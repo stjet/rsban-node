@@ -11,7 +11,7 @@ mod unconfirmed_receive_and_sources_collector;
 
 pub use confirmation_height_bounded::{
     truncate_after, ConfirmationHeightBounded, ConfirmedInfo, NotifyObserversCallback,
-    ReceiveChainDetails, TopAndNextHash, WriteDetails,
+    ReceiveChainDetails, ReceiveSourcePair, TopAndNextHash, WriteDetails,
 };
 pub use confirmation_height_unbounded::ConfirmationHeightUnbounded;
 pub use confirmed_iterated_pairs::ConfirmedIteratedPair;

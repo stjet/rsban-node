@@ -419,6 +419,11 @@ pub struct TopAndNextHash {
     pub next_height: u64,
 }
 
+pub struct ReceiveSourcePair {
+    pub receive_details: ReceiveChainDetails,
+    pub source_hash: BlockHash,
+}
+
 pub fn truncate_after(buffer: &mut BoundedVecDeque<BlockHash>, hash: &BlockHash) {
     if let Some((index, _)) = buffer.iter().enumerate().find(|(_, h)| *h != hash) {
         buffer.truncate(index);

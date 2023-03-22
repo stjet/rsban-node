@@ -4,6 +4,8 @@
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
 
+#include <algorithm>
+
 void nano::public_key::encode_account (std::string & destination_a) const
 {
 	uint8_t account_bytes[32];
@@ -30,6 +32,13 @@ nano::public_key::public_key () :
 nano::public_key const & nano::public_key::null ()
 {
 	return nano::hardened_constants::get ().not_an_account;
+}
+
+nano::public_key nano::public_key::from_bytes (const uint8_t * bytes)
+{
+	nano::public_key result;
+	std::copy (bytes, bytes + 32, std::begin (result.bytes));
+	return result;
 }
 
 std::string nano::public_key::to_node_id () const
@@ -116,6 +125,11 @@ nano::uint256_t nano::uint256_union::number () const
 	nano::uint256_t result;
 	boost::multiprecision::import_bits (result, bytes.begin (), bytes.end ());
 	return result;
+}
+
+void nano::uint256_union::copy_bytes_to (uint8_t * target) const
+{
+	std::copy (std::begin (bytes), std::end (bytes), target);
 }
 
 void nano::uint256_union::encode_hex (std::string & text) const

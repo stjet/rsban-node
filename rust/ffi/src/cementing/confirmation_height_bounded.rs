@@ -8,7 +8,7 @@ use rsnano_core::{Account, BlockHash};
 use rsnano_node::{
     cementing::{
         truncate_after, ConfirmationHeightBounded, ConfirmedInfo, NotifyObserversCallback,
-        ReceiveChainDetails, TopAndNextHash, WriteDetails,
+        ReceiveChainDetails, ReceiveSourcePair, TopAndNextHash, WriteDetails,
     },
     config::Logging,
 };
@@ -296,6 +296,81 @@ pub unsafe extern "C" fn rsn_hash_circular_buffer_truncate_after(
 }
 
 // ----------------------------------
+// ReceiveSourcePairCircularBuffer:
+
+#[repr(C)]
+pub struct ReceiveSourcePairDto {
+    pub receive_details: ReceiveChainDetailsDto,
+    pub source_hash: [u8; 32],
+}
+
+impl From<&ReceiveSourcePair> for ReceiveSourcePairDto {
+    fn from(value: &ReceiveSourcePair) -> Self {
+        Self {
+            receive_details: (&value.receive_details).into(),
+            source_hash: value.source_hash.as_bytes().clone(),
+        }
+    }
+}
+
+impl From<&ReceiveSourcePairDto> for ReceiveSourcePair {
+    fn from(value: &ReceiveSourcePairDto) -> Self {
+        Self {
+            receive_details: (&value.receive_details).into(),
+            source_hash: BlockHash::from_bytes(value.source_hash),
+        }
+    }
+}
+
+pub struct ReceiveSourcePairCircularBufferHandle(BoundedVecDeque<ReceiveSourcePair>);
+
+#[no_mangle]
+pub extern "C" fn rsn_receive_source_pair_circular_buffer_create(
+    max_size: usize,
+) -> *mut ReceiveSourcePairCircularBufferHandle {
+    Box::into_raw(Box::new(ReceiveSourcePairCircularBufferHandle(
+        BoundedVecDeque::new(max_size),
+    )))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_circular_buffer_destroy(
+    handle: *mut ReceiveSourcePairCircularBufferHandle,
+) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_circular_buffer_push_back(
+    handle: *mut ReceiveSourcePairCircularBufferHandle,
+    item: *const ReceiveSourcePairDto,
+) {
+    (*handle).0.push_back((&*item).into());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_circular_buffer_size(
+    handle: *mut ReceiveSourcePairCircularBufferHandle,
+) -> usize {
+    (*handle).0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_circular_buffer_back(
+    handle: *mut ReceiveSourcePairCircularBufferHandle,
+    result: *mut ReceiveSourcePairDto,
+) {
+    *result = (*handle).0.back().unwrap().into();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_receive_source_pair_circular_buffer_pop_back(
+    handle: *mut ReceiveSourcePairCircularBufferHandle,
+) {
+    (*handle).0.pop_back();
+}
+
+// ----------------------------------
 // AccountsConfirmedInfo:
 
 #[repr(C)]
@@ -391,6 +466,21 @@ pub struct ReceiveChainDetailsDto {
     pub has_next: bool,
     pub bottom_height: u64,
     pub bottom_most: [u8; 32],
+}
+
+impl From<&ReceiveChainDetails> for ReceiveChainDetailsDto {
+    fn from(value: &ReceiveChainDetails) -> Self {
+        Self {
+            account: value.account.as_bytes().clone(),
+            height: value.height,
+            hash: value.hash.as_bytes().clone(),
+            top_level: value.top_level.as_bytes().clone(),
+            next: value.next.unwrap_or_default().as_bytes().clone(),
+            has_next: value.next.is_some(),
+            bottom_height: value.bottom_height,
+            bottom_most: value.bottom_most.as_bytes().clone(),
+        }
+    }
 }
 
 impl From<&ReceiveChainDetailsDto> for ReceiveChainDetails {

@@ -8,8 +8,6 @@
 #include <nano/lib/timer.hpp>
 #include <nano/secure/store.hpp>
 
-#include <boost/circular_buffer.hpp>
-
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -197,6 +195,7 @@ private:
 	{
 	public:
 		receive_chain_details (nano::account const &, uint64_t, nano::block_hash const &, nano::block_hash const &, boost::optional<nano::block_hash>, uint64_t, nano::block_hash const &);
+		receive_chain_details (rsnano::ReceiveChainDetailsDto const &);
 		nano::account account;
 		uint64_t height;
 		nano::block_hash hash;
@@ -227,14 +226,33 @@ private:
 	{
 	public:
 		receive_source_pair (receive_chain_details const &, nano::block_hash const &);
+		receive_source_pair (rsnano::ReceiveSourcePairDto const &);
 
 		receive_chain_details receive_details;
 		nano::block_hash source_hash;
+
+		rsnano::ReceiveSourcePairDto to_dto () const;
+	};
+	class receive_source_pair_circular_buffer
+	{
+	public:
+		receive_source_pair_circular_buffer (size_t max_items);
+		receive_source_pair_circular_buffer (receive_source_pair_circular_buffer const &) = delete;
+		receive_source_pair_circular_buffer (receive_source_pair_circular_buffer &&) = delete;
+		~receive_source_pair_circular_buffer ();
+
+		void push_back (receive_source_pair const &);
+		bool empty () const;
+		size_t size () const;
+		receive_source_pair back () const;
+		void pop_back ();
+
+		rsnano::ReceiveSourcePairCircularBufferHandle * handle;
 	};
 
 	nano::timer<std::chrono::milliseconds> timer;
 
-	top_and_next_hash get_next_block (boost::optional<top_and_next_hash> const &, nano::hash_circular_buffer const &, boost::circular_buffer_space_optimized<receive_source_pair> const & receive_source_pairs, boost::optional<receive_chain_details> &, nano::block const & original_block);
+	top_and_next_hash get_next_block (boost::optional<top_and_next_hash> const &, nano::hash_circular_buffer const &, receive_source_pair_circular_buffer const & receive_source_pairs, boost::optional<receive_chain_details> &, nano::block const & original_block);
 	nano::block_hash get_least_unconfirmed_hash_from_top_level (nano::transaction const &, nano::block_hash const &, nano::account const &, nano::confirmation_height_info const &, uint64_t &);
 	boost::optional<top_and_next_hash> prepare_iterated_blocks_for_cementing (preparation_data &);
 
@@ -245,7 +263,7 @@ private:
 	nano::hash_circular_buffer &,
 	nano::block_hash &,
 	nano::block_hash const &,
-	boost::circular_buffer_space_optimized<receive_source_pair> &,
+	receive_source_pair_circular_buffer &,
 	nano::account const &);
 
 	nano::ledger & ledger;

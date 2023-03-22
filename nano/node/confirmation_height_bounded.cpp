@@ -116,7 +116,7 @@ nano::confirmation_height_bounded::~confirmation_height_bounded ()
 nano::confirmation_height_bounded::top_and_next_hash nano::confirmation_height_bounded::get_next_block (
 boost::optional<top_and_next_hash> const & next_in_receive_chain_a,
 nano::hash_circular_buffer const & checkpoints_a,
-boost::circular_buffer_space_optimized<receive_source_pair> const & receive_source_pairs,
+receive_source_pair_circular_buffer const & receive_source_pairs,
 boost::optional<receive_chain_details> & receive_details_a,
 nano::block const & original_block)
 {
@@ -153,7 +153,7 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 
 	boost::optional<top_and_next_hash> next_in_receive_chain;
 	nano::hash_circular_buffer checkpoints{ max_items };
-	boost::circular_buffer_space_optimized<receive_source_pair> receive_source_pairs{ max_items };
+	receive_source_pair_circular_buffer receive_source_pairs{ max_items };
 	nano::block_hash current;
 	bool first_iter = true;
 	auto transaction (ledger.store.tx_begin_read ());
@@ -338,7 +338,7 @@ nano::block_hash const & bottom_hash_a,
 nano::hash_circular_buffer & checkpoints_a,
 nano::block_hash & top_most_non_receive_block_hash_a,
 nano::block_hash const & top_level_hash_a,
-boost::circular_buffer_space_optimized<receive_source_pair> & receive_source_pairs_a,
+receive_source_pair_circular_buffer & receive_source_pairs_a,
 nano::account const & account_a)
 {
 	bool reached_target = false;
@@ -472,6 +472,21 @@ nano::confirmation_height_bounded::receive_chain_details::receive_chain_details 
 {
 }
 
+nano::confirmation_height_bounded::receive_chain_details::receive_chain_details (rsnano::ReceiveChainDetailsDto const & dto) :
+	account (nano::account::from_bytes (dto.account)),
+	height (dto.height),
+	hash (nano::block_hash::from_bytes (dto.hash)),
+	top_level (nano::block_hash::from_bytes (dto.top_level)),
+	next (boost::none),
+	bottom_height (dto.bottom_height),
+	bottom_most (nano::block_hash::from_bytes (dto.bottom_most))
+{
+	if (dto.has_next)
+	{
+		next = nano::block_hash::from_bytes (dto.next);
+	}
+}
+
 nano::confirmation_height_bounded::write_details::write_details (nano::account const & account_a, uint64_t bottom_height_a, nano::block_hash const & bottom_hash_a, uint64_t top_height_a, nano::block_hash const & top_hash_a) :
 	account (account_a),
 	bottom_height (bottom_height_a),
@@ -504,6 +519,12 @@ rsnano::WriteDetailsDto nano::confirmation_height_bounded::write_details::to_dto
 nano::confirmation_height_bounded::receive_source_pair::receive_source_pair (confirmation_height_bounded::receive_chain_details const & receive_details_a, const block_hash & source_a) :
 	receive_details (receive_details_a),
 	source_hash (source_a)
+{
+}
+
+nano::confirmation_height_bounded::receive_source_pair::receive_source_pair (rsnano::ReceiveSourcePairDto const & pair_dto) :
+	receive_details{ pair_dto.receive_details },
+	source_hash{ nano::block_hash::from_bytes (pair_dto.source_hash) }
 {
 }
 
@@ -562,16 +583,62 @@ uint64_t nano::confirmation_height_bounded::pending_writes_queue::total_pending_
 rsnano::ReceiveChainDetailsDto nano::confirmation_height_bounded::receive_chain_details::to_dto () const
 {
 	rsnano::ReceiveChainDetailsDto dto;
-	std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (dto.account));
+	account.copy_bytes_to (dto.account);
 	dto.height = height;
-	std::copy (std::begin (hash.bytes), std::end (hash.bytes), std::begin (dto.hash));
-	std::copy (std::begin (top_level.bytes), std::end (top_level.bytes), std::begin (dto.top_level));
+	hash.copy_bytes_to (dto.hash);
+	top_level.copy_bytes_to (dto.top_level);
 	dto.has_next = next.has_value ();
 	if (next)
 	{
-		std::copy (std::begin (next->bytes), std::end (next->bytes), std::begin (dto.next));
+		next->copy_bytes_to (dto.next);
 	}
 	dto.bottom_height = bottom_height;
-	std::copy (std::begin (bottom_most.bytes), std::end (bottom_most.bytes), std::begin (dto.bottom_most));
+	bottom_most.copy_bytes_to (dto.bottom_most);
 	return dto;
+}
+
+rsnano::ReceiveSourcePairDto nano::confirmation_height_bounded::receive_source_pair::to_dto () const
+{
+	rsnano::ReceiveSourcePairDto dto;
+	source_hash.copy_bytes_to (dto.source_hash);
+	dto.receive_details = receive_details.to_dto ();
+	return dto;
+}
+
+nano::confirmation_height_bounded::receive_source_pair_circular_buffer::receive_source_pair_circular_buffer (size_t max_items) :
+	handle{ rsnano::rsn_receive_source_pair_circular_buffer_create (max_items) }
+{
+}
+
+nano::confirmation_height_bounded::receive_source_pair_circular_buffer::~receive_source_pair_circular_buffer ()
+{
+	rsnano::rsn_receive_source_pair_circular_buffer_destroy (handle);
+}
+
+void nano::confirmation_height_bounded::receive_source_pair_circular_buffer::push_back (nano::confirmation_height_bounded::receive_source_pair const & pair)
+{
+	auto pair_dto{ pair.to_dto () };
+	rsnano::rsn_receive_source_pair_circular_buffer_push_back (handle, &pair_dto);
+}
+
+bool nano::confirmation_height_bounded::receive_source_pair_circular_buffer::empty () const
+{
+	return rsnano::rsn_receive_source_pair_circular_buffer_size (handle) == 0;
+}
+
+size_t nano::confirmation_height_bounded::receive_source_pair_circular_buffer::size () const
+{
+	return rsnano::rsn_receive_source_pair_circular_buffer_size (handle);
+}
+
+nano::confirmation_height_bounded::receive_source_pair nano::confirmation_height_bounded::receive_source_pair_circular_buffer::back () const
+{
+	rsnano::ReceiveSourcePairDto pair_dto;
+	rsnano::rsn_receive_source_pair_circular_buffer_back (handle, &pair_dto);
+	return nano::confirmation_height_bounded::receive_source_pair{ pair_dto };
+}
+
+void nano::confirmation_height_bounded::receive_source_pair_circular_buffer::pop_back ()
+{
+	rsnano::rsn_receive_source_pair_circular_buffer_pop_back (handle);
 }

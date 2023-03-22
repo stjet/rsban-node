@@ -84,6 +84,7 @@ public:
 	bool is_zero () const;
 	std::string to_string () const;
 	nano::uint256_t number () const;
+	void copy_bytes_to (uint8_t *) const;
 
 	union
 	{
@@ -130,6 +131,7 @@ public:
 
 	public_key ();
 
+	static public_key from_bytes (const uint8_t *);
 	static const public_key & null ();
 
 	std::string to_node_id () const;

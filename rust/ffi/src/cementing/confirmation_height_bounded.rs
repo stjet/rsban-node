@@ -95,26 +95,6 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_accounts_confirmed_info
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_bounded_accounts_confirmed_info_size_inc(
-    handle: *mut ConfirmationHeightBoundedHandle,
-) {
-    (*handle)
-        .0
-        .accounts_confirmed_info_size
-        .fetch_add(1, Ordering::Relaxed);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_bounded_accounts_confirmed_info_size_dec(
-    handle: *mut ConfirmationHeightBoundedHandle,
-) {
-    (*handle)
-        .0
-        .accounts_confirmed_info_size
-        .fetch_sub(1, Ordering::Relaxed);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_bounded_accounts_confirmed_info_size_store(
     handle: *mut ConfirmationHeightBoundedHandle,
     value: usize,
@@ -130,37 +110,6 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_pending_writes_size(
     handle: *mut ConfirmationHeightBoundedHandle,
 ) -> usize {
     (*handle).0.pending_writes_size.load(Ordering::Relaxed)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_bounded_pending_writes_size_inc(
-    handle: *mut ConfirmationHeightBoundedHandle,
-) {
-    (*handle)
-        .0
-        .pending_writes_size
-        .fetch_add(1, Ordering::Relaxed);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_bounded_pending_writes_size_dec(
-    handle: *mut ConfirmationHeightBoundedHandle,
-) {
-    (*handle)
-        .0
-        .pending_writes_size
-        .fetch_sub(1, Ordering::Relaxed);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_bounded_pending_writes_size_store(
-    handle: *mut ConfirmationHeightBoundedHandle,
-    value: usize,
-) {
-    (*handle)
-        .0
-        .pending_writes_size
-        .store(value, Ordering::Relaxed);
 }
 
 #[no_mangle]

@@ -13,7 +13,6 @@
 #include <boost/format.hpp>
 
 #include <iterator>
-#include <numeric>
 #include <optional>
 
 nano::hash_circular_buffer::hash_circular_buffer (size_t max_items) :
@@ -404,7 +403,7 @@ boost::optional<nano::confirmation_height_bounded::top_and_next_hash> nano::conf
 	if (receive_details)
 	{
 		details_dto = receive_details->to_dto ();
-	};
+	}
 	bool has_next_dto = preparation_data_a.next_in_receive_chain.has_value ();
 	rsnano::TopAndNextHashDto next_dto;
 	if (preparation_data_a.next_in_receive_chain)

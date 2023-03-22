@@ -6,10 +6,6 @@
 #include <nano/node/write_database_queue.hpp>
 #include <nano/secure/ledger.hpp>
 
-#include <boost/format.hpp>
-
-#include <numeric>
-
 namespace
 {
 void notify_observers_callback_wrapper (void * context, rsnano::BlockHandle * const * block_handles, size_t len)

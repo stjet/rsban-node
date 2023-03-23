@@ -552,7 +552,40 @@ impl ConfirmationHeightBounded {
         next
     }
 
-    pub fn process(&mut self, current: &BlockHash, original_block: &BlockEnum) {
+    pub fn process(
+        &mut self,
+        current: &BlockHash,
+        original_block: &BlockEnum,
+        is_set: bool,
+        receive_source_pairs: &mut BoundedVecDeque<ReceiveSourcePair>,
+        next_in_receive_chain: &mut Option<TopAndNextHash>,
+        txn: &dyn Transaction,
+        top_most_non_receive_block_hash: &BlockHash,
+        already_cemented: bool,
+        checkpoints: &mut BoundedVecDeque<BlockHash>,
+        confirmation_height_info: &ConfirmationHeightInfo,
+        account: &Account,
+        block_height: u64,
+        receive_details: &Option<ReceiveChainDetails>,
+    ) {
+        self.prepare_iterated_blocks_for_cementing(
+            receive_details,
+            checkpoints,
+            next_in_receive_chain,
+            already_cemented,
+            txn,
+            top_most_non_receive_block_hash,
+            confirmation_height_info,
+            account,
+            block_height,
+            current,
+        );
+
+        // If used the top level, don't pop off the receive source pair because it wasn't used
+        if !is_set && !receive_source_pairs.is_empty() {
+            receive_source_pairs.pop_back();
+        }
+
         let total_pending_write_block_count = self.total_pending_write_block_count();
         let max_batch_write_size_reached =
             total_pending_write_block_count >= self.batch_write_size.load(Ordering::SeqCst);

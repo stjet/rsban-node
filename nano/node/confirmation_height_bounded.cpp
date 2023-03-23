@@ -306,16 +306,45 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 		// Need to also handle the case where we are hitting receives where the sends below should be confirmed
 		if (!hit_receive || (receive_source_pairs.size () == 1 && top_most_non_receive_block_hash != current))
 		{
-			preparation_data preparation_data{ *transaction, top_most_non_receive_block_hash, already_cemented, checkpoints, confirmation_height_info, account, block_height, current, receive_details, next_in_receive_chain };
-			next_in_receive_chain = prepare_iterated_blocks_for_cementing (preparation_data);
+			// Call into Rust...
+			//----------------------------------------
+			rsnano::TopAndNextHashDto next_in_receive_chain_dto{};
+			bool has_next_in_receive_chain = false;
 
-			// If used the top level, don't pop off the receive source pair because it wasn't used
-			if (!is_set && !receive_source_pairs.empty ())
+			bool has_receive_details = receive_details.is_initialized ();
+			rsnano::ReceiveChainDetailsDto receive_details_dto{};
+			if (receive_details)
 			{
-				receive_source_pairs.pop_back ();
+				receive_details_dto = receive_details->to_dto ();
 			}
 
-			rsnano::rsn_confirmation_height_bounded_process (handle, current.bytes.data (), original_block->get_handle ());
+			rsnano::rsn_confirmation_height_bounded_process (
+			handle,
+			current.bytes.data (),
+			original_block->get_handle (),
+			is_set,
+			receive_source_pairs.handle,
+			&next_in_receive_chain_dto,
+			&has_next_in_receive_chain,
+			transaction->get_rust_handle (),
+			top_most_non_receive_block_hash.bytes.data (),
+			already_cemented,
+			checkpoints.handle,
+			&confirmation_height_info.dto,
+			account.bytes.data (),
+			block_height,
+			has_receive_details,
+			&receive_details_dto);
+
+			if (has_next_in_receive_chain)
+			{
+				next_in_receive_chain = top_and_next_hash{ next_in_receive_chain_dto };
+			}
+			else
+			{
+				next_in_receive_chain = boost::none;
+			}
+			//----------------------------------------
 		}
 
 		first_iter = false;

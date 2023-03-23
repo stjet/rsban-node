@@ -276,11 +276,52 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_process(
     handle: *mut ConfirmationHeightBoundedHandle,
     current: *const u8,
     original_block: *const BlockHandle,
+    is_set: bool,
+    receive_source_pairs: *mut ReceiveSourcePairCircularBufferHandle,
+    next_in_receive_chain: *mut TopAndNextHashDto,
+    has_next_in_receive_chain: *mut bool,
+    txn: *mut TransactionHandle,
+    top_most_non_receive_block_hash: *const u8,
+    already_cemented: bool,
+    checkpoints: *mut HashCircularBufferHandle,
+    confirmation_height_info: *const ConfirmationHeightInfoDto,
+    account: *const u8,
+    block_height: u64,
+    has_receive_details: bool,
+    receive_details: *const ReceiveChainDetailsDto,
 ) {
+    let mut next = if *has_next_in_receive_chain {
+        Some((&*next_in_receive_chain).into())
+    } else {
+        None
+    };
+
+    let details = if has_receive_details {
+        Some((&*receive_details).into())
+    } else {
+        None
+    };
+
     (*handle).0.process(
         &BlockHash::from_ptr(current),
         &(*original_block).block.read().unwrap(),
+        is_set,
+        &mut (*receive_source_pairs).0,
+        &mut next,
+        (*txn).as_txn(),
+        &BlockHash::from_ptr(top_most_non_receive_block_hash),
+        already_cemented,
+        &mut (*checkpoints).0,
+        &(&*confirmation_height_info).into(),
+        &Account::from_ptr(account),
+        block_height,
+        &details,
     );
+
+    *has_next_in_receive_chain = next.is_some();
+    if let Some(next) = &next {
+        *next_in_receive_chain = next.into();
+    }
 }
 
 // ----------------------------------

@@ -276,7 +276,6 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_process(
     handle: *mut ConfirmationHeightBoundedHandle,
     current: *const u8,
     original_block: *const BlockHandle,
-    is_set: bool,
     receive_source_pairs: *mut ReceiveSourcePairCircularBufferHandle,
     next_in_receive_chain: *mut TopAndNextHashDto,
     has_next_in_receive_chain: *mut bool,
@@ -289,7 +288,9 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_process(
     block_height: u64,
     has_receive_details: bool,
     receive_details: *const ReceiveChainDetailsDto,
-) {
+    hit_receive: bool,
+    first_iter: *mut bool,
+) -> bool {
     let mut next = if *has_next_in_receive_chain {
         Some((&*next_in_receive_chain).into())
     } else {
@@ -302,13 +303,12 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_process(
         None
     };
 
-    (*handle).0.process(
+    let should_break = (*handle).0.process(
         &BlockHash::from_ptr(current),
         &(*original_block).block.read().unwrap(),
-        is_set,
         &mut (*receive_source_pairs).0,
         &mut next,
-        (*txn).as_txn(),
+        (*txn).as_read_txn_mut(),
         &BlockHash::from_ptr(top_most_non_receive_block_hash),
         already_cemented,
         &mut (*checkpoints).0,
@@ -316,12 +316,16 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_process(
         &Account::from_ptr(account),
         block_height,
         &details,
+        hit_receive,
+        &mut *first_iter,
     );
 
     *has_next_in_receive_chain = next.is_some();
     if let Some(next) = &next {
         *next_in_receive_chain = next.into();
     }
+
+    should_break
 }
 
 // ----------------------------------

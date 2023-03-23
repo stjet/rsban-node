@@ -556,10 +556,9 @@ impl ConfirmationHeightBounded {
         &mut self,
         current: &BlockHash,
         original_block: &BlockEnum,
-        is_set: bool,
         receive_source_pairs: &mut BoundedVecDeque<ReceiveSourcePair>,
         next_in_receive_chain: &mut Option<TopAndNextHash>,
-        txn: &dyn Transaction,
+        txn: &mut dyn ReadTransaction,
         top_most_non_receive_block_hash: &BlockHash,
         already_cemented: bool,
         checkpoints: &mut BoundedVecDeque<BlockHash>,
@@ -567,57 +566,80 @@ impl ConfirmationHeightBounded {
         account: &Account,
         block_height: u64,
         receive_details: &Option<ReceiveChainDetails>,
-    ) {
-        self.prepare_iterated_blocks_for_cementing(
-            receive_details,
-            checkpoints,
-            next_in_receive_chain,
-            already_cemented,
-            txn,
-            top_most_non_receive_block_hash,
-            confirmation_height_info,
-            account,
-            block_height,
-            current,
-        );
-
-        // If used the top level, don't pop off the receive source pair because it wasn't used
-        if !is_set && !receive_source_pairs.is_empty() {
-            receive_source_pairs.pop_back();
+        hit_receive: bool,
+        first_iter: &mut bool,
+    ) -> bool {
+        // Exit early when the processor has been stopped, otherwise this function may take a
+        // while (and hence keep the process running) if updating a long chain.
+        if self.stopped.load(Ordering::SeqCst) {
+            // break;
+            return true;
         }
 
-        let total_pending_write_block_count = self.total_pending_write_block_count();
-        let max_batch_write_size_reached =
-            total_pending_write_block_count >= self.batch_write_size.load(Ordering::SeqCst);
+        // next_in_receive_chain can be modified when writing, so need to cache it here before resetting
+        let is_set = next_in_receive_chain.is_some();
+        *next_in_receive_chain = None;
 
-        // When there are a lot of pending confirmation height blocks, it is more efficient to
-        // bulk some of them up to enable better write performance which becomes the bottleneck.
-        let min_time_exceeded =
-            self.timer.lock().unwrap().elapsed() >= self.batch_separate_pending_min_time;
-        let finished_iterating = *current == original_block.hash();
-        let non_awaiting_processing = (self.awaiting_processing_size_callback)() == 0;
-        let should_output = finished_iterating && (non_awaiting_processing || min_time_exceeded);
-
-        let force_write = self.pending_writes.len() >= PENDING_WRITES_MAX_SIZE
-            || self.accounts_confirmed_info.len() >= PENDING_WRITES_MAX_SIZE;
-
-        if (max_batch_write_size_reached || should_output || force_write)
-            && !self.pending_writes.is_empty()
+        // Need to also handle the case where we are hitting receives where the sends below should be confirmed
+        if !hit_receive
+            || (receive_source_pairs.len() == 1 && top_most_non_receive_block_hash != current)
         {
-            // If nothing is currently using the database write lock then write the cemented pending blocks otherwise continue iterating
-            if self
-                .write_database_queue
-                .process(Writer::ConfirmationHeight)
+            self.prepare_iterated_blocks_for_cementing(
+                receive_details,
+                checkpoints,
+                next_in_receive_chain,
+                already_cemented,
+                txn.txn(),
+                top_most_non_receive_block_hash,
+                confirmation_height_info,
+                account,
+                block_height,
+                current,
+            );
+
+            // If used the top level, don't pop off the receive source pair because it wasn't used
+            if !is_set && !receive_source_pairs.is_empty() {
+                receive_source_pairs.pop_back();
+            }
+
+            let total_pending_write_block_count = self.total_pending_write_block_count();
+            let max_batch_write_size_reached =
+                total_pending_write_block_count >= self.batch_write_size.load(Ordering::SeqCst);
+
+            // When there are a lot of pending confirmation height blocks, it is more efficient to
+            // bulk some of them up to enable better write performance which becomes the bottleneck.
+            let min_time_exceeded =
+                self.timer.lock().unwrap().elapsed() >= self.batch_separate_pending_min_time;
+            let finished_iterating = *current == original_block.hash();
+            let non_awaiting_processing = (self.awaiting_processing_size_callback)() == 0;
+            let should_output =
+                finished_iterating && (non_awaiting_processing || min_time_exceeded);
+
+            let force_write = self.pending_writes.len() >= PENDING_WRITES_MAX_SIZE
+                || self.accounts_confirmed_info.len() >= PENDING_WRITES_MAX_SIZE;
+
+            if (max_batch_write_size_reached || should_output || force_write)
+                && !self.pending_writes.is_empty()
             {
-                // todo: this does not seem thread safe!
-                let mut scoped_write_guard = self.write_database_queue.pop();
-                self.cement_blocks(&mut scoped_write_guard);
-            } else if force_write {
-                let mut scoped_write_guard =
-                    self.write_database_queue.wait(Writer::ConfirmationHeight);
-                self.cement_blocks(&mut scoped_write_guard);
+                // If nothing is currently using the database write lock then write the cemented pending blocks otherwise continue iterating
+                if self
+                    .write_database_queue
+                    .process(Writer::ConfirmationHeight)
+                {
+                    // todo: this does not seem thread safe!
+                    let mut scoped_write_guard = self.write_database_queue.pop();
+                    self.cement_blocks(&mut scoped_write_guard);
+                } else if force_write {
+                    let mut scoped_write_guard =
+                        self.write_database_queue.wait(Writer::ConfirmationHeight);
+                    self.cement_blocks(&mut scoped_write_guard);
+                }
             }
         }
+
+        *first_iter = false;
+        txn.refresh();
+        false
     }
 
     fn total_pending_write_block_count(&self) -> u64 {

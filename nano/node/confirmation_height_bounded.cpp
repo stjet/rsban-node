@@ -292,63 +292,51 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 			hit_receive = iterate (*transaction, block_height, current, checkpoints, top_most_non_receive_block_hash, top_level_hash, receive_source_pairs, account);
 		}
 
-		// Exit early when the processor has been stopped, otherwise this function may take a
-		// while (and hence keep the process running) if updating a long chain.
-		if (stopped.load ())
+		// Call into Rust...
+		//----------------------------------------
+		rsnano::TopAndNextHashDto next_in_receive_chain_dto{};
+		bool has_next_in_receive_chain = false;
+
+		bool has_receive_details = receive_details.is_initialized ();
+		rsnano::ReceiveChainDetailsDto receive_details_dto{};
+		if (receive_details)
+		{
+			receive_details_dto = receive_details->to_dto ();
+		}
+
+		bool should_break = rsnano::rsn_confirmation_height_bounded_process (
+		handle,
+		current.bytes.data (),
+		original_block->get_handle (),
+		receive_source_pairs.handle,
+		&next_in_receive_chain_dto,
+		&has_next_in_receive_chain,
+		transaction->get_rust_handle (),
+		top_most_non_receive_block_hash.bytes.data (),
+		already_cemented,
+		checkpoints.handle,
+		&confirmation_height_info.dto,
+		account.bytes.data (),
+		block_height,
+		has_receive_details,
+		&receive_details_dto,
+		hit_receive,
+		&first_iter);
+
+		if (has_next_in_receive_chain)
+		{
+			next_in_receive_chain = top_and_next_hash{ next_in_receive_chain_dto };
+		}
+		else
+		{
+			next_in_receive_chain = boost::none;
+		}
+
+		if (should_break)
 		{
 			break;
 		}
-
-		// next_in_receive_chain can be modified when writing, so need to cache it here before resetting
-		auto is_set = next_in_receive_chain.is_initialized ();
-		next_in_receive_chain = boost::none;
-
-		// Need to also handle the case where we are hitting receives where the sends below should be confirmed
-		if (!hit_receive || (receive_source_pairs.size () == 1 && top_most_non_receive_block_hash != current))
-		{
-			// Call into Rust...
-			//----------------------------------------
-			rsnano::TopAndNextHashDto next_in_receive_chain_dto{};
-			bool has_next_in_receive_chain = false;
-
-			bool has_receive_details = receive_details.is_initialized ();
-			rsnano::ReceiveChainDetailsDto receive_details_dto{};
-			if (receive_details)
-			{
-				receive_details_dto = receive_details->to_dto ();
-			}
-
-			rsnano::rsn_confirmation_height_bounded_process (
-			handle,
-			current.bytes.data (),
-			original_block->get_handle (),
-			is_set,
-			receive_source_pairs.handle,
-			&next_in_receive_chain_dto,
-			&has_next_in_receive_chain,
-			transaction->get_rust_handle (),
-			top_most_non_receive_block_hash.bytes.data (),
-			already_cemented,
-			checkpoints.handle,
-			&confirmation_height_info.dto,
-			account.bytes.data (),
-			block_height,
-			has_receive_details,
-			&receive_details_dto);
-
-			if (has_next_in_receive_chain)
-			{
-				next_in_receive_chain = top_and_next_hash{ next_in_receive_chain_dto };
-			}
-			else
-			{
-				next_in_receive_chain = boost::none;
-			}
-			//----------------------------------------
-		}
-
-		first_iter = false;
-		transaction->refresh ();
+		//----------------------------------------
 	} while ((!receive_source_pairs.empty () || current != original_block->hash ()) && !stopped.load ());
 
 	debug_assert (checkpoints.empty ());

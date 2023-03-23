@@ -220,77 +220,12 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 	auto transaction (ledger.store.tx_begin_read ());
 	do
 	{
-		boost::optional<receive_chain_details> receive_details;
-		auto hash_to_process = get_next_block (next_in_receive_chain, checkpoints, receive_source_pairs, receive_details, *original_block);
-		current = hash_to_process.top;
-
-		auto top_level_hash = current;
-		std::shared_ptr<nano::block> block;
-		if (first_iter)
-		{
-			debug_assert (current == original_block->hash ());
-			block = original_block;
-		}
-		else
-		{
-			block = ledger.store.block ().get (*transaction, current);
-		}
-
-		if (!block)
-		{
-			if (ledger.pruning_enabled () && ledger.store.pruned ().exists (*transaction, current))
-			{
-				if (!receive_source_pairs.empty ())
-				{
-					receive_source_pairs.pop_back ();
-				}
-				continue;
-			}
-			else
-			{
-				auto error_str = (boost::format ("Ledger mismatch trying to set confirmation height for block %1% (bounded processor)") % current.to_string ()).str ();
-				logger->always_log (error_str);
-				std::cerr << error_str << std::endl;
-				release_assert (block);
-			}
-		}
-		nano::account account (block->account ());
-		if (account.is_zero ())
-		{
-			account = block->sideband ().account ();
-		}
-
-		// Checks if we have encountered this account before but not commited changes yet, if so then update the cached confirmation height
-		nano::confirmation_height_info confirmation_height_info;
-		auto found_info = accounts_confirmed_info.find (account);
-		if (found_info)
-		{
-			confirmation_height_info = nano::confirmation_height_info (found_info->confirmed_height, found_info->iterated_frontier);
-		}
-		else
-		{
-			ledger.store.confirmation_height ().get (*transaction, account, confirmation_height_info);
-			// This block was added to the confirmation height processor but is already confirmed
-			if (first_iter && confirmation_height_info.height () >= block->sideband ().height () && current == original_block->hash ())
-			{
-				notify_block_already_cemented_observers_callback (original_block->hash ());
-			}
-		}
-
 		// Call into Rust...
 		//----------------------------------------
 		rsnano::TopAndNextHashDto next_in_receive_chain_dto{};
 		bool has_next_in_receive_chain = false;
 
-		bool has_receive_details = receive_details.is_initialized ();
-		rsnano::ReceiveChainDetailsDto receive_details_dto{};
-		if (receive_details)
-		{
-			receive_details_dto = receive_details->to_dto ();
-		}
-
-		auto hash_to_process_dto{ hash_to_process.to_dto () };
-
+		bool should_continue = false;
 		bool should_break = rsnano::rsn_confirmation_height_bounded_process (
 		handle,
 		current.bytes.data (),
@@ -300,14 +235,8 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 		&has_next_in_receive_chain,
 		transaction->get_rust_handle (),
 		checkpoints.handle,
-		&confirmation_height_info.dto,
-		account.bytes.data (),
-		has_receive_details,
-		&receive_details_dto,
 		&first_iter,
-		top_level_hash.bytes.data (),
-		block->get_handle (),
-		&hash_to_process_dto);
+		&should_continue);
 
 		if (has_next_in_receive_chain)
 		{
@@ -316,6 +245,11 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 		else
 		{
 			next_in_receive_chain = boost::none;
+		}
+
+		if (should_continue)
+		{
+			continue;
 		}
 
 		if (should_break)

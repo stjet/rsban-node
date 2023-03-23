@@ -563,14 +563,67 @@ impl ConfirmationHeightBounded {
         next_in_receive_chain: &mut Option<TopAndNextHash>,
         txn: &mut dyn ReadTransaction,
         checkpoints: &mut BoundedVecDeque<BlockHash>,
-        confirmation_height_info: &ConfirmationHeightInfo,
-        account: &Account,
-        receive_details: &Option<ReceiveChainDetails>,
         first_iter: &mut bool,
-        top_level_hash: &BlockHash,
-        block: &BlockEnum,
-        hash_to_process: &TopAndNextHash,
+        should_continue: &mut bool,
     ) -> bool {
+        let mut receive_details = None;
+        let hash_to_process = self.get_next_block(
+            next_in_receive_chain,
+            checkpoints,
+            receive_source_pairs,
+            &mut receive_details,
+            original_block,
+        );
+        *current = hash_to_process.top;
+
+        let top_level_hash = *current;
+        let block = if *first_iter {
+            debug_assert!(*current == original_block.hash());
+            Some(original_block.clone())
+        } else {
+            self.ledger.store.block().get(txn.txn(), current)
+        };
+
+        let Some(block) = block else{
+			if self.ledger.pruning_enabled () && self.ledger.store.pruned ().exists (txn.txn(), current) {
+				if !receive_source_pairs.is_empty () {
+					receive_source_pairs.pop_back ();
+				}
+				// continue;
+                *should_continue = true;
+                return false;
+			} else {
+				let error_str = format!("Ledger mismatch trying to set confirmation height for block {} (bounded processor)", current);
+				self.logger.always_log(&error_str);
+                eprintln!("{}", error_str);
+				panic!("{}", error_str);
+			}
+        };
+
+        let account = block.account_calculated();
+
+        // Checks if we have encountered this account before but not commited changes yet, if so then update the cached confirmation height
+        let confirmation_height_info = if let Some(found_info) =
+            self.accounts_confirmed_info.get(&account)
+        {
+            ConfirmationHeightInfo::new(found_info.confirmed_height, found_info.iterated_frontier)
+        } else {
+            let conf_info = self
+                .ledger
+                .store
+                .confirmation_height()
+                .get(txn.txn(), &account)
+                .unwrap_or_default();
+            // This block was added to the confirmation height processor but is already confirmed
+            if *first_iter
+                && conf_info.height >= block.sideband().unwrap().height
+                && *current == original_block.hash()
+            {
+                (self.notify_block_already_cemented_observers_callback)(original_block.hash());
+            }
+            conf_info
+        };
+
         let mut block_height = block.sideband().unwrap().height;
         let already_cemented = confirmation_height_info.height >= block_height;
 
@@ -585,8 +638,8 @@ impl ConfirmationHeightBounded {
                 *current = self.get_least_unconfirmed_hash_from_top_level(
                     txn.txn(),
                     current,
-                    account,
-                    confirmation_height_info,
+                    &account,
+                    &confirmation_height_info,
                     &mut block_height,
                 );
             } else {
@@ -604,8 +657,8 @@ impl ConfirmationHeightBounded {
             hit_receive = self.iterate(
                 receive_source_pairs,
                 checkpoints,
-                *top_level_hash,
-                *account,
+                top_level_hash,
+                account,
                 block_height,
                 *current,
                 &mut top_most_non_receive_block_hash,
@@ -629,14 +682,14 @@ impl ConfirmationHeightBounded {
             || (receive_source_pairs.len() == 1 && top_most_non_receive_block_hash != *current)
         {
             self.prepare_iterated_blocks_for_cementing(
-                receive_details,
+                &receive_details,
                 checkpoints,
                 next_in_receive_chain,
                 already_cemented,
                 txn.txn(),
                 &top_most_non_receive_block_hash,
-                confirmation_height_info,
-                account,
+                &confirmation_height_info,
+                &account,
                 block_height,
                 current,
             );

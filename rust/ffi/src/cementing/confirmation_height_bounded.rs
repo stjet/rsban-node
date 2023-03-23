@@ -298,28 +298,14 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_process(
     has_next_in_receive_chain: *mut bool,
     txn: *mut TransactionHandle,
     checkpoints: *mut HashCircularBufferHandle,
-    confirmation_height_info: *const ConfirmationHeightInfoDto,
-    account: *const u8,
-    has_receive_details: bool,
-    receive_details: *const ReceiveChainDetailsDto,
     first_iter: *mut bool,
-    top_level_hash: *const u8,
-    block: *const BlockHandle,
-    hash_to_process: *const TopAndNextHashDto,
+    should_continue: *mut bool,
 ) -> bool {
     let mut next = if *has_next_in_receive_chain {
         Some((&*next_in_receive_chain).into())
     } else {
         None
     };
-
-    let details = if has_receive_details {
-        Some((&*receive_details).into())
-    } else {
-        None
-    };
-
-    let hash_to_process = (&*hash_to_process).into();
 
     let mut current_copy = BlockHash::from_ptr(current);
     let should_break = (*handle).0.process(
@@ -329,13 +315,8 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_process(
         &mut next,
         (*txn).as_read_txn_mut(),
         &mut (*checkpoints).0,
-        &(&*confirmation_height_info).into(),
-        &Account::from_ptr(account),
-        &details,
         &mut *first_iter,
-        &BlockHash::from_ptr(top_level_hash),
-        &(*block).block.read().unwrap(),
-        &hash_to_process,
+        &mut *should_continue,
     );
 
     copy_hash_bytes(current_copy, current);

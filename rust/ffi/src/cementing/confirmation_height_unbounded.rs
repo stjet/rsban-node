@@ -1,10 +1,7 @@
 use std::{
     ffi::c_void,
     ops::Deref,
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc, Mutex, RwLock, Weak,
-    },
+    sync::{atomic::Ordering, Arc, Mutex, RwLock, Weak},
     time::Duration,
 };
 
@@ -17,7 +14,7 @@ use rsnano_node::{
 use crate::{
     core::BlockHandle,
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
-    utils::{ContextWrapper, LoggerHandle, LoggerMT},
+    utils::{AtomicU64Handle, ContextWrapper, LoggerHandle, LoggerMT},
     LoggingDto, StatHandle, VoidPointerCallback,
 };
 
@@ -306,31 +303,4 @@ pub unsafe extern "C" fn rsn_block_hash_vec_truncate(
     new_size: usize,
 ) {
     (*handle).0.truncate(new_size);
-}
-
-pub struct AtomicU64Handle(pub Arc<AtomicU64>);
-
-#[no_mangle]
-pub extern "C" fn rsn_atomic_u64_create(value: u64) -> *mut AtomicU64Handle {
-    Box::into_raw(Box::new(AtomicU64Handle(Arc::new(AtomicU64::new(value)))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_atomic_u64_destroy(handle: *mut AtomicU64Handle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_atomic_u64_load(handle: *mut AtomicU64Handle) -> u64 {
-    (*handle).0.load(Ordering::SeqCst)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_atomic_u64_store(handle: *mut AtomicU64Handle, value: u64) {
-    (*handle).0.store(value, Ordering::SeqCst)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_atomic_u64_add(handle: *mut AtomicU64Handle, value: u64) {
-    (*handle).0.fetch_add(value, Ordering::SeqCst);
 }

@@ -2,7 +2,7 @@ use std::{
     cmp::max,
     collections::{HashMap, VecDeque},
     sync::{
-        atomic::{AtomicU64, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
         Arc, RwLock,
     },
     time::Instant,
@@ -11,7 +11,7 @@ use std::{
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash, ConfirmationHeightInfo};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
-use rsnano_store_traits::Transaction;
+use rsnano_store_traits::{ReadTransaction, Transaction};
 
 use crate::config::Logging;
 
@@ -33,6 +33,7 @@ pub struct ConfirmationHeightBounded {
     pub accounts_confirmed_info: HashMap<Account, ConfirmedInfo>,
     pub accounts_confirmed_info_size: AtomicUsize,
     pub pending_writes_size: AtomicUsize,
+    stopped: Arc<AtomicBool>,
 }
 
 const MAXIMUM_BATCH_WRITE_TIME: u64 = 250; // milliseconds
@@ -43,6 +44,9 @@ const MINIMUM_BATCH_WRITE_SIZE: u64 = 16384;
 /** The maximum number of various containers to keep the memory bounded */
 const MAX_ITEMS: usize = 131072;
 
+/** The maximum number of blocks to be read in while iterating over a long account chain */
+const BATCH_READ_SIZE: u64 = 65536;
+
 impl ConfirmationHeightBounded {
     pub fn new(
         write_database_queue: Arc<WriteDatabaseQueue>,
@@ -51,6 +55,7 @@ impl ConfirmationHeightBounded {
         logger: Arc<dyn Logger>,
         logging: Logging,
         ledger: Arc<Ledger>,
+        stopped: Arc<AtomicBool>,
     ) -> Self {
         Self {
             write_database_queue,
@@ -63,6 +68,7 @@ impl ConfirmationHeightBounded {
             accounts_confirmed_info: HashMap::new(),
             accounts_confirmed_info_size: AtomicUsize::new(0),
             pending_writes_size: AtomicUsize::new(0),
+            stopped,
         }
     }
 
@@ -401,37 +407,68 @@ impl ConfirmationHeightBounded {
         checkpoints: &mut BoundedVecDeque<BlockHash>,
         top_level_hash: BlockHash,
         account: Account,
-        block: &Arc<RwLock<BlockEnum>>,
-        hash: BlockHash,
         bottom_height: u64,
         bottom_hash: BlockHash,
-    ) {
-        let block_lock = block.read().unwrap();
-        let source = block_lock.source_or_link();
-        //----------------------------------------
-        let sideband = block_lock.sideband().unwrap();
-        let next = if !sideband.successor.is_zero() && sideband.successor != top_level_hash {
-            Some(sideband.successor)
-        } else {
-            None
-        };
-        receive_source_pairs.push_back(ReceiveSourcePair {
-            receive_details: ReceiveChainDetails {
-                account,
-                height: sideband.height,
-                hash,
-                top_level: top_level_hash,
-                next,
-                bottom_height,
-                bottom_most: bottom_hash,
-            },
-            source_hash: source,
-        });
+        top_most_non_receive_block_hash: &mut BlockHash,
+        txn: &mut dyn ReadTransaction,
+    ) -> bool {
+        let mut reached_target = false;
+        let mut hit_receive = false;
+        let mut hash = bottom_hash;
+        let mut num_blocks = 0;
+        while !hash.is_zero() && !reached_target && !self.stopped.load(Ordering::SeqCst) {
+            // Keep iterating upwards until we either reach the desired block or the second receive.
+            // Once a receive is cemented, we can cement all blocks above it until the next receive, so store those details for later.
+            num_blocks += 1;
+            let block = self.ledger.store.block().get(txn.txn(), &hash).unwrap();
+            let source = block.source_or_link();
+            //----------------------------------------
+            if !source.is_zero()
+                && !self.ledger.is_epoch_link(&source.into())
+                && self.ledger.store.block().exists(txn.txn(), &source)
+            {
+                hit_receive = true;
+                reached_target = true;
+                let sideband = block.sideband().unwrap();
+                let next = if !sideband.successor.is_zero() && sideband.successor != top_level_hash
+                {
+                    Some(sideband.successor)
+                } else {
+                    None
+                };
+                receive_source_pairs.push_back(ReceiveSourcePair {
+                    receive_details: ReceiveChainDetails {
+                        account,
+                        height: sideband.height,
+                        hash,
+                        top_level: top_level_hash,
+                        next,
+                        bottom_height,
+                        bottom_most: bottom_hash,
+                    },
+                    source_hash: source,
+                });
 
-        // Store a checkpoint every max_items so that we can always traverse a long number of accounts to genesis
-        if receive_source_pairs.len() % MAX_ITEMS == 0 {
-            checkpoints.push_back(top_level_hash);
+                // Store a checkpoint every max_items so that we can always traverse a long number of accounts to genesis
+                if receive_source_pairs.len() % MAX_ITEMS == 0 {
+                    checkpoints.push_back(top_level_hash);
+                }
+            } else {
+                // Found a send/change/epoch block which isn't the desired top level
+                *top_most_non_receive_block_hash = hash;
+                if hash == top_level_hash {
+                    reached_target = true;
+                } else {
+                    hash = block.sideband().unwrap().successor;
+                }
+            }
+
+            // We could be traversing a very large account so we don't want to open read transactions for too long.
+            if (num_blocks > 0) && num_blocks % BATCH_READ_SIZE == 0 {
+                txn.refresh();
+            }
         }
+        hit_receive
     }
 }
 

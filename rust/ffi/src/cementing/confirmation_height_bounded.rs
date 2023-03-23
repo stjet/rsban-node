@@ -15,15 +15,13 @@ use rsnano_node::{
 
 use crate::{
     copy_hash_bytes,
-    core::{BlockHandle, BlockVecHandle},
+    core::BlockVecHandle,
     ledger::datastore::{
         LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle, WriteGuardHandle,
     },
-    utils::{ContextWrapper, LoggerHandle, LoggerMT},
+    utils::{AtomicBoolHandle, AtomicU64Handle, ContextWrapper, LoggerHandle, LoggerMT},
     ConfirmationHeightInfoDto, LoggingDto, VoidPointerCallback,
 };
-
-use super::confirmation_height_unbounded::AtomicU64Handle;
 
 pub struct ConfirmationHeightBoundedHandle(ConfirmationHeightBounded);
 
@@ -39,6 +37,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
     logger: *mut LoggerHandle,
     logging: *const LoggingDto,
     ledger: *mut LedgerHandle,
+    stopped: *mut AtomicBoolHandle,
 ) -> *mut ConfirmationHeightBoundedHandle {
     let notify_observers_context =
         ContextWrapper::new(notify_observers_context, notify_observers_drop_context);
@@ -60,6 +59,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
             Arc::new(LoggerMT::new(Box::from_raw(logger))),
             logging,
             (*ledger).0.clone(),
+            (*stopped).0.clone(),
         ),
     )))
 }
@@ -169,21 +169,25 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_iterate(
     checkpoints: *mut HashCircularBufferHandle,
     top_level_hash: *const u8,
     account: *const u8,
-    block: *const BlockHandle,
-    hash: *const u8,
     bottom_height: u64,
     bottom_hash: *const u8,
-) {
-    (*handle).0.iterate(
+    top_most_non_receive_block_hash: *mut u8,
+    txn: *mut TransactionHandle,
+) -> bool {
+    let mut top_most_receive = BlockHash::from_ptr(top_most_non_receive_block_hash);
+    let hit_receive = (*handle).0.iterate(
         &mut (*receive_source_pairs).0,
         &mut (*checkpoints).0,
         BlockHash::from_ptr(top_level_hash),
         Account::from_ptr(account),
-        &(*block).block,
-        BlockHash::from_ptr(hash),
         bottom_height,
         BlockHash::from_ptr(bottom_hash),
+        &mut top_most_receive,
+        (*txn).as_read_txn_mut(),
     );
+
+    copy_hash_bytes(top_most_receive, top_most_non_receive_block_hash);
+    hit_receive
 }
 
 // ----------------------------------

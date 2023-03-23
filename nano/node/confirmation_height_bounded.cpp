@@ -69,7 +69,8 @@ std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & 
 rsnano::AtomicU64Wrapper & batch_write_size_a,
 std::shared_ptr<nano::logger_mt> & logger_a,
 nano::logging const & logging_a,
-nano::ledger & ledger_a)
+nano::ledger & ledger_a,
+rsnano::AtomicBoolWrapper & stopped_a)
 {
 	auto notify_observers_context = new std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> (notify_observers_callback_a);
 	auto logging_dto{ logging_a.to_dto () };
@@ -81,12 +82,13 @@ nano::ledger & ledger_a)
 	batch_write_size_a.handle,
 	nano::to_logger_handle (logger_a),
 	&logging_dto,
-	ledger_a.handle);
+	ledger_a.handle,
+	stopped_a.handle);
 }
 }
 
-nano::confirmation_height_bounded::confirmation_height_bounded (nano::ledger & ledger_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, std::atomic<bool> & stopped_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
-	handle{ create_conf_height_bounded_handle (write_database_queue_a, notify_observers_callback_a, batch_write_size_a, logger_a, logging_a, ledger_a) },
+nano::confirmation_height_bounded::confirmation_height_bounded (nano::ledger & ledger_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, rsnano::AtomicBoolWrapper & stopped_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
+	handle{ create_conf_height_bounded_handle (write_database_queue_a, notify_observers_callback_a, batch_write_size_a, logger_a, logging_a, ledger_a, stopped_a) },
 	accounts_confirmed_info{ handle },
 	pending_writes{ handle },
 	ledger (ledger_a),
@@ -252,7 +254,7 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 
 		// Exit early when the processor has been stopped, otherwise this function may take a
 		// while (and hence keep the process running) if updating a long chain.
-		if (stopped)
+		if (stopped.load ())
 		{
 			break;
 		}
@@ -302,7 +304,7 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 
 		first_iter = false;
 		transaction->refresh ();
-	} while ((!receive_source_pairs.empty () || current != original_block->hash ()) && !stopped);
+	} while ((!receive_source_pairs.empty () || current != original_block->hash ()) && !stopped.load ());
 
 	debug_assert (checkpoints.empty ());
 }
@@ -341,57 +343,16 @@ nano::block_hash const & top_level_hash_a,
 receive_source_pair_circular_buffer & receive_source_pairs_a,
 nano::account const & account_a)
 {
-	bool reached_target = false;
-	bool hit_receive = false;
-	auto hash = bottom_hash_a;
-	uint64_t num_blocks = 0;
-	while (!hash.is_zero () && !reached_target && !stopped)
-	{
-		// Keep iterating upwards until we either reach the desired block or the second receive.
-		// Once a receive is cemented, we can cement all blocks above it until the next receive, so store those details for later.
-		++num_blocks;
-		auto block = ledger.store.block ().get (transaction_a, hash);
-		auto source (block->source ());
-		if (source.is_zero ())
-		{
-			source = block->link ().as_block_hash ();
-		}
-
-		if (!source.is_zero () && !ledger.is_epoch_link (source) && ledger.store.block ().exists (transaction_a, source))
-		{
-			hit_receive = true;
-			reached_target = true;
-			rsnano::rsn_confirmation_height_bounded_iterate (
-			handle,
-			receive_source_pairs_a.handle,
-			checkpoints_a.handle,
-			top_level_hash_a.bytes.data (),
-			account_a.bytes.data (),
-			block->get_handle (),
-			hash.bytes.data (),
-			bottom_height_a,
-			bottom_hash_a.bytes.data ());
-		}
-		else
-		{
-			// Found a send/change/epoch block which isn't the desired top level
-			top_most_non_receive_block_hash_a = hash;
-			if (hash == top_level_hash_a)
-			{
-				reached_target = true;
-			}
-			else
-			{
-				hash = block->sideband ().successor ();
-			}
-		}
-
-		// We could be traversing a very large account so we don't want to open read transactions for too long.
-		if ((num_blocks > 0) && num_blocks % batch_read_size == 0)
-		{
-			transaction_a.refresh ();
-		}
-	}
+	bool hit_receive = rsnano::rsn_confirmation_height_bounded_iterate (
+	handle,
+	receive_source_pairs_a.handle,
+	checkpoints_a.handle,
+	top_level_hash_a.bytes.data (),
+	account_a.bytes.data (),
+	bottom_height_a,
+	bottom_hash_a.bytes.data (),
+	top_most_non_receive_block_hash_a.bytes.data (),
+	transaction_a.get_rust_handle ());
 
 	return hit_receive;
 }

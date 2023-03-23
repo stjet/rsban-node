@@ -90,7 +90,7 @@ private:
 	std::shared_ptr<nano::block> original_block;
 
 	nano::condition_variable condition;
-	std::atomic<bool> stopped{ false };
+	rsnano::AtomicBoolWrapper stopped{ false };
 	// No mutex needed for the observers as these should be set up during initialization of the node
 	std::vector<std::function<void (std::shared_ptr<nano::block> const &)>> cemented_observers;
 	std::vector<std::function<void (nano::block_hash const &)>> block_already_cemented_observers;

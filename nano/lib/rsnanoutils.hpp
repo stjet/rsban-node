@@ -77,6 +77,33 @@ public:
 	rsnano::AtomicU64Handle * handle;
 };
 
+class AtomicBoolWrapper
+{
+public:
+	AtomicBoolWrapper (bool value_a) :
+		handle{ rsnano::rsn_atomic_bool_create (value_a) }
+	{
+	}
+	AtomicBoolWrapper (AtomicBoolWrapper const &) = delete;
+	AtomicBoolWrapper (AtomicBoolWrapper &&) = delete;
+	~AtomicBoolWrapper ()
+	{
+		rsnano::rsn_atomic_bool_destroy (handle);
+	}
+
+	bool load ()
+	{
+		return rsnano::rsn_atomic_bool_load (handle);
+	}
+
+	void store (bool value_a)
+	{
+		return rsnano::rsn_atomic_bool_store (handle, value_a);
+	}
+
+	rsnano::AtomicBoolHandle * handle;
+};
+
 class RsNanoTimer
 {
 public:

@@ -16,6 +16,9 @@ pub use logger_mt::*;
 mod timer;
 pub use timer::*;
 
+mod atomics;
+pub use atomics::*;
+
 use crate::VoidPointerCallback;
 
 pub struct ContextWrapper {

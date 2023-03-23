@@ -40,7 +40,7 @@ public:
 class confirmation_height_bounded final
 {
 public:
-	confirmation_height_bounded (nano::ledger &, nano::write_database_queue &, std::chrono::milliseconds batch_separate_pending_min_time, nano::logging const &, std::shared_ptr<nano::logger_mt> &, std::atomic<bool> & stopped, rsnano::AtomicU64Wrapper & batch_write_size, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & cemented_callback, std::function<void (nano::block_hash const &)> const & already_cemented_callback, std::function<uint64_t ()> const & awaiting_processing_size_query);
+	confirmation_height_bounded (nano::ledger &, nano::write_database_queue &, std::chrono::milliseconds batch_separate_pending_min_time, nano::logging const &, std::shared_ptr<nano::logger_mt> &, rsnano::AtomicBoolWrapper & stopped, rsnano::AtomicU64Wrapper & batch_write_size, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & cemented_callback, std::function<void (nano::block_hash const &)> const & already_cemented_callback, std::function<uint64_t ()> const & awaiting_processing_size_query);
 	confirmation_height_bounded (confirmation_height_bounded const &) = delete;
 	confirmation_height_bounded (confirmation_height_bounded &&) = delete;
 	~confirmation_height_bounded ();
@@ -271,7 +271,7 @@ private:
 	std::chrono::milliseconds batch_separate_pending_min_time;
 	nano::logging const & logging;
 	std::shared_ptr<nano::logger_mt> & logger;
-	std::atomic<bool> & stopped;
+	rsnano::AtomicBoolWrapper & stopped;
 	rsnano::AtomicU64Wrapper & batch_write_size;
 	std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> notify_observers_callback;
 	std::function<void (nano::block_hash const &)> notify_block_already_cemented_observers_callback;

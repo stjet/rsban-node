@@ -40,7 +40,7 @@ void nano::confirmation_height_processor::stop ()
 {
 	{
 		nano::lock_guard<nano::mutex> guard (mutex);
-		stopped = true;
+		stopped.store (true);
 		unbounded_processor.stop ();
 	}
 	condition.notify_one ();
@@ -53,7 +53,7 @@ void nano::confirmation_height_processor::stop ()
 void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 {
 	nano::unique_lock<nano::mutex> lk (mutex);
-	while (!stopped)
+	while (!stopped.load ())
 	{
 		if (!paused && !awaiting_processing.empty ())
 		{

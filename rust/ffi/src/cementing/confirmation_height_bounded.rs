@@ -291,42 +291,11 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_get_next_block(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_bounded_process(
     handle: *mut ConfirmationHeightBoundedHandle,
-    current: *mut u8,
     original_block: *const BlockHandle,
-    receive_source_pairs: *mut ReceiveSourcePairCircularBufferHandle,
-    next_in_receive_chain: *mut TopAndNextHashDto,
-    has_next_in_receive_chain: *mut bool,
-    txn: *mut TransactionHandle,
-    checkpoints: *mut HashCircularBufferHandle,
-    first_iter: *mut bool,
-    should_continue: *mut bool,
-) -> bool {
-    let mut next = if *has_next_in_receive_chain {
-        Some((&*next_in_receive_chain).into())
-    } else {
-        None
-    };
-
-    let mut current_copy = BlockHash::from_ptr(current);
-    let should_break = (*handle).0.process(
-        &mut current_copy,
-        &(*original_block).block.read().unwrap(),
-        &mut (*receive_source_pairs).0,
-        &mut next,
-        (*txn).as_read_txn_mut(),
-        &mut (*checkpoints).0,
-        &mut *first_iter,
-        &mut *should_continue,
-    );
-
-    copy_hash_bytes(current_copy, current);
-
-    *has_next_in_receive_chain = next.is_some();
-    if let Some(next) = &next {
-        *next_in_receive_chain = next.into();
-    }
-
-    should_break
+) {
+    (*handle)
+        .0
+        .process(&(*original_block).block.read().unwrap());
 }
 
 // ----------------------------------

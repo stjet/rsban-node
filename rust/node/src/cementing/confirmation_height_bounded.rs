@@ -555,43 +555,39 @@ impl ConfirmationHeightBounded {
         next
     }
 
-    pub fn process(
-        &mut self,
-        current: &mut BlockHash,
-        original_block: &BlockEnum,
-        receive_source_pairs: &mut BoundedVecDeque<ReceiveSourcePair>,
-        next_in_receive_chain: &mut Option<TopAndNextHash>,
-        txn: &mut dyn ReadTransaction,
-        checkpoints: &mut BoundedVecDeque<BlockHash>,
-        first_iter: &mut bool,
-        should_continue: &mut bool,
-    ) -> bool {
-        let mut receive_details = None;
-        let hash_to_process = self.get_next_block(
-            next_in_receive_chain,
-            checkpoints,
-            receive_source_pairs,
-            &mut receive_details,
-            original_block,
-        );
-        *current = hash_to_process.top;
+    pub fn process(&mut self, original_block: &BlockEnum) {
+        let mut next_in_receive_chain: Option<TopAndNextHash> = None;
+        let mut checkpoints = BoundedVecDeque::new(MAX_ITEMS);
+        let mut receive_source_pairs = BoundedVecDeque::new(MAX_ITEMS);
+        let mut current: BlockHash;
+        let mut first_iter = true;
+        let mut txn = self.ledger.store.tx_begin_read();
 
-        let top_level_hash = *current;
-        let block = if *first_iter {
-            debug_assert!(*current == original_block.hash());
-            Some(original_block.clone())
-        } else {
-            self.ledger.store.block().get(txn.txn(), current)
-        };
+        loop {
+            let mut receive_details = None;
+            let hash_to_process = self.get_next_block(
+                &next_in_receive_chain,
+                &checkpoints,
+                &receive_source_pairs,
+                &mut receive_details,
+                original_block,
+            );
+            current = hash_to_process.top;
 
-        let Some(block) = block else{
-			if self.ledger.pruning_enabled () && self.ledger.store.pruned ().exists (txn.txn(), current) {
+            let top_level_hash = current;
+            let block = if first_iter {
+                debug_assert!(current == original_block.hash());
+                Some(original_block.clone())
+            } else {
+                self.ledger.store.block().get(txn.txn(), &current)
+            };
+
+            let Some(block) = block else{
+			if self.ledger.pruning_enabled () && self.ledger.store.pruned ().exists (txn.txn(), &current) {
 				if !receive_source_pairs.is_empty () {
 					receive_source_pairs.pop_back ();
 				}
-				// continue;
-                *should_continue = true;
-                return false;
+                continue;
 			} else {
 				let error_str = format!("Ledger mismatch trying to set confirmation height for block {} (bounded processor)", current);
 				self.logger.always_log(&error_str);
@@ -600,143 +596,153 @@ impl ConfirmationHeightBounded {
 			}
         };
 
-        let account = block.account_calculated();
+            let account = block.account_calculated();
 
-        // Checks if we have encountered this account before but not commited changes yet, if so then update the cached confirmation height
-        let confirmation_height_info = if let Some(found_info) =
-            self.accounts_confirmed_info.get(&account)
-        {
-            ConfirmationHeightInfo::new(found_info.confirmed_height, found_info.iterated_frontier)
-        } else {
-            let conf_info = self
-                .ledger
-                .store
-                .confirmation_height()
-                .get(txn.txn(), &account)
-                .unwrap_or_default();
-            // This block was added to the confirmation height processor but is already confirmed
-            if *first_iter
-                && conf_info.height >= block.sideband().unwrap().height
-                && *current == original_block.hash()
+            // Checks if we have encountered this account before but not commited changes yet, if so then update the cached confirmation height
+            let confirmation_height_info = if let Some(found_info) =
+                self.accounts_confirmed_info.get(&account)
             {
-                (self.notify_block_already_cemented_observers_callback)(original_block.hash());
-            }
-            conf_info
-        };
-
-        let mut block_height = block.sideband().unwrap().height;
-        let already_cemented = confirmation_height_info.height >= block_height;
-
-        // If we are not already at the bottom of the account chain (1 above cemented frontier) then find it
-        if !already_cemented && block_height - confirmation_height_info.height > 1 {
-            if block_height - confirmation_height_info.height == 2 {
-                // If there is 1 uncemented block in-between this block and the cemented frontier,
-                // we can just use the previous block to get the least unconfirmed hash.
-                *current = block.previous();
-                block_height -= 1;
-            } else if next_in_receive_chain.is_none() {
-                *current = self.get_least_unconfirmed_hash_from_top_level(
-                    txn.txn(),
-                    current,
-                    &account,
-                    &confirmation_height_info,
-                    &mut block_height,
-                );
+                ConfirmationHeightInfo::new(
+                    found_info.confirmed_height,
+                    found_info.iterated_frontier,
+                )
             } else {
-                // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
-                // as we already know what the next block we should process should be.
-                *current = hash_to_process.next.unwrap();
-                block_height = hash_to_process.next_height;
-            }
-        }
-
-        let mut top_most_non_receive_block_hash = *current;
-
-        let mut hit_receive = false;
-        if !already_cemented {
-            hit_receive = self.iterate(
-                receive_source_pairs,
-                checkpoints,
-                top_level_hash,
-                account,
-                block_height,
-                *current,
-                &mut top_most_non_receive_block_hash,
-                txn,
-            );
-        }
-
-        // Exit early when the processor has been stopped, otherwise this function may take a
-        // while (and hence keep the process running) if updating a long chain.
-        if self.stopped.load(Ordering::SeqCst) {
-            // break;
-            return true;
-        }
-
-        // next_in_receive_chain can be modified when writing, so need to cache it here before resetting
-        let is_set = next_in_receive_chain.is_some();
-        *next_in_receive_chain = None;
-
-        // Need to also handle the case where we are hitting receives where the sends below should be confirmed
-        if !hit_receive
-            || (receive_source_pairs.len() == 1 && top_most_non_receive_block_hash != *current)
-        {
-            self.prepare_iterated_blocks_for_cementing(
-                &receive_details,
-                checkpoints,
-                next_in_receive_chain,
-                already_cemented,
-                txn.txn(),
-                &top_most_non_receive_block_hash,
-                &confirmation_height_info,
-                &account,
-                block_height,
-                current,
-            );
-
-            // If used the top level, don't pop off the receive source pair because it wasn't used
-            if !is_set && !receive_source_pairs.is_empty() {
-                receive_source_pairs.pop_back();
-            }
-
-            let total_pending_write_block_count = self.total_pending_write_block_count();
-            let max_batch_write_size_reached =
-                total_pending_write_block_count >= self.batch_write_size.load(Ordering::SeqCst);
-
-            // When there are a lot of pending confirmation height blocks, it is more efficient to
-            // bulk some of them up to enable better write performance which becomes the bottleneck.
-            let min_time_exceeded =
-                self.timer.lock().unwrap().elapsed() >= self.batch_separate_pending_min_time;
-            let finished_iterating = *current == original_block.hash();
-            let non_awaiting_processing = (self.awaiting_processing_size_callback)() == 0;
-            let should_output =
-                finished_iterating && (non_awaiting_processing || min_time_exceeded);
-
-            let force_write = self.pending_writes.len() >= PENDING_WRITES_MAX_SIZE
-                || self.accounts_confirmed_info.len() >= PENDING_WRITES_MAX_SIZE;
-
-            if (max_batch_write_size_reached || should_output || force_write)
-                && !self.pending_writes.is_empty()
-            {
-                // If nothing is currently using the database write lock then write the cemented pending blocks otherwise continue iterating
-                if self
-                    .write_database_queue
-                    .process(Writer::ConfirmationHeight)
+                let conf_info = self
+                    .ledger
+                    .store
+                    .confirmation_height()
+                    .get(txn.txn(), &account)
+                    .unwrap_or_default();
+                // This block was added to the confirmation height processor but is already confirmed
+                if first_iter
+                    && conf_info.height >= block.sideband().unwrap().height
+                    && current == original_block.hash()
                 {
-                    // todo: this does not seem thread safe!
-                    let mut scoped_write_guard = self.write_database_queue.pop();
-                    self.cement_blocks(&mut scoped_write_guard);
-                } else if force_write {
-                    let mut scoped_write_guard =
-                        self.write_database_queue.wait(Writer::ConfirmationHeight);
-                    self.cement_blocks(&mut scoped_write_guard);
+                    (self.notify_block_already_cemented_observers_callback)(original_block.hash());
+                }
+                conf_info
+            };
+
+            let mut block_height = block.sideband().unwrap().height;
+            let already_cemented = confirmation_height_info.height >= block_height;
+
+            // If we are not already at the bottom of the account chain (1 above cemented frontier) then find it
+            if !already_cemented && block_height - confirmation_height_info.height > 1 {
+                if block_height - confirmation_height_info.height == 2 {
+                    // If there is 1 uncemented block in-between this block and the cemented frontier,
+                    // we can just use the previous block to get the least unconfirmed hash.
+                    current = block.previous();
+                    block_height -= 1;
+                } else if next_in_receive_chain.is_none() {
+                    current = self.get_least_unconfirmed_hash_from_top_level(
+                        txn.txn(),
+                        &current,
+                        &account,
+                        &confirmation_height_info,
+                        &mut block_height,
+                    );
+                } else {
+                    // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
+                    // as we already know what the next block we should process should be.
+                    current = hash_to_process.next.unwrap();
+                    block_height = hash_to_process.next_height;
                 }
             }
+
+            let mut top_most_non_receive_block_hash = current;
+
+            let mut hit_receive = false;
+            if !already_cemented {
+                hit_receive = self.iterate(
+                    &mut receive_source_pairs,
+                    &mut checkpoints,
+                    top_level_hash,
+                    account,
+                    block_height,
+                    current,
+                    &mut top_most_non_receive_block_hash,
+                    txn.as_mut(),
+                );
+            }
+
+            // Exit early when the processor has been stopped, otherwise this function may take a
+            // while (and hence keep the process running) if updating a long chain.
+            if self.stopped.load(Ordering::SeqCst) {
+                break;
+            }
+
+            // next_in_receive_chain can be modified when writing, so need to cache it here before resetting
+            let is_set = next_in_receive_chain.is_some();
+            next_in_receive_chain = None;
+
+            // Need to also handle the case where we are hitting receives where the sends below should be confirmed
+            if !hit_receive
+                || (receive_source_pairs.len() == 1 && top_most_non_receive_block_hash != current)
+            {
+                self.prepare_iterated_blocks_for_cementing(
+                    &receive_details,
+                    &mut checkpoints,
+                    &mut next_in_receive_chain,
+                    already_cemented,
+                    txn.txn(),
+                    &top_most_non_receive_block_hash,
+                    &confirmation_height_info,
+                    &account,
+                    block_height,
+                    &current,
+                );
+
+                // If used the top level, don't pop off the receive source pair because it wasn't used
+                if !is_set && !receive_source_pairs.is_empty() {
+                    receive_source_pairs.pop_back();
+                }
+
+                let total_pending_write_block_count = self.total_pending_write_block_count();
+                let max_batch_write_size_reached =
+                    total_pending_write_block_count >= self.batch_write_size.load(Ordering::SeqCst);
+
+                // When there are a lot of pending confirmation height blocks, it is more efficient to
+                // bulk some of them up to enable better write performance which becomes the bottleneck.
+                let min_time_exceeded =
+                    self.timer.lock().unwrap().elapsed() >= self.batch_separate_pending_min_time;
+                let finished_iterating = current == original_block.hash();
+                let non_awaiting_processing = (self.awaiting_processing_size_callback)() == 0;
+                let should_output =
+                    finished_iterating && (non_awaiting_processing || min_time_exceeded);
+
+                let force_write = self.pending_writes.len() >= PENDING_WRITES_MAX_SIZE
+                    || self.accounts_confirmed_info.len() >= PENDING_WRITES_MAX_SIZE;
+
+                if (max_batch_write_size_reached || should_output || force_write)
+                    && !self.pending_writes.is_empty()
+                {
+                    // If nothing is currently using the database write lock then write the cemented pending blocks otherwise continue iterating
+                    if self
+                        .write_database_queue
+                        .process(Writer::ConfirmationHeight)
+                    {
+                        // todo: this does not seem thread safe!
+                        let mut scoped_write_guard = self.write_database_queue.pop();
+                        self.cement_blocks(&mut scoped_write_guard);
+                    } else if force_write {
+                        let mut scoped_write_guard =
+                            self.write_database_queue.wait(Writer::ConfirmationHeight);
+                        self.cement_blocks(&mut scoped_write_guard);
+                    }
+                }
+            }
+
+            first_iter = false;
+            txn.refresh();
+
+            if !((!receive_source_pairs.is_empty() || current != original_block.hash())
+                && !self.stopped.load(Ordering::SeqCst))
+            {
+                break;
+            }
         }
 
-        *first_iter = false;
-        txn.refresh();
-        false
+        debug_assert!(checkpoints.is_empty());
     }
 
     fn total_pending_write_block_count(&self) -> u64 {

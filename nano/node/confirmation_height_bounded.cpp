@@ -212,54 +212,10 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 		timer.restart ();
 	}
 
-	boost::optional<top_and_next_hash> next_in_receive_chain;
-	nano::hash_circular_buffer checkpoints{ max_items };
-	receive_source_pair_circular_buffer receive_source_pairs{ max_items };
-	nano::block_hash current;
-	bool first_iter = true;
-	auto transaction (ledger.store.tx_begin_read ());
-	do
-	{
-		// Call into Rust...
-		//----------------------------------------
-		rsnano::TopAndNextHashDto next_in_receive_chain_dto{};
-		bool has_next_in_receive_chain = false;
-
-		bool should_continue = false;
-		bool should_break = rsnano::rsn_confirmation_height_bounded_process (
-		handle,
-		current.bytes.data (),
-		original_block->get_handle (),
-		receive_source_pairs.handle,
-		&next_in_receive_chain_dto,
-		&has_next_in_receive_chain,
-		transaction->get_rust_handle (),
-		checkpoints.handle,
-		&first_iter,
-		&should_continue);
-
-		if (has_next_in_receive_chain)
-		{
-			next_in_receive_chain = top_and_next_hash{ next_in_receive_chain_dto };
-		}
-		else
-		{
-			next_in_receive_chain = boost::none;
-		}
-
-		if (should_continue)
-		{
-			continue;
-		}
-
-		if (should_break)
-		{
-			break;
-		}
-		//----------------------------------------
-	} while ((!receive_source_pairs.empty () || current != original_block->hash ()) && !stopped.load ());
-
-	debug_assert (checkpoints.empty ());
+	// Call into Rust...
+	rsnano::rsn_confirmation_height_bounded_process (
+	handle,
+	original_block->get_handle ());
 }
 
 nano::block_hash nano::confirmation_height_bounded::get_least_unconfirmed_hash_from_top_level (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::account const & account_a, nano::confirmation_height_info const & confirmation_height_info_a, uint64_t & block_height_a)

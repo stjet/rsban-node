@@ -470,6 +470,35 @@ impl ConfirmationHeightBounded {
         }
         hit_receive
     }
+
+    pub fn get_least_confirmed_hash_from_top_level(
+        &self,
+        txn: &dyn Transaction,
+        hash: &BlockHash,
+        account: &Account,
+        confirmation_height_info: &ConfirmationHeightInfo,
+        block_height: &mut u64,
+    ) -> BlockHash {
+        let mut least_unconfirmed_hash = *hash;
+        if confirmation_height_info.height != 0 {
+            if *block_height > confirmation_height_info.height {
+                let block = self
+                    .ledger
+                    .store
+                    .block()
+                    .get(txn, &confirmation_height_info.frontier)
+                    .unwrap();
+                least_unconfirmed_hash = block.sideband().unwrap().successor;
+                *block_height = block.sideband().unwrap().height + 1;
+            }
+        } else {
+            // No blocks have been confirmed, so the first block will be the open block
+            let info = self.ledger.account_info(txn, account).unwrap();
+            least_unconfirmed_hash = info.open_block;
+            *block_height = 1;
+        }
+        return least_unconfirmed_hash;
+    }
 }
 
 pub struct WriteDetails {

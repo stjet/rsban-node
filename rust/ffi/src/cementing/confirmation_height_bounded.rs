@@ -190,6 +190,27 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_iterate(
     hit_receive
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_get_least_unconfirmed_hash_from_top_level(
+    handle: *mut ConfirmationHeightBoundedHandle,
+    txn: *const TransactionHandle,
+    hash: *const u8,
+    account: *const u8,
+    conf_height_info: *const ConfirmationHeightInfoDto,
+    block_height: *mut u64,
+    least_confirmed_hash: *mut u8,
+) {
+    let conf_height = (&*conf_height_info).into();
+    let least_confirmed = (*handle).0.get_least_confirmed_hash_from_top_level(
+        (*txn).as_txn(),
+        &BlockHash::from_ptr(hash),
+        &Account::from_ptr(account),
+        &conf_height,
+        &mut *block_height,
+    );
+    copy_hash_bytes(least_confirmed, least_confirmed_hash);
+}
+
 // ----------------------------------
 // PendingWritesQueue:
 

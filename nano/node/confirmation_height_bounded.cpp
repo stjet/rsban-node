@@ -311,25 +311,15 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 
 nano::block_hash nano::confirmation_height_bounded::get_least_unconfirmed_hash_from_top_level (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::account const & account_a, nano::confirmation_height_info const & confirmation_height_info_a, uint64_t & block_height_a)
 {
-	nano::block_hash least_unconfirmed_hash = hash_a;
-	if (confirmation_height_info_a.height () != 0)
-	{
-		if (block_height_a > confirmation_height_info_a.height ())
-		{
-			auto block (ledger.store.block ().get (transaction_a, confirmation_height_info_a.frontier ()));
-			release_assert (block != nullptr);
-			least_unconfirmed_hash = block->sideband ().successor ();
-			block_height_a = block->sideband ().height () + 1;
-		}
-	}
-	else
-	{
-		// No blocks have been confirmed, so the first block will be the open block
-		auto info = ledger.account_info (transaction_a, account_a);
-		release_assert (info);
-		least_unconfirmed_hash = info->open_block ();
-		block_height_a = 1;
-	}
+	nano::block_hash least_unconfirmed_hash;
+	rsnano::rsn_confirmation_height_bounded_get_least_unconfirmed_hash_from_top_level (
+	handle,
+	transaction_a.get_rust_handle (),
+	hash_a.bytes.data (),
+	account_a.bytes.data (),
+	&confirmation_height_info_a.dto,
+	&block_height_a,
+	least_unconfirmed_hash.bytes.data ());
 	return least_unconfirmed_hash;
 }
 

@@ -258,40 +258,6 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 			}
 		}
 
-		auto block_height = block->sideband ().height ();
-		bool already_cemented = confirmation_height_info.height () >= block_height;
-
-		// If we are not already at the bottom of the account chain (1 above cemented frontier) then find it
-		if (!already_cemented && block_height - confirmation_height_info.height () > 1)
-		{
-			if (block_height - confirmation_height_info.height () == 2)
-			{
-				// If there is 1 uncemented block in-between this block and the cemented frontier,
-				// we can just use the previous block to get the least unconfirmed hash.
-				current = block->previous ();
-				--block_height;
-			}
-			else if (!next_in_receive_chain.is_initialized ())
-			{
-				current = get_least_unconfirmed_hash_from_top_level (*transaction, current, account, confirmation_height_info, block_height);
-			}
-			else
-			{
-				// Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
-				// as we already know what the next block we should process should be.
-				current = *hash_to_process.next;
-				block_height = hash_to_process.next_height;
-			}
-		}
-
-		auto top_most_non_receive_block_hash = current;
-
-		bool hit_receive = false;
-		if (!already_cemented)
-		{
-			hit_receive = iterate (*transaction, block_height, current, checkpoints, top_most_non_receive_block_hash, top_level_hash, receive_source_pairs, account);
-		}
-
 		// Call into Rust...
 		//----------------------------------------
 		rsnano::TopAndNextHashDto next_in_receive_chain_dto{};
@@ -304,6 +270,8 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 			receive_details_dto = receive_details->to_dto ();
 		}
 
+		auto hash_to_process_dto{ hash_to_process.to_dto () };
+
 		bool should_break = rsnano::rsn_confirmation_height_bounded_process (
 		handle,
 		current.bytes.data (),
@@ -312,16 +280,15 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 		&next_in_receive_chain_dto,
 		&has_next_in_receive_chain,
 		transaction->get_rust_handle (),
-		top_most_non_receive_block_hash.bytes.data (),
-		already_cemented,
 		checkpoints.handle,
 		&confirmation_height_info.dto,
 		account.bytes.data (),
-		block_height,
 		has_receive_details,
 		&receive_details_dto,
-		hit_receive,
-		&first_iter);
+		&first_iter,
+		top_level_hash.bytes.data (),
+		block->get_handle (),
+		&hash_to_process_dto);
 
 		if (has_next_in_receive_chain)
 		{

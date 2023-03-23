@@ -482,7 +482,7 @@ impl ConfirmationHeightBounded {
         hit_receive
     }
 
-    pub fn get_least_confirmed_hash_from_top_level(
+    pub fn get_least_unconfirmed_hash_from_top_level(
         &self,
         txn: &dyn Transaction,
         hash: &BlockHash,
@@ -554,21 +554,62 @@ impl ConfirmationHeightBounded {
 
     pub fn process(
         &mut self,
-        current: &BlockHash,
+        current: &mut BlockHash,
         original_block: &BlockEnum,
         receive_source_pairs: &mut BoundedVecDeque<ReceiveSourcePair>,
         next_in_receive_chain: &mut Option<TopAndNextHash>,
         txn: &mut dyn ReadTransaction,
-        top_most_non_receive_block_hash: &BlockHash,
-        already_cemented: bool,
         checkpoints: &mut BoundedVecDeque<BlockHash>,
         confirmation_height_info: &ConfirmationHeightInfo,
         account: &Account,
-        block_height: u64,
         receive_details: &Option<ReceiveChainDetails>,
-        hit_receive: bool,
         first_iter: &mut bool,
+        top_level_hash: &BlockHash,
+        block: &BlockEnum,
+        hash_to_process: &TopAndNextHash,
     ) -> bool {
+        let mut block_height = block.sideband().unwrap().height;
+        let already_cemented = confirmation_height_info.height >= block_height;
+
+        // If we are not already at the bottom of the account chain (1 above cemented frontier) then find it
+        if !already_cemented && block_height - confirmation_height_info.height > 1 {
+            if block_height - confirmation_height_info.height == 2 {
+                // If there is 1 uncemented block in-between this block and the cemented frontier,
+                // we can just use the previous block to get the least unconfirmed hash.
+                *current = block.previous();
+                block_height -= 1;
+            } else if next_in_receive_chain.is_none() {
+                *current = self.get_least_unconfirmed_hash_from_top_level(
+                    txn.txn(),
+                    current,
+                    account,
+                    confirmation_height_info,
+                    &mut block_height,
+                );
+            } else {
+                // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
+                // as we already know what the next block we should process should be.
+                *current = hash_to_process.next.unwrap();
+                block_height = hash_to_process.next_height;
+            }
+        }
+
+        let mut top_most_non_receive_block_hash = *current;
+
+        let mut hit_receive = false;
+        if !already_cemented {
+            hit_receive = self.iterate(
+                receive_source_pairs,
+                checkpoints,
+                *top_level_hash,
+                *account,
+                block_height,
+                *current,
+                &mut top_most_non_receive_block_hash,
+                txn,
+            );
+        }
+
         // Exit early when the processor has been stopped, otherwise this function may take a
         // while (and hence keep the process running) if updating a long chain.
         if self.stopped.load(Ordering::SeqCst) {
@@ -582,7 +623,7 @@ impl ConfirmationHeightBounded {
 
         // Need to also handle the case where we are hitting receives where the sends below should be confirmed
         if !hit_receive
-            || (receive_source_pairs.len() == 1 && top_most_non_receive_block_hash != current)
+            || (receive_source_pairs.len() == 1 && top_most_non_receive_block_hash != *current)
         {
             self.prepare_iterated_blocks_for_cementing(
                 receive_details,
@@ -590,7 +631,7 @@ impl ConfirmationHeightBounded {
                 next_in_receive_chain,
                 already_cemented,
                 txn.txn(),
-                top_most_non_receive_block_hash,
+                &top_most_non_receive_block_hash,
                 confirmation_height_info,
                 account,
                 block_height,

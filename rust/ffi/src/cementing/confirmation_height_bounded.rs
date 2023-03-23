@@ -221,7 +221,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_get_least_unconfirmed_h
     least_confirmed_hash: *mut u8,
 ) {
     let conf_height = (&*conf_height_info).into();
-    let least_confirmed = (*handle).0.get_least_confirmed_hash_from_top_level(
+    let least_confirmed = (*handle).0.get_least_unconfirmed_hash_from_top_level(
         (*txn).as_txn(),
         &BlockHash::from_ptr(hash),
         &Account::from_ptr(account),
@@ -274,22 +274,21 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_get_next_block(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_bounded_process(
     handle: *mut ConfirmationHeightBoundedHandle,
-    current: *const u8,
+    current: *mut u8,
     original_block: *const BlockHandle,
     receive_source_pairs: *mut ReceiveSourcePairCircularBufferHandle,
     next_in_receive_chain: *mut TopAndNextHashDto,
     has_next_in_receive_chain: *mut bool,
     txn: *mut TransactionHandle,
-    top_most_non_receive_block_hash: *const u8,
-    already_cemented: bool,
     checkpoints: *mut HashCircularBufferHandle,
     confirmation_height_info: *const ConfirmationHeightInfoDto,
     account: *const u8,
-    block_height: u64,
     has_receive_details: bool,
     receive_details: *const ReceiveChainDetailsDto,
-    hit_receive: bool,
     first_iter: *mut bool,
+    top_level_hash: *const u8,
+    block: *const BlockHandle,
+    hash_to_process: *const TopAndNextHashDto,
 ) -> bool {
     let mut next = if *has_next_in_receive_chain {
         Some((&*next_in_receive_chain).into())
@@ -303,22 +302,26 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_process(
         None
     };
 
+    let hash_to_process = (&*hash_to_process).into();
+
+    let mut current_copy = BlockHash::from_ptr(current);
     let should_break = (*handle).0.process(
-        &BlockHash::from_ptr(current),
+        &mut current_copy,
         &(*original_block).block.read().unwrap(),
         &mut (*receive_source_pairs).0,
         &mut next,
         (*txn).as_read_txn_mut(),
-        &BlockHash::from_ptr(top_most_non_receive_block_hash),
-        already_cemented,
         &mut (*checkpoints).0,
         &(&*confirmation_height_info).into(),
         &Account::from_ptr(account),
-        block_height,
         &details,
-        hit_receive,
         &mut *first_iter,
+        &BlockHash::from_ptr(top_level_hash),
+        &(*block).block.read().unwrap(),
+        &hash_to_process,
     );
+
+    copy_hash_bytes(current_copy, current);
 
     *has_next_in_receive_chain = next.is_some();
     if let Some(next) = &next {

@@ -15,7 +15,7 @@ use rsnano_node::{
 
 use crate::{
     copy_hash_bytes,
-    core::BlockVecHandle,
+    core::{BlockHandle, BlockVecHandle},
     ledger::datastore::{
         LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle, WriteGuardHandle,
     },
@@ -209,6 +209,46 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_get_least_unconfirmed_h
         &mut *block_height,
     );
     copy_hash_bytes(least_confirmed, least_confirmed_hash);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_get_next_block(
+    handle: *mut ConfirmationHeightBoundedHandle,
+    next_in_receive_chain: *const TopAndNextHashDto,
+    has_next_in_receive_chain: bool,
+    checkpoints: *const HashCircularBufferHandle,
+    receive_source_pairs: *const ReceiveSourcePairCircularBufferHandle,
+    receive_details: *mut ReceiveChainDetailsDto,
+    has_receive_details: *mut bool,
+    original_block: *const BlockHandle,
+    next: *mut TopAndNextHashDto,
+) {
+    let next_in_receive_chain = if has_next_in_receive_chain {
+        Some((&*next_in_receive_chain).into())
+    } else {
+        None
+    };
+
+    let mut receive_details_copy = if *has_receive_details {
+        Some((&*receive_details).into())
+    } else {
+        None
+    };
+
+    let next_block = (*handle).0.get_next_block(
+        &next_in_receive_chain,
+        &(*checkpoints).0,
+        &(*receive_source_pairs).0,
+        &mut receive_details_copy,
+        &(*original_block).block.read().unwrap(),
+    );
+
+    *has_receive_details = receive_details_copy.is_some();
+    if let Some(details) = &receive_details_copy {
+        *receive_details = details.into();
+    }
+
+    *next = (&next_block).into();
 }
 
 // ----------------------------------

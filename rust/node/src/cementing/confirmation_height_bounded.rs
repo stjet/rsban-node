@@ -499,6 +499,47 @@ impl ConfirmationHeightBounded {
         }
         return least_unconfirmed_hash;
     }
+
+    /// The next block hash to iterate over, the priority is as follows:
+    /// 1 - The next block in the account chain for the last processed receive (if there is any)
+    /// 2 - The next receive block which is closest to genesis
+    /// 3 - The last checkpoint hit.
+    /// 4 - The hash that was passed in originally. Either all checkpoints were exhausted (this can happen when there are many accounts to genesis)
+    ///     or all other blocks have been processed.
+    pub fn get_next_block(
+        &self,
+        next_in_receive_chain: &Option<TopAndNextHash>,
+        checkpoints: &BoundedVecDeque<BlockHash>,
+        receive_source_pairs: &BoundedVecDeque<ReceiveSourcePair>,
+        receive_details: &mut Option<ReceiveChainDetails>,
+        original_block: &BlockEnum,
+    ) -> TopAndNextHash {
+        let next: TopAndNextHash;
+        if let Some(next_in_chain) = next_in_receive_chain {
+            next = next_in_chain.clone();
+        } else if let Some(next_receive_source_pair) = receive_source_pairs.back() {
+            *receive_details = Some(next_receive_source_pair.receive_details.clone());
+            next = TopAndNextHash {
+                top: next_receive_source_pair.source_hash,
+                next: next_receive_source_pair.receive_details.next,
+                next_height: next_receive_source_pair.receive_details.height + 1,
+            };
+        } else if let Some(checkpoint) = checkpoints.back() {
+            next = TopAndNextHash {
+                top: *checkpoint,
+                next: None,
+                next_height: 0,
+            }
+        } else {
+            next = TopAndNextHash {
+                top: original_block.hash(),
+                next: None,
+                next_height: 0,
+            };
+        }
+
+        next
+    }
 }
 
 pub struct WriteDetails {
@@ -511,6 +552,7 @@ pub struct WriteDetails {
     pub top_hash: BlockHash,
 }
 
+#[derive(Clone)]
 pub struct ReceiveChainDetails {
     pub account: Account,
     pub height: u64,
@@ -521,6 +563,7 @@ pub struct ReceiveChainDetails {
     pub bottom_most: BlockHash,
 }
 
+#[derive(Clone)]
 pub struct TopAndNextHash {
     pub top: BlockHash,
     pub next: Option<BlockHash>,

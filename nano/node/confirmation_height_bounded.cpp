@@ -1,3 +1,4 @@
+#include "boost/none.hpp"
 #include "nano/lib/blocks.hpp"
 #include "nano/lib/numbers.hpp"
 #include "nano/lib/rsnano.hpp"
@@ -122,26 +123,42 @@ receive_source_pair_circular_buffer const & receive_source_pairs,
 boost::optional<receive_chain_details> & receive_details_a,
 nano::block const & original_block)
 {
-	top_and_next_hash next;
-	if (next_in_receive_chain_a.is_initialized ())
+	rsnano::TopAndNextHashDto next_in_chain_dto{};
+	if (next_in_receive_chain_a)
 	{
-		next = *next_in_receive_chain_a;
+		next_in_chain_dto = next_in_receive_chain_a->to_dto ();
 	}
-	else if (!receive_source_pairs.empty ())
+
+	rsnano::ReceiveChainDetailsDto receive_details_dto{};
+	if (receive_details_a)
 	{
-		auto next_receive_source_pair = receive_source_pairs.back ();
-		receive_details_a = next_receive_source_pair.receive_details;
-		next = { next_receive_source_pair.source_hash, receive_details_a->next, receive_details_a->height + 1 };
+		receive_details_dto = receive_details_a->to_dto ();
 	}
-	else if (!checkpoints_a.empty ())
+	bool has_receive_details = receive_details_a.is_initialized ();
+
+	rsnano::TopAndNextHashDto next_dto{};
+
+	rsnano::rsn_confirmation_height_bounded_get_next_block (
+	handle,
+	&next_in_chain_dto,
+	next_in_receive_chain_a.is_initialized (),
+	checkpoints_a.handle,
+	receive_source_pairs.handle,
+	&receive_details_dto,
+	&has_receive_details,
+	original_block.get_handle (),
+	&next_dto);
+
+	if (has_receive_details)
 	{
-		next = { checkpoints_a.back (), boost::none, 0 };
+		receive_details_a = receive_chain_details{ receive_details_dto };
 	}
 	else
 	{
-		next = { original_block.hash (), boost::none, 0 };
+		receive_details_a = boost::none;
 	}
 
+	top_and_next_hash next{ next_dto };
 	return next;
 }
 

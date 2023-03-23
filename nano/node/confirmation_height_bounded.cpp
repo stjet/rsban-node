@@ -77,6 +77,19 @@ void drop_awaiting_processing_size_callback (void * context_a)
 	delete fn;
 }
 
+void block_already_cemented_callback_wrapper (void * context_a, const uint8_t * block_bytes)
+{
+	auto fn = static_cast<std::function<void (nano::block_hash const &)> *> (context_a);
+	auto block{ nano::block_hash::from_bytes (block_bytes) };
+	return (*fn) (block);
+}
+
+void drop_block_already_cemented_context (void * context_a)
+{
+	auto fn = static_cast<std::function<void (nano::block_hash const &)> *> (context_a);
+	delete fn;
+}
+
 rsnano::ConfirmationHeightBoundedHandle * create_conf_height_bounded_handle (
 nano::write_database_queue & write_database_queue_a,
 std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a,
@@ -87,10 +100,13 @@ nano::ledger & ledger_a,
 rsnano::AtomicBoolWrapper & stopped_a,
 rsnano::RsNanoTimer & timer_a,
 std::chrono::milliseconds batch_separate_pending_min_time_a,
-std::function<uint64_t ()> const & awaiting_processing_size_callback_a)
+std::function<uint64_t ()> const & awaiting_processing_size_callback_a,
+std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a)
 {
-	auto callback_context = new std::function<uint64_t ()> (awaiting_processing_size_callback_a);
+	auto awaiting_processing_size_context = new std::function<uint64_t ()> (awaiting_processing_size_callback_a);
 	auto notify_observers_context = new std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> (notify_observers_callback_a);
+	auto block_already_cemented_context = new std::function<void (nano::block_hash const &)> (notify_block_already_cemented_observers_callback_a);
+
 	auto logging_dto{ logging_a.to_dto () };
 	return rsnano::rsn_confirmation_height_bounded_create (
 	write_database_queue_a.handle,
@@ -105,14 +121,17 @@ std::function<uint64_t ()> const & awaiting_processing_size_callback_a)
 	timer_a.handle,
 	batch_separate_pending_min_time_a.count (),
 	awaiting_processing_size_callback_wrapper,
-	callback_context,
-	drop_awaiting_processing_size_callback);
+	awaiting_processing_size_context,
+	drop_awaiting_processing_size_callback,
+	block_already_cemented_callback_wrapper,
+	block_already_cemented_context,
+	drop_block_already_cemented_context);
 }
 }
 
 nano::confirmation_height_bounded::confirmation_height_bounded (nano::ledger & ledger_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, rsnano::AtomicBoolWrapper & stopped_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
 	timer{},
-	handle{ create_conf_height_bounded_handle (write_database_queue_a, notify_observers_callback_a, batch_write_size_a, logger_a, logging_a, ledger_a, stopped_a, timer, batch_separate_pending_min_time_a, awaiting_processing_size_callback_a) },
+	handle{ create_conf_height_bounded_handle (write_database_queue_a, notify_observers_callback_a, batch_write_size_a, logger_a, logging_a, ledger_a, stopped_a, timer, batch_separate_pending_min_time_a, awaiting_processing_size_callback_a, notify_block_already_cemented_observers_callback_a) },
 	accounts_confirmed_info{ handle },
 	pending_writes{ handle },
 	ledger (ledger_a),

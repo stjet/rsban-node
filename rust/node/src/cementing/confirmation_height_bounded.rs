@@ -26,6 +26,7 @@ pub struct ConfirmationHeightBounded {
     write_database_queue: Arc<WriteDatabaseQueue>,
     pub pending_writes: VecDeque<WriteDetails>,
     notify_observers_callback: NotifyObserversCallback,
+    notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash)>,
     batch_write_size: Arc<AtomicU64>,
     logger: Arc<dyn Logger>,
     logging: Logging,
@@ -56,6 +57,7 @@ impl ConfirmationHeightBounded {
     pub fn new(
         write_database_queue: Arc<WriteDatabaseQueue>,
         notify_observers_callback: NotifyObserversCallback,
+        notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash)>,
         batch_write_size: Arc<AtomicU64>,
         logger: Arc<dyn Logger>,
         logging: Logging,
@@ -69,6 +71,7 @@ impl ConfirmationHeightBounded {
             write_database_queue,
             pending_writes: VecDeque::new(),
             notify_observers_callback,
+            notify_block_already_cemented_observers_callback,
             batch_write_size,
             logger,
             logging,

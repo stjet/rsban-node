@@ -23,8 +23,7 @@ pub struct ConfirmationHeightUnboundedHandle(ConfirmationHeightUnbounded);
 pub type ConfHeightUnboundedNotifyObserversCallback =
     unsafe extern "C" fn(*mut c_void, *const *mut BlockHandle, usize);
 
-pub type ConfHeightUnboundedNotifyBlockAlreadyCementedCallback =
-    unsafe extern "C" fn(*mut c_void, *const u8);
+pub type NotifyBlockAlreadyCementedCallback = unsafe extern "C" fn(*mut c_void, *const u8);
 
 pub type AwaitingProcessingSizeCallback = unsafe extern "C" fn(*mut c_void) -> u64;
 
@@ -42,7 +41,7 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_create(
     notify_observers_context: *mut c_void,
     drop_notify_observers_context: VoidPointerCallback,
 
-    notify_block_already_cemented: ConfHeightUnboundedNotifyBlockAlreadyCementedCallback,
+    notify_block_already_cemented: NotifyBlockAlreadyCementedCallback,
     notify_block_already_cemented_context: *mut c_void,
     drop_notify_block_already_cemented_context: VoidPointerCallback,
 
@@ -115,7 +114,7 @@ unsafe fn wrap_notify_observers_callback(
 }
 
 unsafe fn wrap_notify_block_already_cemented_callback(
-    callback: ConfHeightUnboundedNotifyBlockAlreadyCementedCallback,
+    callback: NotifyBlockAlreadyCementedCallback,
     context: *mut c_void,
     drop_context: VoidPointerCallback,
 ) -> Box<dyn Fn(&BlockHash)> {

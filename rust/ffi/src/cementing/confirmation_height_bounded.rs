@@ -26,7 +26,9 @@ use crate::{
     ConfirmationHeightInfoDto, LoggingDto, VoidPointerCallback,
 };
 
-use super::confirmation_height_unbounded::AwaitingProcessingSizeCallback;
+use super::confirmation_height_unbounded::{
+    AwaitingProcessingSizeCallback, NotifyBlockAlreadyCementedCallback,
+};
 
 pub struct ConfirmationHeightBoundedHandle(ConfirmationHeightBounded);
 
@@ -48,6 +50,9 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
     awaiting_processing_size_callback: AwaitingProcessingSizeCallback,
     awaiting_processing_size_context: *mut c_void,
     awaiting_processing_size_context_delete: VoidPointerCallback,
+    block_already_cemented_callback: NotifyBlockAlreadyCementedCallback,
+    block_already_cemented_context: *mut c_void,
+    block_already_cemented_context_delete: VoidPointerCallback,
 ) -> *mut ConfirmationHeightBoundedHandle {
     let notify_observers_context =
         ContextWrapper::new(notify_observers_context, notify_observers_drop_context);
@@ -56,6 +61,17 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
         let cloned_blocks = blocks.clone();
         let block_vec_handle = Box::into_raw(Box::new(BlockVecHandle(cloned_blocks)));
         notify_observers_callback(notify_observers_context.get_context(), block_vec_handle);
+    });
+
+    let block_already_cemented_context = ContextWrapper::new(
+        block_already_cemented_context,
+        block_already_cemented_context_delete,
+    );
+    let block_already_cemented = Box::new(move |block_hash: BlockHash| {
+        block_already_cemented_callback(
+            block_already_cemented_context.get_context(),
+            block_hash.as_bytes().as_ptr(),
+        );
     });
 
     let batch_write_size = Arc::clone(&(*batch_write_size).0);
@@ -72,6 +88,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
         ConfirmationHeightBounded::new(
             (*write_db_queue).0.clone(),
             notify_observers,
+            block_already_cemented,
             batch_write_size,
             Arc::new(LoggerMT::new(Box::from_raw(logger))),
             logging,

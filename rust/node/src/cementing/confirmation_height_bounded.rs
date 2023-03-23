@@ -3,9 +3,9 @@ use std::{
     collections::{HashMap, VecDeque},
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-        Arc, RwLock,
+        Arc, Mutex, RwLock,
     },
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use bounded_vec_deque::BoundedVecDeque;
@@ -34,6 +34,9 @@ pub struct ConfirmationHeightBounded {
     pub accounts_confirmed_info_size: AtomicUsize,
     pub pending_writes_size: AtomicUsize,
     stopped: Arc<AtomicBool>,
+    timer: Arc<Mutex<Instant>>, //todo remove Arc<Mutex<>>
+    batch_separate_pending_min_time: Duration,
+    awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
 }
 
 const MAXIMUM_BATCH_WRITE_TIME: u64 = 250; // milliseconds
@@ -47,6 +50,8 @@ const MAX_ITEMS: usize = 131072;
 /** The maximum number of blocks to be read in while iterating over a long account chain */
 const BATCH_READ_SIZE: u64 = 65536;
 
+const PENDING_WRITES_MAX_SIZE: usize = MAX_ITEMS;
+
 impl ConfirmationHeightBounded {
     pub fn new(
         write_database_queue: Arc<WriteDatabaseQueue>,
@@ -56,6 +61,9 @@ impl ConfirmationHeightBounded {
         logging: Logging,
         ledger: Arc<Ledger>,
         stopped: Arc<AtomicBool>,
+        timer: Arc<Mutex<Instant>>,
+        batch_separate_pending_min_time: Duration,
+        awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
     ) -> Self {
         Self {
             write_database_queue,
@@ -69,6 +77,9 @@ impl ConfirmationHeightBounded {
             accounts_confirmed_info_size: AtomicUsize::new(0),
             pending_writes_size: AtomicUsize::new(0),
             stopped,
+            timer,
+            batch_separate_pending_min_time,
+            awaiting_processing_size_callback,
         }
     }
 
@@ -539,6 +550,48 @@ impl ConfirmationHeightBounded {
         }
 
         next
+    }
+
+    pub fn process(&mut self, current: &BlockHash, original_block: &BlockEnum) {
+        let total_pending_write_block_count = self.total_pending_write_block_count();
+        let max_batch_write_size_reached =
+            total_pending_write_block_count >= self.batch_write_size.load(Ordering::SeqCst);
+
+        // When there are a lot of pending confirmation height blocks, it is more efficient to
+        // bulk some of them up to enable better write performance which becomes the bottleneck.
+        let min_time_exceeded =
+            self.timer.lock().unwrap().elapsed() >= self.batch_separate_pending_min_time;
+        let finished_iterating = *current == original_block.hash();
+        let non_awaiting_processing = (self.awaiting_processing_size_callback)() == 0;
+        let should_output = finished_iterating && (non_awaiting_processing || min_time_exceeded);
+
+        let force_write = self.pending_writes.len() >= PENDING_WRITES_MAX_SIZE
+            || self.accounts_confirmed_info.len() >= PENDING_WRITES_MAX_SIZE;
+
+        if (max_batch_write_size_reached || should_output || force_write)
+            && !self.pending_writes.is_empty()
+        {
+            // If nothing is currently using the database write lock then write the cemented pending blocks otherwise continue iterating
+            if self
+                .write_database_queue
+                .process(Writer::ConfirmationHeight)
+            {
+                // todo: this does not seem thread safe!
+                let mut scoped_write_guard = self.write_database_queue.pop();
+                self.cement_blocks(&mut scoped_write_guard);
+            } else if force_write {
+                let mut scoped_write_guard =
+                    self.write_database_queue.wait(Writer::ConfirmationHeight);
+                self.cement_blocks(&mut scoped_write_guard);
+            }
+        }
+    }
+
+    fn total_pending_write_block_count(&self) -> u64 {
+        self.pending_writes
+            .iter()
+            .map(|i| i.top_height - i.bottom_height + 1)
+            .sum()
     }
 }
 

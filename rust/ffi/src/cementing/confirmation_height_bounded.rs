@@ -1,6 +1,7 @@
 use std::{
     ffi::c_void,
     sync::{atomic::Ordering, Arc},
+    time::Duration,
 };
 
 use bounded_vec_deque::BoundedVecDeque;
@@ -19,9 +20,13 @@ use crate::{
     ledger::datastore::{
         LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle, WriteGuardHandle,
     },
-    utils::{AtomicBoolHandle, AtomicU64Handle, ContextWrapper, LoggerHandle, LoggerMT},
+    utils::{
+        AtomicBoolHandle, AtomicU64Handle, ContextWrapper, LoggerHandle, LoggerMT, TimerHandle,
+    },
     ConfirmationHeightInfoDto, LoggingDto, VoidPointerCallback,
 };
+
+use super::confirmation_height_unbounded::AwaitingProcessingSizeCallback;
 
 pub struct ConfirmationHeightBoundedHandle(ConfirmationHeightBounded);
 
@@ -38,6 +43,11 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
     logging: *const LoggingDto,
     ledger: *mut LedgerHandle,
     stopped: *mut AtomicBoolHandle,
+    timer: *mut TimerHandle,
+    batch_separate_pending_min_time_ms: u64,
+    awaiting_processing_size_callback: AwaitingProcessingSizeCallback,
+    awaiting_processing_size_context: *mut c_void,
+    awaiting_processing_size_context_delete: VoidPointerCallback,
 ) -> *mut ConfirmationHeightBoundedHandle {
     let notify_observers_context =
         ContextWrapper::new(notify_observers_context, notify_observers_drop_context);
@@ -51,6 +61,13 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
     let batch_write_size = Arc::clone(&(*batch_write_size).0);
     let logging = Logging::from(&*logging);
 
+    let context = ContextWrapper::new(
+        awaiting_processing_size_context,
+        awaiting_processing_size_context_delete,
+    );
+    let callback =
+        Box::new(move || unsafe { awaiting_processing_size_callback(context.get_context()) });
+
     Box::into_raw(Box::new(ConfirmationHeightBoundedHandle(
         ConfirmationHeightBounded::new(
             (*write_db_queue).0.clone(),
@@ -60,6 +77,9 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_create(
             logging,
             (*ledger).0.clone(),
             (*stopped).0.clone(),
+            (*timer).0.clone(),
+            Duration::from_millis(batch_separate_pending_min_time_ms),
+            callback,
         ),
     )))
 }
@@ -249,6 +269,18 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_get_next_block(
     }
 
     *next = (&next_block).into();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_process(
+    handle: *mut ConfirmationHeightBoundedHandle,
+    current: *const u8,
+    original_block: *const BlockHandle,
+) {
+    (*handle).0.process(
+        &BlockHash::from_ptr(current),
+        &(*original_block).block.read().unwrap(),
+    );
 }
 
 // ----------------------------------

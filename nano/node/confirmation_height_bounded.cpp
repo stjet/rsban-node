@@ -13,6 +13,7 @@
 
 #include <boost/format.hpp>
 
+#include <chrono>
 #include <iterator>
 #include <optional>
 
@@ -64,6 +65,18 @@ void notify_observers_delete_context (void * context)
 	delete callback;
 }
 
+uint64_t awaiting_processing_size_callback_wrapper (void * context_a)
+{
+	auto fn = static_cast<std::function<uint64_t ()> *> (context_a);
+	return (*fn) ();
+}
+
+void drop_awaiting_processing_size_callback (void * context_a)
+{
+	auto fn = static_cast<std::function<uint64_t ()> *> (context_a);
+	delete fn;
+}
+
 rsnano::ConfirmationHeightBoundedHandle * create_conf_height_bounded_handle (
 nano::write_database_queue & write_database_queue_a,
 std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a,
@@ -71,8 +84,12 @@ rsnano::AtomicU64Wrapper & batch_write_size_a,
 std::shared_ptr<nano::logger_mt> & logger_a,
 nano::logging const & logging_a,
 nano::ledger & ledger_a,
-rsnano::AtomicBoolWrapper & stopped_a)
+rsnano::AtomicBoolWrapper & stopped_a,
+rsnano::RsNanoTimer & timer_a,
+std::chrono::milliseconds batch_separate_pending_min_time_a,
+std::function<uint64_t ()> const & awaiting_processing_size_callback_a)
 {
+	auto callback_context = new std::function<uint64_t ()> (awaiting_processing_size_callback_a);
 	auto notify_observers_context = new std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> (notify_observers_callback_a);
 	auto logging_dto{ logging_a.to_dto () };
 	return rsnano::rsn_confirmation_height_bounded_create (
@@ -84,12 +101,18 @@ rsnano::AtomicBoolWrapper & stopped_a)
 	nano::to_logger_handle (logger_a),
 	&logging_dto,
 	ledger_a.handle,
-	stopped_a.handle);
+	stopped_a.handle,
+	timer_a.handle,
+	batch_separate_pending_min_time_a.count (),
+	awaiting_processing_size_callback_wrapper,
+	callback_context,
+	drop_awaiting_processing_size_callback);
 }
 }
 
 nano::confirmation_height_bounded::confirmation_height_bounded (nano::ledger & ledger_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, rsnano::AtomicBoolWrapper & stopped_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
-	handle{ create_conf_height_bounded_handle (write_database_queue_a, notify_observers_callback_a, batch_write_size_a, logger_a, logging_a, ledger_a, stopped_a) },
+	timer{},
+	handle{ create_conf_height_bounded_handle (write_database_queue_a, notify_observers_callback_a, batch_write_size_a, logger_a, logging_a, ledger_a, stopped_a, timer, batch_separate_pending_min_time_a, awaiting_processing_size_callback_a) },
 	accounts_confirmed_info{ handle },
 	pending_writes{ handle },
 	ledger (ledger_a),
@@ -292,31 +315,7 @@ void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> or
 				receive_source_pairs.pop_back ();
 			}
 
-			auto total_pending_write_block_count = pending_writes.total_pending_write_block_count ();
-
-			auto max_batch_write_size_reached = (total_pending_write_block_count >= batch_write_size.load ());
-			// When there are a lot of pending confirmation height blocks, it is more efficient to
-			// bulk some of them up to enable better write performance which becomes the bottleneck.
-			auto min_time_exceeded = (timer.since_start () >= batch_separate_pending_min_time);
-			auto finished_iterating = current == original_block->hash ();
-			auto non_awaiting_processing = awaiting_processing_size_callback () == 0;
-			auto should_output = finished_iterating && (non_awaiting_processing || min_time_exceeded);
-			auto force_write = pending_writes.size () >= pending_writes_max_size || accounts_confirmed_info.size () >= pending_writes_max_size;
-
-			if ((max_batch_write_size_reached || should_output || force_write) && !pending_writes.empty ())
-			{
-				// If nothing is currently using the database write lock then write the cemented pending blocks otherwise continue iterating
-				if (write_database_queue.process (nano::writer::confirmation_height))
-				{
-					auto scoped_write_guard = write_database_queue.pop ();
-					cement_blocks (scoped_write_guard);
-				}
-				else if (force_write)
-				{
-					auto scoped_write_guard = write_database_queue.wait (nano::writer::confirmation_height);
-					cement_blocks (scoped_write_guard);
-				}
-			}
+			rsnano::rsn_confirmation_height_bounded_process (handle, current.bytes.data (), original_block->get_handle ());
 		}
 
 		first_iter = false;

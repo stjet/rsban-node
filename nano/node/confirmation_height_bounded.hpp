@@ -179,6 +179,7 @@ private:
 	/** The maximum number of various containers to keep the memory bounded */
 	uint32_t const max_items{ 131072 };
 
+	rsnano::RsNanoTimer timer;
 	rsnano::ConfirmationHeightBoundedHandle * handle;
 
 	// All of the atomic variables here just track the size for use in collect_container_info.
@@ -249,8 +250,6 @@ private:
 
 		rsnano::ReceiveSourcePairCircularBufferHandle * handle;
 	};
-
-	nano::timer<std::chrono::milliseconds> timer;
 
 	top_and_next_hash get_next_block (boost::optional<top_and_next_hash> const &, nano::hash_circular_buffer const &, receive_source_pair_circular_buffer const & receive_source_pairs, boost::optional<receive_chain_details> &, nano::block const & original_block);
 	nano::block_hash get_least_unconfirmed_hash_from_top_level (nano::transaction const &, nano::block_hash const &, nano::account const &, nano::confirmation_height_info const &, uint64_t &);

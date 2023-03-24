@@ -82,12 +82,18 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 			if (force_unbounded || valid_unbounded)
 			{
 				debug_assert (bounded_processor.pending_empty ());
+				lk.lock ();
+				auto original_block = lk.original_block ();
+				lk.unlock ();
 				unbounded_processor.process (original_block);
 			}
 			else
 			{
 				debug_assert (mode_a == confirmation_height_mode::bounded || mode_a == confirmation_height_mode::automatic);
 				debug_assert (unbounded_processor.pending_empty ());
+				lk.lock ();
+				auto original_block = lk.original_block ();
+				lk.unlock ();
 				bounded_processor.process (original_block);
 			}
 
@@ -97,7 +103,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 		{
 			auto lock_and_cleanup = [&lk, this] () {
 				lk.lock ();
-				original_block = nullptr;
+				lk.set_original_block (nullptr);
 				lk.original_hashes_pending_clear ();
 				bounded_processor.clear_process_vars ();
 				unbounded_processor.clear_process_vars ();
@@ -138,7 +144,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 			else
 			{
 				// Pausing is only utilised in some tests to help prevent it processing added blocks until required.
-				original_block = nullptr;
+				lk.set_original_block (nullptr);
 				condition.wait (lk);
 			}
 		}
@@ -165,7 +171,8 @@ void nano::confirmation_height_processor::set_next_hash ()
 {
 	auto lk{ mutex.lock () };
 	debug_assert (!lk.awaiting_processing_empty ());
-	original_block = lk.awaiting_processing_front ();
+	auto original_block = lk.awaiting_processing_front ();
+	lk.set_original_block (original_block);
 	lk.original_hashes_pending_insert (original_block->hash ());
 	lk.awaiting_processing_pop_front ();
 }
@@ -235,5 +242,6 @@ bool nano::confirmation_height_processor::is_processing_block (nano::block_hash 
 nano::block_hash nano::confirmation_height_processor::current () const
 {
 	auto lk{ mutex.lock () };
+	auto original_block = lk.original_block ();
 	return original_block ? original_block->hash () : 0;
 }

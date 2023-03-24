@@ -42,7 +42,14 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_add(
     handle: *mut ConfirmationHeightProcessorHandle,
     block: *const BlockHandle,
 ) {
-    (*handle).0.add((*block).block.clone()).unwrap();
+    (*handle).0.add((*block).block.clone());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_set_next_hash(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) {
+    (*handle).0.set_next_hash();
 }
 
 #[no_mangle]
@@ -140,8 +147,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_p
         .as_mut()
         .unwrap()
         .awaiting_processing
-        .push_back((*block).block.clone())
-        .unwrap();
+        .push_back((*block).block.clone());
 }
 
 #[no_mangle]
@@ -241,6 +247,31 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_original_hashes_pendi
         .unwrap()
         .original_hashes_pending
         .clear()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_original_block(
+    handle: *mut ConfirmationHeightProcessorLock,
+) -> *mut BlockHandle {
+    let block = &(*handle).guard.as_ref().unwrap().original_block;
+    match block {
+        Some(block) => Box::into_raw(Box::new(BlockHandle::new(block.clone()))),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_original_block_set(
+    handle: *mut ConfirmationHeightProcessorLock,
+    block: *const BlockHandle,
+) {
+    let new_block = if block.is_null() {
+        None
+    } else {
+        Some((*block).block.clone())
+    };
+
+    (*handle).guard.as_mut().unwrap().original_block = new_block;
 }
 
 //----------------------------------------

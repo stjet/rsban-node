@@ -20,6 +20,7 @@ impl ConfirmationHeightProcessor {
                 paused: false,
                 awaiting_processing: AwaitingProcessingQueue::new(),
                 original_hashes_pending: HashSet::new(),
+                original_block: None,
             })),
             condition: Arc::new(Condvar::new()),
             write_database_queue,
@@ -39,17 +40,25 @@ impl ConfirmationHeightProcessor {
         self.condition.notify_one();
     }
 
-    pub fn add(&self, block: Arc<RwLock<BlockEnum>>) -> anyhow::Result<()> {
+    pub fn add(&self, block: Arc<RwLock<BlockEnum>>) {
         {
             let mut lk = self.guarded_data.lock().unwrap();
-            lk.awaiting_processing.push_back(block)?;
+            lk.awaiting_processing.push_back(block);
         }
         self.condition.notify_one();
-        Ok(())
     }
 
     pub fn awaiting_processing_entry_size() -> usize {
         AwaitingProcessingQueue::entry_size()
+    }
+
+    pub fn set_next_hash(&self) {
+        todo!()
+        // let lk = self.guarded_data.lock().unwrap();
+        // debug_assert!(!lk.awaiting_processing.is_empty());
+        // original_block = lk.awaiting_processing_front ();
+        // lk.original_hashes_pending_insert (original_block->hash ());
+        // lk.awaiting_processing_pop_front ();
     }
 }
 
@@ -58,6 +67,8 @@ pub struct GuardedData {
     pub awaiting_processing: AwaitingProcessingQueue,
     // Hashes which have been added and processed, but have not been cemented
     pub original_hashes_pending: HashSet<BlockHash>,
+    /** This is the last block popped off the confirmation height pending collection */
+    pub original_block: Option<Arc<RwLock<BlockEnum>>>,
 }
 
 pub struct AwaitingProcessingQueue {
@@ -89,16 +100,14 @@ impl AwaitingProcessingQueue {
         self.hashes.contains(hash)
     }
 
-    pub fn push_back(&mut self, block: Arc<RwLock<BlockEnum>>) -> anyhow::Result<()> {
+    pub fn push_back(&mut self, block: Arc<RwLock<BlockEnum>>) {
         let hash = block.read().unwrap().hash();
         if self.hashes.contains(&hash) {
-            bail!("block was already in processing queue");
+            return;
         }
 
         self.blocks.push_back(block);
         self.hashes.insert(hash);
-
-        Ok(())
     }
 
     pub fn front(&self) -> Option<&Arc<RwLock<BlockEnum>>> {

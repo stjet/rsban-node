@@ -116,6 +116,22 @@ public:
 			rsnano::rsn_confirmation_height_processor_original_hashes_pending_clear (handle);
 		}
 
+		std::shared_ptr<nano::block> original_block () const
+		{
+			auto block_handle = rsnano::rsn_confirmation_height_processor_original_block (handle);
+			return nano::block_handle_to_block (block_handle);
+		}
+
+		void set_original_block (std::shared_ptr<nano::block> const & block_a)
+		{
+			rsnano::BlockHandle * block_handle = nullptr;
+			if (block_a)
+			{
+				block_handle = block_a->get_handle ();
+			}
+			rsnano::rsn_confirmation_height_processor_original_block_set (handle, block_handle);
+		}
+
 		rsnano::ConfirmationHeightProcessorLock * handle;
 	};
 
@@ -187,9 +203,6 @@ public:
 	void add_block_already_cemented_observer (std::function<void (nano::block_hash const &)> const &);
 
 private:
-	/** This is the last block popped off the confirmation height pending collection */
-	std::shared_ptr<nano::block> original_block;
-
 	rsnano::AtomicBoolWrapper stopped{ false };
 	// No mutex needed for the observers as these should be set up during initialization of the node
 	std::vector<std::function<void (std::shared_ptr<nano::block> const &)>> cemented_observers;

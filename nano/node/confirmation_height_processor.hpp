@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/timer.hpp>
@@ -33,6 +35,59 @@ class confirmation_height_processor final
 public:
 	confirmation_height_processor (nano::ledger &, nano::stats & stats_a, nano::write_database_queue &, std::chrono::milliseconds, nano::logging const &, std::shared_ptr<nano::logger_mt> &, boost::latch & initialized_latch, confirmation_height_mode = confirmation_height_mode::automatic);
 	~confirmation_height_processor ();
+
+	class mutex_lock
+	{
+	public:
+		mutex_lock (rsnano::ConfirmationHeightProcessorLock * handle_a) :
+			handle{ handle_a }
+		{
+		}
+		mutex_lock (mutex_lock && other)
+		{
+			handle = other.handle;
+			other.handle = nullptr;
+		}
+		mutex_lock (mutex_lock const &) = delete;
+		~mutex_lock ()
+		{
+			if (handle)
+			{
+				rsnano::rsn_confirmation_height_processor_lock_destroy (handle);
+			}
+		}
+		void unlock ()
+		{
+			rsnano::rsn_confirmation_height_processor_lock_unlock (handle);
+		}
+		void lock ()
+		{
+			rsnano::rsn_confirmation_height_processor_lock_relock (handle);
+		}
+		rsnano::ConfirmationHeightProcessorLock * handle;
+	};
+
+	class mutex_wrapper
+	{
+	public:
+		mutex_wrapper (rsnano::ConfirmationHeightProcessorMutex * handle_a) :
+			handle{ handle_a }
+		{
+		}
+		mutex_wrapper (mutex_wrapper const &) = delete;
+		~mutex_wrapper ()
+		{
+			rsnano::rsn_confirmation_height_processor_mutex_destroy (handle);
+		}
+
+		mutex_lock lock ()
+		{
+			return mutex_lock{ rsnano::rsn_confirmation_height_processor_mutex_lock (handle) };
+		}
+
+		rsnano::ConfirmationHeightProcessorMutex * handle;
+	};
+
 	void pause ();
 	void unpause ();
 	void stop ();
@@ -55,8 +110,6 @@ public:
 	void add_block_already_cemented_observer (std::function<void (nano::block_hash const &)> const &);
 
 private:
-	mutable nano::mutex mutex{ mutex_identifier (mutexes::confirmation_height_processor) };
-
 	// Hashes which have been added to the confirmation height processor, but not yet processed
 	struct block_wrapper
 	{
@@ -108,6 +161,8 @@ private:
 	void notify_cemented (std::vector<std::shared_ptr<nano::block>> const &);
 	void notify_already_cemented (nano::block_hash const &);
 
+	rsnano::ConfirmationHeightProcessorHandle * handle;
+	mutable mutex_wrapper mutex;
 	friend std::unique_ptr<container_info_component> collect_container_info (confirmation_height_processor &, std::string const &);
 
 private: // Tests

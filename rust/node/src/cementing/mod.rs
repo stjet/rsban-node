@@ -4,6 +4,7 @@ mod block_cache;
 mod block_cementor;
 mod cement_queue;
 mod confirmation_height_bounded;
+mod confirmation_height_processor;
 mod confirmation_height_unbounded;
 mod confirmed_iterated_pairs;
 mod implicit_receive_cemented_mapping;
@@ -13,6 +14,7 @@ pub use confirmation_height_bounded::{
     truncate_after, ConfirmationHeightBounded, ConfirmedInfo, NotifyObserversCallback,
     ReceiveChainDetails, ReceiveSourcePair, TopAndNextHash, WriteDetails,
 };
+pub use confirmation_height_processor::{ConfirmationHeightProcessor, GuardedData};
 pub use confirmation_height_unbounded::ConfirmationHeightUnbounded;
 pub use confirmed_iterated_pairs::ConfirmedIteratedPair;
 

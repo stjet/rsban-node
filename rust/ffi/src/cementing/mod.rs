@@ -1,2 +1,3 @@
 mod confirmation_height_bounded;
+mod confirmation_height_processor;
 mod confirmation_height_unbounded;

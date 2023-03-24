@@ -98,7 +98,6 @@ std::shared_ptr<nano::logger_mt> & logger_a,
 nano::logging const & logging_a,
 nano::ledger & ledger_a,
 rsnano::AtomicBoolWrapper & stopped_a,
-rsnano::RsNanoTimer & timer_a,
 std::chrono::milliseconds batch_separate_pending_min_time_a,
 std::function<uint64_t ()> const & awaiting_processing_size_callback_a,
 std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a)
@@ -118,7 +117,6 @@ std::function<void (nano::block_hash const &)> const & notify_block_already_ceme
 	&logging_dto,
 	ledger_a.handle,
 	stopped_a.handle,
-	timer_a.handle,
 	batch_separate_pending_min_time_a.count (),
 	awaiting_processing_size_callback_wrapper,
 	awaiting_processing_size_context,
@@ -130,10 +128,7 @@ std::function<void (nano::block_hash const &)> const & notify_block_already_ceme
 }
 
 nano::confirmation_height_bounded::confirmation_height_bounded (nano::ledger & ledger_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, rsnano::AtomicBoolWrapper & stopped_a, rsnano::AtomicU64Wrapper & batch_write_size_a, std::function<void (std::vector<std::shared_ptr<nano::block>> const &)> const & notify_observers_callback_a, std::function<void (nano::block_hash const &)> const & notify_block_already_cemented_observers_callback_a, std::function<uint64_t ()> const & awaiting_processing_size_callback_a) :
-	timer{},
-	handle{ create_conf_height_bounded_handle (write_database_queue_a, notify_observers_callback_a, batch_write_size_a, logger_a, logging_a, ledger_a, stopped_a, timer, batch_separate_pending_min_time_a, awaiting_processing_size_callback_a, notify_block_already_cemented_observers_callback_a) },
-	accounts_confirmed_info{ handle },
-	pending_writes{ handle },
+	handle{ create_conf_height_bounded_handle (write_database_queue_a, notify_observers_callback_a, batch_write_size_a, logger_a, logging_a, ledger_a, stopped_a, batch_separate_pending_min_time_a, awaiting_processing_size_callback_a, notify_block_already_cemented_observers_callback_a) },
 	ledger (ledger_a),
 	write_database_queue (write_database_queue_a),
 	batch_separate_pending_min_time (batch_separate_pending_min_time_a),
@@ -152,152 +147,11 @@ nano::confirmation_height_bounded::~confirmation_height_bounded ()
 	rsnano::rsn_confirmation_height_bounded_destroy (handle);
 }
 
-// The next block hash to iterate over, the priority is as follows:
-// 1 - The next block in the account chain for the last processed receive (if there is any)
-// 2 - The next receive block which is closest to genesis
-// 3 - The last checkpoint hit.
-// 4 - The hash that was passed in originally. Either all checkpoints were exhausted (this can happen when there are many accounts to genesis)
-//     or all other blocks have been processed.
-nano::confirmation_height_bounded::top_and_next_hash nano::confirmation_height_bounded::get_next_block (
-boost::optional<top_and_next_hash> const & next_in_receive_chain_a,
-nano::hash_circular_buffer const & checkpoints_a,
-receive_source_pair_circular_buffer const & receive_source_pairs,
-boost::optional<receive_chain_details> & receive_details_a,
-nano::block const & original_block)
-{
-	rsnano::TopAndNextHashDto next_in_chain_dto{};
-	if (next_in_receive_chain_a)
-	{
-		next_in_chain_dto = next_in_receive_chain_a->to_dto ();
-	}
-
-	rsnano::ReceiveChainDetailsDto receive_details_dto{};
-	if (receive_details_a)
-	{
-		receive_details_dto = receive_details_a->to_dto ();
-	}
-	bool has_receive_details = receive_details_a.is_initialized ();
-
-	rsnano::TopAndNextHashDto next_dto{};
-
-	rsnano::rsn_confirmation_height_bounded_get_next_block (
-	handle,
-	&next_in_chain_dto,
-	next_in_receive_chain_a.is_initialized (),
-	checkpoints_a.handle,
-	receive_source_pairs.handle,
-	&receive_details_dto,
-	&has_receive_details,
-	original_block.get_handle (),
-	&next_dto);
-
-	if (has_receive_details)
-	{
-		receive_details_a = receive_chain_details{ receive_details_dto };
-	}
-	else
-	{
-		receive_details_a = boost::none;
-	}
-
-	top_and_next_hash next{ next_dto };
-	return next;
-}
-
 void nano::confirmation_height_bounded::process (std::shared_ptr<nano::block> original_block)
 {
-	if (pending_empty ())
-	{
-		clear_process_vars ();
-		timer.restart ();
-	}
-
-	// Call into Rust...
 	rsnano::rsn_confirmation_height_bounded_process (
 	handle,
 	original_block->get_handle ());
-}
-
-nano::block_hash nano::confirmation_height_bounded::get_least_unconfirmed_hash_from_top_level (nano::transaction const & transaction_a, nano::block_hash const & hash_a, nano::account const & account_a, nano::confirmation_height_info const & confirmation_height_info_a, uint64_t & block_height_a)
-{
-	nano::block_hash least_unconfirmed_hash;
-	rsnano::rsn_confirmation_height_bounded_get_least_unconfirmed_hash_from_top_level (
-	handle,
-	transaction_a.get_rust_handle (),
-	hash_a.bytes.data (),
-	account_a.bytes.data (),
-	&confirmation_height_info_a.dto,
-	&block_height_a,
-	least_unconfirmed_hash.bytes.data ());
-	return least_unconfirmed_hash;
-}
-
-bool nano::confirmation_height_bounded::iterate (
-nano::read_transaction & transaction_a,
-uint64_t bottom_height_a,
-nano::block_hash const & bottom_hash_a,
-nano::hash_circular_buffer & checkpoints_a,
-nano::block_hash & top_most_non_receive_block_hash_a,
-nano::block_hash const & top_level_hash_a,
-receive_source_pair_circular_buffer & receive_source_pairs_a,
-nano::account const & account_a)
-{
-	bool hit_receive = rsnano::rsn_confirmation_height_bounded_iterate (
-	handle,
-	receive_source_pairs_a.handle,
-	checkpoints_a.handle,
-	top_level_hash_a.bytes.data (),
-	account_a.bytes.data (),
-	bottom_height_a,
-	bottom_hash_a.bytes.data (),
-	top_most_non_receive_block_hash_a.bytes.data (),
-	transaction_a.get_rust_handle ());
-
-	return hit_receive;
-}
-
-// Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
-// the non-receive blocks which have been iterated for an account, and the associated receive block.
-boost::optional<nano::confirmation_height_bounded::top_and_next_hash> nano::confirmation_height_bounded::prepare_iterated_blocks_for_cementing (preparation_data & preparation_data_a)
-{
-	rsnano::ReceiveChainDetailsDto details_dto;
-	auto & receive_details = preparation_data_a.receive_details;
-	if (receive_details)
-	{
-		details_dto = receive_details->to_dto ();
-	}
-	bool has_next_dto = preparation_data_a.next_in_receive_chain.has_value ();
-	rsnano::TopAndNextHashDto next_dto;
-	if (preparation_data_a.next_in_receive_chain)
-	{
-		next_dto = preparation_data_a.next_in_receive_chain->to_dto ();
-	}
-
-	rsnano::rsn_confirmation_height_bounded_prepare_iterated_blocks_for_cementing (
-	handle,
-	receive_details.is_initialized (),
-	&details_dto,
-	preparation_data_a.checkpoints.handle,
-	&has_next_dto,
-	&next_dto,
-	preparation_data_a.already_cemented,
-	preparation_data_a.transaction.get_rust_handle (),
-	preparation_data_a.top_most_non_receive_block_hash.bytes.data (),
-	&preparation_data_a.confirmation_height_info.dto,
-	preparation_data_a.account.bytes.data (),
-	preparation_data_a.bottom_height,
-	preparation_data_a.bottom_most.bytes.data ());
-
-	boost::optional<top_and_next_hash> next_in_receive_chain;
-	if (has_next_dto)
-	{
-		next_in_receive_chain = nano::confirmation_height_bounded::top_and_next_hash{ next_dto };
-	}
-	else
-	{
-		next_in_receive_chain = boost::none;
-	}
-	return next_in_receive_chain;
 }
 
 void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scoped_write_guard_a)
@@ -308,199 +162,22 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 	{
 		scoped_write_guard_a = nano::write_guard{ write_guard_handle };
 	}
-
-	timer.restart ();
 }
 
 bool nano::confirmation_height_bounded::pending_empty () const
 {
-	return pending_writes.empty ();
+	return rsnano::rsn_confirmation_height_bounded_pending_empty (handle);
 }
 
 void nano::confirmation_height_bounded::clear_process_vars ()
 {
-	accounts_confirmed_info.clear ();
-	rsnano::rsn_confirmation_height_bounded_accounts_confirmed_info_size_store (handle, 0);
-}
-
-nano::confirmation_height_bounded::receive_chain_details::receive_chain_details (nano::account const & account_a, uint64_t height_a, nano::block_hash const & hash_a, nano::block_hash const & top_level_a, boost::optional<nano::block_hash> next_a, uint64_t bottom_height_a, nano::block_hash const & bottom_most_a) :
-	account (account_a),
-	height (height_a),
-	hash (hash_a),
-	top_level (top_level_a),
-	next (next_a),
-	bottom_height (bottom_height_a),
-	bottom_most (bottom_most_a)
-{
-}
-
-nano::confirmation_height_bounded::receive_chain_details::receive_chain_details (rsnano::ReceiveChainDetailsDto const & dto) :
-	account (nano::account::from_bytes (dto.account)),
-	height (dto.height),
-	hash (nano::block_hash::from_bytes (dto.hash)),
-	top_level (nano::block_hash::from_bytes (dto.top_level)),
-	next (boost::none),
-	bottom_height (dto.bottom_height),
-	bottom_most (nano::block_hash::from_bytes (dto.bottom_most))
-{
-	if (dto.has_next)
-	{
-		next = nano::block_hash::from_bytes (dto.next);
-	}
-}
-
-nano::confirmation_height_bounded::write_details::write_details (nano::account const & account_a, uint64_t bottom_height_a, nano::block_hash const & bottom_hash_a, uint64_t top_height_a, nano::block_hash const & top_hash_a) :
-	account (account_a),
-	bottom_height (bottom_height_a),
-	bottom_hash (bottom_hash_a),
-	top_height (top_height_a),
-	top_hash (top_hash_a)
-{
-}
-
-nano::confirmation_height_bounded::write_details::write_details (rsnano::WriteDetailsDto const & dto) :
-	bottom_height (dto.bottom_height),
-	top_height (dto.top_height)
-{
-	std::copy (std::begin (dto.account), std::end (dto.account), std::begin (account.bytes));
-	std::copy (std::begin (dto.bottom_hash), std::end (dto.bottom_hash), std::begin (bottom_hash.bytes));
-	std::copy (std::begin (dto.top_hash), std::end (dto.top_hash), std::begin (top_hash.bytes));
-}
-
-rsnano::WriteDetailsDto nano::confirmation_height_bounded::write_details::to_dto () const
-{
-	rsnano::WriteDetailsDto dto;
-	std::copy (std::begin (account.bytes), std::end (account.bytes), std::begin (dto.account));
-	std::copy (std::begin (bottom_hash.bytes), std::end (bottom_hash.bytes), std::begin (dto.bottom_hash));
-	std::copy (std::begin (top_hash.bytes), std::end (top_hash.bytes), std::begin (dto.top_hash));
-	dto.bottom_height = bottom_height;
-	dto.top_height = top_height;
-	return dto;
-}
-
-nano::confirmation_height_bounded::receive_source_pair::receive_source_pair (confirmation_height_bounded::receive_chain_details const & receive_details_a, const block_hash & source_a) :
-	receive_details (receive_details_a),
-	source_hash (source_a)
-{
-}
-
-nano::confirmation_height_bounded::receive_source_pair::receive_source_pair (rsnano::ReceiveSourcePairDto const & pair_dto) :
-	receive_details{ pair_dto.receive_details },
-	source_hash{ nano::block_hash::from_bytes (pair_dto.source_hash) }
-{
-}
-
-nano::confirmation_height_bounded::confirmed_info::confirmed_info (uint64_t confirmed_height_a, nano::block_hash const & iterated_frontier_a) :
-	confirmed_height (confirmed_height_a),
-	iterated_frontier (iterated_frontier_a)
-{
+	rsnano::rsn_confirmation_height_bounded_clear_process_vars (handle);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (confirmation_height_bounded & confirmation_height_bounded, std::string const & name_a)
 {
 	auto composite = std::make_unique<container_info_composite> (name_a);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", rsnano::rsn_confirmation_height_bounded_pending_writes_size (confirmation_height_bounded.handle), sizeof (nano::confirmation_height_bounded::write_details) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "accounts_confirmed_info", rsnano::rsn_confirmation_height_bounded_accounts_confirmed_info_size (confirmation_height_bounded.handle), sizeof (nano::account) + sizeof (nano::confirmation_height_bounded::confirmed_info) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", rsnano::rsn_confirmation_height_bounded_pending_writes_size (confirmation_height_bounded.handle), rsnano::rsn_confirmation_height_bounded_write_details_size () }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "accounts_confirmed_info", rsnano::rsn_confirmation_height_bounded_accounts_confirmed_info_size (confirmation_height_bounded.handle), rsnano::rsn_confirmation_height_bounded_confirmed_info_entry_size () }));
 	return composite;
-}
-
-nano::confirmation_height_bounded::pending_writes_queue::pending_writes_queue (rsnano::ConfirmationHeightBoundedHandle * handle_a) :
-	handle{ handle_a }
-{
-}
-
-size_t nano::confirmation_height_bounded::pending_writes_queue::size () const
-{
-	return rsnano::rsn_pending_writes_queue_size (handle);
-}
-
-bool nano::confirmation_height_bounded::pending_writes_queue::empty () const
-{
-	return size () == 0;
-}
-
-void nano::confirmation_height_bounded::pending_writes_queue::push_back (nano::confirmation_height_bounded::write_details const & details)
-{
-	auto dto{ details.to_dto () };
-	rsnano::rsn_pending_writes_queue_push_back (handle, &dto);
-}
-
-nano::confirmation_height_bounded::write_details nano::confirmation_height_bounded::pending_writes_queue::front () const
-{
-	rsnano::WriteDetailsDto details_dto;
-	rsnano::rsn_pending_writes_queue_front (handle, &details_dto);
-	return nano::confirmation_height_bounded::write_details{ details_dto };
-}
-
-void nano::confirmation_height_bounded::pending_writes_queue::pop_front ()
-{
-	rsnano::rsn_pending_writes_queue_pop_front (handle);
-}
-
-uint64_t nano::confirmation_height_bounded::pending_writes_queue::total_pending_write_block_count () const
-{
-	return rsnano::rsn_pending_writes_queue_total_pending_write_block_count (handle);
-}
-
-rsnano::ReceiveChainDetailsDto nano::confirmation_height_bounded::receive_chain_details::to_dto () const
-{
-	rsnano::ReceiveChainDetailsDto dto;
-	account.copy_bytes_to (dto.account);
-	dto.height = height;
-	hash.copy_bytes_to (dto.hash);
-	top_level.copy_bytes_to (dto.top_level);
-	dto.has_next = next.has_value ();
-	if (next)
-	{
-		next->copy_bytes_to (dto.next);
-	}
-	dto.bottom_height = bottom_height;
-	bottom_most.copy_bytes_to (dto.bottom_most);
-	return dto;
-}
-
-rsnano::ReceiveSourcePairDto nano::confirmation_height_bounded::receive_source_pair::to_dto () const
-{
-	rsnano::ReceiveSourcePairDto dto;
-	source_hash.copy_bytes_to (dto.source_hash);
-	dto.receive_details = receive_details.to_dto ();
-	return dto;
-}
-
-nano::confirmation_height_bounded::receive_source_pair_circular_buffer::receive_source_pair_circular_buffer (size_t max_items) :
-	handle{ rsnano::rsn_receive_source_pair_circular_buffer_create (max_items) }
-{
-}
-
-nano::confirmation_height_bounded::receive_source_pair_circular_buffer::~receive_source_pair_circular_buffer ()
-{
-	rsnano::rsn_receive_source_pair_circular_buffer_destroy (handle);
-}
-
-void nano::confirmation_height_bounded::receive_source_pair_circular_buffer::push_back (nano::confirmation_height_bounded::receive_source_pair const & pair)
-{
-	auto pair_dto{ pair.to_dto () };
-	rsnano::rsn_receive_source_pair_circular_buffer_push_back (handle, &pair_dto);
-}
-
-bool nano::confirmation_height_bounded::receive_source_pair_circular_buffer::empty () const
-{
-	return rsnano::rsn_receive_source_pair_circular_buffer_size (handle) == 0;
-}
-
-size_t nano::confirmation_height_bounded::receive_source_pair_circular_buffer::size () const
-{
-	return rsnano::rsn_receive_source_pair_circular_buffer_size (handle);
-}
-
-nano::confirmation_height_bounded::receive_source_pair nano::confirmation_height_bounded::receive_source_pair_circular_buffer::back () const
-{
-	rsnano::ReceiveSourcePairDto pair_dto;
-	rsnano::rsn_receive_source_pair_circular_buffer_back (handle, &pair_dto);
-	return nano::confirmation_height_bounded::receive_source_pair{ pair_dto };
-}
-
-void nano::confirmation_height_bounded::receive_source_pair_circular_buffer::pop_back ()
-{
-	rsnano::rsn_receive_source_pair_circular_buffer_pop_back (handle);
 }

@@ -3,7 +3,7 @@ use std::{
     collections::{HashMap, VecDeque},
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-        Arc, Mutex, RwLock,
+        Arc, RwLock,
     },
     time::{Duration, Instant},
 };
@@ -27,17 +27,26 @@ pub struct ConfirmationHeightBounded {
     pub pending_writes: VecDeque<WriteDetails>,
     notify_observers_callback: NotifyObserversCallback,
     notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash)>,
-    batch_write_size: Arc<AtomicU64>,
     logger: Arc<dyn Logger>,
     logging: Logging,
     ledger: Arc<Ledger>,
+
+    /* Holds confirmation height/cemented frontier in memory for accounts while iterating */
     pub accounts_confirmed_info: HashMap<Account, ConfirmedInfo>,
-    pub accounts_confirmed_info_size: AtomicUsize,
-    pub pending_writes_size: AtomicUsize,
+
     stopped: Arc<AtomicBool>,
-    timer: Arc<Mutex<Instant>>, //todo remove Arc<Mutex<>>
+    timer: Instant,
     batch_separate_pending_min_time: Duration,
     awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
+
+    // All of the atomic variables here just track the size for use in collect_container_info.
+    // This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
+    // for the sake of a rarely used RPC call for debugging purposes. As such the sizes are not being acted
+    // upon in any way (does not synchronize with any other data).
+    // This allows the load and stores to use relaxed atomic memory ordering.
+    batch_write_size: Arc<AtomicU64>,
+    pub accounts_confirmed_info_size: AtomicUsize,
+    pub pending_writes_size: AtomicUsize,
 }
 
 const MAXIMUM_BATCH_WRITE_TIME: u64 = 250; // milliseconds
@@ -63,7 +72,6 @@ impl ConfirmationHeightBounded {
         logging: Logging,
         ledger: Arc<Ledger>,
         stopped: Arc<AtomicBool>,
-        timer: Arc<Mutex<Instant>>,
         batch_separate_pending_min_time: Duration,
         awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
     ) -> Self {
@@ -80,7 +88,7 @@ impl ConfirmationHeightBounded {
             accounts_confirmed_info_size: AtomicUsize::new(0),
             pending_writes_size: AtomicUsize::new(0),
             stopped,
-            timer,
+            timer: Instant::now(),
             batch_separate_pending_min_time,
             awaiting_processing_size_callback,
         }
@@ -311,6 +319,8 @@ impl ConfirmationHeightBounded {
                 Ordering::SeqCst,
             );
         }
+
+        self.timer = Instant::now();
 
         debug_assert!(self.pending_writes.is_empty());
         debug_assert!(self.pending_writes_size.load(Ordering::Relaxed) == 0);
@@ -556,6 +566,11 @@ impl ConfirmationHeightBounded {
     }
 
     pub fn process(&mut self, original_block: &BlockEnum) {
+        if self.pending_empty() {
+            self.clear_process_vars();
+            self.timer = Instant::now();
+        }
+
         let mut next_in_receive_chain: Option<TopAndNextHash> = None;
         let mut checkpoints = BoundedVecDeque::new(MAX_ITEMS);
         let mut receive_source_pairs = BoundedVecDeque::new(MAX_ITEMS);
@@ -704,7 +719,7 @@ impl ConfirmationHeightBounded {
                 // When there are a lot of pending confirmation height blocks, it is more efficient to
                 // bulk some of them up to enable better write performance which becomes the bottleneck.
                 let min_time_exceeded =
-                    self.timer.lock().unwrap().elapsed() >= self.batch_separate_pending_min_time;
+                    self.timer.elapsed() >= self.batch_separate_pending_min_time;
                 let finished_iterating = current == original_block.hash();
                 let non_awaiting_processing = (self.awaiting_processing_size_callback)() == 0;
                 let should_output =
@@ -750,6 +765,24 @@ impl ConfirmationHeightBounded {
             .iter()
             .map(|i| i.top_height - i.bottom_height + 1)
             .sum()
+    }
+
+    pub fn clear_process_vars(&mut self) {
+        self.accounts_confirmed_info.clear();
+        self.accounts_confirmed_info_size
+            .store(0, Ordering::Relaxed);
+    }
+
+    pub fn pending_empty(&self) -> bool {
+        self.pending_writes.is_empty()
+    }
+
+    pub fn write_details_size() -> usize {
+        std::mem::size_of::<WriteDetails>()
+    }
+
+    pub fn confirmed_info_entry_size() -> usize {
+        std::mem::size_of::<ConfirmedInfo>() + std::mem::size_of::<Account>()
     }
 }
 

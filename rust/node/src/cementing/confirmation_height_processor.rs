@@ -23,6 +23,8 @@ pub struct ConfirmationHeightProcessor {
     pub batch_write_size: Arc<AtomicU64>,
     pub bounded_processor: ConfirmationHeightBounded,
     pub stopped: Arc<AtomicBool>,
+    // No mutex needed for the observers as these should be set up during initialization of the node
+    cemented_observer: Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>>,
 }
 
 impl ConfirmationHeightProcessor {
@@ -33,9 +35,9 @@ impl ConfirmationHeightProcessor {
         ledger: Arc<Ledger>,
         batch_separate_pending_min_time: Duration,
     ) -> Self {
-        let cemented_callback: NotifyObserversCallback = Box::new(|blocks| todo!());
+        let cemented_callback: NotifyObserversCallback = Box::new(|_blocks| todo!());
 
-        let already_cemented_callback = Box::new(|block_hash| todo!());
+        let already_cemented_callback = Box::new(|_block_hash| todo!());
 
         let awaiting_processing_size_callback = Box::new(|| todo!());
 
@@ -52,6 +54,7 @@ impl ConfirmationHeightProcessor {
             write_database_queue: write_database_queue.clone(),
             batch_write_size: batch_write_size.clone(),
             stopped: stopped.clone(),
+            cemented_observer: None,
             bounded_processor: ConfirmationHeightBounded::new(
                 write_database_queue,
                 cemented_callback,
@@ -112,6 +115,22 @@ impl ConfirmationHeightProcessor {
 
     pub fn run(&self, _mode: ConfirmationHeightMode) {
         //todo
+    }
+
+    pub fn set_cemented_observer(&mut self, callback: Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>) {
+        self.cemented_observer = Some(callback);
+    }
+
+    pub fn notify_cemented(&self, blocks: &[Arc<RwLock<BlockEnum>>]) {
+        if let Some(observer) = &self.cemented_observer {
+            for block in blocks {
+                (observer)(block);
+            }
+        }
+    }
+
+    pub fn clear_cemented_observer(&mut self) {
+        self.cemented_observer = None;
     }
 }
 

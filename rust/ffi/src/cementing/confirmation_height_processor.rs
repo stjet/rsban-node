@@ -1,10 +1,11 @@
 use std::{
-    sync::{Arc, Condvar, Mutex, MutexGuard},
+    ffi::c_void,
+    sync::{Arc, Condvar, Mutex, MutexGuard, RwLock},
     time::Duration,
 };
 
 use num::FromPrimitive;
-use rsnano_core::BlockHash;
+use rsnano_core::{BlockEnum, BlockHash};
 use rsnano_node::{
     cementing::{ConfirmationHeightProcessor, GuardedData},
     config::Logging,
@@ -12,10 +13,10 @@ use rsnano_node::{
 
 use crate::{
     copy_hash_bytes,
-    core::BlockHandle,
+    core::{BlockCallback, BlockHandle, BlockVecHandle},
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
-    utils::{AtomicBoolHandle, AtomicU64Handle, LoggerHandle, LoggerMT},
-    LoggingDto,
+    utils::{AtomicBoolHandle, AtomicU64Handle, ContextWrapper, LoggerHandle, LoggerMT},
+    LoggingDto, VoidPointerCallback,
 };
 
 pub struct ConfirmationHeightProcessorHandle(ConfirmationHeightProcessor);
@@ -110,6 +111,37 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_batch_write_size(
     Box::into_raw(Box::new(AtomicU64Handle(
         (*handle).0.batch_write_size.clone(),
     )))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_set_cemented_observer(
+    handle: *mut ConfirmationHeightProcessorHandle,
+    callback: BlockCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let context_wrapper = ContextWrapper::new(context, delete_context);
+    let callback_wrapper = Box::new(move |block: &Arc<RwLock<BlockEnum>>| {
+        let block_handle = Box::into_raw(Box::new(BlockHandle::new(block.clone())));
+        callback(context_wrapper.get_context(), block_handle);
+        drop(Box::from_raw(block_handle));
+    });
+    (*handle).0.set_cemented_observer(callback_wrapper);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_clear_cemented_observer(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) {
+    (*handle).0.clear_cemented_observer();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_notify_cemented(
+    handle: *mut ConfirmationHeightProcessorHandle,
+    blocks: *const BlockVecHandle,
+) {
+    (*handle).0.notify_cemented(&(*blocks).0);
 }
 
 #[no_mangle]

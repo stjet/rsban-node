@@ -272,3 +272,5 @@ impl BlockArrayDto {
 pub unsafe extern "C" fn rsn_block_array_destroy(dto: *mut BlockArrayDto) {
     drop(Box::from_raw((*dto).raw_ptr))
 }
+
+pub type BlockCallback = extern "C" fn(*mut c_void, *mut BlockHandle);

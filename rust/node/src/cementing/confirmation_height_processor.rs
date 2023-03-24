@@ -1,15 +1,100 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::{HashSet, VecDeque},
+    mem::size_of,
+    sync::{Arc, Condvar, Mutex, RwLock},
+};
+
+use rsnano_core::{BlockEnum, BlockHash};
 
 pub struct ConfirmationHeightProcessor {
     pub guarded_data: Arc<Mutex<GuardedData>>,
+    pub condition: Arc<Condvar>,
 }
 
 impl ConfirmationHeightProcessor {
     pub fn new() -> Self {
         Self {
-            guarded_data: Arc::new(Mutex::new(GuardedData {})),
+            guarded_data: Arc::new(Mutex::new(GuardedData {
+                paused: false,
+                awaitin_processing: AwaitingProcessingQueue::new(),
+            })),
+            condition: Arc::new(Condvar::new()),
         }
+    }
+
+    // Pausing only affects processing new blocks, not the current one being processed. Currently only used in tests
+    pub fn pause(&self) {
+        let mut guard = self.guarded_data.lock().unwrap();
+        guard.paused = true;
+    }
+
+    pub fn unpause(&self) {
+        let mut guard = self.guarded_data.lock().unwrap();
+        guard.paused = false;
+        drop(guard);
+        //todo notify
+    }
+
+    pub fn awaiting_processing_entry_size() -> usize {
+        AwaitingProcessingQueue::entry_size()
     }
 }
 
-pub struct GuardedData {}
+pub struct GuardedData {
+    pub paused: bool,
+    pub awaitin_processing: AwaitingProcessingQueue,
+}
+
+pub struct AwaitingProcessingQueue {
+    blocks: VecDeque<Arc<RwLock<BlockEnum>>>,
+    hashes: HashSet<BlockHash>,
+}
+
+impl AwaitingProcessingQueue {
+    pub fn new() -> Self {
+        Self {
+            blocks: VecDeque::new(),
+            hashes: HashSet::new(),
+        }
+    }
+
+    pub fn entry_size() -> usize {
+        size_of::<Arc<RwLock<BlockEnum>>>() + size_of::<BlockHash>()
+    }
+
+    pub fn len(&self) -> usize {
+        self.blocks.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.blocks.is_empty()
+    }
+
+    pub fn contains(&self, hash: &BlockHash) -> bool {
+        self.hashes.contains(hash)
+    }
+
+    pub fn push_back(&mut self, block: Arc<RwLock<BlockEnum>>) -> anyhow::Result<()> {
+        let hash = block.read().unwrap().hash();
+        if self.hashes.contains(&hash) {
+            bail!("block was already in processing queue");
+        }
+
+        self.blocks.push_back(block);
+        self.hashes.insert(hash);
+
+        Ok(())
+    }
+
+    pub fn front(&self) -> Option<&Arc<RwLock<BlockEnum>>> {
+        self.blocks.front()
+    }
+
+    pub fn pop_front(&mut self) -> Option<Arc<RwLock<BlockEnum>>> {
+        let front = self.blocks.pop_front();
+        if let Some(block) = &front {
+            self.hashes.remove(&block.read().unwrap().hash());
+        }
+        front
+    }
+}

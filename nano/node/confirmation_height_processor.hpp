@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/lib/blocks.hpp"
 #include "nano/lib/rsnano.hpp"
 
 #include <nano/lib/numbers.hpp>
@@ -10,16 +11,10 @@
 #include <nano/secure/common.hpp>
 #include <nano/secure/store.hpp>
 
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/mem_fun.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-#include <boost/multi_index_container.hpp>
-
 #include <condition_variable>
 #include <thread>
 #include <unordered_set>
 
-namespace mi = boost::multi_index;
 namespace boost
 {
 class latch;
@@ -64,6 +59,48 @@ public:
 		{
 			rsnano::rsn_confirmation_height_processor_lock_relock (handle);
 		}
+
+		bool paused () const
+		{
+			return rsnano::rsn_confirmation_height_processor_lock_paused (handle);
+		}
+
+		void set_paused (bool value)
+		{
+			rsnano::rsn_confirmation_height_processor_lock_paused_set (handle, value);
+		}
+
+		void awaiting_processing_push_back (std::shared_ptr<nano::block> const & block)
+		{
+			rsnano::rsn_confirmation_height_processor_awaiting_processing_push_back (handle, block->get_handle ());
+		}
+
+		size_t awaiting_processing_size ()
+		{
+			return rsnano::rsn_confirmation_height_processor_awaiting_processing_size (handle);
+		}
+
+		bool awaiting_processing_empty ()
+		{
+			return rsnano::rsn_confirmation_height_processor_awaiting_processing_empty (handle);
+		}
+
+		bool awaiting_processing_contains (nano::block_hash const & hash_a)
+		{
+			return rsnano::rsn_confirmation_height_processor_awaiting_processing_contains (handle, hash_a.bytes.data ());
+		}
+
+		std::shared_ptr<nano::block> awaiting_processing_front ()
+		{
+			auto block_handle = rsnano::rsn_confirmation_height_processor_awaiting_processing_front (handle);
+			return nano::block_handle_to_block (block_handle);
+		}
+
+		void awaiting_processing_pop_front ()
+		{
+			rsnano::rsn_confirmation_height_processor_awaiting_processing_pop_front (handle);
+		}
+
 		rsnano::ConfirmationHeightProcessorLock * handle;
 	};
 
@@ -86,6 +123,31 @@ public:
 		}
 
 		rsnano::ConfirmationHeightProcessorMutex * handle;
+	};
+
+	class condvar_wrapper
+	{
+	public:
+		condvar_wrapper (rsnano::ConfirmationHeightProcessorCondvar * handle_a) :
+			handle{ handle_a }
+		{
+		}
+		condvar_wrapper (condvar_wrapper const &) = delete;
+		~condvar_wrapper ()
+		{
+			rsnano::rsn_confirmation_height_processor_condvar_destroy (handle);
+		}
+		void wait (mutex_lock & lk)
+		{
+			rsnano::rsn_confirmation_height_processor_condvar_wait (handle, lk.handle);
+		}
+
+		void notify_one ()
+		{
+			rsnano::rsn_confirmation_height_processor_condvar_notify_one (handle);
+		}
+
+		rsnano::ConfirmationHeightProcessorCondvar * handle;
 	};
 
 	void pause ();
@@ -125,24 +187,13 @@ private:
 
 		std::shared_ptr<nano::block> block;
 	};
-	// clang-format off
-	class tag_sequence {};
-	class tag_hash {};
-	boost::multi_index_container<block_wrapper,
-	mi::indexed_by<
-		mi::sequenced<mi::tag<tag_sequence>>,
-		mi::hashed_unique<mi::tag<tag_hash>,
-			mi::const_mem_fun<block_wrapper, std::reference_wrapper<nano::block_hash const>, &block_wrapper::hash>>>> awaiting_processing;
-	// clang-format on
 
 	// Hashes which have been added and processed, but have not been cemented
 	std::unordered_set<nano::block_hash> original_hashes_pending;
-	bool paused{ false };
 
 	/** This is the last block popped off the confirmation height pending collection */
 	std::shared_ptr<nano::block> original_block;
 
-	nano::condition_variable condition;
 	rsnano::AtomicBoolWrapper stopped{ false };
 	// No mutex needed for the observers as these should be set up during initialization of the node
 	std::vector<std::function<void (std::shared_ptr<nano::block> const &)>> cemented_observers;
@@ -163,6 +214,7 @@ private:
 
 	rsnano::ConfirmationHeightProcessorHandle * handle;
 	mutable mutex_wrapper mutex;
+	condvar_wrapper condition;
 	friend std::unique_ptr<container_info_component> collect_container_info (confirmation_height_processor &, std::string const &);
 
 private: // Tests

@@ -31,7 +31,8 @@ nano::confirmation_height_processor::confirmation_height_processor (nano::ledger
 		this->run (mode_a);
 	}),
 	handle{ rsnano::rsn_confirmation_height_processor_create () },
-	mutex{ rsnano::rsn_confirmation_height_processor_get_mutex (handle) }
+	mutex{ rsnano::rsn_confirmation_height_processor_get_mutex (handle) },
+	condition{ rsnano::rsn_confirmation_height_processor_get_condvar (handle) }
 {
 }
 
@@ -60,7 +61,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 	auto lk{ mutex.lock () };
 	while (!stopped.load ())
 	{
-		if (!paused && !awaiting_processing.empty ())
+		if (!lk.paused () && !lk.awaiting_processing_empty ())
 		{
 			lk.unlock ();
 			if (bounded_processor.pending_empty () && unbounded_processor.pending_empty ())
@@ -102,7 +103,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 				unbounded_processor.clear_process_vars ();
 			};
 
-			if (!paused)
+			if (!lk.paused ())
 			{
 				lk.unlock ();
 
@@ -128,7 +129,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 				{
 					lock_and_cleanup ();
 					// A block could have been confirmed during the re-locking
-					if (awaiting_processing.empty ())
+					if (lk.awaiting_processing_empty ())
 					{
 						condition.wait (lk);
 					}
@@ -147,16 +148,12 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 // Pausing only affects processing new blocks, not the current one being processed. Currently only used in tests
 void nano::confirmation_height_processor::pause ()
 {
-	auto lk{ mutex.lock () };
-	paused = true;
+	rsnano::rsn_confirmation_height_processor_pause (handle);
 }
 
 void nano::confirmation_height_processor::unpause ()
 {
-	{
-		auto lk{ mutex.lock () };
-		paused = false;
-	}
+	rsnano::rsn_confirmation_height_processor_unpause (handle);
 	condition.notify_one ();
 }
 
@@ -164,7 +161,7 @@ void nano::confirmation_height_processor::add (std::shared_ptr<nano::block> cons
 {
 	{
 		auto lk{ mutex.lock () };
-		awaiting_processing.get<tag_sequence> ().emplace_back (block_a);
+		lk.awaiting_processing_push_back (block_a);
 	}
 	condition.notify_one ();
 }
@@ -172,10 +169,10 @@ void nano::confirmation_height_processor::add (std::shared_ptr<nano::block> cons
 void nano::confirmation_height_processor::set_next_hash ()
 {
 	auto lk{ mutex.lock () };
-	debug_assert (!awaiting_processing.empty ());
-	original_block = awaiting_processing.get<tag_sequence> ().front ().block;
+	debug_assert (!lk.awaiting_processing_empty ());
+	original_block = lk.awaiting_processing_front ();
 	original_hashes_pending.insert (original_block->hash ());
-	awaiting_processing.get<tag_sequence> ().pop_front ();
+	lk.awaiting_processing_pop_front ();
 }
 
 // Not thread-safe, only call before this processor has begun cementing
@@ -217,7 +214,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 	std::size_t block_already_cemented_observers_count = confirmation_height_processor_a.block_already_cemented_observers.size ();
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "cemented_observers", cemented_observers_count, sizeof (decltype (confirmation_height_processor_a.cemented_observers)::value_type) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_already_cemented_observers", block_already_cemented_observers_count, sizeof (decltype (confirmation_height_processor_a.block_already_cemented_observers)::value_type) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "awaiting_processing", confirmation_height_processor_a.awaiting_processing_size (), sizeof (decltype (confirmation_height_processor_a.awaiting_processing)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "awaiting_processing", confirmation_height_processor_a.awaiting_processing_size (), rsnano::rsn_confirmation_height_processor_awaiting_processing_entry_size () }));
 	composite->add_component (collect_container_info (confirmation_height_processor_a.bounded_processor, "bounded_processor"));
 	composite->add_component (collect_container_info (confirmation_height_processor_a.unbounded_processor, "unbounded_processor"));
 	return composite;
@@ -226,13 +223,13 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 std::size_t nano::confirmation_height_processor::awaiting_processing_size () const
 {
 	auto lk{ mutex.lock () };
-	return awaiting_processing.size ();
+	return lk.awaiting_processing_size ();
 }
 
 bool nano::confirmation_height_processor::is_processing_added_block (nano::block_hash const & hash_a) const
 {
 	auto lk{ mutex.lock () };
-	return original_hashes_pending.count (hash_a) > 0 || awaiting_processing.get<tag_hash> ().count (hash_a) > 0;
+	return original_hashes_pending.count (hash_a) > 0 || lk.awaiting_processing_contains (hash_a);
 }
 
 bool nano::confirmation_height_processor::is_processing_block (nano::block_hash const & hash_a) const

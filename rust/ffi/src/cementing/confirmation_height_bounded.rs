@@ -4,17 +4,13 @@ use std::{
     time::Duration,
 };
 
-use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::BlockHash;
 use rsnano_node::{
-    cementing::{
-        truncate_after, ConfirmationHeightBounded, ConfirmedInfo, NotifyObserversCallback,
-    },
+    cementing::{ConfirmationHeightBounded, NotifyObserversCallback},
     config::Logging,
 };
 
 use crate::{
-    copy_hash_bytes,
     core::{BlockHandle, BlockVecHandle},
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle, WriteGuardHandle},
     utils::{AtomicBoolHandle, AtomicU64Handle, ContextWrapper, LoggerHandle, LoggerMT},
@@ -174,82 +170,4 @@ pub unsafe extern "C" fn rsn_confirmation_height_bounded_write_details_size() ->
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_bounded_confirmed_info_entry_size() -> usize {
     ConfirmationHeightBounded::confirmed_info_entry_size()
-}
-
-// ----------------------------------
-// HashCircularBuffer:
-
-pub struct HashCircularBufferHandle(BoundedVecDeque<BlockHash>);
-
-#[no_mangle]
-pub extern "C" fn rsn_hash_circular_buffer_create(
-    max_size: usize,
-) -> *mut HashCircularBufferHandle {
-    Box::into_raw(Box::new(HashCircularBufferHandle(BoundedVecDeque::new(
-        max_size,
-    ))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_hash_circular_buffer_destroy(handle: *mut HashCircularBufferHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_hash_circular_buffer_push_back(
-    handle: *mut HashCircularBufferHandle,
-    hash: *const u8,
-) {
-    (*handle).0.push_back(BlockHash::from_ptr(hash));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_hash_circular_buffer_empty(
-    handle: *mut HashCircularBufferHandle,
-) -> bool {
-    (*handle).0.is_empty()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_hash_circular_buffer_back(
-    handle: *mut HashCircularBufferHandle,
-    result: *mut u8,
-) {
-    let hash = (*handle).0.back().unwrap();
-    copy_hash_bytes(*hash, result);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_hash_circular_buffer_truncate_after(
-    handle: *mut HashCircularBufferHandle,
-    hash: *const u8,
-) {
-    truncate_after(&mut (*handle).0, &BlockHash::from_ptr(hash));
-}
-
-// ----------------------------------
-// AccountsConfirmedInfo:
-
-#[repr(C)]
-pub struct ConfirmedInfoDto {
-    pub confirmed_height: u64,
-    pub iterated_frontier: [u8; 32],
-}
-
-impl From<&ConfirmedInfo> for ConfirmedInfoDto {
-    fn from(value: &ConfirmedInfo) -> Self {
-        Self {
-            confirmed_height: value.confirmed_height,
-            iterated_frontier: value.iterated_frontier.as_bytes().clone(),
-        }
-    }
-}
-
-impl From<&ConfirmedInfoDto> for ConfirmedInfo {
-    fn from(value: &ConfirmedInfoDto) -> Self {
-        Self {
-            confirmed_height: value.confirmed_height,
-            iterated_frontier: BlockHash::from_bytes(value.iterated_frontier),
-        }
-    }
 }

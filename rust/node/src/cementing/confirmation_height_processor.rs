@@ -5,20 +5,24 @@ use std::{
 };
 
 use rsnano_core::{BlockEnum, BlockHash};
+use rsnano_ledger::WriteDatabaseQueue;
 
 pub struct ConfirmationHeightProcessor {
     pub guarded_data: Arc<Mutex<GuardedData>>,
     pub condition: Arc<Condvar>,
+    write_database_queue: Arc<WriteDatabaseQueue>,
 }
 
 impl ConfirmationHeightProcessor {
-    pub fn new() -> Self {
+    pub fn new(write_database_queue: Arc<WriteDatabaseQueue>) -> Self {
         Self {
             guarded_data: Arc::new(Mutex::new(GuardedData {
                 paused: false,
-                awaitin_processing: AwaitingProcessingQueue::new(),
+                awaiting_processing: AwaitingProcessingQueue::new(),
+                original_hashes_pending: HashSet::new(),
             })),
             condition: Arc::new(Condvar::new()),
+            write_database_queue,
         }
     }
 
@@ -32,7 +36,16 @@ impl ConfirmationHeightProcessor {
         let mut guard = self.guarded_data.lock().unwrap();
         guard.paused = false;
         drop(guard);
-        //todo notify
+        self.condition.notify_one();
+    }
+
+    pub fn add(&self, block: Arc<RwLock<BlockEnum>>) -> anyhow::Result<()> {
+        {
+            let mut lk = self.guarded_data.lock().unwrap();
+            lk.awaiting_processing.push_back(block)?;
+        }
+        self.condition.notify_one();
+        Ok(())
     }
 
     pub fn awaiting_processing_entry_size() -> usize {
@@ -42,7 +55,9 @@ impl ConfirmationHeightProcessor {
 
 pub struct GuardedData {
     pub paused: bool,
-    pub awaitin_processing: AwaitingProcessingQueue,
+    pub awaiting_processing: AwaitingProcessingQueue,
+    // Hashes which have been added and processed, but have not been cemented
+    pub original_hashes_pending: HashSet<BlockHash>,
 }
 
 pub struct AwaitingProcessingQueue {

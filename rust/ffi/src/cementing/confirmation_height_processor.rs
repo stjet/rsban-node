@@ -3,15 +3,16 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use rsnano_core::BlockHash;
 use rsnano_node::cementing::{ConfirmationHeightProcessor, GuardedData};
 
-use crate::core::BlockHandle;
+use crate::{core::BlockHandle, ledger::datastore::WriteDatabaseQueueHandle};
 
 pub struct ConfirmationHeightProcessorHandle(ConfirmationHeightProcessor);
 
 #[no_mangle]
-pub extern "C" fn rsn_confirmation_height_processor_create(
+pub unsafe extern "C" fn rsn_confirmation_height_processor_create(
+    write_database_queue: *mut WriteDatabaseQueueHandle,
 ) -> *mut ConfirmationHeightProcessorHandle {
     Box::into_raw(Box::new(ConfirmationHeightProcessorHandle(
-        ConfirmationHeightProcessor::new(),
+        ConfirmationHeightProcessor::new((*write_database_queue).0.clone()),
     )))
 }
 
@@ -34,6 +35,14 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_unpause(
     handle: *mut ConfirmationHeightProcessorHandle,
 ) {
     (*handle).0.unpause();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_add(
+    handle: *mut ConfirmationHeightProcessorHandle,
+    block: *const BlockHandle,
+) {
+    (*handle).0.add((*block).block.clone()).unwrap();
 }
 
 #[no_mangle]
@@ -130,7 +139,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_p
         .guard
         .as_mut()
         .unwrap()
-        .awaitin_processing
+        .awaiting_processing
         .push_back((*block).block.clone())
         .unwrap();
 }
@@ -139,7 +148,12 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_p
 pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_front(
     handle: *mut ConfirmationHeightProcessorLock,
 ) -> *mut BlockHandle {
-    let front = (*handle).guard.as_ref().unwrap().awaitin_processing.front();
+    let front = (*handle)
+        .guard
+        .as_ref()
+        .unwrap()
+        .awaiting_processing
+        .front();
 
     match front {
         Some(block) => Box::into_raw(Box::new(BlockHandle::new(block.clone()))),
@@ -155,7 +169,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_p
         .guard
         .as_mut()
         .unwrap()
-        .awaitin_processing
+        .awaiting_processing
         .pop_front();
 }
 
@@ -167,7 +181,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_e
         .guard
         .as_ref()
         .unwrap()
-        .awaitin_processing
+        .awaiting_processing
         .is_empty()
 }
 
@@ -175,7 +189,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_e
 pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_size(
     handle: *mut ConfirmationHeightProcessorLock,
 ) -> usize {
-    (*handle).guard.as_ref().unwrap().awaitin_processing.len()
+    (*handle).guard.as_ref().unwrap().awaiting_processing.len()
 }
 
 #[no_mangle]
@@ -187,8 +201,46 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_c
         .guard
         .as_ref()
         .unwrap()
-        .awaitin_processing
+        .awaiting_processing
         .contains(&BlockHash::from_ptr(hash))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_original_hashes_pending_contains(
+    handle: *mut ConfirmationHeightProcessorLock,
+    hash: *const u8,
+) -> bool {
+    (*handle)
+        .guard
+        .as_ref()
+        .unwrap()
+        .original_hashes_pending
+        .contains(&BlockHash::from_ptr(hash))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_original_hashes_pending_insert(
+    handle: *mut ConfirmationHeightProcessorLock,
+    hash: *const u8,
+) {
+    (*handle)
+        .guard
+        .as_mut()
+        .unwrap()
+        .original_hashes_pending
+        .insert(BlockHash::from_ptr(hash));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_original_hashes_pending_clear(
+    handle: *mut ConfirmationHeightProcessorLock,
+) {
+    (*handle)
+        .guard
+        .as_mut()
+        .unwrap()
+        .original_hashes_pending
+        .clear()
 }
 
 //----------------------------------------

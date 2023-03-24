@@ -101,6 +101,21 @@ public:
 			rsnano::rsn_confirmation_height_processor_awaiting_processing_pop_front (handle);
 		}
 
+		void original_hashes_pending_insert (nano::block_hash const & hash_a)
+		{
+			rsnano::rsn_confirmation_height_processor_original_hashes_pending_insert (handle, hash_a.bytes.data ());
+		}
+
+		bool original_hashes_pending_contains (nano::block_hash const & hash_a)
+		{
+			return rsnano::rsn_confirmation_height_processor_original_hashes_pending_contains (handle, hash_a.bytes.data ());
+		}
+
+		void original_hashes_pending_clear ()
+		{
+			rsnano::rsn_confirmation_height_processor_original_hashes_pending_clear (handle);
+		}
+
 		rsnano::ConfirmationHeightProcessorLock * handle;
 	};
 
@@ -172,25 +187,6 @@ public:
 	void add_block_already_cemented_observer (std::function<void (nano::block_hash const &)> const &);
 
 private:
-	// Hashes which have been added to the confirmation height processor, but not yet processed
-	struct block_wrapper
-	{
-		explicit block_wrapper (std::shared_ptr<nano::block> const & block_a) :
-			block (block_a)
-		{
-		}
-
-		std::reference_wrapper<nano::block_hash const> hash () const
-		{
-			return block->hash ();
-		}
-
-		std::shared_ptr<nano::block> block;
-	};
-
-	// Hashes which have been added and processed, but have not been cemented
-	std::unordered_set<nano::block_hash> original_hashes_pending;
-
 	/** This is the last block popped off the confirmation height pending collection */
 	std::shared_ptr<nano::block> original_block;
 

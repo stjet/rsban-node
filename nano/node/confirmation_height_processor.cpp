@@ -30,7 +30,7 @@ nano::confirmation_height_processor::confirmation_height_processor (nano::ledger
 		latch.wait ();
 		this->run (mode_a);
 	}),
-	handle{ rsnano::rsn_confirmation_height_processor_create () },
+	handle{ rsnano::rsn_confirmation_height_processor_create (write_database_queue_a.handle) },
 	mutex{ rsnano::rsn_confirmation_height_processor_get_mutex (handle) },
 	condition{ rsnano::rsn_confirmation_height_processor_get_condvar (handle) }
 {
@@ -67,7 +67,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 			if (bounded_processor.pending_empty () && unbounded_processor.pending_empty ())
 			{
 				lk.lock ();
-				original_hashes_pending.clear ();
+				lk.original_hashes_pending_clear ();
 				lk.unlock ();
 			}
 
@@ -98,7 +98,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 			auto lock_and_cleanup = [&lk, this] () {
 				lk.lock ();
 				original_block = nullptr;
-				original_hashes_pending.clear ();
+				lk.original_hashes_pending_clear ();
 				bounded_processor.clear_process_vars ();
 				unbounded_processor.clear_process_vars ();
 			};
@@ -154,16 +154,11 @@ void nano::confirmation_height_processor::pause ()
 void nano::confirmation_height_processor::unpause ()
 {
 	rsnano::rsn_confirmation_height_processor_unpause (handle);
-	condition.notify_one ();
 }
 
 void nano::confirmation_height_processor::add (std::shared_ptr<nano::block> const & block_a)
 {
-	{
-		auto lk{ mutex.lock () };
-		lk.awaiting_processing_push_back (block_a);
-	}
-	condition.notify_one ();
+	rsnano::rsn_confirmation_height_processor_add (handle, block_a->get_handle ());
 }
 
 void nano::confirmation_height_processor::set_next_hash ()
@@ -171,7 +166,7 @@ void nano::confirmation_height_processor::set_next_hash ()
 	auto lk{ mutex.lock () };
 	debug_assert (!lk.awaiting_processing_empty ());
 	original_block = lk.awaiting_processing_front ();
-	original_hashes_pending.insert (original_block->hash ());
+	lk.original_hashes_pending_insert (original_block->hash ());
 	lk.awaiting_processing_pop_front ();
 }
 
@@ -229,7 +224,7 @@ std::size_t nano::confirmation_height_processor::awaiting_processing_size () con
 bool nano::confirmation_height_processor::is_processing_added_block (nano::block_hash const & hash_a) const
 {
 	auto lk{ mutex.lock () };
-	return original_hashes_pending.count (hash_a) > 0 || lk.awaiting_processing_contains (hash_a);
+	return lk.original_hashes_pending_contains (hash_a) || lk.awaiting_processing_contains (hash_a);
 }
 
 bool nano::confirmation_height_processor::is_processing_block (nano::block_hash const & hash_a) const

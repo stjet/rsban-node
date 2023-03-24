@@ -203,15 +203,19 @@ public:
 	void add_block_already_cemented_observer (std::function<void (nano::block_hash const &)> const &);
 
 private:
-	rsnano::AtomicBoolWrapper stopped{ false };
 	// No mutex needed for the observers as these should be set up during initialization of the node
 	std::vector<std::function<void (std::shared_ptr<nano::block> const &)>> cemented_observers;
 	std::vector<std::function<void (nano::block_hash const &)>> block_already_cemented_observers;
 
 	nano::ledger & ledger;
 	nano::write_database_queue & write_database_queue;
+
+	rsnano::ConfirmationHeightProcessorHandle * handle;
+	rsnano::AtomicBoolWrapper stopped;
+	mutable mutex_wrapper mutex;
+	condvar_wrapper condition;
 	/** The maximum amount of blocks to write at once. This is dynamically modified by the bounded processor based on previous write performance **/
-	rsnano::AtomicU64Wrapper batch_write_size{ 16384 };
+	rsnano::AtomicU64Wrapper batch_write_size;
 
 	confirmation_height_unbounded unbounded_processor;
 	confirmation_height_bounded bounded_processor;
@@ -221,9 +225,6 @@ private:
 	void notify_cemented (std::vector<std::shared_ptr<nano::block>> const &);
 	void notify_already_cemented (nano::block_hash const &);
 
-	rsnano::ConfirmationHeightProcessorHandle * handle;
-	mutable mutex_wrapper mutex;
-	condvar_wrapper condition;
 	friend std::unique_ptr<container_info_component> collect_container_info (confirmation_height_processor &, std::string const &);
 
 private: // Tests

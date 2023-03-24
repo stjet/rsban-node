@@ -1,20 +1,46 @@
 use std::{
     collections::{HashSet, VecDeque},
     mem::size_of,
-    sync::{Arc, Condvar, Mutex, RwLock},
+    sync::{
+        atomic::{AtomicBool, AtomicU64},
+        Arc, Condvar, Mutex, RwLock,
+    },
+    time::Duration,
 };
 
-use rsnano_core::{BlockEnum, BlockHash};
-use rsnano_ledger::WriteDatabaseQueue;
+use rsnano_core::{utils::Logger, BlockEnum, BlockHash};
+use rsnano_ledger::{Ledger, WriteDatabaseQueue};
+
+use crate::config::{ConfirmationHeightMode, Logging};
+
+use super::{ConfirmationHeightBounded, NotifyObserversCallback};
 
 pub struct ConfirmationHeightProcessor {
     pub guarded_data: Arc<Mutex<GuardedData>>,
     pub condition: Arc<Condvar>,
     write_database_queue: Arc<WriteDatabaseQueue>,
+    /** The maximum amount of blocks to write at once. This is dynamically modified by the bounded processor based on previous write performance **/
+    pub batch_write_size: Arc<AtomicU64>,
+    pub bounded_processor: ConfirmationHeightBounded,
+    pub stopped: Arc<AtomicBool>,
 }
 
 impl ConfirmationHeightProcessor {
-    pub fn new(write_database_queue: Arc<WriteDatabaseQueue>) -> Self {
+    pub fn new(
+        write_database_queue: Arc<WriteDatabaseQueue>,
+        logger: Arc<dyn Logger>,
+        logging: Logging,
+        ledger: Arc<Ledger>,
+        batch_separate_pending_min_time: Duration,
+    ) -> Self {
+        let cemented_callback: NotifyObserversCallback = Box::new(|blocks| todo!());
+
+        let already_cemented_callback = Box::new(|block_hash| todo!());
+
+        let awaiting_processing_size_callback = Box::new(|| todo!());
+
+        let batch_write_size = Arc::new(AtomicU64::new(16384));
+        let stopped = Arc::new(AtomicBool::new(false));
         Self {
             guarded_data: Arc::new(Mutex::new(GuardedData {
                 paused: false,
@@ -23,7 +49,21 @@ impl ConfirmationHeightProcessor {
                 original_block: None,
             })),
             condition: Arc::new(Condvar::new()),
-            write_database_queue,
+            write_database_queue: write_database_queue.clone(),
+            batch_write_size: batch_write_size.clone(),
+            stopped: stopped.clone(),
+            bounded_processor: ConfirmationHeightBounded::new(
+                write_database_queue,
+                cemented_callback,
+                already_cemented_callback,
+                batch_write_size,
+                logger,
+                logging,
+                ledger,
+                stopped,
+                batch_separate_pending_min_time,
+                awaiting_processing_size_callback,
+            ),
         }
     }
 
@@ -53,12 +93,25 @@ impl ConfirmationHeightProcessor {
     }
 
     pub fn set_next_hash(&self) {
-        todo!()
-        // let lk = self.guarded_data.lock().unwrap();
-        // debug_assert!(!lk.awaiting_processing.is_empty());
-        // original_block = lk.awaiting_processing_front ();
-        // lk.original_hashes_pending_insert (original_block->hash ());
-        // lk.awaiting_processing_pop_front ();
+        let mut lk = self.guarded_data.lock().unwrap();
+        debug_assert!(!lk.awaiting_processing.is_empty());
+        let block = lk.awaiting_processing.front().unwrap().clone();
+        lk.original_hashes_pending
+            .insert(block.read().unwrap().hash());
+        lk.original_block = Some(block);
+        lk.awaiting_processing.pop_front();
+    }
+
+    pub fn current(&self) -> BlockHash {
+        let lk = self.guarded_data.lock().unwrap();
+        match &lk.original_block {
+            Some(block) => block.read().unwrap().hash(),
+            None => BlockHash::zero(),
+        }
+    }
+
+    pub fn run(&self, _mode: ConfirmationHeightMode) {
+        //todo
     }
 }
 

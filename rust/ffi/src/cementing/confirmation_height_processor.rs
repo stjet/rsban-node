@@ -1,18 +1,44 @@
-use std::sync::{Arc, Condvar, Mutex, MutexGuard};
+use std::{
+    sync::{Arc, Condvar, Mutex, MutexGuard},
+    time::Duration,
+};
 
+use num::FromPrimitive;
 use rsnano_core::BlockHash;
-use rsnano_node::cementing::{ConfirmationHeightProcessor, GuardedData};
+use rsnano_node::{
+    cementing::{ConfirmationHeightProcessor, GuardedData},
+    config::Logging,
+};
 
-use crate::{core::BlockHandle, ledger::datastore::WriteDatabaseQueueHandle};
+use crate::{
+    copy_hash_bytes,
+    core::BlockHandle,
+    ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
+    utils::{AtomicBoolHandle, AtomicU64Handle, LoggerHandle, LoggerMT},
+    LoggingDto,
+};
 
 pub struct ConfirmationHeightProcessorHandle(ConfirmationHeightProcessor);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_processor_create(
     write_database_queue: *mut WriteDatabaseQueueHandle,
+    logger: *mut LoggerHandle,
+    logging: *const LoggingDto,
+    ledger: *mut LedgerHandle,
+    batch_separate_pending_min_time_ms: u64,
 ) -> *mut ConfirmationHeightProcessorHandle {
+    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
+    let logging = Logging::from(&*logging);
+
     Box::into_raw(Box::new(ConfirmationHeightProcessorHandle(
-        ConfirmationHeightProcessor::new((*write_database_queue).0.clone()),
+        ConfirmationHeightProcessor::new(
+            (*write_database_queue).0.clone(),
+            logger,
+            logging,
+            (*ledger).0.clone(),
+            Duration::from_millis(batch_separate_pending_min_time_ms),
+        ),
     )))
 }
 
@@ -21,6 +47,13 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_destroy(
     handle: *mut ConfirmationHeightProcessorHandle,
 ) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_stopped(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) -> *mut AtomicBoolHandle {
+    Box::into_raw(Box::new(AtomicBoolHandle((*handle).0.stopped.clone())))
 }
 
 #[no_mangle]
@@ -50,6 +83,33 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_set_next_hash(
     handle: *mut ConfirmationHeightProcessorHandle,
 ) {
     (*handle).0.set_next_hash();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_current(
+    handle: *mut ConfirmationHeightProcessorHandle,
+    hash: *mut u8,
+) {
+    let block_hash = (*handle).0.current();
+    copy_hash_bytes(block_hash, hash);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_run(
+    handle: *mut ConfirmationHeightProcessorHandle,
+    mode: u8,
+) {
+    let mode = FromPrimitive::from_u8(mode).unwrap();
+    (*handle).0.run(mode);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_batch_write_size(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) -> *mut AtomicU64Handle {
+    Box::into_raw(Box::new(AtomicU64Handle(
+        (*handle).0.batch_write_size.clone(),
+    )))
 }
 
 #[no_mangle]

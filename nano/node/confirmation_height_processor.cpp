@@ -5,15 +5,40 @@
 #include <nano/lib/threading.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/node/confirmation_height_processor.hpp>
+#include <nano/node/logging.hpp>
 #include <nano/node/write_database_queue.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>
 
 #include <boost/thread/latch.hpp>
 
+namespace
+{
+rsnano::ConfirmationHeightProcessorHandle * create_processor_handle (
+nano::write_database_queue & write_database_queue_a,
+std::shared_ptr<nano::logger_mt> & logger_a,
+nano::logging const & logging_a,
+nano::ledger & ledger_a,
+std::chrono::milliseconds batch_separate_pending_min_time_a)
+{
+	auto logging_dto{ logging_a.to_dto () };
+	return rsnano::rsn_confirmation_height_processor_create (
+	write_database_queue_a.handle,
+	nano::to_logger_handle (logger_a),
+	&logging_dto,
+	ledger_a.handle,
+	batch_separate_pending_min_time_a.count ());
+}
+}
+
 nano::confirmation_height_processor::confirmation_height_processor (nano::ledger & ledger_a, nano::stats & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, boost::latch & latch, confirmation_height_mode mode_a) :
 	ledger (ledger_a),
 	write_database_queue (write_database_queue_a),
+	handle{ create_processor_handle (write_database_queue_a, logger_a, logging_a, ledger_a, batch_separate_pending_min_time_a) },
+	mutex{ rsnano::rsn_confirmation_height_processor_get_mutex (handle) },
+	condition{ rsnano::rsn_confirmation_height_processor_get_condvar (handle) },
+	batch_write_size{ rsnano::rsn_confirmation_height_processor_batch_write_size (handle) },
+	stopped{ rsnano::rsn_confirmation_height_processor_stopped (handle) },
 	unbounded_processor (
 	ledger_a, stats_a, write_database_queue_a, batch_separate_pending_min_time_a, logging_a, logger_a, batch_write_size,
 	/* cemented_callback */ [this] (auto & cemented_blocks) { this->notify_cemented (cemented_blocks); },
@@ -29,10 +54,7 @@ nano::confirmation_height_processor::confirmation_height_processor (nano::ledger
 		// Do not start running the processing thread until other threads have finished their operations
 		latch.wait ();
 		this->run (mode_a);
-	}),
-	handle{ rsnano::rsn_confirmation_height_processor_create (write_database_queue_a.handle) },
-	mutex{ rsnano::rsn_confirmation_height_processor_get_mutex (handle) },
-	condition{ rsnano::rsn_confirmation_height_processor_get_condvar (handle) }
+	})
 {
 }
 
@@ -122,6 +144,8 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 						bounded_processor.cement_blocks (scoped_write_guard);
 					}
 					lock_and_cleanup ();
+					// todo: move code into here:
+					rsnano::rsn_confirmation_height_processor_run (handle, static_cast<uint8_t> (mode_a));
 				}
 				else if (!unbounded_processor.pending_empty ())
 				{
@@ -169,12 +193,7 @@ void nano::confirmation_height_processor::add (std::shared_ptr<nano::block> cons
 
 void nano::confirmation_height_processor::set_next_hash ()
 {
-	auto lk{ mutex.lock () };
-	debug_assert (!lk.awaiting_processing_empty ());
-	auto original_block = lk.awaiting_processing_front ();
-	lk.set_original_block (original_block);
-	lk.original_hashes_pending_insert (original_block->hash ());
-	lk.awaiting_processing_pop_front ();
+	rsnano::rsn_confirmation_height_processor_set_next_hash (handle);
 }
 
 // Not thread-safe, only call before this processor has begun cementing
@@ -241,7 +260,7 @@ bool nano::confirmation_height_processor::is_processing_block (nano::block_hash 
 
 nano::block_hash nano::confirmation_height_processor::current () const
 {
-	auto lk{ mutex.lock () };
-	auto original_block = lk.original_block ();
-	return original_block ? original_block->hash () : 0;
+	nano::block_hash hash;
+	rsnano::rsn_confirmation_height_processor_current (handle, hash.bytes.data ());
+	return hash;
 }

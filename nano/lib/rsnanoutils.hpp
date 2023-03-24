@@ -52,6 +52,10 @@ public:
 		handle{ rsnano::rsn_atomic_u64_create (value_a) }
 	{
 	}
+	AtomicU64Wrapper (rsnano::AtomicU64Handle * handle_a) :
+		handle{ handle_a }
+	{
+	}
 	AtomicU64Wrapper (AtomicU64Wrapper const &) = delete;
 	AtomicU64Wrapper (AtomicU64Wrapper &&) = delete;
 	~AtomicU64Wrapper ()
@@ -82,6 +86,10 @@ class AtomicBoolWrapper
 public:
 	AtomicBoolWrapper (bool value_a) :
 		handle{ rsnano::rsn_atomic_bool_create (value_a) }
+	{
+	}
+	AtomicBoolWrapper (rsnano::AtomicBoolHandle * handle_a) :
+		handle{ handle_a }
 	{
 	}
 	AtomicBoolWrapper (AtomicBoolWrapper const &) = delete;

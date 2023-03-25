@@ -1,6 +1,7 @@
 use std::{
     collections::{HashSet, VecDeque},
     mem::size_of,
+    ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64},
         Arc, Condvar, Mutex, RwLock,
@@ -24,7 +25,8 @@ pub struct ConfirmationHeightProcessor {
     pub bounded_processor: ConfirmationHeightBounded,
     pub stopped: Arc<AtomicBool>,
     // No mutex needed for the observers as these should be set up during initialization of the node
-    cemented_observer: Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>>,
+    cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>>>>, //todo remove Arc<Mutex<>>
+    already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash)>>>>, //todo remove Arc<Mutex<>>
 }
 
 impl ConfirmationHeightProcessor {
@@ -35,9 +37,27 @@ impl ConfirmationHeightProcessor {
         ledger: Arc<Ledger>,
         batch_separate_pending_min_time: Duration,
     ) -> Self {
-        let cemented_callback: NotifyObserversCallback = Box::new(|_blocks| todo!());
+        let cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>>>> =
+            Arc::new(Mutex::new(None));
+        let cemented_observer_clone = Arc::clone(&cemented_observer);
+        let cemented_callback: NotifyObserversCallback = Box::new(move |blocks| {
+            let lock = cemented_observer_clone.lock().unwrap();
+            if let Some(f) = lock.deref() {
+                for block in blocks {
+                    (f)(block);
+                }
+            }
+        });
 
-        let already_cemented_callback = Box::new(|_block_hash| todo!());
+        let already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash)>>>> =
+            Arc::new(Mutex::new(None));
+        let already_cemented_observer_clone = Arc::clone(&already_cemented_observer);
+        let already_cemented_callback = Box::new(move |block_hash| {
+            let lock = already_cemented_observer_clone.lock().unwrap();
+            if let Some(f) = lock.deref() {
+                (f)(block_hash);
+            }
+        });
 
         let awaiting_processing_size_callback = Box::new(|| todo!());
 
@@ -54,7 +74,8 @@ impl ConfirmationHeightProcessor {
             write_database_queue: write_database_queue.clone(),
             batch_write_size: batch_write_size.clone(),
             stopped: stopped.clone(),
-            cemented_observer: None,
+            cemented_observer,
+            already_cemented_observer,
             bounded_processor: ConfirmationHeightBounded::new(
                 write_database_queue,
                 cemented_callback,
@@ -118,19 +139,31 @@ impl ConfirmationHeightProcessor {
     }
 
     pub fn set_cemented_observer(&mut self, callback: Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>) {
-        self.cemented_observer = Some(callback);
+        *self.cemented_observer.lock().unwrap() = Some(callback);
+    }
+
+    pub fn set_already_cemented_observer(&mut self, callback: Box<dyn Fn(BlockHash)>) {
+        *self.already_cemented_observer.lock().unwrap() = Some(callback);
     }
 
     pub fn notify_cemented(&self, blocks: &[Arc<RwLock<BlockEnum>>]) {
-        if let Some(observer) = &self.cemented_observer {
+        let lock = self.cemented_observer.lock().unwrap();
+        if let Some(observer) = lock.deref() {
             for block in blocks {
                 (observer)(block);
             }
         }
     }
 
+    pub fn notify_already_cemented(&self, block_hash: &BlockHash) {
+        let lock = self.already_cemented_observer.lock().unwrap();
+        if let Some(observer) = lock.deref() {
+            (observer)(*block_hash);
+        }
+    }
+
     pub fn clear_cemented_observer(&mut self) {
-        self.cemented_observer = None;
+        *self.cemented_observer.lock().unwrap() = None;
     }
 }
 

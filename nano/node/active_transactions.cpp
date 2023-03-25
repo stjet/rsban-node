@@ -27,7 +27,7 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	});
 
 	// Register a callback which will get called if a block is already cemented
-	confirmation_height_processor.add_block_already_cemented_observer ([this] (nano::block_hash const & hash_a) {
+	confirmation_height_processor.set_block_already_cemented_observer ([this] (nano::block_hash const & hash_a) {
 		this->block_already_cemented_callback (hash_a);
 	});
 }

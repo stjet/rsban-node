@@ -274,3 +274,4 @@ pub unsafe extern "C" fn rsn_block_array_destroy(dto: *mut BlockArrayDto) {
 }
 
 pub type BlockCallback = extern "C" fn(*mut c_void, *mut BlockHandle);
+pub type BlockHashCallback = extern "C" fn(*mut c_void, *const u8);

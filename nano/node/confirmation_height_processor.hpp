@@ -201,12 +201,9 @@ public:
 	 * Called when the block was added to the confirmation height processor but is already confirmed
 	 * Called from confirmation height processor thread
 	 */
-	void add_block_already_cemented_observer (std::function<void (nano::block_hash const &)> const &);
+	void set_block_already_cemented_observer (std::function<void (nano::block_hash const &)> const &);
 
 private:
-	// No mutex needed for the observers as these should be set up during initialization of the node
-	std::vector<std::function<void (nano::block_hash const &)>> block_already_cemented_observers;
-
 	nano::ledger & ledger;
 	nano::write_database_queue & write_database_queue;
 

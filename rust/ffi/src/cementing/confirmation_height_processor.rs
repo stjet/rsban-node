@@ -13,7 +13,7 @@ use rsnano_node::{
 
 use crate::{
     copy_hash_bytes,
-    core::{BlockCallback, BlockHandle, BlockVecHandle},
+    core::{BlockCallback, BlockHandle, BlockHashCallback, BlockVecHandle},
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
     utils::{AtomicBoolHandle, AtomicU64Handle, ContextWrapper, LoggerHandle, LoggerMT},
     LoggingDto, VoidPointerCallback,
@@ -137,11 +137,38 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_clear_cemented_observ
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_set_already_cemented_observer(
+    handle: *mut ConfirmationHeightProcessorHandle,
+    callback: BlockHashCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let context_wrapper = ContextWrapper::new(context, delete_context);
+    let callback_wrapper = Box::new(move |block_hash: BlockHash| {
+        callback(
+            context_wrapper.get_context(),
+            block_hash.as_bytes().as_ptr(),
+        );
+    });
+    (*handle).0.set_already_cemented_observer(callback_wrapper);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_processor_notify_cemented(
     handle: *mut ConfirmationHeightProcessorHandle,
     blocks: *const BlockVecHandle,
 ) {
     (*handle).0.notify_cemented(&(*blocks).0);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_notify_already_cemented(
+    handle: *mut ConfirmationHeightProcessorHandle,
+    block_hash: *const u8,
+) {
+    (*handle)
+        .0
+        .notify_already_cemented(&BlockHash::from_ptr(block_hash));
 }
 
 #[no_mangle]

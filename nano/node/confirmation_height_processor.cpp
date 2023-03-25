@@ -214,6 +214,19 @@ void delete_block_callback_context (void * context_a)
 	auto callback = static_cast<std::function<void (std::shared_ptr<nano::block> const &)> *> (context_a);
 	delete callback;
 }
+
+void block_hash_callback (void * context_a, const uint8_t * hash_bytes)
+{
+	auto callback = static_cast<std::function<void (nano::block_hash const &)> *> (context_a);
+	auto hash{ nano::block_hash::from_bytes (hash_bytes) };
+	(*callback) (hash);
+}
+
+void delete_block_hash_callback_context (void * context_a)
+{
+	auto callback = static_cast<std::function<void (nano::block_hash const &)> *> (context_a);
+	delete callback;
+}
 }
 
 // Not thread-safe, only call before this processor has begun cementing
@@ -229,9 +242,10 @@ void nano::confirmation_height_processor::clear_cemented_observer ()
 }
 
 // Not thread-safe, only call before this processor has begun cementing
-void nano::confirmation_height_processor::add_block_already_cemented_observer (std::function<void (nano::block_hash const &)> const & callback_a)
+void nano::confirmation_height_processor::set_block_already_cemented_observer (std::function<void (nano::block_hash const &)> const & callback_a)
 {
-	block_already_cemented_observers.push_back (callback_a);
+	auto context = new std::function<void (nano::block_hash const &)> (callback_a);
+	rsnano::rsn_confirmation_height_processor_set_already_cemented_observer (handle, block_hash_callback, context, delete_block_hash_callback_context);
 }
 
 void nano::confirmation_height_processor::notify_cemented (std::vector<std::shared_ptr<nano::block>> const & cemented_blocks)
@@ -242,19 +256,15 @@ void nano::confirmation_height_processor::notify_cemented (std::vector<std::shar
 
 void nano::confirmation_height_processor::notify_already_cemented (nano::block_hash const & hash_already_cemented_a)
 {
-	for (auto const & observer : block_already_cemented_observers)
-	{
-		observer (hash_already_cemented_a);
-	}
+	rsnano::rsn_confirmation_height_processor_notify_already_cemented (handle, hash_already_cemented_a.bytes.data ());
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (confirmation_height_processor & confirmation_height_processor_a, std::string const & name_a)
 {
 	auto composite = std::make_unique<container_info_composite> (name_a);
 
-	std::size_t block_already_cemented_observers_count = confirmation_height_processor_a.block_already_cemented_observers.size ();
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "cemented_observers", 1, sizeof (uintptr_t) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_already_cemented_observers", block_already_cemented_observers_count, sizeof (decltype (confirmation_height_processor_a.block_already_cemented_observers)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_already_cemented_observers", 1, sizeof (uintptr_t) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "awaiting_processing", confirmation_height_processor_a.awaiting_processing_size (), rsnano::rsn_confirmation_height_processor_awaiting_processing_entry_size () }));
 	composite->add_component (collect_container_info (confirmation_height_processor_a.bounded_processor, "bounded_processor"));
 	composite->add_component (collect_container_info (confirmation_height_processor_a.unbounded_processor, "unbounded_processor"));

@@ -3,7 +3,7 @@ use std::{
     mem::size_of,
     ops::Deref,
     sync::{
-        atomic::{AtomicBool, AtomicU64},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Condvar, Mutex, RwLock,
     },
     time::Duration,
@@ -181,7 +181,9 @@ impl ConfirmationHeightProcessor {
     }
 
     pub fn unbounded_pending_writes_len(&self) -> usize {
-        todo!()
+        self.unbounded_processor
+            .pending_writes_size()
+            .load(Ordering::Relaxed)
     }
 }
 

@@ -1052,7 +1052,7 @@ TEST (confirmation_height, dynamic_algorithm_no_transition_while_pending)
 			node->confirmation_height_processor.pause ();
 
 			timer.restart ();
-			ASSERT_TIMELY (10s, node->confirmation_height_processor.unbounded_processor.pending_writes_size () != 0);
+			ASSERT_TIMELY (10s, node->confirmation_height_processor.unbounded_pending_writes_size () != 0);
 
 			{
 				// Make it so that the number of blocks exceed the unbounded cutoff would go into the bounded processor (but shouldn't due to unbounded pending writes)

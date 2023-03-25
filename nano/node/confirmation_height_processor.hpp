@@ -213,7 +213,6 @@ private:
 	/** The maximum amount of blocks to write at once. This is dynamically modified by the bounded processor based on previous write performance **/
 	rsnano::AtomicU64Wrapper batch_write_size;
 
-	confirmation_height_unbounded unbounded_processor;
 	std::thread thread;
 
 	void set_next_hash ();
@@ -235,5 +234,6 @@ private: // Tests
 };
 
 std::unique_ptr<container_info_component> collect_bounded_container_info (confirmation_height_processor &, std::string const &);
+std::unique_ptr<nano::container_info_component> collect_unbounded_container_info (confirmation_height_processor &, std::string const & name_a);
 std::unique_ptr<nano::container_info_component> collect_container_info (confirmation_height_bounded &, std::string const & name_a);
 }

@@ -185,6 +185,94 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_is_processing_added_b
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_conf_iterated_pairs_len(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) -> usize {
+    (*handle)
+        .0
+        .unbounded_processor
+        .confirmed_iterated_pairs_size_atomic()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_pending_writes(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) -> usize {
+    (*handle)
+        .0
+        .unbounded_processor
+        .pending_writes_size()
+        .load(Ordering::Relaxed)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_implicit_receive_cemented_size(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) -> usize {
+    (*handle)
+        .0
+        .unbounded_processor
+        .implicit_receive_cemented_mapping_size()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_block_cache_size(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) -> usize {
+    (*handle).0.unbounded_processor.block_cache_size()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_stop(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) {
+    (*handle).0.unbounded_processor.stop();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_pending_empty(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) -> bool {
+    (*handle).0.unbounded_processor.pending_empty()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_process(
+    handle: *mut ConfirmationHeightProcessorHandle,
+    block: *const BlockHandle,
+) {
+    (*handle)
+        .0
+        .unbounded_processor
+        .process((*block).into_arc_block())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_clear_process_vars(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) {
+    (*handle).0.unbounded_processor.clear_process_vars();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_cement_blocks(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) {
+    (*handle).0.unbounded_processor.cement_pending_blocks();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_has_iterated_over_block(
+    handle: *mut ConfirmationHeightProcessorHandle,
+    block_hash: *const u8,
+) -> bool {
+    (*handle)
+        .0
+        .unbounded_processor
+        .has_iterated_over_block(&BlockHash::from_ptr(block_hash))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_entry_size() -> usize
 {
     ConfirmationHeightProcessor::awaiting_processing_entry_size()

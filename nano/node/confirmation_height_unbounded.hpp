@@ -57,8 +57,6 @@ public:
 
 private:
 	friend class confirmation_height_dynamic_algorithm_no_transition_while_pending_Test;
-	friend std::unique_ptr<nano::container_info_component> collect_container_info (confirmation_height_unbounded &, std::string const & name_a);
 };
 
-std::unique_ptr<nano::container_info_component> collect_container_info (confirmation_height_unbounded &, std::string const & name_a);
 }

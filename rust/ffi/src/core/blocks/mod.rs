@@ -112,6 +112,10 @@ impl BlockHandle {
     pub fn new(block: Arc<RwLock<BlockEnum>>) -> Self {
         Self { block }
     }
+
+    pub fn into_arc_block(&self) -> Arc<BlockEnum> {
+        Arc::new(self.block.read().unwrap().clone())
+    }
 }
 
 #[no_mangle]

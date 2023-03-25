@@ -59,17 +59,24 @@ impl ConfirmationHeightProcessor {
             }
         });
 
-        let awaiting_processing_size_callback = Box::new(|| todo!());
-
         let batch_write_size = Arc::new(AtomicU64::new(16384));
         let stopped = Arc::new(AtomicBool::new(false));
+        let guarded_data = Arc::new(Mutex::new(GuardedData {
+            paused: false,
+            awaiting_processing: AwaitingProcessingQueue::new(),
+            original_hashes_pending: HashSet::new(),
+            original_block: None,
+        }));
+
+        let guarded_data_clone = Arc::clone(&guarded_data);
+
+        let awaiting_processing_size_callback = Box::new(move || {
+            let lk = guarded_data_clone.lock().unwrap();
+            lk.awaiting_processing.len() as u64
+        });
+
         Self {
-            guarded_data: Arc::new(Mutex::new(GuardedData {
-                paused: false,
-                awaiting_processing: AwaitingProcessingQueue::new(),
-                original_hashes_pending: HashSet::new(),
-                original_block: None,
-            })),
+            guarded_data,
             condition: Arc::new(Condvar::new()),
             write_database_queue: write_database_queue.clone(),
             batch_write_size: batch_write_size.clone(),
@@ -175,6 +182,10 @@ impl ConfirmationHeightProcessor {
     pub fn awaiting_processing_len(&self) -> usize {
         let lk = self.guarded_data.lock().unwrap();
         lk.awaiting_processing.len()
+    }
+
+    pub fn unbounded_pending_writes_len(&self) -> usize {
+        todo!()
     }
 }
 

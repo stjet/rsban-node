@@ -1,6 +1,7 @@
 use std::{
     ffi::c_void,
-    sync::{Arc, Condvar, Mutex, MutexGuard, RwLock},
+    ops::Deref,
+    sync::{atomic::Ordering, Arc, Condvar, Mutex, MutexGuard, RwLock},
     time::Duration,
 };
 
@@ -14,7 +15,7 @@ use rsnano_node::{
 use crate::{
     copy_hash_bytes,
     core::{BlockCallback, BlockHandle, BlockHashCallback, BlockVecHandle},
-    ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
+    ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle, WriteGuardHandle},
     utils::{AtomicBoolHandle, AtomicU64Handle, ContextWrapper, LoggerHandle, LoggerMT},
     LoggingDto, VoidPointerCallback,
 };
@@ -325,6 +326,71 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_s
     handle: *mut ConfirmationHeightProcessorHandle,
 ) -> usize {
     (*handle).0.awaiting_processing_len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_pending_writes_size(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) -> usize {
+    (*handle).0.unbounded_pending_writes_len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_bounded_pending_len(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) -> usize {
+    (*handle)
+        .0
+        .bounded_processor
+        .pending_writes_size
+        .load(Ordering::Relaxed)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_bounded_accounts_confirmed_info_len(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) -> usize {
+    (*handle)
+        .0
+        .bounded_processor
+        .accounts_confirmed_info_size
+        .load(Ordering::Relaxed)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_bounded_pending_empty(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) -> bool {
+    (*handle).0.bounded_processor.pending_empty()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_bounded_process(
+    handle: *mut ConfirmationHeightProcessorHandle,
+    block: *const BlockHandle,
+) {
+    (*handle)
+        .0
+        .bounded_processor
+        .process((*block).block.read().unwrap().deref());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_bounded_clear_process_vars(
+    handle: *mut ConfirmationHeightProcessorHandle,
+) {
+    (*handle).0.bounded_processor.clear_process_vars();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_bounded_cement_blocks(
+    handle: *mut ConfirmationHeightProcessorHandle,
+    write_guard: *mut WriteGuardHandle,
+) {
+    (*handle)
+        .0
+        .bounded_processor
+        .cement_blocks(&mut (*write_guard).0);
 }
 
 #[no_mangle]

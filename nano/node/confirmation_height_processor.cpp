@@ -48,11 +48,6 @@ nano::confirmation_height_processor::confirmation_height_processor (nano::ledger
 	/* cemented_callback */ [this] (auto & cemented_blocks) { this->notify_cemented (cemented_blocks); },
 	/* already cemented_callback */ [this] (auto const & block_hash_a) { this->notify_already_cemented (block_hash_a); },
 	/* awaiting_processing_size_query */ [this] () { return this->awaiting_processing_size (); }),
-	bounded_processor (
-	ledger_a, write_database_queue_a, batch_separate_pending_min_time_a, logging_a, logger_a, stopped, batch_write_size,
-	/* cemented_callback */ [this] (auto & cemented_blocks) { this->notify_cemented (cemented_blocks); },
-	/* already cemented_callback */ [this] (auto const & block_hash_a) { this->notify_already_cemented (block_hash_a); },
-	/* awaiting_processing_size_query */ [this] () { return this->awaiting_processing_size (); }),
 	thread ([this, &latch, mode_a] () {
 		nano::thread_role::set (nano::thread_role::name::confirmation_height_processing);
 		// Do not start running the processing thread until other threads have finished their operations
@@ -90,7 +85,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 		if (!lk.paused () && !lk.awaiting_processing_empty ())
 		{
 			lk.unlock ();
-			if (bounded_processor.pending_empty () && unbounded_processor.pending_empty ())
+			if (rsnano::rsn_confirmation_height_processor_bounded_pending_empty (handle) && unbounded_processor.pending_empty ())
 			{
 				lk.lock ();
 				lk.original_hashes_pending_clear ();
@@ -103,11 +98,11 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 			auto blocks_within_automatic_unbounded_selection = (ledger.cache.block_count () < num_blocks_to_use_unbounded || ledger.cache.block_count () - num_blocks_to_use_unbounded < ledger.cache.cemented_count ());
 
 			// Don't want to mix up pending writes across different processors
-			auto valid_unbounded = (mode_a == confirmation_height_mode::automatic && blocks_within_automatic_unbounded_selection && bounded_processor.pending_empty ());
+			auto valid_unbounded = (mode_a == confirmation_height_mode::automatic && blocks_within_automatic_unbounded_selection && rsnano::rsn_confirmation_height_processor_bounded_pending_empty (handle));
 			auto force_unbounded = (!unbounded_processor.pending_empty () || mode_a == confirmation_height_mode::unbounded);
 			if (force_unbounded || valid_unbounded)
 			{
-				debug_assert (bounded_processor.pending_empty ());
+				debug_assert (rsnano::rsn_confirmation_height_processor_bounded_pending_empty (handle));
 				lk.lock ();
 				auto original_block = lk.original_block ();
 				lk.unlock ();
@@ -120,7 +115,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 				lk.lock ();
 				auto original_block = lk.original_block ();
 				lk.unlock ();
-				bounded_processor.process (original_block);
+				rsnano::rsn_confirmation_height_processor_bounded_process (handle, original_block->get_handle ());
 			}
 
 			lk.lock ();
@@ -131,7 +126,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 				lk.lock ();
 				lk.set_original_block (nullptr);
 				lk.original_hashes_pending_clear ();
-				bounded_processor.clear_process_vars ();
+				rsnano::rsn_confirmation_height_processor_bounded_clear_process_vars (handle);
 				unbounded_processor.clear_process_vars ();
 			};
 
@@ -140,12 +135,12 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 				lk.unlock ();
 
 				// If there are blocks pending cementing, then make sure we flush out the remaining writes
-				if (!bounded_processor.pending_empty ())
+				if (!rsnano::rsn_confirmation_height_processor_bounded_pending_empty (handle))
 				{
 					debug_assert (unbounded_processor.pending_empty ());
 					{
 						auto scoped_write_guard = write_database_queue.wait (nano::writer::confirmation_height);
-						bounded_processor.cement_blocks (scoped_write_guard);
+						rsnano::rsn_confirmation_height_processor_bounded_cement_blocks (handle, scoped_write_guard.handle);
 					}
 					lock_and_cleanup ();
 					// todo: move code into here:
@@ -153,7 +148,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 				}
 				else if (!unbounded_processor.pending_empty ())
 				{
-					debug_assert (bounded_processor.pending_empty ());
+					debug_assert (rsnano::rsn_confirmation_height_processor_bounded_pending_empty (handle));
 					{
 						unbounded_processor.cement_blocks ();
 					}
@@ -248,6 +243,11 @@ void nano::confirmation_height_processor::set_block_already_cemented_observer (s
 	rsnano::rsn_confirmation_height_processor_set_already_cemented_observer (handle, block_hash_callback, context, delete_block_hash_callback_context);
 }
 
+size_t nano::confirmation_height_processor::unbounded_pending_writes_size () const
+{
+	return unbounded_processor.pending_writes_size ();
+}
+
 void nano::confirmation_height_processor::notify_cemented (std::vector<std::shared_ptr<nano::block>> const & cemented_blocks)
 {
 	rsnano::block_vec wrapped_blocks{ cemented_blocks };
@@ -259,6 +259,14 @@ void nano::confirmation_height_processor::notify_already_cemented (nano::block_h
 	rsnano::rsn_confirmation_height_processor_notify_already_cemented (handle, hash_already_cemented_a.bytes.data ());
 }
 
+std::unique_ptr<nano::container_info_component> nano::collect_bounded_container_info (confirmation_height_processor & confirmation_height_processor, std::string const & name_a)
+{
+	auto composite = std::make_unique<container_info_composite> (name_a);
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", rsnano::rsn_confirmation_height_processor_bounded_pending_len (confirmation_height_processor.handle), rsnano::rsn_confirmation_height_bounded_write_details_size () }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "accounts_confirmed_info", rsnano::rsn_confirmation_height_processor_bounded_accounts_confirmed_info_len (confirmation_height_processor.handle), rsnano::rsn_confirmation_height_bounded_confirmed_info_entry_size () }));
+	return composite;
+}
+
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (confirmation_height_processor & confirmation_height_processor_a, std::string const & name_a)
 {
 	auto composite = std::make_unique<container_info_composite> (name_a);
@@ -266,7 +274,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "cemented_observers", 1, sizeof (uintptr_t) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_already_cemented_observers", 1, sizeof (uintptr_t) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "awaiting_processing", confirmation_height_processor_a.awaiting_processing_size (), rsnano::rsn_confirmation_height_processor_awaiting_processing_entry_size () }));
-	composite->add_component (collect_container_info (confirmation_height_processor_a.bounded_processor, "bounded_processor"));
+	composite->add_component (collect_bounded_container_info (confirmation_height_processor_a, "bounded_processor"));
 	composite->add_component (collect_container_info (confirmation_height_processor_a.unbounded_processor, "unbounded_processor"));
 	return composite;
 }

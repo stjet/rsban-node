@@ -31,6 +31,4 @@ public:
 	void cement_blocks (nano::write_guard & scoped_write_guard_a);
 	rsnano::ConfirmationHeightBoundedHandle * handle;
 };
-
-std::unique_ptr<nano::container_info_component> collect_container_info (confirmation_height_bounded &, std::string const & name_a);
 }

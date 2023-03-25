@@ -197,12 +197,16 @@ public:
 	 * Called from confirmation height processor thread
 	 */
 	void set_block_already_cemented_observer (std::function<void (nano::block_hash const &)> const &);
+	size_t unbounded_pending_writes_size () const;
 
 private:
 	nano::ledger & ledger;
 	nano::write_database_queue & write_database_queue;
 
+public:
 	rsnano::ConfirmationHeightProcessorHandle * handle;
+
+private:
 	rsnano::AtomicBoolWrapper stopped;
 	mutable mutex_wrapper mutex;
 	condvar_wrapper condition;
@@ -210,7 +214,6 @@ private:
 	rsnano::AtomicU64Wrapper batch_write_size;
 
 	confirmation_height_unbounded unbounded_processor;
-	confirmation_height_bounded bounded_processor;
 	std::thread thread;
 
 	void set_next_hash ();
@@ -231,5 +234,6 @@ private: // Tests
 	friend class active_transactions_pessimistic_elections_Test;
 };
 
-std::unique_ptr<container_info_component> collect_container_info (confirmation_height_processor &, std::string const &);
+std::unique_ptr<container_info_component> collect_bounded_container_info (confirmation_height_processor &, std::string const &);
+std::unique_ptr<nano::container_info_component> collect_container_info (confirmation_height_bounded &, std::string const & name_a);
 }

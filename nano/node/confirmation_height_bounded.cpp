@@ -131,11 +131,3 @@ void nano::confirmation_height_bounded::clear_process_vars ()
 {
 	rsnano::rsn_confirmation_height_bounded_clear_process_vars (handle);
 }
-
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (confirmation_height_bounded & confirmation_height_bounded, std::string const & name_a)
-{
-	auto composite = std::make_unique<container_info_composite> (name_a);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", rsnano::rsn_confirmation_height_bounded_pending_writes_size (confirmation_height_bounded.handle), rsnano::rsn_confirmation_height_bounded_write_details_size () }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "accounts_confirmed_info", rsnano::rsn_confirmation_height_bounded_accounts_confirmed_info_size (confirmation_height_bounded.handle), rsnano::rsn_confirmation_height_bounded_confirmed_info_entry_size () }));
-	return composite;
-}

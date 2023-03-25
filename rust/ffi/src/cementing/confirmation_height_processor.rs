@@ -172,6 +172,16 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_notify_already_cement
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_is_processing_added_block(
+    handle: *mut ConfirmationHeightProcessorHandle,
+    block_hash: *const u8,
+) -> bool {
+    (*handle)
+        .0
+        .is_processing_added_block(&BlockHash::from_ptr(block_hash))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_entry_size() -> usize
 {
     ConfirmationHeightProcessor::awaiting_processing_entry_size()
@@ -312,9 +322,9 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_e
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_size(
-    handle: *mut ConfirmationHeightProcessorLock,
+    handle: *mut ConfirmationHeightProcessorHandle,
 ) -> usize {
-    (*handle).guard.as_ref().unwrap().awaiting_processing.len()
+    (*handle).0.awaiting_processing_len()
 }
 
 #[no_mangle]

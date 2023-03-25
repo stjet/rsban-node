@@ -75,11 +75,6 @@ public:
 			rsnano::rsn_confirmation_height_processor_awaiting_processing_push_back (handle, block->get_handle ());
 		}
 
-		size_t awaiting_processing_size ()
-		{
-			return rsnano::rsn_confirmation_height_processor_awaiting_processing_size (handle);
-		}
-
 		bool awaiting_processing_empty ()
 		{
 			return rsnano::rsn_confirmation_height_processor_awaiting_processing_empty (handle);

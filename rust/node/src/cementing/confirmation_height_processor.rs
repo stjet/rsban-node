@@ -165,6 +165,17 @@ impl ConfirmationHeightProcessor {
     pub fn clear_cemented_observer(&mut self) {
         *self.cemented_observer.lock().unwrap() = None;
     }
+
+    pub fn is_processing_added_block(&self, block_hash: &BlockHash) -> bool {
+        let lk = self.guarded_data.lock().unwrap();
+        lk.original_hashes_pending.contains(block_hash)
+            || lk.awaiting_processing.contains(block_hash)
+    }
+
+    pub fn awaiting_processing_len(&self) -> usize {
+        let lk = self.guarded_data.lock().unwrap();
+        lk.awaiting_processing.len()
+    }
 }
 
 pub struct GuardedData {

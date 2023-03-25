@@ -273,14 +273,12 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 
 std::size_t nano::confirmation_height_processor::awaiting_processing_size () const
 {
-	auto lk{ mutex.lock () };
-	return lk.awaiting_processing_size ();
+	return rsnano::rsn_confirmation_height_processor_awaiting_processing_size (handle);
 }
 
 bool nano::confirmation_height_processor::is_processing_added_block (nano::block_hash const & hash_a) const
 {
-	auto lk{ mutex.lock () };
-	return lk.original_hashes_pending_contains (hash_a) || lk.awaiting_processing_contains (hash_a);
+	return rsnano::rsn_confirmation_height_processor_is_processing_added_block (handle, hash_a.bytes.data ());
 }
 
 bool nano::confirmation_height_processor::is_processing_block (nano::block_hash const & hash_a) const

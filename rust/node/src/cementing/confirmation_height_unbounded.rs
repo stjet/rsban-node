@@ -4,7 +4,7 @@ use rsnano_store_traits::Transaction;
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, RwLock,
     },
     time::Duration,
 };
@@ -32,7 +32,7 @@ pub struct ConfirmationHeightUnbounded {
     implicit_receive_cemented_mapping: ImplictReceiveCementedMapping,
 
     batch_write_size: Arc<AtomicU64>,
-    notify_block_already_cemented_callback: Box<dyn Fn(&BlockHash)>,
+    notify_block_already_cemented_callback: Box<dyn Fn(BlockHash)>,
     awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
     stopped: AtomicBool,
     cement_queue: CementQueue,
@@ -48,8 +48,8 @@ impl ConfirmationHeightUnbounded {
         batch_separate_pending_min_time: Duration,
         batch_write_size: Arc<AtomicU64>,
         write_database_queue: Arc<WriteDatabaseQueue>,
-        notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
-        notify_block_already_cemented_callback: Box<dyn Fn(&BlockHash)>,
+        notify_observers_callback: Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>)>,
+        notify_block_already_cemented_callback: Box<dyn Fn(BlockHash)>,
         awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
     ) -> Self {
         Self {
@@ -178,7 +178,7 @@ impl ConfirmationHeightUnbounded {
             if first_iter && heights.confirmed_height >= block_height {
                 // This block was added to the confirmation height processor but is already confirmed
                 debug_assert!(current_block_hash == original_block.hash());
-                (self.notify_block_already_cemented_callback)(&original_block.hash());
+                (self.notify_block_already_cemented_callback)(original_block.hash());
             }
 
             let count_before_receive = receive_source_pairs.len();

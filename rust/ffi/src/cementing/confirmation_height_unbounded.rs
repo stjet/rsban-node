@@ -1,6 +1,5 @@
 use std::{
     ffi::c_void,
-    ops::Deref,
     sync::{atomic::Ordering, Arc, Mutex, RwLock, Weak},
     time::Duration,
 };
@@ -88,17 +87,13 @@ unsafe fn wrap_notify_observers_callback(
     callback: ConfHeightUnboundedNotifyObserversCallback,
     context: *mut c_void,
     drop_context: VoidPointerCallback,
-) -> Box<dyn Fn(&Vec<Arc<BlockEnum>>)> {
+) -> Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>)> {
     let context_wrapper = ContextWrapper::new(context, drop_context);
 
     Box::new(move |blocks| {
         let block_handles = blocks
             .iter()
-            .map(|b| {
-                Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(
-                    b.deref().clone(),
-                )))))
-            })
+            .map(|b| Box::into_raw(Box::new(BlockHandle::new(b.clone()))))
             .collect::<Vec<_>>();
 
         callback(
@@ -117,7 +112,7 @@ unsafe fn wrap_notify_block_already_cemented_callback(
     callback: NotifyBlockAlreadyCementedCallback,
     context: *mut c_void,
     drop_context: VoidPointerCallback,
-) -> Box<dyn Fn(&BlockHash)> {
+) -> Box<dyn Fn(BlockHash)> {
     let context_wrapper = ContextWrapper::new(context, drop_context);
 
     Box::new(move |block_hash| {

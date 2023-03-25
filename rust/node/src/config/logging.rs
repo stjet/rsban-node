@@ -1,6 +1,7 @@
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
 
+#[derive(Clone)]
 pub struct Logging {
     pub ledger_logging_value: bool,
     pub ledger_duplicate_logging_value: bool,

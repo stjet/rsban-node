@@ -1,5 +1,6 @@
 use std::{
-    sync::{atomic::Ordering, Arc},
+    ops::Deref,
+    sync::{atomic::Ordering, Arc, RwLock},
     time::{Duration, Instant},
 };
 
@@ -24,7 +25,7 @@ pub(crate) struct BlockCementor {
     logger: Arc<dyn Logger>,
     logging: Logging,
     stats: Arc<Stats>,
-    notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
+    notify_observers_callback: Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>)>,
 }
 
 impl BlockCementor {
@@ -35,7 +36,7 @@ impl BlockCementor {
         logger: Arc<dyn Logger>,
         logging: Logging,
         stats: Arc<Stats>,
-        notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>)>,
+        notify_observers_callback: Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>)>,
     ) -> Self {
         Self {
             last_cementation: Instant::now(),
@@ -79,7 +80,11 @@ impl BlockCementor {
         }
 
         self.log_cemented_count(&cemented_blocks);
-        (self.notify_observers_callback)(&cemented_blocks);
+        let tmp_blocks = cemented_blocks
+            .iter()
+            .map(|b| Arc::new(RwLock::new(b.deref().clone())))
+            .collect::<Vec<_>>();
+        (self.notify_observers_callback)(&tmp_blocks);
         debug_assert!(cement_queue.len() == 0);
         debug_assert!(cement_queue.atomic_len().load(Ordering::Relaxed) == 0);
         self.set_last_cementation();

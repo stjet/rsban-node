@@ -12,9 +12,12 @@ use std::{
 use rsnano_core::{utils::Logger, BlockEnum, BlockHash};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 
-use crate::config::{ConfirmationHeightMode, Logging};
+use crate::{
+    config::{ConfirmationHeightMode, Logging},
+    stats::Stats,
+};
 
-use super::{ConfirmationHeightBounded, NotifyObserversCallback};
+use super::{ConfirmationHeightBounded, ConfirmationHeightUnbounded, NotifyObserversCallback};
 
 pub struct ConfirmationHeightProcessor {
     pub guarded_data: Arc<Mutex<GuardedData>>,
@@ -23,6 +26,7 @@ pub struct ConfirmationHeightProcessor {
     /** The maximum amount of blocks to write at once. This is dynamically modified by the bounded processor based on previous write performance **/
     pub batch_write_size: Arc<AtomicU64>,
     pub bounded_processor: ConfirmationHeightBounded,
+    pub unbounded_processor: ConfirmationHeightUnbounded,
     pub stopped: Arc<AtomicBool>,
     // No mutex needed for the observers as these should be set up during initialization of the node
     cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>>>>, //todo remove Arc<Mutex<>>
@@ -36,29 +40,12 @@ impl ConfirmationHeightProcessor {
         logging: Logging,
         ledger: Arc<Ledger>,
         batch_separate_pending_min_time: Duration,
+        stats: Arc<Stats>,
     ) -> Self {
         let cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>>>> =
             Arc::new(Mutex::new(None));
-        let cemented_observer_clone = Arc::clone(&cemented_observer);
-        let cemented_callback: NotifyObserversCallback = Box::new(move |blocks| {
-            let lock = cemented_observer_clone.lock().unwrap();
-            if let Some(f) = lock.deref() {
-                for block in blocks {
-                    (f)(block);
-                }
-            }
-        });
-
         let already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash)>>>> =
             Arc::new(Mutex::new(None));
-        let already_cemented_observer_clone = Arc::clone(&already_cemented_observer);
-        let already_cemented_callback = Box::new(move |block_hash| {
-            let lock = already_cemented_observer_clone.lock().unwrap();
-            if let Some(f) = lock.deref() {
-                (f)(block_hash);
-            }
-        });
-
         let batch_write_size = Arc::new(AtomicU64::new(16384));
         let stopped = Arc::new(AtomicBool::new(false));
         let guarded_data = Arc::new(Mutex::new(GuardedData {
@@ -68,33 +55,42 @@ impl ConfirmationHeightProcessor {
             original_block: None,
         }));
 
-        let guarded_data_clone = Arc::clone(&guarded_data);
+        let bounded_processor = ConfirmationHeightBounded::new(
+            write_database_queue.clone(),
+            cemented_callback(&cemented_observer),
+            block_already_cemented_callback(&already_cemented_observer),
+            batch_write_size.clone(),
+            logger.clone(),
+            logging.clone(),
+            ledger.clone(),
+            stopped.clone(),
+            batch_separate_pending_min_time,
+            awaiting_processing_size_callback(&guarded_data),
+        );
 
-        let awaiting_processing_size_callback = Box::new(move || {
-            let lk = guarded_data_clone.lock().unwrap();
-            lk.awaiting_processing.len() as u64
-        });
+        let unbounded_processor = ConfirmationHeightUnbounded::new(
+            ledger,
+            logger,
+            logging,
+            stats,
+            batch_separate_pending_min_time,
+            batch_write_size.clone(),
+            write_database_queue.clone(),
+            cemented_callback(&cemented_observer),
+            block_already_cemented_callback(&already_cemented_observer),
+            awaiting_processing_size_callback(&guarded_data),
+        );
 
         Self {
             guarded_data,
             condition: Arc::new(Condvar::new()),
-            write_database_queue: write_database_queue.clone(),
-            batch_write_size: batch_write_size.clone(),
-            stopped: stopped.clone(),
+            write_database_queue: write_database_queue,
+            batch_write_size,
+            stopped,
             cemented_observer,
             already_cemented_observer,
-            bounded_processor: ConfirmationHeightBounded::new(
-                write_database_queue,
-                cemented_callback,
-                already_cemented_callback,
-                batch_write_size,
-                logger,
-                logging,
-                ledger,
-                stopped,
-                batch_separate_pending_min_time,
-                awaiting_processing_size_callback,
-            ),
+            bounded_processor,
+            unbounded_processor,
         }
     }
 
@@ -187,6 +183,46 @@ impl ConfirmationHeightProcessor {
     pub fn unbounded_pending_writes_len(&self) -> usize {
         todo!()
     }
+}
+
+fn awaiting_processing_size_callback(
+    guarded_data: &Arc<Mutex<GuardedData>>,
+) -> Box<dyn Fn() -> u64> {
+    let guarded_data_clone = Arc::clone(guarded_data);
+
+    let awaiting_processing_size_callback = Box::new(move || {
+        let lk = guarded_data_clone.lock().unwrap();
+        lk.awaiting_processing.len() as u64
+    });
+    awaiting_processing_size_callback
+}
+
+fn block_already_cemented_callback(
+    already_cemented_observer: &Arc<Mutex<Option<Box<dyn Fn(BlockHash)>>>>,
+) -> Box<dyn Fn(BlockHash)> {
+    let already_cemented_observer_clone = Arc::clone(already_cemented_observer);
+    let already_cemented_callback = Box::new(move |block_hash| {
+        let lock = already_cemented_observer_clone.lock().unwrap();
+        if let Some(f) = lock.deref() {
+            (f)(block_hash);
+        }
+    });
+    already_cemented_callback
+}
+
+fn cemented_callback(
+    cemented_observer: &Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>>>>,
+) -> Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>)> {
+    let cemented_observer_clone = Arc::clone(cemented_observer);
+    let cemented_callback: NotifyObserversCallback = Box::new(move |blocks| {
+        let lock = cemented_observer_clone.lock().unwrap();
+        if let Some(f) = lock.deref() {
+            for block in blocks {
+                (f)(block);
+            }
+        }
+    });
+    cemented_callback
 }
 
 pub struct GuardedData {

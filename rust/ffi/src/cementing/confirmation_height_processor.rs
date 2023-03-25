@@ -17,7 +17,7 @@ use crate::{
     core::{BlockCallback, BlockHandle, BlockHashCallback, BlockVecHandle},
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle, WriteGuardHandle},
     utils::{AtomicBoolHandle, AtomicU64Handle, ContextWrapper, LoggerHandle, LoggerMT},
-    LoggingDto, VoidPointerCallback,
+    LoggingDto, StatHandle, VoidPointerCallback,
 };
 
 pub struct ConfirmationHeightProcessorHandle(ConfirmationHeightProcessor);
@@ -29,6 +29,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_create(
     logging: *const LoggingDto,
     ledger: *mut LedgerHandle,
     batch_separate_pending_min_time_ms: u64,
+    stats: *mut StatHandle,
 ) -> *mut ConfirmationHeightProcessorHandle {
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let logging = Logging::from(&*logging);
@@ -40,6 +41,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_create(
             logging,
             (*ledger).0.clone(),
             Duration::from_millis(batch_separate_pending_min_time_ms),
+            (*stats).0.clone(),
         ),
     )))
 }

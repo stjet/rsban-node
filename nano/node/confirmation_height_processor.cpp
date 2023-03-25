@@ -23,7 +23,8 @@ nano::write_database_queue & write_database_queue_a,
 std::shared_ptr<nano::logger_mt> & logger_a,
 nano::logging const & logging_a,
 nano::ledger & ledger_a,
-std::chrono::milliseconds batch_separate_pending_min_time_a)
+std::chrono::milliseconds batch_separate_pending_min_time_a,
+nano::stats & stats_a)
 {
 	auto logging_dto{ logging_a.to_dto () };
 	return rsnano::rsn_confirmation_height_processor_create (
@@ -31,14 +32,15 @@ std::chrono::milliseconds batch_separate_pending_min_time_a)
 	nano::to_logger_handle (logger_a),
 	&logging_dto,
 	ledger_a.handle,
-	batch_separate_pending_min_time_a.count ());
+	batch_separate_pending_min_time_a.count (),
+	stats_a.handle);
 }
 }
 
 nano::confirmation_height_processor::confirmation_height_processor (nano::ledger & ledger_a, nano::stats & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, boost::latch & latch, confirmation_height_mode mode_a) :
 	ledger (ledger_a),
 	write_database_queue (write_database_queue_a),
-	handle{ create_processor_handle (write_database_queue_a, logger_a, logging_a, ledger_a, batch_separate_pending_min_time_a) },
+	handle{ create_processor_handle (write_database_queue_a, logger_a, logging_a, ledger_a, batch_separate_pending_min_time_a, stats_a) },
 	mutex{ rsnano::rsn_confirmation_height_processor_get_mutex (handle) },
 	condition{ rsnano::rsn_confirmation_height_processor_get_condvar (handle) },
 	batch_write_size{ rsnano::rsn_confirmation_height_processor_batch_write_size (handle) },

@@ -231,8 +231,6 @@ private:
 	void notify_cemented (std::vector<std::shared_ptr<nano::block>> const &);
 	void notify_already_cemented (nano::block_hash const &);
 
-	friend std::unique_ptr<container_info_component> collect_container_info (confirmation_height_processor &, std::string const &);
-
 private: // Tests
 	friend class confirmation_height_pending_observer_callbacks_Test;
 	friend class confirmation_height_dependent_election_Test;
@@ -247,5 +245,5 @@ private: // Tests
 
 std::unique_ptr<container_info_component> collect_bounded_container_info (confirmation_height_processor &, std::string const &);
 std::unique_ptr<nano::container_info_component> collect_unbounded_container_info (confirmation_height_processor &, std::string const & name_a);
-std::unique_ptr<nano::container_info_component> collect_container_info (confirmation_height_bounded &, std::string const & name_a);
+std::unique_ptr<nano::container_info_component> collect_container_info (confirmation_height_processor &, std::string const & name_a);
 }

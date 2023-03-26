@@ -119,47 +119,12 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 		}
 		else
 		{
-			auto lock_and_cleanup = [&lk, this] () {
-				lk.lock ();
-				lk.set_original_block (nullptr);
-				lk.original_hashes_pending_clear ();
-				rsnano::rsn_confirmation_height_processor_bounded_clear_process_vars (handle);
-				rsnano::rsn_confirmation_height_processor_unbounded_clear_process_vars (handle);
-			};
-
 			if (!lk.paused ())
 			{
 				lk.unlock ();
 
-				// If there are blocks pending cementing, then make sure we flush out the remaining writes
-				if (!rsnano::rsn_confirmation_height_processor_bounded_pending_empty (handle))
-				{
-					debug_assert (rsnano::rsn_confirmation_height_processor_unbounded_pending_empty (handle));
-					{
-						auto scoped_write_guard = write_database_queue.wait (nano::writer::confirmation_height);
-						rsnano::rsn_confirmation_height_processor_bounded_cement_blocks (handle, scoped_write_guard.handle);
-					}
-					lock_and_cleanup ();
-					// todo: move code into here:
-					rsnano::rsn_confirmation_height_processor_run (handle, static_cast<uint8_t> (mode_a));
-				}
-				else if (!rsnano::rsn_confirmation_height_processor_unbounded_pending_empty (handle))
-				{
-					debug_assert (rsnano::rsn_confirmation_height_processor_bounded_pending_empty (handle));
-					{
-						rsnano::rsn_confirmation_height_processor_unbounded_cement_blocks (handle);
-					}
-					lock_and_cleanup ();
-				}
-				else
-				{
-					lock_and_cleanup ();
-					// A block could have been confirmed during the re-locking
-					if (lk.awaiting_processing_empty ())
-					{
-						condition.wait (lk);
-					}
-				}
+				// todo: move code into here:
+				lk = mutex_lock{ rsnano::rsn_confirmation_height_processor_run (handle, static_cast<uint8_t> (mode_a)) };
 			}
 			else
 			{

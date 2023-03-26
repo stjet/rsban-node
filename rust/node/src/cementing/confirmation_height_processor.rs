@@ -4,7 +4,7 @@ use std::{
     ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
-        Arc, Condvar, Mutex, RwLock,
+        Arc, Condvar, Mutex, MutexGuard, RwLock,
     },
     time::Duration,
 };
@@ -137,8 +137,51 @@ impl ConfirmationHeightProcessor {
         }
     }
 
-    pub fn run(&self, _mode: ConfirmationHeightMode) {
-        //todo
+    pub fn run(&mut self, _mode: ConfirmationHeightMode) -> MutexGuard<GuardedData> {
+        // If there are blocks pending cementing, then make sure we flush out the remaining writes
+        if !self.bounded_processor.pending_empty() {
+            debug_assert!(self.unbounded_processor.pending_empty());
+
+            {
+                let mut scoped_write_guard = self
+                    .write_database_queue
+                    .wait(rsnano_ledger::Writer::ConfirmationHeight);
+                self.bounded_processor
+                    .cement_blocks(&mut scoped_write_guard);
+            }
+            let mut lk = self.guarded_data.lock().unwrap();
+            lk.original_block = None;
+            lk.original_hashes_pending.clear();
+            self.bounded_processor.clear_process_vars();
+            self.unbounded_processor.clear_process_vars();
+            lk
+        } else if !self.unbounded_processor.pending_empty() {
+            debug_assert!(self.bounded_processor.pending_empty());
+            {
+                let mut scoped_write_guard = self
+                    .write_database_queue
+                    .wait(rsnano_ledger::Writer::ConfirmationHeight);
+                //todo why is scoped_write_guard not being used in Rust version????
+                self.unbounded_processor.cement_pending_blocks();
+            }
+            let mut lk = self.guarded_data.lock().unwrap();
+            lk.original_block = None;
+            lk.original_hashes_pending.clear();
+            self.bounded_processor.clear_process_vars();
+            self.unbounded_processor.clear_process_vars();
+            lk
+        } else {
+            let mut guard = self.guarded_data.lock().unwrap();
+            guard.original_block = None;
+            guard.original_hashes_pending.clear();
+            self.bounded_processor.clear_process_vars();
+            self.unbounded_processor.clear_process_vars();
+            // A block could have been confirmed during the re-locking
+            if guard.awaiting_processing.is_empty() {
+                guard = self.condition.wait(guard).unwrap();
+            }
+            guard
+        }
     }
 
     pub fn set_cemented_observer(&mut self, callback: Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>) {

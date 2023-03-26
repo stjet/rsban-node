@@ -102,9 +102,15 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_current(
 pub unsafe extern "C" fn rsn_confirmation_height_processor_run(
     handle: *mut ConfirmationHeightProcessorHandle,
     mode: u8,
-) {
+) -> *mut ConfirmationHeightProcessorLock {
     let mode = FromPrimitive::from_u8(mode).unwrap();
-    (*handle).0.run(mode);
+    let guard = (*handle).0.run(mode);
+    let guard =
+        std::mem::transmute::<MutexGuard<GuardedData>, MutexGuard<'static, GuardedData>>(guard);
+    Box::into_raw(Box::new(ConfirmationHeightProcessorLock {
+        mutex: (*handle).0.guarded_data.clone(),
+        guard: Some(guard),
+    }))
 }
 
 #[no_mangle]

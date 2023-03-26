@@ -51,6 +51,18 @@ public:
 				rsnano::rsn_confirmation_height_processor_lock_destroy (handle);
 			}
 		}
+
+		mutex_lock & operator= (mutex_lock && other_a)
+		{
+			if (handle)
+			{
+				rsnano::rsn_confirmation_height_processor_lock_destroy (handle);
+			}
+			handle = other_a.handle;
+			other_a.handle = nullptr;
+			return *this;
+		}
+
 		void unlock ()
 		{
 			rsnano::rsn_confirmation_height_processor_lock_unlock (handle);

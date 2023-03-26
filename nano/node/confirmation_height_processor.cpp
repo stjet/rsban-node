@@ -79,48 +79,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 	auto lk{ mutex.lock () };
 	while (!stopped.load ())
 	{
-		if (!lk.paused () && !lk.awaiting_processing_empty ())
-		{
-			lk.unlock ();
-			if (rsnano::rsn_confirmation_height_processor_bounded_pending_empty (handle) && rsnano::rsn_confirmation_height_processor_unbounded_pending_empty (handle))
-			{
-				lk.lock ();
-				lk.original_hashes_pending_clear ();
-				lk.unlock ();
-			}
-
-			set_next_hash ();
-
-			auto const num_blocks_to_use_unbounded = confirmation_height::unbounded_cutoff;
-			auto blocks_within_automatic_unbounded_selection = (ledger.cache.block_count () < num_blocks_to_use_unbounded || ledger.cache.block_count () - num_blocks_to_use_unbounded < ledger.cache.cemented_count ());
-
-			// Don't want to mix up pending writes across different processors
-			auto valid_unbounded = (mode_a == confirmation_height_mode::automatic && blocks_within_automatic_unbounded_selection && rsnano::rsn_confirmation_height_processor_bounded_pending_empty (handle));
-			auto force_unbounded = (!rsnano::rsn_confirmation_height_processor_unbounded_pending_empty (handle) || mode_a == confirmation_height_mode::unbounded);
-			if (force_unbounded || valid_unbounded)
-			{
-				debug_assert (rsnano::rsn_confirmation_height_processor_bounded_pending_empty (handle));
-				lk.lock ();
-				auto original_block = lk.original_block ();
-				lk.unlock ();
-				rsnano::rsn_confirmation_height_processor_unbounded_process (handle, original_block->get_handle ());
-			}
-			else
-			{
-				debug_assert (mode_a == confirmation_height_mode::bounded || mode_a == confirmation_height_mode::automatic);
-				debug_assert (rsnano::rsn_confirmation_height_processor_unbounded_pending_empty (handle));
-				lk.lock ();
-				auto original_block = lk.original_block ();
-				lk.unlock ();
-				rsnano::rsn_confirmation_height_processor_bounded_process (handle, original_block->get_handle ());
-			}
-
-			lk.lock ();
-		}
-		else
-		{
-			rsnano::rsn_confirmation_height_processor_run (handle, static_cast<uint8_t> (mode_a), lk.handle);
-		}
+		rsnano::rsn_confirmation_height_processor_run (handle, static_cast<uint8_t> (mode_a), lk.handle);
 	}
 }
 

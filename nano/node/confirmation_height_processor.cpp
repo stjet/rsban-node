@@ -119,19 +119,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 		}
 		else
 		{
-			if (!lk.paused ())
-			{
-				lk.unlock ();
-
-				// todo: move code into here:
-				lk = mutex_lock{ rsnano::rsn_confirmation_height_processor_run (handle, static_cast<uint8_t> (mode_a)) };
-			}
-			else
-			{
-				// Pausing is only utilised in some tests to help prevent it processing added blocks until required.
-				lk.set_original_block (nullptr);
-				condition.wait (lk);
-			}
+			rsnano::rsn_confirmation_height_processor_run (handle, static_cast<uint8_t> (mode_a), lk.handle);
 		}
 	}
 }

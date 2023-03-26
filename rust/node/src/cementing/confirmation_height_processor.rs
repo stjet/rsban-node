@@ -137,50 +137,80 @@ impl ConfirmationHeightProcessor {
         }
     }
 
-    pub fn run(&mut self, _mode: ConfirmationHeightMode) -> MutexGuard<GuardedData> {
-        // If there are blocks pending cementing, then make sure we flush out the remaining writes
-        if !self.bounded_processor.pending_empty() {
-            debug_assert!(self.unbounded_processor.pending_empty());
+    pub fn run(
+        &mut self,
+        _mode: ConfirmationHeightMode,
+        guard: &mut Option<MutexGuard<'static, GuardedData>>,
+    ) {
+        let mut lk = guard.take().unwrap();
+        if !lk.paused {
+            drop(lk);
 
-            {
-                let mut scoped_write_guard = self
-                    .write_database_queue
-                    .wait(rsnano_ledger::Writer::ConfirmationHeight);
-                self.bounded_processor
-                    .cement_blocks(&mut scoped_write_guard);
+            // If there are blocks pending cementing, then make sure we flush out the remaining writes
+            if !self.bounded_processor.pending_empty() {
+                debug_assert!(self.unbounded_processor.pending_empty());
+
+                {
+                    let mut scoped_write_guard = self
+                        .write_database_queue
+                        .wait(rsnano_ledger::Writer::ConfirmationHeight);
+                    self.bounded_processor
+                        .cement_blocks(&mut scoped_write_guard);
+                }
+                let mut lk = self.guarded_data.lock().unwrap();
+                lk.original_block = None;
+                lk.original_hashes_pending.clear();
+                self.bounded_processor.clear_process_vars();
+                self.unbounded_processor.clear_process_vars();
+                *guard = Some(unsafe {
+                    std::mem::transmute::<MutexGuard<GuardedData>, MutexGuard<'static, GuardedData>>(
+                        lk,
+                    )
+                });
+            } else if !self.unbounded_processor.pending_empty() {
+                debug_assert!(self.bounded_processor.pending_empty());
+                {
+                    let mut scoped_write_guard = self
+                        .write_database_queue
+                        .wait(rsnano_ledger::Writer::ConfirmationHeight);
+                    //todo why is scoped_write_guard not being used in Rust version????
+                    self.unbounded_processor.cement_pending_blocks();
+                }
+                let mut lk = self.guarded_data.lock().unwrap();
+                lk.original_block = None;
+                lk.original_hashes_pending.clear();
+                self.bounded_processor.clear_process_vars();
+                self.unbounded_processor.clear_process_vars();
+                *guard = Some(unsafe {
+                    std::mem::transmute::<MutexGuard<GuardedData>, MutexGuard<'static, GuardedData>>(
+                        lk,
+                    )
+                });
+            } else {
+                let mut lk = self.guarded_data.lock().unwrap();
+                lk.original_block = None;
+                lk.original_hashes_pending.clear();
+                self.bounded_processor.clear_process_vars();
+                self.unbounded_processor.clear_process_vars();
+                // A block could have been confirmed during the re-locking
+                if lk.awaiting_processing.is_empty() {
+                    lk = self.condition.wait(lk).unwrap();
+                }
+                *guard = Some(unsafe {
+                    std::mem::transmute::<MutexGuard<GuardedData>, MutexGuard<'static, GuardedData>>(
+                        lk,
+                    )
+                });
             }
-            let mut lk = self.guarded_data.lock().unwrap();
-            lk.original_block = None;
-            lk.original_hashes_pending.clear();
-            self.bounded_processor.clear_process_vars();
-            self.unbounded_processor.clear_process_vars();
-            lk
-        } else if !self.unbounded_processor.pending_empty() {
-            debug_assert!(self.bounded_processor.pending_empty());
-            {
-                let mut scoped_write_guard = self
-                    .write_database_queue
-                    .wait(rsnano_ledger::Writer::ConfirmationHeight);
-                //todo why is scoped_write_guard not being used in Rust version????
-                self.unbounded_processor.cement_pending_blocks();
-            }
-            let mut lk = self.guarded_data.lock().unwrap();
-            lk.original_block = None;
-            lk.original_hashes_pending.clear();
-            self.bounded_processor.clear_process_vars();
-            self.unbounded_processor.clear_process_vars();
-            lk
         } else {
-            let mut guard = self.guarded_data.lock().unwrap();
-            guard.original_block = None;
-            guard.original_hashes_pending.clear();
-            self.bounded_processor.clear_process_vars();
-            self.unbounded_processor.clear_process_vars();
-            // A block could have been confirmed during the re-locking
-            if guard.awaiting_processing.is_empty() {
-                guard = self.condition.wait(guard).unwrap();
-            }
-            guard
+            // Pausing is only utilised in some tests to help prevent it processing added blocks until required.
+            lk.original_block = None;
+            let new_guard = self.condition.wait(lk).unwrap();
+            *guard = Some(unsafe {
+                std::mem::transmute::<MutexGuard<GuardedData>, MutexGuard<'static, GuardedData>>(
+                    new_guard,
+                )
+            });
         }
     }
 

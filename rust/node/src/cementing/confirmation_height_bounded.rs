@@ -3,7 +3,7 @@ use std::{
     collections::{HashMap, VecDeque},
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-        Arc, RwLock,
+        Arc,
     },
     time::{Duration, Instant},
 };
@@ -15,7 +15,7 @@ use rsnano_store_traits::{ReadTransaction, Transaction};
 
 use crate::config::Logging;
 
-pub type NotifyObserversCallback = Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>) + Send>;
+pub type NotifyObserversCallback = Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>;
 
 pub(crate) struct ConfirmedInfo {
     pub(crate) confirmed_height: u64,
@@ -105,7 +105,7 @@ impl ConfirmationHeightBounded {
 
         // Will contain all blocks that have been cemented (bounded by batch_write_size)
         // and will get run through the cemented observer callback
-        let mut cemented_blocks: Vec<Arc<RwLock<BlockEnum>>> = Vec::new();
+        let mut cemented_blocks: Vec<Arc<BlockEnum>> = Vec::new();
 
         {
             // This only writes to the confirmation_height table and is the only place to do so in a single process
@@ -154,7 +154,7 @@ impl ConfirmationHeightBounded {
                         .store
                         .block()
                         .get(txn.txn(), &new_cemented_frontier)
-                        .map(|b| Arc::new(RwLock::new(b))); // todo remove RwLock???
+                        .map(|b| Arc::new(b));
 
                     // Cementing starts from the bottom of the chain and works upwards. This is because chains can have effectively
                     // an infinite number of send/change blocks in a row. We don't want to hold the write transaction open for too long.
@@ -246,20 +246,14 @@ impl ConfirmationHeightBounded {
 
                         // Get the next block in the chain until we have reached the final desired one
                         if !last_iteration {
-                            new_cemented_frontier = block
-                                .as_ref()
-                                .unwrap()
-                                .read()
-                                .unwrap()
-                                .sideband()
-                                .unwrap()
-                                .successor;
+                            new_cemented_frontier =
+                                block.as_ref().unwrap().sideband().unwrap().successor;
                             block = self
                                 .ledger
                                 .store
                                 .block()
                                 .get(txn.txn(), &new_cemented_frontier)
-                                .map(|b| Arc::new(RwLock::new(b)));
+                                .map(|b| Arc::new(b));
                         } else {
                             // Confirm it is indeed the last one
                             debug_assert!(

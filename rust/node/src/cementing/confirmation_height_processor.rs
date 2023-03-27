@@ -4,7 +4,7 @@ use std::{
     ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-        Arc, Condvar, Mutex, MutexGuard, RwLock,
+        Arc, Condvar, Mutex, MutexGuard,
     },
     thread::JoinHandle,
     time::Duration,
@@ -36,7 +36,7 @@ pub struct ConfirmationHeightProcessor {
     batch_write_size: Arc<AtomicU64>,
     stopped: Arc<AtomicBool>,
     // No mutex needed for the observers as these should be set up during initialization of the node
-    cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>) + Send>>>>, //todo remove Arc<Mutex<>>
+    cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<BlockEnum>) + Send>>>>, //todo remove Arc<Mutex<>>
     already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash) + Send>>>>, //todo remove Arc<Mutex<>>
     thread: Option<JoinHandle<()>>,
     block_cache: Arc<BlockCache>,
@@ -58,7 +58,7 @@ impl ConfirmationHeightProcessor {
         latch: Box<dyn Latch>,
         mode: ConfirmationHeightMode,
     ) -> Self {
-        let cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>) + Send>>>> =
+        let cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<BlockEnum>) + Send>>>> =
             Arc::new(Mutex::new(None));
         let already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash) + Send>>>> =
             Arc::new(Mutex::new(None));
@@ -164,7 +164,7 @@ impl ConfirmationHeightProcessor {
         self.batch_write_size.store(size as u64, Ordering::SeqCst);
     }
 
-    pub fn add(&self, block: Arc<RwLock<BlockEnum>>) {
+    pub fn add(&self, block: Arc<BlockEnum>) {
         {
             let mut lk = self.guarded_data.lock().unwrap();
             lk.awaiting_processing.push_back(block);
@@ -175,12 +175,12 @@ impl ConfirmationHeightProcessor {
     pub fn current(&self) -> BlockHash {
         let lk = self.guarded_data.lock().unwrap();
         match &lk.original_block {
-            Some(block) => block.read().unwrap().hash(),
+            Some(block) => block.hash(),
             None => BlockHash::zero(),
         }
     }
 
-    pub fn set_cemented_observer(&mut self, callback: Box<dyn Fn(&Arc<RwLock<BlockEnum>>) + Send>) {
+    pub fn set_cemented_observer(&mut self, callback: Box<dyn Fn(&Arc<BlockEnum>) + Send>) {
         *self.cemented_observer.lock().unwrap() = Some(callback);
     }
 
@@ -271,8 +271,8 @@ fn block_already_cemented_callback(
 }
 
 fn cemented_callback(
-    cemented_observer: &Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>) + Send>>>>,
-) -> Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>) + Send> {
+    cemented_observer: &Arc<Mutex<Option<Box<dyn Fn(&Arc<BlockEnum>) + Send>>>>,
+) -> Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send> {
     let cemented_observer_clone = Arc::clone(cemented_observer);
     let cemented_callback: NotifyObserversCallback = Box::new(move |blocks| {
         let lock = cemented_observer_clone.lock().unwrap();
@@ -291,11 +291,11 @@ struct GuardedData {
     // Hashes which have been added and processed, but have not been cemented
     pub original_hashes_pending: HashSet<BlockHash>,
     /** This is the last block popped off the confirmation height pending collection */
-    pub original_block: Option<Arc<RwLock<BlockEnum>>>,
+    pub original_block: Option<Arc<BlockEnum>>,
 }
 
 struct AwaitingProcessingQueue {
-    blocks: VecDeque<Arc<RwLock<BlockEnum>>>,
+    blocks: VecDeque<Arc<BlockEnum>>,
     hashes: HashSet<BlockHash>,
 }
 
@@ -308,7 +308,7 @@ impl AwaitingProcessingQueue {
     }
 
     pub fn entry_size() -> usize {
-        size_of::<Arc<RwLock<BlockEnum>>>() + size_of::<BlockHash>()
+        size_of::<Arc<BlockEnum>>() + size_of::<BlockHash>()
     }
 
     pub fn len(&self) -> usize {
@@ -323,8 +323,8 @@ impl AwaitingProcessingQueue {
         self.hashes.contains(hash)
     }
 
-    pub fn push_back(&mut self, block: Arc<RwLock<BlockEnum>>) {
-        let hash = block.read().unwrap().hash();
+    pub fn push_back(&mut self, block: Arc<BlockEnum>) {
+        let hash = block.hash();
         if self.hashes.contains(&hash) {
             return;
         }
@@ -333,14 +333,14 @@ impl AwaitingProcessingQueue {
         self.hashes.insert(hash);
     }
 
-    pub fn front(&self) -> Option<&Arc<RwLock<BlockEnum>>> {
+    pub fn front(&self) -> Option<&Arc<BlockEnum>> {
         self.blocks.front()
     }
 
-    pub fn pop_front(&mut self) -> Option<Arc<RwLock<BlockEnum>>> {
+    pub fn pop_front(&mut self) -> Option<Arc<BlockEnum>> {
         let front = self.blocks.pop_front();
         if let Some(block) = &front {
-            self.hashes.remove(&block.read().unwrap().hash());
+            self.hashes.remove(&block.hash());
         }
         front
     }
@@ -395,9 +395,8 @@ impl ConfirmationHeightProcessorThread {
                     let lk = self.guarded_data.lock().unwrap();
                     let original_block = lk.original_block.clone();
                     drop(lk);
-                    self.unbounded_processor.process(Arc::new(
-                        original_block.unwrap().read().unwrap().deref().clone(),
-                    ));
+                    self.unbounded_processor
+                        .process(original_block.unwrap().clone());
                 } else {
                     debug_assert!(
                         mode == ConfirmationHeightMode::Bounded
@@ -408,7 +407,7 @@ impl ConfirmationHeightProcessorThread {
                     let original_block = lk.original_block.clone();
                     drop(lk);
                     self.bounded_processor
-                        .process(original_block.unwrap().read().unwrap().deref());
+                        .process(original_block.unwrap().deref());
                 }
 
                 let lk = self.guarded_data.lock().unwrap();
@@ -499,8 +498,7 @@ impl ConfirmationHeightProcessorThread {
         let mut lk = self.guarded_data.lock().unwrap();
         debug_assert!(!lk.awaiting_processing.is_empty());
         let block = lk.awaiting_processing.front().unwrap().clone();
-        lk.original_hashes_pending
-            .insert(block.read().unwrap().hash());
+        lk.original_hashes_pending.insert(block.hash());
         lk.original_block = Some(block);
         lk.awaiting_processing.pop_front();
     }

@@ -1,5 +1,6 @@
 use std::{
     ffi::c_void,
+    ops::Deref,
     sync::{atomic::Ordering, Arc, Mutex, RwLock, Weak},
     time::Duration,
 };
@@ -76,7 +77,9 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_add(
     handle: *mut ConfirmationHeightProcessorHandle,
     block: *const BlockHandle,
 ) {
-    (*handle).0.add((*block).block.clone());
+    (*handle)
+        .0
+        .add(Arc::new((*block).block.read().unwrap().clone()));
 }
 
 #[no_mangle]
@@ -103,8 +106,10 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_set_cemented_observer
     delete_context: VoidPointerCallback,
 ) {
     let context_wrapper = ContextWrapper::new(context, delete_context);
-    let callback_wrapper = Box::new(move |block: &Arc<RwLock<BlockEnum>>| {
-        let block_handle = Box::into_raw(Box::new(BlockHandle::new(block.clone())));
+    let callback_wrapper = Box::new(move |block: &Arc<BlockEnum>| {
+        let block_handle = Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(
+            block.deref().clone(),
+        )))));
         callback(context_wrapper.get_context(), block_handle);
         drop(Box::from_raw(block_handle));
     });

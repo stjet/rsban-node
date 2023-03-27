@@ -4,7 +4,7 @@ use rsnano_store_traits::Transaction;
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-        Arc, Mutex, RwLock,
+        Arc, Mutex,
     },
     time::Duration,
 };
@@ -48,7 +48,7 @@ impl ConfirmationHeightUnbounded {
         batch_separate_pending_min_time: Duration,
         batch_write_size: Arc<AtomicU64>,
         write_database_queue: Arc<WriteDatabaseQueue>,
-        notify_observers_callback: Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>) + Send>,
+        notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>,
         notify_block_already_cemented_callback: Box<dyn Fn(BlockHash) + Send>,
         awaiting_processing_size_callback: Box<dyn Fn() -> u64 + Send>,
         block_cache: Arc<BlockCache>,

@@ -38,6 +38,7 @@ public:
 	bool is_processing_added_block (nano::block_hash const & hash_a) const;
 	bool is_processing_block (nano::block_hash const &) const;
 	nano::block_hash current () const;
+	void set_batch_write_size (size_t write_size);
 
 	/*
 	 * Called for each newly cemented block

@@ -233,6 +233,17 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_block_cache
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_set_batch_write_size(
+    handle: *mut ConfirmationHeightProcessorHandle,
+    size: usize,
+) {
+    (*handle)
+        .0
+        .batch_write_size
+        .store(size as u64, Ordering::SeqCst);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_entry_size() -> usize
 {
     ConfirmationHeightProcessor::awaiting_processing_entry_size()

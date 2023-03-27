@@ -147,6 +147,11 @@ nano::block_hash nano::confirmation_height_processor::current () const
 	return hash;
 }
 
+void nano::confirmation_height_processor::set_batch_write_size (size_t write_size)
+{
+	rsnano::rsn_confirmation_height_processor_set_batch_write_size (handle, write_size);
+}
+
 std::unique_ptr<nano::container_info_component> nano::collect_bounded_container_info (confirmation_height_processor & confirmation_height_processor, std::string const & name_a)
 {
 	auto composite = std::make_unique<container_info_composite> (name_a);

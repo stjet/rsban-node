@@ -10,6 +10,9 @@ mod confirmed_iterated_pairs;
 mod implicit_receive_cemented_mapping;
 mod unconfirmed_receive_and_sources_collector;
 
+mod block_queue;
+pub(crate) use block_queue::BlockQueue;
+
 pub(crate) use confirmation_height_bounded::{
     ConfirmationHeightBounded, ConfirmedInfo, NotifyObserversCallback, WriteDetails,
 };

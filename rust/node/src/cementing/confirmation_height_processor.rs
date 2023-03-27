@@ -1,10 +1,9 @@
 use std::{
-    collections::{HashSet, VecDeque},
-    mem::size_of,
+    collections::HashSet,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-        Arc, Condvar, Mutex, MutexGuard,
+        Arc, Condvar, Mutex,
     },
     thread::JoinHandle,
     time::Duration,
@@ -22,8 +21,8 @@ use crate::{
 };
 
 use super::{
-    block_cache::BlockCache, ConfirmationHeightBounded, ConfirmationHeightUnbounded, ConfirmedInfo,
-    NotifyObserversCallback, WriteDetails,
+    block_cache::BlockCache, BlockQueue, ConfirmationHeightBounded, ConfirmationHeightUnbounded,
+    ConfirmedInfo, NotifyObserversCallback, WriteDetails,
 };
 
 /** When the uncemented count (block count - cemented count) is less than this use the unbounded processor */
@@ -36,8 +35,8 @@ pub struct ConfirmationHeightProcessor {
     batch_write_size: Arc<AtomicU64>,
     stopped: Arc<AtomicBool>,
     // No mutex needed for the observers as these should be set up during initialization of the node
-    cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<BlockEnum>) + Send>>>>, //todo remove Arc<Mutex<>>
-    already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash) + Send>>>>, //todo remove Arc<Mutex<>>
+    cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<BlockEnum>) + Send>>>>,
+    already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash) + Send>>>>,
     thread: Option<JoinHandle<()>>,
     block_cache: Arc<BlockCache>,
     pub unbounded_pending_writes: Arc<AtomicUsize>,
@@ -66,7 +65,7 @@ impl ConfirmationHeightProcessor {
         let stopped = Arc::new(AtomicBool::new(false));
         let guarded_data = Arc::new(Mutex::new(GuardedData {
             paused: false,
-            awaiting_processing: AwaitingProcessingQueue::new(),
+            awaiting_processing: BlockQueue::new(),
             original_hashes_pending: HashSet::new(),
             original_block: None,
         }));
@@ -235,7 +234,7 @@ impl ConfirmationHeightProcessor {
     }
 
     pub fn awaiting_processing_entry_size() -> usize {
-        AwaitingProcessingQueue::entry_size()
+        BlockQueue::entry_size()
     }
 }
 
@@ -287,63 +286,11 @@ fn cemented_callback(
 
 struct GuardedData {
     pub paused: bool,
-    pub awaiting_processing: AwaitingProcessingQueue,
+    pub awaiting_processing: BlockQueue,
     // Hashes which have been added and processed, but have not been cemented
     pub original_hashes_pending: HashSet<BlockHash>,
     /** This is the last block popped off the confirmation height pending collection */
     pub original_block: Option<Arc<BlockEnum>>,
-}
-
-struct AwaitingProcessingQueue {
-    blocks: VecDeque<Arc<BlockEnum>>,
-    hashes: HashSet<BlockHash>,
-}
-
-impl AwaitingProcessingQueue {
-    pub fn new() -> Self {
-        Self {
-            blocks: VecDeque::new(),
-            hashes: HashSet::new(),
-        }
-    }
-
-    pub fn entry_size() -> usize {
-        size_of::<Arc<BlockEnum>>() + size_of::<BlockHash>()
-    }
-
-    pub fn len(&self) -> usize {
-        self.blocks.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.blocks.is_empty()
-    }
-
-    pub fn contains(&self, hash: &BlockHash) -> bool {
-        self.hashes.contains(hash)
-    }
-
-    pub fn push_back(&mut self, block: Arc<BlockEnum>) {
-        let hash = block.hash();
-        if self.hashes.contains(&hash) {
-            return;
-        }
-
-        self.blocks.push_back(block);
-        self.hashes.insert(hash);
-    }
-
-    pub fn front(&self) -> Option<&Arc<BlockEnum>> {
-        self.blocks.front()
-    }
-
-    pub fn pop_front(&mut self) -> Option<Arc<BlockEnum>> {
-        let front = self.blocks.pop_front();
-        if let Some(block) = &front {
-            self.hashes.remove(&block.hash());
-        }
-        front
-    }
 }
 
 struct ConfirmationHeightProcessorThread {
@@ -410,12 +357,7 @@ impl ConfirmationHeightProcessorThread {
                         .process(original_block.unwrap().deref());
                 }
 
-                let lk = self.guarded_data.lock().unwrap();
-                guard = Some(unsafe {
-                    std::mem::transmute::<MutexGuard<GuardedData>, MutexGuard<'static, GuardedData>>(
-                        lk,
-                    )
-                });
+                guard = Some(self.guarded_data.lock().unwrap());
             } else {
                 if !lk.paused {
                     drop(lk);
@@ -436,12 +378,7 @@ impl ConfirmationHeightProcessorThread {
                         lk.original_hashes_pending.clear();
                         self.bounded_processor.clear_process_vars();
                         self.unbounded_processor.clear_process_vars();
-                        guard = Some(unsafe {
-                            std::mem::transmute::<
-                                MutexGuard<GuardedData>,
-                                MutexGuard<'static, GuardedData>,
-                            >(lk)
-                        });
+                        guard = Some(lk);
                     } else if !self.unbounded_processor.pending_empty() {
                         debug_assert!(self.bounded_processor.pending_empty());
                         {
@@ -456,12 +393,7 @@ impl ConfirmationHeightProcessorThread {
                         lk.original_hashes_pending.clear();
                         self.bounded_processor.clear_process_vars();
                         self.unbounded_processor.clear_process_vars();
-                        guard = Some(unsafe {
-                            std::mem::transmute::<
-                                MutexGuard<GuardedData>,
-                                MutexGuard<'static, GuardedData>,
-                            >(lk)
-                        });
+                        guard = Some(lk);
                     } else {
                         let mut lk = self.guarded_data.lock().unwrap();
                         lk.original_block = None;
@@ -472,23 +404,12 @@ impl ConfirmationHeightProcessorThread {
                         if lk.awaiting_processing.is_empty() {
                             lk = self.condition.wait(lk).unwrap();
                         }
-                        guard = Some(unsafe {
-                            std::mem::transmute::<
-                                MutexGuard<GuardedData>,
-                                MutexGuard<'static, GuardedData>,
-                            >(lk)
-                        });
+                        guard = Some(lk);
                     }
                 } else {
                     // Pausing is only utilised in some tests to help prevent it processing added blocks until required.
                     lk.original_block = None;
-                    let new_guard = self.condition.wait(lk).unwrap();
-                    guard = Some(unsafe {
-                        std::mem::transmute::<
-                            MutexGuard<GuardedData>,
-                            MutexGuard<'static, GuardedData>,
-                        >(new_guard)
-                    });
+                    guard = Some(self.condition.wait(lk).unwrap());
                 }
             }
         }

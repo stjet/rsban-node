@@ -38,13 +38,7 @@ nano::stats & stats_a)
 }
 
 nano::confirmation_height_processor::confirmation_height_processor (nano::ledger & ledger_a, nano::stats & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, boost::latch & latch, confirmation_height_mode mode_a) :
-	ledger (ledger_a),
-	write_database_queue (write_database_queue_a),
 	handle{ create_processor_handle (write_database_queue_a, logger_a, logging_a, ledger_a, batch_separate_pending_min_time_a, stats_a) },
-	mutex{ rsnano::rsn_confirmation_height_processor_get_mutex (handle) },
-	condition{ rsnano::rsn_confirmation_height_processor_get_condvar (handle) },
-	batch_write_size{ rsnano::rsn_confirmation_height_processor_batch_write_size (handle) },
-	stopped{ rsnano::rsn_confirmation_height_processor_stopped (handle) },
 	thread ([this, &latch, mode_a] () {
 		nano::thread_role::set (nano::thread_role::name::confirmation_height_processing);
 		// Do not start running the processing thread until other threads have finished their operations
@@ -62,12 +56,7 @@ nano::confirmation_height_processor::~confirmation_height_processor ()
 
 void nano::confirmation_height_processor::stop ()
 {
-	{
-		auto guard{ mutex.lock () };
-		stopped.store (true);
-		rsnano::rsn_confirmation_height_processor_unbounded_stop (handle);
-	}
-	condition.notify_one ();
+	rsnano::rsn_confirmation_height_processor_stop (handle);
 	if (thread.joinable ())
 	{
 		thread.join ();
@@ -76,11 +65,7 @@ void nano::confirmation_height_processor::stop ()
 
 void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 {
-	auto lk{ mutex.lock () };
-	while (!stopped.load ())
-	{
-		rsnano::rsn_confirmation_height_processor_run (handle, static_cast<uint8_t> (mode_a), lk.handle);
-	}
+	rsnano::rsn_confirmation_height_processor_run (handle, static_cast<uint8_t> (mode_a));
 }
 
 // Pausing only affects processing new blocks, not the current one being processed. Currently only used in tests
@@ -97,11 +82,6 @@ void nano::confirmation_height_processor::unpause ()
 void nano::confirmation_height_processor::add (std::shared_ptr<nano::block> const & block_a)
 {
 	rsnano::rsn_confirmation_height_processor_add (handle, block_a->get_handle ());
-}
-
-void nano::confirmation_height_processor::set_next_hash ()
-{
-	rsnano::rsn_confirmation_height_processor_set_next_hash (handle);
 }
 
 namespace
@@ -157,15 +137,26 @@ size_t nano::confirmation_height_processor::unbounded_pending_writes_size () con
 	return rsnano::rsn_confirmation_height_processor_unbounded_pending_writes (handle);
 }
 
-void nano::confirmation_height_processor::notify_cemented (std::vector<std::shared_ptr<nano::block>> const & cemented_blocks)
+std::size_t nano::confirmation_height_processor::awaiting_processing_size () const
 {
-	rsnano::block_vec wrapped_blocks{ cemented_blocks };
-	rsnano::rsn_confirmation_height_processor_notify_cemented (handle, wrapped_blocks.handle);
+	return rsnano::rsn_confirmation_height_processor_awaiting_processing_size (handle);
 }
 
-void nano::confirmation_height_processor::notify_already_cemented (nano::block_hash const & hash_already_cemented_a)
+bool nano::confirmation_height_processor::is_processing_added_block (nano::block_hash const & hash_a) const
 {
-	rsnano::rsn_confirmation_height_processor_notify_already_cemented (handle, hash_already_cemented_a.bytes.data ());
+	return rsnano::rsn_confirmation_height_processor_is_processing_added_block (handle, hash_a.bytes.data ());
+}
+
+bool nano::confirmation_height_processor::is_processing_block (nano::block_hash const & hash_a) const
+{
+	return rsnano::rsn_confirmation_height_processor_is_processing_block (handle, hash_a.bytes.data ());
+}
+
+nano::block_hash nano::confirmation_height_processor::current () const
+{
+	nano::block_hash hash;
+	rsnano::rsn_confirmation_height_processor_current (handle, hash.bytes.data ());
+	return hash;
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_bounded_container_info (confirmation_height_processor & confirmation_height_processor, std::string const & name_a)
@@ -196,26 +187,4 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (co
 	composite->add_component (collect_bounded_container_info (confirmation_height_processor_a, "bounded_processor"));
 	composite->add_component (collect_unbounded_container_info (confirmation_height_processor_a, "unbounded_processor"));
 	return composite;
-}
-
-std::size_t nano::confirmation_height_processor::awaiting_processing_size () const
-{
-	return rsnano::rsn_confirmation_height_processor_awaiting_processing_size (handle);
-}
-
-bool nano::confirmation_height_processor::is_processing_added_block (nano::block_hash const & hash_a) const
-{
-	return rsnano::rsn_confirmation_height_processor_is_processing_added_block (handle, hash_a.bytes.data ());
-}
-
-bool nano::confirmation_height_processor::is_processing_block (nano::block_hash const & hash_a) const
-{
-	return is_processing_added_block (hash_a) || rsnano::rsn_confirmation_height_processor_unbounded_has_iterated_over_block (handle, hash_a.bytes.data ());
-}
-
-nano::block_hash nano::confirmation_height_processor::current () const
-{
-	nano::block_hash hash;
-	rsnano::rsn_confirmation_height_processor_current (handle, hash.bytes.data ());
-	return hash;
 }

@@ -17,12 +17,12 @@ use crate::config::Logging;
 
 pub type NotifyObserversCallback = Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>) + Send>;
 
-pub struct ConfirmedInfo {
-    pub confirmed_height: u64,
-    pub iterated_frontier: BlockHash,
+pub(crate) struct ConfirmedInfo {
+    pub(crate) confirmed_height: u64,
+    pub(crate) iterated_frontier: BlockHash,
 }
 
-pub struct ConfirmationHeightBounded {
+pub(crate) struct ConfirmationHeightBounded {
     write_database_queue: Arc<WriteDatabaseQueue>,
     pub pending_writes: VecDeque<WriteDetails>,
     notify_observers_callback: NotifyObserversCallback,
@@ -63,7 +63,7 @@ const BATCH_READ_SIZE: u64 = 65536;
 const PENDING_WRITES_MAX_SIZE: usize = MAX_ITEMS;
 
 impl ConfirmationHeightBounded {
-    pub fn new(
+    pub(crate) fn new(
         write_database_queue: Arc<WriteDatabaseQueue>,
         notify_observers_callback: NotifyObserversCallback,
         notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash) + Send>,
@@ -94,7 +94,10 @@ impl ConfirmationHeightBounded {
         }
     }
 
-    pub fn cement_blocks(&mut self, scoped_write_guard: &mut WriteGuard) -> Option<WriteGuard> {
+    pub(crate) fn cement_blocks(
+        &mut self,
+        scoped_write_guard: &mut WriteGuard,
+    ) -> Option<WriteGuard> {
         let mut new_scoped_write_guard = None;
         let mut cemented_batch_timer: Instant;
         let mut error = false;
@@ -330,7 +333,7 @@ impl ConfirmationHeightBounded {
 
     // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
     // the non-receive blocks which have been iterated for an account, and the associated receive block.
-    pub fn prepare_iterated_blocks_for_cementing(
+    fn prepare_iterated_blocks_for_cementing(
         &mut self,
         receive_details: &Option<ReceiveChainDetails>,
         checkpoints: &mut BoundedVecDeque<BlockHash>,
@@ -425,7 +428,7 @@ impl ConfirmationHeightBounded {
         }
     }
 
-    pub fn iterate(
+    fn iterate(
         &self,
         receive_source_pairs: &mut BoundedVecDeque<ReceiveSourcePair>,
         checkpoints: &mut BoundedVecDeque<BlockHash>,
@@ -495,7 +498,7 @@ impl ConfirmationHeightBounded {
         hit_receive
     }
 
-    pub fn get_least_unconfirmed_hash_from_top_level(
+    fn get_least_unconfirmed_hash_from_top_level(
         &self,
         txn: &dyn Transaction,
         hash: &BlockHash,
@@ -530,7 +533,7 @@ impl ConfirmationHeightBounded {
     /// 3 - The last checkpoint hit.
     /// 4 - The hash that was passed in originally. Either all checkpoints were exhausted (this can happen when there are many accounts to genesis)
     ///     or all other blocks have been processed.
-    pub fn get_next_block(
+    fn get_next_block(
         &self,
         next_in_receive_chain: &Option<TopAndNextHash>,
         checkpoints: &BoundedVecDeque<BlockHash>,
@@ -565,7 +568,7 @@ impl ConfirmationHeightBounded {
         next
     }
 
-    pub fn process(&mut self, original_block: &BlockEnum) {
+    pub(crate) fn process(&mut self, original_block: &BlockEnum) {
         if self.pending_empty() {
             self.clear_process_vars();
             self.timer = Instant::now();
@@ -767,26 +770,18 @@ impl ConfirmationHeightBounded {
             .sum()
     }
 
-    pub fn clear_process_vars(&mut self) {
+    pub(crate) fn clear_process_vars(&mut self) {
         self.accounts_confirmed_info.clear();
         self.accounts_confirmed_info_size
             .store(0, Ordering::Relaxed);
     }
 
-    pub fn pending_empty(&self) -> bool {
+    pub(crate) fn pending_empty(&self) -> bool {
         self.pending_writes.is_empty()
-    }
-
-    pub fn write_details_size() -> usize {
-        std::mem::size_of::<WriteDetails>()
-    }
-
-    pub fn confirmed_info_entry_size() -> usize {
-        std::mem::size_of::<ConfirmedInfo>() + std::mem::size_of::<Account>()
     }
 }
 
-pub struct WriteDetails {
+pub(crate) struct WriteDetails {
     pub account: Account,
     // This is the first block hash (bottom most) which is not cemented
     pub bottom_height: u64,
@@ -797,7 +792,7 @@ pub struct WriteDetails {
 }
 
 #[derive(Clone)]
-pub struct ReceiveChainDetails {
+pub(crate) struct ReceiveChainDetails {
     pub account: Account,
     pub height: u64,
     pub hash: BlockHash,
@@ -808,18 +803,18 @@ pub struct ReceiveChainDetails {
 }
 
 #[derive(Clone)]
-pub struct TopAndNextHash {
+pub(crate) struct TopAndNextHash {
     pub top: BlockHash,
     pub next: Option<BlockHash>,
     pub next_height: u64,
 }
 
-pub struct ReceiveSourcePair {
+pub(crate) struct ReceiveSourcePair {
     pub receive_details: ReceiveChainDetails,
     pub source_hash: BlockHash,
 }
 
-pub fn truncate_after(buffer: &mut BoundedVecDeque<BlockHash>, hash: &BlockHash) {
+fn truncate_after(buffer: &mut BoundedVecDeque<BlockHash>, hash: &BlockHash) {
     if let Some((index, _)) = buffer.iter().enumerate().find(|(_, h)| *h != hash) {
         buffer.truncate(index);
     }

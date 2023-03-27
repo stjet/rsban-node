@@ -24,7 +24,7 @@ use super::{
 /// When the uncemented count (block count - cemented count) is less than this use the unbounded processor
 const UNBOUNDED_CUTOFF: usize = 16384;
 
-pub struct ConfirmationHeightUnbounded {
+pub(crate) struct ConfirmationHeightUnbounded {
     ledger: Arc<Ledger>,
     block_cache: Arc<BlockCache>,
     logger: Arc<dyn Logger>,
@@ -40,7 +40,7 @@ pub struct ConfirmationHeightUnbounded {
 }
 
 impl ConfirmationHeightUnbounded {
-    pub fn new(
+    pub(crate) fn new(
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
         logging: Logging,
@@ -77,15 +77,15 @@ impl ConfirmationHeightUnbounded {
         }
     }
 
-    pub fn pending_empty(&self) -> bool {
+    pub(crate) fn pending_empty(&self) -> bool {
         self.cement_queue.is_empty()
     }
 
-    pub fn pending_writes_size(&self) -> &Arc<AtomicUsize> {
+    pub(crate) fn pending_writes_size(&self) -> &Arc<AtomicUsize> {
         self.cement_queue.atomic_len()
     }
 
-    pub fn add_confirmed_iterated_pair(
+    fn add_confirmed_iterated_pair(
         &mut self,
         account: Account,
         confirmed_height: u64,
@@ -95,23 +95,7 @@ impl ConfirmationHeightUnbounded {
             .insert(account, confirmed_height, iterated_height);
     }
 
-    pub fn get_blocks(&self, details: &ConfHeightDetails) -> Vec<Arc<BlockEnum>> {
-        details
-            .cemented_in_current_account
-            .iter()
-            .map(|hash| self.block_cache.get_cached(hash).unwrap())
-            .collect()
-    }
-
-    pub fn has_iterated_over_block(&self, hash: &BlockHash) -> bool {
-        self.block_cache.contains(hash)
-    }
-
-    pub fn block_cache_size(&self) -> usize {
-        self.block_cache.len()
-    }
-
-    pub fn clear_process_vars(&mut self) {
+    pub(crate) fn clear_process_vars(&mut self) {
         // Separate blocks which are pending confirmation height can be batched by a minimum processing time (to improve lmdb disk write performance),
         // so make sure the slate is clean when a new batch is starting.
         self.confirmed_iterated_pairs.clear();
@@ -119,7 +103,7 @@ impl ConfirmationHeightUnbounded {
         self.block_cache.clear();
     }
 
-    pub fn process(&mut self, original_block: Arc<BlockEnum>) {
+    pub(crate) fn process(&mut self, original_block: Arc<BlockEnum>) {
         if self.pending_empty() {
             self.clear_process_vars();
             self.cementor.set_last_cementation();
@@ -296,10 +280,7 @@ impl ConfirmationHeightUnbounded {
         self.cement_queue.len() >= UNBOUNDED_CUTOFF
     }
 
-    pub fn prepare_iterated_blocks_for_cementing(
-        &mut self,
-        preparation_data_a: &mut PreparationData,
-    ) {
+    fn prepare_iterated_blocks_for_cementing(&mut self, preparation_data_a: &mut PreparationData) {
         let receive_details = &preparation_data_a.receive_details;
         let block_height = preparation_data_a.block_height;
         if block_height > preparation_data_a.confirmation_height {
@@ -425,28 +406,31 @@ impl ConfirmationHeightUnbounded {
             self.cement_queue.push(receive_details_lock.clone())
         }
     }
-    pub fn cement_pending_blocks(&mut self) {
+    pub(crate) fn cement_pending_blocks(&mut self) {
         self.cementor
             .cement_blocks(&mut self.cement_queue, &self.block_cache);
     }
 
-    pub fn implicit_receive_cemented_mapping_size(&self) -> &Arc<AtomicUsize> {
+    pub(crate) fn implicit_receive_cemented_mapping_size(&self) -> &Arc<AtomicUsize> {
         self.implicit_receive_cemented_mapping.size_atomic()
     }
 
-    pub fn confirmed_iterated_pairs_size_atomic(&self) -> &Arc<AtomicUsize> {
+    pub(crate) fn confirmed_iterated_pairs_size_atomic(&self) -> &Arc<AtomicUsize> {
         self.confirmed_iterated_pairs.size_atomic()
     }
 }
 
 #[derive(Clone)]
-pub struct ReceiveSourcePair {
+pub(crate) struct ReceiveSourcePair {
     pub receive_details: Arc<Mutex<ConfHeightDetails>>,
     pub source_hash: BlockHash,
 }
 
 impl ReceiveSourcePair {
-    pub fn new(receive_details: Arc<Mutex<ConfHeightDetails>>, source_hash: BlockHash) -> Self {
+    pub(crate) fn new(
+        receive_details: Arc<Mutex<ConfHeightDetails>>,
+        source_hash: BlockHash,
+    ) -> Self {
         Self {
             receive_details,
             source_hash,
@@ -454,7 +438,7 @@ impl ReceiveSourcePair {
     }
 }
 
-pub struct PreparationData<'a> {
+struct PreparationData<'a> {
     pub block_height: u64,
     pub confirmation_height: u64,
     pub iterated_height: u64,

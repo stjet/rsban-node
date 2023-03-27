@@ -10,12 +10,11 @@ mod confirmed_iterated_pairs;
 mod implicit_receive_cemented_mapping;
 mod unconfirmed_receive_and_sources_collector;
 
-pub use confirmation_height_bounded::{
-    truncate_after, ConfirmationHeightBounded, ConfirmedInfo, NotifyObserversCallback,
-    ReceiveChainDetails, ReceiveSourcePair, TopAndNextHash, WriteDetails,
+pub(crate) use confirmation_height_bounded::{
+    ConfirmationHeightBounded, ConfirmedInfo, NotifyObserversCallback, WriteDetails,
 };
-pub use confirmation_height_processor::{ConfirmationHeightProcessor, GuardedData};
-pub use confirmation_height_unbounded::ConfirmationHeightUnbounded;
+pub use confirmation_height_processor::ConfirmationHeightProcessor;
+pub(crate) use confirmation_height_unbounded::ConfirmationHeightUnbounded;
 pub use confirmed_iterated_pairs::ConfirmedIteratedPair;
 
 /// We need these details whenever we want to write the new

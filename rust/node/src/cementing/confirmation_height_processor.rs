@@ -12,7 +12,7 @@ use std::{
 
 use rsnano_core::{
     utils::{Latch, Logger},
-    BlockEnum, BlockHash,
+    Account, BlockEnum, BlockHash,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 
@@ -22,18 +22,18 @@ use crate::{
 };
 
 use super::{
-    block_cache::BlockCache, ConfirmationHeightBounded, ConfirmationHeightUnbounded,
-    NotifyObserversCallback,
+    block_cache::BlockCache, ConfirmationHeightBounded, ConfirmationHeightUnbounded, ConfirmedInfo,
+    NotifyObserversCallback, WriteDetails,
 };
 
 /** When the uncemented count (block count - cemented count) is less than this use the unbounded processor */
 const UNBOUNDED_CUTOFF: u64 = 16384;
 
 pub struct ConfirmationHeightProcessor {
-    pub guarded_data: Arc<Mutex<GuardedData>>,
-    pub condition: Arc<Condvar>,
+    guarded_data: Arc<Mutex<GuardedData>>,
+    condition: Arc<Condvar>,
     /** The maximum amount of blocks to write at once. This is dynamically modified by the bounded processor based on previous write performance **/
-    pub batch_write_size: Arc<AtomicU64>,
+    batch_write_size: Arc<AtomicU64>,
     stopped: Arc<AtomicBool>,
     // No mutex needed for the observers as these should be set up during initialization of the node
     cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>) + Send>>>>, //todo remove Arc<Mutex<>>
@@ -160,16 +160,16 @@ impl ConfirmationHeightProcessor {
         self.condition.notify_one();
     }
 
+    pub fn set_batch_write_size(&self, size: usize) {
+        self.batch_write_size.store(size as u64, Ordering::SeqCst);
+    }
+
     pub fn add(&self, block: Arc<RwLock<BlockEnum>>) {
         {
             let mut lk = self.guarded_data.lock().unwrap();
             lk.awaiting_processing.push_back(block);
         }
         self.condition.notify_one();
-    }
-
-    pub fn awaiting_processing_entry_size() -> usize {
-        AwaitingProcessingQueue::entry_size()
     }
 
     pub fn current(&self) -> BlockHash {
@@ -225,6 +225,18 @@ impl ConfirmationHeightProcessor {
     pub fn unbounded_block_cache_size(&self) -> usize {
         self.block_cache.len()
     }
+
+    pub fn bounded_write_details_size() -> usize {
+        std::mem::size_of::<WriteDetails>()
+    }
+
+    pub fn bounded_confirmed_info_entry_size() -> usize {
+        std::mem::size_of::<ConfirmedInfo>() + std::mem::size_of::<Account>()
+    }
+
+    pub fn awaiting_processing_entry_size() -> usize {
+        AwaitingProcessingQueue::entry_size()
+    }
 }
 
 impl Drop for ConfirmationHeightProcessor {
@@ -273,7 +285,7 @@ fn cemented_callback(
     cemented_callback
 }
 
-pub struct GuardedData {
+struct GuardedData {
     pub paused: bool,
     pub awaiting_processing: AwaitingProcessingQueue,
     // Hashes which have been added and processed, but have not been cemented
@@ -282,7 +294,7 @@ pub struct GuardedData {
     pub original_block: Option<Arc<RwLock<BlockEnum>>>,
 }
 
-pub struct AwaitingProcessingQueue {
+struct AwaitingProcessingQueue {
     blocks: VecDeque<Arc<RwLock<BlockEnum>>>,
     hashes: HashSet<BlockHash>,
 }

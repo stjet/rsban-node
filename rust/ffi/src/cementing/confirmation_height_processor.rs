@@ -7,10 +7,7 @@ use std::{
 use num::FromPrimitive;
 use rsnano_core::{BlockEnum, BlockHash};
 use rsnano_node::{
-    cementing::{
-        ConfHeightDetails, ConfirmationHeightBounded, ConfirmationHeightProcessor,
-        ConfirmedIteratedPair,
-    },
+    cementing::{ConfHeightDetails, ConfirmationHeightProcessor, ConfirmedIteratedPair},
     config::Logging,
 };
 
@@ -18,7 +15,7 @@ use crate::{
     copy_hash_bytes,
     core::{BlockCallback, BlockHandle, BlockHashCallback},
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
-    utils::{AtomicU64Handle, ContextWrapper, FfiLatch, LoggerHandle, LoggerMT},
+    utils::{ContextWrapper, FfiLatch, LoggerHandle, LoggerMT},
     LoggingDto, StatHandle, VoidPointerCallback,
 };
 
@@ -96,15 +93,6 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_stop(
     handle: *mut ConfirmationHeightProcessorHandle,
 ) {
     (*handle).0.stop();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_batch_write_size(
-    handle: *mut ConfirmationHeightProcessorHandle,
-) -> *mut AtomicU64Handle {
-    Box::into_raw(Box::new(AtomicU64Handle(
-        (*handle).0.batch_write_size.clone(),
-    )))
 }
 
 #[no_mangle]
@@ -237,10 +225,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_set_batch_write_size(
     handle: *mut ConfirmationHeightProcessorHandle,
     size: usize,
 ) {
-    (*handle)
-        .0
-        .batch_write_size
-        .store(size as u64, Ordering::SeqCst);
+    (*handle).0.set_batch_write_size(size);
 }
 
 #[no_mangle]
@@ -271,10 +256,10 @@ pub extern "C" fn rsn_conf_height_details_size() -> usize {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_bounded_write_details_size() -> usize {
-    ConfirmationHeightBounded::write_details_size()
+    ConfirmationHeightProcessor::bounded_write_details_size()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_bounded_confirmed_info_entry_size() -> usize {
-    ConfirmationHeightBounded::confirmed_info_entry_size()
+    ConfirmationHeightProcessor::bounded_confirmed_info_entry_size()
 }

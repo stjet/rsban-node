@@ -26,15 +26,15 @@ const UNBOUNDED_CUTOFF: usize = 16384;
 
 pub struct ConfirmationHeightUnbounded {
     ledger: Arc<Ledger>,
-    block_cache: BlockCache,
+    block_cache: Arc<BlockCache>,
     logger: Arc<dyn Logger>,
     confirmed_iterated_pairs: ConfirmedIteratedPairMap,
     implicit_receive_cemented_mapping: ImplictReceiveCementedMapping,
 
     batch_write_size: Arc<AtomicU64>,
-    notify_block_already_cemented_callback: Box<dyn Fn(BlockHash)>,
-    awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
-    stopped: AtomicBool,
+    notify_block_already_cemented_callback: Box<dyn Fn(BlockHash) + Send>,
+    awaiting_processing_size_callback: Box<dyn Fn() -> u64 + Send>,
+    stopped: Arc<AtomicBool>,
     cement_queue: CementQueue,
     cementor: BlockCementor,
 }
@@ -48,20 +48,22 @@ impl ConfirmationHeightUnbounded {
         batch_separate_pending_min_time: Duration,
         batch_write_size: Arc<AtomicU64>,
         write_database_queue: Arc<WriteDatabaseQueue>,
-        notify_observers_callback: Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>)>,
-        notify_block_already_cemented_callback: Box<dyn Fn(BlockHash)>,
-        awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
+        notify_observers_callback: Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>) + Send>,
+        notify_block_already_cemented_callback: Box<dyn Fn(BlockHash) + Send>,
+        awaiting_processing_size_callback: Box<dyn Fn() -> u64 + Send>,
+        block_cache: Arc<BlockCache>,
+        stopped: Arc<AtomicBool>,
     ) -> Self {
         Self {
             ledger: Arc::clone(&ledger),
             logger: Arc::clone(&logger),
             confirmed_iterated_pairs: ConfirmedIteratedPairMap::new(),
             implicit_receive_cemented_mapping: ImplictReceiveCementedMapping::new(),
-            block_cache: BlockCache::new(Arc::clone(&ledger)),
+            block_cache,
             batch_write_size,
             notify_block_already_cemented_callback,
             awaiting_processing_size_callback,
-            stopped: AtomicBool::new(false),
+            stopped,
             cement_queue: CementQueue::new(),
             cementor: BlockCementor::new(
                 batch_separate_pending_min_time,
@@ -75,16 +77,12 @@ impl ConfirmationHeightUnbounded {
         }
     }
 
-    pub fn stop(&self) {
-        self.stopped.store(true, Ordering::SeqCst);
-    }
-
     pub fn pending_empty(&self) -> bool {
         self.cement_queue.is_empty()
     }
 
-    pub fn pending_writes_size(&self) -> &AtomicUsize {
-        &&self.cement_queue.atomic_len()
+    pub fn pending_writes_size(&self) -> &Arc<AtomicUsize> {
+        self.cement_queue.atomic_len()
     }
 
     pub fn add_confirmed_iterated_pair(
@@ -432,11 +430,11 @@ impl ConfirmationHeightUnbounded {
             .cement_blocks(&mut self.cement_queue, &self.block_cache);
     }
 
-    pub fn implicit_receive_cemented_mapping_size(&self) -> usize {
+    pub fn implicit_receive_cemented_mapping_size(&self) -> &Arc<AtomicUsize> {
         self.implicit_receive_cemented_mapping.size_atomic()
     }
 
-    pub fn confirmed_iterated_pairs_size_atomic(&self) -> usize {
+    pub fn confirmed_iterated_pairs_size_atomic(&self) -> &Arc<AtomicUsize> {
         self.confirmed_iterated_pairs.size_atomic()
     }
 }

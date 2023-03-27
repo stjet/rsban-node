@@ -25,7 +25,7 @@ pub(crate) struct BlockCementor {
     logger: Arc<dyn Logger>,
     logging: Logging,
     stats: Arc<Stats>,
-    notify_observers_callback: Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>)>,
+    notify_observers_callback: Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>) + Send>,
 }
 
 impl BlockCementor {
@@ -36,7 +36,7 @@ impl BlockCementor {
         logger: Arc<dyn Logger>,
         logging: Logging,
         stats: Arc<Stats>,
-        notify_observers_callback: Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>)>,
+        notify_observers_callback: Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>) + Send>,
     ) -> Self {
         Self {
             last_cementation: Instant::now(),

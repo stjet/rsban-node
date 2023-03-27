@@ -7,7 +7,7 @@ use rsnano_core::{BlockEnum, BlockHash};
 use rsnano_ledger::Ledger;
 use rsnano_store_traits::Transaction;
 
-pub(crate) struct BlockCache {
+pub struct BlockCache {
     //todo: Remove RwLock? `contains` is called by RPC!
     block_cache: RwLock<HashMap<BlockHash, Arc<BlockEnum>>>,
     ledger: Arc<Ledger>,

@@ -13,11 +13,11 @@ pub enum Writer {
 }
 
 pub struct WriteGuard {
-    guard_finish_callback: Option<Arc<dyn Fn()>>,
+    guard_finish_callback: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
 impl WriteGuard {
-    pub fn new(guard_finish_callback: Arc<dyn Fn()>) -> Self {
+    pub fn new(guard_finish_callback: Arc<dyn Fn() + Send + Sync>) -> Self {
         Self {
             guard_finish_callback: Some(guard_finish_callback),
         }
@@ -48,7 +48,7 @@ impl Drop for WriteGuard {
 
 pub struct WriteDatabaseQueue {
     data: Arc<WriteDatabaseQueueData>,
-    guard_finish_callback: Arc<dyn Fn()>,
+    guard_finish_callback: Arc<dyn Fn() + Send + Sync>,
 }
 
 struct WriteDatabaseQueueData {

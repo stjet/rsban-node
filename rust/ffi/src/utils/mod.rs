@@ -19,6 +19,9 @@ pub use timer::*;
 mod atomics;
 pub use atomics::*;
 
+mod latch;
+pub use latch::*;
+
 use crate::VoidPointerCallback;
 
 pub struct ContextWrapper {

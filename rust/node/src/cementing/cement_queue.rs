@@ -1,6 +1,9 @@
 use std::{
     collections::VecDeque,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 
 use super::ConfHeightDetails;
@@ -8,14 +11,14 @@ use super::ConfHeightDetails;
 /// Queue for blocks that will be cemented
 pub(crate) struct CementQueue {
     pending_writes: VecDeque<ConfHeightDetails>,
-    pending_writes_size: AtomicUsize,
+    pending_writes_size: Arc<AtomicUsize>,
 }
 
 impl CementQueue {
     pub(crate) fn new() -> Self {
         Self {
             pending_writes: VecDeque::new(),
-            pending_writes_size: AtomicUsize::new(0),
+            pending_writes_size: Arc::new(AtomicUsize::new(0)),
         }
     }
 
@@ -47,7 +50,7 @@ impl CementQueue {
             .sum()
     }
 
-    pub fn atomic_len(&self) -> &AtomicUsize {
+    pub fn atomic_len(&self) -> &Arc<AtomicUsize> {
         &self.pending_writes_size
     }
 }

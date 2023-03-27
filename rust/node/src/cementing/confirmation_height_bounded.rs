@@ -15,7 +15,7 @@ use rsnano_store_traits::{ReadTransaction, Transaction};
 
 use crate::config::Logging;
 
-pub type NotifyObserversCallback = Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>)>;
+pub type NotifyObserversCallback = Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>) + Send>;
 
 pub struct ConfirmedInfo {
     pub confirmed_height: u64,
@@ -26,7 +26,7 @@ pub struct ConfirmationHeightBounded {
     write_database_queue: Arc<WriteDatabaseQueue>,
     pub pending_writes: VecDeque<WriteDetails>,
     notify_observers_callback: NotifyObserversCallback,
-    notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash)>,
+    notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash) + Send>,
     logger: Arc<dyn Logger>,
     logging: Logging,
     ledger: Arc<Ledger>,
@@ -37,7 +37,7 @@ pub struct ConfirmationHeightBounded {
     stopped: Arc<AtomicBool>,
     timer: Instant,
     batch_separate_pending_min_time: Duration,
-    awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
+    awaiting_processing_size_callback: Box<dyn Fn() -> u64 + Send>,
 
     // All of the atomic variables here just track the size for use in collect_container_info.
     // This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
@@ -45,8 +45,8 @@ pub struct ConfirmationHeightBounded {
     // upon in any way (does not synchronize with any other data).
     // This allows the load and stores to use relaxed atomic memory ordering.
     batch_write_size: Arc<AtomicU64>,
-    pub accounts_confirmed_info_size: AtomicUsize,
-    pub pending_writes_size: AtomicUsize,
+    pub accounts_confirmed_info_size: Arc<AtomicUsize>,
+    pub pending_writes_size: Arc<AtomicUsize>,
 }
 
 const MAXIMUM_BATCH_WRITE_TIME: u64 = 250; // milliseconds
@@ -66,14 +66,14 @@ impl ConfirmationHeightBounded {
     pub fn new(
         write_database_queue: Arc<WriteDatabaseQueue>,
         notify_observers_callback: NotifyObserversCallback,
-        notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash)>,
+        notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash) + Send>,
         batch_write_size: Arc<AtomicU64>,
         logger: Arc<dyn Logger>,
         logging: Logging,
         ledger: Arc<Ledger>,
         stopped: Arc<AtomicBool>,
         batch_separate_pending_min_time: Duration,
-        awaiting_processing_size_callback: Box<dyn Fn() -> u64>,
+        awaiting_processing_size_callback: Box<dyn Fn() -> u64 + Send>,
     ) -> Self {
         Self {
             write_database_queue,
@@ -85,8 +85,8 @@ impl ConfirmationHeightBounded {
             logging,
             ledger,
             accounts_confirmed_info: HashMap::new(),
-            accounts_confirmed_info_size: AtomicUsize::new(0),
-            pending_writes_size: AtomicUsize::new(0),
+            accounts_confirmed_info_size: Arc::new(AtomicUsize::new(0)),
+            pending_writes_size: Arc::new(AtomicUsize::new(0)),
             stopped,
             timer: Instant::now(),
             batch_separate_pending_min_time,

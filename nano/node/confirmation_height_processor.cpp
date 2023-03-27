@@ -24,7 +24,9 @@ std::shared_ptr<nano::logger_mt> & logger_a,
 nano::logging const & logging_a,
 nano::ledger & ledger_a,
 std::chrono::milliseconds batch_separate_pending_min_time_a,
-nano::stats & stats_a)
+nano::stats & stats_a,
+boost::latch & latch,
+nano::confirmation_height_mode mode_a)
 {
 	auto logging_dto{ logging_a.to_dto () };
 	return rsnano::rsn_confirmation_height_processor_create (
@@ -33,39 +35,25 @@ nano::stats & stats_a)
 	&logging_dto,
 	ledger_a.handle,
 	batch_separate_pending_min_time_a.count (),
-	stats_a.handle);
+	stats_a.handle,
+	&latch,
+	static_cast<uint8_t> (mode_a));
 }
 }
 
 nano::confirmation_height_processor::confirmation_height_processor (nano::ledger & ledger_a, nano::stats & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, boost::latch & latch, confirmation_height_mode mode_a) :
-	handle{ create_processor_handle (write_database_queue_a, logger_a, logging_a, ledger_a, batch_separate_pending_min_time_a, stats_a) },
-	thread ([this, &latch, mode_a] () {
-		nano::thread_role::set (nano::thread_role::name::confirmation_height_processing);
-		// Do not start running the processing thread until other threads have finished their operations
-		latch.wait ();
-		this->run (mode_a);
-	})
+	handle{ create_processor_handle (write_database_queue_a, logger_a, logging_a, ledger_a, batch_separate_pending_min_time_a, stats_a, latch, mode_a) }
 {
 }
 
 nano::confirmation_height_processor::~confirmation_height_processor ()
 {
-	stop ();
 	rsnano::rsn_confirmation_height_processor_destroy (handle);
 }
 
 void nano::confirmation_height_processor::stop ()
 {
 	rsnano::rsn_confirmation_height_processor_stop (handle);
-	if (thread.joinable ())
-	{
-		thread.join ();
-	}
-}
-
-void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
-{
-	rsnano::rsn_confirmation_height_processor_run (handle, static_cast<uint8_t> (mode_a));
 }
 
 // Pausing only affects processing new blocks, not the current one being processed. Currently only used in tests

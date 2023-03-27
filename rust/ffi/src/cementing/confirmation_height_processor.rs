@@ -1,22 +1,21 @@
 use std::{
     ffi::c_void,
-    ops::Deref,
-    sync::{atomic::Ordering, Arc, Condvar, Mutex, MutexGuard, RwLock},
+    sync::{atomic::Ordering, Arc, Mutex, RwLock, Weak},
     time::Duration,
 };
 
 use num::FromPrimitive;
 use rsnano_core::{BlockEnum, BlockHash};
 use rsnano_node::{
-    cementing::{ConfirmationHeightProcessor, GuardedData},
+    cementing::{ConfHeightDetails, ConfirmationHeightProcessor, ConfirmedIteratedPair},
     config::Logging,
 };
 
 use crate::{
     copy_hash_bytes,
-    core::{BlockCallback, BlockHandle, BlockHashCallback, BlockVecHandle},
-    ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle, WriteGuardHandle},
-    utils::{AtomicBoolHandle, AtomicU64Handle, ContextWrapper, LoggerHandle, LoggerMT},
+    core::{BlockCallback, BlockHandle, BlockHashCallback},
+    ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
+    utils::{AtomicU64Handle, ContextWrapper, FfiLatch, LoggerHandle, LoggerMT},
     LoggingDto, StatHandle, VoidPointerCallback,
 };
 
@@ -30,9 +29,12 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_create(
     ledger: *mut LedgerHandle,
     batch_separate_pending_min_time_ms: u64,
     stats: *mut StatHandle,
+    latch: *mut c_void,
+    mode: u8,
 ) -> *mut ConfirmationHeightProcessorHandle {
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let logging = Logging::from(&*logging);
+    let latch = Box::new(FfiLatch::new(latch));
 
     Box::into_raw(Box::new(ConfirmationHeightProcessorHandle(
         ConfirmationHeightProcessor::new(
@@ -42,6 +44,8 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_create(
             (*ledger).0.clone(),
             Duration::from_millis(batch_separate_pending_min_time_ms),
             (*stats).0.clone(),
+            latch,
+            FromPrimitive::from_u8(mode).unwrap(),
         ),
     )))
 }
@@ -51,13 +55,6 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_destroy(
     handle: *mut ConfirmationHeightProcessorHandle,
 ) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_stopped(
-    handle: *mut ConfirmationHeightProcessorHandle,
-) -> *mut AtomicBoolHandle {
-    Box::into_raw(Box::new(AtomicBoolHandle((*handle).0.stopped.clone())))
 }
 
 #[no_mangle]
@@ -83,13 +80,6 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_add(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_set_next_hash(
-    handle: *mut ConfirmationHeightProcessorHandle,
-) {
-    (*handle).0.set_next_hash();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_processor_current(
     handle: *mut ConfirmationHeightProcessorHandle,
     hash: *mut u8,
@@ -103,15 +93,6 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_stop(
     handle: *mut ConfirmationHeightProcessorHandle,
 ) {
     (*handle).0.stop();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_run(
-    handle: *mut ConfirmationHeightProcessorHandle,
-    mode: u8,
-) {
-    let mode = FromPrimitive::from_u8(mode).unwrap();
-    (*handle).0.run(mode);
 }
 
 #[no_mangle]
@@ -187,11 +168,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_is_processing_added_b
 pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_pending_writes(
     handle: *mut ConfirmationHeightProcessorHandle,
 ) -> usize {
-    (*handle)
-        .0
-        .unbounded_processor
-        .pending_writes_size()
-        .load(Ordering::Relaxed)
+    (*handle).0.unbounded_pending_writes_len()
 }
 
 #[no_mangle]
@@ -212,11 +189,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_pending_wri
 pub unsafe extern "C" fn rsn_confirmation_height_processor_bounded_pending_len(
     handle: *mut ConfirmationHeightProcessorHandle,
 ) -> usize {
-    (*handle)
-        .0
-        .bounded_processor
-        .pending_writes_size
-        .load(Ordering::Relaxed)
+    (*handle).0.bounded_pending_writes.load(Ordering::Relaxed)
 }
 
 #[no_mangle]
@@ -225,8 +198,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_bounded_accounts_conf
 ) -> usize {
     (*handle)
         .0
-        .bounded_processor
-        .accounts_confirmed_info_size
+        .bounded_accounts_confirmed
         .load(Ordering::Relaxed)
 }
 
@@ -236,8 +208,8 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_conf_iterat
 ) -> usize {
     (*handle)
         .0
-        .unbounded_processor
-        .confirmed_iterated_pairs_size_atomic()
+        .unbounded_confirmed_iterated_pairs_size
+        .load(Ordering::Relaxed)
 }
 
 #[no_mangle]
@@ -246,19 +218,39 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_implicit_re
 ) -> usize {
     (*handle)
         .0
-        .unbounded_processor
-        .implicit_receive_cemented_mapping_size()
+        .unbounded_implicit_receive_cemented_mapping_size
+        .load(Ordering::Relaxed)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_block_cache_size(
     handle: *mut ConfirmationHeightProcessorHandle,
 ) -> usize {
-    (*handle).0.unbounded_processor.block_cache_size()
+    (*handle).0.unbounded_block_cache_size()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_entry_size() -> usize
 {
     ConfirmationHeightProcessor::awaiting_processing_entry_size()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_iterated_pair_size() -> usize {
+    std::mem::size_of::<ConfirmedIteratedPair>()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_implicit_receive_cemented_mapping_value_size() -> usize {
+    std::mem::size_of::<Weak<Mutex<ConfHeightDetails>>>()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_conf_height_unbounded_block_cache_element_size() -> usize {
+    std::mem::size_of::<Arc<BlockEnum>>()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_conf_height_details_size() -> usize {
+    std::mem::size_of::<ConfHeightDetails>()
 }

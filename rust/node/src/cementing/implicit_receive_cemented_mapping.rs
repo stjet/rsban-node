@@ -18,14 +18,14 @@ pub(crate) struct ImplictReceiveCementedMapping {
     // for the sake of a rarely used RPC call for debugging purposes. As such the sizes are not being acted
     // upon in any way (does not synchronize with any other data).
     // This allows the load and stores to use relaxed atomic memory ordering.
-    mapping_size: AtomicUsize,
+    mapping_size: Arc<AtomicUsize>,
 }
 
 impl ImplictReceiveCementedMapping {
     pub fn new() -> Self {
         Self {
             mapping: HashMap::new(),
-            mapping_size: AtomicUsize::new(0),
+            mapping_size: Arc::new(AtomicUsize::new(0)),
         }
     }
 
@@ -44,7 +44,7 @@ impl ImplictReceiveCementedMapping {
         self.mapping_size.store(0, Ordering::Relaxed);
     }
 
-    pub fn size_atomic(&self) -> usize {
-        self.mapping_size.load(Ordering::Relaxed)
+    pub fn size_atomic(&self) -> &Arc<AtomicUsize> {
+        &self.mapping_size
     }
 }

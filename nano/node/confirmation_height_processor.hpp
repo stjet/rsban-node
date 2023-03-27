@@ -35,7 +35,6 @@ public:
 	void unpause ();
 	void stop ();
 	void add (std::shared_ptr<nano::block> const &);
-	void run (confirmation_height_mode);
 	std::size_t awaiting_processing_size () const;
 	bool is_processing_added_block (nano::block_hash const & hash_a) const;
 	bool is_processing_block (nano::block_hash const &) const;
@@ -56,9 +55,6 @@ public:
 
 public:
 	rsnano::ConfirmationHeightProcessorHandle * handle;
-
-private:
-	std::thread thread;
 
 private: // Tests
 	friend class confirmation_height_pending_observer_callbacks_Test;

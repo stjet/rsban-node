@@ -3,13 +3,17 @@ use std::{
     mem::size_of,
     ops::Deref,
     sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
         Arc, Condvar, Mutex, MutexGuard, RwLock,
     },
+    thread::JoinHandle,
     time::Duration,
 };
 
-use rsnano_core::{utils::Logger, BlockEnum, BlockHash};
+use rsnano_core::{
+    utils::{Latch, Logger},
+    BlockEnum, BlockHash,
+};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 
 use crate::{
@@ -17,7 +21,10 @@ use crate::{
     stats::Stats,
 };
 
-use super::{ConfirmationHeightBounded, ConfirmationHeightUnbounded, NotifyObserversCallback};
+use super::{
+    block_cache::BlockCache, ConfirmationHeightBounded, ConfirmationHeightUnbounded,
+    NotifyObserversCallback,
+};
 
 /** When the uncemented count (block count - cemented count) is less than this use the unbounded processor */
 const UNBOUNDED_CUTOFF: u64 = 16384;
@@ -25,16 +32,19 @@ const UNBOUNDED_CUTOFF: u64 = 16384;
 pub struct ConfirmationHeightProcessor {
     pub guarded_data: Arc<Mutex<GuardedData>>,
     pub condition: Arc<Condvar>,
-    write_database_queue: Arc<WriteDatabaseQueue>,
     /** The maximum amount of blocks to write at once. This is dynamically modified by the bounded processor based on previous write performance **/
     pub batch_write_size: Arc<AtomicU64>,
-    pub bounded_processor: ConfirmationHeightBounded,
-    pub unbounded_processor: ConfirmationHeightUnbounded,
-    pub stopped: Arc<AtomicBool>,
+    stopped: Arc<AtomicBool>,
     // No mutex needed for the observers as these should be set up during initialization of the node
-    cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>>>>, //todo remove Arc<Mutex<>>
-    already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash)>>>>, //todo remove Arc<Mutex<>>
-    ledger: Arc<Ledger>,
+    cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>) + Send>>>>, //todo remove Arc<Mutex<>>
+    already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash) + Send>>>>, //todo remove Arc<Mutex<>>
+    thread: Option<JoinHandle<()>>,
+    block_cache: Arc<BlockCache>,
+    pub unbounded_pending_writes: Arc<AtomicUsize>,
+    pub bounded_accounts_confirmed: Arc<AtomicUsize>,
+    pub bounded_pending_writes: Arc<AtomicUsize>,
+    pub unbounded_confirmed_iterated_pairs_size: Arc<AtomicUsize>,
+    pub unbounded_implicit_receive_cemented_mapping_size: Arc<AtomicUsize>,
 }
 
 impl ConfirmationHeightProcessor {
@@ -45,10 +55,12 @@ impl ConfirmationHeightProcessor {
         ledger: Arc<Ledger>,
         batch_separate_pending_min_time: Duration,
         stats: Arc<Stats>,
+        latch: Box<dyn Latch>,
+        mode: ConfirmationHeightMode,
     ) -> Self {
-        let cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>>>> =
+        let cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>) + Send>>>> =
             Arc::new(Mutex::new(None));
-        let already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash)>>>> =
+        let already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash) + Send>>>> =
             Arc::new(Mutex::new(None));
         let batch_write_size = Arc::new(AtomicU64::new(16384));
         let stopped = Arc::new(AtomicBool::new(false));
@@ -72,6 +84,11 @@ impl ConfirmationHeightProcessor {
             awaiting_processing_size_callback(&guarded_data),
         );
 
+        let bounded_accounts_confirmed = bounded_processor.accounts_confirmed_info_size.clone();
+        let bounded_pending_writes = bounded_processor.pending_writes_size.clone();
+
+        let block_cache = Arc::new(BlockCache::new(ledger.clone()));
+
         let unbounded_processor = ConfirmationHeightUnbounded::new(
             ledger.clone(),
             logger,
@@ -83,19 +100,50 @@ impl ConfirmationHeightProcessor {
             cemented_callback(&cemented_observer),
             block_already_cemented_callback(&already_cemented_observer),
             awaiting_processing_size_callback(&guarded_data),
+            block_cache.clone(),
+            stopped.clone(),
         );
+
+        let unbounded_pending_writes = Arc::clone(unbounded_processor.pending_writes_size());
+        let unbounded_confirmed_iterated_pairs_size =
+            Arc::clone(unbounded_processor.confirmed_iterated_pairs_size_atomic());
+        let unbounded_implicit_receive_cemented_mapping_size =
+            Arc::clone(unbounded_processor.implicit_receive_cemented_mapping_size());
+
+        let condition = Arc::new(Condvar::new());
+        let mut thread = ConfirmationHeightProcessorThread {
+            guarded_data: guarded_data.clone(),
+            stopped: stopped.clone(),
+            write_database_queue,
+            ledger,
+            condition: condition.clone(),
+            bounded_processor,
+            unbounded_processor,
+        };
+
+        let join_handle = std::thread::Builder::new()
+            .name("Conf height".to_owned())
+            .spawn(move || {
+                // Do not start running the processing thread until other threads have finished their operations
+                latch.wait();
+                thread.run(mode);
+            })
+            .unwrap();
 
         Self {
             guarded_data,
-            condition: Arc::new(Condvar::new()),
-            write_database_queue: write_database_queue,
+            condition,
             batch_write_size,
             stopped,
             cemented_observer,
             already_cemented_observer,
-            bounded_processor,
-            unbounded_processor,
-            ledger,
+            thread: Some(join_handle),
+            block_cache,
+            unbounded_pending_writes,
+            bounded_accounts_confirmed,
+            bounded_pending_writes,
+            unbounded_confirmed_iterated_pairs_size,
+            unbounded_implicit_receive_cemented_mapping_size,
         }
     }
 
@@ -124,16 +172,6 @@ impl ConfirmationHeightProcessor {
         AwaitingProcessingQueue::entry_size()
     }
 
-    pub fn set_next_hash(&self) {
-        let mut lk = self.guarded_data.lock().unwrap();
-        debug_assert!(!lk.awaiting_processing.is_empty());
-        let block = lk.awaiting_processing.front().unwrap().clone();
-        lk.original_hashes_pending
-            .insert(block.read().unwrap().hash());
-        lk.original_block = Some(block);
-        lk.awaiting_processing.pop_front();
-    }
-
     pub fn current(&self) -> BlockHash {
         let lk = self.guarded_data.lock().unwrap();
         match &lk.original_block {
@@ -142,6 +180,171 @@ impl ConfirmationHeightProcessor {
         }
     }
 
+    pub fn set_cemented_observer(&mut self, callback: Box<dyn Fn(&Arc<RwLock<BlockEnum>>) + Send>) {
+        *self.cemented_observer.lock().unwrap() = Some(callback);
+    }
+
+    pub fn set_already_cemented_observer(&mut self, callback: Box<dyn Fn(BlockHash) + Send>) {
+        *self.already_cemented_observer.lock().unwrap() = Some(callback);
+    }
+
+    pub fn clear_cemented_observer(&mut self) {
+        *self.cemented_observer.lock().unwrap() = None;
+    }
+
+    pub fn is_processing_block(&self, block_hash: &BlockHash) -> bool {
+        self.is_processing_added_block(block_hash) || self.block_cache.contains(block_hash)
+    }
+
+    pub fn is_processing_added_block(&self, block_hash: &BlockHash) -> bool {
+        let lk = self.guarded_data.lock().unwrap();
+        lk.original_hashes_pending.contains(block_hash)
+            || lk.awaiting_processing.contains(block_hash)
+    }
+
+    pub fn awaiting_processing_len(&self) -> usize {
+        let lk = self.guarded_data.lock().unwrap();
+        lk.awaiting_processing.len()
+    }
+
+    pub fn unbounded_pending_writes_len(&self) -> usize {
+        self.unbounded_pending_writes.load(Ordering::Relaxed)
+    }
+
+    pub fn stop(&mut self) {
+        {
+            let _guard = self.guarded_data.lock().unwrap(); //todo why is this needed?
+            self.stopped.store(true, Ordering::SeqCst);
+        }
+        self.condition.notify_one();
+        if let Some(handle) = self.thread.take() {
+            handle.join().unwrap();
+        }
+    }
+
+    pub fn unbounded_block_cache_size(&self) -> usize {
+        self.block_cache.len()
+    }
+}
+
+impl Drop for ConfirmationHeightProcessor {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
+fn awaiting_processing_size_callback(
+    guarded_data: &Arc<Mutex<GuardedData>>,
+) -> Box<dyn Fn() -> u64 + Send> {
+    let guarded_data_clone = Arc::clone(guarded_data);
+
+    let awaiting_processing_size_callback = Box::new(move || {
+        let lk = guarded_data_clone.lock().unwrap();
+        lk.awaiting_processing.len() as u64
+    });
+    awaiting_processing_size_callback
+}
+
+fn block_already_cemented_callback(
+    already_cemented_observer: &Arc<Mutex<Option<Box<dyn Fn(BlockHash) + Send>>>>,
+) -> Box<dyn Fn(BlockHash) + Send> {
+    let already_cemented_observer_clone = Arc::clone(already_cemented_observer);
+    let already_cemented_callback = Box::new(move |block_hash| {
+        let lock = already_cemented_observer_clone.lock().unwrap();
+        if let Some(f) = lock.deref() {
+            (f)(block_hash);
+        }
+    });
+    already_cemented_callback
+}
+
+fn cemented_callback(
+    cemented_observer: &Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>) + Send>>>>,
+) -> Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>) + Send> {
+    let cemented_observer_clone = Arc::clone(cemented_observer);
+    let cemented_callback: NotifyObserversCallback = Box::new(move |blocks| {
+        let lock = cemented_observer_clone.lock().unwrap();
+        if let Some(f) = lock.deref() {
+            for block in blocks {
+                (f)(block);
+            }
+        }
+    });
+    cemented_callback
+}
+
+pub struct GuardedData {
+    pub paused: bool,
+    pub awaiting_processing: AwaitingProcessingQueue,
+    // Hashes which have been added and processed, but have not been cemented
+    pub original_hashes_pending: HashSet<BlockHash>,
+    /** This is the last block popped off the confirmation height pending collection */
+    pub original_block: Option<Arc<RwLock<BlockEnum>>>,
+}
+
+pub struct AwaitingProcessingQueue {
+    blocks: VecDeque<Arc<RwLock<BlockEnum>>>,
+    hashes: HashSet<BlockHash>,
+}
+
+impl AwaitingProcessingQueue {
+    pub fn new() -> Self {
+        Self {
+            blocks: VecDeque::new(),
+            hashes: HashSet::new(),
+        }
+    }
+
+    pub fn entry_size() -> usize {
+        size_of::<Arc<RwLock<BlockEnum>>>() + size_of::<BlockHash>()
+    }
+
+    pub fn len(&self) -> usize {
+        self.blocks.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.blocks.is_empty()
+    }
+
+    pub fn contains(&self, hash: &BlockHash) -> bool {
+        self.hashes.contains(hash)
+    }
+
+    pub fn push_back(&mut self, block: Arc<RwLock<BlockEnum>>) {
+        let hash = block.read().unwrap().hash();
+        if self.hashes.contains(&hash) {
+            return;
+        }
+
+        self.blocks.push_back(block);
+        self.hashes.insert(hash);
+    }
+
+    pub fn front(&self) -> Option<&Arc<RwLock<BlockEnum>>> {
+        self.blocks.front()
+    }
+
+    pub fn pop_front(&mut self) -> Option<Arc<RwLock<BlockEnum>>> {
+        let front = self.blocks.pop_front();
+        if let Some(block) = &front {
+            self.hashes.remove(&block.read().unwrap().hash());
+        }
+        front
+    }
+}
+
+struct ConfirmationHeightProcessorThread {
+    guarded_data: Arc<Mutex<GuardedData>>,
+    stopped: Arc<AtomicBool>,
+    write_database_queue: Arc<WriteDatabaseQueue>,
+    ledger: Arc<Ledger>,
+    condition: Arc<Condvar>,
+    pub bounded_processor: ConfirmationHeightBounded,
+    pub unbounded_processor: ConfirmationHeightUnbounded,
+}
+
+impl ConfirmationHeightProcessorThread {
     pub fn run(&mut self, mode: ConfirmationHeightMode) {
         let mut guard = Some(self.guarded_data.lock().unwrap());
         while !self.stopped.load(Ordering::SeqCst) {
@@ -280,163 +483,13 @@ impl ConfirmationHeightProcessor {
         }
     }
 
-    pub fn set_cemented_observer(&mut self, callback: Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>) {
-        *self.cemented_observer.lock().unwrap() = Some(callback);
-    }
-
-    pub fn set_already_cemented_observer(&mut self, callback: Box<dyn Fn(BlockHash)>) {
-        *self.already_cemented_observer.lock().unwrap() = Some(callback);
-    }
-
-    pub fn notify_cemented(&self, blocks: &[Arc<RwLock<BlockEnum>>]) {
-        let lock = self.cemented_observer.lock().unwrap();
-        if let Some(observer) = lock.deref() {
-            for block in blocks {
-                (observer)(block);
-            }
-        }
-    }
-
-    pub fn notify_already_cemented(&self, block_hash: &BlockHash) {
-        let lock = self.already_cemented_observer.lock().unwrap();
-        if let Some(observer) = lock.deref() {
-            (observer)(*block_hash);
-        }
-    }
-
-    pub fn clear_cemented_observer(&mut self) {
-        *self.cemented_observer.lock().unwrap() = None;
-    }
-
-    pub fn is_processing_block(&self, block_hash: &BlockHash) -> bool {
-        self.is_processing_added_block(block_hash)
-            || self.unbounded_processor.has_iterated_over_block(block_hash)
-    }
-
-    pub fn is_processing_added_block(&self, block_hash: &BlockHash) -> bool {
-        let lk = self.guarded_data.lock().unwrap();
-        lk.original_hashes_pending.contains(block_hash)
-            || lk.awaiting_processing.contains(block_hash)
-    }
-
-    pub fn awaiting_processing_len(&self) -> usize {
-        let lk = self.guarded_data.lock().unwrap();
-        lk.awaiting_processing.len()
-    }
-
-    pub fn unbounded_pending_writes_len(&self) -> usize {
-        self.unbounded_processor
-            .pending_writes_size()
-            .load(Ordering::Relaxed)
-    }
-
-    pub fn stop(&self) {
-        {
-            let _guard = self.guarded_data.lock().unwrap(); //todo why is this needed?
-            self.stopped.store(true, Ordering::SeqCst);
-            self.unbounded_processor.stop();
-        }
-        self.condition.notify_one();
-    }
-}
-
-fn awaiting_processing_size_callback(
-    guarded_data: &Arc<Mutex<GuardedData>>,
-) -> Box<dyn Fn() -> u64> {
-    let guarded_data_clone = Arc::clone(guarded_data);
-
-    let awaiting_processing_size_callback = Box::new(move || {
-        let lk = guarded_data_clone.lock().unwrap();
-        lk.awaiting_processing.len() as u64
-    });
-    awaiting_processing_size_callback
-}
-
-fn block_already_cemented_callback(
-    already_cemented_observer: &Arc<Mutex<Option<Box<dyn Fn(BlockHash)>>>>,
-) -> Box<dyn Fn(BlockHash)> {
-    let already_cemented_observer_clone = Arc::clone(already_cemented_observer);
-    let already_cemented_callback = Box::new(move |block_hash| {
-        let lock = already_cemented_observer_clone.lock().unwrap();
-        if let Some(f) = lock.deref() {
-            (f)(block_hash);
-        }
-    });
-    already_cemented_callback
-}
-
-fn cemented_callback(
-    cemented_observer: &Arc<Mutex<Option<Box<dyn Fn(&Arc<RwLock<BlockEnum>>)>>>>,
-) -> Box<dyn Fn(&Vec<Arc<RwLock<BlockEnum>>>)> {
-    let cemented_observer_clone = Arc::clone(cemented_observer);
-    let cemented_callback: NotifyObserversCallback = Box::new(move |blocks| {
-        let lock = cemented_observer_clone.lock().unwrap();
-        if let Some(f) = lock.deref() {
-            for block in blocks {
-                (f)(block);
-            }
-        }
-    });
-    cemented_callback
-}
-
-pub struct GuardedData {
-    pub paused: bool,
-    pub awaiting_processing: AwaitingProcessingQueue,
-    // Hashes which have been added and processed, but have not been cemented
-    pub original_hashes_pending: HashSet<BlockHash>,
-    /** This is the last block popped off the confirmation height pending collection */
-    pub original_block: Option<Arc<RwLock<BlockEnum>>>,
-}
-
-pub struct AwaitingProcessingQueue {
-    blocks: VecDeque<Arc<RwLock<BlockEnum>>>,
-    hashes: HashSet<BlockHash>,
-}
-
-impl AwaitingProcessingQueue {
-    pub fn new() -> Self {
-        Self {
-            blocks: VecDeque::new(),
-            hashes: HashSet::new(),
-        }
-    }
-
-    pub fn entry_size() -> usize {
-        size_of::<Arc<RwLock<BlockEnum>>>() + size_of::<BlockHash>()
-    }
-
-    pub fn len(&self) -> usize {
-        self.blocks.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.blocks.is_empty()
-    }
-
-    pub fn contains(&self, hash: &BlockHash) -> bool {
-        self.hashes.contains(hash)
-    }
-
-    pub fn push_back(&mut self, block: Arc<RwLock<BlockEnum>>) {
-        let hash = block.read().unwrap().hash();
-        if self.hashes.contains(&hash) {
-            return;
-        }
-
-        self.blocks.push_back(block);
-        self.hashes.insert(hash);
-    }
-
-    pub fn front(&self) -> Option<&Arc<RwLock<BlockEnum>>> {
-        self.blocks.front()
-    }
-
-    pub fn pop_front(&mut self) -> Option<Arc<RwLock<BlockEnum>>> {
-        let front = self.blocks.pop_front();
-        if let Some(block) = &front {
-            self.hashes.remove(&block.read().unwrap().hash());
-        }
-        front
+    fn set_next_hash(&self) {
+        let mut lk = self.guarded_data.lock().unwrap();
+        debug_assert!(!lk.awaiting_processing.is_empty());
+        let block = lk.awaiting_processing.front().unwrap().clone();
+        lk.original_hashes_pending
+            .insert(block.read().unwrap().hash());
+        lk.original_block = Some(block);
+        lk.awaiting_processing.pop_front();
     }
 }

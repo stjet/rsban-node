@@ -1,3 +1,4 @@
+#include "boost/thread/latch.hpp"
 #include "nano/lib/blocks.hpp"
 
 #include <nano/lib/config.hpp>
@@ -884,6 +885,12 @@ void election_scheduler_activate (void * scheduler_a, const uint8_t * account_a,
 	election_scheduler->activate (account, txn_wrapper);
 }
 
+void wait_latch (void * latch_ptr)
+{
+	auto latch = static_cast<boost::latch *> (latch_ptr);
+	latch->wait ();
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -991,6 +998,8 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_is_sanitizer_build (nano::is_sanitizer_build);
 
 	rsnano::rsn_callback_election_scheduler_activate (election_scheduler_activate);
+
+	rsnano::rsn_set_wait_latch_callback (wait_latch);
 
 	callbacks_set = true;
 }

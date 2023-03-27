@@ -1,6 +1,9 @@
 use std::{
     collections::HashMap,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 
 use rsnano_core::Account;
@@ -18,14 +21,14 @@ pub struct ConfirmedIteratedPair {
 // This allows the load and stores to use relaxed atomic memory ordering.
 pub(crate) struct ConfirmedIteratedPairMap {
     map: HashMap<Account, ConfirmedIteratedPair>,
-    atomic_size: AtomicUsize,
+    atomic_size: Arc<AtomicUsize>,
 }
 
 impl ConfirmedIteratedPairMap {
     pub(crate) fn new() -> Self {
         Self {
             map: HashMap::new(),
-            atomic_size: AtomicUsize::new(0),
+            atomic_size: Arc::new(AtomicUsize::new(0)),
         }
     }
 
@@ -66,7 +69,7 @@ impl ConfirmedIteratedPairMap {
         self.atomic_size.store(0, Ordering::Relaxed);
     }
 
-    pub(crate) fn size_atomic(&self) -> usize {
-        self.atomic_size.load(Ordering::Relaxed)
+    pub(crate) fn size_atomic(&self) -> &Arc<AtomicUsize> {
+        &self.atomic_size
     }
 }

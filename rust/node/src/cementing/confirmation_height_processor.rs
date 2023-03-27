@@ -118,6 +118,7 @@ impl ConfirmationHeightProcessor {
             condition: condition.clone(),
             bounded_processor,
             unbounded_processor,
+            mode,
         };
 
         let join_handle = std::thread::Builder::new()
@@ -125,7 +126,7 @@ impl ConfirmationHeightProcessor {
             .spawn(move || {
                 // Do not start running the processing thread until other threads have finished their operations
                 latch.wait();
-                thread.run(mode);
+                thread.run();
             })
             .unwrap();
 
@@ -301,66 +302,38 @@ struct ConfirmationHeightProcessorThread {
     condition: Arc<Condvar>,
     pub bounded_processor: ConfirmationHeightBounded,
     pub unbounded_processor: ConfirmationHeightUnbounded,
+    mode: ConfirmationHeightMode,
 }
 
 impl ConfirmationHeightProcessorThread {
-    pub fn run(&mut self, mode: ConfirmationHeightMode) {
-        let mut guard = Some(self.guarded_data.lock().unwrap());
+    pub fn run(&mut self) {
+        let mut guard = self.guarded_data.lock().unwrap();
         while !self.stopped.load(Ordering::SeqCst) {
-            let mut lk = guard.take().unwrap();
-            if !lk.paused && !lk.awaiting_processing.is_empty() {
-                drop(lk);
+            if !guard.paused && !guard.awaiting_processing.is_empty() {
                 if self.bounded_processor.pending_empty()
                     && self.unbounded_processor.pending_empty()
                 {
-                    self.guarded_data
-                        .lock()
-                        .unwrap()
-                        .original_hashes_pending
-                        .clear();
+                    guard.original_hashes_pending.clear();
                 }
 
-                self.set_next_hash();
+                self.set_next_hash(&mut guard);
+                if let Some(original_block) = &guard.original_block {
+                    let original_block = Arc::clone(original_block);
 
-                const NUM_BLOCKS_TO_USE_UNBOUNDED: u64 = UNBOUNDED_CUTOFF;
-                let blocks_within_automatic_unbounded_selection =
-                    self.ledger.cache.block_count.load(Ordering::SeqCst)
-                        < NUM_BLOCKS_TO_USE_UNBOUNDED
-                        || self.ledger.cache.block_count.load(Ordering::SeqCst)
-                            - NUM_BLOCKS_TO_USE_UNBOUNDED
-                            < self.ledger.cache.cemented_count.load(Ordering::SeqCst);
+                    drop(guard);
 
-                // Don't want to mix up pending writes across different processors
-                let valid_unbounded = mode == ConfirmationHeightMode::Automatic
-                    && blocks_within_automatic_unbounded_selection
-                    && self.bounded_processor.pending_empty();
+                    // Don't want to mix up pending writes across different processors
+                    if self.should_use_unbounded_processor() {
+                        self.unbounded_processor.process(original_block);
+                    } else {
+                        self.bounded_processor.process(original_block.deref());
+                    }
 
-                let force_unbounded = !self.unbounded_processor.pending_empty()
-                    || mode == ConfirmationHeightMode::Unbounded;
-                if force_unbounded || valid_unbounded {
-                    debug_assert!(self.bounded_processor.pending_empty());
-                    let lk = self.guarded_data.lock().unwrap();
-                    let original_block = lk.original_block.clone();
-                    drop(lk);
-                    self.unbounded_processor
-                        .process(original_block.unwrap().clone());
-                } else {
-                    debug_assert!(
-                        mode == ConfirmationHeightMode::Bounded
-                            || mode == ConfirmationHeightMode::Automatic
-                    );
-                    debug_assert!(self.unbounded_processor.pending_empty());
-                    let lk = self.guarded_data.lock().unwrap();
-                    let original_block = lk.original_block.clone();
-                    drop(lk);
-                    self.bounded_processor
-                        .process(original_block.unwrap().deref());
+                    guard = self.guarded_data.lock().unwrap();
                 }
-
-                guard = Some(self.guarded_data.lock().unwrap());
             } else {
-                if !lk.paused {
-                    drop(lk);
+                if !guard.paused {
+                    drop(guard);
 
                     // If there are blocks pending cementing, then make sure we flush out the remaining writes
                     if !self.bounded_processor.pending_empty() {
@@ -373,12 +346,11 @@ impl ConfirmationHeightProcessorThread {
                             self.bounded_processor
                                 .cement_blocks(&mut scoped_write_guard);
                         }
-                        let mut lk = self.guarded_data.lock().unwrap();
-                        lk.original_block = None;
-                        lk.original_hashes_pending.clear();
+                        guard = self.guarded_data.lock().unwrap();
+                        guard.original_block = None;
+                        guard.original_hashes_pending.clear();
                         self.bounded_processor.clear_process_vars();
                         self.unbounded_processor.clear_process_vars();
-                        guard = Some(lk);
                     } else if !self.unbounded_processor.pending_empty() {
                         debug_assert!(self.bounded_processor.pending_empty());
                         {
@@ -388,39 +360,61 @@ impl ConfirmationHeightProcessorThread {
                             //todo why is scoped_write_guard not being used in Rust version????
                             self.unbounded_processor.cement_pending_blocks();
                         }
-                        let mut lk = self.guarded_data.lock().unwrap();
-                        lk.original_block = None;
-                        lk.original_hashes_pending.clear();
+                        guard = self.guarded_data.lock().unwrap();
+                        guard.original_block = None;
+                        guard.original_hashes_pending.clear();
                         self.bounded_processor.clear_process_vars();
                         self.unbounded_processor.clear_process_vars();
-                        guard = Some(lk);
                     } else {
-                        let mut lk = self.guarded_data.lock().unwrap();
-                        lk.original_block = None;
-                        lk.original_hashes_pending.clear();
+                        guard = self.guarded_data.lock().unwrap();
+                        guard.original_block = None;
+                        guard.original_hashes_pending.clear();
                         self.bounded_processor.clear_process_vars();
                         self.unbounded_processor.clear_process_vars();
                         // A block could have been confirmed during the re-locking
-                        if lk.awaiting_processing.is_empty() {
-                            lk = self.condition.wait(lk).unwrap();
+                        if guard.awaiting_processing.is_empty() {
+                            guard = self.condition.wait(guard).unwrap();
                         }
-                        guard = Some(lk);
                     }
                 } else {
                     // Pausing is only utilised in some tests to help prevent it processing added blocks until required.
-                    lk.original_block = None;
-                    guard = Some(self.condition.wait(lk).unwrap());
+                    guard.original_block = None;
+                    guard = self.condition.wait(guard).unwrap();
                 }
             }
         }
     }
 
-    fn set_next_hash(&self) {
-        let mut lk = self.guarded_data.lock().unwrap();
-        debug_assert!(!lk.awaiting_processing.is_empty());
-        let block = lk.awaiting_processing.front().unwrap().clone();
-        lk.original_hashes_pending.insert(block.hash());
-        lk.original_block = Some(block);
-        lk.awaiting_processing.pop_front();
+    fn should_use_unbounded_processor(&self) -> bool {
+        let valid_unbounded = self.valid_unbounded();
+        let force_unbounded = self.force_unbounded();
+
+        let use_unbounded_processor = force_unbounded || valid_unbounded;
+        use_unbounded_processor
+    }
+
+    fn force_unbounded(&self) -> bool {
+        !self.unbounded_processor.pending_empty() || self.mode == ConfirmationHeightMode::Unbounded
+    }
+
+    fn valid_unbounded(&self) -> bool {
+        self.mode == ConfirmationHeightMode::Automatic
+            && self.are_blocks_within_automatic_unbounded_section()
+            && self.bounded_processor.pending_empty()
+    }
+
+    fn are_blocks_within_automatic_unbounded_section(&self) -> bool {
+        let block_count = self.ledger.cache.block_count.load(Ordering::SeqCst);
+        let cemented_count = self.ledger.cache.cemented_count.load(Ordering::SeqCst);
+
+        block_count < UNBOUNDED_CUTOFF || block_count - UNBOUNDED_CUTOFF < cemented_count
+    }
+
+    fn set_next_hash(&self, guard: &mut GuardedData) {
+        debug_assert!(!guard.awaiting_processing.is_empty());
+        let block = guard.awaiting_processing.front().unwrap().clone();
+        guard.original_hashes_pending.insert(block.hash());
+        guard.original_block = Some(block);
+        guard.awaiting_processing.pop_front();
     }
 }

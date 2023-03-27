@@ -58,12 +58,8 @@ add_library(
   cli.cpp
   common.hpp
   common.cpp
-  confirmation_height_bounded.hpp
-  confirmation_height_bounded.cpp
   confirmation_height_processor.hpp
   confirmation_height_processor.cpp
-  confirmation_height_unbounded.hpp
-  confirmation_height_unbounded.cpp
   confirmation_solicitor.hpp
   confirmation_solicitor.cpp
   daemonconfig.hpp

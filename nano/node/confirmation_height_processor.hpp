@@ -6,8 +6,6 @@
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/timer.hpp>
-#include <nano/node/confirmation_height_bounded.hpp>
-#include <nano/node/confirmation_height_unbounded.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/store.hpp>
 
@@ -22,6 +20,7 @@ class latch;
 namespace nano
 {
 class ledger;
+class logging;
 class logger_mt;
 class write_database_queue;
 

@@ -7,7 +7,10 @@ use std::{
 use num::FromPrimitive;
 use rsnano_core::{BlockEnum, BlockHash};
 use rsnano_node::{
-    cementing::{ConfHeightDetails, ConfirmationHeightProcessor, ConfirmedIteratedPair},
+    cementing::{
+        ConfHeightDetails, ConfirmationHeightBounded, ConfirmationHeightProcessor,
+        ConfirmedIteratedPair,
+    },
     config::Logging,
 };
 
@@ -253,4 +256,14 @@ pub unsafe extern "C" fn rsn_conf_height_unbounded_block_cache_element_size() ->
 #[no_mangle]
 pub extern "C" fn rsn_conf_height_details_size() -> usize {
     std::mem::size_of::<ConfHeightDetails>()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_write_details_size() -> usize {
+    ConfirmationHeightBounded::write_details_size()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_bounded_confirmed_info_entry_size() -> usize {
+    ConfirmationHeightBounded::confirmed_info_entry_size()
 }

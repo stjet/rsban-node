@@ -158,3 +158,54 @@ void rsnano::read_block_array_dto (rsnano::BlockArrayDto & dto, std::vector<std:
 	}
 	rsnano::rsn_block_array_destroy (&dto);
 }
+
+rsnano::block_hash_vec::block_hash_vec () :
+	handle{ rsnano::rsn_block_hash_vec_create () }
+{
+}
+
+rsnano::block_hash_vec::block_hash_vec (rsnano::BlockHashVecHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
+rsnano::block_hash_vec::block_hash_vec (rsnano::block_hash_vec const & other_a) :
+	handle{ rsnano::rsn_block_hash_vec_clone (other_a.handle) }
+{
+}
+
+rsnano::block_hash_vec::~block_hash_vec ()
+{
+	rsnano::rsn_block_hash_vec_destroy (handle);
+}
+
+rsnano::block_hash_vec & rsnano::block_hash_vec::operator= (rsnano::block_hash_vec const & other_a)
+{
+	rsnano::rsn_block_hash_vec_destroy (handle);
+	handle = rsnano::rsn_block_hash_vec_clone (other_a.handle);
+	return *this;
+}
+bool rsnano::block_hash_vec::empty () const
+{
+	return size () == 0;
+}
+size_t rsnano::block_hash_vec::size () const
+{
+	return rsnano::rsn_block_hash_vec_size (handle);
+}
+void rsnano::block_hash_vec::push_back (const nano::block_hash & hash)
+{
+	rsnano::rsn_block_hash_vec_push (handle, hash.bytes.data ());
+}
+void rsnano::block_hash_vec::clear ()
+{
+	rsnano::rsn_block_hash_vec_clear (handle);
+}
+void rsnano::block_hash_vec::assign (block_hash_vec const & source_a, size_t start, size_t end)
+{
+	rsnano::rsn_block_hash_vec_assign_range (handle, source_a.handle, start, end);
+}
+void rsnano::block_hash_vec::truncate (size_t new_size_a)
+{
+	rsnano::rsn_block_hash_vec_truncate (handle, new_size_a);
+}

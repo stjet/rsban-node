@@ -1,8 +1,13 @@
+#include "nano/lib/rsnanoutils.hpp"
+
+#include <nano/lib/rsnano.hpp>
 #include <nano/lib/utility.hpp>
 
 #include <boost/dll/runtime_symbol_info.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+
+#include <memory>
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -61,7 +66,12 @@ void nano::set_file_descriptor_limit (std::size_t limit)
 }
 
 nano::container_info_composite::container_info_composite (std::string const & name) :
-	name (name)
+	container_info_component{ rsnano::rsn_container_info_composite_create (name.c_str ()) }
+{
+}
+
+nano::container_info_composite::container_info_composite (rsnano::ContainerInfoComponentHandle * handle_a) :
+	container_info_component{ handle_a }
 {
 }
 
@@ -72,21 +82,71 @@ bool nano::container_info_composite::is_composite () const
 
 void nano::container_info_composite::add_component (std::unique_ptr<container_info_component> child)
 {
-	children.push_back (std::move (child));
+	rsnano::rsn_container_info_composite_child_add (handle, child->handle);
 }
 
-std::vector<std::unique_ptr<nano::container_info_component>> const & nano::container_info_composite::get_children () const
+std::vector<std::unique_ptr<nano::container_info_component>> nano::container_info_composite::get_children () const
 {
-	return children;
+	std::vector<std::unique_ptr<nano::container_info_component>> result;
+	auto size = rsnano::rsn_container_info_composite_children_len (handle);
+	result.reserve (size);
+	for (auto i = 0; i < size; ++i)
+	{
+		auto child_handle = rsnano::rsn_container_info_composite_child (handle, i);
+		if (rsnano::rsn_container_info_component_is_composite (child_handle))
+		{
+			result.push_back (std::make_unique<nano::container_info_composite> (child_handle));
+		}
+		else
+		{
+			result.push_back (std::make_unique<nano::container_info_leaf> (child_handle));
+		}
+	}
+
+	return result;
 }
 
-std::string const & nano::container_info_composite::get_name () const
+std::string nano::container_info_composite::get_name () const
 {
-	return name;
+	rsnano::StringDto dto;
+	rsnano::rsn_container_info_composite_name (handle, &dto);
+	return rsnano::convert_dto_to_string (dto);
+}
+
+nano::container_info_component::container_info_component (rsnano::ContainerInfoComponentHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
+nano::container_info_component::container_info_component (container_info_component && other_a)
+{
+	if (handle)
+	{
+		rsnano::rsn_container_info_component_destroy (handle);
+	}
+	handle = other_a.handle;
+	other_a.handle = nullptr;
+}
+
+nano::container_info_component::~container_info_component ()
+{
+	if (handle)
+	{
+		rsnano::rsn_container_info_component_destroy (handle);
+	}
 }
 
 nano::container_info_leaf::container_info_leaf (const container_info & info) :
-	info (info)
+	container_info_component{ rsnano::rsn_container_info_leaf_create (info.name.c_str (), info.count, info.sizeof_element) },
+	info (info),
+	info_loaded{ true }
+{
+}
+
+nano::container_info_leaf::container_info_leaf (rsnano::ContainerInfoComponentHandle * handle_a) :
+	container_info_component{ handle_a },
+	info_loaded{ false },
+	info{}
 {
 }
 
@@ -97,6 +157,15 @@ bool nano::container_info_leaf::is_composite () const
 
 nano::container_info const & nano::container_info_leaf::get_info () const
 {
+	if (!info_loaded)
+	{
+		rsnano::ContainerInfoDto info_dto;
+		rsnano::rsn_container_info_leaf_get_info (handle, &info_dto);
+		info.count = info_dto.count;
+		info.sizeof_element = info_dto.sizeof_element;
+		info.name = rsnano::convert_dto_to_string (info_dto.name);
+		info_loaded = true;
+	}
 	return info;
 }
 

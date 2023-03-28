@@ -563,7 +563,7 @@ impl ConfirmationHeightBounded {
     }
 
     pub(crate) fn process(&mut self, original_block: &BlockEnum) {
-        if self.pending_empty() {
+        if self.pending_writes_empty() {
             self.clear_process_vars();
             self.timer = Instant::now();
         }
@@ -770,7 +770,7 @@ impl ConfirmationHeightBounded {
             .store(0, Ordering::Relaxed);
     }
 
-    pub(crate) fn pending_empty(&self) -> bool {
+    pub(crate) fn pending_writes_empty(&self) -> bool {
         self.pending_writes.is_empty()
     }
 }

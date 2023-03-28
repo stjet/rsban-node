@@ -22,6 +22,9 @@ pub use atomics::*;
 mod latch;
 pub use latch::*;
 
+mod container_info;
+pub use container_info::*;
+
 use crate::VoidPointerCallback;
 
 pub struct ContextWrapper {

@@ -964,7 +964,7 @@ TEST (peer_exclusion, container_info)
 	auto component{ excluded_peers.collect_container_info ("") };
 	auto composite (dynamic_cast<nano::container_info_composite *> (component.get ()));
 	ASSERT_NE (nullptr, component);
-	auto & children (composite->get_children ());
+	auto children (composite->get_children ());
 	ASSERT_EQ (1, children.size ());
 	auto child_leaf (dynamic_cast<nano::container_info_leaf *> (children.front ().get ()));
 	ASSERT_NE (nullptr, child_leaf);

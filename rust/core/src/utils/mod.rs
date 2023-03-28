@@ -12,6 +12,9 @@ pub use toml::*;
 mod logger;
 pub use logger::{Logger, NullLogger};
 
+mod container_info;
+pub use container_info::{ContainerInfo, ContainerInfoComponent};
+
 pub trait Serialize {
     fn serialized_size() -> usize;
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()>;

@@ -77,7 +77,7 @@ impl ConfirmationHeightUnbounded {
         }
     }
 
-    pub(crate) fn pending_empty(&self) -> bool {
+    pub(crate) fn pending_writes_empty(&self) -> bool {
         self.cement_queue.is_empty()
     }
 
@@ -104,7 +104,7 @@ impl ConfirmationHeightUnbounded {
     }
 
     pub(crate) fn process(&mut self, original_block: Arc<BlockEnum>) {
-        if self.pending_empty() {
+        if self.pending_writes_empty() {
             self.clear_process_vars();
             self.cementor.set_last_cementation();
         }

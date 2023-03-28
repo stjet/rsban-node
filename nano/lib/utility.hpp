@@ -31,6 +31,11 @@ namespace program_options
 }
 }
 
+namespace rsnano
+{
+class ContainerInfoComponentHandle;
+}
+
 void assert_internal (char const * check_expr, char const * func, char const * file, unsigned int line, bool is_release_assert, std::string_view error = "");
 
 #define release_assert_1(check) check ? (void)0 : assert_internal (#check, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__, true)
@@ -79,33 +84,36 @@ struct container_info
 class container_info_component
 {
 public:
-	virtual ~container_info_component () = default;
+	container_info_component (rsnano::ContainerInfoComponentHandle * handle_a);
+	container_info_component (container_info_component && other_a);
+	container_info_component (container_info_component const &) = delete;
+	virtual ~container_info_component ();
 	virtual bool is_composite () const = 0;
+	rsnano::ContainerInfoComponentHandle * handle;
 };
 
 class container_info_composite : public container_info_component
 {
 public:
 	container_info_composite (std::string const & name);
+	container_info_composite (rsnano::ContainerInfoComponentHandle * handle_a);
 	bool is_composite () const override;
 	void add_component (std::unique_ptr<container_info_component> child);
-	std::vector<std::unique_ptr<container_info_component>> const & get_children () const;
-	std::string const & get_name () const;
-
-private:
-	std::string name;
-	std::vector<std::unique_ptr<container_info_component>> children;
+	std::vector<std::unique_ptr<container_info_component>> get_children () const;
+	std::string get_name () const;
 };
 
 class container_info_leaf : public container_info_component
 {
 public:
 	container_info_leaf (container_info const & info);
+	container_info_leaf (rsnano::ContainerInfoComponentHandle * handle_a);
 	bool is_composite () const override;
 	container_info const & get_info () const;
 
 private:
-	container_info info;
+	mutable container_info info;
+	mutable bool info_loaded;
 };
 
 /*

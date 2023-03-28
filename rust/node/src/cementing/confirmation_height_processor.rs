@@ -288,9 +288,9 @@ fn cemented_callback(
 struct GuardedData {
     pub paused: bool,
     pub awaiting_processing: BlockQueue,
-    // Hashes which have been added and processed, but have not been cemented
+    /// Hashes which have been added and processed, but have not been cemented
     pub original_hashes_pending: HashSet<BlockHash>,
-    /** This is the last block popped off the confirmation height pending collection */
+    /// This is the last block popped off the awaiting_processing queue
     pub original_block: Option<Arc<BlockEnum>>,
 }
 
@@ -300,8 +300,8 @@ struct ConfirmationHeightProcessorThread {
     write_database_queue: Arc<WriteDatabaseQueue>,
     ledger: Arc<Ledger>,
     condition: Arc<Condvar>,
-    pub bounded_processor: ConfirmationHeightBounded,
-    pub unbounded_processor: ConfirmationHeightUnbounded,
+    bounded_processor: ConfirmationHeightBounded,
+    unbounded_processor: ConfirmationHeightUnbounded,
     mode: ConfirmationHeightMode,
 }
 
@@ -309,20 +309,24 @@ impl ConfirmationHeightProcessorThread {
     pub fn run(&mut self) {
         let mut guard = self.guarded_data.lock().unwrap();
         while !self.stopped.load(Ordering::SeqCst) {
-            if !guard.paused && !guard.awaiting_processing.is_empty() {
-                if self.bounded_processor.pending_empty()
-                    && self.unbounded_processor.pending_empty()
+            if guard.paused {
+                // Pausing is only utilised in some tests to help prevent it processing added blocks until required.
+                guard.original_block = None;
+                guard = self.condition.wait(guard).unwrap();
+            } else if !guard.awaiting_processing.is_empty() {
+                if self.bounded_processor.pending_writes_empty()
+                    && self.unbounded_processor.pending_writes_empty()
                 {
                     guard.original_hashes_pending.clear();
                 }
 
                 self.set_next_hash(&mut guard);
+
                 if let Some(original_block) = &guard.original_block {
                     let original_block = Arc::clone(original_block);
 
                     drop(guard);
 
-                    // Don't want to mix up pending writes across different processors
                     if self.should_use_unbounded_processor() {
                         self.unbounded_processor.process(original_block);
                     } else {
@@ -332,75 +336,66 @@ impl ConfirmationHeightProcessorThread {
                     guard = self.guarded_data.lock().unwrap();
                 }
             } else {
-                if !guard.paused {
-                    drop(guard);
+                drop(guard);
 
-                    // If there are blocks pending cementing, then make sure we flush out the remaining writes
-                    if !self.bounded_processor.pending_empty() {
-                        debug_assert!(self.unbounded_processor.pending_empty());
+                // If there are blocks pending cementing, then make sure we flush out the remaining writes
+                if !self.bounded_processor.pending_writes_empty() {
+                    debug_assert!(self.unbounded_processor.pending_writes_empty());
 
-                        {
-                            let mut scoped_write_guard = self
-                                .write_database_queue
-                                .wait(rsnano_ledger::Writer::ConfirmationHeight);
-                            self.bounded_processor
-                                .cement_blocks(&mut scoped_write_guard);
-                        }
-                        guard = self.guarded_data.lock().unwrap();
-                        guard.original_block = None;
-                        guard.original_hashes_pending.clear();
-                        self.bounded_processor.clear_process_vars();
-                        self.unbounded_processor.clear_process_vars();
-                    } else if !self.unbounded_processor.pending_empty() {
-                        debug_assert!(self.bounded_processor.pending_empty());
-                        {
-                            let _scoped_write_guard = self
-                                .write_database_queue
-                                .wait(rsnano_ledger::Writer::ConfirmationHeight);
-                            //todo why is scoped_write_guard not being used in Rust version????
-                            self.unbounded_processor.cement_pending_blocks();
-                        }
-                        guard = self.guarded_data.lock().unwrap();
-                        guard.original_block = None;
-                        guard.original_hashes_pending.clear();
-                        self.bounded_processor.clear_process_vars();
-                        self.unbounded_processor.clear_process_vars();
-                    } else {
-                        guard = self.guarded_data.lock().unwrap();
-                        guard.original_block = None;
-                        guard.original_hashes_pending.clear();
-                        self.bounded_processor.clear_process_vars();
-                        self.unbounded_processor.clear_process_vars();
-                        // A block could have been confirmed during the re-locking
-                        if guard.awaiting_processing.is_empty() {
-                            guard = self.condition.wait(guard).unwrap();
-                        }
+                    {
+                        let mut scoped_write_guard = self
+                            .write_database_queue
+                            .wait(rsnano_ledger::Writer::ConfirmationHeight);
+                        self.bounded_processor
+                            .cement_blocks(&mut scoped_write_guard);
                     }
-                } else {
-                    // Pausing is only utilised in some tests to help prevent it processing added blocks until required.
+                    guard = self.guarded_data.lock().unwrap();
                     guard.original_block = None;
-                    guard = self.condition.wait(guard).unwrap();
+                    guard.original_hashes_pending.clear();
+                    self.bounded_processor.clear_process_vars();
+                    self.unbounded_processor.clear_process_vars();
+                } else if !self.unbounded_processor.pending_writes_empty() {
+                    debug_assert!(self.bounded_processor.pending_writes_empty());
+                    {
+                        let _scoped_write_guard = self
+                            .write_database_queue
+                            .wait(rsnano_ledger::Writer::ConfirmationHeight);
+                        //todo why is scoped_write_guard not being used in Rust version????
+                        self.unbounded_processor.cement_pending_blocks();
+                    }
+                    guard = self.guarded_data.lock().unwrap();
+                    guard.original_block = None;
+                    guard.original_hashes_pending.clear();
+                    self.bounded_processor.clear_process_vars();
+                    self.unbounded_processor.clear_process_vars();
+                } else {
+                    guard = self.guarded_data.lock().unwrap();
+                    guard.original_block = None;
+                    guard.original_hashes_pending.clear();
+                    self.bounded_processor.clear_process_vars();
+                    self.unbounded_processor.clear_process_vars();
+                    // A block could have been confirmed during the re-locking
+                    if guard.awaiting_processing.is_empty() {
+                        guard = self.condition.wait(guard).unwrap();
+                    }
                 }
             }
         }
     }
 
     fn should_use_unbounded_processor(&self) -> bool {
-        let valid_unbounded = self.valid_unbounded();
-        let force_unbounded = self.force_unbounded();
-
-        let use_unbounded_processor = force_unbounded || valid_unbounded;
-        use_unbounded_processor
+        self.force_unbounded() || self.valid_unbounded()
     }
 
     fn force_unbounded(&self) -> bool {
-        !self.unbounded_processor.pending_empty() || self.mode == ConfirmationHeightMode::Unbounded
+        !self.unbounded_processor.pending_writes_empty()
+            || self.mode == ConfirmationHeightMode::Unbounded
     }
 
     fn valid_unbounded(&self) -> bool {
         self.mode == ConfirmationHeightMode::Automatic
             && self.are_blocks_within_automatic_unbounded_section()
-            && self.bounded_processor.pending_empty()
+            && self.bounded_processor.pending_writes_empty()
     }
 
     fn are_blocks_within_automatic_unbounded_section(&self) -> bool {

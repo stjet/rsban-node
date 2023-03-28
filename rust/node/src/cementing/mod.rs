@@ -1,24 +1,26 @@
-use rsnano_core::{Account, BlockHash};
-
 mod block_cache;
 mod block_cementor;
+mod block_queue;
 mod cement_queue;
 mod confirmation_height_bounded;
+mod confirmation_height_multi_mode;
 mod confirmation_height_processor;
 mod confirmation_height_unbounded;
 mod confirmed_iterated_pairs;
 mod implicit_receive_cemented_mapping;
 mod unconfirmed_receive_and_sources_collector;
 
-mod block_queue;
-pub(crate) use block_queue::BlockQueue;
+use block_queue::BlockQueue;
+use rsnano_core::{Account, BlockHash};
 
-pub(crate) use confirmation_height_bounded::{
+use confirmation_height_bounded::{
     ConfirmationHeightBounded, ConfirmedInfo, NotifyObserversCallback, WriteDetails,
 };
+pub use confirmation_height_multi_mode::ConfirmationHeightMode;
+use confirmation_height_multi_mode::ConfirmationHeightMultiMode;
 pub use confirmation_height_processor::ConfirmationHeightProcessor;
-pub(crate) use confirmation_height_unbounded::ConfirmationHeightUnbounded;
-pub use confirmed_iterated_pairs::ConfirmedIteratedPair;
+use confirmation_height_unbounded::ConfirmationHeightUnbounded;
+use confirmed_iterated_pairs::ConfirmedIteratedPair;
 
 /// We need these details whenever we want to write the new
 /// confirmation height to the ledger

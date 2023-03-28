@@ -121,11 +121,6 @@ void nano::confirmation_height_processor::set_block_already_cemented_observer (s
 	rsnano::rsn_confirmation_height_processor_set_already_cemented_observer (handle, block_hash_callback, context, delete_block_hash_callback_context);
 }
 
-size_t nano::confirmation_height_processor::unbounded_pending_writes_size () const
-{
-	return rsnano::rsn_confirmation_height_processor_unbounded_pending_writes (handle);
-}
-
 std::size_t nano::confirmation_height_processor::awaiting_processing_size () const
 {
 	return rsnano::rsn_confirmation_height_processor_awaiting_processing_size (handle);

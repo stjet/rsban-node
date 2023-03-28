@@ -16,19 +16,13 @@ use rsnano_core::{
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 
-use crate::{
-    config::{ConfirmationHeightMode, Logging},
-    stats::Stats,
-};
+use crate::{config::Logging, stats::Stats};
 
 use super::{
     block_cache::BlockCache, BlockQueue, ConfHeightDetails, ConfirmationHeightBounded,
-    ConfirmationHeightUnbounded, ConfirmedInfo, ConfirmedIteratedPair, NotifyObserversCallback,
-    WriteDetails,
+    ConfirmationHeightMode, ConfirmationHeightMultiMode, ConfirmationHeightUnbounded,
+    ConfirmedInfo, ConfirmedIteratedPair, NotifyObserversCallback, WriteDetails,
 };
-
-/** When the uncemented count (block count - cemented count) is less than this use the unbounded processor */
-const UNBOUNDED_CUTOFF: u64 = 16384;
 
 pub struct ConfirmationHeightProcessor {
     guarded_data: Arc<Mutex<GuardedData>>,
@@ -41,6 +35,7 @@ pub struct ConfirmationHeightProcessor {
     already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash) + Send>>>>,
     thread: Option<JoinHandle<()>>,
     block_cache: Arc<BlockCache>,
+
     unbounded_pending_writes: Arc<AtomicUsize>,
     bounded_accounts_confirmed: Arc<AtomicUsize>,
     bounded_pending_writes: Arc<AtomicUsize>,
@@ -116,10 +111,14 @@ impl ConfirmationHeightProcessor {
             guarded_data: guarded_data.clone(),
             stopped: stopped.clone(),
             write_database_queue,
-            ledger,
+            ledger: ledger.clone(),
             condition: condition.clone(),
-            bounded_processor,
-            unbounded_processor,
+            processor: ConfirmationHeightMultiMode {
+                bounded_processor,
+                unbounded_processor,
+                mode,
+                ledger,
+            },
             mode,
         };
 
@@ -237,18 +236,7 @@ impl ConfirmationHeightProcessor {
     }
 
     pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
-        //todo count observers!
         let children = vec![
-            ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "cemented_observers".to_owned(),
-                count: 1,
-                sizeof_element: size_of::<usize>(),
-            }),
-            ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "block_already_cemented_observers".to_owned(),
-                count: 1,
-                sizeof_element: size_of::<usize>(),
-            }),
             ContainerInfoComponent::Leaf(ContainerInfo {
                 name: "awaiting_processing".to_owned(),
                 count: self.awaiting_processing_len(),
@@ -374,8 +362,7 @@ struct ConfirmationHeightProcessorThread {
     write_database_queue: Arc<WriteDatabaseQueue>,
     ledger: Arc<Ledger>,
     condition: Arc<Condvar>,
-    bounded_processor: ConfirmationHeightBounded,
-    unbounded_processor: ConfirmationHeightUnbounded,
+    processor: ConfirmationHeightMultiMode,
     mode: ConfirmationHeightMode,
 }
 
@@ -388,9 +375,7 @@ impl ConfirmationHeightProcessorThread {
                 guard.original_block = None;
                 guard = self.condition.wait(guard).unwrap();
             } else if !guard.awaiting_processing.is_empty() {
-                if self.bounded_processor.pending_writes_empty()
-                    && self.unbounded_processor.pending_writes_empty()
-                {
+                if self.processor.pending_writes_empty() {
                     guard.original_hashes_pending.clear();
                 }
 
@@ -401,11 +386,7 @@ impl ConfirmationHeightProcessorThread {
 
                     drop(guard);
 
-                    if self.should_use_unbounded_processor() {
-                        self.unbounded_processor.process(original_block);
-                    } else {
-                        self.bounded_processor.process(original_block.deref());
-                    }
+                    self.processor.process(original_block);
 
                     guard = self.guarded_data.lock().unwrap();
                 }
@@ -413,41 +394,39 @@ impl ConfirmationHeightProcessorThread {
                 drop(guard);
 
                 // If there are blocks pending cementing, then make sure we flush out the remaining writes
-                if !self.bounded_processor.pending_writes_empty() {
-                    debug_assert!(self.unbounded_processor.pending_writes_empty());
+                if !self.processor.bounded_processor.pending_writes_empty() {
+                    debug_assert!(self.processor.unbounded_processor.pending_writes_empty());
 
                     {
                         let mut scoped_write_guard = self
                             .write_database_queue
                             .wait(rsnano_ledger::Writer::ConfirmationHeight);
-                        self.bounded_processor
+                        self.processor
+                            .bounded_processor
                             .cement_blocks(&mut scoped_write_guard);
                     }
                     guard = self.guarded_data.lock().unwrap();
                     guard.original_block = None;
                     guard.original_hashes_pending.clear();
-                    self.bounded_processor.clear_process_vars();
-                    self.unbounded_processor.clear_process_vars();
-                } else if !self.unbounded_processor.pending_writes_empty() {
-                    debug_assert!(self.bounded_processor.pending_writes_empty());
+                    self.processor.clear_process_vars();
+                } else if !self.processor.unbounded_processor.pending_writes_empty() {
+                    debug_assert!(self.processor.bounded_processor.pending_writes_empty());
                     {
                         let _scoped_write_guard = self
                             .write_database_queue
                             .wait(rsnano_ledger::Writer::ConfirmationHeight);
                         //todo why is scoped_write_guard not being used in Rust version????
-                        self.unbounded_processor.cement_pending_blocks();
+                        self.processor.unbounded_processor.cement_pending_blocks();
                     }
                     guard = self.guarded_data.lock().unwrap();
                     guard.original_block = None;
                     guard.original_hashes_pending.clear();
-                    self.bounded_processor.clear_process_vars();
-                    self.unbounded_processor.clear_process_vars();
+                    self.processor.clear_process_vars();
                 } else {
                     guard = self.guarded_data.lock().unwrap();
                     guard.original_block = None;
                     guard.original_hashes_pending.clear();
-                    self.bounded_processor.clear_process_vars();
-                    self.unbounded_processor.clear_process_vars();
+                    self.processor.clear_process_vars();
                     // A block could have been confirmed during the re-locking
                     if guard.awaiting_processing.is_empty() {
                         guard = self.condition.wait(guard).unwrap();
@@ -455,28 +434,6 @@ impl ConfirmationHeightProcessorThread {
                 }
             }
         }
-    }
-
-    fn should_use_unbounded_processor(&self) -> bool {
-        self.force_unbounded() || self.valid_unbounded()
-    }
-
-    fn force_unbounded(&self) -> bool {
-        !self.unbounded_processor.pending_writes_empty()
-            || self.mode == ConfirmationHeightMode::Unbounded
-    }
-
-    fn valid_unbounded(&self) -> bool {
-        self.mode == ConfirmationHeightMode::Automatic
-            && self.are_blocks_within_automatic_unbounded_section()
-            && self.bounded_processor.pending_writes_empty()
-    }
-
-    fn are_blocks_within_automatic_unbounded_section(&self) -> bool {
-        let block_count = self.ledger.cache.block_count.load(Ordering::SeqCst);
-        let cemented_count = self.ledger.cache.cemented_count.load(Ordering::SeqCst);
-
-        block_count < UNBOUNDED_CUTOFF || block_count - UNBOUNDED_CUTOFF < cemented_count
     }
 
     fn set_next_hash(&self, guard: &mut GuardedData) {

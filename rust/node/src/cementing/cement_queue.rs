@@ -9,7 +9,7 @@ use std::{
 use super::ConfHeightDetails;
 
 /// Queue for blocks that will be cemented
-pub(crate) struct CementQueue {
+pub(super) struct CementQueue {
     pending_writes: VecDeque<ConfHeightDetails>,
     pending_writes_size: Arc<AtomicUsize>,
 }

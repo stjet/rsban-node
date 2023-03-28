@@ -15,7 +15,7 @@ use crate::{
 use super::{block_cache::BlockCache, cement_queue::CementQueue, ConfHeightDetails};
 
 // Cements blocks. That means it increases the confirmation_height of the account
-pub(crate) struct BlockCementor {
+pub(super) struct BlockCementor {
     batch_start: Instant,
     last_cementation: Instant,
     batch_separate_pending_min_time: Duration,
@@ -28,7 +28,7 @@ pub(crate) struct BlockCementor {
 }
 
 impl BlockCementor {
-    pub(crate) fn new(
+    pub fn new(
         batch_separate_pending_min_time: Duration,
         write_database_queue: Arc<WriteDatabaseQueue>,
         ledger: Arc<Ledger>,

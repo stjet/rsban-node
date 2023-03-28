@@ -236,10 +236,3 @@ fn test_ipc_port() -> u16 {
 fn test_websocket_port() -> u16 {
     get_env_or_default("NANO_TEST_WEBSOCKET_PORT", 17078)
 }
-
-#[derive(FromPrimitive, Clone, PartialEq, Eq, Copy)]
-pub enum ConfirmationHeightMode {
-    Automatic,
-    Unbounded,
-    Bounded,
-}

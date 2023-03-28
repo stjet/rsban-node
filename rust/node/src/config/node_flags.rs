@@ -1,6 +1,6 @@
 use rsnano_ledger::GenerateCache;
 
-use super::ConfirmationHeightMode;
+use crate::cementing::ConfirmationHeightMode;
 
 #[derive(Clone)]
 pub struct NodeFlags {

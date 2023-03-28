@@ -1,16 +1,13 @@
 use std::{
     ffi::{c_char, c_void, CStr},
     ops::Deref,
-    sync::{atomic::Ordering, Arc, Mutex, RwLock, Weak},
+    sync::{Arc, RwLock},
     time::Duration,
 };
 
 use num::FromPrimitive;
 use rsnano_core::{BlockEnum, BlockHash};
-use rsnano_node::{
-    cementing::{ConfHeightDetails, ConfirmationHeightProcessor, ConfirmedIteratedPair},
-    config::Logging,
-};
+use rsnano_node::{cementing::ConfirmationHeightProcessor, config::Logging};
 
 use crate::{
     copy_hash_bytes,
@@ -161,68 +158,10 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_is_processing_added_b
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_pending_writes(
-    handle: *mut ConfirmationHeightProcessorHandle,
-) -> usize {
-    (*handle).0.unbounded_pending_writes_len()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_size(
     handle: *mut ConfirmationHeightProcessorHandle,
 ) -> usize {
     (*handle).0.awaiting_processing_len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_pending_writes_size(
-    handle: *mut ConfirmationHeightProcessorHandle,
-) -> usize {
-    (*handle).0.unbounded_pending_writes_len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_bounded_pending_len(
-    handle: *mut ConfirmationHeightProcessorHandle,
-) -> usize {
-    (*handle).0.bounded_pending_writes.load(Ordering::Relaxed)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_bounded_accounts_confirmed_info_len(
-    handle: *mut ConfirmationHeightProcessorHandle,
-) -> usize {
-    (*handle)
-        .0
-        .bounded_accounts_confirmed
-        .load(Ordering::Relaxed)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_conf_iterated_pairs_len(
-    handle: *mut ConfirmationHeightProcessorHandle,
-) -> usize {
-    (*handle)
-        .0
-        .unbounded_confirmed_iterated_pairs_size
-        .load(Ordering::Relaxed)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_implicit_receive_cemented_size(
-    handle: *mut ConfirmationHeightProcessorHandle,
-) -> usize {
-    (*handle)
-        .0
-        .unbounded_implicit_receive_cemented_mapping_size
-        .load(Ordering::Relaxed)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_unbounded_block_cache_size(
-    handle: *mut ConfirmationHeightProcessorHandle,
-) -> usize {
-    (*handle).0.unbounded_block_cache_size()
 }
 
 #[no_mangle]
@@ -242,40 +181,4 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_collect_container_inf
         .0
         .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
     Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_awaiting_processing_entry_size() -> usize
-{
-    ConfirmationHeightProcessor::awaiting_processing_entry_size()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_iterated_pair_size() -> usize {
-    std::mem::size_of::<ConfirmedIteratedPair>()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_implicit_receive_cemented_mapping_value_size() -> usize {
-    std::mem::size_of::<Weak<Mutex<ConfHeightDetails>>>()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_conf_height_unbounded_block_cache_element_size() -> usize {
-    std::mem::size_of::<Arc<BlockEnum>>()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_conf_height_details_size() -> usize {
-    std::mem::size_of::<ConfHeightDetails>()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_bounded_write_details_size() -> usize {
-    ConfirmationHeightProcessor::bounded_write_details_size()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_bounded_confirmed_info_entry_size() -> usize {
-    ConfirmationHeightProcessor::bounded_confirmed_info_entry_size()
 }

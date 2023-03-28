@@ -41,11 +41,11 @@ pub struct ConfirmationHeightProcessor {
     already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash) + Send>>>>,
     thread: Option<JoinHandle<()>>,
     block_cache: Arc<BlockCache>,
-    pub unbounded_pending_writes: Arc<AtomicUsize>,
-    pub bounded_accounts_confirmed: Arc<AtomicUsize>,
-    pub bounded_pending_writes: Arc<AtomicUsize>,
-    pub unbounded_confirmed_iterated_pairs_size: Arc<AtomicUsize>,
-    pub unbounded_implicit_receive_cemented_mapping_size: Arc<AtomicUsize>,
+    unbounded_pending_writes: Arc<AtomicUsize>,
+    bounded_accounts_confirmed: Arc<AtomicUsize>,
+    bounded_pending_writes: Arc<AtomicUsize>,
+    unbounded_confirmed_iterated_pairs_size: Arc<AtomicUsize>,
+    unbounded_implicit_receive_cemented_mapping_size: Arc<AtomicUsize>,
 }
 
 impl ConfirmationHeightProcessor {
@@ -209,10 +209,6 @@ impl ConfirmationHeightProcessor {
         lk.awaiting_processing.len()
     }
 
-    pub fn unbounded_pending_writes_len(&self) -> usize {
-        self.unbounded_pending_writes.load(Ordering::Relaxed)
-    }
-
     pub fn stop(&mut self) {
         {
             let _guard = self.guarded_data.lock().unwrap(); //todo why is this needed?
@@ -297,7 +293,7 @@ impl ConfirmationHeightProcessor {
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "pending_writes".to_owned(),
-                    count: self.unbounded_pending_writes_len(),
+                    count: self.unbounded_pending_writes.load(Ordering::Relaxed),
                     sizeof_element: size_of::<ConfHeightDetails>(),
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {

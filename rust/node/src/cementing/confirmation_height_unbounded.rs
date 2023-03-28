@@ -407,6 +407,10 @@ impl ConfirmationHeightUnbounded {
         }
     }
     pub(crate) fn write_pending_blocks(&mut self) {
+        if self.cement_queue.is_empty() {
+            return;
+        }
+
         self.cementor
             .cement_blocks(&mut self.cement_queue, &self.block_cache);
     }

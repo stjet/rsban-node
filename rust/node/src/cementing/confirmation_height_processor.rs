@@ -392,29 +392,19 @@ impl ConfirmationHeightProcessorLoop {
                     guard = self.guarded_data.lock().unwrap();
                 }
             } else {
-                drop(guard);
-
                 // If there are blocks pending cementing, then make sure we flush out the remaining writes
-                if !self.processor.bounded_processor.pending_writes_empty() {
-                    debug_assert!(self.processor.unbounded_processor.pending_writes_empty());
-                    self.processor.bounded_processor.write_pending_blocks();
+                if !self.processor.pending_writes_empty() {
+                    drop(guard);
+                    self.processor.write_pending_blocks();
                     guard = self.guarded_data.lock().unwrap();
-                    guard.clear();
-                    self.processor.clear_process_vars();
-                } else if !self.processor.unbounded_processor.pending_writes_empty() {
-                    debug_assert!(self.processor.bounded_processor.pending_writes_empty());
-                    self.processor.unbounded_processor.write_pending_blocks();
-                    guard = self.guarded_data.lock().unwrap();
-                    guard.clear();
-                    self.processor.clear_process_vars();
-                } else {
-                    guard = self.guarded_data.lock().unwrap();
-                    guard.clear();
-                    self.processor.clear_process_vars();
-                    // A block could have been confirmed during the re-locking
-                    if guard.awaiting_processing.is_empty() {
-                        guard = self.condition.wait(guard).unwrap();
-                    }
+                }
+
+                guard.clear();
+                self.processor.clear_process_vars();
+
+                // A block could have been confirmed during the re-locking
+                if guard.awaiting_processing.is_empty() {
+                    guard = self.condition.wait(guard).unwrap();
                 }
             }
         }

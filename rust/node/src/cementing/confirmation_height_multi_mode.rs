@@ -28,6 +28,14 @@ impl ConfirmationHeightMultiMode {
             && self.unbounded_processor.pending_writes_empty()
     }
 
+    pub fn write_pending_blocks(&mut self) {
+        if !self.bounded_processor.pending_writes_empty() {
+            self.bounded_processor.write_pending_blocks();
+        } else if !self.unbounded_processor.pending_writes_empty() {
+            self.unbounded_processor.write_pending_blocks();
+        }
+    }
+
     pub fn process(&mut self, block: Arc<BlockEnum>) {
         if self.should_use_unbounded_processor() {
             self.unbounded_processor.process(block);

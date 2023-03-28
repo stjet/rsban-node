@@ -95,6 +95,10 @@ impl ConfirmationHeightBounded {
     }
 
     pub fn write_pending_blocks(&mut self) {
+        if self.pending_writes.is_empty() {
+            return;
+        }
+
         let mut write_guard = self
             .write_database_queue
             .wait(rsnano_ledger::Writer::ConfirmationHeight);

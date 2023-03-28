@@ -21,7 +21,7 @@ impl From<&ContainerInfo> for ContainerInfoDto {
     }
 }
 
-pub struct ContainerInfoComponentHandle(ContainerInfoComponent);
+pub struct ContainerInfoComponentHandle(pub ContainerInfoComponent);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_container_info_component_clone(

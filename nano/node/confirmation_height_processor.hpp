@@ -53,6 +53,8 @@ public:
 	void set_block_already_cemented_observer (std::function<void (nano::block_hash const &)> const &);
 	size_t unbounded_pending_writes_size () const;
 
+	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name_a);
+
 public:
 	rsnano::ConfirmationHeightProcessorHandle * handle;
 
@@ -67,8 +69,4 @@ private: // Tests
 	friend class request_aggregator_cannot_vote_Test;
 	friend class active_transactions_pessimistic_elections_Test;
 };
-
-std::unique_ptr<container_info_component> collect_bounded_container_info (confirmation_height_processor &, std::string const &);
-std::unique_ptr<nano::container_info_component> collect_unbounded_container_info (confirmation_height_processor &, std::string const & name_a);
-std::unique_ptr<nano::container_info_component> collect_container_info (confirmation_height_processor &, std::string const & name_a);
 }

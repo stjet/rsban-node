@@ -1,16 +1,17 @@
 use std::{
     collections::HashSet,
+    mem::size_of,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-        Arc, Condvar, Mutex,
+        Arc, Condvar, Mutex, Weak,
     },
     thread::JoinHandle,
     time::Duration,
 };
 
 use rsnano_core::{
-    utils::{Latch, Logger},
+    utils::{ContainerInfo, ContainerInfoComponent, Latch, Logger},
     Account, BlockEnum, BlockHash,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
@@ -21,8 +22,9 @@ use crate::{
 };
 
 use super::{
-    block_cache::BlockCache, BlockQueue, ConfirmationHeightBounded, ConfirmationHeightUnbounded,
-    ConfirmedInfo, NotifyObserversCallback, WriteDetails,
+    block_cache::BlockCache, BlockQueue, ConfHeightDetails, ConfirmationHeightBounded,
+    ConfirmationHeightUnbounded, ConfirmedInfo, ConfirmedIteratedPair, NotifyObserversCallback,
+    WriteDetails,
 };
 
 /** When the uncemented count (block count - cemented count) is less than this use the unbounded processor */
@@ -236,6 +238,82 @@ impl ConfirmationHeightProcessor {
 
     pub fn awaiting_processing_entry_size() -> usize {
         BlockQueue::entry_size()
+    }
+
+    pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
+        //todo count observers!
+        let children = vec![
+            ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "cemented_observers".to_owned(),
+                count: 1,
+                sizeof_element: size_of::<usize>(),
+            }),
+            ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "block_already_cemented_observers".to_owned(),
+                count: 1,
+                sizeof_element: size_of::<usize>(),
+            }),
+            ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "awaiting_processing".to_owned(),
+                count: self.awaiting_processing_len(),
+                sizeof_element: size_of::<usize>(),
+            }),
+            self.collect_bounded_processor_container_info(),
+            self.collect_unbounded_processor_container_info(),
+        ];
+
+        ContainerInfoComponent::Composite(name, children)
+    }
+
+    fn collect_bounded_processor_container_info(&self) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            "bounded_processor".to_owned(),
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "pending_writes".to_owned(),
+                    count: self.bounded_pending_writes.load(Ordering::Relaxed),
+                    sizeof_element: std::mem::size_of::<WriteDetails>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "accounts_confirmed_info".to_owned(),
+                    count: self.bounded_accounts_confirmed.load(Ordering::Relaxed),
+                    sizeof_element: std::mem::size_of::<ConfirmedInfo>()
+                        + std::mem::size_of::<Account>(),
+                }),
+            ],
+        )
+    }
+
+    fn collect_unbounded_processor_container_info(&self) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            "unbounded_processor".to_owned(),
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "confirmed_iterated_pairs".to_owned(),
+                    count: self
+                        .unbounded_confirmed_iterated_pairs_size
+                        .load(Ordering::Relaxed),
+                    sizeof_element: size_of::<ConfirmedIteratedPair>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "pending_writes".to_owned(),
+                    count: self.unbounded_pending_writes_len(),
+                    sizeof_element: size_of::<ConfHeightDetails>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "implicit_receive_cemented_mapping".to_owned(),
+                    count: self
+                        .unbounded_implicit_receive_cemented_mapping_size
+                        .load(Ordering::Relaxed),
+                    sizeof_element: size_of::<Weak<Mutex<ConfHeightDetails>>>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "block_cache".to_owned(),
+                    count: self.unbounded_block_cache_size(),
+                    sizeof_element: size_of::<Arc<BlockEnum>>(),
+                }),
+            ],
+        )
     }
 }
 

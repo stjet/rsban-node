@@ -15,6 +15,7 @@
 #include <boost/thread/latch.hpp>
 
 #include <cstdint>
+#include <memory>
 
 namespace
 {
@@ -152,32 +153,8 @@ void nano::confirmation_height_processor::set_batch_write_size (size_t write_siz
 	rsnano::rsn_confirmation_height_processor_set_batch_write_size (handle, write_size);
 }
 
-std::unique_ptr<nano::container_info_component> nano::collect_bounded_container_info (confirmation_height_processor & confirmation_height_processor, std::string const & name_a)
+std::unique_ptr<nano::container_info_component> nano::confirmation_height_processor::collect_container_info (std::string const & name_a)
 {
-	auto composite = std::make_unique<container_info_composite> (name_a);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", rsnano::rsn_confirmation_height_processor_bounded_pending_len (confirmation_height_processor.handle), rsnano::rsn_confirmation_height_bounded_write_details_size () }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "accounts_confirmed_info", rsnano::rsn_confirmation_height_processor_bounded_accounts_confirmed_info_len (confirmation_height_processor.handle), rsnano::rsn_confirmation_height_bounded_confirmed_info_entry_size () }));
-	return composite;
-}
-
-std::unique_ptr<nano::container_info_component> nano::collect_unbounded_container_info (confirmation_height_processor & confirmation_height_processor, std::string const & name_a)
-{
-	auto composite = std::make_unique<container_info_composite> (name_a);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "confirmed_iterated_pairs", rsnano::rsn_confirmation_height_processor_unbounded_conf_iterated_pairs_len (confirmation_height_processor.handle), rsnano::rsn_conf_iterated_pair_size () }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending_writes", rsnano::rsn_confirmation_height_processor_unbounded_pending_writes (confirmation_height_processor.handle), rsnano::rsn_conf_height_details_size () }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "implicit_receive_cemented_mapping", rsnano::rsn_confirmation_height_processor_unbounded_implicit_receive_cemented_size (confirmation_height_processor.handle), rsnano::rsn_implicit_receive_cemented_mapping_value_size () }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_cache", rsnano::rsn_confirmation_height_processor_unbounded_block_cache_size (confirmation_height_processor.handle), rsnano::rsn_conf_height_unbounded_block_cache_element_size () }));
-	return composite;
-}
-
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (confirmation_height_processor & confirmation_height_processor_a, std::string const & name_a)
-{
-	auto composite = std::make_unique<container_info_composite> (name_a);
-
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "cemented_observers", 1, sizeof (uintptr_t) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "block_already_cemented_observers", 1, sizeof (uintptr_t) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "awaiting_processing", confirmation_height_processor_a.awaiting_processing_size (), rsnano::rsn_confirmation_height_processor_awaiting_processing_entry_size () }));
-	composite->add_component (collect_bounded_container_info (confirmation_height_processor_a, "bounded_processor"));
-	composite->add_component (collect_unbounded_container_info (confirmation_height_processor_a, "unbounded_processor"));
-	return composite;
+	return std::make_unique<nano::container_info_composite> (
+	rsnano::rsn_confirmation_height_processor_collect_container_info (handle, name_a.c_str ()));
 }

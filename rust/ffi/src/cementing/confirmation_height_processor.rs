@@ -1,5 +1,5 @@
 use std::{
-    ffi::c_void,
+    ffi::{c_char, c_void, CStr},
     ops::Deref,
     sync::{atomic::Ordering, Arc, Mutex, RwLock, Weak},
     time::Duration,
@@ -16,7 +16,7 @@ use crate::{
     copy_hash_bytes,
     core::{BlockCallback, BlockHandle, BlockHashCallback},
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
-    utils::{ContextWrapper, FfiLatch, LoggerHandle, LoggerMT},
+    utils::{ContainerInfoComponentHandle, ContextWrapper, FfiLatch, LoggerHandle, LoggerMT},
     LoggingDto, StatHandle, VoidPointerCallback,
 };
 
@@ -231,6 +231,17 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_set_batch_write_size(
     size: usize,
 ) {
     (*handle).0.set_batch_write_size(size);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_height_processor_collect_container_info(
+    handle: *const ConfirmationHeightProcessorHandle,
+    name: *const c_char,
+) -> *mut ContainerInfoComponentHandle {
+    let container_info = (*handle)
+        .0
+        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
+    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }
 
 #[no_mangle]

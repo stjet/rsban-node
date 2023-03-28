@@ -162,6 +162,11 @@ void nano::election::transition_active ()
 
 bool nano::election::confirmed () const
 {
+	return node.block_confirmed (status.get_winner ()->hash ());
+}
+
+bool nano::election::status_confirmed () const
+{
 	return state_m == nano::election::state_t::confirmed || state_m == nano::election::state_t::expired_confirmed;
 }
 

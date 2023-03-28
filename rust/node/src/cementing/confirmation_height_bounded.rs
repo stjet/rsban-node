@@ -94,7 +94,15 @@ impl ConfirmationHeightBounded {
         }
     }
 
-    pub(crate) fn cement_blocks(
+    pub fn write_pending_blocks(&mut self) {
+        let mut write_guard = self
+            .write_database_queue
+            .wait(rsnano_ledger::Writer::ConfirmationHeight);
+
+        self.write_pending_blocks_with_write_guard(&mut write_guard);
+    }
+
+    fn write_pending_blocks_with_write_guard(
         &mut self,
         scoped_write_guard: &mut WriteGuard,
     ) -> Option<WriteGuard> {
@@ -735,11 +743,11 @@ impl ConfirmationHeightBounded {
                     {
                         // todo: this does not seem thread safe!
                         let mut scoped_write_guard = self.write_database_queue.pop();
-                        self.cement_blocks(&mut scoped_write_guard);
+                        self.write_pending_blocks_with_write_guard(&mut scoped_write_guard);
                     } else if force_write {
                         let mut scoped_write_guard =
                             self.write_database_queue.wait(Writer::ConfirmationHeight);
-                        self.cement_blocks(&mut scoped_write_guard);
+                        self.write_pending_blocks_with_write_guard(&mut scoped_write_guard);
                     }
                 }
             }

@@ -232,7 +232,7 @@ impl ConfirmationHeightUnbounded {
                     && self.cement_queue.len() > 0;
 
             if should_cement_pending_blocks {
-                self.cement_pending_blocks();
+                self.write_pending_blocks();
             }
 
             first_iter = false;
@@ -406,7 +406,7 @@ impl ConfirmationHeightUnbounded {
             self.cement_queue.push(receive_details_lock.clone())
         }
     }
-    pub(crate) fn cement_pending_blocks(&mut self) {
+    pub(crate) fn write_pending_blocks(&mut self) {
         self.cementor
             .cement_blocks(&mut self.cement_queue, &self.block_cache);
     }

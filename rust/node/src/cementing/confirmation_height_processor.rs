@@ -107,11 +107,9 @@ impl ConfirmationHeightProcessor {
             Arc::clone(unbounded_processor.implicit_receive_cemented_mapping_size());
 
         let condition = Arc::new(Condvar::new());
-        let mut thread = ConfirmationHeightProcessorThread {
+        let mut processor_loop = ConfirmationHeightProcessorLoop {
             guarded_data: guarded_data.clone(),
             stopped: stopped.clone(),
-            write_database_queue,
-            ledger: ledger.clone(),
             condition: condition.clone(),
             processor: ConfirmationHeightMultiMode {
                 bounded_processor,
@@ -119,7 +117,6 @@ impl ConfirmationHeightProcessor {
                 mode,
                 ledger,
             },
-            mode,
         };
 
         let join_handle = std::thread::Builder::new()
@@ -127,7 +124,7 @@ impl ConfirmationHeightProcessor {
             .spawn(move || {
                 // Do not start running the processing thread until other threads have finished their operations
                 latch.wait();
-                thread.run();
+                processor_loop.run();
             })
             .unwrap();
 
@@ -356,17 +353,21 @@ struct GuardedData {
     pub original_block: Option<Arc<BlockEnum>>,
 }
 
-struct ConfirmationHeightProcessorThread {
-    guarded_data: Arc<Mutex<GuardedData>>,
-    stopped: Arc<AtomicBool>,
-    write_database_queue: Arc<WriteDatabaseQueue>,
-    ledger: Arc<Ledger>,
-    condition: Arc<Condvar>,
-    processor: ConfirmationHeightMultiMode,
-    mode: ConfirmationHeightMode,
+impl GuardedData {
+    fn clear(&mut self) {
+        self.original_block = None;
+        self.original_hashes_pending.clear();
+    }
 }
 
-impl ConfirmationHeightProcessorThread {
+struct ConfirmationHeightProcessorLoop {
+    guarded_data: Arc<Mutex<GuardedData>>,
+    stopped: Arc<AtomicBool>,
+    condition: Arc<Condvar>,
+    processor: ConfirmationHeightMultiMode,
+}
+
+impl ConfirmationHeightProcessorLoop {
     pub fn run(&mut self) {
         let mut guard = self.guarded_data.lock().unwrap();
         while !self.stopped.load(Ordering::SeqCst) {
@@ -396,36 +397,19 @@ impl ConfirmationHeightProcessorThread {
                 // If there are blocks pending cementing, then make sure we flush out the remaining writes
                 if !self.processor.bounded_processor.pending_writes_empty() {
                     debug_assert!(self.processor.unbounded_processor.pending_writes_empty());
-
-                    {
-                        let mut scoped_write_guard = self
-                            .write_database_queue
-                            .wait(rsnano_ledger::Writer::ConfirmationHeight);
-                        self.processor
-                            .bounded_processor
-                            .cement_blocks(&mut scoped_write_guard);
-                    }
+                    self.processor.bounded_processor.write_pending_blocks();
                     guard = self.guarded_data.lock().unwrap();
-                    guard.original_block = None;
-                    guard.original_hashes_pending.clear();
+                    guard.clear();
                     self.processor.clear_process_vars();
                 } else if !self.processor.unbounded_processor.pending_writes_empty() {
                     debug_assert!(self.processor.bounded_processor.pending_writes_empty());
-                    {
-                        let _scoped_write_guard = self
-                            .write_database_queue
-                            .wait(rsnano_ledger::Writer::ConfirmationHeight);
-                        //todo why is scoped_write_guard not being used in Rust version????
-                        self.processor.unbounded_processor.cement_pending_blocks();
-                    }
+                    self.processor.unbounded_processor.write_pending_blocks();
                     guard = self.guarded_data.lock().unwrap();
-                    guard.original_block = None;
-                    guard.original_hashes_pending.clear();
+                    guard.clear();
                     self.processor.clear_process_vars();
                 } else {
                     guard = self.guarded_data.lock().unwrap();
-                    guard.original_block = None;
-                    guard.original_hashes_pending.clear();
+                    guard.clear();
                     self.processor.clear_process_vars();
                     // A block could have been confirmed during the re-locking
                     if guard.awaiting_processing.is_empty() {

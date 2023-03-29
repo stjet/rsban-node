@@ -39,13 +39,13 @@ pub(super) struct BoundedMode {
     timer: Instant,
     batch_separate_pending_min_time: Duration,
     awaiting_processing_size_callback: Box<dyn Fn() -> u64 + Send>,
+    pub batch_write_size: Arc<AtomicU64>,
 
     // All of the atomic variables here just track the size for use in collect_container_info.
     // This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
     // for the sake of a rarely used RPC call for debugging purposes. As such the sizes are not being acted
     // upon in any way (does not synchronize with any other data).
     // This allows the load and stores to use relaxed atomic memory ordering.
-    batch_write_size: Arc<AtomicU64>,
     accounts_confirmed_info_size: Arc<AtomicUsize>,
     pending_writes_size: Arc<AtomicUsize>,
 }
@@ -68,7 +68,6 @@ impl BoundedMode {
         write_database_queue: Arc<WriteDatabaseQueue>,
         notify_observers_callback: NotifyObserversCallback,
         notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash) + Send>,
-        batch_write_size: Arc<AtomicU64>,
         logger: Arc<dyn Logger>,
         enable_timing_logging: bool,
         ledger: Arc<Ledger>,
@@ -81,7 +80,7 @@ impl BoundedMode {
             pending_writes: VecDeque::new(),
             notify_observers_callback,
             notify_block_already_cemented_observers_callback,
-            batch_write_size,
+            batch_write_size: Arc::new(AtomicU64::new(16384)),
             logger,
             enable_timing_logging,
             ledger,

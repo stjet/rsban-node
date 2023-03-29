@@ -52,7 +52,6 @@ impl UnboundedMode {
         notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>,
         notify_block_already_cemented_callback: Box<dyn Fn(BlockHash) + Send>,
         awaiting_processing_size_callback: Box<dyn Fn() -> u64 + Send>,
-        block_cache: Arc<BlockCache>,
         stopped: Arc<AtomicBool>,
     ) -> Self {
         Self {
@@ -60,7 +59,7 @@ impl UnboundedMode {
             logger: Arc::clone(&logger),
             confirmed_iterated_pairs: ConfirmedIteratedPairMap::new(),
             implicit_receive_cemented_mapping: ImplictReceiveCementedMapping::new(),
-            block_cache,
+            block_cache: Arc::new(BlockCache::new(ledger.clone())),
             batch_write_size,
             notify_block_already_cemented_callback,
             awaiting_processing_size_callback,
@@ -76,6 +75,10 @@ impl UnboundedMode {
                 notify_observers_callback,
             ),
         }
+    }
+
+    pub fn block_cache(&self) -> &Arc<BlockCache> {
+        &self.block_cache
     }
 
     pub fn pending_writes_empty(&self) -> bool {

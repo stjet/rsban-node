@@ -53,20 +53,13 @@ impl ConfirmationHeightProcessor {
             Arc::new(Mutex::new(None));
         let already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash) + Send>>>> =
             Arc::new(Mutex::new(None));
-        let batch_write_size = Arc::new(AtomicU64::new(16384));
         let stopped = Arc::new(AtomicBool::new(false));
-        let channel = Arc::new(Mutex::new(ProcessorLoopChannel {
-            paused: false,
-            awaiting_processing: BlockQueue::new(),
-            pending_writes: HashSet::new(),
-            current_block: None,
-        }));
+        let channel = Arc::new(Mutex::new(ProcessorLoopChannel::new()));
 
         let bounded_mode = BoundedMode::new(
             write_database_queue.clone(),
             cemented_callback(&cemented_observer),
             block_already_cemented_callback(&already_cemented_observer),
-            batch_write_size.clone(),
             logger.clone(),
             enable_timing_logging,
             ledger.clone(),
@@ -75,20 +68,17 @@ impl ConfirmationHeightProcessor {
             awaiting_processing_size_callback(&channel),
         );
 
-        let block_cache = Arc::new(BlockCache::new(ledger.clone()));
-
         let unbounded_mode = UnboundedMode::new(
             ledger.clone(),
             logger,
             enable_timing_logging,
             stats,
             batch_separate_pending_min_time,
-            batch_write_size.clone(),
+            bounded_mode.batch_write_size.clone(),
             write_database_queue.clone(),
             cemented_callback(&cemented_observer),
             block_already_cemented_callback(&already_cemented_observer),
             awaiting_processing_size_callback(&channel),
-            block_cache.clone(),
             stopped.clone(),
         );
 
@@ -99,8 +89,10 @@ impl ConfirmationHeightProcessor {
             ledger,
         };
 
-        let condition = Arc::new(Condvar::new());
         let automatic_container_info = automatic_mode.container_info();
+        let block_cache = Arc::clone(automatic_mode.block_cache());
+        let batch_write_size = Arc::clone(automatic_mode.batch_write_size());
+        let condition = Arc::new(Condvar::new());
 
         let join_handle = {
             let stopped = stopped.clone();
@@ -276,6 +268,15 @@ struct ProcessorLoopChannel {
 }
 
 impl ProcessorLoopChannel {
+    fn new() -> Self {
+        Self {
+            paused: false,
+            awaiting_processing: BlockQueue::new(),
+            pending_writes: HashSet::new(),
+            current_block: None,
+        }
+    }
+
     fn clear_processed_blocks(&mut self) {
         self.current_block = None;
         self.pending_writes.clear();

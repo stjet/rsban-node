@@ -1,9 +1,15 @@
-use std::sync::{atomic::Ordering, Arc};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 
 use rsnano_core::{utils::ContainerInfoComponent, BlockEnum};
 use rsnano_ledger::Ledger;
 
-use super::{BoundedMode, BoundedModeContainerInfo, UnboundedMode, UnboundedModeContainerInfo};
+use super::{
+    block_cache::BlockCache, BoundedMode, BoundedModeContainerInfo, UnboundedMode,
+    UnboundedModeContainerInfo,
+};
 
 #[derive(FromPrimitive, Clone, PartialEq, Eq, Copy)]
 pub enum ConfirmationHeightMode {
@@ -53,6 +59,14 @@ impl AutomaticMode {
             bounded_container_info: self.bounded_mode.container_info(),
             unbounded_container_info: self.unbounded_mode.container_info(),
         }
+    }
+
+    pub fn block_cache(&self) -> &Arc<BlockCache> {
+        self.unbounded_mode.block_cache()
+    }
+
+    pub fn batch_write_size(&self) -> &Arc<AtomicU64> {
+        &self.bounded_mode.batch_write_size
     }
 
     fn should_use_unbounded_processor(&self) -> bool {

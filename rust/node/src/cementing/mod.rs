@@ -18,7 +18,7 @@ use rsnano_core::{Account, BlockEnum, BlockHash};
 pub use automatic_mode::ConfirmationHeightMode;
 use automatic_mode::{AutomaticMode, AutomaticModeContainerInfo, UNBOUNDED_CUTOFF};
 use bounded_mode::{BoundedMode, BoundedModeContainerInfo};
-use confirmation_height_processor::CementCallbacks;
+use confirmation_height_processor::CementCallbackRefs;
 pub use confirmation_height_processor::ConfirmationHeightProcessor;
 use unbounded_mode::{UnboundedMode, UnboundedModeContainerInfo};
 

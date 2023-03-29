@@ -19,10 +19,11 @@ use super::{
     block_cache::BlockCache,
     block_cementor::BlockCementor,
     cement_queue::CementQueue,
+    confirmation_height_processor::CementCallbackRefs,
     confirmed_iterated_pairs::{ConfirmedIteratedPair, ConfirmedIteratedPairMap},
     implicit_receive_cemented_mapping::ImplictReceiveCementedMapping,
     unconfirmed_receive_and_sources_collector::UnconfirmedReceiveAndSourcesCollector,
-    CementCallbacks, ConfHeightDetails, UNBOUNDED_CUTOFF,
+    BlockCallback, ConfHeightDetails, UNBOUNDED_CUTOFF,
 };
 
 pub(super) struct UnboundedMode {
@@ -106,7 +107,7 @@ impl UnboundedMode {
         self.block_cache.clear();
     }
 
-    pub fn process(&mut self, original_block: Arc<BlockEnum>, callbacks: &CementCallbacks) {
+    pub fn process(&mut self, original_block: Arc<BlockEnum>, callbacks: &mut CementCallbackRefs) {
         if self.pending_writes_empty() {
             self.clear_process_vars();
             self.cementor.set_last_cementation();
@@ -409,7 +410,7 @@ impl UnboundedMode {
             self.cement_queue.push(receive_details_lock.clone())
         }
     }
-    pub fn write_pending_blocks(&mut self, callbacks: &CementCallbacks) {
+    pub fn write_pending_blocks(&mut self, callbacks: &mut CementCallbackRefs) {
         if self.cement_queue.is_empty() {
             return;
         }

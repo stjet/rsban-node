@@ -94,10 +94,13 @@ impl ConfirmationHeightProcessor {
         let batch_write_size = Arc::clone(automatic_mode.batch_write_size());
         let condition = Arc::new(Condvar::new());
 
-        let block_cemented = cemented_callback(cemented_observer.clone());
-        let block_already_cemented =
-            block_already_cemented_callback(already_cemented_observer.clone());
-        let awaiting_processing_count = awaiting_processing_count_callback(channel.clone());
+        let callbacks = CementCallbacks {
+            block_cemented_callback: cemented_callback(cemented_observer.clone()),
+            block_already_cemented_callback: block_already_cemented_callback(
+                already_cemented_observer.clone(),
+            ),
+            awaiting_processing_count_callback: awaiting_processing_count_callback(channel.clone()),
+        };
 
         let join_handle = {
             let stopped = stopped.clone();
@@ -112,9 +115,7 @@ impl ConfirmationHeightProcessor {
                         condition,
                         automatic_mode,
                         channel: &channel,
-                        block_cemented,
-                        block_already_cemented,
-                        awaiting_processing_count,
+                        callbacks,
                     };
                     // Do not start running the processing thread until other threads have finished their operations
                     latch.wait();
@@ -285,9 +286,7 @@ struct ConfirmationHeightProcessorLoop<'a> {
     condition: Arc<Condvar>,
     automatic_mode: AutomaticMode,
     channel: &'a Mutex<ProcessorLoopChannel>,
-    block_cemented: BlockCallback,
-    block_already_cemented: BlockHashCallback,
-    awaiting_processing_count: AwaitingProcessingCountCallback,
+    callbacks: CementCallbacks,
 }
 
 impl<'a> ConfirmationHeightProcessorLoop<'a> {
@@ -326,14 +325,8 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
         channel.current_block = Some(block.clone());
 
         drop(channel);
-        self.automatic_mode.process(
-            block,
-            &CementCallbacks {
-                block_cemented_callback: &self.block_cemented,
-                block_already_cemented_callback: &self.block_already_cemented,
-                awaiting_processing_count_callback: &self.awaiting_processing_count,
-            },
-        );
+        self.automatic_mode
+            .process(block, &mut self.callbacks.as_refs());
         self.channel.lock().unwrap()
     }
 
@@ -344,11 +337,8 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
     ) -> MutexGuard<'a, ProcessorLoopChannel> {
         if !self.automatic_mode.pending_writes_empty() {
             drop(channel);
-            self.automatic_mode.write_pending_blocks(&CementCallbacks {
-                block_cemented_callback: &self.block_cemented,
-                block_already_cemented_callback: &self.block_already_cemented,
-                awaiting_processing_count_callback: &self.awaiting_processing_count,
-            });
+            self.automatic_mode
+                .write_pending_blocks(&mut self.callbacks.as_refs());
             channel = self.channel.lock().unwrap();
         }
 
@@ -363,8 +353,24 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
     }
 }
 
-pub(super) struct CementCallbacks<'a> {
-    pub block_cemented_callback: &'a dyn Fn(&Arc<BlockEnum>),
-    pub block_already_cemented_callback: &'a dyn Fn(BlockHash),
-    pub awaiting_processing_count_callback: &'a dyn Fn() -> u64,
+pub(super) struct CementCallbacks {
+    pub block_cemented_callback: BlockCallback,
+    pub block_already_cemented_callback: BlockHashCallback,
+    pub awaiting_processing_count_callback: AwaitingProcessingCountCallback,
+}
+
+impl CementCallbacks {
+    pub fn as_refs(&mut self) -> CementCallbackRefs {
+        CementCallbackRefs {
+            block_cemented_callback: &mut self.block_cemented_callback,
+            block_already_cemented_callback: &mut self.block_already_cemented_callback,
+            awaiting_processing_count_callback: &mut self.awaiting_processing_count_callback,
+        }
+    }
+}
+
+pub(super) struct CementCallbackRefs<'a> {
+    pub block_cemented_callback: &'a mut dyn FnMut(&Arc<BlockEnum>),
+    pub block_already_cemented_callback: &'a mut dyn FnMut(BlockHash),
+    pub awaiting_processing_count_callback: &'a mut dyn FnMut() -> u64,
 }

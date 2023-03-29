@@ -56,7 +56,7 @@ impl BlockCementor {
         &mut self,
         cement_queue: &mut CementQueue,
         block_cache: &BlockCache,
-        cemented_callback: &dyn Fn(&Arc<BlockEnum>),
+        cemented_callback: &mut dyn FnMut(&Arc<BlockEnum>),
     ) {
         let mut cemented_blocks = Vec::new();
         {

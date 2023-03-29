@@ -16,7 +16,7 @@ use rsnano_core::{
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_traits::{ReadTransaction, Transaction};
 
-use super::confirmation_height_processor::CementCallbacks;
+use super::confirmation_height_processor::CementCallbackRefs;
 
 pub(crate) struct ConfirmedInfo {
     pub(crate) confirmed_height: u64,
@@ -85,7 +85,7 @@ impl BoundedMode {
         }
     }
 
-    pub fn write_pending_blocks(&mut self, callbacks: &CementCallbacks) {
+    pub fn write_pending_blocks(&mut self, callbacks: &mut CementCallbackRefs) {
         if self.pending_writes.is_empty() {
             return;
         }
@@ -100,7 +100,7 @@ impl BoundedMode {
     fn write_pending_blocks_with_write_guard(
         &mut self,
         scoped_write_guard: &mut WriteGuard,
-        callbacks: &CementCallbacks,
+        callbacks: &mut CementCallbackRefs,
     ) -> Option<WriteGuard> {
         let mut new_scoped_write_guard = None;
         let mut cemented_batch_timer: Instant;
@@ -570,7 +570,11 @@ impl BoundedMode {
         next
     }
 
-    pub(crate) fn process(&mut self, original_block: &BlockEnum, callbacks: &CementCallbacks) {
+    pub(crate) fn process(
+        &mut self,
+        original_block: &BlockEnum,
+        callbacks: &mut CementCallbackRefs,
+    ) {
         if self.pending_writes_empty() {
             self.clear_process_vars();
             self.timer = Instant::now();

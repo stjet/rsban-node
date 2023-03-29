@@ -15,8 +15,8 @@ use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 use crate::stats::Stats;
 
 use super::{
-    block_cache::BlockCache, BoundedMode, BoundedModeContainerInfo, CementCallbacks, UnboundedMode,
-    UnboundedModeContainerInfo,
+    block_cache::BlockCache, BoundedMode, BoundedModeContainerInfo, CementCallbackRefs,
+    UnboundedMode, UnboundedModeContainerInfo,
 };
 
 #[derive(FromPrimitive, Clone, PartialEq, Eq, Copy)]
@@ -61,7 +61,7 @@ impl AutomaticMode {
         self.bounded_mode.pending_writes_empty() && self.unbounded_mode.pending_writes_empty()
     }
 
-    pub fn write_pending_blocks(&mut self, callbacks: &CementCallbacks) {
+    pub fn write_pending_blocks(&mut self, callbacks: &mut CementCallbackRefs) {
         if !self.bounded_mode.pending_writes_empty() {
             self.bounded_mode.write_pending_blocks(callbacks);
         } else if !self.unbounded_mode.pending_writes_empty() {
@@ -69,7 +69,7 @@ impl AutomaticMode {
         }
     }
 
-    pub fn process(&mut self, block: Arc<BlockEnum>, callbacks: &CementCallbacks) {
+    pub fn process(&mut self, block: Arc<BlockEnum>, callbacks: &mut CementCallbackRefs) {
         if self.should_use_unbounded_processor() {
             self.unbounded_mode.process(block, callbacks);
         } else {

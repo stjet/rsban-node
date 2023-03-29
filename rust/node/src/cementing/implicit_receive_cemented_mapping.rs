@@ -44,7 +44,7 @@ impl ImplictReceiveCementedMapping {
         self.mapping_size.store(0, Ordering::Relaxed);
     }
 
-    pub fn size_atomic(&self) -> &Arc<AtomicUsize> {
+    pub fn atomic_len(&self) -> &Arc<AtomicUsize> {
         &self.mapping_size
     }
 }

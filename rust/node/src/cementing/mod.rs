@@ -14,13 +14,12 @@ use block_queue::BlockQueue;
 use rsnano_core::{Account, BlockHash};
 
 use confirmation_height_bounded::{
-    ConfirmationHeightBounded, ConfirmedInfo, NotifyObserversCallback, WriteDetails,
+    BoundedContainerInfo, ConfirmationHeightBounded, NotifyObserversCallback,
 };
 pub use confirmation_height_multi_mode::ConfirmationHeightMode;
-use confirmation_height_multi_mode::ConfirmationHeightMultiMode;
+use confirmation_height_multi_mode::{AutomaticContainerInfo, ConfirmationHeightMultiMode};
 pub use confirmation_height_processor::ConfirmationHeightProcessor;
-use confirmation_height_unbounded::ConfirmationHeightUnbounded;
-use confirmed_iterated_pairs::ConfirmedIteratedPair;
+use confirmation_height_unbounded::{ConfirmationHeightUnbounded, UnboundedContainerInfo};
 
 /// We need these details whenever we want to write the new
 /// confirmation height to the ledger

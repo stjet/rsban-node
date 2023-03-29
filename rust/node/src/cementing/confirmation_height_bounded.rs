@@ -9,7 +9,10 @@ use std::{
 };
 
 use bounded_vec_deque::BoundedVecDeque;
-use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash, ConfirmationHeightInfo};
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent, Logger},
+    Account, BlockEnum, BlockHash, ConfirmationHeightInfo,
+};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_traits::{ReadTransaction, Transaction};
 
@@ -22,7 +25,7 @@ pub(crate) struct ConfirmedInfo {
     pub(crate) iterated_frontier: BlockHash,
 }
 
-pub(crate) struct ConfirmationHeightBounded {
+pub(super) struct ConfirmationHeightBounded {
     write_database_queue: Arc<WriteDatabaseQueue>,
     pub pending_writes: VecDeque<WriteDetails>,
     notify_observers_callback: NotifyObserversCallback,
@@ -45,8 +48,8 @@ pub(crate) struct ConfirmationHeightBounded {
     // upon in any way (does not synchronize with any other data).
     // This allows the load and stores to use relaxed atomic memory ordering.
     batch_write_size: Arc<AtomicU64>,
-    pub accounts_confirmed_info_size: Arc<AtomicUsize>,
-    pub pending_writes_size: Arc<AtomicUsize>,
+    accounts_confirmed_info_size: Arc<AtomicUsize>,
+    pending_writes_size: Arc<AtomicUsize>,
 }
 
 const MAXIMUM_BATCH_WRITE_TIME: u64 = 250; // milliseconds
@@ -63,7 +66,7 @@ const BATCH_READ_SIZE: u64 = 65536;
 const PENDING_WRITES_MAX_SIZE: usize = MAX_ITEMS;
 
 impl ConfirmationHeightBounded {
-    pub(crate) fn new(
+    pub fn new(
         write_database_queue: Arc<WriteDatabaseQueue>,
         notify_observers_callback: NotifyObserversCallback,
         notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash) + Send>,
@@ -776,14 +779,21 @@ impl ConfirmationHeightBounded {
             .sum()
     }
 
-    pub(crate) fn clear_process_vars(&mut self) {
+    pub fn clear_process_vars(&mut self) {
         self.accounts_confirmed_info.clear();
         self.accounts_confirmed_info_size
             .store(0, Ordering::Relaxed);
     }
 
-    pub(crate) fn pending_writes_empty(&self) -> bool {
+    pub fn pending_writes_empty(&self) -> bool {
         self.pending_writes.is_empty()
+    }
+
+    pub fn container_info(&self) -> BoundedContainerInfo {
+        BoundedContainerInfo {
+            pending_writes: self.pending_writes_size.clone(),
+            accounts_confirmed: self.accounts_confirmed_info_size.clone(),
+        }
     }
 }
 
@@ -823,5 +833,31 @@ pub(crate) struct ReceiveSourcePair {
 fn truncate_after(buffer: &mut BoundedVecDeque<BlockHash>, hash: &BlockHash) {
     if let Some((index, _)) = buffer.iter().enumerate().find(|(_, h)| *h != hash) {
         buffer.truncate(index);
+    }
+}
+
+pub(super) struct BoundedContainerInfo {
+    pending_writes: Arc<AtomicUsize>,
+    accounts_confirmed: Arc<AtomicUsize>,
+}
+
+impl BoundedContainerInfo {
+    pub fn collect(&self) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            "bounded_processor".to_owned(),
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "pending_writes".to_owned(),
+                    count: self.pending_writes.load(Ordering::Relaxed),
+                    sizeof_element: std::mem::size_of::<WriteDetails>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "accounts_confirmed_info".to_owned(),
+                    count: self.accounts_confirmed.load(Ordering::Relaxed),
+                    sizeof_element: std::mem::size_of::<ConfirmedInfo>()
+                        + std::mem::size_of::<Account>(),
+                }),
+            ],
+        )
     }
 }

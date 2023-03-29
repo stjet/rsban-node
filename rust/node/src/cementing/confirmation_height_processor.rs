@@ -3,8 +3,8 @@ use std::{
     mem::size_of,
     ops::Deref,
     sync::{
-        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-        Arc, Condvar, Mutex, Weak,
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc, Condvar, Mutex, MutexGuard,
     },
     thread::JoinHandle,
     time::Duration,
@@ -12,20 +12,20 @@ use std::{
 
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, Latch, Logger},
-    Account, BlockEnum, BlockHash,
+    BlockEnum, BlockHash,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 
 use crate::{config::Logging, stats::Stats};
 
 use super::{
-    block_cache::BlockCache, BlockQueue, ConfHeightDetails, ConfirmationHeightBounded,
+    block_cache::BlockCache, AutomaticContainerInfo, BlockQueue, ConfirmationHeightBounded,
     ConfirmationHeightMode, ConfirmationHeightMultiMode, ConfirmationHeightUnbounded,
-    ConfirmedInfo, ConfirmedIteratedPair, NotifyObserversCallback, WriteDetails,
+    NotifyObserversCallback,
 };
 
 pub struct ConfirmationHeightProcessor {
-    guarded_data: Arc<Mutex<GuardedData>>,
+    channel: Arc<Mutex<ProcessorLoopChannel>>,
     condition: Arc<Condvar>,
     /** The maximum amount of blocks to write at once. This is dynamically modified by the bounded processor based on previous write performance **/
     batch_write_size: Arc<AtomicU64>,
@@ -36,11 +36,7 @@ pub struct ConfirmationHeightProcessor {
     thread: Option<JoinHandle<()>>,
     block_cache: Arc<BlockCache>,
 
-    unbounded_pending_writes: Arc<AtomicUsize>,
-    bounded_accounts_confirmed: Arc<AtomicUsize>,
-    bounded_pending_writes: Arc<AtomicUsize>,
-    unbounded_confirmed_iterated_pairs_size: Arc<AtomicUsize>,
-    unbounded_implicit_receive_cemented_mapping_size: Arc<AtomicUsize>,
+    automatic_container_info: AutomaticContainerInfo,
 }
 
 impl ConfirmationHeightProcessor {
@@ -60,11 +56,11 @@ impl ConfirmationHeightProcessor {
             Arc::new(Mutex::new(None));
         let batch_write_size = Arc::new(AtomicU64::new(16384));
         let stopped = Arc::new(AtomicBool::new(false));
-        let guarded_data = Arc::new(Mutex::new(GuardedData {
+        let channel = Arc::new(Mutex::new(ProcessorLoopChannel {
             paused: false,
             awaiting_processing: BlockQueue::new(),
-            original_hashes_pending: HashSet::new(),
-            original_block: None,
+            pending_writes: HashSet::new(),
+            current_block: None,
         }));
 
         let bounded_processor = ConfirmationHeightBounded::new(
@@ -77,11 +73,8 @@ impl ConfirmationHeightProcessor {
             ledger.clone(),
             stopped.clone(),
             batch_separate_pending_min_time,
-            awaiting_processing_size_callback(&guarded_data),
+            awaiting_processing_size_callback(&channel),
         );
-
-        let bounded_accounts_confirmed = bounded_processor.accounts_confirmed_info_size.clone();
-        let bounded_pending_writes = bounded_processor.pending_writes_size.clone();
 
         let block_cache = Arc::new(BlockCache::new(ledger.clone()));
 
@@ -95,41 +88,44 @@ impl ConfirmationHeightProcessor {
             write_database_queue.clone(),
             cemented_callback(&cemented_observer),
             block_already_cemented_callback(&already_cemented_observer),
-            awaiting_processing_size_callback(&guarded_data),
+            awaiting_processing_size_callback(&channel),
             block_cache.clone(),
             stopped.clone(),
         );
 
-        let unbounded_pending_writes = Arc::clone(unbounded_processor.pending_writes_size());
-        let unbounded_confirmed_iterated_pairs_size =
-            Arc::clone(unbounded_processor.confirmed_iterated_pairs_size_atomic());
-        let unbounded_implicit_receive_cemented_mapping_size =
-            Arc::clone(unbounded_processor.implicit_receive_cemented_mapping_size());
-
         let condition = Arc::new(Condvar::new());
-        let mut processor_loop = ConfirmationHeightProcessorLoop {
-            guarded_data: guarded_data.clone(),
-            stopped: stopped.clone(),
-            condition: condition.clone(),
-            processor: ConfirmationHeightMultiMode {
-                bounded_processor,
-                unbounded_processor,
-                mode,
-                ledger,
-            },
+        let processor = ConfirmationHeightMultiMode {
+            bounded_processor,
+            unbounded_processor,
+            mode,
+            ledger,
         };
 
-        let join_handle = std::thread::Builder::new()
-            .name("Conf height".to_owned())
-            .spawn(move || {
-                // Do not start running the processing thread until other threads have finished their operations
-                latch.wait();
-                processor_loop.run();
-            })
-            .unwrap();
+        let automatic_container_info = processor.container_info();
+
+        let join_handle = {
+            let stopped = stopped.clone();
+            let condition = condition.clone();
+            let channel = channel.clone();
+
+            std::thread::Builder::new()
+                .name("Conf height".to_owned())
+                .spawn(move || {
+                    let mut processor_loop = ConfirmationHeightProcessorLoop {
+                        stopped,
+                        condition,
+                        processor,
+                        channel: &channel,
+                    };
+                    // Do not start running the processing thread until other threads have finished their operations
+                    latch.wait();
+                    processor_loop.run();
+                })
+                .unwrap()
+        };
 
         Self {
-            guarded_data,
+            channel,
             condition,
             batch_write_size,
             stopped,
@@ -137,22 +133,18 @@ impl ConfirmationHeightProcessor {
             already_cemented_observer,
             thread: Some(join_handle),
             block_cache,
-            unbounded_pending_writes,
-            bounded_accounts_confirmed,
-            bounded_pending_writes,
-            unbounded_confirmed_iterated_pairs_size,
-            unbounded_implicit_receive_cemented_mapping_size,
+            automatic_container_info,
         }
     }
 
     // Pausing only affects processing new blocks, not the current one being processed. Currently only used in tests
     pub fn pause(&self) {
-        let mut guard = self.guarded_data.lock().unwrap();
+        let mut guard = self.channel.lock().unwrap();
         guard.paused = true;
     }
 
     pub fn unpause(&self) {
-        let mut guard = self.guarded_data.lock().unwrap();
+        let mut guard = self.channel.lock().unwrap();
         guard.paused = false;
         drop(guard);
         self.condition.notify_one();
@@ -164,15 +156,15 @@ impl ConfirmationHeightProcessor {
 
     pub fn add(&self, block: Arc<BlockEnum>) {
         {
-            let mut lk = self.guarded_data.lock().unwrap();
+            let mut lk = self.channel.lock().unwrap();
             lk.awaiting_processing.push_back(block);
         }
         self.condition.notify_one();
     }
 
     pub fn current(&self) -> BlockHash {
-        let lk = self.guarded_data.lock().unwrap();
-        match &lk.original_block {
+        let lk = self.channel.lock().unwrap();
+        match &lk.current_block {
             Some(block) => block.hash(),
             None => BlockHash::zero(),
         }
@@ -195,19 +187,18 @@ impl ConfirmationHeightProcessor {
     }
 
     pub fn is_processing_added_block(&self, block_hash: &BlockHash) -> bool {
-        let lk = self.guarded_data.lock().unwrap();
-        lk.original_hashes_pending.contains(block_hash)
-            || lk.awaiting_processing.contains(block_hash)
+        let lk = self.channel.lock().unwrap();
+        lk.pending_writes.contains(block_hash) || lk.awaiting_processing.contains(block_hash)
     }
 
     pub fn awaiting_processing_len(&self) -> usize {
-        let lk = self.guarded_data.lock().unwrap();
+        let lk = self.channel.lock().unwrap();
         lk.awaiting_processing.len()
     }
 
     pub fn stop(&mut self) {
         {
-            let _guard = self.guarded_data.lock().unwrap(); //todo why is this needed?
+            let _guard = self.channel.lock().unwrap(); //todo why is this needed?
             self.stopped.store(true, Ordering::SeqCst);
         }
         self.condition.notify_one();
@@ -216,85 +207,16 @@ impl ConfirmationHeightProcessor {
         }
     }
 
-    pub fn unbounded_block_cache_size(&self) -> usize {
-        self.block_cache.len()
-    }
-
-    pub fn bounded_write_details_size() -> usize {
-        std::mem::size_of::<WriteDetails>()
-    }
-
-    pub fn bounded_confirmed_info_entry_size() -> usize {
-        std::mem::size_of::<ConfirmedInfo>() + std::mem::size_of::<Account>()
-    }
-
-    pub fn awaiting_processing_entry_size() -> usize {
-        BlockQueue::entry_size()
-    }
-
     pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
-        let children = vec![
-            ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "awaiting_processing".to_owned(),
-                count: self.awaiting_processing_len(),
-                sizeof_element: size_of::<usize>(),
-            }),
-            self.collect_bounded_processor_container_info(),
-            self.collect_unbounded_processor_container_info(),
-        ];
+        let mut children = vec![ContainerInfoComponent::Leaf(ContainerInfo {
+            name: "awaiting_processing".to_owned(),
+            count: self.awaiting_processing_len(),
+            sizeof_element: size_of::<usize>(),
+        })];
+
+        children.append(&mut self.automatic_container_info.collect());
 
         ContainerInfoComponent::Composite(name, children)
-    }
-
-    fn collect_bounded_processor_container_info(&self) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            "bounded_processor".to_owned(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "pending_writes".to_owned(),
-                    count: self.bounded_pending_writes.load(Ordering::Relaxed),
-                    sizeof_element: std::mem::size_of::<WriteDetails>(),
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "accounts_confirmed_info".to_owned(),
-                    count: self.bounded_accounts_confirmed.load(Ordering::Relaxed),
-                    sizeof_element: std::mem::size_of::<ConfirmedInfo>()
-                        + std::mem::size_of::<Account>(),
-                }),
-            ],
-        )
-    }
-
-    fn collect_unbounded_processor_container_info(&self) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            "unbounded_processor".to_owned(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "confirmed_iterated_pairs".to_owned(),
-                    count: self
-                        .unbounded_confirmed_iterated_pairs_size
-                        .load(Ordering::Relaxed),
-                    sizeof_element: size_of::<ConfirmedIteratedPair>(),
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "pending_writes".to_owned(),
-                    count: self.unbounded_pending_writes.load(Ordering::Relaxed),
-                    sizeof_element: size_of::<ConfHeightDetails>(),
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "implicit_receive_cemented_mapping".to_owned(),
-                    count: self
-                        .unbounded_implicit_receive_cemented_mapping_size
-                        .load(Ordering::Relaxed),
-                    sizeof_element: size_of::<Weak<Mutex<ConfHeightDetails>>>(),
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "block_cache".to_owned(),
-                    count: self.unbounded_block_cache_size(),
-                    sizeof_element: size_of::<Arc<BlockEnum>>(),
-                }),
-            ],
-        )
     }
 }
 
@@ -305,12 +227,12 @@ impl Drop for ConfirmationHeightProcessor {
 }
 
 fn awaiting_processing_size_callback(
-    guarded_data: &Arc<Mutex<GuardedData>>,
+    channel: &Arc<Mutex<ProcessorLoopChannel>>,
 ) -> Box<dyn Fn() -> u64 + Send> {
-    let guarded_data_clone = Arc::clone(guarded_data);
+    let channel_clone = Arc::clone(channel);
 
     let awaiting_processing_size_callback = Box::new(move || {
-        let lk = guarded_data_clone.lock().unwrap();
+        let lk = channel_clone.lock().unwrap();
         lk.awaiting_processing.len() as u64
     });
     awaiting_processing_size_callback
@@ -344,77 +266,88 @@ fn cemented_callback(
     cemented_callback
 }
 
-struct GuardedData {
+/// Used for inter thread communication between ConfirmationHeightProcessor and ConfirmationHeightProcessorLoop
+struct ProcessorLoopChannel {
     pub paused: bool,
     pub awaiting_processing: BlockQueue,
     /// Hashes which have been added and processed, but have not been cemented
-    pub original_hashes_pending: HashSet<BlockHash>,
+    pub pending_writes: HashSet<BlockHash>,
     /// This is the last block popped off the awaiting_processing queue
-    pub original_block: Option<Arc<BlockEnum>>,
+    pub current_block: Option<Arc<BlockEnum>>,
 }
 
-impl GuardedData {
-    fn clear(&mut self) {
-        self.original_block = None;
-        self.original_hashes_pending.clear();
+impl ProcessorLoopChannel {
+    fn clear_processed_blocks(&mut self) {
+        self.current_block = None;
+        self.pending_writes.clear();
     }
 }
 
-struct ConfirmationHeightProcessorLoop {
-    guarded_data: Arc<Mutex<GuardedData>>,
+struct ConfirmationHeightProcessorLoop<'a> {
     stopped: Arc<AtomicBool>,
     condition: Arc<Condvar>,
     processor: ConfirmationHeightMultiMode,
+    channel: &'a Mutex<ProcessorLoopChannel>,
 }
 
-impl ConfirmationHeightProcessorLoop {
+impl<'a> ConfirmationHeightProcessorLoop<'a> {
     pub fn run(&mut self) {
-        let mut guard = self.guarded_data.lock().unwrap();
+        let mut channel = self.channel.lock().unwrap();
         while !self.stopped.load(Ordering::SeqCst) {
-            if guard.paused {
-                // Pausing is only utilised in some tests to help prevent it processing added blocks until required.
-                guard.original_block = None;
-                guard = self.condition.wait(guard).unwrap();
-            } else if !guard.awaiting_processing.is_empty() {
-                if self.processor.pending_writes_empty() {
-                    guard.original_hashes_pending.clear();
-                }
-
-                self.set_next_hash(&mut guard);
-
-                if let Some(original_block) = &guard.original_block {
-                    let original_block = Arc::clone(original_block);
-
-                    drop(guard);
-
-                    self.processor.process(original_block);
-
-                    guard = self.guarded_data.lock().unwrap();
-                }
+            if channel.paused {
+                channel = self.pause(channel);
+            } else if let Some(block) = channel.awaiting_processing.pop_front() {
+                channel = self.process_block(channel, block);
             } else {
-                // If there are blocks pending cementing, then make sure we flush out the remaining writes
-                if !self.processor.pending_writes_empty() {
-                    drop(guard);
-                    self.processor.write_pending_blocks();
-                    guard = self.guarded_data.lock().unwrap();
-                }
-
-                guard.clear();
-                self.processor.clear_process_vars();
-
-                // A block could have been confirmed during the re-locking
-                if guard.awaiting_processing.is_empty() {
-                    guard = self.condition.wait(guard).unwrap();
-                }
+                channel = self.flush_remaining_writes(channel);
             }
         }
     }
 
-    fn set_next_hash(&self, guard: &mut GuardedData) {
-        debug_assert!(!guard.awaiting_processing.is_empty());
-        let block = guard.awaiting_processing.front().unwrap().clone();
-        guard.original_hashes_pending.insert(block.hash());
-        guard.original_block = Some(block);
-        guard.awaiting_processing.pop_front();
+    fn pause(
+        &self,
+        mut channel: MutexGuard<'a, ProcessorLoopChannel>,
+    ) -> MutexGuard<'a, ProcessorLoopChannel> {
+        // Pausing is only utilised in some tests to help prevent it processing added blocks until required.
+        channel.current_block = None;
+        self.condition.wait(channel).unwrap()
+    }
+
+    fn process_block(
+        &mut self,
+        mut channel: MutexGuard<'a, ProcessorLoopChannel>,
+        block: Arc<BlockEnum>,
+    ) -> MutexGuard<'a, ProcessorLoopChannel> {
+        if self.processor.pending_writes_empty() {
+            channel.pending_writes.clear();
+        }
+
+        channel.pending_writes.insert(block.hash());
+        channel.current_block = Some(block.clone());
+
+        drop(channel);
+        self.processor.process(block);
+        self.channel.lock().unwrap()
+    }
+
+    /// If there are blocks pending cementing, then make sure we flush out the remaining writes
+    fn flush_remaining_writes(
+        &mut self,
+        mut channel: MutexGuard<'a, ProcessorLoopChannel>,
+    ) -> MutexGuard<'a, ProcessorLoopChannel> {
+        if !self.processor.pending_writes_empty() {
+            drop(channel);
+            self.processor.write_pending_blocks();
+            channel = self.channel.lock().unwrap();
+        }
+
+        channel.clear_processed_blocks();
+        self.processor.clear_process_vars();
+
+        // A block could have been confirmed during the re-locking
+        if channel.awaiting_processing.is_empty() {
+            channel = self.condition.wait(channel).unwrap();
+        }
+        channel
     }
 }

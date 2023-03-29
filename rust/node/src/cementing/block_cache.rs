@@ -1,6 +1,9 @@
 use std::{
     collections::HashMap,
-    sync::{Arc, RwLock},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, RwLock,
+    },
 };
 
 use rsnano_core::{BlockEnum, BlockHash};
@@ -11,6 +14,7 @@ pub struct BlockCache {
     //todo: Remove RwLock? `contains` is called by RPC!
     block_cache: RwLock<HashMap<BlockHash, Arc<BlockEnum>>>,
     ledger: Arc<Ledger>,
+    cache_size: Arc<AtomicUsize>,
 }
 
 impl BlockCache {
@@ -18,6 +22,7 @@ impl BlockCache {
         Self {
             block_cache: RwLock::new(HashMap::new()),
             ledger,
+            cache_size: Arc::new(AtomicUsize::new(0)),
         }
     }
 
@@ -26,6 +31,7 @@ impl BlockCache {
             .write()
             .unwrap()
             .insert(block.hash(), block);
+        self.cache_size.fetch_add(1, Ordering::Relaxed);
     }
 
     pub fn get_cached(&self, block_hash: &BlockHash) -> Option<Arc<BlockEnum>> {
@@ -57,7 +63,12 @@ impl BlockCache {
         self.block_cache.read().unwrap().len()
     }
 
+    pub fn atomic_len(&self) -> &Arc<AtomicUsize> {
+        &self.cache_size
+    }
+
     pub fn clear(&self) {
         self.block_cache.write().unwrap().clear();
+        self.cache_size.store(0, Ordering::Relaxed);
     }
 }

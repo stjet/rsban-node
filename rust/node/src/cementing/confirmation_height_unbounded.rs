@@ -1,10 +1,14 @@
-use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash};
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent, Logger},
+    Account, BlockEnum, BlockHash,
+};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 use rsnano_store_traits::Transaction;
 use std::{
+    mem::size_of,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, Weak,
     },
     time::Duration,
 };
@@ -24,7 +28,7 @@ use super::{
 /// When the uncemented count (block count - cemented count) is less than this use the unbounded processor
 const UNBOUNDED_CUTOFF: usize = 16384;
 
-pub(crate) struct ConfirmationHeightUnbounded {
+pub(super) struct ConfirmationHeightUnbounded {
     ledger: Arc<Ledger>,
     block_cache: Arc<BlockCache>,
     logger: Arc<dyn Logger>,
@@ -77,12 +81,19 @@ impl ConfirmationHeightUnbounded {
         }
     }
 
-    pub(crate) fn pending_writes_empty(&self) -> bool {
+    pub fn pending_writes_empty(&self) -> bool {
         self.cement_queue.is_empty()
     }
 
-    pub(crate) fn pending_writes_size(&self) -> &Arc<AtomicUsize> {
-        self.cement_queue.atomic_len()
+    pub fn container_info(&self) -> UnboundedContainerInfo {
+        UnboundedContainerInfo {
+            pending_writes: Arc::clone(self.cement_queue.atomic_len()),
+            confirmed_iterated_pairs: Arc::clone(self.confirmed_iterated_pairs.size_atomic()),
+            implicit_receive_cemented_mapping_size: Arc::clone(
+                &self.implicit_receive_cemented_mapping.atomic_len(),
+            ),
+            block_cache_size: Arc::clone(self.block_cache.atomic_len()),
+        }
     }
 
     fn add_confirmed_iterated_pair(
@@ -95,7 +106,7 @@ impl ConfirmationHeightUnbounded {
             .insert(account, confirmed_height, iterated_height);
     }
 
-    pub(crate) fn clear_process_vars(&mut self) {
+    pub fn clear_process_vars(&mut self) {
         // Separate blocks which are pending confirmation height can be batched by a minimum processing time (to improve lmdb disk write performance),
         // so make sure the slate is clean when a new batch is starting.
         self.confirmed_iterated_pairs.clear();
@@ -103,7 +114,7 @@ impl ConfirmationHeightUnbounded {
         self.block_cache.clear();
     }
 
-    pub(crate) fn process(&mut self, original_block: Arc<BlockEnum>) {
+    pub fn process(&mut self, original_block: Arc<BlockEnum>) {
         if self.pending_writes_empty() {
             self.clear_process_vars();
             self.cementor.set_last_cementation();
@@ -406,21 +417,13 @@ impl ConfirmationHeightUnbounded {
             self.cement_queue.push(receive_details_lock.clone())
         }
     }
-    pub(crate) fn write_pending_blocks(&mut self) {
+    pub fn write_pending_blocks(&mut self) {
         if self.cement_queue.is_empty() {
             return;
         }
 
         self.cementor
             .cement_blocks(&mut self.cement_queue, &self.block_cache);
-    }
-
-    pub(crate) fn implicit_receive_cemented_mapping_size(&self) -> &Arc<AtomicUsize> {
-        self.implicit_receive_cemented_mapping.size_atomic()
-    }
-
-    pub(crate) fn confirmed_iterated_pairs_size_atomic(&self) -> &Arc<AtomicUsize> {
-        self.confirmed_iterated_pairs.size_atomic()
     }
 }
 
@@ -453,4 +456,43 @@ struct PreparationData<'a> {
     pub current: BlockHash,
     pub block_callback_data: &'a mut Vec<BlockHash>,
     pub orig_block_callback_data: &'a mut Vec<BlockHash>,
+}
+
+pub(super) struct UnboundedContainerInfo {
+    pending_writes: Arc<AtomicUsize>,
+    confirmed_iterated_pairs: Arc<AtomicUsize>,
+    implicit_receive_cemented_mapping_size: Arc<AtomicUsize>,
+    block_cache_size: Arc<AtomicUsize>,
+}
+
+impl UnboundedContainerInfo {
+    pub fn collect(&self) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            "unbounded_processor".to_owned(),
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "confirmed_iterated_pairs".to_owned(),
+                    count: self.confirmed_iterated_pairs.load(Ordering::Relaxed),
+                    sizeof_element: size_of::<ConfirmedIteratedPair>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "pending_writes".to_owned(),
+                    count: self.pending_writes.load(Ordering::Relaxed),
+                    sizeof_element: size_of::<ConfHeightDetails>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "implicit_receive_cemented_mapping".to_owned(),
+                    count: self
+                        .implicit_receive_cemented_mapping_size
+                        .load(Ordering::Relaxed),
+                    sizeof_element: size_of::<Weak<Mutex<ConfHeightDetails>>>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "block_cache".to_owned(),
+                    count: self.block_cache_size.load(Ordering::Relaxed),
+                    sizeof_element: size_of::<Arc<BlockEnum>>(),
+                }),
+            ],
+        )
+    }
 }

@@ -1,9 +1,12 @@
 use std::sync::{atomic::Ordering, Arc};
 
-use rsnano_core::BlockEnum;
+use rsnano_core::{utils::ContainerInfoComponent, BlockEnum};
 use rsnano_ledger::Ledger;
 
-use super::{ConfirmationHeightBounded, ConfirmationHeightUnbounded};
+use super::{
+    BoundedContainerInfo, ConfirmationHeightBounded, ConfirmationHeightUnbounded,
+    UnboundedContainerInfo,
+};
 
 #[derive(FromPrimitive, Clone, PartialEq, Eq, Copy)]
 pub enum ConfirmationHeightMode {
@@ -49,25 +52,46 @@ impl ConfirmationHeightMultiMode {
         self.unbounded_processor.clear_process_vars();
     }
 
-    pub(super) fn should_use_unbounded_processor(&self) -> bool {
+    pub fn container_info(&self) -> AutomaticContainerInfo {
+        AutomaticContainerInfo {
+            bounded_container_info: self.bounded_processor.container_info(),
+            unbounded_container_info: self.unbounded_processor.container_info(),
+        }
+    }
+
+    fn should_use_unbounded_processor(&self) -> bool {
         self.force_unbounded() || self.valid_unbounded()
     }
 
-    pub(super) fn valid_unbounded(&self) -> bool {
+    fn valid_unbounded(&self) -> bool {
         self.mode == ConfirmationHeightMode::Automatic
             && self.are_blocks_within_automatic_unbounded_section()
             && self.bounded_processor.pending_writes_empty()
     }
 
-    pub(super) fn force_unbounded(&self) -> bool {
+    fn force_unbounded(&self) -> bool {
         !self.unbounded_processor.pending_writes_empty()
             || self.mode == ConfirmationHeightMode::Unbounded
     }
 
-    pub(super) fn are_blocks_within_automatic_unbounded_section(&self) -> bool {
+    fn are_blocks_within_automatic_unbounded_section(&self) -> bool {
         let block_count = self.ledger.cache.block_count.load(Ordering::SeqCst);
         let cemented_count = self.ledger.cache.cemented_count.load(Ordering::SeqCst);
 
         block_count < UNBOUNDED_CUTOFF || block_count - UNBOUNDED_CUTOFF < cemented_count
+    }
+}
+
+pub(super) struct AutomaticContainerInfo {
+    unbounded_container_info: UnboundedContainerInfo,
+    bounded_container_info: BoundedContainerInfo,
+}
+
+impl AutomaticContainerInfo {
+    pub fn collect(&self) -> Vec<ContainerInfoComponent> {
+        vec![
+            self.bounded_container_info.collect(),
+            self.unbounded_container_info.collect(),
+        ]
     }
 }

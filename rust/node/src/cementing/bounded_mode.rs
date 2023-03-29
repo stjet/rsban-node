@@ -25,7 +25,7 @@ pub(crate) struct ConfirmedInfo {
     pub(crate) iterated_frontier: BlockHash,
 }
 
-pub(super) struct ConfirmationHeightBounded {
+pub(super) struct BoundedMode {
     write_database_queue: Arc<WriteDatabaseQueue>,
     pub pending_writes: VecDeque<WriteDetails>,
     notify_observers_callback: NotifyObserversCallback,
@@ -65,7 +65,7 @@ const BATCH_READ_SIZE: u64 = 65536;
 
 const PENDING_WRITES_MAX_SIZE: usize = MAX_ITEMS;
 
-impl ConfirmationHeightBounded {
+impl BoundedMode {
     pub fn new(
         write_database_queue: Arc<WriteDatabaseQueue>,
         notify_observers_callback: NotifyObserversCallback,
@@ -789,8 +789,8 @@ impl ConfirmationHeightBounded {
         self.pending_writes.is_empty()
     }
 
-    pub fn container_info(&self) -> BoundedContainerInfo {
-        BoundedContainerInfo {
+    pub fn container_info(&self) -> BoundedModeContainerInfo {
+        BoundedModeContainerInfo {
             pending_writes: self.pending_writes_size.clone(),
             accounts_confirmed: self.accounts_confirmed_info_size.clone(),
         }
@@ -836,12 +836,12 @@ fn truncate_after(buffer: &mut BoundedVecDeque<BlockHash>, hash: &BlockHash) {
     }
 }
 
-pub(super) struct BoundedContainerInfo {
+pub(super) struct BoundedModeContainerInfo {
     pending_writes: Arc<AtomicUsize>,
     accounts_confirmed: Arc<AtomicUsize>,
 }
 
-impl BoundedContainerInfo {
+impl BoundedModeContainerInfo {
     pub fn collect(&self) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
             "bounded_processor".to_owned(),

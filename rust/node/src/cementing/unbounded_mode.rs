@@ -22,13 +22,10 @@ use super::{
     confirmed_iterated_pairs::{ConfirmedIteratedPair, ConfirmedIteratedPairMap},
     implicit_receive_cemented_mapping::ImplictReceiveCementedMapping,
     unconfirmed_receive_and_sources_collector::UnconfirmedReceiveAndSourcesCollector,
-    ConfHeightDetails,
+    ConfHeightDetails, UNBOUNDED_CUTOFF,
 };
 
-/// When the uncemented count (block count - cemented count) is less than this use the unbounded processor
-const UNBOUNDED_CUTOFF: usize = 16384;
-
-pub(super) struct ConfirmationHeightUnbounded {
+pub(super) struct UnboundedMode {
     ledger: Arc<Ledger>,
     block_cache: Arc<BlockCache>,
     logger: Arc<dyn Logger>,
@@ -43,7 +40,7 @@ pub(super) struct ConfirmationHeightUnbounded {
     cementor: BlockCementor,
 }
 
-impl ConfirmationHeightUnbounded {
+impl UnboundedMode {
     pub(crate) fn new(
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
@@ -85,8 +82,8 @@ impl ConfirmationHeightUnbounded {
         self.cement_queue.is_empty()
     }
 
-    pub fn container_info(&self) -> UnboundedContainerInfo {
-        UnboundedContainerInfo {
+    pub fn container_info(&self) -> UnboundedModeContainerInfo {
+        UnboundedModeContainerInfo {
             pending_writes: Arc::clone(self.cement_queue.atomic_len()),
             confirmed_iterated_pairs: Arc::clone(self.confirmed_iterated_pairs.size_atomic()),
             implicit_receive_cemented_mapping_size: Arc::clone(
@@ -458,14 +455,14 @@ struct PreparationData<'a> {
     pub orig_block_callback_data: &'a mut Vec<BlockHash>,
 }
 
-pub(super) struct UnboundedContainerInfo {
+pub(super) struct UnboundedModeContainerInfo {
     pending_writes: Arc<AtomicUsize>,
     confirmed_iterated_pairs: Arc<AtomicUsize>,
     implicit_receive_cemented_mapping_size: Arc<AtomicUsize>,
     block_cache_size: Arc<AtomicUsize>,
 }
 
-impl UnboundedContainerInfo {
+impl UnboundedModeContainerInfo {
     pub fn collect(&self) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
             "unbounded_processor".to_owned(),

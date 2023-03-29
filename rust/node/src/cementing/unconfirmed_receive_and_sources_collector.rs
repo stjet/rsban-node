@@ -8,8 +8,8 @@ use rsnano_ledger::Ledger;
 use rsnano_store_traits::Transaction;
 
 use super::{
-    block_cache::BlockCache, confirmation_height_unbounded::ReceiveSourcePair,
-    implicit_receive_cemented_mapping::ImplictReceiveCementedMapping, ConfHeightDetails,
+    block_cache::BlockCache, implicit_receive_cemented_mapping::ImplictReceiveCementedMapping,
+    unbounded_mode::ReceiveSourcePair, ConfHeightDetails,
 };
 
 /// Walks backwards through the accounts blocks (starting at current_block)

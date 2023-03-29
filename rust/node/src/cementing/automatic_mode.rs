@@ -3,10 +3,7 @@ use std::sync::{atomic::Ordering, Arc};
 use rsnano_core::{utils::ContainerInfoComponent, BlockEnum};
 use rsnano_ledger::Ledger;
 
-use super::{
-    BoundedContainerInfo, ConfirmationHeightBounded, ConfirmationHeightUnbounded,
-    UnboundedContainerInfo,
-};
+use super::{BoundedMode, BoundedModeContainerInfo, UnboundedMode, UnboundedModeContainerInfo};
 
 #[derive(FromPrimitive, Clone, PartialEq, Eq, Copy)]
 pub enum ConfirmationHeightMode {
@@ -16,16 +13,16 @@ pub enum ConfirmationHeightMode {
 }
 
 /// When the uncemented count (block count - cemented count) is less than this use the unbounded processor
-const UNBOUNDED_CUTOFF: u64 = 16384;
+pub(super) const UNBOUNDED_CUTOFF: usize = 16384;
 
-pub(super) struct ConfirmationHeightMultiMode {
-    pub bounded_processor: ConfirmationHeightBounded,
-    pub unbounded_processor: ConfirmationHeightUnbounded,
+pub(super) struct AutomaticMode {
+    pub bounded_processor: BoundedMode,
+    pub unbounded_processor: UnboundedMode,
     pub mode: ConfirmationHeightMode,
     pub ledger: Arc<Ledger>,
 }
 
-impl ConfirmationHeightMultiMode {
+impl AutomaticMode {
     pub fn pending_writes_empty(&self) -> bool {
         self.bounded_processor.pending_writes_empty()
             && self.unbounded_processor.pending_writes_empty()
@@ -52,8 +49,8 @@ impl ConfirmationHeightMultiMode {
         self.unbounded_processor.clear_process_vars();
     }
 
-    pub fn container_info(&self) -> AutomaticContainerInfo {
-        AutomaticContainerInfo {
+    pub fn container_info(&self) -> AutomaticModeContainerInfo {
+        AutomaticModeContainerInfo {
             bounded_container_info: self.bounded_processor.container_info(),
             unbounded_container_info: self.unbounded_processor.container_info(),
         }
@@ -78,16 +75,17 @@ impl ConfirmationHeightMultiMode {
         let block_count = self.ledger.cache.block_count.load(Ordering::SeqCst);
         let cemented_count = self.ledger.cache.cemented_count.load(Ordering::SeqCst);
 
-        block_count < UNBOUNDED_CUTOFF || block_count - UNBOUNDED_CUTOFF < cemented_count
+        block_count < (UNBOUNDED_CUTOFF as u64)
+            || block_count - (UNBOUNDED_CUTOFF as u64) < cemented_count
     }
 }
 
-pub(super) struct AutomaticContainerInfo {
-    unbounded_container_info: UnboundedContainerInfo,
-    bounded_container_info: BoundedContainerInfo,
+pub(super) struct AutomaticModeContainerInfo {
+    unbounded_container_info: UnboundedModeContainerInfo,
+    bounded_container_info: BoundedModeContainerInfo,
 }
 
-impl AutomaticContainerInfo {
+impl AutomaticModeContainerInfo {
     pub fn collect(&self) -> Vec<ContainerInfoComponent> {
         vec![
             self.bounded_container_info.collect(),

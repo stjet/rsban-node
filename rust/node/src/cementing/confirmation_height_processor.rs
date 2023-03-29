@@ -19,9 +19,8 @@ use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 use crate::{config::Logging, stats::Stats};
 
 use super::{
-    block_cache::BlockCache, AutomaticContainerInfo, BlockQueue, ConfirmationHeightBounded,
-    ConfirmationHeightMode, ConfirmationHeightMultiMode, ConfirmationHeightUnbounded,
-    NotifyObserversCallback,
+    block_cache::BlockCache, AutomaticMode, AutomaticModeContainerInfo, BlockQueue, BoundedMode,
+    ConfirmationHeightMode, NotifyObserversCallback, UnboundedMode,
 };
 
 pub struct ConfirmationHeightProcessor {
@@ -36,7 +35,7 @@ pub struct ConfirmationHeightProcessor {
     thread: Option<JoinHandle<()>>,
     block_cache: Arc<BlockCache>,
 
-    automatic_container_info: AutomaticContainerInfo,
+    automatic_container_info: AutomaticModeContainerInfo,
 }
 
 impl ConfirmationHeightProcessor {
@@ -63,7 +62,7 @@ impl ConfirmationHeightProcessor {
             current_block: None,
         }));
 
-        let bounded_processor = ConfirmationHeightBounded::new(
+        let bounded_processor = BoundedMode::new(
             write_database_queue.clone(),
             cemented_callback(&cemented_observer),
             block_already_cemented_callback(&already_cemented_observer),
@@ -78,7 +77,7 @@ impl ConfirmationHeightProcessor {
 
         let block_cache = Arc::new(BlockCache::new(ledger.clone()));
 
-        let unbounded_processor = ConfirmationHeightUnbounded::new(
+        let unbounded_processor = UnboundedMode::new(
             ledger.clone(),
             logger,
             logging,
@@ -94,7 +93,7 @@ impl ConfirmationHeightProcessor {
         );
 
         let condition = Arc::new(Condvar::new());
-        let processor = ConfirmationHeightMultiMode {
+        let processor = AutomaticMode {
             bounded_processor,
             unbounded_processor,
             mode,
@@ -286,7 +285,7 @@ impl ProcessorLoopChannel {
 struct ConfirmationHeightProcessorLoop<'a> {
     stopped: Arc<AtomicBool>,
     condition: Arc<Condvar>,
-    processor: ConfirmationHeightMultiMode,
+    processor: AutomaticMode,
     channel: &'a Mutex<ProcessorLoopChannel>,
 }
 

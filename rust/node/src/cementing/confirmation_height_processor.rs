@@ -68,7 +68,7 @@ impl ConfirmationHeightProcessor {
             awaiting_processing_size_callback(&channel),
         );
 
-        let unbounded_mode = UnboundedMode::new(
+        let mut unbounded_mode = UnboundedMode::new(
             ledger.clone(),
             logger,
             enable_timing_logging,
@@ -76,11 +76,12 @@ impl ConfirmationHeightProcessor {
             batch_separate_pending_min_time,
             bounded_mode.batch_write_size.clone(),
             write_database_queue.clone(),
-            cemented_callback(&cemented_observer),
             block_already_cemented_callback(&already_cemented_observer),
             awaiting_processing_size_callback(&channel),
             stopped.clone(),
         );
+
+        unbounded_mode.set_block_cemented_callback(cemented_callback(&cemented_observer));
 
         let automatic_mode = AutomaticMode {
             bounded_mode,

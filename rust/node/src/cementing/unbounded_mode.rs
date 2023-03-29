@@ -49,8 +49,7 @@ impl UnboundedMode {
         batch_separate_pending_min_time: Duration,
         batch_write_size: Arc<AtomicU64>,
         write_database_queue: Arc<WriteDatabaseQueue>,
-        notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>,
-        notify_block_already_cemented_callback: Box<dyn Fn(BlockHash) + Send>,
+        block_already_cemented_callback: Box<dyn Fn(BlockHash) + Send>,
         awaiting_processing_size_callback: Box<dyn Fn() -> u64 + Send>,
         stopped: Arc<AtomicBool>,
     ) -> Self {
@@ -61,7 +60,7 @@ impl UnboundedMode {
             implicit_receive_cemented_mapping: ImplictReceiveCementedMapping::new(),
             block_cache: Arc::new(BlockCache::new(ledger.clone())),
             batch_write_size,
-            notify_block_already_cemented_callback,
+            notify_block_already_cemented_callback: block_already_cemented_callback,
             awaiting_processing_size_callback,
             stopped,
             cement_queue: CementQueue::new(),
@@ -72,9 +71,15 @@ impl UnboundedMode {
                 logger,
                 enable_timing_logging,
                 stats,
-                notify_observers_callback,
             ),
         }
+    }
+
+    pub fn set_block_cemented_callback(
+        &mut self,
+        callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>,
+    ) {
+        self.cementor.set_block_cemented_callback(callback);
     }
 
     pub fn block_cache(&self) -> &Arc<BlockCache> {

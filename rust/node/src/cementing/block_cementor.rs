@@ -21,7 +21,7 @@ pub(super) struct BlockCementor {
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
     stats: Arc<Stats>,
-    notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>,
+    block_cemented_callback: Option<Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>>,
 }
 
 impl BlockCementor {
@@ -32,7 +32,6 @@ impl BlockCementor {
         logger: Arc<dyn Logger>,
         enable_timing_logging: bool,
         stats: Arc<Stats>,
-        notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>,
     ) -> Self {
         Self {
             last_cementation: Instant::now(),
@@ -43,8 +42,15 @@ impl BlockCementor {
             logger,
             enable_timing_logging,
             stats,
-            notify_observers_callback,
+            block_cemented_callback: None,
         }
+    }
+
+    pub fn set_block_cemented_callback(
+        &mut self,
+        callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>,
+    ) {
+        self.block_cemented_callback = Some(callback);
     }
 
     pub fn set_last_cementation(&mut self) {
@@ -76,7 +82,9 @@ impl BlockCementor {
         }
 
         self.log_cemented_count(&cemented_blocks);
-        (self.notify_observers_callback)(&cemented_blocks);
+        if let Some(callback) = &self.block_cemented_callback {
+            callback(&cemented_blocks);
+        }
         debug_assert!(cement_queue.len() == 0);
         debug_assert!(cement_queue.atomic_len().load(Ordering::Relaxed) == 0);
         self.set_last_cementation();

@@ -16,7 +16,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 
-use crate::{config::Logging, stats::Stats};
+use crate::stats::Stats;
 
 use super::{
     block_cache::BlockCache, AutomaticMode, AutomaticModeContainerInfo, BlockQueue, BoundedMode,
@@ -42,7 +42,7 @@ impl ConfirmationHeightProcessor {
     pub fn new(
         write_database_queue: Arc<WriteDatabaseQueue>,
         logger: Arc<dyn Logger>,
-        logging: Logging,
+        enable_timing_logging: bool,
         ledger: Arc<Ledger>,
         batch_separate_pending_min_time: Duration,
         stats: Arc<Stats>,
@@ -62,13 +62,13 @@ impl ConfirmationHeightProcessor {
             current_block: None,
         }));
 
-        let bounded_processor = BoundedMode::new(
+        let bounded_mode = BoundedMode::new(
             write_database_queue.clone(),
             cemented_callback(&cemented_observer),
             block_already_cemented_callback(&already_cemented_observer),
             batch_write_size.clone(),
             logger.clone(),
-            logging.clone(),
+            enable_timing_logging,
             ledger.clone(),
             stopped.clone(),
             batch_separate_pending_min_time,
@@ -77,10 +77,10 @@ impl ConfirmationHeightProcessor {
 
         let block_cache = Arc::new(BlockCache::new(ledger.clone()));
 
-        let unbounded_processor = UnboundedMode::new(
+        let unbounded_mode = UnboundedMode::new(
             ledger.clone(),
             logger,
-            logging,
+            enable_timing_logging,
             stats,
             batch_separate_pending_min_time,
             batch_write_size.clone(),
@@ -92,15 +92,15 @@ impl ConfirmationHeightProcessor {
             stopped.clone(),
         );
 
-        let condition = Arc::new(Condvar::new());
-        let processor = AutomaticMode {
-            bounded_processor,
-            unbounded_processor,
+        let automatic_mode = AutomaticMode {
+            bounded_mode,
+            unbounded_mode,
             mode,
             ledger,
         };
 
-        let automatic_container_info = processor.container_info();
+        let condition = Arc::new(Condvar::new());
+        let automatic_container_info = automatic_mode.container_info();
 
         let join_handle = {
             let stopped = stopped.clone();
@@ -113,7 +113,7 @@ impl ConfirmationHeightProcessor {
                     let mut processor_loop = ConfirmationHeightProcessorLoop {
                         stopped,
                         condition,
-                        processor,
+                        automatic_mode,
                         channel: &channel,
                     };
                     // Do not start running the processing thread until other threads have finished their operations
@@ -285,7 +285,7 @@ impl ProcessorLoopChannel {
 struct ConfirmationHeightProcessorLoop<'a> {
     stopped: Arc<AtomicBool>,
     condition: Arc<Condvar>,
-    processor: AutomaticMode,
+    automatic_mode: AutomaticMode,
     channel: &'a Mutex<ProcessorLoopChannel>,
 }
 
@@ -317,7 +317,7 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
         mut channel: MutexGuard<'a, ProcessorLoopChannel>,
         block: Arc<BlockEnum>,
     ) -> MutexGuard<'a, ProcessorLoopChannel> {
-        if self.processor.pending_writes_empty() {
+        if self.automatic_mode.pending_writes_empty() {
             channel.pending_writes.clear();
         }
 
@@ -325,7 +325,7 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
         channel.current_block = Some(block.clone());
 
         drop(channel);
-        self.processor.process(block);
+        self.automatic_mode.process(block);
         self.channel.lock().unwrap()
     }
 
@@ -334,14 +334,14 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
         &mut self,
         mut channel: MutexGuard<'a, ProcessorLoopChannel>,
     ) -> MutexGuard<'a, ProcessorLoopChannel> {
-        if !self.processor.pending_writes_empty() {
+        if !self.automatic_mode.pending_writes_empty() {
             drop(channel);
-            self.processor.write_pending_blocks();
+            self.automatic_mode.write_pending_blocks();
             channel = self.channel.lock().unwrap();
         }
 
         channel.clear_processed_blocks();
-        self.processor.clear_process_vars();
+        self.automatic_mode.clear_process_vars();
 
         // A block could have been confirmed during the re-locking
         if channel.awaiting_processing.is_empty() {

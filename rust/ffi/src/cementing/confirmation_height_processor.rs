@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_create(
         ConfirmationHeightProcessor::new(
             (*write_database_queue).0.clone(),
             logger,
-            logging,
+            logging.timing_logging_value,
             (*ledger).0.clone(),
             Duration::from_millis(batch_separate_pending_min_time_ms),
             (*stats).0.clone(),

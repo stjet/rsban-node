@@ -16,8 +16,6 @@ use rsnano_core::{
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_traits::{ReadTransaction, Transaction};
 
-use crate::config::Logging;
-
 pub type NotifyObserversCallback = Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>;
 
 pub(crate) struct ConfirmedInfo {
@@ -27,15 +25,15 @@ pub(crate) struct ConfirmedInfo {
 
 pub(super) struct BoundedMode {
     write_database_queue: Arc<WriteDatabaseQueue>,
-    pub pending_writes: VecDeque<WriteDetails>,
+    pending_writes: VecDeque<WriteDetails>,
     notify_observers_callback: NotifyObserversCallback,
     notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash) + Send>,
     logger: Arc<dyn Logger>,
-    logging: Logging,
+    enable_timing_logging: bool,
     ledger: Arc<Ledger>,
 
     /* Holds confirmation height/cemented frontier in memory for accounts while iterating */
-    pub accounts_confirmed_info: HashMap<Account, ConfirmedInfo>,
+    accounts_confirmed_info: HashMap<Account, ConfirmedInfo>,
 
     stopped: Arc<AtomicBool>,
     timer: Instant,
@@ -72,7 +70,7 @@ impl BoundedMode {
         notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash) + Send>,
         batch_write_size: Arc<AtomicU64>,
         logger: Arc<dyn Logger>,
-        logging: Logging,
+        enable_timing_logging: bool,
         ledger: Arc<Ledger>,
         stopped: Arc<AtomicBool>,
         batch_separate_pending_min_time: Duration,
@@ -85,7 +83,7 @@ impl BoundedMode {
             notify_block_already_cemented_observers_callback,
             batch_write_size,
             logger,
-            logging,
+            enable_timing_logging,
             ledger,
             accounts_confirmed_info: HashMap::new(),
             accounts_confirmed_info_size: Arc::new(AtomicUsize::new(0)),
@@ -215,7 +213,7 @@ impl BoundedMode {
 
                             txn.commit();
 
-                            if self.logging.timing_logging_value {
+                            if self.enable_timing_logging {
                                 self.logger.always_log(&format!(
                                     "Cemented {} blocks in {} ms (bounded processor)",
                                     cemented_blocks.len(),
@@ -303,7 +301,7 @@ impl BoundedMode {
         }
 
         let time_spent_cementing = cemented_batch_timer.elapsed().as_millis();
-        if self.logging.timing_logging_value && time_spent_cementing > 50 {
+        if self.enable_timing_logging && time_spent_cementing > 50 {
             self.logger.always_log(&format!(
                 "Cemented {} blocks in {} ms (bounded processor)",
                 cemented_blocks.len(),
@@ -844,7 +842,7 @@ pub(super) struct BoundedModeContainerInfo {
 impl BoundedModeContainerInfo {
     pub fn collect(&self) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
-            "bounded_processor".to_owned(),
+            "bounded_mode".to_owned(),
             vec![
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "pending_writes".to_owned(),

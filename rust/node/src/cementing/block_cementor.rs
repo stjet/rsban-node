@@ -7,10 +7,7 @@ use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash, ConfirmationHeig
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, Writer};
 use rsnano_store_traits::{Table, Transaction, WriteTransaction};
 
-use crate::{
-    config::Logging,
-    stats::{DetailType, Direction, StatType, Stats},
-};
+use crate::stats::{DetailType, Direction, StatType, Stats};
 
 use super::{block_cache::BlockCache, cement_queue::CementQueue, ConfHeightDetails};
 
@@ -22,7 +19,7 @@ pub(super) struct BlockCementor {
     write_database_queue: Arc<WriteDatabaseQueue>,
     ledger: Arc<Ledger>,
     logger: Arc<dyn Logger>,
-    logging: Logging,
+    enable_timing_logging: bool,
     stats: Arc<Stats>,
     notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>,
 }
@@ -33,7 +30,7 @@ impl BlockCementor {
         write_database_queue: Arc<WriteDatabaseQueue>,
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
-        logging: Logging,
+        enable_timing_logging: bool,
         stats: Arc<Stats>,
         notify_observers_callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>,
     ) -> Self {
@@ -44,7 +41,7 @@ impl BlockCementor {
             write_database_queue,
             ledger,
             logger,
-            logging,
+            enable_timing_logging,
             stats,
             notify_observers_callback,
         }
@@ -87,7 +84,7 @@ impl BlockCementor {
 
     fn log_cemented_count(&self, cemented_blocks: &Vec<Arc<BlockEnum>>) {
         let time_spent_cementing = self.batch_start.elapsed();
-        if self.logging.timing_logging_value && time_spent_cementing > Duration::from_millis(50) {
+        if self.enable_timing_logging && time_spent_cementing > Duration::from_millis(50) {
             self.logger.always_log(&format!(
                 "Cemented {} blocks in {} ms (unbounded processor)",
                 cemented_blocks.len(),

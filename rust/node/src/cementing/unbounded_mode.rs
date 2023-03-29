@@ -13,7 +13,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{config::Logging, stats::Stats};
+use crate::stats::Stats;
 
 use super::{
     block_cache::BlockCache,
@@ -44,7 +44,7 @@ impl UnboundedMode {
     pub(crate) fn new(
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
-        logging: Logging,
+        enable_timing_logging: bool,
         stats: Arc<Stats>,
         batch_separate_pending_min_time: Duration,
         batch_write_size: Arc<AtomicU64>,
@@ -71,7 +71,7 @@ impl UnboundedMode {
                 write_database_queue,
                 ledger,
                 logger,
-                logging,
+                enable_timing_logging,
                 stats,
                 notify_observers_callback,
             ),
@@ -465,7 +465,7 @@ pub(super) struct UnboundedModeContainerInfo {
 impl UnboundedModeContainerInfo {
     pub fn collect(&self) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
-            "unbounded_processor".to_owned(),
+            "unbounded_mode".to_owned(),
             vec![
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "confirmed_iterated_pairs".to_owned(),

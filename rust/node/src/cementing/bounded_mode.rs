@@ -16,7 +16,7 @@ use rsnano_core::{
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_traits::{ReadTransaction, Transaction};
 
-pub type NotifyObserversCallback = Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>;
+use super::{AwaitingProcessingCountCallback, BlockCallback, BlockHashCallback};
 
 pub(crate) struct ConfirmedInfo {
     pub(crate) confirmed_height: u64,
@@ -26,8 +26,8 @@ pub(crate) struct ConfirmedInfo {
 pub(super) struct BoundedMode {
     write_database_queue: Arc<WriteDatabaseQueue>,
     pending_writes: VecDeque<WriteDetails>,
-    notify_observers_callback: NotifyObserversCallback,
-    notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash) + Send>,
+    block_cemented_callback: BlockCallback,
+    notify_block_already_cemented_observers_callback: BlockHashCallback,
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
     ledger: Arc<Ledger>,
@@ -38,7 +38,7 @@ pub(super) struct BoundedMode {
     stopped: Arc<AtomicBool>,
     timer: Instant,
     batch_separate_pending_min_time: Duration,
-    awaiting_processing_size_callback: Box<dyn Fn() -> u64 + Send>,
+    awaiting_processing_count_callback: Box<dyn Fn() -> u64 + Send>,
     pub batch_write_size: Arc<AtomicU64>,
 
     // All of the atomic variables here just track the size for use in collect_container_info.
@@ -66,19 +66,19 @@ const PENDING_WRITES_MAX_SIZE: usize = MAX_ITEMS;
 impl BoundedMode {
     pub fn new(
         write_database_queue: Arc<WriteDatabaseQueue>,
-        notify_observers_callback: NotifyObserversCallback,
-        notify_block_already_cemented_observers_callback: Box<dyn Fn(BlockHash) + Send>,
         logger: Arc<dyn Logger>,
         enable_timing_logging: bool,
         ledger: Arc<Ledger>,
         stopped: Arc<AtomicBool>,
         batch_separate_pending_min_time: Duration,
-        awaiting_processing_size_callback: Box<dyn Fn() -> u64 + Send>,
+        notify_observers_callback: BlockCallback,
+        notify_block_already_cemented_observers_callback: BlockHashCallback,
+        awaiting_processing_count_callback: AwaitingProcessingCountCallback,
     ) -> Self {
         Self {
             write_database_queue,
             pending_writes: VecDeque::new(),
-            notify_observers_callback,
+            block_cemented_callback: notify_observers_callback,
             notify_block_already_cemented_observers_callback,
             batch_write_size: Arc::new(AtomicU64::new(16384)),
             logger,
@@ -90,7 +90,7 @@ impl BoundedMode {
             stopped,
             timer: Instant::now(),
             batch_separate_pending_min_time,
-            awaiting_processing_size_callback,
+            awaiting_processing_count_callback,
         }
     }
 
@@ -241,7 +241,9 @@ impl BoundedMode {
 
                             scoped_write_guard.release();
 
-                            (self.notify_observers_callback)(&cemented_blocks);
+                            for block in &cemented_blocks {
+                                (self.block_cemented_callback)(block);
+                            }
 
                             cemented_blocks.clear();
 
@@ -311,7 +313,9 @@ impl BoundedMode {
         // Scope guard could have been released earlier (0 cemented_blocks would indicate that)
         if scoped_write_guard.is_owned() && !cemented_blocks.is_empty() {
             scoped_write_guard.release();
-            (self.notify_observers_callback)(&cemented_blocks);
+            for block in &cemented_blocks {
+                (self.block_cemented_callback)(block);
+            }
         }
 
         // Bail if there was an error. This indicates that there was a fatal issue with the ledger
@@ -730,7 +734,7 @@ impl BoundedMode {
                 let min_time_exceeded =
                     self.timer.elapsed() >= self.batch_separate_pending_min_time;
                 let finished_iterating = current == original_block.hash();
-                let non_awaiting_processing = (self.awaiting_processing_size_callback)() == 0;
+                let non_awaiting_processing = (self.awaiting_processing_count_callback)() == 0;
                 let should_output =
                     finished_iterating && (non_awaiting_processing || min_time_exceeded);
 

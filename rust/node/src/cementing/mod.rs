@@ -10,12 +10,14 @@ mod implicit_receive_cemented_mapping;
 mod unbounded_mode;
 mod unconfirmed_receive_and_sources_collector;
 
+use std::sync::Arc;
+
 use block_queue::BlockQueue;
-use rsnano_core::{Account, BlockHash};
+use rsnano_core::{Account, BlockEnum, BlockHash};
 
 pub use automatic_mode::ConfirmationHeightMode;
 use automatic_mode::{AutomaticMode, AutomaticModeContainerInfo, UNBOUNDED_CUTOFF};
-use bounded_mode::{BoundedMode, BoundedModeContainerInfo, NotifyObserversCallback};
+use bounded_mode::{BoundedMode, BoundedModeContainerInfo};
 pub use confirmation_height_processor::ConfirmationHeightProcessor;
 use unbounded_mode::{UnboundedMode, UnboundedModeContainerInfo};
 
@@ -32,3 +34,7 @@ pub struct ConfHeightDetails {
     /// is this a list of cemented blocks that belong to another account that we received from?
     pub cemented_in_source: Vec<BlockHash>,
 }
+
+type BlockCallback = Box<dyn Fn(&Arc<BlockEnum>) + Send>;
+type BlockHashCallback = Box<dyn Fn(BlockHash) + Send>;
+type AwaitingProcessingCountCallback = Box<dyn Fn() -> u64 + Send>;

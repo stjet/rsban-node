@@ -19,8 +19,9 @@ use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 use crate::stats::Stats;
 
 use super::{
-    block_cache::BlockCache, AutomaticMode, AutomaticModeContainerInfo, BlockQueue, BoundedMode,
-    ConfirmationHeightMode, NotifyObserversCallback, UnboundedMode,
+    block_cache::BlockCache, AutomaticMode, AutomaticModeContainerInfo,
+    AwaitingProcessingCountCallback, BlockCallback, BlockHashCallback, BlockQueue, BoundedMode,
+    ConfirmationHeightMode, UnboundedMode,
 };
 
 pub struct ConfirmationHeightProcessor {
@@ -30,8 +31,8 @@ pub struct ConfirmationHeightProcessor {
     batch_write_size: Arc<AtomicU64>,
     stopped: Arc<AtomicBool>,
     // No mutex needed for the observers as these should be set up during initialization of the node
-    cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<BlockEnum>) + Send>>>>,
-    already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash) + Send>>>>,
+    cemented_observer: Arc<Mutex<Option<BlockCallback>>>,
+    already_cemented_observer: Arc<Mutex<Option<BlockHashCallback>>>,
     thread: Option<JoinHandle<()>>,
     block_cache: Arc<BlockCache>,
 
@@ -49,46 +50,53 @@ impl ConfirmationHeightProcessor {
         latch: Box<dyn Latch>,
         mode: ConfirmationHeightMode,
     ) -> Self {
-        let cemented_observer: Arc<Mutex<Option<Box<dyn Fn(&Arc<BlockEnum>) + Send>>>> =
-            Arc::new(Mutex::new(None));
-        let already_cemented_observer: Arc<Mutex<Option<Box<dyn Fn(BlockHash) + Send>>>> =
+        let cemented_observer: Arc<Mutex<Option<BlockCallback>>> = Arc::new(Mutex::new(None));
+        let already_cemented_observer: Arc<Mutex<Option<BlockHashCallback>>> =
             Arc::new(Mutex::new(None));
         let stopped = Arc::new(AtomicBool::new(false));
         let channel = Arc::new(Mutex::new(ProcessorLoopChannel::new()));
 
         let bounded_mode = BoundedMode::new(
             write_database_queue.clone(),
-            cemented_callback(&cemented_observer),
-            block_already_cemented_callback(&already_cemented_observer),
             logger.clone(),
             enable_timing_logging,
             ledger.clone(),
             stopped.clone(),
             batch_separate_pending_min_time,
-            awaiting_processing_size_callback(&channel),
+            cemented_callback(cemented_observer.clone()),
+            block_already_cemented_callback(already_cemented_observer.clone()),
+            awaiting_processing_count_callback(channel.clone()),
         );
 
-        let mut unbounded_mode = UnboundedMode::new(
+        let unbounded_mode = UnboundedMode::new(
             ledger.clone(),
-            logger,
+            logger.clone(),
             enable_timing_logging,
-            stats,
+            stats.clone(),
             batch_separate_pending_min_time,
             bounded_mode.batch_write_size.clone(),
             write_database_queue.clone(),
-            block_already_cemented_callback(&already_cemented_observer),
-            awaiting_processing_size_callback(&channel),
             stopped.clone(),
+            cemented_callback(cemented_observer.clone()),
+            block_already_cemented_callback(already_cemented_observer.clone()),
+            awaiting_processing_count_callback(channel.clone()),
         );
 
-        unbounded_mode.set_block_cemented_callback(cemented_callback(&cemented_observer));
-
-        let automatic_mode = AutomaticMode {
+        let automatic_mode = AutomaticMode::new(
             bounded_mode,
             unbounded_mode,
             mode,
             ledger,
-        };
+            logger,
+            enable_timing_logging,
+            stats,
+            batch_separate_pending_min_time,
+            write_database_queue.clone(),
+            stopped.clone(),
+            cemented_callback(cemented_observer.clone()),
+            block_already_cemented_callback(already_cemented_observer.clone()),
+            awaiting_processing_count_callback(channel.clone()),
+        );
 
         let automatic_container_info = automatic_mode.container_info();
         let block_cache = Arc::clone(automatic_mode.block_cache());
@@ -162,11 +170,11 @@ impl ConfirmationHeightProcessor {
         }
     }
 
-    pub fn set_cemented_observer(&mut self, callback: Box<dyn Fn(&Arc<BlockEnum>) + Send>) {
+    pub fn set_cemented_observer(&mut self, callback: BlockCallback) {
         *self.cemented_observer.lock().unwrap() = Some(callback);
     }
 
-    pub fn set_already_cemented_observer(&mut self, callback: Box<dyn Fn(BlockHash) + Send>) {
+    pub fn set_already_cemented_observer(&mut self, callback: BlockHashCallback) {
         *self.already_cemented_observer.lock().unwrap() = Some(callback);
     }
 
@@ -218,44 +226,33 @@ impl Drop for ConfirmationHeightProcessor {
     }
 }
 
-fn awaiting_processing_size_callback(
-    channel: &Arc<Mutex<ProcessorLoopChannel>>,
-) -> Box<dyn Fn() -> u64 + Send> {
-    let channel_clone = Arc::clone(channel);
-
-    let awaiting_processing_size_callback = Box::new(move || {
-        let lk = channel_clone.lock().unwrap();
+fn awaiting_processing_count_callback(
+    channel: Arc<Mutex<ProcessorLoopChannel>>,
+) -> AwaitingProcessingCountCallback {
+    Box::new(move || {
+        let lk = channel.lock().unwrap();
         lk.awaiting_processing.len() as u64
-    });
-    awaiting_processing_size_callback
+    })
 }
 
 fn block_already_cemented_callback(
-    already_cemented_observer: &Arc<Mutex<Option<Box<dyn Fn(BlockHash) + Send>>>>,
-) -> Box<dyn Fn(BlockHash) + Send> {
-    let already_cemented_observer_clone = Arc::clone(already_cemented_observer);
-    let already_cemented_callback = Box::new(move |block_hash| {
-        let lock = already_cemented_observer_clone.lock().unwrap();
+    already_cemented_observer: Arc<Mutex<Option<BlockHashCallback>>>,
+) -> BlockHashCallback {
+    Box::new(move |block_hash| {
+        let lock = already_cemented_observer.lock().unwrap();
         if let Some(f) = lock.deref() {
             (f)(block_hash);
         }
-    });
-    already_cemented_callback
+    })
 }
 
-fn cemented_callback(
-    cemented_observer: &Arc<Mutex<Option<Box<dyn Fn(&Arc<BlockEnum>) + Send>>>>,
-) -> Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send> {
-    let cemented_observer_clone = Arc::clone(cemented_observer);
-    let cemented_callback: NotifyObserversCallback = Box::new(move |blocks| {
-        let lock = cemented_observer_clone.lock().unwrap();
+fn cemented_callback(cemented_observer: Arc<Mutex<Option<BlockCallback>>>) -> BlockCallback {
+    Box::new(move |block| {
+        let lock = cemented_observer.lock().unwrap();
         if let Some(f) = lock.deref() {
-            for block in blocks {
-                (f)(block);
-            }
+            (f)(block);
         }
-    });
-    cemented_callback
+    })
 }
 
 /// Used for inter thread communication between ConfirmationHeightProcessor and ConfirmationHeightProcessorLoop

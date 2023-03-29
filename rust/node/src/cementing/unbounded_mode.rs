@@ -22,7 +22,8 @@ use super::{
     confirmed_iterated_pairs::{ConfirmedIteratedPair, ConfirmedIteratedPairMap},
     implicit_receive_cemented_mapping::ImplictReceiveCementedMapping,
     unconfirmed_receive_and_sources_collector::UnconfirmedReceiveAndSourcesCollector,
-    ConfHeightDetails, UNBOUNDED_CUTOFF,
+    AwaitingProcessingCountCallback, BlockCallback, BlockHashCallback, ConfHeightDetails,
+    UNBOUNDED_CUTOFF,
 };
 
 pub(super) struct UnboundedMode {
@@ -33,8 +34,8 @@ pub(super) struct UnboundedMode {
     implicit_receive_cemented_mapping: ImplictReceiveCementedMapping,
 
     batch_write_size: Arc<AtomicU64>,
-    notify_block_already_cemented_callback: Box<dyn Fn(BlockHash) + Send>,
-    awaiting_processing_size_callback: Box<dyn Fn() -> u64 + Send>,
+    block_already_cemented_callback: Option<BlockHashCallback>,
+    awaiting_processing_count_callback: AwaitingProcessingCountCallback,
     stopped: Arc<AtomicBool>,
     cement_queue: CementQueue,
     cementor: BlockCementor,
@@ -49,9 +50,10 @@ impl UnboundedMode {
         batch_separate_pending_min_time: Duration,
         batch_write_size: Arc<AtomicU64>,
         write_database_queue: Arc<WriteDatabaseQueue>,
-        block_already_cemented_callback: Box<dyn Fn(BlockHash) + Send>,
-        awaiting_processing_size_callback: Box<dyn Fn() -> u64 + Send>,
         stopped: Arc<AtomicBool>,
+        block_cemented_callback: BlockCallback,
+        block_already_cemented_callback: BlockHashCallback,
+        awaiting_processing_count_callback: AwaitingProcessingCountCallback,
     ) -> Self {
         Self {
             ledger: Arc::clone(&ledger),
@@ -60,8 +62,8 @@ impl UnboundedMode {
             implicit_receive_cemented_mapping: ImplictReceiveCementedMapping::new(),
             block_cache: Arc::new(BlockCache::new(ledger.clone())),
             batch_write_size,
-            notify_block_already_cemented_callback: block_already_cemented_callback,
-            awaiting_processing_size_callback,
+            block_already_cemented_callback: Some(block_already_cemented_callback),
+            awaiting_processing_count_callback,
             stopped,
             cement_queue: CementQueue::new(),
             cementor: BlockCementor::new(
@@ -71,15 +73,13 @@ impl UnboundedMode {
                 logger,
                 enable_timing_logging,
                 stats,
+                block_cemented_callback,
             ),
         }
     }
 
-    pub fn set_block_cemented_callback(
-        &mut self,
-        callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>,
-    ) {
-        self.cementor.set_block_cemented_callback(callback);
+    pub fn set_block_already_cemented_callback(&mut self, callback: BlockHashCallback) {
+        self.block_already_cemented_callback = Some(callback);
     }
 
     pub fn block_cache(&self) -> &Arc<BlockCache> {
@@ -176,7 +176,9 @@ impl UnboundedMode {
             if first_iter && heights.confirmed_height >= block_height {
                 // This block was added to the confirmation height processor but is already confirmed
                 debug_assert!(current_block_hash == original_block.hash());
-                (self.notify_block_already_cemented_callback)(original_block.hash());
+                if let Some(callback) = &self.block_already_cemented_callback {
+                    (callback)(original_block.hash());
+                }
             }
 
             let count_before_receive = receive_source_pairs.len();
@@ -239,7 +241,7 @@ impl UnboundedMode {
             // When there are a lot of pending confirmation height blocks, it is more efficient to
             // bulk some of them up to enable better write performance which becomes the bottleneck.
             let finished_iterating = receive_source_pairs.is_empty();
-            let no_pending = (self.awaiting_processing_size_callback)() == 0;
+            let no_pending = (self.awaiting_processing_count_callback)() == 0;
             let should_output =
                 finished_iterating && (no_pending || self.cementor.min_time_exceeded());
 

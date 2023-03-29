@@ -9,7 +9,7 @@ use rsnano_store_traits::{Table, Transaction, WriteTransaction};
 
 use crate::stats::{DetailType, Direction, StatType, Stats};
 
-use super::{block_cache::BlockCache, cement_queue::CementQueue, ConfHeightDetails};
+use super::{block_cache::BlockCache, cement_queue::CementQueue, BlockCallback, ConfHeightDetails};
 
 // Cements blocks. That means it increases the confirmation_height of the account
 pub(super) struct BlockCementor {
@@ -21,7 +21,7 @@ pub(super) struct BlockCementor {
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
     stats: Arc<Stats>,
-    block_cemented_callback: Option<Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>>,
+    block_cemented_callback: BlockCallback,
 }
 
 impl BlockCementor {
@@ -32,6 +32,7 @@ impl BlockCementor {
         logger: Arc<dyn Logger>,
         enable_timing_logging: bool,
         stats: Arc<Stats>,
+        block_cemented_callback: BlockCallback,
     ) -> Self {
         Self {
             last_cementation: Instant::now(),
@@ -42,15 +43,8 @@ impl BlockCementor {
             logger,
             enable_timing_logging,
             stats,
-            block_cemented_callback: None,
+            block_cemented_callback,
         }
-    }
-
-    pub fn set_block_cemented_callback(
-        &mut self,
-        callback: Box<dyn Fn(&Vec<Arc<BlockEnum>>) + Send>,
-    ) {
-        self.block_cemented_callback = Some(callback);
     }
 
     pub fn set_last_cementation(&mut self) {
@@ -82,8 +76,8 @@ impl BlockCementor {
         }
 
         self.log_cemented_count(&cemented_blocks);
-        if let Some(callback) = &self.block_cemented_callback {
-            callback(&cemented_blocks);
+        for block in &cemented_blocks {
+            (self.block_cemented_callback)(block);
         }
         debug_assert!(cement_queue.len() == 0);
         debug_assert!(cement_queue.atomic_len().load(Ordering::Relaxed) == 0);

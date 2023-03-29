@@ -1,14 +1,24 @@
-use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    Arc,
+use std::{
+    ops::Deref,
+    rc::Rc,
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc,
+    },
+    time::Duration,
 };
 
-use rsnano_core::{utils::ContainerInfoComponent, BlockEnum};
-use rsnano_ledger::Ledger;
+use rsnano_core::{
+    utils::{ContainerInfoComponent, Logger},
+    BlockEnum,
+};
+use rsnano_ledger::{Ledger, WriteDatabaseQueue};
+
+use crate::stats::Stats;
 
 use super::{
-    block_cache::BlockCache, BoundedMode, BoundedModeContainerInfo, UnboundedMode,
-    UnboundedModeContainerInfo,
+    block_cache::BlockCache, AwaitingProcessingCountCallback, BlockCallback, BlockHashCallback,
+    BoundedMode, BoundedModeContainerInfo, UnboundedMode, UnboundedModeContainerInfo,
 };
 
 #[derive(FromPrimitive, Clone, PartialEq, Eq, Copy)]
@@ -26,9 +36,38 @@ pub(super) struct AutomaticMode {
     pub unbounded_mode: UnboundedMode,
     pub mode: ConfirmationHeightMode,
     pub ledger: Arc<Ledger>,
+    block_cemented_callback: BlockCallback,
+    block_already_cemented_callback: BlockHashCallback,
+    awaiting_processing_count_callback: AwaitingProcessingCountCallback,
 }
 
 impl AutomaticMode {
+    pub(super) fn new(
+        bounded_mode: BoundedMode,
+        unbounded_mode: UnboundedMode,
+        mode: ConfirmationHeightMode,
+        ledger: Arc<Ledger>,
+        logger: Arc<dyn Logger>,
+        enable_timing_logging: bool,
+        stats: Arc<Stats>,
+        batch_separate_pending_min_time: Duration,
+        write_database_queue: Arc<WriteDatabaseQueue>,
+        stopped: Arc<AtomicBool>,
+        block_cemented_callback: BlockCallback,
+        block_already_cemented_callback: BlockHashCallback,
+        awaiting_processing_count_callback: AwaitingProcessingCountCallback,
+    ) -> Self {
+        Self {
+            bounded_mode,
+            unbounded_mode,
+            mode,
+            ledger,
+            block_cemented_callback,
+            block_already_cemented_callback,
+            awaiting_processing_count_callback,
+        }
+    }
+
     pub fn pending_writes_empty(&self) -> bool {
         self.bounded_mode.pending_writes_empty() && self.unbounded_mode.pending_writes_empty()
     }

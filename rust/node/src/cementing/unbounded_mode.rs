@@ -22,8 +22,7 @@ use super::{
     confirmed_iterated_pairs::{ConfirmedIteratedPair, ConfirmedIteratedPairMap},
     implicit_receive_cemented_mapping::ImplictReceiveCementedMapping,
     unconfirmed_receive_and_sources_collector::UnconfirmedReceiveAndSourcesCollector,
-    AwaitingProcessingCountCallback, BlockCallback, BlockHashCallback, ConfHeightDetails,
-    UNBOUNDED_CUTOFF,
+    CementCallbacks, ConfHeightDetails, UNBOUNDED_CUTOFF,
 };
 
 pub(super) struct UnboundedMode {
@@ -34,8 +33,6 @@ pub(super) struct UnboundedMode {
     implicit_receive_cemented_mapping: ImplictReceiveCementedMapping,
 
     batch_write_size: Arc<AtomicU64>,
-    block_already_cemented_callback: Option<BlockHashCallback>,
-    awaiting_processing_count_callback: AwaitingProcessingCountCallback,
     stopped: Arc<AtomicBool>,
     cement_queue: CementQueue,
     cementor: BlockCementor,
@@ -51,9 +48,6 @@ impl UnboundedMode {
         batch_write_size: Arc<AtomicU64>,
         write_database_queue: Arc<WriteDatabaseQueue>,
         stopped: Arc<AtomicBool>,
-        block_cemented_callback: BlockCallback,
-        block_already_cemented_callback: BlockHashCallback,
-        awaiting_processing_count_callback: AwaitingProcessingCountCallback,
     ) -> Self {
         Self {
             ledger: Arc::clone(&ledger),
@@ -62,8 +56,6 @@ impl UnboundedMode {
             implicit_receive_cemented_mapping: ImplictReceiveCementedMapping::new(),
             block_cache: Arc::new(BlockCache::new(ledger.clone())),
             batch_write_size,
-            block_already_cemented_callback: Some(block_already_cemented_callback),
-            awaiting_processing_count_callback,
             stopped,
             cement_queue: CementQueue::new(),
             cementor: BlockCementor::new(
@@ -73,13 +65,8 @@ impl UnboundedMode {
                 logger,
                 enable_timing_logging,
                 stats,
-                block_cemented_callback,
             ),
         }
-    }
-
-    pub fn set_block_already_cemented_callback(&mut self, callback: BlockHashCallback) {
-        self.block_already_cemented_callback = Some(callback);
     }
 
     pub fn block_cache(&self) -> &Arc<BlockCache> {
@@ -119,7 +106,7 @@ impl UnboundedMode {
         self.block_cache.clear();
     }
 
-    pub fn process(&mut self, original_block: Arc<BlockEnum>) {
+    pub fn process(&mut self, original_block: Arc<BlockEnum>, callbacks: &CementCallbacks) {
         if self.pending_writes_empty() {
             self.clear_process_vars();
             self.cementor.set_last_cementation();
@@ -176,9 +163,7 @@ impl UnboundedMode {
             if first_iter && heights.confirmed_height >= block_height {
                 // This block was added to the confirmation height processor but is already confirmed
                 debug_assert!(current_block_hash == original_block.hash());
-                if let Some(callback) = &self.block_already_cemented_callback {
-                    (callback)(original_block.hash());
-                }
+                (callbacks.block_already_cemented_callback)(original_block.hash());
             }
 
             let count_before_receive = receive_source_pairs.len();
@@ -241,7 +226,7 @@ impl UnboundedMode {
             // When there are a lot of pending confirmation height blocks, it is more efficient to
             // bulk some of them up to enable better write performance which becomes the bottleneck.
             let finished_iterating = receive_source_pairs.is_empty();
-            let no_pending = (self.awaiting_processing_count_callback)() == 0;
+            let no_pending = (callbacks.awaiting_processing_count_callback)() == 0;
             let should_output =
                 finished_iterating && (no_pending || self.cementor.min_time_exceeded());
 
@@ -250,7 +235,7 @@ impl UnboundedMode {
                     && self.cement_queue.len() > 0;
 
             if should_cement_pending_blocks {
-                self.write_pending_blocks();
+                self.write_pending_blocks(callbacks);
             }
 
             first_iter = false;
@@ -424,13 +409,16 @@ impl UnboundedMode {
             self.cement_queue.push(receive_details_lock.clone())
         }
     }
-    pub fn write_pending_blocks(&mut self) {
+    pub fn write_pending_blocks(&mut self, callbacks: &CementCallbacks) {
         if self.cement_queue.is_empty() {
             return;
         }
 
-        self.cementor
-            .cement_blocks(&mut self.cement_queue, &self.block_cache);
+        self.cementor.cement_blocks(
+            &mut self.cement_queue,
+            &self.block_cache,
+            callbacks.block_cemented_callback,
+        );
     }
 }
 

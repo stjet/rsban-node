@@ -1,6 +1,4 @@
 use std::{
-    ops::Deref,
-    rc::Rc,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
@@ -17,8 +15,8 @@ use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 use crate::stats::Stats;
 
 use super::{
-    block_cache::BlockCache, AwaitingProcessingCountCallback, BlockCallback, BlockHashCallback,
-    BoundedMode, BoundedModeContainerInfo, UnboundedMode, UnboundedModeContainerInfo,
+    block_cache::BlockCache, BoundedMode, BoundedModeContainerInfo, CementCallbacks, UnboundedMode,
+    UnboundedModeContainerInfo,
 };
 
 #[derive(FromPrimitive, Clone, PartialEq, Eq, Copy)]
@@ -36,9 +34,6 @@ pub(super) struct AutomaticMode {
     pub unbounded_mode: UnboundedMode,
     pub mode: ConfirmationHeightMode,
     pub ledger: Arc<Ledger>,
-    block_cemented_callback: BlockCallback,
-    block_already_cemented_callback: BlockHashCallback,
-    awaiting_processing_count_callback: AwaitingProcessingCountCallback,
 }
 
 impl AutomaticMode {
@@ -53,18 +48,12 @@ impl AutomaticMode {
         batch_separate_pending_min_time: Duration,
         write_database_queue: Arc<WriteDatabaseQueue>,
         stopped: Arc<AtomicBool>,
-        block_cemented_callback: BlockCallback,
-        block_already_cemented_callback: BlockHashCallback,
-        awaiting_processing_count_callback: AwaitingProcessingCountCallback,
     ) -> Self {
         Self {
             bounded_mode,
             unbounded_mode,
             mode,
             ledger,
-            block_cemented_callback,
-            block_already_cemented_callback,
-            awaiting_processing_count_callback,
         }
     }
 
@@ -72,19 +61,19 @@ impl AutomaticMode {
         self.bounded_mode.pending_writes_empty() && self.unbounded_mode.pending_writes_empty()
     }
 
-    pub fn write_pending_blocks(&mut self) {
+    pub fn write_pending_blocks(&mut self, callbacks: &CementCallbacks) {
         if !self.bounded_mode.pending_writes_empty() {
-            self.bounded_mode.write_pending_blocks();
+            self.bounded_mode.write_pending_blocks(callbacks);
         } else if !self.unbounded_mode.pending_writes_empty() {
-            self.unbounded_mode.write_pending_blocks();
+            self.unbounded_mode.write_pending_blocks(callbacks);
         }
     }
 
-    pub fn process(&mut self, block: Arc<BlockEnum>) {
+    pub fn process(&mut self, block: Arc<BlockEnum>, callbacks: &CementCallbacks) {
         if self.should_use_unbounded_processor() {
-            self.unbounded_mode.process(block);
+            self.unbounded_mode.process(block, callbacks);
         } else {
-            self.bounded_mode.process(&block);
+            self.bounded_mode.process(&block, callbacks);
         }
     }
 

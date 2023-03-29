@@ -16,7 +16,7 @@ use rsnano_core::{
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_traits::{ReadTransaction, Transaction};
 
-use super::{AwaitingProcessingCountCallback, BlockCallback, BlockHashCallback};
+use super::confirmation_height_processor::CementCallbacks;
 
 pub(crate) struct ConfirmedInfo {
     pub(crate) confirmed_height: u64,
@@ -26,8 +26,6 @@ pub(crate) struct ConfirmedInfo {
 pub(super) struct BoundedMode {
     write_database_queue: Arc<WriteDatabaseQueue>,
     pending_writes: VecDeque<WriteDetails>,
-    block_cemented_callback: BlockCallback,
-    notify_block_already_cemented_observers_callback: BlockHashCallback,
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
     ledger: Arc<Ledger>,
@@ -38,7 +36,6 @@ pub(super) struct BoundedMode {
     stopped: Arc<AtomicBool>,
     timer: Instant,
     batch_separate_pending_min_time: Duration,
-    awaiting_processing_count_callback: Box<dyn Fn() -> u64 + Send>,
     pub batch_write_size: Arc<AtomicU64>,
 
     // All of the atomic variables here just track the size for use in collect_container_info.
@@ -71,15 +68,10 @@ impl BoundedMode {
         ledger: Arc<Ledger>,
         stopped: Arc<AtomicBool>,
         batch_separate_pending_min_time: Duration,
-        notify_observers_callback: BlockCallback,
-        notify_block_already_cemented_observers_callback: BlockHashCallback,
-        awaiting_processing_count_callback: AwaitingProcessingCountCallback,
     ) -> Self {
         Self {
             write_database_queue,
             pending_writes: VecDeque::new(),
-            block_cemented_callback: notify_observers_callback,
-            notify_block_already_cemented_observers_callback,
             batch_write_size: Arc::new(AtomicU64::new(16384)),
             logger,
             enable_timing_logging,
@@ -90,11 +82,10 @@ impl BoundedMode {
             stopped,
             timer: Instant::now(),
             batch_separate_pending_min_time,
-            awaiting_processing_count_callback,
         }
     }
 
-    pub fn write_pending_blocks(&mut self) {
+    pub fn write_pending_blocks(&mut self, callbacks: &CementCallbacks) {
         if self.pending_writes.is_empty() {
             return;
         }
@@ -103,12 +94,13 @@ impl BoundedMode {
             .write_database_queue
             .wait(rsnano_ledger::Writer::ConfirmationHeight);
 
-        self.write_pending_blocks_with_write_guard(&mut write_guard);
+        self.write_pending_blocks_with_write_guard(&mut write_guard, callbacks);
     }
 
     fn write_pending_blocks_with_write_guard(
         &mut self,
         scoped_write_guard: &mut WriteGuard,
+        callbacks: &CementCallbacks,
     ) -> Option<WriteGuard> {
         let mut new_scoped_write_guard = None;
         let mut cemented_batch_timer: Instant;
@@ -242,7 +234,7 @@ impl BoundedMode {
                             scoped_write_guard.release();
 
                             for block in &cemented_blocks {
-                                (self.block_cemented_callback)(block);
+                                (callbacks.block_cemented_callback)(block);
                             }
 
                             cemented_blocks.clear();
@@ -314,7 +306,7 @@ impl BoundedMode {
         if scoped_write_guard.is_owned() && !cemented_blocks.is_empty() {
             scoped_write_guard.release();
             for block in &cemented_blocks {
-                (self.block_cemented_callback)(block);
+                (callbacks.block_cemented_callback)(block);
             }
         }
 
@@ -578,7 +570,7 @@ impl BoundedMode {
         next
     }
 
-    pub(crate) fn process(&mut self, original_block: &BlockEnum) {
+    pub(crate) fn process(&mut self, original_block: &BlockEnum, callbacks: &CementCallbacks) {
         if self.pending_writes_empty() {
             self.clear_process_vars();
             self.timer = Instant::now();
@@ -627,29 +619,28 @@ impl BoundedMode {
             let account = block.account_calculated();
 
             // Checks if we have encountered this account before but not commited changes yet, if so then update the cached confirmation height
-            let confirmation_height_info = if let Some(found_info) =
-                self.accounts_confirmed_info.get(&account)
-            {
-                ConfirmationHeightInfo::new(
-                    found_info.confirmed_height,
-                    found_info.iterated_frontier,
-                )
-            } else {
-                let conf_info = self
-                    .ledger
-                    .store
-                    .confirmation_height()
-                    .get(txn.txn(), &account)
-                    .unwrap_or_default();
-                // This block was added to the confirmation height processor but is already confirmed
-                if first_iter
-                    && conf_info.height >= block.sideband().unwrap().height
-                    && current == original_block.hash()
-                {
-                    (self.notify_block_already_cemented_observers_callback)(original_block.hash());
-                }
-                conf_info
-            };
+            let confirmation_height_info =
+                if let Some(found_info) = self.accounts_confirmed_info.get(&account) {
+                    ConfirmationHeightInfo::new(
+                        found_info.confirmed_height,
+                        found_info.iterated_frontier,
+                    )
+                } else {
+                    let conf_info = self
+                        .ledger
+                        .store
+                        .confirmation_height()
+                        .get(txn.txn(), &account)
+                        .unwrap_or_default();
+                    // This block was added to the confirmation height processor but is already confirmed
+                    if first_iter
+                        && conf_info.height >= block.sideband().unwrap().height
+                        && current == original_block.hash()
+                    {
+                        (callbacks.block_already_cemented_callback)(original_block.hash());
+                    }
+                    conf_info
+                };
 
             let mut block_height = block.sideband().unwrap().height;
             let already_cemented = confirmation_height_info.height >= block_height;
@@ -734,7 +725,7 @@ impl BoundedMode {
                 let min_time_exceeded =
                     self.timer.elapsed() >= self.batch_separate_pending_min_time;
                 let finished_iterating = current == original_block.hash();
-                let non_awaiting_processing = (self.awaiting_processing_count_callback)() == 0;
+                let non_awaiting_processing = (callbacks.awaiting_processing_count_callback)() == 0;
                 let should_output =
                     finished_iterating && (non_awaiting_processing || min_time_exceeded);
 
@@ -751,11 +742,17 @@ impl BoundedMode {
                     {
                         // todo: this does not seem thread safe!
                         let mut scoped_write_guard = self.write_database_queue.pop();
-                        self.write_pending_blocks_with_write_guard(&mut scoped_write_guard);
+                        self.write_pending_blocks_with_write_guard(
+                            &mut scoped_write_guard,
+                            callbacks,
+                        );
                     } else if force_write {
                         let mut scoped_write_guard =
                             self.write_database_queue.wait(Writer::ConfirmationHeight);
-                        self.write_pending_blocks_with_write_guard(&mut scoped_write_guard);
+                        self.write_pending_blocks_with_write_guard(
+                            &mut scoped_write_guard,
+                            callbacks,
+                        );
                     }
                 }
             }

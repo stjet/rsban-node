@@ -158,8 +158,13 @@ impl BoundedMode {
             }
 
             // If we are not already at the bottom of the account chain (1 above cemented frontier) then find it
-            if !already_cemented && block_height - confirmation_height_info.height > 1 {
-                if block_height - confirmation_height_info.height == 2 {
+            let blocks_to_cement_for_this_account = if already_cemented {
+                0
+            } else {
+                block_height - confirmation_height_info.height
+            };
+            if blocks_to_cement_for_this_account > 1 {
+                if blocks_to_cement_for_this_account == 2 {
                     // If there is 1 uncemented block in-between this block and the cemented frontier,
                     // we can just use the previous block to get the least unconfirmed hash.
                     current = block.previous();
@@ -228,9 +233,8 @@ impl BoundedMode {
                     receive_source_pairs.pop_back();
                 }
 
-                let total_pending_write_block_count = self.total_pending_write_block_count();
-                let max_batch_write_size_reached =
-                    total_pending_write_block_count >= self.batch_write_size.load(Ordering::SeqCst);
+                let max_batch_write_size_reached = self.total_pending_write_block_count()
+                    >= self.batch_write_size.load(Ordering::SeqCst);
 
                 // When there are a lot of pending confirmation height blocks, it is more efficient to
                 // bulk some of them up to enable better write performance which becomes the bottleneck.
@@ -272,9 +276,8 @@ impl BoundedMode {
             first_iter = false;
             txn.refresh();
 
-            if !((!receive_source_pairs.is_empty() || current != original_block.hash())
-                && !self.stopped.load(Ordering::SeqCst))
-            {
+            let is_done = receive_source_pairs.is_empty() && current == original_block.hash();
+            if is_done || self.stopped.load(Ordering::SeqCst) {
                 break;
             }
         }
@@ -523,11 +526,9 @@ impl BoundedMode {
         &mut self,
         scoped_write_guard: &mut WriteGuard,
         callbacks: &mut CementCallbackRefs,
-    ) -> Option<WriteGuard> {
-        let mut new_scoped_write_guard = None;
+    ) {
         let mut cemented_batch_timer: Instant;
-        let mut error = false;
-        let amount_to_change = self.batch_write_size.load(Ordering::SeqCst) / 10; // 10%
+        let batch_size_amount_to_change = self.batch_size_amount_to_change();
 
         // Will contain all blocks that have been cemented (bounded by batch_write_size)
         // and will get run through the cemented observer callback
@@ -540,7 +541,7 @@ impl BoundedMode {
 
             // Cement all pending entries, each entry is specific to an account and contains the least amount
             // of blocks to retain consistent cementing across all account chains to genesis.
-            while !error && !self.pending_writes.is_empty() {
+            while !self.pending_writes.is_empty() {
                 let pending = self.pending_writes.front().unwrap();
                 let account = pending.account;
                 let confirmation_height_info = self
@@ -592,11 +593,7 @@ impl BoundedMode {
                         );
                             self.logger.always_log(&error_str);
                             eprintln!("{}", error_str);
-                            // Undo any blocks about to be cemented from this account for this pending write.
-                            cemented_blocks
-                                .truncate(cemented_blocks.len() - num_blocks_iterated as usize);
-                            error = true;
-                            break;
+                            panic!("{}", error_str);
                         }
 
                         let last_iteration = (num_blocks_confirmed - num_blocks_iterated) == 1;
@@ -637,21 +634,12 @@ impl BoundedMode {
 
                             // Update the maximum amount of blocks to write next time based on the time it took to cement this batch.
                             if time_spent_cementing > MAXIMUM_BATCH_WRITE_TIME {
-                                // Reduce (unless we have hit a floor)
-                                self.batch_write_size.store(
-                                    max(
-                                        MINIMUM_BATCH_WRITE_SIZE,
-                                        self.batch_write_size.load(Ordering::SeqCst)
-                                            - amount_to_change,
-                                    ),
-                                    Ordering::SeqCst,
-                                );
+                                self.reduce_batch_write_size(batch_size_amount_to_change);
                             } else if time_spent_cementing
                                 < MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF
                             {
                                 // Increase amount of blocks written for next batch if the time for writing this one is sufficiently lower than the max time to warrant changing
-                                self.batch_write_size
-                                    .fetch_add(amount_to_change, Ordering::SeqCst);
+                                self.increase_batch_write_size(batch_size_amount_to_change);
                             }
 
                             scoped_write_guard.release();
@@ -664,9 +652,8 @@ impl BoundedMode {
 
                             // Only aquire transaction if there are blocks left
                             if !(last_iteration && self.pending_writes.len() == 1) {
-                                new_scoped_write_guard = Some(
-                                    self.write_database_queue.wait(Writer::ConfirmationHeight),
-                                );
+                                *scoped_write_guard =
+                                    self.write_database_queue.wait(Writer::ConfirmationHeight);
                                 txn.renew();
                             }
 
@@ -735,27 +722,36 @@ impl BoundedMode {
             }
         }
 
-        // Bail if there was an error. This indicates that there was a fatal issue with the ledger
-        // (the blocks probably got rolled back when they shouldn't have).
-        assert!(!error);
-
         if time_spent_cementing > MAXIMUM_BATCH_WRITE_TIME {
-            // Reduce (unless we have hit a floor)
-            self.batch_write_size.store(
-                max(
-                    MINIMUM_BATCH_WRITE_SIZE,
-                    self.batch_write_size.load(Ordering::SeqCst) - amount_to_change,
-                ),
-                Ordering::SeqCst,
-            );
+            self.reduce_batch_write_size(batch_size_amount_to_change);
         }
 
         self.timer = Instant::now();
 
         debug_assert!(self.pending_writes.is_empty());
         debug_assert!(self.pending_writes_size.load(Ordering::Relaxed) == 0);
+    }
 
-        new_scoped_write_guard
+    fn batch_size_amount_to_change(&self) -> usize {
+        // 10%
+        let amount_to_change = self.batch_write_size.load(Ordering::SeqCst) / 10;
+        amount_to_change
+    }
+
+    fn increase_batch_write_size(&self, amount_to_change: usize) {
+        self.batch_write_size
+            .fetch_add(amount_to_change, Ordering::SeqCst);
+    }
+
+    fn reduce_batch_write_size(&self, amount_to_change: usize) {
+        // Reduce (unless we have hit a floor)
+        self.batch_write_size.store(
+            max(
+                MINIMUM_BATCH_WRITE_SIZE,
+                self.batch_write_size.load(Ordering::SeqCst) - amount_to_change,
+            ),
+            Ordering::SeqCst,
+        );
     }
 
     fn write_confirmation_height(

@@ -1,7 +1,7 @@
 use std::{
     collections::HashSet,
     mem::size_of,
-    ops::Deref,
+    ops::DerefMut,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Condvar, Mutex, MutexGuard,
@@ -20,8 +20,8 @@ use crate::stats::Stats;
 
 use super::{
     block_cache::BlockCache, AutomaticMode, AutomaticModeContainerInfo,
-    AwaitingProcessingCountCallback, BlockCallback, BlockHashCallback, BlockQueue, BoundedMode,
-    ConfirmationHeightMode, UnboundedMode,
+    AwaitingProcessingCountCallback, BlockCallback, BlockHashCallback, BlockQueue,
+    ConfirmationHeightMode,
 };
 
 pub struct ConfirmationHeightProcessor {
@@ -56,29 +56,7 @@ impl ConfirmationHeightProcessor {
         let stopped = Arc::new(AtomicBool::new(false));
         let channel = Arc::new(Mutex::new(ProcessorLoopChannel::new()));
 
-        let bounded_mode = BoundedMode::new(
-            write_database_queue.clone(),
-            logger.clone(),
-            enable_timing_logging,
-            ledger.clone(),
-            stopped.clone(),
-            batch_separate_pending_min_time,
-        );
-
-        let unbounded_mode = UnboundedMode::new(
-            ledger.clone(),
-            logger.clone(),
-            enable_timing_logging,
-            stats.clone(),
-            batch_separate_pending_min_time,
-            bounded_mode.batch_write_size.clone(),
-            write_database_queue.clone(),
-            stopped.clone(),
-        );
-
         let automatic_mode = AutomaticMode::new(
-            bounded_mode,
-            unbounded_mode,
             mode,
             ledger,
             logger,
@@ -239,8 +217,8 @@ fn block_already_cemented_callback(
     already_cemented_observer: Arc<Mutex<Option<BlockHashCallback>>>,
 ) -> BlockHashCallback {
     Box::new(move |block_hash| {
-        let lock = already_cemented_observer.lock().unwrap();
-        if let Some(f) = lock.deref() {
+        let mut lock = already_cemented_observer.lock().unwrap();
+        if let Some(f) = lock.deref_mut() {
             (f)(block_hash);
         }
     })
@@ -248,8 +226,8 @@ fn block_already_cemented_callback(
 
 fn cemented_callback(cemented_observer: Arc<Mutex<Option<BlockCallback>>>) -> BlockCallback {
     Box::new(move |block| {
-        let lock = cemented_observer.lock().unwrap();
-        if let Some(f) = lock.deref() {
+        let mut lock = cemented_observer.lock().unwrap();
+        if let Some(f) = lock.deref_mut() {
             (f)(block);
         }
     })

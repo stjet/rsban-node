@@ -13,7 +13,7 @@ mod unconfirmed_receive_and_sources_collector;
 use std::sync::Arc;
 
 use block_queue::BlockQueue;
-use rsnano_core::{Account, BlockEnum, BlockHash};
+use rsnano_core::{BlockEnum, BlockHash, UpdateConfirmationHeight};
 
 pub use automatic_mode::ConfirmationHeightMode;
 use automatic_mode::{AutomaticMode, AutomaticModeContainerInfo, UNBOUNDED_CUTOFF};
@@ -26,16 +26,13 @@ use unbounded_mode::{UnboundedMode, UnboundedModeContainerInfo};
 /// confirmation height to the ledger
 #[derive(Clone, Debug)]
 pub struct ConfHeightDetails {
-    pub account: Account,
-    pub latest_confirmed_block: BlockHash,
-    pub new_height: u64,
-    pub num_blocks_confirmed: u64,
+    pub update_height: UpdateConfirmationHeight,
     /// is this a list of cemented blocks in descending order?
     pub cemented_in_current_account: Vec<BlockHash>,
     /// is this a list of cemented blocks that belong to another account that we received from?
     pub cemented_in_source: Vec<BlockHash>,
 }
 
-type BlockCallback = Box<dyn Fn(&Arc<BlockEnum>) + Send>;
-type BlockHashCallback = Box<dyn Fn(BlockHash) + Send>;
-type AwaitingProcessingCountCallback = Box<dyn Fn() -> u64 + Send>;
+type BlockCallback = Box<dyn FnMut(&Arc<BlockEnum>) + Send>;
+type BlockHashCallback = Box<dyn FnMut(BlockHash) + Send>;
+type AwaitingProcessingCountCallback = Box<dyn FnMut() -> u64 + Send>;

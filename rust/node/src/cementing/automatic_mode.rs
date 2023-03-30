@@ -38,8 +38,6 @@ pub(super) struct AutomaticMode {
 
 impl AutomaticMode {
     pub(super) fn new(
-        bounded_mode: BoundedMode,
-        unbounded_mode: UnboundedMode,
         mode: ConfirmationHeightMode,
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
@@ -49,6 +47,27 @@ impl AutomaticMode {
         write_database_queue: Arc<WriteDatabaseQueue>,
         stopped: Arc<AtomicBool>,
     ) -> Self {
+        let bounded_mode = BoundedMode::new(
+            ledger.clone(),
+            write_database_queue.clone(),
+            logger.clone(),
+            enable_timing_logging,
+            batch_separate_pending_min_time,
+            stopped.clone(),
+            stats.clone(),
+        );
+
+        let unbounded_mode = UnboundedMode::new(
+            ledger.clone(),
+            write_database_queue,
+            logger,
+            enable_timing_logging,
+            batch_separate_pending_min_time,
+            stopped,
+            stats,
+            bounded_mode.batch_write_size.clone(),
+        );
+
         Self {
             bounded_mode,
             unbounded_mode,

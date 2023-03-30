@@ -329,11 +329,6 @@ bool nano::ledger::bootstrap_weight_reached () const
 	return rsnano::rsn_ledger_bootstrap_weight_reached (handle);
 }
 
-void nano::ledger::write_confirmation_height (nano::write_transaction const & transaction_a, nano::account const & account_a, uint64_t num_blocks_cemented_a, uint64_t confirmation_height_a, nano::block_hash const & confirmed_frontier_a)
-{
-	rsnano::rsn_ledger_write_confirmation_height (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), num_blocks_cemented_a, confirmation_height_a, confirmed_frontier_a.bytes.data ());
-}
-
 size_t nano::ledger::get_bootstrap_weights_size () const
 {
 	return get_bootstrap_weights ().size ();

@@ -3,7 +3,7 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use rsnano_core::{BlockEnum, BlockHash};
+use rsnano_core::{BlockEnum, BlockHash, UpdateConfirmationHeight};
 use rsnano_ledger::Ledger;
 use rsnano_store_traits::Transaction;
 
@@ -90,7 +90,7 @@ impl<'a> UnconfirmedReceiveAndSourcesCollector<'a> {
                     let last_pair = self.receive_source_pairs.last().unwrap();
                     let last_receive_details = &last_pair.receive_details;
                     let mut last_receive_details_lock = last_receive_details.lock().unwrap();
-                    last_receive_details_lock.num_blocks_confirmed += 1;
+                    last_receive_details_lock.update_height.num_blocks_cemented += 1;
                     last_receive_details_lock
                         .cemented_in_current_account
                         .push(self.current_block.hash());
@@ -115,10 +115,12 @@ impl<'a> UnconfirmedReceiveAndSourcesCollector<'a> {
 
     fn create_conf_height_details(&mut self) -> ConfHeightDetails {
         ConfHeightDetails {
-            account: self.current_block.account_calculated(),
-            latest_confirmed_block: self.current_block.hash(),
-            new_height: self.confirmation_height + self.num_to_confirm,
-            num_blocks_confirmed: 1,
+            update_height: UpdateConfirmationHeight {
+                account: self.current_block.account_calculated(),
+                new_cemented_frontier: self.current_block.hash(),
+                new_height: self.confirmation_height + self.num_to_confirm,
+                num_blocks_cemented: 1,
+            },
             cemented_in_current_account: vec![self.current_block.hash()],
             cemented_in_source: Vec::new(),
         }

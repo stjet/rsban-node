@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash, ConfirmationHeightInfo};
+use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash, UpdateConfirmationHeight};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, Writer};
 use rsnano_store_traits::{Table, Transaction, WriteTransaction};
 
@@ -104,25 +104,30 @@ impl BlockCementor {
         block_cache: &BlockCache,
         cemented_blocks: &mut Vec<Arc<BlockEnum>>,
     ) {
-        let old_conf_height = self.get_confirmation_height(txn.txn(), &pending.account);
+        let old_conf_height =
+            self.get_confirmation_height(txn.txn(), &pending.update_height.account);
 
-        if pending.new_height <= old_conf_height {
+        if pending.update_height.new_height <= old_conf_height {
             return;
         }
 
-        match self.check_block_exists(txn.txn(), &pending.latest_confirmed_block) {
+        match self.check_block_exists(txn.txn(), &pending.update_height.new_cemented_frontier) {
             BlockResult::BlockExists => {}
             BlockResult::BlockWasPruned => {}
             BlockResult::BlockNotFound => panic!(
                 "Failed to write confirmation height for block {}",
-                pending.latest_confirmed_block
+                pending.update_height.new_cemented_frontier
             ),
         }
 
-        debug_assert!(pending.num_blocks_confirmed == pending.new_height - old_conf_height);
+        debug_assert!(
+            pending.update_height.num_blocks_cemented
+                == pending.update_height.new_height - old_conf_height
+        );
 
-        self.write_confirmation_height(txn, &pending);
-        self.notify_num_blocks_confirmed(&pending);
+        self.ledger
+            .write_confirmation_height(txn, &pending.update_height);
+        self.notify_blocks_cemented(&pending.update_height);
 
         // Reverse it so that the callbacks start from the lowest newly cemented block and move upwards
         for hash in pending.cemented_in_current_account.iter().rev() {
@@ -153,39 +158,12 @@ impl BlockCementor {
         }
     }
 
-    fn write_confirmation_height(
-        &self,
-        txn: &mut dyn WriteTransaction,
-        conf_height: &ConfHeightDetails,
-    ) {
-        self.ledger.store.confirmation_height().put(
-            txn,
-            &conf_height.account,
-            &ConfirmationHeightInfo::new(
-                conf_height.new_height,
-                conf_height.latest_confirmed_block,
-            ),
-        );
-
-        self.ledger
-            .cache
-            .cemented_count
-            .fetch_add(conf_height.num_blocks_confirmed, Ordering::SeqCst);
-    }
-
-    fn notify_num_blocks_confirmed(&self, pending: &super::ConfHeightDetails) {
-        let _ = self.stats.add(
-            StatType::ConfirmationHeight,
-            DetailType::BlocksConfirmed,
-            Direction::In,
-            pending.num_blocks_confirmed,
-            false,
-        );
-        let _ = self.stats.add(
+    fn notify_blocks_cemented(&self, update_height: &UpdateConfirmationHeight) {
+        self.stats.add(
             StatType::ConfirmationHeight,
             DetailType::BlocksConfirmedUnbounded,
             Direction::In,
-            pending.num_blocks_confirmed,
+            update_height.num_blocks_cemented,
             false,
         );
     }

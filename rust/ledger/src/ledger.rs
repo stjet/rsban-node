@@ -7,7 +7,7 @@ use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::seconds_since_epoch, Account, AccountInfo, Amount, Block, BlockEnum, BlockHash,
     BlockSubType, BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey,
-    QualifiedRoot, Root,
+    QualifiedRoot, Root, UpdateConfirmationHeight,
 };
 
 use std::{
@@ -183,11 +183,13 @@ impl Ledger {
         let genesis_hash = genesis_block.hash();
         let genesis_account = genesis_block.account();
         self.store.block().put(txn, genesis_block);
+
         self.store.confirmation_height().put(
             txn,
             &genesis_account,
             &ConfirmationHeightInfo::new(1, genesis_hash),
         );
+
         self.store.account().put(
             txn,
             &genesis_account,
@@ -658,38 +660,41 @@ impl Ledger {
     pub fn write_confirmation_height(
         &self,
         txn: &mut dyn WriteTransaction,
-        account: &Account,
-        num_blocks_cemented: u64,
-        confirmation_height: u64,
-        confirmed_frontier: &BlockHash,
+        update_height: &UpdateConfirmationHeight,
     ) {
         #[cfg(debug_assertions)]
         {
             let conf_height = self
                 .store
                 .confirmation_height()
-                .get(txn.txn(), account)
+                .get(txn.txn(), &update_height.account)
                 .map(|i| i.height)
                 .unwrap_or_default();
             let block = self
                 .store
                 .block()
-                .get(txn.txn(), confirmed_frontier)
+                .get(txn.txn(), &update_height.new_cemented_frontier)
                 .unwrap();
-            debug_assert!(block.sideband().unwrap().height == conf_height + num_blocks_cemented);
+            debug_assert!(
+                block.sideband().unwrap().height == conf_height + update_height.num_blocks_cemented
+            );
         }
 
         self.store.confirmation_height().put(
             txn,
-            account,
-            &ConfirmationHeightInfo::new(confirmation_height, *confirmed_frontier),
+            &update_height.account,
+            &ConfirmationHeightInfo::new(
+                update_height.new_height,
+                update_height.new_cemented_frontier,
+            ),
         );
 
         self.cache
             .cemented_count
-            .fetch_add(num_blocks_cemented, Ordering::SeqCst);
+            .fetch_add(update_height.num_blocks_cemented, Ordering::SeqCst);
 
-        self.observer.blocks_cemented(num_blocks_cemented);
+        self.observer
+            .blocks_cemented(update_height.num_blocks_cemented);
     }
 
     pub fn dependent_blocks(

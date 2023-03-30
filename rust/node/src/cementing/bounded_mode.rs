@@ -11,12 +11,27 @@ use std::{
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, Logger},
-    Account, BlockEnum, BlockHash, ConfirmationHeightInfo,
+    Account, BlockEnum, BlockHash, ConfirmationHeightInfo, UpdateConfirmationHeight,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
-use rsnano_store_traits::{ReadTransaction, Transaction};
+use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
+
+use crate::stats::{DetailType, Direction, StatType, Stats};
 
 use super::confirmation_height_processor::CementCallbackRefs;
+
+const MAXIMUM_BATCH_WRITE_TIME: u64 = 250; // milliseconds
+const MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF: u64 =
+    MAXIMUM_BATCH_WRITE_TIME - (MAXIMUM_BATCH_WRITE_TIME / 5);
+const MINIMUM_BATCH_WRITE_SIZE: u64 = 16384;
+
+/** The maximum number of various containers to keep the memory bounded */
+const MAX_ITEMS: usize = 131072;
+
+/** The maximum number of blocks to be read in while iterating over a long account chain */
+const BATCH_READ_SIZE: u64 = 65536;
+
+const PENDING_WRITES_MAX_SIZE: usize = MAX_ITEMS;
 
 pub(crate) struct ConfirmedInfo {
     pub(crate) confirmed_height: u64,
@@ -45,29 +60,18 @@ pub(super) struct BoundedMode {
     // This allows the load and stores to use relaxed atomic memory ordering.
     accounts_confirmed_info_size: Arc<AtomicUsize>,
     pending_writes_size: Arc<AtomicUsize>,
+    stats: Arc<Stats>,
 }
-
-const MAXIMUM_BATCH_WRITE_TIME: u64 = 250; // milliseconds
-const MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF: u64 =
-    MAXIMUM_BATCH_WRITE_TIME - (MAXIMUM_BATCH_WRITE_TIME / 5);
-const MINIMUM_BATCH_WRITE_SIZE: u64 = 16384;
-
-/** The maximum number of various containers to keep the memory bounded */
-const MAX_ITEMS: usize = 131072;
-
-/** The maximum number of blocks to be read in while iterating over a long account chain */
-const BATCH_READ_SIZE: u64 = 65536;
-
-const PENDING_WRITES_MAX_SIZE: usize = MAX_ITEMS;
 
 impl BoundedMode {
     pub fn new(
+        ledger: Arc<Ledger>,
         write_database_queue: Arc<WriteDatabaseQueue>,
         logger: Arc<dyn Logger>,
         enable_timing_logging: bool,
-        ledger: Arc<Ledger>,
-        stopped: Arc<AtomicBool>,
         batch_separate_pending_min_time: Duration,
+        stopped: Arc<AtomicBool>,
+        stats: Arc<Stats>,
     ) -> Self {
         Self {
             write_database_queue,
@@ -80,6 +84,7 @@ impl BoundedMode {
             accounts_confirmed_info_size: Arc::new(AtomicUsize::new(0)),
             pending_writes_size: Arc::new(AtomicUsize::new(0)),
             stopped,
+            stats,
             timer: Instant::now(),
             batch_separate_pending_min_time,
         }
@@ -194,12 +199,14 @@ impl BoundedMode {
                                 num_blocks_iterated - total_blocks_cemented + 1;
                             total_blocks_cemented += num_blocks_cemented;
 
-                            self.ledger.write_confirmation_height(
+                            self.write_confirmation_height(
                                 txn.as_mut(),
-                                &account,
-                                num_blocks_cemented,
-                                start_height + total_blocks_cemented - 1,
-                                &new_cemented_frontier,
+                                &UpdateConfirmationHeight {
+                                    account,
+                                    new_cemented_frontier,
+                                    new_height: start_height + total_blocks_cemented - 1,
+                                    num_blocks_cemented,
+                                },
                             );
 
                             txn.commit();
@@ -271,12 +278,14 @@ impl BoundedMode {
 
                     let num_blocks_cemented = num_blocks_confirmed - total_blocks_cemented;
                     if num_blocks_cemented > 0 {
-                        self.ledger.write_confirmation_height(
+                        self.write_confirmation_height(
                             txn.as_mut(),
-                            &account,
-                            num_blocks_cemented,
-                            pending.top_height,
-                            &new_cemented_frontier,
+                            &UpdateConfirmationHeight {
+                                account,
+                                new_cemented_frontier,
+                                new_height: pending.top_height,
+                                num_blocks_cemented,
+                            },
                         );
                     }
                 }
@@ -331,6 +340,23 @@ impl BoundedMode {
         debug_assert!(self.pending_writes_size.load(Ordering::Relaxed) == 0);
 
         new_scoped_write_guard
+    }
+
+    fn write_confirmation_height(
+        &self,
+        txn: &mut dyn WriteTransaction,
+        update_confirmation_height: &UpdateConfirmationHeight,
+    ) {
+        self.ledger
+            .write_confirmation_height(txn, &update_confirmation_height);
+
+        self.stats.add(
+            StatType::ConfirmationHeight,
+            DetailType::BlocksConfirmedBounded,
+            Direction::In,
+            update_confirmation_height.num_blocks_cemented,
+            false,
+        );
     }
 
     // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up

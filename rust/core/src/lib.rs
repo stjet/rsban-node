@@ -289,6 +289,16 @@ impl Networks {
     }
 }
 
+/// Command for updating the confirmation height of an account
+#[derive(Clone, Debug)]
+pub struct UpdateConfirmationHeight {
+    pub account: Account,
+    /// The latest cemented block for this account
+    pub new_cemented_frontier: BlockHash,
+    pub new_height: u64,
+    pub num_blocks_cemented: u64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

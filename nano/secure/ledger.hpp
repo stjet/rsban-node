@@ -84,7 +84,6 @@ public:
 	std::multimap<uint64_t, uncemented_info, std::greater<>> unconfirmed_frontiers () const;
 	bool bootstrap_weight_reached () const;
 	rsnano::LedgerHandle * get_handle () const;
-	void write_confirmation_height (nano::write_transaction const &, nano::account const &, uint64_t num_blocks_cemented, uint64_t confirmation_height, nano::block_hash const & confirmed_frontier);
 	size_t get_bootstrap_weights_size () const;
 	void enable_pruning ();
 	bool pruning_enabled () const;

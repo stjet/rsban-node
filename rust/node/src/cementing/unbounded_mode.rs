@@ -1,6 +1,6 @@
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, Logger},
-    Account, BlockEnum, BlockHash,
+    Account, BlockEnum, BlockHash, UpdateConfirmationHeight,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 use rsnano_store_traits::Transaction;
@@ -23,7 +23,7 @@ use super::{
     confirmed_iterated_pairs::{ConfirmedIteratedPair, ConfirmedIteratedPairMap},
     implicit_receive_cemented_mapping::ImplictReceiveCementedMapping,
     unconfirmed_receive_and_sources_collector::UnconfirmedReceiveAndSourcesCollector,
-    BlockCallback, ConfHeightDetails, UNBOUNDED_CUTOFF,
+    ConfHeightDetails, UNBOUNDED_CUTOFF,
 };
 
 pub(super) struct UnboundedMode {
@@ -42,13 +42,13 @@ pub(super) struct UnboundedMode {
 impl UnboundedMode {
     pub(crate) fn new(
         ledger: Arc<Ledger>,
+        write_database_queue: Arc<WriteDatabaseQueue>,
         logger: Arc<dyn Logger>,
         enable_timing_logging: bool,
-        stats: Arc<Stats>,
         batch_separate_pending_min_time: Duration,
-        batch_write_size: Arc<AtomicU64>,
-        write_database_queue: Arc<WriteDatabaseQueue>,
         stopped: Arc<AtomicBool>,
+        stats: Arc<Stats>,
+        batch_write_size: Arc<AtomicU64>,
     ) -> Self {
         Self {
             ledger: Arc::clone(&ledger),
@@ -325,10 +325,10 @@ impl UnboundedMode {
                             let above_receive_details = above_receive_details_w.upgrade().unwrap();
                             let above_receive_details_lock = above_receive_details.lock().unwrap();
 
-                            let num_blocks_already_confirmed = above_receive_details_lock
-                                .num_blocks_confirmed
-                                - (above_receive_details_lock.new_height
-                                    - preparation_data_a.confirmation_height);
+                            let num_blocks_already_confirmed =
+                                above_receive_details_lock.update_height.num_blocks_cemented
+                                    - (above_receive_details_lock.update_height.new_height
+                                        - preparation_data_a.confirmation_height);
 
                             let block_data = above_receive_details_lock
                                 .cemented_in_current_account
@@ -360,10 +360,12 @@ impl UnboundedMode {
                 }
             }
             self.cement_queue.push(ConfHeightDetails {
-                account: preparation_data_a.account,
-                latest_confirmed_block: preparation_data_a.current,
-                new_height: block_height,
-                num_blocks_confirmed,
+                update_height: UpdateConfirmationHeight {
+                    account: preparation_data_a.account,
+                    new_cemented_frontier: preparation_data_a.current,
+                    new_height: block_height,
+                    num_blocks_cemented: num_blocks_confirmed,
+                },
                 cemented_in_current_account: block_callback_data,
                 cemented_in_source: Vec::new(),
             });
@@ -372,7 +374,7 @@ impl UnboundedMode {
         if let Some(receive_details) = receive_details {
             let mut receive_details_lock = receive_details.lock().unwrap();
             // Check whether the previous block has been seen. If so, the rest of sends below have already been seen so don't count them
-            let receive_account = receive_details_lock.account;
+            let receive_account = receive_details_lock.update_height.account;
             let receive_account_it = self.confirmed_iterated_pairs.get(&receive_account);
             match receive_account_it {
                 Some(receive_account_it) => {
@@ -382,27 +384,28 @@ impl UnboundedMode {
                         .confirmed_iterated_pairs
                         .get_mut(&receive_account)
                         .unwrap();
-                    pair.confirmed_height = receive_details_lock.new_height;
-                    let orig_num_blocks_confirmed = receive_details_lock.num_blocks_confirmed;
-                    receive_details_lock.num_blocks_confirmed =
-                        receive_details_lock.new_height - current_height;
+                    pair.confirmed_height = receive_details_lock.update_height.new_height;
+                    let orig_num_blocks_confirmed =
+                        receive_details_lock.update_height.num_blocks_cemented;
+                    receive_details_lock.update_height.num_blocks_cemented =
+                        receive_details_lock.update_height.new_height - current_height;
 
                     // Get the difference and remove the callbacks
-                    let block_callbacks_to_remove =
-                        orig_num_blocks_confirmed - receive_details_lock.num_blocks_confirmed;
+                    let block_callbacks_to_remove = orig_num_blocks_confirmed
+                        - receive_details_lock.update_height.num_blocks_cemented;
                     let mut tmp_blocks = receive_details_lock.cemented_in_current_account.clone();
                     tmp_blocks.truncate(tmp_blocks.len() - block_callbacks_to_remove as usize);
                     receive_details_lock.cemented_in_current_account = tmp_blocks;
                     debug_assert!(
                         receive_details_lock.cemented_in_current_account.len()
-                            == receive_details_lock.num_blocks_confirmed as usize
+                            == receive_details_lock.update_height.num_blocks_cemented as usize
                     );
                 }
                 None => {
                     self.add_confirmed_iterated_pair(
                         receive_account,
-                        receive_details_lock.new_height,
-                        receive_details_lock.new_height,
+                        receive_details_lock.update_height.new_height,
+                        receive_details_lock.update_height.new_height,
                     );
                 }
             }

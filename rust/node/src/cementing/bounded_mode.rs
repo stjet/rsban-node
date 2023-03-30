@@ -22,9 +22,13 @@ use super::confirmation_height_processor::CementCallbackRefs;
 
 const MAXIMUM_BATCH_WRITE_TIME: Duration = Duration::from_millis(250);
 
-const MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF: Duration = Duration::from_millis(
-    MAXIMUM_BATCH_WRITE_TIME.as_millis() as u64 - (MAXIMUM_BATCH_WRITE_TIME.as_millis() as u64 / 5),
-);
+const MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF: Duration =
+    eighty_percent_of(MAXIMUM_BATCH_WRITE_TIME);
+
+const fn eighty_percent_of(d: Duration) -> Duration {
+    let millis = d.as_millis() as u64;
+    Duration::from_millis(millis - (millis / 5))
+}
 
 const MINIMUM_BATCH_WRITE_SIZE: usize = 16384;
 
@@ -122,55 +126,36 @@ impl BoundedMode {
             current = hash_to_process.top;
 
             let top_level_hash = current;
-            let block = if first_iter {
-                debug_assert!(current == original_block.hash());
+            let block = if current == original_block.hash() {
                 Some(original_block.clone())
             } else {
                 self.ledger.store.block().get(txn.txn(), &current)
             };
 
             let Some(block) = block else{
-			if self.ledger.pruning_enabled () && self.ledger.store.pruned ().exists (txn.txn(), &current) {
-				if !receive_source_pairs.is_empty () {
-					receive_source_pairs.pop_back ();
-				}
-                continue;
-			} else {
-				let error_str = format!("Ledger mismatch trying to set confirmation height for block {} (bounded processor)", current);
-				self.logger.always_log(&error_str);
-                eprintln!("{}", error_str);
-				panic!("{}", error_str);
-			}
-        };
+                if self.ledger.pruning_enabled() && self.ledger.store.pruned().exists(txn.txn(), &current) {
+                    if !receive_source_pairs.is_empty() {
+                        receive_source_pairs.pop_back();
+                    }
+                    continue;
+                } else {
+                    let error_str = format!("Ledger mismatch trying to set confirmation height for block {} (bounded processor)", current);
+                    self.logger.always_log(&error_str);
+                    eprintln!("{}", error_str);
+                    panic!("{}", error_str);
+                }
+            };
 
             let account = block.account_calculated();
-
-            // Checks if we have encountered this account before but not commited changes yet, if so then update the cached confirmation height
-            let confirmation_height_info =
-                if let Some(found_info) = self.accounts_confirmed_info.get(&account) {
-                    ConfirmationHeightInfo::new(
-                        found_info.confirmed_height,
-                        found_info.iterated_frontier,
-                    )
-                } else {
-                    let conf_info = self
-                        .ledger
-                        .store
-                        .confirmation_height()
-                        .get(txn.txn(), &account)
-                        .unwrap_or_default();
-                    // This block was added to the confirmation height processor but is already confirmed
-                    if first_iter
-                        && conf_info.height >= block.sideband().unwrap().height
-                        && current == original_block.hash()
-                    {
-                        (callbacks.block_already_cemented_callback)(original_block.hash());
-                    }
-                    conf_info
-                };
+            let confirmation_height_info = self.get_confirmation_height(account, txn.txn());
 
             let mut block_height = block.sideband().unwrap().height;
             let already_cemented = confirmation_height_info.height >= block_height;
+
+            // This block was added to the confirmation height processor but is already confirmed
+            if first_iter && already_cemented && current == original_block.hash() {
+                (callbacks.block_already_cemented_callback)(original_block.hash());
+            }
 
             // If we are not already at the bottom of the account chain (1 above cemented frontier) then find it
             if !already_cemented && block_height - confirmation_height_info.height > 1 {
@@ -297,6 +282,23 @@ impl BoundedMode {
         debug_assert!(checkpoints.is_empty());
     }
 
+    fn get_confirmation_height(
+        &self,
+        account: Account,
+        txn: &dyn Transaction,
+    ) -> ConfirmationHeightInfo {
+        // Checks if we have encountered this account before but not commited changes yet, if so then update the cached confirmation height
+        if let Some(found_info) = self.accounts_confirmed_info.get(&account) {
+            ConfirmationHeightInfo::new(found_info.confirmed_height, found_info.iterated_frontier)
+        } else {
+            self.ledger
+                .store
+                .confirmation_height()
+                .get(txn, &account)
+                .unwrap_or_default()
+        }
+    }
+
     /// The next block hash to iterate over, the priority is as follows:
     /// 1 - The next block in the account chain for the last processed receive (if there is any)
     /// 2 - The next receive block which is closest to genesis
@@ -407,7 +409,7 @@ impl BoundedMode {
         }
         hit_receive
     }
-    
+
     // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
     // the non-receive blocks which have been iterated for an account, and the associated receive block.
     fn prepare_iterated_blocks_for_cementing(
@@ -772,7 +774,6 @@ impl BoundedMode {
             false,
         );
     }
-
 
     fn get_least_unconfirmed_hash_from_top_level(
         &self,

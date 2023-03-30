@@ -2,7 +2,7 @@ use std::{
     cmp::max,
     collections::{HashMap, VecDeque},
     sync::{
-        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
     time::{Duration, Instant},
@@ -20,16 +20,18 @@ use crate::stats::{DetailType, Direction, StatType, Stats};
 
 use super::confirmation_height_processor::CementCallbackRefs;
 
-const MAXIMUM_BATCH_WRITE_TIME: u64 = 250; // milliseconds
-const MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF: u64 =
-    MAXIMUM_BATCH_WRITE_TIME - (MAXIMUM_BATCH_WRITE_TIME / 5);
-const MINIMUM_BATCH_WRITE_SIZE: u64 = 16384;
+const MAXIMUM_BATCH_WRITE_TIME: Duration = Duration::from_millis(250);
+
+const MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF: Duration = Duration::from_millis(
+    MAXIMUM_BATCH_WRITE_TIME.as_millis() as u64 - (MAXIMUM_BATCH_WRITE_TIME.as_millis() as u64 / 5),
+);
+const MINIMUM_BATCH_WRITE_SIZE: usize = 16384;
 
 /** The maximum number of various containers to keep the memory bounded */
 const MAX_ITEMS: usize = 131072;
 
 /** The maximum number of blocks to be read in while iterating over a long account chain */
-const BATCH_READ_SIZE: u64 = 65536;
+const BATCH_READ_SIZE: usize = 65536;
 
 const PENDING_WRITES_MAX_SIZE: usize = MAX_ITEMS;
 
@@ -51,7 +53,7 @@ pub(super) struct BoundedMode {
     stopped: Arc<AtomicBool>,
     timer: Instant,
     batch_separate_pending_min_time: Duration,
-    pub batch_write_size: Arc<AtomicU64>,
+    pub batch_write_size: Arc<AtomicUsize>,
 
     // All of the atomic variables here just track the size for use in collect_container_info.
     // This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
@@ -76,7 +78,7 @@ impl BoundedMode {
         Self {
             write_database_queue,
             pending_writes: VecDeque::new(),
-            batch_write_size: Arc::new(AtomicU64::new(16384)),
+            batch_write_size: Arc::new(AtomicUsize::new(MINIMUM_BATCH_WRITE_SIZE)),
             logger,
             enable_timing_logging,
             ledger,
@@ -188,12 +190,11 @@ impl BoundedMode {
 
                         // Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
                         // Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
-                        if cemented_blocks.len() as u64
+                        if cemented_blocks.len()
                             > self.batch_write_size.load(Ordering::SeqCst)
                                 + (self.batch_write_size.load(Ordering::SeqCst) / 10)
                         {
-                            let time_spent_cementing =
-                                cemented_batch_timer.elapsed().as_millis() as u64;
+                            let time_spent_cementing = cemented_batch_timer.elapsed();
 
                             let num_blocks_cemented =
                                 num_blocks_iterated - total_blocks_cemented + 1;
@@ -215,7 +216,7 @@ impl BoundedMode {
                                 self.logger.always_log(&format!(
                                     "Cemented {} blocks in {} ms (bounded processor)",
                                     cemented_blocks.len(),
-                                    time_spent_cementing
+                                    time_spent_cementing.as_millis()
                                 ));
                             }
 
@@ -302,12 +303,12 @@ impl BoundedMode {
             }
         }
 
-        let time_spent_cementing = cemented_batch_timer.elapsed().as_millis();
-        if self.enable_timing_logging && time_spent_cementing > 50 {
+        let time_spent_cementing = cemented_batch_timer.elapsed();
+        if self.enable_timing_logging && time_spent_cementing > Duration::from_millis(50) {
             self.logger.always_log(&format!(
                 "Cemented {} blocks in {} ms (bounded processor)",
                 cemented_blocks.len(),
-                time_spent_cementing
+                time_spent_cementing.as_millis()
             ));
         }
 
@@ -323,7 +324,7 @@ impl BoundedMode {
         // (the blocks probably got rolled back when they shouldn't have).
         assert!(!error);
 
-        if time_spent_cementing as u64 > MAXIMUM_BATCH_WRITE_TIME {
+        if time_spent_cementing > MAXIMUM_BATCH_WRITE_TIME {
             // Reduce (unless we have hit a floor)
             self.batch_write_size.store(
                 max(
@@ -800,10 +801,10 @@ impl BoundedMode {
         debug_assert!(checkpoints.is_empty());
     }
 
-    fn total_pending_write_block_count(&self) -> u64 {
+    fn total_pending_write_block_count(&self) -> usize {
         self.pending_writes
             .iter()
-            .map(|i| i.top_height - i.bottom_height + 1)
+            .map(|i| (i.top_height - i.bottom_height + 1) as usize)
             .sum()
     }
 

@@ -163,7 +163,7 @@ impl BlockCementor {
             StatType::ConfirmationHeight,
             DetailType::BlocksConfirmedUnbounded,
             Direction::In,
-            update_height.num_blocks_cemented,
+            update_height.num_blocks_cemented as u64,
             false,
         );
     }

@@ -3,7 +3,7 @@ use std::{
     mem::size_of,
     ops::DerefMut,
     sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Condvar, Mutex, MutexGuard,
     },
     thread::JoinHandle,
@@ -28,7 +28,7 @@ pub struct ConfirmationHeightProcessor {
     channel: Arc<Mutex<ProcessorLoopChannel>>,
     condition: Arc<Condvar>,
     /** The maximum amount of blocks to write at once. This is dynamically modified by the bounded processor based on previous write performance **/
-    batch_write_size: Arc<AtomicU64>,
+    batch_write_size: Arc<AtomicUsize>,
     stopped: Arc<AtomicBool>,
     // No mutex needed for the observers as these should be set up during initialization of the node
     cemented_observer: Arc<Mutex<Option<BlockCallback>>>,
@@ -129,7 +129,7 @@ impl ConfirmationHeightProcessor {
     }
 
     pub fn set_batch_write_size(&self, size: usize) {
-        self.batch_write_size.store(size as u64, Ordering::SeqCst);
+        self.batch_write_size.store(size, Ordering::SeqCst);
     }
 
     pub fn add(&self, block: Arc<BlockEnum>) {

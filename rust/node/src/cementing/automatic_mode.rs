@@ -1,6 +1,6 @@
 use std::{
     sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
     time::Duration,
@@ -112,7 +112,7 @@ impl AutomaticMode {
         self.unbounded_mode.block_cache()
     }
 
-    pub fn batch_write_size(&self) -> &Arc<AtomicU64> {
+    pub fn batch_write_size(&self) -> &Arc<AtomicUsize> {
         &self.bounded_mode.batch_write_size
     }
 

@@ -676,7 +676,8 @@ impl Ledger {
                 .get(txn.txn(), &update_height.new_cemented_frontier)
                 .unwrap();
             debug_assert!(
-                block.sideband().unwrap().height == conf_height + update_height.num_blocks_cemented
+                block.sideband().unwrap().height
+                    == conf_height + (update_height.num_blocks_cemented as u64)
             );
         }
 
@@ -691,7 +692,7 @@ impl Ledger {
 
         self.cache
             .cemented_count
-            .fetch_add(update_height.num_blocks_cemented, Ordering::SeqCst);
+            .fetch_add(update_height.num_blocks_cemented as u64, Ordering::SeqCst);
 
         self.observer
             .blocks_cemented(update_height.num_blocks_cemented);

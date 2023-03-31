@@ -5,6 +5,7 @@ mod block_queue;
 mod bounded_mode;
 mod cement_queue;
 mod confirmation_height_processor;
+mod confirmation_height_writer;
 mod confirmed_iterated_pairs;
 mod implicit_receive_cemented_mapping;
 mod unbounded_mode;
@@ -21,6 +22,7 @@ use automatic_mode::{AutomaticMode, AutomaticModeContainerInfo, UNBOUNDED_CUTOFF
 use bounded_mode::{BoundedMode, BoundedModeContainerInfo};
 use confirmation_height_processor::CementCallbackRefs;
 pub use confirmation_height_processor::ConfirmationHeightProcessor;
+use confirmation_height_writer::ConfirmationHeightWriter;
 use unbounded_mode::{UnboundedMode, UnboundedModeContainerInfo};
 use write_details_queue::{WriteDetails, WriteDetailsContainerInfo, WriteDetailsQueue};
 

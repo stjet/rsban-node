@@ -11,6 +11,7 @@ use rsnano_core::{
     Account, BlockHash,
 };
 
+#[derive(Clone)]
 pub(crate) struct WriteDetails {
     pub account: Account,
     // This is the first block hash (bottom most) which is not cemented

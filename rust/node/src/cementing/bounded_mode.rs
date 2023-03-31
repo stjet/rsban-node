@@ -486,7 +486,6 @@ impl BoundedMode {
         scoped_write_guard: &mut WriteGuard,
         callbacks: &mut CementCallbackRefs,
     ) {
-        let batch_size_amount_to_change = self.batch_size_amount_to_change();
         let mut conf_height_writer = ConfirmationHeightWriter::new(
             &mut self.pending_writes,
             &self.ledger,
@@ -495,74 +494,14 @@ impl BoundedMode {
             &self.write_database_queue,
             self.logger.as_ref(),
             self.enable_timing_logging,
+            &mut self.accounts_confirmed_info,
+            scoped_write_guard,
+            callbacks.block_cemented,
         );
 
-        {
-            // This only writes to the confirmation_height table and is the only place to do so in a single process
-            let mut txn = self.ledger.store.tx_begin_write();
-            conf_height_writer.reset_batch_timer();
-
-            // Cement all pending entries, each entry is specific to an account and contains the least amount
-            // of blocks to retain consistent cementing across all account chains to genesis.
-            while !conf_height_writer.pending_writes.is_empty() {
-                let pending = conf_height_writer.pending_writes.front().unwrap().clone();
-                let account = pending.account;
-                let confirmation_height_info = self
-                    .ledger
-                    .store
-                    .confirmation_height()
-                    .get(txn.txn(), &pending.account)
-                    .unwrap_or_default();
-
-                conf_height_writer.do_it(
-                    scoped_write_guard,
-                    txn.as_mut(),
-                    callbacks.block_cemented,
-                    batch_size_amount_to_change,
-                    account,
-                    &pending,
-                    &confirmation_height_info,
-                );
-
-                if let Some(found_info) = self.accounts_confirmed_info.get(&pending.account) {
-                    if found_info.confirmed_height == pending.top_height {
-                        self.accounts_confirmed_info.remove(&pending.account);
-                    }
-                }
-                conf_height_writer.pending_writes.pop_front();
-            }
-        }
-
-        let time_spent_cementing = conf_height_writer.cemented_batch_timer.elapsed();
-        if self.enable_timing_logging && time_spent_cementing > Duration::from_millis(50) {
-            self.logger.always_log(&format!(
-                "Cemented {} blocks in {} ms (bounded processor)",
-                conf_height_writer.cemented_blocks.len(),
-                time_spent_cementing.as_millis()
-            ));
-        }
-
-        // Scope guard could have been released earlier (0 cemented_blocks would indicate that)
-        if scoped_write_guard.is_owned() && !conf_height_writer.cemented_blocks.is_empty() {
-            scoped_write_guard.release();
-            for block in &conf_height_writer.cemented_blocks {
-                (callbacks.block_cemented)(block);
-            }
-        }
-
-        if time_spent_cementing > ConfirmationHeightWriter::MAXIMUM_BATCH_WRITE_TIME {
-            conf_height_writer.reduce_batch_write_size(batch_size_amount_to_change);
-        }
+        conf_height_writer.write();
 
         self.timer = Instant::now();
-
-        debug_assert!(self.pending_writes.is_empty());
-    }
-
-    fn batch_size_amount_to_change(&self) -> usize {
-        // 10%
-        let amount_to_change = self.batch_write_size.load(Ordering::SeqCst) / 10;
-        amount_to_change
     }
 
     fn get_least_unconfirmed_hash_from_top_level(

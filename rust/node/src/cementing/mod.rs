@@ -1,3 +1,4 @@
+mod accounts_confirmed_map;
 mod automatic_mode;
 mod block_cache;
 mod block_cementor;

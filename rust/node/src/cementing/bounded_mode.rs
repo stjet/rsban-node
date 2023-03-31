@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
@@ -9,7 +8,7 @@ use std::{
 
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, Logger},
+    utils::{ContainerInfoComponent, Logger},
     Account, BlockEnum, BlockHash, ConfirmationHeightInfo,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
@@ -18,6 +17,7 @@ use rsnano_store_traits::{ReadTransaction, Transaction};
 use crate::stats::Stats;
 
 use super::{
+    accounts_confirmed_map::{AccountsConfirmedMap, AccountsConfirmedMapContainerInfo},
     CementCallbackRefs, ConfirmationHeightWriter, WriteDetails, WriteDetailsContainerInfo,
     WriteDetailsQueue,
 };
@@ -41,16 +41,13 @@ pub(super) struct BoundedMode {
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
     ledger: Arc<Ledger>,
-
-    /* Holds confirmation height/cemented frontier in memory for accounts while iterating */
-    accounts_confirmed_info: HashMap<Account, ConfirmedInfo>,
+    accounts_confirmed_info: AccountsConfirmedMap,
 
     stopped: Arc<AtomicBool>,
     timer: Instant,
     batch_separate_pending_min_time: Duration,
     pub batch_write_size: Arc<AtomicUsize>,
 
-    accounts_confirmed_info_size: Arc<AtomicUsize>,
     stats: Arc<Stats>,
 }
 
@@ -73,8 +70,7 @@ impl BoundedMode {
             logger,
             enable_timing_logging,
             ledger,
-            accounts_confirmed_info: HashMap::new(),
-            accounts_confirmed_info_size: Arc::new(AtomicUsize::new(0)),
+            accounts_confirmed_info: AccountsConfirmedMap::new(),
             stopped,
             stats,
             timer: Instant::now(),
@@ -426,16 +422,8 @@ impl BoundedMode {
                     iterated_frontier: *top_most_non_receive_block_hash,
                 };
 
-                let found_info = self.accounts_confirmed_info.get(account);
-                if found_info.is_some() {
-                    self.accounts_confirmed_info
-                        .insert(*account, confirmed_info_l);
-                } else {
-                    self.accounts_confirmed_info
-                        .insert(*account, confirmed_info_l);
-                    self.accounts_confirmed_info_size
-                        .fetch_add(1, Ordering::Relaxed);
-                }
+                self.accounts_confirmed_info
+                    .insert(*account, confirmed_info_l);
 
                 truncate_after(checkpoints, top_most_non_receive_block_hash);
 
@@ -452,25 +440,13 @@ impl BoundedMode {
 
         // Add the receive block and all non-receive blocks above that one
         if let Some(receive_details) = receive_details {
-            match self
-                .accounts_confirmed_info
-                .get_mut(&receive_details.account)
-            {
-                Some(found_info) => {
-                    found_info.confirmed_height = receive_details.height;
-                    found_info.iterated_frontier = receive_details.hash;
-                }
-                None => {
-                    let receive_confirmed_info = ConfirmedInfo {
-                        confirmed_height: receive_details.height,
-                        iterated_frontier: receive_details.hash,
-                    };
-                    self.accounts_confirmed_info
-                        .insert(receive_details.account, receive_confirmed_info);
-                    self.accounts_confirmed_info_size
-                        .fetch_add(1, Ordering::Relaxed);
-                }
-            }
+            self.accounts_confirmed_info.insert(
+                receive_details.account,
+                ConfirmedInfo {
+                    confirmed_height: receive_details.height,
+                    iterated_frontier: receive_details.hash,
+                },
+            );
 
             if receive_details.next.is_some() {
                 *next_in_receive_chain = Some(TopAndNextHash {
@@ -538,48 +514,19 @@ impl BoundedMode {
                     .get(txn.txn(), &pending.account)
                     .unwrap_or_default();
 
-                // Some blocks need to be cemented at least
-                if pending.top_height > confirmation_height_info.height {
-                    // The highest hash which will be cemented
-                    let mut new_cemented_frontier: BlockHash;
-                    let num_blocks_confirmed: u64;
-                    let start_height: u64;
-                    if pending.bottom_height > confirmation_height_info.height {
-                        new_cemented_frontier = pending.bottom_hash;
-                        // If we are higher than the cemented frontier, we should be exactly 1 block above
-                        debug_assert!(pending.bottom_height == confirmation_height_info.height + 1);
-                        num_blocks_confirmed = pending.top_height - pending.bottom_height + 1;
-                        start_height = pending.bottom_height;
-                    } else {
-                        let block = self
-                            .ledger
-                            .store
-                            .block()
-                            .get(txn.txn(), &confirmation_height_info.frontier)
-                            .unwrap();
-                        new_cemented_frontier = block.sideband().unwrap().successor;
-                        num_blocks_confirmed = pending.top_height - confirmation_height_info.height;
-                        start_height = confirmation_height_info.height + 1;
-                    }
-
-                    conf_height_writer.do_it(
-                        scoped_write_guard,
-                        txn.as_mut(),
-                        callbacks.block_cemented,
-                        batch_size_amount_to_change,
-                        account,
-                        &mut new_cemented_frontier,
-                        start_height,
-                        num_blocks_confirmed,
-                        &pending,
-                    );
-                }
+                conf_height_writer.do_it(
+                    scoped_write_guard,
+                    txn.as_mut(),
+                    callbacks.block_cemented,
+                    batch_size_amount_to_change,
+                    account,
+                    &pending,
+                    &confirmation_height_info,
+                );
 
                 if let Some(found_info) = self.accounts_confirmed_info.get(&pending.account) {
                     if found_info.confirmed_height == pending.top_height {
                         self.accounts_confirmed_info.remove(&pending.account);
-                        self.accounts_confirmed_info_size
-                            .fetch_add(1, Ordering::Relaxed);
                     }
                 }
                 conf_height_writer.pending_writes.pop_front();
@@ -649,8 +596,6 @@ impl BoundedMode {
 
     pub fn clear_process_vars(&mut self) {
         self.accounts_confirmed_info.clear();
-        self.accounts_confirmed_info_size
-            .store(0, Ordering::Relaxed);
     }
 
     pub fn pending_writes_empty(&self) -> bool {
@@ -660,7 +605,7 @@ impl BoundedMode {
     pub fn container_info(&self) -> BoundedModeContainerInfo {
         BoundedModeContainerInfo {
             pending_writes: self.pending_writes.container_info(),
-            accounts_confirmed: self.accounts_confirmed_info_size.clone(),
+            accounts_confirmed: self.accounts_confirmed_info.container_info(),
         }
     }
 }
@@ -696,7 +641,7 @@ fn truncate_after(buffer: &mut BoundedVecDeque<BlockHash>, hash: &BlockHash) {
 
 pub(super) struct BoundedModeContainerInfo {
     pending_writes: WriteDetailsContainerInfo,
-    accounts_confirmed: Arc<AtomicUsize>,
+    accounts_confirmed: AccountsConfirmedMapContainerInfo,
 }
 
 impl BoundedModeContainerInfo {
@@ -705,12 +650,8 @@ impl BoundedModeContainerInfo {
             "bounded_mode".to_owned(),
             vec![
                 self.pending_writes.collect("pending_writes".to_owned()),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "accounts_confirmed_info".to_owned(),
-                    count: self.accounts_confirmed.load(Ordering::Relaxed),
-                    sizeof_element: std::mem::size_of::<ConfirmedInfo>()
-                        + std::mem::size_of::<Account>(),
-                }),
+                self.accounts_confirmed
+                    .collect("accounts_confirmed_info".to_owned()),
             ],
         )
     }

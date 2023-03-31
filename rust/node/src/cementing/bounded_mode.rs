@@ -10,7 +10,7 @@ use std::{
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, Logger},
-    Account, BlockEnum, BlockHash, ConfirmationHeightInfo, UpdateConfirmationHeight,
+    Account, BlockEnum, BlockHash, ConfirmationHeightInfo,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_traits::{ReadTransaction, Transaction};
@@ -562,97 +562,17 @@ impl BoundedMode {
                         start_height = confirmation_height_info.height + 1;
                     }
 
-                    let mut total_blocks_cemented = 0;
-                    let mut block = self
-                        .ledger
-                        .store
-                        .block()
-                        .get(txn.txn(), &new_cemented_frontier)
-                        .map(|b| Arc::new(b));
-
-                    // Cementing starts from the bottom of the chain and works upwards. This is because chains can have effectively
-                    // an infinite number of send/change blocks in a row. We don't want to hold the write transaction open for too long.
-                    for num_blocks_iterated in 0..num_blocks_confirmed {
-                        if block.is_none() {
-                            let error_str = format!(
-                            "Failed to write confirmation height for block {} (bounded processor)",
-                            new_cemented_frontier
-                        );
-                            self.logger.always_log(&error_str);
-                            eprintln!("{}", error_str);
-                            panic!("{}", error_str);
-                        }
-
-                        let last_iteration = (num_blocks_confirmed - num_blocks_iterated) == 1;
-
-                        conf_height_writer
-                            .cemented_blocks
-                            .push(block.as_ref().unwrap().clone());
-
-                        // Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
-                        // Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
-                        if conf_height_writer.cemented_blocks.len()
-                            > self.batch_write_size.load(Ordering::SeqCst)
-                                + (self.batch_write_size.load(Ordering::SeqCst) / 10)
-                        {
-                            let time_spent_cementing =
-                                conf_height_writer.cemented_batch_timer.elapsed();
-
-                            let num_blocks_cemented =
-                                num_blocks_iterated - total_blocks_cemented + 1;
-                            total_blocks_cemented += num_blocks_cemented;
-
-                            conf_height_writer.write_confirmation_height(
-                                txn.as_mut(),
-                                &UpdateConfirmationHeight {
-                                    account,
-                                    new_cemented_frontier,
-                                    new_height: start_height + total_blocks_cemented - 1,
-                                    num_blocks_cemented,
-                                },
-                            );
-
-                            conf_height_writer.do_it(
-                                last_iteration,
-                                scoped_write_guard,
-                                txn.as_mut(),
-                                callbacks.block_cemented,
-                                time_spent_cementing,
-                                batch_size_amount_to_change,
-                            );
-                        }
-
-                        // Get the next block in the chain until we have reached the final desired one
-                        if !last_iteration {
-                            new_cemented_frontier =
-                                block.as_ref().unwrap().sideband().unwrap().successor;
-                            block = self
-                                .ledger
-                                .store
-                                .block()
-                                .get(txn.txn(), &new_cemented_frontier)
-                                .map(|b| Arc::new(b));
-                        } else {
-                            // Confirm it is indeed the last one
-                            debug_assert!(
-                                new_cemented_frontier
-                                    == conf_height_writer.pending_writes.front().unwrap().top_hash
-                            );
-                        }
-                    }
-
-                    let num_blocks_cemented = num_blocks_confirmed - total_blocks_cemented;
-                    if num_blocks_cemented > 0 {
-                        conf_height_writer.write_confirmation_height(
-                            txn.as_mut(),
-                            &UpdateConfirmationHeight {
-                                account,
-                                new_cemented_frontier,
-                                new_height: pending.top_height,
-                                num_blocks_cemented,
-                            },
-                        );
-                    }
+                    conf_height_writer.do_it(
+                        scoped_write_guard,
+                        txn.as_mut(),
+                        callbacks.block_cemented,
+                        batch_size_amount_to_change,
+                        account,
+                        &mut new_cemented_frontier,
+                        start_height,
+                        num_blocks_confirmed,
+                        &pending,
+                    );
                 }
 
                 if let Some(found_info) = self.accounts_confirmed_info.get(&pending.account) {

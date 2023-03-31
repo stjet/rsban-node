@@ -73,11 +73,11 @@ impl ConfirmationHeightProcessor {
         let condition = Arc::new(Condvar::new());
 
         let callbacks = CementCallbacks {
-            block_cemented_callback: cemented_callback(cemented_observer.clone()),
-            block_already_cemented_callback: block_already_cemented_callback(
+            block_cemented: cemented_callback(cemented_observer.clone()),
+            block_already_cemented: block_already_cemented_callback(
                 already_cemented_observer.clone(),
             ),
-            awaiting_processing_count_callback: awaiting_processing_count_callback(channel.clone()),
+            awaiting_processing_count: awaiting_processing_count_callback(channel.clone()),
         };
 
         let join_handle = {
@@ -332,23 +332,23 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
 }
 
 pub(super) struct CementCallbacks {
-    pub block_cemented_callback: BlockCallback,
-    pub block_already_cemented_callback: BlockHashCallback,
-    pub awaiting_processing_count_callback: AwaitingProcessingCountCallback,
+    pub block_cemented: BlockCallback,
+    pub block_already_cemented: BlockHashCallback,
+    pub awaiting_processing_count: AwaitingProcessingCountCallback,
 }
 
 impl CementCallbacks {
     pub fn as_refs(&mut self) -> CementCallbackRefs {
         CementCallbackRefs {
-            block_cemented_callback: &mut self.block_cemented_callback,
-            block_already_cemented_callback: &mut self.block_already_cemented_callback,
-            awaiting_processing_count_callback: &mut self.awaiting_processing_count_callback,
+            block_cemented: &mut self.block_cemented,
+            block_already_cemented: &mut self.block_already_cemented,
+            awaiting_processing_count: &mut self.awaiting_processing_count,
         }
     }
 }
 
 pub(super) struct CementCallbackRefs<'a> {
-    pub block_cemented_callback: &'a mut dyn FnMut(&Arc<BlockEnum>),
-    pub block_already_cemented_callback: &'a mut dyn FnMut(BlockHash),
-    pub awaiting_processing_count_callback: &'a mut dyn FnMut() -> u64,
+    pub block_cemented: &'a mut dyn FnMut(&Arc<BlockEnum>),
+    pub block_already_cemented: &'a mut dyn FnMut(BlockHash),
+    pub awaiting_processing_count: &'a mut dyn FnMut() -> u64,
 }

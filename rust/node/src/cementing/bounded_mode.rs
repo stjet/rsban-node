@@ -22,16 +22,6 @@ use super::{
     WriteDetailsQueue,
 };
 
-const MAXIMUM_BATCH_WRITE_TIME: Duration = Duration::from_millis(250);
-
-const MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF: Duration =
-    eighty_percent_of(MAXIMUM_BATCH_WRITE_TIME);
-
-const fn eighty_percent_of(d: Duration) -> Duration {
-    let millis = d.as_millis() as u64;
-    Duration::from_millis(millis - (millis / 5))
-}
-
 /** The maximum number of various containers to keep the memory bounded */
 const MAX_ITEMS: usize = 131072;
 
@@ -149,7 +139,7 @@ impl BoundedMode {
 
             // This block was added to the confirmation height processor but is already confirmed
             if first_iter && already_cemented && current == original_block.hash() {
-                (callbacks.block_already_cemented_callback)(original_block.hash());
+                (callbacks.block_already_cemented)(original_block.hash());
             }
 
             // If we are not already at the bottom of the account chain (1 above cemented frontier) then find it
@@ -236,7 +226,7 @@ impl BoundedMode {
                 let min_time_exceeded =
                     self.timer.elapsed() >= self.batch_separate_pending_min_time;
                 let finished_iterating = current == original_block.hash();
-                let non_awaiting_processing = (callbacks.awaiting_processing_count_callback)() == 0;
+                let non_awaiting_processing = (callbacks.awaiting_processing_count)() == 0;
                 let should_output =
                     finished_iterating && (non_awaiting_processing || min_time_exceeded);
 
@@ -526,11 +516,10 @@ impl BoundedMode {
             &self.ledger,
             &self.stats,
             &self.batch_write_size,
+            &self.write_database_queue,
+            self.logger.as_ref(),
+            self.enable_timing_logging,
         );
-
-        // Will contain all blocks that have been cemented (bounded by batch_write_size)
-        // and will get run through the cemented observer callback
-        let mut cemented_blocks: Vec<Arc<BlockEnum>> = Vec::new();
 
         {
             // This only writes to the confirmation_height table and is the only place to do so in a single process
@@ -596,11 +585,13 @@ impl BoundedMode {
 
                         let last_iteration = (num_blocks_confirmed - num_blocks_iterated) == 1;
 
-                        cemented_blocks.push(block.as_ref().unwrap().clone());
+                        conf_height_writer
+                            .cemented_blocks
+                            .push(block.as_ref().unwrap().clone());
 
                         // Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
                         // Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
-                        if cemented_blocks.len()
+                        if conf_height_writer.cemented_blocks.len()
                             > self.batch_write_size.load(Ordering::SeqCst)
                                 + (self.batch_write_size.load(Ordering::SeqCst) / 10)
                         {
@@ -621,44 +612,14 @@ impl BoundedMode {
                                 },
                             );
 
-                            txn.commit();
-
-                            if self.enable_timing_logging {
-                                self.logger.always_log(&format!(
-                                    "Cemented {} blocks in {} ms (bounded processor)",
-                                    cemented_blocks.len(),
-                                    time_spent_cementing.as_millis()
-                                ));
-                            }
-
-                            // Update the maximum amount of blocks to write next time based on the time it took to cement this batch.
-                            if time_spent_cementing > MAXIMUM_BATCH_WRITE_TIME {
-                                conf_height_writer
-                                    .reduce_batch_write_size(batch_size_amount_to_change);
-                            } else if time_spent_cementing
-                                < MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF
-                            {
-                                // Increase amount of blocks written for next batch if the time for writing this one is sufficiently lower than the max time to warrant changing
-                                conf_height_writer
-                                    .increase_batch_write_size(batch_size_amount_to_change);
-                            }
-
-                            scoped_write_guard.release();
-
-                            for block in &cemented_blocks {
-                                (callbacks.block_cemented_callback)(block);
-                            }
-
-                            cemented_blocks.clear();
-
-                            // Only aquire transaction if there are blocks left
-                            if !(last_iteration && conf_height_writer.pending_writes.len() == 1) {
-                                *scoped_write_guard =
-                                    self.write_database_queue.wait(Writer::ConfirmationHeight);
-                                txn.renew();
-                            }
-
-                            conf_height_writer.reset_batch_timer();
+                            conf_height_writer.do_it(
+                                last_iteration,
+                                scoped_write_guard,
+                                txn.as_mut(),
+                                callbacks.block_cemented,
+                                time_spent_cementing,
+                                batch_size_amount_to_change,
+                            );
                         }
 
                         // Get the next block in the chain until we have reached the final desired one
@@ -709,20 +670,20 @@ impl BoundedMode {
         if self.enable_timing_logging && time_spent_cementing > Duration::from_millis(50) {
             self.logger.always_log(&format!(
                 "Cemented {} blocks in {} ms (bounded processor)",
-                cemented_blocks.len(),
+                conf_height_writer.cemented_blocks.len(),
                 time_spent_cementing.as_millis()
             ));
         }
 
         // Scope guard could have been released earlier (0 cemented_blocks would indicate that)
-        if scoped_write_guard.is_owned() && !cemented_blocks.is_empty() {
+        if scoped_write_guard.is_owned() && !conf_height_writer.cemented_blocks.is_empty() {
             scoped_write_guard.release();
-            for block in &cemented_blocks {
-                (callbacks.block_cemented_callback)(block);
+            for block in &conf_height_writer.cemented_blocks {
+                (callbacks.block_cemented)(block);
             }
         }
 
-        if time_spent_cementing > MAXIMUM_BATCH_WRITE_TIME {
+        if time_spent_cementing > ConfirmationHeightWriter::MAXIMUM_BATCH_WRITE_TIME {
             conf_height_writer.reduce_batch_write_size(batch_size_amount_to_change);
         }
 

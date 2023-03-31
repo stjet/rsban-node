@@ -164,7 +164,7 @@ impl UnboundedMode {
             if first_iter && heights.confirmed_height >= block_height {
                 // This block was added to the confirmation height processor but is already confirmed
                 debug_assert!(current_block_hash == original_block.hash());
-                (callbacks.block_already_cemented_callback)(original_block.hash());
+                (callbacks.block_already_cemented)(original_block.hash());
             }
 
             let count_before_receive = receive_source_pairs.len();
@@ -227,7 +227,7 @@ impl UnboundedMode {
             // When there are a lot of pending confirmation height blocks, it is more efficient to
             // bulk some of them up to enable better write performance which becomes the bottleneck.
             let finished_iterating = receive_source_pairs.is_empty();
-            let no_pending = (callbacks.awaiting_processing_count_callback)() == 0;
+            let no_pending = (callbacks.awaiting_processing_count)() == 0;
             let should_output =
                 finished_iterating && (no_pending || self.cementor.min_time_exceeded());
 
@@ -422,7 +422,7 @@ impl UnboundedMode {
         self.cementor.cement_blocks(
             &mut self.cement_queue,
             &self.block_cache,
-            callbacks.block_cemented_callback,
+            callbacks.block_cemented,
         );
     }
 }

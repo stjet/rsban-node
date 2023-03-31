@@ -47,7 +47,7 @@ pub(crate) struct ConfirmedInfo {
 
 pub(super) struct BoundedMode {
     write_database_queue: Arc<WriteDatabaseQueue>,
-    pending_writes: VecDeque<WriteDetails>,
+    pending_writes: WriteDetailsQueue,
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
     ledger: Arc<Ledger>,
@@ -60,13 +60,7 @@ pub(super) struct BoundedMode {
     batch_separate_pending_min_time: Duration,
     pub batch_write_size: Arc<AtomicUsize>,
 
-    // All of the atomic variables here just track the size for use in collect_container_info.
-    // This is so that no mutexes are needed during the algorithm itself, which would otherwise be needed
-    // for the sake of a rarely used RPC call for debugging purposes. As such the sizes are not being acted
-    // upon in any way (does not synchronize with any other data).
-    // This allows the load and stores to use relaxed atomic memory ordering.
     accounts_confirmed_info_size: Arc<AtomicUsize>,
-    pending_writes_size: Arc<AtomicUsize>,
     stats: Arc<Stats>,
 }
 
@@ -82,14 +76,13 @@ impl BoundedMode {
     ) -> Self {
         Self {
             write_database_queue,
-            pending_writes: VecDeque::new(),
+            pending_writes: WriteDetailsQueue::new(),
             batch_write_size: Arc::new(AtomicUsize::new(MINIMUM_BATCH_WRITE_SIZE)),
             logger,
             enable_timing_logging,
             ledger,
             accounts_confirmed_info: HashMap::new(),
             accounts_confirmed_info_size: Arc::new(AtomicUsize::new(0)),
-            pending_writes_size: Arc::new(AtomicUsize::new(0)),
             stopped,
             stats,
             timer: Instant::now(),
@@ -233,7 +226,7 @@ impl BoundedMode {
                     receive_source_pairs.pop_back();
                 }
 
-                let max_batch_write_size_reached = self.total_pending_write_block_count()
+                let max_batch_write_size_reached = self.pending_writes.total_pending_blocks()
                     >= self.batch_write_size.load(Ordering::SeqCst);
 
                 // When there are a lot of pending confirmation height blocks, it is more efficient to
@@ -462,7 +455,6 @@ impl BoundedMode {
                     top_hash: *top_most_non_receive_block_hash,
                 };
                 self.pending_writes.push_back(details);
-                self.pending_writes_size.fetch_add(1, Ordering::Relaxed);
             }
         }
 
@@ -506,7 +498,6 @@ impl BoundedMode {
                 top_hash: receive_details.hash,
             };
             self.pending_writes.push_back(write_details);
-            self.pending_writes_size.fetch_add(1, Ordering::Relaxed);
         }
     }
 
@@ -701,7 +692,6 @@ impl BoundedMode {
                     }
                 }
                 self.pending_writes.pop_front();
-                self.pending_writes_size.fetch_sub(1, Ordering::Relaxed);
             }
         }
 
@@ -729,7 +719,6 @@ impl BoundedMode {
         self.timer = Instant::now();
 
         debug_assert!(self.pending_writes.is_empty());
-        debug_assert!(self.pending_writes_size.load(Ordering::Relaxed) == 0);
     }
 
     fn batch_size_amount_to_change(&self) -> usize {
@@ -800,13 +789,6 @@ impl BoundedMode {
         return least_unconfirmed_hash;
     }
 
-    fn total_pending_write_block_count(&self) -> usize {
-        self.pending_writes
-            .iter()
-            .map(|i| (i.top_height - i.bottom_height + 1) as usize)
-            .sum()
-    }
-
     pub fn clear_process_vars(&mut self) {
         self.accounts_confirmed_info.clear();
         self.accounts_confirmed_info_size
@@ -819,13 +801,13 @@ impl BoundedMode {
 
     pub fn container_info(&self) -> BoundedModeContainerInfo {
         BoundedModeContainerInfo {
-            pending_writes: self.pending_writes_size.clone(),
+            pending_writes: self.pending_writes.container_info(),
             accounts_confirmed: self.accounts_confirmed_info_size.clone(),
         }
     }
 }
 
-pub(crate) struct WriteDetails {
+struct WriteDetails {
     pub account: Account,
     // This is the first block hash (bottom most) which is not cemented
     pub bottom_height: u64,
@@ -833,6 +815,72 @@ pub(crate) struct WriteDetails {
     // Desired cemented frontier
     pub top_height: u64,
     pub top_hash: BlockHash,
+}
+
+struct WriteDetailsQueue {
+    queue: VecDeque<WriteDetails>,
+    queue_len: Arc<AtomicUsize>,
+}
+
+impl WriteDetailsQueue {
+    fn new() -> Self {
+        Self {
+            queue: VecDeque::new(),
+            queue_len: Arc::new(AtomicUsize::new(0)),
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.queue.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+
+    fn push_back(&mut self, details: WriteDetails) {
+        self.queue.push_back(details);
+        self.queue_len.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn front(&self) -> Option<&WriteDetails> {
+        self.queue.front()
+    }
+
+    fn pop_front(&mut self) -> Option<WriteDetails> {
+        let item = self.queue.pop_front();
+        if item.is_some() {
+            self.queue_len.fetch_sub(1, Ordering::Relaxed);
+        }
+        item
+    }
+
+    fn total_pending_blocks(&self) -> usize {
+        self.queue
+            .iter()
+            .map(|i| (i.top_height - i.bottom_height + 1) as usize)
+            .sum()
+    }
+
+    fn container_info(&self) -> WriteDetailsContainerInfo {
+        WriteDetailsContainerInfo {
+            queue_len: self.queue_len.clone(),
+        }
+    }
+}
+
+struct WriteDetailsContainerInfo {
+    queue_len: Arc<AtomicUsize>,
+}
+
+impl WriteDetailsContainerInfo {
+    pub fn collect(&self, name: String) -> ContainerInfoComponent {
+        ContainerInfoComponent::Leaf(ContainerInfo {
+            name,
+            count: self.queue_len.load(Ordering::Relaxed),
+            sizeof_element: std::mem::size_of::<WriteDetails>(),
+        })
+    }
 }
 
 #[derive(Clone)]
@@ -865,7 +913,7 @@ fn truncate_after(buffer: &mut BoundedVecDeque<BlockHash>, hash: &BlockHash) {
 }
 
 pub(super) struct BoundedModeContainerInfo {
-    pending_writes: Arc<AtomicUsize>,
+    pending_writes: WriteDetailsContainerInfo,
     accounts_confirmed: Arc<AtomicUsize>,
 }
 
@@ -874,11 +922,7 @@ impl BoundedModeContainerInfo {
         ContainerInfoComponent::Composite(
             "bounded_mode".to_owned(),
             vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "pending_writes".to_owned(),
-                    count: self.pending_writes.load(Ordering::Relaxed),
-                    sizeof_element: std::mem::size_of::<WriteDetails>(),
-                }),
+                self.pending_writes.collect("pending_writes".to_owned()),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "accounts_confirmed_info".to_owned(),
                     count: self.accounts_confirmed.load(Ordering::Relaxed),

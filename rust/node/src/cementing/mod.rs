@@ -9,6 +9,7 @@ mod confirmed_iterated_pairs;
 mod implicit_receive_cemented_mapping;
 mod unbounded_mode;
 mod unconfirmed_receive_and_sources_collector;
+mod write_details_queue;
 
 use std::sync::Arc;
 
@@ -21,6 +22,7 @@ use bounded_mode::{BoundedMode, BoundedModeContainerInfo};
 use confirmation_height_processor::CementCallbackRefs;
 pub use confirmation_height_processor::ConfirmationHeightProcessor;
 use unbounded_mode::{UnboundedMode, UnboundedModeContainerInfo};
+use write_details_queue::{WriteDetails, WriteDetailsContainerInfo, WriteDetailsQueue};
 
 /// We need these details whenever we want to write the new
 /// confirmation height to the ledger

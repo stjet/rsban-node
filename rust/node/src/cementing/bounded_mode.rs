@@ -1,6 +1,6 @@
 use std::{
     cmp::max,
-    collections::{HashMap, VecDeque},
+    collections::HashMap,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
@@ -18,7 +18,7 @@ use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
 
 use crate::stats::{DetailType, Direction, StatType, Stats};
 
-use super::confirmation_height_processor::CementCallbackRefs;
+use super::{CementCallbackRefs, WriteDetails, WriteDetailsContainerInfo, WriteDetailsQueue};
 
 const MAXIMUM_BATCH_WRITE_TIME: Duration = Duration::from_millis(250);
 
@@ -804,82 +804,6 @@ impl BoundedMode {
             pending_writes: self.pending_writes.container_info(),
             accounts_confirmed: self.accounts_confirmed_info_size.clone(),
         }
-    }
-}
-
-struct WriteDetails {
-    pub account: Account,
-    // This is the first block hash (bottom most) which is not cemented
-    pub bottom_height: u64,
-    pub bottom_hash: BlockHash,
-    // Desired cemented frontier
-    pub top_height: u64,
-    pub top_hash: BlockHash,
-}
-
-struct WriteDetailsQueue {
-    queue: VecDeque<WriteDetails>,
-    queue_len: Arc<AtomicUsize>,
-}
-
-impl WriteDetailsQueue {
-    fn new() -> Self {
-        Self {
-            queue: VecDeque::new(),
-            queue_len: Arc::new(AtomicUsize::new(0)),
-        }
-    }
-
-    fn len(&self) -> usize {
-        self.queue.len()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.queue.is_empty()
-    }
-
-    fn push_back(&mut self, details: WriteDetails) {
-        self.queue.push_back(details);
-        self.queue_len.fetch_add(1, Ordering::Relaxed);
-    }
-
-    fn front(&self) -> Option<&WriteDetails> {
-        self.queue.front()
-    }
-
-    fn pop_front(&mut self) -> Option<WriteDetails> {
-        let item = self.queue.pop_front();
-        if item.is_some() {
-            self.queue_len.fetch_sub(1, Ordering::Relaxed);
-        }
-        item
-    }
-
-    fn total_pending_blocks(&self) -> usize {
-        self.queue
-            .iter()
-            .map(|i| (i.top_height - i.bottom_height + 1) as usize)
-            .sum()
-    }
-
-    fn container_info(&self) -> WriteDetailsContainerInfo {
-        WriteDetailsContainerInfo {
-            queue_len: self.queue_len.clone(),
-        }
-    }
-}
-
-struct WriteDetailsContainerInfo {
-    queue_len: Arc<AtomicUsize>,
-}
-
-impl WriteDetailsContainerInfo {
-    pub fn collect(&self, name: String) -> ContainerInfoComponent {
-        ContainerInfoComponent::Leaf(ContainerInfo {
-            name,
-            count: self.queue_len.load(Ordering::Relaxed),
-            sizeof_element: std::mem::size_of::<WriteDetails>(),
-        })
     }
 }
 

@@ -98,74 +98,10 @@ impl<'a> ConfirmationHeightWriter<'a> {
         // Cement all pending entries, each entry is specific to an account and contains the least amount
         // of blocks to retain consistent cementing across all account chains to genesis.
         while let Some(pending) = self.pending_writes.pop_front() {
-            self.pending = pending;
-            self.total_blocks_cemented = 0;
-            self.confirmation_height_info = self
-                .ledger
-                .store
-                .confirmation_height()
-                .get(txn.txn(), &self.pending.account)
-                .unwrap_or_default();
+            self.cement_pending_block(txn.as_mut(), pending.clone());
 
-            // Some blocks need to be cemented at least
-            if self.pending.top_height > self.confirmation_height_info.height {
-                // The highest hash which will be cemented
-                if self.pending.bottom_height > self.confirmation_height_info.height {
-                    self.new_cemented_frontier = self.pending.bottom_hash;
-                    // If we are higher than the cemented frontier, we should be exactly 1 block above
-                    debug_assert!(
-                        self.pending.bottom_height == self.confirmation_height_info.height + 1
-                    );
-                    self.num_blocks_confirmed =
-                        self.pending.top_height - self.pending.bottom_height + 1;
-                    self.start_height = self.pending.bottom_height;
-                } else {
-                    let frontier =
-                        self.load_block(txn.txn(), &self.confirmation_height_info.frontier);
-                    self.new_cemented_frontier = frontier.sideband().unwrap().successor;
-                    self.num_blocks_confirmed =
-                        self.pending.top_height - self.confirmation_height_info.height;
-                    self.start_height = self.confirmation_height_info.height + 1;
-                }
-
-                let mut block = Arc::new(self.load_block(txn.txn(), &self.new_cemented_frontier));
-
-                // Cementing starts from the bottom of the chain and works upwards. This is because chains can have effectively
-                // an infinite number of send/change blocks in a row. We don't want to hold the write transaction open for too long.
-                for i in 0..self.num_blocks_confirmed {
-                    self.num_blocks_iterated = i;
-                    self.cemented_blocks.push(block.clone());
-
-                    // Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
-                    if self.should_flush() {
-                        self.flush(&mut txn);
-                    }
-
-                    // Get the next block in the chain until we have reached the final desired one
-                    if !self.is_last_iteration() {
-                        self.new_cemented_frontier = block.sideband().unwrap().successor;
-                        block = Arc::new(self.load_block(txn.txn(), &self.new_cemented_frontier));
-                    } else {
-                        // Confirm it is indeed the last one
-                        debug_assert!(self.new_cemented_frontier == self.pending.top_hash);
-                    }
-                }
-
-                if self.num_blocks_cemented() > 0 {
-                    self.write_confirmation_height(
-                        txn.as_mut(),
-                        &UpdateConfirmationHeight {
-                            account: self.pending.account,
-                            new_cemented_frontier: self.new_cemented_frontier,
-                            new_height: self.pending.top_height,
-                            num_blocks_cemented: self.num_blocks_cemented(),
-                        },
-                    );
-                }
-            }
-
-            if let Some(found_info) = self.accounts_confirmed_info.get(&self.pending.account) {
-                if found_info.confirmed_height == self.pending.top_height {
+            if let Some(found_info) = self.accounts_confirmed_info.get(&pending.account) {
+                if found_info.confirmed_height == pending.top_height {
                     self.accounts_confirmed_info.remove(&self.pending.account);
                 }
             }
@@ -190,6 +126,72 @@ impl<'a> ConfirmationHeightWriter<'a> {
         debug_assert!(self.pending_writes.is_empty());
     }
 
+    fn cement_pending_block(&mut self, txn: &mut dyn WriteTransaction, pending: WriteDetails) {
+        self.pending = pending;
+        self.total_blocks_cemented = 0;
+        self.confirmation_height_info = self
+            .ledger
+            .store
+            .confirmation_height()
+            .get(txn.txn(), &self.pending.account)
+            .unwrap_or_default();
+
+        if self.pending.top_height <= self.confirmation_height_info.height {
+            // No blocks need to be cemented
+            return;
+        }
+
+        // The highest hash which will be cemented
+        if self.pending.bottom_height > self.confirmation_height_info.height {
+            self.new_cemented_frontier = self.pending.bottom_hash;
+            // If we are higher than the cemented frontier, we should be exactly 1 block above
+            debug_assert!(self.pending.bottom_height == self.confirmation_height_info.height + 1);
+            self.num_blocks_confirmed = self.pending.top_height - self.pending.bottom_height + 1;
+            self.start_height = self.pending.bottom_height;
+        } else {
+            let frontier = self.load_block(txn.txn(), &self.confirmation_height_info.frontier);
+            self.new_cemented_frontier = frontier.sideband().unwrap().successor;
+            self.num_blocks_confirmed =
+                self.pending.top_height - self.confirmation_height_info.height;
+            self.start_height = self.confirmation_height_info.height + 1;
+        }
+
+        let mut block = Arc::new(self.load_block(txn.txn(), &self.new_cemented_frontier));
+
+        // Cementing starts from the bottom of the chain and works upwards. This is because chains can have effectively
+        // an infinite number of send/change blocks in a row. We don't want to hold the write transaction open for too long.
+        for i in 0..self.num_blocks_confirmed {
+            self.num_blocks_iterated = i;
+            self.cemented_blocks.push(block.clone());
+
+            // Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
+            if self.should_flush() {
+                self.flush(txn);
+            }
+
+            // Get the next block in the chain until we have reached the final desired one
+            if !self.is_last_iteration() {
+                self.new_cemented_frontier = block.sideband().unwrap().successor;
+                block = Arc::new(self.load_block(txn.txn(), &self.new_cemented_frontier));
+            } else {
+                // Confirm it is indeed the last one
+                debug_assert!(self.new_cemented_frontier == self.pending.top_hash);
+            }
+        }
+
+        if self.num_blocks_cemented() > 0 {
+            self.write_confirmation_height(
+                txn,
+                &UpdateConfirmationHeight {
+                    account: self.pending.account,
+                    new_cemented_frontier: self.new_cemented_frontier,
+                    new_height: self.pending.top_height,
+                    num_blocks_cemented: self.num_blocks_cemented(),
+                },
+            );
+        }
+    }
+
     fn load_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockEnum {
         let Some(block) = self
             .ledger
@@ -208,12 +210,9 @@ impl<'a> ConfirmationHeightWriter<'a> {
         block
     }
 
-    fn flush(&mut self, txn: &mut Box<dyn WriteTransaction>) {
+    fn flush(&mut self, txn: &mut dyn WriteTransaction) {
         let time_spent_cementing = self.cemented_batch_timer.elapsed();
-        self.write_confirmation_height(
-            txn.as_mut(),
-            &self.get_update_confirmation_height_command(),
-        );
+        self.write_confirmation_height(txn, &self.get_update_confirmation_height_command());
 
         self.total_blocks_cemented += self.num_blocks_cemented2();
         txn.commit();

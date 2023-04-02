@@ -11,7 +11,7 @@ use rsnano_core::{
     utils::Logger, BlockEnum, BlockHash, ConfirmationHeightInfo, UpdateConfirmationHeight,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
-use rsnano_store_traits::WriteTransaction;
+use rsnano_store_traits::{Transaction, WriteTransaction};
 
 use crate::stats::{DetailType, Direction, StatType, Stats};
 
@@ -97,9 +97,9 @@ impl<'a> ConfirmationHeightWriter<'a> {
 
         // Cement all pending entries, each entry is specific to an account and contains the least amount
         // of blocks to retain consistent cementing across all account chains to genesis.
-        while !self.pending_writes.is_empty() {
+        while let Some(pending) = self.pending_writes.pop_front() {
+            self.pending = pending;
             self.total_blocks_cemented = 0;
-            self.pending = self.pending_writes.front().unwrap().clone();
             self.confirmation_height_info = self
                 .ledger
                 .store
@@ -120,40 +120,21 @@ impl<'a> ConfirmationHeightWriter<'a> {
                         self.pending.top_height - self.pending.bottom_height + 1;
                     self.start_height = self.pending.bottom_height;
                 } else {
-                    let frontier = self
-                        .ledger
-                        .store
-                        .block()
-                        .get(txn.txn(), &self.confirmation_height_info.frontier)
-                        .unwrap();
+                    let frontier =
+                        self.load_block(txn.txn(), &self.confirmation_height_info.frontier);
                     self.new_cemented_frontier = frontier.sideband().unwrap().successor;
                     self.num_blocks_confirmed =
                         self.pending.top_height - self.confirmation_height_info.height;
                     self.start_height = self.confirmation_height_info.height + 1;
                 }
 
-                let mut block = self
-                    .ledger
-                    .store
-                    .block()
-                    .get(txn.txn(), &self.new_cemented_frontier)
-                    .map(|b| Arc::new(b));
+                let mut block = Arc::new(self.load_block(txn.txn(), &self.new_cemented_frontier));
 
                 // Cementing starts from the bottom of the chain and works upwards. This is because chains can have effectively
                 // an infinite number of send/change blocks in a row. We don't want to hold the write transaction open for too long.
                 for i in 0..self.num_blocks_confirmed {
                     self.num_blocks_iterated = i;
-                    if block.is_none() {
-                        let error_str = format!(
-                            "Failed to write confirmation height for block {} (bounded processor)",
-                            self.new_cemented_frontier
-                        );
-                        self.logger.always_log(&error_str);
-                        eprintln!("{}", error_str);
-                        panic!("{}", error_str);
-                    }
-
-                    self.cemented_blocks.push(block.as_ref().unwrap().clone());
+                    self.cemented_blocks.push(block.clone());
 
                     // Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
                     if self.should_flush() {
@@ -162,20 +143,11 @@ impl<'a> ConfirmationHeightWriter<'a> {
 
                     // Get the next block in the chain until we have reached the final desired one
                     if !self.is_last_iteration() {
-                        self.new_cemented_frontier =
-                            block.as_ref().unwrap().sideband().unwrap().successor;
-                        block = self
-                            .ledger
-                            .store
-                            .block()
-                            .get(txn.txn(), &self.new_cemented_frontier)
-                            .map(|b| Arc::new(b));
+                        self.new_cemented_frontier = block.sideband().unwrap().successor;
+                        block = Arc::new(self.load_block(txn.txn(), &self.new_cemented_frontier));
                     } else {
                         // Confirm it is indeed the last one
-                        debug_assert!(
-                            self.new_cemented_frontier
-                                == self.pending_writes.front().unwrap().top_hash
-                        );
+                        debug_assert!(self.new_cemented_frontier == self.pending.top_hash);
                     }
                 }
 
@@ -197,7 +169,6 @@ impl<'a> ConfirmationHeightWriter<'a> {
                     self.accounts_confirmed_info.remove(&self.pending.account);
                 }
             }
-            self.pending_writes.pop_front();
         }
 
         drop(txn);
@@ -217,6 +188,24 @@ impl<'a> ConfirmationHeightWriter<'a> {
             self.reduce_batch_write_size();
         }
         debug_assert!(self.pending_writes.is_empty());
+    }
+
+    fn load_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockEnum {
+        let Some(block) = self
+            .ledger
+            .store
+            .block()
+            .get(txn, hash)
+            else {
+                let error_str = format!(
+                    "Failed to write confirmation height for block {} (bounded processor)",
+                    hash
+                );
+                self.logger.always_log(&error_str);
+                eprintln!("{}", error_str);
+                panic!("{}", error_str);
+            };
+        block
     }
 
     fn flush(&mut self, txn: &mut Box<dyn WriteTransaction>) {
@@ -244,7 +233,7 @@ impl<'a> ConfirmationHeightWriter<'a> {
     }
 
     fn is_another_flush_needed(&self) -> bool {
-        !self.is_last_iteration() || self.pending_writes.len() != 1
+        !self.is_last_iteration() || self.pending_writes.len() > 0
     }
 
     fn get_update_confirmation_height_command(&self) -> UpdateConfirmationHeight {

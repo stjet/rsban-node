@@ -1,3 +1,4 @@
+mod bootstrap_config;
 mod daemon_config;
 mod diagnostics_config;
 mod lmdb_config;

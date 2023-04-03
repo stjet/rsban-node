@@ -14,13 +14,13 @@ pub struct BlocksAckPayload {
     pub blocks: Vec<BlockEnum>,
 }
 
-/* Header allows for 16 bit extensions; 65535 bytes / 500 bytes (block size with some future margin) ~ 131 */
-const MAX_BLOCKS: usize = 128;
-
 impl BlocksAckPayload {
+    /* Header allows for 16 bit extensions; 65535 bytes / 500 bytes (block size with some future margin) ~ 131 */
+    pub const MAX_BLOCKS: usize = 128;
+
     pub fn deserialize(&mut self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         while let Ok(current) = deserialize_block_enum(stream) {
-            if self.blocks.len() >= MAX_BLOCKS {
+            if self.blocks.len() >= Self::MAX_BLOCKS {
                 bail!("too many blocks")
             }
             self.blocks.push(current);
@@ -29,7 +29,7 @@ impl BlocksAckPayload {
     }
 
     pub fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        if self.blocks.len() > MAX_BLOCKS {
+        if self.blocks.len() > Self::MAX_BLOCKS {
             bail!("too many blocks");
         }
 

@@ -278,6 +278,12 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 			optimistic_scheduler.deserialize (config_l);
 		}
 
+		if (toml.has_key ("bootstrap_ascending"))
+		{
+			auto config_l = toml.get_required_child ("bootstrap_ascending");
+			bootstrap_ascending.deserialize (config_l);
+		}
+
 		if (toml.has_key ("work_peers"))
 		{
 			work_peers.clear ();

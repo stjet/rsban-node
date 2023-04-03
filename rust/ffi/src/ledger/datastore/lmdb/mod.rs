@@ -19,6 +19,7 @@ use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction};
 use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
 use std::{ffi::c_void, ops::Deref};
 pub use store::LmdbStoreHandle;
+pub use unchecked_store::UncheckedKeyDto;
 
 use crate::VoidPointerCallback;
 

@@ -229,7 +229,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	block_publisher.connect (block_processor);
 	gap_tracker.connect (block_processor);
 	process_live_dispatcher.connect (block_processor);
-	unchecked.satisfied.add ([this] (nano::unchecked_info const & info) {
+	unchecked.set_satisfied_observer ([this] (nano::unchecked_info const & info) {
 		this->block_processor.add (info.get_block ());
 	});
 

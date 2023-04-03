@@ -899,6 +899,17 @@ nano::unchecked_key::unchecked_key (nano::uint512_union const & union_a) :
 {
 }
 
+nano::unchecked_key::unchecked_key (rsnano::UncheckedKeyDto * dto) :
+	unchecked_key{ 0, 0 }
+{
+	block_hash previous_a;
+	block_hash hash_a;
+	std::copy (std::begin (dto->previous), std::end (dto->previous), std::begin (previous_a.bytes));
+	std::copy (std::begin (dto->hash), std::end (dto->hash), std::begin (hash_a.bytes));
+	previous = previous_a;
+	hash = hash_a;
+}
+
 bool nano::unchecked_key::deserialize (nano::stream & stream_a)
 {
 	auto error (false);

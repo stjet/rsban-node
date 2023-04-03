@@ -16,6 +16,7 @@ mod secure;
 mod signatures;
 mod stats;
 mod transport;
+mod unchecked_map;
 mod utils;
 mod voting;
 mod wallet;

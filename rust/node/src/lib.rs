@@ -27,6 +27,7 @@ mod secure;
 pub mod signatures;
 pub mod stats;
 pub mod transport;
+pub mod unchecked_map;
 pub mod utils;
 pub mod voting;
 pub mod websocket;

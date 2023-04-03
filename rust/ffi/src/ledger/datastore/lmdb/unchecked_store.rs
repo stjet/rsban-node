@@ -31,6 +31,15 @@ impl From<&UncheckedKeyDto> for UncheckedKey {
     }
 }
 
+impl From<&UncheckedKey> for UncheckedKeyDto {
+    fn from(key: &UncheckedKey) -> Self {
+        Self {
+            previous: *key.previous.as_bytes(),
+            hash: *key.hash.as_bytes(),
+        }
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_unchecked_store_destroy(handle: *mut LmdbUncheckedStoreHandle) {
     drop(Box::from_raw(handle))

@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Information on an unchecked block
-#[derive(Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct UncheckedInfo {
     // todo: Remove Option as soon as no C++ code requires the empty constructor
     pub block: Option<Arc<RwLock<BlockEnum>>>,
@@ -69,12 +69,17 @@ impl Deserialize for UncheckedInfo {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UncheckedKey {
     pub previous: BlockHash,
     pub hash: BlockHash,
 }
 
 impl UncheckedKey {
+    pub fn new(previous: BlockHash, hash: BlockHash) -> Self {
+        Self { previous, hash }
+    }
+
     pub fn to_bytes(&self) -> [u8; 64] {
         let mut result = [0; 64];
         result[..32].copy_from_slice(self.previous.as_bytes());

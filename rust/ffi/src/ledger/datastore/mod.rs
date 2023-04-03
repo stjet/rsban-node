@@ -1,5 +1,5 @@
 mod ledger;
-mod lmdb;
+pub mod lmdb;
 mod write_database_queue;
 
 pub(crate) use ledger::LedgerHandle;

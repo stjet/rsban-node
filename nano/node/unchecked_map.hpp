@@ -13,8 +13,6 @@
 
 #include <thread>
 
-namespace mi = boost::multi_index;
-
 namespace nano
 {
 class stats;
@@ -40,59 +38,17 @@ public:
 	void del (nano::unchecked_key const & key);
 	void clear ();
 	std::size_t count () const;
+	std::size_t buffer_count () const;
 	void stop ();
-	void flush ();
 
 	/**
 	 * Trigger requested dependencies
 	 */
 	void trigger (nano::hash_or_account const & dependency);
 
-public: // Events
-	nano::observer_set<nano::unchecked_info const &> satisfied;
+	void set_satisfied_observer (const std::function<void (nano::unchecked_info const &)>);
 
-private:
-	void run ();
-	void query_impl (nano::block_hash const & hash);
-
-private: // Dependencies
-	nano::store & store;
-	nano::stats & stats;
-
-private:
-	bool disable_delete;
-	std::deque<nano::hash_or_account> buffer;
-	std::deque<nano::hash_or_account> back_buffer;
-	bool writing_back_buffer{ false };
-	bool stopped{ false };
-	nano::condition_variable condition;
-	nano::mutex mutex;
-	std::thread thread;
-
-	void process_queries (decltype (buffer) const & back_buffer);
-
-	static std::size_t constexpr mem_block_count_max = 64 * 1024;
-
-private:
-	struct entry
-	{
-		nano::unchecked_key key;
-		nano::unchecked_info info;
-	};
-
-	// clang-format off
-	class tag_sequenced {};
-	class tag_root {};
-
-	using ordered_unchecked = boost::multi_index_container<entry,
-		mi::indexed_by<
-			mi::sequenced<mi::tag<tag_sequenced>>,
-			mi::ordered_unique<mi::tag<tag_root>,
-				mi::member<entry, nano::unchecked_key, &entry::key>>>>;
-	// clang-format on
-	ordered_unchecked entries;
-
-	mutable std::recursive_mutex entries_mutex;
+	rsnano::UncheckedMapHandle * handle;
 
 public: // Container info
 	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);

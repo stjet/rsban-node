@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! u256_struct {
     ($name:ident) => {
-        #[derive(PartialEq, Eq, Clone, Copy, Hash, Default, Debug)]
+        #[derive(PartialEq, Eq, Clone, Copy, Hash, Default, Debug, PartialOrd, Ord)]
         pub struct $name([u8; 32]);
 
         #[allow(dead_code)]

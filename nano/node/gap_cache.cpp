@@ -4,9 +4,52 @@
 
 #include <boost/format.hpp>
 
+#include <memory>
+
+namespace
+{
+class gap_cache_bootstrap_starter
+{
+public:
+	gap_cache_bootstrap_starter (nano::node & node_a) :
+		node{ node_a }
+	{
+	}
+
+	void bootstrap_start (nano::block_hash const & hash_a)
+	{
+		auto node_l (node.shared ());
+		node.workers->add_timed_task (std::chrono::steady_clock::now () + node.network_params.bootstrap.gap_cache_bootstrap_start_interval, [node_l, hash_a] () {
+			if (!node_l->ledger.block_or_pruned_exists (hash_a))
+			{
+				if (!node_l->bootstrap_initiator.in_progress ())
+				{
+					node_l->logger->try_log (boost::str (boost::format ("Missing block %1% which has enough votes to warrant lazy bootstrapping it") % hash_a.to_string ()));
+				}
+				if (!node_l->flags.disable_lazy_bootstrap ())
+				{
+					node_l->bootstrap_initiator.bootstrap_lazy (hash_a);
+				}
+				else if (!node_l->flags.disable_legacy_bootstrap ())
+				{
+					node_l->bootstrap_initiator.bootstrap ();
+				}
+			}
+		});
+	}
+
+private:
+	nano::node & node;
+};
+}
+
 nano::gap_cache::gap_cache (nano::node & node_a) :
 	node (node_a)
 {
+	gap_cache_bootstrap_starter bootstrap_starter{ node_a };
+	start_bootstrap_callback = [bootstrap_starter] (nano::block_hash const & hash_a) mutable {
+		bootstrap_starter.bootstrap_start (hash_a);
+	};
 }
 
 void nano::gap_cache::add (nano::block_hash const & hash_a, std::chrono::steady_clock::time_point time_point_a)
@@ -95,24 +138,7 @@ bool nano::gap_cache::bootstrap_check (std::vector<nano::account> const & voters
 
 void nano::gap_cache::bootstrap_start (nano::block_hash const & hash_a)
 {
-	auto node_l (node.shared ());
-	node.workers->add_timed_task (std::chrono::steady_clock::now () + node.network_params.bootstrap.gap_cache_bootstrap_start_interval, [node_l, hash_a] () {
-		if (!node_l->ledger.block_or_pruned_exists (hash_a))
-		{
-			if (!node_l->bootstrap_initiator.in_progress ())
-			{
-				node_l->logger->try_log (boost::str (boost::format ("Missing block %1% which has enough votes to warrant lazy bootstrapping it") % hash_a.to_string ()));
-			}
-			if (!node_l->flags.disable_lazy_bootstrap ())
-			{
-				node_l->bootstrap_initiator.bootstrap_lazy (hash_a);
-			}
-			else if (!node_l->flags.disable_legacy_bootstrap ())
-			{
-				node_l->bootstrap_initiator.bootstrap ();
-			}
-		}
-	});
+	start_bootstrap_callback (hash_a);
 }
 
 nano::uint128_t nano::gap_cache::bootstrap_threshold ()

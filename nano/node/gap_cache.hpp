@@ -10,6 +10,7 @@
 #include <boost/multi_index_container.hpp>
 
 #include <chrono>
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -54,6 +55,7 @@ public:
 	std::size_t const max = 256;
 	nano::mutex mutex{ mutex_identifier (mutexes::gap_cache) };
 	nano::node & node;
+	std::function<void (nano::block_hash const &)> start_bootstrap_callback;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (gap_cache & gap_cache, std::string const & name);

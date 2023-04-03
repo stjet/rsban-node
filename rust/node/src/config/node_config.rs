@@ -9,7 +9,10 @@ use rsnano_core::{
 };
 use rsnano_store_lmdb::LmdbConfig;
 
-use super::{DiagnosticsConfig, Logging, Networks, OptimisticSchedulerConfig, WebsocketConfig};
+use super::{
+    BootstrapAscendingConfig, DiagnosticsConfig, Logging, Networks, OptimisticSchedulerConfig,
+    WebsocketConfig,
+};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
@@ -60,6 +63,7 @@ pub struct NodeConfig {
     pub active_elections_optimistic_limit_percentage: usize,
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
+    pub bootstrap_ascending: BootstrapAscendingConfig,
     pub bootstrap_bandwidth_limit: usize,
     pub bootstrap_bandwidth_burst_ratio: f64,
     pub conf_height_processor_batch_min_time_ms: i64,
@@ -251,6 +255,7 @@ impl NodeConfig {
             bootstrap_bandwidth_limit: 5 * 1024 * 1024,
             /** Bootstrap traffic does not need bursts */
             bootstrap_bandwidth_burst_ratio: 1.,
+            bootstrap_ascending: Default::default(),
             conf_height_processor_batch_min_time_ms: 50,
             backup_before_upgrade: false,
             max_work_generate_multiplier: 64_f64,
@@ -444,6 +449,10 @@ impl NodeConfig {
 
         toml.put_child("optimistic_scheduler", &mut |opt| {
             self.optimistic_scheduler.serialize_toml(opt)
+        })?;
+
+        toml.put_child("bootstrap_ascending", &mut |writer| {
+            self.bootstrap_ascending.serialize_toml(writer)
         })?;
 
         Ok(())

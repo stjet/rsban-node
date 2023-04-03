@@ -7,6 +7,7 @@
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/threading.hpp>
+#include <nano/node/bootstrap/bootstrap_config.hpp>
 #include <nano/node/ipc/ipc_config.hpp>
 #include <nano/node/logging.hpp>
 #include <nano/node/optimistic_scheduler.hpp>
@@ -106,6 +107,7 @@ public:
 	double bandwidth_limit_burst_ratio{ 3. };
 	std::size_t bootstrap_bandwidth_limit;
 	double bootstrap_bandwidth_burst_ratio;
+	nano::bootstrap_ascending_config bootstrap_ascending;
 	std::chrono::milliseconds conf_height_processor_batch_min_time;
 	bool backup_before_upgrade{ false };
 	double max_work_generate_multiplier;

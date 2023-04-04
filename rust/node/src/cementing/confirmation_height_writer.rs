@@ -7,6 +7,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use anyhow::Context;
 use rsnano_core::{
     utils::Logger, BlockEnum, BlockHash, ConfirmationHeightInfo, UpdateConfirmationHeight,
 };
@@ -18,6 +19,7 @@ use crate::stats::{DetailType, Direction, StatType, Stats};
 use super::{
     accounts_confirmed_map::AccountsConfirmedMap,
     write_details_queue::{WriteDetails, WriteDetailsQueue},
+    UpdateConfirmationHeightCommandFactory,
 };
 
 pub(crate) struct ConfirmationHeightWriter<'a> {
@@ -38,13 +40,8 @@ pub(crate) struct ConfirmationHeightWriter<'a> {
     scoped_write_guard: &'a mut WriteGuard,
     block_cemented: &'a mut dyn FnMut(&Arc<BlockEnum>),
     batch_size_amount_to_change: usize,
-    total_blocks_cemented: u64,
-    num_blocks_confirmed: u64,
-    num_blocks_iterated: u64,
-    new_cemented_frontier: BlockHash,
     pending: WriteDetails,
     confirmation_height_info: ConfirmationHeightInfo,
-    start_height: u64,
 }
 
 impl<'a> ConfirmationHeightWriter<'a> {
@@ -80,13 +77,8 @@ impl<'a> ConfirmationHeightWriter<'a> {
             accounts_confirmed_info,
             scoped_write_guard,
             block_cemented,
-            total_blocks_cemented: 0,
-            num_blocks_confirmed: 0,
-            num_blocks_iterated: 0,
-            new_cemented_frontier: BlockHash::zero(),
             pending: Default::default(),
             confirmation_height_info: Default::default(),
-            start_height: 0,
         }
     }
 
@@ -126,95 +118,58 @@ impl<'a> ConfirmationHeightWriter<'a> {
         debug_assert!(self.pending_writes.is_empty());
     }
 
+    fn load_block_callback<'b>(
+        ledger: &'b Ledger,
+        txn: &'b dyn Transaction,
+    ) -> impl Fn(BlockHash) -> Option<BlockEnum> + 'b {
+        |block_hash| ledger.store.block().get(txn, &block_hash)
+    }
+
     fn cement_pending_block(&mut self, txn: &mut dyn WriteTransaction, pending: WriteDetails) {
-        self.pending = pending;
-        self.total_blocks_cemented = 0;
-        self.confirmation_height_info = self
+        self.pending = pending.clone();
+        let confirmation_height_info = self
             .ledger
             .store
             .confirmation_height()
             .get(txn.txn(), &self.pending.account)
             .unwrap_or_default();
 
-        if self.pending.top_height <= self.confirmation_height_info.height {
-            // No blocks need to be cemented
-            return;
-        }
+        self.confirmation_height_info = confirmation_height_info.clone();
 
-        // The highest hash which will be cemented
-        if self.pending.bottom_height > self.confirmation_height_info.height {
-            self.new_cemented_frontier = self.pending.bottom_hash;
-            // If we are higher than the cemented frontier, we should be exactly 1 block above
-            debug_assert!(self.pending.bottom_height == self.confirmation_height_info.height + 1);
-            self.num_blocks_confirmed = self.pending.top_height - self.pending.bottom_height + 1;
-            self.start_height = self.pending.bottom_height;
-        } else {
-            let frontier = self.load_block(txn.txn(), &self.confirmation_height_info.frontier);
-            self.new_cemented_frontier = frontier.sideband().unwrap().successor;
-            self.num_blocks_confirmed =
-                self.pending.top_height - self.confirmation_height_info.height;
-            self.start_height = self.confirmation_height_info.height + 1;
-        }
+        let mut update_command_factory = UpdateConfirmationHeightCommandFactory::new(
+            &pending,
+            &confirmation_height_info,
+            &self.batch_write_size,
+        );
 
-        let mut block = Arc::new(self.load_block(txn.txn(), &self.new_cemented_frontier));
-
-        // Cementing starts from the bottom of the chain and works upwards. This is because chains can have effectively
-        // an infinite number of send/change blocks in a row. We don't want to hold the write transaction open for too long.
-        for i in 0..self.num_blocks_confirmed {
-            self.num_blocks_iterated = i;
-            self.cemented_blocks.push(block.clone());
-
-            // Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
-            if self.should_flush() {
-                self.flush(txn);
-            }
-
-            // Get the next block in the chain until we have reached the final desired one
-            if !self.is_last_iteration() {
-                self.new_cemented_frontier = block.sideband().unwrap().successor;
-                block = Arc::new(self.load_block(txn.txn(), &self.new_cemented_frontier));
+        loop {
+            let load_block = Self::load_block_callback(&self.ledger, txn.txn());
+            if let Some(update_command) = update_command_factory
+                .create_command(&load_block, &mut self.cemented_blocks)
+                .with_context(|| {
+                    format!(
+                        "Could not create update confirmation height command for account {}",
+                        pending.account
+                    )
+                })
+                .unwrap()
+            {
+                drop(load_block);
+                self.flush(txn, &update_command, &update_command_factory);
             } else {
-                // Confirm it is indeed the last one
-                debug_assert!(self.new_cemented_frontier == self.pending.top_hash);
+                break;
             }
         }
-
-        if self.num_blocks_cemented() > 0 {
-            self.write_confirmation_height(
-                txn,
-                &UpdateConfirmationHeight {
-                    account: self.pending.account,
-                    new_cemented_frontier: self.new_cemented_frontier,
-                    new_height: self.pending.top_height,
-                    num_blocks_cemented: self.num_blocks_cemented(),
-                },
-            );
-        }
     }
 
-    fn load_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockEnum {
-        let Some(block) = self
-            .ledger
-            .store
-            .block()
-            .get(txn, hash)
-            else {
-                let error_str = format!(
-                    "Failed to write confirmation height for block {} (bounded processor)",
-                    hash
-                );
-                self.logger.always_log(&error_str);
-                eprintln!("{}", error_str);
-                panic!("{}", error_str);
-            };
-        block
-    }
-
-    fn flush(&mut self, txn: &mut dyn WriteTransaction) {
+    fn flush(
+        &mut self,
+        txn: &mut dyn WriteTransaction,
+        update_command: &UpdateConfirmationHeight,
+        update_command_factory: &UpdateConfirmationHeightCommandFactory,
+    ) {
+        self.write_confirmation_height(txn, update_command);
         let time_spent_cementing = self.cemented_batch_timer.elapsed();
-        self.write_confirmation_height(txn, &self.get_update_confirmation_height_command());
-
-        self.total_blocks_cemented += self.num_blocks_cemented2();
         txn.commit();
 
         self.log_cemented_blocks(time_spent_cementing);
@@ -223,7 +178,7 @@ impl<'a> ConfirmationHeightWriter<'a> {
         self.publish_cemented_blocks();
 
         // Only aquire transaction if there are blocks left
-        if self.is_another_flush_needed() {
+        if self.is_another_flush_needed(&update_command_factory) {
             *self.scoped_write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
             txn.renew();
         }
@@ -231,20 +186,11 @@ impl<'a> ConfirmationHeightWriter<'a> {
         self.reset_batch_timer();
     }
 
-    fn is_another_flush_needed(&self) -> bool {
-        !self.is_last_iteration() || self.pending_writes.len() > 0
-    }
-
-    fn get_update_confirmation_height_command(&self) -> UpdateConfirmationHeight {
-        UpdateConfirmationHeight {
-            account: self.pending.account,
-            new_cemented_frontier: self.new_cemented_frontier,
-            new_height: self.start_height
-                + self.total_blocks_cemented
-                + self.num_blocks_cemented2()
-                - 1,
-            num_blocks_cemented: self.num_blocks_cemented2(),
-        }
+    fn is_another_flush_needed(
+        &self,
+        update_command_factory: &UpdateConfirmationHeightCommandFactory,
+    ) -> bool {
+        !update_command_factory.is_done() || self.pending_writes.len() > 0
     }
 
     fn publish_cemented_blocks(&mut self) {
@@ -253,29 +199,6 @@ impl<'a> ConfirmationHeightWriter<'a> {
         }
 
         self.cemented_blocks.clear();
-    }
-
-    fn num_blocks_cemented(&self) -> u64 {
-        self.num_blocks_confirmed - self.total_blocks_cemented
-    }
-
-    // todo: Duplication!
-    fn num_blocks_cemented2(&self) -> u64 {
-        self.num_blocks_iterated - self.total_blocks_cemented + 1
-    }
-
-    fn is_last_iteration(&self) -> bool {
-        self.num_blocks_confirmed - self.num_blocks_iterated == 1
-    }
-
-    fn should_flush(&self) -> bool {
-        self.cemented_blocks.len() > self.min_block_count_for_flush()
-    }
-
-    fn min_block_count_for_flush(&self) -> usize {
-        // Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
-        let size = self.batch_write_size.load(Ordering::SeqCst);
-        size + (size / 10)
     }
 
     fn adjust_batch_write_size(&self, time_spent_cementing: Duration) {

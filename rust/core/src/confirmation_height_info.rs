@@ -3,7 +3,7 @@ use crate::{
     BlockHash,
 };
 
-#[derive(Default, PartialEq, Eq, Debug)]
+#[derive(Default, PartialEq, Eq, Debug, Clone)]
 pub struct ConfirmationHeightInfo {
     pub height: u64,
     pub frontier: BlockHash,

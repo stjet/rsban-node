@@ -290,7 +290,7 @@ impl Networks {
 }
 
 /// Command for updating the confirmation height of an account
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UpdateConfirmationHeight {
     pub account: Account,
     /// The latest cemented block for this account

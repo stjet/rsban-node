@@ -60,3 +60,6 @@ impl IoContext for FfiIoContext {
         self.handle
     }
 }
+
+unsafe impl Send for FfiIoContext {}
+unsafe impl Sync for FfiIoContext {}

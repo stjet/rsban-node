@@ -11,7 +11,7 @@ use crate::{
 };
 use rsnano_node::{
     bootstrap::{BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr},
-    transport::{BandwidthLimitType, BufferDropPolicy},
+    transport::{BufferDropPolicy, TrafficType},
 };
 
 use num_traits::FromPrimitive;
@@ -105,6 +105,7 @@ pub unsafe extern "C" fn rsn_bootstrap_client_send_buffer(
     delete_callback: VoidPointerCallback,
     callback_context: *mut c_void,
     policy: u8,
+    traffic_type: u8,
 ) {
     let buffer = Arc::new(std::slice::from_raw_parts(buffer, len).to_vec());
     let callback_wrapper =
@@ -113,7 +114,10 @@ pub unsafe extern "C" fn rsn_bootstrap_client_send_buffer(
         callback_wrapper.call(ec, size);
     });
     let policy = BufferDropPolicy::from_u8(policy).unwrap();
-    (*handle).0.send_buffer(&buffer, Some(cb), policy);
+    let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
+    (*handle)
+        .0
+        .send_buffer(&buffer, Some(cb), policy, traffic_type);
 }
 
 #[no_mangle]
@@ -124,7 +128,7 @@ pub unsafe extern "C" fn rsn_bootstrap_client_send(
     delete_callback: VoidPointerCallback,
     context: *mut c_void,
     policy: u8,
-    limit_type: u8,
+    traffic_type: u8,
 ) {
     let callback_wrapper = ChannelTcpSendCallbackWrapper::new(context, callback, delete_callback);
     let callback_box = Box::new(move |ec, size| {
@@ -134,7 +138,7 @@ pub unsafe extern "C" fn rsn_bootstrap_client_send(
         (*msg).as_ref(),
         Some(callback_box),
         BufferDropPolicy::from_u8(policy).unwrap(),
-        BandwidthLimitType::from_u8(limit_type).unwrap(),
+        TrafficType::from_u8(traffic_type).unwrap(),
     );
 }
 

@@ -18,7 +18,8 @@ use super::NetworkFilter;
 const MAX_MESSAGE_SIZE: usize = 1024 * 4;
 const HEADER_SIZE: usize = 8;
 
-pub type ReadQuery = Box<dyn Fn(Arc<Mutex<Vec<u8>>>, usize, Box<dyn FnOnce(ErrorCode, usize)>)>;
+pub type ReadQuery =
+    Box<dyn Fn(Arc<Mutex<Vec<u8>>>, usize, Box<dyn FnOnce(ErrorCode, usize)>) + Send + Sync>;
 
 pub struct MessageDeserializer {
     network_constants: NetworkConstants,
@@ -476,7 +477,14 @@ mod tests {
         voting::Vote,
     };
     use rsnano_core::{BlockBuilder, BlockHash, KeyPair};
-    use std::{cell::RefCell, rc::Rc, sync::RwLock};
+    use std::{
+        cell::RefCell,
+        rc::Rc,
+        sync::{
+            atomic::{AtomicUsize, Ordering},
+            RwLock,
+        },
+    };
 
     #[test]
     fn exact_confirm_ack() {
@@ -607,14 +615,14 @@ mod tests {
     }
 
     fn create_read_op(input_source: Vec<u8>) -> ReadQuery {
-        let offset = RefCell::new(0);
+        let offset = AtomicUsize::new(0);
         Box::new(move |buffer, size, callback| {
             {
-                let mut os = offset.borrow_mut();
                 let mut buffer_lock = buffer.lock().unwrap();
                 buffer_lock.resize(size, 0);
-                buffer_lock.copy_from_slice(&input_source[*os..(*os + size)]);
-                *os = *os + size;
+                let os = offset.load(Ordering::SeqCst);
+                buffer_lock.copy_from_slice(&input_source[os..(os + size)]);
+                offset.fetch_add(size, Ordering::SeqCst);
             }
 
             callback(ErrorCode::default(), size);

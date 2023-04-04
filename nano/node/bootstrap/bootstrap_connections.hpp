@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nano/node/bandwidth_limiter.hpp"
+#include "nano/node/transport/traffic_type.hpp"
 
 #include <nano/node/bootstrap/bootstrap_bulk_pull.hpp>
 #include <nano/node/common.hpp>
@@ -45,8 +46,8 @@ public:
 	uint8_t * get_receive_buffer ();
 	nano::tcp_endpoint remote_endpoint () const;
 	std::string channel_string () const;
-	void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy drop_policy_a = nano::transport::buffer_drop_policy::limiter, nano::bandwidth_limit_type limit_type_a = nano::bandwidth_limit_type::standard);
-	void send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter);
+	void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy drop_policy_a = nano::transport::buffer_drop_policy::limiter, nano::transport::traffic_type traffic_type = nano::transport::traffic_type::generic);
+	void send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter, nano::transport::traffic_type traffic_type = nano::transport::traffic_type::generic);
 	nano::tcp_endpoint get_tcp_endpoint () const;
 	std::shared_ptr<nano::transport::socket> get_socket () const;
 	uint64_t get_block_count () const;

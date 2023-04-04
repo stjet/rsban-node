@@ -4,7 +4,7 @@ use rsnano_node::{
     stats::SocketStats,
     transport::{
         CompositeSocketObserver, Socket, SocketBuilder, SocketImpl, SocketObserver, SocketType,
-        TcpSocketFacade,
+        TcpSocketFacade, WriteCallback,
     },
     utils::{BufferWrapper, ErrorCode},
 };
@@ -17,7 +17,9 @@ use std::{
 };
 
 use crate::{
-    utils::{DispatchCallback, FfiThreadPool, LoggerHandle, LoggerMT, VoidFnCallbackHandle},
+    utils::{
+        DispatchCallback, FfiIoContext, FfiThreadPool, LoggerHandle, LoggerMT, VoidFnCallbackHandle,
+    },
     ErrorCodeDto, StatHandle, StringDto, VoidPointerCallback,
 };
 
@@ -87,6 +89,8 @@ pub unsafe extern "C" fn rsn_socket_create(
     network_timeout_logging: bool,
     logger: *mut LoggerHandle,
     callback_handler: *mut c_void,
+    max_write_queue_len: usize,
+    io_ctx: *mut c_void,
 ) -> *mut SocketHandle {
     let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
     let tcp_facade = Arc::new(FfiTcpSocketFacade::new(tcp_facade));
@@ -96,8 +100,9 @@ pub unsafe extern "C" fn rsn_socket_create(
 
     let socket_stats = Arc::new(SocketStats::new(stats, logger, network_timeout_logging));
     let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
+    let io_ctx = Arc::new(FfiIoContext::new(io_ctx));
 
-    let socket = SocketBuilder::endpoint_type(endpoint_type, tcp_facade, thread_pool)
+    let socket = SocketBuilder::endpoint_type(endpoint_type, tcp_facade, thread_pool, io_ctx)
         .default_timeout(Duration::from_secs(default_timeout_s))
         .silent_connection_tolerance_time(Duration::from_secs(silent_connection_tolerance_time_s))
         .idle_timeout(Duration::from_secs(idle_timeout_s))
@@ -105,6 +110,7 @@ pub unsafe extern "C" fn rsn_socket_create(
             socket_stats,
             ffi_observer,
         ])))
+        .max_write_queue_len(max_write_queue_len)
         .build();
 
     SocketHandle::new(socket)
@@ -113,6 +119,11 @@ pub unsafe extern "C" fn rsn_socket_create(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_destroy(handle: *mut SocketHandle) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_socket_start(handle: *mut SocketHandle) {
+    (*handle).start();
 }
 
 #[no_mangle]
@@ -227,6 +238,9 @@ impl Drop for ReadCallbackWrapper {
     }
 }
 
+unsafe impl Send for ReadCallbackWrapper {}
+unsafe impl Sync for ReadCallbackWrapper {}
+
 pub type SocketReadCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, usize);
 
 #[no_mangle]
@@ -270,8 +284,9 @@ pub unsafe extern "C" fn rsn_socket_async_write(
     callback: SocketReadCallback,
     destroy_context: SocketDestroyContext,
     context: *mut c_void,
+    traffic_type: u8,
 ) {
-    let cb: Option<Box<dyn FnOnce(ErrorCode, usize)>> = if !context.is_null() {
+    let cb: Option<WriteCallback> = if !context.is_null() {
         let cb_wrapper = ReadCallbackWrapper::new(callback, destroy_context, context);
         Some(Box::new(move |ec, size| {
             cb_wrapper.execute(ec, size);
@@ -280,7 +295,11 @@ pub unsafe extern "C" fn rsn_socket_async_write(
         None
     };
     let buffer = std::slice::from_raw_parts(buffer, buffer_len);
-    (*handle).async_write(&Arc::new(buffer.to_vec()), cb);
+    (*handle).async_write(
+        &Arc::new(buffer.to_vec()),
+        cb,
+        FromPrimitive::from_u8(traffic_type).unwrap(),
+    );
 }
 
 #[no_mangle]
@@ -337,13 +356,13 @@ pub unsafe extern "C" fn rsn_socket_endpoint_type(handle: *mut SocketHandle) -> 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_socket_max(handle: *mut SocketHandle) -> bool {
-    (*handle).max()
+pub unsafe extern "C" fn rsn_socket_max(handle: *mut SocketHandle, traffic_type: u8) -> bool {
+    (*handle).max(FromPrimitive::from_u8(traffic_type).unwrap())
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_socket_full(handle: *mut SocketHandle) -> bool {
-    (*handle).full()
+pub unsafe extern "C" fn rsn_socket_full(handle: *mut SocketHandle, traffic_type: u8) -> bool {
+    (*handle).full(FromPrimitive::from_u8(traffic_type).unwrap())
 }
 
 #[no_mangle]
@@ -381,12 +400,7 @@ pub unsafe extern "C" fn rsn_socket_has_timed_out(handle: *mut SocketHandle) -> 
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_checkup(handle: *mut SocketHandle) {
-    (*handle).checkup();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_get_queue_size(handle: *mut SocketHandle) -> usize {
-    (*handle).get_queue_size()
+    (*handle).ongoing_checkup();
 }
 
 pub struct AsyncConnectCallbackHandle(Option<Box<dyn FnOnce(ErrorCode)>>);

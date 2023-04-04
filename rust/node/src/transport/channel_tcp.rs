@@ -10,14 +10,15 @@ use std::{
 use rsnano_core::Account;
 
 use super::{
-    BandwidthLimitType, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket, SocketImpl,
+    write_queue::WriteCallback, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket,
+    SocketImpl, TrafficType,
 };
 use crate::{
     messages::Message,
     utils::{ErrorCode, IoContext},
 };
 
-pub trait IChannelTcpObserverWeakPtr {
+pub trait IChannelTcpObserverWeakPtr: Send + Sync {
     fn lock(&self) -> Option<Arc<dyn ChannelTcpObserver>>;
 }
 
@@ -125,11 +126,14 @@ impl ChannelTcp {
     pub fn send_buffer(
         &self,
         buffer_a: &Arc<Vec<u8>>,
-        callback_a: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
+        callback_a: Option<WriteCallback>,
         policy_a: BufferDropPolicy,
+        traffic_type: TrafficType,
     ) {
         if let Some(socket_l) = self.socket() {
-            if !socket_l.max() || (policy_a == BufferDropPolicy::NoSocketDrop && !socket_l.full()) {
+            if !socket_l.max(traffic_type)
+                || (policy_a == BufferDropPolicy::NoSocketDrop && !socket_l.full(traffic_type))
+            {
                 let observer_weak_l = self.observer.clone();
                 let endpoint = socket_l
                     .get_remote()
@@ -149,6 +153,7 @@ impl ChannelTcp {
                             callback(ec, size);
                         }
                     })),
+                    traffic_type,
                 );
             } else {
                 if let Some(observer_l) = self.observer.lock() {
@@ -169,22 +174,25 @@ impl ChannelTcp {
         }
     }
 
-    pub fn max(&self) -> bool {
-        self.socket.upgrade().map(|s| s.max()).unwrap_or(true)
+    pub fn max(&self, traffic_type: TrafficType) -> bool {
+        self.socket
+            .upgrade()
+            .map(|s| s.max(traffic_type))
+            .unwrap_or(true)
     }
 
     pub fn send(
         &self,
         message: &dyn Message,
-        callback: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
+        callback: Option<WriteCallback>,
         drop_policy: BufferDropPolicy,
-        limit_type: BandwidthLimitType,
+        traffic_type: TrafficType,
     ) {
         let buffer = Arc::new(message.to_bytes());
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
-        let should_pass = self.limiter.should_pass(buffer.len(), limit_type);
+        let should_pass = self.limiter.should_pass(buffer.len(), traffic_type.into());
         if !is_droppable_by_limiter || should_pass {
-            self.send_buffer(&buffer, callback, drop_policy);
+            self.send_buffer(&buffer, callback, drop_policy, traffic_type);
             if let Some(observer) = self.observer.lock() {
                 observer.message_sent(message);
             }

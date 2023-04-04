@@ -1,3 +1,5 @@
+#include "nano/node/transport/traffic_type.hpp"
+
 #include <nano/boost/asio/bind_executor.hpp>
 #include <nano/boost/asio/ip/address_v6.hpp>
 #include <nano/boost/asio/read.hpp>
@@ -145,12 +147,30 @@ std::size_t nano::transport::buffer_wrapper::len () const
 	return rsnano::rsn_buffer_len (handle);
 }
 
+/*
+ * socket
+ */
+
 nano::transport::socket::socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stats & stats_a,
 std::shared_ptr<nano::logger_mt> & logger_a, std::shared_ptr<nano::thread_pool> const & workers_a,
 std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a,
 std::chrono::seconds idle_timeout_a,
-bool network_timeout_logging_a, std::shared_ptr<nano::node_observers> observers_a) :
-	handle{ rsnano::rsn_socket_create (static_cast<uint8_t> (endpoint_type_a), new std::shared_ptr<nano::transport::tcp_socket_facade> (std::make_shared<nano::transport::tcp_socket_facade> (io_ctx_a)), stats_a.handle, new std::shared_ptr<nano::thread_pool> (workers_a), default_timeout_a.count (), silent_connection_tolerance_time_a.count (), idle_timeout_a.count (), network_timeout_logging_a, nano::to_logger_handle (logger_a), new std::shared_ptr<nano::node_observers> (observers_a)) }
+bool network_timeout_logging_a,
+std::shared_ptr<nano::node_observers> observers_a,
+std::size_t max_queue_size_a) :
+	handle{ rsnano::rsn_socket_create (
+	static_cast<uint8_t> (endpoint_type_a),
+	new std::shared_ptr<nano::transport::tcp_socket_facade> (std::make_shared<nano::transport::tcp_socket_facade> (io_ctx_a)),
+	stats_a.handle,
+	new std::shared_ptr<nano::thread_pool> (workers_a),
+	default_timeout_a.count (),
+	silent_connection_tolerance_time_a.count (),
+	idle_timeout_a.count (),
+	network_timeout_logging_a,
+	nano::to_logger_handle (logger_a),
+	new std::shared_ptr<nano::node_observers> (observers_a),
+	max_queue_size_a,
+	&io_ctx_a) }
 {
 }
 
@@ -187,6 +207,11 @@ void async_connect_delete_context (void * context)
 boost::asio::ip::tcp::endpoint & nano::transport::socket::get_remote ()
 {
 	return remote;
+}
+
+void nano::transport::socket::start ()
+{
+	rsnano::rsn_socket_start (handle);
 }
 
 void nano::transport::socket::async_connect (nano::tcp_endpoint const & endpoint_a, std::function<void (boost::system::error_code const &)> callback_a)
@@ -235,14 +260,14 @@ void nano::transport::socket::async_read (std::shared_ptr<nano::transport::buffe
 	rsnano::rsn_socket_async_read2 (handle, buffer_a->handle, size_a, nano::transport::async_read_adapter, nano::transport::async_read_delete_context, cb_wrapper);
 }
 
-void nano::transport::socket::async_write (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
+void nano::transport::socket::async_write (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a, nano::transport::traffic_type traffic_type)
 {
 	auto cb_wrapper = new std::function<void (boost::system::error_code const &, std::size_t)> ([callback = std::move (callback_a), this_l = shared_from_this ()] (boost::system::error_code const & ec, std::size_t size) {
 		callback (ec, size);
 	});
 
 	auto buffer_l = buffer_a.to_bytes ();
-	rsnano::rsn_socket_async_write (handle, buffer_l.data (), buffer_l.size (), async_read_adapter, async_read_delete_context, cb_wrapper);
+	rsnano::rsn_socket_async_write (handle, buffer_l.data (), buffer_l.size (), async_read_adapter, async_read_delete_context, cb_wrapper, static_cast<uint8_t> (traffic_type));
 }
 
 const void * nano::transport::socket::inner_ptr () const
@@ -301,11 +326,6 @@ void nano::transport::socket::close ()
 	rsnano::rsn_socket_close (handle);
 }
 
-std::size_t nano::transport::socket::get_queue_size () const
-{
-	return rsnano::rsn_socket_get_queue_size (handle);
-}
-
 void nano::transport::socket::close_internal ()
 {
 	rsnano::rsn_socket_close_internal (handle);
@@ -345,14 +365,91 @@ nano::tcp_endpoint nano::transport::socket::local_endpoint () const
 	return rsnano::dto_to_endpoint (dto);
 }
 
-bool nano::transport::socket::max () const
+bool nano::transport::socket::max (nano::transport::traffic_type traffic_type) const
 {
-	return rsnano::rsn_socket_max (handle);
+	return rsnano::rsn_socket_max (handle, static_cast<uint8_t> (traffic_type));
 }
-bool nano::transport::socket::full () const
+
+bool nano::transport::socket::full (nano::transport::traffic_type traffic_type) const
 {
-	return rsnano::rsn_socket_full (handle);
+	return rsnano::rsn_socket_full (handle, static_cast<uint8_t> (traffic_type));
 }
+
+/*
+ * write_queue
+ */
+
+nano::transport::socket::write_queue::write_queue (std::size_t max_size_a) :
+	max_size{ max_size_a }
+{
+}
+
+bool nano::transport::socket::write_queue::insert (const buffer_t & buffer, callback_t callback, nano::transport::traffic_type traffic_type)
+{
+	nano::lock_guard<nano::mutex> guard{ mutex };
+	if (queues[traffic_type].size () < 2 * max_size)
+	{
+		queues[traffic_type].push (entry{ buffer, callback });
+		return true; // Queued
+	}
+	return false; // Not queued
+}
+
+std::optional<nano::transport::socket::write_queue::entry> nano::transport::socket::write_queue::pop ()
+{
+	nano::lock_guard<nano::mutex> guard{ mutex };
+
+	auto try_pop = [this] (nano::transport::traffic_type type) -> std::optional<entry> {
+		auto & que = queues[type];
+		if (!que.empty ())
+		{
+			auto item = que.front ();
+			que.pop ();
+			return item;
+		}
+		return std::nullopt;
+	};
+
+	// TODO: This is a very basic prioritization, implement something more advanced and configurable
+	if (auto item = try_pop (nano::transport::traffic_type::generic))
+	{
+		return item;
+	}
+	if (auto item = try_pop (nano::transport::traffic_type::bootstrap))
+	{
+		return item;
+	}
+
+	return std::nullopt;
+}
+
+void nano::transport::socket::write_queue::clear ()
+{
+	nano::lock_guard<nano::mutex> guard{ mutex };
+	queues.clear ();
+}
+
+std::size_t nano::transport::socket::write_queue::size (nano::transport::traffic_type traffic_type) const
+{
+	nano::lock_guard<nano::mutex> guard{ mutex };
+	if (auto it = queues.find (traffic_type); it != queues.end ())
+	{
+		return it->second.size ();
+	}
+	return 0;
+}
+
+bool nano::transport::socket::write_queue::empty () const
+{
+	nano::lock_guard<nano::mutex> guard{ mutex };
+	return std::all_of (queues.begin (), queues.end (), [] (auto const & que) {
+		return que.second.empty ();
+	});
+}
+
+/*
+ * server_socket
+ */
 
 nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio::ip::tcp::endpoint local_a, std::size_t max_connections_a) :
 	strand{ node_a.io_ctx.get_executor () },
@@ -532,7 +629,7 @@ void nano::transport::server_socket::on_connection (std::function<bool (std::sha
 			{
 				// Make sure the new connection doesn't idle. Note that in most cases, the callback is going to start
 				// an IO operation immediately, which will start a timer.
-				new_connection->checkup ();
+				new_connection->start ();
 				new_connection->set_timeout (this_l->node.network_params.network.idle_timeout);
 				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
 				this_l->connections_per_address.emplace (new_connection->remote_endpoint ().address (), new_connection);
@@ -601,14 +698,15 @@ void nano::transport::server_socket::evict_dead_connections ()
 	}
 }
 
-std::shared_ptr<nano::transport::socket> nano::transport::create_client_socket (nano::node & node_a)
+std::shared_ptr<nano::transport::socket> nano::transport::create_client_socket (nano::node & node_a, std::size_t write_queue_size)
 {
 	return std::make_shared<nano::transport::socket> (node_a.io_ctx, nano::transport::socket::endpoint_type_t::client, *node_a.stats, node_a.logger, node_a.workers,
 	node_a.config->tcp_io_timeout,
 	node_a.network_params.network.silent_connection_tolerance_time,
 	node_a.network_params.network.idle_timeout,
 	node_a.config->logging.network_timeout_logging (),
-	node_a.observers);
+	node_a.observers,
+	write_queue_size);
 }
 
 nano::transport::weak_socket_wrapper::weak_socket_wrapper (rsnano::SocketWeakHandle * handle_a) :

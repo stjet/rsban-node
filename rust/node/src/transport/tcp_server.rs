@@ -32,7 +32,7 @@ use crate::{
 
 use super::NetworkFilter;
 
-pub trait TcpServerObserver {
+pub trait TcpServerObserver: Send + Sync {
     fn bootstrap_server_timeout(&self, inner_ptr: usize);
     fn boostrap_server_exited(
         &self,
@@ -245,7 +245,7 @@ impl Drop for TcpServer {
     }
 }
 
-pub trait RequestResponseVisitorFactory {
+pub trait RequestResponseVisitorFactory: Send + Sync {
     fn handshake_visitor(&self, server: Arc<TcpServer>) -> Box<dyn HandshakeMessageVisitor>;
 
     fn realtime_visitor(&self, server: Arc<TcpServer>) -> Box<dyn RealtimeMessageVisitor>;
@@ -510,6 +510,7 @@ impl HandshakeMessageVisitorImpl {
                     }
                 }
             })),
+            super::TrafficType::Generic,
         );
     }
 

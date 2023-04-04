@@ -1,6 +1,9 @@
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
+#include "nano/node/bandwidth_limiter.hpp"
 #include "nano/node/messages.hpp"
+#include "nano/node/transport/channel.hpp"
+#include "nano/node/transport/traffic_type.hpp"
 
 #include <nano/node/node.hpp>
 #include <nano/node/transport/inproc.hpp>
@@ -73,12 +76,12 @@ public:
 	}
 };
 
-void nano::transport::inproc::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::bandwidth_limit_type limiter_type)
+void nano::transport::inproc::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::transport::traffic_type traffic_type)
 {
 	auto buffer (message_a.to_shared_const_buffer ());
 	auto detail = nano::to_stat_detail (message_a.get_header ().get_type ());
 	auto is_droppable_by_limiter = drop_policy_a == nano::transport::buffer_drop_policy::limiter;
-	auto should_pass (limiter.should_pass (buffer.size (), limiter_type));
+	auto should_pass (limiter.should_pass (buffer.size (), nano::to_bandwidth_limit_type (traffic_type)));
 	if (!is_droppable_by_limiter || should_pass)
 	{
 		send_buffer (buffer, callback_a, drop_policy_a);
@@ -126,7 +129,7 @@ void delete_callback_context (void * context)
  * Send the buffer to the peer and call the callback function when done. The call never fails.
  * Note that the inbound message visitor will be called before the callback because it is called directly whereas the callback is spawned in the background.
  */
-void nano::transport::inproc::channel::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a)
+void nano::transport::inproc::channel::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::transport::traffic_type traffic_type)
 {
 	auto context = new std::function<void (boost::system::error_code, std::unique_ptr<nano::message>)> (
 	[this] (boost::system::error_code ec_a, std::unique_ptr<nano::message> message_a) {

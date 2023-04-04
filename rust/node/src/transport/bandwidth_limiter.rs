@@ -1,5 +1,14 @@
-use super::TokenBucket;
+use super::{TokenBucket, TrafficType};
 use std::sync::Mutex;
+
+impl From<TrafficType> for BandwidthLimitType {
+    fn from(value: TrafficType) -> Self {
+        match value {
+            TrafficType::Generic => BandwidthLimitType::Standard,
+            TrafficType::Bootstrap => BandwidthLimitType::Bootstrap,
+        }
+    }
+}
 
 pub struct BandwidthLimiter {
     bucket: Mutex<TokenBucket>,

@@ -20,15 +20,17 @@ namespace transport
 			std::string to_string () const override;
 			std::size_t hash_code () const override;
 
-			void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter, nano::bandwidth_limit_type = nano::bandwidth_limit_type::standard) override;
+			void send (nano::message & message_a,
+			std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr,
+			nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter,
+			nano::transport::traffic_type = nano::transport::traffic_type::generic) override;
 
 			// clang-format off
 			void send_buffer (
-				nano::shared_const_buffer const &,
-				std::function<void (boost::system::error_code const &, std::size_t)> const & = nullptr,
-				nano::transport::buffer_drop_policy = nano::transport::buffer_drop_policy::limiter
-			) override;
-			// clang-format on
+			nano::shared_const_buffer const &,
+			std::function<void (boost::system::error_code const &, std::size_t)> const & = nullptr,
+			nano::transport::buffer_drop_policy = nano::transport::buffer_drop_policy::limiter,
+			nano::transport::traffic_type = nano::transport::traffic_type::generic) override;
 
 			bool operator== (nano::transport::channel const &) const override;
 			bool operator== (nano::transport::fake::channel const & other_a) const;

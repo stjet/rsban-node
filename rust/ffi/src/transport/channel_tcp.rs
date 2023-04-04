@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{messages::MessageHandle, utils::FfiIoContext, ErrorCodeDto, VoidPointerCallback};
 use rsnano_node::{
-    transport::{BandwidthLimitType, BufferDropPolicy, Channel, ChannelTcp},
+    transport::{BufferDropPolicy, Channel, ChannelTcp, TrafficType},
     utils::ErrorCode,
 };
 use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc};
@@ -105,6 +105,9 @@ impl Drop for SendBufferCallbackWrapper {
     }
 }
 
+unsafe impl Send for SendBufferCallbackWrapper {}
+unsafe impl Sync for SendBufferCallbackWrapper {}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_send_buffer(
     handle: *mut ChannelHandle,
@@ -114,6 +117,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_send_buffer(
     delete_callback: VoidPointerCallback,
     callback_context: *mut c_void,
     policy: u8,
+    traffic_type: u8,
 ) {
     let buffer = Arc::new(std::slice::from_raw_parts(buffer, buffer_len).to_vec());
     let callback_wrapper =
@@ -122,7 +126,8 @@ pub unsafe extern "C" fn rsn_channel_tcp_send_buffer(
         callback_wrapper.call(ec, size);
     });
     let policy = BufferDropPolicy::from_u8(policy).unwrap();
-    as_tcp_channel(handle).send_buffer(&buffer, Some(cb), policy);
+    let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
+    as_tcp_channel(handle).send_buffer(&buffer, Some(cb), policy, traffic_type);
 }
 
 #[no_mangle]
@@ -155,8 +160,8 @@ pub unsafe extern "C" fn rsn_channel_tcp_eq(a: *mut ChannelHandle, b: *mut Chann
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_max(handle: *mut ChannelHandle) -> bool {
-    as_tcp_channel(handle).max()
+pub unsafe extern "C" fn rsn_channel_tcp_max(handle: *mut ChannelHandle, traffic_type: u8) -> bool {
+    as_tcp_channel(handle).max(FromPrimitive::from_u8(traffic_type).unwrap())
 }
 
 #[no_mangle]
@@ -201,6 +206,9 @@ impl Drop for ChannelTcpSendCallbackWrapper {
     }
 }
 
+unsafe impl Send for ChannelTcpSendCallbackWrapper {}
+unsafe impl Sync for ChannelTcpSendCallbackWrapper {}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_send(
     handle: *mut ChannelHandle,
@@ -209,7 +217,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_send(
     delete_callback: VoidPointerCallback,
     context: *mut c_void,
     policy: u8,
-    limit_type: u8,
+    traffic_type: u8,
 ) {
     let callback_wrapper = ChannelTcpSendCallbackWrapper::new(context, callback, delete_callback);
     let callback_box = Box::new(move |ec, size| {
@@ -219,6 +227,6 @@ pub unsafe extern "C" fn rsn_channel_tcp_send(
         (*msg).as_ref(),
         Some(callback_box),
         BufferDropPolicy::from_u8(policy).unwrap(),
-        BandwidthLimitType::from_u8(limit_type).unwrap(),
+        TrafficType::from_u8(traffic_type).unwrap(),
     );
 }

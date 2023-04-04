@@ -75,10 +75,11 @@ namespace transport
 		void set_network_version (uint8_t network_version_a) override;
 		std::size_t hash_code () const override;
 		bool operator== (nano::transport::channel const &) const override;
-		void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter, nano::bandwidth_limit_type = nano::bandwidth_limit_type::standard) override;
+		void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter, nano::transport::traffic_type = nano::transport::traffic_type::generic) override;
+
 		// TODO: investigate clang-tidy warning about default parameters on virtual/override functions
-		//
-		void send_buffer (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> const & = nullptr, nano::transport::buffer_drop_policy = nano::transport::buffer_drop_policy::limiter) override;
+		void send_buffer (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> const & = nullptr, nano::transport::buffer_drop_policy = nano::transport::buffer_drop_policy::limiter, nano::transport::traffic_type = nano::transport::traffic_type::generic) override;
+
 		std::string to_string () const override;
 		bool operator== (nano::transport::channel_tcp const & other_a) const;
 		std::shared_ptr<nano::transport::socket> try_get_socket () const;
@@ -96,7 +97,7 @@ namespace transport
 			return nano::transport::transport_type::tcp;
 		}
 
-		bool max () override;
+		bool max (nano::transport::traffic_type traffic_type) override;
 		nano::endpoint get_peering_endpoint () const override;
 		void set_peering_endpoint (nano::endpoint endpoint) override;
 		virtual bool alive () const override;

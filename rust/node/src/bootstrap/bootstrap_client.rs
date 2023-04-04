@@ -9,7 +9,7 @@ use std::{
 
 use crate::{
     messages::Message,
-    transport::{BandwidthLimitType, BufferDropPolicy, ChannelTcp, Socket, SocketImpl},
+    transport::{BufferDropPolicy, ChannelTcp, Socket, SocketImpl, TrafficType, WriteCallback},
     utils::ErrorCode,
 };
 
@@ -103,22 +103,24 @@ impl BootstrapClient {
 
     pub fn send_buffer(
         &self,
-        buffer_a: &Arc<Vec<u8>>,
-        callback_a: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
-        policy_a: BufferDropPolicy,
+        buffer: &Arc<Vec<u8>>,
+        callback: Option<WriteCallback>,
+        policy: BufferDropPolicy,
+        traffic_type: TrafficType,
     ) {
-        self.channel.send_buffer(buffer_a, callback_a, policy_a);
+        self.channel
+            .send_buffer(buffer, callback, policy, traffic_type);
     }
 
     pub fn send(
         &self,
         message: &dyn Message,
-        callback: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
+        callback: Option<WriteCallback>,
         drop_policy: BufferDropPolicy,
-        limit_type: BandwidthLimitType,
+        traffic_type: TrafficType,
     ) {
         self.channel
-            .send(message, callback, drop_policy, limit_type);
+            .send(message, callback, drop_policy, traffic_type);
     }
 
     pub fn inc_block_count(&self) -> u64 {

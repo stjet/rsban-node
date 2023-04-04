@@ -66,3 +66,8 @@ void nano::outbound_bandwidth_limiter::reset (std::size_t limit, double burst_ra
 {
 	rsnano::rsn_outbound_bandwidth_limiter_reset (handle, burst_ratio, limit, static_cast<uint8_t> (type));
 }
+
+nano::bandwidth_limit_type nano::to_bandwidth_limit_type (const nano::transport::traffic_type & traffic_type)
+{
+	return static_cast<nano::bandwidth_limit_type> (rsnano::rsn_traffic_type_to_bandwidth_limit_type (static_cast<uint8_t> (traffic_type)));
+}

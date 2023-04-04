@@ -108,6 +108,9 @@ pub struct ChannelTcpObserverWeakPtr {
     handle: *mut c_void,
 }
 
+unsafe impl Send for ChannelTcpObserverWeakPtr {}
+unsafe impl Sync for ChannelTcpObserverWeakPtr {}
+
 impl ChannelTcpObserverWeakPtr {
     pub fn new(handle: *mut c_void) -> Self {
         Self { handle }

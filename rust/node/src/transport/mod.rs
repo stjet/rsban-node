@@ -11,6 +11,7 @@ mod tcp_channels;
 mod tcp_message_manager;
 mod tcp_server;
 mod token_bucket;
+mod write_queue;
 
 pub use bandwidth_limiter::{
     BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
@@ -34,6 +35,7 @@ pub use tcp_server::{
     TcpServerExt, TcpServerObserver,
 };
 use token_bucket::TokenBucket;
+pub use write_queue::WriteCallback;
 
 pub trait Channel {
     fn is_temporary(&self) -> bool;
@@ -47,4 +49,11 @@ pub trait Channel {
     fn get_node_id(&self) -> Option<Account>;
     fn set_node_id(&self, id: Account);
     fn is_alive(&self) -> bool;
+}
+
+#[derive(FromPrimitive, Copy, Clone)]
+pub enum TrafficType {
+    Generic,
+    /** For bootstrap (asc_pull_ack, asc_pull_req) traffic */
+    Bootstrap,
 }

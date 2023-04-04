@@ -3,11 +3,16 @@
 #include <nano/boost/asio/ip/tcp.hpp>
 #include <nano/boost/asio/strand.hpp>
 #include <nano/lib/asio.hpp>
+#include <nano/lib/locks.hpp>
 #include <nano/lib/timer.hpp>
+#include <nano/node/transport/traffic_type.hpp>
 
 #include <chrono>
 #include <map>
 #include <memory>
+#include <optional>
+#include <queue>
+#include <unordered_map>
 #include <vector>
 
 namespace boost::asio::ip
@@ -100,6 +105,8 @@ class socket : public std::enable_shared_from_this<nano::transport::socket>
 	friend class server_socket;
 
 public:
+	static std::size_t constexpr default_max_queue_size = 128;
+
 	enum class type_t
 	{
 		undefined,
@@ -122,16 +129,19 @@ public:
 	std::shared_ptr<nano::logger_mt> & logger_a, std::shared_ptr<nano::thread_pool> const & workers_a,
 	std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a,
 	std::chrono::seconds idle_timeout_a, bool network_timeout_logging_a,
-	std::shared_ptr<nano::node_observers>);
+	std::shared_ptr<nano::node_observers>,
+	std::size_t max_queue_size = default_max_queue_size);
 	socket (rsnano::SocketHandle * handle_a);
 	socket (nano::transport::socket const &) = delete;
 	socket (nano::transport::socket &&) = delete;
 	virtual ~socket ();
 
+	void start ();
+
 	void async_connect (boost::asio::ip::tcp::endpoint const &, std::function<void (boost::system::error_code const &)>);
 	void async_read (std::shared_ptr<std::vector<uint8_t>> const &, std::size_t, std::function<void (boost::system::error_code const &, std::size_t)>);
 	void async_read (std::shared_ptr<buffer_wrapper> const &, std::size_t, std::function<void (boost::system::error_code const &, std::size_t)>);
-	void async_write (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> = {});
+	void async_write (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> = {}, nano::transport::traffic_type = nano::transport::traffic_type::generic);
 	const void * inner_ptr () const;
 
 	virtual void close ();
@@ -144,8 +154,8 @@ public:
 	std::chrono::seconds get_default_timeout_value () const;
 	void set_timeout (std::chrono::seconds);
 	void set_silent_connection_tolerance_time (std::chrono::seconds tolerance_time_a);
-	bool max () const;
-	bool full () const;
+	bool max (nano::transport::traffic_type = nano::transport::traffic_type::generic) const;
+	bool full (nano::transport::traffic_type = nano::transport::traffic_type::generic) const;
 	type_t type () const;
 	void type_set (type_t type_a);
 	endpoint_type_t endpoint_type () const;
@@ -157,13 +167,33 @@ public:
 	bool is_closed ();
 	bool alive () const;
 
-protected:
-	/** Holds the buffer and callback for queued writes */
-	class queue_item
+private:
+	class write_queue
 	{
 	public:
-		nano::shared_const_buffer buffer;
-		std::function<void (boost::system::error_code const &, std::size_t)> callback;
+		using buffer_t = nano::shared_const_buffer;
+		using callback_t = std::function<void (boost::system::error_code const &, std::size_t)>;
+
+		struct entry
+		{
+			buffer_t buffer;
+			callback_t callback;
+		};
+
+	public:
+		explicit write_queue (std::size_t max_size);
+
+		bool insert (buffer_t const &, callback_t, nano::transport::traffic_type);
+		std::optional<entry> pop ();
+		void clear ();
+		std::size_t size (nano::transport::traffic_type) const;
+		bool empty () const;
+
+		std::size_t const max_size;
+
+	private:
+		mutable nano::mutex mutex;
+		std::unordered_map<nano::transport::traffic_type, std::queue<entry>> queues;
 	};
 
 	/** The other end of the connection */
@@ -172,7 +202,6 @@ protected:
 	/** The other end of the connection */
 	boost::asio::ip::tcp::endpoint remote;
 
-	std::size_t get_queue_size () const;
 	void close_internal ();
 	void checkup ();
 
@@ -248,5 +277,5 @@ private:
 	bool limit_reached_for_incoming_subnetwork_connections (std::shared_ptr<nano::transport::socket> const & new_connection);
 };
 
-std::shared_ptr<nano::transport::socket> create_client_socket (nano::node & node_a);
+std::shared_ptr<nano::transport::socket> create_client_socket (nano::node & node_a, std::size_t max_queue_size = socket::default_max_queue_size);
 }

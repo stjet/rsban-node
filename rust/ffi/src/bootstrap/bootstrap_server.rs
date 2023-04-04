@@ -271,6 +271,9 @@ impl FfiBootstrapServerObserver {
     }
 }
 
+unsafe impl Send for FfiBootstrapServerObserver {}
+unsafe impl Sync for FfiBootstrapServerObserver {}
+
 impl Drop for FfiBootstrapServerObserver {
     fn drop(&mut self) {
         unsafe {
@@ -394,6 +397,9 @@ impl Drop for FfiRequestResponseVisitorFactory {
         unsafe { DESTROY_VISITOR_FACTORY.expect("DESTROY_VISITOR_FACTORY missing")(self.handle) }
     }
 }
+
+unsafe impl Send for FfiRequestResponseVisitorFactory {}
+unsafe impl Sync for FfiRequestResponseVisitorFactory {}
 
 impl RequestResponseVisitorFactory for FfiRequestResponseVisitorFactory {
     fn handle(&self) -> *mut c_void {

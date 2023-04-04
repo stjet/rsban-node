@@ -1,14 +1,19 @@
-use crate::utils::{BufferWrapper, ErrorCode, ThreadPool};
+use crate::utils::{BufferWrapper, ErrorCode, IoContext, ThreadPool};
 use num_traits::FromPrimitive;
 use rsnano_core::utils::seconds_since_epoch;
 use std::{
     any::Any,
     net::SocketAddr,
     sync::{
-        atomic::{AtomicBool, AtomicU64, AtomicU8, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
         Arc, Mutex,
     },
     time::Duration,
+};
+
+use super::{
+    write_queue::{WriteCallback, WriteQueue},
+    TrafficType,
 };
 
 /// Policy to affect at which stage a buffer can be dropped
@@ -201,16 +206,15 @@ pub struct SocketImpl {
     /// error codes as the OS may have already completed the async operation.
     closed: AtomicBool,
 
-    /// Tracks number of blocks queued for delivery to the local socket send buffers.
-    ///  Under normal circumstances, this should be zero.
-    ///  Note that this is not the number of buffers queued to the peer, it is the number of buffers
-    ///  queued up to enter the local TCP send buffer
-    ///  socket buffer queue -> TCP send queue -> (network) -> TCP receive queue of peer
-    queue_size: AtomicUsize,
+    /// Updated only from strand, but stored as atomic so it can be read from outside
+    write_in_progress: AtomicBool,
 
     socket_type: AtomicU8,
 
     observer: Arc<dyn SocketObserver>,
+
+    send_queue: WriteQueue,
+    io_ctx: Arc<dyn IoContext>,
 }
 
 impl SocketImpl {
@@ -248,6 +252,7 @@ impl SocketImpl {
 
     pub fn close_internal(&self) {
         if !self.closed.swap(true, Ordering::SeqCst) {
+            self.send_queue.clear();
             self.set_default_timeout_value(0);
 
             if let Err(ec) = self.tcp_socket.close() {
@@ -277,13 +282,14 @@ impl SocketImpl {
             || self.socket_type() == SocketType::RealtimeResponseServer
     }
 
-    const QUEUE_SIZE_MAX: usize = 128;
-    pub fn max(&self) -> bool {
-        self.queue_size.load(Ordering::Relaxed) >= Self::QUEUE_SIZE_MAX
+    const MAX_QUEUE_SIZE: usize = 128;
+
+    pub fn max(&self, traffic_type: TrafficType) -> bool {
+        self.send_queue.size(traffic_type) >= Self::MAX_QUEUE_SIZE
     }
 
-    pub fn full(&self) -> bool {
-        self.queue_size.load(Ordering::Relaxed) >= Self::QUEUE_SIZE_MAX * 2
+    pub fn full(&self, traffic_type: TrafficType) -> bool {
+        self.send_queue.size(traffic_type) >= Self::MAX_QUEUE_SIZE * 2
     }
 
     pub fn is_bootstrap_connection(&self) -> bool {
@@ -306,6 +312,7 @@ impl Drop for SocketImpl {
 }
 
 pub trait Socket {
+    fn start(&self);
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn Fn(ErrorCode)>);
     fn async_read(
         &self,
@@ -322,15 +329,15 @@ pub trait Socket {
     fn async_write(
         &self,
         buffer: &Arc<Vec<u8>>,
-        callback: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
+        callback: Option<WriteCallback>,
+        traffic_type: TrafficType,
     );
     fn close(&self);
-    fn checkup(&self);
+    fn ongoing_checkup(&self);
 
     fn get_remote(&self) -> Option<SocketAddr>;
     fn set_remote(&self, endpoint: SocketAddr);
     fn has_timed_out(&self) -> bool;
-    fn get_queue_size(&self) -> usize;
     fn set_silent_connection_tolerance_time(&self, time_s: u64);
     fn read_impl(
         &self,
@@ -338,14 +345,19 @@ pub trait Socket {
         size: usize,
         callback: Box<dyn FnOnce(ErrorCode, usize)>,
     );
+    fn write_queued_messages(&self);
 }
 
 impl Socket for Arc<SocketImpl> {
+    fn start(&self) {
+        self.ongoing_checkup();
+    }
+
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn Fn(ErrorCode)>) {
         let self_clone = self.clone();
         debug_assert!(self.endpoint_type == EndpointType::Client);
 
-        self.checkup();
+        self.start();
         self.set_default_timeout();
 
         self.tcp_socket.async_connect(
@@ -440,7 +452,8 @@ impl Socket for Arc<SocketImpl> {
     fn async_write(
         &self,
         buffer: &Arc<Vec<u8>>,
-        mut callback: Option<Box<dyn FnOnce(ErrorCode, usize)>>,
+        callback: Option<WriteCallback>,
+        traffic_type: TrafficType,
     ) {
         if self.is_closed() {
             if let Some(cb) = callback {
@@ -448,46 +461,60 @@ impl Socket for Arc<SocketImpl> {
                     cb(ErrorCode::not_supported(), 0);
                 }));
             }
-
             return;
         }
 
-        self.queue_size.fetch_add(1, Ordering::SeqCst);
+        let (queued, callback) = self
+            .send_queue
+            .insert(Arc::clone(buffer), callback, traffic_type);
+        if !queued {
+            if let Some(cb) = callback {
+                self.io_ctx.post(Box::new(move || {
+                    cb(ErrorCode::not_supported(), 0);
+                }));
+            }
+            return;
+        }
 
         let self_clone = self.clone();
-        let buffer = Arc::clone(buffer);
         self.tcp_socket.post(Box::new(move || {
-            if self_clone.is_closed() {
-                if let Some(cb) = callback.take() {
-                    cb(ErrorCode::not_supported(), 0);
+            if !self_clone.write_in_progress.load(Ordering::SeqCst) {
+                self_clone.write_queued_messages();
+            }
+        }));
+    }
+
+    fn write_queued_messages(&self) {
+        if self.is_closed() {
+            return;
+        }
+
+        let Some(mut next) = self.send_queue.pop() else { return; };
+        self.set_default_timeout();
+        self.write_in_progress.store(true, Ordering::SeqCst);
+        let self_clone = Arc::clone(self);
+        self.tcp_socket.async_write(
+            &next.buffer,
+            Box::new(move |ec, size| {
+                self_clone.write_in_progress.store(false, Ordering::SeqCst);
+
+                if ec.is_err() {
+                    self_clone.observer.write_error();
+                    self_clone.close();
+                } else {
+                    self_clone.observer.write_successful(size);
+                    self_clone.set_last_completion();
                 }
 
-                return;
-            }
+                if let Some(cbk) = next.callback.take() {
+                    cbk(ec, size);
+                }
 
-            self_clone.set_default_timeout();
-            let self_clone_2 = self_clone.clone();
-
-            self_clone.tcp_socket.async_write(
-                &buffer,
-                Box::new(move |ec, size| {
-                    let _ = buffer;
-                    self_clone_2.queue_size.fetch_sub(1, Ordering::SeqCst);
-
-                    if ec.is_err() {
-                        self_clone_2.observer.write_error();
-                        self_clone_2.close();
-                    } else {
-                        self_clone_2.observer.write_successful(size);
-                        self_clone_2.set_last_completion();
-                    }
-
-                    if let Some(cbk) = callback.take() {
-                        cbk(ec, size);
-                    }
-                }),
-            );
-        }));
+                if ec.is_ok() {
+                    self_clone.write_queued_messages();
+                }
+            }),
+        );
     }
 
     fn close(&self) {
@@ -497,7 +524,7 @@ impl Socket for Arc<SocketImpl> {
         }));
     }
 
-    fn checkup(&self) {
+    fn ongoing_checkup(&self) {
         let socket = Arc::downgrade(self);
         self.thread_pool.add_timed_task(
             Duration::from_secs(2),
@@ -540,7 +567,7 @@ impl Socket for Arc<SocketImpl> {
                         socket.timed_out.store(true, Ordering::SeqCst);
                         socket.close();
                     } else if !socket.is_closed() {
-                        socket.checkup();
+                        socket.ongoing_checkup();
                     }
                 }
             }),
@@ -558,10 +585,6 @@ impl Socket for Arc<SocketImpl> {
 
     fn has_timed_out(&self) -> bool {
         self.timed_out.load(Ordering::SeqCst)
-    }
-
-    fn get_queue_size(&self) -> usize {
-        self.queue_size.load(Ordering::SeqCst)
     }
 
     fn set_silent_connection_tolerance_time(&self, time_s: u64) {
@@ -603,6 +626,8 @@ pub struct SocketBuilder {
     silent_connection_tolerance_time: Duration,
     idle_timeout: Duration,
     observer: Option<Arc<dyn SocketObserver>>,
+    max_write_queue_len: usize,
+    io_ctx: Arc<dyn IoContext>,
 }
 
 impl SocketBuilder {
@@ -610,6 +635,7 @@ impl SocketBuilder {
         endpoint_type: EndpointType,
         tcp_facade: Arc<dyn TcpSocketFacade>,
         thread_pool: Arc<dyn ThreadPool>,
+        io_ctx: Arc<dyn IoContext>,
     ) -> Self {
         Self {
             endpoint_type,
@@ -619,6 +645,8 @@ impl SocketBuilder {
             silent_connection_tolerance_time: Duration::from_secs(120),
             idle_timeout: Duration::from_secs(120),
             observer: None,
+            max_write_queue_len: SocketImpl::MAX_QUEUE_SIZE,
+            io_ctx,
         }
     }
 
@@ -642,6 +670,11 @@ impl SocketBuilder {
         self
     }
 
+    pub fn max_write_queue_len(mut self, max_len: usize) -> Self {
+        self.max_write_queue_len = max_len;
+        self
+    }
+
     pub fn build(self) -> Arc<SocketImpl> {
         let observer = self
             .observer
@@ -662,9 +695,11 @@ impl SocketBuilder {
                 ),
                 timed_out: AtomicBool::new(false),
                 closed: AtomicBool::new(false),
-                queue_size: AtomicUsize::new(0),
                 socket_type: AtomicU8::new(SocketType::Undefined as u8),
                 observer,
+                write_in_progress: AtomicBool::new(false),
+                send_queue: WriteQueue::new(self.max_write_queue_len),
+                io_ctx: self.io_ctx,
             }
         })
     }

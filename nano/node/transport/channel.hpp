@@ -85,15 +85,26 @@ public:
 	virtual bool operator== (nano::transport::channel const &) const = 0;
 	bool is_temporary () const;
 	void set_temporary (bool temporary);
-	virtual void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter, nano::bandwidth_limit_type = nano::bandwidth_limit_type::standard) = 0;
+
+	virtual void send (nano::message & message_a,
+	std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr,
+	nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter,
+	nano::transport::traffic_type = nano::transport::traffic_type::generic)
+	= 0;
+
 	// TODO: investigate clang-tidy warning about default parameters on virtual/override functions
-	//
-	virtual void send_buffer (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> const & = nullptr, nano::transport::buffer_drop_policy = nano::transport::buffer_drop_policy::limiter) = 0;
+	virtual void send_buffer (nano::shared_const_buffer const &,
+	std::function<void (boost::system::error_code const &, std::size_t)> const & = nullptr,
+	nano::transport::buffer_drop_policy = nano::transport::buffer_drop_policy::limiter,
+	nano::transport::traffic_type = nano::transport::traffic_type::generic)
+	= 0;
+
 	virtual std::string to_string () const = 0;
 	virtual nano::endpoint get_endpoint () const = 0;
 	virtual nano::tcp_endpoint get_tcp_endpoint () const = 0;
 	virtual nano::transport::transport_type get_type () const = 0;
-	virtual bool max ()
+
+	virtual bool max (nano::transport::traffic_type = nano::transport::traffic_type::generic)
 	{
 		return false;
 	}

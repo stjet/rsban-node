@@ -9,6 +9,8 @@ pub struct BootstrapAscendingConfig {
     pub database_requests_limit: usize,
     pub pull_count: usize,
     pub timeout: Duration,
+    pub throttle_count: usize,
+    pub throttle_wait: Duration,
     pub account_sets: AccountSetsConfig,
 }
 
@@ -22,6 +24,16 @@ impl BootstrapAscendingConfig {
             "Number of requested blocks for ascending bootstrap request.\ntype:uint64",
         )?;
         toml.put_u64 ("timeout", self.timeout.as_millis() as u64, "Timeout in milliseconds for incoming ascending bootstrap messages to be processed.\ntype:milliseconds")?;
+        toml.put_usize(
+            "throttle_count",
+            self.throttle_count,
+            "Number of samples to track for bootstrap throttling.\ntype:uint64",
+        )?;
+        toml.put_u64(
+            "throttle_wait",
+            self.throttle_wait.as_millis() as u64,
+            "Length of time to wait between requests when throttled.\ntype:milliseconds",
+        )?;
 
         toml.put_child("account_sets", &mut |child| {
             self.account_sets.serialize_toml(child)
@@ -36,6 +48,8 @@ impl Default for BootstrapAscendingConfig {
             database_requests_limit: 1024,
             pull_count: BlocksAckPayload::MAX_BLOCKS,
             timeout: Duration::from_secs(3),
+            throttle_count: 4 * 1024,
+            throttle_wait: Duration::from_millis(100),
             account_sets: Default::default(),
         }
     }

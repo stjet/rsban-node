@@ -14,8 +14,8 @@ use rsnano_core::{
 #[derive(Clone, Default)]
 pub(crate) struct WriteDetails {
     pub account: Account,
-    // This is the first block hash (bottom most) which is not cemented
     pub bottom_height: u64,
+    // This is the first block hash (bottom most) which is not cemented
     pub bottom_hash: BlockHash,
     // Desired cemented frontier
     pub top_height: u64,

@@ -13,13 +13,15 @@ pub(crate) struct UpdateConfirmationHeightCommandFactory<'a> {
     pending: &'a WriteDetails,
     confirmation_height_info: &'a ConfirmationHeightInfo,
     batch_write_size: &'a AtomicUsize,
-    total_blocks_cemented: u64,
-    new_cemented_frontier_hash: BlockHash,
-    num_blocks_to_cement: u64,
-    start_height: u64,
-    num_blocks_iterated: u64,
-    new_cemented_frontier_block: Option<Arc<BlockEnum>>,
     is_initialized: bool,
+    /// The total number of blocks to cement
+    num_blocks_to_cement: u64,
+    total_blocks_cemented: u64,
+    /// The block height of the first block to cement
+    start_height: u64,
+    next_block_index: u64,
+    new_cemented_frontier_hash: BlockHash,
+    new_cemented_frontier_block: Option<Arc<BlockEnum>>,
 }
 
 impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
@@ -32,13 +34,13 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
             pending,
             confirmation_height_info,
             batch_write_size,
-            total_blocks_cemented: 0,
-            new_cemented_frontier_hash: Default::default(),
-            num_blocks_to_cement: 0,
-            start_height: 0,
-            num_blocks_iterated: 0,
-            new_cemented_frontier_block: None,
             is_initialized: false,
+            num_blocks_to_cement: 0,
+            total_blocks_cemented: 0,
+            start_height: 0,
+            next_block_index: 0,
+            new_cemented_frontier_hash: Default::default(),
+            new_cemented_frontier_block: None,
         }
     }
 
@@ -49,11 +51,6 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
     ) -> anyhow::Result<Option<UpdateConfirmationHeight>> {
         cemented_blocks.clear();
 
-        if self.pending.top_height <= self.confirmation_height_info.height {
-            // No blocks need to be cemented
-            return Ok(None);
-        }
-
         if !self.is_initialized {
             self.initialize(load_block)?;
             self.is_initialized = true;
@@ -61,18 +58,14 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
 
         // Cementing starts from the bottom of the chain and works upwards. This is because chains can have effectively
         // an infinite number of send/change blocks in a row. We don't want to hold the write transaction open for too long.
-        for i in self.num_blocks_iterated..self.num_blocks_to_cement {
-            self.num_blocks_iterated = i + 1;
+        for i in self.next_block_index..self.num_blocks_to_cement {
+            self.next_block_index = i + 1;
             let Some(new_frontier) = &self.new_cemented_frontier_block else { break; };
             cemented_blocks.push(new_frontier.clone());
             self.total_blocks_cemented += 1;
 
             // Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
-            let update_command = if self.should_flush(&cemented_blocks) {
-                Some(self.get_update_command(&cemented_blocks))
-            } else {
-                None
-            };
+            let update_command = self.get_update_command(&cemented_blocks);
 
             self.load_next_block_to_cement(&load_block)
                 .with_context(|| {
@@ -87,45 +80,51 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
             }
         }
 
-        if cemented_blocks.len() > 0 {
-            Ok(Some(UpdateConfirmationHeight {
-                account: self.pending.account,
-                new_cemented_frontier: self.pending.top_hash,
-                new_height: self.pending.top_height,
-                num_blocks_cemented: cemented_blocks.len() as u64,
-            }))
-        } else {
-            Ok(None)
-        }
+        Ok(self.get_update_command(&cemented_blocks))
     }
 
     fn initialize(
         &mut self,
         load_block: &dyn Fn(BlockHash) -> Option<BlockEnum>,
     ) -> Result<(), anyhow::Error> {
-        if self.pending.bottom_height > self.confirmation_height_info.height {
-            // This is the usual case where pending.bottom_height is the first uncemented block
-            if self.pending.bottom_height != self.confirmation_height_info.height + 1 {
-                bail!(
-                    "pending.bottom_height should be exactly 1 block above the cemented frontier!"
-                );
-            }
-            self.new_cemented_frontier_hash = self.pending.bottom_hash;
-            self.num_blocks_to_cement = self.pending.top_height - self.pending.bottom_height + 1;
-            self.start_height = self.pending.bottom_height;
-        } else {
-            // Some blocks got cemented already. We have to adjust our starting point
+        if self.are_all_blocks_cemented_already() {
+            // Nothing to do
+            return Ok(());
+        } else if self.are_some_blocks_cemented_already() {
+            // We have to adjust our starting point
             let current_frontier = self.load_current_cemented_frontier(load_block)?;
             self.new_cemented_frontier_hash = current_frontier.sideband().unwrap().successor;
             self.num_blocks_to_cement =
                 self.pending.top_height - self.confirmation_height_info.height;
             self.start_height = self.confirmation_height_info.height + 1;
+        } else {
+            // This is the usual case where pending.bottom_height is the first uncemented block
+            self.ensure_first_block_to_cement_is_one_above_current_frontier()?;
+            self.new_cemented_frontier_hash = self.pending.bottom_hash;
+            self.num_blocks_to_cement = self.pending.top_height - self.pending.bottom_height + 1;
+            self.start_height = self.pending.bottom_height;
         }
 
         self.new_cemented_frontier_block = Some(Arc::new(
             load_block(self.new_cemented_frontier_hash)
                 .ok_or_else(|| anyhow!("block not found"))?,
         ));
+
+        Ok(())
+    }
+
+    fn are_all_blocks_cemented_already(&self) -> bool {
+        self.pending.top_height <= self.confirmation_height_info.height
+    }
+
+    fn are_some_blocks_cemented_already(&self) -> bool {
+        self.confirmation_height_info.height >= self.pending.bottom_height
+    }
+
+    fn ensure_first_block_to_cement_is_one_above_current_frontier(&self) -> anyhow::Result<()> {
+        if self.pending.bottom_height != self.confirmation_height_info.height + 1 {
+            bail!("pending.bottom_height should be exactly 1 block above the cemented frontier!");
+        }
 
         Ok(())
     }
@@ -143,14 +142,13 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
         })
     }
 
+    /// Get the next block in the chain until we have reached the final desired one
     fn load_next_block_to_cement(
         &mut self,
         load_block: &dyn Fn(BlockHash) -> Option<BlockEnum>,
     ) -> anyhow::Result<()> {
-        let Some(current) = &self.new_cemented_frontier_block else { bail!("no current block loaded!") };
-
-        // Get the next block in the chain until we have reached the final desired one
         if !self.is_done() {
+            let Some(current) = &self.new_cemented_frontier_block else { bail!("no current block loaded!") };
             self.new_cemented_frontier_hash = current.sideband().unwrap().successor;
             let next_block = load_block(self.new_cemented_frontier_hash);
             if next_block.is_none() {
@@ -173,23 +171,31 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
         self.total_blocks_cemented == self.num_blocks_to_cement
     }
 
+    fn get_update_command(
+        &self,
+        cemented_blocks: &[Arc<BlockEnum>],
+    ) -> Option<UpdateConfirmationHeight> {
+        if self.should_flush(cemented_blocks) {
+            Some(UpdateConfirmationHeight {
+                account: self.pending.account,
+                new_cemented_frontier: self.new_cemented_frontier_hash,
+                new_height: self.start_height + self.total_blocks_cemented - 1,
+                num_blocks_cemented: cemented_blocks.len() as u64,
+            })
+        } else {
+            None
+        }
+    }
+
     fn should_flush(&self, cemented_blocks: &[Arc<BlockEnum>]) -> bool {
-        cemented_blocks.len() > self.min_block_count_for_flush()
+        (self.is_done() && cemented_blocks.len() > 0)
+            || cemented_blocks.len() > self.min_block_count_for_flush()
     }
 
     fn min_block_count_for_flush(&self) -> usize {
         // Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
         let size = self.batch_write_size.load(Ordering::SeqCst);
         size + (size / 10)
-    }
-
-    fn get_update_command(&self, cemented_blocks: &[Arc<BlockEnum>]) -> UpdateConfirmationHeight {
-        UpdateConfirmationHeight {
-            account: self.pending.account,
-            new_cemented_frontier: self.new_cemented_frontier_hash,
-            new_height: self.start_height + self.total_blocks_cemented - 1,
-            num_blocks_cemented: cemented_blocks.len() as u64,
-        }
     }
 }
 

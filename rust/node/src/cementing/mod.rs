@@ -1,5 +1,6 @@
 mod accounts_confirmed_map;
 mod automatic_mode;
+mod batch_write_size_manager;
 mod block_cache;
 mod block_cementor;
 mod block_queue;
@@ -21,6 +22,7 @@ use rsnano_core::{BlockEnum, BlockHash, UpdateConfirmationHeight};
 
 pub use automatic_mode::ConfirmationHeightMode;
 use automatic_mode::{AutomaticMode, AutomaticModeContainerInfo, UNBOUNDED_CUTOFF};
+use batch_write_size_manager::BatchWriteSizeManager;
 use bounded_mode::{BoundedMode, BoundedModeContainerInfo};
 use confirmation_height_processor::CementCallbackRefs;
 pub use confirmation_height_processor::ConfirmationHeightProcessor;

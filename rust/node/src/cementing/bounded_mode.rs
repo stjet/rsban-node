@@ -18,9 +18,8 @@ use crate::stats::Stats;
 
 use super::{
     accounts_confirmed_map::{AccountsConfirmedMap, AccountsConfirmedMapContainerInfo},
-    confirmation_height_writer::BatchWriteSizeManager,
-    CementCallbackRefs, ConfirmationHeightWriter, WriteDetails, WriteDetailsContainerInfo,
-    WriteDetailsQueue,
+    BatchWriteSizeManager, CementCallbackRefs, ConfirmationHeightWriter, WriteDetails,
+    WriteDetailsContainerInfo, WriteDetailsQueue,
 };
 
 /** The maximum number of various containers to keep the memory bounded */
@@ -78,7 +77,7 @@ impl BoundedMode {
         }
     }
 
-    pub(crate) fn current_batch_write_size(&self) -> usize{
+    pub(crate) fn current_batch_write_size(&self) -> usize {
         self.batch_write_size.current_size()
     }
 

@@ -20,8 +20,8 @@ use crate::stats::Stats;
 
 use super::{
     block_cache::BlockCache, AutomaticMode, AutomaticModeContainerInfo,
-    AwaitingProcessingCountCallback, BlockCallback, BlockHashCallback, BlockQueue,
-    ConfirmationHeightMode, confirmation_height_writer::BatchWriteSizeManager,
+    AwaitingProcessingCountCallback, BatchWriteSizeManager, BlockCallback, BlockHashCallback,
+    BlockQueue, ConfirmationHeightMode,
 };
 
 pub struct ConfirmationHeightProcessor {

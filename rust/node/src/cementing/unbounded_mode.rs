@@ -20,11 +20,10 @@ use super::{
     block_cementor::BlockCementor,
     cement_queue::CementQueue,
     confirmation_height_processor::CementCallbackRefs,
-    confirmation_height_writer::BatchWriteSizeManager,
     confirmed_iterated_pairs::{ConfirmedIteratedPair, ConfirmedIteratedPairMap},
     implicit_receive_cemented_mapping::ImplictReceiveCementedMapping,
     unconfirmed_receive_and_sources_collector::UnconfirmedReceiveAndSourcesCollector,
-    ConfHeightDetails, UNBOUNDED_CUTOFF,
+    BatchWriteSizeManager, ConfHeightDetails, UNBOUNDED_CUTOFF,
 };
 
 pub(super) struct UnboundedMode {

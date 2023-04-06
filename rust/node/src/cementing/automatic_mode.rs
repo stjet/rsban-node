@@ -15,8 +15,8 @@ use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 use crate::stats::Stats;
 
 use super::{
-    block_cache::BlockCache, confirmation_height_writer::BatchWriteSizeManager, BoundedMode,
-    BoundedModeContainerInfo, CementCallbackRefs, UnboundedMode, UnboundedModeContainerInfo,
+    block_cache::BlockCache, BatchWriteSizeManager, BoundedMode, BoundedModeContainerInfo,
+    CementCallbackRefs, UnboundedMode, UnboundedModeContainerInfo,
 };
 
 #[derive(FromPrimitive, Clone, PartialEq, Eq, Copy)]

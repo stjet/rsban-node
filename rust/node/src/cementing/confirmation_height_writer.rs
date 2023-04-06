@@ -139,7 +139,7 @@ impl<'a> ConfirmationHeightWriter<'a> {
         let mut update_command_factory = UpdateConfirmationHeightCommandFactory::new(
             &pending,
             &confirmation_height_info,
-            &self.batch_write_size,
+            self.batch_write_size_with_tolerance(),
         );
 
         loop {
@@ -191,6 +191,12 @@ impl<'a> ConfirmationHeightWriter<'a> {
         update_command_factory: &UpdateConfirmationHeightCommandFactory,
     ) -> bool {
         !update_command_factory.is_done() || self.pending_writes.len() > 0
+    }
+
+    fn batch_write_size_with_tolerance(&self) -> usize {
+        // Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
+        let size = self.batch_write_size.load(Ordering::SeqCst);
+        size + (size / 10)
     }
 
     fn publish_cemented_blocks(&mut self) {

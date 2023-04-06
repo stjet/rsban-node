@@ -1,18 +1,17 @@
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
-};
+use std::sync::Arc;
 
 use anyhow::Context;
 use rsnano_core::{BlockEnum, BlockHash, ConfirmationHeightInfo, UpdateConfirmationHeight};
 
 use super::write_details_queue::WriteDetails;
 
-/// Creates UpdateConfirmationHeight commands for a single account
+/// Creates UpdateConfirmationHeight commands for an account.
+/// Those commands describe the changes that need to be written to
+/// the confirmation height store.
 pub(crate) struct UpdateConfirmationHeightCommandFactory<'a> {
     pending: &'a WriteDetails,
     confirmation_height_info: &'a ConfirmationHeightInfo,
-    batch_write_size: &'a AtomicUsize,
+    batch_write_size: usize,
     is_initialized: bool,
     /// The total number of blocks to cement
     num_blocks_to_cement: u64,
@@ -28,7 +27,7 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
     pub fn new(
         pending: &'a WriteDetails,
         confirmation_height_info: &'a ConfirmationHeightInfo,
-        batch_write_size: &'a AtomicUsize,
+        batch_write_size: usize,
     ) -> Self {
         Self {
             pending,
@@ -87,30 +86,36 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
         &mut self,
         load_block: &dyn Fn(BlockHash) -> Option<BlockEnum>,
     ) -> Result<(), anyhow::Error> {
+        let hash = self.get_first_block_to_cement(load_block)?;
+
+        if let Some(hash) = hash {
+            self.new_cemented_frontier_hash = hash;
+            let new_frontier =
+                Arc::new(load_block(hash).ok_or_else(|| anyhow!("block not found"))?);
+
+            self.start_height = new_frontier.sideband().unwrap().height;
+            self.num_blocks_to_cement = self.pending.top_height - self.start_height + 1;
+            self.new_cemented_frontier_block = Some(new_frontier);
+        }
+
+        Ok(())
+    }
+
+    fn get_first_block_to_cement(
+        &self,
+        load_block: &dyn Fn(BlockHash) -> Option<BlockEnum>,
+    ) -> anyhow::Result<Option<BlockHash>> {
         if self.are_all_blocks_cemented_already() {
-            // Nothing to do
-            return Ok(());
+            Ok(None)
         } else if self.are_some_blocks_cemented_already() {
             // We have to adjust our starting point
             let current_frontier = self.load_current_cemented_frontier(load_block)?;
-            self.new_cemented_frontier_hash = current_frontier.sideband().unwrap().successor;
-            self.num_blocks_to_cement =
-                self.pending.top_height - self.confirmation_height_info.height;
-            self.start_height = self.confirmation_height_info.height + 1;
+            Ok(Some(current_frontier.sideband().unwrap().successor))
         } else {
             // This is the usual case where pending.bottom_height is the first uncemented block
             self.ensure_first_block_to_cement_is_one_above_current_frontier()?;
-            self.new_cemented_frontier_hash = self.pending.bottom_hash;
-            self.num_blocks_to_cement = self.pending.top_height - self.pending.bottom_height + 1;
-            self.start_height = self.pending.bottom_height;
+            Ok(Some(self.pending.bottom_hash))
         }
-
-        self.new_cemented_frontier_block = Some(Arc::new(
-            load_block(self.new_cemented_frontier_hash)
-                .ok_or_else(|| anyhow!("block not found"))?,
-        ));
-
-        Ok(())
     }
 
     fn are_all_blocks_cemented_already(&self) -> bool {
@@ -130,7 +135,7 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
     }
 
     fn load_current_cemented_frontier(
-        &mut self,
+        &self,
         load_block: &dyn Fn(BlockHash) -> Option<BlockEnum>,
     ) -> anyhow::Result<BlockEnum> {
         load_block(self.confirmation_height_info.frontier).ok_or_else(|| {
@@ -189,13 +194,7 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
 
     fn should_flush(&self, cemented_blocks: &[Arc<BlockEnum>]) -> bool {
         (self.is_done() && cemented_blocks.len() > 0)
-            || cemented_blocks.len() > self.min_block_count_for_flush()
-    }
-
-    fn min_block_count_for_flush(&self) -> usize {
-        // Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
-        let size = self.batch_write_size.load(Ordering::SeqCst);
-        size + (size / 10)
+            || cemented_blocks.len() >= self.batch_write_size
     }
 }
 
@@ -218,10 +217,8 @@ mod tests {
 
         let conf_height = ConfirmationHeightInfo::default();
 
-        let batch_write_size = AtomicUsize::new(42);
-
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, &batch_write_size);
+            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 42);
 
         let mut cemented_blocks = Vec::new();
         let command = command_factory
@@ -246,10 +243,8 @@ mod tests {
             frontier: BlockHash::from(7),
         };
 
-        let batch_write_size = AtomicUsize::new(42);
-
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, &batch_write_size);
+            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 42);
 
         let mut cemented_blocks = Vec::new();
         let command = command_factory
@@ -274,10 +269,8 @@ mod tests {
 
         let conf_height = ConfirmationHeightInfo::default();
 
-        let batch_write_size = AtomicUsize::new(42);
-
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, &batch_write_size);
+            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 42);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
@@ -316,10 +309,8 @@ mod tests {
 
         let conf_height = ConfirmationHeightInfo::default();
 
-        let batch_write_size = AtomicUsize::new(42);
-
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, &batch_write_size);
+            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 42);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
@@ -361,10 +352,8 @@ mod tests {
             frontier: pending.bottom_hash,
         };
 
-        let batch_write_size = AtomicUsize::new(42);
-
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, &batch_write_size);
+            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 42);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
@@ -402,10 +391,9 @@ mod tests {
         };
 
         let conf_height = ConfirmationHeightInfo::default();
-        let batch_write_size = AtomicUsize::new(0);
 
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, &batch_write_size);
+            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 1);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
@@ -464,10 +452,9 @@ mod tests {
         };
 
         let conf_height = ConfirmationHeightInfo::default();
-        let batch_write_size = AtomicUsize::new(1);
 
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, &batch_write_size);
+            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 2);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();

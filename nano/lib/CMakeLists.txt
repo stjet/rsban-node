@@ -54,6 +54,7 @@ add_library(
   observer_set.hpp
   optional_ptr.hpp
   processing_queue.hpp
+  relaxed_atomic.hpp
   rep_weights.hpp
   rep_weights.cpp
   rpc_handler_interface.hpp
@@ -68,6 +69,8 @@ add_library(
   stats_enums.hpp
   stream.hpp
   stream.cpp
+  thread_roles.hpp
+  thread_roles.cpp
   threading.hpp
   threading.cpp
   timer.hpp

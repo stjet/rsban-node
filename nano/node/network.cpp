@@ -39,14 +39,12 @@ nano::network::~network ()
 void nano::network::start_threads ()
 {
 	tcp_channels = std::move (std::make_shared<nano::transport::tcp_channels> (node, inbound));
-	boost::thread::attributes attrs;
-	nano::thread_attributes::set (attrs);
 	auto this_l = shared_from_this ();
 	// TCP
 	for (std::size_t i = 0; i < node.config->network_threads && !node.flags.disable_tcp_realtime (); ++i)
 	{
 		auto this_l = shared_from_this ();
-		packet_processing_threads.emplace_back (attrs, [this_l] () {
+		packet_processing_threads.emplace_back (nano::thread_attributes::get_default (), [this_l] () {
 			nano::thread_role::set (nano::thread_role::name::packet_processing);
 			try
 			{

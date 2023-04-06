@@ -1,0 +1,67 @@
+@startuml "Confirmation Height"
+class UnboundedMode {
+    process(block, callbacks)
+}
+
+class BoundedMode{
+    process(block, callbacks)
+}
+
+class AutomaticMode{
+    process(block, callbacks)
+}
+
+class ConfirmationHeightProcessor{
+    add(block)
+    run(mode)
+}
+class Ledger
+
+package "Logic"{
+    enum ConfirmationHeightMode{
+        Autmatic
+        Unbounded
+        Bounded
+    }
+
+    class UpdateConfirmationHeightCommandFactory
+    class BatchWriteSizeManager {
+        current()
+    }
+}
+
+package "Values"{
+    struct UpdateConfirmationHeight{
+        account
+        new_cemented_frontier
+        new_height
+        num_blocks_cemented
+    }
+}
+
+
+UnboundedMode --> Ledger
+UnboundedMode --> BatchWriteSizeManager
+
+BoundedMode --> Ledger
+BoundedMode --> WriteDetailsQueue
+BoundedMode --> ConfirmationHeightWriter
+BoundedMode --> BatchWriteSizeManager
+
+ConfirmationHeightWriter --> UpdateConfirmationHeightCommandFactory
+ConfirmationHeightWriter --> Ledger
+ConfirmationHeightWriter --> BatchWriteSizeManager
+
+UpdateConfirmationHeightCommandFactory --> UpdateConfirmationHeight
+
+WriteDetailsQueue --> WriteDetails
+
+AutomaticMode --> ConfirmationHeightMode
+AutomaticMode --> BoundedMode
+AutomaticMode --> UnboundedMode
+AutomaticMode --> Ledger
+AutomaticMode --> BatchWriteSizeManager
+
+ConfirmationHeightProcessor --> AutomaticMode
+
+@enduml

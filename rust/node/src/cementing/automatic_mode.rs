@@ -1,6 +1,6 @@
 use std::{
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicBool, Ordering},
         Arc,
     },
     time::Duration,
@@ -15,8 +15,8 @@ use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 use crate::stats::Stats;
 
 use super::{
-    block_cache::BlockCache, BoundedMode, BoundedModeContainerInfo, CementCallbackRefs,
-    UnboundedMode, UnboundedModeContainerInfo,
+    block_cache::BlockCache, confirmation_height_writer::BatchWriteSizeManager, BoundedMode,
+    BoundedModeContainerInfo, CementCallbackRefs, UnboundedMode, UnboundedModeContainerInfo,
 };
 
 #[derive(FromPrimitive, Clone, PartialEq, Eq, Copy)]
@@ -45,6 +45,7 @@ impl AutomaticMode {
         stats: Arc<Stats>,
         batch_separate_pending_min_time: Duration,
         write_database_queue: Arc<WriteDatabaseQueue>,
+        batch_write_size: Arc<BatchWriteSizeManager>,
         stopped: Arc<AtomicBool>,
     ) -> Self {
         let bounded_mode = BoundedMode::new(
@@ -55,6 +56,7 @@ impl AutomaticMode {
             batch_separate_pending_min_time,
             stopped.clone(),
             stats.clone(),
+            batch_write_size.clone(),
         );
 
         let unbounded_mode = UnboundedMode::new(
@@ -65,7 +67,7 @@ impl AutomaticMode {
             batch_separate_pending_min_time,
             stopped,
             stats,
-            bounded_mode.batch_write_size.clone(),
+            batch_write_size.clone(),
         );
 
         Self {
@@ -110,10 +112,6 @@ impl AutomaticMode {
 
     pub fn block_cache(&self) -> &Arc<BlockCache> {
         self.unbounded_mode.block_cache()
-    }
-
-    pub fn batch_write_size(&self) -> &Arc<AtomicUsize> {
-        &self.bounded_mode.batch_write_size
     }
 
     fn should_use_unbounded_processor(&self) -> bool {

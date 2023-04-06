@@ -20,6 +20,7 @@ use super::{
     block_cementor::BlockCementor,
     cement_queue::CementQueue,
     confirmation_height_processor::CementCallbackRefs,
+    confirmation_height_writer::BatchWriteSizeManager,
     confirmed_iterated_pairs::{ConfirmedIteratedPair, ConfirmedIteratedPairMap},
     implicit_receive_cemented_mapping::ImplictReceiveCementedMapping,
     unconfirmed_receive_and_sources_collector::UnconfirmedReceiveAndSourcesCollector,
@@ -33,7 +34,7 @@ pub(super) struct UnboundedMode {
     confirmed_iterated_pairs: ConfirmedIteratedPairMap,
     implicit_receive_cemented_mapping: ImplictReceiveCementedMapping,
 
-    batch_write_size: Arc<AtomicUsize>,
+    batch_write_size: Arc<BatchWriteSizeManager>,
     stopped: Arc<AtomicBool>,
     cement_queue: CementQueue,
     cementor: BlockCementor,
@@ -48,7 +49,7 @@ impl UnboundedMode {
         batch_separate_pending_min_time: Duration,
         stopped: Arc<AtomicBool>,
         stats: Arc<Stats>,
-        batch_write_size: Arc<AtomicUsize>,
+        batch_write_size: Arc<BatchWriteSizeManager>,
     ) -> Self {
         Self {
             ledger: Arc::clone(&ledger),
@@ -277,8 +278,7 @@ impl UnboundedMode {
     }
 
     fn should_force_write(&mut self) -> bool {
-        self.cement_queue.total_cemented_blocks()
-            > self.batch_write_size.load(Ordering::Relaxed) as u64
+        self.cement_queue.total_cemented_blocks() > self.batch_write_size.current_size() as u64
     }
 
     fn max_write_size_reached(&self) -> bool {

@@ -27,7 +27,7 @@ pub(crate) struct ConfirmationHeightWriter<'a> {
     pub pending_writes: &'a mut WriteDetailsQueue,
     ledger: &'a Ledger,
     stats: &'a Stats,
-    batch_write_size: &'a AtomicUsize,
+    batch_write_size: &'a BatchWriteSizeManager,
     write_database_queue: &'a WriteDatabaseQueue,
 
     /// Will contain all blocks that have been cemented (bounded by batch_write_size)
@@ -39,23 +39,16 @@ pub(crate) struct ConfirmationHeightWriter<'a> {
     accounts_confirmed_info: &'a mut AccountsConfirmedMap,
     scoped_write_guard: &'a mut WriteGuard,
     block_cemented: &'a mut dyn FnMut(&Arc<BlockEnum>),
-    batch_size_amount_to_change: usize,
     pending: WriteDetails,
     confirmation_height_info: ConfirmationHeightInfo,
 }
 
 impl<'a> ConfirmationHeightWriter<'a> {
-    pub(crate) const MINIMUM_BATCH_WRITE_SIZE: usize = 16384;
-    pub(crate) const MAXIMUM_BATCH_WRITE_TIME: Duration = Duration::from_millis(250);
-
-    pub(crate) const MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF: Duration =
-        eighty_percent_of(Self::MAXIMUM_BATCH_WRITE_TIME);
-
     pub fn new(
         pending_writes: &'a mut WriteDetailsQueue,
         ledger: &'a Ledger,
         stats: &'a Stats,
-        batch_write_size: &'a AtomicUsize,
+        batch_write_size: &'a BatchWriteSizeManager,
         write_database_queue: &'a WriteDatabaseQueue,
         logger: &'a dyn Logger,
         enable_timing_logging: bool,
@@ -68,7 +61,6 @@ impl<'a> ConfirmationHeightWriter<'a> {
             pending_writes,
             ledger,
             stats,
-            batch_size_amount_to_change: batch_write_size.load(Ordering::SeqCst) / 10,
             batch_write_size,
             write_database_queue,
             cemented_blocks: Vec::new(),
@@ -112,8 +104,8 @@ impl<'a> ConfirmationHeightWriter<'a> {
             self.publish_cemented_blocks();
         }
 
-        if time_spent_cementing > ConfirmationHeightWriter::MAXIMUM_BATCH_WRITE_TIME {
-            self.reduce_batch_write_size();
+        if time_spent_cementing > BatchWriteSizeManager::MAXIMUM_BATCH_WRITE_TIME {
+            self.batch_write_size.reduce();
         }
         debug_assert!(self.pending_writes.is_empty());
     }
@@ -139,7 +131,7 @@ impl<'a> ConfirmationHeightWriter<'a> {
         let mut update_command_factory = UpdateConfirmationHeightCommandFactory::new(
             &pending,
             &confirmation_height_info,
-            self.batch_write_size_with_tolerance(),
+            self.batch_write_size.current_size_with_tolerance(),
         );
 
         loop {
@@ -193,12 +185,6 @@ impl<'a> ConfirmationHeightWriter<'a> {
         !update_command_factory.is_done() || self.pending_writes.len() > 0
     }
 
-    fn batch_write_size_with_tolerance(&self) -> usize {
-        // Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
-        let size = self.batch_write_size.load(Ordering::SeqCst);
-        size + (size / 10)
-    }
-
     fn publish_cemented_blocks(&mut self) {
         for block in &self.cemented_blocks {
             (self.block_cemented)(block);
@@ -209,11 +195,13 @@ impl<'a> ConfirmationHeightWriter<'a> {
 
     fn adjust_batch_write_size(&self, time_spent_cementing: Duration) {
         // Update the maximum amount of blocks to write next time based on the time it took to cement this batch.
-        if time_spent_cementing > Self::MAXIMUM_BATCH_WRITE_TIME {
-            self.reduce_batch_write_size();
-        } else if time_spent_cementing < Self::MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF {
+        if time_spent_cementing > BatchWriteSizeManager::MAXIMUM_BATCH_WRITE_TIME {
+            self.batch_write_size.reduce();
+        } else if time_spent_cementing
+            < BatchWriteSizeManager::MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF
+        {
             // Increase amount of blocks written for next batch if the time for writing this one is sufficiently lower than the max time to warrant changing
-            self.increase_batch_write_size();
+            self.batch_write_size.increase();
         }
     }
 
@@ -247,21 +235,55 @@ impl<'a> ConfirmationHeightWriter<'a> {
             false,
         );
     }
+}
 
-    pub fn increase_batch_write_size(&self) {
-        self.batch_write_size
-            .fetch_add(self.batch_size_amount_to_change, Ordering::SeqCst);
+pub(crate) struct BatchWriteSizeManager {
+    pub batch_write_size: Arc<AtomicUsize>,
+}
+
+impl BatchWriteSizeManager {
+    pub(crate) const MINIMUM_BATCH_WRITE_SIZE: usize = 16384;
+    pub(crate) const MAXIMUM_BATCH_WRITE_TIME: Duration = Duration::from_millis(250);
+
+    pub(crate) const MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF: Duration =
+        eighty_percent_of(Self::MAXIMUM_BATCH_WRITE_TIME);
+
+    pub fn new() -> Self {
+        Self {
+            batch_write_size: Arc::new(AtomicUsize::new(Self::MINIMUM_BATCH_WRITE_SIZE)),
+        }
     }
 
-    pub fn reduce_batch_write_size(&self) {
+    pub fn current_size(&self) -> usize {
+        self.batch_write_size.load(Ordering::SeqCst)
+    }
+
+    /// Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
+    pub fn current_size_with_tolerance(&self) -> usize {
+        let size = self.current_size();
+        size + (size / 10)
+    }
+
+    pub fn set_size(&self, size: usize){
+        self.batch_write_size.store(size, Ordering::SeqCst);
+    }
+
+    fn increase(&self) {
+        self.batch_write_size
+            .fetch_add(self.amount_to_change(), Ordering::SeqCst);
+    }
+
+    fn reduce(&self) {
         // Reduce (unless we have hit a floor)
-        self.batch_write_size.store(
-            max(
-                ConfirmationHeightWriter::MINIMUM_BATCH_WRITE_SIZE,
-                self.batch_write_size.load(Ordering::SeqCst) - self.batch_size_amount_to_change,
-            ),
-            Ordering::SeqCst,
+        let new_size = max(
+            BatchWriteSizeManager::MINIMUM_BATCH_WRITE_SIZE,
+            self.current_size() - self.amount_to_change(),
         );
+        self.batch_write_size.store(new_size, Ordering::SeqCst);
+    }
+
+    fn amount_to_change(&self) -> usize {
+        self.current_size() / 10
     }
 }
 

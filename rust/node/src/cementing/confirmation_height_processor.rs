@@ -3,7 +3,7 @@ use std::{
     mem::size_of,
     ops::DerefMut,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex, MutexGuard,
     },
     thread::JoinHandle,
@@ -21,14 +21,14 @@ use crate::stats::Stats;
 use super::{
     block_cache::BlockCache, AutomaticMode, AutomaticModeContainerInfo,
     AwaitingProcessingCountCallback, BlockCallback, BlockHashCallback, BlockQueue,
-    ConfirmationHeightMode,
+    ConfirmationHeightMode, confirmation_height_writer::BatchWriteSizeManager,
 };
 
 pub struct ConfirmationHeightProcessor {
     channel: Arc<Mutex<ProcessorLoopChannel>>,
     condition: Arc<Condvar>,
     /** The maximum amount of blocks to write at once. This is dynamically modified by the bounded processor based on previous write performance **/
-    batch_write_size: Arc<AtomicUsize>,
+    batch_write_size: Arc<BatchWriteSizeManager>,
     stopped: Arc<AtomicBool>,
     // No mutex needed for the observers as these should be set up during initialization of the node
     cemented_observer: Arc<Mutex<Option<BlockCallback>>>,
@@ -56,6 +56,7 @@ impl ConfirmationHeightProcessor {
         let stopped = Arc::new(AtomicBool::new(false));
         let channel = Arc::new(Mutex::new(ProcessorLoopChannel::new()));
 
+        let batch_write_size = Arc::new(BatchWriteSizeManager::new());
         let automatic_mode = AutomaticMode::new(
             mode,
             ledger,
@@ -64,12 +65,12 @@ impl ConfirmationHeightProcessor {
             stats,
             batch_separate_pending_min_time,
             write_database_queue.clone(),
+            batch_write_size.clone(),
             stopped.clone(),
         );
 
         let automatic_container_info = automatic_mode.container_info();
         let block_cache = Arc::clone(automatic_mode.block_cache());
-        let batch_write_size = Arc::clone(automatic_mode.batch_write_size());
         let condition = Arc::new(Condvar::new());
 
         let callbacks = CementCallbacks {
@@ -129,7 +130,7 @@ impl ConfirmationHeightProcessor {
     }
 
     pub fn set_batch_write_size(&self, size: usize) {
-        self.batch_write_size.store(size, Ordering::SeqCst);
+        self.batch_write_size.set_size(size);
     }
 
     pub fn add(&self, block: Arc<BlockEnum>) {

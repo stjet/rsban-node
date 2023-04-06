@@ -1,6 +1,6 @@
 use std::{
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicBool, Ordering},
         Arc,
     },
     time::{Duration, Instant},
@@ -18,6 +18,7 @@ use crate::stats::Stats;
 
 use super::{
     accounts_confirmed_map::{AccountsConfirmedMap, AccountsConfirmedMapContainerInfo},
+    confirmation_height_writer::BatchWriteSizeManager,
     CementCallbackRefs, ConfirmationHeightWriter, WriteDetails, WriteDetailsContainerInfo,
     WriteDetailsQueue,
 };
@@ -46,7 +47,7 @@ pub(super) struct BoundedMode {
     stopped: Arc<AtomicBool>,
     timer: Instant,
     batch_separate_pending_min_time: Duration,
-    pub batch_write_size: Arc<AtomicUsize>,
+    batch_write_size: Arc<BatchWriteSizeManager>,
 
     stats: Arc<Stats>,
 }
@@ -60,13 +61,12 @@ impl BoundedMode {
         batch_separate_pending_min_time: Duration,
         stopped: Arc<AtomicBool>,
         stats: Arc<Stats>,
+        batch_write_size: Arc<BatchWriteSizeManager>,
     ) -> Self {
         Self {
             write_database_queue,
             pending_writes: WriteDetailsQueue::new(),
-            batch_write_size: Arc::new(AtomicUsize::new(
-                ConfirmationHeightWriter::MINIMUM_BATCH_WRITE_SIZE,
-            )),
+            batch_write_size,
             logger,
             enable_timing_logging,
             ledger,
@@ -76,6 +76,10 @@ impl BoundedMode {
             timer: Instant::now(),
             batch_separate_pending_min_time,
         }
+    }
+
+    pub(crate) fn current_batch_write_size(&self) -> usize{
+        self.batch_write_size.current_size()
     }
 
     pub(crate) fn process(
@@ -215,7 +219,7 @@ impl BoundedMode {
                 }
 
                 let max_batch_write_size_reached = self.pending_writes.total_pending_blocks()
-                    >= self.batch_write_size.load(Ordering::SeqCst);
+                    >= self.batch_write_size.current_size();
 
                 // When there are a lot of pending confirmation height blocks, it is more efficient to
                 // bulk some of them up to enable better write performance which becomes the bottleneck.

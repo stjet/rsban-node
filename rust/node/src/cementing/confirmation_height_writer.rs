@@ -4,9 +4,7 @@ use std::{
 };
 
 use anyhow::Context;
-use rsnano_core::{
-    utils::Logger, BlockEnum, BlockHash, ConfirmationHeightInfo, UpdateConfirmationHeight,
-};
+use rsnano_core::{utils::Logger, BlockEnum, BlockHash, UpdateConfirmationHeight};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_traits::{Transaction, WriteTransaction};
 
@@ -17,6 +15,8 @@ use super::{
     UpdateConfirmationHeightCommandFactory, WriteDetails, WriteDetailsQueue,
 };
 
+/// Writes all confirmation heights from the WriteDetailsQueue to the Ledger.
+/// This happens in batches in order to increase performance.
 pub(crate) struct ConfirmationHeightWriter<'a> {
     pub cemented_batch_timer: Instant,
     pub pending_writes: &'a mut WriteDetailsQueue,
@@ -34,8 +34,6 @@ pub(crate) struct ConfirmationHeightWriter<'a> {
     accounts_confirmed_info: &'a mut AccountsConfirmedMap,
     scoped_write_guard: &'a mut WriteGuard,
     block_cemented: &'a mut dyn FnMut(&Arc<BlockEnum>),
-    pending: WriteDetails,
-    confirmation_height_info: ConfirmationHeightInfo,
 }
 
 impl<'a> ConfirmationHeightWriter<'a> {
@@ -64,8 +62,6 @@ impl<'a> ConfirmationHeightWriter<'a> {
             accounts_confirmed_info,
             scoped_write_guard,
             block_cemented,
-            pending: Default::default(),
-            confirmation_height_info: Default::default(),
         }
     }
 
@@ -77,11 +73,11 @@ impl<'a> ConfirmationHeightWriter<'a> {
         // Cement all pending entries, each entry is specific to an account and contains the least amount
         // of blocks to retain consistent cementing across all account chains to genesis.
         while let Some(pending) = self.pending_writes.pop_front() {
-            self.cement_pending_block(txn.as_mut(), pending.clone());
+            self.cement_block(txn.as_mut(), &pending);
 
             if let Some(found_info) = self.accounts_confirmed_info.get(&pending.account) {
                 if found_info.confirmed_height == pending.top_height {
-                    self.accounts_confirmed_info.remove(&self.pending.account);
+                    self.accounts_confirmed_info.remove(&pending.account);
                 }
             }
         }
@@ -110,16 +106,13 @@ impl<'a> ConfirmationHeightWriter<'a> {
         |block_hash| ledger.store.block().get(txn, &block_hash)
     }
 
-    fn cement_pending_block(&mut self, txn: &mut dyn WriteTransaction, pending: WriteDetails) {
-        self.pending = pending.clone();
+    fn cement_block(&mut self, txn: &mut dyn WriteTransaction, pending: &WriteDetails) {
         let confirmation_height_info = self
             .ledger
             .store
             .confirmation_height()
-            .get(txn.txn(), &self.pending.account)
+            .get(txn.txn(), &pending.account)
             .unwrap_or_default();
-
-        self.confirmation_height_info = confirmation_height_info.clone();
 
         let mut update_command_factory = UpdateConfirmationHeightCommandFactory::new(
             &pending,
@@ -140,7 +133,7 @@ impl<'a> ConfirmationHeightWriter<'a> {
                 .unwrap()
             {
                 drop(load_block);
-                self.flush(txn, &update_command, &update_command_factory);
+                self.flush(txn, &update_command, update_command_factory.is_done());
             } else {
                 break;
             }
@@ -151,7 +144,7 @@ impl<'a> ConfirmationHeightWriter<'a> {
         &mut self,
         txn: &mut dyn WriteTransaction,
         update_command: &UpdateConfirmationHeight,
-        update_command_factory: &UpdateConfirmationHeightCommandFactory,
+        is_last_command: bool,
     ) {
         self.write_confirmation_height(txn, update_command);
         let time_spent_cementing = self.cemented_batch_timer.elapsed();
@@ -163,19 +156,12 @@ impl<'a> ConfirmationHeightWriter<'a> {
         self.publish_cemented_blocks();
 
         // Only aquire transaction if there are blocks left
-        if self.is_another_flush_needed(&update_command_factory) {
+        if !self.pending_writes.is_empty() || !is_last_command {
             *self.scoped_write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
             txn.renew();
         }
 
         self.reset_batch_timer();
-    }
-
-    fn is_another_flush_needed(
-        &self,
-        update_command_factory: &UpdateConfirmationHeightCommandFactory,
-    ) -> bool {
-        !update_command_factory.is_done() || self.pending_writes.len() > 0
     }
 
     fn publish_cemented_blocks(&mut self) {

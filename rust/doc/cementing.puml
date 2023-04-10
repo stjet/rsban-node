@@ -24,7 +24,11 @@ package "Logic"{
         Bounded
     }
 
-    class UpdateConfirmationHeightCommandFactory
+    class WriteDetails
+    class WriteDetailsQueue
+
+    class SingleAccountCementer
+    class MultiAccountCementer
     class BatchWriteSizeManager {
         current()
     }
@@ -45,14 +49,15 @@ UnboundedMode --> BatchWriteSizeManager
 
 BoundedMode --> Ledger
 BoundedMode --> WriteDetailsQueue
-BoundedMode --> ConfirmationHeightWriter
+BoundedMode --> MultiAccountCementer
 BoundedMode --> BatchWriteSizeManager
 
-ConfirmationHeightWriter --> UpdateConfirmationHeightCommandFactory
-ConfirmationHeightWriter --> Ledger
-ConfirmationHeightWriter --> BatchWriteSizeManager
+MultiAccountCementer --> SingleAccountCementer
+MultiAccountCementer --> BatchWriteSizeManager
+MultiAccountCementer --> WriteDetailsQueue
 
-UpdateConfirmationHeightCommandFactory --> UpdateConfirmationHeight
+SingleAccountCementer --> UpdateConfirmationHeight
+SingleAccountCementer --> WriteDetails
 
 WriteDetailsQueue --> WriteDetails
 

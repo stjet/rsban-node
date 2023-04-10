@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash, UpdateConfirmationHeight};
+use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash, ConfirmationHeightUpdate};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, Writer};
 use rsnano_store_traits::{Table, Transaction, WriteTransaction};
 
@@ -158,7 +158,7 @@ impl BlockCementor {
         }
     }
 
-    fn notify_blocks_cemented(&self, update_height: &UpdateConfirmationHeight) {
+    fn notify_blocks_cemented(&self, update_height: &ConfirmationHeightUpdate) {
         self.stats.add(
             StatType::ConfirmationHeight,
             DetailType::BlocksConfirmedUnbounded,

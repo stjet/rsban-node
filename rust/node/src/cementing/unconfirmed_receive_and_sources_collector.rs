@@ -3,7 +3,7 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use rsnano_core::{BlockEnum, BlockHash, UpdateConfirmationHeight};
+use rsnano_core::{BlockEnum, BlockHash, ConfirmationHeightUpdate};
 use rsnano_ledger::Ledger;
 use rsnano_store_traits::Transaction;
 
@@ -115,7 +115,7 @@ impl<'a> UnconfirmedReceiveAndSourcesCollector<'a> {
 
     fn create_conf_height_details(&mut self) -> ConfHeightDetails {
         ConfHeightDetails {
-            update_height: UpdateConfirmationHeight {
+            update_height: ConfirmationHeightUpdate {
                 account: self.current_block.account_calculated(),
                 new_cemented_frontier: self.current_block.hash(),
                 new_height: self.confirmation_height + self.num_to_confirm,

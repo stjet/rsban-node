@@ -9,16 +9,16 @@ use std::{
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
     utils::{ContainerInfoComponent, Logger},
-    Account, BlockEnum, BlockHash, ConfirmationHeightInfo,
+    Account, BlockEnum, BlockHash, ConfirmationHeightInfo, ConfirmationHeightUpdate,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
-use rsnano_store_traits::{ReadTransaction, Transaction};
+use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
 
-use crate::stats::Stats;
+use crate::stats::{DetailType, Direction, StatType, Stats};
 
 use super::{
     accounts_confirmed_map::{AccountsConfirmedMap, AccountsConfirmedMapContainerInfo},
-    BatchWriteSizeManager, CementCallbackRefs, ConfirmationHeightWriter, WriteDetails,
+    BatchWriteSizeManager, CementCallbackRefs, MultiAccountCementer, WriteDetails,
     WriteDetailsContainerInfo, WriteDetailsQueue,
 };
 
@@ -49,6 +49,7 @@ pub(super) struct BoundedMode {
     batch_write_size: Arc<BatchWriteSizeManager>,
 
     stats: Arc<Stats>,
+    cemented_batch_timer: Instant,
 }
 
 impl BoundedMode {
@@ -74,6 +75,7 @@ impl BoundedMode {
             stats,
             timer: Instant::now(),
             batch_separate_pending_min_time,
+            cemented_batch_timer: Instant::now(),
         }
     }
 
@@ -489,22 +491,111 @@ impl BoundedMode {
         scoped_write_guard: &mut WriteGuard,
         callbacks: &mut CementCallbackRefs,
     ) {
-        let mut conf_height_writer = ConfirmationHeightWriter::new(
-            &mut self.pending_writes,
-            &self.ledger,
-            &self.stats,
-            &self.batch_write_size,
-            &self.write_database_queue,
-            self.logger.as_ref(),
-            self.enable_timing_logging,
-            &mut self.accounts_confirmed_info,
-            scoped_write_guard,
-            callbacks.block_cemented,
-        );
+        let mut cementer = MultiAccountCementer::new();
 
-        conf_height_writer.write();
+        // This only writes to the confirmation_height table and is the only place to do so in a single process
+        let mut txn = self.ledger.store.tx_begin_write();
+
+        self.start_batch_timer();
+
+        // Cement all pending entries, each entry is specific to an account and contains the least amount
+        // of blocks to retain consistent cementing across all account chains to genesis.
+        while let Some((update_command, account_done)) = cementer
+            .cement_next(
+                &mut self.pending_writes,
+                &self.batch_write_size,
+                &CementationLedgerAdapter {
+                    ledger: &self.ledger,
+                    txn: txn.txn(),
+                },
+            )
+            .unwrap()
+        {
+            self.flush(
+                &mut cementer,
+                txn.as_mut(),
+                &update_command,
+                scoped_write_guard,
+                callbacks,
+            );
+            if account_done {
+                if let Some(found_info) = self.accounts_confirmed_info.get(&update_command.account)
+                {
+                    if found_info.confirmed_height == update_command.new_height {
+                        self.accounts_confirmed_info.remove(&update_command.account);
+                    }
+                }
+            }
+        }
+        drop(txn);
+
+        let unpublished_count = cementer.unpublished_cemented_blocks();
+        self.stop_batch_timer(unpublished_count);
+
+        if unpublished_count > 0 {
+            scoped_write_guard.release();
+            cementer.publish_cemented_blocks(callbacks.block_cemented);
+        }
 
         self.timer = Instant::now();
+    }
+
+    fn start_batch_timer(&mut self) {
+        self.cemented_batch_timer = Instant::now();
+    }
+
+    fn stop_batch_timer(&mut self, cemented_count: usize) {
+        let time_spent_cementing = self.cemented_batch_timer.elapsed();
+
+        if time_spent_cementing > Duration::from_millis(50) {
+            self.log_cemented_blocks(time_spent_cementing, cemented_count);
+        }
+
+        self.batch_write_size.adjust_size(time_spent_cementing);
+    }
+
+    fn log_cemented_blocks(&self, time_spent_cementing: Duration, cemented_count: usize) {
+        if self.enable_timing_logging {
+            self.logger.always_log(&format!(
+                "Cemented {} blocks in {} ms (bounded processor)",
+                cemented_count,
+                time_spent_cementing.as_millis()
+            ));
+        }
+    }
+
+    fn flush(
+        &mut self,
+        cementer: &mut MultiAccountCementer,
+        txn: &mut dyn WriteTransaction,
+        update: &ConfirmationHeightUpdate,
+        scoped_write_guard: &mut WriteGuard,
+        callbacks: &mut CementCallbackRefs,
+    ) {
+        self.ledger.write_confirmation_height(txn, update);
+
+        self.stats.add(
+            StatType::ConfirmationHeight,
+            DetailType::BlocksConfirmedBounded,
+            Direction::In,
+            update.num_blocks_cemented,
+            false,
+        );
+        let time_spent_cementing = self.cemented_batch_timer.elapsed();
+        txn.commit();
+
+        self.log_cemented_blocks(time_spent_cementing, cementer.cemented_blocks.len());
+        self.batch_write_size.adjust_size(time_spent_cementing);
+        scoped_write_guard.release();
+        cementer.publish_cemented_blocks(callbacks.block_cemented);
+
+        // Only aquire transaction if there are blocks left
+        if !self.pending_writes.is_empty() || !cementer.is_done() {
+            *scoped_write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
+            txn.renew();
+        }
+
+        self.start_batch_timer();
     }
 
     fn get_least_unconfirmed_hash_from_top_level(
@@ -596,5 +687,24 @@ impl BoundedModeContainerInfo {
                     .collect("accounts_confirmed_info".to_owned()),
             ],
         )
+    }
+}
+
+pub(crate) struct CementationLedgerAdapter<'a> {
+    txn: &'a dyn Transaction,
+    ledger: &'a Ledger,
+}
+
+impl<'a> CementationLedgerAdapter<'a> {
+    pub fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum> {
+        self.ledger.store.block().get(self.txn, block_hash)
+    }
+
+    pub fn get_current_confirmation_height(&self, account: &Account) -> ConfirmationHeightInfo {
+        self.ledger
+            .store
+            .confirmation_height()
+            .get(self.txn, account)
+            .unwrap_or_default()
     }
 }

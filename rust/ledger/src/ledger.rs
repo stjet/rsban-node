@@ -7,7 +7,7 @@ use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::seconds_since_epoch, Account, AccountInfo, Amount, Block, BlockEnum, BlockHash,
     BlockSubType, BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey,
-    QualifiedRoot, Root, UpdateConfirmationHeight,
+    QualifiedRoot, Root, ConfirmationHeightUpdate,
 };
 
 use std::{
@@ -660,7 +660,7 @@ impl Ledger {
     pub fn write_confirmation_height(
         &self,
         txn: &mut dyn WriteTransaction,
-        update_height: &UpdateConfirmationHeight,
+        update_height: &ConfirmationHeightUpdate,
     ) {
         #[cfg(debug_assertions)]
         {

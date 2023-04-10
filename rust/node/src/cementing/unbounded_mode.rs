@@ -1,6 +1,6 @@
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, Logger},
-    Account, BlockEnum, BlockHash, UpdateConfirmationHeight,
+    Account, BlockEnum, BlockHash, ConfirmationHeightUpdate,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 use rsnano_store_traits::Transaction;
@@ -360,7 +360,7 @@ impl UnboundedMode {
                 }
             }
             self.cement_queue.push(ConfHeightDetails {
-                update_height: UpdateConfirmationHeight {
+                update_height: ConfirmationHeightUpdate {
                     account: preparation_data_a.account,
                     new_cemented_frontier: preparation_data_a.current,
                     new_height: block_height,

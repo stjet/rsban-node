@@ -1,16 +1,17 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use rsnano_core::{BlockEnum, BlockHash, ConfirmationHeightInfo, UpdateConfirmationHeight};
+use rsnano_core::{BlockEnum, BlockHash, ConfirmationHeightInfo, ConfirmationHeightUpdate};
 
 use super::write_details_queue::WriteDetails;
 
-/// Creates UpdateConfirmationHeight commands for an account.
-/// Those commands describe the changes that need to be written to
+/// Creates ConfirmationHeightUpdates for a single account.
+/// Those updates describe the changes that need to be written to
 /// the confirmation height store.
-pub(crate) struct UpdateConfirmationHeightCommandFactory<'a> {
-    pending: &'a WriteDetails,
-    confirmation_height_info: &'a ConfirmationHeightInfo,
+#[derive(Default)]
+pub(crate) struct SingleAccountCementer {
+    pending: WriteDetails,
+    confirmation_height_info: ConfirmationHeightInfo,
     batch_write_size: usize,
     is_initialized: bool,
     /// The total number of blocks to cement
@@ -23,10 +24,10 @@ pub(crate) struct UpdateConfirmationHeightCommandFactory<'a> {
     new_cemented_frontier_block: Option<Arc<BlockEnum>>,
 }
 
-impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
+impl SingleAccountCementer {
     pub fn new(
-        pending: &'a WriteDetails,
-        confirmation_height_info: &'a ConfirmationHeightInfo,
+        pending: WriteDetails,
+        confirmation_height_info: ConfirmationHeightInfo,
         batch_write_size: usize,
     ) -> Self {
         Self {
@@ -43,11 +44,11 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
         }
     }
 
-    pub fn create_command(
+    pub fn cement(
         &mut self,
-        load_block: &dyn Fn(BlockHash) -> Option<BlockEnum>,
+        load_block: &dyn Fn(&BlockHash) -> Option<BlockEnum>,
         cemented_blocks: &mut Vec<Arc<BlockEnum>>,
-    ) -> anyhow::Result<Option<UpdateConfirmationHeight>> {
+    ) -> anyhow::Result<Option<(ConfirmationHeightUpdate, bool)>> {
         cemented_blocks.clear();
 
         if !self.is_initialized {
@@ -74,24 +75,26 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
                     )
                 })?;
 
-            if update_command.is_some() {
-                return Ok(update_command);
+            if let Some(cmd) = update_command {
+                return Ok(Some((cmd, self.is_done())));
             }
         }
 
-        Ok(self.get_update_command(&cemented_blocks))
+        Ok(self
+            .get_update_command(&cemented_blocks)
+            .map(|cmd| (cmd, self.is_done())))
     }
 
     fn initialize(
         &mut self,
-        load_block: &dyn Fn(BlockHash) -> Option<BlockEnum>,
+        load_block: &dyn Fn(&BlockHash) -> Option<BlockEnum>,
     ) -> Result<(), anyhow::Error> {
         let hash = self.get_first_block_to_cement(load_block)?;
 
         if let Some(hash) = hash {
             self.new_cemented_frontier_hash = hash;
             let new_frontier =
-                Arc::new(load_block(hash).ok_or_else(|| anyhow!("block not found"))?);
+                Arc::new(load_block(&hash).ok_or_else(|| anyhow!("block not found"))?);
 
             self.start_height = new_frontier.sideband().unwrap().height;
             self.num_blocks_to_cement = self.pending.top_height - self.start_height + 1;
@@ -103,7 +106,7 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
 
     fn get_first_block_to_cement(
         &self,
-        load_block: &dyn Fn(BlockHash) -> Option<BlockEnum>,
+        load_block: &dyn Fn(&BlockHash) -> Option<BlockEnum>,
     ) -> anyhow::Result<Option<BlockHash>> {
         if self.are_all_blocks_cemented_already() {
             Ok(None)
@@ -136,9 +139,9 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
 
     fn load_current_cemented_frontier(
         &self,
-        load_block: &dyn Fn(BlockHash) -> Option<BlockEnum>,
+        load_block: &dyn Fn(&BlockHash) -> Option<BlockEnum>,
     ) -> anyhow::Result<BlockEnum> {
-        load_block(self.confirmation_height_info.frontier).ok_or_else(|| {
+        load_block(&self.confirmation_height_info.frontier).ok_or_else(|| {
             anyhow!(
                 "Could not load current cemented frontier {} for account {}",
                 self.confirmation_height_info.frontier,
@@ -150,12 +153,12 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
     /// Get the next block in the chain until we have reached the final desired one
     fn load_next_block_to_cement(
         &mut self,
-        load_block: &dyn Fn(BlockHash) -> Option<BlockEnum>,
+        load_block: &dyn Fn(&BlockHash) -> Option<BlockEnum>,
     ) -> anyhow::Result<()> {
         if !self.is_done() {
             let Some(current) = &self.new_cemented_frontier_block else { bail!("no current block loaded!") };
             self.new_cemented_frontier_hash = current.sideband().unwrap().successor;
-            let next_block = load_block(self.new_cemented_frontier_hash);
+            let next_block = load_block(&self.new_cemented_frontier_hash);
             if next_block.is_none() {
                 bail!(
                     "Next block to cement not found: {}",
@@ -179,9 +182,9 @@ impl<'a> UpdateConfirmationHeightCommandFactory<'a> {
     fn get_update_command(
         &self,
         cemented_blocks: &[Arc<BlockEnum>],
-    ) -> Option<UpdateConfirmationHeight> {
+    ) -> Option<ConfirmationHeightUpdate> {
         if self.should_flush(cemented_blocks) {
-            Some(UpdateConfirmationHeight {
+            Some(ConfirmationHeightUpdate {
                 account: self.pending.account,
                 new_cemented_frontier: self.new_cemented_frontier_hash,
                 new_height: self.start_height + self.total_blocks_cemented - 1,
@@ -218,11 +221,11 @@ mod tests {
         let conf_height = ConfirmationHeightInfo::default();
 
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 42);
+            SingleAccountCementer::new(pending, conf_height, 42);
 
         let mut cemented_blocks = Vec::new();
         let command = command_factory
-            .create_command(&|_| unimplemented!(), &mut cemented_blocks)
+            .cement(&|_| unimplemented!(), &mut cemented_blocks)
             .unwrap();
 
         assert_eq!(command, None);
@@ -244,11 +247,11 @@ mod tests {
         };
 
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 42);
+            SingleAccountCementer::new(pending, conf_height, 42);
 
         let mut cemented_blocks = Vec::new();
         let command = command_factory
-            .create_command(&|_| unimplemented!(), &mut cemented_blocks)
+            .cement(&|_| unimplemented!(), &mut cemented_blocks)
             .unwrap();
 
         assert_eq!(command, None);
@@ -270,23 +273,26 @@ mod tests {
         let conf_height = ConfirmationHeightInfo::default();
 
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 42);
+            SingleAccountCementer::new(pending, conf_height, 42);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
         let command = command_factory
-            .create_command(&load_block, &mut cemented_blocks)
+            .cement(&load_block, &mut cemented_blocks)
             .unwrap()
             .expect("command was None!");
 
         assert_eq!(
             command,
-            UpdateConfirmationHeight {
-                account: Account::from(1),
-                new_cemented_frontier: blocks[0].hash(),
-                new_height: 1,
-                num_blocks_cemented: 1
-            }
+            (
+                ConfirmationHeightUpdate {
+                    account: Account::from(1),
+                    new_cemented_frontier: blocks[0].hash(),
+                    new_height: 1,
+                    num_blocks_cemented: 1
+                },
+                true
+            )
         );
         assert_blocks_equal(&cemented_blocks, &blocks);
         assert!(command_factory.is_done());
@@ -310,23 +316,26 @@ mod tests {
         let conf_height = ConfirmationHeightInfo::default();
 
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 42);
+            SingleAccountCementer::new(pending, conf_height, 42);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
         let command = command_factory
-            .create_command(&load_block, &mut cemented_blocks)
+            .cement(&load_block, &mut cemented_blocks)
             .unwrap()
             .expect("command was None!");
 
         assert_eq!(
             command,
-            UpdateConfirmationHeight {
-                account: Account::from(42),
-                new_cemented_frontier: blocks[1].hash(),
-                new_height: 2,
-                num_blocks_cemented: 2
-            }
+            (
+                ConfirmationHeightUpdate {
+                    account: Account::from(42),
+                    new_cemented_frontier: blocks[1].hash(),
+                    new_height: 2,
+                    num_blocks_cemented: 2
+                },
+                true
+            )
         );
         assert_blocks_equal(&cemented_blocks, &blocks);
         assert!(command_factory.is_done());
@@ -353,23 +362,26 @@ mod tests {
         };
 
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 42);
+            SingleAccountCementer::new(pending, conf_height, 42);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
         let command = command_factory
-            .create_command(&load_block, &mut cemented_blocks)
+            .cement(&load_block, &mut cemented_blocks)
             .unwrap()
             .expect("command was None!");
 
         assert_eq!(
             command,
-            UpdateConfirmationHeight {
-                account: Account::from(42),
-                new_cemented_frontier: blocks[1].hash(),
-                new_height: 2,
-                num_blocks_cemented: 1
-            }
+            (
+                ConfirmationHeightUpdate {
+                    account: Account::from(42),
+                    new_cemented_frontier: blocks[1].hash(),
+                    new_height: 2,
+                    num_blocks_cemented: 1
+                },
+                true
+            )
         );
         assert_blocks_equal(&cemented_blocks, &blocks[1..]);
         assert!(command_factory.is_done());
@@ -393,43 +405,49 @@ mod tests {
         let conf_height = ConfirmationHeightInfo::default();
 
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 1);
+            SingleAccountCementer::new(pending, conf_height, 1);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
 
         // Cement first batch
         let command = command_factory
-            .create_command(&load_block, &mut cemented_blocks)
+            .cement(&load_block, &mut cemented_blocks)
             .unwrap()
             .expect("command was None!");
 
         assert_eq!(
             command,
-            UpdateConfirmationHeight {
-                account: Account::from(42),
-                new_cemented_frontier: blocks[0].hash(),
-                new_height: 1,
-                num_blocks_cemented: 1
-            }
+            (
+                ConfirmationHeightUpdate {
+                    account: Account::from(42),
+                    new_cemented_frontier: blocks[0].hash(),
+                    new_height: 1,
+                    num_blocks_cemented: 1
+                },
+                false
+            )
         );
         assert_blocks_equal(&cemented_blocks, &blocks[0..1]);
         assert_eq!(command_factory.is_done(), false);
 
         // Cement second batch
         let command = command_factory
-            .create_command(&load_block, &mut cemented_blocks)
+            .cement(&load_block, &mut cemented_blocks)
             .unwrap()
             .unwrap();
 
         assert_eq!(
             command,
-            UpdateConfirmationHeight {
-                account: Account::from(42),
-                new_cemented_frontier: blocks[1].hash(),
-                new_height: 2,
-                num_blocks_cemented: 1
-            }
+            (
+                ConfirmationHeightUpdate {
+                    account: Account::from(42),
+                    new_cemented_frontier: blocks[1].hash(),
+                    new_height: 2,
+                    num_blocks_cemented: 1
+                },
+                true
+            )
         );
         assert_blocks_equal(&cemented_blocks, &blocks[1..]);
         assert!(command_factory.is_done());
@@ -454,52 +472,58 @@ mod tests {
         let conf_height = ConfirmationHeightInfo::default();
 
         let mut command_factory =
-            UpdateConfirmationHeightCommandFactory::new(&pending, &conf_height, 2);
+            SingleAccountCementer::new(pending, conf_height, 2);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
 
         // Cement first batch
         let command = command_factory
-            .create_command(&load_block, &mut cemented_blocks)
+            .cement(&load_block, &mut cemented_blocks)
             .unwrap()
             .expect("command was None!");
 
         assert_eq!(
             command,
-            UpdateConfirmationHeight {
-                account: Account::from(42),
-                new_cemented_frontier: blocks[1].hash(),
-                new_height: 2,
-                num_blocks_cemented: 2
-            }
+            (
+                ConfirmationHeightUpdate {
+                    account: Account::from(42),
+                    new_cemented_frontier: blocks[1].hash(),
+                    new_height: 2,
+                    num_blocks_cemented: 2
+                },
+                false
+            )
         );
         assert_blocks_equal(&cemented_blocks, &blocks[0..2]);
         assert_eq!(command_factory.is_done(), false);
 
         // Cement second batch
         let command = command_factory
-            .create_command(&load_block, &mut cemented_blocks)
+            .cement(&load_block, &mut cemented_blocks)
             .unwrap()
             .expect("command was None!");
 
         assert_eq!(
             command,
-            UpdateConfirmationHeight {
-                account: Account::from(42),
-                new_cemented_frontier: blocks[2].hash(),
-                new_height: 3,
-                num_blocks_cemented: 1
-            }
+            (
+                ConfirmationHeightUpdate {
+                    account: Account::from(42),
+                    new_cemented_frontier: blocks[2].hash(),
+                    new_height: 3,
+                    num_blocks_cemented: 1
+                },
+                true
+            )
         );
         assert_blocks_equal(&cemented_blocks, &blocks[2..]);
         assert!(command_factory.is_done());
     }
 
-    fn create_block_loader(blocks: &[BlockEnum]) -> Box<dyn Fn(BlockHash) -> Option<BlockEnum>> {
+    fn create_block_loader(blocks: &[BlockEnum]) -> Box<dyn Fn(&BlockHash) -> Option<BlockEnum>> {
         let map: HashMap<BlockHash, BlockEnum> =
             blocks.iter().map(|b| (b.hash(), b.clone())).collect();
-        Box::new(move |block_hash| map.get(&block_hash).cloned())
+        Box::new(move |block_hash| map.get(block_hash).cloned())
     }
 
     struct AccountBlocksBuilder {

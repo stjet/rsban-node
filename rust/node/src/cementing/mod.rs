@@ -7,12 +7,12 @@ mod block_queue;
 mod bounded_mode;
 mod cement_queue;
 mod confirmation_height_processor;
-mod multi_account_cementer;
 mod confirmed_iterated_pairs;
 mod implicit_receive_cemented_mapping;
+mod multi_account_cementer;
+mod single_account_cementer;
 mod unbounded_mode;
 mod unconfirmed_receive_and_sources_collector;
-mod single_account_cementer;
 mod write_details_queue;
 
 use std::sync::Arc;
@@ -27,8 +27,8 @@ use bounded_mode::{BoundedMode, BoundedModeContainerInfo};
 use confirmation_height_processor::CementCallbackRefs;
 pub use confirmation_height_processor::ConfirmationHeightProcessor;
 use multi_account_cementer::MultiAccountCementer;
-use unbounded_mode::{UnboundedMode, UnboundedModeContainerInfo};
 use single_account_cementer::SingleAccountCementer;
+use unbounded_mode::{UnboundedMode, UnboundedModeContainerInfo};
 use write_details_queue::{WriteDetails, WriteDetailsContainerInfo, WriteDetailsQueue};
 
 /// We need these details whenever we want to write the new

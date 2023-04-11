@@ -45,7 +45,6 @@ impl AutomaticMode {
         stats: Arc<Stats>,
         batch_separate_pending_min_time: Duration,
         write_database_queue: Arc<WriteDatabaseQueue>,
-        batch_write_size: Arc<BatchWriteSizeManager>,
         stopped: Arc<AtomicBool>,
     ) -> Self {
         let bounded_mode = BoundedMode::new(
@@ -56,7 +55,6 @@ impl AutomaticMode {
             batch_separate_pending_min_time,
             stopped.clone(),
             stats.clone(),
-            batch_write_size.clone(),
         );
 
         let unbounded_mode = UnboundedMode::new(
@@ -67,7 +65,7 @@ impl AutomaticMode {
             batch_separate_pending_min_time,
             stopped,
             stats,
-            batch_write_size.clone(),
+            bounded_mode.batch_write_size().clone(),
         );
 
         Self {
@@ -76,6 +74,10 @@ impl AutomaticMode {
             mode,
             ledger,
         }
+    }
+
+    pub fn batch_write_size(&self) -> &Arc<BatchWriteSizeManager> {
+        self.bounded_mode.batch_write_size()
     }
 
     pub fn pending_writes_empty(&self) -> bool {

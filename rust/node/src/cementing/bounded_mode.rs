@@ -18,8 +18,9 @@ use crate::stats::{DetailType, Direction, StatType, Stats};
 
 use super::{
     accounts_confirmed_map::{AccountsConfirmedMap, AccountsConfirmedMapContainerInfo},
+    multi_account_cementer::CementationDataRequester,
     BatchWriteSizeManager, CementCallbackRefs, MultiAccountCementer, WriteDetails,
-    WriteDetailsContainerInfo, WriteDetailsQueue,
+    WriteDetailsContainerInfo,
 };
 
 /** The maximum number of various containers to keep the memory bounded */
@@ -37,7 +38,6 @@ pub(crate) struct ConfirmedInfo {
 
 pub(super) struct BoundedMode {
     write_database_queue: Arc<WriteDatabaseQueue>,
-    pending_writes: WriteDetailsQueue,
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
     ledger: Arc<Ledger>,
@@ -46,10 +46,10 @@ pub(super) struct BoundedMode {
     stopped: Arc<AtomicBool>,
     timer: Instant,
     batch_separate_pending_min_time: Duration,
-    batch_write_size: Arc<BatchWriteSizeManager>,
 
     stats: Arc<Stats>,
     cemented_batch_timer: Instant,
+    cementer: MultiAccountCementer,
 }
 
 impl BoundedMode {
@@ -61,12 +61,9 @@ impl BoundedMode {
         batch_separate_pending_min_time: Duration,
         stopped: Arc<AtomicBool>,
         stats: Arc<Stats>,
-        batch_write_size: Arc<BatchWriteSizeManager>,
     ) -> Self {
         Self {
             write_database_queue,
-            pending_writes: WriteDetailsQueue::new(),
-            batch_write_size,
             logger,
             enable_timing_logging,
             ledger,
@@ -76,11 +73,12 @@ impl BoundedMode {
             timer: Instant::now(),
             batch_separate_pending_min_time,
             cemented_batch_timer: Instant::now(),
+            cementer: MultiAccountCementer::new(),
         }
     }
 
-    pub(crate) fn current_batch_write_size(&self) -> usize {
-        self.batch_write_size.current_size()
+    pub(crate) fn batch_write_size(&self) -> &Arc<BatchWriteSizeManager> {
+        &self.cementer.batch_write_size
     }
 
     pub(crate) fn process(
@@ -219,8 +217,9 @@ impl BoundedMode {
                     receive_source_pairs.pop_back();
                 }
 
-                let max_batch_write_size_reached = self.pending_writes.total_pending_blocks()
-                    >= self.batch_write_size.current_size();
+                let max_batch_write_size_reached =
+                    self.cementer.pending_writes.total_pending_blocks()
+                        >= self.cementer.batch_write_size.current_size();
 
                 // When there are a lot of pending confirmation height blocks, it is more efficient to
                 // bulk some of them up to enable better write performance which becomes the bottleneck.
@@ -231,11 +230,11 @@ impl BoundedMode {
                 let should_output =
                     finished_iterating && (non_awaiting_processing || min_time_exceeded);
 
-                let force_write = self.pending_writes.len() >= PENDING_WRITES_MAX_SIZE
+                let force_write = self.cementer.pending_writes.len() >= PENDING_WRITES_MAX_SIZE
                     || self.accounts_confirmed_info.len() >= PENDING_WRITES_MAX_SIZE;
 
                 if (max_batch_write_size_reached || should_output || force_write)
-                    && !self.pending_writes.is_empty()
+                    && !self.cementer.pending_writes.is_empty()
                 {
                     // If nothing is currently using the database write lock then write the cemented pending blocks otherwise continue iterating
                     if self
@@ -439,7 +438,7 @@ impl BoundedMode {
                     top_height: block_height,
                     top_hash: *top_most_non_receive_block_hash,
                 };
-                self.pending_writes.push_back(details);
+                self.cementer.pending_writes.push_back(details);
             }
         }
 
@@ -470,12 +469,12 @@ impl BoundedMode {
                 top_height: receive_details.height,
                 top_hash: receive_details.hash,
             };
-            self.pending_writes.push_back(write_details);
+            self.cementer.pending_writes.push_back(write_details);
         }
     }
 
     pub fn write_pending_blocks(&mut self, callbacks: &mut CementCallbackRefs) {
-        if self.pending_writes.is_empty() {
+        if self.cementer.pending_writes.is_empty() {
             return;
         }
 
@@ -491,8 +490,6 @@ impl BoundedMode {
         scoped_write_guard: &mut WriteGuard,
         callbacks: &mut CementCallbackRefs,
     ) {
-        let mut cementer = MultiAccountCementer::new();
-
         // This only writes to the confirmation_height table and is the only place to do so in a single process
         let mut txn = self.ledger.store.tx_begin_write();
 
@@ -500,24 +497,15 @@ impl BoundedMode {
 
         // Cement all pending entries, each entry is specific to an account and contains the least amount
         // of blocks to retain consistent cementing across all account chains to genesis.
-        while let Some((update_command, account_done)) = cementer
-            .cement_next(
-                &mut self.pending_writes,
-                &self.batch_write_size,
-                &CementationLedgerAdapter {
-                    ledger: &self.ledger,
-                    txn: txn.txn(),
-                },
-            )
+        while let Some((update_command, account_done)) = self
+            .cementer
+            .cement_next(&CementationLedgerAdapter {
+                ledger: &self.ledger,
+                txn: txn.txn(),
+            })
             .unwrap()
         {
-            self.flush(
-                &mut cementer,
-                txn.as_mut(),
-                &update_command,
-                scoped_write_guard,
-                callbacks,
-            );
+            self.flush(txn.as_mut(), &update_command, scoped_write_guard, callbacks);
             if account_done {
                 if let Some(found_info) = self.accounts_confirmed_info.get(&update_command.account)
                 {
@@ -529,12 +517,13 @@ impl BoundedMode {
         }
         drop(txn);
 
-        let unpublished_count = cementer.unpublished_cemented_blocks();
+        let unpublished_count = self.cementer.unpublished_cemented_blocks();
         self.stop_batch_timer(unpublished_count);
 
         if unpublished_count > 0 {
             scoped_write_guard.release();
-            cementer.publish_cemented_blocks(callbacks.block_cemented);
+            self.cementer
+                .publish_cemented_blocks(callbacks.block_cemented);
         }
 
         self.timer = Instant::now();
@@ -551,7 +540,9 @@ impl BoundedMode {
             self.log_cemented_blocks(time_spent_cementing, cemented_count);
         }
 
-        self.batch_write_size.adjust_size(time_spent_cementing);
+        self.cementer
+            .batch_write_size
+            .adjust_size(time_spent_cementing);
     }
 
     fn log_cemented_blocks(&self, time_spent_cementing: Duration, cemented_count: usize) {
@@ -566,7 +557,6 @@ impl BoundedMode {
 
     fn flush(
         &mut self,
-        cementer: &mut MultiAccountCementer,
         txn: &mut dyn WriteTransaction,
         update: &ConfirmationHeightUpdate,
         scoped_write_guard: &mut WriteGuard,
@@ -584,13 +574,19 @@ impl BoundedMode {
         let time_spent_cementing = self.cemented_batch_timer.elapsed();
         txn.commit();
 
-        self.log_cemented_blocks(time_spent_cementing, cementer.cemented_blocks.len());
-        self.batch_write_size.adjust_size(time_spent_cementing);
+        self.log_cemented_blocks(
+            time_spent_cementing,
+            self.cementer.unpublished_cemented_blocks(),
+        );
+        self.cementer
+            .batch_write_size
+            .adjust_size(time_spent_cementing);
         scoped_write_guard.release();
-        cementer.publish_cemented_blocks(callbacks.block_cemented);
+        self.cementer
+            .publish_cemented_blocks(callbacks.block_cemented);
 
         // Only aquire transaction if there are blocks left
-        if !self.pending_writes.is_empty() || !cementer.is_done() {
+        if !self.cementer.pending_writes.is_empty() || !self.cementer.is_done() {
             *scoped_write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
             txn.renew();
         }
@@ -632,12 +628,12 @@ impl BoundedMode {
     }
 
     pub fn pending_writes_empty(&self) -> bool {
-        self.pending_writes.is_empty()
+        self.cementer.pending_writes.is_empty()
     }
 
     pub fn container_info(&self) -> BoundedModeContainerInfo {
         BoundedModeContainerInfo {
-            pending_writes: self.pending_writes.container_info(),
+            pending_writes: self.cementer.pending_writes.container_info(),
             accounts_confirmed: self.accounts_confirmed_info.container_info(),
         }
     }
@@ -695,12 +691,12 @@ pub(crate) struct CementationLedgerAdapter<'a> {
     ledger: &'a Ledger,
 }
 
-impl<'a> CementationLedgerAdapter<'a> {
-    pub fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum> {
+impl<'a> CementationDataRequester for CementationLedgerAdapter<'a> {
+    fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum> {
         self.ledger.store.block().get(self.txn, block_hash)
     }
 
-    pub fn get_current_confirmation_height(&self, account: &Account) -> ConfirmationHeightInfo {
+    fn get_current_confirmation_height(&self, account: &Account) -> ConfirmationHeightInfo {
         self.ledger
             .store
             .confirmation_height()

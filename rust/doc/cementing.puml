@@ -15,7 +15,10 @@ class ConfirmationHeightProcessor{
     add(block)
     run(mode)
 }
-class Ledger
+
+package "Infrastructure" {
+    class Ledger
+}
 
 package "Logic"{
     enum ConfirmationHeightMode{
@@ -32,6 +35,11 @@ package "Logic"{
     class BatchWriteSizeManager {
         current()
     }
+
+    interface CementationDataRequester{
+        get_block()
+        get_current_confirmation_height()
+    }
 }
 
 package "Values"{
@@ -43,18 +51,24 @@ package "Values"{
     }
 }
 
+package "Application"{
+    class CementationLedgerAdapter
+}
+
+Ledger ..> UpdateConfirmationHeight
 
 UnboundedMode --> Ledger
 UnboundedMode --> BatchWriteSizeManager
 
 BoundedMode --> Ledger
-BoundedMode --> WriteDetailsQueue
 BoundedMode --> MultiAccountCementer
 BoundedMode --> BatchWriteSizeManager
+BoundedMode --> CementationLedgerAdapter
 
 MultiAccountCementer --> SingleAccountCementer
 MultiAccountCementer --> BatchWriteSizeManager
 MultiAccountCementer --> WriteDetailsQueue
+MultiAccountCementer --> CementationDataRequester
 
 SingleAccountCementer --> UpdateConfirmationHeight
 SingleAccountCementer --> WriteDetails
@@ -68,5 +82,8 @@ AutomaticMode --> Ledger
 AutomaticMode --> BatchWriteSizeManager
 
 ConfirmationHeightProcessor --> AutomaticMode
+
+CementationLedgerAdapter ..|> CementationDataRequester
+CementationLedgerAdapter --> Ledger
 
 @enduml

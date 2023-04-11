@@ -220,8 +220,7 @@ mod tests {
 
         let conf_height = ConfirmationHeightInfo::default();
 
-        let mut command_factory =
-            SingleAccountCementer::new(pending, conf_height, 42);
+        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 42);
 
         let mut cemented_blocks = Vec::new();
         let command = command_factory
@@ -246,8 +245,7 @@ mod tests {
             frontier: BlockHash::from(7),
         };
 
-        let mut command_factory =
-            SingleAccountCementer::new(pending, conf_height, 42);
+        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 42);
 
         let mut cemented_blocks = Vec::new();
         let command = command_factory
@@ -272,8 +270,7 @@ mod tests {
 
         let conf_height = ConfirmationHeightInfo::default();
 
-        let mut command_factory =
-            SingleAccountCementer::new(pending, conf_height, 42);
+        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 42);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
@@ -315,8 +312,7 @@ mod tests {
 
         let conf_height = ConfirmationHeightInfo::default();
 
-        let mut command_factory =
-            SingleAccountCementer::new(pending, conf_height, 42);
+        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 42);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
@@ -361,8 +357,7 @@ mod tests {
             frontier: pending.bottom_hash,
         };
 
-        let mut command_factory =
-            SingleAccountCementer::new(pending, conf_height, 42);
+        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 42);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
@@ -404,8 +399,7 @@ mod tests {
 
         let conf_height = ConfirmationHeightInfo::default();
 
-        let mut command_factory =
-            SingleAccountCementer::new(pending, conf_height, 1);
+        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 1);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
@@ -471,8 +465,7 @@ mod tests {
 
         let conf_height = ConfirmationHeightInfo::default();
 
-        let mut command_factory =
-            SingleAccountCementer::new(pending, conf_height, 2);
+        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 2);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();

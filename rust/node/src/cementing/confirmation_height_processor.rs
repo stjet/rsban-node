@@ -56,7 +56,6 @@ impl ConfirmationHeightProcessor {
         let stopped = Arc::new(AtomicBool::new(false));
         let channel = Arc::new(Mutex::new(ProcessorLoopChannel::new()));
 
-        let batch_write_size = Arc::new(BatchWriteSizeManager::new());
         let automatic_mode = AutomaticMode::new(
             mode,
             ledger,
@@ -65,9 +64,10 @@ impl ConfirmationHeightProcessor {
             stats,
             batch_separate_pending_min_time,
             write_database_queue.clone(),
-            batch_write_size.clone(),
             stopped.clone(),
         );
+
+        let batch_write_size = automatic_mode.batch_write_size().clone();
 
         let automatic_container_info = automatic_mode.container_info();
         let block_cache = Arc::clone(automatic_mode.block_cache());

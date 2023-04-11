@@ -35,19 +35,18 @@ pub(crate) struct ConfirmedInfo {
 }
 
 pub(super) struct BoundedMode {
+    accounts_confirmed_info: AccountsConfirmedMap,
+    stopped: Arc<AtomicBool>,
+    batch_separate_pending_min_time: Duration,
+    cementer: MultiAccountCementer,
+
+    processing_timer: Instant,
+    stats: Arc<Stats>,
+    cemented_batch_timer: Instant,
     write_database_queue: Arc<WriteDatabaseQueue>,
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
     ledger: Arc<Ledger>,
-    accounts_confirmed_info: AccountsConfirmedMap,
-
-    stopped: Arc<AtomicBool>,
-    timer: Instant,
-    batch_separate_pending_min_time: Duration,
-
-    stats: Arc<Stats>,
-    cemented_batch_timer: Instant,
-    cementer: MultiAccountCementer,
 }
 
 impl BoundedMode {
@@ -68,7 +67,7 @@ impl BoundedMode {
             accounts_confirmed_info: AccountsConfirmedMap::new(),
             stopped,
             stats,
-            timer: Instant::now(),
+            processing_timer: Instant::now(),
             batch_separate_pending_min_time,
             cemented_batch_timer: Instant::now(),
             cementer: MultiAccountCementer::new(),
@@ -86,13 +85,13 @@ impl BoundedMode {
     ) {
         if !self.has_pending_writes() {
             self.clear_process_vars();
-            self.timer = Instant::now();
+            self.processing_timer = Instant::now();
         }
 
         let mut next_in_receive_chain: Option<TopAndNextHash> = None;
-        let mut checkpoints = BoundedVecDeque::new(MAX_ITEMS);
-        let mut receive_source_pairs = BoundedVecDeque::new(MAX_ITEMS);
-        let mut current: BlockHash;
+        let mut checkpoints = BoundedVecDeque::new(MAX_ITEMS); // todo: don't reallocate on every process call
+        let mut receive_source_pairs = BoundedVecDeque::new(MAX_ITEMS); // todo: don't reallocate on every process call
+        let mut current_hash: BlockHash;
         let mut first_iter = true;
         let mut txn = self.ledger.store.tx_begin_read();
 
@@ -105,37 +104,38 @@ impl BoundedMode {
                 &mut receive_details,
                 original_block,
             );
-            current = hash_to_process.top;
+            current_hash = hash_to_process.top;
 
-            let top_level_hash = current;
-            let block = if current == original_block.hash() {
+            let top_level_hash = current_hash;
+
+            let current_block = if current_hash == original_block.hash() {
                 Some(original_block.clone())
             } else {
-                self.ledger.store.block().get(txn.txn(), &current)
+                self.ledger.store.block().get(txn.txn(), &current_hash)
             };
 
-            let Some(block) = block else{
-                if self.ledger.pruning_enabled() && self.ledger.store.pruned().exists(txn.txn(), &current) {
+            let Some(current_block) = current_block else{
+                if self.ledger.pruning_enabled() && self.ledger.store.pruned().exists(txn.txn(), &current_hash) {
                     if !receive_source_pairs.is_empty() {
                         receive_source_pairs.pop_back();
                     }
                     continue;
                 } else {
-                    let error_str = format!("Ledger mismatch trying to set confirmation height for block {} (bounded processor)", current);
+                    let error_str = format!("Ledger mismatch trying to set confirmation height for block {} (bounded processor)", current_hash);
                     self.logger.always_log(&error_str);
                     eprintln!("{}", error_str);
                     panic!("{}", error_str);
                 }
             };
 
-            let account = block.account_calculated();
-            let confirmation_height_info = self.get_confirmation_height(account, txn.txn());
+            let account = current_block.account_calculated();
+            let current_confirmation_height = self.get_confirmation_height(account, txn.txn());
 
-            let mut block_height = block.sideband().unwrap().height;
-            let already_cemented = confirmation_height_info.height >= block_height;
+            let mut block_height = current_block.sideband().unwrap().height;
+            let already_cemented = current_confirmation_height.height >= block_height;
 
             // This block was added to the confirmation height processor but is already confirmed
-            if first_iter && already_cemented && current == original_block.hash() {
+            if first_iter && already_cemented && current_hash == original_block.hash() {
                 (callbacks.block_already_cemented)(original_block.hash());
             }
 
@@ -143,31 +143,31 @@ impl BoundedMode {
             let blocks_to_cement_for_this_account = if already_cemented {
                 0
             } else {
-                block_height - confirmation_height_info.height
+                block_height - current_confirmation_height.height
             };
             if blocks_to_cement_for_this_account > 1 {
                 if blocks_to_cement_for_this_account == 2 {
                     // If there is 1 uncemented block in-between this block and the cemented frontier,
                     // we can just use the previous block to get the least unconfirmed hash.
-                    current = block.previous();
+                    current_hash = current_block.previous();
                     block_height -= 1;
                 } else if next_in_receive_chain.is_none() {
-                    current = self.get_least_unconfirmed_hash_from_top_level(
+                    current_hash = self.get_least_unconfirmed_hash_from_top_level(
                         txn.txn(),
-                        &current,
+                        &current_hash,
                         &account,
-                        &confirmation_height_info,
+                        &current_confirmation_height,
                         &mut block_height,
                     );
                 } else {
                     // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
                     // as we already know what the next block we should process should be.
-                    current = hash_to_process.next.unwrap();
+                    current_hash = hash_to_process.next.unwrap();
                     block_height = hash_to_process.next_height;
                 }
             }
 
-            let mut top_most_non_receive_block_hash = current;
+            let mut top_most_non_receive_block_hash = current_hash;
 
             let mut hit_receive = false;
             if !already_cemented {
@@ -177,7 +177,7 @@ impl BoundedMode {
                     top_level_hash,
                     account,
                     block_height,
-                    current,
+                    current_hash,
                     &mut top_most_non_receive_block_hash,
                     txn.as_mut(),
                 );
@@ -195,7 +195,8 @@ impl BoundedMode {
 
             // Need to also handle the case where we are hitting receives where the sends below should be confirmed
             if !hit_receive
-                || (receive_source_pairs.len() == 1 && top_most_non_receive_block_hash != current)
+                || (receive_source_pairs.len() == 1
+                    && top_most_non_receive_block_hash != current_hash)
             {
                 self.prepare_iterated_blocks_for_cementing(
                     &receive_details,
@@ -204,10 +205,10 @@ impl BoundedMode {
                     already_cemented,
                     txn.txn(),
                     &top_most_non_receive_block_hash,
-                    &confirmation_height_info,
+                    &current_confirmation_height,
                     &account,
                     block_height,
-                    &current,
+                    &current_hash,
                 );
 
                 // If used the top level, don't pop off the receive source pair because it wasn't used
@@ -220,8 +221,8 @@ impl BoundedMode {
                 // When there are a lot of pending confirmation height blocks, it is more efficient to
                 // bulk some of them up to enable better write performance which becomes the bottleneck.
                 let min_time_exceeded =
-                    self.timer.elapsed() >= self.batch_separate_pending_min_time;
-                let finished_iterating = current == original_block.hash();
+                    self.processing_timer.elapsed() >= self.batch_separate_pending_min_time;
+                let finished_iterating = current_hash == original_block.hash();
                 let non_awaiting_processing = (callbacks.awaiting_processing_count)() == 0;
                 let should_output =
                     finished_iterating && (non_awaiting_processing || min_time_exceeded);
@@ -257,7 +258,7 @@ impl BoundedMode {
             first_iter = false;
             txn.refresh();
 
-            let is_done = receive_source_pairs.is_empty() && current == original_block.hash();
+            let is_done = receive_source_pairs.is_empty() && current_hash == original_block.hash();
             if is_done || self.stopped.load(Ordering::SeqCst) {
                 break;
             }
@@ -297,31 +298,28 @@ impl BoundedMode {
         receive_details: &mut Option<ReceiveChainDetails>,
         original_block: &BlockEnum,
     ) -> TopAndNextHash {
-        let next: TopAndNextHash;
         if let Some(next_in_chain) = next_in_receive_chain {
-            next = next_in_chain.clone();
+            next_in_chain.clone()
         } else if let Some(next_receive_source_pair) = receive_source_pairs.back() {
             *receive_details = Some(next_receive_source_pair.receive_details.clone());
-            next = TopAndNextHash {
+            TopAndNextHash {
                 top: next_receive_source_pair.source_hash,
                 next: next_receive_source_pair.receive_details.next,
                 next_height: next_receive_source_pair.receive_details.height + 1,
-            };
+            }
         } else if let Some(checkpoint) = checkpoints.back() {
-            next = TopAndNextHash {
+            TopAndNextHash {
                 top: *checkpoint,
                 next: None,
                 next_height: 0,
             }
         } else {
-            next = TopAndNextHash {
+            TopAndNextHash {
                 top: original_block.hash(),
                 next: None,
                 next_height: 0,
-            };
+            }
         }
-
-        next
     }
 
     fn iterate(
@@ -416,14 +414,15 @@ impl BoundedMode {
                 .store
                 .block()
                 .account_height(txn, top_most_non_receive_block_hash);
+
             if block_height > confirmation_height_info.height {
-                let confirmed_info_l = ConfirmedInfo {
+                let confirmed_info = ConfirmedInfo {
                     confirmed_height: block_height,
                     iterated_frontier: *top_most_non_receive_block_hash,
                 };
 
                 self.accounts_confirmed_info
-                    .insert(*account, confirmed_info_l);
+                    .insert(*account, confirmed_info);
 
                 truncate_after(checkpoints, top_most_non_receive_block_hash);
 
@@ -520,7 +519,7 @@ impl BoundedMode {
                 .publish_cemented_blocks(callbacks.block_cemented);
         }
 
-        self.timer = Instant::now();
+        self.processing_timer = Instant::now();
     }
 
     fn start_batch_timer(&mut self) {
@@ -627,7 +626,7 @@ impl BoundedMode {
 
     pub fn container_info(&self) -> BoundedModeContainerInfo {
         BoundedModeContainerInfo {
-            pending_writes: self.cementer.pending_writes.container_info(),
+            pending_writes: self.cementer.container_info(),
             accounts_confirmed: self.accounts_confirmed_info.container_info(),
         }
     }

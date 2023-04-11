@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use super::{BatchWriteSizeManager, SingleAccountCementer, WriteDetails, WriteDetailsQueue};
+use super::{
+    write_details_queue::WriteDetailsContainerInfo, BatchWriteSizeManager, SingleAccountCementer,
+    WriteDetails, WriteDetailsQueue,
+};
 use rsnano_core::{
     Account, BlockEnum, BlockHash, ConfirmationHeightInfo, ConfirmationHeightUpdate,
 };
@@ -18,7 +21,7 @@ pub(crate) struct MultiAccountCementer {
     cemented_blocks: Vec<Arc<BlockEnum>>,
     account_cementer: SingleAccountCementer,
     current: Option<WriteDetails>,
-    pub pending_writes: WriteDetailsQueue,
+    pending_writes: WriteDetailsQueue,
     pub batch_write_size: Arc<BatchWriteSizeManager>,
 }
 
@@ -99,5 +102,9 @@ impl MultiAccountCementer {
         for block in self.cemented_blocks.drain(..) {
             block_cemented(&block);
         }
+    }
+
+    pub fn container_info(&self) -> WriteDetailsContainerInfo {
+        self.pending_writes.container_info()
     }
 }

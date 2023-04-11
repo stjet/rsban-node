@@ -103,46 +103,30 @@ impl BoundedMode {
             account: Account::zero(),
             block_height: 0,
             previous: BlockHash::zero(),
+            current_confirmation_height: Default::default(),
         };
 
         let mut txn = self.ledger.store.tx_begin_read();
 
         loop {
-            if !helper.load_next_block(txn.txn()) {
+            if !helper.load_next_block(txn.txn(), &self.accounts_confirmed_info) {
                 continue;
             }
 
-            let current_confirmation_height =
-                self.get_confirmation_height(helper.account, txn.txn());
-            let already_cemented = current_confirmation_height.height >= helper.block_height;
-
             // This block was added to the confirmation height processor but is already confirmed
-            if helper.first_iter && already_cemented && helper.current_hash == original_block.hash()
-            {
+            if helper.should_notify_already_cemented() {
                 (callbacks.block_already_cemented)(original_block.hash());
             }
 
-            // If we are not already at the bottom of the account chain (1 above cemented frontier) then find it
-            let blocks_to_cement_for_this_account = if already_cemented {
-                0
-            } else {
-                helper.block_height - current_confirmation_height.height
-            };
-
-            if blocks_to_cement_for_this_account > 1 {
-                if blocks_to_cement_for_this_account == 2 {
+            if helper.blocks_to_cement_for_this_account() > 1 {
+                if helper.blocks_to_cement_for_this_account() == 2 {
                     // If there is 1 uncemented block in-between this block and the cemented frontier,
                     // we can just use the previous block to get the least unconfirmed hash.
                     helper.current_hash = helper.previous;
                     helper.block_height -= 1;
                 } else if helper.next_in_receive_chain.is_none() {
-                    helper.current_hash = self.get_least_unconfirmed_hash_from_top_level(
-                        txn.txn(),
-                        &helper.current_hash,
-                        &helper.account,
-                        &current_confirmation_height,
-                        &mut helper.block_height,
-                    );
+                    helper.current_hash =
+                        self.get_least_unconfirmed_hash_from_top_level(txn.txn(), &mut helper);
                 } else {
                     // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
                     // as we already know what the next block we should process should be.
@@ -154,7 +138,7 @@ impl BoundedMode {
             let mut top_most_non_receive_block_hash = helper.current_hash;
 
             let mut hit_receive = false;
-            if !already_cemented {
+            if !helper.is_already_cemented() {
                 hit_receive = self.iterate(
                     &mut helper.receive_source_pairs,
                     &mut helper.checkpoints,
@@ -182,6 +166,7 @@ impl BoundedMode {
                 || (helper.receive_source_pairs.len() == 1
                     && top_most_non_receive_block_hash != helper.current_hash)
             {
+                let already_cemented = helper.is_already_cemented();
                 self.prepare_iterated_blocks_for_cementing(
                     &helper.receive_details,
                     &mut helper.checkpoints,
@@ -189,7 +174,7 @@ impl BoundedMode {
                     already_cemented,
                     txn.txn(),
                     &top_most_non_receive_block_hash,
-                    &current_confirmation_height,
+                    &helper.current_confirmation_height,
                     &helper.account,
                     helper.block_height,
                     &helper.current_hash,
@@ -250,23 +235,6 @@ impl BoundedMode {
         }
 
         debug_assert!(helper.checkpoints.is_empty());
-    }
-
-    fn get_confirmation_height(
-        &self,
-        account: Account,
-        txn: &dyn Transaction,
-    ) -> ConfirmationHeightInfo {
-        // Checks if we have encountered this account before but not commited changes yet, if so then update the cached confirmation height
-        if let Some(found_info) = self.accounts_confirmed_info.get(&account) {
-            ConfirmationHeightInfo::new(found_info.confirmed_height, found_info.iterated_frontier)
-        } else {
-            self.ledger
-                .store
-                .confirmation_height()
-                .get(txn, &account)
-                .unwrap_or_default()
-        }
     }
 
     /// The next block hash to iterate over, the priority is as follows:
@@ -575,28 +543,25 @@ impl BoundedMode {
     fn get_least_unconfirmed_hash_from_top_level(
         &self,
         txn: &dyn Transaction,
-        hash: &BlockHash,
-        account: &Account,
-        confirmation_height_info: &ConfirmationHeightInfo,
-        block_height: &mut u64,
+        helper: &mut BoundedModeHelper,
     ) -> BlockHash {
-        let mut least_unconfirmed_hash = *hash;
-        if confirmation_height_info.height != 0 {
-            if *block_height > confirmation_height_info.height {
+        let mut least_unconfirmed_hash = helper.current_hash;
+        if helper.current_confirmation_height.height != 0 {
+            if helper.block_height > helper.current_confirmation_height.height {
                 let block = self
                     .ledger
                     .store
                     .block()
-                    .get(txn, &confirmation_height_info.frontier)
+                    .get(txn, &helper.current_confirmation_height.frontier)
                     .unwrap();
                 least_unconfirmed_hash = block.sideband().unwrap().successor;
-                *block_height = block.sideband().unwrap().height + 1;
+                helper.block_height = block.sideband().unwrap().height + 1;
             }
         } else {
             // No blocks have been confirmed, so the first block will be the open block
-            let info = self.ledger.account_info(txn, account).unwrap();
+            let info = self.ledger.account_info(txn, &helper.account).unwrap();
             least_unconfirmed_hash = info.open_block;
-            *block_height = 1;
+            helper.block_height = 1;
         }
         return least_unconfirmed_hash;
     }
@@ -698,10 +663,15 @@ struct BoundedModeHelper<'a> {
     account: Account,
     block_height: u64,
     previous: BlockHash,
+    current_confirmation_height: ConfirmationHeightInfo,
 }
 
 impl<'a> BoundedModeHelper<'a> {
-    fn load_next_block(&mut self, txn: &dyn Transaction) -> bool {
+    fn load_next_block(
+        &mut self,
+        txn: &dyn Transaction,
+        accounts_confirmed_info: &AccountsConfirmedMap,
+    ) -> bool {
         self.receive_details = None;
         self.hash_to_process = self.get_next_block_hash();
         self.current_hash = self.hash_to_process.top;
@@ -730,6 +700,8 @@ impl<'a> BoundedModeHelper<'a> {
         self.account = current_block.account_calculated();
         self.block_height = current_block.sideband().unwrap().height;
         self.previous = current_block.previous();
+        self.current_confirmation_height =
+            self.get_confirmation_height(self.account, txn, accounts_confirmed_info);
 
         true
     }
@@ -762,6 +734,43 @@ impl<'a> BoundedModeHelper<'a> {
                 next: None,
                 next_height: 0,
             }
+        }
+    }
+
+    fn get_confirmation_height(
+        &self,
+        account: Account,
+        txn: &dyn Transaction,
+        accounts_confirmed_info: &AccountsConfirmedMap,
+    ) -> ConfirmationHeightInfo {
+        // Checks if we have encountered this account before but not commited changes yet, if so then update the cached confirmation height
+        if let Some(found_info) = accounts_confirmed_info.get(&account) {
+            ConfirmationHeightInfo::new(found_info.confirmed_height, found_info.iterated_frontier)
+        } else {
+            self.ledger
+                .store
+                .confirmation_height()
+                .get(txn, &account)
+                .unwrap_or_default()
+        }
+    }
+
+    fn is_already_cemented(&self) -> bool {
+        self.current_confirmation_height.height >= self.block_height
+    }
+
+    fn should_notify_already_cemented(&self) -> bool {
+        self.first_iter
+            && self.is_already_cemented()
+            && self.current_hash == self.original_block.hash()
+    }
+
+    fn blocks_to_cement_for_this_account(&self) -> u64 {
+        // If we are not already at the bottom of the account chain (1 above cemented frontier) then find it
+        if self.is_already_cemented() {
+            0
+        } else {
+            self.block_height - self.current_confirmation_height.height
         }
     }
 }

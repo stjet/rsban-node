@@ -9,7 +9,7 @@ use rsnano_core::{Account, BlockHash, FullHash, RawKey, Signature};
 use crate::{utils::FfiStream, FfiPropertyTreeWriter, StringDto};
 use rsnano_node::voting::Vote;
 
-pub struct VoteHandle(Arc<RwLock<Vote>>);
+pub struct VoteHandle(pub Arc<RwLock<Vote>>);
 
 impl VoteHandle {
     pub fn new(vote: Arc<RwLock<Vote>>) -> Self {

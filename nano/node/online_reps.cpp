@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/nodeconfig.hpp>
 #include <nano/node/online_reps.hpp>
 #include <nano/secure/ledger.hpp>
@@ -89,4 +91,9 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (on
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "reps", count, sizeof_element }));
 	return composite;
+}
+
+rsnano::OnlineRepsHandle * nano::online_reps::get_handle () const
+{
+	return handle;
 }

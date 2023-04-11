@@ -159,7 +159,6 @@ public:
 	nano::unchecked_map unchecked;
 	std::unique_ptr<nano::wallets_store> wallets_store_impl;
 	nano::wallets_store & wallets_store;
-	nano::gap_cache gap_cache;
 	nano::ledger ledger;
 	nano::signature_checker checker;
 	nano::outbound_bandwidth_limiter outbound_limiter;
@@ -171,6 +170,7 @@ public:
 	boost::filesystem::path application_path;
 	nano::port_mapping port_mapping;
 	nano::online_reps online_reps;
+	nano::gap_cache gap_cache;
 	nano::rep_crawler rep_crawler;
 	nano::vote_processor vote_processor;
 	unsigned warmed_up;

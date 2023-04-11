@@ -3,12 +3,21 @@ use crate::{copy_amount_bytes, U256ArrayDto};
 use rsnano_core::{Account, Amount};
 use rsnano_node::online_reps::{OnlineReps, ONLINE_WEIGHT_QUORUM};
 use rsnano_node::OnlineWeightSampler;
+use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub struct OnlineRepsHandle {
     pub online_reps: Arc<Mutex<OnlineReps>>,
     pub sampler: OnlineWeightSampler,
+}
+
+impl Deref for OnlineRepsHandle {
+    type Target = Arc<Mutex<OnlineReps>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.online_reps
+    }
 }
 
 #[no_mangle]

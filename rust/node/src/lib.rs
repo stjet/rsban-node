@@ -18,9 +18,11 @@ pub mod config;
 mod ipc;
 pub mod messages;
 
+mod gap_cache;
 pub mod online_reps;
 pub use online_reps::{OnlineReps, OnlineWeightSampler, ONLINE_WEIGHT_QUORUM};
 pub(crate) mod online_reps_container;
+pub use gap_cache::GapCache;
 pub(crate) use online_reps_container::OnlineRepsContainer;
 
 mod secure;

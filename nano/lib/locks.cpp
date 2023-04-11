@@ -258,8 +258,6 @@ char const * nano::mutex_identifier (mutexes mutex)
 			return "confirmation_height_processor";
 		case mutexes::election_winner_details:
 			return "election_winner_details";
-		case mutexes::gap_cache:
-			return "gap_cache";
 		case mutexes::network_filter:
 			return "network_filter";
 		case mutexes::observer_set:

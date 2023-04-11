@@ -6,6 +6,7 @@ pub mod bootstrap;
 mod cementing;
 mod config;
 pub mod core;
+mod gap_cache;
 mod hardened_constants;
 mod ipc;
 pub mod ledger;

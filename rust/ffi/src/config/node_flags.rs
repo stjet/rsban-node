@@ -8,7 +8,7 @@ use crate::{ledger::GenerateCacheHandle, StringDto};
 use num_traits::FromPrimitive;
 use rsnano_node::{cementing::ConfirmationHeightMode, config::NodeFlags};
 
-pub struct NodeFlagsHandle(Arc<Mutex<NodeFlags>>);
+pub struct NodeFlagsHandle(pub Arc<Mutex<NodeFlags>>);
 
 impl NodeFlagsHandle {
     pub fn new(flags: Arc<Mutex<NodeFlags>>) -> *mut NodeFlagsHandle {

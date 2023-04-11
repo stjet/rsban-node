@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
@@ -36,6 +38,7 @@ public:
 	void clear ();
 	static uint8_t online_weight_quorum ();
 	void set_online (nano::uint128_t);
+	rsnano::OnlineRepsHandle * get_handle () const;
 
 private:
 	rsnano::OnlineRepsHandle * handle;

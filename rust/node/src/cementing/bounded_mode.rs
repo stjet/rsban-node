@@ -29,8 +29,6 @@ const MAX_ITEMS: usize = 131072;
 /** The maximum number of blocks to be read in while iterating over a long account chain */
 const BATCH_READ_SIZE: usize = 65536;
 
-const PENDING_WRITES_MAX_SIZE: usize = MAX_ITEMS;
-
 pub(crate) struct ConfirmedInfo {
     pub(crate) confirmed_height: u64,
     pub(crate) iterated_frontier: BlockHash,
@@ -86,7 +84,7 @@ impl BoundedMode {
         original_block: &BlockEnum,
         callbacks: &mut CementCallbackRefs,
     ) {
-        if self.pending_writes_empty() {
+        if !self.has_pending_writes() {
             self.clear_process_vars();
             self.timer = Instant::now();
         }
@@ -217,9 +215,7 @@ impl BoundedMode {
                     receive_source_pairs.pop_back();
                 }
 
-                let max_batch_write_size_reached =
-                    self.cementer.pending_writes.total_pending_blocks()
-                        >= self.cementer.batch_write_size.current_size();
+                let max_batch_write_size_reached = self.cementer.max_batch_write_size_reached();
 
                 // When there are a lot of pending confirmation height blocks, it is more efficient to
                 // bulk some of them up to enable better write performance which becomes the bottleneck.
@@ -230,11 +226,11 @@ impl BoundedMode {
                 let should_output =
                     finished_iterating && (non_awaiting_processing || min_time_exceeded);
 
-                let force_write = self.cementer.pending_writes.len() >= PENDING_WRITES_MAX_SIZE
-                    || self.accounts_confirmed_info.len() >= PENDING_WRITES_MAX_SIZE;
+                let force_write = self.cementer.max_pending_writes_reached()
+                    || self.accounts_confirmed_info.len() >= MAX_ITEMS;
 
                 if (max_batch_write_size_reached || should_output || force_write)
-                    && !self.cementer.pending_writes.is_empty()
+                    && !self.cementer.has_pending_writes()
                 {
                     // If nothing is currently using the database write lock then write the cemented pending blocks otherwise continue iterating
                     if self
@@ -431,14 +427,13 @@ impl BoundedMode {
 
                 truncate_after(checkpoints, top_most_non_receive_block_hash);
 
-                let details = WriteDetails {
+                self.cementer.enqueue(WriteDetails {
                     account: *account,
                     bottom_height: bottom_height,
                     bottom_hash: *bottom_most,
                     top_height: block_height,
                     top_hash: *top_most_non_receive_block_hash,
-                };
-                self.cementer.pending_writes.push_back(details);
+                });
             }
         }
 
@@ -462,19 +457,18 @@ impl BoundedMode {
                 truncate_after(checkpoints, &receive_details.hash);
             }
 
-            let write_details = WriteDetails {
+            self.cementer.enqueue(WriteDetails {
                 account: receive_details.account,
                 bottom_height: receive_details.bottom_height,
                 bottom_hash: receive_details.bottom_most,
                 top_height: receive_details.height,
                 top_hash: receive_details.hash,
-            };
-            self.cementer.pending_writes.push_back(write_details);
+            });
         }
     }
 
     pub fn write_pending_blocks(&mut self, callbacks: &mut CementCallbackRefs) {
-        if self.cementer.pending_writes.is_empty() {
+        if !self.cementer.has_pending_writes() {
             return;
         }
 
@@ -586,7 +580,7 @@ impl BoundedMode {
             .publish_cemented_blocks(callbacks.block_cemented);
 
         // Only aquire transaction if there are blocks left
-        if !self.cementer.pending_writes.is_empty() || !self.cementer.is_done() {
+        if !self.cementer.is_done() {
             *scoped_write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
             txn.renew();
         }
@@ -627,8 +621,8 @@ impl BoundedMode {
         self.accounts_confirmed_info.clear();
     }
 
-    pub fn pending_writes_empty(&self) -> bool {
-        self.cementer.pending_writes.is_empty()
+    pub fn has_pending_writes(&self) -> bool {
+        self.cementer.has_pending_writes()
     }
 
     pub fn container_info(&self) -> BoundedModeContainerInfo {

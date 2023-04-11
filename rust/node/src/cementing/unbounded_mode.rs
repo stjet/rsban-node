@@ -74,8 +74,8 @@ impl UnboundedMode {
         &self.block_cache
     }
 
-    pub fn pending_writes_empty(&self) -> bool {
-        self.cement_queue.is_empty()
+    pub fn has_pending_writes(&self) -> bool {
+        self.cement_queue.len() > 0
     }
 
     pub fn container_info(&self) -> UnboundedModeContainerInfo {
@@ -108,7 +108,7 @@ impl UnboundedMode {
     }
 
     pub fn process(&mut self, original_block: Arc<BlockEnum>, callbacks: &mut CementCallbackRefs) {
-        if self.pending_writes_empty() {
+        if !self.has_pending_writes() {
             self.clear_process_vars();
             self.cementor.set_last_cementation();
         }

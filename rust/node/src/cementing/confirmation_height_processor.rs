@@ -296,7 +296,7 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
         mut channel: MutexGuard<'a, ProcessorLoopChannel>,
         block: Arc<BlockEnum>,
     ) -> MutexGuard<'a, ProcessorLoopChannel> {
-        if self.automatic_mode.pending_writes_empty() {
+        if !self.automatic_mode.has_pending_writes() {
             channel.pending_writes.clear();
         }
 
@@ -314,7 +314,7 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
         &mut self,
         mut channel: MutexGuard<'a, ProcessorLoopChannel>,
     ) -> MutexGuard<'a, ProcessorLoopChannel> {
-        if !self.automatic_mode.pending_writes_empty() {
+        if self.automatic_mode.has_pending_writes() {
             drop(channel);
             self.automatic_mode
                 .write_pending_blocks(&mut self.callbacks.as_refs());

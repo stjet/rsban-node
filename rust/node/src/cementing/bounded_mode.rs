@@ -118,22 +118,7 @@ impl BoundedMode {
                 (callbacks.block_already_cemented)(original_block.hash());
             }
 
-            if helper.blocks_to_cement_for_this_account() > 1 {
-                if helper.blocks_to_cement_for_this_account() == 2 {
-                    // If there is 1 uncemented block in-between this block and the cemented frontier,
-                    // we can just use the previous block to get the least unconfirmed hash.
-                    helper.current_hash = helper.previous;
-                    helper.block_height -= 1;
-                } else if helper.next_in_receive_chain.is_none() {
-                    helper.current_hash =
-                        self.get_least_unconfirmed_hash_from_top_level(txn.txn(), &mut helper);
-                } else {
-                    // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
-                    // as we already know what the next block we should process should be.
-                    helper.current_hash = helper.hash_to_process.next.unwrap();
-                    helper.block_height = helper.hash_to_process.next_height;
-                }
-            }
+            helper.goto_least_confirmed_hash(&txn);
 
             let mut top_most_non_receive_block_hash = helper.current_hash;
 
@@ -540,32 +525,6 @@ impl BoundedMode {
         self.start_batch_timer();
     }
 
-    fn get_least_unconfirmed_hash_from_top_level(
-        &self,
-        txn: &dyn Transaction,
-        helper: &mut BoundedModeHelper,
-    ) -> BlockHash {
-        let mut least_unconfirmed_hash = helper.current_hash;
-        if helper.current_confirmation_height.height != 0 {
-            if helper.block_height > helper.current_confirmation_height.height {
-                let block = self
-                    .ledger
-                    .store
-                    .block()
-                    .get(txn, &helper.current_confirmation_height.frontier)
-                    .unwrap();
-                least_unconfirmed_hash = block.sideband().unwrap().successor;
-                helper.block_height = block.sideband().unwrap().height + 1;
-            }
-        } else {
-            // No blocks have been confirmed, so the first block will be the open block
-            let info = self.ledger.account_info(txn, &helper.account).unwrap();
-            least_unconfirmed_hash = info.open_block;
-            helper.block_height = 1;
-        }
-        return least_unconfirmed_hash;
-    }
-
     pub fn clear_process_vars(&mut self) {
         self.accounts_confirmed_info.clear();
     }
@@ -771,6 +730,46 @@ impl<'a> BoundedModeHelper<'a> {
             0
         } else {
             self.block_height - self.current_confirmation_height.height
+        }
+    }
+
+    fn get_least_unconfirmed_hash_from_top_level(&mut self, txn: &dyn Transaction) -> BlockHash {
+        let mut least_unconfirmed_hash = self.current_hash;
+        if self.current_confirmation_height.height != 0 {
+            if self.block_height > self.current_confirmation_height.height {
+                let block = self
+                    .ledger
+                    .store
+                    .block()
+                    .get(txn, &self.current_confirmation_height.frontier)
+                    .unwrap();
+                least_unconfirmed_hash = block.sideband().unwrap().successor;
+                self.block_height = block.sideband().unwrap().height + 1;
+            }
+        } else {
+            // No blocks have been confirmed, so the first block will be the open block
+            let info = self.ledger.account_info(txn, &self.account).unwrap();
+            least_unconfirmed_hash = info.open_block;
+            self.block_height = 1;
+        }
+        return least_unconfirmed_hash;
+    }
+
+    fn goto_least_confirmed_hash(&mut self, txn: &Box<dyn ReadTransaction>) {
+        if self.blocks_to_cement_for_this_account() > 1 {
+            if self.blocks_to_cement_for_this_account() == 2 {
+                // If there is 1 uncemented block in-between this block and the cemented frontier,
+                // we can just use the previous block to get the least unconfirmed hash.
+                self.current_hash = self.previous;
+                self.block_height -= 1;
+            } else if self.next_in_receive_chain.is_none() {
+                self.current_hash = self.get_least_unconfirmed_hash_from_top_level(txn.txn());
+            } else {
+                // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
+                // as we already know what the next block we should process should be.
+                self.current_hash = self.hash_to_process.next.unwrap();
+                self.block_height = self.hash_to_process.next_height;
+            }
         }
     }
 }

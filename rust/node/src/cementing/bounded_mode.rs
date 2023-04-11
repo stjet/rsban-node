@@ -91,6 +91,7 @@ impl BoundedMode {
         let mut helper = BoundedModeHelper {
             ledger: self.ledger.clone(),
             logger: self.logger.clone(),
+            stopped: self.stopped.clone(),
             next_in_receive_chain: None,
             checkpoints: BoundedVecDeque::new(MAX_ITEMS), // todo: don't reallocate on every process call
             receive_source_pairs: BoundedVecDeque::new(MAX_ITEMS), // todo: don't reallocate on every process call
@@ -104,6 +105,7 @@ impl BoundedMode {
             block_height: 0,
             previous: BlockHash::zero(),
             current_confirmation_height: Default::default(),
+            top_most_non_receive_block_hash: BlockHash::zero(),
         };
 
         let mut txn = self.ledger.store.tx_begin_read();
@@ -120,20 +122,11 @@ impl BoundedMode {
 
             helper.goto_least_confirmed_hash(&txn);
 
-            let mut top_most_non_receive_block_hash = helper.current_hash;
+            helper.top_most_non_receive_block_hash = helper.current_hash;
 
             let mut hit_receive = false;
             if !helper.is_already_cemented() {
-                hit_receive = self.iterate(
-                    &mut helper.receive_source_pairs,
-                    &mut helper.checkpoints,
-                    helper.top_level_hash,
-                    helper.account,
-                    helper.block_height,
-                    helper.current_hash,
-                    &mut top_most_non_receive_block_hash,
-                    txn.as_mut(),
-                );
+                hit_receive = self.iterate(&mut helper, txn.as_mut());
             }
 
             // Exit early when the processor has been stopped, otherwise this function may take a
@@ -149,7 +142,7 @@ impl BoundedMode {
             // Need to also handle the case where we are hitting receives where the sends below should be confirmed
             if !hit_receive
                 || (helper.receive_source_pairs.len() == 1
-                    && top_most_non_receive_block_hash != helper.current_hash)
+                    && helper.top_most_non_receive_block_hash != helper.current_hash)
             {
                 let already_cemented = helper.is_already_cemented();
                 self.prepare_iterated_blocks_for_cementing(
@@ -158,7 +151,7 @@ impl BoundedMode {
                     &mut helper.next_in_receive_chain,
                     already_cemented,
                     txn.txn(),
-                    &top_most_non_receive_block_hash,
+                    &helper.top_most_non_receive_block_hash,
                     &helper.current_confirmation_height,
                     &helper.account,
                     helper.block_height,
@@ -260,20 +253,10 @@ impl BoundedMode {
         }
     }
 
-    fn iterate(
-        &self,
-        receive_source_pairs: &mut BoundedVecDeque<ReceiveSourcePair>,
-        checkpoints: &mut BoundedVecDeque<BlockHash>,
-        top_level_hash: BlockHash,
-        account: Account,
-        bottom_height: u64,
-        bottom_hash: BlockHash,
-        top_most_non_receive_block_hash: &mut BlockHash,
-        txn: &mut dyn ReadTransaction,
-    ) -> bool {
+    fn iterate(&self, helper: &mut BoundedModeHelper, txn: &mut dyn ReadTransaction) -> bool {
         let mut reached_target = false;
         let mut hit_receive = false;
-        let mut hash = bottom_hash;
+        let mut hash = helper.current_hash;
         let mut num_blocks = 0;
         while !hash.is_zero() && !reached_target && !self.stopped.load(Ordering::SeqCst) {
             // Keep iterating upwards until we either reach the desired block or the second receive.
@@ -289,33 +272,34 @@ impl BoundedMode {
                 hit_receive = true;
                 reached_target = true;
                 let sideband = block.sideband().unwrap();
-                let next = if !sideband.successor.is_zero() && sideband.successor != top_level_hash
+                let next = if !sideband.successor.is_zero()
+                    && sideband.successor != helper.top_level_hash
                 {
                     Some(sideband.successor)
                 } else {
                     None
                 };
-                receive_source_pairs.push_back(ReceiveSourcePair {
+                helper.receive_source_pairs.push_back(ReceiveSourcePair {
                     receive_details: ReceiveChainDetails {
-                        account,
+                        account: helper.account,
                         height: sideband.height,
                         hash,
-                        top_level: top_level_hash,
+                        top_level: helper.top_level_hash,
                         next,
-                        bottom_height,
-                        bottom_most: bottom_hash,
+                        bottom_height: helper.block_height,
+                        bottom_most: helper.current_hash,
                     },
                     source_hash: source,
                 });
 
                 // Store a checkpoint every max_items so that we can always traverse a long number of accounts to genesis
-                if receive_source_pairs.len() % MAX_ITEMS == 0 {
-                    checkpoints.push_back(top_level_hash);
+                if helper.receive_source_pairs.len() % MAX_ITEMS == 0 {
+                    helper.checkpoints.push_back(helper.top_level_hash);
                 }
             } else {
                 // Found a send/change/epoch block which isn't the desired top level
-                *top_most_non_receive_block_hash = hash;
-                if hash == top_level_hash {
+                helper.top_most_non_receive_block_hash = hash;
+                if hash == helper.top_level_hash {
                     reached_target = true;
                 } else {
                     hash = block.sideband().unwrap().successor;
@@ -610,6 +594,7 @@ impl<'a> CementationDataRequester for CementationLedgerAdapter<'a> {
 struct BoundedModeHelper<'a> {
     ledger: Arc<Ledger>,
     logger: Arc<dyn Logger>,
+    stopped: Arc<AtomicBool>,
     next_in_receive_chain: Option<TopAndNextHash>,
     checkpoints: BoundedVecDeque<BlockHash>,
     receive_source_pairs: BoundedVecDeque<ReceiveSourcePair>,
@@ -623,6 +608,7 @@ struct BoundedModeHelper<'a> {
     block_height: u64,
     previous: BlockHash,
     current_confirmation_height: ConfirmationHeightInfo,
+    top_most_non_receive_block_hash: BlockHash,
 }
 
 impl<'a> BoundedModeHelper<'a> {

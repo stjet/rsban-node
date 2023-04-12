@@ -30,7 +30,7 @@ bool nano::confirmation_solicitor::broadcast (nano::election const & election_a)
 	bool error (true);
 	if (rebroadcasted++ < max_block_broadcasts)
 	{
-		auto const & hash (election_a.status.get_winner ()->hash ());
+		auto hash{ election_a.status.get_winner ()->hash () };
 		nano::publish winner{ config.network_params.network, election_a.status.get_winner () };
 		unsigned count = 0;
 		// Directed broadcasting to principal representatives
@@ -57,7 +57,7 @@ bool nano::confirmation_solicitor::add (nano::election const & election_a)
 	debug_assert (prepared);
 	bool error (true);
 	unsigned count = 0;
-	auto const & hash (election_a.status.get_winner ()->hash ());
+	auto hash{ election_a.status.get_winner ()->hash () };
 	for (auto i (representatives_requests.begin ()); i != representatives_requests.end () && count < max_election_requests;)
 	{
 		bool full_queue (false);

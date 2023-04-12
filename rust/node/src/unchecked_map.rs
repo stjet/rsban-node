@@ -335,10 +335,13 @@ impl EntriesContainer {
         self.by_id.len()
     }
 
-    fn pop_front(&mut self) {
-        let entry = self.by_id.get(&(0)).unwrap().clone();
-        self.by_id.pop_first();
-        self.by_key.remove(&entry.key);
+    fn pop_front(&mut self) -> Option<Entry> {
+        if let Some((_id, entry)) = self.by_id.pop_first() {
+            self.by_key.remove(&entry.key);
+            Some(entry)
+        } else {
+            None
+        }
     }
 
     fn clear(&mut self) {
@@ -457,6 +460,19 @@ mod tests {
         assert_eq!(container.by_key.len(), 1);
         assert_eq!(container.by_key.get(&entry.key).unwrap(), &1);
         assert_eq!(container.len(), 1);
+    }
+
+    #[test]
+    fn pop_front_twice() {
+        let mut container = EntriesContainer::new();
+
+        container.insert(test_entry(1));
+        container.insert(test_entry(2));
+
+        container.pop_front();
+        container.pop_front();
+
+        assert_eq!(container.len(), 0);
     }
 
     #[test]

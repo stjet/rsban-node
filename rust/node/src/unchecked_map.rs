@@ -308,11 +308,10 @@ impl EntriesContainer {
         match self.by_key.get(&entry.key) {
             Some(_key) => false,
             None => {
-                self.by_key.insert(entry.clone().key, self.next_id);
+                self.by_key.insert(entry.key.clone(), self.next_id);
+                self.by_id.insert(self.next_id, entry);
 
-                self.by_id.insert(self.next_id, entry.clone());
-
-                self.next_id += 1;
+                self.next_id = self.next_id.wrapping_add(1);
 
                 true
             }
@@ -320,7 +319,7 @@ impl EntriesContainer {
     }
 
     fn is_empty(&self) -> bool {
-        self.next_id == 0
+        self.len() == 0
     }
 
     fn remove(&mut self, key: &UncheckedKey) -> Option<Entry> {

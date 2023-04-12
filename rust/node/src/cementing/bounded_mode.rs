@@ -120,7 +120,7 @@ impl BoundedMode {
                 (callbacks.block_already_cemented)(original_block.hash());
             }
 
-            helper.goto_least_confirmed_hash(&txn);
+            helper.goto_least_unconfirmed_hash(&txn);
             helper.top_most_non_receive_block_hash = helper.current_hash;
 
             let hit_receive = if !helper.is_already_cemented() {
@@ -144,11 +144,22 @@ impl BoundedMode {
                 || (helper.receive_source_pairs.len() == 1
                     && helper.top_most_non_receive_block_hash != helper.current_hash)
             {
-                helper.prepare_iterated_blocks_for_cementing(
+                // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
+                // the non-receive blocks which have been iterated for an account, and the associated receive block.
+                if let Some(write_details) = helper.cement_non_receive_blocks_for_this_account(
                     txn.txn(),
                     &mut self.accounts_confirmed_info,
-                    &mut self.cementer,
-                );
+                ) {
+                    self.cementer.enqueue(write_details);
+                }
+
+                if let Some(write_details) = helper
+                    .cement_receive_block_and_all_non_receive_blocks_above(
+                        &mut self.accounts_confirmed_info,
+                    )
+                {
+                    self.cementer.enqueue(write_details);
+                }
 
                 // If used the top level, don't pop off the receive source pair because it wasn't used
                 if !is_set && !helper.receive_source_pairs.is_empty() {
@@ -197,9 +208,7 @@ impl BoundedMode {
             helper.first_iter = false;
             txn.refresh();
 
-            let is_done = helper.receive_source_pairs.is_empty()
-                && helper.current_hash == original_block.hash();
-            if is_done || self.stopped.load(Ordering::SeqCst) {
+            if helper.is_done() || self.stopped.load(Ordering::SeqCst) {
                 break;
             }
         }
@@ -560,7 +569,7 @@ impl<'a> BoundedModeHelper<'a> {
         return least_unconfirmed_hash;
     }
 
-    fn goto_least_confirmed_hash(&mut self, txn: &Box<dyn ReadTransaction>) {
+    fn goto_least_unconfirmed_hash(&mut self, txn: &Box<dyn ReadTransaction>) {
         if self.blocks_to_cement_for_this_account() > 1 {
             if self.blocks_to_cement_for_this_account() == 2 {
                 // If there is 1 uncemented block in-between this block and the cemented frontier,
@@ -638,69 +647,78 @@ impl<'a> BoundedModeHelper<'a> {
         hit_receive
     }
 
-    // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
-    // the non-receive blocks which have been iterated for an account, and the associated receive block.
-    fn prepare_iterated_blocks_for_cementing(
+    /// Add the non-receive blocks iterated for this account
+    fn cement_non_receive_blocks_for_this_account(
         &mut self,
         txn: &dyn Transaction,
         accounts_confirmed_info: &mut AccountsConfirmedMap,
-        cementer: &mut MultiAccountCementer,
-    ) {
-        if !self.is_already_cemented() {
-            // Add the non-receive blocks iterated for this account
-            let height = self
-                .ledger
-                .store
-                .block()
-                .account_height(txn, &self.top_most_non_receive_block_hash);
-
-            if height > self.current_confirmation_height.height {
-                let confirmed_info = ConfirmedInfo {
-                    confirmed_height: height,
-                    iterated_frontier: self.top_most_non_receive_block_hash,
-                };
-
-                accounts_confirmed_info.insert(self.account, confirmed_info);
-
-                truncate_after(&mut self.checkpoints, &self.top_most_non_receive_block_hash);
-
-                cementer.enqueue(WriteDetails {
-                    account: self.account,
-                    bottom_height: self.block_height,
-                    bottom_hash: self.current_hash,
-                    top_height: height,
-                    top_hash: self.top_most_non_receive_block_hash,
-                });
-            }
+    ) -> Option<WriteDetails> {
+        if self.is_already_cemented() {
+            return None;
         }
 
-        // Add the receive block and all non-receive blocks above that one
-        if let Some(receive_details) = &self.receive_details {
-            accounts_confirmed_info.insert(
-                receive_details.account,
-                ConfirmedInfo {
-                    confirmed_height: receive_details.height,
-                    iterated_frontier: receive_details.hash,
-                },
-            );
+        let height = self
+            .ledger
+            .store
+            .block()
+            .account_height(txn, &self.top_most_non_receive_block_hash);
 
-            if receive_details.next.is_some() {
-                self.next_in_receive_chain = Some(TopAndNextHash {
-                    top: receive_details.top_level,
-                    next: receive_details.next,
-                    next_height: receive_details.height + 1,
-                });
-            } else {
-                truncate_after(&mut self.checkpoints, &receive_details.hash);
-            }
+        if height <= self.current_confirmation_height.height {
+            return None;
+        }
 
-            cementer.enqueue(WriteDetails {
-                account: receive_details.account,
-                bottom_height: receive_details.bottom_height,
-                bottom_hash: receive_details.bottom_most,
-                top_height: receive_details.height,
-                top_hash: receive_details.hash,
+        let confirmed_info = ConfirmedInfo {
+            confirmed_height: height,
+            iterated_frontier: self.top_most_non_receive_block_hash,
+        };
+
+        accounts_confirmed_info.insert(self.account, confirmed_info);
+
+        truncate_after(&mut self.checkpoints, &self.top_most_non_receive_block_hash);
+
+        Some(WriteDetails {
+            account: self.account,
+            bottom_height: self.block_height,
+            bottom_hash: self.current_hash,
+            top_height: height,
+            top_hash: self.top_most_non_receive_block_hash,
+        })
+    }
+
+    /// Add the receive block and all non-receive blocks above that one
+    fn cement_receive_block_and_all_non_receive_blocks_above(
+        &mut self,
+        accounts_confirmed_info: &mut AccountsConfirmedMap,
+    ) -> Option<WriteDetails> {
+        let Some(receive_details) = &self.receive_details else { return None; };
+        accounts_confirmed_info.insert(
+            receive_details.account,
+            ConfirmedInfo {
+                confirmed_height: receive_details.height,
+                iterated_frontier: receive_details.hash,
+            },
+        );
+
+        if receive_details.next.is_some() {
+            self.next_in_receive_chain = Some(TopAndNextHash {
+                top: receive_details.top_level,
+                next: receive_details.next,
+                next_height: receive_details.height + 1,
             });
+        } else {
+            truncate_after(&mut self.checkpoints, &receive_details.hash);
         }
+
+        Some(WriteDetails {
+            account: receive_details.account,
+            bottom_height: receive_details.bottom_height,
+            bottom_hash: receive_details.bottom_most,
+            top_height: receive_details.height,
+            top_hash: receive_details.hash,
+        })
+    }
+
+    fn is_done(&self) -> bool {
+        self.receive_source_pairs.is_empty() && self.current_hash == self.original_block.hash()
     }
 }

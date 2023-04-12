@@ -147,7 +147,9 @@ void nano::vote_processor::verify_votes (decltype (votes) const & votes_a)
 	std::vector<int> verifications;
 	verifications.resize (size);
 	std::vector<nano::account> tmp_accounts;
+	tmp_accounts.reserve (size);
 	std::vector<nano::signature> tmp_signatures;
+	tmp_signatures.reserve (size);
 	for (auto const & vote : votes_a)
 	{
 		hashes.push_back (vote.first->hash ());

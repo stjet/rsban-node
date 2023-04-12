@@ -39,9 +39,7 @@ pub unsafe extern "C" fn rsn_unchecked_map_trigger(
     handle: *mut UncheckedMapHandle,
     ptr: *const u8,
 ) {
-    let mut bytes = [0; 32];
-    bytes.copy_from_slice(std::slice::from_raw_parts(ptr, 32));
-    let dependency = HashOrAccount::from_bytes(bytes);
+    let dependency = HashOrAccount::from_ptr(ptr);
     (*handle).0.trigger(&dependency)
 }
 
@@ -76,9 +74,7 @@ pub unsafe extern "C" fn rsn_unchecked_map_put(
     ptr: *const u8,
     info: *mut UncheckedInfoHandle,
 ) {
-    let mut bytes = [0; 32];
-    bytes.copy_from_slice(std::slice::from_raw_parts(ptr, 32));
-    let dependency = HashOrAccount::from_bytes(bytes);
+    let dependency = HashOrAccount::from_ptr(ptr);
     (*handle).0.put(dependency, (*info).0.clone());
 }
 
@@ -107,11 +103,11 @@ unsafe fn wrap_action_callback(
 ) -> Box<dyn FnMut(&UncheckedKey, &UncheckedInfo)> {
     let context_wrapper = ContextWrapper::new(context, drop_context);
     Box::new(move |k, i| {
-        callback(
-            context_wrapper.get_context(),
-            Box::into_raw(Box::new(UncheckedKeyDto::from(k))),
-            Box::into_raw(Box::new(UncheckedInfoHandle(i.clone()))),
-        );
+        let key_dto = Box::into_raw(Box::new(UncheckedKeyDto::from(k)));
+        let info_handle = Box::into_raw(Box::new(UncheckedInfoHandle(i.clone())));
+        callback(context_wrapper.get_context(), key_dto, info_handle);
+        drop(Box::from_raw(key_dto));
+        drop(Box::from_raw(info_handle));
     })
 }
 

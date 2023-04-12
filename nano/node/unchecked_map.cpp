@@ -14,10 +14,8 @@ namespace
 void action_callback_wrapper (void * context, rsnano::UncheckedKeyDto * key, rsnano::UncheckedInfoHandle * info)
 {
 	auto fn = static_cast<std::function<void (nano::unchecked_key const &, nano::unchecked_info const &)> *> (context);
-	nano::unchecked_info i;
-	i = nano::unchecked_info (info);
-	nano::unchecked_key k;
-	k = nano::unchecked_key{ (key) };
+	nano::unchecked_info i{ rsnano::rsn_unchecked_info_clone (info) };
+	nano::unchecked_key k{ *key };
 	(*fn) (k, i);
 }
 

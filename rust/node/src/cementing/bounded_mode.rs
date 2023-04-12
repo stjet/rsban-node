@@ -126,7 +126,7 @@ impl BoundedMode {
 
             let mut hit_receive = false;
             if !helper.is_already_cemented() {
-                hit_receive = self.iterate(&mut helper, txn.as_mut());
+                hit_receive = helper.iterate(txn.as_mut());
             }
 
             // Exit early when the processor has been stopped, otherwise this function may take a
@@ -251,67 +251,6 @@ impl BoundedMode {
                 next_height: 0,
             }
         }
-    }
-
-    fn iterate(&self, helper: &mut BoundedModeHelper, txn: &mut dyn ReadTransaction) -> bool {
-        let mut reached_target = false;
-        let mut hit_receive = false;
-        let mut hash = helper.current_hash;
-        let mut num_blocks = 0;
-        while !hash.is_zero() && !reached_target && !self.stopped.load(Ordering::SeqCst) {
-            // Keep iterating upwards until we either reach the desired block or the second receive.
-            // Once a receive is cemented, we can cement all blocks above it until the next receive, so store those details for later.
-            num_blocks += 1;
-            let block = self.ledger.store.block().get(txn.txn(), &hash).unwrap();
-            let source = block.source_or_link();
-            //----------------------------------------
-            if !source.is_zero()
-                && !self.ledger.is_epoch_link(&source.into())
-                && self.ledger.store.block().exists(txn.txn(), &source)
-            {
-                hit_receive = true;
-                reached_target = true;
-                let sideband = block.sideband().unwrap();
-                let next = if !sideband.successor.is_zero()
-                    && sideband.successor != helper.top_level_hash
-                {
-                    Some(sideband.successor)
-                } else {
-                    None
-                };
-                helper.receive_source_pairs.push_back(ReceiveSourcePair {
-                    receive_details: ReceiveChainDetails {
-                        account: helper.account,
-                        height: sideband.height,
-                        hash,
-                        top_level: helper.top_level_hash,
-                        next,
-                        bottom_height: helper.block_height,
-                        bottom_most: helper.current_hash,
-                    },
-                    source_hash: source,
-                });
-
-                // Store a checkpoint every max_items so that we can always traverse a long number of accounts to genesis
-                if helper.receive_source_pairs.len() % MAX_ITEMS == 0 {
-                    helper.checkpoints.push_back(helper.top_level_hash);
-                }
-            } else {
-                // Found a send/change/epoch block which isn't the desired top level
-                helper.top_most_non_receive_block_hash = hash;
-                if hash == helper.top_level_hash {
-                    reached_target = true;
-                } else {
-                    hash = block.sideband().unwrap().successor;
-                }
-            }
-
-            // We could be traversing a very large account so we don't want to open read transactions for too long.
-            if (num_blocks > 0) && num_blocks % BATCH_READ_SIZE == 0 {
-                txn.refresh();
-            }
-        }
-        hit_receive
     }
 
     // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
@@ -758,4 +697,66 @@ impl<'a> BoundedModeHelper<'a> {
             }
         }
     }
+
+    fn iterate(&mut self, txn: &mut dyn ReadTransaction) -> bool {
+        let mut reached_target = false;
+        let mut hit_receive = false;
+        let mut hash = self.current_hash;
+        let mut num_blocks = 0;
+        while !hash.is_zero() && !reached_target && !self.stopped.load(Ordering::SeqCst) {
+            // Keep iterating upwards until we either reach the desired block or the second receive.
+            // Once a receive is cemented, we can cement all blocks above it until the next receive, so store those details for later.
+            num_blocks += 1;
+            let block = self.ledger.store.block().get(txn.txn(), &hash).unwrap();
+            let source = block.source_or_link();
+            //----------------------------------------
+            if !source.is_zero()
+                && !self.ledger.is_epoch_link(&source.into())
+                && self.ledger.store.block().exists(txn.txn(), &source)
+            {
+                hit_receive = true;
+                reached_target = true;
+                let sideband = block.sideband().unwrap();
+                let next = if !sideband.successor.is_zero()
+                    && sideband.successor != self.top_level_hash
+                {
+                    Some(sideband.successor)
+                } else {
+                    None
+                };
+                self.receive_source_pairs.push_back(ReceiveSourcePair {
+                    receive_details: ReceiveChainDetails {
+                        account: self.account,
+                        height: sideband.height,
+                        hash,
+                        top_level: self.top_level_hash,
+                        next,
+                        bottom_height: self.block_height,
+                        bottom_most: self.current_hash,
+                    },
+                    source_hash: source,
+                });
+
+                // Store a checkpoint every max_items so that we can always traverse a long number of accounts to genesis
+                if self.receive_source_pairs.len() % MAX_ITEMS == 0 {
+                    self.checkpoints.push_back(self.top_level_hash);
+                }
+            } else {
+                // Found a send/change/epoch block which isn't the desired top level
+                self.top_most_non_receive_block_hash = hash;
+                if hash == self.top_level_hash {
+                    reached_target = true;
+                } else {
+                    hash = block.sideband().unwrap().successor;
+                }
+            }
+
+            // We could be traversing a very large account so we don't want to open read transactions for too long.
+            if (num_blocks > 0) && num_blocks % BATCH_READ_SIZE == 0 {
+                txn.refresh();
+            }
+        }
+        hit_receive
+    }
+
 }

@@ -330,10 +330,10 @@ void nano::election::confirm_if_quorum (nano::unique_lock<nano::mutex> & lock_a)
 	debug_assert (!tally_l.empty ());
 	auto winner (tally_l.begin ());
 	auto block_l (winner->second);
-	auto const & winner_hash_l (block_l->hash ());
+	auto winner_hash_l{ block_l->hash () };
 	status.set_tally (winner->first);
 	status.set_final_tally (final_weight);
-	auto const & status_winner_hash_l (status.get_winner ()->hash ());
+	auto status_winner_hash_l{ status.get_winner ()->hash () };
 	nano::uint128_t sum (0);
 	for (auto & i : tally_l)
 	{

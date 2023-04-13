@@ -72,9 +72,9 @@ pub struct NodeConfigDto {
     pub rep_crawler_weight_minimum: [u8; 16],
     pub work_peers: [PeerDto; 5],
     pub work_peers_count: usize,
-    pub secondary_work_peers: [PeerDto; 5],
+    pub secondary_work_peers: [PeerDto; 50],
     pub secondary_work_peers_count: usize,
-    pub preconfigured_peers: [PeerDto; 5],
+    pub preconfigured_peers: [PeerDto; 50],
     pub preconfigured_peers_count: usize,
     pub preconfigured_representatives: [[u8; 32]; 10],
     pub preconfigured_representatives_count: usize,
@@ -175,6 +175,12 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.frontiers_confirmation = cfg.frontiers_confirmation as u8;
     dto.max_queued_requests = cfg.max_queued_requests;
     dto.rep_crawler_weight_minimum = cfg.rep_crawler_weight_minimum.to_be_bytes();
+    if cfg.work_peers.len() > dto.work_peers.len() {
+        panic!(
+            "RsNano does currently not support more than {} work peers",
+            dto.preconfigured_representatives.len()
+        );
+    }
     for (i, peer) in cfg.work_peers.iter().enumerate() {
         let bytes = peer.address.as_bytes();
         dto.work_peers[i].address[..bytes.len()].copy_from_slice(bytes);
@@ -182,6 +188,12 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
         dto.work_peers[i].port = peer.port;
     }
     dto.work_peers_count = cfg.work_peers.len();
+    if cfg.secondary_work_peers.len() > dto.secondary_work_peers.len() {
+        panic!(
+            "RsNano does currently not support more than {} secondary work peers",
+            dto.secondary_work_peers.len()
+        );
+    }
     for (i, peer) in cfg.secondary_work_peers.iter().enumerate() {
         let bytes = peer.address.as_bytes();
         dto.secondary_work_peers[i].address[..bytes.len()].copy_from_slice(bytes);
@@ -189,12 +201,25 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
         dto.secondary_work_peers[i].port = peer.port;
     }
     dto.secondary_work_peers_count = cfg.secondary_work_peers.len();
+
+    if cfg.preconfigured_peers.len() > dto.preconfigured_peers.len() {
+        panic!(
+            "RsNano does currently not support more than {} preconfigured peers",
+            dto.preconfigured_peers.len()
+        );
+    }
     for (i, peer) in cfg.preconfigured_peers.iter().enumerate() {
         let bytes = peer.as_bytes();
         dto.preconfigured_peers[i].address[..bytes.len()].copy_from_slice(bytes);
         dto.preconfigured_peers[i].address_len = bytes.len();
     }
     dto.preconfigured_peers_count = cfg.preconfigured_peers.len();
+    if cfg.preconfigured_representatives.len() > dto.preconfigured_representatives.len() {
+        panic!(
+            "RsNano does currently not support more than {} preconfigured representatives",
+            dto.preconfigured_representatives.len()
+        );
+    }
     for (i, rep) in cfg.preconfigured_representatives.iter().enumerate() {
         dto.preconfigured_representatives[i] = *rep.as_bytes();
     }

@@ -271,7 +271,7 @@ bool allow_bootstrap_a)
 	params.publish_filter = publish_filter_a.handle;
 	params.workers = new std::shared_ptr<nano::thread_pool> (workers_a);
 	params.io_ctx = io_ctx.handle ();
-	params.network = &network_dto.dto;
+	params.network = &network_dto;
 	params.disable_bootstrap_listener = flags_a.disable_bootstrap_listener ();
 	params.connections_max = config_a.bootstrap_connections_max;
 	params.stats = stats_a.handle;

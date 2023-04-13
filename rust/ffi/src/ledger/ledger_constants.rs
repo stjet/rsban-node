@@ -159,6 +159,15 @@ impl TryFrom<&LedgerConstantsDto> for LedgerConstants {
             epochs,
         };
 
+        // We have to free the memory for the block handles!
+        unsafe {
+            drop(Box::from_raw(value.nano_dev_genesis));
+            drop(Box::from_raw(value.nano_beta_genesis));
+            drop(Box::from_raw(value.nano_live_genesis));
+            drop(Box::from_raw(value.nano_test_genesis));
+            drop(Box::from_raw(value.genesis));
+        }
+
         Ok(ledger)
     }
 }

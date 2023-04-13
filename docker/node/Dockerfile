@@ -14,7 +14,7 @@ cmake /tmp/src \
 -DCI_BUILD=${CI_BUILD} \
 -DPORTABLE=1 \
 -DACTIVE_NETWORK=nano_${NETWORK}_network \
--DCMAKE_BUILD_TYPE=Release
+-DCMAKE_BUILD_TYPE=Debug
 
 RUN \ 
 make nano_node -j $(nproc) && \

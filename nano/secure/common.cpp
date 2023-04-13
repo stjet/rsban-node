@@ -65,7 +65,7 @@ nano::network_params::network_params (rsnano::NetworkParamsDto const & dto) :
 {
 }
 
-nano::NetworkParamsDtoWrapper nano::network_params::to_dto () const
+rsnano::NetworkParamsDto nano::network_params::to_dto () const
 {
 	rsnano::NetworkParamsDto dto;
 	dto.kdf_work = kdf_work;
@@ -76,7 +76,7 @@ nano::NetworkParamsDtoWrapper nano::network_params::to_dto () const
 	dto.node = node.to_dto ();
 	dto.portmapping = portmapping.to_dto ();
 	dto.bootstrap = bootstrap.to_dto ();
-	return NetworkParamsDtoWrapper{ dto };
+	return dto;
 }
 
 nano::ledger_constants::ledger_constants (nano::work_thresholds work_a, nano::networks network_a) :

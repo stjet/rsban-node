@@ -3,3 +3,4 @@ cmake-build-debug
 rocksdb/CMakeFiles
 rust/target
 cargo
+build

@@ -20,13 +20,17 @@ RsNano is a Rust port of the original Nano node.
 
 **Please mind that this project is still in its early stages and hasn't been thoroughly tested yet!**
 
-## Build Docker Image
+## Option 1: Run the official docker image
+
+    docker run -d --name rsnano -p 54000:54000 -v ~/NanoBeta:/root/NanoBeta simpago/rsnano-beta:latest nano_node daemon --network=beta
+
+## Option 2: Build your own docker image
 
     docker build -f docker/node/Dockerfile -t rsnano-node https://github.com/simpago/rsnano-node.git#develop
 
     docker run -d --name rsnano -p 54000:54000 -v ~/NanoBeta:/root/NanoBeta rsnano-node:latest nano_node daemon --network=beta
 
-## Build from Source
+## Option 3: Build from source
 
 Currently you can only build RsNano on Linux.
 
@@ -44,10 +48,8 @@ Build the nano-node. The official [nano-node build instructions](https://docs.na
 
     git clone --recurse-submodules https://github.com/simpago/rsnano-node.git
     cd rsnano-node
-    export BOOST_ROOT=`pwd`/build_boost
-    bash util/build_prep/bootstrap_boost.sh -m -B 1.73
+    mkdir build && cd build
 
-    mkdir build_rsnano && cd build_rsnano
     cmake -G "Unix Makefiles" -DNANO_TEST=ON -DCMAKE_BUILD_TYPE=Debug ..
 
     make nano_node

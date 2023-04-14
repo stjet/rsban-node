@@ -1744,7 +1744,7 @@ TEST (rpc, version)
 		ASSERT_EQ (std::to_string (node1->store.version ().get (*transaction)), response1.json.get<std::string> ("store_version"));
 	}
 	ASSERT_EQ (std::to_string (node1->network_params.network.protocol_version), response1.json.get<std::string> ("protocol_version"));
-	ASSERT_EQ (boost::str (boost::format ("Nano %1%") % NANO_VERSION_STRING), response1.json.get<std::string> ("node_vendor"));
+	ASSERT_EQ (boost::str (boost::format ("RsNano %1%") % NANO_VERSION_STRING), response1.json.get<std::string> ("node_vendor"));
 	ASSERT_EQ (node1->store.vendor_get (), response1.json.get<std::string> ("store_vendor"));
 	auto network_label (node1->network_params.network.get_current_network_as_string ());
 	ASSERT_EQ (network_label, response1.json.get<std::string> ("network"));

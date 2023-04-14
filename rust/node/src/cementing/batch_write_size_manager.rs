@@ -33,7 +33,7 @@ impl BatchWriteSizeManager {
     /// Include a tolerance to save having to potentially wait on the block processor if the number of blocks to cement is only a bit higher than the max.
     pub fn current_size_with_tolerance(&self) -> usize {
         let size = self.current_size();
-        size + (size / 10)
+        size.checked_add(size / 10).unwrap_or(usize::MAX)
     }
 
     pub fn set_size(&self, size: usize) {
@@ -51,8 +51,13 @@ impl BatchWriteSizeManager {
     }
 
     fn increase(&self) {
-        self.batch_write_size
-            .fetch_add(self.amount_to_change(), Ordering::SeqCst);
+        let new_size = self
+            .batch_write_size
+            .load(Ordering::SeqCst)
+            .checked_add(self.amount_to_change())
+            .unwrap_or(usize::MAX);
+
+        self.batch_write_size.store(new_size, Ordering::SeqCst);
     }
 
     fn reduce(&self) {

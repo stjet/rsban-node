@@ -15,7 +15,7 @@ use crate::{
 
 use super::NetworkFilter;
 
-const MAX_MESSAGE_SIZE: usize = 1024 * 4;
+const MAX_MESSAGE_SIZE: usize = 1024 * 65;
 const HEADER_SIZE: usize = 8;
 
 pub type ReadQuery =

@@ -144,64 +144,10 @@ impl BoundedMode {
                 || (helper.receive_source_pairs.len() == 1
                     && helper.top_most_non_receive_block_hash != helper.current_hash)
             {
-                // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
-                // the non-receive blocks which have been iterated for an account, and the associated receive block.
-                if let Some(write_details) = helper.cement_non_receive_blocks_for_this_account(
-                    txn.txn(),
-                    &mut self.accounts_confirmed_info,
-                ) {
-                    self.cementer.enqueue(write_details);
-                }
+                self.enqueue_writes(&mut helper, &txn, is_set);
 
-                if let Some(write_details) = helper
-                    .cement_receive_block_and_all_non_receive_blocks_above(
-                        &mut self.accounts_confirmed_info,
-                    )
-                {
-                    self.cementer.enqueue(write_details);
-                }
-
-                // If used the top level, don't pop off the receive source pair because it wasn't used
-                if !is_set && !helper.receive_source_pairs.is_empty() {
-                    helper.receive_source_pairs.pop_back();
-                }
-
-                let max_batch_write_size_reached = self.cementer.max_batch_write_size_reached();
-
-                // When there are a lot of pending confirmation height blocks, it is more efficient to
-                // bulk some of them up to enable better write performance which becomes the bottleneck.
-                let min_time_exceeded =
-                    self.processing_timer.elapsed() >= self.batch_separate_pending_min_time;
-                let finished_iterating = helper.current_hash == original_block.hash();
-                let non_awaiting_processing = (callbacks.awaiting_processing_count)() == 0;
-                let should_output =
-                    finished_iterating && (non_awaiting_processing || min_time_exceeded);
-
-                let force_write = self.cementer.max_pending_writes_reached()
-                    || self.accounts_confirmed_info.len() >= MAX_ITEMS;
-
-                if (max_batch_write_size_reached || should_output || force_write)
-                    && !self.cementer.has_pending_writes()
-                {
-                    // If nothing is currently using the database write lock then write the cemented pending blocks otherwise continue iterating
-                    if self
-                        .write_database_queue
-                        .process(Writer::ConfirmationHeight)
-                    {
-                        // todo: this does not seem thread safe!
-                        let mut scoped_write_guard = self.write_database_queue.pop();
-                        self.write_pending_blocks_with_write_guard(
-                            &mut scoped_write_guard,
-                            callbacks,
-                        );
-                    } else if force_write {
-                        let mut scoped_write_guard =
-                            self.write_database_queue.wait(Writer::ConfirmationHeight);
-                        self.write_pending_blocks_with_write_guard(
-                            &mut scoped_write_guard,
-                            callbacks,
-                        );
-                    }
+                if self.should_flush(&helper, callbacks) && !self.cementer.has_pending_writes() {
+                    self.try_flush(callbacks);
                 }
             }
 
@@ -214,6 +160,71 @@ impl BoundedMode {
         }
 
         debug_assert!(helper.checkpoints.is_empty());
+    }
+
+    fn enqueue_writes(
+        &mut self,
+        helper: &mut BoundedModeHelper,
+        txn: &Box<dyn ReadTransaction>,
+        is_set: bool,
+    ) {
+        // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
+        // the non-receive blocks which have been iterated for an account, and the associated receive block.
+        if let Some(write_details) = helper.cement_non_receive_blocks_for_this_account(
+            txn.txn(),
+            &mut self.accounts_confirmed_info,
+        ) {
+            self.cementer.enqueue(write_details);
+        }
+
+        if let Some(write_details) = helper.cement_receive_block_and_all_non_receive_blocks_above(
+            &mut self.accounts_confirmed_info,
+        ) {
+            self.cementer.enqueue(write_details);
+        }
+
+        // If used the top level, don't pop off the receive source pair because it wasn't used
+        if !is_set && !helper.receive_source_pairs.is_empty() {
+            helper.receive_source_pairs.pop_back();
+        }
+    }
+
+    fn should_flush(&self, helper: &BoundedModeHelper, callbacks: &mut CementCallbackRefs) -> bool {
+        let is_batch_full = self.cementer.max_batch_write_size_reached();
+
+        // When there are a lot of pending confirmation height blocks, it is more efficient to
+        // bulk some of them up to enable better write performance which becomes the bottleneck.
+        let awaiting_processing = (callbacks.awaiting_processing_count)();
+        let is_done_processing = helper.finished_iterating()
+            && (awaiting_processing == 0 || self.is_min_processing_time_exceeded());
+
+        let should_flush = is_done_processing || is_batch_full || self.is_write_queue_full();
+        should_flush
+    }
+
+    fn is_write_queue_full(&self) -> bool {
+        self.cementer.max_pending_writes_reached()
+            || self.accounts_confirmed_info.len() >= MAX_ITEMS
+    }
+
+    fn try_flush(&mut self, callbacks: &mut CementCallbackRefs) {
+        // If nothing is currently using the database write lock then write the cemented pending blocks otherwise continue iterating
+        if self
+            .write_database_queue
+            .process(Writer::ConfirmationHeight)
+        {
+            // todo: this does not seem thread safe!
+            let mut scoped_write_guard = self.write_database_queue.pop();
+            self.write_pending_blocks_with_write_guard(&mut scoped_write_guard, callbacks);
+        } else if self.is_write_queue_full() {
+            // Block and wait until we have DB access. We must flush because the queue is full.
+            let mut scoped_write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
+            self.write_pending_blocks_with_write_guard(&mut scoped_write_guard, callbacks);
+        }
+    }
+
+    fn is_min_processing_time_exceeded(&self) -> bool {
+        self.processing_timer.elapsed() >= self.batch_separate_pending_min_time
     }
 
     pub fn write_pending_blocks(&mut self, callbacks: &mut CementCallbackRefs) {
@@ -720,5 +731,9 @@ impl<'a> BoundedModeHelper<'a> {
 
     fn is_done(&self) -> bool {
         self.receive_source_pairs.is_empty() && self.current_hash == self.original_block.hash()
+    }
+
+    fn finished_iterating(&self) -> bool {
+        self.current_hash == self.original_block.hash()
     }
 }

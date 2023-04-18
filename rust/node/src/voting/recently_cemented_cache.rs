@@ -21,7 +21,7 @@ impl RecentlyCementedCache {
     pub fn put(&self, election_status: ElectionStatus) {
         let mut cemented = self.cemented.lock().unwrap();
         cemented.push_back(election_status);
-        if cemented.len() > self.max_size{
+        if cemented.len() > self.max_size {
             cemented.pop_front();
         }
     }

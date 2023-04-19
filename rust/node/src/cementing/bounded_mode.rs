@@ -47,6 +47,7 @@ pub(super) struct BoundedMode {
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
     ledger: Arc<Ledger>,
+    helper: BoundedModeHelper,
 }
 
 impl BoundedMode {
@@ -59,6 +60,8 @@ impl BoundedMode {
         stopped: Arc<AtomicBool>,
         stats: Arc<Stats>,
     ) -> Self {
+        let helper = BoundedModeHelper::new(ledger.clone(), logger.clone(), stopped.clone());
+
         Self {
             write_database_queue,
             logger,
@@ -71,6 +74,7 @@ impl BoundedMode {
             batch_separate_pending_min_time,
             cemented_batch_timer: Instant::now(),
             cementer: MultiAccountCementer::new(),
+            helper,
         }
     }
 
@@ -88,43 +92,28 @@ impl BoundedMode {
             self.processing_timer = Instant::now();
         }
 
-        let mut helper = BoundedModeHelper {
-            ledger: self.ledger.clone(),
-            logger: self.logger.clone(),
-            stopped: self.stopped.clone(),
-            next_in_receive_chain: None,
-            checkpoints: BoundedVecDeque::new(MAX_ITEMS), // todo: don't reallocate on every process call
-            receive_source_pairs: BoundedVecDeque::new(MAX_ITEMS), // todo: don't reallocate on every process call
-            current_hash: BlockHash::zero(),
-            first_iter: true,
-            original_block,
-            receive_details: None,
-            hash_to_process: Default::default(),
-            top_level_hash: BlockHash::zero(),
-            account: Account::zero(),
-            block_height: 0,
-            previous: BlockHash::zero(),
-            current_confirmation_height: Default::default(),
-            top_most_non_receive_block_hash: BlockHash::zero(),
-        };
+        self.helper.initialize(original_block.hash());
 
         let mut txn = self.ledger.store.tx_begin_read();
 
         loop {
-            if !helper.load_next_block(txn.txn(), &self.accounts_confirmed_info) {
+            if !self
+                .helper
+                .load_next_block(txn.txn(), &self.accounts_confirmed_info)
+            {
                 continue;
             }
 
             // This block was added to the confirmation height processor but is already confirmed
-            if helper.should_notify_already_cemented() {
+            if self.helper.should_notify_already_cemented() {
                 (callbacks.block_already_cemented)(original_block.hash());
             }
 
-            helper.goto_least_unconfirmed_hash(&txn);
-            helper.top_most_non_receive_block_hash = helper.current_hash;
+            self.helper.goto_least_unconfirmed_hash(&txn);
+            self.helper.top_most_non_receive_block_hash = self.helper.current_hash;
 
-            let hit_receive = if !helper.is_already_cemented() {
-                helper.iterate(txn.as_mut())
+            let hit_receive = if !self.helper.is_already_cemented() {
+                self.helper.iterate(txn.as_mut())
             } else {
                 false
             };
@@ -136,56 +125,55 @@ impl BoundedMode {
             }
 
             // next_in_receive_chain can be modified when writing, so need to cache it here before resetting
-            let is_set = helper.next_in_receive_chain.is_some();
-            helper.next_in_receive_chain = None;
+            let is_set = self.helper.next_in_receive_chain.is_some();
+            self.helper.next_in_receive_chain = None;
 
             // Need to also handle the case where we are hitting receives where the sends below should be confirmed
             if !hit_receive
-                || (helper.receive_source_pairs.len() == 1
-                    && helper.top_most_non_receive_block_hash != helper.current_hash)
+                || (self.helper.receive_source_pairs.len() == 1
+                    && self.helper.top_most_non_receive_block_hash != self.helper.current_hash)
             {
-                self.enqueue_writes(&mut helper, &txn, is_set);
+                self.enqueue_writes(&txn, is_set);
 
-                if self.should_flush(&helper, callbacks) && !self.cementer.has_pending_writes() {
+                if self.should_flush(&self.helper, callbacks) && !self.cementer.has_pending_writes()
+                {
                     self.try_flush(callbacks);
                 }
             }
 
-            helper.first_iter = false;
+            self.helper.first_iter = false;
             txn.refresh();
 
-            if helper.is_done() || self.stopped.load(Ordering::SeqCst) {
+            if self.helper.is_done() || self.stopped.load(Ordering::SeqCst) {
                 break;
             }
         }
 
-        debug_assert!(helper.checkpoints.is_empty());
+        debug_assert!(self.helper.checkpoints.is_empty());
     }
 
-    fn enqueue_writes(
-        &mut self,
-        helper: &mut BoundedModeHelper,
-        txn: &Box<dyn ReadTransaction>,
-        is_set: bool,
-    ) {
+    fn enqueue_writes(&mut self, txn: &Box<dyn ReadTransaction>, is_set: bool) {
         // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
         // the non-receive blocks which have been iterated for an account, and the associated receive block.
-        if let Some(write_details) = helper.cement_non_receive_blocks_for_this_account(
+        if let Some(write_details) = self.helper.cement_non_receive_blocks_for_this_account(
             txn.txn(),
             &mut self.accounts_confirmed_info,
         ) {
             self.cementer.enqueue(write_details);
         }
 
-        if let Some(write_details) = helper.cement_receive_block_and_all_non_receive_blocks_above(
-            &mut self.accounts_confirmed_info,
-        ) {
+        if let Some(write_details) = self
+            .helper
+            .cement_receive_block_and_all_non_receive_blocks_above(
+                &mut self.accounts_confirmed_info,
+            )
+        {
             self.cementer.enqueue(write_details);
         }
 
         // If used the top level, don't pop off the receive source pair because it wasn't used
-        if !is_set && !helper.receive_source_pairs.is_empty() {
-            helper.receive_source_pairs.pop_back();
+        if !is_set && !self.helper.receive_source_pairs.is_empty() {
+            self.helper.receive_source_pairs.pop_back();
         }
     }
 
@@ -430,7 +418,7 @@ impl<'a> CementationDataRequester for CementationLedgerAdapter<'a> {
     }
 }
 
-struct BoundedModeHelper<'a> {
+struct BoundedModeHelper {
     ledger: Arc<Ledger>,
     logger: Arc<dyn Logger>,
     stopped: Arc<AtomicBool>,
@@ -439,7 +427,7 @@ struct BoundedModeHelper<'a> {
     receive_source_pairs: BoundedVecDeque<ReceiveSourcePair>,
     current_hash: BlockHash,
     first_iter: bool,
-    original_block: &'a BlockEnum,
+    original_block: BlockHash,
     receive_details: Option<ReceiveChainDetails>,
     hash_to_process: TopAndNextHash,
     top_level_hash: BlockHash,
@@ -450,7 +438,46 @@ struct BoundedModeHelper<'a> {
     top_most_non_receive_block_hash: BlockHash,
 }
 
-impl<'a> BoundedModeHelper<'a> {
+impl BoundedModeHelper {
+    fn new(ledger: Arc<Ledger>, logger: Arc<dyn Logger>, stopped: Arc<AtomicBool>) -> Self {
+        Self {
+            ledger,
+            logger,
+            stopped,
+            checkpoints: BoundedVecDeque::new(MAX_ITEMS),
+            receive_source_pairs: BoundedVecDeque::new(MAX_ITEMS),
+            next_in_receive_chain: None,
+            current_hash: BlockHash::zero(),
+            first_iter: true,
+            original_block: BlockHash::zero(),
+            receive_details: None,
+            hash_to_process: Default::default(),
+            top_level_hash: BlockHash::zero(),
+            account: Account::zero(),
+            block_height: 0,
+            previous: BlockHash::zero(),
+            current_confirmation_height: Default::default(),
+            top_most_non_receive_block_hash: BlockHash::zero(),
+        }
+    }
+
+    fn initialize(&mut self, original_block: BlockHash) {
+        self.checkpoints.clear();
+        self.receive_source_pairs.clear();
+        self.next_in_receive_chain = None;
+        self.current_hash = BlockHash::zero();
+        self.first_iter = true;
+        self.original_block = original_block;
+        self.receive_details = None;
+        self.hash_to_process = Default::default();
+        self.top_level_hash = BlockHash::zero();
+        self.account = Account::zero();
+        self.block_height = 0;
+        self.previous = BlockHash::zero();
+        self.current_confirmation_height = Default::default();
+        self.top_most_non_receive_block_hash = BlockHash::zero();
+    }
+
     fn load_next_block(
         &mut self,
         txn: &dyn Transaction,
@@ -461,11 +488,7 @@ impl<'a> BoundedModeHelper<'a> {
         self.current_hash = self.hash_to_process.top;
         self.top_level_hash = self.current_hash;
 
-        let current_block = if self.current_hash == self.original_block.hash() {
-            Some(self.original_block.clone())
-        } else {
-            self.ledger.store.block().get(txn, &self.current_hash)
-        };
+        let current_block = self.ledger.store.block().get(txn, &self.current_hash);
 
         let Some(current_block) = current_block else{
                 if self.ledger.pruning_enabled() && self.ledger.store.pruned().exists(txn, &self.current_hash) {
@@ -514,7 +537,7 @@ impl<'a> BoundedModeHelper<'a> {
             }
         } else {
             TopAndNextHash {
-                top: self.original_block.hash(),
+                top: self.original_block,
                 next: None,
                 next_height: 0,
             }
@@ -544,9 +567,7 @@ impl<'a> BoundedModeHelper<'a> {
     }
 
     fn should_notify_already_cemented(&self) -> bool {
-        self.first_iter
-            && self.is_already_cemented()
-            && self.current_hash == self.original_block.hash()
+        self.first_iter && self.is_already_cemented() && self.current_hash == self.original_block
     }
 
     fn blocks_to_cement_for_this_account(&self) -> u64 {
@@ -730,10 +751,10 @@ impl<'a> BoundedModeHelper<'a> {
     }
 
     fn is_done(&self) -> bool {
-        self.receive_source_pairs.is_empty() && self.current_hash == self.original_block.hash()
+        self.receive_source_pairs.is_empty() && self.current_hash == self.original_block
     }
 
     fn finished_iterating(&self) -> bool {
-        self.current_hash == self.original_block.hash()
+        self.current_hash == self.original_block
     }
 }

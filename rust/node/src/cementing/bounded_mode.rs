@@ -80,6 +80,43 @@ impl BoundedMode {
         &self.cementer.batch_write_size
     }
 
+    // pub(crate) fn process(
+    //     &mut self,
+    //     original_block: &BlockEnum,
+    //     callbacks: &mut CementCallbackRefs,
+    // ) {
+    //     if !self.has_pending_writes() {
+    //         self.clear_process_vars();
+    //         self.processing_timer = Instant::now();
+    //     }
+
+    //     self.helper.initialize(original_block.hash());
+
+    //     let mut txn = self.ledger.store.tx_begin_read();
+
+    //     loop {
+    //         let next_step = self.helper.get_next_step(txn.as_mut());
+
+    //         // This block was added to the confirmation height processor but is already confirmed
+    //         if next_step.already_cemented {
+    //             (callbacks.block_already_cemented)(original_block.hash());
+    //         }
+
+    //         for write in next_step.write_details.into_iter().flatten() {
+    //             self.cementer.enqueue(write);
+    //         }
+
+    //         if self.should_flush(&self.helper, callbacks) {
+    //             self.try_flush(callbacks);
+    //         }
+
+    //         if next_step.is_done || self.stopped.load(Ordering::SeqCst) {
+    //             break;
+    //         }
+    //         txn.refresh();
+    //     }
+    // }
+
     pub(crate) fn process(
         &mut self,
         original_block: &BlockEnum,
@@ -102,9 +139,10 @@ impl BoundedMode {
             // This block was added to the confirmation height processor but is already confirmed
             if self.helper.should_notify_already_cemented() {
                 (callbacks.block_already_cemented)(original_block.hash());
+                break;
             }
 
-            self.helper.goto_least_unconfirmed_hash(&txn);
+            self.helper.goto_least_unconfirmed_hash(txn.txn());
             self.helper.top_most_non_receive_block_hash = self.helper.current_hash;
 
             let hit_receive = if !self.helper.is_already_cemented() {
@@ -580,7 +618,7 @@ impl BoundedModeHelper {
         return least_unconfirmed_hash;
     }
 
-    fn goto_least_unconfirmed_hash(&mut self, txn: &Box<dyn ReadTransaction>) {
+    fn goto_least_unconfirmed_hash(&mut self, txn: &dyn Transaction) {
         if self.blocks_to_cement_for_this_account() > 1 {
             if self.blocks_to_cement_for_this_account() == 2 {
                 // If there is 1 uncemented block in-between this block and the cemented frontier,
@@ -588,7 +626,7 @@ impl BoundedModeHelper {
                 self.current_hash = self.previous;
                 self.block_height -= 1;
             } else if self.next_in_receive_chain.is_none() {
-                self.current_hash = self.get_least_unconfirmed_hash_from_top_level(txn.txn());
+                self.current_hash = self.get_least_unconfirmed_hash_from_top_level(txn);
             } else {
                 // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
                 // as we already know what the next block we should process should be.
@@ -738,6 +776,60 @@ impl BoundedModeHelper {
         self.accounts_confirmed_info.clear();
     }
 
+    fn get_next_step(&mut self, txn: &mut dyn ReadTransaction) -> BoundedCementationStep {
+        let mut next_step = BoundedCementationStep {
+            write_details: [None, None],
+            already_cemented: false,
+            is_done: false,
+        };
+
+        while !self.load_next_block(txn.txn()) {
+            if self.is_done() || self.stopped.load(Ordering::SeqCst) {
+                next_step.is_done = self.is_done();
+                return next_step;
+            }
+        }
+
+        // This block was added to the confirmation height processor but is already confirmed
+        if self.should_notify_already_cemented() {
+            next_step.already_cemented = true;
+            next_step.is_done = true;
+            return next_step;
+        }
+
+        self.goto_least_unconfirmed_hash(txn.txn());
+        self.top_most_non_receive_block_hash = self.current_hash;
+
+        let hit_receive = if !self.is_already_cemented() {
+            self.iterate(txn)
+        } else {
+            false
+        };
+
+        // Exit early when the processor has been stopped, otherwise this function may take a
+        // while (and hence keep the process running) if updating a long chain.
+        if self.stopped.load(Ordering::SeqCst) {
+            next_step.is_done = true;
+            return next_step;
+        }
+
+        // next_in_receive_chain can be modified when writing, so need to cache it here before resetting
+        let is_set = self.next_in_receive_chain.is_some();
+        self.next_in_receive_chain = None;
+        self.first_iter = false;
+
+        // Need to also handle the case where we are hitting receives where the sends below should be confirmed
+        if !hit_receive
+            || (self.receive_source_pairs.len() == 1
+                && self.top_most_non_receive_block_hash != self.current_hash)
+        {
+            next_step.write_details = self.write_next(txn.txn(), is_set);
+        }
+
+        next_step.is_done = self.is_done();
+        next_step
+    }
+
     fn write_next(&mut self, txn: &dyn Transaction, is_set: bool) -> [Option<WriteDetails>; 2] {
         // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
         // the non-receive blocks which have been iterated for an account, and the associated receive block.
@@ -752,4 +844,10 @@ impl BoundedModeHelper {
 
         [cement_non_receives, cement_receive]
     }
+}
+
+struct BoundedCementationStep {
+    write_details: [Option<WriteDetails>; 2],
+    already_cemented: bool,
+    is_done: bool,
 }

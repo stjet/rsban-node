@@ -35,7 +35,6 @@ pub(crate) struct ConfirmedInfo {
 }
 
 pub(super) struct BoundedMode {
-    accounts_confirmed_info: AccountsConfirmedMap,
     stopped: Arc<AtomicBool>,
     batch_separate_pending_min_time: Duration,
     cementer: MultiAccountCementer,
@@ -67,7 +66,6 @@ impl BoundedMode {
             logger,
             enable_timing_logging,
             ledger,
-            accounts_confirmed_info: AccountsConfirmedMap::new(),
             stopped,
             stats,
             processing_timer: Instant::now(),
@@ -97,10 +95,7 @@ impl BoundedMode {
         let mut txn = self.ledger.store.tx_begin_read();
 
         loop {
-            if !self
-                .helper
-                .load_next_block(txn.txn(), &self.accounts_confirmed_info)
-            {
+            if !self.helper.load_next_block(txn.txn()) {
                 continue;
             }
 
@@ -155,18 +150,16 @@ impl BoundedMode {
     fn enqueue_writes(&mut self, txn: &Box<dyn ReadTransaction>, is_set: bool) {
         // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
         // the non-receive blocks which have been iterated for an account, and the associated receive block.
-        if let Some(write_details) = self.helper.cement_non_receive_blocks_for_this_account(
-            txn.txn(),
-            &mut self.accounts_confirmed_info,
-        ) {
+        if let Some(write_details) = self
+            .helper
+            .cement_non_receive_blocks_for_this_account(txn.txn())
+        {
             self.cementer.enqueue(write_details);
         }
 
         if let Some(write_details) = self
             .helper
-            .cement_receive_block_and_all_non_receive_blocks_above(
-                &mut self.accounts_confirmed_info,
-            )
+            .cement_receive_block_and_all_non_receive_blocks_above()
         {
             self.cementer.enqueue(write_details);
         }
@@ -192,7 +185,7 @@ impl BoundedMode {
 
     fn is_write_queue_full(&self) -> bool {
         self.cementer.max_pending_writes_reached()
-            || self.accounts_confirmed_info.len() >= MAX_ITEMS
+            || self.helper.accounts_confirmed_info.len() >= MAX_ITEMS
     }
 
     fn try_flush(&mut self, callbacks: &mut CementCallbackRefs) {
@@ -249,10 +242,15 @@ impl BoundedMode {
         {
             self.flush(txn.as_mut(), &update_command, scoped_write_guard, callbacks);
             if account_done {
-                if let Some(found_info) = self.accounts_confirmed_info.get(&update_command.account)
+                if let Some(found_info) = self
+                    .helper
+                    .accounts_confirmed_info
+                    .get(&update_command.account)
                 {
                     if found_info.confirmed_height == update_command.new_height {
-                        self.accounts_confirmed_info.remove(&update_command.account);
+                        self.helper
+                            .accounts_confirmed_info
+                            .remove(&update_command.account);
                     }
                 }
             }
@@ -337,7 +335,7 @@ impl BoundedMode {
     }
 
     pub fn clear_process_vars(&mut self) {
-        self.accounts_confirmed_info.clear();
+        self.helper.accounts_confirmed_info.clear();
     }
 
     pub fn has_pending_writes(&self) -> bool {
@@ -347,7 +345,7 @@ impl BoundedMode {
     pub fn container_info(&self) -> BoundedModeContainerInfo {
         BoundedModeContainerInfo {
             pending_writes: self.cementer.container_info(),
-            accounts_confirmed: self.accounts_confirmed_info.container_info(),
+            accounts_confirmed: self.helper.accounts_confirmed_info.container_info(),
         }
     }
 }
@@ -425,6 +423,7 @@ struct BoundedModeHelper {
     next_in_receive_chain: Option<TopAndNextHash>,
     checkpoints: BoundedVecDeque<BlockHash>,
     receive_source_pairs: BoundedVecDeque<ReceiveSourcePair>,
+    accounts_confirmed_info: AccountsConfirmedMap,
     current_hash: BlockHash,
     first_iter: bool,
     original_block: BlockHash,
@@ -446,6 +445,7 @@ impl BoundedModeHelper {
             stopped,
             checkpoints: BoundedVecDeque::new(MAX_ITEMS),
             receive_source_pairs: BoundedVecDeque::new(MAX_ITEMS),
+            accounts_confirmed_info: AccountsConfirmedMap::new(),
             next_in_receive_chain: None,
             current_hash: BlockHash::zero(),
             first_iter: true,
@@ -478,11 +478,7 @@ impl BoundedModeHelper {
         self.top_most_non_receive_block_hash = BlockHash::zero();
     }
 
-    fn load_next_block(
-        &mut self,
-        txn: &dyn Transaction,
-        accounts_confirmed_info: &AccountsConfirmedMap,
-    ) -> bool {
+    fn load_next_block(&mut self, txn: &dyn Transaction) -> bool {
         self.receive_details = None;
         self.hash_to_process = self.get_next_block_hash();
         self.current_hash = self.hash_to_process.top;
@@ -508,7 +504,7 @@ impl BoundedModeHelper {
         self.block_height = current_block.sideband().unwrap().height;
         self.previous = current_block.previous();
         self.current_confirmation_height =
-            self.get_confirmation_height(self.account, txn, accounts_confirmed_info);
+            self.get_confirmation_height(self.account, txn, &self.accounts_confirmed_info);
 
         true
     }
@@ -683,7 +679,6 @@ impl BoundedModeHelper {
     fn cement_non_receive_blocks_for_this_account(
         &mut self,
         txn: &dyn Transaction,
-        accounts_confirmed_info: &mut AccountsConfirmedMap,
     ) -> Option<WriteDetails> {
         if self.is_already_cemented() {
             return None;
@@ -704,7 +699,8 @@ impl BoundedModeHelper {
             iterated_frontier: self.top_most_non_receive_block_hash,
         };
 
-        accounts_confirmed_info.insert(self.account, confirmed_info);
+        self.accounts_confirmed_info
+            .insert(self.account, confirmed_info);
 
         truncate_after(&mut self.checkpoints, &self.top_most_non_receive_block_hash);
 
@@ -718,12 +714,9 @@ impl BoundedModeHelper {
     }
 
     /// Add the receive block and all non-receive blocks above that one
-    fn cement_receive_block_and_all_non_receive_blocks_above(
-        &mut self,
-        accounts_confirmed_info: &mut AccountsConfirmedMap,
-    ) -> Option<WriteDetails> {
+    fn cement_receive_block_and_all_non_receive_blocks_above(&mut self) -> Option<WriteDetails> {
         let Some(receive_details) = &self.receive_details else { return None; };
-        accounts_confirmed_info.insert(
+        self.accounts_confirmed_info.insert(
             receive_details.account,
             ConfirmedInfo {
                 confirmed_height: receive_details.height,

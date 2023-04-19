@@ -128,10 +128,16 @@ impl BoundedMode {
                 || (self.helper.receive_source_pairs.len() == 1
                     && self.helper.top_most_non_receive_block_hash != self.helper.current_hash)
             {
-                self.enqueue_writes(&txn, is_set);
-
-                if self.should_flush(&self.helper, callbacks) && !self.cementer.has_pending_writes()
+                for write in self
+                    .helper
+                    .write_next(txn.txn(), is_set)
+                    .into_iter()
+                    .flatten()
                 {
+                    self.cementer.enqueue(write);
+                }
+
+                if self.should_flush(&self.helper, callbacks) {
                     self.try_flush(callbacks);
                 }
             }
@@ -147,29 +153,6 @@ impl BoundedMode {
         debug_assert!(self.helper.checkpoints.is_empty());
     }
 
-    fn enqueue_writes(&mut self, txn: &Box<dyn ReadTransaction>, is_set: bool) {
-        // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
-        // the non-receive blocks which have been iterated for an account, and the associated receive block.
-        if let Some(write_details) = self
-            .helper
-            .cement_non_receive_blocks_for_this_account(txn.txn())
-        {
-            self.cementer.enqueue(write_details);
-        }
-
-        if let Some(write_details) = self
-            .helper
-            .cement_receive_block_and_all_non_receive_blocks_above()
-        {
-            self.cementer.enqueue(write_details);
-        }
-
-        // If used the top level, don't pop off the receive source pair because it wasn't used
-        if !is_set && !self.helper.receive_source_pairs.is_empty() {
-            self.helper.receive_source_pairs.pop_back();
-        }
-    }
-
     fn should_flush(&self, helper: &BoundedModeHelper, callbacks: &mut CementCallbackRefs) -> bool {
         let is_batch_full = self.cementer.max_batch_write_size_reached();
 
@@ -180,7 +163,7 @@ impl BoundedMode {
             && (awaiting_processing == 0 || self.is_min_processing_time_exceeded());
 
         let should_flush = is_done_processing || is_batch_full || self.is_write_queue_full();
-        should_flush
+        should_flush && !self.cementer.has_pending_writes()
     }
 
     fn is_write_queue_full(&self) -> bool {
@@ -335,7 +318,7 @@ impl BoundedMode {
     }
 
     pub fn clear_process_vars(&mut self) {
-        self.helper.accounts_confirmed_info.clear();
+        self.helper.clear_accounts_cache();
     }
 
     pub fn has_pending_writes(&self) -> bool {
@@ -749,5 +732,24 @@ impl BoundedModeHelper {
 
     fn finished_iterating(&self) -> bool {
         self.current_hash == self.original_block
+    }
+
+    fn clear_accounts_cache(&mut self) {
+        self.accounts_confirmed_info.clear();
+    }
+
+    fn write_next(&mut self, txn: &dyn Transaction, is_set: bool) -> [Option<WriteDetails>; 2] {
+        // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
+        // the non-receive blocks which have been iterated for an account, and the associated receive block.
+        let cement_non_receives = self.cement_non_receive_blocks_for_this_account(txn);
+
+        let cement_receive = self.cement_receive_block_and_all_non_receive_blocks_above();
+
+        // If used the top level, don't pop off the receive source pair because it wasn't used
+        if !is_set && !self.receive_source_pairs.is_empty() {
+            self.receive_source_pairs.pop_back();
+        }
+
+        [cement_non_receives, cement_receive]
     }
 }

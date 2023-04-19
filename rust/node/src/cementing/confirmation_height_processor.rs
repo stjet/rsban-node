@@ -273,6 +273,7 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
         let mut channel = self.channel.lock().unwrap();
         while !self.stopped.load(Ordering::SeqCst) {
             if channel.paused {
+                // for unit tests
                 channel = self.pause(channel);
             } else if let Some(block) = channel.awaiting_processing.pop_front() {
                 channel = self.process_block(channel, block);

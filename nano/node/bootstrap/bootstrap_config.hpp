@@ -37,6 +37,7 @@ public:
 
 	nano::error deserialize (nano::tomlconfig & toml);
 
+	// Maximum number of un-responded requests per channel
 	std::size_t requests_limit;
 	std::size_t database_requests_limit;
 	std::size_t pull_count;

@@ -5,6 +5,7 @@ use rsnano_core::utils::TomlWriter;
 use crate::messages::BlocksAckPayload;
 
 pub struct BootstrapAscendingConfig {
+    /// Maximum number of un-responded requests per channel
     pub requests_limit: usize,
     pub database_requests_limit: usize,
     pub pull_count: usize,
@@ -44,7 +45,7 @@ impl BootstrapAscendingConfig {
 impl Default for BootstrapAscendingConfig {
     fn default() -> Self {
         Self {
-            requests_limit: 128,
+            requests_limit: 4,
             database_requests_limit: 1024,
             pull_count: BlocksAckPayload::MAX_BLOCKS,
             timeout: Duration::from_secs(3),

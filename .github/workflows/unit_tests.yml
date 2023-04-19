@@ -33,7 +33,9 @@ jobs:
         uses: actions/cache/restore@v3
         continue-on-error: true
         with:
-          path: build
+          path: |
+            build
+            ~/.cargo
           key: ${{ runner.os }}-build-cache
 
       - name: Fetch Deps
@@ -48,7 +50,9 @@ jobs:
         uses: actions/cache/save@v3
         continue-on-error: true
         with:
-          path: build
+          path: |
+            build
+            ~/.cargo
           key: ${{ runner.os }}-build-cache
 
       - name: Run Tests
@@ -83,7 +87,9 @@ jobs:
         uses: actions/cache/restore@v3
         continue-on-error: true
         with:
-          path: build
+          path: |
+            build
+            ~/.cargo
           key: ${{ runner.os }}-${{ env.COMPILER }}-build-cache
 
       - name: Fetch Deps
@@ -102,7 +108,9 @@ jobs:
         uses: actions/cache/save@v3
         continue-on-error: true
         with:
-          path: build
+          path: |
+            build
+            ~/.cargo
           key: ${{ runner.os }}-${{ env.COMPILER }}-build-cache
 
       - name: Run Tests

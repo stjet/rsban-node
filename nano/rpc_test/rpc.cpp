@@ -3261,6 +3261,7 @@ TEST (rpc, pending_exists)
 	ASSERT_TRUE (pending_exists ("1"));
 	reset_confirmation_height (node->store, block1->account ());
 	ASSERT_TRUE (pending_exists ("0"));
+	request.put ("include_active", "true");
 	request.put ("include_only_confirmed", "false");
 	ASSERT_TRUE (pending_exists ("1"));
 }

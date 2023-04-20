@@ -35,7 +35,8 @@ jobs:
         with:
           path: |
             build
-            ~/.cargo
+            /home/runner/.cargo
+            cargo
           key: ${{ runner.os }}-build-cache
 
       - name: Fetch Deps
@@ -43,6 +44,10 @@ jobs:
 
       - name: Build Tests
         run: ci/build-ci.sh "/tmp/qt/lib/cmake/Qt5";
+
+      # hacky fix so that the build cache can be saved
+      - name: Change permissons of cargo lock files
+        run: sudo find build -name "*.lock" -exec chmod +r {} +
 
       - name: Save Build Cache
         # only save build cache from develop to avoid polluting it by other branches / PRs
@@ -52,7 +57,8 @@ jobs:
         with:
           path: |
             build
-            ~/.cargo
+            /home/runner/.cargo
+            cargo
           key: ${{ runner.os }}-build-cache
 
       - name: Run Tests
@@ -89,7 +95,8 @@ jobs:
         with:
           path: |
             build
-            ~/.cargo
+            /home/runner/.cargo
+            cargo
           key: ${{ runner.os }}-${{ env.COMPILER }}-build-cache
 
       - name: Fetch Deps
@@ -110,7 +117,8 @@ jobs:
         with:
           path: |
             build
-            ~/.cargo
+            /home/runner/.cargo
+            cargo
           key: ${{ runner.os }}-${{ env.COMPILER }}-build-cache
 
       - name: Run Tests

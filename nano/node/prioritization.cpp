@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/node/prioritization.hpp>
@@ -42,6 +44,11 @@ bool nano::prioritization::value_type::operator== (value_type const & other_a) c
 nano::prioritization::prioritization (uint64_t maximum) :
 	handle (rsnano::rsn_prioritization_create (maximum))
 {
+}
+
+nano::prioritization::~prioritization ()
+{
+	rsnano::rsn_prioritization_destroy (handle);
 }
 
 std::size_t nano::prioritization::index (nano::uint128_t const & balance) const

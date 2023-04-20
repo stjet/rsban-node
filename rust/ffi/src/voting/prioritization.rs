@@ -56,6 +56,11 @@ pub unsafe extern "C" fn rsn_prioritization_create(maximum: u64) -> *mut Priorit
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_prioritization_destroy(handle: *mut PrioritizationHandle) {
+    drop(Box::from_raw(handle));
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_prioritization_size(handle: *const PrioritizationHandle) -> usize {
     (*handle).0.size()
 }

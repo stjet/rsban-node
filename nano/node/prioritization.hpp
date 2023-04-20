@@ -42,6 +42,8 @@ class prioritization final
 
 public:
 	prioritization (uint64_t maximum = 250000u);
+	prioritization (prioritization const &) = delete;
+	~prioritization ();
 	void push (uint64_t time, std::shared_ptr<nano::block> block, nano::amount const & priority);
 	std::shared_ptr<nano::block> top () const;
 	void pop ();

@@ -13,6 +13,7 @@
 #include <boost/multi_index/random_access_index.hpp>
 #include <boost/multi_index_container.hpp>
 
+#include <memory>
 #include <unordered_set>
 
 namespace mi = boost::multi_index;
@@ -263,7 +264,7 @@ namespace transport
 		std::shared_ptr<nano::stats> stats;
 		std::shared_ptr<nano::node_config> config;
 		std::shared_ptr<nano::logger_mt> logger;
-		std::shared_ptr<nano::network> network;
+		std::weak_ptr<nano::network> network;
 		std::shared_ptr<nano::thread_pool> workers;
 		std::shared_ptr<nano::node_observers> observers;
 		nano::store & store;

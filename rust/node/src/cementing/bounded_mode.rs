@@ -80,42 +80,42 @@ impl BoundedMode {
         &self.cementer.batch_write_size
     }
 
-    // pub(crate) fn process(
-    //     &mut self,
-    //     original_block: &BlockEnum,
-    //     callbacks: &mut CementCallbackRefs,
-    // ) {
-    //     if !self.has_pending_writes() {
-    //         self.clear_process_vars();
-    //         self.processing_timer = Instant::now();
-    //     }
+    pub(crate) fn process2(
+        &mut self,
+        original_block: &BlockEnum,
+        callbacks: &mut CementCallbackRefs,
+    ) {
+        if !self.has_pending_writes() {
+            self.clear_process_vars();
+            self.processing_timer = Instant::now();
+        }
 
-    //     self.helper.initialize(original_block.hash());
+        self.helper.initialize(original_block.hash());
 
-    //     let mut txn = self.ledger.store.tx_begin_read();
+        let mut txn = self.ledger.store.tx_begin_read();
 
-    //     loop {
-    //         let next_step = self.helper.get_next_step(txn.as_mut());
+        loop {
+            let next_step = self.helper.get_next_step(txn.as_mut());
 
-    //         // This block was added to the confirmation height processor but is already confirmed
-    //         if next_step.already_cemented {
-    //             (callbacks.block_already_cemented)(original_block.hash());
-    //         }
+            // This block was added to the confirmation height processor but is already confirmed
+            if next_step.already_cemented {
+                (callbacks.block_already_cemented)(original_block.hash());
+            }
 
-    //         for write in next_step.write_details.into_iter().flatten() {
-    //             self.cementer.enqueue(write);
-    //         }
+            for write in next_step.write_details.into_iter().flatten() {
+                self.cementer.enqueue(write);
+            }
 
-    //         if self.should_flush(&self.helper, callbacks) {
-    //             self.try_flush(callbacks);
-    //         }
+            if self.should_flush(&self.helper, callbacks) {
+                self.try_flush(callbacks);
+            }
 
-    //         if next_step.is_done || self.stopped.load(Ordering::SeqCst) {
-    //             break;
-    //         }
-    //         txn.refresh();
-    //     }
-    // }
+            if next_step.is_done || self.stopped.load(Ordering::SeqCst) {
+                break;
+            }
+            txn.refresh();
+        }
+    }
 
     pub(crate) fn process(
         &mut self,
@@ -785,7 +785,7 @@ impl BoundedModeHelper {
 
         while !self.load_next_block(txn.txn()) {
             if self.is_done() || self.stopped.load(Ordering::SeqCst) {
-                next_step.is_done = self.is_done();
+                next_step.is_done = true;
                 return next_step;
             }
         }

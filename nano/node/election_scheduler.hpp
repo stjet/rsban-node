@@ -23,6 +23,8 @@ class election_scheduler final
 {
 public:
 	election_scheduler (nano::node &, nano::stats &);
+	election_scheduler (election_scheduler const &) = delete;
+	election_scheduler (election_scheduler &&) = delete;
 	~election_scheduler ();
 
 	void start ();

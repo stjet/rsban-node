@@ -80,7 +80,7 @@ impl BoundedMode {
         &self.cementer.batch_write_size
     }
 
-    pub(crate) fn process2(
+    pub(crate) fn process(
         &mut self,
         original_block: &BlockEnum,
         callbacks: &mut CementCallbackRefs,
@@ -102,11 +102,13 @@ impl BoundedMode {
                 (callbacks.block_already_cemented)(original_block.hash());
             }
 
+            let mut something_written = false;
             for write in next_step.write_details.into_iter().flatten() {
                 self.cementer.enqueue(write);
+                something_written = true;
             }
 
-            if self.should_flush(&self.helper, callbacks) {
+            if something_written && self.should_flush(callbacks) {
                 self.try_flush(callbacks);
             }
 
@@ -117,87 +119,13 @@ impl BoundedMode {
         }
     }
 
-    pub(crate) fn process(
-        &mut self,
-        original_block: &BlockEnum,
-        callbacks: &mut CementCallbackRefs,
-    ) {
-        if !self.has_pending_writes() {
-            self.clear_process_vars();
-            self.processing_timer = Instant::now();
-        }
-
-        self.helper.initialize(original_block.hash());
-
-        let mut txn = self.ledger.store.tx_begin_read();
-
-        loop {
-            if !self.helper.load_next_block(txn.txn()) {
-                continue;
-            }
-
-            // This block was added to the confirmation height processor but is already confirmed
-            if self.helper.should_notify_already_cemented() {
-                (callbacks.block_already_cemented)(original_block.hash());
-                break;
-            }
-
-            self.helper.goto_least_unconfirmed_hash(txn.txn());
-            self.helper.top_most_non_receive_block_hash = self.helper.current_hash;
-
-            let hit_receive = if !self.helper.is_already_cemented() {
-                self.helper.iterate(txn.as_mut())
-            } else {
-                false
-            };
-
-            // Exit early when the processor has been stopped, otherwise this function may take a
-            // while (and hence keep the process running) if updating a long chain.
-            if self.stopped.load(Ordering::SeqCst) {
-                break;
-            }
-
-            // next_in_receive_chain can be modified when writing, so need to cache it here before resetting
-            let is_set = self.helper.next_in_receive_chain.is_some();
-            self.helper.next_in_receive_chain = None;
-
-            // Need to also handle the case where we are hitting receives where the sends below should be confirmed
-            if !hit_receive
-                || (self.helper.receive_source_pairs.len() == 1
-                    && self.helper.top_most_non_receive_block_hash != self.helper.current_hash)
-            {
-                for write in self
-                    .helper
-                    .write_next(txn.txn(), is_set)
-                    .into_iter()
-                    .flatten()
-                {
-                    self.cementer.enqueue(write);
-                }
-
-                if self.should_flush(&self.helper, callbacks) {
-                    self.try_flush(callbacks);
-                }
-            }
-
-            self.helper.first_iter = false;
-            txn.refresh();
-
-            if self.helper.is_done() || self.stopped.load(Ordering::SeqCst) {
-                break;
-            }
-        }
-
-        debug_assert!(self.helper.checkpoints.is_empty());
-    }
-
-    fn should_flush(&self, helper: &BoundedModeHelper, callbacks: &mut CementCallbackRefs) -> bool {
+    fn should_flush(&self, callbacks: &mut CementCallbackRefs) -> bool {
         let is_batch_full = self.cementer.max_batch_write_size_reached();
 
         // When there are a lot of pending confirmation height blocks, it is more efficient to
         // bulk some of them up to enable better write performance which becomes the bottleneck.
         let awaiting_processing = (callbacks.awaiting_processing_count)();
-        let is_done_processing = helper.finished_iterating()
+        let is_done_processing = self.helper.finished_iterating()
             && (awaiting_processing == 0 || self.is_min_processing_time_exceeded());
 
         let should_flush = is_done_processing || is_batch_full || self.is_write_queue_full();
@@ -211,17 +139,15 @@ impl BoundedMode {
 
     fn try_flush(&mut self, callbacks: &mut CementCallbackRefs) {
         // If nothing is currently using the database write lock then write the cemented pending blocks otherwise continue iterating
-        if self
+        if let Some(mut write_guard) = self
             .write_database_queue
-            .process(Writer::ConfirmationHeight)
+            .try_lock(Writer::ConfirmationHeight)
         {
-            // todo: this does not seem thread safe!
-            let mut scoped_write_guard = self.write_database_queue.pop();
-            self.write_pending_blocks_with_write_guard(&mut scoped_write_guard, callbacks);
+            self.write_pending_blocks_with_write_guard(&mut write_guard, callbacks);
         } else if self.is_write_queue_full() {
             // Block and wait until we have DB access. We must flush because the queue is full.
-            let mut scoped_write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
-            self.write_pending_blocks_with_write_guard(&mut scoped_write_guard, callbacks);
+            let mut write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
+            self.write_pending_blocks_with_write_guard(&mut write_guard, callbacks);
         }
     }
 
@@ -262,6 +188,7 @@ impl BoundedMode {
             .unwrap()
         {
             self.flush(txn.as_mut(), &update_command, scoped_write_guard, callbacks);
+            //todo do this in helper:
             if account_done {
                 if let Some(found_info) = self
                     .helper

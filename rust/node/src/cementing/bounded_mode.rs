@@ -9,10 +9,11 @@ use std::{
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
     utils::{ContainerInfoComponent, Logger},
-    Account, BlockEnum, BlockHash, ConfirmationHeightInfo, ConfirmationHeightUpdate,
+    Account, AccountInfo, BlockEnum, BlockHash, ConfirmationHeightInfo, ConfirmationHeightUpdate,
+    Epochs,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
-use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
+use rsnano_store_traits::{Transaction, WriteTransaction};
 
 use crate::stats::{DetailType, Direction, StatType, Stats};
 
@@ -59,7 +60,11 @@ impl BoundedMode {
         stopped: Arc<AtomicBool>,
         stats: Arc<Stats>,
     ) -> Self {
-        let helper = BoundedModeHelper::new(ledger.clone(), logger.clone(), stopped.clone());
+        let helper = BoundedModeHelper::new(
+            ledger.clone(),
+            ledger.constants.epochs.clone(),
+            stopped.clone(),
+        );
 
         Self {
             write_database_queue,
@@ -93,39 +98,45 @@ impl BoundedMode {
         self.helper.initialize(original_block.hash());
 
         let mut txn = self.ledger.store.tx_begin_read();
+        let ledger_clone = Arc::clone(&self.ledger);
+
+        let mut ledger_adapter = CementationLedgerAdapter {
+            txn: txn.txn_mut(),
+            ledger: &ledger_clone,
+        };
 
         loop {
-            let next_step = self.helper.get_next_step(txn.as_mut());
+            let next_step = self.helper.get_next_step(&mut ledger_adapter);
 
             // This block was added to the confirmation height processor but is already confirmed
             if next_step.already_cemented {
                 (callbacks.block_already_cemented)(original_block.hash());
             }
 
-            let mut something_written = false;
+            let mut something_written = false; // todo remove this flag
             for write in next_step.write_details.into_iter().flatten() {
                 self.cementer.enqueue(write);
                 something_written = true;
             }
 
-            if something_written && self.should_flush(callbacks) {
+            if something_written && self.should_flush(callbacks, next_step.is_done) {
                 self.try_flush(callbacks);
             }
 
             if next_step.is_done || self.stopped.load(Ordering::SeqCst) {
                 break;
             }
-            txn.refresh();
+            ledger_adapter.refresh_transaction();
         }
     }
 
-    fn should_flush(&self, callbacks: &mut CementCallbackRefs) -> bool {
+    fn should_flush(&self, callbacks: &mut CementCallbackRefs, current_process_done: bool) -> bool {
         let is_batch_full = self.cementer.max_batch_write_size_reached();
 
         // When there are a lot of pending confirmation height blocks, it is more efficient to
         // bulk some of them up to enable better write performance which becomes the bottleneck.
         let awaiting_processing = (callbacks.awaiting_processing_count)();
-        let is_done_processing = self.helper.finished_iterating()
+        let is_done_processing = current_process_done
             && (awaiting_processing == 0 || self.is_min_processing_time_exceeded());
 
         let should_flush = is_done_processing || is_batch_full || self.is_write_queue_full();
@@ -183,7 +194,7 @@ impl BoundedMode {
             .cementer
             .cement_next(&CementationLedgerAdapter {
                 ledger: &self.ledger,
-                txn: txn.txn(),
+                txn: txn.txn_mut(),
             })
             .unwrap()
         {
@@ -346,7 +357,7 @@ impl BoundedModeContainerInfo {
 }
 
 pub(crate) struct CementationLedgerAdapter<'a> {
-    txn: &'a dyn Transaction,
+    txn: &'a mut dyn Transaction,
     ledger: &'a Ledger,
 }
 
@@ -362,12 +373,24 @@ impl<'a> CementationDataRequester for CementationLedgerAdapter<'a> {
             .get(self.txn, account)
             .unwrap_or_default()
     }
+
+    fn was_block_pruned(&self, block_hash: &BlockHash) -> bool {
+        self.ledger.pruning_enabled() && self.ledger.store.pruned().exists(self.txn, block_hash)
+    }
+
+    fn get_account_info(&self, account: &Account) -> Option<AccountInfo> {
+        self.ledger.account_info(self.txn, account)
+    }
+
+    fn refresh_transaction(&mut self) {
+        self.txn.refresh();
+    }
 }
 
 struct BoundedModeHelper {
     ledger: Arc<Ledger>,
-    logger: Arc<dyn Logger>,
     stopped: Arc<AtomicBool>,
+    epochs: Epochs,
     next_in_receive_chain: Option<TopAndNextHash>,
     checkpoints: BoundedVecDeque<BlockHash>,
     receive_source_pairs: BoundedVecDeque<ReceiveSourcePair>,
@@ -386,10 +409,10 @@ struct BoundedModeHelper {
 }
 
 impl BoundedModeHelper {
-    fn new(ledger: Arc<Ledger>, logger: Arc<dyn Logger>, stopped: Arc<AtomicBool>) -> Self {
+    fn new(ledger: Arc<Ledger>, epochs: Epochs, stopped: Arc<AtomicBool>) -> Self {
         Self {
             ledger,
-            logger,
+            epochs,
             stopped,
             checkpoints: BoundedVecDeque::new(MAX_ITEMS),
             receive_source_pairs: BoundedVecDeque::new(MAX_ITEMS),
@@ -426,33 +449,33 @@ impl BoundedModeHelper {
         self.top_most_non_receive_block_hash = BlockHash::zero();
     }
 
-    fn load_next_block(&mut self, txn: &dyn Transaction) -> bool {
+    fn load_next_block<T: CementationDataRequester>(&mut self, data_requester: &T) -> bool {
         self.receive_details = None;
         self.hash_to_process = self.get_next_block_hash();
         self.current_hash = self.hash_to_process.top;
         self.top_level_hash = self.current_hash;
 
-        let current_block = self.ledger.store.block().get(txn, &self.current_hash);
+        let current_block = data_requester.get_block(&self.current_hash);
 
         let Some(current_block) = current_block else{
-                if self.ledger.pruning_enabled() && self.ledger.store.pruned().exists(txn, &self.current_hash) {
+                if data_requester.was_block_pruned(&self.current_hash){
                     if !self.receive_source_pairs.is_empty() {
                         self.receive_source_pairs.pop_back();
                     }
                     return false;
                 } else {
-                    let error_str = format!("Ledger mismatch trying to set confirmation height for block {} (bounded processor)", self.current_hash);
-                    self.logger.always_log(&error_str);
-                    eprintln!("{}", error_str);
-                    panic!("{}", error_str);
+                    panic!("Ledger mismatch trying to set confirmation height for block {} (bounded processor)", self.current_hash);
                 }
             };
 
         self.account = current_block.account_calculated();
         self.block_height = current_block.sideband().unwrap().height;
         self.previous = current_block.previous();
-        self.current_confirmation_height =
-            self.get_confirmation_height(self.account, txn, &self.accounts_confirmed_info);
+        self.current_confirmation_height = self.get_confirmation_height(
+            &self.account,
+            data_requester,
+            &self.accounts_confirmed_info,
+        );
 
         true
     }
@@ -488,21 +511,17 @@ impl BoundedModeHelper {
         }
     }
 
-    fn get_confirmation_height(
+    fn get_confirmation_height<T: CementationDataRequester>(
         &self,
-        account: Account,
-        txn: &dyn Transaction,
+        account: &Account,
+        data_requester: &T,
         accounts_confirmed_info: &AccountsConfirmedMap,
     ) -> ConfirmationHeightInfo {
         // Checks if we have encountered this account before but not commited changes yet, if so then update the cached confirmation height
-        if let Some(found_info) = accounts_confirmed_info.get(&account) {
+        if let Some(found_info) = accounts_confirmed_info.get(account) {
             ConfirmationHeightInfo::new(found_info.confirmed_height, found_info.iterated_frontier)
         } else {
-            self.ledger
-                .store
-                .confirmation_height()
-                .get(txn, &account)
-                .unwrap_or_default()
+            data_requester.get_current_confirmation_height(account)
         }
     }
 
@@ -523,29 +542,29 @@ impl BoundedModeHelper {
         }
     }
 
-    fn get_least_unconfirmed_hash_from_top_level(&mut self, txn: &dyn Transaction) -> BlockHash {
+    fn get_least_unconfirmed_hash_from_top_level<T: CementationDataRequester>(
+        &mut self,
+        data_requester: &T,
+    ) -> BlockHash {
         let mut least_unconfirmed_hash = self.current_hash;
         if self.current_confirmation_height.height != 0 {
             if self.block_height > self.current_confirmation_height.height {
-                let block = self
-                    .ledger
-                    .store
-                    .block()
-                    .get(txn, &self.current_confirmation_height.frontier)
+                let block = data_requester
+                    .get_block(&self.current_confirmation_height.frontier)
                     .unwrap();
                 least_unconfirmed_hash = block.sideband().unwrap().successor;
                 self.block_height = block.sideband().unwrap().height + 1;
             }
         } else {
             // No blocks have been confirmed, so the first block will be the open block
-            let info = self.ledger.account_info(txn, &self.account).unwrap();
+            let info = data_requester.get_account_info(&self.account).unwrap();
             least_unconfirmed_hash = info.open_block;
             self.block_height = 1;
         }
         return least_unconfirmed_hash;
     }
 
-    fn goto_least_unconfirmed_hash(&mut self, txn: &dyn Transaction) {
+    fn goto_least_unconfirmed_hash<T: CementationDataRequester>(&mut self, data_requester: &T) {
         if self.blocks_to_cement_for_this_account() > 1 {
             if self.blocks_to_cement_for_this_account() == 2 {
                 // If there is 1 uncemented block in-between this block and the cemented frontier,
@@ -553,7 +572,7 @@ impl BoundedModeHelper {
                 self.current_hash = self.previous;
                 self.block_height -= 1;
             } else if self.next_in_receive_chain.is_none() {
-                self.current_hash = self.get_least_unconfirmed_hash_from_top_level(txn);
+                self.current_hash = self.get_least_unconfirmed_hash_from_top_level(data_requester);
             } else {
                 // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
                 // as we already know what the next block we should process should be.
@@ -563,7 +582,7 @@ impl BoundedModeHelper {
         }
     }
 
-    fn iterate(&mut self, txn: &mut dyn ReadTransaction) -> bool {
+    fn iterate<T: CementationDataRequester>(&mut self, data_requester: &mut T) -> bool {
         let mut reached_target = false;
         let mut hit_receive = false;
         let mut hash = self.current_hash;
@@ -572,12 +591,12 @@ impl BoundedModeHelper {
             // Keep iterating upwards until we either reach the desired block or the second receive.
             // Once a receive is cemented, we can cement all blocks above it until the next receive, so store those details for later.
             num_blocks += 1;
-            let block = self.ledger.store.block().get(txn.txn(), &hash).unwrap();
+            let block = data_requester.get_block(&hash).unwrap();
             let source = block.source_or_link();
             //----------------------------------------
             if !source.is_zero()
-                && !self.ledger.is_epoch_link(&source.into())
-                && self.ledger.store.block().exists(txn.txn(), &source)
+                && !self.epochs.is_epoch_link(&source.into())
+                && data_requester.get_block(&source).is_some()
             {
                 hit_receive = true;
                 reached_target = true;
@@ -617,26 +636,25 @@ impl BoundedModeHelper {
 
             // We could be traversing a very large account so we don't want to open read transactions for too long.
             if (num_blocks > 0) && num_blocks % BATCH_READ_SIZE == 0 {
-                txn.refresh();
+                data_requester.refresh_transaction();
             }
         }
         hit_receive
     }
 
     /// Add the non-receive blocks iterated for this account
-    fn cement_non_receive_blocks_for_this_account(
+    fn cement_non_receive_blocks_for_this_account<T: CementationDataRequester>(
         &mut self,
-        txn: &dyn Transaction,
+        data_requester: &T,
     ) -> Option<WriteDetails> {
         if self.is_already_cemented() {
             return None;
         }
 
-        let height = self
-            .ledger
-            .store
-            .block()
-            .account_height(txn, &self.top_most_non_receive_block_hash);
+        let height = data_requester
+            .get_block(&self.top_most_non_receive_block_hash)
+            .map(|b| b.sideband().unwrap().height)
+            .unwrap_or_default();
 
         if height <= self.current_confirmation_height.height {
             return None;
@@ -703,14 +721,17 @@ impl BoundedModeHelper {
         self.accounts_confirmed_info.clear();
     }
 
-    fn get_next_step(&mut self, txn: &mut dyn ReadTransaction) -> BoundedCementationStep {
+    fn get_next_step<T: CementationDataRequester>(
+        &mut self,
+        data_requester: &mut T,
+    ) -> BoundedCementationStep {
         let mut next_step = BoundedCementationStep {
             write_details: [None, None],
             already_cemented: false,
             is_done: false,
         };
 
-        while !self.load_next_block(txn.txn()) {
+        while !self.load_next_block(data_requester) {
             if self.is_done() || self.stopped.load(Ordering::SeqCst) {
                 next_step.is_done = true;
                 return next_step;
@@ -724,11 +745,11 @@ impl BoundedModeHelper {
             return next_step;
         }
 
-        self.goto_least_unconfirmed_hash(txn.txn());
+        self.goto_least_unconfirmed_hash(data_requester);
         self.top_most_non_receive_block_hash = self.current_hash;
 
         let hit_receive = if !self.is_already_cemented() {
-            self.iterate(txn)
+            self.iterate(data_requester)
         } else {
             false
         };
@@ -750,17 +771,21 @@ impl BoundedModeHelper {
             || (self.receive_source_pairs.len() == 1
                 && self.top_most_non_receive_block_hash != self.current_hash)
         {
-            next_step.write_details = self.write_next(txn.txn(), is_set);
+            next_step.write_details = self.write_next(data_requester, is_set);
         }
 
         next_step.is_done = self.is_done();
         next_step
     }
 
-    fn write_next(&mut self, txn: &dyn Transaction, is_set: bool) -> [Option<WriteDetails>; 2] {
+    fn write_next<T: CementationDataRequester>(
+        &mut self,
+        data_requester: &T,
+        is_set: bool,
+    ) -> [Option<WriteDetails>; 2] {
         // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
         // the non-receive blocks which have been iterated for an account, and the associated receive block.
-        let cement_non_receives = self.cement_non_receive_blocks_for_this_account(txn);
+        let cement_non_receives = self.cement_non_receive_blocks_for_this_account(data_requester);
 
         let cement_receive = self.cement_receive_block_and_all_non_receive_blocks_above();
 

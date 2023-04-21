@@ -27,7 +27,13 @@ package "Logic"{
         Bounded
     }
 
-    class WriteDetails
+    struct WriteDetails{
+        account
+        bottom_height
+        bottom_hash
+        top_height
+        top_hash
+    }
     class WriteDetailsQueue
 
     class SingleAccountCementer
@@ -37,8 +43,17 @@ package "Logic"{
     }
 
     interface CementationDataRequester{
-        get_block()
-        get_current_confirmation_height()
+        get_block(hash)
+        was_block_pruned(hash)
+        get_current_confirmation_height(account)
+        get_account_info(account)
+        refresh_transaction()
+    }
+
+    struct BoundedCementationStep{
+        is_done
+        already_cemented
+        write_details
     }
 }
 
@@ -55,6 +70,11 @@ package "Application"{
     class CementationLedgerAdapter
 }
 
+class BoundedModeHelper{
+    initialize(hash)
+    get_next_step()
+}
+
 Ledger ..> UpdateConfirmationHeight
 
 UnboundedMode --> Ledger
@@ -64,6 +84,11 @@ BoundedMode --> Ledger
 BoundedMode --> MultiAccountCementer
 BoundedMode --> BatchWriteSizeManager
 BoundedMode --> CementationLedgerAdapter
+BoundedMode --> BoundedModeHelper
+
+BoundedModeHelper --> BoundedCementationStep: creates
+
+BoundedCementationStep --> WriteDetails
 
 MultiAccountCementer --> SingleAccountCementer
 MultiAccountCementer --> BatchWriteSizeManager
@@ -71,7 +96,7 @@ MultiAccountCementer --> WriteDetailsQueue
 MultiAccountCementer --> CementationDataRequester
 
 SingleAccountCementer --> UpdateConfirmationHeight
-SingleAccountCementer --> WriteDetails
+SingleAccountCementer --> WriteDetails: creates
 
 WriteDetailsQueue --> WriteDetails
 

@@ -5,12 +5,15 @@ use super::{
     WriteDetails, WriteDetailsQueue,
 };
 use rsnano_core::{
-    Account, BlockEnum, BlockHash, ConfirmationHeightInfo, ConfirmationHeightUpdate,
+    Account, AccountInfo, BlockEnum, BlockHash, ConfirmationHeightInfo, ConfirmationHeightUpdate,
 };
 
 pub(crate) trait CementationDataRequester {
     fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum>;
+    fn was_block_pruned(&self, block_hash: &BlockHash) -> bool;
     fn get_current_confirmation_height(&self, account: &Account) -> ConfirmationHeightInfo;
+    fn get_account_info(&self, account: &Account) -> Option<AccountInfo>;
+    fn refresh_transaction(&mut self);
 }
 
 /// Writes all confirmation heights from the WriteDetailsQueue to the Ledger.

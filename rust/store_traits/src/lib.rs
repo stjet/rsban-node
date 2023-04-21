@@ -43,10 +43,12 @@ use std::{any::Any, time::Duration};
 pub trait Transaction {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn refresh(&mut self);
 }
 
 pub trait ReadTransaction {
     fn txn(&self) -> &dyn Transaction;
+    fn txn_mut(&mut self) -> &mut dyn Transaction;
     fn reset(&mut self);
     fn renew(&mut self);
     fn refresh(&mut self);

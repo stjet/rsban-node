@@ -128,10 +128,18 @@ impl rsnano_store_traits::Transaction for LmdbReadTransaction {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
+
+    fn refresh(&mut self) {
+        ReadTransaction::refresh(self);
+    }
 }
 
 impl ReadTransaction for LmdbReadTransaction {
     fn txn(&self) -> &dyn rsnano_store_traits::Transaction {
+        self
+    }
+
+    fn txn_mut(&mut self) -> &mut dyn rsnano_store_traits::Transaction {
         self
     }
 
@@ -219,6 +227,10 @@ impl rsnano_store_traits::Transaction for LmdbWriteTransaction {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn refresh(&mut self) {
+        WriteTransaction::refresh(self);
     }
 }
 

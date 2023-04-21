@@ -8,10 +8,13 @@ use std::{
 
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Account,
+    Account, BlockHash,
 };
 
-use super::bounded_mode::ConfirmedInfo;
+pub(crate) struct ConfirmedInfo {
+    pub(crate) confirmed_height: u64,
+    pub(crate) iterated_frontier: BlockHash,
+}
 
 /// Holds confirmation height/cemented frontier in memory for accounts while iterating
 pub(crate) struct AccountsConfirmedMap {

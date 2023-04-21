@@ -1,20 +1,10 @@
 use std::sync::Arc;
 
 use super::{
-    write_details_queue::WriteDetailsContainerInfo, BatchWriteSizeManager, SingleAccountCementer,
-    WriteDetails, WriteDetailsQueue,
+    BatchWriteSizeManager, CementationDataRequester, SingleAccountCementer, WriteDetails,
+    WriteDetailsContainerInfo, WriteDetailsQueue,
 };
-use rsnano_core::{
-    Account, AccountInfo, BlockEnum, BlockHash, ConfirmationHeightInfo, ConfirmationHeightUpdate,
-};
-
-pub(crate) trait CementationDataRequester {
-    fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum>;
-    fn was_block_pruned(&self, block_hash: &BlockHash) -> bool;
-    fn get_current_confirmation_height(&self, account: &Account) -> ConfirmationHeightInfo;
-    fn get_account_info(&self, account: &Account) -> Option<AccountInfo>;
-    fn refresh_transaction(&mut self);
-}
+use rsnano_core::{BlockEnum, ConfirmationHeightUpdate};
 
 /// Writes all confirmation heights from the WriteDetailsQueue to the Ledger.
 /// This happens in batches in order to increase performance.

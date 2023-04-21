@@ -20,6 +20,13 @@ impl ConfirmationHeightInfo {
         self.serialize(&mut stream).unwrap();
         buffer
     }
+
+    pub fn test_instance() -> Self {
+        Self {
+            height: 42,
+            frontier: BlockHash::from(7),
+        }
+    }
 }
 
 impl Serialize for ConfirmationHeightInfo {

@@ -29,6 +29,18 @@ impl AccountInfo {
         self.serialize(&mut stream).unwrap();
         buffer
     }
+
+    pub fn test_instance() -> Self {
+        Self {
+            head: BlockHash::from(1),
+            representative: Account::from(2),
+            open_block: BlockHash::from(3),
+            balance: Amount::raw(42),
+            modified: 4,
+            block_count: 5,
+            epoch: Epoch::Epoch2,
+        }
+    }
 }
 
 impl Serialize for AccountInfo {

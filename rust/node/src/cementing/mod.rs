@@ -5,7 +5,9 @@ mod block_cache;
 mod block_cementor;
 mod block_queue;
 mod bounded_mode;
+mod bounded_mode_helper;
 mod cement_queue;
+mod cementation_data_requester;
 mod confirmation_height_processor;
 mod confirmed_iterated_pairs;
 mod implicit_receive_cemented_mapping;
@@ -20,10 +22,19 @@ use std::sync::Arc;
 use block_queue::BlockQueue;
 use rsnano_core::{BlockEnum, BlockHash, ConfirmationHeightUpdate};
 
+use accounts_confirmed_map::{
+    AccountsConfirmedMap, AccountsConfirmedMapContainerInfo, ConfirmedInfo,
+};
 pub use automatic_mode::ConfirmationHeightMode;
 use automatic_mode::{AutomaticMode, AutomaticModeContainerInfo, UNBOUNDED_CUTOFF};
 use batch_write_size_manager::BatchWriteSizeManager;
 use bounded_mode::{BoundedMode, BoundedModeContainerInfo};
+use bounded_mode_helper::{BoundedCementationStep, BoundedModeHelper};
+use cementation_data_requester::{CementationDataRequester, CementationLedgerAdapter};
+
+#[cfg(test)]
+use cementation_data_requester::CementationDataRequesterStub;
+
 use confirmation_height_processor::CementCallbackRefs;
 pub use confirmation_height_processor::ConfirmationHeightProcessor;
 use multi_account_cementer::MultiAccountCementer;

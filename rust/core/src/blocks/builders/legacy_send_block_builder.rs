@@ -6,6 +6,7 @@ use crate::{
 
 pub struct LegacySendBlockBuilder {
     account: Option<Account>,
+    height: Option<u64>,
     previous: Option<BlockHash>,
     destination: Option<Account>,
     balance: Option<Amount>,
@@ -19,6 +20,7 @@ impl LegacySendBlockBuilder {
     pub fn new() -> Self {
         Self {
             account: None,
+            height: None,
             previous: None,
             destination: None,
             balance: None,
@@ -31,6 +33,11 @@ impl LegacySendBlockBuilder {
 
     pub fn account(mut self, account: Account) -> Self {
         self.account = Some(account);
+        self
+    }
+
+    pub fn height(mut self, height: u64) -> Self {
+        self.height = Some(height);
         self
     }
 
@@ -94,13 +101,13 @@ impl LegacySendBlockBuilder {
             work,
         );
 
-        if self.build_sideband {
+        if self.build_sideband || self.account.is_some() || self.height.is_some() {
             let details = BlockDetails::new(Epoch::Epoch0, true, false, false);
             block.set_sideband(BlockSideband::new(
                 self.account.unwrap_or(Account::from(4)),
                 BlockHash::zero(),
                 balance,
-                5,
+                self.height.unwrap_or(5),
                 8,
                 details,
                 Epoch::Epoch0,

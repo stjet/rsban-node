@@ -11,7 +11,7 @@ use rsnano_core::{
     Account, BlockHash,
 };
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub(crate) struct WriteDetails {
     pub account: Account,
     pub bottom_height: u64,

@@ -11,6 +11,7 @@ pub struct LegacyOpenBlockBuilder {
     keypair: Option<KeyPair>,
     work: Option<u64>,
     build_sideband: bool,
+    height: Option<u64>,
 }
 
 impl LegacyOpenBlockBuilder {
@@ -22,6 +23,7 @@ impl LegacyOpenBlockBuilder {
             keypair: None,
             work: None,
             build_sideband: false,
+            height: None,
         }
     }
 
@@ -55,6 +57,11 @@ impl LegacyOpenBlockBuilder {
         self
     }
 
+    pub fn height(mut self, height: u64) -> Self {
+        self.height = Some(height);
+        self
+    }
+
     pub fn build(self) -> BlockEnum {
         let source = self.source.unwrap_or(BlockHash::from(1));
         let key_pair = self.keypair.unwrap_or_default();
@@ -80,12 +87,13 @@ impl LegacyOpenBlockBuilder {
             is_epoch: false,
         };
 
-        if self.build_sideband {
+        if self.build_sideband || self.height.is_some() {
+            let height = self.height.unwrap_or(1);
             block.set_sideband(BlockSideband::new(
                 block.account(),
                 BlockHash::zero(),
                 Amount::raw(5),
-                1,
+                height,
                 2,
                 details,
                 Epoch::Epoch0,

@@ -35,7 +35,7 @@ jobs:
         with:
           path: |
             build
-            /home/runner/.cargo/registry
+            /Users/runner/.cargo/registry
             rust/target
           key: ${{ runner.os }}-build-cache
 
@@ -57,7 +57,7 @@ jobs:
         with:
           path: |
             build
-            /home/runner/.cargo/registry
+            /Users/runner/.cargo/registry
             rust/target
           key: ${{ runner.os }}-build-cache
 

@@ -42,7 +42,7 @@ public:
 	std::size_t database_requests_limit;
 	std::size_t pull_count;
 	nano::millis_t timeout;
-	std::size_t throttle_count;
+	std::size_t throttle_coefficient;
 	nano::millis_t throttle_wait;
 
 	nano::account_sets_config account_sets;

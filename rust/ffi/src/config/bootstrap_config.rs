@@ -7,7 +7,7 @@ pub struct BootstrapAscendingConfigDto {
     pub database_requests_limit: usize,
     pub pull_count: usize,
     pub timeout_ms: u64,
-    pub throttle_count: usize,
+    pub throttle_coefficient: usize,
     pub throttle_wait_ms: u64,
     pub account_sets: AccountSetsConfigDto,
 }
@@ -27,7 +27,7 @@ impl From<&BootstrapAscendingConfig> for BootstrapAscendingConfigDto {
             database_requests_limit: value.database_requests_limit,
             pull_count: value.pull_count,
             timeout_ms: value.timeout.as_millis() as u64,
-            throttle_count: value.throttle_count,
+            throttle_coefficient: value.throttle_coefficient,
             throttle_wait_ms: value.throttle_wait.as_millis() as u64,
             account_sets: (&value.account_sets).into(),
         }
@@ -41,7 +41,7 @@ impl From<&BootstrapAscendingConfigDto> for BootstrapAscendingConfig {
             database_requests_limit: value.database_requests_limit,
             pull_count: value.pull_count,
             timeout: Duration::from_millis(value.timeout_ms),
-            throttle_count: value.throttle_count,
+            throttle_coefficient: value.throttle_coefficient,
             throttle_wait: Duration::from_millis(value.throttle_wait_ms),
             account_sets: (&value.account_sets).into(),
         }

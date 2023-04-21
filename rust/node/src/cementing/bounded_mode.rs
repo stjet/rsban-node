@@ -106,24 +106,25 @@ impl BoundedMode {
         };
 
         loop {
-            let next_step = self.helper.get_next_step(&mut ledger_adapter);
+            match self.helper.get_next_step(&mut ledger_adapter) {
+                BoundedCementationStep::Write(write_details) => {
+                    let mut something_written = false; // todo remove this flag
+                    for write in write_details.into_iter().flatten() {
+                        self.cementer.enqueue(write);
+                        something_written = true;
+                    }
 
-            // This block was added to the confirmation height processor but is already confirmed
-            if next_step.already_cemented {
-                (callbacks.block_already_cemented)(original_block.hash());
+                    if something_written && self.should_flush(callbacks, self.helper.is_done()) {
+                        self.try_flush(callbacks);
+                    }
+                }
+                BoundedCementationStep::AlreadyCemented(hash) => {
+                    (callbacks.block_already_cemented)(hash)
+                }
+                BoundedCementationStep::Done => break,
             }
 
-            let mut something_written = false; // todo remove this flag
-            for write in next_step.write_details.into_iter().flatten() {
-                self.cementer.enqueue(write);
-                something_written = true;
-            }
-
-            if something_written && self.should_flush(callbacks, next_step.is_done) {
-                self.try_flush(callbacks);
-            }
-
-            if next_step.is_done || self.stopped.load(Ordering::SeqCst) {
+            if self.helper.is_done() || self.stopped.load(Ordering::SeqCst) {
                 break;
             }
             ledger_adapter.refresh_transaction();
@@ -199,19 +200,9 @@ impl BoundedMode {
             .unwrap()
         {
             self.flush(txn.as_mut(), &update_command, scoped_write_guard, callbacks);
-            //todo do this in helper:
             if account_done {
-                if let Some(found_info) = self
-                    .helper
-                    .accounts_confirmed_info
-                    .get(&update_command.account)
-                {
-                    if found_info.confirmed_height == update_command.new_height {
-                        self.helper
-                            .accounts_confirmed_info
-                            .remove(&update_command.account);
-                    }
-                }
+                self.helper
+                    .clear_cache(&update_command.account, update_command.new_height);
             }
         }
         drop(txn);
@@ -710,11 +701,9 @@ impl BoundedModeHelper {
     }
 
     fn is_done(&self) -> bool {
-        self.receive_source_pairs.is_empty() && self.current_hash == self.original_block
-    }
-
-    fn finished_iterating(&self) -> bool {
-        self.current_hash == self.original_block
+        !self.first_iter
+            && self.receive_source_pairs.is_empty()
+            && self.current_hash == self.original_block
     }
 
     fn clear_accounts_cache(&mut self) {
@@ -725,57 +714,50 @@ impl BoundedModeHelper {
         &mut self,
         data_requester: &mut T,
     ) -> BoundedCementationStep {
-        let mut next_step = BoundedCementationStep {
-            write_details: [None, None],
-            already_cemented: false,
-            is_done: false,
-        };
+        loop {
+            if self.is_done() {
+                return BoundedCementationStep::Done;
+            }
 
-        while !self.load_next_block(data_requester) {
-            if self.is_done() || self.stopped.load(Ordering::SeqCst) {
-                next_step.is_done = true;
-                return next_step;
+            while !self.load_next_block(data_requester) {
+                if self.is_done() || self.stopped.load(Ordering::SeqCst) {
+                    return BoundedCementationStep::Done;
+                }
+            }
+
+            // This block was added to the confirmation height processor but is already confirmed
+            if self.should_notify_already_cemented() {
+                return BoundedCementationStep::AlreadyCemented(self.original_block);
+            }
+
+            self.goto_least_unconfirmed_hash(data_requester);
+            self.top_most_non_receive_block_hash = self.current_hash;
+
+            let hit_receive = if !self.is_already_cemented() {
+                self.iterate(data_requester)
+            } else {
+                false
+            };
+
+            // Exit early when the processor has been stopped, otherwise this function may take a
+            // while (and hence keep the process running) if updating a long chain.
+            if self.stopped.load(Ordering::SeqCst) {
+                return BoundedCementationStep::Done;
+            }
+
+            // next_in_receive_chain can be modified when writing, so need to cache it here before resetting
+            let is_set = self.next_in_receive_chain.is_some();
+            self.next_in_receive_chain = None;
+            self.first_iter = false;
+
+            // Need to also handle the case where we are hitting receives where the sends below should be confirmed
+            if !hit_receive
+                || (self.receive_source_pairs.len() == 1
+                    && self.top_most_non_receive_block_hash != self.current_hash)
+            {
+                return BoundedCementationStep::Write(self.write_next(data_requester, is_set));
             }
         }
-
-        // This block was added to the confirmation height processor but is already confirmed
-        if self.should_notify_already_cemented() {
-            next_step.already_cemented = true;
-            next_step.is_done = true;
-            return next_step;
-        }
-
-        self.goto_least_unconfirmed_hash(data_requester);
-        self.top_most_non_receive_block_hash = self.current_hash;
-
-        let hit_receive = if !self.is_already_cemented() {
-            self.iterate(data_requester)
-        } else {
-            false
-        };
-
-        // Exit early when the processor has been stopped, otherwise this function may take a
-        // while (and hence keep the process running) if updating a long chain.
-        if self.stopped.load(Ordering::SeqCst) {
-            next_step.is_done = true;
-            return next_step;
-        }
-
-        // next_in_receive_chain can be modified when writing, so need to cache it here before resetting
-        let is_set = self.next_in_receive_chain.is_some();
-        self.next_in_receive_chain = None;
-        self.first_iter = false;
-
-        // Need to also handle the case where we are hitting receives where the sends below should be confirmed
-        if !hit_receive
-            || (self.receive_source_pairs.len() == 1
-                && self.top_most_non_receive_block_hash != self.current_hash)
-        {
-            next_step.write_details = self.write_next(data_requester, is_set);
-        }
-
-        next_step.is_done = self.is_done();
-        next_step
     }
 
     fn write_next<T: CementationDataRequester>(
@@ -796,10 +778,18 @@ impl BoundedModeHelper {
 
         [cement_non_receives, cement_receive]
     }
+
+    fn clear_cache(&mut self, account: &Account, height: u64) {
+        if let Some(found_info) = self.accounts_confirmed_info.get(account) {
+            if found_info.confirmed_height == height {
+                self.accounts_confirmed_info.remove(account);
+            }
+        }
+    }
 }
 
-struct BoundedCementationStep {
-    write_details: [Option<WriteDetails>; 2],
-    already_cemented: bool,
-    is_done: bool,
+enum BoundedCementationStep {
+    Write([Option<WriteDetails>; 2]),
+    AlreadyCemented(BlockHash),
+    Done,
 }

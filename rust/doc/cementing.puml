@@ -36,8 +36,13 @@ package "Logic"{
     }
     class WriteDetailsQueue
 
-    class SingleAccountCementer
-    class MultiAccountCementer
+    class SingleAccountCementer {
+        cement(): ConfirmationHeightUpdate
+    }
+    class MultiAccountCementer {
+        enqueue(write_details)
+        cement_next(data_requester): ConfirmationHeightUpdate
+    }
     class BatchWriteSizeManager {
         current()
     }
@@ -55,10 +60,16 @@ package "Logic"{
         already_cemented
         write_details
     }
+
+    class BoundedModeHelper{
+        initialize(hash)
+        get_next_step()
+    }
+
 }
 
 package "Values"{
-    struct UpdateConfirmationHeight{
+    struct ConfirmationHeightUpdate{
         account
         new_cemented_frontier
         new_height
@@ -70,12 +81,7 @@ package "Application"{
     class CementationLedgerAdapter
 }
 
-class BoundedModeHelper{
-    initialize(hash)
-    get_next_step()
-}
-
-Ledger ..> UpdateConfirmationHeight
+Ledger ..> ConfirmationHeightUpdate
 
 UnboundedMode --> Ledger
 UnboundedMode --> BatchWriteSizeManager
@@ -87,6 +93,7 @@ BoundedMode --> CementationLedgerAdapter
 BoundedMode --> BoundedModeHelper
 
 BoundedModeHelper --> BoundedCementationStep: creates
+BoundedModeHelper --> CementationDataRequester
 
 BoundedCementationStep --> WriteDetails
 
@@ -95,7 +102,7 @@ MultiAccountCementer --> BatchWriteSizeManager
 MultiAccountCementer --> WriteDetailsQueue
 MultiAccountCementer --> CementationDataRequester
 
-SingleAccountCementer --> UpdateConfirmationHeight
+SingleAccountCementer --> ConfirmationHeightUpdate
 SingleAccountCementer --> WriteDetails: creates
 
 WriteDetailsQueue --> WriteDetails

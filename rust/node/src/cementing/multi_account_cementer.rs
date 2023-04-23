@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::{
-    BatchWriteSizeManager, CementationDataRequester, SingleAccountCementer, WriteDetails,
+    BatchWriteSizeManager, LedgerDataRequester, SingleAccountCementer, WriteDetails,
     WriteDetailsContainerInfo, WriteDetailsQueue,
 };
 use rsnano_core::{BlockEnum, ConfirmationHeightUpdate};
@@ -47,7 +47,7 @@ impl MultiAccountCementer {
         self.pending_writes.push_back(write_details);
     }
 
-    pub fn cement_next<T: CementationDataRequester>(
+    pub fn cement_next<T: LedgerDataRequester>(
         &mut self,
         data_requester: &T,
     ) -> anyhow::Result<Option<(ConfirmationHeightUpdate, bool)>> {
@@ -61,14 +61,14 @@ impl MultiAccountCementer {
         )
     }
 
-    fn load_next_pending<T: CementationDataRequester>(&mut self, data_requester: &T) {
+    fn load_next_pending<T: LedgerDataRequester>(&mut self, data_requester: &T) {
         self.current = self.pending_writes.pop_front();
         if let Some(pending) = self.current.clone() {
             self.init_account_cementer(data_requester, pending.clone());
         }
     }
 
-    fn init_account_cementer<T: CementationDataRequester>(
+    fn init_account_cementer<T: LedgerDataRequester>(
         &mut self,
         data_requester: &T,
         pending: WriteDetails,

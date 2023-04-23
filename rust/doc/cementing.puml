@@ -47,7 +47,7 @@ package "Logic"{
         current()
     }
 
-    interface CementationDataRequester{
+    interface LedgerDataRequester{
         get_block(hash)
         was_block_pruned(hash)
         get_current_confirmation_height(account)
@@ -78,7 +78,7 @@ package "Values"{
 }
 
 package "Application"{
-    class CementationLedgerAdapter
+    class LedgerAdapter
 }
 
 Ledger ..> ConfirmationHeightUpdate
@@ -89,18 +89,18 @@ UnboundedMode --> BatchWriteSizeManager
 BoundedMode --> Ledger
 BoundedMode --> MultiAccountCementer
 BoundedMode --> BatchWriteSizeManager
-BoundedMode --> CementationLedgerAdapter
+BoundedMode --> LedgerAdapter
 BoundedMode --> BoundedModeHelper
 
 BoundedModeHelper --> BoundedCementationStep: creates
-BoundedModeHelper --> CementationDataRequester
+BoundedModeHelper --> LedgerDataRequester
 
 BoundedCementationStep --> WriteDetails
 
 MultiAccountCementer --> SingleAccountCementer
 MultiAccountCementer --> BatchWriteSizeManager
 MultiAccountCementer --> WriteDetailsQueue
-MultiAccountCementer --> CementationDataRequester
+MultiAccountCementer --> LedgerDataRequester
 
 SingleAccountCementer --> ConfirmationHeightUpdate
 SingleAccountCementer --> WriteDetails: creates
@@ -115,7 +115,7 @@ AutomaticMode --> BatchWriteSizeManager
 
 ConfirmationHeightProcessor --> AutomaticMode
 
-CementationLedgerAdapter ..|> CementationDataRequester
-CementationLedgerAdapter --> Ledger
+LedgerAdapter ..|> LedgerDataRequester
+LedgerAdapter --> Ledger
 
 @enduml

@@ -9,7 +9,7 @@ use rsnano_core::{Amount, BlockDetails, BlockSideband, Epoch, LegacySendBlockBui
 use rsnano_ledger::Ledger;
 use rsnano_store_traits::Transaction;
 
-pub(crate) trait CementationDataRequester {
+pub(crate) trait LedgerDataRequester {
     fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum>;
     fn was_block_pruned(&self, block_hash: &BlockHash) -> bool;
     fn get_current_confirmation_height(&self, account: &Account) -> ConfirmationHeightInfo;
@@ -17,18 +17,18 @@ pub(crate) trait CementationDataRequester {
     fn refresh_transaction(&mut self);
 }
 
-pub(crate) struct CementationLedgerAdapter<'a> {
+pub(crate) struct LedgerAdapter<'a> {
     txn: &'a mut dyn Transaction,
     ledger: &'a Ledger,
 }
 
-impl<'a> CementationLedgerAdapter<'a> {
+impl<'a> LedgerAdapter<'a> {
     pub(crate) fn new(txn: &'a mut dyn Transaction, ledger: &'a Ledger) -> Self {
         Self { txn, ledger }
     }
 }
 
-impl<'a> CementationDataRequester for CementationLedgerAdapter<'a> {
+impl<'a> LedgerDataRequester for LedgerAdapter<'a> {
     fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum> {
         self.ledger.store.block().get(self.txn, block_hash)
     }
@@ -198,7 +198,7 @@ impl BlockChainBuilder {
 }
 
 #[cfg(test)]
-impl CementationDataRequester for CementationDataRequesterStub {
+impl LedgerDataRequester for CementationDataRequesterStub {
     fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum> {
         self.blocks.get(block_hash).cloned()
     }

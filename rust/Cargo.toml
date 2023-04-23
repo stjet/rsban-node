@@ -7,4 +7,5 @@ members = [
 	"node",
 	"ffi",
 	"load_test",
+	"xtask",
 ]

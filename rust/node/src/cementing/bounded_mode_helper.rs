@@ -7,7 +7,7 @@ use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{Account, BlockHash, ConfirmationHeightInfo, Epochs};
 
 use super::{
-    cementation_data_requester::CementationDataRequester, AccountsConfirmedMap,
+    ledger_data_requester::LedgerDataRequester, AccountsConfirmedMap,
     AccountsConfirmedMapContainerInfo, ConfirmedInfo, WriteDetails,
 };
 
@@ -128,7 +128,7 @@ impl BoundedModeHelper {
         self.top_most_non_receive_block_hash = BlockHash::zero();
     }
 
-    pub fn get_next_step<T: CementationDataRequester>(
+    pub fn get_next_step<T: LedgerDataRequester>(
         &mut self,
         data_requester: &mut T,
     ) -> BoundedCementationStep {
@@ -188,7 +188,7 @@ impl BoundedModeHelper {
             && self.current_hash == self.original_block
     }
 
-    fn load_next_block<T: CementationDataRequester>(&mut self, data_requester: &T) -> bool {
+    fn load_next_block<T: LedgerDataRequester>(&mut self, data_requester: &T) -> bool {
         self.receive_details = None;
         self.hash_to_process = self.get_next_block_hash();
         self.current_hash = self.hash_to_process.top;
@@ -250,7 +250,7 @@ impl BoundedModeHelper {
         }
     }
 
-    fn get_confirmation_height<T: CementationDataRequester>(
+    fn get_confirmation_height<T: LedgerDataRequester>(
         &self,
         account: &Account,
         data_requester: &T,
@@ -281,7 +281,7 @@ impl BoundedModeHelper {
         }
     }
 
-    fn get_least_unconfirmed_hash_from_top_level<T: CementationDataRequester>(
+    fn get_least_unconfirmed_hash_from_top_level<T: LedgerDataRequester>(
         &mut self,
         data_requester: &T,
     ) -> BlockHash {
@@ -303,7 +303,7 @@ impl BoundedModeHelper {
         return least_unconfirmed_hash;
     }
 
-    fn goto_least_unconfirmed_hash<T: CementationDataRequester>(&mut self, data_requester: &T) {
+    fn goto_least_unconfirmed_hash<T: LedgerDataRequester>(&mut self, data_requester: &T) {
         if self.blocks_to_cement_for_this_account() > 1 {
             if self.blocks_to_cement_for_this_account() == 2 {
                 // If there is 1 uncemented block in-between this block and the cemented frontier,
@@ -321,7 +321,7 @@ impl BoundedModeHelper {
         }
     }
 
-    fn iterate<T: CementationDataRequester>(&mut self, data_requester: &mut T) -> bool {
+    fn iterate<T: LedgerDataRequester>(&mut self, data_requester: &mut T) -> bool {
         let mut reached_target = false;
         let mut hit_receive = false;
         let mut hash = self.current_hash;
@@ -382,7 +382,7 @@ impl BoundedModeHelper {
     }
 
     /// Add the non-receive blocks iterated for this account
-    fn cement_non_receive_blocks_for_this_account<T: CementationDataRequester>(
+    fn cement_non_receive_blocks_for_this_account<T: LedgerDataRequester>(
         &mut self,
         data_requester: &T,
     ) -> Option<WriteDetails> {
@@ -460,7 +460,7 @@ impl BoundedModeHelper {
         }
     }
 
-    fn write_next<T: CementationDataRequester>(
+    fn write_next<T: LedgerDataRequester>(
         &mut self,
         data_requester: &T,
         is_set: bool,
@@ -494,7 +494,7 @@ fn truncate_after(buffer: &mut BoundedVecDeque<BlockHash>, hash: &BlockHash) {
 mod tests {
     use super::*;
     use crate::cementing::{
-        cementation_data_requester::BlockChainBuilder, CementationDataRequesterStub,
+        ledger_data_requester::BlockChainBuilder, CementationDataRequesterStub,
     };
 
     #[test]

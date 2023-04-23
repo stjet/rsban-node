@@ -36,7 +36,6 @@ jobs:
           path: |
             build
             /Users/runner/.cargo/registry
-            rust/target
           key: ${{ runner.os }}-build-cache
 
       - name: Fetch Deps
@@ -58,7 +57,6 @@ jobs:
           path: |
             build
             /Users/runner/.cargo/registry
-            rust/target
           key: ${{ runner.os }}-build-cache
 
       - name: Run Tests
@@ -96,7 +94,6 @@ jobs:
           path: |
             build
             cargo-registry
-            rust/target
           key: ${{ runner.os }}-${{ env.COMPILER }}-build-cache
 
       - name: Fetch Deps
@@ -118,7 +115,6 @@ jobs:
           path: |
             build
             cargo-registry
-            rust/target
           key: ${{ runner.os }}-${{ env.COMPILER }}-build-cache
 
       - name: Run Tests

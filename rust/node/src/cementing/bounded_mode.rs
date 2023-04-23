@@ -17,7 +17,7 @@ use crate::stats::{DetailType, Direction, StatType, Stats};
 
 use super::{
     AccountsConfirmedMapContainerInfo, BatchWriteSizeManager, BoundedCementationStep,
-    BoundedModeHelper, CementCallbackRefs, CementationDataRequester, CementationLedgerAdapter,
+    BoundedModeHelper, CementCallbackRefs, LedgerDataRequester, LedgerAdapter,
     MultiAccountCementer, WriteDetailsContainerInfo,
 };
 
@@ -82,7 +82,7 @@ impl BoundedMode {
         let mut txn = self.ledger.store.tx_begin_read();
         let ledger_clone = Arc::clone(&self.ledger);
 
-        let mut ledger_adapter = CementationLedgerAdapter::new(txn.txn_mut(), &ledger_clone);
+        let mut ledger_adapter = LedgerAdapter::new(txn.txn_mut(), &ledger_clone);
 
         loop {
             match self.helper.get_next_step(&mut ledger_adapter) {
@@ -171,7 +171,7 @@ impl BoundedMode {
         // of blocks to retain consistent cementing across all account chains to genesis.
         while let Some((update_command, account_done)) = self
             .cementer
-            .cement_next(&CementationLedgerAdapter::new(txn.txn_mut(), &self.ledger))
+            .cement_next(&LedgerAdapter::new(txn.txn_mut(), &self.ledger))
             .unwrap()
         {
             self.flush(txn.as_mut(), &update_command, scoped_write_guard, callbacks);

@@ -33,7 +33,7 @@ use bounded_mode_helper::{BoundedCementationStep, BoundedModeHelper};
 use ledger_data_requester::{LedgerAdapter, LedgerDataRequester};
 
 #[cfg(test)]
-use ledger_data_requester::CementationDataRequesterStub;
+use ledger_data_requester::LedgerDataRequesterStub;
 
 use confirmation_height_processor::CementCallbackRefs;
 pub use confirmation_height_processor::ConfirmationHeightProcessor;

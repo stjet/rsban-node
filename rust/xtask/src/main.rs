@@ -6,17 +6,15 @@ use std::{
 };
 
 fn main() -> anyhow::Result<()> {
-    let html_mode = std::env::args().any(|a| a == "--html");
-    coverage(html_mode)
+    coverage()
 }
 
-const TARGET_DIR: &str = "../build/coverage/";
+const HTML_TARGET_DIR: &str = "../build/coverage/html";
+const LCOV_FILE: &str = "../build/coverage/tests.lcov";
 
-pub fn coverage(html_mode: bool) -> anyhow::Result<()> {
-    if html_mode {
-        fs_extra::dir::remove(format!("{}/html", TARGET_DIR)).map_err(anyhow::Error::msg)?;
-    }
-    create_dir_all(TARGET_DIR)?;
+pub fn coverage() -> anyhow::Result<()> {
+    fs_extra::dir::remove(HTML_TARGET_DIR).map_err(anyhow::Error::msg)?;
+    create_dir_all(HTML_TARGET_DIR)?;
 
     println!("=== running coverage ===");
     cmd!("cargo", "test", "--lib", "-q")
@@ -26,14 +24,20 @@ pub fn coverage(html_mode: bool) -> anyhow::Result<()> {
         .run()?;
     println!("ok.");
 
-    println!("=== generating report ===");
+    println!("=== generating reports ===");
+    run_gcov("html", HTML_TARGET_DIR)?;
+    run_gcov("lcov", LCOV_FILE)?;
+    println!("ok.");
 
-    let (fmt, file) = if html_mode {
-        ("html", TARGET_DIR.to_string())
-    } else {
-        ("lcov", format!("{}/tests.lcov", TARGET_DIR))
-    };
+    println!("=== cleaning up ===");
+    clean_files("**/*.profraw")?;
+    println!("ok.");
+    println!("report location: {HTML_TARGET_DIR}");
 
+    Ok(())
+}
+
+fn run_gcov(fmt: &str, file: &str) -> Result<(), anyhow::Error> {
     cmd!(
         "grcov",
         ".",
@@ -55,16 +59,9 @@ pub fn coverage(html_mode: bool) -> anyhow::Result<()> {
         "--ignore",
         "*/src/tests/*",
         "-o",
-        file.as_str(),
+        file,
     )
     .run()?;
-    println!("ok.");
-
-    println!("=== cleaning up ===");
-    clean_files("**/*.profraw")?;
-    println!("ok.");
-    println!("report location: {file}");
-
     Ok(())
 }
 

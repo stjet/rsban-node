@@ -24,6 +24,14 @@ impl BlockChainBuilder {
         }
     }
 
+    pub fn from_send_block(block: &BlockEnum) -> Self {
+        let BlockEnum::LegacySend(send_block) = block else {
+            panic!("not a send block!")
+        };
+
+        Self::for_account(*send_block.mandatory_destination()).legacy_open_from(block)
+    }
+
     pub fn height(&self) -> u64 {
         self.height
     }
@@ -38,6 +46,10 @@ impl BlockChainBuilder {
 
     pub fn blocks(&self) -> &[BlockEnum] {
         &self.blocks
+    }
+
+    pub fn latest_block(&self) -> &BlockEnum {
+        self.blocks.last().unwrap()
     }
 
     fn add_block(&mut self, mut block: BlockEnum) -> &BlockEnum {
@@ -115,7 +127,7 @@ mod tests {
     #[test]
     fn add_legacy_open() {
         let builder = BlockChainBuilder::for_account(1).legacy_open();
-        let block = builder.blocks().last().cloned().unwrap();
+        let block = builder.latest_block();
         assert_eq!(block.account(), Account::from(1));
         assert_eq!(block.block_type(), BlockType::LegacyOpen);
         assert_eq!(block.sideband().unwrap().height, 1);

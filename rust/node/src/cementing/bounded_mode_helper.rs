@@ -510,40 +510,25 @@ mod tests {
 
     #[test]
     fn cement_first_send_from_genesis() {
-        let mut sut = BoundedModeHelper::builder().build();
         let mut data_requester = LedgerDataRequesterStub::new();
         let genesis_chain = data_requester.add_genesis_block().legacy_send();
         data_requester.add_uncemented(&genesis_chain);
 
-        sut.initialize(genesis_chain.frontier());
-        let step = sut.get_next_step(&mut data_requester);
-
-        let expected = WriteDetails {
-            account: genesis_chain.account(),
-            bottom_height: 2,
-            bottom_hash: genesis_chain.frontier(),
-            top_height: 2,
-            top_hash: genesis_chain.frontier(),
-        };
-        assert_eq!(step, BoundedCementationStep::Write([Some(expected), None]));
-    }
-
-    #[test]
-    fn when_done_there_are_no_more_steps() {
-        let mut sut = BoundedModeHelper::builder().build();
-        let mut data_requester = LedgerDataRequesterStub::new();
-        let genesis_chain = data_requester.add_genesis_block().legacy_send();
-        data_requester.add_uncemented(&genesis_chain);
-
-        sut.initialize(genesis_chain.frontier());
-        sut.get_next_step(&mut data_requester); // cement the block
-        let step = sut.get_next_step(&mut data_requester);
-        assert_eq!(step, BoundedCementationStep::Done);
+        assert_write_steps(
+            &mut data_requester,
+            genesis_chain.frontier(),
+            &[WriteDetails {
+                account: genesis_chain.account(),
+                bottom_height: 2,
+                bottom_hash: genesis_chain.frontier(),
+                top_height: 2,
+                top_hash: genesis_chain.frontier(),
+            }],
+        );
     }
 
     #[test]
     fn cement_two_blocks_in_one_go() {
-        let mut sut = BoundedModeHelper::builder().build();
         let mut data_requester = LedgerDataRequesterStub::new();
         let genesis_chain = data_requester
             .add_genesis_block()
@@ -553,22 +538,21 @@ mod tests {
         let second_send = genesis_chain.blocks()[2].hash();
         data_requester.add_uncemented(&genesis_chain);
 
-        sut.initialize(second_send);
-        let step = sut.get_next_step(&mut data_requester);
-
-        let expected = WriteDetails {
-            account: genesis_chain.account(),
-            bottom_height: 2,
-            bottom_hash: first_send,
-            top_height: 3,
-            top_hash: second_send,
-        };
-        assert_eq!(step, BoundedCementationStep::Write([Some(expected), None]));
+        assert_write_steps(
+            &mut data_requester,
+            second_send,
+            &[WriteDetails {
+                account: genesis_chain.account(),
+                bottom_height: 2,
+                bottom_hash: first_send,
+                top_height: 3,
+                top_hash: second_send,
+            }],
+        );
     }
 
     #[test]
     fn cement_three_blocks_in_one_go() {
-        let mut sut = BoundedModeHelper::builder().build();
         let mut data_requester = LedgerDataRequesterStub::new();
         let genesis_chain = data_requester
             .add_genesis_block()
@@ -577,22 +561,21 @@ mod tests {
             .legacy_send();
         data_requester.add_uncemented(&genesis_chain);
 
-        sut.initialize(genesis_chain.frontier());
-        let step = sut.get_next_step(&mut data_requester);
-
-        let expected = WriteDetails {
-            account: genesis_chain.account(),
-            bottom_height: 2,
-            bottom_hash: genesis_chain.blocks()[1].hash(),
-            top_height: 4,
-            top_hash: genesis_chain.frontier(),
-        };
-        assert_eq!(step, BoundedCementationStep::Write([Some(expected), None]));
+        assert_write_steps(
+            &mut data_requester,
+            genesis_chain.frontier(),
+            &[WriteDetails {
+                account: genesis_chain.account(),
+                bottom_height: 2,
+                bottom_hash: genesis_chain.blocks()[1].hash(),
+                top_height: 4,
+                top_hash: genesis_chain.frontier(),
+            }],
+        );
     }
 
     #[test]
     fn cement_open_block() {
-        let mut sut = BoundedModeHelper::builder().build();
         let mut data_requester = LedgerDataRequesterStub::new();
         let dest_chain = BlockChainBuilder::new();
         let genesis_chain = data_requester
@@ -603,27 +586,21 @@ mod tests {
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_uncemented(&dest_chain);
 
-        sut.initialize(dest_chain.frontier());
-        let step = sut.get_next_step(&mut data_requester);
-
-        let expected = WriteDetails {
-            account: dest_chain.account(),
-            bottom_height: 1,
-            bottom_hash: dest_chain.frontier(),
-            top_height: 1,
-            top_hash: dest_chain.frontier(),
-        };
-        assert_eq!(step, BoundedCementationStep::Write([None, Some(expected)]));
-        assert_eq!(
-            sut.get_next_step(&mut data_requester),
-            BoundedCementationStep::Done
+        assert_write_steps(
+            &mut data_requester,
+            dest_chain.frontier(),
+            &[WriteDetails {
+                account: dest_chain.account(),
+                bottom_height: 1,
+                bottom_hash: dest_chain.frontier(),
+                top_height: 1,
+                top_hash: dest_chain.frontier(),
+            }],
         );
-        assert!(sut.is_done());
     }
 
     #[test]
     fn cement_open_block_and_successor_in_one_go() {
-        let mut sut = BoundedModeHelper::builder().build();
         let mut data_requester = LedgerDataRequesterStub::new();
         let genesis_chain = data_requester
             .add_genesis_block()
@@ -634,44 +611,30 @@ mod tests {
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_uncemented(&dest_chain);
 
-        sut.initialize(dest_chain.frontier());
-        let step_1 = sut.get_next_step(&mut data_requester);
-
-        let expected = WriteDetails {
-            account: dest_chain.account(),
-            bottom_height: 1,
-            bottom_hash: dest_chain.blocks()[0].hash(),
-            top_height: 1,
-            top_hash: dest_chain.blocks()[0].hash(),
-        };
-        assert_eq!(
-            step_1,
-            BoundedCementationStep::Write([None, Some(expected)])
+        assert_write_steps(
+            &mut data_requester,
+            dest_chain.frontier(),
+            &[
+                WriteDetails {
+                    account: dest_chain.account(),
+                    bottom_height: 1,
+                    bottom_hash: dest_chain.blocks()[0].hash(),
+                    top_height: 1,
+                    top_hash: dest_chain.blocks()[0].hash(),
+                },
+                WriteDetails {
+                    account: dest_chain.account(),
+                    bottom_height: 2,
+                    bottom_hash: dest_chain.frontier(),
+                    top_height: 2,
+                    top_hash: dest_chain.frontier(),
+                },
+            ],
         );
-
-        let step_2 = sut.get_next_step(&mut data_requester);
-
-        let expected = WriteDetails {
-            account: dest_chain.account(),
-            bottom_height: 2,
-            bottom_hash: dest_chain.frontier(),
-            top_height: 2,
-            top_hash: dest_chain.frontier(),
-        };
-        assert_eq!(
-            step_2,
-            BoundedCementationStep::Write([Some(expected), None])
-        );
-        assert_eq!(
-            sut.get_next_step(&mut data_requester),
-            BoundedCementationStep::Done
-        );
-        assert!(sut.is_done());
     }
 
     #[test]
     fn cement_open_block_and_two_successors_in_one_go() {
-        let mut sut = BoundedModeHelper::builder().build();
         let mut data_requester = LedgerDataRequesterStub::new();
         let genesis_chain = data_requester
             .add_genesis_block()
@@ -683,44 +646,30 @@ mod tests {
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_uncemented(&dest_chain);
 
-        sut.initialize(dest_chain.frontier());
-        let step_1 = sut.get_next_step(&mut data_requester);
-
-        let expected = WriteDetails {
-            account: dest_chain.account(),
-            bottom_height: 1,
-            bottom_hash: dest_chain.blocks()[0].hash(),
-            top_height: 1,
-            top_hash: dest_chain.blocks()[0].hash(),
-        };
-        assert_eq!(
-            step_1,
-            BoundedCementationStep::Write([None, Some(expected)])
+        assert_write_steps(
+            &mut data_requester,
+            dest_chain.frontier(),
+            &[
+                WriteDetails {
+                    account: dest_chain.account(),
+                    bottom_height: 1,
+                    bottom_hash: dest_chain.blocks()[0].hash(),
+                    top_height: 1,
+                    top_hash: dest_chain.blocks()[0].hash(),
+                },
+                WriteDetails {
+                    account: dest_chain.account(),
+                    bottom_height: 2,
+                    bottom_hash: dest_chain.blocks()[1].hash(),
+                    top_height: 3,
+                    top_hash: dest_chain.frontier(),
+                },
+            ],
         );
-
-        let step_2 = sut.get_next_step(&mut data_requester);
-
-        let expected = WriteDetails {
-            account: dest_chain.account(),
-            bottom_height: 2,
-            bottom_hash: dest_chain.blocks()[1].hash(),
-            top_height: 3,
-            top_hash: dest_chain.frontier(),
-        };
-        assert_eq!(
-            step_2,
-            BoundedCementationStep::Write([Some(expected), None])
-        );
-        assert_eq!(
-            sut.get_next_step(&mut data_requester),
-            BoundedCementationStep::Done
-        );
-        assert!(sut.is_done());
     }
 
     #[test]
     fn cement_two_accounts_in_one_go() {
-        let mut sut = BoundedModeHelper::builder().build();
         let mut data_requester = LedgerDataRequesterStub::new();
         let genesis_chain = data_requester
             .add_genesis_block()
@@ -739,64 +688,40 @@ mod tests {
         data_requester.add_uncemented(&dest_1);
         data_requester.add_uncemented(&dest_2);
 
-        sut.initialize(dest_2.frontier());
-
-        let step_1 = sut.get_next_step(&mut data_requester);
-        let expected = WriteDetails {
-            account: dest_1.account(),
-            bottom_height: 1,
-            bottom_hash: dest_1.blocks()[0].hash(),
-            top_height: 1,
-            top_hash: dest_1.blocks()[0].hash(),
-        };
-        assert_eq!(
-            step_1,
-            BoundedCementationStep::Write([None, Some(expected)])
+        assert_write_steps(
+            &mut data_requester,
+            dest_2.frontier(),
+            &[
+                WriteDetails {
+                    account: dest_1.account(),
+                    bottom_height: 1,
+                    bottom_hash: dest_1.blocks()[0].hash(),
+                    top_height: 1,
+                    top_hash: dest_1.blocks()[0].hash(),
+                },
+                WriteDetails {
+                    account: dest_1.account(),
+                    bottom_height: 2,
+                    bottom_hash: dest_1.blocks()[1].hash(),
+                    top_height: 4,
+                    top_hash: dest_1.frontier(),
+                },
+                WriteDetails {
+                    account: dest_2.account(),
+                    bottom_height: 1,
+                    bottom_hash: dest_2.blocks()[0].hash(),
+                    top_height: 1,
+                    top_hash: dest_2.blocks()[0].hash(),
+                },
+                WriteDetails {
+                    account: dest_2.account(),
+                    bottom_height: 2,
+                    bottom_hash: dest_2.blocks()[1].hash(),
+                    top_height: 4,
+                    top_hash: dest_2.frontier(),
+                },
+            ],
         );
-
-        let step_2 = sut.get_next_step(&mut data_requester);
-        let expected = WriteDetails {
-            account: dest_1.account(),
-            bottom_height: 2,
-            bottom_hash: dest_1.blocks()[1].hash(),
-            top_height: 4,
-            top_hash: dest_1.frontier(),
-        };
-        assert_eq!(
-            step_2,
-            BoundedCementationStep::Write([Some(expected), None])
-        );
-
-        let step_3 = sut.get_next_step(&mut data_requester);
-        let expected = WriteDetails {
-            account: dest_2.account(),
-            bottom_height: 1,
-            bottom_hash: dest_2.blocks()[0].hash(),
-            top_height: 1,
-            top_hash: dest_2.blocks()[0].hash(),
-        };
-        assert_eq!(
-            step_3,
-            BoundedCementationStep::Write([None, Some(expected)])
-        );
-
-        let step_4 = sut.get_next_step(&mut data_requester);
-        let expected = WriteDetails {
-            account: dest_2.account(),
-            bottom_height: 2,
-            bottom_hash: dest_2.blocks()[1].hash(),
-            top_height: 4,
-            top_hash: dest_2.frontier(),
-        };
-        assert_eq!(
-            step_4,
-            BoundedCementationStep::Write([Some(expected), None])
-        );
-        assert_eq!(
-            sut.get_next_step(&mut data_requester),
-            BoundedCementationStep::Done
-        );
-        assert!(sut.is_done());
     }
 
     #[test]
@@ -816,10 +741,6 @@ mod tests {
 
     #[test]
     fn create_checkpoint() {
-        let mut sut = BoundedModeHelper::builder()
-            .receives_per_checkpoint(2)
-            .build();
-
         let mut data_requester = LedgerDataRequesterStub::new();
         let genesis_chain = data_requester
             .add_genesis_block()
@@ -847,113 +768,81 @@ mod tests {
         data_requester.add_uncemented(&account4);
         data_requester.add_uncemented(&account5);
 
-        sut.initialize(account5.frontier());
-
-        assert_eq!(
-            sut.get_next_step(&mut data_requester),
-            BoundedCementationStep::Write([
-                None,
-                Some(WriteDetails {
+        assert_write_steps(
+            &mut data_requester,
+            account5.frontier(),
+            &[
+                WriteDetails {
                     account: account1.account(),
                     bottom_height: 1,
                     bottom_hash: account1.open(),
                     top_height: 1,
                     top_hash: account1.open(),
-                })
-            ])
-        );
-        assert_eq!(
-            sut.get_next_step(&mut data_requester),
-            BoundedCementationStep::Write([
-                Some(WriteDetails {
+                },
+                WriteDetails {
                     account: account1.account(),
                     bottom_height: 2,
                     bottom_hash: account1.frontier(),
                     top_height: 2,
                     top_hash: account1.frontier(),
-                }),
-                Some(WriteDetails {
+                },
+                WriteDetails {
                     account: account2.account(),
                     bottom_height: 1,
                     bottom_hash: account2.open(),
                     top_height: 1,
                     top_hash: account2.open(),
-                }),
-            ])
-        );
-        assert_eq!(
-            sut.get_next_step(&mut data_requester),
-            BoundedCementationStep::Write([
-                Some(WriteDetails {
+                },
+                WriteDetails {
                     account: account2.account(),
                     bottom_height: 2,
                     bottom_hash: account2.frontier(),
                     top_height: 2,
                     top_hash: account2.frontier(),
-                }),
-                Some(WriteDetails {
+                },
+                WriteDetails {
                     account: account3.account(),
                     bottom_height: 1,
                     bottom_hash: account3.open(),
                     top_height: 1,
                     top_hash: account3.open(),
-                }),
-            ])
-        );
-        assert_eq!(
-            sut.get_next_step(&mut data_requester),
-            BoundedCementationStep::Write([
-                Some(WriteDetails {
+                },
+                WriteDetails {
                     account: account3.account(),
                     bottom_height: 2,
                     bottom_hash: account3.frontier(),
                     top_height: 2,
                     top_hash: account3.frontier(),
-                }),
-                Some(WriteDetails {
+                },
+                WriteDetails {
                     account: account4.account(),
                     bottom_height: 1,
                     bottom_hash: account4.open(),
                     top_height: 1,
                     top_hash: account4.open(),
-                }),
-            ])
-        );
-        assert_eq!(
-            sut.get_next_step(&mut data_requester),
-            BoundedCementationStep::Write([
-                Some(WriteDetails {
+                },
+                WriteDetails {
                     account: account4.account(),
                     bottom_height: 2,
                     bottom_hash: account4.frontier(),
                     top_height: 2,
                     top_hash: account4.frontier(),
-                }),
-                Some(WriteDetails {
+                },
+                WriteDetails {
                     account: account5.account(),
                     bottom_height: 1,
                     bottom_hash: account5.open(),
                     top_height: 1,
                     top_hash: account5.open(),
-                }),
-            ])
-        );
-        assert_eq!(
-            sut.get_next_step(&mut data_requester),
-            BoundedCementationStep::Write([
-                Some(WriteDetails {
+                },
+                WriteDetails {
                     account: account5.account(),
                     bottom_height: 2,
                     bottom_hash: account5.frontier(),
                     top_height: 2,
                     top_hash: account5.frontier(),
-                }),
-                None
-            ])
-        );
-        assert_eq!(
-            sut.get_next_step(&mut data_requester),
-            BoundedCementationStep::Done
+                },
+            ],
         );
     }
 
@@ -975,27 +864,53 @@ mod tests {
 
         #[test]
         fn send_block_pruned() {
-            let mut sut = BoundedModeHelper::builder().build();
             let mut data_requester = LedgerDataRequesterStub::new();
-
             let genesis_chain = data_requester.add_genesis_block().legacy_send();
             let dest_chain = BlockChainBuilder::from_send_block(genesis_chain.latest_block());
             data_requester.add_cemented(&genesis_chain);
             data_requester.add_uncemented(&dest_chain);
             data_requester.prune(genesis_chain.frontier());
 
-            sut.initialize(dest_chain.frontier());
-            let step = sut.get_next_step(&mut data_requester);
-
-            let expected = WriteDetails {
-                account: dest_chain.account(),
-                bottom_height: 1,
-                bottom_hash: dest_chain.frontier(),
-                top_height: 1,
-                top_hash: dest_chain.frontier(),
-            };
-
-            assert_eq!(step, BoundedCementationStep::Write([Some(expected), None]));
+            assert_write_steps(
+                &mut data_requester,
+                dest_chain.frontier(),
+                &[WriteDetails {
+                    account: dest_chain.account(),
+                    bottom_height: 1,
+                    bottom_hash: dest_chain.frontier(),
+                    top_height: 1,
+                    top_hash: dest_chain.frontier(),
+                }],
+            );
         }
+    }
+
+    fn assert_write_steps(
+        data_requester: &mut LedgerDataRequesterStub,
+        block_to_cement: BlockHash,
+        expected: &[WriteDetails],
+    ) {
+        let mut sut = BoundedModeHelper::builder()
+            .receives_per_checkpoint(3)
+            .build();
+        sut.initialize(block_to_cement);
+
+        let mut actual = Vec::new();
+        loop {
+            let step = sut.get_next_step(data_requester);
+            match step {
+                BoundedCementationStep::Write(details) => {
+                    let mut written = false;
+                    for write in details.into_iter().flatten() {
+                        actual.push(write);
+                        written = true;
+                    }
+                    assert!(written);
+                }
+                BoundedCementationStep::AlreadyCemented(_) => unreachable!(),
+                BoundedCementationStep::Done => break,
+            }
+        }
+        assert_eq!(&actual, expected);
     }
 }

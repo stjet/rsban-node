@@ -177,7 +177,7 @@ impl BoundedMode {
             self.flush(txn.as_mut(), &update_command, scoped_write_guard, callbacks);
             if account_done {
                 self.helper
-                    .clear_cache(&update_command.account, update_command.new_height);
+                    .clear_cached_account(&update_command.account, update_command.new_height);
             }
         }
         drop(txn);
@@ -260,7 +260,7 @@ impl BoundedMode {
     }
 
     pub fn clear_process_vars(&mut self) {
-        self.helper.clear_accounts_cache();
+        self.helper.clear_all_cached_accounts();
     }
 
     pub fn has_pending_writes(&self) -> bool {

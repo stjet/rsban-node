@@ -6,8 +6,6 @@ use crate::{
 pub struct BlockChainBuilder {
     account: Account,
     blocks: Vec<BlockEnum>,
-    height: u64,
-    frontier: BlockHash,
 }
 
 impl BlockChainBuilder {
@@ -19,8 +17,6 @@ impl BlockChainBuilder {
         Self {
             account: account.into(),
             blocks: Vec::new(),
-            height: 0,
-            frontier: BlockHash::zero(),
         }
     }
 
@@ -33,11 +29,15 @@ impl BlockChainBuilder {
     }
 
     pub fn height(&self) -> u64 {
-        self.height
+        self.blocks.len() as u64
+    }
+
+    pub fn open(&self) -> BlockHash {
+        self.blocks[0].hash()
     }
 
     pub fn frontier(&self) -> BlockHash {
-        self.frontier
+        self.blocks.last().unwrap().hash()
     }
 
     pub fn account(&self) -> Account {
@@ -54,7 +54,7 @@ impl BlockChainBuilder {
 
     fn add_block(&mut self, mut block: BlockEnum) -> &BlockEnum {
         block.set_sideband(BlockSideband {
-            height: self.height + 1,
+            height: self.height() + 1,
             timestamp: 1,
             successor: BlockHash::zero(),
             account: self.account,
@@ -70,8 +70,6 @@ impl BlockChainBuilder {
             previous.set_sideband(sideband);
         }
 
-        self.height += 1;
-        self.frontier = block.hash();
         self.blocks.push(block);
         self.blocks.last().unwrap()
     }
@@ -101,15 +99,13 @@ impl BlockChainBuilder {
     ) -> Self {
         let block_builder = BlockBuilder::legacy_send()
             .account(self.account)
-            .previous(self.frontier);
+            .previous(self.frontier());
         self.add_block(f(block_builder).build());
         self
     }
 
-    pub fn take_blocks(&mut self) -> Vec<BlockEnum> {
-        let mut blocks = Vec::new();
-        std::mem::swap(&mut blocks, &mut self.blocks);
-        blocks
+    pub fn take_blocks(self) -> Vec<BlockEnum> {
+        self.blocks
     }
 }
 
@@ -132,18 +128,6 @@ mod tests {
         assert_eq!(block.block_type(), BlockType::LegacyOpen);
         assert_eq!(block.sideband().unwrap().height, 1);
         assert_eq!(builder.frontier(), block.hash());
-        assert_eq!(builder.height, 1);
-    }
-
-    #[test]
-    fn take_blocks() {
-        let mut builder = BlockChainBuilder::for_account(1)
-            .legacy_open()
-            .legacy_send();
-        let blocks = builder.take_blocks();
-        assert_eq!(blocks.len(), 2);
-        assert_eq!(builder.blocks.len(), 0);
-        assert_eq!(builder.height(), 2);
-        assert_eq!(builder.frontier(), blocks[1].hash());
+        assert_eq!(builder.height(), 1);
     }
 }

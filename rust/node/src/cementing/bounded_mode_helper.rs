@@ -51,16 +51,27 @@ struct ReceiveChainDetails {
 pub(crate) struct BoundedModeHelperBuilder {
     epochs: Option<Epochs>,
     stopped: Option<Arc<AtomicBool>>,
+    receives_per_checkpoint: Option<usize>,
 }
 
 impl BoundedModeHelperBuilder {
+    pub fn receives_per_checkpoint(mut self, receive_count: usize) -> Self {
+        self.receives_per_checkpoint = Some(receive_count);
+        self
+    }
+
     pub fn build(self) -> BoundedModeHelper {
         let epochs = self.epochs.unwrap_or_default();
         let stopped = self
             .stopped
             .unwrap_or_else(|| Arc::new(AtomicBool::new(false)));
 
-        BoundedModeHelper::new(epochs, stopped)
+        let mut helper = BoundedModeHelper::new(epochs, stopped);
+        if let Some(receive_count) = self.receives_per_checkpoint {
+            helper.receives_per_checkpoint = receive_count;
+        }
+
+        helper
     }
 }
 
@@ -82,6 +93,8 @@ pub(crate) struct BoundedModeHelper {
     previous: BlockHash,
     current_confirmation_height: ConfirmationHeightInfo,
     top_most_non_receive_block_hash: BlockHash,
+    /// Create a checkpoint every time this count of receives were hit
+    receives_per_checkpoint: usize,
 }
 
 impl BoundedModeHelper {
@@ -104,6 +117,7 @@ impl BoundedModeHelper {
             previous: BlockHash::zero(),
             current_confirmation_height: Default::default(),
             top_most_non_receive_block_hash: BlockHash::zero(),
+            receives_per_checkpoint: MAX_ITEMS,
         }
     }
 
@@ -133,7 +147,7 @@ impl BoundedModeHelper {
         data_requester: &mut T,
     ) -> BoundedCementationStep {
         loop {
-            if self.is_done() {
+            if !self.first_iter && self.is_done() {
                 return BoundedCementationStep::Done;
             }
 
@@ -144,8 +158,8 @@ impl BoundedModeHelper {
                 }
             }
 
-            // This block was added to the confirmation height processor but is already confirmed
-            if self.should_notify_already_cemented() {
+            // This block was added to the confirmation height processor but is already cemented
+            if self.original_block_already_cemented() {
                 return BoundedCementationStep::AlreadyCemented(self.original_block);
             }
 
@@ -181,8 +195,7 @@ impl BoundedModeHelper {
     }
 
     pub fn is_done(&self) -> bool {
-        !self.first_iter
-            && (self.receive_source_pairs.is_empty() && self.current_hash == self.original_block)
+        (self.receive_source_pairs.is_empty() && self.current_hash == self.original_block)
             || self.stopped.load(Ordering::SeqCst)
     }
 
@@ -266,7 +279,7 @@ impl BoundedModeHelper {
         self.current_confirmation_height.height >= self.block_height
     }
 
-    fn should_notify_already_cemented(&self) -> bool {
+    fn original_block_already_cemented(&self) -> bool {
         self.first_iter && self.is_already_cemented() && self.current_hash == self.original_block
     }
 
@@ -302,20 +315,21 @@ impl BoundedModeHelper {
     }
 
     fn goto_least_unconfirmed_hash<T: LedgerDataRequester>(&mut self, data_requester: &T) {
-        if self.blocks_to_cement_for_this_account() > 1 {
-            if self.blocks_to_cement_for_this_account() == 2 {
-                // If there is 1 uncemented block in-between this block and the cemented frontier,
-                // we can just use the previous block to get the least unconfirmed hash.
-                self.current_hash = self.previous;
-                self.block_height -= 1;
-            } else if self.next_in_receive_chain.is_none() {
-                self.current_hash = self.get_least_unconfirmed_hash_from_top_level(data_requester);
-            } else {
-                // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
-                // as we already know what the next block we should process should be.
-                self.current_hash = self.hash_to_process.next.unwrap();
-                self.block_height = self.hash_to_process.next_height;
-            }
+        let blocks_to_cement = self.blocks_to_cement_for_this_account();
+        if blocks_to_cement < 2 {
+            // nothing to do
+        } else if blocks_to_cement == 2 {
+            // If there is 1 uncemented block in-between this block and the cemented frontier,
+            // we can just use the previous block to get the least unconfirmed hash.
+            self.current_hash = self.previous;
+            self.block_height -= 1;
+        } else if self.next_in_receive_chain.is_none() {
+            self.current_hash = self.get_least_unconfirmed_hash_from_top_level(data_requester);
+        } else {
+            // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
+            // as we already know what the next block we should process should be.
+            self.current_hash = self.hash_to_process.next.unwrap();
+            self.block_height = self.hash_to_process.next_height;
         }
     }
 
@@ -358,7 +372,7 @@ impl BoundedModeHelper {
                 });
 
                 // Store a checkpoint every max_items so that we can always traverse a long number of accounts to genesis
-                if self.receive_source_pairs.len() % MAX_ITEMS == 0 {
+                if self.receive_source_pairs.len() % self.receives_per_checkpoint == 0 {
                     self.checkpoints.push_back(self.top_level_hash);
                 }
             } else {
@@ -446,11 +460,11 @@ impl BoundedModeHelper {
         })
     }
 
-    pub fn clear_accounts_cache(&mut self) {
+    pub fn clear_all_cached_accounts(&mut self) {
         self.accounts_confirmed_info.clear();
     }
 
-    pub fn clear_cache(&mut self, account: &Account, height: u64) {
+    pub fn clear_cached_account(&mut self, account: &Account, height: u64) {
         if let Some(found_info) = self.accounts_confirmed_info.get(account) {
             if found_info.confirmed_height == height {
                 self.accounts_confirmed_info.remove(account);
@@ -797,6 +811,149 @@ mod tests {
         assert_eq!(
             step,
             BoundedCementationStep::AlreadyCemented(genesis_chain.frontier())
+        );
+    }
+
+    #[test]
+    fn create_checkpoint() {
+        let mut sut = BoundedModeHelper::builder()
+            .receives_per_checkpoint(2)
+            .build();
+
+        let mut data_requester = LedgerDataRequesterStub::new();
+        let genesis_chain = data_requester
+            .add_genesis_block()
+            .legacy_send_with(|b| b.destination(Account::from(1)));
+
+        let account1 = BlockChainBuilder::from_send_block(genesis_chain.latest_block())
+            .legacy_send_with(|b| b.destination(Account::from(2)));
+
+        let account2 = BlockChainBuilder::from_send_block(account1.latest_block())
+            .legacy_send_with(|b| b.destination(Account::from(3)));
+
+        let account3 = BlockChainBuilder::from_send_block(account2.latest_block())
+            .legacy_send_with(|b| b.destination(Account::from(4)));
+
+        let account4 = BlockChainBuilder::from_send_block(account3.latest_block())
+            .legacy_send_with(|b| b.destination(Account::from(5)));
+
+        let account5 = BlockChainBuilder::from_send_block(account4.latest_block())
+            .legacy_send_with(|b| b.destination(Account::from(6)));
+
+        data_requester.add_cemented(&genesis_chain);
+        data_requester.add_uncemented(&account1);
+        data_requester.add_uncemented(&account2);
+        data_requester.add_uncemented(&account3);
+        data_requester.add_uncemented(&account4);
+        data_requester.add_uncemented(&account5);
+
+        sut.initialize(account5.frontier());
+
+        assert_eq!(
+            sut.get_next_step(&mut data_requester),
+            BoundedCementationStep::Write([
+                None,
+                Some(WriteDetails {
+                    account: account1.account(),
+                    bottom_height: 1,
+                    bottom_hash: account1.open(),
+                    top_height: 1,
+                    top_hash: account1.open(),
+                })
+            ])
+        );
+        assert_eq!(
+            sut.get_next_step(&mut data_requester),
+            BoundedCementationStep::Write([
+                Some(WriteDetails {
+                    account: account1.account(),
+                    bottom_height: 2,
+                    bottom_hash: account1.frontier(),
+                    top_height: 2,
+                    top_hash: account1.frontier(),
+                }),
+                Some(WriteDetails {
+                    account: account2.account(),
+                    bottom_height: 1,
+                    bottom_hash: account2.open(),
+                    top_height: 1,
+                    top_hash: account2.open(),
+                }),
+            ])
+        );
+        assert_eq!(
+            sut.get_next_step(&mut data_requester),
+            BoundedCementationStep::Write([
+                Some(WriteDetails {
+                    account: account2.account(),
+                    bottom_height: 2,
+                    bottom_hash: account2.frontier(),
+                    top_height: 2,
+                    top_hash: account2.frontier(),
+                }),
+                Some(WriteDetails {
+                    account: account3.account(),
+                    bottom_height: 1,
+                    bottom_hash: account3.open(),
+                    top_height: 1,
+                    top_hash: account3.open(),
+                }),
+            ])
+        );
+        assert_eq!(
+            sut.get_next_step(&mut data_requester),
+            BoundedCementationStep::Write([
+                Some(WriteDetails {
+                    account: account3.account(),
+                    bottom_height: 2,
+                    bottom_hash: account3.frontier(),
+                    top_height: 2,
+                    top_hash: account3.frontier(),
+                }),
+                Some(WriteDetails {
+                    account: account4.account(),
+                    bottom_height: 1,
+                    bottom_hash: account4.open(),
+                    top_height: 1,
+                    top_hash: account4.open(),
+                }),
+            ])
+        );
+        assert_eq!(
+            sut.get_next_step(&mut data_requester),
+            BoundedCementationStep::Write([
+                Some(WriteDetails {
+                    account: account4.account(),
+                    bottom_height: 2,
+                    bottom_hash: account4.frontier(),
+                    top_height: 2,
+                    top_hash: account4.frontier(),
+                }),
+                Some(WriteDetails {
+                    account: account5.account(),
+                    bottom_height: 1,
+                    bottom_hash: account5.open(),
+                    top_height: 1,
+                    top_hash: account5.open(),
+                }),
+            ])
+        );
+        assert_eq!(
+            sut.get_next_step(&mut data_requester),
+            BoundedCementationStep::Write([
+                Some(WriteDetails {
+                    account: account5.account(),
+                    bottom_height: 2,
+                    bottom_hash: account5.frontier(),
+                    top_height: 2,
+                    top_hash: account5.frontier(),
+                }),
+                None
+            ])
+        );
+        assert_eq!(
+            sut.get_next_step(&mut data_requester),
+            BoundedCementationStep::Done
         );
     }
 

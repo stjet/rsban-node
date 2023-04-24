@@ -124,18 +124,6 @@ impl LedgerDataRequesterStub {
         }
     }
 
-    pub fn cement(&mut self, hash: &BlockHash) {
-        let block = self.blocks.get(hash).unwrap();
-        let sideband = block.sideband().unwrap();
-        self.set_confirmation_height(
-            block.account_calculated(),
-            ConfirmationHeightInfo {
-                height: sideband.height,
-                frontier: block.hash(),
-            },
-        )
-    }
-
     pub fn prune(&mut self, hash: BlockHash) {
         self.pruned.insert(hash);
         self.blocks.remove(&hash);

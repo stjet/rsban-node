@@ -74,7 +74,8 @@ impl LedgerDataRequesterStub {
             pruned: HashSet::new(),
         }
     }
-    pub fn add_block(&mut self, block: BlockEnum) {
+
+    fn add_block(&mut self, block: BlockEnum) {
         let info = self
             .account_infos
             .entry(block.account_calculated())
@@ -118,13 +119,8 @@ impl LedgerDataRequesterStub {
     }
 
     pub fn add_uncemented(&mut self, chain: &BlockChainBuilder) {
-        let block_height = self
-            .get_account_info(&chain.account())
-            .map(|info| info.block_count as usize)
-            .unwrap_or_default();
-
-        for block in chain.blocks().iter().skip(block_height) {
-            self.blocks.insert(block.hash(), block.clone());
+        for block in chain.blocks() {
+            self.add_block(block.clone());
         }
     }
 

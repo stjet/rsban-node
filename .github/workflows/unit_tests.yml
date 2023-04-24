@@ -46,7 +46,7 @@ jobs:
 
       # hacky fix so that the build cache can be saved
       - name: Change owner before caching
-        run: sudo chown -R runner build rust/target
+        run: sudo chown -R runner build
 
       - name: Save Build Cache
         # only save build cache from develop to avoid polluting it by other branches / PRs
@@ -104,7 +104,7 @@ jobs:
 
       # hacky fix so that the build cache can be saved
       - name: Change owner before caching
-        run: sudo chown -R runner build cargo-registry rust/target
+        run: sudo chown -R runner build cargo-registry
 
       - name: Save Build Cache
         # only save build cache from develop to avoid polluting it by other branches / PRs

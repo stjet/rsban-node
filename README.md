@@ -2,7 +2,7 @@
 
 
 
-[![Tests](https://github.com/simpago/rsnano-node/workflows/Tests/badge.svg)](https://github.com/simpago/rsnano-node/actions?query=workflow%3ATests)
+[![Tests](https://github.com/simpago/rsnano-node/workflows/Unit%20Tests/badge.svg)](https://github.com/simpago/rsnano-node/actions/workflows/unit_tests.yml)
 [![Discord](https://img.shields.io/badge/discord-join%20chat-orange.svg)](https://discord.gg/kBwvAyxEWE)
 
 

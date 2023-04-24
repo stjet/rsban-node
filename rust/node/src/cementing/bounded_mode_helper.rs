@@ -4,7 +4,7 @@ use std::sync::{
 };
 
 use bounded_vec_deque::BoundedVecDeque;
-use rsnano_core::{Account, BlockHash, ConfirmationHeightInfo, Epochs};
+use rsnano_core::{Account, BlockEnum, BlockHash, ConfirmationHeightInfo, Epochs};
 
 use super::{
     ledger_data_requester::LedgerDataRequester, AccountsConfirmedMap,
@@ -26,9 +26,10 @@ pub(crate) enum BoundedCementationStep {
 
 #[derive(Clone, Default)]
 struct TopAndNextHash {
-    pub top: BlockHash,
-    pub next: Option<BlockHash>,
-    pub next_height: u64,
+    /// Highest block in the send-chain that needs to be cemented
+    pub top_in_send_chain: BlockHash,
+    pub next_in_receive_chain: Option<BlockHash>,
+    pub next_height_in_receive_chain: u64,
 }
 
 struct ReceiveSourcePair {
@@ -38,11 +39,12 @@ struct ReceiveSourcePair {
 
 #[derive(Clone)]
 struct ReceiveChainDetails {
-    pub account: Account,
-    pub height: u64,
-    pub hash: BlockHash,
+    pub receiving_account: Account,
+    pub receive_block_height: u64,
+    pub receive_block_hash: BlockHash,
     pub top_level: BlockHash,
-    pub next: Option<BlockHash>,
+    /// Next block after the receive block if it is not the top_level
+    pub next_block_after_receive: Option<BlockHash>,
     pub bottom_height: u64,
     pub bottom_most: BlockHash,
 }
@@ -86,11 +88,12 @@ pub(crate) struct BoundedModeHelper {
     first_iter: bool,
     original_block: BlockHash,
     receive_details: Option<ReceiveChainDetails>,
-    hash_to_process: TopAndNextHash,
+    hash_to_iterate: TopAndNextHash,
+    /// Highest block in the current account that needs to be cemented
     top_level_hash: BlockHash,
-    account: Account,
-    block_height: u64,
-    previous: BlockHash,
+    current_account: Account,
+    current_block_height: u64,
+    previous_block: BlockHash,
     current_confirmation_height: ConfirmationHeightInfo,
     top_most_non_receive_block_hash: BlockHash,
     /// Create a checkpoint every time this count of receives were hit
@@ -110,11 +113,11 @@ impl BoundedModeHelper {
             first_iter: true,
             original_block: BlockHash::zero(),
             receive_details: None,
-            hash_to_process: Default::default(),
+            hash_to_iterate: Default::default(),
             top_level_hash: BlockHash::zero(),
-            account: Account::zero(),
-            block_height: 0,
-            previous: BlockHash::zero(),
+            current_account: Account::zero(),
+            current_block_height: 0,
+            previous_block: BlockHash::zero(),
             current_confirmation_height: Default::default(),
             top_most_non_receive_block_hash: BlockHash::zero(),
             receives_per_checkpoint: MAX_ITEMS,
@@ -133,11 +136,11 @@ impl BoundedModeHelper {
         self.first_iter = true;
         self.original_block = original_block;
         self.receive_details = None;
-        self.hash_to_process = Default::default();
+        self.hash_to_iterate = Default::default();
         self.top_level_hash = BlockHash::zero();
-        self.account = Account::zero();
-        self.block_height = 0;
-        self.previous = BlockHash::zero();
+        self.current_account = Account::zero();
+        self.current_block_height = 0;
+        self.previous_block = BlockHash::zero();
         self.current_confirmation_height = Default::default();
         self.top_most_non_receive_block_hash = BlockHash::zero();
     }
@@ -151,7 +154,7 @@ impl BoundedModeHelper {
                 return BoundedCementationStep::Done;
             }
 
-            while !self.load_next_block(data_requester) {
+            while !self.load_next_block_to_iterate_over(data_requester) {
                 if self.current_hash == self.original_block {
                     // The block we are trying to cement was already cemented and pruned!
                     return BoundedCementationStep::Done;
@@ -163,7 +166,7 @@ impl BoundedModeHelper {
                 return BoundedCementationStep::AlreadyCemented(self.original_block);
             }
 
-            self.goto_least_unconfirmed_hash(data_requester);
+            self.goto_lowest_unconfirmed_hash_of_current_account(data_requester);
             self.top_most_non_receive_block_hash = self.current_hash;
 
             let hit_receive = if !self.is_already_cemented() {
@@ -199,10 +202,13 @@ impl BoundedModeHelper {
             || self.stopped.load(Ordering::SeqCst)
     }
 
-    fn load_next_block<T: LedgerDataRequester>(&mut self, data_requester: &T) -> bool {
+    fn load_next_block_to_iterate_over<T: LedgerDataRequester>(
+        &mut self,
+        data_requester: &T,
+    ) -> bool {
         self.receive_details = None;
-        self.hash_to_process = self.get_next_block_hash();
-        self.current_hash = self.hash_to_process.top;
+        self.hash_to_iterate = self.get_next_block_hash_to_iterate_over();
+        self.current_hash = self.hash_to_iterate.top_in_send_chain;
         self.top_level_hash = self.current_hash;
 
         let current_block = data_requester.get_block(&self.current_hash);
@@ -218,11 +224,11 @@ impl BoundedModeHelper {
                 }
             };
 
-        self.account = current_block.account_calculated();
-        self.block_height = current_block.sideband().unwrap().height;
-        self.previous = current_block.previous();
+        self.current_account = current_block.account_calculated();
+        self.current_block_height = current_block.sideband().unwrap().height;
+        self.previous_block = current_block.previous();
         self.current_confirmation_height = self.get_confirmation_height(
-            &self.account,
+            &self.current_account,
             data_requester,
             &self.accounts_confirmed_info,
         );
@@ -236,27 +242,32 @@ impl BoundedModeHelper {
     /// 3 - The last checkpoint hit.
     /// 4 - The hash that was passed in originally. Either all checkpoints were exhausted (this can happen when there are many accounts to genesis)
     ///     or all other blocks have been processed.
-    fn get_next_block_hash(&mut self) -> TopAndNextHash {
+    fn get_next_block_hash_to_iterate_over(&mut self) -> TopAndNextHash {
         if let Some(next_in_chain) = &self.next_in_receive_chain {
             next_in_chain.clone()
         } else if let Some(next_receive_source_pair) = self.receive_source_pairs.back() {
             self.receive_details = Some(next_receive_source_pair.receive_details.clone());
             TopAndNextHash {
-                top: next_receive_source_pair.source_hash,
-                next: next_receive_source_pair.receive_details.next,
-                next_height: next_receive_source_pair.receive_details.height + 1,
+                top_in_send_chain: next_receive_source_pair.source_hash,
+                next_in_receive_chain: next_receive_source_pair
+                    .receive_details
+                    .next_block_after_receive,
+                next_height_in_receive_chain: next_receive_source_pair
+                    .receive_details
+                    .receive_block_height
+                    + 1,
             }
         } else if let Some(checkpoint) = self.checkpoints.back() {
             TopAndNextHash {
-                top: *checkpoint,
-                next: None,
-                next_height: 0,
+                top_in_send_chain: *checkpoint,
+                next_in_receive_chain: None,
+                next_height_in_receive_chain: 0,
             }
         } else {
             TopAndNextHash {
-                top: self.original_block,
-                next: None,
-                next_height: 0,
+                top_in_send_chain: self.original_block,
+                next_in_receive_chain: None,
+                next_height_in_receive_chain: 0,
             }
         }
     }
@@ -276,7 +287,7 @@ impl BoundedModeHelper {
     }
 
     fn is_already_cemented(&self) -> bool {
-        self.current_confirmation_height.height >= self.block_height
+        self.current_confirmation_height.height >= self.current_block_height
     }
 
     fn original_block_already_cemented(&self) -> bool {
@@ -288,7 +299,7 @@ impl BoundedModeHelper {
         if self.is_already_cemented() {
             0
         } else {
-            self.block_height - self.current_confirmation_height.height
+            self.current_block_height - self.current_confirmation_height.height
         }
     }
 
@@ -298,61 +309,61 @@ impl BoundedModeHelper {
     ) -> BlockHash {
         let mut least_unconfirmed_hash = self.current_hash;
         if self.current_confirmation_height.height != 0 {
-            if self.block_height > self.current_confirmation_height.height {
+            if self.current_block_height > self.current_confirmation_height.height {
                 let block = data_requester
                     .get_block(&self.current_confirmation_height.frontier)
                     .unwrap();
                 least_unconfirmed_hash = block.sideband().unwrap().successor;
-                self.block_height = block.sideband().unwrap().height + 1;
+                self.current_block_height = block.sideband().unwrap().height + 1;
             }
         } else {
             // No blocks have been confirmed, so the first block will be the open block
-            let info = data_requester.get_account_info(&self.account).unwrap();
+            let info = data_requester
+                .get_account_info(&self.current_account)
+                .unwrap();
             least_unconfirmed_hash = info.open_block;
-            self.block_height = 1;
+            self.current_block_height = 1;
         }
         return least_unconfirmed_hash;
     }
 
-    fn goto_least_unconfirmed_hash<T: LedgerDataRequester>(&mut self, data_requester: &T) {
+    fn goto_lowest_unconfirmed_hash_of_current_account<T: LedgerDataRequester>(
+        &mut self,
+        data_requester: &T,
+    ) {
         let blocks_to_cement = self.blocks_to_cement_for_this_account();
         if blocks_to_cement < 2 {
             // nothing to do
         } else if blocks_to_cement == 2 {
             // If there is 1 uncemented block in-between this block and the cemented frontier,
             // we can just use the previous block to get the least unconfirmed hash.
-            self.current_hash = self.previous;
-            self.block_height -= 1;
+            self.current_hash = self.previous_block;
+            self.current_block_height -= 1;
         } else if self.next_in_receive_chain.is_none() {
             self.current_hash = self.get_least_unconfirmed_hash_from_top_level(data_requester);
         } else {
             // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
             // as we already know what the next block we should process should be.
-            self.current_hash = self.hash_to_process.next.unwrap();
-            self.block_height = self.hash_to_process.next_height;
+            self.current_hash = self.hash_to_iterate.next_in_receive_chain.unwrap();
+            self.current_block_height = self.hash_to_iterate.next_height_in_receive_chain;
         }
     }
 
     fn iterate<T: LedgerDataRequester>(&mut self, data_requester: &mut T) -> bool {
-        let mut reached_target = false;
+        let mut done = false;
         let mut hit_receive = false;
         let mut hash = self.current_hash;
         let mut num_blocks = 0;
-        while !hash.is_zero() && !reached_target && !self.stopped.load(Ordering::SeqCst) {
+        while !hash.is_zero() && !done && !self.stopped.load(Ordering::SeqCst) {
             // Keep iterating upwards until we either reach the desired block or the second receive.
             // Once a receive is cemented, we can cement all blocks above it until the next receive, so store those details for later.
             num_blocks += 1;
             let block = data_requester.get_block(&hash).unwrap();
-            let source = block.source_or_link();
-            //----------------------------------------
-            if !source.is_zero()
-                && !self.epochs.is_epoch_link(&source.into())
-                && data_requester.get_block(&source).is_some()
-            {
+            if self.is_receive_block(&block, data_requester) {
                 hit_receive = true;
-                reached_target = true;
+                done = true;
                 let sideband = block.sideband().unwrap();
-                let next =
+                let next_block_after_receive =
                     if !sideband.successor.is_zero() && sideband.successor != self.top_level_hash {
                         Some(sideband.successor)
                     } else {
@@ -360,15 +371,15 @@ impl BoundedModeHelper {
                     };
                 self.receive_source_pairs.push_back(ReceiveSourcePair {
                     receive_details: ReceiveChainDetails {
-                        account: self.account,
-                        height: sideband.height,
-                        hash,
+                        receiving_account: self.current_account,
+                        receive_block_height: sideband.height,
+                        receive_block_hash: hash,
                         top_level: self.top_level_hash,
-                        next,
-                        bottom_height: self.block_height,
+                        next_block_after_receive,
+                        bottom_height: self.current_block_height,
                         bottom_most: self.current_hash,
                     },
-                    source_hash: source,
+                    source_hash: block.source_or_link(),
                 });
 
                 // Store a checkpoint every max_items so that we can always traverse a long number of accounts to genesis
@@ -379,7 +390,7 @@ impl BoundedModeHelper {
                 // Found a send/change/epoch block which isn't the desired top level
                 self.top_most_non_receive_block_hash = hash;
                 if hash == self.top_level_hash {
-                    reached_target = true;
+                    done = true;
                 } else {
                     hash = block.sideband().unwrap().successor;
                 }
@@ -391,6 +402,17 @@ impl BoundedModeHelper {
             }
         }
         hit_receive
+    }
+
+    fn is_receive_block<T: LedgerDataRequester>(
+        &self,
+        block: &BlockEnum,
+        data_requester: &mut T,
+    ) -> bool {
+        let source = block.source_or_link();
+        !source.is_zero()
+            && !self.epochs.is_epoch_link(&source.into())
+            && data_requester.get_block(&source).is_some()
     }
 
     /// Add the non-receive blocks iterated for this account
@@ -417,13 +439,13 @@ impl BoundedModeHelper {
         };
 
         self.accounts_confirmed_info
-            .insert(self.account, confirmed_info);
+            .insert(self.current_account, confirmed_info);
 
         truncate_after(&mut self.checkpoints, &self.top_most_non_receive_block_hash);
 
         Some(WriteDetails {
-            account: self.account,
-            bottom_height: self.block_height,
+            account: self.current_account,
+            bottom_height: self.current_block_height,
             bottom_hash: self.current_hash,
             top_height: height,
             top_hash: self.top_most_non_receive_block_hash,
@@ -434,29 +456,29 @@ impl BoundedModeHelper {
     fn cement_receive_block_and_all_non_receive_blocks_above(&mut self) -> Option<WriteDetails> {
         let Some(receive_details) = &self.receive_details else { return None; };
         self.accounts_confirmed_info.insert(
-            receive_details.account,
+            receive_details.receiving_account,
             ConfirmedInfo {
-                confirmed_height: receive_details.height,
-                iterated_frontier: receive_details.hash,
+                confirmed_height: receive_details.receive_block_height,
+                iterated_frontier: receive_details.receive_block_hash,
             },
         );
 
-        if receive_details.next.is_some() {
+        if receive_details.next_block_after_receive.is_some() {
             self.next_in_receive_chain = Some(TopAndNextHash {
-                top: receive_details.top_level,
-                next: receive_details.next,
-                next_height: receive_details.height + 1,
+                top_in_send_chain: receive_details.top_level,
+                next_in_receive_chain: receive_details.next_block_after_receive,
+                next_height_in_receive_chain: receive_details.receive_block_height + 1,
             });
         } else {
-            truncate_after(&mut self.checkpoints, &receive_details.hash);
+            truncate_after(&mut self.checkpoints, &receive_details.receive_block_hash);
         }
 
         Some(WriteDetails {
-            account: receive_details.account,
+            account: receive_details.receiving_account,
             bottom_height: receive_details.bottom_height,
             bottom_hash: receive_details.bottom_most,
-            top_height: receive_details.height,
-            top_hash: receive_details.hash,
+            top_height: receive_details.receive_block_height,
+            top_hash: receive_details.receive_block_hash,
         })
     }
 

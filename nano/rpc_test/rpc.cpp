@@ -3365,6 +3365,7 @@ TEST (rpc, wallet_receivable)
 	reset_confirmation_height (system.nodes.front ()->store, block1->account ());
 	ASSERT_TRUE (check_block_response_count (system, rpc_ctx, request, 0));
 	request.put ("include_only_confirmed", "false");
+	request.put ("include_active", "true");
 	ASSERT_TRUE (check_block_response_count (system, rpc_ctx, request, 1));
 }
 

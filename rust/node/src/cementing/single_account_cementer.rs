@@ -203,7 +203,7 @@ impl SingleAccountCementer {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::{Account, Amount, BlockBuilder, BlockDetails, BlockSideband, Epoch};
+    use rsnano_core::{Account, BlockChainBuilder};
     use std::{collections::HashMap, ops::Deref};
 
     use super::*;
@@ -258,7 +258,9 @@ mod tests {
 
     #[test]
     fn cement_first_block_of_account() {
-        let blocks = AccountBlocksBuilder::for_account(1).add_block().build();
+        let blocks = BlockChainBuilder::for_account(1)
+            .legacy_open()
+            .take_blocks();
 
         let pending = WriteDetails {
             account: Account::from(1),
@@ -297,10 +299,10 @@ mod tests {
 
     #[test]
     fn cement_first_two_blocks_of_account() {
-        let blocks = AccountBlocksBuilder::for_account(42)
-            .add_block()
-            .add_block()
-            .build();
+        let blocks = BlockChainBuilder::for_account(42)
+            .legacy_open()
+            .legacy_send()
+            .take_blocks();
 
         let pending = WriteDetails {
             account: Account::from(42),
@@ -339,10 +341,10 @@ mod tests {
 
     #[test]
     fn skip_already_cemented_blocks() {
-        let blocks = AccountBlocksBuilder::for_account(42)
-            .add_block()
-            .add_block()
-            .build();
+        let blocks = BlockChainBuilder::for_account(42)
+            .legacy_open()
+            .legacy_send()
+            .take_blocks();
 
         let pending = WriteDetails {
             account: Account::from(42),
@@ -384,10 +386,10 @@ mod tests {
 
     #[test]
     fn create_update_commands_in_batches() {
-        let blocks = AccountBlocksBuilder::for_account(42)
-            .add_block()
-            .add_block()
-            .build();
+        let blocks = BlockChainBuilder::for_account(42)
+            .legacy_open()
+            .legacy_send()
+            .take_blocks();
 
         let pending = WriteDetails {
             account: Account::from(42),
@@ -449,11 +451,11 @@ mod tests {
 
     #[test]
     fn create_update_commands_in_batches_and_finish_without_a_full_batch() {
-        let blocks = AccountBlocksBuilder::for_account(42)
-            .add_block()
-            .add_block()
-            .add_block()
-            .build();
+        let blocks = BlockChainBuilder::for_account(42)
+            .legacy_open()
+            .legacy_send()
+            .legacy_send()
+            .take_blocks();
 
         let pending = WriteDetails {
             account: Account::from(42),
@@ -517,52 +519,6 @@ mod tests {
         let map: HashMap<BlockHash, BlockEnum> =
             blocks.iter().map(|b| (b.hash(), b.clone())).collect();
         Box::new(move |block_hash| map.get(block_hash).cloned())
-    }
-
-    struct AccountBlocksBuilder {
-        account: Account,
-        blocks: Vec<BlockEnum>,
-    }
-
-    impl AccountBlocksBuilder {
-        fn for_account<T: Into<Account>>(account: T) -> Self {
-            Self {
-                account: account.into(),
-                blocks: Vec::new(),
-            }
-        }
-
-        fn add_block(mut self) -> Self {
-            let previous = self.blocks.last().map(|b| b.hash()).unwrap_or_default();
-            self.blocks.push(
-                BlockBuilder::state()
-                    .account(self.account)
-                    .previous(previous)
-                    .build(),
-            );
-            self
-        }
-
-        fn build(mut self) -> Vec<BlockEnum> {
-            let mut height = self.blocks.len() as u64;
-            let mut successor = BlockHash::zero();
-            for block in self.blocks.iter_mut().rev() {
-                block.set_sideband(BlockSideband {
-                    height,
-                    successor,
-                    account: Account::from(42),
-                    balance: Amount::raw(42),
-                    details: BlockDetails::new(Epoch::Invalid, false, false, false),
-                    source_epoch: Epoch::Epoch2,
-                    timestamp: 0,
-                });
-
-                height -= 1;
-                successor = block.hash();
-            }
-
-            self.blocks
-        }
     }
 
     fn assert_blocks_equal(cemented_blocks: &[Arc<BlockEnum>], expected: &[BlockEnum]) {

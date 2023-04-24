@@ -7,10 +7,10 @@ mod block_queue;
 mod bounded_mode;
 mod bounded_mode_helper;
 mod cement_queue;
-mod ledger_data_requester;
 mod confirmation_height_processor;
 mod confirmed_iterated_pairs;
 mod implicit_receive_cemented_mapping;
+mod ledger_data_requester;
 mod multi_account_cementer;
 mod single_account_cementer;
 mod unbounded_mode;
@@ -30,7 +30,7 @@ use automatic_mode::{AutomaticMode, AutomaticModeContainerInfo, UNBOUNDED_CUTOFF
 use batch_write_size_manager::BatchWriteSizeManager;
 use bounded_mode::{BoundedMode, BoundedModeContainerInfo};
 use bounded_mode_helper::{BoundedCementationStep, BoundedModeHelper};
-use ledger_data_requester::{LedgerDataRequester, LedgerAdapter};
+use ledger_data_requester::{LedgerAdapter, LedgerDataRequester};
 
 #[cfg(test)]
 use ledger_data_requester::CementationDataRequesterStub;

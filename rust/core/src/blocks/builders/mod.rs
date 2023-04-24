@@ -1,9 +1,11 @@
+mod block_chain_builder;
 mod legacy_change_block_builder;
 mod legacy_open_block_builder;
 mod legacy_receive_block_builder;
 mod legacy_send_block_builder;
 mod state_block_builder;
 
+pub use block_chain_builder::BlockChainBuilder;
 pub use legacy_change_block_builder::LegacyChangeBlockBuilder;
 pub use legacy_open_block_builder::LegacyOpenBlockBuilder;
 pub use legacy_receive_block_builder::LegacyReceiveBlockBuilder;

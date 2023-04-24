@@ -17,7 +17,7 @@ use crate::stats::{DetailType, Direction, StatType, Stats};
 
 use super::{
     AccountsConfirmedMapContainerInfo, BatchWriteSizeManager, BoundedCementationStep,
-    BoundedModeHelper, CementCallbackRefs, LedgerDataRequester, LedgerAdapter,
+    BoundedModeHelper, CementCallbackRefs, LedgerAdapter, LedgerDataRequester,
     MultiAccountCementer, WriteDetailsContainerInfo,
 };
 

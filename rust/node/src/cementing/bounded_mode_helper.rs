@@ -493,16 +493,15 @@ fn truncate_after(buffer: &mut BoundedVecDeque<BlockHash>, hash: &BlockHash) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cementing::{
-        ledger_data_requester::BlockChainBuilder, CementationDataRequesterStub,
-    };
+    use crate::cementing::CementationDataRequesterStub;
+    use rsnano_core::BlockChainBuilder;
 
     #[test]
     fn block_already_cemented() {
         let mut sut = BoundedModeHelper::builder().build();
         let mut data_requester = CementationDataRequesterStub::new();
-        let mut genesis_chain = BlockChainBuilder::new(Account::from(1));
-        let genesis_hash = genesis_chain.legacy_open().hash();
+        let mut genesis_chain = BlockChainBuilder::new().legacy_open();
+        let genesis_hash = genesis_chain.frontier();
         data_requester.add_cemented(&mut genesis_chain);
 
         sut.initialize(genesis_hash);
@@ -515,17 +514,18 @@ mod tests {
     fn cement_first_send_from_genesis() {
         let mut sut = BoundedModeHelper::builder().build();
         let mut data_requester = CementationDataRequesterStub::new();
-        let mut genesis_chain = BlockChainBuilder::new(Account::from(1));
-        genesis_chain.legacy_open().hash();
+        let mut genesis_chain = BlockChainBuilder::new().legacy_open();
         data_requester.add_cemented(&mut genesis_chain);
-        let first_send = genesis_chain.legacy_send().hash();
+
+        let mut genesis_chain = genesis_chain.legacy_send();
+        let first_send = genesis_chain.frontier();
         data_requester.add_uncemented(&mut genesis_chain);
 
         sut.initialize(first_send);
         let step = sut.get_next_step(&mut data_requester);
 
         let expected = WriteDetails {
-            account: genesis_chain.account,
+            account: genesis_chain.account(),
             bottom_height: 2,
             bottom_hash: first_send,
             top_height: 2,
@@ -540,12 +540,12 @@ mod tests {
         let mut data_requester = CementationDataRequesterStub::new();
 
         let genesis_account = Account::from(1);
-        let mut genesis_chain = BlockChainBuilder::new(genesis_account);
-        genesis_chain.legacy_open();
+        let mut genesis_chain = BlockChainBuilder::for_account(genesis_account).legacy_open();
         data_requester.add_cemented(&mut genesis_chain);
 
-        let first_send = genesis_chain.legacy_send().hash();
-        let second_send = genesis_chain.legacy_send().hash();
+        let mut genesis_chain = genesis_chain.legacy_send().legacy_send();
+        let first_send = genesis_chain.blocks()[0].hash();
+        let second_send = genesis_chain.blocks()[1].hash();
         data_requester.add_uncemented(&mut genesis_chain);
 
         sut.initialize(second_send);
@@ -565,12 +565,14 @@ mod tests {
     fn cement_open_block() {
         let mut sut = BoundedModeHelper::builder().build();
         let mut data_requester = CementationDataRequesterStub::new();
-        let mut genesis_chain = BlockChainBuilder::new(Account::from(1));
-        let mut dest_chain = BlockChainBuilder::new(Account::from(2));
-
-        genesis_chain.legacy_open();
-        let send = genesis_chain.legacy_send_with(|b| b.destination(dest_chain.account));
-        let open = dest_chain.legacy_open_from(send).hash();
+        let genesis_chain = BlockChainBuilder::for_account(1);
+        let dest_chain = BlockChainBuilder::for_account(2);
+        let mut genesis_chain = genesis_chain
+            .legacy_open()
+            .legacy_send_with(|b| b.destination(dest_chain.account()));
+        let send = genesis_chain.blocks().last().unwrap();
+        let mut dest_chain = dest_chain.legacy_open_from(send);
+        let open = dest_chain.frontier();
         data_requester.add_cemented(&mut genesis_chain);
         data_requester.add_uncemented(&mut dest_chain);
 
@@ -578,7 +580,7 @@ mod tests {
         let step = sut.get_next_step(&mut data_requester);
 
         let expected = WriteDetails {
-            account: dest_chain.account,
+            account: dest_chain.account(),
             bottom_height: 1,
             bottom_hash: open,
             top_height: 1,

@@ -1,16 +1,22 @@
-use std::{fs::create_dir_all, path::{PathBuf, Path}};
 use duct::cmd;
 use glob::glob;
+use std::{
+    fs::create_dir_all,
+    path::{Path, PathBuf},
+};
 
-fn main() -> anyhow::Result<()>{
+fn main() -> anyhow::Result<()> {
     let html_mode = std::env::args().any(|a| a == "--html");
     coverage(html_mode)
 }
 
+const TARGET_DIR: &str = "../build/coverage/";
+
 pub fn coverage(html_mode: bool) -> anyhow::Result<()> {
-    let target_dir = "../build/coverage";
-    fs_extra::dir::remove(target_dir).map_err(anyhow::Error::msg)?;
-    create_dir_all(target_dir)?;
+    if html_mode {
+        fs_extra::dir::remove(format!("{}/html", TARGET_DIR)).map_err(anyhow::Error::msg)?;
+    }
+    create_dir_all(TARGET_DIR)?;
 
     println!("=== running coverage ===");
     cmd!("cargo", "test", "--lib", "-q")
@@ -23,9 +29,9 @@ pub fn coverage(html_mode: bool) -> anyhow::Result<()> {
     println!("=== generating report ===");
 
     let (fmt, file) = if html_mode {
-        ("html", format!("{}/html", target_dir))
+        ("html", TARGET_DIR.to_string())
     } else {
-        ("lcov", format!("{}/tests.lcov", target_dir))
+        ("lcov", format!("{}/tests.lcov", TARGET_DIR))
     };
 
     cmd!(

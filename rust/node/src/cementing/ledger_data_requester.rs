@@ -1,11 +1,9 @@
 #[cfg(test)]
+use rsnano_core::BlockChainBuilder;
+#[cfg(test)]
 use std::collections::HashMap;
 
-#[cfg(test)]
-use rsnano_core::BlockBuilder;
 use rsnano_core::{Account, AccountInfo, BlockEnum, BlockHash, ConfirmationHeightInfo};
-#[cfg(test)]
-use rsnano_core::{Amount, BlockDetails, BlockSideband, Epoch, LegacySendBlockBuilder};
 use rsnano_ledger::Ledger;
 use rsnano_store_traits::Transaction;
 
@@ -84,7 +82,7 @@ impl CementationDataRequesterStub {
 
     pub fn add_cemented(&mut self, chain: &mut BlockChainBuilder) {
         self.set_confirmation_height(
-            chain.account,
+            chain.account(),
             ConfirmationHeightInfo {
                 height: chain.height(),
                 frontier: chain.frontier(),
@@ -109,91 +107,6 @@ impl CementationDataRequesterStub {
                 frontier: block.hash(),
             },
         )
-    }
-}
-
-#[cfg(test)]
-pub(crate) struct BlockChainBuilder {
-    pub account: Account,
-    blocks: Vec<BlockEnum>,
-    height: u64,
-    frontier: BlockHash,
-}
-
-#[cfg(test)]
-impl BlockChainBuilder {
-    pub(crate) fn new(account: Account) -> Self {
-        Self {
-            account,
-            blocks: Vec::new(),
-            height: 0,
-            frontier: BlockHash::zero(),
-        }
-    }
-
-    fn add_block(&mut self, mut block: BlockEnum) -> &BlockEnum {
-        block.set_sideband(BlockSideband {
-            height: self.height + 1,
-            timestamp: 1,
-            successor: BlockHash::zero(),
-            account: self.account,
-            balance: Amount::zero(),
-            details: BlockDetails::new(Epoch::Unspecified, false, false, false),
-            source_epoch: rsnano_core::Epoch::Unspecified,
-        });
-
-        if self.blocks.len() > 0 {
-            let previous = self.blocks.last_mut().unwrap();
-            let mut sideband = previous.sideband().unwrap().clone();
-            sideband.successor = block.hash();
-            previous.set_sideband(sideband);
-        }
-
-        self.height += 1;
-        self.frontier = block.hash();
-        self.blocks.push(block);
-        self.blocks.last().unwrap()
-    }
-
-    pub fn legacy_open(&mut self) -> &BlockEnum {
-        let block_builder = BlockBuilder::legacy_open().account(self.account);
-        self.add_block(block_builder.build())
-    }
-
-    pub fn legacy_open_from(&mut self, send: &BlockEnum) -> &BlockEnum {
-        assert_eq!(send.destination_or_link(), self.account);
-        let block_builder = BlockBuilder::legacy_open()
-            .account(self.account)
-            .source(send.hash());
-        self.add_block(block_builder.build())
-    }
-
-    pub fn legacy_send(&mut self) -> &BlockEnum {
-        self.legacy_send_with(|b| b)
-    }
-
-    pub fn legacy_send_with<F: FnMut(LegacySendBlockBuilder) -> LegacySendBlockBuilder>(
-        &mut self,
-        mut f: F,
-    ) -> &BlockEnum {
-        let block_builder = BlockBuilder::legacy_send()
-            .account(self.account)
-            .previous(self.frontier);
-        self.add_block(f(block_builder).build())
-    }
-
-    pub fn take_blocks(&mut self) -> Vec<BlockEnum> {
-        let mut blocks = Vec::new();
-        std::mem::swap(&mut blocks, &mut self.blocks);
-        blocks
-    }
-
-    fn height(&self) -> u64 {
-        self.height
-    }
-
-    fn frontier(&self) -> BlockHash {
-        self.frontier
     }
 }
 

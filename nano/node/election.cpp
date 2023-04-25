@@ -130,7 +130,7 @@ bool nano::election::state_change (nano::election::state_t expected_a, nano::ele
 
 bool nano::election::confirmed (nano::unique_lock<nano::mutex> & lock) const
 {
-	return node.block_confirmed (status.get_winner() ->hash ());
+	return node.block_confirmed (status.get_winner ()->hash ());
 }
 
 std::chrono::milliseconds nano::election::confirm_req_time () const

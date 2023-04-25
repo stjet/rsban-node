@@ -87,13 +87,8 @@ impl BoundedMode {
         loop {
             match self.helper.get_next_step(&mut ledger_adapter) {
                 BoundedCementationStep::Write(write_details) => {
-                    let mut something_written = false; // todo remove this flag
-                    for write in write_details.into_iter().flatten() {
-                        self.cementer.enqueue(write);
-                        something_written = true;
-                    }
-
-                    if something_written && self.should_flush(callbacks, self.helper.is_done()) {
+                    self.cementer.enqueue(write_details);
+                    if self.should_flush(callbacks, self.helper.is_done()) {
                         self.try_flush(callbacks);
                     }
                 }

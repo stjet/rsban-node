@@ -11,7 +11,7 @@ use rsnano_core::{
     Account, BlockHash,
 };
 
-#[derive(Clone, Default, PartialEq, Eq, Debug)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub(crate) struct WriteDetails {
     pub account: Account,
     pub bottom_height: u64,
@@ -20,6 +20,18 @@ pub(crate) struct WriteDetails {
     // Desired cemented frontier
     pub top_height: u64,
     pub top_hash: BlockHash,
+}
+
+impl std::fmt::Debug for WriteDetails {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WriteDetails")
+            .field("account", &self.account.encode_account())
+            .field("bottom_height", &self.bottom_height)
+            .field("bottom_hash", &self.bottom_hash.encode_hex())
+            .field("top_height", &self.top_height)
+            .field("top_hash", &self.top_hash.encode_hex())
+            .finish()
+    }
 }
 
 pub(crate) struct WriteDetailsQueue {

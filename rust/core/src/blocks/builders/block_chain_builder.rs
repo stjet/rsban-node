@@ -89,6 +89,15 @@ impl BlockChainBuilder {
         self
     }
 
+    pub fn legacy_receive_from(mut self, send: &BlockEnum) -> Self {
+        assert_eq!(send.destination_or_link(), self.account);
+        let block_builder = BlockBuilder::legacy_receive()
+            .previous(self.frontier())
+            .source(send.hash());
+        self.add_block(block_builder.build());
+        self
+    }
+
     pub fn legacy_send(self) -> Self {
         self.legacy_send_with(|b| b)
     }

@@ -118,4 +118,4 @@ jobs:
           key: ${{ runner.os }}-${{ env.COMPILER }}-build-cache
 
       - name: Run Tests
-        run: docker run -e RELEASE -e RUST_BACKTRACE=1 -v ${PWD}:/workspace simpago/rsnano-env:${{ matrix.COMPILER }} /bin/bash -c "cd /workspace/build && ../ci/test.sh ."
+        run: docker run -e RELEASE -e RUST_BACKTRACE=1 -v ${PWD}:/workspace -v ${PWD}/cargo-registry:/root/.cargo/registry simpago/rsnano-env:${{ matrix.COMPILER }} /bin/bash -c "cd /workspace/build && ../ci/test.sh ."

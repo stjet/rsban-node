@@ -35,7 +35,7 @@ run_tests()
     rpc_test_res=${?}
 
 	pushd ../rust
-    ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} ${TIMEOUT_DEFAULT} ~/.cargo/bin/cargo test 
+    ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} ${TIMEOUT_DEFAULT} ~/.cargo/bin/cargo test -q
     cargo_test_res=${?}
 	popd
 

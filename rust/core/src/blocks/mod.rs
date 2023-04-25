@@ -248,6 +248,18 @@ impl BlockEnum {
 
         result
     }
+
+    pub fn successor(&self) -> Option<BlockHash> {
+        if let Some(sideband) = self.sideband() {
+            if !sideband.successor.is_zero() {
+                Some(sideband.successor)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
 }
 
 impl FullHash for BlockEnum {

@@ -52,6 +52,16 @@ struct ReceiveChainDetails {
     pub bottom_hash: BlockHash,
 }
 
+impl ReceiveChainDetails {
+    fn next_block_after_receive_that_is_not_top_level(&self) -> Option<BlockHash> {
+        if self.next_block_after_receive == Some(self.top_level) {
+            None
+        } else {
+            self.next_block_after_receive
+        }
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct BoundedModeHelperBuilder {
     epochs: Option<Epochs>,
@@ -83,6 +93,8 @@ impl BoundedModeHelperBuilder {
 pub(crate) struct BoundedModeHelper {
     stopped: Arc<AtomicBool>,
     epochs: Epochs,
+    /// This is set if we have cemented a receive block and there are more
+    /// blocks that have to be cemented in the receiving chain
     next_in_receive_chain: Option<TopAndNextHash>,
     checkpoints: BoundedVecDeque<BlockHash>,
     receive_source_pairs: BoundedVecDeque<ReceiveSourcePair>,
@@ -90,7 +102,8 @@ pub(crate) struct BoundedModeHelper {
     current_hash: BlockHash,
     first_iter: bool,
     original_block: BlockHash,
-    /// this is set, if we are in a sender-chain that needs to be cemented, so that the receive can be cemented too
+    /// this is set, if we are in a sender-chain that needs to be cemented,
+    /// so that the receive can be cemented too
     receive_details: Option<ReceiveChainDetails>,
     hash_to_iterate: TopAndNextHash,
     /// Highest block in the current account that needs to be cemented
@@ -268,7 +281,7 @@ impl BoundedModeHelper {
                 top: next_receive_source_pair.source_hash,
                 next: next_receive_source_pair
                     .receive_details
-                    .next_block_after_receive,
+                    .next_block_after_receive_that_is_not_top_level(),
                 next_height: next_receive_source_pair
                     .receive_details
                     .receive_block_height
@@ -320,7 +333,7 @@ impl BoundedModeHelper {
         }
     }
 
-    fn get_least_unconfirmed_hash_from_top_level<T: LedgerDataRequester>(
+    fn get_lowest_unconfirmed_hash_of_current_account<T: LedgerDataRequester>(
         &mut self,
         data_requester: &T,
     ) -> BlockHash {
@@ -357,7 +370,7 @@ impl BoundedModeHelper {
             self.current_hash = self.previous_block;
             self.current_block_height -= 1;
         } else if self.next_in_receive_chain.is_none() {
-            self.current_hash = self.get_least_unconfirmed_hash_from_top_level(data_requester);
+            self.current_hash = self.get_lowest_unconfirmed_hash_of_current_account(data_requester);
         } else {
             // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
             // as we already know what the next block we should process should be.
@@ -382,20 +395,13 @@ impl BoundedModeHelper {
             if self.is_receive_block(&block, data_requester) {
                 hit_receive = true;
                 done = true;
-                let sideband = block.sideband().unwrap();
-                let next_block_after_receive =
-                    if !sideband.successor.is_zero() && sideband.successor != self.top_level_hash {
-                        Some(sideband.successor)
-                    } else {
-                        None
-                    };
                 self.receive_source_pairs.push_back(ReceiveSourcePair {
                     receive_details: ReceiveChainDetails {
                         receiving_account: self.current_account,
-                        receive_block_height: sideband.height,
+                        receive_block_height: block.sideband().unwrap().height,
                         receive_block_hash: hash,
                         top_level: self.top_level_hash,
-                        next_block_after_receive,
+                        next_block_after_receive: block.successor(),
                         bottom_height: self.current_block_height,
                         bottom_hash: self.current_hash,
                     },
@@ -436,7 +442,7 @@ impl BoundedModeHelper {
     }
 
     /// Add the non-receive blocks iterated for this account
-    fn cement_non_receive_blocks_for_this_account<T: LedgerDataRequester>(
+    fn cement_non_receive_blocks_in_sending_account<T: LedgerDataRequester>(
         &mut self,
         data_requester: &T,
     ) -> Option<WriteDetails> {
@@ -472,8 +478,7 @@ impl BoundedModeHelper {
         })
     }
 
-    /// Add the receive block and all higher non-receive blocks of the receiving account
-    fn cement_receive_block_and_all_non_receive_blocks_above(&mut self) -> Option<WriteDetails> {
+    fn cement_receive_block_in_receiving_account(&mut self) -> Option<WriteDetails> {
         let Some(receive) = &self.receive_details else { return None; };
         self.accounts_confirmed_info.insert(
             receive.receiving_account,
@@ -483,10 +488,13 @@ impl BoundedModeHelper {
             },
         );
 
-        if receive.next_block_after_receive.is_some() {
+        if receive
+            .next_block_after_receive_that_is_not_top_level()
+            .is_some()
+        {
             self.next_in_receive_chain = Some(TopAndNextHash {
                 top: receive.top_level,
-                next: receive.next_block_after_receive,
+                next: receive.next_block_after_receive_that_is_not_top_level(),
                 next_height: receive.receive_block_height + 1,
             });
         } else {
@@ -521,8 +529,8 @@ impl BoundedModeHelper {
     ) -> (Option<WriteDetails>, Option<WriteDetails>) {
         // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
         // the non-receive blocks which have been iterated for an account, and the associated receive block.
-        let cement_non_receives = self.cement_non_receive_blocks_for_this_account(data_requester);
-        let cement_receive = self.cement_receive_block_and_all_non_receive_blocks_above();
+        let cement_non_receives = self.cement_non_receive_blocks_in_sending_account(data_requester);
+        let cement_receive = self.cement_receive_block_in_receiving_account();
 
         // If used the top level, don't pop off the receive source pair because it wasn't used
         if !is_set {
@@ -699,6 +707,34 @@ mod tests {
                     top_hash: dest_chain.frontier(),
                 },
             ],
+        );
+    }
+
+    #[test]
+    fn cement_receive_block() {
+        let mut data_requester = LedgerDataRequesterStub::new();
+        let dest_chain = BlockChainBuilder::new();
+        let genesis_chain = data_requester
+            .add_genesis_block()
+            .legacy_send_with(|b| b.destination(dest_chain.account()))
+            .legacy_send_with(|b| b.destination(dest_chain.account()));
+        let dest_chain = dest_chain.legacy_open_from(&genesis_chain.blocks()[1]);
+        data_requester.add_cemented(&genesis_chain);
+        data_requester.add_cemented(&dest_chain);
+
+        let dest_chain = dest_chain.legacy_receive_from(genesis_chain.latest_block());
+        data_requester.add_uncemented(&dest_chain);
+
+        assert_write_steps(
+            &mut data_requester,
+            dest_chain.frontier(),
+            &[WriteDetails {
+                account: dest_chain.account(),
+                bottom_height: 2,
+                bottom_hash: dest_chain.frontier(),
+                top_height: 2,
+                top_hash: dest_chain.frontier(),
+            }],
         );
     }
 

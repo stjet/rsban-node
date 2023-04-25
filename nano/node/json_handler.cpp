@@ -4120,7 +4120,6 @@ void nano::json_handler::unchecked ()
 	if (!ec)
 	{
 		boost::property_tree::ptree unchecked;
-		auto transaction (node.store.tx_begin_read ());
 		node.unchecked.for_each (
 		[&unchecked, &json_block_l] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
 			auto block = info.get_block ();
@@ -4144,7 +4143,6 @@ void nano::json_handler::unchecked ()
 void nano::json_handler::unchecked_clear ()
 {
 	node.workers->push_task (create_worker_task ([] (std::shared_ptr<nano::json_handler> const & rpc_l) {
-		auto transaction (rpc_l->node.store.tx_begin_write ({ tables::unchecked }));
 		rpc_l->node.unchecked.clear ();
 		rpc_l->response_l.put ("success", "");
 		rpc_l->response_errors ();
@@ -4203,7 +4201,6 @@ void nano::json_handler::unchecked_keys ()
 	if (!ec)
 	{
 		boost::property_tree::ptree unchecked;
-		auto transaction (node.store.tx_begin_read ());
 		node.unchecked.for_each (
 		key,
 		[&unchecked, json_block_l] (nano::unchecked_key const & key, nano::unchecked_info const & info) {

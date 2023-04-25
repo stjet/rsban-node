@@ -87,22 +87,6 @@ public:
 		static_assert (std::is_standard_layout<nano::pending_key>::value, "Standard layout is required");
 	}
 
-	db_val (nano::unchecked_info const & val_a) :
-		buffer (std::make_shared<std::vector<uint8_t>> ())
-	{
-		{
-			nano::vectorstream stream (*buffer);
-			val_a.serialize (stream);
-		}
-		convert_buffer_to_value ();
-	}
-
-	db_val (nano::unchecked_key const & val_a) :
-		db_val (sizeof (val_a), const_cast<nano::unchecked_key *> (&val_a))
-	{
-		static_assert (std::is_standard_layout<nano::unchecked_key>::value, "Standard layout is required");
-	}
-
 	db_val (nano::confirmation_height_info const & val_a) :
 		buffer (std::make_shared<std::vector<uint8_t>> ())
 	{
@@ -189,25 +173,6 @@ public:
 		bool error (result.deserialize (stream));
 		(void)error;
 		debug_assert (!error);
-		return result;
-	}
-
-	explicit operator nano::unchecked_info () const
-	{
-		nano::bufferstream stream (reinterpret_cast<uint8_t const *> (data ()), size ());
-		nano::unchecked_info result;
-		bool error (result.deserialize (stream));
-		(void)error;
-		debug_assert (!error);
-		return result;
-	}
-
-	explicit operator nano::unchecked_key () const
-	{
-		nano::unchecked_key result;
-		debug_assert (size () == sizeof (result));
-		static_assert (sizeof (nano::unchecked_key::previous) + sizeof (nano::pending_key::hash) == sizeof (result), "Packed class");
-		std::copy (reinterpret_cast<uint8_t const *> (data ()), reinterpret_cast<uint8_t const *> (data ()) + sizeof (result), reinterpret_cast<uint8_t *> (&result));
 		return result;
 	}
 
@@ -643,26 +608,6 @@ public:
 };
 
 /**
- * Manages unchecked storage and iteration
- */
-class unchecked_store
-{
-public:
-	using iterator = nano::store_iterator<nano::unchecked_key, nano::unchecked_info>;
-
-	virtual void clear (nano::write_transaction const &) = 0;
-	virtual void put (nano::write_transaction const &, nano::hash_or_account const & dependency, nano::unchecked_info const &) = 0;
-	std::pair<iterator, iterator> equal_range (nano::transaction const & transaction, nano::block_hash const & dependency);
-	std::pair<iterator, iterator> full_range (nano::transaction const & transaction);
-	virtual bool exists (nano::transaction const & transaction_a, nano::unchecked_key const & unchecked_key_a) = 0;
-	virtual void del (nano::write_transaction const &, nano::unchecked_key const &) = 0;
-	virtual iterator begin (nano::transaction const &) const = 0;
-	virtual iterator lower_bound (nano::transaction const &, nano::unchecked_key const &) const = 0;
-	virtual iterator end () const = 0;
-	virtual size_t count (nano::transaction const &) = 0;
-};
-
-/**
  * Manages final vote storage and iteration
  */
 class final_vote_store
@@ -721,7 +666,6 @@ public:
 	virtual uint64_t account_height (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const = 0;
 };
 
-class unchecked_map;
 /**
  * Store manager
  */
@@ -733,7 +677,6 @@ public:
 	virtual frontier_store & frontier () = 0;
 	virtual account_store & account () = 0;
 	virtual pending_store & pending () = 0;
-	virtual unchecked_store & unchecked () = 0;
 	virtual online_weight_store & online_weight () = 0;
 	virtual pruned_store & pruned () = 0;
 	virtual peer_store & peer () = 0;
@@ -762,8 +705,6 @@ public:
 
 	virtual std::string vendor_get () const = 0;
 	virtual rsnano::LmdbStoreHandle * get_handle () const = 0;
-
-	friend class unchecked_map;
 };
 
 std::unique_ptr<nano::store> make_store (std::shared_ptr<nano::logger_mt> logger, boost::filesystem::path const & path, nano::ledger_constants & constants, bool open_read_only = false, bool add_db_postfix = false, nano::txn_tracking_config const & txn_tracking_config_a = nano::txn_tracking_config{}, std::chrono::milliseconds block_processor_batch_max_time_a = std::chrono::milliseconds (5000), nano::lmdb_config const & lmdb_config_a = nano::lmdb_config{}, bool backup_before_upgrade = false);

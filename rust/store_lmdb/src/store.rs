@@ -8,8 +8,8 @@ use std::{
 use crate::{
     as_write_txn, EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore,
     LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore,
-    LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction, LmdbUncheckedStore, LmdbVersionStore,
-    LmdbWriteTransaction, STORE_VERSION_MINIMUM,
+    LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction, LmdbVersionStore, LmdbWriteTransaction,
+    STORE_VERSION_MINIMUM,
 };
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
@@ -36,7 +36,6 @@ pub struct LmdbStore {
     pub peer_store: Arc<LmdbPeerStore>,
     pub confirmation_height_store: Arc<LmdbConfirmationHeightStore>,
     pub final_vote_store: Arc<LmdbFinalVoteStore>,
-    pub unchecked_store: Arc<LmdbUncheckedStore>,
     pub version_store: Arc<LmdbVersionStore>,
 }
 
@@ -126,7 +125,6 @@ impl LmdbStore {
             peer_store: Arc::new(LmdbPeerStore::new(env.clone())?),
             confirmation_height_store: Arc::new(LmdbConfirmationHeightStore::new(env.clone())?),
             final_vote_store: Arc::new(LmdbFinalVoteStore::new(env.clone())?),
-            unchecked_store: Arc::new(LmdbUncheckedStore::new(env.clone())?),
             version_store: Arc::new(LmdbVersionStore::new(env.clone())?),
             env,
         })
@@ -376,10 +374,6 @@ impl Store for LmdbStore {
 
     fn final_votes(&self) -> &dyn rsnano_store_traits::FinalVoteStore {
         self.final_vote_store.as_ref()
-    }
-
-    fn unchecked(&self) -> &dyn rsnano_store_traits::UncheckedStore {
-        self.unchecked_store.as_ref()
     }
 }
 

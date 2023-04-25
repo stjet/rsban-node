@@ -28,9 +28,7 @@ pub use pending_store::{PendingIterator, PendingStore};
 mod pruned_store;
 pub use pruned_store::{PrunedIterator, PrunedStore};
 
-mod unchecked_store;
 use rsnano_core::utils::PropertyTreeWriter;
-pub use unchecked_store::{UncheckedIterator, UncheckedStore};
 
 mod version_store;
 pub use version_store::VersionStore;

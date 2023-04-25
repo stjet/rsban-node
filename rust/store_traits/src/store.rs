@@ -2,8 +2,7 @@ use std::path::Path;
 
 use crate::{
     AccountStore, BlockStore, ConfirmationHeightStore, FinalVoteStore, FrontierStore,
-    OnlineWeightStore, PeerStore, PendingStore, PrunedStore, ReadTransaction, UncheckedStore,
-    WriteTransaction,
+    OnlineWeightStore, PeerStore, PendingStore, PrunedStore, ReadTransaction, WriteTransaction,
 };
 
 pub trait Store: Send + Sync {
@@ -20,7 +19,6 @@ pub trait Store: Send + Sync {
     fn online_weight(&self) -> &dyn OnlineWeightStore;
     fn peers(&self) -> &dyn PeerStore;
     fn final_votes(&self) -> &dyn FinalVoteStore;
-    fn unchecked(&self) -> &dyn UncheckedStore;
 }
 
 pub enum Table {

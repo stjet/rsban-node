@@ -57,7 +57,6 @@ nano::lmdb::store::store (std::shared_ptr<nano::logger_mt> logger_a, boost::file
 	peer_store{ rsnano::rsn_lmdb_store_peer (handle) },
 	confirmation_height_store{ rsnano::rsn_lmdb_store_confirmation_height (handle) },
 	final_vote_store{ rsnano::rsn_lmdb_store_final_vote (handle) },
-	unchecked_store{ rsnano::rsn_lmdb_store_unchecked (handle) },
 	version_store{ rsnano::rsn_lmdb_store_version (handle) }
 {
 }
@@ -133,11 +132,6 @@ nano::account_store & nano::lmdb::store::account ()
 nano::pending_store & nano::lmdb::store::pending ()
 {
 	return pending_store;
-}
-
-nano::unchecked_store & nano::lmdb::store::unchecked ()
-{
-	return unchecked_store;
 }
 
 nano::online_weight_store & nano::lmdb::store::online_weight ()

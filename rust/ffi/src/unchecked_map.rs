@@ -1,14 +1,37 @@
 use std::ffi::c_void;
 
-use rsnano_core::{HashOrAccount, UncheckedInfo, UncheckedKey};
+use rsnano_core::{BlockHash, HashOrAccount, UncheckedInfo, UncheckedKey};
 use rsnano_node::unchecked_map::UncheckedMap;
 
 use crate::{
     core::{BlockHandle, UncheckedInfoHandle},
-    ledger::datastore::lmdb::UncheckedKeyDto,
     utils::ContextWrapper,
     StatHandle, VoidPointerCallback,
 };
+
+#[repr(C)]
+pub struct UncheckedKeyDto {
+    pub previous: [u8; 32],
+    pub hash: [u8; 32],
+}
+
+impl From<&UncheckedKeyDto> for UncheckedKey {
+    fn from(dto: &UncheckedKeyDto) -> Self {
+        Self {
+            previous: BlockHash::from_bytes(dto.previous),
+            hash: BlockHash::from_bytes(dto.hash),
+        }
+    }
+}
+
+impl From<&UncheckedKey> for UncheckedKeyDto {
+    fn from(key: &UncheckedKey) -> Self {
+        Self {
+            previous: *key.previous.as_bytes(),
+            hash: *key.hash.as_bytes(),
+        }
+    }
+}
 
 pub struct UncheckedMapHandle(UncheckedMap);
 

@@ -10,7 +10,6 @@ mod peer_store;
 mod pending_store;
 mod pruned_store;
 mod store;
-mod unchecked_store;
 mod version_store;
 mod wallet_store;
 mod wallets;
@@ -19,7 +18,6 @@ use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction};
 use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
 use std::{ffi::c_void, ops::Deref};
 pub use store::LmdbStoreHandle;
-pub use unchecked_store::UncheckedKeyDto;
 
 use crate::VoidPointerCallback;
 

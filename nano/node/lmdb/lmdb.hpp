@@ -16,7 +16,6 @@
 #include <nano/node/lmdb/peer_store.hpp>
 #include <nano/node/lmdb/pending_store.hpp>
 #include <nano/node/lmdb/pruned_store.hpp>
-#include <nano/node/lmdb/unchecked_store.hpp>
 #include <nano/node/lmdb/version_store.hpp>
 #include <nano/secure/common.hpp>
 
@@ -59,7 +58,6 @@ namespace lmdb
 		nano::lmdb::peer_store peer_store;
 		nano::lmdb::pending_store pending_store;
 		nano::lmdb::pruned_store pruned_store;
-		nano::lmdb::unchecked_store unchecked_store;
 		nano::lmdb::version_store version_store;
 
 		friend class nano::lmdb::account_store;
@@ -71,7 +69,6 @@ namespace lmdb
 		friend class nano::lmdb::peer_store;
 		friend class nano::lmdb::pending_store;
 		friend class nano::lmdb::pruned_store;
-		friend class nano::lmdb::unchecked_store;
 		friend class nano::lmdb::version_store;
 
 	public:
@@ -89,7 +86,6 @@ namespace lmdb
 		nano::frontier_store & frontier () override;
 		nano::account_store & account () override;
 		nano::pending_store & pending () override;
-		nano::unchecked_store & unchecked () override;
 		nano::online_weight_store & online_weight () override;
 		nano::pruned_store & pruned () override;
 		nano::peer_store & peer () override;

@@ -40,9 +40,6 @@ pub use peer_store::LmdbPeerStore;
 mod pruned_store;
 pub use pruned_store::LmdbPrunedStore;
 
-mod unchecked_store;
-pub use unchecked_store::LmdbUncheckedStore;
-
 mod version_store;
 pub use version_store::LmdbVersionStore;
 

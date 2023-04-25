@@ -23,8 +23,8 @@ use super::{
     final_vote_store::LmdbFinalVoteStoreHandle, frontier_store::LmdbFrontierStoreHandle,
     lmdb_env::LmdbEnvHandle, online_weight_store::LmdbOnlineWeightStoreHandle,
     peer_store::LmdbPeerStoreHandle, pending_store::LmdbPendingStoreHandle,
-    pruned_store::LmdbPrunedStoreHandle, unchecked_store::LmdbUncheckedStoreHandle,
-    version_store::LmdbVersionStoreHandle, TransactionHandle, TransactionType,
+    pruned_store::LmdbPrunedStoreHandle, version_store::LmdbVersionStoreHandle, TransactionHandle,
+    TransactionType,
 };
 
 pub struct LmdbStoreHandle(pub Arc<LmdbStore>);
@@ -190,17 +190,6 @@ pub unsafe extern "C" fn rsn_lmdb_store_final_vote(
         ptr::null_mut()
     } else {
         LmdbFinalVoteStoreHandle::new((*handle).0.final_vote_store.clone())
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_store_unchecked(
-    handle: *mut LmdbStoreHandle,
-) -> *mut LmdbUncheckedStoreHandle {
-    if handle.is_null() {
-        ptr::null_mut()
-    } else {
-        LmdbUncheckedStoreHandle::new((*handle).0.unchecked_store.clone())
     }
 }
 

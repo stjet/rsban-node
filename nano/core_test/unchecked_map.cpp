@@ -2,7 +2,7 @@
 #include <nano/lib/logger_mt.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/node/unchecked_map.hpp>
-#include <nano/secure/store.hpp>
+#include <nano/secure/common.hpp>
 #include <nano/secure/utility.hpp>
 #include <nano/test_common/system.hpp>
 #include <nano/test_common/testutil.hpp>
@@ -19,14 +19,10 @@ class context
 {
 public:
 	context () :
-		logger{ std::make_shared<nano::logger_mt> () },
-		store{ nano::make_store (logger, nano::unique_path (), nano::dev::constants) },
-		unchecked{ *store, stats, false }
+		unchecked{ stats, false }
 	{
 	}
-	std::shared_ptr<nano::logger_mt> logger;
 	nano::stats stats;
-	std::unique_ptr<nano::store> store;
 	nano::unchecked_map unchecked;
 };
 std::shared_ptr<nano::block> block ()
@@ -59,10 +55,7 @@ TEST (unchecked_map, put_one)
 TEST (block_store, one_bootstrap)
 {
 	nano::test::system system{};
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	nano::unchecked_map unchecked{ *store, system.stats, false };
-	ASSERT_TRUE (!store->init_error ());
+	nano::unchecked_map unchecked{ system.stats, false };
 	nano::keypair key;
 	nano::block_builder builder;
 	auto block1 = builder
@@ -74,12 +67,11 @@ TEST (block_store, one_bootstrap)
 				  .work (5)
 				  .build_shared ();
 	unchecked.put (block1->hash (), nano::unchecked_info{ block1 });
-	auto check_block_is_listed = [&] (nano::transaction const & transaction_a, nano::block_hash const & block_hash_a) {
+	auto check_block_is_listed = [&] (nano::block_hash const & block_hash_a) {
 		return unchecked.get (block_hash_a).size () > 0;
 	};
 	// Waits for the block1 to get saved in the database
-	ASSERT_TIMELY (10s, check_block_is_listed (*store->tx_begin_read (), block1->hash ()));
-	auto transaction = store->tx_begin_read ();
+	ASSERT_TIMELY (10s, check_block_is_listed (block1->hash ()));
 	std::vector<nano::block_hash> dependencies;
 	unchecked.for_each ([&dependencies] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
 		dependencies.push_back (key.key ());
@@ -97,10 +89,7 @@ TEST (block_store, one_bootstrap)
 TEST (unchecked, simple)
 {
 	nano::test::system system{};
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	nano::unchecked_map unchecked{ *store, system.stats, false };
-	ASSERT_TRUE (!store->init_error ());
+	nano::unchecked_map unchecked{ system.stats, false };
 	nano::block_builder builder;
 	nano::keypair key;
 	auto block = builder
@@ -137,10 +126,7 @@ TEST (unchecked, simple)
 TEST (unchecked, multiple)
 {
 	nano::test::system system{};
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	nano::unchecked_map unchecked{ *store, system.stats, false };
-	ASSERT_TRUE (!store->init_error ());
+	nano::unchecked_map unchecked{ system.stats, false };
 	nano::block_builder builder;
 	nano::keypair key;
 	auto block = builder
@@ -171,10 +157,7 @@ TEST (unchecked, multiple)
 TEST (unchecked, double_put)
 {
 	nano::test::system system{};
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	nano::unchecked_map unchecked{ *store, system.stats, false };
-	ASSERT_TRUE (!store->init_error ());
+	nano::unchecked_map unchecked{ system.stats, false };
 	nano::block_builder builder;
 	nano::keypair key;
 	auto block = builder
@@ -206,10 +189,7 @@ TEST (unchecked, double_put)
 TEST (unchecked, multiple_get)
 {
 	nano::test::system system{};
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	nano::unchecked_map unchecked{ *store, system.stats, false };
-	ASSERT_TRUE (!store->init_error ());
+	nano::unchecked_map unchecked{ system.stats, false };
 	// Instantiates three blocks
 	nano::block_builder builder;
 	nano::keypair key1;
@@ -251,7 +231,7 @@ TEST (unchecked, multiple_get)
 
 	// count the number of blocks in the unchecked table by counting them one by one
 	// we cannot trust the count() method if the backend is rocksdb
-	auto count_unchecked_blocks_one_by_one = [&store, &unchecked] () {
+	auto count_unchecked_blocks_one_by_one = [&unchecked] () {
 		size_t count = 0;
 		unchecked.for_each ([&count] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
 			++count;

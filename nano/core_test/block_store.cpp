@@ -25,10 +25,7 @@ using namespace std::chrono_literals;
 TEST (block_store, empty_bootstrap)
 {
 	nano::test::system system{};
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
-	nano::unchecked_map unchecked{ *store, system.stats, false };
-	ASSERT_TRUE (!store->init_error ());
+	nano::unchecked_map unchecked{ system.stats, false };
 	size_t count = 0;
 	unchecked.for_each ([&count] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
 		++count;

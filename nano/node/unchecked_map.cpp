@@ -7,7 +7,6 @@
 #include <nano/lib/threading.hpp>
 #include <nano/lib/timer.hpp>
 #include <nano/node/unchecked_map.hpp>
-#include <nano/secure/store.hpp>
 
 namespace
 {
@@ -38,7 +37,7 @@ void drop_predicate_callback (void * context_a)
 }
 }
 
-nano::unchecked_map::unchecked_map (nano::store & store, nano::stats & stats, bool disable_delete) //:
+nano::unchecked_map::unchecked_map (nano::stats & stats, bool disable_delete)
 {
 	handle = rsnano::rsn_unchecked_map_create (stats.handle, disable_delete);
 }

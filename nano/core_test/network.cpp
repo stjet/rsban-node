@@ -953,7 +953,7 @@ TEST (network, bandwidth_limiter_2_messages)
 	channel2.send (message);
 	channel1.send (message);
 	channel2.send (message);
-	ASSERT_TIMELY (1s, 3 == node.stats->count (nano::stat::type::drop, nano::stat::detail::publish, nano::stat::dir::out));
+	ASSERT_TIMELY (1s, 2 == node.stats->count (nano::stat::type::drop, nano::stat::detail::publish, nano::stat::dir::out));
 }
 
 TEST (network, bandwidth_limiter_with_burst)

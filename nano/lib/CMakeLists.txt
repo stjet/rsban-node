@@ -64,6 +64,8 @@ add_library(
   rsnanoutils.cpp
   signal_manager.hpp
   signal_manager.cpp
+  stacktrace.hpp
+  stacktrace.cpp
   stats.hpp
   stats.cpp
   stats_enums.hpp
@@ -106,6 +108,10 @@ target_link_libraries(
   Boost::multiprecision
   Boost::program_options
   Boost::stacktrace)
+
+if(NANO_STACKTRACE_BACKTRACE)
+  target_link_libraries(nano_lib backtrace)
+endif()
 
 target_compile_definitions(
   nano_lib

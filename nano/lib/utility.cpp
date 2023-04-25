@@ -1,25 +1,18 @@
 #include "nano/lib/rsnanoutils.hpp"
 
 #include <nano/lib/rsnano.hpp>
+#include <nano/lib/stacktrace.hpp>
 #include <nano/lib/utility.hpp>
 
 #include <boost/dll/runtime_symbol_info.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
-#include <memory>
-
-#ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#endif
-#include <boost/stacktrace.hpp>
-
 #include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <sstream>
 #include <string_view>
 #include <thread>
@@ -167,19 +160,6 @@ nano::container_info const & nano::container_info_leaf::get_info () const
 		info_loaded = true;
 	}
 	return info;
-}
-
-void nano::dump_crash_stacktrace ()
-{
-	boost::stacktrace::safe_dump_to ("nano_node_backtrace.dump");
-}
-
-std::string nano::generate_stacktrace ()
-{
-	auto stacktrace = boost::stacktrace::stacktrace ();
-	std::stringstream ss;
-	ss << stacktrace;
-	return ss.str ();
 }
 
 void nano::remove_all_files_in_dir (boost::filesystem::path const & dir)

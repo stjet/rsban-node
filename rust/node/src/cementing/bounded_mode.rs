@@ -46,7 +46,10 @@ impl BoundedMode {
         stopped: Arc<AtomicBool>,
         stats: Arc<Stats>,
     ) -> Self {
-        let helper = BoundedModeHelper::new(ledger.constants.epochs.clone(), stopped.clone());
+        let helper = BoundedModeHelper::builder()
+            .epochs(ledger.constants.epochs.clone())
+            .stopped(stopped.clone())
+            .build();
 
         Self {
             write_database_queue,

@@ -66,12 +66,22 @@ impl ReceiveChainDetails {
 pub(crate) struct BoundedModeHelperBuilder {
     epochs: Option<Epochs>,
     stopped: Option<Arc<AtomicBool>>,
-    receives_per_checkpoint: Option<usize>,
+    max_items: Option<usize>,
 }
 
 impl BoundedModeHelperBuilder {
-    pub fn receives_per_checkpoint(mut self, receive_count: usize) -> Self {
-        self.receives_per_checkpoint = Some(receive_count);
+    pub fn epochs(mut self, epochs: Epochs) -> Self {
+        self.epochs = Some(epochs);
+        self
+    }
+
+    pub fn stopped(mut self, stopped: Arc<AtomicBool>) -> Self {
+        self.stopped = Some(stopped);
+        self
+    }
+
+    pub fn max_items(mut self, max: usize) -> Self {
+        self.max_items = Some(max);
         self
     }
 
@@ -81,12 +91,7 @@ impl BoundedModeHelperBuilder {
             .stopped
             .unwrap_or_else(|| Arc::new(AtomicBool::new(false)));
 
-        let mut helper = BoundedModeHelper::new(epochs, stopped);
-        if let Some(receive_count) = self.receives_per_checkpoint {
-            helper.receives_per_checkpoint = receive_count;
-        }
-
-        helper
+        BoundedModeHelper::new(epochs, stopped, self.max_items.unwrap_or(MAX_ITEMS))
     }
 }
 
@@ -113,19 +118,17 @@ pub(crate) struct BoundedModeHelper {
     previous_block: BlockHash,
     current_confirmation_height: ConfirmationHeightInfo,
     top_most_non_receive_block_hash: BlockHash,
-    /// Create a checkpoint every time this count of receives were hit
-    receives_per_checkpoint: usize,
     // We calculate steps in advance. If next_write is set, it was precalculated and is the next step
     next_write: Option<WriteDetails>,
 }
 
 impl BoundedModeHelper {
-    pub fn new(epochs: Epochs, stopped: Arc<AtomicBool>) -> Self {
+    pub fn new(epochs: Epochs, stopped: Arc<AtomicBool>, max_items: usize) -> Self {
         Self {
             epochs,
             stopped,
-            checkpoints: BoundedVecDeque::new(MAX_ITEMS),
-            unprocessed_receives: BoundedVecDeque::new(MAX_ITEMS),
+            checkpoints: BoundedVecDeque::new(max_items),
+            unprocessed_receives: BoundedVecDeque::new(max_items),
             accounts_confirmed_info: AccountsConfirmedMap::new(),
             next_in_receive_chain: None,
             current_hash: BlockHash::zero(),
@@ -139,7 +142,6 @@ impl BoundedModeHelper {
             previous_block: BlockHash::zero(),
             current_confirmation_height: Default::default(),
             top_most_non_receive_block_hash: BlockHash::zero(),
-            receives_per_checkpoint: MAX_ITEMS,
             next_write: None,
         }
     }
@@ -224,7 +226,7 @@ impl BoundedModeHelper {
     }
 
     pub fn is_accounts_cache_full(&self) -> bool {
-        self.accounts_confirmed_info.len() >= MAX_ITEMS
+        self.accounts_confirmed_info.len() >= self.unprocessed_receives.capacity()
     }
 
     pub fn is_done(&self) -> bool {
@@ -395,22 +397,24 @@ impl BoundedModeHelper {
             if self.is_receive_block(&block, data_requester) {
                 hit_receive = true;
                 done = true;
-                self.unprocessed_receives.push_back(ReceiveSourcePair {
-                    receive_details: ReceiveChainDetails {
-                        receiving_account: self.current_account,
-                        receive_block_height: block.sideband().unwrap().height,
-                        receive_block_hash: hash,
-                        top_level: self.top_level_hash,
-                        next_block_after_receive: block.successor(),
-                        bottom_height: self.current_block_height,
-                        bottom_hash: self.current_hash,
-                    },
-                    source_hash: block.source_or_link(),
-                });
 
                 // Store a checkpoint every max_items so that we can always traverse a long number of accounts to genesis
-                if self.unprocessed_receives.len() % self.receives_per_checkpoint == 0 {
+                if self.unprocessed_receives.is_full() {
                     self.checkpoints.push_back(self.top_level_hash);
+                    self.unprocessed_receives.clear();
+                } else {
+                    self.unprocessed_receives.push_back(ReceiveSourcePair {
+                        receive_details: ReceiveChainDetails {
+                            receiving_account: self.current_account,
+                            receive_block_height: block.sideband().unwrap().height,
+                            receive_block_hash: hash,
+                            top_level: self.top_level_hash,
+                            next_block_after_receive: block.successor(),
+                            bottom_height: self.current_block_height,
+                            bottom_hash: self.current_hash,
+                        },
+                        source_hash: block.source_or_link(),
+                    });
                 }
             } else {
                 // Found a send/change/epoch block which isn't the desired top level
@@ -1000,7 +1004,8 @@ mod tests {
         data_requester.add_uncemented(&account4);
         data_requester.add_uncemented(&account5);
 
-        assert_write_steps(
+        assert_write_steps_with_max_items(
+            2,
             &mut data_requester,
             account5.frontier(),
             &[
@@ -1122,9 +1127,16 @@ mod tests {
         block_to_cement: BlockHash,
         expected: &[WriteDetails],
     ) {
-        let mut sut = BoundedModeHelper::builder()
-            .receives_per_checkpoint(3)
-            .build();
+        assert_write_steps_with_max_items(MAX_ITEMS, data_requester, block_to_cement, expected)
+    }
+
+    fn assert_write_steps_with_max_items(
+        max_items: usize,
+        data_requester: &mut LedgerDataRequesterStub,
+        block_to_cement: BlockHash,
+        expected: &[WriteDetails],
+    ) {
+        let mut sut = BoundedModeHelper::builder().max_items(max_items).build();
         sut.initialize(block_to_cement);
 
         let mut actual = Vec::new();

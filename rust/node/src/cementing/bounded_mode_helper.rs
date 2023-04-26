@@ -26,9 +26,9 @@ pub(crate) enum BoundedCementationStep {
 
 #[derive(Clone, Default)]
 struct TopAndNextHash {
-    /// Highest block in the send-chain that needs to be cemented
+    /// Highest block that needs to be cemented in the current account
     pub top: BlockHash,
-    pub next: Option<BlockHash>,
+    pub next_after_receive: Option<BlockHash>,
     pub next_height: u64,
 }
 
@@ -97,7 +97,7 @@ pub(crate) struct BoundedModeHelper {
     /// blocks that have to be cemented in the receiving chain
     next_in_receive_chain: Option<TopAndNextHash>,
     checkpoints: BoundedVecDeque<BlockHash>,
-    receive_source_pairs: BoundedVecDeque<ReceiveSourcePair>,
+    unprocessed_receives: BoundedVecDeque<ReceiveSourcePair>,
     accounts_confirmed_info: AccountsConfirmedMap,
     current_hash: BlockHash,
     first_iter: bool,
@@ -125,7 +125,7 @@ impl BoundedModeHelper {
             epochs,
             stopped,
             checkpoints: BoundedVecDeque::new(MAX_ITEMS),
-            receive_source_pairs: BoundedVecDeque::new(MAX_ITEMS),
+            unprocessed_receives: BoundedVecDeque::new(MAX_ITEMS),
             accounts_confirmed_info: AccountsConfirmedMap::new(),
             next_in_receive_chain: None,
             current_hash: BlockHash::zero(),
@@ -150,7 +150,7 @@ impl BoundedModeHelper {
 
     pub fn initialize(&mut self, original_block: BlockHash) {
         self.checkpoints.clear();
-        self.receive_source_pairs.clear();
+        self.unprocessed_receives.clear();
         self.next_in_receive_chain = None;
         self.current_hash = BlockHash::zero();
         self.first_iter = true;
@@ -190,7 +190,7 @@ impl BoundedModeHelper {
                 return BoundedCementationStep::AlreadyCemented(self.original_block);
             }
 
-            self.goto_lowest_unconfirmed_hash_of_current_account(data_requester);
+            self.goto_lowest_unconfirmed_block_of_current_account(data_requester);
             self.top_most_non_receive_block_hash = self.current_hash;
 
             let hit_receive = if !self.is_already_cemented() {
@@ -204,11 +204,11 @@ impl BoundedModeHelper {
             self.next_in_receive_chain = None;
             self.first_iter = false;
 
-            // Need to also handle the case where we are hitting receives where the sends below should be confirmed
-            if !hit_receive
-                || (self.receive_source_pairs.len() == 1
-                    && self.top_most_non_receive_block_hash != self.current_hash)
-            {
+            let hit_last_receive_and_uncemented_previous_blocks_exist = hit_receive
+                && self.unprocessed_receives.len() == 1 // this is the last receive
+                && self.top_most_non_receive_block_hash != self.current_hash;
+
+            if !hit_receive || hit_last_receive_and_uncemented_previous_blocks_exist {
                 let write_next = self.write_next(data_requester, is_set);
                 match write_next {
                     (None, None) => {}
@@ -228,7 +228,7 @@ impl BoundedModeHelper {
     }
 
     pub fn is_done(&self) -> bool {
-        (self.receive_source_pairs.is_empty() && self.current_hash == self.original_block)
+        (self.unprocessed_receives.is_empty() && self.current_hash == self.original_block)
             || self.stopped.load(Ordering::SeqCst)
     }
 
@@ -245,8 +245,8 @@ impl BoundedModeHelper {
 
         let Some(current_block) = current_block else{
                 if data_requester.was_block_pruned(&self.current_hash){
-                    if !self.receive_source_pairs.is_empty() {
-                        self.receive_source_pairs.pop_back();
+                    if !self.unprocessed_receives.is_empty() {
+                        self.unprocessed_receives.pop_back();
                     }
                     return false;
                 } else {
@@ -275,11 +275,11 @@ impl BoundedModeHelper {
     fn get_next_block_hash_to_iterate_over(&mut self) -> TopAndNextHash {
         if let Some(next_in_chain) = &self.next_in_receive_chain {
             next_in_chain.clone()
-        } else if let Some(next_receive_source_pair) = self.receive_source_pairs.back() {
+        } else if let Some(next_receive_source_pair) = self.unprocessed_receives.back() {
             self.receive_details = Some(next_receive_source_pair.receive_details.clone());
             TopAndNextHash {
                 top: next_receive_source_pair.source_hash,
-                next: next_receive_source_pair
+                next_after_receive: next_receive_source_pair
                     .receive_details
                     .next_block_after_receive_that_is_not_top_level(),
                 next_height: next_receive_source_pair
@@ -290,13 +290,13 @@ impl BoundedModeHelper {
         } else if let Some(checkpoint) = self.checkpoints.back() {
             TopAndNextHash {
                 top: *checkpoint,
-                next: None,
+                next_after_receive: None,
                 next_height: 0,
             }
         } else {
             TopAndNextHash {
                 top: self.original_block,
-                next: None,
+                next_after_receive: None,
                 next_height: 0,
             }
         }
@@ -357,7 +357,7 @@ impl BoundedModeHelper {
         return least_unconfirmed_hash;
     }
 
-    fn goto_lowest_unconfirmed_hash_of_current_account<T: LedgerDataRequester>(
+    fn goto_lowest_unconfirmed_block_of_current_account<T: LedgerDataRequester>(
         &mut self,
         data_requester: &T,
     ) {
@@ -369,13 +369,13 @@ impl BoundedModeHelper {
             // we can just use the previous block to get the least unconfirmed hash.
             self.current_hash = self.previous_block;
             self.current_block_height -= 1;
-        } else if self.next_in_receive_chain.is_none() {
-            self.current_hash = self.get_lowest_unconfirmed_hash_of_current_account(data_requester);
-        } else {
+        } else if let Some(next) = &self.next_in_receive_chain {
             // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
             // as we already know what the next block we should process should be.
-            self.current_hash = self.hash_to_iterate.next.unwrap();
+            self.current_hash = self.hash_to_iterate.next_after_receive.unwrap();
             self.current_block_height = self.hash_to_iterate.next_height;
+        } else {
+            self.current_hash = self.get_lowest_unconfirmed_hash_of_current_account(data_requester);
         }
     }
 
@@ -395,7 +395,7 @@ impl BoundedModeHelper {
             if self.is_receive_block(&block, data_requester) {
                 hit_receive = true;
                 done = true;
-                self.receive_source_pairs.push_back(ReceiveSourcePair {
+                self.unprocessed_receives.push_back(ReceiveSourcePair {
                     receive_details: ReceiveChainDetails {
                         receiving_account: self.current_account,
                         receive_block_height: block.sideband().unwrap().height,
@@ -409,7 +409,7 @@ impl BoundedModeHelper {
                 });
 
                 // Store a checkpoint every max_items so that we can always traverse a long number of accounts to genesis
-                if self.receive_source_pairs.len() % self.receives_per_checkpoint == 0 {
+                if self.unprocessed_receives.len() % self.receives_per_checkpoint == 0 {
                     self.checkpoints.push_back(self.top_level_hash);
                 }
             } else {
@@ -478,7 +478,7 @@ impl BoundedModeHelper {
         })
     }
 
-    fn cement_receive_block_in_receiving_account(&mut self) -> Option<WriteDetails> {
+    fn cement_receive_block(&mut self) -> Option<WriteDetails> {
         let Some(receive) = &self.receive_details else { return None; };
         self.accounts_confirmed_info.insert(
             receive.receiving_account,
@@ -492,9 +492,10 @@ impl BoundedModeHelper {
             .next_block_after_receive_that_is_not_top_level()
             .is_some()
         {
+            // There is more cementing needed in the receive chain
             self.next_in_receive_chain = Some(TopAndNextHash {
                 top: receive.top_level,
-                next: receive.next_block_after_receive_that_is_not_top_level(),
+                next_after_receive: receive.next_block_after_receive_that_is_not_top_level(),
                 next_height: receive.receive_block_height + 1,
             });
         } else {
@@ -530,11 +531,11 @@ impl BoundedModeHelper {
         // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
         // the non-receive blocks which have been iterated for an account, and the associated receive block.
         let cement_non_receives = self.cement_non_receive_blocks_in_sending_account(data_requester);
-        let cement_receive = self.cement_receive_block_in_receiving_account();
+        let cement_receive = self.cement_receive_block();
 
         // If used the top level, don't pop off the receive source pair because it wasn't used
         if !is_set {
-            self.receive_source_pairs.pop_back();
+            self.unprocessed_receives.pop_back();
         }
 
         (cement_non_receives, cement_receive)
@@ -824,6 +825,138 @@ mod tests {
     }
 
     #[test]
+    fn receive_and_send() {
+        let mut data_requester = LedgerDataRequesterStub::new();
+        let genesis_chain = data_requester.add_genesis_block().legacy_send();
+        let dest_chain =
+            BlockChainBuilder::from_send_block(genesis_chain.latest_block()).legacy_send();
+        data_requester.add_cemented(&genesis_chain);
+        data_requester.add_uncemented(&dest_chain);
+
+        assert_write_steps(
+            &mut data_requester,
+            dest_chain.frontier(),
+            &[
+                WriteDetails {
+                    account: dest_chain.account(),
+                    bottom_height: 1,
+                    bottom_hash: dest_chain.open(),
+                    top_height: 1,
+                    top_hash: dest_chain.open(),
+                },
+                WriteDetails {
+                    account: dest_chain.account(),
+                    bottom_height: 2,
+                    bottom_hash: dest_chain.frontier(),
+                    top_height: 2,
+                    top_hash: dest_chain.frontier(),
+                },
+            ],
+        );
+    }
+
+    #[test]
+    fn complex_example() {
+        let mut data_requester = LedgerDataRequesterStub::new();
+        let genesis_chain = data_requester
+            .add_genesis_block()
+            .legacy_send_with(|b| b.destination(Account::from(1)));
+
+        let account1 = BlockChainBuilder::from_send_block(genesis_chain.latest_block())
+            .legacy_send()
+            .legacy_send_with(|b| b.destination(Account::from(2)));
+
+        let account2 = BlockChainBuilder::from_send_block(account1.latest_block())
+            .legacy_send_with(|b| b.destination(Account::from(3)));
+
+        let account3 = BlockChainBuilder::from_send_block(account2.latest_block())
+            .legacy_send()
+            .legacy_send_with(|b| b.destination(Account::from(1)));
+
+        let account1 = account1
+            .legacy_receive_from(account3.latest_block())
+            .legacy_send()
+            .legacy_send_with(|b| b.destination(account2.account()));
+
+        let account2 = account2.legacy_receive_from(account1.latest_block());
+
+        data_requester.add_cemented(&genesis_chain);
+        data_requester.add_uncemented(&account1);
+        data_requester.add_uncemented(&account2);
+        data_requester.add_uncemented(&account3);
+
+        assert_write_steps(
+            &mut data_requester,
+            account2.frontier(),
+            &[
+                WriteDetails {
+                    account: account1.account(),
+                    bottom_height: 1,
+                    bottom_hash: account1.open(),
+                    top_height: 1,
+                    top_hash: account1.open(),
+                },
+                WriteDetails {
+                    account: account1.account(),
+                    bottom_height: 2,
+                    bottom_hash: account1.blocks()[1].hash(),
+                    top_height: 3,
+                    top_hash: account1.blocks()[2].hash(),
+                },
+                WriteDetails {
+                    account: account2.account(),
+                    bottom_height: 1,
+                    bottom_hash: account2.open(),
+                    top_height: 1,
+                    top_hash: account2.open(),
+                },
+                WriteDetails {
+                    account: account2.account(),
+                    bottom_height: 2,
+                    bottom_hash: account2.blocks()[1].hash(),
+                    top_height: 2,
+                    top_hash: account2.blocks()[1].hash(),
+                },
+                WriteDetails {
+                    account: account3.account(),
+                    bottom_height: 1,
+                    bottom_hash: account3.open(),
+                    top_height: 1,
+                    top_hash: account3.open(),
+                },
+                WriteDetails {
+                    account: account3.account(),
+                    bottom_height: 2,
+                    bottom_hash: account3.blocks()[1].hash(),
+                    top_height: 3,
+                    top_hash: account3.frontier(),
+                },
+                WriteDetails {
+                    account: account1.account(),
+                    bottom_height: 4,
+                    bottom_hash: account1.blocks()[3].hash(),
+                    top_height: 4,
+                    top_hash: account1.blocks()[3].hash(),
+                },
+                WriteDetails {
+                    account: account1.account(),
+                    bottom_height: 5,
+                    bottom_hash: account1.blocks()[4].hash(),
+                    top_height: 6,
+                    top_hash: account1.frontier(),
+                },
+                WriteDetails {
+                    account: account2.account(),
+                    bottom_height: 2,
+                    bottom_hash: account2.blocks()[1].hash(),
+                    top_height: 3,
+                    top_hash: account2.frontier(),
+                },
+            ],
+        );
+    }
+
+    #[test]
     fn block_already_cemented() {
         let mut sut = BoundedModeHelper::builder().build();
         let mut data_requester = LedgerDataRequesterStub::new();
@@ -1003,6 +1136,23 @@ mod tests {
                 BoundedCementationStep::Done => break,
             }
         }
-        assert_eq!(&actual, expected);
+
+        for (i, (act, exp)) in actual.iter().zip(expected).enumerate() {
+            assert_eq!(act, exp, "Unexpected WriteDetails at index {}", i);
+        }
+
+        if actual.len() < expected.len() {
+            panic!(
+                "actual as too few elements. These are missing: {:?}",
+                &expected[actual.len()..]
+            );
+        }
+
+        if actual.len() > expected.len() {
+            panic!(
+                "actual as too many elements. These are too many: {:?}",
+                &actual[expected.len()..]
+            );
+        }
     }
 }

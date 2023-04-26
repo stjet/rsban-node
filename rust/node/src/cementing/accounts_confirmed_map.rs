@@ -11,9 +11,11 @@ use rsnano_core::{
     Account, BlockHash,
 };
 
+#[derive(Clone)]
 pub(crate) struct ConfirmedInfo {
     pub(crate) confirmed_height: u64,
-    pub(crate) iterated_frontier: BlockHash,
+    pub(crate) confirmed_frontier: BlockHash,
+    pub(crate) first_unconfirmed: Option<BlockHash>,
 }
 
 /// Holds confirmation height/cemented frontier in memory for accounts while iterating

@@ -16,9 +16,9 @@ use rsnano_store_traits::WriteTransaction;
 use crate::stats::{DetailType, Direction, StatType, Stats};
 
 use super::{
-    AccountsConfirmedMapContainerInfo, BatchWriteSizeManager, BoundedCementationStep,
-    BoundedModeHelper, CementCallbackRefs, LedgerAdapter, LedgerDataRequester,
-    MultiAccountCementer, WriteDetailsContainerInfo,
+    bounded_mode_helper_v2::{BoundedCementationStep, BoundedModeHelperV2},
+    AccountsConfirmedMapContainerInfo, BatchWriteSizeManager, CementCallbackRefs, LedgerAdapter,
+    LedgerDataRequester, MultiAccountCementer, WriteDetailsContainerInfo,
 };
 
 pub(super) struct BoundedMode {
@@ -33,7 +33,7 @@ pub(super) struct BoundedMode {
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
     ledger: Arc<Ledger>,
-    helper: BoundedModeHelper,
+    helper: BoundedModeHelperV2,
 }
 
 impl BoundedMode {
@@ -46,7 +46,7 @@ impl BoundedMode {
         stopped: Arc<AtomicBool>,
         stats: Arc<Stats>,
     ) -> Self {
-        let helper = BoundedModeHelper::builder()
+        let helper = BoundedModeHelperV2::builder()
             .epochs(ledger.constants.epochs.clone())
             .stopped(stopped.clone())
             .build();
@@ -80,7 +80,7 @@ impl BoundedMode {
             self.processing_timer = Instant::now();
         }
 
-        self.helper.initialize(original_block.hash());
+        self.helper.initialize(&original_block.hash());
 
         let mut txn = self.ledger.store.tx_begin_read();
         let ledger_clone = Arc::clone(&self.ledger);
@@ -88,7 +88,7 @@ impl BoundedMode {
         let mut ledger_adapter = LedgerAdapter::new(txn.txn_mut(), &ledger_clone);
 
         loop {
-            match self.helper.get_next_step(&mut ledger_adapter) {
+            match self.helper.get_next_step(&mut ledger_adapter).unwrap() {
                 BoundedCementationStep::Write(write_details) => {
                     self.cementer.enqueue(write_details);
                     if self.should_flush(callbacks, self.helper.is_done()) {

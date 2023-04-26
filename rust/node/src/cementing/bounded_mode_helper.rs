@@ -211,8 +211,16 @@ impl BoundedModeHelper {
                 && self.top_most_non_receive_block_hash != self.current_hash;
 
             if !hit_receive || hit_last_receive_and_uncemented_previous_blocks_exist {
-                let write_next = self.write_next(data_requester, is_set);
-                match write_next {
+                // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
+                // the non-receive blocks which have been iterated for an account, and the associated receive block.
+                let cement_non_receives =
+                    self.cement_non_receive_blocks_in_sending_account(data_requester);
+                let cement_receive = self.cement_receive_block();
+                // If used the top level, don't pop off the receive source pair because it wasn't used
+                if !is_set {
+                    self.unprocessed_receives.pop_back();
+                }
+                match (cement_non_receives, cement_receive) {
                     (None, None) => {}
                     (None, Some(w)) => return BoundedCementationStep::Write(w),
                     (Some(w), None) => return BoundedCementationStep::Write(w),
@@ -312,9 +320,11 @@ impl BoundedModeHelper {
     ) -> ConfirmationHeightInfo {
         // Checks if we have encountered this account before but not commited changes yet, if so then update the cached confirmation height
         if let Some(found_info) = accounts_confirmed_info.get(account) {
-            ConfirmationHeightInfo::new(found_info.confirmed_height, found_info.iterated_frontier)
+            ConfirmationHeightInfo::new(found_info.confirmed_height, found_info.confirmed_frontier)
         } else {
-            data_requester.get_current_confirmation_height(account)
+            data_requester
+                .get_confirmation_height(account)
+                .unwrap_or_default()
         }
     }
 
@@ -335,7 +345,7 @@ impl BoundedModeHelper {
         }
     }
 
-    fn get_lowest_unconfirmed_hash_of_current_account<T: LedgerDataRequester>(
+    fn get_lowest_unconfirmed_block_hash_of_current_account<T: LedgerDataRequester>(
         &mut self,
         data_requester: &T,
     ) -> BlockHash {
@@ -371,13 +381,14 @@ impl BoundedModeHelper {
             // we can just use the previous block to get the least unconfirmed hash.
             self.current_hash = self.previous_block;
             self.current_block_height -= 1;
-        } else if let Some(next) = &self.next_in_receive_chain {
+        } else if let Some(_next) = &self.next_in_receive_chain {
             // Use the cached successor of the last receive which saves having to do more IO in get_least_unconfirmed_hash_from_top_level
             // as we already know what the next block we should process should be.
             self.current_hash = self.hash_to_iterate.next_after_receive.unwrap();
             self.current_block_height = self.hash_to_iterate.next_height;
         } else {
-            self.current_hash = self.get_lowest_unconfirmed_hash_of_current_account(data_requester);
+            self.current_hash =
+                self.get_lowest_unconfirmed_block_hash_of_current_account(data_requester);
         }
     }
 
@@ -465,7 +476,8 @@ impl BoundedModeHelper {
 
         let confirmed_info = ConfirmedInfo {
             confirmed_height: height,
-            iterated_frontier: self.top_most_non_receive_block_hash,
+            confirmed_frontier: self.top_most_non_receive_block_hash,
+            first_unconfirmed: None,
         };
 
         self.accounts_confirmed_info
@@ -488,7 +500,8 @@ impl BoundedModeHelper {
             receive.receiving_account,
             ConfirmedInfo {
                 confirmed_height: receive.receive_block_height,
-                iterated_frontier: receive.receive_block_hash,
+                confirmed_frontier: receive.receive_block_hash,
+                first_unconfirmed: None,
             },
         );
 
@@ -525,24 +538,6 @@ impl BoundedModeHelper {
                 self.accounts_confirmed_info.remove(account);
             }
         }
-    }
-
-    fn write_next<T: LedgerDataRequester>(
-        &mut self,
-        data_requester: &T,
-        is_set: bool,
-    ) -> (Option<WriteDetails>, Option<WriteDetails>) {
-        // Once the path to genesis has been iterated to, we can begin to cement the lowest blocks in the accounts. This sets up
-        // the non-receive blocks which have been iterated for an account, and the associated receive block.
-        let cement_non_receives = self.cement_non_receive_blocks_in_sending_account(data_requester);
-        let cement_receive = self.cement_receive_block();
-
-        // If used the top level, don't pop off the receive source pair because it wasn't used
-        if !is_set {
-            self.unprocessed_receives.pop_back();
-        }
-
-        (cement_non_receives, cement_receive)
     }
 
     pub(crate) fn container_info(&self) -> AccountsConfirmedMapContainerInfo {
@@ -668,9 +663,9 @@ mod tests {
                 WriteDetails {
                     account: dest_chain.account(),
                     bottom_height: 1,
-                    bottom_hash: dest_chain.blocks()[0].hash(),
+                    bottom_hash: dest_chain.open(),
                     top_height: 1,
-                    top_hash: dest_chain.blocks()[0].hash(),
+                    top_hash: dest_chain.open(),
                 },
                 WriteDetails {
                     account: dest_chain.account(),

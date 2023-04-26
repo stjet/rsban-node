@@ -3,6 +3,8 @@ use rsnano_core::BlockChainBuilder;
 #[cfg(test)]
 use rsnano_core::Epoch;
 #[cfg(test)]
+use std::cell::Cell;
+#[cfg(test)]
 use std::collections::HashMap;
 #[cfg(test)]
 use std::collections::HashSet;
@@ -14,7 +16,7 @@ use rsnano_store_traits::Transaction;
 pub(crate) trait LedgerDataRequester {
     fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum>;
     fn was_block_pruned(&self, block_hash: &BlockHash) -> bool;
-    fn get_current_confirmation_height(&self, account: &Account) -> ConfirmationHeightInfo;
+    fn get_confirmation_height(&self, account: &Account) -> Option<ConfirmationHeightInfo>;
     fn get_account_info(&self, account: &Account) -> Option<AccountInfo>;
     fn refresh_transaction(&mut self);
 }
@@ -35,12 +37,11 @@ impl<'a> LedgerDataRequester for LedgerAdapter<'a> {
         self.ledger.store.block().get(self.txn, block_hash)
     }
 
-    fn get_current_confirmation_height(&self, account: &Account) -> ConfirmationHeightInfo {
+    fn get_confirmation_height(&self, account: &Account) -> Option<ConfirmationHeightInfo> {
         self.ledger
             .store
             .confirmation_height()
             .get(self.txn, account)
-            .unwrap_or_default()
     }
 
     fn was_block_pruned(&self, block_hash: &BlockHash) -> bool {
@@ -62,6 +63,8 @@ pub(crate) struct LedgerDataRequesterStub {
     confirmation_heights: HashMap<Account, ConfirmationHeightInfo>,
     account_infos: HashMap<Account, AccountInfo>,
     pruned: HashSet<BlockHash>,
+    blocks_loaded: Cell<usize>,
+    confirmation_heights_loaded: Cell<usize>,
 }
 
 #[cfg(test)]
@@ -72,6 +75,8 @@ impl LedgerDataRequesterStub {
             confirmation_heights: HashMap::new(),
             account_infos: HashMap::new(),
             pruned: HashSet::new(),
+            blocks_loaded: Cell::new(0),
+            confirmation_heights_loaded: Cell::new(0),
         }
     }
 
@@ -128,11 +133,20 @@ impl LedgerDataRequesterStub {
         self.pruned.insert(hash);
         self.blocks.remove(&hash);
     }
+
+    pub fn blocks_loaded(&self) -> usize {
+        self.blocks_loaded.get()
+    }
+
+    pub fn confirmation_heights_loaded(&self) -> usize {
+        self.confirmation_heights_loaded.get()
+    }
 }
 
 #[cfg(test)]
 impl LedgerDataRequester for LedgerDataRequesterStub {
     fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum> {
+        self.blocks_loaded.set(self.blocks_loaded.get() + 1);
         self.blocks.get(block_hash).cloned()
     }
 
@@ -140,11 +154,10 @@ impl LedgerDataRequester for LedgerDataRequesterStub {
         self.pruned.contains(block_hash)
     }
 
-    fn get_current_confirmation_height(&self, account: &Account) -> ConfirmationHeightInfo {
-        self.confirmation_heights
-            .get(account)
-            .cloned()
-            .unwrap_or_default()
+    fn get_confirmation_height(&self, account: &Account) -> Option<ConfirmationHeightInfo> {
+        self.confirmation_heights_loaded
+            .set(self.confirmation_heights_loaded.get() + 1);
+        self.confirmation_heights.get(account).cloned()
     }
 
     fn get_account_info(&self, account: &Account) -> Option<AccountInfo> {
@@ -168,7 +181,7 @@ mod tests {
         assert_eq!(stub.get_block(&BlockHash::from(1)), None);
         assert_eq!(stub.was_block_pruned(&BlockHash::from(1)), false);
         assert_eq!(
-            stub.get_current_confirmation_height(&Account::from(1)),
+            stub.get_confirmation_height(&Account::from(1)),
             Default::default()
         );
         assert_eq!(stub.get_account_info(&Account::from(1)), None);
@@ -191,8 +204,8 @@ mod tests {
         stub.set_confirmation_height(account, confirmation_height.clone());
 
         assert_eq!(
-            stub.get_current_confirmation_height(&account),
-            confirmation_height
+            stub.get_confirmation_height(&account),
+            Some(confirmation_height)
         );
     }
 

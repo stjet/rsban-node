@@ -73,8 +73,9 @@ impl MultiAccountCementer {
         data_requester: &T,
         pending: WriteDetails,
     ) {
-        let confirmation_height_info =
-            data_requester.get_current_confirmation_height(&pending.account);
+        let confirmation_height_info = data_requester
+            .get_confirmation_height(&pending.account)
+            .unwrap_or_default();
 
         self.account_cementer = SingleAccountCementer::new(
             pending,

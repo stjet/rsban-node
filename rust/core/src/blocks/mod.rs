@@ -249,6 +249,10 @@ impl BlockEnum {
         result
     }
 
+    pub fn height(&self) -> u64 {
+        self.sideband().map(|s| s.height).unwrap_or_default()
+    }
+
     pub fn successor(&self) -> Option<BlockHash> {
         if let Some(sideband) = self.sideband() {
             if !sideband.successor.is_zero() {

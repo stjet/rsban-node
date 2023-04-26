@@ -1559,7 +1559,7 @@ TEST (confirmation_height, cemented_gap_below_receive)
 		ASSERT_EQ (0, node->active.election_winner_details_size ());
 
 		// Check that the order of callbacks is correct
-		std::vector<nano::block_hash> expected_order = { send->hash (), open->hash (), send1->hash (), receive1->hash (), send2->hash (), dummy_send->hash (), receive2->hash (), dummy_send1->hash (), send3->hash (), open1->hash () };
+		std::vector<nano::block_hash> expected_order = { send->hash (), send1->hash (), open->hash (), receive1->hash (), send2->hash (), dummy_send->hash (), receive2->hash (), dummy_send1->hash (), send3->hash (), open1->hash () };
 		nano::lock_guard<nano::mutex> guard (mutex);
 		ASSERT_EQ (observer_order, expected_order);
 	};

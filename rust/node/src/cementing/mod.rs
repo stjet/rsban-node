@@ -6,7 +6,6 @@ mod block_cementor;
 mod block_queue;
 mod bounded_mode;
 mod bounded_mode_helper;
-mod bounded_mode_helper_v2;
 mod cement_queue;
 mod confirmation_height_processor;
 mod confirmed_iterated_pairs;

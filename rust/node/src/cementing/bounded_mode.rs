@@ -16,7 +16,7 @@ use rsnano_store_traits::WriteTransaction;
 use crate::stats::{DetailType, Direction, StatType, Stats};
 
 use super::{
-    bounded_mode_helper_v2::{BoundedCementationStep, BoundedModeHelperV2},
+    bounded_mode_helper::{BoundedCementationStep, BoundedModeHelper},
     AccountsConfirmedMapContainerInfo, BatchWriteSizeManager, CementCallbackRefs, LedgerAdapter,
     LedgerDataRequester, MultiAccountCementer, WriteDetailsContainerInfo,
 };
@@ -33,7 +33,7 @@ pub(super) struct BoundedMode {
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
     ledger: Arc<Ledger>,
-    helper: BoundedModeHelperV2,
+    helper: BoundedModeHelper,
 }
 
 impl BoundedMode {
@@ -46,7 +46,7 @@ impl BoundedMode {
         stopped: Arc<AtomicBool>,
         stats: Arc<Stats>,
     ) -> Self {
-        let helper = BoundedModeHelperV2::builder()
+        let helper = BoundedModeHelper::builder()
             .epochs(ledger.constants.epochs.clone())
             .stopped(stopped.clone())
             .build();

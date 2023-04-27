@@ -19,7 +19,7 @@ use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 use crate::stats::Stats;
 
 use super::{
-    block_cache::BlockCache, AutomaticMode, AutomaticModeContainerInfo,
+    block_cache::BlockCacheV2, bounded_mode::BoundedModeContainerInfo, AutomaticMode,
     AwaitingProcessingCountCallback, BatchWriteSizeManager, BlockCallback, BlockHashCallback,
     BlockQueue, ConfirmationHeightMode,
 };
@@ -34,9 +34,9 @@ pub struct ConfirmationHeightProcessor {
     cemented_observer: Arc<Mutex<Option<BlockCallback>>>,
     already_cemented_observer: Arc<Mutex<Option<BlockHashCallback>>>,
     thread: Option<JoinHandle<()>>,
-    block_cache: Arc<BlockCache>,
+    block_cache: Arc<BlockCacheV2>,
 
-    automatic_container_info: AutomaticModeContainerInfo,
+    container_info: BoundedModeContainerInfo,
 }
 
 impl ConfirmationHeightProcessor {
@@ -69,7 +69,7 @@ impl ConfirmationHeightProcessor {
 
         let batch_write_size = automatic_mode.batch_write_size().clone();
 
-        let automatic_container_info = automatic_mode.container_info();
+        let bounded_container_info = automatic_mode.container_info();
         let block_cache = Arc::clone(automatic_mode.block_cache());
         let condition = Arc::new(Condvar::new());
 
@@ -112,7 +112,7 @@ impl ConfirmationHeightProcessor {
             already_cemented_observer,
             thread: Some(join_handle),
             block_cache,
-            automatic_container_info,
+            container_info: bounded_container_info,
         }
     }
 
@@ -187,15 +187,17 @@ impl ConfirmationHeightProcessor {
     }
 
     pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
-        let mut children = vec![ContainerInfoComponent::Leaf(ContainerInfo {
-            name: "awaiting_processing".to_owned(),
-            count: self.awaiting_processing_len(),
-            sizeof_element: size_of::<usize>(),
-        })];
-
-        children.append(&mut self.automatic_container_info.collect());
-
-        ContainerInfoComponent::Composite(name, children)
+        ContainerInfoComponent::Composite(
+            name,
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "awaiting_processing".to_owned(),
+                    count: self.awaiting_processing_len(),
+                    sizeof_element: size_of::<usize>(),
+                }),
+                self.container_info.collect(),
+            ],
+        )
     }
 }
 

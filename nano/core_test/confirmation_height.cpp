@@ -28,8 +28,9 @@ void add_callback_stats (nano::node & node, std::vector<nano::block_hash> * obse
 }
 nano::stat::detail get_stats_detail (nano::confirmation_height_mode mode_a)
 {
-	debug_assert (mode_a == nano::confirmation_height_mode::bounded || mode_a == nano::confirmation_height_mode::unbounded);
-	return (mode_a == nano::confirmation_height_mode::bounded) ? nano::stat::detail::blocks_confirmed_bounded : nano::stat::detail::blocks_confirmed_unbounded;
+	return nano::stat::detail::blocks_confirmed_bounded;
+	// debug_assert (mode_a == nano::confirmation_height_mode::bounded || mode_a == nano::confirmation_height_mode::unbounded);
+	// return (mode_a == nano::confirmation_height_mode::bounded) ? nano::stat::detail::blocks_confirmed_bounded : nano::stat::detail::blocks_confirmed_unbounded;
 }
 }
 
@@ -1877,7 +1878,7 @@ TEST (confirmation_height, unbounded_block_cache_iteration)
 	}
 
 	ASSERT_EQ (2, stats.count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (2, stats.count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_unbounded, nano::stat::dir::in));
+	ASSERT_EQ (2, stats.count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (3, ledger.cache.cemented_count ());
 }
 

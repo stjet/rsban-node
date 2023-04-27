@@ -8,8 +8,8 @@ use rsnano_core::{Account, BlockEnum, BlockHash, ConfirmationHeightInfo, Epochs}
 use rsnano_ledger::DEV_GENESIS;
 
 use super::{
-    AccountsConfirmedMap, AccountsConfirmedMapContainerInfo, ConfirmedInfo, LedgerDataRequester,
-    WriteDetails,
+    block_cache::BlockCacheV2, AccountsConfirmedMap, AccountsConfirmedMapContainerInfo,
+    ConfirmedInfo, LedgerDataRequester, WriteDetails,
 };
 
 /** The maximum number of blocks to be read in while iterating over a long account chain */
@@ -77,10 +77,7 @@ impl ChainIteration {
 
     /// Search range for receive blocks
     fn search_range(&self) -> BlockRange {
-        BlockRange {
-            bottom: self.current_hash,
-            top: self.top_hash,
-        }
+        BlockRange::new(self.current_hash, self.top_hash)
     }
 
     fn go_to_successor_of(&mut self, block: &BlockEnum) {
@@ -142,6 +139,7 @@ pub(crate) struct BoundedModeHelper {
     checkpoints: BoundedVecDeque<BlockHash>,
     latest_cementation: BlockHash,
     block_read_count: u64,
+    block_cache: Arc<BlockCacheV2>,
 }
 
 impl BoundedModeHelper {
@@ -152,10 +150,11 @@ impl BoundedModeHelper {
             chain_stack: BoundedVecDeque::new(max_items),
             confirmation_heights: AccountsConfirmedMap::new(),
             chains_encountered: 0,
-            original_block: DEV_GENESIS.read().unwrap().clone(), //todo
+            original_block: DEV_GENESIS.read().unwrap().clone(),
             checkpoints: BoundedVecDeque::new(max_items),
             latest_cementation: BlockHash::zero(),
             block_read_count: 0,
+            block_cache: Arc::new(BlockCacheV2::new()),
         }
     }
 
@@ -163,21 +162,24 @@ impl BoundedModeHelper {
         Default::default()
     }
 
+    pub fn block_cache(&self) -> &Arc<BlockCacheV2> {
+        &self.block_cache
+    }
+
     pub fn initialize(&mut self, original_block: BlockEnum) {
         self.latest_cementation = BlockHash::zero();
         self.chain_stack.clear();
         self.chains_encountered = 0;
         self.checkpoints.clear();
-        self.original_block = original_block;
+        self.original_block = original_block.clone();
         self.block_read_count = 0;
+        self.block_cache.clear();
     }
 
     pub fn get_next_step<T: LedgerDataRequester>(
         &mut self,
         data_requester: &mut T,
     ) -> anyhow::Result<BoundedCementationStep> {
-        //todo don't load original block from db
-        //todo add optimizations: cement 2 blocks without db lookup
         loop {
             if self.stopped.load(Ordering::Relaxed) {
                 return Ok(BoundedCementationStep::Done);
@@ -212,7 +214,6 @@ impl BoundedModeHelper {
         } else {
             Ok(BoundedCementationStep::Done)
         }
-        //todo refresh transaction
     }
 
     fn restore_checkpoint_if_required<T: LedgerDataRequester>(
@@ -342,7 +343,6 @@ impl BoundedModeHelper {
         range: &BlockRange,
         data_requester: &mut T,
     ) -> anyhow::Result<Option<(BlockEnum, BlockEnum)>> {
-        // todo check for stop flag
         let mut current = self.get_block(&range.bottom, data_requester)?;
         loop {
             if self.block_read_count > 0 && self.block_read_count % BATCH_READ_SIZE == 0 {
@@ -434,8 +434,9 @@ impl BoundedModeHelper {
             return Ok(self.original_block.clone());
         }
         self.block_read_count += 1;
-        data_requester
-            .get_block(block_hash)
+
+        self.block_cache
+            .load_block(block_hash, data_requester)
             .ok_or_else(|| anyhow!("could not load block {}", block_hash))
     }
 }
@@ -525,7 +526,7 @@ mod tests {
                 top_hash: second_send.hash(),
             }],
         );
-        assert_eq!(data_requester.blocks_loaded(), 2);
+        assert_eq!(data_requester.blocks_loaded(), 1);
         assert_eq!(data_requester.confirmation_heights_loaded(), 1);
     }
 
@@ -550,7 +551,7 @@ mod tests {
                 top_hash: genesis_chain.frontier(),
             }],
         );
-        assert_eq!(data_requester.blocks_loaded(), 4);
+        assert_eq!(data_requester.blocks_loaded(), 3);
         assert_eq!(data_requester.confirmation_heights_loaded(), 1);
     }
 
@@ -805,7 +806,7 @@ mod tests {
                 },
             ],
         );
-        assert_eq!(data_requester.blocks_loaded(), 25);
+        assert_eq!(data_requester.blocks_loaded(), 12);
         assert_eq!(data_requester.confirmation_heights_loaded(), 5);
     }
 
@@ -906,7 +907,7 @@ mod tests {
             ],
         );
 
-        assert_eq!(data_requester.blocks_loaded(), 39);
+        assert_eq!(data_requester.blocks_loaded(), 12);
         assert_eq!(data_requester.confirmation_heights_loaded(), 12);
     }
 

@@ -5,6 +5,7 @@ use std::sync::{
 
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{Account, BlockEnum, BlockHash, ConfirmationHeightInfo, Epochs};
+use rsnano_ledger::DEV_GENESIS;
 
 use super::{
     accounts_confirmed_map::ConfirmedInfo, ledger_data_requester::LedgerDataRequester,
@@ -12,7 +13,7 @@ use super::{
 };
 
 /** The maximum number of blocks to be read in while iterating over a long account chain */
-const BATCH_READ_SIZE: usize = 65536;
+const BATCH_READ_SIZE: u64 = 65536;
 
 /** The maximum number of various containers to keep the memory bounded */
 const MAX_ITEMS: usize = 131072;
@@ -137,9 +138,10 @@ pub(crate) struct BoundedModeHelperV2 {
     chain_stack: BoundedVecDeque<ChainIteration>,
     chains_encountered: usize,
     confirmation_heights: AccountsConfirmedMap,
-    original_block: BlockHash,
+    original_block: BlockEnum,
     checkpoints: BoundedVecDeque<BlockHash>,
     latest_cementation: BlockHash,
+    block_read_count: u64,
 }
 
 impl BoundedModeHelperV2 {
@@ -150,9 +152,10 @@ impl BoundedModeHelperV2 {
             chain_stack: BoundedVecDeque::new(max_items),
             confirmation_heights: AccountsConfirmedMap::new(),
             chains_encountered: 0,
-            original_block: BlockHash::zero(),
+            original_block: DEV_GENESIS.read().unwrap().clone(), //todo
             checkpoints: BoundedVecDeque::new(max_items),
             latest_cementation: BlockHash::zero(),
+            block_read_count: 0,
         }
     }
 
@@ -160,12 +163,13 @@ impl BoundedModeHelperV2 {
         Default::default()
     }
 
-    pub fn initialize(&mut self, original_block: &BlockHash) {
+    pub fn initialize(&mut self, original_block: BlockEnum) {
         self.latest_cementation = BlockHash::zero();
         self.chain_stack.clear();
         self.chains_encountered = 0;
         self.checkpoints.clear();
-        self.original_block = *original_block;
+        self.original_block = original_block;
+        self.block_read_count = 0;
     }
 
     pub fn get_next_step<T: LedgerDataRequester>(
@@ -202,7 +206,9 @@ impl BoundedModeHelperV2 {
         }
 
         if self.chains_encountered == 0 {
-            return Ok(BoundedCementationStep::AlreadyCemented(self.original_block));
+            return Ok(BoundedCementationStep::AlreadyCemented(
+                self.original_block.hash(),
+            ));
         } else {
             Ok(BoundedCementationStep::Done)
         }
@@ -217,8 +223,11 @@ impl BoundedModeHelperV2 {
             return Ok(()); // We still have pending chains. No checkpoint needed.
         }
 
-        let top_hash = self.checkpoints.pop_back().unwrap_or(self.original_block);
-        let block = get_block(&top_hash, data_requester)?;
+        let top_hash = self
+            .checkpoints
+            .pop_back()
+            .unwrap_or(self.original_block.hash());
+        let block = self.get_block(&top_hash, data_requester)?;
         self.enqueue_for_cementation(&block, data_requester)
     }
 
@@ -278,34 +287,39 @@ impl BoundedModeHelperV2 {
         block: &BlockEnum,
         data_requester: &T,
     ) -> anyhow::Result<()> {
-        if let Some(lowest) =
-            self.get_lowest_uncemented_block(&block.account_calculated(), data_requester)?
-        {
-            if lowest.height() <= block.height() {
-                // There are blocks that need to be cemented in this chain
-                self.chain_stack
-                    .push_back(ChainIteration::new(&lowest, &block));
-                self.chains_encountered += 1;
-                if self.chains_encountered % self.chain_stack.max_len() == 0 {
-                    // Make a checkpoint every max_len() chains
-                    self.checkpoints.push_back(block.hash());
-                }
+        if let Some(lowest) = self.get_lowest_uncemented_block(&block, data_requester)? {
+            // There are blocks that need to be cemented in this chain
+            self.chain_stack
+                .push_back(ChainIteration::new(&lowest, &block));
+            self.chains_encountered += 1;
+            if self.chains_encountered % self.chain_stack.max_len() == 0 {
+                // Make a checkpoint every max_len() chains
+                self.checkpoints.push_back(block.hash());
             }
         }
         Ok(())
     }
 
     fn get_lowest_uncemented_block<T: LedgerDataRequester>(
-        &self,
-        account: &Account,
+        &mut self,
+        top_block: &BlockEnum,
         data_requester: &T,
     ) -> anyhow::Result<Option<BlockEnum>> {
-        match self.get_confirmation_height(account, data_requester) {
+        let account = top_block.account_calculated();
+        match self.get_confirmation_height(&account, data_requester) {
             Some(info) => {
-                let frontier_block = get_block(&info.frontier, data_requester)?;
-                get_successor_block(&frontier_block, data_requester)
+                if top_block.height() <= info.height {
+                    Ok(None) // no uncemented block exists
+                } else if top_block.height() - info.height == 1 {
+                    Ok(Some(top_block.clone())) // top_block is the only uncemented block
+                } else if top_block.height() - info.height == 2 {
+                    Ok(Some(self.get_block(&top_block.previous(), data_requester)?))
+                } else {
+                    let frontier_block = self.get_block(&info.frontier, data_requester)?;
+                    self.get_successor_block(&frontier_block, data_requester)
+                }
             }
-            None => Ok(Some(get_open_block(account, data_requester)?)),
+            None => Ok(Some(self.get_open_block(&account, data_requester)?)),
         }
     }
 
@@ -324,22 +338,27 @@ impl BoundedModeHelperV2 {
     }
 
     fn find_receive_block<T: LedgerDataRequester>(
-        &self,
+        &mut self,
         range: &BlockRange,
-        data_requester: &T,
+        data_requester: &mut T,
     ) -> anyhow::Result<Option<(BlockEnum, BlockEnum)>> {
         // todo check for stop flag
-        let mut current = get_block(&range.bottom, data_requester)?;
+        let mut current = self.get_block(&range.bottom, data_requester)?;
         loop {
+            if self.block_read_count > 0 && self.block_read_count % BATCH_READ_SIZE == 0 {
+                // We could be traversing a very large account so we don't want to open read transactions for too long.
+                data_requester.refresh_transaction();
+            }
             if let Some(send) = self.get_corresponding_send_block(&current, data_requester) {
                 return Ok(Some((current, send)));
             }
 
-            if current.hash() == range.top {
+            if current.hash() == range.top || self.stopped.load(Ordering::Relaxed) {
                 return Ok(None);
             }
 
-            current = get_successor_block(&current, data_requester)?
+            current = self
+                .get_successor_block(&current, data_requester)?
                 .ok_or_else(|| anyhow!("invalid block range given"))?;
         }
     }
@@ -349,17 +368,18 @@ impl BoundedModeHelperV2 {
     }
 
     pub fn is_done(&self) -> bool {
-        self.latest_cementation == self.original_block || self.stopped.load(Ordering::Relaxed)
+        self.latest_cementation == self.original_block.hash()
+            || self.stopped.load(Ordering::Relaxed)
     }
 
     fn get_corresponding_send_block<T: LedgerDataRequester>(
-        &self,
+        &mut self,
         block: &BlockEnum,
         data_requester: &T,
     ) -> Option<BlockEnum> {
         let source = block.source_or_link();
         if !source.is_zero() && !self.epochs.is_epoch_link(&source.into()) {
-            data_requester.get_block(&source)
+            self.get_block(&source, data_requester).ok()
         } else {
             None
         }
@@ -380,42 +400,51 @@ impl BoundedModeHelperV2 {
     pub(crate) fn container_info(&self) -> AccountsConfirmedMapContainerInfo {
         self.confirmation_heights.container_info()
     }
-}
 
-fn get_successor_block<T: LedgerDataRequester>(
-    block: &BlockEnum,
-    data_requester: &T,
-) -> anyhow::Result<Option<BlockEnum>> {
-    match block.successor() {
-        Some(successor) => Ok(Some(get_block(&successor, data_requester)?)),
-        None => Ok(None),
+    fn get_successor_block<T: LedgerDataRequester>(
+        &mut self,
+        block: &BlockEnum,
+        data_requester: &T,
+    ) -> anyhow::Result<Option<BlockEnum>> {
+        match block.successor() {
+            Some(successor) => Ok(Some(self.get_block(&successor, data_requester)?)),
+            None => Ok(None),
+        }
     }
-}
 
-fn get_open_block<T: LedgerDataRequester>(
-    account: &Account,
-    data_requester: &T,
-) -> anyhow::Result<BlockEnum> {
-    let open_hash = data_requester
-        .get_account_info(account)
-        .ok_or_else(|| anyhow!("could not load account info for account {}", account))?
-        .open_block;
+    fn get_open_block<T: LedgerDataRequester>(
+        &mut self,
+        account: &Account,
+        data_requester: &T,
+    ) -> anyhow::Result<BlockEnum> {
+        let open_hash = data_requester
+            .get_account_info(account)
+            .ok_or_else(|| anyhow!("could not load account info for account {}", account))?
+            .open_block;
 
-    get_block(&open_hash, data_requester)
-}
+        self.get_block(&open_hash, data_requester)
+    }
 
-fn get_block<T: LedgerDataRequester>(
-    block_hash: &BlockHash,
-    data_requester: &T,
-) -> anyhow::Result<BlockEnum> {
-    data_requester
-        .get_block(block_hash)
-        .ok_or_else(|| anyhow!("could not load block {}", block_hash))
-}
-
-fn truncate_after(buffer: &mut BoundedVecDeque<BlockHash>, hash: &BlockHash) {
-    if let Some((index, _)) = buffer.iter().enumerate().find(|(_, h)| *h != hash) {
-        buffer.truncate(index);
+    fn get_block<T: LedgerDataRequester>(
+        &mut self,
+        block_hash: &BlockHash,
+        data_requester: &T,
+    ) -> anyhow::Result<BlockEnum> {
+        if *block_hash == self.original_block.hash() {
+            return Ok(self.original_block.clone());
+        }
+        self.block_read_count += 1;
+        let result = data_requester
+            .get_block(block_hash)
+            .ok_or_else(|| anyhow!("could not load block {}", block_hash));
+        if let Ok(block) = result.as_ref() {
+            println!(
+                "loaded block {} for account {}",
+                block.height(),
+                block.account_calculated().as_bytes().last().unwrap()
+            );
+        }
+        result
     }
 }
 
@@ -431,12 +460,15 @@ mod tests {
     fn block_not_found() {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut sut = BoundedModeHelperV2::builder().build();
-        let unknown_block = BlockHash::from(42);
-        sut.initialize(&unknown_block);
+        let genesis_chain = data_requester
+            .add_genesis_block()
+            .legacy_send()
+            .legacy_send();
+        sut.initialize(genesis_chain.latest_block().clone());
         let err = sut.get_next_step(&mut data_requester).unwrap_err();
         assert_eq!(
             err.to_string(),
-            "could not load block 000000000000000000000000000000000000000000000000000000000000002A"
+            format!("could not load block {}", genesis_chain.blocks()[1].hash())
         );
     }
 
@@ -450,7 +482,7 @@ mod tests {
 
         let genesis_chain = data_requester.add_genesis_block().legacy_send();
         data_requester.add_uncemented(&genesis_chain);
-        sut.initialize(&genesis_chain.frontier());
+        sut.initialize(genesis_chain.latest_block().clone());
 
         stopped.store(true, Ordering::Relaxed);
 
@@ -466,7 +498,7 @@ mod tests {
 
         assert_write_steps(
             &mut data_requester,
-            genesis_chain.frontier(),
+            genesis_chain.latest_block().clone(),
             &[WriteDetails {
                 account: genesis_chain.account(),
                 bottom_height: 2,
@@ -475,6 +507,9 @@ mod tests {
                 top_hash: genesis_chain.frontier(),
             }],
         );
+
+        assert_eq!(data_requester.blocks_loaded(), 0);
+        assert_eq!(data_requester.confirmation_heights_loaded(), 1);
     }
     #[test]
     fn cement_two_blocks_in_one_go() {
@@ -483,21 +518,23 @@ mod tests {
             .add_genesis_block()
             .legacy_send()
             .legacy_send();
-        let first_send = genesis_chain.blocks()[1].hash();
-        let second_send = genesis_chain.blocks()[2].hash();
+        let first_send = genesis_chain.blocks()[1].clone();
+        let second_send = genesis_chain.blocks()[2].clone();
         data_requester.add_uncemented(&genesis_chain);
 
         assert_write_steps(
             &mut data_requester,
-            second_send,
+            second_send.clone(),
             &[WriteDetails {
                 account: genesis_chain.account(),
                 bottom_height: 2,
-                bottom_hash: first_send,
+                bottom_hash: first_send.hash(),
                 top_height: 3,
-                top_hash: second_send,
+                top_hash: second_send.hash(),
             }],
         );
+        assert_eq!(data_requester.blocks_loaded(), 2);
+        assert_eq!(data_requester.confirmation_heights_loaded(), 1);
     }
 
     #[test]
@@ -512,7 +549,7 @@ mod tests {
 
         assert_write_steps(
             &mut data_requester,
-            genesis_chain.frontier(),
+            genesis_chain.latest_block().clone(),
             &[WriteDetails {
                 account: genesis_chain.account(),
                 bottom_height: 2,
@@ -521,6 +558,8 @@ mod tests {
                 top_hash: genesis_chain.frontier(),
             }],
         );
+        assert_eq!(data_requester.blocks_loaded(), 4);
+        assert_eq!(data_requester.confirmation_heights_loaded(), 1);
     }
 
     #[test]
@@ -536,7 +575,7 @@ mod tests {
 
         assert_write_steps(
             &mut data_requester,
-            dest_chain.frontier(),
+            dest_chain.latest_block().clone(),
             &[WriteDetails {
                 account: dest_chain.account(),
                 bottom_height: 1,
@@ -558,7 +597,7 @@ mod tests {
 
         assert_write_steps(
             &mut data_requester,
-            dest_chain.frontier(),
+            dest_chain.latest_block().clone(),
             &[WriteDetails {
                 account: dest_chain.account(),
                 bottom_height: 1,
@@ -581,7 +620,7 @@ mod tests {
 
         assert_write_steps(
             &mut data_requester,
-            dest_chain.frontier(),
+            dest_chain.latest_block().clone(),
             &[WriteDetails {
                 account: dest_chain.account(),
                 bottom_height: 1,
@@ -609,7 +648,7 @@ mod tests {
 
         assert_write_steps(
             &mut data_requester,
-            dest_chain.frontier(),
+            dest_chain.latest_block().clone(),
             &[WriteDetails {
                 account: dest_chain.account(),
                 bottom_height: 2,
@@ -638,7 +677,7 @@ mod tests {
 
         assert_write_steps(
             &mut data_requester,
-            dest_2.frontier(),
+            dest_2.latest_block().clone(),
             &[
                 WriteDetails {
                     account: dest_1.account(),
@@ -670,7 +709,7 @@ mod tests {
 
         assert_write_steps(
             &mut data_requester,
-            chain.frontier(),
+            chain.latest_block().clone(),
             &[WriteDetails {
                 account: chain.account(),
                 bottom_height: 2,
@@ -692,7 +731,7 @@ mod tests {
 
         assert_write_steps(
             &mut data_requester,
-            dest_chain.frontier(),
+            dest_chain.latest_block().clone(),
             &[WriteDetails {
                 account: dest_chain.account(),
                 bottom_height: 1,
@@ -735,7 +774,7 @@ mod tests {
 
         assert_write_steps(
             &mut data_requester,
-            account2.frontier(),
+            account2.latest_block().clone(),
             &[
                 WriteDetails {
                     account: account1.account(),
@@ -774,6 +813,8 @@ mod tests {
                 },
             ],
         );
+        assert_eq!(data_requester.blocks_loaded(), 25);
+        assert_eq!(data_requester.confirmation_heights_loaded(), 5);
     }
 
     #[test]
@@ -782,7 +823,7 @@ mod tests {
         let mut data_requester = LedgerDataRequesterStub::new();
         let genesis_chain = data_requester.add_genesis_block();
 
-        sut.initialize(&genesis_chain.frontier());
+        sut.initialize(genesis_chain.latest_block().clone());
         let step = sut.get_next_step(&mut data_requester).unwrap();
 
         assert_eq!(
@@ -826,7 +867,7 @@ mod tests {
         assert_write_steps_with_max_items(
             2,
             &mut data_requester,
-            account6.frontier(),
+            account6.latest_block().clone(),
             &[
                 WriteDetails {
                     account: account1.account(),
@@ -873,7 +914,7 @@ mod tests {
             ],
         );
 
-        assert_eq!(data_requester.blocks_loaded(), 47);
+        assert_eq!(data_requester.blocks_loaded(), 39);
         assert_eq!(data_requester.confirmation_heights_loaded(), 12);
     }
 
@@ -888,7 +929,7 @@ mod tests {
             let hash = BlockHash::from(1);
             data_requester.prune(hash);
 
-            sut.initialize(&hash);
+            // sut.initialize(&hash);
             let step = sut.get_next_step(&mut data_requester).unwrap();
 
             assert_eq!(step, BoundedCementationStep::Done);
@@ -906,7 +947,7 @@ mod tests {
 
             assert_write_steps(
                 &mut data_requester,
-                dest_chain.frontier(),
+                dest_chain.latest_block().clone(),
                 &[WriteDetails {
                     account: dest_chain.account(),
                     bottom_height: 1,
@@ -920,7 +961,7 @@ mod tests {
 
     fn assert_write_steps(
         data_requester: &mut LedgerDataRequesterStub,
-        block_to_cement: BlockHash,
+        block_to_cement: BlockEnum,
         expected: &[WriteDetails],
     ) {
         assert_write_steps_with_max_items(MAX_ITEMS, data_requester, block_to_cement, expected)
@@ -929,11 +970,11 @@ mod tests {
     fn assert_write_steps_with_max_items(
         max_items: usize,
         data_requester: &mut LedgerDataRequesterStub,
-        block_to_cement: BlockHash,
+        block_to_cement: BlockEnum,
         expected: &[WriteDetails],
     ) {
         let mut sut = BoundedModeHelperV2::builder().max_items(max_items).build();
-        sut.initialize(&block_to_cement);
+        sut.initialize(block_to_cement);
 
         let mut actual = Vec::new();
         loop {

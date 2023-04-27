@@ -80,7 +80,7 @@ impl BoundedMode {
             self.processing_timer = Instant::now();
         }
 
-        self.helper.initialize(&original_block.hash());
+        self.helper.initialize(original_block.clone());
 
         let mut txn = self.ledger.store.tx_begin_read();
         let ledger_clone = Arc::clone(&self.ledger);

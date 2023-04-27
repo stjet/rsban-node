@@ -434,17 +434,9 @@ impl BoundedModeHelperV2 {
             return Ok(self.original_block.clone());
         }
         self.block_read_count += 1;
-        let result = data_requester
+        data_requester
             .get_block(block_hash)
-            .ok_or_else(|| anyhow!("could not load block {}", block_hash));
-        if let Ok(block) = result.as_ref() {
-            println!(
-                "loaded block {} for account {}",
-                block.height(),
-                block.account_calculated().as_bytes().last().unwrap()
-            );
-        }
-        result
+            .ok_or_else(|| anyhow!("could not load block {}", block_hash))
     }
 }
 

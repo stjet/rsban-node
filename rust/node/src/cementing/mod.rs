@@ -30,7 +30,6 @@ pub use automatic_mode::ConfirmationHeightMode;
 use automatic_mode::{AutomaticMode, AutomaticModeContainerInfo, UNBOUNDED_CUTOFF};
 use batch_write_size_manager::BatchWriteSizeManager;
 use bounded_mode::{BoundedMode, BoundedModeContainerInfo};
-use bounded_mode_helper::{BoundedCementationStep, BoundedModeHelper};
 use ledger_data_requester::{LedgerAdapter, LedgerDataRequester};
 
 #[cfg(test)]

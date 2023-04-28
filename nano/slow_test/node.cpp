@@ -703,8 +703,6 @@ TEST (confirmation_height, many_accounts_single_confirmation)
 
 	ASSERT_EQ (cemented_count, node->ledger.cache.cemented_count ());
 	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in), num_accounts * 2 - 2);
-	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in), num_accounts * 2 - 2);
-	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_unbounded, nano::stat::dir::in), 0);
 
 	ASSERT_TIMELY (40s, (node->ledger.cache.cemented_count () - 1) == node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out));
 	ASSERT_TIMELY (10s, node->active.election_winner_details_size () == 0);
@@ -765,10 +763,6 @@ TEST (confirmation_height, many_accounts_many_confirmations)
 
 	auto const num_blocks_to_confirm = (num_accounts - 1) * 2;
 	ASSERT_TIMELY (1500s, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in) == num_blocks_to_confirm);
-
-	auto num_confirmed_bounded = node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in);
-	ASSERT_GE (num_confirmed_bounded, nano::confirmation_height::unbounded_cutoff);
-	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_unbounded, nano::stat::dir::in), num_blocks_to_confirm - num_confirmed_bounded);
 
 	ASSERT_TIMELY (60s, (node->ledger.cache.cemented_count () - 1) == node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out));
 
@@ -927,8 +921,6 @@ TEST (confirmation_height, long_chains)
 
 	ASSERT_EQ (cemented_count, node->ledger.cache.cemented_count ());
 	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in), num_blocks * 2 + 2);
-	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in), num_blocks * 2 + 2);
-	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_unbounded, nano::stat::dir::in), 0);
 
 	ASSERT_TIMELY (40s, (node->ledger.cache.cemented_count () - 1) == node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out));
 	ASSERT_TIMELY (10s, node->active.election_winner_details_size () == 0);
@@ -977,8 +969,6 @@ TEST (confirmation_height, dynamic_algorithm)
 	ASSERT_TIMELY (20s, node->ledger.cache.cemented_count () == num_blocks + 1);
 
 	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in), num_blocks);
-	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in), 1);
-	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_unbounded, nano::stat::dir::in), num_blocks - 1);
 	ASSERT_TIMELY (10s, node->active.election_winner_details_size () == 0);
 }
 

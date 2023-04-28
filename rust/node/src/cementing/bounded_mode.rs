@@ -13,8 +13,6 @@ use rsnano_core::{
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_traits::WriteTransaction;
 
-use crate::stats::{DetailType, Direction, StatType, Stats};
-
 use super::{
     block_cache::BlockCache,
     bounded_mode_helper::{BoundedCementationStep, BoundedModeHelper},
@@ -28,7 +26,6 @@ pub(super) struct BoundedMode {
     cementer: MultiAccountCementer,
 
     processing_timer: Instant,
-    stats: Arc<Stats>,
     cemented_batch_timer: Instant,
     write_database_queue: Arc<WriteDatabaseQueue>,
     logger: Arc<dyn Logger>,
@@ -45,7 +42,6 @@ impl BoundedMode {
         enable_timing_logging: bool,
         batch_separate_pending_min_time: Duration,
         stopped: Arc<AtomicBool>,
-        stats: Arc<Stats>,
     ) -> Self {
         let helper = BoundedModeHelper::builder()
             .epochs(ledger.constants.epochs.clone())
@@ -58,7 +54,6 @@ impl BoundedMode {
             enable_timing_logging,
             ledger,
             stopped,
-            stats,
             processing_timer: Instant::now(),
             batch_separate_pending_min_time,
             cemented_batch_timer: Instant::now(),
@@ -233,13 +228,6 @@ impl BoundedMode {
     ) {
         self.ledger.write_confirmation_height(txn, update);
 
-        self.stats.add(
-            StatType::ConfirmationHeight,
-            DetailType::BlocksConfirmedBounded,
-            Direction::In,
-            update.num_blocks_cemented,
-            false,
-        );
         let time_spent_cementing = self.cemented_batch_timer.elapsed();
         txn.commit();
 

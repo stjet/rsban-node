@@ -208,8 +208,6 @@ enum class detail : uint8_t
 
 	// confirmation height
 	blocks_confirmed,
-	blocks_confirmed_unbounded,
-	blocks_confirmed_bounded,
 
 	// [request] aggregator
 	aggregator_accepted,

@@ -16,8 +16,6 @@ use rsnano_core::{
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 
-use crate::stats::Stats;
-
 use super::{
     AwaitingProcessingCountCallback, BatchWriteSizeManager, BlockCache, BlockCallback,
     BlockHashCallback, BlockQueue, BoundedMode, BoundedModeContainerInfo,
@@ -45,7 +43,6 @@ impl ConfirmationHeightProcessor {
         enable_timing_logging: bool,
         ledger: Arc<Ledger>,
         batch_separate_pending_min_time: Duration,
-        stats: Arc<Stats>,
         latch: Box<dyn Latch>,
     ) -> Self {
         let cemented_observer: Arc<Mutex<Option<BlockCallback>>> = Arc::new(Mutex::new(None));
@@ -61,7 +58,6 @@ impl ConfirmationHeightProcessor {
             enable_timing_logging,
             batch_separate_pending_min_time,
             stopped.clone(),
-            stats,
         );
 
         let batch_write_size = bounded_mode.batch_write_size().clone();

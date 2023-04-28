@@ -25,7 +25,6 @@ std::shared_ptr<nano::logger_mt> & logger_a,
 nano::logging const & logging_a,
 nano::ledger & ledger_a,
 std::chrono::milliseconds batch_separate_pending_min_time_a,
-nano::stats & stats_a,
 boost::latch & latch)
 {
 	auto logging_dto{ logging_a.to_dto () };
@@ -35,13 +34,12 @@ boost::latch & latch)
 	&logging_dto,
 	ledger_a.handle,
 	batch_separate_pending_min_time_a.count (),
-	stats_a.handle,
 	&latch);
 }
 }
 
 nano::confirmation_height_processor::confirmation_height_processor (nano::ledger & ledger_a, nano::stats & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, boost::latch & latch) :
-	handle{ create_processor_handle (write_database_queue_a, logger_a, logging_a, ledger_a, batch_separate_pending_min_time_a, stats_a, latch) }
+	handle{ create_processor_handle (write_database_queue_a, logger_a, logging_a, ledger_a, batch_separate_pending_min_time_a, latch) }
 {
 }
 

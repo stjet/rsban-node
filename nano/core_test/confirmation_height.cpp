@@ -73,7 +73,6 @@ TEST (confirmation_height, single)
 		ASSERT_TRUE (node->ledger.rollback (*transaction, latest1));
 		ASSERT_TRUE (node->ledger.rollback (*transaction, send1->hash ()));
 		ASSERT_EQ (1, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-		ASSERT_EQ (1, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 		ASSERT_EQ (1, node->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out));
 		ASSERT_EQ (2, node->ledger.cache.cemented_count ());
 
@@ -289,7 +288,6 @@ TEST (confirmation_height, multiple_accounts)
 		ASSERT_TRUE (node->ledger.rollback (*transaction, send2->hash ()));
 	}
 	ASSERT_EQ (10, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (10, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (10, node->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out));
 	ASSERT_EQ (11, node->ledger.cache.cemented_count ());
 
@@ -408,7 +406,6 @@ TEST (confirmation_height, gap_bootstrap)
 		ASSERT_EQ (nano::block_hash (0), confirmation_height_info.frontier ());
 	}
 	ASSERT_EQ (0, node1.stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (0, node1.stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (0, node1.stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out));
 	ASSERT_EQ (1, node1.ledger.cache.cemented_count ());
 
@@ -536,7 +533,6 @@ TEST (confirmation_height, gap_live)
 	ASSERT_EQ (receive2->hash (), confirmation_height_info.frontier ());
 
 	ASSERT_EQ (6, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (6, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (6, node->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out));
 	ASSERT_EQ (7, node->ledger.cache.cemented_count ());
 
@@ -685,7 +681,6 @@ TEST (confirmation_height, send_receive_between_2_accounts)
 	ASSERT_EQ (5, account_info->block_count ());
 
 	ASSERT_EQ (10, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (10, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (10, node->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out));
 	ASSERT_EQ (11, node->ledger.cache.cemented_count ());
 
@@ -788,7 +783,6 @@ TEST (confirmation_height, send_receive_self)
 	ASSERT_EQ (receive3->hash (), confirmation_height_info.frontier ());
 	ASSERT_EQ (8, account_info->block_count ());
 	ASSERT_EQ (6, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (6, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (6, node->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out));
 	ASSERT_EQ (confirmation_height_info.height (), node->ledger.cache.cemented_count ());
 	ASSERT_EQ (0, node->active.election_winner_details_size ());
@@ -1042,7 +1036,6 @@ TEST (confirmation_height, all_block_types)
 	ASSERT_LE (8, account_info->block_count ());
 
 	ASSERT_EQ (15, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (15, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (15, node->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out));
 	ASSERT_EQ (16, node->ledger.cache.cemented_count ());
 
@@ -1123,7 +1116,6 @@ TEST (confirmation_height, observers)
 	auto transaction = node1->store.tx_begin_read ();
 	ASSERT_TRUE (node1->ledger.block_confirmed (*transaction, send1->hash ()));
 	ASSERT_EQ (1, node1->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (1, node1->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (1, node1->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out));
 	ASSERT_EQ (2, node1->ledger.cache.cemented_count ());
 	ASSERT_EQ (0, node1->active.election_winner_details_size ());
@@ -1174,7 +1166,6 @@ TEST (confirmation_height, pending_observer_callbacks)
 	ASSERT_TIMELY (10s, node->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out) == 1 && node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out) == 1);
 
 	ASSERT_EQ (2, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (2, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (3, node->ledger.cache.cemented_count ());
 	ASSERT_EQ (0, node->active.election_winner_details_size ());
 }
@@ -1260,7 +1251,6 @@ TEST (confirmation_height, callback_confirmed_history)
 	ASSERT_EQ (1, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_quorum, nano::stat::dir::out));
 	ASSERT_EQ (1, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out));
 	ASSERT_EQ (2, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (2, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (3, node->ledger.cache.cemented_count ());
 	ASSERT_EQ (0, node->active.election_winner_details_size ());
 }
@@ -1326,7 +1316,6 @@ TEST (confirmation_height, dependent_election)
 	ASSERT_EQ (1, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_conf_height, nano::stat::dir::out));
 	ASSERT_EQ (1, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out));
 	ASSERT_EQ (3, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (3, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (4, node->ledger.cache.cemented_count ());
 
 	ASSERT_EQ (0, node->active.election_winner_details_size ());
@@ -1475,7 +1464,6 @@ TEST (confirmation_height, cemented_gap_below_receive)
 	ASSERT_EQ (0, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_conf_height, nano::stat::dir::out));
 	ASSERT_EQ (9, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out));
 	ASSERT_EQ (10, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (10, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (11, node->ledger.cache.cemented_count ());
 	ASSERT_EQ (0, node->active.election_winner_details_size ());
 
@@ -1635,7 +1623,6 @@ TEST (confirmation_height, cemented_gap_below_no_cache)
 	ASSERT_EQ (0, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_conf_height, nano::stat::dir::out));
 	ASSERT_EQ (5, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out));
 	ASSERT_EQ (6, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (6, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (7, node->ledger.cache.cemented_count ());
 }
 
@@ -1696,7 +1683,6 @@ TEST (confirmation_height, election_winner_details_clearing)
 
 	EXPECT_EQ (1, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out));
 	EXPECT_EQ (3, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	EXPECT_EQ (3, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 }
 }
 
@@ -1782,7 +1768,6 @@ TEST (confirmation_height, unbounded_block_cache_iteration)
 	}
 
 	ASSERT_EQ (2, stats.count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (2, stats.count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed_bounded, nano::stat::dir::in));
 	ASSERT_EQ (3, ledger.cache.cemented_count ());
 }
 

@@ -313,8 +313,6 @@ pub enum DetailType {
 
     // confirmation height
     BlocksConfirmed,
-    BlocksConfirmedUnbounded,
-    BlocksConfirmedBounded,
 
     // [request] aggregator
     AggregatorAccepted,

@@ -19,9 +19,6 @@ pub enum ConfirmationHeightMode {
     Bounded,
 }
 
-/// When the uncemented count (block count - cemented count) is less than this use the unbounded processor
-pub(super) const UNBOUNDED_CUTOFF: usize = 16384;
-
 pub(super) struct AutomaticMode {
     pub bounded_mode: BoundedMode,
     pub mode: ConfirmationHeightMode,

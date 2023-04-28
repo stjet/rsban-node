@@ -101,7 +101,8 @@ impl BoundedMode {
                     }
                 }
                 BoundedCementationStep::AlreadyCemented(hash) => {
-                    (callbacks.block_already_cemented)(hash)
+                    (callbacks.block_already_cemented)(hash);
+                    return;
                 }
                 BoundedCementationStep::Done => break,
             }

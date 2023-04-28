@@ -9,12 +9,9 @@ mod bounded_mode_helper;
 mod cement_queue;
 mod confirmation_height_processor;
 mod confirmed_iterated_pairs;
-mod implicit_receive_cemented_mapping;
 mod ledger_data_requester;
 mod multi_account_cementer;
 mod single_account_cementer;
-mod unbounded_mode;
-mod unconfirmed_receive_and_sources_collector;
 mod write_details_queue;
 
 use std::sync::Arc;
@@ -25,8 +22,8 @@ use rsnano_core::{BlockEnum, BlockHash, ConfirmationHeightUpdate};
 use accounts_confirmed_map::{
     AccountsConfirmedMap, AccountsConfirmedMapContainerInfo, ConfirmedInfo,
 };
+use automatic_mode::AutomaticMode;
 pub use automatic_mode::ConfirmationHeightMode;
-use automatic_mode::{AutomaticMode, UNBOUNDED_CUTOFF};
 use batch_write_size_manager::BatchWriteSizeManager;
 use bounded_mode::{BoundedMode, BoundedModeContainerInfo};
 use ledger_data_requester::{LedgerAdapter, LedgerDataRequester};

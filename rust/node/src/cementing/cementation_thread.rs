@@ -18,11 +18,11 @@ use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 
 use super::{
     AwaitingProcessingCountCallback, BatchWriteSizeManager, BlockCache, BlockCallback,
-    BlockHashCallback, BlockQueue, BoundedMode, BoundedModeContainerInfo,
+    BlockHashCallback, BlockQueue, BlockCementer, BoundedModeContainerInfo,
 };
 
-pub struct ConfirmationHeightProcessor {
-    channel: Arc<Mutex<ProcessorLoopChannel>>,
+pub struct CementationThread {
+    channel: Arc<Mutex<CementationLoopChannel>>,
     condition: Arc<Condvar>,
     /** The maximum amount of blocks to write at once. This is dynamically modified by the bounded processor based on previous write performance **/
     batch_write_size: Arc<BatchWriteSizeManager>,
@@ -36,7 +36,7 @@ pub struct ConfirmationHeightProcessor {
     container_info: BoundedModeContainerInfo,
 }
 
-impl ConfirmationHeightProcessor {
+impl CementationThread {
     pub fn new(
         write_database_queue: Arc<WriteDatabaseQueue>,
         logger: Arc<dyn Logger>,
@@ -49,9 +49,9 @@ impl ConfirmationHeightProcessor {
         let already_cemented_observer: Arc<Mutex<Option<BlockHashCallback>>> =
             Arc::new(Mutex::new(None));
         let stopped = Arc::new(AtomicBool::new(false));
-        let channel = Arc::new(Mutex::new(ProcessorLoopChannel::new()));
+        let channel = Arc::new(Mutex::new(CementationLoopChannel::new()));
 
-        let bounded_mode = BoundedMode::new(
+        let bounded_mode = BlockCementer::new(
             ledger,
             write_database_queue.clone(),
             logger,
@@ -82,7 +82,7 @@ impl ConfirmationHeightProcessor {
             std::thread::Builder::new()
                 .name("Conf height".to_owned())
                 .spawn(move || {
-                    let mut processor_loop = ConfirmationHeightProcessorLoop {
+                    let mut processor_loop = CementationLoop {
                         stopped,
                         condition,
                         bounded_mode,
@@ -194,14 +194,14 @@ impl ConfirmationHeightProcessor {
     }
 }
 
-impl Drop for ConfirmationHeightProcessor {
+impl Drop for CementationThread {
     fn drop(&mut self) {
         self.stop();
     }
 }
 
 fn awaiting_processing_count_callback(
-    channel: Arc<Mutex<ProcessorLoopChannel>>,
+    channel: Arc<Mutex<CementationLoopChannel>>,
 ) -> AwaitingProcessingCountCallback {
     Box::new(move || {
         let lk = channel.lock().unwrap();
@@ -230,7 +230,7 @@ fn cemented_callback(cemented_observer: Arc<Mutex<Option<BlockCallback>>>) -> Bl
 }
 
 /// Used for inter thread communication between ConfirmationHeightProcessor and ConfirmationHeightProcessorLoop
-struct ProcessorLoopChannel {
+struct CementationLoopChannel {
     pub paused: bool,
     pub awaiting_processing: BlockQueue,
     /// Hashes which have been added and processed, but have not been cemented
@@ -239,7 +239,7 @@ struct ProcessorLoopChannel {
     pub current_block: Option<Arc<BlockEnum>>,
 }
 
-impl ProcessorLoopChannel {
+impl CementationLoopChannel {
     fn new() -> Self {
         Self {
             paused: false,
@@ -255,15 +255,15 @@ impl ProcessorLoopChannel {
     }
 }
 
-struct ConfirmationHeightProcessorLoop<'a> {
+struct CementationLoop<'a> {
     stopped: Arc<AtomicBool>,
     condition: Arc<Condvar>,
-    bounded_mode: BoundedMode,
-    channel: &'a Mutex<ProcessorLoopChannel>,
+    bounded_mode: BlockCementer,
+    channel: &'a Mutex<CementationLoopChannel>,
     callbacks: CementCallbacks,
 }
 
-impl<'a> ConfirmationHeightProcessorLoop<'a> {
+impl<'a> CementationLoop<'a> {
     pub fn run(&mut self) {
         let mut channel = self.channel.lock().unwrap();
         while !self.stopped.load(Ordering::SeqCst) {
@@ -280,8 +280,8 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
 
     fn pause(
         &self,
-        mut channel: MutexGuard<'a, ProcessorLoopChannel>,
-    ) -> MutexGuard<'a, ProcessorLoopChannel> {
+        mut channel: MutexGuard<'a, CementationLoopChannel>,
+    ) -> MutexGuard<'a, CementationLoopChannel> {
         // Pausing is only utilised in some tests to help prevent it processing added blocks until required.
         channel.current_block = None;
         self.condition.wait(channel).unwrap()
@@ -289,9 +289,9 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
 
     fn process_block(
         &mut self,
-        mut channel: MutexGuard<'a, ProcessorLoopChannel>,
+        mut channel: MutexGuard<'a, CementationLoopChannel>,
         block: Arc<BlockEnum>,
-    ) -> MutexGuard<'a, ProcessorLoopChannel> {
+    ) -> MutexGuard<'a, CementationLoopChannel> {
         if !self.bounded_mode.has_pending_writes() {
             channel.pending_writes.clear();
         }
@@ -308,8 +308,8 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
     /// If there are blocks pending cementing, then make sure we flush out the remaining writes
     fn flush_remaining_writes(
         &mut self,
-        mut channel: MutexGuard<'a, ProcessorLoopChannel>,
-    ) -> MutexGuard<'a, ProcessorLoopChannel> {
+        mut channel: MutexGuard<'a, CementationLoopChannel>,
+    ) -> MutexGuard<'a, CementationLoopChannel> {
         if self.bounded_mode.has_pending_writes() {
             drop(channel);
             self.bounded_mode

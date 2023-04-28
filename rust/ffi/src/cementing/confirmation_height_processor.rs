@@ -6,7 +6,7 @@ use std::{
 };
 
 use rsnano_core::{BlockEnum, BlockHash};
-use rsnano_node::{cementing::ConfirmationHeightProcessor, config::Logging};
+use rsnano_node::{cementing::CementationThread, config::Logging};
 
 use crate::{
     copy_hash_bytes,
@@ -16,7 +16,7 @@ use crate::{
     LoggingDto, VoidPointerCallback,
 };
 
-pub struct ConfirmationHeightProcessorHandle(ConfirmationHeightProcessor);
+pub struct ConfirmationHeightProcessorHandle(CementationThread);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_processor_create(
@@ -32,7 +32,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_create(
     let latch = Box::new(FfiLatch::new(latch));
 
     Box::into_raw(Box::new(ConfirmationHeightProcessorHandle(
-        ConfirmationHeightProcessor::new(
+        CementationThread::new(
             (*write_database_queue).0.clone(),
             logger,
             logging.timing_logging_value,

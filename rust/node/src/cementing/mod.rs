@@ -2,9 +2,9 @@ mod accounts_confirmed_map;
 mod batch_write_size_manager;
 mod block_cache;
 mod block_queue;
-mod bounded_mode;
+mod block_cementer;
 mod bounded_mode_helper;
-mod confirmation_height_processor;
+mod cementation_thread;
 mod ledger_data_requester;
 mod multi_account_cementer;
 mod single_account_cementer;
@@ -19,15 +19,15 @@ use accounts_confirmed_map::{
     AccountsConfirmedMap, AccountsConfirmedMapContainerInfo, ConfirmedInfo,
 };
 use batch_write_size_manager::BatchWriteSizeManager;
-use bounded_mode::{BoundedMode, BoundedModeContainerInfo};
+use block_cementer::{BlockCementer, BoundedModeContainerInfo};
 use ledger_data_requester::{LedgerAdapter, LedgerDataRequester};
 
 #[cfg(test)]
 use ledger_data_requester::LedgerDataRequesterStub;
 
 use block_cache::BlockCache;
-use confirmation_height_processor::CementCallbackRefs;
-pub use confirmation_height_processor::ConfirmationHeightProcessor;
+use cementation_thread::CementCallbackRefs;
+pub use cementation_thread::CementationThread;
 use multi_account_cementer::MultiAccountCementer;
 use single_account_cementer::SingleAccountCementer;
 use write_details_queue::{WriteDetails, WriteDetailsContainerInfo, WriteDetailsQueue};

@@ -19,7 +19,7 @@ const BATCH_READ_SIZE: u64 = 65536;
 const MAX_ITEMS: usize = 131072;
 
 #[derive(PartialEq, Eq, Debug)]
-pub(crate) enum BoundedCementationStep {
+pub(crate) enum CementationStep {
     Write(WriteDetails),
     AlreadyCemented(BlockHash),
     Done,
@@ -179,10 +179,10 @@ impl BoundedModeHelper {
     pub fn get_next_step<T: LedgerDataRequester>(
         &mut self,
         data_requester: &mut T,
-    ) -> anyhow::Result<BoundedCementationStep> {
+    ) -> anyhow::Result<CementationStep> {
         loop {
             if self.stopped.load(Ordering::Relaxed) {
-                return Ok(BoundedCementationStep::Done);
+                return Ok(CementationStep::Done);
             }
             self.restore_checkpoint_if_required(data_requester)?;
             let Some(chain) = self.chain_stack.back() else { break; };
@@ -197,7 +197,7 @@ impl BoundedModeHelper {
                 if let Some(write_details) = self.get_write_details(&chain) {
                     self.cache_confirmation_height(&write_details, new_first_unconfirmed);
                     self.latest_cementation = write_details.top_hash;
-                    return Ok(BoundedCementationStep::Write(write_details));
+                    return Ok(CementationStep::Write(write_details));
                 }
             } else {
                 self.make_sure_all_receive_blocks_have_cemented_send_blocks(
@@ -208,11 +208,11 @@ impl BoundedModeHelper {
         }
 
         if self.chains_encountered == 0 {
-            return Ok(BoundedCementationStep::AlreadyCemented(
+            return Ok(CementationStep::AlreadyCemented(
                 self.original_block.hash(),
             ));
         } else {
-            Ok(BoundedCementationStep::Done)
+            Ok(CementationStep::Done)
         }
     }
 
@@ -480,7 +480,7 @@ mod tests {
         stopped.store(true, Ordering::Relaxed);
 
         let step = sut.get_next_step(&mut data_requester).unwrap();
-        assert_eq!(step, BoundedCementationStep::Done)
+        assert_eq!(step, CementationStep::Done)
     }
 
     #[test]
@@ -821,7 +821,7 @@ mod tests {
 
         assert_eq!(
             step,
-            BoundedCementationStep::AlreadyCemented(genesis_chain.frontier())
+            CementationStep::AlreadyCemented(genesis_chain.frontier())
         );
     }
 
@@ -925,7 +925,7 @@ mod tests {
             // sut.initialize(&hash);
             let step = sut.get_next_step(&mut data_requester).unwrap();
 
-            assert_eq!(step, BoundedCementationStep::Done);
+            assert_eq!(step, CementationStep::Done);
         }
 
         #[test]
@@ -973,9 +973,9 @@ mod tests {
         loop {
             let step = sut.get_next_step(data_requester).unwrap();
             match step {
-                BoundedCementationStep::Write(details) => actual.push(details),
-                BoundedCementationStep::AlreadyCemented(_) => unreachable!(),
-                BoundedCementationStep::Done => break,
+                CementationStep::Write(details) => actual.push(details),
+                CementationStep::AlreadyCemented(_) => unreachable!(),
+                CementationStep::Done => break,
             }
         }
 

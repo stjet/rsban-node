@@ -15,12 +15,12 @@ use rsnano_store_traits::WriteTransaction;
 
 use super::{
     block_cache::BlockCache,
-    bounded_mode_helper::{BoundedCementationStep, BoundedModeHelper},
+    bounded_mode_helper::{CementationStep, BoundedModeHelper},
     AccountsConfirmedMapContainerInfo, BatchWriteSizeManager, CementCallbackRefs, LedgerAdapter,
     LedgerDataRequester, MultiAccountCementer, WriteDetailsContainerInfo,
 };
 
-pub(super) struct BoundedMode {
+pub(super) struct BlockCementer {
     stopped: Arc<AtomicBool>,
     batch_separate_pending_min_time: Duration,
     cementer: MultiAccountCementer,
@@ -34,7 +34,7 @@ pub(super) struct BoundedMode {
     helper: BoundedModeHelper,
 }
 
-impl BoundedMode {
+impl BlockCementer {
     pub fn new(
         ledger: Arc<Ledger>,
         write_database_queue: Arc<WriteDatabaseQueue>,
@@ -89,17 +89,17 @@ impl BoundedMode {
 
         loop {
             match self.helper.get_next_step(&mut ledger_adapter).unwrap() {
-                BoundedCementationStep::Write(write_details) => {
+                CementationStep::Write(write_details) => {
                     self.cementer.enqueue(write_details);
                     if self.should_flush(callbacks, self.helper.is_done()) {
                         self.try_flush(callbacks);
                     }
                 }
-                BoundedCementationStep::AlreadyCemented(hash) => {
+                CementationStep::AlreadyCemented(hash) => {
                     (callbacks.block_already_cemented)(hash);
                     return;
                 }
-                BoundedCementationStep::Done => break,
+                CementationStep::Done => break,
             }
 
             if self.helper.is_done() || self.stopped.load(Ordering::SeqCst) {

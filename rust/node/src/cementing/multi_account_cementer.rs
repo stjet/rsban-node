@@ -19,7 +19,7 @@ pub(crate) struct MultiAccountCementer {
 }
 
 impl MultiAccountCementer {
-    const PENDING_WRITES_MAX_SIZE: usize = 131072;
+    const PENDING_WRITES_MAX_SIZE: usize = 0x20000;
 
     pub fn new() -> Self {
         Self {

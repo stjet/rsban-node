@@ -1,9 +1,9 @@
 @startuml "Confirmation Height"
-class BoundedMode{
+class BlockCementer{
     process(block, callbacks)
 }
 
-class ConfirmationHeightProcessor{
+class CementationThread{
     add(block)
     run(mode)
 }
@@ -41,7 +41,7 @@ package "Logic"{
         refresh_transaction()
     }
 
-    struct BoundedCementationStep{
+    struct CementationStep{
         is_done
         already_cemented
         write_details
@@ -69,16 +69,16 @@ package "Application"{
 
 Ledger ..> ConfirmationHeightUpdate
 
-BoundedMode --> Ledger
-BoundedMode --> MultiAccountCementer
-BoundedMode --> BatchWriteSizeManager
-BoundedMode --> LedgerAdapter
-BoundedMode --> BoundedModeHelper
+BlockCementer --> Ledger
+BlockCementer --> MultiAccountCementer
+BlockCementer --> BatchWriteSizeManager
+BlockCementer --> LedgerAdapter
+BlockCementer --> BoundedModeHelper
 
-BoundedModeHelper --> BoundedCementationStep: creates
+BoundedModeHelper --> CementationStep: creates
 BoundedModeHelper --> LedgerDataRequester
 
-BoundedCementationStep --> WriteDetails
+CementationStep --> WriteDetails
 
 MultiAccountCementer --> SingleAccountCementer
 MultiAccountCementer --> BatchWriteSizeManager
@@ -90,7 +90,7 @@ SingleAccountCementer --> WriteDetails: creates
 
 WriteDetailsQueue --> WriteDetails
 
-ConfirmationHeightProcessor --> BoundedMode
+CementationThread --> BlockCementer
 
 LedgerAdapter ..|> LedgerDataRequester
 LedgerAdapter --> Ledger

@@ -16,7 +16,7 @@ use rsnano_store_traits::WriteTransaction;
 use crate::stats::{DetailType, Direction, StatType, Stats};
 
 use super::{
-    block_cache::BlockCacheV2,
+    block_cache::BlockCache,
     bounded_mode_helper::{BoundedCementationStep, BoundedModeHelper},
     AccountsConfirmedMapContainerInfo, BatchWriteSizeManager, CementCallbackRefs, LedgerAdapter,
     LedgerDataRequester, MultiAccountCementer, WriteDetailsContainerInfo,
@@ -71,7 +71,7 @@ impl BoundedMode {
         &self.cementer.batch_write_size
     }
 
-    pub fn block_cache(&self) -> &Arc<BlockCacheV2> {
+    pub fn block_cache(&self) -> &Arc<BlockCache> {
         &self.helper.block_cache()
     }
 

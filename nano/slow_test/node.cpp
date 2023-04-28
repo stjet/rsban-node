@@ -990,7 +990,6 @@ TEST (confirmation_height, many_accounts_send_receive_self)
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	node_config.active_elections_size = 400000;
 	nano::node_flags node_flags;
-	node_flags.set_confirmation_height_processor_mode (nano::confirmation_height_mode::unbounded);
 	auto node = system.add_node (node_config);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 
@@ -1134,7 +1133,7 @@ TEST (confirmation_height, many_accounts_send_receive_self_no_elections)
 	boost::latch initialized_latch{ 0 };
 
 	nano::block_hash block_hash_being_processed{ 0 };
-	nano::confirmation_height_processor confirmation_height_processor{ ledger, stats, write_database_queue, 10ms, logging, logger, initialized_latch, confirmation_height_mode::automatic };
+	nano::confirmation_height_processor confirmation_height_processor{ ledger, stats, write_database_queue, 10ms, logging, logger, initialized_latch };
 
 	auto const num_accounts = 100000;
 

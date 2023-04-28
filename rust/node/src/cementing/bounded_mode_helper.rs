@@ -8,8 +8,8 @@ use rsnano_core::{Account, BlockEnum, BlockHash, ConfirmationHeightInfo, Epochs}
 use rsnano_ledger::DEV_GENESIS;
 
 use super::{
-    block_cache::BlockCacheV2, AccountsConfirmedMap, AccountsConfirmedMapContainerInfo,
-    ConfirmedInfo, LedgerDataRequester, WriteDetails,
+    AccountsConfirmedMap, AccountsConfirmedMapContainerInfo, BlockCache, ConfirmedInfo,
+    LedgerDataRequester, WriteDetails,
 };
 
 /** The maximum number of blocks to be read in while iterating over a long account chain */
@@ -97,13 +97,13 @@ impl ChainIteration {
 }
 
 #[derive(Default)]
-pub(crate) struct BoundedModeHelperV2Builder {
+pub(crate) struct BoundedModeHelperBuilder {
     epochs: Option<Epochs>,
     stopped: Option<Arc<AtomicBool>>,
     max_items: Option<usize>,
 }
 
-impl BoundedModeHelperV2Builder {
+impl BoundedModeHelperBuilder {
     pub fn epochs(mut self, epochs: Epochs) -> Self {
         self.epochs = Some(epochs);
         self
@@ -139,7 +139,7 @@ pub(crate) struct BoundedModeHelper {
     checkpoints: BoundedVecDeque<BlockHash>,
     latest_cementation: BlockHash,
     block_read_count: u64,
-    block_cache: Arc<BlockCacheV2>,
+    block_cache: Arc<BlockCache>,
 }
 
 impl BoundedModeHelper {
@@ -154,15 +154,15 @@ impl BoundedModeHelper {
             checkpoints: BoundedVecDeque::new(max_items),
             latest_cementation: BlockHash::zero(),
             block_read_count: 0,
-            block_cache: Arc::new(BlockCacheV2::new()),
+            block_cache: Arc::new(BlockCache::new()),
         }
     }
 
-    pub fn builder() -> BoundedModeHelperV2Builder {
+    pub fn builder() -> BoundedModeHelperBuilder {
         Default::default()
     }
 
-    pub fn block_cache(&self) -> &Arc<BlockCacheV2> {
+    pub fn block_cache(&self) -> &Arc<BlockCache> {
         &self.block_cache
     }
 

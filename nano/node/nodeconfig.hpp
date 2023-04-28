@@ -194,8 +194,6 @@ public:
 	void set_read_only (bool value);
 	bool disable_connection_cleanup () const;
 	void set_disable_connection_cleanup (bool value);
-	nano::confirmation_height_mode confirmation_height_processor_mode () const;
-	void set_confirmation_height_processor_mode (nano::confirmation_height_mode mode);
 	nano::generate_cache generate_cache () const;
 	void set_generate_cache (nano::generate_cache const & cache);
 	bool inactive_node () const;

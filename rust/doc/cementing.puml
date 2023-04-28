@@ -1,13 +1,5 @@
 @startuml "Confirmation Height"
-class UnboundedMode {
-    process(block, callbacks)
-}
-
 class BoundedMode{
-    process(block, callbacks)
-}
-
-class AutomaticMode{
     process(block, callbacks)
 }
 
@@ -21,12 +13,6 @@ package "Infrastructure" {
 }
 
 package "Logic"{
-    enum ConfirmationHeightMode{
-        Autmatic
-        Unbounded
-        Bounded
-    }
-
     struct WriteDetails{
         account
         bottom_height
@@ -83,9 +69,6 @@ package "Application"{
 
 Ledger ..> ConfirmationHeightUpdate
 
-UnboundedMode --> Ledger
-UnboundedMode --> BatchWriteSizeManager
-
 BoundedMode --> Ledger
 BoundedMode --> MultiAccountCementer
 BoundedMode --> BatchWriteSizeManager
@@ -107,13 +90,7 @@ SingleAccountCementer --> WriteDetails: creates
 
 WriteDetailsQueue --> WriteDetails
 
-AutomaticMode --> ConfirmationHeightMode
-AutomaticMode --> BoundedMode
-AutomaticMode --> UnboundedMode
-AutomaticMode --> Ledger
-AutomaticMode --> BatchWriteSizeManager
-
-ConfirmationHeightProcessor --> AutomaticMode
+ConfirmationHeightProcessor --> BoundedMode
 
 LedgerAdapter ..|> LedgerDataRequester
 LedgerAdapter --> Ledger

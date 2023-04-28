@@ -884,16 +884,6 @@ void nano::node_flags::set_disable_connection_cleanup (bool value)
 {
 	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_connection_cleanup = value; });
 }
-nano::confirmation_height_mode nano::node_flags::confirmation_height_processor_mode () const
-{
-	return static_cast<confirmation_height_mode> (flags_dto ().confirmation_height_processor_mode);
-}
-void nano::node_flags::set_confirmation_height_processor_mode (nano::confirmation_height_mode mode)
-{
-	auto dto{ flags_dto () };
-	dto.confirmation_height_processor_mode = static_cast<uint8_t> (mode);
-	rsnano::rsn_node_flags_set (handle, &dto);
-}
 nano::generate_cache nano::node_flags::generate_cache () const
 {
 	return nano::generate_cache{ rsnano::rsn_node_flags_generate_cache (handle) };

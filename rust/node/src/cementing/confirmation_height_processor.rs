@@ -19,9 +19,8 @@ use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 use crate::stats::Stats;
 
 use super::{
-    block_cache::BlockCacheV2, bounded_mode::BoundedModeContainerInfo, AutomaticMode,
-    AwaitingProcessingCountCallback, BatchWriteSizeManager, BlockCallback, BlockHashCallback,
-    BlockQueue, ConfirmationHeightMode,
+    AwaitingProcessingCountCallback, BatchWriteSizeManager, BlockCache, BlockCallback,
+    BlockHashCallback, BlockQueue, BoundedMode, BoundedModeContainerInfo,
 };
 
 pub struct ConfirmationHeightProcessor {
@@ -34,7 +33,7 @@ pub struct ConfirmationHeightProcessor {
     cemented_observer: Arc<Mutex<Option<BlockCallback>>>,
     already_cemented_observer: Arc<Mutex<Option<BlockHashCallback>>>,
     thread: Option<JoinHandle<()>>,
-    block_cache: Arc<BlockCacheV2>,
+    block_cache: Arc<BlockCache>,
 
     container_info: BoundedModeContainerInfo,
 }
@@ -48,7 +47,6 @@ impl ConfirmationHeightProcessor {
         batch_separate_pending_min_time: Duration,
         stats: Arc<Stats>,
         latch: Box<dyn Latch>,
-        mode: ConfirmationHeightMode,
     ) -> Self {
         let cemented_observer: Arc<Mutex<Option<BlockCallback>>> = Arc::new(Mutex::new(None));
         let already_cemented_observer: Arc<Mutex<Option<BlockHashCallback>>> =
@@ -56,21 +54,20 @@ impl ConfirmationHeightProcessor {
         let stopped = Arc::new(AtomicBool::new(false));
         let channel = Arc::new(Mutex::new(ProcessorLoopChannel::new()));
 
-        let automatic_mode = AutomaticMode::new(
-            mode,
+        let bounded_mode = BoundedMode::new(
             ledger,
+            write_database_queue.clone(),
             logger,
             enable_timing_logging,
-            stats,
             batch_separate_pending_min_time,
-            write_database_queue.clone(),
             stopped.clone(),
+            stats,
         );
 
-        let batch_write_size = automatic_mode.batch_write_size().clone();
+        let batch_write_size = bounded_mode.batch_write_size().clone();
 
-        let bounded_container_info = automatic_mode.container_info();
-        let block_cache = Arc::clone(automatic_mode.block_cache());
+        let bounded_container_info = bounded_mode.container_info();
+        let block_cache = Arc::clone(bounded_mode.block_cache());
         let condition = Arc::new(Condvar::new());
 
         let callbacks = CementCallbacks {
@@ -92,7 +89,7 @@ impl ConfirmationHeightProcessor {
                     let mut processor_loop = ConfirmationHeightProcessorLoop {
                         stopped,
                         condition,
-                        automatic_mode,
+                        bounded_mode,
                         channel: &channel,
                         callbacks,
                     };
@@ -265,7 +262,7 @@ impl ProcessorLoopChannel {
 struct ConfirmationHeightProcessorLoop<'a> {
     stopped: Arc<AtomicBool>,
     condition: Arc<Condvar>,
-    automatic_mode: AutomaticMode,
+    bounded_mode: BoundedMode,
     channel: &'a Mutex<ProcessorLoopChannel>,
     callbacks: CementCallbacks,
 }
@@ -299,7 +296,7 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
         mut channel: MutexGuard<'a, ProcessorLoopChannel>,
         block: Arc<BlockEnum>,
     ) -> MutexGuard<'a, ProcessorLoopChannel> {
-        if !self.automatic_mode.has_pending_writes() {
+        if !self.bounded_mode.has_pending_writes() {
             channel.pending_writes.clear();
         }
 
@@ -307,8 +304,8 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
         channel.current_block = Some(block.clone());
 
         drop(channel);
-        self.automatic_mode
-            .process(block, &mut self.callbacks.as_refs());
+        self.bounded_mode
+            .process(&block, &mut self.callbacks.as_refs());
         self.channel.lock().unwrap()
     }
 
@@ -317,15 +314,15 @@ impl<'a> ConfirmationHeightProcessorLoop<'a> {
         &mut self,
         mut channel: MutexGuard<'a, ProcessorLoopChannel>,
     ) -> MutexGuard<'a, ProcessorLoopChannel> {
-        if self.automatic_mode.has_pending_writes() {
+        if self.bounded_mode.has_pending_writes() {
             drop(channel);
-            self.automatic_mode
+            self.bounded_mode
                 .write_pending_blocks(&mut self.callbacks.as_refs());
             channel = self.channel.lock().unwrap();
         }
 
         channel.clear_processed_blocks();
-        self.automatic_mode.clear_process_vars();
+        self.bounded_mode.clear_process_vars();
 
         // A block could have been confirmed during the re-locking
         if channel.awaiting_processing.is_empty() {

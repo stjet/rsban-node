@@ -5,8 +5,7 @@ use std::{
 };
 
 use crate::{ledger::GenerateCacheHandle, StringDto};
-use num_traits::FromPrimitive;
-use rsnano_node::{cementing::ConfirmationHeightMode, config::NodeFlags};
+use rsnano_node::config::NodeFlags;
 
 pub struct NodeFlagsHandle(pub Arc<Mutex<NodeFlags>>);
 
@@ -144,7 +143,6 @@ pub struct NodeFlagsDto {
     pub fast_bootstrap: bool,
     pub read_only: bool,
     pub disable_connection_cleanup: bool,
-    pub confirmation_height_processor_mode: u8,
     pub inactive_node: bool,
     pub block_processor_batch_size: usize,
     pub block_processor_full_size: usize,
@@ -190,7 +188,6 @@ pub unsafe extern "C" fn rsn_node_flags_get(
     result.fast_bootstrap = lock.fast_bootstrap;
     result.read_only = lock.read_only;
     result.disable_connection_cleanup = lock.disable_connection_cleanup;
-    result.confirmation_height_processor_mode = lock.confirmation_height_processor_mode as u8;
     result.inactive_node = lock.inactive_node;
     result.block_processor_batch_size = lock.block_processor_batch_size;
     result.block_processor_full_size = lock.block_processor_full_size;
@@ -236,8 +233,6 @@ pub unsafe extern "C" fn rsn_node_flags_set(
     lock.fast_bootstrap = flags.fast_bootstrap;
     lock.read_only = flags.read_only;
     lock.disable_connection_cleanup = flags.disable_connection_cleanup;
-    lock.confirmation_height_processor_mode =
-        ConfirmationHeightMode::from_u8(flags.confirmation_height_processor_mode).unwrap();
     lock.inactive_node = flags.inactive_node;
     lock.block_processor_batch_size = flags.block_processor_batch_size;
     lock.block_processor_full_size = flags.block_processor_full_size;

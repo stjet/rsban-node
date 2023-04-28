@@ -5,7 +5,6 @@ use std::{
     time::Duration,
 };
 
-use num::FromPrimitive;
 use rsnano_core::{BlockEnum, BlockHash};
 use rsnano_node::{cementing::ConfirmationHeightProcessor, config::Logging};
 
@@ -28,7 +27,6 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_create(
     batch_separate_pending_min_time_ms: u64,
     stats: *mut StatHandle,
     latch: *mut c_void,
-    mode: u8,
 ) -> *mut ConfirmationHeightProcessorHandle {
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let logging = Logging::from(&*logging);
@@ -43,7 +41,6 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_create(
             Duration::from_millis(batch_separate_pending_min_time_ms),
             (*stats).0.clone(),
             latch,
-            FromPrimitive::from_u8(mode).unwrap(),
         ),
     )))
 }

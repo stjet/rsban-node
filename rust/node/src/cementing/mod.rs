@@ -1,14 +1,10 @@
 mod accounts_confirmed_map;
-mod automatic_mode;
 mod batch_write_size_manager;
 mod block_cache;
-mod block_cementor;
 mod block_queue;
 mod bounded_mode;
 mod bounded_mode_helper;
-mod cement_queue;
 mod confirmation_height_processor;
-mod confirmed_iterated_pairs;
 mod ledger_data_requester;
 mod multi_account_cementer;
 mod single_account_cementer;
@@ -22,8 +18,6 @@ use rsnano_core::{BlockEnum, BlockHash, ConfirmationHeightUpdate};
 use accounts_confirmed_map::{
     AccountsConfirmedMap, AccountsConfirmedMapContainerInfo, ConfirmedInfo,
 };
-use automatic_mode::AutomaticMode;
-pub use automatic_mode::ConfirmationHeightMode;
 use batch_write_size_manager::BatchWriteSizeManager;
 use bounded_mode::{BoundedMode, BoundedModeContainerInfo};
 use ledger_data_requester::{LedgerAdapter, LedgerDataRequester};
@@ -31,7 +25,7 @@ use ledger_data_requester::{LedgerAdapter, LedgerDataRequester};
 #[cfg(test)]
 use ledger_data_requester::LedgerDataRequesterStub;
 
-use block_cache::BlockCacheV2;
+use block_cache::BlockCache;
 use confirmation_height_processor::CementCallbackRefs;
 pub use confirmation_height_processor::ConfirmationHeightProcessor;
 use multi_account_cementer::MultiAccountCementer;

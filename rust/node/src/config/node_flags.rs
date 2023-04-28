@@ -1,7 +1,5 @@
 use rsnano_ledger::GenerateCache;
 
-use crate::cementing::ConfirmationHeightMode;
-
 #[derive(Clone)]
 pub struct NodeFlags {
     pub config_overrides: Vec<String>,
@@ -34,7 +32,6 @@ pub struct NodeFlags {
     pub fast_bootstrap: bool,
     pub read_only: bool,
     pub disable_connection_cleanup: bool,
-    pub confirmation_height_processor_mode: ConfirmationHeightMode,
     pub generate_cache: GenerateCache,
     pub inactive_node: bool,
     pub block_processor_batch_size: usize,
@@ -78,7 +75,6 @@ impl NodeFlags {
             fast_bootstrap: false,
             read_only: false,
             disable_connection_cleanup: false,
-            confirmation_height_processor_mode: ConfirmationHeightMode::Automatic,
             generate_cache: GenerateCache::new(),
             inactive_node: false,
             block_processor_batch_size: 0,

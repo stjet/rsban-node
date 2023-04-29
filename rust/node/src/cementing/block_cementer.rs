@@ -57,7 +57,7 @@ impl BlockCementer {
             processing_timer: Instant::now(),
             batch_separate_pending_min_time,
             cemented_batch_timer: Instant::now(),
-            cementer: MultiAccountCementer::new(),
+            cementer: MultiAccountCementer::default(),
             helper,
         }
     }
@@ -168,9 +168,9 @@ impl BlockCementer {
 
         // Cement all pending entries, each entry is specific to an account and contains the least amount
         // of blocks to retain consistent cementing across all account chains to genesis.
-        while let Some((section_to_cement, account_done)) = self
+        while let Some(section_to_cement) = self
             .cementer
-            .cement_next(&LedgerAdapter::new(txn.txn_mut(), &self.ledger))
+            .next_slice(&LedgerAdapter::new(txn.txn_mut(), &self.ledger))
             .unwrap()
         {
             self.flush(
@@ -179,7 +179,7 @@ impl BlockCementer {
                 scoped_write_guard,
                 callbacks,
             );
-            if account_done {
+            if self.cementer.is_done() {
                 self.helper
                     .clear_cached_account(&section_to_cement.account, section_to_cement.top_height);
             }

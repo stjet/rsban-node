@@ -293,14 +293,14 @@ impl Networks {
 #[derive(Clone, PartialEq, Eq, Default)]
 pub struct BlockChainSection {
     pub account: Account,
-    /// The highest block (inclusive)
-    pub top_hash: BlockHash,
-    /// block height of the highest block
-    pub top_height: u64,
     /// The lowest block (inclusive)
     pub bottom_hash: BlockHash,
     /// block height of the lowest block
     pub bottom_height: u64,
+    /// The highest block (inclusive)
+    pub top_hash: BlockHash,
+    /// block height of the highest block
+    pub top_height: u64,
 }
 
 impl BlockChainSection {

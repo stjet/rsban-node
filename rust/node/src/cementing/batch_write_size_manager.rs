@@ -11,18 +11,37 @@ use std::{
 /// that batch size so that writing a batch should not take more than 250 ms.
 pub(crate) struct BatchWriteSizeManager {
     pub batch_write_size: Arc<AtomicUsize>,
+    minimum_size: usize,
+}
+
+pub(crate) struct BatchWriteSizeManagerOptions {
+    pub minimum_size: usize,
+}
+
+impl Default for BatchWriteSizeManagerOptions {
+    fn default() -> Self {
+        Self {
+            minimum_size: 16384,
+        }
+    }
+}
+
+impl Default for BatchWriteSizeManager {
+    fn default() -> Self {
+        Self::new(Default::default())
+    }
 }
 
 impl BatchWriteSizeManager {
-    const MINIMUM_BATCH_WRITE_SIZE: usize = 16384;
     const MAXIMUM_BATCH_WRITE_TIME: Duration = Duration::from_millis(250);
 
     const MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF: Duration =
         eighty_percent_of(Self::MAXIMUM_BATCH_WRITE_TIME);
 
-    pub fn new() -> Self {
+    pub fn new(options: BatchWriteSizeManagerOptions) -> Self {
         Self {
-            batch_write_size: Arc::new(AtomicUsize::new(Self::MINIMUM_BATCH_WRITE_SIZE)),
+            batch_write_size: Arc::new(AtomicUsize::new(options.minimum_size)),
+            minimum_size: options.minimum_size,
         }
     }
 
@@ -63,7 +82,7 @@ impl BatchWriteSizeManager {
     fn reduce(&self) {
         // Reduce (unless we have hit a floor)
         let new_size = max(
-            BatchWriteSizeManager::MINIMUM_BATCH_WRITE_SIZE,
+            self.minimum_size,
             self.current_size() - self.amount_to_change(),
         );
         self.batch_write_size.store(new_size, Ordering::SeqCst);

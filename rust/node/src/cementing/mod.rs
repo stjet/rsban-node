@@ -3,12 +3,11 @@ mod batch_write_size_manager;
 mod block_cache;
 mod block_cementer;
 mod block_queue;
-mod bounded_mode_helper;
+mod cementation_walker;
 mod cementation_queue;
 mod cementation_thread;
 mod ledger_data_requester;
-mod multi_account_cementer;
-mod write_batch_slicer;
+mod write_batcher;
 
 use std::sync::Arc;
 
@@ -29,8 +28,7 @@ use block_cache::BlockCache;
 use cementation_queue::{CementationQueue, WriteDetailsContainerInfo};
 use cementation_thread::CementCallbackRefs;
 pub use cementation_thread::CementationThread;
-use multi_account_cementer::MultiAccountCementer;
-use write_batch_slicer::WriteBatchSlicer;
+use write_batcher::WriteBatcher;
 
 /// We need these details whenever we want to write the new
 /// confirmation height to the ledger

@@ -15,15 +15,15 @@ use rsnano_store_traits::WriteTransaction;
 
 use super::{
     block_cache::BlockCache,
-    bounded_mode_helper::{BoundedModeHelper, CementationStep},
+    cementation_walker::{BoundedModeHelper, CementationStep},
     AccountsConfirmedMapContainerInfo, BatchWriteSizeManager, CementCallbackRefs, LedgerAdapter,
-    LedgerDataRequester, MultiAccountCementer, WriteDetailsContainerInfo,
+    LedgerDataRequester, WriteBatcher, WriteDetailsContainerInfo,
 };
 
 pub(super) struct BlockCementer {
     stopped: Arc<AtomicBool>,
     batch_separate_pending_min_time: Duration,
-    cementer: MultiAccountCementer,
+    cementer: WriteBatcher,
 
     processing_timer: Instant,
     cemented_batch_timer: Instant,
@@ -57,7 +57,7 @@ impl BlockCementer {
             processing_timer: Instant::now(),
             batch_separate_pending_min_time,
             cemented_batch_timer: Instant::now(),
-            cementer: MultiAccountCementer::default(),
+            cementer: WriteBatcher::default(),
             helper,
         }
     }
@@ -88,7 +88,7 @@ impl BlockCementer {
         let mut ledger_adapter = LedgerAdapter::new(txn.txn_mut(), &ledger_clone);
 
         loop {
-            match self.helper.get_next_step(&mut ledger_adapter).unwrap() {
+            match self.helper.next_cementation(&mut ledger_adapter).unwrap() {
                 CementationStep::Cement(write_details) => {
                     self.cementer.enqueue(write_details);
                     if self.should_flush(callbacks, self.helper.is_done()) {
@@ -170,7 +170,7 @@ impl BlockCementer {
         // of blocks to retain consistent cementing across all account chains to genesis.
         while let Some(section_to_cement) = self
             .cementer
-            .next_slice(&LedgerAdapter::new(txn.txn_mut(), &self.ledger))
+            .next_write(&LedgerAdapter::new(txn.txn_mut(), &self.ledger))
             .unwrap()
         {
             self.flush(

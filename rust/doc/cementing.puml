@@ -1,12 +1,4 @@
 @startuml "Confirmation Height"
-class BlockCementer{
-    process(block, callbacks)
-}
-
-class CementationThread{
-    add(block)
-    run(mode)
-}
 
 package "Infrastructure" {
     class Ledger
@@ -15,13 +7,12 @@ package "Infrastructure" {
 package "Logic"{
     class CementationQueue
 
-    class WriteBatchSlicer {
-        next_slice(): BlockChainSection
-    }
-    class MultiAccountCementer {
+    class WriteBatcher {
         enqueue(write_details)
-        cement_next(data_requester): BlockChainSection
+        next_write(data_requester): BlockChainSection
+        is_done()
     }
+
     class BatchWriteSizeManager {
         current()
     }
@@ -40,9 +31,9 @@ package "Logic"{
         cement
     }
 
-    class BoundedModeHelper{
+    class CementationWalker{
         initialize(hash)
-        get_next_step()
+        next_cementation()
     }
 
 }
@@ -58,28 +49,35 @@ package "Values"{
 }
 
 package "Application"{
+    class CementationThread{
+        add(block)
+        run(mode)
+    }
+
+    class BlockCementer{
+        process(block, callbacks)
+    }
+
     class LedgerAdapter
 }
 
 Ledger ..> BlockChainSection
 
 BlockCementer --> Ledger
-BlockCementer --> MultiAccountCementer
+BlockCementer --> WriteBatcher
 BlockCementer --> BatchWriteSizeManager
 BlockCementer --> LedgerAdapter
-BlockCementer --> BoundedModeHelper
+BlockCementer --> CementationWalker
 
-BoundedModeHelper --> CementationStep: creates
-BoundedModeHelper --> LedgerDataRequester
+CementationWalker --> CementationStep: creates
+CementationWalker --> LedgerDataRequester
 
 CementationStep --> BlockChainSection
 
-MultiAccountCementer --> WriteBatchSlicer
-MultiAccountCementer --> BatchWriteSizeManager
-MultiAccountCementer --> CementationQueue
-MultiAccountCementer --> LedgerDataRequester
-
-WriteBatchSlicer --> BlockChainSection: creates
+WriteBatcher --> BatchWriteSizeManager
+WriteBatcher --> CementationQueue
+WriteBatcher --> LedgerDataRequester
+WriteBatcher --> BlockChainSection: creates
 
 CementationQueue --> BlockChainSection
 

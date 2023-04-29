@@ -97,13 +97,13 @@ impl ChainIteration {
 }
 
 #[derive(Default)]
-pub(crate) struct BoundedModeHelperBuilder {
+pub(crate) struct CementationWalker {
     epochs: Option<Epochs>,
     stopped: Option<Arc<AtomicBool>>,
     max_items: Option<usize>,
 }
 
-impl BoundedModeHelperBuilder {
+impl CementationWalker {
     pub fn epochs(mut self, epochs: Epochs) -> Self {
         self.epochs = Some(epochs);
         self
@@ -158,7 +158,7 @@ impl BoundedModeHelper {
         }
     }
 
-    pub fn builder() -> BoundedModeHelperBuilder {
+    pub fn builder() -> CementationWalker {
         Default::default()
     }
 
@@ -176,7 +176,7 @@ impl BoundedModeHelper {
         self.block_cache.clear();
     }
 
-    pub fn get_next_step<T: LedgerDataRequester>(
+    pub fn next_cementation<T: LedgerDataRequester>(
         &mut self,
         data_requester: &mut T,
     ) -> anyhow::Result<CementationStep> {
@@ -456,7 +456,7 @@ mod tests {
             .legacy_send()
             .legacy_send();
         sut.initialize(genesis_chain.latest_block().clone());
-        let err = sut.get_next_step(&mut data_requester).unwrap_err();
+        let err = sut.next_cementation(&mut data_requester).unwrap_err();
         assert_eq!(
             err.to_string(),
             format!("could not load block {}", genesis_chain.blocks()[1].hash())
@@ -477,7 +477,7 @@ mod tests {
 
         stopped.store(true, Ordering::Relaxed);
 
-        let step = sut.get_next_step(&mut data_requester).unwrap();
+        let step = sut.next_cementation(&mut data_requester).unwrap();
         assert_eq!(step, CementationStep::Done)
     }
 
@@ -815,7 +815,7 @@ mod tests {
         let genesis_chain = data_requester.add_genesis_block();
 
         sut.initialize(genesis_chain.latest_block().clone());
-        let step = sut.get_next_step(&mut data_requester).unwrap();
+        let step = sut.next_cementation(&mut data_requester).unwrap();
 
         assert_eq!(
             step,
@@ -921,7 +921,7 @@ mod tests {
             data_requester.prune(hash);
 
             // sut.initialize(&hash);
-            let step = sut.get_next_step(&mut data_requester).unwrap();
+            let step = sut.next_cementation(&mut data_requester).unwrap();
 
             assert_eq!(step, CementationStep::Done);
         }
@@ -969,7 +969,7 @@ mod tests {
 
         let mut actual = Vec::new();
         loop {
-            let step = sut.get_next_step(data_requester).unwrap();
+            let step = sut.next_cementation(data_requester).unwrap();
             match step {
                 CementationStep::Cement(details) => actual.push(details),
                 CementationStep::AlreadyCemented(_) => unreachable!(),

@@ -1,16 +1,14 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use rsnano_core::{BlockEnum, BlockHash, ConfirmationHeightInfo, ConfirmationHeightUpdate};
-
-use super::write_details_queue::WriteDetails;
+use rsnano_core::{BlockChainSection, BlockEnum, BlockHash, ConfirmationHeightInfo};
 
 /// Creates ConfirmationHeightUpdates for a single account.
 /// Those updates describe the changes that need to be written to
 /// the confirmation height store.
 #[derive(Default)]
-pub(crate) struct SingleAccountCementer {
-    pending: WriteDetails,
+pub(crate) struct WriteBatchSlicer {
+    section_to_cement: BlockChainSection,
     confirmation_height_info: ConfirmationHeightInfo,
     batch_write_size: usize,
     is_initialized: bool,
@@ -24,14 +22,14 @@ pub(crate) struct SingleAccountCementer {
     new_cemented_frontier_block: Option<Arc<BlockEnum>>,
 }
 
-impl SingleAccountCementer {
+impl WriteBatchSlicer {
     pub fn new(
-        pending: WriteDetails,
+        section_to_cement: BlockChainSection,
         confirmation_height_info: ConfirmationHeightInfo,
         batch_write_size: usize,
     ) -> Self {
         Self {
-            pending,
+            section_to_cement,
             confirmation_height_info,
             batch_write_size,
             is_initialized: false,
@@ -44,11 +42,11 @@ impl SingleAccountCementer {
         }
     }
 
-    pub fn cement(
+    pub fn next_batch(
         &mut self,
         load_block: &dyn Fn(&BlockHash) -> Option<BlockEnum>,
         cemented_blocks: &mut Vec<Arc<BlockEnum>>,
-    ) -> anyhow::Result<Option<(ConfirmationHeightUpdate, bool)>> {
+    ) -> anyhow::Result<Option<(BlockChainSection, bool)>> {
         cemented_blocks.clear();
 
         if !self.is_initialized {
@@ -65,24 +63,24 @@ impl SingleAccountCementer {
             self.total_blocks_cemented += 1;
 
             // Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
-            let update_command = self.get_update_command(&cemented_blocks);
+            let slice = self.create_slice(&cemented_blocks);
 
             self.load_next_block_to_cement(&load_block)
                 .with_context(|| {
                     format!(
                         "Could not load next block to cement for account {}",
-                        self.pending.account
+                        self.section_to_cement.account
                     )
                 })?;
 
-            if let Some(cmd) = update_command {
-                return Ok(Some((cmd, self.is_done())));
+            if let Some(slice) = slice {
+                return Ok(Some((slice, self.is_done())));
             }
         }
 
         Ok(self
-            .get_update_command(&cemented_blocks)
-            .map(|cmd| (cmd, self.is_done())))
+            .create_slice(&cemented_blocks)
+            .map(|slice| (slice, self.is_done())))
     }
 
     fn initialize(
@@ -97,7 +95,7 @@ impl SingleAccountCementer {
                 Arc::new(load_block(&hash).ok_or_else(|| anyhow!("block not found"))?);
 
             self.start_height = new_frontier.sideband().unwrap().height;
-            self.num_blocks_to_cement = self.pending.top_height - self.start_height + 1;
+            self.num_blocks_to_cement = self.section_to_cement.top_height - self.start_height + 1;
             self.new_cemented_frontier_block = Some(new_frontier);
         }
 
@@ -117,20 +115,20 @@ impl SingleAccountCementer {
         } else {
             // This is the usual case where pending.bottom_height is the first uncemented block
             self.ensure_first_block_to_cement_is_one_above_current_frontier()?;
-            Ok(Some(self.pending.bottom_hash))
+            Ok(Some(self.section_to_cement.bottom_hash))
         }
     }
 
     fn are_all_blocks_cemented_already(&self) -> bool {
-        self.pending.top_height <= self.confirmation_height_info.height
+        self.section_to_cement.top_height <= self.confirmation_height_info.height
     }
 
     fn are_some_blocks_cemented_already(&self) -> bool {
-        self.confirmation_height_info.height >= self.pending.bottom_height
+        self.confirmation_height_info.height >= self.section_to_cement.bottom_height
     }
 
     fn ensure_first_block_to_cement_is_one_above_current_frontier(&self) -> anyhow::Result<()> {
-        if self.pending.bottom_height != self.confirmation_height_info.height + 1 {
+        if self.section_to_cement.bottom_height != self.confirmation_height_info.height + 1 {
             bail!("pending.bottom_height should be exactly 1 block above the cemented frontier!");
         }
 
@@ -145,7 +143,7 @@ impl SingleAccountCementer {
             anyhow!(
                 "Could not load current cemented frontier {} for account {}",
                 self.confirmation_height_info.frontier,
-                self.pending.account
+                self.section_to_cement.account
             )
         })
     }
@@ -167,7 +165,7 @@ impl SingleAccountCementer {
             }
             self.new_cemented_frontier_block = next_block.map(Arc::new);
             Ok(())
-        } else if self.new_cemented_frontier_hash != self.pending.top_hash {
+        } else if self.new_cemented_frontier_hash != self.section_to_cement.top_hash {
             // Confirm it is indeed the last one
             bail!("Last iteration reached, but top_hash does not match cemented frontier!")
         } else {
@@ -179,16 +177,15 @@ impl SingleAccountCementer {
         self.total_blocks_cemented == self.num_blocks_to_cement
     }
 
-    fn get_update_command(
-        &self,
-        cemented_blocks: &[Arc<BlockEnum>],
-    ) -> Option<ConfirmationHeightUpdate> {
+    fn create_slice(&self, cemented_blocks: &[Arc<BlockEnum>]) -> Option<BlockChainSection> {
         if self.should_flush(cemented_blocks) {
-            Some(ConfirmationHeightUpdate {
-                account: self.pending.account,
-                new_cemented_frontier: self.new_cemented_frontier_hash,
-                new_height: self.start_height + self.total_blocks_cemented - 1,
-                num_blocks_cemented: cemented_blocks.len() as u64,
+            let bottom = &cemented_blocks[0];
+            Some(BlockChainSection {
+                account: self.section_to_cement.account,
+                top_hash: self.new_cemented_frontier_hash,
+                top_height: self.start_height + self.total_blocks_cemented - 1,
+                bottom_hash: bottom.hash(),
+                bottom_height: bottom.height(),
             })
         } else {
             None
@@ -210,7 +207,7 @@ mod tests {
 
     #[test]
     fn doesnt_cement_empty_write_details() {
-        let pending = WriteDetails {
+        let pending = BlockChainSection {
             account: Account::from(1),
             bottom_height: 0,
             bottom_hash: BlockHash::zero(),
@@ -220,11 +217,11 @@ mod tests {
 
         let conf_height = ConfirmationHeightInfo::default();
 
-        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 42);
+        let mut command_factory = WriteBatchSlicer::new(pending, conf_height, 42);
 
         let mut cemented_blocks = Vec::new();
         let command = command_factory
-            .cement(&|_| unimplemented!(), &mut cemented_blocks)
+            .next_batch(&|_| unimplemented!(), &mut cemented_blocks)
             .unwrap();
 
         assert_eq!(command, None);
@@ -232,7 +229,7 @@ mod tests {
 
     #[test]
     fn one_block_already_cemented() {
-        let pending = WriteDetails {
+        let pending = BlockChainSection {
             account: Account::from(1),
             bottom_height: 3,
             bottom_hash: BlockHash::from(7),
@@ -245,11 +242,11 @@ mod tests {
             frontier: BlockHash::from(7),
         };
 
-        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 42);
+        let mut command_factory = WriteBatchSlicer::new(pending, conf_height, 42);
 
         let mut cemented_blocks = Vec::new();
         let command = command_factory
-            .cement(&|_| unimplemented!(), &mut cemented_blocks)
+            .next_batch(&|_| unimplemented!(), &mut cemented_blocks)
             .unwrap();
 
         assert_eq!(command, None);
@@ -262,7 +259,7 @@ mod tests {
             .legacy_open()
             .take_blocks();
 
-        let pending = WriteDetails {
+        let pending = BlockChainSection {
             account: Account::from(1),
             bottom_height: 1,
             bottom_hash: blocks[0].hash(),
@@ -272,23 +269,24 @@ mod tests {
 
         let conf_height = ConfirmationHeightInfo::default();
 
-        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 42);
+        let mut command_factory = WriteBatchSlicer::new(pending, conf_height, 42);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
         let command = command_factory
-            .cement(&load_block, &mut cemented_blocks)
+            .next_batch(&load_block, &mut cemented_blocks)
             .unwrap()
             .expect("command was None!");
 
         assert_eq!(
             command,
             (
-                ConfirmationHeightUpdate {
+                BlockChainSection {
                     account: Account::from(1),
-                    new_cemented_frontier: blocks[0].hash(),
-                    new_height: 1,
-                    num_blocks_cemented: 1
+                    top_hash: blocks[0].hash(),
+                    top_height: 1,
+                    bottom_hash: blocks[0].hash(),
+                    bottom_height: 1,
                 },
                 true
             )
@@ -304,7 +302,7 @@ mod tests {
             .legacy_send()
             .take_blocks();
 
-        let pending = WriteDetails {
+        let pending = BlockChainSection {
             account: Account::from(42),
             bottom_height: 1,
             bottom_hash: blocks[0].hash(),
@@ -314,23 +312,24 @@ mod tests {
 
         let conf_height = ConfirmationHeightInfo::default();
 
-        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 42);
+        let mut command_factory = WriteBatchSlicer::new(pending, conf_height, 42);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
         let command = command_factory
-            .cement(&load_block, &mut cemented_blocks)
+            .next_batch(&load_block, &mut cemented_blocks)
             .unwrap()
             .expect("command was None!");
 
         assert_eq!(
             command,
             (
-                ConfirmationHeightUpdate {
+                BlockChainSection {
                     account: Account::from(42),
-                    new_cemented_frontier: blocks[1].hash(),
-                    new_height: 2,
-                    num_blocks_cemented: 2
+                    top_hash: blocks[1].hash(),
+                    top_height: 2,
+                    bottom_hash: blocks[0].hash(),
+                    bottom_height: 1,
                 },
                 true
             )
@@ -346,7 +345,7 @@ mod tests {
             .legacy_send()
             .take_blocks();
 
-        let pending = WriteDetails {
+        let pending = BlockChainSection {
             account: Account::from(42),
             bottom_height: 1,
             bottom_hash: blocks[0].hash(),
@@ -359,23 +358,24 @@ mod tests {
             frontier: pending.bottom_hash,
         };
 
-        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 42);
+        let mut command_factory = WriteBatchSlicer::new(pending, conf_height, 42);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
         let command = command_factory
-            .cement(&load_block, &mut cemented_blocks)
+            .next_batch(&load_block, &mut cemented_blocks)
             .unwrap()
             .expect("command was None!");
 
         assert_eq!(
             command,
             (
-                ConfirmationHeightUpdate {
+                BlockChainSection {
                     account: Account::from(42),
-                    new_cemented_frontier: blocks[1].hash(),
-                    new_height: 2,
-                    num_blocks_cemented: 1
+                    top_hash: blocks[1].hash(),
+                    top_height: 2,
+                    bottom_hash: blocks[1].hash(),
+                    bottom_height: 2,
                 },
                 true
             )
@@ -391,7 +391,7 @@ mod tests {
             .legacy_send()
             .take_blocks();
 
-        let pending = WriteDetails {
+        let pending = BlockChainSection {
             account: Account::from(42),
             bottom_height: 1,
             bottom_hash: blocks[0].hash(),
@@ -401,25 +401,26 @@ mod tests {
 
         let conf_height = ConfirmationHeightInfo::default();
 
-        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 1);
+        let mut command_factory = WriteBatchSlicer::new(pending, conf_height, 1);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
 
         // Cement first batch
         let command = command_factory
-            .cement(&load_block, &mut cemented_blocks)
+            .next_batch(&load_block, &mut cemented_blocks)
             .unwrap()
             .expect("command was None!");
 
         assert_eq!(
             command,
             (
-                ConfirmationHeightUpdate {
+                BlockChainSection {
                     account: Account::from(42),
-                    new_cemented_frontier: blocks[0].hash(),
-                    new_height: 1,
-                    num_blocks_cemented: 1
+                    top_hash: blocks[0].hash(),
+                    top_height: 1,
+                    bottom_hash: blocks[0].hash(),
+                    bottom_height: 1,
                 },
                 false
             )
@@ -429,18 +430,19 @@ mod tests {
 
         // Cement second batch
         let command = command_factory
-            .cement(&load_block, &mut cemented_blocks)
+            .next_batch(&load_block, &mut cemented_blocks)
             .unwrap()
             .unwrap();
 
         assert_eq!(
             command,
             (
-                ConfirmationHeightUpdate {
+                BlockChainSection {
                     account: Account::from(42),
-                    new_cemented_frontier: blocks[1].hash(),
-                    new_height: 2,
-                    num_blocks_cemented: 1
+                    top_hash: blocks[1].hash(),
+                    top_height: 2,
+                    bottom_hash: blocks[1].hash(),
+                    bottom_height: 2,
                 },
                 true
             )
@@ -457,7 +459,7 @@ mod tests {
             .legacy_send()
             .take_blocks();
 
-        let pending = WriteDetails {
+        let pending = BlockChainSection {
             account: Account::from(42),
             bottom_height: 1,
             bottom_hash: blocks[0].hash(),
@@ -467,25 +469,26 @@ mod tests {
 
         let conf_height = ConfirmationHeightInfo::default();
 
-        let mut command_factory = SingleAccountCementer::new(pending, conf_height, 2);
+        let mut command_factory = WriteBatchSlicer::new(pending, conf_height, 2);
 
         let load_block = create_block_loader(&blocks);
         let mut cemented_blocks = Vec::new();
 
         // Cement first batch
         let command = command_factory
-            .cement(&load_block, &mut cemented_blocks)
+            .next_batch(&load_block, &mut cemented_blocks)
             .unwrap()
             .expect("command was None!");
 
         assert_eq!(
             command,
             (
-                ConfirmationHeightUpdate {
+                BlockChainSection {
                     account: Account::from(42),
-                    new_cemented_frontier: blocks[1].hash(),
-                    new_height: 2,
-                    num_blocks_cemented: 2
+                    top_hash: blocks[1].hash(),
+                    top_height: 2,
+                    bottom_hash: blocks[0].hash(),
+                    bottom_height: 1,
                 },
                 false
             )
@@ -495,18 +498,19 @@ mod tests {
 
         // Cement second batch
         let command = command_factory
-            .cement(&load_block, &mut cemented_blocks)
+            .next_batch(&load_block, &mut cemented_blocks)
             .unwrap()
             .expect("command was None!");
 
         assert_eq!(
             command,
             (
-                ConfirmationHeightUpdate {
+                BlockChainSection {
                     account: Account::from(42),
-                    new_cemented_frontier: blocks[2].hash(),
-                    new_height: 3,
-                    num_blocks_cemented: 1
+                    top_hash: blocks[2].hash(),
+                    top_height: 3,
+                    bottom_hash: blocks[2].hash(),
+                    bottom_height: 3,
                 },
                 true
             )

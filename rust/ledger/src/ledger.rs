@@ -5,9 +5,9 @@ use crate::{
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::seconds_since_epoch, Account, AccountInfo, Amount, Block, BlockEnum, BlockHash,
-    BlockSubType, BlockType, ConfirmationHeightInfo, ConfirmationHeightUpdate, Epoch, Link,
-    PendingInfo, PendingKey, QualifiedRoot, Root,
+    utils::seconds_since_epoch, Account, AccountInfo, Amount, Block, BlockChainSection, BlockEnum,
+    BlockHash, BlockSubType, BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo,
+    PendingKey, QualifiedRoot, Root,
 };
 
 use std::{
@@ -660,7 +660,7 @@ impl Ledger {
     pub fn write_confirmation_height(
         &self,
         txn: &mut dyn WriteTransaction,
-        update_height: &ConfirmationHeightUpdate,
+        update_height: &BlockChainSection,
     ) {
         #[cfg(debug_assertions)]
         {
@@ -673,29 +673,25 @@ impl Ledger {
             let block = self
                 .store
                 .block()
-                .get(txn.txn(), &update_height.new_cemented_frontier)
+                .get(txn.txn(), &update_height.top_hash)
                 .unwrap();
             debug_assert_eq!(
                 block.sideband().unwrap().height,
-                conf_height + (update_height.num_blocks_cemented as u64)
+                conf_height + update_height.block_count()
             );
         }
 
         self.store.confirmation_height().put(
             txn,
             &update_height.account,
-            &ConfirmationHeightInfo::new(
-                update_height.new_height,
-                update_height.new_cemented_frontier,
-            ),
+            &ConfirmationHeightInfo::new(update_height.top_height, update_height.top_hash),
         );
 
         self.cache
             .cemented_count
-            .fetch_add(update_height.num_blocks_cemented as u64, Ordering::SeqCst);
+            .fetch_add(update_height.block_count(), Ordering::SeqCst);
 
-        self.observer
-            .blocks_cemented(update_height.num_blocks_cemented);
+        self.observer.blocks_cemented(update_height.block_count());
     }
 
     pub fn dependent_blocks(

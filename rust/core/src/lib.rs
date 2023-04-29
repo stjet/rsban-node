@@ -289,14 +289,36 @@ impl Networks {
     }
 }
 
-/// Command for updating the confirmation height of an account
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ConfirmationHeightUpdate {
+/// A slice of blocks of an account chain
+#[derive(Clone, PartialEq, Eq, Default)]
+pub struct BlockChainSection {
     pub account: Account,
-    /// The latest cemented block for this account
-    pub new_cemented_frontier: BlockHash,
-    pub new_height: u64,
-    pub num_blocks_cemented: u64,
+    /// The highest block (inclusive)
+    pub top_hash: BlockHash,
+    /// block height of the highest block
+    pub top_height: u64,
+    /// The lowest block (inclusive)
+    pub bottom_hash: BlockHash,
+    /// block height of the lowest block
+    pub bottom_height: u64,
+}
+
+impl BlockChainSection {
+    pub fn block_count(&self) -> u64 {
+        self.top_height - self.bottom_height + 1
+    }
+}
+
+impl std::fmt::Debug for BlockChainSection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WriteDetails")
+            .field("account", &self.account.encode_account())
+            .field("bottom_height", &self.bottom_height)
+            .field("bottom_hash", &self.bottom_hash.encode_hex())
+            .field("top_height", &self.top_height)
+            .field("top_hash", &self.top_hash.encode_hex())
+            .finish()
+    }
 }
 
 #[cfg(test)]

@@ -18,7 +18,7 @@ use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 
 use super::{
     AwaitingProcessingCountCallback, BatchWriteSizeManager, BlockCache, BlockCallback,
-    BlockHashCallback, BlockQueue, BlockCementer, BoundedModeContainerInfo,
+    BlockCementer, BlockHashCallback, BlockQueue, BoundedModeContainerInfo,
 };
 
 pub struct CementationThread {

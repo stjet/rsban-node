@@ -13,21 +13,14 @@ package "Infrastructure" {
 }
 
 package "Logic"{
-    struct WriteDetails{
-        account
-        bottom_height
-        bottom_hash
-        top_height
-        top_hash
-    }
-    class WriteDetailsQueue
+    class CementationQueue
 
-    class SingleAccountCementer {
-        cement(): ConfirmationHeightUpdate
+    class WriteBatchSlicer {
+        next_slice(): BlockChainSection
     }
     class MultiAccountCementer {
         enqueue(write_details)
-        cement_next(data_requester): ConfirmationHeightUpdate
+        cement_next(data_requester): BlockChainSection
     }
     class BatchWriteSizeManager {
         current()
@@ -36,7 +29,7 @@ package "Logic"{
     interface LedgerDataRequester{
         get_block(hash)
         was_block_pruned(hash)
-        get_current_confirmation_height(account)
+        get_confirmation_height(account)
         get_account_info(account)
         refresh_transaction()
     }
@@ -44,7 +37,7 @@ package "Logic"{
     struct CementationStep{
         is_done
         already_cemented
-        write_details
+        cement
     }
 
     class BoundedModeHelper{
@@ -55,11 +48,12 @@ package "Logic"{
 }
 
 package "Values"{
-    struct ConfirmationHeightUpdate{
+    struct BlockChainSection{
         account
-        new_cemented_frontier
-        new_height
-        num_blocks_cemented
+        bottom_height
+        bottom_hash
+        top_height
+        top_hash
     }
 }
 
@@ -67,7 +61,7 @@ package "Application"{
     class LedgerAdapter
 }
 
-Ledger ..> ConfirmationHeightUpdate
+Ledger ..> BlockChainSection
 
 BlockCementer --> Ledger
 BlockCementer --> MultiAccountCementer
@@ -78,17 +72,16 @@ BlockCementer --> BoundedModeHelper
 BoundedModeHelper --> CementationStep: creates
 BoundedModeHelper --> LedgerDataRequester
 
-CementationStep --> WriteDetails
+CementationStep --> BlockChainSection
 
-MultiAccountCementer --> SingleAccountCementer
+MultiAccountCementer --> WriteBatchSlicer
 MultiAccountCementer --> BatchWriteSizeManager
-MultiAccountCementer --> WriteDetailsQueue
+MultiAccountCementer --> CementationQueue
 MultiAccountCementer --> LedgerDataRequester
 
-SingleAccountCementer --> ConfirmationHeightUpdate
-SingleAccountCementer --> WriteDetails: creates
+WriteBatchSlicer --> BlockChainSection: creates
 
-WriteDetailsQueue --> WriteDetails
+CementationQueue --> BlockChainSection
 
 CementationThread --> BlockCementer
 

@@ -8,38 +8,15 @@ use std::{
 
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Account, BlockHash,
+    BlockChainSection,
 };
 
-#[derive(Clone, Default, PartialEq, Eq)]
-pub(crate) struct WriteDetails {
-    pub account: Account,
-    pub bottom_height: u64,
-    // This is the first block hash (bottom most) which is not cemented
-    pub bottom_hash: BlockHash,
-    // Desired cemented frontier
-    pub top_height: u64,
-    pub top_hash: BlockHash,
-}
-
-impl std::fmt::Debug for WriteDetails {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("WriteDetails")
-            .field("account", &self.account.encode_account())
-            .field("bottom_height", &self.bottom_height)
-            .field("bottom_hash", &self.bottom_hash.encode_hex())
-            .field("top_height", &self.top_height)
-            .field("top_hash", &self.top_hash.encode_hex())
-            .finish()
-    }
-}
-
-pub(crate) struct WriteDetailsQueue {
-    queue: VecDeque<WriteDetails>,
+pub(crate) struct CementationQueue {
+    queue: VecDeque<BlockChainSection>,
     queue_len: Arc<AtomicUsize>,
 }
 
-impl WriteDetailsQueue {
+impl CementationQueue {
     pub fn new() -> Self {
         Self {
             queue: VecDeque::new(),
@@ -55,16 +32,16 @@ impl WriteDetailsQueue {
         self.queue.is_empty()
     }
 
-    pub fn push_back(&mut self, details: WriteDetails) {
+    pub fn push_back(&mut self, details: BlockChainSection) {
         self.queue.push_back(details);
         self.queue_len.fetch_add(1, Ordering::Relaxed);
     }
 
-    pub fn front(&self) -> Option<&WriteDetails> {
+    pub fn front(&self) -> Option<&BlockChainSection> {
         self.queue.front()
     }
 
-    pub fn pop_front(&mut self) -> Option<WriteDetails> {
+    pub fn pop_front(&mut self) -> Option<BlockChainSection> {
         let item = self.queue.pop_front();
         if item.is_some() {
             self.queue_len.fetch_sub(1, Ordering::Relaxed);
@@ -95,7 +72,7 @@ impl WriteDetailsContainerInfo {
         ContainerInfoComponent::Leaf(ContainerInfo {
             name,
             count: self.queue_len.load(Ordering::Relaxed),
-            sizeof_element: std::mem::size_of::<WriteDetails>(),
+            sizeof_element: std::mem::size_of::<BlockChainSection>(),
         })
     }
 }

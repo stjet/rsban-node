@@ -8,14 +8,14 @@ use std::{
 
 use rsnano_core::{
     utils::{ContainerInfoComponent, Logger},
-    BlockEnum, ConfirmationHeightUpdate,
+    BlockChainSection, BlockEnum,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_traits::WriteTransaction;
 
 use super::{
     block_cache::BlockCache,
-    bounded_mode_helper::{CementationStep, BoundedModeHelper},
+    bounded_mode_helper::{BoundedModeHelper, CementationStep},
     AccountsConfirmedMapContainerInfo, BatchWriteSizeManager, CementCallbackRefs, LedgerAdapter,
     LedgerDataRequester, MultiAccountCementer, WriteDetailsContainerInfo,
 };
@@ -89,7 +89,7 @@ impl BlockCementer {
 
         loop {
             match self.helper.get_next_step(&mut ledger_adapter).unwrap() {
-                CementationStep::Write(write_details) => {
+                CementationStep::Cement(write_details) => {
                     self.cementer.enqueue(write_details);
                     if self.should_flush(callbacks, self.helper.is_done()) {
                         self.try_flush(callbacks);
@@ -168,15 +168,20 @@ impl BlockCementer {
 
         // Cement all pending entries, each entry is specific to an account and contains the least amount
         // of blocks to retain consistent cementing across all account chains to genesis.
-        while let Some((update_command, account_done)) = self
+        while let Some((section_to_cement, account_done)) = self
             .cementer
             .cement_next(&LedgerAdapter::new(txn.txn_mut(), &self.ledger))
             .unwrap()
         {
-            self.flush(txn.as_mut(), &update_command, scoped_write_guard, callbacks);
+            self.flush(
+                txn.as_mut(),
+                &section_to_cement,
+                scoped_write_guard,
+                callbacks,
+            );
             if account_done {
                 self.helper
-                    .clear_cached_account(&update_command.account, update_command.new_height);
+                    .clear_cached_account(&section_to_cement.account, section_to_cement.top_height);
             }
         }
         drop(txn);
@@ -222,7 +227,7 @@ impl BlockCementer {
     fn flush(
         &mut self,
         txn: &mut dyn WriteTransaction,
-        update: &ConfirmationHeightUpdate,
+        update: &BlockChainSection,
         scoped_write_guard: &mut WriteGuard,
         callbacks: &mut CementCallbackRefs,
     ) {

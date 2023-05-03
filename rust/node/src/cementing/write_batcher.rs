@@ -35,7 +35,6 @@ pub(crate) struct WriteBatcher {
 
     section_to_cement: BlockChainSection,
     confirmation_height_info: ConfirmationHeightInfo,
-    batch_write_size2: usize,
     is_initialized: bool,
     /// The total number of blocks to cement
     num_blocks_to_cement: u64,
@@ -66,7 +65,6 @@ impl WriteBatcher {
 
             section_to_cement: Default::default(),
             confirmation_height_info: Default::default(),
-            batch_write_size2: 1,
             is_initialized: false,
             num_blocks_to_cement: 0,
             total_blocks_cemented: 0,
@@ -122,7 +120,6 @@ impl WriteBatcher {
 
         self.section_to_cement = pending;
         self.confirmation_height_info = confirmation_height_info;
-        self.batch_write_size2 = self.batch_write_size.current_size_with_tolerance();
         self.is_initialized = false;
         self.num_blocks_to_cement = 0;
         self.total_blocks_cemented = 0;
@@ -282,7 +279,7 @@ impl WriteBatcher {
 
     fn should_flush(&self) -> bool {
         (self.is_current_account_done() && self.cemented_blocks.len() > 0)
-            || self.cemented_blocks.len() >= self.batch_write_size2
+            || self.cemented_blocks.len() >= self.batch_write_size.current_size_with_tolerance()
     }
 }
 

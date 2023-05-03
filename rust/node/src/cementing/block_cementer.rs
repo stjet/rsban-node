@@ -14,8 +14,7 @@ use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_traits::WriteTransaction;
 
 use super::{
-    block_cache::BlockCache,
-    cementation_walker::{BoundedModeHelper, CementationStep},
+    block_cache::BlockCache, cementation_walker::CementationWalker,
     AccountsConfirmedMapContainerInfo, BatchWriteSizeManager, CementCallbackRefs, LedgerAdapter,
     LedgerDataRequester, WriteBatcher, WriteDetailsContainerInfo,
 };
@@ -23,7 +22,7 @@ use super::{
 pub(super) struct BlockCementer {
     stopped: Arc<AtomicBool>,
     batch_separate_pending_min_time: Duration,
-    cementer: WriteBatcher,
+    write_batcher: WriteBatcher,
 
     processing_timer: Instant,
     cemented_batch_timer: Instant,
@@ -31,7 +30,7 @@ pub(super) struct BlockCementer {
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
     ledger: Arc<Ledger>,
-    helper: BoundedModeHelper,
+    cementation_walker: CementationWalker,
 }
 
 impl BlockCementer {
@@ -43,7 +42,7 @@ impl BlockCementer {
         batch_separate_pending_min_time: Duration,
         stopped: Arc<AtomicBool>,
     ) -> Self {
-        let helper = BoundedModeHelper::builder()
+        let helper = CementationWalker::builder()
             .epochs(ledger.constants.epochs.clone())
             .stopped(stopped.clone())
             .build();
@@ -57,17 +56,17 @@ impl BlockCementer {
             processing_timer: Instant::now(),
             batch_separate_pending_min_time,
             cemented_batch_timer: Instant::now(),
-            cementer: WriteBatcher::default(),
-            helper,
+            write_batcher: WriteBatcher::default(),
+            cementation_walker: helper,
         }
     }
 
     pub(crate) fn batch_write_size(&self) -> &Arc<BatchWriteSizeManager> {
-        &self.cementer.batch_write_size
+        &self.write_batcher.batch_write_size
     }
 
     pub fn block_cache(&self) -> &Arc<BlockCache> {
-        &self.helper.block_cache()
+        &self.cementation_walker.block_cache()
     }
 
     pub(crate) fn process(
@@ -80,37 +79,34 @@ impl BlockCementer {
             self.processing_timer = Instant::now();
         }
 
-        self.helper.initialize(original_block.clone());
+        self.cementation_walker.initialize(original_block.clone());
 
         let mut txn = self.ledger.store.tx_begin_read();
         let ledger_clone = Arc::clone(&self.ledger);
 
         let mut ledger_adapter = LedgerAdapter::new(txn.txn_mut(), &ledger_clone);
 
-        loop {
-            match self.helper.next_cementation(&mut ledger_adapter).unwrap() {
-                CementationStep::Cement(write_details) => {
-                    self.cementer.enqueue(write_details);
-                    if self.should_flush(callbacks, self.helper.is_done()) {
-                        self.try_flush(callbacks);
-                    }
-                }
-                CementationStep::AlreadyCemented(hash) => {
-                    (callbacks.block_already_cemented)(hash);
-                    return;
-                }
-                CementationStep::Done => break,
+        while let Some(section) = self
+            .cementation_walker
+            .next_cementation(&mut ledger_adapter)
+        {
+            self.write_batcher.enqueue(section);
+            if self.should_flush(callbacks, self.cementation_walker.is_done()) {
+                self.try_flush(callbacks);
             }
 
-            if self.helper.is_done() || self.stopped.load(Ordering::SeqCst) {
-                break;
+            if !self.cementation_walker.is_done() {
+                ledger_adapter.refresh_transaction();
             }
-            ledger_adapter.refresh_transaction();
+        }
+
+        if self.cementation_walker.num_accounts_walked() == 0 {
+            (callbacks.block_already_cemented)(original_block.hash());
         }
     }
 
     fn should_flush(&self, callbacks: &mut CementCallbackRefs, current_process_done: bool) -> bool {
-        let is_batch_full = self.cementer.max_batch_write_size_reached();
+        let is_batch_full = self.write_batcher.max_batch_write_size_reached();
 
         // When there are a lot of pending confirmation height blocks, it is more efficient to
         // bulk some of them up to enable better write performance which becomes the bottleneck.
@@ -119,11 +115,12 @@ impl BlockCementer {
             && (awaiting_processing == 0 || self.is_min_processing_time_exceeded());
 
         let should_flush = is_done_processing || is_batch_full || self.is_write_queue_full();
-        should_flush && !self.cementer.has_pending_writes()
+        should_flush && !self.write_batcher.has_pending_writes()
     }
 
     fn is_write_queue_full(&self) -> bool {
-        self.cementer.max_pending_writes_reached() || self.helper.is_accounts_cache_full()
+        self.write_batcher.max_pending_writes_reached()
+            || self.cementation_walker.is_accounts_cache_full()
     }
 
     fn try_flush(&mut self, callbacks: &mut CementCallbackRefs) {
@@ -145,7 +142,7 @@ impl BlockCementer {
     }
 
     pub fn write_pending_blocks(&mut self, callbacks: &mut CementCallbackRefs) {
-        if !self.cementer.has_pending_writes() {
+        if !self.write_batcher.has_pending_writes() {
             return;
         }
 
@@ -169,7 +166,7 @@ impl BlockCementer {
         // Cement all pending entries, each entry is specific to an account and contains the least amount
         // of blocks to retain consistent cementing across all account chains to genesis.
         while let Some(section_to_cement) = self
-            .cementer
+            .write_batcher
             .next_write(&LedgerAdapter::new(txn.txn_mut(), &self.ledger))
             .unwrap()
         {
@@ -179,19 +176,19 @@ impl BlockCementer {
                 scoped_write_guard,
                 callbacks,
             );
-            if self.cementer.is_done() {
-                self.helper
+            if self.write_batcher.is_done() {
+                self.cementation_walker
                     .clear_cached_account(&section_to_cement.account, section_to_cement.top_height);
             }
         }
         drop(txn);
 
-        let unpublished_count = self.cementer.unpublished_cemented_blocks();
+        let unpublished_count = self.write_batcher.unpublished_cemented_blocks();
         self.stop_batch_timer(unpublished_count);
 
         if unpublished_count > 0 {
             scoped_write_guard.release();
-            self.cementer
+            self.write_batcher
                 .publish_cemented_blocks(callbacks.block_cemented);
         }
 
@@ -209,7 +206,7 @@ impl BlockCementer {
             self.log_cemented_blocks(time_spent_cementing, cemented_count);
         }
 
-        self.cementer
+        self.write_batcher
             .batch_write_size
             .adjust_size(time_spent_cementing);
     }
@@ -238,17 +235,17 @@ impl BlockCementer {
 
         self.log_cemented_blocks(
             time_spent_cementing,
-            self.cementer.unpublished_cemented_blocks(),
+            self.write_batcher.unpublished_cemented_blocks(),
         );
-        self.cementer
+        self.write_batcher
             .batch_write_size
             .adjust_size(time_spent_cementing);
         scoped_write_guard.release();
-        self.cementer
+        self.write_batcher
             .publish_cemented_blocks(callbacks.block_cemented);
 
         // Only aquire transaction if there are blocks left
-        if !self.cementer.is_done() {
+        if !self.write_batcher.is_done() {
             *scoped_write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
             txn.renew();
         }
@@ -257,17 +254,17 @@ impl BlockCementer {
     }
 
     pub fn clear_process_vars(&mut self) {
-        self.helper.clear_all_cached_accounts();
+        self.cementation_walker.clear_all_cached_accounts();
     }
 
     pub fn has_pending_writes(&self) -> bool {
-        self.cementer.has_pending_writes()
+        self.write_batcher.has_pending_writes()
     }
 
     pub fn container_info(&self) -> BoundedModeContainerInfo {
         BoundedModeContainerInfo {
-            pending_writes: self.cementer.container_info(),
-            accounts_confirmed: self.helper.container_info(),
+            pending_writes: self.write_batcher.container_info(),
+            accounts_confirmed: self.cementation_walker.container_info(),
         }
     }
 }

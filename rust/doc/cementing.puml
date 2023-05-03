@@ -5,10 +5,9 @@ package "Infrastructure" {
 }
 
 package "Logic"{
-    class CementationQueue
 
     class WriteBatcher {
-        enqueue(write_details)
+        enqueue(section)
         next_write(data_requester): BlockChainSection
         is_done()
     }
@@ -75,11 +74,8 @@ CementationWalker --> LedgerDataRequester
 CementationStep --> BlockChainSection
 
 WriteBatcher --> BatchWriteSizeManager
-WriteBatcher --> CementationQueue
 WriteBatcher --> LedgerDataRequester
 WriteBatcher --> BlockChainSection: creates
-
-CementationQueue --> BlockChainSection
 
 CementationThread --> BlockCementer
 

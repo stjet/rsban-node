@@ -3,9 +3,9 @@ mod batch_write_size_manager;
 mod block_cache;
 mod block_cementer;
 mod block_queue;
-mod cementation_walker;
 mod cementation_queue;
 mod cementation_thread;
+mod cementation_walker;
 mod ledger_data_requester;
 mod write_batcher;
 

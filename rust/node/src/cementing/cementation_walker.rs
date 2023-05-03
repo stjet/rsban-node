@@ -18,12 +18,6 @@ const BATCH_READ_SIZE: u64 = 65536;
 /** The maximum number of various containers to keep the memory bounded */
 const MAX_ITEMS: usize = 131072;
 
-#[derive(PartialEq, Eq, Debug)]
-pub(crate) enum CementationStep {
-    Cement(BlockChainSection),
-    AlreadyCemented(BlockHash),
-    Done,
-}
 struct BlockRange {
     // inclusive lowest block
     bottom: BlockHash,
@@ -97,13 +91,13 @@ impl ChainIteration {
 }
 
 #[derive(Default)]
-pub(crate) struct CementationWalker {
+pub(crate) struct CementationWalkerBuilder {
     epochs: Option<Epochs>,
     stopped: Option<Arc<AtomicBool>>,
     max_items: Option<usize>,
 }
 
-impl CementationWalker {
+impl CementationWalkerBuilder {
     pub fn epochs(mut self, epochs: Epochs) -> Self {
         self.epochs = Some(epochs);
         self
@@ -119,17 +113,17 @@ impl CementationWalker {
         self
     }
 
-    pub fn build(self) -> BoundedModeHelper {
+    pub fn build(self) -> CementationWalker {
         let epochs = self.epochs.unwrap_or_default();
         let stopped = self
             .stopped
             .unwrap_or_else(|| Arc::new(AtomicBool::new(false)));
 
-        BoundedModeHelper::new(epochs, stopped, self.max_items.unwrap_or(MAX_ITEMS))
+        CementationWalker::new(epochs, stopped, self.max_items.unwrap_or(MAX_ITEMS))
     }
 }
 
-pub(crate) struct BoundedModeHelper {
+pub(crate) struct CementationWalker {
     stopped: Arc<AtomicBool>,
     epochs: Epochs,
     chain_stack: BoundedVecDeque<ChainIteration>,
@@ -142,7 +136,7 @@ pub(crate) struct BoundedModeHelper {
     block_cache: Arc<BlockCache>,
 }
 
-impl BoundedModeHelper {
+impl CementationWalker {
     pub fn new(epochs: Epochs, stopped: Arc<AtomicBool>, max_items: usize) -> Self {
         Self {
             epochs,
@@ -158,7 +152,7 @@ impl BoundedModeHelper {
         }
     }
 
-    pub fn builder() -> CementationWalker {
+    pub fn builder() -> CementationWalkerBuilder {
         Default::default()
     }
 
@@ -179,13 +173,13 @@ impl BoundedModeHelper {
     pub fn next_cementation<T: LedgerDataRequester>(
         &mut self,
         data_requester: &mut T,
-    ) -> anyhow::Result<CementationStep> {
+    ) -> Option<BlockChainSection> {
         loop {
             if self.stopped.load(Ordering::Relaxed) {
-                return Ok(CementationStep::Done);
+                return None;
             }
-            self.restore_checkpoint_if_required(data_requester)?;
-            let Some(chain) = self.chain_stack.back() else { break; };
+            self.restore_checkpoint_if_required(data_requester);
+            let Some(chain) = self.chain_stack.back() else { return None; };
 
             if chain.is_done() {
                 // There is nothing left to do for this chain. We can write the confirmation height now.
@@ -194,43 +188,34 @@ impl BoundedModeHelper {
                     self.checkpoints.pop_back();
                 }
                 let new_first_unconfirmed = chain.top_successor;
-                if let Some(write_details) = self.get_write_details(&chain) {
-                    self.cache_confirmation_height(&write_details, new_first_unconfirmed);
-                    self.latest_cementation = write_details.top_hash;
-                    return Ok(CementationStep::Cement(write_details));
+                if let Some(section) = self.section_to_cement(&chain) {
+                    self.cache_confirmation_height(&section, new_first_unconfirmed);
+                    self.latest_cementation = section.top_hash;
+                    return Some(section);
                 }
             } else {
                 self.make_sure_all_receive_blocks_have_cemented_send_blocks(
                     chain.search_range(),
                     data_requester,
-                )?;
+                );
             }
-        }
-
-        if self.chains_encountered == 0 {
-            return Ok(CementationStep::AlreadyCemented(self.original_block.hash()));
-        } else {
-            Ok(CementationStep::Done)
         }
     }
 
-    fn restore_checkpoint_if_required<T: LedgerDataRequester>(
-        &mut self,
-        data_requester: &T,
-    ) -> anyhow::Result<()> {
+    fn restore_checkpoint_if_required<T: LedgerDataRequester>(&mut self, data_requester: &T) {
         if self.chain_stack.len() > 0 || self.is_done() {
-            return Ok(()); // We still have pending chains. No checkpoint needed.
+            return; // We still have pending chains. No checkpoint needed.
         }
 
         let top_hash = self
             .checkpoints
             .pop_back()
             .unwrap_or(self.original_block.hash());
-        let block = self.get_block(&top_hash, data_requester)?;
+        let block = self.get_block(&top_hash, data_requester);
         self.enqueue_for_cementation(&block, data_requester)
     }
 
-    fn get_write_details(&self, chain: &ChainIteration) -> Option<BlockChainSection> {
+    fn section_to_cement(&self, chain: &ChainIteration) -> Option<BlockChainSection> {
         let mut write_details = chain.into_write_details();
         if let Some(info) = self.confirmation_heights.get(&write_details.account) {
             if info.confirmed_height >= write_details.bottom_height {
@@ -265,28 +250,27 @@ impl BoundedModeHelper {
         &mut self,
         search_range: BlockRange,
         data_requester: &mut T,
-    ) -> anyhow::Result<()> {
+    ) {
         if let Some((receive, corresponding_send)) =
-            self.find_receive_block(&search_range, data_requester)?
+            self.find_receive_block(&search_range, data_requester)
         {
             let current_chain = self.chain_stack.back_mut().unwrap();
             current_chain.go_to_successor_of(&receive);
             if corresponding_send.account_calculated() != receive.account_calculated() {
-                self.enqueue_for_cementation(&corresponding_send, data_requester)?;
+                self.enqueue_for_cementation(&corresponding_send, data_requester);
             }
         } else {
             // no more receive blocks in current chain
             self.chain_stack.back_mut().unwrap().set_done();
         }
-        Ok(())
     }
 
     fn enqueue_for_cementation<T: LedgerDataRequester>(
         &mut self,
         block: &BlockEnum,
         data_requester: &T,
-    ) -> anyhow::Result<()> {
-        if let Some(lowest) = self.get_lowest_uncemented_block(&block, data_requester)? {
+    ) {
+        if let Some(lowest) = self.get_lowest_uncemented_block(&block, data_requester) {
             // There are blocks that need to be cemented in this chain
             self.chain_stack
                 .push_back(ChainIteration::new(&lowest, &block));
@@ -296,29 +280,28 @@ impl BoundedModeHelper {
                 self.checkpoints.push_back(block.hash());
             }
         }
-        Ok(())
     }
 
     fn get_lowest_uncemented_block<T: LedgerDataRequester>(
         &mut self,
         top_block: &BlockEnum,
         data_requester: &T,
-    ) -> anyhow::Result<Option<BlockEnum>> {
+    ) -> Option<BlockEnum> {
         let account = top_block.account_calculated();
         match self.get_confirmation_height(&account, data_requester) {
             Some(info) => {
                 if top_block.height() <= info.height {
-                    Ok(None) // no uncemented block exists
+                    None // no uncemented block exists
                 } else if top_block.height() - info.height == 1 {
-                    Ok(Some(top_block.clone())) // top_block is the only uncemented block
+                    Some(top_block.clone()) // top_block is the only uncemented block
                 } else if top_block.height() - info.height == 2 {
-                    Ok(Some(self.get_block(&top_block.previous(), data_requester)?))
+                    Some(self.get_block(&top_block.previous(), data_requester))
                 } else {
-                    let frontier_block = self.get_block(&info.frontier, data_requester)?;
+                    let frontier_block = self.get_block(&info.frontier, data_requester);
                     self.get_successor_block(&frontier_block, data_requester)
                 }
             }
-            None => Ok(Some(self.get_open_block(&account, data_requester)?)),
+            None => Some(self.get_open_block(&account, data_requester)),
         }
     }
 
@@ -340,24 +323,24 @@ impl BoundedModeHelper {
         &mut self,
         range: &BlockRange,
         data_requester: &mut T,
-    ) -> anyhow::Result<Option<(BlockEnum, BlockEnum)>> {
-        let mut current = self.get_block(&range.bottom, data_requester)?;
+    ) -> Option<(BlockEnum, BlockEnum)> {
+        let mut current = self.get_block(&range.bottom, data_requester);
         loop {
             if self.block_read_count > 0 && self.block_read_count % BATCH_READ_SIZE == 0 {
                 // We could be traversing a very large account so we don't want to open read transactions for too long.
                 data_requester.refresh_transaction();
             }
             if let Some(send) = self.get_corresponding_send_block(&current, data_requester) {
-                return Ok(Some((current, send)));
+                return Some((current, send));
             }
 
             if current.hash() == range.top || self.stopped.load(Ordering::Relaxed) {
-                return Ok(None);
+                return None;
             }
 
             current = self
-                .get_successor_block(&current, data_requester)?
-                .ok_or_else(|| anyhow!("invalid block range given"))?;
+                .get_successor_block(&current, data_requester)
+                .expect("invalid block range given");
         }
     }
 
@@ -377,7 +360,7 @@ impl BoundedModeHelper {
     ) -> Option<BlockEnum> {
         let source = block.source_or_link();
         if !source.is_zero() && !self.epochs.is_epoch_link(&source.into()) {
-            self.get_block(&source, data_requester).ok()
+            self.block_cache.load_block(&source, data_requester)
         } else {
             None
         }
@@ -403,21 +386,20 @@ impl BoundedModeHelper {
         &mut self,
         block: &BlockEnum,
         data_requester: &T,
-    ) -> anyhow::Result<Option<BlockEnum>> {
-        match block.successor() {
-            Some(successor) => Ok(Some(self.get_block(&successor, data_requester)?)),
-            None => Ok(None),
-        }
+    ) -> Option<BlockEnum> {
+        block
+            .successor()
+            .map(|successor| self.get_block(&successor, data_requester))
     }
 
     fn get_open_block<T: LedgerDataRequester>(
         &mut self,
         account: &Account,
         data_requester: &T,
-    ) -> anyhow::Result<BlockEnum> {
+    ) -> BlockEnum {
         let open_hash = data_requester
             .get_account_info(account)
-            .ok_or_else(|| anyhow!("could not load account info for account {}", account))?
+            .expect("could not load account info")
             .open_block;
 
         self.get_block(&open_hash, data_requester)
@@ -427,15 +409,19 @@ impl BoundedModeHelper {
         &mut self,
         block_hash: &BlockHash,
         data_requester: &T,
-    ) -> anyhow::Result<BlockEnum> {
+    ) -> BlockEnum {
         if *block_hash == self.original_block.hash() {
-            return Ok(self.original_block.clone());
+            return self.original_block.clone();
         }
         self.block_read_count += 1;
 
         self.block_cache
             .load_block(block_hash, data_requester)
-            .ok_or_else(|| anyhow!("could not load block {}", block_hash))
+            .expect("could not load block")
+    }
+
+    pub(crate) fn num_accounts_walked(&self) -> usize {
+        self.chains_encountered
     }
 }
 
@@ -450,24 +436,22 @@ mod tests {
     #[test]
     fn block_not_found() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let mut sut = BoundedModeHelper::builder().build();
+        let mut sut = CementationWalker::builder().build();
         let genesis_chain = data_requester
             .add_genesis_block()
             .legacy_send()
             .legacy_send();
         sut.initialize(genesis_chain.latest_block().clone());
-        let err = sut.next_cementation(&mut data_requester).unwrap_err();
-        assert_eq!(
-            err.to_string(),
-            format!("could not load block {}", genesis_chain.blocks()[1].hash())
-        );
+
+        let result = std::panic::catch_unwind(move || sut.next_cementation(&mut data_requester));
+        assert!(result.is_err());
     }
 
     #[test]
     fn stopped() {
         let mut data_requester = LedgerDataRequesterStub::new();
         let stopped = Arc::new(AtomicBool::new(false));
-        let mut sut = BoundedModeHelper::builder()
+        let mut sut = CementationWalker::builder()
             .stopped(stopped.clone())
             .build();
 
@@ -477,8 +461,8 @@ mod tests {
 
         stopped.store(true, Ordering::Relaxed);
 
-        let step = sut.next_cementation(&mut data_requester).unwrap();
-        assert_eq!(step, CementationStep::Done)
+        let step = sut.next_cementation(&mut data_requester);
+        assert_eq!(step, None)
     }
 
     #[test]
@@ -810,17 +794,14 @@ mod tests {
 
     #[test]
     fn block_already_cemented() {
-        let mut sut = BoundedModeHelper::builder().build();
+        let mut sut = CementationWalker::builder().build();
         let mut data_requester = LedgerDataRequesterStub::new();
         let genesis_chain = data_requester.add_genesis_block();
 
         sut.initialize(genesis_chain.latest_block().clone());
-        let step = sut.next_cementation(&mut data_requester).unwrap();
+        let step = sut.next_cementation(&mut data_requester);
 
-        assert_eq!(
-            step,
-            CementationStep::AlreadyCemented(genesis_chain.frontier())
-        );
+        assert_eq!(step, None);
     }
 
     #[test]
@@ -915,15 +896,15 @@ mod tests {
         #[test]
         #[ignore]
         fn cement_already_pruned_block() {
-            let mut sut = BoundedModeHelper::builder().build();
+            let mut sut = CementationWalker::builder().build();
             let mut data_requester = LedgerDataRequesterStub::new();
             let hash = BlockHash::from(1);
             data_requester.prune(hash);
 
             // sut.initialize(&hash);
-            let step = sut.next_cementation(&mut data_requester).unwrap();
+            let step = sut.next_cementation(&mut data_requester);
 
-            assert_eq!(step, CementationStep::Done);
+            assert_eq!(step, None);
         }
 
         #[test]
@@ -964,17 +945,12 @@ mod tests {
         block_to_cement: BlockEnum,
         expected: &[BlockChainSection],
     ) {
-        let mut sut = BoundedModeHelper::builder().max_items(max_items).build();
+        let mut sut = CementationWalker::builder().max_items(max_items).build();
         sut.initialize(block_to_cement);
 
         let mut actual = Vec::new();
-        loop {
-            let step = sut.next_cementation(data_requester).unwrap();
-            match step {
-                CementationStep::Cement(details) => actual.push(details),
-                CementationStep::AlreadyCemented(_) => unreachable!(),
-                CementationStep::Done => break,
-            }
+        while let Some(section) = sut.next_cementation(data_requester) {
+            actual.push(section);
         }
 
         for (i, (act, exp)) in actual.iter().zip(expected).enumerate() {

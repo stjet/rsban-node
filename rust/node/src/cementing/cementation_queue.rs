@@ -56,18 +56,18 @@ impl CementationQueue {
             .sum()
     }
 
-    pub fn container_info(&self) -> WriteDetailsContainerInfo {
-        WriteDetailsContainerInfo {
+    pub fn container_info(&self) -> CementationQueueContainerInfo {
+        CementationQueueContainerInfo {
             queue_len: self.queue_len.clone(),
         }
     }
 }
 
-pub(crate) struct WriteDetailsContainerInfo {
+pub(crate) struct CementationQueueContainerInfo {
     queue_len: Arc<AtomicUsize>,
 }
 
-impl WriteDetailsContainerInfo {
+impl CementationQueueContainerInfo {
     pub fn collect(&self, name: String) -> ContainerInfoComponent {
         ContainerInfoComponent::Leaf(ContainerInfo {
             name,

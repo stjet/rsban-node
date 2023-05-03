@@ -24,16 +24,12 @@ package "Logic"{
         refresh_transaction()
     }
 
-    struct CementationStep{
-        is_done
-        already_cemented
-        cement
-    }
-
     class CementationWalker{
         initialize(hash)
         next_cementation()
     }
+
+    class BlockCementerLogic{}
 
 }
 
@@ -60,22 +56,21 @@ package "Application"{
     class LedgerAdapter
 }
 
-Ledger ..> BlockChainSection
+Ledger --> BlockChainSection
 
 BlockCementer --> Ledger
-BlockCementer --> WriteBatcher
-BlockCementer --> BatchWriteSizeManager
 BlockCementer --> LedgerAdapter
-BlockCementer --> CementationWalker
+BlockCementer --> BlockCementerLogic
 
-CementationWalker --> CementationStep: creates
+BlockCementerLogic --> CementationWalker
+BlockCementerLogic --> WriteBatcher
+
+CementationWalker --> BlockChainSection: creates
 CementationWalker --> LedgerDataRequester
-
-CementationStep --> BlockChainSection
 
 WriteBatcher --> BatchWriteSizeManager
 WriteBatcher --> LedgerDataRequester
-WriteBatcher --> BlockChainSection: creates
+WriteBatcher --> BlockChainSection
 
 CementationThread --> BlockCementer
 

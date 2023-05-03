@@ -18,7 +18,7 @@ use rsnano_ledger::{Ledger, WriteDatabaseQueue};
 
 use super::{
     AwaitingProcessingCountCallback, BatchWriteSizeManager, BlockCache, BlockCallback,
-    BlockCementer, BlockHashCallback, BlockQueue, BoundedModeContainerInfo,
+    BlockCementer, BlockCementerContainerInfo, BlockHashCallback, BlockQueue,
 };
 
 pub struct CementationThread {
@@ -33,7 +33,7 @@ pub struct CementationThread {
     thread: Option<JoinHandle<()>>,
     block_cache: Arc<BlockCache>,
 
-    container_info: BoundedModeContainerInfo,
+    container_info: BlockCementerContainerInfo,
 }
 
 impl CementationThread {
@@ -51,7 +51,7 @@ impl CementationThread {
         let stopped = Arc::new(AtomicBool::new(false));
         let channel = Arc::new(Mutex::new(CementationLoopChannel::new()));
 
-        let bounded_mode = BlockCementer::new(
+        let block_cementer = BlockCementer::new(
             ledger,
             write_database_queue.clone(),
             logger,
@@ -60,10 +60,10 @@ impl CementationThread {
             stopped.clone(),
         );
 
-        let batch_write_size = bounded_mode.batch_write_size().clone();
+        let batch_write_size = block_cementer.batch_write_size().clone();
 
-        let bounded_container_info = bounded_mode.container_info();
-        let block_cache = Arc::clone(bounded_mode.block_cache());
+        let bounded_container_info = block_cementer.container_info();
+        let block_cache = Arc::clone(block_cementer.block_cache());
         let condition = Arc::new(Condvar::new());
 
         let callbacks = CementCallbacks {
@@ -85,7 +85,7 @@ impl CementationThread {
                     let mut processor_loop = CementationLoop {
                         stopped,
                         condition,
-                        bounded_mode,
+                        block_cementer,
                         channel: &channel,
                         callbacks,
                     };
@@ -258,7 +258,7 @@ impl CementationLoopChannel {
 struct CementationLoop<'a> {
     stopped: Arc<AtomicBool>,
     condition: Arc<Condvar>,
-    bounded_mode: BlockCementer,
+    block_cementer: BlockCementer,
     channel: &'a Mutex<CementationLoopChannel>,
     callbacks: CementCallbacks,
 }
@@ -292,7 +292,7 @@ impl<'a> CementationLoop<'a> {
         mut channel: MutexGuard<'a, CementationLoopChannel>,
         block: Arc<BlockEnum>,
     ) -> MutexGuard<'a, CementationLoopChannel> {
-        if !self.bounded_mode.has_pending_writes() {
+        if !self.block_cementer.has_pending_writes() {
             channel.pending_writes.clear();
         }
 
@@ -300,7 +300,7 @@ impl<'a> CementationLoop<'a> {
         channel.current_block = Some(block.clone());
 
         drop(channel);
-        self.bounded_mode
+        self.block_cementer
             .process(&block, &mut self.callbacks.as_refs());
         self.channel.lock().unwrap()
     }
@@ -310,15 +310,15 @@ impl<'a> CementationLoop<'a> {
         &mut self,
         mut channel: MutexGuard<'a, CementationLoopChannel>,
     ) -> MutexGuard<'a, CementationLoopChannel> {
-        if self.bounded_mode.has_pending_writes() {
+        if self.block_cementer.has_pending_writes() {
             drop(channel);
-            self.bounded_mode
+            self.block_cementer
                 .write_pending_blocks(&mut self.callbacks.as_refs());
             channel = self.channel.lock().unwrap();
         }
 
         channel.clear_processed_blocks();
-        self.bounded_mode.clear_process_vars();
+        self.block_cementer.clear_process_vars();
 
         // A block could have been confirmed during the re-locking
         if channel.awaiting_processing.is_empty() {

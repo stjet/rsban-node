@@ -18,14 +18,14 @@ use accounts_confirmed_map::{
     AccountsConfirmedMap, AccountsConfirmedMapContainerInfo, ConfirmedInfo,
 };
 use batch_write_size_manager::BatchWriteSizeManager;
-use block_cementer::{BlockCementer, BoundedModeContainerInfo};
+use block_cementer::{BlockCementer, BlockCementerContainerInfo};
 use ledger_data_requester::{LedgerAdapter, LedgerDataRequester};
 
 #[cfg(test)]
 use ledger_data_requester::LedgerDataRequesterStub;
 
 use block_cache::BlockCache;
-use cementation_queue::{CementationQueue, WriteDetailsContainerInfo};
+use cementation_queue::{CementationQueue, CementationQueueContainerInfo};
 use cementation_thread::CementCallbackRefs;
 pub use cementation_thread::CementationThread;
 use write_batcher::WriteBatcher;

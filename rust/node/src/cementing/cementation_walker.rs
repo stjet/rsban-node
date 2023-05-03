@@ -370,7 +370,7 @@ impl CementationWalker {
         self.confirmation_heights.clear();
     }
 
-    pub fn clear_cached_account(&mut self, account: &Account, height: u64) {
+    pub fn cementation_written(&mut self, account: &Account, height: u64) {
         if let Some(found_info) = self.confirmation_heights.get(account) {
             if found_info.confirmed_height == height {
                 self.confirmation_heights.remove(account);

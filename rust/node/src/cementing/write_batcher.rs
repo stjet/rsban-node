@@ -277,6 +277,10 @@ impl WriteBatcher {
         (self.is_current_account_done() && self.cemented_blocks.len() > 0)
             || self.cemented_blocks.len() >= self.batch_write_size.current_size_with_tolerance()
     }
+
+    pub fn unpublished_cemented_blocks_len(&self) -> usize {
+        self.cemented_blocks.len()
+    }
 }
 
 #[cfg(test)]

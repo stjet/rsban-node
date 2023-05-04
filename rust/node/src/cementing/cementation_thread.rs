@@ -344,7 +344,7 @@ impl CementCallbacks {
     }
 }
 
-pub(super) struct CementCallbackRefs<'a> {
+pub(crate) struct CementCallbackRefs<'a> {
     pub block_cemented: &'a mut dyn FnMut(&Arc<BlockEnum>),
     pub block_already_cemented: &'a mut dyn FnMut(BlockHash),
     pub awaiting_processing_count: &'a mut dyn FnMut() -> u64,

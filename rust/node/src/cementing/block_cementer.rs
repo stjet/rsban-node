@@ -5,7 +5,7 @@ use std::{
 
 use rsnano_core::{
     utils::{ContainerInfoComponent, Logger},
-    Account, BlockChainSection, BlockEnum, Epochs,
+    BlockChainSection, BlockEnum, Epochs,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 
@@ -19,7 +19,7 @@ pub(super) struct BlockCementer {
     stopped: Arc<AtomicBool>,
 
     processing_timer: Instant,
-    cemented_batch_timer: Instant,
+    write_txn_started: Instant,
     write_database_queue: Arc<WriteDatabaseQueue>,
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
@@ -49,7 +49,7 @@ impl BlockCementer {
             ledger,
             stopped,
             processing_timer: Instant::now(),
-            cemented_batch_timer: Instant::now(),
+            write_txn_started: Instant::now(),
             logic,
         }
     }
@@ -141,7 +141,7 @@ impl BlockCementer {
     /// This only writes to the confirmation_height table and is the only place to do so in a single process
     fn flush(&mut self, mut write_guard: WriteGuard, callbacks: &mut CementCallbackRefs) {
         let mut txn = self.ledger.store.tx_begin_write();
-        self.start_batch_timer();
+        self.write_txn_started = Instant::now();
 
         // Cement all pending entries, each entry is specific to an account and contains the least amount
         // of blocks to retain consistent cementing across all account chains to genesis.
@@ -151,59 +151,29 @@ impl BlockCementer {
         {
             self.ledger
                 .write_confirmation_height(txn.as_mut(), &section_to_cement);
+
             txn.commit();
             write_guard.release();
+            let time_spent_cementing = self.write_txn_started.elapsed();
 
-            let time_spent_cementing = self.cemented_batch_timer.elapsed();
             self.log_cemented_blocks(time_spent_cementing, section_to_cement.block_count());
 
             self.logic
                 .cementation_written(section_to_cement, time_spent_cementing, callbacks);
 
             // Only aquire transaction if there are blocks left
-            if !self.logic.is_flush_done() {
+            if !self.logic.is_done_writing() {
                 write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
                 txn.renew();
+                self.write_txn_started = Instant::now();
             }
-
-            self.start_batch_timer();
         }
-        drop(txn);
-
-        let unpublished_count = self.logic.write_batcher.unpublished_cemented_blocks();
-        self.stop_batch_timer(unpublished_count);
-
-        if unpublished_count > 0 {
-            write_guard.release();
-            self.logic
-                .write_batcher
-                .publish_cemented_blocks(callbacks.block_cemented);
-        }
-
-        self.processing_timer = Instant::now();
     }
 
     pub fn write_pending_blocks(&mut self, callbacks: &mut CementCallbackRefs) {
         if self.logic.write_batcher.has_pending_writes() {
             self.force_flush(callbacks);
         }
-    }
-
-    fn start_batch_timer(&mut self) {
-        self.cemented_batch_timer = Instant::now();
-    }
-
-    fn stop_batch_timer(&mut self, cemented_count: u64) {
-        let time_spent_cementing = self.cemented_batch_timer.elapsed();
-
-        if time_spent_cementing > Duration::from_millis(50) {
-            self.log_cemented_blocks(time_spent_cementing, cemented_count);
-        }
-
-        self.logic
-            .write_batcher
-            .batch_write_size
-            .adjust_size(time_spent_cementing);
     }
 
     fn log_cemented_blocks(&self, time_spent_cementing: Duration, cemented_count: u64) {
@@ -329,7 +299,7 @@ impl BlockCementorLogic {
         self.cementation_walker.is_done()
     }
 
-    pub fn is_flush_done(&self) -> bool {
+    pub fn is_done_writing(&self) -> bool {
         self.write_batcher.is_done()
     }
 
@@ -350,15 +320,15 @@ impl BlockCementorLogic {
         time_spent_cementing: Duration,
         callbacks: &mut CementCallbackRefs,
     ) {
+        self.cementation_walker
+            .cementation_written(&section_to_cement.account, section_to_cement.top_height);
+
         self.write_batcher
             .batch_write_size
             .adjust_size(time_spent_cementing);
 
         self.write_batcher
             .publish_cemented_blocks(callbacks.block_cemented);
-
-        self.cementation_walker
-            .cementation_written(&section_to_cement.account, section_to_cement.top_height);
     }
 
     pub(crate) fn container_info(&self) -> BlockCementerContainerInfo {

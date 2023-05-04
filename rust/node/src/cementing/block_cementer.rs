@@ -101,7 +101,7 @@ impl BlockCementer {
             self.logic.write_batcher.enqueue(section);
             if self.logic.should_flush(
                 callbacks,
-                self.logic.is_done(),
+                self.logic.is_current_block_done(),
                 self.processing_timer.elapsed(),
             ) {
                 if self.logic.is_write_queue_full() {
@@ -111,7 +111,7 @@ impl BlockCementer {
                 }
             }
 
-            if !self.logic.is_done() {
+            if !self.logic.is_current_block_done() {
                 ledger_adapter.refresh_transaction();
             }
         }
@@ -155,26 +155,13 @@ impl BlockCementer {
             write_guard.release();
 
             let time_spent_cementing = self.cemented_batch_timer.elapsed();
-
-            self.log_cemented_blocks(
-                time_spent_cementing,
-                self.logic.write_batcher.unpublished_cemented_blocks(),
-            );
+            self.log_cemented_blocks(time_spent_cementing, section_to_cement.block_count());
 
             self.logic
-                .write_batcher
-                .batch_write_size
-                .adjust_size(time_spent_cementing);
-
-            self.logic
-                .write_batcher
-                .publish_cemented_blocks(callbacks.block_cemented);
-
-            self.logic
-                .cementation_written(&section_to_cement.account, section_to_cement.top_height);
+                .cementation_written(section_to_cement, time_spent_cementing, callbacks);
 
             // Only aquire transaction if there are blocks left
-            if !self.logic.write_batcher.is_done() {
+            if !self.logic.is_flush_done() {
                 write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
                 txn.renew();
             }
@@ -206,7 +193,7 @@ impl BlockCementer {
         self.cemented_batch_timer = Instant::now();
     }
 
-    fn stop_batch_timer(&mut self, cemented_count: usize) {
+    fn stop_batch_timer(&mut self, cemented_count: u64) {
         let time_spent_cementing = self.cemented_batch_timer.elapsed();
 
         if time_spent_cementing > Duration::from_millis(50) {
@@ -219,7 +206,7 @@ impl BlockCementer {
             .adjust_size(time_spent_cementing);
     }
 
-    fn log_cemented_blocks(&self, time_spent_cementing: Duration, cemented_count: usize) {
+    fn log_cemented_blocks(&self, time_spent_cementing: Duration, cemented_count: u64) {
         if self.enable_timing_logging {
             self.logger.always_log(&format!(
                 "Cemented {} blocks in {} ms (bounded processor)",
@@ -338,8 +325,12 @@ impl BlockCementorLogic {
         should_flush && !self.write_batcher.has_pending_writes()
     }
 
-    pub fn is_done(&self) -> bool {
+    pub fn is_current_block_done(&self) -> bool {
         self.cementation_walker.is_done()
+    }
+
+    pub fn is_flush_done(&self) -> bool {
+        self.write_batcher.is_done()
     }
 
     pub fn was_block_already_cemented(&self) -> bool {
@@ -353,8 +344,21 @@ impl BlockCementorLogic {
         self.write_batcher.next_write(data_requester)
     }
 
-    pub fn cementation_written(&mut self, account: &Account, height: u64) {
-        self.cementation_walker.cementation_written(account, height);
+    fn cementation_written(
+        &mut self,
+        section_to_cement: BlockChainSection,
+        time_spent_cementing: Duration,
+        callbacks: &mut CementCallbackRefs,
+    ) {
+        self.write_batcher
+            .batch_write_size
+            .adjust_size(time_spent_cementing);
+
+        self.write_batcher
+            .publish_cemented_blocks(callbacks.block_cemented);
+
+        self.cementation_walker
+            .cementation_written(&section_to_cement.account, section_to_cement.top_height);
     }
 
     pub(crate) fn container_info(&self) -> BlockCementerContainerInfo {

@@ -133,8 +133,8 @@ impl WriteBatcher {
         self.is_current_account_done() && self.pending_writes.is_empty()
     }
 
-    pub fn unpublished_cemented_blocks(&self) -> usize {
-        self.cemented_blocks.len()
+    pub fn unpublished_cemented_blocks(&self) -> u64 {
+        self.cemented_blocks.len() as u64
     }
 
     pub fn publish_cemented_blocks(&mut self, block_cemented: &mut dyn FnMut(&Arc<BlockEnum>)) {

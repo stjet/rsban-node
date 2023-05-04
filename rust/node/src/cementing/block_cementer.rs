@@ -5,10 +5,9 @@ use std::{
 
 use rsnano_core::{
     utils::{ContainerInfoComponent, Logger},
-    BlockChainSection, BlockEnum, Epochs,
+    Account, BlockChainSection, BlockEnum, Epochs,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
-use rsnano_store_traits::WriteTransaction;
 
 use super::{
     block_cache::BlockCache, cementation_walker::CementationWalker,
@@ -77,13 +76,21 @@ impl BlockCementer {
         let mut ledger_adapter = LedgerAdapter::new(txn.txn_mut(), &ledger_clone);
 
         //-----
-        // plan: while let Some(next) = self.logic.get_next() {
-        //   flush(next);
+        // plan:
+        // match self.logic.enqueue_block(original_block) {
+        //   CementerDecision::Hold => {},
+        //   CementerDecision::TryFlush => {},
+        //   CementerDecision::ForceFlush => {
+        //     start_txn();
+        //     while let Some(section) = self.logic.next_write(){
+        //        write(section)
+        //}
+        //   }
         // }
 
-        if !self.logic.is_initialized {
+        if !self.logic.is_processing_block {
             self.logic.initialize(original_block.clone());
-            self.logic.is_initialized = true;
+            self.logic.is_processing_block = true;
         }
 
         while let Some(section) = self
@@ -97,7 +104,11 @@ impl BlockCementer {
                 self.logic.is_done(),
                 self.processing_timer.elapsed(),
             ) {
-                self.try_flush(callbacks, self.logic.is_write_queue_full());
+                if self.logic.is_write_queue_full() {
+                    self.force_flush(callbacks)
+                } else {
+                    self.try_flush(callbacks);
+                }
             }
 
             if !self.logic.is_done() {
@@ -109,13 +120,26 @@ impl BlockCementer {
             (callbacks.block_already_cemented)(original_block.hash());
         }
 
-        self.logic.is_initialized = false;
+        self.logic.is_processing_block = false;
     }
 
-    fn try_flush(&mut self, callbacks: &mut CementCallbackRefs, force_flush: bool) {
-        let Some(mut write_guard) = self.get_write_guard(force_flush) else { return; };
+    /// If nothing is currently using the database write lock then write the cemented pending blocks otherwise continue iterating
+    fn try_flush(&mut self, callbacks: &mut CementCallbackRefs) {
+        if let Some(write_guard) = self
+            .write_database_queue
+            .try_lock(Writer::ConfirmationHeight)
+        {
+            self.flush(write_guard, callbacks);
+        }
+    }
 
-        // This only writes to the confirmation_height table and is the only place to do so in a single process
+    fn force_flush(&mut self, callbacks: &mut CementCallbackRefs) {
+        let write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
+        self.flush(write_guard, callbacks);
+    }
+
+    /// This only writes to the confirmation_height table and is the only place to do so in a single process
+    fn flush(&mut self, mut write_guard: WriteGuard, callbacks: &mut CementCallbackRefs) {
         let mut txn = self.ledger.store.tx_begin_write();
         self.start_batch_timer();
 
@@ -123,18 +147,39 @@ impl BlockCementer {
         // of blocks to retain consistent cementing across all account chains to genesis.
         while let Some(section_to_cement) = self
             .logic
-            .write_batcher
             .next_write(&LedgerAdapter::new(txn.txn_mut(), &self.ledger))
         {
-            self.flush(
-                txn.as_mut(),
-                &section_to_cement,
-                &mut write_guard,
-                callbacks,
+            self.ledger
+                .write_confirmation_height(txn.as_mut(), &section_to_cement);
+            txn.commit();
+            write_guard.release();
+
+            let time_spent_cementing = self.cemented_batch_timer.elapsed();
+
+            self.log_cemented_blocks(
+                time_spent_cementing,
+                self.logic.write_batcher.unpublished_cemented_blocks(),
             );
+
             self.logic
-                .cementation_walker
+                .write_batcher
+                .batch_write_size
+                .adjust_size(time_spent_cementing);
+
+            self.logic
+                .write_batcher
+                .publish_cemented_blocks(callbacks.block_cemented);
+
+            self.logic
                 .cementation_written(&section_to_cement.account, section_to_cement.top_height);
+
+            // Only aquire transaction if there are blocks left
+            if !self.logic.write_batcher.is_done() {
+                write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
+                txn.renew();
+            }
+
+            self.start_batch_timer();
         }
         drop(txn);
 
@@ -151,20 +196,9 @@ impl BlockCementer {
         self.processing_timer = Instant::now();
     }
 
-    fn get_write_guard(&self, should_block: bool) -> Option<WriteGuard> {
-        if should_block {
-            // Block and wait until we have DB access. We must flush because the queue is full.
-            Some(self.write_database_queue.wait(Writer::ConfirmationHeight))
-        } else {
-            // If nothing is currently using the database write lock then write the cemented pending blocks otherwise continue iterating
-            self.write_database_queue
-                .try_lock(Writer::ConfirmationHeight)
-        }
-    }
-
     pub fn write_pending_blocks(&mut self, callbacks: &mut CementCallbackRefs) {
         if self.logic.write_batcher.has_pending_writes() {
-            self.try_flush(callbacks, true);
+            self.force_flush(callbacks);
         }
     }
 
@@ -193,40 +227,6 @@ impl BlockCementer {
                 time_spent_cementing.as_millis()
             ));
         }
-    }
-
-    fn flush(
-        &mut self,
-        txn: &mut dyn WriteTransaction,
-        update: &BlockChainSection,
-        scoped_write_guard: &mut WriteGuard,
-        callbacks: &mut CementCallbackRefs,
-    ) {
-        self.ledger.write_confirmation_height(txn, update);
-
-        let time_spent_cementing = self.cemented_batch_timer.elapsed();
-        txn.commit();
-
-        self.log_cemented_blocks(
-            time_spent_cementing,
-            self.logic.write_batcher.unpublished_cemented_blocks(),
-        );
-        self.logic
-            .write_batcher
-            .batch_write_size
-            .adjust_size(time_spent_cementing);
-        scoped_write_guard.release();
-        self.logic
-            .write_batcher
-            .publish_cemented_blocks(callbacks.block_cemented);
-
-        // Only aquire transaction if there are blocks left
-        if !self.logic.write_batcher.is_done() {
-            *scoped_write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
-            txn.renew();
-        }
-
-        self.start_batch_timer();
     }
 
     pub fn clear_process_vars(&mut self) {
@@ -265,7 +265,7 @@ pub(crate) struct BlockCementorLogic {
     cementation_walker: CementationWalker,
     write_batcher: WriteBatcher,
     minimum_batch_separation: Duration,
-    is_initialized: bool,
+    is_processing_block: bool,
 }
 
 impl BlockCementorLogic {
@@ -283,7 +283,7 @@ impl BlockCementorLogic {
             cementation_walker,
             write_batcher: Default::default(),
             minimum_batch_separation,
-            is_initialized: false,
+            is_processing_block: false,
         }
     }
 
@@ -344,6 +344,17 @@ impl BlockCementorLogic {
 
     pub fn was_block_already_cemented(&self) -> bool {
         self.cementation_walker.num_accounts_walked() == 0
+    }
+
+    pub fn next_write<T: LedgerDataRequester>(
+        &mut self,
+        data_requester: &T,
+    ) -> Option<BlockChainSection> {
+        self.write_batcher.next_write(data_requester)
+    }
+
+    pub fn cementation_written(&mut self, account: &Account, height: u64) {
+        self.cementation_walker.cementation_written(account, height);
     }
 
     pub(crate) fn container_info(&self) -> BlockCementerContainerInfo {

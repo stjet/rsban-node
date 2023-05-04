@@ -660,38 +660,38 @@ impl Ledger {
     pub fn write_confirmation_height(
         &self,
         txn: &mut dyn WriteTransaction,
-        update_height: &BlockChainSection,
+        section: &BlockChainSection,
     ) {
         #[cfg(debug_assertions)]
         {
             let conf_height = self
                 .store
                 .confirmation_height()
-                .get(txn.txn(), &update_height.account)
+                .get(txn.txn(), &section.account)
                 .map(|i| i.height)
                 .unwrap_or_default();
             let block = self
                 .store
                 .block()
-                .get(txn.txn(), &update_height.top_hash)
+                .get(txn.txn(), &section.top_hash)
                 .unwrap();
             debug_assert_eq!(
                 block.sideband().unwrap().height,
-                conf_height + update_height.block_count()
+                conf_height + section.block_count()
             );
         }
 
         self.store.confirmation_height().put(
             txn,
-            &update_height.account,
-            &ConfirmationHeightInfo::new(update_height.top_height, update_height.top_hash),
+            &section.account,
+            &ConfirmationHeightInfo::new(section.top_height, section.top_hash),
         );
 
         self.cache
             .cemented_count
-            .fetch_add(update_height.block_count(), Ordering::SeqCst);
+            .fetch_add(section.block_count(), Ordering::SeqCst);
 
-        self.observer.blocks_cemented(update_height.block_count());
+        self.observer.blocks_cemented(section.block_count());
     }
 
     pub fn dependent_blocks(

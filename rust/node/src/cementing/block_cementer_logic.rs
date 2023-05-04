@@ -36,6 +36,12 @@ pub(crate) struct BlockCementorLogic {
     minimum_batch_separation: Duration,
 }
 
+pub(crate) enum FlushDecision {
+    DontFlush,
+    TryFlush(bool),
+    ForceFlush(bool),
+}
+
 impl BlockCementorLogic {
     pub fn new(
         epochs: Epochs,
@@ -54,12 +60,43 @@ impl BlockCementorLogic {
         }
     }
 
-    pub fn initialize(&mut self, original_block: BlockEnum) {
-        if !self.write_batcher.has_pending_writes() {
-            self.clear_cached_accounts();
-        }
-
+    pub fn enqueue_block(&mut self, original_block: BlockEnum) {
         self.cementation_walker.initialize(original_block);
+    }
+
+    pub fn process_current_block<T: LedgerDataRequester>(
+        &mut self,
+        data_requester: &mut T,
+        callbacks: &mut CementCallbackRefs,
+    ) -> bool {
+        if let Some(section) = self.cementation_walker.next_cementation(data_requester) {
+            self.write_batcher.enqueue(section);
+            true
+        } else {
+            self.cementation_walker
+                .notify_block_already_cemented(callbacks.block_already_cemented);
+            false
+        }
+    }
+
+    pub fn get_flush_decision(
+        &self,
+        awaiting_processing: u64,
+        processing_time: Duration,
+    ) -> FlushDecision {
+        if self.should_flush(
+            awaiting_processing,
+            self.cementation_walker.is_done(),
+            processing_time,
+        ) {
+            if self.is_write_queue_full() {
+                FlushDecision::ForceFlush(!self.cementation_walker.is_done())
+            } else {
+                FlushDecision::TryFlush(!self.cementation_walker.is_done())
+            }
+        } else {
+            FlushDecision::DontFlush
+        }
     }
 
     pub fn block_cache(&self) -> &Arc<BlockCache> {
@@ -87,9 +124,9 @@ impl BlockCementorLogic {
         processing_time >= self.minimum_batch_separation
     }
 
-    pub(crate) fn should_flush(
+    fn should_flush(
         &self,
-        callbacks: &mut CementCallbackRefs,
+        awaiting_processing: u64,
         current_process_done: bool,
         processing_time: Duration,
     ) -> bool {
@@ -97,20 +134,11 @@ impl BlockCementorLogic {
 
         // When there are a lot of pending confirmation height blocks, it is more efficient to
         // bulk some of them up to enable better write performance which becomes the bottleneck.
-        let awaiting_processing = (callbacks.awaiting_processing_count)();
         let is_done_processing = current_process_done
             && (awaiting_processing == 0 || self.is_min_processing_time_exceeded(processing_time));
 
         let should_flush = is_done_processing || is_batch_full || self.is_write_queue_full();
         should_flush && !self.write_batcher.has_pending_writes()
-    }
-
-    pub fn is_current_block_done(&self) -> bool {
-        self.cementation_walker.is_done()
-    }
-
-    pub fn was_block_already_cemented(&self) -> bool {
-        self.cementation_walker.num_accounts_walked() == 0
     }
 
     pub fn next_write<T: LedgerDataRequester>(
@@ -120,12 +148,12 @@ impl BlockCementorLogic {
         self.write_batcher.next_write(data_requester)
     }
 
-    pub fn cementation_written(&mut self, section_to_cement: &BlockChainSection) {
+    pub fn section_cemented(&mut self, section_to_cement: &BlockChainSection) {
         self.cementation_walker
-            .cementation_written(&section_to_cement.account, section_to_cement.top_height);
+            .section_cemented(&section_to_cement.account, section_to_cement.top_height);
     }
 
-    pub fn batch_written(
+    pub fn batch_completed(
         &mut self,
         time_spent_cementing: Duration,
         callbacks: &mut CementCallbackRefs,

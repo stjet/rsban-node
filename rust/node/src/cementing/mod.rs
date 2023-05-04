@@ -26,7 +26,7 @@ use ledger_data_requester::{LedgerAdapter, LedgerDataRequester};
 use ledger_data_requester::LedgerDataRequesterStub;
 
 use block_cache::BlockCache;
-use block_cementer_logic::{BlockCementerContainerInfo, BlockCementorLogic};
+use block_cementer_logic::{BlockCementerContainerInfo, BlockCementorLogic, FlushDecision};
 use cementation_queue::{CementationQueue, CementationQueueContainerInfo};
 use cementation_thread::CementCallbackRefs;
 pub use cementation_thread::CementationThread;

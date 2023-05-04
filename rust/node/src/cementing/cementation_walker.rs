@@ -370,7 +370,7 @@ impl CementationWalker {
         self.confirmation_heights.clear();
     }
 
-    pub fn cementation_written(&mut self, account: &Account, height: u64) {
+    pub fn section_cemented(&mut self, account: &Account, height: u64) {
         if let Some(found_info) = self.confirmation_heights.get(account) {
             if found_info.confirmed_height == height {
                 self.confirmation_heights.remove(account);
@@ -420,8 +420,10 @@ impl CementationWalker {
             .expect("could not load block")
     }
 
-    pub(crate) fn num_accounts_walked(&self) -> usize {
-        self.chains_encountered
+    pub(crate) fn notify_block_already_cemented(&self, callback: &mut dyn FnMut(BlockHash)) {
+        if self.chains_encountered == 0 {
+            callback(self.original_block.hash());
+        }
     }
 }
 

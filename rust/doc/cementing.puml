@@ -29,8 +29,20 @@ package "Logic"{
         next_cementation()
     }
 
-    class BlockCementerLogic{}
+    class BlockCementerLogic{
+        enqueue_block(block)
+        process_current_block(data_requester, callbacks): bool
+        get_flush_decision()
+        next_write(data_requester): BlockChainSection
+        section_cemented(section)
+        batch_completed(callbacks)
+    }
 
+    enum FlushDecision{
+        DontFlush
+        TryFlush
+        ForceFlush
+    }
 }
 
 package "Values"{
@@ -64,6 +76,7 @@ BlockCementer --> BlockCementerLogic
 
 BlockCementerLogic --> CementationWalker
 BlockCementerLogic --> WriteBatcher
+BlockCementerLogic --> FlushDecision
 
 CementationWalker --> BlockChainSection: creates
 CementationWalker --> LedgerDataRequester

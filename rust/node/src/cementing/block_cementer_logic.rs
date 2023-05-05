@@ -84,7 +84,6 @@ impl BlockCementerLogic {
     }
 
     pub fn set_current_block(&mut self, original_block: BlockEnum) {
-        debug_assert!(self.cementation_walker.is_done());
         self.cementation_walker.initialize(original_block);
     }
 

@@ -5,7 +5,6 @@ use std::sync::{
 
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{Account, BlockEnum, BlockHash, ConfirmationHeightInfo, Epochs};
-use rsnano_ledger::DEV_GENESIS;
 
 use super::{
     AccountsConfirmedMap, AccountsConfirmedMapContainerInfo, BlockCache, BlockChainSection,
@@ -129,7 +128,8 @@ pub(crate) struct CementationWalker {
     chain_stack: BoundedVecDeque<ChainIteration>,
     chains_encountered: usize,
     confirmation_heights: AccountsConfirmedMap,
-    original_block: BlockEnum,
+    original_block: Option<BlockEnum>,
+    original_block_hash: BlockHash,
     checkpoints: BoundedVecDeque<BlockHash>,
     latest_cementation: BlockHash,
     block_read_count: u64,
@@ -144,7 +144,8 @@ impl CementationWalker {
             chain_stack: BoundedVecDeque::new(max_items),
             confirmation_heights: AccountsConfirmedMap::new(),
             chains_encountered: 0,
-            original_block: DEV_GENESIS.read().unwrap().clone(),
+            original_block: None,
+            original_block_hash: BlockHash::zero(),
             checkpoints: BoundedVecDeque::new(max_items),
             latest_cementation: BlockHash::zero(),
             block_read_count: 0,
@@ -165,7 +166,8 @@ impl CementationWalker {
         self.chain_stack.clear();
         self.chains_encountered = 0;
         self.checkpoints.clear();
-        self.original_block = original_block.clone();
+        self.original_block_hash = original_block.hash();
+        self.original_block = Some(original_block);
         self.block_read_count = 0;
         self.block_cache.clear();
     }
@@ -210,7 +212,7 @@ impl CementationWalker {
         let top_hash = self
             .checkpoints
             .pop_back()
-            .unwrap_or(self.original_block.hash());
+            .unwrap_or(self.original_block_hash);
         let block = self.get_block(&top_hash, data_requester);
         self.enqueue_for_cementation(&block, data_requester)
     }
@@ -349,8 +351,7 @@ impl CementationWalker {
     }
 
     pub fn is_done(&self) -> bool {
-        self.latest_cementation == self.original_block.hash()
-            || self.stopped.load(Ordering::Relaxed)
+        self.latest_cementation == self.original_block_hash || self.stopped.load(Ordering::Relaxed)
     }
 
     fn get_corresponding_send_block<T: LedgerDataRequester>(
@@ -410,8 +411,8 @@ impl CementationWalker {
         block_hash: &BlockHash,
         data_requester: &T,
     ) -> BlockEnum {
-        if *block_hash == self.original_block.hash() {
-            return self.original_block.clone();
+        if *block_hash == self.original_block_hash {
+            return self.original_block.as_ref().unwrap().clone();
         }
         self.block_read_count += 1;
 
@@ -422,7 +423,7 @@ impl CementationWalker {
 
     pub(crate) fn notify_block_already_cemented(&self, callback: &mut dyn FnMut(BlockHash)) {
         if self.chains_encountered == 0 {
-            callback(self.original_block.hash());
+            callback(self.original_block_hash);
         }
     }
 }
@@ -476,13 +477,7 @@ mod tests {
         assert_write_steps(
             &mut data_requester,
             genesis_chain.latest_block().clone(),
-            &[BlockChainSection {
-                account: genesis_chain.account(),
-                bottom_height: 2,
-                bottom_hash: genesis_chain.frontier(),
-                top_height: 2,
-                top_hash: genesis_chain.frontier(),
-            }],
+            &[genesis_chain.frontier_section()],
         );
 
         assert_eq!(data_requester.blocks_loaded(), 0);
@@ -495,20 +490,13 @@ mod tests {
             .add_genesis_block()
             .legacy_send()
             .legacy_send();
-        let first_send = genesis_chain.blocks()[1].clone();
         let second_send = genesis_chain.blocks()[2].clone();
         data_requester.add_uncemented(&genesis_chain);
 
         assert_write_steps(
             &mut data_requester,
-            second_send.clone(),
-            &[BlockChainSection {
-                account: genesis_chain.account(),
-                bottom_height: 2,
-                bottom_hash: first_send.hash(),
-                top_height: 3,
-                top_hash: second_send.hash(),
-            }],
+            second_send,
+            &[genesis_chain.section(2, 3)],
         );
         assert_eq!(data_requester.blocks_loaded(), 1);
         assert_eq!(data_requester.confirmation_heights_loaded(), 1);
@@ -527,13 +515,7 @@ mod tests {
         assert_write_steps(
             &mut data_requester,
             genesis_chain.latest_block().clone(),
-            &[BlockChainSection {
-                account: genesis_chain.account(),
-                bottom_height: 2,
-                bottom_hash: genesis_chain.blocks()[1].hash(),
-                top_height: 4,
-                top_hash: genesis_chain.frontier(),
-            }],
+            &[genesis_chain.section(2, 4)],
         );
         assert_eq!(data_requester.blocks_loaded(), 3);
         assert_eq!(data_requester.confirmation_heights_loaded(), 1);
@@ -553,13 +535,7 @@ mod tests {
         assert_write_steps(
             &mut data_requester,
             dest_chain.latest_block().clone(),
-            &[BlockChainSection {
-                account: dest_chain.account(),
-                bottom_height: 1,
-                bottom_hash: dest_chain.frontier(),
-                top_height: 1,
-                top_hash: dest_chain.frontier(),
-            }],
+            &[dest_chain.frontier_section()],
         );
     }
 
@@ -575,13 +551,7 @@ mod tests {
         assert_write_steps(
             &mut data_requester,
             dest_chain.latest_block().clone(),
-            &[BlockChainSection {
-                account: dest_chain.account(),
-                bottom_height: 1,
-                bottom_hash: dest_chain.open(),
-                top_height: 2,
-                top_hash: dest_chain.frontier(),
-            }],
+            &[dest_chain.section(1, 2)],
         );
     }
 
@@ -598,13 +568,7 @@ mod tests {
         assert_write_steps(
             &mut data_requester,
             dest_chain.latest_block().clone(),
-            &[BlockChainSection {
-                account: dest_chain.account(),
-                bottom_height: 1,
-                bottom_hash: dest_chain.open(),
-                top_height: 3,
-                top_hash: dest_chain.frontier(),
-            }],
+            &[dest_chain.section(1, 3)],
         );
     }
 
@@ -626,13 +590,7 @@ mod tests {
         assert_write_steps(
             &mut data_requester,
             dest_chain.latest_block().clone(),
-            &[BlockChainSection {
-                account: dest_chain.account(),
-                bottom_height: 2,
-                bottom_hash: dest_chain.frontier(),
-                top_height: 2,
-                top_hash: dest_chain.frontier(),
-            }],
+            &[dest_chain.frontier_section()],
         );
     }
     #[test]
@@ -655,22 +613,7 @@ mod tests {
         assert_write_steps(
             &mut data_requester,
             dest_2.latest_block().clone(),
-            &[
-                BlockChainSection {
-                    account: dest_1.account(),
-                    bottom_height: 1,
-                    bottom_hash: dest_1.open(),
-                    top_height: 4,
-                    top_hash: dest_1.frontier(),
-                },
-                BlockChainSection {
-                    account: dest_2.account(),
-                    bottom_height: 1,
-                    bottom_hash: dest_2.open(),
-                    top_height: 4,
-                    top_hash: dest_2.frontier(),
-                },
-            ],
+            &[dest_1.section(1, 4), dest_2.section(1, 4)],
         );
     }
 
@@ -687,13 +630,7 @@ mod tests {
         assert_write_steps(
             &mut data_requester,
             chain.latest_block().clone(),
-            &[BlockChainSection {
-                account: chain.account(),
-                bottom_height: 2,
-                bottom_hash: send_block.hash(),
-                top_height: 3,
-                top_hash: chain.frontier(),
-            }],
+            &[chain.section(2, 3)],
         );
     }
 
@@ -709,13 +646,7 @@ mod tests {
         assert_write_steps(
             &mut data_requester,
             dest_chain.latest_block().clone(),
-            &[BlockChainSection {
-                account: dest_chain.account(),
-                bottom_height: 1,
-                bottom_hash: dest_chain.open(),
-                top_height: 2,
-                top_hash: dest_chain.frontier(),
-            }],
+            &[dest_chain.section(1, 2)],
         );
     }
 
@@ -753,41 +684,11 @@ mod tests {
             &mut data_requester,
             account2.latest_block().clone(),
             &[
-                BlockChainSection {
-                    account: account1.account(),
-                    bottom_height: 1,
-                    bottom_hash: account1.open(),
-                    top_height: 3,
-                    top_hash: account1.blocks()[2].hash(),
-                },
-                BlockChainSection {
-                    account: account2.account(),
-                    bottom_height: 1,
-                    bottom_hash: account2.open(),
-                    top_height: 2,
-                    top_hash: account2.blocks()[1].hash(),
-                },
-                BlockChainSection {
-                    account: account3.account(),
-                    bottom_height: 1,
-                    bottom_hash: account3.open(),
-                    top_height: 3,
-                    top_hash: account3.frontier(),
-                },
-                BlockChainSection {
-                    account: account1.account(),
-                    bottom_height: 4,
-                    bottom_hash: account1.blocks()[3].hash(),
-                    top_height: 6,
-                    top_hash: account1.frontier(),
-                },
-                BlockChainSection {
-                    account: account2.account(),
-                    bottom_height: 3,
-                    bottom_hash: account2.frontier(),
-                    top_height: 3,
-                    top_hash: account2.frontier(),
-                },
+                account1.section(1, 3),
+                account2.section(1, 2),
+                account3.section(1, 3),
+                account1.section(4, 6),
+                account2.section(3, 3),
             ],
         );
         assert_eq!(data_requester.blocks_loaded(), 12);
@@ -843,48 +744,12 @@ mod tests {
             &mut data_requester,
             account6.latest_block().clone(),
             &[
-                BlockChainSection {
-                    account: account1.account(),
-                    bottom_height: 1,
-                    bottom_hash: account1.open(),
-                    top_height: 2,
-                    top_hash: account1.frontier(),
-                },
-                BlockChainSection {
-                    account: account2.account(),
-                    bottom_height: 1,
-                    bottom_hash: account2.open(),
-                    top_height: 2,
-                    top_hash: account2.frontier(),
-                },
-                BlockChainSection {
-                    account: account3.account(),
-                    bottom_height: 1,
-                    bottom_hash: account3.open(),
-                    top_height: 2,
-                    top_hash: account3.frontier(),
-                },
-                BlockChainSection {
-                    account: account4.account(),
-                    bottom_height: 1,
-                    bottom_hash: account4.open(),
-                    top_height: 2,
-                    top_hash: account4.frontier(),
-                },
-                BlockChainSection {
-                    account: account5.account(),
-                    bottom_height: 1,
-                    bottom_hash: account5.open(),
-                    top_height: 2,
-                    top_hash: account5.frontier(),
-                },
-                BlockChainSection {
-                    account: account6.account(),
-                    bottom_height: 1,
-                    bottom_hash: account6.open(),
-                    top_height: 2,
-                    top_hash: account6.frontier(),
-                },
+                account1.section(1, 2),
+                account2.section(1, 2),
+                account3.section(1, 2),
+                account4.section(1, 2),
+                account5.section(1, 2),
+                account6.section(1, 2),
             ],
         );
 
@@ -922,13 +787,7 @@ mod tests {
             assert_write_steps(
                 &mut data_requester,
                 dest_chain.latest_block().clone(),
-                &[BlockChainSection {
-                    account: dest_chain.account(),
-                    bottom_height: 1,
-                    bottom_hash: dest_chain.frontier(),
-                    top_height: 1,
-                    top_hash: dest_chain.frontier(),
-                }],
+                &[dest_chain.frontier_section()],
             );
         }
     }

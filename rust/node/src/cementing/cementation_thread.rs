@@ -344,6 +344,16 @@ impl CementCallbacks {
     }
 }
 
+impl Default for CementCallbacks {
+    fn default() -> Self {
+        Self {
+            block_cemented: Box::new(|_block_hash| {}),
+            block_already_cemented: Box::new(|_block_hash| {}),
+            awaiting_processing_count: Box::new(|| 0),
+        }
+    }
+}
+
 pub(crate) struct CementCallbackRefs<'a> {
     pub block_cemented: &'a mut dyn FnMut(&Arc<BlockEnum>),
     pub block_already_cemented: &'a mut dyn FnMut(BlockHash),

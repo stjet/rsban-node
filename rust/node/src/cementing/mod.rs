@@ -26,10 +26,12 @@ use ledger_data_requester::{LedgerAdapter, LedgerDataRequester};
 use ledger_data_requester::LedgerDataRequesterStub;
 
 use block_cache::BlockCache;
-use block_cementer_logic::{BlockCementerContainerInfo, BlockCementorLogic, FlushDecision};
+use block_cementer_logic::{
+    BlockCementerContainerInfo, BlockCementerLogic, BlockCementerLogicOptions, FlushDecision,
+};
 use cementation_queue::{CementationQueue, CementationQueueContainerInfo};
-use cementation_thread::CementCallbackRefs;
 pub use cementation_thread::CementationThread;
+use cementation_thread::{CementCallbackRefs, CementCallbacks};
 use cementation_walker::CementationWalker;
 use write_batcher::WriteBatcher;
 

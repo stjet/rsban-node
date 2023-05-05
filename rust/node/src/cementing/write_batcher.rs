@@ -305,16 +305,8 @@ mod tests {
         let dest_chain = BlockChainBuilder::from_send_block(genesis_chain.latest_block());
         data_requester.add_uncemented(&dest_chain);
 
-        let sections = [BlockChainSection {
-            account: { dest_chain.account() },
-            bottom_hash: dest_chain.open(),
-            bottom_height: 1,
-            top_hash: dest_chain.open(),
-            top_height: 1,
-        }];
-
+        let sections = [dest_chain.section(1, 1)];
         let expected = sections.clone();
-
         assert_writes(Default::default(), &data_requester, &sections, &expected);
     }
 
@@ -327,16 +319,8 @@ mod tests {
             BlockChainBuilder::from_send_block(genesis_chain.latest_block()).legacy_send();
         data_requester.add_uncemented(&dest_chain);
 
-        let sections = [BlockChainSection {
-            account: { dest_chain.account() },
-            bottom_hash: dest_chain.open(),
-            bottom_height: 1,
-            top_hash: dest_chain.frontier(),
-            top_height: 2,
-        }];
-
+        let sections = [dest_chain.section(1, 2)];
         let expected = sections.clone();
-
         assert_writes(Default::default(), &data_requester, &sections, &expected);
     }
 
@@ -348,21 +332,8 @@ mod tests {
         let genesis_chain = genesis_chain.legacy_send();
         data_requester.add_uncemented(&genesis_chain);
 
-        let sections = [BlockChainSection {
-            account: genesis_chain.account(),
-            bottom_hash: genesis_chain.blocks()[1].hash(),
-            bottom_height: 2,
-            top_hash: genesis_chain.frontier(),
-            top_height: 3,
-        }];
-
-        let expected = [BlockChainSection {
-            account: genesis_chain.account(),
-            bottom_hash: genesis_chain.frontier(),
-            bottom_height: 3,
-            top_hash: genesis_chain.frontier(),
-            top_height: 3,
-        }];
+        let sections = [genesis_chain.section(2, 3)];
+        let expected = [genesis_chain.section(3, 3)];
 
         assert_writes(Default::default(), &data_requester, &sections, &expected);
     }
@@ -375,35 +346,14 @@ mod tests {
         let genesis_chain = genesis_chain.legacy_send().legacy_send();
         data_requester.add_uncemented(&genesis_chain);
 
-        let sections = [BlockChainSection {
-            account: genesis_chain.account(),
-            bottom_hash: genesis_chain.blocks()[1].hash(),
-            bottom_height: 2,
-            top_hash: genesis_chain.frontier(),
-            top_height: 3,
-        }];
+        let sections = [genesis_chain.section(2, 3)];
 
         let options = MultiAccountCementerOptions {
             minimum_batch_size: 1,
             ..Default::default()
         };
 
-        let expected = [
-            BlockChainSection {
-                account: genesis_chain.account(),
-                bottom_hash: genesis_chain.blocks()[1].hash(),
-                bottom_height: 2,
-                top_hash: genesis_chain.blocks()[1].hash(),
-                top_height: 2,
-            },
-            BlockChainSection {
-                account: genesis_chain.account(),
-                bottom_hash: genesis_chain.frontier(),
-                bottom_height: 3,
-                top_hash: genesis_chain.frontier(),
-                top_height: 3,
-            },
-        ];
+        let expected = [genesis_chain.section(2, 2), genesis_chain.section(3, 3)];
 
         assert_writes(options, &data_requester, &sections, &expected);
     }
@@ -420,30 +370,8 @@ mod tests {
             ..Default::default()
         };
 
-        let sections = [BlockChainSection {
-            account: genesis_chain.account(),
-            bottom_hash: genesis_chain.blocks()[1].hash(),
-            bottom_height: 2,
-            top_hash: genesis_chain.frontier(),
-            top_height: 4,
-        }];
-
-        let expected = [
-            BlockChainSection {
-                account: genesis_chain.account(),
-                bottom_hash: genesis_chain.blocks()[1].hash(),
-                bottom_height: 2,
-                top_hash: genesis_chain.blocks()[2].hash(),
-                top_height: 3,
-            },
-            BlockChainSection {
-                account: genesis_chain.account(),
-                bottom_hash: genesis_chain.frontier(),
-                bottom_height: 4,
-                top_hash: genesis_chain.frontier(),
-                top_height: 4,
-            },
-        ];
+        let sections = [genesis_chain.section(2, 4)];
+        let expected = [genesis_chain.section(2, 3), genesis_chain.section(4, 4)];
 
         assert_writes(options, &data_requester, &sections, &expected);
     }
@@ -456,22 +384,7 @@ mod tests {
         let dest_chain = BlockChainBuilder::from_send_block(genesis_chain.latest_block());
         data_requester.add_uncemented(&dest_chain);
 
-        let sections = [
-            BlockChainSection {
-                account: genesis_chain.account(),
-                bottom_hash: genesis_chain.frontier(),
-                bottom_height: 2,
-                top_hash: genesis_chain.frontier(),
-                top_height: 2,
-            },
-            BlockChainSection {
-                account: dest_chain.account(),
-                bottom_hash: dest_chain.frontier(),
-                bottom_height: 1,
-                top_hash: dest_chain.frontier(),
-                top_height: 1,
-            },
-        ];
+        let sections = [genesis_chain.section(2, 2), dest_chain.section(1, 1)];
 
         assert_writes(Default::default(), &data_requester, &sections, &sections);
     }

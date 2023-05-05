@@ -1,6 +1,6 @@
 use crate::{
-    Account, Amount, BlockBuilder, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch,
-    LegacySendBlockBuilder,
+    Account, Amount, BlockBuilder, BlockChainSection, BlockDetails, BlockEnum, BlockHash,
+    BlockSideband, Epoch, LegacySendBlockBuilder,
 };
 
 pub struct BlockChainBuilder {
@@ -115,6 +115,20 @@ impl BlockChainBuilder {
 
     pub fn take_blocks(self) -> Vec<BlockEnum> {
         self.blocks
+    }
+
+    pub fn section(&self, bottom: u64, top: u64) -> BlockChainSection {
+        BlockChainSection {
+            account: self.account(),
+            bottom_hash: self.blocks[bottom as usize - 1].hash(),
+            bottom_height: bottom,
+            top_hash: self.blocks[top as usize - 1].hash(),
+            top_height: top,
+        }
+    }
+
+    pub fn frontier_section(&self) -> BlockChainSection {
+        self.section(self.height(), self.height())
     }
 }
 

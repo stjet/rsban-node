@@ -5,10 +5,12 @@ use std::{
 
 use rsnano_core::{utils::Logger, BlockEnum};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
+use rsnano_store_traits::WriteTransaction;
 
 use super::{
-    BatchWriteSizeManager, BlockCache, BlockCementerContainerInfo, BlockCementorLogic,
-    CementCallbackRefs, FlushDecision, LedgerAdapter, LedgerDataRequester,
+    BatchWriteSizeManager, BlockCache, BlockCementerContainerInfo, BlockCementerLogic,
+    BlockCementerLogicOptions, CementCallbackRefs, FlushDecision, LedgerAdapter,
+    LedgerDataRequester,
 };
 
 pub(super) struct BlockCementer {
@@ -20,7 +22,7 @@ pub(super) struct BlockCementer {
     logger: Arc<dyn Logger>,
     enable_timing_logging: bool,
     ledger: Arc<Ledger>,
-    logic: BlockCementorLogic,
+    logic: BlockCementerLogic,
 }
 
 impl BlockCementer {
@@ -32,11 +34,11 @@ impl BlockCementer {
         minimum_batch_separation: Duration,
         stopped: Arc<AtomicBool>,
     ) -> Self {
-        let logic = BlockCementorLogic::new(
-            ledger.constants.epochs.clone(),
-            stopped.clone(),
+        let logic = BlockCementerLogic::new(BlockCementerLogicOptions {
+            epochs: ledger.constants.epochs.clone(),
+            stopped: stopped.clone(),
             minimum_batch_separation,
-        );
+        });
 
         Self {
             write_database_queue,
@@ -71,7 +73,7 @@ impl BlockCementer {
         let ledger_clone = Arc::clone(&self.ledger);
         let mut ledger_adapter = LedgerAdapter::new(txn.txn_mut(), &ledger_clone);
 
-        self.logic.enqueue_block(original_block.clone());
+        self.logic.set_current_block(original_block.clone());
 
         while self
             .logic
@@ -129,26 +131,36 @@ impl BlockCementer {
         {
             self.ledger
                 .write_confirmation_height(txn.as_mut(), &section_to_cement);
+
             self.logic.section_cemented(&section_to_cement);
 
             if self.logic.should_start_new_write_batch() {
-                //todo remove duplication!
-                txn.commit();
-                write_guard.release();
-                let time_spent_cementing = self.write_txn_started.elapsed();
-                self.log_cemented_blocks(
-                    time_spent_cementing,
-                    self.logic.unpublished_cemented_blocks_len(),
-                );
-                self.logic.batch_completed(time_spent_cementing, callbacks);
-
-                write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
-                txn.renew();
-                self.write_txn_started = Instant::now();
+                self.start_new_batch(txn.as_mut(), &mut write_guard, callbacks);
             }
         }
 
-        //todo remove duplication!
+        self.commit_batch(txn.as_mut(), &mut write_guard, callbacks);
+    }
+
+    fn start_new_batch(
+        &mut self,
+        txn: &mut dyn WriteTransaction,
+        write_guard: &mut WriteGuard,
+        callbacks: &mut CementCallbackRefs,
+    ) {
+        self.commit_batch(txn, write_guard, callbacks);
+
+        *write_guard = self.write_database_queue.wait(Writer::ConfirmationHeight);
+        txn.renew();
+        self.write_txn_started = Instant::now();
+    }
+
+    fn commit_batch(
+        &mut self,
+        txn: &mut dyn WriteTransaction,
+        write_guard: &mut WriteGuard,
+        callbacks: &mut CementCallbackRefs,
+    ) {
         txn.commit();
         write_guard.release();
         let time_spent_cementing = self.write_txn_started.elapsed();

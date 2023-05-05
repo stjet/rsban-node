@@ -128,7 +128,7 @@ impl BlockCementerLogic {
         self.cementation_walker.clear_all_cached_accounts();
     }
 
-    pub fn is_write_queue_full(&self) -> bool {
+    fn is_write_queue_full(&self) -> bool {
         self.write_batcher.max_pending_writes_reached()
             || self.cementation_walker.is_accounts_cache_full()
     }
@@ -225,7 +225,11 @@ mod tests {
         let next_write = logic.next_write(&ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.frontier_section());
         logic.section_cemented(&next_write);
+        assert_eq!(logic.should_start_new_write_batch(), true);
         logic.batch_completed(Duration::ZERO, &mut callbacks.as_refs());
+
+        assert_eq!(logic.unpublished_cemented_blocks_len(), 0);
+        assert_eq!(logic.has_pending_writes(), false);
     }
 
     // flush_one_block_if_processing_duration_is_greater_than_minimum

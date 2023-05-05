@@ -33,7 +33,7 @@ use cementation_queue::{CementationQueue, CementationQueueContainerInfo};
 pub use cementation_thread::CementationThread;
 use cementation_thread::{CementCallbackRefs, CementCallbacks};
 use cementation_walker::CementationWalker;
-use write_batcher::WriteBatcher;
+use write_batcher::{WriteBatcher, WriteBatcherOptions};
 
 /// We need these details whenever we want to write the new
 /// confirmation height to the ledger

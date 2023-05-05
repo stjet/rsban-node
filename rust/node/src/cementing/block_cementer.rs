@@ -37,7 +37,8 @@ impl BlockCementer {
         let logic = BlockCementerLogic::new(BlockCementerLogicOptions {
             epochs: ledger.constants.epochs.clone(),
             stopped: stopped.clone(),
-            minimum_batch_separation,
+            min_batch_separation: minimum_batch_separation,
+            ..Default::default()
         });
 
         Self {
@@ -134,9 +135,10 @@ impl BlockCementer {
 
             self.logic.section_cemented(&section_to_cement);
 
-            if self.logic.should_start_new_write_batch() {
-                self.start_new_batch(txn.as_mut(), &mut write_guard, callbacks);
-            }
+            // todo
+            // if self.logic.should_start_new_batch() {
+            self.start_new_batch(txn.as_mut(), &mut write_guard, callbacks);
+            // }
         }
 
         self.commit_batch(txn.as_mut(), &mut write_guard, callbacks);

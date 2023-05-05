@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use super::{
     batch_write_size_manager::BatchWriteSizeManagerOptions, BatchWriteSizeManager,
@@ -7,17 +7,16 @@ use super::{
 use rsnano_core::{BlockChainSection, BlockEnum, BlockHash, ConfirmationHeightInfo};
 
 #[derive(Clone)]
-pub(crate) struct MultiAccountCementerOptions {
+pub(crate) struct WriteBatcherOptions {
     pub max_pending_writes: usize,
-    pub minimum_batch_size: usize,
+    pub min_batch_size: usize,
 }
 
-impl Default for MultiAccountCementerOptions {
+impl Default for WriteBatcherOptions {
     fn default() -> Self {
-        let batch_size = BatchWriteSizeManagerOptions::default();
         Self {
             max_pending_writes: 0x20000,
-            minimum_batch_size: batch_size.minimum_size,
+            min_batch_size: BatchWriteSizeManagerOptions::DEFAULT_MIN_SIZE,
         }
     }
 }
@@ -53,13 +52,13 @@ impl Default for WriteBatcher {
 }
 
 impl WriteBatcher {
-    pub fn new(options: MultiAccountCementerOptions) -> Self {
+    pub fn new(options: WriteBatcherOptions) -> Self {
         Self {
             cemented_blocks: Vec::new(),
             current: None,
             pending_writes: CementationQueue::new(),
             batch_write_size: Arc::new(BatchWriteSizeManager::new(BatchWriteSizeManagerOptions {
-                minimum_size: options.minimum_batch_size,
+                min_size: options.min_batch_size,
             })),
             max_pending_writes: options.max_pending_writes,
 
@@ -75,7 +74,7 @@ impl WriteBatcher {
         }
     }
 
-    pub fn max_batch_write_size_reached(&self) -> bool {
+    pub fn max_batch_size_reached(&self) -> bool {
         self.pending_writes.total_pending_blocks() >= self.batch_write_size.current_size()
     }
 
@@ -133,7 +132,13 @@ impl WriteBatcher {
         self.is_current_account_done() && self.pending_writes.is_empty()
     }
 
-    pub fn publish_cemented_blocks(&mut self, block_cemented: &mut dyn FnMut(&Arc<BlockEnum>)) {
+    pub fn batch_completed(
+        &mut self,
+        time_spent_cementing: Duration,
+        block_cemented: &mut dyn FnMut(&Arc<BlockEnum>),
+    ) {
+        self.batch_write_size
+            .adjust_size(time_spent_cementing, self.cemented_blocks.len());
         for block in self.cemented_blocks.drain(..) {
             block_cemented(&block);
         }
@@ -259,7 +264,7 @@ impl WriteBatcher {
     }
 
     fn create_slice(&self) -> Option<BlockChainSection> {
-        if self.should_flush() {
+        if self.should_create_slice() {
             let bottom = &self.cemented_blocks[0];
             Some(BlockChainSection {
                 account: self.section_to_cement.account,
@@ -273,13 +278,17 @@ impl WriteBatcher {
         }
     }
 
-    fn should_flush(&self) -> bool {
+    fn should_create_slice(&self) -> bool {
         (self.is_current_account_done() && self.cemented_blocks.len() > 0)
             || self.cemented_blocks.len() >= self.batch_write_size.current_size_with_tolerance()
     }
 
     pub fn unpublished_cemented_blocks_len(&self) -> usize {
         self.cemented_blocks.len()
+    }
+
+    pub fn should_start_new_batch(&self) -> bool {
+        self.cemented_blocks.len() >= self.batch_write_size.current_size_with_tolerance()
     }
 }
 
@@ -348,8 +357,8 @@ mod tests {
 
         let sections = [genesis_chain.section(2, 3)];
 
-        let options = MultiAccountCementerOptions {
-            minimum_batch_size: 1,
+        let options = WriteBatcherOptions {
+            min_batch_size: 1,
             ..Default::default()
         };
 
@@ -365,8 +374,8 @@ mod tests {
         let genesis_chain = genesis_chain.legacy_send().legacy_send().legacy_send();
         data_requester.add_uncemented(&genesis_chain);
 
-        let options = MultiAccountCementerOptions {
-            minimum_batch_size: 2,
+        let options = WriteBatcherOptions {
+            min_batch_size: 2,
             ..Default::default()
         };
 
@@ -390,7 +399,7 @@ mod tests {
     }
 
     fn assert_writes(
-        options: MultiAccountCementerOptions,
+        options: WriteBatcherOptions,
         data_requester: &LedgerDataRequesterStub,
         sections: &[BlockChainSection],
         expected_slices: &[BlockChainSection],

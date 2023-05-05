@@ -15,13 +15,17 @@ pub(crate) struct BatchWriteSizeManager {
 }
 
 pub(crate) struct BatchWriteSizeManagerOptions {
-    pub minimum_size: usize,
+    pub min_size: usize,
+}
+
+impl BatchWriteSizeManagerOptions {
+    pub const DEFAULT_MIN_SIZE: usize = 16384;
 }
 
 impl Default for BatchWriteSizeManagerOptions {
     fn default() -> Self {
         Self {
-            minimum_size: 16384,
+            min_size: Self::DEFAULT_MIN_SIZE,
         }
     }
 }
@@ -40,8 +44,8 @@ impl BatchWriteSizeManager {
 
     pub fn new(options: BatchWriteSizeManagerOptions) -> Self {
         Self {
-            batch_write_size: Arc::new(AtomicUsize::new(options.minimum_size)),
-            minimum_size: options.minimum_size,
+            batch_write_size: Arc::new(AtomicUsize::new(options.min_size)),
+            minimum_size: options.min_size,
         }
     }
 
@@ -59,11 +63,13 @@ impl BatchWriteSizeManager {
         self.batch_write_size.store(size, Ordering::SeqCst);
     }
 
-    pub fn adjust_size(&self, time_spent_cementing: Duration) {
+    pub fn adjust_size(&self, cementation_time: Duration, batch_size: usize) {
         // Update the maximum amount of blocks to write next time based on the time it took to cement this batch.
-        if time_spent_cementing > Self::MAXIMUM_BATCH_WRITE_TIME {
+        if cementation_time > Self::MAXIMUM_BATCH_WRITE_TIME {
             self.reduce();
-        } else if time_spent_cementing < Self::MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF {
+        } else if batch_size >= self.current_size()
+            && cementation_time < Self::MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF
+        {
             // Increase amount of blocks written for next batch if the time for writing this one is sufficiently lower than the max time to warrant changing
             self.increase();
         }

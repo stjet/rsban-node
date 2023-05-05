@@ -6,8 +6,9 @@ use std::{
 use rsnano_core::{utils::ContainerInfoComponent, BlockChainSection, BlockEnum, Epochs};
 
 use super::{
-    AccountsConfirmedMapContainerInfo, BatchWriteSizeManager, BlockCache, CementCallbackRefs,
-    CementationQueueContainerInfo, CementationWalker, LedgerDataRequester, WriteBatcher,
+    batch_write_size_manager::BatchWriteSizeManagerOptions, AccountsConfirmedMapContainerInfo,
+    BatchWriteSizeManager, BlockCache, CementCallbackRefs, CementationQueueContainerInfo,
+    CementationWalker, LedgerDataRequester, WriteBatcher, WriteBatcherOptions,
 };
 
 pub(crate) struct BlockCementerContainerInfo {
@@ -32,7 +33,7 @@ impl BlockCementerContainerInfo {
 pub(crate) struct BlockCementerLogic {
     pub(crate) cementation_walker: CementationWalker,
     pub(crate) write_batcher: WriteBatcher,
-    minimum_batch_separation: Duration,
+    min_batch_separation: Duration,
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -45,7 +46,8 @@ pub(crate) enum FlushDecision {
 pub(crate) struct BlockCementerLogicOptions {
     pub epochs: Epochs,
     pub stopped: Arc<AtomicBool>,
-    pub minimum_batch_separation: Duration,
+    pub min_batch_separation: Duration,
+    pub min_batch_size: usize,
 }
 
 impl Default for BlockCementerLogicOptions {
@@ -53,7 +55,8 @@ impl Default for BlockCementerLogicOptions {
         Self {
             epochs: Default::default(),
             stopped: Default::default(),
-            minimum_batch_separation: Duration::from_millis(50),
+            min_batch_separation: Duration::from_millis(50),
+            min_batch_size: BatchWriteSizeManagerOptions::DEFAULT_MIN_SIZE,
         }
     }
 }
@@ -65,10 +68,15 @@ impl BlockCementerLogic {
             .stopped(options.stopped)
             .build();
 
+        let write_batcher = WriteBatcher::new(WriteBatcherOptions {
+            min_batch_size: options.min_batch_size,
+            ..Default::default()
+        });
+
         Self {
             cementation_walker,
-            write_batcher: Default::default(),
-            minimum_batch_separation: options.minimum_batch_separation,
+            write_batcher,
+            min_batch_separation: options.min_batch_separation,
         }
     }
 
@@ -134,7 +142,7 @@ impl BlockCementerLogic {
     }
 
     fn is_min_processing_time_exceeded(&self, processing_time: Duration) -> bool {
-        processing_time >= self.minimum_batch_separation
+        processing_time >= self.min_batch_separation
     }
 
     fn should_flush(
@@ -143,15 +151,18 @@ impl BlockCementerLogic {
         current_process_done: bool,
         processing_time: Duration,
     ) -> bool {
+        if !self.write_batcher.has_pending_writes() {
+            return false;
+        }
+
         // When there are a lot of pending confirmation height blocks, it is more efficient to
         // bulk some of them up to enable better write performance which becomes the bottleneck.
         let is_done_processing = current_process_done
             && (awaiting_processing == 0 || self.is_min_processing_time_exceeded(processing_time));
 
-        let should_flush = is_done_processing
-            || self.write_batcher.max_batch_write_size_reached()
-            || self.is_write_queue_full();
-        should_flush && self.write_batcher.has_pending_writes()
+        is_done_processing
+            || self.write_batcher.max_batch_size_reached()
+            || self.is_write_queue_full()
     }
 
     pub fn next_write<T: LedgerDataRequester>(
@@ -172,11 +183,7 @@ impl BlockCementerLogic {
         callbacks: &mut CementCallbackRefs,
     ) {
         self.write_batcher
-            .batch_write_size
-            .adjust_size(time_spent_cementing);
-
-        self.write_batcher
-            .publish_cemented_blocks(callbacks.block_cemented);
+            .batch_completed(time_spent_cementing, callbacks.block_cemented);
     }
 
     pub(crate) fn container_info(&self) -> BlockCementerContainerInfo {
@@ -190,8 +197,8 @@ impl BlockCementerLogic {
         self.write_batcher.unpublished_cemented_blocks_len()
     }
 
-    pub fn should_start_new_write_batch(&self) -> bool {
-        true //todo implement!
+    pub fn should_start_new_batch(&self) -> bool {
+        self.write_batcher.should_start_new_batch()
     }
 }
 
@@ -206,7 +213,8 @@ mod tests {
     use super::*;
     use crate::cementing::{CementCallbacks, LedgerDataRequesterStub};
 
-    static TEST_MIN_BATCHSEPARATION: Duration = Duration::from_millis(50);
+    static TEST_MIN_BATCH_SEPARATION: Duration = Duration::from_millis(50);
+    const TEST_MIN_BATCH_SIZE: usize = 100;
 
     #[test]
     fn flush_block_if_it_is_the_only_one() {
@@ -214,7 +222,7 @@ mod tests {
         let genesis_chain = ledger_adapter.add_genesis_block().legacy_send();
         ledger_adapter.add_uncemented(&genesis_chain);
 
-        let mut logic = create_block_cementer_logic();
+        let mut logic = BlockCementerLogic::new(test_options());
         logic.set_current_block(genesis_chain.latest_block().clone());
         let mut callbacks = CementCallbacks::default();
         assert!(logic.process_current_block(&mut ledger_adapter, &mut callbacks.as_refs()));
@@ -225,20 +233,131 @@ mod tests {
         let next_write = logic.next_write(&ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.frontier_section());
         logic.section_cemented(&next_write);
-        assert_eq!(logic.should_start_new_write_batch(), true);
+        assert_eq!(logic.should_start_new_batch(), false);
         logic.batch_completed(Duration::ZERO, &mut callbacks.as_refs());
 
+        assert_eq!(
+            logic.process_current_block(&mut ledger_adapter, &mut callbacks.as_refs()),
+            false
+        );
         assert_eq!(logic.unpublished_cemented_blocks_len(), 0);
         assert_eq!(logic.has_pending_writes(), false);
+        assert_eq!(logic.batch_write_size().current_size(), TEST_MIN_BATCH_SIZE);
+    }
+
+    #[test]
+    fn flush_two_blocks_in_one_batch() {
+        let mut ledger_adapter = LedgerDataRequesterStub::new();
+        let genesis_chain = ledger_adapter
+            .add_genesis_block()
+            .legacy_send()
+            .legacy_send();
+        ledger_adapter.add_uncemented(&genesis_chain);
+
+        let mut logic = BlockCementerLogic::new(test_options());
+        logic.set_current_block(genesis_chain.latest_block().clone());
+        let mut callbacks = CementCallbacks::default();
+        assert!(logic.process_current_block(&mut ledger_adapter, &mut callbacks.as_refs()));
+        assert_eq!(
+            logic.get_flush_decision(0, Duration::ZERO),
+            FlushDecision::TryFlush(false)
+        );
+        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        assert_eq!(next_write, genesis_chain.section(2, 3));
+        logic.section_cemented(&next_write);
+        assert_eq!(logic.should_start_new_batch(), false);
+        logic.batch_completed(Duration::ZERO, &mut callbacks.as_refs());
+
+        assert_eq!(
+            logic.process_current_block(&mut ledger_adapter, &mut callbacks.as_refs()),
+            false
+        );
+        assert_eq!(logic.unpublished_cemented_blocks_len(), 0);
+        assert_eq!(logic.has_pending_writes(), false);
+        assert_eq!(logic.batch_write_size().current_size(), TEST_MIN_BATCH_SIZE);
+    }
+
+    #[test]
+    fn dont_flush_if_there_are_more_blocks_awaiting_processing_and_processing_time_is_low() {
+        let mut ledger_adapter = LedgerDataRequesterStub::new();
+        let genesis_chain = ledger_adapter.add_genesis_block().legacy_send();
+        ledger_adapter.add_uncemented(&genesis_chain);
+
+        let mut logic = BlockCementerLogic::new(test_options());
+        logic.set_current_block(genesis_chain.latest_block().clone());
+        let mut callbacks = CementCallbacks::default();
+        assert!(logic.process_current_block(&mut ledger_adapter, &mut callbacks.as_refs()));
+        let still_awaiting_processing = 1;
+        assert_eq!(
+            logic.get_flush_decision(still_awaiting_processing, Duration::ZERO),
+            FlushDecision::DontFlush
+        );
+    }
+
+    #[test]
+    fn flush_if_there_are_more_blocks_awaiting_processing_but_processing_time_is_high() {
+        let mut ledger_adapter = LedgerDataRequesterStub::new();
+        let genesis_chain = ledger_adapter.add_genesis_block().legacy_send();
+        ledger_adapter.add_uncemented(&genesis_chain);
+
+        let mut logic = BlockCementerLogic::new(test_options());
+        logic.set_current_block(genesis_chain.latest_block().clone());
+        let mut callbacks = CementCallbacks::default();
+        assert!(logic.process_current_block(&mut ledger_adapter, &mut callbacks.as_refs()));
+
+        let still_awaiting_processing = 1;
+        let processing_time = TEST_MIN_BATCH_SEPARATION;
+        assert_eq!(
+            logic.get_flush_decision(still_awaiting_processing, processing_time),
+            FlushDecision::TryFlush(false)
+        );
+    }
+
+    #[test]
+    fn flush_if_max_batch_size_reached() {
+        let mut ledger_adapter = LedgerDataRequesterStub::new();
+        let genesis_chain = ledger_adapter
+            .add_genesis_block()
+            .legacy_send()
+            .legacy_send()
+            .legacy_send();
+
+        ledger_adapter.add_uncemented(&genesis_chain);
+
+        let mut logic = BlockCementerLogic::new(BlockCementerLogicOptions {
+            min_batch_size: 2,
+            ..test_options()
+        });
+
+        logic.set_current_block(genesis_chain.latest_block().clone());
+        let mut callbacks = CementCallbacks::default();
+        assert!(logic.process_current_block(&mut ledger_adapter, &mut callbacks.as_refs()));
+        let still_awaiting_processing = 1;
+        assert_eq!(
+            logic.get_flush_decision(still_awaiting_processing, Duration::ZERO),
+            FlushDecision::TryFlush(false)
+        );
+
+        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        assert_eq!(next_write, genesis_chain.section(2, 3));
+        logic.section_cemented(&next_write);
+        assert_eq!(logic.should_start_new_batch(), true);
+        logic.batch_completed(Duration::ZERO, &mut callbacks.as_refs());
+
+        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        assert_eq!(next_write, genesis_chain.section(4, 4));
+        logic.section_cemented(&next_write);
+        assert_eq!(logic.should_start_new_batch(), false);
     }
 
     // flush_one_block_if_processing_duration_is_greater_than_minimum
     // dont_flush_if_processing_duration_is_below_minimum
 
-    fn create_block_cementer_logic() -> BlockCementerLogic {
-        BlockCementerLogic::new(BlockCementerLogicOptions {
-            minimum_batch_separation: TEST_MIN_BATCHSEPARATION,
+    fn test_options() -> BlockCementerLogicOptions {
+        BlockCementerLogicOptions {
+            min_batch_separation: TEST_MIN_BATCH_SEPARATION,
+            min_batch_size: TEST_MIN_BATCH_SIZE,
             ..Default::default()
-        })
+        }
     }
 }

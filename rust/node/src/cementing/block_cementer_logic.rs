@@ -48,6 +48,7 @@ pub(crate) struct BlockCementerLogicOptions {
     pub stopped: Arc<AtomicBool>,
     pub min_batch_separation: Duration,
     pub min_batch_size: usize,
+    pub max_pending_writes: usize,
 }
 
 impl Default for BlockCementerLogicOptions {
@@ -57,6 +58,7 @@ impl Default for BlockCementerLogicOptions {
             stopped: Default::default(),
             min_batch_separation: Duration::from_millis(50),
             min_batch_size: BatchWriteSizeManagerOptions::DEFAULT_MIN_SIZE,
+            max_pending_writes: WriteBatcherOptions::DEFAULT_MAX_PENDING_WRITES,
         }
     }
 }
@@ -70,6 +72,7 @@ impl BlockCementerLogic {
 
         let write_batcher = WriteBatcher::new(WriteBatcherOptions {
             min_batch_size: options.min_batch_size,
+            max_pending_writes: options.max_pending_writes,
             ..Default::default()
         });
 
@@ -169,12 +172,12 @@ impl BlockCementerLogic {
         &mut self,
         data_requester: &T,
     ) -> Option<BlockChainSection> {
-        self.write_batcher.next_write(data_requester)
-    }
-
-    pub fn section_cemented(&mut self, section_to_cement: &BlockChainSection) {
-        self.cementation_walker
-            .section_cemented(&section_to_cement.account, section_to_cement.top_height);
+        let next_write = self.write_batcher.next_write(data_requester);
+        if let Some(section) = &next_write {
+            self.cementation_walker
+                .section_cemented(&section.account, section.top_height);
+        }
+        next_write
     }
 
     pub fn batch_completed(
@@ -232,7 +235,6 @@ mod tests {
         );
         let next_write = logic.next_write(&ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.frontier_section());
-        logic.section_cemented(&next_write);
         assert_eq!(logic.should_start_new_batch(), false);
         logic.batch_completed(Duration::ZERO, &mut callbacks.as_refs());
 
@@ -264,7 +266,6 @@ mod tests {
         );
         let next_write = logic.next_write(&ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.section(2, 3));
-        logic.section_cemented(&next_write);
         assert_eq!(logic.should_start_new_batch(), false);
         logic.batch_completed(Duration::ZERO, &mut callbacks.as_refs());
 
@@ -340,18 +341,39 @@ mod tests {
 
         let next_write = logic.next_write(&ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.section(2, 3));
-        logic.section_cemented(&next_write);
         assert_eq!(logic.should_start_new_batch(), true);
         logic.batch_completed(Duration::ZERO, &mut callbacks.as_refs());
 
         let next_write = logic.next_write(&ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.section(4, 4));
-        logic.section_cemented(&next_write);
         assert_eq!(logic.should_start_new_batch(), false);
     }
 
-    // flush_one_block_if_processing_duration_is_greater_than_minimum
-    // dont_flush_if_processing_duration_is_below_minimum
+    #[test]
+    fn flush_if_write_queue_is_full() {
+        let mut ledger_adapter = LedgerDataRequesterStub::new();
+        let genesis_chain = ledger_adapter.add_genesis_block().legacy_send();
+
+        ledger_adapter.add_uncemented(&genesis_chain);
+
+        let mut logic = BlockCementerLogic::new(BlockCementerLogicOptions {
+            max_pending_writes: 1,
+            ..test_options()
+        });
+
+        logic.set_current_block(genesis_chain.latest_block().clone());
+        let mut callbacks = CementCallbacks::default();
+        assert!(logic.process_current_block(&mut ledger_adapter, &mut callbacks.as_refs()));
+        let still_awaiting_processing = 1;
+        assert_eq!(
+            logic.get_flush_decision(still_awaiting_processing, Duration::ZERO),
+            FlushDecision::ForceFlush(false)
+        );
+
+        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        assert_eq!(next_write, genesis_chain.section(2, 2));
+        assert_eq!(logic.should_start_new_batch(), false);
+    }
 
     fn test_options() -> BlockCementerLogicOptions {
         BlockCementerLogicOptions {

@@ -12,10 +12,14 @@ pub(crate) struct WriteBatcherOptions {
     pub min_batch_size: usize,
 }
 
+impl WriteBatcherOptions {
+    pub const DEFAULT_MAX_PENDING_WRITES: usize = 0x20000;
+}
+
 impl Default for WriteBatcherOptions {
     fn default() -> Self {
         Self {
-            max_pending_writes: 0x20000,
+            max_pending_writes: Self::DEFAULT_MAX_PENDING_WRITES,
             min_batch_size: BatchWriteSizeManagerOptions::DEFAULT_MIN_SIZE,
         }
     }

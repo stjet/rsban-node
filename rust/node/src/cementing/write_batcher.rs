@@ -41,12 +41,14 @@ pub(crate) struct WriteBatcher {
     is_initialized: bool,
     /// The total number of blocks to cement
     num_blocks_to_cement: u64,
-    total_blocks_cemented: u64,
+    total_blocks_cemented_for_current_account: u64,
     /// The block height of the first block to cement
     start_height: u64,
     next_block_index: u64,
     new_cemented_frontier_hash: BlockHash,
     new_cemented_frontier_block: Option<Arc<BlockEnum>>,
+    bottom_hash: BlockHash,
+    bottom_height: u64,
 }
 
 impl Default for WriteBatcher {
@@ -70,11 +72,13 @@ impl WriteBatcher {
             confirmation_height_info: Default::default(),
             is_initialized: false,
             num_blocks_to_cement: 0,
-            total_blocks_cemented: 0,
+            total_blocks_cemented_for_current_account: 0,
             start_height: 0,
             next_block_index: 0,
             new_cemented_frontier_hash: Default::default(),
             new_cemented_frontier_block: None,
+            bottom_hash: BlockHash::zero(),
+            bottom_height: 0,
         }
     }
 
@@ -125,7 +129,7 @@ impl WriteBatcher {
         self.confirmation_height_info = confirmation_height_info;
         self.is_initialized = false;
         self.num_blocks_to_cement = 0;
-        self.total_blocks_cemented = 0;
+        self.total_blocks_cemented_for_current_account = 0;
         self.start_height = 0;
         self.next_block_index = 0;
         self.new_cemented_frontier_hash = Default::default();
@@ -156,8 +160,6 @@ impl WriteBatcher {
         &mut self,
         load_block: &dyn Fn(&BlockHash) -> Option<BlockEnum>,
     ) -> Option<BlockChainSection> {
-        self.cemented_blocks.clear();
-
         if !self.is_initialized {
             self.initialize(load_block);
             self.is_initialized = true;
@@ -169,7 +171,11 @@ impl WriteBatcher {
             self.next_block_index = i + 1;
             let Some(new_frontier) = &self.new_cemented_frontier_block else { break; };
             self.cemented_blocks.push(new_frontier.clone());
-            self.total_blocks_cemented += 1;
+            if self.bottom_height == 0 {
+                self.bottom_height = new_frontier.height();
+                self.bottom_hash = new_frontier.hash();
+            }
+            self.total_blocks_cemented_for_current_account += 1;
 
             // Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
             let slice = self.create_slice();
@@ -264,27 +270,31 @@ impl WriteBatcher {
     }
 
     pub fn is_current_account_done(&self) -> bool {
-        self.total_blocks_cemented == self.num_blocks_to_cement
+        self.total_blocks_cemented_for_current_account == self.num_blocks_to_cement
     }
 
-    fn create_slice(&self) -> Option<BlockChainSection> {
+    fn create_slice(&mut self) -> Option<BlockChainSection> {
         if self.should_create_slice() {
-            let bottom = &self.cemented_blocks[0];
-            Some(BlockChainSection {
+            let section = BlockChainSection {
                 account: self.section_to_cement.account,
                 top_hash: self.new_cemented_frontier_hash,
-                top_height: self.start_height + self.total_blocks_cemented - 1,
-                bottom_hash: bottom.hash(),
-                bottom_height: bottom.height(),
-            })
+                top_height: self.start_height + self.total_blocks_cemented_for_current_account - 1,
+                bottom_hash: self.bottom_hash,
+                bottom_height: self.bottom_height,
+            };
+            self.bottom_hash = BlockHash::zero();
+            self.bottom_height = 0;
+            Some(section)
         } else {
             None
         }
     }
 
     fn should_create_slice(&self) -> bool {
-        (self.is_current_account_done() && self.cemented_blocks.len() > 0)
-            || self.cemented_blocks.len() >= self.batch_write_size.current_size_with_tolerance()
+        self.bottom_height > 0
+            && (self.is_current_account_done()
+                || self.cemented_blocks.len()
+                    >= self.batch_write_size.current_size_with_tolerance())
     }
 
     pub fn unpublished_cemented_blocks_len(&self) -> usize {
@@ -413,9 +423,9 @@ mod tests {
             write_batcher.enqueue(section.clone());
         }
 
-        for expected in expected_slices {
+        for (i, expected) in expected_slices.iter().enumerate() {
             let actual = write_batcher.next_write(data_requester);
-            assert_eq!(actual.as_ref(), Some(expected));
+            assert_eq!(actual.as_ref(), Some(expected), "at index {}", i);
         }
 
         assert_eq!(write_batcher.next_write(data_requester), None);

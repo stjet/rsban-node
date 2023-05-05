@@ -133,10 +133,9 @@ impl BlockCementer {
             self.ledger
                 .write_confirmation_height(txn.as_mut(), &section_to_cement);
 
-            // todo
-            // if self.logic.should_start_new_batch() {
-            self.start_new_batch(txn.as_mut(), &mut write_guard, callbacks);
-            // }
+            if self.logic.should_start_new_batch() {
+                self.start_new_batch(txn.as_mut(), &mut write_guard, callbacks);
+            }
         }
 
         self.commit_batch(txn.as_mut(), &mut write_guard, callbacks);

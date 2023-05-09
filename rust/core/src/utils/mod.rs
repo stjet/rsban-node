@@ -10,7 +10,7 @@ mod toml;
 pub use toml::*;
 
 mod logger;
-pub use logger::{Logger, NullLogger};
+pub use logger::{ConsoleLogger, Logger, NullLogger};
 
 mod container_info;
 pub use container_info::{ContainerInfo, ContainerInfoComponent};
@@ -127,4 +127,16 @@ pub fn get_env_or_default_string(variable_name: &str, default: impl Into<String>
 
 pub trait Latch: Send + Sync {
     fn wait(&self);
+}
+
+pub struct NullLatch {}
+
+impl NullLatch {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Latch for NullLatch {
+    fn wait(&self) {}
 }

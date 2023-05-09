@@ -13,7 +13,7 @@ use rsnano_core::{Account, AccountInfo, BlockEnum, BlockHash, ConfirmationHeight
 use rsnano_ledger::Ledger;
 use rsnano_store_traits::Transaction;
 
-pub(crate) trait LedgerDataRequester {
+pub trait LedgerDataRequester {
     fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum>;
     fn was_block_pruned(&self, block_hash: &BlockHash) -> bool;
     fn get_confirmation_height(&self, account: &Account) -> Option<ConfirmationHeightInfo>;

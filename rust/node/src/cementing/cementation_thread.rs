@@ -328,7 +328,7 @@ impl<'a> CementationLoop<'a> {
     }
 }
 
-pub(super) struct CementCallbacks {
+pub struct CementCallbacks {
     pub block_cemented: BlockCallback,
     pub block_already_cemented: BlockHashCallback,
     pub awaiting_processing_count: AwaitingProcessingCountCallback,
@@ -354,7 +354,7 @@ impl Default for CementCallbacks {
     }
 }
 
-pub(crate) struct CementCallbackRefs<'a> {
+pub struct CementCallbackRefs<'a> {
     pub block_cemented: &'a mut dyn FnMut(&Arc<BlockEnum>),
     pub block_already_cemented: &'a mut dyn FnMut(BlockHash),
     pub awaiting_processing_count: &'a mut dyn FnMut() -> u64,

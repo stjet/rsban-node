@@ -13,7 +13,7 @@ use super::{
     LedgerDataRequester,
 };
 
-pub(super) struct BlockCementer {
+pub struct BlockCementer {
     stopped: Arc<AtomicBool>,
 
     processing_started: Instant,
@@ -61,11 +61,7 @@ impl BlockCementer {
         &self.logic.block_cache()
     }
 
-    pub(crate) fn process(
-        &mut self,
-        original_block: &BlockEnum,
-        callbacks: &mut CementCallbackRefs,
-    ) {
+    pub fn process(&mut self, original_block: &BlockEnum, callbacks: &mut CementCallbackRefs) {
         if !self.logic.has_pending_writes() {
             self.processing_started = Instant::now();
         }

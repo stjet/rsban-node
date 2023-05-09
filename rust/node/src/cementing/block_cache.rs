@@ -16,7 +16,7 @@ struct BlockCacheStorage {
     sequential: BoundedVecDeque<BlockHash>,
 }
 
-pub(crate) struct BlockCache {
+pub struct BlockCache {
     //todo: Remove RwLock? `contains` is called by RPC!
     blocks: RwLock<BlockCacheStorage>,
     cache_size: Arc<AtomicUsize>,

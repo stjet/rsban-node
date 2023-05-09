@@ -11,7 +11,7 @@ use super::{
     CementationWalker, LedgerDataRequester, WriteBatcher, WriteBatcherOptions,
 };
 
-pub(crate) struct BlockCementerContainerInfo {
+pub struct BlockCementerContainerInfo {
     cementation_queue: CementationQueueContainerInfo,
     accounts_confirmed: AccountsConfirmedMapContainerInfo,
 }

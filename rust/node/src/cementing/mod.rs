@@ -19,7 +19,7 @@ use accounts_confirmed_map::{
     AccountsConfirmedMap, AccountsConfirmedMapContainerInfo, ConfirmedInfo,
 };
 use batch_write_size_manager::BatchWriteSizeManager;
-use block_cementer::BlockCementer;
+pub use block_cementer::BlockCementer;
 use ledger_data_requester::{LedgerAdapter, LedgerDataRequester};
 
 #[cfg(test)]
@@ -30,8 +30,7 @@ use block_cementer_logic::{
     BlockCementerContainerInfo, BlockCementerLogic, BlockCementerLogicOptions, FlushDecision,
 };
 use cementation_queue::{CementationQueue, CementationQueueContainerInfo};
-pub use cementation_thread::CementationThread;
-use cementation_thread::{CementCallbackRefs, CementCallbacks};
+pub use cementation_thread::{CementCallbackRefs, CementCallbacks, CementationThread};
 use cementation_walker::CementationWalker;
 use write_batcher::{WriteBatcher, WriteBatcherOptions};
 

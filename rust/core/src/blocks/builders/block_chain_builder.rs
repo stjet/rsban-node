@@ -48,6 +48,10 @@ impl BlockChainBuilder {
         &self.blocks
     }
 
+    pub fn block(&self, height: u64) -> &BlockEnum {
+        &self.blocks[height as usize - 1]
+    }
+
     pub fn latest_block(&self) -> &BlockEnum {
         self.blocks.last().unwrap()
     }

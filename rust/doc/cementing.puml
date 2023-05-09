@@ -34,7 +34,6 @@ package "Logic"{
         process_current_block(data_requester, callbacks): bool
         get_flush_decision()
         next_write(data_requester): BlockChainSection
-        section_cemented(section)
         batch_completed(callbacks)
     }
 

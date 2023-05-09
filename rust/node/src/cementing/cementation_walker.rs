@@ -490,7 +490,7 @@ mod tests {
             .add_genesis_block()
             .legacy_send()
             .legacy_send();
-        let second_send = genesis_chain.blocks()[2].clone();
+        let second_send = genesis_chain.block(3).clone();
         data_requester.add_uncemented(&genesis_chain);
 
         assert_write_steps(
@@ -580,7 +580,7 @@ mod tests {
             .add_genesis_block()
             .legacy_send_with(|b| b.destination(dest_chain.account()))
             .legacy_send_with(|b| b.destination(dest_chain.account()));
-        let dest_chain = dest_chain.legacy_open_from(&genesis_chain.blocks()[1]);
+        let dest_chain = dest_chain.legacy_open_from(&genesis_chain.block(2));
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_cemented(&dest_chain);
 

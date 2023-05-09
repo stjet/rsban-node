@@ -212,6 +212,8 @@ impl Default for BlockCementerLogic {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::BlockChainBuilder;
+
     use super::*;
     use crate::cementing::{CementCallbacks, LedgerDataRequesterStub};
 
@@ -372,6 +374,70 @@ mod tests {
         let next_write = logic.next_write(&ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.section(2, 2));
         assert_eq!(logic.should_start_new_batch(), false);
+    }
+
+    #[test]
+    fn flush_if_batch_is_full() {
+        let mut ledger_adapter = LedgerDataRequesterStub::new();
+        let genesis_chain = ledger_adapter
+            .add_genesis_block()
+            .legacy_send()
+            .legacy_send();
+        ledger_adapter.add_uncemented(&genesis_chain);
+        let dest_chain = BlockChainBuilder::from_send_block(&genesis_chain.block(2));
+        ledger_adapter.add_uncemented(&dest_chain);
+
+        let mut logic = BlockCementerLogic::new(BlockCementerLogicOptions {
+            min_batch_size: 3,
+            ..test_options()
+        });
+        logic.set_current_block(dest_chain.latest_block().clone());
+        let mut callbacks = CementCallbacks::default();
+        assert_eq!(
+            logic.process_current_block(&mut ledger_adapter, &mut callbacks.as_refs()),
+            true
+        );
+        let still_awaiting_processing = 1;
+        assert_eq!(
+            logic.get_flush_decision(still_awaiting_processing, Duration::ZERO),
+            FlushDecision::DontFlush
+        );
+        assert_eq!(
+            logic.process_current_block(&mut ledger_adapter, &mut callbacks.as_refs()),
+            true
+        );
+        assert_eq!(
+            logic.get_flush_decision(still_awaiting_processing, Duration::ZERO),
+            FlushDecision::DontFlush
+        );
+        assert_eq!(
+            logic.process_current_block(&mut ledger_adapter, &mut callbacks.as_refs()),
+            false
+        );
+        logic.set_current_block(genesis_chain.latest_block().clone());
+        assert!(logic.process_current_block(&mut ledger_adapter, &mut callbacks.as_refs()));
+        assert_eq!(
+            logic.get_flush_decision(still_awaiting_processing, Duration::ZERO),
+            FlushDecision::TryFlush(false)
+        );
+
+        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        assert_eq!(next_write, genesis_chain.section(2, 2));
+        ledger_adapter.cement(genesis_chain.block(2));
+        assert_eq!(logic.should_start_new_batch(), false);
+
+        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        assert_eq!(next_write, dest_chain.section(1, 1));
+        ledger_adapter.cement(dest_chain.block(1));
+        assert_eq!(logic.should_start_new_batch(), false);
+
+        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        assert_eq!(next_write, genesis_chain.section(3, 3));
+        ledger_adapter.cement(genesis_chain.block(3));
+        assert_eq!(logic.should_start_new_batch(), false);
+
+        let next_write = logic.next_write(&ledger_adapter);
+        assert_eq!(next_write, None);
     }
 
     fn test_options() -> BlockCementerLogicOptions {

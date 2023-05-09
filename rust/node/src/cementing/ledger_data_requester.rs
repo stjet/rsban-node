@@ -129,6 +129,19 @@ impl LedgerDataRequesterStub {
         }
     }
 
+    pub fn cement(&mut self, block: &BlockEnum) {
+        let account = block.account_calculated();
+        let current_info = self.get_confirmation_height(&account).unwrap_or_default();
+        assert!(current_info.height < block.height());
+        self.set_confirmation_height(
+            account,
+            ConfirmationHeightInfo {
+                height: block.height(),
+                frontier: block.hash(),
+            },
+        );
+    }
+
     pub fn prune(&mut self, hash: BlockHash) {
         self.pruned.insert(hash);
         self.blocks.remove(&hash);

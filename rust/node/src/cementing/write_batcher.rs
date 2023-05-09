@@ -303,6 +303,7 @@ impl WriteBatcher {
 
     pub fn should_start_new_batch(&self) -> bool {
         self.cemented_blocks.len() >= self.batch_write_size.current_size_with_tolerance()
+            && !self.is_done()
     }
 }
 

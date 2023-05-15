@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/transport/transport.hpp>
 
 #include <boost/multi_index/hashed_index.hpp>
@@ -26,12 +28,10 @@ class node;
 class representative
 {
 public:
-	representative () = default;
-	representative (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a) :
-		account (account_a), channel (channel_a)
-	{
-		debug_assert (channel != nullptr);
-	}
+	representative ();
+	representative (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
+	representative (representative const & other_a);
+	~representative ();
 	std::reference_wrapper<nano::transport::channel const> channel_ref () const
 	{
 		return *channel;
@@ -44,6 +44,7 @@ public:
 	std::shared_ptr<nano::transport::channel> channel;
 	std::chrono::steady_clock::time_point last_request{ std::chrono::steady_clock::time_point () };
 	std::chrono::steady_clock::time_point last_response{ std::chrono::steady_clock::time_point () };
+	rsnano::RepresentativeHandle * handle;
 };
 
 /**

@@ -1,7 +1,33 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/node.hpp>
 #include <nano/node/repcrawler.hpp>
 
 #include <boost/format.hpp>
+
+nano::representative::representative () :
+	handle{ rsnano::rsn_representative_create () }
+{
+}
+
+nano::representative::representative (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a) :
+	handle{ rsnano::rsn_representative_create () },
+	account (account_a), channel (channel_a)
+{
+	debug_assert (channel != nullptr);
+}
+
+nano::representative::representative (representative const & other_a) :
+	handle{ rsnano::rsn_representative_clone (other_a.handle) },
+	account{ other_a.account },
+	channel{ other_a.channel }
+{
+}
+
+nano::representative::~representative ()
+{
+	rsnano::rsn_representative_destroy (handle);
+}
 
 nano::rep_crawler::rep_crawler (nano::node & node_a) :
 	node (node_a)

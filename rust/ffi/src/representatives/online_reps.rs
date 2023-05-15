@@ -1,7 +1,7 @@
 use crate::ledger::datastore::LedgerHandle;
 use crate::{copy_amount_bytes, U256ArrayDto};
 use rsnano_core::{Account, Amount};
-use rsnano_node::online_reps::{OnlineReps, ONLINE_WEIGHT_QUORUM};
+use rsnano_node::representatives::{OnlineReps, ONLINE_WEIGHT_QUORUM};
 use rsnano_node::OnlineWeightSampler;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};

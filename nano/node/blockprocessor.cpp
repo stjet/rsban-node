@@ -18,17 +18,12 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	history (node_a.history),
 	ledger (node_a.ledger),
 	flags (node_a.flags),
-	network (*node_a.network),
-	inactive_vote_cache (node_a.inactive_vote_cache),
 	active_transactions (node_a.active),
 	store (node_a.store),
 	stats (*node_a.stats),
-	scheduler (node_a.scheduler),
-	websocket_server (node_a.websocket.server),
 	block_arrival (node_a.block_arrival),
 	unchecked (node_a.unchecked),
 	gap_cache (node_a.gap_cache),
-	bootstrap_initiator (node_a.bootstrap_initiator),
 	write_database_queue (write_database_queue_a),
 	handle (rsnano::rsn_block_processor_create (this))
 {

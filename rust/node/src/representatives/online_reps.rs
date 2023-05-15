@@ -1,4 +1,3 @@
-use crate::OnlineRepsContainer;
 use primitive_types::U256;
 use rsnano_core::{Account, Amount};
 use rsnano_ledger::Ledger;
@@ -10,6 +9,8 @@ use std::{cmp::max, sync::Arc};
 use mock_instant::Instant;
 #[cfg(not(test))]
 use std::time::Instant;
+
+use super::online_reps_container::OnlineRepsContainer;
 
 pub const ONLINE_WEIGHT_QUORUM: u8 = 67;
 static DEFAULT_ONLINE_WEIGHT_MINIMUM: Amount = Amount::nano(60_000_000);

@@ -1,7 +1,7 @@
 use crate::{
     copy_amount_bytes,
     ledger::datastore::LedgerHandle,
-    online_reps::OnlineRepsHandle,
+    representatives::OnlineRepsHandle,
     utils::{ContainerInfoComponentHandle, ContextWrapper},
     voting::VoteHandle,
     NodeConfigDto, NodeFlagsHandle, VoidPointerCallback,

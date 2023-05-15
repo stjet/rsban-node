@@ -90,29 +90,24 @@ private:
 	std::deque<std::shared_ptr<nano::block>> forced;
 	nano::condition_variable condition;
 
-	nano::logger_mt & logger;
-	nano::signature_checker & checker;
-	nano::node_config & config;
-	nano::state_block_signature_verification state_block_signature_verification;
-	nano::network_params & network_params;
-	nano::local_vote_history & history;
-	nano::block_arrival & block_arrival;
+	nano::logger_mt & logger; // already ported
+	nano::signature_checker & checker; // already ported
+	nano::node_config & config; // already ported
+	nano::state_block_signature_verification state_block_signature_verification; // already ported
+	nano::network_params & network_params; // already ported
+	nano::local_vote_history & history; // already ported
+	nano::block_arrival & block_arrival; // already ported
 
 	rsnano::BlockProcessorHandle * handle;
 
-	nano::ledger & ledger;
-	nano::node_flags & flags;
-	nano::network & network; // not yet ported to Rust
-	nano::store & store;
-	nano::stats & stats;
-	nano::active_transactions & active_transactions; // not yet ported to Rust
-	nano::vote_cache & inactive_vote_cache; // not yet ported to Rust
-	nano::election_scheduler & scheduler; // not yet ported to Rust
-	std::shared_ptr<nano::websocket::listener> & websocket_server; // not yet ported to Rust
-	nano::unchecked_map & unchecked; // ported to Rust
-	nano::gap_cache & gap_cache; // ported to Rust
-	nano::bootstrap_initiator & bootstrap_initiator; // not yet ported to Rust
-	nano::write_database_queue & write_database_queue;
+	nano::ledger & ledger; // already ported
+	nano::node_flags & flags; // already ported
+	nano::store & store; // already ported
+	nano::stats & stats; // already ported
+	nano::active_transactions & active_transactions;
+	nano::unchecked_map & unchecked; // already ported
+	nano::gap_cache & gap_cache; // already ported
+	nano::write_database_queue & write_database_queue; // already ported
 	nano::mutex mutex{ mutex_identifier (mutexes::block_processor) };
 	std::thread processing_thread;
 

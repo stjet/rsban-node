@@ -9,14 +9,18 @@ pub struct Representative {
 
 impl Representative {
     pub fn new(account: Account) -> Self {
-        Self {account, last_request: 0, last_response: 0}
+        Self {
+            account,
+            last_request: 0,
+            last_response: 0,
+        }
     }
 
-    pub fn account(&self) -> &Account{
+    pub fn account(&self) -> &Account {
         &self.account
     }
 
-    pub fn last_request(&self) -> u64{
+    pub fn last_request(&self) -> u64 {
         self.last_request
     }
 
@@ -24,7 +28,7 @@ impl Representative {
         self.last_request = value
     }
 
-    pub fn last_response(&mut self) -> u64{
+    pub fn last_response(&mut self) -> u64 {
         self.last_response
     }
 

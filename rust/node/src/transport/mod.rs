@@ -38,6 +38,7 @@ use token_bucket::TokenBucket;
 pub use write_queue::WriteCallback;
 
 pub trait Channel {
+    fn channel_id(&self) -> usize;
     fn is_temporary(&self) -> bool;
     fn set_temporary(&self, temporary: bool);
     fn get_last_bootstrap_attempt(&self) -> u64;

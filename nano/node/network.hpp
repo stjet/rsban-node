@@ -135,6 +135,7 @@ public:
 	std::shared_ptr<nano::network_filter> publish_filter;
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
 	std::atomic<uint16_t> port{ 0 };
+	std::atomic<size_t> next_channel_id{ 1 };
 	std::function<void ()> disconnect_observer;
 
 private:

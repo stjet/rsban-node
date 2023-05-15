@@ -44,7 +44,7 @@ pub unsafe extern "C" fn rsn_representative_last_request(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_representative_set_last_request(
     handle: *mut RepresentativeHandle,
-    value: u64
+    value: u64,
 ) {
     (*handle).0.set_last_request(value);
 }
@@ -59,7 +59,7 @@ pub unsafe extern "C" fn rsn_representative_last_response(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_representative_set_last_response(
     handle: *mut RepresentativeHandle,
-    value: u64
+    value: u64,
 ) {
     (*handle).0.set_last_response(value);
 }

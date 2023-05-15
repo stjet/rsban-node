@@ -122,6 +122,7 @@ pub unsafe extern "C" fn rsn_channel_set_node_id(handle: *mut ChannelHandle, id:
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_inproc_create(
+    channel_id: usize,
     now: u64,
     network_constants: *const NetworkConstantsDto,
     network_filter: *mut NetworkFilterHandle,
@@ -133,6 +134,7 @@ pub unsafe extern "C" fn rsn_channel_inproc_create(
     let block_uniquer = (*block_uniquer).deref().clone();
     let vote_uniquer = (*vote_uniquer).deref().clone();
     ChannelHandle::new(Arc::new(ChannelType::InProc(ChannelInProc::new(
+        channel_id,
         now,
         network_constants,
         network_filter,
@@ -142,9 +144,9 @@ pub unsafe extern "C" fn rsn_channel_inproc_create(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_channel_fake_create(now: u64) -> *mut ChannelHandle {
+pub extern "C" fn rsn_channel_fake_create(now: u64, channel_id: usize) -> *mut ChannelHandle {
     Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::Fake(
-        ChannelFake::new(now),
+        ChannelFake::new(now, channel_id),
     )))))
 }
 

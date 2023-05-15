@@ -8,7 +8,8 @@
 
 nano::transport::fake::channel::channel (nano::node & node) :
 	node{ node },
-	transport::channel{ rsnano::rsn_channel_fake_create (std::chrono::steady_clock::now ().time_since_epoch ().count ()) },
+	transport::channel{ rsnano::rsn_channel_fake_create (std::chrono::steady_clock::now ().time_since_epoch ().count (),
+	node.network->next_channel_id.fetch_add (1)) },
 	endpoint{ node.network->endpoint () }
 {
 	set_node_id (node.node_id.pub);

@@ -23,6 +23,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
     observer: *mut c_void,
     limiter: *const OutboundBandwidthLimiterHandle,
     io_ctx: *mut c_void,
+    channel_id: usize,
 ) -> *mut ChannelHandle {
     let observer = Arc::new(ChannelTcpObserverWeakPtr::new(observer));
     let limiter = Arc::clone(&*limiter);
@@ -33,6 +34,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
         observer,
         limiter,
         io_ctx,
+        channel_id,
     )))))
 }
 

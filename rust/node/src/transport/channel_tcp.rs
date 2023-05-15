@@ -41,6 +41,7 @@ pub struct TcpChannelData {
 }
 
 pub struct ChannelTcp {
+    channel_id: usize,
     channel_mutex: Mutex<TcpChannelData>,
     socket: Weak<SocketImpl>,
     /* Mark for temporary channels. Usually remote ports of these channels are ephemeral and received from incoming connections to server.
@@ -60,8 +61,10 @@ impl ChannelTcp {
         observer: Arc<dyn IChannelTcpObserverWeakPtr>,
         limiter: Arc<OutboundBandwidthLimiter>,
         io_ctx: Arc<dyn IoContext>,
+        channel_id: usize,
     ) -> Self {
         Self {
+            channel_id,
             channel_mutex: Mutex::new(TcpChannelData {
                 last_bootstrap_attempt: 0,
                 last_packet_received: now,
@@ -259,6 +262,10 @@ impl Channel for ChannelTcp {
 
     fn is_alive(&self) -> bool {
         self.socket().map(|s| s.is_alive()).unwrap_or(false)
+    }
+
+    fn channel_id(&self) -> usize {
+        self.channel_id
     }
 }
 

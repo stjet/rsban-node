@@ -24,6 +24,7 @@ pub struct InProcChannelData {
 }
 
 pub struct ChannelInProc {
+    channel_id: usize,
     temporary: AtomicBool,
     channel_mutex: Mutex<InProcChannelData>,
     network_constants: NetworkConstants,
@@ -34,6 +35,7 @@ pub struct ChannelInProc {
 
 impl ChannelInProc {
     pub fn new(
+        channel_id: usize,
         now: u64,
         network_constants: NetworkConstants,
         network_filter: Arc<NetworkFilter>,
@@ -41,6 +43,7 @@ impl ChannelInProc {
         vote_uniquer: Arc<VoteUniquer>,
     ) -> Self {
         Self {
+            channel_id,
             temporary: AtomicBool::new(false),
             channel_mutex: Mutex::new(InProcChannelData {
                 last_bootstrap_attempt: 0,
@@ -128,5 +131,9 @@ impl Channel for ChannelInProc {
 
     fn is_alive(&self) -> bool {
         true
+    }
+
+    fn channel_id(&self) -> usize {
+        self.channel_id
     }
 }

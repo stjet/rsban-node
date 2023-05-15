@@ -15,13 +15,15 @@ pub struct FakeChannelData {
 }
 
 pub struct ChannelFake {
+    channel_id: usize,
     temporary: AtomicBool,
     channel_mutex: Mutex<FakeChannelData>,
 }
 
 impl ChannelFake {
-    pub fn new(now: u64) -> Self {
+    pub fn new(now: u64, channel_id: usize) -> Self {
         Self {
+            channel_id,
             temporary: AtomicBool::new(false),
             channel_mutex: Mutex::new(FakeChannelData {
                 last_bootstrap_attempt: 0,
@@ -76,5 +78,9 @@ impl Channel for ChannelFake {
 
     fn is_alive(&self) -> bool {
         true
+    }
+
+    fn channel_id(&self) -> usize {
+        self.channel_id
     }
 }

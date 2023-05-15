@@ -31,7 +31,7 @@ public:
 	representative (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
 	representative (representative const & other_a);
 	~representative ();
-	representative & operator=(representative const & other_a);
+	representative & operator= (representative const & other_a);
 	std::reference_wrapper<nano::transport::channel const> channel_ref () const
 	{
 		return *channel;
@@ -40,14 +40,14 @@ public:
 	{
 		return get_account () == other_a.get_account ();
 	}
-	nano::account get_account() const;
+	nano::account get_account () const;
 
 	std::shared_ptr<nano::transport::channel> channel;
 
-	std::chrono::steady_clock::time_point get_last_request() const;
-	void set_last_request(std::chrono::steady_clock::time_point time_point);
-	std::chrono::steady_clock::time_point get_last_response() const;
-	void set_last_response(std::chrono::steady_clock::time_point time_point);
+	std::chrono::steady_clock::time_point get_last_request () const;
+	void set_last_request (std::chrono::steady_clock::time_point time_point);
+	std::chrono::steady_clock::time_point get_last_response () const;
+	void set_last_response (std::chrono::steady_clock::time_point time_point);
 
 	rsnano::RepresentativeHandle * handle;
 };

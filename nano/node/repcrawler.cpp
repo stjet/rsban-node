@@ -4,6 +4,7 @@
 #include <nano/node/repcrawler.hpp>
 
 #include <boost/format.hpp>
+
 #include <chrono>
 
 nano::representative::representative (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a) :
@@ -24,41 +25,41 @@ nano::representative::~representative ()
 	rsnano::rsn_representative_destroy (handle);
 }
 
-nano::representative & nano::representative::operator=(nano::representative const & other_a)
+nano::representative & nano::representative::operator= (nano::representative const & other_a)
 {
-	rsnano::rsn_representative_destroy(handle);
-	handle = rsnano::rsn_representative_clone(other_a.handle);
+	rsnano::rsn_representative_destroy (handle);
+	handle = rsnano::rsn_representative_clone (other_a.handle);
 	channel = other_a.channel;
 	return *this;
 }
 
-nano::account nano::representative::get_account() const
+nano::account nano::representative::get_account () const
 {
 	nano::account account;
-	rsnano::rsn_representative_account(handle, account.bytes.data ());
+	rsnano::rsn_representative_account (handle, account.bytes.data ());
 	return account;
 }
 
-std::chrono::steady_clock::time_point nano::representative::get_last_request() const
+std::chrono::steady_clock::time_point nano::representative::get_last_request () const
 {
 	return std::chrono::steady_clock::time_point (
-		std::chrono::steady_clock::duration (rsnano::rsn_representative_last_request(handle)));
+	std::chrono::steady_clock::duration (rsnano::rsn_representative_last_request (handle)));
 }
 
-void nano::representative::set_last_request(std::chrono::steady_clock::time_point time_point)
+void nano::representative::set_last_request (std::chrono::steady_clock::time_point time_point)
 {
-	rsnano::rsn_representative_set_last_request(handle, time_point.time_since_epoch().count());
+	rsnano::rsn_representative_set_last_request (handle, time_point.time_since_epoch ().count ());
 }
 
-std::chrono::steady_clock::time_point nano::representative::get_last_response() const
+std::chrono::steady_clock::time_point nano::representative::get_last_response () const
 {
 	return std::chrono::steady_clock::time_point (
-		std::chrono::steady_clock::duration (rsnano::rsn_representative_last_response(handle)));
+	std::chrono::steady_clock::duration (rsnano::rsn_representative_last_response (handle)));
 }
 
-void nano::representative::set_last_response(std::chrono::steady_clock::time_point time_point)
+void nano::representative::set_last_response (std::chrono::steady_clock::time_point time_point)
 {
-	rsnano::rsn_representative_set_last_response(handle, time_point.time_since_epoch().count());
+	rsnano::rsn_representative_set_last_response (handle, time_point.time_since_epoch ().count ());
 }
 
 nano::rep_crawler::rep_crawler (nano::node & node_a) :

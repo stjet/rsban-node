@@ -16,8 +16,10 @@ namespace
 {
 rsnano::ChannelHandle * create_inproc_handle (nano::node & node_a)
 {
+	auto channel_id = node_a.network->next_channel_id.fetch_add (1);
 	auto network_dto{ node_a.config->network_params.network.to_dto () };
 	return rsnano::rsn_channel_inproc_create (
+	channel_id,
 	std::chrono::steady_clock::now ().time_since_epoch ().count (),
 	&network_dto,
 	node_a.network->publish_filter->handle,

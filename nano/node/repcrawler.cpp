@@ -278,9 +278,9 @@ void nano::rep_crawler::throttled_remove (nano::block_hash const & hash_a, uint6
 bool nano::rep_crawler::is_pr (nano::transport::channel const & channel_a) const
 {
 	nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
-	auto existing = probable_reps.get<tag_channel_ref> ().find (channel_a);
+	auto existing = probable_reps.get<tag_channel_id> ().find (channel_a.channel_id ());
 	bool result = false;
-	if (existing != probable_reps.get<tag_channel_ref> ().end ())
+	if (existing != probable_reps.get<tag_channel_id> ().end ())
 	{
 		result = node.ledger.weight (existing->get_account ()) > node.minimum_principal_weight ();
 	}
@@ -323,13 +323,13 @@ void nano::rep_crawler::on_rep_request (std::shared_ptr<nano::transport::channel
 	nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
 	if (channel_a->get_tcp_endpoint ().address () != boost::asio::ip::address_v6::any ())
 	{
-		probably_rep_t::index<tag_channel_ref>::type & channel_ref_index = probable_reps.get<tag_channel_ref> ();
+		probably_rep_t::index<tag_channel_id>::type & channel_id_index = probable_reps.get<tag_channel_id> ();
 
 		// Find and update the timestamp on all reps available on the endpoint (a single host may have multiple reps)
-		auto itr_pair = channel_ref_index.equal_range (*channel_a);
+		auto itr_pair = channel_id_index.equal_range (channel_a->channel_id ());
 		for (; itr_pair.first != itr_pair.second; itr_pair.first++)
 		{
-			channel_ref_index.modify (itr_pair.first, [] (nano::representative & value_a) {
+			channel_id_index.modify (itr_pair.first, [] (nano::representative & value_a) {
 				value_a.set_last_request (std::chrono::steady_clock::now ());
 			});
 		}
@@ -376,7 +376,7 @@ void nano::rep_crawler::cleanup_reps ()
 		if (!equal)
 		{
 			nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
-			probable_reps.get<tag_channel_ref> ().erase (*i);
+			probable_reps.get<tag_channel_id> ().erase (i->channel_id ());
 		}
 	}
 }

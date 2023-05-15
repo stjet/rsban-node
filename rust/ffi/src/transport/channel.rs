@@ -121,6 +121,11 @@ pub unsafe extern "C" fn rsn_channel_set_node_id(handle: *mut ChannelHandle, id:
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_channel_id(handle: *mut ChannelHandle) -> usize {
+    as_channel(handle).channel_id()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_channel_inproc_create(
     channel_id: usize,
     now: u64,

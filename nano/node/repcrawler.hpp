@@ -2,6 +2,7 @@
 
 #include "nano/lib/rsnano.hpp"
 
+#include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
 
 #include <boost/multi_index/hashed_index.hpp>
@@ -32,10 +33,10 @@ public:
 	representative (representative const & other_a);
 	~representative ();
 	representative & operator= (representative const & other_a);
-	std::reference_wrapper<nano::transport::channel const> channel_ref () const
+	size_t channel_id () const
 	{
-		return *channel;
-	};
+		return channel->channel_id ();
+	}
 	bool operator== (nano::representative const & other_a) const
 	{
 		return get_account () == other_a.get_account ();
@@ -62,7 +63,7 @@ class rep_crawler final
 
 	// clang-format off
 	class tag_account {};
-	class tag_channel_ref {};
+	class tag_channel_id {};
 	class tag_last_request {};
 	class tag_sequenced {};
 
@@ -72,8 +73,8 @@ class rep_crawler final
 		mi::sequenced<mi::tag<tag_sequenced>>,
 		mi::ordered_non_unique<mi::tag<tag_last_request>,
 			mi::const_mem_fun<representative, std::chrono::steady_clock::time_point, &representative::get_last_request>>,
-		mi::hashed_non_unique<mi::tag<tag_channel_ref>,
-			mi::const_mem_fun<representative, std::reference_wrapper<nano::transport::channel const>, &representative::channel_ref>>>>;
+		mi::hashed_non_unique<mi::tag<tag_channel_id>,
+			mi::const_mem_fun<representative, size_t, &representative::channel_id>>>>;
 	// clang-format on
 
 public:

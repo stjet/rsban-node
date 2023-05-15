@@ -1771,7 +1771,7 @@ TEST (node, rep_weight)
 	ASSERT_EQ (1, reps.size ());
 	ASSERT_EQ (node.balance (nano::dev::genesis_key.pub), node.ledger.weight (reps[0].get_account ()));
 	ASSERT_EQ (nano::dev::genesis_key.pub, reps[0].get_account ());
-	ASSERT_EQ (*channel1, reps[0].channel_ref ());
+	ASSERT_EQ (channel1->channel_id (), reps[0].channel_id ());
 	ASSERT_TRUE (node.rep_crawler.is_pr (*channel1));
 	ASSERT_FALSE (node.rep_crawler.is_pr (*channel2));
 	ASSERT_TRUE (node.rep_crawler.is_pr (*channel3));
@@ -1854,7 +1854,7 @@ TEST (node, rep_remove)
 	ASSERT_EQ (1, reps.size ());
 	ASSERT_EQ (searching_node.minimum_principal_weight () * 2, searching_node.ledger.weight (reps[0].get_account ()));
 	ASSERT_EQ (keys_rep1.pub, reps[0].get_account ());
-	ASSERT_EQ (*channel_rep1, reps[0].channel_ref ());
+	ASSERT_EQ (channel_rep1->channel_id (), reps[0].channel_id ());
 
 	// When rep1 disconnects then rep1 should not be found anymore
 	channel_rep1->close ();

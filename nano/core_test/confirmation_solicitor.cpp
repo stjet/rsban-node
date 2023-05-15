@@ -26,7 +26,7 @@ TEST (confirmation_solicitor, batches)
 	solicitor.prepare (representatives);
 	// Ensure the representatives are correct
 	ASSERT_EQ (1, representatives.size ());
-	ASSERT_EQ (channel1, representatives.front ().channel);
+	ASSERT_EQ (channel1->channel_id (), representatives.front ().channel_id ());
 	ASSERT_EQ (nano::dev::genesis_key.pub, representatives.front ().get_account ());
 	ASSERT_TIMELY (3s, node2.network->size () == 1);
 	nano::block_builder builder;
@@ -76,7 +76,7 @@ TEST (confirmation_solicitor, different_hash)
 	solicitor.prepare (representatives);
 	// Ensure the representatives are correct
 	ASSERT_EQ (1, representatives.size ());
-	ASSERT_EQ (channel1, representatives.front ().channel);
+	ASSERT_EQ (channel1->channel_id (), representatives.front ().channel_id ());
 	ASSERT_EQ (nano::dev::genesis_key.pub, representatives.front ().get_account ());
 	ASSERT_TIMELY (3s, node2.network->size () == 1);
 	nano::block_builder builder;

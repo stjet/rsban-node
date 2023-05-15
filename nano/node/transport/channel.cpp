@@ -92,3 +92,8 @@ void nano::transport::channel::set_node_id (nano::account node_id_a)
 {
 	rsnano::rsn_channel_set_node_id (handle, node_id_a.bytes.data ());
 }
+
+size_t nano::transport::channel::channel_id () const
+{
+	return rsnano::rsn_channel_id (handle);
+}

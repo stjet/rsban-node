@@ -26,7 +26,7 @@ public:
 	void push ();
 	void push_block (nano::block const &);
 	void send_finished ();
-	std::shared_ptr<nano::node> node;
+	std::weak_ptr<nano::node> node_weak;
 	std::shared_ptr<nano::bootstrap_client> connection;
 	std::shared_ptr<nano::bootstrap_attempt_legacy> attempt;
 	std::promise<bool> promise;
@@ -44,7 +44,7 @@ public:
 	void receive ();
 	void received_type ();
 	void received_block (boost::system::error_code const &, std::size_t, nano::block_type);
-	std::shared_ptr<nano::node> node;
+	std::weak_ptr<nano::node> node_weak;
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::transport::tcp_server> connection;
 };

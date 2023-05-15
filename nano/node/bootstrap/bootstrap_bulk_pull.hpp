@@ -84,7 +84,7 @@ private:
 	std::shared_ptr<nano::bootstrap::block_deserializer> block_deserializer;
 	bool logging_enabled{ false };
 	bool network_logging{ false };
-	std::shared_ptr<nano::node> node;
+	std::weak_ptr<nano::node> node;
 	nano::logger_mt & logger;
 };
 class bootstrap_attempt_wallet;
@@ -101,7 +101,7 @@ public:
 	uint64_t pull_blocks;
 
 private:
-	std::shared_ptr<nano::node> node;
+	std::weak_ptr<nano::node> node;
 };
 
 class bulk_pull;
@@ -130,7 +130,7 @@ public:
 	nano::bulk_pull::count_t sent_count;
 
 private:
-	std::shared_ptr<nano::node> node;
+	std::weak_ptr<nano::node> node;
 };
 class bulk_pull_account;
 class bulk_pull_account_server final : public std::enable_shared_from_this<nano::bulk_pull_account_server>
@@ -153,6 +153,6 @@ public:
 	bool invalid_request;
 
 private:
-	std::shared_ptr<nano::node> node;
+	std::weak_ptr<nano::node> node;
 };
 }

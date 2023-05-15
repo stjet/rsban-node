@@ -15,6 +15,11 @@ constexpr std::size_t nano::frontier_req_client::size_frontier;
 
 void nano::frontier_req_client::run (nano::account const & start_account_a, uint32_t const frontiers_age_a, uint32_t const count_a)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	nano::frontier_req request{ node->network_params.network };
 	request.set_start ((start_account_a.is_zero () || start_account_a.number () == std::numeric_limits<nano::uint256_t>::max ()) ? start_account_a : start_account_a.number () + 1);
 	request.set_age (frontiers_age_a);
@@ -26,15 +31,20 @@ void nano::frontier_req_client::run (nano::account const & start_account_a, uint
 	auto this_l (shared_from_this ());
 	connection->send (
 	request, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
+		auto node = this_l->node_weak.lock ();
+		if (!node)
+		{
+			return;
+		}
 		if (!ec)
 		{
 			this_l->receive_frontier ();
 		}
 		else
 		{
-			if (this_l->node->config->logging.network_logging ())
+			if (node->config->logging.network_logging ())
 			{
-				this_l->node->logger->try_log (boost::str (boost::format ("Error while sending bootstrap request %1%") % ec.message ()));
+				node->logger->try_log (boost::str (boost::format ("Error while sending bootstrap request %1%") % ec.message ()));
 			}
 		}
 	},
@@ -42,7 +52,7 @@ void nano::frontier_req_client::run (nano::account const & start_account_a, uint
 }
 
 nano::frontier_req_client::frontier_req_client (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::bootstrap_client> const & connection_a, std::shared_ptr<nano::bootstrap_attempt_legacy> const & attempt_a) :
-	node (node_a),
+	node_weak (node_a),
 	connection (connection_a),
 	attempt (attempt_a),
 	count (0),
@@ -54,6 +64,11 @@ void nano::frontier_req_client::receive_frontier ()
 {
 	auto this_l (shared_from_this ());
 	connection->async_read (nano::frontier_req_client::size_frontier, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
+		auto node = this_l->node_weak.lock ();
+		if (!node)
+		{
+			return;
+		}
 		// An issue with asio is that sometimes, instead of reporting a bad file descriptor during disconnect,
 		// we simply get a size of 0.
 		if (size_a == nano::frontier_req_client::size_frontier)
@@ -62,9 +77,9 @@ void nano::frontier_req_client::receive_frontier ()
 		}
 		else
 		{
-			if (this_l->node->config->logging.network_message_logging ())
+			if (node->config->logging.network_message_logging ())
 			{
-				this_l->node->logger->try_log (boost::str (boost::format ("Invalid size: expected %1%, got %2%") % nano::frontier_req_client::size_frontier % size_a));
+				node->logger->try_log (boost::str (boost::format ("Invalid size: expected %1%, got %2%") % nano::frontier_req_client::size_frontier % size_a));
 			}
 		}
 	});
@@ -93,6 +108,11 @@ void nano::frontier_req_client::unsynced (nano::block_hash const & head, nano::b
 
 void nano::frontier_req_client::received_frontier (boost::system::error_code const & ec, std::size_t size_a)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	if (!ec)
 	{
 		debug_assert (size_a == nano::frontier_req_client::size_frontier);
@@ -215,6 +235,11 @@ void nano::frontier_req_client::received_frontier (boost::system::error_code con
 
 void nano::frontier_req_client::next ()
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	// Filling accounts deque to prevent often read transactions
 	if (accounts.empty ())
 	{
@@ -241,7 +266,7 @@ void nano::frontier_req_client::next ()
 }
 
 nano::frontier_req_server::frontier_req_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::frontier_req> request_a) :
-	node (node_a),
+	node_weak (node_a),
 	connection (connection_a),
 	current (request_a->get_start ().number () - 1),
 	frontier (0),
@@ -253,6 +278,11 @@ nano::frontier_req_server::frontier_req_server (std::shared_ptr<nano::node> cons
 
 void nano::frontier_req_server::send_next ()
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	if (!current.is_zero () && count < request->get_count ())
 	{
 		std::vector<uint8_t> send_buffer;
@@ -281,6 +311,11 @@ void nano::frontier_req_server::send_next ()
 
 void nano::frontier_req_server::send_finished ()
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	std::vector<uint8_t> send_buffer;
 	{
 		nano::vectorstream stream (send_buffer);
@@ -300,6 +335,11 @@ void nano::frontier_req_server::send_finished ()
 
 void nano::frontier_req_server::no_block_sent (boost::system::error_code const & ec, std::size_t size_a)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	if (!ec)
 	{
 		connection->start ();
@@ -315,6 +355,11 @@ void nano::frontier_req_server::no_block_sent (boost::system::error_code const &
 
 void nano::frontier_req_server::sent_action (boost::system::error_code const & ec, std::size_t size_a)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	if (!ec)
 	{
 		count++;
@@ -334,6 +379,11 @@ void nano::frontier_req_server::sent_action (boost::system::error_code const & e
 
 void nano::frontier_req_server::next ()
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	// Filling accounts deque to prevent often read transactions
 	if (accounts.empty ())
 	{

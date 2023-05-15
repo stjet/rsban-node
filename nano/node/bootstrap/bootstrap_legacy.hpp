@@ -31,7 +31,7 @@ public:
 	void set_start_account (nano::account const &);
 	rsnano::BootstrapAttemptLockHandle * run_start (rsnano::BootstrapAttemptLockHandle *);
 	void get_information (boost::property_tree::ptree &) override;
-	std::shared_ptr<nano::node> node;
+	std::weak_ptr<nano::node> node_weak;
 	nano::tcp_endpoint endpoint_frontier_request;
 	std::weak_ptr<nano::frontier_req_client> frontiers;
 	std::weak_ptr<nano::bulk_push_client> push;

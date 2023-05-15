@@ -28,7 +28,7 @@ public:
 	bool bulk_push_available ();
 	void unsynced (nano::block_hash const &, nano::block_hash const &);
 	void next ();
-	std::shared_ptr<nano::node> node;
+	std::weak_ptr<nano::node> node_weak;
 	std::shared_ptr<nano::bootstrap_client> connection;
 	std::shared_ptr<nano::bootstrap_attempt_legacy> attempt;
 	nano::account current;
@@ -60,7 +60,7 @@ public:
 	void no_block_sent (boost::system::error_code const &, std::size_t);
 	void next ();
 	bool send_confirmed ();
-	std::shared_ptr<nano::node> node;
+	std::weak_ptr<nano::node> node_weak;
 	std::shared_ptr<nano::transport::tcp_server> connection;
 	nano::account current;
 	nano::block_hash frontier;

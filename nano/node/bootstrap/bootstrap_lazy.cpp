@@ -14,7 +14,7 @@ constexpr std::size_t nano::bootstrap_limits::lazy_blocks_restart_limit;
 
 nano::bootstrap_attempt_lazy::bootstrap_attempt_lazy (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string const & id_a) :
 	nano::bootstrap_attempt (rsnano::rsn_bootstrap_attempt_lazy_create (nano::to_logger_handle (node_a->logger), node_a->websocket.server.get (), node_a->block_processor.get_handle (), node_a->bootstrap_initiator.get_handle (), node_a->ledger.get_handle (), id_a.c_str (), incremental_id_a)),
-	node (node_a)
+	node_weak (node_a)
 {
 }
 
@@ -25,6 +25,11 @@ nano::bootstrap_attempt_lazy::~bootstrap_attempt_lazy ()
 
 bool nano::bootstrap_attempt_lazy::lazy_start (nano::hash_or_account const & hash_or_account_a)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return false;
+	}
 	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	bool inserted (false);
 	// Add start blocks, limit 1024 (4k with disabled legacy bootstrap)
@@ -64,6 +69,11 @@ void nano::bootstrap_attempt_lazy::lazy_add (nano::pull_info const & pull_a)
 
 void nano::bootstrap_attempt_lazy::lazy_requeue (nano::block_hash const & hash_a, nano::block_hash const & previous_a)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	// Add only known blocks
 	if (lazy_blocks_processed (hash_a))
@@ -80,6 +90,11 @@ void nano::bootstrap_attempt_lazy::lazy_requeue (nano::block_hash const & hash_a
 
 uint32_t nano::bootstrap_attempt_lazy::lazy_batch_size ()
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return 0;
+	}
 	auto result (node->network_params.bootstrap.lazy_max_pull_blocks);
 	auto total_blocks = rsnano::rsn_bootstrap_attempt_total_blocks (handle);
 	if (total_blocks > nano::bootstrap_limits::lazy_batch_pull_count_resize_blocks_limit && lazy_blocks_count != 0)
@@ -100,6 +115,11 @@ uint32_t nano::bootstrap_attempt_lazy::lazy_batch_size ()
 
 rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_lazy::lazy_pull_flush (rsnano::BootstrapAttemptLockHandle * lock_a)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return lock_a;
+	}
 	static std::size_t const max_pulls (static_cast<std::size_t> (nano::bootstrap_limits::bootstrap_connection_scale_target_blocks) * 3);
 	if (get_pulling () < max_pulls)
 	{
@@ -136,7 +156,11 @@ rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_lazy::lazy_pull_flu
 
 bool nano::bootstrap_attempt_lazy::lazy_finished ()
 {
-	//debug_assert (!mutex.try_lock ());
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return true;
+	}
 	if (get_stopped ())
 	{
 		return true;
@@ -173,6 +197,11 @@ bool nano::bootstrap_attempt_lazy::lazy_finished ()
 
 bool nano::bootstrap_attempt_lazy::lazy_has_expired () const
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return true;
+	}
 	bool result (false);
 	// Max 30 minutes run with enabled legacy bootstrap
 	static std::chrono::minutes const max_lazy_time (node->flags.disable_legacy_bootstrap () ? 7 * 24 * 60 : 30);
@@ -189,6 +218,11 @@ bool nano::bootstrap_attempt_lazy::lazy_has_expired () const
 
 void nano::bootstrap_attempt_lazy::run ()
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	debug_assert (get_started ());
 	debug_assert (!node->flags.disable_lazy_bootstrap ());
 	node->bootstrap_initiator.connections->populate_connections (false);
@@ -236,6 +270,11 @@ void nano::bootstrap_attempt_lazy::run ()
 
 bool nano::bootstrap_attempt_lazy::process_block (std::shared_ptr<nano::block> const & block_a, nano::account const & known_account_a, uint64_t pull_blocks_processed, nano::bulk_pull::count_t max_blocks, bool block_expected, unsigned retry_limit)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return true;
+	}
 	bool stop_pull (false);
 	if (block_expected)
 	{
@@ -251,6 +290,11 @@ bool nano::bootstrap_attempt_lazy::process_block (std::shared_ptr<nano::block> c
 
 bool nano::bootstrap_attempt_lazy::process_block_lazy (std::shared_ptr<nano::block> const & block_a, nano::account const & known_account_a, uint64_t pull_blocks_processed, nano::bulk_pull::count_t max_blocks, unsigned retry_limit)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return true;
+	}
 	bool stop_pull (false);
 	auto hash (block_a->hash ());
 	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
@@ -298,6 +342,11 @@ bool nano::bootstrap_attempt_lazy::process_block_lazy (std::shared_ptr<nano::blo
 
 void nano::bootstrap_attempt_lazy::lazy_block_state (std::shared_ptr<nano::block> const & block_a, unsigned retry_limit)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	std::shared_ptr<nano::state_block> block_l (std::static_pointer_cast<nano::state_block> (block_a));
 	if (block_l != nullptr)
 	{
@@ -351,6 +400,11 @@ void nano::bootstrap_attempt_lazy::lazy_block_state (std::shared_ptr<nano::block
 
 void nano::bootstrap_attempt_lazy::lazy_block_state_backlog_check (std::shared_ptr<nano::block> const & block_a, nano::block_hash const & hash_a)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	// Search unknown state blocks balances
 	auto find_state (lazy_state_backlog.find (hash_a));
 	if (find_state != lazy_state_backlog.end ())
@@ -376,6 +430,11 @@ void nano::bootstrap_attempt_lazy::lazy_block_state_backlog_check (std::shared_p
 
 void nano::bootstrap_attempt_lazy::lazy_backlog_cleanup ()
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	uint64_t read_count (0);
 	auto transaction (node->store.tx_begin_read ());
 	for (auto it (lazy_state_backlog.begin ()), end (lazy_state_backlog.end ()); it != end && !get_stopped ();)
@@ -441,6 +500,11 @@ bool nano::bootstrap_attempt_lazy::lazy_blocks_processed (nano::block_hash const
 
 bool nano::bootstrap_attempt_lazy::lazy_processed_or_exists (nano::block_hash const & hash_a)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return true;
+	}
 	bool result (false);
 	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	if (lazy_blocks_processed (hash_a))
@@ -477,7 +541,7 @@ void nano::bootstrap_attempt_lazy::get_information (boost::property_tree::ptree 
 
 nano::bootstrap_attempt_wallet::bootstrap_attempt_wallet (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string id_a) :
 	nano::bootstrap_attempt (node_a, nano::bootstrap_mode::wallet_lazy, incremental_id_a, id_a),
-	node (node_a)
+	node_weak (node_a)
 {
 }
 
@@ -487,6 +551,11 @@ nano::bootstrap_attempt_wallet::~bootstrap_attempt_wallet ()
 
 rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_wallet::request_pending (rsnano::BootstrapAttemptLockHandle * lock_a)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return lock_a;
+	}
 	rsnano::rsn_bootstrap_attempt_unlock (lock_a);
 	auto connection_l (node->bootstrap_initiator.connections->connection (shared_from_this ()));
 	lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
@@ -498,8 +567,8 @@ rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_wallet::request_pen
 		auto this_l = std::dynamic_pointer_cast<nano::bootstrap_attempt_wallet> (shared_from_this ());
 		// The bulk_pull_account_client destructor attempt to requeue_pull which can cause a deadlock if this is the last reference
 		// Dispatch request in an external thread in case it needs to be destroyed
-		node->background ([connection_l, this_l, account] () {
-			auto client (std::make_shared<nano::bulk_pull_account_client> (this_l->node, connection_l, this_l, account));
+		node->background ([connection_l, this_l, account, node] () {
+			auto client (std::make_shared<nano::bulk_pull_account_client> (node, connection_l, this_l, account));
 			client->request ();
 		});
 	}
@@ -538,6 +607,11 @@ bool nano::bootstrap_attempt_wallet::wallet_finished ()
 
 void nano::bootstrap_attempt_wallet::run ()
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	debug_assert (get_started ());
 	debug_assert (!node->flags.disable_wallet_bootstrap ());
 	node->bootstrap_initiator.connections->populate_connections (false);

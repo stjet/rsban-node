@@ -7,8 +7,6 @@
 #include <atomic>
 #include <unordered_set>
 
-namespace mi = boost::multi_index;
-
 namespace nano
 {
 class node;
@@ -50,7 +48,7 @@ public:
 	void get_information (boost::property_tree::ptree &) override;
 
 private:
-	std::shared_ptr<nano::node> node;
+	std::weak_ptr<nano::node> node_weak;
 	std::unordered_set<std::size_t> lazy_blocks;
 	std::unordered_map<nano::block_hash, nano::lazy_state_backlog_item> lazy_state_backlog;
 	std::unordered_set<nano::block_hash> lazy_undefined_links;
@@ -79,7 +77,7 @@ public:
 	bool wallet_finished ();
 	std::size_t wallet_size ();
 	void get_information (boost::property_tree::ptree &) override;
-	std::shared_ptr<nano::node> node;
+	std::weak_ptr<nano::node> node_weak;
 	std::deque<nano::account> wallet_accounts;
 };
 }

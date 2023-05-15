@@ -7,7 +7,7 @@
 
 nano::bootstrap_attempt_legacy::bootstrap_attempt_legacy (std::shared_ptr<nano::node> const & node_a, uint64_t const incremental_id_a, std::string const & id_a, uint32_t const frontiers_age_a, nano::account const & start_account_a) :
 	nano::bootstrap_attempt (node_a, nano::bootstrap_mode::legacy, incremental_id_a, id_a),
-	node (node_a),
+	node_weak (node_a),
 	frontiers_age (frontiers_age_a),
 	start_account (start_account_a)
 {
@@ -29,6 +29,11 @@ bool nano::bootstrap_attempt_legacy::consume_future (std::future<bool> & future_
 
 void nano::bootstrap_attempt_legacy::stop ()
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	set_stopped ();
 	rsnano::rsn_bootstrap_attempt_unlock (lock);
@@ -60,6 +65,11 @@ void nano::bootstrap_attempt_legacy::stop ()
 
 rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_legacy::request_push (rsnano::BootstrapAttemptLockHandle * lock_a)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return lock_a;
+	}
 	bool error (false);
 	rsnano::rsn_bootstrap_attempt_unlock (lock_a);
 	auto connection_l (node->bootstrap_initiator.connections->find_connection (endpoint_frontier_request));
@@ -69,7 +79,7 @@ rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_legacy::request_pus
 		std::future<bool> future;
 		{
 			auto this_l = std::dynamic_pointer_cast<nano::bootstrap_attempt_legacy> (shared_from_this ());
-			auto client = std::make_shared<nano::bulk_push_client> (this_l->node, connection_l, this_l);
+			auto client = std::make_shared<nano::bulk_push_client> (node, connection_l, this_l);
 			client->start ();
 			push = client;
 			future = client->promise.get_future ();
@@ -130,6 +140,11 @@ void nano::bootstrap_attempt_legacy::set_start_account (nano::account const & st
 
 bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::BootstrapAttemptLockHandle ** lock_a, bool first_attempt)
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return true;
+	}
 	auto result (true);
 	rsnano::rsn_bootstrap_attempt_unlock (*lock_a);
 	auto connection_l (node->bootstrap_initiator.connections->connection (shared_from_this (), first_attempt));
@@ -140,7 +155,7 @@ bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::BootstrapAttemptL
 		std::future<bool> future;
 		{
 			auto this_l = std::dynamic_pointer_cast<nano::bootstrap_attempt_legacy> (shared_from_this ());
-			auto client = std::make_shared<nano::frontier_req_client> (this_l->node, connection_l, this_l);
+			auto client = std::make_shared<nano::frontier_req_client> (node, connection_l, this_l);
 			client->run (start_account, frontiers_age, node->config->bootstrap_frontier_request_count);
 			frontiers = client;
 			future = client->promise.get_future ();
@@ -207,6 +222,11 @@ rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_legacy::run_start (
 
 void nano::bootstrap_attempt_legacy::run ()
 {
+	auto node = node_weak.lock ();
+	if (!node)
+	{
+		return;
+	}
 	debug_assert (get_started ());
 	debug_assert (!node->flags.disable_legacy_bootstrap ());
 	node->bootstrap_initiator.connections->populate_connections (false);

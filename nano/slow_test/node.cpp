@@ -2180,7 +2180,7 @@ TEST (system, block_sequence)
 		auto prs = node->rep_crawler.principal_representatives ();
 		for (auto pr : prs)
 		{
-			std::cerr << pr.account.to_account () << ' ';
+			std::cerr << pr.get_account ().to_account () << ' ';
 		}
 		std::cerr << '\n';
 	}

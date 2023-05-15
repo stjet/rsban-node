@@ -28,22 +28,27 @@ class node;
 class representative
 {
 public:
-	representative ();
 	representative (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
 	representative (representative const & other_a);
 	~representative ();
+	representative & operator=(representative const & other_a);
 	std::reference_wrapper<nano::transport::channel const> channel_ref () const
 	{
 		return *channel;
 	};
 	bool operator== (nano::representative const & other_a) const
 	{
-		return account == other_a.account;
+		return get_account () == other_a.get_account ();
 	}
-	nano::account account{};
+	nano::account get_account() const;
+
 	std::shared_ptr<nano::transport::channel> channel;
-	std::chrono::steady_clock::time_point last_request{ std::chrono::steady_clock::time_point () };
-	std::chrono::steady_clock::time_point last_response{ std::chrono::steady_clock::time_point () };
+
+	std::chrono::steady_clock::time_point get_last_request() const;
+	void set_last_request(std::chrono::steady_clock::time_point time_point);
+	std::chrono::steady_clock::time_point get_last_response() const;
+	void set_last_response(std::chrono::steady_clock::time_point time_point);
+
 	rsnano::RepresentativeHandle * handle;
 };
 
@@ -63,10 +68,10 @@ class rep_crawler final
 
 	using probably_rep_t = boost::multi_index_container<representative,
 	mi::indexed_by<
-		mi::hashed_unique<mi::tag<tag_account>, mi::member<representative, nano::account, &representative::account>>,
+		mi::hashed_unique<mi::tag<tag_account>, mi::const_mem_fun<representative, nano::account, &representative::get_account>>,
 		mi::sequenced<mi::tag<tag_sequenced>>,
 		mi::ordered_non_unique<mi::tag<tag_last_request>,
-			mi::member<representative, std::chrono::steady_clock::time_point, &representative::last_request>>,
+			mi::const_mem_fun<representative, std::chrono::steady_clock::time_point, &representative::get_last_request>>,
 		mi::hashed_non_unique<mi::tag<tag_channel_ref>,
 			mi::const_mem_fun<representative, std::reference_wrapper<nano::transport::channel const>, &representative::channel_ref>>>>;
 	// clang-format on

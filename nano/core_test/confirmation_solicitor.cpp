@@ -27,7 +27,7 @@ TEST (confirmation_solicitor, batches)
 	// Ensure the representatives are correct
 	ASSERT_EQ (1, representatives.size ());
 	ASSERT_EQ (channel1, representatives.front ().channel);
-	ASSERT_EQ (nano::dev::genesis_key.pub, representatives.front ().account);
+	ASSERT_EQ (nano::dev::genesis_key.pub, representatives.front ().get_account ());
 	ASSERT_TIMELY (3s, node2.network->size () == 1);
 	nano::block_builder builder;
 	auto send = builder
@@ -77,7 +77,7 @@ TEST (confirmation_solicitor, different_hash)
 	// Ensure the representatives are correct
 	ASSERT_EQ (1, representatives.size ());
 	ASSERT_EQ (channel1, representatives.front ().channel);
-	ASSERT_EQ (nano::dev::genesis_key.pub, representatives.front ().account);
+	ASSERT_EQ (nano::dev::genesis_key.pub, representatives.front ().get_account ());
 	ASSERT_TIMELY (3s, node2.network->size () == 1);
 	nano::block_builder builder;
 	auto send = builder
@@ -91,7 +91,7 @@ TEST (confirmation_solicitor, different_hash)
 	send->sideband_set ({});
 	auto election (std::make_shared<nano::election> (node2, send, nullptr, nullptr, nano::election_behavior::normal));
 	// Add a vote for something else, not the winner
-	election->last_votes[representative.account] = { std::chrono::steady_clock::now (), 1, 1 };
+	election->last_votes[representative.get_account ()] = { std::chrono::steady_clock::now (), 1, 1 };
 	// Ensure the request and broadcast goes through
 	ASSERT_FALSE (solicitor.add (*election));
 	ASSERT_FALSE (solicitor.broadcast (*election));
@@ -138,7 +138,7 @@ TEST (confirmation_solicitor, bypass_max_requests_cap)
 	for (auto const & rep : representatives)
 	{
 		nano::lock_guard<nano::mutex> guard (election->mutex);
-		election->last_votes[rep.account] = { std::chrono::steady_clock::now (), 1, 1 };
+		election->last_votes[rep.get_account ()] = { std::chrono::steady_clock::now (), 1, 1 };
 	}
 	ASSERT_FALSE (solicitor.add (*election));
 	ASSERT_FALSE (solicitor.broadcast (*election));

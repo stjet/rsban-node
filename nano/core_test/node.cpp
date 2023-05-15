@@ -1678,7 +1678,7 @@ TEST (node, rep_list)
 		auto reps = node1.rep_crawler.representatives (1);
 		if (!reps.empty ())
 		{
-			if (!node1.ledger.weight (reps[0].account).is_zero ())
+			if (!node1.ledger.weight (reps[0].get_account ()).is_zero ())
 			{
 				done = true;
 			}
@@ -1769,8 +1769,8 @@ TEST (node, rep_weight)
 	// Make sure we get the rep with the most weight first
 	auto reps = node.rep_crawler.representatives (1);
 	ASSERT_EQ (1, reps.size ());
-	ASSERT_EQ (node.balance (nano::dev::genesis_key.pub), node.ledger.weight (reps[0].account));
-	ASSERT_EQ (nano::dev::genesis_key.pub, reps[0].account);
+	ASSERT_EQ (node.balance (nano::dev::genesis_key.pub), node.ledger.weight (reps[0].get_account ()));
+	ASSERT_EQ (nano::dev::genesis_key.pub, reps[0].get_account ());
 	ASSERT_EQ (*channel1, reps[0].channel_ref ());
 	ASSERT_TRUE (node.rep_crawler.is_pr (*channel1));
 	ASSERT_FALSE (node.rep_crawler.is_pr (*channel2));
@@ -1852,8 +1852,8 @@ TEST (node, rep_remove)
 	ASSERT_TIMELY (5s, searching_node.rep_crawler.representative_count () == 1);
 	auto reps (searching_node.rep_crawler.representatives (1));
 	ASSERT_EQ (1, reps.size ());
-	ASSERT_EQ (searching_node.minimum_principal_weight () * 2, searching_node.ledger.weight (reps[0].account));
-	ASSERT_EQ (keys_rep1.pub, reps[0].account);
+	ASSERT_EQ (searching_node.minimum_principal_weight () * 2, searching_node.ledger.weight (reps[0].get_account ()));
+	ASSERT_EQ (keys_rep1.pub, reps[0].get_account ());
 	ASSERT_EQ (*channel_rep1, reps[0].channel_ref ());
 
 	// When rep1 disconnects then rep1 should not be found anymore
@@ -1889,7 +1889,7 @@ TEST (node, rep_remove)
 
 	// Now only genesisRep should be found:
 	reps = searching_node.rep_crawler.representatives (1);
-	ASSERT_EQ (nano::dev::genesis_key.pub, reps[0].account);
+	ASSERT_EQ (nano::dev::genesis_key.pub, reps[0].get_account ());
 	ASSERT_TIMELY_EQ (5s, searching_node.network->size (), 1);
 	auto list (searching_node.network->list (1));
 	ASSERT_EQ (node_genesis_rep->network->endpoint (), list[0]->get_endpoint ());

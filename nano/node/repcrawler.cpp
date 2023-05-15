@@ -4,22 +4,17 @@
 #include <nano/node/repcrawler.hpp>
 
 #include <boost/format.hpp>
-
-nano::representative::representative () :
-	handle{ rsnano::rsn_representative_create () }
-{
-}
+#include <chrono>
 
 nano::representative::representative (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a) :
-	handle{ rsnano::rsn_representative_create () },
-	account (account_a), channel (channel_a)
+	handle{ rsnano::rsn_representative_create (account_a.bytes.data ()) },
+	channel (channel_a)
 {
 	debug_assert (channel != nullptr);
 }
 
 nano::representative::representative (representative const & other_a) :
 	handle{ rsnano::rsn_representative_clone (other_a.handle) },
-	account{ other_a.account },
 	channel{ other_a.channel }
 {
 }
@@ -27,6 +22,43 @@ nano::representative::representative (representative const & other_a) :
 nano::representative::~representative ()
 {
 	rsnano::rsn_representative_destroy (handle);
+}
+
+nano::representative & nano::representative::operator=(nano::representative const & other_a)
+{
+	rsnano::rsn_representative_destroy(handle);
+	handle = rsnano::rsn_representative_clone(other_a.handle);
+	channel = other_a.channel;
+	return *this;
+}
+
+nano::account nano::representative::get_account() const
+{
+	nano::account account;
+	rsnano::rsn_representative_account(handle, account.bytes.data ());
+	return account;
+}
+
+std::chrono::steady_clock::time_point nano::representative::get_last_request() const
+{
+	return std::chrono::steady_clock::time_point (
+		std::chrono::steady_clock::duration (rsnano::rsn_representative_last_request(handle)));
+}
+
+void nano::representative::set_last_request(std::chrono::steady_clock::time_point time_point)
+{
+	rsnano::rsn_representative_set_last_request(handle, time_point.time_since_epoch().count());
+}
+
+std::chrono::steady_clock::time_point nano::representative::get_last_response() const
+{
+	return std::chrono::steady_clock::time_point (
+		std::chrono::steady_clock::duration (rsnano::rsn_representative_last_response(handle)));
+}
+
+void nano::representative::set_last_response(std::chrono::steady_clock::time_point time_point)
+{
+	rsnano::rsn_representative_set_last_response(handle, time_point.time_since_epoch().count());
 }
 
 nano::rep_crawler::rep_crawler (nano::node & node_a) :
@@ -99,12 +131,12 @@ void nano::rep_crawler::validate ()
 		if (existing != probable_reps.end ())
 		{
 			probable_reps.modify (existing, [rep_weight, &updated, &vote, &channel, &prev_channel] (nano::representative & info) {
-				info.last_response = std::chrono::steady_clock::now ();
+				info.set_last_response (std::chrono::steady_clock::now ());
 
 				// Update if representative channel was changed
 				if (info.channel->get_endpoint () != channel->get_endpoint ())
 				{
-					debug_assert (info.account == vote->account ());
+					debug_assert (info.get_account () == vote->account ());
 					updated = true;
 					prev_channel = info.channel;
 					info.channel = channel;
@@ -249,7 +281,7 @@ bool nano::rep_crawler::is_pr (nano::transport::channel const & channel_a) const
 	bool result = false;
 	if (existing != probable_reps.get<tag_channel_ref> ().end ())
 	{
-		result = node.ledger.weight (existing->account) > node.minimum_principal_weight ();
+		result = node.ledger.weight (existing->get_account ()) > node.minimum_principal_weight ();
 	}
 	return result;
 }
@@ -279,7 +311,7 @@ nano::uint128_t nano::rep_crawler::total_weight () const
 	{
 		if (i->channel->alive ())
 		{
-			result += node.ledger.weight (i->account);
+			result += node.ledger.weight (i->get_account ());
 		}
 	}
 	return result;
@@ -297,7 +329,7 @@ void nano::rep_crawler::on_rep_request (std::shared_ptr<nano::transport::channel
 		for (; itr_pair.first != itr_pair.second; itr_pair.first++)
 		{
 			channel_ref_index.modify (itr_pair.first, [] (nano::representative & value_a) {
-				value_a.last_request = std::chrono::steady_clock::now ();
+				value_a.set_last_request (std::chrono::steady_clock::now ());
 			});
 		}
 	}
@@ -355,7 +387,7 @@ std::vector<nano::representative> nano::rep_crawler::representatives (std::size_
 	nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
 	for (auto i (probable_reps.get<tag_account> ().begin ()), n (probable_reps.get<tag_account> ().end ()); i != n; ++i)
 	{
-		auto weight = node.ledger.weight (i->account);
+		auto weight = node.ledger.weight (i->get_account ());
 		if (weight > weight_a && i->channel->get_network_version () >= version_min)
 		{
 			ordered.insert ({ nano::amount{ weight }, *i });

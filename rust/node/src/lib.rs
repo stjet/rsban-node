@@ -13,7 +13,7 @@ extern crate core;
 
 pub mod block_processing;
 pub mod bootstrap;
-pub mod cementing;
+pub mod cementation;
 pub mod config;
 mod ipc;
 pub mod messages;

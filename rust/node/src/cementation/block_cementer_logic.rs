@@ -215,7 +215,7 @@ mod tests {
     use rsnano_core::BlockChainBuilder;
 
     use super::*;
-    use crate::cementing::{CementCallbacks, LedgerDataRequesterStub};
+    use crate::cementation::{CementCallbacks, LedgerDataRequesterStub};
 
     static TEST_MIN_BATCH_SEPARATION: Duration = Duration::from_millis(50);
     const TEST_MIN_BATCH_SIZE: usize = 100;

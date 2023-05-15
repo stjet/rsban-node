@@ -10,7 +10,7 @@ use std::{
 
 use rsnano_core::{utils::ConsoleLogger, Account};
 use rsnano_ledger::{Ledger, LedgerConstants, WriteDatabaseQueue};
-use rsnano_node::cementing::{BlockCementer, CementCallbacks};
+use rsnano_node::cementation::{BlockCementer, CementCallbacks};
 use rsnano_store_lmdb::LmdbStore;
 
 fn main() {

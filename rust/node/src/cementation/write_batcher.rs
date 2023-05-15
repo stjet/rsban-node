@@ -313,7 +313,7 @@ impl WriteBatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cementing::LedgerDataRequesterStub;
+    use crate::cementation::LedgerDataRequesterStub;
     use rsnano_core::BlockChainBuilder;
 
     #[test]

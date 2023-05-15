@@ -6,7 +6,7 @@ use std::{
 };
 
 use rsnano_core::{BlockEnum, BlockHash};
-use rsnano_node::{cementing::CementationThread, config::Logging};
+use rsnano_node::{cementation::CementationThread, config::Logging};
 
 use crate::{
     copy_hash_bytes,

@@ -207,6 +207,7 @@ impl CementationWalker {
             .checkpoints
             .pop_back()
             .unwrap_or(self.original_block_hash);
+
         let block = self.get_block(&top_hash, data_requester);
         self.enqueue_for_cementation(&block, data_requester)
     }
@@ -421,7 +422,7 @@ mod tests {
     use std::sync::atomic::Ordering;
 
     use super::*;
-    use crate::cementing::LedgerDataRequesterStub;
+    use crate::cementation::LedgerDataRequesterStub;
     use rsnano_core::BlockChainBuilder;
 
     #[test]

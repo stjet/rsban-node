@@ -3,7 +3,7 @@ extern crate anyhow;
 
 pub mod block_processing;
 pub mod bootstrap;
-mod cementing;
+mod cementation;
 mod config;
 pub mod core;
 mod gap_cache;

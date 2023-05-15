@@ -169,7 +169,7 @@ impl BlockCementerLogic {
 
     pub fn next_write<T: LedgerDataRequester>(
         &mut self,
-        data_requester: &T,
+        data_requester: &mut T,
     ) -> Option<BlockChainSection> {
         let next_write = self.write_batcher.next_write(data_requester);
         if let Some(section) = &next_write {
@@ -234,7 +234,7 @@ mod tests {
             logic.get_flush_decision(0, Duration::ZERO),
             FlushDecision::TryFlush(false)
         );
-        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        let next_write = logic.next_write(&mut ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.frontier_section());
         assert_eq!(logic.should_start_new_batch(), false);
         logic.batch_completed(Duration::ZERO, &mut callbacks.as_refs());
@@ -265,7 +265,7 @@ mod tests {
             logic.get_flush_decision(0, Duration::ZERO),
             FlushDecision::TryFlush(false)
         );
-        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        let next_write = logic.next_write(&mut ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.section(2, 3));
         assert_eq!(logic.should_start_new_batch(), false);
         logic.batch_completed(Duration::ZERO, &mut callbacks.as_refs());
@@ -340,12 +340,12 @@ mod tests {
             FlushDecision::TryFlush(false)
         );
 
-        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        let next_write = logic.next_write(&mut ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.section(2, 3));
         assert_eq!(logic.should_start_new_batch(), true);
         logic.batch_completed(Duration::ZERO, &mut callbacks.as_refs());
 
-        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        let next_write = logic.next_write(&mut ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.section(4, 4));
         assert_eq!(logic.should_start_new_batch(), false);
     }
@@ -371,7 +371,7 @@ mod tests {
             FlushDecision::ForceFlush(false)
         );
 
-        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        let next_write = logic.next_write(&mut ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.section(2, 2));
         assert_eq!(logic.should_start_new_batch(), false);
     }
@@ -421,22 +421,22 @@ mod tests {
             FlushDecision::TryFlush(false)
         );
 
-        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        let next_write = logic.next_write(&mut ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.section(2, 2));
         ledger_adapter.cement(genesis_chain.block(2));
         assert_eq!(logic.should_start_new_batch(), false);
 
-        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        let next_write = logic.next_write(&mut ledger_adapter).unwrap();
         assert_eq!(next_write, dest_chain.section(1, 1));
         ledger_adapter.cement(dest_chain.block(1));
         assert_eq!(logic.should_start_new_batch(), false);
 
-        let next_write = logic.next_write(&ledger_adapter).unwrap();
+        let next_write = logic.next_write(&mut ledger_adapter).unwrap();
         assert_eq!(next_write, genesis_chain.section(3, 3));
         ledger_adapter.cement(genesis_chain.block(3));
         assert_eq!(logic.should_start_new_batch(), false);
 
-        let next_write = logic.next_write(&ledger_adapter);
+        let next_write = logic.next_write(&mut ledger_adapter);
         assert_eq!(next_write, None);
     }
 

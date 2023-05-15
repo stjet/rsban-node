@@ -11,9 +11,6 @@ use super::{
     ConfirmedInfo, LedgerDataRequester,
 };
 
-/** The maximum number of blocks to be read in while iterating over a long account chain */
-const BATCH_READ_SIZE: u64 = 65536;
-
 /** The maximum number of various containers to keep the memory bounded */
 const MAX_ITEMS: usize = 131072;
 
@@ -132,7 +129,6 @@ pub(crate) struct CementationWalker {
     original_block_hash: BlockHash,
     checkpoints: BoundedVecDeque<BlockHash>,
     latest_cementation: BlockHash,
-    block_read_count: u64,
     block_cache: Arc<BlockCache>,
 }
 
@@ -148,7 +144,6 @@ impl CementationWalker {
             original_block_hash: BlockHash::zero(),
             checkpoints: BoundedVecDeque::new(max_items),
             latest_cementation: BlockHash::zero(),
-            block_read_count: 0,
             block_cache: Arc::new(BlockCache::new()),
         }
     }
@@ -168,7 +163,6 @@ impl CementationWalker {
         self.checkpoints.clear();
         self.original_block_hash = original_block.hash();
         self.original_block = Some(original_block);
-        self.block_read_count = 0;
         self.block_cache.clear();
     }
 
@@ -204,7 +198,7 @@ impl CementationWalker {
         }
     }
 
-    fn restore_checkpoint_if_required<T: LedgerDataRequester>(&mut self, data_requester: &T) {
+    fn restore_checkpoint_if_required<T: LedgerDataRequester>(&mut self, data_requester: &mut T) {
         if self.chain_stack.len() > 0 || self.is_done() {
             return; // We still have pending chains. No checkpoint needed.
         }
@@ -270,7 +264,7 @@ impl CementationWalker {
     fn enqueue_for_cementation<T: LedgerDataRequester>(
         &mut self,
         block: &BlockEnum,
-        data_requester: &T,
+        data_requester: &mut T,
     ) {
         if let Some(lowest) = self.get_lowest_uncemented_block(&block, data_requester) {
             // There are blocks that need to be cemented in this chain
@@ -287,7 +281,7 @@ impl CementationWalker {
     fn get_lowest_uncemented_block<T: LedgerDataRequester>(
         &mut self,
         top_block: &BlockEnum,
-        data_requester: &T,
+        data_requester: &mut T,
     ) -> Option<BlockEnum> {
         let account = top_block.account_calculated();
         match self.get_confirmation_height(&account, data_requester) {
@@ -328,10 +322,6 @@ impl CementationWalker {
     ) -> Option<(BlockEnum, BlockEnum)> {
         let mut current = self.get_block(&range.bottom, data_requester);
         loop {
-            if self.block_read_count > 0 && self.block_read_count % BATCH_READ_SIZE == 0 {
-                // We could be traversing a very large account so we don't want to open read transactions for too long.
-                data_requester.refresh_transaction();
-            }
             if let Some(send) = self.get_corresponding_send_block(&current, data_requester) {
                 return Some((current, send));
             }
@@ -357,7 +347,7 @@ impl CementationWalker {
     fn get_corresponding_send_block<T: LedgerDataRequester>(
         &mut self,
         block: &BlockEnum,
-        data_requester: &T,
+        data_requester: &mut T,
     ) -> Option<BlockEnum> {
         let source = block.source_or_link();
         if !source.is_zero() && !self.epochs.is_epoch_link(&source.into()) {
@@ -386,7 +376,7 @@ impl CementationWalker {
     fn get_successor_block<T: LedgerDataRequester>(
         &mut self,
         block: &BlockEnum,
-        data_requester: &T,
+        data_requester: &mut T,
     ) -> Option<BlockEnum> {
         block
             .successor()
@@ -396,7 +386,7 @@ impl CementationWalker {
     fn get_open_block<T: LedgerDataRequester>(
         &mut self,
         account: &Account,
-        data_requester: &T,
+        data_requester: &mut T,
     ) -> BlockEnum {
         let open_hash = data_requester
             .get_account_info(account)
@@ -409,13 +399,11 @@ impl CementationWalker {
     fn get_block<T: LedgerDataRequester>(
         &mut self,
         block_hash: &BlockHash,
-        data_requester: &T,
+        data_requester: &mut T,
     ) -> BlockEnum {
         if *block_hash == self.original_block_hash {
             return self.original_block.as_ref().unwrap().clone();
         }
-        self.block_read_count += 1;
-
         self.block_cache
             .load_block(block_hash, data_requester)
             .expect("could not load block")
@@ -761,21 +749,6 @@ mod tests {
         use super::*;
 
         #[test]
-        #[ignore]
-        fn cement_already_pruned_block() {
-            let mut sut = CementationWalker::builder().build();
-            let mut data_requester = LedgerDataRequesterStub::new();
-            let hash = BlockHash::from(1);
-            data_requester.prune(hash);
-
-            // sut.initialize(&hash);
-            let step = sut.next_cementation(&mut data_requester);
-
-            assert_eq!(step, None);
-        }
-
-        #[test]
-        #[ignore]
         fn send_block_pruned() {
             let mut data_requester = LedgerDataRequesterStub::new();
             let genesis_chain = data_requester.add_genesis_block().legacy_send();

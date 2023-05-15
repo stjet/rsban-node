@@ -100,13 +100,13 @@ impl WriteBatcher {
 
     pub fn next_write<T: LedgerDataRequester>(
         &mut self,
-        data_requester: &T,
+        data_requester: &mut T,
     ) -> Option<BlockChainSection> {
         if self.is_current_account_done() {
             self.load_next_pending(data_requester);
         }
 
-        self.next_batch(&|hash| data_requester.get_block(hash))
+        self.next_batch(&mut |hash| data_requester.get_block(hash))
     }
 
     fn load_next_pending<T: LedgerDataRequester>(&mut self, data_requester: &T) {
@@ -158,7 +158,7 @@ impl WriteBatcher {
 
     fn next_batch(
         &mut self,
-        load_block: &dyn Fn(&BlockHash) -> Option<BlockEnum>,
+        load_block: &mut dyn FnMut(&BlockHash) -> Option<BlockEnum>,
     ) -> Option<BlockChainSection> {
         if !self.is_initialized {
             self.initialize(load_block);
@@ -180,7 +180,7 @@ impl WriteBatcher {
             // Flush these callbacks and continue as we write in batches (ideally maximum 250ms) to not hold write db transaction for too long.
             let slice = self.create_slice();
 
-            self.load_next_block_to_cement(&load_block);
+            self.load_next_block_to_cement(load_block);
 
             if let Some(slice) = slice {
                 return Some(slice);
@@ -190,7 +190,7 @@ impl WriteBatcher {
         self.create_slice()
     }
 
-    fn initialize(&mut self, load_block: &dyn Fn(&BlockHash) -> Option<BlockEnum>) {
+    fn initialize(&mut self, load_block: &mut dyn FnMut(&BlockHash) -> Option<BlockEnum>) {
         let hash = self.get_first_block_to_cement(load_block);
 
         if let Some(hash) = hash {
@@ -205,7 +205,7 @@ impl WriteBatcher {
 
     fn get_first_block_to_cement(
         &self,
-        load_block: &dyn Fn(&BlockHash) -> Option<BlockEnum>,
+        load_block: &mut dyn FnMut(&BlockHash) -> Option<BlockEnum>,
     ) -> Option<BlockHash> {
         if self.are_all_blocks_cemented_already() {
             None
@@ -236,7 +236,7 @@ impl WriteBatcher {
 
     fn load_current_cemented_frontier(
         &self,
-        load_block: &dyn Fn(&BlockHash) -> Option<BlockEnum>,
+        load_block: &mut dyn FnMut(&BlockHash) -> Option<BlockEnum>,
     ) -> BlockEnum {
         let Some(block) = load_block(&self.confirmation_height_info.frontier) else {
             panic!(
@@ -249,7 +249,10 @@ impl WriteBatcher {
     }
 
     /// Get the next block in the chain until we have reached the final desired one
-    fn load_next_block_to_cement(&mut self, load_block: &dyn Fn(&BlockHash) -> Option<BlockEnum>) {
+    fn load_next_block_to_cement(
+        &mut self,
+        load_block: &mut dyn FnMut(&BlockHash) -> Option<BlockEnum>,
+    ) {
         if !self.is_current_account_done() {
             let Some(current) = &self.new_cemented_frontier_block else { panic!("no current block loaded!") };
             self.new_cemented_frontier_hash = current.sideband().unwrap().successor;
@@ -316,8 +319,8 @@ mod tests {
     #[test]
     fn empty_queue() {
         let mut write_batcher = WriteBatcher::default();
-        let data_requester = LedgerDataRequesterStub::new();
-        let write = write_batcher.next_write(&data_requester);
+        let mut data_requester = LedgerDataRequesterStub::new();
+        let write = write_batcher.next_write(&mut data_requester);
         assert_eq!(write, None)
     }
 
@@ -331,7 +334,12 @@ mod tests {
 
         let sections = [dest_chain.section(1, 1)];
         let expected = sections.clone();
-        assert_writes(Default::default(), &data_requester, &sections, &expected);
+        assert_writes(
+            Default::default(),
+            &mut data_requester,
+            &sections,
+            &expected,
+        );
     }
 
     #[test]
@@ -345,7 +353,12 @@ mod tests {
 
         let sections = [dest_chain.section(1, 2)];
         let expected = sections.clone();
-        assert_writes(Default::default(), &data_requester, &sections, &expected);
+        assert_writes(
+            Default::default(),
+            &mut data_requester,
+            &sections,
+            &expected,
+        );
     }
 
     #[test]
@@ -359,7 +372,12 @@ mod tests {
         let sections = [genesis_chain.section(2, 3)];
         let expected = [genesis_chain.section(3, 3)];
 
-        assert_writes(Default::default(), &data_requester, &sections, &expected);
+        assert_writes(
+            Default::default(),
+            &mut data_requester,
+            &sections,
+            &expected,
+        );
     }
 
     #[test]
@@ -379,7 +397,7 @@ mod tests {
 
         let expected = [genesis_chain.section(2, 2), genesis_chain.section(3, 3)];
 
-        assert_writes(options, &data_requester, &sections, &expected);
+        assert_writes(options, &mut data_requester, &sections, &expected);
     }
 
     #[test]
@@ -397,7 +415,7 @@ mod tests {
         let sections = [genesis_chain.section(2, 4)];
         let expected = [genesis_chain.section(2, 3), genesis_chain.section(4, 4)];
 
-        assert_writes(options, &data_requester, &sections, &expected);
+        assert_writes(options, &mut data_requester, &sections, &expected);
     }
 
     #[test]
@@ -410,12 +428,17 @@ mod tests {
 
         let sections = [genesis_chain.section(2, 2), dest_chain.section(1, 1)];
 
-        assert_writes(Default::default(), &data_requester, &sections, &sections);
+        assert_writes(
+            Default::default(),
+            &mut data_requester,
+            &sections,
+            &sections,
+        );
     }
 
     fn assert_writes(
         options: WriteBatcherOptions,
-        data_requester: &LedgerDataRequesterStub,
+        data_requester: &mut LedgerDataRequesterStub,
         sections: &[BlockChainSection],
         expected_slices: &[BlockChainSection],
     ) {

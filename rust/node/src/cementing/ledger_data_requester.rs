@@ -2,7 +2,6 @@
 use rsnano_core::BlockChainBuilder;
 #[cfg(test)]
 use rsnano_core::Epoch;
-#[cfg(test)]
 use std::cell::Cell;
 #[cfg(test)]
 use std::collections::HashMap;
@@ -14,26 +13,55 @@ use rsnano_ledger::Ledger;
 use rsnano_store_traits::Transaction;
 
 pub trait LedgerDataRequester {
-    fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum>;
+    fn get_block(&mut self, block_hash: &BlockHash) -> Option<BlockEnum>;
     fn was_block_pruned(&self, block_hash: &BlockHash) -> bool;
     fn get_confirmation_height(&self, account: &Account) -> Option<ConfirmationHeightInfo>;
     fn get_account_info(&self, account: &Account) -> Option<AccountInfo>;
-    fn refresh_transaction(&mut self);
 }
+
+/** The maximum number of blocks to be read in while iterating over a long account chain */
+const BATCH_READ_SIZE: usize = 65536;
 
 pub(crate) struct LedgerAdapter<'a> {
     txn: &'a mut dyn Transaction,
     ledger: &'a Ledger,
+    block_read_count: Cell<usize>,
+    max_block_read_count: usize,
 }
 
 impl<'a> LedgerAdapter<'a> {
     pub(crate) fn new(txn: &'a mut dyn Transaction, ledger: &'a Ledger) -> Self {
-        Self { txn, ledger }
+        Self {
+            txn,
+            ledger,
+            block_read_count: Cell::new(0),
+            max_block_read_count: BATCH_READ_SIZE,
+        }
+    }
+
+    pub(crate) fn new_unlimited(txn: &'a mut dyn Transaction, ledger: &'a Ledger) -> Self {
+        Self {
+            txn,
+            ledger,
+            block_read_count: Cell::new(0),
+            max_block_read_count: usize::MAX,
+        }
+    }
+
+    pub fn refresh_transaction(&mut self) {
+        self.txn.refresh();
     }
 }
 
 impl<'a> LedgerDataRequester for LedgerAdapter<'a> {
-    fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum> {
+    fn get_block(&mut self, block_hash: &BlockHash) -> Option<BlockEnum> {
+        let read_count = self.block_read_count.get();
+        if read_count > 0 && read_count % self.max_block_read_count == 0 {
+            // We could be traversing a very large account so we don't want to open read transactions for too long.
+            self.txn.refresh();
+        }
+
+        self.block_read_count.set(read_count + 1);
         self.ledger.store.block().get(self.txn, block_hash)
     }
 
@@ -50,10 +78,6 @@ impl<'a> LedgerDataRequester for LedgerAdapter<'a> {
 
     fn get_account_info(&self, account: &Account) -> Option<AccountInfo> {
         self.ledger.account_info(self.txn, account)
-    }
-
-    fn refresh_transaction(&mut self) {
-        self.txn.refresh();
     }
 }
 
@@ -158,7 +182,7 @@ impl LedgerDataRequesterStub {
 
 #[cfg(test)]
 impl LedgerDataRequester for LedgerDataRequesterStub {
-    fn get_block(&self, block_hash: &BlockHash) -> Option<BlockEnum> {
+    fn get_block(&mut self, block_hash: &BlockHash) -> Option<BlockEnum> {
         self.blocks_loaded.set(self.blocks_loaded.get() + 1);
         self.blocks.get(block_hash).cloned()
     }
@@ -176,10 +200,6 @@ impl LedgerDataRequester for LedgerDataRequesterStub {
     fn get_account_info(&self, account: &Account) -> Option<AccountInfo> {
         self.account_infos.get(account).cloned()
     }
-
-    fn refresh_transaction(&mut self) {
-        todo!()
-    }
 }
 
 #[cfg(test)]
@@ -190,7 +210,7 @@ mod tests {
 
     #[test]
     fn empty_cementation_data_requester_stub() {
-        let stub = LedgerDataRequesterStub::new();
+        let mut stub = LedgerDataRequesterStub::new();
         assert_eq!(stub.get_block(&BlockHash::from(1)), None);
         assert_eq!(stub.was_block_pruned(&BlockHash::from(1)), false);
         assert_eq!(

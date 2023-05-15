@@ -10,7 +10,6 @@ use rsnano_store_traits::WriteTransaction;
 use super::{
     BatchWriteSizeManager, BlockCache, BlockCementerContainerInfo, BlockCementerLogic,
     BlockCementerLogicOptions, CementCallbackRefs, FlushDecision, LedgerAdapter,
-    LedgerDataRequester,
 };
 
 pub struct BlockCementer {
@@ -122,10 +121,9 @@ impl BlockCementer {
 
         // Cement all pending entries, each entry is specific to an account and contains the least amount
         // of blocks to retain consistent cementing across all account chains to genesis.
-        while let Some(section_to_cement) = self
-            .logic
-            .next_write(&LedgerAdapter::new(txn.txn_mut(), &self.ledger))
-        {
+        while let Some(section_to_cement) = self.logic.next_write(
+            &mut LedgerAdapter::new_unlimited(txn.txn_mut(), &self.ledger),
+        ) {
             self.ledger
                 .write_confirmation_height(txn.as_mut(), &section_to_cement);
 

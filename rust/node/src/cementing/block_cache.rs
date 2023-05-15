@@ -49,7 +49,7 @@ impl BlockCache {
     pub fn load_block<T: LedgerDataRequester>(
         &self,
         hash: &BlockHash,
-        data_requester: &T,
+        data_requester: &mut T,
     ) -> Option<BlockEnum> {
         let mut cache = self.blocks.write().unwrap();
         match cache.blocks.get(hash) {

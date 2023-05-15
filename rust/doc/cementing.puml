@@ -21,7 +21,6 @@ package "Logic"{
         was_block_pruned(hash)
         get_confirmation_height(account)
         get_account_info(account)
-        refresh_transaction()
     }
 
     class CementationWalker{

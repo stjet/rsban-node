@@ -633,7 +633,7 @@ boost::optional<nano::election_status_type> nano::active_transactions::confirm_b
 	if (election)
 	{
 		nano::unique_lock<nano::mutex> election_lock{ election->mutex };
-		auto winner = election->status.get_winner();
+		auto winner = election->status.get_winner ();
 		if (winner && winner->hash () == hash)
 		{
 			// Determine if the block was confirmed explicitly via election confirmation or implicitly via confirmation height

@@ -10,6 +10,6 @@ mod election_status;
 mod inactive_cache_information;
 mod inactive_cache_status;
 mod prioritization;
-mod recently_cemented_cache;
 
 mod election_scheduler;
+mod recently_cemented_cache;

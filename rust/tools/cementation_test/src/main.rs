@@ -8,12 +8,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rsnano_core::{
-    utils::{ConsoleLogger, NullLatch},
-    Account, Block,
-};
+use rsnano_core::{utils::ConsoleLogger, Account};
 use rsnano_ledger::{Ledger, LedgerConstants, WriteDatabaseQueue};
-use rsnano_node::cementing::{BlockCementer, CementCallbacks, CementationThread};
+use rsnano_node::cementing::{BlockCementer, CementCallbacks};
 use rsnano_store_lmdb::LmdbStore;
 
 fn main() {

@@ -128,7 +128,7 @@ pub enum StatType {
     VoteGenerator,
     VoteCache,
     Hinting,
-    BlockProcessor,
+    Blockprocessor,
     BootstrapServer,
     Active,
     ActiveStarted,

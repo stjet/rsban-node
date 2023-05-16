@@ -15,10 +15,10 @@
 
 #include <boost/filesystem.hpp>
 
+#include <cstdlib>
 #include <fstream>
 #include <unordered_set>
-
-#include <stdlib.h>
+#include <vector>
 
 using namespace std::chrono_literals;
 

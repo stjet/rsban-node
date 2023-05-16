@@ -262,23 +262,29 @@ fn do_upgrades(env: Arc<LmdbEnv>, logger: &dyn Logger) -> anyhow::Result<Vacuumi
         }
     };
 
-    match version {
-        1..=20 => {
-            logger.always_log(&format!("The version of the ledger ({}) is lower than the minimum ({}) which is supported for upgrades. Either upgrade to a v23 node first or delete the ledger.", version, STORE_VERSION_MINIMUM));
-            Err(anyhow!("version too low"))
-        }
-        21 => {
-            // most recent version
-            Ok(Vacuuming::NotNeeded)
-        }
-        _ => {
-            logger.always_log(&format!(
-                "The version of the ledger ({}) is too high for this node",
-                version
-            ));
-            Err(anyhow!("version too high"))
+    if version < 21 {
+        logger.always_log(&format!("The version of the ledger ({}) is lower than the minimum ({}) which is supported for upgrades. Either upgrade to a v23 node first or delete the ledger.", version, STORE_VERSION_MINIMUM));
+        return Err(anyhow!("version too low"));
+    }
+
+    if version > 22 {
+        logger.always_log(&format!(
+            "The version of the ledger ({}) is too high for this node",
+            version
+        ));
+        return Err(anyhow!("version too high"));
+    }
+
+    if version == 21 {
+        unsafe {
+            let rw_txn = txn.rw_txn_mut();
+            let db = rw_txn.create_db(Some("unchecked"), DatabaseFlags::empty())?;
+            rw_txn.drop_db(db)?;
         }
     }
+
+    // most recent version
+    Ok(Vacuuming::NotNeeded)
 }
 
 fn vacuum_after_upgrade(env: Arc<LmdbEnv>, path: &Path) -> anyhow::Result<()> {

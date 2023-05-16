@@ -361,4 +361,4 @@ where
 }
 
 pub const STORE_VERSION_MINIMUM: i32 = 21;
-pub const STORE_VERSION_CURRENT: i32 = 21;
+pub const STORE_VERSION_CURRENT: i32 = 22;

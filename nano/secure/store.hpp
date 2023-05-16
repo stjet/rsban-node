@@ -428,7 +428,6 @@ enum class tables
 	peers,
 	pending,
 	pruned,
-	unchecked,
 	vote
 };
 
@@ -684,7 +683,7 @@ public:
 	virtual final_vote_store & final_vote () = 0;
 	virtual version_store & version () = 0;
 	static int constexpr version_minimum{ 21 };
-	static int constexpr version_current{ 21 };
+	static int constexpr version_current{ 22 };
 
 	virtual unsigned max_block_write_batch_num () const = 0;
 

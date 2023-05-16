@@ -1,16 +1,20 @@
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
+#include "nano/node/transport/channel.hpp"
 #include "nano/node/transport/traffic_type.hpp"
 #include "nano/secure/common.hpp"
 
 #include <nano/lib/config.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/node/node.hpp>
+#include <nano/node/transport/fake.hpp>
+#include <nano/node/transport/inproc.hpp>
 #include <nano/node/transport/tcp.hpp>
 
 #include <boost/format.hpp>
 
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 
 /*
@@ -1055,4 +1059,20 @@ nano::tcp_message_item & nano::tcp_message_item::operator= (tcp_message_item && 
 	handle = other_a.handle;
 	other_a.handle = nullptr;
 	return *this;
+}
+
+std::shared_ptr<nano::transport::channel> nano::transport::channel_handle_to_channel (rsnano::ChannelHandle * handle)
+{
+	auto channel_type = static_cast<nano::transport::transport_type> (rsnano::rsn_channel_type (handle));
+	switch (channel_type)
+	{
+		case nano::transport::transport_type::tcp:
+			return make_shared<nano::transport::channel_tcp> (handle);
+		// case nano::transport::transport_type::loopback:
+		// 	return make_shared<nano::transport::inproc::channel>(handle);
+		// case nano::transport::transport_type::fake:
+		// 	return make_shared<nano::transport::fake::channel>(handle);
+		default:
+			throw std::runtime_error ("unknown transport type");
+	}
 }

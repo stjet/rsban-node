@@ -42,7 +42,7 @@ bool nano::confirmation_solicitor::broadcast (nano::election const & election_a)
 			bool const different (exists && existing->second.hash != hash);
 			if (!exists || different)
 			{
-				i->channel->send (winner);
+				i->get_channel ()->send (winner);
 				count += different ? 0 : 1;
 			}
 		}
@@ -69,7 +69,7 @@ bool nano::confirmation_solicitor::add (nano::election const & election_a)
 		bool const different (exists && existing->second.hash != hash);
 		if (!exists || !is_final || different)
 		{
-			const auto & channel = rep.channel;
+			auto channel{ rep.get_channel () };
 			auto & request_queue (requests[channel->channel_id ()]);
 			if (!channels.contains (channel->channel_id ()))
 			{

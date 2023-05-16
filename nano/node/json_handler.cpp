@@ -2127,7 +2127,7 @@ void nano::json_handler::confirmation_quorum ()
 		{
 			boost::property_tree::ptree peer_node;
 			peer_node.put ("account", peer.get_account ().to_account ());
-			peer_node.put ("ip", peer.channel->to_string ());
+			peer_node.put ("ip", peer.get_channel ()->to_string ());
 			peer_node.put ("weight", nano::amount{ node.ledger.weight (peer.get_account ()) }.to_string_dec ());
 			peers.push_back (std::make_pair ("", peer_node));
 		}

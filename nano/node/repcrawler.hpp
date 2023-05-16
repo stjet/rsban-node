@@ -35,7 +35,7 @@ public:
 	representative & operator= (representative const & other_a);
 	size_t channel_id () const
 	{
-		return channel->channel_id ();
+		return get_channel ()->channel_id ();
 	}
 	bool operator== (nano::representative const & other_a) const
 	{
@@ -43,7 +43,8 @@ public:
 	}
 	nano::account get_account () const;
 
-	std::shared_ptr<nano::transport::channel> channel;
+	std::shared_ptr<nano::transport::channel> get_channel () const;
+	void set_channel (std::shared_ptr<nano::transport::channel> new_channel);
 
 	std::chrono::steady_clock::time_point get_last_request () const;
 	void set_last_request (std::chrono::steady_clock::time_point time_point);
@@ -51,6 +52,9 @@ public:
 	void set_last_response (std::chrono::steady_clock::time_point time_point);
 
 	rsnano::RepresentativeHandle * handle;
+
+private:
+	std::shared_ptr<nano::transport::channel> channel;
 };
 
 /**

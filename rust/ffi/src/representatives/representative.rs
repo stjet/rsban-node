@@ -1,16 +1,18 @@
 use rsnano_core::Account;
 use rsnano_node::representatives::Representative;
 
-use crate::copy_account_bytes;
+use crate::{copy_account_bytes, transport::ChannelHandle};
 
 pub struct RepresentativeHandle(Representative);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_representative_create(
     account: *const u8,
+    channel: *mut ChannelHandle,
 ) -> *mut RepresentativeHandle {
     Box::into_raw(Box::new(RepresentativeHandle(Representative::new(
         Account::from_ptr(account),
+        (*channel).0.clone(),
     ))))
 }
 
@@ -62,4 +64,19 @@ pub unsafe extern "C" fn rsn_representative_set_last_response(
     value: u64,
 ) {
     (*handle).0.set_last_response(value);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_representative_channel(
+    handle: *const RepresentativeHandle,
+) -> *mut ChannelHandle {
+    ChannelHandle::new((*handle).0.channel().clone())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_representative_set_channel(
+    handle: *mut RepresentativeHandle,
+    channel: *const ChannelHandle,
+) {
+    (*handle).0.set_channel((*channel).0.clone())
 }

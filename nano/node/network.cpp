@@ -188,7 +188,7 @@ void nano::network::flood_block_initial (std::shared_ptr<nano::block> const & bl
 	nano::publish message (node.network_params.network, block_a);
 	for (auto const & i : node.rep_crawler.principal_representatives ())
 	{
-		i.channel->send (message, nullptr, nano::transport::buffer_drop_policy::no_limiter_drop);
+		i.get_channel ()->send (message, nullptr, nano::transport::buffer_drop_policy::no_limiter_drop);
 	}
 	for (auto & i : list_non_pr (fanout (1.0)))
 	{
@@ -210,7 +210,7 @@ void nano::network::flood_vote_pr (std::shared_ptr<nano::vote> const & vote_a)
 	nano::confirm_ack message{ node.network_params.network, vote_a };
 	for (auto const & i : node.rep_crawler.principal_representatives ())
 	{
-		i.channel->send (message, nullptr, nano::transport::buffer_drop_policy::no_limiter_drop);
+		i.get_channel ()->send (message, nullptr, nano::transport::buffer_drop_policy::no_limiter_drop);
 	}
 }
 

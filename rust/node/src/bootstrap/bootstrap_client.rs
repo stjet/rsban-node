@@ -9,7 +9,9 @@ use std::{
 
 use crate::{
     messages::Message,
-    transport::{BufferDropPolicy, ChannelTcp, Socket, SocketImpl, TrafficType, WriteCallback},
+    transport::{
+        BufferDropPolicy, ChannelEnum, ChannelTcp, Socket, SocketImpl, TrafficType, WriteCallback,
+    },
     utils::ErrorCode,
 };
 
@@ -26,7 +28,7 @@ pub trait BootstrapClientObserverWeakPtr {
 
 pub struct BootstrapClient {
     observer: Box<dyn BootstrapClientObserverWeakPtr>,
-    channel: Arc<ChannelTcp>,
+    channel: Arc<ChannelEnum>,
     socket: Arc<SocketImpl>,
     receive_buffer: Arc<Mutex<Vec<u8>>>,
     block_count: AtomicU64,
@@ -39,10 +41,12 @@ pub struct BootstrapClient {
 impl BootstrapClient {
     pub fn new(
         observer: Arc<dyn BootstrapClientObserver>,
-        channel: Arc<ChannelTcp>,
+        channel: Arc<ChannelEnum>,
         socket: Arc<SocketImpl>,
     ) -> Self {
-        channel.set_endpoint();
+        if let ChannelEnum::Tcp(tcp) = channel.as_ref() {
+            tcp.set_endpoint();
+        }
         Self {
             observer: observer.to_weak(),
             channel,
@@ -80,7 +84,7 @@ impl BootstrapClient {
         *lock = Instant::now();
     }
 
-    pub fn get_channel(&self) -> &Arc<ChannelTcp> {
+    pub fn get_channel(&self) -> &Arc<ChannelEnum> {
         &self.channel
     }
 
@@ -101,6 +105,13 @@ impl BootstrapClient {
         self.receive_buffer.lock().unwrap().len()
     }
 
+    fn tcp_channel(&self) -> &ChannelTcp {
+        match self.channel.as_ref() {
+            ChannelEnum::Tcp(tcp) => tcp,
+            _ => panic!("not a tcp channel!"),
+        }
+    }
+
     pub fn send_buffer(
         &self,
         buffer: &Arc<Vec<u8>>,
@@ -108,7 +119,7 @@ impl BootstrapClient {
         policy: BufferDropPolicy,
         traffic_type: TrafficType,
     ) {
-        self.channel
+        self.tcp_channel()
             .send_buffer(buffer, callback, policy, traffic_type);
     }
 
@@ -119,7 +130,7 @@ impl BootstrapClient {
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,
     ) {
-        self.channel
+        self.tcp_channel()
             .send(message, callback, drop_policy, traffic_type);
     }
 
@@ -165,11 +176,11 @@ impl BootstrapClient {
     }
 
     pub fn channel_string(&self) -> String {
-        self.channel.to_string()
+        self.tcp_channel().to_string()
     }
 
     pub fn tcp_endpoint(&self) -> SocketAddr {
-        self.channel.endpoint()
+        self.tcp_channel().endpoint()
     }
 }
 

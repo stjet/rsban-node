@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+#include "nano/node/election.hpp"
 #include "nano/node/nodeconfig.hpp"
 
 #include <nano/node/common.hpp>
@@ -314,5 +316,7 @@ private:
 
 		friend class network_peer_max_tcp_attempts_subnetwork_Test;
 	};
+
+	std::shared_ptr<nano::transport::channel> channel_handle_to_channel (rsnano::ChannelHandle * handle);
 } // namespace transport
 } // namespace nano

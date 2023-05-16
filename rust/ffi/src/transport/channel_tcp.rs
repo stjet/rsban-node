@@ -2,14 +2,14 @@ use num::FromPrimitive;
 
 use super::{
     bandwidth_limiter::OutboundBandwidthLimiterHandle,
-    channel::{as_tcp_channel, ChannelHandle, ChannelType},
+    channel::{as_tcp_channel, ChannelHandle},
     channel_tcp_observer::ChannelTcpObserverWeakPtr,
     socket::SocketHandle,
     EndpointDto,
 };
 use crate::{messages::MessageHandle, utils::FfiIoContext, ErrorCodeDto, VoidPointerCallback};
 use rsnano_node::{
-    transport::{BufferDropPolicy, Channel, ChannelTcp, TrafficType},
+    transport::{BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, TrafficType},
     utils::ErrorCode,
 };
 use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc};
@@ -28,14 +28,14 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
     let observer = Arc::new(ChannelTcpObserverWeakPtr::new(observer));
     let limiter = Arc::clone(&*limiter);
     let io_ctx = Arc::new(FfiIoContext::new(io_ctx));
-    ChannelHandle::new(Arc::new(ChannelType::Tcp(Arc::new(ChannelTcp::new(
+    ChannelHandle::new(Arc::new(ChannelEnum::Tcp(ChannelTcp::new(
         (*socket).deref(),
         now,
         observer,
         limiter,
         io_ctx,
         channel_id,
-    )))))
+    ))))
 }
 
 #[no_mangle]

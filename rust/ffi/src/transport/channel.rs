@@ -5,46 +5,41 @@ use crate::{
 use rsnano_core::Account;
 use rsnano_node::{
     config::NetworkConstants,
-    transport::{Channel, ChannelFake, ChannelInProc, ChannelTcp},
+    transport::{Channel, ChannelEnum, ChannelFake, ChannelInProc, ChannelTcp},
 };
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use super::{MessageCallbackWrapper, MessageReceivedCallback, NetworkFilterHandle};
 
-pub enum ChannelType {
-    Tcp(Arc<ChannelTcp>),
-    InProc(ChannelInProc),
-    Fake(ChannelFake),
-}
-
-pub struct ChannelHandle(Arc<ChannelType>);
+pub struct ChannelHandle(pub Arc<ChannelEnum>);
 
 impl ChannelHandle {
-    pub fn new(channel: Arc<ChannelType>) -> *mut Self {
+    pub fn new(channel: Arc<ChannelEnum>) -> *mut Self {
         Box::into_raw(Box::new(Self(channel)))
     }
 }
 
 pub unsafe fn as_inproc_channel(handle: *mut ChannelHandle) -> &'static ChannelInProc {
     match (*handle).0.as_ref() {
-        ChannelType::InProc(inproc) => inproc,
+        ChannelEnum::InProc(inproc) => inproc,
         _ => panic!("expected inproc channel"),
     }
 }
 
-pub unsafe fn as_tcp_channel(handle: *mut ChannelHandle) -> &'static Arc<ChannelTcp> {
+pub unsafe fn as_tcp_channel(handle: *mut ChannelHandle) -> &'static ChannelTcp {
     match (*handle).0.as_ref() {
-        ChannelType::Tcp(tcp) => tcp,
+        ChannelEnum::Tcp(tcp) => tcp,
         _ => panic!("expected tcp channel"),
     }
 }
 
 pub unsafe fn as_channel(handle: *mut ChannelHandle) -> &'static dyn Channel {
-    match (*handle).0.as_ref() {
-        ChannelType::Tcp(tcp) => tcp.as_ref(),
-        ChannelType::InProc(inproc) => inproc,
-        ChannelType::Fake(fake) => fake,
-    }
+    (*handle).0.as_channel()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_type(handle: *mut ChannelHandle) -> u8 {
+    (*handle).0.as_channel().get_type() as u8
 }
 
 #[no_mangle]
@@ -138,7 +133,7 @@ pub unsafe extern "C" fn rsn_channel_inproc_create(
     let network_filter = (*network_filter).deref().clone();
     let block_uniquer = (*block_uniquer).deref().clone();
     let vote_uniquer = (*vote_uniquer).deref().clone();
-    ChannelHandle::new(Arc::new(ChannelType::InProc(ChannelInProc::new(
+    ChannelHandle::new(Arc::new(ChannelEnum::InProc(ChannelInProc::new(
         channel_id,
         now,
         network_constants,
@@ -150,7 +145,7 @@ pub unsafe extern "C" fn rsn_channel_inproc_create(
 
 #[no_mangle]
 pub extern "C" fn rsn_channel_fake_create(now: u64, channel_id: usize) -> *mut ChannelHandle {
-    Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelType::Fake(
+    Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelEnum::Fake(
         ChannelFake::new(now, channel_id),
     )))))
 }

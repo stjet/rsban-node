@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::transport::{as_tcp_channel, ChannelHandle, SocketHandle};
+use crate::transport::{ChannelHandle, SocketHandle};
 use rsnano_node::bootstrap::ChannelTcpWrapper;
 
 use super::bootstrap_server::TcpServerHandle;
@@ -19,7 +19,6 @@ pub unsafe extern "C" fn rsn_channel_tcp_wrapper_create(
     socket: *mut SocketHandle,
     response_server: *mut TcpServerHandle,
 ) -> *mut ChannelTcpWrapperHandle {
-    let channel = as_tcp_channel(channel);
     let response_server = if response_server.is_null() {
         None
     } else {
@@ -27,7 +26,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_wrapper_create(
     };
 
     ChannelTcpWrapperHandle::new(ChannelTcpWrapper::new(
-        Arc::clone(channel),
+        Arc::clone(&(*channel).0),
         Arc::clone(&*socket),
         response_server,
     ))

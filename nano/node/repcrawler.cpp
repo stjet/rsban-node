@@ -1,4 +1,5 @@
 #include "nano/lib/rsnano.hpp"
+#include "nano/node/transport/tcp.hpp"
 
 #include <nano/node/node.hpp>
 #include <nano/node/repcrawler.hpp>
@@ -6,17 +7,17 @@
 #include <boost/format.hpp>
 
 #include <chrono>
+#include <memory>
 
 nano::representative::representative (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a) :
-	handle{ rsnano::rsn_representative_create (account_a.bytes.data ()) },
-	channel (channel_a)
+	channel{ channel_a },
+	handle{ rsnano::rsn_representative_create (account_a.bytes.data (), channel_a->handle) }
 {
-	debug_assert (channel != nullptr);
 }
 
 nano::representative::representative (representative const & other_a) :
-	handle{ rsnano::rsn_representative_clone (other_a.handle) },
-	channel{ other_a.channel }
+	channel{ other_a.channel },
+	handle{ rsnano::rsn_representative_clone (other_a.handle) }
 {
 }
 
@@ -28,8 +29,8 @@ nano::representative::~representative ()
 nano::representative & nano::representative::operator= (nano::representative const & other_a)
 {
 	rsnano::rsn_representative_destroy (handle);
-	handle = rsnano::rsn_representative_clone (other_a.handle);
 	channel = other_a.channel;
+	handle = rsnano::rsn_representative_clone (other_a.handle);
 	return *this;
 }
 
@@ -38,6 +39,18 @@ nano::account nano::representative::get_account () const
 	nano::account account;
 	rsnano::rsn_representative_account (handle, account.bytes.data ());
 	return account;
+}
+
+std::shared_ptr<nano::transport::channel> nano::representative::get_channel () const
+{
+	return channel;
+	// return nano::transport::channel_handle_to_channel(rsnano::rsn_representative_channel(handle));
+}
+
+void nano::representative::set_channel (std::shared_ptr<nano::transport::channel> new_channel)
+{
+	channel = new_channel;
+	rsnano::rsn_representative_set_channel (handle, new_channel->handle);
 }
 
 std::chrono::steady_clock::time_point nano::representative::get_last_request () const
@@ -134,13 +147,14 @@ void nano::rep_crawler::validate ()
 			probable_reps.modify (existing, [rep_weight, &updated, &vote, &channel, &prev_channel] (nano::representative & info) {
 				info.set_last_response (std::chrono::steady_clock::now ());
 
+				auto info_channel = info.get_channel ();
 				// Update if representative channel was changed
-				if (info.channel->get_endpoint () != channel->get_endpoint ())
+				if (info_channel->get_endpoint () != channel->get_endpoint ())
 				{
 					debug_assert (info.get_account () == vote->account ());
 					updated = true;
-					prev_channel = info.channel;
-					info.channel = channel;
+					prev_channel = info_channel;
+					info.set_channel (channel);
 				}
 			});
 		}
@@ -310,7 +324,7 @@ nano::uint128_t nano::rep_crawler::total_weight () const
 	nano::uint128_t result (0);
 	for (auto i (probable_reps.get<tag_account> ().begin ()), n (probable_reps.get<tag_account> ().end ()); i != n; ++i)
 	{
-		if (i->channel->alive ())
+		if (i->get_channel ()->alive ())
 		{
 			result += node.ledger.weight (i->get_account ());
 		}
@@ -345,9 +359,9 @@ void nano::rep_crawler::cleanup_reps ()
 		auto iterator (probable_reps.get<tag_last_request> ().begin ());
 		while (iterator != probable_reps.get<tag_last_request> ().end ())
 		{
-			if (iterator->channel->alive ())
+			if (iterator->get_channel ()->alive ())
 			{
-				channels.push_back (iterator->channel);
+				channels.push_back (iterator->get_channel ());
 				++iterator;
 			}
 			else
@@ -389,7 +403,7 @@ std::vector<nano::representative> nano::rep_crawler::representatives (std::size_
 	for (auto i (probable_reps.get<tag_account> ().begin ()), n (probable_reps.get<tag_account> ().end ()); i != n; ++i)
 	{
 		auto weight = node.ledger.weight (i->get_account ());
-		if (weight > weight_a && i->channel->get_network_version () >= version_min)
+		if (weight > weight_a && i->get_channel ()->get_network_version () >= version_min)
 		{
 			ordered.insert ({ nano::amount{ weight }, *i });
 		}
@@ -413,7 +427,7 @@ std::vector<std::shared_ptr<nano::transport::channel>> nano::rep_crawler::repres
 	auto reps (representatives (count_a));
 	for (auto const & rep : reps)
 	{
-		result.push_back (rep.channel);
+		result.push_back (rep.get_channel ());
 	}
 	return result;
 }

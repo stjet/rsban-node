@@ -83,4 +83,8 @@ impl Channel for ChannelFake {
     fn channel_id(&self) -> usize {
         self.channel_id
     }
+
+    fn get_type(&self) -> super::TransportType {
+        super::TransportType::Fake
+    }
 }

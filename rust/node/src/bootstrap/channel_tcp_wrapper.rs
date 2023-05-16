@@ -2,17 +2,17 @@ use std::{net::SocketAddr, sync::Arc};
 
 use rsnano_core::Account;
 
-use crate::transport::{Channel, ChannelTcp, SocketImpl, TcpServer};
+use crate::transport::{ChannelEnum, ChannelTcp, SocketImpl, TcpServer};
 
 pub struct ChannelTcpWrapper {
-    pub channel: Arc<ChannelTcp>,
+    pub channel: Arc<ChannelEnum>,
     socket: Arc<SocketImpl>,
     pub response_server: Option<Arc<TcpServer>>,
 }
 
 impl ChannelTcpWrapper {
     pub fn new(
-        channel: Arc<ChannelTcp>,
+        channel: Arc<ChannelEnum>,
         socket: Arc<SocketImpl>,
         response_server: Option<Arc<TcpServer>>,
     ) -> Self {
@@ -23,27 +23,34 @@ impl ChannelTcpWrapper {
         }
     }
 
+    fn tcp_channel(&self) -> &ChannelTcp {
+        match self.channel.as_ref() {
+            ChannelEnum::Tcp(tcp) => tcp,
+            _ => panic!("not a tcp channel"),
+        }
+    }
+
     pub fn endpoint(&self) -> SocketAddr {
-        self.channel.endpoint()
+        self.tcp_channel().endpoint()
     }
 
     pub fn last_packet_sent(&self) -> u64 {
-        self.channel.get_last_packet_sent()
+        self.channel.as_channel().get_last_packet_sent()
     }
 
     pub fn last_bootstrap_attempt(&self) -> u64 {
-        self.channel.get_last_bootstrap_attempt()
+        self.channel.as_channel().get_last_bootstrap_attempt()
     }
 
     pub fn socket(&self) -> Option<Arc<SocketImpl>> {
-        self.channel.socket()
+        self.tcp_channel().socket()
     }
 
     pub fn node_id(&self) -> Option<Account> {
-        self.channel.get_node_id()
+        self.channel.as_channel().get_node_id()
     }
 
     pub fn network_version(&self) -> u8 {
-        self.channel.network_version()
+        self.tcp_channel().network_version()
     }
 }

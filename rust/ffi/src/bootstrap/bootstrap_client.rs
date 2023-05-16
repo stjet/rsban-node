@@ -3,7 +3,7 @@ use std::{ffi::c_void, ops::Deref, sync::Arc, time::Duration};
 use crate::{
     messages::MessageHandle,
     transport::{
-        as_tcp_channel, ChannelHandle, ChannelTcpSendBufferCallback, ChannelTcpSendCallback,
+        ChannelHandle, ChannelTcpSendBufferCallback, ChannelTcpSendCallback,
         ChannelTcpSendCallbackWrapper, EndpointDto, ReadCallbackWrapper, SendBufferCallbackWrapper,
         SocketDestroyContext, SocketHandle, SocketReadCallback,
     },
@@ -26,7 +26,7 @@ pub unsafe extern "C" fn rsn_bootstrap_client_create(
     socket: *mut SocketHandle,
 ) -> *mut BootstrapClientHandle {
     let observer = Arc::new(FfiBootstrapClientObserver::new(observer));
-    let channel = as_tcp_channel(channel).clone();
+    let channel = (*channel).0.clone();
     let socket = (*socket).deref().clone();
     Box::into_raw(Box::new(BootstrapClientHandle(BootstrapClient::new(
         observer, channel, socket,

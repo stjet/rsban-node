@@ -37,6 +37,15 @@ pub use tcp_server::{
 use token_bucket::TokenBucket;
 pub use write_queue::WriteCallback;
 
+#[repr(u8)]
+#[derive(FromPrimitive)]
+pub enum TransportType {
+    Undefined = 0,
+    Tcp = 1,
+    Loopback = 2,
+    Fake = 3,
+}
+
 pub trait Channel {
     fn channel_id(&self) -> usize;
     fn is_temporary(&self) -> bool;
@@ -50,6 +59,7 @@ pub trait Channel {
     fn get_node_id(&self) -> Option<Account>;
     fn set_node_id(&self, id: Account);
     fn is_alive(&self) -> bool;
+    fn get_type(&self) -> TransportType;
 }
 
 #[derive(FromPrimitive, Copy, Clone)]
@@ -57,4 +67,20 @@ pub enum TrafficType {
     Generic,
     /** For bootstrap (asc_pull_ack, asc_pull_req) traffic */
     Bootstrap,
+}
+
+pub enum ChannelEnum {
+    Tcp(ChannelTcp),
+    InProc(ChannelInProc),
+    Fake(ChannelFake),
+}
+
+impl ChannelEnum {
+    pub fn as_channel(&self) -> &dyn Channel {
+        match &self {
+            ChannelEnum::Tcp(tcp) => tcp,
+            ChannelEnum::InProc(inproc) => inproc,
+            ChannelEnum::Fake(fake) => fake,
+        }
+    }
 }

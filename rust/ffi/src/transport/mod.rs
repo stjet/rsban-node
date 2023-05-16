@@ -12,7 +12,7 @@ mod tcp_message_item;
 mod tcp_message_manager;
 
 pub use bandwidth_limiter::BandwidthLimiterHandle;
-pub use channel::{as_tcp_channel, ChannelHandle, ChannelType};
+pub use channel::{as_tcp_channel, ChannelHandle};
 pub use channel_tcp::{
     ChannelTcpSendBufferCallback, ChannelTcpSendCallback, ChannelTcpSendCallbackWrapper,
     SendBufferCallbackWrapper,

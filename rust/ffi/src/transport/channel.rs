@@ -1,6 +1,4 @@
-use crate::{
-    core::BlockUniquerHandle, voting::VoteUniquerHandle, NetworkConstantsDto, VoidPointerCallback,
-};
+use crate::{NetworkConstantsDto, VoidPointerCallback};
 
 use rsnano_core::Account;
 use rsnano_node::{
@@ -126,20 +124,14 @@ pub unsafe extern "C" fn rsn_channel_inproc_create(
     now: u64,
     network_constants: *const NetworkConstantsDto,
     network_filter: *mut NetworkFilterHandle,
-    block_uniquer: *mut BlockUniquerHandle,
-    vote_uniquer: *mut VoteUniquerHandle,
 ) -> *mut ChannelHandle {
     let network_constants = NetworkConstants::try_from(&*network_constants).unwrap();
     let network_filter = (*network_filter).deref().clone();
-    let block_uniquer = (*block_uniquer).deref().clone();
-    let vote_uniquer = (*vote_uniquer).deref().clone();
     ChannelHandle::new(Arc::new(ChannelEnum::InProc(ChannelInProc::new(
         channel_id,
         now,
         network_constants,
         network_filter,
-        block_uniquer,
-        vote_uniquer,
     ))))
 }
 

@@ -67,23 +67,11 @@ impl BatchWriteSizeManager {
         // Update the maximum amount of blocks to write next time based on the time it took to cement this batch.
         if cementation_time > Self::MAXIMUM_BATCH_WRITE_TIME {
             self.reduce();
-            println!(
-                "Cementation time was {} ms. Batch size was {}. Batch size reduced to {}",
-                cementation_time.as_millis(),
-                batch_size,
-                self.current_size()
-            );
         } else if batch_size >= self.current_size()
             && cementation_time < Self::MAXIMUM_BATCH_WRITE_TIME_INCREASE_CUTOFF
         {
             // Increase amount of blocks written for next batch if the time for writing this one is sufficiently lower than the max time to warrant changing
             self.increase();
-            println!(
-                "Cementation time was {} ms. Batch size was {}. Batch size increased to {}",
-                cementation_time.as_millis(),
-                batch_size,
-                self.current_size()
-            );
         }
     }
 

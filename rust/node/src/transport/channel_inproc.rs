@@ -29,8 +29,6 @@ pub struct ChannelInProc {
     channel_mutex: Mutex<InProcChannelData>,
     network_constants: NetworkConstants,
     network_filter: Arc<NetworkFilter>,
-    block_uniquer: Arc<BlockUniquer>,
-    vote_uniquer: Arc<VoteUniquer>,
 }
 
 impl ChannelInProc {
@@ -39,8 +37,6 @@ impl ChannelInProc {
         now: u64,
         network_constants: NetworkConstants,
         network_filter: Arc<NetworkFilter>,
-        block_uniquer: Arc<BlockUniquer>,
-        vote_uniquer: Arc<VoteUniquer>,
     ) -> Self {
         Self {
             channel_id,
@@ -53,8 +49,6 @@ impl ChannelInProc {
             }),
             network_constants,
             network_filter,
-            block_uniquer,
-            vote_uniquer,
         }
     }
 
@@ -79,8 +73,8 @@ impl ChannelInProc {
         let message_deserializer = Arc::new(MessageDeserializer::new(
             self.network_constants.clone(),
             self.network_filter.clone(),
-            self.block_uniquer.clone(),
-            self.vote_uniquer.clone(),
+            Arc::new(BlockUniquer::new()),
+            Arc::new(VoteUniquer::new()),
             buffer_read_fn,
         ));
         message_deserializer.read(callback_msg);

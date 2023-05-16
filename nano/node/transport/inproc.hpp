@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/lib/config.hpp"
 #include "nano/lib/rsnano.hpp"
 
 #include <nano/node/transport/channel.hpp>
@@ -20,6 +21,20 @@ namespace transport
 		{
 		public:
 			explicit channel (nano::node & node, nano::node & destination);
+
+			channel (
+			size_t channel_id,
+			nano::network_filter & publish_filter,
+			nano::network_constants & network,
+			nano::stats & stats,
+			nano::outbound_bandwidth_limiter & outbound_limiter,
+			boost::asio::io_context & io_ctx,
+			nano::endpoint endpoint,
+			nano::account source_node_id,
+			std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> source_inbound,
+			nano::endpoint destination,
+			nano::account destination_node_id,
+			std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> destination_inbound);
 
 			uint8_t get_network_version () const override
 			{
@@ -73,14 +88,16 @@ namespace transport
 		private:
 			boost::asio::io_context & io_ctx;
 			nano::stats & stats;
-			nano::logger_mt & logger;
 			nano::outbound_bandwidth_limiter & limiter;
-			bool network_packet_logging;
+			std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> source_inbound;
+			std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> destination_inbound;
 			mutable nano::mutex channel_mutex;
 			std::atomic<uint8_t> network_version{ 0 };
-			nano::node & node;
-			nano::node & destination;
+			nano::network_constants & network;
 			nano::endpoint const endpoint;
+			nano::endpoint destination;
+			nano::account source_node_id;
+			nano::account destination_node_id;
 			std::optional<nano::endpoint> peering_endpoint{};
 		};
 	} // namespace inproc

@@ -21,6 +21,7 @@ namespace transport
 		{
 		public:
 			explicit channel (nano::node & node, nano::node & destination);
+			explicit channel (rsnano::ChannelHandle * handle_a);
 
 			channel (
 			size_t channel_id,
@@ -36,15 +37,7 @@ namespace transport
 			nano::account destination_node_id,
 			std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> destination_inbound);
 
-			uint8_t get_network_version () const override
-			{
-				return network_version;
-			}
-
-			void set_network_version (uint8_t network_version_a) override
-			{
-				network_version = network_version_a;
-			}
+			uint8_t get_network_version () const override;
 
 			std::size_t hash_code () const override;
 			bool operator== (nano::transport::channel const &) const override;
@@ -64,18 +57,11 @@ namespace transport
 			std::string to_string () const override;
 			bool operator== (nano::transport::inproc::channel const & other_a) const
 			{
-				return endpoint == other_a.get_endpoint ();
+				return get_endpoint () == other_a.get_endpoint ();
 			}
 
-			nano::endpoint get_endpoint () const override
-			{
-				return endpoint;
-			}
-
-			nano::tcp_endpoint get_tcp_endpoint () const override
-			{
-				return nano::transport::map_endpoint_to_tcp (endpoint);
-			}
+			nano::endpoint get_endpoint () const override;
+			nano::tcp_endpoint get_tcp_endpoint () const override;
 
 			nano::transport::transport_type get_type () const override
 			{
@@ -84,21 +70,6 @@ namespace transport
 
 			nano::endpoint get_peering_endpoint () const override;
 			void set_peering_endpoint (nano::endpoint endpoint) override;
-
-		private:
-			boost::asio::io_context & io_ctx;
-			nano::stats & stats;
-			nano::outbound_bandwidth_limiter & limiter;
-			std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> source_inbound;
-			std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> destination_inbound;
-			mutable nano::mutex channel_mutex;
-			std::atomic<uint8_t> network_version{ 0 };
-			nano::network_constants & network;
-			nano::endpoint const endpoint;
-			nano::endpoint destination;
-			nano::account source_node_id;
-			nano::account destination_node_id;
-			std::optional<nano::endpoint> peering_endpoint{};
 		};
 	} // namespace inproc
 } // namespace transport

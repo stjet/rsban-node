@@ -1,6 +1,10 @@
-use std::sync::{
-    atomic::{AtomicBool, AtomicUsize, Ordering},
-    Arc, Mutex,
+use std::{
+    net::SocketAddr,
+    sync::{
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc, Mutex,
+    },
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use message_deserializer::MessageDeserializer;
@@ -9,12 +13,16 @@ use rsnano_core::Account;
 use crate::{
     config::NetworkConstants,
     messages::Message,
+    stats::{DetailType, Direction, StatType, Stats},
     transport::message_deserializer,
-    utils::{BlockUniquer, ErrorCode},
+    utils::{BlockUniquer, ErrorCode, IoContext},
     voting::VoteUniquer,
 };
 
-use super::{message_deserializer::ReadQuery, Channel, MessageDeserializerExt, NetworkFilter};
+use super::{
+    message_deserializer::ReadQuery, BandwidthLimitType, BufferDropPolicy, Channel, ChannelEnum,
+    MessageDeserializerExt, NetworkFilter, OutboundBandwidthLimiter, TrafficType, WriteCallback,
+};
 
 pub struct InProcChannelData {
     last_bootstrap_attempt: u64,
@@ -23,12 +31,23 @@ pub struct InProcChannelData {
     node_id: Option<Account>,
 }
 
+pub type InboundCallback = Arc<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>)>;
+
 pub struct ChannelInProc {
     channel_id: usize,
     temporary: AtomicBool,
     channel_mutex: Mutex<InProcChannelData>,
     network_constants: NetworkConstants,
     network_filter: Arc<NetworkFilter>,
+    stats: Arc<Stats>,
+    limiter: Arc<OutboundBandwidthLimiter>,
+    source_inbound: InboundCallback,
+    destination_inbound: InboundCallback,
+    io_ctx: Arc<dyn IoContext>,
+    pub source_endpoint: SocketAddr,
+    pub destination_endpoint: SocketAddr,
+    source_node_id: Account,
+    destination_node_id: Account,
 }
 
 impl ChannelInProc {
@@ -37,6 +56,15 @@ impl ChannelInProc {
         now: u64,
         network_constants: NetworkConstants,
         network_filter: Arc<NetworkFilter>,
+        stats: Arc<Stats>,
+        limiter: Arc<OutboundBandwidthLimiter>,
+        source_inbound: InboundCallback,
+        destination_inbound: InboundCallback,
+        io_ctx: Arc<dyn IoContext>,
+        source_endpoint: SocketAddr,
+        destination_endpoint: SocketAddr,
+        source_node_id: Account,
+        destination_node_id: Account,
     ) -> Self {
         Self {
             channel_id,
@@ -45,14 +73,117 @@ impl ChannelInProc {
                 last_bootstrap_attempt: 0,
                 last_packet_received: now,
                 last_packet_sent: now,
-                node_id: None,
+                node_id: Some(source_node_id),
             }),
             network_constants,
             network_filter,
+            stats,
+            limiter,
+            source_inbound,
+            destination_inbound,
+            io_ctx,
+            source_endpoint,
+            destination_endpoint,
+            source_node_id,
+            destination_node_id,
         }
     }
 
-    pub fn send_buffer(
+    pub fn send(
+        &self,
+        message_a: &dyn Message,
+        callback_a: Option<WriteCallback>,
+        drop_policy: BufferDropPolicy,
+        traffic_type: TrafficType,
+    ) {
+        let buffer = Arc::new(message_a.to_bytes());
+        let detail = DetailType::from(message_a.header().message_type());
+        let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
+        let should_pass = self
+            .limiter
+            .should_pass(buffer.len(), BandwidthLimitType::from(traffic_type));
+
+        if !is_droppable_by_limiter || should_pass {
+            self.send_buffer_2(&buffer, callback_a, drop_policy, traffic_type);
+            self.stats.inc(StatType::Message, detail, Direction::Out);
+        } else {
+            if let Some(cb) = callback_a {
+                self.io_ctx.post(Box::new(move || {
+                    cb(ErrorCode::not_supported(), 0);
+                }))
+            }
+
+            self.stats.inc(StatType::Drop, detail, Direction::Out);
+        }
+    }
+
+    pub fn send_buffer_2(
+        &self,
+        buffer_a: &Arc<Vec<u8>>,
+        callback_a: Option<WriteCallback>,
+        _policy_a: BufferDropPolicy,
+        _traffic_type: TrafficType,
+    ) {
+        let stats = self.stats.clone();
+        let network_constants = self.network_constants.clone();
+        let limiter = self.limiter.clone();
+        let source_inbound = self.source_inbound.clone();
+        let destination_inbound = self.destination_inbound.clone();
+        let source_endpoint = self.source_endpoint.clone();
+        let destination_endpoint = self.destination_endpoint.clone();
+        let source_node_id = self.source_node_id;
+        let destination_node_id = self.destination_node_id;
+        let io_ctx = self.io_ctx.clone();
+
+        let callback_wrapper = Box::new(move |ec: ErrorCode, msg: Option<Box<dyn Message>>| {
+            if ec.is_err() {
+                return;
+            }
+            let Some(msg) = msg else { return; };
+            let filter = Arc::new(NetworkFilter::new(100000));
+            // we create a temporary channel for the reply path, in case the receiver of the message wants to reply
+            let remote_channel = Arc::new(ChannelEnum::InProc(ChannelInProc::new(
+                1,
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos() as u64,
+                network_constants.clone(),
+                filter,
+                stats.clone(),
+                limiter,
+                source_inbound,
+                destination_inbound.clone(),
+                io_ctx,
+                source_endpoint,
+                destination_endpoint,
+                source_node_id,
+                destination_node_id,
+            )));
+
+            // process message
+            {
+                stats.inc(
+                    StatType::Message,
+                    DetailType::from(msg.header().message_type()),
+                    Direction::In,
+                );
+
+                destination_inbound(msg, remote_channel);
+            }
+        });
+
+        self.send_buffer_impl(&buffer_a, callback_wrapper);
+
+        if let Some(cb) = callback_a {
+            let buffer_size = buffer_a.len();
+            self.io_ctx.post(Box::new(move || {
+                cb(ErrorCode::new(), buffer_size);
+            }));
+        }
+    }
+
+    fn send_buffer_impl(
         &self,
         buffer: &[u8],
         callback_msg: Box<dyn FnOnce(ErrorCode, Option<Box<dyn Message>>)>,
@@ -78,6 +209,10 @@ impl ChannelInProc {
             buffer_read_fn,
         ));
         message_deserializer.read(callback_msg);
+    }
+
+    pub fn network_version(&self) -> u8 {
+        self.network_constants.protocol_version
     }
 }
 

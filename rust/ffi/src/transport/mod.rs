@@ -11,7 +11,7 @@ mod tcp_channels;
 mod tcp_message_item;
 mod tcp_message_manager;
 
-pub use bandwidth_limiter::BandwidthLimiterHandle;
+pub use bandwidth_limiter::{BandwidthLimiterHandle, OutboundBandwidthLimiterHandle};
 pub use channel::{as_tcp_channel, ChannelHandle};
 pub use channel_tcp::{
     ChannelTcpSendBufferCallback, ChannelTcpSendCallback, ChannelTcpSendCallbackWrapper,

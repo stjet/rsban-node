@@ -76,7 +76,7 @@ namespace transport
 			channel{ handle_a } {};
 
 		uint8_t get_network_version () const override;
-		void set_network_version (uint8_t network_version_a) override;
+		void set_network_version (uint8_t network_version_a);
 		std::size_t hash_code () const override;
 		bool operator== (nano::transport::channel const &) const override;
 		void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter, nano::transport::traffic_type = nano::transport::traffic_type::generic) override;

@@ -16,18 +16,63 @@
 #include <boost/format.hpp>
 
 #include <cstddef>
+#include <ios>
 #include <memory>
+#include <stdexcept>
 
 namespace
 {
-rsnano::ChannelHandle * create_inproc_handle (size_t channel_id, nano::network_filter & network_filter, nano::network_constants & network_constants)
+void delete_inbound_context (void * context)
 {
+	auto callback = static_cast<std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> *> (context);
+	delete callback;
+}
+
+void inbound_wrapper (void * context, rsnano::MessageHandle * message_handle, rsnano::ChannelHandle * channel_handle)
+{
+	auto callback = static_cast<std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> *> (context);
+	auto message = rsnano::message_handle_to_message (message_handle);
+	std::shared_ptr<nano::transport::channel> channel{ std::make_shared<nano::transport::inproc::channel> (channel_handle) };
+	(*callback) (*message, channel);
+}
+
+rsnano::ChannelHandle * create_inproc_handle (
+size_t channel_id,
+nano::network_filter & network_filter,
+nano::network_constants & network_constants,
+nano::stats & stats,
+nano::outbound_bandwidth_limiter & outbound_limiter,
+std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> source_inbound,
+std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> destination_inbound,
+boost::asio::io_context & io_ctx,
+nano::endpoint source,
+nano::endpoint destination,
+nano::account source_node_id,
+nano::account destination_node_id)
+{
+	auto source_context = new std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> (source_inbound);
+	auto destination_context = new std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> (destination_inbound);
 	auto network_dto{ network_constants.to_dto () };
+	auto source_dto = rsnano::udp_endpoint_to_dto (source);
+	auto destination_dto = rsnano::udp_endpoint_to_dto (destination);
+
 	return rsnano::rsn_channel_inproc_create (
 	channel_id,
 	std::chrono::steady_clock::now ().time_since_epoch ().count (),
 	&network_dto,
-	network_filter.handle);
+	network_filter.handle,
+	stats.handle,
+	outbound_limiter.handle,
+	inbound_wrapper,
+	source_context,
+	inbound_wrapper,
+	destination_context,
+	delete_inbound_context,
+	&io_ctx,
+	&source_dto,
+	&destination_dto,
+	source_node_id.bytes.data (),
+	destination_node_id.bytes.data ());
 }
 }
 
@@ -48,6 +93,11 @@ nano::transport::inproc::channel::channel (nano::node & node_a, nano::node & des
 {
 }
 
+nano::transport::inproc::channel::channel (rsnano::ChannelHandle * handle_a) :
+	nano::transport::channel (handle_a)
+{
+}
+
 nano::transport::inproc::channel::channel (
 size_t channel_id,
 nano::network_filter & publish_filter,
@@ -61,31 +111,50 @@ std::function<void (nano::message const &, std::shared_ptr<nano::transport::chan
 nano::endpoint destination,
 nano::account destination_node_id,
 std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> destination_inbound) :
-	transport::channel{ create_inproc_handle (channel_id, publish_filter, network) },
-	stats (stats),
-	limiter (outbound_limiter),
-	io_ctx (io_ctx),
-	endpoint{ endpoint },
-	destination{ destination },
-	network{ network },
-	source_inbound{ source_inbound },
-	destination_inbound{ destination_inbound },
-	source_node_id{ source_node_id },
-	destination_node_id{ destination_node_id }
+	transport::channel{ create_inproc_handle (
+	channel_id,
+	publish_filter,
+	network,
+	stats,
+	outbound_limiter,
+	source_inbound,
+	destination_inbound,
+	io_ctx,
+	endpoint,
+	destination,
+	source_node_id,
+	destination_node_id) }
 {
-	set_node_id (source_node_id);
-	set_network_version (network.protocol_version);
+}
+
+uint8_t nano::transport::inproc::channel::get_network_version () const
+{
+	return rsnano::rsn_channel_inproc_network_version (handle);
+}
+
+nano::endpoint nano::transport::inproc::channel::get_endpoint () const
+{
+	rsnano::EndpointDto dto;
+	rsnano::rsn_channel_inproc_endpoint (handle, &dto);
+	return rsnano::dto_to_udp_endpoint (dto);
+}
+
+nano::tcp_endpoint nano::transport::inproc::channel::get_tcp_endpoint () const
+{
+	rsnano::EndpointDto dto;
+	rsnano::rsn_channel_inproc_endpoint (handle, &dto);
+	return rsnano::dto_to_endpoint (dto);
 }
 
 std::size_t nano::transport::inproc::channel::hash_code () const
 {
 	std::hash<::nano::endpoint> hash;
-	return hash (endpoint);
+	return hash (get_endpoint ());
 }
 
 bool nano::transport::inproc::channel::operator== (nano::transport::channel const & other_a) const
 {
-	return endpoint == other_a.get_endpoint ();
+	return get_endpoint () == other_a.get_endpoint ();
 }
 
 /**
@@ -114,26 +183,8 @@ public:
 
 void nano::transport::inproc::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::transport::traffic_type traffic_type)
 {
-	auto buffer (message_a.to_shared_const_buffer ());
-	auto detail = nano::to_stat_detail (message_a.get_header ().get_type ());
-	auto is_droppable_by_limiter = drop_policy_a == nano::transport::buffer_drop_policy::limiter;
-	auto should_pass (limiter.should_pass (buffer.size (), nano::to_bandwidth_limit_type (traffic_type)));
-	if (!is_droppable_by_limiter || should_pass)
-	{
-		send_buffer (buffer, callback_a, drop_policy_a);
-		stats.inc (nano::stat::type::message, detail, nano::stat::dir::out);
-	}
-	else
-	{
-		if (callback_a)
-		{
-			io_ctx.post ([callback_a] () {
-				callback_a (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
-			});
-		}
-
-		stats.inc (nano::stat::type::drop, detail, nano::stat::dir::out);
-	}
+	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
+	rsnano::rsn_channel_inproc_send (handle, message_a.handle, nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a), static_cast<uint8_t> (traffic_type));
 }
 
 namespace
@@ -163,67 +214,21 @@ void delete_callback_context (void * context)
  */
 void nano::transport::inproc::channel::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::transport::traffic_type traffic_type)
 {
-	auto context = new std::function<void (boost::system::error_code, std::unique_ptr<nano::message>)> (
-	[this] (boost::system::error_code ec_a, std::unique_ptr<nano::message> message_a) {
-		if (ec_a || !message_a)
-		{
-			return;
-		}
-		nano::network_filter filter{ 100000 };
-		// we create a temporary channel for the reply path, in case the receiver of the message wants to reply
-		// auto remote_channel = std::make_shared<nano::transport::inproc::channel> (destination, node);
-		auto remote_channel = std::make_shared<nano::transport::inproc::channel> (
-		1,
-		filter,
-		network,
-		stats,
-		limiter,
-		io_ctx,
-		destination,
-		destination_node_id,
-		destination_inbound,
-		endpoint,
-		source_node_id,
-		source_inbound);
-
-		// process message
-		{
-			stats.inc (nano::stat::type::message, nano::to_stat_detail (message_a->get_header ().get_type ()), nano::stat::dir::in);
-
-			// create an inbound message visitor class to handle incoming messages
-			message_visitor_inbound visitor{ destination_inbound, remote_channel };
-			message_a->visit (visitor);
-		}
-	});
-
-	rsnano::rsn_channel_inproc_send_buffer (handle, buffer_a.data (), buffer_a.size (), message_received_callback, context, delete_callback_context);
-
-	if (callback_a)
-	{
-		io_ctx.post ([callback_l = std::move (callback_a), buffer_size = buffer_a.size ()] () {
-			callback_l (boost::system::errc::make_error_code (boost::system::errc::success), buffer_size);
-		});
-	}
+	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
+	rsnano::rsn_channel_inproc_send_buffer (handle, buffer_a.data (), buffer_a.size (), nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a), static_cast<uint8_t> (traffic_type));
 }
 
 std::string nano::transport::inproc::channel::to_string () const
 {
-	return boost::str (boost::format ("%1%") % endpoint);
+	return boost::str (boost::format ("%1%") % get_endpoint ());
 }
 
 void nano::transport::inproc::channel::set_peering_endpoint (nano::endpoint endpoint)
 {
-	peering_endpoint = endpoint;
+	throw std::runtime_error ("set_peering_endpoint not yet implemented for inproc channel");
 }
 
 nano::endpoint nano::transport::inproc::channel::get_peering_endpoint () const
 {
-	if (peering_endpoint)
-	{
-		return *peering_endpoint;
-	}
-	else
-	{
-		return get_endpoint ();
-	}
+	return get_endpoint ();
 }

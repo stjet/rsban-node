@@ -40,7 +40,7 @@ namespace transport
 				return network_version;
 			}
 
-			void set_network_version (uint8_t network_version_a) override
+			void set_network_version (uint8_t network_version_a)
 			{
 				network_version = network_version_a;
 			}

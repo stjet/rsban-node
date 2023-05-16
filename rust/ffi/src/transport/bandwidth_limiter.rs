@@ -5,7 +5,7 @@ use rsnano_node::transport::{
 };
 use std::{borrow::Borrow, ops::Deref, sync::Arc};
 
-pub struct BandwidthLimiterHandle(Arc<BandwidthLimiter>);
+pub struct BandwidthLimiterHandle(pub Arc<BandwidthLimiter>);
 
 impl Deref for BandwidthLimiterHandle {
     type Target = Arc<BandwidthLimiter>;
@@ -48,7 +48,7 @@ pub unsafe extern "C" fn rsn_bandwidth_limiter_reset(
     0
 }
 
-pub struct OutboundBandwidthLimiterHandle(Arc<OutboundBandwidthLimiter>);
+pub struct OutboundBandwidthLimiterHandle(pub Arc<OutboundBandwidthLimiter>);
 
 impl Deref for OutboundBandwidthLimiterHandle {
     type Target = Arc<OutboundBandwidthLimiter>;

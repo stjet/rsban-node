@@ -129,8 +129,6 @@ public:
 	size_t channel_id () const;
 
 	virtual uint8_t get_network_version () const = 0;
-	virtual void set_network_version (uint8_t network_version_a) = 0;
-
 	virtual nano::endpoint get_peering_endpoint () const = 0;
 	virtual void set_peering_endpoint (nano::endpoint endpoint) = 0;
 	rsnano::ChannelHandle * handle;

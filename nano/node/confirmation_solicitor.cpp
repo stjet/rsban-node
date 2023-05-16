@@ -17,6 +17,7 @@ void nano::confirmation_solicitor::prepare (std::vector<nano::representative> co
 {
 	debug_assert (!prepared);
 	requests.clear ();
+	channels.clear ();
 	rebroadcasted = 0;
 	/** Two copies are required as representatives can be erased from \p representatives_requests */
 	representatives_requests = representatives_a;
@@ -68,8 +69,13 @@ bool nano::confirmation_solicitor::add (nano::election const & election_a)
 		bool const different (exists && existing->second.hash != hash);
 		if (!exists || !is_final || different)
 		{
-			auto & request_queue (requests[rep.channel]);
-			if (!rep.channel->max ())
+			const auto & channel = rep.channel;
+			auto & request_queue (requests[channel->channel_id ()]);
+			if (!channels.contains (channel->channel_id ()))
+			{
+				channels.emplace (channel->channel_id (), channel);
+			}
+			if (!channel->max ())
 			{
 				request_queue.emplace_back (election_a.status.get_winner ()->hash (), election_a.status.get_winner ()->root ());
 				count += different ? 0 : 1;
@@ -88,11 +94,11 @@ bool nano::confirmation_solicitor::add (nano::election const & election_a)
 void nano::confirmation_solicitor::flush ()
 {
 	debug_assert (prepared);
-	for (auto const & request_queue : requests)
+	for (auto const & channel_item : channels)
 	{
-		auto const & channel (request_queue.first);
+		auto const & channel (channel_item.second);
 		std::vector<std::pair<nano::block_hash, nano::root>> roots_hashes_l;
-		for (auto const & root_hash : request_queue.second)
+		for (auto const & root_hash : requests[channel->channel_id ()])
 		{
 			roots_hashes_l.push_back (root_hash);
 			if (roots_hashes_l.size () == nano::network::confirm_req_hashes_max)

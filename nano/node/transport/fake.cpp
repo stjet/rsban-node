@@ -32,6 +32,11 @@ nano::transport::fake::channel::channel (nano::node & node) :
 	set_node_id (node.node_id.pub);
 }
 
+nano::transport::fake::channel::channel (rsnano::ChannelHandle * handle) : 
+	nano::transport::channel (handle)
+{
+}
+
 void nano::transport::fake::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::transport::traffic_type traffic_type)
 {
 	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);

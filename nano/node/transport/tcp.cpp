@@ -1068,10 +1068,10 @@ std::shared_ptr<nano::transport::channel> nano::transport::channel_handle_to_cha
 	{
 		case nano::transport::transport_type::tcp:
 			return make_shared<nano::transport::channel_tcp> (handle);
-		// case nano::transport::transport_type::loopback:
-		// 	return make_shared<nano::transport::inproc::channel>(handle);
-		// case nano::transport::transport_type::fake:
-		// 	return make_shared<nano::transport::fake::channel>(handle);
+		case nano::transport::transport_type::loopback:
+			return make_shared<nano::transport::inproc::channel>(handle);
+		case nano::transport::transport_type::fake:
+			return make_shared<nano::transport::fake::channel>(handle);
 		default:
 			throw std::runtime_error ("unknown transport type");
 	}

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
 #include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
 
@@ -16,6 +17,7 @@ namespace transport
 		{
 		public:
 			explicit channel (nano::node &);
+			explicit channel (rsnano::ChannelHandle * handle);
 
 			std::string to_string () const override;
 			std::size_t hash_code () const override;

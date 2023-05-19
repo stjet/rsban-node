@@ -10,13 +10,11 @@
 #include <memory>
 
 nano::representative::representative (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a) :
-	channel{ channel_a },
 	handle{ rsnano::rsn_representative_create (account_a.bytes.data (), channel_a->handle) }
 {
 }
 
 nano::representative::representative (representative const & other_a) :
-	channel{ other_a.channel },
 	handle{ rsnano::rsn_representative_clone (other_a.handle) }
 {
 }
@@ -29,7 +27,6 @@ nano::representative::~representative ()
 nano::representative & nano::representative::operator= (nano::representative const & other_a)
 {
 	rsnano::rsn_representative_destroy (handle);
-	channel = other_a.channel;
 	handle = rsnano::rsn_representative_clone (other_a.handle);
 	return *this;
 }
@@ -43,13 +40,11 @@ nano::account nano::representative::get_account () const
 
 std::shared_ptr<nano::transport::channel> nano::representative::get_channel () const
 {
-	return channel;
-	// return nano::transport::channel_handle_to_channel(rsnano::rsn_representative_channel(handle));
+	return nano::transport::channel_handle_to_channel(rsnano::rsn_representative_channel(handle));
 }
 
 void nano::representative::set_channel (std::shared_ptr<nano::transport::channel> new_channel)
 {
-	channel = new_channel;
 	rsnano::rsn_representative_set_channel (handle, new_channel->handle);
 }
 

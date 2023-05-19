@@ -52,9 +52,6 @@ public:
 	void set_last_response (std::chrono::steady_clock::time_point time_point);
 
 	rsnano::RepresentativeHandle * handle;
-
-private:
-	std::shared_ptr<nano::transport::channel> channel;
 };
 
 /**

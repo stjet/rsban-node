@@ -80,6 +80,8 @@ class rep_crawler final
 
 public:
 	rep_crawler (nano::node & node_a);
+	rep_crawler (rep_crawler const &) = delete;
+	~rep_crawler ();
 
 	/** Start crawling */
 	void start ();
@@ -98,6 +100,12 @@ public:
 
 	/** Query if a peer manages a principle representative */
 	bool is_pr (nano::transport::channel const &) const;
+
+	/** Only for tests*/
+	void insert_active (nano::block_hash const & hash_a);
+
+	/** Only for tests*/
+	void insert_response (std::shared_ptr<nano::transport::channel> channel_a, std::shared_ptr<nano::vote> vote_a);
 
 	/**
 	 * Called when a non-replay vote on a block previously sent by query() is received. This indicates
@@ -128,9 +136,6 @@ private:
 	/** Protects the active-hash container */
 	nano::mutex active_mutex;
 
-	/** We have solicted votes for these random blocks */
-	std::unordered_set<nano::block_hash> active;
-
 	// Validate responses to see if they're reps
 	void validate ();
 
@@ -158,5 +163,6 @@ private:
 	friend class node_online_reps_rep_crawler_Test;
 
 	std::deque<std::pair<std::shared_ptr<nano::transport::channel>, std::shared_ptr<nano::vote>>> responses;
+	rsnano::RepCrawlerHandle * handle;
 };
 }

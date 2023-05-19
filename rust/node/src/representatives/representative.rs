@@ -49,4 +49,12 @@ impl Representative {
     pub fn set_last_response(&mut self, value: u64) {
         self.last_response = value
     }
+
+    #[cfg(test)]
+    pub(crate) fn create_test_instance() -> Self {
+        Self::new(
+            Account::from(42),
+            Arc::new(ChannelEnum::create_test_instance()),
+        )
+    }
 }

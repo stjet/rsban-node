@@ -2055,10 +2055,7 @@ TEST (node, online_reps_rep_crawler)
 	node1.vote_processor.vote_blocking (vote, std::make_shared<nano::transport::fake::channel> (node1));
 	ASSERT_EQ (0, node1.online_reps.online ());
 	// After inserting to rep crawler
-	{
-		nano::lock_guard<nano::mutex> guard{ node1.rep_crawler.probable_reps_mutex };
-		node1.rep_crawler.active.insert (nano::dev::genesis->hash ());
-	}
+	node1.rep_crawler.insert_active (nano::dev::genesis->hash ());
 	node1.vote_processor.vote_blocking (vote, std::make_shared<nano::transport::fake::channel> (node1));
 	ASSERT_EQ (nano::dev::constants.genesis_amount, node1.online_reps.online ());
 }
@@ -4035,11 +4032,8 @@ TEST (rep_crawler, local)
 	auto & node = *system.add_node (flags);
 	auto loopback = std::make_shared<nano::transport::inproc::channel> (node, node);
 	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector{ nano::dev::genesis->hash () });
-	{
-		nano::lock_guard<nano::mutex> guard{ node.rep_crawler.probable_reps_mutex };
-		node.rep_crawler.active.insert (nano::dev::genesis->hash ());
-		node.rep_crawler.responses.emplace_back (loopback, vote);
-	}
+	node.rep_crawler.insert_active (nano::dev::genesis->hash ());
+	node.rep_crawler.insert_response (loopback, vote);
 	node.rep_crawler.validate ();
 	ASSERT_EQ (0, node.rep_crawler.representative_count ());
 }

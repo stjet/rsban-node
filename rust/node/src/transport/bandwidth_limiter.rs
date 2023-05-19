@@ -54,10 +54,27 @@ pub struct OutboundBandwidthLimiterConfig {
     pub bootstrap_burst_ratio: f64,
 }
 
+impl Default for OutboundBandwidthLimiterConfig {
+    fn default() -> Self {
+        Self {
+            standard_limit: 10 * 1024 * 1024,
+            standard_burst_ratio: 3_f64,
+            bootstrap_limit: 5 * 1024 * 1024,
+            bootstrap_burst_ratio: 1_f64,
+        }
+    }
+}
+
 pub struct OutboundBandwidthLimiter {
     config: OutboundBandwidthLimiterConfig,
     limiter_standard: BandwidthLimiter,
     limiter_bootstrap: BandwidthLimiter,
+}
+
+impl Default for OutboundBandwidthLimiter {
+    fn default() -> Self {
+        Self::new(OutboundBandwidthLimiterConfig::default())
+    }
 }
 
 impl OutboundBandwidthLimiter {

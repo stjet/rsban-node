@@ -40,7 +40,7 @@ nano::account nano::representative::get_account () const
 
 std::shared_ptr<nano::transport::channel> nano::representative::get_channel () const
 {
-	return nano::transport::channel_handle_to_channel(rsnano::rsn_representative_channel(handle));
+	return nano::transport::channel_handle_to_channel (rsnano::rsn_representative_channel (handle));
 }
 
 void nano::representative::set_channel (std::shared_ptr<nano::transport::channel> new_channel)
@@ -71,7 +71,8 @@ void nano::representative::set_last_response (std::chrono::steady_clock::time_po
 }
 
 nano::rep_crawler::rep_crawler (nano::node & node_a) :
-	node (node_a)
+	node (node_a),
+	handle{ rsnano::rsn_rep_crawler_create () }
 {
 	if (!node.flags.disable_rep_crawler ())
 	{
@@ -81,10 +82,14 @@ nano::rep_crawler::rep_crawler (nano::node & node_a) :
 	}
 }
 
+nano::rep_crawler::~rep_crawler ()
+{
+	rsnano::rsn_rep_crawler_destroy (handle);
+}
+
 void nano::rep_crawler::remove (nano::block_hash const & hash_a)
 {
-	nano::lock_guard<nano::mutex> lock{ active_mutex };
-	active.erase (hash_a);
+	rsnano::rsn_rep_crawler_remove (handle, hash_a.bytes.data ());
 }
 
 void nano::rep_crawler::start ()
@@ -96,6 +101,7 @@ void nano::rep_crawler::validate ()
 {
 	decltype (responses) responses_l;
 	{
+		rsnano::rsn_rep_crawler_responses_clear (handle);
 		nano::lock_guard<nano::mutex> lock{ active_mutex };
 		responses_l.swap (responses);
 	}
@@ -155,7 +161,9 @@ void nano::rep_crawler::validate ()
 		}
 		else
 		{
-			probable_reps.emplace (nano::representative (vote->account (), channel));
+			nano::representative rep{ vote->account (), channel };
+			probable_reps.emplace (rep);
+			rsnano::rsn_rep_crawler_add (handle, rep.handle);
 			inserted = true;
 		}
 
@@ -225,16 +233,17 @@ void nano::rep_crawler::query (std::vector<std::shared_ptr<nano::transport::chan
 	auto transaction (node.store.tx_begin_read ());
 	auto hash_root (node.ledger.hash_root_random (*transaction));
 	{
-		nano::lock_guard<nano::mutex> lock{ active_mutex };
+		// nano::lock_guard<nano::mutex> lock{ active_mutex };
+
 		// Don't send same block multiple times in tests
 		if (node.network_params.network.is_dev_network ())
 		{
-			for (auto i (0); active.count (hash_root.first) != 0 && i < 4; ++i)
+			for (auto i (0); rsnano::rsn_rep_crawler_active_contains (handle, hash_root.first.bytes.data ()) && i < 4; ++i)
 			{
 				hash_root = node.ledger.hash_root_random (*transaction);
 			}
 		}
-		active.insert (hash_root.first);
+		rsnano::rsn_rep_crawler_active_insert (handle, hash_root.first.bytes.data ());
 	}
 	if (!channels_a.empty ())
 	{
@@ -296,6 +305,16 @@ bool nano::rep_crawler::is_pr (nano::transport::channel const & channel_a) const
 	return result;
 }
 
+void nano::rep_crawler::insert_active (nano::block_hash const & hash_a)
+{
+	rsnano::rsn_rep_crawler_active_insert (handle, hash_a.bytes.data ());
+}
+
+void nano::rep_crawler::insert_response (std::shared_ptr<nano::transport::channel> channel_a, std::shared_ptr<nano::vote> vote_a)
+{
+	rsnano::rsn_rep_crawler_response_insert (handle, channel_a->handle, vote_a->get_handle ());
+}
+
 bool nano::rep_crawler::response (std::shared_ptr<nano::transport::channel> const & channel_a, std::shared_ptr<nano::vote> const & vote_a, bool force)
 {
 	bool error = true;
@@ -303,7 +322,7 @@ bool nano::rep_crawler::response (std::shared_ptr<nano::transport::channel> cons
 	auto hashes = vote_a->hashes ();
 	for (auto i = hashes.begin (), n = hashes.end (); i != n; ++i)
 	{
-		if (force || active.count (*i) != 0)
+		if (force || rsnano::rsn_rep_crawler_active_contains (handle, i->bytes.data ()))
 		{
 			responses.emplace_back (channel_a, vote_a);
 			error = false;
@@ -347,45 +366,19 @@ void nano::rep_crawler::on_rep_request (std::shared_ptr<nano::transport::channel
 
 void nano::rep_crawler::cleanup_reps ()
 {
-	std::vector<std::shared_ptr<nano::transport::channel>> channels;
+	// Check known rep channels
+	nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
+	auto iterator (probable_reps.get<tag_last_request> ().begin ());
+	while (iterator != probable_reps.get<tag_last_request> ().end ())
 	{
-		// Check known rep channels
-		nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
-		auto iterator (probable_reps.get<tag_last_request> ().begin ());
-		while (iterator != probable_reps.get<tag_last_request> ().end ())
+		if (iterator->get_channel ()->alive ())
 		{
-			if (iterator->get_channel ()->alive ())
-			{
-				channels.push_back (iterator->get_channel ());
-				++iterator;
-			}
-			else
-			{
-				// Remove reps with closed channels
-				iterator = probable_reps.get<tag_last_request> ().erase (iterator);
-			}
+			++iterator;
 		}
-	}
-	// Remove reps with inactive channels
-	for (auto const & i : channels)
-	{
-		bool equal (false);
-		if (i->get_type () == nano::transport::transport_type::tcp)
+		else
 		{
-			auto find_channel (node.network->tcp_channels->find_channel (i->get_tcp_endpoint ()));
-			if (find_channel != nullptr && *find_channel == *static_cast<nano::transport::channel_tcp *> (i.get ()))
-			{
-				equal = true;
-			}
-		}
-		else if (i->get_type () == nano::transport::transport_type::fake)
-		{
-			equal = true;
-		}
-		if (!equal)
-		{
-			nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
-			probable_reps.get<tag_channel_id> ().erase (i->channel_id ());
+			// Remove reps with closed channels
+			iterator = probable_reps.get<tag_last_request> ().erase (iterator);
 		}
 	}
 }

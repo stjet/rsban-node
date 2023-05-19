@@ -32,7 +32,7 @@ nano::transport::fake::channel::channel (nano::node & node) :
 	set_node_id (node.node_id.pub);
 }
 
-nano::transport::fake::channel::channel (rsnano::ChannelHandle * handle) : 
+nano::transport::fake::channel::channel (rsnano::ChannelHandle * handle) :
 	nano::transport::channel (handle)
 {
 }

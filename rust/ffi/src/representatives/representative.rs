@@ -3,7 +3,7 @@ use rsnano_node::representatives::Representative;
 
 use crate::{copy_account_bytes, transport::ChannelHandle};
 
-pub struct RepresentativeHandle(Representative);
+pub struct RepresentativeHandle(pub Representative);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_representative_create(

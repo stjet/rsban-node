@@ -1,3 +1,4 @@
+#include "nano/lib/rsnano.hpp"
 #include "nano/secure/common.hpp"
 
 #include <nano/lib/threading.hpp>
@@ -17,6 +18,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <future>
+#include <memory>
 #include <sstream>
 
 double constexpr nano::node::price_max;
@@ -101,16 +103,8 @@ void nano::node::keepalive (std::string const & address_a, uint16_t port_a)
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (rep_crawler & rep_crawler, std::string const & name)
 {
-	std::size_t count;
-	{
-		nano::lock_guard<nano::mutex> guard{ rep_crawler.active_mutex };
-		count = rep_crawler.active.size ();
-	}
-
-	auto const sizeof_element = sizeof (decltype (rep_crawler.active)::value_type);
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "active", count, sizeof_element }));
-	return composite;
+	auto info_handle = rsnano::rsn_rep_crawler_collect_container_info (rep_crawler.handle, name.c_str ());
+	return std::make_unique<nano::container_info_composite> (info_handle);
 }
 
 nano::keypair nano::load_or_create_node_id (boost::filesystem::path const & application_path, nano::logger_mt & logger)

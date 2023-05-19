@@ -467,6 +467,12 @@ pub struct Stats {
     mutables: Mutex<StatMutables>,
 }
 
+impl Default for Stats {
+    fn default() -> Self {
+        Self::new(StatsConfig::default())
+    }
+}
+
 impl Stats {
     pub fn new(config: StatsConfig) -> Self {
         let default_interval = config.interval;

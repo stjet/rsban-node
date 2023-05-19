@@ -83,4 +83,33 @@ impl ChannelEnum {
             ChannelEnum::Fake(fake) => fake,
         }
     }
+
+    #[cfg(test)]
+    pub(crate) fn create_test_instance() -> Self {
+        Self::create_test_instance_with_channel_id(42)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn create_test_instance_with_channel_id(channel_id: usize) -> Self {
+        use std::{
+            net::{IpAddr, Ipv6Addr, SocketAddr},
+            sync::Arc,
+        };
+
+        use crate::{stats::Stats, utils::StubIoContext};
+
+        let limiter = Arc::new(OutboundBandwidthLimiter::default());
+        let io_ctx = Box::new(StubIoContext::new());
+        let stats = Arc::new(Stats::default());
+
+        Self::Fake(ChannelFake::new(
+            1000,
+            channel_id,
+            io_ctx,
+            limiter,
+            stats,
+            SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 123),
+            3,
+        ))
+    }
 }

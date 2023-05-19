@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+#include "nano/lib/rsnanoutils.hpp"
 #include "nano/node/bandwidth_limiter.hpp"
 #include "nano/node/transport/channel.hpp"
 
@@ -6,38 +8,34 @@
 
 #include <boost/format.hpp>
 
+#include <stdexcept>
+
+namespace
+{
+rsnano::ChannelHandle * create_fake_channel (nano::node & node)
+{
+	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (node.network->endpoint ()) };
+	return rsnano::rsn_channel_fake_create (
+	std::chrono::steady_clock::now ().time_since_epoch ().count (),
+	node.network->next_channel_id.fetch_add (1),
+	&node.io_ctx,
+	node.outbound_limiter.handle,
+	node.stats->handle,
+	&endpoint_dto,
+	node.network_params.network.protocol_version);
+}
+}
+
 nano::transport::fake::channel::channel (nano::node & node) :
-	node{ node },
-	transport::channel{ rsnano::rsn_channel_fake_create (std::chrono::steady_clock::now ().time_since_epoch ().count (),
-	node.network->next_channel_id.fetch_add (1)) },
-	endpoint{ node.network->endpoint () }
+	transport::channel{ create_fake_channel (node) }
 {
 	set_node_id (node.node_id.pub);
-	set_network_version (node.network_params.network.protocol_version);
 }
 
 void nano::transport::fake::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::transport::traffic_type traffic_type)
 {
-	auto buffer (message_a.to_shared_const_buffer ());
-	auto detail = nano::to_stat_detail (message_a.get_header ().get_type ());
-	auto is_droppable_by_limiter = drop_policy_a == nano::transport::buffer_drop_policy::limiter;
-	auto should_pass (node.outbound_limiter.should_pass (buffer.size (), nano::to_bandwidth_limit_type (traffic_type)));
-	if (!is_droppable_by_limiter || should_pass)
-	{
-		send_buffer (buffer, callback_a, drop_policy_a);
-		node.stats->inc (nano::stat::type::message, detail, nano::stat::dir::out);
-	}
-	else
-	{
-		if (callback_a)
-		{
-			node.background ([callback_a] () {
-				callback_a (boost::system::errc::make_error_code (boost::system::errc::not_supported), 0);
-			});
-		}
-
-		node.stats->inc (nano::stat::type::drop, detail, nano::stat::dir::out);
-	}
+	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
+	rsnano::rsn_channel_fake_send (handle, message_a.handle, nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a), static_cast<uint8_t> (traffic_type));
 }
 
 /**
@@ -45,50 +43,49 @@ void nano::transport::fake::channel::send (nano::message & message_a, std::funct
  */
 void nano::transport::fake::channel::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::transport::traffic_type traffic_type)
 {
-	// auto bytes = buffer_a.to_bytes ();
-	auto size = buffer_a.size ();
-	if (callback_a)
-	{
-		node.background ([callback_a, size] () {
-			callback_a (boost::system::errc::make_error_code (boost::system::errc::success), size);
-		});
-	}
+	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
+	rsnano::rsn_channel_fake_send_buffer (handle, buffer_a.data (), buffer_a.size (), nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a), static_cast<uint8_t> (traffic_type));
 }
 
 std::size_t nano::transport::fake::channel::hash_code () const
 {
 	std::hash<::nano::endpoint> hash;
-	return hash (endpoint);
+	return hash (get_endpoint ());
 }
 
 bool nano::transport::fake::channel::operator== (nano::transport::channel const & other_a) const
 {
-	return endpoint == other_a.get_endpoint ();
+	return get_endpoint () == other_a.get_endpoint ();
 }
 
 bool nano::transport::fake::channel::operator== (nano::transport::fake::channel const & other_a) const
 {
-	return endpoint == other_a.get_endpoint ();
+	return get_endpoint () == other_a.get_endpoint ();
 }
 
 std::string nano::transport::fake::channel::to_string () const
 {
-	return boost::str (boost::format ("%1%") % endpoint);
+	return boost::str (boost::format ("%1%") % get_endpoint ());
 }
 
 void nano::transport::fake::channel::set_peering_endpoint (nano::endpoint endpoint)
 {
-	peering_endpoint = endpoint;
+	throw std::runtime_error ("setting peering endpoint not implemented for fake channel");
 }
 
 nano::endpoint nano::transport::fake::channel::get_peering_endpoint () const
 {
-	if (peering_endpoint)
-	{
-		return *peering_endpoint;
-	}
-	else
-	{
-		return get_endpoint ();
-	}
+	return get_endpoint ();
+}
+
+bool nano::transport::fake::channel::alive () const
+{
+	return rsnano::rsn_channel_is_alive (handle);
+}
+
+nano::endpoint nano::transport::fake::channel::get_endpoint () const
+{
+	rsnano::EndpointDto dto;
+	rsnano::rsn_channel_fake_endpoint (handle, &dto);
+	return rsnano::dto_to_udp_endpoint (dto);
 }

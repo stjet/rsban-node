@@ -10,7 +10,7 @@ use rsnano_node::{
     config::NetworkConstants,
     transport::{Channel, ChannelEnum, ChannelFake, ChannelInProc, ChannelTcp, TrafficType},
 };
-use std::{ffi::c_void, ops::Deref, sync::Arc};
+use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc};
 
 use super::{
     bandwidth_limiter::OutboundBandwidthLimiterHandle, ChannelTcpSendBufferCallback, EndpointDto,
@@ -22,6 +22,13 @@ pub struct ChannelHandle(pub Arc<ChannelEnum>);
 impl ChannelHandle {
     pub fn new(channel: Arc<ChannelEnum>) -> *mut Self {
         Box::into_raw(Box::new(Self(channel)))
+    }
+}
+
+pub unsafe fn as_fake_channel(handle: *mut ChannelHandle) -> &'static ChannelFake {
+    match (*handle).0.as_ref() {
+        ChannelEnum::Fake(fake) => fake,
+        _ => panic!("expected fake channel"),
     }
 }
 
@@ -56,6 +63,11 @@ pub unsafe extern "C" fn rsn_channel_destroy(handle: *mut ChannelHandle) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_is_temporary(handle: *mut ChannelHandle) -> bool {
     as_channel(handle).is_temporary()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_is_alive(handle: *mut ChannelHandle) -> bool {
+    as_channel(handle).is_alive()
 }
 
 #[no_mangle]
@@ -192,6 +204,12 @@ pub unsafe extern "C" fn rsn_channel_inproc_network_version(handle: *mut Channel
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_channel_fake_network_version(handle: *mut ChannelHandle) -> u8 {
+    let inproc = as_fake_channel(handle);
+    inproc.network_version()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_channel_inproc_endpoint(
     handle: *mut ChannelHandle,
     result: *mut EndpointDto,
@@ -201,10 +219,35 @@ pub unsafe extern "C" fn rsn_channel_inproc_endpoint(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_channel_fake_create(now: u64, channel_id: usize) -> *mut ChannelHandle {
+pub unsafe extern "C" fn rsn_channel_fake_create(
+    now: u64,
+    channel_id: usize,
+    io_ctx: *mut c_void,
+    limiter: *mut OutboundBandwidthLimiterHandle,
+    stats: *mut StatHandle,
+    endpoint: *const EndpointDto,
+    network_version: u8,
+) -> *mut ChannelHandle {
+    let io_ctx = Box::new(FfiIoContext::new(io_ctx));
     Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelEnum::Fake(
-        ChannelFake::new(now, channel_id),
+        ChannelFake::new(
+            now,
+            channel_id,
+            io_ctx,
+            (*limiter).0.clone(),
+            (*stats).0.clone(),
+            SocketAddr::from(&(*endpoint)),
+            network_version,
+        ),
     )))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_fake_endpoint(
+    handle: *mut ChannelHandle,
+    result: *mut EndpointDto,
+) {
+    *result = as_fake_channel(handle).endpoint().into();
 }
 
 #[no_mangle]
@@ -230,6 +273,28 @@ pub unsafe extern "C" fn rsn_channel_inproc_send_buffer(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_channel_fake_send_buffer(
+    handle: *mut ChannelHandle,
+    buffer: *const u8,
+    buffer_len: usize,
+    callback: ChannelTcpSendBufferCallback,
+    delete_callback: VoidPointerCallback,
+    callback_context: *mut c_void,
+    policy: u8,
+    traffic_type: u8,
+) {
+    let buffer = Arc::new(std::slice::from_raw_parts(buffer, buffer_len).to_vec());
+    let callback_wrapper =
+        SendBufferCallbackWrapper::new(callback, callback_context, delete_callback);
+    let cb = Box::new(move |ec, size| {
+        callback_wrapper.call(ec, size);
+    });
+    let policy = FromPrimitive::from_u8(policy).unwrap();
+    let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
+    as_fake_channel(handle).send_buffer(&buffer, Some(cb), policy, traffic_type);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_channel_inproc_send(
     handle: *mut ChannelHandle,
     message: *const MessageHandle,
@@ -247,4 +312,29 @@ pub unsafe extern "C" fn rsn_channel_inproc_send(
     let policy = FromPrimitive::from_u8(policy).unwrap();
     let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
     as_inproc_channel(handle).send((*message).0.as_ref(), Some(cb), policy, traffic_type);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_fake_send(
+    handle: *mut ChannelHandle,
+    message: *const MessageHandle,
+    callback: ChannelTcpSendBufferCallback,
+    delete_callback: VoidPointerCallback,
+    callback_context: *mut c_void,
+    policy: u8,
+    traffic_type: u8,
+) {
+    let callback_wrapper =
+        SendBufferCallbackWrapper::new(callback, callback_context, delete_callback);
+    let cb = Box::new(move |ec, size| {
+        callback_wrapper.call(ec, size);
+    });
+    let policy = FromPrimitive::from_u8(policy).unwrap();
+    let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
+    as_fake_channel(handle).send((*message).0.as_ref(), Some(cb), policy, traffic_type);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_fake_close(handle: *mut ChannelHandle) {
+    as_fake_channel(handle).close();
 }

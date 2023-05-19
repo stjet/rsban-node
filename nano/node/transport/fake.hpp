@@ -37,27 +37,14 @@ namespace transport
 
 			uint8_t get_network_version () const override
 			{
-				return network_version;
+				return rsnano::rsn_channel_fake_network_version (handle);
 			}
 
-			void set_network_version (uint8_t network_version_a)
-			{
-				network_version = network_version_a;
-			}
-
-			void set_endpoint (nano::endpoint const & endpoint_a)
-			{
-				endpoint = endpoint_a;
-			}
-
-			nano::endpoint get_endpoint () const override
-			{
-				return endpoint;
-			}
+			nano::endpoint get_endpoint () const override;
 
 			nano::tcp_endpoint get_tcp_endpoint () const override
 			{
-				return nano::transport::map_endpoint_to_tcp (endpoint);
+				return nano::transport::map_endpoint_to_tcp (get_endpoint());
 			}
 
 			nano::transport::transport_type get_type () const override
@@ -70,21 +57,10 @@ namespace transport
 
 			void close ()
 			{
-				closed = true;
+				rsnano::rsn_channel_fake_close(handle);
 			}
 
-			bool alive () const override
-			{
-				return !closed;
-			}
-
-		private:
-			nano::node & node;
-			std::atomic<uint8_t> network_version{ 0 };
-			std::optional<nano::endpoint> peering_endpoint{};
-			nano::endpoint endpoint;
-
-			std::atomic<bool> closed{ false };
+			bool alive () const override;
 		};
 	} // namespace fake
 } // namespace transport

@@ -5,6 +5,7 @@
 #include "nano/node/nodeconfig.hpp"
 
 #include <nano/node/common.hpp>
+#include <nano/node/peer_exclusion.hpp>
 #include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
 
@@ -182,6 +183,7 @@ namespace transport
 		std::vector<nano::endpoint> get_peers () const;
 
 		nano::tcp_message_manager tcp_message_manager;
+		nano::peer_exclusion excluded_peers;
 
 	private:
 		std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink;

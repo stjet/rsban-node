@@ -113,7 +113,6 @@ public:
 	std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> inbound;
 	boost::asio::ip::udp::resolver resolver;
 	std::vector<boost::thread> packet_processing_threads;
-	nano::peer_exclusion excluded_peers;
 	nano::node & node;
 	std::shared_ptr<nano::network_filter> publish_filter;
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;

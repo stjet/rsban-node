@@ -1,3 +1,4 @@
+#pragma once
 #include <nano/boost/asio/ip/tcp.hpp>
 
 namespace rsnano

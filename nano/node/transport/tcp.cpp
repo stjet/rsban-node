@@ -399,24 +399,24 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 	auto type_a = socket_a->type ();
 	if (!stopped && message_a.get_header ().get_version_using () >= network_params.network.protocol_version_min)
 	{
-		auto channel (network_l->find_channel (nano::transport::map_tcp_to_endpoint (endpoint_a)));
+		auto channel (find_channel (endpoint_a));
 		if (channel)
 		{
 			sink (message_a, channel);
 		}
 		else
 		{
-			channel = network_l->find_node_id (node_id_a);
+			channel = find_node_id (node_id_a);
 			if (channel)
 			{
 				sink (message_a, channel);
 			}
-			else if (!network_l->excluded_peers.check (endpoint_a))
+			else if (!excluded_peers.check (endpoint_a))
 			{
 				if (!node_id_a.is_zero ())
 				{
 					// Add temporary channel
-					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket_a, network_l->tcp_channels, network_l->next_channel_id.fetch_add (1)));
+					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket_a, shared_from_this (), network_l->next_channel_id.fetch_add (1)));
 					temporary_channel->set_endpoint ();
 					debug_assert (endpoint_a == temporary_channel->get_tcp_endpoint ());
 					temporary_channel->set_node_id (node_id_a);
@@ -546,7 +546,7 @@ bool nano::transport::tcp_channels::reachout (nano::endpoint const & endpoint_a)
 
 	auto tcp_endpoint (nano::transport::map_endpoint_to_tcp (endpoint_a));
 	// Don't overload single IP
-	bool error = network_l->excluded_peers.check (tcp_endpoint) || max_ip_or_subnetwork_connections (tcp_endpoint);
+	bool error = excluded_peers.check (tcp_endpoint) || max_ip_or_subnetwork_connections (tcp_endpoint);
 	if (!error && !flags.disable_tcp_realtime ())
 	{
 		// Don't keepalive to nodes that already sent us something

@@ -14,10 +14,15 @@ class wallets #PaleGreen
 class local_vote_history #PaleGreen
 class inactive_vote_cache #PaleGoldenRod
 class signature_checker #PaleGreen
-class rep_crawler
 
-package "Networking"{
+package "Network"{
 class network
+class rep_crawler
+class tcp_message_manager #PaleGreen
+class peer_exclusion #PaleGreen
+}
+
+package "Channels"{
 class channel_tcp_wrapper #PaleGreen
 class channel_tcp #PaleGreen
 class outbound_bandwidth_limiter #PaleGreen
@@ -25,8 +30,6 @@ class syn_cookies #PaleGreen
 class tcp_server #PaleGreen
 class tcp_channels
 class tcp_server_factory
-class peer_exclusion #PaleGreen
-class tcp_message_manager #PaleGreen
 class network_filter #PaleGreen
 }
 

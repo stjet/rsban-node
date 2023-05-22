@@ -115,6 +115,8 @@ class bulk_pull_server final : public std::enable_shared_from_this<nano::bulk_pu
 {
 public:
 	bulk_pull_server (std::shared_ptr<nano::node> const &, std::shared_ptr<nano::transport::tcp_server> const &, std::unique_ptr<nano::bulk_pull>);
+	bulk_pull_server (bulk_pull_server const &) = delete;
+	~bulk_pull_server ();
 	void set_current_end ();
 	std::shared_ptr<nano::block> get_next ();
 	void send_next ();
@@ -126,8 +128,10 @@ public:
 	std::unique_ptr<nano::bulk_pull> request;
 	nano::block_hash current;
 	bool include_start;
-	nano::bulk_pull::count_t max_count;
-	nano::bulk_pull::count_t sent_count;
+	nano::bulk_pull::count_t get_max_count ();
+	nano::bulk_pull::count_t get_sent_count ();
+
+	rsnano::BulkPullServerHandle * handle;
 
 private:
 	std::weak_ptr<nano::node> node;

@@ -15,6 +15,8 @@ class local_vote_history #PaleGreen
 class inactive_vote_cache #PaleGoldenRod
 class signature_checker #PaleGreen
 
+interface message_visitor
+
 package "Networking"{
 class network
 class rep_crawler
@@ -31,6 +33,15 @@ class tcp_server #PaleGreen
 class tcp_channels
 class tcp_server_factory
 class network_filter #PaleGreen
+}
+
+package "Bootstrapping"{
+    class bulk_pull_server
+    class bulk_pull_account_server
+    class frontier_req_server
+    class bulk_push_server
+    class bootstrap_message_visitor
+    class request_response_visitor_factory
 }
 
 active_transactions --> election
@@ -83,5 +94,16 @@ tcp_server --> network_filter
 
 channel_tcp_wrapper --> channel_tcp
 channel_tcp --> tcp_server
+
+bulk_pull_server --> tcp_server
+bulk_pull_account_server --> tcp_server
+
+bootstrap_message_visitor ..|> message_visitor
+bootstrap_message_visitor --> bulk_pull_account_server
+bootstrap_message_visitor --> bulk_pull_server
+bootstrap_message_visitor --> frontier_req_server
+bootstrap_message_visitor --> bulk_push_server
+
+request_response_visitor_factory --> bootstrap_message_visitor
 
 @enduml

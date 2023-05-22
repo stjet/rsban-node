@@ -281,8 +281,8 @@ TEST (bulk_pull, count_limit)
 	req->set_count (2);
 	auto request (std::make_shared<nano::bulk_pull_server> (node0, connection, std::move (req)));
 
-	ASSERT_EQ (request->max_count, 2);
-	ASSERT_EQ (request->sent_count, 0);
+	ASSERT_EQ (request->get_max_count (), 2);
+	ASSERT_EQ (request->get_sent_count (), 0);
 
 	auto block (request->get_next ());
 	ASSERT_NE (nullptr, block);

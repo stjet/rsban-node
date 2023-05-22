@@ -459,14 +459,14 @@ void nano::bulk_pull_server::set_current_end ()
 		}
 	}
 
-	sent_count = 0;
+	rsnano::rsn_bulk_pull_server_sent_count_set (handle, 0);
 	if (request->is_count_present ())
 	{
-		max_count = request->get_count ();
+		rsnano::rsn_bulk_pull_server_sent_count_set (handle, request->get_count ());
 	}
 	else
 	{
-		max_count = 0;
+		rsnano::rsn_bulk_pull_server_sent_count_set (handle, 0);
 	}
 }
 
@@ -497,6 +497,16 @@ void nano::bulk_pull_server::send_next ()
 	{
 		send_finished ();
 	}
+}
+
+nano::bulk_pull::count_t nano::bulk_pull_server::get_sent_count ()
+{
+	return rsnano::rsn_bulk_pull_server_sent_count (handle);
+}
+
+nano::bulk_pull::count_t nano::bulk_pull_server::get_max_count ()
+{
+	return rsnano::rsn_bulk_pull_server_max_count (handle);
 }
 
 std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
@@ -538,7 +548,8 @@ std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 	 * exceeds the requested maximum, return an empty object
 	 * to signal the end of results
 	 */
-	if (max_count != 0 && sent_count >= max_count)
+	auto max_count = rsnano::rsn_bulk_pull_server_max_count (handle);
+	if (max_count != 0 && get_sent_count () >= max_count)
 	{
 		send_current = false;
 	}
@@ -563,7 +574,7 @@ std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 			current = request->get_end ();
 		}
 
-		sent_count++;
+		rsnano::rsn_bulk_pull_server_sent_count_set (handle, get_sent_count () + 1);
 	}
 
 	/*
@@ -644,9 +655,15 @@ bool nano::bulk_pull_server::ascending () const
 nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::bulk_pull> request_a) :
 	connection (connection_a),
 	request (std::move (request_a)),
-	node{ node_a }
+	node{ node_a },
+	handle{ rsnano::rsn_bulk_pull_server_create () }
 {
 	set_current_end ();
+}
+
+nano::bulk_pull_server::~bulk_pull_server ()
+{
+	rsnano::rsn_bulk_pull_server_destroy (handle);
 }
 
 /**

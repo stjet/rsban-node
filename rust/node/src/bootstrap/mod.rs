@@ -3,6 +3,7 @@ mod bootstrap_attempts;
 mod bootstrap_client;
 mod bootstrap_initiator;
 mod bootstrap_lazy;
+mod bulk_pull_server;
 mod channel_tcp_wrapper;
 mod pulls_cache;
 
@@ -15,6 +16,7 @@ pub use bootstrap_client::{
 
 pub use bootstrap_attempts::BootstrapAttempts;
 pub use bootstrap_lazy::BootstrapAttemptLazy;
+pub use bulk_pull_server::BulkPullServer;
 pub use channel_tcp_wrapper::ChannelTcpWrapper;
 pub use pulls_cache::{PullInfo, PullsCache};
 

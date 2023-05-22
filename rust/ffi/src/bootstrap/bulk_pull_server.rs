@@ -1,13 +1,21 @@
 use rsnano_core::BlockHash;
-use rsnano_node::bootstrap::BulkPullServer;
+use rsnano_node::{bootstrap::BulkPullServer, messages::BulkPull};
 
-use crate::copy_hash_bytes;
+use crate::{
+    copy_hash_bytes,
+    messages::{downcast_message, MessageHandle},
+};
 
 pub struct BulkPullServerHandle(BulkPullServer);
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bulk_pull_server_create() -> *mut BulkPullServerHandle {
-    Box::into_raw(Box::new(BulkPullServerHandle(BulkPullServer::new())))
+pub unsafe extern "C" fn rsn_bulk_pull_server_create(
+    request: *mut MessageHandle,
+) -> *mut BulkPullServerHandle {
+    let msg = downcast_message::<BulkPull>(request);
+    Box::into_raw(Box::new(BulkPullServerHandle(BulkPullServer::new(
+        msg.clone(),
+    ))))
 }
 
 #[no_mangle]
@@ -74,4 +82,19 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_current_set(
     current: *const u8,
 ) {
     (*handle).0.current = BlockHash::from_ptr(current);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bulk_pull_server_request(
+    handle: *mut BulkPullServerHandle,
+) -> *mut MessageHandle {
+    MessageHandle::new(Box::new((*handle).0.request.clone()))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bulk_pull_server_request_set_end(
+    handle: *mut BulkPullServerHandle,
+    end: *const u8,
+) {
+    (*handle).0.request.end = BlockHash::from_ptr(end);
 }

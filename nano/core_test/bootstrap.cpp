@@ -35,7 +35,7 @@ TEST (bulk_pull, no_address)
 	req->set_start (1);
 	req->set_end (2);
 	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
-	ASSERT_EQ (request->get_current (), request->request->get_end ());
+	ASSERT_EQ (request->get_current (), request->get_request ().get_end ());
 	ASSERT_TRUE (request->get_current ().is_zero ());
 }
 
@@ -48,7 +48,6 @@ TEST (bulk_pull, genesis_to_end)
 	req->set_end (0);
 	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
 	ASSERT_EQ (system.nodes[0]->latest (nano::dev::genesis_key.pub), request->get_current ());
-	ASSERT_EQ (request->request->get_end (), request->request->get_end ());
 }
 
 // If we can't find the end block, send everything
@@ -61,7 +60,7 @@ TEST (bulk_pull, no_end)
 	req->set_end (1);
 	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
 	ASSERT_EQ (system.nodes[0]->latest (nano::dev::genesis_key.pub), request->get_current ());
-	ASSERT_TRUE (request->request->get_end ().is_zero ());
+	ASSERT_TRUE (request->get_request ().get_end ().is_zero ());
 }
 
 TEST (bulk_pull, end_not_owned)
@@ -93,7 +92,7 @@ TEST (bulk_pull, end_not_owned)
 	req->set_start (key2.pub);
 	req->set_end (nano::dev::genesis->hash ());
 	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
-	ASSERT_EQ (request->get_current (), request->request->get_end ());
+	ASSERT_EQ (request->get_current (), request->get_request ().get_end ());
 }
 
 TEST (bulk_pull, none)
@@ -119,7 +118,7 @@ TEST (bulk_pull, get_next_on_open)
 	auto block (request->get_next ());
 	ASSERT_NE (nullptr, block);
 	ASSERT_TRUE (block->previous ().is_zero ());
-	ASSERT_EQ (request->get_current (), request->request->get_end ());
+	ASSERT_EQ (request->get_current (), request->get_request ().get_end ());
 }
 
 /**

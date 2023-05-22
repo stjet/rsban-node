@@ -127,9 +127,10 @@ public:
 	nano::block_hash get_current () const;
 	nano::bulk_pull::count_t get_max_count () const;
 	nano::bulk_pull::count_t get_sent_count () const;
+	nano::bulk_pull get_request () const;
+	void set_request_end (nano::block_hash const & hash);
 
 	std::shared_ptr<nano::transport::tcp_server> connection;
-	std::unique_ptr<nano::bulk_pull> request;
 	rsnano::BulkPullServerHandle * handle;
 
 private:

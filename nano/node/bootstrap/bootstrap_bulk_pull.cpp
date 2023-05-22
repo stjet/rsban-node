@@ -1,4 +1,5 @@
 #include "nano/lib/rsnano.hpp"
+#include "nano/node/messages.hpp"
 
 #include <nano/node/bootstrap/block_deserializer.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
@@ -411,54 +412,53 @@ void nano::bulk_pull_server::set_current_end ()
 		return;
 	}
 	rsnano::rsn_bulk_pull_server_include_start_set (handle, false);
-	debug_assert (request != nullptr);
 	auto transaction (node_l->store.tx_begin_read ());
-	if (!node_l->store.block ().exists (*transaction, request->get_end ()))
+	if (!node_l->store.block ().exists (*transaction, get_request ().get_end ()))
 	{
 		if (node_l->config->logging.bulk_pull_logging ())
 		{
-			node_l->logger->try_log (boost::str (boost::format ("Bulk pull end block doesn't exist: %1%, sending everything") % request->get_end ().to_string ()));
+			node_l->logger->try_log (boost::str (boost::format ("Bulk pull end block doesn't exist: %1%, sending everything") % get_request ().get_end ().to_string ()));
 		}
-		request->set_end (0);
+		set_request_end (0);
 	}
 
-	if (node_l->store.block ().exists (*transaction, request->get_start ().as_block_hash ()))
+	if (node_l->store.block ().exists (*transaction, get_request ().get_start ().as_block_hash ()))
 	{
 		if (node_l->config->logging.bulk_pull_logging ())
 		{
-			node_l->logger->try_log (boost::str (boost::format ("Bulk pull request for block hash: %1%") % request->get_start ().to_string ()));
+			node_l->logger->try_log (boost::str (boost::format ("Bulk pull request for block hash: %1%") % get_request ().get_start ().to_string ()));
 		}
 
-		auto current = ascending () ? node_l->store.block ().successor (*transaction, request->get_start ().as_block_hash ()) : request->get_start ().as_block_hash ();
+		auto current = ascending () ? node_l->store.block ().successor (*transaction, get_request ().get_start ().as_block_hash ()) : get_request ().get_start ().as_block_hash ();
 		rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
 		rsnano::rsn_bulk_pull_server_include_start_set (handle, true);
 	}
 	else
 	{
-		auto info = node_l->ledger.account_info (*transaction, request->get_start ().as_account ());
+		auto info = node_l->ledger.account_info (*transaction, get_request ().get_start ().as_account ());
 		if (!info)
 		{
 			if (node_l->config->logging.bulk_pull_logging ())
 			{
-				node_l->logger->try_log (boost::str (boost::format ("Request for unknown account: %1%") % request->get_start ().to_account ()));
+				node_l->logger->try_log (boost::str (boost::format ("Request for unknown account: %1%") % get_request ().get_start ().to_account ()));
 			}
-			auto current = request->get_end ();
+			auto current = get_request ().get_end ();
 			rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
 		}
 		else
 		{
 			auto current = ascending () ? info->open_block () : info->head ();
 			rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
-			if (!request->get_end ().is_zero ())
+			if (!get_request ().get_end ().is_zero ())
 			{
-				auto account (node_l->ledger.account (*transaction, request->get_end ()));
-				if (account != request->get_start ().as_account ())
+				auto account (node_l->ledger.account (*transaction, get_request ().get_end ()));
+				if (account != get_request ().get_start ().as_account ())
 				{
 					if (node_l->config->logging.bulk_pull_logging ())
 					{
-						node_l->logger->try_log (boost::str (boost::format ("Request for block that is not on account chain: %1% not on %2%") % request->get_end ().to_string () % request->get_start ().to_account ()));
+						node_l->logger->try_log (boost::str (boost::format ("Request for block that is not on account chain: %1% not on %2%") % get_request ().get_end ().to_string () % get_request ().get_start ().to_account ()));
 					}
-					current = request->get_end ();
+					current = get_request ().get_end ();
 					rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
 				}
 			}
@@ -466,13 +466,13 @@ void nano::bulk_pull_server::set_current_end ()
 	}
 
 	rsnano::rsn_bulk_pull_server_sent_count_set (handle, 0);
-	if (request->is_count_present ())
+	if (get_request ().is_count_present ())
 	{
-		rsnano::rsn_bulk_pull_server_sent_count_set (handle, request->get_count ());
+		rsnano::rsn_bulk_pull_server_max_count_set (handle, get_request ().get_count ());
 	}
 	else
 	{
-		rsnano::rsn_bulk_pull_server_sent_count_set (handle, 0);
+		rsnano::rsn_bulk_pull_server_max_count_set (handle, 0);
 	}
 }
 
@@ -515,6 +515,16 @@ nano::bulk_pull::count_t nano::bulk_pull_server::get_max_count () const
 	return rsnano::rsn_bulk_pull_server_max_count (handle);
 }
 
+nano::bulk_pull nano::bulk_pull_server::get_request () const
+{
+	return nano::bulk_pull{ rsnano::rsn_bulk_pull_server_request (handle) };
+}
+
+void nano::bulk_pull_server::set_request_end (nano::block_hash const & hash)
+{
+	rsnano::rsn_bulk_pull_server_request_set_end (handle, hash.bytes.data ());
+}
+
 nano::block_hash nano::bulk_pull_server::get_current () const
 {
 	nano::block_hash current;
@@ -542,11 +552,11 @@ std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 	 * start member, then include it anyway.
 	 */
 	auto current = get_current ();
-	if (current != request->get_end ())
+	if (current != get_request ().get_end ())
 	{
 		send_current = true;
 	}
-	else if (current == request->get_end () && rsnano::rsn_bulk_pull_server_include_start (handle) == true)
+	else if (current == get_request ().get_end () && rsnano::rsn_bulk_pull_server_include_start (handle) == true)
 	{
 		send_current = true;
 
@@ -581,13 +591,13 @@ std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 			}
 			else
 			{
-				current = request->get_end ();
+				current = get_request ().get_end ();
 				rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
 			}
 		}
 		else
 		{
-			current = request->get_end ();
+			current = get_request ().get_end ();
 			rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
 		}
 
@@ -666,14 +676,13 @@ void nano::bulk_pull_server::no_block_sent (boost::system::error_code const & ec
 
 bool nano::bulk_pull_server::ascending () const
 {
-	return request->is_ascending ();
+	return get_request ().is_ascending ();
 }
 
 nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::bulk_pull> request_a) :
 	connection (connection_a),
-	request (std::move (request_a)),
 	node{ node_a },
-	handle{ rsnano::rsn_bulk_pull_server_create () }
+	handle{ rsnano::rsn_bulk_pull_server_create (request_a->handle) }
 {
 	set_current_end ();
 }

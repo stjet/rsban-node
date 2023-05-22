@@ -211,7 +211,6 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	stats{ node.stats },
 	config{ node.config },
 	logger{ node.logger },
-	network{ node.network },
 	workers{ node.workers },
 	flags{ node.flags },
 	store{ node.store },
@@ -907,11 +906,6 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 		});
 	});
 
-	auto network_l{ network.lock () };
-	if (!network_l)
-	{
-		throw std::runtime_error ("no network ptr");
-	}
 	auto network_constants_dto{ network_params.network.to_dto () };
 	rsnano::rsn_message_deserializer_read_socket (
 	&network_constants_dto,

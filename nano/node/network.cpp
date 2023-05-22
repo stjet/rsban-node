@@ -23,7 +23,6 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 		process_message (message, channel);
 	} },
 	resolver (node_a.io_ctx),
-	tcp_message_manager (node_a.config->tcp_incoming_connections_max),
 	node (node_a),
 	publish_filter{ std::make_shared<nano::network_filter> (256 * 1024) },
 	port (port_a),
@@ -98,7 +97,6 @@ void nano::network::stop ()
 	{
 		tcp_channels->stop ();
 		resolver.cancel ();
-		tcp_message_manager.stop ();
 		port = 0;
 		for (auto & thread : packet_processing_threads)
 		{
@@ -799,35 +797,6 @@ nano::node_id_handshake::response_payload nano::network::prepare_handshake_respo
 	}
 
 	return response;
-}
-
-/*
- * tcp_message_manager
- */
-
-nano::tcp_message_manager::tcp_message_manager (unsigned incoming_connections_max_a) :
-	handle{ rsnano::rsn_tcp_message_manager_create (incoming_connections_max_a) }
-{
-}
-
-nano::tcp_message_manager::~tcp_message_manager ()
-{
-	rsnano::rsn_tcp_message_manager_destroy (handle);
-}
-
-void nano::tcp_message_manager::put_message (nano::tcp_message_item const & item_a)
-{
-	rsnano::rsn_tcp_message_manager_put_message (handle, item_a.handle);
-}
-
-nano::tcp_message_item nano::tcp_message_manager::get_message ()
-{
-	return nano::tcp_message_item{ rsnano::rsn_tcp_message_manager_get_message (handle) };
-}
-
-void nano::tcp_message_manager::stop ()
-{
-	rsnano::rsn_tcp_message_manager_stop (handle);
 }
 
 /*

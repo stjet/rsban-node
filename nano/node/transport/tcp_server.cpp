@@ -204,7 +204,7 @@ void nano::transport::tcp_listener::accept_action (boost::system::error_code con
 		*node.stats, node.flags, *config,
 		node.tcp_listener, req_resp_visitor_factory, node.workers,
 		*network->publish_filter,
-		node.block_uniquer, node.vote_uniquer, node.network->tcp_message_manager, *network->syn_cookies, node.node_id, true));
+		node.block_uniquer, node.vote_uniquer, node.network->tcp_channels->tcp_message_manager, *network->syn_cookies, node.node_id, true));
 		nano::lock_guard<nano::mutex> lock{ mutex };
 		connections[server->unique_id ()] = nano::tcp_server_weak_wrapper (server);
 		server->start ();

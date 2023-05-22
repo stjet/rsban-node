@@ -47,6 +47,21 @@ public:
 	std::shared_ptr<nano::transport::socket> get_socket () const;
 	rsnano::TcpMessageItemHandle * handle;
 };
+
+class tcp_message_manager final
+{
+public:
+	explicit tcp_message_manager (unsigned incoming_connections_max_a);
+	tcp_message_manager (tcp_message_manager const &) = delete;
+	tcp_message_manager (tcp_message_manager &&) = delete;
+	~tcp_message_manager ();
+	void put_message (nano::tcp_message_item const & item_a);
+	nano::tcp_message_item get_message ();
+	// Stop container and notify waiting threads
+	void stop ();
+	rsnano::TcpMessageManagerHandle * handle;
+};
+
 namespace transport
 {
 	class tcp_server;
@@ -165,6 +180,8 @@ namespace transport
 		void no_socket_drop () override;
 		void write_drop () override;
 		std::vector<nano::endpoint> get_peers () const;
+
+		nano::tcp_message_manager tcp_message_manager;
 
 	private:
 		std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink;

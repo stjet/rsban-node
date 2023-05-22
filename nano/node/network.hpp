@@ -15,20 +15,6 @@ namespace nano
 {
 class node;
 
-class tcp_message_manager final
-{
-public:
-	explicit tcp_message_manager (unsigned incoming_connections_max_a);
-	tcp_message_manager (tcp_message_manager const &) = delete;
-	tcp_message_manager (tcp_message_manager &&) = delete;
-	~tcp_message_manager ();
-	void put_message (nano::tcp_message_item const & item_a);
-	nano::tcp_message_item get_message ();
-	// Stop container and notify waiting threads
-	void stop ();
-	rsnano::TcpMessageManagerHandle * handle;
-};
-
 /**
  * Node ID cookies for node ID handshakes
  */
@@ -128,7 +114,6 @@ public:
 	boost::asio::ip::udp::resolver resolver;
 	std::vector<boost::thread> packet_processing_threads;
 	nano::peer_exclusion excluded_peers;
-	nano::tcp_message_manager tcp_message_manager;
 	nano::node & node;
 	std::shared_ptr<nano::network_filter> publish_filter;
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;

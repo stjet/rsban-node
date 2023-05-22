@@ -63,7 +63,6 @@ rep_crawler --> active_transactions
 rep_crawler --> vote_processor
 
 network --> peer_exclusion
-network --> tcp_message_manager
 network --> network_filter
 network --> tcp_channels
 network --> rep_crawler
@@ -72,6 +71,7 @@ tcp_channels --> tcp_server_factory
 tcp_channels --> outbound_bandwidth_limiter
 tcp_channels --> syn_cookies
 tcp_channels --> network
+tcp_channels --> tcp_message_manager
 tcp_channels --> channel_tcp_wrapper
 
 tcp_server_factory --> tcp_server

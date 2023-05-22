@@ -23,7 +23,7 @@ std::shared_ptr<nano::transport::tcp_server> create_bootstrap_server (const std:
 	node->io_ctx, socket, node->logger,
 	*node->stats, node->flags, *node->config,
 	node->tcp_listener, req_resp_visitor_factory, node->workers,
-	*node->network->publish_filter, node->block_uniquer, node->vote_uniquer, node->network->tcp_message_manager, *node->network->syn_cookies, node->node_id);
+	*node->network->publish_filter, node->block_uniquer, node->vote_uniquer, node->network->tcp_channels->tcp_message_manager, *node->network->syn_cookies, node->node_id);
 }
 
 // If the account doesn't exist, current == end so there's no iteration
@@ -1651,7 +1651,7 @@ TEST (frontier_req_response, DISABLED_destruction)
 			*node.stats, node.flags, *node.config,
 			node.tcp_listener, req_resp_visitor_factory, node.workers,
 			*node.network->publish_filter,
-			node.block_uniquer, node.vote_uniquer, node.network->tcp_message_manager, *node.network->syn_cookies, node.node_id));
+			node.block_uniquer, node.vote_uniquer, node.network->tcp_channels->tcp_message_manager, *node.network->syn_cookies, node.node_id));
 
 			auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
 			req->set_start (nano::account (0));

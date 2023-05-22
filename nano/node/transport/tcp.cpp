@@ -18,6 +18,35 @@
 #include <stdexcept>
 
 /*
+ * tcp_message_manager
+ */
+
+nano::tcp_message_manager::tcp_message_manager (unsigned incoming_connections_max_a) :
+	handle{ rsnano::rsn_tcp_message_manager_create (incoming_connections_max_a) }
+{
+}
+
+nano::tcp_message_manager::~tcp_message_manager ()
+{
+	rsnano::rsn_tcp_message_manager_destroy (handle);
+}
+
+void nano::tcp_message_manager::put_message (nano::tcp_message_item const & item_a)
+{
+	rsnano::rsn_tcp_message_manager_put_message (handle, item_a.handle);
+}
+
+nano::tcp_message_item nano::tcp_message_manager::get_message ()
+{
+	return nano::tcp_message_item{ rsnano::rsn_tcp_message_manager_get_message (handle) };
+}
+
+void nano::tcp_message_manager::stop ()
+{
+	rsnano::rsn_tcp_message_manager_stop (handle);
+}
+
+/*
  * channel_tcp
  */
 
@@ -157,7 +186,7 @@ std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory
 	node.io_ctx, socket_a, node.logger,
 	*node.stats, node.flags, *node.config,
 	node.tcp_listener, std::make_shared<nano::transport::request_response_visitor_factory> (node),
-	node.workers, *node.network->publish_filter, node.block_uniquer, node.vote_uniquer, node.network->tcp_message_manager,
+	node.workers, *node.network->publish_filter, node.block_uniquer, node.vote_uniquer, node.network->tcp_channels->tcp_message_manager,
 	*node.network->syn_cookies, node.node_id, true);
 
 	// Listen for possible responses
@@ -173,6 +202,7 @@ std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory
  */
 
 nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
+	tcp_message_manager{ node.config->tcp_incoming_connections_max },
 	tcp_server_factory{ node },
 	node_id{ node.node_id },
 	network_params{ node.network_params },
@@ -349,13 +379,9 @@ nano::tcp_endpoint nano::transport::tcp_channels::bootstrap_peer ()
 
 void nano::transport::tcp_channels::process_messages ()
 {
-	auto network_l{ network.lock () };
-	if (!network_l)
-		throw std::runtime_error ("network ptr was deleted");
-
 	while (!stopped)
 	{
-		auto item (network_l->tcp_message_manager.get_message ());
+		auto item (tcp_message_manager.get_message ());
 		if (item.get_message () != nullptr)
 		{
 			auto message{ item.get_message () };
@@ -444,6 +470,7 @@ void nano::transport::tcp_channels::stop ()
 		}
 	}
 	channels.clear ();
+	tcp_message_manager.stop ();
 }
 
 bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_a, bool allow_local_peers)
@@ -463,7 +490,6 @@ bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_
 	}
 	return result;
 }
-
 
 bool nano::transport::tcp_channels::max_ip_connections (nano::tcp_endpoint const & endpoint_a)
 {

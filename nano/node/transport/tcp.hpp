@@ -138,7 +138,7 @@ namespace transport
 		friend class nano::transport::channel_tcp;
 
 	public:
-		explicit tcp_channels (nano::node &, uint16_t port,  std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> = nullptr);
+		explicit tcp_channels (nano::node &, uint16_t port, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> = nullptr);
 		tcp_channels (nano::transport::tcp_channels const &) = delete;
 		~tcp_channels ();
 		bool insert (std::shared_ptr<nano::transport::channel_tcp> const &, std::shared_ptr<nano::transport::socket> const &, std::shared_ptr<nano::transport::tcp_server> const &);
@@ -181,9 +181,11 @@ namespace transport
 		void no_socket_drop () override;
 		void write_drop () override;
 		std::vector<nano::endpoint> get_peers () const;
+		void random_fill (std::array<nano::endpoint, 8> &) const;
 
 		nano::tcp_message_manager tcp_message_manager;
 		nano::peer_exclusion excluded_peers;
+		std::atomic<size_t> next_channel_id{ 1 };
 
 	private:
 		std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink;

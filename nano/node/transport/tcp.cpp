@@ -219,7 +219,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	observers{ node.observers },
 	sink{ std::move (sink) },
 	node{ node },
-	port { port },
+	port{ port },
 	handle{ rsnano::rsn_tcp_channels_create () }
 {
 }
@@ -333,6 +333,22 @@ std::vector<nano::endpoint> nano::transport::tcp_channels::get_peers () const
 	return endpoints;
 }
 
+void nano::transport::tcp_channels::random_fill (std::array<nano::endpoint, 8> & target_a) const
+{
+	auto peers (random_set (target_a.size (), 0, false)); // Don't include channels with ephemeral remote ports
+	debug_assert (peers.size () <= target_a.size ());
+	auto endpoint (nano::endpoint (boost::asio::ip::address_v6{}, 0));
+	debug_assert (endpoint.address ().is_v6 ());
+	std::fill (target_a.begin (), target_a.end (), endpoint);
+	auto j (target_a.begin ());
+	for (auto i (peers.begin ()), n (peers.end ()); i != n; ++i, ++j)
+	{
+		debug_assert ((*i)->get_peering_endpoint ().address ().is_v6 ());
+		debug_assert (j < target_a.end ());
+		*j = (*i)->get_peering_endpoint ();
+	}
+}
+
 std::vector<nano::endpoint> nano::transport::tcp_channels::get_current_peers () const
 {
 	std::vector<nano::endpoint> endpoints;
@@ -392,10 +408,6 @@ void nano::transport::tcp_channels::process_messages ()
 
 void nano::transport::tcp_channels::process_message (nano::message const & message_a, nano::tcp_endpoint const & endpoint_a, nano::account const & node_id_a, std::shared_ptr<nano::transport::socket> const & socket_a)
 {
-	auto network_l{ network.lock () };
-	if (!network_l)
-		return;
-
 	auto type_a = socket_a->type ();
 	if (!stopped && message_a.get_header ().get_version_using () >= network_params.network.protocol_version_min)
 	{
@@ -416,7 +428,7 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 				if (!node_id_a.is_zero ())
 				{
 					// Add temporary channel
-					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket_a, shared_from_this (), network_l->next_channel_id.fetch_add (1)));
+					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket_a, shared_from_this (), next_channel_id.fetch_add (1)));
 					temporary_channel->set_endpoint ();
 					debug_assert (endpoint_a == temporary_channel->get_tcp_endpoint ());
 					temporary_channel->set_node_id (node_id_a);
@@ -540,10 +552,6 @@ bool nano::transport::tcp_channels::max_ip_or_subnetwork_connections (nano::tcp_
 
 bool nano::transport::tcp_channels::reachout (nano::endpoint const & endpoint_a)
 {
-	auto network_l = network.lock ();
-	if (!network_l)
-		return true;
-
 	auto tcp_endpoint (nano::transport::map_endpoint_to_tcp (endpoint_a));
 	// Don't overload single IP
 	bool error = excluded_peers.check (tcp_endpoint) || max_ip_or_subnetwork_connections (tcp_endpoint);
@@ -602,13 +610,9 @@ void nano::transport::tcp_channels::purge (std::chrono::steady_clock::time_point
 
 void nano::transport::tcp_channels::ongoing_keepalive ()
 {
-	auto network_l{ network.lock () };
-	if (!network_l)
-		return;
-
 	nano::keepalive message{ network_params.network };
 	auto peers{ message.get_peers () };
-	network_l->random_fill (peers);
+	random_fill (peers);
 	message.set_peers (peers);
 	nano::unique_lock<nano::mutex> lock{ mutex };
 	// Wake up channels
@@ -671,17 +675,13 @@ void nano::transport::tcp_channels::update (nano::tcp_endpoint const & endpoint_
 
 void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a)
 {
-	auto network_ptr = network.lock ();
-	if (!network_ptr)
-		throw std::runtime_error ("no network ptr");
-
 	auto socket = std::make_shared<nano::transport::socket> (io_ctx, nano::transport::socket::endpoint_type_t::client, *stats, logger, workers,
 	config->tcp_io_timeout,
 	network_params.network.silent_connection_tolerance_time,
 	network_params.network.idle_timeout,
 	config->logging.network_timeout_logging (),
 	observers);
-	auto channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket, network_ptr->tcp_channels, network_ptr->next_channel_id.fetch_add (1)));
+	auto channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket, shared_from_this (), next_channel_id.fetch_add (1)));
 	auto network_consts = network_params.network;
 	auto config_l = config;
 	auto logger_l = logger;

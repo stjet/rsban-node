@@ -109,7 +109,7 @@ void nano::network::send_keepalive (std::shared_ptr<nano::transport::channel> co
 {
 	nano::keepalive message{ node.network_params.network };
 	std::array<nano::endpoint, 8> peers;
-	random_fill (peers);
+	tcp_channels->random_fill (peers);
 	message.set_peers (peers);
 	channel_a->send (message);
 }
@@ -161,7 +161,7 @@ void nano::network::flood_keepalive (float const scale_a)
 {
 	nano::keepalive message{ node.network_params.network };
 	auto peers{ message.get_peers () };
-	random_fill (peers);
+	tcp_channels->random_fill (peers);
 	message.set_peers (peers);
 	flood_message (message, nano::transport::buffer_drop_policy::limiter, scale_a);
 }
@@ -582,25 +582,9 @@ std::unordered_set<std::shared_ptr<nano::transport::channel>> nano::network::ran
 	return tcp_channels->random_set (count_a, min_version_a, include_temporary_channels_a);
 }
 
-void nano::network::random_fill (std::array<nano::endpoint, 8> & target_a) const
-{
-	auto peers (random_set (target_a.size (), 0, false)); // Don't include channels with ephemeral remote ports
-	debug_assert (peers.size () <= target_a.size ());
-	auto endpoint (nano::endpoint (boost::asio::ip::address_v6{}, 0));
-	debug_assert (endpoint.address ().is_v6 ());
-	std::fill (target_a.begin (), target_a.end (), endpoint);
-	auto j (target_a.begin ());
-	for (auto i (peers.begin ()), n (peers.end ()); i != n; ++i, ++j)
-	{
-		debug_assert ((*i)->get_peering_endpoint ().address ().is_v6 ());
-		debug_assert (j < target_a.end ());
-		*j = (*i)->get_peering_endpoint ();
-	}
-}
-
 void nano::network::fill_keepalive_self (std::array<nano::endpoint, 8> & target_a) const
 {
-	random_fill (target_a);
+	tcp_channels->random_fill (target_a);
 	// We will clobber values in index 0 and 1 and if there are only 2 nodes in the system, these are the only positions occupied
 	// Move these items to index 2 and 3 so they propagate
 	target_a[2] = target_a[0];

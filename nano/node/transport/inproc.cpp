@@ -78,7 +78,7 @@ nano::account destination_node_id)
 
 nano::transport::inproc::channel::channel (nano::node & node_a, nano::node & destination) :
 	channel (
-	node_a.network->next_channel_id.fetch_add (1),
+	node_a.network->tcp_channels->next_channel_id.fetch_add (1),
 	*node_a.network->publish_filter,
 	node_a.config->network_params.network,
 	*node_a.stats,

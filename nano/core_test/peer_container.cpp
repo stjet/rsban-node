@@ -118,7 +118,7 @@ TEST (channels, fill_random_clear)
 	nano::test::system system (1);
 	std::array<nano::endpoint, 8> target;
 	std::fill (target.begin (), target.end (), nano::endpoint (boost::asio::ip::address_v6::loopback (), 10000));
-	system.nodes[0]->network->random_fill (target);
+	system.nodes[0]->network->tcp_channels->random_fill (target);
 	ASSERT_TRUE (std::all_of (target.begin (), target.end (), [] (nano::endpoint const & endpoint_a) { return endpoint_a == nano::endpoint (boost::asio::ip::address_v6::any (), 0); }));
 }
 
@@ -141,7 +141,7 @@ TEST (channels, fill_random_full)
 	std::fill (target.begin (), target.end (), filler_endpoint);
 
 	// random fill target array with endpoints taken from the network connections
-	system.nodes[0]->network->random_fill (target);
+	system.nodes[0]->network->tcp_channels->random_fill (target);
 
 	// check that all element in target got overwritten
 	auto is_filler = [&filler_endpoint] (nano::endpoint const & endpoint_a) {
@@ -163,7 +163,7 @@ TEST (channels, fill_random_part)
 	}
 	ASSERT_EQ (half, system.nodes[0]->network->tcp_channels->size ());
 	std::fill (target.begin (), target.end (), nano::endpoint (boost::asio::ip::address_v6::loopback (), 10000));
-	system.nodes[0]->network->random_fill (target);
+	system.nodes[0]->network->tcp_channels->random_fill (target);
 	ASSERT_TRUE (std::none_of (target.begin (), target.begin () + half, [] (nano::endpoint const & endpoint_a) { return endpoint_a == nano::endpoint (boost::asio::ip::address_v6::loopback (), 10000); }));
 	ASSERT_TRUE (std::none_of (target.begin (), target.begin () + half, [] (nano::endpoint const & endpoint_a) { return endpoint_a == nano::endpoint (boost::asio::ip::address_v6::loopback (), 0); }));
 	ASSERT_TRUE (std::all_of (target.begin () + half, target.end (), [] (nano::endpoint const & endpoint_a) { return endpoint_a == nano::endpoint (boost::asio::ip::address_v6::any (), 0); }));

@@ -77,7 +77,6 @@ public:
 	std::deque<std::shared_ptr<nano::transport::channel>> list_non_pr (std::size_t);
 	// Desired fanout for a given scale
 	std::size_t fanout (float scale = 1.0f) const;
-	void random_fill (std::array<nano::endpoint, 8> &) const;
 	void fill_keepalive_self (std::array<nano::endpoint, 8> &) const;
 	// Note: The minimum protocol version is used after the random selection, so number of peers can be less than expected.
 	std::unordered_set<std::shared_ptr<nano::transport::channel>> random_set (std::size_t count, uint8_t min_version = 0, bool include_temporary_channels = false) const;
@@ -117,7 +116,6 @@ public:
 	std::shared_ptr<nano::network_filter> publish_filter;
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
 	std::atomic<uint16_t> port{ 0 };
-	std::atomic<size_t> next_channel_id{ 1 };
 	std::function<void ()> disconnect_observer;
 
 private:

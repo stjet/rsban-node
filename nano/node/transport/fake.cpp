@@ -17,7 +17,7 @@ rsnano::ChannelHandle * create_fake_channel (nano::node & node)
 	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (node.network->endpoint ()) };
 	return rsnano::rsn_channel_fake_create (
 	std::chrono::steady_clock::now ().time_since_epoch ().count (),
-	node.network->next_channel_id.fetch_add (1),
+	node.network->tcp_channels->next_channel_id.fetch_add (1),
 	&node.io_ctx,
 	node.outbound_limiter.handle,
 	node.stats->handle,

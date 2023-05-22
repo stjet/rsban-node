@@ -685,61 +685,57 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 	auto network_consts = network_params.network;
 	auto config_l = config;
 	auto logger_l = logger;
-	auto network_l = network;
 	std::weak_ptr<nano::transport::tcp_channels> this_w = shared_from_this ();
 	socket->async_connect (nano::transport::map_endpoint_to_tcp (endpoint_a),
-	[channel, socket, endpoint_a, network_consts, config_l, logger_l, this_w, network_l] (boost::system::error_code const & ec) {
-		if (auto network_p = network_l.lock ())
+	[channel, socket, endpoint_a, network_consts, config_l, logger_l, this_w] (boost::system::error_code const & ec) {
+		if (auto this_l = this_w.lock ())
 		{
-			if (auto this_l = this_w.lock ())
+			if (!ec && channel)
 			{
-				if (!ec && channel)
+				// TCP node ID handshake
+				auto query = this_l->prepare_handshake_query (endpoint_a);
+				nano::node_id_handshake message{ network_consts, query };
+
+				if (config_l->logging.network_node_id_handshake_logging ())
 				{
-					// TCP node ID handshake
-					auto query = network_p->prepare_handshake_query (endpoint_a);
-					nano::node_id_handshake message{ network_consts, query };
-
-					if (config_l->logging.network_node_id_handshake_logging ())
-					{
-						logger_l->try_log (boost::str (boost::format ("Node ID handshake request sent with node ID %1% to %2%: query %3%") % this_l->node_id.pub.to_node_id () % endpoint_a % (query ? query->cookie.to_string () : "not set")));
-					}
-
-					channel->set_endpoint ();
-					std::shared_ptr<std::vector<uint8_t>> receive_buffer (std::make_shared<std::vector<uint8_t>> ());
-					receive_buffer->resize (256);
-					channel->send (message, [this_w, channel, endpoint_a, receive_buffer, config_l, logger_l] (boost::system::error_code const & ec, std::size_t size_a) {
-						if (auto this_l = this_w.lock ())
-						{
-							if (!ec)
-							{
-								this_l->start_tcp_receive_node_id (channel, endpoint_a, receive_buffer);
-							}
-							else
-							{
-								if (auto socket_l = channel->try_get_socket ())
-								{
-									socket_l->close ();
-								}
-								if (config_l->logging.network_node_id_handshake_logging ())
-								{
-									logger_l->try_log (boost::str (boost::format ("Error sending node_id_handshake to %1%: %2%") % endpoint_a % ec.message ()));
-								}
-							}
-						}
-					});
+					logger_l->try_log (boost::str (boost::format ("Node ID handshake request sent with node ID %1% to %2%: query %3%") % this_l->node_id.pub.to_node_id () % endpoint_a % (query ? query->cookie.to_string () : "not set")));
 				}
-				else
-				{
-					if (config_l->logging.network_logging ())
+
+				channel->set_endpoint ();
+				std::shared_ptr<std::vector<uint8_t>> receive_buffer (std::make_shared<std::vector<uint8_t>> ());
+				receive_buffer->resize (256);
+				channel->send (message, [this_w, channel, endpoint_a, receive_buffer, config_l, logger_l] (boost::system::error_code const & ec, std::size_t size_a) {
+					if (auto this_l = this_w.lock ())
 					{
-						if (ec)
+						if (!ec)
 						{
-							logger_l->try_log (boost::str (boost::format ("Error connecting to %1%: %2%") % endpoint_a % ec.message ()));
+							this_l->start_tcp_receive_node_id (channel, endpoint_a, receive_buffer);
 						}
 						else
 						{
-							logger_l->try_log (boost::str (boost::format ("Error connecting to %1%") % endpoint_a));
+							if (auto socket_l = channel->try_get_socket ())
+							{
+								socket_l->close ();
+							}
+							if (config_l->logging.network_node_id_handshake_logging ())
+							{
+								logger_l->try_log (boost::str (boost::format ("Error sending node_id_handshake to %1%: %2%") % endpoint_a % ec.message ()));
+							}
 						}
+					}
+				});
+			}
+			else
+			{
+				if (config_l->logging.network_logging ())
+				{
+					if (ec)
+					{
+						logger_l->try_log (boost::str (boost::format ("Error connecting to %1%: %2%") % endpoint_a % ec.message ()));
+					}
+					else
+					{
+						logger_l->try_log (boost::str (boost::format ("Error connecting to %1%") % endpoint_a));
 					}
 				}
 			}
@@ -858,14 +854,7 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 
 		auto const node_id = handshake.get_response ()->node_id;
 
-		auto network_l{ this_l->network.lock () };
-		if (!network_l)
-		{
-			cleanup_node_id_handshake_socket (endpoint_a);
-			return;
-		}
-
-		if (!network_l->verify_handshake_response (*handshake.get_response (), endpoint_a))
+		if (!this_l->verify_handshake_response (*handshake.get_response (), endpoint_a))
 		{
 			cleanup_node_id_handshake_socket (endpoint_a);
 			return;
@@ -883,7 +872,7 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 		channel_a->set_last_packet_received (std::chrono::steady_clock::now ());
 
 		debug_assert (handshake.get_query ());
-		auto response = network_l->prepare_handshake_response (*handshake.get_query (), handshake.is_v2 ());
+		auto response = this_l->prepare_handshake_response (*handshake.get_query (), handshake.is_v2 ());
 		nano::node_id_handshake handshake_response (this_l->network_params.network, std::nullopt, response);
 
 		if (this_l->config->logging.network_node_id_handshake_logging ())
@@ -1100,4 +1089,76 @@ std::shared_ptr<nano::transport::channel> nano::transport::channel_handle_to_cha
 		default:
 			throw std::runtime_error ("unknown transport type");
 	}
+}
+
+std::optional<nano::node_id_handshake::query_payload> nano::transport::tcp_channels::prepare_handshake_query (const nano::endpoint & remote_endpoint)
+{
+	if (auto cookie = syn_cookies->assign (remote_endpoint); cookie)
+	{
+		nano::node_id_handshake::query_payload query{ *cookie };
+		return query;
+	}
+	return std::nullopt;
+}
+
+bool nano::transport::tcp_channels::verify_handshake_response (const nano::node_id_handshake::response_payload & response, const nano::endpoint & remote_endpoint)
+{
+	// Prevent connection with ourselves
+	if (response.node_id == node_id.pub)
+	{
+		stats->inc (nano::stat::type::handshake, nano::stat::detail::invalid_node_id);
+		return false; // Fail
+	}
+
+	// Prevent mismatched genesis
+	if (response.v2 && response.v2->genesis != network_params.ledger.genesis->hash ())
+	{
+		stats->inc (nano::stat::type::handshake, nano::stat::detail::invalid_genesis);
+		return false; // Fail
+	}
+
+	auto cookie = syn_cookies->cookie (remote_endpoint);
+	if (!cookie)
+	{
+		stats->inc (nano::stat::type::handshake, nano::stat::detail::missing_cookie);
+		return false; // Fail
+	}
+
+	if (!rsnano::rsn_message_node_id_handshake_response_validate (
+		cookie->bytes.data (),
+		response.node_id.bytes.data (),
+		response.signature.bytes.data (),
+		response.v2 ? response.v2->salt.bytes.data () : nullptr,
+		response.v2 ? response.v2->genesis.bytes.data () : nullptr))
+	{
+		stats->inc (nano::stat::type::handshake, nano::stat::detail::invalid_signature);
+		return false; // Fail
+	}
+
+	stats->inc (nano::stat::type::handshake, nano::stat::detail::ok);
+	return true; // OK
+}
+
+nano::node_id_handshake::response_payload nano::transport::tcp_channels::prepare_handshake_response (const nano::node_id_handshake::query_payload & query, bool v2) const
+{
+	auto genesis{ node.network_params.ledger.genesis->hash () };
+	rsnano::HandshakeResponseDto result;
+	rsnano::rsn_message_node_id_handshake_response_create (
+	query.cookie.bytes.data (),
+	node.node_id.prv.bytes.data (),
+	genesis.bytes.data (),
+	&result);
+
+	nano::node_id_handshake::response_payload response{};
+	std::copy (std::begin (result.node_id), std::end (result.node_id), std::begin (response.node_id.bytes));
+	std::copy (std::begin (result.signature), std::end (result.signature), std::begin (response.signature.bytes));
+	if (result.v2)
+	{
+		nano::node_id_handshake::response_payload::v2_payload response_v2{};
+		std::copy (std::begin (result.salt), std::end (result.salt), std::begin (response_v2.salt.bytes));
+		std::copy (std::begin (result.genesis), std::end (result.genesis), std::begin (response_v2.genesis.bytes));
+		response.v2 = response_v2;
+	}
+
+	return response;
 }

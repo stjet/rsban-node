@@ -68,6 +68,7 @@ rep_crawler --> vote_processor
 network --> network_filter
 network --> tcp_channels
 network --> rep_crawler
+network --> syn_cookies
 
 tcp_channels --> tcp_server_factory
 tcp_channels --> outbound_bandwidth_limiter

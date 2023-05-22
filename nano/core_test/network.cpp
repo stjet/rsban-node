@@ -1006,9 +1006,9 @@ TEST (network, tcp_no_connect_excluded_peers)
 	node1->start ();
 	system.nodes.push_back (node1);
 	auto endpoint1_tcp (nano::transport::map_endpoint_to_tcp (node1->network->endpoint ()));
-	while (!node0->network->excluded_peers.check (endpoint1_tcp))
+	while (!node0->network->tcp_channels->excluded_peers.check (endpoint1_tcp))
 	{
-		node0->network->excluded_peers.add (endpoint1_tcp);
+		node0->network->tcp_channels->excluded_peers.add (endpoint1_tcp);
 	}
 	ASSERT_EQ (0, node0->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_excluded));
 	node1->network->merge_peer (node0->network->endpoint ());
@@ -1019,8 +1019,8 @@ TEST (network, tcp_no_connect_excluded_peers)
 	ASSERT_TRUE (node0->network->reachout (node1->network->endpoint (), true));
 
 	// Erasing from excluded peers should allow a connection
-	node0->network->excluded_peers.remove (endpoint1_tcp);
-	ASSERT_FALSE (node0->network->excluded_peers.check (endpoint1_tcp));
+	node0->network->tcp_channels->excluded_peers.remove (endpoint1_tcp);
+	ASSERT_FALSE (node0->network->tcp_channels->excluded_peers.check (endpoint1_tcp));
 
 	// Wait until there is a syn_cookie
 	ASSERT_TIMELY (5s, node1->network->syn_cookies->cookies_size () != 0);

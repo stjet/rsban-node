@@ -18,6 +18,9 @@ class signature_checker #PaleGreen
 package "Networking"{
 class network
 class rep_crawler
+}
+
+package "Channels"{
 class peer_exclusion #PaleGreen
 class tcp_message_manager #PaleGreen
 class channel_tcp_wrapper #PaleGreen
@@ -62,7 +65,6 @@ rep_crawler --> ledger
 rep_crawler --> active_transactions
 rep_crawler --> vote_processor
 
-network --> peer_exclusion
 network --> network_filter
 network --> tcp_channels
 network --> rep_crawler
@@ -73,6 +75,7 @@ tcp_channels --> syn_cookies
 tcp_channels --> network
 tcp_channels --> tcp_message_manager
 tcp_channels --> channel_tcp_wrapper
+tcp_channels --> peer_exclusion
 
 tcp_server_factory --> tcp_server
 tcp_server --> syn_cookies

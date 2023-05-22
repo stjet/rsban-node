@@ -168,7 +168,7 @@ std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::connection 
 void nano::bootstrap_connections::pool_connection (std::shared_ptr<nano::bootstrap_client> const & client_a, bool new_client, bool push_front)
 {
 	nano::unique_lock<nano::mutex> lock{ mutex };
-	if (!stopped && !client_a->get_pending_stop () && !node.network->excluded_peers.check (client_a->get_tcp_endpoint ()))
+	if (!stopped && !client_a->get_pending_stop () && !node.network->tcp_channels->excluded_peers.check (client_a->get_tcp_endpoint ()))
 	{
 		client_a->set_timeout (node.network_params.network.idle_timeout);
 		// Push into idle deque
@@ -365,7 +365,7 @@ void nano::bootstrap_connections::populate_connections (bool repeat)
 		for (auto i = 0u; i < delta; i++)
 		{
 			auto endpoint (node.network->bootstrap_peer ()); // Legacy bootstrap is compatible with older version of protocol
-			if (endpoint != nano::tcp_endpoint (boost::asio::ip::address_v6::any (), 0) && (node.flags.allow_bootstrap_peers_duplicates () || endpoints.find (endpoint) == endpoints.end ()) && !node.network->excluded_peers.check (endpoint))
+			if (endpoint != nano::tcp_endpoint (boost::asio::ip::address_v6::any (), 0) && (node.flags.allow_bootstrap_peers_duplicates () || endpoints.find (endpoint) == endpoints.end ()) && !node.network->tcp_channels->excluded_peers.check (endpoint))
 			{
 				connect_client (endpoint);
 				endpoints.insert (endpoint);

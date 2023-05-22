@@ -721,7 +721,7 @@ void nano::network::erase (nano::transport::channel const & channel_a)
 void nano::network::exclude (std::shared_ptr<nano::transport::channel> const & channel)
 {
 	// Add to peer exclusion list
-	excluded_peers.add (channel->get_tcp_endpoint ());
+	tcp_channels->excluded_peers.add (channel->get_tcp_endpoint ());
 
 	// Disconnect
 	erase (*channel);
@@ -857,7 +857,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (ne
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (network.tcp_channels->collect_container_info ("tcp_channels"));
 	composite->add_component (network.syn_cookies->collect_container_info ("syn_cookies"));
-	composite->add_component (network.excluded_peers.collect_container_info ("excluded_peers"));
+	composite->add_component (network.tcp_channels->excluded_peers.collect_container_info ("excluded_peers"));
 	return composite;
 }
 

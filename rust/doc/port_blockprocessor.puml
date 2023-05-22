@@ -11,11 +11,24 @@ class vote_broadcaster
 class vote_processor
 class vote_spacing #PaleGreen
 class wallets #PaleGreen
-class network
 class local_vote_history #PaleGreen
 class inactive_vote_cache #PaleGoldenRod
 class signature_checker #PaleGreen
 class rep_crawler
+
+package "Networking"{
+class network
+class channel_tcp_wrapper #PaleGreen
+class channel_tcp #PaleGreen
+class outbound_bandwidth_limiter #PaleGreen
+class syn_cookies #PaleGreen
+class tcp_server #PaleGreen
+class tcp_channels
+class tcp_server_factory
+class peer_exclusion #PaleGreen
+class tcp_message_manager #PaleGreen
+class network_filter #PaleGreen
+}
 
 active_transactions --> election
 confirmation_solicitor --> network
@@ -43,10 +56,29 @@ vote_processor --> online_reps
 vote_processor --> rep_crawler 
 vote_processor --> ledger
 
-rep_crawler --> network
+rep_crawler --> tcp_channels
 rep_crawler --> online_reps
 rep_crawler --> ledger
 rep_crawler --> active_transactions
 rep_crawler --> vote_processor
+
+network --> peer_exclusion
+network --> tcp_message_manager
+network --> network_filter
+network --> tcp_channels
+network --> rep_crawler
+
+tcp_channels --> tcp_server_factory
+tcp_channels --> outbound_bandwidth_limiter
+tcp_channels --> syn_cookies
+tcp_channels --> network
+tcp_channels --> channel_tcp_wrapper
+
+tcp_server_factory --> tcp_server
+tcp_server --> syn_cookies
+tcp_server --> network_filter
+
+channel_tcp_wrapper --> channel_tcp
+channel_tcp --> tcp_server
 
 @enduml

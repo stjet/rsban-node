@@ -905,7 +905,20 @@ void nano::node::ongoing_bootstrap ()
 
 void nano::node::ongoing_peer_store ()
 {
-	const bool stored{ network->tcp_channels->store_all (true) };
+	auto endpoints{ network->tcp_channels->get_peers () };
+	bool stored (false);
+	if (!endpoints.empty ())
+	{
+		// Clear all peers then refresh with the current list of peers
+		auto transaction (store.tx_begin_write ({ tables::peers }));
+		store.peer ().clear (*transaction);
+		for (auto const & endpoint : endpoints)
+		{
+			store.peer ().put (*transaction, nano::endpoint_key{ endpoint.address ().to_v6 ().to_bytes (), endpoint.port () });
+		}
+		stored = true;
+	}
+
 	std::weak_ptr<nano::node> node_w (shared_from_this ());
 	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.network.peer_dump_interval, [node_w] () {
 		if (auto node_l = node_w.lock ())

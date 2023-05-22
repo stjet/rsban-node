@@ -245,34 +245,6 @@ void nano::network::send_confirm_req (std::shared_ptr<nano::transport::channel> 
 	channel_a->send (req);
 }
 
-void nano::network::broadcast_confirm_req (std::shared_ptr<nano::block> const & block_a)
-{
-	auto list (std::make_shared<std::vector<std::shared_ptr<nano::transport::channel>>> (node.rep_crawler.representative_endpoints (std::numeric_limits<std::size_t>::max ())));
-	if (list->empty () || node.rep_crawler.total_weight () < node.online_reps.delta ())
-	{
-		// broadcast request to all peers (with max limit 2 * sqrt (peers count))
-		auto peers (node.network->list (std::min<std::size_t> (100, node.network->fanout (2.0))));
-		list->clear ();
-		list->insert (list->end (), peers.begin (), peers.end ());
-	}
-
-	/*
-	 * In either case (broadcasting to all representatives, or broadcasting to
-	 * all peers because there are not enough connected representatives),
-	 * limit each instance to a single random up-to-32 selection.  The invoker
-	 * of "broadcast_confirm_req" will be responsible for calling it again
-	 * if the votes for a block have not arrived in time.
-	 */
-	std::size_t const max_endpoints = 32;
-	nano::random_pool_shuffle (list->begin (), list->end ());
-	if (list->size () > max_endpoints)
-	{
-		list->erase (list->begin () + max_endpoints, list->end ());
-	}
-
-	broadcast_confirm_req_base (block_a, list, 0);
-}
-
 void nano::network::broadcast_confirm_req_base (std::shared_ptr<nano::block> const & block_a, std::shared_ptr<std::vector<std::shared_ptr<nano::transport::channel>>> const & endpoints_a, unsigned delay_a, bool resumption)
 {
 	std::size_t const max_reps = 10;

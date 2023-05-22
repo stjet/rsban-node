@@ -131,7 +131,6 @@ namespace transport
 		std::size_t size () const;
 		std::shared_ptr<nano::transport::channel_tcp> find_channel (nano::tcp_endpoint const &) const;
 		std::unordered_set<std::shared_ptr<nano::transport::channel>> random_set (std::size_t, uint8_t = 0, bool = false) const;
-		bool store_all (bool = true);
 		std::vector<endpoint> get_current_peers () const;
 		std::shared_ptr<nano::transport::channel_tcp> find_node_id (nano::account const &);
 		// Get the next peer for attempting a tcp connection
@@ -164,6 +163,7 @@ namespace transport
 		void message_dropped (nano::message const & message_a, std::size_t buffer_size_a) override;
 		void no_socket_drop () override;
 		void write_drop () override;
+		std::vector<nano::endpoint> get_peers () const;
 
 	private:
 		std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink;

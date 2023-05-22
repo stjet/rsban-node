@@ -1,0 +1,52 @@
+@startuml "Port Blockprocessor"
+class block_processor #PaleGoldenRod
+class active_transactions
+class election
+class confirmation_solicitor
+class election_status #PaleGreen
+class online_reps #PaleGreen
+class ledger #PaleGreen
+class vote_generator
+class vote_broadcaster
+class vote_processor
+class vote_spacing #PaleGreen
+class wallets #PaleGreen
+class network
+class local_vote_history #PaleGreen
+class inactive_vote_cache #PaleGoldenRod
+class signature_checker #PaleGreen
+class rep_crawler
+
+active_transactions --> election
+confirmation_solicitor --> network
+
+election --> active_transactions
+election --> election_status
+election --> online_reps
+election --> ledger
+election --> block_processor
+election --> vote_generator
+election --> network
+election --> local_vote_history
+election --> inactive_vote_cache
+election ..> confirmation_solicitor
+
+vote_generator --> vote_broadcaster
+vote_broadcaster --> vote_processor
+vote_generator --> vote_spacing
+vote_generator --> ledger
+vote_generator --> wallets
+
+vote_processor --> signature_checker
+vote_processor --> active_transactions
+vote_processor --> online_reps
+vote_processor --> rep_crawler 
+vote_processor --> ledger
+
+rep_crawler --> network
+rep_crawler --> online_reps
+rep_crawler --> ledger
+rep_crawler --> active_transactions
+rep_crawler --> vote_processor
+
+@enduml

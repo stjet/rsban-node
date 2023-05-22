@@ -8,6 +8,7 @@
 #include <nano/secure/common.hpp>
 
 #include <chrono>
+#include <functional>
 #include <future>
 #include <memory>
 #include <thread>
@@ -95,7 +96,6 @@ private:
 	nano::node_config & config; // already ported
 	nano::state_block_signature_verification state_block_signature_verification; // already ported
 	nano::network_params & network_params; // already ported
-	nano::local_vote_history & history; // already ported
 	nano::block_arrival & block_arrival; // already ported
 
 	rsnano::BlockProcessorHandle * handle;
@@ -104,12 +104,12 @@ private:
 	nano::node_flags & flags; // already ported
 	nano::store & store; // already ported
 	nano::stats & stats; // already ported
-	nano::active_transactions & active_transactions;
 	nano::unchecked_map & unchecked; // already ported
 	nano::gap_cache & gap_cache; // already ported
 	nano::write_database_queue & write_database_queue; // already ported
 	nano::mutex mutex{ mutex_identifier (mutexes::block_processor) };
 	std::thread processing_thread;
+	std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> blocks_rolled_back;
 
 	friend std::unique_ptr<container_info_component> collect_container_info (block_processor & block_processor, std::string const & name);
 };

@@ -15,18 +15,31 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	config (*node_a.config),
 	state_block_signature_verification (checker, config.network_params.ledger.epochs, config.logging.timing_logging (), node_a.logger, node_a.flags.block_processor_verification_size ()),
 	network_params (node_a.network_params),
-	history (node_a.history),
 	ledger (node_a.ledger),
 	flags (node_a.flags),
-	active_transactions (node_a.active),
 	store (node_a.store),
 	stats (*node_a.stats),
 	block_arrival (node_a.block_arrival),
 	unchecked (node_a.unchecked),
 	gap_cache (node_a.gap_cache),
-	write_database_queue (write_database_queue_a),
-	handle (rsnano::rsn_block_processor_create (this))
-{
+	write_database_queue (write_database_queue_a)
+	{
+		blocks_rolled_back = 
+			[&node_a](std::vector<std::shared_ptr<nano::block>> const & rolled_back, std::shared_ptr<nano::block> const & initial_block){
+				// Deleting from votes cache, stop active transaction
+				for (auto & i : rolled_back)
+				{
+					node_a.history.erase (i->root ());
+					// Stop all rolled back active transactions except initial
+					if (i->hash () != initial_block->hash ())
+					{
+						node_a.active.erase (*i);
+					}
+				}
+
+			};
+	handle = rsnano::rsn_block_processor_create (this);
+
 	batch_processed.add ([this] (auto const & items) {
 		// For every batch item: notify the 'processed' observer.
 		for (auto const & item : items)
@@ -298,16 +311,7 @@ auto nano::block_processor::process_batch (nano::unique_lock<nano::mutex> & lock
 				{
 					logger.always_log (boost::str (boost::format ("%1% blocks rolled back") % rollback_list.size ()));
 				}
-				// Deleting from votes cache, stop active transaction
-				for (auto & i : rollback_list)
-				{
-					history.erase (i->root ());
-					// Stop all rolled back active transactions except initial
-					if (i->hash () != successor->hash ())
-					{
-						active_transactions.erase (*i);
-					}
-				}
+				blocks_rolled_back (rollback_list, successor);
 			}
 		}
 		number_of_blocks_processed++;

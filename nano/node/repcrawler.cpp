@@ -101,7 +101,6 @@ void nano::rep_crawler::validate ()
 {
 	decltype (responses) responses_l;
 	{
-		rsnano::rsn_rep_crawler_responses_clear (handle);
 		nano::lock_guard<nano::mutex> lock{ active_mutex };
 		responses_l.swap (responses);
 	}
@@ -163,7 +162,7 @@ void nano::rep_crawler::validate ()
 		{
 			nano::representative rep{ vote->account (), channel };
 			probable_reps.emplace (rep);
-			rsnano::rsn_rep_crawler_add (handle, rep.handle);
+			// rsnano::rsn_rep_crawler_add (handle, rep.handle);
 			inserted = true;
 		}
 
@@ -233,8 +232,6 @@ void nano::rep_crawler::query (std::vector<std::shared_ptr<nano::transport::chan
 	auto transaction (node.store.tx_begin_read ());
 	auto hash_root (node.ledger.hash_root_random (*transaction));
 	{
-		// nano::lock_guard<nano::mutex> lock{ active_mutex };
-
 		// Don't send same block multiple times in tests
 		if (node.network_params.network.is_dev_network ())
 		{

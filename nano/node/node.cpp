@@ -219,6 +219,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 {
 	logger->always_log ("Node ID: ", node_id.pub.to_node_id ());
 
+	block_processor.start ();
 	block_broadcast.connect (block_processor);
 	block_publisher.connect (block_processor);
 	gap_tracker.connect (block_processor);

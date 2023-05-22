@@ -39,6 +39,8 @@ namespace websocket
 	class listener;
 }
 
+class block_processor_lock;
+
 /**
  * Processing blocks is a potentially long IO operation.
  * This class isolates block insertion from other operations like servicing network operations
@@ -50,6 +52,7 @@ public:
 	block_processor (nano::block_processor const &) = delete;
 	block_processor (nano::block_processor &&) = delete;
 	~block_processor ();
+	void start ();
 	void stop ();
 	void flush ();
 	std::size_t size ();
@@ -81,7 +84,7 @@ private:
 private:
 	nano::process_return process_one (nano::write_transaction const &, std::shared_ptr<nano::block> block, bool const = false);
 	void queue_unchecked (nano::write_transaction const &, nano::hash_or_account const &);
-	std::deque<processed_t> process_batch (nano::unique_lock<nano::mutex> &);
+	std::deque<processed_t> process_batch (nano::block_processor_lock &);
 	void process_verified_state_blocks (std::deque<nano::state_block_signature_verification::value_type> &, std::vector<int> const &, std::vector<nano::block_hash> const &, std::vector<nano::signature> const &);
 	void add_impl (std::shared_ptr<nano::block> block);
 	bool stopped{ false };
@@ -89,7 +92,6 @@ private:
 	std::chrono::steady_clock::time_point next_log;
 	std::deque<std::shared_ptr<nano::block>> blocks;
 	std::deque<std::shared_ptr<nano::block>> forced;
-	nano::condition_variable condition;
 
 	nano::logger_mt & logger; // already ported
 	nano::signature_checker & checker; // already ported
@@ -107,7 +109,6 @@ private:
 	nano::unchecked_map & unchecked; // already ported
 	nano::gap_cache & gap_cache; // already ported
 	nano::write_database_queue & write_database_queue; // already ported
-	nano::mutex mutex{ mutex_identifier (mutexes::block_processor) };
 	std::thread processing_thread;
 	std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> blocks_rolled_back;
 

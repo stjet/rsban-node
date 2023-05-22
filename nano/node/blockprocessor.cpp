@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/threading.hpp>
 #include <nano/lib/timer.hpp>
 #include <nano/node/blockprocessor.hpp>
@@ -5,6 +7,32 @@
 #include <nano/secure/store.hpp>
 
 #include <boost/format.hpp>
+
+namespace nano
+{
+class block_processor_lock
+{
+public:
+	block_processor_lock (rsnano::BlockProcessorHandle * handle_a) :
+		handle{ rsnano::rsn_block_processor_lock (handle_a) }
+	{
+	}
+	block_processor_lock (block_processor_lock const &) = delete;
+	~block_processor_lock ()
+	{
+		rsnano::rsn_block_processor_lock_destroy (handle);
+	}
+	void lock (rsnano::BlockProcessorHandle * processor)
+	{
+		rsnano::rsn_block_processor_lock_lock (handle, processor);
+	}
+	void unlock ()
+	{
+		rsnano::rsn_block_processor_lock_unlock (handle);
+	}
+	rsnano::BlockProcessorLockHandle * handle;
+};
+}
 
 std::chrono::milliseconds constexpr nano::block_processor::confirmation_request_delay;
 
@@ -23,21 +51,21 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	unchecked (node_a.unchecked),
 	gap_cache (node_a.gap_cache),
 	write_database_queue (write_database_queue_a)
-	{
-		blocks_rolled_back = 
-			[&node_a](std::vector<std::shared_ptr<nano::block>> const & rolled_back, std::shared_ptr<nano::block> const & initial_block){
-				// Deleting from votes cache, stop active transaction
-				for (auto & i : rolled_back)
-				{
-					node_a.history.erase (i->root ());
-					// Stop all rolled back active transactions except initial
-					if (i->hash () != initial_block->hash ())
-					{
-						node_a.active.erase (*i);
-					}
-				}
+{
+	blocks_rolled_back =
+	[&node_a] (std::vector<std::shared_ptr<nano::block>> const & rolled_back, std::shared_ptr<nano::block> const & initial_block) {
+		// Deleting from votes cache, stop active transaction
+		for (auto & i : rolled_back)
+		{
+			node_a.history.erase (i->root ());
+			// Stop all rolled back active transactions except initial
+			if (i->hash () != initial_block->hash ())
+			{
+				node_a.active.erase (*i);
+			}
+		}
+	};
 
-			};
 	handle = rsnano::rsn_block_processor_create (this);
 
 	batch_processed.add ([this] (auto const & items) {
@@ -57,15 +85,11 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 		{
 			{
 				// Prevent a race with condition.wait in block_processor::flush
-				nano::lock_guard<nano::mutex> guard{ this->mutex };
+				nano::block_processor_lock guard{ this->handle };
 			}
-			this->condition.notify_all ();
+			rsnano::rsn_block_processor_notify_all (this->handle);
 		}
 	};
-	processing_thread = std::thread ([this] () {
-		nano::thread_role::set (nano::thread_role::name::block_processing);
-		this->process_blocks ();
-	});
 }
 
 nano::block_processor::~block_processor ()
@@ -78,13 +102,21 @@ rsnano::BlockProcessorHandle const * nano::block_processor::get_handle () const
 	return handle;
 }
 
+void nano::block_processor::start ()
+{
+	processing_thread = std::thread ([this] () {
+		nano::thread_role::set (nano::thread_role::name::block_processing);
+		this->process_blocks ();
+	});
+}
+
 void nano::block_processor::stop ()
 {
 	{
-		nano::lock_guard<nano::mutex> lock{ mutex };
+		nano::block_processor_lock lock{ handle };
 		stopped = true;
 	}
-	condition.notify_all ();
+	rsnano::rsn_block_processor_notify_all (handle);
 	blocking.stop ();
 	state_block_signature_verification.stop ();
 	nano::join_or_pass (processing_thread);
@@ -94,17 +126,17 @@ void nano::block_processor::flush ()
 {
 	checker.flush ();
 	flushing = true;
-	nano::unique_lock<nano::mutex> lock{ mutex };
+	nano::block_processor_lock lock{ handle };
 	while (!stopped && (have_blocks () || active || state_block_signature_verification.is_active ()))
 	{
-		condition.wait (lock);
+		rsnano::rsn_block_processor_wait (handle, lock.handle);
 	}
 	flushing = false;
 }
 
 std::size_t nano::block_processor::size ()
 {
-	nano::unique_lock<nano::mutex> lock{ mutex };
+	nano::block_processor_lock lock{ handle };
 	return (blocks.size () + state_block_signature_verification.size () + forced.size ());
 }
 
@@ -138,7 +170,7 @@ std::optional<nano::process_return> nano::block_processor::add_blocking (std::sh
 {
 	auto future = blocking.insert (block);
 	add_impl (block);
-	condition.notify_all ();
+	rsnano::rsn_block_processor_notify_all (handle);
 	std::optional<nano::process_return> result;
 	try
 	{
@@ -153,15 +185,15 @@ std::optional<nano::process_return> nano::block_processor::add_blocking (std::sh
 void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 {
 	{
-		nano::lock_guard<nano::mutex> lock{ mutex };
+		nano::block_processor_lock lock{ handle };
 		forced.push_back (block_a);
 	}
-	condition.notify_all ();
+	rsnano::rsn_block_processor_notify_all (handle);
 }
 
 void nano::block_processor::process_blocks ()
 {
-	nano::unique_lock<nano::mutex> lock{ mutex };
+	nano::block_processor_lock lock{ handle };
 	while (!stopped)
 	{
 		if (have_blocks_ready ())
@@ -170,13 +202,13 @@ void nano::block_processor::process_blocks ()
 			lock.unlock ();
 			auto processed = process_batch (lock);
 			batch_processed.notify (processed);
-			lock.lock ();
+			lock.lock (handle);
 			active = false;
 		}
 		else
 		{
-			condition.notify_one ();
-			condition.wait (lock);
+			rsnano::rsn_block_processor_notify_one (handle);
+			rsnano::rsn_block_processor_wait (handle, lock.handle);
 		}
 	}
 }
@@ -195,20 +227,18 @@ bool nano::block_processor::should_log ()
 
 bool nano::block_processor::have_blocks_ready ()
 {
-	debug_assert (!mutex.try_lock ());
 	return !blocks.empty () || !forced.empty ();
 }
 
 bool nano::block_processor::have_blocks ()
 {
-	debug_assert (!mutex.try_lock ());
 	return have_blocks_ready () || state_block_signature_verification.size () != 0;
 }
 
 void nano::block_processor::process_verified_state_blocks (std::deque<nano::state_block_signature_verification::value_type> & items, std::vector<int> const & verifications, std::vector<nano::block_hash> const & hashes, std::vector<nano::signature> const & blocks_signatures)
 {
 	{
-		nano::unique_lock<nano::mutex> lk{ mutex };
+		nano::block_processor_lock lk{ handle };
 		for (auto i (0); i < verifications.size (); ++i)
 		{
 			debug_assert (verifications[i] == 1 || verifications[i] == 0);
@@ -235,7 +265,7 @@ void nano::block_processor::process_verified_state_blocks (std::deque<nano::stat
 			items.pop_front ();
 		}
 	}
-	condition.notify_all ();
+	rsnano::rsn_block_processor_notify_all (handle);
 }
 
 void nano::block_processor::add_impl (std::shared_ptr<nano::block> block)
@@ -247,20 +277,20 @@ void nano::block_processor::add_impl (std::shared_ptr<nano::block> block)
 	else
 	{
 		{
-			nano::lock_guard<nano::mutex> guard{ mutex };
+			block_processor_lock lock{ handle };
 			blocks.emplace_back (block);
 		}
-		condition.notify_all ();
+		rsnano::rsn_block_processor_notify_all (handle);
 	}
 }
 
-auto nano::block_processor::process_batch (nano::unique_lock<nano::mutex> & lock_a) -> std::deque<processed_t>
+auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) -> std::deque<processed_t>
 {
 	std::deque<processed_t> processed;
 	auto scoped_write_guard = write_database_queue.wait (nano::writer::process_batch);
 	auto transaction (store.tx_begin_write ({ tables::accounts, tables::blocks, tables::frontiers, tables::pending }));
 	nano::timer<std::chrono::milliseconds> timer_l;
-	lock_a.lock ();
+	lock_a.lock (handle);
 	timer_l.start ();
 	// Processing blocks
 	unsigned number_of_blocks_processed (0), number_of_forced_processed (0);
@@ -317,7 +347,7 @@ auto nano::block_processor::process_batch (nano::unique_lock<nano::mutex> & lock
 		number_of_blocks_processed++;
 		auto result = process_one (*transaction, block, force);
 		processed.emplace_back (result, block);
-		lock_a.lock ();
+		lock_a.lock (handle);
 	}
 	lock_a.unlock ();
 
@@ -486,7 +516,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (bl
 	std::size_t forced_count;
 
 	{
-		nano::lock_guard<nano::mutex> guard{ block_processor.mutex };
+		nano::block_processor_lock lock{ block_processor.handle };
 		blocks_count = block_processor.blocks.size ();
 		forced_count = block_processor.forced.size ();
 	}

@@ -1,6 +1,10 @@
 use crate::core::BlockHandle;
 use rsnano_node::block_processing::{BlockProcessor, BLOCKPROCESSOR_ADD_CALLBACK};
-use std::{ffi::c_void, ops::Deref, sync::Arc};
+use std::{
+    ffi::c_void,
+    ops::Deref,
+    sync::{Arc, MutexGuard},
+};
 
 pub struct BlockProcessorHandle(Arc<BlockProcessor>);
 
@@ -21,6 +25,54 @@ pub extern "C" fn rsn_block_processor_create(handle: *mut c_void) -> *mut BlockP
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_destroy(handle: *mut BlockProcessorHandle) {
     drop(unsafe { Box::from_raw(handle) });
+}
+
+pub struct BlockProcessorLockHandle(Option<MutexGuard<'static, ()>>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_processor_lock(
+    handle: *mut BlockProcessorHandle,
+) -> *mut BlockProcessorLockHandle {
+    let guard = (*handle).mutex.lock().unwrap();
+    Box::into_raw(Box::new(BlockProcessorLockHandle(Some(guard))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_processor_lock_destroy(handle: *mut BlockProcessorLockHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_processor_lock_lock(
+    handle: *mut BlockProcessorLockHandle,
+    processor: *mut BlockProcessorHandle,
+) {
+    (*handle).0 = Some((*processor).0.mutex.lock().unwrap());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_processor_lock_unlock(handle: *mut BlockProcessorLockHandle) {
+    (*handle).0 = None;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_processor_notify_all(handle: *mut BlockProcessorHandle) {
+    (*handle).0.condition.notify_all();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_processor_notify_one(handle: *mut BlockProcessorHandle) {
+    (*handle).0.condition.notify_one();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_processor_wait(
+    handle: *mut BlockProcessorHandle,
+    lock_handle: *mut BlockProcessorLockHandle,
+) {
+    let guard = (*lock_handle).0.take().unwrap();
+    let guard = (*handle).0.condition.wait(guard).unwrap();
+    (*lock_handle).0 = Some(guard);
 }
 
 pub type BlockProcessorAddCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);

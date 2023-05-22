@@ -38,7 +38,7 @@ nano::network::~network ()
 
 void nano::network::start_threads ()
 {
-	tcp_channels = std::move (std::make_shared<nano::transport::tcp_channels> (node, inbound));
+	tcp_channels = std::move (std::make_shared<nano::transport::tcp_channels> (node, port, inbound));
 	auto this_l = shared_from_this ();
 	// TCP
 	for (std::size_t i = 0; i < node.config->network_threads && !node.flags.disable_tcp_realtime (); ++i)
@@ -534,28 +534,10 @@ void nano::network::merge_peer (nano::endpoint const & peer_a)
 	}
 }
 
-bool nano::network::not_a_peer (nano::endpoint const & endpoint_a, bool allow_local_peers)
-{
-	bool result (false);
-	if (endpoint_a.address ().to_v6 ().is_unspecified ())
-	{
-		result = true;
-	}
-	else if (nano::transport::reserved_address (endpoint_a, allow_local_peers))
-	{
-		result = true;
-	}
-	else if (endpoint_a == endpoint ())
-	{
-		result = true;
-	}
-	return result;
-}
-
 bool nano::network::reachout (nano::endpoint const & endpoint_a, bool allow_local_peers)
 {
 	// Don't contact invalid IPs
-	bool error = not_a_peer (endpoint_a, allow_local_peers);
+	bool error = tcp_channels->not_a_peer (endpoint_a, allow_local_peers);
 	if (!error)
 	{
 		error = tcp_channels->reachout (endpoint_a);

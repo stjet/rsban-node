@@ -172,7 +172,7 @@ std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory
  * tcp_channels
  */
 
-nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
+nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
 	tcp_server_factory{ node },
 	node_id{ node.node_id },
 	network_params{ node.network_params },
@@ -189,6 +189,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, std::function<vo
 	observers{ node.observers },
 	sink{ std::move (sink) },
 	node{ node },
+	port { port },
 	handle{ rsnano::rsn_tcp_channels_create () }
 {
 }
@@ -200,15 +201,11 @@ nano::transport::tcp_channels::~tcp_channels ()
 
 bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::transport::socket> const & socket_a, std::shared_ptr<nano::transport::tcp_server> const & server_a)
 {
-	auto network_l{ network.lock () };
-	if (!network_l)
-		return true;
-
 	auto endpoint (channel_a->get_tcp_endpoint ());
 	debug_assert (endpoint.address ().is_v6 ());
 	auto udp_endpoint (nano::transport::map_tcp_to_endpoint (endpoint));
 	bool error (true);
-	if (!network_l->not_a_peer (udp_endpoint, config->allow_local_peers) && !stopped)
+	if (!not_a_peer (udp_endpoint, config->allow_local_peers) && !stopped)
 	{
 		nano::unique_lock<nano::mutex> lock{ mutex };
 		auto existing (channels.get<endpoint_tag> ().find (endpoint));
@@ -448,6 +445,25 @@ void nano::transport::tcp_channels::stop ()
 	}
 	channels.clear ();
 }
+
+bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_a, bool allow_local_peers)
+{
+	bool result (false);
+	if (endpoint_a.address ().to_v6 ().is_unspecified ())
+	{
+		result = true;
+	}
+	else if (nano::transport::reserved_address (endpoint_a, allow_local_peers))
+	{
+		result = true;
+	}
+	else if (endpoint_a == nano::endpoint (boost::asio::ip::address_v6::loopback (), port))
+	{
+		result = true;
+	}
+	return result;
+}
+
 
 bool nano::transport::tcp_channels::max_ip_connections (nano::tcp_endpoint const & endpoint_a)
 {

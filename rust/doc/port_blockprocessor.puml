@@ -15,14 +15,11 @@ class local_vote_history #PaleGreen
 class inactive_vote_cache #PaleGoldenRod
 class signature_checker #PaleGreen
 
-package "Network"{
+package "Networking"{
 class network
 class rep_crawler
-class tcp_message_manager #PaleGreen
 class peer_exclusion #PaleGreen
-}
-
-package "Channels"{
+class tcp_message_manager #PaleGreen
 class channel_tcp_wrapper #PaleGreen
 class channel_tcp #PaleGreen
 class outbound_bandwidth_limiter #PaleGreen

@@ -38,7 +38,7 @@ TEST (peer_container, reserved_ip_is_not_a_peer)
 {
 	nano::test::system system{ 1 };
 	auto not_a_peer = [&node = system.nodes[0]] (nano::endpoint endpoint_a) -> bool {
-		return node->network->not_a_peer (endpoint_a, true);
+		return node->network->tcp_channels->not_a_peer (endpoint_a, true);
 	};
 
 	// The return value as true means an error because the IP address is for reserved use

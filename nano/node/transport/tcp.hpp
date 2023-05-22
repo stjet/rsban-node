@@ -122,7 +122,7 @@ namespace transport
 		friend class nano::transport::channel_tcp;
 
 	public:
-		explicit tcp_channels (nano::node &, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> = nullptr);
+		explicit tcp_channels (nano::node &, uint16_t port,  std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> = nullptr);
 		tcp_channels (nano::transport::tcp_channels const &) = delete;
 		~tcp_channels ();
 		bool insert (std::shared_ptr<nano::transport::channel_tcp> const &, std::shared_ptr<nano::transport::socket> const &, std::shared_ptr<nano::transport::tcp_server> const &);
@@ -138,6 +138,7 @@ namespace transport
 		void receive ();
 		void start ();
 		void stop ();
+		bool not_a_peer (nano::endpoint const &, bool);
 		void process_messages ();
 		void process_message (nano::message const &, nano::tcp_endpoint const &, nano::account const &, std::shared_ptr<nano::transport::socket> const &);
 		bool max_ip_connections (nano::tcp_endpoint const & endpoint_a);
@@ -312,6 +313,7 @@ private:
 		std::atomic<bool> stopped{ false };
 		// Called when a new channel is observed
 		std::function<void (std::shared_ptr<nano::transport::channel>)> channel_observer;
+		uint16_t port;
 		rsnano::TcpChannelsHandle * handle;
 
 		friend class network_peer_max_tcp_attempts_subnetwork_Test;

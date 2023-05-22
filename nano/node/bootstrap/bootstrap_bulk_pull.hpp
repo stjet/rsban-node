@@ -124,13 +124,12 @@ public:
 	void send_finished ();
 	void no_block_sent (boost::system::error_code const &, std::size_t);
 	bool ascending () const;
+	nano::block_hash get_current () const;
+	nano::bulk_pull::count_t get_max_count () const;
+	nano::bulk_pull::count_t get_sent_count () const;
+
 	std::shared_ptr<nano::transport::tcp_server> connection;
 	std::unique_ptr<nano::bulk_pull> request;
-	nano::block_hash current;
-	bool include_start;
-	nano::bulk_pull::count_t get_max_count ();
-	nano::bulk_pull::count_t get_sent_count ();
-
 	rsnano::BulkPullServerHandle * handle;
 
 private:

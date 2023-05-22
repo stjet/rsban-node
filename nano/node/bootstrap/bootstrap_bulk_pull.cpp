@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/bootstrap/block_deserializer.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/bootstrap/bootstrap_bulk_pull.hpp>
@@ -408,7 +410,7 @@ void nano::bulk_pull_server::set_current_end ()
 	{
 		return;
 	}
-	include_start = false;
+	rsnano::rsn_bulk_pull_server_include_start_set (handle, false);
 	debug_assert (request != nullptr);
 	auto transaction (node_l->store.tx_begin_read ());
 	if (!node_l->store.block ().exists (*transaction, request->get_end ()))
@@ -427,8 +429,9 @@ void nano::bulk_pull_server::set_current_end ()
 			node_l->logger->try_log (boost::str (boost::format ("Bulk pull request for block hash: %1%") % request->get_start ().to_string ()));
 		}
 
-		current = ascending () ? node_l->store.block ().successor (*transaction, request->get_start ().as_block_hash ()) : request->get_start ().as_block_hash ();
-		include_start = true;
+		auto current = ascending () ? node_l->store.block ().successor (*transaction, request->get_start ().as_block_hash ()) : request->get_start ().as_block_hash ();
+		rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
+		rsnano::rsn_bulk_pull_server_include_start_set (handle, true);
 	}
 	else
 	{
@@ -439,11 +442,13 @@ void nano::bulk_pull_server::set_current_end ()
 			{
 				node_l->logger->try_log (boost::str (boost::format ("Request for unknown account: %1%") % request->get_start ().to_account ()));
 			}
-			current = request->get_end ();
+			auto current = request->get_end ();
+			rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
 		}
 		else
 		{
-			current = ascending () ? info->open_block () : info->head ();
+			auto current = ascending () ? info->open_block () : info->head ();
+			rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
 			if (!request->get_end ().is_zero ())
 			{
 				auto account (node_l->ledger.account (*transaction, request->get_end ()));
@@ -454,6 +459,7 @@ void nano::bulk_pull_server::set_current_end ()
 						node_l->logger->try_log (boost::str (boost::format ("Request for block that is not on account chain: %1% not on %2%") % request->get_end ().to_string () % request->get_start ().to_account ()));
 					}
 					current = request->get_end ();
+					rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
 				}
 			}
 		}
@@ -499,14 +505,21 @@ void nano::bulk_pull_server::send_next ()
 	}
 }
 
-nano::bulk_pull::count_t nano::bulk_pull_server::get_sent_count ()
+nano::bulk_pull::count_t nano::bulk_pull_server::get_sent_count () const
 {
 	return rsnano::rsn_bulk_pull_server_sent_count (handle);
 }
 
-nano::bulk_pull::count_t nano::bulk_pull_server::get_max_count ()
+nano::bulk_pull::count_t nano::bulk_pull_server::get_max_count () const
 {
 	return rsnano::rsn_bulk_pull_server_max_count (handle);
+}
+
+nano::block_hash nano::bulk_pull_server::get_current () const
+{
+	nano::block_hash current;
+	rsnano::rsn_bulk_pull_server_current (handle, current.bytes.data ());
+	return current;
 }
 
 std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
@@ -528,11 +541,12 @@ std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 	 * Unless we are including the "start" member and this is the
 	 * start member, then include it anyway.
 	 */
+	auto current = get_current ();
 	if (current != request->get_end ())
 	{
 		send_current = true;
 	}
-	else if (current == request->get_end () && include_start == true)
+	else if (current == request->get_end () && rsnano::rsn_bulk_pull_server_include_start (handle) == true)
 	{
 		send_current = true;
 
@@ -563,15 +577,18 @@ std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 			if (!next.is_zero ())
 			{
 				current = next;
+				rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
 			}
 			else
 			{
 				current = request->get_end ();
+				rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
 			}
 		}
 		else
 		{
 			current = request->get_end ();
+			rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
 		}
 
 		rsnano::rsn_bulk_pull_server_sent_count_set (handle, get_sent_count () + 1);
@@ -581,7 +598,7 @@ std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 	 * Once we have processed "get_next()" once our cursor is no longer on
 	 * the "start" member, so this flag is not relevant is always false.
 	 */
-	include_start = false;
+	rsnano::rsn_bulk_pull_server_include_start_set (handle, false);
 
 	return result;
 }

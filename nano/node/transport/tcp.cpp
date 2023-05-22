@@ -186,7 +186,7 @@ std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory
 	node.io_ctx, socket_a, node.logger,
 	*node.stats, node.flags, *node.config,
 	node.tcp_listener, std::make_shared<nano::transport::request_response_visitor_factory> (node),
-	node.workers, *node.network->publish_filter, node.block_uniquer, node.vote_uniquer, node.network->tcp_channels->tcp_message_manager,
+	node.workers, *node.network->tcp_channels->publish_filter, node.block_uniquer, node.vote_uniquer, node.network->tcp_channels->tcp_message_manager,
 	*node.network->syn_cookies, node.node_id, true);
 
 	// Listen for possible responses
@@ -220,6 +220,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	sink{ std::move (sink) },
 	node{ node },
 	port{ port },
+	publish_filter{ std::make_shared<nano::network_filter> (256 * 1024) },
 	handle{ rsnano::rsn_tcp_channels_create () }
 {
 }
@@ -914,7 +915,7 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 	auto network_constants_dto{ network_params.network.to_dto () };
 	rsnano::rsn_message_deserializer_read_socket (
 	&network_constants_dto,
-	network_l->publish_filter->handle,
+	publish_filter->handle,
 	node.block_uniquer.handle,
 	node.vote_uniquer.handle,
 	socket_l->handle,

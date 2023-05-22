@@ -185,6 +185,7 @@ namespace transport
 
 		nano::tcp_message_manager tcp_message_manager;
 		nano::peer_exclusion excluded_peers;
+		std::shared_ptr<nano::network_filter> publish_filter;
 		std::atomic<size_t> next_channel_id{ 1 };
 
 	private:

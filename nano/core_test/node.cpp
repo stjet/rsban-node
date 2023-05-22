@@ -2555,7 +2555,7 @@ TEST (node, vote_by_hash_republish)
 	ASSERT_TIMELY (5s, node2.active.active (*send1));
 
 	// give block send2 to node1 and wait until the block is received and processed by node1
-	node1.network->publish_filter->clear ();
+	node1.network->tcp_channels->publish_filter->clear ();
 	node1.process_active (send2);
 	ASSERT_TIMELY (5s, node1.active.active (*send2));
 
@@ -3206,7 +3206,7 @@ TEST (node, unchecked_cleanup)
 	}
 	// Add to the blocks filter
 	// Should be cleared after unchecked cleanup
-	ASSERT_FALSE (node.network->publish_filter->apply (bytes.data (), bytes.size ()));
+	ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size ()));
 	node.process_active (open);
 	// Waits for the open block to get saved in the database
 	ASSERT_TIMELY (15s, 1 == node.unchecked.count ());
@@ -3214,11 +3214,11 @@ TEST (node, unchecked_cleanup)
 	ASSERT_EQ (1, node.unchecked.count ());
 	std::this_thread::sleep_for (std::chrono::seconds (1));
 	node.unchecked_cleanup ();
-	ASSERT_TRUE (node.network->publish_filter->apply (bytes.data (), bytes.size ()));
+	ASSERT_TRUE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size ()));
 	ASSERT_EQ (1, node.unchecked.count ());
 	std::this_thread::sleep_for (std::chrono::seconds (2));
 	node.unchecked_cleanup ();
-	ASSERT_FALSE (node.network->publish_filter->apply (bytes.data (), bytes.size ()));
+	ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size ()));
 	ASSERT_EQ (0, node.unchecked.count ());
 }
 

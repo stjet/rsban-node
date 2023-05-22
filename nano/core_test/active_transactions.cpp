@@ -627,14 +627,14 @@ TEST (active_transactions, dropped_cleanup)
 		nano::vectorstream stream (block_bytes);
 		chain[0]->serialize (stream);
 	}
-	ASSERT_FALSE (node.network->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
-	ASSERT_TRUE (node.network->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_TRUE (node.network->tcp_channels->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 
 	auto election = nano::test::start_election (system, node, hash);
 	ASSERT_NE (nullptr, election);
 
 	// Not yet removed
-	ASSERT_TRUE (node.network->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_TRUE (node.network->tcp_channels->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 	ASSERT_TRUE (node.active.active (hash));
 
 	// Now simulate dropping the election
@@ -642,7 +642,7 @@ TEST (active_transactions, dropped_cleanup)
 	node.active.erase (*chain[0]);
 
 	// The filter must have been cleared
-	ASSERT_FALSE (node.network->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 
 	// An election was recently dropped
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::active_dropped, nano::stat::detail::normal));
@@ -651,7 +651,7 @@ TEST (active_transactions, dropped_cleanup)
 	ASSERT_FALSE (node.active.active (hash));
 
 	// Repeat test for a confirmed election
-	ASSERT_TRUE (node.network->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_TRUE (node.network->tcp_channels->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 
 	election = nano::test::start_election (system, node, hash);
 	ASSERT_NE (nullptr, election);
@@ -660,7 +660,7 @@ TEST (active_transactions, dropped_cleanup)
 	node.active.erase (*chain[0]);
 
 	// The filter should not have been cleared
-	ASSERT_TRUE (node.network->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
+	ASSERT_TRUE (node.network->tcp_channels->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
 
 	// Not dropped
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::active_dropped, nano::stat::detail::normal));
@@ -805,7 +805,7 @@ TEST (active_transactions, fork_filter_cleanup)
 	ASSERT_TIMELY (5s, node1.ledger.cache.block_count () == 2);
 
 	// Block is erased from the duplicate filter
-	ASSERT_TIMELY (5s, node1.network->publish_filter->apply (send_block_bytes.data (), send_block_bytes.size ()));
+	ASSERT_TIMELY (5s, node1.network->tcp_channels->publish_filter->apply (send_block_bytes.data (), send_block_bytes.size ()));
 }
 
 /*
@@ -941,7 +941,7 @@ TEST (active_transactions, fork_replacement_tally)
 	// Process correct block
 	node_config.peering_port = nano::test::get_available_port ();
 	auto & node2 (*system.add_node (node_config));
-	node1.network->publish_filter->clear ();
+	node1.network->tcp_channels->publish_filter->clear ();
 	node2.network->flood_block (send_last);
 	ASSERT_TIMELY (3s, node1.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) > 0);
 	node1.block_processor.flush ();
@@ -959,7 +959,7 @@ TEST (active_transactions, fork_replacement_tally)
 	// ensure vote arrives before the block
 	ASSERT_TIMELY (5s, node1.inactive_vote_cache.find (send_last->hash ()));
 	ASSERT_TIMELY (5s, 1 == node1.inactive_vote_cache.find (send_last->hash ())->size ());
-	node1.network->publish_filter->clear ();
+	node1.network->tcp_channels->publish_filter->clear ();
 	node2.network->flood_block (send_last);
 	ASSERT_TIMELY (5s, node1.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) > 1);
 

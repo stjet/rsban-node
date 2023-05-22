@@ -303,7 +303,7 @@ void nano::active_transactions::cleanup_election (nano::unique_lock<nano::mutex>
 		if (!election->confirmed ())
 		{
 			// Clear from publish filter
-			node.network->publish_filter->clear (block);
+			node.network->tcp_channels->publish_filter->clear (block);
 		}
 	}
 

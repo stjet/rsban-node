@@ -24,7 +24,6 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 	} },
 	resolver (node_a.io_ctx),
 	node (node_a),
-	publish_filter{ std::make_shared<nano::network_filter> (256 * 1024) },
 	port (port_a),
 	disconnect_observer ([] () {})
 {
@@ -391,7 +390,7 @@ public:
 		}
 		else
 		{
-			node.network->publish_filter->clear (message_a.get_digest ());
+			node.network->clear_from_publish_filter (message_a.get_digest ());
 			node.stats->inc (nano::stat::type::drop, nano::stat::detail::publish, nano::stat::dir::in);
 		}
 	}
@@ -799,4 +798,9 @@ void nano::network::on_new_channel (std::function<void (std::shared_ptr<nano::tr
 void nano::network::notify_new_channel (std::shared_ptr<nano::transport::channel> channel_a)
 {
 	channel_observer (channel_a);
+}
+
+void nano::network::clear_from_publish_filter (nano::uint128_t const & digest_a)
+{
+	tcp_channels->publish_filter->clear (digest_a);
 }

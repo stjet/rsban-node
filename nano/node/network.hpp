@@ -99,6 +99,7 @@ public:
 	static std::string to_string (nano::networks);
 	void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
 	void notify_new_channel (std::shared_ptr<nano::transport::channel> channel_a);
+	void clear_from_publish_filter (nano::uint128_t const & digest_a);
 
 private:
 	void process_message (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
@@ -108,7 +109,6 @@ public:
 	boost::asio::ip::udp::resolver resolver;
 	std::vector<boost::thread> packet_processing_threads;
 	nano::node & node;
-	std::shared_ptr<nano::network_filter> publish_filter;
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
 	std::atomic<uint16_t> port{ 0 };
 	std::function<void ()> disconnect_observer;

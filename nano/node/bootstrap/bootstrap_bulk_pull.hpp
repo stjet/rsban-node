@@ -120,7 +120,6 @@ public:
 	void set_current_end ();
 	std::shared_ptr<nano::block> get_next ();
 	void send_next ();
-	void sent_action (boost::system::error_code const &, std::size_t);
 	void send_finished ();
 	bool ascending () const;
 	nano::block_hash get_current () const;

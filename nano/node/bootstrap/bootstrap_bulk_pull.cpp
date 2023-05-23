@@ -413,31 +413,7 @@ void nano::bulk_pull_server::set_current_end ()
 
 void nano::bulk_pull_server::send_next ()
 {
-	auto node_l = node.lock ();
-	if (!node_l)
-	{
-		return;
-	}
-	auto block = get_next ();
-	if (block != nullptr)
-	{
-		std::vector<uint8_t> send_buffer;
-		{
-			nano::vectorstream stream (send_buffer);
-			nano::serialize_block (stream, *block);
-		}
-		if (node_l->config->logging.bulk_pull_logging ())
-		{
-			node_l->logger->try_log (boost::str (boost::format ("Sending block: %1%") % block->hash ().to_string ()));
-		}
-		connection->get_socket ()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l = shared_from_this ()] (boost::system::error_code const & ec, std::size_t size_a) {
-			this_l->sent_action (ec, size_a);
-		});
-	}
-	else
-	{
-		send_finished ();
-	}
+	rsnano::rsn_bulk_pull_server_send_next (handle);
 }
 
 nano::bulk_pull::count_t nano::bulk_pull_server::get_sent_count () const
@@ -471,28 +447,6 @@ std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 {
 	auto block_handle = rsnano::rsn_bulk_pull_server_get_next (handle);
 	return nano::block_handle_to_block (block_handle);
-}
-
-void nano::bulk_pull_server::sent_action (boost::system::error_code const & ec, std::size_t size_a)
-{
-	auto node_l = node.lock ();
-	if (!node_l)
-	{
-		return;
-	}
-	if (!ec)
-	{
-		node_l->bootstrap_workers->push_task ([this_l = shared_from_this ()] () {
-			this_l->send_next ();
-		});
-	}
-	else
-	{
-		if (node_l->config->logging.bulk_pull_logging ())
-		{
-			node_l->logger->try_log (boost::str (boost::format ("Unable to bulk send block: %1%") % ec.message ()));
-		}
-	}
 }
 
 void nano::bulk_pull_server::send_finished ()

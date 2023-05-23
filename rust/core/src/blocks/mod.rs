@@ -351,3 +351,8 @@ impl Deserialize for BlockWithSideband {
         Ok(BlockWithSideband { block, sideband })
     }
 }
+
+pub fn serialize_block<T: Stream>(stream: &mut T, block: &BlockEnum) -> anyhow::Result<()> {
+    stream.write_u8(block.block_type() as u8)?;
+    block.serialize(stream)
+}

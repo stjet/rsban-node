@@ -27,6 +27,13 @@ impl ThreadPool for FfiThreadPool {
         }
     }
 
+    fn push_task(&self, callback: Box<dyn FnOnce()>) {
+        let callback_handle = Box::into_raw(Box::new(VoidFnCallbackHandle::new(callback)));
+        unsafe {
+            PUSH_TASK_CALLBACK.expect("PUSH_TASK_CALLBACK missing")(self.handle, callback_handle);
+        }
+    }
+
     fn handle(&self) -> *mut c_void {
         self.handle
     }
@@ -52,13 +59,20 @@ impl VoidFnCallbackHandle {
 }
 
 type AddTimedTaskCallback = unsafe extern "C" fn(*mut c_void, u64, *mut VoidFnCallbackHandle);
+type PushTaskCallback = unsafe extern "C" fn(*mut c_void, *mut VoidFnCallbackHandle);
 
 static mut ADD_TIMED_TASK_CALLBACK: Option<AddTimedTaskCallback> = None;
+static mut PUSH_TASK_CALLBACK: Option<PushTaskCallback> = None;
 static mut DROP_THREAD_POOL: Option<VoidPointerCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_add_timed_task(f: AddTimedTaskCallback) {
     ADD_TIMED_TASK_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_push_task(f: PushTaskCallback) {
+    PUSH_TASK_CALLBACK = Some(f);
 }
 
 #[no_mangle]

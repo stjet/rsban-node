@@ -69,7 +69,7 @@ impl RepCrawler {
         let mut guard = self.data.lock().unwrap();
         guard.responses.clear();
     }
-    pub fn response(&self, channel: Arc<ChannelEnum>, vote: Arc<Vote>, force: bool) {
+    pub fn response(&self, _channel: Arc<ChannelEnum>, _vote: Arc<Vote>, _force: bool) {
         // let guard = self.data.lock().unwrap();
         // for hash in &vote.hashes{
         //     if force ||

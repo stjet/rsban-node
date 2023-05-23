@@ -1,51 +1,56 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash, BlockType};
+use rsnano_core::{
+    serialize_block,
+    utils::{Logger, MemoryStream},
+    Account, BlockEnum, BlockHash, BlockType,
+};
 use rsnano_ledger::Ledger;
 
 use crate::{
     messages::BulkPull,
     transport::{Socket, TcpServer, TcpServerExt},
-    utils::ThreadPool,
+    utils::{ErrorCode, ThreadPool},
 };
 
 pub struct BulkPullServer {
+    server_impl: Arc<Mutex<BulkPullServerImpl>>,
+}
+
+/**
+ * Handle a request for the pull of all blocks associated with an account
+ * The account is supplied as the "start" member, and the final block to
+ * send is the "end" member.  The "start" member may also be a block
+ * hash, in which case the that hash is used as the start of a chain
+ * to send.  To determine if "start" is interpretted as an account or
+ * hash, the ledger is checked to see if the block specified exists,
+ * if not then it is interpretted as an account.
+ *
+ * Additionally, if "start" is specified as a block hash the range
+ * is inclusive of that block hash, that is the range will be:
+ * [start, end); In the case that a block hash is not specified the
+ * range will be exclusive of the frontier for that account with
+ * a range of (frontier, end)
+ */
+struct BulkPullServerImpl {
     ledger: Arc<Ledger>,
     logger: Arc<dyn Logger>,
     enable_logging: bool,
-    pub sent_count: u32,
-    pub max_count: u32,
-    pub include_start: bool,
-    pub current: BlockHash,
-    pub request: BulkPull,
     connection: Arc<TcpServer>,
     thread_pool: Arc<dyn ThreadPool>,
+    include_start: bool,
+    sent_count: u32,
+    max_count: u32,
+    current: BlockHash,
+    request: BulkPull,
 }
 
-impl BulkPullServer {
-    pub fn new(
-        request: BulkPull,
-        connection: Arc<TcpServer>,
-        ledger: Arc<Ledger>,
-        logger: Arc<dyn Logger>,
-        thread_pool: Arc<dyn ThreadPool>,
-        enable_logging: bool,
-    ) -> Self {
-        Self {
-            ledger,
-            logger,
-            enable_logging,
-            thread_pool,
-            sent_count: 0,
-            max_count: 0,
-            include_start: false,
-            current: BlockHash::zero(),
-            request,
-            connection,
-        }
+impl BulkPullServerImpl {
+    fn ascending(&self) -> bool {
+        self.request.is_ascending()
     }
 
-    pub fn set_current_end(&mut self) {
+    fn set_current_end(&mut self) {
         self.include_start = false;
         let transaction = self.ledger.read_txn();
         if !self
@@ -131,35 +136,6 @@ impl BulkPullServer {
         }
     }
 
-    fn ascending(&self) -> bool {
-        self.request.is_ascending()
-    }
-
-    pub fn send_finished(&self) {
-        let send_buffer = Arc::new(vec![BlockType::NotABlock as u8]);
-        if self.enable_logging {
-            self.logger.try_log("Bulk sending finished");
-        }
-
-        let enable_logging = self.enable_logging;
-        let logger = self.logger.clone();
-        let connection = self.connection.clone();
-
-        self.connection.socket.async_write(
-            &send_buffer,
-            Some(Box::new(move |ec, _| {
-                if ec.is_ok() {
-                    connection.start();
-                } else {
-                    if enable_logging {
-                        logger.try_log("Unable to send not-a-block");
-                    }
-                }
-            })),
-            crate::transport::TrafficType::Generic,
-        )
-    }
-
     pub fn get_next(&mut self) -> Option<BlockEnum> {
         let mut send_current = false;
         let mut set_current_to_end = false;
@@ -230,5 +206,151 @@ impl BulkPullServer {
         self.include_start = false;
 
         result
+    }
+
+    pub fn send_finished(&self, server_impl: Arc<Mutex<Self>>) {
+        let send_buffer = Arc::new(vec![BlockType::NotABlock as u8]);
+        if self.enable_logging {
+            self.logger.try_log("Bulk sending finished");
+        }
+
+        self.connection.socket.async_write(
+            &send_buffer,
+            Some(Box::new(move |ec, _| {
+                let guard = server_impl.lock().unwrap();
+                if ec.is_ok() {
+                    guard.connection.start();
+                } else {
+                    if guard.enable_logging {
+                        guard.logger.try_log("Unable to send not-a-block");
+                    }
+                }
+            })),
+            crate::transport::TrafficType::Generic,
+        )
+    }
+
+    pub fn send_next(&mut self, server_impl: Arc<Mutex<Self>>) {
+        if let Some(block) = self.get_next() {
+            let mut stream = MemoryStream::new();
+
+            serialize_block(&mut stream, &block).unwrap();
+            let send_buffer = Arc::new(stream.to_vec());
+            if self.enable_logging {
+                self.logger
+                    .try_log(&format!("sending block: {}", block.hash()));
+            }
+            self.connection.socket.async_write(
+                &send_buffer,
+                Some(Box::new(move |ec, size| {
+                    let server_impl_clone = server_impl.clone();
+                    server_impl
+                        .lock()
+                        .unwrap()
+                        .sent_action(ec, size, server_impl_clone);
+                })),
+                crate::transport::TrafficType::Generic,
+            );
+        } else {
+            self.send_finished(server_impl);
+        }
+    }
+
+    fn sent_action(&mut self, ec: ErrorCode, _size: usize, server_impl: Arc<Mutex<Self>>) {
+        if ec.is_ok() {
+            self.thread_pool.push_task(Box::new(move || {
+                let impl_clone = server_impl.clone();
+                server_impl.lock().unwrap().send_next(impl_clone);
+            }));
+        } else {
+            if self.enable_logging {
+                self.logger
+                    .try_log(&format!("Unable to bulk send block: {:?}", ec));
+            }
+        }
+    }
+}
+
+impl BulkPullServer {
+    pub fn new(
+        request: BulkPull,
+        connection: Arc<TcpServer>,
+        ledger: Arc<Ledger>,
+        logger: Arc<dyn Logger>,
+        thread_pool: Arc<dyn ThreadPool>,
+        enable_logging: bool,
+    ) -> Self {
+        Self {
+            server_impl: Arc::new(Mutex::new(BulkPullServerImpl {
+                include_start: false,
+                sent_count: 0,
+                max_count: 0,
+                current: BlockHash::zero(),
+                request,
+                connection,
+                enable_logging,
+                ledger,
+                logger,
+                thread_pool,
+            })),
+        }
+    }
+
+    pub fn request(&self) -> BulkPull {
+        self.server_impl.lock().unwrap().request.clone()
+    }
+
+    pub fn set_request_end(&self, end: BlockHash) {
+        self.server_impl.lock().unwrap().request.end = end;
+    }
+
+    pub fn current(&self) -> BlockHash {
+        self.server_impl.lock().unwrap().current
+    }
+
+    pub fn set_current(&self, value: BlockHash) {
+        self.server_impl.lock().unwrap().current = value;
+    }
+
+    pub fn sent_count(&self) -> u32 {
+        self.server_impl.lock().unwrap().sent_count
+    }
+
+    pub fn set_sent_count(&self, value: u32) {
+        self.server_impl.lock().unwrap().sent_count = value;
+    }
+
+    pub fn max_count(&self) -> u32 {
+        self.server_impl.lock().unwrap().max_count
+    }
+
+    pub fn set_max_count(&self, value: u32) {
+        self.server_impl.lock().unwrap().max_count = value;
+    }
+
+    pub fn include_start(&self) -> bool {
+        self.server_impl.lock().unwrap().include_start
+    }
+
+    pub fn set_include_start(&self, value: bool) {
+        self.server_impl.lock().unwrap().include_start = value
+    }
+
+    pub fn set_current_end(&mut self) {
+        self.server_impl.lock().unwrap().set_current_end();
+    }
+
+    pub fn get_next(&self) -> Option<BlockEnum> {
+        self.server_impl.lock().unwrap().get_next()
+    }
+
+    pub fn send_next(&mut self) {
+        let impl_clone = self.server_impl.clone();
+        self.server_impl.lock().unwrap().send_next(impl_clone);
+    }
+
+    pub fn send_finished(&self) {
+        let impl_clone = self.server_impl.clone();
+        self.server_impl.lock().unwrap().send_finished(impl_clone);
     }
 }

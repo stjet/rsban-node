@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
-use rsnano_core::{utils::Logger, Account, BlockHash, BlockType};
+use rsnano_core::{utils::Logger, Account, BlockEnum, BlockHash, BlockType};
 use rsnano_ledger::Ledger;
 
 use crate::{
     messages::BulkPull,
     transport::{Socket, TcpServer, TcpServerExt},
+    utils::ThreadPool,
 };
 
 pub struct BulkPullServer {
@@ -18,6 +19,7 @@ pub struct BulkPullServer {
     pub current: BlockHash,
     pub request: BulkPull,
     connection: Arc<TcpServer>,
+    thread_pool: Arc<dyn ThreadPool>,
 }
 
 impl BulkPullServer {
@@ -26,12 +28,14 @@ impl BulkPullServer {
         connection: Arc<TcpServer>,
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
+        thread_pool: Arc<dyn ThreadPool>,
         enable_logging: bool,
     ) -> Self {
         Self {
             ledger,
             logger,
             enable_logging,
+            thread_pool,
             sent_count: 0,
             max_count: 0,
             include_start: false,
@@ -154,5 +158,77 @@ impl BulkPullServer {
             })),
             crate::transport::TrafficType::Generic,
         )
+    }
+
+    pub fn get_next(&mut self) -> Option<BlockEnum> {
+        let mut send_current = false;
+        let mut set_current_to_end = false;
+
+        /*
+         * Determine if we should reply with a block
+         *
+         * If our cursor is on the final block, we should signal that we
+         * are done by returning a null result.
+         *
+         * Unless we are including the "start" member and this is the
+         * start member, then include it anyway.
+         */
+        if self.current != self.request.end {
+            send_current = true;
+        } else if self.current == self.request.end && self.include_start {
+            send_current = true;
+
+            /*
+             * We also need to ensure that the next time
+             * are invoked that we return a null result
+             */
+            set_current_to_end = true;
+        }
+
+        /*
+         * Account for how many blocks we have provided.  If this
+         * exceeds the requested maximum, return an empty object
+         * to signal the end of results
+         */
+        if self.max_count != 0 && self.sent_count >= self.max_count {
+            send_current = false;
+        }
+
+        let mut result = None;
+        if send_current {
+            {
+                let txn = self.ledger.read_txn();
+                result = self.ledger.get_block(txn.txn(), &self.current);
+            }
+
+            if let Some(result) = &result {
+                if set_current_to_end {
+                    let next = if self.ascending() {
+                        result.successor().unwrap_or_default()
+                    } else {
+                        result.previous()
+                    };
+                    if !next.is_zero() {
+                        self.current = next;
+                    } else {
+                        self.current = self.request.end;
+                    }
+                } else {
+                    self.current = self.request.end;
+                }
+            } else {
+                self.current = self.request.end;
+            }
+
+            self.sent_count += 1;
+        }
+
+        /*
+         * Once we have processed "get_next()" once our cursor is no longer on
+         * the "start" member, so this flag is not relevant is always false.
+         */
+        self.include_start = false;
+
+        result
     }
 }

@@ -1,13 +1,17 @@
-use std::sync::Arc;
+use std::{
+    ffi::c_void,
+    sync::{Arc, RwLock},
+};
 
 use rsnano_core::{utils::Logger, BlockHash};
 use rsnano_node::{bootstrap::BulkPullServer, messages::BulkPull};
 
 use crate::{
     copy_hash_bytes,
+    core::BlockHandle,
     ledger::datastore::LedgerHandle,
     messages::{downcast_message, MessageHandle},
-    utils::{LoggerHandle, LoggerMT},
+    utils::{FfiThreadPool, LoggerHandle, LoggerMT},
 };
 
 use super::bootstrap_server::TcpServerHandle;
@@ -20,6 +24,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_create(
     server: *mut TcpServerHandle,
     ledger: *mut LedgerHandle,
     logger: *mut LoggerHandle,
+    thread_pool: *mut c_void,
     logging_enabled: bool,
 ) -> *mut BulkPullServerHandle {
     let msg = downcast_message::<BulkPull>(request);
@@ -29,6 +34,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_create(
         (*server).0.clone(),
         (*ledger).0.clone(),
         logger,
+        Arc::new(FfiThreadPool::new(thread_pool)),
         logging_enabled,
     ))))
 }
@@ -122,4 +128,15 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_set_current_end(handle: *mut BulkP
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bulk_pull_server_send_finished(handle: *mut BulkPullServerHandle) {
     (*handle).0.send_finished();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bulk_pull_server_get_next(
+    handle: *mut BulkPullServerHandle,
+) -> *mut BlockHandle {
+    let block = (*handle).0.get_next();
+    match block {
+        Some(b) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(b))))),
+        None => std::ptr::null_mut(),
+    }
 }

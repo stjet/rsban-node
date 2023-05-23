@@ -1,3 +1,4 @@
+#include "nano/lib/blocks.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/node/messages.hpp"
 
@@ -467,83 +468,8 @@ nano::block_hash nano::bulk_pull_server::get_current () const
 
 std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 {
-	auto node_l = node.lock ();
-	if (!node_l)
-	{
-		return nullptr;
-	}
-	std::shared_ptr<nano::block> result;
-	bool send_current = false, set_current_to_end = false;
-
-	/*
-	 * Determine if we should reply with a block
-	 *
-	 * If our cursor is on the final block, we should signal that we
-	 * are done by returning a null result.
-	 *
-	 * Unless we are including the "start" member and this is the
-	 * start member, then include it anyway.
-	 */
-	auto current = get_current ();
-	if (current != get_request ().get_end ())
-	{
-		send_current = true;
-	}
-	else if (current == get_request ().get_end () && rsnano::rsn_bulk_pull_server_include_start (handle) == true)
-	{
-		send_current = true;
-
-		/*
-		 * We also need to ensure that the next time
-		 * are invoked that we return a null result
-		 */
-		set_current_to_end = true;
-	}
-
-	/*
-	 * Account for how many blocks we have provided.  If this
-	 * exceeds the requested maximum, return an empty object
-	 * to signal the end of results
-	 */
-	auto max_count = rsnano::rsn_bulk_pull_server_max_count (handle);
-	if (max_count != 0 && get_sent_count () >= max_count)
-	{
-		send_current = false;
-	}
-
-	if (send_current)
-	{
-		result = node_l->block (current);
-		if (result != nullptr && set_current_to_end == false)
-		{
-			auto next = ascending () ? result->sideband ().successor () : result->previous ();
-			if (!next.is_zero ())
-			{
-				current = next;
-				rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
-			}
-			else
-			{
-				current = get_request ().get_end ();
-				rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
-			}
-		}
-		else
-		{
-			current = get_request ().get_end ();
-			rsnano::rsn_bulk_pull_server_current_set (handle, current.bytes.data ());
-		}
-
-		rsnano::rsn_bulk_pull_server_sent_count_set (handle, get_sent_count () + 1);
-	}
-
-	/*
-	 * Once we have processed "get_next()" once our cursor is no longer on
-	 * the "start" member, so this flag is not relevant is always false.
-	 */
-	rsnano::rsn_bulk_pull_server_include_start_set (handle, false);
-
-	return result;
+	auto block_handle = rsnano::rsn_bulk_pull_server_get_next (handle);
+	return nano::block_handle_to_block (block_handle);
 }
 
 void nano::bulk_pull_server::sent_action (boost::system::error_code const & ec, std::size_t size_a)
@@ -581,7 +507,7 @@ bool nano::bulk_pull_server::ascending () const
 nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::bulk_pull> request_a) :
 	connection (connection_a),
 	node{ node_a },
-	handle{ rsnano::rsn_bulk_pull_server_create (request_a->handle, connection_a->handle, node_a->ledger.handle, nano::to_logger_handle (node_a->logger), node_a->config->logging.bulk_pull_logging ()) }
+	handle{ rsnano::rsn_bulk_pull_server_create (request_a->handle, connection_a->handle, node_a->ledger.handle, nano::to_logger_handle (node_a->logger), &node_a->bootstrap_workers, node_a->config->logging.bulk_pull_logging ()) }
 {
 	set_current_end ();
 }

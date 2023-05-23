@@ -570,41 +570,7 @@ void nano::bulk_pull_server::sent_action (boost::system::error_code const & ec, 
 
 void nano::bulk_pull_server::send_finished ()
 {
-	auto node_l = node.lock ();
-	if (!node_l)
-	{
-		return;
-	}
-	nano::shared_const_buffer send_buffer (static_cast<uint8_t> (nano::block_type::not_a_block));
-	auto this_l (shared_from_this ());
-	if (node_l->config->logging.bulk_pull_logging ())
-	{
-		node_l->logger->try_log ("Bulk sending finished");
-	}
-	connection->get_socket ()->async_write (send_buffer, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
-		this_l->no_block_sent (ec, size_a);
-	});
-}
-
-void nano::bulk_pull_server::no_block_sent (boost::system::error_code const & ec, std::size_t size_a)
-{
-	auto node_l = node.lock ();
-	if (!node_l)
-	{
-		return;
-	}
-	if (!ec)
-	{
-		debug_assert (size_a == 1);
-		connection->start ();
-	}
-	else
-	{
-		if (node_l->config->logging.bulk_pull_logging ())
-		{
-			node_l->logger->try_log ("Unable to send not-a-block");
-		}
-	}
+	rsnano::rsn_bulk_pull_server_send_finished (handle);
 }
 
 bool nano::bulk_pull_server::ascending () const
@@ -615,7 +581,7 @@ bool nano::bulk_pull_server::ascending () const
 nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::bulk_pull> request_a) :
 	connection (connection_a),
 	node{ node_a },
-	handle{ rsnano::rsn_bulk_pull_server_create (request_a->handle, node_a->ledger.handle, nano::to_logger_handle (node_a->logger), node_a->config->logging.bulk_pull_logging ()) }
+	handle{ rsnano::rsn_bulk_pull_server_create (request_a->handle, connection_a->handle, node_a->ledger.handle, nano::to_logger_handle (node_a->logger), node_a->config->logging.bulk_pull_logging ()) }
 {
 	set_current_end ();
 }

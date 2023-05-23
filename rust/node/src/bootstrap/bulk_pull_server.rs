@@ -1,9 +1,12 @@
 use std::sync::Arc;
 
-use rsnano_core::{utils::Logger, Account, BlockHash};
+use rsnano_core::{utils::Logger, Account, BlockHash, BlockType};
 use rsnano_ledger::Ledger;
 
-use crate::messages::BulkPull;
+use crate::{
+    messages::BulkPull,
+    transport::{Socket, TcpServer, TcpServerExt},
+};
 
 pub struct BulkPullServer {
     ledger: Arc<Ledger>,
@@ -14,11 +17,13 @@ pub struct BulkPullServer {
     pub include_start: bool,
     pub current: BlockHash,
     pub request: BulkPull,
+    connection: Arc<TcpServer>,
 }
 
 impl BulkPullServer {
     pub fn new(
         request: BulkPull,
+        connection: Arc<TcpServer>,
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
         enable_logging: bool,
@@ -32,6 +37,7 @@ impl BulkPullServer {
             include_start: false,
             current: BlockHash::zero(),
             request,
+            connection,
         }
     }
 
@@ -123,5 +129,30 @@ impl BulkPullServer {
 
     fn ascending(&self) -> bool {
         self.request.is_ascending()
+    }
+
+    pub fn send_finished(&self) {
+        let send_buffer = Arc::new(vec![BlockType::NotABlock as u8]);
+        if self.enable_logging {
+            self.logger.try_log("Bulk sending finished");
+        }
+
+        let enable_logging = self.enable_logging;
+        let logger = self.logger.clone();
+        let connection = self.connection.clone();
+
+        self.connection.socket.async_write(
+            &send_buffer,
+            Some(Box::new(move |ec, _| {
+                if ec.is_ok() {
+                    connection.start();
+                } else {
+                    if enable_logging {
+                        logger.try_log("Unable to send not-a-block");
+                    }
+                }
+            })),
+            crate::transport::TrafficType::Generic,
+        )
     }
 }

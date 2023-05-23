@@ -10,11 +10,14 @@ use crate::{
     utils::{LoggerHandle, LoggerMT},
 };
 
+use super::bootstrap_server::TcpServerHandle;
+
 pub struct BulkPullServerHandle(BulkPullServer);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bulk_pull_server_create(
     request: *mut MessageHandle,
+    server: *mut TcpServerHandle,
     ledger: *mut LedgerHandle,
     logger: *mut LoggerHandle,
     logging_enabled: bool,
@@ -23,6 +26,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_create(
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     Box::into_raw(Box::new(BulkPullServerHandle(BulkPullServer::new(
         msg.clone(),
+        (*server).0.clone(),
         (*ledger).0.clone(),
         logger,
         logging_enabled,
@@ -113,4 +117,9 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_request_set_end(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bulk_pull_server_set_current_end(handle: *mut BulkPullServerHandle) {
     (*handle).0.set_current_end();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bulk_pull_server_send_finished(handle: *mut BulkPullServerHandle) {
+    (*handle).0.send_finished();
 }

@@ -26,7 +26,7 @@ use std::{
     sync::{Arc, Weak},
 };
 
-pub struct TcpServerHandle(Arc<TcpServer>);
+pub struct TcpServerHandle(pub Arc<TcpServer>);
 
 impl TcpServerHandle {
     pub fn new(server: Arc<TcpServer>) -> *mut TcpServerHandle {

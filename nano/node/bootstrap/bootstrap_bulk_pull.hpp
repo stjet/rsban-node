@@ -122,7 +122,6 @@ public:
 	void send_next ();
 	void sent_action (boost::system::error_code const &, std::size_t);
 	void send_finished ();
-	void no_block_sent (boost::system::error_code const &, std::size_t);
 	bool ascending () const;
 	nano::block_hash get_current () const;
 	nano::bulk_pull::count_t get_max_count () const;

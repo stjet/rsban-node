@@ -1,5 +1,6 @@
 #include "nano/lib/blocks.hpp"
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/threading.hpp"
 #include "nano/node/messages.hpp"
 
 #include <nano/node/bootstrap/block_deserializer.hpp>
@@ -481,7 +482,7 @@ void nano::bulk_pull_server::sent_action (boost::system::error_code const & ec, 
 	}
 	if (!ec)
 	{
-		node_l->bootstrap_workers.push_task ([this_l = shared_from_this ()] () {
+		node_l->bootstrap_workers->push_task ([this_l = shared_from_this ()] () {
 			this_l->send_next ();
 		});
 	}
@@ -507,7 +508,7 @@ bool nano::bulk_pull_server::ascending () const
 nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::bulk_pull> request_a) :
 	connection (connection_a),
 	node{ node_a },
-	handle{ rsnano::rsn_bulk_pull_server_create (request_a->handle, connection_a->handle, node_a->ledger.handle, nano::to_logger_handle (node_a->logger), &node_a->bootstrap_workers, node_a->config->logging.bulk_pull_logging ()) }
+	handle{ rsnano::rsn_bulk_pull_server_create (request_a->handle, connection_a->handle, node_a->ledger.handle, nano::to_logger_handle (node_a->logger), new std::shared_ptr<nano::thread_pool> (node_a->bootstrap_workers), node_a->config->logging.bulk_pull_logging ()) }
 {
 	set_current_end ();
 }
@@ -773,7 +774,7 @@ void nano::bulk_pull_account_server::sent_action (boost::system::error_code cons
 	}
 	if (!ec)
 	{
-		node_l->bootstrap_workers.push_task ([this_l = shared_from_this ()] () {
+		node_l->bootstrap_workers->push_task ([this_l = shared_from_this ()] () {
 			this_l->send_next_block ();
 		});
 	}

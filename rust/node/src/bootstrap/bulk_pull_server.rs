@@ -202,7 +202,7 @@ impl BulkPullServer {
             }
 
             if let Some(result) = &result {
-                if set_current_to_end {
+                if !set_current_to_end {
                     let next = if self.ascending() {
                         result.successor().unwrap_or_default()
                     } else {

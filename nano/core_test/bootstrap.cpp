@@ -288,6 +288,7 @@ TEST (bulk_pull, count_limit)
 	ASSERT_EQ (receive1->hash (), block->hash ());
 
 	block = request->get_next ();
+	ASSERT_NE (nullptr, block);
 	ASSERT_EQ (send1->hash (), block->hash ());
 
 	block = request->get_next ();

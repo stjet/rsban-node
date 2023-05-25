@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::{sync::{Arc, Mutex}};
 
 use rsnano_core::{
     serialize_block,
@@ -280,8 +280,7 @@ impl BulkPullServer {
         thread_pool: Arc<dyn ThreadPool>,
         enable_logging: bool,
     ) -> Self {
-        Self {
-            server_impl: Arc::new(Mutex::new(BulkPullServerImpl {
+        let mut server_impl = BulkPullServerImpl {
                 include_start: false,
                 sent_count: 0,
                 max_count: 0,
@@ -292,16 +291,16 @@ impl BulkPullServer {
                 ledger,
                 logger,
                 thread_pool,
-            })),
+            };
+
+        server_impl.set_current_end();
+        Self {
+            server_impl: Arc::new(Mutex::new(server_impl)),
         }
     }
 
     pub fn request(&self) -> BulkPull {
         self.server_impl.lock().unwrap().request.clone()
-    }
-
-    pub fn set_request_end(&self, end: BlockHash) {
-        self.server_impl.lock().unwrap().request.end = end;
     }
 
     pub fn current(&self) -> BlockHash {
@@ -336,10 +335,6 @@ impl BulkPullServer {
         self.server_impl.lock().unwrap().include_start = value
     }
 
-    pub fn set_current_end(&mut self) {
-        self.server_impl.lock().unwrap().set_current_end();
-    }
-
     pub fn get_next(&self) -> Option<BlockEnum> {
         self.server_impl.lock().unwrap().get_next()
     }
@@ -347,10 +342,5 @@ impl BulkPullServer {
     pub fn send_next(&mut self) {
         let impl_clone = self.server_impl.clone();
         self.server_impl.lock().unwrap().send_next(impl_clone);
-    }
-
-    pub fn send_finished(&self) {
-        let impl_clone = self.server_impl.clone();
-        self.server_impl.lock().unwrap().send_finished(impl_clone);
     }
 }

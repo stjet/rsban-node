@@ -391,26 +391,6 @@ void nano::bulk_pull_account_client::receive_pending ()
 	});
 }
 
-/**
- * Handle a request for the pull of all blocks associated with an account
- * The account is supplied as the "start" member, and the final block to
- * send is the "end" member.  The "start" member may also be a block
- * hash, in which case the that hash is used as the start of a chain
- * to send.  To determine if "start" is interpretted as an account or
- * hash, the ledger is checked to see if the block specified exists,
- * if not then it is interpretted as an account.
- *
- * Additionally, if "start" is specified as a block hash the range
- * is inclusive of that block hash, that is the range will be:
- * [start, end); In the case that a block hash is not specified the
- * range will be exclusive of the frontier for that account with
- * a range of (frontier, end)
- */
-void nano::bulk_pull_server::set_current_end ()
-{
-	rsnano::rsn_bulk_pull_server_set_current_end (handle);
-}
-
 void nano::bulk_pull_server::send_next ()
 {
 	rsnano::rsn_bulk_pull_server_send_next (handle);
@@ -431,11 +411,6 @@ nano::bulk_pull nano::bulk_pull_server::get_request () const
 	return nano::bulk_pull{ rsnano::rsn_bulk_pull_server_request (handle) };
 }
 
-void nano::bulk_pull_server::set_request_end (nano::block_hash const & hash)
-{
-	rsnano::rsn_bulk_pull_server_request_set_end (handle, hash.bytes.data ());
-}
-
 nano::block_hash nano::bulk_pull_server::get_current () const
 {
 	nano::block_hash current;
@@ -449,22 +424,9 @@ std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 	return nano::block_handle_to_block (block_handle);
 }
 
-void nano::bulk_pull_server::send_finished ()
-{
-	rsnano::rsn_bulk_pull_server_send_finished (handle);
-}
-
-bool nano::bulk_pull_server::ascending () const
-{
-	return get_request ().is_ascending ();
-}
-
 nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::bulk_pull> request_a) :
-	connection (connection_a),
-	node{ node_a },
 	handle{ rsnano::rsn_bulk_pull_server_create (request_a->handle, connection_a->handle, node_a->ledger.handle, nano::to_logger_handle (node_a->logger), new std::shared_ptr<nano::thread_pool> (node_a->bootstrap_workers), node_a->config->logging.bulk_pull_logging ()) }
 {
-	set_current_end ();
 }
 
 nano::bulk_pull_server::~bulk_pull_server ()

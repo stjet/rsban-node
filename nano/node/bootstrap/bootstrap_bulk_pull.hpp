@@ -117,22 +117,13 @@ public:
 	bulk_pull_server (std::shared_ptr<nano::node> const &, std::shared_ptr<nano::transport::tcp_server> const &, std::unique_ptr<nano::bulk_pull>);
 	bulk_pull_server (bulk_pull_server const &) = delete;
 	~bulk_pull_server ();
-	void set_current_end ();
 	std::shared_ptr<nano::block> get_next ();
 	void send_next ();
-	void send_finished ();
-	bool ascending () const;
 	nano::block_hash get_current () const;
 	nano::bulk_pull::count_t get_max_count () const;
 	nano::bulk_pull::count_t get_sent_count () const;
 	nano::bulk_pull get_request () const;
-	void set_request_end (nano::block_hash const & hash);
-
-	std::shared_ptr<nano::transport::tcp_server> connection;
 	rsnano::BulkPullServerHandle * handle;
-
-private:
-	std::weak_ptr<nano::node> node;
 };
 class bulk_pull_account;
 class bulk_pull_account_server final : public std::enable_shared_from_this<nano::bulk_pull_account_server>

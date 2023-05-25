@@ -113,26 +113,8 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_request(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bulk_pull_server_request_set_end(
-    handle: *mut BulkPullServerHandle,
-    end: *const u8,
-) {
-    (*handle).0.set_request_end(BlockHash::from_ptr(end));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bulk_pull_server_set_current_end(handle: *mut BulkPullServerHandle) {
-    (*handle).0.set_current_end();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bulk_pull_server_send_next(handle: *mut BulkPullServerHandle) {
     (*handle).0.send_next();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bulk_pull_server_send_finished(handle: *mut BulkPullServerHandle) {
-    (*handle).0.send_finished();
 }
 
 #[no_mangle]

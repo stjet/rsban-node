@@ -4,7 +4,7 @@ use crate::{
     transport::{
         EndpointDto, NetworkFilterHandle, SocketHandle, SynCookiesHandle, TcpMessageManagerHandle,
     },
-    utils::{FfiIoContext, FfiThreadPool, IoContextHandle, LoggerHandle, LoggerMT},
+    utils::{FfiIoContext, IoContextHandle, LoggerHandle, LoggerMT, ThreadPoolHandle},
     voting::VoteUniquerHandle,
     NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
 };
@@ -51,7 +51,7 @@ pub struct CreateTcpServerParams {
     pub logger: *mut LoggerHandle,
     pub observer: *mut c_void,
     pub publish_filter: *mut NetworkFilterHandle,
-    pub workers: *mut c_void,
+    pub workers: *mut ThreadPoolHandle,
     pub io_ctx: *mut IoContextHandle,
     pub network: *const NetworkParamsDto,
     pub disable_bootstrap_listener: bool,
@@ -77,7 +77,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(params.logger)));
     let observer = Arc::new(FfiBootstrapServerObserver::new(params.observer));
     let publish_filter = Arc::clone(&*params.publish_filter);
-    let workers = Arc::new(FfiThreadPool::new(params.workers));
+    let workers = (*params.workers).0.clone();
     let io_ctx = Arc::new(FfiIoContext::new((*params.io_ctx).raw_handle()));
     let network = NetworkParams::try_from(&*params.network).unwrap();
     let stats = Arc::clone(&(*params.stats));

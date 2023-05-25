@@ -269,7 +269,7 @@ bool allow_bootstrap_a)
 	params.logger = nano::to_logger_handle (logger_a);
 	params.observer = observer_handle;
 	params.publish_filter = publish_filter_a.handle;
-	params.workers = new std::shared_ptr<nano::thread_pool> (workers_a);
+	params.workers = workers_a->handle;
 	params.io_ctx = io_ctx.handle ();
 	params.network = &network_dto;
 	params.disable_bootstrap_listener = flags_a.disable_bootstrap_listener ();

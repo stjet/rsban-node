@@ -162,7 +162,7 @@ std::size_t max_queue_size_a) :
 	static_cast<uint8_t> (endpoint_type_a),
 	new std::shared_ptr<nano::transport::tcp_socket_facade> (std::make_shared<nano::transport::tcp_socket_facade> (io_ctx_a)),
 	stats_a.handle,
-	new std::shared_ptr<nano::thread_pool> (workers_a),
+	workers_a->handle,
 	default_timeout_a.count (),
 	silent_connection_tolerance_time_a.count (),
 	idle_timeout_a.count (),

@@ -526,7 +526,7 @@ impl Socket for Arc<SocketImpl> {
 
     fn ongoing_checkup(&self) {
         let socket = Arc::downgrade(self);
-        self.thread_pool.add_timed_task(
+        self.thread_pool.add_delayed_task(
             Duration::from_secs(2),
             Box::new(move || {
                 if let Some(socket) = socket.upgrade() {

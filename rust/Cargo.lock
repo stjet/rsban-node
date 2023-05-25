@@ -1417,6 +1417,8 @@ dependencies = [
  "serde_variant",
  "siphasher",
  "static_assertions",
+ "threadpool",
+ "timer",
  "toml_edit",
  "uuid 1.2.2",
 ]
@@ -1720,6 +1722,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "threadpool"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d050e60b33d41c19108b32cea32164033a9013fe3b46cbd4457559bfbf77afaa"
+dependencies = [
+ "num_cpus",
+]
+
+[[package]]
 name = "time"
 version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1728,6 +1739,15 @@ dependencies = [
  "libc",
  "wasi 0.10.0+wasi-snapshot-preview1",
  "winapi",
+]
+
+[[package]]
+name = "timer"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31d42176308937165701f50638db1c31586f183f1aab416268216577aec7306b"
+dependencies = [
+ "chrono",
 ]
 
 [[package]]

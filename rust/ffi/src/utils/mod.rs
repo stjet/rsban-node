@@ -7,7 +7,7 @@ mod toml;
 pub use toml::FfiToml;
 
 mod thread_pool;
-pub use thread_pool::{FfiThreadPool, VoidFnCallbackHandle};
+pub use thread_pool::{ThreadPoolHandle, VoidFnCallbackHandle};
 mod io_context;
 pub use io_context::{DispatchCallback, FfiIoContext, IoContextHandle};
 mod logger_mt;

@@ -14,6 +14,11 @@
 #include <latch>
 #include <thread>
 
+namespace rsnano
+{
+class ThreadPoolHandle;
+}
+
 namespace nano
 {
 namespace thread_attributes
@@ -45,6 +50,7 @@ class thread_pool final
 {
 public:
 	explicit thread_pool (unsigned, nano::thread_role::name);
+	thread_pool (thread_pool const &) = delete;
 	~thread_pool ();
 
 	/** This will run when there is an available thread for execution */
@@ -56,22 +62,7 @@ public:
 	/** Stops any further pushed tasks from executing */
 	void stop ();
 
-	/** Number of threads in the thread pool */
-	unsigned get_num_threads () const;
-
-	/** Returns the number of tasks which are awaiting execution by the thread pool **/
-	uint64_t num_queued_tasks () const;
-
-private:
-	nano::mutex mutex;
-	std::atomic<bool> stopped{ false };
-	unsigned num_threads;
-	std::unique_ptr<boost::asio::thread_pool> thread_pool_m;
-	nano::relaxed_atomic_integral<uint64_t> num_tasks{ 0 };
-
-	/** Set the names of all the threads in the thread pool for easier identification */
-	std::latch thread_names_latch;
-	void set_thread_names (nano::thread_role::name thread_name);
+	rsnano::ThreadPoolHandle * handle;
 };
 
 std::unique_ptr<nano::container_info_component> collect_container_info (thread_pool & thread_pool, std::string const & name);

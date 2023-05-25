@@ -1,11 +1,17 @@
+#include "nano/lib/rsnano.hpp"
+#include "nano/lib/thread_roles.hpp"
+
 #include <nano/boost/asio/post.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/threading.hpp>
 
 #include <boost/format.hpp>
 
+#include <chrono>
+#include <exception>
 #include <future>
 #include <iostream>
+#include <stdexcept>
 #include <thread>
 
 /*
@@ -105,90 +111,70 @@ void nano::thread_runner::stop_event_processing ()
  */
 
 nano::thread_pool::thread_pool (unsigned num_threads, nano::thread_role::name thread_name) :
-	num_threads (num_threads),
-	thread_pool_m (std::make_unique<boost::asio::thread_pool> (num_threads)),
-	thread_names_latch{ num_threads }
+	handle{ rsnano::rsn_thread_pool_create (num_threads, nano::thread_role::get_string (thread_name).c_str ()) }
 {
-	set_thread_names (thread_name);
 }
 
 nano::thread_pool::~thread_pool ()
 {
-	stop ();
+	rsnano::rsn_thread_pool_destroy (handle);
 }
 
 void nano::thread_pool::stop ()
 {
-	nano::unique_lock<nano::mutex> lk (mutex);
-	if (!stopped)
-	{
-		stopped = true;
-#if defined(BOOST_ASIO_HAS_IOCP)
-		// A hack needed for Windows to prevent deadlock during destruction, described here: https://github.com/chriskohlhoff/asio/issues/431
-		boost::asio::use_service<boost::asio::detail::win_iocp_io_context> (*thread_pool_m).stop ();
-#endif
-		lk.unlock ();
-		thread_pool_m->stop ();
-		thread_pool_m->join ();
-		lk.lock ();
-		thread_pool_m = nullptr;
-	}
+	rsnano::rsn_thread_pool_stop (handle);
+}
+
+namespace
+{
+void execute_task (void * context)
+{
+	auto callback = static_cast<std::function<void ()> *> (context);
+	(*callback) ();
+}
+
+void delete_task_context (void * context)
+{
+	auto callback = static_cast<std::function<void ()> *> (context);
+	delete callback;
+}
 }
 
 void nano::thread_pool::push_task (std::function<void ()> task)
 {
-	++num_tasks;
-	nano::lock_guard<nano::mutex> guard (mutex);
-	if (!stopped)
-	{
-		boost::asio::post (*thread_pool_m, [this, task] () {
-			task ();
-			--num_tasks;
-		});
-	}
+	auto context = new std::function<void ()> ([task] () {
+		try{
+			task();
+		}
+		catch (std::exception e){
+			std::cerr << "Thread pool task failed: " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cerr << "Thread pool task failed!" << std::endl;
+		} });
+	rsnano::rsn_thread_pool_push_task (handle, execute_task, context, delete_task_context);
 }
 
 void nano::thread_pool::add_timed_task (std::chrono::steady_clock::time_point const & expiry_time, std::function<void ()> task)
 {
-	nano::lock_guard<nano::mutex> guard (mutex);
-	if (!stopped && thread_pool_m)
-	{
-		auto timer = std::make_shared<boost::asio::steady_timer> (thread_pool_m->get_executor (), expiry_time);
-		timer->async_wait ([this, task, timer] (boost::system::error_code const & ec) {
-			if (!ec)
-			{
-				push_task (task);
-			}
-		});
-	}
-}
-
-unsigned nano::thread_pool::get_num_threads () const
-{
-	return num_threads;
-}
-
-uint64_t nano::thread_pool::num_queued_tasks () const
-{
-	return num_tasks;
-}
-
-void nano::thread_pool::set_thread_names (nano::thread_role::name thread_name)
-{
-	for (auto i = 0u; i < num_threads; ++i)
-	{
-		boost::asio::post (*thread_pool_m, [this, thread_name] () {
-			nano::thread_role::set (thread_name);
-			thread_names_latch.arrive_and_wait ();
-		});
-	}
-	thread_names_latch.wait ();
+	auto context = new std::function<void ()> ([task] () {
+		try{
+			task();
+		}
+		catch (std::exception e){
+			std::cerr << "Thread pool task failed: " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cerr << "Thread pool task failed!" << std::endl;
+		} });
+	auto delay_ms = std::chrono::duration_cast<std::chrono::milliseconds> (expiry_time - std::chrono::steady_clock::now ());
+	rsnano::rsn_thread_pool_add_delayed_task (handle, delay_ms.count (), execute_task, context, delete_task_context);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (thread_pool & thread_pool, std::string const & name)
 {
 	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "count", thread_pool.num_queued_tasks (), sizeof (std::function<void ()>) }));
+	// composite->add_component (std::make_unique<container_info_leaf> (container_info{ "count", thread_pool.num_queued_tasks (), sizeof (std::function<void ()>) }));
 	return composite;
 }
 

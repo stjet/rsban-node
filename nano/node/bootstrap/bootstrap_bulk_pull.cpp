@@ -425,7 +425,7 @@ std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 }
 
 nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::bulk_pull> request_a) :
-	handle{ rsnano::rsn_bulk_pull_server_create (request_a->handle, connection_a->handle, node_a->ledger.handle, nano::to_logger_handle (node_a->logger), new std::shared_ptr<nano::thread_pool> (node_a->bootstrap_workers), node_a->config->logging.bulk_pull_logging ()) }
+	handle{ rsnano::rsn_bulk_pull_server_create (request_a->handle, connection_a->handle, node_a->ledger.handle, nano::to_logger_handle (node_a->logger), node_a->bootstrap_workers->handle, node_a->config->logging.bulk_pull_logging ()) }
 {
 }
 

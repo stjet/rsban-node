@@ -1,54 +1,13 @@
-use std::{ffi::c_void, time::Duration};
+use std::{
+    ffi::{c_char, c_void, CStr},
+    sync::Arc,
+    time::Duration,
+};
 
 use crate::VoidPointerCallback;
-use rsnano_node::utils::ThreadPool;
+use rsnano_node::utils::{ThreadPool, ThreadPoolImpl};
 
-pub struct FfiThreadPool {
-    handle: *mut c_void,
-}
-
-impl FfiThreadPool {
-    pub fn new(handle: *mut c_void) -> Self {
-        Self { handle }
-    }
-}
-
-impl ThreadPool for FfiThreadPool {
-    fn add_timed_task(&self, delay: Duration, callback: Box<dyn FnOnce()>) {
-        unsafe {
-            match ADD_TIMED_TASK_CALLBACK {
-                Some(f) => f(
-                    self.handle,
-                    delay.as_millis() as u64,
-                    Box::into_raw(Box::new(VoidFnCallbackHandle::new(callback))),
-                ),
-                None => panic!("ADD_TIMED_TASK_CALLBACK missing"),
-            }
-        }
-    }
-
-    fn push_task(&self, callback: Box<dyn FnOnce()>) {
-        let callback_handle = Box::into_raw(Box::new(VoidFnCallbackHandle::new(callback)));
-        unsafe {
-            PUSH_TASK_CALLBACK.expect("PUSH_TASK_CALLBACK missing")(self.handle, callback_handle);
-        }
-    }
-
-    fn handle(&self) -> *mut c_void {
-        self.handle
-    }
-}
-
-unsafe impl Send for FfiThreadPool {}
-unsafe impl Sync for FfiThreadPool {}
-
-impl Drop for FfiThreadPool {
-    fn drop(&mut self) {
-        unsafe {
-            DROP_THREAD_POOL.expect("DROP_THREAD_POOL missing")(self.handle);
-        }
-    }
-}
+use super::ContextWrapper;
 
 pub struct VoidFnCallbackHandle(Option<Box<dyn FnOnce()>>);
 
@@ -58,26 +17,59 @@ impl VoidFnCallbackHandle {
     }
 }
 
-type AddTimedTaskCallback = unsafe extern "C" fn(*mut c_void, u64, *mut VoidFnCallbackHandle);
-type PushTaskCallback = unsafe extern "C" fn(*mut c_void, *mut VoidFnCallbackHandle);
-
-static mut ADD_TIMED_TASK_CALLBACK: Option<AddTimedTaskCallback> = None;
-static mut PUSH_TASK_CALLBACK: Option<PushTaskCallback> = None;
-static mut DROP_THREAD_POOL: Option<VoidPointerCallback> = None;
+pub struct ThreadPoolHandle(pub Arc<ThreadPoolImpl>);
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_add_timed_task(f: AddTimedTaskCallback) {
-    ADD_TIMED_TASK_CALLBACK = Some(f);
+pub unsafe extern "C" fn rsn_thread_pool_create(
+    num_threads: usize,
+    thread_name: *const c_char,
+) -> *mut ThreadPoolHandle {
+    let thread_name = CStr::from_ptr(thread_name).to_str().unwrap().to_owned();
+    Box::into_raw(Box::new(ThreadPoolHandle(Arc::new(ThreadPoolImpl::new(
+        num_threads,
+        thread_name,
+    )))))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_push_task(f: PushTaskCallback) {
-    PUSH_TASK_CALLBACK = Some(f);
+pub unsafe extern "C" fn rsn_thread_pool_destroy(handle: *mut ThreadPoolHandle) {
+    drop(Box::from_raw(handle));
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_destroy_thread_pool(f: VoidPointerCallback) {
-    DROP_THREAD_POOL = Some(f);
+pub unsafe extern "C" fn rsn_thread_pool_stop(handle: *mut ThreadPoolHandle) {
+    (*handle).0.stop()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_thread_pool_push_task(
+    handle: *mut ThreadPoolHandle,
+    task: VoidPointerCallback,
+    context: *mut c_void,
+    drop_context: VoidPointerCallback,
+) {
+    let context_wrapper = ContextWrapper::new(context, drop_context);
+    let callback = Box::new(move || unsafe {
+        task(context_wrapper.get_context());
+    });
+    (*handle).0.push_task(callback);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_thread_pool_add_delayed_task(
+    handle: *mut ThreadPoolHandle,
+    delay_ms: u64,
+    task: VoidPointerCallback,
+    context: *mut c_void,
+    drop_context: VoidPointerCallback,
+) {
+    let context_wrapper = ContextWrapper::new(context, drop_context);
+    let callback = Box::new(move || unsafe {
+        task(context_wrapper.get_context());
+    });
+    (*handle)
+        .0
+        .add_delayed_task(Duration::from_millis(delay_ms), callback);
 }
 
 #[no_mangle]

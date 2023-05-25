@@ -1,4 +1,4 @@
-use std::{sync::{Arc, Mutex}};
+use std::sync::{Arc, Mutex};
 
 use rsnano_core::{
     serialize_block,
@@ -281,17 +281,17 @@ impl BulkPullServer {
         enable_logging: bool,
     ) -> Self {
         let mut server_impl = BulkPullServerImpl {
-                include_start: false,
-                sent_count: 0,
-                max_count: 0,
-                current: BlockHash::zero(),
-                request,
-                connection,
-                enable_logging,
-                ledger,
-                logger,
-                thread_pool,
-            };
+            include_start: false,
+            sent_count: 0,
+            max_count: 0,
+            current: BlockHash::zero(),
+            request,
+            connection,
+            enable_logging,
+            ledger,
+            logger,
+            thread_pool,
+        };
 
         server_impl.set_current_end();
         Self {

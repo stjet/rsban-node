@@ -18,7 +18,8 @@ use std::{
 
 use crate::{
     utils::{
-        DispatchCallback, FfiIoContext, FfiThreadPool, LoggerHandle, LoggerMT, VoidFnCallbackHandle,
+        DispatchCallback, FfiIoContext, LoggerHandle, LoggerMT, ThreadPoolHandle,
+        VoidFnCallbackHandle,
     },
     ErrorCodeDto, StatHandle, StringDto, VoidPointerCallback,
 };
@@ -82,7 +83,7 @@ pub unsafe extern "C" fn rsn_socket_create(
     endpoint_type: u8,
     tcp_facade: *mut c_void,
     stats_handle: *mut StatHandle,
-    thread_pool: *mut c_void,
+    thread_pool: *mut ThreadPoolHandle,
     default_timeout_s: u64,
     silent_connection_tolerance_time_s: u64,
     idle_timeout_s: u64,
@@ -94,7 +95,7 @@ pub unsafe extern "C" fn rsn_socket_create(
 ) -> *mut SocketHandle {
     let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
     let tcp_facade = Arc::new(FfiTcpSocketFacade::new(tcp_facade));
-    let thread_pool = Arc::new(FfiThreadPool::new(thread_pool));
+    let thread_pool = (*thread_pool).0.clone();
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let stats = (*stats_handle).deref().clone();
 

@@ -426,30 +426,6 @@ void io_ctx_post (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
 	});
 }
 
-void add_timed_task (void * handle_a, uint64_t delay_ms, rsnano::VoidFnCallbackHandle * callback_a)
-{
-	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
-	auto pool{ static_cast<std::shared_ptr<nano::thread_pool> *> (handle_a) };
-	(*pool)->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_ms), [callback_wrapper] () {
-		callback_wrapper->execute ();
-	});
-}
-
-void push_task (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
-{
-	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
-	auto pool{ static_cast<std::shared_ptr<nano::thread_pool> *> (handle_a) };
-	(*pool)->push_task ([callback_wrapper] () {
-		callback_wrapper->execute ();
-	});
-}
-
-void destroy_thread_pool (void * handle_a)
-{
-	auto ptr = static_cast<std::shared_ptr<nano::thread_pool> *> (handle_a);
-	delete ptr;
-}
-
 void logger_destroy (void * handle_a)
 {
 	auto logger = static_cast<std::shared_ptr<nano::logger_mt> *> (handle_a);
@@ -945,9 +921,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_listener_broadcast (listener_broadcast);
 	rsnano::rsn_callback_block_processor_add (blockprocessor_add);
 	rsnano::rsn_callback_block_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
-	rsnano::rsn_callback_add_timed_task (add_timed_task);
-	rsnano::rsn_callback_push_task (push_task);
-	rsnano::rsn_callback_destroy_thread_pool (destroy_thread_pool);
 	rsnano::rsn_callback_logger_destroy (logger_destroy);
 
 	rsnano::rsn_callback_io_ctx_post (io_ctx_post);

@@ -1,17 +1,13 @@
-use std::{
-    ffi::c_void,
-    sync::{Arc, RwLock},
-};
-
 use rsnano_core::{utils::Logger, BlockHash};
 use rsnano_node::{bootstrap::BulkPullServer, messages::BulkPull};
+use std::sync::{Arc, RwLock};
 
 use crate::{
     copy_hash_bytes,
     core::BlockHandle,
     ledger::datastore::LedgerHandle,
     messages::{downcast_message, MessageHandle},
-    utils::{FfiThreadPool, LoggerHandle, LoggerMT},
+    utils::{LoggerHandle, LoggerMT, ThreadPoolHandle},
 };
 
 use super::bootstrap_server::TcpServerHandle;
@@ -24,7 +20,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_create(
     server: *mut TcpServerHandle,
     ledger: *mut LedgerHandle,
     logger: *mut LoggerHandle,
-    thread_pool: *mut c_void,
+    thread_pool: *mut ThreadPoolHandle,
     logging_enabled: bool,
 ) -> *mut BulkPullServerHandle {
     let msg = downcast_message::<BulkPull>(request);
@@ -34,7 +30,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_create(
         (*server).0.clone(),
         (*ledger).0.clone(),
         logger,
-        Arc::new(FfiThreadPool::new(thread_pool)),
+        (*thread_pool).0.clone(),
         logging_enabled,
     ))))
 }

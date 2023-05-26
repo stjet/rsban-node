@@ -1408,6 +1408,7 @@ dependencies = [
  "rand",
  "rsnano_core",
  "rsnano_ledger",
+ "rsnano_node",
  "rsnano_store_lmdb",
  "rsnano_store_traits",
  "scoped_threadpool",

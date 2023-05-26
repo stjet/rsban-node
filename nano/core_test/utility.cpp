@@ -41,31 +41,6 @@ TEST (optional_ptr, basic)
 	ASSERT_EQ (opt->z, 3);
 }
 
-TEST (thread, thread_pool)
-{
-	std::atomic<bool> passed_sleep{ false };
-
-	auto func = [&passed_sleep] () {
-		std::this_thread::sleep_for (std::chrono::seconds (1));
-		passed_sleep = true;
-	};
-
-	nano::thread_pool workers (1u, nano::thread_role::name::unknown);
-	workers.push_task (func);
-	ASSERT_FALSE (passed_sleep);
-
-	nano::timer<std::chrono::milliseconds> timer_l;
-	timer_l.start ();
-	while (!passed_sleep)
-	{
-		if (timer_l.since_start () > std::chrono::seconds (10))
-		{
-			break;
-		}
-	}
-	ASSERT_TRUE (passed_sleep);
-}
-
 TEST (thread_pool_alarm, one)
 {
 	std::atomic<bool> done (false);

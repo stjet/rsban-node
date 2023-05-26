@@ -99,3 +99,33 @@ impl Drop for ThreadPoolImpl {
         self.stop()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn push_task() {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let pool = ThreadPoolImpl::new(1, "test thread".to_string());
+        pool.push_task(Box::new(move || {
+            tx.send("foo").unwrap();
+        }));
+        let result = rx.recv_timeout(Duration::from_millis(300));
+        assert_eq!(result, Ok("foo"));
+    }
+
+    #[test]
+    fn add_delayed_task() {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let pool = ThreadPoolImpl::new(1, "test thread".to_string());
+        pool.add_delayed_task(
+            Duration::from_millis(1),
+            Box::new(move || {
+                tx.send("foo").unwrap();
+            }),
+        );
+        let result = rx.recv_timeout(Duration::from_millis(300));
+        assert_eq!(result, Ok("foo"));
+    }
+}

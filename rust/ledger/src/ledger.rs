@@ -9,6 +9,7 @@ use rsnano_core::{
     BlockHash, BlockSubType, BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo,
     PendingKey, QualifiedRoot, Root,
 };
+use rsnano_store_lmdb::{LmdbReadTransaction, LmdbStore, LmdbWriteTransaction};
 
 use std::{
     collections::{BTreeMap, HashMap},
@@ -20,7 +21,7 @@ use std::{
 };
 
 use super::DependentBlocksFinder;
-use rsnano_store_traits::{ReadTransaction, Store, Transaction, WriteTransaction};
+use rsnano_store_traits::{Store, Transaction, WriteTransaction};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct UncementedInfo {
@@ -68,7 +69,7 @@ impl NullLedgerObserver {
 impl LedgerObserver for NullLedgerObserver {}
 
 pub struct Ledger {
-    pub store: Arc<dyn Store>,
+    pub store: Arc<LmdbStore>,
     pub cache: Arc<LedgerCache>,
     pub constants: LedgerConstants,
     pub observer: Arc<dyn LedgerObserver>,
@@ -79,12 +80,12 @@ pub struct Ledger {
 }
 
 impl Ledger {
-    pub fn new(store: Arc<dyn Store>, constants: LedgerConstants) -> anyhow::Result<Self> {
+    pub fn new(store: Arc<LmdbStore>, constants: LedgerConstants) -> anyhow::Result<Self> {
         Self::with_cache(store, constants, &GenerateCache::new())
     }
 
     pub fn with_cache(
-        store: Arc<dyn Store>,
+        store: Arc<LmdbStore>,
         constants: LedgerConstants,
         generate_cache: &GenerateCache,
     ) -> anyhow::Result<Self> {
@@ -108,17 +109,17 @@ impl Ledger {
         self.observer = observer;
     }
 
-    pub fn read_txn(&self) -> Box<dyn ReadTransaction> {
+    pub fn read_txn(&self) -> LmdbReadTransaction {
         self.store.tx_begin_read()
     }
 
-    pub fn rw_txn(&self) -> Box<dyn WriteTransaction> {
+    pub fn rw_txn(&self) -> LmdbWriteTransaction {
         self.store.tx_begin_write()
     }
 
     fn initialize(&mut self, generate_cache: &GenerateCache) -> anyhow::Result<()> {
-        if self.store.account().begin(self.read_txn().txn()).is_end() {
-            self.add_genesis_block(self.rw_txn().as_mut());
+        if self.store.account().begin(&self.read_txn()).is_end() {
+            self.add_genesis_block(&mut self.rw_txn());
         }
 
         if generate_cache.reps || generate_cache.account_count || generate_cache.block_count {
@@ -160,15 +161,16 @@ impl Ledger {
 
         let transaction = self.store.tx_begin_read();
         self.cache.pruned_count.fetch_add(
-            self.store.pruned().count(transaction.txn()) as u64,
+            self.store.pruned().count(&transaction) as u64,
             Ordering::SeqCst,
         );
 
         // Final votes requirement for confirmation canary block
-        if let Some(conf_height) = self.store.confirmation_height().get(
-            transaction.txn(),
-            &self.constants.final_votes_canary_account,
-        ) {
+        if let Some(conf_height) = self
+            .store
+            .confirmation_height()
+            .get(&transaction, &self.constants.final_votes_canary_account)
+        {
             self.cache.final_votes_confirmation_canary.store(
                 conf_height.height >= self.constants.final_votes_canary_height,
                 Ordering::SeqCst,
@@ -227,7 +229,7 @@ impl Ledger {
 
     pub fn block_or_pruned_exists(&self, block: &BlockHash) -> bool {
         let txn = self.store.tx_begin_read();
-        self.block_or_pruned_exists_txn(txn.txn(), block)
+        self.block_or_pruned_exists_txn(&txn, block)
     }
 
     pub fn block_or_pruned_exists_txn(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
@@ -330,7 +332,7 @@ impl Ledger {
 
     pub fn block_text(&self, hash: &BlockHash) -> anyhow::Result<String> {
         let txn = self.store.tx_begin_read();
-        match self.store.block().get(txn.txn(), hash) {
+        match self.store.block().get(&txn, hash) {
             Some(block) => block.to_json(),
             None => Ok(String::new()),
         }

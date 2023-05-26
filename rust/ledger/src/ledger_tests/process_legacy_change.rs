@@ -11,7 +11,7 @@ fn update_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let change = setup_legacy_change_block(&ctx, txn.as_mut());
+    let change = setup_legacy_change_block(&ctx, &mut txn);
 
     let sideband = change.sideband().unwrap();
     assert_eq!(sideband.account, *DEV_GENESIS_ACCOUNT);
@@ -24,9 +24,9 @@ fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let change = setup_legacy_change_block(&ctx, txn.as_mut());
+    let change = setup_legacy_change_block(&ctx, &mut txn);
 
-    let loaded_block = ctx.ledger.get_block(txn.txn(), &change.hash()).unwrap();
+    let loaded_block = ctx.ledger.get_block(&txn, &change.hash()).unwrap();
 
     assert_eq!(loaded_block, change);
     assert_eq!(loaded_block.sideband().unwrap(), change.sideband().unwrap());
@@ -37,12 +37,12 @@ fn update_frontier_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let change = setup_legacy_change_block(&ctx, txn.as_mut());
+    let change = setup_legacy_change_block(&ctx, &mut txn);
 
-    let account = ctx.ledger.get_frontier(txn.txn(), &change.hash());
+    let account = ctx.ledger.get_frontier(&txn, &change.hash());
     assert_eq!(account, Some(*DEV_GENESIS_ACCOUNT));
 
-    let account = ctx.ledger.get_frontier(txn.txn(), &DEV_GENESIS_HASH);
+    let account = ctx.ledger.get_frontier(&txn, &DEV_GENESIS_HASH);
     assert_eq!(account, None);
 }
 
@@ -51,7 +51,7 @@ fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let BlockEnum::LegacyChange(change) = setup_legacy_change_block(&ctx, txn.as_mut()) else {panic!("not a change block!")};
+    let BlockEnum::LegacyChange(change) = setup_legacy_change_block(&ctx, &mut txn) else {panic!("not a change block!")};
 
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
     assert_eq!(
@@ -65,11 +65,11 @@ fn update_account_info() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let BlockEnum::LegacyChange(change) = setup_legacy_change_block(&ctx, txn.as_mut()) else {panic!("not a change block!")};
+    let BlockEnum::LegacyChange(change) = setup_legacy_change_block(&ctx, &mut txn) else {panic!("not a change block!")};
 
     let account_info = ctx
         .ledger
-        .account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
         .unwrap();
 
     assert_eq!(account_info.head, change.hash());
@@ -85,9 +85,9 @@ fn update_account_info() {
 fn fail_old() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut change = setup_legacy_change_block(&ctx, txn.as_mut());
+    let mut change = setup_legacy_change_block(&ctx, &mut txn);
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut change).unwrap_err();
 
     assert_eq!(result, ProcessResult::Old);
 }
@@ -103,7 +103,7 @@ fn fail_gap_previous() {
         .sign(&keypair)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut block).unwrap_err();
 
     assert_eq!(result, ProcessResult::GapPrevious);
 }
@@ -119,7 +119,7 @@ fn fail_bad_signature() {
         .sign(&wrong_keys)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut block).unwrap_err();
 
     assert_eq!(result, ProcessResult::BadSignature);
 }
@@ -130,8 +130,8 @@ fn fail_fork() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    let mut change = genesis.legacy_change(&txn).build();
+    ctx.ledger.process(&mut txn, &mut change).unwrap();
 
     let mut fork = BlockBuilder::legacy_change()
         .previous(*DEV_GENESIS_HASH)
@@ -139,7 +139,7 @@ fn fail_fork() {
         .sign(&DEV_GENESIS_KEY)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut fork).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut fork).unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -151,11 +151,11 @@ fn change_after_state_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut send = genesis.send(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    let mut send = genesis.send(&txn).build();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
-    let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
+    let mut change = genesis.legacy_change(&txn).build();
+    let result = ctx.ledger.process(&mut txn, &mut change).unwrap_err();
 
     assert_eq!(result, ProcessResult::BlockPosition);
 }
@@ -167,7 +167,7 @@ fn fail_insufficient_work() {
 
     let mut change = ctx
         .genesis_block_factory()
-        .legacy_change(txn.txn())
+        .legacy_change(&txn)
         .work(0)
         .build();
 
@@ -175,6 +175,6 @@ fn fail_insufficient_work() {
         let block: &mut dyn Block = change.as_block_mut();
         block.set_work(0);
     };
-    let result = ctx.ledger.process(txn.as_mut(), &mut change).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut change).unwrap_err();
     assert_eq!(result, ProcessResult::InsufficientWork);
 }

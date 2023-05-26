@@ -1,7 +1,7 @@
 use rsnano_core::{
     Account, AccountInfo, BlockEnum, BlockHash, ConfirmationHeightInfo, PendingInfo, PendingKey,
 };
-use rsnano_store_traits::Transaction;
+use rsnano_store_traits::{Transaction, ConfirmationHeightStore, BlockStore};
 
 use crate::Ledger;
 
@@ -76,7 +76,7 @@ impl<'a> RollbackPlannerFactory<'a> {
     fn account_confirmation_height(&self) -> ConfirmationHeightInfo {
         self.ledger
             .store
-            .confirmation_height()
+            .confirmation_height
             .get(self.txn, &self.head_block.account_calculated())
             .unwrap_or_default()
     }
@@ -96,7 +96,7 @@ impl<'a> RollbackPlannerFactory<'a> {
     fn load_block(&self, block_hash: &BlockHash) -> anyhow::Result<BlockEnum> {
         self.ledger
             .store
-            .block()
+            .block
             .get(self.txn, block_hash)
             .ok_or_else(|| anyhow!("block not found"))
     }

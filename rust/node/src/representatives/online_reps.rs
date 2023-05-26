@@ -1,7 +1,8 @@
 use primitive_types::U256;
 use rsnano_core::{Account, Amount};
 use rsnano_ledger::Ledger;
-use rsnano_store_traits::WriteTransaction;
+use rsnano_store_lmdb::LmdbWriteTransaction;
+use rsnano_store_traits::{WriteTransaction, OnlineWeightStore};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{cmp::max, sync::Arc};
 
@@ -144,7 +145,7 @@ impl OnlineWeightSampler {
         let txn = self.ledger.read_txn();
         let mut items = Vec::with_capacity(self.max_samples as usize + 1);
         items.push(self.online_weight_minimum);
-        let mut it = self.ledger.store.online_weight().begin(txn.txn());
+        let mut it = self.ledger.store.online_weight.begin(&txn);
         while !it.is_end() {
             items.push(*it.current().unwrap().1);
             it.next();
@@ -161,21 +162,21 @@ impl OnlineWeightSampler {
     /** Called periodically to sample online weight */
     pub fn sample(&self, current_online_weight: Amount) {
         let mut txn = self.ledger.rw_txn();
-        self.delete_old_samples(txn.as_mut());
-        self.insert_new_sample(txn.as_mut(), current_online_weight);
+        self.delete_old_samples(&mut txn);
+        self.insert_new_sample(&mut txn, current_online_weight);
     }
 
-    fn delete_old_samples(&self, txn: &mut dyn WriteTransaction) {
-        let weight_store = self.ledger.store.online_weight();
+    fn delete_old_samples(&self, txn: &mut LmdbWriteTransaction) {
+        let weight_store = &self.ledger.store.online_weight;
 
-        while weight_store.count(txn.txn()) >= self.max_samples {
-            let (&oldest, _) = weight_store.begin(txn.txn()).current().unwrap();
+        while weight_store.count(txn) >= self.max_samples {
+            let (&oldest, _) = weight_store.begin(txn).current().unwrap();
             weight_store.del(txn, oldest);
         }
     }
 
     fn insert_new_sample(&self, txn: &mut dyn WriteTransaction, current_online_weight: Amount) {
-        self.ledger.store.online_weight().put(
+        self.ledger.store.online_weight.put(
             txn,
             nano_seconds_since_epoch(),
             &current_online_weight,

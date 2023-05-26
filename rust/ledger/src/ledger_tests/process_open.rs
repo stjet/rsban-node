@@ -13,11 +13,11 @@ fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_open_block(&ctx, txn.as_mut());
+    let open = setup_open_block(&ctx, &mut txn);
 
     let loaded_open = ctx
         .ledger
-        .get_block(txn.txn(), &open.open_block.hash())
+        .get_block(&txn, &open.open_block.hash())
         .unwrap();
 
     assert_eq!(loaded_open, open.open_block);
@@ -32,7 +32,7 @@ fn create_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_open_block(&ctx, txn.as_mut());
+    let open = setup_open_block(&ctx, &mut txn);
 
     let sideband = open.open_block.sideband().unwrap();
     assert_eq!(sideband.height, 1);
@@ -47,10 +47,10 @@ fn clear_pending() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_open_block(&ctx, txn.as_mut());
+    let open = setup_open_block(&ctx, &mut txn);
 
     let pending = ctx.ledger.pending_info(
-        txn.txn(),
+        &txn,
         &PendingKey::new(open.destination.account(), open.send_block.hash()),
     );
     assert_eq!(pending, None);
@@ -61,11 +61,11 @@ fn add_account() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_open_block(&ctx, txn.as_mut());
+    let open = setup_open_block(&ctx, &mut txn);
 
     let account_info = ctx
         .ledger
-        .account_info(txn.txn(), &open.destination.account())
+        .account_info(&txn, &open.destination.account())
         .unwrap();
     assert_eq!(ctx.ledger.cache.account_count.load(Ordering::Relaxed), 2);
     assert_eq!(account_info.balance, open.open_block.balance());
@@ -79,7 +79,7 @@ fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_open_block(&ctx, txn.as_mut());
+    let open = setup_open_block(&ctx, &mut txn);
 
     let weight = ctx
         .ledger
@@ -92,11 +92,11 @@ fn open_fork_fail() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_send_block(&ctx, txn.as_mut());
+    let send = setup_send_block(&ctx, &mut txn);
     let receiver = send.destination;
 
-    let mut open1 = receiver.open(txn.txn(), send.send_block.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut open1).unwrap();
+    let mut open1 = receiver.open(&txn, send.send_block.hash()).build();
+    ctx.ledger.process(&mut txn, &mut open1).unwrap();
 
     let mut open2 = BlockBuilder::state()
         .account(receiver.account())
@@ -106,7 +106,7 @@ fn open_fork_fail() {
         .sign(&receiver.key)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut open2).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut open2).unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -116,15 +116,15 @@ fn previous_fail() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_send_block(&ctx, txn.as_mut());
+    let send = setup_send_block(&ctx, &mut txn);
 
     let invalid_previous = BlockHash::from(1);
     let mut open = send
         .destination
-        .open(txn.txn(), send.send_block.hash())
+        .open(&txn, send.send_block.hash())
         .previous(invalid_previous)
         .build();
-    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut open).unwrap_err();
 
     assert_eq!(result, ProcessResult::GapPrevious);
 }
@@ -134,15 +134,15 @@ fn source_fail() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_send_block(&ctx, txn.as_mut());
+    let send = setup_send_block(&ctx, &mut txn);
 
     let mut open = send
         .destination
-        .open(txn.txn(), send.send_block.hash())
+        .open(&txn, send.send_block.hash())
         .link(Link::zero())
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut open).unwrap_err();
 
     assert_eq!(result, ProcessResult::GapSource);
 }

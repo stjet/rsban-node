@@ -1,7 +1,7 @@
 use std::sync::atomic::Ordering;
 
 use rsnano_core::{Account, Amount};
-use rsnano_store_traits::WriteTransaction;
+use rsnano_store_traits::{WriteTransaction, BlockStore, FrontierStore, PendingStore};
 
 use crate::Ledger;
 
@@ -43,11 +43,11 @@ impl<'a> RollbackInstructionsExecutor<'a> {
     fn update_block_table(&mut self) {
         self.ledger
             .store
-            .block()
+            .block
             .del(self.txn, &self.instructions.block_hash);
 
         if let Some(hash) = self.instructions.clear_successor {
-            self.ledger.store.block().successor_clear(self.txn, &hash);
+            self.ledger.store.block.successor_clear(self.txn, &hash);
         }
     }
 
@@ -62,19 +62,19 @@ impl<'a> RollbackInstructionsExecutor<'a> {
 
     fn update_frontier_table(&mut self) {
         if let Some(hash) = self.instructions.delete_frontier {
-            self.ledger.store.frontier().del(self.txn, &hash);
+            self.ledger.store.frontier.del(self.txn, &hash);
         }
         if let Some((hash, account)) = self.instructions.add_frontier {
-            self.ledger.store.frontier().put(self.txn, &hash, &account)
+            self.ledger.store.frontier.put(self.txn, &hash, &account)
         }
     }
 
     fn update_pending_table(&mut self) {
         if let Some(pending_key) = &self.instructions.remove_pending {
-            self.ledger.store.pending().del(self.txn, pending_key);
+            self.ledger.store.pending.del(self.txn, pending_key);
         }
         if let Some((key, info)) = &self.instructions.add_pending {
-            self.ledger.store.pending().put(self.txn, key, info);
+            self.ledger.store.pending.put(self.txn, key, info);
         }
     }
 

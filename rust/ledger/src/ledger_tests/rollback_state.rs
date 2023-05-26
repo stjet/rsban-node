@@ -3,6 +3,7 @@ use crate::{
     DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 use rsnano_core::{Account, Amount, Epoch, PendingInfo, PendingKey};
+use rsnano_store_traits::{BlockStore, PendingStore, AccountStore};
 
 use super::LedgerContext;
 
@@ -12,18 +13,18 @@ fn rollback_send() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut send = genesis.send(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    let mut send = genesis.send(&txn).build();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-    ctx.ledger.rollback(txn.as_mut(), &send.hash()).unwrap();
+    ctx.ledger.rollback(&mut txn, &send.hash()).unwrap();
 
     assert_eq!(
-        ctx.ledger.store.block().exists(txn.txn(), &send.hash()),
+        ctx.ledger.store.block.exists(&txn, &send.hash()),
         false
     );
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+            .account_balance(&txn, &DEV_GENESIS_ACCOUNT, false),
         LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(
@@ -32,7 +33,7 @@ fn rollback_send() {
     );
     assert_eq!(
         ctx.ledger.pending_info(
-            txn.txn(),
+            &txn,
             &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())
         ),
         None
@@ -40,8 +41,8 @@ fn rollback_send() {
     assert_eq!(
         ctx.ledger
             .store
-            .block()
-            .successor(txn.txn(), &DEV_GENESIS_HASH),
+            .block
+            .successor(&txn, &DEV_GENESIS_HASH),
         None
     );
 }
@@ -54,24 +55,24 @@ fn rollback_receive() {
 
     let amount_sent = Amount::raw(50);
     let mut send = genesis
-        .send(txn.txn())
+        .send(&txn)
         .amount(amount_sent)
         .link(genesis.account())
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-    let mut receive = genesis.receive(txn.txn(), send.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+    let mut receive = genesis.receive(&txn, send.hash()).build();
+    ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
-    ctx.ledger.rollback(txn.as_mut(), &receive.hash()).unwrap();
+    ctx.ledger.rollback(&mut txn, &receive.hash()).unwrap();
 
     assert_eq!(
-        ctx.ledger.store.block().exists(txn.txn(), &receive.hash()),
+        ctx.ledger.store.block.exists(&txn, &receive.hash()),
         false
     );
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+            .account_balance(&txn, &DEV_GENESIS_ACCOUNT, false),
         LEDGER_CONSTANTS_STUB.genesis_amount - amount_sent
     );
     assert_eq!(
@@ -80,7 +81,7 @@ fn rollback_receive() {
     );
     assert_eq!(
         ctx.ledger.pending_info(
-            txn.txn(),
+            &txn,
             &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())
         ),
         Some(PendingInfo {
@@ -90,7 +91,7 @@ fn rollback_receive() {
         })
     );
     assert_eq!(
-        ctx.ledger.store.block().successor(txn.txn(), &send.hash()),
+        ctx.ledger.store.block.successor(&txn, &send.hash()),
         None
     );
 }
@@ -102,32 +103,32 @@ fn rollback_received_send() {
     let genesis = ctx.genesis_block_factory();
     let destination = AccountBlockFactory::new(&ctx.ledger);
 
-    let mut send = genesis.send(txn.txn()).link(destination.account()).build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    let mut send = genesis.send(&txn).link(destination.account()).build();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-    let mut open = destination.open(txn.txn(), send.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+    let mut open = destination.open(&txn, send.hash()).build();
+    ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-    ctx.ledger.rollback(txn.as_mut(), &send.hash()).unwrap();
+    ctx.ledger.rollback(&mut txn, &send.hash()).unwrap();
 
     assert_eq!(
-        ctx.ledger.store.pending().exists(
-            txn.txn(),
+        ctx.ledger.store.pending.exists(
+            &txn,
             &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())
         ),
         false
     );
     assert_eq!(
-        ctx.ledger.store.block().exists(txn.txn(), &send.hash()),
+        ctx.ledger.store.block.exists(&txn, &send.hash()),
         false
     );
     assert_eq!(
-        ctx.ledger.store.block().exists(txn.txn(), &open.hash()),
+        ctx.ledger.store.block.exists(&txn, &open.hash()),
         false
     );
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+            .account_balance(&txn, &DEV_GENESIS_ACCOUNT, false),
         LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(
@@ -136,10 +137,10 @@ fn rollback_received_send() {
     );
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &destination.account(), false),
+            .account_balance(&txn, &destination.account(), false),
         Amount::zero()
     );
-    assert_eq!(ctx.ledger.store.account().count(txn.txn()), 1);
+    assert_eq!(ctx.ledger.store.account.count(&txn), 1);
 }
 
 #[test]
@@ -150,20 +151,20 @@ fn rollback_rep_change() {
     let representative = Account::from(1);
 
     let mut change = genesis
-        .change(txn.txn())
+        .change(&txn)
         .representative(representative)
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    ctx.ledger.process(&mut txn, &mut change).unwrap();
 
-    ctx.ledger.rollback(txn.as_mut(), &change.hash()).unwrap();
+    ctx.ledger.rollback(&mut txn, &change.hash()).unwrap();
 
     assert_eq!(
-        ctx.ledger.store.block().exists(txn.txn(), &change.hash()),
+        ctx.ledger.store.block.exists(&txn, &change.hash()),
         false
     );
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+            .account_balance(&txn, &DEV_GENESIS_ACCOUNT, false),
         LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(
@@ -182,24 +183,24 @@ fn rollback_open() {
 
     let amount_sent = Amount::raw(50);
     let mut send = genesis
-        .send(txn.txn())
+        .send(&txn)
         .link(destination.account())
         .amount(amount_sent)
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-    let mut open = destination.open(txn.txn(), send.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+    let mut open = destination.open(&txn, send.hash()).build();
+    ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-    ctx.ledger.rollback(txn.as_mut(), &open.hash()).unwrap();
+    ctx.ledger.rollback(&mut txn, &open.hash()).unwrap();
 
     assert_eq!(
-        ctx.ledger.store.block().exists(txn.txn(), &open.hash()),
+        ctx.ledger.store.block.exists(&txn, &open.hash()),
         false
     );
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &destination.account(), false),
+            .account_balance(&txn, &destination.account(), false),
         Amount::zero()
     );
     assert_eq!(
@@ -209,7 +210,7 @@ fn rollback_open() {
     assert_eq!(
         ctx.ledger
             .pending_info(
-                txn.txn(),
+                &txn,
                 &PendingKey::new(destination.account(), send.hash())
             )
             .unwrap(),
@@ -219,7 +220,7 @@ fn rollback_open() {
             epoch: Epoch::Epoch0
         }
     );
-    assert_eq!(ctx.ledger.store.account().count(txn.txn()), 1);
+    assert_eq!(ctx.ledger.store.account.count(&txn), 1);
 }
 
 #[test]
@@ -230,20 +231,20 @@ fn rollback_send_with_rep_change() {
 
     let representative = Account::from(1);
     let mut send = genesis
-        .send(txn.txn())
+        .send(&txn)
         .representative(representative)
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-    ctx.ledger.rollback(txn.as_mut(), &send.hash()).unwrap();
+    ctx.ledger.rollback(&mut txn, &send.hash()).unwrap();
 
     assert_eq!(
-        ctx.ledger.store.block().exists(txn.txn(), &send.hash()),
+        ctx.ledger.store.block.exists(&txn, &send.hash()),
         false
     );
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+            .account_balance(&txn, &DEV_GENESIS_ACCOUNT, false),
         LEDGER_CONSTANTS_STUB.genesis_amount
     );
     assert_eq!(
@@ -260,24 +261,24 @@ fn rollback_receive_with_rep_change() {
     let genesis = ctx.genesis_block_factory();
 
     let representative = Account::from(1);
-    let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    let mut send = genesis.send(&txn).link(genesis.account()).build();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
     let mut receive = genesis
-        .receive(txn.txn(), send.hash())
+        .receive(&txn, send.hash())
         .representative(representative)
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+    ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
-    ctx.ledger.rollback(txn.as_mut(), &receive.hash()).unwrap();
+    ctx.ledger.rollback(&mut txn, &receive.hash()).unwrap();
 
     assert_eq!(
-        ctx.ledger.store.block().exists(txn.txn(), &receive.hash()),
+        ctx.ledger.store.block.exists(&txn, &receive.hash()),
         false
     );
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+            .account_balance(&txn, &DEV_GENESIS_ACCOUNT, false),
         send.balance()
     );
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), send.balance());

@@ -13,7 +13,7 @@ fn account_balance_is_zero_for_unknown_account() {
 
     let balance = ctx
         .ledger
-        .account_balance(txn.txn(), &Account::zero(), false);
+        .account_balance(&txn, &Account::zero(), false);
 
     assert_eq!(balance, Amount::zero());
 }
@@ -25,7 +25,7 @@ fn get_genesis_block() {
 
     let block = ctx
         .ledger
-        .get_block(txn.txn(), &DEV_GENESIS_HASH)
+        .get_block(&txn, &DEV_GENESIS_HASH)
         .expect("genesis block not found");
 
     assert_eq!(block.block_type(), BlockType::LegacyOpen);
@@ -38,7 +38,7 @@ fn genesis_account_balance() {
 
     let balance = ctx
         .ledger
-        .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false);
+        .account_balance(&txn, &DEV_GENESIS_ACCOUNT, false);
 
     assert_eq!(balance, LEDGER_CONSTANTS_STUB.genesis_amount);
 }
@@ -50,7 +50,7 @@ fn genesis_account_info() {
 
     let account_info = ctx
         .ledger
-        .account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
         .expect("genesis account not found");
 
     // Frontier time should have been updated when genesis balance was added
@@ -67,7 +67,7 @@ fn genesis_confirmation_height_info() {
     // Genesis block should be confirmed by default
     let conf_info = ctx
         .ledger
-        .get_confirmation_height(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get_confirmation_height(&txn, &DEV_GENESIS_ACCOUNT)
         .expect("conf height not found");
 
     assert_eq!(conf_info.height, 1);
@@ -80,7 +80,7 @@ fn genesis_frontier() {
     let txn = ctx.ledger.read_txn();
 
     assert_eq!(
-        ctx.ledger.get_frontier(txn.txn(), &DEV_GENESIS_HASH),
+        ctx.ledger.get_frontier(&txn, &DEV_GENESIS_HASH),
         Some(*DEV_GENESIS_ACCOUNT),
     );
 }
@@ -98,7 +98,7 @@ fn genesis_representative() {
     let txn = ctx.ledger.read_txn();
     assert_eq!(
         ctx.ledger
-            .representative_block_hash(txn.txn(), &DEV_GENESIS_HASH),
+            .representative_block_hash(&txn, &DEV_GENESIS_HASH),
         *DEV_GENESIS_HASH
     );
 }
@@ -116,5 +116,5 @@ fn genesis_vote_weight() {
 fn latest_empty() {
     let ctx = LedgerContext::empty();
     let txn = ctx.ledger.read_txn();
-    assert_eq!(ctx.ledger.latest(txn.txn(), &Account::from(1)), None);
+    assert_eq!(ctx.ledger.latest(&txn, &Account::from(1)), None);
 }

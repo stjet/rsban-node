@@ -1,5 +1,6 @@
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, DEV_GENESIS_ACCOUNT};
 use rsnano_core::{Account, Amount, BlockDetails, Epoch, PendingInfo, PendingKey};
+use rsnano_store_traits::BlockStore;
 
 use crate::ledger_tests::{setup_send_block, LedgerContext};
 
@@ -8,13 +9,13 @@ fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_send_block(&ctx, txn.as_mut());
+    let send = setup_send_block(&ctx, &mut txn);
 
     let loaded_block = ctx
         .ledger
         .store
-        .block()
-        .get(txn.txn(), &send.send_block.hash())
+        .block
+        .get(&txn, &send.send_block.hash())
         .unwrap();
     assert_eq!(
         loaded_block.sideband().unwrap(),
@@ -22,7 +23,7 @@ fn save_block() {
     );
     assert_eq!(loaded_block, send.send_block);
     assert_eq!(
-        ctx.ledger.amount(txn.txn(), &send.send_block.hash()),
+        ctx.ledger.amount(&txn, &send.send_block.hash()),
         Some(send.amount_sent)
     );
 }
@@ -32,12 +33,12 @@ fn update_pending_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_send_block(&ctx, txn.as_mut());
+    let send = setup_send_block(&ctx, &mut txn);
 
     let pending_info = ctx
         .ledger
         .pending_info(
-            txn.txn(),
+            &txn,
             &PendingKey::new(send.destination.account(), send.send_block.hash()),
         )
         .unwrap();
@@ -57,7 +58,7 @@ fn create_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_send_block(&ctx, txn.as_mut());
+    let send = setup_send_block(&ctx, &mut txn);
 
     let sideband = send.send_block.sideband().unwrap();
     assert_eq!(sideband.height, 2);
@@ -76,14 +77,14 @@ fn send_and_change_representative() {
     let representative = Account::from(1);
     let amount_sent = LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(1);
     let mut send = genesis
-        .send(txn.txn())
+        .send(&txn)
         .amount(amount_sent)
         .representative(representative)
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
     assert_eq!(
-        ctx.ledger.amount(txn.txn(), &send.hash()).unwrap(),
+        ctx.ledger.amount(&txn, &send.hash()).unwrap(),
         amount_sent,
     );
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
@@ -99,7 +100,7 @@ fn send_to_burn_account() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
-    let mut send = genesis.send(txn.txn()).amount(100).link(0).build();
-    let result = ctx.ledger.process(txn.as_mut(), &mut send);
+    let mut send = genesis.send(&txn).amount(100).link(0).build();
+    let result = ctx.ledger.process(&mut txn, &mut send);
     assert_eq!(result, Ok(()))
 }

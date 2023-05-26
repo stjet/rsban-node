@@ -223,6 +223,7 @@ dependencies = [
  "rsnano_ledger",
  "rsnano_node",
  "rsnano_store_lmdb",
+ "rsnano_store_traits",
 ]
 
 [[package]]

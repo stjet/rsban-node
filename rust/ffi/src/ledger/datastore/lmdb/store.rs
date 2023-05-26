@@ -101,7 +101,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_block(
     if handle.is_null() {
         ptr::null_mut()
     } else {
-        LmdbBlockStoreHandle::new((*handle).0.block_store.clone())
+        LmdbBlockStoreHandle::new((*handle).0.block.clone())
     }
 }
 
@@ -112,7 +112,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_frontier(
     if handle.is_null() {
         ptr::null_mut()
     } else {
-        LmdbFrontierStoreHandle::new((*handle).0.frontier_store.clone())
+        LmdbFrontierStoreHandle::new((*handle).0.frontier.clone())
     }
 }
 
@@ -123,7 +123,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_account(
     if handle.is_null() {
         ptr::null_mut()
     } else {
-        LmdbAccountStoreHandle::new((*handle).0.account_store.clone())
+        LmdbAccountStoreHandle::new((*handle).0.account.clone())
     }
 }
 
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_pending(
     if handle.is_null() {
         ptr::null_mut()
     } else {
-        LmdbPendingStoreHandle::new((*handle).0.pending_store.clone())
+        LmdbPendingStoreHandle::new((*handle).0.pending.clone())
     }
 }
 
@@ -145,7 +145,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_online_weight(
     if handle.is_null() {
         ptr::null_mut()
     } else {
-        LmdbOnlineWeightStoreHandle::new((*handle).0.online_weight_store.clone())
+        LmdbOnlineWeightStoreHandle::new((*handle).0.online_weight.clone())
     }
 }
 
@@ -156,7 +156,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_pruned(
     if handle.is_null() {
         ptr::null_mut()
     } else {
-        LmdbPrunedStoreHandle::new((*handle).0.pruned_store.clone())
+        LmdbPrunedStoreHandle::new((*handle).0.pruned.clone())
     }
 }
 
@@ -167,7 +167,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_peer(
     if handle.is_null() {
         ptr::null_mut()
     } else {
-        LmdbPeerStoreHandle::new((*handle).0.peer_store.clone())
+        LmdbPeerStoreHandle::new((*handle).0.peer.clone())
     }
 }
 
@@ -178,7 +178,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_confirmation_height(
     if handle.is_null() {
         ptr::null_mut()
     } else {
-        LmdbConfirmationHeightStoreHandle::new((*handle).0.confirmation_height_store.clone())
+        LmdbConfirmationHeightStoreHandle::new((*handle).0.confirmation_height.clone())
     }
 }
 
@@ -189,7 +189,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_final_vote(
     if handle.is_null() {
         ptr::null_mut()
     } else {
-        LmdbFinalVoteStoreHandle::new((*handle).0.final_vote_store.clone())
+        LmdbFinalVoteStoreHandle::new((*handle).0.final_vote.clone())
     }
 }
 
@@ -200,7 +200,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_version(
     if handle.is_null() {
         ptr::null_mut()
     } else {
-        LmdbVersionStoreHandle::new((*handle).0.version_store.clone())
+        LmdbVersionStoreHandle::new((*handle).0.version.clone())
     }
 }
 
@@ -273,7 +273,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_serialize_mdb_tracker(
 pub unsafe extern "C" fn rsn_lmdb_store_tx_begin_read(
     handle: *mut LmdbStoreHandle,
 ) -> *mut TransactionHandle {
-    let txn = (*handle).0.tx_begin_read().unwrap();
+    let txn = (*handle).0.tx_begin_read();
     TransactionHandle::new(TransactionType::Read(txn))
 }
 
@@ -281,6 +281,6 @@ pub unsafe extern "C" fn rsn_lmdb_store_tx_begin_read(
 pub unsafe extern "C" fn rsn_lmdb_store_tx_begin_write(
     handle: *mut LmdbStoreHandle,
 ) -> *mut TransactionHandle {
-    let txn = (*handle).0.tx_begin_write().unwrap();
+    let txn = (*handle).0.tx_begin_write();
     TransactionHandle::new(TransactionType::Write(txn))
 }

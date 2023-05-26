@@ -3,22 +3,23 @@ use crate::{
     DEV_GENESIS_ACCOUNT,
 };
 use rsnano_core::PendingKey;
+use rsnano_store_traits::BlockStore;
 
 #[test]
 fn clear_successor() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let receive = setup_legacy_receive_block(&ctx, txn.as_mut());
+    let receive = setup_legacy_receive_block(&ctx, &mut txn);
 
     ctx.ledger
-        .rollback(txn.as_mut(), &receive.receive_block.hash())
+        .rollback(&mut txn, &receive.receive_block.hash())
         .unwrap();
 
     assert_eq!(
         ctx.ledger
             .store
-            .block()
-            .successor(txn.txn(), &receive.open_block.hash()),
+            .block
+            .successor(&txn, &receive.open_block.hash()),
         None
     );
 }
@@ -27,20 +28,20 @@ fn clear_successor() {
 fn rollback_frontiers() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let receive = setup_legacy_receive_block(&ctx, txn.as_mut());
+    let receive = setup_legacy_receive_block(&ctx, &mut txn);
 
     ctx.ledger
-        .rollback(txn.as_mut(), &receive.receive_block.hash())
+        .rollback(&mut txn, &receive.receive_block.hash())
         .unwrap();
 
     assert_eq!(
         ctx.ledger
-            .get_frontier(txn.txn(), &receive.open_block.hash()),
+            .get_frontier(&txn, &receive.open_block.hash()),
         Some(receive.destination.account())
     );
     assert_eq!(
         ctx.ledger
-            .get_frontier(txn.txn(), &receive.receive_block.hash()),
+            .get_frontier(&txn, &receive.receive_block.hash()),
         None
     );
 }
@@ -49,15 +50,15 @@ fn rollback_frontiers() {
 fn update_account_info() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let receive = setup_legacy_receive_block(&ctx, txn.as_mut());
+    let receive = setup_legacy_receive_block(&ctx, &mut txn);
 
     ctx.ledger
-        .rollback(txn.as_mut(), &receive.receive_block.hash())
+        .rollback(&mut txn, &receive.receive_block.hash())
         .unwrap();
 
     let account_info = ctx
         .ledger
-        .account_info(txn.txn(), &receive.destination.account())
+        .account_info(&txn, &receive.destination.account())
         .unwrap();
 
     assert_eq!(account_info.head, receive.open_block.hash());
@@ -72,16 +73,16 @@ fn update_account_info() {
 fn rollback_pending_info() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let receive = setup_legacy_receive_block(&ctx, txn.as_mut());
+    let receive = setup_legacy_receive_block(&ctx, &mut txn);
 
     ctx.ledger
-        .rollback(txn.as_mut(), &receive.receive_block.hash())
+        .rollback(&mut txn, &receive.receive_block.hash())
         .unwrap();
 
     let pending = ctx
         .ledger
         .pending_info(
-            txn.txn(),
+            &txn,
             &PendingKey::new(receive.destination.account(), receive.send_block.hash()),
         )
         .unwrap();
@@ -94,10 +95,10 @@ fn rollback_pending_info() {
 fn rollback_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let receive = setup_legacy_receive_block(&ctx, txn.as_mut());
+    let receive = setup_legacy_receive_block(&ctx, &mut txn);
 
     ctx.ledger
-        .rollback(txn.as_mut(), &receive.receive_block.hash())
+        .rollback(&mut txn, &receive.receive_block.hash())
         .unwrap();
 
     assert_eq!(

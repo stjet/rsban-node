@@ -3,7 +3,7 @@ use rsnano_core::{
     Account, Amount, Block, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair, Link,
     PendingKey, StateBlock,
 };
-use rsnano_store_traits::WriteTransaction;
+use rsnano_store_lmdb::LmdbWriteTransaction;
 
 use super::LedgerContext;
 
@@ -12,9 +12,9 @@ fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let (_, receive) = receive_50_raw_into_genesis(&ctx, txn.as_mut());
+    let (_, receive) = receive_50_raw_into_genesis(&ctx, &mut txn);
 
-    let loaded_block = ctx.ledger.get_block(txn.txn(), &receive.hash()).unwrap();
+    let loaded_block = ctx.ledger.get_block(&txn, &receive.hash()).unwrap();
 
     let BlockEnum::State(loaded_block) = loaded_block else { panic!("not a state block")};
     assert_eq!(loaded_block, receive);
@@ -29,7 +29,7 @@ fn create_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let (_, receive) = receive_50_raw_into_genesis(&ctx, txn.as_mut());
+    let (_, receive) = receive_50_raw_into_genesis(&ctx, &mut txn);
 
     let sideband = receive.sideband().unwrap();
     assert_eq!(sideband.account, *DEV_GENESIS_ACCOUNT);
@@ -45,7 +45,7 @@ fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let (_, receive) = receive_50_raw_into_genesis(&ctx, txn.as_mut());
+    let (_, receive) = receive_50_raw_into_genesis(&ctx, &mut txn);
 
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), receive.balance());
 }
@@ -55,11 +55,11 @@ fn remove_pending_info() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let (send, _) = receive_50_raw_into_genesis(&ctx, txn.as_mut());
+    let (send, _) = receive_50_raw_into_genesis(&ctx, &mut txn);
 
     assert_eq!(
         ctx.ledger.pending_info(
-            txn.txn(),
+            &txn,
             &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())
         ),
         None
@@ -73,13 +73,13 @@ fn receive_old_send_block() {
     let genesis = ctx.genesis_block_factory();
 
     let mut send = genesis
-        .legacy_send(txn.txn())
+        .legacy_send(&txn)
         .destination(genesis.account())
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-    let mut receive = genesis.receive(txn.txn(), send.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+    let mut receive = genesis.receive(&txn, send.hash()).build();
+    ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
     let sideband = receive.sideband().unwrap();
     assert_eq!(sideband.account, genesis.account());
@@ -89,7 +89,7 @@ fn receive_old_send_block() {
         BlockDetails::new(Epoch::Epoch0, false, true, false)
     );
 
-    let loaded_block = ctx.ledger.get_block(txn.txn(), &receive.hash()).unwrap();
+    let loaded_block = ctx.ledger.get_block(&txn, &receive.hash()).unwrap();
     assert_eq!(loaded_block, receive);
     assert_eq!(
         loaded_block.sideband().unwrap(),
@@ -103,15 +103,15 @@ fn state_unreceivable_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    let mut send = genesis.send(&txn).link(genesis.account()).build();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
     let mut receive = genesis
-        .receive(txn.txn(), send.hash())
+        .receive(&txn, send.hash())
         .link(Link::from(1))
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut receive).unwrap_err();
 
     assert_eq!(result, ProcessResult::GapSource);
 }
@@ -122,14 +122,14 @@ fn bad_amount_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    let mut send = genesis.send(&txn).link(genesis.account()).build();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
     let mut receive = genesis
-        .receive(txn.txn(), send.hash())
+        .receive(&txn, send.hash())
         .balance(send.balance())
         .build();
-    let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut receive).unwrap_err();
 
     assert_eq!(result, ProcessResult::BalanceMismatch);
 }
@@ -140,14 +140,14 @@ fn no_link_amount_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    let mut send = genesis.send(&txn).link(genesis.account()).build();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
     let mut receive = genesis
-        .receive(txn.txn(), send.hash())
+        .receive(&txn, send.hash())
         .link(Link::zero())
         .build();
-    let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut receive).unwrap_err();
 
     assert_eq!(result, ProcessResult::BalanceMismatch);
 }
@@ -158,8 +158,8 @@ fn receive_wrong_account_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    let mut send = genesis.send(&txn).link(genesis.account()).build();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
     let key = KeyPair::new();
     let mut receive = BlockBuilder::state()
@@ -170,7 +170,7 @@ fn receive_wrong_account_fail() {
         .sign(&key)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut receive).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut receive).unwrap_err();
 
     assert_eq!(result, ProcessResult::Unreceivable);
 }
@@ -183,25 +183,25 @@ fn receive_and_change_representative() {
 
     let amount_sent = Amount::raw(50);
     let mut send = genesis
-        .send(txn.txn())
+        .send(&txn)
         .link(genesis.account())
         .amount(amount_sent)
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
     let representative = Account::from(1);
     let mut receive = genesis
-        .receive(txn.txn(), send.hash())
+        .receive(&txn, send.hash())
         .representative(representative)
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+    ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
     assert_eq!(
-        ctx.ledger.balance(txn.txn(), &receive.hash()),
+        ctx.ledger.balance(&txn, &receive.hash()),
         receive.balance()
     );
     assert_eq!(
-        ctx.ledger.amount(txn.txn(), &receive.hash()).unwrap(),
+        ctx.ledger.amount(&txn, &receive.hash()).unwrap(),
         amount_sent,
     );
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
@@ -214,13 +214,13 @@ fn receive_and_change_representative() {
 
 fn receive_50_raw_into_genesis(
     ctx: &LedgerContext,
-    txn: &mut dyn WriteTransaction,
+    txn: &mut LmdbWriteTransaction,
 ) -> (StateBlock, StateBlock) {
     let genesis = ctx.genesis_block_factory();
-    let mut send = genesis.send(txn.txn()).link(genesis.account()).build();
+    let mut send = genesis.send(txn).link(genesis.account()).build();
     ctx.ledger.process(txn, &mut send).unwrap();
 
-    let mut receive = genesis.receive(txn.txn(), send.hash()).build();
+    let mut receive = genesis.receive(txn, send.hash()).build();
     ctx.ledger.process(txn, &mut receive).unwrap();
 
     let BlockEnum::State(send) = send else {unreachable!()};

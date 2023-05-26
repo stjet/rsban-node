@@ -9,7 +9,7 @@ use crate::stats::{DetailType, Direction, StatType, Stats};
 use primitive_types::U256;
 use rsnano_core::{Account, AccountInfo, ConfirmationHeightInfo};
 use rsnano_ledger::Ledger;
-use rsnano_store_traits::Transaction;
+use rsnano_store_traits::{Transaction, AccountStore, ConfirmationHeightStore};
 
 #[derive(Clone)]
 pub struct BacklogPopulationConfig {
@@ -173,8 +173,8 @@ impl BacklogPopulationThread {
                 let mut i = self
                     .ledger
                     .store
-                    .account()
-                    .begin_account(transaction.txn(), &next);
+                    .account
+                    .begin_account(&transaction, &next);
                 // 			auto const end = ledger.store.account ().end ();
                 while let Some((account, _)) = i.current() {
                     if count >= chunk_size {
@@ -185,7 +185,7 @@ impl BacklogPopulationThread {
                         .stats
                         .inc(StatType::Backlog, DetailType::Total, Direction::In);
 
-                    self.activate(transaction.txn(), account);
+                    self.activate(&transaction, account);
                     next = (account.number().overflowing_add(U256::from(1)).0).into();
 
                     i.next();
@@ -195,8 +195,8 @@ impl BacklogPopulationThread {
                     || self
                         .ledger
                         .store
-                        .account()
-                        .begin_account(transaction.txn(), &next)
+                        .account
+                        .begin_account(&transaction, &next)
                         .is_end();
             }
             lock = self.mutex.lock().unwrap();
@@ -213,7 +213,7 @@ impl BacklogPopulationThread {
     }
 
     pub fn activate(&self, txn: &dyn Transaction, account: &Account) {
-        let account_info = match self.ledger.store.account().get(txn, account) {
+        let account_info = match self.ledger.store.account.get(txn, account) {
             Some(info) => info,
             None => {
                 return;
@@ -223,7 +223,7 @@ impl BacklogPopulationThread {
         let conf_info = self
             .ledger
             .store
-            .confirmation_height()
+            .confirmation_height
             .get(txn, account)
             .unwrap_or_default();
 

@@ -11,10 +11,10 @@ fn remove_from_frontier_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = rollback_open_block(&ctx, txn.as_mut());
+    let open = rollback_open_block(&ctx, &mut txn);
 
     assert_eq!(
-        ctx.ledger.get_frontier(txn.txn(), &open.open_block.hash()),
+        ctx.ledger.get_frontier(&txn, &open.open_block.hash()),
         None
     );
 }
@@ -24,16 +24,16 @@ fn remove_from_account_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = rollback_open_block(&ctx, txn.as_mut());
+    let open = rollback_open_block(&ctx, &mut txn);
 
     let receiver_info = ctx
         .ledger
-        .account_info(txn.txn(), &open.destination.account());
+        .account_info(&txn, &open.destination.account());
     assert_eq!(receiver_info, None);
 
     let sender_info = ctx
         .ledger
-        .account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(sender_info.head, open.send_block.hash());
 }
@@ -43,12 +43,12 @@ fn update_pending_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = rollback_open_block(&ctx, txn.as_mut());
+    let open = rollback_open_block(&ctx, &mut txn);
 
     let pending = ctx
         .ledger
         .pending_info(
-            txn.txn(),
+            &txn,
             &PendingKey::new(open.destination.account(), open.send_block.hash()),
         )
         .unwrap();
@@ -62,16 +62,16 @@ fn update_account_balance() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = rollback_open_block(&ctx, txn.as_mut());
+    let open = rollback_open_block(&ctx, &mut txn);
 
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &open.destination.account(), false),
+            .account_balance(&txn, &open.destination.account(), false),
         Amount::zero()
     );
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+            .account_balance(&txn, &DEV_GENESIS_ACCOUNT, false),
         LEDGER_CONSTANTS_STUB.genesis_amount - open.expected_balance
     );
 }
@@ -81,11 +81,11 @@ fn update_receivable() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = rollback_open_block(&ctx, txn.as_mut());
+    let open = rollback_open_block(&ctx, &mut txn);
 
     assert_eq!(
         ctx.ledger
-            .account_receivable(txn.txn(), &open.destination.account(), false),
+            .account_receivable(&txn, &open.destination.account(), false),
         open.expected_balance
     );
 }
@@ -95,7 +95,7 @@ fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = rollback_open_block(&ctx, txn.as_mut());
+    let open = rollback_open_block(&ctx, &mut txn);
 
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),

@@ -10,7 +10,7 @@ fn update_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     let sideband = open.open_block.sideband().unwrap();
     assert_eq!(sideband.account, open.destination.account());
@@ -23,11 +23,11 @@ fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     let loaded_open = ctx
         .ledger
-        .get_block(txn.txn(), &open.open_block.hash())
+        .get_block(&txn, &open.open_block.hash())
         .unwrap();
 
     assert_eq!(loaded_open, open.open_block);
@@ -42,10 +42,10 @@ fn update_block_amount() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     assert_eq!(
-        ctx.ledger.amount(txn.txn(), &open.open_block.hash()),
+        ctx.ledger.amount(&txn, &open.open_block.hash()),
         Some(open.expected_balance)
     );
     assert_eq!(
@@ -59,10 +59,10 @@ fn update_frontier_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     assert_eq!(
-        ctx.ledger.get_frontier(txn.txn(), &open.open_block.hash()),
+        ctx.ledger.get_frontier(&txn, &open.open_block.hash()),
         Some(open.destination.account())
     );
 }
@@ -72,11 +72,11 @@ fn update_account_balance() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &open.destination.account(), false),
+            .account_balance(&txn, &open.destination.account(), false),
         open.expected_balance
     );
 }
@@ -86,11 +86,11 @@ fn update_account_receivable() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     assert_eq!(
         ctx.ledger
-            .account_receivable(txn.txn(), &open.destination.account(), false),
+            .account_receivable(&txn, &open.destination.account(), false),
         Amount::zero()
     );
 }
@@ -100,7 +100,7 @@ fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
@@ -117,11 +117,11 @@ fn update_sender_account_info() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     let sender_info = ctx
         .ledger
-        .account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(sender_info.head, open.send_block.hash());
 }
@@ -131,11 +131,11 @@ fn update_receiver_account_info() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     let receiver_info = ctx
         .ledger
-        .account_info(txn.txn(), &open.destination.account())
+        .account_info(&txn, &open.destination.account())
         .unwrap();
     assert_eq!(receiver_info.head, open.open_block.hash());
 }
@@ -145,7 +145,7 @@ fn fail_fork() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     let mut open_fork = open
         .destination
@@ -155,7 +155,7 @@ fn fail_fork() {
 
     let result = ctx
         .ledger
-        .process(txn.as_mut(), &mut open_fork)
+        .process(&mut txn, &mut open_fork)
         .unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
@@ -167,13 +167,13 @@ fn fail_fork_previous() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     let mut send2 = genesis
-        .legacy_send(txn.txn())
+        .legacy_send(&txn)
         .destination(open.destination.account())
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+    ctx.ledger.process(&mut txn, &mut send2).unwrap();
 
     let mut open_fork = BlockBuilder::legacy_open()
         .source(send2.hash())
@@ -183,7 +183,7 @@ fn fail_fork_previous() {
 
     let result = ctx
         .ledger
-        .process(txn.as_mut(), &mut open_fork)
+        .process(&mut txn, &mut open_fork)
         .unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
@@ -194,11 +194,11 @@ fn process_duplicate_open_fails() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let mut open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let mut open = setup_legacy_open_block(&ctx, &mut txn);
 
     let result = ctx
         .ledger
-        .process(txn.as_mut(), &mut open.open_block)
+        .process(&mut txn, &mut open.open_block)
         .unwrap_err();
 
     assert_eq!(result, ProcessResult::Old);
@@ -211,7 +211,7 @@ fn fail_gap_source() {
     let destination = ctx.block_factory();
 
     let mut open = destination.legacy_open(BlockHash::from(1)).build();
-    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut open).unwrap_err();
 
     assert_eq!(result, ProcessResult::GapSource);
 }
@@ -221,7 +221,7 @@ fn fail_bad_signature() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
 
     let bad_keys = KeyPair::new();
 
@@ -231,7 +231,7 @@ fn fail_bad_signature() {
         .sign(&bad_keys)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut open).unwrap_err();
     assert_eq!(result, ProcessResult::BadSignature);
 }
 
@@ -240,11 +240,11 @@ fn fail_account_mismatch() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
     let bad_key = ctx.block_factory();
 
     let mut open = bad_key.legacy_open(send.send_block.hash()).build();
-    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut open).unwrap_err();
 
     assert_eq!(result, ProcessResult::Unreceivable);
 }
@@ -254,7 +254,7 @@ fn state_open_fork() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     let mut open2 = BlockBuilder::legacy_open()
         .source(open.send_block.hash())
@@ -262,7 +262,7 @@ fn state_open_fork() {
         .sign(&open.destination.key)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut open2).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut open2).unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -275,19 +275,19 @@ fn open_from_state_block() {
     let destination = ctx.block_factory();
     let amount_sent = Amount::raw(50);
     let mut send = genesis
-        .send(txn.txn())
+        .send(&txn)
         .link(destination.account())
         .amount(amount_sent)
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
     let mut open = destination
         .legacy_open(send.hash())
         .representative(*DEV_GENESIS_ACCOUNT)
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+    ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-    assert_eq!(ctx.ledger.balance(txn.txn(), &open.hash()), amount_sent);
+    assert_eq!(ctx.ledger.balance(&txn, &open.hash()), amount_sent);
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
         LEDGER_CONSTANTS_STUB.genesis_amount
@@ -299,11 +299,11 @@ fn confirmation_height_not_updated() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     let confirmation_height_info = ctx
         .ledger
-        .get_confirmation_height(txn.txn(), &open.open_block.account());
+        .get_confirmation_height(&txn, &open.open_block.account());
     assert_eq!(confirmation_height_info, None);
 }
 
@@ -312,7 +312,7 @@ fn fail_insufficient_work() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
 
     let mut open = send
         .destination
@@ -324,7 +324,7 @@ fn fail_insufficient_work() {
         let block: &mut dyn Block = open.as_block_mut();
         block.set_work(0);
     };
-    let result = ctx.ledger.process(txn.as_mut(), &mut open).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut open).unwrap_err();
 
     assert_eq!(result, ProcessResult::InsufficientWork);
 }

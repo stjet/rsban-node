@@ -3,6 +3,7 @@ use crate::{
     ProcessResult, DEV_GENESIS_ACCOUNT,
 };
 use rsnano_core::{Account, Amount, Block, BlockDetails, Epoch};
+use rsnano_store_traits::BlockStore;
 
 use super::LedgerContext;
 
@@ -11,13 +12,13 @@ fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let change = setup_change_block(&ctx, txn.as_mut());
+    let change = setup_change_block(&ctx, &mut txn);
 
     let loaded_block = ctx
         .ledger
         .store
-        .block()
-        .get(txn.txn(), &change.hash())
+        .block
+        .get(&txn, &change.hash())
         .unwrap();
     assert_eq!(loaded_block, change);
     assert_eq!(loaded_block.sideband().unwrap(), change.sideband().unwrap());
@@ -28,7 +29,7 @@ fn create_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let change = setup_change_block(&ctx, txn.as_mut());
+    let change = setup_change_block(&ctx, &mut txn);
 
     let sideband = change.sideband().unwrap();
     assert_eq!(sideband.height, 2);
@@ -43,7 +44,7 @@ fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let change = setup_change_block(&ctx, txn.as_mut());
+    let change = setup_change_block(&ctx, &mut txn);
 
     let weight = ctx.ledger.weight(&change.representative().unwrap());
     assert_eq!(weight, change.balance());
@@ -56,10 +57,10 @@ fn change_to_zero_rep() {
 
     let mut change = ctx
         .genesis_block_factory()
-        .change(txn.txn())
+        .change(&txn)
         .representative(0)
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    ctx.ledger.process(&mut txn, &mut change).unwrap();
 
     assert_eq!(
         ctx.ledger
@@ -84,20 +85,20 @@ fn change_from_zero_rep_to_real_rep() {
 
     let mut change_to_zero_rep = ctx
         .genesis_block_factory()
-        .change(txn.txn())
+        .change(&txn)
         .representative(0)
         .build();
     ctx.ledger
-        .process(txn.as_mut(), &mut change_to_zero_rep)
+        .process(&mut txn, &mut change_to_zero_rep)
         .unwrap();
 
     let mut change_to_genesis = ctx
         .genesis_block_factory()
-        .change(txn.txn())
+        .change(&txn)
         .representative(*DEV_GENESIS_ACCOUNT)
         .build();
     ctx.ledger
-        .process(txn.as_mut(), &mut change_to_genesis)
+        .process(&mut txn, &mut change_to_genesis)
         .unwrap();
 
     assert_eq!(
@@ -121,12 +122,12 @@ fn fail_insufficient_work_epoch_0() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let mut send = ctx.genesis_block_factory().send(txn.txn()).work(0).build();
+    let mut send = ctx.genesis_block_factory().send(&txn).work(0).build();
     {
         let block: &mut dyn Block = send.as_block_mut();
         block.set_work(0);
     };
-    let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut send).unwrap_err();
     assert_eq!(result, ProcessResult::InsufficientWork);
 }
 
@@ -135,12 +136,12 @@ fn fail_insufficient_work_epoch_1() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    upgrade_genesis_to_epoch_v1(&ctx, txn.as_mut());
-    let mut send = ctx.genesis_block_factory().send(txn.txn()).work(0).build();
+    upgrade_genesis_to_epoch_v1(&ctx, &mut txn);
+    let mut send = ctx.genesis_block_factory().send(&txn).work(0).build();
     {
         let block: &mut dyn Block = send.as_block_mut();
         block.set_work(0);
     };
-    let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut send).unwrap_err();
     assert_eq!(result, ProcessResult::InsufficientWork);
 }

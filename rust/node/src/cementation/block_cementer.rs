@@ -67,7 +67,7 @@ impl BlockCementer {
 
         let mut txn = self.ledger.store.tx_begin_read();
         let ledger_clone = Arc::clone(&self.ledger);
-        let mut ledger_adapter = LedgerAdapter::new(txn.txn_mut(), &ledger_clone);
+        let mut ledger_adapter = LedgerAdapter::new(&mut txn, &ledger_clone);
 
         self.logic.set_current_block(original_block.clone());
 
@@ -125,14 +125,14 @@ impl BlockCementer {
             &mut LedgerAdapter::new_unlimited(txn.txn_mut(), &self.ledger),
         ) {
             self.ledger
-                .write_confirmation_height(txn.as_mut(), &section_to_cement);
+                .write_confirmation_height(&mut txn, &section_to_cement);
 
             if self.logic.should_start_new_batch() {
-                self.start_new_batch(txn.as_mut(), &mut write_guard, callbacks);
+                self.start_new_batch(&mut txn, &mut write_guard, callbacks);
             }
         }
 
-        self.commit_batch(txn.as_mut(), &mut write_guard, callbacks);
+        self.commit_batch(&mut txn, &mut write_guard, callbacks);
     }
 
     fn start_new_batch(

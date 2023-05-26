@@ -27,16 +27,16 @@ pub enum Vacuuming {
 
 pub struct LmdbStore<T: EnvironmentStrategy = EnvironmentWrapper> {
     pub env: Arc<LmdbEnv<T>>,
-    pub block_store: Arc<LmdbBlockStore<T>>,
-    pub frontier_store: Arc<LmdbFrontierStore<T>>,
-    pub account_store: Arc<LmdbAccountStore<T>>,
-    pub pending_store: Arc<LmdbPendingStore<T>>,
-    pub online_weight_store: Arc<LmdbOnlineWeightStore<T>>,
-    pub pruned_store: Arc<LmdbPrunedStore<T>>,
-    pub peer_store: Arc<LmdbPeerStore<T>>,
-    pub confirmation_height_store: Arc<LmdbConfirmationHeightStore<T>>,
-    pub final_vote_store: Arc<LmdbFinalVoteStore<T>>,
-    pub version_store: Arc<LmdbVersionStore<T>>,
+    pub block: Arc<LmdbBlockStore<T>>,
+    pub frontier: Arc<LmdbFrontierStore<T>>,
+    pub account: Arc<LmdbAccountStore<T>>,
+    pub pending: Arc<LmdbPendingStore<T>>,
+    pub online_weight: Arc<LmdbOnlineWeightStore<T>>,
+    pub pruned: Arc<LmdbPrunedStore<T>>,
+    pub peer: Arc<LmdbPeerStore<T>>,
+    pub confirmation_height: Arc<LmdbConfirmationHeightStore<T>>,
+    pub final_vote: Arc<LmdbFinalVoteStore<T>>,
+    pub version: Arc<LmdbVersionStore<T>>,
 }
 
 pub struct LmdbStoreBuilder<'a> {
@@ -116,16 +116,16 @@ impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
         let env = Arc::new(LmdbEnv::<T>::with_txn_tracker(path, options, txn_tracker)?);
 
         Ok(Self {
-            block_store: Arc::new(LmdbBlockStore::new(env.clone())?),
-            frontier_store: Arc::new(LmdbFrontierStore::new(env.clone())?),
-            account_store: Arc::new(LmdbAccountStore::new(env.clone())?),
-            pending_store: Arc::new(LmdbPendingStore::new(env.clone())?),
-            online_weight_store: Arc::new(LmdbOnlineWeightStore::new(env.clone())?),
-            pruned_store: Arc::new(LmdbPrunedStore::new(env.clone())?),
-            peer_store: Arc::new(LmdbPeerStore::new(env.clone())?),
-            confirmation_height_store: Arc::new(LmdbConfirmationHeightStore::new(env.clone())?),
-            final_vote_store: Arc::new(LmdbFinalVoteStore::new(env.clone())?),
-            version_store: Arc::new(LmdbVersionStore::new(env.clone())?),
+            block: Arc::new(LmdbBlockStore::new(env.clone())?),
+            frontier: Arc::new(LmdbFrontierStore::new(env.clone())?),
+            account: Arc::new(LmdbAccountStore::new(env.clone())?),
+            pending: Arc::new(LmdbPendingStore::new(env.clone())?),
+            online_weight: Arc::new(LmdbOnlineWeightStore::new(env.clone())?),
+            pruned: Arc::new(LmdbPrunedStore::new(env.clone())?),
+            peer: Arc::new(LmdbPeerStore::new(env.clone())?),
+            confirmation_height: Arc::new(LmdbConfirmationHeightStore::new(env.clone())?),
+            final_vote: Arc::new(LmdbFinalVoteStore::new(env.clone())?),
+            version: Arc::new(LmdbVersionStore::new(env.clone())?),
             env,
         })
     }
@@ -134,11 +134,11 @@ impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
 impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
     pub fn rebuild_db(&self, txn: &mut dyn WriteTransaction) -> anyhow::Result<()> {
         let tables = [
-            self.account_store.database(),
-            self.block_store.database(),
-            self.pruned_store.database(),
-            self.confirmation_height_store.database(),
-            self.pending_store.database(),
+            self.account.database(),
+            self.block.database(),
+            self.pruned.database(),
+            self.confirmation_height.database(),
+            self.pending.database(),
         ];
         for table in tables {
             rebuild_table(&self.env, txn, table)?;
@@ -173,12 +173,12 @@ impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
             .serialize_txn_tracker(json, min_read_time, min_write_time)
     }
 
-    pub fn tx_begin_read(&self) -> lmdb::Result<LmdbReadTransaction> {
-        self.env.tx_begin_read()
+    pub fn tx_begin_read(&self) -> LmdbReadTransaction {
+        self.env.tx_begin_read().unwrap()
     }
 
-    pub fn tx_begin_write(&self) -> lmdb::Result<LmdbWriteTransaction<T>> {
-        self.env.tx_begin_write()
+    pub fn tx_begin_write(&self) -> LmdbWriteTransaction<T> {
+        self.env.tx_begin_write().unwrap()
     }
 }
 
@@ -349,39 +349,39 @@ impl<T: EnvironmentStrategy + 'static> Store for LmdbStore<T> {
     }
 
     fn account(&self) -> &dyn AccountStore {
-        self.account_store.as_ref()
+        self.account.as_ref()
     }
 
     fn confirmation_height(&self) -> &dyn ConfirmationHeightStore {
-        self.confirmation_height_store.as_ref()
+        self.confirmation_height.as_ref()
     }
 
     fn pruned(&self) -> &dyn PrunedStore {
-        self.pruned_store.as_ref()
+        self.pruned.as_ref()
     }
 
     fn block(&self) -> &dyn BlockStore {
-        self.block_store.as_ref()
+        self.block.as_ref()
     }
 
     fn pending(&self) -> &dyn PendingStore {
-        self.pending_store.as_ref()
+        self.pending.as_ref()
     }
 
     fn frontier(&self) -> &dyn FrontierStore {
-        self.frontier_store.as_ref()
+        self.frontier.as_ref()
     }
 
     fn online_weight(&self) -> &dyn rsnano_store_traits::OnlineWeightStore {
-        self.online_weight_store.as_ref()
+        self.online_weight.as_ref()
     }
 
     fn peers(&self) -> &dyn rsnano_store_traits::PeerStore {
-        self.peer_store.as_ref()
+        self.peer.as_ref()
     }
 
     fn final_votes(&self) -> &dyn rsnano_store_traits::FinalVoteStore {
-        self.final_vote_store.as_ref()
+        self.final_vote.as_ref()
     }
 }
 
@@ -487,8 +487,8 @@ mod tests {
     fn writes_db_version_for_new_store() {
         let file = TestDbFile::random();
         let store = LmdbStore::<EnvironmentWrapper>::open(&file.path).build().unwrap();
-        let txn = store.tx_begin_read().unwrap();
-        assert_eq!(store.version_store.get(&txn), Some(STORE_VERSION_MINIMUM));
+        let txn = store.tx_begin_read();
+        assert_eq!(store.version.get(&txn), Some(STORE_VERSION_MINIMUM));
     }
 
     fn assert_upgrade_fails(path: &Path, error_msg: &str) {

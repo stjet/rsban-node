@@ -2,6 +2,9 @@
 use rsnano_core::BlockChainBuilder;
 #[cfg(test)]
 use rsnano_core::Epoch;
+use rsnano_store_traits::BlockStore;
+use rsnano_store_traits::ConfirmationHeightStore;
+use rsnano_store_traits::PrunedStore;
 use std::cell::Cell;
 #[cfg(test)]
 use std::collections::HashMap;
@@ -62,18 +65,18 @@ impl<'a> LedgerDataRequester for LedgerAdapter<'a> {
         }
 
         self.block_read_count.set(read_count + 1);
-        self.ledger.store.block().get(self.txn, block_hash)
+        self.ledger.store.block.get(self.txn, block_hash)
     }
 
     fn get_confirmation_height(&self, account: &Account) -> Option<ConfirmationHeightInfo> {
         self.ledger
             .store
-            .confirmation_height()
+            .confirmation_height
             .get(self.txn, account)
     }
 
     fn was_block_pruned(&self, block_hash: &BlockHash) -> bool {
-        self.ledger.pruning_enabled() && self.ledger.store.pruned().exists(self.txn, block_hash)
+        self.ledger.pruning_enabled() && self.ledger.store.pruned.exists(self.txn, block_hash)
     }
 
     fn get_account_info(&self, account: &Account) -> Option<AccountInfo> {

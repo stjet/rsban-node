@@ -15,7 +15,7 @@ fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    rollback_send_block(&ctx, txn.as_mut());
+    rollback_send_block(&ctx, &mut txn);
 
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
@@ -28,14 +28,14 @@ fn rollback_frontiers() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = rollback_send_block(&ctx, txn.as_mut());
+    let send = rollback_send_block(&ctx, &mut txn);
 
     assert_eq!(
-        ctx.ledger.get_frontier(txn.txn(), &DEV_GENESIS_HASH),
+        ctx.ledger.get_frontier(&txn, &DEV_GENESIS_HASH),
         Some(*DEV_GENESIS_ACCOUNT)
     );
     assert_eq!(
-        ctx.ledger.get_frontier(txn.txn(), &send.send_block.hash()),
+        ctx.ledger.get_frontier(&txn, &send.send_block.hash()),
         None
     );
 }
@@ -45,11 +45,11 @@ fn update_account_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    rollback_send_block(&ctx, txn.as_mut());
+    rollback_send_block(&ctx, &mut txn);
 
     let account_info = ctx
         .ledger
-        .account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(account_info.block_count, 1);
     assert_eq!(account_info.head, *DEV_GENESIS_HASH);
@@ -62,10 +62,10 @@ fn remove_from_pending_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = rollback_send_block(&ctx, txn.as_mut());
+    let send = rollback_send_block(&ctx, &mut txn);
 
     let pending = ctx.ledger.pending_info(
-        txn.txn(),
+        &txn,
         &PendingKey::new(send.destination.account(), send.send_block.hash()),
     );
     assert_eq!(pending, None);
@@ -76,11 +76,11 @@ fn update_confirmation_height_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    rollback_send_block(&ctx, txn.as_mut());
+    rollback_send_block(&ctx, &mut txn);
 
     let conf_height = ctx
         .ledger
-        .get_confirmation_height(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .get_confirmation_height(&txn, &DEV_GENESIS_ACCOUNT)
         .unwrap();
 
     assert_eq!(conf_height.frontier, *DEV_GENESIS_HASH);
@@ -92,32 +92,32 @@ fn rollback_dependent_blocks_too() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
 
     // Rollback send block. This requires the rollback of the open block first.
     ctx.ledger
-        .rollback(txn.as_mut(), &open.send_block.hash())
+        .rollback(&mut txn, &open.send_block.hash())
         .unwrap();
 
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &DEV_GENESIS_ACCOUNT, false),
+            .account_balance(&txn, &DEV_GENESIS_ACCOUNT, false),
         LEDGER_CONSTANTS_STUB.genesis_amount
     );
 
     assert_eq!(
         ctx.ledger
-            .account_balance(txn.txn(), &open.destination.account(), false),
+            .account_balance(&txn, &open.destination.account(), false),
         Amount::zero()
     );
 
     assert!(ctx
         .ledger
-        .account_info(txn.txn(), &open.destination.account())
+        .account_info(&txn, &open.destination.account())
         .is_none());
 
     let pending = ctx.ledger.pending_info(
-        txn.txn(),
+        &txn,
         &PendingKey::new(open.destination.account(), *DEV_GENESIS_HASH),
     );
     assert_eq!(pending, None);

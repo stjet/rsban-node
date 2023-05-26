@@ -6,6 +6,7 @@ use rsnano_core::{
     Account, BlockEnum, BlockHash, BlockType,
 };
 use rsnano_ledger::Ledger;
+use rsnano_store_traits::BlockStore;
 
 use crate::{
     messages::BulkPull,
@@ -56,8 +57,8 @@ impl BulkPullServerImpl {
         if !self
             .ledger
             .store
-            .block()
-            .exists(transaction.txn(), &self.request.end)
+            .block
+            .exists(&transaction, &self.request.end)
         {
             if self.enable_logging {
                 self.logger.try_log(&format!(
@@ -68,11 +69,14 @@ impl BulkPullServerImpl {
             self.request.end = BlockHash::zero();
         }
 
-        if self
-            .ledger
-            .store
-            .block()
-            .exists(transaction.txn(), &self.request.start.into())
+        if {
+            let ref this = self
+                .ledger
+                .store
+                .block;
+            let hash = &self.request.start.into();
+            this.block_raw_get(&transaction, hash).is_some()
+        }
         {
             if self.enable_logging {
                 self.logger.try_log(&format!(
@@ -84,8 +88,8 @@ impl BulkPullServerImpl {
             self.current = if self.ascending() {
                 self.ledger
                     .store
-                    .block()
-                    .successor(transaction.txn(), &self.request.start.into())
+                    .block
+                    .successor(&transaction, &self.request.start.into())
                     .unwrap_or_default()
             } else {
                 self.request.start.into()
@@ -94,7 +98,7 @@ impl BulkPullServerImpl {
         } else {
             if let Some(info) = self
                 .ledger
-                .account_info(transaction.txn(), &self.request.start.into())
+                .account_info(&transaction, &self.request.start.into())
             {
                 self.current = if self.ascending() {
                     info.open_block
@@ -104,7 +108,7 @@ impl BulkPullServerImpl {
                 if !self.request.end.is_zero() {
                     let account = self
                         .ledger
-                        .account(transaction.txn(), &self.request.end)
+                        .account(&transaction, &self.request.end)
                         .unwrap_or_default();
                     if account != self.request.start.into() {
                         if self.enable_logging {
@@ -174,7 +178,7 @@ impl BulkPullServerImpl {
         if send_current {
             {
                 let txn = self.ledger.read_txn();
-                result = self.ledger.get_block(txn.txn(), &self.current);
+                result = self.ledger.get_block(&txn, &self.current);
             }
 
             if let Some(result) = &result {

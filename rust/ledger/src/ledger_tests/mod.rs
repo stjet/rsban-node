@@ -10,6 +10,7 @@ pub(crate) use helpers::*;
 use rsnano_core::{
     Account, Amount, BlockBuilder, BlockHash, KeyPair, QualifiedRoot, Root, GXRB_RATIO,
 };
+use rsnano_store_traits::{PrunedStore, WriteTransaction};
 
 mod empty_ledger;
 mod epoch_v1;
@@ -34,11 +35,11 @@ fn ledger_successor() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
 
     assert_eq!(
         ctx.ledger.successor(
-            txn.txn(),
+            &txn,
             &QualifiedRoot::new(Root::zero(), *DEV_GENESIS_HASH)
         ),
         Some(send.send_block)
@@ -50,12 +51,12 @@ fn ledger_successor_genesis() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    setup_legacy_send_block(&ctx, txn.as_mut());
+    setup_legacy_send_block(&ctx, &mut txn);
     let genesis = DEV_GENESIS.read().unwrap().clone();
 
     assert_eq!(
         ctx.ledger.successor(
-            txn.txn(),
+            &txn,
             &QualifiedRoot::new(DEV_GENESIS_ACCOUNT.deref().into(), BlockHash::zero())
         ),
         Some(genesis)
@@ -67,7 +68,7 @@ fn latest_root_empty() {
     let ctx = LedgerContext::empty();
     let txn = ctx.ledger.read_txn();
     assert_eq!(
-        ctx.ledger.latest_root(txn.txn(), &Account::from(1)),
+        ctx.ledger.latest_root(&txn, &Account::from(1)),
         Root::from(1)
     );
 }
@@ -77,10 +78,10 @@ fn latest_root() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
 
     assert_eq!(
-        ctx.ledger.latest_root(txn.txn(), &DEV_GENESIS_ACCOUNT),
+        ctx.ledger.latest_root(&txn, &DEV_GENESIS_ACCOUNT),
         send.send_block.hash().into()
     );
 }
@@ -93,24 +94,24 @@ fn send_open_receive_vote_weight() {
     let receiver = ctx.block_factory();
 
     let mut send1 = genesis
-        .legacy_send(txn.txn())
+        .legacy_send(&txn)
         .destination(receiver.account())
         .amount(Amount::raw(50))
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+    ctx.ledger.process(&mut txn, &mut send1).unwrap();
 
     let mut send2 = genesis
-        .legacy_send(txn.txn())
+        .legacy_send(&txn)
         .destination(receiver.account())
         .amount(Amount::raw(50))
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+    ctx.ledger.process(&mut txn, &mut send2).unwrap();
 
     let mut open = receiver.legacy_open(send1.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+    ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-    let mut receive = receiver.legacy_receive(txn.txn(), send2.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+    let mut receive = receiver.legacy_receive(&txn, send2.hash()).build();
+    ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::raw(100));
     assert_eq!(
@@ -127,33 +128,33 @@ fn send_open_receive_rollback() {
     let receiver = AccountBlockFactory::new(&ctx.ledger);
 
     let mut send1 = genesis
-        .legacy_send(txn.txn())
+        .legacy_send(&txn)
         .destination(receiver.account())
         .amount(Amount::raw(50))
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+    ctx.ledger.process(&mut txn, &mut send1).unwrap();
 
     let mut send2 = genesis
-        .legacy_send(txn.txn())
+        .legacy_send(&txn)
         .destination(receiver.account())
         .amount(Amount::raw(50))
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+    ctx.ledger.process(&mut txn, &mut send2).unwrap();
 
     let mut open = receiver.legacy_open(send1.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+    ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-    let mut receive = receiver.legacy_receive(txn.txn(), send2.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+    let mut receive = receiver.legacy_receive(&txn, send2.hash()).build();
+    ctx.ledger.process(&mut txn, &mut receive).unwrap();
     let rep_account = Account::from(1);
 
     let mut change = genesis
-        .legacy_change(txn.txn())
+        .legacy_change(&txn)
         .representative(rep_account)
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    ctx.ledger.process(&mut txn, &mut change).unwrap();
 
-    ctx.ledger.rollback(txn.as_mut(), &receive.hash()).unwrap();
+    ctx.ledger.rollback(&mut txn, &receive.hash()).unwrap();
 
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::raw(50));
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
@@ -162,7 +163,7 @@ fn send_open_receive_rollback() {
         LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(100)
     );
 
-    ctx.ledger.rollback(txn.as_mut(), &open.hash()).unwrap();
+    ctx.ledger.rollback(&mut txn, &open.hash()).unwrap();
 
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::zero());
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
@@ -171,7 +172,7 @@ fn send_open_receive_rollback() {
         LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(100)
     );
 
-    ctx.ledger.rollback(txn.as_mut(), &change.hash()).unwrap();
+    ctx.ledger.rollback(&mut txn, &change.hash()).unwrap();
 
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::zero());
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());
@@ -180,7 +181,7 @@ fn send_open_receive_rollback() {
         LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(100)
     );
 
-    ctx.ledger.rollback(txn.as_mut(), &send2.hash()).unwrap();
+    ctx.ledger.rollback(&mut txn, &send2.hash()).unwrap();
 
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::zero());
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());
@@ -189,7 +190,7 @@ fn send_open_receive_rollback() {
         LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(50)
     );
 
-    ctx.ledger.rollback(txn.as_mut(), &send1.hash()).unwrap();
+    ctx.ledger.rollback(&mut txn, &send1.hash()).unwrap();
 
     assert_eq!(ctx.ledger.weight(&receiver.account()), Amount::zero());
     assert_eq!(ctx.ledger.weight(&rep_account), Amount::zero());
@@ -209,11 +210,11 @@ fn bootstrap_rep_weight() {
     {
         let mut txn = ctx.ledger.rw_txn();
         let mut send = genesis
-            .legacy_send(txn.txn())
+            .legacy_send(&txn)
             .destination(representative_account)
             .amount(Amount::raw(50))
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+        ctx.ledger.process(&mut txn, &mut send).unwrap();
     }
     {
         let mut weights = ctx.ledger.bootstrap_weights.lock().unwrap();
@@ -227,11 +228,11 @@ fn bootstrap_rep_weight() {
     {
         let mut txn = ctx.ledger.rw_txn();
         let mut send = genesis
-            .legacy_send(txn.txn())
+            .legacy_send(&txn)
             .destination(representative_account)
             .amount(Amount::raw(50))
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+        ctx.ledger.process(&mut txn, &mut send).unwrap();
     }
     assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 3);
     assert_eq!(ctx.ledger.weight(&representative_account), Amount::zero());
@@ -246,34 +247,34 @@ fn block_destination_source() {
     let dest_account = Account::from(1000);
 
     let mut send_to_dest = genesis
-        .legacy_send(txn.txn())
+        .legacy_send(&txn)
         .destination(dest_account)
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send_to_dest).unwrap();
+    ctx.ledger.process(&mut txn, &mut send_to_dest).unwrap();
 
     let mut send_to_self = genesis
-        .legacy_send(txn.txn())
+        .legacy_send(&txn)
         .destination(genesis.account())
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send_to_self).unwrap();
+    ctx.ledger.process(&mut txn, &mut send_to_self).unwrap();
 
     let mut receive = genesis
-        .legacy_receive(txn.txn(), send_to_self.hash())
+        .legacy_receive(&txn, send_to_self.hash())
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+    ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
-    let mut send_to_dest_2 = genesis.send(txn.txn()).link(dest_account).build();
+    let mut send_to_dest_2 = genesis.send(&txn).link(dest_account).build();
     ctx.ledger
-        .process(txn.as_mut(), &mut send_to_dest_2)
+        .process(&mut txn, &mut send_to_dest_2)
         .unwrap();
 
-    let mut send_to_self_2 = genesis.send(txn.txn()).link(genesis.account()).build();
+    let mut send_to_self_2 = genesis.send(&txn).link(genesis.account()).build();
     ctx.ledger
-        .process(txn.as_mut(), &mut send_to_self_2)
+        .process(&mut txn, &mut send_to_self_2)
         .unwrap();
 
-    let mut receive2 = genesis.receive(txn.txn(), send_to_self_2.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut receive2).unwrap();
+    let mut receive2 = genesis.receive(&txn, send_to_self_2.hash()).build();
+    ctx.ledger.process(&mut txn, &mut receive2).unwrap();
 
     let block1 = send_to_dest;
     let block2 = send_to_self;
@@ -282,36 +283,36 @@ fn block_destination_source() {
     let block5 = send_to_self_2;
     let block6 = receive2;
 
-    assert_eq!(ledger.balance(txn.txn(), &block6.hash()), block6.balance());
-    assert_eq!(ledger.block_destination(txn.txn(), &block1), dest_account);
-    assert_eq!(ledger.block_source(txn.txn(), &block1), BlockHash::zero());
+    assert_eq!(ledger.balance(&txn, &block6.hash()), block6.balance());
+    assert_eq!(ledger.block_destination(&txn, &block1), dest_account);
+    assert_eq!(ledger.block_source(&txn, &block1), BlockHash::zero());
 
     assert_eq!(
-        ledger.block_destination(txn.txn(), &block2),
+        ledger.block_destination(&txn, &block2),
         *DEV_GENESIS_ACCOUNT
     );
-    assert_eq!(ledger.block_source(txn.txn(), &block2), BlockHash::zero());
+    assert_eq!(ledger.block_source(&txn, &block2), BlockHash::zero());
 
     assert_eq!(
-        ledger.block_destination(txn.txn(), &block3),
+        ledger.block_destination(&txn, &block3),
         Account::zero()
     );
-    assert_eq!(ledger.block_source(txn.txn(), &block3), block2.hash());
+    assert_eq!(ledger.block_source(&txn, &block3), block2.hash());
 
-    assert_eq!(ledger.block_destination(txn.txn(), &block4), dest_account);
-    assert_eq!(ledger.block_source(txn.txn(), &block4), BlockHash::zero());
+    assert_eq!(ledger.block_destination(&txn, &block4), dest_account);
+    assert_eq!(ledger.block_source(&txn, &block4), BlockHash::zero());
 
     assert_eq!(
-        ledger.block_destination(txn.txn(), &block5),
+        ledger.block_destination(&txn, &block5),
         *DEV_GENESIS_ACCOUNT
     );
-    assert_eq!(ledger.block_source(txn.txn(), &block5), BlockHash::zero());
+    assert_eq!(ledger.block_source(&txn, &block5), BlockHash::zero());
 
     assert_eq!(
-        ledger.block_destination(txn.txn(), &block6),
+        ledger.block_destination(&txn, &block6),
         Account::zero()
     );
-    assert_eq!(ledger.block_source(txn.txn(), &block6), block5.hash());
+    assert_eq!(ledger.block_source(&txn, &block6), block5.hash());
 }
 
 #[test]
@@ -325,9 +326,9 @@ fn state_account() {
         .link(*DEV_GENESIS_ACCOUNT)
         .sign(&DEV_GENESIS_KEY)
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
     assert_eq!(
-        ctx.ledger.account(txn.txn(), &send.hash()),
+        ctx.ledger.account(&txn, &send.hash()),
         Some(*DEV_GENESIS_ACCOUNT)
     );
 }
@@ -342,7 +343,7 @@ mod dependents_confirmed {
 
         assert_eq!(
             ctx.ledger
-                .dependents_confirmed(txn.txn(), &DEV_GENESIS.read().unwrap()),
+                .dependents_confirmed(&txn, &DEV_GENESIS.read().unwrap()),
             true
         );
     }
@@ -355,12 +356,12 @@ mod dependents_confirmed {
 
         let mut send = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+        ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &send), true);
+        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &send), true);
     }
 
     #[test]
@@ -368,13 +369,13 @@ mod dependents_confirmed {
         let ctx = LedgerContext::empty();
         let mut txn = ctx.ledger.rw_txn();
 
-        let mut send1 = ctx.genesis_block_factory().send(txn.txn()).build();
-        ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+        let mut send1 = ctx.genesis_block_factory().send(&txn).build();
+        ctx.ledger.process(&mut txn, &mut send1).unwrap();
 
-        let mut send2 = ctx.genesis_block_factory().send(txn.txn()).build();
-        ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+        let mut send2 = ctx.genesis_block_factory().send(&txn).build();
+        ctx.ledger.process(&mut txn, &mut send2).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &send2), false);
+        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &send2), false);
     }
 
     #[test]
@@ -385,15 +386,15 @@ mod dependents_confirmed {
 
         let mut send = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+        ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-        let mut open = destination.open(txn.txn(), send.hash()).build();
-        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+        let mut open = destination.open(&txn, send.hash()).build();
+        ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &open), false);
+        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &open), false);
     }
 
     #[test]
@@ -404,16 +405,16 @@ mod dependents_confirmed {
 
         let mut send = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
-        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.process(&mut txn, &mut send).unwrap();
+        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
 
-        let mut open = destination.open(txn.txn(), send.hash()).build();
-        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+        let mut open = destination.open(&txn, send.hash()).build();
+        ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &open), true);
+        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &open), true);
     }
 
     #[test]
@@ -425,27 +426,27 @@ mod dependents_confirmed {
 
         let mut send1 = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
-        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.process(&mut txn, &mut send1).unwrap();
+        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
 
         let mut send2 = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+        ctx.ledger.process(&mut txn, &mut send2).unwrap();
 
-        let mut open = destination.open(txn.txn(), send1.hash()).build();
-        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
-        ctx.inc_confirmation_height(txn.as_mut(), &destination.account());
+        let mut open = destination.open(&txn, send1.hash()).build();
+        ctx.ledger.process(&mut txn, &mut open).unwrap();
+        ctx.inc_confirmation_height(&mut txn, &destination.account());
 
-        let mut receive = destination.receive(txn.txn(), send2.hash()).build();
-        ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+        let mut receive = destination.receive(&txn, send2.hash()).build();
+        ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive), false);
+        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &receive), false);
     }
 
     #[test]
@@ -457,27 +458,27 @@ mod dependents_confirmed {
 
         let mut send1 = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
-        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.process(&mut txn, &mut send1).unwrap();
+        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
 
         let mut send2 = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
-        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.process(&mut txn, &mut send2).unwrap();
+        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
 
-        let mut open = destination.open(txn.txn(), send1.hash()).build();
-        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+        let mut open = destination.open(&txn, send1.hash()).build();
+        ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-        let mut receive = destination.receive(txn.txn(), send2.hash()).build();
-        ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+        let mut receive = destination.receive(&txn, send2.hash()).build();
+        ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive), false);
+        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &receive), false);
     }
 
     #[test]
@@ -489,28 +490,28 @@ mod dependents_confirmed {
 
         let mut send1 = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
-        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.process(&mut txn, &mut send1).unwrap();
+        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
 
         let mut send2 = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
-        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.process(&mut txn, &mut send2).unwrap();
+        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
 
-        let mut open = destination.open(txn.txn(), send1.hash()).build();
-        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
-        ctx.inc_confirmation_height(txn.as_mut(), &destination.account());
+        let mut open = destination.open(&txn, send1.hash()).build();
+        ctx.ledger.process(&mut txn, &mut open).unwrap();
+        ctx.inc_confirmation_height(&mut txn, &destination.account());
 
-        let mut receive = destination.receive(txn.txn(), send2.hash()).build();
-        ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+        let mut receive = destination.receive(&txn, send2.hash()).build();
+        ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive), true);
+        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &receive), true);
     }
 
     #[test]
@@ -522,22 +523,22 @@ mod dependents_confirmed {
 
         let mut send1 = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .amount(Amount::raw(1))
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
-        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.process(&mut txn, &mut send1).unwrap();
+        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
 
         let mut send2 = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
-        ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.process(&mut txn, &mut send2).unwrap();
+        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
 
-        assert_eq!(ctx.ledger.pruning_action(txn.as_mut(), &send2.hash(), 1), 2);
+        assert_eq!(ctx.ledger.pruning_action(&mut txn, &send2.hash(), 1), 2);
 
         let receive1 = BlockBuilder::state()
             .account(destination.account())
@@ -546,7 +547,7 @@ mod dependents_confirmed {
             .link(send1.hash())
             .sign(&destination.key)
             .build();
-        assert_eq!(ctx.ledger.dependents_confirmed(txn.txn(), &receive1), true);
+        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &receive1), true);
     }
 }
 
@@ -559,16 +560,16 @@ mod could_fit {
     fn legacy_change_block_with_known_previous_block_fits() {
         let ctx = LedgerContext::empty();
         let txn = ctx.ledger.read_txn();
-        let change = ctx.genesis_block_factory().legacy_change(txn.txn()).build();
-        assert!(ctx.ledger.could_fit(txn.txn(), &change));
+        let change = ctx.genesis_block_factory().legacy_change(&txn).build();
+        assert!(ctx.ledger.could_fit(&txn, &change));
     }
 
     #[test]
     fn change_block_with_known_previous_block_fits() {
         let ctx = LedgerContext::empty();
         let txn = ctx.ledger.read_txn();
-        let change2 = ctx.genesis_block_factory().change(txn.txn()).build();
-        assert!(ctx.ledger.could_fit(txn.txn(), &change2));
+        let change2 = ctx.genesis_block_factory().change(&txn).build();
+        assert!(ctx.ledger.could_fit(&txn, &change2));
     }
 
     #[test]
@@ -577,14 +578,14 @@ mod could_fit {
         let txn = ctx.ledger.read_txn();
         let genesis = ctx.genesis_block_factory();
 
-        let unknown_previous = genesis.legacy_change(txn.txn()).build();
+        let unknown_previous = genesis.legacy_change(&txn).build();
 
         let send = genesis
-            .legacy_send(txn.txn())
+            .legacy_send(&txn)
             .previous(unknown_previous.hash())
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &send), false);
+        assert_eq!(ctx.ledger.could_fit(&txn, &send), false);
     }
 
     #[test]
@@ -593,18 +594,18 @@ mod could_fit {
         let mut txn = ctx.ledger.rw_txn();
         let genesis = ctx.genesis_block_factory();
 
-        let mut known_previous = genesis.legacy_change(txn.txn()).build();
+        let mut known_previous = genesis.legacy_change(&txn).build();
         ctx.ledger
-            .process(txn.as_mut(), &mut known_previous)
+            .process(&mut txn, &mut known_previous)
             .unwrap();
 
         let send = genesis
-            .legacy_send(txn.txn())
+            .legacy_send(&txn)
             .previous(known_previous.hash())
             .build();
 
-        assert!(ctx.ledger.could_fit(txn.txn(), &known_previous));
-        assert!(ctx.ledger.could_fit(txn.txn(), &send));
+        assert!(ctx.ledger.could_fit(&txn, &known_previous));
+        assert!(ctx.ledger.could_fit(&txn, &send));
     }
 
     #[test]
@@ -615,7 +616,7 @@ mod could_fit {
         let destination = ctx.block_factory();
 
         let send = genesis
-            .send(txn.txn())
+            .send(&txn)
             .amount(Amount::raw(1))
             .link(destination.account())
             .build();
@@ -629,7 +630,7 @@ mod could_fit {
             .sign(&destination.key)
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &open), false);
+        assert_eq!(ctx.ledger.could_fit(&txn, &open), false);
     }
 
     #[test]
@@ -640,13 +641,13 @@ mod could_fit {
 
         let unknown_send = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .link(destination.account())
             .build();
 
         let open = destination.legacy_open(unknown_send.hash()).build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &open), false);
+        assert_eq!(ctx.ledger.could_fit(&txn, &open), false);
     }
 
     #[test]
@@ -657,14 +658,14 @@ mod could_fit {
 
         let mut send = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+        ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-        let open = destination.open(txn.txn(), send.hash()).build();
+        let open = destination.open(&txn, send.hash()).build();
 
-        assert!(ctx.ledger.could_fit(txn.txn(), &open));
+        assert!(ctx.ledger.could_fit(&txn, &open));
     }
 
     #[test]
@@ -675,14 +676,14 @@ mod could_fit {
 
         let mut send = ctx
             .genesis_block_factory()
-            .send(txn.txn())
+            .send(&txn)
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+        ctx.ledger.process(&mut txn, &mut send).unwrap();
 
         let open = destination.legacy_open(send.hash()).build();
 
-        assert!(ctx.ledger.could_fit(txn.txn(), &open));
+        assert!(ctx.ledger.could_fit(&txn, &open));
     }
 
     #[test]
@@ -692,19 +693,19 @@ mod could_fit {
         let genesis = ctx.genesis_block_factory();
         let destination = ctx.block_factory();
 
-        let mut send1 = genesis.send(txn.txn()).link(destination.account()).build();
-        ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+        let mut send1 = genesis.send(&txn).link(destination.account()).build();
+        ctx.ledger.process(&mut txn, &mut send1).unwrap();
 
         let mut open = destination.legacy_open(send1.hash()).build();
-        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+        ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-        let unknown_send = genesis.send(txn.txn()).link(destination.account()).build();
+        let unknown_send = genesis.send(&txn).link(destination.account()).build();
 
         let receive = destination
-            .legacy_receive(txn.txn(), unknown_send.hash())
+            .legacy_receive(&txn, unknown_send.hash())
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive), false);
+        assert_eq!(ctx.ledger.could_fit(&txn, &receive), false);
     }
 
     #[test]
@@ -715,16 +716,16 @@ mod could_fit {
         let destination = ctx.block_factory();
 
         let mut send = genesis
-            .send(txn.txn())
+            .send(&txn)
             .amount(Amount::raw(1))
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+        ctx.ledger.process(&mut txn, &mut send).unwrap();
 
         let mut open = destination.legacy_open(send.hash()).build();
-        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+        ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-        let unknown_send = genesis.send(txn.txn()).link(destination.account()).build();
+        let unknown_send = genesis.send(&txn).link(destination.account()).build();
 
         let receive = BlockBuilder::state()
             .account(destination.account())
@@ -733,7 +734,7 @@ mod could_fit {
             .sign(&destination.key)
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive), false);
+        assert_eq!(ctx.ledger.could_fit(&txn, &receive), false);
     }
 
     #[test]
@@ -744,21 +745,21 @@ mod could_fit {
         let destination = ctx.block_factory();
 
         let mut send = genesis
-            .send(txn.txn())
+            .send(&txn)
             .amount(Amount::raw(1))
             .link(destination.account())
             .build();
-        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+        ctx.ledger.process(&mut txn, &mut send).unwrap();
 
         let mut open = destination.legacy_open(send.hash()).build();
-        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+        ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-        let mut send2 = genesis.send(txn.txn()).link(destination.account()).build();
-        ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+        let mut send2 = genesis.send(&txn).link(destination.account()).build();
+        ctx.ledger.process(&mut txn, &mut send2).unwrap();
 
-        let receive = destination.legacy_receive(txn.txn(), send2.hash()).build();
+        let receive = destination.legacy_receive(&txn, send2.hash()).build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive), true);
+        assert_eq!(ctx.ledger.could_fit(&txn, &receive), true);
     }
 
     #[test]
@@ -768,18 +769,18 @@ mod could_fit {
         let genesis = ctx.genesis_block_factory();
         let destination = ctx.block_factory();
 
-        let mut send = genesis.send(txn.txn()).link(destination.account()).build();
-        ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+        let mut send = genesis.send(&txn).link(destination.account()).build();
+        ctx.ledger.process(&mut txn, &mut send).unwrap();
 
         let mut open = destination.legacy_open(send.hash()).build();
-        ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+        ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-        let mut send2 = genesis.send(txn.txn()).link(destination.account()).build();
-        ctx.ledger.process(txn.as_mut(), &mut send2).unwrap();
+        let mut send2 = genesis.send(&txn).link(destination.account()).build();
+        ctx.ledger.process(&mut txn, &mut send2).unwrap();
 
-        let receive = destination.receive(txn.txn(), send2.hash()).build();
+        let receive = destination.receive(&txn, send2.hash()).build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &receive), true);
+        assert_eq!(ctx.ledger.could_fit(&txn, &receive), true);
     }
 
     #[test]
@@ -788,7 +789,7 @@ mod could_fit {
         let txn = ctx.ledger.read_txn();
         let genesis = ctx.genesis_block_factory();
 
-        let unknown_send = genesis.send(txn.txn()).build();
+        let unknown_send = genesis.send(&txn).build();
 
         let epoch = BlockBuilder::state()
             .account(genesis.account())
@@ -799,7 +800,7 @@ mod could_fit {
             .sign(&genesis.key)
             .build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &epoch), false);
+        assert_eq!(ctx.ledger.could_fit(&txn, &epoch), false);
     }
 
     #[test]
@@ -807,9 +808,9 @@ mod could_fit {
         let ctx = LedgerContext::empty();
         let txn = ctx.ledger.read_txn();
 
-        let epoch = ctx.genesis_block_factory().epoch_v1(txn.txn()).build();
+        let epoch = ctx.genesis_block_factory().epoch_v1(&txn).build();
 
-        assert_eq!(ctx.ledger.could_fit(txn.txn(), &epoch), true);
+        assert_eq!(ctx.ledger.could_fit(&txn, &epoch), true);
     }
 }
 
@@ -818,25 +819,25 @@ fn block_confirmed() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     assert_eq!(
-        ctx.ledger.block_confirmed(txn.txn(), &DEV_GENESIS_HASH),
+        ctx.ledger.block_confirmed(&txn, &DEV_GENESIS_HASH),
         true
     );
 
     let destination = ctx.block_factory();
     let mut send = ctx
         .genesis_block_factory()
-        .send(txn.txn())
+        .send(&txn)
         .link(destination.account())
         .build();
 
     // Must be safe against non-existing blocks
-    assert_eq!(ctx.ledger.block_confirmed(txn.txn(), &send.hash()), false);
+    assert_eq!(ctx.ledger.block_confirmed(&txn, &send.hash()), false);
 
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
-    assert_eq!(ctx.ledger.block_confirmed(txn.txn(), &send.hash()), false);
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
+    assert_eq!(ctx.ledger.block_confirmed(&txn, &send.hash()), false);
 
-    ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
-    assert_eq!(ctx.ledger.block_confirmed(txn.txn(), &send.hash()), true);
+    ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
+    assert_eq!(ctx.ledger.block_confirmed(&txn, &send.hash()), true);
 }
 
 #[test]
@@ -897,8 +898,8 @@ fn ledger_cache() {
         let destination = ctx.block_factory();
         let send = {
             let mut txn = ctx.ledger.rw_txn();
-            let mut send = genesis.send(txn.txn()).link(destination.account()).build();
-            ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+            let mut send = genesis.send(&txn).link(destination.account()).build();
+            ctx.ledger.process(&mut txn, &mut send).unwrap();
             expected.block_count += 1;
             expected.genesis_weight = send.balance();
             send
@@ -907,8 +908,8 @@ fn ledger_cache() {
 
         let open = {
             let mut txn = ctx.ledger.rw_txn();
-            let mut open = destination.open(txn.txn(), send.hash()).build();
-            ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+            let mut open = destination.open(&txn, send.hash()).build();
+            ctx.ledger.process(&mut txn, &mut open).unwrap();
             expected.block_count += 1;
             expected.account_count += 1;
             open
@@ -917,7 +918,7 @@ fn ledger_cache() {
 
         {
             let mut txn = ctx.ledger.rw_txn();
-            ctx.inc_confirmation_height(txn.as_mut(), &DEV_GENESIS_ACCOUNT);
+            ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
             ctx.ledger
                 .cache
                 .cemented_count
@@ -928,7 +929,7 @@ fn ledger_cache() {
 
         {
             let mut txn = ctx.ledger.rw_txn();
-            ctx.inc_confirmation_height(txn.as_mut(), &destination.account());
+            ctx.inc_confirmation_height(&mut txn, &destination.account());
             ctx.ledger
                 .cache
                 .cemented_count
@@ -939,7 +940,7 @@ fn ledger_cache() {
 
         {
             let mut txn = ctx.ledger.rw_txn();
-            ctx.ledger.store.pruned().put(txn.as_mut(), &open.hash());
+            ctx.ledger.store.pruned.put(&mut txn, &open.hash());
             ctx.ledger
                 .cache
                 .pruned_count
@@ -959,10 +960,10 @@ fn unconfirmed_frontiers() {
 
     let genesis = ctx.genesis_block_factory();
     let destination = ctx.block_factory();
-    let latest = ctx.ledger.latest(txn.txn(), &genesis.account()).unwrap();
+    let latest = ctx.ledger.latest(&txn, &genesis.account()).unwrap();
 
-    let mut send = genesis.send(txn.txn()).link(destination.account()).build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    let mut send = genesis.send(&txn).link(destination.account()).build();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
     txn.commit();
 
     let unconfirmed_frontiers = ctx.ledger.unconfirmed_frontiers();
@@ -985,7 +986,7 @@ fn is_send_genesis() {
     let txn = ctx.ledger.read_txn();
     assert_eq!(
         ctx.ledger
-            .is_send(txn.txn(), DEV_GENESIS.read().unwrap().deref().deref()),
+            .is_send(&txn, DEV_GENESIS.read().unwrap().deref().deref()),
         false
     );
 }
@@ -994,15 +995,15 @@ fn is_send_genesis() {
 fn is_send_state() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let open = setup_open_block(&ctx, txn.as_mut());
+    let open = setup_open_block(&ctx, &mut txn);
     assert_eq!(
         ctx.ledger
-            .is_send(txn.txn(), open.send_block.deref().deref()),
+            .is_send(&txn, open.send_block.deref().deref()),
         true
     );
     assert_eq!(
         ctx.ledger
-            .is_send(txn.txn(), open.open_block.deref().deref()),
+            .is_send(&txn, open.open_block.deref().deref()),
         false
     );
 }
@@ -1011,15 +1012,15 @@ fn is_send_state() {
 fn is_send_legacy() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let open = setup_legacy_open_block(&ctx, txn.as_mut());
+    let open = setup_legacy_open_block(&ctx, &mut txn);
     assert_eq!(
         ctx.ledger
-            .is_send(txn.txn(), open.send_block.deref().deref()),
+            .is_send(&txn, open.send_block.deref().deref()),
         true
     );
     assert_eq!(
         ctx.ledger
-            .is_send(txn.txn(), open.open_block.deref().deref()),
+            .is_send(&txn, open.open_block.deref().deref()),
         false
     );
 }
@@ -1034,45 +1035,45 @@ fn sideband_height() {
     let dest3 = ctx.block_factory();
 
     let mut send = genesis
-        .legacy_send(txn.txn())
+        .legacy_send(&txn)
         .destination(genesis.account())
         .build();
-    ctx.ledger.process(txn.as_mut(), &mut send).unwrap();
+    ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-    let mut receive = genesis.legacy_receive(txn.txn(), send.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut receive).unwrap();
+    let mut receive = genesis.legacy_receive(&txn, send.hash()).build();
+    ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
-    let mut change = genesis.legacy_change(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut change).unwrap();
+    let mut change = genesis.legacy_change(&txn).build();
+    ctx.ledger.process(&mut txn, &mut change).unwrap();
 
-    let mut state_send1 = genesis.send(txn.txn()).link(dest1.account()).build();
-    ctx.ledger.process(txn.as_mut(), &mut state_send1).unwrap();
+    let mut state_send1 = genesis.send(&txn).link(dest1.account()).build();
+    ctx.ledger.process(&mut txn, &mut state_send1).unwrap();
 
-    let mut state_send2 = genesis.send(txn.txn()).link(dest2.account()).build();
-    ctx.ledger.process(txn.as_mut(), &mut state_send2).unwrap();
+    let mut state_send2 = genesis.send(&txn).link(dest2.account()).build();
+    ctx.ledger.process(&mut txn, &mut state_send2).unwrap();
 
-    let mut state_send3 = genesis.send(txn.txn()).link(dest3.account()).build();
-    ctx.ledger.process(txn.as_mut(), &mut state_send3).unwrap();
+    let mut state_send3 = genesis.send(&txn).link(dest3.account()).build();
+    ctx.ledger.process(&mut txn, &mut state_send3).unwrap();
 
-    let mut state_open = dest1.open(txn.txn(), state_send1.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut state_open).unwrap();
+    let mut state_open = dest1.open(&txn, state_send1.hash()).build();
+    ctx.ledger.process(&mut txn, &mut state_open).unwrap();
 
-    let mut epoch = dest1.epoch_v1(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut epoch).unwrap();
+    let mut epoch = dest1.epoch_v1(&txn).build();
+    ctx.ledger.process(&mut txn, &mut epoch).unwrap();
 
     let mut epoch_open = dest2.epoch_v1_open().build();
-    ctx.ledger.process(txn.as_mut(), &mut epoch_open).unwrap();
+    ctx.ledger.process(&mut txn, &mut epoch_open).unwrap();
 
-    let mut state_receive = dest2.receive(txn.txn(), state_send2.hash()).build();
+    let mut state_receive = dest2.receive(&txn, state_send2.hash()).build();
     ctx.ledger
-        .process(txn.as_mut(), &mut state_receive)
+        .process(&mut txn, &mut state_receive)
         .unwrap();
 
     let mut open = dest3.legacy_open(state_send3.hash()).build();
-    ctx.ledger.process(txn.as_mut(), &mut open).unwrap();
+    ctx.ledger.process(&mut txn, &mut open).unwrap();
 
     let assert_sideband_height = |hash: &BlockHash, expected_height: u64| {
-        let block = ctx.ledger.get_block(txn.txn(), hash).unwrap();
+        let block = ctx.ledger.get_block(&txn, hash).unwrap();
         assert_eq!(block.sideband().unwrap().height, expected_height);
     };
 

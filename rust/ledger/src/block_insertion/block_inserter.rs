@@ -1,11 +1,10 @@
 use std::sync::atomic::Ordering;
 
+use crate::Ledger;
 use rsnano_core::{
     Account, AccountInfo, Amount, BlockEnum, BlockSideband, BlockType, PendingInfo, PendingKey,
 };
-use rsnano_store_traits::WriteTransaction;
-
-use crate::Ledger;
+use rsnano_store_traits::{WriteTransaction, BlockStore, FrontierStore, PendingStore};
 
 pub(crate) struct BlockInsertInstructions {
     pub account: Account,
@@ -42,7 +41,7 @@ impl<'a> BlockInserter<'a> {
 
     pub(crate) fn insert(&mut self) {
         self.set_block_sideband();
-        self.ledger.store.block().put(self.txn, self.block);
+        self.ledger.store.block.put(self.txn, self.block);
         self.update_account();
         self.delete_old_pending_info();
         self.insert_new_pending_info();
@@ -73,20 +72,20 @@ impl<'a> BlockInserter<'a> {
         if self
             .ledger
             .store
-            .frontier()
+            .frontier
             .get(self.txn.txn(), &self.instructions.old_account_info.head)
             .is_some()
         {
             self.ledger
                 .store
-                .frontier()
+                .frontier
                 .del(self.txn, &self.instructions.old_account_info.head);
         }
     }
 
     fn insert_new_frontier(&mut self) {
         if self.block.block_type() != BlockType::State {
-            self.ledger.store.frontier().put(
+            self.ledger.store.frontier.put(
                 self.txn,
                 &self.block.hash(),
                 &self.instructions.account,
@@ -96,13 +95,13 @@ impl<'a> BlockInserter<'a> {
 
     fn delete_old_pending_info(&mut self) {
         if let Some(key) = &self.instructions.delete_pending {
-            self.ledger.store.pending().del(self.txn, key);
+            self.ledger.store.pending.del(self.txn, key);
         }
     }
 
     fn insert_new_pending_info(&mut self) {
         if let Some((key, info)) = &self.instructions.insert_pending {
-            self.ledger.store.pending().put(self.txn, key, info);
+            self.ledger.store.pending.put(self.txn, key, info);
         }
     }
 

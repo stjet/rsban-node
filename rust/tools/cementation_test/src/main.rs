@@ -12,6 +12,7 @@ use rsnano_core::{utils::ConsoleLogger, Account};
 use rsnano_ledger::{Ledger, LedgerConstants, WriteDatabaseQueue};
 use rsnano_node::cementation::{BlockCementer, CementCallbacks};
 use rsnano_store_lmdb::{LmdbStore, EnvironmentStrategy, EnvironmentWrapper};
+use rsnano_store_traits::{ConfirmationHeightStore, WriteTransaction, AccountStore, BlockStore};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -27,7 +28,7 @@ fn main() {
             let ledger = open_ledger::<_, EnvironmentWrapper>(ledger_path);
             let mut txn = ledger.rw_txn();
             let started = Instant::now();
-            ledger.store.confirmation_height().clear(txn.as_mut());
+            ledger.store.confirmation_height.clear(&mut txn);
             txn.commit();
             println!("clearing took {} ms", started.elapsed().as_millis());
         }
@@ -52,18 +53,18 @@ fn main() {
 
             let mut iterator = ledger
                 .store
-                .account()
-                .begin_account(txn.txn(), &Account::from(0));
+                .account
+                .begin_account(&txn, &Account::from(0));
 
             while let Some((account, info)) = iterator.current() {
                 let conf_height = ledger
                     .store
-                    .confirmation_height()
-                    .get(txn.txn(), account)
+                    .confirmation_height
+                    .get(&txn, account)
                     .unwrap_or_default();
 
                 if conf_height.height != info.block_count {
-                    let head = ledger.store.block().get(txn.txn(), &info.head).unwrap();
+                    let head = ledger.store.block.get(&txn, &info.head).unwrap();
                     block_queue.push_back(head);
                     if block_queue.len() == 300_000 {
                         break;

@@ -1,4 +1,5 @@
 use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockHash, KeyPair};
+use rsnano_store_traits::BlockStore;
 
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB,
@@ -11,13 +12,13 @@ fn save_block() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
 
     let loaded_send = ctx
         .ledger
         .store
-        .block()
-        .get(txn.txn(), &send.send_block.hash())
+        .block
+        .get(&txn, &send.send_block.hash())
         .unwrap();
 
     assert_eq!(loaded_send, send.send_block);
@@ -32,7 +33,7 @@ fn update_sideband() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
 
     let sideband = send.send_block.sideband().unwrap();
     assert_eq!(sideband.account, *DEV_GENESIS_ACCOUNT);
@@ -48,10 +49,10 @@ fn update_block_amount() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
 
     assert_eq!(
-        ctx.ledger.amount(txn.txn(), &send.send_block.hash()),
+        ctx.ledger.amount(&txn, &send.send_block.hash()),
         Some(send.amount_sent)
     );
 }
@@ -61,11 +62,11 @@ fn update_receivable() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
 
     assert_eq!(
         ctx.ledger
-            .account_receivable(txn.txn(), &send.destination.account(), false),
+            .account_receivable(&txn, &send.destination.account(), false),
         send.amount_sent
     );
 }
@@ -75,11 +76,11 @@ fn update_frontier_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
 
-    assert_eq!(ctx.ledger.get_frontier(txn.txn(), &DEV_GENESIS_HASH), None);
+    assert_eq!(ctx.ledger.get_frontier(&txn, &DEV_GENESIS_HASH), None);
     assert_eq!(
-        ctx.ledger.get_frontier(txn.txn(), &send.send_block.hash()),
+        ctx.ledger.get_frontier(&txn, &send.send_block.hash()),
         Some(*DEV_GENESIS_ACCOUNT)
     );
 }
@@ -89,11 +90,11 @@ fn update_account_info() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
 
     let account_info = ctx
         .ledger
-        .account_info(txn.txn(), &DEV_GENESIS_ACCOUNT)
+        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
         .unwrap();
     assert_eq!(account_info.block_count, 2);
     assert_eq!(account_info.head, send.send_block.hash());
@@ -104,7 +105,7 @@ fn update_vote_weight() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
 
     assert_eq!(
         ctx.ledger.weight(&send.destination.account()),
@@ -121,11 +122,11 @@ fn fail_duplicate_send() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let mut send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let mut send = setup_legacy_send_block(&ctx, &mut txn);
 
     let result = ctx
         .ledger
-        .process(txn.as_mut(), &mut send.send_block)
+        .process(&mut txn, &mut send.send_block)
         .unwrap_err();
 
     assert_eq!(result, ProcessResult::Old);
@@ -136,7 +137,7 @@ fn fail_fork() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
 
     let mut fork = BlockBuilder::legacy_send()
         .previous(*DEV_GENESIS_HASH)
@@ -144,7 +145,7 @@ fn fail_fork() {
         .sign(send.destination.key)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut fork).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut fork).unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -160,7 +161,7 @@ fn fail_gap_previous() {
         .sign(DEV_GENESIS_KEY.clone())
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut block).unwrap_err();
 
     assert_eq!(result, ProcessResult::GapPrevious);
 }
@@ -177,7 +178,7 @@ fn fail_bad_signature() {
         .sign(wrong_keys)
         .build();
 
-    let result = ctx.ledger.process(txn.as_mut(), &mut block).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut block).unwrap_err();
 
     assert_eq!(result, ProcessResult::BadSignature);
 }
@@ -188,16 +189,16 @@ fn fail_negative_spend() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let send = setup_legacy_send_block(&ctx, txn.as_mut());
+    let send = setup_legacy_send_block(&ctx, &mut txn);
 
     let mut negative_spend = genesis
-        .legacy_send(txn.txn())
+        .legacy_send(&txn)
         .balance(send.send_block.balance() + Amount::raw(1))
         .build();
 
     let result = ctx
         .ledger
-        .process(txn.as_mut(), &mut negative_spend)
+        .process(&mut txn, &mut negative_spend)
         .unwrap_err();
     assert_eq!(result, ProcessResult::NegativeSpend);
 }
@@ -209,11 +210,11 @@ fn send_after_state_fail() {
     let mut txn = ctx.ledger.rw_txn();
     let genesis = ctx.genesis_block_factory();
 
-    let mut send1 = genesis.send(txn.txn()).build();
-    ctx.ledger.process(txn.as_mut(), &mut send1).unwrap();
+    let mut send1 = genesis.send(&txn).build();
+    ctx.ledger.process(&mut txn, &mut send1).unwrap();
 
-    let mut send2 = genesis.legacy_send(txn.txn()).build();
-    let result = ctx.ledger.process(txn.as_mut(), &mut send2).unwrap_err();
+    let mut send2 = genesis.legacy_send(&txn).build();
+    let result = ctx.ledger.process(&mut txn, &mut send2).unwrap_err();
 
     assert_eq!(result, ProcessResult::BlockPosition);
 }
@@ -225,11 +226,11 @@ fn fail_insufficient_work() {
 
     let genesis = ctx.genesis_block_factory();
 
-    let mut send = genesis.legacy_send(txn.txn()).work(0).build();
+    let mut send = genesis.legacy_send(&txn).work(0).build();
     {
         let block: &mut dyn Block = send.as_block_mut();
         block.set_work(0);
     };
-    let result = ctx.ledger.process(txn.as_mut(), &mut send).unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut send).unwrap_err();
     assert_eq!(result, ProcessResult::InsufficientWork);
 }

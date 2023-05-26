@@ -1,5 +1,5 @@
 use rsnano_core::{AccountInfo, BlockEnum, BlockHash};
-use rsnano_store_traits::WriteTransaction;
+use rsnano_store_traits::{WriteTransaction, BlockStore};
 
 use crate::Ledger;
 
@@ -58,7 +58,7 @@ impl<'a> BlockRollbackPerformer<'a> {
     }
 
     fn block_exists(&self, block_hash: &BlockHash) -> bool {
-        self.ledger.store.block().exists(self.txn.txn(), block_hash)
+        self.ledger.store.block.exists(self.txn.txn(), block_hash)
     }
 
     fn load_account_head(&self, block: &BlockEnum) -> anyhow::Result<BlockEnum> {
@@ -75,7 +75,7 @@ impl<'a> BlockRollbackPerformer<'a> {
     fn load_block(&self, block_hash: &BlockHash) -> anyhow::Result<BlockEnum> {
         self.ledger
             .store
-            .block()
+            .block
             .get(self.txn.txn(), block_hash)
             .ok_or_else(|| anyhow!("block not found"))
     }

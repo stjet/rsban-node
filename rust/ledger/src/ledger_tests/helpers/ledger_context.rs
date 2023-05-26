@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, Ledger};
 use rsnano_core::{Account, ConfirmationHeightInfo};
 use rsnano_store_lmdb::{LmdbStore, TestDbFile, EnvironmentWrapper};
-use rsnano_store_traits::WriteTransaction;
+use rsnano_store_traits::{WriteTransaction, ConfirmationHeightStore};
 
 use super::AccountBlockFactory;
 
@@ -36,7 +36,7 @@ impl LedgerContext {
         let mut height = self
             .ledger
             .store
-            .confirmation_height()
+            .confirmation_height
             .get(txn.txn(), account)
             .unwrap_or_else(|| ConfirmationHeightInfo {
                 height: 0,
@@ -45,7 +45,7 @@ impl LedgerContext {
         height.height = height.height + 1;
         self.ledger
             .store
-            .confirmation_height()
+            .confirmation_height
             .put(txn, account, &height);
     }
 }

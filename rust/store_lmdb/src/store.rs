@@ -164,9 +164,6 @@ impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
         self.peer.as_ref()
     }
 
-    pub fn final_votes(&self) -> &dyn rsnano_store_traits::FinalVoteStore {
-        self.final_vote.as_ref()
-    }
     pub fn rebuild_db(&self, txn: &mut dyn WriteTransaction) -> anyhow::Result<()> {
         let tables = [
             self.account.database(),

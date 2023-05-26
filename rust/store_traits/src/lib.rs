@@ -1,9 +1,6 @@
 mod iterator;
 pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl};
 
-mod final_vote_store;
-pub use final_vote_store::{FinalVoteIterator, FinalVoteStore};
-
 mod frontier_store;
 pub use frontier_store::{FrontierIterator, FrontierStore};
 
@@ -19,7 +16,7 @@ pub use pending_store::{PendingIterator, PendingStore};
 mod pruned_store;
 pub use pruned_store::{PrunedIterator, PrunedStore};
 
-use rsnano_core::{utils::PropertyTreeWriter, Account, AccountInfo, BlockHash, BlockWithSideband, ConfirmationHeightInfo};
+use rsnano_core::{utils::PropertyTreeWriter, Account, AccountInfo, BlockHash, BlockWithSideband, ConfirmationHeightInfo, QualifiedRoot};
 
 mod version_store;
 pub use version_store::VersionStore;
@@ -31,6 +28,7 @@ pub enum Table {
 pub type AccountIterator = Box<dyn DbIterator<Account, AccountInfo>>;
 pub type BlockIterator = Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
 pub type ConfirmationHeightIterator = Box<dyn DbIterator<Account, ConfirmationHeightInfo>>;
+pub type FinalVoteIterator = Box<dyn DbIterator<QualifiedRoot, BlockHash>>;
 
 use std::{any::Any, time::Duration};
 

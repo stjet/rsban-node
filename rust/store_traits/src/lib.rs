@@ -1,9 +1,6 @@
 mod iterator;
 pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl};
 
-mod account_store;
-pub use account_store::{AccountIterator, AccountStore};
-
 mod block_store;
 pub use block_store::{BlockIterator, BlockStore};
 
@@ -28,13 +25,16 @@ pub use pending_store::{PendingIterator, PendingStore};
 mod pruned_store;
 pub use pruned_store::{PrunedIterator, PrunedStore};
 
-use rsnano_core::utils::PropertyTreeWriter;
+use rsnano_core::{utils::PropertyTreeWriter, Account, AccountInfo};
 
 mod version_store;
 pub use version_store::VersionStore;
 
-mod store;
-pub use store::{Store, Table};
+pub enum Table {
+    ConfirmationHeight,
+}
+
+pub type AccountIterator = Box<dyn DbIterator<Account, AccountInfo>>;
 
 use std::{any::Any, time::Duration};
 

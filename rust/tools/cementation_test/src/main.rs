@@ -12,7 +12,7 @@ use rsnano_core::{utils::ConsoleLogger, Account};
 use rsnano_ledger::{Ledger, LedgerConstants, WriteDatabaseQueue};
 use rsnano_node::cementation::{BlockCementer, CementCallbacks};
 use rsnano_store_lmdb::{LmdbStore, EnvironmentStrategy, EnvironmentWrapper};
-use rsnano_store_traits::{ConfirmationHeightStore, WriteTransaction, AccountStore, BlockStore};
+use rsnano_store_traits::{ConfirmationHeightStore, WriteTransaction, BlockStore};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

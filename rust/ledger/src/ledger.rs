@@ -118,12 +118,12 @@ impl Ledger {
     }
 
     fn initialize(&mut self, generate_cache: &GenerateCache) -> anyhow::Result<()> {
-        if self.store.account().begin(&self.read_txn()).is_end() {
+        if self.store.account.begin(&self.read_txn()).is_end() {
             self.add_genesis_block(&mut self.rw_txn());
         }
 
         if generate_cache.reps || generate_cache.account_count || generate_cache.block_count {
-            self.store.account().for_each_par(&|_txn, mut i, n| {
+            self.store.account.for_each_par(&|_txn, mut i, n| {
                 let mut block_count = 0;
                 let mut account_count = 0;
                 let rep_weights = RepWeights::new();
@@ -192,7 +192,7 @@ impl Ledger {
             &ConfirmationHeightInfo::new(1, genesis_hash),
         );
 
-        self.store.account().put(
+        self.store.account.put(
             txn,
             &genesis_account,
             &AccountInfo {
@@ -555,12 +555,12 @@ impl Ledger {
             }
             if !old_info.head.is_zero() && old_info.epoch != new_info.epoch {
                 // store.account ().put won't erase existing entries if they're in different tables
-                self.store.account().del(txn, account);
+                self.store.account.del(txn, account);
             }
-            self.store.account().put(txn, account, new_info);
+            self.store.account.put(txn, account, new_info);
         } else {
             debug_assert!(!self.store.confirmation_height().exists(txn.txn(), account));
-            self.store.account().del(txn, account);
+            self.store.account.del(txn, account);
             debug_assert!(self.cache.account_count.load(Ordering::SeqCst) > 0);
             self.cache.account_count.fetch_sub(1, Ordering::SeqCst);
         }
@@ -619,7 +619,7 @@ impl Ledger {
     /// **Warning:** In C++ the result is sorted in reverse order!
     pub fn unconfirmed_frontiers(&self) -> BTreeMap<u64, Vec<UncementedInfo>> {
         let result = Mutex::new(BTreeMap::<u64, Vec<UncementedInfo>>::new());
-        self.store.account().for_each_par(&|txn, mut i, n| {
+        self.store.account.for_each_par(&|txn, mut i, n| {
             let mut unconfirmed_frontiers = Vec::new();
             while !i.eq(n.as_ref()) {
                 if let Some((&account, account_info)) = i.current() {
@@ -762,7 +762,7 @@ impl Ledger {
         transaction: &dyn Transaction,
         account: &Account,
     ) -> Option<AccountInfo> {
-        self.store.account().get(transaction, account)
+        self.store.account.get(transaction, account)
     }
 
     pub fn get_confirmation_height(

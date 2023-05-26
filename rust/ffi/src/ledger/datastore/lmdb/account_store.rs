@@ -6,8 +6,6 @@ use std::{
 
 use rsnano_core::Account;
 use rsnano_store_lmdb::LmdbAccountStore;
-use rsnano_store_traits::AccountStore;
-
 use crate::{core::AccountInfoHandle, VoidPointerCallback};
 
 use super::{

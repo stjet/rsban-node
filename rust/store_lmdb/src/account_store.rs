@@ -5,7 +5,7 @@ use rsnano_core::{
     Account, AccountInfo,
 };
 use rsnano_store_traits::{
-    AccountIterator, AccountStore, ReadTransaction, Transaction, WriteTransaction,
+    AccountIterator, ReadTransaction, Transaction, WriteTransaction,
 };
 use std::sync::Arc;
 
@@ -16,7 +16,7 @@ pub struct LmdbAccountStore<T: EnvironmentStrategy = EnvironmentWrapper> {
     database: Database,
 }
 
-impl<T: EnvironmentStrategy> LmdbAccountStore<T> {
+impl<T: EnvironmentStrategy + 'static> LmdbAccountStore<T> {
     pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment
@@ -27,10 +27,8 @@ impl<T: EnvironmentStrategy> LmdbAccountStore<T> {
     pub fn database(&self) -> Database {
         self.database
     }
-}
 
-impl<T: EnvironmentStrategy + 'static> AccountStore for LmdbAccountStore<T> {
-    fn put(&self, transaction: &mut dyn WriteTransaction, account: &Account, info: &AccountInfo) {
+    pub fn put(&self, transaction: &mut dyn WriteTransaction, account: &Account, info: &AccountInfo) {
         as_write_txn::<T>(transaction)
             .put(
                 self.database,
@@ -41,7 +39,7 @@ impl<T: EnvironmentStrategy + 'static> AccountStore for LmdbAccountStore<T> {
             .unwrap();
     }
 
-    fn get(&self, transaction: &dyn Transaction, account: &Account) -> Option<AccountInfo> {
+    pub fn get(&self, transaction: &dyn Transaction, account: &Account) -> Option<AccountInfo> {
         let result = get::<T, _>(transaction, self.database, account.as_bytes());
         match result {
             Err(lmdb::Error::NotFound) => None,
@@ -53,21 +51,21 @@ impl<T: EnvironmentStrategy + 'static> AccountStore for LmdbAccountStore<T> {
         }
     }
 
-    fn del(&self, transaction: &mut dyn WriteTransaction, account: &Account) {
+    pub fn del(&self, transaction: &mut dyn WriteTransaction, account: &Account) {
         as_write_txn::<T>(transaction)
             .del(self.database, account.as_bytes(), None)
             .unwrap();
     }
 
-    fn begin_account(&self, transaction: &dyn Transaction, account: &Account) -> AccountIterator {
+    pub fn begin_account(&self, transaction: &dyn Transaction, account: &Account) -> AccountIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(transaction, self.database, Some(account.as_bytes()), true)
     }
 
-    fn begin(&self, transaction: &dyn Transaction) -> AccountIterator {
+    pub fn begin(&self, transaction: &dyn Transaction) -> AccountIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(transaction, self.database, None, true)
     }
 
-    fn for_each_par(
+    pub fn for_each_par(
         &self,
         action: &(dyn Fn(&dyn ReadTransaction, AccountIterator, AccountIterator) + Send + Sync),
     ) {
@@ -83,15 +81,15 @@ impl<T: EnvironmentStrategy + 'static> AccountStore for LmdbAccountStore<T> {
         })
     }
 
-    fn end(&self) -> AccountIterator {
+    pub fn end(&self) -> AccountIterator {
         LmdbIteratorImpl::null_iterator()
     }
 
-    fn count(&self, txn: &dyn Transaction) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction) -> u64 {
         count::<T>(txn, self.database)
     }
 
-    fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {
+    pub fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {
         !self.begin_account(txn, account).is_end()
     }
 }

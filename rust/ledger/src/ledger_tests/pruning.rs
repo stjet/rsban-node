@@ -5,10 +5,8 @@ use rsnano_core::{
     work::{WorkPool, STUB_WORK_POOL},
     Amount, BlockBuilder, BlockDetails, Epoch, PendingKey,
 };
-use rsnano_store_traits::{PendingStore, PrunedStore, BlockStore, AccountStore};
-
+use rsnano_store_traits::{BlockStore, PendingStore, PrunedStore};
 use crate::ledger_tests::LedgerContext;
-
 use super::upgrade_genesis_to_epoch_v1;
 
 #[test]
@@ -34,33 +32,20 @@ fn pruning_action() {
 
     // Prune...
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &send1.hash(), 1), 1);
-    assert_eq!(
-        ctx.ledger
-            .pruning_action(&mut txn, &DEV_GENESIS_HASH, 1),
-        0
-    );
+    assert_eq!(ctx.ledger.pruning_action(&mut txn, &DEV_GENESIS_HASH, 1), 0);
     assert!(ctx
         .ledger
         .store
         .pending
         .exists(&txn, &PendingKey::new(genesis.account(), send1.hash())),);
 
-    assert_eq!(
-        ctx.ledger.store.block.exists(&txn, &send1.hash()),
-        false
-    );
+    assert_eq!(ctx.ledger.store.block.exists(&txn, &send1.hash()), false);
 
-    assert!(ctx
-        .ledger
-        .block_or_pruned_exists_txn(&txn, &send1.hash()),);
+    assert!(ctx.ledger.block_or_pruned_exists_txn(&txn, &send1.hash()),);
 
     assert!(ctx.ledger.store.pruned.exists(&txn, &send1.hash()),);
 
-    assert!(ctx
-        .ledger
-        .store
-        .block
-        .exists(&txn, &DEV_GENESIS_HASH));
+    assert!(ctx.ledger.store.block.exists(&txn, &DEV_GENESIS_HASH));
     assert!(ctx.ledger.store.block.exists(&txn, &send2.hash()));
 
     // Receiving pruned block
@@ -94,10 +79,7 @@ fn pruning_action() {
     assert!(ctx.ledger.store.block.exists(&txn, &send2.hash()));
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &send2.hash(), 1), 1);
     assert!(ctx.ledger.store.pruned.exists(&txn, &send2.hash()));
-    assert_eq!(
-        ctx.ledger.store.block.exists(&txn, &send2.hash()),
-        false
-    );
+    assert_eq!(ctx.ledger.store.block.exists(&txn, &send2.hash()), false);
     assert_eq!(
         ctx.ledger.store.account.count(&txn),
         ctx.ledger.cache.account_count.load(Ordering::Relaxed)
@@ -142,15 +124,8 @@ fn pruning_large_chain() {
     );
 
     assert!(ctx.ledger.store.pruned.exists(&txn, &last_hash));
-    assert!(ctx
-        .ledger
-        .store
-        .block
-        .exists(&txn, &DEV_GENESIS_HASH));
-    assert_eq!(
-        ctx.ledger.store.block.exists(&txn, &last_hash),
-        false
-    );
+    assert!(ctx.ledger.store.block.exists(&txn, &DEV_GENESIS_HASH));
+    assert_eq!(ctx.ledger.store.block.exists(&txn, &last_hash), false);
     assert_eq!(
         ctx.ledger.store.pruned.count(&txn),
         ctx.ledger.cache.pruned_count.load(Ordering::Relaxed)
@@ -160,10 +135,7 @@ fn pruning_large_chain() {
         ctx.ledger.cache.block_count.load(Ordering::Relaxed)
             - ctx.ledger.cache.pruned_count.load(Ordering::Relaxed)
     );
-    assert_eq!(
-        ctx.ledger.store.pruned.count(&txn),
-        send_receive_pairs * 2
-    );
+    assert_eq!(ctx.ledger.store.pruned.count(&txn), send_receive_pairs * 2);
     assert_eq!(ctx.ledger.store.block.count(&txn), 1);
 }
 
@@ -309,10 +281,7 @@ fn pruning_source_rollback_legacy() {
 
     let info4 = ctx
         .ledger
-        .pending_info(
-            &txn,
-            &PendingKey::new(destination.account(), send2.hash()),
-        )
+        .pending_info(&txn, &PendingKey::new(destination.account(), send2.hash()))
         .unwrap();
     assert_ne!(info4.source, genesis.account()); // Tradeoff to not store pruned blocks accounts
     assert_eq!(info4.amount, Amount::raw(100));
@@ -321,10 +290,8 @@ fn pruning_source_rollback_legacy() {
     // Process open block again
     ctx.ledger.process(&mut txn, &mut open1).unwrap();
     assert_eq!(
-        ctx.ledger.pending_info(
-            &txn,
-            &PendingKey::new(destination.account(), send2.hash())
-        ),
+        ctx.ledger
+            .pending_info(&txn, &PendingKey::new(destination.account(), send2.hash())),
         None
     );
     assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 2);
@@ -402,61 +369,21 @@ fn pruning_legacy_blocks() {
     ctx.ledger.process(&mut txn, &mut send3).unwrap();
 
     // Pruning action
-    assert_eq!(
-        ctx.ledger.pruning_action(&mut txn, &change1.hash(), 2),
-        3
-    );
+    assert_eq!(ctx.ledger.pruning_action(&mut txn, &change1.hash(), 2), 3);
 
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &open1.hash(), 1), 1);
 
-    assert!(ctx
-        .ledger
-        .store
-        .block
-        .exists(&txn, &DEV_GENESIS_HASH));
-    assert_eq!(
-        ctx.ledger.store.block.exists(&txn, &send1.hash()),
-        false
-    );
-    assert_eq!(
-        ctx.ledger.store.pruned.exists(&txn, &send1.hash()),
-        true
-    );
-    assert_eq!(
-        ctx.ledger.store.block.exists(&txn, &receive1.hash()),
-        false
-    );
-    assert_eq!(
-        ctx.ledger
-            .store
-            .pruned
-            .exists(&txn, &receive1.hash()),
-        true
-    );
-    assert_eq!(
-        ctx.ledger.store.block.exists(&txn, &change1.hash()),
-        false
-    );
-    assert_eq!(
-        ctx.ledger.store.pruned.exists(&txn, &change1.hash()),
-        true
-    );
-    assert_eq!(
-        ctx.ledger.store.block.exists(&txn, &send2.hash()),
-        true
-    );
-    assert_eq!(
-        ctx.ledger.store.block.exists(&txn, &open1.hash()),
-        false
-    );
-    assert_eq!(
-        ctx.ledger.store.pruned.exists(&txn, &open1.hash()),
-        true
-    );
-    assert_eq!(
-        ctx.ledger.store.block.exists(&txn, &send3.hash()),
-        true
-    );
+    assert!(ctx.ledger.store.block.exists(&txn, &DEV_GENESIS_HASH));
+    assert_eq!(ctx.ledger.store.block.exists(&txn, &send1.hash()), false);
+    assert_eq!(ctx.ledger.store.pruned.exists(&txn, &send1.hash()), true);
+    assert_eq!(ctx.ledger.store.block.exists(&txn, &receive1.hash()), false);
+    assert_eq!(ctx.ledger.store.pruned.exists(&txn, &receive1.hash()), true);
+    assert_eq!(ctx.ledger.store.block.exists(&txn, &change1.hash()), false);
+    assert_eq!(ctx.ledger.store.pruned.exists(&txn, &change1.hash()), true);
+    assert_eq!(ctx.ledger.store.block.exists(&txn, &send2.hash()), true);
+    assert_eq!(ctx.ledger.store.block.exists(&txn, &open1.hash()), false);
+    assert_eq!(ctx.ledger.store.pruned.exists(&txn, &open1.hash()), true);
+    assert_eq!(ctx.ledger.store.block.exists(&txn, &send3.hash()), true);
     assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 4);
     assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 7);
     assert_eq!(ctx.ledger.store.pruned.count(&txn), 4);

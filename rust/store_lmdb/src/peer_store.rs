@@ -1,11 +1,14 @@
-use crate::{as_write_txn, count, exists, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::DbIterator, WriteTransaction, Transaction};
+use crate::{
+    as_write_txn, count, exists, iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper,
+    LmdbEnv, LmdbIteratorImpl, Transaction, WriteTransaction,
+};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{EndpointKey, NoValue};
 use std::sync::Arc;
 
 pub type PeerIterator = Box<dyn DbIterator<EndpointKey, NoValue>>;
 
-pub struct LmdbPeerStore<T:EnvironmentStrategy = EnvironmentWrapper> {
+pub struct LmdbPeerStore<T: EnvironmentStrategy = EnvironmentWrapper> {
     _env: Arc<LmdbEnv<T>>,
     database: Database,
 }

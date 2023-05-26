@@ -1,4 +1,8 @@
-use crate::{as_write_txn, count, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, lmdb_env::EnvironmentWrapper, iterator::DbIterator, WriteTransaction, Transaction, ReadTransaction};
+use crate::{
+    as_write_txn, count, get, iterator::DbIterator, lmdb_env::EnvironmentWrapper,
+    parallel_traversal, EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, ReadTransaction,
+    Transaction, WriteTransaction,
+};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
@@ -27,7 +31,12 @@ impl<T: EnvironmentStrategy + 'static> LmdbAccountStore<T> {
         self.database
     }
 
-    pub fn put(&self, transaction: &mut dyn WriteTransaction, account: &Account, info: &AccountInfo) {
+    pub fn put(
+        &self,
+        transaction: &mut dyn WriteTransaction,
+        account: &Account,
+        info: &AccountInfo,
+    ) {
         as_write_txn::<T>(transaction)
             .put(
                 self.database,
@@ -56,8 +65,17 @@ impl<T: EnvironmentStrategy + 'static> LmdbAccountStore<T> {
             .unwrap();
     }
 
-    pub fn begin_account(&self, transaction: &dyn Transaction, account: &Account) -> AccountIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(transaction, self.database, Some(account.as_bytes()), true)
+    pub fn begin_account(
+        &self,
+        transaction: &dyn Transaction,
+        account: &Account,
+    ) -> AccountIterator {
+        LmdbIteratorImpl::new_iterator::<T, _, _>(
+            transaction,
+            self.database,
+            Some(account.as_bytes()),
+            true,
+        )
     }
 
     pub fn begin(&self, transaction: &dyn Transaction) -> AccountIterator {

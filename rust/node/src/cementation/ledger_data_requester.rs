@@ -66,10 +66,7 @@ impl<'a> LedgerDataRequester for LedgerAdapter<'a> {
     }
 
     fn get_confirmation_height(&self, account: &Account) -> Option<ConfirmationHeightInfo> {
-        self.ledger
-            .store
-            .confirmation_height
-            .get(self.txn, account)
+        self.ledger.store.confirmation_height.get(self.txn, account)
     }
 
     fn was_block_pruned(&self, block_hash: &BlockHash) -> bool {

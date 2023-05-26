@@ -15,10 +15,7 @@ fn save_block() {
 
     let open = setup_open_block(&ctx, &mut txn);
 
-    let loaded_open = ctx
-        .ledger
-        .get_block(&txn, &open.open_block.hash())
-        .unwrap();
+    let loaded_open = ctx.ledger.get_block(&txn, &open.open_block.hash()).unwrap();
 
     assert_eq!(loaded_open, open.open_block);
     assert_eq!(

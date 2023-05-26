@@ -25,10 +25,7 @@ fn save_block() {
 
     let open = setup_legacy_open_block(&ctx, &mut txn);
 
-    let loaded_open = ctx
-        .ledger
-        .get_block(&txn, &open.open_block.hash())
-        .unwrap();
+    let loaded_open = ctx.ledger.get_block(&txn, &open.open_block.hash()).unwrap();
 
     assert_eq!(loaded_open, open.open_block);
     assert_eq!(
@@ -119,10 +116,7 @@ fn update_sender_account_info() {
 
     let open = setup_legacy_open_block(&ctx, &mut txn);
 
-    let sender_info = ctx
-        .ledger
-        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
-        .unwrap();
+    let sender_info = ctx.ledger.account_info(&txn, &DEV_GENESIS_ACCOUNT).unwrap();
     assert_eq!(sender_info.head, open.send_block.hash());
 }
 
@@ -153,10 +147,7 @@ fn fail_fork() {
         .representative(Account::from(1000))
         .build();
 
-    let result = ctx
-        .ledger
-        .process(&mut txn, &mut open_fork)
-        .unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut open_fork).unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -181,10 +172,7 @@ fn fail_fork_previous() {
         .sign(&open.destination.key)
         .build();
 
-    let result = ctx
-        .ledger
-        .process(&mut txn, &mut open_fork)
-        .unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut open_fork).unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }

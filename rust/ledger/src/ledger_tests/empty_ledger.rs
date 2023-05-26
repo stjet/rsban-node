@@ -11,9 +11,7 @@ fn account_balance_is_zero_for_unknown_account() {
     let ctx = LedgerContext::empty();
     let txn = ctx.ledger.read_txn();
 
-    let balance = ctx
-        .ledger
-        .account_balance(&txn, &Account::zero(), false);
+    let balance = ctx.ledger.account_balance(&txn, &Account::zero(), false);
 
     assert_eq!(balance, Amount::zero());
 }

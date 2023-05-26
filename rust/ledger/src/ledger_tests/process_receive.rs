@@ -58,10 +58,8 @@ fn remove_pending_info() {
     let (send, _) = receive_50_raw_into_genesis(&ctx, &mut txn);
 
     assert_eq!(
-        ctx.ledger.pending_info(
-            &txn,
-            &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())
-        ),
+        ctx.ledger
+            .pending_info(&txn, &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())),
         None
     );
 }
@@ -196,10 +194,7 @@ fn receive_and_change_representative() {
         .build();
     ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
-    assert_eq!(
-        ctx.ledger.balance(&txn, &receive.hash()),
-        receive.balance()
-    );
+    assert_eq!(ctx.ledger.balance(&txn, &receive.hash()), receive.balance());
     assert_eq!(
         ctx.ledger.amount(&txn, &receive.hash()).unwrap(),
         amount_sent,

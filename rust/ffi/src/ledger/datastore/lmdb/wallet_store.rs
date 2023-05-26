@@ -10,7 +10,7 @@ use crate::{
     StringDto, U256ArrayDto,
 };
 use rsnano_core::{Account, PublicKey, RawKey};
-use rsnano_store_lmdb::{LmdbWalletStore, WalletValue, EnvironmentWrapper};
+use rsnano_store_lmdb::{EnvironmentWrapper, LmdbWalletStore, WalletValue};
 
 use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 

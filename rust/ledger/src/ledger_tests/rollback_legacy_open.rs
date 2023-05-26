@@ -13,10 +13,7 @@ fn remove_from_frontier_store() {
 
     let open = rollback_open_block(&ctx, &mut txn);
 
-    assert_eq!(
-        ctx.ledger.get_frontier(&txn, &open.open_block.hash()),
-        None
-    );
+    assert_eq!(ctx.ledger.get_frontier(&txn, &open.open_block.hash()), None);
 }
 
 #[test]
@@ -26,15 +23,10 @@ fn remove_from_account_store() {
 
     let open = rollback_open_block(&ctx, &mut txn);
 
-    let receiver_info = ctx
-        .ledger
-        .account_info(&txn, &open.destination.account());
+    let receiver_info = ctx.ledger.account_info(&txn, &open.destination.account());
     assert_eq!(receiver_info, None);
 
-    let sender_info = ctx
-        .ledger
-        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
-        .unwrap();
+    let sender_info = ctx.ledger.account_info(&txn, &DEV_GENESIS_ACCOUNT).unwrap();
     assert_eq!(sender_info.head, open.send_block.hash());
 }
 

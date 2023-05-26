@@ -1,11 +1,15 @@
-use crate::{as_write_txn, count, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::DbIterator, WriteTransaction, ReadTransaction, Transaction};
+use crate::{
+    as_write_txn, count, get, iterator::DbIterator, parallel_traversal, EnvironmentStrategy,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, ReadTransaction, Transaction, WriteTransaction,
+};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     deserialize_block_enum,
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
     Account, Amount, Block, BlockDetails, BlockEnum, BlockHash, BlockSideband, BlockType,
-    BlockVisitor, ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock, BlockWithSideband,
+    BlockVisitor, BlockWithSideband, ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock,
+    StateBlock,
 };
 use std::sync::Arc;
 
@@ -155,7 +159,12 @@ impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
     }
 
     pub fn begin_at_hash(&self, transaction: &dyn Transaction, hash: &BlockHash) -> BlockIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(transaction, self.database, Some(hash.as_bytes()), true)
+        LmdbIteratorImpl::new_iterator::<T, _, _>(
+            transaction,
+            self.database,
+            Some(hash.as_bytes()),
+            true,
+        )
     }
 
     pub fn end(&self) -> BlockIterator {
@@ -266,7 +275,7 @@ impl<'a, 'b, T: EnvironmentStrategy + 'static> BlockPredecessorMdbSet<'a, T> {
     }
 }
 
-impl<'a, T:EnvironmentStrategy> BlockVisitor for BlockPredecessorMdbSet<'a,T> {
+impl<'a, T: EnvironmentStrategy> BlockVisitor for BlockPredecessorMdbSet<'a, T> {
     fn send_block(&mut self, block: &SendBlock) {
         self.fill_value(block);
     }

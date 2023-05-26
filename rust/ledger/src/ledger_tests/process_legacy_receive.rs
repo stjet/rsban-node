@@ -62,13 +62,11 @@ fn update_frontier_store() {
     let result = setup_legacy_receive_block(&ctx, &mut txn);
 
     assert_eq!(
-        ctx.ledger
-            .get_frontier(&txn, &result.open_block.hash()),
+        ctx.ledger.get_frontier(&txn, &result.open_block.hash()),
         None
     );
     assert_eq!(
-        ctx.ledger
-            .get_frontier(&txn, &result.receive_block.hash()),
+        ctx.ledger.get_frontier(&txn, &result.receive_block.hash()),
         Some(result.destination.account())
     );
 }
@@ -158,10 +156,7 @@ fn receive_fork() {
         .sign(&result.destination.key)
         .build();
 
-    let result = ctx
-        .ledger
-        .process(&mut txn, &mut receive_fork)
-        .unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut receive_fork).unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -314,10 +309,7 @@ fn fail_fork_previous() {
         .source(receivable.hash())
         .sign(&open.destination.key)
         .build();
-    let result = ctx
-        .ledger
-        .process(&mut txn, &mut fork_receive)
-        .unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut fork_receive).unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -356,10 +348,7 @@ fn fail_receive_received_source() {
         .sign(&open.destination.key)
         .build();
 
-    let result = ctx
-        .ledger
-        .process(&mut txn, &mut fork_receive)
-        .unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut fork_receive).unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -402,10 +391,7 @@ fn receive_from_state_block() {
         .build();
     ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
-    assert_eq!(
-        ctx.ledger.balance(&txn, &receive.hash()),
-        Amount::raw(100)
-    );
+    assert_eq!(ctx.ledger.balance(&txn, &receive.hash()), Amount::raw(100));
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
         LEDGER_CONSTANTS_STUB.genesis_amount
@@ -426,10 +412,7 @@ fn fail_insufficient_work() {
         .build();
     ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-    let mut receive_block = open
-        .destination
-        .legacy_receive(&txn, send.hash())
-        .build();
+    let mut receive_block = open.destination.legacy_receive(&txn, send.hash()).build();
 
     {
         let block: &mut dyn Block = receive_block.as_block_mut();

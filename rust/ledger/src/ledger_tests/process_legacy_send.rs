@@ -91,10 +91,7 @@ fn update_account_info() {
 
     let send = setup_legacy_send_block(&ctx, &mut txn);
 
-    let account_info = ctx
-        .ledger
-        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
-        .unwrap();
+    let account_info = ctx.ledger.account_info(&txn, &DEV_GENESIS_ACCOUNT).unwrap();
     assert_eq!(account_info.block_count, 2);
     assert_eq!(account_info.head, send.send_block.hash());
 }

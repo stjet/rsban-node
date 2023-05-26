@@ -1,4 +1,7 @@
-use crate::{as_write_txn, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::DbIterator, WriteTransaction, Transaction, ReadTransaction};
+use crate::{
+    as_write_txn, get, iterator::DbIterator, parallel_traversal, EnvironmentStrategy,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, ReadTransaction, Transaction, WriteTransaction,
+};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{Account, BlockHash};
 use std::sync::Arc;
@@ -10,7 +13,7 @@ pub struct LmdbFrontierStore<T: EnvironmentStrategy = EnvironmentWrapper> {
     database: Database,
 }
 
-impl<T:EnvironmentStrategy + 'static> LmdbFrontierStore<T> {
+impl<T: EnvironmentStrategy + 'static> LmdbFrontierStore<T> {
     pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment

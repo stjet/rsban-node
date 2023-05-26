@@ -1,6 +1,10 @@
 use std::marker::PhantomData;
 
-use crate::{as_write_txn, get, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::{BinaryDbIterator, DbIterator}, WriteTransaction};
+use crate::{
+    as_write_txn, get,
+    iterator::{BinaryDbIterator, DbIterator},
+    EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, WriteTransaction,
+};
 use lmdb::{Cursor, Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, NoValue, RawKey, WalletId};
 pub type WalletsIterator = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl>;
@@ -8,10 +12,10 @@ pub type WalletsIterator = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl>
 pub struct LmdbWallets<T: EnvironmentStrategy = EnvironmentWrapper> {
     pub handle: Option<Database>,
     pub send_action_ids_handle: Option<Database>,
-    phantom: PhantomData<T>
+    phantom: PhantomData<T>,
 }
 
-impl<T:EnvironmentStrategy + 'static> LmdbWallets<T> {
+impl<T: EnvironmentStrategy + 'static> LmdbWallets<T> {
     pub fn new() -> Self {
         Self {
             handle: None,
@@ -25,7 +29,8 @@ impl<T:EnvironmentStrategy + 'static> LmdbWallets<T> {
         txn: &mut dyn WriteTransaction,
         env: &LmdbEnv,
     ) -> anyhow::Result<()> {
-        self.handle = Some(unsafe { as_write_txn::<T>(txn).create_db(None, DatabaseFlags::empty())? });
+        self.handle =
+            Some(unsafe { as_write_txn::<T>(txn).create_db(None, DatabaseFlags::empty())? });
         self.split_if_needed(txn, env)?;
         self.send_action_ids_handle = Some(unsafe {
             as_write_txn::<T>(txn).create_db(Some("send_action_ids"), DatabaseFlags::empty())?
@@ -33,11 +38,7 @@ impl<T:EnvironmentStrategy + 'static> LmdbWallets<T> {
         Ok(())
     }
 
-    pub fn get_store_it(
-        &self,
-        txn: &dyn crate::Transaction,
-        hash: &str,
-    ) -> WalletsIterator {
+    pub fn get_store_it(&self, txn: &dyn crate::Transaction, hash: &str) -> WalletsIterator {
         let hash_bytes: [u8; 64] = hash.as_bytes().try_into().unwrap();
         WalletsIterator::new(LmdbIteratorImpl::new::<T>(
             txn,

@@ -34,13 +34,11 @@ fn rollback_frontiers() {
         .unwrap();
 
     assert_eq!(
-        ctx.ledger
-            .get_frontier(&txn, &receive.open_block.hash()),
+        ctx.ledger.get_frontier(&txn, &receive.open_block.hash()),
         Some(receive.destination.account())
     );
     assert_eq!(
-        ctx.ledger
-            .get_frontier(&txn, &receive.receive_block.hash()),
+        ctx.ledger.get_frontier(&txn, &receive.receive_block.hash()),
         None
     );
 }

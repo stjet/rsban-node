@@ -19,10 +19,7 @@ fn epoch_block_upgrades_epoch() {
     );
     // source_epoch is not used for epoch blocks
     assert_eq!(epoch.sideband().unwrap().source_epoch, Epoch::Epoch0);
-    let account_info = ctx
-        .ledger
-        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
-        .unwrap();
+    let account_info = ctx.ledger.account_info(&txn, &DEV_GENESIS_ACCOUNT).unwrap();
 
     assert_eq!(account_info.epoch, Epoch::Epoch1);
 }
@@ -76,10 +73,7 @@ fn rollback_epoch() {
 
     ctx.ledger.rollback(&mut txn, &epoch.hash()).unwrap();
 
-    let account_info = ctx
-        .ledger
-        .account_info(&txn, &epoch.account())
-        .unwrap();
+    let account_info = ctx.ledger.account_info(&txn, &epoch.account()).unwrap();
 
     assert_eq!(account_info.epoch, Epoch::Epoch0);
 }
@@ -258,10 +252,7 @@ fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
 
     let pending_send2 = ctx
         .ledger
-        .pending_info(
-            &txn,
-            &PendingKey::new(destination.account(), send2.hash()),
-        )
+        .pending_info(&txn, &PendingKey::new(destination.account(), send2.hash()))
         .unwrap();
     assert_eq!(pending_send2.epoch, Epoch::Epoch1);
 }
@@ -278,10 +269,7 @@ fn epoch_v1_fork() {
         .previous(send.send_block.previous())
         .build();
 
-    let result = ctx
-        .ledger
-        .process(&mut txn, &mut epoch_fork)
-        .unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut epoch_fork).unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -317,8 +305,7 @@ fn successor_epoch() {
         Some(change)
     );
     assert_eq!(
-        ctx.ledger
-            .successor(&txn, &epoch_open.qualified_root()),
+        ctx.ledger.successor(&txn, &epoch_open.qualified_root()),
         Some(epoch_open)
     );
 }

@@ -82,10 +82,7 @@ fn send_and_change_representative() {
         .build();
     ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-    assert_eq!(
-        ctx.ledger.amount(&txn, &send.hash()).unwrap(),
-        amount_sent,
-    );
+    assert_eq!(ctx.ledger.amount(&txn, &send.hash()).unwrap(), amount_sent,);
     assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), Amount::zero());
     assert_eq!(ctx.ledger.weight(&representative), Amount::raw(1));
     assert_eq!(

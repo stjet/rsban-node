@@ -35,10 +35,7 @@ fn upgrade_to_epoch_v2() {
     // source_epoch is not used for send blocks
     assert_eq!(epoch2.sideband().unwrap().source_epoch, Epoch::Epoch0);
 
-    let account_info = ctx
-        .ledger
-        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
-        .unwrap();
+    let account_info = ctx.ledger.account_info(&txn, &DEV_GENESIS_ACCOUNT).unwrap();
     assert_eq!(account_info.epoch, Epoch::Epoch2);
 }
 
@@ -71,10 +68,7 @@ fn rollback_epoch_v2() {
 
     ctx.ledger.rollback(&mut txn, &epoch.hash()).unwrap();
 
-    let genesis_info = ctx
-        .ledger
-        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
-        .unwrap();
+    let genesis_info = ctx.ledger.account_info(&txn, &DEV_GENESIS_ACCOUNT).unwrap();
     assert_eq!(genesis_info.epoch, Epoch::Epoch1);
 
     let mut legacy_change = genesis.legacy_change(&txn).build();
@@ -154,10 +148,7 @@ fn cannot_use_legacy_open_block_with_epoch_v2_send() {
 
     // Try to create an open block from an epoch 2 source block.
     let mut legacy_open = destination.legacy_open(send.hash()).build();
-    let result = ctx
-        .ledger
-        .process(&mut txn, &mut legacy_open)
-        .unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut legacy_open).unwrap_err();
     assert_eq!(result, ProcessResult::Unreceivable);
 }
 
@@ -267,10 +258,7 @@ fn epoch_v2_fork() {
         .previous(send.send_block.previous())
         .build();
 
-    let result = ctx
-        .ledger
-        .process(&mut txn, &mut epoch_fork)
-        .unwrap_err();
+    let result = ctx.ledger.process(&mut txn, &mut epoch_fork).unwrap_err();
 
     assert_eq!(result, ProcessResult::Fork);
 }
@@ -283,10 +271,7 @@ fn epoch_v2_fork_with_epoch_v1_block() {
     let epoch_v1 = upgrade_genesis_to_epoch_v1(&ctx, &mut txn);
 
     let genesis = ctx.genesis_block_factory();
-    let mut epoch_v2_fork = genesis
-        .epoch_v2(&txn)
-        .previous(epoch_v1.previous())
-        .build();
+    let mut epoch_v2_fork = genesis.epoch_v2(&txn).previous(epoch_v1.previous()).build();
 
     let result = ctx
         .ledger

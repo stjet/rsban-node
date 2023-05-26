@@ -9,7 +9,9 @@ use rsnano_core::{
     BlockHash, BlockSubType, BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo,
     PendingKey, QualifiedRoot, Root,
 };
-use rsnano_store_lmdb::{LmdbReadTransaction, LmdbStore, LmdbWriteTransaction, WriteTransaction, Transaction};
+use rsnano_store_lmdb::{
+    LmdbReadTransaction, LmdbStore, LmdbWriteTransaction, Transaction, WriteTransaction,
+};
 
 use std::{
     collections::{BTreeMap, HashMap},

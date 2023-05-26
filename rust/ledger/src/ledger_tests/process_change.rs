@@ -1,9 +1,9 @@
+use super::LedgerContext;
 use crate::{
     ledger_tests::{setup_change_block, upgrade_genesis_to_epoch_v1},
     ProcessResult, DEV_GENESIS_ACCOUNT,
 };
 use rsnano_core::{Account, Amount, Block, BlockDetails, Epoch};
-use super::LedgerContext;
 
 #[test]
 fn save_block() {
@@ -12,12 +12,7 @@ fn save_block() {
 
     let change = setup_change_block(&ctx, &mut txn);
 
-    let loaded_block = ctx
-        .ledger
-        .store
-        .block
-        .get(&txn, &change.hash())
-        .unwrap();
+    let loaded_block = ctx.ledger.store.block.get(&txn, &change.hash()).unwrap();
     assert_eq!(loaded_block, change);
     assert_eq!(loaded_block.sideband().unwrap(), change.sideband().unwrap());
 }

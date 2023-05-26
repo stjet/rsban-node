@@ -1,4 +1,4 @@
-use std::{ffi::c_uint, any::Any};
+use std::{any::Any, ffi::c_uint};
 
 use crate::{EnvironmentStrategy, Transaction};
 

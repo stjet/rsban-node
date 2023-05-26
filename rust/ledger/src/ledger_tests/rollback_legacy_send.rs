@@ -34,10 +34,7 @@ fn rollback_frontiers() {
         ctx.ledger.get_frontier(&txn, &DEV_GENESIS_HASH),
         Some(*DEV_GENESIS_ACCOUNT)
     );
-    assert_eq!(
-        ctx.ledger.get_frontier(&txn, &send.send_block.hash()),
-        None
-    );
+    assert_eq!(ctx.ledger.get_frontier(&txn, &send.send_block.hash()), None);
 }
 
 #[test]
@@ -47,10 +44,7 @@ fn update_account_store() {
 
     rollback_send_block(&ctx, &mut txn);
 
-    let account_info = ctx
-        .ledger
-        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
-        .unwrap();
+    let account_info = ctx.ledger.account_info(&txn, &DEV_GENESIS_ACCOUNT).unwrap();
     assert_eq!(account_info.block_count, 1);
     assert_eq!(account_info.head, *DEV_GENESIS_HASH);
     assert_eq!(account_info.balance, LEDGER_CONSTANTS_STUB.genesis_amount);

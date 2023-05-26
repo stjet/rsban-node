@@ -1,4 +1,7 @@
-use crate::{as_write_txn, get, Fan, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::DbIterator, WriteTransaction, LmdbWriteTransaction, Transaction};
+use crate::{
+    as_write_txn, get, iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper, Fan,
+    LmdbIteratorImpl, LmdbWriteTransaction, Transaction, WriteTransaction,
+};
 use anyhow::bail;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -6,13 +9,13 @@ use rsnano_core::{
     utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamAdapter, StreamExt},
     Account, KeyDerivationFunction, PublicKey, RawKey,
 };
-use std::{io::Write, marker::PhantomData};
 use std::{
     fs::{set_permissions, File, Permissions},
     os::unix::prelude::PermissionsExt,
     path::Path,
     sync::{Mutex, MutexGuard},
 };
+use std::{io::Write, marker::PhantomData};
 
 pub struct Fans {
     pub password: Fan,
@@ -98,7 +101,7 @@ impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
             db_handle: Mutex::new(None),
             fans: Mutex::new(Fans::new(fanout)),
             kdf,
-            phantom: PhantomData
+            phantom: PhantomData,
         };
         store.initialize(txn, wallet)?;
         let handle = store.db_handle();
@@ -141,9 +144,7 @@ impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
             );
         }
         {
-            let key = store
-                .entry_get_raw(txn, &Self::wallet_key_special())
-                .key;
+            let key = store.entry_get_raw(txn, &Self::wallet_key_special()).key;
             let mut guard = store.fans.lock().unwrap();
             guard.wallet_key_mem.value_set(key);
         }
@@ -161,7 +162,7 @@ impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
             db_handle: Mutex::new(None),
             fans: Mutex::new(Fans::new(fanout)),
             kdf,
-            phantom: PhantomData
+            phantom: PhantomData,
         };
         store.initialize(txn, wallet)?;
         let handle = store.db_handle();
@@ -249,7 +250,8 @@ impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
             .as_os_str()
             .to_str()
             .ok_or_else(|| anyhow!("invalid path"))?;
-        let db = unsafe { as_write_txn::<T>(txn).create_db(Some(path_str), DatabaseFlags::empty()) }?;
+        let db =
+            unsafe { as_write_txn::<T>(txn).create_db(Some(path_str), DatabaseFlags::empty()) }?;
         *self.db_handle.lock().unwrap() = Some(db);
         Ok(())
     }

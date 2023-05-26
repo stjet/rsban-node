@@ -5,13 +5,16 @@ extern crate num_derive;
 extern crate anyhow;
 
 mod iterator;
-pub use iterator::{LmdbIteratorImpl, DbIterator, BinaryDbIterator, DbIteratorImpl};
+pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl, LmdbIteratorImpl};
 
 mod lmdb_config;
 pub use lmdb_config::{LmdbConfig, SyncStrategy};
 
 mod lmdb_env;
-pub use lmdb_env::{EnvOptions, EnvironmentOptions, LmdbEnv, TestDbFile, TestLmdbEnv, EnvironmentStrategy, EnvironmentWrapper};
+pub use lmdb_env::{
+    EnvOptions, EnvironmentOptions, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, TestDbFile,
+    TestLmdbEnv,
+};
 
 mod account_store;
 pub use account_store::LmdbAccountStore;
@@ -56,9 +59,11 @@ mod store;
 pub use store::{create_backup_file, LmdbStore};
 
 use std::{
+    any::Any,
     cmp::{max, min},
     mem,
-    sync::Arc, any::Any, time::Duration,
+    sync::Arc,
+    time::Duration,
 };
 
 use lmdb::{Database, InactiveTransaction, RoCursor, RoTransaction, RwTransaction};
@@ -325,7 +330,11 @@ pub enum Table {
     ConfirmationHeight,
 }
 
-pub fn exists<T:EnvironmentStrategy + 'static>(txn: &dyn Transaction, db: Database, key: &[u8]) -> bool {
+pub fn exists<T: EnvironmentStrategy + 'static>(
+    txn: &dyn Transaction,
+    db: Database,
+    key: &[u8],
+) -> bool {
     match get::<T, _>(txn, db, &key) {
         Ok(_) => true,
         Err(lmdb::Error::NotFound) => false,
@@ -333,7 +342,9 @@ pub fn exists<T:EnvironmentStrategy + 'static>(txn: &dyn Transaction, db: Databa
     }
 }
 
-pub fn as_write_txn<T:EnvironmentStrategy + 'static>(txn: &mut dyn WriteTransaction) -> &mut RwTransaction<'static> {
+pub fn as_write_txn<T: EnvironmentStrategy + 'static>(
+    txn: &mut dyn WriteTransaction,
+) -> &mut RwTransaction<'static> {
     txn.txn_mut()
         .as_any_mut()
         .downcast_mut::<LmdbWriteTransaction<T>>()
@@ -350,9 +361,11 @@ pub fn get<'a, T: EnvironmentStrategy + 'static, K: AsRef<[u8]>>(
     if let Some(t) = any.downcast_ref::<LmdbWriteTransaction<T>>() {
         lmdb::Transaction::get(t.rw_txn(), database, key)
     } else {
-        lmdb::Transaction::get(any.downcast_ref::<LmdbReadTransaction>()
-            .unwrap()
-            .txn(), database, key)
+        lmdb::Transaction::get(
+            any.downcast_ref::<LmdbReadTransaction>().unwrap().txn(),
+            database,
+            key,
+        )
     }
 }
 
@@ -364,20 +377,25 @@ pub fn open_ro_cursor<'a, T: EnvironmentStrategy + 'static>(
     if let Some(t) = any.downcast_ref::<LmdbWriteTransaction<T>>() {
         lmdb::Transaction::open_ro_cursor(t.rw_txn(), database)
     } else {
-        lmdb::Transaction::open_ro_cursor(any.downcast_ref::<LmdbReadTransaction>()
-            .unwrap()
-            .txn(), database)
+        lmdb::Transaction::open_ro_cursor(
+            any.downcast_ref::<LmdbReadTransaction>().unwrap().txn(),
+            database,
+        )
     }
 }
 
-pub fn count<'a, T: EnvironmentStrategy + 'static>(txn: &'a dyn Transaction, database: Database) -> u64 {
+pub fn count<'a, T: EnvironmentStrategy + 'static>(
+    txn: &'a dyn Transaction,
+    database: Database,
+) -> u64 {
     let any = txn.as_any();
     let stat = if let Some(t) = any.downcast_ref::<LmdbWriteTransaction<T>>() {
         lmdb::Transaction::stat(t.rw_txn(), database)
     } else {
-        lmdb::Transaction::stat(any.downcast_ref::<LmdbReadTransaction>()
-            .unwrap()
-            .txn(), database)
+        lmdb::Transaction::stat(
+            any.downcast_ref::<LmdbReadTransaction>().unwrap().txn(),
+            database,
+        )
     };
     stat.unwrap().entries() as u64
 }

@@ -1,4 +1,8 @@
-use crate::{as_write_txn, count, exists, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::DbIterator, WriteTransaction, Transaction, ReadTransaction};
+use crate::{
+    as_write_txn, count, exists, get, iterator::DbIterator, parallel_traversal,
+    EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, ReadTransaction,
+    Transaction, WriteTransaction,
+};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
@@ -81,7 +85,12 @@ impl<T: EnvironmentStrategy + 'static> LmdbConfirmationHeightStore<T> {
         txn: &dyn Transaction,
         account: &Account,
     ) -> ConfirmationHeightIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, Some(account.as_bytes()), true)
+        LmdbIteratorImpl::new_iterator::<T, _, _>(
+            txn,
+            self.database,
+            Some(account.as_bytes()),
+            true,
+        )
     }
 
     pub fn end(&self) -> ConfirmationHeightIterator {

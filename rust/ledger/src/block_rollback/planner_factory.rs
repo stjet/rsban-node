@@ -1,9 +1,9 @@
+use super::rollback_planner::RollbackPlanner;
+use crate::Ledger;
 use rsnano_core::{
     Account, AccountInfo, BlockEnum, BlockHash, ConfirmationHeightInfo, PendingInfo, PendingKey,
 };
 use rsnano_store_lmdb::Transaction;
-use crate::Ledger;
-use super::rollback_planner::RollbackPlanner;
 
 pub(crate) struct RollbackPlannerFactory<'a> {
     ledger: &'a Ledger,

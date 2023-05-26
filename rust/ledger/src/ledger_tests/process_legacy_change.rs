@@ -67,10 +67,7 @@ fn update_account_info() {
 
     let BlockEnum::LegacyChange(change) = setup_legacy_change_block(&ctx, &mut txn) else {panic!("not a change block!")};
 
-    let account_info = ctx
-        .ledger
-        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
-        .unwrap();
+    let account_info = ctx.ledger.account_info(&txn, &DEV_GENESIS_ACCOUNT).unwrap();
 
     assert_eq!(account_info.head, change.hash());
     assert_eq!(account_info.block_count, 2);

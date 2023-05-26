@@ -1,4 +1,7 @@
-use crate::{LmdbConfig, LmdbReadTransaction, LmdbWriteTransaction, SyncStrategy, TransactionTracker, NullTransactionTracker};
+use crate::{
+    LmdbConfig, LmdbReadTransaction, LmdbWriteTransaction, NullTransactionTracker, SyncStrategy,
+    TransactionTracker,
+};
 use anyhow::bail;
 use lmdb::{Database, DatabaseFlags, EnvironmentFlags, Stat};
 use lmdb_sys::{MDB_env, MDB_SUCCESS};
@@ -175,10 +178,7 @@ impl<T: EnvironmentStrategy> LmdbEnv<T> {
         Ok(env)
     }
 
-    pub fn init(
-        path: impl AsRef<Path>,
-        options: &EnvOptions,
-    ) -> anyhow::Result<T> {
+    pub fn init(path: impl AsRef<Path>, options: &EnvOptions) -> anyhow::Result<T> {
         let path = path.as_ref();
         try_create_parent_dir(path)?;
         let mut map_size = options.config.map_size;

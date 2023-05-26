@@ -9,7 +9,8 @@ use crate::{
     as_write_txn, lmdb_env::EnvironmentWrapper, EnvOptions, EnvironmentStrategy, LmdbAccountStore,
     LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
     LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
-    LmdbVersionStore, LmdbWriteTransaction, STORE_VERSION_MINIMUM, TransactionTracker, NullTransactionTracker, WriteTransaction, Table,
+    LmdbVersionStore, LmdbWriteTransaction, NullTransactionTracker, Table, TransactionTracker,
+    WriteTransaction, STORE_VERSION_MINIMUM,
 };
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};

@@ -1,4 +1,7 @@
-use crate::{as_write_txn, get, LmdbEnv, STORE_VERSION_CURRENT, EnvironmentStrategy, EnvironmentWrapper, WriteTransaction, Transaction};
+use crate::{
+    as_write_txn, get, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, Transaction,
+    WriteTransaction, STORE_VERSION_CURRENT,
+};
 use core::panic;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use std::{path::Path, sync::Arc};
@@ -72,7 +75,10 @@ impl<T: EnvironmentStrategy + 'static> LmdbVersionStore<T> {
     }
 }
 
-fn load_version<T: EnvironmentStrategy + 'static>(txn: &dyn Transaction, db: Database) -> Option<i32> {
+fn load_version<T: EnvironmentStrategy + 'static>(
+    txn: &dyn Transaction,
+    db: Database,
+) -> Option<i32> {
     let key_bytes = version_key();
     match get::<T, _>(txn, db, &key_bytes) {
         Ok(value) => Some(i32::from_be_bytes(value[28..].try_into().unwrap())),

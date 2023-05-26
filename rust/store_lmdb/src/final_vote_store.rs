@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crate::{as_write_txn, count, get, parallel_traversal_u512, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::DbIterator, WriteTransaction, Transaction, ReadTransaction};
+use crate::{
+    as_write_txn, count, get, iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, ReadTransaction, Transaction, WriteTransaction,
+};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
 
@@ -13,7 +16,7 @@ pub struct LmdbFinalVoteStore<T: EnvironmentStrategy = EnvironmentWrapper> {
     database: Database,
 }
 
-impl<T:EnvironmentStrategy + 'static> LmdbFinalVoteStore<T> {
+impl<T: EnvironmentStrategy + 'static> LmdbFinalVoteStore<T> {
     pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment
@@ -25,7 +28,12 @@ impl<T:EnvironmentStrategy + 'static> LmdbFinalVoteStore<T> {
         self.database
     }
 
-    pub fn put(&self, txn: &mut dyn WriteTransaction, root: &QualifiedRoot, hash: &BlockHash) -> bool {
+    pub fn put(
+        &self,
+        txn: &mut dyn WriteTransaction,
+        root: &QualifiedRoot,
+        hash: &BlockHash,
+    ) -> bool {
         let root_bytes = root.to_bytes();
         match get::<T, _>(txn.txn(), self.database, &root_bytes) {
             Err(lmdb::Error::NotFound) => {

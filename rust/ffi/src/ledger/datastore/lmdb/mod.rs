@@ -14,7 +14,9 @@ mod version_store;
 mod wallet_store;
 mod wallets;
 
-use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, ReadTransaction, WriteTransaction, Transaction};
+use rsnano_store_lmdb::{
+    LmdbReadTransaction, LmdbWriteTransaction, ReadTransaction, Transaction, WriteTransaction,
+};
 use std::{ffi::c_void, ops::Deref};
 pub use store::LmdbStoreHandle;
 

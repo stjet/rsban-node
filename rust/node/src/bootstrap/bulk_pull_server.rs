@@ -69,14 +69,10 @@ impl BulkPullServerImpl {
         }
 
         if {
-            let ref this = self
-                .ledger
-                .store
-                .block;
+            let ref this = self.ledger.store.block;
             let hash = &self.request.start.into();
             this.block_raw_get(&transaction, hash).is_some()
-        }
-        {
+        } {
             if self.enable_logging {
                 self.logger.try_log(&format!(
                     "Bulk pull request for block hash: {}",

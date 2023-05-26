@@ -2,7 +2,7 @@ use primitive_types::U256;
 use rsnano_core::{Account, Amount};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbWriteTransaction;
-use rsnano_store_traits::{WriteTransaction, OnlineWeightStore};
+use rsnano_store_traits::WriteTransaction;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{cmp::max, sync::Arc};
 

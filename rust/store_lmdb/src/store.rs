@@ -152,10 +152,6 @@ impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
         self.pending.as_ref()
     }
 
-    pub fn online_weight(&self) -> &dyn rsnano_store_traits::OnlineWeightStore {
-        self.online_weight.as_ref()
-    }
-
     pub fn peers(&self) -> &dyn rsnano_store_traits::PeerStore {
         self.peer.as_ref()
     }

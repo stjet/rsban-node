@@ -1,7 +1,7 @@
 use crate::{LmdbConfig, LmdbReadTransaction, LmdbWriteTransaction, SyncStrategy};
 use anyhow::bail;
-use lmdb::{Environment, EnvironmentFlags};
-use lmdb_sys::MDB_SUCCESS;
+use lmdb::{Database, DatabaseFlags, EnvironmentFlags, Stat};
+use lmdb_sys::{MDB_env, MDB_SUCCESS};
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
 use rsnano_store_traits::{NullTransactionTracker, TransactionTracker};
 use std::ops::Deref;
@@ -17,6 +17,64 @@ use std::{
     },
     time::Duration,
 };
+
+// Embedded Stubs
+// --------------------------------------------------------------------------------
+
+pub struct Environment(lmdb::Environment);
+
+pub struct EnvironmentOptions<'a> {
+    pub max_dbs: u32,
+    pub map_size: usize,
+    pub flags: EnvironmentFlags,
+    pub path: &'a Path,
+    pub file_mode: u32,
+}
+
+impl Environment {
+    pub fn build(options: EnvironmentOptions) -> lmdb::Result<Self> {
+        let env = lmdb::Environment::new()
+            .set_max_dbs(options.max_dbs)
+            .set_map_size(options.map_size)
+            .set_flags(options.flags)
+            .open_with_permissions(options.path, options.file_mode)?;
+        Ok(Self(env))
+    }
+
+    pub fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<lmdb::RoTransaction<'env>> {
+        self.0.begin_ro_txn()
+    }
+    pub fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<lmdb::RwTransaction<'env>> {
+        self.0.begin_rw_txn()
+    }
+
+    pub fn create_db<'env>(
+        &'env self,
+        name: Option<&str>,
+        flags: DatabaseFlags,
+    ) -> lmdb::Result<Database> {
+        self.0.create_db(name, flags)
+    }
+
+    pub fn env(&self) -> *mut MDB_env {
+        self.0.env()
+    }
+
+    pub fn open_db<'env>(&'env self, name: Option<&str>) -> lmdb::Result<Database> {
+        self.0.open_db(name)
+    }
+
+    pub fn sync(&self, force: bool) -> lmdb::Result<()> {
+        self.0.sync(force)
+    }
+
+    pub fn stat(&self) -> lmdb::Result<Stat> {
+        self.0.stat()
+    }
+}
+
+// Environment
+// --------------------------------------------------------------------------------
 
 #[derive(Default)]
 pub struct EnvOptions {
@@ -88,11 +146,13 @@ impl LmdbEnv {
             environment_flags |= EnvironmentFlags::NO_MEM_INIT;
         }
 
-        let env = Environment::new()
-            .set_max_dbs(options.config.max_databases)
-            .set_map_size(map_size)
-            .set_flags(environment_flags)
-            .open_with_permissions(path, 0o600)?;
+        let env = Environment::build(EnvironmentOptions {
+            max_dbs: options.config.max_databases,
+            map_size,
+            flags: environment_flags,
+            path,
+            file_mode: 0o600,
+        })?;
         Ok(env)
     }
 

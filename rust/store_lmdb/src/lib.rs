@@ -11,7 +11,8 @@ mod lmdb_config;
 pub use lmdb_config::{LmdbConfig, SyncStrategy};
 
 mod lmdb_env;
-pub use lmdb_env::{EnvOptions, LmdbEnv, TestDbFile, TestLmdbEnv};
+use lmdb_env::Environment;
+pub use lmdb_env::{EnvOptions, EnvironmentOptions, LmdbEnv, TestDbFile, TestLmdbEnv};
 
 mod account_store;
 pub use account_store::LmdbAccountStore;
@@ -61,9 +62,7 @@ use std::{
     sync::Arc,
 };
 
-use lmdb::{
-    Database, Environment, InactiveTransaction, RoCursor, RoTransaction, RwTransaction, Transaction,
-};
+use lmdb::{Database, InactiveTransaction, RoCursor, RoTransaction, RwTransaction, Transaction};
 use primitive_types::{U256, U512};
 use rsnano_core::utils::get_cpu_count;
 use rsnano_store_traits::{ReadTransaction, TransactionTracker, WriteTransaction};

@@ -5,7 +5,7 @@ use rsnano_core::{
     Account, ConfirmationHeightInfo,
 };
 use rsnano_store_traits::{
-    ConfirmationHeightIterator, ConfirmationHeightStore, ReadTransaction, Transaction,
+    ConfirmationHeightIterator, ReadTransaction, Transaction,
     WriteTransaction,
 };
 use std::sync::Arc;
@@ -15,7 +15,7 @@ pub struct LmdbConfirmationHeightStore<T: EnvironmentStrategy = EnvironmentWrapp
     database: Database,
 }
 
-impl<T: EnvironmentStrategy> LmdbConfirmationHeightStore<T> {
+impl<T: EnvironmentStrategy + 'static> LmdbConfirmationHeightStore<T> {
     pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment
@@ -26,10 +26,8 @@ impl<T: EnvironmentStrategy> LmdbConfirmationHeightStore<T> {
     pub fn database(&self) -> Database {
         self.database
     }
-}
 
-impl<T: EnvironmentStrategy + 'static> ConfirmationHeightStore for LmdbConfirmationHeightStore<T> {
-    fn put(
+    pub fn put(
         &self,
         txn: &mut dyn WriteTransaction,
         account: &Account,
@@ -45,7 +43,7 @@ impl<T: EnvironmentStrategy + 'static> ConfirmationHeightStore for LmdbConfirmat
             .unwrap();
     }
 
-    fn get(&self, txn: &dyn Transaction, account: &Account) -> Option<ConfirmationHeightInfo> {
+    pub fn get(&self, txn: &dyn Transaction, account: &Account) -> Option<ConfirmationHeightInfo> {
         match get::<T, _>(txn, self.database, account.as_bytes()) {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => {
@@ -58,29 +56,29 @@ impl<T: EnvironmentStrategy + 'static> ConfirmationHeightStore for LmdbConfirmat
         }
     }
 
-    fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {
+    pub fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {
         exists::<T>(txn, self.database, account.as_bytes())
     }
 
-    fn del(&self, txn: &mut dyn WriteTransaction, account: &Account) {
+    pub fn del(&self, txn: &mut dyn WriteTransaction, account: &Account) {
         as_write_txn::<T>(txn)
             .del(self.database, account.as_bytes(), None)
             .unwrap();
     }
 
-    fn count(&self, txn: &dyn Transaction) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction) -> u64 {
         count::<T>(txn, self.database)
     }
 
-    fn clear(&self, txn: &mut dyn WriteTransaction) {
+    pub fn clear(&self, txn: &mut dyn WriteTransaction) {
         as_write_txn::<T>(txn).clear_db(self.database).unwrap()
     }
 
-    fn begin(&self, txn: &dyn Transaction) -> ConfirmationHeightIterator {
+    pub fn begin(&self, txn: &dyn Transaction) -> ConfirmationHeightIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
     }
 
-    fn begin_at_account(
+    pub fn begin_at_account(
         &self,
         txn: &dyn Transaction,
         account: &Account,
@@ -88,11 +86,11 @@ impl<T: EnvironmentStrategy + 'static> ConfirmationHeightStore for LmdbConfirmat
         LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, Some(account.as_bytes()), true)
     }
 
-    fn end(&self) -> ConfirmationHeightIterator {
+    pub fn end(&self) -> ConfirmationHeightIterator {
         LmdbIteratorImpl::null_iterator()
     }
 
-    fn for_each_par(
+    pub fn for_each_par(
         &self,
         action: &(dyn Fn(&dyn ReadTransaction, ConfirmationHeightIterator, ConfirmationHeightIterator)
               + Send

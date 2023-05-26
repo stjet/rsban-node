@@ -146,7 +146,7 @@ impl Ledger {
 
         if generate_cache.cemented_count {
             self.store
-                .confirmation_height()
+                .confirmation_height
                 .for_each_par(&|_txn, mut i, n| {
                     let mut cemented_count = 0;
                     while !i.eq(n.as_ref()) {
@@ -168,7 +168,7 @@ impl Ledger {
         // Final votes requirement for confirmation canary block
         if let Some(conf_height) = self
             .store
-            .confirmation_height()
+            .confirmation_height
             .get(&transaction, &self.constants.final_votes_canary_account)
         {
             self.cache.final_votes_confirmation_canary.store(
@@ -186,7 +186,7 @@ impl Ledger {
         let genesis_account = genesis_block.account();
         self.store.block.put(txn, genesis_block);
 
-        self.store.confirmation_height().put(
+        self.store.confirmation_height.put(
             txn,
             &genesis_account,
             &ConfirmationHeightInfo::new(1, genesis_hash),
@@ -264,7 +264,7 @@ impl Ledger {
         only_confirmed: bool,
     ) -> Amount {
         if only_confirmed {
-            match self.store.confirmation_height().get(txn, account) {
+            match self.store.confirmation_height.get(txn, account) {
                 Some(info) => self.balance(txn, &info.frontier),
                 None => Amount::zero(),
             }
@@ -320,7 +320,7 @@ impl Ledger {
                 if account.is_zero() {
                     account = sideband.account;
                 }
-                let confirmed = match self.store.confirmation_height().get(txn, &account) {
+                let confirmed = match self.store.confirmation_height.get(txn, &account) {
                     Some(info) => info.height >= sideband.height,
                     None => false,
                 };
@@ -511,7 +511,7 @@ impl Ledger {
         send_block_hash: &BlockHash,
     ) -> Option<BlockEnum> {
         // get the cemented frontier
-        let info = self.store.confirmation_height().get(txn, destination)?;
+        let info = self.store.confirmation_height.get(txn, destination)?;
         let mut possible_receive_block = self.store.block.get(txn, &info.frontier);
 
         // walk down the chain until the source field of a receive block matches the send block hash
@@ -559,7 +559,7 @@ impl Ledger {
             }
             self.store.account.put(txn, account, new_info);
         } else {
-            debug_assert!(!self.store.confirmation_height().exists(txn.txn(), account));
+            debug_assert!(!self.store.confirmation_height.exists(txn.txn(), account));
             self.store.account.del(txn, account);
             debug_assert!(self.cache.account_count.load(Ordering::SeqCst) > 0);
             self.cache.account_count.fetch_sub(1, Ordering::SeqCst);
@@ -624,7 +624,7 @@ impl Ledger {
             while !i.eq(n.as_ref()) {
                 if let Some((&account, account_info)) = i.current() {
                     if let Some(conf_height_info) =
-                        self.store.confirmation_height().get(txn.txn(), &account)
+                        self.store.confirmation_height.get(txn.txn(), &account)
                     {
                         if account_info.block_count != conf_height_info.height {
                             // Always output as no confirmation height has been set on the account yet
@@ -668,7 +668,7 @@ impl Ledger {
         {
             let conf_height = self
                 .store
-                .confirmation_height()
+                .confirmation_height
                 .get(txn.txn(), &section.account)
                 .map(|i| i.height)
                 .unwrap_or_default();
@@ -683,7 +683,7 @@ impl Ledger {
             );
         }
 
-        self.store.confirmation_height().put(
+        self.store.confirmation_height.put(
             txn,
             &section.account,
             &ConfirmationHeightInfo::new(section.top_height, section.top_hash),
@@ -770,7 +770,7 @@ impl Ledger {
         txn: &dyn Transaction,
         account: &Account,
     ) -> Option<ConfirmationHeightInfo> {
-        self.store.confirmation_height().get(txn, account)
+        self.store.confirmation_height.get(txn, account)
     }
 
     pub fn get_frontier(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {

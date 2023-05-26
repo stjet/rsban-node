@@ -1,7 +1,7 @@
 use rsnano_core::{
     Account, AccountInfo, BlockEnum, BlockHash, ConfirmationHeightInfo, PendingInfo, PendingKey,
 };
-use rsnano_store_traits::{Transaction, ConfirmationHeightStore};
+use rsnano_store_traits::Transaction;
 
 use crate::Ledger;
 

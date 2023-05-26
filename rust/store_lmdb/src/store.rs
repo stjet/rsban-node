@@ -15,7 +15,7 @@ use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::utils::{seconds_since_epoch, Logger, NullLogger, PropertyTreeWriter};
 use rsnano_store_traits::{
-    ConfirmationHeightStore, FrontierStore, NullTransactionTracker,
+    FrontierStore, NullTransactionTracker,
     PendingStore, PrunedStore, Table, TransactionTracker, VersionStore, WriteTransaction,
 };
 
@@ -142,10 +142,6 @@ impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
             .env
             .tx_begin_write()
             .expect("Could not create LMDB read/write transaction")
-    }
-
-    pub fn confirmation_height(&self) -> &dyn ConfirmationHeightStore {
-        self.confirmation_height.as_ref()
     }
 
     pub fn pruned(&self) -> &dyn PrunedStore {

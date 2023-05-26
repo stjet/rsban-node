@@ -9,7 +9,7 @@ use crate::stats::{DetailType, Direction, StatType, Stats};
 use primitive_types::U256;
 use rsnano_core::{Account, AccountInfo, ConfirmationHeightInfo};
 use rsnano_ledger::Ledger;
-use rsnano_store_traits::{Transaction, ConfirmationHeightStore};
+use rsnano_store_traits::Transaction;
 
 #[derive(Clone)]
 pub struct BacklogPopulationConfig {
@@ -170,11 +170,7 @@ impl BacklogPopulationThread {
                 let transaction = self.ledger.store.tx_begin_read();
 
                 let mut count = 0u32;
-                let mut i = self
-                    .ledger
-                    .store
-                    .account
-                    .begin_account(&transaction, &next);
+                let mut i = self.ledger.store.account.begin_account(&transaction, &next);
                 // 			auto const end = ledger.store.account ().end ();
                 while let Some((account, _)) = i.current() {
                     if count >= chunk_size {

@@ -7,7 +7,6 @@ use rsnano_core::{
     work::{WorkPool, STUB_WORK_POOL},
     Amount, BlockBuilder, BlockDetails, Epoch, PendingKey,
 };
-use rsnano_store_traits::PrunedStore;
 
 #[test]
 fn pruning_action() {

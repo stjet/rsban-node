@@ -1,9 +1,6 @@
 mod iterator;
 pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl};
 
-mod pruned_store;
-pub use pruned_store::{PrunedIterator, PrunedStore};
-
 use rsnano_core::{utils::PropertyTreeWriter, Account, AccountInfo, BlockHash, BlockWithSideband, ConfirmationHeightInfo, QualifiedRoot, Amount, EndpointKey, NoValue, PendingKey, PendingInfo};
 
 mod version_store;
@@ -13,6 +10,7 @@ pub enum Table {
     ConfirmationHeight,
 }
 
+pub type PrunedIterator = Box<dyn DbIterator<BlockHash, NoValue>>;
 pub type PendingIterator = Box<dyn DbIterator<PendingKey, PendingInfo>>;
 pub type PeerIterator = Box<dyn DbIterator<EndpointKey, NoValue>>;
 pub type OnlineWeightIterator = Box<dyn DbIterator<u64, Amount>>;

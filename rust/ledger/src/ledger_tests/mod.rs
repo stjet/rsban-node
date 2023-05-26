@@ -10,7 +10,7 @@ pub(crate) use helpers::*;
 use rsnano_core::{
     Account, Amount, BlockBuilder, BlockHash, KeyPair, QualifiedRoot, Root, GXRB_RATIO,
 };
-use rsnano_store_traits::{PrunedStore, WriteTransaction};
+use rsnano_store_traits::WriteTransaction;
 
 mod empty_ledger;
 mod epoch_v1;
@@ -38,10 +38,8 @@ fn ledger_successor() {
     let send = setup_legacy_send_block(&ctx, &mut txn);
 
     assert_eq!(
-        ctx.ledger.successor(
-            &txn,
-            &QualifiedRoot::new(Root::zero(), *DEV_GENESIS_HASH)
-        ),
+        ctx.ledger
+            .successor(&txn, &QualifiedRoot::new(Root::zero(), *DEV_GENESIS_HASH)),
         Some(send.send_block)
     );
 }
@@ -246,10 +244,7 @@ fn block_destination_source() {
     let genesis = ctx.genesis_block_factory();
     let dest_account = Account::from(1000);
 
-    let mut send_to_dest = genesis
-        .legacy_send(&txn)
-        .destination(dest_account)
-        .build();
+    let mut send_to_dest = genesis.legacy_send(&txn).destination(dest_account).build();
     ctx.ledger.process(&mut txn, &mut send_to_dest).unwrap();
 
     let mut send_to_self = genesis
@@ -258,20 +253,14 @@ fn block_destination_source() {
         .build();
     ctx.ledger.process(&mut txn, &mut send_to_self).unwrap();
 
-    let mut receive = genesis
-        .legacy_receive(&txn, send_to_self.hash())
-        .build();
+    let mut receive = genesis.legacy_receive(&txn, send_to_self.hash()).build();
     ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
     let mut send_to_dest_2 = genesis.send(&txn).link(dest_account).build();
-    ctx.ledger
-        .process(&mut txn, &mut send_to_dest_2)
-        .unwrap();
+    ctx.ledger.process(&mut txn, &mut send_to_dest_2).unwrap();
 
     let mut send_to_self_2 = genesis.send(&txn).link(genesis.account()).build();
-    ctx.ledger
-        .process(&mut txn, &mut send_to_self_2)
-        .unwrap();
+    ctx.ledger.process(&mut txn, &mut send_to_self_2).unwrap();
 
     let mut receive2 = genesis.receive(&txn, send_to_self_2.hash()).build();
     ctx.ledger.process(&mut txn, &mut receive2).unwrap();
@@ -293,10 +282,7 @@ fn block_destination_source() {
     );
     assert_eq!(ledger.block_source(&txn, &block2), BlockHash::zero());
 
-    assert_eq!(
-        ledger.block_destination(&txn, &block3),
-        Account::zero()
-    );
+    assert_eq!(ledger.block_destination(&txn, &block3), Account::zero());
     assert_eq!(ledger.block_source(&txn, &block3), block2.hash());
 
     assert_eq!(ledger.block_destination(&txn, &block4), dest_account);
@@ -308,10 +294,7 @@ fn block_destination_source() {
     );
     assert_eq!(ledger.block_source(&txn, &block5), BlockHash::zero());
 
-    assert_eq!(
-        ledger.block_destination(&txn, &block6),
-        Account::zero()
-    );
+    assert_eq!(ledger.block_destination(&txn, &block6), Account::zero());
     assert_eq!(ledger.block_source(&txn, &block6), block5.hash());
 }
 
@@ -595,9 +578,7 @@ mod could_fit {
         let genesis = ctx.genesis_block_factory();
 
         let mut known_previous = genesis.legacy_change(&txn).build();
-        ctx.ledger
-            .process(&mut txn, &mut known_previous)
-            .unwrap();
+        ctx.ledger.process(&mut txn, &mut known_previous).unwrap();
 
         let send = genesis
             .legacy_send(&txn)
@@ -818,10 +799,7 @@ mod could_fit {
 fn block_confirmed() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    assert_eq!(
-        ctx.ledger.block_confirmed(&txn, &DEV_GENESIS_HASH),
-        true
-    );
+    assert_eq!(ctx.ledger.block_confirmed(&txn, &DEV_GENESIS_HASH), true);
 
     let destination = ctx.block_factory();
     let mut send = ctx
@@ -997,13 +975,11 @@ fn is_send_state() {
     let mut txn = ctx.ledger.rw_txn();
     let open = setup_open_block(&ctx, &mut txn);
     assert_eq!(
-        ctx.ledger
-            .is_send(&txn, open.send_block.deref().deref()),
+        ctx.ledger.is_send(&txn, open.send_block.deref().deref()),
         true
     );
     assert_eq!(
-        ctx.ledger
-            .is_send(&txn, open.open_block.deref().deref()),
+        ctx.ledger.is_send(&txn, open.open_block.deref().deref()),
         false
     );
 }
@@ -1014,13 +990,11 @@ fn is_send_legacy() {
     let mut txn = ctx.ledger.rw_txn();
     let open = setup_legacy_open_block(&ctx, &mut txn);
     assert_eq!(
-        ctx.ledger
-            .is_send(&txn, open.send_block.deref().deref()),
+        ctx.ledger.is_send(&txn, open.send_block.deref().deref()),
         true
     );
     assert_eq!(
-        ctx.ledger
-            .is_send(&txn, open.open_block.deref().deref()),
+        ctx.ledger.is_send(&txn, open.open_block.deref().deref()),
         false
     );
 }
@@ -1065,9 +1039,7 @@ fn sideband_height() {
     ctx.ledger.process(&mut txn, &mut epoch_open).unwrap();
 
     let mut state_receive = dest2.receive(&txn, state_send2.hash()).build();
-    ctx.ledger
-        .process(&mut txn, &mut state_receive)
-        .unwrap();
+    ctx.ledger.process(&mut txn, &mut state_receive).unwrap();
 
     let mut open = dest3.legacy_open(state_send3.hash()).build();
     ctx.ledger.process(&mut txn, &mut open).unwrap();

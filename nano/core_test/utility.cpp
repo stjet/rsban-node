@@ -41,66 +41,6 @@ TEST (optional_ptr, basic)
 	ASSERT_EQ (opt->z, 3);
 }
 
-TEST (thread_pool_alarm, one)
-{
-	std::atomic<bool> done (false);
-	nano::mutex mutex;
-	nano::condition_variable condition;
-	nano::thread_pool workers (1u, nano::thread_role::name::unknown);
-	workers.add_timed_task (std::chrono::steady_clock::now (), [&] () {
-		{
-			nano::lock_guard<nano::mutex> lock{ mutex };
-			done = true;
-		}
-		condition.notify_one ();
-	});
-	nano::unique_lock<nano::mutex> unique{ mutex };
-	condition.wait (unique, [&] () { return !!done; });
-}
-
-TEST (thread_pool_alarm, many)
-{
-	std::atomic<int> count (0);
-	nano::mutex mutex;
-	nano::condition_variable condition;
-	nano::thread_pool workers (50u, nano::thread_role::name::unknown);
-	for (auto i (0); i < 50; ++i)
-	{
-		workers.add_timed_task (std::chrono::steady_clock::now (), [&] () {
-			{
-				nano::lock_guard<nano::mutex> lock{ mutex };
-				count += 1;
-			}
-			condition.notify_one ();
-		});
-	}
-	nano::unique_lock<nano::mutex> unique{ mutex };
-	condition.wait (unique, [&] () { return count == 50; });
-}
-
-TEST (thread_pool_alarm, top_execution)
-{
-	int value1 (0);
-	int value2 (0);
-	nano::mutex mutex;
-	std::promise<bool> promise;
-	nano::thread_pool workers (1u, nano::thread_role::name::unknown);
-	workers.add_timed_task (std::chrono::steady_clock::now (), [&] () {
-		nano::lock_guard<nano::mutex> lock{ mutex };
-		value1 = 1;
-		value2 = 1;
-	});
-	workers.add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (1), [&] () {
-		nano::lock_guard<nano::mutex> lock{ mutex };
-		value2 = 2;
-		promise.set_value (false);
-	});
-	promise.get_future ().get ();
-	nano::lock_guard<nano::mutex> lock{ mutex };
-	ASSERT_EQ (1, value1);
-	ASSERT_EQ (2, value2);
-}
-
 TEST (filesystem, remove_all_files)
 {
 	auto path = nano::unique_path ();

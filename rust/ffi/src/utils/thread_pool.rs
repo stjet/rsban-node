@@ -25,10 +25,9 @@ pub unsafe extern "C" fn rsn_thread_pool_create(
     thread_name: *const c_char,
 ) -> *mut ThreadPoolHandle {
     let thread_name = CStr::from_ptr(thread_name).to_str().unwrap().to_owned();
-    Box::into_raw(Box::new(ThreadPoolHandle(Arc::new(ThreadPoolImpl::new(
-        num_threads,
-        thread_name,
-    )))))
+    Box::into_raw(Box::new(ThreadPoolHandle(Arc::new(
+        ThreadPoolImpl::create(num_threads, thread_name),
+    ))))
 }
 
 #[no_mangle]

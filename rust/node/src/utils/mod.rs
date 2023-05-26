@@ -4,11 +4,13 @@ mod buffer;
 mod io_context;
 mod json;
 mod thread_pool;
+mod timer;
 mod toml;
 
 mod uniquer;
 use std::net::Ipv6Addr;
 
+pub use crate::utils::timer::{NullTimer, Timer, TimerStrategy, TimerWrapper};
 use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,

@@ -5,6 +5,8 @@ mod output_tracker_mt;
 use std::time::SystemTime;
 
 pub use json::*;
+pub use output_tracker::{OutputListener, OutputTracker};
+pub use output_tracker_mt::{OutputListenerMt, OutputTrackerMt};
 
 mod stream;
 pub use stream::*;

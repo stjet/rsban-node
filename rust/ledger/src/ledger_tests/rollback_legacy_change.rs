@@ -1,5 +1,4 @@
 use rsnano_core::Amount;
-use rsnano_store_traits::FrontierStore;
 
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB, ledger_tests::LedgerContext, DEV_GENESIS_ACCOUNT,

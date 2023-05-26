@@ -1,9 +1,6 @@
 mod iterator;
 pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl};
 
-mod frontier_store;
-pub use frontier_store::{FrontierIterator, FrontierStore};
-
 mod online_weight_store;
 pub use online_weight_store::{OnlineWeightIterator, OnlineWeightStore};
 
@@ -29,6 +26,7 @@ pub type AccountIterator = Box<dyn DbIterator<Account, AccountInfo>>;
 pub type BlockIterator = Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
 pub type ConfirmationHeightIterator = Box<dyn DbIterator<Account, ConfirmationHeightInfo>>;
 pub type FinalVoteIterator = Box<dyn DbIterator<QualifiedRoot, BlockHash>>;
+pub type FrontierIterator = Box<dyn DbIterator<BlockHash, Account>>;
 
 use std::{any::Any, time::Duration};
 

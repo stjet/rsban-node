@@ -2,7 +2,7 @@ use crate::{as_write_txn, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, En
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{Account, BlockHash};
 use rsnano_store_traits::{
-    FrontierIterator, FrontierStore, ReadTransaction, Transaction, WriteTransaction,
+    FrontierIterator, ReadTransaction, Transaction, WriteTransaction,
 };
 use std::sync::Arc;
 
@@ -11,7 +11,7 @@ pub struct LmdbFrontierStore<T: EnvironmentStrategy = EnvironmentWrapper> {
     database: Database,
 }
 
-impl<T:EnvironmentStrategy> LmdbFrontierStore<T> {
+impl<T:EnvironmentStrategy + 'static> LmdbFrontierStore<T> {
     pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment
@@ -26,10 +26,8 @@ impl<T:EnvironmentStrategy> LmdbFrontierStore<T> {
     pub fn create_db(&self) -> anyhow::Result<()> {
         Ok(())
     }
-}
 
-impl<T:EnvironmentStrategy + 'static> FrontierStore for LmdbFrontierStore<T> {
-    fn put(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash, account: &Account) {
+    pub fn put(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash, account: &Account) {
         as_write_txn::<T>(txn)
             .put(
                 self.database,
@@ -40,7 +38,7 @@ impl<T:EnvironmentStrategy + 'static> FrontierStore for LmdbFrontierStore<T> {
             .unwrap();
     }
 
-    fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
+    pub fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
         match get::<T, _>(txn, self.database, hash.as_bytes()) {
             Ok(bytes) => Some(Account::from_slice(bytes).unwrap()),
             Err(lmdb::Error::NotFound) => None,
@@ -48,21 +46,21 @@ impl<T:EnvironmentStrategy + 'static> FrontierStore for LmdbFrontierStore<T> {
         }
     }
 
-    fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
+    pub fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
         as_write_txn::<T>(txn)
             .del(self.database, hash.as_bytes(), None)
             .unwrap();
     }
 
-    fn begin(&self, txn: &dyn Transaction) -> FrontierIterator {
+    pub fn begin(&self, txn: &dyn Transaction) -> FrontierIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
     }
 
-    fn begin_at_hash(&self, txn: &dyn Transaction, hash: &BlockHash) -> FrontierIterator {
+    pub fn begin_at_hash(&self, txn: &dyn Transaction, hash: &BlockHash) -> FrontierIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, Some(hash.as_bytes()), true)
     }
 
-    fn for_each_par(
+    pub fn for_each_par(
         &self,
         action: &(dyn Fn(&dyn ReadTransaction, FrontierIterator, FrontierIterator) + Send + Sync),
     ) {
@@ -78,7 +76,7 @@ impl<T:EnvironmentStrategy + 'static> FrontierStore for LmdbFrontierStore<T> {
         });
     }
 
-    fn end(&self) -> FrontierIterator {
+    pub fn end(&self) -> FrontierIterator {
         LmdbIteratorImpl::null_iterator()
     }
 }

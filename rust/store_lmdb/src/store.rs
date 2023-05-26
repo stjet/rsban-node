@@ -15,7 +15,7 @@ use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::utils::{seconds_since_epoch, Logger, NullLogger, PropertyTreeWriter};
 use rsnano_store_traits::{
-    FrontierStore, NullTransactionTracker,
+    NullTransactionTracker,
     PendingStore, PrunedStore, Table, TransactionTracker, VersionStore, WriteTransaction,
 };
 
@@ -150,10 +150,6 @@ impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
 
     pub fn pending(&self) -> &dyn PendingStore {
         self.pending.as_ref()
-    }
-
-    pub fn frontier(&self) -> &dyn FrontierStore {
-        self.frontier.as_ref()
     }
 
     pub fn online_weight(&self) -> &dyn rsnano_store_traits::OnlineWeightStore {

@@ -206,7 +206,7 @@ impl Ledger {
             },
         );
         self.store
-            .frontier()
+            .frontier
             .put(txn, &genesis_hash, &genesis_account);
     }
 
@@ -774,7 +774,7 @@ impl Ledger {
     }
 
     pub fn get_frontier(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
-        self.store.frontier().get(txn, hash)
+        self.store.frontier.get(txn, hash)
     }
 
     pub fn pending_info(&self, txn: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo> {

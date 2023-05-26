@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
-use crate::{as_write_txn, count, exists, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, lmdb_env::EnvironmentWrapper};
+use crate::{as_write_txn, count, exists, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, lmdb_env::EnvironmentWrapper, iterator::DbIterator, WriteTransaction, Transaction, ReadTransaction};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
-use rsnano_core::BlockHash;
-use rsnano_store_traits::{
-    PrunedIterator, ReadTransaction, Transaction, WriteTransaction,
-};
+use rsnano_core::{BlockHash, NoValue};
+
+pub type PrunedIterator = Box<dyn DbIterator<BlockHash, NoValue>>;
 
 pub struct LmdbPrunedStore<T:EnvironmentStrategy = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,

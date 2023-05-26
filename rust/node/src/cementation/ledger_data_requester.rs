@@ -2,6 +2,7 @@
 use rsnano_core::BlockChainBuilder;
 #[cfg(test)]
 use rsnano_core::Epoch;
+use rsnano_store_lmdb::Transaction;
 use std::cell::Cell;
 #[cfg(test)]
 use std::collections::HashMap;
@@ -10,7 +11,6 @@ use std::collections::HashSet;
 
 use rsnano_core::{Account, AccountInfo, BlockEnum, BlockHash, ConfirmationHeightInfo};
 use rsnano_ledger::Ledger;
-use rsnano_store_traits::Transaction;
 
 pub trait LedgerDataRequester {
     fn get_block(&mut self, block_hash: &BlockHash) -> Option<BlockEnum>;

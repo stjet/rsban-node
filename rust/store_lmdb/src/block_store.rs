@@ -1,16 +1,15 @@
-use crate::{as_write_txn, count, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper};
+use crate::{as_write_txn, count, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::DbIterator, WriteTransaction, ReadTransaction, Transaction};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     deserialize_block_enum,
     utils::{MemoryStream, Serialize, Stream, StreamAdapter},
     Account, Amount, Block, BlockDetails, BlockEnum, BlockHash, BlockSideband, BlockType,
-    BlockVisitor, ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
-};
-use rsnano_store_traits::{
-    BlockIterator, ReadTransaction, Transaction, WriteTransaction,
+    BlockVisitor, ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock, BlockWithSideband,
 };
 use std::sync::Arc;
+
+pub type BlockIterator = Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
 
 pub struct LmdbBlockStore<T: EnvironmentStrategy = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,

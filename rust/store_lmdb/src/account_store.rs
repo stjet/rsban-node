@@ -1,13 +1,12 @@
-use crate::{as_write_txn, count, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, lmdb_env::EnvironmentWrapper};
+use crate::{as_write_txn, count, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, lmdb_env::EnvironmentWrapper, iterator::DbIterator, WriteTransaction, Transaction, ReadTransaction};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, AccountInfo,
 };
-use rsnano_store_traits::{
-    AccountIterator, ReadTransaction, Transaction, WriteTransaction,
-};
 use std::sync::Arc;
+
+pub type AccountIterator = Box<dyn DbIterator<Account, AccountInfo>>;
 
 pub struct LmdbAccountStore<T: EnvironmentStrategy = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,

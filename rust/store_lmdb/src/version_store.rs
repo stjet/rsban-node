@@ -1,7 +1,6 @@
-use crate::{as_write_txn, get, LmdbEnv, STORE_VERSION_CURRENT, EnvironmentStrategy, EnvironmentWrapper};
+use crate::{as_write_txn, get, LmdbEnv, STORE_VERSION_CURRENT, EnvironmentStrategy, EnvironmentWrapper, WriteTransaction, Transaction};
 use core::panic;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
-use rsnano_store_traits::{Transaction, WriteTransaction};
 use std::{path::Path, sync::Arc};
 
 pub struct LmdbVersionStore<T: EnvironmentStrategy = EnvironmentWrapper> {

@@ -14,8 +14,7 @@ mod version_store;
 mod wallet_store;
 mod wallets;
 
-use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction};
-use rsnano_store_traits::{ReadTransaction, Transaction, WriteTransaction};
+use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, ReadTransaction, WriteTransaction, Transaction};
 use std::{ffi::c_void, ops::Deref};
 pub use store::LmdbStoreHandle;
 
@@ -44,7 +43,7 @@ impl TransactionHandle {
         }
     }
 
-    pub fn as_write_txn(&mut self) -> &mut dyn WriteTransaction {
+    pub fn as_write_txn(&mut self) -> &mut LmdbWriteTransaction {
         match &mut self.0 {
             TransactionType::Write(tx) => tx,
             _ => panic!("invalid tx type"),
@@ -132,7 +131,7 @@ pub unsafe extern "C" fn rsn_lmdb_write_txn_renew(handle: *mut TransactionHandle
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_write_txn_refresh(handle: *mut TransactionHandle) {
-    (*handle).as_write_txn().refresh();
+    WriteTransaction::refresh((*handle).as_write_txn());
 }
 
 pub(crate) unsafe fn into_read_txn_handle(txn: &dyn Transaction) -> *mut TransactionHandle {

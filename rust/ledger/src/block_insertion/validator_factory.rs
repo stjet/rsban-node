@@ -1,5 +1,5 @@
 use rsnano_core::{Account, BlockEnum, BlockHash, PendingInfo, PendingKey};
-use rsnano_store_traits::Transaction;
+use rsnano_store_lmdb::Transaction;
 
 use crate::Ledger;
 

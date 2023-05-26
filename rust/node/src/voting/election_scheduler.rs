@@ -1,7 +1,7 @@
 use std::ffi::c_void;
 
 use rsnano_core::Account;
-use rsnano_store_traits::Transaction;
+use rsnano_store_lmdb::Transaction;
 
 pub type ElectionSchedulerActivateInternalCallback =
     unsafe fn(*mut c_void, &Account, &dyn Transaction);

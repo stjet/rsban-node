@@ -1,4 +1,4 @@
-use crate::{as_write_txn, get, Fan, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper};
+use crate::{as_write_txn, get, Fan, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::DbIterator, WriteTransaction, LmdbWriteTransaction, Transaction};
 use anyhow::bail;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -6,7 +6,6 @@ use rsnano_core::{
     utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamAdapter, StreamExt},
     Account, KeyDerivationFunction, PublicKey, RawKey,
 };
-use rsnano_store_traits::{DbIterator, Transaction, WriteTransaction};
 use std::{io::Write, marker::PhantomData};
 use std::{
     fs::{set_permissions, File, Permissions},
@@ -91,7 +90,7 @@ impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
     pub fn new(
         fanout: usize,
         kdf: KeyDerivationFunction,
-        txn: &mut dyn WriteTransaction,
+        txn: &mut LmdbWriteTransaction,
         representative: &Account,
         wallet: &Path,
     ) -> anyhow::Result<Self> {
@@ -143,7 +142,7 @@ impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
         }
         {
             let key = store
-                .entry_get_raw(txn.txn(), &Self::wallet_key_special())
+                .entry_get_raw(txn, &Self::wallet_key_special())
                 .key;
             let mut guard = store.fans.lock().unwrap();
             guard.wallet_key_mem.value_set(key);

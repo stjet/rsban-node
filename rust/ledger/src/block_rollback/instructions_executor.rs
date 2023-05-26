@@ -1,7 +1,7 @@
 use std::sync::atomic::Ordering;
 
 use rsnano_core::{Account, Amount};
-use rsnano_store_traits::WriteTransaction;
+use rsnano_store_lmdb::WriteTransaction;
 
 use crate::Ledger;
 

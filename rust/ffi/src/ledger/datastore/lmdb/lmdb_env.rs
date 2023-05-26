@@ -6,8 +6,7 @@ use std::{
     time::Duration,
 };
 
-use rsnano_store_lmdb::{EnvOptions, LmdbConfig, LmdbEnv};
-use rsnano_store_traits::{NullTransactionTracker, TransactionTracker};
+use rsnano_store_lmdb::{EnvOptions, LmdbConfig, LmdbEnv, TransactionTracker, NullTransactionTracker};
 
 use crate::{
     utils::{LoggerHandle, LoggerMT},

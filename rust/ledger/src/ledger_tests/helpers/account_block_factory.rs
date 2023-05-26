@@ -1,11 +1,11 @@
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, Ledger, DEV_GENESIS_KEY};
 use rsnano_core::{Account, AccountInfo, Amount, BlockHash, Epoch, KeyPair, Link};
-use rsnano_store_traits::Transaction;
 
 use rsnano_core::{
     BlockBuilder, LegacyChangeBlockBuilder, LegacyOpenBlockBuilder, LegacyReceiveBlockBuilder,
     LegacySendBlockBuilder, StateBlockBuilder,
 };
+use rsnano_store_lmdb::Transaction;
 
 /// Test helper that creates blocks for a single account
 pub(crate) struct AccountBlockFactory<'a> {

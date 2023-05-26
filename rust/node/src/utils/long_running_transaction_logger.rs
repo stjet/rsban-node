@@ -6,7 +6,7 @@ use std::{
 
 use backtrace::Backtrace;
 use rsnano_core::utils::{Logger, PropertyTreeWriter};
-use rsnano_store_traits::TransactionTracker;
+use rsnano_store_lmdb::TransactionTracker;
 
 pub struct TxnTrackingConfig {
     /** If true, enable tracking for transaction read/writes held open longer than the min time variables */

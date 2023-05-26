@@ -1,9 +1,8 @@
-use crate::{LmdbConfig, LmdbReadTransaction, LmdbWriteTransaction, SyncStrategy};
+use crate::{LmdbConfig, LmdbReadTransaction, LmdbWriteTransaction, SyncStrategy, TransactionTracker, NullTransactionTracker};
 use anyhow::bail;
 use lmdb::{Database, DatabaseFlags, EnvironmentFlags, Stat};
 use lmdb_sys::{MDB_env, MDB_SUCCESS};
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
-use rsnano_store_traits::{NullTransactionTracker, TransactionTracker};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::{

@@ -1,10 +1,9 @@
-use crate::{as_write_txn, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper};
+use crate::{as_write_txn, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::DbIterator, WriteTransaction, Transaction, ReadTransaction};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{Account, BlockHash};
-use rsnano_store_traits::{
-    FrontierIterator, ReadTransaction, Transaction, WriteTransaction,
-};
 use std::sync::Arc;
+
+pub type FrontierIterator = Box<dyn DbIterator<BlockHash, Account>>;
 
 pub struct LmdbFrontierStore<T: EnvironmentStrategy = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,

@@ -1,6 +1,5 @@
 use rsnano_core::{BlockEnum, BlockHash};
-use rsnano_store_lmdb::LmdbStore;
-use rsnano_store_traits::Transaction;
+use rsnano_store_lmdb::{LmdbStore, Transaction};
 
 /// Goes back in the block history until it finds a block with representative information
 pub struct RepresentativeBlockFinder<'a> {

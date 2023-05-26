@@ -5,7 +5,7 @@ use std::{
 
 use rsnano_core::{utils::Logger, BlockEnum};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
-use rsnano_store_traits::WriteTransaction;
+use rsnano_store_lmdb::WriteTransaction;
 
 use super::{
     BatchWriteSizeManager, BlockCache, BlockCementerContainerInfo, BlockCementerLogic,

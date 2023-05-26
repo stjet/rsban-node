@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
-use crate::{as_write_txn, count, get, parallel_traversal_u512, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper};
+use crate::{as_write_txn, count, get, parallel_traversal_u512, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::DbIterator, WriteTransaction, Transaction, ReadTransaction};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
-use rsnano_store_traits::{
-    FinalVoteIterator, ReadTransaction, Transaction, WriteTransaction,
-};
+
+pub type FinalVoteIterator = Box<dyn DbIterator<QualifiedRoot, BlockHash>>;
 
 /// Maps root to block hash for generated final votes.
 /// nano::qualified_root -> nano::block_hash

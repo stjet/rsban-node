@@ -7,8 +7,7 @@ use std::{
     time::Duration,
 };
 
-use rsnano_store_lmdb::{create_backup_file, EnvOptions, LmdbConfig, LmdbStore, EnvironmentWrapper};
-use rsnano_store_traits::{NullTransactionTracker, TransactionTracker};
+use rsnano_store_lmdb::{create_backup_file, EnvOptions, LmdbConfig, LmdbStore, EnvironmentWrapper, TransactionTracker, NullTransactionTracker};
 
 use rsnano_node::{config::DiagnosticsConfig, utils::LongRunningTransactionLogger};
 

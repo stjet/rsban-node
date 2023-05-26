@@ -9,7 +9,7 @@ use crate::stats::{DetailType, Direction, StatType, Stats};
 use primitive_types::U256;
 use rsnano_core::{Account, AccountInfo, ConfirmationHeightInfo};
 use rsnano_ledger::Ledger;
-use rsnano_store_traits::Transaction;
+use rsnano_store_lmdb::Transaction;
 
 #[derive(Clone)]
 pub struct BacklogPopulationConfig {

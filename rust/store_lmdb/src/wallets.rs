@@ -1,9 +1,8 @@
 use std::marker::PhantomData;
 
-use crate::{as_write_txn, get, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper};
-use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
+use crate::{as_write_txn, get, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::{BinaryDbIterator, DbIterator}, WriteTransaction};
+use lmdb::{Cursor, Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, NoValue, RawKey, WalletId};
-use rsnano_store_traits::{BinaryDbIterator, DbIterator, WriteTransaction};
 pub type WalletsIterator = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl>;
 
 pub struct LmdbWallets<T: EnvironmentStrategy = EnvironmentWrapper> {
@@ -36,7 +35,7 @@ impl<T:EnvironmentStrategy + 'static> LmdbWallets<T> {
 
     pub fn get_store_it(
         &self,
-        txn: &dyn rsnano_store_traits::Transaction,
+        txn: &dyn crate::Transaction,
         hash: &str,
     ) -> WalletsIterator {
         let hash_bytes: [u8; 64] = hash.as_bytes().try_into().unwrap();
@@ -61,7 +60,7 @@ impl<T:EnvironmentStrategy + 'static> LmdbWallets<T> {
             unsafe { rw_txn_dest.create_db(Some(name), DatabaseFlags::empty()) }?;
 
         {
-            let mut cursor = rw_txn_source.open_ro_cursor(handle_source)?;
+            let mut cursor = lmdb::Transaction::open_ro_cursor(rw_txn_source, handle_source)?;
             for x in cursor.iter_start() {
                 let (k, v) = x?;
                 rw_txn_dest.put(handle_destination, &k, &v, WriteFlags::empty())?;
@@ -101,7 +100,7 @@ impl<T:EnvironmentStrategy + 'static> LmdbWallets<T> {
         Ok(())
     }
 
-    pub fn get_wallet_ids(&self, txn: &dyn rsnano_store_traits::Transaction) -> Vec<WalletId> {
+    pub fn get_wallet_ids(&self, txn: &dyn crate::Transaction) -> Vec<WalletId> {
         let mut wallet_ids = Vec::new();
         let beginning = RawKey::from(0).encode_hex();
         let mut i = self.get_store_it(txn, &beginning);
@@ -115,7 +114,7 @@ impl<T:EnvironmentStrategy + 'static> LmdbWallets<T> {
 
     pub fn get_block_hash(
         &self,
-        txn: &dyn rsnano_store_traits::Transaction,
+        txn: &dyn crate::Transaction,
         id: &str,
     ) -> anyhow::Result<Option<BlockHash>> {
         match get::<T, _>(txn, self.send_action_ids_handle.unwrap(), &id.as_bytes()) {

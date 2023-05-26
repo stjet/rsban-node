@@ -1,14 +1,12 @@
-use crate::{as_write_txn, count, exists, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper};
+use crate::{as_write_txn, count, exists, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::DbIterator, WriteTransaction, Transaction, ReadTransaction};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, ConfirmationHeightInfo,
 };
-use rsnano_store_traits::{
-    ConfirmationHeightIterator, ReadTransaction, Transaction,
-    WriteTransaction,
-};
 use std::sync::Arc;
+
+pub type ConfirmationHeightIterator = Box<dyn DbIterator<Account, ConfirmationHeightInfo>>;
 
 pub struct LmdbConfirmationHeightStore<T: EnvironmentStrategy = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,

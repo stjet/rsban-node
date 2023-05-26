@@ -1,14 +1,13 @@
 use std::sync::Arc;
 
-use crate::{as_write_txn, get, parallel_traversal_u512, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper};
+use crate::{as_write_txn, get, parallel_traversal_u512, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper, iterator::DbIterator, WriteTransaction, Transaction, ReadTransaction};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, BlockHash, PendingInfo, PendingKey,
 };
-use rsnano_store_traits::{
-    PendingIterator, ReadTransaction, Transaction, WriteTransaction,
-};
+
+pub type PendingIterator = Box<dyn DbIterator<PendingKey, PendingInfo>>;
 
 pub struct LmdbPendingStore<T:EnvironmentStrategy = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,

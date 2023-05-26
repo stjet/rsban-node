@@ -9,7 +9,7 @@ use rsnano_core::{
     BlockHash, BlockSubType, BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo,
     PendingKey, QualifiedRoot, Root,
 };
-use rsnano_store_lmdb::{LmdbReadTransaction, LmdbStore, LmdbWriteTransaction};
+use rsnano_store_lmdb::{LmdbReadTransaction, LmdbStore, LmdbWriteTransaction, WriteTransaction, Transaction};
 
 use std::{
     collections::{BTreeMap, HashMap},
@@ -21,7 +21,6 @@ use std::{
 };
 
 use super::DependentBlocksFinder;
-use rsnano_store_traits::{Transaction, WriteTransaction};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct UncementedInfo {

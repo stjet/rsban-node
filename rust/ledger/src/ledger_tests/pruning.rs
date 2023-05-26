@@ -5,7 +5,7 @@ use rsnano_core::{
     work::{WorkPool, STUB_WORK_POOL},
     Amount, BlockBuilder, BlockDetails, Epoch, PendingKey,
 };
-use rsnano_store_traits::{BlockStore, PendingStore, PrunedStore};
+use rsnano_store_traits::{PendingStore, PrunedStore};
 use crate::ledger_tests::LedgerContext;
 use super::upgrade_genesis_to_epoch_v1;
 

@@ -4,7 +4,7 @@ use crate::Ledger;
 use rsnano_core::{
     Account, AccountInfo, Amount, BlockEnum, BlockSideband, BlockType, PendingInfo, PendingKey,
 };
-use rsnano_store_traits::{WriteTransaction, BlockStore, FrontierStore, PendingStore};
+use rsnano_store_traits::{WriteTransaction, FrontierStore, PendingStore};
 
 pub(crate) struct BlockInsertInstructions {
     pub account: Account,

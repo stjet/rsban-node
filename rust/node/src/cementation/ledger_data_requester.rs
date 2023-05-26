@@ -2,7 +2,6 @@
 use rsnano_core::BlockChainBuilder;
 #[cfg(test)]
 use rsnano_core::Epoch;
-use rsnano_store_traits::BlockStore;
 use rsnano_store_traits::ConfirmationHeightStore;
 use rsnano_store_traits::PrunedStore;
 use std::cell::Cell;

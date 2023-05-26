@@ -6,7 +6,6 @@ use std::{
 
 use rsnano_core::BlockHash;
 use rsnano_store_lmdb::LmdbBlockStore;
-use rsnano_store_traits::BlockStore;
 
 use crate::{
     copy_account_bytes, copy_amount_bytes, copy_hash_bytes, core::BlockHandle, VoidPointerCallback,

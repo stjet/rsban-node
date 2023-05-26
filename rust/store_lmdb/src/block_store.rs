@@ -8,7 +8,7 @@ use rsnano_core::{
     BlockVisitor, ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
 use rsnano_store_traits::{
-    BlockIterator, BlockStore, ReadTransaction, Transaction, WriteTransaction,
+    BlockIterator, ReadTransaction, Transaction, WriteTransaction,
 };
 use std::sync::Arc;
 
@@ -29,27 +29,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
         self.database
     }
 
-    pub fn raw_put(&self, txn: &mut dyn WriteTransaction, data: &[u8], hash: &BlockHash) {
-        as_write_txn::<T>(txn)
-            .put(self.database, hash.as_bytes(), &data, WriteFlags::empty())
-            .unwrap();
-    }
-
-    pub fn block_raw_get<'a>(
-        &self,
-        txn: &'a dyn Transaction,
-        hash: &BlockHash,
-    ) -> Option<&'a [u8]> {
-        match get::<T, _>(txn, self.database, hash.as_bytes()) {
-            Err(lmdb::Error::NotFound) => None,
-            Ok(bytes) => Some(bytes),
-            Err(e) => panic!("Could not load block. {:?}", e),
-        }
-    }
-}
-
-impl<T: EnvironmentStrategy + 'static> BlockStore for LmdbBlockStore<T> {
-    fn put(&self, txn: &mut dyn WriteTransaction, block: &BlockEnum) {
+    pub fn put(&self, txn: &mut dyn WriteTransaction, block: &BlockEnum) {
         let hash = block.hash();
         debug_assert!(
             block.sideband().unwrap().successor.is_zero()
@@ -79,11 +59,11 @@ impl<T: EnvironmentStrategy + 'static> BlockStore for LmdbBlockStore<T> {
         );
     }
 
-    fn exists(&self, transaction: &dyn Transaction, hash: &BlockHash) -> bool {
+    pub fn exists(&self, transaction: &dyn Transaction, hash: &BlockHash) -> bool {
         self.block_raw_get(transaction, hash).is_some()
     }
 
-    fn successor(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockHash> {
+    pub fn successor(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockHash> {
         self.block_raw_get(txn, hash)
             .map(|data| {
                 debug_assert!(data.len() >= 32);
@@ -100,7 +80,7 @@ impl<T: EnvironmentStrategy + 'static> BlockStore for LmdbBlockStore<T> {
             .flatten()
     }
 
-    fn successor_clear(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
+    pub fn successor_clear(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
         let value = self.block_raw_get(txn.txn(), hash).unwrap();
         let block_type = BlockType::from_u8(value[0]).unwrap();
 
@@ -110,7 +90,7 @@ impl<T: EnvironmentStrategy + 'static> BlockStore for LmdbBlockStore<T> {
         self.raw_put(txn, &data, hash)
     }
 
-    fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
+    pub fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
         match self.block_raw_get(txn, hash) {
             None => None,
             Some(bytes) => {
@@ -146,7 +126,7 @@ impl<T: EnvironmentStrategy + 'static> BlockStore for LmdbBlockStore<T> {
         }
     }
 
-    fn get_no_sideband(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
+    pub fn get_no_sideband(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
         match self.block_raw_get(txn, hash) {
             None => None,
             Some(bytes) => {
@@ -156,34 +136,34 @@ impl<T: EnvironmentStrategy + 'static> BlockStore for LmdbBlockStore<T> {
         }
     }
 
-    fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
+    pub fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
         as_write_txn::<T>(txn)
             .del(self.database, hash.as_bytes(), None)
             .unwrap();
     }
 
-    fn count(&self, txn: &dyn Transaction) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction) -> u64 {
         count::<T>(txn, self.database)
     }
 
-    fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
+    pub fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
         let block = self.get(txn, hash)?;
         Some(block.account_calculated())
     }
 
-    fn begin(&self, transaction: &dyn Transaction) -> BlockIterator {
+    pub fn begin(&self, transaction: &dyn Transaction) -> BlockIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(transaction, self.database, None, true)
     }
 
-    fn begin_at_hash(&self, transaction: &dyn Transaction, hash: &BlockHash) -> BlockIterator {
+    pub fn begin_at_hash(&self, transaction: &dyn Transaction, hash: &BlockHash) -> BlockIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(transaction, self.database, Some(hash.as_bytes()), true)
     }
 
-    fn end(&self) -> BlockIterator {
+    pub fn end(&self) -> BlockIterator {
         LmdbIteratorImpl::null_iterator()
     }
 
-    fn random(&self, transaction: &dyn Transaction) -> Option<BlockEnum> {
+    pub fn random(&self, transaction: &dyn Transaction) -> Option<BlockEnum> {
         let hash = BlockHash::random();
         let mut existing = self.begin_at_hash(transaction, &hash);
         if existing.is_end() {
@@ -193,14 +173,14 @@ impl<T: EnvironmentStrategy + 'static> BlockStore for LmdbBlockStore<T> {
         existing.current().map(|(_, v)| v.block.clone())
     }
 
-    fn balance(&self, txn: &dyn Transaction, hash: &BlockHash) -> Amount {
+    pub fn balance(&self, txn: &dyn Transaction, hash: &BlockHash) -> Amount {
         match self.get(txn, hash) {
             Some(block) => block.balance_calculated(),
             None => Amount::zero(),
         }
     }
 
-    fn version(&self, txn: &dyn Transaction, hash: &BlockHash) -> Epoch {
+    pub fn version(&self, txn: &dyn Transaction, hash: &BlockHash) -> Epoch {
         match self.get(txn, hash) {
             Some(block) => {
                 if let BlockEnum::State(b) = block {
@@ -213,7 +193,7 @@ impl<T: EnvironmentStrategy + 'static> BlockStore for LmdbBlockStore<T> {
         }
     }
 
-    fn for_each_par(
+    pub fn for_each_par(
         &self,
         action: &(dyn Fn(&dyn ReadTransaction, BlockIterator, BlockIterator) + Send + Sync),
     ) {
@@ -229,10 +209,28 @@ impl<T: EnvironmentStrategy + 'static> BlockStore for LmdbBlockStore<T> {
         });
     }
 
-    fn account_height(&self, txn: &dyn Transaction, hash: &BlockHash) -> u64 {
+    pub fn account_height(&self, txn: &dyn Transaction, hash: &BlockHash) -> u64 {
         match self.get(txn, hash) {
             Some(block) => block.sideband().unwrap().height,
             None => 0,
+        }
+    }
+
+    pub fn raw_put(&self, txn: &mut dyn WriteTransaction, data: &[u8], hash: &BlockHash) {
+        as_write_txn::<T>(txn)
+            .put(self.database, hash.as_bytes(), &data, WriteFlags::empty())
+            .unwrap();
+    }
+
+    pub fn block_raw_get<'a>(
+        &self,
+        txn: &'a dyn Transaction,
+        hash: &BlockHash,
+    ) -> Option<&'a [u8]> {
+        match get::<T, _>(txn, self.database, hash.as_bytes()) {
+            Err(lmdb::Error::NotFound) => None,
+            Ok(bytes) => Some(bytes),
+            Err(e) => panic!("Could not load block. {:?}", e),
         }
     }
 }

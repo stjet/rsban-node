@@ -1,5 +1,4 @@
 use rsnano_core::{Account, Amount, Block, BlockBuilder, BlockHash, KeyPair};
-use rsnano_store_traits::BlockStore;
 
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB,

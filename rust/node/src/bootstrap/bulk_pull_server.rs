@@ -6,7 +6,6 @@ use rsnano_core::{
     Account, BlockEnum, BlockHash, BlockType,
 };
 use rsnano_ledger::Ledger;
-use rsnano_store_traits::BlockStore;
 
 use crate::{
     messages::BulkPull,

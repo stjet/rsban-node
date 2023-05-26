@@ -3,7 +3,7 @@ use crate::{
     DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 use rsnano_core::{Account, Amount, Epoch, PendingInfo, PendingKey};
-use rsnano_store_traits::{BlockStore, PendingStore};
+use rsnano_store_traits::PendingStore;
 
 use super::LedgerContext;
 

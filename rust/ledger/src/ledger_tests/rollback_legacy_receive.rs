@@ -3,7 +3,6 @@ use crate::{
     DEV_GENESIS_ACCOUNT,
 };
 use rsnano_core::PendingKey;
-use rsnano_store_traits::BlockStore;
 
 #[test]
 fn clear_successor() {

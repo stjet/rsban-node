@@ -1,5 +1,5 @@
 use rsnano_core::Amount;
-use rsnano_store_traits::{FrontierStore, BlockStore};
+use rsnano_store_traits::FrontierStore;
 
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB, ledger_tests::LedgerContext, DEV_GENESIS_ACCOUNT,
@@ -36,10 +36,7 @@ fn update_account_info() {
 
     ctx.ledger.rollback(&mut txn, &change.hash()).unwrap();
 
-    let account_info = ctx
-        .ledger
-        .account_info(&txn, &DEV_GENESIS_ACCOUNT)
-        .unwrap();
+    let account_info = ctx.ledger.account_info(&txn, &DEV_GENESIS_ACCOUNT).unwrap();
 
     assert_eq!(account_info.head, *DEV_GENESIS_HASH);
     assert_eq!(account_info.balance, LEDGER_CONSTANTS_STUB.genesis_amount);

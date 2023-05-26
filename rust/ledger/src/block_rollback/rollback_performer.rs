@@ -1,5 +1,5 @@
 use rsnano_core::{AccountInfo, BlockEnum, BlockHash};
-use rsnano_store_traits::{WriteTransaction, BlockStore};
+use rsnano_store_traits::WriteTransaction;
 
 use crate::Ledger;
 

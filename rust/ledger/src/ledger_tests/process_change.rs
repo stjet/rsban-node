@@ -3,8 +3,6 @@ use crate::{
     ProcessResult, DEV_GENESIS_ACCOUNT,
 };
 use rsnano_core::{Account, Amount, Block, BlockDetails, Epoch};
-use rsnano_store_traits::BlockStore;
-
 use super::LedgerContext;
 
 #[test]

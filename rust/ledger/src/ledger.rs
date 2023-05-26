@@ -184,7 +184,7 @@ impl Ledger {
         let genesis_block = genesis_block_enum.deref();
         let genesis_hash = genesis_block.hash();
         let genesis_account = genesis_block.account();
-        self.store.block().put(txn, genesis_block);
+        self.store.block.put(txn, genesis_block);
 
         self.store.confirmation_height().put(
             txn,
@@ -233,7 +233,7 @@ impl Ledger {
     }
 
     pub fn block_or_pruned_exists_txn(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
-        self.store.pruned().exists(txn, hash) || self.store.block().exists(txn, hash)
+        self.store.pruned().exists(txn, hash) || self.store.block.exists(txn, hash)
     }
 
     /// Balance for account containing the given block at the time of the block.
@@ -242,14 +242,14 @@ impl Ledger {
         if hash.is_zero() {
             Amount::zero()
         } else {
-            self.store.block().balance(txn, hash)
+            self.store.block.balance(txn, hash)
         }
     }
 
     /// Balance for account containing the given block at the time of the block.
     /// Returns Err if the pruning is enabled and the block was not found.
     pub fn balance_safe(&self, txn: &dyn Transaction, hash: &BlockHash) -> anyhow::Result<Amount> {
-        if self.pruning_enabled() && !hash.is_zero() && !self.store.block().exists(txn, hash) {
+        if self.pruning_enabled() && !hash.is_zero() && !self.store.block.exists(txn, hash) {
             bail!("block not found");
         }
 
@@ -313,7 +313,7 @@ impl Ledger {
             return true;
         }
 
-        match self.store.block().get(txn, hash) {
+        match self.store.block.get(txn, hash) {
             Some(block) => {
                 let mut account = block.account();
                 let sideband = &block.sideband().unwrap();
@@ -332,7 +332,7 @@ impl Ledger {
 
     pub fn block_text(&self, hash: &BlockHash) -> anyhow::Result<String> {
         let txn = self.store.tx_begin_read();
-        match self.store.block().get(&txn, hash) {
+        match self.store.block.get(&txn, hash) {
             Some(block) => block.to_json(),
             None => Ok(String::new()),
         }
@@ -351,7 +351,7 @@ impl Ledger {
         debug_assert!(
             block.sideband().is_some()
                 || previous.is_zero()
-                || self.store.block().exists(txn, &previous)
+                || self.store.block.exists(txn, &previous)
         );
         match block.sideband() {
             Some(sideband) => sideband.details.is_send,
@@ -386,7 +386,7 @@ impl Ledger {
          * to check account balances to determine if it is a send block.
          */
         debug_assert!(
-            block.previous().is_zero() || self.store.block().exists(txn, &block.previous())
+            block.previous().is_zero() || self.store.block.exists(txn, &block.previous())
         );
 
         // If block_a.source () is nonzero, then we have our source.
@@ -406,7 +406,7 @@ impl Ledger {
     pub fn hash_root_random(&self, txn: &dyn Transaction) -> Option<(BlockHash, BlockHash)> {
         if !self.pruning_enabled() {
             self.store
-                .block()
+                .block
                 .random(txn)
                 .map(|block| (block.hash(), block.root().into()))
         } else {
@@ -419,7 +419,7 @@ impl Ledger {
             }
             if hash.is_zero() {
                 self.store
-                    .block()
+                    .block
                     .random(txn)
                     .map(|block| (block.hash(), block.root().into()))
             } else {
@@ -446,12 +446,12 @@ impl Ledger {
 
     /// Return account containing block hash
     pub fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
-        self.store.block().account(txn, hash)
+        self.store.block.account(txn, hash)
     }
 
     /// Return absolute amount decrease or increase for block
     pub fn amount(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
-        self.store.block().get(txn, hash).map(|block| {
+        self.store.block.get(txn, hash).map(|block| {
             let block_balance = self.balance(txn, hash);
             let previous_balance = self.balance(txn, &block.previous());
             if block_balance > previous_balance {
@@ -465,7 +465,7 @@ impl Ledger {
     /// Return absolute amount decrease or increase for block
     pub fn amount_safe(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
         self.store
-            .block()
+            .block
             .get(txn, hash)
             .map(|block| {
                 let block_balance = self.balance(txn, hash);
@@ -512,7 +512,7 @@ impl Ledger {
     ) -> Option<BlockEnum> {
         // get the cemented frontier
         let info = self.store.confirmation_height().get(txn, destination)?;
-        let mut possible_receive_block = self.store.block().get(txn, &info.frontier);
+        let mut possible_receive_block = self.store.block.get(txn, &info.frontier);
 
         // walk down the chain until the source field of a receive block matches the send block hash
         while let Some(current) = possible_receive_block {
@@ -532,7 +532,7 @@ impl Ledger {
                 return Some(current);
             }
 
-            possible_receive_block = self.store.block().get(txn, &current.previous());
+            possible_receive_block = self.store.block.get(txn, &current.previous());
         }
 
         None
@@ -577,11 +577,11 @@ impl Ledger {
         };
 
         if get_from_previous {
-            successor = self.store.block().successor(txn, &root.previous);
+            successor = self.store.block.successor(txn, &root.previous);
         }
 
         successor
-            .map(|hash| self.store.block().get(txn, &hash))
+            .map(|hash| self.store.block.get(txn, &hash))
             .flatten()
     }
 
@@ -596,8 +596,8 @@ impl Ledger {
         let genesis_hash = { self.constants.genesis.read().unwrap().hash() };
 
         while !hash.is_zero() && hash != genesis_hash {
-            if let Some(block) = self.store.block().get(txn.txn(), &hash) {
-                self.store.block().del(txn, &hash);
+            if let Some(block) = self.store.block.get(txn.txn(), &hash) {
+                self.store.block.del(txn, &hash);
                 self.store.pruned().put(txn, &hash);
                 hash = block.previous();
                 pruned_count += 1;
@@ -674,7 +674,7 @@ impl Ledger {
                 .unwrap_or_default();
             let block = self
                 .store
-                .block()
+                .block
                 .get(txn.txn(), &section.top_hash)
                 .unwrap();
             debug_assert_eq!(
@@ -710,7 +710,7 @@ impl Ledger {
     }
 
     fn is_dependency_satisfied(&self, txn: &dyn Transaction, dependency: &BlockHash) -> bool {
-        dependency.is_zero() || self.store.block().exists(txn, dependency)
+        dependency.is_zero() || self.store.block.exists(txn, dependency)
     }
 
     pub fn dependents_confirmed(&self, txn: &dyn Transaction, block: &BlockEnum) -> bool {
@@ -738,7 +738,7 @@ impl Ledger {
     /// Returns the latest block with representative information
     pub fn representative_block_hash(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockHash {
         let hash = RepresentativeBlockFinder::new(txn, self.store.as_ref()).find_rep_block(*hash);
-        debug_assert!(hash.is_zero() || self.store.block().exists(txn, &hash));
+        debug_assert!(hash.is_zero() || self.store.block.exists(txn, &hash));
         hash
     }
 
@@ -754,7 +754,7 @@ impl Ledger {
     }
 
     pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
-        self.store.block().get(txn, hash)
+        self.store.block.get(txn, hash)
     }
 
     pub fn account_info(

@@ -1,5 +1,5 @@
 use rsnano_core::{Account, BlockEnum, BlockHash, PendingInfo, PendingKey};
-use rsnano_store_traits::Transaction;
+use rsnano_store_traits::{Transaction, PendingStore};
 
 use crate::Ledger;
 
@@ -79,6 +79,6 @@ impl<'a> BlockValidatorFactory<'a> {
     }
 
     fn any_pending_exists(&self, account: &Account) -> bool {
-        self.ledger.store.pending().any(self.txn, account)
+        self.ledger.store.pending.any(self.txn, account)
     }
 }

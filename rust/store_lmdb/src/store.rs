@@ -15,8 +15,7 @@ use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::utils::{seconds_since_epoch, Logger, NullLogger, PropertyTreeWriter};
 use rsnano_store_traits::{
-    NullTransactionTracker,
-    PendingStore, PrunedStore, Table, TransactionTracker, VersionStore, WriteTransaction,
+    NullTransactionTracker, Table, TransactionTracker, VersionStore, WriteTransaction,
 };
 
 #[derive(PartialEq, Eq)]
@@ -138,22 +137,9 @@ impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
 
     pub fn tx_begin_write_for(&self, _to_lock: &[Table]) -> LmdbWriteTransaction<T> {
         // locking tables is not needed for LMDB because there can only ever be one write transaction at a time
-        self
-            .env
+        self.env
             .tx_begin_write()
             .expect("Could not create LMDB read/write transaction")
-    }
-
-    pub fn pruned(&self) -> &dyn PrunedStore {
-        self.pruned.as_ref()
-    }
-
-    pub fn pending(&self) -> &dyn PendingStore {
-        self.pending.as_ref()
-    }
-
-    pub fn peers(&self) -> &dyn rsnano_store_traits::PeerStore {
-        self.peer.as_ref()
     }
 
     pub fn rebuild_db(&self, txn: &mut dyn WriteTransaction) -> anyhow::Result<()> {
@@ -443,7 +429,9 @@ mod tests {
     #[test]
     fn writes_db_version_for_new_store() {
         let file = TestDbFile::random();
-        let store = LmdbStore::<EnvironmentWrapper>::open(&file.path).build().unwrap();
+        let store = LmdbStore::<EnvironmentWrapper>::open(&file.path)
+            .build()
+            .unwrap();
         let txn = store.tx_begin_read();
         assert_eq!(store.version.get(&txn), Some(STORE_VERSION_MINIMUM));
     }

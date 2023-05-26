@@ -21,7 +21,7 @@ use std::{
 };
 
 use super::DependentBlocksFinder;
-use rsnano_store_traits::{Transaction, WriteTransaction};
+use rsnano_store_traits::{Transaction, WriteTransaction, PrunedStore, PendingStore};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct UncementedInfo {
@@ -161,7 +161,7 @@ impl Ledger {
 
         let transaction = self.store.tx_begin_read();
         self.cache.pruned_count.fetch_add(
-            self.store.pruned().count(&transaction) as u64,
+            self.store.pruned.count(&transaction) as u64,
             Ordering::SeqCst,
         );
 
@@ -233,7 +233,7 @@ impl Ledger {
     }
 
     pub fn block_or_pruned_exists_txn(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
-        self.store.pruned().exists(txn, hash) || self.store.block.exists(txn, hash)
+        self.store.pruned.exists(txn, hash) || self.store.block.exists(txn, hash)
     }
 
     /// Balance for account containing the given block at the time of the block.
@@ -286,11 +286,11 @@ impl Ledger {
         let end = Account::from(account.number() + 1);
         let mut i = self
             .store
-            .pending()
+            .pending
             .begin_at_key(txn, &PendingKey::new(*account, BlockHash::zero()));
         let n = self
             .store
-            .pending()
+            .pending
             .begin_at_key(txn, &PendingKey::new(end, BlockHash::zero()));
         while !i.eq(n.as_ref()) {
             if let Some((key, info)) = i.current() {
@@ -309,7 +309,7 @@ impl Ledger {
     }
 
     pub fn block_confirmed(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
-        if self.store.pruned().exists(txn, hash) {
+        if self.store.pruned.exists(txn, hash) {
             return true;
         }
 
@@ -415,7 +415,7 @@ impl Ledger {
             let region = thread_rng().gen_range(0..count);
             // Pruned cache cannot guarantee that pruned blocks are already commited
             if region < self.cache.pruned_count.load(Ordering::SeqCst) {
-                hash = self.store.pruned().random(txn).unwrap_or_default();
+                hash = self.store.pruned.random(txn).unwrap_or_default();
             }
             if hash.is_zero() {
                 self.store
@@ -598,7 +598,7 @@ impl Ledger {
         while !hash.is_zero() && hash != genesis_hash {
             if let Some(block) = self.store.block.get(txn.txn(), &hash) {
                 self.store.block.del(txn, &hash);
-                self.store.pruned().put(txn, &hash);
+                self.store.pruned.put(txn, &hash);
                 hash = block.previous();
                 pruned_count += 1;
                 self.cache.pruned_count.fetch_add(1, Ordering::SeqCst);
@@ -606,7 +606,7 @@ impl Ledger {
                     txn.commit();
                     txn.renew();
                 }
-            } else if self.store.pruned().exists(txn.txn(), &hash) {
+            } else if self.store.pruned.exists(txn.txn(), &hash) {
                 hash = BlockHash::zero();
             } else {
                 panic!("Error finding block for pruning");
@@ -778,6 +778,6 @@ impl Ledger {
     }
 
     pub fn pending_info(&self, txn: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo> {
-        self.store.pending().get(txn, key)
+        self.store.pending.get(txn, key)
     }
 }

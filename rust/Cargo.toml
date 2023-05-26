@@ -1,7 +1,6 @@
 [workspace]
 members = [
 	"core",
-	"store_traits",
 	"store_lmdb",
 	"ledger",
 	"node",

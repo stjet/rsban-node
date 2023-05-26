@@ -321,6 +321,10 @@ impl<T: EnvironmentStrategy> WriteTransaction for LmdbWriteTransaction<T> {
     }
 }
 
+pub enum Table {
+    ConfirmationHeight,
+}
+
 pub fn exists<T:EnvironmentStrategy + 'static>(txn: &dyn Transaction, db: Database, key: &[u8]) -> bool {
     match get::<T, _>(txn, db, &key) {
         Ok(_) => true,

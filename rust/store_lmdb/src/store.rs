@@ -9,12 +9,11 @@ use crate::{
     as_write_txn, lmdb_env::EnvironmentWrapper, EnvOptions, EnvironmentStrategy, LmdbAccountStore,
     LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
     LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
-    LmdbVersionStore, LmdbWriteTransaction, STORE_VERSION_MINIMUM, TransactionTracker, NullTransactionTracker, WriteTransaction,
+    LmdbVersionStore, LmdbWriteTransaction, STORE_VERSION_MINIMUM, TransactionTracker, NullTransactionTracker, WriteTransaction, Table,
 };
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::utils::{seconds_since_epoch, Logger, NullLogger, PropertyTreeWriter};
-use rsnano_store_traits::Table;
 
 #[derive(PartialEq, Eq)]
 pub enum Vacuuming {

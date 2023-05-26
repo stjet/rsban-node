@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 rsnano_core = { path = "../core" }
-rsnano_store_traits = { path = "../store_traits" }
 lmdb-rkv = "0.14"
 lmdb-rkv-sys = "0.11"
 primitive-types = "0"

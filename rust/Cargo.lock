@@ -223,7 +223,6 @@ dependencies = [
  "rsnano_ledger",
  "rsnano_node",
  "rsnano_store_lmdb",
- "rsnano_store_traits",
 ]
 
 [[package]]
@@ -1371,7 +1370,6 @@ dependencies = [
  "rsnano_ledger",
  "rsnano_node",
  "rsnano_store_lmdb",
- "rsnano_store_traits",
 ]
 
 [[package]]
@@ -1385,7 +1383,6 @@ dependencies = [
  "rand",
  "rsnano_core",
  "rsnano_store_lmdb",
- "rsnano_store_traits",
 ]
 
 [[package]]
@@ -1411,7 +1408,6 @@ dependencies = [
  "rsnano_ledger",
  "rsnano_node",
  "rsnano_store_lmdb",
- "rsnano_store_traits",
  "scoped_threadpool",
  "serde",
  "serde_derive",
@@ -1437,17 +1433,8 @@ dependencies = [
  "primitive-types",
  "rand",
  "rsnano_core",
- "rsnano_store_traits",
  "serde_json",
  "uuid 0.8.2",
-]
-
-[[package]]
-name = "rsnano_store_traits"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "rsnano_core",
 ]
 
 [[package]]

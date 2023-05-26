@@ -11,8 +11,7 @@ mod lmdb_config;
 pub use lmdb_config::{LmdbConfig, SyncStrategy};
 
 mod lmdb_env;
-use lmdb_env::EnvironmentWrapper;
-pub use lmdb_env::{EnvOptions, EnvironmentOptions, LmdbEnv, TestDbFile, TestLmdbEnv};
+pub use lmdb_env::{EnvOptions, EnvironmentOptions, LmdbEnv, TestDbFile, TestLmdbEnv, EnvironmentStrategy, EnvironmentWrapper};
 
 mod account_store;
 pub use account_store::LmdbAccountStore;
@@ -80,9 +79,9 @@ pub struct LmdbReadTransaction {
 }
 
 impl LmdbReadTransaction {
-    pub fn new<'a>(
+    pub fn new<'a, T: EnvironmentStrategy>(
         txn_id: u64,
-        env: &'a EnvironmentWrapper,
+        env: &'a T,
         callbacks: Arc<dyn TransactionTracker>,
     ) -> lmdb::Result<Self> {
         let txn = env.begin_ro_txn()?;
@@ -171,20 +170,20 @@ enum RwTxnState<'a> {
     Transitioning,
 }
 
-pub struct LmdbWriteTransaction {
-    env: &'static EnvironmentWrapper,
+pub struct LmdbWriteTransaction<T: EnvironmentStrategy + 'static = EnvironmentWrapper> {
+    env: &'static T,
     txn_id: u64,
     callbacks: Arc<dyn TransactionTracker>,
     txn: RwTxnState<'static>,
 }
 
-impl LmdbWriteTransaction {
+impl<T: EnvironmentStrategy> LmdbWriteTransaction<T> {
     pub fn new<'a>(
         txn_id: u64,
-        env: &'a EnvironmentWrapper,
+        env: &'a T,
         callbacks: Arc<dyn TransactionTracker>,
     ) -> lmdb::Result<Self> {
-        let env = unsafe { std::mem::transmute::<&'a EnvironmentWrapper, &'static EnvironmentWrapper>(env) };
+        let env = unsafe { std::mem::transmute::<&'a T, &'static T>(env) };
         let mut tx = Self {
             env,
             txn_id,
@@ -210,13 +209,13 @@ impl LmdbWriteTransaction {
     }
 }
 
-impl<'a> Drop for LmdbWriteTransaction {
+impl<'a, T: EnvironmentStrategy> Drop for LmdbWriteTransaction<T> {
     fn drop(&mut self) {
         self.commit();
     }
 }
 
-impl rsnano_store_traits::Transaction for LmdbWriteTransaction {
+impl<T: EnvironmentStrategy> rsnano_store_traits::Transaction for LmdbWriteTransaction<T> {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -230,7 +229,7 @@ impl rsnano_store_traits::Transaction for LmdbWriteTransaction {
     }
 }
 
-impl WriteTransaction for LmdbWriteTransaction {
+impl<T: EnvironmentStrategy> WriteTransaction for LmdbWriteTransaction<T> {
     fn txn(&self) -> &dyn rsnano_store_traits::Transaction {
         self
     }
@@ -267,29 +266,29 @@ impl WriteTransaction for LmdbWriteTransaction {
     }
 }
 
-pub fn exists(txn: &dyn rsnano_store_traits::Transaction, db: Database, key: &[u8]) -> bool {
-    match get(txn, db, &key) {
+pub fn exists<T:EnvironmentStrategy + 'static>(txn: &dyn rsnano_store_traits::Transaction, db: Database, key: &[u8]) -> bool {
+    match get::<T, _>(txn, db, &key) {
         Ok(_) => true,
         Err(lmdb::Error::NotFound) => false,
         Err(e) => panic!("exists failed: {:?}", e),
     }
 }
 
-pub fn as_write_txn(txn: &mut dyn WriteTransaction) -> &mut RwTransaction<'static> {
+pub fn as_write_txn<T:EnvironmentStrategy + 'static>(txn: &mut dyn WriteTransaction) -> &mut RwTransaction<'static> {
     txn.txn_mut()
         .as_any_mut()
-        .downcast_mut::<LmdbWriteTransaction>()
+        .downcast_mut::<LmdbWriteTransaction<T>>()
         .unwrap()
         .rw_txn_mut()
 }
 
-pub fn get<'a, K: AsRef<[u8]>>(
+pub fn get<'a, T: EnvironmentStrategy + 'static, K: AsRef<[u8]>>(
     txn: &'a dyn rsnano_store_traits::Transaction,
     database: Database,
     key: &K,
 ) -> lmdb::Result<&'a [u8]> {
     let any = txn.as_any();
-    if let Some(t) = any.downcast_ref::<LmdbWriteTransaction>() {
+    if let Some(t) = any.downcast_ref::<LmdbWriteTransaction<T>>() {
         t.rw_txn().get(database, key)
     } else {
         any.downcast_ref::<LmdbReadTransaction>()
@@ -299,12 +298,12 @@ pub fn get<'a, K: AsRef<[u8]>>(
     }
 }
 
-pub fn open_ro_cursor<'a>(
+pub fn open_ro_cursor<'a, T: EnvironmentStrategy + 'static>(
     txn: &'a dyn rsnano_store_traits::Transaction,
     database: Database,
 ) -> lmdb::Result<RoCursor<'a>> {
     let any = txn.as_any();
-    if let Some(t) = any.downcast_ref::<LmdbWriteTransaction>() {
+    if let Some(t) = any.downcast_ref::<LmdbWriteTransaction<T>>() {
         t.rw_txn().open_ro_cursor(database)
     } else {
         any.downcast_ref::<LmdbReadTransaction>()
@@ -314,9 +313,9 @@ pub fn open_ro_cursor<'a>(
     }
 }
 
-pub fn count<'a>(txn: &'a dyn rsnano_store_traits::Transaction, database: Database) -> u64 {
+pub fn count<'a, T: EnvironmentStrategy + 'static>(txn: &'a dyn rsnano_store_traits::Transaction, database: Database) -> u64 {
     let any = txn.as_any();
-    let stat = if let Some(t) = any.downcast_ref::<LmdbWriteTransaction>() {
+    let stat = if let Some(t) = any.downcast_ref::<LmdbWriteTransaction<T>>() {
         t.rw_txn().stat(database)
     } else {
         any.downcast_ref::<LmdbReadTransaction>()

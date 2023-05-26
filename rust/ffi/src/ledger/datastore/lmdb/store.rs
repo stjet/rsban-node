@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use rsnano_store_lmdb::{create_backup_file, EnvOptions, LmdbConfig, LmdbStore};
+use rsnano_store_lmdb::{create_backup_file, EnvOptions, LmdbConfig, LmdbStore, EnvironmentWrapper};
 use rsnano_store_traits::{NullTransactionTracker, Store, TransactionTracker};
 
 use rsnano_node::{config::DiagnosticsConfig, utils::LongRunningTransactionLogger};
@@ -69,7 +69,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_create(
         Arc::new(NullTransactionTracker::new())
     };
 
-    let store = LmdbStore::open(path)
+    let store = LmdbStore::<EnvironmentWrapper>::open(path)
         .options(&options)
         .txn_tracker(txn_tracker)
         .logger(logger)

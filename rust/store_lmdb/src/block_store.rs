@@ -1,4 +1,4 @@
-use crate::{as_write_txn, count, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl};
+use crate::{as_write_txn, count, get, parallel_traversal, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
@@ -12,13 +12,13 @@ use rsnano_store_traits::{
 };
 use std::sync::Arc;
 
-pub struct LmdbBlockStore {
-    env: Arc<LmdbEnv>,
+pub struct LmdbBlockStore<T: EnvironmentStrategy = EnvironmentWrapper> {
+    env: Arc<LmdbEnv<T>>,
     database: Database,
 }
 
-impl LmdbBlockStore {
-    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
+impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
+    pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment
             .create_db(Some("blocks"), DatabaseFlags::empty())?;
@@ -30,7 +30,7 @@ impl LmdbBlockStore {
     }
 
     pub fn raw_put(&self, txn: &mut dyn WriteTransaction, data: &[u8], hash: &BlockHash) {
-        as_write_txn(txn)
+        as_write_txn::<T>(txn)
             .put(self.database, hash.as_bytes(), &data, WriteFlags::empty())
             .unwrap();
     }
@@ -40,7 +40,7 @@ impl LmdbBlockStore {
         txn: &'a dyn Transaction,
         hash: &BlockHash,
     ) -> Option<&'a [u8]> {
-        match get(txn, self.database, hash.as_bytes()) {
+        match get::<T, _>(txn, self.database, hash.as_bytes()) {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => Some(bytes),
             Err(e) => panic!("Could not load block. {:?}", e),
@@ -48,7 +48,7 @@ impl LmdbBlockStore {
     }
 }
 
-impl BlockStore for LmdbBlockStore {
+impl<T: EnvironmentStrategy + 'static> BlockStore for LmdbBlockStore<T> {
     fn put(&self, txn: &mut dyn WriteTransaction, block: &BlockEnum) {
         let hash = block.hash();
         debug_assert!(
@@ -157,13 +157,13 @@ impl BlockStore for LmdbBlockStore {
     }
 
     fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
-        as_write_txn(txn)
+        as_write_txn::<T>(txn)
             .del(self.database, hash.as_bytes(), None)
             .unwrap();
     }
 
     fn count(&self, txn: &dyn Transaction) -> u64 {
-        count(txn, self.database)
+        count::<T>(txn, self.database)
     }
 
     fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
@@ -172,11 +172,11 @@ impl BlockStore for LmdbBlockStore {
     }
 
     fn begin(&self, transaction: &dyn Transaction) -> BlockIterator {
-        LmdbIteratorImpl::new_iterator(transaction, self.database, None, true)
+        LmdbIteratorImpl::new_iterator::<T, _, _>(transaction, self.database, None, true)
     }
 
     fn begin_at_hash(&self, transaction: &dyn Transaction, hash: &BlockHash) -> BlockIterator {
-        LmdbIteratorImpl::new_iterator(transaction, self.database, Some(hash.as_bytes()), true)
+        LmdbIteratorImpl::new_iterator::<T, _, _>(transaction, self.database, Some(hash.as_bytes()), true)
     }
 
     fn end(&self) -> BlockIterator {
@@ -238,13 +238,13 @@ impl BlockStore for LmdbBlockStore {
 }
 
 /// Fill in our predecessors
-struct BlockPredecessorMdbSet<'a> {
+struct BlockPredecessorMdbSet<'a, T: EnvironmentStrategy + 'static> {
     transaction: &'a mut dyn WriteTransaction,
-    block_store: &'a LmdbBlockStore,
+    block_store: &'a LmdbBlockStore<T>,
 }
 
-impl<'a, 'b> BlockPredecessorMdbSet<'a> {
-    fn new(transaction: &'a mut dyn WriteTransaction, block_store: &'a LmdbBlockStore) -> Self {
+impl<'a, 'b, T: EnvironmentStrategy + 'static> BlockPredecessorMdbSet<'a, T> {
+    fn new(transaction: &'a mut dyn WriteTransaction, block_store: &'a LmdbBlockStore<T>) -> Self {
         Self {
             transaction,
             block_store,
@@ -269,7 +269,7 @@ impl<'a, 'b> BlockPredecessorMdbSet<'a> {
     }
 }
 
-impl<'a> BlockVisitor for BlockPredecessorMdbSet<'a> {
+impl<'a, T:EnvironmentStrategy> BlockVisitor for BlockPredecessorMdbSet<'a,T> {
     fn send_block(&mut self, block: &SendBlock) {
         self.fill_value(block);
     }

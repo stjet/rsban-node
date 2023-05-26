@@ -1,5 +1,7 @@
 use std::ffi::c_uint;
 
+use crate::EnvironmentStrategy;
+
 use super::open_ro_cursor;
 use lmdb::{Cursor, Database, RoCursor};
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
@@ -12,17 +14,18 @@ pub struct LmdbIteratorImpl {
 }
 
 impl LmdbIteratorImpl {
-    pub fn new_iterator<K, V>(
+    pub fn new_iterator<T, K, V>(
         txn: &dyn Transaction,
         dbi: Database,
         key_val: Option<&[u8]>,
         direction_asc: bool,
     ) -> Box<dyn DbIterator<K, V>>
     where
+        T: EnvironmentStrategy + 'static,
         K: Serialize + Deserialize<Target = K> + 'static,
         V: Deserialize<Target = V> + 'static,
     {
-        let iterator_impl = Self::new(txn, dbi, key_val, direction_asc);
+        let iterator_impl = Self::new::<T>(txn, dbi, key_val, direction_asc);
         Box::new(BinaryDbIterator::new(iterator_impl))
     }
 
@@ -34,7 +37,7 @@ impl LmdbIteratorImpl {
         Box::new(BinaryDbIterator::new(Self::null()))
     }
 
-    pub fn new(
+    pub fn new<T: EnvironmentStrategy + 'static>(
         txn: &dyn Transaction,
         dbi: Database,
         key_val: Option<&[u8]>,
@@ -50,7 +53,7 @@ impl LmdbIteratorImpl {
             }
         };
 
-        let cursor = open_ro_cursor(txn, dbi).unwrap();
+        let cursor = open_ro_cursor::<T>(txn, dbi).unwrap();
         //todo: dont use unsafe code:
         let cursor =
             unsafe { std::mem::transmute::<lmdb::RoCursor<'_>, lmdb::RoCursor<'static>>(cursor) };

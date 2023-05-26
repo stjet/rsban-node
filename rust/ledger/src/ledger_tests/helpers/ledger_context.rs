@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, Ledger};
 use rsnano_core::{Account, ConfirmationHeightInfo};
-use rsnano_store_lmdb::{LmdbStore, TestDbFile};
+use rsnano_store_lmdb::{LmdbStore, TestDbFile, EnvironmentWrapper};
 use rsnano_store_traits::WriteTransaction;
 
 use super::AccountBlockFactory;
@@ -15,7 +15,7 @@ pub(crate) struct LedgerContext {
 impl LedgerContext {
     pub fn empty() -> Self {
         let db_file = TestDbFile::random();
-        let store = Arc::new(LmdbStore::open(&db_file.path).build().unwrap());
+        let store = Arc::new(LmdbStore::<EnvironmentWrapper>::open(&db_file.path).build().unwrap());
         let ledger = Ledger::new(store.clone(), LEDGER_CONSTANTS_STUB.clone()).unwrap();
 
         LedgerContext {

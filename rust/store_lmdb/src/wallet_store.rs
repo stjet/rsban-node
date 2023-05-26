@@ -1,4 +1,4 @@
-use crate::{as_write_txn, get, Fan, LmdbIteratorImpl};
+use crate::{as_write_txn, get, Fan, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper};
 use anyhow::bail;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -7,7 +7,7 @@ use rsnano_core::{
     Account, KeyDerivationFunction, PublicKey, RawKey,
 };
 use rsnano_store_traits::{DbIterator, Transaction, WriteTransaction};
-use std::io::Write;
+use std::{io::Write, marker::PhantomData};
 use std::{
     fs::{set_permissions, File, Permissions},
     os::unix::prelude::PermissionsExt,
@@ -80,13 +80,14 @@ const VERSION_CURRENT: u32 = 4;
 
 pub type WalletIterator = Box<dyn DbIterator<Account, WalletValue>>;
 
-pub struct LmdbWalletStore {
+pub struct LmdbWalletStore<T: EnvironmentStrategy = EnvironmentWrapper> {
     db_handle: Mutex<Option<Database>>,
     pub fans: Mutex<Fans>,
     kdf: KeyDerivationFunction,
+    phantom: PhantomData<T>,
 }
 
-impl<'a> LmdbWalletStore {
+impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
     pub fn new(
         fanout: usize,
         kdf: KeyDerivationFunction,
@@ -98,11 +99,12 @@ impl<'a> LmdbWalletStore {
             db_handle: Mutex::new(None),
             fans: Mutex::new(Fans::new(fanout)),
             kdf,
+            phantom: PhantomData
         };
         store.initialize(txn, wallet)?;
         let handle = store.db_handle();
         if let Err(lmdb::Error::NotFound) =
-            get(txn.txn(), handle, Self::version_special().as_bytes())
+            get::<T, _>(txn.txn(), handle, Self::version_special().as_bytes())
         {
             store.version_put(txn, VERSION_CURRENT);
             let salt = RawKey::random();
@@ -160,10 +162,11 @@ impl<'a> LmdbWalletStore {
             db_handle: Mutex::new(None),
             fans: Mutex::new(Fans::new(fanout)),
             kdf,
+            phantom: PhantomData
         };
         store.initialize(txn, wallet)?;
         let handle = store.db_handle();
-        match get(txn.txn(), handle, Self::version_special().as_bytes()) {
+        match get::<T, _>(txn.txn(), handle, Self::version_special().as_bytes()) {
             Ok(_) => panic!("wallet store already initialized"),
             Err(lmdb::Error::NotFound) => {}
             Err(e) => panic!("unexpected wallet store error: {:?}", e),
@@ -199,7 +202,7 @@ impl<'a> LmdbWalletStore {
     }
 
     fn ensure_key_exists(&self, txn: &dyn Transaction, key: &Account) -> anyhow::Result<()> {
-        get(txn, self.db_handle(), key.as_bytes())?;
+        get::<T, _>(txn, self.db_handle(), key.as_bytes())?;
         Ok(())
     }
 
@@ -247,7 +250,7 @@ impl<'a> LmdbWalletStore {
             .as_os_str()
             .to_str()
             .ok_or_else(|| anyhow!("invalid path"))?;
-        let db = unsafe { as_write_txn(txn).create_db(Some(path_str), DatabaseFlags::empty()) }?;
+        let db = unsafe { as_write_txn::<T>(txn).create_db(Some(path_str), DatabaseFlags::empty()) }?;
         *self.db_handle.lock().unwrap() = Some(db);
         Ok(())
     }
@@ -257,7 +260,7 @@ impl<'a> LmdbWalletStore {
     }
 
     pub fn entry_get_raw(&self, txn: &dyn Transaction, account: &Account) -> WalletValue {
-        match get(txn, self.db_handle(), account.as_bytes()) {
+        match get::<T, _>(txn, self.db_handle(), account.as_bytes()) {
             Ok(bytes) => {
                 let mut stream = StreamAdapter::new(bytes);
                 WalletValue::deserialize(&mut stream).unwrap()
@@ -272,7 +275,7 @@ impl<'a> LmdbWalletStore {
         account: &Account,
         entry: &WalletValue,
     ) {
-        as_write_txn(txn)
+        as_write_txn::<T>(txn)
             .put(
                 self.db_handle(),
                 account.as_bytes(),
@@ -378,7 +381,7 @@ impl<'a> LmdbWalletStore {
     }
 
     pub fn begin(&self, txn: &dyn Transaction) -> WalletIterator {
-        LmdbIteratorImpl::new_iterator(
+        LmdbIteratorImpl::new_iterator::<T, _, _>(
             txn,
             self.db_handle(),
             Some(Self::special_count().as_bytes()),
@@ -387,7 +390,7 @@ impl<'a> LmdbWalletStore {
     }
 
     pub fn begin_at_account(&self, txn: &dyn Transaction, key: &Account) -> WalletIterator {
-        LmdbIteratorImpl::new_iterator(txn, self.db_handle(), Some(key.as_bytes()), true)
+        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.db_handle(), Some(key.as_bytes()), true)
     }
 
     pub fn end(&self) -> WalletIterator {
@@ -406,7 +409,7 @@ impl<'a> LmdbWalletStore {
     }
 
     pub fn erase(&self, txn: &mut dyn WriteTransaction, account: &Account) {
-        as_write_txn(txn)
+        as_write_txn::<T>(txn)
             .del(self.db_handle(), account.as_bytes(), None)
             .unwrap();
     }
@@ -588,7 +591,7 @@ impl<'a> LmdbWalletStore {
 
     pub fn serialize_json(&self, txn: &dyn Transaction) -> String {
         let mut map = serde_json::Map::new();
-        let mut it = LmdbIteratorImpl::new_iterator::<Account, WalletValue>(
+        let mut it = LmdbIteratorImpl::new_iterator::<T, Account, WalletValue>(
             txn,
             self.db_handle(),
             None,
@@ -616,7 +619,7 @@ impl<'a> LmdbWalletStore {
     pub fn move_keys(
         &self,
         txn: &mut dyn WriteTransaction,
-        other: &LmdbWalletStore,
+        other: &LmdbWalletStore<T>,
         keys: &[PublicKey],
     ) -> anyhow::Result<()> {
         debug_assert!(self.valid_password(txn.txn()));
@@ -633,7 +636,7 @@ impl<'a> LmdbWalletStore {
     pub fn import(
         &self,
         txn: &mut dyn WriteTransaction,
-        other: &LmdbWalletStore,
+        other: &LmdbWalletStore<T>,
     ) -> anyhow::Result<()> {
         debug_assert!(self.valid_password(txn.txn()));
         debug_assert!(other.valid_password(txn.txn()));
@@ -676,7 +679,7 @@ impl<'a> LmdbWalletStore {
 
     pub fn destroy(&self, txn: &mut dyn WriteTransaction) {
         unsafe {
-            as_write_txn(txn).drop_db(self.db_handle()).unwrap();
+            as_write_txn::<T>(txn).drop_db(self.db_handle()).unwrap();
         }
         *self.db_handle.lock().unwrap() = None;
     }

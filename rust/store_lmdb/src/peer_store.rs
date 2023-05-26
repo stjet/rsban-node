@@ -1,16 +1,16 @@
-use crate::{as_write_txn, count, exists, LmdbEnv, LmdbIteratorImpl};
+use crate::{as_write_txn, count, exists, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::EndpointKey;
 use rsnano_store_traits::{PeerIterator, PeerStore, Transaction, WriteTransaction};
 use std::sync::Arc;
 
-pub struct LmdbPeerStore {
-    _env: Arc<LmdbEnv>,
+pub struct LmdbPeerStore<T:EnvironmentStrategy = EnvironmentWrapper> {
+    _env: Arc<LmdbEnv<T>>,
     database: Database,
 }
 
-impl LmdbPeerStore {
-    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
+impl<T: EnvironmentStrategy> LmdbPeerStore<T> {
+    pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment
             .create_db(Some("peers"), DatabaseFlags::empty())?;
@@ -26,9 +26,9 @@ impl LmdbPeerStore {
     }
 }
 
-impl PeerStore for LmdbPeerStore {
+impl<T:EnvironmentStrategy + 'static> PeerStore for LmdbPeerStore<T> {
     fn put(&self, txn: &mut dyn WriteTransaction, endpoint: &EndpointKey) {
-        as_write_txn(txn)
+        as_write_txn::<T>(txn)
             .put(
                 self.database,
                 &endpoint.to_bytes(),
@@ -39,25 +39,25 @@ impl PeerStore for LmdbPeerStore {
     }
 
     fn del(&self, txn: &mut dyn WriteTransaction, endpoint: &EndpointKey) {
-        as_write_txn(txn)
+        as_write_txn::<T>(txn)
             .del(self.database, &endpoint.to_bytes(), None)
             .unwrap();
     }
 
     fn exists(&self, txn: &dyn Transaction, endpoint: &EndpointKey) -> bool {
-        exists(txn, self.database, &endpoint.to_bytes())
+        exists::<T>(txn, self.database, &endpoint.to_bytes())
     }
 
     fn count(&self, txn: &dyn Transaction) -> u64 {
-        count(txn, self.database)
+        count::<T>(txn, self.database)
     }
 
     fn clear(&self, txn: &mut dyn WriteTransaction) {
-        as_write_txn(txn).clear_db(self.database).unwrap();
+        as_write_txn::<T>(txn).clear_db(self.database).unwrap();
     }
 
     fn begin(&self, txn: &dyn Transaction) -> PeerIterator {
-        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
+        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
     }
 }
 

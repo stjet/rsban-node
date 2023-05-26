@@ -31,7 +31,7 @@ pub struct EnvironmentOptions<'a> {
     pub file_mode: u32,
 }
 
-trait EnvironmentTrait {
+pub trait EnvironmentStrategy: Send + Sync {
     fn build(options: EnvironmentOptions) -> lmdb::Result<Self>
     where
         Self: Sized;
@@ -49,8 +49,8 @@ trait EnvironmentTrait {
     fn stat(&self) -> lmdb::Result<Stat>;
 }
 
-impl EnvironmentWrapper {
-    pub fn build(options: EnvironmentOptions) -> lmdb::Result<Self> {
+impl EnvironmentStrategy for EnvironmentWrapper {
+    fn build(options: EnvironmentOptions) -> lmdb::Result<Self> {
         let env = lmdb::Environment::new()
             .set_max_dbs(options.max_dbs)
             .set_map_size(options.map_size)
@@ -59,14 +59,14 @@ impl EnvironmentWrapper {
         Ok(Self(env))
     }
 
-    pub fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<lmdb::RoTransaction<'env>> {
+    fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<lmdb::RoTransaction<'env>> {
         self.0.begin_ro_txn()
     }
-    pub fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<lmdb::RwTransaction<'env>> {
+    fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<lmdb::RwTransaction<'env>> {
         self.0.begin_rw_txn()
     }
 
-    pub fn create_db<'env>(
+    fn create_db<'env>(
         &'env self,
         name: Option<&str>,
         flags: DatabaseFlags,
@@ -74,26 +74,26 @@ impl EnvironmentWrapper {
         self.0.create_db(name, flags)
     }
 
-    pub fn env(&self) -> *mut MDB_env {
+    fn env(&self) -> *mut MDB_env {
         self.0.env()
     }
 
-    pub fn open_db<'env>(&'env self, name: Option<&str>) -> lmdb::Result<Database> {
+    fn open_db<'env>(&'env self, name: Option<&str>) -> lmdb::Result<Database> {
         self.0.open_db(name)
     }
 
-    pub fn sync(&self, force: bool) -> lmdb::Result<()> {
+    fn sync(&self, force: bool) -> lmdb::Result<()> {
         self.0.sync(force)
     }
 
-    pub fn stat(&self) -> lmdb::Result<Stat> {
+    fn stat(&self) -> lmdb::Result<Stat> {
         self.0.stat()
     }
 }
 
 struct EnvironmentStub;
 
-impl EnvironmentTrait for EnvironmentStub {
+impl EnvironmentStrategy for EnvironmentStub {
     fn build(_options: EnvironmentOptions) -> lmdb::Result<Self>
     where
         Self: Sized,
@@ -143,13 +143,13 @@ pub struct EnvOptions {
     pub use_no_mem_init: bool,
 }
 
-pub struct LmdbEnv {
-    pub environment: EnvironmentWrapper,
+pub struct LmdbEnv<T: EnvironmentStrategy = EnvironmentWrapper> {
+    pub environment: T,
     next_txn_id: AtomicU64,
     txn_tracker: Arc<dyn TransactionTracker>,
 }
 
-impl LmdbEnv {
+impl<T: EnvironmentStrategy> LmdbEnv<T> {
     pub fn new(path: impl AsRef<Path>) -> anyhow::Result<Self> {
         Self::with_options(path, &EnvOptions::default())
     }
@@ -179,7 +179,7 @@ impl LmdbEnv {
     pub fn init(
         path: impl AsRef<Path>,
         options: &EnvOptions,
-    ) -> anyhow::Result<EnvironmentWrapper> {
+    ) -> anyhow::Result<T> {
         let path = path.as_ref();
         try_create_parent_dir(path)?;
         let mut map_size = options.config.map_size;
@@ -210,7 +210,7 @@ impl LmdbEnv {
             environment_flags |= EnvironmentFlags::NO_MEM_INIT;
         }
 
-        let env = EnvironmentWrapper::build(EnvironmentOptions {
+        let env = T::build(EnvironmentOptions {
             max_dbs: options.config.max_databases,
             map_size,
             flags: environment_flags,
@@ -225,7 +225,7 @@ impl LmdbEnv {
         LmdbReadTransaction::new(txn_id, &self.environment, self.create_txn_callbacks())
     }
 
-    pub fn tx_begin_write(&self) -> lmdb::Result<LmdbWriteTransaction> {
+    pub fn tx_begin_write(&self) -> lmdb::Result<LmdbWriteTransaction<T>> {
         // For IO threads, we do not want them to block on creating write transactions.
         debug_assert!(std::thread::current().name() != Some("I/O"));
         let txn_id = self.next_txn_id.fetch_add(1, Ordering::Relaxed);
@@ -269,7 +269,7 @@ fn try_create_parent_dir(path: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-impl Drop for LmdbEnv {
+impl<T: EnvironmentStrategy> Drop for LmdbEnv<T> {
     fn drop(&mut self) {
         let _ = self.environment.sync(true);
     }
@@ -348,8 +348,6 @@ impl Deref for TestLmdbEnv {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_store_traits::ReadTransaction;
-
     use super::*;
 
     mod test_db_file {
@@ -399,14 +397,5 @@ mod tests {
             assert_eq!(filename.file_stem().unwrap().len(), 32);
             assert_ne!(TestDbFile::temp_file_name(), TestDbFile::temp_file_name());
         }
-    }
-
-    #[test]
-    fn first_test() {
-        let db_file = TestDbFile::new("foo.ldb");
-        let env = LmdbEnv::new(&db_file.path).unwrap();
-        let mut txn = env.tx_begin_read().unwrap();
-        txn.refresh();
-        assert!(true)
     }
 }

@@ -1,11 +1,11 @@
-use crate::{as_write_txn, get, LmdbEnv, STORE_VERSION_CURRENT};
+use crate::{as_write_txn, get, LmdbEnv, STORE_VERSION_CURRENT, EnvironmentStrategy, EnvironmentWrapper};
 use core::panic;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_store_traits::{Transaction, VersionStore, WriteTransaction};
 use std::{path::Path, sync::Arc};
 
-pub struct LmdbVersionStore {
-    _env: Arc<LmdbEnv>,
+pub struct LmdbVersionStore<T: EnvironmentStrategy = EnvironmentWrapper> {
+    _env: Arc<LmdbEnv<T>>,
 
     /// U256 (arbitrary key) -> blob
     db_handle: Database,
@@ -16,8 +16,8 @@ pub struct UpgradeInfo {
     pub is_fully_upgraded: bool,
 }
 
-impl LmdbVersionStore {
-    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
+impl<T: EnvironmentStrategy + 'static> LmdbVersionStore<T> {
+    pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let db_handle = env
             .environment
             .create_db(Some("meta"), DatabaseFlags::empty())?;
@@ -27,18 +27,18 @@ impl LmdbVersionStore {
         })
     }
 
-    pub fn try_read_version(env: &LmdbEnv) -> anyhow::Result<Option<i32>> {
+    pub fn try_read_version(env: &LmdbEnv<T>) -> anyhow::Result<Option<i32>> {
         match env.environment.open_db(Some("meta")) {
             Ok(db) => {
                 let txn = env.tx_begin_read()?;
-                Ok(load_version(&txn, db))
+                Ok(load_version::<T>(&txn, db))
             }
             Err(_) => Ok(None),
         }
     }
 
     pub fn check_upgrade(path: &Path) -> anyhow::Result<UpgradeInfo> {
-        let env = LmdbEnv::new(path)?;
+        let env = LmdbEnv::<T>::new(path)?;
         let info = match LmdbVersionStore::try_read_version(&env)? {
             Some(version) => UpgradeInfo {
                 is_fresh_db: false,
@@ -57,27 +57,27 @@ impl LmdbVersionStore {
     }
 }
 
-impl VersionStore for LmdbVersionStore {
+impl<T: EnvironmentStrategy + 'static> VersionStore for LmdbVersionStore<T> {
     fn put(&self, txn: &mut dyn WriteTransaction, version: i32) {
         let db = self.db_handle();
 
         let key_bytes = version_key();
         let value_bytes = value_bytes(version);
 
-        as_write_txn(txn)
+        as_write_txn::<T>(txn)
             .put(db, &key_bytes, &value_bytes, WriteFlags::empty())
             .unwrap();
     }
 
     fn get(&self, txn: &dyn Transaction) -> Option<i32> {
         let db = self.db_handle();
-        load_version(txn, db)
+        load_version::<T>(txn, db)
     }
 }
 
-fn load_version(txn: &dyn Transaction, db: Database) -> Option<i32> {
+fn load_version<T: EnvironmentStrategy + 'static>(txn: &dyn Transaction, db: Database) -> Option<i32> {
     let key_bytes = version_key();
-    match get(txn, db, &key_bytes) {
+    match get::<T, _>(txn, db, &key_bytes) {
         Ok(value) => Some(i32::from_be_bytes(value[28..].try_into().unwrap())),
         Err(lmdb::Error::NotFound) => None,
         Err(_) => panic!("Error while loading db version"),

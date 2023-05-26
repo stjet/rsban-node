@@ -11,7 +11,7 @@ use std::{
 use rsnano_core::{utils::ConsoleLogger, Account};
 use rsnano_ledger::{Ledger, LedgerConstants, WriteDatabaseQueue};
 use rsnano_node::cementation::{BlockCementer, CementCallbacks};
-use rsnano_store_lmdb::LmdbStore;
+use rsnano_store_lmdb::{LmdbStore, EnvironmentStrategy, EnvironmentWrapper};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -24,7 +24,7 @@ fn main() {
     match mode {
         Mode::Clear(ledger_path) => {
             println!("Clearing confirmation height at {:?}", ledger_path);
-            let ledger = open_ledger(ledger_path);
+            let ledger = open_ledger::<_, EnvironmentWrapper>(ledger_path);
             let mut txn = ledger.rw_txn();
             let started = Instant::now();
             ledger.store.confirmation_height().clear(txn.as_mut());
@@ -33,7 +33,7 @@ fn main() {
         }
         Mode::Cement(ledger_path) => {
             println!("Running test with ledger {:?}", ledger_path);
-            let ledger = Arc::new(open_ledger(ledger_path));
+            let ledger = Arc::new(open_ledger::<_, EnvironmentWrapper>(ledger_path));
 
             let write_queue = Arc::new(WriteDatabaseQueue::new(true));
             let logger = Arc::new(ConsoleLogger::new());
@@ -120,8 +120,8 @@ fn main() {
     }
 }
 
-fn open_ledger<T: AsRef<Path>>(ledger_path: T) -> Ledger {
-    let store = Arc::new(LmdbStore::open(ledger_path.as_ref()).build().unwrap());
+fn open_ledger<T: AsRef<Path>, E: EnvironmentStrategy + 'static>(ledger_path: T) -> Ledger {
+    let store = Arc::new(LmdbStore::<E>::open(ledger_path.as_ref()).build().unwrap());
     Ledger::new(store, LedgerConstants::beta().unwrap()).unwrap()
 }
 

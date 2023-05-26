@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{as_write_txn, get, parallel_traversal_u512, LmdbEnv, LmdbIteratorImpl};
+use crate::{as_write_txn, get, parallel_traversal_u512, LmdbEnv, LmdbIteratorImpl, EnvironmentStrategy, EnvironmentWrapper};
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
@@ -10,13 +10,13 @@ use rsnano_store_traits::{
     PendingIterator, PendingStore, ReadTransaction, Transaction, WriteTransaction,
 };
 
-pub struct LmdbPendingStore {
-    env: Arc<LmdbEnv>,
+pub struct LmdbPendingStore<T:EnvironmentStrategy = EnvironmentWrapper> {
+    env: Arc<LmdbEnv<T>>,
     database: Database,
 }
 
-impl LmdbPendingStore {
-    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
+impl<T:EnvironmentStrategy> LmdbPendingStore<T> {
+    pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment
             .create_db(Some("pending"), DatabaseFlags::empty())?;
@@ -29,11 +29,11 @@ impl LmdbPendingStore {
     }
 }
 
-impl PendingStore for LmdbPendingStore {
+impl<T: EnvironmentStrategy + 'static> PendingStore for LmdbPendingStore<T> {
     fn put(&self, txn: &mut dyn WriteTransaction, key: &PendingKey, pending: &PendingInfo) {
         let key_bytes = key.to_bytes();
         let pending_bytes = pending.to_bytes();
-        as_write_txn(txn)
+        as_write_txn::<T>(txn)
             .put(
                 self.database,
                 &key_bytes,
@@ -45,14 +45,14 @@ impl PendingStore for LmdbPendingStore {
 
     fn del(&self, txn: &mut dyn WriteTransaction, key: &PendingKey) {
         let key_bytes = key.to_bytes();
-        as_write_txn(txn)
+        as_write_txn::<T>(txn)
             .del(self.database, &key_bytes, None)
             .unwrap();
     }
 
     fn get(&self, txn: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo> {
         let key_bytes = key.to_bytes();
-        match get(txn, self.database, &key_bytes) {
+        match get::<T, _>(txn, self.database, &key_bytes) {
             Ok(bytes) => {
                 let mut stream = StreamAdapter::new(bytes);
                 PendingInfo::deserialize(&mut stream).ok()
@@ -65,12 +65,12 @@ impl PendingStore for LmdbPendingStore {
     }
 
     fn begin(&self, txn: &dyn Transaction) -> PendingIterator {
-        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
+        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
     }
 
     fn begin_at_key(&self, txn: &dyn Transaction, key: &PendingKey) -> PendingIterator {
         let key_bytes = key.to_bytes();
-        LmdbIteratorImpl::new_iterator(txn, self.database, Some(&key_bytes), true)
+        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, Some(&key_bytes), true)
     }
 
     fn exists(&self, txn: &dyn Transaction, key: &PendingKey) -> bool {

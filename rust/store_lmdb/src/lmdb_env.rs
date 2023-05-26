@@ -21,7 +21,7 @@ use std::{
 // Embedded Stubs
 // --------------------------------------------------------------------------------
 
-pub struct Environment(lmdb::Environment);
+pub struct EnvironmentWrapper(lmdb::Environment);
 
 pub struct EnvironmentOptions<'a> {
     pub max_dbs: u32,
@@ -31,7 +31,25 @@ pub struct EnvironmentOptions<'a> {
     pub file_mode: u32,
 }
 
-impl Environment {
+trait EnvironmentTrait {
+    fn build(options: EnvironmentOptions) -> lmdb::Result<Self>
+    where
+        Self: Sized;
+    fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<lmdb::RoTransaction<'env>>;
+    fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<lmdb::RwTransaction<'env>>;
+    fn create_db<'env>(
+        &'env self,
+        name: Option<&str>,
+        flags: DatabaseFlags,
+    ) -> lmdb::Result<Database>;
+
+    fn env(&self) -> *mut MDB_env;
+    fn open_db<'env>(&'env self, name: Option<&str>) -> lmdb::Result<Database>;
+    fn sync(&self, force: bool) -> lmdb::Result<()>;
+    fn stat(&self) -> lmdb::Result<Stat>;
+}
+
+impl EnvironmentWrapper {
     pub fn build(options: EnvironmentOptions) -> lmdb::Result<Self> {
         let env = lmdb::Environment::new()
             .set_max_dbs(options.max_dbs)
@@ -73,6 +91,49 @@ impl Environment {
     }
 }
 
+struct EnvironmentStub;
+
+impl EnvironmentTrait for EnvironmentStub {
+    fn build(_options: EnvironmentOptions) -> lmdb::Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self {})
+    }
+
+    fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<lmdb::RoTransaction<'env>> {
+        todo!()
+    }
+
+    fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<lmdb::RwTransaction<'env>> {
+        todo!()
+    }
+
+    fn create_db<'env>(
+        &'env self,
+        _name: Option<&str>,
+        _flags: DatabaseFlags,
+    ) -> lmdb::Result<Database> {
+        todo!()
+    }
+
+    fn env(&self) -> *mut MDB_env {
+        todo!()
+    }
+
+    fn open_db<'env>(&'env self, _name: Option<&str>) -> lmdb::Result<Database> {
+        todo!()
+    }
+
+    fn sync(&self, _force: bool) -> lmdb::Result<()> {
+        todo!()
+    }
+
+    fn stat(&self) -> lmdb::Result<Stat> {
+        todo!()
+    }
+}
+
 // Environment
 // --------------------------------------------------------------------------------
 
@@ -83,7 +144,7 @@ pub struct EnvOptions {
 }
 
 pub struct LmdbEnv {
-    pub environment: Environment,
+    pub environment: EnvironmentWrapper,
     next_txn_id: AtomicU64,
     txn_tracker: Arc<dyn TransactionTracker>,
 }
@@ -115,7 +176,10 @@ impl LmdbEnv {
         Ok(env)
     }
 
-    pub fn init(path: impl AsRef<Path>, options: &EnvOptions) -> anyhow::Result<Environment> {
+    pub fn init(
+        path: impl AsRef<Path>,
+        options: &EnvOptions,
+    ) -> anyhow::Result<EnvironmentWrapper> {
         let path = path.as_ref();
         try_create_parent_dir(path)?;
         let mut map_size = options.config.map_size;
@@ -146,7 +210,7 @@ impl LmdbEnv {
             environment_flags |= EnvironmentFlags::NO_MEM_INIT;
         }
 
-        let env = Environment::build(EnvironmentOptions {
+        let env = EnvironmentWrapper::build(EnvironmentOptions {
             max_dbs: options.config.max_databases,
             map_size,
             flags: environment_flags,

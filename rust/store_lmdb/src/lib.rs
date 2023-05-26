@@ -11,7 +11,7 @@ mod lmdb_config;
 pub use lmdb_config::{LmdbConfig, SyncStrategy};
 
 mod lmdb_env;
-use lmdb_env::Environment;
+use lmdb_env::EnvironmentWrapper;
 pub use lmdb_env::{EnvOptions, EnvironmentOptions, LmdbEnv, TestDbFile, TestLmdbEnv};
 
 mod account_store;
@@ -82,7 +82,7 @@ pub struct LmdbReadTransaction {
 impl LmdbReadTransaction {
     pub fn new<'a>(
         txn_id: u64,
-        env: &'a Environment,
+        env: &'a EnvironmentWrapper,
         callbacks: Arc<dyn TransactionTracker>,
     ) -> lmdb::Result<Self> {
         let txn = env.begin_ro_txn()?;
@@ -172,7 +172,7 @@ enum RwTxnState<'a> {
 }
 
 pub struct LmdbWriteTransaction {
-    env: &'static Environment,
+    env: &'static EnvironmentWrapper,
     txn_id: u64,
     callbacks: Arc<dyn TransactionTracker>,
     txn: RwTxnState<'static>,
@@ -181,10 +181,10 @@ pub struct LmdbWriteTransaction {
 impl LmdbWriteTransaction {
     pub fn new<'a>(
         txn_id: u64,
-        env: &'a Environment,
+        env: &'a EnvironmentWrapper,
         callbacks: Arc<dyn TransactionTracker>,
     ) -> lmdb::Result<Self> {
-        let env = unsafe { std::mem::transmute::<&'a Environment, &'static Environment>(env) };
+        let env = unsafe { std::mem::transmute::<&'a EnvironmentWrapper, &'static EnvironmentWrapper>(env) };
         let mut tx = Self {
             env,
             txn_id,

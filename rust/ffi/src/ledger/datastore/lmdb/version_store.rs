@@ -1,5 +1,4 @@
 use rsnano_store_lmdb::{LmdbVersionStore, STORE_VERSION_MINIMUM};
-use rsnano_store_traits::VersionStore;
 
 use super::TransactionHandle;
 use std::sync::Arc;

@@ -3,9 +3,6 @@ pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl};
 
 use rsnano_core::{utils::PropertyTreeWriter, Account, AccountInfo, BlockHash, BlockWithSideband, ConfirmationHeightInfo, QualifiedRoot, Amount, EndpointKey, NoValue, PendingKey, PendingInfo};
 
-mod version_store;
-pub use version_store::VersionStore;
-
 pub enum Table {
     ConfirmationHeight,
 }

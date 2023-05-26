@@ -1,7 +1,7 @@
 use crate::{as_write_txn, get, LmdbEnv, STORE_VERSION_CURRENT, EnvironmentStrategy, EnvironmentWrapper};
 use core::panic;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
-use rsnano_store_traits::{Transaction, VersionStore, WriteTransaction};
+use rsnano_store_traits::{Transaction, WriteTransaction};
 use std::{path::Path, sync::Arc};
 
 pub struct LmdbVersionStore<T: EnvironmentStrategy = EnvironmentWrapper> {
@@ -55,10 +55,8 @@ impl<T: EnvironmentStrategy + 'static> LmdbVersionStore<T> {
     pub fn db_handle(&self) -> Database {
         self.db_handle
     }
-}
 
-impl<T: EnvironmentStrategy + 'static> VersionStore for LmdbVersionStore<T> {
-    fn put(&self, txn: &mut dyn WriteTransaction, version: i32) {
+    pub fn put(&self, txn: &mut dyn WriteTransaction, version: i32) {
         let db = self.db_handle();
 
         let key_bytes = version_key();
@@ -69,7 +67,7 @@ impl<T: EnvironmentStrategy + 'static> VersionStore for LmdbVersionStore<T> {
             .unwrap();
     }
 
-    fn get(&self, txn: &dyn Transaction) -> Option<i32> {
+    pub fn get(&self, txn: &dyn Transaction) -> Option<i32> {
         let db = self.db_handle();
         load_version::<T>(txn, db)
     }

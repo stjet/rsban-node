@@ -15,7 +15,7 @@ use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::utils::{seconds_since_epoch, Logger, NullLogger, PropertyTreeWriter};
 use rsnano_store_traits::{
-    NullTransactionTracker, Table, TransactionTracker, VersionStore, WriteTransaction,
+    NullTransactionTracker, Table, TransactionTracker, WriteTransaction,
 };
 
 #[derive(PartialEq, Eq)]

@@ -182,7 +182,6 @@ void nano::rep_crawler::validate ()
 
 void nano::rep_crawler::ongoing_crawl ()
 {
-	auto now (std::chrono::steady_clock::now ());
 	auto total_weight_l (total_weight ());
 	cleanup_reps ();
 	validate ();
@@ -197,6 +196,7 @@ void nano::rep_crawler::ongoing_crawl ()
 	unsigned next_run_ms = node.network_params.network.is_dev_network () ? 100 : sufficient_weight ? 7000
 																								   : 3000;
 	std::weak_ptr<nano::node> node_w (node.shared ());
+	auto now (std::chrono::steady_clock::now ());
 	node.workers->add_timed_task (now + std::chrono::milliseconds (next_run_ms), [node_w, this] () {
 		if (auto node_l = node_w.lock ())
 		{

@@ -167,8 +167,11 @@ void nano::thread_pool::add_timed_task (std::chrono::steady_clock::time_point co
 		catch (...) {
 			std::cerr << "Thread pool task failed!" << std::endl;
 		} });
-	auto delay_ms = std::chrono::duration_cast<std::chrono::milliseconds> (expiry_time - std::chrono::steady_clock::now ());
-	rsnano::rsn_thread_pool_add_delayed_task (handle, delay_ms.count (), execute_task, context, delete_task_context);
+	int64_t delay_ms = std::chrono::duration_cast<std::chrono::milliseconds> (expiry_time - std::chrono::steady_clock::now ()).count();
+	if(delay_ms < 0 ){
+		delay_ms = 0;
+	}
+	rsnano::rsn_thread_pool_add_delayed_task (handle, delay_ms, execute_task, context, delete_task_context);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (thread_pool & thread_pool, std::string const & name)

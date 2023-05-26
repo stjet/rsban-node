@@ -16,7 +16,7 @@ use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::utils::{seconds_since_epoch, Logger, NullLogger, PropertyTreeWriter};
 use rsnano_store_traits::{
     AccountStore, BlockStore, ConfirmationHeightStore, FrontierStore, NullTransactionTracker,
-    PendingStore, PrunedStore, Store, Table, TransactionTracker, VersionStore, WriteTransaction,
+    PendingStore, PrunedStore, Table, TransactionTracker, VersionStore, WriteTransaction,
 };
 
 #[derive(PartialEq, Eq)]
@@ -132,6 +132,53 @@ impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
 }
 
 impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
+    pub fn copy_db(&self, destination: &Path) -> anyhow::Result<()> {
+        copy_db(&self.env, destination)
+    }
+
+    pub fn tx_begin_write_for(&self, _to_lock: &[Table]) -> LmdbWriteTransaction<T> {
+        // locking tables is not needed for LMDB because there can only ever be one write transaction at a time
+        self
+            .env
+            .tx_begin_write()
+            .expect("Could not create LMDB read/write transaction")
+    }
+
+    pub fn account(&self) -> &dyn AccountStore {
+        self.account.as_ref()
+    }
+
+    pub fn confirmation_height(&self) -> &dyn ConfirmationHeightStore {
+        self.confirmation_height.as_ref()
+    }
+
+    pub fn pruned(&self) -> &dyn PrunedStore {
+        self.pruned.as_ref()
+    }
+
+    pub fn block(&self) -> &dyn BlockStore {
+        self.block.as_ref()
+    }
+
+    pub fn pending(&self) -> &dyn PendingStore {
+        self.pending.as_ref()
+    }
+
+    pub fn frontier(&self) -> &dyn FrontierStore {
+        self.frontier.as_ref()
+    }
+
+    pub fn online_weight(&self) -> &dyn rsnano_store_traits::OnlineWeightStore {
+        self.online_weight.as_ref()
+    }
+
+    pub fn peers(&self) -> &dyn rsnano_store_traits::PeerStore {
+        self.peer.as_ref()
+    }
+
+    pub fn final_votes(&self) -> &dyn rsnano_store_traits::FinalVoteStore {
+        self.final_vote.as_ref()
+    }
     pub fn rebuild_db(&self, txn: &mut dyn WriteTransaction) -> anyhow::Result<()> {
         let tables = [
             self.account.database(),
@@ -316,73 +363,6 @@ fn copy_db<T: EnvironmentStrategy>(env: &LmdbEnv<T>, destination: &Path) -> anyh
     let status =
         unsafe { lmdb_sys::mdb_env_copy2(env.environment.env(), c_path.as_ptr(), MDB_CP_COMPACT) };
     ensure_success(status)
-}
-
-impl<T: EnvironmentStrategy + 'static> Store for LmdbStore<T> {
-    fn copy_db(&self, destination: &Path) -> anyhow::Result<()> {
-        copy_db(&self.env, destination)
-    }
-
-    fn tx_begin_read(&self) -> Box<dyn rsnano_store_traits::ReadTransaction> {
-        let txn = self
-            .env
-            .tx_begin_read()
-            .expect("Could not create LMDB read transaction");
-        Box::new(txn)
-    }
-
-    fn tx_begin_write(&self) -> Box<dyn WriteTransaction> {
-        let txn = self
-            .env
-            .tx_begin_write()
-            .expect("Could not create LMDB read/write transaction");
-        Box::new(txn)
-    }
-
-    fn tx_begin_write_for(&self, _to_lock: &[Table]) -> Box<dyn WriteTransaction> {
-        // locking tables is not needed for LMDB because there can only ever be one write transaction at a time
-        let txn = self
-            .env
-            .tx_begin_write()
-            .expect("Could not create LMDB read/write transaction");
-        Box::new(txn)
-    }
-
-    fn account(&self) -> &dyn AccountStore {
-        self.account.as_ref()
-    }
-
-    fn confirmation_height(&self) -> &dyn ConfirmationHeightStore {
-        self.confirmation_height.as_ref()
-    }
-
-    fn pruned(&self) -> &dyn PrunedStore {
-        self.pruned.as_ref()
-    }
-
-    fn block(&self) -> &dyn BlockStore {
-        self.block.as_ref()
-    }
-
-    fn pending(&self) -> &dyn PendingStore {
-        self.pending.as_ref()
-    }
-
-    fn frontier(&self) -> &dyn FrontierStore {
-        self.frontier.as_ref()
-    }
-
-    fn online_weight(&self) -> &dyn rsnano_store_traits::OnlineWeightStore {
-        self.online_weight.as_ref()
-    }
-
-    fn peers(&self) -> &dyn rsnano_store_traits::PeerStore {
-        self.peer.as_ref()
-    }
-
-    fn final_votes(&self) -> &dyn rsnano_store_traits::FinalVoteStore {
-        self.final_vote.as_ref()
-    }
 }
 
 fn ensure_success(status: i32) -> Result<(), anyhow::Error> {

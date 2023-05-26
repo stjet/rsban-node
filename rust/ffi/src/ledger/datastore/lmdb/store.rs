@@ -8,7 +8,7 @@ use std::{
 };
 
 use rsnano_store_lmdb::{create_backup_file, EnvOptions, LmdbConfig, LmdbStore, EnvironmentWrapper};
-use rsnano_store_traits::{NullTransactionTracker, Store, TransactionTracker};
+use rsnano_store_traits::{NullTransactionTracker, TransactionTracker};
 
 use rsnano_node::{config::DiagnosticsConfig, utils::LongRunningTransactionLogger};
 

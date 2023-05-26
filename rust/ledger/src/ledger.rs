@@ -21,7 +21,7 @@ use std::{
 };
 
 use super::DependentBlocksFinder;
-use rsnano_store_traits::{Store, Transaction, WriteTransaction};
+use rsnano_store_traits::{Transaction, WriteTransaction};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct UncementedInfo {

@@ -1,14 +1,15 @@
 use rsnano_core::{BlockEnum, BlockHash};
-use rsnano_store_traits::{Store, Transaction};
+use rsnano_store_lmdb::LmdbStore;
+use rsnano_store_traits::Transaction;
 
 /// Goes back in the block history until it finds a block with representative information
 pub struct RepresentativeBlockFinder<'a> {
     txn: &'a dyn Transaction,
-    store: &'a dyn Store,
+    store: &'a LmdbStore,
 }
 
 impl<'a> RepresentativeBlockFinder<'a> {
-    pub fn new(txn: &'a dyn Transaction, store: &'a dyn Store) -> Self {
+    pub fn new(txn: &'a dyn Transaction, store: &'a LmdbStore) -> Self {
         Self { txn, store }
     }
 

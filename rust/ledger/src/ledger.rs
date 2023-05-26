@@ -21,7 +21,7 @@ use std::{
 };
 
 use super::DependentBlocksFinder;
-use rsnano_store_traits::{Transaction, WriteTransaction, PrunedStore, PendingStore};
+use rsnano_store_traits::{PrunedStore, Transaction, WriteTransaction};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct UncementedInfo {
@@ -672,11 +672,7 @@ impl Ledger {
                 .get(txn.txn(), &section.account)
                 .map(|i| i.height)
                 .unwrap_or_default();
-            let block = self
-                .store
-                .block
-                .get(txn.txn(), &section.top_hash)
-                .unwrap();
+            let block = self.store.block.get(txn.txn(), &section.top_hash).unwrap();
             debug_assert_eq!(
                 block.sideband().unwrap().height,
                 conf_height + section.block_count()

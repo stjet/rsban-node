@@ -1,13 +1,13 @@
 use std::sync::atomic::Ordering;
 
+use super::upgrade_genesis_to_epoch_v1;
+use crate::ledger_tests::LedgerContext;
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, ProcessResult, DEV_GENESIS_HASH};
 use rsnano_core::{
     work::{WorkPool, STUB_WORK_POOL},
     Amount, BlockBuilder, BlockDetails, Epoch, PendingKey,
 };
-use rsnano_store_traits::{PendingStore, PrunedStore};
-use crate::ledger_tests::LedgerContext;
-use super::upgrade_genesis_to_epoch_v1;
+use rsnano_store_traits::PrunedStore;
 
 #[test]
 fn pruning_action() {

@@ -623,7 +623,7 @@ impl Ledger {
             while !i.eq(n.as_ref()) {
                 if let Some((&account, account_info)) = i.current() {
                     if let Some(conf_height_info) =
-                        self.store.confirmation_height.get(txn.txn(), &account)
+                        self.store.confirmation_height.get(txn, &account)
                     {
                         if account_info.block_count != conf_height_info.height {
                             // Always output as no confirmation height has been set on the account yet

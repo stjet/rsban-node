@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     count, get, iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, ReadTransaction, Transaction, LmdbWriteTransaction,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, Transaction, LmdbWriteTransaction, LmdbReadTransaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
@@ -119,7 +119,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbFinalVoteStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&dyn ReadTransaction, FinalVoteIterator, FinalVoteIterator) + Send + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction, FinalVoteIterator, FinalVoteIterator) + Send + Sync),
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();

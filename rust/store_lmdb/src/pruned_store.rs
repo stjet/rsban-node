@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    count, exists, iterator::DbIterator, lmdb_env::EnvironmentWrapper,
-    parallel_traversal, EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, ReadTransaction,
-    Transaction, LmdbWriteTransaction,
+    count, exists, iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal,
+    EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, Transaction, LmdbReadTransaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
@@ -76,7 +75,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbPrunedStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&dyn ReadTransaction, PrunedIterator, PrunedIterator) + Send + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction, PrunedIterator, PrunedIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();

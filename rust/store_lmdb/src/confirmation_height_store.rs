@@ -1,7 +1,7 @@
 use crate::{
     count, exists, get, iterator::DbIterator, parallel_traversal,
-    EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, ReadTransaction,
-    Transaction, LmdbWriteTransaction,
+    EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, 
+    Transaction, LmdbWriteTransaction, LmdbReadTransaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -99,7 +99,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbConfirmationHeightStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&dyn ReadTransaction, ConfirmationHeightIterator, ConfirmationHeightIterator)
+        action: &(dyn Fn(&LmdbReadTransaction, ConfirmationHeightIterator, ConfirmationHeightIterator)
               + Send
               + Sync),
     ) {

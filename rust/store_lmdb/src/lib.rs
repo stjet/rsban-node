@@ -76,14 +76,6 @@ pub trait Transaction {
     fn refresh(&mut self);
 }
 
-pub trait ReadTransaction {
-    fn txn(&self) -> &dyn Transaction;
-    fn txn_mut(&mut self) -> &mut dyn Transaction;
-    fn reset(&mut self);
-    fn renew(&mut self);
-    fn refresh(&mut self);
-}
-
 pub trait TransactionTracker: Send + Sync {
     fn txn_start(&self, txn_id: u64, is_write: bool);
     fn txn_end(&self, txn_id: u64, is_write: bool);
@@ -153,6 +145,26 @@ impl LmdbReadTransaction {
             _ => panic!("LMDB read transaction not active"),
         }
     }
+
+    pub fn reset(&mut self) {
+        let t = mem::replace(&mut self.txn, RoTxnState::Transitioning);
+        self.txn = match t {
+            RoTxnState::Active(t) => RoTxnState::Inactive(t.reset()),
+            RoTxnState::Inactive(_) => panic!("Cannot reset inactive transaction"),
+            RoTxnState::Transitioning => unreachable!(),
+        };
+        self.callbacks.txn_end(self.txn_id, false);
+    }
+
+    pub fn renew(&mut self) {
+        let t = mem::replace(&mut self.txn, RoTxnState::Transitioning);
+        self.txn = match t {
+            RoTxnState::Active(_) => panic!("Cannot renew active transaction"),
+            RoTxnState::Inactive(t) => RoTxnState::Active(t.renew().unwrap()),
+            RoTxnState::Transitioning => unreachable!(),
+        };
+        self.callbacks.txn_start(self.txn_id, false);
+    }
 }
 
 impl Drop for LmdbReadTransaction {
@@ -174,40 +186,6 @@ impl Transaction for LmdbReadTransaction {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
-    }
-
-    fn refresh(&mut self) {
-        ReadTransaction::refresh(self);
-    }
-}
-
-impl ReadTransaction for LmdbReadTransaction {
-    fn txn(&self) -> &dyn Transaction {
-        self
-    }
-
-    fn txn_mut(&mut self) -> &mut dyn Transaction {
-        self
-    }
-
-    fn reset(&mut self) {
-        let t = mem::replace(&mut self.txn, RoTxnState::Transitioning);
-        self.txn = match t {
-            RoTxnState::Active(t) => RoTxnState::Inactive(t.reset()),
-            RoTxnState::Inactive(_) => panic!("Cannot reset inactive transaction"),
-            RoTxnState::Transitioning => unreachable!(),
-        };
-        self.callbacks.txn_end(self.txn_id, false);
-    }
-
-    fn renew(&mut self) {
-        let t = mem::replace(&mut self.txn, RoTxnState::Transitioning);
-        self.txn = match t {
-            RoTxnState::Active(_) => panic!("Cannot renew active transaction"),
-            RoTxnState::Inactive(t) => RoTxnState::Active(t.renew().unwrap()),
-            RoTxnState::Transitioning => unreachable!(),
-        };
-        self.callbacks.txn_start(self.txn_id, false);
     }
 
     fn refresh(&mut self) {

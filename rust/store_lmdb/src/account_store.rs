@@ -1,7 +1,6 @@
 use crate::{
     count, get, iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal,
-    EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, ReadTransaction,
-    Transaction,
+    EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, Transaction, LmdbReadTransaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -86,7 +85,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbAccountStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&dyn ReadTransaction, AccountIterator, AccountIterator) + Send + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction, AccountIterator, AccountIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let txn = self.env.tx_begin_read().unwrap();

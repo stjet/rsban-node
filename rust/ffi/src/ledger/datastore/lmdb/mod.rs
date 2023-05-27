@@ -14,7 +14,7 @@ mod version_store;
 mod wallet_store;
 mod wallets;
 
-use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, ReadTransaction, Transaction};
+use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, Transaction};
 use std::{ffi::c_void, ops::Deref};
 pub use store::LmdbStoreHandle;
 
@@ -27,7 +27,7 @@ impl TransactionHandle {
         Box::into_raw(Box::new(TransactionHandle(txn_type)))
     }
 
-    pub fn as_read_txn_mut(&mut self) -> &mut dyn ReadTransaction {
+    pub fn as_read_txn_mut(&mut self) -> &mut LmdbReadTransaction {
         match &mut self.0 {
             TransactionType::Read(tx) => tx,
             _ => panic!("invalid tx type"),
@@ -35,7 +35,7 @@ impl TransactionHandle {
     }
 
     #[allow(unused)]
-    pub fn as_read_txn(&mut self) -> &dyn ReadTransaction {
+    pub fn as_read_txn(&mut self) -> &LmdbReadTransaction {
         match &mut self.0 {
             TransactionType::Read(tx) => tx,
             TransactionType::ReadRef(tx) => *tx,
@@ -54,7 +54,7 @@ impl TransactionHandle {
         match &self.0 {
             TransactionType::Read(t) => t,
             TransactionType::Write(t) => t,
-            TransactionType::ReadRef(t) => t.txn(),
+            TransactionType::ReadRef(t) => *t,
         }
     }
 }
@@ -69,7 +69,7 @@ impl Deref for TransactionHandle {
 
 pub enum TransactionType {
     Read(LmdbReadTransaction),
-    ReadRef(&'static dyn ReadTransaction),
+    ReadRef(&'static LmdbReadTransaction),
     Write(LmdbWriteTransaction),
 }
 

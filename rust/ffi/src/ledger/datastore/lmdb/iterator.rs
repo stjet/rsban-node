@@ -2,8 +2,7 @@ use std::ffi::c_void;
 
 use rsnano_core::utils::{Deserialize, Serialize};
 use rsnano_store_lmdb::{
-    BinaryDbIterator, DbIterator, DbIteratorImpl, LmdbIteratorImpl, ReadTransaction,
-};
+    BinaryDbIterator, DbIterator, DbIteratorImpl, LmdbIteratorImpl, LmdbReadTransaction, };
 
 use crate::VoidPointerCallback;
 
@@ -104,7 +103,7 @@ pub struct ForEachParWrapper {
 impl ForEachParWrapper {
     pub fn execute<K, V>(
         &self,
-        txn: &dyn ReadTransaction,
+        txn: &LmdbReadTransaction,
         begin: Box<dyn DbIterator<K, V>>,
         end: Box<dyn DbIterator<K, V>>,
     ) where
@@ -112,7 +111,7 @@ impl ForEachParWrapper {
         V: Deserialize<Target = V> + 'static,
     {
         let lmdb_txn = unsafe {
-            std::mem::transmute::<&dyn ReadTransaction, &'static dyn ReadTransaction>(txn)
+            std::mem::transmute::<&LmdbReadTransaction, &'static LmdbReadTransaction>(txn)
         };
         let txn_handle = TransactionHandle::new(TransactionType::ReadRef(lmdb_txn));
         let begin_handle = to_lmdb_iterator_handle(begin);

@@ -29,11 +29,11 @@ impl<T: EnvironmentStrategy + 'static> LmdbWallets<T> {
         txn: &mut LmdbWriteTransaction,
         env: &LmdbEnv,
     ) -> anyhow::Result<()> {
-        self.handle =
-            Some(unsafe { txn.rw_txn_mut().create_db(None, DatabaseFlags::empty())? });
+        self.handle = Some(unsafe { txn.rw_txn_mut().create_db(None, DatabaseFlags::empty())? });
         self.split_if_needed(txn, env)?;
         self.send_action_ids_handle = Some(unsafe {
-            txn.rw_txn_mut().create_db(Some("send_action_ids"), DatabaseFlags::empty())?
+            txn.rw_txn_mut()
+                .create_db(Some("send_action_ids"), DatabaseFlags::empty())?
         });
         Ok(())
     }

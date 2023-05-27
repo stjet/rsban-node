@@ -72,7 +72,6 @@ use rsnano_core::utils::{get_cpu_count, PropertyTreeWriter};
 
 pub trait Transaction {
     fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
     fn refresh(&mut self);
 }
 
@@ -184,10 +183,6 @@ impl Transaction for LmdbReadTransaction {
         self
     }
 
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
     fn refresh(&mut self) {
         self.reset();
         self.renew();
@@ -270,10 +265,6 @@ impl<'a, T: EnvironmentStrategy> Drop for LmdbWriteTransaction<T> {
 
 impl<T: EnvironmentStrategy> Transaction for LmdbWriteTransaction<T> {
     fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
 

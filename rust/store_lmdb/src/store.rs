@@ -227,8 +227,11 @@ fn rebuild_table<T: EnvironmentStrategy + 'static>(
     rw_txn: &mut LmdbWriteTransaction,
     db: Database,
 ) -> anyhow::Result<()> {
-    let temp =
-        unsafe { rw_txn.rw_txn_mut().create_db(Some("temp_table"), DatabaseFlags::empty()) }?;
+    let temp = unsafe {
+        rw_txn
+            .rw_txn_mut()
+            .create_db(Some("temp_table"), DatabaseFlags::empty())
+    }?;
     copy_table(env, rw_txn, db, temp)?;
     crate::Transaction::refresh(rw_txn);
     rw_txn.rw_txn_mut().clear_db(db)?;
@@ -249,7 +252,9 @@ fn copy_table<T: EnvironmentStrategy + 'static>(
         let mut cursor = ro_txn.txn().open_ro_cursor(source)?;
         for x in cursor.iter_start() {
             let (k, v) = x?;
-            rw_txn.rw_txn_mut().put(target, &k, &v, WriteFlags::APPEND)?;
+            rw_txn
+                .rw_txn_mut()
+                .put(target, &k, &v, WriteFlags::APPEND)?;
         }
     }
     if ro_txn.txn().stat(source)?.entries() != rw_txn.rw_txn_mut().stat(target)?.entries() {

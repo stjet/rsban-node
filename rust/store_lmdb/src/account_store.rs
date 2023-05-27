@@ -1,6 +1,7 @@
 use crate::{
     count, get, iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal,
-    EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, Transaction, LmdbReadTransaction,
+    EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
+    Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{

@@ -1,6 +1,6 @@
 use crate::{
-    get, iterator::DbIterator, parallel_traversal, EnvironmentStrategy,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, Transaction, LmdbWriteTransaction, LmdbReadTransaction,
+    get, iterator::DbIterator, parallel_traversal, EnvironmentStrategy, EnvironmentWrapper,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{Account, BlockHash};

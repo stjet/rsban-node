@@ -1,6 +1,6 @@
 use crate::{
-    count, get, iterator::DbIterator, parallel_traversal, EnvironmentStrategy,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, Transaction, LmdbWriteTransaction, LmdbReadTransaction,
+    count, get, iterator::DbIterator, parallel_traversal, EnvironmentStrategy, EnvironmentWrapper,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
@@ -55,10 +55,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
 
         debug_assert!(
             block.previous().is_zero()
-                || self
-                    .successor(txn, &block.previous())
-                    .unwrap_or_default()
-                    == hash
+                || self.successor(txn, &block.previous()).unwrap_or_default() == hash
         );
     }
 

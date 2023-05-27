@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use crate::{
     count, get, iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, Transaction, LmdbWriteTransaction, LmdbReadTransaction,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
+    Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};

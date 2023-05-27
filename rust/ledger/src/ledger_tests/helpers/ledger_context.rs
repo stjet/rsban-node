@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, Ledger};
 use rsnano_core::{Account, ConfirmationHeightInfo};
-use rsnano_store_lmdb::{EnvironmentWrapper, LmdbStore, TestDbFile, LmdbWriteTransaction};
+use rsnano_store_lmdb::{EnvironmentWrapper, LmdbStore, LmdbWriteTransaction, TestDbFile};
 
 use super::AccountBlockFactory;
 

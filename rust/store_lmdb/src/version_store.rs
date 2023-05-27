@@ -1,6 +1,6 @@
 use crate::{
-    get, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction,
-    Transaction, STORE_VERSION_CURRENT,
+    get, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction, Transaction,
+    STORE_VERSION_CURRENT,
 };
 use core::panic;
 use lmdb::{Database, DatabaseFlags, WriteFlags};

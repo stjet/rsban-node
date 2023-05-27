@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     count, iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv,
-    LmdbIteratorImpl, Transaction, LmdbWriteTransaction,
+    LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::Amount;

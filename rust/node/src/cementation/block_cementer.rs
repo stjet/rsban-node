@@ -121,9 +121,10 @@ impl BlockCementer {
 
         // Cement all pending entries, each entry is specific to an account and contains the least amount
         // of blocks to retain consistent cementing across all account chains to genesis.
-        while let Some(section_to_cement) = self.logic.next_write(
-            &mut LedgerAdapter::new_unlimited(&mut txn, &self.ledger),
-        ) {
+        while let Some(section_to_cement) = self
+            .logic
+            .next_write(&mut LedgerAdapter::new_unlimited(&mut txn, &self.ledger))
+        {
             self.ledger
                 .write_confirmation_height(&mut txn, &section_to_cement);
 

@@ -1,6 +1,6 @@
 use crate::{
-    count, exists, iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper,
-    LmdbEnv, LmdbIteratorImpl, Transaction, LmdbWriteTransaction,
+    count, exists, iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv,
+    LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{EndpointKey, NoValue};

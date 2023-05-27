@@ -2,7 +2,8 @@ use std::ffi::c_void;
 
 use rsnano_core::utils::{Deserialize, Serialize};
 use rsnano_store_lmdb::{
-    BinaryDbIterator, DbIterator, DbIteratorImpl, LmdbIteratorImpl, LmdbReadTransaction, };
+    BinaryDbIterator, DbIterator, DbIteratorImpl, LmdbIteratorImpl, LmdbReadTransaction,
+};
 
 use crate::VoidPointerCallback;
 

@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use crate::{
     count, exists, iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal,
-    EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, Transaction, LmdbReadTransaction,
+    EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
+    Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};

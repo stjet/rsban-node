@@ -249,8 +249,10 @@ impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
             .as_os_str()
             .to_str()
             .ok_or_else(|| anyhow!("invalid path"))?;
-        let db =
-            unsafe { txn.rw_txn_mut().create_db(Some(path_str), DatabaseFlags::empty()) }?;
+        let db = unsafe {
+            txn.rw_txn_mut()
+                .create_db(Some(path_str), DatabaseFlags::empty())
+        }?;
         *self.db_handle.lock().unwrap() = Some(db);
         Ok(())
     }

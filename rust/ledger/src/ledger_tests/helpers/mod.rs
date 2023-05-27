@@ -104,10 +104,7 @@ pub(crate) fn setup_legacy_receive_block<'a>(
         .build();
     ctx.ledger.process(txn, &mut send2).unwrap();
 
-    let mut receive_block = open
-        .destination
-        .legacy_receive(txn, send2.hash())
-        .build();
+    let mut receive_block = open.destination.legacy_receive(txn, send2.hash()).build();
     ctx.ledger.process(txn, &mut receive_block).unwrap();
 
     LegacyReceiveBlockResult {
@@ -158,10 +155,7 @@ pub(crate) fn setup_open_block<'a>(
 ) -> OpenBlockResult<'a> {
     let send = setup_send_block(ctx, txn);
 
-    let mut open_block = send
-        .destination
-        .open(txn, send.send_block.hash())
-        .build();
+    let mut open_block = send.destination.open(txn, send.send_block.hash()).build();
     ctx.ledger.process(txn, &mut open_block).unwrap();
 
     OpenBlockResult {

@@ -1,5 +1,5 @@
 use crate::{
-    count, exists, iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv,
+    iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv,
     LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
@@ -47,11 +47,11 @@ impl<T: EnvironmentStrategy + 'static> LmdbPeerStore<T> {
     }
 
     pub fn exists(&self, txn: &dyn Transaction, endpoint: &EndpointKey) -> bool {
-        exists::<T>(txn, self.database, &endpoint.to_bytes())
+        txn.exists(self.database, &endpoint.to_bytes())
     }
 
     pub fn count(&self, txn: &dyn Transaction) -> u64 {
-        count::<T>(txn, self.database)
+        txn.count(self.database)
     }
 
     pub fn clear(&self, txn: &mut LmdbWriteTransaction) {

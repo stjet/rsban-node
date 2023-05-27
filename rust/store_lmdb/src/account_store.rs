@@ -1,5 +1,5 @@
 use crate::{
-    count, iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal,
+    iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal,
     EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
     Transaction,
 };
@@ -105,7 +105,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbAccountStore<T> {
     }
 
     pub fn count(&self, txn: &dyn Transaction) -> u64 {
-        count::<T>(txn, self.database)
+        txn.count(self.database)
     }
 
     pub fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {

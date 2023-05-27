@@ -1,5 +1,5 @@
 use crate::{
-    count, exists, iterator::DbIterator, parallel_traversal, EnvironmentStrategy,
+    iterator::DbIterator, parallel_traversal, EnvironmentStrategy,
     EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
     Transaction,
 };
@@ -59,7 +59,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbConfirmationHeightStore<T> {
     }
 
     pub fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {
-        exists::<T>(txn, self.database, account.as_bytes())
+        txn.exists(self.database, account.as_bytes())
     }
 
     pub fn del(&self, txn: &mut LmdbWriteTransaction, account: &Account) {
@@ -69,7 +69,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbConfirmationHeightStore<T> {
     }
 
     pub fn count(&self, txn: &dyn Transaction) -> u64 {
-        count::<T>(txn, self.database)
+        txn.count(self.database)
     }
 
     pub fn clear(&self, txn: &mut LmdbWriteTransaction) {

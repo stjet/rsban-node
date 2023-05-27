@@ -1,5 +1,5 @@
 use crate::{
-    count, iterator::DbIterator, parallel_traversal, EnvironmentStrategy, EnvironmentWrapper,
+    iterator::DbIterator, parallel_traversal, EnvironmentStrategy, EnvironmentWrapper,
     LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
@@ -143,7 +143,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
     }
 
     pub fn count(&self, txn: &dyn Transaction) -> u64 {
-        count::<T>(txn, self.database)
+        txn.count(self.database)
     }
 
     pub fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {

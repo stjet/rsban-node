@@ -74,6 +74,15 @@ pub trait Transaction {
     fn as_any(&self) -> &dyn Any;
     fn refresh(&mut self);
     fn get(&self, database: Database, key: &[u8]) -> lmdb::Result<&[u8]>;
+    fn exists(&self, db: Database, key: &[u8]) -> bool {
+        match self.get(db, &key) {
+            Ok(_) => true,
+            Err(lmdb::Error::NotFound) => false,
+            Err(e) => panic!("exists failed: {:?}", e),
+        }
+    }
+    fn open_ro_cursor(&self, database: Database) -> lmdb::Result<RoCursor>;
+    fn count(&self, database: Database) -> u64;
 }
 
 pub trait TransactionTracker: Send + Sync {
@@ -192,6 +201,15 @@ impl Transaction for LmdbReadTransaction {
     fn get(&self, database: Database, key: &[u8]) -> lmdb::Result<&[u8]> {
         lmdb::Transaction::get(self.txn(), database, &&*key)
     }
+
+    fn open_ro_cursor(&self, database: Database) -> lmdb::Result<RoCursor> {
+        lmdb::Transaction::open_ro_cursor(self.txn(), database)
+    }
+
+    fn count(&self, database: Database) -> u64 {
+        let stat = lmdb::Transaction::stat(self.txn(), database);
+        stat.unwrap().entries() as u64
+    }
 }
 
 enum RwTxnState<'a> {
@@ -279,55 +297,21 @@ impl<T: EnvironmentStrategy> Transaction for LmdbWriteTransaction<T> {
     }
 
     fn get(&self, database: Database, key: &[u8]) -> lmdb::Result<&[u8]> {
-        lmdb::Transaction::get( self.rw_txn(), database, &&*key)
+        lmdb::Transaction::get(self.rw_txn(), database, &&*key)
+    }
+
+    fn open_ro_cursor(&self, database: Database) -> lmdb::Result<RoCursor> {
+        lmdb::Transaction::open_ro_cursor(self.rw_txn(), database)
+    }
+
+    fn count(&self, database: Database) -> u64 {
+        let stat = lmdb::Transaction::stat(self.rw_txn(), database);
+        stat.unwrap().entries() as u64
     }
 }
 
 pub enum Table {
     ConfirmationHeight,
-}
-
-pub fn exists<T: EnvironmentStrategy + 'static>(
-    txn: &dyn Transaction,
-    db: Database,
-    key: &[u8],
-) -> bool {
-    match txn.get(db, &key) {
-        Ok(_) => true,
-        Err(lmdb::Error::NotFound) => false,
-        Err(e) => panic!("exists failed: {:?}", e),
-    }
-}
-
-pub fn open_ro_cursor<'a, T: EnvironmentStrategy + 'static>(
-    txn: &'a dyn Transaction,
-    database: Database,
-) -> lmdb::Result<RoCursor<'a>> {
-    let any = txn.as_any();
-    if let Some(t) = any.downcast_ref::<LmdbWriteTransaction<T>>() {
-        lmdb::Transaction::open_ro_cursor(t.rw_txn(), database)
-    } else {
-        lmdb::Transaction::open_ro_cursor(
-            any.downcast_ref::<LmdbReadTransaction>().unwrap().txn(),
-            database,
-        )
-    }
-}
-
-pub fn count<'a, T: EnvironmentStrategy + 'static>(
-    txn: &'a dyn Transaction,
-    database: Database,
-) -> u64 {
-    let any = txn.as_any();
-    let stat = if let Some(t) = any.downcast_ref::<LmdbWriteTransaction<T>>() {
-        lmdb::Transaction::stat(t.rw_txn(), database)
-    } else {
-        lmdb::Transaction::stat(
-            any.downcast_ref::<LmdbReadTransaction>().unwrap().txn(),
-            database,
-        )
-    };
-    stat.unwrap().entries() as u64
 }
 
 pub fn parallel_traversal(action: &(impl Fn(U256, U256, bool) + Send + Sync)) {

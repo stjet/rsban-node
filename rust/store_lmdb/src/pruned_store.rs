@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    count, exists, iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal,
+    iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal,
     EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
     Transaction,
 };
@@ -41,7 +41,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbPrunedStore<T> {
     }
 
     pub fn exists(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
-        exists::<T>(txn, self.database, hash.as_bytes())
+        txn.exists(self.database, hash.as_bytes())
     }
 
     pub fn begin(&self, txn: &dyn Transaction) -> PrunedIterator {
@@ -63,7 +63,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbPrunedStore<T> {
     }
 
     pub fn count(&self, txn: &dyn Transaction) -> u64 {
-        count::<T>(txn, self.database)
+        txn.count(self.database)
     }
 
     pub fn clear(&self, txn: &mut LmdbWriteTransaction) {

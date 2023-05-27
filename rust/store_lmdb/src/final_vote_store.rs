@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    count, iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy,
+    iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy,
     EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
     Transaction,
 };
@@ -111,7 +111,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbFinalVoteStore<T> {
     }
 
     pub fn count(&self, txn: &dyn Transaction) -> u64 {
-        count::<T>(txn, self.database)
+        txn.count(self.database)
     }
 
     pub fn clear(&self, txn: &mut LmdbWriteTransaction) {

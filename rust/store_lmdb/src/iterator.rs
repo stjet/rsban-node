@@ -2,7 +2,6 @@ use std::{any::Any, ffi::c_uint};
 
 use crate::{EnvironmentStrategy, Transaction};
 
-use super::open_ro_cursor;
 use lmdb::{Cursor, Database, RoCursor};
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 use rsnano_core::utils::{Deserialize, Serialize, StreamAdapter};
@@ -158,7 +157,7 @@ impl LmdbIteratorImpl {
             }
         };
 
-        let cursor = open_ro_cursor::<T>(txn, dbi).unwrap();
+        let cursor = txn.open_ro_cursor(dbi).unwrap();
         //todo: dont use unsafe code:
         let cursor =
             unsafe { std::mem::transmute::<lmdb::RoCursor<'_>, lmdb::RoCursor<'static>>(cursor) };

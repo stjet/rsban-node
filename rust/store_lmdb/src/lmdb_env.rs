@@ -93,7 +93,7 @@ impl EnvironmentStrategy for EnvironmentWrapper {
     }
 }
 
-struct EnvironmentStub;
+pub struct EnvironmentStub;
 
 impl EnvironmentStrategy for EnvironmentStub {
     fn build(_options: EnvironmentOptions) -> lmdb::Result<Self>
@@ -128,7 +128,7 @@ impl EnvironmentStrategy for EnvironmentStub {
     }
 
     fn sync(&self, _force: bool) -> lmdb::Result<()> {
-        todo!()
+        Ok(())
     }
 
     fn stat(&self) -> lmdb::Result<Stat> {
@@ -149,6 +149,12 @@ pub struct LmdbEnv<T: EnvironmentStrategy = EnvironmentWrapper> {
     pub environment: T,
     next_txn_id: AtomicU64,
     txn_tracker: Arc<dyn TransactionTracker>,
+}
+
+impl LmdbEnv<EnvironmentStub>{
+    pub fn create_null() -> Self{
+        Self::new("nulled_data.ldb").unwrap()
+    }
 }
 
 impl<T: EnvironmentStrategy> LmdbEnv<T> {

@@ -13,7 +13,7 @@ pub use lmdb_config::{LmdbConfig, SyncStrategy};
 mod lmdb_env;
 pub use lmdb_env::{
     EnvOptions, EnvironmentOptions, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, TestDbFile,
-    TestLmdbEnv,
+    TestLmdbEnv, EnvironmentStub
 };
 
 mod account_store;

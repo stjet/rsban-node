@@ -1,5 +1,5 @@
 use crate::{
-    count, get, iterator::DbIterator, parallel_traversal, EnvironmentStrategy, EnvironmentWrapper,
+    count, iterator::DbIterator, parallel_traversal, EnvironmentStrategy, EnvironmentWrapper,
     LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
@@ -232,7 +232,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
         txn: &'a dyn Transaction,
         hash: &BlockHash,
     ) -> Option<&'a [u8]> {
-        match get::<T, _>(txn, self.database, hash.as_bytes()) {
+        match txn.get(self.database, hash.as_bytes()) {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => Some(bytes),
             Err(e) => panic!("Could not load block. {:?}", e),

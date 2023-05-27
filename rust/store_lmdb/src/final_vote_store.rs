@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    count, get, iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy,
+    count, iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy,
     EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
     Transaction,
 };
@@ -36,7 +36,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbFinalVoteStore<T> {
         hash: &BlockHash,
     ) -> bool {
         let root_bytes = root.to_bytes();
-        match get::<T, _>(txn, self.database, &root_bytes) {
+        match txn.get(self.database, &root_bytes) {
             Err(lmdb::Error::NotFound) => {
                 txn.rw_txn_mut()
                     .put(

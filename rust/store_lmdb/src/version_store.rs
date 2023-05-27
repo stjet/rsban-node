@@ -1,5 +1,5 @@
 use crate::{
-    get, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction, Transaction,
+    EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction, Transaction,
     STORE_VERSION_CURRENT,
 };
 use core::panic;
@@ -80,7 +80,7 @@ fn load_version<T: EnvironmentStrategy + 'static>(
     db: Database,
 ) -> Option<i32> {
     let key_bytes = version_key();
-    match get::<T, _>(txn, db, &key_bytes) {
+    match txn.get(db, &key_bytes) {
         Ok(value) => Some(i32::from_be_bytes(value[28..].try_into().unwrap())),
         Err(lmdb::Error::NotFound) => None,
         Err(_) => panic!("Error while loading db version"),

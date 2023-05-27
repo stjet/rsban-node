@@ -1,5 +1,5 @@
 use crate::{
-    count, get, iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal,
+    count, iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal,
     EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
     Transaction,
 };
@@ -49,7 +49,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbAccountStore<T> {
     }
 
     pub fn get(&self, transaction: &dyn Transaction, account: &Account) -> Option<AccountInfo> {
-        let result = get::<T, _>(transaction, self.database, account.as_bytes());
+        let result = transaction.get(self.database, account.as_bytes());
         match result {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => {

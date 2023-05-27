@@ -1,5 +1,5 @@
 use crate::{
-    get, iterator::DbIterator, parallel_traversal, EnvironmentStrategy, EnvironmentWrapper,
+    iterator::DbIterator, parallel_traversal, EnvironmentStrategy, EnvironmentWrapper,
     LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
@@ -41,7 +41,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbFrontierStore<T> {
     }
 
     pub fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
-        match get::<T, _>(txn, self.database, hash.as_bytes()) {
+        match txn.get(self.database, hash.as_bytes()) {
             Ok(bytes) => Some(Account::from_slice(bytes).unwrap()),
             Err(lmdb::Error::NotFound) => None,
             Err(e) => panic!("Could not load frontier: {:?}", e),

@@ -1,5 +1,5 @@
 use crate::{
-    get, iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper, Fan, LmdbIteratorImpl,
+    iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper, Fan, LmdbIteratorImpl,
     LmdbWriteTransaction, Transaction,
 };
 use anyhow::bail;
@@ -106,7 +106,7 @@ impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
         store.initialize(txn, wallet)?;
         let handle = store.db_handle();
         if let Err(lmdb::Error::NotFound) =
-            get::<T, _>(txn, handle, Self::version_special().as_bytes())
+            txn.get(handle, Self::version_special().as_bytes())
         {
             store.version_put(txn, VERSION_CURRENT);
             let salt = RawKey::random();
@@ -166,7 +166,7 @@ impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
         };
         store.initialize(txn, wallet)?;
         let handle = store.db_handle();
-        match get::<T, _>(txn, handle, Self::version_special().as_bytes()) {
+        match txn.get(handle, Self::version_special().as_bytes()) {
             Ok(_) => panic!("wallet store already initialized"),
             Err(lmdb::Error::NotFound) => {}
             Err(e) => panic!("unexpected wallet store error: {:?}", e),
@@ -201,7 +201,7 @@ impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
     }
 
     fn ensure_key_exists(&self, txn: &dyn Transaction, key: &Account) -> anyhow::Result<()> {
-        get::<T, _>(txn, self.db_handle(), key.as_bytes())?;
+        txn.get(self.db_handle(), key.as_bytes())?;
         Ok(())
     }
 
@@ -262,7 +262,7 @@ impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
     }
 
     pub fn entry_get_raw(&self, txn: &dyn Transaction, account: &Account) -> WalletValue {
-        match get::<T, _>(txn, self.db_handle(), account.as_bytes()) {
+        match txn.get(self.db_handle(), account.as_bytes()) {
             Ok(bytes) => {
                 let mut stream = StreamAdapter::new(bytes);
                 WalletValue::deserialize(&mut stream).unwrap()

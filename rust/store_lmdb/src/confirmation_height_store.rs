@@ -1,5 +1,5 @@
 use crate::{
-    count, exists, get, iterator::DbIterator, parallel_traversal, EnvironmentStrategy,
+    count, exists, iterator::DbIterator, parallel_traversal, EnvironmentStrategy,
     EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
     Transaction,
 };
@@ -46,7 +46,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbConfirmationHeightStore<T> {
     }
 
     pub fn get(&self, txn: &dyn Transaction, account: &Account) -> Option<ConfirmationHeightInfo> {
-        match get::<T, _>(txn, self.database, account.as_bytes()) {
+        match txn.get(self.database, account.as_bytes()) {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => {
                 let mut stream = StreamAdapter::new(bytes);

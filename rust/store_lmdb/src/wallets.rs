@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 
 use crate::{
-    get,
     iterator::{BinaryDbIterator, DbIterator},
     EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction,
 };
@@ -118,7 +117,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbWallets<T> {
         txn: &dyn crate::Transaction,
         id: &str,
     ) -> anyhow::Result<Option<BlockHash>> {
-        match get::<T, _>(txn, self.send_action_ids_handle.unwrap(), &id.as_bytes()) {
+        match txn.get(self.send_action_ids_handle.unwrap(), &id.as_bytes()) {
             Ok(bytes) => Ok(Some(
                 BlockHash::from_slice(bytes).ok_or_else(|| anyhow!("invalid block hash"))?,
             )),

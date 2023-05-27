@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    get, iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy, EnvironmentWrapper,
+    iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy, EnvironmentWrapper,
     LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
@@ -52,7 +52,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbPendingStore<T> {
 
     pub fn get(&self, txn: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo> {
         let key_bytes = key.to_bytes();
-        match get::<T, _>(txn, self.database, &key_bytes) {
+        match txn.get(self.database, &key_bytes) {
             Ok(bytes) => {
                 let mut stream = StreamAdapter::new(bytes);
                 PendingInfo::deserialize(&mut stream).ok()

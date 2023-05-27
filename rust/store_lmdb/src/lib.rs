@@ -73,6 +73,7 @@ use rsnano_core::utils::{get_cpu_count, PropertyTreeWriter};
 pub trait Transaction {
     fn as_any(&self) -> &dyn Any;
     fn refresh(&mut self);
+    fn get(&self, database: Database, key: &[u8]) -> lmdb::Result<&[u8]>;
 }
 
 pub trait TransactionTracker: Send + Sync {
@@ -187,6 +188,10 @@ impl Transaction for LmdbReadTransaction {
         self.reset();
         self.renew();
     }
+
+    fn get(&self, database: Database, key: &[u8]) -> lmdb::Result<&[u8]> {
+        lmdb::Transaction::get(self.txn(), database, &&*key)
+    }
 }
 
 enum RwTxnState<'a> {
@@ -272,6 +277,10 @@ impl<T: EnvironmentStrategy> Transaction for LmdbWriteTransaction<T> {
         self.commit();
         self.renew();
     }
+
+    fn get(&self, database: Database, key: &[u8]) -> lmdb::Result<&[u8]> {
+        lmdb::Transaction::get( self.rw_txn(), database, &&*key)
+    }
 }
 
 pub enum Table {
@@ -283,27 +292,10 @@ pub fn exists<T: EnvironmentStrategy + 'static>(
     db: Database,
     key: &[u8],
 ) -> bool {
-    match get::<T, _>(txn, db, &key) {
+    match txn.get(db, &key) {
         Ok(_) => true,
         Err(lmdb::Error::NotFound) => false,
         Err(e) => panic!("exists failed: {:?}", e),
-    }
-}
-
-pub fn get<'a, T: EnvironmentStrategy + 'static, K: AsRef<[u8]>>(
-    txn: &'a dyn Transaction,
-    database: Database,
-    key: &K,
-) -> lmdb::Result<&'a [u8]> {
-    let any = txn.as_any();
-    if let Some(t) = any.downcast_ref::<LmdbWriteTransaction<T>>() {
-        lmdb::Transaction::get(t.rw_txn(), database, key)
-    } else {
-        lmdb::Transaction::get(
-            any.downcast_ref::<LmdbReadTransaction>().unwrap().txn(),
-            database,
-            key,
-        )
     }
 }
 

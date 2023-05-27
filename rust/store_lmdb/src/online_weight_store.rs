@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    as_write_txn, count, iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv,
-    LmdbIteratorImpl, Transaction, WriteTransaction,
+    count, iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv,
+    LmdbIteratorImpl, Transaction, LmdbWriteTransaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::Amount;
@@ -29,10 +29,10 @@ impl<T: EnvironmentStrategy + 'static> LmdbOnlineWeightStore<T> {
         self.database
     }
 
-    pub fn put(&self, txn: &mut dyn WriteTransaction, time: u64, amount: &Amount) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, time: u64, amount: &Amount) {
         let time_bytes = time.to_be_bytes();
         let amount_bytes = amount.to_be_bytes();
-        as_write_txn::<T>(txn)
+        txn.rw_txn_mut()
             .put(
                 self.database,
                 &time_bytes,
@@ -42,9 +42,9 @@ impl<T: EnvironmentStrategy + 'static> LmdbOnlineWeightStore<T> {
             .unwrap();
     }
 
-    pub fn del(&self, txn: &mut dyn WriteTransaction, time: u64) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, time: u64) {
         let time_bytes = time.to_be_bytes();
-        as_write_txn::<T>(txn)
+        txn.rw_txn_mut()
             .del(self.database, &time_bytes, None)
             .unwrap();
     }
@@ -61,8 +61,8 @@ impl<T: EnvironmentStrategy + 'static> LmdbOnlineWeightStore<T> {
         count::<T>(txn, self.database)
     }
 
-    pub fn clear(&self, txn: &mut dyn WriteTransaction) {
-        as_write_txn::<T>(txn).clear_db(self.database).unwrap();
+    pub fn clear(&self, txn: &mut LmdbWriteTransaction) {
+        txn.rw_txn_mut().clear_db(self.database).unwrap();
     }
 }
 

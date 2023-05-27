@@ -1,7 +1,7 @@
 use std::sync::atomic::Ordering;
 
 use rsnano_core::{Amount, PendingKey};
-use rsnano_store_lmdb::WriteTransaction;
+use rsnano_store_lmdb::LmdbWriteTransaction;
 
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB, ledger_tests::setup_legacy_open_block,
@@ -119,7 +119,7 @@ fn rollback_dependent_blocks_too() {
 
 fn rollback_send_block<'a>(
     ctx: &'a LedgerContext,
-    txn: &mut dyn WriteTransaction,
+    txn: &mut LmdbWriteTransaction,
 ) -> LegacySendBlockResult<'a> {
     let send = setup_legacy_send_block(ctx, txn);
     ctx.ledger.rollback(txn, &send.send_block.hash()).unwrap();

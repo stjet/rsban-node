@@ -1,6 +1,6 @@
 use crate::{
-    as_write_txn, count, exists, iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper,
-    LmdbEnv, LmdbIteratorImpl, Transaction, WriteTransaction,
+    count, exists, iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper,
+    LmdbEnv, LmdbIteratorImpl, Transaction, LmdbWriteTransaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{EndpointKey, NoValue};
@@ -29,8 +29,8 @@ impl<T: EnvironmentStrategy + 'static> LmdbPeerStore<T> {
         self.database
     }
 
-    pub fn put(&self, txn: &mut dyn WriteTransaction, endpoint: &EndpointKey) {
-        as_write_txn::<T>(txn)
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, endpoint: &EndpointKey) {
+        txn.rw_txn_mut()
             .put(
                 self.database,
                 &endpoint.to_bytes(),
@@ -40,8 +40,8 @@ impl<T: EnvironmentStrategy + 'static> LmdbPeerStore<T> {
             .unwrap();
     }
 
-    pub fn del(&self, txn: &mut dyn WriteTransaction, endpoint: &EndpointKey) {
-        as_write_txn::<T>(txn)
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, endpoint: &EndpointKey) {
+        txn.rw_txn_mut()
             .del(self.database, &endpoint.to_bytes(), None)
             .unwrap();
     }
@@ -54,8 +54,8 @@ impl<T: EnvironmentStrategy + 'static> LmdbPeerStore<T> {
         count::<T>(txn, self.database)
     }
 
-    pub fn clear(&self, txn: &mut dyn WriteTransaction) {
-        as_write_txn::<T>(txn).clear_db(self.database).unwrap();
+    pub fn clear(&self, txn: &mut LmdbWriteTransaction) {
+        txn.rw_txn_mut().clear_db(self.database).unwrap();
     }
 
     pub fn begin(&self, txn: &dyn Transaction) -> PeerIterator {

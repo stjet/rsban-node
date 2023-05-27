@@ -1,6 +1,6 @@
 use crate::{
-    as_write_txn, get, iterator::DbIterator, parallel_traversal, EnvironmentStrategy,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, ReadTransaction, Transaction, WriteTransaction,
+    get, iterator::DbIterator, parallel_traversal, EnvironmentStrategy,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, ReadTransaction, Transaction, LmdbWriteTransaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{Account, BlockHash};
@@ -29,8 +29,8 @@ impl<T: EnvironmentStrategy + 'static> LmdbFrontierStore<T> {
         Ok(())
     }
 
-    pub fn put(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash, account: &Account) {
-        as_write_txn::<T>(txn)
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash, account: &Account) {
+        txn.rw_txn_mut()
             .put(
                 self.database,
                 hash.as_bytes(),
@@ -48,8 +48,8 @@ impl<T: EnvironmentStrategy + 'static> LmdbFrontierStore<T> {
         }
     }
 
-    pub fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
-        as_write_txn::<T>(txn)
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
+        txn.rw_txn_mut()
             .del(self.database, hash.as_bytes(), None)
             .unwrap();
     }

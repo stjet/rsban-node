@@ -10,7 +10,6 @@ pub(crate) use helpers::*;
 use rsnano_core::{
     Account, Amount, BlockBuilder, BlockHash, KeyPair, QualifiedRoot, Root, GXRB_RATIO,
 };
-use rsnano_store_lmdb::WriteTransaction;
 
 mod empty_ledger;
 mod epoch_v1;

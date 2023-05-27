@@ -1,7 +1,7 @@
 use primitive_types::U256;
 use rsnano_core::{Account, Amount};
 use rsnano_ledger::Ledger;
-use rsnano_store_lmdb::{LmdbWriteTransaction, WriteTransaction};
+use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{cmp::max, sync::Arc};
 
@@ -174,7 +174,7 @@ impl OnlineWeightSampler {
         }
     }
 
-    fn insert_new_sample(&self, txn: &mut dyn WriteTransaction, current_online_weight: Amount) {
+    fn insert_new_sample(&self, txn: &mut LmdbWriteTransaction, current_online_weight: Amount) {
         self.ledger.store.online_weight.put(
             txn,
             nano_seconds_since_epoch(),

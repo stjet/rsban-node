@@ -5,7 +5,7 @@ use std::{
 
 use rsnano_core::{utils::Logger, BlockEnum};
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
-use rsnano_store_lmdb::WriteTransaction;
+use rsnano_store_lmdb::LmdbWriteTransaction;
 
 use super::{
     BatchWriteSizeManager, BlockCache, BlockCementerContainerInfo, BlockCementerLogic,
@@ -122,7 +122,7 @@ impl BlockCementer {
         // Cement all pending entries, each entry is specific to an account and contains the least amount
         // of blocks to retain consistent cementing across all account chains to genesis.
         while let Some(section_to_cement) = self.logic.next_write(
-            &mut LedgerAdapter::new_unlimited(txn.txn_mut(), &self.ledger),
+            &mut LedgerAdapter::new_unlimited(&mut txn, &self.ledger),
         ) {
             self.ledger
                 .write_confirmation_height(&mut txn, &section_to_cement);
@@ -137,7 +137,7 @@ impl BlockCementer {
 
     fn start_new_batch(
         &mut self,
-        txn: &mut dyn WriteTransaction,
+        txn: &mut LmdbWriteTransaction,
         write_guard: &mut WriteGuard,
         callbacks: &mut CementCallbackRefs,
     ) {
@@ -150,7 +150,7 @@ impl BlockCementer {
 
     fn commit_batch(
         &mut self,
-        txn: &mut dyn WriteTransaction,
+        txn: &mut LmdbWriteTransaction,
         write_guard: &mut WriteGuard,
         callbacks: &mut CementCallbackRefs,
     ) {

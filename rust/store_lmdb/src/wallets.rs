@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
 use crate::{
-    as_write_txn, get,
+    get,
     iterator::{BinaryDbIterator, DbIterator},
-    EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, WriteTransaction,
+    EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction,
 };
 use lmdb::{Cursor, Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, NoValue, RawKey, WalletId};
@@ -26,14 +26,14 @@ impl<T: EnvironmentStrategy + 'static> LmdbWallets<T> {
 
     pub fn initialize(
         &mut self,
-        txn: &mut dyn WriteTransaction,
+        txn: &mut LmdbWriteTransaction,
         env: &LmdbEnv,
     ) -> anyhow::Result<()> {
         self.handle =
-            Some(unsafe { as_write_txn::<T>(txn).create_db(None, DatabaseFlags::empty())? });
+            Some(unsafe { txn.rw_txn_mut().create_db(None, DatabaseFlags::empty())? });
         self.split_if_needed(txn, env)?;
         self.send_action_ids_handle = Some(unsafe {
-            as_write_txn::<T>(txn).create_db(Some("send_action_ids"), DatabaseFlags::empty())?
+            txn.rw_txn_mut().create_db(Some("send_action_ids"), DatabaseFlags::empty())?
         });
         Ok(())
     }
@@ -51,11 +51,11 @@ impl<T: EnvironmentStrategy + 'static> LmdbWallets<T> {
     pub fn move_table(
         &self,
         name: &str,
-        txn_source: &mut dyn WriteTransaction,
-        txn_destination: &mut dyn WriteTransaction,
+        txn_source: &mut LmdbWriteTransaction,
+        txn_destination: &mut LmdbWriteTransaction,
     ) -> anyhow::Result<()> {
-        let rw_txn_source = as_write_txn::<T>(txn_source);
-        let rw_txn_dest = as_write_txn::<T>(txn_destination);
+        let rw_txn_source = txn_source.rw_txn_mut();
+        let rw_txn_dest = txn_destination.rw_txn_mut();
         let handle_source = unsafe { rw_txn_source.create_db(Some(name), DatabaseFlags::empty()) }?;
         let handle_destination =
             unsafe { rw_txn_dest.create_db(Some(name), DatabaseFlags::empty()) }?;
@@ -74,7 +74,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbWallets<T> {
 
     pub fn split_if_needed(
         &self,
-        txn_destination: &mut dyn WriteTransaction,
+        txn_destination: &mut LmdbWriteTransaction,
         env: &LmdbEnv,
     ) -> anyhow::Result<()> {
         let beginning = RawKey::from(0).encode_hex();
@@ -129,11 +129,11 @@ impl<T: EnvironmentStrategy + 'static> LmdbWallets<T> {
 
     pub fn set_block_hash(
         &self,
-        txn: &mut dyn WriteTransaction,
+        txn: &mut LmdbWriteTransaction,
         id: &str,
         hash: &BlockHash,
     ) -> anyhow::Result<()> {
-        as_write_txn::<T>(txn).put(
+        txn.rw_txn_mut().put(
             self.send_action_ids_handle.unwrap(),
             &id.as_bytes(),
             hash.as_bytes(),
@@ -142,8 +142,8 @@ impl<T: EnvironmentStrategy + 'static> LmdbWallets<T> {
         Ok(())
     }
 
-    pub fn clear_send_ids(&self, txn: &mut dyn WriteTransaction) {
-        as_write_txn::<T>(txn)
+    pub fn clear_send_ids(&self, txn: &mut LmdbWriteTransaction) {
+        txn.rw_txn_mut()
             .clear_db(self.send_action_ids_handle.unwrap())
             .unwrap();
     }

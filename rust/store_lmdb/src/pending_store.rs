@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    as_write_txn, get, iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, ReadTransaction, Transaction, WriteTransaction,
+    get, iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
+    Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -30,10 +31,10 @@ impl<T: EnvironmentStrategy + 'static> LmdbPendingStore<T> {
         self.database
     }
 
-    pub fn put(&self, txn: &mut dyn WriteTransaction, key: &PendingKey, pending: &PendingInfo) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, key: &PendingKey, pending: &PendingInfo) {
         let key_bytes = key.to_bytes();
         let pending_bytes = pending.to_bytes();
-        as_write_txn::<T>(txn)
+        txn.rw_txn_mut()
             .put(
                 self.database,
                 &key_bytes,
@@ -43,9 +44,9 @@ impl<T: EnvironmentStrategy + 'static> LmdbPendingStore<T> {
             .unwrap();
     }
 
-    pub fn del(&self, txn: &mut dyn WriteTransaction, key: &PendingKey) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, key: &PendingKey) {
         let key_bytes = key.to_bytes();
-        as_write_txn::<T>(txn)
+        txn.rw_txn_mut()
             .del(self.database, &key_bytes, None)
             .unwrap();
     }
@@ -89,7 +90,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbPendingStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&dyn ReadTransaction, PendingIterator, PendingIterator) + Send + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction, PendingIterator, PendingIterator) + Send + Sync),
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();

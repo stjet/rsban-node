@@ -1,6 +1,6 @@
 use crate::{
-    as_write_txn, get, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, Transaction,
-    WriteTransaction, STORE_VERSION_CURRENT,
+    get, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction,
+    Transaction, STORE_VERSION_CURRENT,
 };
 use core::panic;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
@@ -58,13 +58,13 @@ impl<T: EnvironmentStrategy + 'static> LmdbVersionStore<T> {
         self.db_handle
     }
 
-    pub fn put(&self, txn: &mut dyn WriteTransaction, version: i32) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, version: i32) {
         let db = self.db_handle();
 
         let key_bytes = version_key();
         let value_bytes = value_bytes(version);
 
-        as_write_txn::<T>(txn)
+        txn.rw_txn_mut()
             .put(db, &key_bytes, &value_bytes, WriteFlags::empty())
             .unwrap();
     }

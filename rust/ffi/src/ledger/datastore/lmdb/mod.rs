@@ -14,9 +14,7 @@ mod version_store;
 mod wallet_store;
 mod wallets;
 
-use rsnano_store_lmdb::{
-    LmdbReadTransaction, LmdbWriteTransaction, ReadTransaction, Transaction, WriteTransaction,
-};
+use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, ReadTransaction, Transaction};
 use std::{ffi::c_void, ops::Deref};
 pub use store::LmdbStoreHandle;
 
@@ -133,7 +131,7 @@ pub unsafe extern "C" fn rsn_lmdb_write_txn_renew(handle: *mut TransactionHandle
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_write_txn_refresh(handle: *mut TransactionHandle) {
-    WriteTransaction::refresh((*handle).as_write_txn());
+    (*handle).as_write_txn().refresh();
 }
 
 pub(crate) unsafe fn into_read_txn_handle(txn: &dyn Transaction) -> *mut TransactionHandle {

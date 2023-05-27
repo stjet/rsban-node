@@ -1,7 +1,7 @@
 use crate::{
-    as_write_txn, count, get, iterator::DbIterator, lmdb_env::EnvironmentWrapper,
-    parallel_traversal, EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, ReadTransaction,
-    Transaction, WriteTransaction,
+    count, get, iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal,
+    EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, ReadTransaction,
+    Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -33,11 +33,12 @@ impl<T: EnvironmentStrategy + 'static> LmdbAccountStore<T> {
 
     pub fn put(
         &self,
-        transaction: &mut dyn WriteTransaction,
+        transaction: &mut LmdbWriteTransaction,
         account: &Account,
         info: &AccountInfo,
     ) {
-        as_write_txn::<T>(transaction)
+        transaction
+            .rw_txn_mut()
             .put(
                 self.database,
                 account.as_bytes(),
@@ -59,8 +60,9 @@ impl<T: EnvironmentStrategy + 'static> LmdbAccountStore<T> {
         }
     }
 
-    pub fn del(&self, transaction: &mut dyn WriteTransaction, account: &Account) {
-        as_write_txn::<T>(transaction)
+    pub fn del(&self, transaction: &mut LmdbWriteTransaction, account: &Account) {
+        transaction
+            .rw_txn_mut()
             .del(self.database, account.as_bytes(), None)
             .unwrap();
     }

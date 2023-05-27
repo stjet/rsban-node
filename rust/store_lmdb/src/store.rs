@@ -6,11 +6,11 @@ use std::{
 };
 
 use crate::{
-    as_write_txn, lmdb_env::EnvironmentWrapper, EnvOptions, EnvironmentStrategy, LmdbAccountStore,
+    lmdb_env::EnvironmentWrapper, EnvOptions, EnvironmentStrategy, LmdbAccountStore,
     LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
     LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
     LmdbVersionStore, LmdbWriteTransaction, NullTransactionTracker, Table, TransactionTracker,
-    WriteTransaction, STORE_VERSION_MINIMUM,
+    STORE_VERSION_MINIMUM,
 };
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
@@ -140,7 +140,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
             .expect("Could not create LMDB read/write transaction")
     }
 
-    pub fn rebuild_db(&self, txn: &mut dyn WriteTransaction) -> anyhow::Result<()> {
+    pub fn rebuild_db(&self, txn: &mut LmdbWriteTransaction) -> anyhow::Result<()> {
         let tables = [
             self.account.database(),
             self.block.database(),
@@ -224,23 +224,23 @@ fn upgrade_if_needed<T: EnvironmentStrategy + 'static>(
 
 fn rebuild_table<T: EnvironmentStrategy + 'static>(
     env: &LmdbEnv<T>,
-    rw_txn: &mut dyn WriteTransaction,
+    rw_txn: &mut LmdbWriteTransaction,
     db: Database,
 ) -> anyhow::Result<()> {
     let temp =
-        unsafe { as_write_txn::<T>(rw_txn).create_db(Some("temp_table"), DatabaseFlags::empty()) }?;
+        unsafe { rw_txn.rw_txn_mut().create_db(Some("temp_table"), DatabaseFlags::empty()) }?;
     copy_table(env, rw_txn, db, temp)?;
-    rw_txn.refresh();
-    as_write_txn::<T>(rw_txn).clear_db(db)?;
+    crate::Transaction::refresh(rw_txn);
+    rw_txn.rw_txn_mut().clear_db(db)?;
     copy_table(env, rw_txn, temp, db)?;
-    unsafe { as_write_txn::<T>(rw_txn).drop_db(temp) }?;
-    rw_txn.refresh();
+    unsafe { rw_txn.rw_txn_mut().drop_db(temp) }?;
+    crate::Transaction::refresh(rw_txn);
     Ok(())
 }
 
 fn copy_table<T: EnvironmentStrategy + 'static>(
     env: &LmdbEnv<T>,
-    rw_txn: &mut dyn WriteTransaction,
+    rw_txn: &mut LmdbWriteTransaction,
     source: Database,
     target: Database,
 ) -> anyhow::Result<()> {
@@ -249,10 +249,10 @@ fn copy_table<T: EnvironmentStrategy + 'static>(
         let mut cursor = ro_txn.txn().open_ro_cursor(source)?;
         for x in cursor.iter_start() {
             let (k, v) = x?;
-            as_write_txn::<T>(rw_txn).put(target, &k, &v, WriteFlags::APPEND)?;
+            rw_txn.rw_txn_mut().put(target, &k, &v, WriteFlags::APPEND)?;
         }
     }
-    if ro_txn.txn().stat(source)?.entries() != as_write_txn::<T>(rw_txn).stat(target)?.entries() {
+    if ro_txn.txn().stat(source)?.entries() != rw_txn.rw_txn_mut().stat(target)?.entries() {
         bail!("table count mismatch");
     }
     Ok(())

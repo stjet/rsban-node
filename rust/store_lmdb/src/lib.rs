@@ -84,14 +84,6 @@ pub trait ReadTransaction {
     fn refresh(&mut self);
 }
 
-pub trait WriteTransaction {
-    fn txn(&self) -> &dyn Transaction;
-    fn txn_mut(&mut self) -> &mut dyn Transaction;
-    fn refresh(&mut self);
-    fn renew(&mut self);
-    fn commit(&mut self);
-}
-
 pub trait TransactionTracker: Send + Sync {
     fn txn_start(&self, txn_id: u64, is_write: bool);
     fn txn_end(&self, txn_id: u64, is_write: bool);
@@ -267,6 +259,29 @@ impl<T: EnvironmentStrategy> LmdbWriteTransaction<T> {
             _ => panic!("txn not active"),
         }
     }
+
+    pub fn renew(&mut self) {
+        let t = mem::replace(&mut self.txn, RwTxnState::Transitioning);
+        self.txn = match t {
+            RwTxnState::Active(_) => panic!("Cannot renew active RwTransaction"),
+            RwTxnState::Inactive() => RwTxnState::Active(self.env.begin_rw_txn().unwrap()),
+            RwTxnState::Transitioning => unreachable!(),
+        };
+        self.callbacks.txn_start(self.txn_id, true);
+    }
+
+    pub fn commit(&mut self) {
+        let t = mem::replace(&mut self.txn, RwTxnState::Transitioning);
+        match t {
+            RwTxnState::Inactive() => {}
+            RwTxnState::Active(t) => {
+                lmdb::Transaction::commit(t).unwrap();
+                self.callbacks.txn_end(self.txn_id, true);
+            }
+            RwTxnState::Transitioning => unreachable!(),
+        };
+        self.txn = RwTxnState::Inactive();
+    }
 }
 
 impl<'a, T: EnvironmentStrategy> Drop for LmdbWriteTransaction<T> {
@@ -285,44 +300,8 @@ impl<T: EnvironmentStrategy> Transaction for LmdbWriteTransaction<T> {
     }
 
     fn refresh(&mut self) {
-        WriteTransaction::refresh(self);
-    }
-}
-
-impl<T: EnvironmentStrategy> WriteTransaction for LmdbWriteTransaction<T> {
-    fn txn(&self) -> &dyn Transaction {
-        self
-    }
-    fn txn_mut(&mut self) -> &mut dyn Transaction {
-        self
-    }
-
-    fn renew(&mut self) {
-        let t = mem::replace(&mut self.txn, RwTxnState::Transitioning);
-        self.txn = match t {
-            RwTxnState::Active(_) => panic!("Cannot renew active RwTransaction"),
-            RwTxnState::Inactive() => RwTxnState::Active(self.env.begin_rw_txn().unwrap()),
-            RwTxnState::Transitioning => unreachable!(),
-        };
-        self.callbacks.txn_start(self.txn_id, true);
-    }
-
-    fn refresh(&mut self) {
         self.commit();
         self.renew();
-    }
-
-    fn commit(&mut self) {
-        let t = mem::replace(&mut self.txn, RwTxnState::Transitioning);
-        match t {
-            RwTxnState::Inactive() => {}
-            RwTxnState::Active(t) => {
-                lmdb::Transaction::commit(t).unwrap();
-                self.callbacks.txn_end(self.txn_id, true);
-            }
-            RwTxnState::Transitioning => unreachable!(),
-        };
-        self.txn = RwTxnState::Inactive();
     }
 }
 
@@ -340,16 +319,6 @@ pub fn exists<T: EnvironmentStrategy + 'static>(
         Err(lmdb::Error::NotFound) => false,
         Err(e) => panic!("exists failed: {:?}", e),
     }
-}
-
-pub fn as_write_txn<T: EnvironmentStrategy + 'static>(
-    txn: &mut dyn WriteTransaction,
-) -> &mut RwTransaction<'static> {
-    txn.txn_mut()
-        .as_any_mut()
-        .downcast_mut::<LmdbWriteTransaction<T>>()
-        .unwrap()
-        .rw_txn_mut()
 }
 
 pub fn get<'a, T: EnvironmentStrategy + 'static, K: AsRef<[u8]>>(

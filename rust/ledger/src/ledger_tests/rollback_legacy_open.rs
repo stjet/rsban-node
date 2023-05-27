@@ -1,6 +1,6 @@
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, DEV_GENESIS_ACCOUNT};
 use rsnano_core::{Amount, PendingKey};
-use rsnano_store_lmdb::WriteTransaction;
+use rsnano_store_lmdb::LmdbWriteTransaction;
 
 use crate::ledger_tests::{setup_legacy_open_block, LedgerContext};
 
@@ -101,7 +101,7 @@ fn update_vote_weight() {
 
 fn rollback_open_block<'a>(
     ctx: &'a LedgerContext,
-    txn: &mut dyn WriteTransaction,
+    txn: &mut LmdbWriteTransaction,
 ) -> LegacyOpenBlockResult<'a> {
     let open = setup_legacy_open_block(ctx, txn);
     ctx.ledger.rollback(txn, &open.open_block.hash()).unwrap();

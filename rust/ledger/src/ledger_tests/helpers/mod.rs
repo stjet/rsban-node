@@ -4,28 +4,28 @@ mod ledger_context;
 pub(crate) use account_block_factory::AccountBlockFactory;
 pub(crate) use ledger_context::LedgerContext;
 use rsnano_core::{Amount, BlockEnum};
-use rsnano_store_lmdb::WriteTransaction;
+use rsnano_store_lmdb::LmdbWriteTransaction;
 
 pub(crate) fn upgrade_genesis_to_epoch_v1(
     ctx: &LedgerContext,
-    txn: &mut dyn WriteTransaction,
+    txn: &mut LmdbWriteTransaction,
 ) -> BlockEnum {
-    let mut epoch = ctx.genesis_block_factory().epoch_v1(txn.txn()).build();
+    let mut epoch = ctx.genesis_block_factory().epoch_v1(txn).build();
     ctx.ledger.process(txn, &mut epoch).unwrap();
     epoch
 }
 
 pub(crate) fn setup_legacy_change_block(
     ctx: &LedgerContext,
-    txn: &mut dyn WriteTransaction,
+    txn: &mut LmdbWriteTransaction,
 ) -> BlockEnum {
-    let mut change = ctx.genesis_block_factory().legacy_change(txn.txn()).build();
+    let mut change = ctx.genesis_block_factory().legacy_change(txn).build();
     ctx.ledger.process(txn, &mut change).unwrap();
     change
 }
 
-pub(crate) fn setup_change_block(ctx: &LedgerContext, txn: &mut dyn WriteTransaction) -> BlockEnum {
-    let mut change = ctx.genesis_block_factory().change(txn.txn()).build();
+pub(crate) fn setup_change_block(ctx: &LedgerContext, txn: &mut LmdbWriteTransaction) -> BlockEnum {
+    let mut change = ctx.genesis_block_factory().change(txn).build();
     ctx.ledger.process(txn, &mut change).unwrap();
     change
 }
@@ -37,14 +37,14 @@ pub(crate) struct LegacySendBlockResult<'a> {
 }
 pub(crate) fn setup_legacy_send_block<'a>(
     ctx: &'a LedgerContext,
-    txn: &mut dyn WriteTransaction,
+    txn: &mut LmdbWriteTransaction,
 ) -> LegacySendBlockResult<'a> {
     let genesis = ctx.genesis_block_factory();
     let destination = ctx.block_factory();
 
     let amount_sent = Amount::raw(50);
     let mut send_block = genesis
-        .legacy_send(txn.txn())
+        .legacy_send(txn)
         .destination(destination.account())
         .amount(amount_sent)
         .build();
@@ -65,7 +65,7 @@ pub(crate) struct LegacyOpenBlockResult<'a> {
 
 pub(crate) fn setup_legacy_open_block<'a>(
     ctx: &'a LedgerContext,
-    txn: &mut dyn WriteTransaction,
+    txn: &mut LmdbWriteTransaction,
 ) -> LegacyOpenBlockResult<'a> {
     let send = setup_legacy_send_block(ctx, txn);
 
@@ -90,7 +90,7 @@ pub(crate) struct LegacyReceiveBlockResult<'a> {
 }
 pub(crate) fn setup_legacy_receive_block<'a>(
     ctx: &'a LedgerContext,
-    txn: &mut dyn WriteTransaction,
+    txn: &mut LmdbWriteTransaction,
 ) -> LegacyReceiveBlockResult<'a> {
     let genesis = ctx.genesis_block_factory();
 
@@ -98,7 +98,7 @@ pub(crate) fn setup_legacy_receive_block<'a>(
 
     let amount_sent2 = Amount::raw(25);
     let mut send2 = genesis
-        .legacy_send(txn.txn())
+        .legacy_send(txn)
         .destination(open.destination.account())
         .amount(amount_sent2)
         .build();
@@ -106,7 +106,7 @@ pub(crate) fn setup_legacy_receive_block<'a>(
 
     let mut receive_block = open
         .destination
-        .legacy_receive(txn.txn(), send2.hash())
+        .legacy_receive(txn, send2.hash())
         .build();
     ctx.ledger.process(txn, &mut receive_block).unwrap();
 
@@ -127,14 +127,14 @@ pub(crate) struct SendBlockResult<'a> {
 }
 pub(crate) fn setup_send_block<'a>(
     ctx: &'a LedgerContext,
-    txn: &mut dyn WriteTransaction,
+    txn: &mut LmdbWriteTransaction,
 ) -> SendBlockResult<'a> {
     let genesis = ctx.genesis_block_factory();
     let destination = ctx.block_factory();
 
     let amount_sent = Amount::raw(50);
     let mut send_block = genesis
-        .send(txn.txn())
+        .send(txn)
         .link(destination.account())
         .amount(amount_sent)
         .build();
@@ -154,13 +154,13 @@ pub(crate) struct OpenBlockResult<'a> {
 }
 pub(crate) fn setup_open_block<'a>(
     ctx: &'a LedgerContext,
-    txn: &mut dyn WriteTransaction,
+    txn: &mut LmdbWriteTransaction,
 ) -> OpenBlockResult<'a> {
     let send = setup_send_block(ctx, txn);
 
     let mut open_block = send
         .destination
-        .open(txn.txn(), send.send_block.hash())
+        .open(txn, send.send_block.hash())
         .build();
     ctx.ledger.process(txn, &mut open_block).unwrap();
 

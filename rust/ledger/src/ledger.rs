@@ -9,9 +9,7 @@ use rsnano_core::{
     BlockHash, BlockSubType, BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo,
     PendingKey, QualifiedRoot, Root,
 };
-use rsnano_store_lmdb::{
-    LmdbReadTransaction, LmdbStore, LmdbWriteTransaction, Transaction, WriteTransaction,
-};
+use rsnano_store_lmdb::{LmdbReadTransaction, LmdbStore, LmdbWriteTransaction, Transaction};
 
 use std::{
     collections::{BTreeMap, HashMap},
@@ -180,7 +178,7 @@ impl Ledger {
         Ok(())
     }
 
-    fn add_genesis_block(&self, txn: &mut dyn WriteTransaction) {
+    fn add_genesis_block(&self, txn: &mut LmdbWriteTransaction) {
         let genesis_block_enum = self.constants.genesis.read().unwrap();
         let genesis_block = genesis_block_enum.deref();
         let genesis_hash = genesis_block.hash();
@@ -545,7 +543,7 @@ impl Ledger {
 
     pub fn update_account(
         &self,
-        txn: &mut dyn WriteTransaction,
+        txn: &mut LmdbWriteTransaction,
         account: &Account,
         old_info: &AccountInfo,
         new_info: &AccountInfo,
@@ -560,7 +558,7 @@ impl Ledger {
             }
             self.store.account.put(txn, account, new_info);
         } else {
-            debug_assert!(!self.store.confirmation_height.exists(txn.txn(), account));
+            debug_assert!(!self.store.confirmation_height.exists(txn, account));
             self.store.account.del(txn, account);
             debug_assert!(self.cache.account_count.load(Ordering::SeqCst) > 0);
             self.cache.account_count.fetch_sub(1, Ordering::SeqCst);
@@ -588,7 +586,7 @@ impl Ledger {
 
     pub fn pruning_action(
         &self,
-        txn: &mut dyn WriteTransaction,
+        txn: &mut LmdbWriteTransaction,
         hash: &BlockHash,
         batch_size: u64,
     ) -> u64 {
@@ -597,7 +595,7 @@ impl Ledger {
         let genesis_hash = { self.constants.genesis.read().unwrap().hash() };
 
         while !hash.is_zero() && hash != genesis_hash {
-            if let Some(block) = self.store.block.get(txn.txn(), &hash) {
+            if let Some(block) = self.store.block.get(txn, &hash) {
                 self.store.block.del(txn, &hash);
                 self.store.pruned.put(txn, &hash);
                 hash = block.previous();
@@ -607,7 +605,7 @@ impl Ledger {
                     txn.commit();
                     txn.renew();
                 }
-            } else if self.store.pruned.exists(txn.txn(), &hash) {
+            } else if self.store.pruned.exists(txn, &hash) {
                 hash = BlockHash::zero();
             } else {
                 panic!("Error finding block for pruning");
@@ -662,7 +660,7 @@ impl Ledger {
 
     pub fn write_confirmation_height(
         &self,
-        txn: &mut dyn WriteTransaction,
+        txn: &mut LmdbWriteTransaction,
         section: &BlockChainSection,
     ) {
         #[cfg(debug_assertions)]
@@ -670,10 +668,10 @@ impl Ledger {
             let conf_height = self
                 .store
                 .confirmation_height
-                .get(txn.txn(), &section.account)
+                .get(txn, &section.account)
                 .map(|i| i.height)
                 .unwrap_or_default();
-            let block = self.store.block.get(txn.txn(), &section.top_hash).unwrap();
+            let block = self.store.block.get(txn, &section.top_hash).unwrap();
             debug_assert_eq!(
                 block.sideband().unwrap().height,
                 conf_height + section.block_count()
@@ -726,7 +724,7 @@ impl Ledger {
     /// Rollback blocks until `block' doesn't exist or it tries to penetrate the confirmation height
     pub fn rollback(
         &self,
-        txn: &mut dyn WriteTransaction,
+        txn: &mut LmdbWriteTransaction,
         block: &BlockHash,
     ) -> anyhow::Result<Vec<BlockEnum>> {
         BlockRollbackPerformer::new(self, txn).roll_back(block)
@@ -741,10 +739,10 @@ impl Ledger {
 
     pub fn process(
         &self,
-        txn: &mut dyn WriteTransaction,
+        txn: &mut LmdbWriteTransaction,
         block: &mut BlockEnum,
     ) -> Result<(), ProcessResult> {
-        let validator = BlockValidatorFactory::new(self, txn.txn(), block).create_validator();
+        let validator = BlockValidatorFactory::new(self, txn, block).create_validator();
         let instructions = validator.validate()?;
         BlockInserter::new(self, txn, block, &instructions).insert();
         Ok(())

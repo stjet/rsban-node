@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    as_write_txn, count, get, iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, ReadTransaction, Transaction, WriteTransaction,
+    count, get, iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, ReadTransaction, Transaction, LmdbWriteTransaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
@@ -30,14 +30,14 @@ impl<T: EnvironmentStrategy + 'static> LmdbFinalVoteStore<T> {
 
     pub fn put(
         &self,
-        txn: &mut dyn WriteTransaction,
+        txn: &mut LmdbWriteTransaction,
         root: &QualifiedRoot,
         hash: &BlockHash,
     ) -> bool {
         let root_bytes = root.to_bytes();
-        match get::<T, _>(txn.txn(), self.database, &root_bytes) {
+        match get::<T, _>(txn, self.database, &root_bytes) {
             Err(lmdb::Error::NotFound) => {
-                as_write_txn::<T>(txn)
+                txn.rw_txn_mut()
                     .put(
                         self.database,
                         &root_bytes,
@@ -83,11 +83,11 @@ impl<T: EnvironmentStrategy + 'static> LmdbFinalVoteStore<T> {
         result
     }
 
-    pub fn del(&self, txn: &mut dyn WriteTransaction, root: &Root) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, root: &Root) {
         let mut final_vote_qualified_roots = Vec::new();
 
         let mut it = self.begin_at_root(
-            txn.txn(),
+            txn,
             &QualifiedRoot {
                 root: *root,
                 previous: BlockHash::zero(),
@@ -103,7 +103,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbFinalVoteStore<T> {
 
         for qualified_root in final_vote_qualified_roots {
             let root_bytes = qualified_root.to_bytes();
-            as_write_txn::<T>(txn)
+            txn.rw_txn_mut()
                 .del(self.database, &root_bytes, None)
                 .unwrap();
         }
@@ -113,8 +113,8 @@ impl<T: EnvironmentStrategy + 'static> LmdbFinalVoteStore<T> {
         count::<T>(txn, self.database)
     }
 
-    pub fn clear(&self, txn: &mut dyn WriteTransaction) {
-        as_write_txn::<T>(txn).clear_db(self.database).unwrap();
+    pub fn clear(&self, txn: &mut LmdbWriteTransaction) {
+        txn.rw_txn_mut().clear_db(self.database).unwrap();
     }
 
     pub fn for_each_par(

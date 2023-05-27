@@ -1,5 +1,5 @@
 use rsnano_core::{AccountInfo, BlockEnum, BlockHash};
-use rsnano_store_lmdb::WriteTransaction;
+use rsnano_store_lmdb::LmdbWriteTransaction;
 
 use crate::Ledger;
 
@@ -10,12 +10,12 @@ use super::{
 
 pub(crate) struct BlockRollbackPerformer<'a> {
     ledger: &'a Ledger,
-    pub txn: &'a mut dyn WriteTransaction,
+    pub txn: &'a mut LmdbWriteTransaction,
     pub rolled_back: Vec<BlockEnum>,
 }
 
 impl<'a> BlockRollbackPerformer<'a> {
-    pub(crate) fn new(ledger: &'a Ledger, txn: &'a mut dyn WriteTransaction) -> Self {
+    pub(crate) fn new(ledger: &'a Ledger, txn: &'a mut LmdbWriteTransaction) -> Self {
         Self {
             ledger,
             txn,
@@ -38,8 +38,8 @@ impl<'a> BlockRollbackPerformer<'a> {
     }
 
     fn roll_back_head_block(&mut self, head_block: BlockEnum) -> Result<(), anyhow::Error> {
-        let planner = RollbackPlannerFactory::new(self.ledger, self.txn.txn(), &head_block)
-            .create_planner()?;
+        let planner =
+            RollbackPlannerFactory::new(self.ledger, self.txn, &head_block).create_planner()?;
         let step = planner.roll_back_head_block()?;
         self.execute(step, head_block)?;
         Ok(())
@@ -58,7 +58,7 @@ impl<'a> BlockRollbackPerformer<'a> {
     }
 
     fn block_exists(&self, block_hash: &BlockHash) -> bool {
-        self.ledger.store.block.exists(self.txn.txn(), block_hash)
+        self.ledger.store.block.exists(self.txn, block_hash)
     }
 
     fn load_account_head(&self, block: &BlockEnum) -> anyhow::Result<BlockEnum> {
@@ -68,7 +68,7 @@ impl<'a> BlockRollbackPerformer<'a> {
 
     fn get_account_info(&self, block: &BlockEnum) -> AccountInfo {
         self.ledger
-            .account_info(self.txn.txn(), &block.account_calculated())
+            .account_info(self.txn, &block.account_calculated())
             .unwrap()
     }
 
@@ -76,7 +76,7 @@ impl<'a> BlockRollbackPerformer<'a> {
         self.ledger
             .store
             .block
-            .get(self.txn.txn(), block_hash)
+            .get(self.txn, block_hash)
             .ok_or_else(|| anyhow!("block not found"))
     }
 }

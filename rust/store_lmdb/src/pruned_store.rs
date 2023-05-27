@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    as_write_txn, count, exists, iterator::DbIterator, lmdb_env::EnvironmentWrapper,
+    count, exists, iterator::DbIterator, lmdb_env::EnvironmentWrapper,
     parallel_traversal, EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, ReadTransaction,
-    Transaction, WriteTransaction,
+    Transaction, LmdbWriteTransaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
@@ -28,14 +28,14 @@ impl<T: EnvironmentStrategy + 'static> LmdbPrunedStore<T> {
         self.database
     }
 
-    pub fn put(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
-        as_write_txn::<T>(txn)
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
+        txn.rw_txn_mut()
             .put(self.database, hash.as_bytes(), &[0; 0], WriteFlags::empty())
             .unwrap();
     }
 
-    pub fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
-        as_write_txn::<T>(txn)
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
+        txn.rw_txn_mut()
             .del(self.database, hash.as_bytes(), None)
             .unwrap();
     }
@@ -66,8 +66,8 @@ impl<T: EnvironmentStrategy + 'static> LmdbPrunedStore<T> {
         count::<T>(txn, self.database)
     }
 
-    pub fn clear(&self, txn: &mut dyn WriteTransaction) {
-        as_write_txn::<T>(txn).clear_db(self.database).unwrap();
+    pub fn clear(&self, txn: &mut LmdbWriteTransaction) {
+        txn.rw_txn_mut().clear_db(self.database).unwrap();
     }
 
     pub fn end(&self) -> PrunedIterator {
@@ -170,7 +170,7 @@ mod tests {
         let mut txn = env.tx_begin_write()?;
         let hash = BlockHash::random();
         store.put(&mut txn, &hash);
-        let random_hash = store.random(txn.txn());
+        let random_hash = store.random(&txn);
         assert_eq!(random_hash, Some(hash));
         Ok(())
     }

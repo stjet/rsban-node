@@ -4,7 +4,7 @@ use crate::Ledger;
 use rsnano_core::{
     Account, AccountInfo, Amount, BlockEnum, BlockSideband, BlockType, PendingInfo, PendingKey,
 };
-use rsnano_store_lmdb::WriteTransaction;
+use rsnano_store_lmdb::LmdbWriteTransaction;
 
 pub(crate) struct BlockInsertInstructions {
     pub account: Account,
@@ -19,7 +19,7 @@ pub(crate) struct BlockInsertInstructions {
 /// Inserts a new block into the ledger
 pub(crate) struct BlockInserter<'a> {
     ledger: &'a Ledger,
-    txn: &'a mut dyn WriteTransaction,
+    txn: &'a mut LmdbWriteTransaction,
     block: &'a mut BlockEnum,
     instructions: &'a BlockInsertInstructions,
 }
@@ -27,7 +27,7 @@ pub(crate) struct BlockInserter<'a> {
 impl<'a> BlockInserter<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
-        txn: &'a mut dyn WriteTransaction,
+        txn: &'a mut LmdbWriteTransaction,
         block: &'a mut BlockEnum,
         instructions: &'a BlockInsertInstructions,
     ) -> Self {
@@ -73,7 +73,7 @@ impl<'a> BlockInserter<'a> {
             .ledger
             .store
             .frontier
-            .get(self.txn.txn(), &self.instructions.old_account_info.head)
+            .get(self.txn, &self.instructions.old_account_info.head)
             .is_some()
         {
             self.ledger

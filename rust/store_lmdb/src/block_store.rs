@@ -1,6 +1,6 @@
 use crate::{
-    as_write_txn, count, get, iterator::DbIterator, parallel_traversal, EnvironmentStrategy,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, ReadTransaction, Transaction, WriteTransaction,
+    count, get, iterator::DbIterator, parallel_traversal, EnvironmentStrategy,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, ReadTransaction, Transaction, LmdbWriteTransaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
@@ -32,11 +32,11 @@ impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
         self.database
     }
 
-    pub fn put(&self, txn: &mut dyn WriteTransaction, block: &BlockEnum) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, block: &BlockEnum) {
         let hash = block.hash();
         debug_assert!(
             block.sideband().unwrap().successor.is_zero()
-                || self.exists(txn.txn(), &block.sideband().unwrap().successor)
+                || self.exists(txn, &block.sideband().unwrap().successor)
         );
 
         let mut stream = MemoryStream::new();
@@ -56,7 +56,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
         debug_assert!(
             block.previous().is_zero()
                 || self
-                    .successor(txn.txn(), &block.previous())
+                    .successor(txn, &block.previous())
                     .unwrap_or_default()
                     == hash
         );
@@ -83,8 +83,8 @@ impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
             .flatten()
     }
 
-    pub fn successor_clear(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
-        let value = self.block_raw_get(txn.txn(), hash).unwrap();
+    pub fn successor_clear(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
+        let value = self.block_raw_get(txn, hash).unwrap();
         let block_type = BlockType::from_u8(value[0]).unwrap();
 
         let mut data = value.to_vec();
@@ -139,8 +139,8 @@ impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
         }
     }
 
-    pub fn del(&self, txn: &mut dyn WriteTransaction, hash: &BlockHash) {
-        as_write_txn::<T>(txn)
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
+        txn.rw_txn_mut()
             .del(self.database, hash.as_bytes(), None)
             .unwrap();
     }
@@ -224,8 +224,8 @@ impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
         }
     }
 
-    pub fn raw_put(&self, txn: &mut dyn WriteTransaction, data: &[u8], hash: &BlockHash) {
-        as_write_txn::<T>(txn)
+    pub fn raw_put(&self, txn: &mut LmdbWriteTransaction, data: &[u8], hash: &BlockHash) {
+        txn.rw_txn_mut()
             .put(self.database, hash.as_bytes(), &data, WriteFlags::empty())
             .unwrap();
     }
@@ -245,12 +245,12 @@ impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
 
 /// Fill in our predecessors
 struct BlockPredecessorMdbSet<'a, T: EnvironmentStrategy + 'static> {
-    transaction: &'a mut dyn WriteTransaction,
+    transaction: &'a mut LmdbWriteTransaction,
     block_store: &'a LmdbBlockStore<T>,
 }
 
 impl<'a, 'b, T: EnvironmentStrategy + 'static> BlockPredecessorMdbSet<'a, T> {
-    fn new(transaction: &'a mut dyn WriteTransaction, block_store: &'a LmdbBlockStore<T>) -> Self {
+    fn new(transaction: &'a mut LmdbWriteTransaction, block_store: &'a LmdbBlockStore<T>) -> Self {
         Self {
             transaction,
             block_store,
@@ -259,10 +259,9 @@ impl<'a, 'b, T: EnvironmentStrategy + 'static> BlockPredecessorMdbSet<'a, T> {
 
     fn fill_value(&mut self, block: &dyn Block) {
         let hash = block.hash();
-        let t = self.transaction.txn();
         let value = self
             .block_store
-            .block_raw_get(t, &block.previous())
+            .block_raw_get(self.transaction, &block.previous())
             .unwrap();
         let mut data = value.to_vec();
         let block_type = BlockType::from_u8(data[0]).unwrap();

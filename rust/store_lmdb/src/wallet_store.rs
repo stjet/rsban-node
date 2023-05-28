@@ -105,9 +105,7 @@ impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
         };
         store.initialize(txn, wallet)?;
         let handle = store.db_handle();
-        if let Err(lmdb::Error::NotFound) =
-            txn.get(handle, Self::version_special().as_bytes())
-        {
+        if let Err(lmdb::Error::NotFound) = txn.get(handle, Self::version_special().as_bytes()) {
             store.version_put(txn, VERSION_CURRENT);
             let salt = RawKey::random();
             store.entry_put_raw(txn, &Self::salt_special(), &WalletValue::new(salt, 0));

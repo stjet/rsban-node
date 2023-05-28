@@ -6,11 +6,11 @@ use std::{
 };
 
 use crate::{
-    lmdb_env::{EnvironmentWrapper, RoTransactionStrategy}, EnvOptions, EnvironmentStrategy, LmdbAccountStore,
-    LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
-    LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
-    LmdbVersionStore, LmdbWriteTransaction, NullTransactionTracker, Table, TransactionTracker,
-    STORE_VERSION_MINIMUM,
+    lmdb_env::{EnvironmentWrapper, RoTransactionStrategy},
+    EnvOptions, EnvironmentStrategy, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore,
+    LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore,
+    LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction, LmdbVersionStore, LmdbWriteTransaction,
+    NullTransactionTracker, Table, TransactionTracker, STORE_VERSION_MINIMUM,
 };
 use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};

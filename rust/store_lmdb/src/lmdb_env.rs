@@ -68,7 +68,7 @@ impl<'env> RoTransactionStrategy<'env> for RoTransactionWrapper<'env> {
         }
     }
 
-    fn commit(self) -> lmdb::Result<()>{
+    fn commit(self) -> lmdb::Result<()> {
         lmdb::Transaction::commit(self.0)
     }
 

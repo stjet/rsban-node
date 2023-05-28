@@ -1,6 +1,6 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, EnvironmentStrategy, EnvironmentWrapper,
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, parallel_traversal, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{Account, BlockHash};
@@ -64,7 +64,9 @@ impl<T: EnvironmentStrategy + 'static> LmdbFrontierStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&LmdbReadTransaction<T>, FrontierIterator, FrontierIterator) + Send + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction<T>, FrontierIterator, FrontierIterator)
+              + Send
+              + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();

@@ -23,14 +23,17 @@ pub trait LedgerDataRequester {
 const BATCH_READ_SIZE: usize = 65536;
 
 pub(crate) struct LedgerAdapter<'a> {
-    txn: &'a mut dyn Transaction,
+    txn: &'a mut dyn Transaction<Database = lmdb::Database>,
     ledger: &'a Ledger,
     block_read_count: Cell<usize>,
     max_block_read_count: usize,
 }
 
 impl<'a> LedgerAdapter<'a> {
-    pub(crate) fn new(txn: &'a mut dyn Transaction, ledger: &'a Ledger) -> Self {
+    pub(crate) fn new(
+        txn: &'a mut dyn Transaction<Database = lmdb::Database>,
+        ledger: &'a Ledger,
+    ) -> Self {
         Self {
             txn,
             ledger,
@@ -39,7 +42,10 @@ impl<'a> LedgerAdapter<'a> {
         }
     }
 
-    pub(crate) fn new_unlimited(txn: &'a mut dyn Transaction, ledger: &'a Ledger) -> Self {
+    pub(crate) fn new_unlimited(
+        txn: &'a mut dyn Transaction<Database = lmdb::Database>,
+        ledger: &'a Ledger,
+    ) -> Self {
         Self {
             txn,
             ledger,

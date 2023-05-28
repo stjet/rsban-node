@@ -4,7 +4,7 @@ use rsnano_core::Account;
 use rsnano_store_lmdb::Transaction;
 
 pub type ElectionSchedulerActivateInternalCallback =
-    unsafe fn(*mut c_void, &Account, &dyn Transaction);
+    unsafe fn(*mut c_void, &Account, &dyn Transaction<Database = lmdb::Database>);
 pub static mut ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK: Option<
     ElectionSchedulerActivateInternalCallback,
 > = None;
@@ -20,7 +20,7 @@ impl ElectionScheduler {
         }
     }
 
-    pub fn activate(&self, account: &Account, txn: &dyn Transaction) {
+    pub fn activate(&self, account: &Account, txn: &dyn Transaction<Database = lmdb::Database>) {
         unsafe {
             let callback = ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK
                 .expect("ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK not defined");

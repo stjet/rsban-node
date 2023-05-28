@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use crate::{
     iterator::DbIterator, parallel_traversal_u512, Environment, EnvironmentWrapper, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, RwTransaction2, Transaction,
 };
-use lmdb::{Database, DatabaseFlags, WriteFlags};
+use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, BlockHash, PendingInfo, PendingKey,
@@ -14,7 +14,7 @@ pub type PendingIterator = Box<dyn DbIterator<PendingKey, PendingInfo>>;
 
 pub struct LmdbPendingStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
-    database: Database,
+    database: T::Database,
 }
 
 impl<T: Environment + 'static> LmdbPendingStore<T> {
@@ -26,11 +26,11 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
         Ok(Self { env, database })
     }
 
-    pub fn database(&self) -> Database {
+    pub fn database(&self) -> T::Database {
         self.database
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction, key: &PendingKey, pending: &PendingInfo) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, key: &PendingKey, pending: &PendingInfo) {
         let key_bytes = key.to_bytes();
         let pending_bytes = pending.to_bytes();
         txn.rw_txn_mut()
@@ -43,14 +43,18 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
             .unwrap();
     }
 
-    pub fn del(&self, txn: &mut LmdbWriteTransaction, key: &PendingKey) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, key: &PendingKey) {
         let key_bytes = key.to_bytes();
         txn.rw_txn_mut()
             .del(self.database, &key_bytes, None)
             .unwrap();
     }
 
-    pub fn get(&self, txn: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo> {
+    pub fn get(
+        &self,
+        txn: &dyn Transaction<Database = T::Database>,
+        key: &PendingKey,
+    ) -> Option<PendingInfo> {
         let key_bytes = key.to_bytes();
         match txn.get(self.database, &key_bytes) {
             Ok(bytes) => {
@@ -64,21 +68,25 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
         }
     }
 
-    pub fn begin(&self, txn: &dyn Transaction) -> PendingIterator {
+    pub fn begin(&self, txn: &dyn Transaction<Database = T::Database>) -> PendingIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
     }
 
-    pub fn begin_at_key(&self, txn: &dyn Transaction, key: &PendingKey) -> PendingIterator {
+    pub fn begin_at_key(
+        &self,
+        txn: &dyn Transaction<Database = T::Database>,
+        key: &PendingKey,
+    ) -> PendingIterator {
         let key_bytes = key.to_bytes();
         LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, Some(&key_bytes), true)
     }
 
-    pub fn exists(&self, txn: &dyn Transaction, key: &PendingKey) -> bool {
+    pub fn exists(&self, txn: &dyn Transaction<Database = T::Database>, key: &PendingKey) -> bool {
         let iterator = self.begin_at_key(txn, key);
         iterator.current().map(|(k, _)| k == key).unwrap_or(false)
     }
 
-    pub fn any(&self, txn: &dyn Transaction, account: &Account) -> bool {
+    pub fn any(&self, txn: &dyn Transaction<Database = T::Database>, account: &Account) -> bool {
         let key = PendingKey::new(*account, BlockHash::zero());
         let iterator = self.begin_at_key(txn, &key);
         iterator

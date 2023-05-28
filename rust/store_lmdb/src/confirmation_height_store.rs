@@ -1,8 +1,9 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, Environment, EnvironmentWrapper, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, lmdb_env::RwTransaction2, parallel_traversal, Environment,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
+    Transaction,
 };
-use lmdb::{Database, DatabaseFlags, WriteFlags};
+use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, ConfirmationHeightInfo,
@@ -13,7 +14,7 @@ pub type ConfirmationHeightIterator = Box<dyn DbIterator<Account, ConfirmationHe
 
 pub struct LmdbConfirmationHeightStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
-    database: Database,
+    database: T::Database,
 }
 
 impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
@@ -24,13 +25,13 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
         Ok(Self { env, database })
     }
 
-    pub fn database(&self) -> Database {
+    pub fn database(&self) -> T::Database {
         self.database
     }
 
     pub fn put(
         &self,
-        txn: &mut LmdbWriteTransaction,
+        txn: &mut LmdbWriteTransaction<T>,
         account: &Account,
         info: &ConfirmationHeightInfo,
     ) {
@@ -44,7 +45,11 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
             .unwrap();
     }
 
-    pub fn get(&self, txn: &dyn Transaction, account: &Account) -> Option<ConfirmationHeightInfo> {
+    pub fn get(
+        &self,
+        txn: &dyn Transaction<Database = T::Database>,
+        account: &Account,
+    ) -> Option<ConfirmationHeightInfo> {
         match txn.get(self.database, account.as_bytes()) {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => {
@@ -57,31 +62,34 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
         }
     }
 
-    pub fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {
+    pub fn exists(&self, txn: &dyn Transaction<Database = T::Database>, account: &Account) -> bool {
         txn.exists(self.database, account.as_bytes())
     }
 
-    pub fn del(&self, txn: &mut LmdbWriteTransaction, account: &Account) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, account: &Account) {
         txn.rw_txn_mut()
             .del(self.database, account.as_bytes(), None)
             .unwrap();
     }
 
-    pub fn count(&self, txn: &dyn Transaction) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction<Database = T::Database>) -> u64 {
         txn.count(self.database)
     }
 
-    pub fn clear(&self, txn: &mut LmdbWriteTransaction) {
+    pub fn clear(&self, txn: &mut LmdbWriteTransaction<T>) {
         txn.rw_txn_mut().clear_db(self.database).unwrap()
     }
 
-    pub fn begin(&self, txn: &dyn Transaction) -> ConfirmationHeightIterator {
+    pub fn begin(
+        &self,
+        txn: &dyn Transaction<Database = T::Database>,
+    ) -> ConfirmationHeightIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
     }
 
     pub fn begin_at_account(
         &self,
-        txn: &dyn Transaction,
+        txn: &dyn Transaction<Database = T::Database>,
         account: &Account,
     ) -> ConfirmationHeightIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(

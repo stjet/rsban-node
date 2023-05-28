@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
 use crate::{
-    iterator::DbIterator, Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl,
-    LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, lmdb_env::RwTransaction2, Environment, EnvironmentWrapper, LmdbEnv,
+    LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
 };
-use lmdb::{Database, DatabaseFlags, WriteFlags};
+use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::Amount;
 
 pub type OnlineWeightIterator = Box<dyn DbIterator<u64, Amount>>;
 
 pub struct LmdbOnlineWeightStore<T: Environment = EnvironmentWrapper> {
     _env: Arc<LmdbEnv<T>>,
-    database: Database,
+    database: T::Database,
 }
 
 impl<T: Environment + 'static> LmdbOnlineWeightStore<T> {
@@ -25,11 +25,11 @@ impl<T: Environment + 'static> LmdbOnlineWeightStore<T> {
         })
     }
 
-    pub fn database(&self) -> Database {
+    pub fn database(&self) -> T::Database {
         self.database
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction, time: u64, amount: &Amount) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, time: u64, amount: &Amount) {
         let time_bytes = time.to_be_bytes();
         let amount_bytes = amount.to_be_bytes();
         txn.rw_txn_mut()
@@ -42,26 +42,26 @@ impl<T: Environment + 'static> LmdbOnlineWeightStore<T> {
             .unwrap();
     }
 
-    pub fn del(&self, txn: &mut LmdbWriteTransaction, time: u64) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, time: u64) {
         let time_bytes = time.to_be_bytes();
         txn.rw_txn_mut()
             .del(self.database, &time_bytes, None)
             .unwrap();
     }
 
-    pub fn begin(&self, txn: &dyn Transaction) -> OnlineWeightIterator {
+    pub fn begin(&self, txn: &dyn Transaction<Database = T::Database>) -> OnlineWeightIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
     }
 
-    pub fn rbegin(&self, txn: &dyn Transaction) -> OnlineWeightIterator {
+    pub fn rbegin(&self, txn: &dyn Transaction<Database = T::Database>) -> OnlineWeightIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, false)
     }
 
-    pub fn count(&self, txn: &dyn Transaction) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction<Database = T::Database>) -> u64 {
         txn.count(self.database)
     }
 
-    pub fn clear(&self, txn: &mut LmdbWriteTransaction) {
+    pub fn clear(&self, txn: &mut LmdbWriteTransaction<T>) {
         txn.rw_txn_mut().clear_db(self.database).unwrap();
     }
 }

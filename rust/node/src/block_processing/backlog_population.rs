@@ -45,8 +45,15 @@ pub struct BacklogPopulation {
     thread: Option<JoinHandle<()>>,
 }
 
-pub type ActivateCallback =
-    Box<dyn Fn(&dyn Transaction, &Account, &AccountInfo, &ConfirmationHeightInfo) + Send + Sync>;
+pub type ActivateCallback = Box<
+    dyn Fn(
+            &dyn Transaction<Database = lmdb::Database>,
+            &Account,
+            &AccountInfo,
+            &ConfirmationHeightInfo,
+        ) + Send
+        + Sync,
+>;
 
 impl BacklogPopulation {
     pub fn new(config: BacklogPopulationConfig, ledger: Arc<Ledger>, stats: Arc<Stats>) -> Self {
@@ -208,7 +215,7 @@ impl BacklogPopulationThread {
         }
     }
 
-    pub fn activate(&self, txn: &dyn Transaction, account: &Account) {
+    pub fn activate(&self, txn: &dyn Transaction<Database = lmdb::Database>, account: &Account) {
         let account_info = match self.ledger.store.account.get(txn, account) {
             Some(info) => info,
             None => {

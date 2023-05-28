@@ -6,11 +6,14 @@ use rsnano_store_lmdb::Transaction;
 /// There can be at most two dependencies per block, namely "previous" and "link/source".
 pub(crate) struct DependentBlocksFinder<'a> {
     ledger: &'a Ledger,
-    txn: &'a dyn Transaction,
+    txn: &'a dyn Transaction<Database = lmdb::Database>,
 }
 
 impl<'a> DependentBlocksFinder<'a> {
-    pub(crate) fn new(ledger: &'a Ledger, txn: &'a dyn Transaction) -> Self {
+    pub(crate) fn new(
+        ledger: &'a Ledger,
+        txn: &'a dyn Transaction<Database = lmdb::Database>,
+    ) -> Self {
         Self { ledger, txn }
     }
 

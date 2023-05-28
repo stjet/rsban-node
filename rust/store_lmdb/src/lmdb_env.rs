@@ -3,7 +3,7 @@ use crate::{
     TransactionTracker,
 };
 use anyhow::bail;
-use lmdb::{DatabaseFlags, EnvironmentFlags, Stat};
+use lmdb::{DatabaseFlags, EnvironmentFlags, Stat, Transaction};
 use lmdb_sys::{MDB_env, MDB_SUCCESS};
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
 use std::marker::PhantomData;
@@ -24,6 +24,151 @@ use std::{
 // Thin Wrappers + Embedded Stubs
 // --------------------------------------------------------------------------------
 
+pub trait RwTransaction2<'env> {
+    type Database;
+    fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]>;
+    fn put(
+        &mut self,
+        database: Self::Database,
+        key: &[u8],
+        data: &[u8],
+        flags: lmdb::WriteFlags,
+    ) -> lmdb::Result<()>;
+
+    fn del(
+        &mut self,
+        database: Self::Database,
+        key: &[u8],
+        flags: Option<&[u8]>,
+    ) -> lmdb::Result<()>;
+
+    unsafe fn create_db(
+        &self,
+        name: Option<&str>,
+        flags: DatabaseFlags,
+    ) -> lmdb::Result<Self::Database>;
+    unsafe fn drop_db(&mut self, database: Self::Database) -> lmdb::Result<()>;
+    fn clear_db(&mut self, database: Self::Database) -> lmdb::Result<()>;
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<lmdb::RoCursor>;
+    fn count(&self, database: Self::Database) -> u64;
+    fn commit(self) -> lmdb::Result<()>;
+}
+
+pub struct RwTransactionWrapper<'env>(lmdb::RwTransaction<'env>);
+
+impl<'env> RwTransaction2<'env> for RwTransactionWrapper<'env> {
+    type Database = lmdb::Database;
+
+    fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
+        lmdb::Transaction::get(&self.0, database, &&*key)
+    }
+
+    fn put(
+        &mut self,
+        database: Self::Database,
+        key: &[u8],
+        data: &[u8],
+        flags: lmdb::WriteFlags,
+    ) -> lmdb::Result<()> {
+        lmdb::RwTransaction::put(&mut self.0, database, &&*key, &&*data, flags)
+    }
+
+    fn del(
+        &mut self,
+        database: Self::Database,
+        key: &[u8],
+        flags: Option<&[u8]>,
+    ) -> lmdb::Result<()> {
+        lmdb::RwTransaction::del(&mut self.0, database, &&*key, flags)
+    }
+
+    fn clear_db(&mut self, database: Self::Database) -> lmdb::Result<()> {
+        lmdb::RwTransaction::clear_db(&mut self.0, database)
+    }
+
+    fn commit(self) -> lmdb::Result<()> {
+        self.0.commit()
+    }
+
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<lmdb::RoCursor> {
+        lmdb::Transaction::open_ro_cursor(&self.0, database)
+    }
+
+    fn count(&self, database: Self::Database) -> u64 {
+        let stat = lmdb::Transaction::stat(&self.0, database);
+        stat.unwrap().entries() as u64
+    }
+
+    unsafe fn drop_db(&mut self, database: Self::Database) -> lmdb::Result<()> {
+        lmdb::RwTransaction::drop_db(&mut self.0, database)
+    }
+
+    unsafe fn create_db(
+        &self,
+        name: Option<&str>,
+        flags: DatabaseFlags,
+    ) -> lmdb::Result<Self::Database> {
+        lmdb::RwTransaction::create_db(&self.0, name, flags)
+    }
+}
+
+pub struct NullRwTransaction<'env>(PhantomData<&'env ()>);
+
+impl<'env> RwTransaction2<'env> for NullRwTransaction<'env> {
+    type Database = DatabaseStub;
+
+    fn get(&self, _database: Self::Database, _key: &[u8]) -> lmdb::Result<&[u8]> {
+        Err(lmdb::Error::NotFound)
+    }
+
+    fn put(
+        &mut self,
+        _database: Self::Database,
+        _key: &[u8],
+        _data: &[u8],
+        _flags: lmdb::WriteFlags,
+    ) -> lmdb::Result<()> {
+        Ok(())
+    }
+
+    fn del(
+        &mut self,
+        _database: Self::Database,
+        _key: &[u8],
+        _flags: Option<&[u8]>,
+    ) -> lmdb::Result<()> {
+        Ok(())
+    }
+
+    fn clear_db(&mut self, _database: Self::Database) -> lmdb::Result<()> {
+        Ok(())
+    }
+
+    fn commit(self) -> lmdb::Result<()> {
+        Ok(())
+    }
+
+    fn open_ro_cursor(&self, _database: Self::Database) -> lmdb::Result<lmdb::RoCursor> {
+        Err(lmdb::Error::NotFound)
+    }
+
+    fn count(&self, _database: Self::Database) -> u64 {
+        0
+    }
+
+    unsafe fn drop_db(&mut self, _database: Self::Database) -> lmdb::Result<()> {
+        Ok(())
+    }
+
+    unsafe fn create_db(
+        &self,
+        _name: Option<&str>,
+        _flags: DatabaseFlags,
+    ) -> lmdb::Result<Self::Database> {
+        Ok(DatabaseStub(42))
+    }
+}
+
 pub trait InactiveTransaction<'env> {
     type RoTxnType: RoTransaction<'env>;
     fn renew(self) -> lmdb::Result<Self::RoTxnType>;
@@ -34,14 +179,16 @@ pub trait RoTransaction<'env> {
     where
         Self: Sized;
 
+    type Database;
+
     fn reset(self) -> Self::InactiveTxnType
     where
         Self: Sized;
 
     fn commit(self) -> lmdb::Result<()>;
-    fn get(&self, database: lmdb::Database, key: &[u8]) -> lmdb::Result<&[u8]>;
-    fn open_ro_cursor(&self, database: lmdb::Database) -> lmdb::Result<lmdb::RoCursor>;
-    fn count(&self, database: lmdb::Database) -> u64;
+    fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]>;
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<lmdb::RoCursor>;
+    fn count(&self, database: Self::Database) -> u64;
 }
 
 pub struct InactiveTransactionWrapper<'env> {
@@ -60,6 +207,7 @@ pub struct RoTransactionWrapper<'env>(lmdb::RoTransaction<'env>);
 
 impl<'env> RoTransaction<'env> for RoTransactionWrapper<'env> {
     type InactiveTxnType = InactiveTransactionWrapper<'env>;
+    type Database = lmdb::Database;
 
     fn reset(self) -> Self::InactiveTxnType {
         InactiveTransactionWrapper {
@@ -72,15 +220,15 @@ impl<'env> RoTransaction<'env> for RoTransactionWrapper<'env> {
         lmdb::Transaction::commit(self.0)
     }
 
-    fn get(&self, database: lmdb::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
+    fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
         lmdb::Transaction::get(&self.0, database, &&*key)
     }
 
-    fn open_ro_cursor(&self, database: lmdb::Database) -> lmdb::Result<lmdb::RoCursor> {
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<lmdb::RoCursor> {
         lmdb::Transaction::open_ro_cursor(&self.0, database)
     }
 
-    fn count(&self, database: lmdb::Database) -> u64 {
+    fn count(&self, database: Self::Database) -> u64 {
         let stat = lmdb::Transaction::stat(&self.0, database);
         stat.unwrap().entries() as u64
     }
@@ -90,6 +238,7 @@ pub struct NullInactiveTransaction<'env>(PhantomData<&'env ()>);
 
 impl<'env> RoTransaction<'env> for NullRoTransaction<'env> {
     type InactiveTxnType = NullInactiveTransaction<'env>;
+    type Database = DatabaseStub;
 
     fn reset(self) -> Self::InactiveTxnType
     where
@@ -102,15 +251,15 @@ impl<'env> RoTransaction<'env> for NullRoTransaction<'env> {
         Ok(())
     }
 
-    fn get(&self, _database: lmdb::Database, _key: &[u8]) -> lmdb::Result<&[u8]> {
+    fn get(&self, _database: Self::Database, _key: &[u8]) -> lmdb::Result<&[u8]> {
         Err(lmdb::Error::NotFound)
     }
 
-    fn open_ro_cursor(&self, _database: lmdb::Database) -> lmdb::Result<lmdb::RoCursor> {
+    fn open_ro_cursor(&self, _database: Self::Database) -> lmdb::Result<lmdb::RoCursor> {
         Err(lmdb::Error::NotFound)
     }
 
-    fn count(&self, _database: lmdb::Database) -> u64 {
+    fn count(&self, _database: Self::Database) -> u64 {
         0
     }
 }
@@ -132,7 +281,11 @@ pub struct EnvironmentOptions<'a> {
 }
 
 pub trait Environment: Send + Sync {
-    type RoTxnImpl<'env>: RoTransaction<'env, InactiveTxnType = Self::InactiveTxnImpl<'env>>
+    type RoTxnImpl<'env>: RoTransaction<
+        'env,
+        InactiveTxnType = Self::InactiveTxnImpl<'env>,
+        Database = Self::Database,
+    >
     where
         Self: 'env;
 
@@ -140,21 +293,25 @@ pub trait Environment: Send + Sync {
     where
         Self: 'env;
 
-    type Database;
+    type RwTxnType<'env>: RwTransaction2<'env, Database = Self::Database>
+    where
+        Self: 'env;
+
+    type Database: Send + Sync + Copy;
 
     fn build(options: EnvironmentOptions) -> lmdb::Result<Self>
     where
         Self: Sized;
     fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<Self::RoTxnImpl<'env>>;
-    fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<lmdb::RwTransaction<'env>>;
+    fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<Self::RwTxnType<'env>>;
     fn create_db<'env>(
         &'env self,
         name: Option<&str>,
         flags: DatabaseFlags,
-    ) -> lmdb::Result<lmdb::Database>;
+    ) -> lmdb::Result<Self::Database>;
 
     fn env(&self) -> *mut MDB_env;
-    fn open_db<'env>(&'env self, name: Option<&str>) -> lmdb::Result<lmdb::Database>;
+    fn open_db<'env>(&'env self, name: Option<&str>) -> lmdb::Result<Self::Database>;
     fn sync(&self, force: bool) -> lmdb::Result<()>;
     fn stat(&self) -> lmdb::Result<Stat>;
 }
@@ -164,6 +321,7 @@ pub struct EnvironmentWrapper(lmdb::Environment);
 impl Environment for EnvironmentWrapper {
     type RoTxnImpl<'env> = RoTransactionWrapper<'env>;
     type InactiveTxnImpl<'env> = InactiveTransactionWrapper<'env>;
+    type RwTxnType<'env> = RwTransactionWrapper<'env>;
     type Database = lmdb::Database;
 
     fn build(options: EnvironmentOptions) -> lmdb::Result<Self> {
@@ -179,8 +337,8 @@ impl Environment for EnvironmentWrapper {
         self.0.begin_ro_txn().map(|txn| RoTransactionWrapper(txn))
     }
 
-    fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<lmdb::RwTransaction<'env>> {
-        self.0.begin_rw_txn()
+    fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<Self::RwTxnType<'env>> {
+        self.0.begin_rw_txn().map(|txn| RwTransactionWrapper(txn))
     }
 
     fn create_db<'env>(
@@ -209,11 +367,13 @@ impl Environment for EnvironmentWrapper {
 }
 
 pub struct EnvironmentStub;
+#[derive(Clone, Copy)]
 pub struct DatabaseStub(u32);
 
 impl Environment for EnvironmentStub {
     type RoTxnImpl<'env> = NullRoTransaction<'env>;
     type InactiveTxnImpl<'env> = NullInactiveTransaction<'env>;
+    type RwTxnType<'env> = NullRwTransaction<'env>;
     type Database = DatabaseStub;
 
     fn build(_options: EnvironmentOptions) -> lmdb::Result<Self>
@@ -227,23 +387,23 @@ impl Environment for EnvironmentStub {
         Ok(NullRoTransaction(Default::default()))
     }
 
-    fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<lmdb::RwTransaction<'env>> {
-        todo!()
+    fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<Self::RwTxnType<'env>> {
+        Ok(NullRwTransaction(Default::default()))
     }
 
     fn create_db<'env>(
         &'env self,
         _name: Option<&str>,
         _flags: DatabaseFlags,
-    ) -> lmdb::Result<lmdb::Database> {
-        todo!()
+    ) -> lmdb::Result<Self::Database> {
+        Ok(DatabaseStub(42))
     }
 
     fn env(&self) -> *mut MDB_env {
         todo!()
     }
 
-    fn open_db<'env>(&'env self, _name: Option<&str>) -> lmdb::Result<lmdb::Database> {
+    fn open_db<'env>(&'env self, _name: Option<&str>) -> lmdb::Result<Self::Database> {
         todo!()
     }
 

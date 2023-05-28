@@ -2,7 +2,7 @@ use std::{any::Any, ffi::c_uint};
 
 use crate::{Environment, Transaction};
 
-use lmdb::{Cursor, Database, RoCursor};
+use lmdb::{Cursor, RoCursor};
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 use rsnano_core::utils::{Deserialize, Serialize, StreamAdapter};
 
@@ -119,8 +119,8 @@ pub struct LmdbIteratorImpl {
 
 impl LmdbIteratorImpl {
     pub fn new_iterator<T, K, V>(
-        txn: &dyn Transaction,
-        dbi: Database,
+        txn: &dyn Transaction<Database = T::Database>,
+        dbi: T::Database,
         key_val: Option<&[u8]>,
         direction_asc: bool,
     ) -> Box<dyn DbIterator<K, V>>
@@ -142,8 +142,8 @@ impl LmdbIteratorImpl {
     }
 
     pub fn new<T: Environment + 'static>(
-        txn: &dyn Transaction,
-        dbi: Database,
+        txn: &dyn Transaction<Database = T::Database>,
+        dbi: T::Database,
         key_val: Option<&[u8]>,
         direction_asc: bool,
     ) -> Self {

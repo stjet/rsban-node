@@ -50,7 +50,7 @@ impl TransactionHandle {
         }
     }
 
-    pub fn as_txn(&self) -> &dyn Transaction {
+    pub fn as_txn(&self) -> &dyn Transaction<Database = lmdb::Database> {
         match &self.0 {
             TransactionType::Read(t) => t,
             TransactionType::Write(t) => t,
@@ -134,7 +134,9 @@ pub unsafe extern "C" fn rsn_lmdb_write_txn_refresh(handle: *mut TransactionHand
     (*handle).as_write_txn().refresh();
 }
 
-pub(crate) unsafe fn into_read_txn_handle(txn: &dyn Transaction) -> *mut TransactionHandle {
+pub(crate) unsafe fn into_read_txn_handle(
+    txn: &dyn Transaction<Database = lmdb::Database>,
+) -> *mut TransactionHandle {
     TransactionHandle::new(TransactionType::ReadRef(std::mem::transmute::<
         &LmdbReadTransaction,
         &'static LmdbReadTransaction,

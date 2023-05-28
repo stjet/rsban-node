@@ -1,16 +1,16 @@
 use crate::{
-    Environment, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction, Transaction,
-    STORE_VERSION_CURRENT,
+    lmdb_env::RwTransaction2, Environment, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction,
+    Transaction, STORE_VERSION_CURRENT,
 };
 use core::panic;
-use lmdb::{Database, DatabaseFlags, WriteFlags};
+use lmdb::{DatabaseFlags, WriteFlags};
 use std::{path::Path, sync::Arc};
 
 pub struct LmdbVersionStore<T: Environment = EnvironmentWrapper> {
     _env: Arc<LmdbEnv<T>>,
 
     /// U256 (arbitrary key) -> blob
-    db_handle: Database,
+    db_handle: T::Database,
 }
 
 pub struct UpgradeInfo {
@@ -54,11 +54,11 @@ impl<T: Environment + 'static> LmdbVersionStore<T> {
         Ok(info)
     }
 
-    pub fn db_handle(&self) -> Database {
+    pub fn db_handle(&self) -> T::Database {
         self.db_handle
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction, version: i32) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, version: i32) {
         let db = self.db_handle();
 
         let key_bytes = version_key();
@@ -69,13 +69,16 @@ impl<T: Environment + 'static> LmdbVersionStore<T> {
             .unwrap();
     }
 
-    pub fn get(&self, txn: &dyn Transaction) -> Option<i32> {
+    pub fn get(&self, txn: &dyn Transaction<Database = T::Database>) -> Option<i32> {
         let db = self.db_handle();
         load_version::<T>(txn, db)
     }
 }
 
-fn load_version<T: Environment + 'static>(txn: &dyn Transaction, db: Database) -> Option<i32> {
+fn load_version<T: Environment + 'static>(
+    txn: &dyn Transaction<Database = T::Database>,
+    db: T::Database,
+) -> Option<i32> {
     let key_bytes = version_key();
     match txn.get(db, &key_bytes) {
         Ok(value) => Some(i32::from_be_bytes(value[28..].try_into().unwrap())),

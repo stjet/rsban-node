@@ -1,8 +1,10 @@
 use crate::{
-    iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal, Environment, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator,
+    lmdb_env::{EnvironmentWrapper, RwTransaction2},
+    parallel_traversal, Environment, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction,
+    LmdbWriteTransaction, Transaction,
 };
-use lmdb::{Database, DatabaseFlags, WriteFlags};
+use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{Deserialize, StreamAdapter},
     Account, AccountInfo,
@@ -15,7 +17,7 @@ pub struct LmdbAccountStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
 
     /// U256 (arbitrary key) -> blob
-    database: Database,
+    database: T::Database,
 }
 
 impl<T: Environment + 'static> LmdbAccountStore<T> {
@@ -26,13 +28,13 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         Ok(Self { env, database })
     }
 
-    pub fn database(&self) -> Database {
+    pub fn database(&self) -> T::Database {
         self.database
     }
 
     pub fn put(
         &self,
-        transaction: &mut LmdbWriteTransaction,
+        transaction: &mut LmdbWriteTransaction<T>,
         account: &Account,
         info: &AccountInfo,
     ) {
@@ -47,7 +49,11 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
             .unwrap();
     }
 
-    pub fn get(&self, transaction: &dyn Transaction, account: &Account) -> Option<AccountInfo> {
+    pub fn get(
+        &self,
+        transaction: &dyn Transaction<Database = T::Database>,
+        account: &Account,
+    ) -> Option<AccountInfo> {
         let result = transaction.get(self.database, account.as_bytes());
         match result {
             Err(lmdb::Error::NotFound) => None,
@@ -59,7 +65,7 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         }
     }
 
-    pub fn del(&self, transaction: &mut LmdbWriteTransaction, account: &Account) {
+    pub fn del(&self, transaction: &mut LmdbWriteTransaction<T>, account: &Account) {
         transaction
             .rw_txn_mut()
             .del(self.database, account.as_bytes(), None)
@@ -68,7 +74,7 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
 
     pub fn begin_account(
         &self,
-        transaction: &dyn Transaction,
+        transaction: &dyn Transaction<Database = T::Database>,
         account: &Account,
     ) -> AccountIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(
@@ -79,7 +85,7 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         )
     }
 
-    pub fn begin(&self, transaction: &dyn Transaction) -> AccountIterator {
+    pub fn begin(&self, transaction: &dyn Transaction<Database = T::Database>) -> AccountIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(transaction, self.database, None, true)
     }
 
@@ -103,11 +109,11 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         LmdbIteratorImpl::null_iterator()
     }
 
-    pub fn count(&self, txn: &dyn Transaction) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction<Database = T::Database>) -> u64 {
         txn.count(self.database)
     }
 
-    pub fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {
+    pub fn exists(&self, txn: &dyn Transaction<Database = T::Database>, account: &Account) -> bool {
         !self.begin_account(txn, account).is_end()
     }
 }

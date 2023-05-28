@@ -15,7 +15,7 @@ pub use lmdb_env::{
     EnvOptions, Environment, EnvironmentOptions, EnvironmentStub, EnvironmentWrapper, LmdbEnv,
     TestDbFile, TestLmdbEnv,
 };
-use lmdb_env::{InactiveTransaction, RoTransaction};
+use lmdb_env::{InactiveTransaction, RoTransaction, RwTransaction2};
 
 mod account_store;
 pub use account_store::LmdbAccountStore;
@@ -62,28 +62,30 @@ pub use store::{create_backup_file, LmdbStore};
 use std::{
     any::Any,
     cmp::{max, min},
+    marker::PhantomData,
     mem,
     sync::Arc,
     time::Duration,
 };
 
-use lmdb::{Database, RoCursor, RwTransaction};
+use lmdb::RoCursor;
 use primitive_types::{U256, U512};
 use rsnano_core::utils::{get_cpu_count, PropertyTreeWriter};
 
 pub trait Transaction {
+    type Database;
     fn as_any(&self) -> &dyn Any;
     fn refresh(&mut self);
-    fn get(&self, database: Database, key: &[u8]) -> lmdb::Result<&[u8]>;
-    fn exists(&self, db: Database, key: &[u8]) -> bool {
+    fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]>;
+    fn exists(&self, db: Self::Database, key: &[u8]) -> bool {
         match self.get(db, &key) {
             Ok(_) => true,
             Err(lmdb::Error::NotFound) => false,
             Err(e) => panic!("exists failed: {:?}", e),
         }
     }
-    fn open_ro_cursor(&self, database: Database) -> lmdb::Result<RoCursor>;
-    fn count(&self, database: Database) -> u64;
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<RoCursor>;
+    fn count(&self, database: Self::Database) -> u64;
 }
 
 pub trait TransactionTracker: Send + Sync {
@@ -194,6 +196,8 @@ impl<T: Environment + 'static> Drop for LmdbReadTransaction<T> {
 }
 
 impl<T: Environment + 'static> Transaction for LmdbReadTransaction<T> {
+    type Database = T::Database;
+
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -203,22 +207,22 @@ impl<T: Environment + 'static> Transaction for LmdbReadTransaction<T> {
         self.renew();
     }
 
-    fn get(&self, database: Database, key: &[u8]) -> lmdb::Result<&[u8]> {
+    fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
         self.txn().get(database, key)
     }
 
-    fn open_ro_cursor(&self, database: Database) -> lmdb::Result<RoCursor> {
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<RoCursor> {
         self.txn().open_ro_cursor(database)
     }
 
-    fn count(&self, database: Database) -> u64 {
+    fn count(&self, database: Self::Database) -> u64 {
         self.txn().count(database)
     }
 }
 
-enum RwTxnState<'a> {
-    Inactive(),
-    Active(RwTransaction<'a>),
+enum RwTxnState<'a, T: RwTransaction2<'a>> {
+    Inactive(PhantomData<&'a ()>),
+    Active(T),
     Transitioning,
 }
 
@@ -226,7 +230,7 @@ pub struct LmdbWriteTransaction<T: Environment + 'static = EnvironmentWrapper> {
     env: &'static T,
     txn_id: u64,
     callbacks: Arc<dyn TransactionTracker>,
-    txn: RwTxnState<'static>,
+    txn: RwTxnState<'static, T::RwTxnType<'static>>,
 }
 
 impl<T: Environment> LmdbWriteTransaction<T> {
@@ -240,20 +244,20 @@ impl<T: Environment> LmdbWriteTransaction<T> {
             env,
             txn_id,
             callbacks,
-            txn: RwTxnState::Inactive(),
+            txn: RwTxnState::Inactive(Default::default()),
         };
         tx.renew();
         Ok(tx)
     }
 
-    pub fn rw_txn(&self) -> &RwTransaction<'static> {
+    pub fn rw_txn(&self) -> &T::RwTxnType<'static> {
         match &self.txn {
             RwTxnState::Active(t) => t,
             _ => panic!("txn not active"),
         }
     }
 
-    pub fn rw_txn_mut(&mut self) -> &mut RwTransaction<'static> {
+    pub fn rw_txn_mut(&mut self) -> &mut T::RwTxnType<'static> {
         match &mut self.txn {
             RwTxnState::Active(t) => t,
             _ => panic!("txn not active"),
@@ -264,7 +268,7 @@ impl<T: Environment> LmdbWriteTransaction<T> {
         let t = mem::replace(&mut self.txn, RwTxnState::Transitioning);
         self.txn = match t {
             RwTxnState::Active(_) => panic!("Cannot renew active RwTransaction"),
-            RwTxnState::Inactive() => RwTxnState::Active(self.env.begin_rw_txn().unwrap()),
+            RwTxnState::Inactive(_) => RwTxnState::Active(self.env.begin_rw_txn().unwrap()),
             RwTxnState::Transitioning => unreachable!(),
         };
         self.callbacks.txn_start(self.txn_id, true);
@@ -273,14 +277,14 @@ impl<T: Environment> LmdbWriteTransaction<T> {
     pub fn commit(&mut self) {
         let t = mem::replace(&mut self.txn, RwTxnState::Transitioning);
         match t {
-            RwTxnState::Inactive() => {}
+            RwTxnState::Inactive(_) => {}
             RwTxnState::Active(t) => {
-                lmdb::Transaction::commit(t).unwrap();
+                t.commit().unwrap();
                 self.callbacks.txn_end(self.txn_id, true);
             }
             RwTxnState::Transitioning => unreachable!(),
         };
-        self.txn = RwTxnState::Inactive();
+        self.txn = RwTxnState::Inactive(Default::default());
     }
 }
 
@@ -291,6 +295,7 @@ impl<'a, T: Environment> Drop for LmdbWriteTransaction<T> {
 }
 
 impl<T: Environment> Transaction for LmdbWriteTransaction<T> {
+    type Database = T::Database;
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -300,17 +305,16 @@ impl<T: Environment> Transaction for LmdbWriteTransaction<T> {
         self.renew();
     }
 
-    fn get(&self, database: Database, key: &[u8]) -> lmdb::Result<&[u8]> {
-        lmdb::Transaction::get(self.rw_txn(), database, &&*key)
+    fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
+        self.rw_txn().get(database, key)
     }
 
-    fn open_ro_cursor(&self, database: Database) -> lmdb::Result<RoCursor> {
-        lmdb::Transaction::open_ro_cursor(self.rw_txn(), database)
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<RoCursor> {
+        self.rw_txn().open_ro_cursor(database)
     }
 
-    fn count(&self, database: Database) -> u64 {
-        let stat = lmdb::Transaction::stat(self.rw_txn(), database);
-        stat.unwrap().entries() as u64
+    fn count(&self, database: Self::Database) -> u64 {
+        self.rw_txn().count(database)
     }
 }
 

@@ -7,12 +7,16 @@ use super::BlockValidator;
 
 pub(crate) struct BlockValidatorFactory<'a> {
     ledger: &'a Ledger,
-    txn: &'a dyn Transaction,
+    txn: &'a dyn Transaction<Database = lmdb::Database>,
     block: &'a BlockEnum,
 }
 
 impl<'a> BlockValidatorFactory<'a> {
-    pub(crate) fn new(ledger: &'a Ledger, txn: &'a dyn Transaction, block: &'a BlockEnum) -> Self {
+    pub(crate) fn new(
+        ledger: &'a Ledger,
+        txn: &'a dyn Transaction<Database = lmdb::Database>,
+        block: &'a BlockEnum,
+    ) -> Self {
         Self { ledger, txn, block }
     }
 

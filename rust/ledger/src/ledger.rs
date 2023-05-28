@@ -231,13 +231,21 @@ impl Ledger {
         self.block_or_pruned_exists_txn(&txn, block)
     }
 
-    pub fn block_or_pruned_exists_txn(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
+    pub fn block_or_pruned_exists_txn(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        hash: &BlockHash,
+    ) -> bool {
         self.store.pruned.exists(txn, hash) || self.store.block.exists(txn, hash)
     }
 
     /// Balance for account containing the given block at the time of the block.
     /// Returns 0 if the block was not found
-    pub fn balance(&self, txn: &dyn Transaction, hash: &BlockHash) -> Amount {
+    pub fn balance(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        hash: &BlockHash,
+    ) -> Amount {
         if hash.is_zero() {
             Amount::zero()
         } else {
@@ -247,7 +255,11 @@ impl Ledger {
 
     /// Balance for account containing the given block at the time of the block.
     /// Returns Err if the pruning is enabled and the block was not found.
-    pub fn balance_safe(&self, txn: &dyn Transaction, hash: &BlockHash) -> anyhow::Result<Amount> {
+    pub fn balance_safe(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        hash: &BlockHash,
+    ) -> anyhow::Result<Amount> {
         if self.pruning_enabled() && !hash.is_zero() && !self.store.block.exists(txn, hash) {
             bail!("block not found");
         }
@@ -258,7 +270,7 @@ impl Ledger {
     /// Balance for account by account number
     pub fn account_balance(
         &self,
-        txn: &dyn Transaction,
+        txn: &dyn Transaction<Database = lmdb::Database>,
         account: &Account,
         only_confirmed: bool,
     ) -> Amount {
@@ -277,7 +289,7 @@ impl Ledger {
 
     pub fn account_receivable(
         &self,
-        txn: &dyn Transaction,
+        txn: &dyn Transaction<Database = lmdb::Database>,
         account: &Account,
         only_confirmed: bool,
     ) -> Amount {
@@ -307,7 +319,11 @@ impl Ledger {
         result
     }
 
-    pub fn block_confirmed(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
+    pub fn block_confirmed(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        hash: &BlockHash,
+    ) -> bool {
         if self.store.pruned.exists(txn, hash) {
             return true;
         }
@@ -337,7 +353,11 @@ impl Ledger {
         }
     }
 
-    pub fn is_send(&self, txn: &dyn Transaction, block: &dyn Block) -> bool {
+    pub fn is_send(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        block: &dyn Block,
+    ) -> bool {
         if block.block_type() != BlockType::State {
             return block.block_type() == BlockType::LegacySend;
         }
@@ -364,7 +384,11 @@ impl Ledger {
         }
     }
 
-    pub fn block_destination(&self, txn: &dyn Transaction, block: &BlockEnum) -> Account {
+    pub fn block_destination(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        block: &BlockEnum,
+    ) -> Account {
         match block {
             BlockEnum::LegacySend(send) => send.hashables.destination,
             BlockEnum::State(state) => {
@@ -378,7 +402,11 @@ impl Ledger {
         }
     }
 
-    pub fn block_source(&self, txn: &dyn Transaction, block: &BlockEnum) -> BlockHash {
+    pub fn block_source(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        block: &BlockEnum,
+    ) -> BlockHash {
         /*
          * block_source() requires that the previous block of the block
          * passed in exist in the database.  This is because it will try
@@ -402,7 +430,10 @@ impl Ledger {
         }
     }
 
-    pub fn hash_root_random(&self, txn: &dyn Transaction) -> Option<(BlockHash, BlockHash)> {
+    pub fn hash_root_random(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+    ) -> Option<(BlockHash, BlockHash)> {
         if !self.pruning_enabled() {
             self.store
                 .block
@@ -444,12 +475,20 @@ impl Ledger {
     }
 
     /// Return account containing block hash
-    pub fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
+    pub fn account(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        hash: &BlockHash,
+    ) -> Option<Account> {
         self.store.block.account(txn, hash)
     }
 
     /// Return absolute amount decrease or increase for block
-    pub fn amount(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
+    pub fn amount(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        hash: &BlockHash,
+    ) -> Option<Amount> {
         self.store.block.get(txn, hash).map(|block| {
             let block_balance = self.balance(txn, hash);
             let previous_balance = self.balance(txn, &block.previous());
@@ -462,7 +501,11 @@ impl Ledger {
     }
 
     /// Return absolute amount decrease or increase for block
-    pub fn amount_safe(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
+    pub fn amount_safe(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        hash: &BlockHash,
+    ) -> Option<Amount> {
         self.store
             .block
             .get(txn, hash)
@@ -484,12 +527,20 @@ impl Ledger {
     }
 
     /// Return latest block for account
-    pub fn latest(&self, txn: &dyn Transaction, account: &Account) -> Option<BlockHash> {
+    pub fn latest(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        account: &Account,
+    ) -> Option<BlockHash> {
         self.account_info(txn, account).map(|info| info.head)
     }
 
     /// Return latest root for account, account number if there are no blocks for this account
-    pub fn latest_root(&self, txn: &dyn Transaction, account: &Account) -> Root {
+    pub fn latest_root(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        account: &Account,
+    ) -> Root {
         match self.account_info(txn, account) {
             Some(info) => info.head.into(),
             None => account.into(),
@@ -505,7 +556,7 @@ impl Ledger {
     /// Return the receive block on success and None on failure
     pub fn find_receive_block_by_send_hash(
         &self,
-        txn: &dyn Transaction,
+        txn: &dyn Transaction<Database = lmdb::Database>,
         destination: &Account,
         send_block_hash: &BlockHash,
     ) -> Option<BlockEnum> {
@@ -565,7 +616,11 @@ impl Ledger {
         }
     }
 
-    pub fn successor(&self, txn: &dyn Transaction, root: &QualifiedRoot) -> Option<BlockEnum> {
+    pub fn successor(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        root: &QualifiedRoot,
+    ) -> Option<BlockEnum> {
         let (mut successor, get_from_previous) = if root.previous.is_zero() {
             match self.account_info(txn, &root.root.into()) {
                 Some(info) => (Some(info.open_block), false),
@@ -693,27 +748,43 @@ impl Ledger {
 
     pub fn dependent_blocks(
         &self,
-        txn: &dyn Transaction,
+        txn: &dyn Transaction<Database = lmdb::Database>,
         block: &BlockEnum,
     ) -> (BlockHash, BlockHash) {
         DependentBlocksFinder::new(self, txn).find_dependent_blocks(block)
     }
 
-    pub fn could_fit(&self, txn: &dyn Transaction, block: &BlockEnum) -> bool {
+    pub fn could_fit(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        block: &BlockEnum,
+    ) -> bool {
         let (first, second) = self.dependent_blocks(txn, block);
         self.is_dependency_satisfied(txn, &first) && self.is_dependency_satisfied(txn, &second)
     }
 
-    fn is_dependency_satisfied(&self, txn: &dyn Transaction, dependency: &BlockHash) -> bool {
+    fn is_dependency_satisfied(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        dependency: &BlockHash,
+    ) -> bool {
         dependency.is_zero() || self.store.block.exists(txn, dependency)
     }
 
-    pub fn dependents_confirmed(&self, txn: &dyn Transaction, block: &BlockEnum) -> bool {
+    pub fn dependents_confirmed(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        block: &BlockEnum,
+    ) -> bool {
         let (first, second) = self.dependent_blocks(txn, block);
         self.is_dependency_confirmed(txn, &first) && self.is_dependency_confirmed(txn, &second)
     }
 
-    fn is_dependency_confirmed(&self, txn: &dyn Transaction, dependency: &BlockHash) -> bool {
+    fn is_dependency_confirmed(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        dependency: &BlockHash,
+    ) -> bool {
         if !dependency.is_zero() {
             self.block_confirmed(txn, dependency)
         } else {
@@ -731,7 +802,11 @@ impl Ledger {
     }
 
     /// Returns the latest block with representative information
-    pub fn representative_block_hash(&self, txn: &dyn Transaction, hash: &BlockHash) -> BlockHash {
+    pub fn representative_block_hash(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        hash: &BlockHash,
+    ) -> BlockHash {
         let hash = RepresentativeBlockFinder::new(txn, self.store.as_ref()).find_rep_block(*hash);
         debug_assert!(hash.is_zero() || self.store.block.exists(txn, &hash));
         hash
@@ -748,13 +823,17 @@ impl Ledger {
         Ok(())
     }
 
-    pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
+    pub fn get_block(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        hash: &BlockHash,
+    ) -> Option<BlockEnum> {
         self.store.block.get(txn, hash)
     }
 
     pub fn account_info(
         &self,
-        transaction: &dyn Transaction,
+        transaction: &dyn Transaction<Database = lmdb::Database>,
         account: &Account,
     ) -> Option<AccountInfo> {
         self.store.account.get(transaction, account)
@@ -762,17 +841,25 @@ impl Ledger {
 
     pub fn get_confirmation_height(
         &self,
-        txn: &dyn Transaction,
+        txn: &dyn Transaction<Database = lmdb::Database>,
         account: &Account,
     ) -> Option<ConfirmationHeightInfo> {
         self.store.confirmation_height.get(txn, account)
     }
 
-    pub fn get_frontier(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
+    pub fn get_frontier(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        hash: &BlockHash,
+    ) -> Option<Account> {
         self.store.frontier.get(txn, hash)
     }
 
-    pub fn pending_info(&self, txn: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo> {
+    pub fn pending_info(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database>,
+        key: &PendingKey,
+    ) -> Option<PendingInfo> {
         self.store.pending.get(txn, key)
     }
 }

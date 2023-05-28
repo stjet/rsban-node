@@ -2,15 +2,16 @@ use std::marker::PhantomData;
 
 use crate::{
     iterator::{BinaryDbIterator, DbIterator},
+    lmdb_env::RwTransaction2,
     Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction,
 };
-use lmdb::{Cursor, Database, DatabaseFlags, WriteFlags};
+use lmdb::{Cursor, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, NoValue, RawKey, WalletId};
 pub type WalletsIterator = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl>;
 
 pub struct LmdbWallets<T: Environment = EnvironmentWrapper> {
-    pub handle: Option<Database>,
-    pub send_action_ids_handle: Option<Database>,
+    pub handle: Option<T::Database>,
+    pub send_action_ids_handle: Option<T::Database>,
     phantom: PhantomData<T>,
 }
 
@@ -25,8 +26,8 @@ impl<T: Environment + 'static> LmdbWallets<T> {
 
     pub fn initialize(
         &mut self,
-        txn: &mut LmdbWriteTransaction,
-        env: &LmdbEnv,
+        txn: &mut LmdbWriteTransaction<T>,
+        env: &LmdbEnv<T>,
     ) -> anyhow::Result<()> {
         self.handle = Some(unsafe { txn.rw_txn_mut().create_db(None, DatabaseFlags::empty())? });
         self.split_if_needed(txn, env)?;
@@ -37,7 +38,11 @@ impl<T: Environment + 'static> LmdbWallets<T> {
         Ok(())
     }
 
-    pub fn get_store_it(&self, txn: &dyn crate::Transaction, hash: &str) -> WalletsIterator {
+    pub fn get_store_it(
+        &self,
+        txn: &dyn crate::Transaction<Database = T::Database>,
+        hash: &str,
+    ) -> WalletsIterator {
         let hash_bytes: [u8; 64] = hash.as_bytes().try_into().unwrap();
         WalletsIterator::new(LmdbIteratorImpl::new::<T>(
             txn,
@@ -50,8 +55,8 @@ impl<T: Environment + 'static> LmdbWallets<T> {
     pub fn move_table(
         &self,
         name: &str,
-        txn_source: &mut LmdbWriteTransaction,
-        txn_destination: &mut LmdbWriteTransaction,
+        txn_source: &mut LmdbWriteTransaction<T>,
+        txn_destination: &mut LmdbWriteTransaction<T>,
     ) -> anyhow::Result<()> {
         let rw_txn_source = txn_source.rw_txn_mut();
         let rw_txn_dest = txn_destination.rw_txn_mut();
@@ -60,7 +65,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
             unsafe { rw_txn_dest.create_db(Some(name), DatabaseFlags::empty()) }?;
 
         {
-            let mut cursor = lmdb::Transaction::open_ro_cursor(rw_txn_source, handle_source)?;
+            let mut cursor = rw_txn_source.open_ro_cursor(handle_source)?;
             for x in cursor.iter_start() {
                 let (k, v) = x?;
                 rw_txn_dest.put(handle_destination, &k, &v, WriteFlags::empty())?;
@@ -73,8 +78,8 @@ impl<T: Environment + 'static> LmdbWallets<T> {
 
     pub fn split_if_needed(
         &self,
-        txn_destination: &mut LmdbWriteTransaction,
-        env: &LmdbEnv,
+        txn_destination: &mut LmdbWriteTransaction<T>,
+        env: &LmdbEnv<T>,
     ) -> anyhow::Result<()> {
         let beginning = RawKey::from(0).encode_hex();
         let end = RawKey::from_bytes([1; 32]).encode_hex();
@@ -100,7 +105,10 @@ impl<T: Environment + 'static> LmdbWallets<T> {
         Ok(())
     }
 
-    pub fn get_wallet_ids(&self, txn: &dyn crate::Transaction) -> Vec<WalletId> {
+    pub fn get_wallet_ids(
+        &self,
+        txn: &dyn crate::Transaction<Database = T::Database>,
+    ) -> Vec<WalletId> {
         let mut wallet_ids = Vec::new();
         let beginning = RawKey::from(0).encode_hex();
         let mut i = self.get_store_it(txn, &beginning);
@@ -114,7 +122,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
 
     pub fn get_block_hash(
         &self,
-        txn: &dyn crate::Transaction,
+        txn: &dyn crate::Transaction<Database = T::Database>,
         id: &str,
     ) -> anyhow::Result<Option<BlockHash>> {
         match txn.get(self.send_action_ids_handle.unwrap(), &id.as_bytes()) {
@@ -128,7 +136,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
 
     pub fn set_block_hash(
         &self,
-        txn: &mut LmdbWriteTransaction,
+        txn: &mut LmdbWriteTransaction<T>,
         id: &str,
         hash: &BlockHash,
     ) -> anyhow::Result<()> {
@@ -141,7 +149,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
         Ok(())
     }
 
-    pub fn clear_send_ids(&self, txn: &mut LmdbWriteTransaction) {
+    pub fn clear_send_ids(&self, txn: &mut LmdbWriteTransaction<T>) {
         txn.rw_txn_mut()
             .clear_db(self.send_action_ids_handle.unwrap())
             .unwrap();

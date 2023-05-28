@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rsn_callback_election_scheduler_activate(
 fn forward_scheduler_activate(
     cpp_scheduler: *mut c_void,
     account: &Account,
-    txn: &dyn Transaction,
+    txn: &dyn Transaction<Database = lmdb::Database>,
 ) {
     let callback = unsafe {
         ELECTION_SCHEDULER_ACTIVATE_CALLBACK.expect("ELECTION_SCHEDULER_ACTIVATE_CALLBACK missing")

@@ -6,13 +6,13 @@ use std::{
 };
 
 use crate::{
-    lmdb_env::{EnvironmentWrapper, RoTransaction},
+    lmdb_env::{EnvironmentWrapper, RoTransaction, RwTransaction2},
     EnvOptions, Environment, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore,
     LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore,
     LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction, LmdbVersionStore, LmdbWriteTransaction,
     NullTransactionTracker, Table, TransactionTracker, STORE_VERSION_MINIMUM,
 };
-use lmdb::{Cursor, Database, DatabaseFlags, Transaction, WriteFlags};
+use lmdb::{Cursor, DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::utils::{seconds_since_epoch, Logger, NullLogger, PropertyTreeWriter};
 
@@ -140,7 +140,7 @@ impl<T: Environment + 'static> LmdbStore<T> {
             .expect("Could not create LMDB read/write transaction")
     }
 
-    pub fn rebuild_db(&self, txn: &mut LmdbWriteTransaction) -> anyhow::Result<()> {
+    pub fn rebuild_db(&self, txn: &mut LmdbWriteTransaction<T>) -> anyhow::Result<()> {
         let tables = [
             self.account.database(),
             self.block.database(),
@@ -224,8 +224,8 @@ fn upgrade_if_needed<T: Environment + 'static>(
 
 fn rebuild_table<T: Environment + 'static>(
     env: &LmdbEnv<T>,
-    rw_txn: &mut LmdbWriteTransaction,
-    db: Database,
+    rw_txn: &mut LmdbWriteTransaction<T>,
+    db: T::Database,
 ) -> anyhow::Result<()> {
     let temp = unsafe {
         rw_txn
@@ -243,9 +243,9 @@ fn rebuild_table<T: Environment + 'static>(
 
 fn copy_table<T: Environment + 'static>(
     env: &LmdbEnv<T>,
-    rw_txn: &mut LmdbWriteTransaction,
-    source: Database,
-    target: Database,
+    rw_txn: &mut LmdbWriteTransaction<T>,
+    source: T::Database,
+    target: T::Database,
 ) -> anyhow::Result<()> {
     let ro_txn = env.tx_begin_read()?;
     {
@@ -257,7 +257,7 @@ fn copy_table<T: Environment + 'static>(
                 .put(target, &k, &v, WriteFlags::APPEND)?;
         }
     }
-    if ro_txn.txn().count(source) != rw_txn.rw_txn_mut().stat(target)?.entries() as u64 {
+    if ro_txn.txn().count(source) != rw_txn.rw_txn_mut().count(target) {
         bail!("table count mismatch");
     }
     Ok(())

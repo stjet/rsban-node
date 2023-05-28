@@ -1,8 +1,9 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, Environment, EnvironmentWrapper, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, lmdb_env::RwTransaction2, parallel_traversal, Environment,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
+    Transaction,
 };
-use lmdb::{Database, DatabaseFlags, WriteFlags};
+use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     deserialize_block_enum,
@@ -17,7 +18,7 @@ pub type BlockIterator = Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
 
 pub struct LmdbBlockStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
-    database: Database,
+    database: T::Database,
 }
 
 impl<T: Environment + 'static> LmdbBlockStore<T> {
@@ -28,11 +29,11 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         Ok(Self { env, database })
     }
 
-    pub fn database(&self) -> Database {
+    pub fn database(&self) -> T::Database {
         self.database
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction, block: &BlockEnum) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, block: &BlockEnum) {
         let hash = block.hash();
         debug_assert!(
             block.sideband().unwrap().successor.is_zero()
@@ -59,11 +60,19 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         );
     }
 
-    pub fn exists(&self, transaction: &dyn Transaction, hash: &BlockHash) -> bool {
+    pub fn exists(
+        &self,
+        transaction: &dyn Transaction<Database = T::Database>,
+        hash: &BlockHash,
+    ) -> bool {
         self.block_raw_get(transaction, hash).is_some()
     }
 
-    pub fn successor(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockHash> {
+    pub fn successor(
+        &self,
+        txn: &dyn Transaction<Database = T::Database>,
+        hash: &BlockHash,
+    ) -> Option<BlockHash> {
         self.block_raw_get(txn, hash)
             .map(|data| {
                 debug_assert!(data.len() >= 32);
@@ -80,7 +89,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
             .flatten()
     }
 
-    pub fn successor_clear(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
+    pub fn successor_clear(&self, txn: &mut LmdbWriteTransaction<T>, hash: &BlockHash) {
         let value = self.block_raw_get(txn, hash).unwrap();
         let block_type = BlockType::from_u8(value[0]).unwrap();
 
@@ -90,7 +99,11 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         self.raw_put(txn, &data, hash)
     }
 
-    pub fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
+    pub fn get(
+        &self,
+        txn: &dyn Transaction<Database = T::Database>,
+        hash: &BlockHash,
+    ) -> Option<BlockEnum> {
         match self.block_raw_get(txn, hash) {
             None => None,
             Some(bytes) => {
@@ -126,7 +139,11 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         }
     }
 
-    pub fn get_no_sideband(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
+    pub fn get_no_sideband(
+        &self,
+        txn: &dyn Transaction<Database = T::Database>,
+        hash: &BlockHash,
+    ) -> Option<BlockEnum> {
         match self.block_raw_get(txn, hash) {
             None => None,
             Some(bytes) => {
@@ -136,26 +153,34 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         }
     }
 
-    pub fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, hash: &BlockHash) {
         txn.rw_txn_mut()
             .del(self.database, hash.as_bytes(), None)
             .unwrap();
     }
 
-    pub fn count(&self, txn: &dyn Transaction) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction<Database = T::Database>) -> u64 {
         txn.count(self.database)
     }
 
-    pub fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
+    pub fn account(
+        &self,
+        txn: &dyn Transaction<Database = T::Database>,
+        hash: &BlockHash,
+    ) -> Option<Account> {
         let block = self.get(txn, hash)?;
         Some(block.account_calculated())
     }
 
-    pub fn begin(&self, transaction: &dyn Transaction) -> BlockIterator {
+    pub fn begin(&self, transaction: &dyn Transaction<Database = T::Database>) -> BlockIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(transaction, self.database, None, true)
     }
 
-    pub fn begin_at_hash(&self, transaction: &dyn Transaction, hash: &BlockHash) -> BlockIterator {
+    pub fn begin_at_hash(
+        &self,
+        transaction: &dyn Transaction<Database = T::Database>,
+        hash: &BlockHash,
+    ) -> BlockIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(
             transaction,
             self.database,
@@ -168,7 +193,10 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         LmdbIteratorImpl::null_iterator()
     }
 
-    pub fn random(&self, transaction: &dyn Transaction) -> Option<BlockEnum> {
+    pub fn random(
+        &self,
+        transaction: &dyn Transaction<Database = T::Database>,
+    ) -> Option<BlockEnum> {
         let hash = BlockHash::random();
         let mut existing = self.begin_at_hash(transaction, &hash);
         if existing.is_end() {
@@ -178,14 +206,22 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         existing.current().map(|(_, v)| v.block.clone())
     }
 
-    pub fn balance(&self, txn: &dyn Transaction, hash: &BlockHash) -> Amount {
+    pub fn balance(
+        &self,
+        txn: &dyn Transaction<Database = T::Database>,
+        hash: &BlockHash,
+    ) -> Amount {
         match self.get(txn, hash) {
             Some(block) => block.balance_calculated(),
             None => Amount::zero(),
         }
     }
 
-    pub fn version(&self, txn: &dyn Transaction, hash: &BlockHash) -> Epoch {
+    pub fn version(
+        &self,
+        txn: &dyn Transaction<Database = T::Database>,
+        hash: &BlockHash,
+    ) -> Epoch {
         match self.get(txn, hash) {
             Some(block) => {
                 if let BlockEnum::State(b) = block {
@@ -214,14 +250,18 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         });
     }
 
-    pub fn account_height(&self, txn: &dyn Transaction, hash: &BlockHash) -> u64 {
+    pub fn account_height(
+        &self,
+        txn: &dyn Transaction<Database = T::Database>,
+        hash: &BlockHash,
+    ) -> u64 {
         match self.get(txn, hash) {
             Some(block) => block.sideband().unwrap().height,
             None => 0,
         }
     }
 
-    pub fn raw_put(&self, txn: &mut LmdbWriteTransaction, data: &[u8], hash: &BlockHash) {
+    pub fn raw_put(&self, txn: &mut LmdbWriteTransaction<T>, data: &[u8], hash: &BlockHash) {
         txn.rw_txn_mut()
             .put(self.database, hash.as_bytes(), &data, WriteFlags::empty())
             .unwrap();
@@ -229,7 +269,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
 
     pub fn block_raw_get<'a>(
         &self,
-        txn: &'a dyn Transaction,
+        txn: &'a dyn Transaction<Database = T::Database>,
         hash: &BlockHash,
     ) -> Option<&'a [u8]> {
         match txn.get(self.database, hash.as_bytes()) {
@@ -242,12 +282,15 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
 
 /// Fill in our predecessors
 struct BlockPredecessorMdbSet<'a, T: Environment + 'static> {
-    transaction: &'a mut LmdbWriteTransaction,
+    transaction: &'a mut LmdbWriteTransaction<T>,
     block_store: &'a LmdbBlockStore<T>,
 }
 
 impl<'a, 'b, T: Environment + 'static> BlockPredecessorMdbSet<'a, T> {
-    fn new(transaction: &'a mut LmdbWriteTransaction, block_store: &'a LmdbBlockStore<T>) -> Self {
+    fn new(
+        transaction: &'a mut LmdbWriteTransaction<T>,
+        block_store: &'a LmdbBlockStore<T>,
+    ) -> Self {
         Self {
             transaction,
             block_store,

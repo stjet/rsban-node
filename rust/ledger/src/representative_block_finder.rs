@@ -3,12 +3,12 @@ use rsnano_store_lmdb::{LmdbStore, Transaction};
 
 /// Goes back in the block history until it finds a block with representative information
 pub struct RepresentativeBlockFinder<'a> {
-    txn: &'a dyn Transaction,
+    txn: &'a dyn Transaction<Database = lmdb::Database>,
     store: &'a LmdbStore,
 }
 
 impl<'a> RepresentativeBlockFinder<'a> {
-    pub fn new(txn: &'a dyn Transaction, store: &'a LmdbStore) -> Self {
+    pub fn new(txn: &'a dyn Transaction<Database = lmdb::Database>, store: &'a LmdbStore) -> Self {
         Self { txn, store }
     }
 

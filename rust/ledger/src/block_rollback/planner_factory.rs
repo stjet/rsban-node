@@ -7,14 +7,14 @@ use rsnano_store_lmdb::Transaction;
 
 pub(crate) struct RollbackPlannerFactory<'a> {
     ledger: &'a Ledger,
-    txn: &'a dyn Transaction,
+    txn: &'a dyn Transaction<Database = lmdb::Database>,
     head_block: &'a BlockEnum,
 }
 
 impl<'a> RollbackPlannerFactory<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
-        txn: &'a dyn Transaction,
+        txn: &'a dyn Transaction<Database = lmdb::Database>,
         head_block: &'a BlockEnum,
     ) -> Self {
         Self {

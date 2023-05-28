@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use crate::{
     iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal, Environment, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, RwTransaction2, Transaction,
 };
-use lmdb::{Database, DatabaseFlags, WriteFlags};
+use lmdb::{DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
 use rsnano_core::{BlockHash, NoValue};
 
@@ -12,7 +12,7 @@ pub type PrunedIterator = Box<dyn DbIterator<BlockHash, NoValue>>;
 
 pub struct LmdbPrunedStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
-    database: Database,
+    database: T::Database,
 }
 
 impl<T: Environment + 'static> LmdbPrunedStore<T> {
@@ -23,35 +23,39 @@ impl<T: Environment + 'static> LmdbPrunedStore<T> {
         Ok(Self { env, database })
     }
 
-    pub fn database(&self) -> Database {
+    pub fn database(&self) -> T::Database {
         self.database
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, hash: &BlockHash) {
         txn.rw_txn_mut()
             .put(self.database, hash.as_bytes(), &[0; 0], WriteFlags::empty())
             .unwrap();
     }
 
-    pub fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, hash: &BlockHash) {
         txn.rw_txn_mut()
             .del(self.database, hash.as_bytes(), None)
             .unwrap();
     }
 
-    pub fn exists(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
+    pub fn exists(&self, txn: &dyn Transaction<Database = T::Database>, hash: &BlockHash) -> bool {
         txn.exists(self.database, hash.as_bytes())
     }
 
-    pub fn begin(&self, txn: &dyn Transaction) -> PrunedIterator {
+    pub fn begin(&self, txn: &dyn Transaction<Database = T::Database>) -> PrunedIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
     }
 
-    pub fn begin_at_hash(&self, txn: &dyn Transaction, hash: &BlockHash) -> PrunedIterator {
+    pub fn begin_at_hash(
+        &self,
+        txn: &dyn Transaction<Database = T::Database>,
+        hash: &BlockHash,
+    ) -> PrunedIterator {
         LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, Some(hash.as_bytes()), true)
     }
 
-    pub fn random(&self, txn: &dyn Transaction) -> Option<BlockHash> {
+    pub fn random(&self, txn: &dyn Transaction<Database = T::Database>) -> Option<BlockHash> {
         let random_hash = BlockHash::from_bytes(thread_rng().gen());
         let mut existing = self.begin_at_hash(txn, &random_hash);
         if existing.is_end() {
@@ -61,11 +65,11 @@ impl<T: Environment + 'static> LmdbPrunedStore<T> {
         existing.current().map(|(k, _)| *k)
     }
 
-    pub fn count(&self, txn: &dyn Transaction) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction<Database = T::Database>) -> u64 {
         txn.count(self.database)
     }
 
-    pub fn clear(&self, txn: &mut LmdbWriteTransaction) {
+    pub fn clear(&self, txn: &mut LmdbWriteTransaction<T>) {
         txn.rw_txn_mut().clear_db(self.database).unwrap();
     }
 

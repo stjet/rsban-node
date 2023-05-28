@@ -120,7 +120,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbFinalVoteStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&LmdbReadTransaction, FinalVoteIterator, FinalVoteIterator) + Send + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction<T>, FinalVoteIterator, FinalVoteIterator) + Send + Sync),
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();

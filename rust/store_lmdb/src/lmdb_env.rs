@@ -6,6 +6,7 @@ use anyhow::bail;
 use lmdb::{Database, DatabaseFlags, EnvironmentFlags, Stat};
 use lmdb_sys::{MDB_env, MDB_SUCCESS};
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::{
@@ -23,6 +24,105 @@ use std::{
 // Embedded Stubs
 // --------------------------------------------------------------------------------
 
+pub trait InactiveTransaction2<'env> {
+    type RoTxnType: RoTransactionStrategy<'env>;
+    fn renew(self) -> lmdb::Result<Self::RoTxnType>;
+}
+
+pub trait RoTransactionStrategy<'env> {
+    type InactiveTxnType: InactiveTransaction2<'env, RoTxnType = Self>
+    where
+        Self: Sized;
+
+    fn reset(self) -> Self::InactiveTxnType
+    where
+        Self: Sized;
+
+    fn commit(self) -> lmdb::Result<()>;
+    fn get(&self, database: lmdb::Database, key: &[u8]) -> lmdb::Result<&[u8]>;
+    fn open_ro_cursor(&self, database: Database) -> lmdb::Result<lmdb::RoCursor>;
+    fn count(&self, database: Database) -> u64;
+}
+
+pub struct InactiveTransactionWrapper<'env> {
+    inactive: lmdb::InactiveTransaction<'env>,
+    _marker: PhantomData<&'env ()>,
+}
+
+impl<'env> InactiveTransaction2<'env> for InactiveTransactionWrapper<'env> {
+    type RoTxnType = RoTransactionWrapper<'env>;
+    fn renew(self) -> lmdb::Result<Self::RoTxnType> {
+        self.inactive.renew().map(|t| RoTransactionWrapper(t))
+    }
+}
+
+pub struct RoTransactionWrapper<'env>(lmdb::RoTransaction<'env>);
+
+impl<'env> RoTransactionStrategy<'env> for RoTransactionWrapper<'env> {
+    type InactiveTxnType = InactiveTransactionWrapper<'env>;
+
+    fn reset(self) -> Self::InactiveTxnType {
+        InactiveTransactionWrapper {
+            inactive: self.0.reset(),
+            _marker: Default::default(),
+        }
+    }
+
+    fn commit(self) -> lmdb::Result<()>{
+        lmdb::Transaction::commit(self.0)
+    }
+
+    fn get(&self, database: lmdb::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
+        lmdb::Transaction::get(&self.0, database, &&*key)
+    }
+
+    fn open_ro_cursor(&self, database: Database) -> lmdb::Result<lmdb::RoCursor> {
+        lmdb::Transaction::open_ro_cursor(&self.0, database)
+    }
+
+    fn count(&self, database: Database) -> u64 {
+        let stat = lmdb::Transaction::stat(&self.0, database);
+        stat.unwrap().entries() as u64
+    }
+}
+pub struct NullRoTransaction<'env>(PhantomData<&'env ()>);
+pub struct NullInactiveTransaction<'env>(PhantomData<&'env ()>);
+
+impl<'env> RoTransactionStrategy<'env> for NullRoTransaction<'env> {
+    type InactiveTxnType = NullInactiveTransaction<'env>;
+
+    fn reset(self) -> Self::InactiveTxnType
+    where
+        Self: Sized,
+    {
+        NullInactiveTransaction(Default::default())
+    }
+
+    fn commit(self) -> lmdb::Result<()> {
+        Ok(())
+    }
+
+    fn get(&self, _database: lmdb::Database, _key: &[u8]) -> lmdb::Result<&[u8]> {
+        Err(lmdb::Error::NotFound)
+    }
+
+    fn open_ro_cursor(&self, _database: Database) -> lmdb::Result<lmdb::RoCursor> {
+        Err(lmdb::Error::NotFound)
+    }
+
+    fn count(&self, _database: Database) -> u64 {
+        0
+    }
+}
+
+impl<'env> InactiveTransaction2<'env> for NullInactiveTransaction<'env> {
+    type RoTxnType = NullRoTransaction<'env>;
+
+    fn renew(self) -> lmdb::Result<Self::RoTxnType> {
+        Ok(NullRoTransaction(Default::default()))
+    }
+}
+
 pub struct EnvironmentWrapper(lmdb::Environment);
 
 pub struct EnvironmentOptions<'a> {
@@ -34,10 +134,18 @@ pub struct EnvironmentOptions<'a> {
 }
 
 pub trait EnvironmentStrategy: Send + Sync {
+    type RoTxnImpl<'env>: RoTransactionStrategy<'env, InactiveTxnType = Self::InactiveTxnImpl<'env>>
+    where
+        Self: 'env;
+
+    type InactiveTxnImpl<'env>: InactiveTransaction2<'env, RoTxnType = Self::RoTxnImpl<'env>>
+    where
+        Self: 'env;
+
     fn build(options: EnvironmentOptions) -> lmdb::Result<Self>
     where
         Self: Sized;
-    fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<lmdb::RoTransaction<'env>>;
+    fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<Self::RoTxnImpl<'env>>;
     fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<lmdb::RwTransaction<'env>>;
     fn create_db<'env>(
         &'env self,
@@ -52,6 +160,9 @@ pub trait EnvironmentStrategy: Send + Sync {
 }
 
 impl EnvironmentStrategy for EnvironmentWrapper {
+    type RoTxnImpl<'env> = RoTransactionWrapper<'env>;
+    type InactiveTxnImpl<'env> = InactiveTransactionWrapper<'env>;
+
     fn build(options: EnvironmentOptions) -> lmdb::Result<Self> {
         let env = lmdb::Environment::new()
             .set_max_dbs(options.max_dbs)
@@ -61,9 +172,10 @@ impl EnvironmentStrategy for EnvironmentWrapper {
         Ok(Self(env))
     }
 
-    fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<lmdb::RoTransaction<'env>> {
-        self.0.begin_ro_txn()
+    fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<Self::RoTxnImpl<'env>> {
+        self.0.begin_ro_txn().map(|txn| RoTransactionWrapper(txn))
     }
+
     fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<lmdb::RwTransaction<'env>> {
         self.0.begin_rw_txn()
     }
@@ -96,6 +208,9 @@ impl EnvironmentStrategy for EnvironmentWrapper {
 pub struct EnvironmentStub;
 
 impl EnvironmentStrategy for EnvironmentStub {
+    type RoTxnImpl<'env> = NullRoTransaction<'env>;
+    type InactiveTxnImpl<'env> = NullInactiveTransaction<'env>;
+
     fn build(_options: EnvironmentOptions) -> lmdb::Result<Self>
     where
         Self: Sized,
@@ -103,8 +218,8 @@ impl EnvironmentStrategy for EnvironmentStub {
         Ok(Self {})
     }
 
-    fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<lmdb::RoTransaction<'env>> {
-        todo!()
+    fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<Self::RoTxnImpl<'env>> {
+        Ok(NullRoTransaction(Default::default()))
     }
 
     fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<lmdb::RwTransaction<'env>> {
@@ -151,8 +266,8 @@ pub struct LmdbEnv<T: EnvironmentStrategy = EnvironmentWrapper> {
     txn_tracker: Arc<dyn TransactionTracker>,
 }
 
-impl LmdbEnv<EnvironmentStub>{
-    pub fn create_null() -> Self{
+impl LmdbEnv<EnvironmentStub> {
+    pub fn create_null() -> Self {
         Self::new("nulled_data.ldb").unwrap()
     }
 }
@@ -225,7 +340,7 @@ impl<T: EnvironmentStrategy> LmdbEnv<T> {
         Ok(env)
     }
 
-    pub fn tx_begin_read(&self) -> lmdb::Result<LmdbReadTransaction> {
+    pub fn tx_begin_read(&self) -> lmdb::Result<LmdbReadTransaction<T>> {
         let txn_id = self.next_txn_id.fetch_add(1, Ordering::Relaxed);
         LmdbReadTransaction::new(txn_id, &self.environment, self.create_txn_callbacks())
     }

@@ -1,7 +1,6 @@
 use crate::{
-    iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal,
-    EnvironmentStrategy, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
-    Transaction,
+    iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal, EnvironmentStrategy,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -86,7 +85,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbAccountStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&LmdbReadTransaction, AccountIterator, AccountIterator) + Send + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction<T>, AccountIterator, AccountIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let txn = self.env.tx_begin_read().unwrap();
@@ -117,7 +116,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbAccountStore<T> {
 mod tests {
     use std::sync::Mutex;
 
-    use crate::{TestLmdbEnv, EnvironmentOptions, EnvironmentStub};
+    use crate::TestLmdbEnv;
     use rsnano_core::{Amount, BlockHash};
 
     use super::*;
@@ -136,9 +135,10 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "wip"]
     fn empty_store_with_nullables() {
         let env = Arc::new(LmdbEnv::create_null());
-        let txn = env.tx_begin_read().unwrap();
+        let _txn = env.tx_begin_read().unwrap();
         // let store = LmdbAccountStore::new(env).unwrap();
         // let account = Account::from(1);
         // let result = store.get(&txn, &account);

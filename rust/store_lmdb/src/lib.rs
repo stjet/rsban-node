@@ -12,9 +12,10 @@ pub use lmdb_config::{LmdbConfig, SyncStrategy};
 
 mod lmdb_env;
 pub use lmdb_env::{
-    EnvOptions, EnvironmentOptions, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, TestDbFile,
-    TestLmdbEnv, EnvironmentStub
+    EnvOptions, EnvironmentOptions, EnvironmentStrategy, EnvironmentStub, EnvironmentWrapper,
+    LmdbEnv, TestDbFile, TestLmdbEnv,
 };
+use lmdb_env::{InactiveTransaction2, RoTransactionStrategy};
 
 mod account_store;
 pub use account_store::LmdbAccountStore;
@@ -66,7 +67,7 @@ use std::{
     time::Duration,
 };
 
-use lmdb::{Database, InactiveTransaction, RoCursor, RoTransaction, RwTransaction};
+use lmdb::{Database, RoCursor, RwTransaction};
 use primitive_types::{U256, U512};
 use rsnano_core::utils::{get_cpu_count, PropertyTreeWriter};
 
@@ -119,26 +120,30 @@ impl TransactionTracker for NullTransactionTracker {
     }
 }
 
-enum RoTxnState {
-    Inactive(InactiveTransaction<'static>),
-    Active(RoTransaction<'static>),
+enum RoTxnState<T, U>
+where
+    T: RoTransactionStrategy<'static, InactiveTxnType = U>,
+    U: InactiveTransaction2<'static, RoTxnType = T>,
+{
+    Inactive(U),
+    Active(T),
     Transitioning,
 }
 
-pub struct LmdbReadTransaction {
+pub struct LmdbReadTransaction<T: EnvironmentStrategy + 'static = EnvironmentWrapper> {
     txn_id: u64,
     callbacks: Arc<dyn TransactionTracker>,
-    txn: RoTxnState,
+    txn: RoTxnState<T::RoTxnImpl<'static>, T::InactiveTxnImpl<'static>>,
 }
 
-impl LmdbReadTransaction {
-    pub fn new<'a, T: EnvironmentStrategy>(
+impl<T: EnvironmentStrategy + 'static> LmdbReadTransaction<T> {
+    pub fn new<'a>(
         txn_id: u64,
         env: &'a T,
         callbacks: Arc<dyn TransactionTracker>,
     ) -> lmdb::Result<Self> {
         let txn = env.begin_ro_txn()?;
-        let txn = unsafe { std::mem::transmute::<RoTransaction<'a>, RoTransaction<'static>>(txn) };
+        let txn = unsafe { std::mem::transmute::<T::RoTxnImpl<'a>, T::RoTxnImpl<'static>>(txn) };
         callbacks.txn_start(txn_id, false);
 
         Ok(Self {
@@ -148,7 +153,7 @@ impl LmdbReadTransaction {
         })
     }
 
-    pub fn txn(&self) -> &lmdb::RoTransaction {
+    pub fn txn(&self) -> &T::RoTxnImpl<'static> {
         match &self.txn {
             RoTxnState::Active(t) => t,
             _ => panic!("LMDB read transaction not active"),
@@ -176,19 +181,19 @@ impl LmdbReadTransaction {
     }
 }
 
-impl Drop for LmdbReadTransaction {
+impl<T: EnvironmentStrategy + 'static> Drop for LmdbReadTransaction<T> {
     fn drop(&mut self) {
         let t = mem::replace(&mut self.txn, RoTxnState::Transitioning);
         // This uses commit rather than abort, as it is needed when opening databases with a read only transaction
         match t {
-            RoTxnState::Active(t) => lmdb::Transaction::commit(t).unwrap(),
+            RoTxnState::Active(t) => t.commit().unwrap(),
             _ => {}
         }
         self.callbacks.txn_end(self.txn_id, false);
     }
 }
 
-impl Transaction for LmdbReadTransaction {
+impl<T: EnvironmentStrategy + 'static> Transaction for LmdbReadTransaction<T> {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -199,16 +204,15 @@ impl Transaction for LmdbReadTransaction {
     }
 
     fn get(&self, database: Database, key: &[u8]) -> lmdb::Result<&[u8]> {
-        lmdb::Transaction::get(self.txn(), database, &&*key)
+        self.txn().get(database, key)
     }
 
     fn open_ro_cursor(&self, database: Database) -> lmdb::Result<RoCursor> {
-        lmdb::Transaction::open_ro_cursor(self.txn(), database)
+        self.txn().open_ro_cursor(database)
     }
 
     fn count(&self, database: Database) -> u64 {
-        let stat = lmdb::Transaction::stat(self.txn(), database);
-        stat.unwrap().entries() as u64
+        self.txn().count(database)
     }
 }
 

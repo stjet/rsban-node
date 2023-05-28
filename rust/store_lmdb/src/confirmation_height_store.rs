@@ -99,7 +99,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbConfirmationHeightStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&LmdbReadTransaction, ConfirmationHeightIterator, ConfirmationHeightIterator)
+        action: &(dyn Fn(&LmdbReadTransaction<T>, ConfirmationHeightIterator, ConfirmationHeightIterator)
               + Send
               + Sync),
     ) {

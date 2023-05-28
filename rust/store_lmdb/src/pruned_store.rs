@@ -76,7 +76,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbPrunedStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&LmdbReadTransaction, PrunedIterator, PrunedIterator) + Send + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction<T>, PrunedIterator, PrunedIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();

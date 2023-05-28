@@ -89,7 +89,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbPendingStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&LmdbReadTransaction, PendingIterator, PendingIterator) + Send + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction<T>, PendingIterator, PendingIterator) + Send + Sync),
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();

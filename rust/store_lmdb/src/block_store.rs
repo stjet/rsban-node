@@ -200,7 +200,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&LmdbReadTransaction, BlockIterator, BlockIterator) + Send + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction<T>, BlockIterator, BlockIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read().unwrap();

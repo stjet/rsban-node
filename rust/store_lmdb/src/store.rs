@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    lmdb_env::EnvironmentWrapper, EnvOptions, EnvironmentStrategy, LmdbAccountStore,
+    lmdb_env::{EnvironmentWrapper, RoTransactionStrategy}, EnvOptions, EnvironmentStrategy, LmdbAccountStore,
     LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
     LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
     LmdbVersionStore, LmdbWriteTransaction, NullTransactionTracker, Table, TransactionTracker,
@@ -181,7 +181,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
             .serialize_txn_tracker(json, min_read_time, min_write_time)
     }
 
-    pub fn tx_begin_read(&self) -> LmdbReadTransaction {
+    pub fn tx_begin_read(&self) -> LmdbReadTransaction<T> {
         self.env.tx_begin_read().unwrap()
     }
 
@@ -257,7 +257,7 @@ fn copy_table<T: EnvironmentStrategy + 'static>(
                 .put(target, &k, &v, WriteFlags::APPEND)?;
         }
     }
-    if ro_txn.txn().stat(source)?.entries() != rw_txn.rw_txn_mut().stat(target)?.entries() {
+    if ro_txn.txn().count(source) != rw_txn.rw_txn_mut().stat(target)?.entries() as u64 {
         bail!("table count mismatch");
     }
     Ok(())

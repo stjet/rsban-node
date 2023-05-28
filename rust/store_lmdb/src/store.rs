@@ -6,8 +6,8 @@ use std::{
 };
 
 use crate::{
-    lmdb_env::{EnvironmentWrapper, RoTransactionStrategy},
-    EnvOptions, EnvironmentStrategy, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore,
+    lmdb_env::{EnvironmentWrapper, RoTransaction},
+    EnvOptions, Environment, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore,
     LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore,
     LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction, LmdbVersionStore, LmdbWriteTransaction,
     NullTransactionTracker, Table, TransactionTracker, STORE_VERSION_MINIMUM,
@@ -22,7 +22,7 @@ pub enum Vacuuming {
     NotNeeded,
 }
 
-pub struct LmdbStore<T: EnvironmentStrategy = EnvironmentWrapper> {
+pub struct LmdbStore<T: Environment = EnvironmentWrapper> {
     pub env: Arc<LmdbEnv<T>>,
     pub block: Arc<LmdbBlockStore<T>>,
     pub frontier: Arc<LmdbFrontierStore<T>>,
@@ -95,7 +95,7 @@ impl<'a> LmdbStoreBuilder<'a> {
     }
 }
 
-impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
+impl<T: Environment + 'static> LmdbStore<T> {
     pub fn open<'a>(path: &'a Path) -> LmdbStoreBuilder<'a> {
         LmdbStoreBuilder::new(path)
     }
@@ -128,7 +128,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
     }
 }
 
-impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
+impl<T: Environment + 'static> LmdbStore<T> {
     pub fn copy_db(&self, destination: &Path) -> anyhow::Result<()> {
         copy_db(&self.env, destination)
     }
@@ -190,7 +190,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbStore<T> {
     }
 }
 
-fn upgrade_if_needed<T: EnvironmentStrategy + 'static>(
+fn upgrade_if_needed<T: Environment + 'static>(
     path: &Path,
     logger: &Arc<dyn Logger>,
     backup_before_upgrade: bool,
@@ -222,7 +222,7 @@ fn upgrade_if_needed<T: EnvironmentStrategy + 'static>(
     Ok(())
 }
 
-fn rebuild_table<T: EnvironmentStrategy + 'static>(
+fn rebuild_table<T: Environment + 'static>(
     env: &LmdbEnv<T>,
     rw_txn: &mut LmdbWriteTransaction,
     db: Database,
@@ -241,7 +241,7 @@ fn rebuild_table<T: EnvironmentStrategy + 'static>(
     Ok(())
 }
 
-fn copy_table<T: EnvironmentStrategy + 'static>(
+fn copy_table<T: Environment + 'static>(
     env: &LmdbEnv<T>,
     rw_txn: &mut LmdbWriteTransaction,
     source: Database,
@@ -324,7 +324,7 @@ fn vacuum_after_upgrade(env: Arc<LmdbEnv>, path: &Path) -> anyhow::Result<()> {
         }
     }
 }
-fn copy_db<T: EnvironmentStrategy>(env: &LmdbEnv<T>, destination: &Path) -> anyhow::Result<()> {
+fn copy_db<T: Environment>(env: &LmdbEnv<T>, destination: &Path) -> anyhow::Result<()> {
     let c_path = CString::new(destination.as_os_str().to_str().unwrap()).unwrap();
     let status =
         unsafe { lmdb_sys::mdb_env_copy2(env.environment.env(), c_path.as_ptr(), MDB_CP_COMPACT) };

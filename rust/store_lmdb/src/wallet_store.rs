@@ -1,5 +1,5 @@
 use crate::{
-    iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper, Fan, LmdbIteratorImpl,
+    iterator::DbIterator, Environment, EnvironmentWrapper, Fan, LmdbIteratorImpl,
     LmdbWriteTransaction, Transaction,
 };
 use anyhow::bail;
@@ -82,14 +82,14 @@ const VERSION_CURRENT: u32 = 4;
 
 pub type WalletIterator = Box<dyn DbIterator<Account, WalletValue>>;
 
-pub struct LmdbWalletStore<T: EnvironmentStrategy = EnvironmentWrapper> {
+pub struct LmdbWalletStore<T: Environment = EnvironmentWrapper> {
     db_handle: Mutex<Option<Database>>,
     pub fans: Mutex<Fans>,
     kdf: KeyDerivationFunction,
     phantom: PhantomData<T>,
 }
 
-impl<'a, T: EnvironmentStrategy + 'static> LmdbWalletStore<T> {
+impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
     pub fn new(
         fanout: usize,
         kdf: KeyDerivationFunction,

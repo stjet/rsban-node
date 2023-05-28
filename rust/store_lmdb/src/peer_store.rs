@@ -1,5 +1,5 @@
 use crate::{
-    iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl,
+    iterator::DbIterator, Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl,
     LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
@@ -8,12 +8,12 @@ use std::sync::Arc;
 
 pub type PeerIterator = Box<dyn DbIterator<EndpointKey, NoValue>>;
 
-pub struct LmdbPeerStore<T: EnvironmentStrategy = EnvironmentWrapper> {
+pub struct LmdbPeerStore<T: Environment = EnvironmentWrapper> {
     _env: Arc<LmdbEnv<T>>,
     database: Database,
 }
 
-impl<T: EnvironmentStrategy + 'static> LmdbPeerStore<T> {
+impl<T: Environment + 'static> LmdbPeerStore<T> {
     pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment

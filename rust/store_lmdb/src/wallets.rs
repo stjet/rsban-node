@@ -2,19 +2,19 @@ use std::marker::PhantomData;
 
 use crate::{
     iterator::{BinaryDbIterator, DbIterator},
-    EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction,
+    Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction,
 };
 use lmdb::{Cursor, Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, NoValue, RawKey, WalletId};
 pub type WalletsIterator = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl>;
 
-pub struct LmdbWallets<T: EnvironmentStrategy = EnvironmentWrapper> {
+pub struct LmdbWallets<T: Environment = EnvironmentWrapper> {
     pub handle: Option<Database>,
     pub send_action_ids_handle: Option<Database>,
     phantom: PhantomData<T>,
 }
 
-impl<T: EnvironmentStrategy + 'static> LmdbWallets<T> {
+impl<T: Environment + 'static> LmdbWallets<T> {
     pub fn new() -> Self {
         Self {
             handle: None,

@@ -12,10 +12,10 @@ pub use lmdb_config::{LmdbConfig, SyncStrategy};
 
 mod lmdb_env;
 pub use lmdb_env::{
-    EnvOptions, EnvironmentOptions, EnvironmentStrategy, EnvironmentStub, EnvironmentWrapper,
-    LmdbEnv, TestDbFile, TestLmdbEnv,
+    EnvOptions, Environment, EnvironmentOptions, EnvironmentStub, EnvironmentWrapper, LmdbEnv,
+    TestDbFile, TestLmdbEnv,
 };
-use lmdb_env::{InactiveTransaction2, RoTransactionStrategy};
+use lmdb_env::{InactiveTransaction, RoTransaction};
 
 mod account_store;
 pub use account_store::LmdbAccountStore;
@@ -122,21 +122,21 @@ impl TransactionTracker for NullTransactionTracker {
 
 enum RoTxnState<T, U>
 where
-    T: RoTransactionStrategy<'static, InactiveTxnType = U>,
-    U: InactiveTransaction2<'static, RoTxnType = T>,
+    T: RoTransaction<'static, InactiveTxnType = U>,
+    U: InactiveTransaction<'static, RoTxnType = T>,
 {
     Inactive(U),
     Active(T),
     Transitioning,
 }
 
-pub struct LmdbReadTransaction<T: EnvironmentStrategy + 'static = EnvironmentWrapper> {
+pub struct LmdbReadTransaction<T: Environment + 'static = EnvironmentWrapper> {
     txn_id: u64,
     callbacks: Arc<dyn TransactionTracker>,
     txn: RoTxnState<T::RoTxnImpl<'static>, T::InactiveTxnImpl<'static>>,
 }
 
-impl<T: EnvironmentStrategy + 'static> LmdbReadTransaction<T> {
+impl<T: Environment + 'static> LmdbReadTransaction<T> {
     pub fn new<'a>(
         txn_id: u64,
         env: &'a T,
@@ -181,7 +181,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbReadTransaction<T> {
     }
 }
 
-impl<T: EnvironmentStrategy + 'static> Drop for LmdbReadTransaction<T> {
+impl<T: Environment + 'static> Drop for LmdbReadTransaction<T> {
     fn drop(&mut self) {
         let t = mem::replace(&mut self.txn, RoTxnState::Transitioning);
         // This uses commit rather than abort, as it is needed when opening databases with a read only transaction
@@ -193,7 +193,7 @@ impl<T: EnvironmentStrategy + 'static> Drop for LmdbReadTransaction<T> {
     }
 }
 
-impl<T: EnvironmentStrategy + 'static> Transaction for LmdbReadTransaction<T> {
+impl<T: Environment + 'static> Transaction for LmdbReadTransaction<T> {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -222,14 +222,14 @@ enum RwTxnState<'a> {
     Transitioning,
 }
 
-pub struct LmdbWriteTransaction<T: EnvironmentStrategy + 'static = EnvironmentWrapper> {
+pub struct LmdbWriteTransaction<T: Environment + 'static = EnvironmentWrapper> {
     env: &'static T,
     txn_id: u64,
     callbacks: Arc<dyn TransactionTracker>,
     txn: RwTxnState<'static>,
 }
 
-impl<T: EnvironmentStrategy> LmdbWriteTransaction<T> {
+impl<T: Environment> LmdbWriteTransaction<T> {
     pub fn new<'a>(
         txn_id: u64,
         env: &'a T,
@@ -284,13 +284,13 @@ impl<T: EnvironmentStrategy> LmdbWriteTransaction<T> {
     }
 }
 
-impl<'a, T: EnvironmentStrategy> Drop for LmdbWriteTransaction<T> {
+impl<'a, T: Environment> Drop for LmdbWriteTransaction<T> {
     fn drop(&mut self) {
         self.commit();
     }
 }
 
-impl<T: EnvironmentStrategy> Transaction for LmdbWriteTransaction<T> {
+impl<T: Environment> Transaction for LmdbWriteTransaction<T> {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }

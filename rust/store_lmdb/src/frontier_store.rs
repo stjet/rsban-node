@@ -1,5 +1,5 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv,
+    iterator::DbIterator, parallel_traversal, Environment, EnvironmentWrapper, LmdbEnv,
     LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
@@ -8,12 +8,12 @@ use std::sync::Arc;
 
 pub type FrontierIterator = Box<dyn DbIterator<BlockHash, Account>>;
 
-pub struct LmdbFrontierStore<T: EnvironmentStrategy = EnvironmentWrapper> {
+pub struct LmdbFrontierStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
     database: Database,
 }
 
-impl<T: EnvironmentStrategy + 'static> LmdbFrontierStore<T> {
+impl<T: Environment + 'static> LmdbFrontierStore<T> {
     pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment

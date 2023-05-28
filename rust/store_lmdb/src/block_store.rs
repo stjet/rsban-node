@@ -1,5 +1,5 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv,
+    iterator::DbIterator, parallel_traversal, Environment, EnvironmentWrapper, LmdbEnv,
     LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
@@ -15,12 +15,12 @@ use std::sync::Arc;
 
 pub type BlockIterator = Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
 
-pub struct LmdbBlockStore<T: EnvironmentStrategy = EnvironmentWrapper> {
+pub struct LmdbBlockStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
     database: Database,
 }
 
-impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
+impl<T: Environment + 'static> LmdbBlockStore<T> {
     pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment
@@ -241,12 +241,12 @@ impl<T: EnvironmentStrategy + 'static> LmdbBlockStore<T> {
 }
 
 /// Fill in our predecessors
-struct BlockPredecessorMdbSet<'a, T: EnvironmentStrategy + 'static> {
+struct BlockPredecessorMdbSet<'a, T: Environment + 'static> {
     transaction: &'a mut LmdbWriteTransaction,
     block_store: &'a LmdbBlockStore<T>,
 }
 
-impl<'a, 'b, T: EnvironmentStrategy + 'static> BlockPredecessorMdbSet<'a, T> {
+impl<'a, 'b, T: Environment + 'static> BlockPredecessorMdbSet<'a, T> {
     fn new(transaction: &'a mut LmdbWriteTransaction, block_store: &'a LmdbBlockStore<T>) -> Self {
         Self {
             transaction,
@@ -271,7 +271,7 @@ impl<'a, 'b, T: EnvironmentStrategy + 'static> BlockPredecessorMdbSet<'a, T> {
     }
 }
 
-impl<'a, T: EnvironmentStrategy> BlockVisitor for BlockPredecessorMdbSet<'a, T> {
+impl<'a, T: Environment> BlockVisitor for BlockPredecessorMdbSet<'a, T> {
     fn send_block(&mut self, block: &SendBlock) {
         self.fill_value(block);
     }

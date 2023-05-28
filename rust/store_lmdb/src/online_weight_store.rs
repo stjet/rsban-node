@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    iterator::DbIterator, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl,
+    iterator::DbIterator, Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl,
     LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
@@ -9,12 +9,12 @@ use rsnano_core::Amount;
 
 pub type OnlineWeightIterator = Box<dyn DbIterator<u64, Amount>>;
 
-pub struct LmdbOnlineWeightStore<T: EnvironmentStrategy = EnvironmentWrapper> {
+pub struct LmdbOnlineWeightStore<T: Environment = EnvironmentWrapper> {
     _env: Arc<LmdbEnv<T>>,
     database: Database,
 }
 
-impl<T: EnvironmentStrategy + 'static> LmdbOnlineWeightStore<T> {
+impl<T: Environment + 'static> LmdbOnlineWeightStore<T> {
     pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment

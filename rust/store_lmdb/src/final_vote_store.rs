@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    iterator::DbIterator, parallel_traversal_u512, EnvironmentStrategy, EnvironmentWrapper,
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, parallel_traversal_u512, Environment, EnvironmentWrapper, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
@@ -11,12 +11,12 @@ pub type FinalVoteIterator = Box<dyn DbIterator<QualifiedRoot, BlockHash>>;
 
 /// Maps root to block hash for generated final votes.
 /// nano::qualified_root -> nano::block_hash
-pub struct LmdbFinalVoteStore<T: EnvironmentStrategy = EnvironmentWrapper> {
+pub struct LmdbFinalVoteStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
     database: Database,
 }
 
-impl<T: EnvironmentStrategy + 'static> LmdbFinalVoteStore<T> {
+impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
     pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment

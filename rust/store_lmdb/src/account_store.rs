@@ -1,6 +1,6 @@
 use crate::{
-    iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal, EnvironmentStrategy,
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal, Environment, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -11,14 +11,14 @@ use std::sync::Arc;
 
 pub type AccountIterator = Box<dyn DbIterator<Account, AccountInfo>>;
 
-pub struct LmdbAccountStore<T: EnvironmentStrategy = EnvironmentWrapper> {
+pub struct LmdbAccountStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
 
     /// U256 (arbitrary key) -> blob
     database: Database,
 }
 
-impl<T: EnvironmentStrategy + 'static> LmdbAccountStore<T> {
+impl<T: Environment + 'static> LmdbAccountStore<T> {
     pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment
@@ -138,8 +138,8 @@ mod tests {
     #[ignore = "wip"]
     fn empty_store_with_nullables() {
         let env = Arc::new(LmdbEnv::create_null());
-        let _txn = env.tx_begin_read().unwrap();
-        // let store = LmdbAccountStore::new(env).unwrap();
+        let txn = env.tx_begin_read().unwrap();
+        let store = LmdbAccountStore::new(env).unwrap();
         // let account = Account::from(1);
         // let result = store.get(&txn, &account);
         // assert_eq!(result, None);

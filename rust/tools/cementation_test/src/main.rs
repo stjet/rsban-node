@@ -11,7 +11,7 @@ use std::{
 use rsnano_core::{utils::ConsoleLogger, Account};
 use rsnano_ledger::{Ledger, LedgerConstants, WriteDatabaseQueue};
 use rsnano_node::cementation::{BlockCementer, CementCallbacks};
-use rsnano_store_lmdb::{EnvironmentStrategy, EnvironmentWrapper, LmdbStore};
+use rsnano_store_lmdb::{Environment, EnvironmentWrapper, LmdbStore};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -117,7 +117,7 @@ fn main() {
     }
 }
 
-fn open_ledger<T: AsRef<Path>, E: EnvironmentStrategy + 'static>(ledger_path: T) -> Ledger {
+fn open_ledger<T: AsRef<Path>, E: Environment + 'static>(ledger_path: T) -> Ledger {
     let store = Arc::new(LmdbStore::<E>::open(ledger_path.as_ref()).build().unwrap());
     Ledger::new(store, LedgerConstants::beta().unwrap()).unwrap()
 }

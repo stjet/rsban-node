@@ -1,12 +1,12 @@
 use crate::{
-    EnvironmentStrategy, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction, Transaction,
+    Environment, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction, Transaction,
     STORE_VERSION_CURRENT,
 };
 use core::panic;
 use lmdb::{Database, DatabaseFlags, WriteFlags};
 use std::{path::Path, sync::Arc};
 
-pub struct LmdbVersionStore<T: EnvironmentStrategy = EnvironmentWrapper> {
+pub struct LmdbVersionStore<T: Environment = EnvironmentWrapper> {
     _env: Arc<LmdbEnv<T>>,
 
     /// U256 (arbitrary key) -> blob
@@ -18,7 +18,7 @@ pub struct UpgradeInfo {
     pub is_fully_upgraded: bool,
 }
 
-impl<T: EnvironmentStrategy + 'static> LmdbVersionStore<T> {
+impl<T: Environment + 'static> LmdbVersionStore<T> {
     pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let db_handle = env
             .environment
@@ -75,10 +75,7 @@ impl<T: EnvironmentStrategy + 'static> LmdbVersionStore<T> {
     }
 }
 
-fn load_version<T: EnvironmentStrategy + 'static>(
-    txn: &dyn Transaction,
-    db: Database,
-) -> Option<i32> {
+fn load_version<T: Environment + 'static>(txn: &dyn Transaction, db: Database) -> Option<i32> {
     let key_bytes = version_key();
     match txn.get(db, &key_bytes) {
         Ok(value) => Some(i32::from_be_bytes(value[28..].try_into().unwrap())),

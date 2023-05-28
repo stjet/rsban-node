@@ -1,5 +1,5 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, EnvironmentStrategy, EnvironmentWrapper, LmdbEnv,
+    iterator::DbIterator, parallel_traversal, Environment, EnvironmentWrapper, LmdbEnv,
     LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{Database, DatabaseFlags, WriteFlags};
@@ -11,12 +11,12 @@ use std::sync::Arc;
 
 pub type ConfirmationHeightIterator = Box<dyn DbIterator<Account, ConfirmationHeightInfo>>;
 
-pub struct LmdbConfirmationHeightStore<T: EnvironmentStrategy = EnvironmentWrapper> {
+pub struct LmdbConfirmationHeightStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
     database: Database,
 }
 
-impl<T: EnvironmentStrategy + 'static> LmdbConfirmationHeightStore<T> {
+impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
     pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
         let database = env
             .environment

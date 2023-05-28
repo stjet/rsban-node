@@ -1,6 +1,6 @@
 use std::{any::Any, ffi::c_uint};
 
-use crate::{EnvironmentStrategy, Transaction};
+use crate::{Environment, Transaction};
 
 use lmdb::{Cursor, Database, RoCursor};
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
@@ -125,7 +125,7 @@ impl LmdbIteratorImpl {
         direction_asc: bool,
     ) -> Box<dyn DbIterator<K, V>>
     where
-        T: EnvironmentStrategy + 'static,
+        T: Environment + 'static,
         K: Serialize + Deserialize<Target = K> + 'static,
         V: Deserialize<Target = V> + 'static,
     {
@@ -141,7 +141,7 @@ impl LmdbIteratorImpl {
         Box::new(BinaryDbIterator::new(Self::null()))
     }
 
-    pub fn new<T: EnvironmentStrategy + 'static>(
+    pub fn new<T: Environment + 'static>(
         txn: &dyn Transaction,
         dbi: Database,
         key_val: Option<&[u8]>,

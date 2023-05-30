@@ -252,8 +252,7 @@ fn copy_table<T: Environment + 'static>(
         let mut cursor = ro_txn.txn().open_ro_cursor(source)?;
         for x in cursor.iter_start() {
             let (k, v) = x?;
-            rw_txn
-                .put(target, &k, &v, WriteFlags::APPEND)?;
+            rw_txn.put(target, &k, &v, WriteFlags::APPEND)?;
         }
     }
     if ro_txn.txn().count(source) != rw_txn.rw_txn_mut().count(target) {

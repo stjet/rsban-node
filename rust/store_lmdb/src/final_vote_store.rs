@@ -38,14 +38,13 @@ impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
         let root_bytes = root.to_bytes();
         match txn.get(self.database, &root_bytes) {
             Err(lmdb::Error::NotFound) => {
-                txn
-                    .put(
-                        self.database,
-                        &root_bytes,
-                        hash.as_bytes(),
-                        WriteFlags::empty(),
-                    )
-                    .unwrap();
+                txn.put(
+                    self.database,
+                    &root_bytes,
+                    hash.as_bytes(),
+                    WriteFlags::empty(),
+                )
+                .unwrap();
                 true
             }
             Ok(bytes) => BlockHash::from_slice(bytes).unwrap() == *hash,

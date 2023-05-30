@@ -259,6 +259,7 @@ impl<T: Environment> LmdbWriteTransaction<T> {
             txn_id,
             callbacks,
             txn: RwTxnState::Inactive,
+            #[cfg(feature = "output_tracking")]
             put_listener: OutputListener::new(),
         };
         tx.renew();

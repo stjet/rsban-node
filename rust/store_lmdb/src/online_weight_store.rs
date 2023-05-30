@@ -32,14 +32,13 @@ impl<T: Environment + 'static> LmdbOnlineWeightStore<T> {
     pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, time: u64, amount: &Amount) {
         let time_bytes = time.to_be_bytes();
         let amount_bytes = amount.to_be_bytes();
-        txn
-            .put(
-                self.database,
-                &time_bytes,
-                &amount_bytes,
-                WriteFlags::empty(),
-            )
-            .unwrap();
+        txn.put(
+            self.database,
+            &time_bytes,
+            &amount_bytes,
+            WriteFlags::empty(),
+        )
+        .unwrap();
     }
 
     pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, time: u64) {

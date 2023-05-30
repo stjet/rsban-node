@@ -30,14 +30,13 @@ impl<T: Environment + 'static> LmdbPeerStore<T> {
     }
 
     pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, endpoint: &EndpointKey) {
-        txn
-            .put(
-                self.database,
-                &endpoint.to_bytes(),
-                &[0; 0],
-                WriteFlags::empty(),
-            )
-            .unwrap();
+        txn.put(
+            self.database,
+            &endpoint.to_bytes(),
+            &[0; 0],
+            WriteFlags::empty(),
+        )
+        .unwrap();
     }
 
     pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, endpoint: &EndpointKey) {

@@ -283,14 +283,13 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         account: &Account,
         entry: &WalletValue,
     ) {
-        txn
-            .put(
-                self.db_handle(),
-                account.as_bytes(),
-                &entry.to_bytes(),
-                WriteFlags::empty(),
-            )
-            .unwrap();
+        txn.put(
+            self.db_handle(),
+            account.as_bytes(),
+            &entry.to_bytes(),
+            WriteFlags::empty(),
+        )
+        .unwrap();
     }
 
     pub fn check(

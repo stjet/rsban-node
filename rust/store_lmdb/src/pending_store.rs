@@ -33,14 +33,13 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
     pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, key: &PendingKey, pending: &PendingInfo) {
         let key_bytes = key.to_bytes();
         let pending_bytes = pending.to_bytes();
-        txn
-            .put(
-                self.database,
-                &key_bytes,
-                &pending_bytes,
-                WriteFlags::empty(),
-            )
-            .unwrap();
+        txn.put(
+            self.database,
+            &key_bytes,
+            &pending_bytes,
+            WriteFlags::empty(),
+        )
+        .unwrap();
     }
 
     pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, key: &PendingKey) {

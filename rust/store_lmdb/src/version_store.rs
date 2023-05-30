@@ -1,6 +1,6 @@
 use crate::{
-    Environment, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction,
-    Transaction, STORE_VERSION_CURRENT,
+    Environment, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction, Transaction,
+    STORE_VERSION_CURRENT,
 };
 use core::panic;
 use lmdb::{DatabaseFlags, WriteFlags};
@@ -64,8 +64,7 @@ impl<T: Environment + 'static> LmdbVersionStore<T> {
         let key_bytes = version_key();
         let value_bytes = value_bytes(version);
 
-        txn
-            .put(db, &key_bytes, &value_bytes, WriteFlags::empty())
+        txn.put(db, &key_bytes, &value_bytes, WriteFlags::empty())
             .unwrap();
     }
 

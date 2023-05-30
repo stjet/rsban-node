@@ -1,5 +1,5 @@
 use crate::{
-    iterator::DbIterator, lmdb_env::RwTransaction2, Environment, EnvironmentWrapper, Fan,
+    iterator::DbIterator, lmdb_env::RwTransaction, Environment, EnvironmentWrapper, Fan,
     LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
 };
 use anyhow::bail;

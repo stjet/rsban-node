@@ -6,7 +6,6 @@ use anyhow::bail;
 use lmdb::{DatabaseFlags, EnvironmentFlags, Stat, Transaction};
 use lmdb_sys::{MDB_env, MDB_SUCCESS};
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
-use std::marker::PhantomData;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::{
@@ -24,7 +23,7 @@ use std::{
 // Thin Wrappers + Embedded Stubs
 // --------------------------------------------------------------------------------
 
-pub trait RwTransaction2 {
+pub trait RwTransaction {
     type Database;
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]>;
     fn put(
@@ -56,7 +55,7 @@ pub trait RwTransaction2 {
 
 pub struct RwTransactionWrapper(lmdb::RwTransaction<'static>);
 
-impl RwTransaction2 for RwTransactionWrapper {
+impl RwTransaction for RwTransactionWrapper {
     type Database = lmdb::Database;
 
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
@@ -114,7 +113,7 @@ impl RwTransaction2 for RwTransactionWrapper {
 
 pub struct NullRwTransaction;
 
-impl<'env> RwTransaction2 for NullRwTransaction {
+impl<'env> RwTransaction for NullRwTransaction {
     type Database = DatabaseStub;
 
     fn get(&self, _database: Self::Database, _key: &[u8]) -> lmdb::Result<&[u8]> {
@@ -286,7 +285,7 @@ pub trait Environment: Send + Sync {
 
     type InactiveTxnImpl: InactiveTransaction<RoTxnType = Self::RoTxnImpl>;
 
-    type RwTxnType: RwTransaction2<Database = Self::Database>;
+    type RwTxnType: RwTransaction<Database = Self::Database>;
 
     type Database: Send + Sync + Copy;
 

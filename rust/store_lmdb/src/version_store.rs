@@ -1,5 +1,5 @@
 use crate::{
-    lmdb_env::RwTransaction2, Environment, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction,
+    lmdb_env::RwTransaction, Environment, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction,
     Transaction, STORE_VERSION_CURRENT,
 };
 use core::panic;

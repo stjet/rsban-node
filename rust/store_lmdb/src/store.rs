@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    lmdb_env::{EnvironmentWrapper, RoTransaction, RwTransaction2},
+    lmdb_env::{EnvironmentWrapper, RoTransaction, RwTransaction},
     EnvOptions, Environment, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore,
     LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore,
     LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction, LmdbVersionStore, LmdbWriteTransaction,

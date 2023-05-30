@@ -15,7 +15,7 @@ pub use lmdb_env::{
     EnvOptions, Environment, EnvironmentOptions, EnvironmentStub, EnvironmentWrapper, LmdbEnv,
     TestDbFile, TestLmdbEnv,
 };
-use lmdb_env::{InactiveTransaction, RoTransaction, RwTransaction2};
+use lmdb_env::{InactiveTransaction, RoTransaction, RwTransaction};
 
 mod account_store;
 pub use account_store::LmdbAccountStore;
@@ -218,7 +218,7 @@ impl<T: Environment + 'static> Transaction for LmdbReadTransaction<T> {
     }
 }
 
-enum RwTxnState<T: RwTransaction2> {
+enum RwTxnState<T: RwTransaction> {
     Inactive,
     Active(T),
     Transitioning,

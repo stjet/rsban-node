@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    iterator::DbIterator, lmdb_env::RwTransaction2, parallel_traversal_u512, Environment,
+    iterator::DbIterator, lmdb_env::RwTransaction, parallel_traversal_u512, Environment,
     EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
     Transaction,
 };

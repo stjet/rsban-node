@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{
     iterator::{BinaryDbIterator, DbIterator},
-    lmdb_env::RwTransaction2,
+    lmdb_env::RwTransaction,
     Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction,
 };
 use lmdb::{Cursor, DatabaseFlags, WriteFlags};

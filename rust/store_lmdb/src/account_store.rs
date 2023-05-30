@@ -1,6 +1,6 @@
 use crate::{
     iterator::DbIterator,
-    lmdb_env::{EnvironmentWrapper, RwTransaction2},
+    lmdb_env::{EnvironmentWrapper, RwTransaction},
     parallel_traversal, Environment, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction,
     LmdbWriteTransaction, Transaction,
 };

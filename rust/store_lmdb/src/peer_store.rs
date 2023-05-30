@@ -1,5 +1,5 @@
 use crate::{
-    iterator::DbIterator, lmdb_env::RwTransaction2, Environment, EnvironmentWrapper, LmdbEnv,
+    iterator::DbIterator, lmdb_env::RwTransaction, Environment, EnvironmentWrapper, LmdbEnv,
     LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};

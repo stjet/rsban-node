@@ -217,7 +217,7 @@ impl<'env> RwTransaction for NullRwTransaction {
     }
 
     fn open_ro_cursor(&self, _database: Self::Database) -> lmdb::Result<Self::RoCursor> {
-        Err(lmdb::Error::NotFound)
+        Ok(RoCursorStub)
     }
 
     fn count(&self, _database: Self::Database) -> u64 {
@@ -330,7 +330,7 @@ impl RoTransaction for NullRoTransaction {
     }
 
     fn open_ro_cursor(&self, _database: Self::Database) -> lmdb::Result<Self::RoCursor> {
-        Err(lmdb::Error::NotFound)
+        Ok(RoCursorStub)
     }
 
     fn count(&self, _database: Self::Database) -> u64 {

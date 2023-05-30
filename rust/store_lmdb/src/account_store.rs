@@ -151,7 +151,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "wip"]
     fn empty_store_with_nullables() {
         let env = Arc::new(LmdbEnv::create_null());
         let txn = env.tx_begin_read().unwrap();

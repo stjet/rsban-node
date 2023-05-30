@@ -13,7 +13,7 @@ pub use lmdb_config::{LmdbConfig, SyncStrategy};
 mod lmdb_env;
 pub use lmdb_env::{
     EnvOptions, Environment, EnvironmentOptions, EnvironmentStub, EnvironmentWrapper, LmdbEnv,
-    TestDbFile, TestLmdbEnv,
+    RoCursorWrapper, TestDbFile, TestLmdbEnv,
 };
 use lmdb_env::{InactiveTransaction, RoTransaction, RwTransaction};
 
@@ -67,12 +67,12 @@ use std::{
     time::Duration,
 };
 
-use lmdb::RoCursor;
 use primitive_types::{U256, U512};
 use rsnano_core::utils::{get_cpu_count, PropertyTreeWriter};
 
 pub trait Transaction {
     type Database;
+    type RoCursor;
     fn as_any(&self) -> &dyn Any;
     fn refresh(&mut self);
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]>;
@@ -83,7 +83,7 @@ pub trait Transaction {
             Err(e) => panic!("exists failed: {:?}", e),
         }
     }
-    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<RoCursor>;
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<Self::RoCursor>;
     fn count(&self, database: Self::Database) -> u64;
 }
 
@@ -195,6 +195,7 @@ impl<T: Environment + 'static> Drop for LmdbReadTransaction<T> {
 
 impl<T: Environment + 'static> Transaction for LmdbReadTransaction<T> {
     type Database = T::Database;
+    type RoCursor = T::RoCursor;
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -209,7 +210,7 @@ impl<T: Environment + 'static> Transaction for LmdbReadTransaction<T> {
         self.txn().get(database, key)
     }
 
-    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<RoCursor> {
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<Self::RoCursor> {
         self.txn().open_ro_cursor(database)
     }
 
@@ -294,6 +295,8 @@ impl<'a, T: Environment> Drop for LmdbWriteTransaction<T> {
 
 impl<T: Environment> Transaction for LmdbWriteTransaction<T> {
     type Database = T::Database;
+    type RoCursor = T::RoCursor;
+
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -307,7 +310,7 @@ impl<T: Environment> Transaction for LmdbWriteTransaction<T> {
         self.rw_txn().get(database, key)
     }
 
-    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<RoCursor> {
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<Self::RoCursor> {
         self.rw_txn().open_ro_cursor(database)
     }
 

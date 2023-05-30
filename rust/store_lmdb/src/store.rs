@@ -6,13 +6,13 @@ use std::{
 };
 
 use crate::{
-    lmdb_env::{EnvironmentWrapper, RoTransaction, RwTransaction},
+    lmdb_env::{EnvironmentWrapper, RoCursor, RoTransaction, RwTransaction},
     EnvOptions, Environment, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore,
     LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore,
     LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction, LmdbVersionStore, LmdbWriteTransaction,
     NullTransactionTracker, Table, TransactionTracker, STORE_VERSION_MINIMUM,
 };
-use lmdb::{Cursor, DatabaseFlags, WriteFlags};
+use lmdb::{DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::utils::{seconds_since_epoch, Logger, NullLogger, PropertyTreeWriter};
 

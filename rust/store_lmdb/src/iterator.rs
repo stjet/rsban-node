@@ -1,8 +1,7 @@
 use std::{any::Any, ffi::c_uint};
 
-use crate::{Environment, Transaction};
+use crate::{lmdb_env::RoCursor, Environment, Transaction};
 
-use lmdb::{Cursor, RoCursor};
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 use rsnano_core::utils::{Deserialize, Serialize, StreamAdapter};
 
@@ -112,24 +111,23 @@ where
     }
 }
 
-pub struct LmdbIteratorImpl {
+pub struct LmdbIteratorImpl<E: Environment + 'static> {
     current: Option<(&'static [u8], &'static [u8])>,
-    cursor: Option<RoCursor<'static>>,
+    cursor: Option<E::RoCursor>,
 }
 
-impl LmdbIteratorImpl {
-    pub fn new_iterator<T, K, V>(
-        txn: &dyn Transaction<Database = T::Database>,
-        dbi: T::Database,
+impl<E: Environment + 'static> LmdbIteratorImpl<E> {
+    pub fn new_iterator<K, V>(
+        txn: &dyn Transaction<Database = E::Database, RoCursor = E::RoCursor>,
+        dbi: E::Database,
         key_val: Option<&[u8]>,
         direction_asc: bool,
     ) -> Box<dyn DbIterator<K, V>>
     where
-        T: Environment + 'static,
         K: Serialize + Deserialize<Target = K> + 'static,
         V: Deserialize<Target = V> + 'static,
     {
-        let iterator_impl = Self::new::<T>(txn, dbi, key_val, direction_asc);
+        let iterator_impl = Self::new(txn, dbi, key_val, direction_asc);
         Box::new(BinaryDbIterator::new(iterator_impl))
     }
 
@@ -141,9 +139,9 @@ impl LmdbIteratorImpl {
         Box::new(BinaryDbIterator::new(Self::null()))
     }
 
-    pub fn new<T: Environment + 'static>(
-        txn: &dyn Transaction<Database = T::Database>,
-        dbi: T::Database,
+    pub fn new(
+        txn: &dyn Transaction<Database = E::Database, RoCursor = E::RoCursor>,
+        dbi: E::Database,
         key_val: Option<&[u8]>,
         direction_asc: bool,
     ) -> Self {
@@ -158,9 +156,6 @@ impl LmdbIteratorImpl {
         };
 
         let cursor = txn.open_ro_cursor(dbi).unwrap();
-        //todo: dont use unsafe code:
-        let cursor =
-            unsafe { std::mem::transmute::<lmdb::RoCursor<'_>, lmdb::RoCursor<'static>>(cursor) };
         let mut result = Self {
             current: None,
             cursor: Some(cursor),
@@ -190,7 +185,7 @@ impl LmdbIteratorImpl {
     }
 }
 
-impl DbIteratorImpl for LmdbIteratorImpl {
+impl<E: Environment + 'static> DbIteratorImpl for LmdbIteratorImpl<E> {
     fn current(&self) -> Option<(&[u8], &[u8])> {
         self.current
     }
@@ -200,7 +195,7 @@ impl DbIteratorImpl for LmdbIteratorImpl {
     }
 }
 
-impl PartialEq for LmdbIteratorImpl {
+impl<E: Environment + 'static> PartialEq for LmdbIteratorImpl<E> {
     fn eq(&self, other: &Self) -> bool {
         self.current.map(|(k, _)| k) == other.current.map(|(k, _)| k)
     }

@@ -51,7 +51,7 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
 
     pub fn get(
         &self,
-        transaction: &dyn Transaction<Database = T::Database>,
+        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         account: &Account,
     ) -> Option<AccountInfo> {
         let result = transaction.get(self.database, account.as_bytes());
@@ -74,10 +74,10 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
 
     pub fn begin_account(
         &self,
-        transaction: &dyn Transaction<Database = T::Database>,
+        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         account: &Account,
     ) -> AccountIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(
+        LmdbIteratorImpl::<T>::new_iterator(
             transaction,
             self.database,
             Some(account.as_bytes()),
@@ -85,8 +85,11 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         )
     }
 
-    pub fn begin(&self, transaction: &dyn Transaction<Database = T::Database>) -> AccountIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(transaction, self.database, None, true)
+    pub fn begin(
+        &self,
+        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> AccountIterator {
+        LmdbIteratorImpl::<T>::new_iterator(transaction, self.database, None, true)
     }
 
     pub fn for_each_par(
@@ -106,14 +109,21 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
     }
 
     pub fn end(&self) -> AccountIterator {
-        LmdbIteratorImpl::null_iterator()
+        LmdbIteratorImpl::<T>::null_iterator()
     }
 
-    pub fn count(&self, txn: &dyn Transaction<Database = T::Database>) -> u64 {
+    pub fn count(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> u64 {
         txn.count(self.database)
     }
 
-    pub fn exists(&self, txn: &dyn Transaction<Database = T::Database>, account: &Account) -> bool {
+    pub fn exists(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        account: &Account,
+    ) -> bool {
         !self.begin_account(txn, account).is_end()
     }
 }

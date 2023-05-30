@@ -52,7 +52,7 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
 
     pub fn get(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         key: &PendingKey,
     ) -> Option<PendingInfo> {
         let key_bytes = key.to_bytes();
@@ -68,25 +68,36 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
         }
     }
 
-    pub fn begin(&self, txn: &dyn Transaction<Database = T::Database>) -> PendingIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
+    pub fn begin(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> PendingIterator {
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, None, true)
     }
 
     pub fn begin_at_key(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         key: &PendingKey,
     ) -> PendingIterator {
         let key_bytes = key.to_bytes();
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, Some(&key_bytes), true)
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, Some(&key_bytes), true)
     }
 
-    pub fn exists(&self, txn: &dyn Transaction<Database = T::Database>, key: &PendingKey) -> bool {
+    pub fn exists(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        key: &PendingKey,
+    ) -> bool {
         let iterator = self.begin_at_key(txn, key);
         iterator.current().map(|(k, _)| k == key).unwrap_or(false)
     }
 
-    pub fn any(&self, txn: &dyn Transaction<Database = T::Database>, account: &Account) -> bool {
+    pub fn any(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        account: &Account,
+    ) -> bool {
         let key = PendingKey::new(*account, BlockHash::zero());
         let iterator = self.begin_at_key(txn, &key);
         iterator
@@ -112,7 +123,7 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
     }
 
     pub fn end(&self) -> PendingIterator {
-        LmdbIteratorImpl::null_iterator()
+        LmdbIteratorImpl::<T>::null_iterator()
     }
 }
 

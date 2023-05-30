@@ -9,7 +9,7 @@ use crate::stats::{DetailType, Direction, StatType, Stats};
 use primitive_types::U256;
 use rsnano_core::{Account, AccountInfo, ConfirmationHeightInfo};
 use rsnano_ledger::Ledger;
-use rsnano_store_lmdb::Transaction;
+use rsnano_store_lmdb::{RoCursorWrapper, Transaction};
 
 #[derive(Clone)]
 pub struct BacklogPopulationConfig {
@@ -47,7 +47,7 @@ pub struct BacklogPopulation {
 
 pub type ActivateCallback = Box<
     dyn Fn(
-            &dyn Transaction<Database = lmdb::Database>,
+            &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
             &Account,
             &AccountInfo,
             &ConfirmationHeightInfo,
@@ -215,7 +215,11 @@ impl BacklogPopulationThread {
         }
     }
 
-    pub fn activate(&self, txn: &dyn Transaction<Database = lmdb::Database>, account: &Account) {
+    pub fn activate(
+        &self,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
+        account: &Account,
+    ) {
         let account_info = match self.ledger.store.account.get(txn, account) {
             Some(info) => info,
             None => {

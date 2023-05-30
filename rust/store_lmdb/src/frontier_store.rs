@@ -43,7 +43,7 @@ impl<T: Environment + 'static> LmdbFrontierStore<T> {
 
     pub fn get(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<Account> {
         match txn.get(self.database, hash.as_bytes()) {
@@ -59,16 +59,19 @@ impl<T: Environment + 'static> LmdbFrontierStore<T> {
             .unwrap();
     }
 
-    pub fn begin(&self, txn: &dyn Transaction<Database = T::Database>) -> FrontierIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
+    pub fn begin(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> FrontierIterator {
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, None, true)
     }
 
     pub fn begin_at_hash(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> FrontierIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, Some(hash.as_bytes()), true)
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, Some(hash.as_bytes()), true)
     }
 
     pub fn for_each_par(
@@ -90,7 +93,7 @@ impl<T: Environment + 'static> LmdbFrontierStore<T> {
     }
 
     pub fn end(&self) -> FrontierIterator {
-        LmdbIteratorImpl::null_iterator()
+        LmdbIteratorImpl::<T>::null_iterator()
     }
 }
 

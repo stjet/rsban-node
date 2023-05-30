@@ -1,10 +1,13 @@
 use std::ffi::c_void;
 
 use rsnano_core::Account;
-use rsnano_store_lmdb::Transaction;
+use rsnano_store_lmdb::{RoCursorWrapper, Transaction};
 
-pub type ElectionSchedulerActivateInternalCallback =
-    unsafe fn(*mut c_void, &Account, &dyn Transaction<Database = lmdb::Database>);
+pub type ElectionSchedulerActivateInternalCallback = unsafe fn(
+    *mut c_void,
+    &Account,
+    &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
+);
 pub static mut ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK: Option<
     ElectionSchedulerActivateInternalCallback,
 > = None;
@@ -20,7 +23,11 @@ impl ElectionScheduler {
         }
     }
 
-    pub fn activate(&self, account: &Account, txn: &dyn Transaction<Database = lmdb::Database>) {
+    pub fn activate(
+        &self,
+        account: &Account,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
+    ) {
         unsafe {
             let callback = ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK
                 .expect("ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK not defined");

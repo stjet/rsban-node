@@ -200,7 +200,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
 
     fn ensure_key_exists(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         key: &Account,
     ) -> anyhow::Result<()> {
         txn.get(self.db_handle(), key.as_bytes())?;
@@ -265,7 +265,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
 
     pub fn entry_get_raw(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         account: &Account,
     ) -> WalletValue {
         match txn.get(self.db_handle(), account.as_bytes()) {
@@ -293,15 +293,24 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
             .unwrap();
     }
 
-    pub fn check(&self, txn: &dyn Transaction<Database = T::Database>) -> RawKey {
+    pub fn check(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> RawKey {
         self.entry_get_raw(txn, &Self::check_special()).key
     }
 
-    pub fn salt(&self, txn: &dyn Transaction<Database = T::Database>) -> RawKey {
+    pub fn salt(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> RawKey {
         self.entry_get_raw(txn, &Self::salt_special()).key
     }
 
-    pub fn wallet_key(&self, txn: &dyn Transaction<Database = T::Database>) -> RawKey {
+    pub fn wallet_key(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> RawKey {
         let guard = self.fans.lock().unwrap();
         self.wallet_key_locked(&guard, txn)
     }
@@ -309,7 +318,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
     fn wallet_key_locked(
         &self,
         guard: &MutexGuard<Fans>,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
     ) -> RawKey {
         let wallet = guard.wallet_key_mem.value();
         let password = guard.password.value();
@@ -317,7 +326,10 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         wallet.decrypt(&password, &iv)
     }
 
-    pub fn seed(&self, txn: &dyn Transaction<Database = T::Database>) -> RawKey {
+    pub fn seed(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> RawKey {
         let value = self.entry_get_raw(txn, &Self::seed_special());
         let password = self.wallet_key(txn);
         let iv = self.salt(txn).initialization_vector_high();
@@ -334,7 +346,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
 
     pub fn deterministic_key(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         index: u32,
     ) -> RawKey {
         debug_assert!(self.valid_password(txn));
@@ -342,7 +354,10 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         deterministic_key(&seed, index)
     }
 
-    pub fn deterministic_index_get(&self, txn: &dyn Transaction<Database = T::Database>) -> u32 {
+    pub fn deterministic_index_get(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> u32 {
         let value = self.entry_get_raw(txn, &Self::deterministic_index_special());
         value.key.number().low_u32()
     }
@@ -353,7 +368,10 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         self.entry_put_raw(txn, &Self::deterministic_index_special(), &value);
     }
 
-    pub fn valid_password(&self, txn: &dyn Transaction<Database = T::Database>) -> bool {
+    pub fn valid_password(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> bool {
         let wallet_key = self.wallet_key(txn);
         self.check_wallet_key(txn, &wallet_key)
     }
@@ -361,7 +379,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
     pub fn valid_password_locked(
         &self,
         guard: &MutexGuard<Fans>,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
     ) -> bool {
         let wallet_key = self.wallet_key_locked(guard, txn);
         self.check_wallet_key(txn, &wallet_key)
@@ -369,7 +387,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
 
     fn check_wallet_key(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         wallet_key: &RawKey,
     ) -> bool {
         let zero = RawKey::zero();
@@ -380,7 +398,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
 
     pub fn derive_key(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         password: &str,
     ) -> RawKey {
         let salt = self.salt(txn);
@@ -407,8 +425,11 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         }
     }
 
-    pub fn begin(&self, txn: &dyn Transaction<Database = T::Database>) -> WalletIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(
+    pub fn begin(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> WalletIterator {
+        LmdbIteratorImpl::<T>::new_iterator(
             txn,
             self.db_handle(),
             Some(Self::special_count().as_bytes()),
@@ -418,19 +439,19 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
 
     pub fn begin_at_account(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         key: &Account,
     ) -> WalletIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.db_handle(), Some(key.as_bytes()), true)
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.db_handle(), Some(key.as_bytes()), true)
     }
 
     pub fn end(&self) -> WalletIterator {
-        LmdbIteratorImpl::null_iterator()
+        LmdbIteratorImpl::<T>::null_iterator()
     }
 
     pub fn find(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         account: &Account,
     ) -> WalletIterator {
         let result = self.begin_at_account(txn, account);
@@ -481,7 +502,11 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         key.number() >= Self::special_count().number()
     }
 
-    pub fn exists(&self, txn: &dyn Transaction<Database = T::Database>, key: &PublicKey) -> bool {
+    pub fn exists(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        key: &PublicKey,
+    ) -> bool {
         self.valid_public_key(key) && !self.find(txn, key).is_end()
     }
 
@@ -522,14 +547,17 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         result
     }
 
-    pub fn version(&self, txn: &dyn Transaction<Database = T::Database>) -> u32 {
+    pub fn version(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> u32 {
         let value = self.entry_get_raw(txn, &Self::version_special());
         value.key.as_bytes()[31] as u32
     }
 
     pub fn attempt_password(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         password: &str,
     ) -> bool {
         let is_valid = {
@@ -552,7 +580,10 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         self.fans.lock().unwrap().password.value_set(RawKey::zero());
     }
 
-    pub fn accounts(&self, txn: &dyn Transaction<Database = T::Database>) -> Vec<Account> {
+    pub fn accounts(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> Vec<Account> {
         let mut result = Vec::new();
         let mut it = self.begin(txn);
         while let Some((k, _)) = it.current() {
@@ -563,7 +594,10 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         result
     }
 
-    pub fn representative(&self, txn: &dyn Transaction<Database = T::Database>) -> Account {
+    pub fn representative(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> Account {
         let value = self.entry_get_raw(txn, &Self::representative_special());
         Account::from_bytes(*value.key.as_bytes())
     }
@@ -601,7 +635,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
 
     pub fn fetch(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         pub_key: &Account,
     ) -> anyhow::Result<RawKey> {
         if !self.valid_password(txn) {
@@ -635,9 +669,12 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         Ok(prv)
     }
 
-    pub fn serialize_json(&self, txn: &dyn Transaction<Database = T::Database>) -> String {
+    pub fn serialize_json(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> String {
         let mut map = serde_json::Map::new();
-        let mut it = LmdbIteratorImpl::new_iterator::<T, Account, WalletValue>(
+        let mut it = LmdbIteratorImpl::<T>::new_iterator::<Account, WalletValue>(
             txn,
             self.db_handle(),
             None,
@@ -657,7 +694,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
 
     pub fn write_backup(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         path: &Path,
     ) -> anyhow::Result<()> {
         let mut file = File::create(path)?;
@@ -708,7 +745,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
 
     pub fn work_get(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         pub_key: &PublicKey,
     ) -> anyhow::Result<u64> {
         let entry = self.entry_get_raw(txn, pub_key);

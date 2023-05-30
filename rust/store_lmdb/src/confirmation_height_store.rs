@@ -47,7 +47,7 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
 
     pub fn get(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         account: &Account,
     ) -> Option<ConfirmationHeightInfo> {
         match txn.get(self.database, account.as_bytes()) {
@@ -62,7 +62,11 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
         }
     }
 
-    pub fn exists(&self, txn: &dyn Transaction<Database = T::Database>, account: &Account) -> bool {
+    pub fn exists(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        account: &Account,
+    ) -> bool {
         txn.exists(self.database, account.as_bytes())
     }
 
@@ -72,7 +76,10 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
             .unwrap();
     }
 
-    pub fn count(&self, txn: &dyn Transaction<Database = T::Database>) -> u64 {
+    pub fn count(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> u64 {
         txn.count(self.database)
     }
 
@@ -82,26 +89,21 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
 
     pub fn begin(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
     ) -> ConfirmationHeightIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, None, true)
     }
 
     pub fn begin_at_account(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         account: &Account,
     ) -> ConfirmationHeightIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(
-            txn,
-            self.database,
-            Some(account.as_bytes()),
-            true,
-        )
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, Some(account.as_bytes()), true)
     }
 
     pub fn end(&self) -> ConfirmationHeightIterator {
-        LmdbIteratorImpl::null_iterator()
+        LmdbIteratorImpl::<T>::null_iterator()
     }
 
     pub fn for_each_par(

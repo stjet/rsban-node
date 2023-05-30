@@ -39,23 +39,33 @@ impl<T: Environment + 'static> LmdbPrunedStore<T> {
             .unwrap();
     }
 
-    pub fn exists(&self, txn: &dyn Transaction<Database = T::Database>, hash: &BlockHash) -> bool {
+    pub fn exists(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        hash: &BlockHash,
+    ) -> bool {
         txn.exists(self.database, hash.as_bytes())
     }
 
-    pub fn begin(&self, txn: &dyn Transaction<Database = T::Database>) -> PrunedIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
+    pub fn begin(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> PrunedIterator {
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, None, true)
     }
 
     pub fn begin_at_hash(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> PrunedIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, Some(hash.as_bytes()), true)
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, Some(hash.as_bytes()), true)
     }
 
-    pub fn random(&self, txn: &dyn Transaction<Database = T::Database>) -> Option<BlockHash> {
+    pub fn random(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> Option<BlockHash> {
         let random_hash = BlockHash::from_bytes(thread_rng().gen());
         let mut existing = self.begin_at_hash(txn, &random_hash);
         if existing.is_end() {
@@ -65,7 +75,10 @@ impl<T: Environment + 'static> LmdbPrunedStore<T> {
         existing.current().map(|(k, _)| *k)
     }
 
-    pub fn count(&self, txn: &dyn Transaction<Database = T::Database>) -> u64 {
+    pub fn count(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> u64 {
         txn.count(self.database)
     }
 
@@ -74,7 +87,7 @@ impl<T: Environment + 'static> LmdbPrunedStore<T> {
     }
 
     pub fn end(&self) -> PrunedIterator {
-        LmdbIteratorImpl::null_iterator()
+        LmdbIteratorImpl::<T>::null_iterator()
     }
 
     pub fn for_each_par(

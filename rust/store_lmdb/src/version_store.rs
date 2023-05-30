@@ -69,14 +69,17 @@ impl<T: Environment + 'static> LmdbVersionStore<T> {
             .unwrap();
     }
 
-    pub fn get(&self, txn: &dyn Transaction<Database = T::Database>) -> Option<i32> {
+    pub fn get(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> Option<i32> {
         let db = self.db_handle();
         load_version::<T>(txn, db)
     }
 }
 
 fn load_version<T: Environment + 'static>(
-    txn: &dyn Transaction<Database = T::Database>,
+    txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
     db: T::Database,
 ) -> Option<i32> {
     let key_bytes = version_key();

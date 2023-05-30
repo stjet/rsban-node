@@ -55,20 +55,27 @@ impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
         }
     }
 
-    pub fn begin(&self, txn: &dyn Transaction<Database = T::Database>) -> FinalVoteIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
+    pub fn begin(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> FinalVoteIterator {
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, None, true)
     }
 
     pub fn begin_at_root(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         root: &QualifiedRoot,
     ) -> FinalVoteIterator {
         let key_bytes = root.to_bytes();
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, Some(&key_bytes), true)
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, Some(&key_bytes), true)
     }
 
-    pub fn get(&self, txn: &dyn Transaction<Database = T::Database>, root: Root) -> Vec<BlockHash> {
+    pub fn get(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        root: Root,
+    ) -> Vec<BlockHash> {
         let mut result = Vec::new();
         let key_start = QualifiedRoot {
             root,
@@ -114,7 +121,10 @@ impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
         }
     }
 
-    pub fn count(&self, txn: &dyn Transaction<Database = T::Database>) -> u64 {
+    pub fn count(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> u64 {
         txn.count(self.database)
     }
 
@@ -141,7 +151,7 @@ impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
     }
 
     pub fn end(&self) -> FinalVoteIterator {
-        LmdbIteratorImpl::null_iterator()
+        LmdbIteratorImpl::<T>::null_iterator()
     }
 }
 

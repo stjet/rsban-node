@@ -14,7 +14,7 @@ mod version_store;
 mod wallet_store;
 mod wallets;
 
-use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, Transaction};
+use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, RoCursorWrapper, Transaction};
 use std::{ffi::c_void, ops::Deref};
 pub use store::LmdbStoreHandle;
 
@@ -50,7 +50,9 @@ impl TransactionHandle {
         }
     }
 
-    pub fn as_txn(&self) -> &dyn Transaction<Database = lmdb::Database> {
+    pub fn as_txn(
+        &self,
+    ) -> &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper> {
         match &self.0 {
             TransactionType::Read(t) => t,
             TransactionType::Write(t) => t,
@@ -135,7 +137,7 @@ pub unsafe extern "C" fn rsn_lmdb_write_txn_refresh(handle: *mut TransactionHand
 }
 
 pub(crate) unsafe fn into_read_txn_handle(
-    txn: &dyn Transaction<Database = lmdb::Database>,
+    txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
 ) -> *mut TransactionHandle {
     TransactionHandle::new(TransactionType::ReadRef(std::mem::transmute::<
         &LmdbReadTransaction,

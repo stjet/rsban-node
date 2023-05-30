@@ -49,15 +49,24 @@ impl<T: Environment + 'static> LmdbOnlineWeightStore<T> {
             .unwrap();
     }
 
-    pub fn begin(&self, txn: &dyn Transaction<Database = T::Database>) -> OnlineWeightIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
+    pub fn begin(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> OnlineWeightIterator {
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, None, true)
     }
 
-    pub fn rbegin(&self, txn: &dyn Transaction<Database = T::Database>) -> OnlineWeightIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, false)
+    pub fn rbegin(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> OnlineWeightIterator {
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, None, false)
     }
 
-    pub fn count(&self, txn: &dyn Transaction<Database = T::Database>) -> u64 {
+    pub fn count(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> u64 {
         txn.count(self.database)
     }
 

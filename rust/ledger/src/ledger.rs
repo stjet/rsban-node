@@ -9,7 +9,9 @@ use rsnano_core::{
     BlockHash, BlockSubType, BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo,
     PendingKey, QualifiedRoot, Root,
 };
-use rsnano_store_lmdb::{LmdbReadTransaction, LmdbStore, LmdbWriteTransaction, Transaction};
+use rsnano_store_lmdb::{
+    LmdbReadTransaction, LmdbStore, LmdbWriteTransaction, RoCursorWrapper, Transaction,
+};
 
 use std::{
     collections::{BTreeMap, HashMap},
@@ -233,7 +235,7 @@ impl Ledger {
 
     pub fn block_or_pruned_exists_txn(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         hash: &BlockHash,
     ) -> bool {
         self.store.pruned.exists(txn, hash) || self.store.block.exists(txn, hash)
@@ -243,7 +245,7 @@ impl Ledger {
     /// Returns 0 if the block was not found
     pub fn balance(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         hash: &BlockHash,
     ) -> Amount {
         if hash.is_zero() {
@@ -257,7 +259,7 @@ impl Ledger {
     /// Returns Err if the pruning is enabled and the block was not found.
     pub fn balance_safe(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         hash: &BlockHash,
     ) -> anyhow::Result<Amount> {
         if self.pruning_enabled() && !hash.is_zero() && !self.store.block.exists(txn, hash) {
@@ -270,7 +272,7 @@ impl Ledger {
     /// Balance for account by account number
     pub fn account_balance(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         account: &Account,
         only_confirmed: bool,
     ) -> Amount {
@@ -289,7 +291,7 @@ impl Ledger {
 
     pub fn account_receivable(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         account: &Account,
         only_confirmed: bool,
     ) -> Amount {
@@ -321,7 +323,7 @@ impl Ledger {
 
     pub fn block_confirmed(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         hash: &BlockHash,
     ) -> bool {
         if self.store.pruned.exists(txn, hash) {
@@ -355,7 +357,7 @@ impl Ledger {
 
     pub fn is_send(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         block: &dyn Block,
     ) -> bool {
         if block.block_type() != BlockType::State {
@@ -386,7 +388,7 @@ impl Ledger {
 
     pub fn block_destination(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         block: &BlockEnum,
     ) -> Account {
         match block {
@@ -404,7 +406,7 @@ impl Ledger {
 
     pub fn block_source(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         block: &BlockEnum,
     ) -> BlockHash {
         /*
@@ -432,7 +434,7 @@ impl Ledger {
 
     pub fn hash_root_random(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
     ) -> Option<(BlockHash, BlockHash)> {
         if !self.pruning_enabled() {
             self.store
@@ -477,7 +479,7 @@ impl Ledger {
     /// Return account containing block hash
     pub fn account(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         hash: &BlockHash,
     ) -> Option<Account> {
         self.store.block.account(txn, hash)
@@ -486,7 +488,7 @@ impl Ledger {
     /// Return absolute amount decrease or increase for block
     pub fn amount(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         hash: &BlockHash,
     ) -> Option<Amount> {
         self.store.block.get(txn, hash).map(|block| {
@@ -503,7 +505,7 @@ impl Ledger {
     /// Return absolute amount decrease or increase for block
     pub fn amount_safe(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         hash: &BlockHash,
     ) -> Option<Amount> {
         self.store
@@ -529,7 +531,7 @@ impl Ledger {
     /// Return latest block for account
     pub fn latest(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         account: &Account,
     ) -> Option<BlockHash> {
         self.account_info(txn, account).map(|info| info.head)
@@ -538,7 +540,7 @@ impl Ledger {
     /// Return latest root for account, account number if there are no blocks for this account
     pub fn latest_root(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         account: &Account,
     ) -> Root {
         match self.account_info(txn, account) {
@@ -556,7 +558,7 @@ impl Ledger {
     /// Return the receive block on success and None on failure
     pub fn find_receive_block_by_send_hash(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         destination: &Account,
         send_block_hash: &BlockHash,
     ) -> Option<BlockEnum> {
@@ -618,7 +620,7 @@ impl Ledger {
 
     pub fn successor(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         root: &QualifiedRoot,
     ) -> Option<BlockEnum> {
         let (mut successor, get_from_previous) = if root.previous.is_zero() {
@@ -748,7 +750,7 @@ impl Ledger {
 
     pub fn dependent_blocks(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         block: &BlockEnum,
     ) -> (BlockHash, BlockHash) {
         DependentBlocksFinder::new(self, txn).find_dependent_blocks(block)
@@ -756,7 +758,7 @@ impl Ledger {
 
     pub fn could_fit(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         block: &BlockEnum,
     ) -> bool {
         let (first, second) = self.dependent_blocks(txn, block);
@@ -765,7 +767,7 @@ impl Ledger {
 
     fn is_dependency_satisfied(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         dependency: &BlockHash,
     ) -> bool {
         dependency.is_zero() || self.store.block.exists(txn, dependency)
@@ -773,7 +775,7 @@ impl Ledger {
 
     pub fn dependents_confirmed(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         block: &BlockEnum,
     ) -> bool {
         let (first, second) = self.dependent_blocks(txn, block);
@@ -782,7 +784,7 @@ impl Ledger {
 
     fn is_dependency_confirmed(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         dependency: &BlockHash,
     ) -> bool {
         if !dependency.is_zero() {
@@ -804,7 +806,7 @@ impl Ledger {
     /// Returns the latest block with representative information
     pub fn representative_block_hash(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         hash: &BlockHash,
     ) -> BlockHash {
         let hash = RepresentativeBlockFinder::new(txn, self.store.as_ref()).find_rep_block(*hash);
@@ -825,7 +827,7 @@ impl Ledger {
 
     pub fn get_block(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         hash: &BlockHash,
     ) -> Option<BlockEnum> {
         self.store.block.get(txn, hash)
@@ -833,7 +835,7 @@ impl Ledger {
 
     pub fn account_info(
         &self,
-        transaction: &dyn Transaction<Database = lmdb::Database>,
+        transaction: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         account: &Account,
     ) -> Option<AccountInfo> {
         self.store.account.get(transaction, account)
@@ -841,7 +843,7 @@ impl Ledger {
 
     pub fn get_confirmation_height(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         account: &Account,
     ) -> Option<ConfirmationHeightInfo> {
         self.store.confirmation_height.get(txn, account)
@@ -849,7 +851,7 @@ impl Ledger {
 
     pub fn get_frontier(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
         hash: &BlockHash,
     ) -> Option<Account> {
         self.store.frontier.get(txn, hash)
@@ -857,7 +859,8 @@ impl Ledger {
 
     pub fn pending_info(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database>,
+        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
+
         key: &PendingKey,
     ) -> Option<PendingInfo> {
         self.store.pending.get(txn, key)

@@ -3,7 +3,7 @@ use crate::{
     TransactionTracker,
 };
 use anyhow::bail;
-use lmdb::{DatabaseFlags, EnvironmentFlags, Stat, Transaction};
+use lmdb::{Cursor, DatabaseFlags, EnvironmentFlags, Stat, Transaction};
 use lmdb_sys::{MDB_env, MDB_SUCCESS};
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
 use std::ops::Deref;
@@ -23,8 +23,53 @@ use std::{
 // Thin Wrappers + Embedded Stubs
 // --------------------------------------------------------------------------------
 
+pub trait RoCursor {
+    fn iter_start(&mut self) -> lmdb::Iter<'static>;
+    fn get(
+        &self,
+        key: Option<&[u8]>,
+        data: Option<&[u8]>,
+        op: u32,
+    ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])>; //todo don't use static lifetimes
+}
+
+pub struct RoCursorWrapper(lmdb::RoCursor<'static>);
+
+impl RoCursor for RoCursorWrapper {
+    fn iter_start(&mut self) -> lmdb::Iter<'static> {
+        self.0.iter_start()
+    }
+
+    fn get(
+        &self,
+        key: Option<&[u8]>,
+        data: Option<&[u8]>,
+        op: u32,
+    ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])> {
+        self.0.get(key, data, op)
+    }
+}
+
+pub struct RoCursorStub;
+
+impl RoCursor for RoCursorStub {
+    fn iter_start(&mut self) -> lmdb::Iter<'static> {
+        lmdb::Iter::Err(lmdb::Error::NotFound)
+    }
+
+    fn get(
+        &self,
+        key: Option<&[u8]>,
+        data: Option<&[u8]>,
+        op: u32,
+    ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])> {
+        Err(lmdb::Error::NotFound)
+    }
+}
+
 pub trait RwTransaction {
     type Database;
+    type RoCursor: RoCursor;
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]>;
     fn put(
         &mut self,
@@ -48,7 +93,7 @@ pub trait RwTransaction {
     ) -> lmdb::Result<Self::Database>;
     unsafe fn drop_db(&mut self, database: Self::Database) -> lmdb::Result<()>;
     fn clear_db(&mut self, database: Self::Database) -> lmdb::Result<()>;
-    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<lmdb::RoCursor>;
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<Self::RoCursor>;
     fn count(&self, database: Self::Database) -> u64;
     fn commit(self) -> lmdb::Result<()>;
 }
@@ -57,6 +102,7 @@ pub struct RwTransactionWrapper(lmdb::RwTransaction<'static>);
 
 impl RwTransaction for RwTransactionWrapper {
     type Database = lmdb::Database;
+    type RoCursor = RoCursorWrapper;
 
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
         lmdb::Transaction::get(&self.0, database, &&*key)
@@ -89,8 +135,14 @@ impl RwTransaction for RwTransactionWrapper {
         self.0.commit()
     }
 
-    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<lmdb::RoCursor> {
-        lmdb::Transaction::open_ro_cursor(&self.0, database)
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<Self::RoCursor> {
+        let cursor = lmdb::Transaction::open_ro_cursor(&self.0, database);
+        cursor.map(|c| {
+            // todo: don't use static lifetime
+            let c =
+                unsafe { std::mem::transmute::<lmdb::RoCursor<'_>, lmdb::RoCursor<'static>>(c) };
+            RoCursorWrapper(c)
+        })
     }
 
     fn count(&self, database: Self::Database) -> u64 {
@@ -115,6 +167,7 @@ pub struct NullRwTransaction;
 
 impl<'env> RwTransaction for NullRwTransaction {
     type Database = DatabaseStub;
+    type RoCursor = RoCursorStub;
 
     fn get(&self, _database: Self::Database, _key: &[u8]) -> lmdb::Result<&[u8]> {
         Err(lmdb::Error::NotFound)
@@ -147,7 +200,7 @@ impl<'env> RwTransaction for NullRwTransaction {
         Ok(())
     }
 
-    fn open_ro_cursor(&self, _database: Self::Database) -> lmdb::Result<lmdb::RoCursor> {
+    fn open_ro_cursor(&self, _database: Self::Database) -> lmdb::Result<Self::RoCursor> {
         Err(lmdb::Error::NotFound)
     }
 
@@ -179,6 +232,7 @@ pub trait RoTransaction {
         Self: Sized;
 
     type Database;
+    type RoCursor: RoCursor;
 
     fn reset(self) -> Self::InactiveTxnType
     where
@@ -186,7 +240,7 @@ pub trait RoTransaction {
 
     fn commit(self) -> lmdb::Result<()>;
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]>;
-    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<lmdb::RoCursor>;
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<Self::RoCursor>;
     fn count(&self, database: Self::Database) -> u64;
 }
 
@@ -206,6 +260,7 @@ pub struct RoTransactionWrapper(lmdb::RoTransaction<'static>);
 impl RoTransaction for RoTransactionWrapper {
     type InactiveTxnType = InactiveTransactionWrapper;
     type Database = lmdb::Database;
+    type RoCursor = RoCursorWrapper;
 
     fn reset(self) -> Self::InactiveTxnType {
         InactiveTransactionWrapper {
@@ -221,8 +276,13 @@ impl RoTransaction for RoTransactionWrapper {
         lmdb::Transaction::get(&self.0, database, &&*key)
     }
 
-    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<lmdb::RoCursor> {
-        lmdb::Transaction::open_ro_cursor(&self.0, database)
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<Self::RoCursor> {
+        lmdb::Transaction::open_ro_cursor(&self.0, database).map(|c| {
+            //todo don't use static lifetime
+            let c =
+                unsafe { std::mem::transmute::<lmdb::RoCursor<'_>, lmdb::RoCursor<'static>>(c) };
+            RoCursorWrapper(c)
+        })
     }
 
     fn count(&self, database: Self::Database) -> u64 {
@@ -236,6 +296,7 @@ pub struct NullInactiveTransaction;
 impl RoTransaction for NullRoTransaction {
     type InactiveTxnType = NullInactiveTransaction;
     type Database = DatabaseStub;
+    type RoCursor = RoCursorStub;
 
     fn reset(self) -> Self::InactiveTxnType
     where
@@ -252,7 +313,7 @@ impl RoTransaction for NullRoTransaction {
         Err(lmdb::Error::NotFound)
     }
 
-    fn open_ro_cursor(&self, _database: Self::Database) -> lmdb::Result<lmdb::RoCursor> {
+    fn open_ro_cursor(&self, _database: Self::Database) -> lmdb::Result<Self::RoCursor> {
         Err(lmdb::Error::NotFound)
     }
 
@@ -281,13 +342,15 @@ pub trait Environment: Send + Sync {
     type RoTxnImpl: RoTransaction<
         InactiveTxnType = Self::InactiveTxnImpl,
         Database = Self::Database,
+        RoCursor = Self::RoCursor,
     >;
 
     type InactiveTxnImpl: InactiveTransaction<RoTxnType = Self::RoTxnImpl>;
 
-    type RwTxnType: RwTransaction<Database = Self::Database>;
+    type RwTxnType: RwTransaction<Database = Self::Database, RoCursor = Self::RoCursor>;
 
     type Database: Send + Sync + Copy;
+    type RoCursor: RoCursor;
 
     fn build(options: EnvironmentOptions) -> lmdb::Result<Self>
     where
@@ -313,6 +376,7 @@ impl Environment for EnvironmentWrapper {
     type InactiveTxnImpl = InactiveTransactionWrapper;
     type RwTxnType = RwTransactionWrapper;
     type Database = lmdb::Database;
+    type RoCursor = RoCursorWrapper;
 
     fn build(options: EnvironmentOptions) -> lmdb::Result<Self> {
         let env = lmdb::Environment::new()
@@ -326,7 +390,9 @@ impl Environment for EnvironmentWrapper {
     fn begin_ro_txn(&self) -> lmdb::Result<Self::RoTxnImpl> {
         self.0.begin_ro_txn().map(|txn| {
             // todo: don't use static life time
-            let txn = unsafe {std::mem::transmute::<lmdb::RoTransaction<'_>, lmdb::RoTransaction<'static>>(txn)};
+            let txn = unsafe {
+                std::mem::transmute::<lmdb::RoTransaction<'_>, lmdb::RoTransaction<'static>>(txn)
+            };
             RoTransactionWrapper(txn)
         })
     }
@@ -334,7 +400,9 @@ impl Environment for EnvironmentWrapper {
     fn begin_rw_txn(&self) -> lmdb::Result<Self::RwTxnType> {
         self.0.begin_rw_txn().map(|txn| {
             // todo: don't use static life time
-            let txn = unsafe {std::mem::transmute::<lmdb::RwTransaction<'_>, lmdb::RwTransaction<'static>>(txn)};
+            let txn = unsafe {
+                std::mem::transmute::<lmdb::RwTransaction<'_>, lmdb::RwTransaction<'static>>(txn)
+            };
             RwTransactionWrapper(txn)
         })
     }
@@ -373,6 +441,7 @@ impl Environment for EnvironmentStub {
     type InactiveTxnImpl = NullInactiveTransaction;
     type RwTxnType = NullRwTransaction;
     type Database = DatabaseStub;
+    type RoCursor = RoCursorStub;
 
     fn build(_options: EnvironmentOptions) -> lmdb::Result<Self>
     where

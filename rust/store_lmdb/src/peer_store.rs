@@ -48,13 +48,16 @@ impl<T: Environment + 'static> LmdbPeerStore<T> {
 
     pub fn exists(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         endpoint: &EndpointKey,
     ) -> bool {
         txn.exists(self.database, &endpoint.to_bytes())
     }
 
-    pub fn count(&self, txn: &dyn Transaction<Database = T::Database>) -> u64 {
+    pub fn count(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> u64 {
         txn.count(self.database)
     }
 
@@ -62,8 +65,11 @@ impl<T: Environment + 'static> LmdbPeerStore<T> {
         txn.rw_txn_mut().clear_db(self.database).unwrap();
     }
 
-    pub fn begin(&self, txn: &dyn Transaction<Database = T::Database>) -> PeerIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(txn, self.database, None, true)
+    pub fn begin(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> PeerIterator {
+        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, None, true)
     }
 }
 

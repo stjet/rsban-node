@@ -2,7 +2,8 @@ use std::ffi::c_void;
 
 use rsnano_core::utils::{Deserialize, Serialize};
 use rsnano_store_lmdb::{
-    BinaryDbIterator, DbIterator, DbIteratorImpl, LmdbIteratorImpl, LmdbReadTransaction,
+    BinaryDbIterator, DbIterator, DbIteratorImpl, EnvironmentWrapper, LmdbIteratorImpl,
+    LmdbReadTransaction,
 };
 
 use crate::VoidPointerCallback;
@@ -25,13 +26,13 @@ impl MdbVal {
 }
 
 enum IteratorType {
-    Lmdb(LmdbIteratorImpl),
+    Lmdb(LmdbIteratorImpl<EnvironmentWrapper>),
 }
 
 pub struct LmdbIteratorHandle(IteratorType);
 
 impl LmdbIteratorHandle {
-    pub fn new(it: LmdbIteratorImpl) -> *mut Self {
+    pub fn new(it: LmdbIteratorImpl<EnvironmentWrapper>) -> *mut Self {
         Box::into_raw(Box::new(LmdbIteratorHandle(IteratorType::Lmdb(it))))
     }
 
@@ -130,14 +131,16 @@ impl Drop for ForEachParWrapper {
     }
 }
 
-pub(crate) fn take_iterator_impl<K, V>(mut it: Box<dyn DbIterator<K, V>>) -> LmdbIteratorImpl
+pub(crate) fn take_iterator_impl<K, V>(
+    mut it: Box<dyn DbIterator<K, V>>,
+) -> LmdbIteratorImpl<EnvironmentWrapper>
 where
     K: Serialize + Deserialize<Target = K> + 'static,
     V: Deserialize<Target = V> + 'static,
 {
     let it = it
         .as_any_mut()
-        .downcast_mut::<BinaryDbIterator<K, V, LmdbIteratorImpl>>()
+        .downcast_mut::<BinaryDbIterator<K, V, LmdbIteratorImpl<EnvironmentWrapper>>>()
         .unwrap();
     it.take_impl()
 }

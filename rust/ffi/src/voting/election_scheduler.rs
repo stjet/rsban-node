@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use rsnano_core::Account;
 use rsnano_node::voting::{ElectionScheduler, ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK};
-use rsnano_store_lmdb::Transaction;
+use rsnano_store_lmdb::{RoCursorWrapper, Transaction};
 
 use crate::ledger::datastore::{into_read_txn_handle, TransactionHandle};
 
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rsn_callback_election_scheduler_activate(
 fn forward_scheduler_activate(
     cpp_scheduler: *mut c_void,
     account: &Account,
-    txn: &dyn Transaction<Database = lmdb::Database>,
+    txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
 ) {
     let callback = unsafe {
         ELECTION_SCHEDULER_ACTIVATE_CALLBACK.expect("ELECTION_SCHEDULER_ACTIVATE_CALLBACK missing")

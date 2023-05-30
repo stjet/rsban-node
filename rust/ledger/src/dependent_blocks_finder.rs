@@ -1,18 +1,18 @@
 use crate::ledger::Ledger;
 use rsnano_core::{Block, BlockEnum, BlockHash, OpenBlock, StateBlock};
-use rsnano_store_lmdb::Transaction;
+use rsnano_store_lmdb::{RoCursorWrapper, Transaction};
 
 /// Finds all dependent blocks for a given block.
 /// There can be at most two dependencies per block, namely "previous" and "link/source".
 pub(crate) struct DependentBlocksFinder<'a> {
     ledger: &'a Ledger,
-    txn: &'a dyn Transaction<Database = lmdb::Database>,
+    txn: &'a dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
 }
 
 impl<'a> DependentBlocksFinder<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
-        txn: &'a dyn Transaction<Database = lmdb::Database>,
+        txn: &'a dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
     ) -> Self {
         Self { ledger, txn }
     }

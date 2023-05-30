@@ -62,7 +62,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
 
     pub fn exists(
         &self,
-        transaction: &dyn Transaction<Database = T::Database>,
+        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> bool {
         self.block_raw_get(transaction, hash).is_some()
@@ -70,7 +70,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
 
     pub fn successor(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<BlockHash> {
         self.block_raw_get(txn, hash)
@@ -101,7 +101,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
 
     pub fn get(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<BlockEnum> {
         match self.block_raw_get(txn, hash) {
@@ -141,7 +141,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
 
     pub fn get_no_sideband(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<BlockEnum> {
         match self.block_raw_get(txn, hash) {
@@ -159,43 +159,44 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
             .unwrap();
     }
 
-    pub fn count(&self, txn: &dyn Transaction<Database = T::Database>) -> u64 {
+    pub fn count(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> u64 {
         txn.count(self.database)
     }
 
     pub fn account(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<Account> {
         let block = self.get(txn, hash)?;
         Some(block.account_calculated())
     }
 
-    pub fn begin(&self, transaction: &dyn Transaction<Database = T::Database>) -> BlockIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(transaction, self.database, None, true)
+    pub fn begin(
+        &self,
+        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> BlockIterator {
+        LmdbIteratorImpl::<T>::new_iterator(transaction, self.database, None, true)
     }
 
     pub fn begin_at_hash(
         &self,
-        transaction: &dyn Transaction<Database = T::Database>,
+        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> BlockIterator {
-        LmdbIteratorImpl::new_iterator::<T, _, _>(
-            transaction,
-            self.database,
-            Some(hash.as_bytes()),
-            true,
-        )
+        LmdbIteratorImpl::<T>::new_iterator(transaction, self.database, Some(hash.as_bytes()), true)
     }
 
     pub fn end(&self) -> BlockIterator {
-        LmdbIteratorImpl::null_iterator()
+        LmdbIteratorImpl::<T>::null_iterator()
     }
 
     pub fn random(
         &self,
-        transaction: &dyn Transaction<Database = T::Database>,
+        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
     ) -> Option<BlockEnum> {
         let hash = BlockHash::random();
         let mut existing = self.begin_at_hash(transaction, &hash);
@@ -208,7 +209,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
 
     pub fn balance(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Amount {
         match self.get(txn, hash) {
@@ -219,7 +220,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
 
     pub fn version(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Epoch {
         match self.get(txn, hash) {
@@ -252,7 +253,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
 
     pub fn account_height(
         &self,
-        txn: &dyn Transaction<Database = T::Database>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> u64 {
         match self.get(txn, hash) {
@@ -269,7 +270,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
 
     pub fn block_raw_get<'a>(
         &self,
-        txn: &'a dyn Transaction<Database = T::Database>,
+        txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<&'a [u8]> {
         match txn.get(self.database, hash.as_bytes()) {

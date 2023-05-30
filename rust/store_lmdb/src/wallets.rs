@@ -2,12 +2,12 @@ use std::marker::PhantomData;
 
 use crate::{
     iterator::{BinaryDbIterator, DbIterator},
-    lmdb_env::RwTransaction,
+    lmdb_env::{RoCursor, RwTransaction},
     Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction,
 };
-use lmdb::{Cursor, DatabaseFlags, WriteFlags};
+use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, NoValue, RawKey, WalletId};
-pub type WalletsIterator = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl>;
+pub type WalletsIterator<T> = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl<T>>;
 
 pub struct LmdbWallets<T: Environment = EnvironmentWrapper> {
     pub handle: Option<T::Database>,
@@ -40,11 +40,11 @@ impl<T: Environment + 'static> LmdbWallets<T> {
 
     pub fn get_store_it(
         &self,
-        txn: &dyn crate::Transaction<Database = T::Database>,
+        txn: &dyn crate::Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &str,
-    ) -> WalletsIterator {
+    ) -> WalletsIterator<T> {
         let hash_bytes: [u8; 64] = hash.as_bytes().try_into().unwrap();
-        WalletsIterator::new(LmdbIteratorImpl::new::<T>(
+        WalletsIterator::new(LmdbIteratorImpl::<T>::new(
             txn,
             self.handle.unwrap(),
             Some(&hash_bytes),
@@ -107,7 +107,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
 
     pub fn get_wallet_ids(
         &self,
-        txn: &dyn crate::Transaction<Database = T::Database>,
+        txn: &dyn crate::Transaction<Database = T::Database, RoCursor = T::RoCursor>,
     ) -> Vec<WalletId> {
         let mut wallet_ids = Vec::new();
         let beginning = RawKey::from(0).encode_hex();
@@ -122,7 +122,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
 
     pub fn get_block_hash(
         &self,
-        txn: &dyn crate::Transaction<Database = T::Database>,
+        txn: &dyn crate::Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         id: &str,
     ) -> anyhow::Result<Option<BlockHash>> {
         match txn.get(self.send_action_ids_handle.unwrap(), &id.as_bytes()) {

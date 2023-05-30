@@ -62,7 +62,6 @@ pub use store::{create_backup_file, LmdbStore};
 use std::{
     any::Any,
     cmp::{max, min},
-    marker::PhantomData,
     mem,
     sync::Arc,
     time::Duration,
@@ -124,8 +123,8 @@ impl TransactionTracker for NullTransactionTracker {
 
 enum RoTxnState<T, U>
 where
-    T: RoTransaction<'static, InactiveTxnType = U>,
-    U: InactiveTransaction<'static, RoTxnType = T>,
+    T: RoTransaction<InactiveTxnType = U>,
+    U: InactiveTransaction<RoTxnType = T>,
 {
     Inactive(U),
     Active(T),
@@ -135,7 +134,7 @@ where
 pub struct LmdbReadTransaction<T: Environment + 'static = EnvironmentWrapper> {
     txn_id: u64,
     callbacks: Arc<dyn TransactionTracker>,
-    txn: RoTxnState<T::RoTxnImpl<'static>, T::InactiveTxnImpl<'static>>,
+    txn: RoTxnState<T::RoTxnImpl, T::InactiveTxnImpl>,
 }
 
 impl<T: Environment + 'static> LmdbReadTransaction<T> {
@@ -145,7 +144,6 @@ impl<T: Environment + 'static> LmdbReadTransaction<T> {
         callbacks: Arc<dyn TransactionTracker>,
     ) -> lmdb::Result<Self> {
         let txn = env.begin_ro_txn()?;
-        let txn = unsafe { std::mem::transmute::<T::RoTxnImpl<'a>, T::RoTxnImpl<'static>>(txn) };
         callbacks.txn_start(txn_id, false);
 
         Ok(Self {
@@ -155,7 +153,7 @@ impl<T: Environment + 'static> LmdbReadTransaction<T> {
         })
     }
 
-    pub fn txn(&self) -> &T::RoTxnImpl<'static> {
+    pub fn txn(&self) -> &T::RoTxnImpl {
         match &self.txn {
             RoTxnState::Active(t) => t,
             _ => panic!("LMDB read transaction not active"),
@@ -220,8 +218,8 @@ impl<T: Environment + 'static> Transaction for LmdbReadTransaction<T> {
     }
 }
 
-enum RwTxnState<'a, T: RwTransaction2<'a>> {
-    Inactive(PhantomData<&'a ()>),
+enum RwTxnState<T: RwTransaction2> {
+    Inactive,
     Active(T),
     Transitioning,
 }
@@ -230,7 +228,7 @@ pub struct LmdbWriteTransaction<T: Environment + 'static = EnvironmentWrapper> {
     env: &'static T,
     txn_id: u64,
     callbacks: Arc<dyn TransactionTracker>,
-    txn: RwTxnState<'static, T::RwTxnType<'static>>,
+    txn: RwTxnState<T::RwTxnType>,
 }
 
 impl<T: Environment> LmdbWriteTransaction<T> {
@@ -244,20 +242,20 @@ impl<T: Environment> LmdbWriteTransaction<T> {
             env,
             txn_id,
             callbacks,
-            txn: RwTxnState::Inactive(Default::default()),
+            txn: RwTxnState::Inactive,
         };
         tx.renew();
         Ok(tx)
     }
 
-    pub fn rw_txn(&self) -> &T::RwTxnType<'static> {
+    pub fn rw_txn(&self) -> &T::RwTxnType {
         match &self.txn {
             RwTxnState::Active(t) => t,
             _ => panic!("txn not active"),
         }
     }
 
-    pub fn rw_txn_mut(&mut self) -> &mut T::RwTxnType<'static> {
+    pub fn rw_txn_mut(&mut self) -> &mut T::RwTxnType {
         match &mut self.txn {
             RwTxnState::Active(t) => t,
             _ => panic!("txn not active"),
@@ -268,7 +266,7 @@ impl<T: Environment> LmdbWriteTransaction<T> {
         let t = mem::replace(&mut self.txn, RwTxnState::Transitioning);
         self.txn = match t {
             RwTxnState::Active(_) => panic!("Cannot renew active RwTransaction"),
-            RwTxnState::Inactive(_) => RwTxnState::Active(self.env.begin_rw_txn().unwrap()),
+            RwTxnState::Inactive => RwTxnState::Active(self.env.begin_rw_txn().unwrap()),
             RwTxnState::Transitioning => unreachable!(),
         };
         self.callbacks.txn_start(self.txn_id, true);
@@ -277,14 +275,14 @@ impl<T: Environment> LmdbWriteTransaction<T> {
     pub fn commit(&mut self) {
         let t = mem::replace(&mut self.txn, RwTxnState::Transitioning);
         match t {
-            RwTxnState::Inactive(_) => {}
+            RwTxnState::Inactive => {}
             RwTxnState::Active(t) => {
                 t.commit().unwrap();
                 self.callbacks.txn_end(self.txn_id, true);
             }
             RwTxnState::Transitioning => unreachable!(),
         };
-        self.txn = RwTxnState::Inactive(Default::default());
+        self.txn = RwTxnState::Inactive;
     }
 }
 

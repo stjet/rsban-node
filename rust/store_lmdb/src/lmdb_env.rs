@@ -24,7 +24,7 @@ use std::{
 // Thin Wrappers + Embedded Stubs
 // --------------------------------------------------------------------------------
 
-pub trait RwTransaction2<'env> {
+pub trait RwTransaction2 {
     type Database;
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]>;
     fn put(
@@ -54,9 +54,9 @@ pub trait RwTransaction2<'env> {
     fn commit(self) -> lmdb::Result<()>;
 }
 
-pub struct RwTransactionWrapper<'env>(lmdb::RwTransaction<'env>);
+pub struct RwTransactionWrapper(lmdb::RwTransaction<'static>);
 
-impl<'env> RwTransaction2<'env> for RwTransactionWrapper<'env> {
+impl RwTransaction2 for RwTransactionWrapper {
     type Database = lmdb::Database;
 
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
@@ -112,9 +112,9 @@ impl<'env> RwTransaction2<'env> for RwTransactionWrapper<'env> {
     }
 }
 
-pub struct NullRwTransaction<'env>(PhantomData<&'env ()>);
+pub struct NullRwTransaction;
 
-impl<'env> RwTransaction2<'env> for NullRwTransaction<'env> {
+impl<'env> RwTransaction2 for NullRwTransaction {
     type Database = DatabaseStub;
 
     fn get(&self, _database: Self::Database, _key: &[u8]) -> lmdb::Result<&[u8]> {
@@ -169,13 +169,13 @@ impl<'env> RwTransaction2<'env> for NullRwTransaction<'env> {
     }
 }
 
-pub trait InactiveTransaction<'env> {
-    type RoTxnType: RoTransaction<'env>;
+pub trait InactiveTransaction {
+    type RoTxnType: RoTransaction;
     fn renew(self) -> lmdb::Result<Self::RoTxnType>;
 }
 
-pub trait RoTransaction<'env> {
-    type InactiveTxnType: InactiveTransaction<'env, RoTxnType = Self>
+pub trait RoTransaction {
+    type InactiveTxnType: InactiveTransaction<RoTxnType = Self>
     where
         Self: Sized;
 
@@ -191,28 +191,26 @@ pub trait RoTransaction<'env> {
     fn count(&self, database: Self::Database) -> u64;
 }
 
-pub struct InactiveTransactionWrapper<'env> {
-    inactive: lmdb::InactiveTransaction<'env>,
-    _marker: PhantomData<&'env ()>,
+pub struct InactiveTransactionWrapper {
+    inactive: lmdb::InactiveTransaction<'static>,
 }
 
-impl<'env> InactiveTransaction<'env> for InactiveTransactionWrapper<'env> {
-    type RoTxnType = RoTransactionWrapper<'env>;
+impl InactiveTransaction for InactiveTransactionWrapper {
+    type RoTxnType = RoTransactionWrapper;
     fn renew(self) -> lmdb::Result<Self::RoTxnType> {
         self.inactive.renew().map(|t| RoTransactionWrapper(t))
     }
 }
 
-pub struct RoTransactionWrapper<'env>(lmdb::RoTransaction<'env>);
+pub struct RoTransactionWrapper(lmdb::RoTransaction<'static>);
 
-impl<'env> RoTransaction<'env> for RoTransactionWrapper<'env> {
-    type InactiveTxnType = InactiveTransactionWrapper<'env>;
+impl RoTransaction for RoTransactionWrapper {
+    type InactiveTxnType = InactiveTransactionWrapper;
     type Database = lmdb::Database;
 
     fn reset(self) -> Self::InactiveTxnType {
         InactiveTransactionWrapper {
             inactive: self.0.reset(),
-            _marker: Default::default(),
         }
     }
 
@@ -233,18 +231,18 @@ impl<'env> RoTransaction<'env> for RoTransactionWrapper<'env> {
         stat.unwrap().entries() as u64
     }
 }
-pub struct NullRoTransaction<'env>(PhantomData<&'env ()>);
-pub struct NullInactiveTransaction<'env>(PhantomData<&'env ()>);
+pub struct NullRoTransaction;
+pub struct NullInactiveTransaction;
 
-impl<'env> RoTransaction<'env> for NullRoTransaction<'env> {
-    type InactiveTxnType = NullInactiveTransaction<'env>;
+impl RoTransaction for NullRoTransaction {
+    type InactiveTxnType = NullInactiveTransaction;
     type Database = DatabaseStub;
 
     fn reset(self) -> Self::InactiveTxnType
     where
         Self: Sized,
     {
-        NullInactiveTransaction(Default::default())
+        NullInactiveTransaction
     }
 
     fn commit(self) -> lmdb::Result<()> {
@@ -264,11 +262,11 @@ impl<'env> RoTransaction<'env> for NullRoTransaction<'env> {
     }
 }
 
-impl<'env> InactiveTransaction<'env> for NullInactiveTransaction<'env> {
-    type RoTxnType = NullRoTransaction<'env>;
+impl InactiveTransaction for NullInactiveTransaction {
+    type RoTxnType = NullRoTransaction;
 
     fn renew(self) -> lmdb::Result<Self::RoTxnType> {
-        Ok(NullRoTransaction(Default::default()))
+        Ok(NullRoTransaction)
     }
 }
 
@@ -281,29 +279,22 @@ pub struct EnvironmentOptions<'a> {
 }
 
 pub trait Environment: Send + Sync {
-    type RoTxnImpl<'env>: RoTransaction<
-        'env,
-        InactiveTxnType = Self::InactiveTxnImpl<'env>,
+    type RoTxnImpl: RoTransaction<
+        InactiveTxnType = Self::InactiveTxnImpl,
         Database = Self::Database,
-    >
-    where
-        Self: 'env;
+    >;
 
-    type InactiveTxnImpl<'env>: InactiveTransaction<'env, RoTxnType = Self::RoTxnImpl<'env>>
-    where
-        Self: 'env;
+    type InactiveTxnImpl: InactiveTransaction<RoTxnType = Self::RoTxnImpl>;
 
-    type RwTxnType<'env>: RwTransaction2<'env, Database = Self::Database>
-    where
-        Self: 'env;
+    type RwTxnType: RwTransaction2<Database = Self::Database>;
 
     type Database: Send + Sync + Copy;
 
     fn build(options: EnvironmentOptions) -> lmdb::Result<Self>
     where
         Self: Sized;
-    fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<Self::RoTxnImpl<'env>>;
-    fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<Self::RwTxnType<'env>>;
+    fn begin_ro_txn<'env>(&self) -> lmdb::Result<Self::RoTxnImpl>;
+    fn begin_rw_txn<'env>(&self) -> lmdb::Result<Self::RwTxnType>;
     fn create_db<'env>(
         &'env self,
         name: Option<&str>,
@@ -319,9 +310,9 @@ pub trait Environment: Send + Sync {
 pub struct EnvironmentWrapper(lmdb::Environment);
 
 impl Environment for EnvironmentWrapper {
-    type RoTxnImpl<'env> = RoTransactionWrapper<'env>;
-    type InactiveTxnImpl<'env> = InactiveTransactionWrapper<'env>;
-    type RwTxnType<'env> = RwTransactionWrapper<'env>;
+    type RoTxnImpl = RoTransactionWrapper;
+    type InactiveTxnImpl = InactiveTransactionWrapper;
+    type RwTxnType = RwTransactionWrapper;
     type Database = lmdb::Database;
 
     fn build(options: EnvironmentOptions) -> lmdb::Result<Self> {
@@ -333,12 +324,20 @@ impl Environment for EnvironmentWrapper {
         Ok(Self(env))
     }
 
-    fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<Self::RoTxnImpl<'env>> {
-        self.0.begin_ro_txn().map(|txn| RoTransactionWrapper(txn))
+    fn begin_ro_txn(&self) -> lmdb::Result<Self::RoTxnImpl> {
+        self.0.begin_ro_txn().map(|txn| {
+            // todo: don't use static life time
+            let txn = unsafe {std::mem::transmute::<lmdb::RoTransaction<'_>, lmdb::RoTransaction<'static>>(txn)};
+            RoTransactionWrapper(txn)
+        })
     }
 
-    fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<Self::RwTxnType<'env>> {
-        self.0.begin_rw_txn().map(|txn| RwTransactionWrapper(txn))
+    fn begin_rw_txn(&self) -> lmdb::Result<Self::RwTxnType> {
+        self.0.begin_rw_txn().map(|txn| {
+            // todo: don't use static life time
+            let txn = unsafe {std::mem::transmute::<lmdb::RwTransaction<'_>, lmdb::RwTransaction<'static>>(txn)};
+            RwTransactionWrapper(txn)
+        })
     }
 
     fn create_db<'env>(
@@ -371,9 +370,9 @@ pub struct EnvironmentStub;
 pub struct DatabaseStub(u32);
 
 impl Environment for EnvironmentStub {
-    type RoTxnImpl<'env> = NullRoTransaction<'env>;
-    type InactiveTxnImpl<'env> = NullInactiveTransaction<'env>;
-    type RwTxnType<'env> = NullRwTransaction<'env>;
+    type RoTxnImpl = NullRoTransaction;
+    type InactiveTxnImpl = NullInactiveTransaction;
+    type RwTxnType = NullRwTransaction;
     type Database = DatabaseStub;
 
     fn build(_options: EnvironmentOptions) -> lmdb::Result<Self>
@@ -383,12 +382,12 @@ impl Environment for EnvironmentStub {
         Ok(Self {})
     }
 
-    fn begin_ro_txn<'env>(&'env self) -> lmdb::Result<Self::RoTxnImpl<'env>> {
-        Ok(NullRoTransaction(Default::default()))
+    fn begin_ro_txn(&self) -> lmdb::Result<Self::RoTxnImpl> {
+        Ok(NullRoTransaction)
     }
 
-    fn begin_rw_txn<'env>(&'env self) -> lmdb::Result<Self::RwTxnType<'env>> {
-        Ok(NullRwTransaction(Default::default()))
+    fn begin_rw_txn(&self) -> lmdb::Result<Self::RwTxnType> {
+        Ok(NullRwTransaction)
     }
 
     fn create_db<'env>(

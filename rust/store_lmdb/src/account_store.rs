@@ -156,11 +156,11 @@ mod tests {
         let env = Arc::new(LmdbEnv::create_null());
         let txn = env.tx_begin_read().unwrap();
         let store = LmdbAccountStore::new(env).unwrap();
-        // let account = Account::from(1);
-        // let result = store.get(&txn, &account);
-        // assert_eq!(result, None);
-        // assert_eq!(store.exists(&txn, &account), false);
-        // assert_eq!(store.count(&txn), 0);
+        let account = Account::from(1);
+        let result = store.get(&txn, &account);
+        assert_eq!(result, None);
+        assert_eq!(store.exists(&txn, &account), false);
+        assert_eq!(store.count(&txn), 0);
     }
 
     #[test]

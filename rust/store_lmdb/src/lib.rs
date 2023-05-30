@@ -15,7 +15,7 @@ pub use lmdb_env::{
     EnvOptions, Environment, EnvironmentOptions, EnvironmentStub, EnvironmentWrapper, LmdbEnv,
     RoCursorWrapper, TestDbFile, TestLmdbEnv,
 };
-use lmdb_env::{InactiveTransaction, RoTransaction, RwTransaction};
+use lmdb_env::{InactiveTransaction, RoTransaction, RwTransaction, RoCursor};
 
 mod account_store;
 pub use account_store::LmdbAccountStore;
@@ -72,7 +72,7 @@ use rsnano_core::utils::{get_cpu_count, PropertyTreeWriter};
 
 pub trait Transaction {
     type Database;
-    type RoCursor;
+    type RoCursor: RoCursor;
     fn as_any(&self) -> &dyn Any;
     fn refresh(&mut self);
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]>;

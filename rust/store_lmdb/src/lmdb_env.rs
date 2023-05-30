@@ -3,7 +3,7 @@ use crate::{
     TransactionTracker,
 };
 use anyhow::bail;
-use lmdb::{Cursor, DatabaseFlags, EnvironmentFlags, Stat, Transaction};
+use lmdb::{DatabaseFlags, EnvironmentFlags, Stat, Transaction};
 use lmdb_sys::{MDB_env, MDB_SUCCESS};
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
 use std::ops::Deref;
@@ -23,21 +23,25 @@ use std::{
 // Thin Wrappers + Embedded Stubs
 // --------------------------------------------------------------------------------
 
+ //todo don't use static lifetimes!
 pub trait RoCursor {
-    fn iter_start(&mut self) -> lmdb::Iter<'static>;
+    type Iter: Iterator<Item = lmdb::Result<(&'static [u8], &'static [u8])>>;
+    fn iter_start(&mut self) -> Self::Iter;
     fn get(
         &self,
         key: Option<&[u8]>,
         data: Option<&[u8]>,
         op: u32,
-    ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])>; //todo don't use static lifetimes
+    ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])>;
 }
 
+ //todo don't use static lifetimes!
 pub struct RoCursorWrapper(lmdb::RoCursor<'static>);
 
 impl RoCursor for RoCursorWrapper {
+    type Iter = lmdb::Iter<'static>;
     fn iter_start(&mut self) -> lmdb::Iter<'static> {
-        self.0.iter_start()
+        lmdb::Cursor::iter_start(&mut self.0)
     }
 
     fn get(
@@ -46,22 +50,34 @@ impl RoCursor for RoCursorWrapper {
         data: Option<&[u8]>,
         op: u32,
     ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])> {
-        self.0.get(key, data, op)
+        lmdb::Cursor::get(&self.0, key, data, op)
     }
 }
 
 pub struct RoCursorStub;
 
+pub struct NullIter;
+
+impl Iterator for NullIter{
+    type Item = lmdb::Result<(&'static [u8], &'static [u8])>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
 impl RoCursor for RoCursorStub {
-    fn iter_start(&mut self) -> lmdb::Iter<'static> {
-        lmdb::Iter::Err(lmdb::Error::NotFound)
+    type Iter = NullIter;
+
+    fn iter_start(&mut self) -> NullIter {
+        NullIter
     }
 
     fn get(
         &self,
-        key: Option<&[u8]>,
-        data: Option<&[u8]>,
-        op: u32,
+        _key: Option<&[u8]>,
+        _data: Option<&[u8]>,
+        _op: u32,
     ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])> {
         Err(lmdb::Error::NotFound)
     }

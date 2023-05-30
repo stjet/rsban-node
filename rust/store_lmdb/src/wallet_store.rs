@@ -464,8 +464,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
     }
 
     pub fn erase(&self, txn: &mut LmdbWriteTransaction<T>, account: &Account) {
-        txn.rw_txn_mut()
-            .del(self.db_handle(), account.as_bytes(), None)
+        txn.delete(self.db_handle(), account.as_bytes(), None)
             .unwrap();
     }
 

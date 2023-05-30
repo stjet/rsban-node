@@ -33,9 +33,7 @@ impl<T: Environment + 'static> LmdbPrunedStore<T> {
     }
 
     pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, hash: &BlockHash) {
-        txn.rw_txn_mut()
-            .del(self.database, hash.as_bytes(), None)
-            .unwrap();
+        txn.delete(self.database, hash.as_bytes(), None).unwrap();
     }
 
     pub fn exists(

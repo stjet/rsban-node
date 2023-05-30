@@ -44,9 +44,7 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
 
     pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, key: &PendingKey) {
         let key_bytes = key.to_bytes();
-        txn.rw_txn_mut()
-            .del(self.database, &key_bytes, None)
-            .unwrap();
+        txn.delete(self.database, &key_bytes, None).unwrap();
     }
 
     pub fn get(

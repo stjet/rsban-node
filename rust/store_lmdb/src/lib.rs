@@ -238,6 +238,13 @@ pub struct PutEvent<T> {
     flags: lmdb::WriteFlags,
 }
 
+#[cfg(feature = "output_tracking")]
+#[derive(Clone, Debug, PartialEq)]
+pub struct DeleteEvent<T> {
+    database: T,
+    key: Vec<u8>,
+}
+
 pub struct LmdbWriteTransaction<T: Environment + 'static = EnvironmentWrapper> {
     env: &'static T,
     txn_id: u64,
@@ -245,6 +252,8 @@ pub struct LmdbWriteTransaction<T: Environment + 'static = EnvironmentWrapper> {
     txn: RwTxnState<T::RwTxnType>,
     #[cfg(feature = "output_tracking")]
     put_listener: OutputListener<PutEvent<T::Database>>,
+    #[cfg(feature = "output_tracking")]
+    delete_listener: OutputListener<DeleteEvent<T::Database>>,
 }
 
 impl<T: Environment> LmdbWriteTransaction<T> {
@@ -261,6 +270,8 @@ impl<T: Environment> LmdbWriteTransaction<T> {
             txn: RwTxnState::Inactive,
             #[cfg(feature = "output_tracking")]
             put_listener: OutputListener::new(),
+            #[cfg(feature = "output_tracking")]
+            delete_listener: OutputListener::new(),
         };
         tx.renew();
         Ok(tx)
@@ -308,6 +319,11 @@ impl<T: Environment> LmdbWriteTransaction<T> {
         self.put_listener.track()
     }
 
+    #[cfg(feature = "output_tracking")]
+    fn track_deletes(&self) -> Rc<OutputTracker<DeleteEvent<T::Database>>> {
+        self.delete_listener.track()
+    }
+
     unsafe fn create_db(
         &mut self,
         name: Option<&str>,
@@ -331,6 +347,19 @@ impl<T: Environment> LmdbWriteTransaction<T> {
             flags,
         });
         self.rw_txn_mut().put(database, key, value, flags)
+    }
+
+    fn delete(
+        &mut self,
+        database: T::Database,
+        key: &[u8],
+        flags: Option<&[u8]>,
+    ) -> lmdb::Result<()> {
+        self.delete_listener.emit(DeleteEvent {
+            database,
+            key: key.to_vec(),
+        });
+        self.rw_txn_mut().del(database, key, flags)
     }
 }
 
@@ -404,3 +433,23 @@ where
 
 pub const STORE_VERSION_MINIMUM: i32 = 21;
 pub const STORE_VERSION_CURRENT: i32 = 22;
+
+#[cfg(test)]
+mod test {
+    use crate::lmdb_env::DatabaseStub;
+
+    use super::*;
+
+    #[test]
+    fn tracks_deletes() {
+        let env = LmdbEnv::create_null();
+        let mut txn = env.tx_begin_write().unwrap();
+        let delete_tracker = txn.track_deletes();
+
+        let database = DatabaseStub(42);
+        let key = vec![1, 2, 3];
+        txn.delete(database, &key, None).unwrap();
+
+        assert_eq!(delete_tracker.output(), vec![DeleteEvent { database, key }])
+    }
+}

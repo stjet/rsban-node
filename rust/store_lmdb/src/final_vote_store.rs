@@ -114,9 +114,7 @@ impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
 
         for qualified_root in final_vote_qualified_roots {
             let root_bytes = qualified_root.to_bytes();
-            txn.rw_txn_mut()
-                .del(self.database, &root_bytes, None)
-                .unwrap();
+            txn.delete(self.database, &root_bytes, None).unwrap();
         }
     }
 

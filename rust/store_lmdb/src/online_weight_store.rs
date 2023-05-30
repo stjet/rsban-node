@@ -43,9 +43,7 @@ impl<T: Environment + 'static> LmdbOnlineWeightStore<T> {
 
     pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, time: u64) {
         let time_bytes = time.to_be_bytes();
-        txn.rw_txn_mut()
-            .del(self.database, &time_bytes, None)
-            .unwrap();
+        txn.delete(self.database, &time_bytes, None).unwrap();
     }
 
     pub fn begin(

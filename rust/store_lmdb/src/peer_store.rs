@@ -40,8 +40,7 @@ impl<T: Environment + 'static> LmdbPeerStore<T> {
     }
 
     pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, endpoint: &EndpointKey) {
-        txn.rw_txn_mut()
-            .del(self.database, &endpoint.to_bytes(), None)
+        txn.delete(self.database, &endpoint.to_bytes(), None)
             .unwrap();
     }
 

@@ -66,8 +66,7 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
 
     pub fn del(&self, transaction: &mut LmdbWriteTransaction<T>, account: &Account) {
         transaction
-            .rw_txn_mut()
-            .del(self.database, account.as_bytes(), None)
+            .delete(self.database, account.as_bytes(), None)
             .unwrap();
     }
 
@@ -131,7 +130,7 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
 mod tests {
     use std::sync::Mutex;
 
-    use crate::{lmdb_env::DatabaseStub, EnvironmentStub, PutEvent, TestLmdbEnv};
+    use crate::{lmdb_env::DatabaseStub, DeleteEvent, EnvironmentStub, PutEvent, TestLmdbEnv};
     use rsnano_core::{Amount, BlockHash};
 
     use super::*;
@@ -188,7 +187,7 @@ mod tests {
     }
 
     #[test]
-    fn add_one_account_with_nullables() {
+    fn add_one_account() {
         let fixture = create_fixture();
         let mut txn = fixture.rw_txn();
         let put_tracker = txn.track_puts();
@@ -241,18 +240,21 @@ mod tests {
     }
 
     #[test]
-    fn del() {
-        let sut = AccountStoreTestContext::new();
-        let mut txn = sut.env.tx_begin_write().unwrap();
+    fn delete_account() {
+        let fixture = create_fixture();
+        let mut txn = fixture.rw_txn();
+        let delete_tracker = txn.track_deletes();
+
         let account = Account::from(1);
-        let info = AccountInfo {
-            balance: Amount::raw(123),
-            ..Default::default()
-        };
-        sut.store.put(&mut txn, &account, &info);
-        sut.store.del(&mut txn, &account);
-        let result = sut.store.get(&txn, &account);
-        assert_eq!(result, None);
+        fixture.store.del(&mut txn, &account);
+
+        assert_eq!(
+            delete_tracker.output(),
+            vec![DeleteEvent {
+                database: Default::default(),
+                key: account.as_bytes().to_vec()
+            }]
+        )
     }
 
     #[test]

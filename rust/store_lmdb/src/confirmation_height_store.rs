@@ -70,9 +70,7 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
     }
 
     pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, account: &Account) {
-        txn.rw_txn_mut()
-            .del(self.database, account.as_bytes(), None)
-            .unwrap();
+        txn.delete(self.database, account.as_bytes(), None).unwrap();
     }
 
     pub fn count(

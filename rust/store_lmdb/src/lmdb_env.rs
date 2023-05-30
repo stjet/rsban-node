@@ -6,6 +6,7 @@ use anyhow::bail;
 use lmdb::{DatabaseFlags, EnvironmentFlags, Stat, Transaction};
 use lmdb_sys::{MDB_env, MDB_SUCCESS};
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::{
@@ -23,7 +24,7 @@ use std::{
 // Thin Wrappers + Embedded Stubs
 // --------------------------------------------------------------------------------
 
- //todo don't use static lifetimes!
+//todo don't use static lifetimes!
 pub trait RoCursor {
     type Iter: Iterator<Item = lmdb::Result<(&'static [u8], &'static [u8])>>;
     fn iter_start(&mut self) -> Self::Iter;
@@ -35,7 +36,7 @@ pub trait RoCursor {
     ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])>;
 }
 
- //todo don't use static lifetimes!
+//todo don't use static lifetimes!
 pub struct RoCursorWrapper(lmdb::RoCursor<'static>);
 
 impl RoCursor for RoCursorWrapper {
@@ -58,7 +59,7 @@ pub struct RoCursorStub;
 
 pub struct NullIter;
 
-impl Iterator for NullIter{
+impl Iterator for NullIter {
     type Item = lmdb::Result<(&'static [u8], &'static [u8])>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -306,8 +307,18 @@ impl RoTransaction for RoTransactionWrapper {
         stat.unwrap().entries() as u64
     }
 }
-pub struct NullRoTransaction;
-pub struct NullInactiveTransaction;
+pub struct NullRoTransaction {
+    databases: Vec<ConfiguredDatabase>,
+}
+
+impl NullRoTransaction {
+    fn get_database(&self, database: DatabaseStub) -> Option<&ConfiguredDatabase> {
+        self.databases.iter().find(|d| d.dbi == database)
+    }
+}
+pub struct NullInactiveTransaction {
+    databases: Vec<ConfiguredDatabase>,
+}
 
 impl RoTransaction for NullRoTransaction {
     type InactiveTxnType = NullInactiveTransaction;
@@ -318,23 +329,31 @@ impl RoTransaction for NullRoTransaction {
     where
         Self: Sized,
     {
-        NullInactiveTransaction
+        NullInactiveTransaction {
+            databases: self.databases,
+        }
     }
 
     fn commit(self) -> lmdb::Result<()> {
         Ok(())
     }
 
-    fn get(&self, _database: Self::Database, _key: &[u8]) -> lmdb::Result<&[u8]> {
-        Err(lmdb::Error::NotFound)
+    fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
+        let Some(db) = self.get_database(database) else { return Err(lmdb::Error::NotFound) };
+        match db.entries.get(key) {
+            Some(value) => Ok(value),
+            None => Err(lmdb::Error::NotFound),
+        }
     }
 
     fn open_ro_cursor(&self, _database: Self::Database) -> lmdb::Result<Self::RoCursor> {
         Ok(RoCursorStub)
     }
 
-    fn count(&self, _database: Self::Database) -> u64 {
-        0
+    fn count(&self, database: Self::Database) -> u64 {
+        self.get_database(database)
+            .map(|db| db.entries.len())
+            .unwrap_or_default() as u64
     }
 }
 
@@ -342,7 +361,9 @@ impl InactiveTransaction for NullInactiveTransaction {
     type RoTxnType = NullRoTransaction;
 
     fn renew(self) -> lmdb::Result<Self::RoTxnType> {
-        Ok(NullRoTransaction)
+        Ok(NullRoTransaction {
+            databases: self.databases,
+        })
     }
 }
 
@@ -448,9 +469,18 @@ impl Environment for EnvironmentWrapper {
     }
 }
 
-pub struct EnvironmentStub;
-#[derive(Clone, Copy)]
-pub struct DatabaseStub(u32);
+pub struct EnvironmentStub {
+    databases: Vec<ConfiguredDatabase>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DatabaseStub(pub u32);
+
+impl Default for DatabaseStub {
+    fn default() -> Self {
+        Self(42)
+    }
+}
 
 impl Environment for EnvironmentStub {
     type RoTxnImpl = NullRoTransaction;
@@ -463,11 +493,15 @@ impl Environment for EnvironmentStub {
     where
         Self: Sized,
     {
-        Ok(Self {})
+        Ok(Self {
+            databases: Vec::new(),
+        })
     }
 
     fn begin_ro_txn(&self) -> lmdb::Result<Self::RoTxnImpl> {
-        Ok(NullRoTransaction)
+        Ok(NullRoTransaction {
+            databases: self.databases.clone(), //todo  don't clone!
+        })
     }
 
     fn begin_rw_txn(&self) -> lmdb::Result<Self::RwTxnType> {
@@ -476,10 +510,15 @@ impl Environment for EnvironmentStub {
 
     fn create_db<'env>(
         &'env self,
-        _name: Option<&str>,
+        name: Option<&str>,
         _flags: DatabaseFlags,
     ) -> lmdb::Result<Self::Database> {
-        Ok(DatabaseStub(42))
+        Ok(self
+            .databases
+            .iter()
+            .find(|x| name == Some(&x.db_name))
+            .map(|x| x.dbi)
+            .unwrap_or(DatabaseStub(42)))
     }
 
     fn env(&self) -> *mut MDB_env {
@@ -508,6 +547,53 @@ pub struct EnvOptions {
     pub use_no_mem_init: bool,
 }
 
+pub struct NullLmdbEnvBuilder {
+    databases: Vec<ConfiguredDatabase>,
+}
+
+impl NullLmdbEnvBuilder {
+    pub fn database(self, name: impl Into<String>, dbi: DatabaseStub) -> NullDatabaseBuilder {
+        NullDatabaseBuilder {
+            data: ConfiguredDatabase {
+                dbi,
+                db_name: name.into(),
+                entries: HashMap::new(),
+            },
+            env_builder: self,
+        }
+    }
+
+    pub fn build(self) -> LmdbEnv<EnvironmentStub> {
+        let env = EnvironmentStub {
+            databases: self.databases,
+        };
+        LmdbEnv::with_env(env)
+    }
+}
+
+#[derive(Clone)]
+struct ConfiguredDatabase {
+    dbi: DatabaseStub,
+    db_name: String,
+    entries: HashMap<Vec<u8>, Vec<u8>>,
+}
+
+pub struct NullDatabaseBuilder {
+    env_builder: NullLmdbEnvBuilder,
+    data: ConfiguredDatabase,
+}
+
+impl NullDatabaseBuilder {
+    pub fn entry(mut self, key: &[u8], value: &[u8]) -> Self {
+        self.data.entries.insert(key.to_vec(), value.to_vec());
+        self
+    }
+    pub fn build(mut self) -> NullLmdbEnvBuilder {
+        self.env_builder.databases.push(self.data);
+        self.env_builder
+    }
+}
+
 pub struct LmdbEnv<T: Environment = EnvironmentWrapper> {
     pub environment: T,
     next_txn_id: AtomicU64,
@@ -518,11 +604,25 @@ impl LmdbEnv<EnvironmentStub> {
     pub fn create_null() -> Self {
         Self::new("nulled_data.ldb").unwrap()
     }
+
+    pub fn create_null_with() -> NullLmdbEnvBuilder {
+        NullLmdbEnvBuilder {
+            databases: Vec::new(),
+        }
+    }
 }
 
 impl<T: Environment> LmdbEnv<T> {
     pub fn new(path: impl AsRef<Path>) -> anyhow::Result<Self> {
         Self::with_options(path, &EnvOptions::default())
+    }
+
+    pub fn with_env(env: T) -> Self {
+        Self {
+            environment: env,
+            next_txn_id: AtomicU64::new(0),
+            txn_tracker: Arc::new(NullTransactionTracker::new()),
+        }
     }
 
     pub fn with_options(path: impl AsRef<Path>, options: &EnvOptions) -> anyhow::Result<Self> {
@@ -717,6 +817,38 @@ impl Deref for TestLmdbEnv {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    mod rw_txn {
+        use lmdb::WriteFlags;
+
+        use crate::PutEvent;
+
+        use super::*;
+
+        #[test]
+        fn can_track_puts() {
+            let env = LmdbEnv::create_null();
+            let mut txn = env.tx_begin_write().unwrap();
+            let tracker = txn.track_puts();
+
+            let database = DatabaseStub(42);
+            let key = &[1, 2, 3];
+            let value = &[4, 5, 6];
+            let flags = WriteFlags::APPEND;
+            txn.put(database, key, value, flags).unwrap();
+
+            let puts = tracker.output();
+            assert_eq!(
+                puts,
+                vec![PutEvent {
+                    database,
+                    key: key.to_vec(),
+                    value: value.to_vec(),
+                    flags
+                }]
+            )
+        }
+    }
 
     mod test_db_file {
         use super::*;

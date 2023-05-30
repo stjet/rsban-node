@@ -15,7 +15,7 @@ pub use lmdb_env::{
     EnvOptions, Environment, EnvironmentOptions, EnvironmentStub, EnvironmentWrapper, LmdbEnv,
     RoCursorWrapper, TestDbFile, TestLmdbEnv,
 };
-use lmdb_env::{InactiveTransaction, RoTransaction, RwTransaction, RoCursor};
+use lmdb_env::{InactiveTransaction, RoCursor, RoTransaction, RwTransaction};
 
 mod account_store;
 pub use account_store::LmdbAccountStore;
@@ -68,7 +68,11 @@ use std::{
 };
 
 use primitive_types::{U256, U512};
-use rsnano_core::utils::{get_cpu_count, PropertyTreeWriter};
+#[cfg(feature = "output_tracking")]
+use rsnano_core::utils::OutputTracker;
+use rsnano_core::utils::{get_cpu_count, OutputListener, PropertyTreeWriter};
+#[cfg(feature = "output_tracking")]
+use std::rc::Rc;
 
 pub trait Transaction {
     type Database;
@@ -225,11 +229,22 @@ enum RwTxnState<T: RwTransaction> {
     Transitioning,
 }
 
+#[cfg(feature = "output_tracking")]
+#[derive(Clone, Debug, PartialEq)]
+pub struct PutEvent<T> {
+    database: T,
+    key: Vec<u8>,
+    value: Vec<u8>,
+    flags: lmdb::WriteFlags,
+}
+
 pub struct LmdbWriteTransaction<T: Environment + 'static = EnvironmentWrapper> {
     env: &'static T,
     txn_id: u64,
     callbacks: Arc<dyn TransactionTracker>,
     txn: RwTxnState<T::RwTxnType>,
+    #[cfg(feature = "output_tracking")]
+    put_listener: OutputListener<PutEvent<T::Database>>,
 }
 
 impl<T: Environment> LmdbWriteTransaction<T> {
@@ -244,6 +259,7 @@ impl<T: Environment> LmdbWriteTransaction<T> {
             txn_id,
             callbacks,
             txn: RwTxnState::Inactive,
+            put_listener: OutputListener::new(),
         };
         tx.renew();
         Ok(tx)
@@ -284,6 +300,36 @@ impl<T: Environment> LmdbWriteTransaction<T> {
             RwTxnState::Transitioning => unreachable!(),
         };
         self.txn = RwTxnState::Inactive;
+    }
+
+    #[cfg(feature = "output_tracking")]
+    pub fn track_puts(&self) -> Rc<OutputTracker<PutEvent<T::Database>>> {
+        self.put_listener.track()
+    }
+
+    unsafe fn create_db(
+        &mut self,
+        name: Option<&str>,
+        flags: lmdb::DatabaseFlags,
+    ) -> lmdb::Result<T::Database> {
+        self.rw_txn().create_db(name, flags)
+    }
+
+    fn put(
+        &mut self,
+        database: T::Database,
+        key: &[u8],
+        value: &[u8],
+        flags: lmdb::WriteFlags,
+    ) -> lmdb::Result<()> {
+        #[cfg(feature = "output_tracking")]
+        self.put_listener.emit(PutEvent {
+            database,
+            key: key.to_vec(),
+            value: value.to_vec(),
+            flags,
+        });
+        self.rw_txn_mut().put(database, key, value, flags)
     }
 }
 

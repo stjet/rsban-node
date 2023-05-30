@@ -28,7 +28,7 @@ impl<T: Environment + 'static> LmdbPrunedStore<T> {
     }
 
     pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, hash: &BlockHash) {
-        txn.rw_txn_mut()
+        txn
             .put(self.database, hash.as_bytes(), &[0; 0], WriteFlags::empty())
             .unwrap();
     }

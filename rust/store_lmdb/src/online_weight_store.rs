@@ -32,7 +32,7 @@ impl<T: Environment + 'static> LmdbOnlineWeightStore<T> {
     pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, time: u64, amount: &Amount) {
         let time_bytes = time.to_be_bytes();
         let amount_bytes = amount.to_be_bytes();
-        txn.rw_txn_mut()
+        txn
             .put(
                 self.database,
                 &time_bytes,

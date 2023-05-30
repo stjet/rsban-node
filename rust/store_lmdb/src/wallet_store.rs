@@ -283,7 +283,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         account: &Account,
         entry: &WalletValue,
     ) {
-        txn.rw_txn_mut()
+        txn
             .put(
                 self.db_handle(),
                 account.as_bytes(),

@@ -30,7 +30,7 @@ impl AccountInfo {
         buffer
     }
 
-    pub fn test_instance() -> Self {
+    pub fn create_test_instance() -> Self {
         Self {
             head: BlockHash::from(1),
             representative: Account::from(2),

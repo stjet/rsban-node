@@ -1436,6 +1436,7 @@ dependencies = [
  "primitive-types",
  "rand",
  "rsnano_core",
+ "rsnano_store_lmdb",
  "serde_json",
  "uuid 0.8.2",
 ]

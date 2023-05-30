@@ -38,7 +38,7 @@ impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
         let root_bytes = root.to_bytes();
         match txn.get(self.database, &root_bytes) {
             Err(lmdb::Error::NotFound) => {
-                txn.rw_txn_mut()
+                txn
                     .put(
                         self.database,
                         &root_bytes,

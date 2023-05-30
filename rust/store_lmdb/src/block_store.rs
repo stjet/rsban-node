@@ -263,8 +263,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
     }
 
     pub fn raw_put(&self, txn: &mut LmdbWriteTransaction<T>, data: &[u8], hash: &BlockHash) {
-        txn.rw_txn_mut()
-            .put(self.database, hash.as_bytes(), &data, WriteFlags::empty())
+        txn.put(self.database, hash.as_bytes(), &data, WriteFlags::empty())
             .unwrap();
     }
 

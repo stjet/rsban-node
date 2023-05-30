@@ -59,16 +59,15 @@ impl<T: Environment + 'static> LmdbWallets<T> {
         txn_destination: &mut LmdbWriteTransaction<T>,
     ) -> anyhow::Result<()> {
         let rw_txn_source = txn_source.rw_txn_mut();
-        let rw_txn_dest = txn_destination.rw_txn_mut();
         let handle_source = unsafe { rw_txn_source.create_db(Some(name), DatabaseFlags::empty()) }?;
         let handle_destination =
-            unsafe { rw_txn_dest.create_db(Some(name), DatabaseFlags::empty()) }?;
+            unsafe { txn_destination.create_db(Some(name), DatabaseFlags::empty()) }?;
 
         {
             let mut cursor = rw_txn_source.open_ro_cursor(handle_source)?;
             for x in cursor.iter_start() {
                 let (k, v) = x?;
-                rw_txn_dest.put(handle_destination, &k, &v, WriteFlags::empty())?;
+                txn_destination.put(handle_destination, &k, &v, WriteFlags::empty())?;
             }
         }
 

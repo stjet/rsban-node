@@ -250,7 +250,7 @@ mod tests {
     fn set_account_info() {
         let mut stub = LedgerDataRequesterStub::new();
         let account = Account::from(1);
-        let account_info = AccountInfo::test_instance();
+        let account_info = AccountInfo::create_test_instance();
 
         stub.set_account_info(account, account_info.clone());
 

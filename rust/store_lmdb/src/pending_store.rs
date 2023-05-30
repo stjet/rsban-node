@@ -33,7 +33,7 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
     pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, key: &PendingKey, pending: &PendingInfo) {
         let key_bytes = key.to_bytes();
         let pending_bytes = pending.to_bytes();
-        txn.rw_txn_mut()
+        txn
             .put(
                 self.database,
                 &key_bytes,

@@ -35,14 +35,13 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
         account: &Account,
         info: &ConfirmationHeightInfo,
     ) {
-        txn.rw_txn_mut()
-            .put(
-                self.database,
-                account.as_bytes(),
-                &info.to_bytes(),
-                WriteFlags::empty(),
-            )
-            .unwrap();
+        txn.put(
+            self.database,
+            account.as_bytes(),
+            &info.to_bytes(),
+            WriteFlags::empty(),
+        )
+        .unwrap();
     }
 
     pub fn get(

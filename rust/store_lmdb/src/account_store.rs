@@ -39,7 +39,6 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         info: &AccountInfo,
     ) {
         transaction
-            .rw_txn_mut()
             .put(
                 self.database,
                 account.as_bytes(),
@@ -132,7 +131,7 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
 mod tests {
     use std::sync::Mutex;
 
-    use crate::TestLmdbEnv;
+    use crate::{lmdb_env::DatabaseStub, EnvironmentStub, PutEvent, TestLmdbEnv};
     use rsnano_core::{Amount, BlockHash};
 
     use super::*;
@@ -150,43 +149,95 @@ mod tests {
         }
     }
 
-    #[test]
-    fn empty_store_with_nullables() {
-        let env = Arc::new(LmdbEnv::create_null());
-        let txn = env.tx_begin_read().unwrap();
-        let store = LmdbAccountStore::new(env).unwrap();
-        let account = Account::from(1);
-        let result = store.get(&txn, &account);
-        assert_eq!(result, None);
-        assert_eq!(store.exists(&txn, &account), false);
-        assert_eq!(store.count(&txn), 0);
+    struct Fixture {
+        env: Arc<LmdbEnv<EnvironmentStub>>,
+        store: LmdbAccountStore<EnvironmentStub>,
     }
 
+    impl Fixture {
+        fn ro_txn(&self) -> LmdbReadTransaction<EnvironmentStub> {
+            self.env.tx_begin_read().unwrap()
+        }
+        fn rw_txn(&self) -> LmdbWriteTransaction<EnvironmentStub> {
+            self.env.tx_begin_write().unwrap()
+        }
+    }
+
+    fn create_fixture() -> Fixture {
+        let env = Arc::new(LmdbEnv::create_null());
+        let store = LmdbAccountStore::new(env.clone()).unwrap();
+
+        Fixture { env, store }
+    }
+
+    fn create_fixture_with_env(env: LmdbEnv<EnvironmentStub>) -> Fixture {
+        let env = Arc::new(env);
+        let store = LmdbAccountStore::new(env.clone()).unwrap();
+
+        Fixture { env, store }
+    }
     #[test]
     fn empty_store() {
-        let sut = AccountStoreTestContext::new();
-        let txn = sut.env.tx_begin_read().unwrap();
+        let fixture = create_fixture();
+        let txn = fixture.ro_txn();
         let account = Account::from(1);
-        let result = sut.store.get(&txn, &account);
+        let result = fixture.store.get(&txn, &account);
         assert_eq!(result, None);
-        assert_eq!(sut.store.exists(&txn, &account), false);
-        assert_eq!(sut.store.count(&txn), 0);
+        assert_eq!(fixture.store.exists(&txn, &account), false);
+        assert_eq!(fixture.store.count(&txn), 0);
     }
 
     #[test]
-    fn add_one_account() {
-        let sut = AccountStoreTestContext::new();
-        let mut txn = sut.env.tx_begin_write().unwrap();
+    fn add_one_account_with_nullables() {
+        let fixture = create_fixture();
+        let mut txn = fixture.rw_txn();
+        let put_tracker = txn.track_puts();
+
         let account = Account::from(1);
-        let info = AccountInfo {
-            balance: Amount::raw(123),
-            ..Default::default()
-        };
-        sut.store.put(&mut txn, &account, &info);
-        assert!(sut.store.exists(&txn, &account));
-        let result = sut.store.get(&txn, &account);
+        let info = AccountInfo::create_test_instance();
+        fixture.store.put(&mut txn, &account, &info);
+
+        assert_eq!(
+            put_tracker.output(),
+            vec![PutEvent {
+                database: Default::default(),
+                key: account.as_bytes().to_vec(),
+                value: info.to_bytes().to_vec(),
+                flags: lmdb::WriteFlags::empty()
+            }]
+        );
+    }
+
+    #[test]
+    fn load_account() {
+        let account = Account::from(1);
+        let info = AccountInfo::create_test_instance();
+        let env = LmdbEnv::create_null_with()
+            .database("accounts", DatabaseStub(1))
+            .entry(account.as_bytes(), &info.to_bytes())
+            .build()
+            .build();
+        let fixture = create_fixture_with_env(env);
+
+        let result = fixture.store.get(&fixture.ro_txn(), &account);
+
         assert_eq!(result, Some(info));
-        assert_eq!(sut.store.count(&txn), 1);
+    }
+
+    #[test]
+    fn count() {
+        let info = AccountInfo::create_test_instance();
+        let env = LmdbEnv::create_null_with()
+            .database("accounts", DatabaseStub(1))
+            .entry(Account::from(1).as_bytes(), &info.to_bytes())
+            .entry(Account::from(2).as_bytes(), &info.to_bytes())
+            .build()
+            .build();
+        let fixture = create_fixture_with_env(env);
+
+        let count = fixture.store.count(&fixture.ro_txn());
+
+        assert_eq!(count, 2);
     }
 
     #[test]

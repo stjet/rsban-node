@@ -253,7 +253,6 @@ fn copy_table<T: Environment + 'static>(
         for x in cursor.iter_start() {
             let (k, v) = x?;
             rw_txn
-                .rw_txn_mut()
                 .put(target, &k, &v, WriteFlags::APPEND)?;
         }
     }

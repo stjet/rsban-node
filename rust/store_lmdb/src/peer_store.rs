@@ -30,7 +30,7 @@ impl<T: Environment + 'static> LmdbPeerStore<T> {
     }
 
     pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, endpoint: &EndpointKey) {
-        txn.rw_txn_mut()
+        txn
             .put(
                 self.database,
                 &endpoint.to_bytes(),

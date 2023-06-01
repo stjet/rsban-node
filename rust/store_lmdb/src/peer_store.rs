@@ -60,7 +60,7 @@ impl<T: Environment + 'static> LmdbPeerStore<T> {
     }
 
     pub fn clear(&self, txn: &mut LmdbWriteTransaction<T>) {
-        txn.rw_txn_mut().clear_db(self.database).unwrap();
+        txn.clear_db(self.database).unwrap();
     }
 
     pub fn begin(

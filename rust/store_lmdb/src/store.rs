@@ -232,7 +232,7 @@ fn rebuild_table<T: Environment + 'static>(
     }?;
     copy_table(env, rw_txn, db, temp)?;
     crate::Transaction::refresh(rw_txn);
-    rw_txn.rw_txn_mut().clear_db(db)?;
+    rw_txn.clear_db(db)?;
     copy_table(env, rw_txn, temp, db)?;
     unsafe { rw_txn.rw_txn_mut().drop_db(temp) }?;
     crate::Transaction::refresh(rw_txn);

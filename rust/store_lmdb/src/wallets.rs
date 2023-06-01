@@ -149,8 +149,6 @@ impl<T: Environment + 'static> LmdbWallets<T> {
     }
 
     pub fn clear_send_ids(&self, txn: &mut LmdbWriteTransaction<T>) {
-        txn.rw_txn_mut()
-            .clear_db(self.send_action_ids_handle.unwrap())
-            .unwrap();
+        txn.clear_db(self.send_action_ids_handle.unwrap()).unwrap();
     }
 }

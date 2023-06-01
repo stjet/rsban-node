@@ -254,6 +254,8 @@ pub struct LmdbWriteTransaction<T: Environment + 'static = EnvironmentWrapper> {
     put_listener: OutputListener<PutEvent<T::Database>>,
     #[cfg(feature = "output_tracking")]
     delete_listener: OutputListener<DeleteEvent<T::Database>>,
+    #[cfg(feature = "output_tracking")]
+    clear_listener: OutputListener<T::Database>,
 }
 
 impl<T: Environment> LmdbWriteTransaction<T> {
@@ -272,6 +274,8 @@ impl<T: Environment> LmdbWriteTransaction<T> {
             put_listener: OutputListener::new(),
             #[cfg(feature = "output_tracking")]
             delete_listener: OutputListener::new(),
+            #[cfg(feature = "output_tracking")]
+            clear_listener: OutputListener::new(),
         };
         tx.renew();
         Ok(tx)
@@ -324,7 +328,12 @@ impl<T: Environment> LmdbWriteTransaction<T> {
         self.delete_listener.track()
     }
 
-    unsafe fn create_db(
+    #[cfg(feature = "output_tracking")]
+    fn track_clears(&self) -> Rc<OutputTracker<T::Database>> {
+        self.clear_listener.track()
+    }
+
+    pub unsafe fn create_db(
         &mut self,
         name: Option<&str>,
         flags: lmdb::DatabaseFlags,
@@ -332,7 +341,7 @@ impl<T: Environment> LmdbWriteTransaction<T> {
         self.rw_txn().create_db(name, flags)
     }
 
-    fn put(
+    pub fn put(
         &mut self,
         database: T::Database,
         key: &[u8],
@@ -349,7 +358,7 @@ impl<T: Environment> LmdbWriteTransaction<T> {
         self.rw_txn_mut().put(database, key, value, flags)
     }
 
-    fn delete(
+    pub fn delete(
         &mut self,
         database: T::Database,
         key: &[u8],
@@ -360,6 +369,11 @@ impl<T: Environment> LmdbWriteTransaction<T> {
             key: key.to_vec(),
         });
         self.rw_txn_mut().del(database, key, flags)
+    }
+
+    pub fn clear_db(&mut self, database: T::Database) -> lmdb::Result<()> {
+        self.clear_listener.emit(database);
+        self.rw_txn_mut().clear_db(database)
     }
 }
 
@@ -451,5 +465,17 @@ mod test {
         txn.delete(database, &key, None).unwrap();
 
         assert_eq!(delete_tracker.output(), vec![DeleteEvent { database, key }])
+    }
+
+    #[test]
+    fn tracks_clears() {
+        let env = LmdbEnv::create_null();
+        let mut txn = env.tx_begin_write();
+        let clear_tracker = txn.track_clears();
+
+        let database = DatabaseStub(42);
+        txn.clear_db(database).unwrap();
+
+        assert_eq!(clear_tracker.output(), vec![database])
     }
 }

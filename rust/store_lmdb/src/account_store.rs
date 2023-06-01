@@ -4,7 +4,7 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    utils::{Deserialize, StreamAdapter},
+    utils::{Deserialize, OutputListenerMt, OutputTrackerMt, StreamAdapter},
     Account, AccountInfo,
 };
 use std::sync::Arc;
@@ -16,6 +16,8 @@ pub struct LmdbAccountStore<T: Environment = EnvironmentWrapper> {
 
     /// U256 (arbitrary key) -> blob
     database: T::Database,
+    #[cfg(feature = "output_tracking")]
+    put_listener: OutputListenerMt<(Account, AccountInfo)>,
 }
 
 impl<T: Environment + 'static> LmdbAccountStore<T> {
@@ -23,7 +25,16 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         let database = env
             .environment
             .create_db(Some("accounts"), DatabaseFlags::empty())?;
-        Ok(Self { env, database })
+        Ok(Self {
+            env,
+            database,
+            #[cfg(feature = "output_tracking")]
+            put_listener: OutputListenerMt::new(),
+        })
+    }
+
+    pub fn track_puts(&self) -> Arc<OutputTrackerMt<(Account, AccountInfo)>> {
+        self.put_listener.track()
     }
 
     pub fn database(&self) -> T::Database {
@@ -36,6 +47,8 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         account: &Account,
         info: &AccountInfo,
     ) {
+        #[cfg(feature = "output_tracking")]
+        self.put_listener.emit((account.clone(), info.clone()));
         transaction
             .put(
                 self.database,
@@ -339,5 +352,18 @@ mod tests {
             }
         });
         assert_eq!(*balance_sum.lock().unwrap(), Amount::raw(4));
+    }
+
+    #[test]
+    fn track_inserted_account_info() {
+        let fixture = Fixture::new();
+        let put_tracker = fixture.store.track_puts();
+        let mut txn = fixture.env.tx_begin_write();
+        let account = Account::from(1);
+        let info = AccountInfo::create_test_instance();
+
+        fixture.store.put(&mut txn, &account, &info);
+
+        assert_eq!(put_tracker.output(), vec![(account, info)]);
     }
 }

@@ -149,10 +149,12 @@ mod tests {
             is_epoch_block: false,
         };
 
+        let put_tracker = ledger.store.block.track_puts();
         let mut block_inserter = BlockInserter::new(&ledger, &mut txn, &mut block, &instructions);
         block_inserter.insert();
 
         assert_eq!(block.sideband().unwrap(), &instructions.set_sideband);
+        assert_eq!(put_tracker.output(), vec![block]);
         // todo more asserts
     }
 }

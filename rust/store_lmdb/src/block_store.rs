@@ -6,7 +6,7 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     deserialize_block_enum,
-    utils::{Serialize, StreamAdapter},
+    utils::{OutputListenerMt, OutputTrackerMt, Serialize, StreamAdapter},
     Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
     BlockWithSideband, ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
@@ -17,6 +17,8 @@ pub type BlockIterator = Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
 pub struct LmdbBlockStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
     database: T::Database,
+    #[cfg(feature = "output_tracking")]
+    put_listener: OutputListenerMt<BlockEnum>,
 }
 
 impl<T: Environment + 'static> LmdbBlockStore<T> {
@@ -24,14 +26,27 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         let database = env
             .environment
             .create_db(Some("blocks"), DatabaseFlags::empty())?;
-        Ok(Self { env, database })
+        Ok(Self {
+            env,
+            database,
+            #[cfg(feature = "output_tracking")]
+            put_listener: OutputListenerMt::new(),
+        })
     }
 
     pub fn database(&self) -> T::Database {
         self.database
     }
 
+    #[cfg(feature = "output_tracking")]
+    pub fn track_puts(&self) -> Arc<OutputTrackerMt<BlockEnum>> {
+        self.put_listener.track()
+    }
+
     pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, block: &BlockEnum) {
+        #[cfg(feature = "output_tracking")]
+        self.put_listener.emit(block.clone());
+
         let hash = block.hash();
         debug_assert!(
             block.sideband().unwrap().successor.is_zero()
@@ -429,5 +444,22 @@ mod tests {
 
         assert_eq!(random, block);
         Ok(())
+    }
+
+    #[test]
+    fn track_inserted_blocks() {
+        let fixture = Fixture::new();
+        let mut block = BlockBuilder::state().previous(BlockHash::zero()).build();
+        block.set_sideband(BlockSideband {
+            height: 1,
+            successor: BlockHash::zero(),
+            ..BlockSideband::create_test_instance()
+        });
+        let mut txn = fixture.env.tx_begin_write();
+        let put_tracker = fixture.store.track_puts();
+
+        fixture.store.put(&mut txn, &block);
+
+        assert_eq!(put_tracker.output(), vec![block]);
     }
 }

@@ -126,11 +126,33 @@ impl<'a, T: Environment> BlockInserter<'a, T> {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::{BlockBuilder, BlockHash};
+
     use super::*;
 
     #[test]
-    fn insert_block() {
+    fn insert_open_block() {
         let ledger = Ledger::create_null();
-        //let block_inserter = BlockInserter::new()
+        let mut txn = ledger.rw_txn();
+        let mut block = BlockBuilder::state().previous(BlockHash::zero()).build();
+        let sideband = BlockSideband {
+            successor: BlockHash::zero(),
+            ..BlockSideband::create_test_instance()
+        };
+        let instructions = BlockInsertInstructions {
+            account: Account::from(1),
+            old_account_info: AccountInfo::create_test_instance(),
+            set_account_info: AccountInfo::create_test_instance(),
+            delete_pending: None,
+            insert_pending: None,
+            set_sideband: sideband,
+            is_epoch_block: false,
+        };
+
+        let mut block_inserter = BlockInserter::new(&ledger, &mut txn, &mut block, &instructions);
+        block_inserter.insert();
+
+        assert_eq!(block.sideband().unwrap(), &instructions.set_sideband);
+        // todo more asserts
     }
 }

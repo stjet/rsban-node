@@ -615,8 +615,8 @@ impl Environment for EnvironmentStub {
         todo!()
     }
 
-    fn open_db<'env>(&'env self, _name: Option<&str>) -> lmdb::Result<Self::Database> {
-        todo!()
+    fn open_db<'env>(&'env self, name: Option<&str>) -> lmdb::Result<Self::Database> {
+        self.create_db(name, DatabaseFlags::empty())
     }
 
     fn sync(&self, _force: bool) -> lmdb::Result<()> {

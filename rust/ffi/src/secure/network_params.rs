@@ -36,10 +36,7 @@ pub unsafe extern "C" fn rsn_network_params_create(
         Some(n) => n,
         None => return -1,
     };
-    let params = match NetworkParams::new(network) {
-        Ok(p) => p,
-        Err(_) => return -1,
-    };
+    let params = NetworkParams::new(network);
     let dto = &mut (*dto);
     fill_network_params_dto(dto, &params);
     0

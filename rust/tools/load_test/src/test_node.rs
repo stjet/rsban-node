@@ -170,7 +170,7 @@ fn spawn_nano_node(node_path: &Path, data_path: &Path, network: &str) -> Child {
 }
 
 fn write_config_files(data_path: &Path, index: usize) -> Result<()> {
-    let network_params = NetworkParams::new(NetworkConstants::active_network())?;
+    let network_params = NetworkParams::new(NetworkConstants::active_network());
     write_node_config(index, data_path, &network_params)?;
     write_rpc_config(index, data_path, &network_params)?;
     Ok(())

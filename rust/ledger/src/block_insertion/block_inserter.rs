@@ -123,3 +123,14 @@ impl<'a, T: Environment> BlockInserter<'a, T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn insert_block() {
+        let ledger = Ledger::create_null();
+        //let block_inserter = BlockInserter::new()
+    }
+}

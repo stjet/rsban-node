@@ -10,8 +10,8 @@ use rsnano_core::{
     PendingKey, QualifiedRoot, Root,
 };
 use rsnano_store_lmdb::{
-    Environment, EnvironmentWrapper, LmdbReadTransaction, LmdbStore, LmdbWriteTransaction,
-    Transaction,
+    Environment, EnvironmentStub, EnvironmentWrapper, LmdbReadTransaction, LmdbStore,
+    LmdbWriteTransaction, Transaction,
 };
 
 use std::{
@@ -79,6 +79,12 @@ pub struct Ledger<T: Environment + 'static = EnvironmentWrapper> {
     bootstrap_weight_max_blocks: AtomicU64,
     pub check_bootstrap_weights: AtomicBool,
     pub bootstrap_weights: Mutex<HashMap<Account, Amount>>,
+}
+
+impl Ledger<EnvironmentStub> {
+    pub fn create_null() -> Self {
+        Self::new(Arc::new(LmdbStore::create_null()), LedgerConstants::dev()).unwrap()
+    }
 }
 
 impl<T: Environment + 'static> Ledger<T> {

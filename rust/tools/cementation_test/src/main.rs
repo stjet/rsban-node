@@ -119,7 +119,7 @@ fn main() {
 
 fn open_ledger<T: AsRef<Path>, E: Environment + 'static>(ledger_path: T) -> Ledger {
     let store = Arc::new(LmdbStore::<E>::open(ledger_path.as_ref()).build().unwrap());
-    Ledger::new(store, LedgerConstants::beta().unwrap()).unwrap()
+    Ledger::new(store, LedgerConstants::beta()).unwrap()
 }
 
 enum Mode {

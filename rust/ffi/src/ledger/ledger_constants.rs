@@ -57,10 +57,7 @@ pub unsafe extern "C" fn rsn_ledger_constants_create(
     };
 
     let work = WorkThresholds::from(work);
-    let ledger = match LedgerConstants::new(work, network) {
-        Ok(l) => l,
-        Err(_) => return -1,
-    };
+    let ledger = LedgerConstants::new(work, network);
 
     fill_ledger_constants_dto(&mut (*dto), &ledger);
     0

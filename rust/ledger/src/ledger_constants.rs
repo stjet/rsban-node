@@ -81,9 +81,8 @@ static TEST_CANARY_PUBLIC_KEY_DATA: Lazy<String> = Lazy::new(|| {
 pub static DEV_GENESIS_KEY: Lazy<KeyPair> =
     Lazy::new(|| KeyPair::from_priv_key_hex(DEV_PRIVATE_KEY_DATA).unwrap());
 
-pub static LEDGER_CONSTANTS_STUB: Lazy<LedgerConstants> = Lazy::new(|| {
-    LedgerConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork).unwrap()
-});
+pub static LEDGER_CONSTANTS_STUB: Lazy<LedgerConstants> =
+    Lazy::new(|| LedgerConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork));
 
 pub static DEV_GENESIS: Lazy<Arc<RwLock<BlockEnum>>> =
     Lazy::new(|| LEDGER_CONSTANTS_STUB.genesis.clone());
@@ -138,11 +137,12 @@ pub struct LedgerConstants {
 }
 
 impl LedgerConstants {
-    pub fn new(work: WorkThresholds, network: Networks) -> Result<Self> {
-        let mut nano_dev_genesis = parse_block_from_genesis_data(DEV_GENESIS_DATA)?;
-        let mut nano_beta_genesis = parse_block_from_genesis_data(BETA_GENESIS_DATA)?;
-        let mut nano_live_genesis = parse_block_from_genesis_data(LIVE_GENESIS_DATA)?;
-        let mut nano_test_genesis = parse_block_from_genesis_data(TEST_GENESIS_DATA.as_str())?;
+    pub fn new(work: WorkThresholds, network: Networks) -> Self {
+        let mut nano_dev_genesis = parse_block_from_genesis_data(DEV_GENESIS_DATA).unwrap();
+        let mut nano_beta_genesis = parse_block_from_genesis_data(BETA_GENESIS_DATA).unwrap();
+        let mut nano_live_genesis = parse_block_from_genesis_data(LIVE_GENESIS_DATA).unwrap();
+        let mut nano_test_genesis =
+            parse_block_from_genesis_data(TEST_GENESIS_DATA.as_str()).unwrap();
 
         let beta_genesis_account = nano_beta_genesis.account();
         nano_beta_genesis
@@ -201,28 +201,28 @@ impl LedgerConstants {
             Networks::NanoBetaNetwork => nano_beta_genesis.clone(),
             Networks::NanoTestNetwork => nano_test_genesis.clone(),
             Networks::NanoLiveNetwork => nano_live_genesis.clone(),
-            Networks::Invalid => bail!("invalid network"),
+            Networks::Invalid => panic!("invalid network"),
         };
         let genesis_account = genesis.account();
 
-        let nano_dev_final_votes_canary_account = Account::decode_hex(DEV_PUBLIC_KEY_DATA)?;
+        let nano_dev_final_votes_canary_account = Account::decode_hex(DEV_PUBLIC_KEY_DATA).unwrap();
         let nano_beta_final_votes_canary_account =
-            Account::decode_hex(BETA_CANARY_PUBLIC_KEY_DATA)?;
+            Account::decode_hex(BETA_CANARY_PUBLIC_KEY_DATA).unwrap();
         let nano_live_final_votes_canary_account =
-            Account::decode_hex(LIVE_CANARY_PUBLIC_KEY_DATA)?;
+            Account::decode_hex(LIVE_CANARY_PUBLIC_KEY_DATA).unwrap();
         let nano_test_final_votes_canary_account =
-            Account::decode_hex(TEST_CANARY_PUBLIC_KEY_DATA.as_str())?;
+            Account::decode_hex(TEST_CANARY_PUBLIC_KEY_DATA.as_str()).unwrap();
 
         let final_votes_canary_account = match network {
             Networks::NanoDevNetwork => nano_dev_final_votes_canary_account,
             Networks::NanoBetaNetwork => nano_beta_final_votes_canary_account,
             Networks::NanoLiveNetwork => nano_live_final_votes_canary_account,
             Networks::NanoTestNetwork => nano_test_final_votes_canary_account,
-            Networks::Invalid => bail!("invalid network"),
+            Networks::Invalid => panic!("invalid network"),
         };
 
-        let nano_beta_account = Account::decode_hex(BETA_PUBLIC_KEY_DATA)?;
-        let nano_test_account = Account::decode_hex(TEST_PUBLIC_KEY_DATA.as_str())?;
+        let nano_beta_account = Account::decode_hex(BETA_PUBLIC_KEY_DATA).unwrap();
+        let nano_test_account = Account::decode_hex(TEST_PUBLIC_KEY_DATA.as_str()).unwrap();
 
         let mut epochs = Epochs::new();
 
@@ -248,11 +248,11 @@ impl LedgerConstants {
         epochs.add(Epoch::Epoch1, epoch_1_signer, epoch_link_v1);
         epochs.add(Epoch::Epoch2, epoch_2_signer, epoch_link_v2);
 
-        Ok(Self {
+        Self {
             work,
             zero_key: KeyPair::zero(),
             nano_beta_account,
-            nano_live_account: Account::decode_hex(LIVE_PUBLIC_KEY_DATA)?,
+            nano_live_account: Account::decode_hex(LIVE_PUBLIC_KEY_DATA).unwrap(),
             nano_test_account,
             nano_dev_genesis: Arc::new(RwLock::new(nano_dev_genesis)),
             nano_beta_genesis: Arc::new(RwLock::new(nano_beta_genesis)),
@@ -273,31 +273,31 @@ impl LedgerConstants {
             nano_test_final_votes_canary_height: 1,
             final_votes_canary_height: 1,
             epochs,
-        })
+        }
     }
 
-    pub fn live() -> anyhow::Result<Self> {
+    pub fn live() -> Self {
         Self::new(
             WorkThresholds::publish_full().clone(),
             Networks::NanoLiveNetwork,
         )
     }
 
-    pub fn beta() -> anyhow::Result<Self> {
+    pub fn beta() -> Self {
         Self::new(
             WorkThresholds::publish_beta().clone(),
             Networks::NanoBetaNetwork,
         )
     }
 
-    pub fn test() -> anyhow::Result<Self> {
+    pub fn test() -> Self {
         Self::new(
             WorkThresholds::publish_test().clone(),
             Networks::NanoTestNetwork,
         )
     }
 
-    pub fn dev() -> anyhow::Result<Self> {
+    pub fn dev() -> Self {
         Self::new(
             WorkThresholds::publish_dev().clone(),
             Networks::NanoDevNetwork,

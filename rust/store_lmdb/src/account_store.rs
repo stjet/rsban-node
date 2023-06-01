@@ -128,23 +128,10 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
 mod tests {
     use std::sync::Mutex;
 
-    use crate::{lmdb_env::DatabaseStub, DeleteEvent, EnvironmentStub, PutEvent, TestLmdbEnv};
+    use crate::{lmdb_env::DatabaseStub, DeleteEvent, EnvironmentStub, PutEvent};
     use rsnano_core::{Amount, BlockHash};
 
     use super::*;
-
-    struct AccountStoreTestContext {
-        pub store: LmdbAccountStore,
-        pub env: TestLmdbEnv,
-    }
-
-    impl AccountStoreTestContext {
-        pub fn new() -> Self {
-            let env = TestLmdbEnv::new();
-            let store = LmdbAccountStore::new(env.env()).unwrap();
-            Self { store, env }
-        }
-    }
 
     struct Fixture {
         env: Arc<LmdbEnv<EnvironmentStub>>,
@@ -296,8 +283,6 @@ mod tests {
 
     #[test]
     fn begin_account() {
-        let sut = AccountStoreTestContext::new();
-        let mut txn = sut.env.tx_begin_write().unwrap();
         let account1 = Account::from(1);
         let account3 = Account::from(3);
         let info1 = AccountInfo {
@@ -308,9 +293,19 @@ mod tests {
             head: BlockHash::from(3),
             ..Default::default()
         };
-        sut.store.put(&mut txn, &account1, &info1);
-        sut.store.put(&mut txn, &account3, &info3);
-        let mut it = sut.store.begin_account(&txn, &Account::from(2));
+
+        let env = LmdbEnv::create_null_with()
+            .database("accounts", DatabaseStub(42))
+            .entry(account1.as_bytes(), &info1.to_bytes())
+            .entry(account3.as_bytes(), &info3.to_bytes())
+            .build()
+            .build();
+
+        let fixture = create_fixture_with_env(env);
+        let txn = fixture.ro_txn();
+
+        let mut it = fixture.store.begin_account(&txn, &Account::from(2));
+
         assert_eq!(it.current(), Some((&account3, &info3)));
         it.next();
         assert_eq!(it.current(), None);
@@ -318,24 +313,28 @@ mod tests {
 
     #[test]
     fn for_each_par() {
-        let sut = AccountStoreTestContext::new();
-        let mut txn = sut.env.tx_begin_write().unwrap();
-        let account_1 = Account::from(1);
-        let account_max = Account::from_bytes([0xFF; 32]);
-        let info_1 = AccountInfo {
+        let account1 = Account::from(1);
+        let account3 = Account::from(3);
+        let info1 = AccountInfo {
             balance: Amount::raw(1),
             ..Default::default()
         };
-        let info_max = AccountInfo {
+        let info3 = AccountInfo {
             balance: Amount::raw(3),
             ..Default::default()
         };
-        sut.store.put(&mut txn, &account_1, &info_1);
-        sut.store.put(&mut txn, &account_max, &info_max);
-        txn.commit();
+
+        let env = LmdbEnv::create_null_with()
+            .database("accounts", DatabaseStub(42))
+            .entry(account1.as_bytes(), &info1.to_bytes())
+            .entry(account3.as_bytes(), &info3.to_bytes())
+            .build()
+            .build();
+
+        let fixture = create_fixture_with_env(env);
 
         let balance_sum = Mutex::new(Amount::zero());
-        sut.store.for_each_par(&|_, mut begin, end| {
+        fixture.store.for_each_par(&|_, mut begin, end| {
             while !begin.eq(end.as_ref()) {
                 if let Some((_, v)) = begin.current() {
                     *balance_sum.lock().unwrap() += v.balance

@@ -73,74 +73,127 @@ impl<T: Environment + 'static> LmdbPeerStore<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::TestLmdbEnv;
+    use super::*;
+    use crate::{lmdb_env::DatabaseStub, DeleteEvent, EnvironmentStub, PutEvent};
     use rsnano_core::NoValue;
 
-    use super::*;
+    struct Fixture {
+        env: Arc<LmdbEnv<EnvironmentStub>>,
+        store: LmdbPeerStore<EnvironmentStub>,
+    }
+
+    impl Fixture {
+        fn new() -> Self {
+            Self::with_env(LmdbEnv::create_null())
+        }
+
+        fn with_stored_data(entries: Vec<EndpointKey>) -> Self {
+            let mut env = LmdbEnv::create_null_with().database("peers", DatabaseStub::default());
+
+            for entry in entries {
+                env = env.entry(&entry.to_bytes(), &[]);
+            }
+
+            Self::with_env(env.build().build())
+        }
+
+        fn with_env(env: LmdbEnv<EnvironmentStub>) -> Self {
+            let env = Arc::new(env);
+            Self {
+                env: env.clone(),
+                store: LmdbPeerStore::new(env).unwrap(),
+            }
+        }
+    }
 
     #[test]
-    fn empty_store() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPeerStore::new(env.env())?;
-        let txn = env.tx_begin_read();
+    fn empty_store() {
+        let fixture = Fixture::new();
+        let txn = fixture.env.tx_begin_read();
+        let store = &fixture.store;
         assert_eq!(store.count(&txn), 0);
-        assert_eq!(store.exists(&txn, &test_endpoint_key()), false);
+        assert_eq!(
+            store.exists(&txn, &EndpointKey::create_test_instance()),
+            false
+        );
         assert!(store.begin(&txn).is_end());
-        Ok(())
     }
 
     #[test]
-    fn add_one_endpoint() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPeerStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
+    fn add_one_endpoint() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let put_tracker = txn.track_puts();
 
-        let key = test_endpoint_key();
-        store.put(&mut txn, &key);
+        let key = EndpointKey::create_test_instance();
+        fixture.store.put(&mut txn, &key);
 
-        assert_eq!(store.count(&txn), 1);
-        assert_eq!(store.exists(&txn, &key), true);
-        assert_eq!(store.begin(&txn).current(), Some((&key, &NoValue {})));
-        Ok(())
+        assert_eq!(
+            put_tracker.output(),
+            vec![PutEvent {
+                database: Default::default(),
+                key: key.to_bytes().to_vec(),
+                value: Vec::new(),
+                flags: WriteFlags::empty()
+            }]
+        )
     }
 
     #[test]
-    fn add_two_endpoints() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPeerStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
+    fn exists() {
+        let endpoint_a = EndpointKey::new([1; 16], 1000);
+        let endpoint_b = EndpointKey::new([2; 16], 2000);
+        let unknown_endpoint = EndpointKey::new([3; 16], 3000);
+        let fixture = Fixture::with_stored_data(vec![endpoint_a.clone(), endpoint_b.clone()]);
 
-        let key1 = test_endpoint_key();
-        let key2 = EndpointKey::new([2; 16], 123);
-        store.put(&mut txn, &key1);
-        store.put(&mut txn, &key2);
+        let txn = fixture.env.tx_begin_read();
 
-        assert_eq!(store.count(&txn), 2);
-        assert_eq!(store.exists(&txn, &key1), true);
-        assert_eq!(store.exists(&txn, &key2), true);
-        Ok(())
+        assert_eq!(fixture.store.exists(&txn, &endpoint_a), true);
+        assert_eq!(fixture.store.exists(&txn, &endpoint_b), true);
+        assert_eq!(fixture.store.exists(&txn, &unknown_endpoint), false);
     }
 
     #[test]
-    fn delete() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPeerStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
+    fn count() {
+        let endpoint_a = EndpointKey::new([1; 16], 1000);
+        let endpoint_b = EndpointKey::new([2; 16], 2000);
+        let fixture = Fixture::with_stored_data(vec![endpoint_a, endpoint_b]);
 
-        let key1 = test_endpoint_key();
-        let key2 = EndpointKey::new([2; 16], 123);
-        store.put(&mut txn, &key1);
-        store.put(&mut txn, &key2);
+        let txn = fixture.env.tx_begin_read();
 
-        store.del(&mut txn, &key1);
-
-        assert_eq!(store.count(&txn), 1);
-        assert_eq!(store.exists(&txn, &key1), false);
-        assert_eq!(store.exists(&txn, &key2), true);
-        Ok(())
+        assert_eq!(fixture.store.count(&txn), 2);
     }
 
-    fn test_endpoint_key() -> EndpointKey {
-        EndpointKey::new([1; 16], 123)
+    #[test]
+    fn iterate() {
+        let endpoint_a = EndpointKey::new([1; 16], 1000);
+        let endpoint_b = EndpointKey::new([2; 16], 2000);
+        let fixture = Fixture::with_stored_data(vec![endpoint_a.clone(), endpoint_b.clone()]);
+
+        let txn = fixture.env.tx_begin_read();
+        let mut it = fixture.store.begin(&txn);
+        assert_eq!(it.current(), Some((&endpoint_a, &NoValue {})));
+        it.next();
+        assert_eq!(it.current(), Some((&endpoint_b, &NoValue {})));
+        it.next();
+        assert_eq!(it.current(), None);
+    }
+
+    #[test]
+    fn delete() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let delete_tracker = txn.track_deletions();
+
+        let key = EndpointKey::create_test_instance();
+        fixture.store.del(&mut txn, &key);
+
+        assert_eq!(
+            delete_tracker.output(),
+            vec![DeleteEvent {
+                database: Default::default(),
+                key: key.to_bytes().to_vec()
+            }]
+        )
     }
 }

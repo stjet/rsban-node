@@ -1,6 +1,6 @@
 use crate::utils::{Deserialize, MutStreamAdapter, Serialize, Stream};
 
-#[derive(Default, PartialEq, Eq, Debug)]
+#[derive(Default, PartialEq, Eq, Debug, Clone)]
 pub struct EndpointKey {
     /// The ipv6 address in network byte order
     address: [u8; 16],
@@ -20,6 +20,10 @@ impl EndpointKey {
         let mut stream = MutStreamAdapter::new(&mut buffer);
         self.serialize(&mut stream).unwrap();
         buffer
+    }
+
+    pub fn create_test_instance() -> Self{
+        EndpointKey::new([1; 16], 123)
     }
 }
 

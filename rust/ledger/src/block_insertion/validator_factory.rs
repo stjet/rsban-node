@@ -1,20 +1,20 @@
 use rsnano_core::{Account, BlockEnum, BlockHash, PendingInfo, PendingKey};
-use rsnano_store_lmdb::{RoCursorWrapper, Transaction};
+use rsnano_store_lmdb::{Environment, Transaction};
 
 use crate::Ledger;
 
 use super::BlockValidator;
 
-pub(crate) struct BlockValidatorFactory<'a> {
-    ledger: &'a Ledger,
-    txn: &'a dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
+pub(crate) struct BlockValidatorFactory<'a, T: Environment + 'static> {
+    ledger: &'a Ledger<T>,
+    txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
     block: &'a BlockEnum,
 }
 
-impl<'a> BlockValidatorFactory<'a> {
+impl<'a, T: Environment + 'static> BlockValidatorFactory<'a, T> {
     pub(crate) fn new(
-        ledger: &'a Ledger,
-        txn: &'a dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
+        ledger: &'a Ledger<T>,
+        txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         block: &'a BlockEnum,
     ) -> Self {
         Self { ledger, txn, block }

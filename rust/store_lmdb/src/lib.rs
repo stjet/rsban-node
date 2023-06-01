@@ -324,12 +324,12 @@ impl<T: Environment> LmdbWriteTransaction<T> {
     }
 
     #[cfg(feature = "output_tracking")]
-    fn track_deletions(&self) -> Rc<OutputTracker<DeleteEvent<T::Database>>> {
+    pub fn track_deletions(&self) -> Rc<OutputTracker<DeleteEvent<T::Database>>> {
         self.delete_listener.track()
     }
 
     #[cfg(feature = "output_tracking")]
-    fn track_clears(&self) -> Rc<OutputTracker<T::Database>> {
+    pub fn track_clears(&self) -> Rc<OutputTracker<T::Database>> {
         self.clear_listener.track()
     }
 
@@ -450,9 +450,8 @@ pub const STORE_VERSION_CURRENT: i32 = 22;
 
 #[cfg(test)]
 mod test {
-    use crate::lmdb_env::DatabaseStub;
-
     use super::*;
+    use crate::lmdb_env::DatabaseStub;
 
     #[test]
     fn tracks_deletes() {

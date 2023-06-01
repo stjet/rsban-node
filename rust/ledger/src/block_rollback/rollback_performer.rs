@@ -1,5 +1,5 @@
 use rsnano_core::{AccountInfo, BlockEnum, BlockHash};
-use rsnano_store_lmdb::LmdbWriteTransaction;
+use rsnano_store_lmdb::{Environment, LmdbWriteTransaction};
 
 use crate::Ledger;
 
@@ -8,14 +8,14 @@ use super::{
     rollback_planner::RollbackStep,
 };
 
-pub(crate) struct BlockRollbackPerformer<'a> {
-    ledger: &'a Ledger,
-    pub txn: &'a mut LmdbWriteTransaction,
+pub(crate) struct BlockRollbackPerformer<'a, T: Environment + 'static> {
+    ledger: &'a Ledger<T>,
+    pub txn: &'a mut LmdbWriteTransaction<T>,
     pub rolled_back: Vec<BlockEnum>,
 }
 
-impl<'a> BlockRollbackPerformer<'a> {
-    pub(crate) fn new(ledger: &'a Ledger, txn: &'a mut LmdbWriteTransaction) -> Self {
+impl<'a, T: Environment> BlockRollbackPerformer<'a, T> {
+    pub(crate) fn new(ledger: &'a Ledger<T>, txn: &'a mut LmdbWriteTransaction<T>) -> Self {
         Self {
             ledger,
             txn,

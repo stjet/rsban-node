@@ -3,18 +3,18 @@ use crate::Ledger;
 use rsnano_core::{
     Account, AccountInfo, BlockEnum, BlockHash, ConfirmationHeightInfo, PendingInfo, PendingKey,
 };
-use rsnano_store_lmdb::{RoCursorWrapper, Transaction};
+use rsnano_store_lmdb::{Environment, Transaction};
 
-pub(crate) struct RollbackPlannerFactory<'a> {
-    ledger: &'a Ledger,
-    txn: &'a dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
+pub(crate) struct RollbackPlannerFactory<'a, T: Environment + 'static> {
+    ledger: &'a Ledger<T>,
+    txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
     head_block: &'a BlockEnum,
 }
 
-impl<'a> RollbackPlannerFactory<'a> {
+impl<'a, T: Environment + 'static> RollbackPlannerFactory<'a, T> {
     pub(crate) fn new(
-        ledger: &'a Ledger,
-        txn: &'a dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
+        ledger: &'a Ledger<T>,
+        txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         head_block: &'a BlockEnum,
     ) -> Self {
         Self {

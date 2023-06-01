@@ -93,7 +93,7 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         action: &(dyn Fn(&LmdbReadTransaction<T>, AccountIterator, AccountIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
-            let txn = self.env.tx_begin_read().unwrap();
+            let txn = self.env.tx_begin_read();
             let begin_it = self.begin_account(&txn, &start.into());
             let end_it = if !is_last {
                 self.begin_account(&txn, &end.into())
@@ -139,15 +139,6 @@ mod tests {
     }
 
     impl Fixture {
-        fn ro_txn(&self) -> LmdbReadTransaction<EnvironmentStub> {
-            self.env.tx_begin_read().unwrap()
-        }
-        fn rw_txn(&self) -> LmdbWriteTransaction<EnvironmentStub> {
-            self.env.tx_begin_write().unwrap()
-        }
-    }
-
-    impl Fixture {
         fn new() -> Self {
             let env = Arc::new(LmdbEnv::create_null());
             let store = LmdbAccountStore::new(env.clone()).unwrap();
@@ -166,7 +157,7 @@ mod tests {
     #[test]
     fn empty_store() {
         let fixture = Fixture::new();
-        let txn = fixture.ro_txn();
+        let txn = fixture.env.tx_begin_read();
         let account = Account::from(1);
         let result = fixture.store.get(&txn, &account);
         assert_eq!(result, None);
@@ -177,7 +168,7 @@ mod tests {
     #[test]
     fn add_one_account() {
         let fixture = Fixture::new();
-        let mut txn = fixture.rw_txn();
+        let mut txn = fixture.env.tx_begin_write();
         let put_tracker = txn.track_puts();
 
         let account = Account::from(1);
@@ -205,8 +196,9 @@ mod tests {
             .build()
             .build();
         let fixture = Fixture::with_env(env);
+        let txn = fixture.env.tx_begin_read();
 
-        let result = fixture.store.get(&fixture.ro_txn(), &account);
+        let result = fixture.store.get(&txn, &account);
 
         assert_eq!(result, Some(info));
     }
@@ -221,8 +213,9 @@ mod tests {
             .build()
             .build();
         let fixture = Fixture::with_env(env);
+        let txn = fixture.env.tx_begin_read();
 
-        let count = fixture.store.count(&fixture.ro_txn());
+        let count = fixture.store.count(&txn);
 
         assert_eq!(count, 2);
     }
@@ -230,7 +223,7 @@ mod tests {
     #[test]
     fn delete_account() {
         let fixture = Fixture::new();
-        let mut txn = fixture.rw_txn();
+        let mut txn = fixture.env.tx_begin_write();
         let delete_tracker = txn.track_deletes();
 
         let account = Account::from(1);
@@ -248,7 +241,7 @@ mod tests {
     #[test]
     fn begin_empty_store_nullable() {
         let fixture = Fixture::new();
-        let txn = fixture.ro_txn();
+        let txn = fixture.env.tx_begin_read();
         let it = fixture.store.begin(&txn);
         assert_eq!(it.is_end(), true);
     }
@@ -274,7 +267,7 @@ mod tests {
             .build();
 
         let fixture = Fixture::with_env(env);
-        let txn = fixture.ro_txn();
+        let txn = fixture.env.tx_begin_read();
 
         let mut it = fixture.store.begin(&txn);
         assert_eq!(it.current(), Some((&account1, &info1)));
@@ -305,7 +298,7 @@ mod tests {
             .build();
 
         let fixture = Fixture::with_env(env);
-        let txn = fixture.ro_txn();
+        let txn = fixture.env.tx_begin_read();
 
         let mut it = fixture.store.begin_account(&txn, &Account::from(2));
 

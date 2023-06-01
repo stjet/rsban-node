@@ -29,19 +29,19 @@ impl<T: Environment + 'static> LmdbVersionStore<T> {
         })
     }
 
-    pub fn try_read_version(env: &LmdbEnv<T>) -> anyhow::Result<Option<i32>> {
+    pub fn try_read_version(env: &LmdbEnv<T>) -> Option<i32> {
         match env.environment.open_db(Some("meta")) {
             Ok(db) => {
-                let txn = env.tx_begin_read()?;
-                Ok(load_version::<T>(&txn, db))
+                let txn = env.tx_begin_read();
+                load_version::<T>(&txn, db)
             }
-            Err(_) => Ok(None),
+            Err(_) => None,
         }
     }
 
     pub fn check_upgrade(path: &Path) -> anyhow::Result<UpgradeInfo> {
         let env = LmdbEnv::<T>::new(path)?;
-        let info = match LmdbVersionStore::try_read_version(&env)? {
+        let info = match LmdbVersionStore::try_read_version(&env) {
             Some(version) => UpgradeInfo {
                 is_fresh_db: false,
                 is_fully_upgraded: version == STORE_VERSION_CURRENT,

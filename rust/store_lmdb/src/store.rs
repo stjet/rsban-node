@@ -135,9 +135,7 @@ impl<T: Environment + 'static> LmdbStore<T> {
 
     pub fn tx_begin_write_for(&self, _to_lock: &[Table]) -> LmdbWriteTransaction<T> {
         // locking tables is not needed for LMDB because there can only ever be one write transaction at a time
-        self.env
-            .tx_begin_write()
-            .expect("Could not create LMDB read/write transaction")
+        self.env.tx_begin_write()
     }
 
     pub fn rebuild_db(&self, txn: &mut LmdbWriteTransaction<T>) -> anyhow::Result<()> {
@@ -182,11 +180,11 @@ impl<T: Environment + 'static> LmdbStore<T> {
     }
 
     pub fn tx_begin_read(&self) -> LmdbReadTransaction<T> {
-        self.env.tx_begin_read().unwrap()
+        self.env.tx_begin_read()
     }
 
     pub fn tx_begin_write(&self) -> LmdbWriteTransaction<T> {
-        self.env.tx_begin_write().unwrap()
+        self.env.tx_begin_write()
     }
 }
 
@@ -247,7 +245,7 @@ fn copy_table<T: Environment + 'static>(
     source: T::Database,
     target: T::Database,
 ) -> anyhow::Result<()> {
-    let ro_txn = env.tx_begin_read()?;
+    let ro_txn = env.tx_begin_read();
     {
         let mut cursor = ro_txn.txn().open_ro_cursor(source)?;
         for x in cursor.iter_start() {
@@ -263,7 +261,7 @@ fn copy_table<T: Environment + 'static>(
 
 fn do_upgrades(env: Arc<LmdbEnv>, logger: &dyn Logger) -> anyhow::Result<Vacuuming> {
     let version_store = LmdbVersionStore::new(env.clone())?;
-    let mut txn = env.tx_begin_write()?;
+    let mut txn = env.tx_begin_write();
 
     let version = match version_store.get(&txn) {
         Some(v) => v,
@@ -449,7 +447,7 @@ mod tests {
     fn set_store_version(file: &TestDbFile, current_version: i32) -> Result<(), anyhow::Error> {
         let env = Arc::new(LmdbEnv::<EnvironmentWrapper>::new(&file.path)?);
         let version_store = LmdbVersionStore::new(env.clone())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         version_store.put(&mut txn, current_version);
         Ok(())
     }

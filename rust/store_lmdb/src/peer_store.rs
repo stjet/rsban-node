@@ -82,7 +82,7 @@ mod tests {
     fn empty_store() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbPeerStore::new(env.env())?;
-        let txn = env.tx_begin_read()?;
+        let txn = env.tx_begin_read();
         assert_eq!(store.count(&txn), 0);
         assert_eq!(store.exists(&txn, &test_endpoint_key()), false);
         assert!(store.begin(&txn).is_end());
@@ -93,7 +93,7 @@ mod tests {
     fn add_one_endpoint() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbPeerStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
 
         let key = test_endpoint_key();
         store.put(&mut txn, &key);
@@ -108,7 +108,7 @@ mod tests {
     fn add_two_endpoints() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbPeerStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
 
         let key1 = test_endpoint_key();
         let key2 = EndpointKey::new([2; 16], 123);
@@ -125,7 +125,7 @@ mod tests {
     fn delete() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbPeerStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
 
         let key1 = test_endpoint_key();
         let key2 = EndpointKey::new([2; 16], 123);

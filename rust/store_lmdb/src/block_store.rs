@@ -237,7 +237,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         action: &(dyn Fn(&LmdbReadTransaction<T>, BlockIterator, BlockIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read().unwrap();
+            let transaction = self.env.tx_begin_read();
             let begin_it = self.begin_at_hash(&transaction, &start.into());
             let end_it = if !is_last {
                 self.begin_at_hash(&transaction, &end.into())
@@ -369,7 +369,7 @@ mod tests {
     fn empty() {
         let fixture = Fixture::new();
         let store = &fixture.store;
-        let txn = fixture.env.tx_begin_read().unwrap();
+        let txn = fixture.env.tx_begin_read();
 
         assert!(store.get(&txn, &BlockHash::from(1)).is_none());
         assert_eq!(store.exists(&txn, &BlockHash::from(1)), false);
@@ -380,7 +380,7 @@ mod tests {
     fn add_block() {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env()).unwrap();
-        let mut txn = env.tx_begin_write().unwrap();
+        let mut txn = env.tx_begin_write();
         let block = BlockBuilder::legacy_open().with_sideband().build();
         let block_hash = block.hash();
 
@@ -396,7 +396,7 @@ mod tests {
     fn clear_successor() {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env()).unwrap();
-        let mut txn = env.tx_begin_write().unwrap();
+        let mut txn = env.tx_begin_write();
 
         let mut block1 = BlockBuilder::legacy_open()
             .account(Account::from(1))
@@ -427,7 +427,7 @@ mod tests {
     fn add_two_blocks() {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env()).unwrap();
-        let mut txn = env.tx_begin_write().unwrap();
+        let mut txn = env.tx_begin_write();
         let block1 = BlockBuilder::legacy_open().with_sideband().build();
         let block2 = BlockBuilder::legacy_open().with_sideband().build();
 
@@ -449,7 +449,7 @@ mod tests {
             .previous(block1.hash())
             .with_sideband()
             .build();
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         store.put(&mut txn, &block1);
         store.put(&mut txn, &block2);
         let loaded = store.get(&txn, &block2.hash()).expect("block not found");
@@ -466,7 +466,7 @@ mod tests {
             .previous(block1.hash())
             .with_sideband()
             .build();
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         store.put(&mut txn, &block1);
         store.put(&mut txn, &block2);
         let loaded = store.get(&txn, &block2.hash()).expect("block not found");
@@ -478,7 +478,7 @@ mod tests {
     fn replace_block() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let open = BlockBuilder::legacy_open().with_sideband().build();
         let send1 = BlockBuilder::legacy_send()
             .previous(open.hash())
@@ -500,7 +500,7 @@ mod tests {
     fn random() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbBlockStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let block = BlockBuilder::legacy_open().with_sideband().build();
 
         store.put(&mut txn, &block);
@@ -517,10 +517,10 @@ mod tests {
         let block = BlockBuilder::legacy_open().with_sideband().build();
         let block_hash = block.hash();
 
-        let mut read_txn = env.tx_begin_read()?;
+        let mut read_txn = env.tx_begin_read();
         read_txn.reset();
         {
-            let mut txn = env.tx_begin_write()?;
+            let mut txn = env.tx_begin_write();
             store.put(&mut txn, &block);
         }
         read_txn.renew();

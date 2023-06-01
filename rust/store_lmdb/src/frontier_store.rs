@@ -79,7 +79,7 @@ impl<T: Environment + 'static> LmdbFrontierStore<T> {
               + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read().unwrap();
+            let transaction = self.env.tx_begin_read();
             let begin_it = self.begin_at_hash(&transaction, &start.into());
             let end_it = if !is_last {
                 self.begin_at_hash(&transaction, &end.into())
@@ -105,7 +105,7 @@ mod tests {
     fn empty_store() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbFrontierStore::new(env.env())?;
-        let txn = env.tx_begin_read()?;
+        let txn = env.tx_begin_read();
         assert_eq!(store.get(&txn, &BlockHash::from(1)), None);
         assert!(store.begin(&txn).is_end());
         Ok(())
@@ -115,7 +115,7 @@ mod tests {
     fn put() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbFrontierStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let block = BlockHash::from(1);
         let account = Account::from(2);
 
@@ -130,7 +130,7 @@ mod tests {
     fn delete() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbFrontierStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let block = BlockHash::from(1);
         store.put(&mut txn, &block, &Account::from(2));
 

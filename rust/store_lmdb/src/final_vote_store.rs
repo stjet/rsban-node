@@ -136,7 +136,7 @@ impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
               + Sync),
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read().unwrap();
+            let transaction = self.env.tx_begin_read();
             let begin_it = self.begin_at_root(&transaction, &start.into());
             let end_it = if !is_last {
                 self.begin_at_root(&transaction, &end.into())
@@ -163,7 +163,7 @@ mod tests {
     fn del() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbFinalVoteStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let root1 = QualifiedRoot::from(U512::from(1));
         let root2 = QualifiedRoot::from(U512::MAX);
         store.put(&mut txn, &root1, &BlockHash::from(3));
@@ -180,7 +180,7 @@ mod tests {
     fn del_unknown_root_should_not_remove() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbFinalVoteStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let root1 = QualifiedRoot::from(U512::from(1));
         let root2 = QualifiedRoot::from(U512::MAX);
         store.put(&mut txn, &root1, &BlockHash::from(3));
@@ -195,7 +195,7 @@ mod tests {
     fn clear() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbFinalVoteStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let root1 = QualifiedRoot::from(U512::from(1));
         let root2 = QualifiedRoot::from(U512::MAX);
         store.put(&mut txn, &root1, &BlockHash::from(3));

@@ -110,7 +110,7 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
               + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read().unwrap();
+            let transaction = self.env.tx_begin_read();
             let begin_it = self.begin_at_account(&transaction, &start.into());
             let end_it = if !is_last {
                 self.begin_at_account(&transaction, &end.into())
@@ -133,7 +133,7 @@ mod tests {
     fn empty_store() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbConfirmationHeightStore::new(env.env())?;
-        let txn = env.tx_begin_read()?;
+        let txn = env.tx_begin_read();
         assert!(store.get(&txn, &Account::from(0)).is_none());
         assert_eq!(store.exists(&txn, &Account::from(0)), false);
         assert!(store.begin(&txn).is_end());
@@ -145,7 +145,7 @@ mod tests {
     fn add_account() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbConfirmationHeightStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let account = Account::from(1);
         let info = ConfirmationHeightInfo::new(1, BlockHash::from(2));
         store.put(&mut txn, &account, &info);
@@ -158,7 +158,7 @@ mod tests {
     fn iterate_one_account() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbConfirmationHeightStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let account = Account::from(1);
         let info = ConfirmationHeightInfo::new(1, BlockHash::from(2));
         store.put(&mut txn, &account, &info);
@@ -175,7 +175,7 @@ mod tests {
     fn iterate_two_accounts() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbConfirmationHeightStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let account1 = Account::from(1);
         let account2 = Account::from(2);
         let info1 = ConfirmationHeightInfo::new(1, BlockHash::from(2));
@@ -196,7 +196,7 @@ mod tests {
     fn clear() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbConfirmationHeightStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let account1 = Account::from(1);
         let account2 = Account::from(2);
         let info1 = ConfirmationHeightInfo::new(1, BlockHash::from(2));

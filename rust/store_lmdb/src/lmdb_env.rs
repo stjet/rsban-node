@@ -761,16 +761,18 @@ impl<T: Environment> LmdbEnv<T> {
         Ok(env)
     }
 
-    pub fn tx_begin_read(&self) -> lmdb::Result<LmdbReadTransaction<T>> {
+    pub fn tx_begin_read(&self) -> LmdbReadTransaction<T> {
         let txn_id = self.next_txn_id.fetch_add(1, Ordering::Relaxed);
         LmdbReadTransaction::new(txn_id, &self.environment, self.create_txn_callbacks())
+            .expect("Could not create LMDB read-only transaction")
     }
 
-    pub fn tx_begin_write(&self) -> lmdb::Result<LmdbWriteTransaction<T>> {
+    pub fn tx_begin_write(&self) -> LmdbWriteTransaction<T> {
         // For IO threads, we do not want them to block on creating write transactions.
         debug_assert!(std::thread::current().name() != Some("I/O"));
         let txn_id = self.next_txn_id.fetch_add(1, Ordering::Relaxed);
         LmdbWriteTransaction::new(txn_id, &self.environment, self.create_txn_callbacks())
+            .expect("Could not create LMDB read-write transaction")
     }
 
     pub fn file_path(&self) -> anyhow::Result<PathBuf> {
@@ -903,7 +905,7 @@ mod tests {
         #[test]
         fn can_track_puts() {
             let env = LmdbEnv::create_null();
-            let mut txn = env.tx_begin_write().unwrap();
+            let mut txn = env.tx_begin_write();
             let tracker = txn.track_puts();
 
             let database = DatabaseStub(42);
@@ -934,7 +936,7 @@ mod tests {
             .build()
             .build();
 
-        let txn = env.tx_begin_read().unwrap();
+        let txn = env.tx_begin_read();
 
         let cursor = txn.txn().open_ro_cursor(DatabaseStub(42)).unwrap();
         let result = cursor.get(None, None, MDB_FIRST);
@@ -961,7 +963,7 @@ mod tests {
             .build()
             .build();
 
-        let txn = env.tx_begin_read().unwrap();
+        let txn = env.tx_begin_read();
 
         let cursor = txn.txn().open_ro_cursor(DatabaseStub(42)).unwrap();
         let result = cursor.get(Some([2u8, 2, 2].as_slice()), None, MDB_SET_RANGE);

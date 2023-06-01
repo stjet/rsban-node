@@ -82,7 +82,7 @@ mod tests {
     fn empty_store() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbOnlineWeightStore::new(env.env())?;
-        let txn = env.tx_begin_read()?;
+        let txn = env.tx_begin_read();
         assert_eq!(store.count(&txn), 0);
         assert!(store.begin(&txn).is_end());
         assert!(store.rbegin(&txn).is_end());
@@ -93,7 +93,7 @@ mod tests {
     fn add_one() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbOnlineWeightStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
 
         let time = 1;
         let amount = Amount::raw(2);
@@ -109,7 +109,7 @@ mod tests {
     fn add_two() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbOnlineWeightStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
 
         let time1 = 1;
         let time2 = 2;
@@ -128,7 +128,7 @@ mod tests {
     fn delete() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbOnlineWeightStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
 
         let time1 = 1;
         let time2 = 2;

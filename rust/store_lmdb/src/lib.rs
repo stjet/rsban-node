@@ -443,7 +443,7 @@ mod test {
     #[test]
     fn tracks_deletes() {
         let env = LmdbEnv::create_null();
-        let mut txn = env.tx_begin_write().unwrap();
+        let mut txn = env.tx_begin_write();
         let delete_tracker = txn.track_deletes();
 
         let database = DatabaseStub(42);

@@ -108,7 +108,7 @@ pub unsafe extern "C" fn rsn_mdb_env_destroy(handle: *mut LmdbEnvHandle) {
 pub unsafe extern "C" fn rsn_mdb_env_tx_begin_read(
     handle: *mut LmdbEnvHandle,
 ) -> *mut TransactionHandle {
-    let txn = (*handle).0.tx_begin_read().unwrap();
+    let txn = (*handle).0.tx_begin_read();
     TransactionHandle::new(TransactionType::Read(txn))
 }
 
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn rsn_mdb_env_tx_begin_read(
 pub unsafe extern "C" fn rsn_mdb_env_tx_begin_write(
     handle: *mut LmdbEnvHandle,
 ) -> *mut TransactionHandle {
-    let txn = (*handle).0.tx_begin_write().unwrap();
+    let txn = (*handle).0.tx_begin_write();
     TransactionHandle::new(TransactionType::Write(txn))
 }
 

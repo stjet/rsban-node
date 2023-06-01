@@ -92,7 +92,7 @@ impl<T: Environment + 'static> LmdbPrunedStore<T> {
         action: &(dyn Fn(&LmdbReadTransaction<T>, PrunedIterator, PrunedIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read().unwrap();
+            let transaction = self.env.tx_begin_read();
             let begin_it = self.begin_at_hash(&transaction, &start.into());
             let end_it = if !is_last {
                 self.begin_at_hash(&transaction, &end.into())
@@ -120,7 +120,7 @@ mod tests {
     #[test]
     fn empty_store() -> anyhow::Result<()> {
         let (env, store) = create_sut()?;
-        let txn = env.tx_begin_read()?;
+        let txn = env.tx_begin_read();
 
         assert_eq!(store.count(&txn), 0);
         assert_eq!(store.exists(&txn, &BlockHash::from(1)), false);
@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn add_one() -> anyhow::Result<()> {
         let (env, store) = create_sut()?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
 
         let hash = BlockHash::from(1);
         store.put(&mut txn, &hash);
@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn add_two() -> anyhow::Result<()> {
         let (env, store) = create_sut()?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
 
         let hash1 = BlockHash::from(1);
         let hash2 = BlockHash::from(2);
@@ -163,7 +163,7 @@ mod tests {
     #[test]
     fn add_delete() -> anyhow::Result<()> {
         let (env, store) = create_sut()?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
 
         let hash1 = BlockHash::from(1);
         let hash2 = BlockHash::from(2);
@@ -180,7 +180,7 @@ mod tests {
     #[test]
     fn pruned_random() -> anyhow::Result<()> {
         let (env, store) = create_sut()?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let hash = BlockHash::random();
         store.put(&mut txn, &hash);
         let random_hash = store.random(&txn);

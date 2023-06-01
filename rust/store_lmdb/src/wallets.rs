@@ -85,14 +85,14 @@ impl<T: Environment + 'static> LmdbWallets<T> {
 
         // First do a read pass to check if there are any wallets that need extracting (to save holding a write lock and potentially being blocked)
         let wallets_need_splitting = {
-            let transaction_source = env.tx_begin_read()?;
+            let transaction_source = env.tx_begin_read();
             let i = self.get_store_it(&transaction_source, &beginning);
             let n = self.get_store_it(&transaction_source, &end);
             i.current().map(|(k, _)| *k) != n.current().map(|(k, _)| *k)
         };
 
         if wallets_need_splitting {
-            let mut txn_source = env.tx_begin_write().unwrap();
+            let mut txn_source = env.tx_begin_write();
             let mut i = self.get_store_it(&txn_source, &beginning);
             while let Some((k, _)) = i.current() {
                 let text = std::str::from_utf8(k)?;

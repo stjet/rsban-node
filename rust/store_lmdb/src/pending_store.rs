@@ -108,7 +108,7 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
         action: &(dyn Fn(&LmdbReadTransaction<T>, PendingIterator, PendingIterator) + Send + Sync),
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read().unwrap();
+            let transaction = self.env.tx_begin_read();
             let begin_it = self.begin_at_key(&transaction, &start.into());
             let end_it = if !is_last {
                 self.begin_at_key(&transaction, &end.into())
@@ -135,7 +135,7 @@ mod tests {
     fn not_found() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbPendingStore::new(env.env())?;
-        let txn = env.tx_begin_read()?;
+        let txn = env.tx_begin_read();
         let result = store.get(&txn, &test_key());
         assert!(result.is_none());
         assert_eq!(store.exists(&txn, &test_key()), false);
@@ -146,7 +146,7 @@ mod tests {
     fn add_pending() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbPendingStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let pending_key = test_key();
         let pending = test_pending_info();
         store.put(&mut txn, &pending_key, &pending);
@@ -160,7 +160,7 @@ mod tests {
     fn delete() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbPendingStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let pending_key = test_key();
         let pending = test_pending_info();
         store.put(&mut txn, &pending_key, &pending);
@@ -174,7 +174,7 @@ mod tests {
     fn iter_empty() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbPendingStore::new(env.env())?;
-        let txn = env.tx_begin_read()?;
+        let txn = env.tx_begin_read();
         assert!(store.begin(&txn).is_end());
         Ok(())
     }
@@ -183,7 +183,7 @@ mod tests {
     fn iter() -> anyhow::Result<()> {
         let env = TestLmdbEnv::new();
         let store = LmdbPendingStore::new(env.env())?;
-        let mut txn = env.tx_begin_write()?;
+        let mut txn = env.tx_begin_write();
         let pending_key = test_key();
         let pending = test_pending_info();
         store.put(&mut txn, &pending_key, &pending);

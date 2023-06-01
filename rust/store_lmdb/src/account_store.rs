@@ -147,22 +147,25 @@ mod tests {
         }
     }
 
-    fn create_fixture() -> Fixture {
-        let env = Arc::new(LmdbEnv::create_null());
-        let store = LmdbAccountStore::new(env.clone()).unwrap();
+    impl Fixture {
+        fn new() -> Self {
+            let env = Arc::new(LmdbEnv::create_null());
+            let store = LmdbAccountStore::new(env.clone()).unwrap();
 
-        Fixture { env, store }
+            Self { env, store }
+        }
+
+        fn with_env(env: LmdbEnv<EnvironmentStub>) -> Self {
+            let env = Arc::new(env);
+            let store = LmdbAccountStore::new(env.clone()).unwrap();
+
+            Fixture { env, store }
+        }
     }
 
-    fn create_fixture_with_env(env: LmdbEnv<EnvironmentStub>) -> Fixture {
-        let env = Arc::new(env);
-        let store = LmdbAccountStore::new(env.clone()).unwrap();
-
-        Fixture { env, store }
-    }
     #[test]
     fn empty_store() {
-        let fixture = create_fixture();
+        let fixture = Fixture::new();
         let txn = fixture.ro_txn();
         let account = Account::from(1);
         let result = fixture.store.get(&txn, &account);
@@ -173,7 +176,7 @@ mod tests {
 
     #[test]
     fn add_one_account() {
-        let fixture = create_fixture();
+        let fixture = Fixture::new();
         let mut txn = fixture.rw_txn();
         let put_tracker = txn.track_puts();
 
@@ -201,7 +204,7 @@ mod tests {
             .entry(account.as_bytes(), &info.to_bytes())
             .build()
             .build();
-        let fixture = create_fixture_with_env(env);
+        let fixture = Fixture::with_env(env);
 
         let result = fixture.store.get(&fixture.ro_txn(), &account);
 
@@ -217,7 +220,7 @@ mod tests {
             .entry(Account::from(2).as_bytes(), &info.to_bytes())
             .build()
             .build();
-        let fixture = create_fixture_with_env(env);
+        let fixture = Fixture::with_env(env);
 
         let count = fixture.store.count(&fixture.ro_txn());
 
@@ -226,7 +229,7 @@ mod tests {
 
     #[test]
     fn delete_account() {
-        let fixture = create_fixture();
+        let fixture = Fixture::new();
         let mut txn = fixture.rw_txn();
         let delete_tracker = txn.track_deletes();
 
@@ -244,7 +247,7 @@ mod tests {
 
     #[test]
     fn begin_empty_store_nullable() {
-        let fixture = create_fixture();
+        let fixture = Fixture::new();
         let txn = fixture.ro_txn();
         let it = fixture.store.begin(&txn);
         assert_eq!(it.is_end(), true);
@@ -270,7 +273,7 @@ mod tests {
             .build()
             .build();
 
-        let fixture = create_fixture_with_env(env);
+        let fixture = Fixture::with_env(env);
         let txn = fixture.ro_txn();
 
         let mut it = fixture.store.begin(&txn);
@@ -301,7 +304,7 @@ mod tests {
             .build()
             .build();
 
-        let fixture = create_fixture_with_env(env);
+        let fixture = Fixture::with_env(env);
         let txn = fixture.ro_txn();
 
         let mut it = fixture.store.begin_account(&txn, &Account::from(2));
@@ -331,7 +334,7 @@ mod tests {
             .build()
             .build();
 
-        let fixture = create_fixture_with_env(env);
+        let fixture = Fixture::with_env(env);
 
         let balance_sum = Mutex::new(Amount::zero());
         fixture.store.for_each_par(&|_, mut begin, end| {

@@ -341,20 +341,39 @@ fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crate::TestLmdbEnv;
+    use crate::{EnvironmentStub, TestLmdbEnv};
     use rsnano_core::BlockBuilder;
 
     use super::*;
 
+    struct Fixture {
+        env: Arc<LmdbEnv<EnvironmentStub>>,
+        store: LmdbBlockStore<EnvironmentStub>,
+    }
+
+    impl Fixture {
+        fn new() -> Self {
+            Self::with_env(LmdbEnv::create_null())
+        }
+
+        fn with_env(env: LmdbEnv<EnvironmentStub>) -> Self {
+            let env = Arc::new(env);
+            Self {
+                env: env.clone(),
+                store: LmdbBlockStore::new(env).unwrap(),
+            }
+        }
+    }
+
     #[test]
-    fn empty() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbBlockStore::new(env.env())?;
-        let txn = env.tx_begin_read()?;
+    fn empty() {
+        let fixture = Fixture::new();
+        let store = &fixture.store;
+        let txn = fixture.env.tx_begin_read().unwrap();
+
         assert!(store.get(&txn, &BlockHash::from(1)).is_none());
         assert_eq!(store.exists(&txn, &BlockHash::from(1)), false);
         assert_eq!(store.count(&txn), 0);
-        Ok(())
     }
 
     #[test]

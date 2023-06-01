@@ -324,7 +324,7 @@ impl<T: Environment> LmdbWriteTransaction<T> {
     }
 
     #[cfg(feature = "output_tracking")]
-    fn track_deletes(&self) -> Rc<OutputTracker<DeleteEvent<T::Database>>> {
+    fn track_deletions(&self) -> Rc<OutputTracker<DeleteEvent<T::Database>>> {
         self.delete_listener.track()
     }
 
@@ -458,7 +458,7 @@ mod test {
     fn tracks_deletes() {
         let env = LmdbEnv::create_null();
         let mut txn = env.tx_begin_write();
-        let delete_tracker = txn.track_deletes();
+        let delete_tracker = txn.track_deletions();
 
         let database = DatabaseStub(42);
         let key = vec![1, 2, 3];

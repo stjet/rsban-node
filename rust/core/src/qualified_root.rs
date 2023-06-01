@@ -28,6 +28,10 @@ impl QualifiedRoot {
             previous: BlockHash::from_ptr(ptr.add(32)),
         }
     }
+
+    pub fn create_test_instance() -> Self {
+        Self::new(Root::from(111), BlockHash::from(222))
+    }
 }
 
 impl Serialize for QualifiedRoot {

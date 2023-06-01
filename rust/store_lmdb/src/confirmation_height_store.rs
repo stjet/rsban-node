@@ -1,7 +1,6 @@
 use crate::{
-    iterator::DbIterator, lmdb_env::RwTransaction, parallel_traversal, Environment,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
-    Transaction,
+    iterator::DbIterator, parallel_traversal, Environment, EnvironmentWrapper, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -124,7 +123,7 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{lmdb_env::DatabaseStub, EnvironmentStub, PutEvent, TestLmdbEnv};
+    use crate::{lmdb_env::DatabaseStub, EnvironmentStub, PutEvent};
     use rsnano_core::BlockHash;
 
     use super::*;
@@ -220,20 +219,13 @@ mod tests {
     }
 
     #[test]
-    fn clear() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbConfirmationHeightStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
-        let account1 = Account::from(1);
-        let account2 = Account::from(2);
-        let info1 = ConfirmationHeightInfo::new(1, BlockHash::from(2));
-        let info2 = ConfirmationHeightInfo::new(3, BlockHash::from(4));
-        store.put(&mut txn, &account1, &info1);
-        store.put(&mut txn, &account2, &info2);
+    fn clear() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let clear_tracker = txn.track_clears();
 
-        store.clear(&mut txn);
+        fixture.store.clear(&mut txn);
 
-        assert_eq!(store.count(&txn), 0);
-        Ok(())
+        assert_eq!(clear_tracker.output(), vec![Default::default()])
     }
 }

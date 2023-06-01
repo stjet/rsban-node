@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    iterator::DbIterator, lmdb_env::RwTransaction, parallel_traversal_u512, Environment,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
-    Transaction,
+    iterator::DbIterator, parallel_traversal_u512, Environment, EnvironmentWrapper, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
@@ -154,56 +153,90 @@ impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::TestLmdbEnv;
-    use primitive_types::U512;
-
     use super::*;
+    use crate::{lmdb_env::DatabaseStub, DeleteEvent, EnvironmentStub};
 
-    #[test]
-    fn del() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbFinalVoteStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
-        let root1 = QualifiedRoot::from(U512::from(1));
-        let root2 = QualifiedRoot::from(U512::MAX);
-        store.put(&mut txn, &root1, &BlockHash::from(3));
-        store.put(&mut txn, &root2, &BlockHash::from(4));
+    const TEST_DATABASE: DatabaseStub = DatabaseStub(100);
 
-        store.del(&mut txn, &root1.root);
+    struct Fixture {
+        env: Arc<LmdbEnv<EnvironmentStub>>,
+        store: LmdbFinalVoteStore<EnvironmentStub>,
+    }
 
-        assert_eq!(store.count(&txn), 1);
-        assert_eq!(store.get(&txn, root1.root).len(), 0);
-        Ok(())
+    impl Fixture {
+        fn new() -> Self {
+            Self::with_env(LmdbEnv::create_null())
+        }
+
+        fn with_stored_entries(entries: Vec<(QualifiedRoot, BlockHash)>) -> Self {
+            let mut env = LmdbEnv::create_null_with().database("final_votes", TEST_DATABASE);
+            for (key, value) in entries {
+                env = env.entry(&key.to_bytes(), value.as_bytes());
+            }
+            Self::with_env(env.build().build())
+        }
+
+        fn with_env(env: LmdbEnv<EnvironmentStub>) -> Self {
+            let env = Arc::new(env);
+            Self {
+                env: env.clone(),
+                store: LmdbFinalVoteStore::new(env).unwrap(),
+            }
+        }
     }
 
     #[test]
-    fn del_unknown_root_should_not_remove() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbFinalVoteStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
-        let root1 = QualifiedRoot::from(U512::from(1));
-        let root2 = QualifiedRoot::from(U512::MAX);
-        store.put(&mut txn, &root1, &BlockHash::from(3));
+    fn load() {
+        let root = QualifiedRoot::create_test_instance();
+        let hash = BlockHash::from(333);
+        let fixture = Fixture::with_stored_entries(vec![(root.clone(), hash)]);
+        let txn = fixture.env.tx_begin_read();
 
-        store.del(&mut txn, &root2.root);
+        let result = fixture.store.get(&txn, root.root);
 
-        assert_eq!(store.count(&txn), 1);
-        Ok(())
+        assert_eq!(result, vec![hash])
     }
 
     #[test]
-    fn clear() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbFinalVoteStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
-        let root1 = QualifiedRoot::from(U512::from(1));
-        let root2 = QualifiedRoot::from(U512::MAX);
-        store.put(&mut txn, &root1, &BlockHash::from(3));
-        store.put(&mut txn, &root2, &BlockHash::from(4));
+    fn delete() {
+        let root = QualifiedRoot::create_test_instance();
+        let fixture = Fixture::with_stored_entries(vec![(root.clone(), BlockHash::from(333))]);
+        let mut txn = fixture.env.tx_begin_write();
+        let delete_tracker = txn.track_deletions();
 
-        store.clear(&mut txn);
+        fixture.store.del(&mut txn, &root.root);
 
-        assert_eq!(store.count(&txn), 0);
-        Ok(())
+        assert_eq!(
+            delete_tracker.output(),
+            vec![DeleteEvent {
+                key: root.to_bytes().to_vec(),
+                database: TEST_DATABASE,
+            }]
+        )
+    }
+
+    #[test]
+    fn del_unknown_root_should_not_remove() {
+        let fixture = Fixture::with_stored_entries(vec![(
+            QualifiedRoot::create_test_instance(),
+            BlockHash::from(333),
+        )]);
+        let mut txn = fixture.env.tx_begin_write();
+        let delete_tracker = txn.track_deletions();
+
+        fixture.store.del(&mut txn, &Root::from(98765));
+
+        assert_eq!(delete_tracker.output(), vec![]);
+    }
+
+    #[test]
+    fn clear() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let clear_tracker = txn.track_clears();
+
+        fixture.store.clear(&mut txn);
+
+        assert_eq!(clear_tracker.output(), vec![]);
     }
 }

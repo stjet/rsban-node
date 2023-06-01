@@ -224,7 +224,7 @@ mod tests {
     fn delete_account() {
         let fixture = Fixture::new();
         let mut txn = fixture.env.tx_begin_write();
-        let delete_tracker = txn.track_deletes();
+        let delete_tracker = txn.track_deletions();
 
         let account = Account::from(1);
         fixture.store.del(&mut txn, &account);

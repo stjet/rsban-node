@@ -126,35 +126,81 @@ impl<'a, T: Environment> BlockInserter<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::{BlockBuilder, BlockHash};
-
     use super::*;
+    use rsnano_core::{BlockBuilder, BlockHash};
+    use rsnano_store_lmdb::EnvironmentStub;
 
     #[test]
     fn insert_open_block() {
+        let (mut block, instructions) = open_state_block_instructions();
         let ledger = Ledger::create_null();
+
+        let result = insert(&ledger, &mut block, &instructions);
+
+        assert_eq!(block.sideband().unwrap(), &instructions.set_sideband);
+        assert_eq!(result.block_puts, vec![block]);
+        assert_eq!(
+            result.account_puts,
+            vec![(instructions.account, instructions.set_account_info.clone())]
+        );
+        assert_eq!(
+            ledger
+                .cache
+                .rep_weights
+                .representation_get(&instructions.set_account_info.representative),
+            instructions.set_account_info.balance
+        );
+        assert_eq!(ledger.cache.block_count.load(Ordering::Relaxed), 1);
+        assert_eq!(result.pending_deletions, Vec::new());
+    }
+
+    fn insert(
+        ledger: &Ledger<EnvironmentStub>,
+        block: &mut BlockEnum,
+        instructions: &BlockInsertInstructions,
+    ) -> InsertResult {
         let mut txn = ledger.rw_txn();
-        let mut block = BlockBuilder::state().previous(BlockHash::zero()).build();
+        let block_puts = ledger.store.block.track_puts();
+        let account_puts = ledger.store.account.track_puts();
+        let pending_deletions = ledger.store.pending.track_deletions();
+
+        let mut block_inserter = BlockInserter::new(&ledger, &mut txn, block, &instructions);
+        block_inserter.insert();
+
+        InsertResult {
+            block_puts: block_puts.output(),
+            account_puts: account_puts.output(),
+            pending_deletions: pending_deletions.output(),
+        }
+    }
+
+    struct InsertResult {
+        block_puts: Vec<BlockEnum>,
+        account_puts: Vec<(Account, AccountInfo)>,
+        pending_deletions: Vec<PendingKey>,
+    }
+
+    fn open_state_block_instructions() -> (BlockEnum, BlockInsertInstructions) {
+        let block = BlockBuilder::state().previous(BlockHash::zero()).build();
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
             ..BlockSideband::create_test_instance()
         };
+        let account_info = AccountInfo {
+            head: block.hash(),
+            open_block: block.hash(),
+            ..AccountInfo::create_test_instance()
+        };
         let instructions = BlockInsertInstructions {
             account: Account::from(1),
-            old_account_info: AccountInfo::create_test_instance(),
-            set_account_info: AccountInfo::create_test_instance(),
+            old_account_info: AccountInfo::default(),
+            set_account_info: account_info,
             delete_pending: None,
             insert_pending: None,
             set_sideband: sideband,
             is_epoch_block: false,
         };
 
-        let put_tracker = ledger.store.block.track_puts();
-        let mut block_inserter = BlockInserter::new(&ledger, &mut txn, &mut block, &instructions);
-        block_inserter.insert();
-
-        assert_eq!(block.sideband().unwrap(), &instructions.set_sideband);
-        assert_eq!(put_tracker.output(), vec![block]);
-        // todo more asserts
+        (block, instructions)
     }
 }

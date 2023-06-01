@@ -6,7 +6,7 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    utils::{Deserialize, StreamAdapter},
+    utils::{Deserialize, OutputListenerMt, OutputTrackerMt, StreamAdapter},
     Account, BlockHash, PendingInfo, PendingKey,
 };
 
@@ -15,6 +15,8 @@ pub type PendingIterator = Box<dyn DbIterator<PendingKey, PendingInfo>>;
 pub struct LmdbPendingStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
     database: T::Database,
+    #[cfg(feature = "output_tracking")]
+    delete_listener: OutputListenerMt<PendingKey>,
 }
 
 impl<T: Environment + 'static> LmdbPendingStore<T> {
@@ -23,11 +25,21 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
             .environment
             .create_db(Some("pending"), DatabaseFlags::empty())?;
 
-        Ok(Self { env, database })
+        Ok(Self {
+            env,
+            database,
+            #[cfg(feature = "output_tracking")]
+            delete_listener: OutputListenerMt::new(),
+        })
     }
 
     pub fn database(&self) -> T::Database {
         self.database
+    }
+
+    #[cfg(feature = "output_tracking")]
+    pub fn track_deletions(&self) -> Arc<OutputTrackerMt<PendingKey>> {
+        self.delete_listener.track()
     }
 
     pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, key: &PendingKey, pending: &PendingInfo) {
@@ -43,6 +55,8 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
     }
 
     pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, key: &PendingKey) {
+        #[cfg(feature = "output_tracking")]
+        self.delete_listener.emit(key.clone());
         let key_bytes = key.to_bytes();
         txn.delete(self.database, &key_bytes, None).unwrap();
     }
@@ -242,5 +256,17 @@ mod tests {
 
         it.next();
         assert!(it.is_end());
+    }
+
+    #[test]
+    fn tracks_deletions() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let key = PendingKey::create_test_instance();
+        let delete_tracker = fixture.store.track_deletions();
+
+        fixture.store.del(&mut txn, &key);
+
+        assert_eq!(delete_tracker.output(), vec![key]);
     }
 }

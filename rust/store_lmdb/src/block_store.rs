@@ -6,7 +6,7 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     deserialize_block_enum,
-    utils::{MemoryStream, Serialize, Stream, StreamAdapter},
+    utils::{Serialize, StreamAdapter},
     Account, Amount, Block, BlockDetails, BlockEnum, BlockHash, BlockSideband, BlockType,
     BlockVisitor, BlockWithSideband, ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock,
     StateBlock,
@@ -39,15 +39,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
                 || self.exists(txn, &block.sideband().unwrap().successor)
         );
 
-        let mut stream = MemoryStream::new();
-        stream.write_u8(block.block_type() as u8).unwrap();
-        block.serialize(&mut stream).unwrap();
-        block
-            .sideband()
-            .unwrap()
-            .serialize(&mut stream, block.block_type())
-            .unwrap();
-        self.raw_put(txn, stream.as_bytes(), &hash);
+        self.raw_put(txn, &block.serialize_with_sideband(), &hash);
         {
             let mut predecessor = BlockPredecessorMdbSet::new(txn, self);
             block.visit(&mut predecessor);
@@ -341,7 +333,7 @@ fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crate::{EnvironmentStub, TestLmdbEnv};
+    use crate::{EnvironmentStub, PutEvent, TestLmdbEnv};
     use rsnano_core::BlockBuilder;
 
     use super::*;
@@ -378,18 +370,22 @@ mod tests {
 
     #[test]
     fn add_block() {
-        let env = TestLmdbEnv::new();
-        let store = LmdbBlockStore::new(env.env()).unwrap();
-        let mut txn = env.tx_begin_write();
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let put_tracker = txn.track_puts();
         let block = BlockBuilder::legacy_open().with_sideband().build();
-        let block_hash = block.hash();
 
-        store.put(&mut txn, &block);
-        let loaded = store.get(&txn, &block.hash()).expect("block not found");
+        fixture.store.put(&mut txn, &block);
 
-        assert_eq!(loaded, block);
-        assert!(store.exists(&txn, &block_hash));
-        assert_eq!(store.count(&txn), 1);
+        assert_eq!(
+            put_tracker.output(),
+            vec![PutEvent {
+                database: Default::default(),
+                key: block.hash().as_bytes().to_vec(),
+                value: block.serialize_with_sideband(),
+                flags: lmdb::WriteFlags::empty(),
+            }]
+        );
     }
 
     #[test]

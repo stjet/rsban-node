@@ -23,7 +23,7 @@ mod builders;
 pub use builders::*;
 
 use crate::{
-    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, SerdePropertyTree, Stream},
+    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, SerdePropertyTree, Stream, MemoryStream},
     Account, Amount, BlockHash, BlockHashBuilder, FullHash, Link, QualifiedRoot, Root, Signature,
     WorkVersion,
 };
@@ -263,6 +263,17 @@ impl BlockEnum {
         } else {
             None
         }
+    }
+
+    pub fn serialize_with_sideband(&self) -> Vec<u8>{
+        let mut stream = MemoryStream::new();
+        stream.write_u8(self.block_type() as u8).unwrap();
+        self.serialize(&mut stream).unwrap();
+        self.sideband()
+            .unwrap()
+            .serialize(&mut stream, self.block_type())
+            .unwrap();
+        stream.to_vec()
     }
 }
 

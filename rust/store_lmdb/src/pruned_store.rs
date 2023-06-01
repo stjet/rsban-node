@@ -106,85 +106,117 @@ impl<T: Environment + 'static> LmdbPrunedStore<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::TestLmdbEnv;
-    use rsnano_core::NoValue;
-
     use super::*;
+    use crate::{DeleteEvent, EnvironmentStub, PutEvent};
 
-    fn create_sut() -> anyhow::Result<(TestLmdbEnv, LmdbPrunedStore)> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPrunedStore::new(env.env())?;
-        Ok((env, store))
+    struct Fixture {
+        env: Arc<LmdbEnv<EnvironmentStub>>,
+        store: LmdbPrunedStore<EnvironmentStub>,
+    }
+
+    impl Fixture {
+        pub fn new() -> Self {
+            Self::with_stored_data(Vec::new())
+        }
+
+        pub fn with_stored_data(entries: Vec<BlockHash>) -> Self {
+            let mut env = LmdbEnv::create_null_with().database("pruned", Default::default());
+
+            for hash in entries {
+                env = env.entry(hash.as_bytes(), &[]);
+            }
+
+            let env = Arc::new(env.build().build());
+            Self {
+                env: env.clone(),
+                store: LmdbPrunedStore::new(env).unwrap(),
+            }
+        }
     }
 
     #[test]
-    fn empty_store() -> anyhow::Result<()> {
-        let (env, store) = create_sut()?;
-        let txn = env.tx_begin_read();
+    fn empty_store() {
+        let fixture = Fixture::new();
+        let txn = fixture.env.tx_begin_read();
+        let store = &fixture.store;
 
         assert_eq!(store.count(&txn), 0);
         assert_eq!(store.exists(&txn, &BlockHash::from(1)), false);
         assert_eq!(store.begin(&txn).is_end(), true);
         assert!(store.random(&txn).is_none());
-        Ok(())
     }
 
     #[test]
-    fn add_one() -> anyhow::Result<()> {
-        let (env, store) = create_sut()?;
-        let mut txn = env.tx_begin_write();
-
+    fn add_pruned_info() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let put_tracker = txn.track_puts();
         let hash = BlockHash::from(1);
-        store.put(&mut txn, &hash);
 
-        assert_eq!(store.count(&txn), 1);
-        assert_eq!(store.exists(&txn, &hash), true);
-        assert_eq!(store.begin(&txn).current(), Some((&hash, &NoValue {})));
-        assert_eq!(store.random(&txn), Some(hash));
-        Ok(())
+        fixture.store.put(&mut txn, &hash);
+
+        assert_eq!(
+            put_tracker.output(),
+            vec![PutEvent {
+                database: Default::default(),
+                key: hash.as_bytes().to_vec(),
+                value: Vec::new(),
+                flags: WriteFlags::empty()
+            }]
+        );
     }
 
     #[test]
-    fn add_two() -> anyhow::Result<()> {
-        let (env, store) = create_sut()?;
-        let mut txn = env.tx_begin_write();
+    fn count() {
+        let fixture = Fixture::with_stored_data(vec![BlockHash::from(1), BlockHash::from(2)]);
+        let txn = fixture.env.tx_begin_read();
 
-        let hash1 = BlockHash::from(1);
-        let hash2 = BlockHash::from(2);
-        store.put(&mut txn, &hash1);
-        store.put(&mut txn, &hash2);
-
-        assert_eq!(store.count(&txn), 2);
-        assert_eq!(store.exists(&txn, &hash1), true);
-        assert_eq!(store.exists(&txn, &hash2), true);
-        Ok(())
+        assert_eq!(fixture.store.count(&txn), 2);
+        assert_eq!(fixture.store.exists(&txn, &BlockHash::from(1)), true);
+        assert_eq!(fixture.store.exists(&txn, &BlockHash::from(3)), false);
     }
 
     #[test]
-    fn add_delete() -> anyhow::Result<()> {
-        let (env, store) = create_sut()?;
-        let mut txn = env.tx_begin_write();
+    fn iterate() {
+        let fixture = Fixture::with_stored_data(vec![BlockHash::from(1), BlockHash::from(2)]);
+        let txn = fixture.env.tx_begin_read();
 
-        let hash1 = BlockHash::from(1);
-        let hash2 = BlockHash::from(2);
-        store.put(&mut txn, &hash1);
-        store.put(&mut txn, &hash2);
-        store.del(&mut txn, &hash1);
-
-        assert_eq!(store.count(&txn), 1);
-        assert_eq!(store.exists(&txn, &hash1), false);
-        assert_eq!(store.exists(&txn, &hash2), true);
-        Ok(())
+        assert_eq!(
+            fixture.store.begin(&txn).current(),
+            Some((&BlockHash::from(1), &NoValue {}))
+        );
+        assert_eq!(
+            fixture
+                .store
+                .begin_at_hash(&txn, &BlockHash::from(2))
+                .current(),
+            Some((&BlockHash::from(2), &NoValue {}))
+        );
     }
 
     #[test]
-    fn pruned_random() -> anyhow::Result<()> {
-        let (env, store) = create_sut()?;
-        let mut txn = env.tx_begin_write();
-        let hash = BlockHash::random();
-        store.put(&mut txn, &hash);
-        let random_hash = store.random(&txn);
-        assert_eq!(random_hash, Some(hash));
-        Ok(())
+    fn delete() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let delete_tracker = txn.track_deletions();
+        let hash = BlockHash::from(1);
+
+        fixture.store.del(&mut txn, &hash);
+
+        assert_eq!(
+            delete_tracker.output(),
+            vec![DeleteEvent {
+                database: Default::default(),
+                key: hash.as_bytes().to_vec()
+            }]
+        )
+    }
+
+    #[test]
+    fn pruned_random() {
+        let fixture = Fixture::with_stored_data(vec![BlockHash::from(42)]);
+        let txn = fixture.env.tx_begin_read();
+        let random_hash = fixture.store.random(&txn);
+        assert_eq!(random_hash, Some(BlockHash::from(42)));
     }
 }

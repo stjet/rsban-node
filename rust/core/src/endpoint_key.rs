@@ -22,7 +22,7 @@ impl EndpointKey {
         buffer
     }
 
-    pub fn create_test_instance() -> Self{
+    pub fn create_test_instance() -> Self {
         EndpointKey::new([1; 16], 123)
     }
 }

@@ -126,84 +126,121 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::TestLmdbEnv;
-    use rsnano_core::{Amount, Epoch};
-
     use super::*;
+    use crate::{DeleteEvent, EnvironmentStub, PutEvent};
+
+    struct Fixture {
+        env: Arc<LmdbEnv<EnvironmentStub>>,
+        store: LmdbPendingStore<EnvironmentStub>,
+    }
+
+    impl Fixture {
+        pub fn new() -> Self {
+            Self::with_stored_data(Vec::new())
+        }
+
+        pub fn with_stored_data(entries: Vec<(PendingKey, PendingInfo)>) -> Self {
+            let mut env = LmdbEnv::create_null_with().database("pending", Default::default());
+
+            for (key, value) in entries {
+                env = env.entry(&key.to_bytes(), &value.to_bytes())
+            }
+
+            let env = Arc::new(env.build().build());
+            Self {
+                env: env.clone(),
+                store: LmdbPendingStore::new(env).unwrap(),
+            }
+        }
+    }
 
     #[test]
-    fn not_found() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPendingStore::new(env.env())?;
-        let txn = env.tx_begin_read();
-        let result = store.get(&txn, &test_key());
+    fn not_found() {
+        let fixture = Fixture::new();
+        let txn = fixture.env.tx_begin_read();
+        let result = fixture.store.get(&txn, &PendingKey::create_test_instance());
         assert!(result.is_none());
-        assert_eq!(store.exists(&txn, &test_key()), false);
-        Ok(())
+        assert_eq!(
+            fixture
+                .store
+                .exists(&txn, &PendingKey::create_test_instance()),
+            false
+        );
     }
 
     #[test]
-    fn add_pending() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPendingStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
-        let pending_key = test_key();
-        let pending = test_pending_info();
-        store.put(&mut txn, &pending_key, &pending);
-        let result = store.get(&txn, &pending_key);
-        assert_eq!(result, Some(pending));
-        assert!(store.exists(&txn, &pending_key));
-        Ok(())
+    fn load_pending_info() {
+        let key = PendingKey::create_test_instance();
+        let info = PendingInfo::create_test_instance();
+        let fixture = Fixture::with_stored_data(vec![(key.clone(), info.clone())]);
+        let txn = fixture.env.tx_begin_read();
+
+        let result = fixture.store.get(&txn, &key);
+
+        assert_eq!(result, Some(info));
+        assert_eq!(fixture.store.exists(&txn, &key), true);
     }
 
     #[test]
-    fn delete() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPendingStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
-        let pending_key = test_key();
-        let pending = test_pending_info();
-        store.put(&mut txn, &pending_key, &pending);
-        store.del(&mut txn, &pending_key);
-        let result = store.get(&txn, &pending_key);
-        assert!(result.is_none());
-        Ok(())
+    fn add_pending() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let put_tracker = txn.track_puts();
+        let pending_key = PendingKey::create_test_instance();
+        let pending = PendingInfo::create_test_instance();
+
+        fixture.store.put(&mut txn, &pending_key, &pending);
+
+        assert_eq!(
+            put_tracker.output(),
+            vec![PutEvent {
+                database: Default::default(),
+                key: pending_key.to_bytes().to_vec(),
+                value: pending.to_bytes().to_vec(),
+                flags: WriteFlags::empty()
+            }]
+        );
     }
 
     #[test]
-    fn iter_empty() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPendingStore::new(env.env())?;
-        let txn = env.tx_begin_read();
-        assert!(store.begin(&txn).is_end());
-        Ok(())
+    fn delete() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let delete_tracker = txn.track_deletions();
+        let pending_key = PendingKey::create_test_instance();
+
+        fixture.store.del(&mut txn, &pending_key);
+
+        assert_eq!(
+            delete_tracker.output(),
+            vec![DeleteEvent {
+                database: Default::default(),
+                key: pending_key.to_bytes().to_vec()
+            }]
+        )
     }
 
     #[test]
-    fn iter() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbPendingStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
-        let pending_key = test_key();
-        let pending = test_pending_info();
-        store.put(&mut txn, &pending_key, &pending);
+    fn iter_empty() {
+        let fixture = Fixture::new();
+        let txn = fixture.env.tx_begin_read();
+        assert!(fixture.store.begin(&txn).is_end());
+    }
 
-        let mut it = store.begin(&txn);
+    #[test]
+    fn iter() {
+        let key = PendingKey::create_test_instance();
+        let info = PendingInfo::create_test_instance();
+        let fixture = Fixture::with_stored_data(vec![(key.clone(), info.clone())]);
+        let txn = fixture.env.tx_begin_read();
+
+        let mut it = fixture.store.begin(&txn);
         assert_eq!(it.is_end(), false);
         let (k, v) = it.current().unwrap();
-        assert_eq!(k, &pending_key);
-        assert_eq!(v, &pending);
+        assert_eq!(k, &key);
+        assert_eq!(v, &info);
 
         it.next();
         assert!(it.is_end());
-        Ok(())
-    }
-
-    fn test_key() -> PendingKey {
-        PendingKey::new(Account::from(1), BlockHash::from(2))
-    }
-
-    fn test_pending_info() -> PendingInfo {
-        PendingInfo::new(Account::from(3), Amount::raw(4), Epoch::Epoch2)
     }
 }

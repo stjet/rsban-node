@@ -29,6 +29,10 @@ impl PendingKey {
     pub fn for_receive_state_block(block: &StateBlock) -> Self {
         Self::new(block.account(), block.link().into())
     }
+
+    pub fn create_test_instance() -> Self {
+        Self::new(Account::from(1), BlockHash::from(2))
+    }
 }
 
 impl Serialize for PendingKey {

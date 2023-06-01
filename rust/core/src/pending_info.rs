@@ -39,6 +39,10 @@ impl PendingInfo {
         bytes[48] = self.epoch as u8;
         bytes
     }
+
+    pub fn create_test_instance() -> Self {
+        Self::new(Account::from(3), Amount::raw(4), Epoch::Epoch2)
+    }
 }
 
 impl Serialize for PendingInfo {

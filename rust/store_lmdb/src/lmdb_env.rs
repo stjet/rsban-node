@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::bail;
 use lmdb::{DatabaseFlags, EnvironmentFlags, Stat, Transaction};
-use lmdb_sys::{MDB_env, MDB_FIRST, MDB_NEXT, MDB_SET_RANGE, MDB_SUCCESS, MDB_LAST};
+use lmdb_sys::{MDB_env, MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE, MDB_SUCCESS};
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
 use std::cell::Cell;
 use std::collections::BTreeMap;
@@ -95,8 +95,7 @@ impl RoCursor for RoCursorStub {
         } else if op == MDB_NEXT {
             if self.ascending.get() {
                 self.current.set(self.current.get() + 1);
-            }
-            else{
+            } else {
                 self.current.set(self.current.get() - 1);
             }
         } else if op == MDB_SET_RANGE {
@@ -119,8 +118,8 @@ impl RoCursor for RoCursorStub {
         }
 
         let current = self.current.get();
-        if current < 0{
-            return Err(lmdb::Error::NotFound)
+        if current < 0 {
+            return Err(lmdb::Error::NotFound);
         }
 
         self.database
@@ -919,7 +918,7 @@ impl Deref for TestLmdbEnv {
 
 #[cfg(test)]
 mod tests {
-    use lmdb_sys::{MDB_FIRST, MDB_SET_RANGE, MDB_LAST};
+    use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_SET_RANGE};
 
     use super::*;
 

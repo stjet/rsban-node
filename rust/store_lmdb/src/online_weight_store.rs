@@ -74,73 +74,121 @@ impl<T: Environment + 'static> LmdbOnlineWeightStore<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::TestLmdbEnv;
-
     use super::*;
+    use crate::{lmdb_env::DatabaseStub, DeleteEvent, EnvironmentStub, PutEvent};
+
+    struct Fixture {
+        env: Arc<LmdbEnv<EnvironmentStub>>,
+        store: LmdbOnlineWeightStore<EnvironmentStub>,
+    }
+
+    impl Fixture {
+        fn new() -> Self {
+            Self::with_stored_data(Vec::new())
+        }
+
+        fn with_stored_data(entries: Vec<(u64, Amount)>) -> Self {
+            let mut env =
+                LmdbEnv::create_null_with().database("online_weight", DatabaseStub::default());
+
+            for (key, value) in entries {
+                env = env.entry(&key.to_be_bytes(), &value.to_be_bytes())
+            }
+
+            Self::with_env(env.build().build())
+        }
+
+        fn with_env(env: LmdbEnv<EnvironmentStub>) -> Self {
+            let env = Arc::new(env);
+            Self {
+                env: env.clone(),
+                store: LmdbOnlineWeightStore::new(env).unwrap(),
+            }
+        }
+    }
 
     #[test]
-    fn empty_store() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbOnlineWeightStore::new(env.env())?;
-        let txn = env.tx_begin_read();
+    fn empty_store() {
+        let fixture = Fixture::new();
+        let txn = fixture.env.tx_begin_read();
+        let store = &fixture.store;
         assert_eq!(store.count(&txn), 0);
         assert!(store.begin(&txn).is_end());
         assert!(store.rbegin(&txn).is_end());
-        Ok(())
     }
 
     #[test]
-    fn add_one() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbOnlineWeightStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
+    fn count() {
+        let fixture = Fixture::with_stored_data(vec![(1, Amount::raw(100)), (2, Amount::raw(200))]);
+        let txn = fixture.env.tx_begin_read();
+
+        let count = fixture.store.count(&txn);
+
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn add() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let put_tracker = txn.track_puts();
 
         let time = 1;
         let amount = Amount::raw(2);
-        store.put(&mut txn, time, &amount);
+        fixture.store.put(&mut txn, time, &amount);
 
-        assert_eq!(store.count(&txn), 1);
-        assert_eq!(store.begin(&txn).current(), Some((&time, &amount)));
-        assert_eq!(store.rbegin(&txn).current(), Some((&time, &amount)));
-        Ok(())
+        assert_eq!(
+            put_tracker.output(),
+            vec![PutEvent {
+                database: Default::default(),
+                key: time.to_be_bytes().to_vec(),
+                value: amount.to_be_bytes().to_vec(),
+                flags: WriteFlags::empty(),
+            }]
+        );
     }
 
     #[test]
-    fn add_two() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbOnlineWeightStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
+    fn iterate_ascending() {
+        let fixture = Fixture::with_stored_data(vec![(1, Amount::raw(100)), (2, Amount::raw(200))]);
+        let txn = fixture.env.tx_begin_read();
 
-        let time1 = 1;
-        let time2 = 2;
-        let amount1 = Amount::raw(3);
-        let amount2 = Amount::raw(4);
-        store.put(&mut txn, time1, &amount1);
-        store.put(&mut txn, time2, &amount2);
-
-        assert_eq!(store.count(&txn), 2);
-        assert_eq!(store.begin(&txn).current(), Some((&time1, &amount1)));
-        assert_eq!(store.rbegin(&txn).current(), Some((&time2, &amount2)));
-        Ok(())
+        let mut it = fixture.store.begin(&txn);
+        assert_eq!(it.current(), Some((&1, &Amount::raw(100))));
+        it.next();
+        assert_eq!(it.current(), Some((&2, &Amount::raw(200))));
+        it.next();
+        assert_eq!(it.current(), None);
     }
 
     #[test]
-    fn delete() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbOnlineWeightStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
+    fn iterate_descending() {
+        let fixture = Fixture::with_stored_data(vec![(1, Amount::raw(100)), (2, Amount::raw(200))]);
+        let txn = fixture.env.tx_begin_read();
 
-        let time1 = 1;
-        let time2 = 2;
-        let amount1 = Amount::raw(3);
-        let amount2 = Amount::raw(4);
-        store.put(&mut txn, time1, &amount1);
-        store.put(&mut txn, time2, &amount2);
+        let mut it = fixture.store.rbegin(&txn);
+        assert_eq!(it.current(), Some((&2, &Amount::raw(200))));
+        it.next();
+        assert_eq!(it.current(), Some((&1, &Amount::raw(100))));
+        it.next();
+        assert_eq!(it.current(), None);
+    }
 
-        store.del(&mut txn, time1);
+    #[test]
+    fn delete() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let delete_tracker = txn.track_deletions();
 
-        assert_eq!(store.count(&txn), 1);
-        assert_eq!(store.begin(&txn).current(), Some((&time2, &amount2)));
-        Ok(())
+        let time = 1;
+        fixture.store.del(&mut txn, time);
+
+        assert_eq!(
+            delete_tracker.output(),
+            vec![DeleteEvent {
+                database: Default::default(),
+                key: time.to_be_bytes().to_vec()
+            }]
+        );
     }
 }

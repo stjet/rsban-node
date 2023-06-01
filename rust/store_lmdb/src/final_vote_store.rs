@@ -165,7 +165,7 @@ mod tests {
 
     impl Fixture {
         fn new() -> Self {
-            Self::with_env(LmdbEnv::create_null())
+            Self::with_stored_entries(Vec::new())
         }
 
         fn with_stored_entries(entries: Vec<(QualifiedRoot, BlockHash)>) -> Self {
@@ -237,6 +237,6 @@ mod tests {
 
         fixture.store.clear(&mut txn);
 
-        assert_eq!(clear_tracker.output(), vec![]);
+        assert_eq!(clear_tracker.output(), vec![TEST_DATABASE]);
     }
 }

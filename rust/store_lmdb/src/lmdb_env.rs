@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::bail;
 use lmdb::{DatabaseFlags, EnvironmentFlags, Stat, Transaction};
-use lmdb_sys::{MDB_env, MDB_FIRST, MDB_NEXT, MDB_SET_RANGE, MDB_SUCCESS};
+use lmdb_sys::{MDB_env, MDB_FIRST, MDB_NEXT, MDB_SET_RANGE, MDB_SUCCESS, MDB_LAST};
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
 use std::cell::Cell;
 use std::collections::BTreeMap;
@@ -58,7 +58,8 @@ impl RoCursor for RoCursorWrapper {
 
 pub struct RoCursorStub {
     database: ConfiguredDatabase,
-    current: Cell<usize>,
+    current: Cell<i32>,
+    ascending: Cell<bool>,
 }
 
 pub struct NullIter {}
@@ -86,8 +87,18 @@ impl RoCursor for RoCursorStub {
     ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])> {
         if op == MDB_FIRST {
             self.current.set(0);
+            self.ascending.set(true);
+        } else if op == MDB_LAST {
+            let entry_count = self.database.entries.len();
+            self.ascending.set(false);
+            self.current.set((entry_count as i32) - 1);
         } else if op == MDB_NEXT {
-            self.current.set(self.current.get() + 1);
+            if self.ascending.get() {
+                self.current.set(self.current.get() + 1);
+            }
+            else{
+                self.current.set(self.current.get() - 1);
+            }
         } else if op == MDB_SET_RANGE {
             self.current.set(
                 self.database
@@ -96,22 +107,26 @@ impl RoCursor for RoCursorStub {
                     .enumerate()
                     .find_map(|(i, k)| {
                         if Some(k.as_slice()) >= key {
-                            Some(i)
+                            Some(i as i32)
                         } else {
                             None
                         }
                     })
-                    .unwrap_or(usize::MAX),
+                    .unwrap_or(i32::MAX),
             );
         } else {
             unimplemented!()
         }
 
         let current = self.current.get();
+        if current < 0{
+            return Err(lmdb::Error::NotFound)
+        }
+
         self.database
             .entries
             .iter()
-            .nth(current)
+            .nth(current as usize)
             .map(|(k, v)| unsafe {
                 (
                     Some(std::mem::transmute::<&'_ [u8], &'static [u8]>(k.as_slice())),
@@ -270,6 +285,7 @@ impl<'env> RwTransaction for RwTransactionStub {
     fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<Self::RoCursor> {
         Ok(RoCursorStub {
             current: Cell::new(0),
+            ascending: Cell::new(true),
             database: self
                 .databases
                 .iter()
@@ -409,9 +425,11 @@ impl RoTransaction for RoTransactionStub {
             Some(db) => Ok(RoCursorStub {
                 current: Cell::new(0),
                 database: db.clone(),
+                ascending: Cell::new(true),
             }),
             None => Ok(RoCursorStub {
                 current: Cell::new(0),
+                ascending: Cell::new(true),
                 database: ConfiguredDatabase {
                     dbi: database,
                     db_name: "test_database".to_string(),
@@ -591,7 +609,7 @@ impl Environment for EnvironmentStub {
             .iter()
             .find(|x| name == Some(&x.db_name))
             .map(|x| x.dbi)
-            .unwrap_or(DatabaseStub(42)))
+            .unwrap_or_default())
     }
 
     fn env(&self) -> *mut MDB_env {
@@ -901,7 +919,7 @@ impl Deref for TestLmdbEnv {
 
 #[cfg(test)]
 mod tests {
-    use lmdb_sys::{MDB_FIRST, MDB_SET_RANGE};
+    use lmdb_sys::{MDB_FIRST, MDB_SET_RANGE, MDB_LAST};
 
     use super::*;
 
@@ -958,6 +976,32 @@ mod tests {
         assert_eq!(
             result,
             Ok((Some([2u8, 2, 2].as_slice()), [6u8, 6, 6].as_slice()))
+        );
+        let result = cursor.get(None, None, MDB_NEXT);
+        assert_eq!(result, Err(lmdb::Error::NotFound));
+    }
+
+    #[test]
+    fn nulled_cursor_can_be_iterated_backwards() {
+        let env = LmdbEnv::create_null_with()
+            .database("foo", DatabaseStub(42))
+            .entry(&[1, 2, 3], &[4, 5, 6])
+            .entry(&[2, 2, 2], &[6, 6, 6])
+            .build()
+            .build();
+
+        let txn = env.tx_begin_read();
+
+        let cursor = txn.txn().open_ro_cursor(DatabaseStub(42)).unwrap();
+        let result = cursor.get(None, None, MDB_LAST);
+        assert_eq!(
+            result,
+            Ok((Some([2u8, 2, 2].as_slice()), [6u8, 6, 6].as_slice()))
+        );
+        let result = cursor.get(None, None, MDB_NEXT);
+        assert_eq!(
+            result,
+            Ok((Some([1u8, 2, 3].as_slice()), [4u8, 5, 6].as_slice()))
         );
         let result = cursor.get(None, None, MDB_NEXT);
         assert_eq!(result, Err(lmdb::Error::NotFound));

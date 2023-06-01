@@ -1,8 +1,6 @@
 use crate::{
-    iterator::DbIterator,
-    lmdb_env::{EnvironmentWrapper, RwTransaction},
-    parallel_traversal, Environment, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction,
-    LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal, Environment, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -258,17 +256,15 @@ mod tests {
     }
 
     #[test]
-    fn begin_empty_store() {
-        let sut = AccountStoreTestContext::new();
-        let txn = sut.env.tx_begin_read().unwrap();
-        let it = sut.store.begin(&txn);
-        assert!(it.is_end())
+    fn begin_empty_store_nullable() {
+        let fixture = create_fixture();
+        let txn = fixture.ro_txn();
+        let it = fixture.store.begin(&txn);
+        assert_eq!(it.is_end(), true);
     }
 
     #[test]
     fn begin() {
-        let sut = AccountStoreTestContext::new();
-        let mut txn = sut.env.tx_begin_write().unwrap();
         let account1 = Account::from(1);
         let account2 = Account::from(2);
         let info1 = AccountInfo {
@@ -279,9 +275,18 @@ mod tests {
             head: BlockHash::from(2),
             ..Default::default()
         };
-        sut.store.put(&mut txn, &account1, &info1);
-        sut.store.put(&mut txn, &account2, &info2);
-        let mut it = sut.store.begin(&txn);
+
+        let env = LmdbEnv::create_null_with()
+            .database("accounts", DatabaseStub(42))
+            .entry(account1.as_bytes(), &info1.to_bytes())
+            .entry(account2.as_bytes(), &info2.to_bytes())
+            .build()
+            .build();
+
+        let fixture = create_fixture_with_env(env);
+        let txn = fixture.ro_txn();
+
+        let mut it = fixture.store.begin(&txn);
         assert_eq!(it.current(), Some((&account1, &info1)));
         it.next();
         assert_eq!(it.current(), Some((&account2, &info2)));

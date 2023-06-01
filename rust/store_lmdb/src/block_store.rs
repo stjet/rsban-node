@@ -1,7 +1,6 @@
 use crate::{
-    iterator::DbIterator, lmdb_env::RwTransaction, parallel_traversal, Environment,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
-    Transaction,
+    iterator::DbIterator, parallel_traversal, Environment, EnvironmentWrapper, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;

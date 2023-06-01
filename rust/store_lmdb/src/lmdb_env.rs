@@ -4,9 +4,10 @@ use crate::{
 };
 use anyhow::bail;
 use lmdb::{DatabaseFlags, EnvironmentFlags, Stat, Transaction};
-use lmdb_sys::{MDB_env, MDB_SUCCESS};
+use lmdb_sys::{MDB_env, MDB_FIRST, MDB_NEXT, MDB_SET_RANGE, MDB_SUCCESS};
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
-use std::collections::HashMap;
+use std::cell::Cell;
+use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::{
@@ -55,9 +56,12 @@ impl RoCursor for RoCursorWrapper {
     }
 }
 
-pub struct RoCursorStub;
+pub struct RoCursorStub {
+    database: ConfiguredDatabase,
+    current: Cell<usize>,
+}
 
-pub struct NullIter;
+pub struct NullIter {}
 
 impl Iterator for NullIter {
     type Item = lmdb::Result<(&'static [u8], &'static [u8])>;
@@ -71,16 +75,50 @@ impl RoCursor for RoCursorStub {
     type Iter = NullIter;
 
     fn iter_start(&mut self) -> NullIter {
-        NullIter
+        NullIter {}
     }
 
     fn get(
         &self,
-        _key: Option<&[u8]>,
+        key: Option<&[u8]>,
         _data: Option<&[u8]>,
-        _op: u32,
+        op: u32,
     ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])> {
-        Err(lmdb::Error::NotFound)
+        if op == MDB_FIRST {
+            self.current.set(0);
+        } else if op == MDB_NEXT {
+            self.current.set(self.current.get() + 1);
+        } else if op == MDB_SET_RANGE {
+            self.current.set(
+                self.database
+                    .entries
+                    .keys()
+                    .enumerate()
+                    .find_map(|(i, k)| {
+                        if Some(k.as_slice()) >= key {
+                            Some(i)
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or(usize::MAX),
+            );
+        } else {
+            unimplemented!()
+        }
+
+        let current = self.current.get();
+        self.database
+            .entries
+            .iter()
+            .nth(current)
+            .map(|(k, v)| unsafe {
+                (
+                    Some(std::mem::transmute::<&'_ [u8], &'static [u8]>(k.as_slice())),
+                    std::mem::transmute::<&'_ [u8], &'static [u8]>(v.as_slice()),
+                )
+            })
+            .ok_or(lmdb::Error::NotFound)
     }
 }
 
@@ -180,7 +218,9 @@ impl RwTransaction for RwTransactionWrapper {
     }
 }
 
-pub struct NullRwTransaction;
+pub struct NullRwTransaction {
+    databases: Vec<ConfiguredDatabase>,
+}
 
 impl<'env> RwTransaction for NullRwTransaction {
     type Database = DatabaseStub;
@@ -217,8 +257,16 @@ impl<'env> RwTransaction for NullRwTransaction {
         Ok(())
     }
 
-    fn open_ro_cursor(&self, _database: Self::Database) -> lmdb::Result<Self::RoCursor> {
-        Ok(RoCursorStub)
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<Self::RoCursor> {
+        Ok(RoCursorStub {
+            current: Cell::new(0),
+            database: self
+                .databases
+                .iter()
+                .find(|db| db.dbi == database)
+                .cloned()
+                .unwrap_or_default(),
+        })
     }
 
     fn count(&self, _database: Self::Database) -> u64 {
@@ -307,11 +355,11 @@ impl RoTransaction for RoTransactionWrapper {
         stat.unwrap().entries() as u64
     }
 }
-pub struct NullRoTransaction {
+pub struct RoTransactionStub {
     databases: Vec<ConfiguredDatabase>,
 }
 
-impl NullRoTransaction {
+impl RoTransactionStub {
     fn get_database(&self, database: DatabaseStub) -> Option<&ConfiguredDatabase> {
         self.databases.iter().find(|d| d.dbi == database)
     }
@@ -320,7 +368,7 @@ pub struct NullInactiveTransaction {
     databases: Vec<ConfiguredDatabase>,
 }
 
-impl RoTransaction for NullRoTransaction {
+impl RoTransaction for RoTransactionStub {
     type InactiveTxnType = NullInactiveTransaction;
     type Database = DatabaseStub;
     type RoCursor = RoCursorStub;
@@ -346,8 +394,21 @@ impl RoTransaction for NullRoTransaction {
         }
     }
 
-    fn open_ro_cursor(&self, _database: Self::Database) -> lmdb::Result<Self::RoCursor> {
-        Ok(RoCursorStub)
+    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<Self::RoCursor> {
+        match self.get_database(database) {
+            Some(db) => Ok(RoCursorStub {
+                current: Cell::new(0),
+                database: db.clone(),
+            }),
+            None => Ok(RoCursorStub {
+                current: Cell::new(0),
+                database: ConfiguredDatabase {
+                    dbi: database,
+                    db_name: "test_database".to_string(),
+                    entries: Default::default(),
+                },
+            }),
+        }
     }
 
     fn count(&self, database: Self::Database) -> u64 {
@@ -358,10 +419,10 @@ impl RoTransaction for NullRoTransaction {
 }
 
 impl InactiveTransaction for NullInactiveTransaction {
-    type RoTxnType = NullRoTransaction;
+    type RoTxnType = RoTransactionStub;
 
     fn renew(self) -> lmdb::Result<Self::RoTxnType> {
-        Ok(NullRoTransaction {
+        Ok(RoTransactionStub {
             databases: self.databases,
         })
     }
@@ -483,7 +544,7 @@ impl Default for DatabaseStub {
 }
 
 impl Environment for EnvironmentStub {
-    type RoTxnImpl = NullRoTransaction;
+    type RoTxnImpl = RoTransactionStub;
     type InactiveTxnImpl = NullInactiveTransaction;
     type RwTxnType = NullRwTransaction;
     type Database = DatabaseStub;
@@ -499,13 +560,15 @@ impl Environment for EnvironmentStub {
     }
 
     fn begin_ro_txn(&self) -> lmdb::Result<Self::RoTxnImpl> {
-        Ok(NullRoTransaction {
+        Ok(RoTransactionStub {
             databases: self.databases.clone(), //todo  don't clone!
         })
     }
 
     fn begin_rw_txn(&self) -> lmdb::Result<Self::RwTxnType> {
-        Ok(NullRwTransaction)
+        Ok(NullRwTransaction {
+            databases: self.databases.clone(), //todo  don't clone!
+        })
     }
 
     fn create_db<'env>(
@@ -557,7 +620,7 @@ impl NullLmdbEnvBuilder {
             data: ConfiguredDatabase {
                 dbi,
                 db_name: name.into(),
-                entries: HashMap::new(),
+                entries: BTreeMap::new(),
             },
             env_builder: self,
         }
@@ -575,7 +638,17 @@ impl NullLmdbEnvBuilder {
 struct ConfiguredDatabase {
     dbi: DatabaseStub,
     db_name: String,
-    entries: HashMap<Vec<u8>, Vec<u8>>,
+    entries: BTreeMap<Vec<u8>, Vec<u8>>,
+}
+
+impl Default for ConfiguredDatabase {
+    fn default() -> Self {
+        Self {
+            dbi: DatabaseStub(42),
+            db_name: "nulled_database".to_string(),
+            entries: Default::default(),
+        }
+    }
 }
 
 pub struct NullDatabaseBuilder {
@@ -816,6 +889,8 @@ impl Deref for TestLmdbEnv {
 
 #[cfg(test)]
 mod tests {
+    use lmdb_sys::{MDB_FIRST, MDB_SET_RANGE};
+
     use super::*;
 
     mod rw_txn {
@@ -848,6 +923,58 @@ mod tests {
                 }]
             )
         }
+    }
+
+    #[test]
+    fn nulled_cursor_can_be_iterated_forwards() {
+        let env = LmdbEnv::create_null_with()
+            .database("foo", DatabaseStub(42))
+            .entry(&[1, 2, 3], &[4, 5, 6])
+            .entry(&[2, 2, 2], &[6, 6, 6])
+            .build()
+            .build();
+
+        let txn = env.tx_begin_read().unwrap();
+
+        let cursor = txn.txn().open_ro_cursor(DatabaseStub(42)).unwrap();
+        let result = cursor.get(None, None, MDB_FIRST);
+        assert_eq!(
+            result,
+            Ok((Some([1u8, 2, 3].as_slice()), [4u8, 5, 6].as_slice()))
+        );
+        let result = cursor.get(None, None, MDB_NEXT);
+        assert_eq!(
+            result,
+            Ok((Some([2u8, 2, 2].as_slice()), [6u8, 6, 6].as_slice()))
+        );
+        let result = cursor.get(None, None, MDB_NEXT);
+        assert_eq!(result, Err(lmdb::Error::NotFound));
+    }
+
+    #[test]
+    fn nulled_cursor_can_start_at_specified_key() {
+        let env = LmdbEnv::create_null_with()
+            .database("foo", DatabaseStub(42))
+            .entry(&[1, 1, 1], &[6, 6, 6])
+            .entry(&[2, 2, 2], &[7, 7, 7])
+            .entry(&[3, 3, 3], &[8, 8, 8])
+            .build()
+            .build();
+
+        let txn = env.tx_begin_read().unwrap();
+
+        let cursor = txn.txn().open_ro_cursor(DatabaseStub(42)).unwrap();
+        let result = cursor.get(Some([2u8, 2, 2].as_slice()), None, MDB_SET_RANGE);
+        assert_eq!(
+            result,
+            Ok((Some([2u8, 2, 2].as_slice()), [7u8, 7, 7].as_slice()))
+        );
+
+        let result = cursor.get(Some([2u8, 1, 0].as_slice()), None, MDB_SET_RANGE);
+        assert_eq!(
+            result,
+            Ok((Some([2u8, 2, 2].as_slice()), [7u8, 7, 7].as_slice()))
+        );
     }
 
     mod test_db_file {

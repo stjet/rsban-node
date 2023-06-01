@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     iterator::DbIterator, parallel_traversal_u512, Environment, EnvironmentWrapper, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, RwTransaction, Transaction,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{

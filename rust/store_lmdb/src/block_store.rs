@@ -7,9 +7,8 @@ use num_traits::FromPrimitive;
 use rsnano_core::{
     deserialize_block_enum,
     utils::{Serialize, StreamAdapter},
-    Account, Amount, Block, BlockDetails, BlockEnum, BlockHash, BlockSideband, BlockType,
-    BlockVisitor, BlockWithSideband, ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock,
-    StateBlock,
+    Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
+    BlockWithSideband, ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
 use std::sync::Arc;
 
@@ -95,39 +94,10 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<BlockEnum> {
-        match self.block_raw_get(txn, hash) {
-            None => None,
-            Some(bytes) => {
-                let mut stream = StreamAdapter::new(bytes);
-                let mut block = deserialize_block_enum(&mut stream).unwrap();
-                let mut sideband =
-                    BlockSideband::from_stream(&mut stream, block.block_type()).unwrap();
-                // BlockSideband does not serialize all data depending on the block type.
-                // That's why we fill in the missing data here:
-                match &block {
-                    BlockEnum::LegacySend(_) => {
-                        sideband.balance = block.balance();
-                        sideband.details = BlockDetails::new(Epoch::Epoch0, true, false, false)
-                    }
-                    BlockEnum::LegacyOpen(_) => {
-                        sideband.account = block.account();
-                        sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)
-                    }
-                    BlockEnum::LegacyReceive(_) => {
-                        sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)
-                    }
-                    BlockEnum::LegacyChange(_) => {
-                        sideband.details = BlockDetails::new(Epoch::Epoch0, false, false, false)
-                    }
-                    BlockEnum::State(_) => {
-                        sideband.account = block.account();
-                        sideband.balance = block.balance();
-                    }
-                }
-                block.as_block_mut().set_sideband(sideband);
-                Some(block)
-            }
-        }
+        self.block_raw_get(txn, hash).map(|bytes| {
+            BlockEnum::deserialize_with_sideband(bytes)
+                .expect(&format!("Could not deserialize block {}!", hash))
+        })
     }
 
     pub fn get_no_sideband(
@@ -333,7 +303,8 @@ fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crate::{EnvironmentStub, PutEvent, TestLmdbEnv};
+    use crate::lmdb_env::DatabaseStub;
+    use crate::{EnvironmentStub, PutEvent};
     use rsnano_core::BlockBuilder;
 
     use super::*;
@@ -369,6 +340,22 @@ mod tests {
     }
 
     #[test]
+    fn load_block_by_hash() {
+        let block = BlockBuilder::legacy_open().with_sideband().build();
+
+        let env = LmdbEnv::create_null_with()
+            .database("blocks", DatabaseStub(100))
+            .entry(block.hash().as_bytes(), &block.serialize_with_sideband())
+            .build()
+            .build();
+        let fixture = Fixture::with_env(env);
+        let txn = fixture.env.tx_begin_read();
+
+        let result = fixture.store.get(&txn, &block.hash());
+        assert_eq!(result, Some(block));
+    }
+
+    #[test]
     fn add_block() {
         let fixture = Fixture::new();
         let mut txn = fixture.env.tx_begin_write();
@@ -390,137 +377,57 @@ mod tests {
 
     #[test]
     fn clear_successor() {
-        let env = TestLmdbEnv::new();
-        let store = LmdbBlockStore::new(env.env()).unwrap();
-        let mut txn = env.tx_begin_write();
+        let mut block = BlockBuilder::legacy_open().build();
+        let sideband = BlockSideband {
+            successor: BlockHash::from(123),
+            ..BlockSideband::create_test_instance()
+        };
+        block.set_sideband(sideband.clone());
 
-        let mut block1 = BlockBuilder::legacy_open()
-            .account(Account::from(1))
-            .representative(Account::from(2))
-            .with_sideband()
+        let env = LmdbEnv::create_null_with()
+            .database("blocks", DatabaseStub(100))
+            .entry(block.hash().as_bytes(), &block.serialize_with_sideband())
+            .build()
             .build();
+        let fixture = Fixture::with_env(env);
+        let mut txn = fixture.env.tx_begin_write();
+        let put_tracker = txn.track_puts();
 
-        let block2 = BlockBuilder::legacy_open()
-            .account(Account::from(1))
-            .representative(Account::from(3))
-            .with_sideband()
-            .build();
+        fixture.store.successor_clear(&mut txn, &block.hash());
 
-        let mut sideband = block1.sideband().unwrap().clone();
-        sideband.successor = block2.hash();
-        block1.as_block_mut().set_sideband(sideband);
+        let mut expected_block = block.clone();
+        expected_block.set_sideband(BlockSideband {
+            successor: BlockHash::zero(),
+            ..sideband
+        });
 
-        store.put(&mut txn, &block2);
-        store.put(&mut txn, &block1);
-
-        store.successor_clear(&mut txn, &block1.hash());
-
-        let loaded = store.get(&txn, &block1.hash()).expect("block not found");
-        assert_eq!(loaded.sideband().unwrap().successor, BlockHash::zero());
-    }
-
-    #[test]
-    fn add_two_blocks() {
-        let env = TestLmdbEnv::new();
-        let store = LmdbBlockStore::new(env.env()).unwrap();
-        let mut txn = env.tx_begin_write();
-        let block1 = BlockBuilder::legacy_open().with_sideband().build();
-        let block2 = BlockBuilder::legacy_open().with_sideband().build();
-
-        store.put(&mut txn, &block1);
-        store.put(&mut txn, &block2);
-        let loaded1 = store.get(&txn, &block1.hash()).expect("block1 not found");
-        let loaded2 = store.get(&txn, &block2.hash()).expect("block2 not found");
-
-        assert_eq!(loaded1, block1);
-        assert_eq!(loaded2, block2);
-    }
-
-    #[test]
-    fn add_receive() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbBlockStore::new(env.env())?;
-        let block1 = BlockBuilder::legacy_open().with_sideband().build();
-        let block2 = BlockBuilder::legacy_receive()
-            .previous(block1.hash())
-            .with_sideband()
-            .build();
-        let mut txn = env.tx_begin_write();
-        store.put(&mut txn, &block1);
-        store.put(&mut txn, &block2);
-        let loaded = store.get(&txn, &block2.hash()).expect("block not found");
-        assert_eq!(loaded, block2);
-        Ok(())
-    }
-
-    #[test]
-    fn add_state() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbBlockStore::new(env.env())?;
-        let block1 = BlockBuilder::legacy_open().with_sideband().build();
-        let block2 = BlockBuilder::state()
-            .previous(block1.hash())
-            .with_sideband()
-            .build();
-        let mut txn = env.tx_begin_write();
-        store.put(&mut txn, &block1);
-        store.put(&mut txn, &block2);
-        let loaded = store.get(&txn, &block2.hash()).expect("block not found");
-        assert_eq!(loaded, block2);
-        Ok(())
-    }
-
-    #[test]
-    fn replace_block() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbBlockStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
-        let open = BlockBuilder::legacy_open().with_sideband().build();
-        let send1 = BlockBuilder::legacy_send()
-            .previous(open.hash())
-            .with_sideband()
-            .build();
-        let mut send2 = send1.clone();
-        send2.as_block_mut().set_work(12345);
-
-        store.put(&mut txn, &open);
-        store.put(&mut txn, &send1);
-        store.put(&mut txn, &send2);
-
-        assert_eq!(store.count(&txn), 2);
-        assert_eq!(store.get(&txn, &send1.hash()).unwrap().work(), 12345);
-        Ok(())
+        assert_eq!(
+            put_tracker.output(),
+            vec![PutEvent {
+                database: DatabaseStub(100),
+                key: expected_block.hash().as_bytes().to_vec(),
+                value: expected_block.serialize_with_sideband(),
+                flags: WriteFlags::empty(),
+            }]
+        );
     }
 
     #[test]
     fn random() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbBlockStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
         let block = BlockBuilder::legacy_open().with_sideband().build();
 
-        store.put(&mut txn, &block);
-        let random = store.random(&txn).expect("block not found");
+        let env = LmdbEnv::create_null_with()
+            .database("blocks", DatabaseStub(100))
+            .entry(block.hash().as_bytes(), &block.serialize_with_sideband())
+            .build()
+            .build();
+
+        let fixture = Fixture::with_env(env);
+        let txn = fixture.env.tx_begin_read();
+
+        let random = fixture.store.random(&txn).expect("block not found");
 
         assert_eq!(random, block);
-        Ok(())
-    }
-
-    #[test]
-    fn reset_renew_existing_transaction() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbBlockStore::new(env.env())?;
-        let block = BlockBuilder::legacy_open().with_sideband().build();
-        let block_hash = block.hash();
-
-        let mut read_txn = env.tx_begin_read();
-        read_txn.reset();
-        {
-            let mut txn = env.tx_begin_write();
-            store.put(&mut txn, &block);
-        }
-        read_txn.renew();
-        assert!(store.exists(&read_txn, &block_hash));
         Ok(())
     }
 }

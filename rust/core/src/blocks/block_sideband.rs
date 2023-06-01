@@ -145,6 +145,23 @@ impl BlockSideband {
 
         Ok(())
     }
+
+    pub fn create_test_instance() -> Self {
+        Self {
+            height: 42,
+            timestamp: 1000,
+            successor: BlockHash::from(3),
+            account: Account::from(1),
+            balance: Amount::raw(42),
+            details: BlockDetails {
+                epoch: Epoch::Epoch2,
+                is_send: true,
+                is_receive: false,
+                is_epoch: false,
+            },
+            source_epoch: Epoch::Epoch2,
+        }
+    }
 }
 
 #[cfg(test)]

@@ -23,9 +23,12 @@ mod builders;
 pub use builders::*;
 
 use crate::{
-    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, SerdePropertyTree, Stream, MemoryStream},
-    Account, Amount, BlockHash, BlockHashBuilder, FullHash, Link, QualifiedRoot, Root, Signature,
-    WorkVersion,
+    utils::{
+        Deserialize, MemoryStream, PropertyTreeReader, PropertyTreeWriter, SerdePropertyTree,
+        Stream, StreamAdapter,
+    },
+    Account, Amount, BlockHash, BlockHashBuilder, Epoch, FullHash, Link, QualifiedRoot, Root,
+    Signature, WorkVersion,
 };
 use num::FromPrimitive;
 use std::{
@@ -265,7 +268,7 @@ impl BlockEnum {
         }
     }
 
-    pub fn serialize_with_sideband(&self) -> Vec<u8>{
+    pub fn serialize_with_sideband(&self) -> Vec<u8> {
         let mut stream = MemoryStream::new();
         stream.write_u8(self.block_type() as u8).unwrap();
         self.serialize(&mut stream).unwrap();
@@ -274,6 +277,36 @@ impl BlockEnum {
             .serialize(&mut stream, self.block_type())
             .unwrap();
         stream.to_vec()
+    }
+
+    pub fn deserialize_with_sideband(bytes: &[u8]) -> anyhow::Result<BlockEnum> {
+        let mut stream = StreamAdapter::new(bytes);
+        let mut block = deserialize_block_enum(&mut stream)?;
+        let mut sideband = BlockSideband::from_stream(&mut stream, block.block_type())?;
+        // BlockSideband does not serialize all data depending on the block type.
+        // That's why we fill in the missing data here:
+        match &block {
+            BlockEnum::LegacySend(_) => {
+                sideband.balance = block.balance();
+                sideband.details = BlockDetails::new(Epoch::Epoch0, true, false, false)
+            }
+            BlockEnum::LegacyOpen(_) => {
+                sideband.account = block.account();
+                sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)
+            }
+            BlockEnum::LegacyReceive(_) => {
+                sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)
+            }
+            BlockEnum::LegacyChange(_) => {
+                sideband.details = BlockDetails::new(Epoch::Epoch0, false, false, false)
+            }
+            BlockEnum::State(_) => {
+                sideband.account = block.account();
+                sideband.balance = block.balance();
+            }
+        }
+        block.as_block_mut().set_sideband(sideband);
+        Ok(block)
     }
 }
 
@@ -366,4 +399,46 @@ impl Deserialize for BlockWithSideband {
 pub fn serialize_block<T: Stream>(stream: &mut T, block: &BlockEnum) -> anyhow::Result<()> {
     stream.write_u8(block.block_type() as u8)?;
     block.serialize(stream)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serialize_legacy_open() {
+        let block = BlockBuilder::legacy_open().with_sideband().build();
+        assert_serializable(block);
+    }
+
+    #[test]
+    fn serialize_legacy_receive() {
+        let block = BlockBuilder::legacy_receive().with_sideband().build();
+        assert_serializable(block);
+    }
+
+    #[test]
+    fn serialize_legacy_send() {
+        let block = BlockBuilder::legacy_send().with_sideband().build();
+        assert_serializable(block);
+    }
+
+    #[test]
+    fn serialize_legacy_change() {
+        let block = BlockBuilder::legacy_change().with_sideband().build();
+        assert_serializable(block);
+    }
+
+    #[test]
+    fn serialize_state() {
+        let block = BlockBuilder::state().with_sideband().build();
+        assert_serializable(block);
+    }
+
+    fn assert_serializable(block: BlockEnum) {
+        let bytes = block.serialize_with_sideband();
+        let deserialized = BlockEnum::deserialize_with_sideband(&bytes).unwrap();
+
+        assert_eq!(deserialized, block);
+    }
 }

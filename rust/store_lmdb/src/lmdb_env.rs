@@ -218,16 +218,26 @@ impl RwTransaction for RwTransactionWrapper {
     }
 }
 
-pub struct NullRwTransaction {
+pub struct RwTransactionStub {
     databases: Vec<ConfiguredDatabase>,
 }
 
-impl<'env> RwTransaction for NullRwTransaction {
+impl RwTransactionStub {
+    fn get_database(&self, database: DatabaseStub) -> Option<&ConfiguredDatabase> {
+        self.databases.iter().find(|d| d.dbi == database)
+    }
+}
+
+impl<'env> RwTransaction for RwTransactionStub {
     type Database = DatabaseStub;
     type RoCursor = RoCursorStub;
 
-    fn get(&self, _database: Self::Database, _key: &[u8]) -> lmdb::Result<&[u8]> {
-        Err(lmdb::Error::NotFound)
+    fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
+        let Some(db) = self.get_database(database) else { return Err(lmdb::Error::NotFound) };
+        match db.entries.get(key) {
+            Some(value) => Ok(value),
+            None => Err(lmdb::Error::NotFound),
+        }
     }
 
     fn put(
@@ -546,7 +556,7 @@ impl Default for DatabaseStub {
 impl Environment for EnvironmentStub {
     type RoTxnImpl = RoTransactionStub;
     type InactiveTxnImpl = NullInactiveTransaction;
-    type RwTxnType = NullRwTransaction;
+    type RwTxnType = RwTransactionStub;
     type Database = DatabaseStub;
     type RoCursor = RoCursorStub;
 
@@ -566,7 +576,7 @@ impl Environment for EnvironmentStub {
     }
 
     fn begin_rw_txn(&self) -> lmdb::Result<Self::RwTxnType> {
-        Ok(NullRwTransaction {
+        Ok(RwTransactionStub {
             databases: self.databases.clone(), //todo  don't clone!
         })
     }

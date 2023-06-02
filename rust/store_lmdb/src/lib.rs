@@ -12,8 +12,8 @@ pub use lmdb_config::{LmdbConfig, SyncStrategy};
 
 mod lmdb_env;
 pub use lmdb_env::{
-    EnvOptions, Environment, EnvironmentOptions, EnvironmentStub, EnvironmentWrapper, LmdbEnv,
-    RoCursorWrapper, TestDbFile, TestLmdbEnv,
+    ConfiguredDatabase, DatabaseStub, EnvOptions, Environment, EnvironmentOptions, EnvironmentStub,
+    EnvironmentWrapper, LmdbEnv, RoCursorWrapper, TestDbFile, TestLmdbEnv,
 };
 use lmdb_env::{InactiveTransaction, RoCursor, RoTransaction, RwTransaction};
 
@@ -21,7 +21,7 @@ mod account_store;
 pub use account_store::LmdbAccountStore;
 
 mod block_store;
-pub use block_store::LmdbBlockStore;
+pub use block_store::{ConfiguredBlockDatabaseBuilder, LmdbBlockStore};
 
 mod confirmation_height_store;
 pub use confirmation_height_store::LmdbConfirmationHeightStore;
@@ -30,7 +30,7 @@ mod final_vote_store;
 pub use final_vote_store::LmdbFinalVoteStore;
 
 mod frontier_store;
-pub use frontier_store::LmdbFrontierStore;
+pub use frontier_store::{ConfiguredFrontierDatabaseBuilder, LmdbFrontierStore};
 
 mod online_weight_store;
 pub use online_weight_store::LmdbOnlineWeightStore;

@@ -10,8 +10,11 @@ use rsnano_core::{
     PendingKey, QualifiedRoot, Root,
 };
 use rsnano_store_lmdb::{
-    Environment, EnvironmentStub, EnvironmentWrapper, LmdbReadTransaction, LmdbStore,
-    LmdbWriteTransaction, Transaction,
+    ConfiguredBlockDatabaseBuilder, ConfiguredFrontierDatabaseBuilder, Environment,
+    EnvironmentStub, EnvironmentWrapper, LmdbAccountStore, LmdbBlockStore,
+    LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
+    LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
+    LmdbStore, LmdbVersionStore, LmdbWriteTransaction, Transaction,
 };
 
 use std::{
@@ -84,6 +87,58 @@ pub struct Ledger<T: Environment + 'static = EnvironmentWrapper> {
 impl Ledger<EnvironmentStub> {
     pub fn create_null() -> Self {
         Self::new(Arc::new(LmdbStore::create_null()), LedgerConstants::dev()).unwrap()
+    }
+
+    pub fn create_null_with() -> NullLedgerBuilder {
+        NullLedgerBuilder::new()
+    }
+}
+
+pub struct NullLedgerBuilder {
+    blocks: ConfiguredBlockDatabaseBuilder,
+    frontiers: ConfiguredFrontierDatabaseBuilder,
+}
+
+impl NullLedgerBuilder {
+    fn new() -> Self {
+        Self {
+            blocks: ConfiguredBlockDatabaseBuilder::new(),
+            frontiers: ConfiguredFrontierDatabaseBuilder::new(),
+        }
+    }
+
+    pub fn block(mut self, block: &BlockEnum) -> Self {
+        self.blocks = self.blocks.block(block);
+        self
+    }
+
+    pub fn frontier(mut self, hash: &BlockHash, account: &Account) -> Self {
+        self.frontiers = self.frontiers.frontier(hash, account);
+        self
+    }
+
+    pub fn build(self) -> Ledger<EnvironmentStub> {
+        let env = Arc::new(
+            LmdbEnv::create_null_with()
+                .configured_database(self.blocks.build())
+                .configured_database(self.frontiers.build())
+                .build(),
+        );
+
+        let store = LmdbStore {
+            env: env.clone(),
+            account: Arc::new(LmdbAccountStore::new(env.clone()).unwrap()),
+            block: Arc::new(LmdbBlockStore::new(env.clone()).unwrap()),
+            confirmation_height: Arc::new(LmdbConfirmationHeightStore::new(env.clone()).unwrap()),
+            final_vote: Arc::new(LmdbFinalVoteStore::new(env.clone()).unwrap()),
+            frontier: Arc::new(LmdbFrontierStore::new(env.clone()).unwrap()),
+            online_weight: Arc::new(LmdbOnlineWeightStore::new(env.clone()).unwrap()),
+            peer: Arc::new(LmdbPeerStore::new(env.clone()).unwrap()),
+            pending: Arc::new(LmdbPendingStore::new(env.clone()).unwrap()),
+            pruned: Arc::new(LmdbPrunedStore::new(env.clone()).unwrap()),
+            version: Arc::new(LmdbVersionStore::new(env.clone()).unwrap()),
+        };
+        Ledger::new(Arc::new(store), LedgerConstants::dev()).unwrap()
     }
 }
 

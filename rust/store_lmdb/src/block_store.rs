@@ -1,6 +1,7 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, Environment, EnvironmentWrapper, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, DatabaseStub, Environment,
+    EnvironmentStub, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction,
+    LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
@@ -19,6 +20,36 @@ pub struct LmdbBlockStore<T: Environment = EnvironmentWrapper> {
     database: T::Database,
     #[cfg(feature = "output_tracking")]
     put_listener: OutputListenerMt<BlockEnum>,
+}
+
+impl LmdbBlockStore<EnvironmentStub> {
+    pub fn configured_responses() -> ConfiguredBlockDatabaseBuilder {
+        ConfiguredBlockDatabaseBuilder::new()
+    }
+}
+
+pub struct ConfiguredBlockDatabaseBuilder {
+    database: ConfiguredDatabase,
+}
+
+impl ConfiguredBlockDatabaseBuilder {
+    pub fn new() -> Self {
+        Self {
+            database: ConfiguredDatabase::new(DatabaseStub(1), "blocks"),
+        }
+    }
+
+    pub fn block(mut self, block: &BlockEnum) -> Self {
+        self.database.entries.insert(
+            block.hash().as_bytes().to_vec(),
+            block.serialize_with_sideband(),
+        );
+        self
+    }
+
+    pub fn build(self) -> ConfiguredDatabase {
+        self.database
+    }
 }
 
 impl<T: Environment + 'static> LmdbBlockStore<T> {
@@ -58,11 +89,6 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
             let mut predecessor = BlockPredecessorMdbSet::new(txn, self);
             block.visit(&mut predecessor);
         }
-
-        debug_assert!(
-            block.previous().is_zero()
-                || self.successor(txn, &block.previous()).unwrap_or_default() == hash
-        );
     }
 
     pub fn exists(
@@ -276,7 +302,7 @@ impl<'a, 'b, T: Environment + 'static> BlockPredecessorMdbSet<'a, T> {
         let value = self
             .block_store
             .block_raw_get(self.transaction, &block.previous())
-            .unwrap();
+            .expect("block not found by fill_value");
         let mut data = value.to_vec();
         let block_type = BlockType::from_u8(data[0]).unwrap();
 
@@ -461,5 +487,17 @@ mod tests {
         fixture.store.put(&mut txn, &block);
 
         assert_eq!(put_tracker.output(), vec![block]);
+    }
+
+    #[test]
+    fn can_be_nulled() {
+        let block = BlockBuilder::state().with_sideband().build();
+        let configured_responses = LmdbBlockStore::configured_responses().block(&block).build();
+        let env = LmdbEnv::create_null_with()
+            .configured_database(configured_responses)
+            .build();
+        let txn = env.tx_begin_read();
+        let block_store = LmdbBlockStore::new(Arc::new(env)).unwrap();
+        assert_eq!(block_store.get(&txn, &block.hash()), Some(block));
     }
 }

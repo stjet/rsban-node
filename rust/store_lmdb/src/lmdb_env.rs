@@ -653,6 +653,21 @@ impl NullLmdbEnvBuilder {
         }
     }
 
+    pub fn configured_database(mut self, db: ConfiguredDatabase) -> Self {
+        if self
+            .databases
+            .iter()
+            .any(|x| x.dbi == db.dbi || x.db_name == db.db_name)
+        {
+            panic!(
+                "trying to duplicated database for {} / {}",
+                db.dbi.0, db.db_name
+            );
+        }
+        self.databases.push(db);
+        self
+    }
+
     pub fn build(self) -> LmdbEnv<EnvironmentStub> {
         let env = EnvironmentStub {
             databases: self.databases,
@@ -662,10 +677,20 @@ impl NullLmdbEnvBuilder {
 }
 
 #[derive(Clone)]
-struct ConfiguredDatabase {
-    dbi: DatabaseStub,
-    db_name: String,
-    entries: BTreeMap<Vec<u8>, Vec<u8>>,
+pub struct ConfiguredDatabase {
+    pub dbi: DatabaseStub,
+    pub db_name: String,
+    pub entries: BTreeMap<Vec<u8>, Vec<u8>>,
+}
+
+impl ConfiguredDatabase {
+    pub fn new(dbi: DatabaseStub, name: impl Into<String>) -> Self {
+        Self {
+            dbi,
+            db_name: name.into(),
+            entries: BTreeMap::new(),
+        }
+    }
 }
 
 impl Default for ConfiguredDatabase {

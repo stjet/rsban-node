@@ -138,9 +138,9 @@ mod tests {
         let result = insert(&ledger, &mut block, &instructions);
 
         assert_eq!(block.sideband().unwrap(), &instructions.set_sideband);
-        assert_eq!(result.block_puts, vec![block]);
+        assert_eq!(result.saved_blocks, vec![block]);
         assert_eq!(
-            result.account_puts,
+            result.saved_accounts,
             vec![(instructions.account, instructions.set_account_info.clone())]
         );
         assert_eq!(
@@ -151,7 +151,31 @@ mod tests {
             instructions.set_account_info.balance
         );
         assert_eq!(ledger.cache.block_count.load(Ordering::Relaxed), 1);
-        assert_eq!(result.pending_deletions, Vec::new());
+        assert_eq!(result.deleted_pending, Vec::new());
+    }
+
+    #[test]
+    fn delete_old_frontier() {
+        let mut open = BlockBuilder::legacy_open().build();
+        let sideband = BlockSideband {
+            successor: BlockHash::zero(),
+            ..BlockSideband::create_test_instance()
+        };
+        open.set_sideband(sideband);
+
+        let (mut block, instructions) = state_block_instructions(&open);
+
+        let ledger = Ledger::create_null_with()
+            .block(&open)
+            .frontier(&instructions.old_account_info.head, &instructions.account)
+            .build();
+
+        let result = insert(&ledger, &mut block, &instructions);
+
+        assert_eq!(
+            result.deleted_frontiers,
+            vec![instructions.old_account_info.head]
+        )
     }
 
     fn insert(
@@ -160,24 +184,27 @@ mod tests {
         instructions: &BlockInsertInstructions,
     ) -> InsertResult {
         let mut txn = ledger.rw_txn();
-        let block_puts = ledger.store.block.track_puts();
-        let account_puts = ledger.store.account.track_puts();
-        let pending_deletions = ledger.store.pending.track_deletions();
+        let saved_blocks = ledger.store.block.track_puts();
+        let saved_accounts = ledger.store.account.track_puts();
+        let deleted_pending = ledger.store.pending.track_deletions();
+        let deleted_frontiers = ledger.store.frontier.track_deletions();
 
         let mut block_inserter = BlockInserter::new(&ledger, &mut txn, block, &instructions);
         block_inserter.insert();
 
         InsertResult {
-            block_puts: block_puts.output(),
-            account_puts: account_puts.output(),
-            pending_deletions: pending_deletions.output(),
+            saved_blocks: saved_blocks.output(),
+            saved_accounts: saved_accounts.output(),
+            deleted_pending: deleted_pending.output(),
+            deleted_frontiers: deleted_frontiers.output(),
         }
     }
 
     struct InsertResult {
-        block_puts: Vec<BlockEnum>,
-        account_puts: Vec<(Account, AccountInfo)>,
-        pending_deletions: Vec<PendingKey>,
+        saved_blocks: Vec<BlockEnum>,
+        saved_accounts: Vec<(Account, AccountInfo)>,
+        deleted_pending: Vec<PendingKey>,
+        deleted_frontiers: Vec<BlockHash>,
     }
 
     fn open_state_block_instructions() -> (BlockEnum, BlockInsertInstructions) {
@@ -195,6 +222,34 @@ mod tests {
             account: Account::from(1),
             old_account_info: AccountInfo::default(),
             set_account_info: account_info,
+            delete_pending: None,
+            insert_pending: None,
+            set_sideband: sideband,
+            is_epoch_block: false,
+        };
+
+        (block, instructions)
+    }
+
+    fn state_block_instructions(previous: &BlockEnum) -> (BlockEnum, BlockInsertInstructions) {
+        let block = BlockBuilder::state().previous(previous.hash()).build();
+        let sideband = BlockSideband {
+            successor: BlockHash::zero(),
+            ..BlockSideband::create_test_instance()
+        };
+        let old_account_info = AccountInfo {
+            head: previous.hash(),
+            ..AccountInfo::create_test_instance()
+        };
+        let new_account_info = AccountInfo {
+            head: block.hash(),
+            open_block: block.hash(),
+            ..AccountInfo::create_test_instance()
+        };
+        let instructions = BlockInsertInstructions {
+            account: Account::from(1),
+            old_account_info,
+            set_account_info: new_account_info,
             delete_pending: None,
             insert_pending: None,
             set_sideband: sideband,

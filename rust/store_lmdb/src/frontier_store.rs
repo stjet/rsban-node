@@ -1,7 +1,7 @@
 use crate::{
-    iterator::DbIterator, lmdb_env::RwTransaction, parallel_traversal, ConfiguredDatabase,
-    DatabaseStub, Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction,
-    LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, DatabaseStub, Environment,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
+    Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
@@ -14,10 +14,12 @@ pub struct ConfiguredFrontierDatabaseBuilder {
     database: ConfiguredDatabase,
 }
 
+const FRONTIER_TEST_DATABASE: DatabaseStub = DatabaseStub(2);
+
 impl ConfiguredFrontierDatabaseBuilder {
     pub fn new() -> Self {
         Self {
-            database: ConfiguredDatabase::new(DatabaseStub(2), "frontiers"),
+            database: ConfiguredDatabase::new(FRONTIER_TEST_DATABASE, "frontiers"),
         }
     }
 
@@ -31,11 +33,21 @@ impl ConfiguredFrontierDatabaseBuilder {
     pub fn build(self) -> ConfiguredDatabase {
         self.database
     }
+
+    pub fn create(frontiers: Vec<(BlockHash, Account)>) -> ConfiguredDatabase {
+        let mut builder = Self::new();
+        for (hash, account) in frontiers {
+            builder = builder.frontier(&hash, &account);
+        }
+        builder.build()
+    }
 }
 
 pub struct LmdbFrontierStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
     database: T::Database,
+    #[cfg(feature = "output_tracking")]
+    put_listener: OutputListenerMt<(BlockHash, Account)>,
     #[cfg(feature = "output_tracking")]
     delete_listener: OutputListenerMt<BlockHash>,
 }
@@ -48,6 +60,8 @@ impl<T: Environment + 'static> LmdbFrontierStore<T> {
         Ok(Self {
             env,
             database,
+            #[cfg(feature = "output_tracking")]
+            put_listener: OutputListenerMt::new(),
             #[cfg(feature = "output_tracking")]
             delete_listener: OutputListenerMt::new(),
         })
@@ -62,19 +76,25 @@ impl<T: Environment + 'static> LmdbFrontierStore<T> {
     }
 
     #[cfg(feature = "output_tracking")]
+    pub fn track_puts(&self) -> Arc<OutputTrackerMt<(BlockHash, Account)>> {
+        self.put_listener.track()
+    }
+
+    #[cfg(feature = "output_tracking")]
     pub fn track_deletions(&self) -> Arc<OutputTrackerMt<BlockHash>> {
         self.delete_listener.track()
     }
 
     pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, hash: &BlockHash, account: &Account) {
-        txn.rw_txn_mut()
-            .put(
-                self.database,
-                hash.as_bytes(),
-                account.as_bytes(),
-                WriteFlags::empty(),
-            )
-            .unwrap();
+        #[cfg(feature = "output_tracking")]
+        self.put_listener.emit((hash.clone(), account.clone()));
+        txn.put(
+            self.database,
+            hash.as_bytes(),
+            account.as_bytes(),
+            WriteFlags::empty(),
+        )
+        .unwrap();
     }
 
     pub fn get(
@@ -136,47 +156,112 @@ impl<T: Environment + 'static> LmdbFrontierStore<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::TestLmdbEnv;
+    use crate::{DeleteEvent, EnvironmentStub, PutEvent};
 
-    #[test]
-    fn empty_store() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbFrontierStore::new(env.env())?;
-        let txn = env.tx_begin_read();
-        assert_eq!(store.get(&txn, &BlockHash::from(1)), None);
-        assert!(store.begin(&txn).is_end());
-        Ok(())
+    struct Fixture {
+        env: Arc<LmdbEnv<EnvironmentStub>>,
+        store: LmdbFrontierStore<EnvironmentStub>,
+    }
+
+    impl Fixture {
+        fn new() -> Self {
+            Self::with_stored_frontieres(Vec::new())
+        }
+
+        fn with_stored_frontieres(frontiers: Vec<(BlockHash, Account)>) -> Self {
+            let env = LmdbEnv::create_null_with()
+                .configured_database(ConfiguredFrontierDatabaseBuilder::create(frontiers))
+                .build();
+
+            let env = Arc::new(env);
+            Self {
+                env: env.clone(),
+                store: LmdbFrontierStore::new(env).unwrap(),
+            }
+        }
     }
 
     #[test]
-    fn put() -> anyhow::Result<()> {
-        let env = TestLmdbEnv::new();
-        let store = LmdbFrontierStore::new(env.env())?;
-        let mut txn = env.tx_begin_write();
-        let block = BlockHash::from(1);
-        let account = Account::from(2);
+    fn empty_store() {
+        let fixture = Fixture::new();
+        let txn = fixture.env.tx_begin_read();
+        assert_eq!(fixture.store.get(&txn, &BlockHash::from(1)), None);
+        assert!(fixture.store.begin(&txn).is_end());
+    }
 
-        store.put(&mut txn, &block, &account);
-        let loaded = store.get(&txn, &block);
+    #[test]
+    fn get_frontier() {
+        let fixture = Fixture::with_stored_frontieres(vec![(BlockHash::from(1), Account::from(2))]);
+        let txn = fixture.env.tx_begin_read();
+        assert_eq!(
+            fixture.store.get(&txn, &BlockHash::from(1)),
+            Some(Account::from(2))
+        );
+    }
 
-        assert_eq!(loaded, Some(account));
-        Ok(())
+    #[test]
+    fn put() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let put_tracker = txn.track_puts();
+
+        fixture
+            .store
+            .put(&mut txn, &BlockHash::from(1), &Account::from(2));
+
+        assert_eq!(
+            put_tracker.output(),
+            vec![PutEvent {
+                database: FRONTIER_TEST_DATABASE,
+                key: BlockHash::from(1).as_bytes().to_vec(),
+                value: Account::from(2).as_bytes().to_vec(),
+                flags: WriteFlags::empty(),
+            }]
+        );
+    }
+
+    #[test]
+    fn can_track_puts() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let put_tracker = fixture.store.track_puts();
+
+        fixture
+            .store
+            .put(&mut txn, &BlockHash::from(1), &Account::from(2));
+
+        assert_eq!(
+            put_tracker.output(),
+            vec![(BlockHash::from(1), Account::from(2))]
+        );
     }
 
     #[test]
     fn delete() {
-        let env = TestLmdbEnv::new();
-        let store = LmdbFrontierStore::new(env.env()).unwrap();
-        let mut txn = env.tx_begin_write();
-        let block = BlockHash::from(1);
-        store.put(&mut txn, &block, &Account::from(2));
-        let delete_tracker = store.track_deletions();
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let delete_tracker = txn.track_deletions();
 
-        store.del(&mut txn, &block);
+        fixture.store.del(&mut txn, &BlockHash::from(42));
 
-        let loaded = store.get(&txn, &block);
-        assert_eq!(loaded, None);
-        assert_eq!(delete_tracker.output(), vec![block]);
+        assert_eq!(
+            delete_tracker.output(),
+            vec![DeleteEvent {
+                database: FRONTIER_TEST_DATABASE,
+                key: BlockHash::from(42).as_bytes().to_vec()
+            }]
+        );
+    }
+
+    #[test]
+    fn can_track_deletions() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let delete_tracker = fixture.store.track_deletions();
+
+        fixture.store.del(&mut txn, &BlockHash::from(42));
+
+        assert_eq!(delete_tracker.output(), vec![BlockHash::from(42)]);
     }
 
     #[test]

@@ -14,19 +14,12 @@ use rsnano_core::{
 mod empty_ledger;
 mod epoch_v1;
 mod epoch_v2;
-mod process_change;
-mod process_legacy_change;
-mod process_legacy_open;
-mod process_legacy_receive;
-mod process_legacy_send;
-mod process_open;
 mod pruning;
 mod rollback_legacy_change;
 mod rollback_legacy_open;
 mod rollback_legacy_receive;
 mod rollback_legacy_send;
 mod rollback_state;
-mod validate_block;
 
 #[test]
 fn ledger_successor() {

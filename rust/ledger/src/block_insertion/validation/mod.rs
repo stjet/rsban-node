@@ -4,6 +4,8 @@ mod helpers;
 mod open_block_rules;
 mod receive_block_rules;
 mod send_block_rules;
+#[cfg(test)]
+mod tests;
 
 use super::BlockInsertInstructions;
 use crate::ProcessResult;

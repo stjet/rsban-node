@@ -30,6 +30,10 @@ impl PendingKey {
         Self::new(block.link().into(), block.hash())
     }
 
+    pub fn for_receive_block(block: &BlockEnum) -> Self {
+        Self::new(block.account(), block.link().into())
+    }
+
     pub fn for_receive_state_block(block: &StateBlock) -> Self {
         Self::new(block.account(), block.link().into())
     }

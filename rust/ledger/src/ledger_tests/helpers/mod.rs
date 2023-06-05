@@ -15,21 +15,6 @@ pub(crate) fn upgrade_genesis_to_epoch_v1(
     epoch
 }
 
-pub(crate) fn setup_legacy_change_block(
-    ctx: &LedgerContext,
-    txn: &mut LmdbWriteTransaction,
-) -> BlockEnum {
-    let mut change = ctx.genesis_block_factory().legacy_change(txn).build();
-    ctx.ledger.process(txn, &mut change).unwrap();
-    change
-}
-
-pub(crate) fn setup_change_block(ctx: &LedgerContext, txn: &mut LmdbWriteTransaction) -> BlockEnum {
-    let mut change = ctx.genesis_block_factory().change(txn).build();
-    ctx.ledger.process(txn, &mut change).unwrap();
-    change
-}
-
 pub(crate) struct LegacySendBlockResult<'a> {
     pub destination: AccountBlockFactory<'a>,
     pub send_block: BlockEnum,

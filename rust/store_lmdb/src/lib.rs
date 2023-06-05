@@ -36,13 +36,13 @@ mod online_weight_store;
 pub use online_weight_store::LmdbOnlineWeightStore;
 
 mod pending_store;
-pub use pending_store::LmdbPendingStore;
+pub use pending_store::{ConfiguredPendingDatabaseBuilder, LmdbPendingStore};
 
 mod peer_store;
 pub use peer_store::LmdbPeerStore;
 
 mod pruned_store;
-pub use pruned_store::LmdbPrunedStore;
+pub use pruned_store::{ConfiguredPrunedDatabaseBuilder, LmdbPrunedStore};
 
 mod version_store;
 pub use version_store::LmdbVersionStore;
@@ -450,6 +450,11 @@ where
 pub const STORE_VERSION_MINIMUM: i32 = 21;
 pub const STORE_VERSION_CURRENT: i32 = 22;
 
+pub const BLOCK_TEST_DATABASE: DatabaseStub = DatabaseStub(1);
+pub const FRONTIER_TEST_DATABASE: DatabaseStub = DatabaseStub(2);
+pub const ACCOUNT_TEST_DATABASE: DatabaseStub = DatabaseStub(3);
+pub const PENDING_TEST_DATABASE: DatabaseStub = DatabaseStub(4);
+pub const PRUNED_TEST_DATABASE: DatabaseStub = DatabaseStub(5);
 #[cfg(test)]
 mod test {
     use super::*;

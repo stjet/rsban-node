@@ -1,7 +1,7 @@
 use crate::{
     iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal, ConfiguredDatabase,
-    DatabaseStub, Environment, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction,
-    LmdbWriteTransaction, Transaction,
+    Environment, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    ACCOUNT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -142,8 +142,6 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
 pub struct ConfiguredAccountDatabaseBuilder {
     database: ConfiguredDatabase,
 }
-
-const ACCOUNT_TEST_DATABASE: DatabaseStub = DatabaseStub(3);
 
 impl ConfiguredAccountDatabaseBuilder {
     pub fn new() -> Self {

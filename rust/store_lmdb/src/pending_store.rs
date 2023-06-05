@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    iterator::DbIterator, parallel_traversal_u512, Environment, EnvironmentWrapper, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, parallel_traversal_u512, ConfiguredDatabase, Environment,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
+    Transaction, PENDING_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -149,6 +150,37 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
     }
 }
 
+pub struct ConfiguredPendingDatabaseBuilder {
+    database: ConfiguredDatabase,
+}
+
+impl ConfiguredPendingDatabaseBuilder {
+    pub fn new() -> Self {
+        Self {
+            database: ConfiguredDatabase::new(PENDING_TEST_DATABASE, "pending"),
+        }
+    }
+
+    pub fn pending(mut self, key: &PendingKey, info: &PendingInfo) -> Self {
+        self.database
+            .entries
+            .insert(key.to_bytes().to_vec(), info.to_bytes().to_vec());
+        self
+    }
+
+    pub fn build(self) -> ConfiguredDatabase {
+        self.database
+    }
+
+    pub fn create(frontiers: Vec<(PendingKey, PendingInfo)>) -> ConfiguredDatabase {
+        let mut builder = Self::new();
+        for (key, info) in frontiers {
+            builder = builder.pending(&key, &info);
+        }
+        builder.build()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -165,13 +197,11 @@ mod tests {
         }
 
         pub fn with_stored_data(entries: Vec<(PendingKey, PendingInfo)>) -> Self {
-            let mut env = LmdbEnv::create_null_with().database("pending", Default::default());
+            let env = LmdbEnv::create_null_with()
+                .configured_database(ConfiguredPendingDatabaseBuilder::create(entries))
+                .build();
 
-            for (key, value) in entries {
-                env = env.entry(&key.to_bytes(), &value.to_bytes())
-            }
-
-            let env = Arc::new(env.build().build());
+            let env = Arc::new(env);
             Self {
                 env: env.clone(),
                 store: LmdbPendingStore::new(env).unwrap(),
@@ -219,7 +249,7 @@ mod tests {
         assert_eq!(
             put_tracker.output(),
             vec![PutEvent {
-                database: Default::default(),
+                database: PENDING_TEST_DATABASE,
                 key: pending_key.to_bytes().to_vec(),
                 value: pending.to_bytes().to_vec(),
                 flags: WriteFlags::empty()
@@ -239,7 +269,7 @@ mod tests {
         assert_eq!(
             delete_tracker.output(),
             vec![DeleteEvent {
-                database: Default::default(),
+                database: PENDING_TEST_DATABASE,
                 key: pending_key.to_bytes().to_vec()
             }]
         )

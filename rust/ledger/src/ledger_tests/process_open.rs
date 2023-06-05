@@ -1,12 +1,11 @@
 use std::sync::atomic::Ordering;
 
+use super::LedgerContext;
 use crate::{
     ledger_tests::{setup_open_block, setup_send_block},
     ProcessResult,
 };
 use rsnano_core::{BlockBuilder, BlockDetails, BlockHash, Epoch, Link, PendingKey};
-
-use super::LedgerContext;
 
 #[test]
 fn save_block() {

@@ -6,6 +6,7 @@ use rsnano_core::{
 };
 use rsnano_store_lmdb::{Environment, LmdbWriteTransaction};
 
+#[derive(Debug, PartialEq)]
 pub(crate) struct BlockInsertInstructions {
     pub account: Account,
     pub old_account_info: AccountInfo,

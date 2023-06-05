@@ -1,7 +1,7 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, DatabaseStub, Environment,
-    EnvironmentStub, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction,
-    LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, Environment, EnvironmentStub,
+    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
+    Transaction, BLOCK_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
@@ -35,7 +35,7 @@ pub struct ConfiguredBlockDatabaseBuilder {
 impl ConfiguredBlockDatabaseBuilder {
     pub fn new() -> Self {
         Self {
-            database: ConfiguredDatabase::new(DatabaseStub(1), "blocks"),
+            database: ConfiguredDatabase::new(BLOCK_TEST_DATABASE, "blocks"),
         }
     }
 

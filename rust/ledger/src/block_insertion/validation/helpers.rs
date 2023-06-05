@@ -1,6 +1,6 @@
 use rsnano_core::{
-    utils::seconds_since_epoch, Account, AccountInfo, Amount, Block, BlockDetails, BlockEnum,
-    BlockHash, BlockSideband, Epoch, PendingInfo, PendingKey, StateBlock,
+    Account, AccountInfo, Amount, Block, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch,
+    PendingInfo, PendingKey, StateBlock,
 };
 
 use super::BlockValidator;
@@ -202,7 +202,7 @@ impl<'a> BlockValidator<'a> {
             BlockHash::zero(),
             self.new_balance(),
             self.new_block_count(),
-            seconds_since_epoch(),
+            self.seconds_since_epoch,
             self.block_details(),
             self.source_epoch(),
         )
@@ -214,7 +214,7 @@ impl<'a> BlockValidator<'a> {
             representative: self.new_representative(),
             open_block: self.open_block(),
             balance: self.new_balance(),
-            modified: seconds_since_epoch(),
+            modified: self.seconds_since_epoch,
             block_count: self.new_block_count(),
             epoch: self.epoch(),
         }

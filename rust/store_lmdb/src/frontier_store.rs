@@ -1,7 +1,7 @@
+use crate::FRONTIER_TEST_DATABASE;
 use crate::{
-    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, DatabaseStub, Environment,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
-    Transaction,
+    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, Environment, EnvironmentWrapper,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
@@ -13,8 +13,6 @@ pub type FrontierIterator = Box<dyn DbIterator<BlockHash, Account>>;
 pub struct ConfiguredFrontierDatabaseBuilder {
     database: ConfiguredDatabase,
 }
-
-const FRONTIER_TEST_DATABASE: DatabaseStub = DatabaseStub(2);
 
 impl ConfiguredFrontierDatabaseBuilder {
     pub fn new() -> Self {

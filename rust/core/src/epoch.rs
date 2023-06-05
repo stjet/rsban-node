@@ -24,13 +24,13 @@ impl Epoch {
     pub const MAX: Epoch = Epoch::Epoch2;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 struct EpochInfo {
     pub signer: PublicKey,
     pub link: Link,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct Epochs {
     epochs: HashMap<Epoch, EpochInfo>,
 }

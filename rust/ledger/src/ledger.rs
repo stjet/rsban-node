@@ -11,7 +11,8 @@ use rsnano_core::{
 };
 use rsnano_store_lmdb::{
     ConfiguredAccountDatabaseBuilder, ConfiguredBlockDatabaseBuilder,
-    ConfiguredFrontierDatabaseBuilder, Environment, EnvironmentStub, EnvironmentWrapper,
+    ConfiguredFrontierDatabaseBuilder, ConfiguredPendingDatabaseBuilder,
+    ConfiguredPrunedDatabaseBuilder, Environment, EnvironmentStub, EnvironmentWrapper,
     LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore,
     LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore,
     LmdbReadTransaction, LmdbStore, LmdbVersionStore, LmdbWriteTransaction, Transaction,
@@ -102,6 +103,8 @@ pub struct NullLedgerBuilder {
     blocks: ConfiguredBlockDatabaseBuilder,
     frontiers: ConfiguredFrontierDatabaseBuilder,
     accounts: ConfiguredAccountDatabaseBuilder,
+    pending: ConfiguredPendingDatabaseBuilder,
+    pruned: ConfiguredPrunedDatabaseBuilder,
 }
 
 impl NullLedgerBuilder {
@@ -110,6 +113,8 @@ impl NullLedgerBuilder {
             blocks: ConfiguredBlockDatabaseBuilder::new(),
             frontiers: ConfiguredFrontierDatabaseBuilder::new(),
             accounts: ConfiguredAccountDatabaseBuilder::new(),
+            pending: ConfiguredPendingDatabaseBuilder::new(),
+            pruned: ConfiguredPrunedDatabaseBuilder::new(),
         }
     }
 
@@ -135,12 +140,24 @@ impl NullLedgerBuilder {
         self
     }
 
+    pub fn pending(mut self, key: &PendingKey, info: &PendingInfo) -> Self {
+        self.pending = self.pending.pending(key, info);
+        self
+    }
+
+    pub fn pruned(mut self, hash: &BlockHash) -> Self {
+        self.pruned = self.pruned.pruned(hash);
+        self
+    }
+
     pub fn build(self) -> Ledger<EnvironmentStub> {
         let env = Arc::new(
             LmdbEnv::create_null_with()
                 .configured_database(self.blocks.build())
                 .configured_database(self.frontiers.build())
                 .configured_database(self.accounts.build())
+                .configured_database(self.pending.build())
+                .configured_database(self.pruned.build())
                 .build(),
         );
 

@@ -24,6 +24,7 @@ pub(crate) struct BlockValidator<'a> {
     pub pending_receive_info: Option<PendingInfo>,
     pub any_pending_exists: bool,
     pub source_block_exists: bool,
+    pub seconds_since_epoch: u64,
 }
 
 impl<'a> BlockValidator<'a> {

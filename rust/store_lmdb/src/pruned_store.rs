@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal, Environment, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal, ConfiguredDatabase,
+    Environment, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    PRUNED_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
@@ -104,6 +105,37 @@ impl<T: Environment + 'static> LmdbPrunedStore<T> {
     }
 }
 
+pub struct ConfiguredPrunedDatabaseBuilder {
+    database: ConfiguredDatabase,
+}
+
+impl ConfiguredPrunedDatabaseBuilder {
+    pub fn new() -> Self {
+        Self {
+            database: ConfiguredDatabase::new(PRUNED_TEST_DATABASE, "pruned"),
+        }
+    }
+
+    pub fn pruned(mut self, hash: &BlockHash) -> Self {
+        self.database
+            .entries
+            .insert(hash.as_bytes().to_vec(), Vec::new());
+        self
+    }
+
+    pub fn build(self) -> ConfiguredDatabase {
+        self.database
+    }
+
+    pub fn create(hashes: Vec<BlockHash>) -> ConfiguredDatabase {
+        let mut builder = Self::new();
+        for hash in hashes {
+            builder = builder.pruned(&hash);
+        }
+        builder.build()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -120,13 +152,10 @@ mod tests {
         }
 
         pub fn with_stored_data(entries: Vec<BlockHash>) -> Self {
-            let mut env = LmdbEnv::create_null_with().database("pruned", Default::default());
-
-            for hash in entries {
-                env = env.entry(hash.as_bytes(), &[]);
-            }
-
-            let env = Arc::new(env.build().build());
+            let env = LmdbEnv::create_null_with()
+                .configured_database(ConfiguredPrunedDatabaseBuilder::create(entries))
+                .build();
+            let env = Arc::new(env);
             Self {
                 env: env.clone(),
                 store: LmdbPrunedStore::new(env).unwrap(),
@@ -158,7 +187,7 @@ mod tests {
         assert_eq!(
             put_tracker.output(),
             vec![PutEvent {
-                database: Default::default(),
+                database: PRUNED_TEST_DATABASE,
                 key: hash.as_bytes().to_vec(),
                 value: Vec::new(),
                 flags: WriteFlags::empty()
@@ -206,7 +235,7 @@ mod tests {
         assert_eq!(
             delete_tracker.output(),
             vec![DeleteEvent {
-                database: Default::default(),
+                database: PRUNED_TEST_DATABASE,
                 key: hash.as_bytes().to_vec()
             }]
         )

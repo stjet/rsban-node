@@ -1,6 +1,7 @@
 use crate::{
-    iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal, Environment, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal, ConfiguredDatabase,
+    DatabaseStub, Environment, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction,
+    LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -33,6 +34,7 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         })
     }
 
+    #[cfg(feature = "output_tracking")]
     pub fn track_puts(&self) -> Arc<OutputTrackerMt<(Account, AccountInfo)>> {
         self.put_listener.track()
     }
@@ -137,11 +139,44 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
     }
 }
 
+pub struct ConfiguredAccountDatabaseBuilder {
+    database: ConfiguredDatabase,
+}
+
+const ACCOUNT_TEST_DATABASE: DatabaseStub = DatabaseStub(3);
+
+impl ConfiguredAccountDatabaseBuilder {
+    pub fn new() -> Self {
+        Self {
+            database: ConfiguredDatabase::new(ACCOUNT_TEST_DATABASE, "accounts"),
+        }
+    }
+
+    pub fn account(mut self, account: &Account, info: &AccountInfo) -> Self {
+        self.database
+            .entries
+            .insert(account.as_bytes().to_vec(), info.to_bytes().to_vec());
+        self
+    }
+
+    pub fn build(self) -> ConfiguredDatabase {
+        self.database
+    }
+
+    pub fn create(frontiers: Vec<(Account, AccountInfo)>) -> ConfiguredDatabase {
+        let mut builder = Self::new();
+        for (account, info) in frontiers {
+            builder = builder.account(&account, &info);
+        }
+        builder.build()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Mutex;
 
-    use crate::{lmdb_env::DatabaseStub, DeleteEvent, EnvironmentStub, PutEvent};
+    use crate::{DeleteEvent, EnvironmentStub, PutEvent};
     use rsnano_core::{Amount, BlockHash};
 
     use super::*;
@@ -153,10 +188,14 @@ mod tests {
 
     impl Fixture {
         fn new() -> Self {
-            let env = Arc::new(LmdbEnv::create_null());
-            let store = LmdbAccountStore::new(env.clone()).unwrap();
+            Self::with_stored_accounts(Vec::new())
+        }
 
-            Self { env, store }
+        fn with_stored_accounts(accounts: Vec<(Account, AccountInfo)>) -> Self {
+            let env = LmdbEnv::create_null_with()
+                .configured_database(ConfiguredAccountDatabaseBuilder::create(accounts))
+                .build();
+            Self::with_env(env)
         }
 
         fn with_env(env: LmdbEnv<EnvironmentStub>) -> Self {
@@ -191,7 +230,7 @@ mod tests {
         assert_eq!(
             put_tracker.output(),
             vec![PutEvent {
-                database: Default::default(),
+                database: ACCOUNT_TEST_DATABASE,
                 key: account.as_bytes().to_vec(),
                 value: info.to_bytes().to_vec(),
                 flags: lmdb::WriteFlags::empty()
@@ -203,12 +242,7 @@ mod tests {
     fn load_account() {
         let account = Account::from(1);
         let info = AccountInfo::create_test_instance();
-        let env = LmdbEnv::create_null_with()
-            .database("accounts", DatabaseStub(1))
-            .entry(account.as_bytes(), &info.to_bytes())
-            .build()
-            .build();
-        let fixture = Fixture::with_env(env);
+        let fixture = Fixture::with_stored_accounts(vec![(account.clone(), info.clone())]);
         let txn = fixture.env.tx_begin_read();
 
         let result = fixture.store.get(&txn, &account);
@@ -218,14 +252,10 @@ mod tests {
 
     #[test]
     fn count() {
-        let info = AccountInfo::create_test_instance();
-        let env = LmdbEnv::create_null_with()
-            .database("accounts", DatabaseStub(1))
-            .entry(Account::from(1).as_bytes(), &info.to_bytes())
-            .entry(Account::from(2).as_bytes(), &info.to_bytes())
-            .build()
-            .build();
-        let fixture = Fixture::with_env(env);
+        let fixture = Fixture::with_stored_accounts(vec![
+            (Account::from(1), AccountInfo::create_test_instance()),
+            (Account::from(2), AccountInfo::create_test_instance()),
+        ]);
         let txn = fixture.env.tx_begin_read();
 
         let count = fixture.store.count(&txn);
@@ -245,7 +275,7 @@ mod tests {
         assert_eq!(
             delete_tracker.output(),
             vec![DeleteEvent {
-                database: Default::default(),
+                database: ACCOUNT_TEST_DATABASE,
                 key: account.as_bytes().to_vec()
             }]
         )
@@ -272,14 +302,10 @@ mod tests {
             ..Default::default()
         };
 
-        let env = LmdbEnv::create_null_with()
-            .database("accounts", DatabaseStub(42))
-            .entry(account1.as_bytes(), &info1.to_bytes())
-            .entry(account2.as_bytes(), &info2.to_bytes())
-            .build()
-            .build();
-
-        let fixture = Fixture::with_env(env);
+        let fixture = Fixture::with_stored_accounts(vec![
+            (account1.clone(), info1.clone()),
+            (account2.clone(), info2.clone()),
+        ]);
         let txn = fixture.env.tx_begin_read();
 
         let mut it = fixture.store.begin(&txn);
@@ -303,14 +329,10 @@ mod tests {
             ..Default::default()
         };
 
-        let env = LmdbEnv::create_null_with()
-            .database("accounts", DatabaseStub(42))
-            .entry(account1.as_bytes(), &info1.to_bytes())
-            .entry(account3.as_bytes(), &info3.to_bytes())
-            .build()
-            .build();
-
-        let fixture = Fixture::with_env(env);
+        let fixture = Fixture::with_stored_accounts(vec![
+            (account1.clone(), info1.clone()),
+            (account3.clone(), info3.clone()),
+        ]);
         let txn = fixture.env.tx_begin_read();
 
         let mut it = fixture.store.begin_account(&txn, &Account::from(2));
@@ -333,14 +355,10 @@ mod tests {
             ..Default::default()
         };
 
-        let env = LmdbEnv::create_null_with()
-            .database("accounts", DatabaseStub(42))
-            .entry(account1.as_bytes(), &info1.to_bytes())
-            .entry(account3.as_bytes(), &info3.to_bytes())
-            .build()
-            .build();
-
-        let fixture = Fixture::with_env(env);
+        let fixture = Fixture::with_stored_accounts(vec![
+            (account1.clone(), info1.clone()),
+            (account3.clone(), info3.clone()),
+        ]);
 
         let balance_sum = Mutex::new(Amount::zero());
         fixture.store.for_each_par(&|_, mut begin, end| {

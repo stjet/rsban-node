@@ -10,11 +10,11 @@ use rsnano_core::{
     PendingKey, QualifiedRoot, Root,
 };
 use rsnano_store_lmdb::{
-    ConfiguredBlockDatabaseBuilder, ConfiguredFrontierDatabaseBuilder, Environment,
-    EnvironmentStub, EnvironmentWrapper, LmdbAccountStore, LmdbBlockStore,
-    LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
-    LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
-    LmdbStore, LmdbVersionStore, LmdbWriteTransaction, Transaction,
+    ConfiguredAccountDatabaseBuilder, ConfiguredBlockDatabaseBuilder,
+    ConfiguredFrontierDatabaseBuilder, Environment, EnvironmentStub, EnvironmentWrapper,
+    LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore,
+    LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore,
+    LmdbReadTransaction, LmdbStore, LmdbVersionStore, LmdbWriteTransaction, Transaction,
 };
 
 use std::{
@@ -86,7 +86,11 @@ pub struct Ledger<T: Environment + 'static = EnvironmentWrapper> {
 
 impl Ledger<EnvironmentStub> {
     pub fn create_null() -> Self {
-        Self::new(Arc::new(LmdbStore::create_null()), LedgerConstants::dev()).unwrap()
+        Self::new(
+            Arc::new(LmdbStore::create_null()),
+            LedgerConstants::unit_test(),
+        )
+        .unwrap()
     }
 
     pub fn create_null_with() -> NullLedgerBuilder {
@@ -97,6 +101,7 @@ impl Ledger<EnvironmentStub> {
 pub struct NullLedgerBuilder {
     blocks: ConfiguredBlockDatabaseBuilder,
     frontiers: ConfiguredFrontierDatabaseBuilder,
+    accounts: ConfiguredAccountDatabaseBuilder,
 }
 
 impl NullLedgerBuilder {
@@ -104,6 +109,7 @@ impl NullLedgerBuilder {
         Self {
             blocks: ConfiguredBlockDatabaseBuilder::new(),
             frontiers: ConfiguredFrontierDatabaseBuilder::new(),
+            accounts: ConfiguredAccountDatabaseBuilder::new(),
         }
     }
 
@@ -112,8 +118,20 @@ impl NullLedgerBuilder {
         self
     }
 
+    pub fn blocks<'a>(mut self, blocks: impl IntoIterator<Item = &'a BlockEnum>) -> Self {
+        for b in blocks.into_iter() {
+            self.blocks = self.blocks.block(b);
+        }
+        self
+    }
+
     pub fn frontier(mut self, hash: &BlockHash, account: &Account) -> Self {
         self.frontiers = self.frontiers.frontier(hash, account);
+        self
+    }
+
+    pub fn account_info(mut self, account: &Account, info: &AccountInfo) -> Self {
+        self.accounts = self.accounts.account(account, info);
         self
     }
 
@@ -122,6 +140,7 @@ impl NullLedgerBuilder {
             LmdbEnv::create_null_with()
                 .configured_database(self.blocks.build())
                 .configured_database(self.frontiers.build())
+                .configured_database(self.accounts.build())
                 .build(),
         );
 
@@ -138,7 +157,7 @@ impl NullLedgerBuilder {
             pruned: Arc::new(LmdbPrunedStore::new(env.clone()).unwrap()),
             version: Arc::new(LmdbVersionStore::new(env.clone()).unwrap()),
         };
-        Ledger::new(Arc::new(store), LedgerConstants::dev()).unwrap()
+        Ledger::new(Arc::new(store), LedgerConstants::unit_test()).unwrap()
     }
 }
 

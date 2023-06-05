@@ -303,4 +303,8 @@ impl LedgerConstants {
             Networks::NanoDevNetwork,
         )
     }
+
+    pub fn unit_test() -> Self {
+        Self::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork)
+    }
 }

@@ -18,7 +18,7 @@ pub use lmdb_env::{
 use lmdb_env::{InactiveTransaction, RoCursor, RoTransaction, RwTransaction};
 
 mod account_store;
-pub use account_store::LmdbAccountStore;
+pub use account_store::{ConfiguredAccountDatabaseBuilder, LmdbAccountStore};
 
 mod block_store;
 pub use block_store::{ConfiguredBlockDatabaseBuilder, LmdbBlockStore};
@@ -364,6 +364,7 @@ impl<T: Environment> LmdbWriteTransaction<T> {
         key: &[u8],
         flags: Option<&[u8]>,
     ) -> lmdb::Result<()> {
+        #[cfg(feature = "output_tracking")]
         self.delete_listener.emit(DeleteEvent {
             database,
             key: key.to_vec(),
@@ -372,6 +373,7 @@ impl<T: Environment> LmdbWriteTransaction<T> {
     }
 
     pub fn clear_db(&mut self, database: T::Database) -> lmdb::Result<()> {
+        #[cfg(feature = "output_tracking")]
         self.clear_listener.emit(database);
         self.rw_txn_mut().clear_db(database)
     }

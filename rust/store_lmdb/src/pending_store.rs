@@ -16,6 +16,8 @@ pub struct LmdbPendingStore<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
     database: T::Database,
     #[cfg(feature = "output_tracking")]
+    put_listener: OutputListenerMt<(PendingKey, PendingInfo)>,
+    #[cfg(feature = "output_tracking")]
     delete_listener: OutputListenerMt<PendingKey>,
 }
 
@@ -29,6 +31,8 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
             env,
             database,
             #[cfg(feature = "output_tracking")]
+            put_listener: OutputListenerMt::new(),
+            #[cfg(feature = "output_tracking")]
             delete_listener: OutputListenerMt::new(),
         })
     }
@@ -38,11 +42,18 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
     }
 
     #[cfg(feature = "output_tracking")]
+    pub fn track_puts(&self) -> Arc<OutputTrackerMt<(PendingKey, PendingInfo)>> {
+        self.put_listener.track()
+    }
+
+    #[cfg(feature = "output_tracking")]
     pub fn track_deletions(&self) -> Arc<OutputTrackerMt<PendingKey>> {
         self.delete_listener.track()
     }
 
     pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, key: &PendingKey, pending: &PendingInfo) {
+        #[cfg(feature = "output_tracking")]
+        self.put_listener.emit((key.clone(), pending.clone()));
         let key_bytes = key.to_bytes();
         let pending_bytes = pending.to_bytes();
         txn.put(
@@ -256,6 +267,19 @@ mod tests {
 
         it.next();
         assert!(it.is_end());
+    }
+
+    #[test]
+    fn tracks_puts() {
+        let fixture = Fixture::new();
+        let mut txn = fixture.env.tx_begin_write();
+        let key = PendingKey::create_test_instance();
+        let info = PendingInfo::create_test_instance();
+        let put_tracker = fixture.store.track_puts();
+
+        fixture.store.put(&mut txn, &key, &info);
+
+        assert_eq!(put_tracker.output(), vec![(key, info)]);
     }
 
     #[test]

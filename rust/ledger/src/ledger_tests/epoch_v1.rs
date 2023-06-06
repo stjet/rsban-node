@@ -1,69 +1,10 @@
 use crate::{
     ledger_tests::{setup_legacy_send_block, upgrade_genesis_to_epoch_v1},
-    ProcessResult, DEV_GENESIS_ACCOUNT,
+    ProcessResult,
 };
 use rsnano_core::{Account, BlockDetails, Epoch, PendingKey};
 
 use super::LedgerContext;
-
-#[test]
-fn epoch_block_upgrades_epoch() {
-    let ctx = LedgerContext::empty();
-    let mut txn = ctx.ledger.rw_txn();
-
-    let epoch = upgrade_genesis_to_epoch_v1(&ctx, &mut txn);
-
-    assert_eq!(
-        epoch.sideband().unwrap().details,
-        BlockDetails::new(Epoch::Epoch1, false, false, true)
-    );
-    // source_epoch is not used for epoch blocks
-    assert_eq!(epoch.sideband().unwrap().source_epoch, Epoch::Epoch0);
-    let account_info = ctx.ledger.account_info(&txn, &DEV_GENESIS_ACCOUNT).unwrap();
-
-    assert_eq!(account_info.epoch, Epoch::Epoch1);
-}
-
-#[test]
-fn adding_epoch_twice_fails() {
-    let ctx = LedgerContext::empty();
-    let mut txn = ctx.ledger.rw_txn();
-    upgrade_genesis_to_epoch_v1(&ctx, &mut txn);
-
-    let mut epoch = ctx.genesis_block_factory().epoch_v1(&txn).build();
-    let result = ctx.ledger.process(&mut txn, &mut epoch).unwrap_err();
-
-    assert_eq!(result, ProcessResult::BlockPosition);
-}
-
-#[test]
-fn adding_legacy_change_block_after_epoch1_fails() {
-    let ctx = LedgerContext::empty();
-    let mut txn = ctx.ledger.rw_txn();
-    upgrade_genesis_to_epoch_v1(&ctx, &mut txn);
-
-    let mut change = ctx.genesis_block_factory().legacy_change(&txn).build();
-    let result = ctx.ledger.process(&mut txn, &mut change).unwrap_err();
-
-    assert_eq!(result, ProcessResult::BlockPosition);
-}
-
-#[test]
-fn can_add_state_blocks_after_epoch1() {
-    let ctx = LedgerContext::empty();
-    let mut txn = ctx.ledger.rw_txn();
-    upgrade_genesis_to_epoch_v1(&ctx, &mut txn);
-
-    let mut send = ctx.genesis_block_factory().send(&txn).build();
-    ctx.ledger.process(&mut txn, &mut send).unwrap();
-
-    assert_eq!(
-        send.sideband().unwrap().details,
-        BlockDetails::new(Epoch::Epoch1, true, false, false)
-    );
-    // source_epoch is not used for send blocks
-    assert_eq!(send.sideband().unwrap().source_epoch, Epoch::Epoch0);
-}
 
 #[test]
 fn rollback_epoch() {

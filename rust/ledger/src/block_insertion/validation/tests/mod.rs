@@ -40,6 +40,7 @@ pub(crate) fn create_account_info(block: &BlockEnum) -> AccountInfo {
         balance: block.balance_calculated(),
         head: block.hash(),
         epoch: Epoch::Epoch0,
+        representative: block.representative().unwrap_or(Account::from(2)),
         ..AccountInfo::create_test_instance()
     }
 }

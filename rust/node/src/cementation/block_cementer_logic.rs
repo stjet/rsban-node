@@ -212,8 +212,6 @@ impl Default for BlockCementerLogic {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::BlockChainBuilder;
-
     use super::*;
     use crate::cementation::{CementCallbacks, LedgerDataRequesterStub};
 
@@ -381,10 +379,10 @@ mod tests {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
         let genesis_chain = ledger_adapter
             .add_genesis_block()
-            .legacy_send()
             .legacy_send();
+        let dest_chain = genesis_chain.open_last_destination();
+        let genesis_chain = genesis_chain.legacy_send();
         ledger_adapter.add_uncemented(&genesis_chain);
-        let dest_chain = BlockChainBuilder::from_send_block(&genesis_chain.block(2));
         ledger_adapter.add_uncemented(&dest_chain);
 
         let mut logic = BlockCementerLogic::new(BlockCementerLogicOptions {

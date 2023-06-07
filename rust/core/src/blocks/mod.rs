@@ -234,6 +234,14 @@ impl BlockEnum {
         }
     }
 
+    pub fn balance_opt(&self) -> Option<Amount>{
+        match self{
+            BlockEnum::LegacySend(b) => Some(b.balance()),
+            BlockEnum::State(b) => Some(b.balance()),
+            _ => None
+        }
+    }
+
     pub fn source_or_link(&self) -> BlockHash {
         self.source().unwrap_or_else(|| self.link().into())
     }

@@ -71,20 +71,6 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&DEV_GENESIS_KEY)
     }
 
-    pub(crate) fn epoch_v2(
-        &self,
-        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
-    ) -> StateBlockBuilder {
-        let info = self.info(txn).unwrap();
-        BlockBuilder::state()
-            .account(self.account())
-            .previous(info.head)
-            .representative(info.representative)
-            .balance(info.balance)
-            .link(*LEDGER_CONSTANTS_STUB.epochs.link(Epoch::Epoch2).unwrap())
-            .sign(&DEV_GENESIS_KEY)
-    }
-
     pub(crate) fn legacy_change(
         &self,
         txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,

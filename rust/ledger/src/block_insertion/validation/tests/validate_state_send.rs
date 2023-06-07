@@ -5,7 +5,7 @@ use rsnano_core::{
 
 use crate::block_insertion::{validation::tests::ValidateStateBlockOptions, BlockValidator};
 
-use super::{create_account_info, ValidateOutput};
+use super::{create_test_account_info, ValidateOutput};
 
 #[test]
 fn valid_send_block() {
@@ -84,7 +84,7 @@ fn validate_send_block(mut options: ValidateStateBlockOptions) -> ValidateOutput
         send = setup(send);
     }
     let send_block = send.build();
-    let old_account_info = create_account_info(&previous);
+    let old_account_info = create_test_account_info(&previous);
 
     let mut validator = BlockValidator {
         block: &send_block,

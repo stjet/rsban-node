@@ -8,7 +8,7 @@ use crate::{
     ProcessResult,
 };
 
-use super::{create_account_info, ValidateOutput};
+use super::{create_test_account_info, ValidateOutput};
 
 #[test]
 fn valid_receive_block() {
@@ -109,7 +109,7 @@ fn validate_receive_block(mut options: ValidateStateBlockOptions) -> ValidateOut
     }
     let receive = receive.build();
 
-    let old_account_info = create_account_info(&previous);
+    let old_account_info = create_test_account_info(&previous);
 
     let mut validator = BlockValidator {
         block: &receive,

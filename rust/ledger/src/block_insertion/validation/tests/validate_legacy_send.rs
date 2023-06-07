@@ -5,7 +5,7 @@ use rsnano_core::{
 };
 
 use crate::{
-    block_insertion::{validation::tests::create_account_info, BlockValidator},
+    block_insertion::{validation::tests::create_test_account_info, BlockValidator},
     ProcessResult,
 };
 
@@ -135,7 +135,7 @@ fn fails_if_legacy_send_follows_a_state_block() {
         .balance(Amount::raw(900))
         .sign(keypair.clone())
         .build();
-    let old_account_info = Some(create_account_info(&previous));
+    let old_account_info = Some(create_test_account_info(&previous));
     let validator = BlockValidator {
         block: &legacy_send,
         epochs: &Epochs::new(),
@@ -194,7 +194,7 @@ fn validate_legacy_send_block(mut options: ValidateLegacySendBlockOptions) -> Va
         send = setup(send);
     }
     let send = send.build();
-    let old_account_info = create_account_info(&previous);
+    let old_account_info = create_test_account_info(&previous);
 
     let mut validator = BlockValidator {
         block: &send,

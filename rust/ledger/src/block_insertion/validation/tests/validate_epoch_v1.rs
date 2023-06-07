@@ -2,17 +2,12 @@ use rsnano_core::{Account, AccountInfo, Amount, BlockDetails, BlockHash, Epoch};
 
 use crate::{
     block_insertion::validation::tests::{
-        assert_block_is_valid, create_epoch1_open_block, create_legacy_open_block,
-        create_validator_for_existing_account, epoch_successor, legacy_receive_successor,
-        setup_pending_receive,
+        assert_block_is_valid, create_validator_for_existing_account, setup_pending_receive,
     },
-    ProcessResult,
+    ProcessResult, test_helpers::{create_legacy_open_block, epoch_successor, create_state_block, legacy_change_successor, state_successor, legacy_receive_successor, create_epoch1_open_block},
 };
 
-use super::{
-    assert_validation_fails_with, create_state_block, create_test_validator,
-    legacy_change_successor, state_successor,
-};
+use super::{assert_validation_fails_with, create_test_validator};
 
 #[test]
 fn updgrade_to_epoch_v1() {

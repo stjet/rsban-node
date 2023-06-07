@@ -423,7 +423,7 @@ mod tests {
 
     use super::*;
     use crate::cementation::LedgerDataRequesterStub;
-    use rsnano_core::BlockChainBuilder;
+    use rsnano_core::{BlockChainBuilder, Amount};
 
     #[test]
     fn block_not_found() {
@@ -517,7 +517,7 @@ mod tests {
         let genesis_chain = data_requester
             .add_genesis_block()
             .legacy_send_with(|b| b.destination(dest_chain.account()));
-        let dest_chain = dest_chain.legacy_open_from(genesis_chain.latest_block());
+        let dest_chain = dest_chain.legacy_open_from(genesis_chain.latest_block(), Amount::raw(10));
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_uncemented(&dest_chain);
 
@@ -569,11 +569,11 @@ mod tests {
             .add_genesis_block()
             .legacy_send_with(|b| b.destination(dest_chain.account()))
             .legacy_send_with(|b| b.destination(dest_chain.account()));
-        let dest_chain = dest_chain.legacy_open_from(&genesis_chain.block(2));
+        let dest_chain = dest_chain.legacy_open_from(&genesis_chain.block(2), Amount::raw(10));
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_cemented(&dest_chain);
 
-        let dest_chain = dest_chain.legacy_receive_from(genesis_chain.latest_block());
+        let dest_chain = dest_chain.legacy_receive_from(genesis_chain.latest_block(), Amount::raw(10));
         data_requester.add_uncemented(&dest_chain);
 
         assert_write_steps(
@@ -613,7 +613,7 @@ mod tests {
         let account = chain.account();
         let chain = chain.legacy_send_with(|b| b.destination(account));
         let send_block = chain.latest_block().clone();
-        let chain = chain.legacy_receive_from(&send_block);
+        let chain = chain.legacy_receive_from(&send_block, Amount::raw(10));
         data_requester.add_uncemented(&chain);
 
         assert_write_steps(
@@ -658,11 +658,11 @@ mod tests {
             .legacy_send_with(|b| b.destination(Account::from(1)));
 
         let account1 = account1
-            .legacy_receive_from(account3.latest_block())
+            .legacy_receive_from(account3.latest_block(), Amount::raw(10))
             .legacy_send()
             .legacy_send_with(|b| b.destination(account2.account()));
 
-        let account2 = account2.legacy_receive_from(account1.latest_block());
+        let account2 = account2.legacy_receive_from(account1.latest_block(), Amount::raw(10));
 
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_uncemented(&account1);

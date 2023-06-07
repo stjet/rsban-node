@@ -1,11 +1,11 @@
+use super::ValidateOutput;
+use crate::{
+    block_insertion::BlockValidator, test_helpers::create_test_account_info, ProcessResult,
+};
 use rsnano_core::{
     work::WORK_THRESHOLDS_STUB, Account, BlockBuilder, BlockDetails, BlockHash, BlockSideband,
     Epoch, Epochs, KeyPair, LegacyChangeBlockBuilder,
 };
-
-use crate::{block_insertion::BlockValidator, ProcessResult};
-
-use super::{create_account_info, ValidateOutput};
 
 // Legacy Change
 //------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ fn fails_with_block_position_if_legacy_change_follows_state_block() {
         .representative(Account::from(123))
         .sign(&keypair)
         .build();
-    let old_account_info = Some(create_account_info(&previous));
+    let old_account_info = Some(create_test_account_info(&previous));
     let validator = BlockValidator {
         block: &legacy_change,
         epochs: &Epochs::new(),
@@ -139,7 +139,7 @@ fn validate_legacy_change_block(mut options: ValidateLegacyChangeBlockOptions) -
         change = setup(change);
     }
     let change = change.build();
-    let old_account_info = create_account_info(&previous);
+    let old_account_info = create_test_account_info(&previous);
 
     let mut validator = BlockValidator {
         block: &change,

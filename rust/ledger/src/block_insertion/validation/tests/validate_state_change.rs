@@ -5,7 +5,7 @@ use rsnano_core::{
 
 use crate::block_insertion::BlockValidator;
 
-use super::{create_account_info, ValidateOutput, ValidateStateBlockOptions};
+use super::{create_test_account_info, ValidateOutput, ValidateStateBlockOptions};
 
 #[test]
 fn valid_change_block() {
@@ -64,7 +64,7 @@ fn validate_change_block(mut options: ValidateStateBlockOptions) -> ValidateOutp
         change = setup(change);
     }
     let change = change.build();
-    let old_account_info = create_account_info(&previous);
+    let old_account_info = create_test_account_info(&previous);
 
     let mut validator = BlockValidator {
         block: &change,

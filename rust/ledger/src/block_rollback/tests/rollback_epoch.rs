@@ -6,23 +6,27 @@ use rsnano_core::{
 use crate::{
     block_rollback::rollback_planner::{RollbackPlanner, RollbackStep},
     ledger_constants::LEDGER_CONSTANTS_STUB,
+    test_helpers::{
+        create_state_block, create_test_account_info, epoch_block_sideband, epoch_successor,
+        state_successor,
+    },
     DEV_GENESIS_KEY,
 };
 
 #[test]
 fn rollback_epoch1() {
+    let mut previous_block = BlockBuilder::state().build();
+    previous_block.set_sideband(BlockSideband {
+        details: BlockDetails::new(Epoch::Epoch0, false, false, false),
+        ..BlockSideband::create_test_instance()
+    });
+
     let mut epoch_block = BlockBuilder::state()
         .link(*LEDGER_CONSTANTS_STUB.epochs.link(Epoch::Epoch1).unwrap())
         .sign(&DEV_GENESIS_KEY)
         .build();
     epoch_block.set_sideband(BlockSideband {
         details: BlockDetails::new(Epoch::Epoch1, false, false, true),
-        ..BlockSideband::create_test_instance()
-    });
-
-    let mut previous_block = BlockBuilder::state().build();
-    previous_block.set_sideband(BlockSideband {
-        details: BlockDetails::new(Epoch::Epoch0, false, false, false),
         ..BlockSideband::create_test_instance()
     });
 
@@ -59,37 +63,21 @@ fn rollback_epoch1() {
 
 #[test]
 fn rollback_receive_block_which_performed_epoch1_upgrade_undoes_epoch_upgrade() {
-    let mut previous_block = BlockBuilder::state().balance(Amount::raw(100)).build();
-    previous_block.set_sideband(BlockSideband {
-        details: BlockDetails::new(Epoch::Epoch0, false, false, false),
-        ..BlockSideband::create_test_instance()
-    });
+    let (keypair, previous_block) = create_state_block(Epoch::Epoch0);
 
     let send_hash = BlockHash::from(123);
 
-    let mut receive_block = BlockBuilder::state()
+    let mut receive_block = state_successor(keypair, &previous_block)
         .link(send_hash)
-        .balance(Amount::raw(110))
+        .balance(previous_block.balance() + Amount::raw(10))
         .build();
-    receive_block.set_sideband(BlockSideband {
-        details: BlockDetails::new(Epoch::Epoch1, false, false, true),
-        source_epoch: Epoch::Epoch1,
-        ..BlockSideband::create_test_instance()
-    });
+    receive_block.set_sideband(epoch_block_sideband(Epoch::Epoch1));
 
     let planner = RollbackPlanner {
         epochs: &LEDGER_CONSTANTS_STUB.epochs,
         head_block: &receive_block,
         account: receive_block.account(),
-        current_account_info: AccountInfo {
-            head: receive_block.hash(),
-            representative: receive_block.representative().unwrap(),
-            open_block: BlockHash::from(6),
-            balance: receive_block.balance(),
-            modified: 0,
-            block_count: 2,
-            epoch: Epoch::Epoch1,
-        },
+        current_account_info: create_test_account_info(&receive_block),
         previous_representative: Some(previous_block.representative().unwrap()),
         previous: Some(previous_block),
         linked_account: Account::from(456),
@@ -118,4 +106,34 @@ fn rollback_receive_block_which_performed_epoch1_upgrade_undoes_epoch_upgrade() 
             }
         ))
     );
+}
+
+#[test]
+fn rollback_epoch_v2() {
+    let (_, previous_block) = create_state_block(Epoch::Epoch1);
+
+    let mut epoch2_block = epoch_successor(&previous_block, Epoch::Epoch2).build();
+    epoch2_block.set_sideband(epoch_block_sideband(Epoch::Epoch2));
+
+    let planner = RollbackPlanner {
+        epochs: &LEDGER_CONSTANTS_STUB.epochs,
+        head_block: &epoch2_block,
+        account: epoch2_block.account_calculated(),
+        current_account_info: create_test_account_info(&epoch2_block),
+        previous_representative: None,
+        previous: Some(previous_block),
+        linked_account: Account::zero(),
+        pending_receive: None,
+        latest_block_for_destination: None,
+        confirmation_height: ConfirmationHeightInfo {
+            height: 2,
+            frontier: BlockHash::from(1),
+        },
+    };
+
+    let result = planner
+        .roll_back_head_block()
+        .expect("rollback should succeed");
+    let RollbackStep::RollBackBlock(instructions) = result else { panic!("expected RollBackBlock") };
+    assert_eq!(instructions.set_account_info.epoch, Epoch::Epoch1);
 }

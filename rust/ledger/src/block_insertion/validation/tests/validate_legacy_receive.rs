@@ -3,12 +3,10 @@ use rsnano_core::{
     BlockSideband, Epoch, Epochs, KeyPair, LegacyReceiveBlockBuilder, PendingInfo, PendingKey,
 };
 
-use crate::{
-    block_insertion::{validation::tests::create_account_info, BlockValidator},
-    ProcessResult,
-};
-
 use super::ValidateOutput;
+use crate::{
+    block_insertion::BlockValidator, test_helpers::create_test_account_info, ProcessResult,
+};
 
 #[test]
 fn valid_legacy_receive_block() {
@@ -122,7 +120,7 @@ fn fails_if_legacy_receive_follows_state_block() {
         .source(BlockHash::from(42))
         .sign(&keypair)
         .build();
-    let old_account_info = Some(create_account_info(&previous));
+    let old_account_info = Some(create_test_account_info(&previous));
     let validator = BlockValidator {
         block: &legacy_receive,
         epochs: &Epochs::new(),
@@ -184,7 +182,7 @@ fn validate_legacy_receive_block(mut options: ValidateLegacyReceiveBlockOptions)
         receive = setup(receive);
     }
     let receive = receive.build();
-    let old_account_info = create_account_info(&previous);
+    let old_account_info = create_test_account_info(&previous);
 
     let mut validator = BlockValidator {
         block: &receive,

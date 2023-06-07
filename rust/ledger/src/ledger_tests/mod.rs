@@ -12,7 +12,6 @@ use rsnano_core::{
 };
 
 mod empty_ledger;
-mod epoch_v1;
 mod epoch_v2;
 mod pruning;
 mod rollback_legacy_change;

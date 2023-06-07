@@ -1,1 +1,1 @@
-mod rollback_epoch_v1;
+mod rollback_epoch;

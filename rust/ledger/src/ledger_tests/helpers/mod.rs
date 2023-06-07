@@ -105,7 +105,6 @@ pub(crate) fn setup_legacy_receive_block<'a>(
 pub(crate) struct SendBlockResult<'a> {
     pub destination: AccountBlockFactory<'a>,
     pub send_block: BlockEnum,
-    pub amount_sent: Amount,
 }
 pub(crate) fn setup_send_block<'a>(
     ctx: &'a LedgerContext,
@@ -125,26 +124,23 @@ pub(crate) fn setup_send_block<'a>(
     SendBlockResult {
         destination,
         send_block,
-        amount_sent,
     }
 }
 
-pub(crate) struct OpenBlockResult<'a> {
-    pub destination: AccountBlockFactory<'a>,
+pub(crate) struct OpenBlockResult {
     pub send_block: BlockEnum,
     pub open_block: BlockEnum,
 }
-pub(crate) fn setup_open_block<'a>(
-    ctx: &'a LedgerContext,
+pub(crate) fn setup_open_block(
+    ctx: &LedgerContext,
     txn: &mut LmdbWriteTransaction,
-) -> OpenBlockResult<'a> {
+) -> OpenBlockResult {
     let send = setup_send_block(ctx, txn);
 
     let mut open_block = send.destination.open(txn, send.send_block.hash()).build();
     ctx.ledger.process(txn, &mut open_block).unwrap();
 
     OpenBlockResult {
-        destination: send.destination,
         send_block: send.send_block,
         open_block,
     }

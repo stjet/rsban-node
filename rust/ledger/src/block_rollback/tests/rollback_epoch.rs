@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[test]
-fn rollback_epoch() {
+fn rollback_epoch1() {
     let mut epoch_block = BlockBuilder::state()
         .link(*LEDGER_CONSTANTS_STUB.epochs.link(Epoch::Epoch1).unwrap())
         .sign(&DEV_GENESIS_KEY)
@@ -58,7 +58,7 @@ fn rollback_epoch() {
 }
 
 #[test]
-fn rollback_receive_block_which_performed_epoch_upgrade_undoes_epoch_upgrade() {
+fn rollback_receive_block_which_performed_epoch1_upgrade_undoes_epoch_upgrade() {
     let mut previous_block = BlockBuilder::state().balance(Amount::raw(100)).build();
     previous_block.set_sideband(BlockSideband {
         details: BlockDetails::new(Epoch::Epoch0, false, false, false),

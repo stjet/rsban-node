@@ -8,8 +8,8 @@ use crate::{
 };
 pub(crate) use helpers::*;
 use rsnano_core::{
-    Account, Amount, BlockBuilder, BlockHash, KeyPair, QualifiedRoot, Root, DEV_GENESIS_KEY,
-    GXRB_RATIO,
+    Account, Amount, BlockBuilder, BlockHash, KeyPair, QualifiedRoot, Root, TestAccountChain,
+    DEV_GENESIS_KEY, GXRB_RATIO,
 };
 
 mod empty_ledger;
@@ -22,55 +22,60 @@ mod rollback_state;
 
 #[test]
 fn ledger_successor() {
-    let ctx = LedgerContext::empty();
-    let mut txn = ctx.ledger.rw_txn();
-
-    let send = setup_legacy_send_block(&ctx, &mut txn);
+    let mut chain = TestAccountChain::new_opened_chain();
+    let send = chain.add_legacy_send().clone();
+    let ledger = Ledger::create_null_with()
+        .blocks(chain.blocks())
+        .account_info(&chain.account(), &chain.account_info())
+        .build();
+    let txn = ledger.read_txn();
 
     assert_eq!(
-        ctx.ledger
-            .successor(&txn, &QualifiedRoot::new(Root::zero(), *DEV_GENESIS_HASH)),
-        Some(send.send_block)
+        ledger.successor(&txn, &QualifiedRoot::new(Root::zero(), chain.open())),
+        Some(send)
     );
 }
 
 #[test]
 fn ledger_successor_genesis() {
-    let ctx = LedgerContext::empty();
-    let mut txn = ctx.ledger.rw_txn();
-
-    setup_legacy_send_block(&ctx, &mut txn);
-    let genesis = DEV_GENESIS.read().unwrap().clone();
+    let mut genesis = TestAccountChain::genesis();
+    genesis.add_legacy_send();
+    let ledger = Ledger::create_null_with()
+        .blocks(genesis.blocks())
+        .account_info(&genesis.account(), &genesis.account_info())
+        .build();
+    let txn = ledger.read_txn();
 
     assert_eq!(
-        ctx.ledger.successor(
+        ledger.successor(
             &txn,
-            &QualifiedRoot::new(DEV_GENESIS_ACCOUNT.deref().into(), BlockHash::zero())
+            &QualifiedRoot::new(genesis.account().into(), BlockHash::zero())
         ),
-        Some(genesis)
+        Some(genesis.block(1).clone())
     );
 }
 
 #[test]
 fn latest_root_empty() {
-    let ctx = LedgerContext::empty();
-    let txn = ctx.ledger.read_txn();
-    assert_eq!(
-        ctx.ledger.latest_root(&txn, &Account::from(1)),
-        Root::from(1)
-    );
+    let ledger = Ledger::create_null();
+    let txn = ledger.read_txn();
+    assert_eq!(ledger.latest_root(&txn, &Account::from(1)), Root::from(1));
 }
 
 #[test]
 fn latest_root() {
-    let ctx = LedgerContext::empty();
-    let mut txn = ctx.ledger.rw_txn();
+    let mut genesis = TestAccountChain::genesis();
+    genesis.add_legacy_send();
 
-    let send = setup_legacy_send_block(&ctx, &mut txn);
+    let ledger = Ledger::create_null_with()
+        .blocks(genesis.blocks())
+        .account_info(&genesis.account(), &genesis.account_info())
+        .build();
+    let txn = ledger.rw_txn();
 
     assert_eq!(
-        ctx.ledger.latest_root(&txn, &DEV_GENESIS_ACCOUNT),
-        send.send_block.hash().into()
+        ledger.latest_root(&txn, &DEV_GENESIS_ACCOUNT),
+        genesis.frontier().into()
     );
 }
 

@@ -1,7 +1,8 @@
 use crate::{
     epoch_v1_link, epoch_v2_link, Account, AccountInfo, Amount, BlockBuilder, BlockChainSection,
     BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair, LegacyChangeBlockBuilder,
-    LegacyOpenBlockBuilder, LegacyReceiveBlockBuilder, StateBlockBuilder, DEV_GENESIS_KEY,
+    LegacyOpenBlockBuilder, LegacyReceiveBlockBuilder, LegacySendBlockBuilder, StateBlockBuilder,
+    DEV_GENESIS_KEY,
 };
 
 pub struct TestAccountChain {
@@ -166,13 +167,10 @@ impl TestAccountChain {
     }
 
     pub fn add_legacy_send_to(&mut self, destination: Account, amount: Amount) -> &BlockEnum {
-        let new_balance = self.balance - amount;
-        let block = BlockBuilder::legacy_send()
-            .account(self.account)
-            .previous(self.frontier())
+        let block = self
+            .new_legacy_send_block()
+            .amount(amount)
             .destination(destination)
-            .balance(new_balance)
-            .sign(self.keypair.clone())
             .build();
         self.add_block(block, Epoch::Epoch0)
     }
@@ -230,6 +228,16 @@ impl TestAccountChain {
             .link(555)
             .previous(0)
             .sign(&self.keypair)
+    }
+
+    pub fn new_legacy_send_block(&self) -> LegacySendBlockBuilder {
+        BlockBuilder::legacy_send()
+            .account(self.account)
+            .previous(self.frontier())
+            .destination(Account::from(42))
+            .previous_balance(self.balance)
+            .amount(1)
+            .sign(self.keypair.clone())
     }
 
     pub fn new_receive_block(&self) -> StateBlockBuilder {

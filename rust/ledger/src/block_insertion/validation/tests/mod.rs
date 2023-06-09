@@ -44,9 +44,11 @@ impl<'a> Default for ValidateStateBlockOptions<'a> {
 
 pub(crate) struct BlockValidationTest {
     pub seconds_since_epoch: u64,
-    chain: TestAccountChain,
+    pub chain: TestAccountChain,
     block: Option<BlockEnum>,
     pending_receive: Option<PendingInfo>,
+    block_already_exists: bool,
+    source_block_does_not_exist: bool,
 }
 impl BlockValidationTest {
     pub fn for_epoch0_account() -> Self {
@@ -78,6 +80,8 @@ impl BlockValidationTest {
             block: None,
             pending_receive: None,
             seconds_since_epoch: 123456,
+            block_already_exists: false,
+            source_block_does_not_exist: false,
         }
     }
 
@@ -91,6 +95,16 @@ impl BlockValidationTest {
         create_block: impl FnOnce(&TestAccountChain) -> BlockEnum,
     ) -> Self {
         self.block = Some(create_block(&self.chain));
+        self
+    }
+
+    pub fn source_block_does_not_exist(mut self) -> Self {
+        self.source_block_does_not_exist = true;
+        self
+    }
+
+    pub fn block_already_exists(mut self) -> Self {
+        self.block_already_exists = true;
         self
     }
 
@@ -128,6 +142,8 @@ impl BlockValidationTest {
             validator.source_block_exists = true;
             validator.pending_receive_info = self.pending_receive.clone();
         }
+        validator.block_exists = self.block_already_exists;
+        validator.source_block_exists = !self.source_block_does_not_exist;
         validator.validate()
     }
 }

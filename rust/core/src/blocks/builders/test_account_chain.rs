@@ -90,6 +90,14 @@ impl TestAccountChain {
         self.blocks.last().unwrap()
     }
 
+    pub fn add_legacy_change(&mut self, representative: impl Into<Account>) -> &BlockEnum {
+        let block = self
+            .new_legacy_change_block()
+            .representative(representative.into())
+            .build();
+        self.add_block(block, Epoch::Epoch0)
+    }
+
     pub fn add_legacy_open_from_account(&mut self, sender_chain: &TestAccountChain) -> &BlockEnum {
         self.add_legacy_open_from_account_block(sender_chain, sender_chain.height())
     }

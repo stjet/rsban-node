@@ -48,7 +48,8 @@ pub(crate) struct BlockValidationTest {
     block: Option<BlockEnum>,
     pending_receive: Option<PendingInfo>,
     block_already_exists: bool,
-    source_block_does_not_exist: bool,
+    source_block_missing: bool,
+    previous_block_missing: bool,
 }
 impl BlockValidationTest {
     pub fn for_epoch0_account() -> Self {
@@ -81,7 +82,8 @@ impl BlockValidationTest {
             pending_receive: None,
             seconds_since_epoch: 123456,
             block_already_exists: false,
-            source_block_does_not_exist: false,
+            source_block_missing: false,
+            previous_block_missing: false,
         }
     }
 
@@ -98,8 +100,13 @@ impl BlockValidationTest {
         self
     }
 
-    pub fn source_block_does_not_exist(mut self) -> Self {
-        self.source_block_does_not_exist = true;
+    pub fn previous_block_is_missing(mut self) -> Self {
+        self.previous_block_missing = true;
+        self
+    }
+
+    pub fn source_block_does_is_missing(mut self) -> Self {
+        self.source_block_missing = true;
         self
     }
 
@@ -134,7 +141,9 @@ impl BlockValidationTest {
         let mut validator = create_test_validator(block, self.chain.account());
         if self.chain.height() > 0 {
             validator.old_account_info = Some(self.chain.account_info());
-            validator.previous_block = Some(self.chain.latest_block().clone());
+            if !self.previous_block_missing {
+                validator.previous_block = Some(self.chain.latest_block().clone());
+            }
         };
         validator.seconds_since_epoch = self.seconds_since_epoch;
         if self.pending_receive.is_some() {
@@ -143,7 +152,7 @@ impl BlockValidationTest {
             validator.pending_receive_info = self.pending_receive.clone();
         }
         validator.block_exists = self.block_already_exists;
-        validator.source_block_exists = !self.source_block_does_not_exist;
+        validator.source_block_exists = !self.source_block_missing;
         validator.validate()
     }
 }

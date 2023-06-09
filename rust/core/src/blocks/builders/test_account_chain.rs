@@ -71,7 +71,7 @@ impl TestAccountChain {
     }
 
     pub fn frontier(&self) -> BlockHash {
-        self.blocks.last().unwrap().hash()
+        self.blocks.last().map(|b| b.hash()).unwrap_or_default()
     }
 
     pub fn account(&self) -> Account {

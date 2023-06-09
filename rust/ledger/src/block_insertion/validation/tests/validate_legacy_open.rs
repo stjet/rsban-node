@@ -66,7 +66,7 @@ fn fail_if_duplicate() {
 fn fail_with_gap_source_if_source_not_found() {
     BlockValidationTest::for_unopened_account()
         .block_to_validate(|chain| chain.new_legacy_open_block().build())
-        .source_block_does_not_exist()
+        .source_block_does_is_missing()
         .assert_validation_fails_with(ProcessResult::GapSource);
 }
 

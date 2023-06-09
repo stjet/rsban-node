@@ -3,11 +3,11 @@ use std::sync::{Arc, RwLock};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 use rsnano_core::{
-    deserialize_block_json,
+    deserialize_block_json, epoch_v1_link, epoch_v2_link,
     utils::{get_env_or_default_string, seconds_since_epoch, SerdePropertyTree},
     work::{WorkThresholds, WORK_THRESHOLDS_STUB},
     Account, Amount, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, Epochs, KeyPair,
-    Networks, DEV_GENESIS_KEY, DEV_PUBLIC_KEY_DATA, epoch_v1_link, epoch_v2_link,
+    Networks, DEV_GENESIS_KEY, DEV_PUBLIC_KEY_DATA,
 };
 
 static BETA_PUBLIC_KEY_DATA: &str =

@@ -1,6 +1,6 @@
-use rsnano_core::{AccountInfo, Amount, BlockDetails, Epoch};
-use crate::ProcessResult;
 use super::BlockValidationTest;
+use crate::ProcessResult;
+use rsnano_core::{AccountInfo, Amount, BlockDetails, Epoch};
 
 #[test]
 fn updgrade_to_epoch_v1() {

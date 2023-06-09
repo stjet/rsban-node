@@ -1,6 +1,7 @@
 use rsnano_core::{
     Account, AccountInfo, BlockBuilder, BlockDetails, BlockEnum, BlockSideband, Epoch, KeyPair,
-    LegacyReceiveBlockBuilder, StateBlockBuilder, DEV_GENESIS_KEY, };
+    StateBlockBuilder, DEV_GENESIS_KEY,
+};
 
 use crate::ledger_constants::LEDGER_CONSTANTS_STUB;
 
@@ -34,19 +35,6 @@ pub(crate) fn create_state_block(epoch: Epoch) -> (KeyPair, BlockEnum) {
     (keypair, state)
 }
 
-pub(crate) fn create_legacy_open_block() -> (KeyPair, BlockEnum) {
-    let keypair = KeyPair::new();
-    let mut open = BlockBuilder::legacy_open()
-        .account(keypair.public_key())
-        .sign(&keypair)
-        .build();
-    open.set_sideband(BlockSideband {
-        details: BlockDetails::new(Epoch::Epoch0, false, true, false),
-        ..BlockSideband::create_test_instance()
-    });
-    (keypair, open)
-}
-
 pub(crate) fn epoch_successor(previous: &BlockEnum, epoch: Epoch) -> StateBlockBuilder {
     BlockBuilder::state()
         .account(previous.account_calculated())
@@ -62,15 +50,6 @@ pub(crate) fn state_successor(keypair: KeyPair, previous: &BlockEnum) -> StateBl
         .account(keypair.public_key())
         .previous(previous.hash())
         .link(0)
-        .sign(&keypair)
-}
-
-pub(crate) fn legacy_receive_successor(
-    keypair: KeyPair,
-    previous: &BlockEnum,
-) -> LegacyReceiveBlockBuilder {
-    BlockBuilder::legacy_receive()
-        .previous(previous.hash())
         .sign(&keypair)
 }
 

@@ -1,7 +1,7 @@
 use crate::{
-    epoch_v1_link, Account, AccountInfo, Amount, BlockBuilder, BlockChainSection, BlockDetails,
-    BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair, LegacyChangeBlockBuilder,
-    LegacyOpenBlockBuilder, LegacyReceiveBlockBuilder, StateBlockBuilder, DEV_GENESIS_KEY, 
+    epoch_v1_link, epoch_v2_link, Account, AccountInfo, Amount, BlockBuilder, BlockChainSection,
+    BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair, LegacyChangeBlockBuilder,
+    LegacyOpenBlockBuilder, LegacyReceiveBlockBuilder, StateBlockBuilder, DEV_GENESIS_KEY,
 };
 
 pub struct TestAccountChain {
@@ -38,7 +38,7 @@ impl TestAccountChain {
         result
     }
 
-    pub fn add_random_open_block(&mut self){
+    pub fn add_random_open_block(&mut self) {
         assert_eq!(self.height(), 0);
         self.balance = Amount::nano(1);
         self.add_block(
@@ -113,7 +113,10 @@ impl TestAccountChain {
         self.add_block(open_block, send_block.epoch())
     }
 
-    pub fn add_legacy_receive_from_account(&mut self, sender_chain: &TestAccountChain) -> &BlockEnum {
+    pub fn add_legacy_receive_from_account(
+        &mut self,
+        sender_chain: &TestAccountChain,
+    ) -> &BlockEnum {
         self.add_legacy_receive_from_account_block(sender_chain, sender_chain.height())
     }
 
@@ -166,7 +169,7 @@ impl TestAccountChain {
         self.add_block(block, Epoch::Epoch0)
     }
 
-    pub fn add_state(&mut self) -> &BlockEnum{
+    pub fn add_state(&mut self) -> &BlockEnum {
         let state = self.new_state_block().build();
         self.add_block(state, Epoch::Epoch0)
     }
@@ -176,9 +179,20 @@ impl TestAccountChain {
         self.add_block(epoch_block, Epoch::Epoch0)
     }
 
+    pub fn add_epoch_v2(&mut self) -> &BlockEnum {
+        let epoch_block = self.new_epoch2_block().build();
+        self.add_block(epoch_block, Epoch::Epoch0)
+    }
+
     pub fn new_epoch1_block(&self) -> StateBlockBuilder {
         self.new_state_block()
             .link(epoch_v1_link())
+            .sign(&DEV_GENESIS_KEY)
+    }
+
+    pub fn new_epoch2_block(&self) -> StateBlockBuilder {
+        self.new_state_block()
+            .link(epoch_v2_link())
             .sign(&DEV_GENESIS_KEY)
     }
 
@@ -200,6 +214,16 @@ impl TestAccountChain {
             .sign(&self.keypair)
     }
 
+    pub fn new_open_block(&self) -> StateBlockBuilder {
+        BlockBuilder::state()
+            .account(self.account)
+            .balance(42)
+            .representative(1234)
+            .link(555)
+            .previous(0)
+            .sign(&self.keypair)
+    }
+
     pub fn new_receive_block(&self) -> StateBlockBuilder {
         self.new_state_block()
             .previous_balance(self.balance)
@@ -207,7 +231,7 @@ impl TestAccountChain {
             .link(123)
     }
 
-    pub fn new_epoch1_open_block(&self) -> StateBlockBuilder{
+    pub fn new_epoch1_open_block(&self) -> StateBlockBuilder {
         BlockBuilder::state()
             .account(self.account)
             .balance(0)
@@ -286,6 +310,8 @@ impl TestAccountChain {
 
         if block.link() == epoch_v1_link() {
             self.epoch = Epoch::Epoch1;
+        } else if block.link() == epoch_v2_link() {
+            self.epoch = Epoch::Epoch2;
         }
 
         block.set_sideband(BlockSideband {

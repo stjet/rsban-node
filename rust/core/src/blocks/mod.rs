@@ -276,8 +276,8 @@ impl BlockEnum {
             None
         }
     }
-    
-    pub fn epoch(&self) -> Epoch{
+
+    pub fn epoch(&self) -> Epoch {
         self.sideband().unwrap().details.epoch
     }
 

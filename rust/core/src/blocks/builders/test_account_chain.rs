@@ -326,7 +326,7 @@ impl TestAccountChain {
         }
     }
 
-    fn add_block(&mut self, mut block: BlockEnum, source_epoch: Epoch) -> &BlockEnum {
+    pub fn add_block(&mut self, mut block: BlockEnum, source_epoch: Epoch) -> &BlockEnum {
         if let Some(new_balance) = block.balance_opt() {
             self.balance = new_balance;
         }

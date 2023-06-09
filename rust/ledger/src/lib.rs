@@ -13,8 +13,6 @@ mod ledger_cache;
 mod ledger_constants;
 mod rep_weights;
 mod representative_block_finder;
-#[cfg(test)]
-pub(crate) mod test_helpers;
 mod write_database_queue;
 
 #[cfg(test)]

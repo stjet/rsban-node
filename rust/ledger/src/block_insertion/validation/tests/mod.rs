@@ -11,36 +11,13 @@ mod validate_state_send;
 
 use crate::{
     block_insertion::BlockInsertInstructions, ledger_constants::LEDGER_CONSTANTS_STUB,
-    test_helpers::create_test_account_info, ProcessResult,
+    ProcessResult,
 };
 use rsnano_core::{
-    work::WORK_THRESHOLDS_STUB, Account, AccountInfo, Amount, BlockEnum, Epoch, PendingInfo,
-    StateBlockBuilder, TestAccountChain,
+    work::WORK_THRESHOLDS_STUB, Account, Amount, BlockEnum, Epoch, PendingInfo, TestAccountChain,
 };
 
 use super::BlockValidator;
-
-pub(crate) struct ValidateOutput {
-    pub block: BlockEnum,
-    pub result: Result<BlockInsertInstructions, ProcessResult>,
-    pub old_account_info: AccountInfo,
-    pub seconds_since_epoch: u64,
-    pub account: Account,
-}
-
-pub(crate) struct ValidateStateBlockOptions<'a> {
-    pub setup_block: Option<&'a dyn Fn(StateBlockBuilder) -> StateBlockBuilder>,
-    pub setup_validator: Option<&'a mut dyn FnMut(&mut BlockValidator)>,
-}
-
-impl<'a> Default for ValidateStateBlockOptions<'a> {
-    fn default() -> Self {
-        Self {
-            setup_block: None,
-            setup_validator: None,
-        }
-    }
-}
 
 pub(crate) struct BlockValidationTest {
     pub seconds_since_epoch: u64,
@@ -105,7 +82,7 @@ impl BlockValidationTest {
         self
     }
 
-    pub fn source_block_does_is_missing(mut self) -> Self {
+    pub fn source_block_is_missing(mut self) -> Self {
         self.source_block_missing = true;
         self
     }

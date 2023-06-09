@@ -117,7 +117,7 @@ impl<'a> AccountBlockFactory<'a> {
             .previous(info.head)
             .previous_balance(info.balance)
             .representative(info.representative)
-            .amount(Amount::raw(50))
+            .amount_sent(Amount::raw(50))
             .link(Account::from(1))
             .sign(&self.key)
     }

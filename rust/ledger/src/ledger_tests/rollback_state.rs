@@ -47,7 +47,7 @@ fn rollback_receive() {
     let amount_sent = Amount::raw(50);
     let mut send = genesis
         .send(&txn)
-        .amount(amount_sent)
+        .amount_sent(amount_sent)
         .link(genesis.account())
         .build();
     ctx.ledger.process(&mut txn, &mut send).unwrap();
@@ -156,7 +156,7 @@ fn rollback_open() {
     let mut send = genesis
         .send(&txn)
         .link(destination.account())
-        .amount(amount_sent)
+        .amount_sent(amount_sent)
         .build();
     ctx.ledger.process(&mut txn, &mut send).unwrap();
 

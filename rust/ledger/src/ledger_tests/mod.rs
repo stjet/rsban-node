@@ -497,7 +497,7 @@ mod dependents_confirmed {
         let mut send1 = ctx
             .genesis_block_factory()
             .send(&txn)
-            .amount(Amount::raw(1))
+            .amount_sent(Amount::raw(1))
             .link(destination.account())
             .build();
         ctx.ledger.process(&mut txn, &mut send1).unwrap();
@@ -588,7 +588,7 @@ mod could_fit {
 
         let send = genesis
             .send(&txn)
-            .amount(Amount::raw(1))
+            .amount_sent(Amount::raw(1))
             .link(destination.account())
             .build();
 
@@ -688,7 +688,7 @@ mod could_fit {
 
         let mut send = genesis
             .send(&txn)
-            .amount(Amount::raw(1))
+            .amount_sent(Amount::raw(1))
             .link(destination.account())
             .build();
         ctx.ledger.process(&mut txn, &mut send).unwrap();
@@ -717,7 +717,7 @@ mod could_fit {
 
         let mut send = genesis
             .send(&txn)
-            .amount(Amount::raw(1))
+            .amount_sent(Amount::raw(1))
             .link(destination.account())
             .build();
         ctx.ledger.process(&mut txn, &mut send).unwrap();

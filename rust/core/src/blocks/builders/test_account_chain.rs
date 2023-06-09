@@ -240,6 +240,13 @@ impl TestAccountChain {
             .sign(self.keypair.clone())
     }
 
+    pub fn new_send_block(&self) -> StateBlockBuilder {
+        self.new_state_block()
+            .previous_balance(self.balance)
+            .amount_sent(Amount::raw(1))
+            .link(123)
+    }
+
     pub fn new_receive_block(&self) -> StateBlockBuilder {
         self.new_state_block()
             .previous_balance(self.balance)

@@ -117,7 +117,7 @@ pub(crate) fn setup_send_block<'a>(
     let mut send_block = genesis
         .send(txn)
         .link(destination.account())
-        .amount(amount_sent)
+        .amount_sent(amount_sent)
         .build();
     ctx.ledger.process(txn, &mut send_block).unwrap();
 

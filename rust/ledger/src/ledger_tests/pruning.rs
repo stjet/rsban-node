@@ -17,14 +17,14 @@ fn pruning_action() {
 
     let mut send1 = genesis
         .send(&txn)
-        .amount(100)
+        .amount_sent(100)
         .link(genesis.account())
         .build();
     ctx.ledger.process(&mut txn, &mut send1).unwrap();
 
     let mut send2 = genesis
         .send(&txn)
-        .amount(100)
+        .amount_sent(100)
         .link(genesis.account())
         .build();
     ctx.ledger.process(&mut txn, &mut send2).unwrap();
@@ -149,14 +149,14 @@ fn pruning_source_rollback() {
 
     let mut send1 = genesis
         .send(&txn)
-        .amount(100)
+        .amount_sent(100)
         .link(genesis.account())
         .build();
     ctx.ledger.process(&mut txn, &mut send1).unwrap();
 
     let mut send2 = genesis
         .send(&txn)
-        .amount(100)
+        .amount_sent(100)
         .link(genesis.account())
         .build();
     ctx.ledger.process(&mut txn, &mut send2).unwrap();

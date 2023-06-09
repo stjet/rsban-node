@@ -47,7 +47,7 @@ fn cannot_use_legacy_open_block_with_epoch_v2_send() {
 fn receive_after_epoch_v2_upgrade() {
     BlockValidationTest::for_epoch2_account()
         .with_pending_receive(Amount::raw(10), Epoch::Epoch2)
-        .block_to_validate(|chain| chain.new_receive_block().amount(10).build())
+        .block_to_validate(|chain| chain.new_receive_block().amount_sent(10).build())
         .assert_is_valid();
 }
 
@@ -55,7 +55,7 @@ fn receive_after_epoch_v2_upgrade() {
 fn receiving_from_epoch_2_block_upgrades_receiver_to_epoch2() {
     let instructions = BlockValidationTest::for_epoch0_account()
         .with_pending_receive(Amount::raw(10), Epoch::Epoch2)
-        .block_to_validate(|chain| chain.new_receive_block().amount(10).build())
+        .block_to_validate(|chain| chain.new_receive_block().amount_sent(10).build())
         .assert_is_valid();
     assert_eq!(instructions.set_account_info.epoch, Epoch::Epoch2);
     assert_eq!(instructions.set_sideband.details.epoch, Epoch::Epoch2);

@@ -42,7 +42,7 @@ fn fails_with_unreceivable_if_legacy_send_already_received() {
 fn fails_with_gap_source_if_legacy_source_not_found() {
     BlockValidationTest::for_epoch0_account()
         .block_to_validate(|chain| chain.new_legacy_receive_block().build())
-        .source_block_does_is_missing()
+        .source_block_is_missing()
         .assert_validation_fails_with(ProcessResult::GapSource);
 }
 

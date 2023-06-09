@@ -72,7 +72,7 @@ fn cannot_use_legacy_receive_block_after_sender_upgraded_to_epoch1() {
 fn can_add_state_receive_block_after_epoch1() {
     let instructions = BlockValidationTest::for_epoch1_account()
         .with_pending_receive(Amount::raw(10), Epoch::Epoch1)
-        .block_to_validate(|chain| chain.new_receive_block().amount(10).build())
+        .block_to_validate(|chain| chain.new_receive_block().amount_sent(10).build())
         .assert_is_valid();
 
     assert_eq!(instructions.set_sideband.details.epoch, Epoch::Epoch1);
@@ -105,7 +105,7 @@ fn can_open_account_with_epoch1_block() {
 fn receiving_from_epoch1_sender_upgrades_receiver_to_epoch1() {
     let instructions = BlockValidationTest::for_epoch0_account()
         .with_pending_receive(Amount::raw(10), Epoch::Epoch1)
-        .block_to_validate(|chain| chain.new_receive_block().amount(10).build())
+        .block_to_validate(|chain| chain.new_receive_block().amount_sent(10).build())
         .assert_is_valid();
     assert_eq!(instructions.set_account_info.epoch, Epoch::Epoch1);
     assert_eq!(instructions.set_sideband.details.epoch, Epoch::Epoch1);

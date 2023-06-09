@@ -1,7 +1,7 @@
 #[cfg(test)]
-use rsnano_core::BlockChainBuilder;
-#[cfg(test)]
 use rsnano_core::Epoch;
+#[cfg(test)]
+use rsnano_core::TestAccountChain;
 use rsnano_store_lmdb::RoCursorWrapper;
 use rsnano_store_lmdb::Transaction;
 use std::cell::Cell;
@@ -134,13 +134,13 @@ impl LedgerDataRequesterStub {
         self.account_infos.insert(account, info);
     }
 
-    pub fn add_genesis_block(&mut self) -> BlockChainBuilder {
-        let mut genesis_chain = BlockChainBuilder::genesis();
+    pub fn add_genesis_block(&mut self) -> TestAccountChain {
+        let mut genesis_chain = TestAccountChain::genesis();
         self.add_cemented(&mut genesis_chain);
         genesis_chain
     }
 
-    pub fn add_cemented(&mut self, chain: &BlockChainBuilder) {
+    pub fn add_cemented(&mut self, chain: &TestAccountChain) {
         self.set_confirmation_height(
             chain.account(),
             ConfirmationHeightInfo {
@@ -151,7 +151,7 @@ impl LedgerDataRequesterStub {
         self.add_uncemented(chain);
     }
 
-    pub fn add_uncemented(&mut self, chain: &BlockChainBuilder) {
+    pub fn add_uncemented(&mut self, chain: &TestAccountChain) {
         for block in chain.blocks() {
             self.add_block(block.clone());
         }

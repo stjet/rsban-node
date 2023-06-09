@@ -212,7 +212,7 @@ impl Default for BlockCementerLogic {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::{Amount, BlockChainBuilder};
+    use rsnano_core::{Amount, TestAccountChain};
 
     use super::*;
     use crate::cementation::{CementCallbacks, LedgerDataRequesterStub};
@@ -381,7 +381,7 @@ mod tests {
     #[test]
     fn flush_if_batch_is_full() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
-        let mut dest_chain = BlockChainBuilder::new();
+        let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = ledger_adapter.add_genesis_block();
         genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
         dest_chain.legacy_open_from_account(&genesis_chain);

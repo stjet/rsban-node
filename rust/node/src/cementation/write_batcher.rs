@@ -314,7 +314,7 @@ impl WriteBatcher {
 mod tests {
     use super::*;
     use crate::cementation::LedgerDataRequesterStub;
-    use rsnano_core::{Amount, BlockChainBuilder};
+    use rsnano_core::{Amount, TestAccountChain};
 
     #[test]
     fn empty_queue() {
@@ -327,7 +327,7 @@ mod tests {
     #[test]
     fn one_open_block() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let mut dest_chain = BlockChainBuilder::new();
+        let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
         genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
         data_requester.add_cemented(&genesis_chain);
@@ -347,7 +347,7 @@ mod tests {
     #[test]
     fn open_block_and_successor_block() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let mut dest_chain = BlockChainBuilder::new();
+        let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
         genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
         data_requester.add_cemented(&genesis_chain);
@@ -429,7 +429,7 @@ mod tests {
     #[test]
     fn enqueue_two_accounts() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let mut dest_chain = BlockChainBuilder::new();
+        let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
         genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
         data_requester.add_uncemented(&genesis_chain);

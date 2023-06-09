@@ -423,7 +423,7 @@ mod tests {
 
     use super::*;
     use crate::cementation::LedgerDataRequesterStub;
-    use rsnano_core::{Amount, BlockChainBuilder};
+    use rsnano_core::{Amount, TestAccountChain};
 
     #[test]
     fn block_not_found() {
@@ -512,7 +512,7 @@ mod tests {
     #[test]
     fn cement_open_block() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let mut dest_chain = BlockChainBuilder::new();
+        let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
         genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(10));
         dest_chain.legacy_open_from_account(&genesis_chain);
@@ -531,7 +531,7 @@ mod tests {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut genesis_chain = data_requester.add_genesis_block();
         genesis_chain.legacy_send();
-        let mut dest_chain = BlockChainBuilder::new();
+        let mut dest_chain = TestAccountChain::new();
         dest_chain.legacy_open_from_account(&genesis_chain);
         dest_chain.legacy_send();
         data_requester.add_cemented(&genesis_chain);
@@ -547,7 +547,7 @@ mod tests {
     #[test]
     fn cement_open_block_and_two_successors_in_one_go() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let mut dest_chain = BlockChainBuilder::new();
+        let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
         genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(2));
         dest_chain.legacy_open_from_account(&genesis_chain);
@@ -566,7 +566,7 @@ mod tests {
     #[test]
     fn cement_receive_block() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let mut dest_chain = BlockChainBuilder::new();
+        let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
         genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
         genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
@@ -587,8 +587,8 @@ mod tests {
     fn cement_two_accounts_in_one_go() {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        let mut dest_1 = BlockChainBuilder::new();
-        let mut dest_2 = BlockChainBuilder::new();
+        let mut dest_1 = TestAccountChain::new();
+        let mut dest_2 = TestAccountChain::new();
         genesis_chain.legacy_send_to(dest_1.account(), Amount::raw(5));
 
         dest_1.legacy_open_from_account(&genesis_chain);
@@ -631,7 +631,7 @@ mod tests {
     #[test]
     fn receive_and_send() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let mut dest_chain = BlockChainBuilder::new();
+        let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
         genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
         dest_chain.legacy_open_from_account(&genesis_chain);
@@ -649,9 +649,9 @@ mod tests {
     #[test]
     fn complex_example() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let mut account1 = BlockChainBuilder::new();
-        let mut account2 = BlockChainBuilder::new();
-        let mut account3 = BlockChainBuilder::new();
+        let mut account1 = TestAccountChain::new();
+        let mut account2 = TestAccountChain::new();
+        let mut account3 = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
         genesis_chain.legacy_send_to(account1.account(), Amount::raw(5));
 
@@ -707,12 +707,12 @@ mod tests {
     #[test]
     fn use_checkpoints() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let mut account1 = BlockChainBuilder::new();
-        let mut account2 = BlockChainBuilder::new();
-        let mut account3 = BlockChainBuilder::new();
-        let mut account4 = BlockChainBuilder::new();
-        let mut account5 = BlockChainBuilder::new();
-        let mut account6 = BlockChainBuilder::new();
+        let mut account1 = TestAccountChain::new();
+        let mut account2 = TestAccountChain::new();
+        let mut account3 = TestAccountChain::new();
+        let mut account4 = TestAccountChain::new();
+        let mut account5 = TestAccountChain::new();
+        let mut account6 = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
         genesis_chain.legacy_send_to(account1.account(), Amount::raw(1));
 
@@ -766,7 +766,7 @@ mod tests {
         #[test]
         fn send_block_pruned() {
             let mut data_requester = LedgerDataRequesterStub::new();
-            let mut dest_chain = BlockChainBuilder::new();
+            let mut dest_chain = TestAccountChain::new();
             let mut genesis_chain = data_requester.add_genesis_block();
             genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
             dest_chain.legacy_open_from_account(&genesis_chain);

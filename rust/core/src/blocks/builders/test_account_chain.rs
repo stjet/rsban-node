@@ -3,7 +3,7 @@ use crate::{
     BlockHash, BlockSideband, Epoch, KeyPair, DEV_GENESIS_KEY,
 };
 
-pub struct BlockChainBuilder {
+pub struct TestAccountChain {
     keypair: KeyPair,
     account: Account,
     balance: Amount,
@@ -11,7 +11,7 @@ pub struct BlockChainBuilder {
     blocks: Vec<BlockEnum>,
 }
 
-impl BlockChainBuilder {
+impl TestAccountChain {
     pub fn new() -> Self {
         Self::with_keys(KeyPair::new())
     }
@@ -67,13 +67,13 @@ impl BlockChainBuilder {
         self.blocks.last().unwrap()
     }
 
-    pub fn legacy_open_from_account(&mut self, sender_chain: &BlockChainBuilder) -> &BlockEnum {
+    pub fn legacy_open_from_account(&mut self, sender_chain: &TestAccountChain) -> &BlockEnum {
         self.legacy_open_from_account_block(sender_chain, sender_chain.height())
     }
 
     pub fn legacy_open_from_account_block(
         &mut self,
-        sender_chain: &BlockChainBuilder,
+        sender_chain: &TestAccountChain,
         height: u64,
     ) -> &BlockEnum {
         let send_block = sender_chain.block(height);
@@ -89,7 +89,7 @@ impl BlockChainBuilder {
         self.add_block(open_block)
     }
 
-    pub fn legacy_receive_from_account(&mut self, sender_chain: &BlockChainBuilder) -> &BlockEnum {
+    pub fn legacy_receive_from_account(&mut self, sender_chain: &TestAccountChain) -> &BlockEnum {
         self.legacy_receive_from_account_block(sender_chain, sender_chain.height())
     }
 
@@ -101,7 +101,7 @@ impl BlockChainBuilder {
 
     pub fn legacy_receive_from_account_block(
         &mut self,
-        sender: &BlockChainBuilder,
+        sender: &TestAccountChain,
         height: u64,
     ) -> &BlockEnum {
         let send_block = sender.block(height);
@@ -221,15 +221,15 @@ mod tests {
 
     #[test]
     fn default_account() {
-        let chain1 = BlockChainBuilder::new();
-        let chain2 = BlockChainBuilder::new();
+        let chain1 = TestAccountChain::new();
+        let chain2 = TestAccountChain::new();
         assert_ne!(chain1.account, chain2.account);
     }
 
     #[test]
     fn add_legacy_open() {
-        let mut genesis = BlockChainBuilder::genesis();
-        let mut chain = BlockChainBuilder::new();
+        let mut genesis = TestAccountChain::genesis();
+        let mut chain = TestAccountChain::new();
         genesis.legacy_send_to(chain.account, Amount::raw(10));
         chain.legacy_open_from_account(&genesis);
         let block = chain.latest_block();

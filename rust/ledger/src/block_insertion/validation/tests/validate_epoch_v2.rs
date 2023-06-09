@@ -16,14 +16,14 @@ fn fails_if_directly_upgrading_from_epoch_0_to_epoch_2() {
     let (_, previous) = create_legacy_open_block();
     let epoch = epoch_successor(&previous, Epoch::Epoch2).build();
     // Trying to upgrade from epoch 0 to epoch 2. It is a requirement epoch upgrades are sequential unless the account is unopened
-    assert_validation_fails_with(ProcessResult::BlockPosition, &epoch, Some(previous));
+    assert_validation_fails_with(ProcessResult::BlockPosition, &epoch, &previous);
 }
 
 #[test]
 fn upgrade_from_epoch_1_to_epoch_2() {
     let (_, previous) = create_state_block(Epoch::Epoch1);
     let epoch = epoch_successor(&previous, Epoch::Epoch2).build();
-    let instructions = assert_block_is_valid(&epoch, Some(previous));
+    let instructions = assert_block_is_valid(&epoch, &previous);
     assert_eq!(instructions.set_account_info.epoch, Epoch::Epoch2);
     assert_eq!(instructions.set_sideband.details.epoch, Epoch::Epoch2);
 }
@@ -32,7 +32,7 @@ fn upgrade_from_epoch_1_to_epoch_2() {
 fn upgrading_to_epoch_v2_twice_fails() {
     let (_, previous) = create_state_block(Epoch::Epoch2);
     let epoch = epoch_successor(&previous, Epoch::Epoch2).build();
-    assert_validation_fails_with(ProcessResult::BlockPosition, &epoch, Some(previous));
+    assert_validation_fails_with(ProcessResult::BlockPosition, &epoch, &previous);
 }
 
 #[test]
@@ -42,7 +42,7 @@ fn legacy_receive_block_after_epoch_v2_upgrade_fails() {
     assert_validation_fails_with(
         ProcessResult::BlockPosition,
         &legacy_receive,
-        Some(previous),
+        &previous,
     );
 }
 
@@ -63,7 +63,7 @@ fn receive_after_epoch_v2_upgrade() {
         .balance(previous.balance() - Amount::raw(10))
         .build();
 
-    let mut validator = create_validator_for_existing_account(&receive, previous);
+    let mut validator = create_validator_for_existing_account(&receive, &previous);
     setup_pending_receive(&mut validator, Epoch::Epoch2, Amount::raw(10));
 
     validator.validate().expect("block should be valid");
@@ -74,7 +74,7 @@ fn receiving_from_epoch_2_block_upgrades_receiver_to_epoch2() {
     let (keypair, previous) = create_legacy_open_block();
     let receive = state_successor(keypair, &previous).link(123).build();
 
-    let mut validator = create_validator_for_existing_account(&receive, previous);
+    let mut validator = create_validator_for_existing_account(&receive, &previous);
     setup_pending_receive(&mut validator, Epoch::Epoch2, Amount::raw(10));
     let instructions = validator.validate().expect("block should be valid");
 

@@ -7,7 +7,7 @@ use rsnano_core::{
     utils::{get_env_or_default_string, seconds_since_epoch, SerdePropertyTree},
     work::{WorkThresholds, WORK_THRESHOLDS_STUB},
     Account, Amount, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, Epochs, KeyPair,
-    Link, Networks, DEV_GENESIS_KEY, DEV_PUBLIC_KEY_DATA,
+    Networks, DEV_GENESIS_KEY, DEV_PUBLIC_KEY_DATA, epoch_v1_link, epoch_v2_link,
 };
 
 static BETA_PUBLIC_KEY_DATA: &str =
@@ -220,9 +220,7 @@ impl LedgerConstants {
         let mut epochs = Epochs::new();
 
         let epoch_1_signer = genesis.account().into();
-        let mut link_bytes = [0u8; 32];
-        link_bytes[..14].copy_from_slice(b"epoch v1 block");
-        let epoch_link_v1 = Link::from_bytes(link_bytes);
+        let epoch_link_v1 = epoch_v1_link();
 
         let nano_live_epoch_v2_signer = Account::decode_account(
             "nano_3qb6o6i1tkzr6jwr5s7eehfxwg9x6eemitdinbpi7u8bjjwsgqfj4wzser3x",
@@ -235,8 +233,7 @@ impl LedgerConstants {
             Networks::NanoTestNetwork => nano_test_account.into(),
             _ => panic!("invalid network"),
         };
-        link_bytes[..14].copy_from_slice(b"epoch v2 block");
-        let epoch_link_v2 = Link::from_bytes(link_bytes);
+        let epoch_link_v2 = epoch_v2_link();
 
         epochs.add(Epoch::Epoch1, epoch_1_signer, epoch_link_v1);
         epochs.add(Epoch::Epoch2, epoch_2_signer, epoch_link_v2);

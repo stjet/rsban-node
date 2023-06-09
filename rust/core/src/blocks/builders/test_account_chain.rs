@@ -1,6 +1,7 @@
 use crate::{
-    Account, AccountInfo, Amount, BlockBuilder, BlockChainSection, BlockDetails, BlockEnum,
-    BlockHash, BlockSideband, Epoch, KeyPair, DEV_GENESIS_KEY,
+    epoch_v1_link, Account, AccountInfo, Amount, BlockBuilder, BlockChainSection, BlockDetails,
+    BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair, LegacyChangeBlockBuilder,
+    LegacyOpenBlockBuilder, LegacyReceiveBlockBuilder, StateBlockBuilder, DEV_GENESIS_KEY, 
 };
 
 pub struct TestAccountChain {
@@ -9,6 +10,7 @@ pub struct TestAccountChain {
     balance: Amount,
     representative: Account,
     blocks: Vec<BlockEnum>,
+    epoch: Epoch,
 }
 
 impl TestAccountChain {
@@ -25,8 +27,28 @@ impl TestAccountChain {
                 .source(BlockHash::zero())
                 .sign(&result.keypair)
                 .build(),
+            Epoch::Epoch0,
         );
         result
+    }
+
+    pub fn new_opened_chain() -> Self {
+        let mut result = Self::new();
+        result.add_random_open_block();
+        result
+    }
+
+    pub fn add_random_open_block(&mut self){
+        assert_eq!(self.height(), 0);
+        self.balance = Amount::nano(1);
+        self.add_block(
+            BlockBuilder::legacy_open()
+                .account(self.account)
+                .source(BlockHash::from(123))
+                .sign(&self.keypair)
+                .build(),
+            Epoch::Epoch0,
+        );
     }
 
     pub fn with_keys(keypair: KeyPair) -> Self {
@@ -36,6 +58,7 @@ impl TestAccountChain {
             blocks: Vec::new(),
             representative: Account::zero(),
             keypair,
+            epoch: Epoch::Epoch0,
         }
     }
 
@@ -67,11 +90,11 @@ impl TestAccountChain {
         self.blocks.last().unwrap()
     }
 
-    pub fn legacy_open_from_account(&mut self, sender_chain: &TestAccountChain) -> &BlockEnum {
-        self.legacy_open_from_account_block(sender_chain, sender_chain.height())
+    pub fn add_legacy_open_from_account(&mut self, sender_chain: &TestAccountChain) -> &BlockEnum {
+        self.add_legacy_open_from_account_block(sender_chain, sender_chain.height())
     }
 
-    pub fn legacy_open_from_account_block(
+    pub fn add_legacy_open_from_account_block(
         &mut self,
         sender_chain: &TestAccountChain,
         height: u64,
@@ -80,50 +103,58 @@ impl TestAccountChain {
         let amount = sender_chain.amount_of_block(height);
         assert_eq!(self.height(), 0);
         assert!(amount > Amount::zero());
+        assert_eq!(send_block.destination_or_link(), self.account);
         self.balance = amount;
         let open_block = BlockBuilder::legacy_open()
             .account(self.account)
             .source(send_block.hash())
             .sign(&self.keypair)
             .build();
-        self.add_block(open_block)
+        self.add_block(open_block, send_block.epoch())
     }
 
-    pub fn legacy_receive_from_account(&mut self, sender_chain: &TestAccountChain) -> &BlockEnum {
-        self.legacy_receive_from_account_block(sender_chain, sender_chain.height())
+    pub fn add_legacy_receive_from_account(&mut self, sender_chain: &TestAccountChain) -> &BlockEnum {
+        self.add_legacy_receive_from_account_block(sender_chain, sender_chain.height())
     }
 
-    pub fn legacy_receive_from_self(&mut self) -> &BlockEnum {
+    pub fn add_legacy_receive_from_self(&mut self) -> &BlockEnum {
         let send_block = self.block(self.height());
         let amount = self.amount_of_block(self.height());
-        self.legacy_receive(send_block.hash(), amount)
+        assert_eq!(send_block.destination_or_link(), self.account);
+        self.add_legacy_receive(send_block.hash(), amount, send_block.epoch())
     }
 
-    pub fn legacy_receive_from_account_block(
+    pub fn add_legacy_receive_from_account_block(
         &mut self,
         sender: &TestAccountChain,
         height: u64,
     ) -> &BlockEnum {
         let send_block = sender.block(height);
         let amount = sender.amount_of_block(height);
-        self.legacy_receive(send_block.hash(), amount)
+        assert_eq!(send_block.destination_or_link(), self.account);
+        self.add_legacy_receive(send_block.hash(), amount, send_block.epoch())
     }
 
-    fn legacy_receive(&mut self, source: BlockHash, amount: Amount) -> &BlockEnum {
+    fn add_legacy_receive(
+        &mut self,
+        source: BlockHash,
+        amount: Amount,
+        source_epoch: Epoch,
+    ) -> &BlockEnum {
         assert!(amount > Amount::zero());
         let block_builder = BlockBuilder::legacy_receive()
             .previous(self.frontier())
             .source(source)
             .sign(&self.keypair);
         self.balance += amount;
-        self.add_block(block_builder.build())
+        self.add_block(block_builder.build(), source_epoch)
     }
 
-    pub fn legacy_send(&mut self) -> &BlockEnum {
-        self.legacy_send_to(Account::from(42), Amount::raw(1))
+    pub fn add_legacy_send(&mut self) -> &BlockEnum {
+        self.add_legacy_send_to(Account::from(42), Amount::raw(1))
     }
 
-    pub fn legacy_send_to(&mut self, destination: Account, amount: Amount) -> &BlockEnum {
+    pub fn add_legacy_send_to(&mut self, destination: Account, amount: Amount) -> &BlockEnum {
         let new_balance = self.balance - amount;
         let block = BlockBuilder::legacy_send()
             .account(self.account)
@@ -132,7 +163,72 @@ impl TestAccountChain {
             .balance(new_balance)
             .sign(self.keypair.clone())
             .build();
-        self.add_block(block)
+        self.add_block(block, Epoch::Epoch0)
+    }
+
+    pub fn add_state(&mut self) -> &BlockEnum{
+        let state = self.new_state_block().build();
+        self.add_block(state, Epoch::Epoch0)
+    }
+
+    pub fn add_epoch_v1(&mut self) -> &BlockEnum {
+        let epoch_block = self.new_epoch1_block().build();
+        self.add_block(epoch_block, Epoch::Epoch0)
+    }
+
+    pub fn new_epoch1_block(&self) -> StateBlockBuilder {
+        self.new_state_block()
+            .link(epoch_v1_link())
+            .sign(&DEV_GENESIS_KEY)
+    }
+
+    pub fn new_legacy_open_block(&self) -> LegacyOpenBlockBuilder {
+        BlockBuilder::legacy_open()
+            .account(self.account)
+            .source(BlockHash::from(123))
+            .representative(Account::from(456))
+            .sign(&self.keypair)
+    }
+
+    pub fn new_state_block(&self) -> StateBlockBuilder {
+        BlockBuilder::state()
+            .account(self.account)
+            .balance(self.balance)
+            .representative(self.representative)
+            .link(0)
+            .previous(self.frontier())
+            .sign(&self.keypair)
+    }
+
+    pub fn new_receive_block(&self) -> StateBlockBuilder {
+        self.new_state_block()
+            .previous_balance(self.balance)
+            .balance(self.balance + Amount::raw(1))
+            .link(123)
+    }
+
+    pub fn new_epoch1_open_block(&self) -> StateBlockBuilder{
+        BlockBuilder::state()
+            .account(self.account)
+            .balance(0)
+            .representative(0)
+            .link(epoch_v1_link())
+            .previous(0)
+            .sign(&DEV_GENESIS_KEY)
+    }
+
+    pub fn new_legacy_receive_block(&self) -> LegacyReceiveBlockBuilder {
+        BlockBuilder::legacy_receive()
+            .previous(self.frontier())
+            .source(BlockHash::from(123))
+            .sign(&self.keypair)
+    }
+
+    pub fn new_legacy_change_block(&self) -> LegacyChangeBlockBuilder {
+        BlockBuilder::legacy_change()
+            .previous(self.frontier())
+            .representative(Account::from(42))
+            .sign(&self.keypair)
     }
 
     pub fn take_blocks(self) -> Vec<BlockEnum> {
@@ -161,7 +257,7 @@ impl TestAccountChain {
             balance: self.latest_block().balance_calculated(),
             modified: 123,
             block_count: self.height(),
-            epoch: self.latest_block().sideband().unwrap().details.epoch,
+            epoch: self.epoch,
         }
     }
 
@@ -183,9 +279,13 @@ impl TestAccountChain {
         }
     }
 
-    fn add_block(&mut self, mut block: BlockEnum) -> &BlockEnum {
+    fn add_block(&mut self, mut block: BlockEnum, source_epoch: Epoch) -> &BlockEnum {
         if let Some(new_balance) = block.balance_opt() {
             self.balance = new_balance;
+        }
+
+        if block.link() == epoch_v1_link() {
+            self.epoch = Epoch::Epoch1;
         }
 
         block.set_sideband(BlockSideband {
@@ -194,8 +294,8 @@ impl TestAccountChain {
             successor: BlockHash::zero(),
             account: self.account,
             balance: self.balance,
-            details: BlockDetails::new(Epoch::Epoch0, false, false, false),
-            source_epoch: Epoch::Epoch0,
+            details: BlockDetails::new(self.epoch, false, false, false),
+            source_epoch,
         });
 
         if self.blocks.len() > 0 {
@@ -230,8 +330,8 @@ mod tests {
     fn add_legacy_open() {
         let mut genesis = TestAccountChain::genesis();
         let mut chain = TestAccountChain::new();
-        genesis.legacy_send_to(chain.account, Amount::raw(10));
-        chain.legacy_open_from_account(&genesis);
+        genesis.add_legacy_send_to(chain.account, Amount::raw(10));
+        chain.add_legacy_open_from_account(&genesis);
         let block = chain.latest_block();
         assert_eq!(block.account(), chain.account());
         assert_eq!(block.block_type(), BlockType::LegacyOpen);

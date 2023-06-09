@@ -329,9 +329,9 @@ mod tests {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
+        genesis_chain.add_legacy_send_to(dest_chain.account(), Amount::raw(1));
         data_requester.add_cemented(&genesis_chain);
-        dest_chain.legacy_open_from_account(&genesis_chain);
+        dest_chain.add_legacy_open_from_account(&genesis_chain);
         data_requester.add_uncemented(&dest_chain);
 
         let sections = [dest_chain.section(1, 1)];
@@ -349,10 +349,10 @@ mod tests {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
+        genesis_chain.add_legacy_send_to(dest_chain.account(), Amount::raw(1));
         data_requester.add_cemented(&genesis_chain);
-        dest_chain.legacy_open_from_account(&genesis_chain);
-        dest_chain.legacy_send();
+        dest_chain.add_legacy_open_from_account(&genesis_chain);
+        dest_chain.add_legacy_send();
         data_requester.add_uncemented(&dest_chain);
 
         let sections = [dest_chain.section(1, 2)];
@@ -369,9 +369,9 @@ mod tests {
     fn skip_already_cemented_block() {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
         data_requester.add_cemented(&genesis_chain);
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
         data_requester.add_uncemented(&genesis_chain);
 
         let sections = [genesis_chain.section(2, 3)];
@@ -390,8 +390,8 @@ mod tests {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut genesis_chain = data_requester.add_genesis_block();
         data_requester.add_cemented(&genesis_chain);
-        genesis_chain.legacy_send();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
+        genesis_chain.add_legacy_send();
         data_requester.add_uncemented(&genesis_chain);
 
         let sections = [genesis_chain.section(2, 3)];
@@ -410,9 +410,9 @@ mod tests {
     fn slice_large_section_and_finish_without_a_full_batch() {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send();
-        genesis_chain.legacy_send();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
+        genesis_chain.add_legacy_send();
+        genesis_chain.add_legacy_send();
         data_requester.add_uncemented(&genesis_chain);
 
         let options = WriteBatcherOptions {
@@ -431,9 +431,9 @@ mod tests {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
+        genesis_chain.add_legacy_send_to(dest_chain.account(), Amount::raw(1));
         data_requester.add_uncemented(&genesis_chain);
-        dest_chain.legacy_open_from_account(&genesis_chain);
+        dest_chain.add_legacy_open_from_account(&genesis_chain);
         data_requester.add_uncemented(&dest_chain);
 
         let sections = [genesis_chain.section(2, 2), dest_chain.section(1, 1)];

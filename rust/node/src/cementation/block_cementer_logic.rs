@@ -224,7 +224,7 @@ mod tests {
     fn flush_block_if_it_is_the_only_one() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
         let mut genesis_chain = ledger_adapter.add_genesis_block();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
         ledger_adapter.add_uncemented(&genesis_chain);
 
         let mut logic = BlockCementerLogic::new(test_options());
@@ -253,8 +253,8 @@ mod tests {
     fn flush_two_blocks_in_one_batch() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
         let mut genesis_chain = ledger_adapter.add_genesis_block();
-        genesis_chain.legacy_send();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
+        genesis_chain.add_legacy_send();
         ledger_adapter.add_uncemented(&genesis_chain);
 
         let mut logic = BlockCementerLogic::new(test_options());
@@ -283,7 +283,7 @@ mod tests {
     fn dont_flush_if_there_are_more_blocks_awaiting_processing_and_processing_time_is_low() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
         let mut genesis_chain = ledger_adapter.add_genesis_block();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
         ledger_adapter.add_uncemented(&genesis_chain);
 
         let mut logic = BlockCementerLogic::new(test_options());
@@ -301,7 +301,7 @@ mod tests {
     fn flush_if_there_are_more_blocks_awaiting_processing_but_processing_time_is_high() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
         let mut genesis_chain = ledger_adapter.add_genesis_block();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
         ledger_adapter.add_uncemented(&genesis_chain);
 
         let mut logic = BlockCementerLogic::new(test_options());
@@ -321,9 +321,9 @@ mod tests {
     fn flush_if_max_batch_size_reached() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
         let mut genesis_chain = ledger_adapter.add_genesis_block();
-        genesis_chain.legacy_send();
-        genesis_chain.legacy_send();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
+        genesis_chain.add_legacy_send();
+        genesis_chain.add_legacy_send();
 
         ledger_adapter.add_uncemented(&genesis_chain);
 
@@ -355,7 +355,7 @@ mod tests {
     fn flush_if_write_queue_is_full() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
         let mut genesis_chain = ledger_adapter.add_genesis_block();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
 
         ledger_adapter.add_uncemented(&genesis_chain);
 
@@ -383,9 +383,9 @@ mod tests {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
         let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = ledger_adapter.add_genesis_block();
-        genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
-        dest_chain.legacy_open_from_account(&genesis_chain);
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send_to(dest_chain.account(), Amount::raw(1));
+        dest_chain.add_legacy_open_from_account(&genesis_chain);
+        genesis_chain.add_legacy_send();
         ledger_adapter.add_uncemented(&genesis_chain);
         ledger_adapter.add_uncemented(&dest_chain);
 

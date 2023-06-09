@@ -1,23 +1,13 @@
-use rsnano_core::{Account, AccountInfo, Amount, BlockDetails, BlockHash, Epoch};
-
-use crate::{
-    block_insertion::validation::tests::{
-        assert_block_is_valid, create_validator_for_existing_account, setup_pending_receive,
-    },
-    test_helpers::{
-        create_epoch1_open_block, create_legacy_open_block, create_state_block, epoch_successor,
-        legacy_change_successor, legacy_receive_successor, state_successor,
-    },
-    ProcessResult,
-};
-
-use super::{assert_validation_fails_with, create_test_validator};
+use rsnano_core::{AccountInfo, Amount, BlockDetails, Epoch};
+use crate::ProcessResult;
+use super::BlockValidationTest;
 
 #[test]
 fn updgrade_to_epoch_v1() {
-    let (_, previous) = create_legacy_open_block();
-    let epoch = epoch_successor(&previous, Epoch::Epoch1).build();
-    let instructions = assert_block_is_valid(&epoch, Some(previous));
+    let instructions = BlockValidationTest::for_epoch0_account()
+        .block_to_validate(|chain| chain.new_epoch1_block().build())
+        .assert_is_valid();
+
     assert_eq!(instructions.set_account_info.epoch, Epoch::Epoch1);
     assert_eq!(
         instructions.set_sideband.details,
@@ -28,106 +18,83 @@ fn updgrade_to_epoch_v1() {
 
 #[test]
 fn adding_epoch_twice_fails() {
-    let (_, previous) = create_state_block(Epoch::Epoch1);
-    let epoch = epoch_successor(&previous, Epoch::Epoch1).build();
-    assert_validation_fails_with(ProcessResult::BlockPosition, &epoch, Some(previous));
+    BlockValidationTest::for_epoch1_account()
+        .block_to_validate(|chain| chain.new_epoch1_block().build())
+        .assert_validation_fails_with(ProcessResult::BlockPosition);
 }
 
 #[test]
 fn adding_legacy_change_block_after_epoch1_fails() {
-    let (keypair, previous) = create_state_block(Epoch::Epoch1);
-    let change = legacy_change_successor(keypair, &previous).build();
-    assert_validation_fails_with(ProcessResult::BlockPosition, &change, Some(previous));
+    BlockValidationTest::for_epoch1_account()
+        .block_to_validate(|chain| chain.new_legacy_change_block().build())
+        .assert_validation_fails_with(ProcessResult::BlockPosition);
 }
 
 #[test]
 fn can_add_state_blocks_after_epoch1() {
-    let (keypair, previous) = create_state_block(Epoch::Epoch1);
-    let state = state_successor(keypair, &previous).build();
-    assert_block_is_valid(&state, Some(previous));
+    BlockValidationTest::for_epoch1_account()
+        .block_to_validate(|chain| chain.new_state_block().build())
+        .assert_is_valid();
 }
 
 #[test]
 fn epoch_block_with_changed_representative_fails() {
-    let (_, open) = create_legacy_open_block();
-    let epoch_with_invalid_rep = epoch_successor(&open, Epoch::Epoch1)
-        .representative(Account::from(999999))
-        .build();
-    assert_validation_fails_with(
-        ProcessResult::RepresentativeMismatch,
-        &epoch_with_invalid_rep,
-        Some(open),
-    );
+    BlockValidationTest::for_epoch0_account()
+        .block_to_validate(|chain| chain.new_epoch1_block().representative(999999).build())
+        .assert_validation_fails_with(ProcessResult::RepresentativeMismatch);
 }
 
 #[test]
 fn cannot_use_legacy_open_block_if_sender_is_on_epoch1() {
-    let (_, legacy_open) = create_legacy_open_block();
-
-    let mut validator = create_test_validator(&legacy_open, legacy_open.account());
-    setup_pending_receive(&mut validator, Epoch::Epoch1, Amount::raw(10));
-
-    let result = validator.validate();
-    assert_eq!(result, Err(ProcessResult::Unreceivable));
+    BlockValidationTest::for_unopened_account()
+        .with_pending_receive(Amount::raw(10), Epoch::Epoch1)
+        .block_to_validate(|chain| chain.new_legacy_open_block().build())
+        .assert_validation_fails_with(ProcessResult::Unreceivable);
 }
 
 #[test]
-fn cannot_use_legacy_receive_block_after_epoch1_open() {
-    let (keypair, previous) = create_state_block(Epoch::Epoch1);
-    let legacy_receive = legacy_receive_successor(keypair, &previous).build();
-    let mut validator = create_validator_for_existing_account(&legacy_receive, previous);
-    setup_pending_receive(&mut validator, Epoch::Epoch0, Amount::raw(10));
-
-    let result = validator.validate();
-
-    assert_eq!(result, Err(ProcessResult::BlockPosition));
+fn cannot_use_legacy_receive_block_after_epoch1_upgrade() {
+    BlockValidationTest::for_epoch1_account()
+        .with_pending_receive(Amount::raw(10), Epoch::Epoch0)
+        .block_to_validate(|chain| chain.new_legacy_receive_block().build())
+        .assert_validation_fails_with(ProcessResult::BlockPosition);
 }
 
 #[test]
 fn cannot_use_legacy_receive_block_after_sender_upgraded_to_epoch1() {
-    let (keypair, previous) = create_legacy_open_block();
-    let legacy_receive = legacy_receive_successor(keypair, &previous).build();
-    let mut validator = create_validator_for_existing_account(&legacy_receive, previous);
-    setup_pending_receive(&mut validator, Epoch::Epoch1, Amount::raw(10));
-
-    let result = validator.validate();
-
-    assert_eq!(result, Err(ProcessResult::Unreceivable));
+    BlockValidationTest::for_epoch0_account()
+        .with_pending_receive(Amount::raw(10), Epoch::Epoch1)
+        .block_to_validate(|chain| chain.new_legacy_receive_block().build())
+        .assert_validation_fails_with(ProcessResult::Unreceivable);
 }
 
 #[test]
 fn can_add_state_receive_block_after_epoch1() {
-    let (keypair, previous) = create_state_block(Epoch::Epoch1);
+    let instructions = BlockValidationTest::for_epoch1_account()
+        .with_pending_receive(Amount::raw(10), Epoch::Epoch1)
+        .block_to_validate(|chain| chain.new_receive_block().amount(10).build())
+        .assert_is_valid();
 
-    let state_receive = state_successor(keypair, &previous)
-        .link(123)
-        .balance(previous.balance() + Amount::raw(10))
-        .build();
-
-    let mut validator = create_validator_for_existing_account(&state_receive, previous);
-    setup_pending_receive(&mut validator, Epoch::Epoch1, Amount::raw(10));
-
-    let result = validator.validate().expect("block should be valid");
-    assert_eq!(result.set_sideband.details.epoch, Epoch::Epoch1);
-    assert_eq!(result.set_sideband.source_epoch, Epoch::Epoch1);
+    assert_eq!(instructions.set_sideband.details.epoch, Epoch::Epoch1);
+    assert_eq!(instructions.set_sideband.source_epoch, Epoch::Epoch1);
 }
 
 #[test]
 fn can_open_account_with_epoch1_block() {
-    let epoch1_open = create_epoch1_open_block();
-    let mut validator = create_test_validator(&epoch1_open, epoch1_open.account());
-    validator.any_pending_exists = true;
-
-    let result = validator.validate().expect("block should be valid");
+    let test = BlockValidationTest::for_unopened_account()
+        .with_pending_receive(Amount::raw(10), Epoch::Epoch1)
+        .block_to_validate(|chain| chain.new_epoch1_open_block().build());
+    let instructions = test.assert_is_valid();
+    let epoch1_open = test.block();
 
     assert_eq!(
-        result.set_account_info,
+        instructions.set_account_info,
         AccountInfo {
             head: epoch1_open.hash(),
             representative: epoch1_open.representative().unwrap(),
             open_block: epoch1_open.hash(),
             balance: Amount::zero(),
-            modified: validator.seconds_since_epoch,
+            modified: test.seconds_since_epoch,
             block_count: 1,
             epoch: Epoch::Epoch1
         }
@@ -136,29 +103,20 @@ fn can_open_account_with_epoch1_block() {
 
 #[test]
 fn receiving_from_epoch1_sender_upgrades_receiver_to_epoch1() {
-    let (keypair, previous) = create_legacy_open_block();
-    let receive = state_successor(keypair, &previous).link(123).build();
-
-    let mut validator = create_validator_for_existing_account(&receive, previous);
-    setup_pending_receive(&mut validator, Epoch::Epoch1, Amount::raw(10));
-
-    let result = validator.validate().expect("block should be valid");
-    assert_eq!(result.set_account_info.epoch, Epoch::Epoch1);
-    assert_eq!(result.set_sideband.details.epoch, Epoch::Epoch1);
+    let instructions = BlockValidationTest::for_epoch0_account()
+        .with_pending_receive(Amount::raw(10), Epoch::Epoch1)
+        .block_to_validate(|chain| chain.new_receive_block().amount(10).build())
+        .assert_is_valid();
+    assert_eq!(instructions.set_account_info.epoch, Epoch::Epoch1);
+    assert_eq!(instructions.set_sideband.details.epoch, Epoch::Epoch1);
 }
 
 #[test]
 fn epoch_v1_fork() {
-    let (_, previous) = create_legacy_open_block();
-    let epoch1_block = epoch_successor(&previous, Epoch::Epoch1).build();
-    let mut validator = create_validator_for_existing_account(&epoch1_block, previous);
-    validator.old_account_info = Some(AccountInfo {
-        epoch: Epoch::Epoch0,
-        head: BlockHash::from(123),
-        ..AccountInfo::create_test_instance()
-    });
-
-    let result = validator.validate();
-
-    assert_eq!(result, Err(ProcessResult::Fork));
+    BlockValidationTest::for_epoch0_account()
+        .block_to_validate(|chain| chain.new_epoch1_block().build())
+        .setup_account(|chain| {
+            chain.add_state();
+        })
+        .assert_validation_fails_with(ProcessResult::Fork);
 }

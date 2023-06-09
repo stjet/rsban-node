@@ -1,7 +1,6 @@
 use rsnano_core::{
     Account, AccountInfo, BlockBuilder, BlockDetails, BlockEnum, BlockSideband, Epoch, KeyPair,
-    LegacyChangeBlockBuilder, LegacyReceiveBlockBuilder, StateBlockBuilder, DEV_GENESIS_KEY,
-};
+    LegacyReceiveBlockBuilder, StateBlockBuilder, DEV_GENESIS_KEY, };
 
 use crate::ledger_constants::LEDGER_CONSTANTS_STUB;
 
@@ -35,16 +34,6 @@ pub(crate) fn create_state_block(epoch: Epoch) -> (KeyPair, BlockEnum) {
     (keypair, state)
 }
 
-pub(crate) fn create_epoch1_open_block() -> BlockEnum {
-    BlockBuilder::state()
-        .previous(0)
-        .balance(0)
-        .representative(0)
-        .link(*LEDGER_CONSTANTS_STUB.epochs.link(Epoch::Epoch1).unwrap())
-        .sign(&DEV_GENESIS_KEY)
-        .build()
-}
-
 pub(crate) fn create_legacy_open_block() -> (KeyPair, BlockEnum) {
     let keypair = KeyPair::new();
     let mut open = BlockBuilder::legacy_open()
@@ -66,17 +55,6 @@ pub(crate) fn epoch_successor(previous: &BlockEnum, epoch: Epoch) -> StateBlockB
         .link(*LEDGER_CONSTANTS_STUB.epochs.link(epoch).unwrap())
         .previous(previous.hash())
         .sign(&DEV_GENESIS_KEY)
-}
-
-pub(crate) fn legacy_change_successor(
-    keypair: KeyPair,
-    previous: &BlockEnum,
-) -> LegacyChangeBlockBuilder {
-    BlockBuilder::legacy_change()
-        .account(keypair.public_key())
-        .representative(Account::from(12345))
-        .previous(previous.hash())
-        .sign(&keypair)
 }
 
 pub(crate) fn state_successor(keypair: KeyPair, previous: &BlockEnum) -> StateBlockBuilder {

@@ -321,6 +321,18 @@ impl std::fmt::Debug for BlockChainSection {
     }
 }
 
+pub fn epoch_v1_link() -> Link {
+    let mut link_bytes = [0u8; 32];
+    link_bytes[..14].copy_from_slice(b"epoch v1 block");
+    Link::from_bytes(link_bytes)
+}
+
+pub fn epoch_v2_link() -> Link {
+    let mut link_bytes = [0u8; 32];
+    link_bytes[..14].copy_from_slice(b"epoch v2 block");
+    Link::from_bytes(link_bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

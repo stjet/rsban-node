@@ -430,8 +430,8 @@ mod tests {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut sut = CementationWalker::builder().build();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
+        genesis_chain.add_legacy_send();
         sut.initialize(genesis_chain.latest_block().clone());
 
         let result = std::panic::catch_unwind(move || sut.next_cementation(&mut data_requester));
@@ -447,7 +447,7 @@ mod tests {
             .build();
 
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
         data_requester.add_uncemented(&genesis_chain);
         sut.initialize(genesis_chain.latest_block().clone());
 
@@ -461,7 +461,7 @@ mod tests {
     fn cement_first_send_from_genesis() {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
         data_requester.add_uncemented(&genesis_chain);
 
         assert_write_steps(
@@ -477,8 +477,8 @@ mod tests {
     fn cement_two_blocks_in_one_go() {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
+        genesis_chain.add_legacy_send();
         let second_send = genesis_chain.block(3).clone();
         data_requester.add_uncemented(&genesis_chain);
 
@@ -495,9 +495,9 @@ mod tests {
     fn cement_three_blocks_in_one_go() {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send();
-        genesis_chain.legacy_send();
-        genesis_chain.legacy_send();
+        genesis_chain.add_legacy_send();
+        genesis_chain.add_legacy_send();
+        genesis_chain.add_legacy_send();
         data_requester.add_uncemented(&genesis_chain);
 
         assert_write_steps(
@@ -514,8 +514,8 @@ mod tests {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(10));
-        dest_chain.legacy_open_from_account(&genesis_chain);
+        genesis_chain.add_legacy_send_to(dest_chain.account(), Amount::raw(10));
+        dest_chain.add_legacy_open_from_account(&genesis_chain);
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_uncemented(&dest_chain);
 
@@ -530,10 +530,10 @@ mod tests {
     fn cement_open_block_and_successor_in_one_go() {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send();
         let mut dest_chain = TestAccountChain::new();
-        dest_chain.legacy_open_from_account(&genesis_chain);
-        dest_chain.legacy_send();
+        genesis_chain.add_legacy_send_to(dest_chain.account(), Amount::raw(1));
+        dest_chain.add_legacy_open_from_account(&genesis_chain);
+        dest_chain.add_legacy_send();
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_uncemented(&dest_chain);
 
@@ -549,10 +549,10 @@ mod tests {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(2));
-        dest_chain.legacy_open_from_account(&genesis_chain);
-        dest_chain.legacy_send();
-        dest_chain.legacy_send();
+        genesis_chain.add_legacy_send_to(dest_chain.account(), Amount::raw(2));
+        dest_chain.add_legacy_open_from_account(&genesis_chain);
+        dest_chain.add_legacy_send();
+        dest_chain.add_legacy_send();
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_uncemented(&dest_chain);
 
@@ -568,13 +568,13 @@ mod tests {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
-        genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
-        dest_chain.legacy_open_from_account_block(&genesis_chain, 2);
+        genesis_chain.add_legacy_send_to(dest_chain.account(), Amount::raw(1));
+        genesis_chain.add_legacy_send_to(dest_chain.account(), Amount::raw(1));
+        dest_chain.add_legacy_open_from_account_block(&genesis_chain, 2);
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_cemented(&dest_chain);
 
-        dest_chain.legacy_receive_from_account(&genesis_chain);
+        dest_chain.add_legacy_receive_from_account(&genesis_chain);
         data_requester.add_uncemented(&dest_chain);
 
         assert_write_steps(
@@ -589,17 +589,17 @@ mod tests {
         let mut genesis_chain = data_requester.add_genesis_block();
         let mut dest_1 = TestAccountChain::new();
         let mut dest_2 = TestAccountChain::new();
-        genesis_chain.legacy_send_to(dest_1.account(), Amount::raw(5));
+        genesis_chain.add_legacy_send_to(dest_1.account(), Amount::raw(5));
 
-        dest_1.legacy_open_from_account(&genesis_chain);
-        dest_1.legacy_send();
-        dest_1.legacy_send();
-        dest_1.legacy_send_to(dest_2.account(), Amount::raw(3));
+        dest_1.add_legacy_open_from_account(&genesis_chain);
+        dest_1.add_legacy_send();
+        dest_1.add_legacy_send();
+        dest_1.add_legacy_send_to(dest_2.account(), Amount::raw(3));
 
-        dest_2.legacy_open_from_account(&dest_1);
-        dest_2.legacy_send();
-        dest_2.legacy_send();
-        dest_2.legacy_send();
+        dest_2.add_legacy_open_from_account(&dest_1);
+        dest_2.add_legacy_send();
+        dest_2.add_legacy_send();
+        dest_2.add_legacy_send();
 
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_uncemented(&dest_1);
@@ -617,8 +617,8 @@ mod tests {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut chain = data_requester.add_genesis_block();
         let account = chain.account();
-        chain.legacy_send_to(account, Amount::raw(10));
-        chain.legacy_receive_from_self();
+        chain.add_legacy_send_to(account, Amount::raw(10));
+        chain.add_legacy_receive_from_self();
         data_requester.add_uncemented(&chain);
 
         assert_write_steps(
@@ -633,9 +633,9 @@ mod tests {
         let mut data_requester = LedgerDataRequesterStub::new();
         let mut dest_chain = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
-        dest_chain.legacy_open_from_account(&genesis_chain);
-        dest_chain.legacy_send();
+        genesis_chain.add_legacy_send_to(dest_chain.account(), Amount::raw(1));
+        dest_chain.add_legacy_open_from_account(&genesis_chain);
+        dest_chain.add_legacy_send();
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_uncemented(&dest_chain);
 
@@ -653,24 +653,24 @@ mod tests {
         let mut account2 = TestAccountChain::new();
         let mut account3 = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send_to(account1.account(), Amount::raw(5));
+        genesis_chain.add_legacy_send_to(account1.account(), Amount::raw(5));
 
-        account1.legacy_open_from_account(&genesis_chain);
-        account1.legacy_send();
-        account1.legacy_send_to(account2.account(), Amount::raw(4));
+        account1.add_legacy_open_from_account(&genesis_chain);
+        account1.add_legacy_send();
+        account1.add_legacy_send_to(account2.account(), Amount::raw(4));
 
-        account2.legacy_open_from_account(&account1);
-        account2.legacy_send_to(account3.account(), Amount::raw(4));
+        account2.add_legacy_open_from_account(&account1);
+        account2.add_legacy_send_to(account3.account(), Amount::raw(4));
 
-        account3.legacy_open_from_account(&account2);
-        account3.legacy_send();
-        account3.legacy_send_to(account1.account(), Amount::raw(3));
+        account3.add_legacy_open_from_account(&account2);
+        account3.add_legacy_send();
+        account3.add_legacy_send_to(account1.account(), Amount::raw(3));
 
-        account1.legacy_receive_from_account(&account3);
-        account1.legacy_send();
-        account1.legacy_send_to(account2.account(), Amount::raw(1));
+        account1.add_legacy_receive_from_account(&account3);
+        account1.add_legacy_send();
+        account1.add_legacy_send_to(account2.account(), Amount::raw(1));
 
-        account2.legacy_receive_from_account(&account1);
+        account2.add_legacy_receive_from_account(&account1);
 
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_uncemented(&account1);
@@ -714,25 +714,25 @@ mod tests {
         let mut account5 = TestAccountChain::new();
         let mut account6 = TestAccountChain::new();
         let mut genesis_chain = data_requester.add_genesis_block();
-        genesis_chain.legacy_send_to(account1.account(), Amount::raw(1));
+        genesis_chain.add_legacy_send_to(account1.account(), Amount::raw(1));
 
-        account1.legacy_open_from_account(&genesis_chain);
-        account1.legacy_send_to(account2.account(), Amount::raw(1));
+        account1.add_legacy_open_from_account(&genesis_chain);
+        account1.add_legacy_send_to(account2.account(), Amount::raw(1));
 
-        account2.legacy_open_from_account(&account1);
-        account2.legacy_send_to(account3.account(), Amount::raw(1));
+        account2.add_legacy_open_from_account(&account1);
+        account2.add_legacy_send_to(account3.account(), Amount::raw(1));
 
-        account3.legacy_open_from_account(&account2);
-        account3.legacy_send_to(account4.account(), Amount::raw(1));
+        account3.add_legacy_open_from_account(&account2);
+        account3.add_legacy_send_to(account4.account(), Amount::raw(1));
 
-        account4.legacy_open_from_account(&account3);
-        account4.legacy_send_to(account5.account(), Amount::raw(1));
+        account4.add_legacy_open_from_account(&account3);
+        account4.add_legacy_send_to(account5.account(), Amount::raw(1));
 
-        account5.legacy_open_from_account(&account4);
-        account5.legacy_send_to(account6.account(), Amount::raw(1));
+        account5.add_legacy_open_from_account(&account4);
+        account5.add_legacy_send_to(account6.account(), Amount::raw(1));
 
-        account6.legacy_open_from_account(&account5);
-        account6.legacy_send();
+        account6.add_legacy_open_from_account(&account5);
+        account6.add_legacy_send();
 
         data_requester.add_cemented(&genesis_chain);
         data_requester.add_uncemented(&account1);
@@ -768,8 +768,8 @@ mod tests {
             let mut data_requester = LedgerDataRequesterStub::new();
             let mut dest_chain = TestAccountChain::new();
             let mut genesis_chain = data_requester.add_genesis_block();
-            genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
-            dest_chain.legacy_open_from_account(&genesis_chain);
+            genesis_chain.add_legacy_send_to(dest_chain.account(), Amount::raw(1));
+            dest_chain.add_legacy_open_from_account(&genesis_chain);
             data_requester.add_cemented(&genesis_chain);
             data_requester.add_uncemented(&dest_chain);
             data_requester.prune(genesis_chain.frontier());

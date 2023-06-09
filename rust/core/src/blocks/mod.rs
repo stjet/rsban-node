@@ -276,6 +276,10 @@ impl BlockEnum {
             None
         }
     }
+    
+    pub fn epoch(&self) -> Epoch{
+        self.sideband().unwrap().details.epoch
+    }
 
     pub fn serialize_with_sideband(&self) -> Vec<u8> {
         let mut stream = MemoryStream::new();

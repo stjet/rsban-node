@@ -2,7 +2,13 @@ use super::{
     assert_block_is_valid, assert_validation_fails_with, create_test_validator,
     create_validator_for_existing_account, setup_pending_receive,
 };
-use crate::{ProcessResult, test_helpers::{create_legacy_open_block, epoch_successor, create_state_block, legacy_receive_successor, state_successor}};
+use crate::{
+    test_helpers::{
+        create_legacy_open_block, create_state_block, epoch_successor, legacy_receive_successor,
+        state_successor,
+    },
+    ProcessResult,
+};
 use rsnano_core::{Amount, BlockBuilder, Epoch, KeyPair};
 
 #[test]

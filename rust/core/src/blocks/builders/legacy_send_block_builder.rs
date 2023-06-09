@@ -51,8 +51,8 @@ impl LegacySendBlockBuilder {
         self
     }
 
-    pub fn balance(mut self, balance: Amount) -> Self {
-        self.balance = Some(balance);
+    pub fn balance(mut self, balance: impl Into<Amount>) -> Self {
+        self.balance = Some(balance.into());
         self
     }
 

@@ -314,7 +314,7 @@ impl WriteBatcher {
 mod tests {
     use super::*;
     use crate::cementation::LedgerDataRequesterStub;
-    use rsnano_core::BlockChainBuilder;
+    use rsnano_core::{Amount, BlockChainBuilder};
 
     #[test]
     fn empty_queue() {
@@ -327,9 +327,11 @@ mod tests {
     #[test]
     fn one_open_block() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let genesis_chain = data_requester.add_genesis_block().legacy_send();
+        let mut dest_chain = BlockChainBuilder::new();
+        let mut genesis_chain = data_requester.add_genesis_block();
+        genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
         data_requester.add_cemented(&genesis_chain);
-        let dest_chain = BlockChainBuilder::from_send_block(genesis_chain.latest_block());
+        dest_chain.legacy_open_from_account(&genesis_chain);
         data_requester.add_uncemented(&dest_chain);
 
         let sections = [dest_chain.section(1, 1)];
@@ -345,10 +347,12 @@ mod tests {
     #[test]
     fn open_block_and_successor_block() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let genesis_chain = data_requester.add_genesis_block().legacy_send();
+        let mut dest_chain = BlockChainBuilder::new();
+        let mut genesis_chain = data_requester.add_genesis_block();
+        genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
         data_requester.add_cemented(&genesis_chain);
-        let dest_chain =
-            BlockChainBuilder::from_send_block(genesis_chain.latest_block()).legacy_send();
+        dest_chain.legacy_open_from_account(&genesis_chain);
+        dest_chain.legacy_send();
         data_requester.add_uncemented(&dest_chain);
 
         let sections = [dest_chain.section(1, 2)];
@@ -364,9 +368,10 @@ mod tests {
     #[test]
     fn skip_already_cemented_block() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let genesis_chain = data_requester.add_genesis_block().legacy_send();
+        let mut genesis_chain = data_requester.add_genesis_block();
+        genesis_chain.legacy_send();
         data_requester.add_cemented(&genesis_chain);
-        let genesis_chain = genesis_chain.legacy_send();
+        genesis_chain.legacy_send();
         data_requester.add_uncemented(&genesis_chain);
 
         let sections = [genesis_chain.section(2, 3)];
@@ -383,9 +388,10 @@ mod tests {
     #[test]
     fn slice_large_section() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let genesis_chain = data_requester.add_genesis_block();
+        let mut genesis_chain = data_requester.add_genesis_block();
         data_requester.add_cemented(&genesis_chain);
-        let genesis_chain = genesis_chain.legacy_send().legacy_send();
+        genesis_chain.legacy_send();
+        genesis_chain.legacy_send();
         data_requester.add_uncemented(&genesis_chain);
 
         let sections = [genesis_chain.section(2, 3)];
@@ -403,8 +409,10 @@ mod tests {
     #[test]
     fn slice_large_section_and_finish_without_a_full_batch() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let genesis_chain = data_requester.add_genesis_block();
-        let genesis_chain = genesis_chain.legacy_send().legacy_send().legacy_send();
+        let mut genesis_chain = data_requester.add_genesis_block();
+        genesis_chain.legacy_send();
+        genesis_chain.legacy_send();
+        genesis_chain.legacy_send();
         data_requester.add_uncemented(&genesis_chain);
 
         let options = WriteBatcherOptions {
@@ -421,9 +429,11 @@ mod tests {
     #[test]
     fn enqueue_two_accounts() {
         let mut data_requester = LedgerDataRequesterStub::new();
-        let genesis_chain = data_requester.add_genesis_block().legacy_send();
+        let mut dest_chain = BlockChainBuilder::new();
+        let mut genesis_chain = data_requester.add_genesis_block();
+        genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
         data_requester.add_uncemented(&genesis_chain);
-        let dest_chain = BlockChainBuilder::from_send_block(genesis_chain.latest_block());
+        dest_chain.legacy_open_from_account(&genesis_chain);
         data_requester.add_uncemented(&dest_chain);
 
         let sections = [genesis_chain.section(2, 2), dest_chain.section(1, 1)];

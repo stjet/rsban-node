@@ -8,6 +8,7 @@ mod change_block;
 pub use change_block::{valid_change_block_predecessor, ChangeBlock, ChangeHashables};
 
 mod open_block;
+use once_cell::sync::Lazy;
 pub use open_block::{OpenBlock, OpenHashables};
 
 mod receive_block;
@@ -27,8 +28,8 @@ use crate::{
         Deserialize, MemoryStream, PropertyTreeReader, PropertyTreeWriter, SerdePropertyTree,
         Stream, StreamAdapter,
     },
-    Account, Amount, BlockHash, BlockHashBuilder, Epoch, FullHash, Link, QualifiedRoot, Root,
-    Signature, WorkVersion,
+    Account, Amount, BlockHash, BlockHashBuilder, Epoch, FullHash, KeyPair, Link, QualifiedRoot,
+    Root, Signature, WorkVersion,
 };
 use num::FromPrimitive;
 use std::{
@@ -234,11 +235,11 @@ impl BlockEnum {
         }
     }
 
-    pub fn balance_opt(&self) -> Option<Amount>{
-        match self{
+    pub fn balance_opt(&self) -> Option<Amount> {
+        match self {
             BlockEnum::LegacySend(b) => Some(b.balance()),
             BlockEnum::State(b) => Some(b.balance()),
-            _ => None
+            _ => None,
         }
     }
 
@@ -408,6 +409,13 @@ pub fn serialize_block<T: Stream>(stream: &mut T, block: &BlockEnum) -> anyhow::
     stream.write_u8(block.block_type() as u8)?;
     block.serialize(stream)
 }
+
+static DEV_PRIVATE_KEY_DATA: &str =
+    "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";
+pub static DEV_PUBLIC_KEY_DATA: &str =
+    "B0311EA55708D6A53C75CDBF88300259C6D018522FE3D4D0A242E431F9E8B6D0"; // xrb_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo
+pub static DEV_GENESIS_KEY: Lazy<KeyPair> =
+    Lazy::new(|| KeyPair::from_priv_key_hex(DEV_PRIVATE_KEY_DATA).unwrap());
 
 #[cfg(test)]
 mod tests {

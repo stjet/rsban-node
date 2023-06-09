@@ -135,7 +135,7 @@ impl LedgerDataRequesterStub {
     }
 
     pub fn add_genesis_block(&mut self) -> BlockChainBuilder {
-        let mut genesis_chain = BlockChainBuilder::for_account(123456).legacy_open();
+        let mut genesis_chain = BlockChainBuilder::genesis();
         self.add_cemented(&mut genesis_chain);
         genesis_chain
     }

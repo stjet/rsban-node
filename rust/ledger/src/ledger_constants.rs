@@ -7,13 +7,9 @@ use rsnano_core::{
     utils::{get_env_or_default_string, seconds_since_epoch, SerdePropertyTree},
     work::{WorkThresholds, WORK_THRESHOLDS_STUB},
     Account, Amount, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, Epochs, KeyPair,
-    Link, Networks,
+    Link, Networks, DEV_GENESIS_KEY, DEV_PUBLIC_KEY_DATA,
 };
 
-static DEV_PRIVATE_KEY_DATA: &str =
-    "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";
-static DEV_PUBLIC_KEY_DATA: &str =
-    "B0311EA55708D6A53C75CDBF88300259C6D018522FE3D4D0A242E431F9E8B6D0"; // xrb_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo
 static BETA_PUBLIC_KEY_DATA: &str =
     "259A43ABDB779E97452E188BA3EB951B41C961D3318CA6B925380F4D99F0577A"; // nano_1betagoxpxwykx4kw86dnhosc8t3s7ix8eeentwkcg1hbpez1outjrcyg4n1
 static LIVE_PUBLIC_KEY_DATA: &str =
@@ -77,9 +73,6 @@ static TEST_CANARY_PUBLIC_KEY_DATA: Lazy<String> = Lazy::new(|| {
         "3BAD2C554ACE05F5E528FBBCE79D51E552C55FA765CCFD89B289C4835DE5F04A",
     ) // nano_1gxf7jcnomi7yqkkjyxwwygo5sckrohtgsgezp6u74g6ifgydw4cajwbk8bf
 });
-
-pub static DEV_GENESIS_KEY: Lazy<KeyPair> =
-    Lazy::new(|| KeyPair::from_priv_key_hex(DEV_PRIVATE_KEY_DATA).unwrap());
 
 pub static LEDGER_CONSTANTS_STUB: Lazy<LedgerConstants> =
     Lazy::new(|| LedgerConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork));

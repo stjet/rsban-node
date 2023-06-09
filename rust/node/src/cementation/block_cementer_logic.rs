@@ -212,6 +212,8 @@ impl Default for BlockCementerLogic {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::{Amount, BlockChainBuilder};
+
     use super::*;
     use crate::cementation::{CementCallbacks, LedgerDataRequesterStub};
 
@@ -221,7 +223,8 @@ mod tests {
     #[test]
     fn flush_block_if_it_is_the_only_one() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
-        let genesis_chain = ledger_adapter.add_genesis_block().legacy_send();
+        let mut genesis_chain = ledger_adapter.add_genesis_block();
+        genesis_chain.legacy_send();
         ledger_adapter.add_uncemented(&genesis_chain);
 
         let mut logic = BlockCementerLogic::new(test_options());
@@ -249,10 +252,9 @@ mod tests {
     #[test]
     fn flush_two_blocks_in_one_batch() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
-        let genesis_chain = ledger_adapter
-            .add_genesis_block()
-            .legacy_send()
-            .legacy_send();
+        let mut genesis_chain = ledger_adapter.add_genesis_block();
+        genesis_chain.legacy_send();
+        genesis_chain.legacy_send();
         ledger_adapter.add_uncemented(&genesis_chain);
 
         let mut logic = BlockCementerLogic::new(test_options());
@@ -280,7 +282,8 @@ mod tests {
     #[test]
     fn dont_flush_if_there_are_more_blocks_awaiting_processing_and_processing_time_is_low() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
-        let genesis_chain = ledger_adapter.add_genesis_block().legacy_send();
+        let mut genesis_chain = ledger_adapter.add_genesis_block();
+        genesis_chain.legacy_send();
         ledger_adapter.add_uncemented(&genesis_chain);
 
         let mut logic = BlockCementerLogic::new(test_options());
@@ -297,7 +300,8 @@ mod tests {
     #[test]
     fn flush_if_there_are_more_blocks_awaiting_processing_but_processing_time_is_high() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
-        let genesis_chain = ledger_adapter.add_genesis_block().legacy_send();
+        let mut genesis_chain = ledger_adapter.add_genesis_block();
+        genesis_chain.legacy_send();
         ledger_adapter.add_uncemented(&genesis_chain);
 
         let mut logic = BlockCementerLogic::new(test_options());
@@ -316,11 +320,10 @@ mod tests {
     #[test]
     fn flush_if_max_batch_size_reached() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
-        let genesis_chain = ledger_adapter
-            .add_genesis_block()
-            .legacy_send()
-            .legacy_send()
-            .legacy_send();
+        let mut genesis_chain = ledger_adapter.add_genesis_block();
+        genesis_chain.legacy_send();
+        genesis_chain.legacy_send();
+        genesis_chain.legacy_send();
 
         ledger_adapter.add_uncemented(&genesis_chain);
 
@@ -351,7 +354,8 @@ mod tests {
     #[test]
     fn flush_if_write_queue_is_full() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
-        let genesis_chain = ledger_adapter.add_genesis_block().legacy_send();
+        let mut genesis_chain = ledger_adapter.add_genesis_block();
+        genesis_chain.legacy_send();
 
         ledger_adapter.add_uncemented(&genesis_chain);
 
@@ -377,11 +381,11 @@ mod tests {
     #[test]
     fn flush_if_batch_is_full() {
         let mut ledger_adapter = LedgerDataRequesterStub::new();
-        let genesis_chain = ledger_adapter
-            .add_genesis_block()
-            .legacy_send();
-        let dest_chain = genesis_chain.open_last_destination();
-        let genesis_chain = genesis_chain.legacy_send();
+        let mut dest_chain = BlockChainBuilder::new();
+        let mut genesis_chain = ledger_adapter.add_genesis_block();
+        genesis_chain.legacy_send_to(dest_chain.account(), Amount::raw(1));
+        dest_chain.legacy_open_from_account(&genesis_chain);
+        genesis_chain.legacy_send();
         ledger_adapter.add_uncemented(&genesis_chain);
         ledger_adapter.add_uncemented(&dest_chain);
 

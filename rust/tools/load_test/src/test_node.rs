@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use reqwest::Url;
-use rsnano_ledger::DEV_GENESIS_KEY;
+use rsnano_core::DEV_GENESIS_KEY;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},

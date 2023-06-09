@@ -1,9 +1,9 @@
 use rsnano_core::{
     Account, AccountInfo, BlockBuilder, BlockDetails, BlockEnum, BlockSideband, Epoch, KeyPair,
-    LegacyChangeBlockBuilder, LegacyReceiveBlockBuilder, StateBlockBuilder,
+    LegacyChangeBlockBuilder, LegacyReceiveBlockBuilder, StateBlockBuilder, DEV_GENESIS_KEY,
 };
 
-use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, DEV_GENESIS_KEY};
+use crate::ledger_constants::LEDGER_CONSTANTS_STUB;
 
 pub(crate) fn create_test_account_info(block: &BlockEnum) -> AccountInfo {
     AccountInfo {

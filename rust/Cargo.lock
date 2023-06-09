@@ -908,6 +908,7 @@ dependencies = [
  "clap 2.34.0",
  "rand",
  "reqwest",
+ "rsnano_core",
  "rsnano_ledger",
  "rsnano_node",
  "serde_json",

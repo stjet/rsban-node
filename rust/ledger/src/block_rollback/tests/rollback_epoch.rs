@@ -1,6 +1,6 @@
 use rsnano_core::{
     Account, AccountInfo, Amount, BlockBuilder, BlockDetails, BlockHash, BlockSideband,
-    ConfirmationHeightInfo, Epoch, PendingInfo, PendingKey,
+    ConfirmationHeightInfo, Epoch, PendingInfo, PendingKey, DEV_GENESIS_KEY,
 };
 
 use crate::{
@@ -10,7 +10,6 @@ use crate::{
         create_state_block, create_test_account_info, epoch_block_sideband, epoch_successor,
         state_successor,
     },
-    DEV_GENESIS_KEY,
 };
 
 #[test]

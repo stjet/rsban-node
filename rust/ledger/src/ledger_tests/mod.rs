@@ -4,11 +4,12 @@ use std::sync::atomic::Ordering;
 mod helpers;
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB, Ledger, LedgerCache, UncementedInfo, DEV_GENESIS,
-    DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_KEY,
+    DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 pub(crate) use helpers::*;
 use rsnano_core::{
-    Account, Amount, BlockBuilder, BlockHash, KeyPair, QualifiedRoot, Root, GXRB_RATIO,
+    Account, Amount, BlockBuilder, BlockHash, KeyPair, QualifiedRoot, Root, DEV_GENESIS_KEY,
+    GXRB_RATIO,
 };
 
 mod empty_ledger;

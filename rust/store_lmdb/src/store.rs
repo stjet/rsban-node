@@ -288,7 +288,7 @@ fn do_upgrades<T: Environment + 'static>(
 
     if version < 21 {
         logger.always_log(&format!("The version of the ledger ({}) is lower than the minimum ({}) which is supported for upgrades. Either upgrade to a v23 node first or delete the ledger.", version, STORE_VERSION_MINIMUM));
-        return Err(anyhow!("version too low"));
+        bail!("version too low");
     }
 
     if version > 22 {
@@ -296,7 +296,7 @@ fn do_upgrades<T: Environment + 'static>(
             "The version of the ledger ({}) is too high for this node",
             version
         ));
-        return Err(anyhow!("version too high"));
+        bail!("version too high");
     }
 
     if version == 21 {

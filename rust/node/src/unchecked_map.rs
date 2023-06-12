@@ -107,7 +107,7 @@ impl UncheckedMap {
 
     pub fn trigger(&self, dependency: &HashOrAccount) {
         let mut lock = self.mutable.lock().unwrap();
-        lock.buffer.push_back(dependency.clone());
+        lock.buffer.push_back(*dependency);
         drop(lock);
         self.stats
             .inc(StatType::Unchecked, DetailType::Trigger, Direction::In);
@@ -122,6 +122,11 @@ impl UncheckedMap {
     pub fn len(&self) -> usize {
         let lock = self.mutable.lock().unwrap();
         lock.entries_container.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        let lock = self.mutable.lock().unwrap();
+        lock.entries_container.is_empty()
     }
 
     pub fn entries_size() -> usize {

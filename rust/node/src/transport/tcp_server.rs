@@ -557,7 +557,7 @@ impl HandshakeMessageVisitorImpl {
 
         self.stats
             .inc(StatType::Handshake, DetailType::Ok, Direction::In);
-        return true; // OK
+        true // OK
     }
 }
 

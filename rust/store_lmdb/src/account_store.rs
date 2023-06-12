@@ -50,7 +50,7 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         info: &AccountInfo,
     ) {
         #[cfg(feature = "output_tracking")]
-        self.put_listener.emit((account.clone(), info.clone()));
+        self.put_listener.emit((*account, info.clone()));
         transaction
             .put(
                 self.database,

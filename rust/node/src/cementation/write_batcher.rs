@@ -91,7 +91,7 @@ impl WriteBatcher {
     }
 
     pub fn has_pending_writes(&self) -> bool {
-        self.pending_writes.len() > 0
+        !self.pending_writes.is_empty()
     }
 
     pub fn enqueue(&mut self, write_details: BlockChainSection) {

@@ -147,12 +147,10 @@ impl<E: Environment + 'static> LmdbIteratorImpl<E> {
     ) -> Self {
         let operation = if key_val.is_some() {
             MDB_SET_RANGE
+        } else if direction_asc {
+            MDB_FIRST
         } else {
-            if direction_asc {
-                MDB_FIRST
-            } else {
-                MDB_LAST
-            }
+            MDB_LAST
         };
 
         let cursor = txn.open_ro_cursor(dbi).unwrap();

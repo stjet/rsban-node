@@ -28,7 +28,7 @@ impl<'a, T: Environment + 'static> RollbackPlannerFactory<'a, T> {
         let account = self.get_account(self.head_block)?;
         let planner = RollbackPlanner {
             epochs: &self.ledger.constants.epochs,
-            head_block: &self.head_block,
+            head_block: self.head_block,
             account,
             current_account_info: self.load_account(&account),
             previous_representative: self.get_previous_representative()?,

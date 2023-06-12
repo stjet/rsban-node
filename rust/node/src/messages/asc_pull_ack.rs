@@ -129,7 +129,7 @@ impl AscPullAck {
     }
 
     pub fn payload(&self) -> &AscPullAckPayload {
-        &&self.payload
+        &self.payload
     }
 
     fn serialize_payload(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {

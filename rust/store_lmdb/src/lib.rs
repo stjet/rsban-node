@@ -81,7 +81,7 @@ pub trait Transaction {
     fn refresh(&mut self);
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]>;
     fn exists(&self, db: Self::Database, key: &[u8]) -> bool {
-        match self.get(db, &key) {
+        match self.get(db, key) {
             Ok(_) => true,
             Err(lmdb::Error::NotFound) => false,
             Err(e) => panic!("exists failed: {:?}", e),
@@ -142,11 +142,7 @@ pub struct LmdbReadTransaction<T: Environment + 'static = EnvironmentWrapper> {
 }
 
 impl<T: Environment + 'static> LmdbReadTransaction<T> {
-    pub fn new<'a>(
-        txn_id: u64,
-        env: &'a T,
-        callbacks: Arc<dyn TransactionTracker>,
-    ) -> lmdb::Result<Self> {
+    pub fn new(txn_id: u64, env: &T, callbacks: Arc<dyn TransactionTracker>) -> lmdb::Result<Self> {
         let txn = env.begin_ro_txn()?;
         callbacks.txn_start(txn_id, false);
 
@@ -189,9 +185,8 @@ impl<T: Environment + 'static> Drop for LmdbReadTransaction<T> {
     fn drop(&mut self) {
         let t = mem::replace(&mut self.txn, RoTxnState::Transitioning);
         // This uses commit rather than abort, as it is needed when opening databases with a read only transaction
-        match t {
-            RoTxnState::Active(t) => t.commit().unwrap(),
-            _ => {}
+        if let RoTxnState::Active(t) = t {
+            t.commit().unwrap()
         }
         self.callbacks.txn_end(self.txn_id, false);
     }
@@ -379,7 +374,7 @@ impl<T: Environment> LmdbWriteTransaction<T> {
     }
 }
 
-impl<'a, T: Environment> Drop for LmdbWriteTransaction<T> {
+impl<T: Environment> Drop for LmdbWriteTransaction<T> {
     fn drop(&mut self) {
         self.commit();
     }

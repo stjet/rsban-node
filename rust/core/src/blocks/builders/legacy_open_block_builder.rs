@@ -65,7 +65,7 @@ impl LegacyOpenBlockBuilder {
     pub fn build(self) -> BlockEnum {
         let source = self.source.unwrap_or(BlockHash::from(1));
         let key_pair = self.keypair.unwrap_or_default();
-        let account = self.account.unwrap_or_else(|| key_pair.public_key().into());
+        let account = self.account.unwrap_or_else(|| key_pair.public_key());
         let representative = self.representative.unwrap_or(Account::from(2));
         let work = self
             .work

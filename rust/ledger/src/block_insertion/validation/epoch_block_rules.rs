@@ -40,10 +40,8 @@ impl<'a> BlockValidator<'a> {
     }
 
     fn ensure_epoch_open_has_pending_entry(&self) -> Result<(), ProcessResult> {
-        if self.block.is_open() && self.is_epoch_block() {
-            if !self.any_pending_exists {
-                return Err(ProcessResult::GapEpochOpenPending);
-            };
+        if self.block.is_open() && self.is_epoch_block() && !self.any_pending_exists {
+            return Err(ProcessResult::GapEpochOpenPending);
         }
         Ok(())
     }

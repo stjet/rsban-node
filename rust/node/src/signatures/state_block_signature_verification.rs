@@ -255,14 +255,13 @@ impl StateBlockSignatureVerificationThread {
             messages.push(block.hash().as_bytes().to_vec());
             let mut account = block.account();
             if !block.link().is_zero() && self.epochs.is_epoch_link(&block.link()) {
-                account = self
+                account = *self
                     .epochs
                     .signer(self.epochs.epoch(&block.link()).unwrap())
-                    .unwrap()
-                    .clone();
+                    .unwrap();
             }
             accounts.push(account);
-            pub_keys.push(account.into());
+            pub_keys.push(account);
             block_signatures.push(block.block_signature().clone())
         }
 

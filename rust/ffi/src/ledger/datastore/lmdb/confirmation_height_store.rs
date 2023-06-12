@@ -89,7 +89,7 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_count(
     handle: *mut LmdbConfirmationHeightStoreHandle,
     txn: *mut TransactionHandle,
 ) -> u64 {
-    (*handle).0.count((*txn).as_txn()) as u64
+    (*handle).0.count((*txn).as_txn())
 }
 
 #[no_mangle]

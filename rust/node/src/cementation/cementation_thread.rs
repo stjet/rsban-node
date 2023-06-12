@@ -53,7 +53,7 @@ impl CementationThread {
 
         let block_cementer = BlockCementer::new(
             ledger,
-            write_database_queue.clone(),
+            write_database_queue,
             logger,
             enable_timing_logging,
             batch_separate_pending_min_time,

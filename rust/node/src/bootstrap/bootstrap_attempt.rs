@@ -141,10 +141,8 @@ impl BootstrapAttempt {
             && self.ledger.block_or_pruned_exists(&hash)
         {
             stop_pull = true;
-        } else {
-            if let Some(p) = self.block_processor.upgrade() {
-                p.add(block);
-            }
+        } else if let Some(p) = self.block_processor.upgrade() {
+            p.add(block);
         }
 
         stop_pull

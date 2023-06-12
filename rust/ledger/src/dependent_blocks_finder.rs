@@ -48,6 +48,6 @@ impl<'a, T: Environment + 'static> DependentBlocksFinder<'a, T> {
     }
 
     fn is_genesis_open(&self, open: &OpenBlock) -> bool {
-        open.account() == self.ledger.constants.genesis_account.into()
+        open.account() == self.ledger.constants.genesis_account
     }
 }

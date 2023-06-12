@@ -34,7 +34,7 @@ impl InactiveCacheInformation {
 
 impl Display for InactiveCacheInformation {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        write!(f, "hash={}", self.hash.to_string())?;
+        write!(f, "hash={}", self.hash)?;
         write!(f, ", arrival={}", self.arrival)?;
         write!(f, ", {}", self.status)?;
         write!(f, ", {} voters", self.voters.len())?;

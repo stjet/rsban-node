@@ -30,11 +30,11 @@ pub struct WorkThresholds {
 impl Clone for WorkThresholds {
     fn clone(&self) -> Self {
         Self {
-            epoch_1: self.epoch_1.clone(),
-            epoch_2: self.epoch_2.clone(),
-            epoch_2_receive: self.epoch_2_receive.clone(),
-            base: self.base.clone(),
-            entry: self.entry.clone(),
+            epoch_1: self.epoch_1,
+            epoch_2: self.epoch_2,
+            epoch_2_receive: self.epoch_2_receive,
+            base: self.base,
+            entry: self.entry,
             difficulty: self.difficulty.clone(),
         }
     }
@@ -117,7 +117,7 @@ impl WorkThresholds {
 impl WorkThresholds {
     pub fn new(epoch_1: u64, epoch_2: u64, epoch_2_receive: u64) -> Self {
         Self::with_difficulty(
-            Box::new(DifficultyV1::default()),
+            Box::<DifficultyV1>::default(),
             epoch_1,
             epoch_2,
             epoch_2_receive,

@@ -59,7 +59,7 @@ impl From<&SendHashables> for BlockHash {
         BlockHashBuilder::new()
             .update(hashables.previous.as_bytes())
             .update(hashables.destination.as_bytes())
-            .update(&hashables.balance.to_be_bytes())
+            .update(hashables.balance.to_be_bytes())
             .build()
     }
 }

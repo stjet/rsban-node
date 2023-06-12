@@ -55,8 +55,7 @@ impl RepWeights {
 
     pub fn representation_get(&self, account: &Account) -> Amount {
         let guard = self.rep_amounts.lock().unwrap();
-        let result = self.get(&guard, account);
-        result
+        self.get(&guard, account)
     }
 
     pub fn representation_add_dual(

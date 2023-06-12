@@ -134,7 +134,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_count(
     handle: *mut LmdbBlockStoreHandle,
     txn: *mut TransactionHandle,
 ) -> u64 {
-    (*handle).0.count((*txn).as_txn()) as u64
+    (*handle).0.count((*txn).as_txn())
 }
 
 #[no_mangle]

@@ -259,10 +259,9 @@ impl<T: Environment + 'static> Ledger<T> {
         }
 
         let transaction = self.store.tx_begin_read();
-        self.cache.pruned_count.fetch_add(
-            self.store.pruned.count(&transaction) as u64,
-            Ordering::SeqCst,
-        );
+        self.cache
+            .pruned_count
+            .fetch_add(self.store.pruned.count(&transaction), Ordering::SeqCst);
 
         // Final votes requirement for confirmation canary block
         if let Some(conf_height) = self
@@ -435,11 +434,10 @@ impl<T: Environment + 'static> Ledger<T> {
                 if account.is_zero() {
                     account = sideband.account;
                 }
-                let confirmed = match self.store.confirmation_height.get(txn, &account) {
+                match self.store.confirmation_height.get(txn, &account) {
                     Some(info) => info.height >= sideband.height,
                     None => false,
-                };
-                confirmed
+                }
             }
             None => false,
         }
@@ -606,24 +604,20 @@ impl<T: Environment + 'static> Ledger<T> {
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<Amount> {
-        self.store
-            .block
-            .get(txn, hash)
-            .map(|block| {
-                let block_balance = self.balance(txn, hash);
-                let previous_balance = self.balance_safe(txn, &block.previous());
-                match previous_balance {
-                    Ok(previous) => {
-                        if block_balance > previous {
-                            Some(block_balance - previous)
-                        } else {
-                            Some(previous - block_balance)
-                        }
+        self.store.block.get(txn, hash).and_then(|block| {
+            let block_balance = self.balance(txn, hash);
+            let previous_balance = self.balance_safe(txn, &block.previous());
+            match previous_balance {
+                Ok(previous) => {
+                    if block_balance > previous {
+                        Some(block_balance - previous)
+                    } else {
+                        Some(previous - block_balance)
                     }
-                    Err(_) => None,
                 }
-            })
-            .flatten()
+                Err(_) => None,
+            }
+        })
     }
 
     /// Return latest block for account
@@ -734,9 +728,7 @@ impl<T: Environment + 'static> Ledger<T> {
             successor = self.store.block.successor(txn, &root.previous);
         }
 
-        successor
-            .map(|hash| self.store.block.get(txn, &hash))
-            .flatten()
+        successor.and_then(|hash| self.store.block.get(txn, &hash))
     }
 
     pub fn pruning_action(

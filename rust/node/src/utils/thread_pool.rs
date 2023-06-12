@@ -26,8 +26,8 @@ struct ThreadPoolData<T: TimerStrategy> {
 }
 
 impl<T: TimerStrategy> ThreadPoolData<T> {
-    fn push_task(&self, mut callback: Box<dyn FnMut() + Send>) {
-        self.pool.execute(move || callback());
+    fn push_task(&self, callback: Box<dyn FnMut() + Send>) {
+        self.pool.execute(callback);
     }
 }
 

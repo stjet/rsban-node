@@ -172,9 +172,11 @@ impl GapCache {
 
     pub fn add(&mut self, hash: &BlockHash, time_point: i64) {
         let mut lock = self.blocks.lock().unwrap();
-        if !lock.modify(hash, &mut |info| {
+        let modified = lock.modify(hash, &mut |info| {
             info.arrival = time_point;
-        }) {
+        });
+
+        if !modified {
             let gap_information = GapInformation::new(time_point, *hash);
             lock.add(gap_information);
             lock.trim(MAX);
@@ -204,7 +206,7 @@ impl GapCache {
         }
     }
 
-    pub fn bootstrap_check(&self, voters: &Vec<Account>, hash: &BlockHash) -> bool {
+    pub fn bootstrap_check(&self, voters: &[Account], hash: &BlockHash) -> bool {
         let tally = Amount::raw(
             voters
                 .iter()
@@ -244,10 +246,7 @@ impl GapCache {
 
     pub fn block_exists(&self, hash: &BlockHash) -> bool {
         let lock = self.blocks.lock().unwrap();
-        match lock.get(hash) {
-            Some(_) => true,
-            None => false,
-        }
+        lock.get(hash).is_some()
     }
 
     pub fn earliest(&self) -> i64 {
@@ -382,7 +381,7 @@ mod tests {
 
         gaps.modify(&hash, &mut |info| info.bootstrap_started = true);
 
-        assert_eq!(gaps.get(&hash).unwrap().bootstrap_started, true);
+        assert!(gaps.get(&hash).unwrap().bootstrap_started);
     }
 
     #[test]

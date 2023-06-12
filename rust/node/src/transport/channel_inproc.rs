@@ -129,8 +129,8 @@ impl ChannelInProc {
         let limiter = self.limiter.clone();
         let source_inbound = self.source_inbound.clone();
         let destination_inbound = self.destination_inbound.clone();
-        let source_endpoint = self.source_endpoint.clone();
-        let destination_endpoint = self.destination_endpoint.clone();
+        let source_endpoint = self.source_endpoint;
+        let destination_endpoint = self.destination_endpoint;
         let source_node_id = self.source_node_id;
         let destination_node_id = self.destination_node_id;
         let io_ctx = self.io_ctx.clone();
@@ -173,7 +173,7 @@ impl ChannelInProc {
             }
         });
 
-        self.send_buffer_impl(&buffer_a, callback_wrapper);
+        self.send_buffer_impl(buffer_a, callback_wrapper);
 
         if let Some(cb) = callback_a {
             let buffer_size = buffer_a.len();

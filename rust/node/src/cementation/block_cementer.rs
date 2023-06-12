@@ -57,7 +57,7 @@ impl BlockCementer {
     }
 
     pub fn block_cache(&self) -> &Arc<BlockCache> {
-        &self.logic.block_cache()
+        self.logic.block_cache()
     }
 
     pub fn process(&mut self, original_block: &BlockEnum, callbacks: &mut CementCallbackRefs) {

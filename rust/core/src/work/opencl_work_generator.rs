@@ -26,7 +26,7 @@ impl OpenClWorkGenerator {
         min_difficulty: u64,
         work_ticket: &WorkTicket,
     ) -> Option<(u64, u64)> {
-        let work = (self.opencl)(version, *item, min_difficulty, &work_ticket);
+        let work = (self.opencl)(version, *item, min_difficulty, work_ticket);
         work.map(|work| (work, DifficultyV1::default().get_difficulty(item, work)))
     }
 }
@@ -39,13 +39,13 @@ impl WorkGenerator for OpenClWorkGenerator {
         min_difficulty: u64,
         work_ticket: &WorkTicket,
     ) -> Option<(u64, u64)> {
-        let result = self.create_opencl_work(version, &item, min_difficulty, &work_ticket);
+        let result = self.create_opencl_work(version, item, min_difficulty, work_ticket);
 
         if result.is_some() {
             result
         } else {
             self.cpu_gen
-                .create(version, &item, min_difficulty, &work_ticket)
+                .create(version, item, min_difficulty, work_ticket)
         }
     }
 }

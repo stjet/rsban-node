@@ -16,7 +16,7 @@ impl RepresentativeCollection {
     }
 
     pub fn add(&mut self, rep: Representative) {
-        let account = rep.account().clone();
+        let account = *rep.account();
         let channel_id = rep.channel().as_channel().channel_id();
 
         let old = self.by_account.insert(account, rep);

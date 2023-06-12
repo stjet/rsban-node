@@ -46,15 +46,16 @@ impl<'a, T: Environment> BlockRollbackPerformer<'a, T> {
     }
 
     fn execute(&mut self, step: RollbackStep, head_block: BlockEnum) -> Result<(), anyhow::Error> {
-        Ok(match step {
+        match step {
             RollbackStep::RollBackBlock(instructions) => {
                 RollbackInstructionsExecutor::new(self.ledger, self.txn, &instructions).execute();
                 self.rolled_back.push(head_block);
+                Ok(())
             }
             RollbackStep::RequestDependencyRollback(dependency_hash) => {
-                self.roll_back_block_and_successors(&dependency_hash)?
+                self.roll_back_block_and_successors(&dependency_hash)
             }
-        })
+        }
     }
 
     fn block_exists(&self, block_hash: &BlockHash) -> bool {

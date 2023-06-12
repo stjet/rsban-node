@@ -213,18 +213,16 @@ impl Display for ConfirmReq {
             for (hash, root) in &self.roots_hashes {
                 write!(f, "\n{}:{}", hash, root)?;
             }
-        } else {
-            if let Some(block) = &self.block {
-                write!(
-                    f,
-                    "\n{}",
-                    block
-                        .read()
-                        .unwrap()
-                        .to_json()
-                        .map_err(|_| std::fmt::Error)?
-                )?;
-            }
+        } else if let Some(block) = &self.block {
+            write!(
+                f,
+                "\n{}",
+                block
+                    .read()
+                    .unwrap()
+                    .to_json()
+                    .map_err(|_| std::fmt::Error)?
+            )?;
         }
         Ok(())
     }

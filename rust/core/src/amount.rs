@@ -2,7 +2,7 @@ use crate::utils::{Deserialize, Serialize, Stream};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 
-#[derive(Clone, Copy, PartialEq, Eq, Default, Debug, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct Amount {
     raw: u128, // native endian!
 }
@@ -161,6 +161,12 @@ impl std::ops::Sub for Amount {
 impl std::cmp::PartialOrd for Amount {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.raw.partial_cmp(&other.raw)
+    }
+}
+
+impl std::cmp::Ord for Amount {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.raw.cmp(&other.raw)
     }
 }
 

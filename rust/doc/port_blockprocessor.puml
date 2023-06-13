@@ -36,12 +36,14 @@ class network_filter #PaleGreen
 }
 
 package "Bootstrapping"{
-    class bulk_pull_server
+    class bulk_pull_server #PaleGreen
     class bulk_pull_account_server
     class frontier_req_server
     class bulk_push_server
     class bootstrap_message_visitor
-    class request_response_visitor_factory
+    class request_response_visitor_factory {
+        create_visitor(tcp_server)
+    }
 }
 
 active_transactions --> election
@@ -91,6 +93,7 @@ tcp_channels --> peer_exclusion
 tcp_server_factory --> tcp_server
 tcp_server --> syn_cookies
 tcp_server --> network_filter
+tcp_server --> request_response_visitor_factory
 
 channel_tcp_wrapper --> channel_tcp
 channel_tcp --> tcp_server
@@ -104,6 +107,6 @@ bootstrap_message_visitor --> bulk_pull_server
 bootstrap_message_visitor --> frontier_req_server
 bootstrap_message_visitor --> bulk_push_server
 
-request_response_visitor_factory --> bootstrap_message_visitor
+request_response_visitor_factory --> bootstrap_message_visitor: creates
 
 @enduml

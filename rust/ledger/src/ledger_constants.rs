@@ -219,7 +219,7 @@ impl LedgerConstants {
 
         let mut epochs = Epochs::new();
 
-        let epoch_1_signer = genesis.account().into();
+        let epoch_1_signer = genesis.account();
         let epoch_link_v1 = epoch_v1_link();
 
         let nano_live_epoch_v2_signer = Account::decode_account(
@@ -228,9 +228,9 @@ impl LedgerConstants {
         .unwrap();
         let epoch_2_signer = match network {
             Networks::NanoDevNetwork => DEV_GENESIS_KEY.public_key(),
-            Networks::NanoBetaNetwork => nano_beta_account.into(),
-            Networks::NanoLiveNetwork => nano_live_epoch_v2_signer.into(),
-            Networks::NanoTestNetwork => nano_test_account.into(),
+            Networks::NanoBetaNetwork => nano_beta_account,
+            Networks::NanoLiveNetwork => nano_live_epoch_v2_signer,
+            Networks::NanoTestNetwork => nano_test_account,
             _ => panic!("invalid network"),
         };
         let epoch_link_v2 = epoch_v2_link();

@@ -106,7 +106,7 @@ impl LmdbStore<EnvironmentStub> {
 }
 
 impl<T: Environment + 'static> LmdbStore<T> {
-    pub fn open<'a>(path: &'a Path) -> LmdbStoreBuilder<'a> {
+    pub fn open(path: &Path) -> LmdbStoreBuilder<'_> {
         LmdbStoreBuilder::new(path)
     }
 
@@ -210,10 +210,8 @@ fn upgrade_if_needed<T: Environment + 'static>(
     }
 
     let env = Arc::new(LmdbEnv::<T>::new(path)?);
-    if !upgrade_info.is_fresh_db {
-        if backup_before_upgrade {
-            create_backup_file(&env, logger.as_ref())?;
-        }
+    if !upgrade_info.is_fresh_db && backup_before_upgrade {
+        create_backup_file(&env, logger.as_ref())?;
     }
 
     logger.always_log("Upgrade in progress...");
@@ -260,7 +258,7 @@ fn copy_table<T: Environment + 'static>(
         let mut cursor = ro_txn.txn().open_ro_cursor(source)?;
         for x in cursor.iter_start() {
             let (k, v) = x?;
-            rw_txn.put(target, &k, &v, WriteFlags::APPEND)?;
+            rw_txn.put(target, k, v, WriteFlags::APPEND)?;
         }
     }
     if ro_txn.txn().count(source) != rw_txn.rw_txn_mut().count(target) {
@@ -288,7 +286,7 @@ fn do_upgrades<T: Environment + 'static>(
 
     if version < 21 {
         logger.always_log(&format!("The version of the ledger ({}) is lower than the minimum ({}) which is supported for upgrades. Either upgrade to a v23 node first or delete the ledger.", version, STORE_VERSION_MINIMUM));
-        return Err(anyhow!("version too low"));
+        bail!("version too low");
     }
 
     if version > 22 {
@@ -296,7 +294,7 @@ fn do_upgrades<T: Environment + 'static>(
             "The version of the ledger ({}) is too high for this node",
             version
         ));
-        return Err(anyhow!("version too high"));
+        bail!("version too high");
     }
 
     if version == 21 {

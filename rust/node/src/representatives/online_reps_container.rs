@@ -22,7 +22,7 @@ impl OnlineRepsContainer {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Account> {
-        self.by_account.keys().into_iter()
+        self.by_account.keys()
     }
 
     pub fn clear(&mut self) {

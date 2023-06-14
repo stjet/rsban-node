@@ -44,7 +44,7 @@ pub unsafe extern "C" fn rsn_unchecked_info_clone(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_unchecked_info_destroy(handle: *mut UncheckedInfoHandle) {
+pub unsafe extern "C" fn rsn_unchecked_info_destroy(handle: *mut UncheckedInfoHandle) {
     drop(unsafe { Box::from_raw(handle) });
 }
 

@@ -229,10 +229,7 @@ impl BlockEnum {
     }
 
     pub fn is_legacy(&self) -> bool {
-        match self {
-            BlockEnum::State(_) => false,
-            _ => true,
-        }
+        !matches!(self, BlockEnum::State(_))
     }
 
     pub fn balance_opt(&self) -> Option<Amount> {

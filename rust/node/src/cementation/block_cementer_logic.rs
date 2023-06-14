@@ -73,7 +73,6 @@ impl BlockCementerLogic {
         let write_batcher = WriteBatcher::new(WriteBatcherOptions {
             min_batch_size: options.min_batch_size,
             max_pending_writes: options.max_pending_writes,
-            ..Default::default()
         });
 
         Self {
@@ -123,7 +122,7 @@ impl BlockCementerLogic {
     }
 
     pub fn block_cache(&self) -> &Arc<BlockCache> {
-        &self.cementation_walker.block_cache()
+        self.cementation_walker.block_cache()
     }
 
     pub(crate) fn batch_write_size(&self) -> &Arc<BatchWriteSizeManager> {

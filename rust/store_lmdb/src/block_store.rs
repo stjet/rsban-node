@@ -104,20 +104,17 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<BlockHash> {
-        self.block_raw_get(txn, hash)
-            .map(|data| {
-                debug_assert!(data.len() >= 32);
-                let block_type = BlockType::from_u8(data[0]).unwrap();
-                let offset = block_successor_offset(data.len(), block_type);
-                let successor =
-                    BlockHash::from_bytes(data[offset..offset + 32].try_into().unwrap());
-                if successor.is_zero() {
-                    None
-                } else {
-                    Some(successor)
-                }
-            })
-            .flatten()
+        self.block_raw_get(txn, hash).and_then(|data| {
+            debug_assert!(data.len() >= 32);
+            let block_type = BlockType::from_u8(data[0]).unwrap();
+            let offset = block_successor_offset(data.len(), block_type);
+            let successor = BlockHash::from_bytes(data[offset..offset + 32].try_into().unwrap());
+            if successor.is_zero() {
+                None
+            } else {
+                Some(successor)
+            }
+        })
     }
 
     pub fn successor_clear(&self, txn: &mut LmdbWriteTransaction<T>, hash: &BlockHash) {
@@ -137,7 +134,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
     ) -> Option<BlockEnum> {
         self.block_raw_get(txn, hash).map(|bytes| {
             BlockEnum::deserialize_with_sideband(bytes)
-                .expect(&format!("Could not deserialize block {}!", hash))
+                .unwrap_or_else(|_| panic!("Could not deserialize block {}!", hash))
         })
     }
 
@@ -263,7 +260,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
     }
 
     pub fn raw_put(&self, txn: &mut LmdbWriteTransaction<T>, data: &[u8], hash: &BlockHash) {
-        txn.put(self.database, hash.as_bytes(), &data, WriteFlags::empty())
+        txn.put(self.database, hash.as_bytes(), data, WriteFlags::empty())
             .unwrap();
     }
 
@@ -286,7 +283,7 @@ struct BlockPredecessorMdbSet<'a, T: Environment + 'static> {
     block_store: &'a LmdbBlockStore<T>,
 }
 
-impl<'a, 'b, T: Environment + 'static> BlockPredecessorMdbSet<'a, T> {
+impl<'a, T: Environment + 'static> BlockPredecessorMdbSet<'a, T> {
     fn new(
         transaction: &'a mut LmdbWriteTransaction<T>,
         block_store: &'a LmdbBlockStore<T>,

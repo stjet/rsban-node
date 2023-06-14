@@ -157,7 +157,7 @@ impl TelemetryData {
     }
 
     pub fn sign(&mut self, keys: &KeyPair) -> Result<()> {
-        debug_assert!(keys.public_key() == self.node_id.into());
+        debug_assert!(keys.public_key() == self.node_id);
         let mut stream = MemoryStream::new();
         self.serialize_without_signature(&mut stream)?;
         self.signature = sign_message(&keys.private_key(), &keys.public_key(), stream.as_bytes());
@@ -167,7 +167,7 @@ impl TelemetryData {
     pub fn validate_signature(&self) -> bool {
         let mut stream = MemoryStream::new();
         if self.serialize_without_signature(&mut stream).is_ok() {
-            validate_message(&self.node_id.into(), stream.as_bytes(), &self.signature).is_ok()
+            validate_message(&self.node_id, stream.as_bytes(), &self.signature).is_ok()
         } else {
             false
         }
@@ -344,7 +344,7 @@ impl Message for TelemetryAck {
 impl Display for TelemetryAck {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.header.fmt(f)?;
-        write!(f, "\n")?;
+        writeln!(f)?;
         if self.is_empty_payload() {
             write!(f, "empty telemetry payload")?;
         } else {

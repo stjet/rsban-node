@@ -347,7 +347,7 @@ impl TestAccountChain {
             source_epoch,
         });
 
-        if self.blocks.len() > 0 {
+        if !self.blocks.is_empty() {
             let previous = self.blocks.last_mut().unwrap();
             let mut sideband = previous.sideband().unwrap().clone();
             sideband.successor = block.hash();

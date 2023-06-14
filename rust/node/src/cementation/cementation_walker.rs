@@ -75,7 +75,7 @@ impl ChainIteration {
         self.current_height = block.height() + 1;
     }
 
-    fn into_write_details(&self) -> BlockChainSection {
+    fn to_write_details(&self) -> BlockChainSection {
         BlockChainSection {
             account: self.account,
             bottom_height: self.bottom_height,
@@ -213,7 +213,7 @@ impl CementationWalker {
     }
 
     fn section_to_cement(&self, chain: &ChainIteration) -> Option<BlockChainSection> {
-        let mut write_details = chain.into_write_details();
+        let mut write_details = chain.to_write_details();
         if let Some(info) = self.confirmation_heights.get(&write_details.account) {
             if info.confirmed_height >= write_details.bottom_height {
                 // our bottom is out of date
@@ -267,10 +267,10 @@ impl CementationWalker {
         block: &BlockEnum,
         data_requester: &mut T,
     ) {
-        if let Some(lowest) = self.get_lowest_uncemented_block(&block, data_requester) {
+        if let Some(lowest) = self.get_lowest_uncemented_block(block, data_requester) {
             // There are blocks that need to be cemented in this chain
             self.chain_stack
-                .push_back(ChainIteration::new(&lowest, &block));
+                .push_back(ChainIteration::new(&lowest, block));
             self.chains_encountered += 1;
             if self.chains_encountered % self.chain_stack.max_len() == 0 {
                 // Make a checkpoint every max_len() chains

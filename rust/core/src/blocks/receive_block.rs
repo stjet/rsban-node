@@ -102,13 +102,13 @@ impl ReceiveBlock {
 }
 
 pub fn valid_receive_block_predecessor(predecessor: BlockType) -> bool {
-    match predecessor {
+    matches!(
+        predecessor,
         BlockType::LegacySend
-        | BlockType::LegacyReceive
-        | BlockType::LegacyOpen
-        | BlockType::LegacyChange => true,
-        _ => false,
-    }
+            | BlockType::LegacyReceive
+            | BlockType::LegacyOpen
+            | BlockType::LegacyChange
+    )
 }
 
 impl PartialEq for ReceiveBlock {

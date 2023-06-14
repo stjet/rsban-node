@@ -35,11 +35,11 @@ impl From<&StateHashables> for BlockHash {
         let mut preamble = [0u8; 32];
         preamble[31] = BlockType::State as u8;
         BlockHashBuilder::new()
-            .update(&preamble)
+            .update(preamble)
             .update(hashables.account.as_bytes())
             .update(hashables.previous.as_bytes())
             .update(hashables.representative.as_bytes())
-            .update(&hashables.balance.to_be_bytes())
+            .update(hashables.balance.to_be_bytes())
             .update(hashables.link.as_bytes())
             .build()
     }

@@ -96,9 +96,9 @@ pub fn validate_message_batch(
 
 pub fn validate_block_signature(block: &BlockEnum) -> anyhow::Result<()> {
     validate_message(
-        &block.account().into(),
+        &block.account(),
         block.hash().as_bytes(),
-        &block.block_signature(),
+        block.block_signature(),
     )
 }
 

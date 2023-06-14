@@ -89,7 +89,7 @@ pub struct LmdbWalletStore<T: Environment = EnvironmentWrapper> {
     phantom: PhantomData<T>,
 }
 
-impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
+impl<T: Environment + 'static> LmdbWalletStore<T> {
     pub fn new(
         fanout: usize,
         kdf: KeyDerivationFunction,
@@ -391,7 +391,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
     ) -> bool {
         let zero = RawKey::zero();
         let iv = self.salt(txn).initialization_vector_low();
-        let check = zero.encrypt(&wallet_key, &iv);
+        let check = zero.encrypt(wallet_key, &iv);
         self.check(txn) == check
     }
 
@@ -472,12 +472,10 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         let number = value.key.number();
         if number > u64::MAX.into() {
             KeyType::Adhoc
+        } else if (number >> 32).low_u32() == 1 {
+            KeyType::Deterministic
         } else {
-            if (number >> 32).low_u32() == 1 {
-                KeyType::Deterministic
-            } else {
-                KeyType::Unknown
-            }
+            KeyType::Unknown
         }
     }
 
@@ -521,14 +519,10 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         let mut marker = 1u64;
         marker <<= 32;
         marker |= index as u64;
-        self.entry_put_raw(
-            txn,
-            &Account::from(result),
-            &WalletValue::new(marker.into(), 0),
-        );
+        self.entry_put_raw(txn, &result, &WalletValue::new(marker.into(), 0));
         index += 1;
         self.deterministic_index_set(txn, index);
-        return result;
+        result
     }
 
     pub fn deterministic_insert_at(
@@ -541,7 +535,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         let mut marker = 1u64;
         marker <<= 32;
         marker |= index as u64;
-        self.entry_put_raw(txn, &result.into(), &&WalletValue::new(marker.into(), 0));
+        self.entry_put_raw(txn, &result, &WalletValue::new(marker.into(), 0));
         result
     }
 
@@ -565,10 +559,8 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
             self.valid_password_locked(&guard, txn)
         };
 
-        if is_valid {
-            if self.version(txn) != 4 {
-                panic!("invalid wallet store version!");
-            }
+        if is_valid && self.version(txn) != 4 {
+            panic!("invalid wallet store version!");
         }
 
         is_valid
@@ -614,7 +606,7 @@ impl<'a, T: Environment + 'static> LmdbWalletStore<T> {
         let pub_key = PublicKey::try_from(prv).unwrap();
         let password = self.wallet_key(txn);
         let ciphertext = prv.encrypt(&password, &pub_key.initialization_vector());
-        self.entry_put_raw(txn, &pub_key.into(), &WalletValue::new(ciphertext, 0));
+        self.entry_put_raw(txn, &pub_key, &WalletValue::new(ciphertext, 0));
         pub_key
     }
 

@@ -38,7 +38,7 @@ impl TransactionHandle {
     pub fn as_read_txn(&mut self) -> &LmdbReadTransaction {
         match &mut self.0 {
             TransactionType::Read(tx) => tx,
-            TransactionType::ReadRef(tx) => *tx,
+            TransactionType::ReadRef(tx) => tx,
             _ => panic!("invalid tx type"),
         }
     }

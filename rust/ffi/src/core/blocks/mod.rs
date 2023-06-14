@@ -165,7 +165,7 @@ pub unsafe extern "C" fn rsn_block_signature_set(handle: *mut BlockHandle, signa
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_previous(handle: &BlockHandle, result: *mut [u8; 32]) {
-    (*result) = *(*handle).block.read().unwrap().previous().as_bytes();
+    (*result) = *(handle).block.read().unwrap().previous().as_bytes();
 }
 
 #[no_mangle]

@@ -45,8 +45,7 @@ impl Vote {
             signature: Signature::new(),
             hashes,
         };
-        result.signature =
-            sign_message(prv, &result.voting_account.into(), result.hash().as_bytes());
+        result.signature = sign_message(prv, &result.voting_account, result.hash().as_bytes());
         result
     }
 
@@ -138,7 +137,7 @@ impl Vote {
 
     pub fn validate(&self) -> Result<()> {
         validate_message(
-            &self.voting_account.into(),
+            &self.voting_account,
             self.hash().as_bytes(),
             &self.signature,
         )

@@ -88,8 +88,7 @@ impl Epochs {
         validate_message(
             &self
                 .epoch_signer(&block.link())
-                .ok_or_else(|| anyhow!("not an epoch link!"))?
-                .into(),
+                .ok_or_else(|| anyhow!("not an epoch link!"))?,
             block.hash().as_bytes(),
             block.block_signature(),
         )

@@ -133,7 +133,7 @@ where
         let mut work = 0;
         let mut difficulty = 0;
         while iteration > 0 && difficulty < min_difficulty {
-            (work, difficulty) = self.next(&item);
+            (work, difficulty) = self.next(item);
             iteration -= 1;
         }
 

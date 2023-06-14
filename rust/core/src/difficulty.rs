@@ -63,7 +63,7 @@ impl Difficulty for DifficultyV1 {
     }
 
     fn clone(&self) -> Box<dyn Difficulty> {
-        Box::new(DifficultyV1::default())
+        Box::<DifficultyV1>::default()
     }
 }
 

@@ -67,7 +67,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
             let mut cursor = rw_txn_source.open_ro_cursor(handle_source)?;
             for x in cursor.iter_start() {
                 let (k, v) = x?;
-                txn_destination.put(handle_destination, &k, &v, WriteFlags::empty())?;
+                txn_destination.put(handle_destination, k, v, WriteFlags::empty())?;
             }
         }
 
@@ -113,7 +113,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
         let mut i = self.get_store_it(txn, &beginning);
         while let Some((k, _)) = i.current() {
             let text = std::str::from_utf8(k).unwrap();
-            wallet_ids.push(WalletId::decode_hex(&text).unwrap());
+            wallet_ids.push(WalletId::decode_hex(text).unwrap());
             i.next();
         }
         wallet_ids
@@ -124,7 +124,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
         txn: &dyn crate::Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         id: &str,
     ) -> anyhow::Result<Option<BlockHash>> {
-        match txn.get(self.send_action_ids_handle.unwrap(), &id.as_bytes()) {
+        match txn.get(self.send_action_ids_handle.unwrap(), id.as_bytes()) {
             Ok(bytes) => Ok(Some(
                 BlockHash::from_slice(bytes).ok_or_else(|| anyhow!("invalid block hash"))?,
             )),
@@ -141,7 +141,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
     ) -> anyhow::Result<()> {
         txn.rw_txn_mut().put(
             self.send_action_ids_handle.unwrap(),
-            &id.as_bytes(),
+            id.as_bytes(),
             hash.as_bytes(),
             WriteFlags::empty(),
         )?;

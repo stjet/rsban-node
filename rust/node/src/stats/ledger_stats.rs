@@ -35,7 +35,7 @@ impl LedgerObserver for LedgerStats {
     fn block_rolled_back2(&self, block: &BlockEnum, is_epoch: bool) {
         let _ = self.stats.inc(
             StatType::Rollback,
-            block_detail_type(&block, is_epoch),
+            block_detail_type(block, is_epoch),
             Direction::In,
         );
     }

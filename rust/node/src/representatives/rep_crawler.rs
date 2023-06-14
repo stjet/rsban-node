@@ -42,7 +42,7 @@ impl RepCrawler {
 
     pub fn add_rep(&self, rep: Representative) {
         let mut guard = self.probable_reps.lock().unwrap();
-        guard.insert(rep.account().clone(), rep); // todo panic if already added
+        guard.insert(*rep.account(), rep); // todo panic if already added
     }
 
     pub fn remove(&self, hash: &BlockHash) {

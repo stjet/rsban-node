@@ -111,13 +111,13 @@ impl ChangeBlock {
 }
 
 pub fn valid_change_block_predecessor(predecessor: BlockType) -> bool {
-    match predecessor {
+    matches!(
+        predecessor,
         BlockType::LegacySend
-        | BlockType::LegacyReceive
-        | BlockType::LegacyOpen
-        | BlockType::LegacyChange => true,
-        _ => false,
-    }
+            | BlockType::LegacyReceive
+            | BlockType::LegacyOpen
+            | BlockType::LegacyChange
+    )
 }
 
 impl PartialEq for ChangeBlock {

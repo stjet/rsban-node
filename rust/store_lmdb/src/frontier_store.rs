@@ -85,7 +85,7 @@ impl<T: Environment + 'static> LmdbFrontierStore<T> {
 
     pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, hash: &BlockHash, account: &Account) {
         #[cfg(feature = "output_tracking")]
-        self.put_listener.emit((hash.clone(), account.clone()));
+        self.put_listener.emit((*hash, *account));
         txn.put(
             self.database,
             hash.as_bytes(),
@@ -109,7 +109,7 @@ impl<T: Environment + 'static> LmdbFrontierStore<T> {
 
     pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, hash: &BlockHash) {
         #[cfg(feature = "output_tracking")]
-        self.delete_listener.emit(hash.clone());
+        self.delete_listener.emit(*hash);
         txn.delete(self.database, hash.as_bytes(), None).unwrap();
     }
 

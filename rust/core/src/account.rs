@@ -13,7 +13,7 @@ impl Account {
         let mut number = U512::from_big_endian(&self.0);
         let check = U512::from_little_endian(&self.account_checksum());
         number <<= 40;
-        number = number | check;
+        number |= check;
 
         let mut result = String::with_capacity(65);
 

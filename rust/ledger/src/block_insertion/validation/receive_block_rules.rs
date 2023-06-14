@@ -35,10 +35,10 @@ impl<'a> BlockValidator<'a> {
     }
 
     fn ensure_legacy_source_is_epoch_0(&self) -> Result<(), ProcessResult> {
-        let is_legacy_receive = match self.block {
-            BlockEnum::LegacyReceive(_) | BlockEnum::LegacyOpen(_) => true,
-            _ => false,
-        };
+        let is_legacy_receive = matches!(
+            self.block,
+            BlockEnum::LegacyReceive(_) | BlockEnum::LegacyOpen(_)
+        );
 
         if is_legacy_receive
             && self

@@ -43,6 +43,10 @@ impl VoteSpacing {
         self.recent.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.recent.is_empty()
+    }
+
     fn trim(&mut self) {
         self.recent.trim(self.delay);
     }
@@ -135,6 +139,10 @@ impl EntryContainer {
     fn len(&self) -> usize {
         self.entries.len()
     }
+
+    fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
 }
 
 fn change_time_for_entries(
@@ -186,7 +194,7 @@ mod tests {
     fn empty() {
         let spacing = VoteSpacing::new(Duration::from_millis(100));
         assert_eq!(spacing.len(), 0);
-        assert_eq!(spacing.votable(&Root::from(1), &BlockHash::from(2)), true);
+        assert!(spacing.votable(&Root::from(1), &BlockHash::from(2)));
     }
 
     #[test]
@@ -200,8 +208,8 @@ mod tests {
 
         spacing.flag(&root1, &hash1);
         assert_eq!(spacing.len(), 1);
-        assert_eq!(spacing.votable(&root1, &hash1), true);
-        assert_eq!(spacing.votable(&root1, &hash2), false);
+        assert!(spacing.votable(&root1, &hash1));
+        assert!(!spacing.votable(&root1, &hash2));
 
         spacing.flag(&root2, &hash3);
         assert_eq!(spacing.len(), 2);

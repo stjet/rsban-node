@@ -52,7 +52,7 @@ impl BlockDetails {
         let epoch_value = value & epoch_mask;
         let epoch = match FromPrimitive::from_u8(epoch_value) {
             Some(e) => e,
-            None => return Err(anyhow!("unknown epoch value: {}", epoch_value)),
+            None => bail!("unknown epoch value: {}", epoch_value),
         };
 
         Ok(BlockDetails {

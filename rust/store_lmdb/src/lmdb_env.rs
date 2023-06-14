@@ -174,7 +174,7 @@ impl RwTransaction for RwTransactionWrapper {
     type RoCursor = RoCursorWrapper;
 
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
-        lmdb::Transaction::get(&self.0, database, &&*key)
+        lmdb::Transaction::get(&self.0, database, &key)
     }
 
     fn put(
@@ -184,7 +184,7 @@ impl RwTransaction for RwTransactionWrapper {
         data: &[u8],
         flags: lmdb::WriteFlags,
     ) -> lmdb::Result<()> {
-        lmdb::RwTransaction::put(&mut self.0, database, &&*key, &&*data, flags)
+        lmdb::RwTransaction::put(&mut self.0, database, &key, &data, flags)
     }
 
     fn del(
@@ -193,7 +193,7 @@ impl RwTransaction for RwTransactionWrapper {
         key: &[u8],
         flags: Option<&[u8]>,
     ) -> lmdb::Result<()> {
-        lmdb::RwTransaction::del(&mut self.0, database, &&*key, flags)
+        lmdb::RwTransaction::del(&mut self.0, database, &key, flags)
     }
 
     fn clear_db(&mut self, database: Self::Database) -> lmdb::Result<()> {
@@ -242,7 +242,7 @@ impl RwTransactionStub {
     }
 }
 
-impl<'env> RwTransaction for RwTransactionStub {
+impl RwTransaction for RwTransactionStub {
     type Database = DatabaseStub;
     type RoCursor = RoCursorStub;
 
@@ -341,7 +341,7 @@ pub struct InactiveTransactionWrapper {
 impl InactiveTransaction for InactiveTransactionWrapper {
     type RoTxnType = RoTransactionWrapper;
     fn renew(self) -> lmdb::Result<Self::RoTxnType> {
-        self.inactive.renew().map(|t| RoTransactionWrapper(t))
+        self.inactive.renew().map(RoTransactionWrapper)
     }
 }
 
@@ -480,16 +480,12 @@ pub trait Environment: Send + Sync {
     fn build(options: EnvironmentOptions) -> lmdb::Result<Self>
     where
         Self: Sized;
-    fn begin_ro_txn<'env>(&self) -> lmdb::Result<Self::RoTxnImpl>;
-    fn begin_rw_txn<'env>(&self) -> lmdb::Result<Self::RwTxnType>;
-    fn create_db<'env>(
-        &'env self,
-        name: Option<&str>,
-        flags: DatabaseFlags,
-    ) -> lmdb::Result<Self::Database>;
+    fn begin_ro_txn(&self) -> lmdb::Result<Self::RoTxnImpl>;
+    fn begin_rw_txn(&self) -> lmdb::Result<Self::RwTxnType>;
+    fn create_db(&self, name: Option<&str>, flags: DatabaseFlags) -> lmdb::Result<Self::Database>;
 
     fn env(&self) -> *mut MDB_env;
-    fn open_db<'env>(&'env self, name: Option<&str>) -> lmdb::Result<Self::Database>;
+    fn open_db(&self, name: Option<&str>) -> lmdb::Result<Self::Database>;
     fn sync(&self, force: bool) -> lmdb::Result<()>;
     fn stat(&self) -> lmdb::Result<Stat>;
 }
@@ -532,11 +528,7 @@ impl Environment for EnvironmentWrapper {
         })
     }
 
-    fn create_db<'env>(
-        &'env self,
-        name: Option<&str>,
-        flags: DatabaseFlags,
-    ) -> lmdb::Result<lmdb::Database> {
+    fn create_db(&self, name: Option<&str>, flags: DatabaseFlags) -> lmdb::Result<lmdb::Database> {
         self.0.create_db(name, flags)
     }
 
@@ -544,7 +536,7 @@ impl Environment for EnvironmentWrapper {
         self.0.env()
     }
 
-    fn open_db<'env>(&'env self, name: Option<&str>) -> lmdb::Result<lmdb::Database> {
+    fn open_db(&self, name: Option<&str>) -> lmdb::Result<lmdb::Database> {
         self.0.open_db(name)
     }
 
@@ -598,11 +590,7 @@ impl Environment for EnvironmentStub {
         })
     }
 
-    fn create_db<'env>(
-        &'env self,
-        name: Option<&str>,
-        _flags: DatabaseFlags,
-    ) -> lmdb::Result<Self::Database> {
+    fn create_db(&self, name: Option<&str>, _flags: DatabaseFlags) -> lmdb::Result<Self::Database> {
         Ok(self
             .databases
             .iter()
@@ -615,7 +603,7 @@ impl Environment for EnvironmentStub {
         todo!()
     }
 
-    fn open_db<'env>(&'env self, name: Option<&str>) -> lmdb::Result<Self::Database> {
+    fn open_db(&self, name: Option<&str>) -> lmdb::Result<Self::Database> {
         self.create_db(name, DatabaseFlags::empty())
     }
 
@@ -854,11 +842,9 @@ impl<T: Environment> LmdbEnv<T> {
 
 fn try_create_parent_dir(path: &Path) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
-        if parent != Path::new("") {
-            if !parent.is_dir() {
-                create_dir_all(parent)?;
-                set_permissions(parent, Permissions::from_mode(0o700))?;
-            }
+        if parent != Path::new("") && !parent.is_dir() {
+            create_dir_all(parent)?;
+            set_permissions(parent, Permissions::from_mode(0o700))?;
         }
     }
     Ok(())

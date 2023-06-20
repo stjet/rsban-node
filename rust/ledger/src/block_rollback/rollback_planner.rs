@@ -1,6 +1,6 @@
 use rsnano_core::{
-    utils::seconds_since_epoch, Account, AccountInfo, Amount, BlockEnum, BlockHash, BlockSubType,
-    ConfirmationHeightInfo, Epoch, Epochs, PendingInfo, PendingKey,
+    Account, AccountInfo, Amount, BlockEnum, BlockHash, BlockSubType, ConfirmationHeightInfo,
+    Epoch, Epochs, PendingInfo, PendingKey,
 };
 
 pub(crate) enum RollbackStep {
@@ -37,6 +37,7 @@ pub(crate) struct RollbackPlanner<'a> {
     pub pending_receive: Option<PendingInfo>,
     pub latest_block_for_destination: Option<BlockHash>,
     pub confirmation_height: ConfirmationHeightInfo,
+    pub seconds_since_epoch: u64,
 }
 
 impl<'a> RollbackPlanner<'a> {
@@ -163,7 +164,7 @@ impl<'a> RollbackPlanner<'a> {
                 representative: self.previous_representative(),
                 open_block: self.current_account_info.open_block,
                 balance: self.previous_balance(),
-                modified: seconds_since_epoch(),
+                modified: self.seconds_since_epoch,
                 block_count: self.current_account_info.block_count - 1,
                 epoch: self.previous_epoch(),
             }

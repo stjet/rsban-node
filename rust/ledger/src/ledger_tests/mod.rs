@@ -15,7 +15,6 @@ use rsnano_core::{
 mod empty_ledger;
 mod pruning;
 mod rollback_legacy_change;
-mod rollback_legacy_open;
 mod rollback_legacy_receive;
 mod rollback_legacy_send;
 mod rollback_state;

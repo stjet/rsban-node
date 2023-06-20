@@ -4,13 +4,14 @@ use crate::ledger_constants::LEDGER_CONSTANTS_STUB;
 
 use super::rollback_planner::{RollbackInstructions, RollbackPlanner, RollbackStep};
 
-mod rollback_epoch;
+mod rollback_tests;
 
 pub(crate) struct RollbackTest<'a> {
     planner: RollbackPlanner<'a>,
 }
 
 impl<'a> RollbackTest<'a> {
+    pub const SECONDS_SINCE_EPOCH: u64 = 1234;
     pub fn for_chain(chain: &'a TestAccountChain) -> Self {
         Self {
             planner: create_test_rollback_planner(chain),
@@ -30,6 +31,15 @@ impl<'a> RollbackTest<'a> {
         let RollbackStep::RollBackBlock(instructions) = result else { panic!("expected RollBackBlock") };
         instructions
     }
+
+    pub fn assert_dependency_rollback(self) -> BlockHash {
+        let result = self
+            .planner
+            .roll_back_head_block()
+            .expect("rollback should succeed");
+        let RollbackStep::RequestDependencyRollback(dependency_hash) = result else { panic!("expected dependency rollback") };
+        dependency_hash
+    }
 }
 
 fn create_test_rollback_planner<'a>(chain: &'a TestAccountChain) -> RollbackPlanner<'a> {
@@ -38,8 +48,8 @@ fn create_test_rollback_planner<'a>(chain: &'a TestAccountChain) -> RollbackPlan
         head_block: chain.latest_block(),
         account: chain.account(),
         current_account_info: chain.account_info(),
-        previous_representative: None,
-        previous: Some(chain.block(chain.height() - 1).clone()),
+        previous_representative: chain.representative_at_height(chain.height() - 1),
+        previous: chain.try_get_block(chain.height() - 1).cloned(),
         linked_account: Account::zero(),
         pending_receive: None,
         latest_block_for_destination: None,
@@ -47,5 +57,6 @@ fn create_test_rollback_planner<'a>(chain: &'a TestAccountChain) -> RollbackPlan
             height: 0,
             frontier: BlockHash::zero(),
         },
+        seconds_since_epoch: RollbackTest::SECONDS_SINCE_EPOCH,
     }
 }

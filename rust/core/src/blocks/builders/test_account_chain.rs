@@ -87,6 +87,13 @@ impl TestAccountChain {
         &self.blocks[height as usize - 1]
     }
 
+    pub fn try_get_block(&self, height: u64) -> Option<&BlockEnum> {
+        if height == 0 {
+            return None;
+        }
+        self.blocks.get(height as usize - 1)
+    }
+
     pub fn latest_block(&self) -> &BlockEnum {
         self.blocks.last().unwrap()
     }
@@ -360,6 +367,14 @@ impl TestAccountChain {
 
         self.blocks.push(block);
         self.blocks.last().unwrap()
+    }
+
+    pub fn representative_at_height(&self, height: u64) -> Option<Account> {
+        self.blocks[..height as usize]
+            .iter()
+            .rev()
+            .filter_map(|b| b.representative())
+            .next()
     }
 }
 

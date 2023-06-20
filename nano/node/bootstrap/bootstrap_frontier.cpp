@@ -1,3 +1,6 @@
+#include "nano/lib/logger_mt.hpp"
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/bootstrap/bootstrap_attempt.hpp>
 #include <nano/node/bootstrap/bootstrap_frontier.hpp>
 #include <nano/node/bootstrap/bootstrap_legacy.hpp>
@@ -265,15 +268,40 @@ void nano::frontier_req_client::next ()
 	accounts.pop_front ();
 }
 
+namespace
+{
+rsnano::FrontierReqServerHandle * create_frontier_req_server_handle (
+std::shared_ptr<nano::node> const & node_a,
+std::shared_ptr<nano::transport::tcp_server> const & connection_a,
+rsnano::MessageHandle * request_a)
+{
+	rsnano::NodeConfigDto config_dto{ node_a->config->to_dto () };
+	return rsnano::rsn_frontier_req_server_create (connection_a->handle,
+	request_a,
+	node_a->bootstrap_workers->handle,
+	nano::to_logger_handle (node_a->logger),
+	&config_dto,
+	node_a->ledger.get_handle ());
+}
+}
+
 nano::frontier_req_server::frontier_req_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::frontier_req> request_a) :
 	node_weak (node_a),
 	connection (connection_a),
 	current (request_a->get_start ().number () - 1),
 	frontier (0),
 	request (std::move (request_a)),
-	count (0)
+	count (0),
+	handle{ create_frontier_req_server_handle (node_a,
+	connection_a,
+	request->handle) }
 {
 	next ();
+}
+
+nano::frontier_req_server::~frontier_req_server ()
+{
+	rsnano::rsn_frontier_req_server_destroy (handle);
 }
 
 void nano::frontier_req_server::send_next ()

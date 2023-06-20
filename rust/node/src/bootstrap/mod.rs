@@ -5,10 +5,12 @@ mod bootstrap_initiator;
 mod bootstrap_lazy;
 mod bulk_pull_server;
 mod channel_tcp_wrapper;
+mod frontier_req_server;
 mod pulls_cache;
 
 pub use bootstrap_attempt::*;
 pub use bootstrap_initiator::*;
+pub use frontier_req_server::FrontierReqServer;
 
 pub use bootstrap_client::{
     BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr,

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/common.hpp>
 
 #include <deque>
@@ -54,6 +56,8 @@ class frontier_req_server final : public std::enable_shared_from_this<nano::fron
 {
 public:
 	frontier_req_server (std::shared_ptr<nano::node> const &, std::shared_ptr<nano::transport::tcp_server> const &, std::unique_ptr<nano::frontier_req>);
+	frontier_req_server (frontier_req_server const &) = delete;
+	~frontier_req_server ();
 	void send_next ();
 	void sent_action (boost::system::error_code const &, std::size_t);
 	void send_finished ();
@@ -67,5 +71,6 @@ public:
 	std::unique_ptr<nano::frontier_req> request;
 	std::size_t count;
 	std::deque<std::pair<nano::account, nano::block_hash>> accounts;
+	rsnano::FrontierReqServerHandle * handle;
 };
 }

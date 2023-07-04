@@ -1,4 +1,5 @@
 #include "nano/lib/logger_mt.hpp"
+#include "nano/lib/numbers.hpp"
 #include "nano/lib/rsnano.hpp"
 
 #include <nano/node/bootstrap/bootstrap_attempt.hpp>
@@ -268,6 +269,10 @@ void nano::frontier_req_client::next ()
 	accounts.pop_front ();
 }
 
+//------------------------------------------------------------------------------
+// frontier_req_server
+//------------------------------------------------------------------------------
+
 namespace
 {
 rsnano::FrontierReqServerHandle * create_frontier_req_server_handle (
@@ -286,17 +291,8 @@ rsnano::MessageHandle * request_a)
 }
 
 nano::frontier_req_server::frontier_req_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::frontier_req> request_a) :
-	node_weak (node_a),
-	connection (connection_a),
-	current (request_a->get_start ().number () - 1),
-	frontier (0),
-	request (std::move (request_a)),
-	count (0),
-	handle{ create_frontier_req_server_handle (node_a,
-	connection_a,
-	request->handle) }
+	handle{ create_frontier_req_server_handle (node_a, connection_a, request_a->handle) }
 {
-	next ();
 }
 
 nano::frontier_req_server::~frontier_req_server ()
@@ -306,159 +302,19 @@ nano::frontier_req_server::~frontier_req_server ()
 
 void nano::frontier_req_server::send_next ()
 {
-	auto node = node_weak.lock ();
-	if (!node)
-	{
-		return;
-	}
-	if (!current.is_zero () && count < request->get_count ())
-	{
-		std::vector<uint8_t> send_buffer;
-		{
-			nano::vectorstream stream (send_buffer);
-			write (stream, current.bytes);
-			write (stream, frontier.bytes);
-			debug_assert (!current.is_zero ());
-			debug_assert (!frontier.is_zero ());
-		}
-		auto this_l (shared_from_this ());
-		if (node->config->logging.bulk_pull_logging ())
-		{
-			node->logger->try_log (boost::str (boost::format ("Sending frontier for %1% %2%") % current.to_account () % frontier.to_string ()));
-		}
-		next ();
-		connection->get_socket ()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
-			this_l->sent_action (ec, size_a);
-		});
-	}
-	else
-	{
-		send_finished ();
-	}
+	rsnano::rsn_frontier_req_server_send_next (handle);
 }
 
-void nano::frontier_req_server::send_finished ()
+nano::public_key nano::frontier_req_server::current () const
 {
-	auto node = node_weak.lock ();
-	if (!node)
-	{
-		return;
-	}
-	std::vector<uint8_t> send_buffer;
-	{
-		nano::vectorstream stream (send_buffer);
-		nano::uint256_union zero (0);
-		write (stream, zero.bytes);
-		write (stream, zero.bytes);
-	}
-	auto this_l (shared_from_this ());
-	if (node->config->logging.network_logging ())
-	{
-		node->logger->try_log ("Frontier sending finished");
-	}
-	connection->get_socket ()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
-		this_l->no_block_sent (ec, size_a);
-	});
+	nano::public_key result;
+	rsnano::rsn_frontier_req_server_current (handle, result.bytes.data ());
+	return result;
 }
 
-void nano::frontier_req_server::no_block_sent (boost::system::error_code const & ec, std::size_t size_a)
+nano::block_hash nano::frontier_req_server::frontier () const
 {
-	auto node = node_weak.lock ();
-	if (!node)
-	{
-		return;
-	}
-	if (!ec)
-	{
-		connection->start ();
-	}
-	else
-	{
-		if (node->config->logging.network_logging ())
-		{
-			node->logger->try_log (boost::str (boost::format ("Error sending frontier finish: %1%") % ec.message ()));
-		}
-	}
-}
-
-void nano::frontier_req_server::sent_action (boost::system::error_code const & ec, std::size_t size_a)
-{
-	auto node = node_weak.lock ();
-	if (!node)
-	{
-		return;
-	}
-	if (!ec)
-	{
-		count++;
-
-		node->bootstrap_workers->push_task ([this_l = shared_from_this ()] () {
-			this_l->send_next ();
-		});
-	}
-	else
-	{
-		if (node->config->logging.network_logging ())
-		{
-			node->logger->try_log (boost::str (boost::format ("Error sending frontier pair: %1%") % ec.message ()));
-		}
-	}
-}
-
-void nano::frontier_req_server::next ()
-{
-	auto node = node_weak.lock ();
-	if (!node)
-	{
-		return;
-	}
-	// Filling accounts deque to prevent often read transactions
-	if (accounts.empty ())
-	{
-		auto now (nano::seconds_since_epoch ());
-		bool disable_age_filter (request->get_age () == std::numeric_limits<decltype (request->get_age ())>::max ());
-		std::size_t max_size (128);
-		auto transaction (node->store.tx_begin_read ());
-		if (!send_confirmed ())
-		{
-			for (auto i (node->store.account ().begin (*transaction, current.number () + 1)), n (node->store.account ().end ()); i != n && accounts.size () != max_size; ++i)
-			{
-				nano::account_info const & info (i->second);
-				if (disable_age_filter || (now - info.modified ()) <= request->get_age ())
-				{
-					nano::account const & account (i->first);
-					accounts.emplace_back (account, info.head ());
-				}
-			}
-		}
-		else
-		{
-			for (auto i (node->store.confirmation_height ().begin (*transaction, current.number () + 1)), n (node->store.confirmation_height ().end ()); i != n && accounts.size () != max_size; ++i)
-			{
-				nano::confirmation_height_info const & info (i->second);
-				nano::block_hash const confirmed_frontier (info.frontier ());
-				if (!confirmed_frontier.is_zero ())
-				{
-					nano::account const & account (i->first);
-					accounts.emplace_back (account, confirmed_frontier);
-				}
-			}
-		}
-
-		/* If loop breaks before max_size, then accounts_end () is reached. Add empty record to finish frontier_req_server */
-		if (accounts.size () != max_size)
-		{
-			accounts.emplace_back (nano::account{}, nano::block_hash (0));
-		}
-	}
-	// Retrieving accounts from deque
-	auto const & account_pair (accounts.front ());
-	current = account_pair.first;
-	frontier = account_pair.second;
-	accounts.pop_front ();
-}
-
-bool nano::frontier_req_server::send_confirmed ()
-{
-	return request->is_only_confirmed_present ();
+	nano::block_hash result;
+	rsnano::rsn_frontier_req_server_frontier (handle, result.bytes.data ());
+	return result;
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/lib/numbers.hpp"
 #include "nano/lib/rsnano.hpp"
 
 #include <nano/node/common.hpp>
@@ -59,18 +60,8 @@ public:
 	frontier_req_server (frontier_req_server const &) = delete;
 	~frontier_req_server ();
 	void send_next ();
-	void sent_action (boost::system::error_code const &, std::size_t);
-	void send_finished ();
-	void no_block_sent (boost::system::error_code const &, std::size_t);
-	void next ();
-	bool send_confirmed ();
-	std::weak_ptr<nano::node> node_weak;
-	std::shared_ptr<nano::transport::tcp_server> connection;
-	nano::account current;
-	nano::block_hash frontier;
-	std::unique_ptr<nano::frontier_req> request;
-	std::size_t count;
-	std::deque<std::pair<nano::account, nano::block_hash>> accounts;
+	nano::public_key current () const;
+	nano::block_hash frontier () const;
 	rsnano::FrontierReqServerHandle * handle;
 };
 }

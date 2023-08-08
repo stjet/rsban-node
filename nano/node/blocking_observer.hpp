@@ -24,6 +24,7 @@ public:
 	void observe (nano::process_return const & result, std::shared_ptr<nano::block> block);
 	[[nodiscard]] std::future<nano::process_return> insert (std::shared_ptr<nano::block> block);
 	bool exists (std::shared_ptr<nano::block> block);
+	void erase (std::shared_ptr<nano::block> block);
 
 private:
 	std::unordered_multimap<nano::block_hash, std::promise<nano::process_return>> blocking;

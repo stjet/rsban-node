@@ -35,6 +35,7 @@ pub struct NodeConfigDto {
     pub io_threads: u32,
     pub network_threads: u32,
     pub work_threads: u32,
+    pub background_threads: u32,
     pub signature_checker_threads: u32,
     pub enable_voting: bool,
     pub bootstrap_connections: u32,
@@ -47,6 +48,7 @@ pub struct NodeConfigDto {
     pub vote_minimum: [u8; 16],
     pub vote_generator_delay_ms: i64,
     pub vote_generator_threshold: u32,
+    block_process_timeout_s: i64,
     pub unchecked_cutoff_time_s: i64,
     pub tcp_io_timeout_s: i64,
     pub pow_sleep_interval_ns: i64,
@@ -138,6 +140,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.io_threads = cfg.io_threads;
     dto.network_threads = cfg.network_threads;
     dto.work_threads = cfg.work_threads;
+    dto.background_threads = cfg.background_threads;
     dto.signature_checker_threads = cfg.signature_checker_threads;
     dto.enable_voting = cfg.enable_voting;
     dto.bootstrap_connections = cfg.bootstrap_connections;
@@ -151,6 +154,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.vote_generator_delay_ms = cfg.vote_generator_delay_ms;
     dto.vote_generator_threshold = cfg.vote_generator_threshold;
     dto.unchecked_cutoff_time_s = cfg.unchecked_cutoff_time_s;
+    dto.block_process_timeout_s = cfg.block_process_timeout_s;
     dto.tcp_io_timeout_s = cfg.tcp_io_timeout_s;
     dto.pow_sleep_interval_ns = cfg.pow_sleep_interval_ns;
     let bytes: &[u8] = cfg.external_address.as_bytes();
@@ -305,6 +309,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             io_threads: value.io_threads,
             network_threads: value.network_threads,
             work_threads: value.work_threads,
+            background_threads: value.background_threads,
             signature_checker_threads: value.signature_checker_threads,
             enable_voting: value.enable_voting,
             bootstrap_connections: value.bootstrap_connections,
@@ -318,6 +323,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             vote_generator_delay_ms: value.vote_generator_delay_ms,
             vote_generator_threshold: value.vote_generator_threshold,
             unchecked_cutoff_time_s: value.unchecked_cutoff_time_s,
+            block_process_timeout_s: value.block_process_timeout_s,
             tcp_io_timeout_s: value.tcp_io_timeout_s,
             pow_sleep_interval_ns: value.pow_sleep_interval_ns,
             external_address: String::from_utf8_lossy(

@@ -34,6 +34,7 @@ pub struct NodeConfig {
     pub io_threads: u32,
     pub network_threads: u32,
     pub work_threads: u32,
+    pub background_threads: u32,
     pub signature_checker_threads: u32,
     pub enable_voting: bool,
     pub bootstrap_connections: u32,
@@ -46,6 +47,7 @@ pub struct NodeConfig {
     pub vote_minimum: Amount,
     pub vote_generator_delay_ms: i64,
     pub vote_generator_threshold: u32,
+    pub block_process_timeout_s: i64,
     pub unchecked_cutoff_time_s: i64,
     pub tcp_io_timeout_s: i64,
     pub pow_sleep_interval_ns: i64,
@@ -217,6 +219,7 @@ impl NodeConfig {
             io_threads: std::cmp::max(get_cpu_count() as u32, 4),
             network_threads: std::cmp::max(get_cpu_count() as u32, 4),
             work_threads: std::cmp::max(get_cpu_count() as u32, 4),
+            background_threads: std::cmp::max(get_cpu_count() as u32, 4),
             /* Use half available threads on the system for signature checking. The calling thread does checks as well, so these are extra worker threads */
             signature_checker_threads: get_cpu_count() as u32 / 2,
             enable_voting,
@@ -231,6 +234,7 @@ impl NodeConfig {
             vote_minimum: Amount::raw(*GXRB_RATIO),
             vote_generator_delay_ms: 100,
             vote_generator_threshold: 3,
+            block_process_timeout_s: 15,
             unchecked_cutoff_time_s: 4 * 60 * 60, // 4 hours
             tcp_io_timeout_s: if network_params.network.is_dev_network() && !is_sanitizer_build() {
                 5
@@ -305,6 +309,7 @@ impl NodeConfig {
         toml.put_u32("io_threads", self.io_threads, "Number of threads dedicated to I/O operations. Defaults to the number of CPU threads, and at least 4.\ntype:uint64")?;
         toml.put_u32("network_threads", self.network_threads, "Number of threads dedicated to processing network messages. Defaults to the number of CPU threads, and at least 4.\ntype:uint64")?;
         toml.put_u32("work_threads", self.work_threads, "Number of threads dedicated to CPU generated work. Defaults to all available CPU threads.\ntype:uint64")?;
+        toml.put_u32("background_threads", self.background_threads, "Number of threads dedicated to background node work, including handling of RPC requests. Defaults to all available CPU threads.\ntype:uint64")?;
         toml.put_u32("signature_checker_threads", self.signature_checker_threads, "Number of additional threads dedicated to signature verification. Defaults to number of CPU threads / 2.\ntype:uint64")?;
         toml.put_bool("enable_voting", self.enable_voting, "Enable or disable voting. Enabling this option requires additional system resources, namely increased CPU, bandwidth and disk usage.\ntype:bool")?;
         toml.put_u32("bootstrap_connections", self.bootstrap_connections, "Number of outbound bootstrap connections. Must be a power of 2. Defaults to 4.\nWarning: a larger amount of connections may use substantially more system memory.\ntype:uint64")?;
@@ -322,6 +327,11 @@ impl NodeConfig {
         toml.put_i64("vote_generator_delay", self.vote_generator_delay_ms, "Delay before votes are sent to allow for efficient bundling of hashes in votes.\ntype:milliseconds")?;
         toml.put_u32("vote_generator_threshold", self.vote_generator_threshold, "Number of bundled hashes required for an additional generator delay.\ntype:uint64,[1..11]")?;
         toml.put_i64("unchecked_cutoff_time", self.unchecked_cutoff_time_s, "Number of seconds before deleting an unchecked entry.\nWarning: lower values (e.g., 3600 seconds, or 1 hour) may result in unsuccessful bootstraps, especially a bootstrap from scratch.\ntype:seconds")?;
+        toml.put_i64(
+            "block_process_timeout",
+            self.block_process_timeout_s,
+            "Time to wait for block processing result.\ntype:seconds",
+        )?;
         toml.put_i64("tcp_io_timeout", self.tcp_io_timeout_s , "Timeout for TCP connect-, read- and write operations.\nWarning: a low value (e.g., below 5 seconds) may result in TCP connections failing.\ntype:seconds")?;
         toml.put_i64 ("pow_sleep_interval", self.pow_sleep_interval_ns, "Time to sleep between batch work generation attempts. Reduces max CPU usage at the expense of a longer generation time.\ntype:nanoseconds")?;
         toml.put_str("external_address", &self.external_address, "The external address of this node (NAT). If not set, the node will request this information via UPnP.\ntype:string,ip")?;

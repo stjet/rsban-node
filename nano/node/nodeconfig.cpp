@@ -29,6 +29,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.io_threads = config.io_threads;
 	dto.network_threads = config.network_threads;
 	dto.work_threads = config.work_threads;
+	dto.background_threads = config.background_threads;
 	dto.signature_checker_threads = config.signature_checker_threads;
 	dto.enable_voting = config.enable_voting;
 	dto.bootstrap_connections = config.bootstrap_connections;
@@ -42,6 +43,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.vote_generator_delay_ms = config.vote_generator_delay.count ();
 	dto.vote_generator_threshold = config.vote_generator_threshold;
 	dto.unchecked_cutoff_time_s = config.unchecked_cutoff_time.count ();
+	dto.block_process_timeout_s = config.block_process_timeout.count ();
 	dto.tcp_io_timeout_s = config.tcp_io_timeout.count ();
 	dto.pow_sleep_interval_ns = config.pow_sleep_interval.count ();
 	std::copy (config.external_address.begin (), config.external_address.end (), std::begin (dto.external_address));
@@ -149,6 +151,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	io_threads = dto.io_threads;
 	network_threads = dto.network_threads;
 	work_threads = dto.work_threads;
+	background_threads = dto.background_threads;
 	signature_checker_threads = dto.signature_checker_threads;
 	enable_voting = dto.enable_voting;
 	bootstrap_connections = dto.bootstrap_connections;
@@ -162,6 +165,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	vote_generator_delay = std::chrono::milliseconds (dto.vote_generator_delay_ms);
 	vote_generator_threshold = dto.vote_generator_threshold;
 	unchecked_cutoff_time = std::chrono::seconds (dto.unchecked_cutoff_time_s);
+	block_process_timeout = std::chrono::seconds (dto.block_process_timeout_s);
 	tcp_io_timeout = std::chrono::seconds (dto.tcp_io_timeout_s);
 	pow_sleep_interval = std::chrono::nanoseconds (dto.pow_sleep_interval_ns);
 	external_address = std::string (reinterpret_cast<const char *> (dto.external_address), dto.external_address_len);
@@ -358,6 +362,10 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		toml.get ("block_processor_batch_max_time", block_processor_batch_max_time_l);
 		block_processor_batch_max_time = std::chrono::milliseconds (block_processor_batch_max_time_l);
 
+		auto block_process_timeout_l = block_process_timeout.count ();
+		toml.get ("block_process_timeout", block_process_timeout_l);
+		block_process_timeout = std::chrono::seconds{ block_process_timeout_l };
+
 		auto unchecked_cutoff_time_l = static_cast<unsigned long> (unchecked_cutoff_time.count ());
 		toml.get ("unchecked_cutoff_time", unchecked_cutoff_time_l);
 		unchecked_cutoff_time = std::chrono::seconds (unchecked_cutoff_time_l);
@@ -379,6 +387,7 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		toml.get<unsigned> ("io_threads", io_threads);
 		toml.get<unsigned> ("work_threads", work_threads);
 		toml.get<unsigned> ("network_threads", network_threads);
+		toml.get<unsigned> ("background_threads", background_threads);
 		toml.get<unsigned> ("bootstrap_connections", bootstrap_connections);
 		toml.get<unsigned> ("bootstrap_connections_max", bootstrap_connections_max);
 		toml.get<unsigned> ("bootstrap_initiator_threads", bootstrap_initiator_threads);

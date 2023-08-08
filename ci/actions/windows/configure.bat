@@ -9,7 +9,7 @@ cmake .. ^
   %NANO_TEST% ^
   %CI% ^
   -DPORTABLE=1 ^
-  -DQt5_DIR="c:\qt\5.13.1\msvc2017_64\lib\cmake\Qt5" ^
+  -DQt5_DIR="c:\qt\5.15.2\msvc2019_64\lib\cmake\Qt5" ^
   -DNANO_GUI=ON ^
   -DCMAKE_BUILD_TYPE=%BUILD_TYPE% ^
   -DACTIVE_NETWORK=nano_%NETWORK_CFG%_network ^

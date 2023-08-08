@@ -191,6 +191,31 @@ std::optional<nano::process_return> nano::block_processor::add_blocking (std::sh
 	return result;
 }
 
+void nano::block_processor::rollback_competitor (nano::write_transaction const & transaction, nano::block const & block)
+{
+	auto hash = block.hash ();
+	auto successor = ledger.successor (transaction, block.qualified_root ());
+	if (successor != nullptr && successor->hash () != hash)
+	{
+		// Replace our block with the winner and roll back any dependent blocks
+		if (config.logging.ledger_rollback_logging ())
+		{
+			logger.always_log (boost::str (boost::format ("Rolling back %1% and replacing with %2%") % successor->hash ().to_string () % hash.to_string ()));
+		}
+		std::vector<std::shared_ptr<nano::block>> rollback_list;
+		if (ledger.rollback (transaction, successor->hash (), rollback_list))
+		{
+			stats.inc (nano::stat::type::ledger, nano::stat::detail::rollback_failed);
+			logger.always_log (nano::severity_level::error, boost::str (boost::format ("Failed to roll back %1% because it or a successor was confirmed") % successor->hash ().to_string ()));
+		}
+		else if (config.logging.ledger_rollback_logging ())
+		{
+			logger.always_log (boost::str (boost::format ("%1% blocks rolled back") % rollback_list.size ()));
+		}
+		blocks_rolled_back (rollback_list, successor);
+	}
+}
+
 void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 {
 	{
@@ -332,26 +357,7 @@ auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) 
 		lock_a.unlock ();
 		if (force)
 		{
-			auto successor = ledger.successor (*transaction, block->qualified_root ());
-			if (successor != nullptr && successor->hash () != hash)
-			{
-				// Replace our block with the winner and roll back any dependent blocks
-				if (config.logging.ledger_rollback_logging ())
-				{
-					logger.always_log (boost::str (boost::format ("Rolling back %1% and replacing with %2%") % successor->hash ().to_string () % hash.to_string ()));
-				}
-				std::vector<std::shared_ptr<nano::block>> rollback_list;
-				if (ledger.rollback (*transaction, successor->hash (), rollback_list))
-				{
-					stats.inc (nano::stat::type::ledger, nano::stat::detail::rollback_failed);
-					logger.always_log (nano::severity_level::error, boost::str (boost::format ("Failed to roll back %1% because it or a successor was confirmed") % successor->hash ().to_string ()));
-				}
-				else if (config.logging.ledger_rollback_logging ())
-				{
-					logger.always_log (boost::str (boost::format ("%1% blocks rolled back") % rollback_list.size ()));
-				}
-				blocks_rolled_back (rollback_list, successor);
-			}
+			rollback_competitor (*transaction, *block);
 		}
 		number_of_blocks_processed++;
 		auto result = process_one (*transaction, block, force);

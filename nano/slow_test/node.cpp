@@ -2209,7 +2209,7 @@ TEST (system, block_sequence)
 			std::string message;
 			for (auto i : system.nodes)
 			{
-				message += boost::str (boost::format ("N:%1% b:%2% c:%3% a:%4% s:%5% p:%6%\n") % std::to_string (i->network->port) % std::to_string (i->ledger.cache.block_count ()) % std::to_string (i->ledger.cache.cemented_count ()) % std::to_string (i->active.size ()) % std::to_string (i->scheduler.buckets.size ()) % std::to_string (i->network.size ()));
+				message += boost::str (boost::format ("N:%1% b:%2% c:%3% a:%4% s:%5% p:%6%\n") % std::to_string (i->network->port) % std::to_string (i->ledger.cache.block_count ()) % std::to_string (i->ledger.cache.cemented_count ()) % std::to_string (i->active.size ()) % std::to_string (i->scheduler.buckets.size ()) % std::to_string (i->network->size ()));
 				nano::lock_guard<nano::mutex> lock{ i->active.mutex };
 				for (auto const & j : i->active.roots)
 				{

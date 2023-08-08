@@ -11,7 +11,7 @@ jobs:
         RELEASE:
           - ${{ startsWith(github.ref, 'refs/tags/') }}
     env:
-      RELEASE: ${{ matrix.RELEASE }}
+      BUILD_TYPE: ${{ matrix.RELEASE && 'RelWithDebInfo' || 'Debug' }}
     runs-on: macos-12
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     steps:
@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       COMPILER: ${{ matrix.COMPILER }}
-      RELEASE: ${{ matrix.RELEASE }}
+      BUILD_TYPE: ${{ matrix.RELEASE && 'RelWithDebInfo' || 'Debug' }}
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     steps:
       - name: Checkout
@@ -131,4 +131,3 @@ jobs:
       - name: System Tests
         if: steps.build.outcome == 'success' && (success() || failure())
         run: cd build && ../ci/tests/run-system-tests.sh
-

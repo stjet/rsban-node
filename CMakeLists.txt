@@ -41,10 +41,6 @@ if(COVERAGE)
   include(CoverageTest)
 endif()
 
-set(CI_TEST
-    0
-    CACHE STRING "")
-
 if(MSVC)
   add_definitions(/MP)
 endif()
@@ -74,6 +70,8 @@ endif()
 
 # Create all libraries and executables in the root binary dir
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR})
 
 set(NANO_TEST
     OFF
@@ -498,6 +496,12 @@ add_subdirectory(nano/nano_node)
 add_subdirectory(nano/rpc)
 add_subdirectory(nano/nano_rpc)
 
+add_custom_target(
+  executables
+  COMMAND echo "BATCH BUILDING node + rpc"
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  DEPENDS nano_node nano_rpc)
+
 if(NANO_FUZZER_TEST)
   if(NOT WIN32)
     add_subdirectory(nano/fuzzer_test)
@@ -534,15 +538,10 @@ if(NANO_TEST OR RAIBLOCKS_TEST)
   add_subdirectory(nano/rpc_test)
   add_subdirectory(nano/slow_test)
   add_custom_target(
-    build_tests
+    all_tests
     COMMAND echo "BATCH BUILDING TESTS"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    DEPENDS core_test rpc_test nano_node nano_rpc)
-  add_custom_target(
-    run_tests
-    COMMAND ${PROJECT_SOURCE_DIR}/ci/test.sh ${CMAKE_BINARY_DIR}
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    DEPENDS build_tests)
+    DEPENDS core_test load_test rpc_test slow_test nano_node nano_rpc)
 endif()
 
 if(NANO_TEST OR RAIBLOCKS_TEST)

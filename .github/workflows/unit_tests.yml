@@ -2,10 +2,6 @@ name: Unit Tests
 
 on: [push, pull_request]
 
-env:
-  RELEASE: 0
-  artifact: 0
-
 jobs:
   osx_test:
     name: macOS
@@ -23,7 +19,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: "recursive"
-          fetch-depth: 0 # full history needed for restoring file timestamps
+          fetch-depth: 0 # Full history needed for restoring file timestamps
 
       - name: Restore Timestamps
         uses: ./.github/actions/restore-git-mtimes
@@ -38,18 +34,19 @@ jobs:
             /Users/runner/.cargo/registry
           key: ${{ runner.os }}-build-cache
 
-      - name: Fetch Deps
-        run: TEST=1 ci/actions/osx/install_deps.sh
+      - name: Prepare
+        run: ci/prepare/macos/prepare.sh
 
       - name: Build Tests
-        run: ci/build-ci.sh "/tmp/qt/lib/cmake/Qt5";
+        id: build
+        run: ci/build-tests.sh
 
       # hacky fix so that the build cache can be saved
       - name: Change owner before caching
         run: sudo chown -R runner build
 
       - name: Save Build Cache
-        # only save build cache from develop to avoid polluting it by other branches / PRs
+        # Only save build cache from develop to avoid polluting it by other branches / PRs
         if: github.ref == 'refs/heads/develop' && success()
         uses: actions/cache/save@v3
         continue-on-error: true
@@ -59,8 +56,17 @@ jobs:
             /Users/runner/.cargo/registry
           key: ${{ runner.os }}-build-cache
 
-      - name: Run Tests
-        run: cd build && sudo RUST_BACKTRACE=1 ../ci/test.sh .
+      - name: Core Tests
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: cd build && ../ci/tests/run-core-tests.sh
+
+      - name: RPC Tests
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: cd build && ../ci/tests/run-rpc-tests.sh
+
+      - name: System Tests
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: cd build && ../ci/tests/run-system-tests.sh
 
   linux_test:
     name: Linux [${{ matrix.COMPILER }}]
@@ -81,7 +87,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: "recursive"
-          fetch-depth: 0 # full history needed for restoring file timestamps
+          fetch-depth: 0 # Full history needed for restoring file timestamps
 
       - name: Restore Timestamps
         uses: ./.github/actions/restore-git-mtimes
@@ -96,18 +102,15 @@ jobs:
             cargo-registry
           key: ${{ runner.os }}-${{ env.COMPILER }}-build-cache
 
-      - name: Fetch Deps
-        run: ci/actions/linux/install_deps.sh
+      - name: Prepare
+        run: sudo -E ci/prepare/linux/prepare.sh
 
       - name: Build Tests
-        run: docker run -e RELEASE -v ${PWD}:/workspace -v ${PWD}/cargo-registry:/root/.cargo/registry simpago/rsnano-env:${{ matrix.COMPILER }} /bin/bash -c "cd /workspace && ./ci/build-ci.sh /usr/lib/x86_64-linux-gnu/cmake/Qt5"
-
-      # hacky fix so that the build cache can be saved
-      - name: Change owner before caching
-        run: sudo chown -R runner build cargo-registry
+        id: build
+        run: ci/build-tests.sh
 
       - name: Save Build Cache
-        # only save build cache from develop to avoid polluting it by other branches / PRs
+        # Only save build cache from develop to avoid polluting it by other branches / PRs
         if: github.ref == 'refs/heads/develop' && success()
         uses: actions/cache/save@v3
         continue-on-error: true
@@ -117,5 +120,15 @@ jobs:
             cargo-registry
           key: ${{ runner.os }}-${{ env.COMPILER }}-build-cache
 
-      - name: Run Tests
-        run: docker run -e RELEASE -e RUST_BACKTRACE=1 -v ${PWD}:/workspace -v ${PWD}/cargo-registry:/root/.cargo/registry simpago/rsnano-env:${{ matrix.COMPILER }} /bin/bash -c "cd /workspace/build && ../ci/test.sh ."
+      - name: Core Tests
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: cd build && ../ci/tests/run-core-tests.sh
+
+      - name: RPC Tests
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: cd build && ../ci/tests/run-rpc-tests.sh
+
+      - name: System Tests
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: cd build && ../ci/tests/run-system-tests.sh
+

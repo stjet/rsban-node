@@ -67,8 +67,6 @@ public:
 	void process_blocks ();
 
 	std::atomic<bool> flushing{ false };
-	// Delay required for average network propagartion before requesting confirmation
-	static std::chrono::milliseconds constexpr confirmation_request_delay{ 1500 };
 	rsnano::BlockProcessorHandle const * get_handle () const;
 
 public: // Events

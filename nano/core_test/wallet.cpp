@@ -1086,7 +1086,7 @@ TEST (wallet, foreach_representative_deadlock)
 TEST (wallet, search_receivable)
 {
 	nano::test::system system;
-	nano::node_config config (nano::test::get_available_port (), system.logging);
+	nano::node_config config = system.default_config ();
 	config.enable_voting = false;
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags flags;
@@ -1142,7 +1142,7 @@ TEST (wallet, receive_pruned)
 	node_flags.set_disable_request_loop (true);
 	auto & node1 = *system.add_node (node_flags);
 	node_flags.set_enable_pruning (true);
-	nano::node_config config (nano::test::get_available_port (), system.logging);
+	nano::node_config config = system.default_config ();
 	config.enable_voting = false; // Remove after allowing pruned voting
 	auto & node2 = *system.add_node (config, node_flags);
 

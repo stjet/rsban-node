@@ -17,7 +17,7 @@ std::shared_ptr<nano::transport::channel> create_dummy_channel (nano::node & nod
 TEST (request_aggregator, one)
 {
 	nano::test::system system;
-	nano::node_config node_config (nano::test::get_available_port (), system.logging);
+	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
@@ -63,7 +63,7 @@ TEST (request_aggregator, one)
 TEST (request_aggregator, one_update)
 {
 	nano::test::system system;
-	nano::node_config node_config (nano::test::get_available_port (), system.logging);
+	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
@@ -129,7 +129,7 @@ TEST (request_aggregator, one_update)
 TEST (request_aggregator, two)
 {
 	nano::test::system system;
-	nano::node_config node_config (nano::test::get_available_port (), system.logging);
+	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
@@ -203,12 +203,12 @@ TEST (request_aggregator, two)
 TEST (request_aggregator, two_endpoints)
 {
 	nano::test::system system;
-	nano::node_config node_config (nano::test::get_available_port (), system.logging);
+	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
 	node_flags.set_disable_rep_crawler (true);
 	auto & node1 (*system.add_node (node_config, node_flags));
-	node_config.peering_port = nano::test::get_available_port ();
+	node_config.peering_port = system.get_available_port ();
 	auto & node2 (*system.add_node (node_config, node_flags));
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::block_builder builder;
@@ -262,7 +262,7 @@ TEST (request_aggregator, split)
 {
 	constexpr size_t max_vbh = nano::network::confirm_ack_hashes_max;
 	nano::test::system system;
-	nano::node_config node_config (nano::test::get_available_port (), system.logging);
+	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
@@ -316,7 +316,7 @@ TEST (request_aggregator, split)
 TEST (request_aggregator, channel_lifetime)
 {
 	nano::test::system system;
-	nano::node_config node_config (nano::test::get_available_port (), system.logging);
+	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
@@ -347,7 +347,7 @@ TEST (request_aggregator, channel_lifetime)
 TEST (request_aggregator, channel_update)
 {
 	nano::test::system system;
-	nano::node_config node_config (nano::test::get_available_port (), system.logging);
+	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
@@ -386,7 +386,7 @@ TEST (request_aggregator, channel_update)
 TEST (request_aggregator, channel_max_queue)
 {
 	nano::test::system system;
-	nano::node_config node_config (nano::test::get_available_port (), system.logging);
+	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	node_config.max_queued_requests = 1;
 	auto & node (*system.add_node (node_config));
@@ -415,7 +415,7 @@ TEST (request_aggregator, channel_max_queue)
 TEST (request_aggregator, unique)
 {
 	nano::test::system system;
-	nano::node_config node_config (nano::test::get_available_port (), system.logging);
+	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);

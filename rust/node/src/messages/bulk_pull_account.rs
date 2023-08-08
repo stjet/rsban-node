@@ -8,7 +8,7 @@ use rsnano_core::{
 };
 use std::{any::Any, fmt::Display, mem::size_of};
 
-#[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
+#[derive(Clone, Copy, PartialEq, Eq, FromPrimitive, Debug)]
 #[repr(u8)]
 pub enum BulkPullAccountFlags {
     PendingHashAndAmount = 0x0,

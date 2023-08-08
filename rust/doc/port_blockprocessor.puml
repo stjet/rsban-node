@@ -38,7 +38,7 @@ class network_filter #PaleGreen
 package "Bootstrapping"{
     class bulk_pull_server #PaleGreen
     class bulk_pull_account_server
-    class frontier_req_server
+    class frontier_req_server #PaleGreen
     class bulk_push_server
     class bootstrap_message_visitor
     class request_response_visitor_factory {

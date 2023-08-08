@@ -3,6 +3,7 @@ mod bootstrap_attempts;
 mod bootstrap_client;
 mod bootstrap_initiator;
 mod bootstrap_lazy;
+mod bulk_pull_account_server;
 mod bulk_pull_server;
 mod channel_tcp_wrapper;
 mod frontier_req_server;

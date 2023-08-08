@@ -82,14 +82,10 @@ add_library(
   election.hpp
   election.cpp
   election_insertion_result.hpp
-  election_scheduler.hpp
-  election_scheduler.cpp
   epoch_upgrader.hpp
   epoch_upgrader.cpp
   gap_cache.hpp
   gap_cache.cpp
-  hinted_scheduler.hpp
-  hinted_scheduler.cpp
   inactive_cache_information.hpp
   inactive_cache_information.cpp
   inactive_cache_status.hpp
@@ -159,8 +155,6 @@ add_library(
   openclconfig.cpp
   openclwork.hpp
   openclwork.cpp
-  optimistic_scheduler.hpp
-  optimistic_scheduler.cpp
   peer_exclusion.hpp
   peer_exclusion.cpp
   portmapping.hpp
@@ -175,6 +169,14 @@ add_library(
   request_aggregator.cpp
   rsnano_callbacks.hpp
   rsnano_callbacks.cpp
+  scheduler/buckets.hpp
+  scheduler/buckets.cpp
+  scheduler/component.hpp
+  scheduler/component.cpp
+  scheduler/hinted.hpp
+  scheduler/hinted.cpp
+  scheduler/optimistic.hpp
+  scheduler/optimistic.cpp
   signatures.hpp
   signatures.cpp
   state_block_signature_verification.hpp

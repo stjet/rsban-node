@@ -27,11 +27,14 @@ namespace nano
 class node;
 class ledger;
 class active_transactions;
+}
 
-class optimistic_scheduler_config final
+namespace nano::scheduler
+{
+class optimistic_config final
 {
 public:
-	optimistic_scheduler_config ();
+	optimistic_config ();
 	nano::error deserialize (nano::tomlconfig & toml);
 	void load_dto (rsnano::OptimisticSchedulerConfigDto const & dto_a);
 
@@ -44,14 +47,13 @@ public:
 	/** Maximum number of candidates stored in memory */
 	std::size_t max_size;
 };
-
-class optimistic_scheduler final
+class optimistic final
 {
 	struct entry;
 
 public:
-	optimistic_scheduler (optimistic_scheduler_config const &, nano::node &, nano::ledger &, nano::active_transactions &, nano::network_constants const & network_constants, nano::stats &);
-	~optimistic_scheduler ();
+	optimistic (optimistic_config const &, nano::node &, nano::ledger &, nano::active_transactions &, nano::network_constants const & network_constants, nano::stats &);
+	~optimistic ();
 
 	void start ();
 	void stop ();
@@ -74,7 +76,7 @@ private:
 	void run_one (nano::transaction const &, entry const & candidate);
 
 private: // Dependencies
-	optimistic_scheduler_config const & config;
+	optimistic_config const & config;
 	nano::node & node;
 	nano::ledger & ledger;
 	nano::active_transactions & active;

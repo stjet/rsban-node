@@ -2,6 +2,8 @@
 
 #include <nano/node/network.hpp>
 #include <nano/node/nodeconfig.hpp>
+#include <nano/node/scheduler/buckets.hpp>
+#include <nano/node/scheduler/component.hpp>
 #include <nano/node/transport/inproc.hpp>
 #include <nano/node/transport/socket.hpp>
 #include <nano/test_common/network.hpp>
@@ -421,7 +423,7 @@ TEST (receivable_processor, confirm_insufficient_pos)
 	ASSERT_EQ (nano::process_result::progress, node1.process (*block1).code);
 	{
 		auto tx{ node1.store.tx_begin_read () };
-		node1.scheduler.activate (nano::dev::genesis_key.pub, *tx);
+		node1.scheduler.buckets.activate (nano::dev::genesis_key.pub, *tx);
 	}
 	nano::keypair key1;
 	auto vote (std::make_shared<nano::vote> (key1.pub, key1.prv, 0, 0, std::vector<nano::block_hash>{ block1->hash () }));
@@ -447,7 +449,7 @@ TEST (receivable_processor, confirm_sufficient_pos)
 	ASSERT_EQ (nano::process_result::progress, node1.process (*block1).code);
 	{
 		auto tx{ node1.store.tx_begin_read () };
-		node1.scheduler.activate (nano::dev::genesis_key.pub, *tx);
+		node1.scheduler.buckets.activate (nano::dev::genesis_key.pub, *tx);
 	}
 	auto vote (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash>{ block1->hash () }));
 	nano::confirm_ack con1{ nano::dev::network_params.network, vote };

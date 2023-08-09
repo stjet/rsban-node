@@ -6,8 +6,9 @@ for i in {1..5}; do brew update && break || { echo "Update failed, retrying...";
 
 brew install coreutils
 
-brew install qt@5
-brew link qt@5
-
-# Workaround: https://github.com/Homebrew/homebrew-core/issues/8392
-echo "$(brew --prefix qt5)/bin" >> $GITHUB_PATH
+pushd ..
+git clone https://github.com/corrosion-rs/corrosion.git
+cmake -Scorrosion -Bcorrosion_build -DCMAKE_BUILD_TYPE=Release
+cmake --build corrosion_build --config Release
+sudo cmake --install corrosion_build --config Release
+popd

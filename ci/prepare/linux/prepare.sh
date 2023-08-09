@@ -18,10 +18,15 @@ cmake \
 git \
 valgrind 
 
+pushd ..
+mkdir corrosion
+pushd corrosion
 git clone https://github.com/AndrewGaspar/corrosion.git \
     && cmake -Scorrosion -Bbuild -DCMAKE_BUILD_TYPE=Release \
     && cmake --build build --config Release \
     && cmake --install build --config Release 
+popd
+popd
 
 # Compiler specific setup
 $(dirname "$BASH_SOURCE")/prepare-${COMPILER}.sh

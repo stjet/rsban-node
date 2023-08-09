@@ -16,12 +16,12 @@ python3 \
 zlib1g-dev \
 cmake \
 git \
-qtbase5-dev \
-qtchooser \
-qt5-qmake \
-qtbase5-dev-tools \
-valgrind \
-xorg xvfb xauth xfonts-100dpi xfonts-75dpi xfonts-scalable xfonts-cyrillic
+valgrind 
+
+git clone https://github.com/AndrewGaspar/corrosion.git \
+    && cmake -Scorrosion -Bbuild -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build build --config Release \
+    && cmake --install build --config Release 
 
 # Compiler specific setup
 $(dirname "$BASH_SOURCE")/prepare-${COMPILER}.sh

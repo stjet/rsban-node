@@ -56,4 +56,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
           name: Run clippy check
-        working-directory: rust
+          working-directory: rust

@@ -504,7 +504,7 @@ impl Environment for EnvironmentWrapper {
             .set_max_dbs(options.max_dbs)
             .set_map_size(options.map_size)
             .set_flags(options.flags)
-            .open_with_permissions(options.path, options.file_mode.into())?;
+            .open_with_permissions(options.path, options.file_mode.try_into().unwrap())?;
         Ok(Self(env))
     }
 

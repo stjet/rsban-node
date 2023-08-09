@@ -16,125 +16,15 @@ use rsnano_core::{
 
 use crate::voting::Vote;
 
-pub struct Config {
-    max_size: usize,
-}
-
-impl Config {
-    pub fn new(max_size: usize) -> Self {
-        Config { max_size }
-    }
-
-    pub fn create_null() -> Self {
-        Config::new(1024)
-    }
-}
-
-#[derive(MultiIndexMap, Default, Debug, Clone)]
-pub struct CacheEntry {
-    #[multi_index(ordered_unique)]
-    id: usize,
-    #[multi_index(hashed_unique)]
-    hash: BlockHash,
-    voters: Vec<(Account, u64)>,
-    tally: u128,
-}
-
-impl CacheEntry {
-    const MAX_VOTERS: usize = 40;
-
-    pub fn new(hash: BlockHash) -> Self {
-        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
-        CacheEntry {
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-            hash,
-            voters: vec![],
-            tally: 0,
-        }
-    }
-
-    pub fn vote(&mut self, representative: &Account, timestamp: u64, rep_weight: u128) -> bool {
-        if let Some(existing) = self
-            .voters
-            .iter_mut()
-            .find(|(key, _)| key == representative)
-        {
-            // We already have a vote from this rep
-            // Update timestamp if newer but tally remains unchanged as we already counted this rep weight
-            // It is not essential to keep tally up to date if rep voting weight changes, elections do tally calculations independently, so in the worst case scenario only our queue ordering will be a bit off
-            if timestamp > existing.1 {
-                existing.1 = timestamp
-            }
-            return false;
-        }
-        // Vote from an unseen representative, add to list and update tally
-        if self.voters.len() < Self::MAX_VOTERS {
-            self.voters.push((*representative, timestamp));
-            self.tally += rep_weight;
-            return true;
-        }
-        false
-    }
-
-    // TODO: depends on nano::election -> integrate with CPP code and port later
-    // pub fn fill()
-
-    pub fn size(&self) -> usize {
-        self.voters.len()
-    }
-}
-
-#[derive(MultiIndexMap, Debug, Clone)]
-pub struct QueueEntry {
-    #[multi_index(ordered_unique)]
-    id: usize,
-    #[multi_index(hashed_unique)]
-    hash: BlockHash,
-    #[multi_index(ordered_non_unique)]
-    tally: u128,
-}
-
-impl QueueEntry {
-    pub fn new(hash: BlockHash, tally: u128) -> Self {
-        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
-        QueueEntry {
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-            hash,
-            tally,
-        }
-    }
-}
-
-impl MultiIndexCacheEntryMap {
-    fn pop_front(&mut self) -> Option<CacheEntry> {
-        let entry = self.iter_by_id().next()?.clone();
-        self.remove_by_id(&entry.id);
-        Some(entry)
-    }
-}
-
-impl MultiIndexQueueEntryMap {
-    fn pop_front(&mut self) -> Option<QueueEntry> {
-        let entry = self.iter_by_id().next()?.clone();
-        self.remove_by_id(&entry.id);
-        Some(entry)
-    }
-}
-
-impl Debug for MultiIndexCacheEntryMap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MultiIndexCacheEntryMap").finish()
-    }
-}
-
-impl Debug for MultiIndexQueueEntryMap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MultiIndexQueueEntryMap").finish()
-    }
-}
-
-#[derive(Debug)]
-
+///	A container holding votes that do not match any active or recently finished elections.
+///	It keeps track of votes in two internal structures: cache and queue
+///
+///	Cache: Stores votes associated with a particular block hash with a bounded maximum number of votes per hash.
+///			When cache size exceeds `max_size` oldest entries are evicted first.
+///
+///	Queue: Keeps track of block hashes ordered by total cached vote tally.
+///			When inserting a new vote into cache, the queue is atomically updated.
+///			When queue size exceeds `max_size` oldest entries are evicted first.
 pub struct VoteCache {
     max_size: usize,
     cache: MultiIndexCacheEntryMap,
@@ -142,17 +32,16 @@ pub struct VoteCache {
 }
 
 impl VoteCache {
-    pub fn new(config: Config) -> Self {
+    pub fn new(max_size: usize) -> Self {
         VoteCache {
-            max_size: config.max_size,
+            max_size,
             cache: MultiIndexCacheEntryMap::default(),
             queue: MultiIndexQueueEntryMap::default(),
         }
     }
 
     pub fn create_null() -> Self {
-        let config = Config::create_null();
-        VoteCache::new(config)
+        VoteCache::new(1024)
     }
 
     fn rep_to_weight_map() -> &'static Mutex<HashMap<Account, u128>> {
@@ -302,6 +191,114 @@ impl VoteCache {
     }
 }
 
+impl Default for VoteCache {
+    fn default() -> Self {
+        Self::new(1024 * 128)
+    }
+}
+
+#[derive(MultiIndexMap, Default, Debug, Clone)]
+pub struct CacheEntry {
+    #[multi_index(ordered_unique)]
+    id: usize,
+    #[multi_index(hashed_unique)]
+    hash: BlockHash,
+    voters: Vec<(Account, u64)>,
+    tally: u128,
+}
+
+impl CacheEntry {
+    const MAX_VOTERS: usize = 40;
+
+    pub fn new(hash: BlockHash) -> Self {
+        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+        CacheEntry {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            hash,
+            voters: vec![],
+            tally: 0,
+        }
+    }
+
+    pub fn vote(&mut self, representative: &Account, timestamp: u64, rep_weight: u128) -> bool {
+        if let Some(existing) = self
+            .voters
+            .iter_mut()
+            .find(|(key, _)| key == representative)
+        {
+            // We already have a vote from this rep
+            // Update timestamp if newer but tally remains unchanged as we already counted this rep weight
+            // It is not essential to keep tally up to date if rep voting weight changes, elections do tally calculations independently, so in the worst case scenario only our queue ordering will be a bit off
+            if timestamp > existing.1 {
+                existing.1 = timestamp
+            }
+            return false;
+        }
+        // Vote from an unseen representative, add to list and update tally
+        if self.voters.len() < Self::MAX_VOTERS {
+            self.voters.push((*representative, timestamp));
+            self.tally += rep_weight;
+            return true;
+        }
+        false
+    }
+
+    // TODO: depends on nano::election -> integrate with CPP code and port later
+    // pub fn fill()
+
+    pub fn size(&self) -> usize {
+        self.voters.len()
+    }
+}
+
+#[derive(MultiIndexMap, Debug, Clone)]
+pub struct QueueEntry {
+    #[multi_index(ordered_unique)]
+    id: usize,
+    #[multi_index(hashed_unique)]
+    hash: BlockHash,
+    #[multi_index(ordered_non_unique)]
+    tally: u128,
+}
+
+impl QueueEntry {
+    pub fn new(hash: BlockHash, tally: u128) -> Self {
+        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+        QueueEntry {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            hash,
+            tally,
+        }
+    }
+}
+
+impl MultiIndexCacheEntryMap {
+    fn pop_front(&mut self) -> Option<CacheEntry> {
+        let entry = self.iter_by_id().next()?.clone();
+        self.remove_by_id(&entry.id);
+        Some(entry)
+    }
+}
+
+impl MultiIndexQueueEntryMap {
+    fn pop_front(&mut self) -> Option<QueueEntry> {
+        let entry = self.iter_by_id().next()?.clone();
+        self.remove_by_id(&entry.id);
+        Some(entry)
+    }
+}
+
+impl Debug for MultiIndexCacheEntryMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MultiIndexCacheEntryMap").finish()
+    }
+}
+
+impl Debug for MultiIndexQueueEntryMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MultiIndexQueueEntryMap").finish()
+    }
+}
 #[cfg(test)]
 mod tests {
     use rsnano_core::KeyPair;
@@ -349,7 +346,7 @@ mod tests {
 
     #[test]
     fn construction() {
-        let cache = VoteCache::create_null();
+        let cache = VoteCache::new(10);
         assert_eq!(cache.cache_size(), 0);
         assert!(cache.cache_empty());
         let hash = BlockHash::random();
@@ -358,7 +355,7 @@ mod tests {
 
     #[test]
     fn insert_one_hash() {
-        let mut cache = VoteCache::create_null();
+        let mut cache = VoteCache::new(10);
 
         let rep1 = create_rep(7);
         let hash1 = BlockHash::random();
@@ -383,7 +380,7 @@ mod tests {
      */
     #[test]
     fn insert_one_hash_many_votes() {
-        let mut cache = VoteCache::create_null();
+        let mut cache = VoteCache::new(10);
 
         let hash1 = BlockHash::random();
         let rep1 = create_rep(7);
@@ -407,7 +404,7 @@ mod tests {
 
     #[test]
     fn insert_many_hashes_many_votes() {
-        let mut cache = VoteCache::create_null();
+        let mut cache = VoteCache::new(10);
 
         // There will be 3 random hashes to vote for
         let hash1 = BlockHash::random();
@@ -475,7 +472,7 @@ mod tests {
      */
     #[test]
     fn insert_duplicate() {
-        let mut cache = VoteCache::create_null();
+        let mut cache = VoteCache::new(10);
 
         let hash1 = BlockHash::random();
         let rep1 = create_rep(9);
@@ -493,7 +490,7 @@ mod tests {
      */
     #[test]
     fn insert_newer() {
-        let mut cache = VoteCache::create_null();
+        let mut cache = VoteCache::new(10);
 
         let hash1 = BlockHash::random();
         let rep1 = create_rep(9);
@@ -523,7 +520,7 @@ mod tests {
      */
     #[test]
     fn insert_older() {
-        let mut cache = VoteCache::create_null();
+        let mut cache = VoteCache::new(10);
         let hash1 = BlockHash::random();
         let rep1 = create_rep(9);
         let vote1 = create_vote(&rep1, &hash1, 2);
@@ -547,7 +544,7 @@ mod tests {
      */
     #[test]
     fn erase() {
-        let mut cache = VoteCache::create_null();
+        let mut cache = VoteCache::new(10);
         let hash1 = BlockHash::random();
         let hash2 = BlockHash::random();
         let hash3 = BlockHash::random();
@@ -591,7 +588,7 @@ mod tests {
     // TODO: takes a long time -> shrink example?
     fn overfill() {
         // Create a vote cache with max size set to 1024
-        let mut cache = VoteCache::new(Config { max_size: 1024 });
+        let mut cache = VoteCache::new(1024);
 
         let count = 16 * 1024;
         for n in 0..count {
@@ -603,7 +600,6 @@ mod tests {
         }
 
         assert!((cache.cache_size() as u128) < count);
-        dbg!(&cache);
 
         let peek1 = peek(&cache);
         // Check that oldest votes are dropped first
@@ -615,7 +611,7 @@ mod tests {
      */
     #[test]
     fn overfill_entry() {
-        let mut cache = VoteCache::new(Config { max_size: 1024 });
+        let mut cache = VoteCache::new(1024);
         let count = 1024;
 
         let hash1 = BlockHash::random();

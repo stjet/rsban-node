@@ -100,6 +100,8 @@ public:
 	void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
 	void notify_new_channel (std::shared_ptr<nano::transport::channel> channel_a);
 	void clear_from_publish_filter (nano::uint128_t const & digest_a);
+	uint16_t get_port();
+	void set_port(uint16_t port_a);
 
 private:
 	void process_message (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
@@ -110,7 +112,6 @@ public:
 	std::vector<boost::thread> packet_processing_threads;
 	nano::node & node;
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
-	std::atomic<uint16_t> port{ 0 };
 	std::function<void ()> disconnect_observer;
 
 private:
@@ -118,6 +119,7 @@ private:
 	std::function<void (std::shared_ptr<nano::transport::channel>)> channel_observer;
 
 public:
+	std::atomic<uint16_t> port{ 0 };
 	std::atomic<bool> stopped{ false };
 	static unsigned const broadcast_interval_ms = 10;
 	static std::size_t const buffer_size = 512;

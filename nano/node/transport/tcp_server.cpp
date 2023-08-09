@@ -84,7 +84,7 @@ void nano::transport::tcp_listener::start ()
 		//
 		if (port == listening_port)
 		{
-			debug_assert (port == network->port);
+			debug_assert (port == network->get_port ());
 			debug_assert (port == network->endpoint ().port ());
 		}
 		// (2) -- OS port choice happened at TCP socket bind time, so propagate this port value back;

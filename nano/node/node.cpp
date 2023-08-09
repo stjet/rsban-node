@@ -181,7 +181,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	//         Thus, be very careful if you change the order: if `bootstrap` gets constructed before `network`,
 	//         the latter would inherit the port from the former (if TCP is active, otherwise `network` picks first)
 	//
-	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (network->port, *this) },
+	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (network->get_port(), *this) },
 	application_path (application_path_a),
 	port_mapping (*this),
 	rep_crawler (*this),
@@ -652,12 +652,12 @@ void nano::node::start ()
 		tcp_listener->start ();
 		tcp_enabled = true;
 
-		if (network->port != tcp_listener->port)
+		if (network->get_port() != tcp_listener->port)
 		{
-			network->port = tcp_listener->port;
+			network->set_port (tcp_listener->port);
 		}
 
-		logger->always_log (boost::str (boost::format ("Node started with peering port `%1%`.") % network->port));
+		logger->always_log (boost::str (boost::format ("Node started with peering port `%1%`.") % network->get_port ()));
 	}
 
 	if (!flags.disable_backup ())

@@ -349,6 +349,11 @@ void nano::transport::tcp_channels::random_fill (std::array<nano::endpoint, 8> &
 	}
 }
 
+void nano::transport::tcp_channels::set_port(uint16_t port_a)
+{
+	port = port_a;
+}
+
 std::vector<nano::endpoint> nano::transport::tcp_channels::get_current_peers () const
 {
 	std::vector<nano::endpoint> endpoints;

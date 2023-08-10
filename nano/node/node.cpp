@@ -194,7 +194,9 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	history{ config_a.network_params.voting },
 	vote_uniquer (block_uniquer),
 	confirmation_height_processor (ledger, *stats, write_database_queue, config_a.conf_height_processor_batch_min_time, config->logging, logger, node_initialized_latch),
-	inactive_vote_cache{ nano::nodeconfig_to_vote_cache_config (config_a, flags) },
+	inactive_vote_cache{ nano::nodeconfig_to_vote_cache_config (config_a, flags), [this] (nano::account const & rep) {
+		return ledger.weight (rep);
+	}},
 	generator{ *config, ledger, wallets, vote_processor, history, *network, *stats, /* non-final */ false },
 	final_generator{ *config, ledger, wallets, vote_processor, history, *network, *stats, /* final */ true },
 	active (*this, confirmation_height_processor),
@@ -223,10 +225,6 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	unchecked.set_satisfied_observer ([this] (nano::unchecked_info const & info) {
 		this->block_processor.add (info.get_block ());
 	});
-
-	inactive_vote_cache.rep_weight_query = [this] (nano::account const & rep) {
-		return ledger.weight (rep);
-	};
 
 	backlog.set_activate_callback ([this] (nano::transaction const & transaction, nano::account const & account, nano::account_info const & account_info, nano::confirmation_height_info const & conf_info) {
 		scheduler.buckets.activate (account, transaction);

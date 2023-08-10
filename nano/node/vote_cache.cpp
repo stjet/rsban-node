@@ -41,8 +41,9 @@ std::size_t nano::vote_cache::entry::size () const
 	return voters.size ();
 }
 
-nano::vote_cache::vote_cache (const config config_a) :
-	max_size{ config_a.max_size }
+nano::vote_cache::vote_cache (const config config_a, std::function<nano::uint128_t (nano::account const &)> rep_weight_query_a) :
+	max_size{ config_a.max_size },
+	rep_weight_query{ rep_weight_query_a}
 {
 }
 

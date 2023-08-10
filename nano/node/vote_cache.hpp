@@ -78,7 +78,7 @@ private:
 	};
 
 public:
-	explicit vote_cache (const config);
+	explicit vote_cache (const config, std::function<nano::uint128_t (nano::account const &)> rep_weight_query_a);
 
 	/**
 	 * Adds a new vote to cache
@@ -118,7 +118,7 @@ public:
 public: // Container info
 	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);
 
-public:
+private:
 	/**
 	 * Function used to query rep weight for tally calculation
 	 */

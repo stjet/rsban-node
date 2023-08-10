@@ -21,17 +21,17 @@ pub struct VoteCache {
     cache: MultiIndexCacheEntryMap,
     queue: MultiIndexQueueEntryMap,
     next_id: usize,
-    pub rep_weight_query: Box<dyn Fn(&Account) -> Amount>,
+    rep_weight_query: Box<dyn Fn(&Account) -> Amount>,
 }
 
 impl VoteCache {
-    pub fn new(max_size: usize) -> Self {
+    pub fn new(max_size: usize, rep_weight_query: Box<dyn Fn(&Account) -> Amount>) -> Self {
         VoteCache {
             max_size,
             cache: MultiIndexCacheEntryMap::default(),
             queue: MultiIndexQueueEntryMap::default(),
             next_id: 0,
-            rep_weight_query: Box::new(|_| Amount::zero()),
+            rep_weight_query,
         }
     }
 
@@ -193,12 +193,6 @@ impl VoteCache {
     }
 }
 
-impl Default for VoteCache {
-    fn default() -> Self {
-        Self::new(1024 * 128)
-    }
-}
-
 /// Stores votes associated with a single block hash
 #[derive(MultiIndexMap, Default, Debug, Clone)]
 pub struct CacheEntry {
@@ -309,6 +303,10 @@ mod tests {
             .unwrap_or_default()
     }
 
+    fn create_vote_cache() -> VoteCache{
+        VoteCache::new(10, Box::new(get_test_rep_weight))
+    }
+
     fn create_rep(weight: Amount) -> KeyPair {
         let key = KeyPair::new();
         let rep = key.public_key();
@@ -345,7 +343,7 @@ mod tests {
 
     #[test]
     fn construction() {
-        let cache = VoteCache::new(10);
+        let cache = create_vote_cache();
         assert_eq!(cache.cache_size(), 0);
         assert!(cache.cache_empty());
         let hash = BlockHash::random();
@@ -354,9 +352,7 @@ mod tests {
 
     #[test]
     fn insert_one_hash() {
-        let mut cache = VoteCache::new(10);
-        cache.rep_weight_query = Box::new(get_test_rep_weight);
-
+        let mut cache = create_vote_cache();
         let rep1 = create_rep(Amount::raw(7));
         let hash1 = BlockHash::random();
         let vote1 = create_vote(&rep1, &hash1, 1);
@@ -380,8 +376,7 @@ mod tests {
      */
     #[test]
     fn insert_one_hash_many_votes() {
-        let mut cache = VoteCache::new(10);
-        cache.rep_weight_query = Box::new(get_test_rep_weight);
+        let mut cache = create_vote_cache();
 
         let hash1 = BlockHash::random();
         let rep1 = create_rep(Amount::raw(7));
@@ -405,8 +400,7 @@ mod tests {
 
     #[test]
     fn insert_many_hashes_many_votes() {
-        let mut cache = VoteCache::new(10);
-        cache.rep_weight_query = Box::new(get_test_rep_weight);
+        let mut cache = create_vote_cache();
 
         // There will be 3 random hashes to vote for
         let hash1 = BlockHash::random();
@@ -474,8 +468,7 @@ mod tests {
      */
     #[test]
     fn insert_duplicate() {
-        let mut cache = VoteCache::new(10);
-        cache.rep_weight_query = Box::new(get_test_rep_weight);
+        let mut cache = create_vote_cache();
 
         let hash1 = BlockHash::random();
         let rep1 = create_rep(Amount::raw(9));
@@ -493,8 +486,7 @@ mod tests {
      */
     #[test]
     fn insert_newer() {
-        let mut cache = VoteCache::new(10);
-        cache.rep_weight_query = Box::new(get_test_rep_weight);
+        let mut cache = create_vote_cache();
 
         let hash1 = BlockHash::random();
         let rep1 = create_rep(Amount::raw(9));
@@ -524,8 +516,7 @@ mod tests {
      */
     #[test]
     fn insert_older() {
-        let mut cache = VoteCache::new(10);
-        cache.rep_weight_query = Box::new(get_test_rep_weight);
+        let mut cache = create_vote_cache();
         let hash1 = BlockHash::random();
         let rep1 = create_rep(Amount::raw(9));
         let vote1 = create_vote(&rep1, &hash1, 2);
@@ -549,8 +540,7 @@ mod tests {
      */
     #[test]
     fn erase() {
-        let mut cache = VoteCache::new(10);
-        cache.rep_weight_query = Box::new(get_test_rep_weight);
+        let mut cache = create_vote_cache();
         let hash1 = BlockHash::random();
         let hash2 = BlockHash::random();
         let hash3 = BlockHash::random();
@@ -594,8 +584,7 @@ mod tests {
     // TODO: takes a long time -> shrink example?
     fn overfill() {
         // Create a vote cache with max size set to 1024
-        let mut cache = VoteCache::new(1024);
-        cache.rep_weight_query = Box::new(get_test_rep_weight);
+        let mut cache = VoteCache::new(1024, Box::new(get_test_rep_weight));
 
         let count = 16 * 1024;
         for n in 0..count {
@@ -618,8 +607,7 @@ mod tests {
      */
     #[test]
     fn overfill_entry() {
-        let mut cache = VoteCache::new(1024);
-        cache.rep_weight_query = Box::new(get_test_rep_weight);
+        let mut cache = VoteCache::new(1024, Box::new(get_test_rep_weight));
         let count = 1024;
 
         let hash1 = BlockHash::random();

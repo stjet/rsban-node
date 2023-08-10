@@ -199,10 +199,10 @@ pub struct CacheEntry {
     #[multi_index(ordered_unique)]
     id: usize,
     #[multi_index(hashed_unique)]
-    hash: BlockHash,
+    pub hash: BlockHash,
     /// <rep, timestamp> pair
-    voters: Vec<(Account, u64)>,
-    tally: Amount,
+    pub voters: Vec<(Account, u64)>,
+    pub tally: Amount,
 }
 
 impl CacheEntry {

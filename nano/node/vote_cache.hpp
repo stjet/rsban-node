@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
 #include <nano/lib/locks.hpp>
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/utility.hpp>
@@ -79,6 +80,9 @@ private:
 
 public:
 	explicit vote_cache (const config, std::function<nano::uint128_t (nano::account const &)> rep_weight_query_a);
+	vote_cache (vote_cache const &) = delete;
+	vote_cache (vote_cache &&) = delete;
+	~vote_cache();
 
 	/**
 	 * Adds a new vote to cache
@@ -158,5 +162,6 @@ private:
 	ordered_queue queue;
 
 	mutable nano::mutex mutex;
+	rsnano::VoteCacheHandle * handle;
 };
 }

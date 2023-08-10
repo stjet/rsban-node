@@ -1,3 +1,4 @@
+#include "nano/lib/numbers.hpp"
 #include <nano/node/node.hpp>
 #include <nano/node/vote_cache.hpp>
 
@@ -41,10 +42,37 @@ std::size_t nano::vote_cache::entry::size () const
 	return voters.size ();
 }
 
+namespace{
+void execute_rep_weight_query(void * handle_a, uint8_t const * account_a, uint8_t * amount_a)
+{
+	auto fp = static_cast<std::function<nano::uint128_t (nano::account const &)>*>(handle_a);
+	nano::account acc{};
+	std::copy(account_a, account_a + 32, std::begin(acc.bytes));
+	nano::amount weight{(*fp)(acc)};
+	std::copy (std::begin(weight.bytes), std::end(weight.bytes), amount_a);
+}
+
+void delete_rep_weight_query(void * handle_a)
+{
+	auto fp = static_cast<std::function<nano::uint128_t (nano::account const &)>*>(handle_a);
+	delete fp;
+}
+}
+
 nano::vote_cache::vote_cache (const config config_a, std::function<nano::uint128_t (nano::account const &)> rep_weight_query_a) :
 	max_size{ config_a.max_size },
-	rep_weight_query{ rep_weight_query_a}
+	rep_weight_query{ rep_weight_query_a},
+	handle{ rsnano::rsn_vote_cache_create (
+		config_a.max_size, 
+		new std::function<nano::uint128_t (nano::account const &)>(rep_weight_query_a),
+		execute_rep_weight_query,
+		delete_rep_weight_query
+		) }
 {
+}
+
+nano::vote_cache::~vote_cache(){
+	rsnano::rsn_vote_cache_destroy (handle);
 }
 
 void nano::vote_cache::vote (const nano::block_hash & hash, const std::shared_ptr<nano::vote> vote)

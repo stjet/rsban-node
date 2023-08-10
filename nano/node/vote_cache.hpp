@@ -129,10 +129,6 @@ private:
 	std::function<nano::uint128_t (nano::account const &)> rep_weight_query{ [] (nano::account const & rep) { return 0; } };
 
 private:
-	void vote_impl (nano::block_hash const & hash, nano::account const & representative, uint64_t const & timestamp, nano::uint128_t const & rep_weight);
-	std::optional<entry> find_locked (nano::block_hash const & hash) const;
-	void trim_overflow_locked ();
-
 	const std::size_t max_size;
 
 	// clang-format off

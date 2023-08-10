@@ -123,6 +123,18 @@ pub unsafe extern "C" fn rsn_vote_cache_erase(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_vote_cache_pop(
+    handle: *mut VoteCacheHandle,
+    min_tally: *const u8,
+    result: *mut VoteCacheEntryDto,
+) -> bool {
+    let min_tally = Amount::from_ptr(min_tally);
+    let mut guard = (*handle).0.lock().unwrap();
+    let entry = guard.pop(Some(min_tally));
+    fill_entry_dto(entry.as_ref(), result)
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_cache_peek(
     handle: *mut VoteCacheHandle,
     min_tally: *const u8,

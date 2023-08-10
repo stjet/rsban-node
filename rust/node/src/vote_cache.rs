@@ -1,18 +1,9 @@
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-    mem::size_of,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Mutex, OnceLock,
-    },
-};
-
 use multi_index_map::MultiIndexMap;
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Account, Amount, BlockHash,
 };
+use std::{fmt::Debug, mem::size_of};
 
 use crate::voting::Vote;
 
@@ -46,112 +37,9 @@ impl VoteCache {
 
     /// Adds a new vote to cache
     pub fn vote(&mut self, hash: &BlockHash, vote: &Vote) {
+        // todo get weight outside of here, because a mutex is locked when we get here!
         let weight = (self.rep_weight_query)(&vote.voting_account);
         self.vote_impl(hash, &vote.voting_account, vote.timestamp(), weight);
-    }
-
-    /// Tries to find an entry associated with block hash
-    pub fn find(&self, hash: &BlockHash) -> Option<&CacheEntry> {
-        self.cache.get_by_hash(hash)
-    }
-
-    /// Removes an entry associated with block hash, does nothing if entry does not exist
-    /// return true if hash existed and was erased, false otherwise
-    pub fn erase(&mut self, hash: &BlockHash) -> bool {
-        let result = self.cache.remove_by_hash(hash).is_some();
-        self.queue.remove_by_hash(hash);
-        result
-    }
-
-    /// Returns an entry with the highest tally.
-    /// param min_tally minimum tally threshold, entries below with their voting weight below this will be ignored
-    pub fn peek(&self, min_tally: Option<Amount>) -> Option<&CacheEntry> {
-        if self.queue.is_empty() {
-            return None;
-        }
-
-        let top = self.queue.iter_by_tally().last()?;
-        let cache_entry = self.find(&top.hash)?;
-
-        match cache_entry.tally >= min_tally.unwrap_or_default() {
-            true => Some(cache_entry),
-            false => None,
-        }
-    }
-
-    /// Returns an entry with the highest tally and removes it from container.
-    /// param min_tally minimum tally threshold, entries below with their voting weight below this will be ignored
-    pub fn pop(&mut self, min_tally: Option<Amount>) -> Option<CacheEntry> {
-        if self.queue.is_empty() {
-            return None;
-        };
-
-        let top = self.queue.iter_by_tally().last()?.clone();
-        let cache_entry = self.find(&top.hash)?.to_owned();
-        if cache_entry.tally < min_tally.unwrap_or_default() {
-            return None;
-        }
-
-        self.queue.remove_by_id(&top.id);
-        Some(cache_entry)
-    }
-
-    /// Reinserts a block into the queue.
-    /// It is possible that we dequeue a hash that doesn't have a received block yet (for eg. if publish message was lost).
-    /// We need a way to reinsert that hash into the queue when we finally receive the block
-    pub fn trigger(&mut self, hash: &BlockHash) {
-        if self.queue.get_by_hash(hash).is_some() {
-            if let Some(existing_cache_entry) = self.find(hash) {
-                self.queue
-                    .insert(QueueEntry::new(*hash, existing_cache_entry.tally));
-                self.trim_overflow_locked();
-            }
-        }
-    }
-
-    pub fn cache_size(&self) -> usize {
-        self.cache.len()
-    }
-
-    pub fn queue_size(&self) -> usize {
-        self.queue.len()
-    }
-
-    pub fn cache_empty(&self) -> bool {
-        self.cache.is_empty()
-    }
-
-    pub fn queue_empty(&self) -> bool {
-        self.queue.is_empty()
-    }
-
-    pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
-        let children = vec![
-            ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "cache".to_owned(),
-                count: self.cache_size(),
-                sizeof_element: size_of::<MultiIndexCacheEntryMap>(), // TODO: add fn size_of_element (&self) to MultiIndexCacheEntryMap
-            }),
-            ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "queue".to_owned(),
-                count: self.queue_size(),
-                sizeof_element: size_of::<MultiIndexQueueEntryMap>(), // TODO: add fn size_of_element (&self) to MultiIndexQueueEntryMap
-            }),
-        ];
-
-        ContainerInfoComponent::Composite(name, children)
-    }
-
-    pub fn rep_weight_query(&self) -> impl Fn(&Account) -> u128 {
-        |acc| match Self::rep_to_weight_map().lock().unwrap().get(acc) {
-            Some(weight) => *weight,
-            None => 0,
-        }
-    }
-
-    fn rep_to_weight_map() -> &'static Mutex<HashMap<Account, u128>> {
-        static REP_TO_WEIGHT_MAP: OnceLock<Mutex<HashMap<Account, u128>>> = OnceLock::new();
-        REP_TO_WEIGHT_MAP.get_or_init(|| Mutex::new(HashMap::new()))
     }
 
     fn vote_impl(
@@ -176,11 +64,12 @@ impl VoteCache {
             .is_some();
 
         if !cache_entry_exists {
-            let mut cache_entry = CacheEntry::new(self.next_id, *hash);
+            let id = self.next_id;
             self.next_id += 1;
+            let mut cache_entry = CacheEntry::new(id, *hash);
             cache_entry.vote(representative, timestamp, rep_weight);
 
-            let queue_entry = QueueEntry::new(*hash, cache_entry.tally);
+            let queue_entry = QueueEntry::new(id, *hash, cache_entry.tally);
             self.cache.insert(cache_entry);
 
             // If a stale entry for the same hash already exists in queue, replace it by a new entry with fresh tally
@@ -189,6 +78,106 @@ impl VoteCache {
 
             self.trim_overflow_locked();
         }
+    }
+
+    pub fn cache_empty(&self) -> bool {
+        self.cache.is_empty()
+    }
+
+    pub fn queue_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+
+    pub fn cache_size(&self) -> usize {
+        self.cache.len()
+    }
+
+    pub fn queue_size(&self) -> usize {
+        self.queue.len()
+    }
+
+    /// Tries to find an entry associated with block hash
+    pub fn find(&self, hash: &BlockHash) -> Option<&CacheEntry> {
+        self.cache.get_by_hash(hash)
+    }
+
+    /// Removes an entry associated with block hash, does nothing if entry does not exist
+    /// return true if hash existed and was erased, false otherwise
+    pub fn erase(&mut self, hash: &BlockHash) -> bool {
+        let result = self.cache.remove_by_hash(hash).is_some();
+        self.queue.remove_by_hash(hash);
+        result
+    }
+
+    /// Returns an entry with the highest tally and removes it from container.
+    /// param min_tally minimum tally threshold, entries below with their voting weight below this will be ignored
+    pub fn pop(&mut self, min_tally: Option<Amount>) -> Option<CacheEntry> {
+        if self.queue.is_empty() {
+            return None;
+        };
+
+        let top = self.queue.iter_by_tally().rev().next()?.clone();
+        let cache_entry = self.find(&top.hash)?.clone(); // element with the highest tally
+
+        // Here we check whether our best candidate passes the minimum vote tally threshold
+        // If yes, erase it from the queue (but still keep the votes in cache)
+        if cache_entry.tally < min_tally.unwrap_or_default() {
+            return None;
+        }
+
+        self.queue.remove_by_id(&top.id);
+        Some(cache_entry)
+    }
+
+    /// Returns an entry with the highest tally.
+    /// param min_tally minimum tally threshold, entries below with their voting weight below this will be ignored
+    pub fn peek(&self, min_tally: Option<Amount>) -> Option<&CacheEntry> {
+        if self.queue.is_empty() {
+            return None;
+        }
+
+        let top = self.queue.iter_by_tally().rev().next()?; // element with the highest tally
+        let cache_entry = self.find(&top.hash)?;
+
+        match cache_entry.tally >= min_tally.unwrap_or_default() {
+            true => Some(cache_entry),
+            false => None,
+        }
+    }
+
+    /// Reinserts a block into the queue.
+    /// It is possible that we dequeue a hash that doesn't have a received block yet (for eg. if publish message was lost).
+    /// We need a way to reinsert that hash into the queue when we finally receive the block
+    pub fn trigger(&mut self, hash: &BlockHash) {
+        // Only reinsert to queue if it is not already in queue and there are votes in passive cache
+        if self.queue.get_by_hash(hash).is_none() {
+            if let Some(existing_cache_entry) = self.find(hash) {
+                self.queue.insert(QueueEntry::new(
+                    self.next_id,
+                    *hash,
+                    existing_cache_entry.tally,
+                ));
+                self.next_id += 1;
+                self.trim_overflow_locked();
+            }
+        }
+    }
+
+    pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
+        let children = vec![
+            ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "cache".to_owned(),
+                count: self.cache_size(),
+                sizeof_element: size_of::<MultiIndexCacheEntryMap>(), // TODO: add fn size_of_element (&self) to MultiIndexCacheEntryMap
+            }),
+            ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "queue".to_owned(),
+                count: self.queue_size(),
+                sizeof_element: size_of::<MultiIndexQueueEntryMap>(), // TODO: add fn size_of_element (&self) to MultiIndexQueueEntryMap
+            }),
+        ];
+
+        ContainerInfoComponent::Composite(name, children)
     }
 
     fn trim_overflow_locked(&mut self) {
@@ -273,29 +262,22 @@ pub struct QueueEntry {
 }
 
 impl QueueEntry {
-    pub fn new(hash: BlockHash, tally: Amount) -> Self {
-        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
-        QueueEntry {
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-            hash,
-            tally,
-        }
+    pub fn new(id: usize, hash: BlockHash, tally: Amount) -> Self {
+        QueueEntry { id, hash, tally }
     }
 }
 
 impl MultiIndexCacheEntryMap {
     fn pop_front(&mut self) -> Option<CacheEntry> {
-        let entry = self.iter_by_id().next()?.clone();
-        self.remove_by_id(&entry.id);
-        Some(entry)
+        let id = self.iter_by_id().next()?.id;
+        self.remove_by_id(&id)
     }
 }
 
 impl MultiIndexQueueEntryMap {
     fn pop_front(&mut self) -> Option<QueueEntry> {
-        let entry = self.iter_by_id().next()?.clone();
-        self.remove_by_id(&entry.id);
-        Some(entry)
+        let id = self.iter_by_id().next()?.id;
+        self.remove_by_id(&id)
     }
 }
 
@@ -312,6 +294,11 @@ impl Debug for MultiIndexQueueEntryMap {
 }
 #[cfg(test)]
 mod tests {
+    use std::{
+        collections::HashMap,
+        sync::{Mutex, OnceLock},
+    };
+
     use super::*;
     use crate::voting::{DURATION_MAX, TIMESTAMP_MAX};
     use rsnano_core::KeyPair;

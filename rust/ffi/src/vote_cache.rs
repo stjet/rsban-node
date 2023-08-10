@@ -1,6 +1,6 @@
-use std::ffi::{c_char, CStr};
-use rsnano_node::vote_cache::VoteCache;
 use crate::utils::ContainerInfoComponentHandle;
+use rsnano_node::vote_cache::VoteCache;
+use std::ffi::{c_char, CStr};
 
 pub struct VoteCacheHandle(VoteCache);
 

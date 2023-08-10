@@ -36,20 +36,6 @@ bool nano::vote_cache::entry::vote (const nano::account & representative, const 
 	}
 }
 
-std::size_t nano::vote_cache::entry::fill (std::shared_ptr<nano::election> election) const
-{
-	std::size_t inserted = 0;
-	for (const auto & [rep, timestamp] : voters)
-	{
-		auto [is_replay, processed] = election->vote (rep, timestamp, hash, nano::election::vote_source::cache);
-		if (processed)
-		{
-			inserted++;
-		}
-	}
-	return inserted;
-}
-
 std::size_t nano::vote_cache::entry::size () const
 {
 	return voters.size ();

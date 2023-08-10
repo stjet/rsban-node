@@ -3,6 +3,7 @@
 #include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>
 #include <nano/secure/store.hpp>
+#include <nano/node/vote_cache.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -145,6 +146,11 @@ public: // Interface
 	 * If the election reaches consensus, it will be confirmed
 	 */
 	nano::election_vote_result vote (nano::account const & representative, uint64_t timestamp, nano::block_hash const & block_hash, vote_source = vote_source::live);
+	/**
+	* Inserts votes stored in the cache entry into this election
+	*/
+	std::size_t fill_from_cache (nano::vote_cache::entry const & entry);
+
 	bool publish (std::shared_ptr<nano::block> const & block_a);
 	// Confirm this block if quorum is met
 	void confirm_if_quorum (nano::unique_lock<nano::mutex> &);

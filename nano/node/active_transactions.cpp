@@ -424,7 +424,7 @@ nano::election_insertion_result nano::active_transactions::insert_impl (nano::un
 				lock_a.unlock ();
 				if (auto const cache = node.inactive_vote_cache.find (hash); cache)
 				{
-					cache->fill (result.election);
+					result.election->fill_from_cache(*cache);
 				}
 				node.stats->inc (nano::stat::type::active_started, nano::to_stat_detail (election_behavior_a));
 				node.observers->active_started.notify (hash);
@@ -623,7 +623,7 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 			lock.unlock ();
 			if (auto const cache = node.inactive_vote_cache.find (block_a->hash ()); cache)
 			{
-				cache->fill (election);
+				election->fill_from_cache(*cache);
 			}
 			node.stats->inc (nano::stat::type::active, nano::stat::detail::election_block_conflict);
 		}

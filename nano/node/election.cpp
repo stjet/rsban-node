@@ -453,6 +453,20 @@ nano::election_vote_result nano::election::vote (nano::account const & rep, uint
 	return nano::election_vote_result (false, true);
 }
 
+std::size_t nano::election::fill_from_cache (nano::vote_cache::entry const & entry)
+{
+	std::size_t inserted = 0;
+	for (const auto & [rep, timestamp] : entry.voters)
+	{
+		auto [is_replay, processed] = vote (rep, timestamp, entry.hash, nano::election::vote_source::cache);
+		if (processed)
+		{
+			inserted++;
+		}
+	}
+	return inserted;
+}
+
 bool nano::election::publish (std::shared_ptr<nano::block> const & block_a)
 {
 	nano::unique_lock<nano::mutex> lock{ mutex };

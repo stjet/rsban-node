@@ -198,12 +198,14 @@ impl Default for VoteCache {
     }
 }
 
+/// Stores votes associated with a single block hash
 #[derive(MultiIndexMap, Default, Debug, Clone)]
 pub struct CacheEntry {
     #[multi_index(ordered_unique)]
     id: usize,
     #[multi_index(hashed_unique)]
     hash: BlockHash,
+    /// <rep, timestamp> pair
     voters: Vec<(Account, u64)>,
     tally: Amount,
 }
@@ -215,11 +217,13 @@ impl CacheEntry {
         CacheEntry {
             id,
             hash,
-            voters: vec![],
+            voters: Vec::new(),
             tally: Amount::zero(),
         }
     }
 
+    /// Adds a vote into a list, checks for duplicates and updates timestamp if new one is greater
+    /// returns true if current tally changed, false otherwise
     pub fn vote(&mut self, representative: &Account, timestamp: u64, rep_weight: Amount) -> bool {
         if let Some(existing) = self
             .voters
@@ -242,9 +246,6 @@ impl CacheEntry {
         }
         false
     }
-
-    // TODO: depends on nano::election -> integrate with CPP code and port later
-    // pub fn fill()
 
     pub fn size(&self) -> usize {
         self.voters.len()
@@ -281,17 +282,6 @@ impl MultiIndexQueueEntryMap {
     }
 }
 
-impl Debug for MultiIndexCacheEntryMap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MultiIndexCacheEntryMap").finish()
-    }
-}
-
-impl Debug for MultiIndexQueueEntryMap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MultiIndexQueueEntryMap").finish()
-    }
-}
 #[cfg(test)]
 mod tests {
     use std::{

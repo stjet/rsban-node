@@ -21,7 +21,6 @@ namespace nano
 {
 class node;
 class active_transactions;
-class election;
 class vote;
 
 /**
@@ -64,10 +63,6 @@ public:
 		 * @return true if current tally changed, false otherwise
 		 */
 		bool vote (nano::account const & representative, uint64_t const & timestamp, nano::uint128_t const & rep_weight);
-		/**
-		 * Inserts votes stored in this entry into an election
-		 */
-		std::size_t fill (std::shared_ptr<nano::election> election) const;
 		/*
 		 * Size of this entry
 		 */

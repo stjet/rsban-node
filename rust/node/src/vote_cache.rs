@@ -164,20 +164,21 @@ impl VoteCache {
     }
 
     pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
-        let children = vec![
-            ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "cache".to_owned(),
-                count: self.cache_size(),
-                sizeof_element: size_of::<MultiIndexCacheEntryMap>(), // TODO: add fn size_of_element (&self) to MultiIndexCacheEntryMap
-            }),
-            ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "queue".to_owned(),
-                count: self.queue_size(),
-                sizeof_element: size_of::<MultiIndexQueueEntryMap>(), // TODO: add fn size_of_element (&self) to MultiIndexQueueEntryMap
-            }),
-        ];
-
-        ContainerInfoComponent::Composite(name, children)
+        ContainerInfoComponent::Composite(
+            name,
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "cache".to_owned(),
+                    count: self.cache_size(),
+                    sizeof_element: size_of::<CacheEntry>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "queue".to_owned(),
+                    count: self.queue_size(),
+                    sizeof_element: size_of::<QueueEntry>(),
+                }),
+            ],
+        )
     }
 
     fn trim_overflow_locked(&mut self) {

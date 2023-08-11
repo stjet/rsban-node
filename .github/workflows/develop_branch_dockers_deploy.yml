@@ -22,7 +22,7 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
       - name: Check if secrets.DOCKER_PASSWORD exists
         run: echo "DOCKER_PASSWORD_EXISTS=${{ secrets.DOCKER_PASSWORD != '' }}" >> $GITHUB_ENV  
-      - name: Deploy Docker (nanocurrency/nano-env)
+      - name: Deploy Docker (simpago/rsnano-env)
         if: env.DOCKER_PASSWORD_EXISTS == 'true'
         run: ci/actions/linux/docker-deploy-env.sh
         env:

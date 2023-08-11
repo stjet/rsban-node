@@ -5,7 +5,7 @@ set -a
 scripts="$PWD/ci"
 CI_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-simpago}"
-DOCKER_USER="${DOCKER_USER:-nanoreleaseteam}"
+DOCKER_USER="${DOCKER_USER:-simpago}"
 tags=()
 
 if [ -n "$CI_TAG" ]; then

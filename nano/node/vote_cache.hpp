@@ -59,11 +59,6 @@ public:
 		std::vector<std::pair<nano::account, uint64_t>> voters; // <rep, timestamp> pair
 		nano::uint128_t tally{ 0 };
 
-		/**
-		 * Adds a vote into a list, checks for duplicates and updates timestamp if new one is greater
-		 * @return true if current tally changed, false otherwise
-		 */
-		bool vote (nano::account const & representative, uint64_t const & timestamp, nano::uint128_t const & rep_weight);
 		/*
 		 * Size of this entry
 		 */

@@ -1,43 +1,15 @@
 #include "nano/lib/numbers.hpp"
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/utility.hpp"
 
 #include <nano/node/node.hpp>
 #include <nano/node/vote_cache.hpp>
+#include <memory>
 #include <vector>
 
 nano::vote_cache::entry::entry (const nano::block_hash & hash) :
 	hash{ hash }
 {
-}
-
-bool nano::vote_cache::entry::vote (const nano::account & representative, const uint64_t & timestamp, const nano::uint128_t & rep_weight)
-{
-	auto existing = std::find_if (voters.begin (), voters.end (), [&representative] (auto const & item) { return item.first == representative; });
-	if (existing != voters.end ())
-	{
-		// We already have a vote from this rep
-		// Update timestamp if newer but tally remains unchanged as we already counted this rep weight
-		// It is not essential to keep tally up to date if rep voting weight changes, elections do tally calculations independently, so in the worst case scenario only our queue ordering will be a bit off
-		if (timestamp > existing->second)
-		{
-			existing->second = timestamp;
-		}
-		return false;
-	}
-	else
-	{
-		// Vote from an unseen representative, add to list and update tally
-		if (voters.size () < max_voters)
-		{
-			voters.emplace_back (representative, timestamp);
-			tally += rep_weight;
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
 }
 
 std::size_t nano::vote_cache::entry::size () const
@@ -112,13 +84,12 @@ namespace
 		nano::amount tally;
 		std::copy(std::begin(dto.tally), std::end(dto.tally), std::begin(tally.bytes));
 		entry.tally = tally.number();
-		std::vector<std::pair<nano::account, uint64_t>> voters;
-		voters.reserve(dto.voters_count);
+		entry.voters.reserve(dto.voters_count);
 		for (auto i = 0; i < dto.voters_count; ++i) {
 			nano::account account;
 			uint64_t timestamp;
 			rsnano::rsn_vote_cache_entry_get_voter(&dto, i, account.bytes.data(), &timestamp);
-			voters.emplace_back(account, timestamp);
+			entry.voters.emplace_back(account, timestamp);
 		}
 		rsnano::rsn_vote_cache_entry_destroy(&dto);
 		return entry;
@@ -167,8 +138,6 @@ void nano::vote_cache::trigger (const nano::block_hash & hash)
 
 std::unique_ptr<nano::container_info_component> nano::vote_cache::collect_container_info (const std::string & name)
 {
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "cache", cache_size (), sizeof (ordered_cache::value_type) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "queue", queue_size (), sizeof (ordered_queue::value_type) }));
-	return composite;
+	auto info_handle = rsnano::rsn_vote_cache_collect_container_info(handle, name.c_str());
+	return std::make_unique<nano::container_info_composite>(info_handle);
 }

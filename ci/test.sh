@@ -28,14 +28,14 @@ run_tests()
         TIMEOUT_TIME_ARG=""
     fi
 
-    ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} ${TIMEOUT_DEFAULT} ./core_test
+    ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} ${TIMEOUT_DEFAULT} RUST_BACKTRACE=1 ./core_test
     core_test_res=${?}
 
     ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} ${TIMEOUT_DEFAULT} ./rpc_test
     rpc_test_res=${?}
 
 	pushd ../rust
-    ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} ${TIMEOUT_DEFAULT} ~/.cargo/bin/cargo test -q
+    ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} ${TIMEOUT_DEFAULT} RUST_BACKTRACE=1 ~/.cargo/bin/cargo test -q
     cargo_test_res=${?}
 	popd
 

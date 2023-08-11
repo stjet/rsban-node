@@ -181,7 +181,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	//         Thus, be very careful if you change the order: if `bootstrap` gets constructed before `network`,
 	//         the latter would inherit the port from the former (if TCP is active, otherwise `network` picks first)
 	//
-	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (network->get_port(), *this) },
+	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (network->get_port (), *this) },
 	application_path (application_path_a),
 	port_mapping (*this),
 	rep_crawler (*this),
@@ -223,10 +223,6 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	unchecked.set_satisfied_observer ([this] (nano::unchecked_info const & info) {
 		this->block_processor.add (info.get_block ());
 	});
-
-	inactive_vote_cache.rep_weight_query = [this] (nano::account const & rep) {
-		return ledger.weight (rep);
-	};
 
 	backlog.set_activate_callback ([this] (nano::transaction const & transaction, nano::account const & account, nano::account_info const & account_info, nano::confirmation_height_info const & conf_info) {
 		scheduler.buckets.activate (account, transaction);
@@ -652,7 +648,7 @@ void nano::node::start ()
 		tcp_listener->start ();
 		tcp_enabled = true;
 
-		if (network->get_port() != tcp_listener->port)
+		if (network->get_port () != tcp_listener->port)
 		{
 			network->set_port (tcp_listener->port);
 		}

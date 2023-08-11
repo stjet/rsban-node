@@ -805,12 +805,12 @@ void nano::network::clear_from_publish_filter (nano::uint128_t const & digest_a)
 	tcp_channels->publish_filter->clear (digest_a);
 }
 
-uint16_t nano::network::get_port()
+uint16_t nano::network::get_port ()
 {
 	return port;
 }
 
-void nano::network::set_port(uint16_t port_a)
+void nano::network::set_port (uint16_t port_a)
 {
 	port = port_a;
 	tcp_channels->set_port (port_a);

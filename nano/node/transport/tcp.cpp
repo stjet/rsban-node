@@ -349,7 +349,7 @@ void nano::transport::tcp_channels::random_fill (std::array<nano::endpoint, 8> &
 	}
 }
 
-void nano::transport::tcp_channels::set_port(uint16_t port_a)
+void nano::transport::tcp_channels::set_port (uint16_t port_a)
 {
 	port = port_a;
 }

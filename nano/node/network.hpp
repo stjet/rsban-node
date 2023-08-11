@@ -100,8 +100,8 @@ public:
 	void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
 	void notify_new_channel (std::shared_ptr<nano::transport::channel> channel_a);
 	void clear_from_publish_filter (nano::uint128_t const & digest_a);
-	uint16_t get_port();
-	void set_port(uint16_t port_a);
+	uint16_t get_port ();
+	void set_port (uint16_t port_a);
 
 private:
 	void process_message (nano::message const &, std::shared_ptr<nano::transport::channel> const &);

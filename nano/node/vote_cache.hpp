@@ -1,22 +1,14 @@
 #pragma once
 
 #include "nano/lib/rsnano.hpp"
-#include <nano/lib/locks.hpp>
+
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
 
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-#include <boost/multi_index_container.hpp>
-
 #include <memory>
 #include <optional>
 #include <vector>
-
-namespace mi = boost::multi_index;
 
 namespace nano
 {
@@ -44,7 +36,6 @@ public:
 		std::size_t max_size;
 	};
 
-public:
 	/**
 	 * Class that stores votes associated with a single block hash
 	 */
@@ -65,24 +56,15 @@ public:
 		std::size_t size () const;
 	};
 
-private:
-	class queue_entry final
-	{
-	public:
-		nano::block_hash hash{ 0 };
-		nano::uint128_t tally{ 0 };
-	};
-
-public:
-	explicit vote_cache (const config, std::function<nano::uint128_t (nano::account const &)> rep_weight_query_a);
+	explicit vote_cache (const config);
 	vote_cache (vote_cache const &) = delete;
 	vote_cache (vote_cache &&) = delete;
-	~vote_cache();
+	~vote_cache ();
 
 	/**
 	 * Adds a new vote to cache
 	 */
-	void vote (nano::block_hash const & hash, std::shared_ptr<nano::vote> vote);
+	void vote (nano::block_hash const & hash, std::shared_ptr<nano::vote> vote, nano::uint128_t rep_weight);
 	/**
 	 * Tries to find an entry associated with block hash
 	 */
@@ -114,45 +96,8 @@ public:
 	bool cache_empty () const;
 	bool queue_empty () const;
 
-public: // Container info
 	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);
 
-private:
-	/**
-	 * Function used to query rep weight for tally calculation
-	 */
-	std::function<nano::uint128_t (nano::account const &)> rep_weight_query{ [] (nano::account const & rep) { return 0; } };
-
-private:
-	const std::size_t max_size;
-
-	// clang-format off
-	class tag_sequenced {};
-	class tag_tally {};
-	class tag_hash {};
-	// clang-format on
-
-	// clang-format off
-	using ordered_cache = boost::multi_index_container<entry,
-	mi::indexed_by<
-		mi::sequenced<mi::tag<tag_sequenced>>,
-		mi::hashed_unique<mi::tag<tag_hash>,
-			mi::member<entry, nano::block_hash, &entry::hash>>>>;
-	// clang-format on
-	ordered_cache cache;
-
-	// clang-format off
-	using ordered_queue = boost::multi_index_container<queue_entry,
-	mi::indexed_by<
-		mi::sequenced<mi::tag<tag_sequenced>>,
-		mi::ordered_non_unique<mi::tag<tag_tally>,
-			mi::member<queue_entry, nano::uint128_t, &queue_entry::tally>>,
-		mi::hashed_unique<mi::tag<tag_hash>,
-			mi::member<queue_entry, nano::block_hash, &queue_entry::hash>>>>;
-	// clang-format on
-	ordered_queue queue;
-
-	mutable nano::mutex mutex;
 	rsnano::VoteCacheHandle * handle;
 };
 }

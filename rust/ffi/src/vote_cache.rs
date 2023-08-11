@@ -1,53 +1,17 @@
-use crate::{utils::ContainerInfoComponentHandle, voting::VoteHandle, copy_account_bytes};
+use crate::{copy_account_bytes, utils::ContainerInfoComponentHandle, voting::VoteHandle};
 use rsnano_core::{Account, Amount, BlockHash};
 use rsnano_node::vote_cache::VoteCache;
 use std::{
-    ffi::{c_char, c_void, CStr},
+    ffi::{c_char, CStr},
     sync::{Arc, Mutex},
 };
 
 pub struct VoteCacheHandle(Arc<Mutex<VoteCache>>);
-pub type DeleteRepWeightQueryCallback = unsafe extern "C" fn(*mut c_void);
-pub type ExecuteRepWeightQueryCallback = unsafe extern "C" fn(*mut c_void, *const u8, *mut u8);
-
-struct FfiRepWeightQueryWrapper {
-    handle: *mut c_void,
-    execute_callback: ExecuteRepWeightQueryCallback,
-    delete_callback: DeleteRepWeightQueryCallback,
-}
-
-impl FfiRepWeightQueryWrapper {
-    pub fn execute(&self, rep: &Account) -> Amount {
-        unsafe {
-            let bytes = rep.as_bytes();
-            let mut amount = [0u8; 16];
-            (self.execute_callback)(self.handle, bytes.as_ptr(), amount.as_mut_ptr());
-            Amount::from_be_bytes(amount)
-        }
-    }
-}
-
-impl Drop for FfiRepWeightQueryWrapper {
-    fn drop(&mut self) {
-        unsafe { (self.delete_callback)(self.handle) }
-    }
-}
 
 #[no_mangle]
-pub extern "C" fn rsn_vote_cache_create(
-    max_size: usize,
-    rep_weight_query_handle: *mut c_void,
-    execute_rep_weight_query: ExecuteRepWeightQueryCallback,
-    delete_rep_weight_query: DeleteRepWeightQueryCallback,
-) -> *mut VoteCacheHandle {
-    let rep_query_wrapper = FfiRepWeightQueryWrapper {
-        handle: rep_weight_query_handle,
-        execute_callback: execute_rep_weight_query,
-        delete_callback: delete_rep_weight_query,
-    };
-    let rep_query = Box::new(move |rep: &_| rep_query_wrapper.execute(rep));
+pub extern "C" fn rsn_vote_cache_create(max_size: usize) -> *mut VoteCacheHandle {
     Box::into_raw(Box::new(VoteCacheHandle(Arc::new(Mutex::new(
-        VoteCache::new(max_size, rep_query),
+        VoteCache::new(max_size),
     )))))
 }
 
@@ -61,10 +25,12 @@ pub unsafe extern "C" fn rsn_vote_cache_vote(
     handle: *mut VoteCacheHandle,
     hash: *const u8,
     vote: *const VoteHandle,
+    rep_weight: *const u8,
 ) {
     let hash = BlockHash::from_ptr(hash);
     let vote = (*vote).0.read().unwrap();
-    (*handle).0.lock().unwrap().vote(&hash, &vote)
+    let rep_weight = Amount::from_ptr(rep_weight);
+    (*handle).0.lock().unwrap().vote(&hash, &vote, rep_weight);
 }
 
 #[no_mangle]
@@ -99,7 +65,10 @@ pub unsafe extern "C" fn rsn_vote_cache_find(
     fill_entry_dto(entry, result)
 }
 
-unsafe fn fill_entry_dto(entry: Option<&rsnano_node::vote_cache::CacheEntry>, result: *mut VoteCacheEntryDto) -> bool {
+unsafe fn fill_entry_dto(
+    entry: Option<&rsnano_node::vote_cache::CacheEntry>,
+    result: *mut VoteCacheEntryDto,
+) -> bool {
     match entry {
         Some(entry) => {
             (*result).hash.copy_from_slice(entry.hash.as_bytes());
@@ -130,7 +99,7 @@ pub unsafe extern "C" fn rsn_vote_cache_pop(
 ) -> bool {
     let min_tally = Amount::from_ptr(min_tally);
     let mut guard = (*handle).0.lock().unwrap();
-    let entry = guard.pop(Some(min_tally));
+    let entry = guard.pop_min_tally(min_tally);
     fill_entry_dto(entry.as_ref(), result)
 }
 
@@ -142,15 +111,12 @@ pub unsafe extern "C" fn rsn_vote_cache_peek(
 ) -> bool {
     let min_tally = Amount::from_ptr(min_tally);
     let guard = (*handle).0.lock().unwrap();
-    let entry = guard.peek(Some(min_tally));
+    let entry = guard.peek_min_tally(min_tally);
     fill_entry_dto(entry, result)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_trigger(
-    handle: *mut VoteCacheHandle,
-    hash: *const u8,
-) {
+pub unsafe extern "C" fn rsn_vote_cache_trigger(handle: *mut VoteCacheHandle, hash: *const u8) {
     let hash = BlockHash::from_ptr(hash);
     (*handle).0.lock().unwrap().trigger(&hash);
 }

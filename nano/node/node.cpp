@@ -181,7 +181,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	//         Thus, be very careful if you change the order: if `bootstrap` gets constructed before `network`,
 	//         the latter would inherit the port from the former (if TCP is active, otherwise `network` picks first)
 	//
-	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (network->get_port(), *this) },
+	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (network->get_port (), *this) },
 	application_path (application_path_a),
 	port_mapping (*this),
 	rep_crawler (*this),
@@ -194,9 +194,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	history{ config_a.network_params.voting },
 	vote_uniquer (block_uniquer),
 	confirmation_height_processor (ledger, *stats, write_database_queue, config_a.conf_height_processor_batch_min_time, config->logging, logger, node_initialized_latch),
-	inactive_vote_cache{ nano::nodeconfig_to_vote_cache_config (config_a, flags), [this] (nano::account const & rep) {
-		return ledger.weight (rep);
-	}},
+	inactive_vote_cache{ nano::nodeconfig_to_vote_cache_config (config_a, flags) },
 	generator{ *config, ledger, wallets, vote_processor, history, *network, *stats, /* non-final */ false },
 	final_generator{ *config, ledger, wallets, vote_processor, history, *network, *stats, /* final */ true },
 	active (*this, confirmation_height_processor),
@@ -650,7 +648,7 @@ void nano::node::start ()
 		tcp_listener->start ();
 		tcp_enabled = true;
 
-		if (network->get_port() != tcp_listener->port)
+		if (network->get_port () != tcp_listener->port)
 		{
 			network->set_port (tcp_listener->port);
 		}

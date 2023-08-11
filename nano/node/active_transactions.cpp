@@ -424,7 +424,7 @@ nano::election_insertion_result nano::active_transactions::insert_impl (nano::un
 				lock_a.unlock ();
 				if (auto const cache = node.inactive_vote_cache.find (hash); cache)
 				{
-					result.election->fill_from_cache(*cache);
+					result.election->fill_from_cache (*cache);
 				}
 				node.stats->inc (nano::stat::type::active_started, nano::to_stat_detail (election_behavior_a));
 				node.observers->active_started.notify (hash);
@@ -623,7 +623,7 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 			lock.unlock ();
 			if (auto const cache = node.inactive_vote_cache.find (block_a->hash ()); cache)
 			{
-				election->fill_from_cache(*cache);
+				election->fill_from_cache (*cache);
 			}
 			node.stats->inc (nano::stat::type::active, nano::stat::detail::election_block_conflict);
 		}
@@ -682,9 +682,10 @@ boost::optional<nano::election_status_type> nano::active_transactions::confirm_b
 
 void nano::active_transactions::add_inactive_vote_cache (nano::block_hash const & hash, std::shared_ptr<nano::vote> const vote)
 {
-	if (node.ledger.weight (vote->account ()) > node.minimum_principal_weight ())
+	auto rep_weight = node.ledger.weight (vote->account ());
+	if (rep_weight > node.minimum_principal_weight ())
 	{
-		node.inactive_vote_cache.vote (hash, vote);
+		node.inactive_vote_cache.vote (hash, vote, rep_weight);
 	}
 }
 

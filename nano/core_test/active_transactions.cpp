@@ -1,3 +1,6 @@
+#include "nano/lib/numbers.hpp"
+#include "nano/secure/common.hpp"
+
 #include <nano/lib/jsonconfig.hpp>
 #include <nano/node/election.hpp>
 #include <nano/node/scheduler/buckets.hpp>
@@ -322,10 +325,11 @@ TEST (active_transactions, inactive_votes_cache_existing_vote)
 	nano::block_hash latest (node.latest (nano::dev::genesis_key.pub));
 	nano::keypair key;
 	nano::block_builder builder;
+	nano::uint128_t rep_weight{ 100 * nano::Gxrb_ratio };
 	auto send = builder.send ()
 				.previous (latest)
 				.destination (key.pub)
-				.balance (nano::dev::constants.genesis_amount - 100 * nano::Gxrb_ratio)
+				.balance (nano::dev::constants.genesis_amount - rep_weight)
 				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				.work (*system.work.generate (latest))
 				.build_shared ();
@@ -333,7 +337,7 @@ TEST (active_transactions, inactive_votes_cache_existing_vote)
 				.account (key.pub)
 				.previous (0)
 				.representative (key.pub)
-				.balance (100 * nano::Gxrb_ratio)
+				.balance (rep_weight)
 				.link (send->hash ())
 				.sign (key.prv, key.pub)
 				.work (*system.work.generate (key.pub))
@@ -355,11 +359,11 @@ TEST (active_transactions, inactive_votes_cache_existing_vote)
 	ASSERT_EQ (nano::vote::timestamp_min * 1, last_vote1.timestamp);
 	// Attempt to change vote with inactive_votes_cache
 	nano::unique_lock<nano::mutex> active_lock (node.active.mutex);
-	node.inactive_vote_cache.vote (send->hash (), vote1);
+	node.inactive_vote_cache.vote (send->hash (), vote1, rep_weight);
 	auto cache = node.inactive_vote_cache.find (send->hash ());
 	ASSERT_TRUE (cache);
 	ASSERT_EQ (1, cache->voters.size ());
-	election->fill_from_cache(*cache);
+	election->fill_from_cache (*cache);
 	// Check that election data is not changed
 	ASSERT_EQ (2, election->votes ().size ());
 	auto last_vote2 (election->votes ()[key.pub]);
@@ -1516,7 +1520,7 @@ TEST (active_transactions, allow_limited_overflow)
 	{
 		// Non-final vote, so it stays in the AEC without getting confirmed
 		auto vote = nano::test::make_vote (nano::dev::genesis_key, { block });
-		node.inactive_vote_cache.vote (block->hash (), vote);
+		node.inactive_vote_cache.vote (block->hash (), vote, nano::dev::constants.genesis_amount);
 	}
 
 	// Ensure active elections overfill AEC only up to normal + hinted limit
@@ -1554,7 +1558,7 @@ TEST (active_transactions, allow_limited_overflow_adapt)
 	{
 		// Non-final vote, so it stays in the AEC without getting confirmed
 		auto vote = nano::test::make_vote (nano::dev::genesis_key, { block });
-		node.inactive_vote_cache.vote (block->hash (), vote);
+		node.inactive_vote_cache.vote (block->hash (), vote, nano::dev::constants.genesis_amount);
 	}
 
 	// Ensure hinted election amount is bounded by hinted limit

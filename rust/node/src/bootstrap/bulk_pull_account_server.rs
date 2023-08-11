@@ -3,13 +3,14 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use rsnano_core::{utils::Logger, Account, BlockHash, PendingInfo, PendingKey};
+use rsnano_core::{utils::Logger, Account, Amount, BlockHash, PendingInfo, PendingKey};
 use rsnano_ledger::Ledger;
 
 use crate::{
     config::NodeConfig,
     messages::{BulkPullAccount, BulkPullAccountFlags},
-    transport::{Socket, TcpServer, TrafficType},
+    transport::{Socket, TcpServer, TcpServerExt, TrafficType},
+    utils::{ErrorCode, ThreadPool},
 };
 
 struct BulkPullAccountServerImpl {
@@ -17,6 +18,7 @@ struct BulkPullAccountServerImpl {
     request: BulkPullAccount,
     logger: Arc<dyn Logger>,
     config: NodeConfig,
+    thread_pool: Arc<dyn ThreadPool>,
     ledger: Arc<Ledger>,
     deduplication: HashSet<Account>,
     current_key: PendingKey,
@@ -91,14 +93,15 @@ impl BulkPullAccountServerImpl {
             self.connection.socket.async_write(
                 &Arc::new(send_buffer),
                 Some(Box::new(move |ec, size| {
-                    server.lock().unwrap().sent_action(ec, size);
+                    let server2 = Arc::clone(&server);
+                    server.lock().unwrap().sent_action(ec, size, server2);
                 })),
                 TrafficType::Generic,
             );
         }
     }
 
-    fn send_next_block(&self, server: Arc<Mutex<BulkPullAccountServerImpl>>) {
+    fn send_next_block(&mut self, server: Arc<Mutex<BulkPullAccountServerImpl>>) {
         /*
          * Get the next item from the queue, it is a tuple with the key (which
          * contains the account and hash) and data (which contains the amount)
@@ -127,9 +130,7 @@ impl BulkPullAccountServerImpl {
                 send_buffer.extend_from_slice(&block_info.amount.to_be_bytes());
 
                 if self.pending_include_address {
-                    /**
-                     ** Write the source address as well, if requested
-                     **/
+                    // Write the source address as well, if requested
                     send_buffer.extend_from_slice(block_info.source.as_bytes());
                 }
             }
@@ -137,7 +138,8 @@ impl BulkPullAccountServerImpl {
             self.connection.socket.async_write(
                 &Arc::new(send_buffer),
                 Some(Box::new(move |ec, len| {
-                    server.lock().unwrap().sent_action(ec, len)
+                    let server2 = Arc::clone(&server);
+                    server.lock().unwrap().sent_action(ec, len, server2);
                 })),
                 TrafficType::Generic,
             );
@@ -149,7 +151,7 @@ impl BulkPullAccountServerImpl {
                 self.logger.try_log("Done sending blocks");
             }
 
-            self.send_finished();
+            self.send_finished(server);
         }
     }
 
@@ -173,7 +175,7 @@ impl BulkPullAccountServerImpl {
              * Get the key for the next value, to use in the next call or iteration
              */
             self.current_key.account = key.account;
-            self.current_key.hash = key.hash.number().overflowing_add(1).0.into();
+            self.current_key.hash = key.hash.number().overflowing_add(1.into()).0.into();
 
             /*
              * Finish up if the response is for a different account
@@ -212,10 +214,83 @@ impl BulkPullAccountServerImpl {
                 }
             }
 
-            return Some((*key, *info));
+            return Some((key.clone(), info.clone()));
         }
 
         None
+    }
+
+    pub fn sent_action(
+        &self,
+        ec: ErrorCode,
+        _size: usize,
+        server: Arc<Mutex<BulkPullAccountServerImpl>>,
+    ) {
+        if ec.is_ok() {
+            self.thread_pool.push_task(Box::new(move || {
+                let server2 = Arc::clone(&server);
+                server.lock().unwrap().send_next_block(server2);
+            }));
+        } else {
+            if self.config.logging.bulk_pull_logging_value {
+                self.logger
+                    .try_log(&format!("Unable to bulk send block: {:?}", ec));
+            }
+        }
+    }
+
+    pub fn send_finished(&self, server: Arc<Mutex<BulkPullAccountServerImpl>>) {
+        /*
+         * The "bulk_pull_account" final sequence is a final block of all
+         * zeros.  If we are sending only account public keys (with the
+         * "pending_address_only" flag) then it will be 256-bits of zeros,
+         * otherwise it will be either 384-bits of zeros (if the
+         * "pending_include_address" flag is not set) or 640-bits of zeros
+         * (if that flag is set).
+         */
+        let mut send_buffer = Vec::new();
+        {
+            send_buffer.extend_from_slice(Account::zero().as_bytes());
+
+            if !self.pending_address_only {
+                send_buffer.extend_from_slice(&Amount::zero().to_be_bytes());
+                if self.pending_include_address {
+                    send_buffer.extend_from_slice(Account::zero().as_bytes());
+                }
+            }
+        }
+
+        if self.config.logging.bulk_pull_logging_value {
+            self.logger.try_log("Bulk sending for an account finished");
+        }
+
+        self.connection.socket.async_write(
+            &Arc::new(send_buffer),
+            Some(Box::new(move |ec, len| {
+                server.lock().unwrap().complete(ec, len);
+            })),
+            TrafficType::Generic,
+        );
+    }
+
+    pub fn complete(&self, ec: ErrorCode, size: usize) {
+        if ec.is_ok() {
+            if self.pending_address_only {
+                debug_assert!(size == 32);
+            } else {
+                if self.pending_include_address {
+                    debug_assert!(size == 80);
+                } else {
+                    debug_assert!(size == 48);
+                }
+            }
+
+            self.connection.start();
+        } else {
+            if self.config.logging.bulk_pull_logging_value {
+                self.logger.try_log("Unable to pending-as-zero");
+            }
+        }
     }
 }
 
@@ -228,6 +303,7 @@ impl BulkPullAccountServer {
         connection: Arc<TcpServer>,
         request: BulkPullAccount,
         logger: Arc<dyn Logger>,
+        thread_pool: Arc<dyn ThreadPool>,
         config: NodeConfig,
         ledger: Arc<Ledger>,
     ) -> Self {
@@ -235,6 +311,7 @@ impl BulkPullAccountServer {
             connection,
             request,
             logger,
+            thread_pool,
             config,
             ledger,
             deduplication: HashSet::new(),

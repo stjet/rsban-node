@@ -2,7 +2,7 @@
 
 set -x
 
-DOCKER_REGISTRY="${DOCKER_REGISTRY:-nanocurrency}"
+DOCKER_REGISTRY="${DOCKER_REGISTRY:-simpago}"
 
 echo "Script ci/actions/linux/install_deps.sh starting COMPILER=\"$COMPILER\""
 

@@ -1,7 +1,9 @@
 #include "nano/lib/blocks.hpp"
+#include "nano/lib/epoch.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/threading.hpp"
 #include "nano/node/messages.hpp"
+#include "nano/secure/common.hpp"
 
 #include <nano/node/bootstrap/block_deserializer.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
@@ -434,364 +436,73 @@ nano::bulk_pull_server::~bulk_pull_server ()
 	rsnano::rsn_bulk_pull_server_destroy (handle);
 }
 
-/**
- * Bulk pull blocks related to an account
- */
-void nano::bulk_pull_account_server::set_params ()
+nano::bulk_pull_account_server::bulk_pull_account_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::bulk_pull_account> request_a) :
+	handle{ rsnano::rsn_bulk_pull_account_server_create (request_a->handle, connection_a->handle, node_a->ledger.handle, nano::to_logger_handle (node_a->logger), node_a->bootstrap_workers->handle, node_a->config->logging.bulk_pull_logging ()) }
 {
-	auto node_l = node.lock ();
-	if (!node_l)
-	{
-		return;
-	}
-	debug_assert (request != nullptr);
+}
 
-	/*
-	 * Parse the flags
-	 */
-	invalid_request = false;
-	pending_include_address = false;
-	pending_address_only = false;
-	if (request->get_flags () == nano::bulk_pull_account_flags::pending_address_only)
-	{
-		pending_address_only = true;
-	}
-	else if (request->get_flags () == nano::bulk_pull_account_flags::pending_hash_amount_and_address)
-	{
-		/**
-		 ** This is the same as "pending_hash_and_amount" but with the
-		 ** sending address appended, for UI purposes mainly.
-		 **/
-		pending_include_address = true;
-	}
-	else if (request->get_flags () == nano::bulk_pull_account_flags::pending_hash_and_amount)
-	{
-		/** The defaults are set above **/
-	}
-	else
-	{
-		if (node_l->config->logging.bulk_pull_logging ())
-		{
-			node_l->logger->try_log (boost::str (boost::format ("Invalid bulk_pull_account flags supplied %1%") % static_cast<uint8_t> (request->get_flags ())));
-		}
-
-		invalid_request = true;
-
-		return;
-	}
-
-	/*
-	 * Initialize the current item from the requested account
-	 */
-	current_key.account = request->get_account ();
-	current_key.hash = 0;
+nano::bulk_pull_account_server::~bulk_pull_account_server ()
+{
+	rsnano::rsn_bulk_pull_account_server_destroy (handle);
 }
 
 void nano::bulk_pull_account_server::send_frontier ()
 {
-	/*
-	 * This function is really the entry point into this class,
-	 * so handle the invalid_request case by terminating the
-	 * request without any response
-	 */
-	auto node_l = node.lock ();
-	if (!node_l)
-	{
-		return;
-	}
-	if (!invalid_request)
-	{
-		auto stream_transaction (node_l->store.tx_begin_read ());
-
-		// Get account balance and frontier block hash
-		auto account_frontier_hash (node_l->ledger.latest (*stream_transaction, request->get_account ()));
-		auto account_frontier_balance_int (node_l->ledger.account_balance (*stream_transaction, request->get_account ()));
-		nano::uint128_union account_frontier_balance (account_frontier_balance_int);
-
-		// Write the frontier block hash and balance into a buffer
-		std::vector<uint8_t> send_buffer;
-		{
-			nano::vectorstream output_stream (send_buffer);
-			write (output_stream, account_frontier_hash.bytes);
-			write (output_stream, account_frontier_balance.bytes);
-		}
-
-		// Send the buffer to the requestor
-		auto this_l (shared_from_this ());
-		connection->get_socket ()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
-			this_l->sent_action (ec, size_a);
-		});
-	}
-}
-
-void nano::bulk_pull_account_server::send_next_block ()
-{
-	/*
-	 * Get the next item from the queue, it is a tuple with the key (which
-	 * contains the account and hash) and data (which contains the amount)
-	 */
-	auto node_l = node.lock ();
-	if (!node_l)
-	{
-		return;
-	}
-	auto block_data (get_next ());
-	auto block_info_key (block_data.first.get ());
-	auto block_info (block_data.second.get ());
-
-	if (block_info_key != nullptr)
-	{
-		/*
-		 * If we have a new item, emit it to the socket
-		 */
-
-		std::vector<uint8_t> send_buffer;
-		if (pending_address_only)
-		{
-			nano::vectorstream output_stream (send_buffer);
-
-			if (node_l->config->logging.bulk_pull_logging ())
-			{
-				node_l->logger->try_log (boost::str (boost::format ("Sending address: %1%") % block_info->source.to_string ()));
-			}
-
-			write (output_stream, block_info->source.bytes);
-		}
-		else
-		{
-			nano::vectorstream output_stream (send_buffer);
-
-			if (node_l->config->logging.bulk_pull_logging ())
-			{
-				node_l->logger->try_log (boost::str (boost::format ("Sending block: %1%") % block_info_key->hash.to_string ()));
-			}
-
-			write (output_stream, block_info_key->hash.bytes);
-			write (output_stream, block_info->amount.bytes);
-
-			if (pending_include_address)
-			{
-				/**
-				 ** Write the source address as well, if requested
-				 **/
-				write (output_stream, block_info->source.bytes);
-			}
-		}
-
-		auto this_l (shared_from_this ());
-		connection->get_socket ()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
-			this_l->sent_action (ec, size_a);
-		});
-	}
-	else
-	{
-		/*
-		 * Otherwise, finalize the connection
-		 */
-		if (node_l->config->logging.bulk_pull_logging ())
-		{
-			node_l->logger->try_log (boost::str (boost::format ("Done sending blocks")));
-		}
-
-		send_finished ();
-	}
+	rsnano::rsn_bulk_pull_account_server_send_frontier (handle);
 }
 
 std::pair<std::unique_ptr<nano::pending_key>, std::unique_ptr<nano::pending_info>> nano::bulk_pull_account_server::get_next ()
 {
-	auto node_l = node.lock ();
-	if (!node_l)
-	{
-		return { nullptr, nullptr };
-	}
 	std::pair<std::unique_ptr<nano::pending_key>, std::unique_ptr<nano::pending_info>> result;
 
-	while (true)
+	rsnano::PendingKeyDto key_dto;
+	rsnano::PendingInfoDto info_dto;
+	if (rsnano::rsn_bulk_pull_account_server_get_next (handle, &key_dto, &info_dto))
 	{
-		/*
-		 * For each iteration of this loop, establish and then
-		 * destroy a database transaction, to avoid locking the
-		 * database for a prolonged period.
-		 */
-		auto stream_transaction (node_l->store.tx_begin_read ());
-		auto stream (node_l->store.pending ().begin (*stream_transaction, current_key));
+		nano::account acc{};
+		std::copy (std::begin (key_dto.account), std::end (key_dto.account), acc.bytes.data ());
+		auto hash = nano::block_hash::from_bytes (&key_dto.hash[0]);
+		result.first = std::make_unique<nano::pending_key> (acc, hash);
 
-		if (stream == nano::store_iterator<nano::pending_key, nano::pending_info> (nullptr))
-		{
-			break;
-		}
+		nano::account source{};
+		std::copy (std::begin (info_dto.source), std::end (info_dto.source), source.bytes.data ());
+		nano::amount amount{};
+		std::copy (std::begin (info_dto.amount), std::end (info_dto.amount), amount.bytes.data ());
+		auto epoch = static_cast<nano::epoch> (info_dto.epoch);
 
-		nano::pending_key key (stream->first);
-		nano::pending_info info (stream->second);
-
-		/*
-		 * Get the key for the next value, to use in the next call or iteration
-		 */
-		current_key.account = key.account;
-		current_key.hash = key.hash.number () + 1;
-
-		/*
-		 * Finish up if the response is for a different account
-		 */
-		if (key.account != request->get_account ())
-		{
-			break;
-		}
-
-		/*
-		 * Skip entries where the amount is less than the requested
-		 * minimum
-		 */
-		if (info.amount < request->get_minimum_amount ())
-		{
-			continue;
-		}
-
-		/*
-		 * If the pending_address_only flag is set, de-duplicate the
-		 * responses.  The responses are the address of the sender,
-		 * so they are are part of the pending table's information
-		 * and not key, so we have to de-duplicate them manually.
-		 */
-		if (pending_address_only)
-		{
-			if (!deduplication.insert (info.source).second)
-			{
-				/*
-				 * If the deduplication map gets too
-				 * large, clear it out.  This may
-				 * result in some duplicates getting
-				 * sent to the client, but we do not
-				 * want to commit too much memory
-				 */
-				if (deduplication.size () > 4096)
-				{
-					deduplication.clear ();
-				}
-				continue;
-			}
-		}
-
-		result.first = std::make_unique<nano::pending_key> (key);
-		result.second = std::make_unique<nano::pending_info> (info);
-
-		break;
+		result.second = std::make_unique<nano::pending_info> (source, amount, epoch);
+	}
+	else
+	{
+		result.first = nullptr;
+		result.second = nullptr;
 	}
 
 	return result;
 }
 
-void nano::bulk_pull_account_server::sent_action (boost::system::error_code const & ec, std::size_t size_a)
+nano::pending_key nano::bulk_pull_account_server::current_key ()
 {
-	auto node_l = node.lock ();
-	if (!node_l)
-	{
-		return;
-	}
-	if (!ec)
-	{
-		node_l->bootstrap_workers->push_task ([this_l = shared_from_this ()] () {
-			this_l->send_next_block ();
-		});
-	}
-	else
-	{
-		if (node_l->config->logging.bulk_pull_logging ())
-		{
-			node_l->logger->try_log (boost::str (boost::format ("Unable to bulk send block: %1%") % ec.message ()));
-		}
-	}
+	rsnano::PendingKeyDto key_dto;
+	rsnano::rsn_bulk_pull_account_server_current_key (handle, &key_dto);
+
+	nano::account acc{};
+	std::copy (std::begin (key_dto.account), std::end (key_dto.account), acc.bytes.data ());
+	auto hash = nano::block_hash::from_bytes (&key_dto.hash[0]);
+	return nano::pending_key{ acc, hash };
 }
 
-void nano::bulk_pull_account_server::send_finished ()
+bool nano::bulk_pull_account_server::pending_address_only ()
 {
-	/*
-	 * The "bulk_pull_account" final sequence is a final block of all
-	 * zeros.  If we are sending only account public keys (with the
-	 * "pending_address_only" flag) then it will be 256-bits of zeros,
-	 * otherwise it will be either 384-bits of zeros (if the
-	 * "pending_include_address" flag is not set) or 640-bits of zeros
-	 * (if that flag is set).
-	 */
-	auto node_l = node.lock ();
-	if (!node_l)
-	{
-		return;
-	}
-	std::vector<uint8_t> send_buffer;
-	{
-		nano::vectorstream output_stream (send_buffer);
-		nano::uint256_union account_zero (0);
-		nano::uint128_union balance_zero (0);
-
-		write (output_stream, account_zero.bytes);
-
-		if (!pending_address_only)
-		{
-			write (output_stream, balance_zero.bytes);
-			if (pending_include_address)
-			{
-				write (output_stream, account_zero.bytes);
-			}
-		}
-	}
-
-	auto this_l (shared_from_this ());
-
-	if (node_l->config->logging.bulk_pull_logging ())
-	{
-		node_l->logger->try_log ("Bulk sending for an account finished");
-	}
-
-	connection->get_socket ()->async_write (nano::shared_const_buffer (std::move (send_buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
-		this_l->complete (ec, size_a);
-	});
+	return rsnano::rsn_bulk_pull_account_server_pending_address_only (handle);
 }
 
-void nano::bulk_pull_account_server::complete (boost::system::error_code const & ec, std::size_t size_a)
+bool nano::bulk_pull_account_server::pending_include_address ()
 {
-	auto node_l = node.lock ();
-	if (!node_l)
-	{
-		return;
-	}
-	if (!ec)
-	{
-		if (pending_address_only)
-		{
-			debug_assert (size_a == 32);
-		}
-		else
-		{
-			if (pending_include_address)
-			{
-				debug_assert (size_a == 80);
-			}
-			else
-			{
-				debug_assert (size_a == 48);
-			}
-		}
-
-		connection->start ();
-	}
-	else
-	{
-		if (node_l->config->logging.bulk_pull_logging ())
-		{
-			node_l->logger->try_log ("Unable to pending-as-zero");
-		}
-	}
+	return rsnano::rsn_bulk_pull_account_server_pending_include_address (handle);
 }
 
-nano::bulk_pull_account_server::bulk_pull_account_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::bulk_pull_account> request_a) :
-	connection (connection_a),
-	request (std::move (request_a)),
-	current_key (0, 0),
-	node{ node_a }
+bool nano::bulk_pull_account_server::invalid_request ()
 {
-	/*
-	 * Setup the streaming response for the first call to "send_frontier" and  "send_next_block"
-	 */
-	set_params ();
+	return rsnano::rsn_bulk_pull_account_server_invalid_request (handle);
 }

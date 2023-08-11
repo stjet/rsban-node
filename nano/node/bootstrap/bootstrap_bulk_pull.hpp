@@ -130,22 +130,14 @@ class bulk_pull_account_server final : public std::enable_shared_from_this<nano:
 {
 public:
 	bulk_pull_account_server (std::shared_ptr<nano::node> const &, std::shared_ptr<nano::transport::tcp_server> const &, std::unique_ptr<nano::bulk_pull_account>);
-	void set_params ();
+	bulk_pull_account_server (bulk_pull_server const &) = delete;
+	~bulk_pull_account_server ();
 	std::pair<std::unique_ptr<nano::pending_key>, std::unique_ptr<nano::pending_info>> get_next ();
 	void send_frontier ();
-	void send_next_block ();
-	void sent_action (boost::system::error_code const &, std::size_t);
-	void send_finished ();
-	void complete (boost::system::error_code const &, std::size_t);
-	std::shared_ptr<nano::transport::tcp_server> connection;
-	std::unique_ptr<nano::bulk_pull_account> request;
-	std::unordered_set<nano::uint256_union> deduplication;
-	nano::pending_key current_key;
-	bool pending_address_only;
-	bool pending_include_address;
-	bool invalid_request;
-
-private:
-	std::weak_ptr<nano::node> node;
+	nano::pending_key current_key ();
+	bool pending_address_only ();
+	bool pending_include_address ();
+	bool invalid_request ();
+	rsnano::BulkPullAccountServerHandle * handle;
 };
 }

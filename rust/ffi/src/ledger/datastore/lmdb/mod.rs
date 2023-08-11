@@ -14,6 +14,7 @@ mod version_store;
 mod wallet_store;
 mod wallets;
 
+pub use pending_store::{PendingInfoDto, PendingKeyDto};
 use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, RoCursorWrapper, Transaction};
 use std::{ffi::c_void, ops::Deref};
 pub use store::LmdbStoreHandle;

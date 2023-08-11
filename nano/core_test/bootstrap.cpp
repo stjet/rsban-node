@@ -2112,11 +2112,11 @@ TEST (bulk_pull_account, basics)
 		req->set_minimum_amount (5);
 		req->set_flags (nano::bulk_pull_account_flags ());
 		auto request (std::make_shared<nano::bulk_pull_account_server> (system.nodes[0], connection, std::move (req)));
-		ASSERT_FALSE (request->invalid_request);
-		ASSERT_FALSE (request->pending_include_address);
-		ASSERT_FALSE (request->pending_address_only);
-		ASSERT_EQ (request->current_key.account, key1.pub);
-		ASSERT_EQ (request->current_key.hash, 0);
+		ASSERT_FALSE (request->invalid_request ());
+		ASSERT_FALSE (request->pending_include_address ());
+		ASSERT_FALSE (request->pending_address_only ());
+		ASSERT_EQ (request->current_key ().account, key1.pub);
+		ASSERT_EQ (request->current_key ().hash, 0);
 		auto block_data (request->get_next ());
 		ASSERT_EQ (send2->hash (), block_data.first.get ()->hash);
 		ASSERT_EQ (nano::uint128_union (10), block_data.second.get ()->amount);
@@ -2130,7 +2130,7 @@ TEST (bulk_pull_account, basics)
 		req->set_minimum_amount (0);
 		req->set_flags (nano::bulk_pull_account_flags::pending_address_only);
 		auto request (std::make_shared<nano::bulk_pull_account_server> (system.nodes[0], connection, std::move (req)));
-		ASSERT_TRUE (request->pending_address_only);
+		ASSERT_TRUE (request->pending_address_only ());
 		auto block_data (request->get_next ());
 		ASSERT_NE (nullptr, block_data.first.get ());
 		ASSERT_NE (nullptr, block_data.second.get ());

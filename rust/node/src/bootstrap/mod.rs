@@ -19,6 +19,7 @@ pub use bootstrap_client::{
 
 pub use bootstrap_attempts::BootstrapAttempts;
 pub use bootstrap_lazy::BootstrapAttemptLazy;
+pub use bulk_pull_account_server::BulkPullAccountServer;
 pub use bulk_pull_server::BulkPullServer;
 pub use channel_tcp_wrapper::ChannelTcpWrapper;
 pub use pulls_cache::{PullInfo, PullsCache};

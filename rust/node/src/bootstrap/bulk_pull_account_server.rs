@@ -7,7 +7,6 @@ use rsnano_core::{utils::Logger, Account, Amount, BlockHash, PendingInfo, Pendin
 use rsnano_ledger::Ledger;
 
 use crate::{
-    config::NodeConfig,
     messages::{BulkPullAccount, BulkPullAccountFlags},
     transport::{Socket, TcpServer, TcpServerExt, TrafficType},
     utils::{ErrorCode, ThreadPool},
@@ -17,7 +16,6 @@ struct BulkPullAccountServerImpl {
     connection: Arc<TcpServer>,
     request: BulkPullAccount,
     logger: Arc<dyn Logger>,
-    config: NodeConfig,
     thread_pool: Arc<dyn ThreadPool>,
     ledger: Arc<Ledger>,
     deduplication: HashSet<Account>,
@@ -25,6 +23,7 @@ struct BulkPullAccountServerImpl {
     pending_address_only: bool,
     pending_include_address: bool,
     invalid_request: bool,
+    is_logging_enabled: bool,
 }
 
 impl BulkPullAccountServerImpl {
@@ -45,7 +44,7 @@ impl BulkPullAccountServerImpl {
         } else if self.request.flags == BulkPullAccountFlags::PendingHashAndAmount {
             // The defaults are set above
         } else {
-            if self.config.logging.bulk_pull_logging_value {
+            if self.is_logging_enabled {
                 self.logger.try_log(&format!(
                     "Invalid bulk_pull_account flags supplied {:?}",
                     self.request.flags
@@ -113,7 +112,7 @@ impl BulkPullAccountServerImpl {
 
             let mut send_buffer = Vec::new();
             if self.pending_address_only {
-                if self.config.logging.bulk_pull_logging_value {
+                if self.is_logging_enabled {
                     self.logger.try_log(&format!(
                         "Sending address: {}",
                         block_info.source.encode_account()
@@ -121,7 +120,7 @@ impl BulkPullAccountServerImpl {
                 }
                 send_buffer.extend_from_slice(block_info.source.as_bytes());
             } else {
-                if self.config.logging.bulk_pull_logging_value {
+                if self.is_logging_enabled {
                     self.logger
                         .try_log(&format!("Sending block: {}", block_info_key.hash));
                 }
@@ -147,7 +146,7 @@ impl BulkPullAccountServerImpl {
             /*
              * Otherwise, finalize the connection
              */
-            if self.config.logging.bulk_pull_logging_value {
+            if self.is_logging_enabled {
                 self.logger.try_log("Done sending blocks");
             }
 
@@ -232,7 +231,7 @@ impl BulkPullAccountServerImpl {
                 server.lock().unwrap().send_next_block(server2);
             }));
         } else {
-            if self.config.logging.bulk_pull_logging_value {
+            if self.is_logging_enabled {
                 self.logger
                     .try_log(&format!("Unable to bulk send block: {:?}", ec));
             }
@@ -260,7 +259,7 @@ impl BulkPullAccountServerImpl {
             }
         }
 
-        if self.config.logging.bulk_pull_logging_value {
+        if self.is_logging_enabled {
             self.logger.try_log("Bulk sending for an account finished");
         }
 
@@ -287,7 +286,7 @@ impl BulkPullAccountServerImpl {
 
             self.connection.start();
         } else {
-            if self.config.logging.bulk_pull_logging_value {
+            if self.is_logging_enabled {
                 self.logger.try_log("Unable to pending-as-zero");
             }
         }
@@ -304,24 +303,53 @@ impl BulkPullAccountServer {
         request: BulkPullAccount,
         logger: Arc<dyn Logger>,
         thread_pool: Arc<dyn ThreadPool>,
-        config: NodeConfig,
         ledger: Arc<Ledger>,
+        is_logging_enabled: bool,
     ) -> Self {
-        let server = BulkPullAccountServerImpl {
+        let mut server = BulkPullAccountServerImpl {
             connection,
             request,
             logger,
             thread_pool,
-            config,
             ledger,
             deduplication: HashSet::new(),
             current_key: PendingKey::new(Account::zero(), BlockHash::zero()),
             pending_address_only: false,
             pending_include_address: false,
             invalid_request: false,
+            is_logging_enabled,
         };
+        /*
+         * Setup the streaming response for the first call to "send_frontier" and  "send_next_block"
+         */
+        server.set_params();
         Self {
             server: Arc::new(Mutex::new(server)),
         }
+    }
+
+    pub fn send_frontier(&self) {
+        let server2 = Arc::clone(&self.server);
+        self.server.lock().unwrap().send_frontier(server2);
+    }
+
+    pub fn get_next(&self) -> Option<(PendingKey, PendingInfo)> {
+        self.server.lock().unwrap().get_next()
+    }
+
+    pub fn current_key(&self) -> PendingKey {
+        self.server.lock().unwrap().current_key.clone()
+    }
+
+    pub fn pending_address_only(&self) -> bool {
+        self.server.lock().unwrap().pending_address_only
+    }
+
+    pub fn pending_include_address(&self) -> bool {
+        self.server.lock().unwrap().pending_include_address
+    }
+
+    pub fn invalid_request(&self) -> bool {
+        self.server.lock().unwrap().invalid_request
     }
 }

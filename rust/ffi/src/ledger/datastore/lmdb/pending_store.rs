@@ -55,6 +55,25 @@ impl From<&PendingInfoDto> for PendingInfo {
     }
 }
 
+impl From<PendingKey> for PendingKeyDto {
+    fn from(value: PendingKey) -> Self {
+        Self {
+            account: *value.account.as_bytes(),
+            hash: *value.hash.as_bytes(),
+        }
+    }
+}
+
+impl From<PendingInfo> for PendingInfoDto {
+    fn from(value: PendingInfo) -> Self {
+        Self {
+            source: *value.source.as_bytes(),
+            amount: value.amount.to_be_bytes(),
+            epoch: value.epoch as u8,
+        }
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_pending_store_put(
     handle: *mut LmdbPendingStoreHandle,
@@ -89,9 +108,7 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_get(
 ) -> bool {
     match (*handle).0.get((*txn).as_txn(), &PendingKey::from(&*key)) {
         Some(p) => {
-            (*pending).source = *p.source.as_bytes();
-            (*pending).amount = p.amount.to_be_bytes();
-            (*pending).epoch = p.epoch as u8;
+            *pending = p.into();
             false
         }
         None => true,

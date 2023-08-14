@@ -36,3 +36,6 @@ impl BootstrapInitiator {
         }
     }
 }
+
+unsafe impl Send for BootstrapInitiator {}
+unsafe impl Sync for BootstrapInitiator {}

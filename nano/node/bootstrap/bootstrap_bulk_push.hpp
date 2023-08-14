@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/common.hpp>
 
 #include <future>
@@ -47,5 +49,6 @@ public:
 	std::weak_ptr<nano::node> node_weak;
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::transport::tcp_server> connection;
+	rsnano::BulkPushServerHandle * handle;
 };
 }

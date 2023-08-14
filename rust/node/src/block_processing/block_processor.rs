@@ -5,7 +5,9 @@ use std::{
 };
 
 pub static mut BLOCKPROCESSOR_ADD_CALLBACK: Option<fn(*mut c_void, Arc<RwLock<BlockEnum>>)> = None;
-pub static mut BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK: Option<fn(*mut c_void, Arc<RwLock<BlockEnum>>)> = None;
+pub static mut BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK: Option<
+    fn(*mut c_void, Arc<RwLock<BlockEnum>>),
+> = None;
 pub static mut BLOCKPROCESSOR_HALF_FULL_CALLBACK: Option<
     unsafe extern "C" fn(*mut c_void) -> bool,
 > = None;
@@ -27,9 +29,9 @@ impl BlockProcessor {
 
     pub fn process_active(&self, block: Arc<RwLock<BlockEnum>>) {
         unsafe {
-            BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK.expect("BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK missing")(
-                self.handle,
-                block,
+            BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK
+                .expect("BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK missing")(
+                self.handle, block
             )
         }
     }

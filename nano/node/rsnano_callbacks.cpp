@@ -409,7 +409,7 @@ void bootstrap_initiator_clear_pulls (void * handle_a, uint64_t bootstrap_id_a)
 bool bootstrap_initiator_in_progress (void * handle_a)
 {
 	auto bootstrap_initiator{ static_cast<nano::bootstrap_initiator *> (handle_a) };
-	bootstrap_initiator->in_progress ();
+	return bootstrap_initiator->in_progress ();
 }
 
 class void_fn_callback_wrapper

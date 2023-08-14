@@ -136,7 +136,18 @@ void nano::bulk_push_client::push_block (nano::block const & block_a)
 nano::bulk_push_server::bulk_push_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a) :
 	node_weak (node_a),
 	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
-	connection (connection_a)
+	connection (connection_a),
+	handle{ rsnano::rsn_bulk_push_server_create (
+	connection_a->handle,
+	node_a->ledger.handle,
+	nano::to_logger_handle (node_a->logger),
+	node_a->bootstrap_workers->handle,
+	node_a->config->logging.bulk_pull_logging (),
+	node_a->config->logging.network_packet_logging (),
+	node_a->block_processor.handle,
+	node_a->bootstrap_initiator.handle,
+	node_a->stats->handle,
+	&node_a->config->network_params.work.dto) }
 {
 	receive_buffer->resize (256);
 }

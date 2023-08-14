@@ -5,6 +5,7 @@ mod bootstrap_initiator;
 mod bootstrap_lazy;
 mod bulk_pull_account_server;
 mod bulk_pull_server;
+mod bulk_push_server;
 mod channel_tcp_wrapper;
 mod frontier_req_server;
 mod pulls_cache;
@@ -21,6 +22,7 @@ pub use bootstrap_attempts::BootstrapAttempts;
 pub use bootstrap_lazy::BootstrapAttemptLazy;
 pub use bulk_pull_account_server::BulkPullAccountServer;
 pub use bulk_pull_server::BulkPullServer;
+pub use bulk_push_server::BulkPushServer;
 pub use channel_tcp_wrapper::ChannelTcpWrapper;
 pub use pulls_cache::{PullInfo, PullsCache};
 

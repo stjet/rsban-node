@@ -13,10 +13,6 @@ use crate::{
     utils::{ErrorCode, ThreadPool},
 };
 
-pub struct BulkPullServer {
-    server_impl: Arc<Mutex<BulkPullServerImpl>>,
-}
-
 /**
  * Handle a request for the pull of all blocks associated with an account
  * The account is supplied as the "start" member, and the final block to
@@ -32,6 +28,84 @@ pub struct BulkPullServer {
  * range will be exclusive of the frontier for that account with
  * a range of (frontier, end)
  */
+pub struct BulkPullServer {
+    server_impl: Arc<Mutex<BulkPullServerImpl>>,
+}
+
+impl BulkPullServer {
+    pub fn new(
+        request: BulkPull,
+        connection: Arc<TcpServer>,
+        ledger: Arc<Ledger>,
+        logger: Arc<dyn Logger>,
+        thread_pool: Arc<dyn ThreadPool>,
+        enable_logging: bool,
+    ) -> Self {
+        let mut server_impl = BulkPullServerImpl {
+            include_start: false,
+            sent_count: 0,
+            max_count: 0,
+            current: BlockHash::zero(),
+            request,
+            connection,
+            enable_logging,
+            ledger,
+            logger,
+            thread_pool,
+        };
+
+        server_impl.set_current_end();
+        Self {
+            server_impl: Arc::new(Mutex::new(server_impl)),
+        }
+    }
+
+    pub fn request(&self) -> BulkPull {
+        self.server_impl.lock().unwrap().request.clone()
+    }
+
+    pub fn current(&self) -> BlockHash {
+        self.server_impl.lock().unwrap().current
+    }
+
+    pub fn set_current(&self, value: BlockHash) {
+        self.server_impl.lock().unwrap().current = value;
+    }
+
+    pub fn sent_count(&self) -> u32 {
+        self.server_impl.lock().unwrap().sent_count
+    }
+
+    pub fn set_sent_count(&self, value: u32) {
+        self.server_impl.lock().unwrap().sent_count = value;
+    }
+
+    pub fn max_count(&self) -> u32 {
+        self.server_impl.lock().unwrap().max_count
+    }
+
+    pub fn set_max_count(&self, value: u32) {
+        self.server_impl.lock().unwrap().max_count = value;
+    }
+
+    pub fn include_start(&self) -> bool {
+        self.server_impl.lock().unwrap().include_start
+    }
+
+    pub fn set_include_start(&self, value: bool) {
+        self.server_impl.lock().unwrap().include_start = value
+    }
+
+    pub fn get_next(&self) -> Option<BlockEnum> {
+        self.server_impl.lock().unwrap().get_next()
+    }
+
+    pub fn send_next(&mut self) {
+        let impl_clone = self.server_impl.clone();
+        self.server_impl.lock().unwrap().send_next(impl_clone);
+    }
+}
+
 struct BulkPullServerImpl {
     ledger: Arc<Ledger>,
     logger: Arc<dyn Logger>,
@@ -263,79 +337,5 @@ impl BulkPullServerImpl {
             self.logger
                 .try_log(&format!("Unable to bulk send block: {:?}", ec));
         }
-    }
-}
-
-impl BulkPullServer {
-    pub fn new(
-        request: BulkPull,
-        connection: Arc<TcpServer>,
-        ledger: Arc<Ledger>,
-        logger: Arc<dyn Logger>,
-        thread_pool: Arc<dyn ThreadPool>,
-        enable_logging: bool,
-    ) -> Self {
-        let mut server_impl = BulkPullServerImpl {
-            include_start: false,
-            sent_count: 0,
-            max_count: 0,
-            current: BlockHash::zero(),
-            request,
-            connection,
-            enable_logging,
-            ledger,
-            logger,
-            thread_pool,
-        };
-
-        server_impl.set_current_end();
-        Self {
-            server_impl: Arc::new(Mutex::new(server_impl)),
-        }
-    }
-
-    pub fn request(&self) -> BulkPull {
-        self.server_impl.lock().unwrap().request.clone()
-    }
-
-    pub fn current(&self) -> BlockHash {
-        self.server_impl.lock().unwrap().current
-    }
-
-    pub fn set_current(&self, value: BlockHash) {
-        self.server_impl.lock().unwrap().current = value;
-    }
-
-    pub fn sent_count(&self) -> u32 {
-        self.server_impl.lock().unwrap().sent_count
-    }
-
-    pub fn set_sent_count(&self, value: u32) {
-        self.server_impl.lock().unwrap().sent_count = value;
-    }
-
-    pub fn max_count(&self) -> u32 {
-        self.server_impl.lock().unwrap().max_count
-    }
-
-    pub fn set_max_count(&self, value: u32) {
-        self.server_impl.lock().unwrap().max_count = value;
-    }
-
-    pub fn include_start(&self) -> bool {
-        self.server_impl.lock().unwrap().include_start
-    }
-
-    pub fn set_include_start(&self, value: bool) {
-        self.server_impl.lock().unwrap().include_start = value
-    }
-
-    pub fn get_next(&self) -> Option<BlockEnum> {
-        self.server_impl.lock().unwrap().get_next()
-    }
-
-    pub fn send_next(&mut self) {
-        let impl_clone = self.server_impl.clone();
-        self.server_impl.lock().unwrap().send_next(impl_clone);
     }
 }

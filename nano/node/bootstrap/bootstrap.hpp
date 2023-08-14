@@ -126,6 +126,8 @@ private:
 	nano::mutex mutex;
 	nano::condition_variable condition;
 	std::vector<boost::thread> bootstrap_initiator_threads;
+
+public:
 	rsnano::BootstrapInitiatorHandle * handle;
 
 	friend std::unique_ptr<container_info_component> collect_container_info (bootstrap_initiator & bootstrap_initiator, std::string const & name);

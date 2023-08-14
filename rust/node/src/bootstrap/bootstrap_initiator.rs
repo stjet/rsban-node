@@ -5,6 +5,11 @@ pub static mut BOOTSTRAP_INITIATOR_CLEAR_PULLS_CALLBACK: Option<
     BootstrapInitiatorClearPullsCallback,
 > = None;
 
+pub type BootstrapInitiatorInProgressCallback = unsafe extern "C" fn(*mut c_void) -> bool;
+pub static mut BOOTSTRAP_INITIATOR_IN_PROGRESS_CALLBACK: Option<
+    BootstrapInitiatorInProgressCallback,
+> = None;
+
 pub struct BootstrapInitiator {
     handle: *mut c_void,
 }
@@ -16,10 +21,18 @@ impl BootstrapInitiator {
 
     pub fn clear_pulls(&self, bootstrap_id: u64) {
         unsafe {
-            match BOOTSTRAP_INITIATOR_CLEAR_PULLS_CALLBACK {
-                Some(f) => f(self.handle, bootstrap_id),
-                None => panic!("BOOTSTRAP_INITIATOR_CLEAR_PULLS_CALLBACK missing"),
-            }
+            BOOTSTRAP_INITIATOR_CLEAR_PULLS_CALLBACK
+                .expect("BOOTSTRAP_INITIATOR_CLEAR_PULLS_CALLBACK missing")(
+                self.handle,
+                bootstrap_id,
+            )
+        }
+    }
+
+    pub fn in_progress(&self) -> bool {
+        unsafe {
+            BOOTSTRAP_INITIATOR_IN_PROGRESS_CALLBACK
+                .expect("BOOTSTRAP_INITIATOR_IN_PROGRESS_CALLBACK missing")(self.handle)
         }
     }
 }

@@ -37,7 +37,7 @@ class network_filter #PaleGreen
 
 package "Bootstrapping"{
     class bulk_pull_server #PaleGreen
-    class bulk_pull_account_server
+    class bulk_pull_account_server #PaleGreen
     class frontier_req_server #PaleGreen
     class bulk_push_server
     class bootstrap_message_visitor
@@ -100,6 +100,9 @@ channel_tcp --> tcp_server
 
 bulk_pull_server --> tcp_server
 bulk_pull_account_server --> tcp_server
+bulk_push_server --> tcp_server
+bulk_push_server --> bootstrap_initiator
+bulk_push_server --> block_processor
 
 bootstrap_message_visitor ..|> message_visitor
 bootstrap_message_visitor --> bulk_pull_account_server

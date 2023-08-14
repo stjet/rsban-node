@@ -393,6 +393,12 @@ void bootstrap_initiator_clear_pulls (void * handle_a, uint64_t bootstrap_id_a)
 	bootstrap_initiator->clear_pulls (bootstrap_id_a);
 }
 
+bool bootstrap_initiator_in_progress (void * handle_a)
+{
+	auto bootstrap_initiator{ static_cast<nano::bootstrap_initiator *> (handle_a) };
+	bootstrap_initiator->in_progress ();
+}
+
 class void_fn_callback_wrapper
 {
 public:
@@ -920,7 +926,8 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_always_log (logger_always_log);
 	rsnano::rsn_callback_listener_broadcast (listener_broadcast);
 	rsnano::rsn_callback_block_processor_add (blockprocessor_add);
-	rsnano::rsn_callback_block_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
+	rsnano::rsn_callback_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
+	rsnano::rsn_callback_bootstrap_initiator_in_progress (bootstrap_initiator_in_progress);
 	rsnano::rsn_callback_logger_destroy (logger_destroy);
 
 	rsnano::rsn_callback_io_ctx_post (io_ctx_post);

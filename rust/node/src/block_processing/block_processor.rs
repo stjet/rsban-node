@@ -5,6 +5,9 @@ use std::{
 };
 
 pub static mut BLOCKPROCESSOR_ADD_CALLBACK: Option<fn(*mut c_void, Arc<RwLock<BlockEnum>>)> = None;
+pub static mut BLOCKPROCESSOR_HALF_FULL_CALLBACK: Option<
+    unsafe extern "C" fn(*mut c_void) -> bool,
+> = None;
 
 pub struct BlockProcessor {
     handle: *mut c_void,
@@ -23,10 +26,21 @@ impl BlockProcessor {
 
     pub fn add(&self, block: Arc<RwLock<BlockEnum>>) {
         unsafe {
-            match BLOCKPROCESSOR_ADD_CALLBACK {
-                Some(f) => f(self.handle, block),
-                None => panic!("BLOCKPROCESSOR_ADD_CALLBACK missing"),
-            }
+            BLOCKPROCESSOR_ADD_CALLBACK.expect("BLOCKPROCESSOR_ADD_CALLBACK missing")(
+                self.handle,
+                block,
+            )
+        }
+    }
+
+    pub fn half_full(&self) -> bool {
+        unsafe {
+            BLOCKPROCESSOR_HALF_FULL_CALLBACK.expect("BLOCKPROCESSOR_ADD_CALLBACK missing")(
+                self.handle,
+            )
         }
     }
 }
+
+unsafe impl Send for BlockProcessor {}
+unsafe impl Sync for BlockProcessor {}

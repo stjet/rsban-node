@@ -1,5 +1,7 @@
 use crate::core::BlockHandle;
-use rsnano_node::block_processing::{BlockProcessor, BLOCKPROCESSOR_ADD_CALLBACK};
+use rsnano_node::block_processing::{
+    BlockProcessor, BLOCKPROCESSOR_ADD_CALLBACK, BLOCKPROCESSOR_HALF_FULL_CALLBACK,
+};
 use std::{
     ffi::c_void,
     ops::Deref,
@@ -76,6 +78,7 @@ pub unsafe extern "C" fn rsn_block_processor_wait(
 }
 
 pub type BlockProcessorAddCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
+pub type BlockProcessorHalfFullCallback = unsafe extern "C" fn(*mut c_void) -> bool;
 static mut ADD_CALLBACK: Option<BlockProcessorAddCallback> = None;
 
 #[no_mangle]
@@ -87,4 +90,9 @@ pub unsafe extern "C" fn rsn_callback_block_processor_add(f: BlockProcessorAddCa
             Box::into_raw(Box::new(BlockHandle::new(block))),
         )
     });
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_block_processor_half_full(f: BlockProcessorHalfFullCallback) {
+    BLOCKPROCESSOR_HALF_FULL_CALLBACK = Some(f);
 }

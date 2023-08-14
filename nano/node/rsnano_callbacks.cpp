@@ -387,6 +387,12 @@ void blockprocessor_add (void * handle_a, rsnano::BlockHandle * block_a)
 	processor->add (block);
 }
 
+bool blockprocessor_half_full (void * handle_a)
+{
+	auto processor = static_cast<nano::block_processor *> (handle_a);
+	return processor->half_full ();
+}
+
 void bootstrap_initiator_clear_pulls (void * handle_a, uint64_t bootstrap_id_a)
 {
 	auto bootstrap_initiator{ static_cast<nano::bootstrap_initiator *> (handle_a) };
@@ -926,6 +932,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_always_log (logger_always_log);
 	rsnano::rsn_callback_listener_broadcast (listener_broadcast);
 	rsnano::rsn_callback_block_processor_add (blockprocessor_add);
+	rsnano::rsn_callback_block_processor_half_full (blockprocessor_half_full);
 	rsnano::rsn_callback_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
 	rsnano::rsn_callback_bootstrap_initiator_in_progress (bootstrap_initiator_in_progress);
 	rsnano::rsn_callback_logger_destroy (logger_destroy);

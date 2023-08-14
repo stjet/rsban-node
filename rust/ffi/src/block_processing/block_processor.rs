@@ -1,6 +1,6 @@
 use crate::core::BlockHandle;
 use rsnano_node::block_processing::{
-    BlockProcessor, BLOCKPROCESSOR_ADD_CALLBACK, BLOCKPROCESSOR_HALF_FULL_CALLBACK,
+    BlockProcessor, BLOCKPROCESSOR_ADD_CALLBACK, BLOCKPROCESSOR_HALF_FULL_CALLBACK, BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
 };
 use std::{
     ffi::c_void,
@@ -80,12 +80,24 @@ pub unsafe extern "C" fn rsn_block_processor_wait(
 pub type BlockProcessorAddCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
 pub type BlockProcessorHalfFullCallback = unsafe extern "C" fn(*mut c_void) -> bool;
 static mut ADD_CALLBACK: Option<BlockProcessorAddCallback> = None;
+static mut PROCESS_ACTIVE_CALLBACK: Option<BlockProcessorAddCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_block_processor_add(f: BlockProcessorAddCallback) {
     ADD_CALLBACK = Some(f);
     BLOCKPROCESSOR_ADD_CALLBACK = Some(|handle, block| {
         ADD_CALLBACK.expect("ADD_CALLBACK missing")(
+            handle,
+            Box::into_raw(Box::new(BlockHandle::new(block))),
+        )
+    });
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_block_processor_process_active(f: BlockProcessorAddCallback) {
+    PROCESS_ACTIVE_CALLBACK = Some(f);
+    BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK = Some(|handle, block| {
+        PROCESS_ACTIVE_CALLBACK.expect("PROCESS_ACTIVE_CALLBACK missing")(
             handle,
             Box::into_raw(Box::new(BlockHandle::new(block))),
         )

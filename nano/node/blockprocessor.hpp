@@ -101,8 +101,10 @@ private:
 	nano::network_params & network_params; // already ported
 	nano::block_arrival & block_arrival; // already ported
 
+public:
 	rsnano::BlockProcessorHandle * handle;
 
+private:
 	nano::ledger & ledger; // already ported
 	nano::node_flags & flags; // already ported
 	nano::store & store; // already ported

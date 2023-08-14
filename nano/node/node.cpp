@@ -581,8 +581,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (no
 
 void nano::node::process_active (std::shared_ptr<nano::block> const & incoming)
 {
-	block_arrival.add (incoming->hash ());
-	block_processor.add (incoming);
+	block_processor.process_active (incoming);
 }
 
 [[nodiscard]] nano::process_return nano::node::process (nano::write_transaction const & transaction, nano::block & block)

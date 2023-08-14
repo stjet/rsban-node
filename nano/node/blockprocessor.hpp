@@ -58,6 +58,7 @@ public:
 	std::size_t size ();
 	bool full ();
 	bool half_full ();
+	void process_active (std::shared_ptr<nano::block> const & incoming);
 	void add (std::shared_ptr<nano::block> const &);
 	std::optional<nano::process_return> add_blocking (std::shared_ptr<nano::block> const & block);
 	void force (std::shared_ptr<nano::block> const &);

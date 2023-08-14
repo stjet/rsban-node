@@ -148,6 +148,12 @@ bool nano::block_processor::half_full ()
 	return size () >= flags.block_processor_full_size () / 2;
 }
 
+void nano::block_processor::process_active (std::shared_ptr<nano::block> const & incoming)
+{
+	block_arrival.add (incoming->hash ());
+	add (incoming);
+}
+
 void nano::block_processor::add (std::shared_ptr<nano::block> const & block)
 {
 	if (full ())

@@ -291,7 +291,7 @@ void nano::bulk_push_server::received_block (boost::system::error_code const & e
 				node->stats->inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
 				return;
 			}
-			node->process_active (std::move (block));
+			node->block_processor.process_active (std::move (block));
 			throttled_receive ();
 		}
 		else

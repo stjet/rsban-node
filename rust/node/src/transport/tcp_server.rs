@@ -1,5 +1,4 @@
 use std::{
-    ffi::c_void,
     net::{Ipv6Addr, SocketAddr},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -14,6 +13,7 @@ use rsnano_core::{
 };
 
 use crate::{
+    bootstrap::RequestResponseVisitorFactory,
     config::{NetworkConstants, NodeConfig},
     messages::{
         AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
@@ -25,7 +25,7 @@ use crate::{
         MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketImpl, SocketType,
         SynCookies, TcpMessageItem, TcpMessageManager,
     },
-    utils::{BlockUniquer, IoContext, ThreadPool},
+    utils::{BlockUniquer, IoContext},
     voting::VoteUniquer,
     NetworkParams,
 };
@@ -66,7 +66,7 @@ pub struct TcpServer {
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
     handshake_query_received: AtomicBool,
-    request_response_visitor_factory: Arc<dyn RequestResponseVisitorFactory>,
+    request_response_visitor_factory: Arc<RequestResponseVisitorFactory>,
     message_deserializer: Arc<MessageDeserializer>,
     tcp_message_manager: Arc<TcpMessageManager>,
     allow_bootstrap: bool,
@@ -84,7 +84,7 @@ impl TcpServer {
         io_ctx: Arc<dyn IoContext>,
         network: NetworkParams,
         stats: Arc<Stats>,
-        request_response_visitor_factory: Arc<dyn RequestResponseVisitorFactory>,
+        request_response_visitor_factory: Arc<RequestResponseVisitorFactory>,
         block_uniquer: Arc<BlockUniquer>,
         vote_uniquer: Arc<VoteUniquer>,
         tcp_message_manager: Arc<TcpMessageManager>,
@@ -240,12 +240,6 @@ impl Drop for TcpServer {
         );
         self.stop();
     }
-}
-
-pub trait RequestResponseVisitorFactory: Send + Sync {
-    fn handshake_visitor(&self, server: Arc<TcpServer>) -> Box<dyn HandshakeMessageVisitor>;
-    fn realtime_visitor(&self, server: Arc<TcpServer>) -> Box<dyn RealtimeMessageVisitor>;
-    fn bootstrap_visitor(&self, server: Arc<TcpServer>) -> Box<dyn BootstrapMessageVisitor>;
 }
 
 pub trait HandshakeMessageVisitor: MessageVisitor {

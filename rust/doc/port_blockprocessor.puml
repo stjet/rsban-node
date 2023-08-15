@@ -40,7 +40,7 @@ package "Bootstrapping"{
     class bulk_pull_account_server #PaleGreen
     class frontier_req_server #PaleGreen
     class bulk_push_server #PaleGreen
-    class bootstrap_message_visitor
+    class bootstrap_message_visitor #PaleGreen
     class request_response_visitor_factory {
         create_visitor(tcp_server)
     }

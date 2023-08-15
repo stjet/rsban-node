@@ -1,27 +1,14 @@
 use crate::{
-    block_processing::BlockProcessorHandle,
     core::BlockUniquerHandle,
-    ledger::datastore::LedgerHandle,
-    transport::{
-        EndpointDto, NetworkFilterHandle, SocketHandle, SynCookiesHandle, TcpMessageManagerHandle,
-    },
-    utils::{FfiIoContext, IoContextHandle, LoggerHandle, LoggerMT, ThreadPoolHandle},
+    transport::{EndpointDto, NetworkFilterHandle, SocketHandle, TcpMessageManagerHandle},
+    utils::{FfiIoContext, IoContextHandle, LoggerHandle, LoggerMT},
     voting::VoteUniquerHandle,
-    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
+    NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
 };
-use rsnano_core::{utils::Logger, Account, KeyPair};
-use rsnano_ledger::Ledger;
+use rsnano_core::{utils::Logger, Account};
 use rsnano_node::{
-    block_processing::BlockProcessor,
-    bootstrap::{BootstrapInitiator, BootstrapMessageVisitorImpl},
-    config::{Logging, NetworkConstants, NodeConfig, NodeFlags},
-    stats::Stats,
-    transport::{
-        BootstrapMessageVisitor, HandshakeMessageVisitor, HandshakeMessageVisitorImpl,
-        RealtimeMessageVisitor, RealtimeMessageVisitorImpl, RequestResponseVisitorFactory,
-        SocketType, SynCookies, TcpServer, TcpServerExt, TcpServerObserver,
-    },
-    utils::ThreadPool,
+    config::NodeConfig,
+    transport::{SocketType, TcpServer, TcpServerExt, TcpServerObserver},
     NetworkParams,
 };
 use std::{
@@ -31,7 +18,7 @@ use std::{
     sync::{Arc, Weak},
 };
 
-use super::bootstrap_initiator::BootstrapInitiatorHandle;
+use super::request_response_visitor_factory::RequestResponseVisitorFactoryHandle;
 
 pub struct TcpServerHandle(pub Arc<TcpServer>);
 
@@ -58,7 +45,6 @@ pub struct CreateTcpServerParams {
     pub logger: *mut LoggerHandle,
     pub observer: *mut c_void,
     pub publish_filter: *mut NetworkFilterHandle,
-    pub workers: *mut ThreadPoolHandle,
     pub io_ctx: *mut IoContextHandle,
     pub network: *const NetworkParamsDto,
     pub disable_bootstrap_listener: bool,
@@ -66,18 +52,11 @@ pub struct CreateTcpServerParams {
     pub stats: *mut StatHandle,
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
-    pub request_response_visitor_factory: *mut c_void,
+    pub request_response_visitor_factory: *mut RequestResponseVisitorFactoryHandle,
     pub block_uniquer: *mut BlockUniquerHandle,
     pub vote_uniquer: *mut VoteUniquerHandle,
     pub tcp_message_manager: *mut TcpMessageManagerHandle,
-    pub syn_cookies: *mut SynCookiesHandle,
-    pub node_id_prv: *const u8,
     pub allow_bootstrap: bool,
-
-    pub ledger: *mut LedgerHandle,
-    pub block_processor: *mut BlockProcessorHandle,
-    pub bootstrap_initiator: *mut BootstrapInitiatorHandle,
-    pub flags: *const NodeFlagsHandle,
 }
 
 #[no_mangle]
@@ -89,35 +68,10 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(params.logger)));
     let observer = Arc::new(FfiBootstrapServerObserver::new(params.observer));
     let publish_filter = Arc::clone(&*params.publish_filter);
-    let workers = (*params.workers).0.clone();
     let io_ctx = Arc::new(FfiIoContext::new((*params.io_ctx).raw_handle()));
     let network = NetworkParams::try_from(&*params.network).unwrap();
     let stats = Arc::clone(&(*params.stats));
-    let ledger = Arc::clone(&(*params.ledger));
-    let block_processor = Arc::clone(&(*params.block_processor));
-    let bootstrap_initiator = Arc::clone(&(*params.bootstrap_initiator));
-    let node_flags = (*params.flags).0.lock().unwrap().clone();
-    let logging_config = config.logging.clone();
-    let node_id = Arc::new(
-        KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(params.node_id_prv, 32)).unwrap(),
-    );
-    let mut visitor_factory = FfiRequestResponseVisitorFactory::new(
-        params.request_response_visitor_factory,
-        Arc::clone(&logger),
-        Arc::clone(&*params.syn_cookies),
-        Arc::clone(&stats),
-        network.network.clone(),
-        node_id,
-        ledger,
-        workers,
-        block_processor,
-        bootstrap_initiator,
-        node_flags,
-        logging_config,
-    );
-    visitor_factory.handshake_logging = config.logging.network_node_id_handshake_logging_value;
-    visitor_factory.disable_tcp_realtime = params.disable_tcp_realtime;
-    let visitor_factory = Arc::new(visitor_factory);
+    let visitor_factory = Arc::clone(&(*params.request_response_visitor_factory).0);
     let block_uniquer = Arc::clone(&*params.block_uniquer);
     let vote_uniquer = Arc::clone(&*params.vote_uniquer);
     let tcp_message_manager = Arc::clone(&*params.tcp_message_manager);
@@ -342,113 +296,5 @@ impl TcpServerObserver for FfiBootstrapServerObserver {
         unsafe {
             INC_REALTIME_COUNT_CALLBACK.expect("INC_REALTIME_COUNT_CALLBACK missing")(self.handle)
         }
-    }
-}
-
-static mut DESTROY_VISITOR_FACTORY: Option<VoidPointerCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_destroy(
-    f: VoidPointerCallback,
-) {
-    DESTROY_VISITOR_FACTORY = Some(f);
-}
-
-pub struct FfiRequestResponseVisitorFactory {
-    handle: *mut c_void,
-    logger: Arc<dyn Logger>,
-    syn_cookies: Arc<SynCookies>,
-    stats: Arc<Stats>,
-    node_id: Arc<KeyPair>,
-    network_constants: NetworkConstants,
-    ledger: Arc<Ledger>,
-    thread_pool: Arc<dyn ThreadPool>,
-    block_processor: Arc<BlockProcessor>,
-    bootstrap_initiator: Arc<BootstrapInitiator>,
-    flags: NodeFlags,
-    logging_config: Logging,
-    pub disable_tcp_realtime: bool,
-    pub handshake_logging: bool,
-}
-
-impl FfiRequestResponseVisitorFactory {
-    pub fn new(
-        handle: *mut c_void,
-        logger: Arc<dyn Logger>,
-        syn_cookies: Arc<SynCookies>,
-        stats: Arc<Stats>,
-        network_constants: NetworkConstants,
-        node_id: Arc<KeyPair>,
-        ledger: Arc<Ledger>,
-        thread_pool: Arc<dyn ThreadPool>,
-        block_processor: Arc<BlockProcessor>,
-        bootstrap_initiator: Arc<BootstrapInitiator>,
-        flags: NodeFlags,
-        logging_config: Logging,
-    ) -> Self {
-        Self {
-            handle,
-            logger,
-            syn_cookies,
-            stats,
-            node_id,
-            disable_tcp_realtime: false,
-            handshake_logging: false,
-            network_constants,
-            ledger,
-            thread_pool,
-            block_processor,
-            bootstrap_initiator,
-            flags,
-            logging_config,
-        }
-    }
-}
-
-impl Drop for FfiRequestResponseVisitorFactory {
-    fn drop(&mut self) {
-        unsafe { DESTROY_VISITOR_FACTORY.expect("DESTROY_VISITOR_FACTORY missing")(self.handle) }
-    }
-}
-
-unsafe impl Send for FfiRequestResponseVisitorFactory {}
-unsafe impl Sync for FfiRequestResponseVisitorFactory {}
-
-impl RequestResponseVisitorFactory for FfiRequestResponseVisitorFactory {
-    fn handshake_visitor(&self, server: Arc<TcpServer>) -> Box<dyn HandshakeMessageVisitor> {
-        let mut visitor = Box::new(HandshakeMessageVisitorImpl::new(
-            server,
-            Arc::clone(&self.logger),
-            Arc::clone(&self.syn_cookies),
-            Arc::clone(&self.stats),
-            Arc::clone(&self.node_id),
-            self.network_constants.clone(),
-        ));
-        visitor.disable_tcp_realtime = self.disable_tcp_realtime;
-        visitor.handshake_logging = self.handshake_logging;
-        visitor
-    }
-
-    fn realtime_visitor(&self, server: Arc<TcpServer>) -> Box<dyn RealtimeMessageVisitor> {
-        Box::new(RealtimeMessageVisitorImpl::new(
-            server,
-            Arc::clone(&self.stats),
-        ))
-    }
-
-    fn bootstrap_visitor(&self, server: Arc<TcpServer>) -> Box<dyn BootstrapMessageVisitor> {
-        Box::new(BootstrapMessageVisitorImpl {
-            ledger: Arc::clone(&self.ledger),
-            logger: Arc::clone(&self.logger),
-            connection: server,
-            thread_pool: Arc::clone(&self.thread_pool),
-            block_processor: Arc::clone(&self.block_processor),
-            bootstrap_initiator: Arc::clone(&self.bootstrap_initiator),
-            stats: Arc::clone(&self.stats),
-            work_thresholds: self.network_constants.work.clone(),
-            flags: self.flags.clone(),
-            processed: false,
-            logging_config: self.logging_config.clone(),
-        })
     }
 }

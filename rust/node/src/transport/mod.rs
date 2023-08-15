@@ -31,8 +31,7 @@ pub use tcp_channels::TcpChannels;
 pub use tcp_message_manager::{TcpMessageItem, TcpMessageManager};
 pub use tcp_server::{
     BootstrapMessageVisitor, HandshakeMessageVisitor, HandshakeMessageVisitorImpl,
-    RealtimeMessageVisitor, RealtimeMessageVisitorImpl, RequestResponseVisitorFactory, TcpServer,
-    TcpServerExt, TcpServerObserver,
+    RealtimeMessageVisitor, RealtimeMessageVisitorImpl, TcpServer, TcpServerExt, TcpServerObserver,
 };
 use token_bucket::TokenBucket;
 pub use write_queue::WriteCallback;

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "nano/lib/rsnano.hpp"
+#include "nano/node/transport/tcp.hpp"
+#include "nano/secure/common.hpp"
 
 #include <nano/node/common.hpp>
 #include <nano/node/messages.hpp>
@@ -110,6 +112,7 @@ class request_response_visitor_factory
 public:
 	explicit request_response_visitor_factory (nano::node & node_a);
 	std::shared_ptr<nano::message_visitor> create_bootstrap (std::shared_ptr<nano::transport::tcp_server> connection_a);
+	rsnano::RequestResponseVisitorFactoryHandle * handle;
 
 private:
 	nano::node & node; // shared_ptr isn't possible, because this factory gets created in node's constructor
@@ -162,6 +165,7 @@ public:
 	{
 	public:
 		explicit bootstrap_message_visitor (std::shared_ptr<tcp_server>, std::shared_ptr<nano::node>);
+		explicit bootstrap_message_visitor (rsnano::BootstrapMessageVisitorHandle * handle_a);
 		bootstrap_message_visitor (const bootstrap_message_visitor &) = delete;
 		bootstrap_message_visitor (bootstrap_message_visitor &&) = delete;
 		~bootstrap_message_visitor ();

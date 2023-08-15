@@ -1,5 +1,6 @@
 #include "nano/lib/rsnano.hpp"
 #include "nano/node/bootstrap/bootstrap.hpp"
+#include "nano/secure/common.hpp"
 #include "nano/secure/ledger.hpp"
 
 #include <nano/lib/rsnanoutils.hpp>
@@ -285,7 +286,6 @@ bool allow_bootstrap_a)
 	params.logger = nano::to_logger_handle (logger_a);
 	params.observer = observer_handle;
 	params.publish_filter = publish_filter_a.handle;
-	params.workers = bootstrap_workers_a->handle;
 	params.io_ctx = io_ctx.handle ();
 	params.network = &network_dto;
 	params.disable_bootstrap_listener = flags_a.disable_bootstrap_listener ();
@@ -293,17 +293,11 @@ bool allow_bootstrap_a)
 	params.stats = stats_a.handle;
 	params.disable_bootstrap_bulk_pull_server = flags_a.disable_bootstrap_bulk_pull_server ();
 	params.disable_tcp_realtime = flags_a.disable_tcp_realtime ();
-	params.request_response_visitor_factory = new std::shared_ptr<nano::transport::request_response_visitor_factory> (visitor_factory_a);
+	params.request_response_visitor_factory = visitor_factory_a->handle;
 	params.block_uniquer = block_uniquer_a.handle;
 	params.vote_uniquer = vote_uniquer_a.handle;
 	params.tcp_message_manager = tcp_message_manager_a.handle;
-	params.syn_cookies = syn_cookies_a.handle;
-	params.node_id_prv = node_id_a.prv.bytes.data ();
 	params.allow_bootstrap = allow_bootstrap_a;
-	params.ledger = ledger_a.handle;
-	params.block_processor = block_processor_a.handle;
-	params.bootstrap_initiator = bootstrap_initiator_a.handle;
-	params.flags = flags_a.handle;
 	handle = rsnano::rsn_bootstrap_server_create (&params);
 	debug_assert (socket_a != nullptr);
 }
@@ -356,10 +350,34 @@ rsnano::BootstrapMessageVisitorHandle * create_bootstrap_message_visitor (std::s
 	node_a->flags.handle,
 	&logging_dto);
 }
+
+rsnano::RequestResponseVisitorFactoryHandle * create_request_response_message_visitor_factory (nano::node & node_a)
+{
+	auto config_dto{ node_a.config->to_dto () };
+	auto network_dto{ node_a.config->network_params.to_dto () };
+	rsnano::RequestResponseVisitorFactoryParams params;
+	params.config = &config_dto;
+	params.logger = nano::to_logger_handle (node_a.logger);
+	params.workers = node_a.bootstrap_workers->handle;
+	params.network = &network_dto;
+	params.stats = node_a.stats->handle;
+	params.syn_cookies = node_a.network->syn_cookies->handle;
+	params.node_id_prv = node_a.node_id.prv.bytes.data ();
+	params.ledger = node_a.ledger.handle;
+	params.block_processor = node_a.block_processor.handle;
+	params.bootstrap_initiator = node_a.bootstrap_initiator.handle;
+	params.flags = node_a.flags.handle;
+
+	return rsnano::rsn_request_response_visitor_factory_create (&params);
+}
 }
 
 nano::transport::tcp_server::bootstrap_message_visitor::bootstrap_message_visitor (std::shared_ptr<tcp_server> server, std::shared_ptr<nano::node> node_a) :
 	handle{ create_bootstrap_message_visitor (server, node_a) }
+{
+}
+nano::transport::tcp_server::bootstrap_message_visitor::bootstrap_message_visitor (rsnano::BootstrapMessageVisitorHandle * handle_a) :
+	handle{ handle_a }
 {
 }
 
@@ -389,7 +407,8 @@ void nano::transport::tcp_server::bootstrap_message_visitor::frontier_req (const
 }
 
 nano::transport::request_response_visitor_factory::request_response_visitor_factory (nano::node & node_a) :
-	node{ node_a }
+	node{ node_a },
+	handle{ create_request_response_message_visitor_factory (node_a) }
 {
 }
 

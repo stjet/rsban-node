@@ -183,8 +183,12 @@ std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory
 	channel_a->set_last_packet_sent (std::chrono::steady_clock::now ());
 
 	auto response_server = std::make_shared<nano::transport::tcp_server> (
-	node.io_ctx, socket_a, node.logger,
-	*node.stats, node.flags, *node.config,
+	node.io_ctx,
+	socket_a,
+	node.logger,
+	*node.stats,
+	node.flags,
+	*node.config,
 	node.tcp_listener,
 	std::make_shared<nano::transport::request_response_visitor_factory> (node),
 	node.bootstrap_workers,

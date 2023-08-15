@@ -682,12 +682,6 @@ void bootstrap_observer_timeout (void * handle_a, uintptr_t inner_ptr_a)
 	(*observer)->tcp_server_timeout (inner_ptr_a);
 }
 
-void request_response_visitor_factory_destroy (void * handle_a)
-{
-	auto factory = static_cast<std::shared_ptr<nano::transport::request_response_visitor_factory> *> (handle_a);
-	delete factory;
-}
-
 nano::transport::channel_tcp_observer & to_channel_tcp (void * handle_a)
 {
 	auto channel = static_cast<std::shared_ptr<nano::transport::channel_tcp_observer> *> (handle_a);
@@ -909,8 +903,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_observer_inc_bootstrap_count (bootstrap_observer_inc_bootstrap_count);
 	rsnano::rsn_callback_bootstrap_observer_inc_realtime_count (bootstrap_observer_inc_realtime_count);
 	rsnano::rsn_callback_bootstrap_observer_timeout (bootstrap_observer_timeout);
-
-	rsnano::rsn_callback_request_response_visitor_factory_destroy (request_response_visitor_factory_destroy);
 
 	rsnano::rsn_callback_bootstrap_client_observer_closed (bootstrap_client_observer_closed);
 	rsnano::rsn_callback_bootstrap_client_observer_destroy (bootstrap_client_observer_destroy);

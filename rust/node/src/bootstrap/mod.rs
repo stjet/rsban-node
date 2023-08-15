@@ -10,6 +10,7 @@ mod bulk_push_server;
 mod channel_tcp_wrapper;
 mod frontier_req_server;
 mod pulls_cache;
+mod request_response_message_visitor_factory;
 
 pub use bootstrap_attempt::*;
 pub use bootstrap_initiator::*;
@@ -27,6 +28,7 @@ pub use bulk_pull_server::BulkPullServer;
 pub use bulk_push_server::BulkPushServer;
 pub use channel_tcp_wrapper::ChannelTcpWrapper;
 pub use pulls_cache::{PullInfo, PullsCache};
+pub use request_response_message_visitor_factory::RequestResponseVisitorFactory;
 
 pub mod bootstrap_limits {
     pub const PULL_COUNT_PER_CHECK: u64 = 8 * 1024;

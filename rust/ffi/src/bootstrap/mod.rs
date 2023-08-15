@@ -10,3 +10,8 @@ mod bulk_pull_server;
 mod channel_tcp_wrapper;
 mod frontier_req_server;
 mod pulls_cache;
+mod request_response_visitor_factory;
+
+pub use bootstrap_initiator::BootstrapInitiatorHandle;
+pub use bootstrap_message_visitor::BootstrapMessageVisitorHandle;
+pub use bootstrap_server::TcpServerHandle;

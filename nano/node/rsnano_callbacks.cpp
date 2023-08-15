@@ -877,7 +877,8 @@ void txn_callbacks_end (void * handle_a, uint64_t txn_id_a)
 bool message_visitor_bootstrap_processed (void * handle_a)
 {
 	auto visitor = static_cast<std::shared_ptr<nano::message_visitor> *> (handle_a);
-	return (static_cast<nano::transport::tcp_server::bootstrap_message_visitor *> (visitor->get ()))->processed;
+	auto bs_visitor = (static_cast<nano::transport::tcp_server::bootstrap_message_visitor *> (visitor->get ()));
+	return rsnano::rsn_bootstrap_message_visitor_processed_get (bs_visitor->handle);
 }
 
 void election_scheduler_activate (void * scheduler_a, const uint8_t * account_a, rsnano::TransactionHandle * txn_a)

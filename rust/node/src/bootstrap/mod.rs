@@ -3,6 +3,7 @@ mod bootstrap_attempts;
 mod bootstrap_client;
 mod bootstrap_initiator;
 mod bootstrap_lazy;
+mod bootstrap_message_visitor;
 mod bulk_pull_account_server;
 mod bulk_pull_server;
 mod bulk_push_server;
@@ -20,6 +21,7 @@ pub use bootstrap_client::{
 
 pub use bootstrap_attempts::BootstrapAttempts;
 pub use bootstrap_lazy::BootstrapAttemptLazy;
+pub use bootstrap_message_visitor::BootstrapMessageVisitorImpl;
 pub use bulk_pull_account_server::BulkPullAccountServer;
 pub use bulk_pull_server::BulkPullServer;
 pub use bulk_push_server::BulkPushServer;

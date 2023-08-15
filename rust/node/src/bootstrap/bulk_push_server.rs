@@ -222,7 +222,7 @@ impl BulkPushServerImpl {
         &self,
         server_impl: Arc<Mutex<Self>>,
         ec: ErrorCode,
-        len: usize,
+        _len: usize,
         block_type: BlockType,
     ) {
         if ec.is_ok() {

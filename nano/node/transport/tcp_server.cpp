@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/node/bootstrap/bootstrap_bulk_push.hpp>
 #include <nano/node/bootstrap/bootstrap_frontier.hpp>
@@ -308,14 +310,36 @@ void nano::transport::tcp_server::stop ()
 	rsnano::rsn_bootstrap_server_stop (handle);
 }
 
+// TODO: We could periodically call this (from a dedicated timeout thread for eg.) but socket already handles timeouts,
+//  and since we only ever store tcp_server as weak_ptr, socket timeout will automatically trigger tcp_server cleanup
+void nano::transport::tcp_server::timeout ()
+{
+	rsnano::rsn_bootstrap_server_timeout (handle);
+}
+
 /*
  * Bootstrap
  */
 
 nano::transport::tcp_server::bootstrap_message_visitor::bootstrap_message_visitor (std::shared_ptr<tcp_server> server, std::shared_ptr<nano::node> node_a) :
+	handle{ rsnano::rsn_bootstrap_message_visitor_create (
+	server->handle,
+	node_a->ledger.handle,
+	nano::to_logger_handle (node_a->logger),
+	node_a->bootstrap_workers->handle,
+	node_a->block_processor.handle,
+	node_a->bootstrap_initiator.handle,
+	node_a->stats->handle,
+	&node_a->config->network_params.work.dto,
+	node_a->flags.handle) },
 	server{ std::move (server) },
 	node{ std::move (node_a) }
 {
+}
+
+nano::transport::tcp_server::bootstrap_message_visitor::~bootstrap_message_visitor ()
+{
+	rsnano::rsn_bootstrap_message_visitor_destory (handle);
 }
 
 void nano::transport::tcp_server::bootstrap_message_visitor::bulk_pull (const nano::bulk_pull & message)
@@ -337,7 +361,7 @@ void nano::transport::tcp_server::bootstrap_message_visitor::bulk_pull (const na
 		bulk_pull_server->send_next ();
 	});
 
-	processed = true;
+	rsnano::rsn_bootstrap_message_visitor_processed_set (handle, true);
 }
 
 void nano::transport::tcp_server::bootstrap_message_visitor::bulk_pull_account (const nano::bulk_pull_account & message)
@@ -359,7 +383,7 @@ void nano::transport::tcp_server::bootstrap_message_visitor::bulk_pull_account (
 		bulk_pull_account_server->send_frontier ();
 	});
 
-	processed = true;
+	rsnano::rsn_bootstrap_message_visitor_processed_set (handle, true);
 }
 
 void nano::transport::tcp_server::bootstrap_message_visitor::bulk_push (const nano::bulk_push &)
@@ -370,7 +394,7 @@ void nano::transport::tcp_server::bootstrap_message_visitor::bulk_push (const na
 		bulk_push_server->throttled_receive ();
 	});
 
-	processed = true;
+	rsnano::rsn_bootstrap_message_visitor_processed_set (handle, true);
 }
 
 void nano::transport::tcp_server::bootstrap_message_visitor::frontier_req (const nano::frontier_req & message)
@@ -386,14 +410,7 @@ void nano::transport::tcp_server::bootstrap_message_visitor::frontier_req (const
 		response->send_next ();
 	});
 
-	processed = true;
-}
-
-// TODO: We could periodically call this (from a dedicated timeout thread for eg.) but socket already handles timeouts,
-//  and since we only ever store tcp_server as weak_ptr, socket timeout will automatically trigger tcp_server cleanup
-void nano::transport::tcp_server::timeout ()
-{
-	rsnano::rsn_bootstrap_server_timeout (handle);
+	rsnano::rsn_bootstrap_message_visitor_processed_set (handle, true);
 }
 
 nano::transport::request_response_visitor_factory::request_response_visitor_factory (nano::node & node_a) :

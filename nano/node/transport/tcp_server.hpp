@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/common.hpp>
 #include <nano/node/messages.hpp>
 #include <nano/node/transport/socket.hpp>
@@ -156,11 +158,15 @@ public:
 		bool processed{ false };
 
 		explicit bootstrap_message_visitor (std::shared_ptr<tcp_server>, std::shared_ptr<nano::node>);
+		bootstrap_message_visitor (const bootstrap_message_visitor &) = delete;
+		bootstrap_message_visitor (bootstrap_message_visitor &&) = delete;
+		~bootstrap_message_visitor ();
 
 		void bulk_pull (nano::bulk_pull const &) override;
 		void bulk_pull_account (nano::bulk_pull_account const &) override;
 		void bulk_push (nano::bulk_push const &) override;
 		void frontier_req (nano::frontier_req const &) override;
+		rsnano::BootstrapMessageVisitorHandle * handle;
 
 	private:
 		std::shared_ptr<tcp_server> server;

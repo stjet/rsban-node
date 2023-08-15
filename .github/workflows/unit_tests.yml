@@ -60,6 +60,10 @@ jobs:
         if: steps.build.outcome == 'success' && (success() || failure())
         run: cd build && ../ci/tests/run-core-tests.sh
 
+      - name: Rust Tests
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: cd build && ../ci/tests/run-rust-tests.sh
+
       - name: RPC Tests
         if: steps.build.outcome == 'success' && (success() || failure())
         run: cd build && ../ci/tests/run-rpc-tests.sh

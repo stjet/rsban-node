@@ -3,5 +3,7 @@ set -euo pipefail
 
 source "$(dirname "$BASH_SOURCE")/common.sh"
 
-cd rust
+BUILD_DIR=${1-${PWD}}
+
+cd ${BUILD_DIR}/../rust
 cargo test -q

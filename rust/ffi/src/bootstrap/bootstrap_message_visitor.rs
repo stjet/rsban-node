@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
 use rsnano_core::{utils::Logger, work::WorkThresholds};
-use rsnano_node::bootstrap::BootstrapMessageVisitorImpl;
+use rsnano_node::{bootstrap::BootstrapMessageVisitorImpl, config::Logging, messages::{MessageVisitor, BulkPull}};
 
 use crate::{
     block_processing::BlockProcessorHandle,
     ledger::datastore::LedgerHandle,
+    messages::{MessageHandle, downcast_message},
     utils::{LoggerHandle, LoggerMT, ThreadPoolHandle},
     work::WorkThresholdsDto,
-    NodeFlagsHandle, StatHandle,
+    LoggingDto, NodeFlagsHandle, StatHandle,
 };
 
 use super::{bootstrap_initiator::BootstrapInitiatorHandle, bootstrap_server::TcpServerHandle};
@@ -26,6 +27,7 @@ pub unsafe extern "C" fn rsn_bootstrap_message_visitor_create(
     stats: *mut StatHandle,
     work_thresholds: *const WorkThresholdsDto,
     flags: *mut NodeFlagsHandle,
+    logging_config: *const LoggingDto,
 ) -> *mut BootstrapMessageVisitorHandle {
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let visitor = BootstrapMessageVisitorImpl {
@@ -39,6 +41,7 @@ pub unsafe extern "C" fn rsn_bootstrap_message_visitor_create(
         work_thresholds: WorkThresholds::from(&*work_thresholds),
         flags: Arc::clone(&(*flags).0),
         processed: false,
+        logging_config: Logging::from(&*logging_config),
     };
     Box::into_raw(Box::new(BootstrapMessageVisitorHandle(visitor)))
 }
@@ -63,4 +66,13 @@ pub unsafe extern "C" fn rsn_bootstrap_message_visitor_processed_set(
     processed: bool,
 ) {
     (*handle).0.processed = processed;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_message_visitor_bulk_pull(
+    handle: *mut BootstrapMessageVisitorHandle,
+    message: *mut MessageHandle,
+) {
+    let bulk_pull = downcast_message::<BulkPull>(message);
+    (*handle).0.bulk_pull(bulk_pull);
 }

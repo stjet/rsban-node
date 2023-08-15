@@ -321,8 +321,12 @@ void nano::transport::tcp_server::timeout ()
  * Bootstrap
  */
 
-nano::transport::tcp_server::bootstrap_message_visitor::bootstrap_message_visitor (std::shared_ptr<tcp_server> server, std::shared_ptr<nano::node> node_a) :
-	handle{ rsnano::rsn_bootstrap_message_visitor_create (
+namespace
+{
+rsnano::BootstrapMessageVisitorHandle * create_bootstrap_message_visitor (std::shared_ptr<nano::transport::tcp_server> server, std::shared_ptr<nano::node> node_a)
+{
+	auto logging_dto{ node_a->config->logging.to_dto () };
+	return rsnano::rsn_bootstrap_message_visitor_create (
 	server->handle,
 	node_a->ledger.handle,
 	nano::to_logger_handle (node_a->logger),
@@ -331,7 +335,13 @@ nano::transport::tcp_server::bootstrap_message_visitor::bootstrap_message_visito
 	node_a->bootstrap_initiator.handle,
 	node_a->stats->handle,
 	&node_a->config->network_params.work.dto,
-	node_a->flags.handle) },
+	node_a->flags.handle,
+	&logging_dto);
+}
+}
+
+nano::transport::tcp_server::bootstrap_message_visitor::bootstrap_message_visitor (std::shared_ptr<tcp_server> server, std::shared_ptr<nano::node> node_a) :
+	handle{ create_bootstrap_message_visitor (server, node_a) },
 	server{ std::move (server) },
 	node{ std::move (node_a) }
 {
@@ -344,24 +354,7 @@ nano::transport::tcp_server::bootstrap_message_visitor::~bootstrap_message_visit
 
 void nano::transport::tcp_server::bootstrap_message_visitor::bulk_pull (const nano::bulk_pull & message)
 {
-	if (node->flags.disable_bootstrap_bulk_pull_server ())
-	{
-		return;
-	}
-
-	if (node->config->logging.bulk_pull_logging ())
-	{
-		node->logger->try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3% from %4%") % message.get_start ().to_string () % message.get_end ().to_string () % message.get_count () % server->get_remote_endpoint ()));
-	}
-
-	node->bootstrap_workers->push_task ([server = server, message = message, node = node] () {
-		// TODO: Add completion callback to bulk pull server
-		// TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
-		auto bulk_pull_server = std::make_shared<nano::bulk_pull_server> (node, server, std::make_unique<nano::bulk_pull> (message));
-		bulk_pull_server->send_next ();
-	});
-
-	rsnano::rsn_bootstrap_message_visitor_processed_set (handle, true);
+	rsnano::rsn_bootstrap_message_visitor_bulk_pull (handle, message.handle);
 }
 
 void nano::transport::tcp_server::bootstrap_message_visitor::bulk_pull_account (const nano::bulk_pull_account & message)

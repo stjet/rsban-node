@@ -69,7 +69,7 @@ impl FrontierReqServerImpl {
             send_buffer.extend_from_slice(self.frontier.as_bytes());
             debug_assert!(!self.current.is_zero());
             debug_assert!(!self.frontier.is_zero());
-            if self.config.logging.bulk_pull_logging_value {
+            if self.config.logging.bulk_pull_logging() {
                 self.logger.try_log(&format!(
                     "Sending frontier for {} {}",
                     self.current.encode_account(),

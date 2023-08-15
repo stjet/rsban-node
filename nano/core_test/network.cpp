@@ -138,7 +138,7 @@ TEST (network, last_contacted)
 	// capture the state before and ensure the clock ticks at least once
 	auto timestamp_before_keepalive = channel0->get_last_packet_received ();
 	auto keepalive_count = node0->stats->count (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in);
-	ASSERT_TIMELY (3s, std::chrono::steady_clock::now () > timestamp_before_keepalive);
+	ASSERT_TIMELY (3s, std::chrono::system_clock::now ().time_since_epoch ().count () > timestamp_before_keepalive);
 
 	// send 3 keepalives
 	// we need an extra keepalive to handle the race condition between the timestamp set and the counter increment
@@ -969,7 +969,7 @@ TEST (network, tcp_no_connect_excluded_peers)
 	ASSERT_TIMELY (5s, node1->network->syn_cookies->cookies_size () != 0);
 
 	// Manually cleanup previous attempt
-	node1->network->cleanup (std::chrono::steady_clock::now ());
+	node1->network->cleanup (std::chrono::system_clock::now ());
 	node1->network->syn_cookies->purge (std::chrono::seconds{ 0 });
 
 	// Ensure a successful connection
@@ -980,7 +980,7 @@ TEST (network, tcp_no_connect_excluded_peers)
 
 TEST (network, cleanup_purge)
 {
-	auto test_start = std::chrono::steady_clock::now ();
+	auto test_start = std::chrono::system_clock::now ();
 
 	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
@@ -993,7 +993,7 @@ TEST (network, cleanup_purge)
 	node1.network->cleanup (test_start);
 	ASSERT_EQ (0, node1.network->size ());
 
-	node1.network->cleanup (std::chrono::steady_clock::now ());
+	node1.network->cleanup (std::chrono::system_clock::now ());
 	ASSERT_EQ (0, node1.network->size ());
 
 	std::weak_ptr<nano::node> node_w = node1.shared ();
@@ -1003,7 +1003,7 @@ TEST (network, cleanup_purge)
 	node1.network->cleanup (test_start);
 	ASSERT_EQ (1, node1.network->size ());
 
-	node1.network->cleanup (std::chrono::steady_clock::now ());
+	node1.network->cleanup (std::chrono::system_clock::now ());
 	ASSERT_EQ (0, node1.network->size ());
 }
 

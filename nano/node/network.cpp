@@ -631,7 +631,7 @@ nano::endpoint nano::network::endpoint () const
 	return nano::endpoint (boost::asio::ip::address_v6::loopback (), port);
 }
 
-void nano::network::cleanup (std::chrono::steady_clock::time_point const & cutoff_a)
+void nano::network::cleanup (std::chrono::system_clock::time_point const & cutoff_a)
 {
 	tcp_channels->purge (cutoff_a);
 	if (node.network->empty ())
@@ -642,7 +642,7 @@ void nano::network::cleanup (std::chrono::steady_clock::time_point const & cutof
 
 void nano::network::ongoing_cleanup ()
 {
-	cleanup (std::chrono::steady_clock::now () - node.network_params.network.cleanup_cutoff ());
+	cleanup (std::chrono::system_clock::now () - node.network_params.network.cleanup_cutoff ());
 	std::weak_ptr<nano::node> node_w (node.shared ());
 	node.workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (node.network_params.network.is_dev_network () ? 1 : 5), [node_w] () {
 		if (auto node_l = node_w.lock ())

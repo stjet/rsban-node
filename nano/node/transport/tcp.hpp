@@ -16,7 +16,9 @@
 #include <boost/multi_index/random_access_index.hpp>
 #include <boost/multi_index_container.hpp>
 
+#include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <unordered_set>
 
@@ -29,8 +31,8 @@ class node_config;
 class node_flags;
 class network;
 class telemetry;
-class request_response_visitor_factory;
 class syn_cookies;
+class tcp_server_observer;
 class tcp_message_item final
 {
 public:
@@ -67,6 +69,13 @@ namespace transport
 {
 	class tcp_server;
 	class tcp_channels;
+
+	class request_response_visitor_factory
+	{
+	public:
+		explicit request_response_visitor_factory (nano::node & node_a);
+		rsnano::RequestResponseVisitorFactoryHandle * handle;
+	};
 
 	class channel_tcp_observer
 	{
@@ -126,11 +135,22 @@ namespace transport
 	class tcp_server_factory
 	{
 	public:
-		tcp_server_factory (nano::node & node_a);
+		tcp_server_factory (
+		nano::node_config & config,
+		boost::asio::io_context & io_ctx_a,
+		std::shared_ptr<nano::logger_mt> const & logger_a,
+		nano::network_filter & publish_filter,
+		nano::stats & stats_a,
+		nano::block_uniquer & block_uniquer_a,
+		nano::vote_uniquer & vote_uniquer_a,
+		nano::tcp_message_manager & message_manager_a);
+		tcp_server_factory (tcp_server_factory const &) = delete;
+		tcp_server_factory (tcp_server_factory &&) = delete;
+		~tcp_server_factory ();
+		void set_observer (std::shared_ptr<nano::tcp_server_observer> observer_a);
+		void set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory);
 		std::shared_ptr<nano::transport::tcp_server> create_tcp_server (const std::shared_ptr<nano::transport::channel_tcp> & channel_a, const std::shared_ptr<nano::transport::socket> & socket_a);
-
-	private:
-		nano::node & node;
+		rsnano::TcpServerFactoryHandle * handle;
 	};
 
 	class tcp_channels final : public nano::transport::channel_tcp_observer, public std::enable_shared_from_this<tcp_channels>
@@ -163,7 +183,7 @@ namespace transport
 		// Should we reach out to this endpoint with a keepalive message
 		bool reachout (nano::endpoint const &);
 		std::unique_ptr<container_info_component> collect_container_info (std::string const &);
-		void purge (std::chrono::steady_clock::time_point const &);
+		void purge (std::chrono::system_clock::time_point const &);
 		void ongoing_keepalive ();
 		void list (std::deque<std::shared_ptr<nano::transport::channel>> &, uint8_t = 0, bool = true);
 		void modify (std::shared_ptr<nano::transport::channel_tcp> const &, std::function<void (std::shared_ptr<nano::transport::channel_tcp> const &)>);
@@ -183,6 +203,8 @@ namespace transport
 		std::vector<nano::endpoint> get_peers () const;
 		void random_fill (std::array<nano::endpoint, 8> &) const;
 		void set_port (uint16_t port_a);
+		void set_observer (std::shared_ptr<nano::tcp_server_observer> observer_a);
+		void set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory);
 
 		nano::tcp_message_manager tcp_message_manager;
 		nano::peer_exclusion excluded_peers;
@@ -235,11 +257,11 @@ namespace transport
 			{
 				return get_channel ()->get_tcp_endpoint ();
 			}
-			std::chrono::steady_clock::time_point last_packet_sent () const
+			uint64_t last_packet_sent () const
 			{
 				return get_channel ()->get_last_packet_sent ();
 			}
-			std::chrono::steady_clock::time_point last_bootstrap_attempt () const
+			uint64_t last_bootstrap_attempt () const
 			{
 				return get_channel ()->get_last_bootstrap_attempt ();
 			}
@@ -278,7 +300,7 @@ namespace transport
 			nano::tcp_endpoint endpoint;
 			boost::asio::ip::address address;
 			boost::asio::ip::address subnetwork;
-			std::chrono::steady_clock::time_point last_attempt{ std::chrono::steady_clock::now () };
+			std::chrono::system_clock::time_point last_attempt{ std::chrono::system_clock::now () };
 
 			explicit tcp_endpoint_attempt (nano::tcp_endpoint const & endpoint_a) :
 				endpoint (endpoint_a),
@@ -287,7 +309,6 @@ namespace transport
 			{
 			}
 		};
-		nano::transport::tcp_server_factory tcp_server_factory;
 		nano::keypair node_id;
 		nano::network_params & network_params;
 		nano::outbound_bandwidth_limiter & limiter;
@@ -309,13 +330,13 @@ namespace transport
 		mi::indexed_by<
 			mi::random_access<mi::tag<random_access_tag>>,
 			mi::ordered_non_unique<mi::tag<last_bootstrap_attempt_tag>,
-				mi::const_mem_fun<channel_tcp_wrapper, std::chrono::steady_clock::time_point, &channel_tcp_wrapper::last_bootstrap_attempt>>,
+				mi::const_mem_fun<channel_tcp_wrapper, uint64_t, &channel_tcp_wrapper::last_bootstrap_attempt>>,
 			mi::hashed_unique<mi::tag<endpoint_tag>,
 				mi::const_mem_fun<channel_tcp_wrapper, nano::tcp_endpoint, &channel_tcp_wrapper::endpoint>>,
 			mi::hashed_non_unique<mi::tag<node_id_tag>,
 				mi::const_mem_fun<channel_tcp_wrapper, nano::account, &channel_tcp_wrapper::node_id>>,
 			mi::ordered_non_unique<mi::tag<last_packet_sent_tag>,
-				mi::const_mem_fun<channel_tcp_wrapper, std::chrono::steady_clock::time_point, &channel_tcp_wrapper::last_packet_sent>>,
+				mi::const_mem_fun<channel_tcp_wrapper, uint64_t, &channel_tcp_wrapper::last_packet_sent>>,
 			mi::ordered_non_unique<mi::tag<version_tag>,
 				mi::const_mem_fun<channel_tcp_wrapper, uint8_t, &channel_tcp_wrapper::network_version>>,
 			mi::hashed_non_unique<mi::tag<ip_address_tag>,
@@ -333,13 +354,14 @@ private:
 			mi::hashed_non_unique<mi::tag<subnetwork_tag>,
 				mi::member<tcp_endpoint_attempt, boost::asio::ip::address, &tcp_endpoint_attempt::subnetwork>>,
 			mi::ordered_non_unique<mi::tag<last_attempt_tag>,
-				mi::member<tcp_endpoint_attempt, std::chrono::steady_clock::time_point, &tcp_endpoint_attempt::last_attempt>>>>
+				mi::member<tcp_endpoint_attempt, std::chrono::system_clock::time_point, &tcp_endpoint_attempt::last_attempt>>>>
 		attempts;
 		// clang-format on
 		std::atomic<bool> stopped{ false };
 		// Called when a new channel is observed
 		std::function<void (std::shared_ptr<nano::transport::channel>)> channel_observer;
 		uint16_t port;
+		nano::transport::tcp_server_factory tcp_server_factory;
 		rsnano::TcpChannelsHandle * handle;
 
 		friend class network_peer_max_tcp_attempts_subnetwork_Test;

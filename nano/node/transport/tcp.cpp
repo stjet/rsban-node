@@ -1,8 +1,12 @@
+#include "boost/asio/io_context.hpp"
+#include "nano/lib/blocks.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
+#include "nano/node/nodeconfig.hpp"
 #include "nano/node/transport/channel.hpp"
 #include "nano/node/transport/traffic_type.hpp"
 #include "nano/secure/common.hpp"
+#include "nano/secure/network_filter.hpp"
 
 #include <nano/lib/config.hpp>
 #include <nano/lib/stats.hpp>
@@ -13,6 +17,7 @@
 
 #include <boost/format.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
@@ -52,7 +57,6 @@ void nano::tcp_message_manager::stop ()
 
 nano::transport::channel_tcp::channel_tcp (boost::asio::io_context & io_ctx_a, nano::outbound_bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::transport::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a, size_t channel_id) :
 	channel (rsnano::rsn_channel_tcp_create (
-	std::chrono::steady_clock::now ().time_since_epoch ().count (),
 	socket_a->handle,
 	new std::weak_ptr<nano::transport::channel_tcp_observer> (observer_a),
 	limiter_a.handle,
@@ -173,42 +177,68 @@ bool nano::transport::channel_tcp::alive () const
 	return rsnano::rsn_channel_tcp_is_alive (handle);
 }
 
-nano::transport::tcp_server_factory::tcp_server_factory (nano::node & node) :
-	node{ node }
+namespace
 {
+rsnano::TcpServerFactoryHandle * create_tcp_server_factory (
+nano::node_config & config,
+boost::asio::io_context & io_ctx_a,
+std::shared_ptr<nano::logger_mt> const & logger_a,
+nano::network_filter & publish_filter,
+nano::stats & stats_a,
+nano::block_uniquer & block_uniquer_a,
+nano::vote_uniquer & vote_uniquer_a,
+nano::tcp_message_manager & message_manager_a)
+{
+	rsnano::NodeConfigDto config_dto{ config.to_dto () };
+	auto network_dto{ config.network_params.to_dto () };
+	rsnano::io_ctx_wrapper io_ctx{ io_ctx_a };
+	rsnano::TcpServerFactoryParams params;
+	params.node_config = &config_dto;
+	params.logger = nano::to_logger_handle (logger_a);
+	params.publish_filter = publish_filter.handle;
+	params.io_ctx = io_ctx.handle ();
+	params.network = &network_dto;
+	params.stats = stats_a.handle;
+	params.block_uniquer = block_uniquer_a.handle;
+	params.vote_uniquer = vote_uniquer_a.handle;
+	params.tcp_message_manager = message_manager_a.handle;
+	return rsnano::rsn_tcp_server_factory_create (&params);
+}
+}
+
+nano::transport::tcp_server_factory::tcp_server_factory (
+nano::node_config & config,
+boost::asio::io_context & io_ctx_a,
+std::shared_ptr<nano::logger_mt> const & logger_a,
+nano::network_filter & publish_filter,
+nano::stats & stats_a,
+nano::block_uniquer & block_uniquer_a,
+nano::vote_uniquer & vote_uniquer_a,
+nano::tcp_message_manager & message_manager_a) :
+	handle{ create_tcp_server_factory (config, io_ctx_a, logger_a, publish_filter, stats_a, block_uniquer_a, vote_uniquer_a, message_manager_a) }
+{
+}
+
+nano::transport::tcp_server_factory::~tcp_server_factory ()
+{
+	rsnano::rsn_tcp_server_factory_destroy (handle);
+}
+
+void nano::transport::tcp_server_factory::set_observer (std::shared_ptr<nano::tcp_server_observer> observer_a)
+{
+	auto observer_handle = new std::shared_ptr<nano::tcp_server_observer> (observer_a);
+	rsnano::rsn_tcp_server_factory_set_observer (handle, observer_handle);
+}
+
+void nano::transport::tcp_server_factory::set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory)
+{
+	rsnano::rsn_tcp_server_factory_set_message_visitor_factory (handle, visitor_factory.handle);
 }
 
 std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory::create_tcp_server (const std::shared_ptr<nano::transport::channel_tcp> & channel_a, const std::shared_ptr<nano::transport::socket> & socket_a)
 {
-	channel_a->set_last_packet_sent (std::chrono::steady_clock::now ());
-
-	auto response_server = std::make_shared<nano::transport::tcp_server> (
-	node.io_ctx,
-	socket_a,
-	node.logger,
-	*node.stats,
-	node.flags,
-	*node.config,
-	node.tcp_listener,
-	std::make_shared<nano::transport::request_response_visitor_factory> (node),
-	node.bootstrap_workers,
-	*node.network->tcp_channels->publish_filter,
-	node.block_uniquer,
-	node.vote_uniquer,
-	node.network->tcp_channels->tcp_message_manager,
-	*node.network->syn_cookies,
-	node.ledger,
-	node.block_processor,
-	node.bootstrap_initiator,
-	node.node_id,
-	true);
-
-	// Listen for possible responses
-	response_server->get_socket ()->type_set (nano::transport::socket::type_t::realtime_response_server);
-	response_server->set_remote_node_id (channel_a->get_node_id ());
-	response_server->start ();
-
-	return response_server;
+	auto server_handle = rsnano::rsn_tcp_server_factory_create_tcp_server (handle, channel_a->handle, socket_a->handle);
+	return std::make_shared<nano::transport::tcp_server> (server_handle);
 }
 
 /*
@@ -217,7 +247,6 @@ std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory
 
 nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
 	tcp_message_manager{ node.config->tcp_incoming_connections_max },
-	tcp_server_factory{ node },
 	node_id{ node.node_id },
 	network_params{ node.network_params },
 	limiter{ node.outbound_limiter },
@@ -234,6 +263,16 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	node{ node },
 	port{ port },
 	publish_filter{ std::make_shared<nano::network_filter> (256 * 1024) },
+	tcp_server_factory{
+		*node.config,
+		node.io_ctx,
+		node.logger,
+		*publish_filter,
+		*node.stats,
+		node.block_uniquer,
+		node.vote_uniquer,
+		tcp_message_manager
+	},
 	handle{ rsnano::rsn_tcp_channels_create () }
 {
 }
@@ -368,6 +407,16 @@ void nano::transport::tcp_channels::set_port (uint16_t port_a)
 	port = port_a;
 }
 
+void nano::transport::tcp_channels::set_observer (std::shared_ptr<nano::tcp_server_observer> observer_a)
+{
+	tcp_server_factory.set_observer (observer_a);
+}
+
+void nano::transport::tcp_channels::set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory)
+{
+	tcp_server_factory.set_message_visitor_factory (visitor_factory);
+}
+
 std::vector<nano::endpoint> nano::transport::tcp_channels::get_current_peers () const
 {
 	std::vector<nano::endpoint> endpoints;
@@ -400,7 +449,7 @@ nano::tcp_endpoint nano::transport::tcp_channels::bootstrap_peer ()
 		{
 			result = nano::transport::map_endpoint_to_tcp (i->get_channel ()->get_peering_endpoint ());
 			channels.get<last_bootstrap_attempt_tag> ().modify (i, [] (channel_tcp_wrapper & wrapper_a) {
-				wrapper_a.get_channel ()->set_last_bootstrap_attempt (std::chrono::steady_clock::now ());
+				wrapper_a.get_channel ()->set_last_bootstrap_attempt ();
 			});
 			i = n;
 		}
@@ -471,7 +520,7 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 		}
 		if (channel)
 		{
-			channel->set_last_packet_received (std::chrono::steady_clock::now ());
+			channel->set_last_packet_received ();
 		}
 	}
 }
@@ -602,8 +651,9 @@ std::unique_ptr<nano::container_info_component> nano::transport::tcp_channels::c
 	return composite;
 }
 
-void nano::transport::tcp_channels::purge (std::chrono::steady_clock::time_point const & cutoff_a)
+void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point const & cutoff_a)
 {
+	uint64_t cutoff_ns = cutoff_a.time_since_epoch ().count ();
 	nano::lock_guard<nano::mutex> lock{ mutex };
 
 	// Remove channels with dead underlying sockets
@@ -615,7 +665,7 @@ void nano::transport::tcp_channels::purge (std::chrono::steady_clock::time_point
 		}
 	}
 
-	auto disconnect_cutoff (channels.get<last_packet_sent_tag> ().lower_bound (cutoff_a));
+	auto disconnect_cutoff (channels.get<last_packet_sent_tag> ().lower_bound (cutoff_ns));
 	channels.get<last_packet_sent_tag> ().erase (channels.get<last_packet_sent_tag> ().begin (), disconnect_cutoff);
 
 	// Remove keepalive attempt tracking for attempts older than cutoff
@@ -636,7 +686,8 @@ void nano::transport::tcp_channels::ongoing_keepalive ()
 	nano::unique_lock<nano::mutex> lock{ mutex };
 	// Wake up channels
 	std::vector<std::shared_ptr<nano::transport::channel_tcp>> send_list;
-	auto keepalive_sent_cutoff (channels.get<last_packet_sent_tag> ().lower_bound (std::chrono::steady_clock::now () - network_params.network.keepalive_period));
+	uint64_t cutoff = (std::chrono::system_clock::now () - network_params.network.keepalive_period).time_since_epoch ().count ();
+	auto keepalive_sent_cutoff (channels.get<last_packet_sent_tag> ().lower_bound (cutoff));
 	for (auto i (channels.get<last_packet_sent_tag> ().begin ()); i != keepalive_sent_cutoff; ++i)
 	{
 		send_list.push_back (i->get_channel ());
@@ -687,7 +738,7 @@ void nano::transport::tcp_channels::update (nano::tcp_endpoint const & endpoint_
 	if (existing != channels.get<endpoint_tag> ().end ())
 	{
 		channels.get<endpoint_tag> ().modify (existing, [] (channel_tcp_wrapper & wrapper_a) {
-			wrapper_a.get_channel ()->set_last_packet_sent (std::chrono::steady_clock::now ());
+			wrapper_a.get_channel ()->set_last_packet_sent ();
 		});
 	}
 }
@@ -888,7 +939,7 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 			return;
 		}
 		channel_a->set_node_id (node_id);
-		channel_a->set_last_packet_received (std::chrono::steady_clock::now ());
+		channel_a->set_last_packet_received ();
 
 		debug_assert (handshake.get_query ());
 		auto response = this_l->prepare_handshake_response (*handshake.get_query (), handshake.is_v2 ());

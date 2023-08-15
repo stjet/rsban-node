@@ -7,12 +7,12 @@ use crate::{
 };
 use rsnano_core::{utils::Logger, KeyPair};
 
-use rsnano_node::{bootstrap::RequestResponseVisitorFactory, config::NodeConfig, NetworkParams};
+use rsnano_node::{bootstrap::BootstrapMessageVisitorFactory, config::NodeConfig, NetworkParams};
 use std::sync::Arc;
 
 use super::bootstrap_initiator::BootstrapInitiatorHandle;
 
-pub struct RequestResponseVisitorFactoryHandle(pub Arc<RequestResponseVisitorFactory>);
+pub struct RequestResponseVisitorFactoryHandle(pub Arc<BootstrapMessageVisitorFactory>);
 
 #[repr(C)]
 pub struct RequestResponseVisitorFactoryParams {
@@ -46,7 +46,7 @@ pub unsafe extern "C" fn rsn_request_response_visitor_factory_create(
     let node_id = Arc::new(
         KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(params.node_id_prv, 32)).unwrap(),
     );
-    let mut visitor_factory = RequestResponseVisitorFactory::new(
+    let mut visitor_factory = BootstrapMessageVisitorFactory::new(
         Arc::clone(&logger),
         Arc::clone(&*params.syn_cookies),
         Arc::clone(&stats),

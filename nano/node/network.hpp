@@ -7,6 +7,7 @@
 
 #include <boost/thread/thread.hpp>
 
+#include <chrono>
 #include <deque>
 #include <memory>
 #include <unordered_set>
@@ -83,7 +84,7 @@ public:
 	// Get the next peer for attempting a tcp bootstrap connection
 	nano::tcp_endpoint bootstrap_peer ();
 	nano::endpoint endpoint () const;
-	void cleanup (std::chrono::steady_clock::time_point const &);
+	void cleanup (std::chrono::system_clock::time_point const &);
 	void ongoing_cleanup ();
 	// Node ID cookies cleanup
 	std::shared_ptr<nano::syn_cookies> syn_cookies;

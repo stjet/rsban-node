@@ -58,7 +58,6 @@ nano::account destination_node_id)
 
 	return rsnano::rsn_channel_inproc_create (
 	channel_id,
-	std::chrono::steady_clock::now ().time_since_epoch ().count (),
 	&network_dto,
 	network_filter.handle,
 	stats.handle,

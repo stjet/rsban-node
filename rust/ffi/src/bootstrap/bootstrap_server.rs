@@ -69,7 +69,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let observer = Arc::new(FfiBootstrapServerObserver::new(params.observer));
     let publish_filter = Arc::clone(&*params.publish_filter);
     let io_ctx = Arc::new(FfiIoContext::new((*params.io_ctx).raw_handle()));
-    let network = NetworkParams::try_from(&*params.network).unwrap();
+    let network = Arc::new(NetworkParams::try_from(&*params.network).unwrap());
     let stats = Arc::clone(&(*params.stats));
     let visitor_factory = Arc::clone(&(*params.request_response_visitor_factory).0);
     let block_uniquer = Arc::clone(&*params.block_uniquer);
@@ -84,10 +84,10 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
         io_ctx,
         network,
         stats,
-        visitor_factory,
         block_uniquer,
         vote_uniquer,
         tcp_message_manager,
+        visitor_factory,
         params.allow_bootstrap,
     );
     server.disable_bootstrap_listener = params.disable_bootstrap_listener;

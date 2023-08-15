@@ -61,7 +61,7 @@ pub unsafe extern "C" fn rsn_buffer_len(handle: *mut BufferHandle) -> usize {
     (*handle).0.lock().unwrap().len()
 }
 
-pub struct SocketHandle(Arc<SocketImpl>);
+pub struct SocketHandle(pub Arc<SocketImpl>);
 pub struct SocketWeakHandle(Weak<SocketImpl>);
 
 impl SocketHandle {

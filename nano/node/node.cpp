@@ -214,6 +214,9 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 	process_live_dispatcher{ ledger, scheduler.buckets, inactive_vote_cache, websocket }
 {
 	logger->always_log ("Node ID: ", node_id.pub.to_node_id ());
+	network->tcp_channels->set_observer (tcp_listener);
+	nano::transport::request_response_visitor_factory visitor_factory{ *this };
+	network->tcp_channels->set_message_visitor_factory (visitor_factory);
 
 	block_processor.start ();
 	block_broadcast.connect (block_processor);

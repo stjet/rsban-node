@@ -9,6 +9,9 @@
 
 #include <boost/asio/ip/network_v6.hpp>
 
+#include <chrono>
+#include <cstdint>
+
 namespace rsnano
 {
 class BandwidthLimiterHandle;
@@ -113,14 +116,15 @@ public:
 		return true;
 	}
 
-	std::chrono::steady_clock::time_point get_last_bootstrap_attempt () const;
-	void set_last_bootstrap_attempt (std::chrono::steady_clock::time_point const time_a);
+	uint64_t get_last_bootstrap_attempt () const;
+	void set_last_bootstrap_attempt ();
 
-	std::chrono::steady_clock::time_point get_last_packet_received () const;
-	void set_last_packet_received (std::chrono::steady_clock::time_point const time_a);
+	uint64_t get_last_packet_received () const;
+	void set_last_packet_received ();
 
-	std::chrono::steady_clock::time_point get_last_packet_sent () const;
-	void set_last_packet_sent (std::chrono::steady_clock::time_point const time_a);
+	uint64_t get_last_packet_sent () const;
+	void set_last_packet_sent ();
+	void set_last_packet_sent (std::chrono::system_clock::time_point time);
 
 	boost::optional<nano::account> get_node_id_optional () const;
 	nano::account get_node_id () const;

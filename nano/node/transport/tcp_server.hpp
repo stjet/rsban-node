@@ -107,13 +107,6 @@ private:
 
 std::unique_ptr<container_info_component> collect_container_info (tcp_listener & bootstrap_listener, std::string const & name);
 
-class request_response_visitor_factory
-{
-public:
-	explicit request_response_visitor_factory (nano::node & node_a);
-	rsnano::RequestResponseVisitorFactoryHandle * handle;
-};
-
 namespace bootstrap
 {
 	class message_deserializer;

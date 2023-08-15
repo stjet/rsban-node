@@ -1,8 +1,9 @@
 use primitive_types::U256;
+use rsnano_core::utils::nano_seconds_since_epoch;
 use rsnano_core::{Account, Amount};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbWriteTransaction;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use std::{cmp::max, sync::Arc};
 
 #[cfg(test)]
@@ -181,11 +182,4 @@ impl OnlineWeightSampler {
             &current_online_weight,
         );
     }
-}
-
-fn nano_seconds_since_epoch() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_nanos() as u64
 }

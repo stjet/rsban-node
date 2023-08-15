@@ -2,7 +2,7 @@ use std::{ops::Deref, sync::Arc};
 
 use rsnano_node::transport::NetworkFilter;
 
-pub struct NetworkFilterHandle(Arc<NetworkFilter>);
+pub struct NetworkFilterHandle(pub Arc<NetworkFilter>);
 
 impl NetworkFilterHandle {
     pub fn new(filter: Arc<NetworkFilter>) -> *mut Self {

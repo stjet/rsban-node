@@ -2,7 +2,7 @@ mod json;
 mod output_tracker;
 mod output_tracker_mt;
 
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 pub use json::*;
 pub use output_tracker::{OutputListener, OutputTracker};
@@ -110,11 +110,25 @@ pub fn is_sanitizer_build() -> bool {
     unsafe { IS_SANITIZER_BUILD() }
 }
 
+pub fn nano_seconds_since_epoch() -> u64 {
+    system_time_as_nanoseconds(SystemTime::now())
+}
+
 pub fn seconds_since_epoch() -> u64 {
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_secs()
+}
+
+pub fn system_time_from_nanoseconds(nanos: u64) -> SystemTime {
+    SystemTime::UNIX_EPOCH + Duration::from_nanos(nanos)
+}
+
+pub fn system_time_as_nanoseconds(time: SystemTime) -> u64 {
+    time.duration_since(SystemTime::UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_nanos() as u64
 }
 
 pub fn get_env_or_default<T>(variable_name: &str, default: T) -> T

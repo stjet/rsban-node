@@ -162,6 +162,8 @@ public:
 	nano::ledger ledger;
 	nano::signature_checker checker;
 	nano::outbound_bandwidth_limiter outbound_limiter;
+	nano::block_uniquer block_uniquer;
+	nano::vote_uniquer vote_uniquer;
 	std::shared_ptr<nano::network> network;
 	std::shared_ptr<nano::telemetry> telemetry;
 	nano::bootstrap_initiator bootstrap_initiator;
@@ -177,8 +179,6 @@ public:
 	nano::local_vote_history history;
 	nano::block_arrival block_arrival;
 	nano::block_processor block_processor;
-	nano::block_uniquer block_uniquer;
-	nano::vote_uniquer vote_uniquer;
 	nano::confirmation_height_processor confirmation_height_processor;
 	nano::vote_cache inactive_vote_cache;
 	nano::vote_generator generator;

@@ -13,7 +13,7 @@ use rsnano_core::{
 };
 
 use crate::{
-    bootstrap::RequestResponseVisitorFactory,
+    bootstrap::BootstrapMessageVisitorFactory,
     config::{NetworkConstants, NodeConfig},
     messages::{
         AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
@@ -45,6 +45,27 @@ pub trait TcpServerObserver: Send + Sync {
     fn inc_realtime_count(&self);
 }
 
+pub struct NullTcpServerObserver {}
+impl TcpServerObserver for NullTcpServerObserver {
+    fn bootstrap_server_timeout(&self, _inner_ptr: usize) {}
+
+    fn boostrap_server_exited(
+        &self,
+        _socket_type: SocketType,
+        _unique_id: usize,
+        _endpoint: SocketAddr,
+    ) {
+    }
+
+    fn get_bootstrap_count(&self) -> usize {
+        0
+    }
+
+    fn inc_bootstrap_count(&self) {}
+
+    fn inc_realtime_count(&self) {}
+}
+
 pub struct TcpServer {
     pub socket: Arc<SocketImpl>,
     config: Arc<NodeConfig>,
@@ -59,14 +80,14 @@ pub struct TcpServer {
     pub remote_node_id: Mutex<Account>,
     io_ctx: Arc<dyn IoContext>,
 
-    network: NetworkParams,
+    network: Arc<NetworkParams>,
     last_telemetry_req: Mutex<Option<Instant>>,
     unique_id: usize,
     stats: Arc<Stats>,
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
     handshake_query_received: AtomicBool,
-    request_response_visitor_factory: Arc<RequestResponseVisitorFactory>,
+    message_visitor_factory: Arc<BootstrapMessageVisitorFactory>,
     message_deserializer: Arc<MessageDeserializer>,
     tcp_message_manager: Arc<TcpMessageManager>,
     allow_bootstrap: bool,
@@ -82,12 +103,12 @@ impl TcpServer {
         observer: Arc<dyn TcpServerObserver>,
         publish_filter: Arc<NetworkFilter>,
         io_ctx: Arc<dyn IoContext>,
-        network: NetworkParams,
+        network: Arc<NetworkParams>,
         stats: Arc<Stats>,
-        request_response_visitor_factory: Arc<RequestResponseVisitorFactory>,
         block_uniquer: Arc<BlockUniquer>,
         vote_uniquer: Arc<VoteUniquer>,
         tcp_message_manager: Arc<TcpMessageManager>,
+        message_visitor_factory: Arc<BootstrapMessageVisitorFactory>,
         allow_bootstrap: bool,
     ) -> Self {
         let network_constants = network.network.clone();
@@ -113,7 +134,7 @@ impl TcpServer {
             disable_bootstrap_bulk_pull_server: false,
             disable_tcp_realtime: false,
             handshake_query_received: AtomicBool::new(false),
-            request_response_visitor_factory,
+            message_visitor_factory: message_visitor_factory,
             message_deserializer: Arc::new(MessageDeserializer::new(
                 network_constants,
                 publish_filter,
@@ -363,7 +384,7 @@ impl TcpServerExt for Arc<TcpServer> {
          */
         if self.is_undefined_connection() {
             let mut handshake_visitor = self
-                .request_response_visitor_factory
+                .message_visitor_factory
                 .handshake_visitor(Arc::clone(self));
             message.visit(handshake_visitor.as_message_visitor());
 
@@ -381,7 +402,7 @@ impl TcpServerExt for Arc<TcpServer> {
             }
         } else if self.is_realtime_connection() {
             let mut realtime_visitor = self
-                .request_response_visitor_factory
+                .message_visitor_factory
                 .realtime_visitor(Arc::clone(self));
             message.visit(realtime_visitor.as_message_visitor());
             if realtime_visitor.process() {
@@ -392,7 +413,7 @@ impl TcpServerExt for Arc<TcpServer> {
         // the server will switch to bootstrap mode immediately after processing the first bootstrap message, thus no `else if`
         if self.is_bootstrap_connection() {
             let mut bootstrap_visitor = self
-                .request_response_visitor_factory
+                .message_visitor_factory
                 .bootstrap_visitor(Arc::clone(self));
             message.visit(bootstrap_visitor.as_message_visitor());
             return !bootstrap_visitor.processed(); // Stop receiving new messages if bootstrap serving started

@@ -31,15 +31,6 @@ impl<'a> RollbackTest<'a> {
         let RollbackStep::RollBackBlock(instructions) = result else { panic!("expected RollBackBlock") };
         instructions
     }
-
-    pub fn assert_dependency_rollback(self) -> BlockHash {
-        let result = self
-            .planner
-            .roll_back_head_block()
-            .expect("rollback should succeed");
-        let RollbackStep::RequestDependencyRollback(dependency_hash) = result else { panic!("expected dependency rollback") };
-        dependency_hash
-    }
 }
 
 fn create_test_rollback_planner<'a>(chain: &'a TestAccountChain) -> RollbackPlanner<'a> {

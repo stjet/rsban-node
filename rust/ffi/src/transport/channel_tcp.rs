@@ -12,13 +12,12 @@ use rsnano_node::{
     transport::{BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, TrafficType},
     utils::ErrorCode,
 };
-use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc};
+use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc, time::SystemTime};
 
 #[no_mangle]
 /// observer is `weak_ptr<channel_tcp_observer> *`
 /// io_ctx is `boost::asio::io_context *`
 pub unsafe extern "C" fn rsn_channel_tcp_create(
-    now: u64,
     socket: *mut SocketHandle,
     observer: *mut c_void,
     limiter: *const OutboundBandwidthLimiterHandle,
@@ -30,7 +29,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
     let io_ctx = Arc::new(FfiIoContext::new(io_ctx));
     ChannelHandle::new(Arc::new(ChannelEnum::Tcp(ChannelTcp::new(
         (*socket).deref(),
-        now,
+        SystemTime::now(),
         observer,
         limiter,
         io_ctx,

@@ -16,7 +16,7 @@ use crate::{
 
 use super::{BootstrapInitiator, BootstrapMessageVisitorImpl};
 
-pub struct RequestResponseVisitorFactory {
+pub struct BootstrapMessageVisitorFactory {
     logger: Arc<dyn Logger>,
     syn_cookies: Arc<SynCookies>,
     stats: Arc<Stats>,
@@ -31,7 +31,7 @@ pub struct RequestResponseVisitorFactory {
     pub handshake_logging: bool,
 }
 
-impl RequestResponseVisitorFactory {
+impl BootstrapMessageVisitorFactory {
     pub fn new(
         logger: Arc<dyn Logger>,
         syn_cookies: Arc<SynCookies>,

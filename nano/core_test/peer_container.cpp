@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <memory>
 
 using namespace std::chrono_literals;
@@ -15,7 +16,7 @@ TEST (peer_container, empty_peers)
 {
 	nano::test::system system (1);
 	nano::network & network (*system.nodes[0]->network);
-	system.nodes[0]->network->cleanup (std::chrono::steady_clock::now ());
+	system.nodes[0]->network->cleanup (std::chrono::system_clock::now ());
 	ASSERT_EQ (0, network.size ());
 }
 
@@ -72,7 +73,7 @@ TEST (peer_container, tcp_channel_cleanup_works)
 	outer_node1->config->network_params.network.keepalive_period = std::chrono::minutes (10);
 	auto outer_node2 = nano::test::add_outer_node (system, node_flags);
 	outer_node2->config->network_params.network.keepalive_period = std::chrono::minutes (10);
-	auto now = std::chrono::steady_clock::now ();
+	auto now = std::chrono::system_clock::now ();
 	auto channel1 = nano::test::establish_tcp (system, node1, outer_node1->network->endpoint ());
 	ASSERT_NE (nullptr, channel1);
 	// set the last packet sent for channel1 only to guarantee it contains a value.
@@ -100,7 +101,7 @@ TEST (peer_container, tcp_channel_cleanup_works)
 		auto const min_last_packet_sent = std::min (channel1_last_packet_sent, channel2_last_packet_sent);
 		auto const cleanup_point = ((max_last_packet_sent - min_last_packet_sent) / 2) + min_last_packet_sent;
 
-		node1.network->cleanup (cleanup_point);
+		node1.network->cleanup (std::chrono::system_clock::time_point (std::chrono::nanoseconds (cleanup_point)));
 
 		// it is possible that the last_packet_sent times changed because of another thread and the cleanup_point
 		// is not the middle time anymore, in these case we wait a bit and try again in a loop up to 10 times
@@ -223,10 +224,10 @@ TEST (peer_container, reachout)
 	// Reaching out to them once should signal we shouldn't reach out again.
 	ASSERT_TRUE (node1.network->reachout (outer_node2->network->endpoint ()));
 	// Make sure we don't purge new items
-	node1.network->cleanup (std::chrono::steady_clock::now () - std::chrono::seconds (10));
+	node1.network->cleanup (std::chrono::system_clock::now () - std::chrono::seconds (10));
 	ASSERT_TRUE (node1.network->reachout (outer_node2->network->endpoint ()));
 	// Make sure we purge old items
-	node1.network->cleanup (std::chrono::steady_clock::now () + std::chrono::seconds (10));
+	node1.network->cleanup (std::chrono::system_clock::now () + std::chrono::seconds (10));
 	ASSERT_FALSE (node1.network->reachout (outer_node2->network->endpoint ()));
 }
 

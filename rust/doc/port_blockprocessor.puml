@@ -20,9 +20,6 @@ interface message_visitor
 package "Networking"{
 class network
 class rep_crawler
-}
-
-package "Channels"{
 class peer_exclusion #PaleGreen
 class tcp_message_manager #PaleGreen
 class channel_tcp_wrapper #PaleGreen
@@ -31,8 +28,10 @@ class outbound_bandwidth_limiter #PaleGreen
 class syn_cookies #PaleGreen
 class tcp_server #PaleGreen
 class tcp_channels
-class tcp_server_factory
+class tcp_server_factory #PaleGreen
 class network_filter #PaleGreen
+class tcp_listener
+interface tcp_server_observer #PaleGreen
 }
 
 package "Bootstrapping"{
@@ -41,7 +40,7 @@ package "Bootstrapping"{
     class frontier_req_server #PaleGreen
     class bulk_push_server #PaleGreen
     class bootstrap_message_visitor #PaleGreen
-    class request_response_visitor_factory {
+    class bootstrap_message_visitor_factory #PaleGreen {
         create_visitor(tcp_server)
     }
 }
@@ -90,10 +89,14 @@ tcp_channels --> tcp_message_manager
 tcp_channels --> channel_tcp_wrapper
 tcp_channels --> peer_exclusion
 
-tcp_server_factory --> tcp_server
+tcp_server_factory ..> tcp_server: creates
 tcp_server --> syn_cookies
 tcp_server --> network_filter
-tcp_server --> request_response_visitor_factory
+tcp_server --> bootstrap_message_visitor_factory
+tcp_server --> tcp_server_observer
+
+tcp_listener ..|> tcp_server_observer
+tcp_listener --> network
 
 channel_tcp_wrapper --> channel_tcp
 channel_tcp --> tcp_server
@@ -110,6 +113,7 @@ bootstrap_message_visitor --> bulk_pull_server
 bootstrap_message_visitor --> frontier_req_server
 bootstrap_message_visitor --> bulk_push_server
 
-request_response_visitor_factory --> bootstrap_message_visitor: creates
-
+bootstrap_message_visitor_factory ..> bootstrap_message_visitor: creates
+bootstrap_message_visitor_factory --> block_processor
+bootstrap_message_visitor_factory --> bootstrap_initiator
 @enduml

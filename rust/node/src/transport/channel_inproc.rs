@@ -25,9 +25,9 @@ use super::{
 };
 
 pub struct InProcChannelData {
-    last_bootstrap_attempt: u64,
-    last_packet_received: u64,
-    last_packet_sent: u64,
+    last_bootstrap_attempt: SystemTime,
+    last_packet_received: SystemTime,
+    last_packet_sent: SystemTime,
     node_id: Option<Account>,
 }
 
@@ -53,7 +53,7 @@ pub struct ChannelInProc {
 impl ChannelInProc {
     pub fn new(
         channel_id: usize,
-        now: u64,
+        now: SystemTime,
         network_constants: NetworkConstants,
         network_filter: Arc<NetworkFilter>,
         stats: Arc<Stats>,
@@ -70,7 +70,7 @@ impl ChannelInProc {
             channel_id,
             temporary: AtomicBool::new(false),
             channel_mutex: Mutex::new(InProcChannelData {
-                last_bootstrap_attempt: 0,
+                last_bootstrap_attempt: UNIX_EPOCH,
                 last_packet_received: now,
                 last_packet_sent: now,
                 node_id: Some(source_node_id),
@@ -144,10 +144,7 @@ impl ChannelInProc {
             // we create a temporary channel for the reply path, in case the receiver of the message wants to reply
             let remote_channel = Arc::new(ChannelEnum::InProc(ChannelInProc::new(
                 1,
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_nanos() as u64,
+                SystemTime::now(),
                 network_constants.clone(),
                 filter,
                 stats.clone(),
@@ -226,27 +223,27 @@ impl Channel for ChannelInProc {
             .store(temporary, std::sync::atomic::Ordering::SeqCst);
     }
 
-    fn get_last_bootstrap_attempt(&self) -> u64 {
+    fn get_last_bootstrap_attempt(&self) -> SystemTime {
         self.channel_mutex.lock().unwrap().last_bootstrap_attempt
     }
 
-    fn set_last_bootstrap_attempt(&self, instant: u64) {
-        self.channel_mutex.lock().unwrap().last_bootstrap_attempt = instant;
+    fn set_last_bootstrap_attempt(&self, time: SystemTime) {
+        self.channel_mutex.lock().unwrap().last_bootstrap_attempt = time;
     }
 
-    fn get_last_packet_received(&self) -> u64 {
+    fn get_last_packet_received(&self) -> SystemTime {
         self.channel_mutex.lock().unwrap().last_packet_received
     }
 
-    fn set_last_packet_received(&self, instant: u64) {
+    fn set_last_packet_received(&self, instant: SystemTime) {
         self.channel_mutex.lock().unwrap().last_packet_received = instant;
     }
 
-    fn get_last_packet_sent(&self) -> u64 {
+    fn get_last_packet_sent(&self) -> SystemTime {
         self.channel_mutex.lock().unwrap().last_packet_sent
     }
 
-    fn set_last_packet_sent(&self, instant: u64) {
+    fn set_last_packet_sent(&self, instant: SystemTime) {
         self.channel_mutex.lock().unwrap().last_packet_sent = instant;
     }
 

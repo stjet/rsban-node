@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc, time::SystemTime};
 
 use rsnano_core::Account;
 
@@ -34,11 +34,11 @@ impl ChannelTcpWrapper {
         self.tcp_channel().endpoint()
     }
 
-    pub fn last_packet_sent(&self) -> u64 {
+    pub fn last_packet_sent(&self) -> SystemTime {
         self.channel.as_channel().get_last_packet_sent()
     }
 
-    pub fn last_bootstrap_attempt(&self) -> u64 {
+    pub fn last_bootstrap_attempt(&self) -> SystemTime {
         self.channel.as_channel().get_last_bootstrap_attempt()
     }
 

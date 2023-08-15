@@ -44,7 +44,7 @@ impl BulkPushServer {
             logger,
             thread_pool,
             block_processor,
-            receive_buffer: Arc::new(Mutex::new(Vec::with_capacity(256))),
+            receive_buffer: Arc::new(Mutex::new(vec![0; 256])),
             bootstrap_initiator,
             stats,
             work_thresholds,
@@ -53,6 +53,14 @@ impl BulkPushServer {
         Self {
             server_impl: Arc::new(Mutex::new(server_impl)),
         }
+    }
+
+    pub fn throttled_receive(&self) {
+        let server_impl2 = Arc::clone(&self.server_impl);
+        self.server_impl
+            .lock()
+            .unwrap()
+            .throttled_receive(server_impl2);
     }
 }
 
@@ -117,7 +125,8 @@ impl BulkPushServerImpl {
 
     fn received_type(&self, server_impl: Arc<Mutex<Self>>) {
         let server_impl2 = Arc::clone(&server_impl);
-        match BlockType::from_u8(self.receive_buffer.lock().unwrap()[0]) {
+        let block_type = { BlockType::from_u8(self.receive_buffer.lock().unwrap()[0]) };
+        match block_type {
             Some(BlockType::LegacySend) => {
                 self.stats
                     .inc(StatType::Bootstrap, DetailType::Send, Direction::In);
@@ -220,6 +229,7 @@ impl BulkPushServerImpl {
             let guard = self.receive_buffer.lock().unwrap();
             let block =
                 deserialize_block_enum_with_type(block_type, &mut StreamAdapter::new(&guard));
+            drop(guard);
             match block {
                 Ok(block) => {
                     if self.work_thresholds.validate_entry_block(&block) {

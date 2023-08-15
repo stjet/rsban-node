@@ -47,3 +47,8 @@ pub unsafe extern "C" fn rsn_bulk_push_server_create(
 pub unsafe extern "C" fn rsn_bulk_push_server_destroy(handle: *mut BulkPushServerHandle) {
     drop(Box::from_raw(handle))
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bulk_push_server_throttled_receive(handle: *mut BulkPushServerHandle) {
+    (*handle).0.throttled_receive();
+}

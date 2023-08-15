@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/bootstrap/bootstrap_attempt.hpp>
 #include <nano/node/bootstrap/bootstrap_bulk_push.hpp>
 #include <nano/node/bootstrap/bootstrap_legacy.hpp>
@@ -134,9 +136,6 @@ void nano::bulk_push_client::push_block (nano::block const & block_a)
 }
 
 nano::bulk_push_server::bulk_push_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a) :
-	node_weak (node_a),
-	receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
-	connection (connection_a),
 	handle{ rsnano::rsn_bulk_push_server_create (
 	connection_a->handle,
 	node_a->ledger.handle,
@@ -149,168 +148,9 @@ nano::bulk_push_server::bulk_push_server (std::shared_ptr<nano::node> const & no
 	node_a->stats->handle,
 	&node_a->config->network_params.work.dto) }
 {
-	receive_buffer->resize (256);
 }
 
 void nano::bulk_push_server::throttled_receive ()
 {
-	auto node = node_weak.lock ();
-	if (!node)
-	{
-		return;
-	}
-	if (!node->block_processor.half_full ())
-	{
-		receive ();
-	}
-	else
-	{
-		auto this_l (shared_from_this ());
-		node->workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (1), [this_l] () {
-			if (!this_l->connection->is_stopped ())
-			{
-				this_l->throttled_receive ();
-			}
-		});
-	}
-}
-
-void nano::bulk_push_server::receive ()
-{
-	auto node = node_weak.lock ();
-	if (!node)
-	{
-		return;
-	}
-	if (node->bootstrap_initiator.in_progress ())
-	{
-		if (node->config->logging.bulk_pull_logging ())
-		{
-			node->logger->try_log ("Aborting bulk_push because a bootstrap attempt is in progress");
-		}
-	}
-	else
-	{
-		auto this_l (shared_from_this ());
-		connection->get_socket ()->async_read (receive_buffer, 1, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
-			auto node = this_l->node_weak.lock ();
-			if (!node)
-			{
-				return;
-			}
-			if (!ec)
-			{
-				this_l->received_type ();
-			}
-			else
-			{
-				if (node->config->logging.bulk_pull_logging ())
-				{
-					node->logger->try_log (boost::str (boost::format ("Error receiving block type: %1%") % ec.message ()));
-				}
-			}
-		});
-	}
-}
-
-void nano::bulk_push_server::received_type ()
-{
-	auto node = node_weak.lock ();
-	if (!node)
-	{
-		return;
-	}
-	auto this_l (shared_from_this ());
-	nano::block_type type (static_cast<nano::block_type> (receive_buffer->data ()[0]));
-	switch (type)
-	{
-		case nano::block_type::send:
-		{
-			node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::send, nano::stat::dir::in);
-			connection->get_socket ()->async_read (receive_buffer, nano::send_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
-		case nano::block_type::receive:
-		{
-			node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::receive, nano::stat::dir::in);
-			connection->get_socket ()->async_read (receive_buffer, nano::receive_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
-		case nano::block_type::open:
-		{
-			node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::open, nano::stat::dir::in);
-			connection->get_socket ()->async_read (receive_buffer, nano::open_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
-		case nano::block_type::change:
-		{
-			node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::change, nano::stat::dir::in);
-			connection->get_socket ()->async_read (receive_buffer, nano::change_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
-		case nano::block_type::state:
-		{
-			node->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::state_block, nano::stat::dir::in);
-			connection->get_socket ()->async_read (receive_buffer, nano::state_block::size (), [this_l, type] (boost::system::error_code const & ec, std::size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
-		case nano::block_type::not_a_block:
-		{
-			connection->start ();
-			break;
-		}
-		default:
-		{
-			if (node->config->logging.network_packet_logging ())
-			{
-				node->logger->try_log ("Unknown type received as block type");
-			}
-			break;
-		}
-	}
-}
-
-void nano::bulk_push_server::received_block (boost::system::error_code const & ec, std::size_t size_a, nano::block_type type_a)
-{
-	auto node = node_weak.lock ();
-	if (!node)
-	{
-		return;
-	}
-	if (!ec)
-	{
-		nano::bufferstream stream (receive_buffer->data (), size_a);
-		auto block (nano::deserialize_block (stream, type_a));
-		if (block != nullptr)
-		{
-			if (node->network_params.work.validate_entry (*block))
-			{
-				if (node->config->logging.bulk_pull_logging ())
-				{
-					node->logger->try_log (boost::str (boost::format ("Insufficient work for bulk push block: %1%") % block->hash ().to_string ()));
-				}
-				node->stats->inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
-				return;
-			}
-			node->block_processor.process_active (std::move (block));
-			throttled_receive ();
-		}
-		else
-		{
-			if (node->config->logging.bulk_pull_logging ())
-			{
-				node->logger->try_log ("Error deserializing block received from pull request");
-			}
-		}
-	}
+	rsnano::rsn_bulk_push_server_throttled_receive (handle);
 }

@@ -335,22 +335,6 @@ void nano::transport::tcp_server::timeout ()
 
 namespace
 {
-rsnano::BootstrapMessageVisitorHandle * create_bootstrap_message_visitor (std::shared_ptr<nano::transport::tcp_server> server, std::shared_ptr<nano::node> node_a)
-{
-	auto logging_dto{ node_a->config->logging.to_dto () };
-	return rsnano::rsn_bootstrap_message_visitor_create (
-	server->handle,
-	node_a->ledger.handle,
-	nano::to_logger_handle (node_a->logger),
-	node_a->bootstrap_workers->handle,
-	node_a->block_processor.handle,
-	node_a->bootstrap_initiator.handle,
-	node_a->stats->handle,
-	&node_a->config->network_params.work.dto,
-	node_a->flags.handle,
-	&logging_dto);
-}
-
 rsnano::RequestResponseVisitorFactoryHandle * create_request_response_message_visitor_factory (nano::node & node_a)
 {
 	auto config_dto{ node_a.config->to_dto () };
@@ -372,49 +356,9 @@ rsnano::RequestResponseVisitorFactoryHandle * create_request_response_message_vi
 }
 }
 
-nano::transport::tcp_server::bootstrap_message_visitor::bootstrap_message_visitor (std::shared_ptr<tcp_server> server, std::shared_ptr<nano::node> node_a) :
-	handle{ create_bootstrap_message_visitor (server, node_a) }
-{
-}
-nano::transport::tcp_server::bootstrap_message_visitor::bootstrap_message_visitor (rsnano::BootstrapMessageVisitorHandle * handle_a) :
-	handle{ handle_a }
-{
-}
-
-nano::transport::tcp_server::bootstrap_message_visitor::~bootstrap_message_visitor ()
-{
-	rsnano::rsn_bootstrap_message_visitor_destory (handle);
-}
-
-void nano::transport::tcp_server::bootstrap_message_visitor::bulk_pull (const nano::bulk_pull & message)
-{
-	rsnano::rsn_bootstrap_message_visitor_bulk_pull (handle, message.handle);
-}
-
-void nano::transport::tcp_server::bootstrap_message_visitor::bulk_pull_account (const nano::bulk_pull_account & message)
-{
-	rsnano::rsn_bootstrap_message_visitor_bulk_pull_account (handle, message.handle);
-}
-
-void nano::transport::tcp_server::bootstrap_message_visitor::bulk_push (const nano::bulk_push & message)
-{
-	rsnano::rsn_bootstrap_message_visitor_bulk_push (handle, message.handle);
-}
-
-void nano::transport::tcp_server::bootstrap_message_visitor::frontier_req (const nano::frontier_req & message)
-{
-	rsnano::rsn_bootstrap_message_visitor_frontier_req (handle, message.handle);
-}
-
 nano::transport::request_response_visitor_factory::request_response_visitor_factory (nano::node & node_a) :
-	node{ node_a },
 	handle{ create_request_response_message_visitor_factory (node_a) }
 {
-}
-
-std::shared_ptr<nano::message_visitor> nano::transport::request_response_visitor_factory::create_bootstrap (std::shared_ptr<nano::transport::tcp_server> connection_a)
-{
-	return std::make_shared<nano::transport::tcp_server::bootstrap_message_visitor> (connection_a, node.shared ());
 }
 
 bool nano::transport::tcp_server::is_stopped () const

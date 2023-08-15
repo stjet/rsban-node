@@ -111,11 +111,7 @@ class request_response_visitor_factory
 {
 public:
 	explicit request_response_visitor_factory (nano::node & node_a);
-	std::shared_ptr<nano::message_visitor> create_bootstrap (std::shared_ptr<nano::transport::tcp_server> connection_a);
 	rsnano::RequestResponseVisitorFactoryHandle * handle;
-
-private:
-	nano::node & node; // shared_ptr isn't possible, because this factory gets created in node's constructor
 };
 
 namespace bootstrap
@@ -160,21 +156,5 @@ public:
 	std::shared_ptr<nano::transport::socket> const get_socket () const;
 
 	rsnano::TcpServerHandle * handle;
-
-	class bootstrap_message_visitor : public nano::message_visitor
-	{
-	public:
-		explicit bootstrap_message_visitor (std::shared_ptr<tcp_server>, std::shared_ptr<nano::node>);
-		explicit bootstrap_message_visitor (rsnano::BootstrapMessageVisitorHandle * handle_a);
-		bootstrap_message_visitor (const bootstrap_message_visitor &) = delete;
-		bootstrap_message_visitor (bootstrap_message_visitor &&) = delete;
-		~bootstrap_message_visitor ();
-
-		void bulk_pull (nano::bulk_pull const &) override;
-		void bulk_pull_account (nano::bulk_pull_account const &) override;
-		void bulk_push (nano::bulk_push const &) override;
-		void frontier_req (nano::frontier_req const &) override;
-		rsnano::BootstrapMessageVisitorHandle * handle;
-	};
 };
 }

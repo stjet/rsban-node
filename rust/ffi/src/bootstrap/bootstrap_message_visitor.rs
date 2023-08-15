@@ -4,7 +4,7 @@ use rsnano_core::{utils::Logger, work::WorkThresholds};
 use rsnano_node::{
     bootstrap::BootstrapMessageVisitorImpl,
     config::Logging,
-    messages::{BulkPull, BulkPullAccount, MessageVisitor},
+    messages::{BulkPull, BulkPullAccount, BulkPush, FrontierReq, MessageVisitor},
 };
 
 use crate::{
@@ -88,4 +88,22 @@ pub unsafe extern "C" fn rsn_bootstrap_message_visitor_bulk_pull_account(
 ) {
     let bulk_pull = downcast_message::<BulkPullAccount>(message);
     (*handle).0.bulk_pull_account(bulk_pull);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_message_visitor_bulk_push(
+    handle: *mut BootstrapMessageVisitorHandle,
+    message: *mut MessageHandle,
+) {
+    let bulk_push = downcast_message::<BulkPush>(message);
+    (*handle).0.bulk_push(bulk_push);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_message_visitor_frontier_req(
+    handle: *mut BootstrapMessageVisitorHandle,
+    message: *mut MessageHandle,
+) {
+    let frontier_req = downcast_message::<FrontierReq>(message);
+    (*handle).0.frontier_req(frontier_req);
 }

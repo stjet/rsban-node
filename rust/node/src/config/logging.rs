@@ -46,6 +46,10 @@ impl Logging {
         self.network_logging_value && self.bulk_pull_logging_value
     }
 
+    pub fn network_packet_logging(&self) -> bool {
+        self.network_logging_value && self.network_packet_logging_value
+    }
+
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {
         toml.put_bool(
             "ledger",

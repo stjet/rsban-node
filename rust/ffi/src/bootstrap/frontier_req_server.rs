@@ -9,7 +9,7 @@ use crate::{
     NodeConfigDto,
 };
 use rsnano_core::utils::Logger;
-use rsnano_node::{bootstrap::FrontierReqServer, messages::FrontierReq};
+use rsnano_node::{bootstrap::FrontierReqServer, config::NodeConfig, messages::FrontierReq};
 
 pub struct FrontierReqServerHandle(FrontierReqServer);
 
@@ -23,12 +23,14 @@ pub unsafe extern "C" fn rsn_frontier_req_server_create(
     ledger: *mut LedgerHandle,
 ) -> *mut FrontierReqServerHandle {
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(logger)));
+    let config: NodeConfig = (&*config).try_into().unwrap();
     Box::into_raw(Box::new(FrontierReqServerHandle(FrontierReqServer::new(
         (*tcp_server).0.clone(),
         downcast_message::<FrontierReq>(request).clone(),
         (*thread_pool).0.clone(),
         logger,
-        (&*config).try_into().unwrap(),
+        config.logging.bulk_pull_logging(),
+        config.logging.network_logging_value,
         (*ledger).0.clone(),
     ))))
 }

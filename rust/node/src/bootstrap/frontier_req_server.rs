@@ -10,7 +10,6 @@ use rsnano_core::{
 use rsnano_ledger::Ledger;
 
 use crate::{
-    config::NodeConfig,
     messages::FrontierReq,
     transport::{Socket, TcpServer, TcpServerExt, TrafficType},
     utils::{ErrorCode, ThreadPool},
@@ -24,7 +23,8 @@ struct FrontierReqServerImpl {
     count: usize,
     accounts: VecDeque<(Account, BlockHash)>,
     logger: Arc<dyn Logger>,
-    config: NodeConfig,
+    enable_logging: bool,
+    enable_network_logging: bool,
     thread_pool: Arc<dyn ThreadPool>,
     ledger: Arc<Ledger>,
 }
@@ -34,7 +34,7 @@ impl FrontierReqServerImpl {
         if ec.is_ok() {
             self.connection.start();
         } else {
-            if self.config.logging.network_logging_value {
+            if self.enable_network_logging {
                 self.logger
                     .try_log(&format!("Error sending frontier finish: {:?}", ec));
             }
@@ -49,7 +49,7 @@ impl FrontierReqServerImpl {
         let mut send_buffer = Vec::with_capacity(64);
         send_buffer.extend_from_slice(Account::zero().as_bytes());
         send_buffer.extend_from_slice(BlockHash::zero().as_bytes());
-        if self.config.logging.network_logging_value {
+        if self.enable_network_logging {
             self.logger.try_log("Frontier sending finished");
         }
 
@@ -69,7 +69,7 @@ impl FrontierReqServerImpl {
             send_buffer.extend_from_slice(self.frontier.as_bytes());
             debug_assert!(!self.current.is_zero());
             debug_assert!(!self.frontier.is_zero());
-            if self.config.logging.bulk_pull_logging() {
+            if self.enable_logging {
                 self.logger.try_log(&format!(
                     "Sending frontier for {} {}",
                     self.current.encode_account(),
@@ -157,7 +157,7 @@ impl FrontierReqServerImpl {
                 server.lock().unwrap().send_next(server_clone);
             }));
         } else {
-            if self.config.logging.network_logging_value {
+            if self.enable_network_logging {
                 self.logger
                     .try_log(&format!("Error sending frontier pair: {:?}", ec));
             }
@@ -175,7 +175,8 @@ impl FrontierReqServer {
         request: FrontierReq,
         thread_pool: Arc<dyn ThreadPool>,
         logger: Arc<dyn Logger>,
-        config: NodeConfig,
+        enable_logging: bool,
+        enable_network_logging: bool,
         ledger: Arc<Ledger>,
     ) -> Self {
         let result = Self {
@@ -188,7 +189,8 @@ impl FrontierReqServer {
                 accounts: VecDeque::new(),
                 thread_pool,
                 logger,
-                config,
+                enable_logging,
+                enable_network_logging,
                 ledger,
             })),
         };

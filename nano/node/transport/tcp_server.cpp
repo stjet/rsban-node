@@ -362,31 +362,14 @@ void nano::transport::tcp_server::bootstrap_message_visitor::bulk_pull_account (
 	rsnano::rsn_bootstrap_message_visitor_bulk_pull_account (handle, message.handle);
 }
 
-void nano::transport::tcp_server::bootstrap_message_visitor::bulk_push (const nano::bulk_push &)
+void nano::transport::tcp_server::bootstrap_message_visitor::bulk_push (const nano::bulk_push & message)
 {
-	node->bootstrap_workers->push_task ([server = server, node = node] () {
-		// TODO: Add completion callback to bulk pull server
-		auto bulk_push_server = std::make_shared<nano::bulk_push_server> (node, server);
-		bulk_push_server->throttled_receive ();
-	});
-
-	rsnano::rsn_bootstrap_message_visitor_processed_set (handle, true);
+	rsnano::rsn_bootstrap_message_visitor_bulk_push (handle, message.handle);
 }
 
 void nano::transport::tcp_server::bootstrap_message_visitor::frontier_req (const nano::frontier_req & message)
 {
-	if (node->config->logging.bulk_pull_logging ())
-	{
-		node->logger->try_log (boost::str (boost::format ("Received frontier request for %1% with age %2%") % message.get_start ().to_string () % message.get_age ()));
-	}
-
-	node->bootstrap_workers->push_task ([server = server, message = message, node = node] () {
-		// TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
-		auto response = std::make_shared<nano::frontier_req_server> (node, server, std::make_unique<nano::frontier_req> (message));
-		response->send_next ();
-	});
-
-	rsnano::rsn_bootstrap_message_visitor_processed_set (handle, true);
+	rsnano::rsn_bootstrap_message_visitor_frontier_req (handle, message.handle);
 }
 
 nano::transport::request_response_visitor_factory::request_response_visitor_factory (nano::node & node_a) :

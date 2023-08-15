@@ -6,17 +6,21 @@ use crate::{
     },
     utils::{FfiIoContext, IoContextHandle, LoggerHandle, LoggerMT, ThreadPoolHandle},
     voting::VoteUniquerHandle,
-    NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
+    NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback, ledger::datastore::LedgerHandle, block_processing::{BlockProcessorHalfFullCallback, BlockProcessorHandle}, NodeFlagsHandle,
 };
 use rsnano_core::{utils::Logger, Account, KeyPair};
+use rsnano_ledger::Ledger;
 use rsnano_node::{
-    config::{NetworkConstants, NodeConfig},
+    block_processing::BlockProcessor,
+    bootstrap::{BootstrapInitiator, BootstrapMessageVisitorImpl},
+    config::{Logging, NetworkConstants, NodeConfig, NodeFlags},
     stats::Stats,
     transport::{
         BootstrapMessageVisitor, HandshakeMessageVisitor, HandshakeMessageVisitorImpl,
         RealtimeMessageVisitor, RealtimeMessageVisitorImpl, RequestResponseVisitorFactory,
         SocketType, SynCookies, TcpServer, TcpServerExt, TcpServerObserver,
     },
+    utils::ThreadPool,
     NetworkParams,
 };
 use std::{
@@ -25,6 +29,8 @@ use std::{
     ops::Deref,
     sync::{Arc, Weak},
 };
+
+use super::bootstrap_initiator::BootstrapInitiatorHandle;
 
 pub struct TcpServerHandle(pub Arc<TcpServer>);
 
@@ -66,6 +72,11 @@ pub struct CreateTcpServerParams {
     pub syn_cookies: *mut SynCookiesHandle,
     pub node_id_prv: *const u8,
     pub allow_bootstrap: bool,
+
+    pub ledger: *mut LedgerHandle,
+    pub block_processor: *mut BlockProcessorHandle,
+    pub bootstrap_initiator: *mut BootstrapInitiatorHandle,
+    pub flags: *const NodeFlagsHandle,
 }
 
 #[no_mangle]
@@ -81,6 +92,11 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let io_ctx = Arc::new(FfiIoContext::new((*params.io_ctx).raw_handle()));
     let network = NetworkParams::try_from(&*params.network).unwrap();
     let stats = Arc::clone(&(*params.stats));
+    let ledger = Arc::clone(&(*params.ledger));
+    let block_processor = Arc::clone(&(*params.block_processor));
+    let bootstrap_initiator = Arc::clone(&(*params.bootstrap_initiator));
+    let node_flags = (*params.flags).0.lock().unwrap().clone();
+    let logging_config = config.logging.clone();
     let node_id = Arc::new(
         KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(params.node_id_prv, 32)).unwrap(),
     );
@@ -91,6 +107,12 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
         Arc::clone(&stats),
         network.network.clone(),
         node_id,
+        ledger,
+        workers,
+        block_processor,
+        bootstrap_initiator,
+        node_flags,
+        logging_config,
     );
     visitor_factory.handshake_logging = config.logging.network_node_id_handshake_logging_value;
     visitor_factory.disable_tcp_realtime = params.disable_tcp_realtime;
@@ -104,7 +126,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
         logger,
         observer,
         publish_filter,
-        workers,
         io_ctx,
         network,
         stats,
@@ -336,14 +357,6 @@ pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_destroy(
 /// returns a `shared_ptr<message_visitor> *`
 pub type RequestResponseVisitorFactoryCreateCallback =
     unsafe extern "C" fn(*mut c_void, *mut TcpServerHandle) -> *mut c_void;
-static mut BOOTSTRAP_VISITOR: Option<RequestResponseVisitorFactoryCreateCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_bootstrap_visitor(
-    f: RequestResponseVisitorFactoryCreateCallback,
-) {
-    BOOTSTRAP_VISITOR = Some(f);
-}
 
 pub struct FfiRequestResponseVisitorFactory {
     handle: *mut c_void,
@@ -352,6 +365,12 @@ pub struct FfiRequestResponseVisitorFactory {
     stats: Arc<Stats>,
     node_id: Arc<KeyPair>,
     network_constants: NetworkConstants,
+    ledger: Arc<Ledger>,
+    thread_pool: Arc<dyn ThreadPool>,
+    block_processor: Arc<BlockProcessor>,
+    bootstrap_initiator: Arc<BootstrapInitiator>,
+    flags: NodeFlags,
+    logging_config: Logging,
     pub disable_tcp_realtime: bool,
     pub handshake_logging: bool,
 }
@@ -364,6 +383,12 @@ impl FfiRequestResponseVisitorFactory {
         stats: Arc<Stats>,
         network_constants: NetworkConstants,
         node_id: Arc<KeyPair>,
+        ledger: Arc<Ledger>,
+        thread_pool: Arc<dyn ThreadPool>,
+        block_processor: Arc<BlockProcessor>,
+        bootstrap_initiator: Arc<BootstrapInitiator>,
+        flags: NodeFlags,
+        logging_config: Logging,
     ) -> Self {
         Self {
             handle,
@@ -374,6 +399,12 @@ impl FfiRequestResponseVisitorFactory {
             disable_tcp_realtime: false,
             handshake_logging: false,
             network_constants,
+            ledger,
+            thread_pool,
+            block_processor,
+            bootstrap_initiator,
+            flags,
+            logging_config,
         }
     }
 
@@ -428,6 +459,18 @@ impl RequestResponseVisitorFactory for FfiRequestResponseVisitorFactory {
     }
 
     fn bootstrap_visitor(&self, server: Arc<TcpServer>) -> Box<dyn BootstrapMessageVisitor> {
-        unsafe { self.create_visitor(BOOTSTRAP_VISITOR, server) }
+        Box::new(BootstrapMessageVisitorImpl {
+            ledger: Arc::clone(&self.ledger),
+            logger: Arc::clone(&self.logger),
+            connection: server,
+            thread_pool: Arc::clone(&self.thread_pool),
+            block_processor: Arc::clone(&self.block_processor),
+            bootstrap_initiator: Arc::clone(&self.bootstrap_initiator),
+            stats: Arc::clone(&self.stats),
+            work_thresholds: self.network_constants.work.clone(),
+            flags: self.flags.clone(),
+            processed: false,
+            logging_config: self.logging_config.clone(),
+        })
     }
 }

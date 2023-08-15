@@ -57,7 +57,6 @@ pub struct TcpServer {
     // Remote enpoint used to remove response channel even after socket closing
     remote_endpoint: Mutex<SocketAddr>,
     pub remote_node_id: Mutex<Account>,
-    workers: Arc<dyn ThreadPool>,
     io_ctx: Arc<dyn IoContext>,
 
     network: NetworkParams,
@@ -82,7 +81,6 @@ impl TcpServer {
         logger: Arc<dyn Logger>,
         observer: Arc<dyn TcpServerObserver>,
         publish_filter: Arc<NetworkFilter>,
-        workers: Arc<dyn ThreadPool>,
         io_ctx: Arc<dyn IoContext>,
         network: NetworkParams,
         stats: Arc<Stats>,
@@ -107,7 +105,6 @@ impl TcpServer {
                 0,
             )),
             remote_node_id: Mutex::new(Account::zero()),
-            workers,
             io_ctx,
             last_telemetry_req: Mutex::new(None),
             network,

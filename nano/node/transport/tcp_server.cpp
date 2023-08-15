@@ -1,4 +1,6 @@
 #include "nano/lib/rsnano.hpp"
+#include "nano/node/bootstrap/bootstrap.hpp"
+#include "nano/secure/ledger.hpp"
 
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/node/bootstrap/bootstrap_bulk_push.hpp>
@@ -204,9 +206,18 @@ void nano::transport::tcp_listener::accept_action (boost::system::error_code con
 		auto server (std::make_shared<nano::transport::tcp_server> (
 		node.io_ctx, socket_a, logger,
 		*node.stats, node.flags, *config,
-		node.tcp_listener, req_resp_visitor_factory, node.workers,
+		node.tcp_listener, req_resp_visitor_factory, 
+		node.bootstrap_workers,
 		*network->tcp_channels->publish_filter,
-		node.block_uniquer, node.vote_uniquer, node.network->tcp_channels->tcp_message_manager, *network->syn_cookies, node.node_id, true));
+		node.block_uniquer, 
+		node.vote_uniquer, 
+		node.network->tcp_channels->tcp_message_manager, 
+		*network->syn_cookies, 
+		node.ledger,
+		node.block_processor,
+		node.bootstrap_initiator,
+		node.node_id, 
+		true));
 		nano::lock_guard<nano::mutex> lock{ mutex };
 		connections[server->unique_id ()] = nano::tcp_server_weak_wrapper (server);
 		server->start ();
@@ -252,12 +263,15 @@ nano::node_flags const & flags_a,
 nano::node_config const & config_a,
 std::shared_ptr<nano::tcp_server_observer> const & observer_a,
 std::shared_ptr<nano::transport::request_response_visitor_factory> visitor_factory_a,
-std::shared_ptr<nano::thread_pool> const & workers_a,
+std::shared_ptr<nano::thread_pool> const & bootstrap_workers_a,
 nano::network_filter const & publish_filter_a,
 nano::block_uniquer & block_uniquer_a,
 nano::vote_uniquer & vote_uniquer_a,
 nano::tcp_message_manager & tcp_message_manager_a,
 nano::syn_cookies & syn_cookies_a,
+nano::ledger & ledger_a,
+nano::block_processor & block_processor_a,
+nano::bootstrap_initiator & bootstrap_initiator_a,
 nano::keypair & node_id_a,
 bool allow_bootstrap_a)
 {
@@ -271,7 +285,7 @@ bool allow_bootstrap_a)
 	params.logger = nano::to_logger_handle (logger_a);
 	params.observer = observer_handle;
 	params.publish_filter = publish_filter_a.handle;
-	params.workers = workers_a->handle;
+	params.workers = bootstrap_workers_a->handle;
 	params.io_ctx = io_ctx.handle ();
 	params.network = &network_dto;
 	params.disable_bootstrap_listener = flags_a.disable_bootstrap_listener ();
@@ -286,6 +300,10 @@ bool allow_bootstrap_a)
 	params.syn_cookies = syn_cookies_a.handle;
 	params.node_id_prv = node_id_a.prv.bytes.data ();
 	params.allow_bootstrap = allow_bootstrap_a;
+	params.ledger = ledger_a.handle;
+	params.block_processor = block_processor_a.handle;
+	params.bootstrap_initiator = bootstrap_initiator_a.handle;
+	params.flags = flags_a.handle;
 	handle = rsnano::rsn_bootstrap_server_create (&params);
 	debug_assert (socket_a != nullptr);
 }
@@ -341,9 +359,7 @@ rsnano::BootstrapMessageVisitorHandle * create_bootstrap_message_visitor (std::s
 }
 
 nano::transport::tcp_server::bootstrap_message_visitor::bootstrap_message_visitor (std::shared_ptr<tcp_server> server, std::shared_ptr<nano::node> node_a) :
-	handle{ create_bootstrap_message_visitor (server, node_a) },
-	server{ std::move (server) },
-	node{ std::move (node_a) }
+	handle{ create_bootstrap_message_visitor (server, node_a) }
 {
 }
 

@@ -8,7 +8,7 @@ use crate::{
     config::{Logging, NodeFlags},
     messages::{BulkPull, BulkPullAccount, BulkPush, FrontierReq, MessageVisitor},
     stats::Stats,
-    transport::TcpServer,
+    transport::{TcpServer, BootstrapMessageVisitor},
     utils::ThreadPool,
 };
 
@@ -167,5 +167,15 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
         }));
 
         self.processed = true;
+    }
+}
+
+impl BootstrapMessageVisitor for BootstrapMessageVisitorImpl{
+    fn processed(&self) -> bool {
+        self.processed
+    }
+
+    fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor {
+        self
     }
 }

@@ -185,9 +185,19 @@ std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory
 	auto response_server = std::make_shared<nano::transport::tcp_server> (
 	node.io_ctx, socket_a, node.logger,
 	*node.stats, node.flags, *node.config,
-	node.tcp_listener, std::make_shared<nano::transport::request_response_visitor_factory> (node),
-	node.workers, *node.network->tcp_channels->publish_filter, node.block_uniquer, node.vote_uniquer, node.network->tcp_channels->tcp_message_manager,
-	*node.network->syn_cookies, node.node_id, true);
+	node.tcp_listener, 
+	std::make_shared<nano::transport::request_response_visitor_factory> (node),
+	node.bootstrap_workers, 
+	*node.network->tcp_channels->publish_filter, 
+	node.block_uniquer, 
+	node.vote_uniquer, 
+	node.network->tcp_channels->tcp_message_manager,
+	*node.network->syn_cookies, 
+	node.ledger,
+	node.block_processor,
+	node.bootstrap_initiator,
+	node.node_id, 
+	true);
 
 	// Listen for possible responses
 	response_server->get_socket ()->type_set (nano::transport::socket::type_t::realtime_response_server);

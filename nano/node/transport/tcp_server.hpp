@@ -19,6 +19,9 @@ namespace nano
 class node_config;
 class node_flags;
 class network;
+class ledger;
+class block_processor;
+class bootstrap_initiator;
 
 namespace transport
 {
@@ -135,6 +138,9 @@ public:
 	nano::vote_uniquer & vote_uniquer_a,
 	nano::tcp_message_manager & tcp_message_manager_a,
 	nano::syn_cookies & syn_cookies_a,
+nano::ledger & ledger_a,
+nano::block_processor & block_processor_a,
+nano::bootstrap_initiator & bootstrap_initiator_a,
 	nano::keypair & node_id_a,
 	bool allow_bootstrap_a = true);
 	explicit tcp_server (rsnano::TcpServerHandle * handle_a);
@@ -155,8 +161,6 @@ public:
 	class bootstrap_message_visitor : public nano::message_visitor
 	{
 	public:
-		bool processed{ false };
-
 		explicit bootstrap_message_visitor (std::shared_ptr<tcp_server>, std::shared_ptr<nano::node>);
 		bootstrap_message_visitor (const bootstrap_message_visitor &) = delete;
 		bootstrap_message_visitor (bootstrap_message_visitor &&) = delete;
@@ -167,10 +171,6 @@ public:
 		void bulk_push (nano::bulk_push const &) override;
 		void frontier_req (nano::frontier_req const &) override;
 		rsnano::BootstrapMessageVisitorHandle * handle;
-
-	private:
-		std::shared_ptr<tcp_server> server;
-		std::shared_ptr<nano::node> node;
 	};
 };
 }

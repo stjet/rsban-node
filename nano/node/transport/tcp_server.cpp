@@ -359,24 +359,7 @@ void nano::transport::tcp_server::bootstrap_message_visitor::bulk_pull (const na
 
 void nano::transport::tcp_server::bootstrap_message_visitor::bulk_pull_account (const nano::bulk_pull_account & message)
 {
-	if (node->flags.disable_bootstrap_bulk_pull_server ())
-	{
-		return;
-	}
-
-	if (node->config->logging.bulk_pull_logging ())
-	{
-		node->logger->try_log (boost::str (boost::format ("Received bulk pull account for %1% with a minimum amount of %2%") % message.get_account ().to_account () % nano::amount (message.get_minimum_amount ()).format_balance (nano::Mxrb_ratio, 10, true)));
-	}
-
-	node->bootstrap_workers->push_task ([server = server, message = message, node = node] () {
-		// TODO: Add completion callback to bulk pull server
-		// TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
-		auto bulk_pull_account_server = std::make_shared<nano::bulk_pull_account_server> (node, server, std::make_unique<nano::bulk_pull_account> (message));
-		bulk_pull_account_server->send_frontier ();
-	});
-
-	rsnano::rsn_bootstrap_message_visitor_processed_set (handle, true);
+	rsnano::rsn_bootstrap_message_visitor_bulk_pull_account (handle, message.handle);
 }
 
 void nano::transport::tcp_server::bootstrap_message_visitor::bulk_push (const nano::bulk_push &)

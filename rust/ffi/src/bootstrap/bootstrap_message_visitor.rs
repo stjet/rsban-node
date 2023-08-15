@@ -1,12 +1,16 @@
 use std::sync::Arc;
 
 use rsnano_core::{utils::Logger, work::WorkThresholds};
-use rsnano_node::{bootstrap::BootstrapMessageVisitorImpl, config::Logging, messages::{MessageVisitor, BulkPull}};
+use rsnano_node::{
+    bootstrap::BootstrapMessageVisitorImpl,
+    config::Logging,
+    messages::{BulkPull, BulkPullAccount, MessageVisitor},
+};
 
 use crate::{
     block_processing::BlockProcessorHandle,
     ledger::datastore::LedgerHandle,
-    messages::{MessageHandle, downcast_message},
+    messages::{downcast_message, MessageHandle},
     utils::{LoggerHandle, LoggerMT, ThreadPoolHandle},
     work::WorkThresholdsDto,
     LoggingDto, NodeFlagsHandle, StatHandle,
@@ -39,7 +43,7 @@ pub unsafe extern "C" fn rsn_bootstrap_message_visitor_create(
         bootstrap_initiator: Arc::clone(&*bootstrap_initiator),
         stats: Arc::clone(&*stats),
         work_thresholds: WorkThresholds::from(&*work_thresholds),
-        flags: Arc::clone(&(*flags).0),
+        flags: (*flags).0.lock().unwrap().clone(),
         processed: false,
         logging_config: Logging::from(&*logging_config),
     };
@@ -75,4 +79,13 @@ pub unsafe extern "C" fn rsn_bootstrap_message_visitor_bulk_pull(
 ) {
     let bulk_pull = downcast_message::<BulkPull>(message);
     (*handle).0.bulk_pull(bulk_pull);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_message_visitor_bulk_pull_account(
+    handle: *mut BootstrapMessageVisitorHandle,
+    message: *mut MessageHandle,
+) {
+    let bulk_pull = downcast_message::<BulkPullAccount>(message);
+    (*handle).0.bulk_pull_account(bulk_pull);
 }

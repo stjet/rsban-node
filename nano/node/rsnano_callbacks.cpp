@@ -644,64 +644,6 @@ std::size_t buffer_size (void * handle_a)
 	return (*ptr)->size ();
 }
 
-void message_visitor_visit (void * handle_a, rsnano::MessageHandle * msg_a, uint8_t msg_type_a)
-{
-	auto msg_type = static_cast<nano::message_type> (msg_type_a);
-	auto visitor = static_cast<std::shared_ptr<nano::message_visitor> *> (handle_a);
-	try
-	{
-		switch (msg_type)
-		{
-			case nano::message_type::keepalive:
-				(*visitor)->keepalive (nano::keepalive (msg_a));
-				break;
-			case nano::message_type::publish:
-				(*visitor)->publish (nano::publish (msg_a));
-				break;
-			case nano::message_type::confirm_req:
-				(*visitor)->confirm_req (nano::confirm_req (msg_a));
-				break;
-			case nano::message_type::confirm_ack:
-				(*visitor)->confirm_ack (nano::confirm_ack (msg_a));
-				break;
-			case nano::message_type::bulk_pull:
-				(*visitor)->bulk_pull (nano::bulk_pull (msg_a));
-				break;
-			case nano::message_type::bulk_push:
-				(*visitor)->bulk_push (nano::bulk_push (msg_a));
-				break;
-			case nano::message_type::frontier_req:
-				(*visitor)->frontier_req (nano::frontier_req (msg_a));
-				break;
-			case nano::message_type::node_id_handshake:
-				(*visitor)->node_id_handshake (nano::node_id_handshake (msg_a));
-				break;
-			case nano::message_type::bulk_pull_account:
-				(*visitor)->bulk_pull_account (nano::bulk_pull_account (msg_a));
-				break;
-			case nano::message_type::telemetry_req:
-				(*visitor)->telemetry_req (nano::telemetry_req (msg_a));
-				break;
-			case nano::message_type::telemetry_ack:
-				(*visitor)->telemetry_ack (nano::telemetry_ack (msg_a));
-				break;
-
-			default:
-				break;
-		}
-	}
-	catch (std::exception & e)
-	{
-		std::cerr << "message vistior callback error: " << e.what () << std::endl;
-	}
-}
-
-void message_visitor_destroy (void * handle_a)
-{
-	auto visitor = static_cast<std::shared_ptr<nano::message_visitor> *> (handle_a);
-	delete visitor;
-}
-
 void bootstrap_observer_destroy (void * handle_a)
 {
 	auto observer = static_cast<std::shared_ptr<nano::tcp_server_observer> *> (handle_a);
@@ -866,13 +808,6 @@ void txn_callbacks_end (void * handle_a, uint64_t txn_id_a)
 	callbacks->txn_end (txn_id_a);
 }
 
-bool message_visitor_bootstrap_processed (void * handle_a)
-{
-	auto visitor = static_cast<std::shared_ptr<nano::message_visitor> *> (handle_a);
-	auto bs_visitor = (static_cast<nano::transport::tcp_server::bootstrap_message_visitor *> (visitor->get ()));
-	return rsnano::rsn_bootstrap_message_visitor_processed_get (bs_visitor->handle);
-}
-
 void election_scheduler_activate (void * scheduler_a, const uint8_t * account_a, rsnano::TransactionHandle * txn_a)
 {
 	auto election_scheduler = static_cast<nano::scheduler::buckets *> (scheduler_a);
@@ -968,9 +903,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_buffer_destroy (buffer_destroy);
 	rsnano::rsn_callback_buffer_size (buffer_size);
 
-	rsnano::rsn_callback_message_visitor_visit (message_visitor_visit);
-	rsnano::rsn_callback_message_visitor_destroy (message_visitor_destroy);
-
 	rsnano::rsn_callback_bootstrap_observer_destroy (bootstrap_observer_destroy);
 	rsnano::rsn_callback_bootstrap_observer_bootstrap_count (bootstrap_observer_bootstrap_count);
 	rsnano::rsn_callback_bootstrap_observer_exited (bootstrap_observer_exited);
@@ -990,7 +922,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_txn_callbacks_start (txn_callbacks_start);
 	rsnano::rsn_callback_txn_callbacks_end (txn_callbacks_end);
 
-	rsnano::rsn_callback_message_visitor_bootstrap_processed (message_visitor_bootstrap_processed);
 	rsnano::rsn_callback_memory_intensive_instrumentation (nano::memory_intensive_instrumentation);
 	rsnano::rsn_callback_is_sanitizer_build (nano::is_sanitizer_build);
 

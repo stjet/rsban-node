@@ -1,12 +1,13 @@
 use crate::{
+    block_processing::BlockProcessorHandle,
     core::BlockUniquerHandle,
-    messages::FfiMessageVisitor,
+    ledger::datastore::LedgerHandle,
     transport::{
         EndpointDto, NetworkFilterHandle, SocketHandle, SynCookiesHandle, TcpMessageManagerHandle,
     },
     utils::{FfiIoContext, IoContextHandle, LoggerHandle, LoggerMT, ThreadPoolHandle},
     voting::VoteUniquerHandle,
-    NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback, ledger::datastore::LedgerHandle, block_processing::{BlockProcessorHalfFullCallback, BlockProcessorHandle}, NodeFlagsHandle,
+    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
 use rsnano_core::{utils::Logger, Account, KeyPair};
 use rsnano_ledger::Ledger;
@@ -353,11 +354,6 @@ pub unsafe extern "C" fn rsn_callback_request_response_visitor_factory_destroy(
     DESTROY_VISITOR_FACTORY = Some(f);
 }
 
-/// first arg is a `shared_ptr<request_response_visitor_factory> *`
-/// returns a `shared_ptr<message_visitor> *`
-pub type RequestResponseVisitorFactoryCreateCallback =
-    unsafe extern "C" fn(*mut c_void, *mut TcpServerHandle) -> *mut c_void;
-
 pub struct FfiRequestResponseVisitorFactory {
     handle: *mut c_void,
     logger: Arc<dyn Logger>,
@@ -406,20 +402,6 @@ impl FfiRequestResponseVisitorFactory {
             flags,
             logging_config,
         }
-    }
-
-    fn create_visitor(
-        &self,
-        callback: Option<RequestResponseVisitorFactoryCreateCallback>,
-        server: Arc<TcpServer>,
-    ) -> Box<FfiMessageVisitor> {
-        let visitor_handle = unsafe {
-            callback.expect("RequestResponseVisitorFactory callbacks missing")(
-                self.handle,
-                TcpServerHandle::new(server),
-            )
-        };
-        Box::new(FfiMessageVisitor::new(visitor_handle))
     }
 }
 

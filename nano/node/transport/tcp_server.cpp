@@ -206,17 +206,17 @@ void nano::transport::tcp_listener::accept_action (boost::system::error_code con
 		auto server (std::make_shared<nano::transport::tcp_server> (
 		node.io_ctx, socket_a, logger,
 		*node.stats, node.flags, *config,
-		node.tcp_listener, req_resp_visitor_factory, 
+		node.tcp_listener, req_resp_visitor_factory,
 		node.bootstrap_workers,
 		*network->tcp_channels->publish_filter,
-		node.block_uniquer, 
-		node.vote_uniquer, 
-		node.network->tcp_channels->tcp_message_manager, 
-		*network->syn_cookies, 
+		node.block_uniquer,
+		node.vote_uniquer,
+		node.network->tcp_channels->tcp_message_manager,
+		*network->syn_cookies,
 		node.ledger,
 		node.block_processor,
 		node.bootstrap_initiator,
-		node.node_id, 
+		node.node_id,
 		true));
 		nano::lock_guard<nano::mutex> lock{ mutex };
 		connections[server->unique_id ()] = nano::tcp_server_weak_wrapper (server);

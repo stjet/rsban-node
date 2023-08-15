@@ -138,9 +138,9 @@ public:
 	nano::vote_uniquer & vote_uniquer_a,
 	nano::tcp_message_manager & tcp_message_manager_a,
 	nano::syn_cookies & syn_cookies_a,
-nano::ledger & ledger_a,
-nano::block_processor & block_processor_a,
-nano::bootstrap_initiator & bootstrap_initiator_a,
+	nano::ledger & ledger_a,
+	nano::block_processor & block_processor_a,
+	nano::bootstrap_initiator & bootstrap_initiator_a,
 	nano::keypair & node_id_a,
 	bool allow_bootstrap_a = true);
 	explicit tcp_server (rsnano::TcpServerHandle * handle_a);

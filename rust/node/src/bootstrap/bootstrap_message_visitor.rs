@@ -59,11 +59,11 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
             // TODO from original code: Add completion callback to bulk pull server
             // TODO from original code: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
             let mut bulk_pull_server = BulkPullServer::new(
-                message.clone(),
-                connection.clone(),
-                ledger.clone(),
-                logger.clone(),
-                thread_pool.clone(),
+                message,
+                connection,
+                ledger,
+                logger,
+                thread_pool,
                 enable_logging,
             );
             bulk_pull_server.send_next();

@@ -11,8 +11,8 @@ use rsnano_core::utils::OutputTrackerMt;
 use super::{NullTimer, Timer, TimerStrategy, TimerWrapper};
 
 pub trait ThreadPool: Send + Sync {
-    fn push_task(&self, callback: Box<dyn FnMut() + Send>);
-    fn add_delayed_task(&self, delay: Duration, callback: Box<dyn FnMut() + Send>);
+    fn push_task(&self, callback: Box<dyn FnOnce() + Send>);
+    fn add_delayed_task(&self, delay: Duration, callback: Box<dyn FnOnce() + Send>);
 }
 
 pub struct ThreadPoolImpl<T: TimerStrategy = TimerWrapper> {
@@ -26,7 +26,7 @@ struct ThreadPoolData<T: TimerStrategy> {
 }
 
 impl<T: TimerStrategy> ThreadPoolData<T> {
-    fn push_task(&self, callback: Box<dyn FnMut() + Send>) {
+    fn push_task(&self, callback: Box<dyn FnOnce() + Send>) {
         self.pool.execute(callback);
     }
 }
@@ -76,7 +76,7 @@ impl<T: TimerStrategy> ThreadPoolImpl<T> {
 }
 
 impl<T: TimerStrategy + 'static> ThreadPool for ThreadPoolImpl<T> {
-    fn push_task(&self, callback: Box<dyn FnMut() + Send>) {
+    fn push_task(&self, callback: Box<dyn FnOnce() + Send>) {
         let stopped_guard = self.stopped.lock().unwrap();
         if !*stopped_guard {
             let data_guard = self.data.lock().unwrap();
@@ -87,7 +87,7 @@ impl<T: TimerStrategy + 'static> ThreadPool for ThreadPoolImpl<T> {
         }
     }
 
-    fn add_delayed_task(&self, delay: Duration, callback: Box<dyn FnMut() + Send>) {
+    fn add_delayed_task(&self, delay: Duration, callback: Box<dyn FnOnce() + Send>) {
         let stopped_guard = self.stopped.lock().unwrap();
         if !*stopped_guard {
             let data_guard = self.data.lock().unwrap();

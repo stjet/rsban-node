@@ -19,6 +19,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::Ledger;
 
+/// Server side of a bulk_push request. Receives blocks and puts them in the block processor to be processed.
 pub struct BulkPushServer {
     server_impl: Arc<Mutex<BulkPushServerImpl>>,
 }

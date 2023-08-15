@@ -34,15 +34,4 @@ public:
 	std::promise<bool> promise;
 	std::pair<nano::block_hash, nano::block_hash> current_target;
 };
-
-/**
- * Server side of a bulk_push request. Receives blocks and puts them in the block processor to be processed.
- */
-class bulk_push_server final : public std::enable_shared_from_this<nano::bulk_push_server>
-{
-public:
-	explicit bulk_push_server (std::shared_ptr<nano::node> const &, std::shared_ptr<nano::transport::tcp_server> const &);
-	void throttled_receive ();
-	rsnano::BulkPushServerHandle * handle;
-};
 }

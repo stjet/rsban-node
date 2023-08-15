@@ -7,7 +7,6 @@ mod bootstrap_message_visitor;
 mod bootstrap_server;
 mod bulk_pull_account_server;
 mod bulk_pull_server;
-mod bulk_push_server;
 mod channel_tcp_wrapper;
 mod frontier_req_server;
 mod pulls_cache;

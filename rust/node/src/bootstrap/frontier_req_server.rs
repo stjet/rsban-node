@@ -15,6 +15,54 @@ use crate::{
     utils::{ErrorCode, ThreadPool},
 };
 
+/// Server side of a frontier request. Created when a tcp_server receives a frontier_req message and exited when end-of-list is reached.
+pub struct FrontierReqServer {
+    server_impl: Arc<Mutex<FrontierReqServerImpl>>,
+}
+
+impl FrontierReqServer {
+    pub fn new(
+        connection: Arc<TcpServer>,
+        request: FrontierReq,
+        thread_pool: Arc<dyn ThreadPool>,
+        logger: Arc<dyn Logger>,
+        enable_logging: bool,
+        enable_network_logging: bool,
+        ledger: Arc<Ledger>,
+    ) -> Self {
+        let result = Self {
+            server_impl: Arc::new(Mutex::new(FrontierReqServerImpl {
+                connection,
+                current: (request.start.number().overflowing_sub(1.into()).0).into(), // todo: figure out what underflow does
+                frontier: BlockHash::zero(),
+                request,
+                count: 0,
+                accounts: VecDeque::new(),
+                thread_pool,
+                logger,
+                enable_logging,
+                enable_network_logging,
+                ledger,
+            })),
+        };
+        result.server_impl.lock().unwrap().next();
+        result
+    }
+
+    pub fn send_next(&self) {
+        let server_clone = Arc::clone(&self.server_impl);
+        self.server_impl.lock().unwrap().send_next(server_clone);
+    }
+
+    pub fn current(&self) -> Account {
+        self.server_impl.lock().unwrap().current
+    }
+
+    pub fn frontier(&self) -> BlockHash {
+        self.server_impl.lock().unwrap().frontier
+    }
+}
+
 struct FrontierReqServerImpl {
     connection: Arc<TcpServer>,
     current: Account,
@@ -162,52 +210,5 @@ impl FrontierReqServerImpl {
                     .try_log(&format!("Error sending frontier pair: {:?}", ec));
             }
         }
-    }
-}
-
-pub struct FrontierReqServer {
-    server_impl: Arc<Mutex<FrontierReqServerImpl>>,
-}
-
-impl FrontierReqServer {
-    pub fn new(
-        connection: Arc<TcpServer>,
-        request: FrontierReq,
-        thread_pool: Arc<dyn ThreadPool>,
-        logger: Arc<dyn Logger>,
-        enable_logging: bool,
-        enable_network_logging: bool,
-        ledger: Arc<Ledger>,
-    ) -> Self {
-        let result = Self {
-            server_impl: Arc::new(Mutex::new(FrontierReqServerImpl {
-                connection,
-                current: (request.start.number().overflowing_sub(1.into()).0).into(), // todo: figure out what underflow does
-                frontier: BlockHash::zero(),
-                request,
-                count: 0,
-                accounts: VecDeque::new(),
-                thread_pool,
-                logger,
-                enable_logging,
-                enable_network_logging,
-                ledger,
-            })),
-        };
-        result.server_impl.lock().unwrap().next();
-        result
-    }
-
-    pub fn send_next(&self) {
-        let server_clone = Arc::clone(&self.server_impl);
-        self.server_impl.lock().unwrap().send_next(server_clone);
-    }
-
-    pub fn current(&self) -> Account {
-        self.server_impl.lock().unwrap().current
-    }
-
-    pub fn frontier(&self) -> BlockHash {
-        self.server_impl.lock().unwrap().frontier
     }
 }

@@ -415,10 +415,6 @@ unsafe impl Send for FfiRequestResponseVisitorFactory {}
 unsafe impl Sync for FfiRequestResponseVisitorFactory {}
 
 impl RequestResponseVisitorFactory for FfiRequestResponseVisitorFactory {
-    fn handle(&self) -> *mut c_void {
-        self.handle
-    }
-
     fn handshake_visitor(&self, server: Arc<TcpServer>) -> Box<dyn HandshakeMessageVisitor> {
         let mut visitor = Box::new(HandshakeMessageVisitorImpl::new(
             server,

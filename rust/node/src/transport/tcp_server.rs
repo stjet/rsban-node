@@ -244,12 +244,8 @@ impl Drop for TcpServer {
 
 pub trait RequestResponseVisitorFactory: Send + Sync {
     fn handshake_visitor(&self, server: Arc<TcpServer>) -> Box<dyn HandshakeMessageVisitor>;
-
     fn realtime_visitor(&self, server: Arc<TcpServer>) -> Box<dyn RealtimeMessageVisitor>;
-
     fn bootstrap_visitor(&self, server: Arc<TcpServer>) -> Box<dyn BootstrapMessageVisitor>;
-
-    fn handle(&self) -> *mut c_void;
 }
 
 pub trait HandshakeMessageVisitor: MessageVisitor {

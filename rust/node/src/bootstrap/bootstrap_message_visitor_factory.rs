@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 use rsnano_core::{utils::Logger, KeyPair};
 use rsnano_ledger::Ledger;
@@ -23,9 +23,9 @@ pub struct BootstrapMessageVisitorFactory {
     node_id: Arc<KeyPair>,
     network_constants: NetworkConstants,
     ledger: Arc<Ledger>,
-    thread_pool: Arc<dyn ThreadPool>,
-    block_processor: Arc<BlockProcessor>,
-    bootstrap_initiator: Arc<BootstrapInitiator>,
+    thread_pool: Weak<dyn ThreadPool>,
+    block_processor: Weak<BlockProcessor>,
+    bootstrap_initiator: Weak<BootstrapInitiator>,
     flags: NodeFlags,
     logging_config: Logging,
     pub handshake_logging: bool,
@@ -53,9 +53,9 @@ impl BootstrapMessageVisitorFactory {
             handshake_logging: false,
             network_constants,
             ledger,
-            thread_pool,
-            block_processor,
-            bootstrap_initiator,
+            thread_pool: Arc::downgrade(&thread_pool),
+            block_processor: Arc::downgrade(&block_processor),
+            bootstrap_initiator: Arc::downgrade(&bootstrap_initiator),
             flags,
             logging_config,
         }
@@ -87,9 +87,9 @@ impl BootstrapMessageVisitorFactory {
             ledger: Arc::clone(&self.ledger),
             logger: Arc::clone(&self.logger),
             connection: server,
-            thread_pool: Arc::clone(&self.thread_pool),
-            block_processor: Arc::clone(&self.block_processor),
-            bootstrap_initiator: Arc::clone(&self.bootstrap_initiator),
+            thread_pool: self.thread_pool.clone(),
+            block_processor: self.block_processor.clone(),
+            bootstrap_initiator: self.bootstrap_initiator.clone(),
             stats: Arc::clone(&self.stats),
             work_thresholds: self.network_constants.work.clone(),
             flags: self.flags.clone(),

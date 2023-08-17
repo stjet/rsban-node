@@ -277,7 +277,7 @@ nano::keypair & node_id_a,
 bool allow_bootstrap_a)
 {
 	auto config_dto{ config_a.to_dto () };
-	auto observer_handle = new std::shared_ptr<nano::tcp_server_observer> (observer_a);
+	auto observer_handle = new std::weak_ptr<nano::tcp_server_observer> (observer_a);
 	auto network_dto{ config_a.network_params.to_dto () };
 	rsnano::io_ctx_wrapper io_ctx (io_ctx_a);
 	rsnano::CreateTcpServerParams params;
@@ -359,6 +359,11 @@ rsnano::RequestResponseVisitorFactoryHandle * create_request_response_message_vi
 nano::transport::request_response_visitor_factory::request_response_visitor_factory (nano::node & node_a) :
 	handle{ create_request_response_message_visitor_factory (node_a) }
 {
+}
+
+nano::transport::request_response_visitor_factory::~request_response_visitor_factory ()
+{
+	rsnano::rsn_request_response_visitor_factory_destroy (handle);
 }
 
 bool nano::transport::tcp_server::is_stopped () const

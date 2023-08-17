@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 
 use rsnano_core::{
     serialize_block,
@@ -51,7 +51,7 @@ impl BulkPullServer {
             enable_logging,
             ledger,
             logger,
-            thread_pool,
+            thread_pool: Arc::downgrade(&thread_pool),
         };
 
         server_impl.set_current_end();
@@ -111,7 +111,7 @@ struct BulkPullServerImpl {
     logger: Arc<dyn Logger>,
     enable_logging: bool,
     connection: Arc<TcpServer>,
-    thread_pool: Arc<dyn ThreadPool>,
+    thread_pool: Weak<dyn ThreadPool>,
     include_start: bool,
     sent_count: u32,
     max_count: u32,
@@ -328,8 +328,9 @@ impl BulkPullServerImpl {
     }
 
     fn sent_action(&mut self, ec: ErrorCode, _size: usize, server_impl: Arc<Mutex<Self>>) {
+        let Some(thread_pool) = self.thread_pool.upgrade() else { return;};
         if ec.is_ok() {
-            self.thread_pool.push_task(Box::new(move || {
+            thread_pool.push_task(Box::new(move || {
                 let impl_clone = server_impl.clone();
                 server_impl.lock().unwrap().send_next(impl_clone);
             }));

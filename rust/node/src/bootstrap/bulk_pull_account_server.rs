@@ -1,6 +1,6 @@
 use std::{
     collections::HashSet,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, Weak},
 };
 
 use rsnano_core::{utils::Logger, Account, Amount, BlockHash, PendingInfo, PendingKey};
@@ -16,7 +16,7 @@ struct BulkPullAccountServerImpl {
     connection: Arc<TcpServer>,
     request: BulkPullAccount,
     logger: Arc<dyn Logger>,
-    thread_pool: Arc<dyn ThreadPool>,
+    thread_pool: Weak<dyn ThreadPool>,
     ledger: Arc<Ledger>,
     deduplication: HashSet<Account>,
     current_key: PendingKey,
@@ -225,8 +225,9 @@ impl BulkPullAccountServerImpl {
         _size: usize,
         server: Arc<Mutex<BulkPullAccountServerImpl>>,
     ) {
+        let Some(thread_pool) = self.thread_pool.upgrade() else { return;};
         if ec.is_ok() {
-            self.thread_pool.push_task(Box::new(move || {
+            thread_pool.push_task(Box::new(move || {
                 let server2 = Arc::clone(&server);
                 server.lock().unwrap().send_next_block(server2);
             }));
@@ -310,7 +311,7 @@ impl BulkPullAccountServer {
             connection,
             request,
             logger,
-            thread_pool,
+            thread_pool: Arc::downgrade(&thread_pool),
             ledger,
             deduplication: HashSet::new(),
             current_key: PendingKey::new(Account::zero(), BlockHash::zero()),

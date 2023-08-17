@@ -1,6 +1,6 @@
 use std::{
     collections::VecDeque,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, Weak},
 };
 
 use rsnano_core::{
@@ -38,7 +38,7 @@ impl FrontierReqServer {
                 request,
                 count: 0,
                 accounts: VecDeque::new(),
-                thread_pool,
+                thread_pool: Arc::downgrade(&thread_pool),
                 logger,
                 enable_logging,
                 enable_network_logging,
@@ -73,7 +73,7 @@ struct FrontierReqServerImpl {
     logger: Arc<dyn Logger>,
     enable_logging: bool,
     enable_network_logging: bool,
-    thread_pool: Arc<dyn ThreadPool>,
+    thread_pool: Weak<dyn ThreadPool>,
     ledger: Arc<Ledger>,
 }
 
@@ -198,9 +198,11 @@ impl FrontierReqServerImpl {
         _size: usize,
         server: Arc<Mutex<FrontierReqServerImpl>>,
     ) {
+        let Some(thread_pool) = self.thread_pool.upgrade() else { return;};
+
         if ec.is_ok() {
             self.count += 1;
-            self.thread_pool.push_task(Box::new(move || {
+            thread_pool.push_task(Box::new(move || {
                 let server_clone = Arc::clone(&server);
                 server.lock().unwrap().send_next(server_clone);
             }));

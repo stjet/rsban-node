@@ -74,6 +74,8 @@ namespace transport
 	{
 	public:
 		explicit request_response_visitor_factory (nano::node & node_a);
+		request_response_visitor_factory (request_response_visitor_factory const &) = delete;
+		~request_response_visitor_factory ();
 		rsnano::RequestResponseVisitorFactoryHandle * handle;
 	};
 

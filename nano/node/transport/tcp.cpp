@@ -226,7 +226,7 @@ nano::transport::tcp_server_factory::~tcp_server_factory ()
 
 void nano::transport::tcp_server_factory::set_observer (std::shared_ptr<nano::tcp_server_observer> observer_a)
 {
-	auto observer_handle = new std::shared_ptr<nano::tcp_server_observer> (observer_a);
+	auto observer_handle = new std::weak_ptr<nano::tcp_server_observer> (observer_a);
 	rsnano::rsn_tcp_server_factory_set_observer (handle, observer_handle);
 }
 

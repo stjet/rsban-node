@@ -1,5 +1,5 @@
 use std::{
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, Mutex, RwLock, Weak},
     time::Duration,
 };
 
@@ -43,10 +43,10 @@ impl BulkPushServer {
             enable_network_logging,
             ledger,
             logger,
-            thread_pool,
-            block_processor,
+            thread_pool: Arc::downgrade(&thread_pool),
+            block_processor: Arc::downgrade(&block_processor),
             receive_buffer: Arc::new(Mutex::new(vec![0; 256])),
-            bootstrap_initiator,
+            bootstrap_initiator: Arc::downgrade(&bootstrap_initiator),
             stats,
             work_thresholds,
         };
@@ -71,20 +71,22 @@ struct BulkPushServerImpl {
     enable_logging: bool,
     enable_network_logging: bool,
     connection: Arc<TcpServer>,
-    thread_pool: Arc<dyn ThreadPool>,
-    block_processor: Arc<BlockProcessor>,
+    thread_pool: Weak<dyn ThreadPool>,
+    block_processor: Weak<BlockProcessor>,
     receive_buffer: Arc<Mutex<Vec<u8>>>,
-    bootstrap_initiator: Arc<BootstrapInitiator>,
+    bootstrap_initiator: Weak<BootstrapInitiator>,
     stats: Arc<Stats>,
     work_thresholds: WorkThresholds,
 }
 
 impl BulkPushServerImpl {
     fn throttled_receive(&self, server_impl: Arc<Mutex<Self>>) {
-        if !self.block_processor.half_full() {
+        let Some(thread_pool) = self.thread_pool.upgrade() else { return;};
+        let Some(block_processor) = self.block_processor.upgrade() else { return;};
+        if !block_processor.half_full() {
             self.receive(server_impl);
         } else {
-            self.thread_pool.add_delayed_task(
+            thread_pool.add_delayed_task(
                 Duration::from_secs(1),
                 Box::new(move || {
                     let server_impl2 = Arc::clone(&server_impl);
@@ -98,7 +100,8 @@ impl BulkPushServerImpl {
     }
 
     fn receive(&self, server_impl: Arc<Mutex<Self>>) {
-        if self.bootstrap_initiator.in_progress() {
+        let Some(bootstrap_initiator) = self.bootstrap_initiator.upgrade() else { return;};
+        if bootstrap_initiator.in_progress() {
             if self.enable_logging {
                 self.logger
                     .try_log("Aborting bulk_push because a bootstrap attempt is in progress");
@@ -226,6 +229,8 @@ impl BulkPushServerImpl {
         _len: usize,
         block_type: BlockType,
     ) {
+        let Some(block_processor) = self.block_processor.upgrade() else { return; };
+
         if ec.is_ok() {
             let guard = self.receive_buffer.lock().unwrap();
             let block =
@@ -246,8 +251,7 @@ impl BulkPushServerImpl {
                             Direction::In,
                         );
                     } else {
-                        self.block_processor
-                            .process_active(Arc::new(RwLock::new(block)));
+                        block_processor.process_active(Arc::new(RwLock::new(block)));
                         self.throttled_receive(server_impl);
                     }
                 }

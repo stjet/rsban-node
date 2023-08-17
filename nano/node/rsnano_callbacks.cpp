@@ -617,13 +617,15 @@ bool tcp_socket_is_open (void * handle_a)
 
 void tcp_socket_connected (void * handle_a, rsnano::SocketHandle * socket_a)
 {
-	auto callback{ static_cast<std::shared_ptr<nano::node_observers> *> (handle_a) };
-	(*callback)->socket_connected.notify (std::make_shared<nano::transport::socket> (socket_a));
+	auto callback_weak{ static_cast<std::weak_ptr<nano::node_observers> *> (handle_a) };
+	auto callback = callback_weak->lock ();
+	if (callback)
+		callback->socket_connected.notify (std::make_shared<nano::transport::socket> (socket_a));
 }
 
 void tcp_socket_delete_callback (void * handle_a)
 {
-	auto callback{ static_cast<std::shared_ptr<nano::node_observers> *> (handle_a) };
+	auto callback{ static_cast<std::weak_ptr<nano::node_observers> *> (handle_a) };
 	delete callback;
 };
 void tcp_socket_destroy (void * handle_a)

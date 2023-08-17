@@ -168,7 +168,7 @@ std::size_t max_queue_size_a) :
 	idle_timeout_a.count (),
 	network_timeout_logging_a,
 	nano::to_logger_handle (logger_a),
-	new std::shared_ptr<nano::node_observers> (observers_a),
+	new std::weak_ptr<nano::node_observers> (observers_a),
 	max_queue_size_a,
 	&io_ctx_a) }
 {

@@ -56,7 +56,8 @@ std::chrono::steady_clock::time_point nano::representative::get_last_request () 
 
 void nano::representative::set_last_request (std::chrono::steady_clock::time_point time_point)
 {
-	rsnano::rsn_representative_set_last_request (handle, time_point.time_since_epoch ().count ());
+	auto timepoint_ns = std::chrono::duration_cast<std::chrono::nanoseconds> (time_point.time_since_epoch ()).count ();
+	rsnano::rsn_representative_set_last_request (handle, timepoint_ns);
 }
 
 std::chrono::steady_clock::time_point nano::representative::get_last_response () const

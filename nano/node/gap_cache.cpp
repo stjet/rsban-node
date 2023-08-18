@@ -7,6 +7,7 @@
 
 #include <boost/format.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <vector>
 
@@ -88,7 +89,8 @@ nano::gap_cache::~gap_cache ()
 
 void nano::gap_cache::add (nano::block_hash const & hash_a, std::chrono::steady_clock::time_point time_point_a)
 {
-	rsnano::rsn_gap_cache_add (handle, hash_a.bytes.data (), time_point_a.time_since_epoch ().count ());
+	auto timepoint_ns = std::chrono::duration_cast<std::chrono::milliseconds> (time_point_a.time_since_epoch ()).count ();
+	rsnano::rsn_gap_cache_add (handle, hash_a.bytes.data (), timepoint_ns);
 }
 
 void nano::gap_cache::erase (nano::block_hash const & hash_a)

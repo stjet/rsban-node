@@ -1358,7 +1358,7 @@ namespace transport
 							shared_data.write_completion.increment_required_count ();
 
 							// Pick first peer to be consistent
-							auto peer = data.node->network->tcp_channels->channels[0].get_channel ();
+							auto peer = data.node->network->tcp_channels->get_first_channel ();
 
 							auto maybe_telemetry = data.node->telemetry->get_telemetry (peer->get_endpoint ());
 							if (maybe_telemetry)

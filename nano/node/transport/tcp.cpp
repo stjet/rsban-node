@@ -293,6 +293,7 @@ bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::cha
 	if (!not_a_peer (udp_endpoint, config->allow_local_peers) && !stopped)
 	{
 		nano::unique_lock<nano::mutex> lock{ mutex };
+		//rsnano::rsn_tcp_channels_channel_exists
 		auto existing (channels.get<endpoint_tag> ().find (endpoint));
 		if (existing == channels.get<endpoint_tag> ().end ())
 		{
@@ -421,6 +422,11 @@ void nano::transport::tcp_channels::set_observer (std::shared_ptr<nano::tcp_serv
 void nano::transport::tcp_channels::set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory)
 {
 	tcp_server_factory.set_message_visitor_factory (visitor_factory);
+}
+
+std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::get_first_channel () const
+{
+	return channels[0].get_channel ();
 }
 
 std::vector<nano::endpoint> nano::transport::tcp_channels::get_current_peers () const

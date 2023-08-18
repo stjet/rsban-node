@@ -5,10 +5,10 @@ use rsnano_node::bootstrap::ChannelTcpWrapper;
 
 use super::bootstrap_server::TcpServerHandle;
 
-pub struct ChannelTcpWrapperHandle(ChannelTcpWrapper);
+pub struct ChannelTcpWrapperHandle(Arc<ChannelTcpWrapper>);
 
 impl ChannelTcpWrapperHandle {
-    pub fn new(wrapper: ChannelTcpWrapper) -> *mut ChannelTcpWrapperHandle {
+    pub fn new(wrapper: Arc<ChannelTcpWrapper>) -> *mut ChannelTcpWrapperHandle {
         Box::into_raw(Box::new(ChannelTcpWrapperHandle(wrapper)))
     }
 }
@@ -25,11 +25,11 @@ pub unsafe extern "C" fn rsn_channel_tcp_wrapper_create(
         Some(Arc::clone(&*response_server))
     };
 
-    ChannelTcpWrapperHandle::new(ChannelTcpWrapper::new(
+    ChannelTcpWrapperHandle::new(Arc::new(ChannelTcpWrapper::new(
         Arc::clone(&(*channel).0),
         Arc::clone(&*socket),
         response_server,
-    ))
+    )))
 }
 
 #[no_mangle]

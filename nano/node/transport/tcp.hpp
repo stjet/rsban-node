@@ -207,6 +207,7 @@ namespace transport
 		void set_port (uint16_t port_a);
 		void set_observer (std::shared_ptr<nano::tcp_server_observer> observer_a);
 		void set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory);
+		std::shared_ptr<nano::transport::channel_tcp> get_first_channel () const;
 
 		nano::tcp_message_manager tcp_message_manager;
 		nano::peer_exclusion excluded_peers;

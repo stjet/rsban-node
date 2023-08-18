@@ -1,9 +1,12 @@
 use std::{
-    net::{Ipv6Addr, SocketAddrV6},
+    net::{Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{Arc, Mutex},
 };
 
-use rsnano_core::utils::{system_time_as_nanoseconds, system_time_from_nanoseconds};
+use rsnano_core::{
+    utils::{system_time_as_nanoseconds, system_time_from_nanoseconds},
+    PublicKey,
+};
 use rsnano_node::transport::{TcpChannels, TcpEndpointAttempt};
 
 use crate::utils::ptr_into_ipv6addr;
@@ -87,6 +90,32 @@ pub unsafe extern "C" fn rsn_tcp_channels_attempts_purge(
     let cutoff = system_time_from_nanoseconds(cutoff_ns);
     let mut guard = (*handle).0.lock().unwrap();
     guard.attempts.purge(cutoff)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_erase_channel_by_node_id(
+    handle: &mut TcpChannelsHandle,
+    node_id: *const u8,
+) {
+    handle
+        .0
+        .lock()
+        .unwrap()
+        .channels
+        .remove_by_node_id(&PublicKey::from_ptr(node_id))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_channel_exists(
+    handle: &mut TcpChannelsHandle,
+    endpoint: &EndpointDto,
+) -> bool {
+    handle
+        .0
+        .lock()
+        .unwrap()
+        .channels
+        .exists(&SocketAddr::from(endpoint))
 }
 
 pub struct TcpEndpointAttemptDto {

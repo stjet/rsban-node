@@ -106,7 +106,7 @@ pub fn ip_address_hash_raw(address: &Ipv6Addr, port: u16) -> u64 {
     u64::from_ne_bytes(result_bytes)
 }
 
-pub fn ipv4_address_or_ipv6_subnet(input: Ipv6Addr) -> Ipv6Addr {
+pub fn ipv4_address_or_ipv6_subnet(input: &Ipv6Addr) -> Ipv6Addr {
     if is_ipv4_mapped(input) {
         input.clone()
     } else {
@@ -114,7 +114,7 @@ pub fn ipv4_address_or_ipv6_subnet(input: Ipv6Addr) -> Ipv6Addr {
     }
 }
 
-pub fn map_address_to_subnetwork(input: Ipv6Addr) -> Ipv6Addr {
+pub fn map_address_to_subnetwork(input: &Ipv6Addr) -> Ipv6Addr {
     const IPV6_SUBNET_PREFIX_LENGTH: u8 = 32; // Equivalent to network prefix /32.
     const IPV4_SUBNET_PREFIX_LENGTH: u8 = (128 - 32) + 24; // Limits for /24 IPv4 subnetwork
     if is_ipv4_mapped(input) {
@@ -124,7 +124,7 @@ pub fn map_address_to_subnetwork(input: Ipv6Addr) -> Ipv6Addr {
     }
 }
 
-fn make_network_address(input: Ipv6Addr, prefix_bits: u8) -> Ipv6Addr {
+fn make_network_address(input: &Ipv6Addr, prefix_bits: u8) -> Ipv6Addr {
     debug_assert!(prefix_bits % 8 == 0);
     let index = (prefix_bits / 8) as usize;
     let mut octets = input.octets();
@@ -132,7 +132,7 @@ fn make_network_address(input: Ipv6Addr, prefix_bits: u8) -> Ipv6Addr {
     Ipv6Addr::from(octets)
 }
 
-fn is_ipv4_mapped(input: Ipv6Addr) -> bool {
+fn is_ipv4_mapped(input: &Ipv6Addr) -> bool {
     matches!(
         input.octets(),
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, _, _, _, _]

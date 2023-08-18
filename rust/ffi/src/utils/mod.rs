@@ -63,14 +63,14 @@ impl Drop for ContextWrapper {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_map_address_to_subnetwork(ipv6_bytes: *const u8, result: *mut u8) {
     let input = ptr_into_ipv6addr(ipv6_bytes);
-    let output = map_address_to_subnetwork(input);
+    let output = map_address_to_subnetwork(&input);
     copy_ipv6addr_bytes(output, result);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_ipv4_address_or_ipv6_subnet(ipv6_bytes: *const u8, result: *mut u8) {
     let input = ptr_into_ipv6addr(ipv6_bytes);
-    let output = ipv4_address_or_ipv6_subnet(input);
+    let output = ipv4_address_or_ipv6_subnet(&input);
     copy_ipv6addr_bytes(output, result);
 }
 

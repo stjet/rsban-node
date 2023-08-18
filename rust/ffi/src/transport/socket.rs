@@ -10,7 +10,7 @@ use rsnano_node::{
 };
 use std::{
     ffi::c_void,
-    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
     ops::Deref,
     sync::{Arc, Mutex, Weak},
     time::Duration,
@@ -876,6 +876,26 @@ impl EndpointDto {
 impl Default for EndpointDto {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl From<&EndpointDto> for SocketAddrV6 {
+    fn from(dto: &EndpointDto) -> Self {
+        if dto.v6 {
+            SocketAddrV6::new(Ipv6Addr::from(dto.bytes), dto.port, 0, 0)
+        } else {
+            panic!("not a v6 ip address")
+        }
+    }
+}
+
+impl From<SocketAddrV6> for EndpointDto {
+    fn from(value: SocketAddrV6) -> Self {
+        Self {
+            bytes: value.ip().octets(),
+            port: value.port(),
+            v6: true,
+        }
     }
 }
 

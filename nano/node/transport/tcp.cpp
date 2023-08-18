@@ -302,7 +302,6 @@ bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::cha
 				channels.get<node_id_tag> ().erase (node_id);
 			}
 			channels.get<endpoint_tag> ().emplace (channel_a, socket_a, server_a);
-			attempts.get<endpoint_tag> ().erase (endpoint);
 			auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint) };
 			rsnano::rsn_tcp_channels_erase_attempt (handle, &endpoint_dto);
 			error = false;
@@ -590,8 +589,7 @@ bool nano::transport::tcp_channels::max_ip_connections (nano::tcp_endpoint const
 	result = channels.get<ip_address_tag> ().count (address) >= network_params.network.max_peers_per_ip;
 	if (!result)
 	{
-		// rsnano::rsn_tcp_channels_get_attempt_count_by_ip_address()
-		result = attempts.get<ip_address_tag> ().count (address) >= network_params.network.max_peers_per_ip;
+		result = rsnano::rsn_tcp_channels_get_attempt_count_by_ip_address (handle, address.to_v6 ().to_bytes ().data ()) >= network_params.network.max_peers_per_ip;
 	}
 	if (result)
 	{
@@ -612,8 +610,7 @@ bool nano::transport::tcp_channels::max_subnetwork_connections (nano::tcp_endpoi
 	result = channels.get<subnetwork_tag> ().count (subnet) >= network_params.network.max_peers_per_subnetwork;
 	if (!result)
 	{
-		// rsnano::rsn_tcp_channels_get_attempt_count_by_subnetwork
-		result = attempts.get<subnetwork_tag> ().count (subnet) >= network_params.network.max_peers_per_subnetwork;
+		result = rsnano::rsn_tcp_channels_get_attempt_count_by_subnetwork (handle, subnet.to_v6 ().to_bytes ().data ()) >= network_params.network.max_peers_per_subnetwork;
 	}
 	if (result)
 	{
@@ -637,9 +634,9 @@ bool nano::transport::tcp_channels::reachout (nano::endpoint const & endpoint_a)
 		// Don't keepalive to nodes that already sent us something
 		error |= find_channel (tcp_endpoint) != nullptr;
 		nano::lock_guard<nano::mutex> lock{ mutex };
-		// rsnano::rsn_tcp_channels_add_attempt
-		auto inserted (attempts.emplace (tcp_endpoint));
-		error |= !inserted.second;
+		auto attempt_dto{ rsnano::endpoint_to_dto (tcp_endpoint) };
+		auto inserted = rsnano::rsn_tcp_channels_add_attempt (handle, &attempt_dto);
+		error |= !inserted;
 	}
 	return error;
 }
@@ -652,12 +649,12 @@ std::unique_ptr<nano::container_info_component> nano::transport::tcp_channels::c
 		nano::lock_guard<nano::mutex> guard{ mutex };
 		channels_count = channels.size ();
 		//rsnano::rsn_tcp_channels_attempts_count
-		attemps_count = attempts.size ();
+		attemps_count = rsnano::rsn_tcp_channels_attempts_count (handle);
 	}
 
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "channels", channels_count, sizeof (decltype (channels)::value_type) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "attempts", attemps_count, sizeof (decltype (attempts)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "attempts", attemps_count, sizeof (nano::transport::tcp_channels::tcp_endpoint_attempt) }));
 
 	return composite;
 }
@@ -680,9 +677,7 @@ void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point
 	channels.get<last_packet_sent_tag> ().erase (channels.get<last_packet_sent_tag> ().begin (), disconnect_cutoff);
 
 	// Remove keepalive attempt tracking for attempts older than cutoff
-	// rsnano::rsn_tcp_channels_attempts_purge
-	auto attempts_cutoff (attempts.get<last_attempt_tag> ().lower_bound (cutoff_a));
-	attempts.get<last_attempt_tag> ().erase (attempts.get<last_attempt_tag> ().begin (), attempts_cutoff);
+	rsnano::rsn_tcp_channels_attempts_purge (handle, cutoff_ns);
 
 	// Check if any tcp channels belonging to old protocol versions which may still be alive due to async operations
 	auto lower_bound = channels.get<version_tag> ().lower_bound (network_params.network.protocol_version_min);
@@ -915,8 +910,9 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 			// Cleanup attempt
 			{
 				nano::lock_guard<nano::mutex> lock{ this_l->mutex };
-				//rsnano::rsn_tcp_channels_erase_attempt
-				this_l->attempts.get<endpoint_tag> ().erase (nano::transport::map_endpoint_to_tcp (endpoint_a));
+				auto mapped_endpoint{ nano::transport::map_endpoint_to_tcp (endpoint_a) };
+				auto endpoint_dto{ rsnano::endpoint_to_dto (mapped_endpoint) };
+				rsnano::rsn_tcp_channels_erase_attempt (this_l->handle, &endpoint_dto);
 			}
 			return;
 		}

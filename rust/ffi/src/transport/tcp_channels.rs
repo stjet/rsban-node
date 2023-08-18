@@ -66,9 +66,9 @@ pub unsafe extern "C" fn rsn_tcp_channels_get_attempt_count_by_subnetwork(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_add_attempt(
     handle: *mut TcpChannelsHandle,
-    attempt: &TcpEndpointAttemptDto,
+    endpoint: &EndpointDto,
 ) -> bool {
-    let attempt = TcpEndpointAttempt::from(attempt);
+    let attempt = TcpEndpointAttempt::new(endpoint.into());
     let mut guard = (*handle).0.lock().unwrap();
     guard.attempts.insert(attempt.into())
 }

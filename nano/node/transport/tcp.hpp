@@ -342,17 +342,6 @@ namespace transport
 				mi::const_mem_fun<channel_tcp_wrapper, boost::asio::ip::address, &channel_tcp_wrapper::subnetwork>>>>
 		channels;
 private:
-		boost::multi_index_container<tcp_endpoint_attempt,
-		mi::indexed_by<
-			mi::hashed_unique<mi::tag<endpoint_tag>,
-				mi::member<tcp_endpoint_attempt, nano::tcp_endpoint, &tcp_endpoint_attempt::endpoint>>,
-			mi::hashed_non_unique<mi::tag<ip_address_tag>,
-				mi::member<tcp_endpoint_attempt, boost::asio::ip::address, &tcp_endpoint_attempt::address>>,
-			mi::hashed_non_unique<mi::tag<subnetwork_tag>,
-				mi::member<tcp_endpoint_attempt, boost::asio::ip::address, &tcp_endpoint_attempt::subnetwork>>,
-			mi::ordered_non_unique<mi::tag<last_attempt_tag>,
-				mi::member<tcp_endpoint_attempt, std::chrono::system_clock::time_point, &tcp_endpoint_attempt::last_attempt>>>>
-		attempts;
 		// clang-format on
 		std::atomic<bool> stopped{ false };
 		// Called when a new channel is observed

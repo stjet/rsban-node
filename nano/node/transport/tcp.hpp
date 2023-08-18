@@ -168,7 +168,7 @@ namespace transport
 		void erase_temporary_channel (nano::tcp_endpoint const &);
 		std::size_t size () const;
 		std::shared_ptr<nano::transport::channel_tcp> find_channel (nano::tcp_endpoint const &) const;
-		std::unordered_set<std::shared_ptr<nano::transport::channel>> random_set (std::size_t, uint8_t = 0, bool = false) const;
+		std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t, uint8_t = 0, bool = false) const;
 		std::vector<endpoint> get_current_peers () const;
 		std::shared_ptr<nano::transport::channel_tcp> find_node_id (nano::account const &);
 		// Get the next peer for attempting a tcp connection

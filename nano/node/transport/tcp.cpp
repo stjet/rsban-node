@@ -18,9 +18,11 @@
 #include <boost/format.hpp>
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
+#include <unordered_set>
 
 /*
  * tcp_message_manager
@@ -343,9 +345,10 @@ std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::fin
 	return result;
 }
 
-std::unordered_set<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::random_set (std::size_t count_a, uint8_t min_version, bool include_temporary_channels_a) const
+std::vector<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::random_channels (std::size_t count_a, uint8_t min_version, bool include_temporary_channels_a) const
 {
-	std::unordered_set<std::shared_ptr<nano::transport::channel>> result;
+	std::vector<std::shared_ptr<nano::transport::channel>> result;
+	std::unordered_set<std::size_t> channel_ids;
 	result.reserve (count_a);
 	nano::lock_guard<nano::mutex> lock{ mutex };
 	// Stop trying to fill result with random samples after this many attempts
@@ -367,7 +370,9 @@ std::unordered_set<std::shared_ptr<nano::transport::channel>> nano::transport::t
 
 			if (channel->get_network_version () >= min_version && (include_temporary_channels_a || !channel->is_temporary ()))
 			{
-				result.insert (channel);
+				auto insert_result{ channel_ids.insert (channel->channel_id ()) };
+				if (insert_result.second)
+					result.push_back (channel);
 			}
 		}
 	}
@@ -388,7 +393,7 @@ std::vector<nano::endpoint> nano::transport::tcp_channels::get_peers () const
 
 void nano::transport::tcp_channels::random_fill (std::array<nano::endpoint, 8> & target_a) const
 {
-	auto peers (random_set (target_a.size (), 0, false)); // Don't include channels with ephemeral remote ports
+	auto peers{ random_channels (target_a.size (), 0, false) }; // Don't include channels with ephemeral remote ports
 	debug_assert (peers.size () <= target_a.size ());
 	auto endpoint (nano::endpoint (boost::asio::ip::address_v6{}, 0));
 	debug_assert (endpoint.address ().is_v6 ());
@@ -1047,10 +1052,17 @@ nano::transport::tcp_channels::channel_tcp_wrapper::~channel_tcp_wrapper ()
 
 std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::channel_tcp_wrapper::get_channel () const
 {
+	//auto channel_handle = rsnano::rsn_channel_tcp_wrapper_get_channel(handle);
+	//return make_shared<nano::transport::channel_tcp> (channel_handle);
 	return channel;
 }
 std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_channels::channel_tcp_wrapper::get_response_server () const
 {
+	// auto server_handle = rsnano::rsn_channel_tcp_wrapper_get_server(handle);
+	// if (server_handle)
+	// 	return make_shared<nano::transport::tcp_server>(server_handle);
+
+	// return nullptr;
 	return server;
 }
 

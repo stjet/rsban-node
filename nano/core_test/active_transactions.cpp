@@ -78,7 +78,7 @@ TEST (active_transactions, confirm_election_by_request)
 	ASSERT_EQ (0, election->confirmation_request_count);
 
 	// Get random peer list (of size 1) from node2 -- so basically just node2
-	auto const peers = node2.network->random_set (1);
+	auto const peers = node2.network->random_channels (1);
 	ASSERT_FALSE (peers.empty ());
 
 	// Add representative (node1) to disabled rep crawler of node2
@@ -118,7 +118,7 @@ TEST (active_transactions, confirm_frontier)
 	// Add key to node1
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	// Add representative to disabled rep crawler
-	auto peers (node2.network->random_set (1));
+	auto peers (node2.network->random_channels (1));
 	ASSERT_FALSE (peers.empty ());
 	{
 		nano::lock_guard<nano::mutex> guard (node2.rep_crawler.probable_reps_mutex);

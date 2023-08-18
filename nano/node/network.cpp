@@ -576,9 +576,9 @@ std::size_t nano::network::fanout (float scale) const
 	return static_cast<std::size_t> (std::ceil (scale * size_sqrt ()));
 }
 
-std::unordered_set<std::shared_ptr<nano::transport::channel>> nano::network::random_set (std::size_t count_a, uint8_t min_version_a, bool include_temporary_channels_a) const
+std::vector<std::shared_ptr<nano::transport::channel>> nano::network::random_channels (std::size_t count_a, uint8_t min_version_a, bool include_temporary_channels_a) const
 {
-	return tcp_channels->random_set (count_a, min_version_a, include_temporary_channels_a);
+	return tcp_channels->random_channels (count_a, min_version_a, include_temporary_channels_a);
 }
 
 void nano::network::fill_keepalive_self (std::array<nano::endpoint, 8> & target_a) const

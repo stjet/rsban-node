@@ -80,7 +80,7 @@ public:
 	std::size_t fanout (float scale = 1.0f) const;
 	void fill_keepalive_self (std::array<nano::endpoint, 8> &) const;
 	// Note: The minimum protocol version is used after the random selection, so number of peers can be less than expected.
-	std::unordered_set<std::shared_ptr<nano::transport::channel>> random_set (std::size_t count, uint8_t min_version = 0, bool include_temporary_channels = false) const;
+	std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t count, uint8_t min_version = 0, bool include_temporary_channels = false) const;
 	// Get the next peer for attempting a tcp bootstrap connection
 	nano::tcp_endpoint bootstrap_peer ();
 	nano::endpoint endpoint () const;

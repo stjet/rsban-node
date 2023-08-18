@@ -27,7 +27,7 @@ private:
 
 	nano::network & network;
 	nano::block_arrival & block_arrival;
-	std::unordered_set<std::shared_ptr<nano::block>> local; // Blocks originated on this node
+	std::unordered_set<nano::block_hash> local; // Blocks originated on this node
 	nano::mutex mutex;
 	bool enabled;
 };

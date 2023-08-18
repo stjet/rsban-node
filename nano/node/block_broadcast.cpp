@@ -32,7 +32,7 @@ void nano::block_broadcast::connect (nano::block_processor & block_processor)
 void nano::block_broadcast::observe (std::shared_ptr<nano::block> block)
 {
 	nano::unique_lock<nano::mutex> lock{ mutex };
-	auto existing = local.find (block);
+	auto existing = local.find (block->hash ());
 	auto local_l = existing != local.end ();
 	lock.unlock ();
 	if (local_l)
@@ -63,7 +63,7 @@ void nano::block_broadcast::set_local (std::shared_ptr<nano::block> block)
 		return;
 	}
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	local.insert (block);
+	local.insert (block->hash ());
 }
 
 void nano::block_broadcast::erase (std::shared_ptr<nano::block> block)
@@ -73,5 +73,5 @@ void nano::block_broadcast::erase (std::shared_ptr<nano::block> block)
 		return;
 	}
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	local.erase (block);
+	local.erase (block->hash ());
 }

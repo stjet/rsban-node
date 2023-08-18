@@ -1035,9 +1035,7 @@ void nano::transport::tcp_channels::on_new_channel (std::function<void (std::sha
 	channel_observer = std::move (observer_a);
 }
 
-nano::transport::tcp_channels::channel_tcp_wrapper::channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::transport::socket> socket_a, std::shared_ptr<nano::transport::tcp_server> server_a) :
-	channel{ channel_a },
-	server{ server_a }
+nano::transport::tcp_channels::channel_tcp_wrapper::channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::transport::socket> socket_a, std::shared_ptr<nano::transport::tcp_server> server_a)
 {
 	rsnano::TcpServerHandle * server_handle = nullptr;
 	if (server_a)
@@ -1052,18 +1050,16 @@ nano::transport::tcp_channels::channel_tcp_wrapper::~channel_tcp_wrapper ()
 
 std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::channel_tcp_wrapper::get_channel () const
 {
-	//auto channel_handle = rsnano::rsn_channel_tcp_wrapper_get_channel(handle);
-	//return make_shared<nano::transport::channel_tcp> (channel_handle);
-	return channel;
+	auto channel_handle = rsnano::rsn_channel_tcp_wrapper_get_channel (handle);
+	return make_shared<nano::transport::channel_tcp> (channel_handle);
 }
 std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_channels::channel_tcp_wrapper::get_response_server () const
 {
-	// auto server_handle = rsnano::rsn_channel_tcp_wrapper_get_server(handle);
-	// if (server_handle)
-	// 	return make_shared<nano::transport::tcp_server>(server_handle);
+	auto server_handle = rsnano::rsn_channel_tcp_wrapper_get_server (handle);
+	if (server_handle)
+		return make_shared<nano::transport::tcp_server> (server_handle);
 
-	// return nullptr;
-	return server;
+	return nullptr;
 }
 
 nano::tcp_message_item::tcp_message_item () :

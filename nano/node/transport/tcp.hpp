@@ -289,11 +289,6 @@ namespace transport
 				return get_channel ()->get_network_version ();
 			}
 
-		private:
-			// Keep shared_ptrs in C++ so that we don't have to return new shared_ptrs.
-			// New shared_ptrs would break unordered_maps of channels!
-			std::shared_ptr<nano::transport::channel_tcp> channel;
-			std::shared_ptr<nano::transport::tcp_server> server;
 			rsnano::ChannelTcpWrapperHandle * handle;
 		};
 		class tcp_endpoint_attempt final

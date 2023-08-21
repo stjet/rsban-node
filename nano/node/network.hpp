@@ -99,7 +99,6 @@ public:
 
 	static std::string to_string (nano::networks);
 	void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
-	void notify_new_channel (std::shared_ptr<nano::transport::channel> channel_a);
 	void clear_from_publish_filter (nano::uint128_t const & digest_a);
 	uint16_t get_port ();
 	void set_port (uint16_t port_a);
@@ -114,10 +113,6 @@ public:
 	nano::node & node;
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
 	std::function<void ()> disconnect_observer;
-
-private:
-	// Called when a new channel is observed
-	std::function<void (std::shared_ptr<nano::transport::channel>)> channel_observer;
 
 public:
 	std::atomic<uint16_t> port{ 0 };

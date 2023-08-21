@@ -1,4 +1,5 @@
 use std::{
+    ffi::c_void,
     net::{Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{atomic::Ordering, Arc},
 };
@@ -9,9 +10,13 @@ use rsnano_core::{
 };
 use rsnano_node::transport::{ChannelEnum, TcpChannels, TcpEndpointAttempt};
 
-use crate::{bootstrap::ChannelTcpWrapperHandle, utils::ptr_into_ipv6addr, NetworkConstantsDto};
+use crate::{
+    bootstrap::{ChannelTcpWrapperHandle, TcpServerHandle},
+    utils::{ptr_into_ipv6addr, ContextWrapper},
+    NetworkConstantsDto, VoidPointerCallback,
+};
 
-use super::{ChannelHandle, EndpointDto};
+use super::{ChannelHandle, EndpointDto, SocketHandle};
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
 
@@ -19,16 +24,40 @@ pub struct TcpChannelsHandle(Arc<TcpChannels>);
 pub extern "C" fn rsn_tcp_channels_create(
     port: u16,
     network_constants: &NetworkConstantsDto,
+    allow_local_peers: bool,
 ) -> *mut TcpChannelsHandle {
     Box::into_raw(Box::new(TcpChannelsHandle(Arc::new(TcpChannels::new(
         port,
         network_constants.try_into().unwrap(),
+        allow_local_peers,
     )))))
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_channels_set_port(handle: &mut TcpChannelsHandle, port: u16) {
-    handle.0.port.store(port, Ordering::SeqCst);
+    handle.0.port.store(port, Ordering::SeqCst)
+}
+
+pub type NewChannelCallback = unsafe extern "C" fn(*mut c_void, *mut ChannelHandle);
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_stop(handle: &mut TcpChannelsHandle) {
+    handle.0.stop();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_on_new_channel(
+    handle: &mut TcpChannelsHandle,
+    callback_handle: *mut c_void,
+    call_callback: NewChannelCallback,
+    delete_callback: VoidPointerCallback,
+) {
+    let context_wrapper = ContextWrapper::new(callback_handle, delete_callback);
+    let callback = Arc::new(move |channel| {
+        let ctx = context_wrapper.get_context();
+        unsafe { call_callback(ctx, ChannelHandle::new(channel)) };
+    });
+    handle.0.on_new_channel(callback)
 }
 
 #[no_mangle]
@@ -187,6 +216,21 @@ pub extern "C" fn rsn_tcp_channels_channel_exists(
 #[no_mangle]
 pub extern "C" fn rsn_tcp_channels_channel_count(handle: &mut TcpChannelsHandle) -> usize {
     handle.0.tcp_channels.lock().unwrap().channels.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_insert(
+    handle: &mut TcpChannelsHandle,
+    channel: &ChannelHandle,
+    socket: &SocketHandle,
+    server: *const TcpServerHandle,
+) -> bool {
+    let server = if server.is_null() {
+        None
+    } else {
+        Some((*server).0.clone())
+    };
+    handle.0.insert(&channel.0, &socket.0, server).is_err()
 }
 
 #[no_mangle]

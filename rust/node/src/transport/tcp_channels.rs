@@ -3,7 +3,7 @@ use std::{
     hash::Hash,
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
-        atomic::{AtomicU16, Ordering},
+        atomic::{AtomicBool, AtomicU16, Ordering},
         Arc, Mutex,
     },
     time::SystemTime,
@@ -17,25 +17,75 @@ use crate::{
     utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address},
 };
 
-use super::{ChannelEnum, Socket};
+use super::{ChannelEnum, Socket, SocketImpl, TcpServer};
 
 pub struct TcpChannels {
     pub tcp_channels: Mutex<TcpChannelsImpl>,
     pub port: AtomicU16,
+    pub stopped: AtomicBool,
+    allow_local_peers: bool,
 }
 
 impl TcpChannels {
-    pub fn new(port: u16, network_constants: NetworkConstants) -> Self {
+    pub fn new(port: u16, network_constants: NetworkConstants, allow_local_peers: bool) -> Self {
         Self {
             tcp_channels: Mutex::new(TcpChannelsImpl::new(network_constants)),
             port: AtomicU16::new(port),
+            stopped: AtomicBool::new(false),
+            allow_local_peers,
         }
     }
+
+    pub fn stop(&self) {
+        self.stopped.store(true, Ordering::SeqCst);
+    }
+
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
         endpoint.ip().is_unspecified()
             || reserved_address(endpoint, allow_local_peers)
             || endpoint
                 == &SocketAddrV6::new(Ipv6Addr::LOCALHOST, self.port.load(Ordering::SeqCst), 0, 0)
+    }
+
+    pub fn on_new_channel(&self, callback: Arc<dyn Fn(Arc<ChannelEnum>)>) {
+        self.tcp_channels.lock().unwrap().new_channel_observer = Some(callback);
+    }
+
+    pub fn insert(
+        &self,
+        channel: &Arc<ChannelEnum>,
+        socket: &Arc<SocketImpl>,
+        server: Option<Arc<TcpServer>>,
+    ) -> Result<(), ()> {
+        let ChannelEnum::Tcp(tcp_channel) = channel.as_ref() else { panic!("not a tcp channel")};
+        let endpoint = tcp_channel.endpoint();
+        let SocketAddr::V6(endpoint_v6) = endpoint else {panic!("not a v6 address")};
+        if !self.not_a_peer(&endpoint_v6, self.allow_local_peers)
+            && !self.stopped.load(Ordering::SeqCst)
+        {
+            let mut lock = self.tcp_channels.lock().unwrap();
+            if !lock.channels.exists(&endpoint) {
+                let node_id = channel.as_channel().get_node_id().unwrap_or_default();
+                if !channel.as_channel().is_temporary() {
+                    lock.channels.remove_by_node_id(&node_id);
+                }
+
+                let wrapper = Arc::new(ChannelTcpWrapper::new(
+                    channel.clone(),
+                    socket.clone(),
+                    server,
+                ));
+                lock.channels.insert(wrapper);
+                lock.attempts.remove(&endpoint_v6);
+                let observer = lock.new_channel_observer.clone();
+                drop(lock);
+                if let Some(callback) = observer {
+                    callback(channel.clone());
+                }
+                return Ok(());
+            }
+        }
+        Err(())
     }
 }
 
@@ -43,6 +93,7 @@ pub struct TcpChannelsImpl {
     pub attempts: TcpEndpointAttemptContainer,
     pub channels: ChannelContainer,
     network_constants: NetworkConstants,
+    new_channel_observer: Option<Arc<dyn Fn(Arc<ChannelEnum>)>>,
 }
 
 impl TcpChannelsImpl {
@@ -51,6 +102,7 @@ impl TcpChannelsImpl {
             attempts: Default::default(),
             channels: Default::default(),
             network_constants,
+            new_channel_observer: None,
         }
     }
 

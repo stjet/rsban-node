@@ -792,12 +792,6 @@ std::string nano::network::to_string (nano::networks network)
 void nano::network::on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a)
 {
 	tcp_channels->on_new_channel (observer_a);
-	channel_observer = std::move (observer_a);
-}
-
-void nano::network::notify_new_channel (std::shared_ptr<nano::transport::channel> channel_a)
-{
-	channel_observer (channel_a);
 }
 
 void nano::network::clear_from_publish_filter (nano::uint128_t const & digest_a)

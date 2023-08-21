@@ -277,7 +277,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	}
 {
 	auto dto{ config->network_params.network.to_dto () };
-	handle = rsnano::rsn_tcp_channels_create (&dto);
+	handle = rsnano::rsn_tcp_channels_create (port, &dto);
 }
 
 nano::transport::tcp_channels::~tcp_channels ()
@@ -422,6 +422,7 @@ void nano::transport::tcp_channels::random_fill (std::array<nano::endpoint, 8> &
 void nano::transport::tcp_channels::set_port (uint16_t port_a)
 {
 	port = port_a;
+	rsnano::rsn_tcp_channels_set_port (handle, port_a);
 }
 
 void nano::transport::tcp_channels::set_observer (std::shared_ptr<nano::tcp_server_observer> observer_a)
@@ -553,20 +554,8 @@ void nano::transport::tcp_channels::stop ()
 
 bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_a, bool allow_local_peers)
 {
-	bool result (false);
-	if (endpoint_a.address ().to_v6 ().is_unspecified ())
-	{
-		result = true;
-	}
-	else if (nano::transport::reserved_address (endpoint_a, allow_local_peers))
-	{
-		result = true;
-	}
-	else if (endpoint_a == nano::endpoint (boost::asio::ip::address_v6::loopback (), port))
-	{
-		result = true;
-	}
-	return result;
+	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
+	return rsnano::rsn_tcp_channels_not_a_peer (handle, &endpoint_dto, allow_local_peers);
 }
 
 bool nano::transport::tcp_channels::max_ip_connections (nano::tcp_endpoint const & endpoint_a)

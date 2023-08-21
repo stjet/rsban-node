@@ -2,7 +2,10 @@ use std::{
     collections::{BTreeMap, HashMap},
     hash::Hash,
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicU16, Ordering},
+        Arc, Mutex,
+    },
     time::SystemTime,
 };
 
@@ -11,18 +14,38 @@ use rsnano_core::PublicKey;
 use crate::{
     bootstrap::ChannelTcpWrapper,
     config::NetworkConstants,
-    utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork},
+    utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address},
 };
 
 use super::{ChannelEnum, Socket};
 
 pub struct TcpChannels {
+    pub tcp_channels: Mutex<TcpChannelsImpl>,
+    pub port: AtomicU16,
+}
+
+impl TcpChannels {
+    pub fn new(port: u16, network_constants: NetworkConstants) -> Self {
+        Self {
+            tcp_channels: Mutex::new(TcpChannelsImpl::new(network_constants)),
+            port: AtomicU16::new(port),
+        }
+    }
+    pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
+        endpoint.ip().is_unspecified()
+            || reserved_address(endpoint, allow_local_peers)
+            || endpoint
+                == &SocketAddrV6::new(Ipv6Addr::LOCALHOST, self.port.load(Ordering::SeqCst), 0, 0)
+    }
+}
+
+pub struct TcpChannelsImpl {
     pub attempts: TcpEndpointAttemptContainer,
     pub channels: ChannelContainer,
     network_constants: NetworkConstants,
 }
 
-impl TcpChannels {
+impl TcpChannelsImpl {
     pub fn new(network_constants: NetworkConstants) -> Self {
         Self {
             attempts: Default::default(),

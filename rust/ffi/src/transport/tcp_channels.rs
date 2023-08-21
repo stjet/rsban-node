@@ -7,18 +7,20 @@ use rsnano_core::{
     utils::{system_time_as_nanoseconds, system_time_from_nanoseconds},
     PublicKey,
 };
-use rsnano_node::transport::{TcpChannels, TcpEndpointAttempt};
+use rsnano_node::transport::{ChannelEnum, TcpChannels, TcpEndpointAttempt};
 
-use crate::utils::ptr_into_ipv6addr;
+use crate::{bootstrap::ChannelTcpWrapperHandle, utils::ptr_into_ipv6addr, NetworkConstantsDto};
 
-use super::EndpointDto;
+use super::{ChannelHandle, EndpointDto};
 
 pub struct TcpChannelsHandle(Arc<Mutex<TcpChannels>>);
 
 #[no_mangle]
-pub extern "C" fn rsn_tcp_channels_create() -> *mut TcpChannelsHandle {
+pub extern "C" fn rsn_tcp_channels_create(
+    network_constants: &NetworkConstantsDto,
+) -> *mut TcpChannelsHandle {
     Box::into_raw(Box::new(TcpChannelsHandle(Arc::new(Mutex::new(
-        TcpChannels::new(),
+        TcpChannels::new(network_constants.try_into().unwrap()),
     )))))
 }
 
@@ -83,13 +85,10 @@ pub unsafe extern "C" fn rsn_tcp_channels_attempts_count(handle: *mut TcpChannel
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_attempts_purge(
-    handle: *mut TcpChannelsHandle,
-    cutoff_ns: u64,
-) {
+pub unsafe extern "C" fn rsn_tcp_channels_purge(handle: *mut TcpChannelsHandle, cutoff_ns: u64) {
     let cutoff = system_time_from_nanoseconds(cutoff_ns);
     let mut guard = (*handle).0.lock().unwrap();
-    guard.attempts.purge(cutoff)
+    guard.purge(cutoff)
 }
 
 #[no_mangle]
@@ -106,6 +105,59 @@ pub unsafe extern "C" fn rsn_tcp_channels_erase_channel_by_node_id(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_find_channel_by_node_id(
+    handle: &mut TcpChannelsHandle,
+    node_id: *const u8,
+) -> *mut ChannelTcpWrapperHandle {
+    let guard = handle.0.lock().unwrap();
+    match guard.channels.get_by_node_id(&PublicKey::from_ptr(node_id)) {
+        Some(wrapper) => ChannelTcpWrapperHandle::new(Arc::clone(wrapper)),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_erase_channel_by_endpoint(
+    handle: &mut TcpChannelsHandle,
+    endpoint: &EndpointDto,
+) {
+    handle
+        .0
+        .lock()
+        .unwrap()
+        .channels
+        .remove_by_endpoint(&SocketAddr::from(endpoint))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_get_channel(
+    handle: &mut TcpChannelsHandle,
+    endpoint: &EndpointDto,
+) -> *mut ChannelTcpWrapperHandle {
+    let guard = handle.0.lock().unwrap();
+    match guard.channels.get(&SocketAddr::from(endpoint)) {
+        Some(wrapper) => ChannelTcpWrapperHandle::new(Arc::clone(wrapper)),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_get_channel_by_index(
+    handle: &mut TcpChannelsHandle,
+    index: usize,
+) -> *mut ChannelTcpWrapperHandle {
+    ChannelTcpWrapperHandle::new(Arc::clone(
+        handle
+            .0
+            .lock()
+            .unwrap()
+            .channels
+            .get_by_index(index)
+            .unwrap(),
+    ))
+}
+
+#[no_mangle]
 pub extern "C" fn rsn_tcp_channels_channel_exists(
     handle: &mut TcpChannelsHandle,
     endpoint: &EndpointDto,
@@ -116,6 +168,121 @@ pub extern "C" fn rsn_tcp_channels_channel_exists(
         .unwrap()
         .channels
         .exists(&SocketAddr::from(endpoint))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_channel_count(handle: &mut TcpChannelsHandle) -> usize {
+    handle.0.lock().unwrap().channels.len()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_insert_channel(
+    handle: &mut TcpChannelsHandle,
+    wrapper: &ChannelTcpWrapperHandle,
+) -> bool {
+    handle
+        .0
+        .lock()
+        .unwrap()
+        .channels
+        .insert(Arc::clone(&wrapper.0))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_bootstrap_peer(
+    handle: &mut TcpChannelsHandle,
+    result: &mut EndpointDto,
+) {
+    let peer = handle.0.lock().unwrap().bootstrap_peer();
+    *result = peer.into();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_close_channels(handle: &mut TcpChannelsHandle) {
+    handle.0.lock().unwrap().close_channels();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_count_by_ip(
+    handle: &mut TcpChannelsHandle,
+    ip: *const u8,
+) -> usize {
+    let address_bytes: [u8; 16] = std::slice::from_raw_parts(ip, 16).try_into().unwrap();
+    let ip_address = Ipv6Addr::from(address_bytes);
+    handle.0.lock().unwrap().channels.count_by_ip(&ip_address)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_count_by_subnet(
+    handle: &mut TcpChannelsHandle,
+    subnet: *const u8,
+) -> usize {
+    let address_bytes: [u8; 16] = std::slice::from_raw_parts(subnet, 16).try_into().unwrap();
+    let subnet = Ipv6Addr::from(address_bytes);
+    handle.0.lock().unwrap().channels.count_by_subnet(&subnet)
+}
+
+pub struct ChannelListHandle(Vec<Arc<ChannelEnum>>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_list_len(handle: *mut ChannelListHandle) -> usize {
+    (*handle).0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_list_get(
+    handle: *mut ChannelListHandle,
+    index: usize,
+) -> *mut ChannelHandle {
+    ChannelHandle::new((*handle).0[index].clone())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_list_destroy(handle: *mut ChannelListHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_list_channels(
+    handle: &mut TcpChannelsHandle,
+    min_version: u8,
+    include_temporary_channels: bool,
+) -> *mut ChannelListHandle {
+    let channels = handle
+        .0
+        .lock()
+        .unwrap()
+        .list(min_version, include_temporary_channels);
+    Box::into_raw(Box::new(ChannelListHandle(channels)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_keepalive_list(
+    handle: &mut TcpChannelsHandle,
+) -> *mut ChannelListHandle {
+    let channels = handle.0.lock().unwrap().keepalive_list();
+    Box::into_raw(Box::new(ChannelListHandle(channels)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_update_channel(
+    handle: &mut TcpChannelsHandle,
+    endpoint: &EndpointDto,
+) {
+    handle.0.lock().unwrap().update(&endpoint.into())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_set_last_packet_sent(
+    handle: &mut TcpChannelsHandle,
+    endpoint: &EndpointDto,
+    time_ns: u64,
+) {
+    handle
+        .0
+        .lock()
+        .unwrap()
+        .set_last_packet_sent(&endpoint.into(), system_time_from_nanoseconds(time_ns));
 }
 
 pub struct TcpEndpointAttemptDto {

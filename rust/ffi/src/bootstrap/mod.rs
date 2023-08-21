@@ -14,4 +14,5 @@ mod request_response_visitor_factory;
 pub use bootstrap_initiator::BootstrapInitiatorHandle;
 pub use bootstrap_server::FfiBootstrapServerObserver;
 pub use bootstrap_server::TcpServerHandle;
+pub use channel_tcp_wrapper::ChannelTcpWrapperHandle;
 pub use request_response_visitor_factory::RequestResponseVisitorFactoryHandle;

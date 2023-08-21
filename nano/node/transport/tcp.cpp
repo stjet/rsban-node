@@ -274,9 +274,10 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 		node.block_uniquer,
 		node.vote_uniquer,
 		tcp_message_manager
-	},
-	handle{ rsnano::rsn_tcp_channels_create () }
+	}
 {
+	auto dto{ config->network_params.network.to_dto () };
+	handle = rsnano::rsn_tcp_channels_create (&dto);
 }
 
 nano::transport::tcp_channels::~tcp_channels ()
@@ -293,16 +294,16 @@ bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::cha
 	if (!not_a_peer (udp_endpoint, config->allow_local_peers) && !stopped)
 	{
 		nano::unique_lock<nano::mutex> lock{ mutex };
-		//rsnano::rsn_tcp_channels_channel_exists
-		auto existing (channels.get<endpoint_tag> ().find (endpoint));
-		if (existing == channels.get<endpoint_tag> ().end ())
+		auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint) };
+		if (!rsnano::rsn_tcp_channels_channel_exists (handle, &endpoint_dto))
 		{
 			auto node_id (channel_a->get_node_id ());
 			if (!channel_a->is_temporary ())
 			{
-				channels.get<node_id_tag> ().erase (node_id);
+				rsnano::rsn_tcp_channels_erase_channel_by_node_id (handle, node_id.bytes.data ());
 			}
-			channels.get<endpoint_tag> ().emplace (channel_a, socket_a, server_a);
+			nano::transport::tcp_channels::channel_tcp_wrapper wrapper{ channel_a, socket_a, server_a };
+			rsnano::rsn_tcp_channels_insert_channel (handle, wrapper.handle);
 			auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint) };
 			rsnano::rsn_tcp_channels_erase_attempt (handle, &endpoint_dto);
 			error = false;
@@ -316,7 +317,8 @@ bool nano::transport::tcp_channels::insert (std::shared_ptr<nano::transport::cha
 void nano::transport::tcp_channels::erase (nano::tcp_endpoint const & endpoint_a)
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	channels.get<endpoint_tag> ().erase (endpoint_a);
+	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
+	rsnano::rsn_tcp_channels_erase_channel_by_endpoint (handle, &endpoint_dto);
 }
 
 void nano::transport::tcp_channels::erase_temporary_channel (nano::tcp_endpoint const & endpoint_a)
@@ -332,17 +334,19 @@ void nano::transport::tcp_channels::erase_temporary_channel (nano::tcp_endpoint 
 std::size_t nano::transport::tcp_channels::size () const
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	return channels.size ();
+	return rsnano::rsn_tcp_channels_channel_count (handle);
 }
 
 std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::find_channel (nano::tcp_endpoint const & endpoint_a) const
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
 	std::shared_ptr<nano::transport::channel_tcp> result;
-	auto existing (channels.get<endpoint_tag> ().find (endpoint_a));
-	if (existing != channels.get<endpoint_tag> ().end ())
+	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
+	auto wrapper_handle = rsnano::rsn_tcp_channels_get_channel (handle, &endpoint_dto);
+	if (wrapper_handle)
 	{
-		result = existing->get_channel ();
+		nano::transport::tcp_channels::channel_tcp_wrapper wrapper{ wrapper_handle };
+		result = wrapper.get_channel ();
 	}
 	return result;
 }
@@ -355,16 +359,17 @@ std::vector<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_chan
 	nano::lock_guard<nano::mutex> lock{ mutex };
 	// Stop trying to fill result with random samples after this many attempts
 	auto random_cutoff (count_a * 2);
-	auto peers_size (channels.size ());
+	auto peers_size = rsnano::rsn_tcp_channels_channel_count (handle);
 	// Usually count_a will be much smaller than peers.size()
 	// Otherwise make sure we have a cutoff on attempting to randomly fill
-	if (!channels.empty ())
+	if (peers_size > 0)
 	{
 		for (auto i (0); i < random_cutoff && result.size () < count_a; ++i)
 		{
 			auto index (nano::random_pool::generate_word32 (0, static_cast<uint32_t> (peers_size - 1)));
 
-			auto channel = channels.get<random_access_tag> ()[index].get_channel ();
+			nano::transport::tcp_channels::channel_tcp_wrapper wrapper{ rsnano::rsn_tcp_channels_get_channel_by_index (handle, index) };
+			auto channel = wrapper.get_channel ();
 			if (!channel->alive ())
 			{
 				continue;
@@ -387,9 +392,14 @@ std::vector<nano::endpoint> nano::transport::tcp_channels::get_peers () const
 	// we collect endpoints to be saved and then relase the lock.
 	nano::lock_guard<nano::mutex> lock{ mutex };
 	std::vector<nano::endpoint> endpoints;
-	endpoints.reserve (channels.size ());
-	std::transform (channels.begin (), channels.end (),
-	std::back_inserter (endpoints), [] (auto const & channel) { return nano::transport::map_tcp_to_endpoint (channel.endpoint ()); });
+	auto channel_count = rsnano::rsn_tcp_channels_channel_count (handle);
+	endpoints.reserve (channel_count);
+	for (auto i = 0; i < channel_count; ++i)
+	{
+		nano::transport::tcp_channels::channel_tcp_wrapper wrapper{ rsnano::rsn_tcp_channels_get_channel_by_index (handle, i) };
+		endpoints.push_back (nano::transport::map_tcp_to_endpoint (wrapper.endpoint ()));
+	}
+
 	return endpoints;
 }
 
@@ -426,16 +436,21 @@ void nano::transport::tcp_channels::set_message_visitor_factory (nano::transport
 
 std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::get_first_channel () const
 {
-	return channels[0].get_channel ();
+	nano::transport::tcp_channels::channel_tcp_wrapper wrapper{ rsnano::rsn_tcp_channels_get_channel_by_index (handle, 0) };
+	return wrapper.get_channel ();
 }
 
 std::vector<nano::endpoint> nano::transport::tcp_channels::get_current_peers () const
 {
 	std::vector<nano::endpoint> endpoints;
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	endpoints.reserve (channels.size ());
-	std::transform (channels.begin (), channels.end (),
-	std::back_inserter (endpoints), [] (auto const & channel) { return nano::transport::map_tcp_to_endpoint (channel.endpoint ()); });
+	auto channel_count = rsnano::rsn_tcp_channels_channel_count (handle);
+	endpoints.reserve (channel_count);
+	for (auto i = 0; i < channel_count; ++i)
+	{
+		nano::transport::tcp_channels::channel_tcp_wrapper wrapper{ rsnano::rsn_tcp_channels_get_channel_by_index (handle, i) };
+		endpoints.push_back (nano::transport::map_tcp_to_endpoint (wrapper.endpoint ()));
+	}
 	return endpoints;
 }
 
@@ -443,34 +458,20 @@ std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::fin
 {
 	std::shared_ptr<nano::transport::channel_tcp> result;
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	auto existing (channels.get<node_id_tag> ().find (node_id_a));
-	if (existing != channels.get<node_id_tag> ().end ())
+	auto wrapper_handle = rsnano::rsn_tcp_channels_find_channel_by_node_id (handle, node_id_a.bytes.data ());
+	if (wrapper_handle)
 	{
-		result = existing->get_channel ();
+		nano::transport::tcp_channels::channel_tcp_wrapper wrapper{ wrapper_handle };
+		result = wrapper.get_channel ();
 	}
 	return result;
 }
 
 nano::tcp_endpoint nano::transport::tcp_channels::bootstrap_peer ()
 {
-	nano::tcp_endpoint result (boost::asio::ip::address_v6::any (), 0);
-	nano::lock_guard<nano::mutex> lock{ mutex };
-	for (auto i (channels.get<last_bootstrap_attempt_tag> ().begin ()), n (channels.get<last_bootstrap_attempt_tag> ().end ()); i != n;)
-	{
-		if (i->get_channel ()->get_network_version () >= network_params.network.protocol_version_min)
-		{
-			result = nano::transport::map_endpoint_to_tcp (i->get_channel ()->get_peering_endpoint ());
-			channels.get<last_bootstrap_attempt_tag> ().modify (i, [] (channel_tcp_wrapper & wrapper_a) {
-				wrapper_a.get_channel ()->set_last_bootstrap_attempt ();
-			});
-			i = n;
-		}
-		else
-		{
-			++i;
-		}
-	}
-	return result;
+	rsnano::EndpointDto endpoint_dto;
+	rsnano::rsn_tcp_channels_bootstrap_peer (handle, &endpoint_dto);
+	return rsnano::dto_to_endpoint (endpoint_dto);
 }
 
 void nano::transport::tcp_channels::process_messages ()
@@ -546,22 +547,7 @@ void nano::transport::tcp_channels::stop ()
 {
 	stopped = true;
 	nano::unique_lock<nano::mutex> lock{ mutex };
-	// Close all TCP sockets
-	for (auto const & channel : channels)
-	{
-		auto socket{ channel.try_get_socket () };
-		if (socket)
-		{
-			socket->close ();
-		}
-		// Remove response server
-		auto server{ channel.get_response_server () };
-		if (server)
-		{
-			server->stop ();
-		}
-	}
-	channels.clear ();
+	rsnano::rsn_tcp_channels_close_channels (handle);
 	tcp_message_manager.stop ();
 }
 
@@ -592,7 +578,7 @@ bool nano::transport::tcp_channels::max_ip_connections (nano::tcp_endpoint const
 	bool result{ false };
 	auto const address (nano::transport::ipv4_address_or_ipv6_subnet (endpoint_a.address ()));
 	nano::unique_lock<nano::mutex> lock{ mutex };
-	result = channels.get<ip_address_tag> ().count (address) >= network_params.network.max_peers_per_ip;
+	result = rsnano::rsn_tcp_channels_count_by_ip (handle, address.to_v6 ().to_bytes ().data ()) >= network_params.network.max_peers_per_ip;
 	if (!result)
 	{
 		result = rsnano::rsn_tcp_channels_get_attempt_count_by_ip_address (handle, address.to_v6 ().to_bytes ().data ()) >= network_params.network.max_peers_per_ip;
@@ -613,7 +599,7 @@ bool nano::transport::tcp_channels::max_subnetwork_connections (nano::tcp_endpoi
 	bool result{ false };
 	auto const subnet (nano::transport::map_address_to_subnetwork (endpoint_a.address ()));
 	nano::unique_lock<nano::mutex> lock{ mutex };
-	result = channels.get<subnetwork_tag> ().count (subnet) >= network_params.network.max_peers_per_subnetwork;
+	result = rsnano::rsn_tcp_channels_count_by_subnet (handle, subnet.to_v6 ().to_bytes ().data ()) >= network_params.network.max_peers_per_subnetwork;
 	if (!result)
 	{
 		result = rsnano::rsn_tcp_channels_get_attempt_count_by_subnetwork (handle, subnet.to_v6 ().to_bytes ().data ()) >= network_params.network.max_peers_per_subnetwork;
@@ -653,13 +639,12 @@ std::unique_ptr<nano::container_info_component> nano::transport::tcp_channels::c
 	std::size_t attemps_count;
 	{
 		nano::lock_guard<nano::mutex> guard{ mutex };
-		channels_count = channels.size ();
-		//rsnano::rsn_tcp_channels_attempts_count
+		channels_count = rsnano::rsn_tcp_channels_channel_count (handle);
 		attemps_count = rsnano::rsn_tcp_channels_attempts_count (handle);
 	}
 
 	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "channels", channels_count, sizeof (decltype (channels)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "channels", channels_count, sizeof (nano::transport::tcp_channels::channel_tcp_wrapper) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "attempts", attemps_count, sizeof (nano::transport::tcp_channels::tcp_endpoint_attempt) }));
 
 	return composite;
@@ -669,25 +654,7 @@ void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point
 {
 	uint64_t cutoff_ns = std::chrono::duration_cast<std::chrono::nanoseconds> (cutoff_a.time_since_epoch ()).count ();
 	nano::lock_guard<nano::mutex> lock{ mutex };
-
-	// Remove channels with dead underlying sockets
-	for (auto it = channels.begin (); it != channels.end (); ++it)
-	{
-		if (!it->get_channel ()->alive ())
-		{
-			it = channels.erase (it);
-		}
-	}
-
-	auto disconnect_cutoff (channels.get<last_packet_sent_tag> ().lower_bound (cutoff_ns));
-	channels.get<last_packet_sent_tag> ().erase (channels.get<last_packet_sent_tag> ().begin (), disconnect_cutoff);
-
-	// Remove keepalive attempt tracking for attempts older than cutoff
-	rsnano::rsn_tcp_channels_attempts_purge (handle, cutoff_ns);
-
-	// Check if any tcp channels belonging to old protocol versions which may still be alive due to async operations
-	auto lower_bound = channels.get<version_tag> ().lower_bound (network_params.network.protocol_version_min);
-	channels.get<version_tag> ().erase (channels.get<version_tag> ().begin (), lower_bound);
+	rsnano::rsn_tcp_channels_purge (handle, cutoff_ns);
 }
 
 void nano::transport::tcp_channels::ongoing_keepalive ()
@@ -698,13 +665,16 @@ void nano::transport::tcp_channels::ongoing_keepalive ()
 	message.set_peers (peers);
 	nano::unique_lock<nano::mutex> lock{ mutex };
 	// Wake up channels
+	auto list_handle = rsnano::rsn_tcp_channels_keepalive_list (handle);
+	auto list_len = rsnano::rsn_channel_list_len (list_handle);
 	std::vector<std::shared_ptr<nano::transport::channel_tcp>> send_list;
-	uint64_t cutoff = (std::chrono::system_clock::now () - network_params.network.keepalive_period).time_since_epoch ().count ();
-	auto keepalive_sent_cutoff (channels.get<last_packet_sent_tag> ().lower_bound (cutoff));
-	for (auto i (channels.get<last_packet_sent_tag> ().begin ()); i != keepalive_sent_cutoff; ++i)
+	send_list.reserve (list_len);
+	for (auto i = 0; i < list_len; ++i)
 	{
-		send_list.push_back (i->get_channel ());
+		auto channel_handle = rsnano::rsn_channel_list_get (list_handle, i);
+		send_list.push_back (std::make_shared<nano::transport::channel_tcp> (channel_handle));
 	}
+	rsnano::rsn_channel_list_destroy (list_handle);
 	lock.unlock ();
 	for (auto & channel : send_list)
 	{
@@ -725,35 +695,29 @@ void nano::transport::tcp_channels::ongoing_keepalive ()
 void nano::transport::tcp_channels::list (std::deque<std::shared_ptr<nano::transport::channel>> & deque_a, uint8_t minimum_version_a, bool include_temporary_channels_a)
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	// clang-format off
-	nano::transform_if (channels.get<random_access_tag> ().begin (), channels.get<random_access_tag> ().end (), std::back_inserter (deque_a),
-		[include_temporary_channels_a, minimum_version_a](auto & channel_a) { return channel_a.get_channel()->get_network_version () >= minimum_version_a && (include_temporary_channels_a || !channel_a.get_channel()->is_temporary ()); },
-		[](auto const & channel) { return channel.get_channel(); });
-	// clang-format on
+	auto list_handle = rsnano::rsn_tcp_channels_list_channels (handle, minimum_version_a, include_temporary_channels_a);
+	auto len = rsnano::rsn_channel_list_len (list_handle);
+	for (auto i = 0; i < len; ++i)
+	{
+		auto channel{ std::make_shared<nano::transport::channel_tcp> (rsnano::rsn_channel_list_get (list_handle, i)) };
+		deque_a.push_back (channel);
+	}
+	rsnano::rsn_channel_list_destroy (list_handle);
 }
 
-void nano::transport::tcp_channels::modify (std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::function<void (std::shared_ptr<nano::transport::channel_tcp> const &)> modify_callback_a)
+void nano::transport::tcp_channels::modify_last_packet_sent (nano::endpoint const & endpoint_a, std::chrono::system_clock::time_point const & time_a)
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	auto existing (channels.get<endpoint_tag> ().find (channel_a->get_tcp_endpoint ()));
-	if (existing != channels.get<endpoint_tag> ().end ())
-	{
-		channels.get<endpoint_tag> ().modify (existing, [modify_callback = std::move (modify_callback_a)] (channel_tcp_wrapper & wrapper_a) {
-			modify_callback (wrapper_a.get_channel ());
-		});
-	}
+	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
+	auto time_ns = std::chrono::duration_cast<std::chrono::nanoseconds> (time_a.time_since_epoch ()).count ();
+	rsnano::rsn_tcp_channels_set_last_packet_sent (handle, &endpoint_dto, time_ns);
 }
 
 void nano::transport::tcp_channels::update (nano::tcp_endpoint const & endpoint_a)
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	auto existing (channels.get<endpoint_tag> ().find (endpoint_a));
-	if (existing != channels.get<endpoint_tag> ().end ())
-	{
-		channels.get<endpoint_tag> ().modify (existing, [] (channel_tcp_wrapper & wrapper_a) {
-			wrapper_a.get_channel ()->set_last_packet_sent ();
-		});
-	}
+	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
+	rsnano::rsn_tcp_channels_update_channel (handle, &endpoint_dto);
 }
 
 void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a)
@@ -1051,6 +1015,11 @@ nano::transport::tcp_channels::channel_tcp_wrapper::channel_tcp_wrapper (std::sh
 	if (server_a)
 		server_handle = server_a->handle;
 	handle = rsnano::rsn_channel_tcp_wrapper_create (channel_a->handle, socket_a->handle, server_handle);
+}
+
+nano::transport::tcp_channels::channel_tcp_wrapper::channel_tcp_wrapper (rsnano::ChannelTcpWrapperHandle * handle_a) :
+	handle{ handle_a }
+{
 }
 
 nano::transport::tcp_channels::channel_tcp_wrapper::~channel_tcp_wrapper ()

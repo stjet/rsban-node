@@ -188,7 +188,7 @@ namespace transport
 		void purge (std::chrono::system_clock::time_point const &);
 		void ongoing_keepalive ();
 		void list (std::deque<std::shared_ptr<nano::transport::channel>> &, uint8_t = 0, bool = true);
-		void modify (std::shared_ptr<nano::transport::channel_tcp> const &, std::function<void (std::shared_ptr<nano::transport::channel_tcp> const &)>);
+		void modify_last_packet_sent (nano::endpoint const & endpoint_a, std::chrono::system_clock::time_point const & time_a);
 		void update (nano::tcp_endpoint const &);
 		// Connection start
 		void start_tcp (nano::endpoint const &);
@@ -252,6 +252,7 @@ namespace transport
 		{
 		public:
 			channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::transport::socket> socket_a, std::shared_ptr<nano::transport::tcp_server> server_a);
+			channel_tcp_wrapper (rsnano::ChannelTcpWrapperHandle * handle_a);
 			channel_tcp_wrapper (channel_tcp_wrapper const &) = delete;
 			~channel_tcp_wrapper ();
 			std::shared_ptr<nano::transport::channel_tcp> get_channel () const;
@@ -322,28 +323,7 @@ namespace transport
 		boost::asio::io_context & io_ctx;
 		mutable nano::mutex mutex;
 
-	public:
-		// clang-format off
-		boost::multi_index_container<channel_tcp_wrapper,
-		mi::indexed_by<
-			mi::random_access<mi::tag<random_access_tag>>,
-			mi::ordered_non_unique<mi::tag<last_bootstrap_attempt_tag>,
-				mi::const_mem_fun<channel_tcp_wrapper, uint64_t, &channel_tcp_wrapper::last_bootstrap_attempt>>,
-			mi::hashed_unique<mi::tag<endpoint_tag>,
-				mi::const_mem_fun<channel_tcp_wrapper, nano::tcp_endpoint, &channel_tcp_wrapper::endpoint>>,
-			mi::hashed_non_unique<mi::tag<node_id_tag>,
-				mi::const_mem_fun<channel_tcp_wrapper, nano::account, &channel_tcp_wrapper::node_id>>,
-			mi::ordered_non_unique<mi::tag<last_packet_sent_tag>,
-				mi::const_mem_fun<channel_tcp_wrapper, uint64_t, &channel_tcp_wrapper::last_packet_sent>>,
-			mi::ordered_non_unique<mi::tag<version_tag>,
-				mi::const_mem_fun<channel_tcp_wrapper, uint8_t, &channel_tcp_wrapper::network_version>>,
-			mi::hashed_non_unique<mi::tag<ip_address_tag>,
-				mi::const_mem_fun<channel_tcp_wrapper, boost::asio::ip::address, &channel_tcp_wrapper::ip_address>>,
-			mi::hashed_non_unique<mi::tag<subnetwork_tag>,
-				mi::const_mem_fun<channel_tcp_wrapper, boost::asio::ip::address, &channel_tcp_wrapper::subnetwork>>>>
-		channels;
-private:
-		// clang-format on
+	private:
 		std::atomic<bool> stopped{ false };
 		// Called when a new channel is observed
 		std::function<void (std::shared_ptr<nano::transport::channel>)> channel_observer;

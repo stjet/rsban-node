@@ -30,7 +30,7 @@ impl ChannelTcpWrapper {
         }
     }
 
-    fn tcp_channel(&self) -> &ChannelTcp {
+    pub fn tcp_channel(&self) -> &ChannelTcp {
         match self.channel.as_ref() {
             ChannelEnum::Tcp(tcp) => tcp,
             _ => panic!("not a tcp channel"),

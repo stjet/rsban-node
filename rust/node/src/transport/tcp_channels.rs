@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    net::{Ipv6Addr, SocketAddr, SocketAddrV6},
+    hash::Hash,
+    net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::Arc,
     time::SystemTime,
 };
@@ -9,26 +10,107 @@ use rsnano_core::PublicKey;
 
 use crate::{
     bootstrap::ChannelTcpWrapper,
+    config::NetworkConstants,
     utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork},
 };
+
+use super::{ChannelEnum, Socket};
 
 pub struct TcpChannels {
     pub attempts: TcpEndpointAttemptContainer,
     pub channels: ChannelContainer,
+    network_constants: NetworkConstants,
 }
 
 impl TcpChannels {
-    pub fn new() -> Self {
+    pub fn new(network_constants: NetworkConstants) -> Self {
         Self {
             attempts: Default::default(),
             channels: Default::default(),
+            network_constants,
         }
     }
-}
 
-impl Default for TcpChannels {
-    fn default() -> Self {
-        Self::new()
+    pub fn bootstrap_peer(&mut self) -> SocketAddr {
+        let mut channel_endpoint = None;
+        let mut peering_endpoint = None;
+        for channel in self.channels.iter_by_last_bootstrap_attempt() {
+            if channel.network_version() >= self.network_constants.protocol_version_min {
+                if let ChannelEnum::Tcp(tcp) = channel.channel.as_ref() {
+                    channel_endpoint = Some(channel.endpoint());
+                    peering_endpoint = Some(tcp.peering_endpoint());
+                    break;
+                }
+            }
+        }
+
+        match (channel_endpoint, peering_endpoint) {
+            (Some(ep), Some(peering)) => {
+                self.channels
+                    .set_last_bootstrap_attempt(&ep, SystemTime::now());
+                peering
+            }
+            _ => SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
+        }
+    }
+
+    pub fn close_channels(&mut self) {
+        for channel in self.channels.iter() {
+            if let Some(socket) = channel.socket() {
+                socket.close();
+            }
+            // Remove response server
+            if let Some(server) = &channel.response_server {
+                server.stop();
+            }
+        }
+        self.channels.clear();
+    }
+
+    pub fn purge(&mut self, cutoff: SystemTime) {
+        // Remove channels with dead underlying sockets
+        self.channels.remove_dead();
+        self.channels.purge(cutoff);
+
+        // Remove keepalive attempt tracking for attempts older than cutoff
+        self.attempts.purge(cutoff);
+
+        // Check if any tcp channels belonging to old protocol versions which may still be alive due to async operations
+        self.channels
+            .remove_old_protocol_versions(self.network_constants.protocol_version_min);
+    }
+
+    pub fn list(&self, min_version: u8, include_temporary_channels: bool) -> Vec<Arc<ChannelEnum>> {
+        self.channels
+            .iter()
+            .filter(|c| {
+                c.tcp_channel().network_version() >= min_version
+                    && (include_temporary_channels || !c.channel.as_channel().is_temporary())
+            })
+            .map(|c| c.channel.clone())
+            .collect()
+    }
+
+    pub fn keepalive_list(&self) -> Vec<Arc<ChannelEnum>> {
+        let cutoff = SystemTime::now() - self.network_constants.keepalive_period;
+        let mut result = Vec::new();
+        for channel in self.channels.iter_by_last_packet_sent() {
+            if channel.last_packet_sent() >= cutoff {
+                break;
+            }
+            result.push(channel.channel.clone());
+        }
+
+        result
+    }
+
+    pub fn update(&mut self, endpoint: &SocketAddr) {
+        self.channels
+            .set_last_packet_sent(endpoint, SystemTime::now());
+    }
+
+    pub fn set_last_packet_sent(&mut self, endpoint: &SocketAddr, time: SystemTime) {
+        self.channels.set_last_packet_sent(endpoint, time);
     }
 }
 
@@ -80,6 +162,22 @@ impl ChannelContainer {
         true
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = &Arc<ChannelTcpWrapper>> {
+        self.by_endpoint.values()
+    }
+
+    pub fn iter_by_last_bootstrap_attempt(&self) -> impl Iterator<Item = &Arc<ChannelTcpWrapper>> {
+        self.by_bootstrap_attempt
+            .iter()
+            .flat_map(|(_, v)| v.iter().map(|ep| self.by_endpoint.get(ep).unwrap()))
+    }
+
+    pub fn iter_by_last_packet_sent(&self) -> impl Iterator<Item = &Arc<ChannelTcpWrapper>> {
+        self.by_last_packet_sent
+            .iter()
+            .flat_map(|(_, v)| v.iter().map(|ep| self.by_endpoint.get(ep).unwrap()))
+    }
+
     pub fn exists(&self, endpoint: &SocketAddr) -> bool {
         self.by_endpoint.contains_key(endpoint)
     }
@@ -96,23 +194,172 @@ impl ChannelContainer {
         if let Some(wrapper) = self.by_endpoint.remove(endpoint) {
             self.by_random_access.retain(|x| x != endpoint); // todo: linear search is slow?
 
-            let by_bootstrap = self
-                .by_bootstrap_attempt
-                .get_mut(&wrapper.last_bootstrap_attempt())
-                .unwrap();
-            if by_bootstrap.len() > 1 {
-                by_bootstrap.retain(|x| x != endpoint);
-            } else {
-                self.by_bootstrap_attempt
-                    .remove(&wrapper.last_bootstrap_attempt());
-            }
-
-            // by_node_id: HashMap<PublicKey, Vec<SocketAddr>>,
-            // by_last_packet_sent: BTreeMap<SystemTime, Vec<SocketAddr>>,
-            // by_network_version: BTreeMap<u8, Vec<SocketAddr>>,
-            // by_ip_address: HashMap<Ipv6Addr, Vec<SocketAddr>>,
-            // by_subnet: HashMap<Ipv6Addr, Vec<SocketAddr>>,
+            remove_endpoint_btree(
+                &mut self.by_bootstrap_attempt,
+                &wrapper.last_bootstrap_attempt(),
+                endpoint,
+            );
+            remove_endpoint_map(
+                &mut self.by_node_id,
+                &wrapper.node_id().unwrap_or_default(),
+                endpoint,
+            );
+            remove_endpoint_btree(
+                &mut self.by_last_packet_sent,
+                &wrapper.last_packet_sent(),
+                endpoint,
+            );
+            remove_endpoint_btree(
+                &mut self.by_network_version,
+                &wrapper.network_version(),
+                endpoint,
+            );
+            remove_endpoint_map(&mut self.by_ip_address, &wrapper.ip_address(), endpoint);
+            remove_endpoint_map(&mut self.by_subnet, &wrapper.subnetwork(), endpoint);
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.by_endpoint.len()
+    }
+
+    pub fn get(&self, endpoint: &SocketAddr) -> Option<&Arc<ChannelTcpWrapper>> {
+        self.by_endpoint.get(endpoint)
+    }
+
+    pub fn get_by_index(&self, index: usize) -> Option<&Arc<ChannelTcpWrapper>> {
+        self.by_random_access
+            .get(index)
+            .map(|ep| self.by_endpoint.get(ep))
+            .flatten()
+    }
+
+    pub fn get_by_node_id(&self, node_id: &PublicKey) -> Option<&Arc<ChannelTcpWrapper>> {
+        self.by_node_id
+            .get(node_id)
+            .map(|endpoints| self.by_endpoint.get(&endpoints[0]))
+            .flatten()
+    }
+
+    pub fn set_last_packet_sent(&mut self, endpoint: &SocketAddr, time: SystemTime) {
+        if let Some(channel) = self.by_endpoint.get(endpoint) {
+            let old_time = channel.last_packet_sent();
+            channel.channel.as_channel().set_last_packet_sent(time);
+            remove_endpoint_btree(&mut self.by_last_packet_sent, &old_time, endpoint);
+            self.by_last_packet_sent
+                .entry(time)
+                .or_default()
+                .push(*endpoint);
+        }
+    }
+
+    pub fn set_last_bootstrap_attempt(&mut self, endpoint: &SocketAddr, attempt_time: SystemTime) {
+        if let Some(channel) = self.by_endpoint.get(endpoint) {
+            let old_time = channel.last_bootstrap_attempt();
+            channel
+                .channel
+                .as_channel()
+                .set_last_bootstrap_attempt(attempt_time);
+            remove_endpoint_btree(
+                &mut self.by_bootstrap_attempt,
+                &old_time,
+                &channel.endpoint(),
+            );
+            self.by_bootstrap_attempt
+                .entry(attempt_time)
+                .or_default()
+                .push(*endpoint);
+        }
+    }
+
+    pub fn count_by_ip(&self, ip: &Ipv6Addr) -> usize {
+        self.by_ip_address
+            .get(ip)
+            .map(|endpoints| endpoints.len())
+            .unwrap_or_default()
+    }
+
+    pub fn count_by_subnet(&self, subnet: &Ipv6Addr) -> usize {
+        self.by_subnet
+            .get(subnet)
+            .map(|endpoints| endpoints.len())
+            .unwrap_or_default()
+    }
+
+    pub fn clear(&mut self) {
+        self.by_endpoint.clear();
+        self.by_random_access.clear();
+        self.by_bootstrap_attempt.clear();
+        self.by_node_id.clear();
+        self.by_last_packet_sent.clear();
+        self.by_network_version.clear();
+        self.by_ip_address.clear();
+        self.by_subnet.clear();
+    }
+
+    pub fn purge(&mut self, cutoff: SystemTime) {
+        while let Some((time, endpoints)) = self.by_last_packet_sent.first_key_value() {
+            if *time < cutoff {
+                let endpoints = endpoints.clone();
+                for ep in endpoints {
+                    self.remove_by_endpoint(&ep);
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
+    pub fn remove_dead(&mut self) {
+        let dead_channels: Vec<_> = self
+            .by_endpoint
+            .values()
+            .filter(|c| !c.channel.as_channel().is_alive())
+            .cloned()
+            .collect();
+
+        for channel in dead_channels {
+            self.remove_by_endpoint(&channel.endpoint());
+        }
+    }
+
+    pub fn remove_old_protocol_versions(&mut self, min_version: u8) {
+        while let Some((version, endpoints)) = self.by_network_version.first_key_value() {
+            if *version < min_version {
+                let endpoints = endpoints.clone();
+                for ep in endpoints {
+                    self.remove_by_endpoint(&ep);
+                }
+            } else {
+                break;
+            }
+        }
+    }
+}
+
+fn remove_endpoint_btree<K: Ord>(
+    tree: &mut BTreeMap<K, Vec<SocketAddr>>,
+    key: &K,
+    endpoint: &SocketAddr,
+) {
+    let endpoints = tree.get_mut(key).unwrap();
+    if endpoints.len() > 1 {
+        endpoints.retain(|x| x != endpoint);
+    } else {
+        tree.remove(key);
+    }
+}
+
+fn remove_endpoint_map<K: Eq + PartialEq + Hash>(
+    map: &mut HashMap<K, Vec<SocketAddr>>,
+    key: &K,
+    endpoint: &SocketAddr,
+) {
+    let endpoints = map.get_mut(key).unwrap();
+    if endpoints.len() > 1 {
+        endpoints.retain(|x| x != endpoint);
+    } else {
+        map.remove(key);
     }
 }
 

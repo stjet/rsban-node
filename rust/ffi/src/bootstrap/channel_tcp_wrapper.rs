@@ -5,7 +5,7 @@ use rsnano_node::bootstrap::ChannelTcpWrapper;
 
 use super::bootstrap_server::TcpServerHandle;
 
-pub struct ChannelTcpWrapperHandle(Arc<ChannelTcpWrapper>);
+pub struct ChannelTcpWrapperHandle(pub Arc<ChannelTcpWrapper>);
 
 impl ChannelTcpWrapperHandle {
     pub fn new(wrapper: Arc<ChannelTcpWrapper>) -> *mut ChannelTcpWrapperHandle {

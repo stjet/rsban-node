@@ -9,20 +9,11 @@
 #include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
 
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/mem_fun.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/random_access_index.hpp>
-#include <boost/multi_index_container.hpp>
-
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <unordered_set>
-
-namespace mi = boost::multi_index;
 
 namespace nano
 {
@@ -220,33 +211,6 @@ namespace transport
 		/** Verifies that handshake response matches our query. @returns true if OK */
 		bool verify_handshake_response (nano::node_id_handshake::response_payload const & response, nano::endpoint const & remote_endpoint);
 		std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink;
-		class endpoint_tag
-		{
-		};
-		class ip_address_tag
-		{
-		};
-		class subnetwork_tag
-		{
-		};
-		class random_access_tag
-		{
-		};
-		class last_packet_sent_tag
-		{
-		};
-		class last_bootstrap_attempt_tag
-		{
-		};
-		class last_attempt_tag
-		{
-		};
-		class node_id_tag
-		{
-		};
-		class version_tag
-		{
-		};
 
 		class channel_tcp_wrapper final
 		{

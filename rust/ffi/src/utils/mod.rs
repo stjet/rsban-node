@@ -1,10 +1,12 @@
 mod stream;
 use std::{
     ffi::c_void,
-    net::{IpAddr, Ipv6Addr, SocketAddr},
+    net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
 };
 
-use rsnano_node::utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork};
+use rsnano_node::utils::{
+    ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address,
+};
 pub use stream::FfiStream;
 
 mod toml;
@@ -84,4 +86,10 @@ pub(crate) unsafe fn ptr_into_ipv6addr(ipv6_bytes: *const u8) -> Ipv6Addr {
         .try_into()
         .unwrap();
     Ipv6Addr::from(octets)
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_reserved_address(endpoint: &EndpointDto, allow_local_peers: bool) -> bool {
+    let endpoint = SocketAddrV6::from(endpoint);
+    reserved_address(&endpoint, allow_local_peers)
 }

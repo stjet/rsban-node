@@ -10,9 +10,6 @@
 [submodule "flatbuffers"]
 	path = submodules/flatbuffers
 	url = https://github.com/google/flatbuffers.git
-[submodule "diskhash"]
-	path = submodules/diskhash
-	url = https://github.com/nanocurrency/diskhash.git
 [submodule "boost"]
 	path = submodules/boost
 	url = https://github.com/boostorg/boost.git

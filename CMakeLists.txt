@@ -454,13 +454,6 @@ target_link_libraries(boost_property_tree INTERFACE Boost::any)
 target_link_libraries(boost_property_tree INTERFACE Boost::format)
 target_link_libraries(boost_property_tree INTERFACE Boost::multi_index)
 
-# diskhash
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  add_library(diskhash STATIC
-              ${CMAKE_SOURCE_DIR}/submodules/diskhash/src/diskhash.c)
-  include_directories(submodules/diskhash/src)
-endif()
-
 include_directories(cpptoml/include)
 
 # magic_enum

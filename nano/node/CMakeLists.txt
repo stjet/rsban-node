@@ -106,8 +106,6 @@ add_library(
   ipc/ipc_server.cpp
   json_handler.hpp
   json_handler.cpp
-  ledger_walker.hpp
-  ledger_walker.cpp
   lmdb/account_store.hpp
   lmdb/account_store.cpp
   lmdb/block_store.hpp
@@ -219,10 +217,6 @@ add_library(
   messages.cpp
   xorshift.hpp)
 
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  set(DISKHASH diskhash)
-endif()
-
 target_link_libraries(
   node
   rpc
@@ -237,7 +231,6 @@ target_link_libraries(
   Boost::stacktrace
   Boost::system
   Boost::thread
-  ${DISKHASH}
   ${CMAKE_DL_LIBS}
   ${psapi_lib})
 

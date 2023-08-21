@@ -12,20 +12,21 @@ use std::{
     collections::{BTreeMap, HashMap},
     mem::size_of,
     sync::{Arc, Mutex},
+    time::SystemTime,
 };
 
 const MAX: usize = 256;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct GapInformation {
-    arrival: i64,
+    arrival: SystemTime,
     hash: BlockHash,
     voters: Vec<Account>, // todo: Should this be a HashSet?
     bootstrap_started: bool,
 }
 
 impl GapInformation {
-    fn new(arrival: i64, hash: BlockHash) -> Self {
+    fn new(arrival: SystemTime, hash: BlockHash) -> Self {
         Self {
             arrival,
             hash,
@@ -41,7 +42,7 @@ impl GapInformation {
     #[cfg(test)]
     fn create_test_instance() -> Self {
         Self {
-            arrival: 123,
+            arrival: SystemTime::UNIX_EPOCH,
             hash: BlockHash::from(42),
             voters: Vec::new(),
             bootstrap_started: false,
@@ -51,7 +52,7 @@ impl GapInformation {
 
 struct OrderedGaps {
     gap_infos: HashMap<BlockHash, GapInformation>,
-    by_arrival: BTreeMap<i64, Vec<BlockHash>>,
+    by_arrival: BTreeMap<SystemTime, Vec<BlockHash>>,
 }
 
 impl OrderedGaps {
@@ -109,12 +110,12 @@ impl OrderedGaps {
         }
     }
 
-    fn add_arrival(&mut self, arrival: i64, hash: BlockHash) {
+    fn add_arrival(&mut self, arrival: SystemTime, hash: BlockHash) {
         let hashes = self.by_arrival.entry(arrival).or_default();
         hashes.push(hash);
     }
 
-    fn remove_arrival(&mut self, arrival: i64, hash: &BlockHash) {
+    fn remove_arrival(&mut self, arrival: SystemTime, hash: &BlockHash) {
         let hashes = self.by_arrival.get_mut(&arrival).unwrap();
         if hashes.len() == 1 {
             self.by_arrival.remove(&arrival);
@@ -132,7 +133,7 @@ impl OrderedGaps {
         }
     }
 
-    fn earliest(&self) -> Option<i64> {
+    fn earliest(&self) -> Option<SystemTime> {
         self.by_arrival
             .first_key_value()
             .map(|(&arrival, _)| arrival)
@@ -170,7 +171,7 @@ impl GapCache {
         }
     }
 
-    pub fn add(&mut self, hash: &BlockHash, time_point: i64) {
+    pub fn add(&mut self, hash: &BlockHash, time_point: SystemTime) {
         let mut lock = self.blocks.lock().unwrap();
         let modified = lock.modify(hash, &mut |info| {
             info.arrival = time_point;
@@ -249,11 +250,11 @@ impl GapCache {
         lock.get(hash).is_some()
     }
 
-    pub fn earliest(&self) -> i64 {
-        self.blocks.lock().unwrap().earliest().unwrap_or_default()
+    pub fn earliest(&self) -> Option<SystemTime> {
+        self.blocks.lock().unwrap().earliest()
     }
 
-    pub fn block_arrival(&self, hash: &BlockHash) -> i64 {
+    pub fn block_arrival(&self, hash: &BlockHash) -> SystemTime {
         self.blocks.lock().unwrap().get(hash).unwrap().arrival
     }
 
@@ -271,6 +272,7 @@ impl GapCache {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn new_ordered_gaps_is_empty() {
@@ -336,28 +338,28 @@ mod tests {
         // will be removed by trim
         gaps.add(GapInformation {
             hash: BlockHash::from(1),
-            arrival: 100,
+            arrival: SystemTime::UNIX_EPOCH + Duration::from_secs(1),
             ..GapInformation::create_test_instance()
         });
 
         // will be kept
         gaps.add(GapInformation {
             hash: BlockHash::from(3),
-            arrival: 101,
+            arrival: SystemTime::UNIX_EPOCH + Duration::from_secs(2),
             ..GapInformation::create_test_instance()
         });
 
         // will be kept
         gaps.add(GapInformation {
             hash: BlockHash::from(4),
-            arrival: 102,
+            arrival: SystemTime::UNIX_EPOCH + Duration::from_secs(3),
             ..GapInformation::create_test_instance()
         });
 
         // will be removed by trim
         gaps.add(GapInformation {
             hash: BlockHash::from(2),
-            arrival: 99,
+            arrival: SystemTime::UNIX_EPOCH,
             ..GapInformation::create_test_instance()
         });
 
@@ -366,7 +368,10 @@ mod tests {
         assert_eq!(gaps.len(), 2);
         assert!(gaps.get(&BlockHash::from(3)).is_some());
         assert!(gaps.get(&BlockHash::from(4)).is_some());
-        assert_eq!(gaps.earliest(), Some(101));
+        assert_eq!(
+            gaps.earliest(),
+            Some(SystemTime::UNIX_EPOCH + Duration::from_secs(2))
+        );
     }
 
     #[test]
@@ -389,20 +394,20 @@ mod tests {
         let mut gaps = OrderedGaps::new();
         gaps.add(GapInformation {
             hash: BlockHash::from(1),
-            arrival: 100,
+            arrival: SystemTime::UNIX_EPOCH,
             ..GapInformation::create_test_instance()
         });
 
         gaps.add(GapInformation {
             hash: BlockHash::from(2),
-            arrival: 100,
+            arrival: SystemTime::UNIX_EPOCH,
             ..GapInformation::create_test_instance()
         });
 
         gaps.remove(&BlockHash::from(1));
 
         assert_eq!(gaps.len(), 1);
-        assert_eq!(gaps.earliest(), Some(100));
+        assert_eq!(gaps.earliest(), Some(SystemTime::UNIX_EPOCH));
     }
 
     #[test]
@@ -410,13 +415,18 @@ mod tests {
         let mut gaps = OrderedGaps::new();
         gaps.add(GapInformation {
             hash: BlockHash::from(1),
-            arrival: 100,
+            arrival: SystemTime::UNIX_EPOCH,
             ..GapInformation::create_test_instance()
         });
 
-        gaps.modify(&BlockHash::from(1), &mut |info| info.arrival = 200);
+        gaps.modify(&BlockHash::from(1), &mut |info| {
+            info.arrival = SystemTime::UNIX_EPOCH + Duration::from_secs(10)
+        });
 
         assert_eq!(gaps.len(), 1);
-        assert_eq!(gaps.earliest(), Some(200));
+        assert_eq!(
+            gaps.earliest(),
+            Some(SystemTime::UNIX_EPOCH + Duration::from_secs(10))
+        );
     }
 }

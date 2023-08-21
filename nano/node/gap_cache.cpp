@@ -87,9 +87,9 @@ nano::gap_cache::~gap_cache ()
 	rsnano::rsn_gap_cache_destroy (handle);
 }
 
-void nano::gap_cache::add (nano::block_hash const & hash_a, std::chrono::steady_clock::time_point time_point_a)
+void nano::gap_cache::add (nano::block_hash const & hash_a, std::chrono::system_clock::time_point time_point_a)
 {
-	auto timepoint_ns = std::chrono::duration_cast<std::chrono::milliseconds> (time_point_a.time_since_epoch ()).count ();
+	auto timepoint_ns = std::chrono::duration_cast<std::chrono::nanoseconds> (time_point_a.time_since_epoch ()).count ();
 	rsnano::rsn_gap_cache_add (handle, hash_a.bytes.data (), timepoint_ns);
 }
 
@@ -138,16 +138,16 @@ bool nano::gap_cache::block_exists (nano::block_hash const & hash_a)
 	return rsnano::rsn_gap_cache_block_exists (handle, hash_a.bytes.data ());
 }
 
-std::chrono::steady_clock::time_point nano::gap_cache::earliest ()
+std::chrono::system_clock::time_point nano::gap_cache::earliest ()
 {
 	auto value = rsnano::rsn_gap_cache_earliest (handle);
-	return std::chrono::steady_clock::time_point (std::chrono::steady_clock::duration (value));
+	return std::chrono::system_clock::time_point (std::chrono::duration_cast<std::chrono::system_clock::duration> (std::chrono::nanoseconds (value)));
 }
 
-std::chrono::steady_clock::time_point nano::gap_cache::block_arrival (nano::block_hash const & hash_a)
+std::chrono::system_clock::time_point nano::gap_cache::block_arrival (nano::block_hash const & hash_a)
 {
 	auto value = rsnano::rsn_gap_cache_block_arrival (handle, hash_a.bytes.data ());
-	return std::chrono::steady_clock::time_point (std::chrono::steady_clock::duration (value));
+	return std::chrono::system_clock::time_point (std::chrono::duration_cast<std::chrono::system_clock::duration> (std::chrono::nanoseconds (value)));
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (gap_cache & gap_cache, std::string const & name)

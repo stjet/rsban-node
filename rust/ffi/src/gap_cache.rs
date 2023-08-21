@@ -7,7 +7,10 @@ use crate::{
     NodeConfigDto, NodeFlagsHandle, VoidPointerCallback,
 };
 use core::ffi::c_void;
-use rsnano_core::{Account, BlockHash};
+use rsnano_core::{
+    utils::{system_time_as_nanoseconds, system_time_from_nanoseconds},
+    Account, BlockHash,
+};
 use rsnano_node::{config::NodeConfig, GapCache};
 use std::{
     ffi::{c_char, CStr},
@@ -56,10 +59,12 @@ pub unsafe extern "C" fn rsn_gap_cache_destroy(handle: *mut GapCacheHandle) {
 pub unsafe extern "C" fn rsn_gap_cache_add(
     handle: *mut GapCacheHandle,
     hash_a: *const u8,
-    time_point_a: i64,
+    time_point: u64,
 ) {
     let hash = BlockHash::from_ptr(hash_a);
-    (*handle).0.add(&hash, time_point_a);
+    (*handle)
+        .0
+        .add(&hash, system_time_from_nanoseconds(time_point));
 }
 
 #[no_mangle]
@@ -120,17 +125,21 @@ pub unsafe extern "C" fn rsn_gap_cache_block_exists(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_gap_cache_earliest(handle: *mut GapCacheHandle) -> i64 {
-    (*handle).0.earliest()
+pub unsafe extern "C" fn rsn_gap_cache_earliest(handle: *mut GapCacheHandle) -> u64 {
+    (*handle)
+        .0
+        .earliest()
+        .map(system_time_as_nanoseconds)
+        .unwrap_or_default()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_gap_cache_block_arrival(
     handle: *mut GapCacheHandle,
     hash_a: *const u8,
-) -> i64 {
+) -> u64 {
     let hash = BlockHash::from_ptr(hash_a);
-    (*handle).0.block_arrival(&hash)
+    system_time_as_nanoseconds((*handle).0.block_arrival(&hash))
 }
 
 pub type StartBootstrapCallback = unsafe extern "C" fn(*mut c_void, *const u8);

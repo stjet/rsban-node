@@ -1,7 +1,7 @@
 mod stream;
 use std::{
     ffi::c_void,
-    net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
+    net::{Ipv6Addr, SocketAddrV6},
 };
 
 use rsnano_node::utils::{

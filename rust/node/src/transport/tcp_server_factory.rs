@@ -1,7 +1,4 @@
-use std::{
-    sync::Arc,
-    time::{Instant, SystemTime},
-};
+use std::{sync::Arc, time::SystemTime};
 
 use rsnano_core::utils::Logger;
 

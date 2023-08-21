@@ -10,7 +10,7 @@ use rsnano_node::{
 };
 use std::{
     ffi::c_void,
-    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6},
     ops::Deref,
     sync::{Arc, Mutex, Weak},
     time::Duration,

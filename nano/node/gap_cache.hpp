@@ -27,7 +27,7 @@ class transaction;
 class gap_information final
 {
 public:
-	std::chrono::steady_clock::time_point arrival;
+	std::chrono::system_clock::time_point arrival;
 	nano::block_hash hash;
 	std::vector<nano::account> voters;
 	bool bootstrap_started{ false };
@@ -41,7 +41,7 @@ public:
 	gap_cache (gap_cache const &) = delete;
 	gap_cache (gap_cache &&) = delete;
 	~gap_cache ();
-	void add (nano::block_hash const &, std::chrono::steady_clock::time_point = std::chrono::steady_clock::now ());
+	void add (nano::block_hash const &, std::chrono::system_clock::time_point = std::chrono::system_clock::now ());
 	void erase (nano::block_hash const & hash_a);
 	void vote (std::shared_ptr<nano::vote> const &);
 	bool bootstrap_check (std::vector<nano::account> const &, nano::block_hash const &);
@@ -49,8 +49,8 @@ public:
 	nano::uint128_t bootstrap_threshold ();
 	std::size_t size ();
 	bool block_exists (nano::block_hash const & hash_a);
-	std::chrono::steady_clock::time_point earliest ();
-	std::chrono::steady_clock::time_point block_arrival (nano::block_hash const & hash_a);
+	std::chrono::system_clock::time_point earliest ();
+	std::chrono::system_clock::time_point block_arrival (nano::block_hash const & hash_a);
 	// clang-format on
 	std::size_t const max = 256;
 	nano::node & node;

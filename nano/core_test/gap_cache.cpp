@@ -43,10 +43,10 @@ TEST (gap_cache, add_existing)
 				  .work (5)
 				  .build_shared ();
 	cache.add (block1->hash ());
-	std::chrono::steady_clock::time_point arrival;
+	std::chrono::system_clock::time_point arrival;
 	arrival = cache.block_arrival (block1->hash ());
 	ASSERT_TRUE (cache.block_exists (block1->hash ()));
-	ASSERT_TIMELY (20s, arrival != std::chrono::steady_clock::now ());
+	ASSERT_TIMELY (20s, arrival != std::chrono::system_clock::now ());
 	cache.add (block1->hash ());
 	ASSERT_EQ (1, cache.size ());
 	ASSERT_TRUE (cache.block_exists (block1->hash ()));
@@ -69,9 +69,9 @@ TEST (gap_cache, comparison)
 				  .build_shared ();
 	cache.add (block1->hash ());
 	ASSERT_TRUE (cache.block_exists (block1->hash ()));
-	std::chrono::steady_clock::time_point arrival;
+	std::chrono::system_clock::time_point arrival;
 	arrival = cache.block_arrival (block1->hash ());
-	ASSERT_TIMELY (20s, std::chrono::steady_clock::now () != arrival);
+	ASSERT_TIMELY (20s, std::chrono::system_clock::now () != arrival);
 	nano::keypair key2;
 	auto block3 = builder
 				  .send ()

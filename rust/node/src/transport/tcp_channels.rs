@@ -4,7 +4,7 @@ use std::{
     mem::size_of,
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
-        atomic::{AtomicBool, AtomicU16, Ordering},
+        atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
         Arc, Mutex,
     },
     time::SystemTime,
@@ -30,8 +30,8 @@ use crate::{
 };
 
 use super::{
-    ChannelEnum, NetworkFilter, NullTcpServerObserver, Socket, SocketImpl, TcpMessageManager,
-    TcpServer, TcpServerFactory, TcpServerObserver,
+    ChannelEnum, NetworkFilter, NullTcpServerObserver, PeerExclusion, Socket, SocketImpl,
+    TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver,
 };
 
 pub struct TcpChannelsOptions {
@@ -58,6 +58,9 @@ pub struct TcpChannels {
     flags: NodeFlags,
     stats: Arc<Stats>,
     sink: Box<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>)>,
+    next_channel_id: AtomicUsize,
+    network: Arc<NetworkParams>,
+    pub excluded_peers: Arc<Mutex<PeerExclusion>>,
 }
 
 impl TcpChannels {
@@ -93,7 +96,14 @@ impl TcpChannels {
                 tcp_server_factory,
             }),
             sink: options.sink,
+            next_channel_id: AtomicUsize::new(1),
+            network,
+            excluded_peers: Arc::new(Mutex::new(PeerExclusion::new())),
         }
+    }
+
+    pub fn get_next_channel_id(&self) -> usize {
+        self.next_channel_id.fetch_add(1, Ordering::SeqCst)
     }
 
     pub fn stop(&self) {
@@ -233,6 +243,59 @@ impl TcpChannels {
                 .inc(StatType::Tcp, DetailType::TcpMaxPerIp, Direction::Out);
         }
         result
+    }
+
+    pub fn process_message(
+        &self,
+        message: &dyn Message,
+        endpoint: &SocketAddr,
+        node_id: PublicKey,
+        socket: &Arc<SocketImpl>,
+    ) {
+        let socket_type = socket.socket_type();
+        if !self.stopped.load(Ordering::SeqCst)
+            && message.header().version_using() >= self.network.network.protocol_version_min
+        {
+            if let Some(channel) = self.find_channel(endpoint) {
+                (self.sink)(message.clone_box(), channel);
+            } else {
+                if let Some(channel) = self.find_node_id(&node_id) {
+                    (self.sink)(message.clone_box(), channel);
+                }
+                // 		else if (!excluded_peers.check (endpoint_a))
+                // 		{
+                // 			if (!node_id_a.is_zero ())
+                // 			{
+                // 				// Add temporary channel
+                // 				auto channel_id = rsnano::rsn_tcp_channels_get_next_channel_id (handle);
+                // 				auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket_a, shared_from_this (), channel_id));
+                // 				temporary_channel->set_endpoint ();
+                // 				debug_assert (endpoint_a == temporary_channel->get_tcp_endpoint ());
+                // 				temporary_channel->set_node_id (node_id_a);
+                // 				temporary_channel->set_network_version (message_a.get_header ().get_version_using ());
+                // 				temporary_channel->set_temporary (true);
+                // 				debug_assert (type_a == nano::transport::socket::type_t::realtime || type_a == nano::transport::socket::type_t::realtime_response_server);
+                // 				// Don't insert temporary channels for response_server
+                // 				if (type_a == nano::transport::socket::type_t::realtime)
+                // 				{
+                // 					insert (temporary_channel, socket_a, nullptr);
+                // 				}
+                // 				sink (message_a, temporary_channel);
+                // 			}
+                // 			else
+                // 			{
+                // 				// Initial node_id_handshake request without node ID
+                // 				debug_assert (message_a.get_header ().get_type () == nano::message_type::node_id_handshake);
+                // 				stats->inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in);
+                // 			}
+                // 		}
+            }
+
+            // 	if (channel)
+            // 	{
+            // 		channel->set_last_packet_received ();
+            // 	}
+        }
     }
 }
 

@@ -6,7 +6,7 @@ use std::{
 
 use super::EndpointDto;
 
-pub struct PeerExclusionHandle(Arc<Mutex<PeerExclusion>>);
+pub struct PeerExclusionHandle(pub Arc<Mutex<PeerExclusion>>);
 
 #[no_mangle]
 pub extern "C" fn rsn_peer_exclusion_create(max_size: usize) -> *mut PeerExclusionHandle {

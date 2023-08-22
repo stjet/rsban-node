@@ -8,6 +8,11 @@ nano::peer_exclusion::peer_exclusion (std::size_t max_size_a) :
 {
 }
 
+nano::peer_exclusion::peer_exclusion (rsnano::PeerExclusionHandle * handle_a) :
+	handle{ handle_a }
+{
+}
+
 nano::peer_exclusion::~peer_exclusion ()
 {
 	rsnano::rsn_peer_exclusion_destroy (handle);

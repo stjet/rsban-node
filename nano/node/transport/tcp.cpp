@@ -3,6 +3,7 @@
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
 #include "nano/node/nodeconfig.hpp"
+#include "nano/node/peer_exclusion.hpp"
 #include "nano/node/transport/channel.hpp"
 #include "nano/node/transport/tcp_server.hpp"
 #include "nano/node/transport/traffic_type.hpp"
@@ -350,9 +351,19 @@ std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::get
 	return std::make_shared<nano::transport::channel_tcp> (rsnano::rsn_tcp_channels_get_first_channel (handle));
 }
 
+std::size_t nano::transport::tcp_channels::get_next_channel_id ()
+{
+	return rsnano::rsn_tcp_channels_get_next_channel_id (handle);
+}
+
 std::vector<nano::endpoint> nano::transport::tcp_channels::get_current_peers () const
 {
 	return get_peers ();
+}
+
+nano::peer_exclusion nano::transport::tcp_channels::excluded_peers ()
+{
+	return nano::peer_exclusion{ rsnano::rsn_tcp_channels_excluded_peers (handle) };
 }
 
 std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::find_node_id (nano::account const & node_id_a)
@@ -404,12 +415,13 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 			{
 				sink (message_a, channel);
 			}
-			else if (!excluded_peers.check (endpoint_a))
+			else if (!excluded_peers ().check (endpoint_a))
 			{
 				if (!node_id_a.is_zero ())
 				{
 					// Add temporary channel
-					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket_a, shared_from_this (), next_channel_id.fetch_add (1)));
+					auto channel_id = rsnano::rsn_tcp_channels_get_next_channel_id (handle);
+					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket_a, shared_from_this (), channel_id));
 					temporary_channel->set_endpoint ();
 					debug_assert (endpoint_a == temporary_channel->get_tcp_endpoint ());
 					temporary_channel->set_node_id (node_id_a);
@@ -491,7 +503,7 @@ bool nano::transport::tcp_channels::reachout (nano::endpoint const & endpoint_a)
 {
 	auto tcp_endpoint (nano::transport::map_endpoint_to_tcp (endpoint_a));
 	// Don't overload single IP
-	bool error = excluded_peers.check (tcp_endpoint) || max_ip_or_subnetwork_connections (tcp_endpoint);
+	bool error = excluded_peers ().check (tcp_endpoint) || max_ip_or_subnetwork_connections (tcp_endpoint);
 	if (!error && !flags.disable_tcp_realtime ())
 	{
 		// Don't keepalive to nodes that already sent us something
@@ -588,7 +600,8 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 	network_params.network.idle_timeout,
 	config->logging.network_timeout_logging (),
 	observers);
-	auto channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket, shared_from_this (), next_channel_id.fetch_add (1)));
+	auto channel_id = rsnano::rsn_tcp_channels_get_next_channel_id (handle);
+	auto channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket, shared_from_this (), channel_id));
 	auto network_consts = network_params.network;
 	auto config_l = config;
 	auto logger_l = logger;

@@ -67,7 +67,7 @@ void nano::bootstrap_initiator::bootstrap (nano::endpoint const & endpoint_a, bo
 		auto legacy_attempt (std::make_shared<nano::bootstrap_attempt_legacy> (node.shared (), attempts.create_incremental_id (), id_a, std::numeric_limits<uint32_t>::max (), 0));
 		attempts_list.push_back (legacy_attempt);
 		attempts.add (legacy_attempt);
-		if (!node.network->tcp_channels->excluded_peers.check (nano::transport::map_endpoint_to_tcp (endpoint_a)))
+		if (!node.network->tcp_channels->excluded_peers ().check (nano::transport::map_endpoint_to_tcp (endpoint_a)))
 		{
 			connections->add_connection (endpoint_a);
 		}

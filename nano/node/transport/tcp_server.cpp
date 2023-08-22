@@ -201,7 +201,7 @@ void nano::transport::tcp_listener::tcp_server_exited (nano::transport::socket::
 
 void nano::transport::tcp_listener::accept_action (boost::system::error_code const & ec, std::shared_ptr<nano::transport::socket> const & socket_a)
 {
-	if (!network->tcp_channels->excluded_peers.check (socket_a->remote_endpoint ()))
+	if (!network->tcp_channels->excluded_peers ().check (socket_a->remote_endpoint ()))
 	{
 		auto req_resp_visitor_factory = std::make_shared<nano::transport::request_response_visitor_factory> (node);
 		auto server (std::make_shared<nano::transport::tcp_server> (

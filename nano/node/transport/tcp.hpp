@@ -178,11 +178,11 @@ namespace transport
 		void set_observer (std::shared_ptr<nano::tcp_server_observer> observer_a);
 		void set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory);
 		std::shared_ptr<nano::transport::channel_tcp> get_first_channel () const;
+		std::size_t get_next_channel_id ();
 
 		nano::tcp_message_manager tcp_message_manager;
-		nano::peer_exclusion excluded_peers;
+		nano::peer_exclusion excluded_peers ();
 		std::shared_ptr<nano::network_filter> publish_filter;
-		std::atomic<size_t> next_channel_id{ 1 };
 
 	private:
 		std::optional<nano::node_id_handshake::query_payload> prepare_handshake_query (nano::endpoint const & remote_endpoint);

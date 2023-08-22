@@ -16,6 +16,7 @@ class peer_exclusion final
 public:
 	peer_exclusion (std::size_t max_size = 5000);
 	peer_exclusion (nano::peer_exclusion const &) = delete;
+	peer_exclusion (rsnano::PeerExclusionHandle * handle_a);
 	~peer_exclusion ();
 	uint64_t add (nano::tcp_endpoint const &);
 	uint64_t score (nano::tcp_endpoint const &) const;

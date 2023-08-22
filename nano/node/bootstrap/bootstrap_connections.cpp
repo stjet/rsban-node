@@ -168,7 +168,7 @@ std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::connection 
 void nano::bootstrap_connections::pool_connection (std::shared_ptr<nano::bootstrap_client> const & client_a, bool new_client, bool push_front)
 {
 	nano::unique_lock<nano::mutex> lock{ mutex };
-	if (!stopped && !client_a->get_pending_stop () && !node.network->tcp_channels->excluded_peers.check (client_a->get_tcp_endpoint ()))
+	if (!stopped && !client_a->get_pending_stop () && !node.network->tcp_channels->excluded_peers ().check (client_a->get_tcp_endpoint ()))
 	{
 		client_a->set_timeout (node.network_params.network.idle_timeout);
 		// Push into idle deque
@@ -233,7 +233,7 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 				this_l->node.logger->try_log (boost::str (boost::format ("Connection established to %1%") % endpoint_a));
 			}
 
-			auto channel_id = this_l->node.network->tcp_channels->next_channel_id.fetch_add (1);
+			auto channel_id = this_l->node.network->tcp_channels->get_next_channel_id ();
 			auto client (std::make_shared<nano::bootstrap_client> (this_l, std::make_shared<nano::transport::channel_tcp> (this_l->node.io_ctx, this_l->node.outbound_limiter, this_l->node.config->network_params.network, socket, this_l->node.network->tcp_channels, channel_id), socket));
 			this_l->connections_count++;
 			this_l->pool_connection (client, true, push_front);
@@ -365,7 +365,7 @@ void nano::bootstrap_connections::populate_connections (bool repeat)
 		for (auto i = 0u; i < delta; i++)
 		{
 			auto endpoint (node.network->bootstrap_peer ()); // Legacy bootstrap is compatible with older version of protocol
-			if (endpoint != nano::tcp_endpoint (boost::asio::ip::address_v6::any (), 0) && (node.flags.allow_bootstrap_peers_duplicates () || endpoints.find (endpoint) == endpoints.end ()) && !node.network->tcp_channels->excluded_peers.check (endpoint))
+			if (endpoint != nano::tcp_endpoint (boost::asio::ip::address_v6::any (), 0) && (node.flags.allow_bootstrap_peers_duplicates () || endpoints.find (endpoint) == endpoints.end ()) && !node.network->tcp_channels->excluded_peers ().check (endpoint))
 			{
 				connect_client (endpoint);
 				endpoints.insert (endpoint);

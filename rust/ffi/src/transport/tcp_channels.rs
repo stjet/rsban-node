@@ -25,7 +25,8 @@ use crate::{
 };
 
 use super::{
-    ChannelHandle, EndpointDto, NetworkFilterHandle, SocketHandle, TcpMessageManagerHandle,
+    peer_exclusion::PeerExclusionHandle, ChannelHandle, EndpointDto, NetworkFilterHandle,
+    SocketHandle, TcpMessageManagerHandle,
 };
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
@@ -483,6 +484,34 @@ pub unsafe extern "C" fn rsn_tcp_channels_create_tcp_server(
             .tcp_server_factory
             .create_tcp_server(channel_tcp, socket.0.clone()),
     )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_get_next_channel_id(handle: &TcpChannelsHandle) -> usize {
+    handle.0.get_next_channel_id()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_process_message(
+    handle: &TcpChannelsHandle,
+    message: &MessageHandle,
+    endpoint: &EndpointDto,
+    node_id: *const u8,
+    socket: &SocketHandle,
+) {
+    let node_id = PublicKey::from_ptr(node_id);
+    handle
+        .0
+        .process_message(message.0.as_ref(), &endpoint.into(), node_id, &socket.0);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_excluded_peers(
+    handle: &TcpChannelsHandle,
+) -> *mut PeerExclusionHandle {
+    Box::into_raw(Box::new(PeerExclusionHandle(
+        handle.0.excluded_peers.clone(),
+    )))
 }
 
 pub struct EndpointListHandle(Vec<SocketAddr>);

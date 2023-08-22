@@ -19,6 +19,7 @@ use rsnano_core::{
 use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
     config::{NetworkConstants, NodeConfig, NodeFlags},
+    messages::Message,
     stats::{DetailType, Direction, StatType, Stats},
     utils::{
         ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address, BlockUniquer,
@@ -45,6 +46,7 @@ pub struct TcpChannelsOptions {
     pub tcp_message_manager: Arc<TcpMessageManager>,
     pub port: u16,
     pub flags: NodeFlags,
+    pub sink: Box<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>)>,
 }
 
 pub struct TcpChannels {
@@ -55,18 +57,42 @@ pub struct TcpChannels {
     tcp_message_manager: Arc<TcpMessageManager>,
     flags: NodeFlags,
     stats: Arc<Stats>,
+    sink: Box<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>)>,
 }
 
 impl TcpChannels {
     pub fn new(options: TcpChannelsOptions) -> Self {
+        let node_config = Arc::new(options.node_config);
+        let network = Arc::new(options.network);
+        let tcp_server_factory = TcpServerFactory {
+            config: node_config.clone(),
+            logger: options.logger,
+            observer: Arc::new(NullTcpServerObserver {}),
+            publish_filter: options.publish_filter,
+            io_ctx: options.io_ctx,
+            network: network.clone(),
+            stats: options.stats.clone(),
+            block_uniquer: options.block_uniquer,
+            vote_uniquer: options.vote_uniquer,
+            tcp_message_manager: options.tcp_message_manager.clone(),
+            message_visitor_factory: None,
+        };
+
         Self {
             port: AtomicU16::new(options.port),
             stopped: AtomicBool::new(false),
-            allow_local_peers: options.node_config.allow_local_peers,
+            allow_local_peers: node_config.allow_local_peers,
             tcp_message_manager: options.tcp_message_manager.clone(),
-            flags: options.flags.clone(),
-            stats: options.stats.clone(),
-            tcp_channels: Mutex::new(TcpChannelsImpl::new(options)),
+            flags: options.flags,
+            stats: options.stats,
+            tcp_channels: Mutex::new(TcpChannelsImpl {
+                attempts: Default::default(),
+                channels: Default::default(),
+                network_constants: network.network.clone(),
+                new_channel_observer: None,
+                tcp_server_factory,
+            }),
+            sink: options.sink,
         }
     }
 
@@ -219,28 +245,6 @@ pub struct TcpChannelsImpl {
 }
 
 impl TcpChannelsImpl {
-    pub fn new(options: TcpChannelsOptions) -> Self {
-        Self {
-            attempts: Default::default(),
-            channels: Default::default(),
-            network_constants: options.network.network.clone(),
-            new_channel_observer: None,
-            tcp_server_factory: TcpServerFactory {
-                config: Arc::new(options.node_config),
-                logger: options.logger,
-                observer: Arc::new(NullTcpServerObserver {}),
-                publish_filter: options.publish_filter,
-                io_ctx: options.io_ctx,
-                network: Arc::new(options.network),
-                stats: options.stats,
-                block_uniquer: options.block_uniquer,
-                vote_uniquer: options.vote_uniquer,
-                tcp_message_manager: options.tcp_message_manager,
-                message_visitor_factory: None,
-            },
-        }
-    }
-
     pub fn bootstrap_peer(&mut self) -> SocketAddr {
         let mut channel_endpoint = None;
         let mut peering_endpoint = None;

@@ -15,6 +15,7 @@ use rsnano_node::{
 use crate::{
     bootstrap::{FfiBootstrapServerObserver, RequestResponseVisitorFactoryHandle, TcpServerHandle},
     core::BlockUniquerHandle,
+    messages::MessageHandle,
     utils::{
         ptr_into_ipv6addr, ContainerInfoComponentHandle, ContextWrapper, FfiIoContext,
         IoContextHandle, LoggerHandle, LoggerMT,
@@ -29,6 +30,8 @@ use super::{
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
 
+pub type SinkCallback = unsafe extern "C" fn(*mut c_void, *mut MessageHandle, *mut ChannelHandle);
+
 #[repr(C)]
 pub struct TcpChannelsOptionsDto {
     pub node_config: *const NodeConfigDto,
@@ -42,6 +45,9 @@ pub struct TcpChannelsOptionsDto {
     pub tcp_message_manager: *mut TcpMessageManagerHandle,
     pub port: u16,
     pub flags: *mut NodeFlagsHandle,
+    pub sink_handle: *mut c_void,
+    pub sink_callback: SinkCallback,
+    pub delete_sink: VoidPointerCallback,
 }
 
 impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
@@ -49,6 +55,16 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
 
     fn try_from(value: &TcpChannelsOptionsDto) -> Result<Self, Self::Error> {
         unsafe {
+            let context_wrapper = ContextWrapper::new(value.sink_handle, value.delete_sink);
+            let callback = value.sink_callback;
+            let sink = Box::new(move |msg, channel| {
+                callback(
+                    context_wrapper.get_context(),
+                    MessageHandle::new(msg),
+                    ChannelHandle::new(channel),
+                )
+            });
+
             Ok(Self {
                 node_config: NodeConfig::try_from(&*value.node_config)?,
                 logger: Arc::new(LoggerMT::new(Box::from_raw(value.logger))),
@@ -61,6 +77,7 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 tcp_message_manager: (*value.tcp_message_manager).deref().clone(),
                 port: value.port,
                 flags: (*value.flags).0.lock().unwrap().clone(),
+                sink,
             })
         }
     }

@@ -184,6 +184,23 @@ bool nano::transport::channel_tcp::alive () const
  * tcp_channels
  */
 
+namespace
+{
+void sink_callback (void * callback_handle, rsnano::MessageHandle * msg_handle, rsnano::ChannelHandle * channel_handle)
+{
+	auto callback = static_cast<std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> *> (callback_handle);
+	auto channel = std::make_shared<nano::transport::channel_tcp> (channel_handle);
+	auto message = rsnano::message_handle_to_message (msg_handle);
+	(*callback) (*message, channel);
+}
+
+void delete_sink (void * callback_handle)
+{
+	auto callback = static_cast<std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> *> (callback_handle);
+	delete callback;
+}
+}
+
 nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
 	tcp_message_manager{ node.config->tcp_incoming_connections_max },
 	node_id{ node.node_id },
@@ -218,6 +235,9 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	options.tcp_message_manager = tcp_message_manager.handle;
 	options.port = port;
 	options.flags = node.flags.handle;
+	options.sink_handle = new std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> (sink);
+	options.sink_callback = sink_callback;
+	options.delete_sink = delete_sink;
 
 	handle = rsnano::rsn_tcp_channels_create (&options);
 }

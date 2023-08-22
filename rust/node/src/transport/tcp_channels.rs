@@ -66,6 +66,8 @@ pub struct TcpChannels {
     pub excluded_peers: Arc<Mutex<PeerExclusion>>,
     limiter: Arc<OutboundBandwidthLimiter>,
     io_ctx: Arc<dyn IoContext>,
+    node_config: Arc<NodeConfig>,
+    logger: Arc<dyn Logger>,
 }
 
 impl TcpChannels {
@@ -74,7 +76,7 @@ impl TcpChannels {
         let network = Arc::new(options.network);
         let tcp_server_factory = TcpServerFactory {
             config: node_config.clone(),
-            logger: options.logger,
+            logger: options.logger.clone(),
             observer: Arc::new(NullTcpServerObserver {}),
             publish_filter: options.publish_filter,
             io_ctx: options.io_ctx.clone(),
@@ -90,6 +92,7 @@ impl TcpChannels {
             port: AtomicU16::new(options.port),
             stopped: AtomicBool::new(false),
             allow_local_peers: node_config.allow_local_peers,
+            node_config,
             tcp_message_manager: options.tcp_message_manager.clone(),
             flags: options.flags,
             stats: options.stats,
@@ -106,6 +109,7 @@ impl TcpChannels {
             excluded_peers: Arc::new(Mutex::new(PeerExclusion::new())),
             limiter: options.limiter,
             io_ctx: options.io_ctx,
+            logger: options.logger,
         }
     }
 
@@ -255,27 +259,42 @@ impl TcpChannels {
 
 impl ChannelTcpObserver for TcpChannels {
     fn data_sent(&self, endpoint: &SocketAddr) {
-        todo!()
+        self.tcp_channels.lock().unwrap().update(endpoint);
     }
 
     fn host_unreachable(&self) {
-        todo!()
+        self.stats
+            .inc(StatType::Error, DetailType::UnreachableHost, Direction::Out);
     }
 
     fn message_sent(&self, message: &dyn Message) {
-        todo!()
+        let detail = DetailType::from(message.header().message_type());
+        self.stats.inc(StatType::Message, detail, Direction::Out);
     }
 
     fn message_dropped(&self, message: &dyn Message, buffer_size: usize) {
-        todo!()
+        let detail_type = message.message_type().into();
+        self.stats.inc(StatType::Drop, detail_type, Direction::Out);
+        if self.node_config.logging.network_packet_logging() {
+            self.logger.always_log(&format!(
+                "{} of size {} dropped",
+                detail_type.as_str(),
+                buffer_size
+            ));
+        }
     }
 
     fn no_socket_drop(&self) {
-        todo!()
+        self.stats.inc(
+            StatType::Tcp,
+            DetailType::TcpWriteNoSocketDrop,
+            Direction::Out,
+        );
     }
 
     fn write_drop(&self) {
-        todo!()
+        self.stats
+            .inc(StatType::Tcp, DetailType::TcpWriteDrop, Direction::Out);
     }
 }
 

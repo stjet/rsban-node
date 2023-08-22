@@ -189,7 +189,6 @@ namespace transport
 		nano::node_id_handshake::response_payload prepare_handshake_response (nano::node_id_handshake::query_payload const & query, bool v2) const;
 		/** Verifies that handshake response matches our query. @returns true if OK */
 		bool verify_handshake_response (nano::node_id_handshake::response_payload const & response, nano::endpoint const & remote_endpoint);
-		std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink;
 
 		nano::keypair node_id;
 		nano::network_params & network_params;

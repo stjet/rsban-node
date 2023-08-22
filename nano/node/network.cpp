@@ -10,6 +10,8 @@
 
 #include <boost/format.hpp>
 
+#include <exception>
+
 /*
  * network
  */
@@ -60,6 +62,12 @@ void nano::network::start_threads ()
 			}
 			catch (std::runtime_error & err)
 			{
+				this_l->node.logger->always_log (FATAL_LOG_PREFIX, err.what ());
+				release_assert (false);
+			}
+			catch (std::exception & err)
+			{
+				std::cerr << err.what () << std::endl;
 				this_l->node.logger->always_log (FATAL_LOG_PREFIX, err.what ());
 				release_assert (false);
 			}

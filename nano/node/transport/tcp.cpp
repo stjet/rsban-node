@@ -222,7 +222,6 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	store{ node.store },
 	io_ctx{ node.io_ctx },
 	observers{ node.observers },
-	sink{ std::move (sink) },
 	node{ node },
 	port{ port },
 	publish_filter{ std::make_shared<nano::network_filter> (256 * 1024) }
@@ -407,54 +406,8 @@ void nano::transport::tcp_channels::process_messages ()
 
 void nano::transport::tcp_channels::process_message (nano::message const & message_a, nano::tcp_endpoint const & endpoint_a, nano::account const & node_id_a, std::shared_ptr<nano::transport::socket> const & socket_a)
 {
-	auto type_a = socket_a->type ();
-	if (!stopped && message_a.get_header ().get_version_using () >= network_params.network.protocol_version_min)
-	{
-		auto channel (find_channel (endpoint_a));
-		if (channel)
-		{
-			sink (message_a, channel);
-		}
-		else
-		{
-			channel = find_node_id (node_id_a);
-			if (channel)
-			{
-				sink (message_a, channel);
-			}
-			else if (!excluded_peers ().check (endpoint_a))
-			{
-				if (!node_id_a.is_zero ())
-				{
-					// Add temporary channel
-					auto channel_id = rsnano::rsn_tcp_channels_get_next_channel_id (handle);
-					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket_a, shared_from_this (), channel_id));
-					temporary_channel->set_endpoint ();
-					debug_assert (endpoint_a == temporary_channel->get_tcp_endpoint ());
-					temporary_channel->set_node_id (node_id_a);
-					temporary_channel->set_network_version (message_a.get_header ().get_version_using ());
-					temporary_channel->set_temporary (true);
-					debug_assert (type_a == nano::transport::socket::type_t::realtime || type_a == nano::transport::socket::type_t::realtime_response_server);
-					// Don't insert temporary channels for response_server
-					if (type_a == nano::transport::socket::type_t::realtime)
-					{
-						insert (temporary_channel, socket_a, nullptr);
-					}
-					sink (message_a, temporary_channel);
-				}
-				else
-				{
-					// Initial node_id_handshake request without node ID
-					debug_assert (message_a.get_header ().get_type () == nano::message_type::node_id_handshake);
-					stats->inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in);
-				}
-			}
-		}
-		if (channel)
-		{
-			channel->set_last_packet_received ();
-		}
-	}
+	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
+	rsnano::rsn_tcp_channels_process_message (handle, message_a.handle, &endpoint_dto, node_id_a.bytes.data (), socket_a->handle);
 }
 
 void nano::transport::tcp_channels::start ()

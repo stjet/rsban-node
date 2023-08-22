@@ -157,7 +157,7 @@ impl StatType {
 
 // Optional detail type
 #[repr(u8)]
-#[derive(FromPrimitive, Serialize)]
+#[derive(FromPrimitive, Serialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum DetailType {
     All = 0,

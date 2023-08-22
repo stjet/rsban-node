@@ -105,6 +105,10 @@ impl TcpChannels {
             include_temporary_channels,
         )
     }
+
+    pub fn get_peers(&self) -> Vec<SocketAddr> {
+        self.tcp_channels.lock().unwrap().get_peers()
+    }
 }
 
 pub struct TcpChannelsImpl {
@@ -248,6 +252,12 @@ impl TcpChannelsImpl {
         }
 
         result
+    }
+
+    pub fn get_peers(&self) -> Vec<SocketAddr> {
+        // We can't hold the mutex while starting a write transaction, so
+        // we collect endpoints to be saved and then release the lock.
+        self.channels.iter().map(|c| c.endpoint()).collect()
     }
 }
 

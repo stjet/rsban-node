@@ -363,7 +363,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_find_channel(
     }
 }
 #[no_mangle]
-
 pub unsafe extern "C" fn rsn_tcp_channels_random_channels(
     handle: &mut TcpChannelsHandle,
     count: usize,
@@ -374,6 +373,35 @@ pub unsafe extern "C" fn rsn_tcp_channels_random_channels(
         .0
         .random_channels(count, min_version, include_temporary_channels);
     Box::into_raw(Box::new(ChannelListHandle(channels)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_get_peers(
+    handle: &mut TcpChannelsHandle,
+) -> *mut EndpointListHandle {
+    let peers = handle.0.get_peers();
+    Box::into_raw(Box::new(EndpointListHandle(peers)))
+}
+
+pub struct EndpointListHandle(Vec<SocketAddr>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_endpoint_list_len(handle: &EndpointListHandle) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_endpoint_list_get(
+    handle: &EndpointListHandle,
+    index: usize,
+    result: &mut EndpointDto,
+) {
+    *result = handle.0.get(index).unwrap().into();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_endpoint_list_destroy(handle: *mut EndpointListHandle) {
+    drop(Box::from_raw(handle))
 }
 
 pub struct TcpEndpointAttemptDto {

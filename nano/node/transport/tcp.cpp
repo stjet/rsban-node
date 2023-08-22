@@ -345,18 +345,17 @@ std::vector<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_chan
 
 std::vector<nano::endpoint> nano::transport::tcp_channels::get_peers () const
 {
-	// We can't hold the mutex while starting a write transaction, so
-	// we collect endpoints to be saved and then relase the lock.
-	nano::lock_guard<nano::mutex> lock{ mutex };
+	auto list_handle = rsnano::rsn_tcp_channels_get_peers (handle);
+	auto len = rsnano::rsn_endpoint_list_len (list_handle);
 	std::vector<nano::endpoint> endpoints;
-	auto channel_count = rsnano::rsn_tcp_channels_channel_count (handle);
-	endpoints.reserve (channel_count);
-	for (auto i = 0; i < channel_count; ++i)
+	endpoints.reserve (len);
+	for (auto i = 0; i < len; ++i)
 	{
-		nano::transport::tcp_channels::channel_tcp_wrapper wrapper{ rsnano::rsn_tcp_channels_get_channel_by_index (handle, i) };
-		endpoints.push_back (nano::transport::map_tcp_to_endpoint (wrapper.endpoint ()));
+		rsnano::EndpointDto dto;
+		rsnano::rsn_endpoint_list_get (list_handle, i, &dto);
+		endpoints.push_back (rsnano::dto_to_udp_endpoint (dto));
 	}
-
+	rsnano::rsn_endpoint_list_destroy (list_handle);
 	return endpoints;
 }
 

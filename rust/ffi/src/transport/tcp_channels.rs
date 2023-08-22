@@ -1,13 +1,10 @@
 use std::{
     ffi::{c_char, c_void, CStr},
-    net::{Ipv6Addr, SocketAddr, SocketAddrV6},
+    net::{IpAddr, Ipv6Addr, SocketAddr},
     sync::{atomic::Ordering, Arc},
 };
 
-use rsnano_core::{
-    utils::{system_time_as_nanoseconds, system_time_from_nanoseconds},
-    PublicKey,
-};
+use rsnano_core::{utils::system_time_from_nanoseconds, PublicKey};
 use rsnano_node::transport::{ChannelEnum, TcpChannels, TcpEndpointAttempt};
 
 use crate::{
@@ -155,7 +152,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_erase_channel_by_endpoint(
         .lock()
         .unwrap()
         .channels
-        .remove_by_endpoint(&SocketAddr::from(endpoint))
+        .remove_by_endpoint(&SocketAddr::from(endpoint));
 }
 
 #[no_mangle]
@@ -358,6 +355,29 @@ pub unsafe extern "C" fn rsn_tcp_channels_collect_container_info(
     Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }
 
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_erase_temporary_channel(
+    handle: &TcpChannelsHandle,
+    endpoint: &EndpointDto,
+) {
+    handle.0.erase_temporary_channel(&endpoint.into())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_random_fill(
+    handle: &TcpChannelsHandle,
+    endpoints: *mut EndpointDto,
+) {
+    let endpoints = std::slice::from_raw_parts_mut(endpoints, 8);
+    let null_endpoint = SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0);
+    let mut tmp = [null_endpoint; 8];
+    handle.0.random_fill(&mut tmp);
+    endpoints
+        .iter_mut()
+        .zip(&tmp)
+        .for_each(|(dto, ep)| *dto = ep.into());
+}
+
 pub struct EndpointListHandle(Vec<SocketAddr>);
 
 #[no_mangle]
@@ -377,35 +397,6 @@ pub unsafe extern "C" fn rsn_endpoint_list_get(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_endpoint_list_destroy(handle: *mut EndpointListHandle) {
     drop(Box::from_raw(handle))
-}
-
-pub struct TcpEndpointAttemptDto {
-    pub endpoint: EndpointDto,
-    pub address: [u8; 16],
-    pub subnetwork: [u8; 16],
-    pub last_attempt: u64,
-}
-
-impl From<&TcpEndpointAttemptDto> for TcpEndpointAttempt {
-    fn from(value: &TcpEndpointAttemptDto) -> Self {
-        Self {
-            endpoint: SocketAddrV6::from(&value.endpoint),
-            address: Ipv6Addr::from(value.address),
-            subnetwork: Ipv6Addr::from(value.subnetwork),
-            last_attempt: system_time_from_nanoseconds(value.last_attempt),
-        }
-    }
-}
-
-impl From<&TcpEndpointAttempt> for TcpEndpointAttemptDto {
-    fn from(value: &TcpEndpointAttempt) -> Self {
-        Self {
-            endpoint: value.endpoint.into(),
-            address: value.address.octets(),
-            subnetwork: value.subnetwork.octets(),
-            last_attempt: system_time_as_nanoseconds(value.last_attempt),
-        }
-    }
 }
 
 pub struct ChannelListHandle(Vec<Arc<ChannelEnum>>);

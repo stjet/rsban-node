@@ -300,12 +300,8 @@ void nano::transport::tcp_channels::erase (nano::tcp_endpoint const & endpoint_a
 
 void nano::transport::tcp_channels::erase_temporary_channel (nano::tcp_endpoint const & endpoint_a)
 {
-	auto exisiting_response_channel (find_channel (endpoint_a));
-	if (exisiting_response_channel != nullptr)
-	{
-		exisiting_response_channel->set_temporary (false);
-		erase (endpoint_a);
-	}
+	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
+	rsnano::rsn_tcp_channels_erase_temporary_channel (handle, &endpoint_dto);
 }
 
 std::size_t nano::transport::tcp_channels::size () const
@@ -361,17 +357,12 @@ std::vector<nano::endpoint> nano::transport::tcp_channels::get_peers () const
 
 void nano::transport::tcp_channels::random_fill (std::array<nano::endpoint, 8> & target_a) const
 {
-	auto peers{ random_channels (target_a.size (), 0, false) }; // Don't include channels with ephemeral remote ports
-	debug_assert (peers.size () <= target_a.size ());
-	auto endpoint (nano::endpoint (boost::asio::ip::address_v6{}, 0));
-	debug_assert (endpoint.address ().is_v6 ());
-	std::fill (target_a.begin (), target_a.end (), endpoint);
-	auto j (target_a.begin ());
-	for (auto i (peers.begin ()), n (peers.end ()); i != n; ++i, ++j)
+	std::array<rsnano::EndpointDto, 8> dtos;
+	rsnano::rsn_tcp_channels_random_fill (handle, dtos.data ());
+	auto j{ target_a.begin () };
+	for (auto i{ dtos.begin () }, n{ dtos.end () }; i != n; ++i, ++j)
 	{
-		debug_assert ((*i)->get_peering_endpoint ().address ().is_v6 ());
-		debug_assert (j < target_a.end ());
-		*j = (*i)->get_peering_endpoint ();
+		*j = rsnano::dto_to_udp_endpoint (*i);
 	}
 }
 

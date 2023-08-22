@@ -212,21 +212,6 @@ namespace transport
 		bool verify_handshake_response (nano::node_id_handshake::response_payload const & response, nano::endpoint const & remote_endpoint);
 		std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink;
 
-		class tcp_endpoint_attempt final
-		{
-		public:
-			nano::tcp_endpoint endpoint;
-			boost::asio::ip::address address;
-			boost::asio::ip::address subnetwork;
-			std::chrono::system_clock::time_point last_attempt{ std::chrono::system_clock::now () };
-
-			explicit tcp_endpoint_attempt (nano::tcp_endpoint const & endpoint_a) :
-				endpoint (endpoint_a),
-				address (nano::transport::ipv4_address_or_ipv6_subnet (endpoint_a.address ())),
-				subnetwork (nano::transport::map_address_to_subnetwork (endpoint_a.address ()))
-			{
-			}
-		};
 		nano::keypair node_id;
 		nano::network_params & network_params;
 		nano::outbound_bandwidth_limiter & limiter;

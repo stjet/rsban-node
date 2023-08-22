@@ -128,6 +128,17 @@ impl TcpChannels {
             .unwrap()
             .collect_container_info(name)
     }
+
+    pub fn erase_temporary_channel(&self, endpoint: &SocketAddr) {
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .erase_temporary_channel(endpoint);
+    }
+
+    pub fn random_fill(&self, endpoints: &mut [SocketAddr]) {
+        self.tcp_channels.lock().unwrap().random_fill(endpoints);
+    }
 }
 
 pub struct TcpChannelsImpl {
@@ -289,6 +300,27 @@ impl TcpChannelsImpl {
             .map(|c| c.channel.clone())
     }
 
+    pub fn erase_temporary_channel(&mut self, endpoint: &SocketAddr) {
+        if let Some(channel) = self.channels.remove_by_endpoint(endpoint) {
+            channel.as_channel().set_temporary(false);
+        }
+    }
+
+    pub fn random_fill(&self, endpoints: &mut [SocketAddr]) {
+        // Don't include channels with ephemeral remote ports
+        let peers = self.random_channels(endpoints.len(), 0, false);
+        let null_endpoint = SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0);
+        for (i, target) in endpoints.iter_mut().enumerate() {
+            let endpoint = if i < peers.len() {
+                let ChannelEnum::Tcp(tcp) = peers[i].as_ref() else { panic!("not a tcp channel")};
+                tcp.peering_endpoint()
+            } else {
+                null_endpoint
+            };
+            *target = endpoint;
+        }
+    }
+
     pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
             name,
@@ -384,7 +416,7 @@ impl ChannelContainer {
         }
     }
 
-    pub fn remove_by_endpoint(&mut self, endpoint: &SocketAddr) {
+    pub fn remove_by_endpoint(&mut self, endpoint: &SocketAddr) -> Option<Arc<ChannelEnum>> {
         if let Some(wrapper) = self.by_endpoint.remove(endpoint) {
             self.by_random_access.retain(|x| x != endpoint); // todo: linear search is slow?
 
@@ -410,6 +442,9 @@ impl ChannelContainer {
             );
             remove_endpoint_map(&mut self.by_ip_address, &wrapper.ip_address(), endpoint);
             remove_endpoint_map(&mut self.by_subnet, &wrapper.subnetwork(), endpoint);
+            Some(wrapper.channel.clone())
+        } else {
+            None
         }
     }
 

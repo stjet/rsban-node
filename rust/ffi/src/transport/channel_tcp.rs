@@ -3,7 +3,7 @@ use num::FromPrimitive;
 use super::{
     bandwidth_limiter::OutboundBandwidthLimiterHandle,
     channel::{as_tcp_channel, ChannelHandle},
-    channel_tcp_observer::ChannelTcpObserverWeakPtr,
+    channel_tcp_observer::FfiChannelTcpObserverWeakPtr,
     socket::SocketHandle,
     EndpointDto,
 };
@@ -24,7 +24,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
     io_ctx: *mut c_void,
     channel_id: usize,
 ) -> *mut ChannelHandle {
-    let observer = Arc::new(ChannelTcpObserverWeakPtr::new(observer));
+    let observer = Arc::new(FfiChannelTcpObserverWeakPtr::new(observer));
     let limiter = Arc::clone(&*limiter);
     let io_ctx = Arc::new(FfiIoContext::new(io_ctx));
     ChannelHandle::new(Arc::new(ChannelEnum::Tcp(ChannelTcp::new(

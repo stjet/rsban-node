@@ -23,7 +23,7 @@ pub trait IChannelTcpObserverWeakPtr: Send + Sync {
     fn lock(&self) -> Option<Arc<dyn ChannelTcpObserver>>;
 }
 
-pub trait ChannelTcpObserver {
+pub trait ChannelTcpObserver: Send + Sync {
     fn data_sent(&self, endpoint: &SocketAddr);
     fn host_unreachable(&self);
     fn message_sent(&self, message: &dyn Message);

@@ -49,6 +49,9 @@ impl FfiChannelTcpObserver {
     }
 }
 
+unsafe impl Send for FfiChannelTcpObserver {}
+unsafe impl Sync for FfiChannelTcpObserver {}
+
 impl ChannelTcpObserver for FfiChannelTcpObserver {
     fn data_sent(&self, endpoint: &SocketAddr) {
         let dto = EndpointDto::from(endpoint);
@@ -103,21 +106,21 @@ impl Drop for FfiChannelTcpObserver {
     }
 }
 
-pub struct ChannelTcpObserverWeakPtr {
+pub struct FfiChannelTcpObserverWeakPtr {
     /// `weak_ptr<channel_tcp_observer> *`
     handle: *mut c_void,
 }
 
-unsafe impl Send for ChannelTcpObserverWeakPtr {}
-unsafe impl Sync for ChannelTcpObserverWeakPtr {}
+unsafe impl Send for FfiChannelTcpObserverWeakPtr {}
+unsafe impl Sync for FfiChannelTcpObserverWeakPtr {}
 
-impl ChannelTcpObserverWeakPtr {
+impl FfiChannelTcpObserverWeakPtr {
     pub fn new(handle: *mut c_void) -> Self {
         Self { handle }
     }
 }
 
-impl IChannelTcpObserverWeakPtr for ChannelTcpObserverWeakPtr {
+impl IChannelTcpObserverWeakPtr for FfiChannelTcpObserverWeakPtr {
     fn lock(&self) -> Option<Arc<dyn ChannelTcpObserver>> {
         let shared_ptr_handle =
             unsafe { LOCK_OBSERVER.expect("LOCK_OBSERVER missing")(self.handle) };
@@ -129,13 +132,13 @@ impl IChannelTcpObserverWeakPtr for ChannelTcpObserverWeakPtr {
     }
 }
 
-impl Drop for ChannelTcpObserverWeakPtr {
+impl Drop for FfiChannelTcpObserverWeakPtr {
     fn drop(&mut self) {
         unsafe { DROP_WEAK_PTR.expect("DROP_WEAK_PTR missing")(self.handle) }
     }
 }
 
-impl Clone for ChannelTcpObserverWeakPtr {
+impl Clone for FfiChannelTcpObserverWeakPtr {
     fn clone(&self) -> Self {
         Self {
             handle: unsafe { CLONE_WEAK_PTR.expect("CLONE_WEAK_PTR missing")(self.handle) },

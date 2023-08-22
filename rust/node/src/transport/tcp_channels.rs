@@ -5,7 +5,7 @@ use std::{
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, Weak,
     },
     time::SystemTime,
 };
@@ -19,8 +19,9 @@ use rsnano_core::{
 use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
     config::{NetworkConstants, NodeConfig, NodeFlags},
-    messages::Message,
+    messages::{Message, MessageType},
     stats::{DetailType, Direction, StatType, Stats},
+    transport::{Channel, SocketType},
     utils::{
         ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address, BlockUniquer,
         IoContext,
@@ -30,7 +31,8 @@ use crate::{
 };
 
 use super::{
-    ChannelEnum, NetworkFilter, NullTcpServerObserver, PeerExclusion, Socket, SocketImpl,
+    ChannelEnum, ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr, NetworkFilter,
+    NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket, SocketImpl,
     TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver,
 };
 
@@ -46,7 +48,8 @@ pub struct TcpChannelsOptions {
     pub tcp_message_manager: Arc<TcpMessageManager>,
     pub port: u16,
     pub flags: NodeFlags,
-    pub sink: Box<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>)>,
+    pub sink: Box<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>) + Sync + Send>,
+    pub limiter: Arc<OutboundBandwidthLimiter>,
 }
 
 pub struct TcpChannels {
@@ -57,10 +60,12 @@ pub struct TcpChannels {
     tcp_message_manager: Arc<TcpMessageManager>,
     flags: NodeFlags,
     stats: Arc<Stats>,
-    sink: Box<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>)>,
+    sink: Box<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>) + Send + Sync>,
     next_channel_id: AtomicUsize,
     network: Arc<NetworkParams>,
     pub excluded_peers: Arc<Mutex<PeerExclusion>>,
+    limiter: Arc<OutboundBandwidthLimiter>,
+    io_ctx: Arc<dyn IoContext>,
 }
 
 impl TcpChannels {
@@ -72,7 +77,7 @@ impl TcpChannels {
             logger: options.logger,
             observer: Arc::new(NullTcpServerObserver {}),
             publish_filter: options.publish_filter,
-            io_ctx: options.io_ctx,
+            io_ctx: options.io_ctx.clone(),
             network: network.clone(),
             stats: options.stats.clone(),
             block_uniquer: options.block_uniquer,
@@ -99,6 +104,8 @@ impl TcpChannels {
             next_channel_id: AtomicUsize::new(1),
             network,
             excluded_peers: Arc::new(Mutex::new(PeerExclusion::new())),
+            limiter: options.limiter,
+            io_ctx: options.io_ctx,
         }
     }
 
@@ -119,7 +126,7 @@ impl TcpChannels {
                 == &SocketAddrV6::new(Ipv6Addr::LOCALHOST, self.port.load(Ordering::SeqCst), 0, 0)
     }
 
-    pub fn on_new_channel(&self, callback: Arc<dyn Fn(Arc<ChannelEnum>)>) {
+    pub fn on_new_channel(&self, callback: Arc<dyn Fn(Arc<ChannelEnum>) + Send + Sync>) {
         self.tcp_channels.lock().unwrap().new_channel_observer = Some(callback);
     }
 
@@ -244,8 +251,54 @@ impl TcpChannels {
         }
         result
     }
+}
 
-    pub fn process_message(
+impl ChannelTcpObserver for TcpChannels {
+    fn data_sent(&self, endpoint: &SocketAddr) {
+        todo!()
+    }
+
+    fn host_unreachable(&self) {
+        todo!()
+    }
+
+    fn message_sent(&self, message: &dyn Message) {
+        todo!()
+    }
+
+    fn message_dropped(&self, message: &dyn Message, buffer_size: usize) {
+        todo!()
+    }
+
+    fn no_socket_drop(&self) {
+        todo!()
+    }
+
+    fn write_drop(&self) {
+        todo!()
+    }
+}
+
+struct ChannelTcpObserverWeakPtr(Weak<dyn ChannelTcpObserver>);
+
+impl IChannelTcpObserverWeakPtr for ChannelTcpObserverWeakPtr {
+    fn lock(&self) -> Option<Arc<dyn ChannelTcpObserver>> {
+        self.0.upgrade()
+    }
+}
+
+pub trait TcpChannelsExtension {
+    fn process_message(
+        &self,
+        message: &dyn Message,
+        endpoint: &SocketAddr,
+        node_id: PublicKey,
+        socket: &Arc<SocketImpl>,
+    );
+}
+
+impl TcpChannelsExtension for Arc<TcpChannels> {
+    fn process_message(
         &self,
         message: &dyn Message,
         endpoint: &SocketAddr,
@@ -257,45 +310,86 @@ impl TcpChannels {
             && message.header().version_using() >= self.network.network.protocol_version_min
         {
             if let Some(channel) = self.find_channel(endpoint) {
-                (self.sink)(message.clone_box(), channel);
+                (self.sink)(message.clone_box(), Arc::clone(&channel));
+                channel
+                    .as_channel()
+                    .set_last_packet_received(SystemTime::now());
             } else {
                 if let Some(channel) = self.find_node_id(&node_id) {
-                    (self.sink)(message.clone_box(), channel);
+                    (self.sink)(message.clone_box(), Arc::clone(&channel));
+                    channel
+                        .as_channel()
+                        .set_last_packet_received(SystemTime::now());
+                } else if !self.excluded_peers.lock().unwrap().is_excluded(endpoint) {
+                    if !node_id.is_zero() {
+                        // Add temporary channel
+                        let channel_id = self.get_next_channel_id();
+                        let observer: Arc<dyn ChannelTcpObserver> =
+                            Arc::new(ChannelTcpObserverProxy(Arc::clone(self)));
+                        let temporary_channel = ChannelTcp::new(
+                            socket,
+                            SystemTime::now(),
+                            Arc::new(ChannelTcpObserverWeakPtr(Arc::downgrade(&observer))),
+                            self.limiter.clone(),
+                            self.io_ctx.clone(),
+                            channel_id,
+                        );
+                        temporary_channel.set_endpoint();
+                        debug_assert!(*endpoint == temporary_channel.endpoint());
+                        temporary_channel.set_node_id(node_id);
+                        temporary_channel.set_network_version(message.header().version_using());
+                        temporary_channel.set_temporary(true);
+                        let temporary_channel = Arc::new(ChannelEnum::Tcp(temporary_channel));
+                        debug_assert!(
+                            socket_type == SocketType::Realtime
+                                || socket_type == SocketType::RealtimeResponseServer,
+                        );
+                        // Don't insert temporary channels for response_server
+                        if socket_type == SocketType::Realtime {
+                            let _ = self.insert(&temporary_channel, socket, None);
+                        }
+                        (self.sink)(message.clone_box(), temporary_channel);
+                    } else {
+                        // Initial node_id_handshake request without node ID
+                        debug_assert!(
+                            message.header().message_type() == MessageType::NodeIdHandshake
+                        );
+                        self.stats.inc(
+                            StatType::Message,
+                            DetailType::NodeIdHandshake,
+                            Direction::In,
+                        );
+                    }
                 }
-                // 		else if (!excluded_peers.check (endpoint_a))
-                // 		{
-                // 			if (!node_id_a.is_zero ())
-                // 			{
-                // 				// Add temporary channel
-                // 				auto channel_id = rsnano::rsn_tcp_channels_get_next_channel_id (handle);
-                // 				auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket_a, shared_from_this (), channel_id));
-                // 				temporary_channel->set_endpoint ();
-                // 				debug_assert (endpoint_a == temporary_channel->get_tcp_endpoint ());
-                // 				temporary_channel->set_node_id (node_id_a);
-                // 				temporary_channel->set_network_version (message_a.get_header ().get_version_using ());
-                // 				temporary_channel->set_temporary (true);
-                // 				debug_assert (type_a == nano::transport::socket::type_t::realtime || type_a == nano::transport::socket::type_t::realtime_response_server);
-                // 				// Don't insert temporary channels for response_server
-                // 				if (type_a == nano::transport::socket::type_t::realtime)
-                // 				{
-                // 					insert (temporary_channel, socket_a, nullptr);
-                // 				}
-                // 				sink (message_a, temporary_channel);
-                // 			}
-                // 			else
-                // 			{
-                // 				// Initial node_id_handshake request without node ID
-                // 				debug_assert (message_a.get_header ().get_type () == nano::message_type::node_id_handshake);
-                // 				stats->inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in);
-                // 			}
-                // 		}
             }
-
-            // 	if (channel)
-            // 	{
-            // 		channel->set_last_packet_received ();
-            // 	}
         }
+    }
+}
+
+pub struct ChannelTcpObserverProxy(Arc<TcpChannels>);
+impl ChannelTcpObserver for ChannelTcpObserverProxy {
+    fn data_sent(&self, endpoint: &SocketAddr) {
+        self.0.data_sent(endpoint);
+    }
+
+    fn host_unreachable(&self) {
+        self.0.host_unreachable();
+    }
+
+    fn message_sent(&self, message: &dyn Message) {
+        self.0.message_sent(message);
+    }
+
+    fn message_dropped(&self, message: &dyn Message, buffer_size: usize) {
+        self.0.message_dropped(message, buffer_size);
+    }
+
+    fn no_socket_drop(&self) {
+        self.0.no_socket_drop();
+    }
+
+    fn write_drop(&self) {
+        self.0.write_drop();
     }
 }
 
@@ -303,7 +397,7 @@ pub struct TcpChannelsImpl {
     pub attempts: TcpEndpointAttemptContainer,
     pub channels: ChannelContainer,
     network_constants: NetworkConstants,
-    new_channel_observer: Option<Arc<dyn Fn(Arc<ChannelEnum>)>>,
+    new_channel_observer: Option<Arc<dyn Fn(Arc<ChannelEnum>) + Send + Sync>>,
     pub tcp_server_factory: TcpServerFactory,
 }
 

@@ -31,7 +31,7 @@ pub struct InProcChannelData {
     node_id: Option<Account>,
 }
 
-pub type InboundCallback = Arc<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>)>;
+pub type InboundCallback = Arc<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>) + Send + Sync>;
 
 pub struct ChannelInProc {
     channel_id: usize,

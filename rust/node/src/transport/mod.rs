@@ -30,7 +30,9 @@ pub use peer_exclusion::PeerExclusion;
 use rsnano_core::Account;
 pub use socket::*;
 pub use syn_cookies::{Cookie, SynCookies};
-pub use tcp_channels::{TcpChannels, TcpChannelsImpl, TcpChannelsOptions, TcpEndpointAttempt};
+pub use tcp_channels::{
+    TcpChannels, TcpChannelsExtension, TcpChannelsImpl, TcpChannelsOptions, TcpEndpointAttempt,
+};
 pub use tcp_message_manager::{TcpMessageItem, TcpMessageManager};
 pub use tcp_server::{
     BootstrapMessageVisitor, HandshakeMessageVisitor, HandshakeMessageVisitorImpl,

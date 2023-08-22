@@ -59,7 +59,13 @@ void nano::tcp_message_manager::stop ()
  * channel_tcp
  */
 
-nano::transport::channel_tcp::channel_tcp (boost::asio::io_context & io_ctx_a, nano::outbound_bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::transport::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a, size_t channel_id) :
+nano::transport::channel_tcp::channel_tcp (
+boost::asio::io_context & io_ctx_a,
+nano::outbound_bandwidth_limiter & limiter_a,
+nano::network_constants const & network_a,
+std::shared_ptr<nano::transport::socket> const & socket_a,
+std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a,
+size_t channel_id) :
 	channel (rsnano::rsn_channel_tcp_create (
 	socket_a->handle,
 	new std::weak_ptr<nano::transport::channel_tcp_observer> (observer_a),
@@ -239,6 +245,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	options.sink_handle = new std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> (sink);
 	options.sink_callback = sink_callback;
 	options.delete_sink = delete_sink;
+	options.limiter = node.outbound_limiter.handle;
 
 	handle = rsnano::rsn_tcp_channels_create (&options);
 }

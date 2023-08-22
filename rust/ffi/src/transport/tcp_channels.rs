@@ -8,7 +8,9 @@ use std::{
 use rsnano_core::{utils::system_time_from_nanoseconds, PublicKey};
 use rsnano_node::{
     config::NodeConfig,
-    transport::{ChannelEnum, TcpChannels, TcpChannelsOptions, TcpEndpointAttempt},
+    transport::{
+        ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpEndpointAttempt,
+    },
     NetworkParams,
 };
 
@@ -26,7 +28,7 @@ use crate::{
 
 use super::{
     peer_exclusion::PeerExclusionHandle, ChannelHandle, EndpointDto, NetworkFilterHandle,
-    SocketHandle, TcpMessageManagerHandle,
+    OutboundBandwidthLimiterHandle, SocketHandle, TcpMessageManagerHandle,
 };
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
@@ -49,6 +51,7 @@ pub struct TcpChannelsOptionsDto {
     pub sink_handle: *mut c_void,
     pub sink_callback: SinkCallback,
     pub delete_sink: VoidPointerCallback,
+    pub limiter: *mut OutboundBandwidthLimiterHandle,
 }
 
 impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
@@ -79,6 +82,7 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 port: value.port,
                 flags: (*value.flags).0.lock().unwrap().clone(),
                 sink,
+                limiter: (*value.limiter).0.clone(),
             })
         }
     }

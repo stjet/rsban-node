@@ -20,7 +20,7 @@ use crate::{
         IoContextHandle, LoggerHandle, LoggerMT,
     },
     voting::VoteUniquerHandle,
-    NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
+    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
 
 use super::{
@@ -41,6 +41,7 @@ pub struct TcpChannelsOptionsDto {
     pub vote_uniquer: *mut VoteUniquerHandle,
     pub tcp_message_manager: *mut TcpMessageManagerHandle,
     pub port: u16,
+    pub flags: *mut NodeFlagsHandle,
 }
 
 impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
@@ -59,6 +60,7 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 vote_uniquer: (*value.vote_uniquer).deref().clone(),
                 tcp_message_manager: (*value.tcp_message_manager).deref().clone(),
                 port: value.port,
+                flags: (*value.flags).0.lock().unwrap().clone(),
             })
         }
     }
@@ -83,6 +85,14 @@ pub type NewChannelCallback = unsafe extern "C" fn(*mut c_void, *mut ChannelHand
 #[no_mangle]
 pub extern "C" fn rsn_tcp_channels_stop(handle: &mut TcpChannelsHandle) {
     handle.0.stop();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_max_ip_connections(
+    handle: &mut TcpChannelsHandle,
+    endpoint: &EndpointDto,
+) -> bool {
+    handle.0.max_ip_connections(&endpoint.into())
 }
 
 #[no_mangle]

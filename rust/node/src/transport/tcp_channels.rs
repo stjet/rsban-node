@@ -18,8 +18,8 @@ use rsnano_core::{
 
 use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
-    config::{NetworkConstants, NodeConfig},
-    stats::Stats,
+    config::{NetworkConstants, NodeConfig, NodeFlags},
+    stats::{DetailType, Direction, StatType, Stats},
     utils::{
         ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address, BlockUniquer,
         IoContext,
@@ -44,6 +44,7 @@ pub struct TcpChannelsOptions {
     pub vote_uniquer: Arc<VoteUniquer>,
     pub tcp_message_manager: Arc<TcpMessageManager>,
     pub port: u16,
+    pub flags: NodeFlags,
 }
 
 pub struct TcpChannels {
@@ -51,6 +52,9 @@ pub struct TcpChannels {
     pub port: AtomicU16,
     pub stopped: AtomicBool,
     allow_local_peers: bool,
+    tcp_message_manager: Arc<TcpMessageManager>,
+    flags: NodeFlags,
+    stats: Arc<Stats>,
 }
 
 impl TcpChannels {
@@ -59,12 +63,17 @@ impl TcpChannels {
             port: AtomicU16::new(options.port),
             stopped: AtomicBool::new(false),
             allow_local_peers: options.node_config.allow_local_peers,
+            tcp_message_manager: options.tcp_message_manager.clone(),
+            flags: options.flags.clone(),
+            stats: options.stats.clone(),
             tcp_channels: Mutex::new(TcpChannelsImpl::new(options)),
         }
     }
 
     pub fn stop(&self) {
         self.stopped.store(true, Ordering::SeqCst);
+        self.tcp_channels.lock().unwrap().close_channels();
+        self.tcp_message_manager.stop();
     }
 
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
@@ -179,6 +188,25 @@ impl TcpChannels {
             .unwrap()
             .tcp_server_factory
             .message_visitor_factory = Some(visitor_factory);
+    }
+
+    pub fn max_ip_connections(&self, endpoint: &SocketAddrV6) -> bool {
+        if self.flags.disable_max_peers_per_ip {
+            return false;
+        }
+        let mut result;
+        let address = ipv4_address_or_ipv6_subnet(endpoint.ip());
+        let lock = self.tcp_channels.lock().unwrap();
+        result = lock.channels.count_by_ip(&address) >= lock.network_constants.max_peers_per_ip;
+        if !result {
+            result =
+                lock.attempts.count_by_address(&address) >= lock.network_constants.max_peers_per_ip;
+        }
+        if result {
+            self.stats
+                .inc(StatType::Tcp, DetailType::TcpMaxPerIp, Direction::Out);
+        }
+        result
     }
 }
 

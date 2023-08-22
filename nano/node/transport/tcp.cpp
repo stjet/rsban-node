@@ -217,6 +217,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	options.vote_uniquer = node.vote_uniquer.handle;
 	options.tcp_message_manager = tcp_message_manager.handle;
 	options.port = port;
+	options.flags = node.flags.handle;
 
 	handle = rsnano::rsn_tcp_channels_create (&options);
 }
@@ -426,9 +427,6 @@ void nano::transport::tcp_channels::stop ()
 {
 	stopped = true;
 	rsnano::rsn_tcp_channels_stop (handle);
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	rsnano::rsn_tcp_channels_close_channels (handle);
-	tcp_message_manager.stop ();
 }
 
 bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_a, bool allow_local_peers)
@@ -439,23 +437,8 @@ bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_
 
 bool nano::transport::tcp_channels::max_ip_connections (nano::tcp_endpoint const & endpoint_a)
 {
-	if (flags.disable_max_peers_per_ip ())
-	{
-		return false;
-	}
-	bool result{ false };
-	auto const address (nano::transport::ipv4_address_or_ipv6_subnet (endpoint_a.address ()));
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	result = rsnano::rsn_tcp_channels_count_by_ip (handle, address.to_v6 ().to_bytes ().data ()) >= network_params.network.max_peers_per_ip;
-	if (!result)
-	{
-		result = rsnano::rsn_tcp_channels_get_attempt_count_by_ip_address (handle, address.to_v6 ().to_bytes ().data ()) >= network_params.network.max_peers_per_ip;
-	}
-	if (result)
-	{
-		stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_ip, nano::stat::dir::out);
-	}
-	return result;
+	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
+	return rsnano::rsn_tcp_channels_max_ip_connections (handle, &endpoint_dto);
 }
 
 bool nano::transport::tcp_channels::max_subnetwork_connections (nano::tcp_endpoint const & endpoint_a)

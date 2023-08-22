@@ -226,7 +226,7 @@ impl TcpChannelsImpl {
         // Otherwise make sure we have a cutoff on attempting to randomly fill
         if peers_size > 0 {
             let mut rng = thread_rng();
-            for i in 0..random_cutoff {
+            for _ in 0..random_cutoff {
                 let index = rng.gen_range(0..peers_size);
                 let wrapper = self.channels.get_by_index(index).unwrap();
                 if !wrapper.channel.as_channel().is_alive() {

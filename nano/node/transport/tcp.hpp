@@ -225,11 +225,11 @@ namespace transport
 			{
 				return get_channel ()->get_tcp_endpoint ();
 			}
-			uint64_t last_packet_sent () const
+			std::chrono::system_clock::time_point last_packet_sent () const
 			{
 				return get_channel ()->get_last_packet_sent ();
 			}
-			uint64_t last_bootstrap_attempt () const
+			std::chrono::system_clock::time_point last_bootstrap_attempt () const
 			{
 				return get_channel ()->get_last_bootstrap_attempt ();
 			}

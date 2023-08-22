@@ -116,13 +116,13 @@ public:
 		return true;
 	}
 
-	uint64_t get_last_bootstrap_attempt () const;
+	std::chrono::system_clock::time_point get_last_bootstrap_attempt () const;
 	void set_last_bootstrap_attempt ();
 
-	uint64_t get_last_packet_received () const;
+	std::chrono::system_clock::time_point get_last_packet_received () const;
 	void set_last_packet_received ();
 
-	uint64_t get_last_packet_sent () const;
+	std::chrono::system_clock::time_point get_last_packet_sent () const;
 	void set_last_packet_sent ();
 	void set_last_packet_sent (std::chrono::system_clock::time_point time);
 

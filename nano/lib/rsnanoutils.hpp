@@ -221,4 +221,6 @@ public:
 	rsnano::BlockHashVecHandle * handle;
 };
 
+std::chrono::system_clock::time_point time_point_from_nanoseconds (uint64_t nanoseconds);
+
 }

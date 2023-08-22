@@ -138,7 +138,7 @@ TEST (network, last_contacted)
 	// capture the state before and ensure the clock ticks at least once
 	auto timestamp_before_keepalive = channel0->get_last_packet_received ();
 	auto keepalive_count = node0->stats->count (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in);
-	ASSERT_TIMELY (3s, std::chrono::system_clock::now ().time_since_epoch ().count () > timestamp_before_keepalive);
+	ASSERT_TIMELY (3s, std::chrono::system_clock::now () > timestamp_before_keepalive);
 
 	// send 3 keepalives
 	// we need an extra keepalive to handle the race condition between the timestamp set and the counter increment

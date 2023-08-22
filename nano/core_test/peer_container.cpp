@@ -97,7 +97,7 @@ TEST (peer_container, tcp_channel_cleanup_works)
 		auto const min_last_packet_sent = std::min (channel1_last_packet_sent, channel2_last_packet_sent);
 		auto const cleanup_point = ((max_last_packet_sent - min_last_packet_sent) / 2) + min_last_packet_sent;
 
-		node1.network->cleanup (std::chrono::system_clock::time_point (std::chrono::duration_cast<std::chrono::microseconds> (std::chrono::nanoseconds (cleanup_point))));
+		node1.network->cleanup (std::chrono::system_clock::time_point (cleanup_point));
 
 		// it is possible that the last_packet_sent times changed because of another thread and the cleanup_point
 		// is not the middle time anymore, in these case we wait a bit and try again in a loop up to 10 times

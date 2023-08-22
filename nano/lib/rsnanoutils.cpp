@@ -2,6 +2,8 @@
 
 #include <nano/lib/rsnanoutils.hpp>
 
+#include <chrono>
+
 boost::system::error_code rsnano::dto_to_error_code (rsnano::ErrorCodeDto const & dto)
 {
 	boost::system::error_category const * cat;
@@ -208,4 +210,10 @@ void rsnano::block_hash_vec::assign (block_hash_vec const & source_a, size_t sta
 void rsnano::block_hash_vec::truncate (size_t new_size_a)
 {
 	rsnano::rsn_block_hash_vec_truncate (handle, new_size_a);
+}
+
+std::chrono::system_clock::time_point rsnano::time_point_from_nanoseconds (uint64_t nanoseconds)
+{
+	std::chrono::nanoseconds result_ns{ nanoseconds };
+	return std::chrono::system_clock::time_point (std::chrono::duration_cast<std::chrono::system_clock::duration> (result_ns));
 }

@@ -212,51 +212,6 @@ namespace transport
 		bool verify_handshake_response (nano::node_id_handshake::response_payload const & response, nano::endpoint const & remote_endpoint);
 		std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink;
 
-		class channel_tcp_wrapper final
-		{
-		public:
-			channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::transport::socket> socket_a, std::shared_ptr<nano::transport::tcp_server> server_a);
-			channel_tcp_wrapper (rsnano::ChannelTcpWrapperHandle * handle_a);
-			channel_tcp_wrapper (channel_tcp_wrapper const &) = delete;
-			~channel_tcp_wrapper ();
-			std::shared_ptr<nano::transport::channel_tcp> get_channel () const;
-			std::shared_ptr<nano::transport::tcp_server> get_response_server () const;
-			nano::tcp_endpoint endpoint () const
-			{
-				return get_channel ()->get_tcp_endpoint ();
-			}
-			std::chrono::system_clock::time_point last_packet_sent () const
-			{
-				return get_channel ()->get_last_packet_sent ();
-			}
-			std::chrono::system_clock::time_point last_bootstrap_attempt () const
-			{
-				return get_channel ()->get_last_bootstrap_attempt ();
-			}
-			std::shared_ptr<nano::transport::socket> try_get_socket () const
-			{
-				return get_channel ()->try_get_socket ();
-			}
-			boost::asio::ip::address ip_address () const
-			{
-				return nano::transport::ipv4_address_or_ipv6_subnet (endpoint ().address ());
-			}
-			boost::asio::ip::address subnetwork () const
-			{
-				return nano::transport::map_address_to_subnetwork (endpoint ().address ());
-			}
-			nano::account node_id () const
-			{
-				auto node_id (get_channel ()->get_node_id ());
-				return node_id;
-			}
-			uint8_t network_version () const
-			{
-				return get_channel ()->get_network_version ();
-			}
-
-			rsnano::ChannelTcpWrapperHandle * handle;
-		};
 		class tcp_endpoint_attempt final
 		{
 		public:

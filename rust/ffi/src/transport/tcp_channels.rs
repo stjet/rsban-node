@@ -1,5 +1,5 @@
 use std::{
-    ffi::c_void,
+    ffi::{c_char, c_void, CStr},
     net::{Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{atomic::Ordering, Arc},
 };
@@ -11,8 +11,8 @@ use rsnano_core::{
 use rsnano_node::transport::{ChannelEnum, TcpChannels, TcpEndpointAttempt};
 
 use crate::{
-    bootstrap::{ChannelTcpWrapperHandle, TcpServerHandle},
-    utils::{ptr_into_ipv6addr, ContextWrapper},
+    bootstrap::TcpServerHandle,
+    utils::{ptr_into_ipv6addr, ContainerInfoComponentHandle, ContextWrapper},
     NetworkConstantsDto, VoidPointerCallback,
 };
 
@@ -145,18 +145,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_erase_channel_by_node_id(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_find_channel_by_node_id(
-    handle: &mut TcpChannelsHandle,
-    node_id: *const u8,
-) -> *mut ChannelTcpWrapperHandle {
-    let guard = handle.0.tcp_channels.lock().unwrap();
-    match guard.channels.get_by_node_id(&PublicKey::from_ptr(node_id)) {
-        Some(wrapper) => ChannelTcpWrapperHandle::new(Arc::clone(wrapper)),
-        None => std::ptr::null_mut(),
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_erase_channel_by_endpoint(
     handle: &mut TcpChannelsHandle,
     endpoint: &EndpointDto,
@@ -168,35 +156,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_erase_channel_by_endpoint(
         .unwrap()
         .channels
         .remove_by_endpoint(&SocketAddr::from(endpoint))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_channels_get_channel(
-    handle: &mut TcpChannelsHandle,
-    endpoint: &EndpointDto,
-) -> *mut ChannelTcpWrapperHandle {
-    let guard = handle.0.tcp_channels.lock().unwrap();
-    match guard.channels.get(&SocketAddr::from(endpoint)) {
-        Some(wrapper) => ChannelTcpWrapperHandle::new(Arc::clone(wrapper)),
-        None => std::ptr::null_mut(),
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_channels_get_channel_by_index(
-    handle: &mut TcpChannelsHandle,
-    index: usize,
-) -> *mut ChannelTcpWrapperHandle {
-    ChannelTcpWrapperHandle::new(Arc::clone(
-        handle
-            .0
-            .tcp_channels
-            .lock()
-            .unwrap()
-            .channels
-            .get_by_index(index)
-            .unwrap(),
-    ))
 }
 
 #[no_mangle]
@@ -231,20 +190,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_insert(
         Some((*server).0.clone())
     };
     handle.0.insert(&channel.0, &socket.0, server).is_err()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_channels_insert_channel(
-    handle: &mut TcpChannelsHandle,
-    wrapper: &ChannelTcpWrapperHandle,
-) -> bool {
-    handle
-        .0
-        .tcp_channels
-        .lock()
-        .unwrap()
-        .channels
-        .insert(Arc::clone(&wrapper.0))
 }
 
 #[no_mangle]
@@ -381,6 +326,36 @@ pub unsafe extern "C" fn rsn_tcp_channels_get_peers(
 ) -> *mut EndpointListHandle {
     let peers = handle.0.get_peers();
     Box::into_raw(Box::new(EndpointListHandle(peers)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_get_first_channel(
+    handle: &mut TcpChannelsHandle,
+) -> *mut ChannelHandle {
+    ChannelHandle::new(handle.0.get_first_channel().unwrap())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_find_node_id(
+    handle: &mut TcpChannelsHandle,
+    node_id: *const u8,
+) -> *mut ChannelHandle {
+    let node_id = PublicKey::from_ptr(node_id);
+    match handle.0.find_node_id(&node_id) {
+        Some(channel) => ChannelHandle::new(channel),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_collect_container_info(
+    handle: &TcpChannelsHandle,
+    name: *const c_char,
+) -> *mut ContainerInfoComponentHandle {
+    let container_info = (*handle)
+        .0
+        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
+    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }
 
 pub struct EndpointListHandle(Vec<SocketAddr>);

@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     hash::Hash,
+    mem::size_of,
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU16, Ordering},
@@ -10,7 +11,10 @@ use std::{
 };
 
 use rand::{thread_rng, Rng};
-use rsnano_core::PublicKey;
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent},
+    PublicKey,
+};
 
 use crate::{
     bootstrap::ChannelTcpWrapper,
@@ -108,6 +112,21 @@ impl TcpChannels {
 
     pub fn get_peers(&self) -> Vec<SocketAddr> {
         self.tcp_channels.lock().unwrap().get_peers()
+    }
+
+    pub fn get_first_channel(&self) -> Option<Arc<ChannelEnum>> {
+        self.tcp_channels.lock().unwrap().get_first_channel()
+    }
+
+    pub fn find_node_id(&self, node_id: &PublicKey) -> Option<Arc<ChannelEnum>> {
+        self.tcp_channels.lock().unwrap().find_node_id(node_id)
+    }
+
+    pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .collect_container_info(name)
     }
 }
 
@@ -258,6 +277,34 @@ impl TcpChannelsImpl {
         // We can't hold the mutex while starting a write transaction, so
         // we collect endpoints to be saved and then release the lock.
         self.channels.iter().map(|c| c.endpoint()).collect()
+    }
+
+    pub fn get_first_channel(&self) -> Option<Arc<ChannelEnum>> {
+        self.channels.get_by_index(0).map(|c| c.channel.clone())
+    }
+
+    pub fn find_node_id(&self, node_id: &PublicKey) -> Option<Arc<ChannelEnum>> {
+        self.channels
+            .get_by_node_id(node_id)
+            .map(|c| c.channel.clone())
+    }
+
+    pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name,
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "channels".to_string(),
+                    count: self.channels.len(),
+                    sizeof_element: size_of::<ChannelTcpWrapper>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "attempts".to_string(),
+                    count: self.attempts.len(),
+                    sizeof_element: size_of::<TcpEndpointAttempt>(),
+                }),
+            ],
+        )
     }
 }
 

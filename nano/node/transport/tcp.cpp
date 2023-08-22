@@ -393,33 +393,22 @@ void nano::transport::tcp_channels::set_message_visitor_factory (nano::transport
 
 std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::get_first_channel () const
 {
-	nano::transport::tcp_channels::channel_tcp_wrapper wrapper{ rsnano::rsn_tcp_channels_get_channel_by_index (handle, 0) };
-	return wrapper.get_channel ();
+	return std::make_shared<nano::transport::channel_tcp> (rsnano::rsn_tcp_channels_get_first_channel (handle));
 }
 
 std::vector<nano::endpoint> nano::transport::tcp_channels::get_current_peers () const
 {
-	std::vector<nano::endpoint> endpoints;
-	nano::lock_guard<nano::mutex> lock{ mutex };
-	auto channel_count = rsnano::rsn_tcp_channels_channel_count (handle);
-	endpoints.reserve (channel_count);
-	for (auto i = 0; i < channel_count; ++i)
-	{
-		nano::transport::tcp_channels::channel_tcp_wrapper wrapper{ rsnano::rsn_tcp_channels_get_channel_by_index (handle, i) };
-		endpoints.push_back (nano::transport::map_tcp_to_endpoint (wrapper.endpoint ()));
-	}
-	return endpoints;
+	return get_peers ();
 }
 
 std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::find_node_id (nano::account const & node_id_a)
 {
 	std::shared_ptr<nano::transport::channel_tcp> result;
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	auto wrapper_handle = rsnano::rsn_tcp_channels_find_channel_by_node_id (handle, node_id_a.bytes.data ());
-	if (wrapper_handle)
+	auto channel_handle = rsnano::rsn_tcp_channels_find_node_id (handle, node_id_a.bytes.data ());
+	if (channel_handle)
 	{
-		nano::transport::tcp_channels::channel_tcp_wrapper wrapper{ wrapper_handle };
-		result = wrapper.get_channel ();
+		result = std::make_shared<nano::transport::channel_tcp> (channel_handle);
 	}
 	return result;
 }
@@ -581,19 +570,8 @@ bool nano::transport::tcp_channels::reachout (nano::endpoint const & endpoint_a)
 
 std::unique_ptr<nano::container_info_component> nano::transport::tcp_channels::collect_container_info (std::string const & name)
 {
-	std::size_t channels_count;
-	std::size_t attemps_count;
-	{
-		nano::lock_guard<nano::mutex> guard{ mutex };
-		channels_count = rsnano::rsn_tcp_channels_channel_count (handle);
-		attemps_count = rsnano::rsn_tcp_channels_attempts_count (handle);
-	}
-
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "channels", channels_count, sizeof (nano::transport::tcp_channels::channel_tcp_wrapper) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "attempts", attemps_count, sizeof (nano::transport::tcp_channels::tcp_endpoint_attempt) }));
-
-	return composite;
+	nano::lock_guard<nano::mutex> guard{ mutex };
+	return std::make_unique<container_info_composite> (rsnano::rsn_tcp_channels_collect_container_info (handle, name.c_str ()));
 }
 
 void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point const & cutoff_a)
@@ -971,38 +949,6 @@ void nano::transport::tcp_channels::on_new_channel (std::function<void (std::sha
 	auto callback_handle = new std::function<void (std::shared_ptr<nano::transport::channel>)> (observer_a);
 	rsnano::rsn_tcp_channels_on_new_channel (handle, callback_handle, call_new_channel_callback, delete_new_channel_callback);
 	channel_observer = std::move (observer_a);
-}
-
-nano::transport::tcp_channels::channel_tcp_wrapper::channel_tcp_wrapper (std::shared_ptr<nano::transport::channel_tcp> channel_a, std::shared_ptr<nano::transport::socket> socket_a, std::shared_ptr<nano::transport::tcp_server> server_a)
-{
-	rsnano::TcpServerHandle * server_handle = nullptr;
-	if (server_a)
-		server_handle = server_a->handle;
-	handle = rsnano::rsn_channel_tcp_wrapper_create (channel_a->handle, socket_a->handle, server_handle);
-}
-
-nano::transport::tcp_channels::channel_tcp_wrapper::channel_tcp_wrapper (rsnano::ChannelTcpWrapperHandle * handle_a) :
-	handle{ handle_a }
-{
-}
-
-nano::transport::tcp_channels::channel_tcp_wrapper::~channel_tcp_wrapper ()
-{
-	rsnano::rsn_channel_tcp_wrapper_destroy (handle);
-}
-
-std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::channel_tcp_wrapper::get_channel () const
-{
-	auto channel_handle = rsnano::rsn_channel_tcp_wrapper_get_channel (handle);
-	return make_shared<nano::transport::channel_tcp> (channel_handle);
-}
-std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_channels::channel_tcp_wrapper::get_response_server () const
-{
-	auto server_handle = rsnano::rsn_channel_tcp_wrapper_get_server (handle);
-	if (server_handle)
-		return make_shared<nano::transport::tcp_server> (server_handle);
-
-	return nullptr;
 }
 
 nano::tcp_message_item::tcp_message_item () :

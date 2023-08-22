@@ -13,8 +13,6 @@
 
 #include <chrono>
 
-#include <bits/chrono.h>
-
 nano::transport::channel::channel (rsnano::ChannelHandle * handle_a) :
 	handle (handle_a)
 {

@@ -319,47 +319,27 @@ std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::fin
 	nano::lock_guard<nano::mutex> lock{ mutex };
 	std::shared_ptr<nano::transport::channel_tcp> result;
 	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
-	auto wrapper_handle = rsnano::rsn_tcp_channels_get_channel (handle, &endpoint_dto);
-	if (wrapper_handle)
+	auto channel_handle = rsnano::rsn_tcp_channels_find_channel (handle, &endpoint_dto);
+	if (channel_handle)
 	{
-		nano::transport::tcp_channels::channel_tcp_wrapper wrapper{ wrapper_handle };
-		result = wrapper.get_channel ();
+		result = std::make_shared<nano::transport::channel_tcp> (channel_handle);
 	}
 	return result;
 }
 
 std::vector<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::random_channels (std::size_t count_a, uint8_t min_version, bool include_temporary_channels_a) const
 {
-	std::vector<std::shared_ptr<nano::transport::channel>> result;
-	std::unordered_set<std::size_t> channel_ids;
-	result.reserve (count_a);
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	// Stop trying to fill result with random samples after this many attempts
-	auto random_cutoff (count_a * 2);
-	auto peers_size = rsnano::rsn_tcp_channels_channel_count (handle);
-	// Usually count_a will be much smaller than peers.size()
-	// Otherwise make sure we have a cutoff on attempting to randomly fill
-	if (peers_size > 0)
+	auto list_handle = rsnano::rsn_tcp_channels_random_channels (handle, count_a, min_version, include_temporary_channels_a);
+	auto len = rsnano::rsn_channel_list_len (list_handle);
+	std::vector<std::shared_ptr<nano::transport::channel>> result;
+	result.reserve (len);
+	for (auto i = 0; i < len; ++i)
 	{
-		for (auto i (0); i < random_cutoff && result.size () < count_a; ++i)
-		{
-			auto index (nano::random_pool::generate_word32 (0, static_cast<uint32_t> (peers_size - 1)));
-
-			nano::transport::tcp_channels::channel_tcp_wrapper wrapper{ rsnano::rsn_tcp_channels_get_channel_by_index (handle, index) };
-			auto channel = wrapper.get_channel ();
-			if (!channel->alive ())
-			{
-				continue;
-			}
-
-			if (channel->get_network_version () >= min_version && (include_temporary_channels_a || !channel->is_temporary ()))
-			{
-				auto insert_result{ channel_ids.insert (channel->channel_id ()) };
-				if (insert_result.second)
-					result.push_back (channel);
-			}
-		}
+		auto channel_handle = rsnano::rsn_channel_list_get (list_handle, i);
+		result.push_back (std::make_shared<nano::transport::channel_tcp> (channel_handle));
 	}
+	rsnano::rsn_channel_list_destroy (list_handle);
 	return result;
 }
 

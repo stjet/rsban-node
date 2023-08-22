@@ -293,26 +293,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_count_by_subnet(
         .count_by_subnet(&subnet)
 }
 
-pub struct ChannelListHandle(Vec<Arc<ChannelEnum>>);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_list_len(handle: *mut ChannelListHandle) -> usize {
-    (*handle).0.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_list_get(
-    handle: *mut ChannelListHandle,
-    index: usize,
-) -> *mut ChannelHandle {
-    ChannelHandle::new((*handle).0[index].clone())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_list_destroy(handle: *mut ChannelListHandle) {
-    drop(Box::from_raw(handle))
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_list_channels(
     handle: &mut TcpChannelsHandle,
@@ -372,6 +352,30 @@ pub unsafe extern "C" fn rsn_tcp_channels_not_a_peer(
     handle.0.not_a_peer(&endpoint.into(), allow_local_peers)
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_find_channel(
+    handle: &mut TcpChannelsHandle,
+    endpoint: &EndpointDto,
+) -> *mut ChannelHandle {
+    match handle.0.find_channel(&endpoint.into()) {
+        Some(channel) => ChannelHandle::new(channel),
+        None => std::ptr::null_mut(),
+    }
+}
+#[no_mangle]
+
+pub unsafe extern "C" fn rsn_tcp_channels_random_channels(
+    handle: &mut TcpChannelsHandle,
+    count: usize,
+    min_version: u8,
+    include_temporary_channels: bool,
+) -> *mut ChannelListHandle {
+    let channels = handle
+        .0
+        .random_channels(count, min_version, include_temporary_channels);
+    Box::into_raw(Box::new(ChannelListHandle(channels)))
+}
+
 pub struct TcpEndpointAttemptDto {
     pub endpoint: EndpointDto,
     pub address: [u8; 16],
@@ -399,4 +403,24 @@ impl From<&TcpEndpointAttempt> for TcpEndpointAttemptDto {
             last_attempt: system_time_as_nanoseconds(value.last_attempt),
         }
     }
+}
+
+pub struct ChannelListHandle(Vec<Arc<ChannelEnum>>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_list_len(handle: *mut ChannelListHandle) -> usize {
+    (*handle).0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_list_get(
+    handle: *mut ChannelListHandle,
+    index: usize,
+) -> *mut ChannelHandle {
+    ChannelHandle::new((*handle).0[index].clone())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_list_destroy(handle: *mut ChannelListHandle) {
+    drop(Box::from_raw(handle))
 }

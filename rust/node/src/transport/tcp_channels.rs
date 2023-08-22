@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     hash::Hash,
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
@@ -9,6 +9,7 @@ use std::{
     time::SystemTime,
 };
 
+use rand::{thread_rng, Rng};
 use rsnano_core::PublicKey;
 
 use crate::{
@@ -86,6 +87,23 @@ impl TcpChannels {
             }
         }
         Err(())
+    }
+
+    pub fn find_channel(&self, endpoint: &SocketAddr) -> Option<Arc<ChannelEnum>> {
+        self.tcp_channels.lock().unwrap().find_channel(endpoint)
+    }
+
+    pub fn random_channels(
+        &self,
+        count: usize,
+        min_version: u8,
+        include_temporary_channels: bool,
+    ) -> Vec<Arc<ChannelEnum>> {
+        self.tcp_channels.lock().unwrap().random_channels(
+            count,
+            min_version,
+            include_temporary_channels,
+        )
     }
 }
 
@@ -186,6 +204,50 @@ impl TcpChannelsImpl {
 
     pub fn set_last_packet_sent(&mut self, endpoint: &SocketAddr, time: SystemTime) {
         self.channels.set_last_packet_sent(endpoint, time);
+    }
+
+    pub fn find_channel(&self, endpoint: &SocketAddr) -> Option<Arc<ChannelEnum>> {
+        self.channels.get(endpoint).map(|c| c.channel.clone())
+    }
+
+    pub fn random_channels(
+        &self,
+        count: usize,
+        min_version: u8,
+        include_temporary_channels: bool,
+    ) -> Vec<Arc<ChannelEnum>> {
+        let mut result = Vec::with_capacity(count);
+        let mut channel_ids = HashSet::new();
+
+        // Stop trying to fill result with random samples after this many attempts
+        let random_cutoff = count * 2;
+        let peers_size = self.channels.len();
+        // Usually count will be much smaller than peers_size
+        // Otherwise make sure we have a cutoff on attempting to randomly fill
+        if peers_size > 0 {
+            let mut rng = thread_rng();
+            for i in 0..random_cutoff {
+                let index = rng.gen_range(0..peers_size);
+                let wrapper = self.channels.get_by_index(index).unwrap();
+                if !wrapper.channel.as_channel().is_alive() {
+                    continue;
+                }
+
+                if wrapper.tcp_channel().network_version() >= min_version
+                    && (include_temporary_channels || !wrapper.channel.as_channel().is_temporary())
+                {
+                    if channel_ids.insert(wrapper.channel.as_channel().channel_id()) {
+                        result.push(wrapper.channel.clone())
+                    }
+                }
+
+                if result.len() == count {
+                    break;
+                }
+            }
+        }
+
+        result
     }
 }
 

@@ -30,7 +30,7 @@ add_custom_target(
     '${PROJECT_SOURCE_DIR}/crypto/*'
     '${PROJECT_SOURCE_DIR}/submodules/flatbuffers/*'
     '${PROJECT_SOURCE_DIR}/gtest/*' '${PROJECT_SOURCE_DIR}/valgrind/*'
-    '${PROJECT_SOURCE_DIR}/nano/core_test/*' 
+    '${PROJECT_SOURCE_DIR}/nano/core_test/*'
     '${PROJECT_SOURCE_DIR}/nano/ipc_flatbuffers_test/*'
     '${PROJECT_SOURCE_DIR}/nano/ipc_flatbuffers_lib/*'
     '${PROJECT_SOURCE_DIR}/nano/nano_node/*'

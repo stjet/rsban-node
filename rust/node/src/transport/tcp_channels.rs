@@ -12,17 +12,39 @@ use std::{
 
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, Logger},
     PublicKey,
 };
 
 use crate::{
-    bootstrap::ChannelTcpWrapper,
-    config::NetworkConstants,
-    utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address},
+    bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
+    config::{NetworkConstants, NodeConfig},
+    stats::Stats,
+    utils::{
+        ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address, BlockUniquer,
+        IoContext,
+    },
+    voting::VoteUniquer,
+    NetworkParams,
 };
 
-use super::{ChannelEnum, Socket, SocketImpl, TcpServer};
+use super::{
+    ChannelEnum, NetworkFilter, NullTcpServerObserver, Socket, SocketImpl, TcpMessageManager,
+    TcpServer, TcpServerFactory, TcpServerObserver,
+};
+
+pub struct TcpChannelsOptions {
+    pub node_config: NodeConfig,
+    pub logger: Arc<dyn Logger>,
+    pub publish_filter: Arc<NetworkFilter>,
+    pub io_ctx: Arc<dyn IoContext>,
+    pub network: NetworkParams,
+    pub stats: Arc<Stats>,
+    pub block_uniquer: Arc<BlockUniquer>,
+    pub vote_uniquer: Arc<VoteUniquer>,
+    pub tcp_message_manager: Arc<TcpMessageManager>,
+    pub port: u16,
+}
 
 pub struct TcpChannels {
     pub tcp_channels: Mutex<TcpChannelsImpl>,
@@ -32,12 +54,12 @@ pub struct TcpChannels {
 }
 
 impl TcpChannels {
-    pub fn new(port: u16, network_constants: NetworkConstants, allow_local_peers: bool) -> Self {
+    pub fn new(options: TcpChannelsOptions) -> Self {
         Self {
-            tcp_channels: Mutex::new(TcpChannelsImpl::new(network_constants)),
-            port: AtomicU16::new(port),
+            port: AtomicU16::new(options.port),
             stopped: AtomicBool::new(false),
-            allow_local_peers,
+            allow_local_peers: options.node_config.allow_local_peers,
+            tcp_channels: Mutex::new(TcpChannelsImpl::new(options)),
         }
     }
 
@@ -139,6 +161,25 @@ impl TcpChannels {
     pub fn random_fill(&self, endpoints: &mut [SocketAddr]) {
         self.tcp_channels.lock().unwrap().random_fill(endpoints);
     }
+
+    pub fn set_observer(&self, observer: Arc<dyn TcpServerObserver>) {
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .tcp_server_factory
+            .observer = observer;
+    }
+
+    pub fn set_message_visitor_factory(
+        &self,
+        visitor_factory: Arc<BootstrapMessageVisitorFactory>,
+    ) {
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .tcp_server_factory
+            .message_visitor_factory = Some(visitor_factory);
+    }
 }
 
 pub struct TcpChannelsImpl {
@@ -146,15 +187,29 @@ pub struct TcpChannelsImpl {
     pub channels: ChannelContainer,
     network_constants: NetworkConstants,
     new_channel_observer: Option<Arc<dyn Fn(Arc<ChannelEnum>)>>,
+    pub tcp_server_factory: TcpServerFactory,
 }
 
 impl TcpChannelsImpl {
-    pub fn new(network_constants: NetworkConstants) -> Self {
+    pub fn new(options: TcpChannelsOptions) -> Self {
         Self {
             attempts: Default::default(),
             channels: Default::default(),
-            network_constants,
+            network_constants: options.network.network.clone(),
             new_channel_observer: None,
+            tcp_server_factory: TcpServerFactory {
+                config: Arc::new(options.node_config),
+                logger: options.logger,
+                observer: Arc::new(NullTcpServerObserver {}),
+                publish_filter: options.publish_filter,
+                io_ctx: options.io_ctx,
+                network: Arc::new(options.network),
+                stats: options.stats,
+                block_uniquer: options.block_uniquer,
+                vote_uniquer: options.vote_uniquer,
+                tcp_message_manager: options.tcp_message_manager,
+                message_visitor_factory: None,
+            },
         }
     }
 

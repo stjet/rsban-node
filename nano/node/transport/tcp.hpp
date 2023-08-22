@@ -125,27 +125,6 @@ namespace transport
 		virtual bool alive () const override;
 	};
 
-	class tcp_server_factory
-	{
-	public:
-		tcp_server_factory (
-		nano::node_config & config,
-		boost::asio::io_context & io_ctx_a,
-		std::shared_ptr<nano::logger_mt> const & logger_a,
-		nano::network_filter & publish_filter,
-		nano::stats & stats_a,
-		nano::block_uniquer & block_uniquer_a,
-		nano::vote_uniquer & vote_uniquer_a,
-		nano::tcp_message_manager & message_manager_a);
-		tcp_server_factory (tcp_server_factory const &) = delete;
-		tcp_server_factory (tcp_server_factory &&) = delete;
-		~tcp_server_factory ();
-		void set_observer (std::shared_ptr<nano::tcp_server_observer> observer_a);
-		void set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory);
-		std::shared_ptr<nano::transport::tcp_server> create_tcp_server (const std::shared_ptr<nano::transport::channel_tcp> & channel_a, const std::shared_ptr<nano::transport::socket> & socket_a);
-		rsnano::TcpServerFactoryHandle * handle;
-	};
-
 	class tcp_channels final : public nano::transport::channel_tcp_observer, public std::enable_shared_from_this<tcp_channels>
 	{
 		friend class nano::transport::channel_tcp;
@@ -232,7 +211,6 @@ namespace transport
 		// Called when a new channel is observed
 		std::function<void (std::shared_ptr<nano::transport::channel>)> channel_observer;
 		uint16_t port;
-		nano::transport::tcp_server_factory tcp_server_factory;
 		rsnano::TcpChannelsHandle * handle;
 
 		friend class network_peer_max_tcp_attempts_subnetwork_Test;

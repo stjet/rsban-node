@@ -10,7 +10,6 @@ mod syn_cookies;
 mod tcp_channels;
 mod tcp_message_item;
 mod tcp_message_manager;
-mod tcp_server_factory;
 
 pub use bandwidth_limiter::{BandwidthLimiterHandle, OutboundBandwidthLimiterHandle};
 pub use channel::{as_tcp_channel, ChannelHandle};

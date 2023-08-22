@@ -1,32 +1,75 @@
 use std::{
     ffi::{c_char, c_void, CStr},
     net::{IpAddr, Ipv6Addr, SocketAddr},
+    ops::Deref,
     sync::{atomic::Ordering, Arc},
 };
 
 use rsnano_core::{utils::system_time_from_nanoseconds, PublicKey};
-use rsnano_node::transport::{ChannelEnum, TcpChannels, TcpEndpointAttempt};
-
-use crate::{
-    bootstrap::TcpServerHandle,
-    utils::{ptr_into_ipv6addr, ContainerInfoComponentHandle, ContextWrapper},
-    NetworkConstantsDto, VoidPointerCallback,
+use rsnano_node::{
+    config::NodeConfig,
+    transport::{ChannelEnum, TcpChannels, TcpChannelsOptions, TcpEndpointAttempt},
+    NetworkParams,
 };
 
-use super::{ChannelHandle, EndpointDto, SocketHandle};
+use crate::{
+    bootstrap::{FfiBootstrapServerObserver, RequestResponseVisitorFactoryHandle, TcpServerHandle},
+    core::BlockUniquerHandle,
+    utils::{
+        ptr_into_ipv6addr, ContainerInfoComponentHandle, ContextWrapper, FfiIoContext,
+        IoContextHandle, LoggerHandle, LoggerMT,
+    },
+    voting::VoteUniquerHandle,
+    NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
+};
+
+use super::{
+    ChannelHandle, EndpointDto, NetworkFilterHandle, SocketHandle, TcpMessageManagerHandle,
+};
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
 
+#[repr(C)]
+pub struct TcpChannelsOptionsDto {
+    pub node_config: *const NodeConfigDto,
+    pub logger: *mut LoggerHandle,
+    pub publish_filter: *mut NetworkFilterHandle,
+    pub io_ctx: *mut IoContextHandle,
+    pub network: *mut NetworkParamsDto,
+    pub stats: *mut StatHandle,
+    pub block_uniquer: *mut BlockUniquerHandle,
+    pub vote_uniquer: *mut VoteUniquerHandle,
+    pub tcp_message_manager: *mut TcpMessageManagerHandle,
+    pub port: u16,
+}
+
+impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &TcpChannelsOptionsDto) -> Result<Self, Self::Error> {
+        unsafe {
+            Ok(Self {
+                node_config: NodeConfig::try_from(&*value.node_config)?,
+                logger: Arc::new(LoggerMT::new(Box::from_raw(value.logger))),
+                publish_filter: (*value.publish_filter).0.clone(),
+                io_ctx: Arc::new(FfiIoContext::new((*value.io_ctx).raw_handle())),
+                network: NetworkParams::try_from(&*value.network)?,
+                stats: (*value.stats).0.clone(),
+                block_uniquer: (*value.block_uniquer).deref().clone(),
+                vote_uniquer: (*value.vote_uniquer).deref().clone(),
+                tcp_message_manager: (*value.tcp_message_manager).deref().clone(),
+                port: value.port,
+            })
+        }
+    }
+}
+
 #[no_mangle]
-pub extern "C" fn rsn_tcp_channels_create(
-    port: u16,
-    network_constants: &NetworkConstantsDto,
-    allow_local_peers: bool,
+pub unsafe extern "C" fn rsn_tcp_channels_create(
+    options: &TcpChannelsOptionsDto,
 ) -> *mut TcpChannelsHandle {
     Box::into_raw(Box::new(TcpChannelsHandle(Arc::new(TcpChannels::new(
-        port,
-        network_constants.try_into().unwrap(),
-        allow_local_peers,
+        TcpChannelsOptions::try_from(options).unwrap(),
     )))))
 }
 
@@ -376,6 +419,43 @@ pub unsafe extern "C" fn rsn_tcp_channels_random_fill(
         .iter_mut()
         .zip(&tmp)
         .for_each(|(dto, ep)| *dto = ep.into());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_set_observer(
+    handle: &mut TcpChannelsHandle,
+    observer: *mut c_void,
+) {
+    let observer = Arc::new(FfiBootstrapServerObserver::new(observer));
+    handle.0.set_observer(observer);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_set_message_visitor(
+    handle: &mut TcpChannelsHandle,
+    visitor_factory: &RequestResponseVisitorFactoryHandle,
+) {
+    handle
+        .0
+        .set_message_visitor_factory(visitor_factory.0.clone())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_create_tcp_server(
+    handle: &TcpChannelsHandle,
+    channel: &ChannelHandle,
+    socket: &SocketHandle,
+) -> *mut TcpServerHandle {
+    let ChannelEnum::Tcp(channel_tcp) = channel.0.as_ref() else { panic!("not a tcp channel")};
+    TcpServerHandle::new(
+        handle
+            .0
+            .tcp_channels
+            .lock()
+            .unwrap()
+            .tcp_server_factory
+            .create_tcp_server(channel_tcp, socket.0.clone()),
+    )
 }
 
 pub struct EndpointListHandle(Vec<SocketAddr>);

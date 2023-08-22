@@ -4,6 +4,7 @@
 #include "nano/lib/rsnanoutils.hpp"
 #include "nano/node/nodeconfig.hpp"
 #include "nano/node/transport/channel.hpp"
+#include "nano/node/transport/tcp_server.hpp"
 #include "nano/node/transport/traffic_type.hpp"
 #include "nano/secure/common.hpp"
 #include "nano/secure/network_filter.hpp"
@@ -179,70 +180,6 @@ bool nano::transport::channel_tcp::alive () const
 	return rsnano::rsn_channel_tcp_is_alive (handle);
 }
 
-namespace
-{
-rsnano::TcpServerFactoryHandle * create_tcp_server_factory (
-nano::node_config & config,
-boost::asio::io_context & io_ctx_a,
-std::shared_ptr<nano::logger_mt> const & logger_a,
-nano::network_filter & publish_filter,
-nano::stats & stats_a,
-nano::block_uniquer & block_uniquer_a,
-nano::vote_uniquer & vote_uniquer_a,
-nano::tcp_message_manager & message_manager_a)
-{
-	rsnano::NodeConfigDto config_dto{ config.to_dto () };
-	auto network_dto{ config.network_params.to_dto () };
-	rsnano::io_ctx_wrapper io_ctx{ io_ctx_a };
-	rsnano::TcpServerFactoryParams params;
-	params.node_config = &config_dto;
-	params.logger = nano::to_logger_handle (logger_a);
-	params.publish_filter = publish_filter.handle;
-	params.io_ctx = io_ctx.handle ();
-	params.network = &network_dto;
-	params.stats = stats_a.handle;
-	params.block_uniquer = block_uniquer_a.handle;
-	params.vote_uniquer = vote_uniquer_a.handle;
-	params.tcp_message_manager = message_manager_a.handle;
-	return rsnano::rsn_tcp_server_factory_create (&params);
-}
-}
-
-nano::transport::tcp_server_factory::tcp_server_factory (
-nano::node_config & config,
-boost::asio::io_context & io_ctx_a,
-std::shared_ptr<nano::logger_mt> const & logger_a,
-nano::network_filter & publish_filter,
-nano::stats & stats_a,
-nano::block_uniquer & block_uniquer_a,
-nano::vote_uniquer & vote_uniquer_a,
-nano::tcp_message_manager & message_manager_a) :
-	handle{ create_tcp_server_factory (config, io_ctx_a, logger_a, publish_filter, stats_a, block_uniquer_a, vote_uniquer_a, message_manager_a) }
-{
-}
-
-nano::transport::tcp_server_factory::~tcp_server_factory ()
-{
-	rsnano::rsn_tcp_server_factory_destroy (handle);
-}
-
-void nano::transport::tcp_server_factory::set_observer (std::shared_ptr<nano::tcp_server_observer> observer_a)
-{
-	auto observer_handle = new std::weak_ptr<nano::tcp_server_observer> (observer_a);
-	rsnano::rsn_tcp_server_factory_set_observer (handle, observer_handle);
-}
-
-void nano::transport::tcp_server_factory::set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory)
-{
-	rsnano::rsn_tcp_server_factory_set_message_visitor_factory (handle, visitor_factory.handle);
-}
-
-std::shared_ptr<nano::transport::tcp_server> nano::transport::tcp_server_factory::create_tcp_server (const std::shared_ptr<nano::transport::channel_tcp> & channel_a, const std::shared_ptr<nano::transport::socket> & socket_a)
-{
-	auto server_handle = rsnano::rsn_tcp_server_factory_create_tcp_server (handle, channel_a->handle, socket_a->handle);
-	return std::make_shared<nano::transport::tcp_server> (server_handle);
-}
-
 /*
  * tcp_channels
  */
@@ -264,20 +201,24 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	sink{ std::move (sink) },
 	node{ node },
 	port{ port },
-	publish_filter{ std::make_shared<nano::network_filter> (256 * 1024) },
-	tcp_server_factory{
-		*node.config,
-		node.io_ctx,
-		node.logger,
-		*publish_filter,
-		*node.stats,
-		node.block_uniquer,
-		node.vote_uniquer,
-		tcp_message_manager
-	}
+	publish_filter{ std::make_shared<nano::network_filter> (256 * 1024) }
 {
-	auto dto{ config->network_params.network.to_dto () };
-	handle = rsnano::rsn_tcp_channels_create (port, &dto, config->allow_local_peers);
+	auto node_config_dto{ node.config->to_dto () };
+	auto network_dto{ node.config->network_params.to_dto () };
+	rsnano::io_ctx_wrapper io_ctx{ node.io_ctx };
+	rsnano::TcpChannelsOptionsDto options;
+	options.node_config = &node_config_dto;
+	options.logger = nano::to_logger_handle (node.logger);
+	options.publish_filter = publish_filter->handle;
+	options.io_ctx = io_ctx.handle ();
+	options.network = &network_dto;
+	options.stats = node.stats->handle;
+	options.block_uniquer = node.block_uniquer.handle;
+	options.vote_uniquer = node.vote_uniquer.handle;
+	options.tcp_message_manager = tcp_message_manager.handle;
+	options.port = port;
+
+	handle = rsnano::rsn_tcp_channels_create (&options);
 }
 
 nano::transport::tcp_channels::~tcp_channels ()
@@ -374,12 +315,13 @@ void nano::transport::tcp_channels::set_port (uint16_t port_a)
 
 void nano::transport::tcp_channels::set_observer (std::shared_ptr<nano::tcp_server_observer> observer_a)
 {
-	tcp_server_factory.set_observer (observer_a);
+	auto observer_handle = new std::weak_ptr<nano::tcp_server_observer> (observer_a);
+	rsnano::rsn_tcp_channels_set_observer (handle, observer_handle);
 }
 
 void nano::transport::tcp_channels::set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory)
 {
-	tcp_server_factory.set_message_visitor_factory (visitor_factory);
+	rsnano::rsn_tcp_channels_set_message_visitor (handle, visitor_factory.handle);
 }
 
 std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::get_first_channel () const
@@ -865,7 +807,7 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 			{
 				return;
 			}
-			auto response_server = this_l->tcp_server_factory.create_tcp_server (channel_a, socket_l);
+			auto response_server = std::make_shared<nano::transport::tcp_server> (rsnano::rsn_tcp_channels_create_tcp_server (this_l->handle, channel_a->handle, socket_l->handle));
 			this_l->insert (channel_a, socket_l, response_server);
 		});
 	});

@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use rsnano_core::{Account, BlockHash, KeyPair, Signature};
+use rsnano_core::{Account, BlockHash, KeyPair, PublicKey, Signature};
 
 use crate::{
     copy_account_bytes, copy_hash_bytes, copy_signature_bytes, utils::FfiStream,
@@ -140,6 +140,43 @@ pub struct HandshakeResponseDto {
     pub genesis: [u8; 32],
 }
 
+impl From<&HandshakeResponseDto> for NodeIdHandshakeResponse {
+    fn from(value: &HandshakeResponseDto) -> Self {
+        NodeIdHandshakeResponse {
+            node_id: PublicKey::from_bytes(value.node_id),
+            signature: Signature::from_bytes(value.signature),
+            v2: if value.v2 {
+                Some(V2Payload {
+                    genesis: BlockHash::from_bytes(value.genesis),
+                    salt: value.salt,
+                })
+            } else {
+                None
+            },
+        }
+    }
+}
+
+impl From<NodeIdHandshakeResponse> for HandshakeResponseDto {
+    fn from(value: NodeIdHandshakeResponse) -> Self {
+        Self {
+            node_id: *value.node_id.as_bytes(),
+            signature: *value.signature.as_bytes(),
+            v2: value.v2.is_some(),
+            salt: if let Some(v2) = &value.v2 {
+                v2.salt
+            } else {
+                [0; 32]
+            },
+            genesis: if let Some(v2) = &value.v2 {
+                *v2.genesis.as_bytes()
+            } else {
+                [0; 32]
+            },
+        }
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_node_id_handshake_response_create(
     cookie: *const u8,
@@ -155,13 +192,7 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_response_create(
         let genesis = BlockHash::from_ptr(genesis);
         NodeIdHandshakeResponse::new_v2(cookie, &key, genesis)
     };
-    (*result).node_id = *response.node_id.as_bytes();
-    (*result).signature = *response.signature.as_bytes();
-    (*result).v2 = response.v2.is_some();
-    if let Some(v2) = response.v2 {
-        (*result).salt = v2.salt;
-        (*result).genesis = *v2.genesis.as_bytes();
-    }
+    *result = response.into();
 }
 
 #[no_mangle]

@@ -4,7 +4,7 @@ use std::{net::SocketAddr, ops::Deref, sync::Arc, time::Duration};
 
 use super::EndpointDto;
 
-pub struct SynCookiesHandle(Arc<SynCookies>);
+pub struct SynCookiesHandle(pub Arc<SynCookies>);
 
 impl Deref for SynCookiesHandle {
     type Target = Arc<SynCookies>;

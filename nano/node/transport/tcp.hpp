@@ -172,6 +172,7 @@ namespace transport
 		void message_dropped (nano::message const & message_a, std::size_t buffer_size_a) override;
 		void no_socket_drop () override;
 		void write_drop () override;
+
 		std::vector<nano::endpoint> get_peers () const;
 		void random_fill (std::array<nano::endpoint, 8> &) const;
 		void set_port (uint16_t port_a);

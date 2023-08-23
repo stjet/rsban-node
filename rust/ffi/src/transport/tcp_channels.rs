@@ -5,9 +5,10 @@ use std::{
     sync::{atomic::Ordering, Arc},
 };
 
-use rsnano_core::{utils::system_time_from_nanoseconds, PublicKey};
+use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
 use rsnano_node::{
     config::NodeConfig,
+    messages::{NodeIdHandshakeQuery, NodeIdHandshakeResponse},
     transport::{
         ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpEndpointAttempt,
     },
@@ -17,7 +18,7 @@ use rsnano_node::{
 use crate::{
     bootstrap::{FfiBootstrapServerObserver, RequestResponseVisitorFactoryHandle, TcpServerHandle},
     core::BlockUniquerHandle,
-    messages::MessageHandle,
+    messages::{HandshakeResponseDto, MessageHandle},
     utils::{
         ptr_into_ipv6addr, ContainerInfoComponentHandle, ContextWrapper, FfiIoContext,
         IoContextHandle, LoggerHandle, LoggerMT,
@@ -28,7 +29,7 @@ use crate::{
 
 use super::{
     peer_exclusion::PeerExclusionHandle, ChannelHandle, EndpointDto, NetworkFilterHandle,
-    OutboundBandwidthLimiterHandle, SocketHandle, TcpMessageManagerHandle,
+    OutboundBandwidthLimiterHandle, SocketHandle, SynCookiesHandle, TcpMessageManagerHandle,
 };
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
@@ -52,6 +53,8 @@ pub struct TcpChannelsOptionsDto {
     pub sink_callback: SinkCallback,
     pub delete_sink: VoidPointerCallback,
     pub limiter: *mut OutboundBandwidthLimiterHandle,
+    pub node_id_prv: *const u8,
+    pub syn_cookies: *mut SynCookiesHandle,
 }
 
 impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
@@ -83,6 +86,12 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 flags: (*value.flags).0.lock().unwrap().clone(),
                 sink,
                 limiter: (*value.limiter).0.clone(),
+                node_id: KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(
+                    value.node_id_prv,
+                    32,
+                ))
+                .unwrap(),
+                syn_cookies: (*value.syn_cookies).0.clone(),
             })
         }
     }
@@ -516,6 +525,31 @@ pub unsafe extern "C" fn rsn_tcp_channels_excluded_peers(
     Box::into_raw(Box::new(PeerExclusionHandle(
         handle.0.excluded_peers.clone(),
     )))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_prepare_handshake_response(
+    handle: &TcpChannelsHandle,
+    cookie: *const u8,
+    v2: bool,
+    response: &mut HandshakeResponseDto,
+) {
+    let query_payload = NodeIdHandshakeQuery {
+        cookie: std::slice::from_raw_parts(cookie, 32).try_into().unwrap(),
+    };
+    let response_payload = handle.0.prepare_handshake_response(&query_payload, v2);
+    *response = response_payload.into();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_verify_handshake_response(
+    handle: &TcpChannelsHandle,
+    response: &HandshakeResponseDto,
+    endpoint: &EndpointDto,
+) -> bool {
+    let response = NodeIdHandshakeResponse::from(response);
+    let endpoint = SocketAddr::from(endpoint);
+    handle.0.verify_handshake_response(&response, &endpoint)
 }
 
 pub struct EndpointListHandle(Vec<SocketAddr>);

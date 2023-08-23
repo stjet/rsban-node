@@ -13,13 +13,13 @@ use std::{
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, Logger},
-    PublicKey,
+    KeyPair, PublicKey,
 };
 
 use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
     config::{NetworkConstants, NodeConfig, NodeFlags},
-    messages::{Message, MessageType},
+    messages::{Message, MessageType, NodeIdHandshakeQuery, NodeIdHandshakeResponse},
     stats::{DetailType, Direction, StatType, Stats},
     transport::{Channel, SocketType},
     utils::{
@@ -32,7 +32,7 @@ use crate::{
 
 use super::{
     ChannelEnum, ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr, NetworkFilter,
-    NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket, SocketImpl,
+    NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket, SocketImpl, SynCookies,
     TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver,
 };
 
@@ -50,6 +50,8 @@ pub struct TcpChannelsOptions {
     pub flags: NodeFlags,
     pub sink: Box<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>) + Sync + Send>,
     pub limiter: Arc<OutboundBandwidthLimiter>,
+    pub node_id: KeyPair,
+    pub syn_cookies: Arc<SynCookies>,
 }
 
 pub struct TcpChannels {
@@ -68,6 +70,8 @@ pub struct TcpChannels {
     io_ctx: Arc<dyn IoContext>,
     node_config: Arc<NodeConfig>,
     logger: Arc<dyn Logger>,
+    node_id: KeyPair,
+    syn_cookies: Arc<SynCookies>,
 }
 
 impl TcpChannels {
@@ -110,6 +114,8 @@ impl TcpChannels {
             limiter: options.limiter,
             io_ctx: options.io_ctx,
             logger: options.logger,
+            node_id: options.node_id,
+            syn_cookies: options.syn_cookies,
         }
     }
 
@@ -254,6 +260,65 @@ impl TcpChannels {
                 .inc(StatType::Tcp, DetailType::TcpMaxPerIp, Direction::Out);
         }
         result
+    }
+
+    pub fn verify_handshake_response(
+        &self,
+        response: &NodeIdHandshakeResponse,
+        remote_endpoint: &SocketAddr,
+    ) -> bool {
+        // Prevent connection with ourselves
+        if response.node_id == self.node_id.public_key() {
+            self.stats.inc(
+                StatType::Handshake,
+                DetailType::InvalidNodeId,
+                Direction::In,
+            );
+            return false; // Fail
+        }
+
+        // Prevent mismatched genesis
+        if let Some(v2) = &response.v2 {
+            if v2.genesis != self.network.ledger.genesis.read().unwrap().hash() {
+                self.stats.inc(
+                    StatType::Handshake,
+                    DetailType::InvalidGenesis,
+                    Direction::In,
+                );
+                return false; // Fail
+            }
+        }
+
+        let Some(cookie) = self.syn_cookies.cookie(remote_endpoint) else {
+	 	self.stats.inc (StatType::Handshake, DetailType::MissingCookie, Direction::In);
+	 	return false; // Fail
+    };
+
+        if response.validate(&cookie).is_err() {
+            self.stats.inc(
+                StatType::Handshake,
+                DetailType::InvalidSignature,
+                Direction::In,
+            );
+            return false; // Fail
+        }
+
+        self.stats
+            .inc(StatType::Handshake, DetailType::Ok, Direction::In);
+        true
+    }
+
+    pub fn prepare_handshake_response(
+        &self,
+        query_payload: &NodeIdHandshakeQuery,
+        v2: bool,
+    ) -> NodeIdHandshakeResponse {
+        if v2 {
+            let genesis = self.network.ledger.genesis.read().unwrap().hash();
+            NodeIdHandshakeResponse::new_v2(&query_payload.cookie, &self.node_id, genesis)
+        } else {
+            NodeIdHandshakeResponse::new_v1(&query_payload.cookie, &self.node_id)
+        }
     }
 }
 

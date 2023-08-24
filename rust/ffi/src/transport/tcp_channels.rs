@@ -497,6 +497,8 @@ pub unsafe extern "C" fn rsn_tcp_channels_create_tcp_server(
             .lock()
             .unwrap()
             .tcp_server_factory
+            .lock()
+            .unwrap()
             .create_tcp_server(channel_tcp, socket.0.clone()),
     )
 }
@@ -550,13 +552,25 @@ pub unsafe extern "C" fn rsn_tcp_channels_verify_handshake_response(
     endpoint: &EndpointDto,
 ) -> bool {
     let response = NodeIdHandshakeResponse::from(response);
-    let endpoint = SocketAddr::from(endpoint);
-    handle.0.verify_handshake_response(&response, &endpoint)
+    handle
+        .0
+        .verify_handshake_response(&response, endpoint.into())
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_ongoing_keepalive(handle: &TcpChannelsHandle) {
     handle.0.ongoing_keepalive()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_start_tcp_receive_node_id(
+    handle: &TcpChannelsHandle,
+    channel: &ChannelHandle,
+    endpoint: &EndpointDto,
+) {
+    handle
+        .0
+        .start_tcp_receive_node_id(&channel.0, endpoint.into());
 }
 
 pub struct EndpointListHandle(Vec<SocketAddr>);

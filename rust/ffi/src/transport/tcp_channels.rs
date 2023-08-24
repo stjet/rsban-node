@@ -21,7 +21,7 @@ use crate::{
     messages::{HandshakeResponseDto, MessageHandle},
     utils::{
         ptr_into_ipv6addr, ContainerInfoComponentHandle, ContextWrapper, FfiIoContext,
-        IoContextHandle, LoggerHandle, LoggerMT,
+        IoContextHandle, LoggerHandle, LoggerMT, ThreadPoolHandle,
     },
     voting::VoteUniquerHandle,
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
@@ -55,6 +55,7 @@ pub struct TcpChannelsOptionsDto {
     pub limiter: *mut OutboundBandwidthLimiterHandle,
     pub node_id_prv: *const u8,
     pub syn_cookies: *mut SynCookiesHandle,
+    pub workers: *mut ThreadPoolHandle,
 }
 
 impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
@@ -92,6 +93,7 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 ))
                 .unwrap(),
                 syn_cookies: (*value.syn_cookies).0.clone(),
+                workers: (*value.workers).0.clone(),
             })
         }
     }
@@ -550,6 +552,11 @@ pub unsafe extern "C" fn rsn_tcp_channels_verify_handshake_response(
     let response = NodeIdHandshakeResponse::from(response);
     let endpoint = SocketAddr::from(endpoint);
     handle.0.verify_handshake_response(&response, &endpoint)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_ongoing_keepalive(handle: &TcpChannelsHandle) {
+    handle.0.ongoing_keepalive()
 }
 
 pub struct EndpointListHandle(Vec<SocketAddr>);

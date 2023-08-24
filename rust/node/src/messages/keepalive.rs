@@ -22,6 +22,13 @@ impl Keepalive {
         }
     }
 
+    pub fn new_with_peers(constants: &NetworkConstants, peers: [SocketAddr; 8]) -> Self {
+        Self {
+            header: MessageHeader::new(constants, MessageType::Keepalive),
+            peers,
+        }
+    }
+
     pub fn with_version_using(constants: &NetworkConstants, version_using: u8) -> Self {
         Self {
             header: MessageHeader::with_version_using(

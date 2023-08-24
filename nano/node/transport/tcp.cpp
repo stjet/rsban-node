@@ -247,6 +247,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	options.limiter = node.outbound_limiter.handle;
 	options.node_id_prv = node.node_id.prv.bytes.data ();
 	options.syn_cookies = node.network->syn_cookies->handle;
+	options.workers = node.workers->handle;
 
 	handle = rsnano::rsn_tcp_channels_create (&options);
 }
@@ -493,37 +494,7 @@ void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point
 
 void nano::transport::tcp_channels::ongoing_keepalive ()
 {
-	nano::keepalive message{ network_params.network };
-	auto peers{ message.get_peers () };
-	random_fill (peers);
-	message.set_peers (peers);
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	// Wake up channels
-	auto list_handle = rsnano::rsn_tcp_channels_keepalive_list (handle);
-	auto list_len = rsnano::rsn_channel_list_len (list_handle);
-	std::vector<std::shared_ptr<nano::transport::channel_tcp>> send_list;
-	send_list.reserve (list_len);
-	for (auto i = 0; i < list_len; ++i)
-	{
-		auto channel_handle = rsnano::rsn_channel_list_get (list_handle, i);
-		send_list.push_back (std::make_shared<nano::transport::channel_tcp> (channel_handle));
-	}
-	rsnano::rsn_channel_list_destroy (list_handle);
-	lock.unlock ();
-	for (auto & channel : send_list)
-	{
-		channel->send (message);
-	}
-	std::weak_ptr<nano::transport::tcp_channels> this_w (shared_from_this ());
-	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.network.keepalive_period, [this_w] () {
-		if (auto this_l = this_w.lock ())
-		{
-			if (!this_l->stopped)
-			{
-				this_l->ongoing_keepalive ();
-			}
-		}
-	});
+	rsnano::rsn_tcp_channels_ongoing_keepalive (handle);
 }
 
 void nano::transport::tcp_channels::list (std::deque<std::shared_ptr<nano::transport::channel>> & deque_a, uint8_t minimum_version_a, bool include_temporary_channels_a)

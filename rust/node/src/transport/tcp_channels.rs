@@ -19,21 +19,22 @@ use rsnano_core::{
 use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
     config::{NetworkConstants, NodeConfig, NodeFlags},
-    messages::{Message, MessageType, NodeIdHandshakeQuery, NodeIdHandshakeResponse},
+    messages::{Keepalive, Message, MessageType, NodeIdHandshakeQuery, NodeIdHandshakeResponse},
     stats::{DetailType, Direction, StatType, Stats},
     transport::{Channel, SocketType},
     utils::{
         ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address, BlockUniquer,
-        IoContext,
+        IoContext, ThreadPool,
     },
     voting::VoteUniquer,
     NetworkParams,
 };
 
 use super::{
-    ChannelEnum, ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr, NetworkFilter,
-    NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket, SocketImpl, SynCookies,
-    TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver,
+    BufferDropPolicy, ChannelEnum, ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr,
+    NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket,
+    SocketImpl, SynCookies, TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver,
+    TrafficType,
 };
 
 pub struct TcpChannelsOptions {
@@ -52,6 +53,7 @@ pub struct TcpChannelsOptions {
     pub limiter: Arc<OutboundBandwidthLimiter>,
     pub node_id: KeyPair,
     pub syn_cookies: Arc<SynCookies>,
+    pub workers: Arc<dyn ThreadPool>,
 }
 
 pub struct TcpChannels {
@@ -72,6 +74,7 @@ pub struct TcpChannels {
     logger: Arc<dyn Logger>,
     node_id: KeyPair,
     syn_cookies: Arc<SynCookies>,
+    workers: Arc<dyn ThreadPool>,
 }
 
 impl TcpChannels {
@@ -116,6 +119,7 @@ impl TcpChannels {
             logger: options.logger,
             node_id: options.node_id,
             syn_cookies: options.syn_cookies,
+            workers: options.workers,
         }
     }
 
@@ -379,6 +383,8 @@ pub trait TcpChannelsExtension {
         node_id: PublicKey,
         socket: &Arc<SocketImpl>,
     );
+
+    fn ongoing_keepalive(&self);
 }
 
 impl TcpChannelsExtension for Arc<TcpChannels> {
@@ -447,6 +453,38 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 }
             }
         }
+    }
+
+    fn ongoing_keepalive(&self) {
+        let mut peers = [SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0); 8];
+        self.random_fill(&mut peers);
+        let message = Keepalive::new_with_peers(&self.network.network, peers);
+        // Wake up channels
+        let send_list = {
+            let guard = self.tcp_channels.lock().unwrap();
+            guard.keepalive_list()
+        };
+        for channel in send_list {
+            let ChannelEnum::Tcp(tcp) = channel.as_ref() else { continue; };
+            tcp.send(
+                &message,
+                None,
+                BufferDropPolicy::Limiter,
+                TrafficType::Generic,
+            );
+        }
+
+        let this_w = Arc::downgrade(self);
+        self.workers.add_delayed_task(
+            self.network.network.keepalive_period,
+            Box::new(move || {
+                if let Some(this_l) = this_w.upgrade() {
+                    if !this_l.stopped.load(Ordering::SeqCst) {
+                        this_l.ongoing_keepalive();
+                    }
+                }
+            }),
+        );
     }
 }
 

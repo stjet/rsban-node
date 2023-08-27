@@ -121,7 +121,7 @@ private:
 	nano::node & node;
 	std::shared_ptr<nano::bootstrap_attempt> find_attempt (nano::bootstrap_mode);
 	void stop_attempts ();
-	std::vector<std::shared_ptr<nano::bootstrap_attempt>> attempts_list;
+	std::unordered_map<std::size_t, std::shared_ptr<nano::bootstrap_attempt>> attempts_list;
 	std::atomic<bool> stopped{ false };
 	nano::mutex mutex;
 	nano::condition_variable condition;

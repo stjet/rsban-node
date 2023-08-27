@@ -35,7 +35,7 @@ pub mod bootstrap_limits {
     pub const BOOTSTRAP_MINIMUM_ELAPSED_SECONDS_BLOCKRATE: f64 = 0.02;
 }
 
-#[derive(Clone, Copy, FromPrimitive)]
+#[derive(Clone, Copy, FromPrimitive, Debug)]
 pub enum BootstrapMode {
     Legacy,
     Lazy,

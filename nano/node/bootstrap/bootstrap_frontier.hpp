@@ -33,7 +33,7 @@ public:
 	void next ();
 	std::weak_ptr<nano::node> node_weak;
 	std::shared_ptr<nano::bootstrap_client> connection;
-	std::shared_ptr<nano::bootstrap_attempt_legacy> attempt;
+	std::weak_ptr<nano::bootstrap_attempt_legacy> attempt;
 	nano::account current;
 	nano::block_hash frontier;
 	unsigned count;

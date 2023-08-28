@@ -22,16 +22,17 @@ nano::bulk_push_client::~bulk_push_client ()
 void nano::bulk_push_client::start ()
 {
 	auto node = node_weak.lock ();
-	if (!node || node->is_stopped())
+	auto attempt_l = attempt.lock ();
+	if (!node || node->is_stopped () || !attempt_l)
 	{
 		return;
 	}
 	nano::bulk_push message{ node->network_params.network };
-	auto this_l (shared_from_this ());
+	auto this_l{ shared_from_this () };
 	connection->send (
 	message, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		auto node = this_l->node_weak.lock ();
-		if (!node || node->is_stopped())
+		if (!node || node->is_stopped ())
 		{
 			return;
 		}
@@ -53,7 +54,8 @@ void nano::bulk_push_client::start ()
 void nano::bulk_push_client::push ()
 {
 	auto node = node_weak.lock ();
-	if (!node || node->is_stopped())
+	auto attempt_l = attempt.lock ();
+	if (!node || node->is_stopped () || !attempt_l)
 	{
 		return;
 	}
@@ -63,7 +65,7 @@ void nano::bulk_push_client::push ()
 	{
 		if (current_target.first.is_zero () || current_target.first == current_target.second)
 		{
-			finished = attempt->request_bulk_push_target (current_target);
+			finished = attempt_l->request_bulk_push_target (current_target);
 		}
 		if (!finished)
 		{
@@ -114,10 +116,13 @@ void nano::bulk_push_client::push_block (nano::block const & block_a)
 		nano::vectorstream stream (buffer);
 		nano::serialize_block (stream, block_a);
 	}
-	auto this_l (shared_from_this ());
-	connection->send_buffer (nano::shared_const_buffer (std::move (buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
+	std::weak_ptr<nano::bulk_push_client> this_w = (shared_from_this ());
+	connection->send_buffer (nano::shared_const_buffer (std::move (buffer)), [this_w] (boost::system::error_code const & ec, std::size_t size_a) {
+		auto this_l = this_w.lock ();
+		if (!this_l)
+			return;
 		auto node = this_l->node_weak.lock ();
-		if (!node || node->is_stopped())
+		if (!node || node->is_stopped ())
 		{
 			return;
 		}

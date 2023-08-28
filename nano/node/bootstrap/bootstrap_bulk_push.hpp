@@ -30,7 +30,7 @@ public:
 	void send_finished ();
 	std::weak_ptr<nano::node> node_weak;
 	std::shared_ptr<nano::bootstrap_client> connection;
-	std::shared_ptr<nano::bootstrap_attempt_legacy> attempt;
+	std::weak_ptr<nano::bootstrap_attempt_legacy> attempt;
 	std::promise<bool> promise;
 	std::pair<nano::block_hash, nano::block_hash> current_target;
 };

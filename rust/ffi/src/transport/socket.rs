@@ -596,12 +596,12 @@ pub unsafe extern "C" fn rsn_socket_type_to_string(socket_type: u8, result: *mut
     *result = StringDto::from(SocketType::from_u8(socket_type).unwrap().as_str())
 }
 
-struct FfiTcpSocketFacade {
+pub struct FfiTcpSocketFacade {
     handle: *mut c_void,
 }
 
 impl FfiTcpSocketFacade {
-    fn new(handle: *mut c_void) -> Self {
+    pub fn new(handle: *mut c_void) -> Self {
         Self { handle }
     }
 }
@@ -823,12 +823,12 @@ impl BufferWrapper for FfiBufferWrapper {
     }
 }
 
-struct SocketFfiObserver {
+pub struct SocketFfiObserver {
     handle: *mut c_void,
 }
 
 impl SocketFfiObserver {
-    fn new(handle: *mut c_void) -> Self {
+    pub fn new(handle: *mut c_void) -> Self {
         Self { handle }
     }
 }

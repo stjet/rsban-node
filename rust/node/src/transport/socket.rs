@@ -313,7 +313,7 @@ impl Drop for SocketImpl {
 
 pub trait Socket {
     fn start(&self);
-    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn Fn(ErrorCode)>);
+    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode)>);
     fn async_read(
         &self,
         buffer: Arc<dyn BufferWrapper>,
@@ -353,7 +353,7 @@ impl Socket for Arc<SocketImpl> {
         self.ongoing_checkup();
     }
 
-    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn Fn(ErrorCode)>) {
+    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode)>) {
         let self_clone = self.clone();
         debug_assert!(self.endpoint_type == EndpointType::Client);
 

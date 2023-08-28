@@ -100,7 +100,7 @@ nano::bulk_pull_client::~bulk_pull_client ()
 void nano::bulk_pull_client::request ()
 {
 	auto node_l = node.lock ();
-	if (!node_l || node_l->is_stopped())
+	if (!node_l || node_l->is_stopped ())
 	{
 		return;
 	}
@@ -133,7 +133,7 @@ void nano::bulk_pull_client::request ()
 	connection->send (
 	req, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		auto node_l = this_l->node.lock ();
-		if (!node_l || node_l->is_stopped())
+		if (!node_l || node_l->is_stopped ())
 		{
 			return;
 		}
@@ -156,7 +156,7 @@ void nano::bulk_pull_client::request ()
 void nano::bulk_pull_client::throttled_receive_block ()
 {
 	auto node_l = node.lock ();
-	if (!node_l || node_l->is_stopped())
+	if (!node_l || node_l->is_stopped ())
 	{
 		return;
 	}
@@ -188,7 +188,7 @@ void nano::bulk_pull_client::receive_block ()
 void nano::bulk_pull_client::received_block (boost::system::error_code ec, std::shared_ptr<nano::block> block)
 {
 	auto node_l = node.lock ();
-	if (!node_l || node_l->is_stopped())
+	if (!node_l || node_l->is_stopped ())
 	{
 		return;
 	}
@@ -280,7 +280,7 @@ nano::bulk_pull_account_client::~bulk_pull_account_client ()
 void nano::bulk_pull_account_client::request ()
 {
 	auto node_l = node.lock ();
-	if (!node_l || node_l->is_stopped())
+	if (!node_l || node_l->is_stopped ())
 	{
 		return;
 	}
@@ -300,7 +300,7 @@ void nano::bulk_pull_account_client::request ()
 	connection->send (
 	req, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		auto node_l = this_l->node.lock ();
-		if (!node_l || node_l->is_stopped())
+		if (!node_l || node_l->is_stopped ())
 		{
 			return;
 		}
@@ -327,7 +327,7 @@ void nano::bulk_pull_account_client::receive_pending ()
 	std::size_t size_l (sizeof (nano::uint256_union) + sizeof (nano::uint128_union));
 	connection->async_read (size_l, [this_l, size_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		auto node_l = this_l->node.lock ();
-		if (!node_l || node_l->is_stopped())
+		if (!node_l || node_l->is_stopped ())
 		{
 			return;
 		}

@@ -10,6 +10,8 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::path::PathBuf;
+use std::sync::atomic::AtomicUsize;
+use std::sync::OnceLock;
 use std::{
     ffi::{c_char, CStr},
     fs::{create_dir_all, set_permissions, Permissions},

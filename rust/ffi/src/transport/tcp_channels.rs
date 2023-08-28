@@ -28,8 +28,9 @@ use crate::{
 };
 
 use super::{
-    peer_exclusion::PeerExclusionHandle, ChannelHandle, EndpointDto, NetworkFilterHandle,
-    OutboundBandwidthLimiterHandle, SocketHandle, SynCookiesHandle, TcpMessageManagerHandle,
+    peer_exclusion::PeerExclusionHandle, ChannelHandle, EndpointDto, FfiTcpSocketFacade,
+    NetworkFilterHandle, OutboundBandwidthLimiterHandle, SocketFfiObserver, SocketHandle,
+    SynCookiesHandle, TcpMessageManagerHandle,
 };
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
@@ -56,6 +57,8 @@ pub struct TcpChannelsOptionsDto {
     pub node_id_prv: *const u8,
     pub syn_cookies: *mut SynCookiesHandle,
     pub workers: *mut ThreadPoolHandle,
+    pub socket_observer: *mut c_void,
+    pub tcp_facade: *mut c_void,
 }
 
 impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
@@ -72,6 +75,8 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                     ChannelHandle::new(channel),
                 )
             });
+            let observer = Arc::new(SocketFfiObserver::new(value.socket_observer));
+            let tcp_facade = Arc::new(FfiTcpSocketFacade::new(value.tcp_facade));
 
             Ok(Self {
                 node_config: NodeConfig::try_from(&*value.node_config)?,
@@ -94,6 +99,8 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 .unwrap(),
                 syn_cookies: (*value.syn_cookies).0.clone(),
                 workers: (*value.workers).0.clone(),
+                //tcp_facade,
+                observer,
             })
         }
     }
@@ -103,9 +110,11 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
 pub unsafe extern "C" fn rsn_tcp_channels_create(
     options: &TcpChannelsOptionsDto,
 ) -> *mut TcpChannelsHandle {
-    Box::into_raw(Box::new(TcpChannelsHandle(Arc::new(TcpChannels::new(
+    let channels = Arc::new(TcpChannels::new(
         TcpChannelsOptions::try_from(options).unwrap(),
-    )))))
+    ));
+    channels.observe();
+    Box::into_raw(Box::new(TcpChannelsHandle(channels)))
 }
 
 #[no_mangle]
@@ -571,6 +580,14 @@ pub unsafe extern "C" fn rsn_tcp_channels_start_tcp_receive_node_id(
     handle
         .0
         .start_tcp_receive_node_id(&channel.0, endpoint.into());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_start_tcp(
+    handle: &TcpChannelsHandle,
+    endpoint: &EndpointDto,
+) {
+    handle.0.start_tcp(endpoint.into());
 }
 
 pub struct EndpointListHandle(Vec<SocketAddr>);

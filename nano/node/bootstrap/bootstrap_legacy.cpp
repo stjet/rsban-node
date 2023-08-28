@@ -66,7 +66,7 @@ void nano::bootstrap_attempt_legacy::stop ()
 rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_legacy::request_push (rsnano::BootstrapAttemptLockHandle * lock_a)
 {
 	auto node = node_weak.lock ();
-	if (!node || node->is_stopped())
+	if (!node || node->is_stopped ())
 	{
 		return lock_a;
 	}
@@ -141,7 +141,7 @@ void nano::bootstrap_attempt_legacy::set_start_account (nano::account const & st
 bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::BootstrapAttemptLockHandle ** lock_a, bool first_attempt)
 {
 	auto node = node_weak.lock ();
-	if (!node || node->is_stopped())
+	if (!node || node->is_stopped ())
 	{
 		return false;
 	}

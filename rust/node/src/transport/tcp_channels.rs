@@ -36,8 +36,9 @@ use crate::{
 use super::{
     BufferDropPolicy, ChannelEnum, ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr,
     MessageDeserializer, MessageDeserializerExt, NetworkFilter, NullTcpServerObserver,
-    OutboundBandwidthLimiter, PeerExclusion, Socket, SocketImpl, SynCookies, TcpMessageManager,
-    TcpServer, TcpServerFactory, TcpServerObserver, TrafficType,
+    OutboundBandwidthLimiter, PeerExclusion, Socket, SocketImpl, SocketObserver, SynCookies,
+    TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver, TcpSocketFacade,
+    TrafficType,
 };
 
 pub struct TcpChannelsOptions {
@@ -57,6 +58,8 @@ pub struct TcpChannelsOptions {
     pub node_id: KeyPair,
     pub syn_cookies: Arc<SynCookies>,
     pub workers: Arc<dyn ThreadPool>,
+    //pub tcp_facade: Arc<dyn TcpSocketFacade>,
+    pub observer: Arc<dyn SocketObserver>,
 }
 
 pub struct TcpChannels {
@@ -82,6 +85,9 @@ pub struct TcpChannels {
     block_uniquer: Arc<BlockUniquer>,
     vote_uniquer: Arc<VoteUniquer>,
     tcp_server_factory: Arc<Mutex<TcpServerFactory>>,
+    //tcp_facade: Arc<dyn TcpSocketFacade>,
+    observer: Arc<dyn SocketObserver>,
+    channel_observer: Mutex<Option<Arc<dyn ChannelTcpObserver>>>,
 }
 
 impl TcpChannels {
@@ -131,6 +137,9 @@ impl TcpChannels {
             block_uniquer: options.block_uniquer,
             vote_uniquer: options.vote_uniquer,
             tcp_server_factory,
+            //tcp_facade: options.tcp_facade,
+            observer: options.observer,
+            channel_observer: Mutex::new(None),
         }
     }
 
@@ -161,9 +170,13 @@ impl TcpChannels {
         socket: &Arc<SocketImpl>,
         server: Option<Arc<TcpServer>>,
     ) -> Result<(), ()> {
-        let ChannelEnum::Tcp(tcp_channel) = channel.as_ref() else { panic!("not a tcp channel")};
+        let ChannelEnum::Tcp(tcp_channel) = channel.as_ref() else {
+            panic!("not a tcp channel")
+        };
         let endpoint = tcp_channel.endpoint();
-        let SocketAddr::V6(endpoint_v6) = endpoint else {panic!("not a v6 address")};
+        let SocketAddr::V6(endpoint_v6) = endpoint else {
+            panic!("not a v6 address")
+        };
         if !self.not_a_peer(&endpoint_v6, self.allow_local_peers)
             && !self.stopped.load(Ordering::SeqCst)
         {
@@ -309,9 +322,13 @@ impl TcpChannels {
         }
 
         let Some(cookie) = self.syn_cookies.cookie(&SocketAddr::V6(remote_endpoint)) else {
-	 	self.stats.inc (StatType::Handshake, DetailType::MissingCookie, Direction::In);
-	 	return false; // Fail
-    };
+            self.stats.inc(
+                StatType::Handshake,
+                DetailType::MissingCookie,
+                Direction::In,
+            );
+            return false; // Fail
+        };
 
         if response.validate(&cookie).is_err() {
             self.stats.inc(
@@ -339,46 +356,81 @@ impl TcpChannels {
             NodeIdHandshakeResponse::new_v1(&query_payload.cookie, &self.node_id)
         }
     }
+
+    pub fn prepare_handshake_query(
+        &self,
+        remote_endpoint: SocketAddrV6,
+    ) -> Option<NodeIdHandshakeQuery> {
+        self.syn_cookies
+            .assign(&SocketAddr::V6(remote_endpoint))
+            .map(|cookie| NodeIdHandshakeQuery { cookie })
+    }
 }
 
-impl ChannelTcpObserver for TcpChannels {
+pub struct ChannelTcpObserverImpl(Weak<TcpChannels>);
+
+impl ChannelTcpObserverImpl {
+    fn execute(&self, action: impl FnOnce(&TcpChannels)) {
+        if let Some(channels) = self.0.upgrade() {
+            action(&channels)
+        }
+    }
+}
+
+impl ChannelTcpObserver for ChannelTcpObserverImpl {
     fn data_sent(&self, endpoint: &SocketAddr) {
-        self.tcp_channels.lock().unwrap().update(endpoint);
+        self.execute(|channels| channels.tcp_channels.lock().unwrap().update(endpoint));
     }
 
     fn host_unreachable(&self) {
-        self.stats
-            .inc(StatType::Error, DetailType::UnreachableHost, Direction::Out);
+        self.execute(|channels| {
+            channels
+                .stats
+                .inc(StatType::Error, DetailType::UnreachableHost, Direction::Out)
+        });
     }
 
     fn message_sent(&self, message: &dyn Message) {
-        let detail = DetailType::from(message.header().message_type());
-        self.stats.inc(StatType::Message, detail, Direction::Out);
+        self.execute(|channels| {
+            let detail = DetailType::from(message.header().message_type());
+            channels
+                .stats
+                .inc(StatType::Message, detail, Direction::Out);
+        });
     }
 
     fn message_dropped(&self, message: &dyn Message, buffer_size: usize) {
-        let detail_type = message.message_type().into();
-        self.stats.inc(StatType::Drop, detail_type, Direction::Out);
-        if self.node_config.logging.network_packet_logging() {
-            self.logger.always_log(&format!(
-                "{} of size {} dropped",
-                detail_type.as_str(),
-                buffer_size
-            ));
-        }
+        self.execute(|channels| {
+            let detail_type = message.message_type().into();
+            channels
+                .stats
+                .inc(StatType::Drop, detail_type, Direction::Out);
+            if channels.node_config.logging.network_packet_logging() {
+                channels.logger.always_log(&format!(
+                    "{} of size {} dropped",
+                    detail_type.as_str(),
+                    buffer_size
+                ));
+            }
+        });
     }
 
     fn no_socket_drop(&self) {
-        self.stats.inc(
-            StatType::Tcp,
-            DetailType::TcpWriteNoSocketDrop,
-            Direction::Out,
-        );
+        self.execute(|channels| {
+            channels.stats.inc(
+                StatType::Tcp,
+                DetailType::TcpWriteNoSocketDrop,
+                Direction::Out,
+            )
+        });
     }
 
     fn write_drop(&self) {
-        self.stats
-            .inc(StatType::Tcp, DetailType::TcpWriteDrop, Direction::Out);
+        self.execute(|channels| {
+            channels
+                .stats
+                .inc(StatType::Tcp, DetailType::TcpWriteDrop, Direction::Out);
+        });
     }
 }
 
@@ -401,6 +453,8 @@ pub trait TcpChannelsExtension {
 
     fn ongoing_keepalive(&self);
     fn start_tcp_receive_node_id(&self, channel: &Arc<ChannelEnum>, endpoint: SocketAddrV6);
+    fn start_tcp(&self, endpoint: SocketAddrV6);
+    fn observe(&self);
 }
 
 impl TcpChannelsExtension for Arc<TcpChannels> {
@@ -430,12 +484,12 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     if !node_id.is_zero() {
                         // Add temporary channel
                         let channel_id = self.get_next_channel_id();
-                        let observer: Arc<dyn ChannelTcpObserver> =
-                            Arc::new(ChannelTcpObserverProxy(Arc::clone(self)));
+                        let channel_observer =
+                            Arc::downgrade(self.channel_observer.lock().unwrap().as_ref().unwrap());
                         let temporary_channel = ChannelTcp::new(
                             socket,
                             SystemTime::now(),
-                            Arc::new(ChannelTcpObserverWeakPtr(Arc::downgrade(&observer))),
+                            Arc::new(ChannelTcpObserverWeakPtr(channel_observer)),
                             self.limiter.clone(),
                             self.io_ctx.clone(),
                             channel_id,
@@ -481,7 +535,9 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             guard.keepalive_list()
         };
         for channel in send_list {
-            let ChannelEnum::Tcp(tcp) = channel.as_ref() else { continue; };
+            let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
+                continue;
+            };
             tcp.send(
                 &message,
                 None,
@@ -505,7 +561,9 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
     fn start_tcp_receive_node_id(&self, channel: &Arc<ChannelEnum>, endpoint: SocketAddrV6) {
         let this_w = Arc::downgrade(self);
-        let ChannelEnum::Tcp(tcp) = channel.as_ref() else { return; };
+        let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
+            return;
+        };
         let Some(socket_l) = tcp.socket() else { return };
         let channel_w = Arc::downgrade(channel);
 
@@ -522,10 +580,16 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
         let channel_clone = channel.clone();
         let callback = Box::new(move |ec: ErrorCode, message: Option<Box<dyn Message>>| {
-            let Some(this_l) = this_w.upgrade() else { return; };
-            let Some(message) = message else { return; };
+            let Some(this_l) = this_w.upgrade() else {
+                return;
+            };
+            let Some(message) = message else {
+                return;
+            };
             let channel = channel_clone;
-            let ChannelEnum::Tcp(tcp) = channel.as_ref() else { return; };
+            let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
+                return;
+            };
 
             if ec.is_err() {
                 if this_l
@@ -550,11 +614,18 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             // the header type should in principle be checked after checking the network bytes and the version numbers, I will not change it here since the benefits do not outweight the difficulties
 
             let Some(handshake) = message.as_any().downcast_ref::<NodeIdHandshake>() else {
-        		if this_l.node_config.logging.network_node_id_handshake_logging() {
-        			this_l.logger.try_log (&format!("Error reading node_id_handshake message header from {}", endpoint));
-        		}
-        		cleanup_node_id_handshake_socket ();
-        		return;
+                if this_l
+                    .node_config
+                    .logging
+                    .network_node_id_handshake_logging()
+                {
+                    this_l.logger.try_log(&format!(
+                        "Error reading node_id_handshake message header from {}",
+                        endpoint
+                    ));
+                }
+                cleanup_node_id_handshake_socket();
+                return;
             };
 
             if handshake.header().network() != this_l.network.network.current_network
@@ -647,9 +718,13 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             tcp.send(
                 &handshake_response,
                 Some(Box::new(move |ec, _| {
-                    let Some(this_l) = this_w.upgrade () else { return; };
+                    let Some(this_l) = this_w.upgrade() else {
+                        return;
+                    };
                     let channel = channel_clone;
-                    let ChannelEnum::Tcp(tcp) = channel.as_ref() else { return; };
+                    let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
+                        return;
+                    };
                     if ec.is_err() {
                         if this_l
                             .node_config
@@ -665,7 +740,9 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         return;
                     }
                     // Insert new node ID connection
-                    let Some(socket_l) = tcp.socket() else { return;};
+                    let Some(socket_l) = tcp.socket() else {
+                        return;
+                    };
                     let response_server = this_l
                         .tcp_server_factory
                         .lock()
@@ -692,32 +769,122 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
         deserializer.read(callback);
     }
-}
 
-pub struct ChannelTcpObserverProxy(Arc<TcpChannels>);
-impl ChannelTcpObserver for ChannelTcpObserverProxy {
-    fn data_sent(&self, endpoint: &SocketAddr) {
-        self.0.data_sent(endpoint);
+    fn start_tcp(&self, endpoint: SocketAddrV6) {
+        // let socket_stats = Arc::new(SocketStats::new(
+        //     self.stats.clone(),
+        //     self.logger.clone(),
+        //     self.node_config.logging.network_timeout_logging(),
+        // ));
+
+        // let socket = SocketBuilder::endpoint_type(
+        //     EndpointType::Client,
+        //     self.tcp_facade.clone(),
+        //     self.workers.clone(),
+        //     self.io_ctx.clone(),
+        // )
+        // .default_timeout(Duration::from_secs(
+        //     self.node_config.tcp_io_timeout_s as u64,
+        // ))
+        // .silent_connection_tolerance_time(Duration::from_secs(
+        //     self.network.network.silent_connection_tolerance_time_s as u64,
+        // ))
+        // .idle_timeout(Duration::from_secs(
+        //     self.network.network.idle_timeout_s as u64,
+        // ))
+        // .observer(Arc::new(CompositeSocketObserver::new(vec![
+        //     socket_stats,
+        //     self.observer.clone(),
+        // ])))
+        // .build();
+
+        // let channel_id = self.get_next_channel_id();
+        // let observer: Arc<dyn ChannelTcpObserver> = Arc::new(ChannelTcpObserverImpl(self.clone()));
+        // let channel = Arc::new(ChannelEnum::Tcp(ChannelTcp::new(
+        //     &socket,
+        //     SystemTime::now(),
+        //     Arc::new(ChannelTcpObserverWeakPtr(Arc::downgrade(&observer))),
+        //     self.limiter.clone(),
+        //     self.io_ctx.clone(),
+        //     channel_id,
+        // )));
+        // let this_w = Arc::downgrade(self);
+        // let socket_clone = Arc::clone(&socket);
+        // socket.async_connect(
+        //     SocketAddr::V6(endpoint),
+        //     Box::new(move |ec| {
+        //         let _socket = socket_clone; //keep socket alive!
+        //         let Some(this_l) = this_w.upgrade() else { return ;};
+
+        //         if ec.is_err() {
+        //             if this_l.node_config.logging.network_logging_value {
+        //                 this_l
+        //                     .logger
+        //                     .try_log(&format!("Error connecting to {}: {:?}", endpoint, ec));
+        //             }
+
+        //             return;
+        //         }
+
+        //         // TCP node ID handshake
+        //         let query = this_l.prepare_handshake_query(endpoint);
+        //         let message = NodeIdHandshake::new(&this_l.network.network, query.clone(), None);
+
+        //         if this_l
+        //             .node_config
+        //             .logging
+        //             .network_node_id_handshake_logging()
+        //         {
+        //             let query_string = query
+        //                 .map(|q| format!("{:?}", q.cookie))
+        //                 .unwrap_or_else(|| "not_set".to_string());
+        //             this_l.logger.try_log(&format!(
+        //                 "Node ID handshake request sent with node ID {} to {}: query {}",
+        //                 this_l.node_id.public_key().to_node_id(),
+        //                 endpoint,
+        //                 query_string
+        //             ));
+        //         }
+
+        //         let ChannelEnum::Tcp(tcp) = channel.as_ref() else { panic!("not a tcp channel")};
+        //         tcp.set_endpoint();
+        //         let this_w = Arc::downgrade(&this_l);
+        //         let channel_clone = Arc::clone(&channel);
+        //         tcp.send(
+        //             &message,
+        //             Some(Box::new(move |ec, _size| {
+        //                 let channel = channel_clone;
+        //                 let ChannelEnum::Tcp(tcp) = channel.as_ref() else {return;};
+        //                 if let Some(this_l) = this_w.upgrade() {
+        //                     if ec.is_ok() {
+        //                         this_l.start_tcp_receive_node_id(&channel, endpoint);
+        //                     } else {
+        //                         if let Some(socket) = tcp.socket() {
+        //                             socket.close();
+        //                         }
+        //                         if this_l
+        //                             .node_config
+        //                             .logging
+        //                             .network_node_id_handshake_logging()
+        //                         {
+        //                             this_l.logger.try_log(&format!(
+        //                                 "Error sending node_id_handshake to {}: {:?}",
+        //                                 endpoint, ec
+        //                             ));
+        //                         }
+        //                     }
+        //                 }
+        //             })),
+        //             BufferDropPolicy::Limiter,
+        //             TrafficType::Generic,
+        //         );
+        //     }),
+        // );
     }
 
-    fn host_unreachable(&self) {
-        self.0.host_unreachable();
-    }
-
-    fn message_sent(&self, message: &dyn Message) {
-        self.0.message_sent(message);
-    }
-
-    fn message_dropped(&self, message: &dyn Message, buffer_size: usize) {
-        self.0.message_dropped(message, buffer_size);
-    }
-
-    fn no_socket_drop(&self) {
-        self.0.no_socket_drop();
-    }
-
-    fn write_drop(&self) {
-        self.0.write_drop();
+    fn observe(&self) {
+        *self.channel_observer.lock().unwrap() =
+            Some(Arc::new(ChannelTcpObserverImpl(Arc::downgrade(self))));
     }
 }
 
@@ -884,7 +1051,9 @@ impl TcpChannelsImpl {
         let null_endpoint = SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0);
         for (i, target) in endpoints.iter_mut().enumerate() {
             let endpoint = if i < peers.len() {
-                let ChannelEnum::Tcp(tcp) = peers[i].as_ref() else { panic!("not a tcp channel")};
+                let ChannelEnum::Tcp(tcp) = peers[i].as_ref() else {
+                    panic!("not a tcp channel")
+                };
                 tcp.peering_endpoint()
             } else {
                 null_endpoint

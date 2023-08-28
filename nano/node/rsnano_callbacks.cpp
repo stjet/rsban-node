@@ -438,11 +438,18 @@ private:
 
 void io_ctx_post (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
 {
-	auto io_ctx{ static_cast<boost::asio::io_context *> (handle_a) };
-	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
-	io_ctx->post ([callback_wrapper] () {
-		callback_wrapper->execute ();
-	});
+	try
+	{
+		auto io_ctx{ static_cast<boost::asio::io_context *> (handle_a) };
+		auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
+		io_ctx->post ([callback_wrapper] () {
+			callback_wrapper->execute ();
+		});
+	}
+	catch (std::exception e)
+	{
+		std::cerr << "Exception while calling io_ctx::post(): " << e.what () << std::endl;
+	}
 }
 
 void logger_destroy (void * handle_a)
@@ -559,12 +566,19 @@ private:
 
 void tcp_socket_async_write (void * handle_a, const uint8_t * buffer_a, std::size_t len_a, rsnano::AsyncWriteCallbackHandle * callback_a)
 {
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	nano::shared_const_buffer buffer{ buffer_a, len_a };
-	auto callback_wrapper{ std::make_shared<async_write_callback_wrapper> (callback_a) };
-	(*socket)->async_write (buffer, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
-		callback_wrapper->execute (ec, size);
-	});
+	try
+	{
+		auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
+		nano::shared_const_buffer buffer{ buffer_a, len_a };
+		auto callback_wrapper{ std::make_shared<async_write_callback_wrapper> (callback_a) };
+		(*socket)->async_write (buffer, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
+			callback_wrapper->execute (ec, size);
+		});
+	}
+	catch (std::exception e)
+	{
+		std::cerr << "Exception whie writing to socket: " << e.what () << std::endl;
+	}
 }
 
 void tcp_socket_remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a, rsnano::ErrorCodeDto * ec_a)
@@ -587,11 +601,18 @@ void tcp_socket_dispatch (void * handle_a, rsnano::VoidFnCallbackHandle * callba
 
 void tcp_socket_post (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
 {
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
-	(*socket)->post ([callback_wrapper] () {
-		callback_wrapper->execute ();
-	});
+	try
+	{
+		auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
+		auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
+		(*socket)->post ([callback_wrapper] () {
+			callback_wrapper->execute ();
+		});
+	}
+	catch (std::exception e)
+	{
+		std::cerr << "Exception while calling tcp_socket_post: " << e.what () << std::endl;
+	}
 }
 
 void tcp_socket_close (void * handle_a, rsnano::ErrorCodeDto * ec_a)

@@ -20,7 +20,7 @@ constexpr std::size_t nano::frontier_req_client::size_frontier;
 void nano::frontier_req_client::run (nano::account const & start_account_a, uint32_t const frontiers_age_a, uint32_t const count_a)
 {
 	auto node = node_weak.lock ();
-	if (!node || node->is_stopped())
+	if (!node || node->is_stopped ())
 	{
 		return;
 	}
@@ -36,7 +36,7 @@ void nano::frontier_req_client::run (nano::account const & start_account_a, uint
 	connection->send (
 	request, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		auto node = this_l->node_weak.lock ();
-		if (!node || node->is_stopped())
+		if (!node || node->is_stopped ())
 		{
 			return;
 		}
@@ -69,7 +69,7 @@ void nano::frontier_req_client::receive_frontier ()
 	auto this_l (shared_from_this ());
 	connection->async_read (nano::frontier_req_client::size_frontier, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		auto node = this_l->node_weak.lock ();
-		if (!node || node->is_stopped())
+		if (!node || node->is_stopped ())
 		{
 			return;
 		}
@@ -96,9 +96,13 @@ bool nano::frontier_req_client::bulk_push_available ()
 
 void nano::frontier_req_client::unsynced (nano::block_hash const & head, nano::block_hash const & end)
 {
+	auto attempt_l = attempt.lock ();
+	if (!attempt_l)
+		return;
+
 	if (bulk_push_available ())
 	{
-		attempt->add_bulk_push_target (head, end);
+		attempt_l->add_bulk_push_target (head, end);
 		if (end.is_zero ())
 		{
 			bulk_push_cost += 2;
@@ -112,8 +116,11 @@ void nano::frontier_req_client::unsynced (nano::block_hash const & head, nano::b
 
 void nano::frontier_req_client::received_frontier (boost::system::error_code const & ec, std::size_t size_a)
 {
+	auto attempt_l = attempt.lock ();
+	if (!attempt_l)
+		return;
 	auto node = node_weak.lock ();
-	if (!node || node->is_stopped())
+	if (!node || node->is_stopped ())
 	{
 		return;
 	}
@@ -146,7 +153,7 @@ void nano::frontier_req_client::received_frontier (boost::system::error_code con
 			promise.set_value (true);
 			return;
 		}
-		if (attempt->should_log ())
+		if (attempt_l->should_log ())
 		{
 			node->logger->always_log (boost::str (boost::format ("Received %1% frontiers from %2%") % std::to_string (count) % connection->channel_string ()));
 		}
@@ -176,7 +183,7 @@ void nano::frontier_req_client::received_frontier (boost::system::error_code con
 						}
 						else
 						{
-							attempt->add_frontier (nano::pull_info (account, latest, frontier, attempt->get_incremental_id (), 0, node->network_params.bootstrap.frontier_retry_limit));
+							attempt_l->add_frontier (nano::pull_info (account, latest, frontier, attempt_l->get_incremental_id (), 0, node->network_params.bootstrap.frontier_retry_limit));
 							// Either we're behind or there's a fork we differ on
 							// Either way, bulk pushing will probably not be effective
 							bulk_push_cost += 5;
@@ -187,12 +194,12 @@ void nano::frontier_req_client::received_frontier (boost::system::error_code con
 				else
 				{
 					debug_assert (account < current);
-					attempt->add_frontier (nano::pull_info (account, latest, nano::block_hash (0), attempt->get_incremental_id (), 0, node->network_params.bootstrap.frontier_retry_limit));
+					attempt_l->add_frontier (nano::pull_info (account, latest, nano::block_hash (0), attempt_l->get_incremental_id (), 0, node->network_params.bootstrap.frontier_retry_limit));
 				}
 			}
 			else
 			{
-				attempt->add_frontier (nano::pull_info (account, latest, nano::block_hash (0), attempt->get_incremental_id (), 0, node->network_params.bootstrap.frontier_retry_limit));
+				attempt_l->add_frontier (nano::pull_info (account, latest, nano::block_hash (0), attempt_l->get_incremental_id (), 0, node->network_params.bootstrap.frontier_retry_limit));
 			}
 			receive_frontier ();
 		}
@@ -207,7 +214,7 @@ void nano::frontier_req_client::received_frontier (boost::system::error_code con
 					next ();
 				}
 				// Prevent new frontier_req requests
-				attempt->set_start_account (std::numeric_limits<nano::uint256_t>::max ());
+				attempt_l->set_start_account (std::numeric_limits<nano::uint256_t>::max ());
 				if (node->config->logging.bulk_pull_logging ())
 				{
 					node->logger->try_log ("Bulk push cost: ", bulk_push_cost);
@@ -216,7 +223,7 @@ void nano::frontier_req_client::received_frontier (boost::system::error_code con
 			else
 			{
 				// Set last processed account as new start target
-				attempt->set_start_account (last_account);
+				attempt_l->set_start_account (last_account);
 			}
 			node->bootstrap_initiator.connections->pool_connection (connection);
 			try
@@ -240,7 +247,7 @@ void nano::frontier_req_client::received_frontier (boost::system::error_code con
 void nano::frontier_req_client::next ()
 {
 	auto node = node_weak.lock ();
-	if (!node || node->is_stopped())
+	if (!node || node->is_stopped ())
 	{
 		return;
 	}

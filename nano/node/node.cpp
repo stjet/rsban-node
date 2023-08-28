@@ -740,7 +740,7 @@ void nano::node::stop ()
 	// work pool is not stopped on purpose due to testing setup
 }
 
-bool nano::node::is_stopped() const
+bool nano::node::is_stopped () const
 {
 	return stopped;
 }

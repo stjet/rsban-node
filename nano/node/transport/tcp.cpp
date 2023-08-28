@@ -248,6 +248,8 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	options.node_id_prv = node.node_id.prv.bytes.data ();
 	options.syn_cookies = node.network->syn_cookies->handle;
 	options.workers = node.workers->handle;
+	options.tcp_facade = new std::shared_ptr<nano::transport::tcp_socket_facade> (std::make_shared<nano::transport::tcp_socket_facade> (node.io_ctx));
+	options.socket_observer = new std::weak_ptr<nano::node_observers> (node.observers);
 
 	handle = rsnano::rsn_tcp_channels_create (&options);
 }
@@ -527,6 +529,10 @@ void nano::transport::tcp_channels::update (nano::tcp_endpoint const & endpoint_
 
 void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a)
 {
+	// auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
+	// rsnano::rsn_tcp_channels_start_tcp(handle, &endpoint_dto);
+	// return;
+
 	auto socket = std::make_shared<nano::transport::socket> (io_ctx, nano::transport::socket::endpoint_type_t::client, *stats, logger, workers,
 	config->tcp_io_timeout,
 	network_params.network.silent_connection_tolerance_time,

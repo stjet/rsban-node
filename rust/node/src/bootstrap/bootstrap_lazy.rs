@@ -10,6 +10,15 @@ pub struct BootstrapAttemptLazy {
     pub attempt: BootstrapAttempt,
 }
 
+impl Drop for BootstrapAttemptLazy {
+    fn drop(&mut self) {
+        println!(
+            "dropping BootstrapAttemptLazy. ID {}",
+            self.attempt.incremental_id
+        );
+    }
+}
+
 impl BootstrapAttemptLazy {
     pub fn new(
         logger: Arc<dyn Logger>,
@@ -20,6 +29,7 @@ impl BootstrapAttemptLazy {
         id: &str,
         incremental_id: u64,
     ) -> Result<Self> {
+        println!("creating BootstrapAttemptLazy. ID {}", incremental_id);
         Ok(Self {
             attempt: BootstrapAttempt::new(
                 logger,

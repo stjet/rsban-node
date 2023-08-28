@@ -20,7 +20,7 @@ constexpr std::size_t nano::frontier_req_client::size_frontier;
 void nano::frontier_req_client::run (nano::account const & start_account_a, uint32_t const frontiers_age_a, uint32_t const count_a)
 {
 	auto node = node_weak.lock ();
-	if (!node)
+	if (!node || node->is_stopped())
 	{
 		return;
 	}
@@ -36,7 +36,7 @@ void nano::frontier_req_client::run (nano::account const & start_account_a, uint
 	connection->send (
 	request, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		auto node = this_l->node_weak.lock ();
-		if (!node)
+		if (!node || node->is_stopped())
 		{
 			return;
 		}
@@ -69,7 +69,7 @@ void nano::frontier_req_client::receive_frontier ()
 	auto this_l (shared_from_this ());
 	connection->async_read (nano::frontier_req_client::size_frontier, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		auto node = this_l->node_weak.lock ();
-		if (!node)
+		if (!node || node->is_stopped())
 		{
 			return;
 		}
@@ -113,7 +113,7 @@ void nano::frontier_req_client::unsynced (nano::block_hash const & head, nano::b
 void nano::frontier_req_client::received_frontier (boost::system::error_code const & ec, std::size_t size_a)
 {
 	auto node = node_weak.lock ();
-	if (!node)
+	if (!node || node->is_stopped())
 	{
 		return;
 	}
@@ -240,7 +240,7 @@ void nano::frontier_req_client::received_frontier (boost::system::error_code con
 void nano::frontier_req_client::next ()
 {
 	auto node = node_weak.lock ();
-	if (!node)
+	if (!node || node->is_stopped())
 	{
 		return;
 	}

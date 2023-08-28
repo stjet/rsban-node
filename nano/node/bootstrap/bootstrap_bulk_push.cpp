@@ -31,7 +31,7 @@ void nano::bulk_push_client::start ()
 	connection->send (
 	message, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		auto node = this_l->node_weak.lock ();
-		if (!node)
+		if (!node || node->is_stopped())
 		{
 			return;
 		}
@@ -53,7 +53,7 @@ void nano::bulk_push_client::start ()
 void nano::bulk_push_client::push ()
 {
 	auto node = node_weak.lock ();
-	if (!node)
+	if (!node || node->is_stopped())
 	{
 		return;
 	}
@@ -117,7 +117,7 @@ void nano::bulk_push_client::push_block (nano::block const & block_a)
 	auto this_l (shared_from_this ());
 	connection->send_buffer (nano::shared_const_buffer (std::move (buffer)), [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
 		auto node = this_l->node_weak.lock ();
-		if (!node)
+		if (!node || node->is_stopped())
 		{
 			return;
 		}

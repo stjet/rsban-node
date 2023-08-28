@@ -248,7 +248,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	options.node_id_prv = node.node_id.prv.bytes.data ();
 	options.syn_cookies = node.network->syn_cookies->handle;
 	options.workers = node.workers->handle;
-	options.tcp_facade = new std::shared_ptr<nano::transport::tcp_socket_facade> (std::make_shared<nano::transport::tcp_socket_facade> (node.io_ctx));
+	//options.tcp_facade = new std::shared_ptr<nano::transport::tcp_socket_facade> (std::make_shared<nano::transport::tcp_socket_facade> (node.io_ctx));
 	options.socket_observer = new std::weak_ptr<nano::node_observers> (node.observers);
 
 	handle = rsnano::rsn_tcp_channels_create (&options);

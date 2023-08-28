@@ -58,7 +58,7 @@ pub struct TcpChannelsOptionsDto {
     pub syn_cookies: *mut SynCookiesHandle,
     pub workers: *mut ThreadPoolHandle,
     pub socket_observer: *mut c_void,
-    pub tcp_facade: *mut c_void,
+    //pub tcp_facade: *mut c_void,
 }
 
 impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
@@ -76,7 +76,7 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 )
             });
             let observer = Arc::new(SocketFfiObserver::new(value.socket_observer));
-            let tcp_facade = Arc::new(FfiTcpSocketFacade::new(value.tcp_facade));
+            //let tcp_facade = Arc::new(FfiTcpSocketFacade::new(value.tcp_facade));
 
             Ok(Self {
                 node_config: NodeConfig::try_from(&*value.node_config)?,

@@ -7,7 +7,7 @@ use std::{
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
     },
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 
 use rand::{thread_rng, Rng};
@@ -23,7 +23,7 @@ use crate::{
         Keepalive, Message, MessageType, NodeIdHandshake, NodeIdHandshakeQuery,
         NodeIdHandshakeResponse,
     },
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{DetailType, Direction, SocketStats, StatType, Stats},
     transport::{Channel, SocketType},
     utils::{
         ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address, BlockUniquer,
@@ -34,11 +34,11 @@ use crate::{
 };
 
 use super::{
-    BufferDropPolicy, ChannelEnum, ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr,
-    MessageDeserializer, MessageDeserializerExt, NetworkFilter, NullTcpServerObserver,
-    OutboundBandwidthLimiter, PeerExclusion, Socket, SocketImpl, SocketObserver, SynCookies,
-    TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver, TcpSocketFacade,
-    TrafficType,
+    BufferDropPolicy, ChannelEnum, ChannelTcp, ChannelTcpObserver, CompositeSocketObserver,
+    EndpointType, IChannelTcpObserverWeakPtr, MessageDeserializer, MessageDeserializerExt,
+    NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket,
+    SocketBuilder, SocketImpl, SocketObserver, SynCookies, TcpMessageManager, TcpServer,
+    TcpServerFactory, TcpServerObserver, TcpSocketFacade, TrafficType,
 };
 
 pub struct TcpChannelsOptions {
@@ -771,115 +771,116 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
     }
 
     fn start_tcp(&self, endpoint: SocketAddrV6) {
-        // let socket_stats = Arc::new(SocketStats::new(
-        //     self.stats.clone(),
-        //     self.logger.clone(),
-        //     self.node_config.logging.network_timeout_logging(),
-        // ));
-
-        // let socket = SocketBuilder::endpoint_type(
-        //     EndpointType::Client,
-        //     self.tcp_facade.clone(),
-        //     self.workers.clone(),
-        //     self.io_ctx.clone(),
-        // )
-        // .default_timeout(Duration::from_secs(
-        //     self.node_config.tcp_io_timeout_s as u64,
-        // ))
-        // .silent_connection_tolerance_time(Duration::from_secs(
-        //     self.network.network.silent_connection_tolerance_time_s as u64,
-        // ))
-        // .idle_timeout(Duration::from_secs(
-        //     self.network.network.idle_timeout_s as u64,
-        // ))
-        // .observer(Arc::new(CompositeSocketObserver::new(vec![
-        //     socket_stats,
-        //     self.observer.clone(),
-        // ])))
-        // .build();
-
-        // let channel_id = self.get_next_channel_id();
-        // let observer: Arc<dyn ChannelTcpObserver> = Arc::new(ChannelTcpObserverImpl(self.clone()));
-        // let channel = Arc::new(ChannelEnum::Tcp(ChannelTcp::new(
-        //     &socket,
-        //     SystemTime::now(),
-        //     Arc::new(ChannelTcpObserverWeakPtr(Arc::downgrade(&observer))),
-        //     self.limiter.clone(),
-        //     self.io_ctx.clone(),
-        //     channel_id,
-        // )));
-        // let this_w = Arc::downgrade(self);
-        // let socket_clone = Arc::clone(&socket);
-        // socket.async_connect(
-        //     SocketAddr::V6(endpoint),
-        //     Box::new(move |ec| {
-        //         let _socket = socket_clone; //keep socket alive!
-        //         let Some(this_l) = this_w.upgrade() else { return ;};
-
-        //         if ec.is_err() {
-        //             if this_l.node_config.logging.network_logging_value {
-        //                 this_l
-        //                     .logger
-        //                     .try_log(&format!("Error connecting to {}: {:?}", endpoint, ec));
-        //             }
-
-        //             return;
-        //         }
-
-        //         // TCP node ID handshake
-        //         let query = this_l.prepare_handshake_query(endpoint);
-        //         let message = NodeIdHandshake::new(&this_l.network.network, query.clone(), None);
-
-        //         if this_l
-        //             .node_config
-        //             .logging
-        //             .network_node_id_handshake_logging()
-        //         {
-        //             let query_string = query
-        //                 .map(|q| format!("{:?}", q.cookie))
-        //                 .unwrap_or_else(|| "not_set".to_string());
-        //             this_l.logger.try_log(&format!(
-        //                 "Node ID handshake request sent with node ID {} to {}: query {}",
-        //                 this_l.node_id.public_key().to_node_id(),
-        //                 endpoint,
-        //                 query_string
-        //             ));
-        //         }
-
-        //         let ChannelEnum::Tcp(tcp) = channel.as_ref() else { panic!("not a tcp channel")};
-        //         tcp.set_endpoint();
-        //         let this_w = Arc::downgrade(&this_l);
-        //         let channel_clone = Arc::clone(&channel);
-        //         tcp.send(
-        //             &message,
-        //             Some(Box::new(move |ec, _size| {
-        //                 let channel = channel_clone;
-        //                 let ChannelEnum::Tcp(tcp) = channel.as_ref() else {return;};
-        //                 if let Some(this_l) = this_w.upgrade() {
-        //                     if ec.is_ok() {
-        //                         this_l.start_tcp_receive_node_id(&channel, endpoint);
-        //                     } else {
-        //                         if let Some(socket) = tcp.socket() {
-        //                             socket.close();
-        //                         }
-        //                         if this_l
-        //                             .node_config
-        //                             .logging
-        //                             .network_node_id_handshake_logging()
-        //                         {
-        //                             this_l.logger.try_log(&format!(
-        //                                 "Error sending node_id_handshake to {}: {:?}",
-        //                                 endpoint, ec
-        //                             ));
-        //                         }
-        //                     }
-        //                 }
-        //             })),
-        //             BufferDropPolicy::Limiter,
-        //             TrafficType::Generic,
-        //         );
-        //     }),
-        // );
+        //        let socket_stats = Arc::new(SocketStats::new(
+        //            self.stats.clone(),
+        //            self.logger.clone(),
+        //            self.node_config.logging.network_timeout_logging(),
+        //        ));
+        //
+        //        let socket = SocketBuilder::endpoint_type(
+        //            EndpointType::Client,
+        //            self.tcp_facade.clone(),
+        //            self.workers.clone(),
+        //            self.io_ctx.clone(),
+        //        )
+        //        .default_timeout(Duration::from_secs(
+        //            self.node_config.tcp_io_timeout_s as u64,
+        //        ))
+        //        .silent_connection_tolerance_time(Duration::from_secs(
+        //            self.network.network.silent_connection_tolerance_time_s as u64,
+        //        ))
+        //        .idle_timeout(Duration::from_secs(
+        //            self.network.network.idle_timeout_s as u64,
+        //        ))
+        //        .observer(Arc::new(CompositeSocketObserver::new(vec![
+        //            socket_stats,
+        //            self.observer.clone(),
+        //        ])))
+        //        .build();
+        //
+        //        let channel_id = self.get_next_channel_id();
+        //        let observer: Arc<dyn ChannelTcpObserver> =
+        //            Arc::new(ChannelTcpObserverImpl(Arc::downgrade(self)));
+        //        let channel = Arc::new(ChannelEnum::Tcp(ChannelTcp::new(
+        //            &socket,
+        //            SystemTime::now(),
+        //            Arc::new(ChannelTcpObserverWeakPtr(Arc::downgrade(&observer))),
+        //            self.limiter.clone(),
+        //            self.io_ctx.clone(),
+        //            channel_id,
+        //        )));
+        //        let this_w = Arc::downgrade(self);
+        //        let socket_clone = Arc::clone(&socket);
+        //        socket.async_connect(
+        //            SocketAddr::V6(endpoint),
+        //            Box::new(move |ec| {
+        //                let _socket = socket_clone; //keep socket alive!
+        //                let Some(this_l) = this_w.upgrade() else { return ;};
+        //
+        //                if ec.is_err() {
+        //                    if this_l.node_config.logging.network_logging_value {
+        //                        this_l
+        //                            .logger
+        //                            .try_log(&format!("Error connecting to {}: {:?}", endpoint, ec));
+        //                    }
+        //
+        //                    return;
+        //                }
+        //
+        //                // TCP node ID handshake
+        //                let query = this_l.prepare_handshake_query(endpoint);
+        //                let message = NodeIdHandshake::new(&this_l.network.network, query.clone(), None);
+        //
+        //                if this_l
+        //                    .node_config
+        //                    .logging
+        //                    .network_node_id_handshake_logging()
+        //                {
+        //                    let query_string = query
+        //                        .map(|q| format!("{:?}", q.cookie))
+        //                        .unwrap_or_else(|| "not_set".to_string());
+        //                    this_l.logger.try_log(&format!(
+        //                        "Node ID handshake request sent with node ID {} to {}: query {}",
+        //                        this_l.node_id.public_key().to_node_id(),
+        //                        endpoint,
+        //                        query_string
+        //                    ));
+        //                }
+        //
+        //                let ChannelEnum::Tcp(tcp) = channel.as_ref() else { panic!("not a tcp channel")};
+        //                tcp.set_endpoint();
+        //                let this_w = Arc::downgrade(&this_l);
+        //                let channel_clone = Arc::clone(&channel);
+        //                tcp.send(
+        //                    &message,
+        //                    Some(Box::new(move |ec, _size| {
+        //                        let channel = channel_clone;
+        //                        let ChannelEnum::Tcp(tcp) = channel.as_ref() else {return;};
+        //                        if let Some(this_l) = this_w.upgrade() {
+        //                            if ec.is_ok() {
+        //                                this_l.start_tcp_receive_node_id(&channel, endpoint);
+        //                            } else {
+        //                                if let Some(socket) = tcp.socket() {
+        //                                    socket.close();
+        //                                }
+        //                                if this_l
+        //                                    .node_config
+        //                                    .logging
+        //                                    .network_node_id_handshake_logging()
+        //                                {
+        //                                    this_l.logger.try_log(&format!(
+        //                                        "Error sending node_id_handshake to {}: {:?}",
+        //                                        endpoint, ec
+        //                                    ));
+        //                                }
+        //                            }
+        //                        }
+        //                    })),
+        //                    BufferDropPolicy::Limiter,
+        //                    TrafficType::Generic,
+        //                );
+        //            }),
+        //        );
     }
 
     fn observe(&self) {

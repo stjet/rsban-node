@@ -102,7 +102,8 @@ void nano::network::stop ()
 {
 	if (!stopped.exchange (true))
 	{
-		tcp_channels->stop ();
+		if (tcp_channels)
+			tcp_channels->stop ();
 		resolver.cancel ();
 		port = 0;
 		for (auto & thread : packet_processing_threads)

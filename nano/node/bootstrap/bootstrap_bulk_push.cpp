@@ -22,7 +22,7 @@ nano::bulk_push_client::~bulk_push_client ()
 void nano::bulk_push_client::start ()
 {
 	auto node = node_weak.lock ();
-	if (!node)
+	if (!node || node->is_stopped())
 	{
 		return;
 	}

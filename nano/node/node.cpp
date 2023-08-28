@@ -740,6 +740,11 @@ void nano::node::stop ()
 	// work pool is not stopped on purpose due to testing setup
 }
 
+bool nano::node::is_stopped() const
+{
+	return stopped;
+}
+
 void nano::node::keepalive_preconfigured (std::vector<std::string> const & peers_a)
 {
 	for (auto i (peers_a.begin ()), n (peers_a.end ()); i != n; ++i)

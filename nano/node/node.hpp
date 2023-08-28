@@ -81,6 +81,7 @@ public:
 	void keepalive (std::string const &, uint16_t);
 	void start ();
 	void stop ();
+	bool is_stopped() const;
 	std::shared_ptr<nano::node> shared ();
 	int store_version ();
 	void receive_confirmed (nano::transaction const & block_transaction_a, nano::block_hash const & hash_a, nano::account const & destination_a);

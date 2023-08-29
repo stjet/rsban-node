@@ -27,6 +27,10 @@ pub enum BufferDropPolicy {
     NoSocketDrop,
 }
 
+pub trait TcpSocketFacadeFactory: Send + Sync {
+    fn create_tcp_socket(&self) -> Arc<dyn TcpSocketFacade>;
+}
+
 pub trait TcpSocketFacade: Send + Sync {
     fn local_endpoint(&self) -> SocketAddr;
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode)>);

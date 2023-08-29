@@ -4,7 +4,7 @@ use rsnano_node::{
     stats::SocketStats,
     transport::{
         CompositeSocketObserver, Socket, SocketBuilder, SocketImpl, SocketObserver, SocketType,
-        TcpSocketFacade, WriteCallback,
+        TcpSocketFacade, TcpSocketFacadeFactory, WriteCallback,
     },
     utils::{BufferWrapper, ErrorCode},
 };
@@ -510,6 +510,20 @@ type SocketConnectedCallback = unsafe extern "C" fn(*mut c_void, *mut SocketHand
 static mut SOCKET_CONNECTED_CALLBACK: Option<SocketConnectedCallback> = None;
 static mut DELETE_TCP_SOCKET_CALLBACK: Option<VoidPointerCallback> = None;
 
+pub type CreateTcpSocketCallback = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
+static mut CREATE_TCP_SOCKET_CALLBACK: Option<CreateTcpSocketCallback> = None;
+static mut DESTROY_TCP_SOCKET_FACADE_FACTORY_CALLBACK: Option<VoidPointerCallback> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_create_tcp_socket(f: CreateTcpSocketCallback) {
+    CREATE_TCP_SOCKET_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_destroy_tcp_socket_facade_factory(f: VoidPointerCallback) {
+    DESTROY_TCP_SOCKET_FACADE_FACTORY_CALLBACK = Some(f);
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_tcp_socket_local_endpoint(f: SocketLocalEndpointCallback) {
     LOCAL_ENDPOINT_CALLBACK = Some(f);
@@ -594,6 +608,29 @@ pub unsafe extern "C" fn rsn_socket_is_alive(handle: *mut SocketHandle) -> bool 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_type_to_string(socket_type: u8, result: *mut StringDto) {
     *result = StringDto::from(SocketType::from_u8(socket_type).unwrap().as_str())
+}
+
+pub struct FfiTcpSocketFacadeFactory(pub *mut c_void);
+
+unsafe impl Send for FfiTcpSocketFacadeFactory {}
+unsafe impl Sync for FfiTcpSocketFacadeFactory {}
+
+impl TcpSocketFacadeFactory for FfiTcpSocketFacadeFactory {
+    fn create_tcp_socket(&self) -> Arc<dyn TcpSocketFacade> {
+        let handle = unsafe {
+            CREATE_TCP_SOCKET_CALLBACK.expect("CREATE_TCP_SOCKET_CALLBACK missing")(self.0)
+        };
+        Arc::new(FfiTcpSocketFacade::new(handle))
+    }
+}
+
+impl Drop for FfiTcpSocketFacadeFactory {
+    fn drop(&mut self) {
+        unsafe {
+            DESTROY_TCP_SOCKET_FACADE_FACTORY_CALLBACK
+                .expect("DESTROY_TCP_SOCKET_FACADE_FACTORY_CALLBACK missing")(self.0)
+        }
+    }
 }
 
 pub struct FfiTcpSocketFacade {

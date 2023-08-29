@@ -38,7 +38,7 @@ use super::{
     EndpointType, IChannelTcpObserverWeakPtr, MessageDeserializer, MessageDeserializerExt,
     NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket,
     SocketBuilder, SocketImpl, SocketObserver, SynCookies, TcpMessageManager, TcpServer,
-    TcpServerFactory, TcpServerObserver, TcpSocketFacade, TrafficType,
+    TcpServerFactory, TcpServerObserver, TcpSocketFacade, TcpSocketFacadeFactory, TrafficType,
 };
 
 pub struct TcpChannelsOptions {
@@ -58,7 +58,7 @@ pub struct TcpChannelsOptions {
     pub node_id: KeyPair,
     pub syn_cookies: Arc<SynCookies>,
     pub workers: Arc<dyn ThreadPool>,
-    //pub tcp_facade: Arc<dyn TcpSocketFacade>,
+    pub tcp_socket_factory: Arc<dyn TcpSocketFacadeFactory>,
     pub observer: Arc<dyn SocketObserver>,
 }
 
@@ -85,7 +85,7 @@ pub struct TcpChannels {
     block_uniquer: Arc<BlockUniquer>,
     vote_uniquer: Arc<VoteUniquer>,
     tcp_server_factory: Arc<Mutex<TcpServerFactory>>,
-    //tcp_facade: Arc<dyn TcpSocketFacade>,
+    tcp_socket_factory: Arc<dyn TcpSocketFacadeFactory>,
     observer: Arc<dyn SocketObserver>,
     channel_observer: Mutex<Option<Arc<dyn ChannelTcpObserver>>>,
 }
@@ -137,9 +137,9 @@ impl TcpChannels {
             block_uniquer: options.block_uniquer,
             vote_uniquer: options.vote_uniquer,
             tcp_server_factory,
-            //tcp_facade: options.tcp_facade,
             observer: options.observer,
             channel_observer: Mutex::new(None),
+            tcp_socket_factory: options.tcp_socket_factory,
         }
     }
 

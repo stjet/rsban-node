@@ -96,6 +96,16 @@ private:
 	std::atomic<bool> closed{ false };
 };
 
+class tcp_socket_facade_factory
+{
+public:
+	tcp_socket_facade_factory (boost::asio::io_context & io_ctx);
+	std::shared_ptr<nano::transport::tcp_socket_facade> create_socket ();
+
+private:
+	boost::asio::io_context & io_ctx;
+};
+
 void async_read_adapter (void * context_a, rsnano::ErrorCodeDto const * error_a, std::size_t size_a);
 void async_read_delete_context (void * context_a);
 

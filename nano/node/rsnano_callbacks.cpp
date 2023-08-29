@@ -649,9 +649,22 @@ void tcp_socket_delete_callback (void * handle_a)
 	auto callback{ static_cast<std::weak_ptr<nano::node_observers> *> (handle_a) };
 	delete callback;
 };
+
 void tcp_socket_destroy (void * handle_a)
 {
 	auto ptr{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
+	delete ptr;
+}
+
+void * tcp_socket_facade_factory_create_socket (void * handle_a)
+{
+	auto ptr{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade_factory> *> (handle_a) };
+	return new std::shared_ptr<nano::transport::tcp_socket_facade> ((*ptr)->create_socket ());
+}
+
+void tcp_socket_facade_factory_destroy (void * handle_a)
+{
+	auto ptr{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade_factory> *> (handle_a) };
 	delete ptr;
 }
 
@@ -922,6 +935,9 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_tcp_socket_is_open (tcp_socket_is_open);
 	rsnano::rsn_callback_tcp_socket_connected (tcp_socket_connected);
 	rsnano::rsn_callback_delete_tcp_socket_callback (tcp_socket_delete_callback);
+
+	rsnano::rsn_callback_create_tcp_socket (tcp_socket_facade_factory_create_socket);
+	rsnano::rsn_callback_destroy_tcp_socket_facade_factory (tcp_socket_facade_factory_destroy);
 
 	rsnano::rsn_callback_channel_tcp_observer_data_sent (channel_tcp_data_sent);
 	rsnano::rsn_callback_channel_tcp_observer_host_unreachable (channel_tcp_host_unreachable);

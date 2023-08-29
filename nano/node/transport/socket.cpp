@@ -120,6 +120,16 @@ nano::transport::buffer_wrapper::buffer_wrapper (std::size_t len) :
 {
 }
 
+nano::transport::tcp_socket_facade_factory::tcp_socket_facade_factory (boost::asio::io_context & io_ctx_a) :
+	io_ctx{ io_ctx_a }
+{
+}
+
+std::shared_ptr<nano::transport::tcp_socket_facade> nano::transport::tcp_socket_facade_factory::create_socket ()
+{
+	return std::make_shared<nano::transport::tcp_socket_facade> (io_ctx);
+}
+
 nano::transport::buffer_wrapper::buffer_wrapper (rsnano::BufferHandle * handle_a) :
 	handle{ handle_a }
 {

@@ -67,8 +67,8 @@ outbound_bandwidth_limiter::config outbound_bandwidth_limiter_config (node_confi
 class node final : public std::enable_shared_from_this<nano::node>
 {
 public:
-	node (boost::asio::io_context &, uint16_t, boost::filesystem::path const &, nano::logging const &, nano::work_pool &, nano::node_flags = nano::node_flags (), unsigned seq = 0);
-	node (boost::asio::io_context &, boost::filesystem::path const &, nano::node_config const &, nano::work_pool &, nano::node_flags = nano::node_flags (), unsigned seq = 0);
+	node (rsnano::async_runtime & async_rt_a, uint16_t, boost::filesystem::path const &, nano::logging const &, nano::work_pool &, nano::node_flags = nano::node_flags (), unsigned seq = 0);
+	node (rsnano::async_runtime & async_rt_a, boost::filesystem::path const &, nano::node_config const &, nano::work_pool &, nano::node_flags = nano::node_flags (), unsigned seq = 0);
 	~node ();
 
 public:
@@ -243,7 +243,7 @@ public:
 	~node_wrapper ();
 
 	nano::network_params network_params;
-	std::shared_ptr<boost::asio::io_context> io_context;
+	std::shared_ptr<rsnano::async_runtime> async_rt;
 	nano::work_pool work;
 	std::shared_ptr<nano::node> node;
 };

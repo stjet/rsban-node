@@ -35,8 +35,8 @@ public:
 		node_rpc_config{},
 		rpc_config{ node.network_params.network, port, true },
 		ipc{ node, node_rpc_config },
-		ipc_rpc_processor{ system.io_ctx, rpc_config },
-		rpc{ system.io_ctx, rpc_config, ipc_rpc_processor }
+		ipc_rpc_processor{ system.async_rt.io_ctx, rpc_config },
+		rpc{ system.async_rt.io_ctx, rpc_config, ipc_rpc_processor }
 	{
 	}
 
@@ -64,7 +64,7 @@ std::unique_ptr<rpc_wrapper> start_rpc (nano::test::system & system, nano::node 
 TEST (bootstrap_ascending, profile)
 {
 	nano::test::system system;
-	nano::thread_runner runner{ system.io_ctx, 2 };
+	nano::thread_runner runner{ system.async_rt.io_ctx, 2 };
 	nano::networks network = nano::networks::nano_beta_network;
 	nano::network_params network_params{ network };
 
@@ -80,7 +80,7 @@ TEST (bootstrap_ascending, profile)
 	flags_server.set_disable_ascending_bootstrap (true);
 	auto data_path_server = nano::working_path (network);
 	//auto data_path_server = "";
-	auto server = std::make_shared<nano::node> (system.io_ctx, data_path_server, config_server, system.work, flags_server);
+	auto server = std::make_shared<nano::node> (system.async_rt, data_path_server, config_server, system.work, flags_server);
 	system.nodes.push_back (server);
 	server->start ();
 
@@ -100,7 +100,7 @@ TEST (bootstrap_ascending, profile)
 	// macos 16GB RAM disk:  diskutil erasevolume HFS+ "RAMDisk" `hdiutil attach -nomount ram://33554432`
 	//auto data_path_client = "/Volumes/RAMDisk";
 	auto data_path_client = nano::unique_path ();
-	auto client = std::make_shared<nano::node> (system.io_ctx, data_path_client, config_client, system.work, flags_client);
+	auto client = std::make_shared<nano::node> (system.async_rt, data_path_client, config_client, system.work, flags_client);
 	system.nodes.push_back (client);
 	client->start ();
 

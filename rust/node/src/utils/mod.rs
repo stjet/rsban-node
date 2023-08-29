@@ -1,3 +1,4 @@
+mod async_runtime;
 mod blake2b;
 mod blocks;
 mod buffer;
@@ -11,6 +12,7 @@ mod uniquer;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddrV6};
 
 pub use crate::utils::timer::{NullTimer, Timer, TimerStrategy, TimerWrapper};
+pub use async_runtime::AsyncRuntime;
 use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,

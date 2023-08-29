@@ -92,7 +92,7 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 			config.node.websocket_config.tls_config = tls_config;
 		}
 
-		boost::asio::io_context io_ctx;
+		rsnano::async_runtime async_rt{};
 		auto opencl (nano::opencl_work::create (config.opencl_enable, config.opencl, logger, config.node.network_params.work));
 		nano::work_pool opencl_work (config.node.network_params.network, config.node.work_threads, config.node.pow_sleep_interval, opencl ? [&opencl] (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, nano::work_ticket ticket_a) {
 			return opencl->generate_work (version_a, root_a, difficulty_a, ticket_a);
@@ -127,7 +127,7 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 				config.node.peering_port = network_params.network.default_node_port;
 			}
 
-			auto node (std::make_shared<nano::node> (io_ctx, data_path, config.node, opencl_work, flags));
+			auto node (std::make_shared<nano::node> (async_rt, data_path, config.node, opencl_work, flags));
 			if (!node->init_error ())
 			{
 				auto network_label = node->network_params.network.get_current_network_as_string ();
@@ -165,13 +165,13 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 						}
 
 						rpc_config.tls_config = tls_config;
-						rpc_handler = std::make_unique<nano::inprocess_rpc_handler> (*node, ipc_server, config.rpc, [&ipc_server, &workers = *node->workers, &io_ctx] () {
+						rpc_handler = std::make_unique<nano::inprocess_rpc_handler> (*node, ipc_server, config.rpc, [&ipc_server, &workers = *node->workers, &async_rt] () {
 							ipc_server.stop ();
-							workers.add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (3), [&io_ctx] () {
-								io_ctx.stop ();
+							workers.add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (3), [&async_rt] () {
+								async_rt.io_ctx.stop ();
 							});
 						});
-						rpc = nano::get_rpc (io_ctx, rpc_config, *rpc_handler);
+						rpc = nano::get_rpc (async_rt.io_ctx, rpc_config, *rpc_handler);
 						rpc->start ();
 					}
 					else
@@ -188,8 +188,8 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 				}
 
 				debug_assert (!nano::signal_handler_impl);
-				nano::signal_handler_impl = [&io_ctx] () {
-					io_ctx.stop ();
+				nano::signal_handler_impl = [&async_rt] () {
+					async_rt.io_ctx.stop ();
 					sig_int_or_term = 1;
 				};
 
@@ -201,7 +201,7 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 				// sigterm is less likely to come in bunches so only trap it once
 				sigman.register_signal_handler (SIGTERM, &nano::signal_handler, false);
 
-				runner = std::make_unique<nano::thread_runner> (io_ctx, node->config->io_threads);
+				runner = std::make_unique<nano::thread_runner> (async_rt.io_ctx, node->config->io_threads);
 				runner->join ();
 
 				if (sig_int_or_term == 1)

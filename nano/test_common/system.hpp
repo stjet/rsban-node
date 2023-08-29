@@ -64,7 +64,7 @@ namespace test
 		uint16_t get_available_port (bool can_be_zero = true);
 
 	public:
-		boost::asio::io_context io_ctx;
+		rsnano::async_runtime async_rt;
 		std::vector<std::shared_ptr<nano::node>> nodes;
 		nano::logging logging;
 		nano::stats stats;

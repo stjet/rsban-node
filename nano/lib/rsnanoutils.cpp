@@ -120,6 +120,17 @@ boost::asio::io_context * rsnano::io_ctx_wrapper::inner () const
 	return static_cast<boost::asio::io_context *> (rsnano::rsn_io_ctx_get_ctx (handle_m));
 }
 
+rsnano::async_runtime::async_runtime () :
+	io_ctx{},
+	handle{ rsnano::rsn_async_runtime_create (&io_ctx) }
+{
+}
+
+rsnano::async_runtime::~async_runtime ()
+{
+	rsnano::rsn_async_runtime_destroy (handle);
+}
+
 std::unique_ptr<nano::message> rsnano::message_handle_to_message (rsnano::MessageHandle * handle)
 {
 	auto type = static_cast<nano::message_type> (rsnano::rsn_message_type (handle));

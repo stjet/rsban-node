@@ -37,7 +37,7 @@ TEST (system, DISABLED_generate_send_existing)
 {
 	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
-	nano::thread_runner runner (system.io_ctx, node1.config->io_threads);
+	nano::thread_runner runner (system.async_rt.io_ctx, node1.config->io_threads);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::keypair stake_preserver;
 	auto send_block (system.wallet (0)->send_action (nano::dev::genesis->account (), stake_preserver.pub, nano::dev::constants.genesis_amount / 3 * 2, true));
@@ -87,7 +87,7 @@ TEST (system, DISABLED_generate_send_new)
 {
 	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
-	nano::thread_runner runner (system.io_ctx, node1.config->io_threads);
+	nano::thread_runner runner (system.async_rt.io_ctx, node1.config->io_threads);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	{
 		auto transaction (node1.store.tx_begin_read ());

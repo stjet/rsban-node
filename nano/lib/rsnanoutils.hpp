@@ -42,6 +42,16 @@ private:
 	rsnano::IoContextHandle * handle_m;
 };
 
+class async_runtime
+{
+public:
+	async_runtime ();
+	async_runtime (async_runtime const &) = delete;
+	~async_runtime ();
+	boost::asio::io_context io_ctx;
+	rsnano::AsyncRuntimeHandle * handle;
+};
+
 void read_block_array_dto (rsnano::BlockArrayDto & dto, std::vector<std::shared_ptr<nano::block>> & list_a);
 rsnano::BlockArrayDto to_block_array_dto (std::vector<std::shared_ptr<nano::block>> & list_a);
 

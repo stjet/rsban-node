@@ -56,7 +56,7 @@ TEST (system, generate_mass_activity_long)
 	nano::node_config node_config = system.default_config ();
 	node_config.enable_voting = false; // Prevent blocks cementing
 	auto node = system.add_node (node_config);
-	nano::thread_runner runner (system.io_ctx, system.nodes[0]->config->io_threads);
+	nano::thread_runner runner (system.async_rt.io_ctx, system.nodes[0]->config->io_threads);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	uint32_t count (1000000);
 	auto count_env_var = std::getenv ("SLOW_TEST_SYSTEM_GENERATE_MASS_ACTIVITY_LONG_COUNT");
@@ -82,12 +82,12 @@ TEST (system, receive_while_synchronizing)
 		nano::node_config node_config = system.default_config ();
 		node_config.enable_voting = false; // Prevent blocks cementing
 		auto node = system.add_node (node_config);
-		nano::thread_runner runner (system.io_ctx, system.nodes[0]->config->io_threads);
+		nano::thread_runner runner (system.async_rt.io_ctx, system.nodes[0]->config->io_threads);
 		system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 		uint32_t count (1000);
 		system.generate_mass_activity (count, *system.nodes[0]);
 		nano::keypair key;
-		auto node1 (std::make_shared<nano::node> (system.io_ctx, system.get_available_port (), nano::unique_path (), system.logging, system.work));
+		auto node1 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.logging, system.work));
 		ASSERT_FALSE (node1->init_error ());
 		auto wallet (node1->wallets.create (1));
 		wallet->insert_adhoc (nano::dev::genesis_key.prv); // For voting
@@ -1541,7 +1541,7 @@ TEST (telemetry, many_nodes)
 		// Make a metric completely different for each node so we can check afterwards that there are no duplicates
 		node_config.bandwidth_limit = 100000 + i;
 
-		auto node = std::make_shared<nano::node> (system.io_ctx, nano::unique_path (), node_config, system.work, node_flags);
+		auto node = std::make_shared<nano::node> (system.async_rt, nano::unique_path (), node_config, system.work, node_flags);
 		node->start ();
 		system.nodes.push_back (node);
 	}

@@ -35,7 +35,7 @@ TEST (node, stop)
 	nano::test::system system (1);
 	ASSERT_NE (system.nodes[0]->wallets.items.end (), system.nodes[0]->wallets.items.begin ());
 	system.nodes[0]->stop ();
-	system.io_ctx.run ();
+	system.async_rt.io_ctx.run ();
 	ASSERT_TRUE (true);
 }
 
@@ -67,7 +67,7 @@ TEST (node, work_generate)
 TEST (node, block_store_path_failure)
 {
 	nano::test::system system;
-	auto service (boost::make_shared<boost::asio::io_context> ());
+	auto service (boost::make_shared<rsnano::async_runtime> ());
 	auto path (nano::unique_path ());
 	nano::logging logging;
 	logging.init (path);
@@ -80,14 +80,14 @@ TEST (node, block_store_path_failure)
 TEST (node, password_fanout)
 {
 	nano::test::system system;
-	boost::asio::io_context io_ctx;
+	rsnano::async_runtime async_rt;
 	auto path (nano::unique_path ());
 	nano::node_config config;
 	config.peering_port = system.get_available_port ();
 	config.logging.init (path);
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
 	config.password_fanout = 10;
-	nano::node node (io_ctx, path, config, pool);
+	nano::node node (async_rt, path, config, pool);
 	auto wallet (node.wallets.create (100));
 	ASSERT_EQ (10, wallet->store.fanout);
 	node.stop ();
@@ -262,7 +262,7 @@ TEST (node, auto_bootstrap)
 	auto send1 (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, node0->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send1);
 	ASSERT_TIMELY (10s, node0->balance (key2.pub) == node0->config->receive_minimum.number ());
-	auto node1 (std::make_shared<nano::node> (system.io_ctx, system.get_available_port (), nano::unique_path (), system.logging, system.work, node_flags));
+	auto node1 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.logging, system.work, node_flags));
 	ASSERT_FALSE (node1->init_error ());
 	node1->start ();
 	system.nodes.push_back (node1);
@@ -291,7 +291,7 @@ TEST (node, auto_bootstrap_reverse)
 	nano::keypair key2;
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	system.wallet (0)->insert_adhoc (key2.prv);
-	auto node1 (std::make_shared<nano::node> (system.io_ctx, system.get_available_port (), nano::unique_path (), system.logging, system.work, node_flags));
+	auto node1 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.logging, system.work, node_flags));
 	ASSERT_FALSE (node1->init_error ());
 	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, node0->config->receive_minimum.number ()));
 	node1->start ();
@@ -310,7 +310,7 @@ TEST (node, auto_bootstrap_age)
 	node_flags.set_disable_lazy_bootstrap (true);
 	node_flags.set_bootstrap_interval (1);
 	auto node0 = system.add_node (config, node_flags);
-	auto node1 (std::make_shared<nano::node> (system.io_ctx, system.get_available_port (), nano::unique_path (), system.logging, system.work, node_flags));
+	auto node1 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.logging, system.work, node_flags));
 	ASSERT_FALSE (node1->init_error ());
 	node1->start ();
 	system.nodes.push_back (node1);
@@ -1697,7 +1697,7 @@ TEST (node, rep_weight)
 {
 	nano::test::system system;
 	auto add_node = [&system] {
-		auto node = std::make_shared<nano::node> (system.io_ctx, system.get_available_port (), nano::unique_path (), system.logging, system.work);
+		auto node = std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.logging, system.work);
 		node->start ();
 		system.nodes.push_back (node);
 		return node;
@@ -1878,7 +1878,7 @@ TEST (node, rep_remove)
 	ASSERT_TIMELY (10s, searching_node.rep_crawler.representative_count () == 1);
 
 	// Start a node for Rep2 and wait until it is connected
-	auto node_rep2 (std::make_shared<nano::node> (system.io_ctx, nano::unique_path (), nano::node_config (system.get_available_port (), system.logging), system.work));
+	auto node_rep2 (std::make_shared<nano::node> (system.async_rt, nano::unique_path (), nano::node_config (system.get_available_port (), system.logging), system.work));
 	node_rep2->start ();
 	searching_node.network->tcp_channels->start_tcp (node_rep2->network->endpoint ());
 	std::shared_ptr<nano::transport::channel> channel_rep2;
@@ -3098,7 +3098,7 @@ TEST (node, peers)
 	auto node1 (system.nodes[0]);
 	ASSERT_TRUE (node1->network->empty ());
 
-	auto node2 (std::make_shared<nano::node> (system.io_ctx, system.get_available_port (), nano::unique_path (), system.logging, system.work));
+	auto node2 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.logging, system.work));
 	system.nodes.push_back (node2);
 
 	auto endpoint = node1->network->endpoint ();
@@ -3148,7 +3148,7 @@ TEST (node, peer_cache_restart)
 	nano::endpoint_key endpoint_key{ endpoint.address ().to_v6 ().to_bytes (), endpoint.port () };
 	auto path (nano::unique_path ());
 	{
-		auto node2 (std::make_shared<nano::node> (system.io_ctx, system.get_available_port (), path, system.logging, system.work));
+		auto node2 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), path, system.logging, system.work));
 		system.nodes.push_back (node2);
 		auto & store = node2->store;
 		{
@@ -3168,7 +3168,7 @@ TEST (node, peer_cache_restart)
 	{
 		nano::node_flags node_flags;
 		node_flags.set_read_only (true);
-		auto node3 (std::make_shared<nano::node> (system.io_ctx, system.get_available_port (), path, system.logging, system.work, node_flags));
+		auto node3 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), path, system.logging, system.work, node_flags));
 		system.nodes.push_back (node3);
 		// Check cached peers after restart
 		node3->network->start ();

@@ -139,14 +139,14 @@ std::shared_ptr<nano::network> create_network (nano::node & node_a, nano::node_c
 	return network;
 }
 
-nano::node::node (boost::asio::io_context & io_ctx_a, uint16_t peering_port_a, boost::filesystem::path const & application_path_a, nano::logging const & logging_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
-	node (io_ctx_a, application_path_a, nano::node_config (peering_port_a, logging_a), work_a, flags_a, seq)
+nano::node::node (rsnano::async_runtime & async_rt, uint16_t peering_port_a, boost::filesystem::path const & application_path_a, nano::logging const & logging_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
+	node (async_rt, application_path_a, nano::node_config (peering_port_a, logging_a), work_a, flags_a, seq)
 {
 }
 
-nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path const & application_path_a, nano::node_config const & config_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
+nano::node::node (rsnano::async_runtime & async_rt_a, boost::filesystem::path const & application_path_a, nano::node_config const & config_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
 	write_database_queue (!flags_a.force_use_write_database_queue ()),
-	io_ctx (io_ctx_a),
+	io_ctx (async_rt_a.io_ctx),
 	node_initialized_latch (1),
 	observers{ std::make_shared<nano::node_observers> () },
 	config{ std::make_shared<nano::node_config> (config_a) },
@@ -1537,7 +1537,7 @@ nano::telemetry_data nano::node::local_telemetry () const
 
 nano::node_wrapper::node_wrapper (boost::filesystem::path const & path_a, boost::filesystem::path const & config_path_a, nano::node_flags & node_flags_a) :
 	network_params{ nano::network_constants::active_network () },
-	io_context (std::make_shared<boost::asio::io_context> ()),
+	async_rt (std::make_shared<rsnano::async_runtime> ()),
 	work{ network_params.network, 1 }
 {
 	boost::system::error_code error_chmod;
@@ -1568,7 +1568,7 @@ nano::node_wrapper::node_wrapper (boost::filesystem::path const & path_a, boost:
 	node_config.logging.max_size = std::numeric_limits<std::uintmax_t>::max ();
 	node_config.logging.init (path_a);
 
-	node = std::make_shared<nano::node> (*io_context, path_a, node_config, work, node_flags_a);
+	node = std::make_shared<nano::node> (*async_rt, path_a, node_config, work, node_flags_a);
 }
 
 nano::node_wrapper::~node_wrapper ()

@@ -1429,6 +1429,7 @@ dependencies = [
  "rsnano_ledger",
  "rsnano_node",
  "rsnano_store_lmdb",
+ "tokio",
 ]
 
 [[package]]
@@ -1479,6 +1480,7 @@ dependencies = [
  "static_assertions",
  "threadpool",
  "timer",
+ "tokio",
  "toml_edit",
  "uuid 1.2.2",
 ]

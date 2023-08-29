@@ -530,77 +530,9 @@ void nano::transport::tcp_channels::update (nano::tcp_endpoint const & endpoint_
 
 void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a)
 {
-	// auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
-	// rsnano::rsn_tcp_channels_start_tcp(handle, &endpoint_dto);
-	// return;
-
-	auto socket = std::make_shared<nano::transport::socket> (io_ctx, nano::transport::socket::endpoint_type_t::client, *stats, logger, workers,
-	config->tcp_io_timeout,
-	network_params.network.silent_connection_tolerance_time,
-	network_params.network.idle_timeout,
-	config->logging.network_timeout_logging (),
-	observers);
-	auto channel_id = rsnano::rsn_tcp_channels_get_next_channel_id (handle);
-	auto channel (std::make_shared<nano::transport::channel_tcp> (io_ctx, limiter, config->network_params.network, socket, shared_from_this (), channel_id));
-	auto network_consts = network_params.network;
-	auto config_l = config;
-	auto logger_l = logger;
-	std::weak_ptr<nano::transport::tcp_channels> this_w = shared_from_this ();
-	socket->async_connect (nano::transport::map_endpoint_to_tcp (endpoint_a),
-	[channel, socket, endpoint_a, network_consts, config_l, logger_l, this_w] (boost::system::error_code const & ec) {
-		if (auto this_l = this_w.lock ())
-		{
-			if (!ec && channel)
-			{
-				// TCP node ID handshake
-				auto query = this_l->prepare_handshake_query (endpoint_a);
-				nano::node_id_handshake message{ network_consts, query };
-
-				if (config_l->logging.network_node_id_handshake_logging ())
-				{
-					logger_l->try_log (boost::str (boost::format ("Node ID handshake request sent with node ID %1% to %2%: query %3%") % this_l->node_id.pub.to_node_id () % endpoint_a % (query ? query->cookie.to_string () : "not set")));
-				}
-
-				channel->set_endpoint ();
-				std::shared_ptr<std::vector<uint8_t>> receive_buffer (std::make_shared<std::vector<uint8_t>> ());
-				receive_buffer->resize (256);
-				channel->send (message, [this_w, channel, endpoint_a, receive_buffer, config_l, logger_l] (boost::system::error_code const & ec, std::size_t size_a) {
-					if (auto this_l = this_w.lock ())
-					{
-						if (!ec)
-						{
-							this_l->start_tcp_receive_node_id (channel, endpoint_a, receive_buffer);
-						}
-						else
-						{
-							if (auto socket_l = channel->try_get_socket ())
-							{
-								socket_l->close ();
-							}
-							if (config_l->logging.network_node_id_handshake_logging ())
-							{
-								logger_l->try_log (boost::str (boost::format ("Error sending node_id_handshake to %1%: %2%") % endpoint_a % ec.message ()));
-							}
-						}
-					}
-				});
-			}
-			else
-			{
-				if (config_l->logging.network_logging ())
-				{
-					if (ec)
-					{
-						logger_l->try_log (boost::str (boost::format ("Error connecting to %1%: %2%") % endpoint_a % ec.message ()));
-					}
-					else
-					{
-						logger_l->try_log (boost::str (boost::format ("Error connecting to %1%") % endpoint_a));
-					}
-				}
-			}
-		}
-	});
+	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
+	rsnano::rsn_tcp_channels_start_tcp (handle, &endpoint_dto);
+	return;
 }
 
 namespace

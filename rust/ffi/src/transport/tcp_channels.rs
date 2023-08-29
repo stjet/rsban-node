@@ -8,7 +8,6 @@ use std::{
 use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
 use rsnano_node::{
     config::NodeConfig,
-    messages::{NodeIdHandshakeQuery, NodeIdHandshakeResponse},
     transport::{
         ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpEndpointAttempt,
     },
@@ -18,7 +17,7 @@ use rsnano_node::{
 use crate::{
     bootstrap::{FfiBootstrapServerObserver, RequestResponseVisitorFactoryHandle, TcpServerHandle},
     core::BlockUniquerHandle,
-    messages::{HandshakeResponseDto, MessageHandle},
+    messages::MessageHandle,
     utils::{
         ptr_into_ipv6addr, ContainerInfoComponentHandle, ContextWrapper, FfiIoContext,
         IoContextHandle, LoggerHandle, LoggerMT, ThreadPoolHandle,
@@ -538,32 +537,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_excluded_peers(
     Box::into_raw(Box::new(PeerExclusionHandle(
         handle.0.excluded_peers.clone(),
     )))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_prepare_handshake_response(
-    handle: &TcpChannelsHandle,
-    cookie: *const u8,
-    v2: bool,
-    response: &mut HandshakeResponseDto,
-) {
-    let query_payload = NodeIdHandshakeQuery {
-        cookie: std::slice::from_raw_parts(cookie, 32).try_into().unwrap(),
-    };
-    let response_payload = handle.0.prepare_handshake_response(&query_payload, v2);
-    *response = response_payload.into();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_verify_handshake_response(
-    handle: &TcpChannelsHandle,
-    response: &HandshakeResponseDto,
-    endpoint: &EndpointDto,
-) -> bool {
-    let response = NodeIdHandshakeResponse::from(response);
-    handle
-        .0
-        .verify_handshake_response(&response, endpoint.into())
 }
 
 #[no_mangle]

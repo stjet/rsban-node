@@ -211,7 +211,6 @@ void delete_sink (void * callback_handle)
 
 nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
 	tcp_message_manager{ node.config->tcp_incoming_connections_max },
-	node_id{ node.node_id },
 	network_params{ node.network_params },
 	limiter{ node.outbound_limiter },
 	syn_cookies{ node.network->syn_cookies },
@@ -722,49 +721,4 @@ std::shared_ptr<nano::transport::channel> nano::transport::channel_handle_to_cha
 		default:
 			throw std::runtime_error ("unknown transport type");
 	}
-}
-
-std::optional<nano::node_id_handshake::query_payload> nano::transport::tcp_channels::prepare_handshake_query (const nano::endpoint & remote_endpoint)
-{
-	if (auto cookie = syn_cookies->assign (remote_endpoint); cookie)
-	{
-		nano::node_id_handshake::query_payload query{ *cookie };
-		return query;
-	}
-	return std::nullopt;
-}
-
-bool nano::transport::tcp_channels::verify_handshake_response (const nano::node_id_handshake::response_payload & response, const nano::endpoint & remote_endpoint)
-{
-	rsnano::HandshakeResponseDto response_dto;
-	std::copy (response.node_id.bytes.begin (), response.node_id.bytes.end (), std::begin (response_dto.node_id));
-	std::copy (response.signature.bytes.begin (), response.signature.bytes.end (), std::begin (response_dto.signature));
-	response_dto.v2 = response.v2.has_value ();
-	if (response.v2.has_value ())
-	{
-		auto v2 = response.v2.value ();
-		std::copy (v2.salt.bytes.begin (), v2.salt.bytes.end (), std::begin (response_dto.salt));
-		std::copy (v2.genesis.bytes.begin (), v2.genesis.bytes.end (), std::begin (response_dto.genesis));
-	}
-	auto endpoint_dto = rsnano::udp_endpoint_to_dto (remote_endpoint);
-	return rsnano::rsn_tcp_channels_verify_handshake_response (handle, &response_dto, &endpoint_dto);
-}
-
-nano::node_id_handshake::response_payload nano::transport::tcp_channels::prepare_handshake_response (const nano::node_id_handshake::query_payload & query, bool v2) const
-{
-	rsnano::HandshakeResponseDto result;
-	rsnano::rsn_tcp_channels_prepare_handshake_response (handle, query.cookie.bytes.data (), v2, &result);
-
-	nano::node_id_handshake::response_payload response{};
-	std::copy (std::begin (result.node_id), std::end (result.node_id), std::begin (response.node_id.bytes));
-	std::copy (std::begin (result.signature), std::end (result.signature), std::begin (response.signature.bytes));
-	if (result.v2)
-	{
-		nano::node_id_handshake::response_payload::v2_payload response_v2{};
-		std::copy (std::begin (result.salt), std::end (result.salt), std::begin (response_v2.salt.bytes));
-		std::copy (std::begin (result.genesis), std::end (result.genesis), std::begin (response_v2.genesis.bytes));
-		response.v2 = response_v2;
-	}
-
-	return response;
 }

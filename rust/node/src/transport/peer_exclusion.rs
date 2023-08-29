@@ -4,7 +4,7 @@ use mock_instant::Instant;
 use std::time::Instant;
 use std::{
     collections::{BTreeMap, HashMap},
-    net::{IpAddr, SocketAddr},
+    net::{IpAddr, SocketAddr, SocketAddrV6},
     time::Duration,
 };
 
@@ -64,6 +64,11 @@ impl PeerExclusion {
         self.by_ip
             .get(&endpoint.ip())
             .map(|item| item.exclude_until)
+    }
+
+    /// Checks if an endpoint is currently excluded.
+    pub fn is_excluded2(&mut self, endpoint: &SocketAddrV6) -> bool {
+        self.is_excluded(&SocketAddr::V6(*endpoint))
     }
 
     /// Checks if an endpoint is currently excluded.

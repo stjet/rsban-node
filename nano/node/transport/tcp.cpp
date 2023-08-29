@@ -398,15 +398,7 @@ nano::tcp_endpoint nano::transport::tcp_channels::bootstrap_peer ()
 
 void nano::transport::tcp_channels::process_messages ()
 {
-	while (!stopped)
-	{
-		auto item (tcp_message_manager.get_message ());
-		if (item.get_message () != nullptr)
-		{
-			auto message{ item.get_message () };
-			process_message (*message, item.get_endpoint (), item.get_node_id (), item.get_socket ());
-		}
-	}
+	rsnano::rsn_tcp_channels_process_messages (handle);
 }
 
 void nano::transport::tcp_channels::process_message (nano::message const & message_a, nano::tcp_endpoint const & endpoint_a, nano::account const & node_id_a, std::shared_ptr<nano::transport::socket> const & socket_a)
@@ -440,23 +432,8 @@ bool nano::transport::tcp_channels::max_ip_connections (nano::tcp_endpoint const
 
 bool nano::transport::tcp_channels::max_subnetwork_connections (nano::tcp_endpoint const & endpoint_a)
 {
-	if (flags.disable_max_peers_per_subnetwork ())
-	{
-		return false;
-	}
-	bool result{ false };
-	auto const subnet (nano::transport::map_address_to_subnetwork (endpoint_a.address ()));
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	result = rsnano::rsn_tcp_channels_count_by_subnet (handle, subnet.to_v6 ().to_bytes ().data ()) >= network_params.network.max_peers_per_subnetwork;
-	if (!result)
-	{
-		result = rsnano::rsn_tcp_channels_get_attempt_count_by_subnetwork (handle, subnet.to_v6 ().to_bytes ().data ()) >= network_params.network.max_peers_per_subnetwork;
-	}
-	if (result)
-	{
-		stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_subnetwork, nano::stat::dir::out);
-	}
-	return result;
+	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
+	return rsnano::rsn_tcp_channels_max_subnetwork_connections (handle, &endpoint_dto);
 }
 
 bool nano::transport::tcp_channels::max_ip_or_subnetwork_connections (nano::tcp_endpoint const & endpoint_a)
@@ -466,19 +443,8 @@ bool nano::transport::tcp_channels::max_ip_or_subnetwork_connections (nano::tcp_
 
 bool nano::transport::tcp_channels::reachout (nano::endpoint const & endpoint_a)
 {
-	auto tcp_endpoint (nano::transport::map_endpoint_to_tcp (endpoint_a));
-	// Don't overload single IP
-	bool error = excluded_peers ().check (tcp_endpoint) || max_ip_or_subnetwork_connections (tcp_endpoint);
-	if (!error && !flags.disable_tcp_realtime ())
-	{
-		// Don't keepalive to nodes that already sent us something
-		error |= find_channel (tcp_endpoint) != nullptr;
-		nano::lock_guard<nano::mutex> lock{ mutex };
-		auto attempt_dto{ rsnano::endpoint_to_dto (tcp_endpoint) };
-		auto inserted = rsnano::rsn_tcp_channels_add_attempt (handle, &attempt_dto);
-		error |= !inserted;
-	}
-	return error;
+	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
+	return rsnano::rsn_tcp_channels_reachout (handle, &endpoint_dto);
 }
 
 std::unique_ptr<nano::container_info_component> nano::transport::tcp_channels::collect_container_info (std::string const & name)

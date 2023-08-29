@@ -517,6 +517,11 @@ pub unsafe extern "C" fn rsn_tcp_channels_get_next_channel_id(handle: &TcpChanne
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_process_messages(handle: &TcpChannelsHandle) {
+    handle.0.process_messages();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_process_message(
     handle: &TcpChannelsHandle,
     message: &MessageHandle,
@@ -528,6 +533,22 @@ pub unsafe extern "C" fn rsn_tcp_channels_process_message(
     handle
         .0
         .process_message(message.0.as_ref(), &endpoint.into(), node_id, &socket.0);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_max_subnetwork_connections(
+    handle: &TcpChannelsHandle,
+    endpoint: &EndpointDto,
+) -> bool {
+    handle.0.max_subnetwork_connections(&endpoint.into())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_reachout(
+    handle: &TcpChannelsHandle,
+    endpoint: &EndpointDto,
+) -> bool {
+    handle.0.reachout(&endpoint.into())
 }
 
 #[no_mangle]

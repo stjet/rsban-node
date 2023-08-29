@@ -38,7 +38,7 @@ use super::{
     EndpointType, IChannelTcpObserverWeakPtr, MessageDeserializer, MessageDeserializerExt,
     NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket,
     SocketBuilder, SocketImpl, SocketObserver, SynCookies, TcpMessageManager, TcpServer,
-    TcpServerFactory, TcpServerObserver, TcpSocketFacade, TcpSocketFacadeFactory, TrafficType,
+    TcpServerFactory, TcpServerObserver, TcpSocketFacadeFactory, TrafficType,
 };
 
 pub struct TcpChannelsOptions {
@@ -275,6 +275,10 @@ impl TcpChannels {
             .message_visitor_factory = Some(visitor_factory);
     }
 
+    pub fn max_ip_or_subnetwork_connections(&self, endpoint: &SocketAddrV6) -> bool {
+        self.max_ip_connections(endpoint) || self.max_subnetwork_connections(endpoint)
+    }
+
     pub fn max_ip_connections(&self, endpoint: &SocketAddrV6) -> bool {
         if self.flags.disable_max_peers_per_ip {
             return false;
@@ -365,6 +369,51 @@ impl TcpChannels {
             .assign(&SocketAddr::V6(remote_endpoint))
             .map(|cookie| NodeIdHandshakeQuery { cookie })
     }
+
+    pub fn max_subnetwork_connections(&self, endoint: &SocketAddrV6) -> bool {
+        if self.flags.disable_max_peers_per_subnetwork {
+            return false;
+        }
+
+        let subnet = map_address_to_subnetwork(endoint.ip());
+        let guard = self.tcp_channels.lock().unwrap();
+
+        let is_max = guard.channels.count_by_subnet(&subnet)
+            >= self.network.network.max_peers_per_subnetwork
+            || guard.attempts.count_by_subnetwork(&subnet)
+                >= self.network.network.max_peers_per_subnetwork;
+
+        if is_max {
+            self.stats.inc(
+                StatType::Tcp,
+                DetailType::TcpMaxPerSubnetwork,
+                Direction::Out,
+            );
+        }
+
+        is_max
+    }
+
+    pub fn reachout(&self, endpoint: &SocketAddrV6) -> bool {
+        // Don't overload single IP
+        let mut error = self.excluded_peers.lock().unwrap().is_excluded2(endpoint)
+            || self.max_ip_or_subnetwork_connections(endpoint);
+
+        if !error && !self.flags.disable_tcp_realtime {
+            // Don't keepalive to nodes that already sent us something
+            if self.find_channel(&SocketAddr::V6(*endpoint)).is_some() {
+                error = true;
+            }
+
+            let mut guard = self.tcp_channels.lock().unwrap();
+            let attempt = TcpEndpointAttempt::new(*endpoint);
+            let inserted = guard.attempts.insert(attempt);
+            if !inserted {
+                error = true;
+            }
+        }
+        error
+    }
 }
 
 pub struct ChannelTcpObserverImpl(Weak<TcpChannels>);
@@ -443,6 +492,7 @@ impl IChannelTcpObserverWeakPtr for ChannelTcpObserverWeakPtr {
 }
 
 pub trait TcpChannelsExtension {
+    fn process_messages(&self);
     fn process_message(
         &self,
         message: &dyn Message,
@@ -458,6 +508,20 @@ pub trait TcpChannelsExtension {
 }
 
 impl TcpChannelsExtension for Arc<TcpChannels> {
+    fn process_messages(&self) {
+        while !self.stopped.load(Ordering::SeqCst) {
+            let item = self.tcp_message_manager.get_message();
+            if let Some(message) = item.message {
+                self.process_message(
+                    message.as_ref(),
+                    &item.endpoint,
+                    item.node_id,
+                    &item.socket.unwrap(),
+                );
+            }
+        }
+    }
+
     fn process_message(
         &self,
         message: &dyn Message,

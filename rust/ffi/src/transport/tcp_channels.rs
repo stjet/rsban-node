@@ -129,14 +129,6 @@ pub extern "C" fn rsn_tcp_channels_stop(handle: &mut TcpChannelsHandle) {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_tcp_channels_max_ip_connections(
-    handle: &mut TcpChannelsHandle,
-    endpoint: &EndpointDto,
-) -> bool {
-    handle.0.max_ip_connections(&endpoint.into())
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_tcp_channels_on_new_channel(
     handle: &mut TcpChannelsHandle,
     callback_handle: *mut c_void,
@@ -266,21 +258,6 @@ pub extern "C" fn rsn_tcp_channels_channel_exists(
 #[no_mangle]
 pub extern "C" fn rsn_tcp_channels_channel_count(handle: &mut TcpChannelsHandle) -> usize {
     handle.0.tcp_channels.lock().unwrap().channels.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_insert(
-    handle: &mut TcpChannelsHandle,
-    channel: &ChannelHandle,
-    socket: &SocketHandle,
-    server: *const TcpServerHandle,
-) -> bool {
-    let server = if server.is_null() {
-        None
-    } else {
-        Some((*server).0.clone())
-    };
-    handle.0.insert(&channel.0, &socket.0, server).is_err()
 }
 
 #[no_mangle]
@@ -522,28 +499,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_process_messages(handle: &TcpChannelsH
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_process_message(
-    handle: &TcpChannelsHandle,
-    message: &MessageHandle,
-    endpoint: &EndpointDto,
-    node_id: *const u8,
-    socket: &SocketHandle,
-) {
-    let node_id = PublicKey::from_ptr(node_id);
-    handle
-        .0
-        .process_message(message.0.as_ref(), &endpoint.into(), node_id, &socket.0);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_max_subnetwork_connections(
-    handle: &TcpChannelsHandle,
-    endpoint: &EndpointDto,
-) -> bool {
-    handle.0.max_subnetwork_connections(&endpoint.into())
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_reachout(
     handle: &TcpChannelsHandle,
     endpoint: &EndpointDto,
@@ -563,17 +518,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_excluded_peers(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_ongoing_keepalive(handle: &TcpChannelsHandle) {
     handle.0.ongoing_keepalive()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_start_tcp_receive_node_id(
-    handle: &TcpChannelsHandle,
-    channel: &ChannelHandle,
-    endpoint: &EndpointDto,
-) {
-    handle
-        .0
-        .start_tcp_receive_node_id(&channel.0, endpoint.into());
 }
 
 #[no_mangle]

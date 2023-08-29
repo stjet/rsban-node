@@ -27,7 +27,7 @@ class channel_tcp #PaleGreen
 class outbound_bandwidth_limiter #PaleGreen
 class syn_cookies #PaleGreen
 class tcp_server #PaleGreen
-class tcp_channels
+class tcp_channels #PaleGreen
 class tcp_server_factory #PaleGreen
 class network_filter #PaleGreen
 class tcp_listener

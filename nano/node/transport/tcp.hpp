@@ -133,25 +133,18 @@ namespace transport
 		explicit tcp_channels (nano::node &, uint16_t port, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> = nullptr);
 		tcp_channels (nano::transport::tcp_channels const &) = delete;
 		~tcp_channels ();
-		bool insert (std::shared_ptr<nano::transport::channel_tcp> const &, std::shared_ptr<nano::transport::socket> const &, std::shared_ptr<nano::transport::tcp_server> const &);
 		void erase (nano::tcp_endpoint const &);
 		void erase_temporary_channel (nano::tcp_endpoint const &);
 		std::size_t size () const;
 		std::shared_ptr<nano::transport::channel_tcp> find_channel (nano::tcp_endpoint const &) const;
 		std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t, uint8_t = 0, bool = false) const;
-		std::vector<endpoint> get_current_peers () const;
 		std::shared_ptr<nano::transport::channel_tcp> find_node_id (nano::account const &);
 		// Get the next peer for attempting a tcp connection
 		nano::tcp_endpoint bootstrap_peer ();
-		void receive ();
 		void start ();
 		void stop ();
 		bool not_a_peer (nano::endpoint const &, bool);
 		void process_messages ();
-		void process_message (nano::message const &, nano::tcp_endpoint const &, nano::account const &, std::shared_ptr<nano::transport::socket> const &);
-		bool max_ip_connections (nano::tcp_endpoint const & endpoint_a);
-		bool max_subnetwork_connections (nano::tcp_endpoint const & endpoint_a);
-		bool max_ip_or_subnetwork_connections (nano::tcp_endpoint const & endpoint_a);
 		// Should we reach out to this endpoint with a keepalive message
 		bool reachout (nano::endpoint const &);
 		std::unique_ptr<container_info_component> collect_container_info (std::string const &);
@@ -162,7 +155,6 @@ namespace transport
 		void update (nano::tcp_endpoint const &);
 		// Connection start
 		void start_tcp (nano::endpoint const &);
-		void start_tcp_receive_node_id (std::shared_ptr<nano::transport::channel_tcp> const &, nano::endpoint const &, std::shared_ptr<std::vector<uint8_t>> const &);
 		void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
 
 		// channel_tcp_observer:
@@ -186,23 +178,9 @@ namespace transport
 		std::shared_ptr<nano::network_filter> publish_filter;
 
 	private:
-		nano::network_params & network_params;
-		nano::outbound_bandwidth_limiter & limiter;
-		std::shared_ptr<nano::syn_cookies> syn_cookies;
 		std::shared_ptr<nano::stats> stats;
 		std::shared_ptr<nano::node_config> config;
 		std::shared_ptr<nano::logger_mt> logger;
-		std::shared_ptr<nano::thread_pool> workers;
-		std::shared_ptr<nano::node_observers> observers;
-		nano::store & store;
-		nano::node_flags flags;
-		nano::node & node;
-		boost::asio::io_context & io_ctx;
-		mutable nano::mutex mutex;
-		std::atomic<bool> stopped{ false };
-		// Called when a new channel is observed
-		std::function<void (std::shared_ptr<nano::transport::channel>)> channel_observer;
-		uint16_t port;
 		rsnano::TcpChannelsHandle * handle;
 
 		friend class network_peer_max_tcp_attempts_subnetwork_Test;

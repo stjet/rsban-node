@@ -279,11 +279,6 @@ void nano::transport::socket::async_write (nano::shared_const_buffer const & buf
 	rsnano::rsn_socket_async_write (handle, buffer_l.data (), buffer_l.size (), async_read_adapter, async_read_delete_context, cb_wrapper, static_cast<uint8_t> (traffic_type));
 }
 
-const void * nano::transport::socket::inner_ptr () const
-{
-	return rsnano::rsn_socket_inner_ptr (handle);
-}
-
 /** Set the current timeout of the socket in seconds
  *  timeout occurs when the last socket completion is more than timeout seconds in the past
  *  timeout always applies, the socket always has a timeout
@@ -382,78 +377,6 @@ bool nano::transport::socket::max (nano::transport::traffic_type traffic_type) c
 bool nano::transport::socket::full (nano::transport::traffic_type traffic_type) const
 {
 	return rsnano::rsn_socket_full (handle, static_cast<uint8_t> (traffic_type));
-}
-
-/*
- * write_queue
- */
-
-nano::transport::socket::write_queue::write_queue (std::size_t max_size_a) :
-	max_size{ max_size_a }
-{
-}
-
-bool nano::transport::socket::write_queue::insert (const buffer_t & buffer, callback_t callback, nano::transport::traffic_type traffic_type)
-{
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	if (queues[traffic_type].size () < 2 * max_size)
-	{
-		queues[traffic_type].push (entry{ buffer, callback });
-		return true; // Queued
-	}
-	return false; // Not queued
-}
-
-std::optional<nano::transport::socket::write_queue::entry> nano::transport::socket::write_queue::pop ()
-{
-	nano::lock_guard<nano::mutex> guard{ mutex };
-
-	auto try_pop = [this] (nano::transport::traffic_type type) -> std::optional<entry> {
-		auto & que = queues[type];
-		if (!que.empty ())
-		{
-			auto item = que.front ();
-			que.pop ();
-			return item;
-		}
-		return std::nullopt;
-	};
-
-	// TODO: This is a very basic prioritization, implement something more advanced and configurable
-	if (auto item = try_pop (nano::transport::traffic_type::generic))
-	{
-		return item;
-	}
-	if (auto item = try_pop (nano::transport::traffic_type::bootstrap))
-	{
-		return item;
-	}
-
-	return std::nullopt;
-}
-
-void nano::transport::socket::write_queue::clear ()
-{
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	queues.clear ();
-}
-
-std::size_t nano::transport::socket::write_queue::size (nano::transport::traffic_type traffic_type) const
-{
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	if (auto it = queues.find (traffic_type); it != queues.end ())
-	{
-		return it->second.size ();
-	}
-	return 0;
-}
-
-bool nano::transport::socket::write_queue::empty () const
-{
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	return std::all_of (queues.begin (), queues.end (), [] (auto const & que) {
-		return que.second.empty ();
-	});
 }
 
 /*
@@ -685,11 +608,6 @@ void nano::transport::server_socket::on_connection_requeue_delayed (std::functio
 	workers.add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (1), [this_l, callback = std::move (callback_a)] () mutable {
 		this_l->on_connection (std::move (callback));
 	});
-}
-
-nano::transport::socket & nano::transport::server_socket::get_socket ()
-{
-	return socket;
 }
 
 // This must be called from a strand

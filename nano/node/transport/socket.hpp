@@ -153,7 +153,6 @@ public:
 	void async_read (std::shared_ptr<std::vector<uint8_t>> const &, std::size_t, std::function<void (boost::system::error_code const &, std::size_t)>);
 	void async_read (std::shared_ptr<buffer_wrapper> const &, std::size_t, std::function<void (boost::system::error_code const &, std::size_t)>);
 	void async_write (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> = {}, nano::transport::traffic_type = nano::transport::traffic_type::generic);
-	const void * inner_ptr () const;
 
 	virtual void close ();
 	boost::asio::ip::tcp::endpoint remote_endpoint () const;
@@ -179,34 +178,6 @@ public:
 	bool alive () const;
 
 private:
-	class write_queue
-	{
-	public:
-		using buffer_t = nano::shared_const_buffer;
-		using callback_t = std::function<void (boost::system::error_code const &, std::size_t)>;
-
-		struct entry
-		{
-			buffer_t buffer;
-			callback_t callback;
-		};
-
-	public:
-		explicit write_queue (std::size_t max_size);
-
-		bool insert (buffer_t const &, callback_t, nano::transport::traffic_type);
-		std::optional<entry> pop ();
-		void clear ();
-		std::size_t size (nano::transport::traffic_type) const;
-		bool empty () const;
-
-		std::size_t const max_size;
-
-	private:
-		mutable nano::mutex mutex;
-		std::unordered_map<nano::transport::traffic_type, std::queue<entry>> queues;
-	};
-
 	/** The other end of the connection */
 	boost::asio::ip::tcp::endpoint & get_remote ();
 
@@ -268,7 +239,6 @@ public:
 	{
 		return acceptor.local_endpoint ().port ();
 	}
-	nano::transport::socket & get_socket ();
 
 private:
 	boost::asio::strand<boost::asio::io_context::executor_type> strand;

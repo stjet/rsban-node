@@ -1360,7 +1360,7 @@ namespace transport
 							// Pick first peer to be consistent
 							auto peer = data.node->network->tcp_channels->get_first_channel ();
 
-							auto maybe_telemetry = data.node->telemetry->get_telemetry (peer->get_endpoint ());
+							auto maybe_telemetry = data.node->telemetry->get_telemetry (peer->get_remote_endpoint ());
 							if (maybe_telemetry)
 							{
 								callback_process (shared_data, data, node_data, maybe_telemetry->get_timestamp ());
@@ -1491,7 +1491,7 @@ TEST (telemetry, cache_read_and_timeout)
 	ASSERT_NE (channel, nullptr);
 
 	node_client->telemetry->trigger ();
-	ASSERT_TIMELY (5s, telemetry_data = node_client->telemetry->get_telemetry (channel->get_endpoint ()));
+	ASSERT_TIMELY (5s, telemetry_data = node_client->telemetry->get_telemetry (channel->get_remote_endpoint ()));
 
 	auto responses = node_client->telemetry->get_all_telemetries ();
 	ASSERT_TRUE (!responses.empty ());
@@ -1514,7 +1514,7 @@ TEST (telemetry, cache_read_and_timeout)
 
 	// Request telemetry metrics again
 	node_client->telemetry->trigger ();
-	ASSERT_TIMELY (5s, telemetry_data = node_client->telemetry->get_telemetry (channel->get_endpoint ()));
+	ASSERT_TIMELY (5s, telemetry_data = node_client->telemetry->get_telemetry (channel->get_remote_endpoint ()));
 
 	responses = node_client->telemetry->get_all_telemetries ();
 	ASSERT_TRUE (!responses.empty ());
@@ -1589,7 +1589,7 @@ TEST (telemetry, many_nodes)
 	for (auto const & peer : peers)
 	{
 		std::optional<nano::telemetry_data> telemetry_data;
-		ASSERT_TIMELY (5s, telemetry_data = node_client->telemetry->get_telemetry (peer->get_endpoint ()));
+		ASSERT_TIMELY (5s, telemetry_data = node_client->telemetry->get_telemetry (peer->get_remote_endpoint ()));
 		telemetry_datas.push_back (*telemetry_data);
 	}
 

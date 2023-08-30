@@ -43,11 +43,11 @@ namespace transport
 				return rsnano::rsn_channel_fake_network_version (handle);
 			}
 
-			nano::endpoint get_endpoint () const override;
+			nano::endpoint get_remote_endpoint () const override;
 
-			nano::tcp_endpoint get_tcp_endpoint () const override
+			nano::tcp_endpoint get_tcp_remote_endpoint () const override
 			{
-				return nano::transport::map_endpoint_to_tcp (get_endpoint());
+				return nano::transport::map_endpoint_to_tcp (get_remote_endpoint());
 			}
 
 			nano::transport::transport_type get_type () const override

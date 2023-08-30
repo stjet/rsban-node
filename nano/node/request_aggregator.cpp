@@ -38,7 +38,7 @@ void nano::request_aggregator::add (std::shared_ptr<nano::transport::channel> co
 {
 	debug_assert (wallets.reps ().voting > 0);
 	bool error = true;
-	auto const endpoint (nano::transport::map_endpoint_to_v6 (channel_a->get_endpoint ()));
+	auto const endpoint (nano::transport::map_endpoint_to_v6 (channel_a->get_remote_endpoint ()));
 	nano::unique_lock<nano::mutex> lock{ mutex };
 	// Protecting from ever-increasing memory usage when request are consumed slower than generated
 	// Reject request if the oldest request has not yet been processed after its deadline + a modest margin

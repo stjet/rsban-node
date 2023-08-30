@@ -1014,8 +1014,8 @@ TEST (network, loopback_channel)
 	auto & node2 = *system.nodes[1];
 	nano::transport::inproc::channel channel1 (node1, node1);
 	ASSERT_EQ (channel1.get_type (), nano::transport::transport_type::loopback);
-	ASSERT_EQ (channel1.get_endpoint (), node1.network->endpoint ());
-	ASSERT_EQ (channel1.get_tcp_endpoint (), nano::transport::map_endpoint_to_tcp (node1.network->endpoint ()));
+	ASSERT_EQ (channel1.get_remote_endpoint (), node1.network->endpoint ());
+	ASSERT_EQ (channel1.get_tcp_remote_endpoint (), nano::transport::map_endpoint_to_tcp (node1.network->endpoint ()));
 	ASSERT_EQ (channel1.get_network_version (), node1.network_params.network.protocol_version);
 	ASSERT_EQ (channel1.get_node_id (), node1.node_id.pub);
 	ASSERT_EQ (channel1.get_node_id_optional ().value_or (0), node1.node_id.pub);
@@ -1023,7 +1023,7 @@ TEST (network, loopback_channel)
 	ASSERT_TRUE (channel1 == channel1);
 	ASSERT_FALSE (channel1 == channel2);
 	++node1.network->port;
-	ASSERT_NE (channel1.get_endpoint (), node1.network->endpoint ());
+	ASSERT_NE (channel1.get_remote_endpoint (), node1.network->endpoint ());
 }
 
 // Ensure the network filters messages with the incorrect magic number

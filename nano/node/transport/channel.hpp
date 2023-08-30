@@ -103,8 +103,8 @@ public:
 	= 0;
 
 	virtual std::string to_string () const = 0;
-	virtual nano::endpoint get_endpoint () const = 0;
-	virtual nano::tcp_endpoint get_tcp_endpoint () const = 0;
+	virtual nano::endpoint get_remote_endpoint () const = 0;
+	virtual nano::tcp_endpoint get_tcp_remote_endpoint () const = 0;
 	virtual nano::transport::transport_type get_type () const = 0;
 
 	virtual bool max (nano::transport::traffic_type = nano::transport::traffic_type::generic)

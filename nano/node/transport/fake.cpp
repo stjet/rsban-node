@@ -54,22 +54,22 @@ void nano::transport::fake::channel::send_buffer (nano::shared_const_buffer cons
 std::size_t nano::transport::fake::channel::hash_code () const
 {
 	std::hash<::nano::endpoint> hash;
-	return hash (get_endpoint ());
+	return hash (get_remote_endpoint ());
 }
 
 bool nano::transport::fake::channel::operator== (nano::transport::channel const & other_a) const
 {
-	return get_endpoint () == other_a.get_endpoint ();
+	return get_remote_endpoint () == other_a.get_remote_endpoint ();
 }
 
 bool nano::transport::fake::channel::operator== (nano::transport::fake::channel const & other_a) const
 {
-	return get_endpoint () == other_a.get_endpoint ();
+	return get_remote_endpoint () == other_a.get_remote_endpoint ();
 }
 
 std::string nano::transport::fake::channel::to_string () const
 {
-	return boost::str (boost::format ("%1%") % get_endpoint ());
+	return boost::str (boost::format ("%1%") % get_remote_endpoint ());
 }
 
 void nano::transport::fake::channel::set_peering_endpoint (nano::endpoint endpoint)
@@ -79,7 +79,7 @@ void nano::transport::fake::channel::set_peering_endpoint (nano::endpoint endpoi
 
 nano::endpoint nano::transport::fake::channel::get_peering_endpoint () const
 {
-	return get_endpoint ();
+	return get_remote_endpoint ();
 }
 
 bool nano::transport::fake::channel::alive () const
@@ -87,7 +87,7 @@ bool nano::transport::fake::channel::alive () const
 	return rsnano::rsn_channel_is_alive (handle);
 }
 
-nano::endpoint nano::transport::fake::channel::get_endpoint () const
+nano::endpoint nano::transport::fake::channel::get_remote_endpoint () const
 {
 	rsnano::EndpointDto dto;
 	rsnano::rsn_channel_fake_endpoint (handle, &dto);

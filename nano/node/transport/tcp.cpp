@@ -87,7 +87,7 @@ void nano::transport::channel_tcp::set_network_version (uint8_t network_version_
 	rsnano::rsn_channel_tcp_network_set_version (handle, network_version_a);
 }
 
-nano::tcp_endpoint nano::transport::channel_tcp::get_tcp_endpoint () const
+nano::tcp_endpoint nano::transport::channel_tcp::get_tcp_remote_endpoint () const
 {
 	rsnano::EndpointDto ep_dto{};
 	rsnano::rsn_channel_tcp_remote_endpoint (handle, &ep_dto);
@@ -102,7 +102,7 @@ bool nano::transport::channel_tcp::max (nano::transport::traffic_type traffic_ty
 std::size_t nano::transport::channel_tcp::hash_code () const
 {
 	std::hash<::nano::tcp_endpoint> hash;
-	return hash (get_tcp_endpoint ());
+	return hash (get_tcp_remote_endpoint ());
 }
 
 bool nano::transport::channel_tcp::operator== (nano::transport::channel const & other_a) const
@@ -146,7 +146,7 @@ void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const 
 
 std::string nano::transport::channel_tcp::to_string () const
 {
-	return boost::str (boost::format ("%1%") % get_tcp_endpoint ());
+	return boost::str (boost::format ("%1%") % get_tcp_remote_endpoint ());
 }
 
 bool nano::transport::channel_tcp::operator== (nano::transport::channel_tcp const & other_a) const
@@ -163,11 +163,6 @@ std::shared_ptr<nano::transport::socket> nano::transport::channel_tcp::try_get_s
 		socket = std::make_shared<nano::transport::socket> (socket_handle);
 	}
 	return socket;
-}
-
-void nano::transport::channel_tcp::set_endpoint ()
-{
-	rsnano::rsn_channel_tcp_set_remote_endpoint (handle);
 }
 
 nano::endpoint nano::transport::channel_tcp::get_peering_endpoint () const

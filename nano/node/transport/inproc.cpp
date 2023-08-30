@@ -131,14 +131,14 @@ uint8_t nano::transport::inproc::channel::get_network_version () const
 	return rsnano::rsn_channel_inproc_network_version (handle);
 }
 
-nano::endpoint nano::transport::inproc::channel::get_endpoint () const
+nano::endpoint nano::transport::inproc::channel::get_remote_endpoint () const
 {
 	rsnano::EndpointDto dto;
 	rsnano::rsn_channel_inproc_endpoint (handle, &dto);
 	return rsnano::dto_to_udp_endpoint (dto);
 }
 
-nano::tcp_endpoint nano::transport::inproc::channel::get_tcp_endpoint () const
+nano::tcp_endpoint nano::transport::inproc::channel::get_tcp_remote_endpoint () const
 {
 	rsnano::EndpointDto dto;
 	rsnano::rsn_channel_inproc_endpoint (handle, &dto);
@@ -148,12 +148,12 @@ nano::tcp_endpoint nano::transport::inproc::channel::get_tcp_endpoint () const
 std::size_t nano::transport::inproc::channel::hash_code () const
 {
 	std::hash<::nano::endpoint> hash;
-	return hash (get_endpoint ());
+	return hash (get_remote_endpoint ());
 }
 
 bool nano::transport::inproc::channel::operator== (nano::transport::channel const & other_a) const
 {
-	return get_endpoint () == other_a.get_endpoint ();
+	return get_remote_endpoint () == other_a.get_remote_endpoint ();
 }
 
 /**
@@ -219,7 +219,7 @@ void nano::transport::inproc::channel::send_buffer (nano::shared_const_buffer co
 
 std::string nano::transport::inproc::channel::to_string () const
 {
-	return boost::str (boost::format ("%1%") % get_endpoint ());
+	return boost::str (boost::format ("%1%") % get_remote_endpoint ());
 }
 
 void nano::transport::inproc::channel::set_peering_endpoint (nano::endpoint endpoint)
@@ -229,5 +229,5 @@ void nano::transport::inproc::channel::set_peering_endpoint (nano::endpoint endp
 
 nano::endpoint nano::transport::inproc::channel::get_peering_endpoint () const
 {
-	return get_endpoint ();
+	return get_remote_endpoint ();
 }

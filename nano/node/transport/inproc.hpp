@@ -57,11 +57,11 @@ namespace transport
 			std::string to_string () const override;
 			bool operator== (nano::transport::inproc::channel const & other_a) const
 			{
-				return get_endpoint () == other_a.get_endpoint ();
+				return get_remote_endpoint () == other_a.get_remote_endpoint ();
 			}
 
-			nano::endpoint get_endpoint () const override;
-			nano::tcp_endpoint get_tcp_endpoint () const override;
+			nano::endpoint get_remote_endpoint () const override;
+			nano::tcp_endpoint get_tcp_remote_endpoint () const override;
 
 			nano::transport::transport_type get_type () const override
 			{

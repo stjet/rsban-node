@@ -150,7 +150,7 @@ void nano::rep_crawler::validate ()
 
 				auto info_channel = info.get_channel ();
 				// Update if representative channel was changed
-				if (info_channel->get_endpoint () != channel->get_endpoint ())
+				if (info_channel->get_remote_endpoint () != channel->get_remote_endpoint ())
 				{
 					debug_assert (info.get_account () == vote->account ());
 					updated = true;
@@ -344,7 +344,7 @@ nano::uint128_t nano::rep_crawler::total_weight () const
 void nano::rep_crawler::on_rep_request (std::shared_ptr<nano::transport::channel> const & channel_a)
 {
 	nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
-	if (channel_a->get_tcp_endpoint ().address () != boost::asio::ip::address_v6::any ())
+	if (channel_a->get_tcp_remote_endpoint ().address () != boost::asio::ip::address_v6::any ())
 	{
 		probably_rep_t::index<tag_channel_id>::type & channel_id_index = probable_reps.get<tag_channel_id> ();
 

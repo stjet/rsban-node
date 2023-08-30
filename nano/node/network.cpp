@@ -151,7 +151,7 @@ void nano::network::send_node_id_handshake (std::shared_ptr<nano::transport::cha
 	nano::node_id_handshake message{ node.network_params.network, query, response };
 	if (node.config->logging.network_node_id_handshake_logging ())
 	{
-		node.logger->try_log (boost::str (boost::format ("Node ID handshake sent with node ID %1% to %2%: query %3%, respond_to %4% (signature %5%)") % node.node_id.pub.to_node_id () % channel_a->get_endpoint () % (query ? query->cookie.to_string () : std::string ("[none]")) % (respond_to ? respond_to->to_string () : std::string ("[none]")) % (response ? response->signature.to_string () : std::string ("[none]"))));
+		node.logger->try_log (boost::str (boost::format ("Node ID handshake sent with node ID %1% to %2%: query %3%, respond_to %4% (signature %5%)") % node.node_id.pub.to_node_id () % channel_a->get_remote_endpoint () % (query ? query->cookie.to_string () : std::string ("[none]")) % (respond_to ? respond_to->to_string () : std::string ("[none]")) % (response ? response->signature.to_string () : std::string ("[none]"))));
 	}
 
 	channel_a->send (message);
@@ -377,7 +377,7 @@ public:
 		auto peer0 (message_a.get_peers ()[0]);
 		if (peer0.address () == boost::asio::ip::address_v6{} && peer0.port () != 0)
 		{
-			nano::endpoint new_endpoint (channel->get_tcp_endpoint ().address (), peer0.port ());
+			nano::endpoint new_endpoint (channel->get_tcp_remote_endpoint ().address (), peer0.port ());
 			node.network->merge_peer (new_endpoint);
 
 			// Remember this for future forwarding to other peers
@@ -706,14 +706,14 @@ void nano::network::erase (nano::transport::channel const & channel_a)
 	auto const channel_type = channel_a.get_type ();
 	if (channel_type == nano::transport::transport_type::tcp)
 	{
-		tcp_channels->erase (channel_a.get_tcp_endpoint ());
+		tcp_channels->erase (channel_a.get_tcp_remote_endpoint ());
 	}
 }
 
 void nano::network::exclude (std::shared_ptr<nano::transport::channel> const & channel)
 {
 	// Add to peer exclusion list
-	tcp_channels->excluded_peers ().add (channel->get_tcp_endpoint ());
+	tcp_channels->excluded_peers ().add (channel->get_tcp_remote_endpoint ());
 
 	// Disconnect
 	erase (*channel);

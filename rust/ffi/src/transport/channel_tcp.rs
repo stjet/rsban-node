@@ -38,16 +38,11 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_endpoint(
+pub unsafe extern "C" fn rsn_channel_tcp_remote_endpoint(
     handle: *mut ChannelHandle,
     endpoint: *mut EndpointDto,
 ) {
-    (*endpoint) = EndpointDto::from(as_tcp_channel(handle).endpoint())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_set_endpoint(handle: *mut ChannelHandle) {
-    as_tcp_channel(handle).set_endpoint();
+    (*endpoint) = EndpointDto::from(as_tcp_channel(handle).remote_endpoint())
 }
 
 #[no_mangle]

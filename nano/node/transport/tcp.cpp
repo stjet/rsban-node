@@ -90,7 +90,7 @@ void nano::transport::channel_tcp::set_network_version (uint8_t network_version_
 nano::tcp_endpoint nano::transport::channel_tcp::get_tcp_endpoint () const
 {
 	rsnano::EndpointDto ep_dto{};
-	rsnano::rsn_channel_tcp_endpoint (handle, &ep_dto);
+	rsnano::rsn_channel_tcp_remote_endpoint (handle, &ep_dto);
 	return rsnano::dto_to_endpoint (ep_dto);
 }
 
@@ -167,7 +167,7 @@ std::shared_ptr<nano::transport::socket> nano::transport::channel_tcp::try_get_s
 
 void nano::transport::channel_tcp::set_endpoint ()
 {
-	rsnano::rsn_channel_tcp_set_endpoint (handle);
+	rsnano::rsn_channel_tcp_set_remote_endpoint (handle);
 }
 
 nano::endpoint nano::transport::channel_tcp::get_peering_endpoint () const

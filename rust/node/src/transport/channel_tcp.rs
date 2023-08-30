@@ -37,7 +37,7 @@ pub struct TcpChannelData {
     last_packet_received: SystemTime,
     last_packet_sent: SystemTime,
     node_id: Option<Account>,
-    pub endpoint: SocketAddr,
+    pub remote_endpoint: SocketAddr,
     pub peering_endpoint: Option<SocketAddr>,
 }
 
@@ -71,7 +71,7 @@ impl ChannelTcp {
                 last_packet_received: now,
                 last_packet_sent: now,
                 node_id: None,
-                endpoint: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
+                remote_endpoint: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
                 peering_endpoint: None,
             }),
             socket: Arc::downgrade(socket),
@@ -99,17 +99,19 @@ impl ChannelTcp {
         self.network_version.store(version, Ordering::Relaxed)
     }
 
-    pub fn endpoint(&self) -> SocketAddr {
-        self.channel_mutex.lock().unwrap().endpoint
+    pub fn remote_endpoint(&self) -> SocketAddr {
+        self.channel_mutex.lock().unwrap().remote_endpoint
     }
 
-    pub fn set_endpoint(&self) {
+    pub fn set_remote_endpoint(&self) {
         let mut lock = self.channel_mutex.lock().unwrap();
-        debug_assert!(lock.endpoint == SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0)); // Not initialized endpoint value
-                                                                                               // Calculate TCP socket endpoint
+        debug_assert!(
+            lock.remote_endpoint == SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0)
+        ); // Not initialized endpoint value
+           // Calculate TCP socket endpoint
         if let Some(socket) = self.socket() {
             if let Some(ep) = socket.get_remote() {
-                lock.endpoint = ep;
+                lock.remote_endpoint = ep;
             }
         }
     }
@@ -118,7 +120,7 @@ impl ChannelTcp {
         let lock = self.channel_mutex.lock().unwrap();
         match lock.peering_endpoint {
             Some(addr) => addr,
-            None => lock.endpoint,
+            None => lock.remote_endpoint,
         }
     }
 
@@ -216,7 +218,7 @@ impl ChannelTcp {
 
 impl Display for ChannelTcp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.endpoint().fmt(f)
+        self.remote_endpoint().fmt(f)
     }
 }
 

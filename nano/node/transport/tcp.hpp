@@ -106,8 +106,6 @@ namespace transport
 		bool operator== (nano::transport::channel_tcp const & other_a) const;
 		std::shared_ptr<nano::transport::socket> try_get_socket () const;
 
-		void set_endpoint ();
-
 		nano::endpoint get_endpoint () const override
 		{
 			return nano::transport::map_tcp_to_endpoint (get_tcp_endpoint ());

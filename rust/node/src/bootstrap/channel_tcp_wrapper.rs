@@ -38,14 +38,14 @@ impl ChannelTcpWrapper {
     }
 
     pub fn endpoint_v6(&self) -> SocketAddrV6 {
-        let SocketAddr::V6(endpoint) = self.tcp_channel().endpoint() else {
+        let SocketAddr::V6(endpoint) = self.tcp_channel().remote_endpoint() else {
             panic!("not a v6 address");
         };
         endpoint
     }
 
     pub fn endpoint(&self) -> SocketAddr {
-        self.tcp_channel().endpoint()
+        self.tcp_channel().remote_endpoint()
     }
 
     pub fn last_packet_sent(&self) -> SystemTime {

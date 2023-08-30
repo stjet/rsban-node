@@ -45,7 +45,7 @@ impl BootstrapClient {
         socket: Arc<SocketImpl>,
     ) -> Self {
         if let ChannelEnum::Tcp(tcp) = channel.as_ref() {
-            tcp.set_endpoint();
+            tcp.set_remote_endpoint();
         }
         Self {
             observer: observer.to_weak(),
@@ -180,7 +180,7 @@ impl BootstrapClient {
     }
 
     pub fn tcp_endpoint(&self) -> SocketAddr {
-        self.tcp_channel().endpoint()
+        self.tcp_channel().remote_endpoint()
     }
 }
 

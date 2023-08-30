@@ -173,7 +173,7 @@ impl TcpChannels {
         let ChannelEnum::Tcp(tcp_channel) = channel.as_ref() else {
             panic!("not a tcp channel")
         };
-        let endpoint = tcp_channel.endpoint();
+        let endpoint = tcp_channel.remote_endpoint();
         let SocketAddr::V6(endpoint_v6) = endpoint else {
             panic!("not a v6 address")
         };
@@ -558,8 +558,8 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                             self.io_ctx.clone(),
                             channel_id,
                         );
-                        temporary_channel.set_endpoint();
-                        debug_assert!(*endpoint == temporary_channel.endpoint());
+                        temporary_channel.set_remote_endpoint();
+                        debug_assert!(*endpoint == temporary_channel.remote_endpoint());
                         temporary_channel.set_node_id(node_id);
                         temporary_channel.set_network_version(message.header().version_using());
                         temporary_channel.set_temporary(true);
@@ -911,7 +911,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 }
 
                 let ChannelEnum::Tcp(tcp) = channel.as_ref() else { panic!("not a tcp channel")};
-                tcp.set_endpoint();
+                tcp.set_remote_endpoint();
                 let this_w = Arc::downgrade(&this_l);
                 let channel_clone = Arc::clone(&channel);
                 tcp.send(

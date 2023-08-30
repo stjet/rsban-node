@@ -1289,8 +1289,8 @@ int main (int argc, char * const * argv)
 			auto end (std::chrono::high_resolution_clock::now ());
 			auto time (std::chrono::duration_cast<std::chrono::microseconds> (end - begin).count ());
 			std::cout << boost::str (boost::format ("%|1$ 12d| us \n%2% frontiers per second\n") % time % ((count + 1) * 1000000 / time));
-			async_rt1.io_ctx.stop ();
-			async_rt2.io_ctx.stop ();
+			async_rt1.stop ();
+			async_rt2.stop ();
 			runner1.join ();
 			runner2.join ();
 			node1->stop ();

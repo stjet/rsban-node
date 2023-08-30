@@ -131,6 +131,11 @@ rsnano::async_runtime::~async_runtime ()
 	rsnano::rsn_async_runtime_destroy (handle);
 }
 
+void rsnano::async_runtime::stop ()
+{
+	io_ctx.stop ();
+}
+
 std::unique_ptr<nano::message> rsnano::message_handle_to_message (rsnano::MessageHandle * handle)
 {
 	auto type = static_cast<nano::message_type> (rsnano::rsn_message_type (handle));

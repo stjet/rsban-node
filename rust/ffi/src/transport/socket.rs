@@ -91,7 +91,6 @@ pub unsafe extern "C" fn rsn_socket_create(
     logger: *mut LoggerHandle,
     callback_handler: *mut c_void,
     max_write_queue_len: usize,
-    io_ctx: *mut c_void,
 ) -> *mut SocketHandle {
     let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
     let tcp_facade = Arc::new(FfiTcpSocketFacade::new(tcp_facade));
@@ -101,9 +100,8 @@ pub unsafe extern "C" fn rsn_socket_create(
 
     let socket_stats = Arc::new(SocketStats::new(stats, logger, network_timeout_logging));
     let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
-    let io_ctx = Arc::new(FfiIoContext::new(io_ctx));
 
-    let socket = SocketBuilder::endpoint_type(endpoint_type, tcp_facade, thread_pool, io_ctx)
+    let socket = SocketBuilder::endpoint_type(endpoint_type, tcp_facade, thread_pool)
         .default_timeout(Duration::from_secs(default_timeout_s))
         .silent_connection_tolerance_time(Duration::from_secs(silent_connection_tolerance_time_s))
         .idle_timeout(Duration::from_secs(idle_timeout_s))

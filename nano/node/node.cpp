@@ -146,7 +146,7 @@ nano::node::node (rsnano::async_runtime & async_rt, uint16_t peering_port_a, boo
 
 nano::node::node (rsnano::async_runtime & async_rt_a, boost::filesystem::path const & application_path_a, nano::node_config const & config_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
 	write_database_queue (!flags_a.force_use_write_database_queue ()),
-	async_rt {async_rt_a},
+	async_rt{ async_rt_a },
 	io_ctx (async_rt_a.io_ctx),
 	node_initialized_latch (1),
 	observers{ std::make_shared<nano::node_observers> () },

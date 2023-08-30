@@ -6082,7 +6082,7 @@ TEST (rpc, simultaneous_calls)
 	rpc.stop ();
 	system.stop ();
 	ipc_server.stop ();
-	system.async_rt.io_ctx.stop ();
+	system.async_rt.stop ();
 	runner.join ();
 }
 

@@ -48,6 +48,7 @@ public:
 	async_runtime ();
 	async_runtime (async_runtime const &) = delete;
 	~async_runtime ();
+	void stop ();
 	boost::asio::io_context io_ctx;
 	rsnano::AsyncRuntimeHandle * handle;
 };

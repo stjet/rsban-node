@@ -845,7 +845,6 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             EndpointType::Client,
             self.tcp_socket_factory.create_tcp_socket(),
             self.workers.clone(),
-            self.io_ctx.clone(),
         )
         .default_timeout(Duration::from_secs(
             self.node_config.tcp_io_timeout_s as u64,

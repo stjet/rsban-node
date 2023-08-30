@@ -168,7 +168,7 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 						rpc_handler = std::make_unique<nano::inprocess_rpc_handler> (*node, ipc_server, config.rpc, [&ipc_server, &workers = *node->workers, &async_rt] () {
 							ipc_server.stop ();
 							workers.add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (3), [&async_rt] () {
-								async_rt.io_ctx.stop ();
+								async_rt.stop ();
 							});
 						});
 						rpc = nano::get_rpc (async_rt.io_ctx, rpc_config, *rpc_handler);
@@ -189,7 +189,7 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 
 				debug_assert (!nano::signal_handler_impl);
 				nano::signal_handler_impl = [&async_rt] () {
-					async_rt.io_ctx.stop ();
+					async_rt.stop ();
 					sig_int_or_term = 1;
 				};
 

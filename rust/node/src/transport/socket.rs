@@ -1,4 +1,4 @@
-use crate::utils::{BufferWrapper, ErrorCode, IoContext, ThreadPool};
+use crate::utils::{BufferWrapper, ErrorCode, ThreadPool};
 use num_traits::FromPrimitive;
 use rsnano_core::utils::seconds_since_epoch;
 use std::{
@@ -218,7 +218,6 @@ pub struct SocketImpl {
     observer: Arc<dyn SocketObserver>,
 
     send_queue: WriteQueue,
-    io_ctx: Arc<dyn IoContext>,
 }
 
 impl SocketImpl {
@@ -473,7 +472,7 @@ impl Socket for Arc<SocketImpl> {
             .insert(Arc::clone(buffer), callback, traffic_type);
         if !queued {
             if let Some(cb) = callback {
-                self.io_ctx.post(Box::new(move || {
+                self.tcp_socket.post(Box::new(move || {
                     cb(ErrorCode::not_supported(), 0);
                 }));
             }
@@ -631,7 +630,6 @@ pub struct SocketBuilder {
     idle_timeout: Duration,
     observer: Option<Arc<dyn SocketObserver>>,
     max_write_queue_len: usize,
-    io_ctx: Arc<dyn IoContext>,
 }
 
 impl SocketBuilder {
@@ -639,7 +637,6 @@ impl SocketBuilder {
         endpoint_type: EndpointType,
         tcp_facade: Arc<dyn TcpSocketFacade>,
         thread_pool: Arc<dyn ThreadPool>,
-        io_ctx: Arc<dyn IoContext>,
     ) -> Self {
         Self {
             endpoint_type,
@@ -650,7 +647,6 @@ impl SocketBuilder {
             idle_timeout: Duration::from_secs(120),
             observer: None,
             max_write_queue_len: SocketImpl::MAX_QUEUE_SIZE,
-            io_ctx,
         }
     }
 
@@ -703,7 +699,6 @@ impl SocketBuilder {
                 observer,
                 write_in_progress: AtomicBool::new(false),
                 send_queue: WriteQueue::new(self.max_write_queue_len),
-                io_ctx: self.io_ctx,
             }
         })
     }

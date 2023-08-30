@@ -129,10 +129,8 @@ TEST (network, last_contacted)
 
 	{
 		// check that the endpoints are part of the same connection
-		std::shared_ptr<nano::transport::socket> sock0 = channel0->try_get_socket ();
-		std::shared_ptr<nano::transport::socket> sock1 = channel1->try_get_socket ();
-		ASSERT_TRUE (sock0->local_endpoint () == sock1->remote_endpoint ());
-		ASSERT_TRUE (sock1->local_endpoint () == sock0->remote_endpoint ());
+		ASSERT_TRUE (channel0->get_local_endpoint () == channel1->get_tcp_remote_endpoint ());
+		ASSERT_TRUE (channel1->get_local_endpoint () == channel0->get_tcp_remote_endpoint ());
 	}
 
 	// capture the state before and ensure the clock ticks at least once

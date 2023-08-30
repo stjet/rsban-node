@@ -104,7 +104,6 @@ namespace transport
 
 		std::string to_string () const override;
 		bool operator== (nano::transport::channel_tcp const & other_a) const;
-		std::shared_ptr<nano::transport::socket> try_get_socket () const;
 
 		nano::endpoint get_remote_endpoint () const override
 		{
@@ -112,6 +111,7 @@ namespace transport
 		}
 
 		nano::tcp_endpoint get_tcp_remote_endpoint () const override;
+		nano::tcp_endpoint get_local_endpoint () const override;
 		nano::transport::transport_type get_type () const override
 		{
 			return nano::transport::transport_type::tcp;

@@ -38,6 +38,14 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_local_endpoint(
+    handle: *mut ChannelHandle,
+    endpoint: *mut EndpointDto,
+) {
+    (*endpoint) = EndpointDto::from(as_tcp_channel(handle).local_endpoint());
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_remote_endpoint(
     handle: *mut ChannelHandle,
     endpoint: *mut EndpointDto,
@@ -124,15 +132,6 @@ pub unsafe extern "C" fn rsn_channel_tcp_send_buffer(
     let policy = BufferDropPolicy::from_u8(policy).unwrap();
     let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
     as_tcp_channel(handle).send_buffer(&buffer, Some(cb), policy, traffic_type);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_socket(handle: *mut ChannelHandle) -> *mut SocketHandle {
-    let tcp = as_tcp_channel(handle);
-    match tcp.socket() {
-        Some(s) => SocketHandle::new(s),
-        None => std::ptr::null_mut(),
-    }
 }
 
 #[no_mangle]

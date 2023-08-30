@@ -99,6 +99,12 @@ impl ChannelTcp {
         self.network_version.store(version, Ordering::Relaxed)
     }
 
+    pub fn local_endpoint(&self) -> SocketAddr {
+        self.socket()
+            .map(|s| s.local_endpoint())
+            .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0))
+    }
+
     pub fn remote_endpoint(&self) -> SocketAddr {
         self.channel_mutex.lock().unwrap().remote_endpoint
     }

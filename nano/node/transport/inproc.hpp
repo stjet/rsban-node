@@ -60,6 +60,11 @@ namespace transport
 				return get_remote_endpoint () == other_a.get_remote_endpoint ();
 			}
 
+			nano::tcp_endpoint get_local_endpoint () const override
+			{
+				return nano::tcp_endpoint{};
+			}
+
 			nano::endpoint get_remote_endpoint () const override;
 			nano::tcp_endpoint get_tcp_remote_endpoint () const override;
 

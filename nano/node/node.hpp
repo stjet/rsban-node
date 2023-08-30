@@ -142,6 +142,7 @@ public:
 
 public:
 	nano::write_database_queue write_database_queue;
+	rsnano::async_runtime & async_rt;
 	boost::asio::io_context & io_ctx;
 	boost::latch node_initialized_latch;
 	std::shared_ptr<nano::node_observers> observers;

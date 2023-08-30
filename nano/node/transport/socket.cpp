@@ -161,7 +161,7 @@ std::size_t nano::transport::buffer_wrapper::len () const
  * socket
  */
 
-nano::transport::socket::socket (boost::asio::io_context & io_ctx_a, endpoint_type_t endpoint_type_a, nano::stats & stats_a,
+nano::transport::socket::socket (rsnano::async_runtime & async_rt_a, endpoint_type_t endpoint_type_a, nano::stats & stats_a,
 std::shared_ptr<nano::logger_mt> & logger_a, std::shared_ptr<nano::thread_pool> const & workers_a,
 std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a,
 std::chrono::seconds idle_timeout_a,
@@ -170,7 +170,7 @@ std::shared_ptr<nano::node_observers> observers_a,
 std::size_t max_queue_size_a) :
 	handle{ rsnano::rsn_socket_create (
 	static_cast<uint8_t> (endpoint_type_a),
-	new std::shared_ptr<nano::transport::tcp_socket_facade> (std::make_shared<nano::transport::tcp_socket_facade> (io_ctx_a)),
+	new std::shared_ptr<nano::transport::tcp_socket_facade> (std::make_shared<nano::transport::tcp_socket_facade> (async_rt_a.io_ctx)),
 	stats_a.handle,
 	workers_a->handle,
 	default_timeout_a.count (),
@@ -180,7 +180,7 @@ std::size_t max_queue_size_a) :
 	nano::to_logger_handle (logger_a),
 	new std::weak_ptr<nano::node_observers> (observers_a),
 	max_queue_size_a,
-	&io_ctx_a) }
+	&async_rt_a.io_ctx) }
 {
 }
 
@@ -467,7 +467,7 @@ nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio:
 	logger{ *node_a.logger },
 	workers{ *node_a.workers },
 	node{ node_a },
-	socket{ node_a.io_ctx, nano::transport::socket::endpoint_type_t::server, *node_a.stats, node_a.logger, node_a.workers,
+	socket{ node_a.async_rt, nano::transport::socket::endpoint_type_t::server, *node_a.stats, node_a.logger, node_a.workers,
 		std::chrono::seconds::max (),
 		node_a.network_params.network.silent_connection_tolerance_time,
 		node_a.network_params.network.idle_timeout,
@@ -584,7 +584,7 @@ void nano::transport::server_socket::on_connection (std::function<bool (std::sha
 		}
 
 		// Prepare new connection
-		auto new_connection = std::make_shared<nano::transport::socket> (this_l->node.io_ctx, nano::transport::socket::endpoint_type_t::server,
+		auto new_connection = std::make_shared<nano::transport::socket> (this_l->node.async_rt, nano::transport::socket::endpoint_type_t::server,
 		*this_l->node.stats, this_l->node.logger, this_l->node.workers, this_l->node.config->tcp_io_timeout,
 		this_l->node.network_params.network.silent_connection_tolerance_time,
 		this_l->node.network_params.network.idle_timeout,
@@ -710,7 +710,7 @@ void nano::transport::server_socket::evict_dead_connections ()
 
 std::shared_ptr<nano::transport::socket> nano::transport::create_client_socket (nano::node & node_a, std::size_t write_queue_size)
 {
-	return std::make_shared<nano::transport::socket> (node_a.io_ctx, nano::transport::socket::endpoint_type_t::client, *node_a.stats, node_a.logger, node_a.workers,
+	return std::make_shared<nano::transport::socket> (node_a.async_rt, nano::transport::socket::endpoint_type_t::client, *node_a.stats, node_a.logger, node_a.workers,
 	node_a.config->tcp_io_timeout,
 	node_a.network_params.network.silent_connection_tolerance_time,
 	node_a.network_params.network.idle_timeout,

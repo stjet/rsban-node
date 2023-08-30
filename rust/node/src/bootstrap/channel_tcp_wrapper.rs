@@ -7,20 +7,20 @@ use std::{
 use rsnano_core::Account;
 
 use crate::{
-    transport::{ChannelEnum, ChannelTcp, SocketImpl, TcpServer},
+    transport::{ChannelEnum, ChannelTcp, Socket, TcpServer},
     utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork},
 };
 
 pub struct ChannelTcpWrapper {
     pub channel: Arc<ChannelEnum>,
-    socket: Arc<SocketImpl>,
+    socket: Arc<Socket>,
     pub response_server: Option<Arc<TcpServer>>,
 }
 
 impl ChannelTcpWrapper {
     pub fn new(
         channel: Arc<ChannelEnum>,
-        socket: Arc<SocketImpl>,
+        socket: Arc<Socket>,
         response_server: Option<Arc<TcpServer>>,
     ) -> Self {
         Self {
@@ -56,7 +56,7 @@ impl ChannelTcpWrapper {
         self.channel.as_channel().get_last_bootstrap_attempt()
     }
 
-    pub fn socket(&self) -> Option<Arc<SocketImpl>> {
+    pub fn socket(&self) -> Option<Arc<Socket>> {
         self.tcp_channel().socket()
     }
 

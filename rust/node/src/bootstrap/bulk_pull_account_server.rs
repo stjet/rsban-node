@@ -8,7 +8,7 @@ use rsnano_ledger::Ledger;
 
 use crate::{
     messages::{BulkPullAccount, BulkPullAccountFlags},
-    transport::{Socket, TcpServer, TcpServerExt, TrafficType},
+    transport::{SocketExtensions, TcpServer, TcpServerExt, TrafficType},
     utils::{ErrorCode, ThreadPool},
 };
 

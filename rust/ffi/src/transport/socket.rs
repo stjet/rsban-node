@@ -3,8 +3,8 @@ use num::FromPrimitive;
 use rsnano_node::{
     stats::SocketStats,
     transport::{
-        CompositeSocketObserver, Socket, SocketBuilder, SocketImpl, SocketObserver, SocketType,
-        TcpSocketFacade, TcpSocketFacadeFactory, WriteCallback,
+        CompositeSocketObserver, Socket, SocketBuilder, SocketExtensions, SocketObserver,
+        SocketType, TcpSocketFacade, TcpSocketFacadeFactory, WriteCallback,
     },
     utils::{BufferWrapper, ErrorCode},
 };
@@ -61,17 +61,17 @@ pub unsafe extern "C" fn rsn_buffer_len(handle: *mut BufferHandle) -> usize {
     (*handle).0.lock().unwrap().len()
 }
 
-pub struct SocketHandle(pub Arc<SocketImpl>);
-pub struct SocketWeakHandle(Weak<SocketImpl>);
+pub struct SocketHandle(pub Arc<Socket>);
+pub struct SocketWeakHandle(Weak<Socket>);
 
 impl SocketHandle {
-    pub fn new(socket: Arc<SocketImpl>) -> *mut SocketHandle {
+    pub fn new(socket: Arc<Socket>) -> *mut SocketHandle {
         Box::into_raw(Box::new(SocketHandle(socket)))
     }
 }
 
 impl Deref for SocketHandle {
-    type Target = Arc<SocketImpl>;
+    type Target = Arc<Socket>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -872,7 +872,7 @@ unsafe impl Send for SocketFfiObserver {}
 unsafe impl Sync for SocketFfiObserver {}
 
 impl SocketObserver for SocketFfiObserver {
-    fn socket_connected(&self, socket: Arc<SocketImpl>) {
+    fn socket_connected(&self, socket: Arc<Socket>) {
         unsafe {
             SOCKET_CONNECTED_CALLBACK.expect("SOCKET_CONNECTED_CALLBACK missing")(
                 self.handle,

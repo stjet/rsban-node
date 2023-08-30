@@ -8,13 +8,13 @@ use rsnano_core::Account;
 
 use crate::messages::Message;
 
-use super::SocketImpl;
+use super::Socket;
 
 pub struct TcpMessageItem {
     pub message: Option<Box<dyn Message>>,
     pub endpoint: SocketAddr,
     pub node_id: Account,
-    pub socket: Option<Arc<SocketImpl>>,
+    pub socket: Option<Arc<Socket>>,
 }
 
 impl Clone for TcpMessageItem {

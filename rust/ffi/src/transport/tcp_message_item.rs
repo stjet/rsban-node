@@ -92,13 +92,3 @@ pub unsafe extern "C" fn rsn_tcp_message_item_message(
         None => std::ptr::null_mut(),
     }
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_message_item_socket(
-    handle: *mut TcpMessageItemHandle,
-) -> *mut SocketHandle {
-    match &(*handle).0.socket {
-        Some(socket) => SocketHandle::new(socket.clone()),
-        None => std::ptr::null_mut(),
-    }
-}

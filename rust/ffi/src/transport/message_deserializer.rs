@@ -3,7 +3,7 @@ use std::{ffi::c_void, ops::Deref, sync::Arc};
 use rsnano_node::{
     config::NetworkConstants,
     messages::Message,
-    transport::{MessageDeserializer, MessageDeserializerExt, Socket},
+    transport::{MessageDeserializer, MessageDeserializerExt, SocketExtensions},
     utils::ErrorCode,
 };
 

@@ -22,8 +22,8 @@ use crate::{
     },
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
-        MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketImpl, SocketType,
-        SynCookies, TcpMessageItem, TcpMessageManager,
+        MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketExtensions,
+        SocketType, SynCookies, TcpMessageItem, TcpMessageManager,
     },
     utils::{BlockUniquer, IoContext},
     voting::VoteUniquer,
@@ -67,7 +67,7 @@ impl TcpServerObserver for NullTcpServerObserver {
 }
 
 pub struct TcpServer {
-    pub socket: Arc<SocketImpl>,
+    pub socket: Arc<Socket>,
     config: Arc<NodeConfig>,
     logger: Arc<dyn Logger>,
     stopped: AtomicBool,
@@ -97,7 +97,7 @@ static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
 
 impl TcpServer {
     pub fn new(
-        socket: Arc<SocketImpl>,
+        socket: Arc<Socket>,
         config: Arc<NodeConfig>,
         logger: Arc<dyn Logger>,
         observer: Arc<dyn TcpServerObserver>,

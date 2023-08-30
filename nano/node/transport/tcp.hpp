@@ -38,7 +38,6 @@ public:
 	std::shared_ptr<nano::message> get_message () const;
 	nano::tcp_endpoint get_endpoint () const;
 	nano::account get_node_id () const;
-	std::shared_ptr<nano::transport::socket> get_socket () const;
 	rsnano::TcpMessageItemHandle * handle;
 };
 

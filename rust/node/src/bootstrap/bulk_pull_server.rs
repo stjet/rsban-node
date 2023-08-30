@@ -9,7 +9,7 @@ use rsnano_ledger::Ledger;
 
 use crate::{
     messages::BulkPull,
-    transport::{Socket, TcpServer, TcpServerExt},
+    transport::{SocketExtensions, TcpServer, TcpServerExt},
     utils::{ErrorCode, ThreadPool},
 };
 

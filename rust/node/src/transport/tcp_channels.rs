@@ -37,7 +37,7 @@ use super::{
     BufferDropPolicy, ChannelEnum, ChannelTcp, ChannelTcpObserver, CompositeSocketObserver,
     EndpointType, IChannelTcpObserverWeakPtr, MessageDeserializer, MessageDeserializerExt,
     NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket,
-    SocketBuilder, SocketImpl, SocketObserver, SynCookies, TcpMessageManager, TcpServer,
+    SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpMessageManager, TcpServer,
     TcpServerFactory, TcpServerObserver, TcpSocketFacadeFactory, TrafficType,
 };
 
@@ -167,7 +167,7 @@ impl TcpChannels {
     pub fn insert(
         &self,
         channel: &Arc<ChannelEnum>,
-        socket: &Arc<SocketImpl>,
+        socket: &Arc<Socket>,
         server: Option<Arc<TcpServer>>,
     ) -> Result<(), ()> {
         let ChannelEnum::Tcp(tcp_channel) = channel.as_ref() else {
@@ -498,7 +498,7 @@ pub trait TcpChannelsExtension {
         message: &dyn Message,
         endpoint: &SocketAddr,
         node_id: PublicKey,
-        socket: &Arc<SocketImpl>,
+        socket: &Arc<Socket>,
     );
 
     fn ongoing_keepalive(&self);
@@ -527,7 +527,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         message: &dyn Message,
         endpoint: &SocketAddr,
         node_id: PublicKey,
-        socket: &Arc<SocketImpl>,
+        socket: &Arc<Socket>,
     ) {
         let socket_type = socket.socket_type();
         if !self.stopped.load(Ordering::SeqCst)

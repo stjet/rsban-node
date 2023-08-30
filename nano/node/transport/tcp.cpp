@@ -579,12 +579,6 @@ nano::account nano::tcp_message_item::get_node_id () const
 	return node_id;
 }
 
-std::shared_ptr<nano::transport::socket> nano::tcp_message_item::get_socket () const
-{
-	auto socket_handle = rsnano::rsn_tcp_message_item_socket (handle);
-	return std::make_shared<nano::transport::socket> (socket_handle);
-}
-
 nano::tcp_message_item & nano::tcp_message_item::operator= (tcp_message_item const & other_a)
 {
 	if (handle != nullptr)

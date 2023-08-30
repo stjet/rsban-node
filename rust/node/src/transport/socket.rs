@@ -81,7 +81,7 @@ impl SocketType {
 }
 
 pub trait SocketObserver: Send + Sync {
-    fn socket_connected(&self, _socket: Arc<SocketImpl>) {}
+    fn socket_connected(&self, _socket: Arc<Socket>) {}
     fn close_socket_failed(&self, _ec: ErrorCode) {}
     fn disconnect_due_to_timeout(&self, _endpoint: SocketAddr) {}
     fn connect_error(&self) {}
@@ -115,7 +115,7 @@ impl CompositeSocketObserver {
 }
 
 impl SocketObserver for CompositeSocketObserver {
-    fn socket_connected(&self, socket: Arc<SocketImpl>) {
+    fn socket_connected(&self, socket: Arc<Socket>) {
         for child in &self.children {
             child.socket_connected(Arc::clone(&socket));
         }
@@ -176,7 +176,7 @@ impl SocketObserver for CompositeSocketObserver {
     }
 }
 
-pub struct SocketImpl {
+pub struct Socket {
     /// The other end of the connection
     remote: Mutex<Option<SocketAddr>>,
 
@@ -220,7 +220,7 @@ pub struct SocketImpl {
     send_queue: WriteQueue,
 }
 
-impl SocketImpl {
+impl Socket {
     pub fn is_closed(&self) -> bool {
         self.closed.load(Ordering::SeqCst)
     }
@@ -308,13 +308,13 @@ impl SocketImpl {
     }
 }
 
-impl Drop for SocketImpl {
+impl Drop for Socket {
     fn drop(&mut self) {
         self.close_internal();
     }
 }
 
-pub trait Socket {
+pub trait SocketExtensions {
     fn start(&self);
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode)>);
     fn async_read(
@@ -351,7 +351,7 @@ pub trait Socket {
     fn write_queued_messages(&self);
 }
 
-impl Socket for Arc<SocketImpl> {
+impl SocketExtensions for Arc<Socket> {
     fn start(&self) {
         self.ongoing_checkup();
     }
@@ -646,7 +646,7 @@ impl SocketBuilder {
             silent_connection_tolerance_time: Duration::from_secs(120),
             idle_timeout: Duration::from_secs(120),
             observer: None,
-            max_write_queue_len: SocketImpl::MAX_QUEUE_SIZE,
+            max_write_queue_len: Socket::MAX_QUEUE_SIZE,
         }
     }
 
@@ -675,12 +675,12 @@ impl SocketBuilder {
         self
     }
 
-    pub fn build(self) -> Arc<SocketImpl> {
+    pub fn build(self) -> Arc<Socket> {
         let observer = self
             .observer
             .unwrap_or_else(|| Arc::new(NullSocketObserver::new()));
         Arc::new({
-            SocketImpl {
+            Socket {
                 remote: Mutex::new(None),
                 last_completion_time_or_init: AtomicU64::new(seconds_since_epoch()),
                 last_receive_time_or_init: AtomicU64::new(seconds_since_epoch()),

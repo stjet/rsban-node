@@ -12,7 +12,7 @@ use rsnano_core::Account;
 
 use super::{
     write_queue::WriteCallback, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket,
-    SocketImpl, TrafficType,
+    SocketExtensions, TrafficType,
 };
 use crate::{
     messages::Message,
@@ -44,7 +44,7 @@ pub struct TcpChannelData {
 pub struct ChannelTcp {
     channel_id: usize,
     channel_mutex: Mutex<TcpChannelData>,
-    socket: Weak<SocketImpl>,
+    socket: Weak<Socket>,
     /* Mark for temporary channels. Usually remote ports of these channels are ephemeral and received from incoming connections to server.
     If remote part has open listening port, temporary channel will be replaced with direct connection to listening port soon.
     But if other side is behing NAT or firewall this connection can be pemanent. */
@@ -57,7 +57,7 @@ pub struct ChannelTcp {
 
 impl ChannelTcp {
     pub fn new(
-        socket: &Arc<SocketImpl>,
+        socket: &Arc<Socket>,
         now: SystemTime,
         observer: Arc<dyn IChannelTcpObserverWeakPtr>,
         limiter: Arc<OutboundBandwidthLimiter>,
@@ -83,7 +83,7 @@ impl ChannelTcp {
         }
     }
 
-    pub fn socket(&self) -> Option<Arc<SocketImpl>> {
+    pub fn socket(&self) -> Option<Arc<Socket>> {
         self.socket.upgrade()
     }
 

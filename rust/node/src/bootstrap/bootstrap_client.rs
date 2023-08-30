@@ -10,7 +10,8 @@ use std::{
 use crate::{
     messages::Message,
     transport::{
-        BufferDropPolicy, ChannelEnum, ChannelTcp, Socket, SocketImpl, TrafficType, WriteCallback,
+        BufferDropPolicy, ChannelEnum, ChannelTcp, Socket, SocketExtensions, TrafficType,
+        WriteCallback,
     },
     utils::ErrorCode,
 };
@@ -29,7 +30,7 @@ pub trait BootstrapClientObserverWeakPtr {
 pub struct BootstrapClient {
     observer: Box<dyn BootstrapClientObserverWeakPtr>,
     channel: Arc<ChannelEnum>,
-    socket: Arc<SocketImpl>,
+    socket: Arc<Socket>,
     receive_buffer: Arc<Mutex<Vec<u8>>>,
     block_count: AtomicU64,
     block_rate: AtomicU64,
@@ -42,7 +43,7 @@ impl BootstrapClient {
     pub fn new(
         observer: Arc<dyn BootstrapClientObserver>,
         channel: Arc<ChannelEnum>,
-        socket: Arc<SocketImpl>,
+        socket: Arc<Socket>,
     ) -> Self {
         if let ChannelEnum::Tcp(tcp) = channel.as_ref() {
             tcp.set_remote_endpoint();
@@ -88,7 +89,7 @@ impl BootstrapClient {
         &self.channel
     }
 
-    pub fn get_socket(&self) -> &Arc<SocketImpl> {
+    pub fn get_socket(&self) -> &Arc<Socket> {
         &self.socket
     }
 

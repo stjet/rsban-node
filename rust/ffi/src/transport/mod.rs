@@ -5,6 +5,7 @@ mod channel_tcp_observer;
 mod message_deserializer;
 mod network_filter;
 mod peer_exclusion;
+mod server_socket;
 mod socket;
 mod syn_cookies;
 mod tcp_channels;

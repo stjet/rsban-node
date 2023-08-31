@@ -17,10 +17,7 @@ use std::{
 };
 
 use crate::{
-    utils::{
-        DispatchCallback, FfiIoContext, LoggerHandle, LoggerMT, ThreadPoolHandle,
-        VoidFnCallbackHandle,
-    },
+    utils::{DispatchCallback, LoggerHandle, LoggerMT, ThreadPoolHandle, VoidFnCallbackHandle},
     ErrorCodeDto, StatHandle, StringDto, VoidPointerCallback,
 };
 

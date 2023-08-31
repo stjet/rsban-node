@@ -5,6 +5,7 @@ mod channel_tcp;
 mod message_deserializer;
 mod network_filter;
 mod peer_exclusion;
+mod server_socket;
 mod socket;
 mod syn_cookies;
 mod tcp_channels;
@@ -28,6 +29,7 @@ pub use message_deserializer::{
 pub use network_filter::NetworkFilter;
 pub use peer_exclusion::PeerExclusion;
 use rsnano_core::Account;
+pub use server_socket::ServerSocket;
 pub use socket::*;
 pub use syn_cookies::{Cookie, SynCookies};
 pub use tcp_channels::{

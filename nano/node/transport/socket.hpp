@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/boost/asio/ip/tcp.hpp>
 #include <nano/boost/asio/strand.hpp>
 #include <nano/lib/asio.hpp>
@@ -82,16 +84,31 @@ public:
 	std::function<void (boost::system::error_code const &, std::size_t)> callback_a);
 
 	void async_write (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a);
+	bool running_in_this_thread ();
+	void async_accept (
+	boost::asio::ip::tcp::socket & client_socket,
+	boost::asio::ip::tcp::endpoint & peer,
+	std::function<void (boost::system::error_code const &)> callback_a);
+
+	bool is_acceptor_open ();
 
 	boost::asio::ip::tcp::endpoint remote_endpoint (boost::system::error_code & ec);
 
 	void dispatch (std::function<void ()> callback_a);
 	void post (std::function<void ()> callback_a);
 	void close (boost::system::error_code & ec);
+	void close_acceptor ();
+	uint16_t listening_port ()
+	{
+		return acceptor.local_endpoint ().port ();
+	}
+
+	void open (boost::asio::ip::tcp::endpoint & local, boost::system::error_code & ec_a);
 
 	boost::asio::strand<boost::asio::io_context::executor_type> strand;
 	boost::asio::ip::tcp::socket tcp_socket;
 	boost::asio::io_context & io_ctx;
+	boost::asio::ip::tcp::acceptor acceptor;
 
 private:
 	std::atomic<bool> closed{ false };
@@ -229,6 +246,8 @@ public:
 	 * @param max_connections_a Maximum number of concurrent connections
 	 */
 	explicit server_socket (nano::node & node_a, boost::asio::ip::tcp::endpoint local_a, std::size_t max_connections_a);
+	server_socket (server_socket const &) = delete;
+	~server_socket ();
 	/**Start accepting new connections */
 	void start (boost::system::error_code &);
 	/** Stop accepting new connections */
@@ -237,18 +256,17 @@ public:
 	void on_connection (std::function<bool (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const &)>);
 	uint16_t listening_port ()
 	{
-		return acceptor.local_endpoint ().port ();
+		return socket_facade->listening_port ();
 	}
 
 private:
-	boost::asio::strand<boost::asio::io_context::executor_type> strand;
+	std::shared_ptr<nano::transport::tcp_socket_facade> socket_facade;
 	nano::logger_mt & logger;
 	nano::stats & stats;
 	nano::transport::socket socket;
 	nano::thread_pool & workers;
 	nano::node & node;
 	nano::transport::address_socket_mmap connections_per_address;
-	boost::asio::ip::tcp::acceptor acceptor;
 	boost::asio::ip::tcp::endpoint local;
 	std::size_t max_inbound_connections;
 	void evict_dead_connections ();
@@ -256,6 +274,7 @@ private:
 	/** Checks whether the maximum number of connections per IP was reached. If so, it returns true. */
 	bool limit_reached_for_incoming_ip_connections (std::shared_ptr<nano::transport::socket> const & new_connection);
 	bool limit_reached_for_incoming_subnetwork_connections (std::shared_ptr<nano::transport::socket> const & new_connection);
+	rsnano::ServerSocketHandle * handle;
 };
 
 std::shared_ptr<nano::transport::socket> create_client_socket (nano::node & node_a, std::size_t max_queue_size = socket::default_max_queue_size);

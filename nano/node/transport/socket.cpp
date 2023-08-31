@@ -434,11 +434,18 @@ nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio:
 	max_inbound_connections{ max_connections_a }
 {
 	auto network_params_dto{ node_a.network_params.to_dto () };
+	auto node_config_dto{ node_a.config->to_dto () };
 	handle = rsnano::rsn_server_socket_create (
 	new std::shared_ptr<nano::transport::tcp_socket_facade> (socket_facade),
 	socket.handle,
 	node_a.flags.handle,
-	&network_params_dto);
+	&network_params_dto,
+	node_a.workers->handle,
+	nano::to_logger_handle (node_a.logger),
+	new std::shared_ptr<nano::transport::tcp_socket_facade_factory> (std::make_shared<nano::transport::tcp_socket_facade_factory> (node_a.io_ctx)),
+	new std::weak_ptr<nano::node_observers> (node_a.observers),
+	node_a.stats->handle,
+	&node_config_dto);
 }
 
 nano::transport::server_socket::~server_socket ()

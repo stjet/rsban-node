@@ -1,5 +1,7 @@
 use rsnano_node::{
-    transport::{ServerSocket, ServerSocketExtensions},
+    config::NodeConfig,
+    transport::{ServerSocket, ServerSocketExtensions, Socket},
+    utils::ErrorCode,
     NetworkParams,
 };
 use std::{
@@ -8,24 +10,48 @@ use std::{
     sync::Arc,
 };
 
-use super::{EndpointDto, FfiTcpSocketFacade, SocketHandle};
-use crate::{NetworkParamsDto, NodeFlagsHandle};
+use super::{
+    socket::FfiTcpSocketFacadeFactory, EndpointDto, FfiTcpSocketFacade, SocketFfiObserver,
+    SocketHandle,
+};
+use crate::{
+    utils::{ContextWrapper, LoggerHandle, LoggerMT, ThreadPoolHandle},
+    ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
+    VoidPointerCallback,
+};
 pub struct ServerSocketHandle(Arc<ServerSocket>);
 
 #[no_mangle]
-pub extern "C" fn rsn_server_socket_create(
+pub unsafe extern "C" fn rsn_server_socket_create(
     socket_facade_ptr: *mut c_void,
     socket: &SocketHandle,
     flags: &NodeFlagsHandle,
     network_params: &NetworkParamsDto,
+    workers: &ThreadPoolHandle,
+    logger: *mut LoggerHandle,
+    tcp_socket_facade_factory: *mut c_void,
+    callback_handler: *mut c_void,
+    stats: &StatHandle,
+    node_config: &NodeConfigDto,
 ) -> *mut ServerSocketHandle {
+    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let socket_facade = Arc::new(FfiTcpSocketFacade::new(socket_facade_ptr));
     let network_params = NetworkParams::try_from(network_params).unwrap();
+    let tcp_socket_facade_factory = Arc::new(FfiTcpSocketFacadeFactory(tcp_socket_facade_factory));
+    let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
+    let stats = Arc::clone(&stats.0);
+    let node_config = NodeConfig::try_from(node_config).unwrap();
     Box::into_raw(Box::new(ServerSocketHandle(Arc::new(ServerSocket::new(
         socket_facade,
         Arc::clone(&socket.0),
         flags.0.lock().unwrap().clone(),
         network_params,
+        Arc::clone(&workers.0),
+        logger,
+        tcp_socket_facade_factory,
+        node_config,
+        stats,
+        ffi_observer,
     )))))
 }
 
@@ -100,4 +126,21 @@ pub extern "C" fn rsn_server_socket_limit_reached_for_incoming_ip_connections(
     handle
         .0
         .limit_reached_for_incoming_ip_connections(&new_conenction.0)
+}
+
+pub type OnConnectionCallback = extern "C" fn(*mut c_void, *mut SocketHandle, *const ErrorCodeDto);
+
+#[no_mangle]
+pub extern "C" fn rsn_server_socket_on_connection(
+    handle: &ServerSocketHandle,
+    callback: OnConnectionCallback,
+    callback_context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let context = ContextWrapper::new(callback_context, delete_context);
+    let callback_wrapper = Box::new(move |socket: Arc<Socket>, ec: ErrorCode| {
+        let ec_dto = ErrorCodeDto::from(&ec);
+        callback(context.get_context(), SocketHandle::new(socket), &ec_dto);
+    });
+    handle.0.on_connection(callback_wrapper);
 }

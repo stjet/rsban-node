@@ -80,7 +80,7 @@ pub unsafe extern "C" fn rsn_socket_create(
     endpoint_type: u8,
     tcp_facade: *mut c_void,
     stats_handle: *mut StatHandle,
-    thread_pool: *mut ThreadPoolHandle,
+    thread_pool: &ThreadPoolHandle,
     default_timeout_s: u64,
     silent_connection_tolerance_time_s: u64,
     idle_timeout_s: u64,
@@ -91,7 +91,7 @@ pub unsafe extern "C" fn rsn_socket_create(
 ) -> *mut SocketHandle {
     let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
     let tcp_facade = Arc::new(FfiTcpSocketFacade::new(tcp_facade));
-    let thread_pool = (*thread_pool).0.clone();
+    let thread_pool = thread_pool.0.clone();
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let stats = (*stats_handle).deref().clone();
 
@@ -509,6 +509,8 @@ pub type CreateTcpSocketCallback = unsafe extern "C" fn(*mut c_void) -> *mut c_v
 static mut CREATE_TCP_SOCKET_CALLBACK: Option<CreateTcpSocketCallback> = None;
 static mut DESTROY_TCP_SOCKET_FACADE_FACTORY_CALLBACK: Option<VoidPointerCallback> = None;
 static mut SOCKET_CLOSE_ACCEPTOR_CALLBACK: Option<VoidPointerCallback> = None;
+static mut IS_ACCEPTOR_OPEN: Option<SocketIsOpenCallback> = None;
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_create_tcp_socket(f: CreateTcpSocketCallback) {
     CREATE_TCP_SOCKET_CALLBACK = Some(f);
@@ -522,6 +524,11 @@ pub unsafe extern "C" fn rsn_callback_destroy_tcp_socket_facade_factory(f: VoidP
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_tcp_socket_local_endpoint(f: SocketLocalEndpointCallback) {
     LOCAL_ENDPOINT_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_tcp_socket_is_acceptor_open(f: SocketIsOpenCallback) {
+    IS_ACCEPTOR_OPEN = Some(f);
 }
 
 #[no_mangle]
@@ -788,6 +795,10 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
                 self.handle,
             )
         }
+    }
+
+    fn is_acceptor_open(&self) -> bool {
+        unsafe { IS_ACCEPTOR_OPEN.expect("IS_ACCEPTOR_OPEN missing")(self.handle) }
     }
 }
 

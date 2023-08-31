@@ -17,7 +17,7 @@ impl VoidFnCallbackHandle {
     }
 }
 
-pub struct ThreadPoolHandle(pub Arc<ThreadPoolImpl>);
+pub struct ThreadPoolHandle(pub Arc<dyn ThreadPool>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_thread_pool_create(

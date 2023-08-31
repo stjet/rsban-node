@@ -656,6 +656,12 @@ void tcp_socket_close_acceptor (void * handle_a)
 	(*socket)->close_acceptor ();
 }
 
+bool tcp_socket_is_acceptor_open (void * handle_a)
+{
+	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
+	return (*socket)->is_acceptor_open ();
+}
+
 void tcp_socket_destroy (void * handle_a)
 {
 	auto ptr{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
@@ -942,6 +948,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_tcp_socket_connected (tcp_socket_connected);
 	rsnano::rsn_callback_delete_tcp_socket_callback (tcp_socket_delete_callback);
 	rsnano::rsn_callback_socket_close_acceptor_callback (tcp_socket_close_acceptor);
+	rsnano::rsn_callback_tcp_socket_is_acceptor_open (tcp_socket_is_acceptor_open);
 
 	rsnano::rsn_callback_create_tcp_socket (tcp_socket_facade_factory_create_socket);
 	rsnano::rsn_callback_destroy_tcp_socket_facade_factory (tcp_socket_facade_factory_destroy);

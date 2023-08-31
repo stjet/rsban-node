@@ -51,6 +51,7 @@ pub trait TcpSocketFacade: Send + Sync {
     fn post(&self, f: Box<dyn FnOnce()>);
     fn dispatch(&self, f: Box<dyn FnOnce()>);
     fn close_acceptor(&self);
+    fn is_acceptor_open(&self) -> bool;
     fn close(&self) -> Result<(), ErrorCode>;
     fn as_any(&self) -> &dyn Any;
     fn is_open(&self) -> bool;
@@ -104,6 +105,10 @@ impl TcpSocketFacade for NullTcpSocketFacade {
     }
 
     fn close_acceptor(&self) {}
+
+    fn is_acceptor_open(&self) -> bool {
+        false
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, FromPrimitive)]

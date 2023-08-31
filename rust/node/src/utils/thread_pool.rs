@@ -13,9 +13,10 @@ use super::{NullTimer, Timer, TimerStrategy, TimerWrapper};
 pub trait ThreadPool: Send + Sync {
     fn push_task(&self, callback: Box<dyn FnOnce() + Send>);
     fn add_delayed_task(&self, delay: Duration, callback: Box<dyn FnOnce() + Send>);
+    fn stop(&self);
 }
 
-pub struct ThreadPoolImpl<T: TimerStrategy = TimerWrapper> {
+pub struct ThreadPoolImpl<T: TimerStrategy + 'static = TimerWrapper> {
     data: Arc<Mutex<Option<ThreadPoolData<T>>>>,
     stopped: Arc<Mutex<bool>>,
 }
@@ -61,18 +62,6 @@ impl<T: TimerStrategy> ThreadPoolImpl<T> {
     pub fn track(&self) -> Arc<OutputTrackerMt<TimerEvent>> {
         self.data.lock().unwrap().as_ref().unwrap().timer.track()
     }
-
-    pub fn stop(&self) {
-        let mut stopped_guard = self.stopped.lock().unwrap();
-        if !*stopped_guard {
-            let mut data_guard = self.data.lock().unwrap();
-            *stopped_guard = true;
-            drop(stopped_guard);
-            if let Some(data) = data_guard.take() {
-                data.pool.join();
-            }
-        }
-    }
 }
 
 impl<T: TimerStrategy + 'static> ThreadPool for ThreadPoolImpl<T> {
@@ -114,11 +103,23 @@ impl<T: TimerStrategy + 'static> ThreadPool for ThreadPoolImpl<T> {
             }
         }
     }
+
+    fn stop(&self) {
+        let mut stopped_guard = self.stopped.lock().unwrap();
+        if !*stopped_guard {
+            let mut data_guard = self.data.lock().unwrap();
+            *stopped_guard = true;
+            drop(stopped_guard);
+            if let Some(data) = data_guard.take() {
+                data.pool.join();
+            }
+        }
+    }
 }
 
 //todo collect_container_info
 
-impl<T: TimerStrategy> Drop for ThreadPoolImpl<T> {
+impl<T: TimerStrategy + 'static> Drop for ThreadPoolImpl<T> {
     fn drop(&mut self) {
         self.stop()
     }

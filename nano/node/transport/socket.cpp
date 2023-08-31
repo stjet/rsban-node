@@ -432,7 +432,7 @@ nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio:
 		node_a.observers },
 	local{ std::move (local_a) },
 	max_inbound_connections{ max_connections_a },
-	handle{ rsnano::rsn_server_socket_create () }
+	handle{ rsnano::rsn_server_socket_create (new std::shared_ptr<nano::transport::tcp_socket_facade> (socket_facade)) }
 {
 }
 
@@ -453,14 +453,7 @@ void nano::transport::server_socket::close ()
 	socket_facade->dispatch ([this_l] () {
 		this_l->socket.close_internal ();
 		this_l->socket_facade->close_acceptor ();
-		for (auto & address_connection_pair : this_l->connections_per_address)
-		{
-			if (auto connection_l = address_connection_pair.second.lock ())
-			{
-				connection_l->close ();
-			}
-		}
-		this_l->connections_per_address.clear ();
+		rsnano::rsn_server_socket_close_connections (this_l->handle);
 	});
 }
 
@@ -508,10 +501,13 @@ bool nano::transport::server_socket::limit_reached_for_incoming_subnetwork_conne
 		// If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6 /64.
 		return false;
 	}
-	auto const counted_connections = socket_functions::count_subnetwork_connections (
-	connections_per_address,
-	new_connection->remote_endpoint ().address ().to_v6 (),
+
+	auto endpoint_dto{ rsnano::endpoint_to_dto (new_connection->remote_endpoint ()) };
+	auto const counted_connections = rsnano::rsn_server_socket_count_subnetwork_connections (
+	handle,
+	&endpoint_dto,
 	node.network_params.network.ipv6_subnetwork_prefix_for_limiting);
+
 	return counted_connections >= node.network_params.network.max_peers_per_subnetwork;
 }
 
@@ -523,8 +519,10 @@ bool nano::transport::server_socket::limit_reached_for_incoming_ip_connections (
 		// If the limit is disabled, then it is unreachable.
 		return false;
 	}
-	auto const address_connections_range = connections_per_address.equal_range (new_connection->remote_endpoint ().address ());
-	auto const counted_connections = static_cast<std::size_t> (std::abs (std::distance (address_connections_range.first, address_connections_range.second)));
+
+	auto endpoint_dto{ rsnano::endpoint_to_dto (new_connection->remote_endpoint ()) };
+	auto const counted_connections = rsnano::rsn_server_socket_count_connections_for_ip (handle, &endpoint_dto);
+
 	return counted_connections >= node.network_params.network.max_peers_per_ip;
 }
 
@@ -557,7 +555,7 @@ void nano::transport::server_socket::on_connection (std::function<bool (std::sha
 			rsnano::rsn_socket_set_remote_endpoint (new_connection->handle, &endpoint_dto);
 			this_l->evict_dead_connections ();
 
-			if (this_l->connections_per_address.size () >= this_l->max_inbound_connections)
+			if (rsnano::rsn_server_socket_count_connections (this_l->handle) >= this_l->max_inbound_connections)
 			{
 				this_l->logger.try_log ("Network: max_inbound_connections reached, unable to open new connection");
 				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_accept_failure, nano::stat::dir::in);
@@ -599,7 +597,7 @@ void nano::transport::server_socket::on_connection (std::function<bool (std::sha
 				new_connection->start ();
 				new_connection->set_timeout (this_l->node.network_params.network.idle_timeout);
 				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
-				this_l->connections_per_address.emplace (new_connection->remote_endpoint ().address (), new_connection);
+				rsnano::rsn_server_socket_insert_connection (this_l->handle, new_connection->handle);
 				this_l->node.observers->socket_accepted.notify (*new_connection);
 				if (cbk (new_connection, ec_a))
 				{
@@ -649,15 +647,7 @@ void nano::transport::server_socket::on_connection_requeue_delayed (std::functio
 void nano::transport::server_socket::evict_dead_connections ()
 {
 	debug_assert (socket_facade->running_in_this_thread ());
-	for (auto it = connections_per_address.begin (); it != connections_per_address.end ();)
-	{
-		if (it->second.expired ())
-		{
-			it = connections_per_address.erase (it);
-			continue;
-		}
-		++it;
-	}
+	rsnano::rsn_server_socket_evict_dead_connections (handle);
 }
 
 std::shared_ptr<nano::transport::socket> nano::transport::create_client_socket (nano::node & node_a, std::size_t write_queue_size)

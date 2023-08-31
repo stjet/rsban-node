@@ -126,11 +126,19 @@ pub fn map_address_to_subnetwork(input: &Ipv6Addr) -> Ipv6Addr {
     }
 }
 
-fn make_network_address(input: &Ipv6Addr, prefix_bits: u8) -> Ipv6Addr {
+pub fn make_network_address(input: &Ipv6Addr, prefix_bits: u8) -> Ipv6Addr {
     debug_assert!(prefix_bits % 8 == 0);
     let index = (prefix_bits / 8) as usize;
     let mut octets = input.octets();
     octets[index..].fill(0);
+    Ipv6Addr::from(octets)
+}
+
+pub fn last_ipv6_subnet_address(input: &Ipv6Addr, prefix_bits: u8) -> Ipv6Addr {
+    debug_assert!(prefix_bits % 8 == 0);
+    let index = (prefix_bits / 8) as usize;
+    let mut octets = input.octets();
+    octets[index..].fill(0xFF);
     Ipv6Addr::from(octets)
 }
 

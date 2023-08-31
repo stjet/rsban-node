@@ -266,7 +266,6 @@ private:
 	nano::transport::socket socket;
 	nano::thread_pool & workers;
 	nano::node & node;
-	nano::transport::address_socket_mmap connections_per_address;
 	boost::asio::ip::tcp::endpoint local;
 	std::size_t max_inbound_connections;
 	void evict_dead_connections ();

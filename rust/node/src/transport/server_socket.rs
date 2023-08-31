@@ -9,23 +9,18 @@ use crate::utils::{first_ipv6_subnet_address, last_ipv6_subnet_address};
 use super::{Socket, SocketExtensions, TcpSocketFacade};
 
 pub struct ServerSocket {
+    socket: Arc<Socket>,
     socket_facade: Arc<dyn TcpSocketFacade>,
     connections_per_address: Mutex<ConnectionsPerAddress>,
 }
 
 impl ServerSocket {
-    pub fn new(socket_facade: Arc<dyn TcpSocketFacade>) -> Self {
+    pub fn new(socket_facade: Arc<dyn TcpSocketFacade>, socket: Arc<Socket>) -> Self {
         ServerSocket {
+            socket,
             socket_facade,
             connections_per_address: Mutex::new(Default::default()),
         }
-    }
-
-    pub fn close_connections(&self) {
-        self.connections_per_address
-            .lock()
-            .unwrap()
-            .close_connections();
     }
 
     pub fn count_subnetwork_connections(
@@ -125,6 +120,26 @@ impl ConnectionsPerAddress {
             !conns.is_empty()
         });
         self.count = self.connections.values().map(|conns| conns.len()).sum();
+    }
+}
+
+pub trait ServerSocketExtensions {
+    /// Stop accepting new connections
+    fn close(&self);
+}
+
+impl ServerSocketExtensions for Arc<ServerSocket> {
+    fn close(&self) {
+        let self_clone = Arc::clone(self);
+        self.socket_facade.dispatch(Box::new(move || {
+            self_clone.socket.close_internal();
+            self_clone.socket_facade.close_acceptor();
+            self_clone
+                .connections_per_address
+                .lock()
+                .unwrap()
+                .close_connections();
+        }))
     }
 }
 

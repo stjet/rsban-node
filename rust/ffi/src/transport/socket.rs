@@ -508,7 +508,7 @@ static mut DELETE_TCP_SOCKET_CALLBACK: Option<VoidPointerCallback> = None;
 pub type CreateTcpSocketCallback = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
 static mut CREATE_TCP_SOCKET_CALLBACK: Option<CreateTcpSocketCallback> = None;
 static mut DESTROY_TCP_SOCKET_FACADE_FACTORY_CALLBACK: Option<VoidPointerCallback> = None;
-
+static mut SOCKET_CLOSE_ACCEPTOR_CALLBACK: Option<VoidPointerCallback> = None;
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_create_tcp_socket(f: CreateTcpSocketCallback) {
     CREATE_TCP_SOCKET_CALLBACK = Some(f);
@@ -537,6 +537,11 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_connected(f: SocketConnectedCal
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_delete_tcp_socket_callback(f: VoidPointerCallback) {
     DELETE_TCP_SOCKET_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_socket_close_acceptor_callback(f: VoidPointerCallback) {
+    SOCKET_CLOSE_ACCEPTOR_CALLBACK = Some(f);
 }
 
 #[no_mangle]
@@ -775,6 +780,14 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
 
     fn is_open(&self) -> bool {
         unsafe { SOCKET_IS_OPEN_CALLBACK.expect("SOCKET_IS_OPEN_CALLBACK missing")(self.handle) }
+    }
+
+    fn close_acceptor(&self) {
+        unsafe {
+            SOCKET_CLOSE_ACCEPTOR_CALLBACK.expect("SOCKET_CLOSE_ACCEPTOR_CALLBACK missing")(
+                self.handle,
+            )
+        }
     }
 }
 

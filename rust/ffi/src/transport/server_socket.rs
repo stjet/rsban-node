@@ -1,4 +1,4 @@
-use rsnano_node::transport::ServerSocket;
+use rsnano_node::transport::{ServerSocket, ServerSocketExtensions};
 use std::{
     ffi::c_void,
     net::{SocketAddr, SocketAddrV6},
@@ -12,10 +12,12 @@ pub struct ServerSocketHandle(Arc<ServerSocket>);
 #[no_mangle]
 pub extern "C" fn rsn_server_socket_create(
     socket_facade_ptr: *mut c_void,
+    socket: &SocketHandle,
 ) -> *mut ServerSocketHandle {
     let socket_facade = Arc::new(FfiTcpSocketFacade::new(socket_facade_ptr));
     Box::into_raw(Box::new(ServerSocketHandle(Arc::new(ServerSocket::new(
         socket_facade,
+        Arc::clone(&socket.0),
     )))))
 }
 
@@ -25,8 +27,8 @@ pub unsafe extern "C" fn rsn_server_socket_destroy(handle: *mut ServerSocketHand
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_server_socket_close_connections(handle: &mut ServerSocketHandle) {
-    handle.0.close_connections();
+pub extern "C" fn rsn_server_socket_close(handle: &mut ServerSocketHandle) {
+    handle.0.close();
 }
 
 #[no_mangle]

@@ -432,7 +432,7 @@ nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio:
 		node_a.observers },
 	local{ std::move (local_a) },
 	max_inbound_connections{ max_connections_a },
-	handle{ rsnano::rsn_server_socket_create (new std::shared_ptr<nano::transport::tcp_socket_facade> (socket_facade)) }
+	handle{ rsnano::rsn_server_socket_create (new std::shared_ptr<nano::transport::tcp_socket_facade> (socket_facade), socket.handle) }
 {
 }
 
@@ -448,13 +448,7 @@ void nano::transport::server_socket::start (boost::system::error_code & ec_a)
 
 void nano::transport::server_socket::close ()
 {
-	auto this_l (shared_from_this ());
-
-	socket_facade->dispatch ([this_l] () {
-		this_l->socket.close_internal ();
-		this_l->socket_facade->close_acceptor ();
-		rsnano::rsn_server_socket_close_connections (this_l->handle);
-	});
+	rsnano::rsn_server_socket_close (handle);
 }
 
 boost::asio::ip::network_v6 nano::transport::socket_functions::get_ipv6_subnet_address (boost::asio::ip::address_v6 const & ip_address, std::size_t network_prefix)

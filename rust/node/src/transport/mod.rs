@@ -29,7 +29,7 @@ pub use message_deserializer::{
 pub use network_filter::NetworkFilter;
 pub use peer_exclusion::PeerExclusion;
 use rsnano_core::Account;
-pub use server_socket::ServerSocket;
+pub use server_socket::{ServerSocket, ServerSocketExtensions};
 pub use socket::*;
 pub use syn_cookies::{Cookie, SynCookies};
 pub use tcp_channels::{

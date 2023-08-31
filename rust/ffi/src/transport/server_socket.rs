@@ -35,9 +35,10 @@ pub extern "C" fn rsn_server_socket_count_subnetwork_connections(
     endpoint: &EndpointDto,
     ipv6_subnetwork_prefix_for_limiting: usize,
 ) -> usize {
+    let address = SocketAddrV6::from(endpoint);
     handle
         .0
-        .count_subnetwork_connections(&endpoint.into(), ipv6_subnetwork_prefix_for_limiting)
+        .count_subnetwork_connections(address.ip(), ipv6_subnetwork_prefix_for_limiting)
 }
 
 #[no_mangle]

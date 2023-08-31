@@ -1,4 +1,4 @@
-use std::{ffi::c_void, sync::Arc, time::Duration};
+use std::{ffi::c_void, sync::Arc};
 
 use rsnano_node::utils::AsyncRuntime;
 

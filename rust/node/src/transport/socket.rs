@@ -1,9 +1,9 @@
-use crate::utils::{BufferWrapper, ErrorCode, ThreadPool};
+use crate::utils::{BufferWrapper, ErrorCode, ThreadPool, ThreadPoolImpl};
 use num_traits::FromPrimitive;
 use rsnano_core::utils::seconds_since_epoch;
 use std::{
     any::Any,
-    net::SocketAddr,
+    net::{IpAddr, Ipv6Addr, SocketAddr},
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
         Arc, Mutex,
@@ -53,6 +53,54 @@ pub trait TcpSocketFacade: Send + Sync {
     fn close(&self) -> Result<(), ErrorCode>;
     fn as_any(&self) -> &dyn Any;
     fn is_open(&self) -> bool;
+}
+
+#[derive(Default)]
+pub struct NullTcpSocketFacade {}
+
+impl TcpSocketFacade for NullTcpSocketFacade {
+    fn local_endpoint(&self) -> SocketAddr {
+        SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 42)
+    }
+
+    fn async_connect(&self, _endpoint: SocketAddr, _callback: Box<dyn FnOnce(ErrorCode)>) {}
+
+    fn async_read(
+        &self,
+        _buffer: &Arc<dyn BufferWrapper>,
+        _len: usize,
+        _callback: Box<dyn FnOnce(ErrorCode, usize)>,
+    ) {
+    }
+
+    fn async_read2(
+        &self,
+        _buffer: &Arc<Mutex<Vec<u8>>>,
+        _len: usize,
+        _callback: Box<dyn FnOnce(ErrorCode, usize)>,
+    ) {
+    }
+
+    fn async_write(&self, _buffer: &Arc<Vec<u8>>, _callback: Box<dyn FnOnce(ErrorCode, usize)>) {}
+
+    fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode> {
+        Err(ErrorCode::not_supported())
+    }
+
+    fn post(&self, _: Box<dyn FnOnce()>) {}
+    fn dispatch(&self, _: Box<dyn FnOnce()>) {}
+
+    fn close(&self) -> Result<(), ErrorCode> {
+        Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn is_open(&self) -> bool {
+        false
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, FromPrimitive)]
@@ -221,6 +269,12 @@ pub struct Socket {
 }
 
 impl Socket {
+    pub fn create_null() -> Arc<Socket> {
+        let tcp_facade = Arc::new(NullTcpSocketFacade::default());
+        let thread_pool = Arc::new(ThreadPoolImpl::create_null());
+        SocketBuilder::endpoint_type(EndpointType::Client, tcp_facade, thread_pool).build()
+    }
+
     pub fn is_closed(&self) -> bool {
         self.closed.load(Ordering::SeqCst)
     }

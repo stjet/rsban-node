@@ -178,54 +178,6 @@ TEST (socket, limited_subnet_address)
 	ASSERT_EQ ("a41d:b7b2::/32", network.canonical ().to_string ());
 }
 
-TEST (socket, first_ipv6_subnet_address)
-{
-	auto address = boost::asio::ip::make_address ("a41d:b7b2:8298:cf45:672e:bd1a:e7fb:f713");
-	auto first_address = nano::transport::socket_functions::first_ipv6_subnet_address (address.to_v6 (), 32); // network prefix = 32.
-	ASSERT_EQ ("a41d:b7b2::", first_address.to_string ());
-}
-
-TEST (socket, last_ipv6_subnet_address)
-{
-	auto address = boost::asio::ip::make_address ("a41d:b7b2:8298:cf45:672e:bd1a:e7fb:f713");
-	auto last_address = nano::transport::socket_functions::last_ipv6_subnet_address (address.to_v6 (), 32); // network prefix = 32.
-	ASSERT_EQ ("a41d:b7b2:ffff:ffff:ffff:ffff:ffff:ffff", last_address.to_string ());
-}
-
-TEST (socket, count_subnetwork_connections)
-{
-	nano::test::system system;
-	auto node = system.add_node ();
-
-	auto address0 = boost::asio::ip::make_address ("a41d:b7b1:ffff:ffff:ffff:ffff:ffff:ffff"); // out of network prefix
-	auto address1 = boost::asio::ip::make_address ("a41d:b7b2:8298:cf45:672e:bd1a:e7fb:f713"); // referece address
-	auto address2 = boost::asio::ip::make_address ("a41d:b7b2::"); // start of the network range
-	auto address3 = boost::asio::ip::make_address ("a41d:b7b2::1");
-	auto address4 = boost::asio::ip::make_address ("a41d:b7b2:ffff:ffff:ffff:ffff:ffff:ffff"); // end of the network range
-	auto address5 = boost::asio::ip::make_address ("a41d:b7b3::"); // out of the network prefix
-	auto address6 = boost::asio::ip::make_address ("a41d:b7b3::1"); // out of the network prefix
-
-	auto connection0 = nano::transport::create_client_socket (*node);
-	auto connection1 = nano::transport::create_client_socket (*node);
-	auto connection2 = nano::transport::create_client_socket (*node);
-	auto connection3 = nano::transport::create_client_socket (*node);
-	auto connection4 = nano::transport::create_client_socket (*node);
-	auto connection5 = nano::transport::create_client_socket (*node);
-	auto connection6 = nano::transport::create_client_socket (*node);
-
-	nano::transport::address_socket_mmap connections_per_address;
-	connections_per_address.emplace (address0, connection0);
-	connections_per_address.emplace (address1, connection1);
-	connections_per_address.emplace (address2, connection2);
-	connections_per_address.emplace (address3, connection3);
-	connections_per_address.emplace (address4, connection4);
-	connections_per_address.emplace (address5, connection5);
-	connections_per_address.emplace (address6, connection6);
-
-	// Asserts it counts only the connections for the specified address and its network prefix.
-	ASSERT_EQ (4, nano::transport::socket_functions::count_subnetwork_connections (connections_per_address, address1.to_v6 (), 32));
-}
-
 TEST (socket, max_connections_per_subnetwork)
 {
 	nano::test::system system;

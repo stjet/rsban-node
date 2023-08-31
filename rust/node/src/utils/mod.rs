@@ -112,7 +112,7 @@ pub fn ipv4_address_or_ipv6_subnet(input: &Ipv6Addr) -> Ipv6Addr {
     if is_ipv4_mapped(input) {
         input.clone()
     } else {
-        make_network_address(input, 48)
+        first_ipv6_subnet_address(input, 48)
     }
 }
 
@@ -120,13 +120,13 @@ pub fn map_address_to_subnetwork(input: &Ipv6Addr) -> Ipv6Addr {
     const IPV6_SUBNET_PREFIX_LENGTH: u8 = 32; // Equivalent to network prefix /32.
     const IPV4_SUBNET_PREFIX_LENGTH: u8 = (128 - 32) + 24; // Limits for /24 IPv4 subnetwork
     if is_ipv4_mapped(input) {
-        make_network_address(input, IPV4_SUBNET_PREFIX_LENGTH)
+        first_ipv6_subnet_address(input, IPV4_SUBNET_PREFIX_LENGTH)
     } else {
-        make_network_address(input, IPV6_SUBNET_PREFIX_LENGTH)
+        first_ipv6_subnet_address(input, IPV6_SUBNET_PREFIX_LENGTH)
     }
 }
 
-pub fn make_network_address(input: &Ipv6Addr, prefix_bits: u8) -> Ipv6Addr {
+pub fn first_ipv6_subnet_address(input: &Ipv6Addr, prefix_bits: u8) -> Ipv6Addr {
     debug_assert!(prefix_bits % 8 == 0);
     let index = (prefix_bits / 8) as usize;
     let mut octets = input.octets();
@@ -216,4 +216,29 @@ pub fn reserved_address(endpoint: &SocketAddrV6, allow_local_peers: bool) -> boo
     }
 
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_first_ipv6_subnet_address() {
+        let address = Ipv6Addr::new(
+            0xa41d, 0xb7b2, 0x8298, 0xcf45, 0x672e, 0xbd1a, 0xe7fb, 0xf713,
+        );
+        let expected = Ipv6Addr::new(0xa41d, 0xb7b2, 0, 0, 0, 0, 0, 0);
+        assert_eq!(first_ipv6_subnet_address(&address, 32), expected);
+    }
+
+    #[test]
+    fn test_last_ipv6_subnet_address() {
+        let address = Ipv6Addr::new(
+            0xa41d, 0xb7b2, 0x8298, 0xcf45, 0x672e, 0xbd1a, 0xe7fb, 0xf713,
+        );
+        let expected = Ipv6Addr::new(
+            0xa41d, 0xb7b2, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff,
+        );
+        assert_eq!(last_ipv6_subnet_address(&address, 32), expected);
+    }
 }

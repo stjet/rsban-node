@@ -28,8 +28,8 @@ use crate::{
 
 use super::{
     peer_exclusion::PeerExclusionHandle, socket::FfiTcpSocketFacadeFactory, ChannelHandle,
-    EndpointDto, FfiTcpSocketFacade, NetworkFilterHandle, OutboundBandwidthLimiterHandle,
-    SocketFfiObserver, SocketHandle, SynCookiesHandle, TcpMessageManagerHandle,
+    EndpointDto, NetworkFilterHandle, OutboundBandwidthLimiterHandle, SocketFfiObserver,
+    SocketHandle, SynCookiesHandle, TcpMessageManagerHandle,
 };
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);

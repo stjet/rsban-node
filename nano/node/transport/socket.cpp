@@ -431,9 +431,14 @@ nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio:
 		node_a.config->logging.network_timeout_logging (),
 		node_a.observers },
 	local{ std::move (local_a) },
-	max_inbound_connections{ max_connections_a },
-	handle{ rsnano::rsn_server_socket_create (new std::shared_ptr<nano::transport::tcp_socket_facade> (socket_facade), socket.handle) }
+	max_inbound_connections{ max_connections_a }
 {
+	auto network_params_dto{ node_a.network_params.to_dto () };
+	handle = rsnano::rsn_server_socket_create (
+	new std::shared_ptr<nano::transport::tcp_socket_facade> (socket_facade),
+	socket.handle,
+	node_a.flags.handle,
+	&network_params_dto);
 }
 
 nano::transport::server_socket::~server_socket ()
@@ -458,36 +463,12 @@ boost::asio::ip::network_v6 nano::transport::socket_functions::get_ipv6_subnet_a
 
 bool nano::transport::server_socket::limit_reached_for_incoming_subnetwork_connections (std::shared_ptr<nano::transport::socket> const & new_connection)
 {
-	debug_assert (socket_facade->running_in_this_thread ());
-	if (node.flags.disable_max_peers_per_subnetwork () || nano::transport::is_ipv4_or_v4_mapped_address (new_connection->remote_endpoint ().address ()))
-	{
-		// If the limit is disabled, then it is unreachable.
-		// If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6 /64.
-		return false;
-	}
-
-	auto endpoint_dto{ rsnano::endpoint_to_dto (new_connection->remote_endpoint ()) };
-	auto const counted_connections = rsnano::rsn_server_socket_count_subnetwork_connections (
-	handle,
-	&endpoint_dto,
-	node.network_params.network.ipv6_subnetwork_prefix_for_limiting);
-
-	return counted_connections >= node.network_params.network.max_peers_per_subnetwork;
+	return rsnano::rsn_server_socket_limit_reached_for_incoming_subnetwork_connections (handle, new_connection->handle);
 }
 
 bool nano::transport::server_socket::limit_reached_for_incoming_ip_connections (std::shared_ptr<nano::transport::socket> const & new_connection)
 {
-	debug_assert (socket_facade->running_in_this_thread ());
-	if (node.flags.disable_max_peers_per_ip ())
-	{
-		// If the limit is disabled, then it is unreachable.
-		return false;
-	}
-
-	auto endpoint_dto{ rsnano::endpoint_to_dto (new_connection->remote_endpoint ()) };
-	auto const counted_connections = rsnano::rsn_server_socket_count_connections_for_ip (handle, &endpoint_dto);
-
-	return counted_connections >= node.network_params.network.max_peers_per_ip;
+	return rsnano::rsn_server_socket_limit_reached_for_incoming_ip_connections (handle, new_connection->handle);
 }
 
 void nano::transport::server_socket::on_connection (std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> callback_a)

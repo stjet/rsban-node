@@ -4,7 +4,14 @@ use std::{
     sync::{Arc, Mutex, Weak},
 };
 
-use crate::utils::{first_ipv6_subnet_address, last_ipv6_subnet_address};
+use crate::{
+    config::NodeFlags,
+    utils::{
+        first_ipv6_subnet_address, into_ipv6_address, is_ipv4_or_v4_mapped_address,
+        last_ipv6_subnet_address,
+    },
+    NetworkParams,
+};
 
 use super::{Socket, SocketExtensions, TcpSocketFacade};
 
@@ -12,15 +19,69 @@ pub struct ServerSocket {
     socket: Arc<Socket>,
     socket_facade: Arc<dyn TcpSocketFacade>,
     connections_per_address: Mutex<ConnectionsPerAddress>,
+    node_flags: NodeFlags,
+    network_params: NetworkParams,
 }
 
 impl ServerSocket {
-    pub fn new(socket_facade: Arc<dyn TcpSocketFacade>, socket: Arc<Socket>) -> Self {
+    pub fn new(
+        socket_facade: Arc<dyn TcpSocketFacade>,
+        socket: Arc<Socket>,
+        node_flags: NodeFlags,
+        network_params: NetworkParams,
+    ) -> Self {
         ServerSocket {
             socket,
             socket_facade,
             connections_per_address: Mutex::new(Default::default()),
+            node_flags,
+            network_params,
         }
+    }
+
+    pub fn limit_reached_for_incoming_ip_connections(&self, new_connection: &Arc<Socket>) -> bool {
+        if self.node_flags.disable_max_peers_per_ip {
+            return false;
+        }
+
+        let ip = into_ipv6_address(new_connection.get_remote().unwrap().ip());
+        let counted_connections = self
+            .connections_per_address
+            .lock()
+            .unwrap()
+            .count_connections_for_ip(&ip);
+
+        counted_connections >= self.network_params.network.max_peers_per_ip
+    }
+
+    pub fn limit_reached_for_incoming_subnetwork_connections(
+        &self,
+        new_connection: &Arc<Socket>,
+    ) -> bool {
+        let endpoint = new_connection
+            .get_remote()
+            .expect("new connection has no remote endpoint set");
+        if self.node_flags.disable_max_peers_per_subnetwork
+            || is_ipv4_or_v4_mapped_address(&endpoint.ip())
+        {
+            // If the limit is disabled, then it is unreachable.
+            // If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6 /64.
+            return false;
+        }
+        let ip_address = into_ipv6_address(endpoint.ip());
+
+        let counted_connections = self
+            .connections_per_address
+            .lock()
+            .unwrap()
+            .count_subnetwork_connections(
+                &ip_address,
+                self.network_params
+                    .network
+                    .ipv6_subnetwork_prefix_for_limiting,
+            );
+
+        counted_connections >= self.network_params.network.max_peers_per_subnetwork
     }
 
     pub fn count_subnetwork_connections(

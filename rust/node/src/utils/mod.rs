@@ -9,7 +9,7 @@ mod timer;
 mod toml;
 
 mod uniquer;
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddrV6};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddrV6};
 
 pub use crate::utils::timer::{NullTimer, Timer, TimerStrategy, TimerWrapper};
 pub use async_runtime::AsyncRuntime;
@@ -134,6 +134,13 @@ pub fn first_ipv6_subnet_address(input: &Ipv6Addr, prefix_bits: u8) -> Ipv6Addr 
     Ipv6Addr::from(octets)
 }
 
+pub fn is_ipv4_or_v4_mapped_address(address: &IpAddr) -> bool {
+    match address {
+        IpAddr::V4(_) => true,
+        IpAddr::V6(ip) => is_ipv4_mapped(ip),
+    }
+}
+
 pub fn last_ipv6_subnet_address(input: &Ipv6Addr, prefix_bits: u8) -> Ipv6Addr {
     debug_assert!(prefix_bits % 8 == 0);
     let index = (prefix_bits / 8) as usize;
@@ -142,11 +149,18 @@ pub fn last_ipv6_subnet_address(input: &Ipv6Addr, prefix_bits: u8) -> Ipv6Addr {
     Ipv6Addr::from(octets)
 }
 
-fn is_ipv4_mapped(input: &Ipv6Addr) -> bool {
+pub fn is_ipv4_mapped(input: &Ipv6Addr) -> bool {
     matches!(
         input.octets(),
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, _, _, _, _]
     )
+}
+
+pub fn into_ipv6_address(input: IpAddr) -> Ipv6Addr {
+    match input {
+        IpAddr::V4(ip) => ip.to_ipv6_mapped(),
+        IpAddr::V6(ip) => ip,
+    }
 }
 
 pub fn reserved_address(endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {

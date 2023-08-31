@@ -1,4 +1,7 @@
-use rsnano_node::transport::{ServerSocket, ServerSocketExtensions};
+use rsnano_node::{
+    transport::{ServerSocket, ServerSocketExtensions},
+    NetworkParams,
+};
 use std::{
     ffi::c_void,
     net::{SocketAddr, SocketAddrV6},
@@ -6,18 +9,23 @@ use std::{
 };
 
 use super::{EndpointDto, FfiTcpSocketFacade, SocketHandle};
-
+use crate::{NetworkParamsDto, NodeFlagsHandle};
 pub struct ServerSocketHandle(Arc<ServerSocket>);
 
 #[no_mangle]
 pub extern "C" fn rsn_server_socket_create(
     socket_facade_ptr: *mut c_void,
     socket: &SocketHandle,
+    flags: &NodeFlagsHandle,
+    network_params: &NetworkParamsDto,
 ) -> *mut ServerSocketHandle {
     let socket_facade = Arc::new(FfiTcpSocketFacade::new(socket_facade_ptr));
+    let network_params = NetworkParams::try_from(network_params).unwrap();
     Box::into_raw(Box::new(ServerSocketHandle(Arc::new(ServerSocket::new(
         socket_facade,
         Arc::clone(&socket.0),
+        flags.0.lock().unwrap().clone(),
+        network_params,
     )))))
 }
 
@@ -72,4 +80,24 @@ pub extern "C" fn rsn_server_socket_insert_connection(
 #[no_mangle]
 pub extern "C" fn rsn_server_socket_evict_dead_connections(handle: &ServerSocketHandle) {
     handle.0.evict_dead_connections();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_server_socket_limit_reached_for_incoming_subnetwork_connections(
+    handle: &ServerSocketHandle,
+    new_conenction: &SocketHandle,
+) -> bool {
+    handle
+        .0
+        .limit_reached_for_incoming_subnetwork_connections(&new_conenction.0)
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_server_socket_limit_reached_for_incoming_ip_connections(
+    handle: &ServerSocketHandle,
+    new_conenction: &SocketHandle,
+) -> bool {
+    handle
+        .0
+        .limit_reached_for_incoming_ip_connections(&new_conenction.0)
 }

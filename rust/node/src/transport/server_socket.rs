@@ -1,6 +1,6 @@
 use std::{
     collections::BTreeMap,
-    net::{IpAddr, Ipv6Addr, SocketAddr},
+    net::{Ipv6Addr, SocketAddr},
     sync::{Arc, Mutex, Weak},
     time::Duration,
 };
@@ -9,7 +9,7 @@ use rsnano_core::utils::Logger;
 
 use crate::{
     config::{NodeConfig, NodeFlags},
-    stats::{SocketStats, Stats},
+    stats::{DetailType, Direction, SocketStats, StatType, Stats},
     utils::{
         first_ipv6_subnet_address, into_ipv6_address, is_ipv4_or_v4_mapped_address,
         last_ipv6_subnet_address, ErrorCode, ThreadPool,
@@ -34,6 +34,7 @@ pub struct ServerSocket {
     node_config: NodeConfig,
     stats: Arc<Stats>,
     socket_observer: Arc<dyn SocketObserver>,
+    max_inbound_connections: usize,
 }
 
 impl ServerSocket {
@@ -48,6 +49,7 @@ impl ServerSocket {
         node_config: NodeConfig,
         stats: Arc<Stats>,
         socket_observer: Arc<dyn SocketObserver>,
+        max_inbound_connections: usize,
     ) -> Self {
         ServerSocket {
             socket,
@@ -61,6 +63,7 @@ impl ServerSocket {
             node_config,
             stats,
             socket_observer,
+            max_inbound_connections,
         }
     }
 
@@ -210,9 +213,17 @@ impl ConnectionsPerAddress {
 }
 
 pub trait ServerSocketExtensions {
-    fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode)>);
+    fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) + Send + Sync>);
     /// Stop accepting new connections
     fn close(&self);
+
+    /// If we are unable to accept a socket, for any reason, we wait just a little (1ms) before rescheduling the next connection accept.
+    /// The intention is to throttle back the connection requests and break up any busy loops that could possibly form and
+    /// give the rest of the system a chance to recover.
+    fn on_connection_requeue_delayed(
+        &self,
+        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) + Send + Sync>,
+    );
 }
 
 impl ServerSocketExtensions for Arc<ServerSocket> {
@@ -229,7 +240,7 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
         }))
     }
 
-    fn on_connection(&self, _callback: Box<dyn Fn(Arc<Socket>, ErrorCode)>) {
+    fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) + Send + Sync>) {
         let this_l = Arc::clone(self);
         self.socket_facade.post(Box::new(move || {
             if !this_l.socket_facade.is_acceptor_open() {
@@ -279,14 +290,13 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
                     let this_l = this_clone;
                     new_connection.set_remote(remote_endpoint);
                     this_l.evict_dead_connections();
-                    //
-                    //			if (rsnano::rsn_server_socket_count_connections (this_l->handle) >= this_l->max_inbound_connections)
-                    //			{
-                    //				this_l->logger.try_log ("Network: max_inbound_connections reached, unable to open new connection");
-                    //				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_accept_failure, nano::stat::dir::in);
-                    //				this_l->on_connection_requeue_delayed (std::move (cbk));
-                    //				return;
-                    //			}
+
+                    if this_l.connections_per_address.lock().unwrap().count_connections() >= this_l.max_inbound_connections{
+                    				this_l.logger.try_log ("Network: max_inbound_connections reached, unable to open new connection");
+                    				this_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
+                    				this_l.on_connection_requeue_delayed (callback);
+                    				return;
+                    }
                     //
                     //			if (this_l->limit_reached_for_incoming_ip_connections (new_connection))
                     //			{
@@ -356,6 +366,19 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
                 }),
             );
         }))
+    }
+
+    fn on_connection_requeue_delayed(
+        &self,
+        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) + Send + Sync>,
+    ) {
+        let this_l = Arc::clone(self);
+        self.workers.add_delayed_task(
+            Duration::from_millis(1),
+            Box::new(move || {
+                this_l.on_connection(callback);
+            }),
+        );
     }
 }
 

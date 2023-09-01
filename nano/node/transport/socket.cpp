@@ -445,7 +445,8 @@ nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio:
 	new std::shared_ptr<nano::transport::tcp_socket_facade_factory> (std::make_shared<nano::transport::tcp_socket_facade_factory> (node_a.io_ctx)),
 	new std::weak_ptr<nano::node_observers> (node_a.observers),
 	node_a.stats->handle,
-	&node_config_dto);
+	&node_config_dto,
+	max_connections_a);
 }
 
 nano::transport::server_socket::~server_socket ()

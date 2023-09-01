@@ -33,6 +33,7 @@ pub unsafe extern "C" fn rsn_server_socket_create(
     callback_handler: *mut c_void,
     stats: &StatHandle,
     node_config: &NodeConfigDto,
+    max_inbound_connections: usize,
 ) -> *mut ServerSocketHandle {
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let socket_facade = Arc::new(FfiTcpSocketFacade::new(socket_facade_ptr));
@@ -52,6 +53,7 @@ pub unsafe extern "C" fn rsn_server_socket_create(
         node_config,
         stats,
         ffi_observer,
+        max_inbound_connections,
     )))))
 }
 

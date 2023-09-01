@@ -577,7 +577,51 @@ void tcp_socket_async_write (void * handle_a, const uint8_t * buffer_a, std::siz
 	}
 	catch (std::exception e)
 	{
-		std::cerr << "Exception whie writing to socket: " << e.what () << std::endl;
+		std::cerr << "Exception while writing to socket: " << e.what () << std::endl;
+	}
+}
+
+class async_accept_callback_wrapper
+{
+public:
+	async_accept_callback_wrapper (rsnano::AsyncAcceptCallbackHandle * callback_a) :
+		callback_m{ callback_a }
+	{
+	}
+
+	async_accept_callback_wrapper (async_write_callback_wrapper const &) = delete;
+
+	~async_accept_callback_wrapper ()
+	{
+		rsnano::rsn_async_accept_callback_destroy (callback_m);
+	}
+
+	void execute (const boost::system::error_code & ec, const boost::asio::ip::tcp::endpoint & remote_endpoint)
+	{
+		auto ec_dto{ rsnano::error_code_to_dto (ec) };
+		auto endpoint_dto{ rsnano::endpoint_to_dto (remote_endpoint) };
+		rsnano::rsn_async_accept_callback_execute (callback_m, &ec_dto, &endpoint_dto);
+	}
+
+private:
+	rsnano::AsyncAcceptCallbackHandle * callback_m;
+};
+
+void tcp_socket_async_accept (void * handle_a, void * client_socket_handle, rsnano::AsyncAcceptCallbackHandle * callback_handle)
+{
+	try
+	{
+		auto server_socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
+		auto client_socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (client_socket_handle) };
+		auto remote_endpoint = std::make_shared<boost::asio::ip::tcp::endpoint> ();
+		auto callback_wrapper{ std::make_shared<async_accept_callback_wrapper> (callback_handle) };
+		(*server_socket)->async_accept ((*client_socket)->tcp_socket, *remote_endpoint, [callback_wrapper, remote_endpoint] (const boost::system::error_code & ec) {
+			callback_wrapper->execute (ec, *remote_endpoint);
+		});
+	}
+	catch (std::exception e)
+	{
+		std::cerr << "Exception while accepting connection: " << e.what () << std::endl;
 	}
 }
 
@@ -949,6 +993,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_delete_tcp_socket_callback (tcp_socket_delete_callback);
 	rsnano::rsn_callback_socket_close_acceptor_callback (tcp_socket_close_acceptor);
 	rsnano::rsn_callback_tcp_socket_is_acceptor_open (tcp_socket_is_acceptor_open);
+	rsnano::rsn_callback_tcp_socket_async_accept (tcp_socket_async_accept);
 
 	rsnano::rsn_callback_create_tcp_socket (tcp_socket_facade_factory_create_socket);
 	rsnano::rsn_callback_destroy_tcp_socket_facade_factory (tcp_socket_facade_factory_destroy);

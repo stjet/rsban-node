@@ -47,6 +47,11 @@ pub trait TcpSocketFacade: Send + Sync {
         callback: Box<dyn FnOnce(ErrorCode, usize)>,
     );
     fn async_write(&self, buffer: &Arc<Vec<u8>>, callback: Box<dyn FnOnce(ErrorCode, usize)>);
+    fn async_accept(
+        &self,
+        client_socket: &Arc<dyn TcpSocketFacade>,
+        callback: Box<dyn FnOnce(SocketAddr, ErrorCode)>,
+    );
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode>;
     fn post(&self, f: Box<dyn FnOnce()>);
     fn dispatch(&self, f: Box<dyn FnOnce()>);
@@ -108,6 +113,13 @@ impl TcpSocketFacade for NullTcpSocketFacade {
 
     fn is_acceptor_open(&self) -> bool {
         false
+    }
+
+    fn async_accept(
+        &self,
+        _client_socket: &Arc<dyn TcpSocketFacade>,
+        _callback: Box<dyn FnOnce(SocketAddr, ErrorCode)>,
+    ) {
     }
 }
 

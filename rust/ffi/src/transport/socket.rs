@@ -488,6 +488,18 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_async_write(f: AsyncWriteCallba
     ASYNC_WRITE_CALLBACK = Some(f);
 }
 
+pub struct AsyncAcceptCallbackHandle(Option<Box<dyn FnOnce(SocketAddr, ErrorCode)>>);
+
+type AsyncAcceptCallback =
+    unsafe extern "C" fn(*mut c_void, *mut c_void, *mut AsyncAcceptCallbackHandle);
+
+static mut ASYNC_ACCEPT_CALLBACK: Option<AsyncAcceptCallback> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_tcp_socket_async_accept(f: AsyncAcceptCallback) {
+    ASYNC_ACCEPT_CALLBACK = Some(f);
+}
+
 static mut TCP_FACADE_DESTROY_CALLBACK: Option<VoidPointerCallback> = None;
 
 #[no_mangle]
@@ -565,6 +577,26 @@ pub unsafe extern "C" fn rsn_async_connect_callback_execute(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_async_connect_callback_destroy(
     callback: *mut AsyncConnectCallbackHandle,
+) {
+    drop(Box::from_raw(callback))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_async_accept_callback_execute(
+    callback: &mut AsyncAcceptCallbackHandle,
+    ec: &ErrorCodeDto,
+    remote_endpoint: &EndpointDto,
+) {
+    let error_code = ErrorCode::from(&*ec);
+    let remote_endpoint = SocketAddr::from(remote_endpoint);
+    if let Some(cb) = (*callback).0.take() {
+        cb(remote_endpoint, error_code);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_async_accept_callback_destroy(
+    callback: *mut AsyncAcceptCallbackHandle,
 ) {
     drop(Box::from_raw(callback))
 }
@@ -799,6 +831,25 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
 
     fn is_acceptor_open(&self) -> bool {
         unsafe { IS_ACCEPTOR_OPEN.expect("IS_ACCEPTOR_OPEN missing")(self.handle) }
+    }
+
+    fn async_accept(
+        &self,
+        client_socket: &Arc<dyn TcpSocketFacade>,
+        callback: Box<dyn FnOnce(SocketAddr, ErrorCode)>,
+    ) {
+        let callback_handle = Box::into_raw(Box::new(AsyncAcceptCallbackHandle(Some(callback))));
+        unsafe {
+            ASYNC_ACCEPT_CALLBACK.expect("ASYNC_ACCEPT_CALLBACK missing")(
+                self.handle,
+                client_socket
+                    .as_any()
+                    .downcast_ref::<FfiTcpSocketFacade>()
+                    .unwrap()
+                    .handle,
+                callback_handle,
+            )
+        };
     }
 }
 

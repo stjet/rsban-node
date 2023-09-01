@@ -258,18 +258,8 @@ public:
 
 private:
 	std::shared_ptr<nano::transport::tcp_socket_facade> socket_facade;
-	nano::logger_mt & logger;
-	nano::stats & stats;
 	nano::transport::socket socket;
-	nano::thread_pool & workers;
-	nano::node & node;
 	boost::asio::ip::tcp::endpoint local;
-	std::size_t max_inbound_connections;
-	void evict_dead_connections ();
-	void on_connection_requeue_delayed (std::function<bool (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const &)>);
-	/** Checks whether the maximum number of connections per IP was reached. If so, it returns true. */
-	bool limit_reached_for_incoming_ip_connections (std::shared_ptr<nano::transport::socket> const & new_connection);
-	bool limit_reached_for_incoming_subnetwork_connections (std::shared_ptr<nano::transport::socket> const & new_connection);
 	rsnano::ServerSocketHandle * handle;
 };
 

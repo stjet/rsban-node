@@ -127,10 +127,18 @@ pub fn map_address_to_subnetwork(input: &Ipv6Addr) -> Ipv6Addr {
 }
 
 pub fn first_ipv6_subnet_address(input: &Ipv6Addr, prefix_bits: u8) -> Ipv6Addr {
-    debug_assert!(prefix_bits % 8 == 0);
+    fill_remaining_bits(input, prefix_bits, 0)
+}
+
+pub fn last_ipv6_subnet_address(input: &Ipv6Addr, prefix_bits: u8) -> Ipv6Addr {
+    fill_remaining_bits(input, prefix_bits, 0xFF)
+}
+
+pub fn fill_remaining_bits(input: &Ipv6Addr, prefix_bits: u8, filler: u8) -> Ipv6Addr {
+    debug_assert_eq!(prefix_bits % 8, 0);
     let index = (prefix_bits / 8) as usize;
     let mut octets = input.octets();
-    octets[index..].fill(0);
+    octets[index..].fill(filler);
     Ipv6Addr::from(octets)
 }
 
@@ -139,14 +147,6 @@ pub fn is_ipv4_or_v4_mapped_address(address: &IpAddr) -> bool {
         IpAddr::V4(_) => true,
         IpAddr::V6(ip) => is_ipv4_mapped(ip),
     }
-}
-
-pub fn last_ipv6_subnet_address(input: &Ipv6Addr, prefix_bits: u8) -> Ipv6Addr {
-    debug_assert!(prefix_bits % 8 == 0);
-    let index = (prefix_bits / 8) as usize;
-    let mut octets = input.octets();
-    octets[index..].fill(0xFF);
-    Ipv6Addr::from(octets)
 }
 
 pub fn is_ipv4_mapped(input: &Ipv6Addr) -> bool {

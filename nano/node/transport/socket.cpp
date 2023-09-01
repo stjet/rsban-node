@@ -420,18 +420,13 @@ bool nano::transport::socket::full (nano::transport::traffic_type traffic_type) 
 
 nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio::ip::tcp::endpoint local_a, std::size_t max_connections_a) :
 	socket_facade{ std::make_shared<nano::transport::tcp_socket_facade> (node_a.io_ctx) },
-	stats{ *node_a.stats },
-	logger{ *node_a.logger },
-	workers{ *node_a.workers },
-	node{ node_a },
 	socket{ node_a.async_rt, nano::transport::socket::endpoint_type_t::server, *node_a.stats, node_a.logger, node_a.workers,
 		std::chrono::seconds::max (),
 		node_a.network_params.network.silent_connection_tolerance_time,
 		node_a.network_params.network.idle_timeout,
 		node_a.config->logging.network_timeout_logging (),
 		node_a.observers },
-	local{ std::move (local_a) },
-	max_inbound_connections{ max_connections_a }
+	local{ std::move (local_a) }
 {
 	auto network_params_dto{ node_a.network_params.to_dto () };
 	auto node_config_dto{ node_a.config->to_dto () };
@@ -469,138 +464,28 @@ boost::asio::ip::network_v6 nano::transport::socket_functions::get_ipv6_subnet_a
 	return boost::asio::ip::make_network_v6 (ip_address, static_cast<unsigned short> (network_prefix));
 }
 
-bool nano::transport::server_socket::limit_reached_for_incoming_subnetwork_connections (std::shared_ptr<nano::transport::socket> const & new_connection)
+namespace
 {
-	return rsnano::rsn_server_socket_limit_reached_for_incoming_subnetwork_connections (handle, new_connection->handle);
+bool on_connection_callback (void * context, rsnano::SocketHandle * socket_handle, const rsnano::ErrorCodeDto * ec_dto)
+{
+	auto callback = static_cast<std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> *> (context);
+	auto socket = std::make_shared<nano::transport::socket> (socket_handle);
+	auto ec = rsnano::dto_to_error_code (*ec_dto);
+	return (*callback) (socket, ec);
 }
 
-bool nano::transport::server_socket::limit_reached_for_incoming_ip_connections (std::shared_ptr<nano::transport::socket> const & new_connection)
+void delete_on_connection_context (void * handle_a)
 {
-	return rsnano::rsn_server_socket_limit_reached_for_incoming_ip_connections (handle, new_connection->handle);
+	auto callback = static_cast<std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> *> (handle_a);
+	delete callback;
+}
 }
 
 void nano::transport::server_socket::on_connection (std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> callback_a)
 {
-	auto this_l (std::static_pointer_cast<nano::transport::server_socket> (shared_from_this ()));
-
-	socket_facade->post ([this_l, callback = std::move (callback_a)] () mutable {
-		if (!this_l->socket_facade->is_acceptor_open ())
-		{
-			this_l->logger.always_log ("Network: Acceptor is not open");
-			return;
-		}
-
-		// Prepare new connection
-		auto new_connection = std::make_shared<nano::transport::socket> (this_l->node.async_rt, nano::transport::socket::endpoint_type_t::server,
-		*this_l->node.stats, this_l->node.logger, this_l->node.workers, this_l->node.config->tcp_io_timeout,
-		this_l->node.network_params.network.silent_connection_tolerance_time,
-		this_l->node.network_params.network.idle_timeout,
-		this_l->node.config->logging.network_timeout_logging (),
-		this_l->node.observers);
-
-		auto socket_facade_ptr = static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (rsnano::rsn_socket_facade (new_connection->handle));
-		std::shared_ptr<nano::transport::tcp_socket_facade> client_socket_facade (*socket_facade_ptr);
-		this_l->socket_facade->async_accept (
-		client_socket_facade->tcp_socket,
-		new_connection->get_remote (),
-		[this_l, new_connection, cbk = std::move (callback)] (boost::system::error_code const & ec_a) mutable {
-			auto endpoint_dto{ rsnano::endpoint_to_dto (new_connection->get_remote ()) };
-			rsnano::rsn_socket_set_remote_endpoint (new_connection->handle, &endpoint_dto);
-			this_l->evict_dead_connections ();
-
-			if (rsnano::rsn_server_socket_count_connections (this_l->handle) >= this_l->max_inbound_connections)
-			{
-				this_l->logger.try_log ("Network: max_inbound_connections reached, unable to open new connection");
-				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_accept_failure, nano::stat::dir::in);
-				this_l->on_connection_requeue_delayed (std::move (cbk));
-				return;
-			}
-
-			if (this_l->limit_reached_for_incoming_ip_connections (new_connection))
-			{
-				auto const remote_ip_address = new_connection->remote_endpoint ().address ();
-				auto const log_message = boost::str (
-				boost::format ("Network: max connections per IP (max_peers_per_ip) was reached for %1%, unable to open new connection")
-				% remote_ip_address.to_string ());
-				this_l->logger.try_log (log_message);
-				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_ip, nano::stat::dir::in);
-				this_l->on_connection_requeue_delayed (std::move (cbk));
-				return;
-			}
-
-			if (this_l->limit_reached_for_incoming_subnetwork_connections (new_connection))
-			{
-				auto const remote_ip_address = new_connection->remote_endpoint ().address ();
-				debug_assert (remote_ip_address.is_v6 ());
-				auto const remote_subnet = socket_functions::get_ipv6_subnet_address (remote_ip_address.to_v6 (), this_l->node.network_params.network.max_peers_per_subnetwork);
-				auto const log_message = boost::str (
-				boost::format ("Network: max connections per subnetwork (max_peers_per_subnetwork) was reached for subnetwork %1% (remote IP: %2%), unable to open new connection")
-				% remote_subnet.canonical ().to_string ()
-				% remote_ip_address.to_string ());
-				this_l->logger.try_log (log_message);
-				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_subnetwork, nano::stat::dir::in);
-				this_l->on_connection_requeue_delayed (std::move (cbk));
-				return;
-			}
-
-			if (!ec_a)
-			{
-				// Make sure the new connection doesn't idle. Note that in most cases, the callback is going to start
-				// an IO operation immediately, which will start a timer.
-				new_connection->start ();
-				new_connection->set_timeout (this_l->node.network_params.network.idle_timeout);
-				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
-				rsnano::rsn_server_socket_insert_connection (this_l->handle, new_connection->handle);
-				this_l->node.observers->socket_accepted.notify (*new_connection);
-				if (cbk (new_connection, ec_a))
-				{
-					this_l->on_connection (std::move (cbk));
-					return;
-				}
-				this_l->logger.always_log ("Network: Stopping to accept connections");
-				return;
-			}
-
-			// accept error
-			this_l->logger.try_log ("Network: Unable to accept connection: ", ec_a.message ());
-			this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_accept_failure, nano::stat::dir::in);
-
-			if (is_temporary_error (ec_a))
-			{
-				// if it is a temporary error, just retry it
-				this_l->on_connection_requeue_delayed (std::move (cbk));
-				return;
-			}
-
-			// if it is not a temporary error, check how the listener wants to handle this error
-			if (cbk (new_connection, ec_a))
-			{
-				this_l->on_connection_requeue_delayed (std::move (cbk));
-				return;
-			}
-
-			// No requeue if we reach here, no incoming socket connections will be handled
-			this_l->logger.always_log ("Network: Stopping to accept connections");
-		});
-	});
-}
-
-// If we are unable to accept a socket, for any reason, we wait just a little (1ms) before rescheduling the next connection accept.
-// The intention is to throttle back the connection requests and break up any busy loops that could possibly form and
-// give the rest of the system a chance to recover.
-void nano::transport::server_socket::on_connection_requeue_delayed (std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> callback_a)
-{
-	auto this_l (std::static_pointer_cast<nano::transport::server_socket> (shared_from_this ()));
-	workers.add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (1), [this_l, callback = std::move (callback_a)] () mutable {
-		this_l->on_connection (std::move (callback));
-	});
-}
-
-// This must be called from a strand
-void nano::transport::server_socket::evict_dead_connections ()
-{
-	debug_assert (socket_facade->running_in_this_thread ());
-	rsnano::rsn_server_socket_evict_dead_connections (handle);
+	auto context = new std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> (callback_a);
+	rsnano::rsn_server_socket_on_connection (handle, on_connection_callback, context, delete_on_connection_context);
+	return;
 }
 
 std::shared_ptr<nano::transport::socket> nano::transport::create_client_socket (nano::node & node_a, std::size_t write_queue_size)

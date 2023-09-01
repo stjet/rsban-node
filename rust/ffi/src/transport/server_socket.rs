@@ -130,7 +130,8 @@ pub extern "C" fn rsn_server_socket_limit_reached_for_incoming_ip_connections(
         .limit_reached_for_incoming_ip_connections(&new_conenction.0)
 }
 
-pub type OnConnectionCallback = extern "C" fn(*mut c_void, *mut SocketHandle, *const ErrorCodeDto);
+pub type OnConnectionCallback =
+    extern "C" fn(*mut c_void, *mut SocketHandle, *const ErrorCodeDto) -> bool;
 
 #[no_mangle]
 pub extern "C" fn rsn_server_socket_on_connection(
@@ -142,7 +143,7 @@ pub extern "C" fn rsn_server_socket_on_connection(
     let context = ContextWrapper::new(callback_context, delete_context);
     let callback_wrapper = Box::new(move |socket: Arc<Socket>, ec: ErrorCode| {
         let ec_dto = ErrorCodeDto::from(&ec);
-        callback(context.get_context(), SocketHandle::new(socket), &ec_dto);
+        callback(context.get_context(), SocketHandle::new(socket), &ec_dto)
     });
     handle.0.on_connection(callback_wrapper);
 }

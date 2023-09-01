@@ -1,6 +1,6 @@
 use std::{
     collections::BTreeMap,
-    net::{Ipv6Addr, SocketAddr},
+    net::{IpAddr, Ipv6Addr, SocketAddr},
     sync::{Arc, Mutex, Weak},
     time::Duration,
 };
@@ -213,7 +213,7 @@ impl ConnectionsPerAddress {
 }
 
 pub trait ServerSocketExtensions {
-    fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) + Send + Sync>);
+    fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>);
     /// Stop accepting new connections
     fn close(&self);
 
@@ -222,7 +222,7 @@ pub trait ServerSocketExtensions {
     /// give the rest of the system a chance to recover.
     fn on_connection_requeue_delayed(
         &self,
-        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) + Send + Sync>,
+        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
     );
 }
 
@@ -240,7 +240,7 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
         }))
     }
 
-    fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) + Send + Sync>) {
+    fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>) {
         let this_l = Arc::clone(self);
         self.socket_facade.post(Box::new(move || {
             if !this_l.socket_facade.is_acceptor_open() {
@@ -286,83 +286,75 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
             let this_clone = Arc::clone(&this_l);
             this_l.socket_facade.async_accept(
                 &client_socket,
-                Box::new(move |remote_endpoint, _ec| {
+                Box::new(move |remote_endpoint, ec| {
                     let this_l = this_clone;
                     new_connection.set_remote(remote_endpoint);
                     this_l.evict_dead_connections();
 
-                    if this_l.connections_per_address.lock().unwrap().count_connections() >= this_l.max_inbound_connections{
-                    				this_l.logger.try_log ("Network: max_inbound_connections reached, unable to open new connection");
-                    				this_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
+                    if this_l.connections_per_address.lock().unwrap().count_connections() >= this_l.max_inbound_connections {
+                        this_l.logger.try_log ("Network: max_inbound_connections reached, unable to open new connection");
+                        this_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
+                        this_l.on_connection_requeue_delayed (callback);
+                        return;
+                    }
+
+                    if this_l.limit_reached_for_incoming_ip_connections (&new_connection) {
+                        let remote_ip_address = new_connection.get_remote().unwrap().ip();
+                        let log_message = format!("Network: max connections per IP (max_peers_per_ip) was reached for {}, unable to open new connection", remote_ip_address);
+                        this_l.logger.try_log(&log_message);
+                        this_l.stats.inc (StatType::Tcp, DetailType::TcpMaxPerIp, Direction::In);
+                        this_l.on_connection_requeue_delayed (callback);
+                        return;
+                    }
+
+                    if this_l.limit_reached_for_incoming_subnetwork_connections (&new_connection) {
+                        let remote_ip_address = new_connection.get_remote().unwrap().ip();
+                        let IpAddr::V6(remote_ip_address) = remote_ip_address else { panic!("not a v6 IP address")};
+                        let remote_subnet = first_ipv6_subnet_address(&remote_ip_address, this_l.network_params.network.max_peers_per_subnetwork as u8);
+                        let log_message = format!("Network: max connections per subnetwork (max_peers_per_subnetwork) was reached for subnetwork {} (remote IP: {}), unable to open new connection",
+                            remote_subnet, remote_ip_address);
+                        this_l.logger.try_log(&log_message);
+                        this_l.stats.inc(StatType::Tcp, DetailType::TcpMaxPerSubnetwork, Direction::In);
+                        this_l.on_connection_requeue_delayed (callback);
+                        return;
+                    }
+                   			if ec.is_ok() {
+                    				// Make sure the new connection doesn't idle. Note that in most cases, the callback is going to start
+                    				// an IO operation immediately, which will start a timer.
+                    				new_connection.start ();
+                    				new_connection.set_timeout (Duration::from_secs(this_l.network_params.network.idle_timeout_s as u64));
+                    				this_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptSuccess, Direction::In);
+                                    this_l.connections_per_address.lock().unwrap().insert(&new_connection);
+                    				this_l.socket_observer.socket_accepted(Arc::clone(&new_connection));
+                    				if callback (new_connection, ec)
+                    				{
+                    					this_l.on_connection (callback);
+                    					return;
+                    				}
+                    				this_l.logger.always_log ("Network: Stopping to accept connections");
+                    				return;
+                   			}
+
+                    			// accept error
+                    			this_l.logger.try_log (&format!("Network: Unable to accept connection: {:?}", ec));
+                    			this_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
+
+                    			if is_temporary_error (ec)
+                    			{
+                    				// if it is a temporary error, just retry it
                     				this_l.on_connection_requeue_delayed (callback);
                     				return;
-                    }
-                    //
-                    //			if (this_l->limit_reached_for_incoming_ip_connections (new_connection))
-                    //			{
-                    //				auto const remote_ip_address = new_connection->remote_endpoint ().address ();
-                    //				auto const log_message = boost::str (
-                    //				boost::format ("Network: max connections per IP (max_peers_per_ip) was reached for %1%, unable to open new connection")
-                    //				% remote_ip_address.to_string ());
-                    //				this_l->logger.try_log (log_message);
-                    //				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_ip, nano::stat::dir::in);
-                    //				this_l->on_connection_requeue_delayed (std::move (cbk));
-                    //				return;
-                    //			}
-                    //
-                    //			if (this_l->limit_reached_for_incoming_subnetwork_connections (new_connection))
-                    //			{
-                    //				auto const remote_ip_address = new_connection->remote_endpoint ().address ();
-                    //				debug_assert (remote_ip_address.is_v6 ());
-                    //				auto const remote_subnet = socket_functions::get_ipv6_subnet_address (remote_ip_address.to_v6 (), this_l->node.network_params.network.max_peers_per_subnetwork);
-                    //				auto const log_message = boost::str (
-                    //				boost::format ("Network: max connections per subnetwork (max_peers_per_subnetwork) was reached for subnetwork %1% (remote IP: %2%), unable to open new connection")
-                    //				% remote_subnet.canonical ().to_string ()
-                    //				% remote_ip_address.to_string ());
-                    //				this_l->logger.try_log (log_message);
-                    //				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_subnetwork, nano::stat::dir::in);
-                    //				this_l->on_connection_requeue_delayed (std::move (cbk));
-                    //				return;
-                    //			}
-                    //
-                    //			if (!ec_a)
-                    //			{
-                    //				// Make sure the new connection doesn't idle. Note that in most cases, the callback is going to start
-                    //				// an IO operation immediately, which will start a timer.
-                    //				new_connection->start ();
-                    //				new_connection->set_timeout (this_l->node.network_params.network.idle_timeout);
-                    //				this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
-                    //				rsnano::rsn_server_socket_insert_connection (this_l->handle, new_connection->handle);
-                    //				this_l->node.observers->socket_accepted.notify (*new_connection);
-                    //				if (cbk (new_connection, ec_a))
-                    //				{
-                    //					this_l->on_connection (std::move (cbk));
-                    //					return;
-                    //				}
-                    //				this_l->logger.always_log ("Network: Stopping to accept connections");
-                    //				return;
-                    //			}
-                    //
-                    //			// accept error
-                    //			this_l->logger.try_log ("Network: Unable to accept connection: ", ec_a.message ());
-                    //			this_l->stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_accept_failure, nano::stat::dir::in);
-                    //
-                    //			if (is_temporary_error (ec_a))
-                    //			{
-                    //				// if it is a temporary error, just retry it
-                    //				this_l->on_connection_requeue_delayed (std::move (cbk));
-                    //				return;
-                    //			}
-                    //
-                    //			// if it is not a temporary error, check how the listener wants to handle this error
-                    //			if (cbk (new_connection, ec_a))
-                    //			{
-                    //				this_l->on_connection_requeue_delayed (std::move (cbk));
-                    //				return;
-                    //			}
-                    //
-                    //			// No requeue if we reach here, no incoming socket connections will be handled
-                    //			this_l->logger.always_log ("Network: Stopping to accept connections");
+                    			}
+
+                    			// if it is not a temporary error, check how the listener wants to handle this error
+                    			if callback(new_connection, ec)
+                    			{
+                    				this_l.on_connection_requeue_delayed (callback);
+                    				return;
+                    			}
+
+                    			// No requeue if we reach here, no incoming socket connections will be handled
+                    			this_l.logger.always_log ("Network: Stopping to accept connections");
                 }),
             );
         }))
@@ -370,7 +362,7 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
 
     fn on_connection_requeue_delayed(
         &self,
-        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) + Send + Sync>,
+        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
     ) {
         let this_l = Arc::clone(self);
         self.workers.add_delayed_task(
@@ -380,6 +372,11 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
             }),
         );
     }
+}
+
+fn is_temporary_error(ec: ErrorCode) -> bool {
+    return ec.val == 11 // would block
+                        || ec.val ==  4; // interrupted system call
 }
 
 #[cfg(test)]

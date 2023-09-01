@@ -515,6 +515,7 @@ static mut SOCKET_IS_OPEN_CALLBACK: Option<SocketIsOpenCallback> = None;
 
 type SocketConnectedCallback = unsafe extern "C" fn(*mut c_void, *mut SocketHandle);
 static mut SOCKET_CONNECTED_CALLBACK: Option<SocketConnectedCallback> = None;
+static mut SOCKET_ACCEPTED_CALLBACK: Option<SocketConnectedCallback> = None;
 static mut DELETE_TCP_SOCKET_CALLBACK: Option<VoidPointerCallback> = None;
 
 pub type CreateTcpSocketCallback = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
@@ -551,6 +552,11 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_is_open(f: SocketIsOpenCallback
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_tcp_socket_connected(f: SocketConnectedCallback) {
     SOCKET_CONNECTED_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_tcp_socket_accepted(f: SocketConnectedCallback) {
+    SOCKET_ACCEPTED_CALLBACK = Some(f);
 }
 
 #[no_mangle]
@@ -947,6 +953,15 @@ impl SocketObserver for SocketFfiObserver {
     fn socket_connected(&self, socket: Arc<Socket>) {
         unsafe {
             SOCKET_CONNECTED_CALLBACK.expect("SOCKET_CONNECTED_CALLBACK missing")(
+                self.handle,
+                SocketHandle::new(socket),
+            )
+        }
+    }
+
+    fn socket_accepted(&self, socket: Arc<Socket>) {
+        unsafe {
+            SOCKET_ACCEPTED_CALLBACK.expect("SOCKET_ACCEPTED_CALLBACK missing")(
                 self.handle,
                 SocketHandle::new(socket),
             )

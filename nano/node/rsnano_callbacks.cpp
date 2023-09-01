@@ -680,6 +680,17 @@ bool tcp_socket_is_open (void * handle_a)
 	return (*socket)->tcp_socket.is_open ();
 }
 
+void tcp_socket_accepted (void * handle_a, rsnano::SocketHandle * socket_a)
+{
+	auto callback_weak{ static_cast<std::weak_ptr<nano::node_observers> *> (handle_a) };
+	auto callback = callback_weak->lock ();
+	if (callback)
+	{
+		auto socket{ std::make_shared<nano::transport::socket> (socket_a) };
+		callback->socket_accepted.notify (*socket);
+	}
+}
+
 void tcp_socket_connected (void * handle_a, rsnano::SocketHandle * socket_a)
 {
 	auto callback_weak{ static_cast<std::weak_ptr<nano::node_observers> *> (handle_a) };
@@ -990,6 +1001,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_tcp_socket_local_endpoint (tcp_socket_local_endpoint);
 	rsnano::rsn_callback_tcp_socket_is_open (tcp_socket_is_open);
 	rsnano::rsn_callback_tcp_socket_connected (tcp_socket_connected);
+	rsnano::rsn_callback_tcp_socket_accepted (tcp_socket_accepted);
 	rsnano::rsn_callback_delete_tcp_socket_callback (tcp_socket_delete_callback);
 	rsnano::rsn_callback_socket_close_acceptor_callback (tcp_socket_close_acceptor);
 	rsnano::rsn_callback_tcp_socket_is_acceptor_open (tcp_socket_is_acceptor_open);

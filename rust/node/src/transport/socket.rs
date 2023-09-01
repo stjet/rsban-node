@@ -149,16 +149,17 @@ impl SocketType {
 }
 
 pub trait SocketObserver: Send + Sync {
-    fn socket_connected(&self, _socket: Arc<Socket>) {}
-    fn close_socket_failed(&self, _ec: ErrorCode) {}
-    fn disconnect_due_to_timeout(&self, _endpoint: SocketAddr) {}
+    fn socket_connected(&self, socket: Arc<Socket>) {}
+    fn socket_accepted(&self, socket: Arc<Socket>) {}
+    fn close_socket_failed(&self, ec: ErrorCode) {}
+    fn disconnect_due_to_timeout(&self, endpoint: SocketAddr) {}
     fn connect_error(&self) {}
     fn read_error(&self) {}
-    fn read_successful(&self, _len: usize) {}
+    fn read_successful(&self, len: usize) {}
     fn write_error(&self) {}
-    fn write_successful(&self, _len: usize) {}
+    fn write_successful(&self, len: usize) {}
     fn silent_connection_dropped(&self) {}
-    fn inactive_connection_dropped(&self, _endpoint_type: EndpointType) {}
+    fn inactive_connection_dropped(&self, endpoint_type: EndpointType) {}
 }
 
 #[derive(Default)]
@@ -240,6 +241,12 @@ impl SocketObserver for CompositeSocketObserver {
     fn inactive_connection_dropped(&self, endpoint_type: EndpointType) {
         for child in &self.children {
             child.inactive_connection_dropped(endpoint_type);
+        }
+    }
+
+    fn socket_accepted(&self, socket: Arc<Socket>) {
+        for child in &self.children {
+            child.socket_accepted(Arc::clone(&socket));
         }
     }
 }

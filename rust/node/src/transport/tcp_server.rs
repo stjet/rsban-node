@@ -134,7 +134,7 @@ impl TcpServer {
             disable_bootstrap_bulk_pull_server: false,
             disable_tcp_realtime: false,
             handshake_query_received: AtomicBool::new(false),
-            message_visitor_factory: message_visitor_factory,
+            message_visitor_factory,
             message_deserializer: Arc::new(MessageDeserializer::new(
                 network_constants,
                 publish_filter,

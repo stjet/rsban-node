@@ -6,6 +6,7 @@ use std::{
     net::{Ipv6Addr, SocketAddrV6},
 };
 
+pub use async_runtime::AsyncRuntimeHandle;
 use rsnano_node::utils::{
     ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address,
 };

@@ -19,7 +19,7 @@ const MAX_MESSAGE_SIZE: usize = 1024 * 65;
 const HEADER_SIZE: usize = 8;
 
 pub type ReadQuery =
-    Box<dyn Fn(Arc<Mutex<Vec<u8>>>, usize, Box<dyn FnOnce(ErrorCode, usize)>) + Send + Sync>;
+    Box<dyn Fn(Arc<Mutex<Vec<u8>>>, usize, Box<dyn FnOnce(ErrorCode, usize) + Send>) + Send + Sync>;
 
 pub struct MessageDeserializer {
     network_constants: NetworkConstants,
@@ -310,7 +310,7 @@ impl MessageDeserializer {
     }
 }
 
-pub type CallbackType = Box<dyn FnOnce(ErrorCode, Option<Box<dyn Message>>)>;
+pub type CallbackType = Box<dyn FnOnce(ErrorCode, Option<Box<dyn Message>>) + Send>;
 
 pub trait MessageDeserializerExt {
     /// Asynchronously read next message from channel_read_fn.

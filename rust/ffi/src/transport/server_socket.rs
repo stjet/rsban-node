@@ -15,7 +15,7 @@ use super::{
     SocketHandle,
 };
 use crate::{
-    utils::{ContextWrapper, LoggerHandle, LoggerMT, ThreadPoolHandle},
+    utils::{AsyncRuntimeHandle, ContextWrapper, LoggerHandle, LoggerMT, ThreadPoolHandle},
     ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
     VoidPointerCallback,
 };
@@ -34,6 +34,7 @@ pub unsafe extern "C" fn rsn_server_socket_create(
     node_config: &NodeConfigDto,
     max_inbound_connections: usize,
     local: &EndpointDto,
+    _async_rt: &AsyncRuntimeHandle,
 ) -> *mut ServerSocketHandle {
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let socket_facade = Arc::new(FfiTcpSocketFacade::new(socket_facade_ptr));

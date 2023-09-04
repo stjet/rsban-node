@@ -59,6 +59,8 @@ impl Drop for MessageCallbackWrapper {
     }
 }
 
+unsafe impl Send for MessageCallbackWrapper {}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_deserializer_read_socket(
     network_constants: *const NetworkConstantsDto,

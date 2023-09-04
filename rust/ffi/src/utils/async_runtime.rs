@@ -8,10 +8,12 @@ pub struct AsyncRuntimeHandle(Arc<AsyncRuntime>);
 pub extern "C" fn rsn_async_runtime_create(io_ctx: *mut c_void) -> *mut AsyncRuntimeHandle {
     Box::into_raw(Box::new(AsyncRuntimeHandle(Arc::new(AsyncRuntime {
         cpp: io_ctx,
-        tokio: tokio::runtime::Builder::new_multi_thread()
-            .thread_name("tokio runtime")
-            .build()
-            .unwrap(),
+        tokio: Arc::new(
+            tokio::runtime::Builder::new_multi_thread()
+                .thread_name("tokio runtime")
+                .build()
+                .unwrap(),
+        ),
     }))))
 }
 

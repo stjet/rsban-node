@@ -183,7 +183,7 @@ impl ChannelInProc {
     fn send_buffer_impl(
         &self,
         buffer: &[u8],
-        callback_msg: Box<dyn FnOnce(ErrorCode, Option<Box<dyn Message>>)>,
+        callback_msg: Box<dyn FnOnce(ErrorCode, Option<Box<dyn Message>>) + Send>,
     ) {
         let offset = AtomicUsize::new(0);
         let buffer_copy = buffer.to_vec();

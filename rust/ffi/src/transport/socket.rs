@@ -17,7 +17,10 @@ use std::{
 };
 
 use crate::{
-    utils::{DispatchCallback, LoggerHandle, LoggerMT, ThreadPoolHandle, VoidFnCallbackHandle},
+    utils::{
+        AsyncRuntimeHandle, DispatchCallback, LoggerHandle, LoggerMT, ThreadPoolHandle,
+        VoidFnCallbackHandle,
+    },
     ErrorCodeDto, StatHandle, StringDto, VoidPointerCallback,
 };
 
@@ -88,6 +91,7 @@ pub unsafe extern "C" fn rsn_socket_create(
     logger: *mut LoggerHandle,
     callback_handler: *mut c_void,
     max_write_queue_len: usize,
+    _async_rt: &AsyncRuntimeHandle,
 ) -> *mut SocketHandle {
     let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
     let tcp_facade = Arc::new(FfiTcpSocketFacade::new(tcp_facade));
@@ -163,6 +167,8 @@ struct ConnectCallbackWrapper {
     destory_context: SocketDestroyContext,
     context: *mut c_void,
 }
+
+unsafe impl Send for ConnectCallbackWrapper {}
 
 impl ConnectCallbackWrapper {
     fn new(
@@ -714,7 +720,7 @@ impl Drop for FfiTcpSocketFacade {
 }
 
 impl TcpSocketFacade for FfiTcpSocketFacade {
-    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode)>) {
+    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
         let endpoint_dto = EndpointDto::from(&endpoint);
         let callback_handle = Box::new(AsyncConnectCallbackHandle::new(callback));
         unsafe {
@@ -729,7 +735,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         &self,
         buffer: &Arc<dyn BufferWrapper>,
         len: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     ) {
         let callback_handle = Box::into_raw(Box::new(AsyncReadCallbackHandle(Some(callback))));
         unsafe {
@@ -746,7 +752,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         &self,
         buffer: &Arc<Mutex<Vec<u8>>>,
         len: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     ) {
         let callback_handle = Box::into_raw(Box::new(AsyncReadCallbackHandle(Some(callback))));
         unsafe {
@@ -759,7 +765,11 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         }
     }
 
-    fn async_write(&self, buffer: &Arc<Vec<u8>>, callback: Box<dyn FnOnce(ErrorCode, usize)>) {
+    fn async_write(
+        &self,
+        buffer: &Arc<Vec<u8>>,
+        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
+    ) {
         let callback_handle = Box::into_raw(Box::new(AsyncWriteCallbackHandle::new(callback)));
         unsafe {
             ASYNC_WRITE_CALLBACK.expect("ASYNC_WRITE_CALLBACK missing")(
@@ -791,7 +801,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         }
     }
 
-    fn post(&self, f: Box<dyn FnOnce()>) {
+    fn post(&self, f: Box<dyn FnOnce() + Send>) {
         unsafe {
             POST_CALLBACK.expect("POST_CALLBACK missing")(
                 self.handle,
@@ -800,7 +810,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         }
     }
 
-    fn dispatch(&self, f: Box<dyn FnOnce()>) {
+    fn dispatch(&self, f: Box<dyn FnOnce() + Send>) {
         unsafe {
             DISPATCH_CALLBACK.expect("DISPATCH_CALLBACK missing")(
                 self.handle,
@@ -859,7 +869,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
     fn async_accept(
         &self,
         client_socket: &Arc<dyn TcpSocketFacade>,
-        callback: Box<dyn FnOnce(SocketAddr, ErrorCode)>,
+        callback: Box<dyn FnOnce(SocketAddr, ErrorCode) + Send>,
     ) {
         let callback_handle = Box::into_raw(Box::new(AsyncAcceptCallbackHandle(Some(callback))));
         unsafe {
@@ -909,12 +919,19 @@ pub unsafe extern "C" fn rsn_callback_buffer_destroy(f: VoidPointerCallback) {
 }
 
 type BufferSizeCallback = unsafe extern "C" fn(*mut c_void) -> usize;
-
 static mut BUFFER_SIZE_CALLBACK: Option<BufferSizeCallback> = None;
+
+type BufferGetSliceCallback = unsafe extern "C" fn(*mut c_void) -> *mut u8;
+static mut BUFFER_GET_SLICE: Option<BufferGetSliceCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_buffer_size(f: BufferSizeCallback) {
     BUFFER_SIZE_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_buffer_get_slice(f: BufferGetSliceCallback) {
+    BUFFER_GET_SLICE = Some(f);
 }
 
 #[no_mangle]
@@ -959,6 +976,9 @@ impl FfiBufferWrapper {
     }
 }
 
+unsafe impl Send for FfiBufferWrapper {}
+unsafe impl Sync for FfiBufferWrapper {}
+
 impl Drop for FfiBufferWrapper {
     fn drop(&mut self) {
         unsafe { BUFFER_DESTROY_CALLBACK.expect("BUFFER_DESTROY_CALLBACK missing")(self.handle) }
@@ -972,6 +992,14 @@ impl BufferWrapper for FfiBufferWrapper {
 
     fn handle(&self) -> *mut c_void {
         self.handle
+    }
+
+    fn get_slice_mut(&self) -> &mut [u8] {
+        unsafe {
+            let ptr = BUFFER_GET_SLICE.expect("BUFFER_GET_SLICE missing")(self.handle);
+            let len = self.len();
+            std::slice::from_raw_parts_mut(ptr, len)
+        }
     }
 }
 

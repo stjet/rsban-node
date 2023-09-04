@@ -4,12 +4,14 @@ use rsnano_core::utils::seconds_since_epoch;
 use std::{
     any::Any,
     net::{IpAddr, Ipv6Addr, SocketAddr},
+    ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
         Arc, Mutex,
     },
     time::Duration,
 };
+use tokio::net::TcpStream;
 
 use super::{
     write_queue::{WriteCallback, WriteQueue},
@@ -33,28 +35,32 @@ pub trait TcpSocketFacadeFactory: Send + Sync {
 
 pub trait TcpSocketFacade: Send + Sync {
     fn local_endpoint(&self) -> SocketAddr;
-    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode)>);
+    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>);
     fn async_read(
         &self,
         buffer: &Arc<dyn BufferWrapper>,
         len: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     );
     fn async_read2(
         &self,
         buffer: &Arc<Mutex<Vec<u8>>>,
         len: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     );
-    fn async_write(&self, buffer: &Arc<Vec<u8>>, callback: Box<dyn FnOnce(ErrorCode, usize)>);
+    fn async_write(
+        &self,
+        buffer: &Arc<Vec<u8>>,
+        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
+    );
     fn async_accept(
         &self,
         client_socket: &Arc<dyn TcpSocketFacade>,
-        callback: Box<dyn FnOnce(SocketAddr, ErrorCode)>,
+        callback: Box<dyn FnOnce(SocketAddr, ErrorCode) + Send>,
     );
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode>;
-    fn post(&self, f: Box<dyn FnOnce()>);
-    fn dispatch(&self, f: Box<dyn FnOnce()>);
+    fn post(&self, f: Box<dyn FnOnce() + Send>);
+    fn dispatch(&self, f: Box<dyn FnOnce() + Send>);
     fn close_acceptor(&self);
     fn is_acceptor_open(&self) -> bool;
     fn close(&self) -> Result<(), ErrorCode>;
@@ -62,6 +68,189 @@ pub trait TcpSocketFacade: Send + Sync {
     fn is_open(&self) -> bool;
     fn open(&self, endpoint: &SocketAddr) -> ErrorCode;
     fn listening_port(&self) -> u16;
+}
+
+pub struct TokioSocketFacade {
+    runtime: Arc<tokio::runtime::Runtime>,
+    state: Arc<Mutex<TokioSocketState>>,
+}
+
+enum TokioSocketState {
+    Closed,
+    Client(Arc<TcpStream>),
+    Server,
+}
+
+impl TokioSocketFacade {
+    pub fn new(runtime: Arc<tokio::runtime::Runtime>) -> Self {
+        Self {
+            runtime,
+            state: Arc::new(Mutex::new(TokioSocketState::Closed)),
+        }
+    }
+}
+
+impl TcpSocketFacade for TokioSocketFacade {
+    fn local_endpoint(&self) -> SocketAddr {
+        let guard = self.state.lock().unwrap();
+        match guard.deref() {
+            TokioSocketState::Closed => SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0),
+            TokioSocketState::Client(stream) => stream
+                .local_addr()
+                .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0)),
+            TokioSocketState::Server => todo!(),
+        }
+    }
+
+    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
+        let state = Arc::clone(&self.state);
+        let runtime = Arc::clone(&self.runtime);
+        self.runtime.spawn(async move {
+            let Ok(stream) = TcpStream::connect(endpoint).await else {
+                runtime.spawn_blocking(move || callback(ErrorCode::fault()));
+                return;
+            };
+            {
+                let mut guard = state.lock().unwrap();
+                debug_assert!(matches!(*guard, TokioSocketState::Closed));
+                *guard = TokioSocketState::Client(Arc::new(stream));
+            }
+            runtime.spawn_blocking(move || callback(ErrorCode::new()));
+        });
+    }
+
+    fn async_read(
+        &self,
+        buffer: &Arc<dyn BufferWrapper>,
+        len: usize,
+        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
+    ) {
+        let buffer = Arc::clone(buffer);
+        let stream = {
+            let guard = self.state.lock().unwrap();
+            let TokioSocketState::Client(stream) = guard.deref() else {panic!("not a tcp client")};
+            Arc::clone(stream)
+        };
+        let runtime = Arc::clone(&self.runtime);
+        self.runtime.spawn(async move {
+            match stream.readable().await {
+                Ok(_) => loop {
+                    let buf = buffer.get_slice_mut();
+                    match stream.try_read(buf) {
+                        Ok(n) => {
+                            callback(ErrorCode::new(), n);
+                            break;
+                        }
+                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                            continue;
+                        }
+                        Err(_) => {
+                            runtime.spawn_blocking(move || callback(ErrorCode::fault(), 0));
+                            break;
+                        }
+                    };
+                },
+                Err(_) => {
+                    runtime.spawn_blocking(move || callback(ErrorCode::fault(), 0));
+                }
+            }
+        });
+    }
+
+    fn async_read2(
+        &self,
+        buffer: &Arc<Mutex<Vec<u8>>>,
+        len: usize,
+        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
+    ) {
+        let buffer = Arc::clone(buffer);
+        let stream = {
+            let guard = self.state.lock().unwrap();
+            let TokioSocketState::Client(stream) = guard.deref() else {panic!("not a tcp client")};
+            Arc::clone(stream)
+        };
+        let runtime = Arc::clone(&self.runtime);
+        self.runtime.spawn(async move {
+            match stream.readable().await {
+                Ok(_) => loop {
+                    let mut buf = buffer.lock().unwrap();
+                    match stream.try_read(buf.as_mut_slice()) {
+                        Ok(n) => {
+                            drop(buf);
+                            callback(ErrorCode::new(), n);
+                            break;
+                        }
+                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                            continue;
+                        }
+                        Err(_) => {
+                            runtime.spawn_blocking(move || callback(ErrorCode::fault(), 0));
+                            break;
+                        }
+                    };
+                },
+                Err(_) => {
+                    runtime.spawn_blocking(move || callback(ErrorCode::fault(), 0));
+                }
+            }
+        });
+    }
+
+    fn async_write(
+        &self,
+        _buffer: &Arc<Vec<u8>>,
+        _callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
+    ) {
+        todo!()
+    }
+
+    fn async_accept(
+        &self,
+        _client_socket: &Arc<dyn TcpSocketFacade>,
+        _callback: Box<dyn FnOnce(SocketAddr, ErrorCode) + Send>,
+    ) {
+        todo!()
+    }
+
+    fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode> {
+        todo!()
+    }
+
+    fn post(&self, f: Box<dyn FnOnce() + Send>) {
+        self.runtime.spawn_blocking(move || f());
+    }
+
+    fn dispatch(&self, f: Box<dyn FnOnce() + Send>) {
+        self.runtime.spawn_blocking(move || f());
+    }
+
+    fn close_acceptor(&self) {
+        todo!()
+    }
+
+    fn is_acceptor_open(&self) -> bool {
+        todo!()
+    }
+
+    fn close(&self) -> Result<(), ErrorCode> {
+        todo!()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn is_open(&self) -> bool {
+        todo!()
+    }
+
+    fn open(&self, _endpoint: &SocketAddr) -> ErrorCode {
+        todo!()
+    }
+
+    fn listening_port(&self) -> u16 {
+        todo!()
+    }
 }
 
 #[derive(Default)]
@@ -72,13 +261,13 @@ impl TcpSocketFacade for NullTcpSocketFacade {
         SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 42)
     }
 
-    fn async_connect(&self, _endpoint: SocketAddr, _callback: Box<dyn FnOnce(ErrorCode)>) {}
+    fn async_connect(&self, _endpoint: SocketAddr, _callback: Box<dyn FnOnce(ErrorCode) + Send>) {}
 
     fn async_read(
         &self,
         _buffer: &Arc<dyn BufferWrapper>,
         _len: usize,
-        _callback: Box<dyn FnOnce(ErrorCode, usize)>,
+        _callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     ) {
     }
 
@@ -86,18 +275,23 @@ impl TcpSocketFacade for NullTcpSocketFacade {
         &self,
         _buffer: &Arc<Mutex<Vec<u8>>>,
         _len: usize,
-        _callback: Box<dyn FnOnce(ErrorCode, usize)>,
+        _callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     ) {
     }
 
-    fn async_write(&self, _buffer: &Arc<Vec<u8>>, _callback: Box<dyn FnOnce(ErrorCode, usize)>) {}
+    fn async_write(
+        &self,
+        _buffer: &Arc<Vec<u8>>,
+        _callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
+    ) {
+    }
 
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode> {
         Err(ErrorCode::not_supported())
     }
 
-    fn post(&self, _: Box<dyn FnOnce()>) {}
-    fn dispatch(&self, _: Box<dyn FnOnce()>) {}
+    fn post(&self, _: Box<dyn FnOnce() + Send>) {}
+    fn dispatch(&self, _: Box<dyn FnOnce() + Send>) {}
 
     fn close(&self) -> Result<(), ErrorCode> {
         Ok(())
@@ -120,7 +314,7 @@ impl TcpSocketFacade for NullTcpSocketFacade {
     fn async_accept(
         &self,
         _client_socket: &Arc<dyn TcpSocketFacade>,
-        _callback: Box<dyn FnOnce(SocketAddr, ErrorCode)>,
+        _callback: Box<dyn FnOnce(SocketAddr, ErrorCode) + Send>,
     ) {
     }
 
@@ -407,18 +601,18 @@ impl Drop for Socket {
 
 pub trait SocketExtensions {
     fn start(&self);
-    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode)>);
+    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>);
     fn async_read(
         &self,
         buffer: Arc<dyn BufferWrapper>,
         size: usize,
-        callback: Box<dyn Fn(ErrorCode, usize)>,
+        callback: Box<dyn Fn(ErrorCode, usize) + Send>,
     );
     fn async_read2(
         &self,
         buffer: Arc<Mutex<Vec<u8>>>,
         size: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     );
     fn async_write(
         &self,
@@ -437,7 +631,7 @@ pub trait SocketExtensions {
         &self,
         data: Arc<Mutex<Vec<u8>>>,
         size: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     );
     fn write_queued_messages(&self);
 }
@@ -447,7 +641,7 @@ impl SocketExtensions for Arc<Socket> {
         self.ongoing_checkup();
     }
 
-    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode)>) {
+    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
         let self_clone = self.clone();
         debug_assert!(self.endpoint_type == EndpointType::Client);
 
@@ -481,7 +675,7 @@ impl SocketExtensions for Arc<Socket> {
         &self,
         buffer: Arc<dyn BufferWrapper>,
         size: usize,
-        callback: Box<dyn Fn(ErrorCode, usize)>,
+        callback: Box<dyn Fn(ErrorCode, usize) + Send>,
     ) {
         if size <= buffer.len() {
             if !self.is_closed() {
@@ -514,7 +708,7 @@ impl SocketExtensions for Arc<Socket> {
         &self,
         buffer: Arc<Mutex<Vec<u8>>>,
         size: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     ) {
         let buffer_len = { buffer.lock().unwrap().len() };
         if size <= buffer_len {
@@ -694,7 +888,7 @@ impl SocketExtensions for Arc<Socket> {
         &self,
         data: Arc<Mutex<Vec<u8>>>,
         size: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize)>,
+        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     ) {
         // Increase timeout to receive TCP header (idle server socket)
         let prev_timeout = self.default_timeout_value();

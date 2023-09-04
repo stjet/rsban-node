@@ -763,6 +763,12 @@ std::size_t buffer_size (void * handle_a)
 	return (*ptr)->size ();
 }
 
+uint8_t * buffer_get_slice (void * handle_a)
+{
+	auto ptr{ static_cast<std::shared_ptr<std::vector<uint8_t>> *> (handle_a) };
+	return (*ptr)->data ();
+}
+
 void bootstrap_observer_destroy (void * handle_a)
 {
 	auto observer = static_cast<std::weak_ptr<nano::tcp_server_observer> *> (handle_a);
@@ -1041,6 +1047,7 @@ void rsnano::set_rsnano_callbacks ()
 
 	rsnano::rsn_callback_buffer_destroy (buffer_destroy);
 	rsnano::rsn_callback_buffer_size (buffer_size);
+	rsnano::rsn_callback_buffer_get_slice (buffer_get_slice);
 
 	rsnano::rsn_callback_bootstrap_observer_destroy (bootstrap_observer_destroy);
 	rsnano::rsn_callback_bootstrap_observer_bootstrap_count (bootstrap_observer_bootstrap_count);

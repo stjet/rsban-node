@@ -1,6 +1,6 @@
-use std::ffi::c_void;
+use std::{ffi::c_void, sync::Arc};
 
 pub struct AsyncRuntime {
     pub cpp: *mut c_void,
-    pub tokio: tokio::runtime::Runtime,
+    pub tokio: Arc<tokio::runtime::Runtime>,
 }

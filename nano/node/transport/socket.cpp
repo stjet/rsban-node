@@ -214,7 +214,8 @@ std::size_t max_queue_size_a) :
 	network_timeout_logging_a,
 	nano::to_logger_handle (logger_a),
 	new std::weak_ptr<nano::node_observers> (observers_a),
-	max_queue_size_a) }
+	max_queue_size_a,
+	async_rt_a.handle) }
 {
 }
 
@@ -434,7 +435,8 @@ nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio:
 	node_a.stats->handle,
 	&node_config_dto,
 	max_connections_a,
-	&local_dto);
+	&local_dto,
+	node_a.async_rt.handle);
 }
 
 nano::transport::server_socket::~server_socket ()

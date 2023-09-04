@@ -418,22 +418,13 @@ bool nano::transport::socket::full (nano::transport::traffic_type traffic_type) 
  * server_socket
  */
 
-nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio::ip::tcp::endpoint local_a, std::size_t max_connections_a) :
-	socket_facade{ std::make_shared<nano::transport::tcp_socket_facade> (node_a.io_ctx) },
-	socket{ node_a.async_rt, nano::transport::socket::endpoint_type_t::server, *node_a.stats, node_a.logger, node_a.workers,
-		std::chrono::seconds::max (),
-		node_a.network_params.network.silent_connection_tolerance_time,
-		node_a.network_params.network.idle_timeout,
-		node_a.config->logging.network_timeout_logging (),
-		node_a.observers },
-	local{ std::move (local_a) }
+nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio::ip::tcp::endpoint local_a, std::size_t max_connections_a)
 {
 	auto network_params_dto{ node_a.network_params.to_dto () };
 	auto node_config_dto{ node_a.config->to_dto () };
 	auto local_dto{ rsnano::endpoint_to_dto (local_a) };
 	handle = rsnano::rsn_server_socket_create (
-	new std::shared_ptr<nano::transport::tcp_socket_facade> (socket_facade),
-	socket.handle,
+	new std::shared_ptr<nano::transport::tcp_socket_facade> (std::make_shared<nano::transport::tcp_socket_facade> (node_a.io_ctx)),
 	node_a.flags.handle,
 	&network_params_dto,
 	node_a.workers->handle,
@@ -459,6 +450,11 @@ void nano::transport::server_socket::start (boost::system::error_code & ec_a)
 void nano::transport::server_socket::close ()
 {
 	rsnano::rsn_server_socket_close (handle);
+}
+
+uint16_t nano::transport::server_socket::listening_port ()
+{
+	return rsnano::rsn_server_socket_listening_port (handle);
 }
 
 boost::asio::ip::network_v6 nano::transport::socket_functions::get_ipv6_subnet_address (boost::asio::ip::address_v6 const & ip_address, std::size_t network_prefix)

@@ -24,7 +24,6 @@ pub struct ServerSocketHandle(Arc<ServerSocket>);
 #[no_mangle]
 pub unsafe extern "C" fn rsn_server_socket_create(
     socket_facade_ptr: *mut c_void,
-    socket: &SocketHandle,
     flags: &NodeFlagsHandle,
     network_params: &NetworkParamsDto,
     workers: &ThreadPoolHandle,
@@ -45,7 +44,6 @@ pub unsafe extern "C" fn rsn_server_socket_create(
     let node_config = NodeConfig::try_from(node_config).unwrap();
     Box::into_raw(Box::new(ServerSocketHandle(Arc::new(ServerSocket::new(
         socket_facade,
-        Arc::clone(&socket.0),
         flags.0.lock().unwrap().clone(),
         network_params,
         Arc::clone(&workers.0),
@@ -153,4 +151,9 @@ pub extern "C" fn rsn_server_socket_on_connection(
 #[no_mangle]
 pub extern "C" fn rsn_server_socket_start(handle: &mut ServerSocketHandle) {
     handle.0.start();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_server_socket_listening_port(handle: &mut ServerSocketHandle) -> u16 {
+    handle.0.listening_port()
 }

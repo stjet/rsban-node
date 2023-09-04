@@ -251,15 +251,9 @@ public:
 	void close ();
 	/** Register callback for new connections. The callback must return true to keep accepting new connections. */
 	void on_connection (std::function<bool (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const &)>);
-	uint16_t listening_port ()
-	{
-		return socket_facade->listening_port ();
-	}
+	uint16_t listening_port ();
 
 private:
-	std::shared_ptr<nano::transport::tcp_socket_facade> socket_facade;
-	nano::transport::socket socket;
-	boost::asio::ip::tcp::endpoint local;
 	rsnano::ServerSocketHandle * handle;
 };
 

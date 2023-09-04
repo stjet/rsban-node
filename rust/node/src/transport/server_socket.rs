@@ -41,7 +41,6 @@ pub struct ServerSocket {
 impl ServerSocket {
     pub fn new(
         socket_facade: Arc<dyn TcpSocketFacade>,
-        socket: Arc<Socket>,
         node_flags: NodeFlags,
         network_params: NetworkParams,
         workers: Arc<dyn ThreadPool>,
@@ -53,6 +52,31 @@ impl ServerSocket {
         max_inbound_connections: usize,
         local: SocketAddr,
     ) -> Self {
+        let socket_stats = Arc::new(SocketStats::new(
+            Arc::clone(&stats),
+            Arc::clone(&logger),
+            node_config.logging.network_timeout_logging(),
+        ));
+        let ffi_observer = Arc::clone(&socket_observer);
+
+        let socket = SocketBuilder::endpoint_type(
+            EndpointType::Server,
+            Arc::clone(&socket_facade),
+            Arc::clone(&workers),
+        )
+        .default_timeout(Duration::MAX)
+        .silent_connection_tolerance_time(Duration::from_secs(
+            network_params.network.silent_connection_tolerance_time_s as u64,
+        ))
+        .idle_timeout(Duration::from_secs(
+            network_params.network.idle_timeout_s as u64,
+        ))
+        .observer(Arc::new(CompositeSocketObserver::new(vec![
+            socket_stats,
+            ffi_observer,
+        ])))
+        .build();
+
         ServerSocket {
             socket,
             socket_facade,
@@ -156,6 +180,10 @@ impl ServerSocket {
 
     pub fn start(&self) -> ErrorCode {
         self.socket_facade.open(&self.local)
+    }
+
+    pub fn listening_port(&self) -> u16 {
+        self.socket_facade.listening_port()
     }
 }
 

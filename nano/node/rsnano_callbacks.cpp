@@ -635,6 +635,12 @@ void tcp_socket_open (void * handle_a, const rsnano::EndpointDto * local_a, rsna
 	*ec_dto = rsnano::error_code_to_dto (ec);
 }
 
+uint16_t tcp_socket_listening_port (void * handle_a)
+{
+	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
+	return (*socket)->listening_port ();
+}
+
 void tcp_socket_remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a, rsnano::ErrorCodeDto * ec_a)
 {
 	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
@@ -1017,6 +1023,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_tcp_socket_is_acceptor_open (tcp_socket_is_acceptor_open);
 	rsnano::rsn_callback_tcp_socket_async_accept (tcp_socket_async_accept);
 	rsnano::rsn_callback_tcp_socket_open (tcp_socket_open);
+	rsnano::rsn_callback_tcp_socket_listening_port (tcp_socket_listening_port);
 
 	rsnano::rsn_callback_create_tcp_socket (tcp_socket_facade_factory_create_socket);
 	rsnano::rsn_callback_destroy_tcp_socket_facade_factory (tcp_socket_facade_factory_destroy);

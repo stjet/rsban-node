@@ -507,6 +507,9 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_destroy(f: VoidPointerCallback)
     TCP_FACADE_DESTROY_CALLBACK = Some(f);
 }
 
+type TcpSocketListeningPortCallback = unsafe extern "C" fn(*mut c_void) -> u16;
+static mut TCP_SOCKET_LISTENING_PORT: Option<TcpSocketListeningPortCallback> = None;
+
 type TcpSocketOpenCallback =
     unsafe extern "C" fn(*mut c_void, *const EndpointDto, *mut ErrorCodeDto);
 static mut TCP_SOCKET_OPEN: Option<TcpSocketOpenCallback> = None;
@@ -536,6 +539,11 @@ pub unsafe extern "C" fn rsn_callback_create_tcp_socket(f: CreateTcpSocketCallba
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_destroy_tcp_socket_facade_factory(f: VoidPointerCallback) {
     DESTROY_TCP_SOCKET_FACADE_FACTORY_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_tcp_socket_listening_port(f: TcpSocketListeningPortCallback) {
+    TCP_SOCKET_LISTENING_PORT = Some(f);
 }
 
 #[no_mangle]
@@ -881,6 +889,12 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
             );
         }
         (&error).into()
+    }
+
+    fn listening_port(&self) -> u16 {
+        unsafe {
+            TCP_SOCKET_LISTENING_PORT.expect("TCP_SOCKET_LISTENING_PORT missing")(self.handle)
+        }
     }
 }
 

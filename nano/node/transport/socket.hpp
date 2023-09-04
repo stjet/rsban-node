@@ -103,7 +103,7 @@ public:
 		return acceptor.local_endpoint ().port ();
 	}
 
-	void open (boost::asio::ip::tcp::endpoint & local, boost::system::error_code & ec_a);
+	void open (const boost::asio::ip::tcp::endpoint & local, boost::system::error_code & ec_a);
 
 	boost::asio::strand<boost::asio::io_context::executor_type> strand;
 	boost::asio::ip::tcp::socket tcp_socket;

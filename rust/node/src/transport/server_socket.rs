@@ -35,6 +35,7 @@ pub struct ServerSocket {
     stats: Arc<Stats>,
     socket_observer: Arc<dyn SocketObserver>,
     max_inbound_connections: usize,
+    local: SocketAddr,
 }
 
 impl ServerSocket {
@@ -50,6 +51,7 @@ impl ServerSocket {
         stats: Arc<Stats>,
         socket_observer: Arc<dyn SocketObserver>,
         max_inbound_connections: usize,
+        local: SocketAddr,
     ) -> Self {
         ServerSocket {
             socket,
@@ -64,6 +66,7 @@ impl ServerSocket {
             stats,
             socket_observer,
             max_inbound_connections,
+            local,
         }
     }
 
@@ -149,6 +152,10 @@ impl ServerSocket {
             .lock()
             .unwrap()
             .evict_dead_connections();
+    }
+
+    pub fn start(&self) -> ErrorCode {
+        self.socket_facade.open(&self.local)
     }
 }
 

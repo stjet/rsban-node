@@ -60,6 +60,7 @@ pub trait TcpSocketFacade: Send + Sync {
     fn close(&self) -> Result<(), ErrorCode>;
     fn as_any(&self) -> &dyn Any;
     fn is_open(&self) -> bool;
+    fn open(&self, endpoint: &SocketAddr) -> ErrorCode;
 }
 
 #[derive(Default)]
@@ -120,6 +121,10 @@ impl TcpSocketFacade for NullTcpSocketFacade {
         _client_socket: &Arc<dyn TcpSocketFacade>,
         _callback: Box<dyn FnOnce(SocketAddr, ErrorCode)>,
     ) {
+    }
+
+    fn open(&self, _endpoint: &SocketAddr) -> ErrorCode {
+        ErrorCode::new()
     }
 }
 

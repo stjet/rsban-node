@@ -92,7 +92,7 @@ bool nano::transport::tcp_socket_facade::running_in_this_thread ()
 	return strand.running_in_this_thread ();
 }
 
-void nano::transport::tcp_socket_facade::open (boost::asio::ip::tcp::endpoint & local, boost::system::error_code & ec_a)
+void nano::transport::tcp_socket_facade::open (const boost::asio::ip::tcp::endpoint & local, boost::system::error_code & ec_a)
 {
 	acceptor.open (local.protocol ());
 	acceptor.set_option (boost::asio::ip::tcp::acceptor::reuse_address (true));
@@ -430,6 +430,7 @@ nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio:
 {
 	auto network_params_dto{ node_a.network_params.to_dto () };
 	auto node_config_dto{ node_a.config->to_dto () };
+	auto local_dto{ rsnano::endpoint_to_dto (local_a) };
 	handle = rsnano::rsn_server_socket_create (
 	new std::shared_ptr<nano::transport::tcp_socket_facade> (socket_facade),
 	socket.handle,
@@ -441,7 +442,8 @@ nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio:
 	new std::weak_ptr<nano::node_observers> (node_a.observers),
 	node_a.stats->handle,
 	&node_config_dto,
-	max_connections_a);
+	max_connections_a,
+	&local_dto);
 }
 
 nano::transport::server_socket::~server_socket ()
@@ -451,7 +453,7 @@ nano::transport::server_socket::~server_socket ()
 
 void nano::transport::server_socket::start (boost::system::error_code & ec_a)
 {
-	socket_facade->open (local, ec_a);
+	rsnano::rsn_server_socket_start (handle);
 }
 
 void nano::transport::server_socket::close ()

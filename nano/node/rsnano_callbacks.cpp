@@ -21,6 +21,7 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include <iostream>
+#include <system_error>
 
 int32_t write_u8 (void * stream, const uint8_t value)
 {
@@ -625,6 +626,15 @@ void tcp_socket_async_accept (void * handle_a, void * client_socket_handle, rsna
 	}
 }
 
+void tcp_socket_open (void * handle_a, const rsnano::EndpointDto * local_a, rsnano::ErrorCodeDto * ec_dto)
+{
+	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
+	boost::system::error_code ec;
+	auto endpoint{ rsnano::dto_to_endpoint (*local_a) };
+	(*socket)->open (endpoint, ec);
+	*ec_dto = rsnano::error_code_to_dto (ec);
+}
+
 void tcp_socket_remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a, rsnano::ErrorCodeDto * ec_a)
 {
 	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
@@ -1006,6 +1016,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_socket_close_acceptor_callback (tcp_socket_close_acceptor);
 	rsnano::rsn_callback_tcp_socket_is_acceptor_open (tcp_socket_is_acceptor_open);
 	rsnano::rsn_callback_tcp_socket_async_accept (tcp_socket_async_accept);
+	rsnano::rsn_callback_tcp_socket_open (tcp_socket_open);
 
 	rsnano::rsn_callback_create_tcp_socket (tcp_socket_facade_factory_create_socket);
 	rsnano::rsn_callback_destroy_tcp_socket_facade_factory (tcp_socket_facade_factory_destroy);

@@ -507,6 +507,10 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_destroy(f: VoidPointerCallback)
     TCP_FACADE_DESTROY_CALLBACK = Some(f);
 }
 
+type TcpSocketOpenCallback =
+    unsafe extern "C" fn(*mut c_void, *const EndpointDto, *mut ErrorCodeDto);
+static mut TCP_SOCKET_OPEN: Option<TcpSocketOpenCallback> = None;
+
 type SocketLocalEndpointCallback = unsafe extern "C" fn(*mut c_void, *mut EndpointDto);
 static mut LOCAL_ENDPOINT_CALLBACK: Option<SocketLocalEndpointCallback> = None;
 
@@ -532,6 +536,11 @@ pub unsafe extern "C" fn rsn_callback_create_tcp_socket(f: CreateTcpSocketCallba
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_destroy_tcp_socket_facade_factory(f: VoidPointerCallback) {
     DESTROY_TCP_SOCKET_FACADE_FACTORY_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_tcp_socket_open(f: TcpSocketOpenCallback) {
+    TCP_SOCKET_OPEN = Some(f);
 }
 
 #[no_mangle]
@@ -856,6 +865,22 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
                 callback_handle,
             )
         };
+    }
+
+    fn open(&self, endpoint: &SocketAddr) -> ErrorCode {
+        let mut error = ErrorCodeDto {
+            val: 0,
+            category: 0,
+        };
+        let endpoint_dto = EndpointDto::from(endpoint);
+        unsafe {
+            TCP_SOCKET_OPEN.expect("TCP_SOCKET_OPEN missing")(
+                self.handle,
+                &endpoint_dto,
+                &mut error,
+            );
+        }
+        (&error).into()
     }
 }
 

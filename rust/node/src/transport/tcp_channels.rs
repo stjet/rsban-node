@@ -99,7 +99,6 @@ impl TcpChannels {
             logger: options.logger.clone(),
             observer: Arc::new(NullTcpServerObserver {}),
             publish_filter: options.publish_filter.clone(),
-            io_ctx: options.io_ctx.clone(),
             network: network.clone(),
             stats: options.stats.clone(),
             block_uniquer: options.block_uniquer.clone(),
@@ -128,7 +127,6 @@ impl TcpChannels {
             network,
             excluded_peers: Arc::new(Mutex::new(PeerExclusion::new())),
             limiter: options.limiter,
-            io_ctx: options.io_ctx,
             logger: options.logger,
             node_id: options.node_id,
             syn_cookies: options.syn_cookies,
@@ -140,6 +138,7 @@ impl TcpChannels {
             observer: options.observer,
             channel_observer: Mutex::new(None),
             tcp_socket_factory: options.tcp_socket_factory,
+            io_ctx: options.io_ctx,
         }
     }
 

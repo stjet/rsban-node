@@ -10,6 +10,7 @@ use rsnano_node::{
     config::NodeConfig,
     transport::{
         ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpEndpointAttempt,
+        TcpSocketFacadeFactory, TokioSocketFacadeFactory,
     },
     NetworkParams,
 };
@@ -19,8 +20,8 @@ use crate::{
     core::BlockUniquerHandle,
     messages::MessageHandle,
     utils::{
-        ptr_into_ipv6addr, ContainerInfoComponentHandle, ContextWrapper, FfiIoContext,
-        IoContextHandle, LoggerHandle, LoggerMT, ThreadPoolHandle,
+        ptr_into_ipv6addr, AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper,
+        FfiIoContext, IoContextHandle, LoggerHandle, LoggerMT, ThreadPoolHandle,
     },
     voting::VoteUniquerHandle,
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
@@ -41,7 +42,7 @@ pub struct TcpChannelsOptionsDto {
     pub node_config: *const NodeConfigDto,
     pub logger: *mut LoggerHandle,
     pub publish_filter: *mut NetworkFilterHandle,
-    pub io_ctx: *mut IoContextHandle,
+    pub async_rt: *mut AsyncRuntimeHandle,
     pub network: *mut NetworkParamsDto,
     pub stats: *mut StatHandle,
     pub block_uniquer: *mut BlockUniquerHandle,
@@ -75,14 +76,21 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 )
             });
             let observer = Arc::new(SocketFfiObserver::new(value.socket_observer));
-            let tcp_socket_factory = Arc::new(FfiTcpSocketFacadeFactory(value.tcp_socket_factory));
+            let mut tcp_socket_factory: Arc<dyn TcpSocketFacadeFactory> =
+                Arc::new(FfiTcpSocketFacadeFactory(value.tcp_socket_factory));
+            #[cfg(feature = "tokio_sockets")]
+            {
+                tcp_socket_factory = Arc::new(TokioSocketFacadeFactory::new(Arc::clone(
+                    &(*value.async_rt).0.tokio,
+                )));
+            }
 
             Ok(Self {
                 node_config: NodeConfig::try_from(&*value.node_config)?,
                 logger: Arc::new(LoggerMT::new(Box::from_raw(value.logger))),
                 publish_filter: (*value.publish_filter).0.clone(),
-                io_ctx: Arc::new(FfiIoContext::new((*value.io_ctx).raw_handle())),
                 network: NetworkParams::try_from(&*value.network)?,
+                io_ctx: Arc::new(FfiIoContext::new((*value.async_rt).0.cpp)),
                 stats: (*value.stats).0.clone(),
                 block_uniquer: (*value.block_uniquer).deref().clone(),
                 vote_uniquer: (*value.vote_uniquer).deref().clone(),

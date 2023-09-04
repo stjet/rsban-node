@@ -2,7 +2,7 @@ use std::{ffi::c_void, sync::Arc};
 
 use rsnano_node::utils::AsyncRuntime;
 
-pub struct AsyncRuntimeHandle(Arc<AsyncRuntime>);
+pub struct AsyncRuntimeHandle(pub Arc<AsyncRuntime>);
 
 #[no_mangle]
 pub extern "C" fn rsn_async_runtime_create(io_ctx: *mut c_void) -> *mut AsyncRuntimeHandle {

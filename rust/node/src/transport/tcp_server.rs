@@ -25,7 +25,7 @@ use crate::{
         MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketExtensions,
         SocketType, SynCookies, TcpMessageItem, TcpMessageManager,
     },
-    utils::{BlockUniquer, IoContext},
+    utils::BlockUniquer,
     voting::VoteUniquer,
     NetworkParams,
 };
@@ -78,7 +78,6 @@ pub struct TcpServer {
     // Remote enpoint used to remove response channel even after socket closing
     remote_endpoint: Mutex<SocketAddr>,
     pub remote_node_id: Mutex<Account>,
-    io_ctx: Arc<dyn IoContext>,
 
     network: Arc<NetworkParams>,
     last_telemetry_req: Mutex<Option<Instant>>,
@@ -102,7 +101,6 @@ impl TcpServer {
         logger: Arc<dyn Logger>,
         observer: Arc<dyn TcpServerObserver>,
         publish_filter: Arc<NetworkFilter>,
-        io_ctx: Arc<dyn IoContext>,
         network: Arc<NetworkParams>,
         stats: Arc<Stats>,
         block_uniquer: Arc<BlockUniquer>,
@@ -126,7 +124,6 @@ impl TcpServer {
                 0,
             )),
             remote_node_id: Mutex::new(Account::zero()),
-            io_ctx,
             last_telemetry_req: Mutex::new(None),
             network,
             unique_id: NEXT_UNIQUE_ID.fetch_add(1, Ordering::Relaxed),

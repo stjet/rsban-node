@@ -68,7 +68,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(params.logger)));
     let observer = Arc::new(FfiBootstrapServerObserver::new(params.observer));
     let publish_filter = Arc::clone(&*params.publish_filter);
-    let io_ctx = Arc::new(FfiIoContext::new((*params.io_ctx).raw_handle()));
     let network = Arc::new(NetworkParams::try_from(&*params.network).unwrap());
     let stats = Arc::clone(&(*params.stats));
     let visitor_factory = Arc::clone(&(*params.request_response_visitor_factory).0);
@@ -81,7 +80,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
         logger,
         observer,
         publish_filter,
-        io_ctx,
         network,
         stats,
         block_uniquer,

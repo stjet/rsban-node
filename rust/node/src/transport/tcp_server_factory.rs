@@ -3,12 +3,8 @@ use std::{sync::Arc, time::SystemTime};
 use rsnano_core::utils::Logger;
 
 use crate::{
-    bootstrap::BootstrapMessageVisitorFactory,
-    config::NodeConfig,
-    stats::Stats,
-    utils::{BlockUniquer, IoContext},
-    voting::VoteUniquer,
-    NetworkParams,
+    bootstrap::BootstrapMessageVisitorFactory, config::NodeConfig, stats::Stats,
+    utils::BlockUniquer, voting::VoteUniquer, NetworkParams,
 };
 
 use super::{
@@ -21,7 +17,6 @@ pub struct TcpServerFactory {
     pub logger: Arc<dyn Logger>,
     pub observer: Arc<dyn TcpServerObserver>,
     pub publish_filter: Arc<NetworkFilter>,
-    pub io_ctx: Arc<dyn IoContext>,
     pub network: Arc<NetworkParams>,
     pub stats: Arc<Stats>,
     pub block_uniquer: Arc<BlockUniquer>,
@@ -38,7 +33,6 @@ impl TcpServerFactory {
             Arc::clone(&self.logger),
             Arc::clone(&self.observer),
             Arc::clone(&self.publish_filter),
-            Arc::clone(&self.io_ctx),
             Arc::clone(&self.network),
             Arc::clone(&self.stats),
             Arc::clone(&self.block_uniquer),

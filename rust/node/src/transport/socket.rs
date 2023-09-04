@@ -365,6 +365,22 @@ impl TcpSocketFacade for TokioSocketFacade {
     }
 }
 
+pub struct TokioSocketFacadeFactory {
+    runtime: Arc<tokio::runtime::Runtime>,
+}
+
+impl TokioSocketFacadeFactory {
+    pub fn new(runtime: Arc<tokio::runtime::Runtime>) -> Self {
+        Self { runtime }
+    }
+}
+
+impl TcpSocketFacadeFactory for TokioSocketFacadeFactory {
+    fn create_tcp_socket(&self) -> Arc<dyn TcpSocketFacade> {
+        Arc::new(TokioSocketFacade::new(Arc::clone(&self.runtime)))
+    }
+}
+
 #[derive(Default)]
 pub struct NullTcpSocketFacade {}
 

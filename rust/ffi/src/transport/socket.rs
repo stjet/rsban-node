@@ -4,7 +4,7 @@ use rsnano_node::{
     stats::SocketStats,
     transport::{
         CompositeSocketObserver, Socket, SocketBuilder, SocketExtensions, SocketObserver,
-        SocketType, TcpSocketFacade, TcpSocketFacadeFactory, WriteCallback,
+        SocketType, TcpSocketFacade, TcpSocketFacadeFactory, TokioSocketFacade, WriteCallback,
     },
     utils::{BufferWrapper, ErrorCode},
 };
@@ -81,7 +81,7 @@ impl Deref for SocketHandle {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_create(
     endpoint_type: u8,
-    tcp_facade: *mut c_void,
+    tcp_facade_handle: *mut c_void,
     stats_handle: *mut StatHandle,
     thread_pool: &ThreadPoolHandle,
     default_timeout_s: u64,
@@ -91,10 +91,15 @@ pub unsafe extern "C" fn rsn_socket_create(
     logger: *mut LoggerHandle,
     callback_handler: *mut c_void,
     max_write_queue_len: usize,
-    _async_rt: &AsyncRuntimeHandle,
+    async_rt: &AsyncRuntimeHandle,
 ) -> *mut SocketHandle {
     let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
-    let tcp_facade = Arc::new(FfiTcpSocketFacade::new(tcp_facade));
+    let mut tcp_facade: Arc<dyn TcpSocketFacade> =
+        Arc::new(FfiTcpSocketFacade::new(tcp_facade_handle));
+    #[cfg(feature = "tokio_sockets")]
+    {
+        tcp_facade = Arc::new(TokioSocketFacade::new(Arc::clone(&async_rt.0.tokio)));
+    }
     let thread_pool = thread_pool.0.clone();
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let stats = (*stats_handle).deref().clone();
@@ -646,16 +651,6 @@ pub unsafe extern "C" fn rsn_socket_type(handle: *mut SocketHandle) -> u8 {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_set_type(handle: *mut SocketHandle, socket_type: u8) {
     (*handle).set_socket_type(SocketType::from_u8(socket_type).unwrap());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_facade(handle: *mut SocketHandle) -> *mut c_void {
-    (*handle)
-        .tcp_socket
-        .as_any()
-        .downcast_ref::<FfiTcpSocketFacade>()
-        .expect("not an ffi socket")
-        .handle
 }
 
 #[no_mangle]

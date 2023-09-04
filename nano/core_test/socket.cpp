@@ -556,16 +556,17 @@ TEST (socket, concurrent_writes)
 TEST (socket_timeout, connect)
 {
 	// create one node and set timeout to 1 second
-	nano::test::system system (1);
-	std::shared_ptr<nano::node> node = system.nodes[0];
-	node->config->tcp_io_timeout = std::chrono::seconds (1);
+	nano::test::system system{};
+	auto config{ system.default_config () };
+	config.tcp_io_timeout = std::chrono::seconds (1);
+	auto node{ system.add_node (config) };
 
 	// try to connect to an IP address that most likely does not exist and will not reply
 	// we want the tcp stack to not receive a negative reply, we want it to see silence and to keep trying
 	// I use the un-routable IP address 10.255.254.253, which is likely to not exist
 	boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::make_address_v6 ("::ffff:10.255.254.253"), 1234);
 
-	// create a client socket and try to connect to the IP address that wil not respond
+	// create a client socket and try to connect to the IP address that will not respond
 	auto socket = nano::transport::create_client_socket (*node);
 	std::atomic<bool> done = false;
 	boost::system::error_code ec;
@@ -589,9 +590,10 @@ TEST (socket_timeout, connect)
 TEST (socket_timeout, read)
 {
 	// create one node and set timeout to 1 second
-	nano::test::system system (1);
-	std::shared_ptr<nano::node> node = system.nodes[0];
-	node->config->tcp_io_timeout = std::chrono::seconds (2);
+	nano::test::system system{};
+	auto config{ system.default_config () };
+	config.tcp_io_timeout = std::chrono::seconds (2);
+	auto node{ system.add_node (config) };
 
 	// create a server socket
 	boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v6::loopback (), system.get_available_port ());
@@ -635,9 +637,10 @@ TEST (socket_timeout, read)
 TEST (socket_timeout, write)
 {
 	// create one node and set timeout to 1 second
-	nano::test::system system (1);
-	std::shared_ptr<nano::node> node = system.nodes[0];
-	node->config->tcp_io_timeout = std::chrono::seconds (2);
+	nano::test::system system{};
+	auto config{ system.default_config () };
+	config.tcp_io_timeout = std::chrono::seconds (2);
+	auto node{ system.add_node (config) };
 
 	// create a server socket
 	boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v6::loopback (), system.get_available_port ());
@@ -686,9 +689,10 @@ TEST (socket_timeout, write)
 TEST (socket_timeout, read_overlapped)
 {
 	// create one node and set timeout to 1 second
-	nano::test::system system (1);
-	std::shared_ptr<nano::node> node = system.nodes[0];
-	node->config->tcp_io_timeout = std::chrono::seconds (2);
+	nano::test::system system{};
+	auto config{ system.default_config () };
+	config.tcp_io_timeout = std::chrono::seconds (2);
+	auto node{ system.add_node (config) };
 
 	// create a server socket
 	boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v6::loopback (), system.get_available_port ());
@@ -744,9 +748,10 @@ TEST (socket_timeout, read_overlapped)
 TEST (socket_timeout, write_overlapped)
 {
 	// create one node and set timeout to 1 second
-	nano::test::system system (1);
-	std::shared_ptr<nano::node> node = system.nodes[0];
-	node->config->tcp_io_timeout = std::chrono::seconds (2);
+	nano::test::system system{};
+	auto config{ system.default_config () };
+	config.tcp_io_timeout = std::chrono::seconds (2);
+	auto node{ system.add_node (config) };
 
 	// create a server socket
 	boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v6::loopback (), system.get_available_port ());

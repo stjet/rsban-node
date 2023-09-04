@@ -73,10 +73,13 @@ pub trait TcpSocketFacade: Send + Sync {
 pub struct TokioSocketFacade {
     runtime: Arc<tokio::runtime::Runtime>,
     state: Arc<Mutex<TokioSocketState>>,
+    // make sure we call the current callback if we close the socket
+    current_action: Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
 }
 
 enum TokioSocketState {
     Closed,
+    Connecting,
     Client(Arc<TcpStream>),
     Server(Arc<TcpListener>),
 }
@@ -86,6 +89,7 @@ impl TokioSocketFacade {
         Self {
             runtime,
             state: Arc::new(Mutex::new(TokioSocketState::Closed)),
+            current_action: Mutex::new(None),
         }
     }
 }
@@ -101,23 +105,43 @@ impl TcpSocketFacade for TokioSocketFacade {
             TokioSocketState::Server(listener) => listener
                 .local_addr()
                 .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0)),
+            TokioSocketState::Connecting => SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0),
         }
     }
 
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
+        let callback = Arc::new(Mutex::new(Some(callback)));
+        let callback_clone = Arc::clone(&callback);
+        *self.current_action.lock().unwrap() = Some(Box::new(move || {
+            if let Some(f) = callback_clone.lock().unwrap().take() {
+                f(ErrorCode::fault());
+            }
+        }));
+
+        {
+            let mut guard = self.state.lock().unwrap();
+            debug_assert!(matches!(*guard, TokioSocketState::Closed));
+            *guard = TokioSocketState::Connecting;
+        }
         let state = Arc::clone(&self.state);
         let runtime = Arc::clone(&self.runtime);
         self.runtime.spawn(async move {
             let Ok(stream) = TcpStream::connect(endpoint).await else {
-                runtime.spawn_blocking(move || callback(ErrorCode::fault()));
+                if let Some(cb) = callback.lock().unwrap().take(){
+                    runtime.spawn_blocking(move || cb(ErrorCode::fault()));
+                }
                 return;
             };
             {
                 let mut guard = state.lock().unwrap();
-                debug_assert!(matches!(*guard, TokioSocketState::Closed));
+                debug_assert!(matches!(*guard, TokioSocketState::Connecting));
                 *guard = TokioSocketState::Client(Arc::new(stream));
             }
-            runtime.spawn_blocking(move || callback(ErrorCode::new()));
+            runtime.spawn_blocking(move || {
+                if let Some(cb) = callback.lock().unwrap().take() {
+                    cb(ErrorCode::new())
+                }
+            });
         });
     }
 
@@ -127,6 +151,14 @@ impl TcpSocketFacade for TokioSocketFacade {
         len: usize,
         callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     ) {
+        let callback = Arc::new(Mutex::new(Some(callback)));
+        let callback_clone = Arc::clone(&callback);
+        *self.current_action.lock().unwrap() = Some(Box::new(move || {
+            if let Some(f) = callback_clone.lock().unwrap().take() {
+                f(ErrorCode::fault(), 0);
+            }
+        }));
+
         let buffer = Arc::clone(buffer);
         let stream = {
             let guard = self.state.lock().unwrap();
@@ -140,20 +172,32 @@ impl TcpSocketFacade for TokioSocketFacade {
                     let buf = buffer.get_slice_mut();
                     match stream.try_read(&mut buf[..len]) {
                         Ok(n) => {
-                            callback(ErrorCode::new(), n);
+                            runtime.spawn_blocking(move || {
+                                if let Some(cb) = callback.lock().unwrap().take() {
+                                    cb(ErrorCode::new(), n);
+                                }
+                            });
                             break;
                         }
                         Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                             continue;
                         }
                         Err(_) => {
-                            runtime.spawn_blocking(move || callback(ErrorCode::fault(), 0));
+                            runtime.spawn_blocking(move || {
+                                if let Some(cb) = callback.lock().unwrap().take() {
+                                    cb(ErrorCode::fault(), 0)
+                                }
+                            });
                             break;
                         }
                     };
                 },
                 Err(_) => {
-                    runtime.spawn_blocking(move || callback(ErrorCode::fault(), 0));
+                    runtime.spawn_blocking(move || {
+                        if let Some(cb) = callback.lock().unwrap().take() {
+                            cb(ErrorCode::fault(), 0);
+                        }
+                    });
                 }
             }
         });
@@ -165,6 +209,14 @@ impl TcpSocketFacade for TokioSocketFacade {
         len: usize,
         callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     ) {
+        let callback = Arc::new(Mutex::new(Some(callback)));
+        let callback_clone = Arc::clone(&callback);
+        *self.current_action.lock().unwrap() = Some(Box::new(move || {
+            if let Some(f) = callback_clone.lock().unwrap().take() {
+                f(ErrorCode::fault(), 0);
+            }
+        }));
+
         let buffer = Arc::clone(buffer);
         let stream = {
             let guard = self.state.lock().unwrap();
@@ -179,20 +231,32 @@ impl TcpSocketFacade for TokioSocketFacade {
                     match stream.try_read(&mut buf.as_mut_slice()[..len]) {
                         Ok(n) => {
                             drop(buf);
-                            callback(ErrorCode::new(), n);
+                            runtime.spawn_blocking(move || {
+                                if let Some(cb) = callback.lock().unwrap().take() {
+                                    cb(ErrorCode::new(), n);
+                                }
+                            });
                             break;
                         }
                         Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                             continue;
                         }
                         Err(_) => {
-                            runtime.spawn_blocking(move || callback(ErrorCode::fault(), 0));
+                            runtime.spawn_blocking(move || {
+                                if let Some(cb) = callback.lock().unwrap().take() {
+                                    cb(ErrorCode::fault(), 0);
+                                }
+                            });
                             break;
                         }
                     };
                 },
                 Err(_) => {
-                    runtime.spawn_blocking(move || callback(ErrorCode::fault(), 0));
+                    runtime.spawn_blocking(move || {
+                        if let Some(cb) = callback.lock().unwrap().take() {
+                            cb(ErrorCode::fault(), 0);
+                        }
+                    });
                 }
             }
         });
@@ -203,6 +267,14 @@ impl TcpSocketFacade for TokioSocketFacade {
         buffer: &Arc<Vec<u8>>,
         callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     ) {
+        let callback = Arc::new(Mutex::new(Some(callback)));
+        let callback_clone = Arc::clone(&callback);
+        *self.current_action.lock().unwrap() = Some(Box::new(move || {
+            if let Some(f) = callback_clone.lock().unwrap().take() {
+                f(ErrorCode::fault(), 0);
+            }
+        }));
+
         let stream = {
             let guard = self.state.lock().unwrap();
             let TokioSocketState::Client(stream) = guard.deref() else {panic!("not a tcp client")};
@@ -218,7 +290,11 @@ impl TcpSocketFacade for TokioSocketFacade {
                         Ok(n) => {
                             written += n;
                             if written >= buffer.len() {
-                                runtime.spawn_blocking(move || callback(ErrorCode::new(), written));
+                                runtime.spawn_blocking(move || {
+                                    if let Some(cb) = callback.lock().unwrap().take() {
+                                        cb(ErrorCode::new(), written);
+                                    }
+                                });
                                 break;
                             }
                         }
@@ -226,12 +302,20 @@ impl TcpSocketFacade for TokioSocketFacade {
                             continue;
                         }
                         Err(_) => {
-                            runtime.spawn_blocking(move || callback(ErrorCode::fault(), 0));
+                            runtime.spawn_blocking(move || {
+                                if let Some(cb) = callback.lock().unwrap().take() {
+                                    cb(ErrorCode::fault(), 0);
+                                }
+                            });
                             break;
                         }
                     },
                     Err(_) => {
-                        runtime.spawn_blocking(move || callback(ErrorCode::fault(), 0));
+                        runtime.spawn_blocking(move || {
+                            if let Some(cb) = callback.lock().unwrap().take() {
+                                cb(ErrorCode::fault(), 0);
+                            }
+                        });
                         break;
                     }
                 }
@@ -254,15 +338,29 @@ impl TcpSocketFacade for TokioSocketFacade {
                 TokioSocketState::Closed
             ));
         }
+
+        let callback = Arc::new(Mutex::new(Some(callback)));
+        let callback_clone = Arc::clone(&callback);
+        *self.current_action.lock().unwrap() = Some(Box::new(move || {
+            if let Some(f) = callback_clone.lock().unwrap().take() {
+                f(
+                    SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
+                    ErrorCode::fault(),
+                );
+            }
+        }));
+
         let listener = {
             let guard = self.state.lock().unwrap();
             match guard.deref() {
                 TokioSocketState::Server(listener) => Arc::clone(listener),
                 _ => {
-                    callback(
-                        SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
-                        ErrorCode::fault(),
-                    );
+                    if let Some(cb) = callback.lock().unwrap().take() {
+                        cb(
+                            SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
+                            ErrorCode::fault(),
+                        );
+                    }
                     return;
                 }
             }
@@ -278,14 +376,20 @@ impl TcpSocketFacade for TokioSocketFacade {
                         .downcast_ref::<TokioSocketFacade>()
                         .expect("not a Tokio socket");
                     *socket.state.lock().unwrap() = TokioSocketState::Client(Arc::new(stream));
-                    runtime.spawn_blocking(move || callback(remote, ErrorCode::new()));
+                    runtime.spawn_blocking(move || {
+                        if let Some(cb) = callback.lock().unwrap().take() {
+                            cb(remote, ErrorCode::new());
+                        }
+                    });
                 }
                 Err(_) => {
                     runtime.spawn_blocking(move || {
-                        callback(
-                            SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
-                            ErrorCode::fault(),
-                        )
+                        if let Some(cb) = callback.lock().unwrap().take() {
+                            cb(
+                                SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
+                                ErrorCode::fault(),
+                            )
+                        }
                     });
                 }
             }
@@ -321,6 +425,9 @@ impl TcpSocketFacade for TokioSocketFacade {
 
     fn close(&self) -> Result<(), ErrorCode> {
         *self.state.lock().unwrap() = TokioSocketState::Closed;
+        if let Some(cb) = self.current_action.lock().unwrap().take() {
+            cb();
+        }
         Ok(())
     }
 
@@ -338,7 +445,7 @@ impl TcpSocketFacade for TokioSocketFacade {
 
     fn open(&self, endpoint: &SocketAddr) -> ErrorCode {
         {
-            let guard = self.state.lock().unwrap();
+            let mut guard = self.state.lock().unwrap();
             debug_assert!(matches!(guard.deref(), TokioSocketState::Closed));
         }
         match self
@@ -358,6 +465,7 @@ impl TcpSocketFacade for TokioSocketFacade {
         match guard.deref() {
             TokioSocketState::Closed => 0,
             TokioSocketState::Client(_) => 0,
+            TokioSocketState::Connecting => 0,
             TokioSocketState::Server(listener) => {
                 listener.local_addr().map(|a| a.port()).unwrap_or_default()
             }

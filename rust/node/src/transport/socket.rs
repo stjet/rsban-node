@@ -11,7 +11,7 @@ use std::{
     },
     time::Duration,
 };
-use tokio::net::TcpStream;
+use tokio::net::{TcpListener, TcpStream};
 
 use super::{
     write_queue::{WriteCallback, WriteQueue},
@@ -78,7 +78,7 @@ pub struct TokioSocketFacade {
 enum TokioSocketState {
     Closed,
     Client(Arc<TcpStream>),
-    Server,
+    Server(Arc<TcpListener>),
 }
 
 impl TokioSocketFacade {
@@ -98,7 +98,9 @@ impl TcpSocketFacade for TokioSocketFacade {
             TokioSocketState::Client(stream) => stream
                 .local_addr()
                 .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0)),
-            TokioSocketState::Server => todo!(),
+            TokioSocketState::Server(listener) => listener
+                .local_addr()
+                .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0)),
         }
     }
 
@@ -136,7 +138,7 @@ impl TcpSocketFacade for TokioSocketFacade {
             match stream.readable().await {
                 Ok(_) => loop {
                     let buf = buffer.get_slice_mut();
-                    match stream.try_read(buf) {
+                    match stream.try_read(&mut buf[..len]) {
                         Ok(n) => {
                             callback(ErrorCode::new(), n);
                             break;
@@ -174,7 +176,7 @@ impl TcpSocketFacade for TokioSocketFacade {
             match stream.readable().await {
                 Ok(_) => loop {
                     let mut buf = buffer.lock().unwrap();
-                    match stream.try_read(buf.as_mut_slice()) {
+                    match stream.try_read(&mut buf.as_mut_slice()[..len]) {
                         Ok(n) => {
                             drop(buf);
                             callback(ErrorCode::new(), n);
@@ -198,22 +200,104 @@ impl TcpSocketFacade for TokioSocketFacade {
 
     fn async_write(
         &self,
-        _buffer: &Arc<Vec<u8>>,
-        _callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
+        buffer: &Arc<Vec<u8>>,
+        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     ) {
-        todo!()
+        let stream = {
+            let guard = self.state.lock().unwrap();
+            let TokioSocketState::Client(stream) = guard.deref() else {panic!("not a tcp client")};
+            Arc::clone(stream)
+        };
+        let runtime = Arc::clone(&self.runtime);
+        let buffer = Arc::clone(buffer);
+        self.runtime.spawn(async move {
+            let mut written = 0;
+            loop {
+                match stream.writable().await {
+                    Ok(()) => match stream.try_write(&buffer[written..]) {
+                        Ok(n) => {
+                            written += n;
+                            if written >= buffer.len() {
+                                runtime.spawn_blocking(move || callback(ErrorCode::new(), written));
+                                break;
+                            }
+                        }
+                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                            continue;
+                        }
+                        Err(_) => {
+                            runtime.spawn_blocking(move || callback(ErrorCode::fault(), 0));
+                            break;
+                        }
+                    },
+                    Err(_) => {
+                        runtime.spawn_blocking(move || callback(ErrorCode::fault(), 0));
+                        break;
+                    }
+                }
+            }
+        });
     }
 
     fn async_accept(
         &self,
-        _client_socket: &Arc<dyn TcpSocketFacade>,
-        _callback: Box<dyn FnOnce(SocketAddr, ErrorCode) + Send>,
+        client_socket: &Arc<dyn TcpSocketFacade>,
+        callback: Box<dyn FnOnce(SocketAddr, ErrorCode) + Send>,
     ) {
-        todo!()
+        {
+            let socket = client_socket
+                .as_any()
+                .downcast_ref::<TokioSocketFacade>()
+                .expect("not a Tokio socket");
+            debug_assert!(matches!(
+                socket.state.lock().unwrap().deref(),
+                TokioSocketState::Closed
+            ));
+        }
+        let listener = {
+            let guard = self.state.lock().unwrap();
+            match guard.deref() {
+                TokioSocketState::Server(listener) => Arc::clone(listener),
+                _ => {
+                    callback(
+                        SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
+                        ErrorCode::fault(),
+                    );
+                    return;
+                }
+            }
+        };
+
+        let runtime = Arc::clone(&self.runtime);
+        let client_socket = Arc::clone(client_socket);
+        self.runtime.spawn(async move {
+            match listener.accept().await {
+                Ok((stream, remote)) => {
+                    let socket = client_socket
+                        .as_any()
+                        .downcast_ref::<TokioSocketFacade>()
+                        .expect("not a Tokio socket");
+                    *socket.state.lock().unwrap() = TokioSocketState::Client(Arc::new(stream));
+                    runtime.spawn_blocking(move || callback(remote, ErrorCode::new()));
+                }
+                Err(_) => {
+                    runtime.spawn_blocking(move || {
+                        callback(
+                            SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
+                            ErrorCode::fault(),
+                        )
+                    });
+                }
+            }
+        });
     }
 
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode> {
-        todo!()
+        let guard = self.state.lock().unwrap();
+        match guard.deref() {
+            TokioSocketState::Client(stream) => stream.peer_addr().map_err(|_| ErrorCode::fault()),
+            _ => Err(ErrorCode::fault()),
+        }
     }
 
     fn post(&self, f: Box<dyn FnOnce() + Send>) {
@@ -225,15 +309,19 @@ impl TcpSocketFacade for TokioSocketFacade {
     }
 
     fn close_acceptor(&self) {
-        todo!()
+        *self.state.lock().unwrap() = TokioSocketState::Closed;
     }
 
     fn is_acceptor_open(&self) -> bool {
-        todo!()
+        matches!(
+            self.state.lock().unwrap().deref(),
+            TokioSocketState::Server(_)
+        )
     }
 
     fn close(&self) -> Result<(), ErrorCode> {
-        todo!()
+        *self.state.lock().unwrap() = TokioSocketState::Closed;
+        Ok(())
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -241,15 +329,39 @@ impl TcpSocketFacade for TokioSocketFacade {
     }
 
     fn is_open(&self) -> bool {
-        todo!()
+        let guard = self.state.lock().unwrap();
+        match guard.deref() {
+            TokioSocketState::Closed => false,
+            _ => true,
+        }
     }
 
-    fn open(&self, _endpoint: &SocketAddr) -> ErrorCode {
-        todo!()
+    fn open(&self, endpoint: &SocketAddr) -> ErrorCode {
+        {
+            let guard = self.state.lock().unwrap();
+            debug_assert!(matches!(guard.deref(), TokioSocketState::Closed));
+        }
+        match self
+            .runtime
+            .block_on(async move { TcpListener::bind(endpoint).await })
+        {
+            Ok(listener) => {
+                *self.state.lock().unwrap() = TokioSocketState::Server(Arc::new(listener));
+                ErrorCode::new()
+            }
+            Err(_) => ErrorCode::fault(),
+        }
     }
 
     fn listening_port(&self) -> u16 {
-        todo!()
+        let guard = self.state.lock().unwrap();
+        match guard.deref() {
+            TokioSocketState::Closed => 0,
+            TokioSocketState::Client(_) => 0,
+            TokioSocketState::Server(listener) => {
+                listener.local_addr().map(|a| a.port()).unwrap_or_default()
+            }
+        }
     }
 }
 

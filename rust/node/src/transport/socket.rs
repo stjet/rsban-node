@@ -1100,3 +1100,63 @@ impl SocketBuilder {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use tokio::time::sleep;
+
+    use super::*;
+
+    #[test]
+    #[ignore = "only run manually because it is slow"]
+    pub fn test_connect_and_send() {
+        let runtime = Arc::new(
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap(),
+        );
+        let server = TokioSocketFacade::new(Arc::clone(&runtime));
+        server.open(&SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 8888));
+        println!("OPEN CALLED");
+
+        let client_socket: Arc<dyn TcpSocketFacade> =
+            Arc::new(TokioSocketFacade::new(Arc::clone(&runtime)));
+        let client_socket_clone = Arc::clone(&client_socket);
+        server.async_accept(
+            &client_socket,
+            Box::new(move |_remote_endpoint, _ec| {
+                println!("ACCEPTED!!!");
+                let buffer = Arc::new(Mutex::new(vec![0; 10]));
+                let buffer_clone = Arc::clone(&buffer);
+                client_socket_clone.async_read2(
+                    &buffer,
+                    3,
+                    Box::new(move |ec, len| {
+                        println!(
+                            "SERVER RECEIVED BYTES: {:?}",
+                            &buffer_clone.lock().unwrap()[..3]
+                        );
+                    }),
+                )
+            }),
+        );
+
+        let client = Arc::new(TokioSocketFacade::new(Arc::clone(&runtime)));
+        let client_clone = Arc::clone(&client);
+        client.async_connect(
+            SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 8888),
+            Box::new(move |ec| {
+                println!("CLIENT CONNECTED!");
+                client_clone.async_write(
+                    &Arc::new(vec![1, 2, 3]),
+                    Box::new(|ec, len| println!("client bytes written!")),
+                )
+            }),
+        );
+
+        runtime.block_on(async {
+            sleep(Duration::from_secs(5)).await;
+        });
+    }
+}

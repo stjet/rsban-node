@@ -44,4 +44,4 @@ primitive-types = "0"
 threadpool = "1"
 timer = "0"
 multi_index_map = "0.6.0"
-tokio = { version = "1", features = ["rt", "net"]}
+tokio = { version = "1", features = ["rt", "net", "time"]}

@@ -481,7 +481,7 @@ mod tests {
         cell::RefCell,
         rc::Rc,
         sync::{
-            atomic::{AtomicUsize, Ordering},
+            atomic::{AtomicBool, AtomicUsize, Ordering},
             RwLock,
         },
     };
@@ -572,17 +572,17 @@ mod tests {
 
     fn test_deserializer(original_message: &dyn Message) {
         let deserializer = create_message_deserializer(original_message.to_bytes());
-        let success = Rc::new(RefCell::new(false));
-        let success_clone = Rc::clone(&success);
+        let success = Arc::new(AtomicBool::new(false));
+        let success_clone = Arc::clone(&success);
         let original_bytes = original_message.to_bytes();
         deserializer.read(Box::new(move |ec, msg| {
             assert!(ec.is_ok());
             let Some(deserialized_msg) = msg else { panic!("no message read")};
             assert_eq!(deserialized_msg.to_bytes(), original_bytes);
-            *success_clone.borrow_mut() = true;
+            success_clone.store(true, Ordering::SeqCst);
         }));
         assert_eq!(deserializer.status(), ParseStatus::Success);
-        assert!(*success.borrow());
+        assert!(success.load(Ordering::SeqCst));
     }
 
     fn create_message_deserializer(input_source: Vec<u8>) -> Arc<MessageDeserializer> {

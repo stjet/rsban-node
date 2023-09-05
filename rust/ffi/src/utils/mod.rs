@@ -96,3 +96,9 @@ pub extern "C" fn rsn_reserved_address(endpoint: &EndpointDto, allow_local_peers
     let endpoint = SocketAddrV6::from(endpoint);
     reserved_address(&endpoint, allow_local_peers)
 }
+
+pub fn is_tokio_enabled() -> bool {
+    std::env::var("NANO_ENABLE_TOKIO")
+        .map(|s| s == "1")
+        .unwrap_or_default()
+}

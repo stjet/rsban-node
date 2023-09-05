@@ -18,7 +18,10 @@ use super::{
     SocketHandle,
 };
 use crate::{
-    utils::{AsyncRuntimeHandle, ContextWrapper, LoggerHandle, LoggerMT, ThreadPoolHandle},
+    utils::{
+        is_tokio_enabled, AsyncRuntimeHandle, ContextWrapper, LoggerHandle, LoggerMT,
+        ThreadPoolHandle,
+    },
     ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
     VoidPointerCallback,
 };
@@ -46,8 +49,7 @@ pub unsafe extern "C" fn rsn_server_socket_create(
     let mut tcp_socket_facade_factory: Arc<dyn TcpSocketFacadeFactory> =
         Arc::new(FfiTcpSocketFacadeFactory(tcp_socket_facade_factory_handle));
 
-    #[cfg(feature = "tokio_sockets")]
-    {
+    if is_tokio_enabled() {
         socket_facade = Arc::new(TokioSocketFacade::new(Arc::clone(&async_rt.0.tokio)));
         tcp_socket_facade_factory =
             Arc::new(TokioSocketFacadeFactory::new(Arc::clone(&async_rt.0.tokio)));

@@ -20,8 +20,8 @@ use crate::{
     core::BlockUniquerHandle,
     messages::MessageHandle,
     utils::{
-        ptr_into_ipv6addr, AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper,
-        FfiIoContext, IoContextHandle, LoggerHandle, LoggerMT, ThreadPoolHandle,
+        is_tokio_enabled, ptr_into_ipv6addr, AsyncRuntimeHandle, ContainerInfoComponentHandle,
+        ContextWrapper, FfiIoContext, IoContextHandle, LoggerHandle, LoggerMT, ThreadPoolHandle,
     },
     voting::VoteUniquerHandle,
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
@@ -78,8 +78,7 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
             let observer = Arc::new(SocketFfiObserver::new(value.socket_observer));
             let mut tcp_socket_factory: Arc<dyn TcpSocketFacadeFactory> =
                 Arc::new(FfiTcpSocketFacadeFactory(value.tcp_socket_factory));
-            #[cfg(feature = "tokio_sockets")]
-            {
+            if is_tokio_enabled() {
                 tcp_socket_factory = Arc::new(TokioSocketFacadeFactory::new(Arc::clone(
                     &(*value.async_rt).0.tokio,
                 )));

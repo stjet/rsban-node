@@ -70,7 +70,7 @@ pub trait Channel {
     fn get_type(&self) -> TransportType;
 }
 
-#[derive(FromPrimitive, Copy, Clone)]
+#[derive(FromPrimitive, Copy, Clone, Debug)]
 pub enum TrafficType {
     Generic,
     /** For bootstrap (asc_pull_ack, asc_pull_req) traffic */

@@ -11,7 +11,7 @@ use std::{
     },
     time::Duration,
 };
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::{TcpListener, TcpSocket, TcpStream};
 
 use super::{
     write_queue::{WriteCallback, WriteQueue},
@@ -19,7 +19,7 @@ use super::{
 };
 
 /// Policy to affect at which stage a buffer can be dropped
-#[derive(PartialEq, Eq, FromPrimitive)]
+#[derive(PartialEq, Eq, FromPrimitive, Debug)]
 pub enum BufferDropPolicy {
     /// Can be dropped by bandwidth limiter (default)
     Limiter,
@@ -167,37 +167,44 @@ impl TcpSocketFacade for TokioSocketFacade {
         };
         let runtime = Arc::clone(&self.runtime);
         self.runtime.spawn(async move {
-            match stream.readable().await {
-                Ok(_) => loop {
-                    let buf = buffer.get_slice_mut();
-                    match stream.try_read(&mut buf[..len]) {
-                        Ok(n) => {
-                            runtime.spawn_blocking(move || {
-                                if let Some(cb) = callback.lock().unwrap().take() {
-                                    cb(ErrorCode::new(), n);
+            let mut read = 0;
+            loop {
+                match stream.readable().await {
+                    Ok(_) => {
+                        let buf = buffer.get_slice_mut();
+                        match stream.try_read(&mut buf[read..(len - read)]) {
+                            Ok(n) => {
+                                read += n;
+                                if read >= len {
+                                    runtime.spawn_blocking(move || {
+                                        if let Some(cb) = callback.lock().unwrap().take() {
+                                            cb(ErrorCode::new(), n);
+                                        }
+                                    });
+                                    break;
                                 }
-                            });
-                            break;
-                        }
-                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                            continue;
-                        }
-                        Err(_) => {
-                            runtime.spawn_blocking(move || {
-                                if let Some(cb) = callback.lock().unwrap().take() {
-                                    cb(ErrorCode::fault(), 0)
-                                }
-                            });
-                            break;
-                        }
-                    };
-                },
-                Err(_) => {
-                    runtime.spawn_blocking(move || {
-                        if let Some(cb) = callback.lock().unwrap().take() {
-                            cb(ErrorCode::fault(), 0);
-                        }
-                    });
+                            }
+                            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                continue;
+                            }
+                            Err(_) => {
+                                runtime.spawn_blocking(move || {
+                                    if let Some(cb) = callback.lock().unwrap().take() {
+                                        cb(ErrorCode::fault(), 0)
+                                    }
+                                });
+                                break;
+                            }
+                        };
+                    }
+                    Err(_) => {
+                        runtime.spawn_blocking(move || {
+                            if let Some(cb) = callback.lock().unwrap().take() {
+                                cb(ErrorCode::fault(), 0);
+                            }
+                        });
+                        break;
+                    }
                 }
             }
         });
@@ -225,38 +232,45 @@ impl TcpSocketFacade for TokioSocketFacade {
         };
         let runtime = Arc::clone(&self.runtime);
         self.runtime.spawn(async move {
-            match stream.readable().await {
-                Ok(_) => loop {
-                    let mut buf = buffer.lock().unwrap();
-                    match stream.try_read(&mut buf.as_mut_slice()[..len]) {
-                        Ok(n) => {
-                            drop(buf);
-                            runtime.spawn_blocking(move || {
-                                if let Some(cb) = callback.lock().unwrap().take() {
-                                    cb(ErrorCode::new(), n);
+            let mut read = 0;
+            loop {
+                match stream.readable().await {
+                    Ok(_) => {
+                        let mut buf = buffer.lock().unwrap();
+                        match stream.try_read(&mut buf.as_mut_slice()[read..(len - read)]) {
+                            Ok(n) => {
+                                drop(buf);
+                                read += n;
+                                if read >= len {
+                                    runtime.spawn_blocking(move || {
+                                        if let Some(cb) = callback.lock().unwrap().take() {
+                                            cb(ErrorCode::new(), n);
+                                        }
+                                    });
+                                    break;
                                 }
-                            });
-                            break;
-                        }
-                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                            continue;
-                        }
-                        Err(_) => {
-                            runtime.spawn_blocking(move || {
-                                if let Some(cb) = callback.lock().unwrap().take() {
-                                    cb(ErrorCode::fault(), 0);
-                                }
-                            });
-                            break;
-                        }
-                    };
-                },
-                Err(_) => {
-                    runtime.spawn_blocking(move || {
-                        if let Some(cb) = callback.lock().unwrap().take() {
-                            cb(ErrorCode::fault(), 0);
-                        }
-                    });
+                            }
+                            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                continue;
+                            }
+                            Err(_) => {
+                                runtime.spawn_blocking(move || {
+                                    if let Some(cb) = callback.lock().unwrap().take() {
+                                        cb(ErrorCode::fault(), 0);
+                                    }
+                                });
+                                break;
+                            }
+                        };
+                    }
+                    Err(_) => {
+                        runtime.spawn_blocking(move || {
+                            if let Some(cb) = callback.lock().unwrap().take() {
+                                cb(ErrorCode::fault(), 0);
+                            }
+                        });
+                        break;
+                    }
                 }
             }
         });

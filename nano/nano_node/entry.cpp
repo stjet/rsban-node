@@ -1131,8 +1131,8 @@ int main (int argc, char * const * argv)
 				}
 			}
 			std::cout << boost::str (boost::format ("Starting generating %1% blocks...\n") % (count * 2));
-			rsnano::async_runtime async_rt1;
-			rsnano::async_runtime async_rt2;
+			rsnano::async_runtime async_rt1{ true };
+			rsnano::async_runtime async_rt2{ true };
 			nano::work_pool work{ network_params.network, std::numeric_limits<unsigned>::max () };
 			nano::logging logging;
 			auto path1 (nano::unique_path ());

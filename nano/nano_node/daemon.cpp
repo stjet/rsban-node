@@ -92,7 +92,7 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 			config.node.websocket_config.tls_config = tls_config;
 		}
 
-		rsnano::async_runtime async_rt{};
+		rsnano::async_runtime async_rt{ true };
 		auto opencl (nano::opencl_work::create (config.opencl_enable, config.opencl, logger, config.node.network_params.work));
 		nano::work_pool opencl_work (config.node.network_params.network, config.node.work_threads, config.node.pow_sleep_interval, opencl ? [&opencl] (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, nano::work_ticket ticket_a) {
 			return opencl->generate_work (version_a, root_a, difficulty_a, ticket_a);

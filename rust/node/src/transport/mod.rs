@@ -104,16 +104,23 @@ impl ChannelEnum {
             sync::Arc,
         };
 
-        use crate::{stats::Stats, utils::StubIoContext};
+        use crate::{
+            stats::Stats,
+            utils::{AsyncRuntime, StubIoContext},
+        };
 
         let limiter = Arc::new(OutboundBandwidthLimiter::default());
-        let io_ctx = Box::new(StubIoContext::new());
+        let io_ctx = Arc::new(StubIoContext::new());
+        let async_rt = Arc::new(AsyncRuntime {
+            cpp: io_ctx,
+            tokio: Arc::new(tokio::runtime::Runtime::new().unwrap()),
+        });
         let stats = Arc::new(Stats::default());
 
         Self::Fake(ChannelFake::new(
             SystemTime::now(),
             channel_id,
-            io_ctx,
+            &async_rt,
             limiter,
             stats,
             SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 123),

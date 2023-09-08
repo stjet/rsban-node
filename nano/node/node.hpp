@@ -72,11 +72,7 @@ public:
 	~node ();
 
 public:
-	template <typename T>
-	void background (T action_a)
-	{
-		io_ctx.post (action_a);
-	}
+	void background (std::function<void ()> action_a);
 	bool copy_with_compaction (boost::filesystem::path const &);
 	void keepalive (std::string const &, uint16_t);
 	void start ();

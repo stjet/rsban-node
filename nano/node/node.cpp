@@ -472,6 +472,34 @@ nano::node::~node ()
 	stop ();
 }
 
+namespace
+{
+void call_post_callback (void * callback_handle)
+{
+	auto callback = static_cast<std::function<void ()> *> (callback_handle);
+	(*callback) ();
+}
+
+void delete_post_callback (void * callback_handle)
+{
+	auto callback = static_cast<std::function<void ()> *> (callback_handle);
+	delete callback;
+}
+}
+
+void nano::node::background (std::function<void ()> action_a)
+{
+	if (!rsnano::rsn_async_runtime_tokio_enabled ())
+	{
+		io_ctx.post (action_a);
+	}
+	else
+	{
+		auto context = new std::function<void ()> (std::move (action_a));
+		rsnano::rsn_async_runtime_post (async_rt.handle, call_post_callback, context, delete_post_callback);
+	}
+}
+
 void nano::node::do_rpc_callback (boost::asio::ip::tcp::resolver::iterator i_a, std::string const & address, uint16_t port, std::shared_ptr<std::string> const & target, std::shared_ptr<std::string> const & body, std::shared_ptr<boost::asio::ip::tcp::resolver> const & resolver)
 {
 	if (i_a != boost::asio::ip::tcp::resolver::iterator{})

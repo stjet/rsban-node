@@ -1,6 +1,21 @@
-use std::{ffi::c_void, sync::Arc};
+use std::sync::Arc;
+
+use super::{is_tokio_enabled, IoContext};
 
 pub struct AsyncRuntime {
-    pub cpp: *mut c_void,
+    pub cpp: Arc<dyn IoContext>,
     pub tokio: Arc<tokio::runtime::Runtime>,
+}
+
+impl AsyncRuntime {
+    pub fn post<F>(&self, action: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        if is_tokio_enabled() {
+            self.tokio.spawn_blocking(action);
+        } else {
+            self.cpp.post(Box::new(move || action()));
+        }
+    }
 }

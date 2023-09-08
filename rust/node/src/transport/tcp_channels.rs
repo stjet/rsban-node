@@ -26,8 +26,8 @@ use crate::{
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     transport::{Channel, SocketType},
     utils::{
-        ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address, BlockUniquer,
-        ErrorCode, IoContext, ThreadPool,
+        ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address, AsyncRuntime,
+        BlockUniquer, ErrorCode, ThreadPool,
     },
     voting::VoteUniquer,
     NetworkParams,
@@ -45,7 +45,7 @@ pub struct TcpChannelsOptions {
     pub node_config: NodeConfig,
     pub logger: Arc<dyn Logger>,
     pub publish_filter: Arc<NetworkFilter>,
-    pub io_ctx: Arc<dyn IoContext>,
+    pub async_rt: Arc<AsyncRuntime>,
     pub network: NetworkParams,
     pub stats: Arc<Stats>,
     pub block_uniquer: Arc<BlockUniquer>,
@@ -75,7 +75,7 @@ pub struct TcpChannels {
     network: Arc<NetworkParams>,
     pub excluded_peers: Arc<Mutex<PeerExclusion>>,
     limiter: Arc<OutboundBandwidthLimiter>,
-    io_ctx: Arc<dyn IoContext>,
+    async_rt: Weak<AsyncRuntime>,
     node_config: Arc<NodeConfig>,
     logger: Arc<dyn Logger>,
     pub node_id: KeyPair,
@@ -138,7 +138,7 @@ impl TcpChannels {
             observer: options.observer,
             channel_observer: Mutex::new(None),
             tcp_socket_factory: options.tcp_socket_factory,
-            io_ctx: options.io_ctx,
+            async_rt: Arc::downgrade(&options.async_rt),
         }
     }
 
@@ -528,6 +528,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         node_id: PublicKey,
         socket: &Arc<Socket>,
     ) {
+        let Some(async_rt) = self.async_rt.upgrade() else { return;};
         let socket_type = socket.socket_type();
         if !self.stopped.load(Ordering::SeqCst)
             && message.header().version_using() >= self.network.network.protocol_version_min
@@ -554,7 +555,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                             SystemTime::now(),
                             Arc::new(ChannelTcpObserverWeakPtr(channel_observer)),
                             self.limiter.clone(),
-                            self.io_ctx.clone(),
+                            &async_rt,
                             channel_id,
                         );
                         temporary_channel.set_remote_endpoint();
@@ -834,6 +835,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
     }
 
     fn start_tcp(&self, endpoint: SocketAddrV6) {
+        let Some(async_rt) = self.async_rt.upgrade() else { return; };
         let socket_stats = Arc::new(SocketStats::new(
             self.stats.clone(),
             self.logger.clone(),
@@ -868,7 +870,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             SystemTime::now(),
             Arc::new(ChannelTcpObserverWeakPtr(Arc::downgrade(&observer))),
             self.limiter.clone(),
-            self.io_ctx.clone(),
+            &async_rt,
             channel_id,
         )));
         let this_w = Arc::downgrade(self);

@@ -11,7 +11,7 @@ use std::{
     },
     time::Duration,
 };
-use tokio::net::{TcpListener, TcpSocket, TcpStream};
+use tokio::net::{TcpListener, TcpStream};
 
 use super::{
     write_queue::{WriteCallback, WriteQueue},
@@ -86,11 +86,18 @@ enum TokioSocketState {
 
 impl TokioSocketFacade {
     pub fn new(runtime: Arc<tokio::runtime::Runtime>) -> Self {
+        println!("tokio facade created");
         Self {
             runtime,
             state: Arc::new(Mutex::new(TokioSocketState::Closed)),
             current_action: Mutex::new(None),
         }
+    }
+}
+
+impl Drop for TokioSocketFacade {
+    fn drop(&mut self) {
+        println!("dropping tokio socket facade");
     }
 }
 

@@ -9,7 +9,10 @@ mod timer;
 mod toml;
 
 mod uniquer;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddrV6};
+use std::{
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddrV6},
+    sync::OnceLock,
+};
 
 pub use crate::utils::timer::{NullTimer, Timer, TimerStrategy, TimerWrapper};
 pub use async_runtime::AsyncRuntime;
@@ -93,6 +96,18 @@ impl ErrorCode {
             category: error_category::GENERIC,
         }
     }
+}
+
+static TOKIO_ENABLED_VALUE: OnceLock<bool> = OnceLock::new();
+
+pub fn is_tokio_enabled() -> bool {
+    *TOKIO_ENABLED_VALUE.get_or_init(|| {
+        let enable = std::env::var("NANO_ENABLE_TOKIO")
+            .map(|s| s == "1")
+            .unwrap_or_default();
+        println!("TOKIO IS{} ENABLED", if enable { "" } else { " NOT" });
+        enable
+    })
 }
 
 pub fn ip_address_hash_raw(address: &Ipv6Addr, port: u16) -> u64 {

@@ -29,7 +29,7 @@ namespace transport
 			nano::network_constants & network,
 			nano::stats & stats,
 			nano::outbound_bandwidth_limiter & outbound_limiter,
-			boost::asio::io_context & io_ctx,
+			rsnano::async_runtime & async_rt,
 			nano::endpoint endpoint,
 			nano::account source_node_id,
 			std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> source_inbound,

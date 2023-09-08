@@ -12,6 +12,7 @@ use rsnano_node::{
         ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpEndpointAttempt,
         TcpSocketFacadeFactory, TokioSocketFacadeFactory,
     },
+    utils::is_tokio_enabled,
     NetworkParams,
 };
 
@@ -20,8 +21,8 @@ use crate::{
     core::BlockUniquerHandle,
     messages::MessageHandle,
     utils::{
-        is_tokio_enabled, ptr_into_ipv6addr, AsyncRuntimeHandle, ContainerInfoComponentHandle,
-        ContextWrapper, FfiIoContext, IoContextHandle, LoggerHandle, LoggerMT, ThreadPoolHandle,
+        ptr_into_ipv6addr, AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper,
+        LoggerHandle, LoggerMT, ThreadPoolHandle,
     },
     voting::VoteUniquerHandle,
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
@@ -89,7 +90,7 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 logger: Arc::new(LoggerMT::new(Box::from_raw(value.logger))),
                 publish_filter: (*value.publish_filter).0.clone(),
                 network: NetworkParams::try_from(&*value.network)?,
-                io_ctx: Arc::new(FfiIoContext::new((*value.async_rt).0.cpp)),
+                async_rt: Arc::clone(&(*value.async_rt).0),
                 stats: (*value.stats).0.clone(),
                 block_uniquer: (*value.block_uniquer).deref().clone(),
                 vote_uniquer: (*value.vote_uniquer).deref().clone(),

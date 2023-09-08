@@ -45,7 +45,7 @@ private:
 class async_runtime
 {
 public:
-	async_runtime ();
+	async_runtime (bool multi_threaded);
 	async_runtime (async_runtime const &) = delete;
 	~async_runtime ();
 	void stop ();

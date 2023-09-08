@@ -4,6 +4,7 @@ mod stream;
 use std::{
     ffi::c_void,
     net::{Ipv6Addr, SocketAddrV6},
+    sync::OnceLock,
 };
 
 pub use async_runtime::AsyncRuntimeHandle;
@@ -95,10 +96,4 @@ pub(crate) unsafe fn ptr_into_ipv6addr(ipv6_bytes: *const u8) -> Ipv6Addr {
 pub extern "C" fn rsn_reserved_address(endpoint: &EndpointDto, allow_local_peers: bool) -> bool {
     let endpoint = SocketAddrV6::from(endpoint);
     reserved_address(&endpoint, allow_local_peers)
-}
-
-pub fn is_tokio_enabled() -> bool {
-    std::env::var("NANO_ENABLE_TOKIO")
-        .map(|s| s == "1")
-        .unwrap_or_default()
 }

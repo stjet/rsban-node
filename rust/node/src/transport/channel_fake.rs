@@ -2,7 +2,7 @@ use std::{
     net::SocketAddr,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, Weak,
     },
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -12,7 +12,7 @@ use rsnano_core::Account;
 use crate::{
     messages::Message,
     stats::{DetailType, Direction, StatType, Stats},
-    utils::{ErrorCode, IoContext},
+    utils::{AsyncRuntime, ErrorCode, IoContext},
 };
 
 use super::{
@@ -29,7 +29,7 @@ pub struct FakeChannelData {
 
 pub struct ChannelFake {
     channel_id: usize,
-    io_ctx: Box<dyn IoContext>,
+    async_rt: Weak<AsyncRuntime>,
     temporary: AtomicBool,
     channel_mutex: Mutex<FakeChannelData>,
     limiter: Arc<OutboundBandwidthLimiter>,
@@ -43,7 +43,7 @@ impl ChannelFake {
     pub fn new(
         now: SystemTime,
         channel_id: usize,
-        io_ctx: Box<dyn IoContext>,
+        async_rt: &Arc<AsyncRuntime>,
         limiter: Arc<OutboundBandwidthLimiter>,
         stats: Arc<Stats>,
         endpoint: SocketAddr,
@@ -51,7 +51,7 @@ impl ChannelFake {
     ) -> Self {
         Self {
             channel_id,
-            io_ctx,
+            async_rt: Arc::downgrade(async_rt),
             temporary: AtomicBool::new(false),
             channel_mutex: Mutex::new(FakeChannelData {
                 last_bootstrap_attempt: UNIX_EPOCH,
@@ -86,9 +86,11 @@ impl ChannelFake {
             self.stats.inc(StatType::Message, detail, Direction::Out);
         } else {
             if let Some(cb) = callback_a {
-                self.io_ctx.post(Box::new(move || {
-                    cb(ErrorCode::not_supported(), 0);
-                }))
+                if let Some(async_rt) = self.async_rt.upgrade() {
+                    async_rt.post(Box::new(move || {
+                        cb(ErrorCode::not_supported(), 0);
+                    }))
+                }
             }
 
             self.stats.inc(StatType::Drop, detail, Direction::Out);
@@ -104,9 +106,11 @@ impl ChannelFake {
     ) {
         let size = buffer_a.len();
         if let Some(cb) = callback_a {
-            self.io_ctx.post(Box::new(move || {
-                cb(ErrorCode::new(), size);
-            }))
+            if let Some(async_rt) = self.async_rt.upgrade() {
+                async_rt.post(Box::new(move || {
+                    cb(ErrorCode::new(), size);
+                }))
+            }
         }
     }
 

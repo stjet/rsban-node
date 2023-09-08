@@ -234,7 +234,7 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 			}
 
 			auto channel_id = this_l->node.network->tcp_channels->get_next_channel_id ();
-			auto client (std::make_shared<nano::bootstrap_client> (this_l, std::make_shared<nano::transport::channel_tcp> (this_l->node.io_ctx, this_l->node.outbound_limiter, this_l->node.config->network_params.network, socket, this_l->node.network->tcp_channels, channel_id), socket));
+			auto client (std::make_shared<nano::bootstrap_client> (this_l, std::make_shared<nano::transport::channel_tcp> (this_l->node.async_rt, this_l->node.outbound_limiter, this_l->node.config->network_params.network, socket, this_l->node.network->tcp_channels, channel_id), socket));
 			this_l->connections_count++;
 			this_l->pool_connection (client, true, push_front);
 		}

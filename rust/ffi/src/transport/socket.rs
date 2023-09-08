@@ -6,9 +6,10 @@ use rsnano_node::{
         CompositeSocketObserver, Socket, SocketBuilder, SocketExtensions, SocketObserver,
         SocketType, TcpSocketFacade, TcpSocketFacadeFactory, TokioSocketFacade, WriteCallback,
     },
-    utils::{BufferWrapper, ErrorCode},
+    utils::{is_tokio_enabled, BufferWrapper, ErrorCode},
 };
 use std::{
+    backtrace::Backtrace,
     ffi::c_void,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6},
     ops::Deref,
@@ -18,8 +19,8 @@ use std::{
 
 use crate::{
     utils::{
-        is_tokio_enabled, AsyncRuntimeHandle, DispatchCallback, LoggerHandle, LoggerMT,
-        ThreadPoolHandle, VoidFnCallbackHandle,
+        AsyncRuntimeHandle, DispatchCallback, LoggerHandle, LoggerMT, ThreadPoolHandle,
+        VoidFnCallbackHandle,
     },
     ErrorCodeDto, StatHandle, StringDto, VoidPointerCallback,
 };
@@ -703,6 +704,14 @@ impl FfiTcpSocketFacade {
     pub fn new(handle: *mut c_void) -> Self {
         Self { handle }
     }
+
+    fn log_tokio_warning() {
+        if is_tokio_enabled() {
+            println!("FFI SOCKET FACADE USED ALTHOUGH TOKIO IS ENABLED!");
+            let bt = Backtrace::capture();
+            println!("{}", bt.to_string());
+        }
+    }
 }
 
 impl Drop for FfiTcpSocketFacade {
@@ -715,6 +724,7 @@ impl Drop for FfiTcpSocketFacade {
 
 impl TcpSocketFacade for FfiTcpSocketFacade {
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
+        Self::log_tokio_warning();
         let endpoint_dto = EndpointDto::from(&endpoint);
         let callback_handle = Box::new(AsyncConnectCallbackHandle::new(callback));
         unsafe {
@@ -731,6 +741,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         len: usize,
         callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     ) {
+        Self::log_tokio_warning();
         let callback_handle = Box::into_raw(Box::new(AsyncReadCallbackHandle(Some(callback))));
         unsafe {
             ASYNC_READ_CALLBACK.expect("ASYNC_READ_CALLBACK missing")(
@@ -748,6 +759,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         len: usize,
         callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     ) {
+        Self::log_tokio_warning();
         let callback_handle = Box::into_raw(Box::new(AsyncReadCallbackHandle(Some(callback))));
         unsafe {
             ASYNC_READ2_CALLBACK.expect("ASYNC_READ2_CALLBACK missing")(
@@ -764,6 +776,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         buffer: &Arc<Vec<u8>>,
         callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     ) {
+        Self::log_tokio_warning();
         let callback_handle = Box::into_raw(Box::new(AsyncWriteCallbackHandle::new(callback)));
         unsafe {
             ASYNC_WRITE_CALLBACK.expect("ASYNC_WRITE_CALLBACK missing")(
@@ -776,6 +789,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
     }
 
     fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode> {
+        Self::log_tokio_warning();
         let mut endpoint_dto = EndpointDto::new();
         let mut ec_dto = ErrorCodeDto {
             val: 0,
@@ -796,6 +810,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
     }
 
     fn post(&self, f: Box<dyn FnOnce() + Send>) {
+        Self::log_tokio_warning();
         unsafe {
             POST_CALLBACK.expect("POST_CALLBACK missing")(
                 self.handle,
@@ -805,6 +820,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
     }
 
     fn dispatch(&self, f: Box<dyn FnOnce() + Send>) {
+        Self::log_tokio_warning();
         unsafe {
             DISPATCH_CALLBACK.expect("DISPATCH_CALLBACK missing")(
                 self.handle,
@@ -830,6 +846,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
     }
 
     fn local_endpoint(&self) -> SocketAddr {
+        Self::log_tokio_warning();
         unsafe {
             let mut dto = EndpointDto::new();
             LOCAL_ENDPOINT_CALLBACK.expect("LOCAL_ENDPOINT_CALLBACK missing")(
@@ -845,10 +862,12 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
     }
 
     fn is_open(&self) -> bool {
+        Self::log_tokio_warning();
         unsafe { SOCKET_IS_OPEN_CALLBACK.expect("SOCKET_IS_OPEN_CALLBACK missing")(self.handle) }
     }
 
     fn close_acceptor(&self) {
+        Self::log_tokio_warning();
         unsafe {
             SOCKET_CLOSE_ACCEPTOR_CALLBACK.expect("SOCKET_CLOSE_ACCEPTOR_CALLBACK missing")(
                 self.handle,
@@ -857,6 +876,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
     }
 
     fn is_acceptor_open(&self) -> bool {
+        Self::log_tokio_warning();
         unsafe { IS_ACCEPTOR_OPEN.expect("IS_ACCEPTOR_OPEN missing")(self.handle) }
     }
 
@@ -865,6 +885,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
         client_socket: &Arc<dyn TcpSocketFacade>,
         callback: Box<dyn FnOnce(SocketAddr, ErrorCode) + Send>,
     ) {
+        Self::log_tokio_warning();
         let callback_handle = Box::into_raw(Box::new(AsyncAcceptCallbackHandle(Some(callback))));
         unsafe {
             ASYNC_ACCEPT_CALLBACK.expect("ASYNC_ACCEPT_CALLBACK missing")(
@@ -880,6 +901,7 @@ impl TcpSocketFacade for FfiTcpSocketFacade {
     }
 
     fn open(&self, endpoint: &SocketAddr) -> ErrorCode {
+        Self::log_tokio_warning();
         let mut error = ErrorCodeDto {
             val: 0,
             category: 0,

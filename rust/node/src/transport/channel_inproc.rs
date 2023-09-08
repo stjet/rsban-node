@@ -2,7 +2,7 @@ use std::{
     net::SocketAddr,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, Weak,
     },
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -15,7 +15,7 @@ use crate::{
     messages::Message,
     stats::{DetailType, Direction, StatType, Stats},
     transport::message_deserializer,
-    utils::{BlockUniquer, ErrorCode, IoContext},
+    utils::{AsyncRuntime, BlockUniquer, ErrorCode},
     voting::VoteUniquer,
 };
 
@@ -43,7 +43,7 @@ pub struct ChannelInProc {
     limiter: Arc<OutboundBandwidthLimiter>,
     source_inbound: InboundCallback,
     destination_inbound: InboundCallback,
-    io_ctx: Arc<dyn IoContext>,
+    async_rt: Weak<AsyncRuntime>,
     pub source_endpoint: SocketAddr,
     pub destination_endpoint: SocketAddr,
     source_node_id: Account,
@@ -60,7 +60,7 @@ impl ChannelInProc {
         limiter: Arc<OutboundBandwidthLimiter>,
         source_inbound: InboundCallback,
         destination_inbound: InboundCallback,
-        io_ctx: Arc<dyn IoContext>,
+        async_rt: &Arc<AsyncRuntime>,
         source_endpoint: SocketAddr,
         destination_endpoint: SocketAddr,
         source_node_id: Account,
@@ -81,7 +81,7 @@ impl ChannelInProc {
             limiter,
             source_inbound,
             destination_inbound,
-            io_ctx,
+            async_rt: Arc::downgrade(async_rt),
             source_endpoint,
             destination_endpoint,
             source_node_id,
@@ -108,9 +108,11 @@ impl ChannelInProc {
             self.stats.inc(StatType::Message, detail, Direction::Out);
         } else {
             if let Some(cb) = callback_a {
-                self.io_ctx.post(Box::new(move || {
-                    cb(ErrorCode::not_supported(), 0);
-                }))
+                if let Some(async_rt) = self.async_rt.upgrade() {
+                    async_rt.post(Box::new(move || {
+                        cb(ErrorCode::not_supported(), 0);
+                    }))
+                }
             }
 
             self.stats.inc(StatType::Drop, detail, Direction::Out);
@@ -133,12 +135,13 @@ impl ChannelInProc {
         let destination_endpoint = self.destination_endpoint;
         let source_node_id = self.source_node_id;
         let destination_node_id = self.destination_node_id;
-        let io_ctx = self.io_ctx.clone();
+        let async_rt = self.async_rt.clone();
 
         let callback_wrapper = Box::new(move |ec: ErrorCode, msg: Option<Box<dyn Message>>| {
             if ec.is_err() {
                 return;
             }
+            let Some(async_rt) = async_rt.upgrade() else { return; };
             let Some(msg) = msg else { return; };
             let filter = Arc::new(NetworkFilter::new(100000));
             // we create a temporary channel for the reply path, in case the receiver of the message wants to reply
@@ -151,7 +154,7 @@ impl ChannelInProc {
                 limiter,
                 source_inbound,
                 destination_inbound.clone(),
-                io_ctx,
+                &async_rt,
                 source_endpoint,
                 destination_endpoint,
                 source_node_id,
@@ -174,9 +177,11 @@ impl ChannelInProc {
 
         if let Some(cb) = callback_a {
             let buffer_size = buffer_a.len();
-            self.io_ctx.post(Box::new(move || {
-                cb(ErrorCode::new(), buffer_size);
-            }));
+            if let Some(async_rt) = self.async_rt.upgrade() {
+                async_rt.post(Box::new(move || {
+                    cb(ErrorCode::new(), buffer_size);
+                }));
+            }
         }
     }
 

@@ -4,7 +4,7 @@ use rsnano_node::{
         ServerSocket, ServerSocketExtensions, Socket, TcpSocketFacade, TcpSocketFacadeFactory,
         TokioSocketFacade, TokioSocketFacadeFactory,
     },
-    utils::ErrorCode,
+    utils::{is_tokio_enabled, ErrorCode},
     NetworkParams,
 };
 use std::{
@@ -18,10 +18,7 @@ use super::{
     SocketHandle,
 };
 use crate::{
-    utils::{
-        is_tokio_enabled, AsyncRuntimeHandle, ContextWrapper, LoggerHandle, LoggerMT,
-        ThreadPoolHandle,
-    },
+    utils::{AsyncRuntimeHandle, ContextWrapper, LoggerHandle, LoggerMT, ThreadPoolHandle},
     ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
     VoidPointerCallback,
 };

@@ -16,7 +16,7 @@ use super::{
 };
 use crate::{
     messages::Message,
-    utils::{ErrorCode, IoContext},
+    utils::{AsyncRuntime, ErrorCode, IoContext},
 };
 
 pub trait IChannelTcpObserverWeakPtr: Send + Sync {
@@ -52,7 +52,7 @@ pub struct ChannelTcp {
     network_version: AtomicU8,
     pub observer: Arc<dyn IChannelTcpObserverWeakPtr>,
     pub limiter: Arc<OutboundBandwidthLimiter>,
-    pub io_ctx: Arc<dyn IoContext>,
+    pub async_rt: Weak<AsyncRuntime>,
 }
 
 impl ChannelTcp {
@@ -61,7 +61,7 @@ impl ChannelTcp {
         now: SystemTime,
         observer: Arc<dyn IChannelTcpObserverWeakPtr>,
         limiter: Arc<OutboundBandwidthLimiter>,
-        io_ctx: Arc<dyn IoContext>,
+        async_rt: &Arc<AsyncRuntime>,
         channel_id: usize,
     ) -> Self {
         Self {
@@ -79,7 +79,7 @@ impl ChannelTcp {
             network_version: AtomicU8::new(0),
             observer,
             limiter,
-            io_ctx,
+            async_rt: Arc::downgrade(async_rt),
         }
     }
 
@@ -180,9 +180,11 @@ impl ChannelTcp {
                 }
             }
         } else if let Some(callback_a) = callback_a {
-            self.io_ctx.post(Box::new(|| {
-                callback_a(ErrorCode::not_supported(), 0);
-            }));
+            if let Some(async_rt) = self.async_rt.upgrade() {
+                async_rt.post(Box::new(|| {
+                    callback_a(ErrorCode::not_supported(), 0);
+                }));
+            }
         }
     }
 
@@ -210,9 +212,11 @@ impl ChannelTcp {
             }
         } else {
             if let Some(callback) = callback {
-                self.io_ctx.post(Box::new(move || {
-                    callback(ErrorCode::not_supported(), 0);
-                }));
+                if let Some(async_rt) = self.async_rt.upgrade() {
+                    async_rt.post(Box::new(move || {
+                        callback(ErrorCode::not_supported(), 0);
+                    }));
+                }
             }
 
             if let Some(observer) = self.observer.lock() {

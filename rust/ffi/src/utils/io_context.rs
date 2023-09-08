@@ -1,6 +1,6 @@
 use super::thread_pool::VoidFnCallbackHandle;
-use rsnano_node::utils::IoContext;
-use std::ffi::c_void;
+use rsnano_node::utils::{is_tokio_enabled, IoContext};
+use std::{backtrace::Backtrace, ffi::c_void};
 
 pub struct IoContextHandle(*mut c_void);
 
@@ -48,6 +48,11 @@ impl FfiIoContext {
 
 impl IoContext for FfiIoContext {
     fn post(&self, f: Box<dyn FnOnce()>) {
+        if is_tokio_enabled() {
+            println!("CALLING io_ctx.post() ALTHOUGH TOKIO IS ENABLED!");
+            let bt = Backtrace::capture();
+            println!("{}", bt.to_string());
+        }
         unsafe {
             POST_CALLBACK.expect("POST_CALLBACK missing")(
                 self.handle,

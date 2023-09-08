@@ -7,7 +7,11 @@ use super::{
     socket::SocketHandle,
     EndpointDto,
 };
-use crate::{messages::MessageHandle, utils::FfiIoContext, ErrorCodeDto, VoidPointerCallback};
+use crate::{
+    messages::MessageHandle,
+    utils::{AsyncRuntimeHandle, FfiIoContext},
+    ErrorCodeDto, VoidPointerCallback,
+};
 use rsnano_node::{
     transport::{BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, TrafficType},
     utils::ErrorCode,
@@ -16,23 +20,22 @@ use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc, time::SystemTime}
 
 #[no_mangle]
 /// observer is `weak_ptr<channel_tcp_observer> *`
-/// io_ctx is `boost::asio::io_context *`
 pub unsafe extern "C" fn rsn_channel_tcp_create(
     socket: *mut SocketHandle,
     observer: *mut c_void,
     limiter: *const OutboundBandwidthLimiterHandle,
-    io_ctx: *mut c_void,
+    async_rt: &AsyncRuntimeHandle,
     channel_id: usize,
 ) -> *mut ChannelHandle {
     let observer = Arc::new(FfiChannelTcpObserverWeakPtr::new(observer));
     let limiter = Arc::clone(&*limiter);
-    let io_ctx = Arc::new(FfiIoContext::new(io_ctx));
+    let async_rt = Arc::clone(&async_rt.0);
     ChannelHandle::new(Arc::new(ChannelEnum::Tcp(ChannelTcp::new(
         (*socket).deref(),
         SystemTime::now(),
         observer,
         limiter,
-        io_ctx,
+        &async_rt,
         channel_id,
     ))))
 }

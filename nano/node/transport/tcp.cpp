@@ -61,7 +61,7 @@ void nano::tcp_message_manager::stop ()
  */
 
 nano::transport::channel_tcp::channel_tcp (
-boost::asio::io_context & io_ctx_a,
+rsnano::async_runtime & async_rt_a,
 nano::outbound_bandwidth_limiter & limiter_a,
 nano::network_constants const & network_a,
 std::shared_ptr<nano::transport::socket> const & socket_a,
@@ -71,7 +71,7 @@ size_t channel_id) :
 	socket_a->handle,
 	new std::weak_ptr<nano::transport::channel_tcp_observer> (observer_a),
 	limiter_a.handle,
-	&io_ctx_a,
+	async_rt_a.handle,
 	channel_id))
 {
 	set_network_version (network_a.protocol_version);

@@ -1566,7 +1566,7 @@ nano::telemetry_data nano::node::local_telemetry () const
 
 nano::node_wrapper::node_wrapper (boost::filesystem::path const & path_a, boost::filesystem::path const & config_path_a, nano::node_flags & node_flags_a) :
 	network_params{ nano::network_constants::active_network () },
-	async_rt (std::make_shared<rsnano::async_runtime> ()),
+	async_rt (std::make_shared<rsnano::async_runtime> (true)),
 	work{ network_params.network, 1 }
 {
 	boost::system::error_code error_chmod;

@@ -120,9 +120,9 @@ boost::asio::io_context * rsnano::io_ctx_wrapper::inner () const
 	return static_cast<boost::asio::io_context *> (rsnano::rsn_io_ctx_get_ctx (handle_m));
 }
 
-rsnano::async_runtime::async_runtime () :
+rsnano::async_runtime::async_runtime (bool multi_threaded) :
 	io_ctx{},
-	handle{ rsnano::rsn_async_runtime_create (&io_ctx) }
+	handle{ rsnano::rsn_async_runtime_create (&io_ctx, multi_threaded) }
 {
 }
 

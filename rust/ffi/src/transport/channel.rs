@@ -1,6 +1,6 @@
 use crate::{
     messages::MessageHandle,
-    utils::{ContextWrapper, FfiIoContext},
+    utils::{AsyncRuntimeHandle, ContextWrapper, FfiIoContext},
     NetworkConstantsDto, StatHandle, VoidPointerCallback,
 };
 
@@ -152,7 +152,7 @@ pub unsafe extern "C" fn rsn_channel_inproc_create(
     destination_inbound_callback: InboundCallback,
     destination_inbound_context: *mut c_void,
     delete_context: VoidPointerCallback,
-    io_context: *mut c_void,
+    async_rt: &mut AsyncRuntimeHandle,
     source_endpoint: *const EndpointDto,
     destination_endpoint: *const EndpointDto,
     source_node_id: *const u8,
@@ -187,7 +187,7 @@ pub unsafe extern "C" fn rsn_channel_inproc_create(
         (*limiter).0.clone(),
         source_inbound,
         destination_inbound,
-        Arc::new(FfiIoContext::new(io_context)),
+        &async_rt.0,
         (&*source_endpoint).into(),
         (&*destination_endpoint).into(),
         Account::from_ptr(source_node_id),
@@ -219,18 +219,17 @@ pub unsafe extern "C" fn rsn_channel_inproc_endpoint(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_fake_create(
     channel_id: usize,
-    io_ctx: *mut c_void,
+    async_rt: &mut AsyncRuntimeHandle,
     limiter: *mut OutboundBandwidthLimiterHandle,
     stats: *mut StatHandle,
     endpoint: *const EndpointDto,
     network_version: u8,
 ) -> *mut ChannelHandle {
-    let io_ctx = Box::new(FfiIoContext::new(io_ctx));
     Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelEnum::Fake(
         ChannelFake::new(
             SystemTime::now(),
             channel_id,
-            io_ctx,
+            &async_rt.0,
             (*limiter).0.clone(),
             (*stats).0.clone(),
             SocketAddr::from(&(*endpoint)),

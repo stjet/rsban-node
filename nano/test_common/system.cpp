@@ -125,7 +125,8 @@ std::shared_ptr<nano::node> nano::test::system::add_node (nano::node_config cons
 	return node;
 }
 
-nano::test::system::system ()
+nano::test::system::system () :
+	async_rt{ false }
 {
 	auto scale_str = std::getenv ("DEADLINE_SCALE_FACTOR");
 	if (scale_str)

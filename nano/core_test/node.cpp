@@ -67,7 +67,7 @@ TEST (node, work_generate)
 TEST (node, block_store_path_failure)
 {
 	nano::test::system system;
-	auto service (boost::make_shared<rsnano::async_runtime> ());
+	auto service (boost::make_shared<rsnano::async_runtime> (false));
 	auto path (nano::unique_path ());
 	nano::logging logging;
 	logging.init (path);
@@ -80,7 +80,7 @@ TEST (node, block_store_path_failure)
 TEST (node, password_fanout)
 {
 	nano::test::system system;
-	rsnano::async_runtime async_rt;
+	rsnano::async_runtime async_rt{ false };
 	auto path (nano::unique_path ());
 	nano::node_config config;
 	config.peering_port = system.get_available_port ();

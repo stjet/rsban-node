@@ -81,8 +81,12 @@ struct BulkPushServerImpl {
 
 impl BulkPushServerImpl {
     fn throttled_receive(&self, server_impl: Arc<Mutex<Self>>) {
-        let Some(thread_pool) = self.thread_pool.upgrade() else { return;};
-        let Some(block_processor) = self.block_processor.upgrade() else { return;};
+        let Some(thread_pool) = self.thread_pool.upgrade() else {
+            return;
+        };
+        let Some(block_processor) = self.block_processor.upgrade() else {
+            return;
+        };
         if !block_processor.half_full() {
             self.receive(server_impl);
         } else {
@@ -100,7 +104,9 @@ impl BulkPushServerImpl {
     }
 
     fn receive(&self, server_impl: Arc<Mutex<Self>>) {
-        let Some(bootstrap_initiator) = self.bootstrap_initiator.upgrade() else { return;};
+        let Some(bootstrap_initiator) = self.bootstrap_initiator.upgrade() else {
+            return;
+        };
         if bootstrap_initiator.in_progress() {
             if self.enable_logging {
                 self.logger
@@ -229,7 +235,9 @@ impl BulkPushServerImpl {
         _len: usize,
         block_type: BlockType,
     ) {
-        let Some(block_processor) = self.block_processor.upgrade() else { return; };
+        let Some(block_processor) = self.block_processor.upgrade() else {
+            return;
+        };
 
         if ec.is_ok() {
             let guard = self.receive_buffer.lock().unwrap();

@@ -47,9 +47,9 @@ pub unsafe extern "C" fn rsn_server_socket_create(
         Arc::new(FfiTcpSocketFacadeFactory(tcp_socket_facade_factory_handle));
 
     if is_tokio_enabled() {
-        socket_facade = Arc::new(TokioSocketFacade::new(Arc::clone(&async_rt.0.tokio)));
+        socket_facade = Arc::new(TokioSocketFacade::new(Arc::clone(&async_rt.0)));
         tcp_socket_facade_factory =
-            Arc::new(TokioSocketFacadeFactory::new(Arc::clone(&async_rt.0.tokio)));
+            Arc::new(TokioSocketFacadeFactory::new(Arc::clone(&async_rt.0)));
     }
     let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
     let stats = Arc::clone(&stats.0);

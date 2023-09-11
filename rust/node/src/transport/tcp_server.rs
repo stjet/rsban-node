@@ -546,8 +546,12 @@ impl HandshakeMessageVisitorImpl {
             }
         }
 
-        let Some(cookie) = self.syn_cookies.cookie (remote_endpoint) else{
-            self.stats.inc (StatType::Handshake, DetailType::MissingCookie, Direction::In);
+        let Some(cookie) = self.syn_cookies.cookie(remote_endpoint) else {
+            self.stats.inc(
+                StatType::Handshake,
+                DetailType::MissingCookie,
+                Direction::In,
+            );
             return false; // Fail
         };
 

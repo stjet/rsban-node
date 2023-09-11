@@ -16,7 +16,7 @@ use super::{
 };
 use crate::{
     messages::Message,
-    utils::{AsyncRuntime, ErrorCode, IoContext},
+    utils::{AsyncRuntime, ErrorCode},
 };
 
 pub trait IChannelTcpObserverWeakPtr: Send + Sync {

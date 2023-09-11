@@ -98,7 +98,7 @@ pub unsafe extern "C" fn rsn_socket_create(
     let mut tcp_facade: Arc<dyn TcpSocketFacade> =
         Arc::new(FfiTcpSocketFacade::new(tcp_facade_handle));
     if is_tokio_enabled() {
-        tcp_facade = Arc::new(TokioSocketFacade::new(Arc::clone(&async_rt.0.tokio)));
+        tcp_facade = Arc::new(TokioSocketFacade::new(Arc::clone(&async_rt.0)));
     }
     let thread_pool = thread_pool.0.clone();
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));

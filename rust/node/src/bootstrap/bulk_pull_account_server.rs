@@ -168,7 +168,9 @@ impl BulkPullAccountServerImpl {
                 .pending
                 .begin_at_key(&stream_transaction, &self.current_key);
 
-            let Some((key, info)) = stream.current() else {break;};
+            let Some((key, info)) = stream.current() else {
+                break;
+            };
 
             /*
              * Get the key for the next value, to use in the next call or iteration
@@ -225,7 +227,9 @@ impl BulkPullAccountServerImpl {
         _size: usize,
         server: Arc<Mutex<BulkPullAccountServerImpl>>,
     ) {
-        let Some(thread_pool) = self.thread_pool.upgrade() else { return;};
+        let Some(thread_pool) = self.thread_pool.upgrade() else {
+            return;
+        };
         if ec.is_ok() {
             thread_pool.push_task(Box::new(move || {
                 let server2 = Arc::clone(&server);

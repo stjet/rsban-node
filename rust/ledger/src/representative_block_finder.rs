@@ -19,7 +19,9 @@ impl<'a, T: Environment + 'static> RepresentativeBlockFinder<'a, T> {
         let mut current = hash;
         let mut result = BlockHash::zero();
         while result.is_zero() {
-            let Some(block) = self.store.block.get(self.txn, &current) else {return BlockHash::zero();};
+            let Some(block) = self.store.block.get(self.txn, &current) else {
+                return BlockHash::zero();
+            };
             (current, result) = match &block {
                 BlockEnum::LegacySend(_) => (block.previous(), BlockHash::zero()),
                 BlockEnum::LegacyReceive(_) => (block.previous(), BlockHash::zero()),

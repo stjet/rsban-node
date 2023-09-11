@@ -5,6 +5,16 @@ pub trait IoContext: Send + Sync {
     fn raw_handle(&self) -> *mut c_void;
 }
 
+pub struct NullIoContext {}
+
+impl IoContext for NullIoContext {
+    fn post(&self, _f: Box<dyn FnOnce()>) {}
+
+    fn raw_handle(&self) -> *mut c_void {
+        std::ptr::null_mut()
+    }
+}
+
 #[cfg(test)]
 pub struct StubIoContext {}
 

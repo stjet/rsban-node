@@ -477,13 +477,9 @@ mod tests {
         voting::Vote,
     };
     use rsnano_core::{BlockBuilder, BlockHash, KeyPair};
-    use std::{
-        cell::RefCell,
-        rc::Rc,
-        sync::{
-            atomic::{AtomicBool, AtomicUsize, Ordering},
-            RwLock,
-        },
+    use std::sync::{
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+        RwLock,
     };
 
     #[test]
@@ -577,7 +573,9 @@ mod tests {
         let original_bytes = original_message.to_bytes();
         deserializer.read(Box::new(move |ec, msg| {
             assert!(ec.is_ok());
-            let Some(deserialized_msg) = msg else { panic!("no message read")};
+            let Some(deserialized_msg) = msg else {
+                panic!("no message read")
+            };
             assert_eq!(deserialized_msg.to_bytes(), original_bytes);
             success_clone.store(true, Ordering::SeqCst);
         }));

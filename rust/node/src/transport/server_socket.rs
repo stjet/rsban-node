@@ -230,7 +230,9 @@ impl ConnectionsPerAddress {
     }
 
     pub fn insert(&mut self, connection: &Arc<Socket>) {
-        let SocketAddr::V6(endpoint) = connection.get_remote().unwrap() else { panic!("socket doesn't have a v6 remote endpoint'");};
+        let SocketAddr::V6(endpoint) = connection.get_remote().unwrap() else {
+            panic!("socket doesn't have a v6 remote endpoint'");
+        };
         self.connections
             .entry(*endpoint.ip())
             .or_default()

@@ -36,7 +36,9 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
             return;
         }
 
-        let Some(thread_pool) = self.thread_pool.upgrade() else { return; };
+        let Some(thread_pool) = self.thread_pool.upgrade() else {
+            return;
+        };
 
         if self.logging_config.bulk_pull_logging() {
             self.logger.try_log(&format!(
@@ -75,7 +77,9 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
         if self.flags.disable_bootstrap_bulk_pull_server {
             return;
         }
-        let Some(thread_pool) = self.thread_pool.upgrade() else { return; };
+        let Some(thread_pool) = self.thread_pool.upgrade() else {
+            return;
+        };
 
         if self.logging_config.bulk_pull_logging() {
             self.logger.try_log(&format!(
@@ -109,9 +113,15 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
     }
 
     fn bulk_push(&mut self, _message: &BulkPush) {
-        let Some(thread_pool) = self.thread_pool.upgrade() else { return; };
-        let Some(block_processor) = self.block_processor.upgrade() else { return;};
-        let Some(bootstrap_initiator) = self.bootstrap_initiator.upgrade() else { return;};
+        let Some(thread_pool) = self.thread_pool.upgrade() else {
+            return;
+        };
+        let Some(block_processor) = self.block_processor.upgrade() else {
+            return;
+        };
+        let Some(bootstrap_initiator) = self.bootstrap_initiator.upgrade() else {
+            return;
+        };
         let connection = Arc::clone(&self.connection);
         let ledger = Arc::clone(&self.ledger);
         let thread_pool2 = Arc::clone(&thread_pool);
@@ -141,7 +151,9 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
     }
 
     fn frontier_req(&mut self, message: &FrontierReq) {
-        let Some(thread_pool) = self.thread_pool.upgrade() else { return; };
+        let Some(thread_pool) = self.thread_pool.upgrade() else {
+            return;
+        };
         if self.logging_config.bulk_pull_logging() {
             self.logger.try_log(&format!(
                 "Received frontier request for {} with age {}",

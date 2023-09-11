@@ -112,7 +112,9 @@ mod tests {
     #[test]
     fn create_open_block() {
         let block = BlockBuilder::legacy_open().with_sideband().build();
-        let BlockEnum::LegacyOpen(open) =  &block else {panic!("not an open block")};
+        let BlockEnum::LegacyOpen(open) = &block else {
+            panic!("not an open block")
+        };
         assert_eq!(open.hashables.source, BlockHash::from(1));
         assert_eq!(open.hashables.representative, Account::from(2));
         assert_ne!(open.hashables.account, Account::zero());

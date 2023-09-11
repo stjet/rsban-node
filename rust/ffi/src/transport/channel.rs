@@ -1,6 +1,6 @@
 use crate::{
     messages::MessageHandle,
-    utils::{AsyncRuntimeHandle, ContextWrapper, FfiIoContext},
+    utils::{AsyncRuntimeHandle, ContextWrapper},
     NetworkConstantsDto, StatHandle, VoidPointerCallback,
 };
 

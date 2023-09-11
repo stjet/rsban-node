@@ -247,7 +247,9 @@ impl RwTransaction for RwTransactionStub {
     type RoCursor = RoCursorStub;
 
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
-        let Some(db) = self.get_database(database) else { return Err(lmdb::Error::NotFound) };
+        let Some(db) = self.get_database(database) else {
+            return Err(lmdb::Error::NotFound);
+        };
         match db.entries.get(key) {
             Some(value) => Ok(value),
             None => Err(lmdb::Error::NotFound),
@@ -412,7 +414,9 @@ impl RoTransaction for RoTransactionStub {
     }
 
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
-        let Some(db) = self.get_database(database) else { return Err(lmdb::Error::NotFound) };
+        let Some(db) = self.get_database(database) else {
+            return Err(lmdb::Error::NotFound);
+        };
         match db.entries.get(key) {
             Some(value) => Ok(value),
             None => Err(lmdb::Error::NotFound),

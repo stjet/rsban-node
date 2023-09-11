@@ -169,7 +169,9 @@ impl WriteBatcher {
         // an infinite number of send/change blocks in a row. We don't want to hold the write transaction open for too long.
         for i in self.next_block_index..self.num_blocks_to_cement {
             self.next_block_index = i + 1;
-            let Some(new_frontier) = &self.new_cemented_frontier_block else { break; };
+            let Some(new_frontier) = &self.new_cemented_frontier_block else {
+                break;
+            };
             self.cemented_blocks.push(new_frontier.clone());
             if self.bottom_height == 0 {
                 self.bottom_height = new_frontier.height();
@@ -241,8 +243,7 @@ impl WriteBatcher {
         let Some(block) = load_block(&self.confirmation_height_info.frontier) else {
             panic!(
                 "Could not load current cemented frontier {} for account {}",
-                self.confirmation_height_info.frontier,
-                self.section_to_cement.account
+                self.confirmation_height_info.frontier, self.section_to_cement.account
             )
         };
         block
@@ -254,7 +255,9 @@ impl WriteBatcher {
         load_block: &mut dyn FnMut(&BlockHash) -> Option<BlockEnum>,
     ) {
         if !self.is_current_account_done() {
-            let Some(current) = &self.new_cemented_frontier_block else { panic!("no current block loaded!") };
+            let Some(current) = &self.new_cemented_frontier_block else {
+                panic!("no current block loaded!")
+            };
             self.new_cemented_frontier_hash = current.sideband().unwrap().successor;
             let next_block = load_block(&self.new_cemented_frontier_hash);
             if next_block.is_none() {

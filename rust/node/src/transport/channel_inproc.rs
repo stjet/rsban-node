@@ -141,8 +141,12 @@ impl ChannelInProc {
             if ec.is_err() {
                 return;
             }
-            let Some(async_rt) = async_rt.upgrade() else { return; };
-            let Some(msg) = msg else { return; };
+            let Some(async_rt) = async_rt.upgrade() else {
+                return;
+            };
+            let Some(msg) = msg else {
+                return;
+            };
             let filter = Arc::new(NetworkFilter::new(100000));
             // we create a temporary channel for the reply path, in case the receiver of the message wants to reply
             let remote_channel = Arc::new(ChannelEnum::InProc(ChannelInProc::new(

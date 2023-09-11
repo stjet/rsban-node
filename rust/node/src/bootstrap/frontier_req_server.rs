@@ -198,7 +198,9 @@ impl FrontierReqServerImpl {
         _size: usize,
         server: Arc<Mutex<FrontierReqServerImpl>>,
     ) {
-        let Some(thread_pool) = self.thread_pool.upgrade() else { return;};
+        let Some(thread_pool) = self.thread_pool.upgrade() else {
+            return;
+        };
 
         if ec.is_ok() {
             self.count += 1;

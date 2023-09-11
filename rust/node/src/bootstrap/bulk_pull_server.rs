@@ -328,7 +328,9 @@ impl BulkPullServerImpl {
     }
 
     fn sent_action(&mut self, ec: ErrorCode, _size: usize, server_impl: Arc<Mutex<Self>>) {
-        let Some(thread_pool) = self.thread_pool.upgrade() else { return;};
+        let Some(thread_pool) = self.thread_pool.upgrade() else {
+            return;
+        };
         if ec.is_ok() {
             thread_pool.push_task(Box::new(move || {
                 let impl_clone = server_impl.clone();

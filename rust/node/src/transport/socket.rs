@@ -1,4 +1,4 @@
-use crate::utils::{BufferWrapper, ErrorCode, ThreadPool, ThreadPoolImpl};
+use crate::utils::{AsyncRuntime, BufferWrapper, ErrorCode, ThreadPool, ThreadPoolImpl};
 use num_traits::FromPrimitive;
 use rsnano_core::utils::seconds_since_epoch;
 use std::{
@@ -7,7 +7,7 @@ use std::{
     ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, Weak,
     },
     time::Duration,
 };
@@ -71,7 +71,7 @@ pub trait TcpSocketFacade: Send + Sync {
 }
 
 pub struct TokioSocketFacade {
-    runtime: Arc<tokio::runtime::Runtime>,
+    runtime: Weak<AsyncRuntime>,
     state: Arc<Mutex<TokioSocketState>>,
     // make sure we call the current callback if we close the socket
     current_action: Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
@@ -85,19 +85,12 @@ enum TokioSocketState {
 }
 
 impl TokioSocketFacade {
-    pub fn new(runtime: Arc<tokio::runtime::Runtime>) -> Self {
-        println!("tokio facade created");
+    pub fn new(runtime: Arc<AsyncRuntime>) -> Self {
         Self {
-            runtime,
+            runtime: Arc::downgrade(&runtime),
             state: Arc::new(Mutex::new(TokioSocketState::Closed)),
             current_action: Mutex::new(None),
         }
-    }
-}
-
-impl Drop for TokioSocketFacade {
-    fn drop(&mut self) {
-        println!("dropping tokio socket facade");
     }
 }
 
@@ -131,11 +124,19 @@ impl TcpSocketFacade for TokioSocketFacade {
             *guard = TokioSocketState::Connecting;
         }
         let state = Arc::clone(&self.state);
-        let runtime = Arc::clone(&self.runtime);
-        self.runtime.spawn(async move {
+        let Some(runtime) = self.runtime.upgrade() else {
+            return;
+        };
+        let runtime_w = Weak::clone(&self.runtime);
+        runtime.tokio.spawn(async move {
             let Ok(stream) = TcpStream::connect(endpoint).await else {
-                if let Some(cb) = callback.lock().unwrap().take(){
-                    runtime.spawn_blocking(move || cb(ErrorCode::fault()));
+                if let Some(cb) = callback.lock().unwrap().take() {
+                    let Some(runtime) = runtime_w.upgrade() else {
+                        return;
+                    };
+                    runtime.tokio.spawn_blocking(move || {
+                        cb(ErrorCode::fault());
+                    });
                 }
                 return;
             };
@@ -144,7 +145,10 @@ impl TcpSocketFacade for TokioSocketFacade {
                 debug_assert!(matches!(*guard, TokioSocketState::Connecting));
                 *guard = TokioSocketState::Client(Arc::new(stream));
             }
-            runtime.spawn_blocking(move || {
+            let Some(runtime) = runtime_w.upgrade() else {
+                return;
+            };
+            runtime.tokio.spawn_blocking(move || {
                 if let Some(cb) = callback.lock().unwrap().take() {
                     cb(ErrorCode::new())
                 }
@@ -169,21 +173,40 @@ impl TcpSocketFacade for TokioSocketFacade {
         let buffer = Arc::clone(buffer);
         let stream = {
             let guard = self.state.lock().unwrap();
-            let TokioSocketState::Client(stream) = guard.deref() else {panic!("not a tcp client")};
+            let TokioSocketState::Client(stream) = guard.deref() else {
+                panic!("not a tcp client")
+            };
             Arc::clone(stream)
         };
-        let runtime = Arc::clone(&self.runtime);
-        self.runtime.spawn(async move {
+        let Some(runtime) = self.runtime.upgrade() else {
+            return;
+        };
+        let runtime_w = Weak::clone(&self.runtime);
+        runtime.tokio.spawn(async move {
             let mut read = 0;
             loop {
                 match stream.readable().await {
                     Ok(_) => {
                         let buf = buffer.get_slice_mut();
                         match stream.try_read(&mut buf[read..(len - read)]) {
+                            Ok(0) => {
+                                let Some(runtime) = runtime_w.upgrade() else {
+                                    break;
+                                };
+                                runtime.tokio.spawn_blocking(move || {
+                                    if let Some(cb) = callback.lock().unwrap().take() {
+                                        cb(ErrorCode::fault(), 0);
+                                    }
+                                });
+                                break;
+                            }
                             Ok(n) => {
                                 read += n;
                                 if read >= len {
-                                    runtime.spawn_blocking(move || {
+                                    let Some(runtime) = runtime_w.upgrade() else {
+                                        break;
+                                    };
+                                    runtime.tokio.spawn_blocking(move || {
                                         if let Some(cb) = callback.lock().unwrap().take() {
                                             cb(ErrorCode::new(), n);
                                         }
@@ -195,7 +218,10 @@ impl TcpSocketFacade for TokioSocketFacade {
                                 continue;
                             }
                             Err(_) => {
-                                runtime.spawn_blocking(move || {
+                                let Some(runtime) = runtime_w.upgrade() else {
+                                    break;
+                                };
+                                runtime.tokio.spawn_blocking(move || {
                                     if let Some(cb) = callback.lock().unwrap().take() {
                                         cb(ErrorCode::fault(), 0)
                                     }
@@ -205,7 +231,10 @@ impl TcpSocketFacade for TokioSocketFacade {
                         };
                     }
                     Err(_) => {
-                        runtime.spawn_blocking(move || {
+                        let Some(runtime) = runtime_w.upgrade() else {
+                            break;
+                        };
+                        runtime.tokio.spawn_blocking(move || {
                             if let Some(cb) = callback.lock().unwrap().take() {
                                 cb(ErrorCode::fault(), 0);
                             }
@@ -234,22 +263,42 @@ impl TcpSocketFacade for TokioSocketFacade {
         let buffer = Arc::clone(buffer);
         let stream = {
             let guard = self.state.lock().unwrap();
-            let TokioSocketState::Client(stream) = guard.deref() else {panic!("not a tcp client")};
+            let TokioSocketState::Client(stream) = guard.deref() else {
+                panic!("not a tcp client")
+            };
             Arc::clone(stream)
         };
-        let runtime = Arc::clone(&self.runtime);
-        self.runtime.spawn(async move {
+        let Some(runtime) = self.runtime.upgrade() else {
+            return;
+        };
+        let runtime_w = Weak::clone(&self.runtime);
+        runtime.tokio.spawn(async move {
             let mut read = 0;
             loop {
                 match stream.readable().await {
                     Ok(_) => {
                         let mut buf = buffer.lock().unwrap();
                         match stream.try_read(&mut buf.as_mut_slice()[read..(len - read)]) {
+                            Ok(0) => {
+                                drop(buf);
+                                let Some(runtime) = runtime_w.upgrade() else {
+                                    break;
+                                };
+                                runtime.tokio.spawn_blocking(move || {
+                                    if let Some(cb) = callback.lock().unwrap().take() {
+                                        cb(ErrorCode::fault(), 0);
+                                    }
+                                });
+                                break;
+                            }
                             Ok(n) => {
                                 drop(buf);
                                 read += n;
                                 if read >= len {
-                                    runtime.spawn_blocking(move || {
+                                    let Some(runtime) = runtime_w.upgrade() else {
+                                        break;
+                                    };
+                                    runtime.tokio.spawn_blocking(move || {
                                         if let Some(cb) = callback.lock().unwrap().take() {
                                             cb(ErrorCode::new(), n);
                                         }
@@ -261,7 +310,10 @@ impl TcpSocketFacade for TokioSocketFacade {
                                 continue;
                             }
                             Err(_) => {
-                                runtime.spawn_blocking(move || {
+                                let Some(runtime) = runtime_w.upgrade() else {
+                                    break;
+                                };
+                                runtime.tokio.spawn_blocking(move || {
                                     if let Some(cb) = callback.lock().unwrap().take() {
                                         cb(ErrorCode::fault(), 0);
                                     }
@@ -271,7 +323,10 @@ impl TcpSocketFacade for TokioSocketFacade {
                         };
                     }
                     Err(_) => {
-                        runtime.spawn_blocking(move || {
+                        let Some(runtime) = runtime_w.upgrade() else {
+                            break;
+                        };
+                        runtime.tokio.spawn_blocking(move || {
                             if let Some(cb) = callback.lock().unwrap().take() {
                                 cb(ErrorCode::fault(), 0);
                             }
@@ -298,12 +353,17 @@ impl TcpSocketFacade for TokioSocketFacade {
 
         let stream = {
             let guard = self.state.lock().unwrap();
-            let TokioSocketState::Client(stream) = guard.deref() else {panic!("not a tcp client")};
+            let TokioSocketState::Client(stream) = guard.deref() else {
+                panic!("not a tcp client")
+            };
             Arc::clone(stream)
         };
-        let runtime = Arc::clone(&self.runtime);
+        let Some(runtime) = self.runtime.upgrade() else {
+            return;
+        };
+        let runtime_w = Weak::clone(&self.runtime);
         let buffer = Arc::clone(buffer);
-        self.runtime.spawn(async move {
+        runtime.tokio.spawn(async move {
             let mut written = 0;
             loop {
                 match stream.writable().await {
@@ -311,7 +371,10 @@ impl TcpSocketFacade for TokioSocketFacade {
                         Ok(n) => {
                             written += n;
                             if written >= buffer.len() {
-                                runtime.spawn_blocking(move || {
+                                let Some(runtime) = runtime_w.upgrade() else {
+                                    break;
+                                };
+                                runtime.tokio.spawn_blocking(move || {
                                     if let Some(cb) = callback.lock().unwrap().take() {
                                         cb(ErrorCode::new(), written);
                                     }
@@ -323,7 +386,10 @@ impl TcpSocketFacade for TokioSocketFacade {
                             continue;
                         }
                         Err(_) => {
-                            runtime.spawn_blocking(move || {
+                            let Some(runtime) = runtime_w.upgrade() else {
+                                break;
+                            };
+                            runtime.tokio.spawn_blocking(move || {
                                 if let Some(cb) = callback.lock().unwrap().take() {
                                     cb(ErrorCode::fault(), 0);
                                 }
@@ -332,7 +398,10 @@ impl TcpSocketFacade for TokioSocketFacade {
                         }
                     },
                     Err(_) => {
-                        runtime.spawn_blocking(move || {
+                        let Some(runtime) = runtime_w.upgrade() else {
+                            break;
+                        };
+                        runtime.tokio.spawn_blocking(move || {
                             if let Some(cb) = callback.lock().unwrap().take() {
                                 cb(ErrorCode::fault(), 0);
                             }
@@ -387,9 +456,12 @@ impl TcpSocketFacade for TokioSocketFacade {
             }
         };
 
-        let runtime = Arc::clone(&self.runtime);
+        let Some(runtime) = self.runtime.upgrade() else {
+            return;
+        };
+        let runtime_w = Weak::clone(&self.runtime);
         let client_socket = Arc::clone(client_socket);
-        self.runtime.spawn(async move {
+        runtime.tokio.spawn(async move {
             match listener.accept().await {
                 Ok((stream, remote)) => {
                     let socket = client_socket
@@ -397,14 +469,20 @@ impl TcpSocketFacade for TokioSocketFacade {
                         .downcast_ref::<TokioSocketFacade>()
                         .expect("not a Tokio socket");
                     *socket.state.lock().unwrap() = TokioSocketState::Client(Arc::new(stream));
-                    runtime.spawn_blocking(move || {
+                    let Some(runtime) = runtime_w.upgrade() else {
+                        return;
+                    };
+                    runtime.tokio.spawn_blocking(move || {
                         if let Some(cb) = callback.lock().unwrap().take() {
                             cb(remote, ErrorCode::new());
                         }
                     });
                 }
                 Err(_) => {
-                    runtime.spawn_blocking(move || {
+                    let Some(runtime) = runtime_w.upgrade() else {
+                        return;
+                    };
+                    runtime.tokio.spawn_blocking(move || {
                         if let Some(cb) = callback.lock().unwrap().take() {
                             cb(
                                 SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
@@ -426,11 +504,21 @@ impl TcpSocketFacade for TokioSocketFacade {
     }
 
     fn post(&self, f: Box<dyn FnOnce() + Send>) {
-        self.runtime.spawn_blocking(move || f());
+        let Some(runtime) = self.runtime.upgrade() else {
+            return;
+        };
+        runtime.tokio.spawn_blocking(move || {
+            f();
+        });
     }
 
     fn dispatch(&self, f: Box<dyn FnOnce() + Send>) {
-        self.runtime.spawn_blocking(move || f());
+        let Some(runtime) = self.runtime.upgrade() else {
+            return;
+        };
+        runtime.tokio.spawn_blocking(move || {
+            f();
+        });
     }
 
     fn close_acceptor(&self) {
@@ -466,11 +554,14 @@ impl TcpSocketFacade for TokioSocketFacade {
 
     fn open(&self, endpoint: &SocketAddr) -> ErrorCode {
         {
-            let mut guard = self.state.lock().unwrap();
+            let guard = self.state.lock().unwrap();
             debug_assert!(matches!(guard.deref(), TokioSocketState::Closed));
         }
-        match self
-            .runtime
+        let Some(runtime) = self.runtime.upgrade() else {
+            return ErrorCode::fault();
+        };
+        match runtime
+            .tokio
             .block_on(async move { TcpListener::bind(endpoint).await })
         {
             Ok(listener) => {
@@ -495,11 +586,11 @@ impl TcpSocketFacade for TokioSocketFacade {
 }
 
 pub struct TokioSocketFacadeFactory {
-    runtime: Arc<tokio::runtime::Runtime>,
+    runtime: Arc<AsyncRuntime>,
 }
 
 impl TokioSocketFacadeFactory {
-    pub fn new(runtime: Arc<tokio::runtime::Runtime>) -> Self {
+    pub fn new(runtime: Arc<AsyncRuntime>) -> Self {
         Self { runtime }
     }
 }
@@ -1034,7 +1125,9 @@ impl SocketExtensions for Arc<Socket> {
             return;
         }
 
-        let Some(mut next) = self.send_queue.pop() else { return; };
+        let Some(mut next) = self.send_queue.pop() else {
+            return;
+        };
         self.set_default_timeout();
         self.write_in_progress.store(true, Ordering::SeqCst);
         let self_clone = Arc::clone(self);
@@ -1250,17 +1343,20 @@ impl SocketBuilder {
 mod tests {
     use tokio::time::sleep;
 
+    use crate::utils::NullIoContext;
+
     use super::*;
 
     #[test]
     #[ignore = "only run manually because it is slow"]
     pub fn test_connect_and_send() {
-        let runtime = Arc::new(
+        let runtime = Arc::new(AsyncRuntime::new(
+            Arc::new(NullIoContext {}),
             tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
                 .unwrap(),
-        );
+        ));
         let server = TokioSocketFacade::new(Arc::clone(&runtime));
         server.open(&SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 8888));
         println!("OPEN CALLED");
@@ -1300,7 +1396,7 @@ mod tests {
             }),
         );
 
-        runtime.block_on(async {
+        runtime.tokio.block_on(async {
             sleep(Duration::from_secs(5)).await;
         });
     }

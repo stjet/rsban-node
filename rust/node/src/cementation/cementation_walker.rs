@@ -175,7 +175,9 @@ impl CementationWalker {
                 return None;
             }
             self.restore_checkpoint_if_required(data_requester);
-            let Some(chain) = self.chain_stack.back() else { return None; };
+            let Some(chain) = self.chain_stack.back() else {
+                return None;
+            };
 
             if chain.is_done() {
                 // There is nothing left to do for this chain. We can write the confirmation height now.

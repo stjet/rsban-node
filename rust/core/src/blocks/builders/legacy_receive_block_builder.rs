@@ -93,7 +93,9 @@ mod tests {
     #[test]
     fn receive_block() {
         let block = BlockBuilder::legacy_receive().with_sideband().build();
-        let BlockEnum::LegacyReceive(receive) =  &block else {panic!("not a receive block!")};
+        let BlockEnum::LegacyReceive(receive) = &block else {
+            panic!("not a receive block!")
+        };
         assert_eq!(receive.hashables.previous, BlockHash::from(1));
         assert_eq!(receive.hashables.source, BlockHash::from(2));
         assert_eq!(WORK_THRESHOLDS_STUB.validate_entry_block(&block), false);

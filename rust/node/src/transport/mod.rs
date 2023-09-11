@@ -111,10 +111,10 @@ impl ChannelEnum {
 
         let limiter = Arc::new(OutboundBandwidthLimiter::default());
         let io_ctx = Arc::new(StubIoContext::new());
-        let async_rt = Arc::new(AsyncRuntime {
-            cpp: io_ctx,
-            tokio: Arc::new(tokio::runtime::Runtime::new().unwrap()),
-        });
+        let async_rt = Arc::new(AsyncRuntime::new(
+            io_ctx,
+            tokio::runtime::Runtime::new().unwrap(),
+        ));
         let stats = Arc::new(Stats::default());
 
         Self::Fake(ChannelFake::new(

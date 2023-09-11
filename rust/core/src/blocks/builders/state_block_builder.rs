@@ -213,7 +213,10 @@ mod tests {
             .balance(2)
             .link(4)
             .work(5)
-            .build() else {panic!("not a state block")};
+            .build()
+        else {
+            panic!("not a state block")
+        };
 
         assert_eq!(block1.hashables.account, Account::from(3));
         assert_eq!(block1.hashables.previous, BlockHash::from(1));
@@ -240,7 +243,9 @@ mod tests {
             "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F"
         );
 
-        let BlockEnum::State(b) = &block else { panic!("not a state block")};
+        let BlockEnum::State(b) = &block else {
+            panic!("not a state block")
+        };
         let block2 = BlockBuilder::state().from(&b).build();
         assert_eq!(
             block2.hash().to_string(),

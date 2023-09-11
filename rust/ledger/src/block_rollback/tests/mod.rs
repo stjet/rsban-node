@@ -28,7 +28,9 @@ impl<'a> RollbackTest<'a> {
             .planner
             .roll_back_head_block()
             .expect("rollback should succeed");
-        let RollbackStep::RollBackBlock(instructions) = result else { panic!("expected RollBackBlock") };
+        let RollbackStep::RollBackBlock(instructions) = result else {
+            panic!("expected RollBackBlock")
+        };
         instructions
     }
 }

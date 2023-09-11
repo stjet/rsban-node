@@ -81,7 +81,7 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 Arc::new(FfiTcpSocketFacadeFactory(value.tcp_socket_factory));
             if is_tokio_enabled() {
                 tcp_socket_factory = Arc::new(TokioSocketFacadeFactory::new(Arc::clone(
-                    &(*value.async_rt).0.tokio,
+                    &(*value.async_rt).0,
                 )));
             }
 
@@ -482,7 +482,9 @@ pub unsafe extern "C" fn rsn_tcp_channels_create_tcp_server(
     channel: &ChannelHandle,
     socket: &SocketHandle,
 ) -> *mut TcpServerHandle {
-    let ChannelEnum::Tcp(channel_tcp) = channel.0.as_ref() else { panic!("not a tcp channel")};
+    let ChannelEnum::Tcp(channel_tcp) = channel.0.as_ref() else {
+        panic!("not a tcp channel")
+    };
     TcpServerHandle::new(
         handle
             .0

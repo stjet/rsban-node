@@ -4,7 +4,6 @@ mod stream;
 use std::{
     ffi::c_void,
     net::{Ipv6Addr, SocketAddrV6},
-    sync::OnceLock,
 };
 
 pub use async_runtime::AsyncRuntimeHandle;

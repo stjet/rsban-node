@@ -1,7 +1,7 @@
 use crate::{
     core::BlockUniquerHandle,
     transport::{EndpointDto, NetworkFilterHandle, SocketHandle, TcpMessageManagerHandle},
-    utils::{FfiIoContext, IoContextHandle, LoggerHandle, LoggerMT},
+    utils::{IoContextHandle, LoggerHandle, LoggerMT},
     voting::VoteUniquerHandle,
     NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
 };

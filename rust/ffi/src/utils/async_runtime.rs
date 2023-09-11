@@ -16,27 +16,23 @@ pub extern "C" fn rsn_async_runtime_create(
     let multi_threaded = true;
     //todo! use single threaded runtime for tests
     if multi_threaded {
-        Box::into_raw(Box::new(AsyncRuntimeHandle(Arc::new(AsyncRuntime {
-            cpp: Arc::new(FfiIoContext::new(io_ctx)),
-            tokio: Arc::new(
-                tokio::runtime::Builder::new_multi_thread()
-                    .thread_name("tokio runtime")
-                    .enable_all()
-                    .build()
-                    .unwrap(),
-            ),
-        }))))
+        Box::into_raw(Box::new(AsyncRuntimeHandle(Arc::new(AsyncRuntime::new(
+            Arc::new(FfiIoContext::new(io_ctx)),
+            tokio::runtime::Builder::new_multi_thread()
+                .thread_name("tokio runtime")
+                .enable_all()
+                .build()
+                .unwrap(),
+        )))))
     } else {
-        Box::into_raw(Box::new(AsyncRuntimeHandle(Arc::new(AsyncRuntime {
-            cpp: Arc::new(FfiIoContext::new(io_ctx)),
-            tokio: Arc::new(
-                tokio::runtime::Builder::new_current_thread()
-                    .thread_name("tokio runtime")
-                    .enable_all()
-                    .build()
-                    .unwrap(),
-            ),
-        }))))
+        Box::into_raw(Box::new(AsyncRuntimeHandle(Arc::new(AsyncRuntime::new(
+            Arc::new(FfiIoContext::new(io_ctx)),
+            tokio::runtime::Builder::new_current_thread()
+                .thread_name("tokio runtime")
+                .enable_all()
+                .build()
+                .unwrap(),
+        )))))
     }
 }
 
@@ -53,7 +49,9 @@ pub unsafe extern "C" fn rsn_async_runtime_post(
     delete_context: VoidPointerCallback,
 ) {
     let context_wrapper = ContextWrapper::new(context, delete_context);
-    let callback_wrapper = Box::new(move || callback(context_wrapper.get_context()));
+    let callback_wrapper = Box::new(move || {
+        callback(context_wrapper.get_context());
+    });
     handle.0.tokio.spawn_blocking(callback_wrapper);
 }
 

@@ -120,13 +120,17 @@ impl PropertyTreeWriter for SerdePropertyTree {
     }
 
     fn put_string(&mut self, path: &str, value: &str) -> anyhow::Result<()> {
-        let Value::Object(map) = &mut self.value else {bail!("not an object")};
+        let Value::Object(map) = &mut self.value else {
+            bail!("not an object")
+        };
         map.insert(path.to_string(), Value::String(value.to_string()));
         Ok(())
     }
 
     fn put_u64(&mut self, path: &str, value: u64) -> anyhow::Result<()> {
-        let Value::Object(map) = &mut self.value else {bail!("not an object")};
+        let Value::Object(map) = &mut self.value else {
+            bail!("not an object")
+        };
         map.insert(path.to_string(), Value::Number(value.into()));
         Ok(())
     }

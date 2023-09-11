@@ -12,7 +12,7 @@ use rsnano_core::Account;
 use crate::{
     messages::Message,
     stats::{DetailType, Direction, StatType, Stats},
-    utils::{AsyncRuntime, ErrorCode, IoContext},
+    utils::{AsyncRuntime, ErrorCode},
 };
 
 use super::{

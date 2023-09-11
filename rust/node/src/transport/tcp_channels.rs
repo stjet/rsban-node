@@ -528,7 +528,9 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         node_id: PublicKey,
         socket: &Arc<Socket>,
     ) {
-        let Some(async_rt) = self.async_rt.upgrade() else { return;};
+        let Some(async_rt) = self.async_rt.upgrade() else {
+            return;
+        };
         let socket_type = socket.socket_type();
         if !self.stopped.load(Ordering::SeqCst)
             && message.header().version_using() >= self.network.network.protocol_version_min
@@ -835,7 +837,9 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
     }
 
     fn start_tcp(&self, endpoint: SocketAddrV6) {
-        let Some(async_rt) = self.async_rt.upgrade() else { return; };
+        let Some(async_rt) = self.async_rt.upgrade() else {
+            return;
+        };
         let socket_stats = Arc::new(SocketStats::new(
             self.stats.clone(),
             self.logger.clone(),
@@ -879,7 +883,9 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             SocketAddr::V6(endpoint),
             Box::new(move |ec| {
                 let _socket = socket_clone; //keep socket alive!
-                let Some(this_l) = this_w.upgrade() else { return ;};
+                let Some(this_l) = this_w.upgrade() else {
+                    return;
+                };
 
                 if ec.is_err() {
                     if this_l.node_config.logging.network_logging_value {
@@ -911,7 +917,9 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     ));
                 }
 
-                let ChannelEnum::Tcp(tcp) = channel.as_ref() else { panic!("not a tcp channel")};
+                let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
+                    panic!("not a tcp channel")
+                };
                 tcp.set_remote_endpoint();
                 let this_w = Arc::downgrade(&this_l);
                 let channel_clone = Arc::clone(&channel);
@@ -919,7 +927,9 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     &message,
                     Some(Box::new(move |ec, _size| {
                         let channel = channel_clone;
-                        let ChannelEnum::Tcp(tcp) = channel.as_ref() else {return;};
+                        let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
+                            return;
+                        };
                         if let Some(this_l) = this_w.upgrade() {
                             if ec.is_ok() {
                                 this_l.start_tcp_receive_node_id(&channel, endpoint);

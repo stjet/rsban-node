@@ -529,23 +529,33 @@ impl Stats {
         self.add(stat_type, detail, dir, 1, true)
     }
 
+    fn has_interval_counter(&self) -> bool {
+        self.config.log_interval_counters > 0
+    }
+
+    fn has_sampling(&self, entry: &StatEntry) -> bool {
+        self.config.sampling_enabled && entry.sample_interval > 0
+    }
+
     /// Update count and sample
     ///
     /// # Arguments
     /// * `key` a key constructor from `StatType`, `DetailType` and `Direction`
     /// * `value` Amount to add to the counter
     fn update(&self, key: u32, value: u64) -> anyhow::Result<()> {
-        let now = Instant::now();
-
         let mut lock = self.mutables.lock().unwrap();
         if !lock.stopped {
             {
                 let entry = lock.get_entry_default(key);
                 entry.counter.add(value, true);
+                if !self.has_interval_counter() && !self.has_sampling(entry) {
+                    return Ok(());
+                }
             }
 
+            let now = Instant::now();
             let duration = now - lock.log_last_count_writeout;
-            if self.config.log_interval_counters > 0
+            if self.has_interval_counter()
                 && duration.as_millis() > self.config.log_interval_counters as u128
             {
                 let mut log_count = LOG_COUNT.lock().unwrap();
@@ -563,7 +573,7 @@ impl Stats {
 
             let entry = lock.get_entry_default(key);
             // Samples
-            if self.config.sampling_enabled && entry.sample_interval > 0 {
+            if self.has_sampling(entry) {
                 entry.sample_current.add(value, false);
 
                 let duration = now - entry.sample_start_time;

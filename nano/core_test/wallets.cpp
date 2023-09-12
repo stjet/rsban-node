@@ -3,6 +3,8 @@
 
 #include <gtest/gtest.h>
 
+#include <thread>
+
 using namespace std::chrono_literals;
 
 TEST (wallets, open_create)
@@ -46,6 +48,8 @@ TEST (wallets, open_existing)
 		ASSERT_FALSE (error);
 		ASSERT_EQ (2, wallets.items.size ());
 		ASSERT_NE (nullptr, wallets.open (id));
+		// give it some time so that the receivable blocks search can run
+		std::this_thread::sleep_for (1000ms);
 	}
 }
 

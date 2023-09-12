@@ -8,7 +8,9 @@
 
 #include <boost/format.hpp>
 
+#include <chrono>
 #include <numeric>
+#include <thread>
 
 using namespace std::chrono_literals;
 
@@ -1674,6 +1676,9 @@ TEST (confirmation_height, election_winner_details_clearing)
 
 	node->process_confirmed (nano::election_status{ send3 });
 	ASSERT_TIMELY (5s, node->block_confirmed (send3->hash ()));
+
+	// Give the cemented callback time to do its thing
+	std::this_thread::sleep_for (1000ms);
 
 	// Add an already cemented block with fake election details. It should get removed
 	node->active.add_election_winner_details (send3->hash (), nullptr);

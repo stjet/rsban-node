@@ -756,7 +756,6 @@ bool nano::wallet::search_receivable (nano::transaction const & wallet_transacti
 	auto result (!store.valid_password (wallet_transaction_a));
 	if (!result)
 	{
-		wallets.node.logger->try_log ("Beginning receivable block search");
 		for (auto i (store.begin (wallet_transaction_a)), n (store.end ()); i != n; ++i)
 		{
 			auto block_transaction (wallets.node.store.tx_begin_read ());

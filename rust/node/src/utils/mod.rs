@@ -105,7 +105,9 @@ pub fn is_tokio_enabled() -> bool {
         let enable = std::env::var("NANO_ENABLE_TOKIO")
             .map(|s| s == "1")
             .unwrap_or_default();
-        println!("TOKIO IS{} ENABLED", if enable { "" } else { " NOT" });
+        if enable {
+            println!("TOKIO IS ENABLED");
+        }
         enable
     })
 }

@@ -4,7 +4,7 @@ use rsnano_core::{
     utils::{Deserialize, MemoryStream, Stream, StreamExt},
     HashOrAccount,
 };
-use std::{any::Any, mem::size_of};
+use std::{any::Any, fmt::Display, mem::size_of};
 
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
 
@@ -239,6 +239,30 @@ impl Message for AscPullReq {
     }
 }
 
+impl Display for AscPullReq {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", self.header)?;
+        match self.payload() {
+            AscPullReqPayload::Invalid => write!(f, "missing payload")?,
+            AscPullReqPayload::Blocks(blocks) => {
+                write!(
+                    f,
+                    "acc:{} max block count:{} hash type: {}",
+                    blocks.start, blocks.count, blocks.start_type as u8
+                )?;
+            }
+            AscPullReqPayload::AccountInfo(info) => {
+                write!(
+                    f,
+                    "target:{} hash type:{}",
+                    info.target, info.target_type as u8
+                )?;
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rsnano_core::utils::MemoryStream;
@@ -313,5 +337,37 @@ mod tests {
         assert_eq!(message_out.payload(), original.payload());
         assert!(stream.at_end());
         Ok(())
+    }
+
+    #[test]
+    fn display_blocks_payload() {
+        let mut req = AscPullReq::new(&DEV_NETWORK_PARAMS.network);
+        req.id = 7;
+        req.request_blocks(BlocksReqPayload {
+            start: 1.into(),
+            count: 2,
+            start_type: HashType::Block,
+        })
+        .unwrap();
+        assert_eq!(req.to_string(), "NetID: 5241(dev), VerMaxUsingMin: 19/19/18, MsgType: 14(asc_pull_req), Extensions: 0022\nacc:0000000000000000000000000000000000000000000000000000000000000001 max block count:2 hash type: 1");
+    }
+
+    #[test]
+    fn display_invalid_payload() {
+        let mut req = AscPullReq::new(&DEV_NETWORK_PARAMS.network);
+        req.id = 7;
+        assert_eq!(req.to_string(), "NetID: 5241(dev), VerMaxUsingMin: 19/19/18, MsgType: 14(asc_pull_req), Extensions: 0000\nmissing payload");
+    }
+
+    #[test]
+    fn display_account_info_payload() {
+        let mut req = AscPullReq::new(&DEV_NETWORK_PARAMS.network);
+        req.id = 7;
+        req.request_account_info(AccountInfoReqPayload {
+            target: HashOrAccount::from(123),
+            target_type: HashType::Block,
+        })
+        .unwrap();
+        assert_eq!(req.to_string(), "NetID: 5241(dev), VerMaxUsingMin: 19/19/18, MsgType: 14(asc_pull_req), Extensions: 0021\ntarget:000000000000000000000000000000000000000000000000000000000000007B hash type:1");
     }
 }

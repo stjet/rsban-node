@@ -5,7 +5,7 @@ use rsnano_core::{
     utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
     Account, BlockEnum, BlockHash, BlockType,
 };
-use std::{any::Any, mem::size_of};
+use std::{any::Any, fmt::Display, mem::size_of};
 
 use super::{AscPullPayloadId, Message, MessageHeader, MessageType, MessageVisitor};
 
@@ -247,6 +247,33 @@ impl Message for AscPullAck {
     }
 }
 
+impl Display for AscPullAck {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", self.header)?;
+        match self.payload() {
+            AscPullAckPayload::Invalid => write!(f, "missing payload")?,
+            AscPullAckPayload::Blocks(blocks) => {
+                for block in &blocks.blocks {
+                    write!(f, "{}", block.to_json().map_err(|_| std::fmt::Error)?)?;
+                }
+            }
+            AscPullAckPayload::AccountInfo(info) => {
+                write!(
+                    f,
+                    "account public key:{} account open:{} account head:{} block count:{} confirmation frontier:{} confirmation height:{}",
+                    info.account.encode_account(),
+                    info.account_open,
+                    info.account_head,
+                    info.account_block_count,
+                    info.account_conf_frontier,
+                    info.account_conf_height,
+                )?;
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rsnano_core::{utils::MemoryStream, BlockBuilder};
@@ -319,5 +346,22 @@ mod tests {
         assert_eq!(message_out.payload(), original.payload());
         assert!(stream.at_end());
         Ok(())
+    }
+
+    #[test]
+    fn display() {
+        let mut ack = AscPullAck::new(&DEV_NETWORK_PARAMS.network);
+        ack.id = 7;
+        ack.request_account_info(AccountInfoAckPayload {
+            account: Account::from(1),
+            account_open: BlockHash::from(2),
+            account_head: BlockHash::from(3),
+            account_block_count: 4,
+            account_conf_frontier: BlockHash::from(5),
+            account_conf_height: 6,
+        })
+        .unwrap();
+
+        assert_eq!(ack.to_string(), "NetID: 5241(dev), VerMaxUsingMin: 19/19/18, MsgType: 15(asc_pull_ack), Extensions: 0090\naccount public key:nano_1111111111111111111111111111111111111111111111111113b8661hfk account open:0000000000000000000000000000000000000000000000000000000000000002 account head:0000000000000000000000000000000000000000000000000000000000000003 block count:4 confirmation frontier:0000000000000000000000000000000000000000000000000000000000000005 confirmation height:6");
     }
 }

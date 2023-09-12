@@ -174,7 +174,7 @@ impl TcpSocketFacade for TokioSocketFacade {
         let stream = {
             let guard = self.state.lock().unwrap();
             let TokioSocketState::Client(stream) = guard.deref() else {
-                panic!("not a tcp client")
+                return;
             };
             Arc::clone(stream)
         };
@@ -188,7 +188,7 @@ impl TcpSocketFacade for TokioSocketFacade {
                 match stream.readable().await {
                     Ok(_) => {
                         let buf = buffer.get_slice_mut();
-                        match stream.try_read(&mut buf[read..(len - read)]) {
+                        match stream.try_read(&mut buf[read..len]) {
                             Ok(0) => {
                                 let Some(runtime) = runtime_w.upgrade() else {
                                     break;
@@ -264,7 +264,7 @@ impl TcpSocketFacade for TokioSocketFacade {
         let stream = {
             let guard = self.state.lock().unwrap();
             let TokioSocketState::Client(stream) = guard.deref() else {
-                panic!("not a tcp client")
+                return;
             };
             Arc::clone(stream)
         };
@@ -278,7 +278,7 @@ impl TcpSocketFacade for TokioSocketFacade {
                 match stream.readable().await {
                     Ok(_) => {
                         let mut buf = buffer.lock().unwrap();
-                        match stream.try_read(&mut buf.as_mut_slice()[read..(len - read)]) {
+                        match stream.try_read(&mut buf.as_mut_slice()[read..len]) {
                             Ok(0) => {
                                 drop(buf);
                                 let Some(runtime) = runtime_w.upgrade() else {
@@ -354,7 +354,7 @@ impl TcpSocketFacade for TokioSocketFacade {
         let stream = {
             let guard = self.state.lock().unwrap();
             let TokioSocketState::Client(stream) = guard.deref() else {
-                panic!("not a tcp client")
+                return;
             };
             Arc::clone(stream)
         };

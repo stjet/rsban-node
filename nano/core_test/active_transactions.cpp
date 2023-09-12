@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include <numeric>
+#include <thread>
 
 using namespace std::chrono_literals;
 
@@ -425,6 +426,7 @@ TEST (active_transactions, inactive_votes_cache_multiple_votes)
 	node.scheduler.buckets.activate (nano::dev::genesis_key.pub, *node.store.tx_begin_read ());
 	std::shared_ptr<nano::election> election;
 	ASSERT_TIMELY (5s, election = node.active.election (send1->qualified_root ()));
+	std::this_thread::sleep_for (500ms);
 	ASSERT_EQ (3, election->votes ().size ()); // 2 votes and 1 default not_an_acount
 	ASSERT_EQ (2, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached));
 }
@@ -1233,6 +1235,9 @@ TEST (active_transactions, activate_inactive)
 	ASSERT_TIMELY (5s, node.block_confirmed (send2->hash ()));
 	ASSERT_TIMELY (5s, node.block_confirmed (send->hash ()));
 
+	// wait so that blocks observer can increase the stats
+	std::this_thread::sleep_for (1000ms);
+
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out));
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_quorum, nano::stat::dir::out));
 	ASSERT_EQ (0, node.stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_conf_height, nano::stat::dir::out));
@@ -1475,6 +1480,8 @@ TEST (active_transactions, limit_vote_hinted_elections)
 
 	// Now a second block should get vote hinted
 	ASSERT_TIMELY (5s, nano::test::active (node, { open1 }));
+
+	std::this_thread::sleep_for (500ms);
 
 	// Ensure there was no overflow of elections
 	ASSERT_EQ (0, node.stats->count (nano::stat::type::active_dropped, nano::stat::detail::normal));

@@ -546,8 +546,12 @@ impl Stats {
         let mut lock = self.mutables.lock().unwrap();
         if !lock.stopped {
             {
+                // Counters
                 let entry = lock.get_entry_default(key);
-                entry.counter.add(value, true);
+
+                // Only update timestamp when sampling is enabled as this has a performance impact
+                entry.counter.add(value, self.has_sampling(entry));
+
                 if !self.has_interval_counter() && !self.has_sampling(entry) {
                     return Ok(());
                 }
@@ -572,6 +576,7 @@ impl Stats {
             }
 
             let entry = lock.get_entry_default(key);
+
             // Samples
             if self.has_sampling(entry) {
                 entry.sample_current.add(value, false);

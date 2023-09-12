@@ -1,4 +1,5 @@
 #include "nano/node/common.hpp"
+#include "nano/node/messages.hpp"
 
 #include <nano/lib/rsnanoutils.hpp>
 
@@ -163,6 +164,10 @@ std::unique_ptr<nano::message> rsnano::message_handle_to_message (rsnano::Messag
 			return std::make_unique<nano::telemetry_req> (handle);
 		case nano::message_type::telemetry_ack:
 			return std::make_unique<nano::telemetry_ack> (handle);
+		case nano::message_type::asc_pull_req:
+			return std::make_unique<nano::asc_pull_req> (handle);
+		case nano::message_type::asc_pull_ack:
+			return std::make_unique<nano::asc_pull_ack> (handle);
 		default:
 			throw std::runtime_error ("invalid message type");
 	}

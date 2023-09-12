@@ -67,12 +67,16 @@ TEST (wallets, remove)
 		ASSERT_EQ (2, wallets.items.size ());
 		wallets.destroy (one);
 		ASSERT_EQ (1, wallets.items.size ());
+		// give it some time so that the receivable blocks search can run
+		std::this_thread::sleep_for (1000ms);
 	}
 	{
 		bool error (false);
 		nano::wallets wallets (error, *system.nodes[0]);
 		ASSERT_FALSE (error);
 		ASSERT_EQ (1, wallets.items.size ());
+		// give it some time so that the receivable blocks search can run
+		std::this_thread::sleep_for (1000ms);
 	}
 }
 

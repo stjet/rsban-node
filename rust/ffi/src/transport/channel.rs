@@ -13,7 +13,13 @@ use rsnano_node::{
     config::NetworkConstants,
     transport::{Channel, ChannelEnum, ChannelFake, ChannelInProc, ChannelTcp, TrafficType},
 };
-use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc, time::SystemTime};
+use std::{
+    ffi::c_void,
+    net::SocketAddr,
+    ops::Deref,
+    sync::{Arc, Weak},
+    time::SystemTime,
+};
 
 use super::{
     bandwidth_limiter::OutboundBandwidthLimiterHandle, ChannelTcpSendBufferCallback, EndpointDto,
@@ -21,6 +27,7 @@ use super::{
 };
 
 pub struct ChannelHandle(pub Arc<ChannelEnum>);
+pub struct ChannelWeakHandle(pub Weak<ChannelEnum>);
 
 impl ChannelHandle {
     pub fn new(channel: Arc<ChannelEnum>) -> *mut Self {
@@ -333,4 +340,22 @@ pub unsafe extern "C" fn rsn_channel_fake_send(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_fake_close(handle: *mut ChannelHandle) {
     as_fake_channel(handle).close();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_channel_to_weak(handle: &ChannelHandle) -> *mut ChannelWeakHandle {
+    Box::into_raw(Box::new(ChannelWeakHandle(Arc::downgrade(&handle.0))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_weak_destroy(handle: *mut ChannelWeakHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_channel_weak_upgrade(handle: &ChannelWeakHandle) -> *mut ChannelHandle {
+    match handle.0.upgrade() {
+        Some(channel) => Box::into_raw(Box::new(ChannelHandle(channel))),
+        None => std::ptr::null_mut(),
+    }
 }

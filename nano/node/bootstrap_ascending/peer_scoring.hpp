@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/node/transport/channel.hpp"
+
 #include <nano/node/common.hpp>
 
 #include <boost/multi_index/hashed_index.hpp>
@@ -16,10 +18,6 @@ namespace nano
 {
 class bootstrap_ascending_config;
 class network_constants;
-namespace transport
-{
-	class channel;
-}
 namespace bootstrap_ascending
 {
 	// Container for tracking and scoring peers with respect to bootstrapping
@@ -42,20 +40,10 @@ namespace bootstrap_ascending
 		{
 		public:
 			explicit peer_score (std::shared_ptr<nano::transport::channel> const &, uint64_t, uint64_t, uint64_t);
-			std::weak_ptr<nano::transport::channel> channel;
-			// std::weak_ptr does not provide ordering so the naked pointer is also tracked and used for ordering channels
-			// This pointer may be invalid if the channel has been destroyed
-			nano::transport::channel * channel_ptr;
+			nano::transport::channel_weak_ptr channel;
+			size_t channel_id;
 			// Acquire reference to the shared channel object if it is still valid
-			[[nodiscard]] std::shared_ptr<nano::transport::channel> shared () const
-			{
-				auto result = channel.lock ();
-				if (result)
-				{
-					debug_assert (result.get () == channel_ptr);
-				}
-				return result;
-			}
+			[[nodiscard]] std::shared_ptr<nano::transport::channel> shared () const;
 			void decay ()
 			{
 				outstanding = outstanding > 0 ? outstanding - 1 : 0;
@@ -77,7 +65,7 @@ namespace bootstrap_ascending
 		using scoring_t = boost::multi_index_container<peer_score,
 		mi::indexed_by<
 			mi::hashed_unique<mi::tag<tag_channel>,
-				mi::member<peer_score, nano::transport::channel *, &peer_score::channel_ptr>>,
+				mi::member<peer_score, size_t, &peer_score::channel_id>>,
 			mi::ordered_non_unique<mi::tag<tag_outstanding>,
 				mi::member<peer_score, uint64_t, &peer_score::outstanding>>>>;
 		// clang-format on

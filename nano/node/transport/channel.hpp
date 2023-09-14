@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/locks.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/node/bandwidth_limiter.hpp>
@@ -16,6 +18,7 @@ namespace rsnano
 {
 class BandwidthLimiterHandle;
 class ChannelHandle;
+class ChannelWeakHandle;
 }
 
 namespace nano::transport
@@ -138,6 +141,19 @@ public:
 	virtual void set_peering_endpoint (nano::endpoint endpoint) = 0;
 	rsnano::ChannelHandle * handle;
 };
+
+class channel_weak_ptr
+{
+public:
+	channel_weak_ptr (const std::shared_ptr<nano::transport::channel> & channel_a);
+	channel_weak_ptr (const channel_weak_ptr &) = delete;
+	channel_weak_ptr (channel_weak_ptr &&);
+	~channel_weak_ptr ();
+	std::shared_ptr<nano::transport::channel> upgrade () const;
+
+private:
+	rsnano::ChannelWeakHandle * handle;
+};
 }
 
 namespace std
@@ -180,4 +196,5 @@ struct hash<std::reference_wrapper<::nano::transport::channel const>>
 		return hash (channel_a.get ());
 	}
 };
+
 }

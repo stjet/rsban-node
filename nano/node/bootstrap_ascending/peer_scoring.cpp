@@ -15,7 +15,7 @@ nano::bootstrap_ascending::peer_scoring::peer_scoring (nano::bootstrap_ascending
 bool nano::bootstrap_ascending::peer_scoring::try_send_message (std::shared_ptr<nano::transport::channel> channel)
 {
 	auto & index = scoring.get<tag_channel> ();
-	auto existing = index.find (channel.get ());
+	auto existing = index.find (channel->channel_id ());
 	if (existing == index.end ())
 	{
 		index.emplace (channel, 1, 1, 0);
@@ -41,7 +41,7 @@ bool nano::bootstrap_ascending::peer_scoring::try_send_message (std::shared_ptr<
 void nano::bootstrap_ascending::peer_scoring::received_message (std::shared_ptr<nano::transport::channel> channel)
 {
 	auto & index = scoring.get<tag_channel> ();
-	auto existing = index.find (channel.get ());
+	auto existing = index.find (channel->channel_id ());
 	if (existing != index.end ())
 	{
 		if (existing->outstanding > 1)
@@ -109,7 +109,7 @@ void nano::bootstrap_ascending::peer_scoring::sync (std::deque<std::shared_ptr<n
 	{
 		if (channel->get_network_version () >= network_constants.bootstrap_protocol_version_min)
 		{
-			if (index.find (channel.get ()) == index.end ())
+			if (index.find (channel->channel_id ()) == index.end ())
 			{
 				if (!channel->max (nano::transport::traffic_type::bootstrap))
 				{
@@ -127,9 +127,14 @@ void nano::bootstrap_ascending::peer_scoring::sync (std::deque<std::shared_ptr<n
 nano::bootstrap_ascending::peer_scoring::peer_score::peer_score (
 std::shared_ptr<nano::transport::channel> const & channel_a, uint64_t outstanding_a, uint64_t request_count_total_a, uint64_t response_count_total_a) :
 	channel{ channel_a },
-	channel_ptr{ channel_a.get () },
+	channel_id{ channel_a->channel_id () },
 	outstanding{ outstanding_a },
 	request_count_total{ request_count_total_a },
 	response_count_total{ response_count_total_a }
 {
+}
+
+[[nodiscard]] std::shared_ptr<nano::transport::channel> nano::bootstrap_ascending::peer_scoring::peer_score::shared () const
+{
+	return channel.upgrade ();
 }

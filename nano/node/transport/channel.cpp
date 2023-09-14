@@ -1,4 +1,5 @@
 #include "nano/lib/rsnanoutils.hpp"
+#include "nano/node/transport/tcp.hpp"
 
 #include <nano/lib/rsnano.hpp>
 #include <nano/node/common.hpp>
@@ -102,4 +103,33 @@ void nano::transport::channel::set_node_id (nano::account node_id_a)
 size_t nano::transport::channel::channel_id () const
 {
 	return rsnano::rsn_channel_id (handle);
+}
+
+nano::transport::channel_weak_ptr::channel_weak_ptr (const std::shared_ptr<nano::transport::channel> & channel_a) :
+	handle{ rsnano::rsn_channel_to_weak (channel_a->handle) }
+{
+}
+
+nano::transport::channel_weak_ptr::channel_weak_ptr (channel_weak_ptr && other_a) :
+	handle{ other_a.handle }
+{
+	other_a.handle = nullptr;
+}
+nano::transport::channel_weak_ptr::~channel_weak_ptr ()
+{
+	if (handle)
+	{
+		rsnano::rsn_channel_weak_destroy (handle);
+	}
+}
+
+std::shared_ptr<nano::transport::channel> nano::transport::channel_weak_ptr::upgrade () const
+{
+	auto channel_handle = rsnano::rsn_channel_weak_upgrade (handle);
+	std::shared_ptr<nano::transport::channel> result;
+	if (channel_handle)
+	{
+		result = nano::transport::channel_handle_to_channel (channel_handle);
+	}
+	return result;
 }

@@ -12,11 +12,14 @@ DEBIAN_FRONTEND=noninteractive apt-get install -yqq \
 build-essential \
 g++ \
 wget \
+curl \
 python3 \
 zlib1g-dev \
 cmake \
 git \
 valgrind 
+
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 
 pushd ..
 mkdir corrosion

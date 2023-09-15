@@ -208,7 +208,7 @@ impl TcpSocketFacade for TokioSocketFacade {
                                     };
                                     runtime.tokio.spawn_blocking(move || {
                                         if let Some(cb) = callback.lock().unwrap().take() {
-                                            cb(ErrorCode::new(), n);
+                                            cb(ErrorCode::new(), read);
                                         }
                                     });
                                     break;
@@ -300,7 +300,7 @@ impl TcpSocketFacade for TokioSocketFacade {
                                     };
                                     runtime.tokio.spawn_blocking(move || {
                                         if let Some(cb) = callback.lock().unwrap().take() {
-                                            cb(ErrorCode::new(), n);
+                                            cb(ErrorCode::new(), read);
                                         }
                                     });
                                     break;

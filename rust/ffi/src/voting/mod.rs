@@ -6,10 +6,10 @@ mod vote_uniquer;
 pub use vote::VoteHandle;
 pub use vote_uniquer::VoteUniquerHandle;
 
+mod buckets;
 mod election_status;
 mod inactive_cache_information;
 mod inactive_cache_status;
-mod prioritization;
 
 mod election_scheduler;
 mod recently_cemented_cache;

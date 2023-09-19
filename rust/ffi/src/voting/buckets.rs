@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use crate::core::BlockHandle;
 use rsnano_core::Amount;
-use rsnano_node::voting::{Prioritization, ValueType};
+use rsnano_node::voting::{Buckets, ValueType};
 
 pub struct ValueTypeHandle(ValueType);
 
@@ -47,11 +47,11 @@ pub unsafe extern "C" fn rsn_prioritization_get_value_type_block(
     Box::into_raw(Box::new(BlockHandle::new((*handle).0.block.clone())))
 }
 
-pub struct PrioritizationHandle(Prioritization);
+pub struct PrioritizationHandle(Buckets);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_prioritization_create(maximum: u64) -> *mut PrioritizationHandle {
-    let info = Prioritization::new(maximum);
+    let info = Buckets::new(maximum);
     Box::into_raw(Box::new(PrioritizationHandle(info)))
 }
 

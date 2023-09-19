@@ -16,8 +16,8 @@ mod inactive_cache_status;
 
 pub use inactive_cache_information::InactiveCacheInformation;
 pub use inactive_cache_status::InactiveCacheStatus;
-mod prioritization;
-pub use prioritization::{Prioritization, ValueType};
+mod buckets;
+pub use buckets::{Buckets, ValueType};
 
 mod election_scheduler;
 pub use election_scheduler::{

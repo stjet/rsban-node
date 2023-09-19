@@ -56,7 +56,7 @@ impl ValueType {
 ///  for example, in the event of bootstrapped blocks.
 ///
 #[derive(Clone)]
-pub struct Prioritization {
+pub struct Buckets {
     /// container for the buckets to be read in round robin fashion
     buckets: Vec<BTreeSet<ValueType>>,
 
@@ -74,7 +74,7 @@ pub struct Prioritization {
     maximum: u64,
 }
 
-impl Prioritization {
+impl Buckets {
     /// Prioritization constructor, construct a container containing approximately 'maximum' number of blocks.
     pub fn new(maximum: u64) -> Self {
         let mut minimums = Vec::new();

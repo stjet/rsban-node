@@ -15,7 +15,9 @@ class PrioritizationHandle;
 namespace nano
 {
 class block;
-
+}
+namespace nano::scheduler
+{
 /** A container for holding blocks and their arrival/creation time.
  *
  *  The container consists of a number of buckets. Each bucket holds an ordered set of 'value_type' items.
@@ -26,7 +28,7 @@ class block;
  *  The arrival/creation time is only an approximation and it could even be wildly wrong,
  *  for example, in the event of bootstrapped blocks.
  */
-class prioritization final
+class buckets final
 {
 	class value_type
 	{
@@ -41,9 +43,9 @@ class prioritization final
 	};
 
 public:
-	prioritization (uint64_t maximum = 250000u);
-	prioritization (prioritization const &) = delete;
-	~prioritization ();
+	buckets (uint64_t maximum = 250000u);
+	buckets (buckets const &) = delete;
+	~buckets ();
 	void push (uint64_t time, std::shared_ptr<nano::block> block, nano::amount const & priority);
 	std::shared_ptr<nano::block> top () const;
 	void pop ();
@@ -57,4 +59,4 @@ public:
 
 	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const &);
 };
-}
+} // namespace nano::scheduler

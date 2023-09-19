@@ -157,8 +157,6 @@ add_library(
   peer_exclusion.cpp
   portmapping.hpp
   portmapping.cpp
-  prioritization.cpp
-  prioritization.hpp
   process_live_dispatcher.cpp
   process_live_dispatcher.hpp
   repcrawler.hpp
@@ -167,6 +165,8 @@ add_library(
   request_aggregator.cpp
   rsnano_callbacks.hpp
   rsnano_callbacks.cpp
+  scheduler/buckets.cpp
+  scheduler/buckets.hpp
   scheduler/component.hpp
   scheduler/component.cpp
   scheduler/hinted.hpp

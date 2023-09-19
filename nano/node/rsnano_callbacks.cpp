@@ -1,6 +1,6 @@
 #include "boost/thread/latch.hpp"
 #include "nano/lib/blocks.hpp"
-#include "nano/node/scheduler/buckets.hpp"
+#include "nano/node/scheduler/priority.hpp"
 
 #include <nano/lib/config.hpp>
 #include <nano/lib/logger_mt.hpp>
@@ -946,7 +946,7 @@ void txn_callbacks_end (void * handle_a, uint64_t txn_id_a)
 
 void election_scheduler_activate (void * scheduler_a, const uint8_t * account_a, rsnano::TransactionHandle * txn_a)
 {
-	auto election_scheduler = static_cast<nano::scheduler::buckets *> (scheduler_a);
+	auto election_scheduler = static_cast<nano::scheduler::priority *> (scheduler_a);
 	nano::account account;
 	std::copy (account_a, account_a + 32, std::begin (account.bytes));
 	nano::transaction_wrapper txn_wrapper{ txn_a };

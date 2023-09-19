@@ -167,14 +167,14 @@ add_library(
   request_aggregator.cpp
   rsnano_callbacks.hpp
   rsnano_callbacks.cpp
-  scheduler/buckets.hpp
-  scheduler/buckets.cpp
   scheduler/component.hpp
   scheduler/component.cpp
   scheduler/hinted.hpp
   scheduler/hinted.cpp
   scheduler/optimistic.hpp
   scheduler/optimistic.cpp
+  scheduler/priority.hpp
+  scheduler/priority.cpp
   signatures.hpp
   signatures.cpp
   state_block_signature_verification.hpp

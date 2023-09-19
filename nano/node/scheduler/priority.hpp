@@ -22,13 +22,13 @@ class node;
 
 namespace nano::scheduler
 {
-class buckets final
+class priority final
 {
 public:
-	buckets (nano::node &, nano::stats &);
-	buckets (buckets const &) = delete;
-	buckets (buckets &&) = delete;
-	~buckets ();
+	priority (nano::node &, nano::stats &);
+	priority (priority const &) = delete;
+	priority (priority &&) = delete;
+	~priority ();
 
 	void start ();
 	void stop ();
@@ -59,7 +59,7 @@ private:
 	bool priority_queue_predicate () const;
 	bool manual_queue_predicate () const;
 
-	nano::prioritization priority;
+	nano::prioritization buckets;
 
 	std::deque<std::tuple<std::shared_ptr<nano::block>, boost::optional<nano::uint128_t>, nano::election_behavior>> manual_queue;
 	bool stopped{ false };

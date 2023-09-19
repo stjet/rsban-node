@@ -367,7 +367,10 @@ TEST (socket, disconnection_of_silent_connections)
 	node->stop ();
 }
 
-TEST (socket, drop_policy)
+// Disabled, because it doesn't work with Tokio. The Test expects the async runtime to
+// not do anything, so that the drop policy can trigger, but Tokio does make connections/sends
+// and that prevents the drop. The test must be rewritten
+TEST (DISABLED_socket, drop_policy)
 {
 	nano::test::system system;
 

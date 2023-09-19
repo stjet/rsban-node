@@ -747,7 +747,9 @@ TEST (tcp_listener, tcp_listener_timeout_node_id_handshake)
 // PR in which it got disabled: https://github.com/nanocurrency/nano-node/pull/3622
 // Issue for investigating it: https://github.com/nanocurrency/nano-node/issues/3621
 #ifndef _WIN32
-TEST (network, peer_max_tcp_attempts)
+// Disabled, because it does not work with Tokio, because Tokio executes the async requests
+// and this test assumes that the async runtime doesn't poll. Test must be rewritten!
+TEST (DISABLED_network, peer_max_tcp_attempts)
 {
 	// Add nodes that can accept TCP connection, but not node ID handshake
 	nano::node_flags node_flags;

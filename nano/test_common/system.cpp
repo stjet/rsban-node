@@ -286,6 +286,10 @@ std::error_code nano::test::system::poll (std::chrono::nanoseconds const & wait_
 	}
 #endif
 
+	if (async_rt.io_ctx.stopped()){
+		async_rt.io_ctx.restart();
+	}
+
 	std::error_code ec;
 	if (std::chrono::steady_clock::now () > deadline)
 	{
@@ -318,6 +322,9 @@ void nano::test::system::delay_ms (std::chrono::milliseconds const & delay)
 	{
 		async_rt.io_ctx.run_one_for (endtime - now);
 		now = std::chrono::steady_clock::now ();
+		if (async_rt.io_ctx.stopped()){
+			async_rt.io_ctx.restart();
+		}
 	}
 }
 

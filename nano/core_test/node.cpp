@@ -35,6 +35,7 @@ TEST (node, stop)
 	nano::test::system system (1);
 	ASSERT_NE (system.nodes[0]->wallets.items.end (), system.nodes[0]->wallets.items.begin ());
 	system.nodes[0]->stop ();
+	system.io_guard.reset ();
 	system.async_rt.io_ctx.run ();
 	ASSERT_TRUE (true);
 }

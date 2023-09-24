@@ -126,7 +126,8 @@ std::shared_ptr<nano::node> nano::test::system::add_node (nano::node_config cons
 }
 
 nano::test::system::system () :
-	async_rt{ false }
+	async_rt{ false },
+	io_guard{ boost::asio::make_work_guard (async_rt.io_ctx) }
 {
 	auto scale_str = std::getenv ("DEADLINE_SCALE_FACTOR");
 	if (scale_str)
@@ -286,10 +287,6 @@ std::error_code nano::test::system::poll (std::chrono::nanoseconds const & wait_
 	}
 #endif
 
-	if (async_rt.io_ctx.stopped()){
-		async_rt.io_ctx.restart();
-	}
-
 	std::error_code ec;
 	if (std::chrono::steady_clock::now () > deadline)
 	{
@@ -322,8 +319,9 @@ void nano::test::system::delay_ms (std::chrono::milliseconds const & delay)
 	{
 		async_rt.io_ctx.run_one_for (endtime - now);
 		now = std::chrono::steady_clock::now ();
-		if (async_rt.io_ctx.stopped()){
-			async_rt.io_ctx.restart();
+		if (async_rt.io_ctx.stopped ())
+		{
+			async_rt.io_ctx.restart ();
 		}
 	}
 }
@@ -567,6 +565,7 @@ void nano::test::system::stop ()
 		i->stop ();
 	}
 	work.stop ();
+	io_guard.reset();
 }
 
 nano::node_config nano::test::system::default_config ()

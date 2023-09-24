@@ -73,6 +73,7 @@ namespace test
 		double deadline_scaling_factor{ 1.0 };
 		unsigned node_sequence{ 0 };
 		std::vector<std::shared_ptr<nano::block>> initialization_blocks;
+		boost::asio::executor_work_guard<boost::asio::io_context::executor_type> io_guard;
 	};
 
 	std::unique_ptr<nano::state_block> upgrade_epoch (nano::work_pool &, nano::ledger &, nano::epoch);

@@ -140,4 +140,3 @@ TEST (election_scheduler, no_vacancy)
 	ASSERT_TIMELY (5s, node.active.election (block2->qualified_root ()) != nullptr);
 	ASSERT_TRUE (node.scheduler.priority.empty ());
 }
-

@@ -171,6 +171,8 @@ add_library(
   scheduler/component.cpp
   scheduler/hinted.hpp
   scheduler/hinted.cpp
+  scheduler/manual.hpp
+  scheduler/manual.cpp
   scheduler/optimistic.hpp
   scheduler/optimistic.cpp
   scheduler/priority.hpp

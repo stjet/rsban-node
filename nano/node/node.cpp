@@ -9,6 +9,7 @@
 #include <nano/node/node.hpp>
 #include <nano/node/scheduler/component.hpp>
 #include <nano/node/scheduler/hinted.hpp>
+#include <nano/node/scheduler/manual.hpp>
 #include <nano/node/scheduler/optimistic.hpp>
 #include <nano/node/scheduler/priority.hpp>
 #include <nano/node/telemetry.hpp>
@@ -1307,7 +1308,7 @@ void nano::node::add_initial_peers ()
 
 void nano::node::start_election (std::shared_ptr<nano::block> const & block)
 {
-	scheduler.priority.manual (block);
+	scheduler.manual.push (block);
 }
 
 bool nano::node::block_confirmed (nano::block_hash const & hash_a)

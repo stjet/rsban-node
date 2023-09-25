@@ -565,7 +565,7 @@ void nano::test::system::stop ()
 		i->stop ();
 	}
 	work.stop ();
-	io_guard.reset();
+	io_guard.reset ();
 }
 
 nano::node_config nano::test::system::default_config ()

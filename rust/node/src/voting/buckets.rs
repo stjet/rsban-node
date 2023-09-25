@@ -2,7 +2,7 @@ use rsnano_core::{Amount, BlockEnum};
 
 use std::{
     cmp::{max, Ordering},
-    collections::BTreeSet,
+    collections::{BTreeSet, VecDeque},
     sync::{Arc, RwLock},
 };
 
@@ -58,14 +58,14 @@ impl ValueType {
 #[derive(Clone)]
 pub struct Buckets {
     /// container for the buckets to be read in round robin fashion
-    buckets: Vec<BTreeSet<ValueType>>,
+    buckets: VecDeque<BTreeSet<ValueType>>,
 
     /// thresholds that define the bands for each bucket, the minimum balance an account must have to enter a bucket,
     /// the container writes a block to the lowest indexed bucket that has balance larger than the bucket's minimum value
-    minimums: Vec<u128>,
+    minimums: VecDeque<u128>,
 
     /// Contains bucket indicies to iterate over when making the next scheduling decision
-    schedule: Vec<u8>,
+    schedule: VecDeque<u8>,
 
     /// index of bucket to read next
     current: usize,
@@ -77,13 +77,13 @@ pub struct Buckets {
 impl Buckets {
     /// Prioritization constructor, construct a container containing approximately 'maximum' number of blocks.
     pub fn new(maximum: u64) -> Self {
-        let mut minimums = Vec::new();
-        minimums.push(0);
+        let mut minimums = VecDeque::new();
+        minimums.push_back(0);
 
         let mut build_region = |begin: u128, end: u128, count: usize| {
             let width = (end - begin) / (count as u128);
             for i in 0..count {
-                minimums.push(begin + (i as u128 * width))
+                minimums.push_back(begin + (i as u128 * width))
             }
         };
 
@@ -95,13 +95,13 @@ impl Buckets {
         build_region(1 << 108, 1 << 112, 8);
         build_region(1 << 112, 1 << 116, 4);
         build_region(1 << 116, 1 << 120, 2);
-        minimums.push(1 << 120);
+        minimums.push_back(1 << 120);
 
-        let buckets = vec![BTreeSet::new(); minimums.len()];
+        let buckets = VecDeque::from(vec![BTreeSet::new(); minimums.len()]);
 
-        let mut schedule = Vec::with_capacity(buckets.len());
+        let mut schedule = VecDeque::with_capacity(buckets.len());
         for i in 0..buckets.len() {
-            schedule.push(i as u8);
+            schedule.push_back(i as u8);
         }
 
         Self {
@@ -202,14 +202,13 @@ impl Buckets {
         self.minimums
             .iter()
             .enumerate()
-            .filter_map(|(i, min)| {
+            .find_map(|(i, min)| {
                 if amount.number() < *min {
                     Some(i)
                 } else {
                     None
                 }
             })
-            .next()
             .unwrap_or(self.minimums.len())
             - 1
     }

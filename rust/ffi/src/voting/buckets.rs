@@ -6,7 +6,7 @@ pub struct PrioritizationHandle(Buckets);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_prioritization_create(maximum: u64) -> *mut PrioritizationHandle {
-    let info = Buckets::new(maximum);
+    let info = Buckets::new(maximum as usize);
     Box::into_raw(Box::new(PrioritizationHandle(info)))
 }
 

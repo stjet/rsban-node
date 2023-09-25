@@ -45,6 +45,52 @@ impl ValueType {
     }
 }
 
+/// A class which holds an ordered set of blocks to be scheduled, ordered by their block arrival time
+pub struct Bucket {
+    maximum: usize,
+    queue: BTreeSet<ValueType>,
+}
+
+impl Bucket {
+    pub fn new(maximum: usize) -> Self {
+        Self {
+            maximum,
+            queue: BTreeSet::new(),
+        }
+    }
+
+    pub fn top(&self) -> &Arc<RwLock<BlockEnum>> {
+        debug_assert!(!self.queue.is_empty());
+        &self.queue.first().unwrap().block
+    }
+
+    pub fn pop(&mut self) {
+        debug_assert!(!self.queue.is_empty());
+        self.queue.pop_first();
+    }
+
+    pub fn push(&mut self, time: u64, block: Arc<RwLock<BlockEnum>>) {
+        self.queue.insert(ValueType::new(time, block));
+        if self.queue.len() > self.maximum {
+            self.queue.pop_last();
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.queue.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+
+    pub fn dump(&self) {
+        for item in &self.queue {
+            eprintln!("{} {}", item.time, item.block.read().unwrap().hash());
+        }
+    }
+}
+
 /// A container for holding blocks and their arrival/creation time.
 ///
 ///  The container consists of a number of buckets. Each bucket holds an ordered set of 'ValueType' items.
@@ -55,10 +101,9 @@ impl ValueType {
 ///  The arrival/creation time is only an approximation and it could even be wildly wrong,
 ///  for example, in the event of bootstrapped blocks.
 ///
-#[derive(Clone)]
 pub struct Buckets {
     /// container for the buckets to be read in round robin fashion
-    buckets: VecDeque<BTreeSet<ValueType>>,
+    buckets: VecDeque<Bucket>,
 
     /// thresholds that define the bands for each bucket, the minimum balance an account must have to enter a bucket,
     /// the container writes a block to the lowest indexed bucket that has balance larger than the bucket's minimum value
@@ -71,12 +116,12 @@ pub struct Buckets {
     current: usize,
 
     /// maximum number of blocks in whole container, each bucket's maximum is maximum / bucket_number
-    maximum: u64,
+    maximum: usize,
 }
 
 impl Buckets {
     /// Prioritization constructor, construct a container containing approximately 'maximum' number of blocks.
-    pub fn new(maximum: u64) -> Self {
+    pub fn new(maximum: usize) -> Self {
         let mut minimums = VecDeque::new();
         minimums.push_back(0);
 
@@ -97,7 +142,11 @@ impl Buckets {
         build_region(1 << 116, 1 << 120, 2);
         minimums.push_back(1 << 120);
 
-        let buckets = VecDeque::from(vec![BTreeSet::new(); minimums.len()]);
+        let bucket_max = max(1, maximum / minimums.len());
+        let buckets = minimums
+            .iter()
+            .map(|_| Bucket::new(bucket_max))
+            .collect::<VecDeque<_>>();
 
         let mut schedule = VecDeque::with_capacity(buckets.len());
         for i in 0..buckets.len() {
@@ -113,9 +162,17 @@ impl Buckets {
         }
     }
 
-    /// Returns the total number of blocks in buckets
-    pub fn size(&self) -> usize {
-        self.buckets.iter().map(|b| b.len()).sum()
+    /// Push a block and its associated time into the prioritization container.
+    /// The time is given here because sideband might not exist in the case of state blocks.
+    pub fn push(&mut self, time: u64, block: Arc<RwLock<BlockEnum>>, priority: Amount) {
+        let was_empty = self.empty();
+        let index = self.index(&priority);
+        let bucket = &mut self.buckets[index];
+        bucket.push(time, block);
+
+        if was_empty {
+            self.seek();
+        }
     }
 
     /// Moves the bucket pointer to the next bucket
@@ -126,15 +183,23 @@ impl Buckets {
         }
     }
 
+    /// Return the highest priority block of the current bucket
+    pub fn top(&mut self) -> &Arc<RwLock<BlockEnum>> {
+        debug_assert!(!self.empty());
+        self.buckets[self.current].top()
+    }
+
     /// Pop the current block from the container and seek to the next block, if it exists
     pub fn pop(&mut self) {
         debug_assert!(!self.empty());
-        debug_assert!(!self.buckets[self.current].is_empty());
         let bucket = &mut self.buckets[self.current];
-        if let Some(first) = bucket.iter().next().cloned() {
-            bucket.remove(&first);
-        }
+        bucket.pop();
         self.seek();
+    }
+
+    /// Returns the total number of blocks in buckets
+    pub fn size(&self) -> usize {
+        self.buckets.iter().map(|b| b.len()).sum()
     }
 
     /// Seek to the next non-empty bucket, if one exists
@@ -144,33 +209,6 @@ impl Buckets {
             if self.buckets[self.current].is_empty() {
                 self.next();
             }
-        }
-    }
-
-    /// Return the highest priority block of the current bucket
-    pub fn top(&mut self) -> &Arc<RwLock<BlockEnum>> {
-        debug_assert!(!self.empty());
-        debug_assert!(!self.buckets[self.current].is_empty());
-
-        &self.buckets[self.current].iter().next().unwrap().block
-    }
-
-    /// Push a block and its associated time into the prioritization container.
-    /// The time is given here because sideband might not exist in the case of state blocks.
-    pub fn push(&mut self, time: u64, block: Arc<RwLock<BlockEnum>>, priority: Amount) {
-        let was_empty = self.empty();
-        let index = self.index(&priority);
-        let bucket_count = self.buckets.len();
-        let bucket = &mut self.buckets[index];
-        bucket.insert(ValueType::new(time, block));
-
-        if bucket.len() > max(1, self.maximum as usize / bucket_count) {
-            let end = bucket.iter().next_back().cloned().unwrap();
-            bucket.remove(&end);
-        }
-
-        if was_empty {
-            self.seek();
         }
     }
 
@@ -190,10 +228,8 @@ impl Buckets {
     }
 
     pub fn dump(&self) {
-        for i in &self.buckets {
-            for j in i.iter() {
-                eprintln!("{} {}", j.time, j.block.read().unwrap().hash());
-            }
+        for bucket in &self.buckets {
+            bucket.dump();
         }
         eprintln!("current: {}", self.schedule[self.current]);
     }

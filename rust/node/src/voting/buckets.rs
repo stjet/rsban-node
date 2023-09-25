@@ -199,6 +199,8 @@ impl Buckets {
         for _ in 0..self.buckets.len() {
             if self.buckets[self.current].is_empty() {
                 self.next();
+            } else {
+                break;
             }
         }
     }

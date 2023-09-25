@@ -437,22 +437,6 @@ private:
 	rsnano::VoidFnCallbackHandle * callback_m;
 };
 
-void io_ctx_post (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
-{
-	try
-	{
-		auto io_ctx{ static_cast<boost::asio::io_context *> (handle_a) };
-		auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
-		io_ctx->post ([callback_wrapper] () {
-			callback_wrapper->execute ();
-		});
-	}
-	catch (std::exception e)
-	{
-		std::cerr << "Exception while calling io_ctx::post(): " << e.what () << std::endl;
-	}
-}
-
 void logger_destroy (void * handle_a)
 {
 	auto logger = static_cast<std::shared_ptr<nano::logger_mt> *> (handle_a);
@@ -648,31 +632,6 @@ void tcp_socket_remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint
 	auto endpoint{ (*socket)->remote_endpoint (ec) };
 	*endpoint_a = rsnano::endpoint_to_dto (endpoint);
 	*ec_a = rsnano::error_code_to_dto (ec);
-}
-
-void tcp_socket_dispatch (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
-{
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
-	(*socket)->dispatch ([callback_wrapper] () {
-		callback_wrapper->execute ();
-	});
-}
-
-void tcp_socket_post (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
-{
-	try
-	{
-		auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-		auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
-		(*socket)->post ([callback_wrapper] () {
-			callback_wrapper->execute ();
-		});
-	}
-	catch (std::exception e)
-	{
-		std::cerr << "Exception while calling tcp_socket_post: " << e.what () << std::endl;
-	}
 }
 
 void tcp_socket_close (void * handle_a, rsnano::ErrorCodeDto * ec_a)
@@ -1009,15 +968,11 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_initiator_in_progress (bootstrap_initiator_in_progress);
 	rsnano::rsn_callback_logger_destroy (logger_destroy);
 
-	rsnano::rsn_callback_io_ctx_post (io_ctx_post);
-
 	rsnano::rsn_callback_tcp_socket_async_connect (tcp_socket_async_connect);
 	rsnano::rsn_callback_tcp_socket_async_read (tcp_socket_async_read);
 	rsnano::rsn_callback_tcp_socket_async_read2 (tcp_socket_async_read2);
 	rsnano::rsn_callback_tcp_socket_async_write (tcp_socket_async_write);
 	rsnano::rsn_callback_tcp_socket_remote_endpoint (tcp_socket_remote_endpoint);
-	rsnano::rsn_callback_tcp_socket_dispatch (tcp_socket_dispatch);
-	rsnano::rsn_callback_tcp_socket_post (tcp_socket_post);
 	rsnano::rsn_callback_tcp_socket_close (tcp_socket_close);
 	rsnano::rsn_callback_tcp_socket_destroy (tcp_socket_destroy);
 	rsnano::rsn_callback_tcp_socket_local_endpoint (tcp_socket_local_endpoint);

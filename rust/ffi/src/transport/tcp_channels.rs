@@ -10,9 +10,8 @@ use rsnano_node::{
     config::NodeConfig,
     transport::{
         ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpEndpointAttempt,
-        TcpSocketFacadeFactory, TokioSocketFacadeFactory,
+        TokioSocketFacadeFactory,
     },
-    utils::is_tokio_enabled,
     NetworkParams,
 };
 
@@ -29,9 +28,9 @@ use crate::{
 };
 
 use super::{
-    peer_exclusion::PeerExclusionHandle, socket::FfiTcpSocketFacadeFactory, ChannelHandle,
-    EndpointDto, NetworkFilterHandle, OutboundBandwidthLimiterHandle, SocketFfiObserver,
-    SocketHandle, SynCookiesHandle, TcpMessageManagerHandle,
+    peer_exclusion::PeerExclusionHandle, ChannelHandle, EndpointDto, NetworkFilterHandle,
+    OutboundBandwidthLimiterHandle, SocketFfiObserver, SocketHandle, SynCookiesHandle,
+    TcpMessageManagerHandle,
 };
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
@@ -77,13 +76,9 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 )
             });
             let observer = Arc::new(SocketFfiObserver::new(value.socket_observer));
-            let mut tcp_socket_factory: Arc<dyn TcpSocketFacadeFactory> =
-                Arc::new(FfiTcpSocketFacadeFactory(value.tcp_socket_factory));
-            if is_tokio_enabled() {
-                tcp_socket_factory = Arc::new(TokioSocketFacadeFactory::new(Arc::clone(
-                    &(*value.async_rt).0,
-                )));
-            }
+            let tcp_socket_factory = Arc::new(TokioSocketFacadeFactory::new(Arc::clone(
+                &(*value.async_rt).0,
+            )));
 
             Ok(Self {
                 node_config: NodeConfig::try_from(&*value.node_config)?,

@@ -4,12 +4,11 @@ use rsnano_node::{
     stats::SocketStats,
     transport::{
         CompositeSocketObserver, Socket, SocketBuilder, SocketExtensions, SocketObserver,
-        SocketType, TcpSocketFacade, TcpSocketFacadeFactory, TokioSocketFacade, WriteCallback,
+        SocketType, TokioSocketFacade, WriteCallback,
     },
-    utils::{is_tokio_enabled, BufferWrapper, ErrorCode},
+    utils::{BufferWrapper, ErrorCode},
 };
 use std::{
-    backtrace::Backtrace,
     ffi::c_void,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6},
     ops::Deref,
@@ -18,20 +17,11 @@ use std::{
 };
 
 use crate::{
-    utils::{
-        AsyncRuntimeHandle, DispatchCallback, LoggerHandle, LoggerMT, ThreadPoolHandle,
-        VoidFnCallbackHandle,
-    },
+    utils::{AsyncRuntimeHandle, LoggerHandle, LoggerMT, ThreadPoolHandle},
     ErrorCodeDto, StatHandle, StringDto, VoidPointerCallback,
 };
 
 pub struct BufferHandle(Arc<Mutex<Vec<u8>>>);
-
-impl BufferHandle {
-    pub fn new(buf: Arc<Mutex<Vec<u8>>>) -> *mut BufferHandle {
-        Box::into_raw(Box::new(BufferHandle(buf)))
-    }
-}
 
 impl Deref for BufferHandle {
     type Target = Arc<Mutex<Vec<u8>>>;
@@ -82,7 +72,6 @@ impl Deref for SocketHandle {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_create(
     endpoint_type: u8,
-    tcp_facade_handle: *mut c_void,
     stats_handle: *mut StatHandle,
     thread_pool: &ThreadPoolHandle,
     default_timeout_s: u64,
@@ -95,11 +84,7 @@ pub unsafe extern "C" fn rsn_socket_create(
     async_rt: &AsyncRuntimeHandle,
 ) -> *mut SocketHandle {
     let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
-    let mut tcp_facade: Arc<dyn TcpSocketFacade> =
-        Arc::new(FfiTcpSocketFacade::new(tcp_facade_handle));
-    if is_tokio_enabled() {
-        tcp_facade = Arc::new(TokioSocketFacade::new(Arc::clone(&async_rt.0)));
-    }
+    let tcp_facade = Arc::new(TokioSocketFacade::new(Arc::clone(&async_rt.0)));
     let thread_pool = thread_pool.0.clone();
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let stats = (*stats_handle).deref().clone();
@@ -412,12 +397,6 @@ pub unsafe extern "C" fn rsn_socket_checkup(handle: *mut SocketHandle) {
 
 pub struct AsyncConnectCallbackHandle(Option<Box<dyn FnOnce(ErrorCode)>>);
 
-impl AsyncConnectCallbackHandle {
-    pub fn new(callback: Box<dyn FnOnce(ErrorCode)>) -> Self {
-        Self(Some(callback))
-    }
-}
-
 type AsyncConnectCallback =
     unsafe extern "C" fn(*mut c_void, *const EndpointDto, *mut AsyncConnectCallbackHandle);
 
@@ -427,9 +406,6 @@ type RemoteEndpointCallback =
     unsafe extern "C" fn(*mut c_void, *mut EndpointDto, *mut ErrorCodeDto);
 
 static mut REMOTE_ENDPOINT_CALLBACK: Option<RemoteEndpointCallback> = None;
-
-static mut DISPATCH_CALLBACK: Option<DispatchCallback> = None;
-static mut POST_CALLBACK: Option<DispatchCallback> = None;
 
 type CloseSocketCallback = unsafe extern "C" fn(*mut c_void, *mut ErrorCodeDto);
 
@@ -443,16 +419,6 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_async_connect(f: AsyncConnectCa
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_tcp_socket_remote_endpoint(f: RemoteEndpointCallback) {
     REMOTE_ENDPOINT_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_dispatch(f: DispatchCallback) {
-    DISPATCH_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_post(f: DispatchCallback) {
-    POST_CALLBACK = Some(f);
 }
 
 #[no_mangle]
@@ -482,12 +448,6 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_async_read2(f: AsyncRead2Callba
 }
 
 pub struct AsyncWriteCallbackHandle(Option<Box<dyn FnOnce(ErrorCode, usize)>>);
-
-impl AsyncWriteCallbackHandle {
-    pub fn new(callback: Box<dyn FnOnce(ErrorCode, usize)>) -> Self {
-        Self(Some(callback))
-    }
-}
 
 type AsyncWriteCallback =
     unsafe extern "C" fn(*mut c_void, *const u8, usize, *mut AsyncWriteCallbackHandle);
@@ -672,260 +632,6 @@ pub unsafe extern "C" fn rsn_socket_is_alive(handle: *mut SocketHandle) -> bool 
 pub unsafe extern "C" fn rsn_socket_type_to_string(socket_type: u8, result: *mut StringDto) {
     *result = StringDto::from(SocketType::from_u8(socket_type).unwrap().as_str())
 }
-
-pub struct FfiTcpSocketFacadeFactory(pub *mut c_void);
-
-unsafe impl Send for FfiTcpSocketFacadeFactory {}
-unsafe impl Sync for FfiTcpSocketFacadeFactory {}
-
-impl TcpSocketFacadeFactory for FfiTcpSocketFacadeFactory {
-    fn create_tcp_socket(&self) -> Arc<dyn TcpSocketFacade> {
-        let handle = unsafe {
-            CREATE_TCP_SOCKET_CALLBACK.expect("CREATE_TCP_SOCKET_CALLBACK missing")(self.0)
-        };
-        Arc::new(FfiTcpSocketFacade::new(handle))
-    }
-}
-
-impl Drop for FfiTcpSocketFacadeFactory {
-    fn drop(&mut self) {
-        unsafe {
-            DESTROY_TCP_SOCKET_FACADE_FACTORY_CALLBACK
-                .expect("DESTROY_TCP_SOCKET_FACADE_FACTORY_CALLBACK missing")(self.0)
-        }
-    }
-}
-
-pub struct FfiTcpSocketFacade {
-    handle: *mut c_void,
-}
-
-impl FfiTcpSocketFacade {
-    pub fn new(handle: *mut c_void) -> Self {
-        Self { handle }
-    }
-
-    fn log_tokio_warning() {
-        if is_tokio_enabled() {
-            println!("FFI SOCKET FACADE USED ALTHOUGH TOKIO IS ENABLED!");
-            let bt = Backtrace::capture();
-            println!("{}", bt.to_string());
-        }
-    }
-}
-
-impl Drop for FfiTcpSocketFacade {
-    fn drop(&mut self) {
-        unsafe {
-            TCP_FACADE_DESTROY_CALLBACK.expect("TCP_FACADE_DESTROY_CALLBACK missing")(self.handle)
-        }
-    }
-}
-
-impl TcpSocketFacade for FfiTcpSocketFacade {
-    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
-        Self::log_tokio_warning();
-        let endpoint_dto = EndpointDto::from(&endpoint);
-        let callback_handle = Box::new(AsyncConnectCallbackHandle::new(callback));
-        unsafe {
-            match ASYNC_CONNECT_CALLBACK {
-                Some(f) => f(self.handle, &endpoint_dto, Box::into_raw(callback_handle)),
-                None => panic!("ASYNC_CONNECT_CALLBACK missing"),
-            }
-        }
-    }
-
-    fn async_read(
-        &self,
-        buffer: &Arc<dyn BufferWrapper>,
-        len: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    ) {
-        Self::log_tokio_warning();
-        let callback_handle = Box::into_raw(Box::new(AsyncReadCallbackHandle(Some(callback))));
-        unsafe {
-            ASYNC_READ_CALLBACK.expect("ASYNC_READ_CALLBACK missing")(
-                self.handle,
-                buffer.handle(),
-                len,
-                callback_handle,
-            );
-        }
-    }
-
-    fn async_read2(
-        &self,
-        buffer: &Arc<Mutex<Vec<u8>>>,
-        len: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    ) {
-        Self::log_tokio_warning();
-        let callback_handle = Box::into_raw(Box::new(AsyncReadCallbackHandle(Some(callback))));
-        unsafe {
-            ASYNC_READ2_CALLBACK.expect("ASYNC_READ2_CALLBACK missing")(
-                self.handle,
-                BufferHandle::new(buffer.clone()),
-                len,
-                callback_handle,
-            );
-        }
-    }
-
-    fn async_write(
-        &self,
-        buffer: &Arc<Vec<u8>>,
-        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    ) {
-        Self::log_tokio_warning();
-        let callback_handle = Box::into_raw(Box::new(AsyncWriteCallbackHandle::new(callback)));
-        unsafe {
-            ASYNC_WRITE_CALLBACK.expect("ASYNC_WRITE_CALLBACK missing")(
-                self.handle,
-                buffer.as_ptr(),
-                buffer.len(),
-                callback_handle,
-            );
-        }
-    }
-
-    fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode> {
-        Self::log_tokio_warning();
-        let mut endpoint_dto = EndpointDto::new();
-        let mut ec_dto = ErrorCodeDto {
-            val: 0,
-            category: 0,
-        };
-        unsafe {
-            REMOTE_ENDPOINT_CALLBACK.expect("REMOTE_ENDPOINT_CALLBACK missing")(
-                self.handle,
-                &mut endpoint_dto,
-                &mut ec_dto,
-            );
-        }
-        if ec_dto.val == 0 {
-            Ok((&endpoint_dto).into())
-        } else {
-            Err((&ec_dto).into())
-        }
-    }
-
-    fn post(&self, f: Box<dyn FnOnce() + Send>) {
-        Self::log_tokio_warning();
-        unsafe {
-            POST_CALLBACK.expect("POST_CALLBACK missing")(
-                self.handle,
-                Box::into_raw(Box::new(VoidFnCallbackHandle::new(f))),
-            );
-        }
-    }
-
-    fn dispatch(&self, f: Box<dyn FnOnce() + Send>) {
-        Self::log_tokio_warning();
-        unsafe {
-            DISPATCH_CALLBACK.expect("DISPATCH_CALLBACK missing")(
-                self.handle,
-                Box::into_raw(Box::new(VoidFnCallbackHandle::new(f))),
-            );
-        }
-    }
-
-    fn close(&self) -> Result<(), ErrorCode> {
-        let mut ec_dto = ErrorCodeDto {
-            val: 0,
-            category: 0,
-        };
-        unsafe {
-            CLOSE_SOCKET_CALLBACK.expect("CLOSE_SOCKET_CALLBACK missing")(self.handle, &mut ec_dto);
-        }
-
-        if ec_dto.val == 0 {
-            Ok(())
-        } else {
-            Err((&ec_dto).into())
-        }
-    }
-
-    fn local_endpoint(&self) -> SocketAddr {
-        Self::log_tokio_warning();
-        unsafe {
-            let mut dto = EndpointDto::new();
-            LOCAL_ENDPOINT_CALLBACK.expect("LOCAL_ENDPOINT_CALLBACK missing")(
-                self.handle,
-                &mut dto,
-            );
-            SocketAddr::from(&dto)
-        }
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn is_open(&self) -> bool {
-        Self::log_tokio_warning();
-        unsafe { SOCKET_IS_OPEN_CALLBACK.expect("SOCKET_IS_OPEN_CALLBACK missing")(self.handle) }
-    }
-
-    fn close_acceptor(&self) {
-        Self::log_tokio_warning();
-        unsafe {
-            SOCKET_CLOSE_ACCEPTOR_CALLBACK.expect("SOCKET_CLOSE_ACCEPTOR_CALLBACK missing")(
-                self.handle,
-            )
-        }
-    }
-
-    fn is_acceptor_open(&self) -> bool {
-        Self::log_tokio_warning();
-        unsafe { IS_ACCEPTOR_OPEN.expect("IS_ACCEPTOR_OPEN missing")(self.handle) }
-    }
-
-    fn async_accept(
-        &self,
-        client_socket: &Arc<dyn TcpSocketFacade>,
-        callback: Box<dyn FnOnce(SocketAddr, ErrorCode) + Send>,
-    ) {
-        Self::log_tokio_warning();
-        let callback_handle = Box::into_raw(Box::new(AsyncAcceptCallbackHandle(Some(callback))));
-        unsafe {
-            ASYNC_ACCEPT_CALLBACK.expect("ASYNC_ACCEPT_CALLBACK missing")(
-                self.handle,
-                client_socket
-                    .as_any()
-                    .downcast_ref::<FfiTcpSocketFacade>()
-                    .unwrap()
-                    .handle,
-                callback_handle,
-            )
-        };
-    }
-
-    fn open(&self, endpoint: &SocketAddr) -> ErrorCode {
-        Self::log_tokio_warning();
-        let mut error = ErrorCodeDto {
-            val: 0,
-            category: 0,
-        };
-        let endpoint_dto = EndpointDto::from(endpoint);
-        unsafe {
-            TCP_SOCKET_OPEN.expect("TCP_SOCKET_OPEN missing")(
-                self.handle,
-                &endpoint_dto,
-                &mut error,
-            );
-        }
-        (&error).into()
-    }
-
-    fn listening_port(&self) -> u16 {
-        unsafe {
-            TCP_SOCKET_LISTENING_PORT.expect("TCP_SOCKET_LISTENING_PORT missing")(self.handle)
-        }
-    }
-}
-
-unsafe impl Send for FfiTcpSocketFacade {}
-unsafe impl Sync for FfiTcpSocketFacade {}
 
 static mut BUFFER_DESTROY_CALLBACK: Option<VoidPointerCallback> = None;
 

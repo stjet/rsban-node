@@ -96,34 +96,9 @@ std::string rsnano::convert_dto_to_string (rsnano::StringDto & dto)
 	return result;
 }
 
-rsnano::io_ctx_wrapper::io_ctx_wrapper (boost::asio::io_context & ctx) :
-	handle_m{ rsnano::rsn_io_ctx_create (&ctx) }
-{
-}
-
-rsnano::io_ctx_wrapper::io_ctx_wrapper (rsnano::IoContextHandle * handle_a) :
-	handle_m{ handle_a }
-{
-}
-
-rsnano::io_ctx_wrapper::~io_ctx_wrapper ()
-{
-	rsnano::rsn_io_ctx_destroy (handle_m);
-}
-
-rsnano::IoContextHandle * rsnano::io_ctx_wrapper::handle () const
-{
-	return handle_m;
-}
-
-boost::asio::io_context * rsnano::io_ctx_wrapper::inner () const
-{
-	return static_cast<boost::asio::io_context *> (rsnano::rsn_io_ctx_get_ctx (handle_m));
-}
-
 rsnano::async_runtime::async_runtime (bool multi_threaded) :
 	io_ctx{},
-	handle{ rsnano::rsn_async_runtime_create (&io_ctx, multi_threaded) }
+	handle{ rsnano::rsn_async_runtime_create (multi_threaded) }
 {
 }
 

@@ -602,7 +602,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (no
 	composite->add_component (node.confirmation_height_processor.collect_container_info ("confirmation_height_processor"));
 	composite->add_component (collect_container_info (node.distributed_work, "distributed_work"));
 	composite->add_component (collect_container_info (node.aggregator, "request_aggregator"));
-	composite->add_component (node.scheduler.priority.collect_container_info ("priority_scheduler"));
+	composite->add_component (node.scheduler.collect_container_info ("scheduler"));
 	composite->add_component (node.inactive_vote_cache.collect_container_info ("inactive_vote_cache"));
 	composite->add_component (collect_container_info (node.generator, "vote_generator"));
 	composite->add_component (collect_container_info (node.final_generator, "vote_generator_final"));
@@ -712,10 +712,8 @@ void nano::node::start ()
 	active.start ();
 	generator.start ();
 	final_generator.start ();
-	scheduler.optimistic.start ();
-	scheduler.priority.start ();
+	scheduler.start ();
 	backlog.start ();
-	scheduler.hinted.start ();
 	bootstrap_server.start ();
 	if (!flags.disable_ascending_bootstrap ())
 	{
@@ -747,9 +745,7 @@ void nano::node::stop ()
 	block_processor.stop ();
 	aggregator.stop ();
 	vote_processor.stop ();
-	scheduler.priority.stop ();
-	scheduler.optimistic.stop ();
-	scheduler.hinted.stop ();
+	scheduler.stop ();
 	active.stop ();
 	generator.stop ();
 	final_generator.stop ();

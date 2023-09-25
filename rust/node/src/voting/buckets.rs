@@ -109,9 +109,6 @@ pub struct Buckets {
     /// the container writes a block to the lowest indexed bucket that has balance larger than the bucket's minimum value
     minimums: VecDeque<u128>,
 
-    /// Contains bucket indicies to iterate over when making the next scheduling decision
-    schedule: VecDeque<u8>,
-
     /// index of bucket to read next
     current: usize,
 
@@ -148,15 +145,9 @@ impl Buckets {
             .map(|_| Bucket::new(bucket_max))
             .collect::<VecDeque<_>>();
 
-        let mut schedule = VecDeque::with_capacity(buckets.len());
-        for i in 0..buckets.len() {
-            schedule.push_back(i as u8);
-        }
-
         Self {
             buckets,
             minimums,
-            schedule,
             current: 0,
             maximum,
         }
@@ -178,7 +169,7 @@ impl Buckets {
     /// Moves the bucket pointer to the next bucket
     fn next(&mut self) {
         self.current += 1;
-        if self.current >= self.schedule.len() {
+        if self.current >= self.buckets.len() {
             self.current = 0;
         }
     }
@@ -205,7 +196,7 @@ impl Buckets {
     /// Seek to the next non-empty bucket, if one exists
     pub fn seek(&mut self) {
         self.next();
-        for _ in 0..self.schedule.len() {
+        for _ in 0..self.buckets.len() {
             if self.buckets[self.current].is_empty() {
                 self.next();
             }
@@ -231,7 +222,7 @@ impl Buckets {
         for bucket in &self.buckets {
             bucket.dump();
         }
-        eprintln!("current: {}", self.schedule[self.current]);
+        eprintln!("current: {}", self.current);
     }
 
     pub fn index(&self, amount: &Amount) -> usize {

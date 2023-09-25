@@ -1,51 +1,6 @@
-use std::cmp::Ordering;
-
 use crate::core::BlockHandle;
 use rsnano_core::Amount;
-use rsnano_node::voting::{Buckets, ValueType};
-
-pub struct ValueTypeHandle(ValueType);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_prioritization_create_value_type(
-    time: u64,
-    block: *const BlockHandle,
-) -> *mut ValueTypeHandle {
-    let block = (*block).block.clone();
-    let info = ValueType::new(time, block);
-    Box::into_raw(Box::new(ValueTypeHandle(info)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_prioritization_drop_value_type(handle: *mut ValueTypeHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_prioritization_value_type_cmp(
-    first: *mut ValueTypeHandle,
-    second: *mut ValueTypeHandle,
-) -> i32 {
-    match (*first).0.cmp(&(*second).0) {
-        Ordering::Less => -1,
-        Ordering::Equal => 0,
-        Ordering::Greater => 1,
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_prioritization_get_value_type_time(
-    handle: *const ValueTypeHandle,
-) -> u64 {
-    (*handle).0.time
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_prioritization_get_value_type_block(
-    handle: *const ValueTypeHandle,
-) -> *mut BlockHandle {
-    Box::into_raw(Box::new(BlockHandle::new((*handle).0.block.clone())))
-}
+use rsnano_node::voting::Buckets;
 
 pub struct PrioritizationHandle(Buckets);
 

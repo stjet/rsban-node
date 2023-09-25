@@ -30,18 +30,6 @@ namespace nano::scheduler
  */
 class buckets final
 {
-	class value_type
-	{
-	public:
-		value_type (uint64_t, std::shared_ptr<nano::block>);
-		~value_type ();
-		uint64_t get_time () const;
-		std::shared_ptr<nano::block> get_block () const;
-		bool operator< (value_type const & other_a) const;
-		bool operator== (value_type const & other_a) const;
-		rsnano::ValueTypeHandle * handle;
-	};
-
 public:
 	buckets (uint64_t maximum = 250000u);
 	buckets (buckets const &) = delete;

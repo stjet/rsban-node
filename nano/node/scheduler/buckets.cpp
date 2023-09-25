@@ -6,37 +6,6 @@
 
 #include <string>
 
-nano::scheduler::buckets::value_type::value_type (uint64_t time, std::shared_ptr<nano::block> block) :
-	handle (rsnano::rsn_prioritization_create_value_type (time, block->get_handle ()))
-{
-}
-
-nano::scheduler::buckets::value_type::~value_type ()
-{
-	rsnano::rsn_prioritization_drop_value_type (handle);
-}
-
-uint64_t nano::scheduler::buckets::value_type::get_time () const
-{
-	return rsnano::rsn_prioritization_get_value_type_time (handle);
-}
-
-std::shared_ptr<nano::block> nano::scheduler::buckets::value_type::get_block () const
-{
-	auto block_handle = rsnano::rsn_prioritization_get_value_type_block (handle);
-	return block_handle_to_block (block_handle);
-}
-
-bool nano::scheduler::buckets::value_type::operator< (value_type const & other_a) const
-{
-	return rsnano::rsn_prioritization_value_type_cmp (handle, other_a.handle) < 0;
-}
-
-bool nano::scheduler::buckets::value_type::operator== (value_type const & other_a) const
-{
-	return rsnano::rsn_prioritization_value_type_cmp (handle, other_a.handle) == 0;
-}
-
 /**
  * Prioritization constructor, construct a container containing approximately 'maximum' number of blocks.
  * @param maximum number of blocks that this container can hold, this is a soft and approximate limit.

@@ -60,14 +60,14 @@ void nano::scheduler::manual::run ()
 		debug_assert ((std::this_thread::yield (), true)); // Introduce some random delay in debug builds
 		if (!stopped)
 		{
-			node.stats.inc (nano::stat::type::election_scheduler, nano::stat::detail::loop);
+			node.stats->inc (nano::stat::type::election_scheduler, nano::stat::detail::loop);
 
 			if (predicate ())
 			{
 				auto const [block, previous_balance, election_behavior] = queue.front ();
 				queue.pop_front ();
 				lock.unlock ();
-				node.stats.inc (nano::stat::type::election_scheduler, nano::stat::detail::insert_manual);
+				node.stats->inc (nano::stat::type::election_scheduler, nano::stat::detail::insert_manual);
 				auto result = node.active.insert (block, election_behavior);
 				if (result.election != nullptr)
 				{

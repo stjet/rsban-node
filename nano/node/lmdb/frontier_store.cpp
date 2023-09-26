@@ -1,5 +1,5 @@
-#include <nano/node/lmdb/frontier_store.hpp>
-#include <nano/node/lmdb/lmdb.hpp>
+#include <nano/store/lmdb/frontier.hpp>
+#include <nano/store/lmdb/lmdb.hpp>
 
 nano::lmdb::frontier_store::frontier_store (rsnano::LmdbFrontierStoreHandle * handle_a) :
 	handle{ handle_a }

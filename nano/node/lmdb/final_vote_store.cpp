@@ -1,5 +1,5 @@
-#include <nano/node/lmdb/final_vote_store.hpp>
-#include <nano/node/lmdb/lmdb.hpp>
+#include <nano/store/lmdb/final_vote.hpp>
+#include <nano/store/lmdb/lmdb.hpp>
 
 namespace
 {

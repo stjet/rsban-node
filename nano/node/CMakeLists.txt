@@ -106,34 +106,19 @@ add_library(
   ipc/ipc_server.cpp
   json_handler.hpp
   json_handler.cpp
-  lmdb/account_store.hpp
   lmdb/account_store.cpp
-  lmdb/block_store.hpp
   lmdb/block_store.cpp
-  lmdb/confirmation_height_store.hpp
   lmdb/confirmation_height_store.cpp
-  lmdb/final_vote_store.hpp
   lmdb/final_vote_store.cpp
-  lmdb/frontier_store.hpp
   lmdb/frontier_store.cpp
-  lmdb/online_weight_store.hpp
   lmdb/online_weight_store.cpp
-  lmdb/peer_store.hpp
   lmdb/peer_store.cpp
-  lmdb/pending_store.hpp
   lmdb/pending_store.cpp
-  lmdb/pruned_store.hpp
   lmdb/pruned_store.cpp
-  lmdb/version_store.hpp
   lmdb/version_store.cpp
-  lmdb/lmdb.hpp
   lmdb/lmdb.cpp
-  lmdb/lmdb_env.hpp
   lmdb/lmdb_env.cpp
-  lmdb/lmdb_iterator.hpp
-  lmdb/lmdb_txn.hpp
   lmdb/lmdb_txn.cpp
-  lmdb/wallet_value.hpp
   lmdb/wallet_value.cpp
   logging.hpp
   logging.cpp
@@ -167,6 +152,8 @@ add_library(
   request_aggregator.cpp
   rsnano_callbacks.hpp
   rsnano_callbacks.cpp
+  scheduler/bucket.cpp
+  scheduler/bucket.hpp
   scheduler/buckets.cpp
   scheduler/buckets.hpp
   scheduler/component.hpp

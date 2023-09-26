@@ -1,5 +1,5 @@
-#include <nano/node/lmdb/lmdb.hpp>
 #include <nano/node/make_store.hpp>
+#include <nano/store/lmdb/lmdb.hpp>
 
 #include <boost/filesystem/path.hpp>
 

@@ -1,5 +1,5 @@
-#include <nano/node/lmdb/lmdb.hpp>
-#include <nano/node/lmdb/online_weight_store.hpp>
+#include <nano/store/lmdb/lmdb.hpp>
+#include <nano/store/lmdb/online_weight.hpp>
 
 namespace
 {

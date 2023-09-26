@@ -1,7 +1,7 @@
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/utility.hpp>
-#include <nano/node/lmdb/lmdb.hpp>
-#include <nano/node/lmdb/lmdb_iterator.hpp>
+#include <nano/store/lmdb/lmdb.hpp>
+#include <nano/store/lmdb/iterator.hpp>
 
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>

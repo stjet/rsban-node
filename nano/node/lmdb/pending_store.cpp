@@ -1,5 +1,5 @@
-#include <nano/node/lmdb/lmdb.hpp>
-#include <nano/node/lmdb/pending_store.hpp>
+#include <nano/store/lmdb/lmdb.hpp>
+#include <nano/store/lmdb/pending.hpp>
 
 namespace
 {

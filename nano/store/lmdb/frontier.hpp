@@ -1,5 +1,5 @@
 #pragma once
-#include <nano/store/component.hpp>
+#include <nano/store/frontier.hpp>
 
 namespace nano
 {

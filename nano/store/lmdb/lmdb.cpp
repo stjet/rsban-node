@@ -2,8 +2,10 @@
 #include <nano/lib/utility.hpp>
 #include <nano/secure/buffer.hpp>
 #include <nano/secure/ledger.hpp>
-#include <nano/store/lmdb/lmdb.hpp>
 #include <nano/store/lmdb/iterator.hpp>
+#include <nano/store/lmdb/lmdb.hpp>
+#include <nano/store/lmdb/wallet_value.hpp>
+#include <nano/store/version.hpp>
 
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
@@ -11,32 +13,6 @@
 
 #include <queue>
 
-namespace nano
-{
-template <>
-void * mdb_val::data () const
-{
-	return value.mv_data;
-}
-
-template <>
-std::size_t mdb_val::size () const
-{
-	return value.mv_size;
-}
-
-template <>
-mdb_val::db_val (std::size_t size_a, void * data_a) :
-	value ({ size_a, data_a })
-{
-}
-
-template <>
-void mdb_val::convert_buffer_to_value ()
-{
-	value = { buffer->size (), const_cast<uint8_t *> (buffer->data ()) };
-}
-}
 namespace
 {
 rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, boost::filesystem::path const & path_a, nano::mdb_env::options options_a, const std::shared_ptr<nano::logger_mt> & logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, bool backup_before_upgrade)

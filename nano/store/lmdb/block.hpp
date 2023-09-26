@@ -1,6 +1,7 @@
 #pragma once
 
-#include <nano/store/component.hpp>
+#include <nano/store/block.hpp>
+#include <nano/store/lmdb/db_val.hpp>
 
 namespace nano
 {

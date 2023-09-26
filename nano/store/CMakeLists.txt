@@ -1,9 +1,18 @@
 add_library(
   nano_store
+  account.hpp
+  block.hpp
   component.hpp
+  confirmation_height.hpp
+  db_val.hpp
+  iterator.hpp
+  iterator_impl.hpp
+  final.hpp
+  frontier.hpp
   lmdb/account.hpp
   lmdb/block.hpp
   lmdb/confirmation_height.hpp
+  lmdb/db_val.hpp
   lmdb/final_vote.hpp
   lmdb/frontier.hpp
   lmdb/lmdb.hpp
@@ -17,10 +26,27 @@ add_library(
   lmdb/transaction_impl.hpp
   lmdb/version.hpp
   lmdb/wallet_value.hpp
+  online_weight.hpp
+  peer.hpp
+  pending.hpp
+  pruned.hpp
+  tables.hpp
+  transaction.hpp
+  version.hpp
+  versioning.hpp
+  account.cpp
+  block.cpp
   component.cpp
+  confirmation_height.cpp
+  db_val.cpp
+  iterator.cpp
+  iterator_impl.cpp
+  final.cpp
+  frontier.cpp
   lmdb/account.cpp
   lmdb/block.cpp
   lmdb/confirmation_height.cpp
+  lmdb/db_val.cpp
   lmdb/final_vote.cpp
   lmdb/frontier.cpp
   lmdb/lmdb.cpp
@@ -31,7 +57,13 @@ add_library(
   lmdb/pending.cpp
   lmdb/pruned.cpp
   lmdb/version.cpp
-  lmdb/wallet_value.cpp)
+  lmdb/wallet_value.cpp
+  online_weight.cpp
+  peer.cpp
+  pending.cpp
+  pruned.cpp
+  transaction.cpp
+  version.cpp)
 
 target_link_libraries(
   nano_store

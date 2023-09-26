@@ -8,6 +8,7 @@
 #include <nano/store/lmdb/account.hpp>
 #include <nano/store/lmdb/block.hpp>
 #include <nano/store/lmdb/confirmation_height.hpp>
+#include <nano/store/lmdb/db_val.hpp>
 #include <nano/store/lmdb/final_vote.hpp>
 #include <nano/store/lmdb/frontier.hpp>
 #include <nano/store/lmdb/iterator.hpp>
@@ -31,8 +32,6 @@ namespace filesystem
 
 namespace nano
 {
-using mdb_val = db_val<rsnano::MdbVal>;
-
 class transaction;
 
 namespace lmdb
@@ -102,13 +101,4 @@ namespace lmdb
 		friend class block_store_DISABLED_change_dupsort_Test;
 	};
 }
-
-template <>
-void * mdb_val::data () const;
-template <>
-std::size_t mdb_val::size () const;
-template <>
-mdb_val::db_val (std::size_t size_a, void * data_a);
-template <>
-void mdb_val::convert_buffer_to_value ();
 }

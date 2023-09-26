@@ -211,17 +211,6 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         });
     }
 
-    pub fn account_height(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        hash: &BlockHash,
-    ) -> u64 {
-        match self.get(txn, hash) {
-            Some(block) => block.sideband().unwrap().height,
-            None => 0,
-        }
-    }
-
     pub fn raw_put(&self, txn: &mut LmdbWriteTransaction<T>, data: &[u8], hash: &BlockHash) {
         txn.put(self.database, hash.as_bytes(), data, WriteFlags::empty())
             .unwrap();

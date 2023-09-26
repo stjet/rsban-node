@@ -114,9 +114,4 @@ void nano::lmdb::block_store::for_each_par (std::function<void (nano::read_trans
 	auto context = (void *)&action_a;
 	rsnano::rsn_lmdb_block_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);
 }
-
-// Converts a block hash to a block height
-uint64_t nano::lmdb::block_store::account_height (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
-{
-	return rsnano::rsn_lmdb_block_store_account_height (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());
 }

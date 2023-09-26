@@ -438,6 +438,12 @@ nano::epoch nano::ledger::version (nano::transaction const & transaction, nano::
 	return static_cast<nano::epoch>(epoch);
 }
 
+uint64_t nano::ledger::height (nano::transaction const & transaction, nano::block_hash const & hash) const
+{
+	auto block = store.block.get (transaction, hash);
+	return block->sideband ().height;
+}
+
 nano::uncemented_info::uncemented_info (nano::block_hash const & cemented_frontier, nano::block_hash const & frontier, nano::account const & account) :
 	cemented_frontier (cemented_frontier), frontier (frontier), account (account)
 {

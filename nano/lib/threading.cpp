@@ -1,10 +1,9 @@
 #include "nano/lib/thread_roles.hpp"
 
 #include <nano/lib/config.hpp>
+#include <nano/lib/thread_roles.hpp>
 #include <nano/lib/threading.hpp>
 
-#include <future>
-#include <iostream>
 #include <thread>
 
 /*

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <nano/lib/rsnano.hpp>
-#include <nano/lib/threading.hpp>
+#include <nano/lib/thread_pool.hpp>
 #include <nano/lib/utility.hpp>
 
 #include <atomic>

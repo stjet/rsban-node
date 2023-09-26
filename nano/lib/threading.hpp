@@ -21,27 +21,6 @@ namespace thread_attributes
 	boost::thread::attributes get_default ();
 }
 
-class thread_pool final
-{
-public:
-	explicit thread_pool (unsigned, nano::thread_role::name);
-	thread_pool (thread_pool const &) = delete;
-	~thread_pool ();
-
-	/** This will run when there is an available thread for execution */
-	void push_task (std::function<void ()>);
-
-	/** Run a task at a certain point in time */
-	void add_timed_task (std::chrono::steady_clock::time_point const & expiry_time, std::function<void ()> task);
-
-	/** Stops any further pushed tasks from executing */
-	void stop ();
-
-	rsnano::ThreadPoolHandle * handle;
-};
-
-std::unique_ptr<nano::container_info_component> collect_container_info (thread_pool & thread_pool, std::string const & name);
-
 /**
  * Number of available logical processor cores. Might be overridden by setting `NANO_HARDWARE_CONCURRENCY` environment variable
  */

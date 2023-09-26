@@ -1,6 +1,7 @@
 #include "nano/lib/rsnanoutils.hpp"
 
 #include <nano/node/election.hpp>
+#include <nano/node/make_store.hpp>
 #include <nano/test_common/system.hpp>
 #include <nano/test_common/testutil.hpp>
 

@@ -1,9 +1,6 @@
 #pragma once
 
 #include <nano/crypto_lib/random_pool.hpp>
-#include <nano/lib/diagnosticsconfig.hpp>
-#include <nano/lib/lmdbconfig.hpp>
-#include <nano/lib/logger_mt.hpp>
 #include <nano/lib/memory.hpp>
 #include <nano/secure/buffer.hpp>
 #include <nano/secure/common.hpp>
@@ -698,8 +695,6 @@ public:
 	virtual std::string vendor_get () const = 0;
 	virtual rsnano::LmdbStoreHandle * get_handle () const = 0;
 };
-
-std::unique_ptr<nano::store> make_store (std::shared_ptr<nano::logger_mt> logger, boost::filesystem::path const & path, nano::ledger_constants & constants, bool open_read_only = false, bool add_db_postfix = true, nano::txn_tracking_config const & txn_tracking_config_a = nano::txn_tracking_config{}, std::chrono::milliseconds block_processor_batch_max_time_a = std::chrono::milliseconds (5000), nano::lmdb_config const & lmdb_config_a = nano::lmdb_config{}, bool backup_before_upgrade = false);
 }
 
 namespace std

@@ -6,6 +6,7 @@
 #include <nano/lib/utility.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/daemonconfig.hpp>
+#include <nano/node/make_store.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/scheduler/component.hpp>
 #include <nano/node/scheduler/hinted.hpp>
@@ -1624,9 +1625,4 @@ nano::node_flags const & nano::inactive_node_flag_defaults ()
 	node_flags.set_disable_bootstrap_listener (true);
 	node_flags.set_disable_tcp_realtime (true);
 	return node_flags;
-}
-
-std::unique_ptr<nano::store> nano::make_store (std::shared_ptr<nano::logger_mt> logger, boost::filesystem::path const & path, nano::ledger_constants & constants, bool read_only, bool add_db_postfix, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade)
-{
-	return std::make_unique<nano::lmdb::store> (logger, add_db_postfix ? path / "data.ldb" : path, constants, txn_tracking_config_a, block_processor_batch_max_time_a, lmdb_config_a, backup_before_upgrade);
 }

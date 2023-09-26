@@ -348,7 +348,11 @@ impl<T: Environment + 'static> Ledger<T> {
         if hash.is_zero() {
             Amount::zero()
         } else {
-            self.store.block.balance(txn, hash)
+            self.store
+                .block
+                .get(txn, hash)
+                .map(|block| block.balance_calculated())
+                .unwrap_or_default()
         }
     }
 

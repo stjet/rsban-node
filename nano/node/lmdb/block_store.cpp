@@ -114,4 +114,3 @@ void nano::lmdb::block_store::for_each_par (std::function<void (nano::read_trans
 	auto context = (void *)&action_a;
 	rsnano::rsn_lmdb_block_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);
 }
-}

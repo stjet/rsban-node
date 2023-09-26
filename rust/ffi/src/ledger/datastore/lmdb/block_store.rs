@@ -7,9 +7,7 @@ use std::{
 use rsnano_core::BlockHash;
 use rsnano_store_lmdb::LmdbBlockStore;
 
-use crate::{
-    copy_account_bytes, copy_amount_bytes, copy_hash_bytes, core::BlockHandle, VoidPointerCallback,
-};
+use crate::{copy_hash_bytes, core::BlockHandle, VoidPointerCallback};
 
 use super::{
     iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},
@@ -154,17 +152,6 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_random(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_version(
-    handle: *mut LmdbBlockStoreHandle,
-    txn: *mut TransactionHandle,
-    hash: *const u8,
-) -> u8 {
-    (*handle)
-        .0
-        .version((*txn).as_txn(), &BlockHash::from_ptr(hash)) as u8
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_block_store_for_each_par(
     handle: *mut LmdbBlockStoreHandle,
     action: ForEachParCallback,
@@ -179,15 +166,4 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_for_each_par(
     (*handle)
         .0
         .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_account_height(
-    handle: *mut LmdbBlockStoreHandle,
-    txn: *mut TransactionHandle,
-    hash: *const u8,
-) -> u64 {
-    (*handle)
-        .0
-        .account_height((*txn).as_txn(), &BlockHash::from_ptr(hash))
 }

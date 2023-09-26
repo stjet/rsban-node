@@ -1,4 +1,5 @@
 #include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/rep_weights.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/stats.hpp>
@@ -434,14 +435,13 @@ nano::epoch nano::ledger::version (nano::block const & block)
 
 nano::epoch nano::ledger::version (nano::transaction const & transaction, nano::block_hash const & hash) const
 {
-	auto epoch = rsnano::rsn_ledger_version(handle, transaction.get_rust_handle(), hash.bytes.data());
-	return static_cast<nano::epoch>(epoch);
+	auto epoch = rsnano::rsn_ledger_version (handle, transaction.get_rust_handle (), hash.bytes.data ());
+	return static_cast<nano::epoch> (epoch);
 }
 
 uint64_t nano::ledger::height (nano::transaction const & transaction, nano::block_hash const & hash) const
 {
-	auto block = store.block.get (transaction, hash);
-	return block->sideband ().height;
+	return rsnano::rsn_ledger_account_height (handle, transaction.get_rust_handle (), hash.bytes.data ());
 }
 
 nano::uncemented_info::uncemented_info (nano::block_hash const & cemented_frontier, nano::block_hash const & frontier, nano::account const & account) :

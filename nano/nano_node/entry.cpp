@@ -1688,7 +1688,7 @@ int main (int argc, char * const * argv)
 					std::cout << boost::str (boost::format ("%1% pending blocks validated\n") % count);
 				}
 				// Check block existance
-				auto block (node->store.block ().get_no_sideband (transaction, key.hash));
+				auto block (node->store.block ().get (transaction, key.hash));
 				bool pruned (false);
 				if (block == nullptr)
 				{
@@ -1814,7 +1814,11 @@ int main (int argc, char * const * argv)
 					while (!hash.is_zero ())
 					{
 						// Retrieving block data
+<<<<<<< HEAD
 						auto block (source_node->store.block ().get_no_sideband (*transaction, hash));
+=======
+						auto block (source_node->store.block.get (transaction, hash));
+>>>>>>> 6fb101d6ec33e88a5bfee60f347689c867e3178e
 						if (block != nullptr)
 						{
 							++count;

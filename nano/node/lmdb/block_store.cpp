@@ -51,12 +51,6 @@ std::shared_ptr<nano::block> nano::lmdb::block_store::get (nano::transaction con
 	return nano::block_handle_to_block (block_handle);
 }
 
-std::shared_ptr<nano::block> nano::lmdb::block_store::get_no_sideband (nano::transaction const & transaction, nano::block_hash const & hash) const
-{
-	auto block_handle = rsnano::rsn_lmdb_block_store_get_no_sideband (handle, transaction.get_rust_handle (), hash.bytes.data ());
-	return nano::block_handle_to_block (block_handle);
-}
-
 std::shared_ptr<nano::block> nano::lmdb::block_store::random (nano::transaction const & transaction)
 {
 	std::shared_ptr<nano::block> result;

@@ -104,21 +104,6 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_get(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_get_no_sideband(
-    handle: *mut LmdbBlockStoreHandle,
-    txn: *mut TransactionHandle,
-    hash: *const u8,
-) -> *mut BlockHandle {
-    match (*handle)
-        .0
-        .get_no_sideband((*txn).as_txn(), &BlockHash::from_ptr(hash))
-    {
-        Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(block))))),
-        None => ptr::null_mut(),
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_block_store_del(
     handle: *mut LmdbBlockStoreHandle,
     txn: *mut TransactionHandle,

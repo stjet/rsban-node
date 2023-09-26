@@ -395,147 +395,14 @@ pub unsafe extern "C" fn rsn_socket_checkup(handle: *mut SocketHandle) {
     (*handle).ongoing_checkup();
 }
 
-pub struct AsyncConnectCallbackHandle(Option<Box<dyn FnOnce(ErrorCode)>>);
-
-type AsyncConnectCallback =
-    unsafe extern "C" fn(*mut c_void, *const EndpointDto, *mut AsyncConnectCallbackHandle);
-
-static mut ASYNC_CONNECT_CALLBACK: Option<AsyncConnectCallback> = None;
-
-type RemoteEndpointCallback =
-    unsafe extern "C" fn(*mut c_void, *mut EndpointDto, *mut ErrorCodeDto);
-
-static mut REMOTE_ENDPOINT_CALLBACK: Option<RemoteEndpointCallback> = None;
-
-type CloseSocketCallback = unsafe extern "C" fn(*mut c_void, *mut ErrorCodeDto);
-
-static mut CLOSE_SOCKET_CALLBACK: Option<CloseSocketCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_async_connect(f: AsyncConnectCallback) {
-    ASYNC_CONNECT_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_remote_endpoint(f: RemoteEndpointCallback) {
-    REMOTE_ENDPOINT_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_close(f: CloseSocketCallback) {
-    CLOSE_SOCKET_CALLBACK = Some(f);
-}
-
-pub struct AsyncReadCallbackHandle(Option<Box<dyn FnOnce(ErrorCode, usize)>>);
-
-type AsyncReadCallback =
-    unsafe extern "C" fn(*mut c_void, *mut c_void, usize, *mut AsyncReadCallbackHandle);
-
-type AsyncRead2Callback =
-    unsafe extern "C" fn(*mut c_void, *mut BufferHandle, usize, *mut AsyncReadCallbackHandle);
-
-static mut ASYNC_READ_CALLBACK: Option<AsyncReadCallback> = None;
-static mut ASYNC_READ2_CALLBACK: Option<AsyncRead2Callback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_async_read(f: AsyncReadCallback) {
-    ASYNC_READ_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_async_read2(f: AsyncRead2Callback) {
-    ASYNC_READ2_CALLBACK = Some(f);
-}
-
 pub struct AsyncWriteCallbackHandle(Option<Box<dyn FnOnce(ErrorCode, usize)>>);
 
-type AsyncWriteCallback =
-    unsafe extern "C" fn(*mut c_void, *const u8, usize, *mut AsyncWriteCallbackHandle);
-
-static mut ASYNC_WRITE_CALLBACK: Option<AsyncWriteCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_async_write(f: AsyncWriteCallback) {
-    ASYNC_WRITE_CALLBACK = Some(f);
-}
-
 pub struct AsyncAcceptCallbackHandle(Option<Box<dyn FnOnce(SocketAddr, ErrorCode)>>);
-
-type AsyncAcceptCallback =
-    unsafe extern "C" fn(*mut c_void, *mut c_void, *mut AsyncAcceptCallbackHandle);
-
-static mut ASYNC_ACCEPT_CALLBACK: Option<AsyncAcceptCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_async_accept(f: AsyncAcceptCallback) {
-    ASYNC_ACCEPT_CALLBACK = Some(f);
-}
-
-static mut TCP_FACADE_DESTROY_CALLBACK: Option<VoidPointerCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_destroy(f: VoidPointerCallback) {
-    TCP_FACADE_DESTROY_CALLBACK = Some(f);
-}
-
-type TcpSocketListeningPortCallback = unsafe extern "C" fn(*mut c_void) -> u16;
-static mut TCP_SOCKET_LISTENING_PORT: Option<TcpSocketListeningPortCallback> = None;
-
-type TcpSocketOpenCallback =
-    unsafe extern "C" fn(*mut c_void, *const EndpointDto, *mut ErrorCodeDto);
-static mut TCP_SOCKET_OPEN: Option<TcpSocketOpenCallback> = None;
-
-type SocketLocalEndpointCallback = unsafe extern "C" fn(*mut c_void, *mut EndpointDto);
-static mut LOCAL_ENDPOINT_CALLBACK: Option<SocketLocalEndpointCallback> = None;
-
-type SocketIsOpenCallback = unsafe extern "C" fn(*mut c_void) -> bool;
-static mut SOCKET_IS_OPEN_CALLBACK: Option<SocketIsOpenCallback> = None;
 
 type SocketConnectedCallback = unsafe extern "C" fn(*mut c_void, *mut SocketHandle);
 static mut SOCKET_CONNECTED_CALLBACK: Option<SocketConnectedCallback> = None;
 static mut SOCKET_ACCEPTED_CALLBACK: Option<SocketConnectedCallback> = None;
 static mut DELETE_TCP_SOCKET_CALLBACK: Option<VoidPointerCallback> = None;
-
-pub type CreateTcpSocketCallback = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
-static mut CREATE_TCP_SOCKET_CALLBACK: Option<CreateTcpSocketCallback> = None;
-static mut DESTROY_TCP_SOCKET_FACADE_FACTORY_CALLBACK: Option<VoidPointerCallback> = None;
-static mut SOCKET_CLOSE_ACCEPTOR_CALLBACK: Option<VoidPointerCallback> = None;
-static mut IS_ACCEPTOR_OPEN: Option<SocketIsOpenCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_create_tcp_socket(f: CreateTcpSocketCallback) {
-    CREATE_TCP_SOCKET_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_destroy_tcp_socket_facade_factory(f: VoidPointerCallback) {
-    DESTROY_TCP_SOCKET_FACADE_FACTORY_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_listening_port(f: TcpSocketListeningPortCallback) {
-    TCP_SOCKET_LISTENING_PORT = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_open(f: TcpSocketOpenCallback) {
-    TCP_SOCKET_OPEN = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_local_endpoint(f: SocketLocalEndpointCallback) {
-    LOCAL_ENDPOINT_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_is_acceptor_open(f: SocketIsOpenCallback) {
-    IS_ACCEPTOR_OPEN = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_is_open(f: SocketIsOpenCallback) {
-    SOCKET_IS_OPEN_CALLBACK = Some(f);
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_tcp_socket_connected(f: SocketConnectedCallback) {
@@ -550,42 +417,6 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_accepted(f: SocketConnectedCall
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_delete_tcp_socket_callback(f: VoidPointerCallback) {
     DELETE_TCP_SOCKET_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_socket_close_acceptor_callback(f: VoidPointerCallback) {
-    SOCKET_CLOSE_ACCEPTOR_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_async_connect_callback_execute(
-    callback: *mut AsyncConnectCallbackHandle,
-    ec: *const ErrorCodeDto,
-) {
-    let error_code = ErrorCode::from(&*ec);
-    if let Some(cb) = (*callback).0.take() {
-        cb(error_code);
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_async_connect_callback_destroy(
-    callback: *mut AsyncConnectCallbackHandle,
-) {
-    drop(Box::from_raw(callback))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_async_accept_callback_execute(
-    callback: &mut AsyncAcceptCallbackHandle,
-    ec: &ErrorCodeDto,
-    remote_endpoint: &EndpointDto,
-) {
-    let error_code = ErrorCode::from(&*ec);
-    let remote_endpoint = SocketAddr::from(remote_endpoint);
-    if let Some(cb) = (*callback).0.take() {
-        cb(remote_endpoint, error_code);
-    }
 }
 
 #[no_mangle]
@@ -654,21 +485,6 @@ pub unsafe extern "C" fn rsn_callback_buffer_size(f: BufferSizeCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_buffer_get_slice(f: BufferGetSliceCallback) {
     BUFFER_GET_SLICE = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_async_read_callback_execute(
-    callback: *mut AsyncReadCallbackHandle,
-    ec: *const ErrorCodeDto,
-    size: usize,
-) {
-    let error_code = ErrorCode::from(&*ec);
-    (*callback).0.take().unwrap()(error_code, size);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_async_read_callback_destroy(callback: *mut AsyncReadCallbackHandle) {
-    drop(Box::from_raw(callback))
 }
 
 #[no_mangle]

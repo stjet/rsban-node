@@ -8,8 +8,8 @@ use num_traits::FromPrimitive;
 use rsnano_core::{
     deserialize_block_enum,
     utils::{OutputListenerMt, OutputTrackerMt, Serialize, StreamAdapter},
-    Account, Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor,
-    BlockWithSideband, ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
+    Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor, BlockWithSideband,
+    ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
 use std::sync::Arc;
 
@@ -193,17 +193,6 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         }
 
         existing.current().map(|(_, v)| v.block.clone())
-    }
-
-    pub fn balance(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        hash: &BlockHash,
-    ) -> Amount {
-        match self.get(txn, hash) {
-            Some(block) => block.balance_calculated(),
-            None => Amount::zero(),
-        }
     }
 
     pub fn version(

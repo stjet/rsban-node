@@ -100,20 +100,6 @@ nano::store_iterator<nano::block_hash, nano::block_w_sideband> nano::lmdb::block
 	return nano::store_iterator<nano::block_hash, nano::block_w_sideband> (nullptr);
 }
 
-nano::uint128_t nano::lmdb::block_store::balance (nano::transaction const & transaction_a, nano::block_hash const & hash_a)
-{
-	nano::amount result;
-	rsnano::rsn_lmdb_block_store_balance (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
-	return result.number ();
-}
-
-nano::uint128_t nano::lmdb::block_store::balance_calculated (std::shared_ptr<nano::block> const & block_a) const
-{
-	nano::amount result;
-	rsnano::rsn_lmdb_block_store_balance_calculated (handle, block_a->get_handle (), result.bytes.data ());
-	return result.number ();
-}
-
 nano::epoch nano::lmdb::block_store::version (nano::transaction const & transaction_a, nano::block_hash const & hash_a)
 {
 	auto epoch = rsnano::rsn_lmdb_block_store_version (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());

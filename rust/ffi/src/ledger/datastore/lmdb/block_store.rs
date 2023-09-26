@@ -169,29 +169,6 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_random(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_balance(
-    handle: *mut LmdbBlockStoreHandle,
-    txn: *mut TransactionHandle,
-    hash: *const u8,
-    balance: *mut u8,
-) {
-    let result = (*handle)
-        .0
-        .balance((*txn).as_txn(), &BlockHash::from_ptr(hash));
-    copy_amount_bytes(result, balance);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_balance_calculated(
-    _handle: *mut LmdbBlockStoreHandle,
-    block: *const BlockHandle,
-    balance: *mut u8,
-) {
-    let result = (*block).block.read().unwrap().balance_calculated();
-    copy_amount_bytes(result, balance);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_block_store_version(
     handle: *mut LmdbBlockStoreHandle,
     txn: *mut TransactionHandle,

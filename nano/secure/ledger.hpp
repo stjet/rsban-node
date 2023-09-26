@@ -93,6 +93,8 @@ public:
 	void set_bootstrap_weights (std::unordered_map<nano::account, nano::uint128_t> const & weights_a);
 	void set_bootstrap_weight_max_blocks (uint64_t max_a);
 	uint64_t get_bootstrap_weight_max_blocks () const;
+	static nano::epoch version (nano::block const & block);
+	nano::epoch version (nano::transaction const & transaction, nano::block_hash const & hash) const;
 	static nano::uint128_t const unit;
 	nano::store & store;
 	nano::ledger_cache cache;

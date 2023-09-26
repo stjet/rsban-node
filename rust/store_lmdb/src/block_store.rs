@@ -195,23 +195,6 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         existing.current().map(|(_, v)| v.block.clone())
     }
 
-    pub fn version(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        hash: &BlockHash,
-    ) -> Epoch {
-        match self.get(txn, hash) {
-            Some(block) => {
-                if let BlockEnum::State(b) = block {
-                    b.sideband().unwrap().details.epoch
-                } else {
-                    Epoch::Epoch0
-                }
-            }
-            None => Epoch::Epoch0,
-        }
-    }
-
     pub fn for_each_par(
         &self,
         action: &(dyn Fn(&LmdbReadTransaction<T>, BlockIterator, BlockIterator) + Send + Sync),

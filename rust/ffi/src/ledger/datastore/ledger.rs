@@ -346,6 +346,15 @@ pub unsafe extern "C" fn rsn_ledger_account_safe(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_version(
+    handle: &LedgerHandle,
+    txn: &mut TransactionHandle,
+    hash: *const u8,
+) -> u8 {
+    handle.0.version(txn.as_txn(), &BlockHash::from_ptr(hash)) as u8
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_amount(
     handle: *mut LedgerHandle,
     txn: *mut TransactionHandle,

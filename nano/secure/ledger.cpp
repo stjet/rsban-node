@@ -1,3 +1,4 @@
+#include "nano/lib/rsnano.hpp"
 #include <nano/lib/rep_weights.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/stats.hpp>
@@ -419,6 +420,22 @@ uint64_t nano::ledger::get_bootstrap_weight_max_blocks () const
 void nano::ledger::set_bootstrap_weight_max_blocks (uint64_t max_a)
 {
 	rsnano::rsn_ledger_set_bootstrap_weight_max_blocks (handle, max_a);
+}
+
+nano::epoch nano::ledger::version (nano::block const & block)
+{
+	if (block.type () == nano::block_type::state)
+	{
+		return block.sideband ().details ().epoch ();
+	}
+
+	return nano::epoch::epoch_0;
+}
+
+nano::epoch nano::ledger::version (nano::transaction const & transaction, nano::block_hash const & hash) const
+{
+	auto epoch = rsnano::rsn_ledger_version(handle, transaction.get_rust_handle(), hash.bytes.data());
+	return static_cast<nano::epoch>(epoch);
 }
 
 nano::uncemented_info::uncemented_info (nano::block_hash const & cemented_frontier, nano::block_hash const & frontier, nano::account const & account) :

@@ -644,6 +644,18 @@ impl<T: Environment + 'static> Ledger<T> {
         }
     }
 
+    pub fn version(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        hash: &BlockHash,
+    ) -> Epoch {
+        self.store
+            .block
+            .get(txn, hash)
+            .map(|block| block.epoch())
+            .unwrap_or(Epoch::Epoch0)
+    }
+
     pub fn is_epoch_link(&self, link: &Link) -> bool {
         self.constants.epochs.is_epoch_link(link)
     }

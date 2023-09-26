@@ -94,12 +94,6 @@ nano::store_iterator<nano::block_hash, nano::block_w_sideband> nano::lmdb::block
 	return nano::store_iterator<nano::block_hash, nano::block_w_sideband> (nullptr);
 }
 
-nano::epoch nano::lmdb::block_store::version (nano::transaction const & transaction_a, nano::block_hash const & hash_a)
-{
-	auto epoch = rsnano::rsn_lmdb_block_store_version (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());
-	return static_cast<nano::epoch> (epoch);
-}
-
 namespace
 {
 void for_each_par_wrapper (void * context, rsnano::TransactionHandle * txn_handle, rsnano::LmdbIteratorHandle * begin_handle, rsnano::LmdbIteratorHandle * end_handle)

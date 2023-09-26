@@ -1571,7 +1571,7 @@ int main (int argc, char * const * argv)
 					// Check link epoch version
 					if (sideband.details ().is_receive () && (!node->ledger.pruning_enabled () || !node->store.pruned ().exists (transaction, block->link ().as_block_hash ())))
 					{
-						if (sideband.source_epoch () != node->store.block ().version (transaction, block->link ().as_block_hash ()))
+						if (sideband.source_epoch () != node->ledger.version (*block))
 						{
 							print_error_message (boost::str (boost::format ("Incorrect source epoch for block %1%\n") % hash.to_string ()));
 						}
@@ -1814,11 +1814,7 @@ int main (int argc, char * const * argv)
 					while (!hash.is_zero ())
 					{
 						// Retrieving block data
-<<<<<<< HEAD
-						auto block (source_node->store.block ().get_no_sideband (*transaction, hash));
-=======
-						auto block (source_node->store.block.get (transaction, hash));
->>>>>>> 6fb101d6ec33e88a5bfee60f347689c867e3178e
+						auto block (source_node->store.block ().get (*transaction, hash));
 						if (block != nullptr)
 						{
 							++count;

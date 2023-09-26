@@ -157,10 +157,22 @@ bool nano::ledger::rollback (nano::write_transaction const & transaction_a, nano
 	return rollback (transaction_a, block_a, rollback_list);
 }
 
-nano::account nano::ledger::account (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
+nano::account nano::ledger::account (nano::block const & block) const
+{
+	debug_assert (block.has_sideband ());
+	nano::account result (block.account ());
+	if (result.is_zero ())
+	{
+		result = block.sideband ().account ();
+	}
+	debug_assert (!result.is_zero ());
+	return result;
+}
+
+nano::account nano::ledger::account (nano::transaction const & transaction, nano::block_hash const & hash) const
 {
 	nano::account result;
-	rsnano::rsn_ledger_account (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
+	rsnano::rsn_ledger_account (handle, transaction.get_rust_handle (), hash.bytes.data (), result.bytes.data ());
 	return result;
 }
 

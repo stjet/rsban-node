@@ -402,7 +402,7 @@ uint64_t nano::json_handler::difficulty_ledger (nano::block const & block_a)
 	// Send check
 	if (block_previous != nullptr)
 	{
-		auto is_send = node.store.block ().balance (*transaction, previous) > block_a.balance ().number ();
+		auto is_send = node.ledger.balance (*transaction, previous) > block_a.balance ().number ();
 		details = nano::block_details (nano::epoch::epoch_0, is_send, false, false);
 		details_found = true;
 	}
@@ -1659,7 +1659,7 @@ void nano::json_handler::block_create ()
 			else if (previous_text.is_initialized () && balance_text.is_initialized () && type == "send")
 			{
 				auto transaction (node.store.tx_begin_read ());
-				if (node.store.block ().exists (*transaction, previous) && node.store.block ().balance (*transaction, previous) != balance.number ())
+				if (node.store.block ().exists (*transaction, previous) && node.ledger.balance (*transaction, previous) != balance.number ())
 				{
 					ec = nano::error_rpc::block_create_balance_mismatch;
 				}

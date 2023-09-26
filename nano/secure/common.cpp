@@ -4,7 +4,7 @@
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/timer.hpp>
 #include <nano/secure/common.hpp>
-#include <nano/secure/store.hpp>
+#include <nano/store/component.hpp>
 
 #include <boost/endian/conversion.hpp>
 #include <boost/property_tree/json_parser.hpp>

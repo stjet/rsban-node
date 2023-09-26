@@ -1,7 +1,7 @@
 #pragma once
 
 #include <nano/node/lmdb/lmdb_env.hpp>
-#include <nano/secure/store.hpp>
+#include <nano/store/component.hpp>
 
 namespace nano
 {

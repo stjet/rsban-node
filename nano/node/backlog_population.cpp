@@ -5,7 +5,7 @@
 #include <nano/node/backlog_population.hpp>
 #include <nano/node/nodeconfig.hpp>
 #include <nano/node/scheduler/priority.hpp>
-#include <nano/secure/store.hpp>
+#include <nano/store/component.hpp>
 
 // Helper functions for wrapping the activate callback
 

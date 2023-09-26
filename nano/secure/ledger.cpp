@@ -6,7 +6,7 @@
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>
-#include <nano/secure/store.hpp>
+#include <nano/store/component.hpp>
 
 #include <boost/multiprecision/cpp_int.hpp>
 

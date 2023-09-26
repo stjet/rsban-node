@@ -7,7 +7,7 @@
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/timer.hpp>
 #include <nano/secure/common.hpp>
-#include <nano/secure/store.hpp>
+#include <nano/store/component.hpp>
 
 #include <condition_variable>
 #include <thread>

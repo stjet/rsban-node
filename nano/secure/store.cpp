@@ -1,6 +1,6 @@
 #include <nano/lib/thread_roles.hpp>
 #include <nano/lib/timer.hpp>
-#include <nano/secure/store.hpp>
+#include <nano/store/component.hpp>
 
 std::optional<nano::account_info> nano::account_store::get (const nano::transaction & transaction, const nano::account & account)
 {

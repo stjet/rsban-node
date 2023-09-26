@@ -1,5 +1,5 @@
 #include <nano/lib/rep_weights.hpp>
-#include <nano/secure/store.hpp>
+#include <nano/store/component.hpp>
 
 nano::rep_weights::rep_weights () :
 	handle{ rsnano::rsn_rep_weights_create () }

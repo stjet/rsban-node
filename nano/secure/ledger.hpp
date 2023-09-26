@@ -8,7 +8,10 @@
 
 namespace nano
 {
-class store;
+namespace store
+{
+	class component;
+}
 class stats;
 class write_transaction;
 
@@ -27,7 +30,7 @@ public:
 class ledger final
 {
 public:
-	ledger (nano::store &, nano::stats &, nano::ledger_constants & constants, nano::generate_cache const & = nano::generate_cache ());
+	ledger (nano::store::component &, nano::stats &, nano::ledger_constants & constants, nano::generate_cache const & = nano::generate_cache ());
 	ledger (nano::ledger const &) = delete;
 	ledger (nano::ledger &&) = delete;
 	~ledger ();
@@ -97,7 +100,12 @@ public:
 	nano::epoch version (nano::transaction const & transaction, nano::block_hash const & hash) const;
 	uint64_t height (nano::transaction const & transaction, nano::block_hash const & hash) const;
 	static nano::uint128_t const unit;
+<<<<<<< HEAD
 	nano::store & store;
+=======
+	nano::ledger_constants & constants;
+	nano::store::component & store;
+>>>>>>> cec9adf98a06579dad2ad63b38e82b49b3c43a13
 	nano::ledger_cache cache;
 	nano::ledger_constants & constants;
 

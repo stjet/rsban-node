@@ -40,7 +40,7 @@ namespace lmdb
 	/**
 	 * mdb implementation of the block store
 	 */
-	class store : public nano::store
+	class store : public nano::store::component
 	{
 	private:
 		bool error{ false };

@@ -13,7 +13,10 @@ class RepWeightsHandle;
 }
 namespace nano
 {
-class store;
+namespace store
+{
+	class component;
+}
 class transaction;
 
 class rep_weights

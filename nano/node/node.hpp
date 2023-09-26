@@ -149,8 +149,8 @@ public:
 	nano::node_flags flags;
 	nano::work_pool & work;
 	nano::distributed_work_factory distributed_work;
-	std::unique_ptr<nano::store> store_impl;
-	nano::store & store;
+	std::unique_ptr<nano::store::component> store_impl;
+	nano::store::component & store;
 	nano::unchecked_map unchecked;
 	std::unique_ptr<nano::wallets_store> wallets_store_impl;
 	nano::wallets_store & wallets_store;

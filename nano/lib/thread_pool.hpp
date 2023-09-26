@@ -9,7 +9,6 @@
 
 namespace nano
 {
-
 class thread_pool final
 {
 public:

@@ -1,3 +1,4 @@
+#include "nano/lib/logger_mt.hpp"
 #include "nano/lib/threading.hpp"
 
 #include <nano/node/lmdb/lmdb_env.hpp>

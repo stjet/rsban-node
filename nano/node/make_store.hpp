@@ -3,7 +3,6 @@
 #include <nano/lib/diagnosticsconfig.hpp>
 #include <nano/lib/lmdbconfig.hpp>
 #include <nano/lib/logger_mt.hpp>
-#include <nano/lib/rocksdbconfig.hpp>
 
 #include <chrono>
 

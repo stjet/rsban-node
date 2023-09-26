@@ -5,7 +5,6 @@
 
 #include <boost/thread/thread.hpp>
 
-
 namespace rsnano
 {
 class ThreadPoolHandle;

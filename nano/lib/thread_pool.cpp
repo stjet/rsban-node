@@ -1,6 +1,8 @@
-#include <nano/lib/thread_pool.hpp>
-#include <iostream>
 #include "nano/lib/rsnano.hpp"
+
+#include <nano/lib/thread_pool.hpp>
+
+#include <iostream>
 
 /*
  * thread_pool
@@ -77,4 +79,3 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (th
 	// composite->add_component (std::make_unique<container_info_leaf> (container_info{ "count", thread_pool.num_queued_tasks (), sizeof (std::function<void ()>) }));
 	return composite;
 }
-

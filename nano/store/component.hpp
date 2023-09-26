@@ -340,7 +340,6 @@ private:
 };
 
 class transaction;
-class store;
 
 template <typename T, typename U>
 class store_iterator_impl

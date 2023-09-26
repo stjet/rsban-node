@@ -138,8 +138,6 @@ add_library(
   request_aggregator.cpp
   rsnano_callbacks.hpp
   rsnano_callbacks.cpp
-  scheduler/bucket.cpp
-  scheduler/bucket.hpp
   scheduler/buckets.cpp
   scheduler/buckets.hpp
   scheduler/component.hpp

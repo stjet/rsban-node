@@ -73,6 +73,8 @@ add_library(
   stream.cpp
   thread_roles.hpp
   thread_roles.cpp
+  thread_runner.hpp
+  thread_runner.cpp
   threading.hpp
   threading.cpp
   timer.hpp

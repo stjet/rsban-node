@@ -578,7 +578,10 @@ impl<T: Environment + 'static> Ledger<T> {
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<Account> {
-        self.store.block.account(txn, hash)
+        self.store
+            .block
+            .get(txn, hash)
+            .map(|block| block.account_calculated())
     }
 
     /// Return absolute amount decrease or increase for block

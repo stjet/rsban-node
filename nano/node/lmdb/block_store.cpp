@@ -83,20 +83,6 @@ uint64_t nano::lmdb::block_store::count (nano::transaction const & transaction_a
 	return rsnano::rsn_lmdb_block_store_count (handle, transaction_a.get_rust_handle ());
 }
 
-nano::account nano::lmdb::block_store::account (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
-{
-	nano::account result;
-	rsnano::rsn_lmdb_block_store_account (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
-	return result;
-}
-
-nano::account nano::lmdb::block_store::account_calculated (nano::block const & block_a) const
-{
-	nano::account result;
-	rsnano::rsn_lmdb_block_store_account_calculated (handle, block_a.get_handle (), result.bytes.data ());
-	return result;
-}
-
 nano::store_iterator<nano::block_hash, nano::block_w_sideband> nano::lmdb::block_store::begin (nano::transaction const & transaction) const
 {
 	auto it_handle{ rsnano::rsn_lmdb_block_store_begin (handle, transaction.get_rust_handle ()) };

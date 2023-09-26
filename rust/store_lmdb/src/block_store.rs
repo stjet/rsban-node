@@ -163,15 +163,6 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         txn.count(self.database)
     }
 
-    pub fn account(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        hash: &BlockHash,
-    ) -> Option<Account> {
-        let block = self.get(txn, hash)?;
-        Some(block.account_calculated())
-    }
-
     pub fn begin(
         &self,
         transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,

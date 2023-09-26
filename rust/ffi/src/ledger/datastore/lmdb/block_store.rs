@@ -138,30 +138,6 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_count(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_account_calculated(
-    _handle: *mut LmdbBlockStoreHandle,
-    block: *const BlockHandle,
-    result: *mut u8,
-) {
-    let account = (*block).block.read().unwrap().account_calculated();
-    copy_account_bytes(account, result);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_account(
-    handle: *mut LmdbBlockStoreHandle,
-    txn: *mut TransactionHandle,
-    hash: *const u8,
-    result: *mut u8,
-) {
-    let account = (*handle)
-        .0
-        .account((*txn).as_txn(), &BlockHash::from_ptr(hash))
-        .unwrap_or_default();
-    copy_account_bytes(account, result);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_block_store_begin(
     handle: *mut LmdbBlockStoreHandle,
     txn: *mut TransactionHandle,

@@ -175,7 +175,7 @@ nano::account nano::ledger::account_safe (nano::transaction const & transaction_
 	return result;
 }
 
-nano::account nano::ledger::account_safe (const nano::transaction & transaction, const nano::block_hash & hash) const
+nano::account nano::ledger::account_safe (nano::transaction const & transaction, nano::block_hash const & hash) const
 {
 	bool ignored;
 	return account_safe (transaction, hash, ignored);

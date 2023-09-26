@@ -226,6 +226,7 @@ target_link_libraries(
   rpc
   secure
   nano_lib
+  nano_store
   libminiupnpc-static
   Boost::beast
   Boost::filesystem

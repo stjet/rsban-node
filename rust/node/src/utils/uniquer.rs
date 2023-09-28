@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex, RwLock, Weak};
+use std::sync::{Arc, Mutex, Weak};
 
 use indexmap::IndexMap;
 use rand::Rng;
@@ -8,7 +8,7 @@ pub struct Uniquer<T>
 where
     T: FullHash,
 {
-    cache: Mutex<IndexMap<BlockHash, Weak<RwLock<T>>>>,
+    cache: Mutex<IndexMap<BlockHash, Weak<T>>>,
 }
 
 impl<T> Uniquer<T>
@@ -21,8 +21,8 @@ where
         }
     }
 
-    pub fn unique(&self, original: &Arc<RwLock<T>>) -> Arc<RwLock<T>> {
-        let key = { original.read().unwrap().full_hash() };
+    pub fn unique(&self, original: &Arc<T>) -> Arc<T> {
+        let key = { original.full_hash() };
         let mut cache = self.cache.lock().unwrap();
 
         let result = match cache.get(&key) {

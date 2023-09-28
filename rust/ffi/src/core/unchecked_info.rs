@@ -2,6 +2,7 @@ use rsnano_core::utils::{Deserialize, Serialize};
 use rsnano_core::UncheckedInfo;
 use std::ffi::c_void;
 use std::ops::Deref;
+use std::sync::Arc;
 
 use crate::{core::BlockHandle, utils::FfiStream};
 
@@ -28,10 +29,8 @@ pub extern "C" fn rsn_unchecked_info_create() -> *mut UncheckedInfoHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_info_create2(
-    block: *const BlockHandle,
-) -> *mut UncheckedInfoHandle {
-    let block = (*block).block.clone();
+pub extern "C" fn rsn_unchecked_info_create2(block: &BlockHandle) -> *mut UncheckedInfoHandle {
+    let block = Arc::clone(&block);
     let info = UncheckedInfo::new(block);
     Box::into_raw(Box::new(UncheckedInfoHandle::new(info)))
 }
@@ -49,12 +48,10 @@ pub unsafe extern "C" fn rsn_unchecked_info_destroy(handle: *mut UncheckedInfoHa
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_info_block(
-    handle: *const UncheckedInfoHandle,
-) -> *mut BlockHandle {
-    Box::into_raw(Box::new(BlockHandle {
-        block: (*handle).0.block.as_ref().unwrap().clone(),
-    }))
+pub extern "C" fn rsn_unchecked_info_block(handle: &UncheckedInfoHandle) -> *mut BlockHandle {
+    Box::into_raw(Box::new(BlockHandle(Arc::clone(
+        &handle.0.block.as_ref().unwrap(),
+    ))))
 }
 
 #[no_mangle]

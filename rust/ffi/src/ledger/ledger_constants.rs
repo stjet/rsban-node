@@ -1,7 +1,4 @@
-use std::{
-    convert::TryFrom,
-    sync::{Arc, RwLock},
-};
+use std::{convert::TryFrom, ops::Deref, sync::Arc};
 
 use num::FromPrimitive;
 use rsnano_ledger::LedgerConstants;
@@ -63,10 +60,8 @@ pub unsafe extern "C" fn rsn_ledger_constants_create(
     0
 }
 
-fn block_to_block_handle(block: &Arc<RwLock<BlockEnum>>) -> *mut BlockHandle {
-    Box::into_raw(Box::new(BlockHandle {
-        block: Arc::clone(block),
-    }))
+fn block_to_block_handle(block: &Arc<BlockEnum>) -> *mut BlockHandle {
+    Box::into_raw(Box::new(BlockHandle(Arc::clone(block))))
 }
 
 pub fn fill_ledger_constants_dto(dto: &mut LedgerConstantsDto, ledger: &LedgerConstants) {
@@ -119,18 +114,18 @@ impl TryFrom<&LedgerConstantsDto> for LedgerConstants {
             Link::from_bytes(value.epoch_2_link),
         );
 
-        let genesis = unsafe { &*value.genesis }.block.clone();
-        let genesis_account = genesis.read().unwrap().account();
+        let genesis = unsafe { &*value.genesis }.deref().clone();
+        let genesis_account = genesis.account();
         let ledger = LedgerConstants {
             work: (&value.work).into(),
             zero_key: KeyPair::from_priv_key_bytes(&value.priv_key)?,
             nano_beta_account: Account::from_bytes(value.nano_beta_account),
             nano_live_account: Account::from_bytes(value.nano_live_account),
             nano_test_account: Account::from_bytes(value.nano_test_account),
-            nano_dev_genesis: unsafe { &*value.nano_dev_genesis }.block.clone(),
-            nano_beta_genesis: unsafe { &*value.nano_beta_genesis }.block.clone(),
-            nano_live_genesis: unsafe { &*value.nano_live_genesis }.block.clone(),
-            nano_test_genesis: unsafe { &*value.nano_test_genesis }.block.clone(),
+            nano_dev_genesis: unsafe { &*value.nano_dev_genesis }.deref().clone(),
+            nano_beta_genesis: unsafe { &*value.nano_beta_genesis }.deref().clone(),
+            nano_live_genesis: unsafe { &*value.nano_live_genesis }.deref().clone(),
+            nano_test_genesis: unsafe { &*value.nano_test_genesis }.deref().clone(),
             genesis_account,
             genesis,
             genesis_amount: Amount::from_be_bytes(value.genesis_amount),

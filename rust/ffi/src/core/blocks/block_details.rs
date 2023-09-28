@@ -12,12 +12,12 @@ pub struct BlockDetailsDto {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_details_create(
+pub extern "C" fn rsn_block_details_create(
     epoch: u8,
     is_send: bool,
     is_receive: bool,
     is_epoch: bool,
-    result: *mut BlockDetailsDto,
+    result: &mut BlockDetailsDto,
 ) -> i32 {
     let epoch = match FromPrimitive::from_u8(epoch) {
         Some(e) => e,
@@ -45,7 +45,7 @@ pub unsafe extern "C" fn rsn_block_details_serialize(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_details_deserialize(
-    dto: *mut BlockDetailsDto,
+    dto: &mut BlockDetailsDto,
     stream: *mut c_void,
 ) -> i32 {
     let mut stream = FfiStream::new(stream);
@@ -57,11 +57,11 @@ pub unsafe extern "C" fn rsn_block_details_deserialize(
     -1
 }
 
-unsafe fn set_block_details_dto(details: &BlockDetails, result: *mut BlockDetailsDto) {
-    (*result).epoch = details.epoch as u8;
-    (*result).is_send = details.is_send;
-    (*result).is_receive = details.is_receive;
-    (*result).is_epoch = details.is_epoch;
+fn set_block_details_dto(details: &BlockDetails, result: &mut BlockDetailsDto) {
+    result.epoch = details.epoch as u8;
+    result.is_send = details.is_send;
+    result.is_receive = details.is_receive;
+    result.is_epoch = details.is_epoch;
 }
 
 #[repr(C)]
@@ -75,15 +75,14 @@ pub struct BlockSidebandDto {
     pub source_epoch: u8,
 }
 
-pub unsafe fn set_block_sideband_dto(sideband: &BlockSideband, result: *mut BlockSidebandDto) {
-    (*result).height = sideband.height;
-    (*result).timestamp = sideband.timestamp;
-    (*result).successor = *sideband.successor.as_bytes();
-    (*result).account = *sideband.account.as_bytes();
-    (*result).balance = sideband.balance.to_be_bytes();
-    let details_ptr: *mut BlockDetailsDto = &mut (*result).details;
-    set_block_details_dto(&sideband.details, details_ptr);
-    (*result).source_epoch = sideband.source_epoch as u8;
+pub fn set_block_sideband_dto(sideband: &BlockSideband, result: &mut BlockSidebandDto) {
+    result.height = sideband.height;
+    result.timestamp = sideband.timestamp;
+    result.successor = *sideband.successor.as_bytes();
+    result.account = *sideband.account.as_bytes();
+    result.balance = sideband.balance.to_be_bytes();
+    set_block_details_dto(&sideband.details, &mut result.details);
+    result.source_epoch = sideband.source_epoch as u8;
 }
 
 #[no_mangle]
@@ -123,12 +122,12 @@ pub extern "C" fn rsn_block_sideband_serialize(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_sideband_deserialize(
-    dto: *mut BlockSidebandDto,
+    dto: &mut BlockSidebandDto,
     stream: *mut c_void,
     block_type: u8,
 ) -> i32 {
     if let Ok(block_type) = BlockType::try_from(block_type) {
-        if let Ok(mut sideband) = BlockSideband::try_from(dto.as_ref().unwrap()) {
+        if let Ok(mut sideband) = BlockSideband::try_from(&*dto) {
             let mut stream = FfiStream::new(stream);
             if sideband.deserialize(&mut stream, block_type).is_ok() {
                 set_block_sideband_dto(&sideband, dto);

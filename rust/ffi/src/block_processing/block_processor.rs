@@ -89,7 +89,7 @@ pub unsafe extern "C" fn rsn_callback_block_processor_add(f: BlockProcessorAddCa
     BLOCKPROCESSOR_ADD_CALLBACK = Some(|handle, block| {
         ADD_CALLBACK.expect("ADD_CALLBACK missing")(
             handle,
-            Box::into_raw(Box::new(BlockHandle::new(block))),
+            Box::into_raw(Box::new(BlockHandle(block))),
         )
     });
 }
@@ -100,7 +100,7 @@ pub unsafe extern "C" fn rsn_callback_block_processor_process_active(f: BlockPro
     BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK = Some(|handle, block| {
         PROCESS_ACTIVE_CALLBACK.expect("PROCESS_ACTIVE_CALLBACK missing")(
             handle,
-            Box::into_raw(Box::new(BlockHandle::new(block))),
+            Box::into_raw(Box::new(BlockHandle(block))),
         )
     });
 }

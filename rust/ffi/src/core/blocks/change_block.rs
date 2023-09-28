@@ -1,5 +1,6 @@
 use std::ffi::c_void;
-use std::sync::{Arc, RwLock};
+use std::ops::Deref;
+use std::sync::Arc;
 
 use rsnano_core::{
     Account, BlockEnum, BlockHash, ChangeBlock, ChangeHashables, LazyBlockHash, PublicKey, RawKey,
@@ -29,8 +30,8 @@ pub struct ChangeBlockDto2 {
 
 #[no_mangle]
 pub extern "C" fn rsn_change_block_create(dto: &ChangeBlockDto) -> *mut BlockHandle {
-    Box::into_raw(Box::new(BlockHandle {
-        block: Arc::new(RwLock::new(BlockEnum::LegacyChange(ChangeBlock {
+    Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacyChange(
+        ChangeBlock {
             work: dto.work,
             signature: Signature::from_bytes(dto.signature),
             hashables: ChangeHashables {
@@ -39,8 +40,8 @@ pub extern "C" fn rsn_change_block_create(dto: &ChangeBlockDto) -> *mut BlockHan
             },
             hash: LazyBlockHash::new(),
             sideband: None,
-        }))),
-    }))
+        },
+    )))))
 }
 
 #[no_mangle]
@@ -52,14 +53,14 @@ pub extern "C" fn rsn_change_block_create2(dto: &ChangeBlockDto2) -> *mut BlockH
         &PublicKey::from_bytes(dto.pub_key),
         dto.work,
     );
-    Box::into_raw(Box::new(BlockHandle {
-        block: Arc::new(RwLock::new(BlockEnum::LegacyChange(block))),
-    }))
+    Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacyChange(
+        block,
+    )))))
 }
 
 unsafe fn read_change_block<T>(handle: *const BlockHandle, f: impl FnOnce(&ChangeBlock) -> T) -> T {
-    let block = (*handle).block.read().unwrap();
-    match &*block {
+    let block = (*handle).deref().deref();
+    match block {
         BlockEnum::LegacyChange(b) => f(b),
         _ => panic!("expected change block"),
     }
@@ -69,8 +70,8 @@ unsafe fn write_change_block<T>(
     handle: *mut BlockHandle,
     mut f: impl FnMut(&mut ChangeBlock) -> T,
 ) -> T {
-    let mut block = (*handle).block.write().unwrap();
-    match &mut *block {
+    let block = (*handle).get_mut();
+    match block {
         BlockEnum::LegacyChange(b) => f(b),
         _ => panic!("expected change block"),
     }
@@ -113,9 +114,9 @@ pub extern "C" fn rsn_change_block_size() -> usize {
 pub unsafe extern "C" fn rsn_change_block_deserialize(stream: *mut c_void) -> *mut BlockHandle {
     let mut stream = FfiStream::new(stream);
     match ChangeBlock::deserialize(&mut stream) {
-        Ok(block) => Box::into_raw(Box::new(BlockHandle {
-            block: Arc::new(RwLock::new(BlockEnum::LegacyChange(block))),
-        })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacyChange(
+            block,
+        ))))),
         Err(_) => std::ptr::null_mut(),
     }
 }
@@ -124,9 +125,9 @@ pub unsafe extern "C" fn rsn_change_block_deserialize(stream: *mut c_void) -> *m
 pub extern "C" fn rsn_change_block_deserialize_json(ptree: *const c_void) -> *mut BlockHandle {
     let reader = FfiPropertyTreeReader::new(ptree);
     match ChangeBlock::deserialize_json(&reader) {
-        Ok(block) => Box::into_raw(Box::new(BlockHandle {
-            block: Arc::new(RwLock::new(BlockEnum::LegacyChange(block))),
-        })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacyChange(
+            block,
+        ))))),
         Err(_) => std::ptr::null_mut(),
     }
 }

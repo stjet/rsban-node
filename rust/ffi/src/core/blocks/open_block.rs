@@ -1,5 +1,6 @@
 use std::ffi::c_void;
-use std::sync::{Arc, RwLock};
+use std::ops::Deref;
+use std::sync::Arc;
 
 use rsnano_core::{
     Account, BlockEnum, BlockHash, LazyBlockHash, OpenBlock, OpenHashables, PublicKey, RawKey,
@@ -31,8 +32,8 @@ pub struct OpenBlockDto2 {
 
 #[no_mangle]
 pub extern "C" fn rsn_open_block_create(dto: &OpenBlockDto) -> *mut BlockHandle {
-    Box::into_raw(Box::new(BlockHandle {
-        block: Arc::new(RwLock::new(BlockEnum::LegacyOpen(OpenBlock {
+    Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacyOpen(
+        OpenBlock {
             work: dto.work,
             signature: Signature::from_bytes(dto.signature),
             hashables: OpenHashables {
@@ -42,8 +43,8 @@ pub extern "C" fn rsn_open_block_create(dto: &OpenBlockDto) -> *mut BlockHandle 
             },
             hash: LazyBlockHash::new(),
             sideband: None,
-        }))),
-    }))
+        },
+    )))))
 }
 
 #[no_mangle]
@@ -57,14 +58,14 @@ pub extern "C" fn rsn_open_block_create2(dto: &OpenBlockDto2) -> *mut BlockHandl
         dto.work,
     );
 
-    Box::into_raw(Box::new(BlockHandle {
-        block: Arc::new(RwLock::new(BlockEnum::LegacyOpen(block))),
-    }))
+    Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacyOpen(
+        block,
+    )))))
 }
 
 unsafe fn read_open_block<T>(handle: *const BlockHandle, f: impl FnOnce(&OpenBlock) -> T) -> T {
-    let block = (*handle).block.read().unwrap();
-    match &*block {
+    let block = (*handle).deref().deref();
+    match block {
         BlockEnum::LegacyOpen(b) => f(b),
         _ => panic!("expected open block"),
     }
@@ -74,8 +75,8 @@ unsafe fn write_open_block<T>(
     handle: *mut BlockHandle,
     mut f: impl FnMut(&mut OpenBlock) -> T,
 ) -> T {
-    let mut block = (*handle).block.write().unwrap();
-    match &mut *block {
+    let block = (*handle).get_mut();
+    match block {
         BlockEnum::LegacyOpen(b) => f(b),
         _ => panic!("expected open block"),
     }
@@ -132,9 +133,9 @@ pub extern "C" fn rsn_open_block_size() -> usize {
 pub unsafe extern "C" fn rsn_open_block_deserialize(stream: *mut c_void) -> *mut BlockHandle {
     let mut stream = FfiStream::new(stream);
     match OpenBlock::deserialize(&mut stream) {
-        Ok(block) => Box::into_raw(Box::new(BlockHandle {
-            block: Arc::new(RwLock::new(BlockEnum::LegacyOpen(block))),
-        })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacyOpen(
+            block,
+        ))))),
         Err(_) => std::ptr::null_mut(),
     }
 }
@@ -143,9 +144,9 @@ pub unsafe extern "C" fn rsn_open_block_deserialize(stream: *mut c_void) -> *mut
 pub extern "C" fn rsn_open_block_deserialize_json(ptree: *const c_void) -> *mut BlockHandle {
     let reader = FfiPropertyTreeReader::new(ptree);
     match OpenBlock::deserialize_json(&reader) {
-        Ok(block) => Box::into_raw(Box::new(BlockHandle {
-            block: Arc::new(RwLock::new(BlockEnum::LegacyOpen(block))),
-        })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacyOpen(
+            block,
+        ))))),
         Err(_) => std::ptr::null_mut(),
     }
 }

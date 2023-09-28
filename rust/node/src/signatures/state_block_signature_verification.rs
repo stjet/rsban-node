@@ -1,7 +1,7 @@
 use std::{
     collections::VecDeque,
     ops::Deref,
-    sync::{Arc, Condvar, Mutex, RwLock},
+    sync::{Arc, Condvar, Mutex},
     thread::JoinHandle,
     time::Duration,
 };
@@ -88,7 +88,7 @@ impl Builder {
 }
 
 pub struct StateBlockSignatureVerificationValue {
-    pub block: Arc<RwLock<BlockEnum>>,
+    pub block: Arc<BlockEnum>,
 }
 
 pub struct StateBlockSignatureVerificationResult {
@@ -249,8 +249,7 @@ impl StateBlockSignatureVerificationThread {
         let verifications = vec![0; size];
 
         for i in &items {
-            let guard = i.block.read().unwrap();
-            let block: &dyn Block = guard.deref().deref();
+            let block: &dyn Block = i.block.deref().deref();
             hashes.push(block.hash());
             messages.push(block.hash().as_bytes().to_vec());
             let mut account = block.account();
@@ -331,7 +330,7 @@ mod tests {
             .account(keys.public_key())
             .sign(&keys)
             .build();
-        let block = Arc::new(RwLock::new(block));
+        let block = Arc::new(block);
 
         verification.add(StateBlockSignatureVerificationValue { block });
 

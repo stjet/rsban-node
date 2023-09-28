@@ -11,7 +11,8 @@ use rsnano_core::{
 use std::{
     any::Any,
     fmt::{Debug, Display, Write},
-    sync::{Arc, RwLock},
+    ops::Deref,
+    sync::Arc,
 };
 
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
@@ -19,14 +20,14 @@ use super::{Message, MessageHeader, MessageType, MessageVisitor};
 #[derive(Clone)]
 pub struct ConfirmReq {
     header: MessageHeader,
-    block: Option<Arc<RwLock<BlockEnum>>>,
+    block: Option<Arc<BlockEnum>>,
     roots_hashes: Vec<(BlockHash, Root)>,
 }
 
 impl ConfirmReq {
-    pub fn with_block(constants: &NetworkConstants, block: Arc<RwLock<BlockEnum>>) -> Self {
+    pub fn with_block(constants: &NetworkConstants, block: Arc<BlockEnum>) -> Self {
         let mut header = MessageHeader::new(constants, MessageType::ConfirmReq);
-        header.set_block_type(block.read().unwrap().block_type());
+        header.set_block_type(block.block_type());
 
         Self {
             header,
@@ -71,7 +72,7 @@ impl ConfirmReq {
         Ok(msg)
     }
 
-    pub fn block(&self) -> Option<&Arc<RwLock<BlockEnum>>> {
+    pub fn block(&self) -> Option<&Arc<BlockEnum>> {
         self.block.as_ref()
     }
 
@@ -158,7 +159,7 @@ impl Message for ConfirmReq {
         } else {
             match self.block() {
                 Some(block) => {
-                    block.read().unwrap().serialize(stream)?;
+                    block.serialize(stream)?;
                 }
                 None => bail!("block not set"),
             }
@@ -185,9 +186,7 @@ impl PartialEq for ConfirmReq {
         let mut equal = false;
         if let Some(block_a) = self.block() {
             if let Some(block_b) = other.block() {
-                let lck_a = block_a.read().unwrap();
-                let lck_b = block_b.read().unwrap();
-                equal = lck_a.eq(&lck_b);
+                equal = block_a.deref().eq(&block_b.deref());
             }
         } else if !self.roots_hashes().is_empty() && !other.roots_hashes().is_empty() {
             equal = self.roots_hashes() == other.roots_hashes()
@@ -214,15 +213,7 @@ impl Display for ConfirmReq {
                 write!(f, "\n{}:{}", hash, root)?;
             }
         } else if let Some(block) = &self.block {
-            write!(
-                f,
-                "\n{}",
-                block
-                    .read()
-                    .unwrap()
-                    .to_json()
-                    .map_err(|_| std::fmt::Error)?
-            )?;
+            write!(f, "\n{}", block.to_json().map_err(|_| std::fmt::Error)?)?;
         }
         Ok(())
     }
@@ -235,7 +226,7 @@ mod tests {
 
     #[test]
     fn serialize_block() -> Result<()> {
-        let block = Arc::new(RwLock::new(StateBlockBuilder::new().build()));
+        let block = Arc::new(StateBlockBuilder::new().build());
         let constants = NetworkConstants::empty();
         let confirm_req1 = ConfirmReq::with_block(&constants, block);
         let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;

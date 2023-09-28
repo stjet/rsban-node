@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::core::BlockHandle;
 use rsnano_core::Amount;
 use rsnano_node::voting::Buckets;
@@ -47,21 +49,19 @@ pub unsafe extern "C" fn rsn_prioritization_pop(handle: *mut PrioritizationHandl
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_prioritization_push(
-    handle: *mut PrioritizationHandle,
+    handle: &mut PrioritizationHandle,
     time: u64,
-    block: *const BlockHandle,
+    block: &BlockHandle,
     priority: *const u8,
 ) {
-    (*handle)
+    handle
         .0
-        .push(time, (*block).block.clone(), Amount::from_ptr(priority))
+        .push(time, Arc::clone(&block), Amount::from_ptr(priority))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_prioritization_top(
-    handle: *mut PrioritizationHandle,
-) -> *mut BlockHandle {
-    Box::into_raw(Box::new(BlockHandle::new((*handle).0.top().clone())))
+pub extern "C" fn rsn_prioritization_top(handle: &PrioritizationHandle) -> *mut BlockHandle {
+    Box::into_raw(Box::new(BlockHandle(Arc::clone(handle.0.top()))))
 }
 
 #[no_mangle]

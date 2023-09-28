@@ -9,8 +9,8 @@ mod state_block;
 use std::{
     convert::TryFrom,
     ffi::c_void,
-    ops::Deref,
-    sync::{Arc, RwLock},
+    ops::{Deref, DerefMut},
+    sync::Arc,
 };
 
 pub use block_details::*;
@@ -40,11 +40,8 @@ pub extern "C" fn rsn_block_serialized_size(block_type: u8) -> usize {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_sideband(
-    block: *const BlockHandle,
-    sideband: *mut BlockSidebandDto,
-) -> i32 {
-    let b = (*block).block.read().unwrap();
+pub extern "C" fn rsn_block_sideband(block: &BlockHandle, sideband: &mut BlockSidebandDto) -> i32 {
+    let b = block.deref();
     match b.sideband() {
         Some(sb) => {
             set_block_sideband_dto(sb, sideband);
@@ -56,22 +53,18 @@ pub unsafe extern "C" fn rsn_block_sideband(
 
 #[no_mangle]
 pub extern "C" fn rsn_block_clone(handle: &BlockHandle) -> *mut BlockHandle {
-    let cloned = handle.block.read().unwrap().clone();
-    Box::into_raw(Box::new(BlockHandle {
-        block: Arc::new(RwLock::new(cloned)),
-    }))
+    let cloned = handle.deref().deref().clone();
+    Box::into_raw(Box::new(BlockHandle(Arc::new(cloned))))
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_block_handle_clone(handle: &BlockHandle) -> *mut BlockHandle {
-    Box::into_raw(Box::new(BlockHandle {
-        block: handle.block.clone(),
-    }))
+    Box::into_raw(Box::new(BlockHandle(Arc::clone(handle.deref()))))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_rust_data_pointer(handle: *const BlockHandle) -> *const c_void {
-    let ptr = Arc::as_ptr(&(*handle).block);
+pub extern "C" fn rsn_block_rust_data_pointer(handle: &BlockHandle) -> *const c_void {
+    let ptr = Arc::as_ptr(handle.deref());
     ptr as *const c_void
 }
 
@@ -81,18 +74,13 @@ pub unsafe extern "C" fn rsn_block_destroy(handle: *mut BlockHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_sideband_set(
-    block: *mut BlockHandle,
+pub extern "C" fn rsn_block_sideband_set(
+    block: &mut BlockHandle,
     sideband: &BlockSidebandDto,
 ) -> i32 {
     match BlockSideband::try_from(sideband) {
         Ok(sideband) => {
-            (*block)
-                .block
-                .write()
-                .unwrap()
-                .as_block_mut()
-                .set_sideband(sideband);
+            block.get_mut().as_block_mut().set_sideband(sideband);
             0
         }
         Err(_) => -1,
@@ -100,21 +88,29 @@ pub unsafe extern "C" fn rsn_block_sideband_set(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_has_sideband(block: *const BlockHandle) -> bool {
-    (*block).block.read().unwrap().sideband().is_some()
+pub unsafe extern "C" fn rsn_block_has_sideband(block: &BlockHandle) -> bool {
+    block.deref().sideband().is_some()
 }
 
-pub struct BlockHandle {
-    pub(crate) block: Arc<RwLock<BlockEnum>>,
-}
+pub struct BlockHandle(pub Arc<BlockEnum>);
 
 impl BlockHandle {
-    pub fn new(block: Arc<RwLock<BlockEnum>>) -> Self {
-        Self { block }
+    pub fn get_mut(&mut self) -> &mut BlockEnum {
+        Arc::get_mut(&mut self.0).expect("Could not make block mutable")
     }
+}
 
-    pub fn into_arc_block(&self) -> Arc<BlockEnum> {
-        Arc::new(self.block.read().unwrap().clone())
+impl Deref for BlockHandle {
+    type Target = Arc<BlockEnum>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for BlockHandle {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -122,83 +118,64 @@ impl BlockHandle {
 pub unsafe extern "C" fn rsn_deserialize_block_json(ptree: *const c_void) -> *mut BlockHandle {
     let ptree_reader = FfiPropertyTreeReader::new(ptree);
     match deserialize_block_json(&ptree_reader) {
-        Ok(block) => Box::into_raw(Box::new(BlockHandle {
-            block: Arc::new(RwLock::new(block)),
-        })),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(block)))),
         Err(_) => std::ptr::null_mut(),
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_type(handle: *const BlockHandle) -> u8 {
-    (*handle).block.read().unwrap().block_type() as u8
+pub extern "C" fn rsn_block_type(handle: &BlockHandle) -> u8 {
+    handle.deref().block_type() as u8
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_work_set(handle: *mut BlockHandle, work: u64) {
-    (*handle)
-        .block
-        .write()
-        .unwrap()
-        .as_block_mut()
-        .set_work(work);
+pub extern "C" fn rsn_block_work_set(handle: &mut BlockHandle, work: u64) {
+    handle.get_mut().as_block_mut().set_work(work);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_work(handle: *const BlockHandle) -> u64 {
-    (*handle).block.read().unwrap().work()
+pub extern "C" fn rsn_block_work(handle: &BlockHandle) -> u64 {
+    handle.deref().work()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_signature(handle: *const BlockHandle, result: *mut [u8; 64]) {
-    (*result) = *(*handle).block.read().unwrap().block_signature().as_bytes();
+pub unsafe extern "C" fn rsn_block_signature(handle: &BlockHandle, result: *mut [u8; 64]) {
+    (*result) = *handle.deref().block_signature().as_bytes();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_signature_set(handle: *mut BlockHandle, signature: &[u8; 64]) {
-    (*handle)
-        .block
-        .write()
-        .unwrap()
+pub extern "C" fn rsn_block_signature_set(handle: &mut BlockHandle, signature: &[u8; 64]) {
+    handle
+        .get_mut()
         .set_block_signature(&Signature::from_bytes(*signature));
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_previous(handle: &BlockHandle, result: *mut [u8; 32]) {
-    (*result) = *(handle).block.read().unwrap().previous().as_bytes();
+pub extern "C" fn rsn_block_previous(handle: &BlockHandle, result: &mut [u8; 32]) {
+    *result = *handle.deref().previous().as_bytes();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_equals(a: *const BlockHandle, b: *const BlockHandle) -> bool {
-    let a_guard = (*a).block.read().unwrap();
-    let b_guard = (*b).block.read().unwrap();
-
-    (*a_guard).eq(&*b_guard)
+pub extern "C" fn rsn_block_equals(a: &BlockHandle, b: &BlockHandle) -> bool {
+    a.deref().deref().eq(b.deref().deref())
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_hash(handle: *const BlockHandle, hash: *mut [u8; 32]) {
-    (*hash) = *(*handle).block.read().unwrap().hash().as_bytes();
+pub extern "C" fn rsn_block_hash(handle: &BlockHandle, hash: &mut [u8; 32]) {
+    *hash = *handle.deref().hash().as_bytes();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_full_hash(handle: *const BlockHandle, hash: *mut u8) {
+pub unsafe extern "C" fn rsn_block_full_hash(handle: &BlockHandle, hash: *mut u8) {
     let result = std::slice::from_raw_parts_mut(hash, 32);
-    let hash = (*handle).block.read().unwrap().full_hash();
-
+    let hash = handle.deref().full_hash();
     result.copy_from_slice(hash.as_bytes());
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_serialize(handle: *mut BlockHandle, stream: *mut c_void) -> i32 {
+pub unsafe extern "C" fn rsn_block_serialize(handle: &BlockHandle, stream: *mut c_void) -> i32 {
     let mut stream = FfiStream::new(stream);
-    if (*handle)
-        .block
-        .read()
-        .unwrap()
-        .serialize(&mut stream)
-        .is_ok()
-    {
+    if handle.deref().serialize(&mut stream).is_ok() {
         0
     } else {
         -1
@@ -206,12 +183,9 @@ pub unsafe extern "C" fn rsn_block_serialize(handle: *mut BlockHandle, stream: *
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_serialize_json(
-    handle: *const BlockHandle,
-    ptree: *mut c_void,
-) -> i32 {
+pub unsafe extern "C" fn rsn_block_serialize_json(handle: &BlockHandle, ptree: *mut c_void) -> i32 {
     let mut writer = FfiPropertyTreeWriter::new_borrowed(ptree);
-    match (*handle).block.read().unwrap().serialize_json(&mut writer) {
+    match handle.deref().serialize_json(&mut writer) {
         Ok(_) => 0,
         Err(_) => -1,
     }
@@ -236,22 +210,19 @@ pub unsafe extern "C" fn rsn_deserialize_block(
     };
 
     match deserialize_block(block_type, &mut stream, uniquer) {
-        Ok(block) => Box::into_raw(Box::new(BlockHandle::new(block))),
+        Ok(block) => Box::into_raw(Box::new(BlockHandle(block))),
         Err(_) => std::ptr::null_mut(),
     }
 }
 
 pub struct BlockArrayRawPtr(Vec<*mut BlockHandle>);
 
-pub(crate) unsafe fn copy_block_array_dto(
-    blocks: Vec<Arc<RwLock<BlockEnum>>>,
-    target: *mut BlockArrayDto,
-) {
+pub(crate) unsafe fn copy_block_array_dto(blocks: Vec<Arc<BlockEnum>>, target: *mut BlockArrayDto) {
     let mut raw_block_array = Box::new(BlockArrayRawPtr(Vec::new()));
     for block in blocks {
         raw_block_array
             .0
-            .push(Box::into_raw(Box::new(BlockHandle::new(block))));
+            .push(Box::into_raw(Box::new(BlockHandle(block))));
     }
     (*target).blocks = raw_block_array.0.as_ptr();
     (*target).count = raw_block_array.0.len();
@@ -266,9 +237,9 @@ pub struct BlockArrayDto {
 }
 
 impl BlockArrayDto {
-    pub unsafe fn blocks(&self) -> impl Iterator<Item = &Arc<RwLock<BlockEnum>>> {
+    pub unsafe fn blocks(&self) -> impl Iterator<Item = &Arc<BlockEnum>> {
         let dtos = std::slice::from_raw_parts(self.blocks, self.count);
-        dtos.iter().map(|&b| &(*b).block)
+        dtos.iter().map(|&b| (*b).deref())
     }
 }
 

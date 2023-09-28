@@ -1,4 +1,4 @@
-use std::{ffi::c_void, ops::Deref};
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use rsnano_node::messages::{Message, Publish};
 
@@ -15,10 +15,10 @@ use crate::{
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_publish_create(
     constants: *mut NetworkConstantsDto,
-    block: *mut BlockHandle,
+    block: &BlockHandle,
 ) -> *mut MessageHandle {
     create_message_handle(constants, |consts| {
-        let block = (*block).block.clone();
+        let block = Arc::clone((*block).deref());
         Publish::new(consts, block)
     })
 }
@@ -70,7 +70,7 @@ pub unsafe extern "C" fn rsn_message_publish_deserialize(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_publish_block(handle: *mut MessageHandle) -> *mut BlockHandle {
     match &downcast_message::<Publish>(handle).block {
-        Some(b) => Box::into_raw(Box::new(BlockHandle::new(b.clone()))),
+        Some(b) => Box::into_raw(Box::new(BlockHandle(b.clone()))),
         None => std::ptr::null_mut(),
     }
 }

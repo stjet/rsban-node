@@ -1,5 +1,5 @@
 use std::{
-    sync::{Arc, Mutex, RwLock, Weak},
+    sync::{Arc, Mutex, Weak},
     time::Duration,
 };
 
@@ -259,7 +259,7 @@ impl BulkPushServerImpl {
                             Direction::In,
                         );
                     } else {
-                        block_processor.process_active(Arc::new(RwLock::new(block)));
+                        block_processor.process_active(Arc::new(block));
                         self.throttled_receive(server_impl);
                     }
                 }

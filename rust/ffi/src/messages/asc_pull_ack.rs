@@ -12,11 +12,7 @@ use crate::{
 use rsnano_node::messages::{
     AccountInfoAckPayload, AscPullAck, AscPullAckPayload, BlocksAckPayload, Message,
 };
-use std::{
-    borrow::Borrow,
-    ffi::c_void,
-    sync::{Arc, RwLock},
-};
+use std::{borrow::Borrow, ffi::c_void, ops::Deref, sync::Arc};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_create(
@@ -93,11 +89,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_blocks(
 ) {
     match downcast_message::<AscPullAck>(handle).payload() {
         AscPullAckPayload::Blocks(blks) => {
-            let list = blks
-                .blocks
-                .iter()
-                .map(|b| Arc::new(RwLock::new(b.clone())))
-                .collect();
+            let list = blks.blocks.iter().map(|b| Arc::new(b.clone())).collect();
             copy_block_array_dto(list, blocks)
         }
         _ => panic!("not a blocks payload"),
@@ -161,7 +153,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_request_blocks(
     let payload = BlocksAckPayload {
         blocks: blocks
             .iter()
-            .map(|&b| (*b).block.read().unwrap().clone())
+            .map(|&b| (*b).deref().deref().clone())
             .collect(),
     };
     downcast_message_mut::<AscPullAck>(handle)

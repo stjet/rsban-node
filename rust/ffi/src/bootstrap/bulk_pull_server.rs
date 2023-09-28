@@ -1,6 +1,6 @@
 use rsnano_core::{utils::Logger, BlockHash};
 use rsnano_node::{bootstrap::BulkPullServer, messages::BulkPull};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use crate::{
     copy_hash_bytes,
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_get_next(
 ) -> *mut BlockHandle {
     let block = (*handle).0.get_next();
     match block {
-        Some(b) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(b))))),
+        Some(b) => Box::into_raw(Box::new(BlockHandle(Arc::new(b)))),
         None => std::ptr::null_mut(),
     }
 }

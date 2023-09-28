@@ -1,5 +1,5 @@
 use std::{
-    sync::{Arc, RwLock},
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -14,14 +14,14 @@ use crate::{
 #[derive(Default, Clone, Debug)]
 pub struct UncheckedInfo {
     // todo: Remove Option as soon as no C++ code requires the empty constructor
-    pub block: Option<Arc<RwLock<BlockEnum>>>,
+    pub block: Option<Arc<BlockEnum>>,
 
     /// Seconds since posix epoch
     pub modified: u64,
 }
 
 impl UncheckedInfo {
-    pub fn new(block: Arc<RwLock<BlockEnum>>) -> Self {
+    pub fn new(block: Arc<BlockEnum>) -> Self {
         Self {
             block: Some(block),
             modified: SystemTime::now()
@@ -51,7 +51,7 @@ impl Serialize for UncheckedInfo {
     }
 
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        serialize_block_enum(stream, &self.block.as_ref().unwrap().read().unwrap())?;
+        serialize_block_enum(stream, self.block.as_ref().unwrap())?;
         stream.write_u64_ne(self.modified)
     }
 }
@@ -63,7 +63,7 @@ impl Deserialize for UncheckedInfo {
         let block = deserialize_block_enum(stream)?;
         let modified = stream.read_u64_ne()?;
         Ok(Self {
-            block: Some(Arc::new(RwLock::new(block))),
+            block: Some(Arc::new(block)),
             modified,
         })
     }

@@ -9,7 +9,7 @@ use std::{
     any::Any,
     fmt::{Debug, Display},
     ops::Deref,
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 use super::{Message, MessageHeader, MessageVisitor};
@@ -17,19 +17,17 @@ use super::{Message, MessageHeader, MessageVisitor};
 #[derive(Clone)]
 pub struct ConfirmAck {
     header: MessageHeader,
-    vote: Option<Arc<RwLock<Vote>>>,
+    vote: Option<Arc<Vote>>,
 }
 
 impl ConfirmAck {
     pub const HASHES_MAX: usize = 12;
 
-    pub fn new(constants: &NetworkConstants, vote: Arc<RwLock<Vote>>) -> Self {
+    pub fn new(constants: &NetworkConstants, vote: Arc<Vote>) -> Self {
         let mut header = MessageHeader::new(constants, MessageType::ConfirmAck);
         header.set_block_type(BlockType::NotABlock);
-        let vote_lk = vote.read().unwrap();
-        debug_assert!(vote_lk.hashes.len() < 16);
-        header.set_count(vote_lk.hashes.len() as u8);
-        drop(vote_lk);
+        debug_assert!(vote.hashes.len() < 16);
+        header.set_count(vote.hashes.len() as u8);
 
         Self {
             header,
@@ -43,7 +41,7 @@ impl ConfirmAck {
     ) -> Result<Self> {
         let mut vote = Vote::null();
         vote.deserialize(stream)?;
-        let mut vote = Arc::new(RwLock::new(vote));
+        let mut vote = Arc::new(vote);
 
         if let Some(uniquer) = uniquer {
             vote = uniquer.unique(&vote);
@@ -55,7 +53,7 @@ impl ConfirmAck {
         })
     }
 
-    pub fn vote(&self) -> Option<&Arc<RwLock<Vote>>> {
+    pub fn vote(&self) -> Option<&Arc<Vote>> {
         self.vote.as_ref()
     }
 
@@ -91,7 +89,7 @@ impl Message for ConfirmAck {
                 || self.header.block_type() == BlockType::State
         );
         self.header().serialize(stream)?;
-        self.vote().unwrap().read().unwrap().serialize(stream)
+        self.vote().unwrap().serialize(stream)
     }
 
     fn visit(&self, visitor: &mut dyn MessageVisitor) {
@@ -115,9 +113,7 @@ impl PartialEq for ConfirmAck {
 
         if let Some(v1) = &self.vote {
             if let Some(v2) = &other.vote {
-                let lk1 = v1.read().unwrap();
-                let lk2 = v2.read().unwrap();
-                if *lk1 != *lk2 {
+                if v1.deref() != v2.deref() {
                     return false;
                 }
             }
@@ -133,8 +129,7 @@ impl Debug for ConfirmAck {
 
         match &self.vote {
             Some(v) => {
-                let lck = v.read().map_err(|_| std::fmt::Error)?;
-                builder.field("vote", lck.deref());
+                builder.field("vote", v.deref());
             }
             None => {
                 builder.field("vote", &"None");
@@ -148,14 +143,7 @@ impl Display for ConfirmAck {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.header, f)?;
         if let Some(vote) = &self.vote {
-            write!(
-                f,
-                "\n{}",
-                vote.read()
-                    .unwrap()
-                    .to_json()
-                    .map_err(|_| std::fmt::Error)?
-            )?;
+            write!(f, "\n{}", vote.to_json().map_err(|_| std::fmt::Error)?)?;
         }
         Ok(())
     }

@@ -11,12 +11,6 @@ use super::ContextWrapper;
 
 pub struct VoidFnCallbackHandle(Option<Box<dyn FnOnce()>>);
 
-impl VoidFnCallbackHandle {
-    pub fn new(f: Box<dyn FnOnce()>) -> Self {
-        VoidFnCallbackHandle(Some(f))
-    }
-}
-
 pub struct ThreadPoolHandle(pub Arc<dyn ThreadPool>);
 
 #[no_mangle]

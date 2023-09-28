@@ -8,7 +8,7 @@ use crate::VoidPointerCallback;
 pub struct AsyncRuntimeHandle(pub Arc<AsyncRuntime>);
 
 #[no_mangle]
-pub extern "C" fn rsn_async_runtime_create(multi_threaded: bool) -> *mut AsyncRuntimeHandle {
+pub extern "C" fn rsn_async_runtime_create(_multi_threaded: bool) -> *mut AsyncRuntimeHandle {
     let multi_threaded = true;
     //todo! use single threaded runtime for tests
     if multi_threaded {

@@ -16,10 +16,8 @@ mod wallets;
 
 pub use pending_store::{PendingInfoDto, PendingKeyDto};
 use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, RoCursorWrapper, Transaction};
-use std::{ffi::c_void, ops::Deref};
+use std::ops::Deref;
 pub use store::LmdbStoreHandle;
-
-use crate::VoidPointerCallback;
 
 pub struct TransactionHandle(TransactionType);
 

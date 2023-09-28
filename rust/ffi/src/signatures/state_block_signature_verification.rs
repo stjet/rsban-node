@@ -1,4 +1,4 @@
-use std::{ffi::c_void, sync::Arc};
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use rsnano_node::signatures::{
     StateBlockSignatureVerification, StateBlockSignatureVerificationResult,
@@ -156,7 +156,7 @@ pub extern "C" fn rsn_state_block_signature_verification_add(
     let verification = unsafe { &mut (*handle).verification };
     let block = unsafe { &*block };
     let block = StateBlockSignatureVerificationValue {
-        block: unsafe { &*block.block }.block.clone(),
+        block: Arc::clone(unsafe { &*block.block }.deref()),
     };
     verification.add(block);
 }
@@ -172,9 +172,7 @@ pub extern "C" fn rsn_state_block_signature_verification_size(
 impl From<&StateBlockSignatureVerificationValue> for StateBlockSignatureVerificationValueDto {
     fn from(value: &StateBlockSignatureVerificationValue) -> Self {
         StateBlockSignatureVerificationValueDto {
-            block: Box::into_raw(Box::new(BlockHandle {
-                block: value.block.clone(),
-            })),
+            block: Box::into_raw(Box::new(BlockHandle(value.block.clone()))),
         }
     }
 }

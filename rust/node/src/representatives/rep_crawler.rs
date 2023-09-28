@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     mem::size_of,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, Mutex},
 };
 
 use super::Representative;
@@ -20,7 +20,7 @@ pub struct RepCrawler {
 struct RepCrawlerData {
     /** We have solicted votes for these random blocks */
     active: HashSet<BlockHash>,
-    responses: VecDeque<(Arc<ChannelEnum>, Arc<RwLock<Vote>>)>,
+    responses: VecDeque<(Arc<ChannelEnum>, Arc<Vote>)>,
 }
 
 impl RepCrawlerData {
@@ -60,7 +60,7 @@ impl RepCrawler {
         guard.active.insert(hash);
     }
 
-    pub fn insert_response(&self, channel: Arc<ChannelEnum>, vote: Arc<RwLock<Vote>>) {
+    pub fn insert_response(&self, channel: Arc<ChannelEnum>, vote: Arc<Vote>) {
         let mut guard = self.data.lock().unwrap();
         guard.responses.push_back((channel, vote));
     }

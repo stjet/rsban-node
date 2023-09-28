@@ -1,7 +1,7 @@
 use rsnano_core::{Amount, BlockEnum};
 
 use std::{
-    sync::{Arc, RwLock},
+    sync::Arc,
     time::{Duration, SystemTime},
 };
 
@@ -22,7 +22,7 @@ pub enum ElectionStatusType {
 /// Information on the status of an election
 #[derive(Clone, Default)]
 pub struct ElectionStatus {
-    pub winner: Option<Arc<RwLock<BlockEnum>>>,
+    pub winner: Option<Arc<BlockEnum>>,
     pub tally: Amount,
     pub final_tally: Amount,
     pub confirmation_request_count: u32,

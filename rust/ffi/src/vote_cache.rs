@@ -24,11 +24,10 @@ pub unsafe extern "C" fn rsn_vote_cache_destroy(handle: *mut VoteCacheHandle) {
 pub unsafe extern "C" fn rsn_vote_cache_vote(
     handle: *mut VoteCacheHandle,
     hash: *const u8,
-    vote: *const VoteHandle,
+    vote: &VoteHandle,
     rep_weight: *const u8,
 ) {
     let hash = BlockHash::from_ptr(hash);
-    let vote = (*vote).0.read().unwrap();
     let rep_weight = Amount::from_ptr(rep_weight);
     (*handle).0.lock().unwrap().vote(&hash, &vote, rep_weight);
 }

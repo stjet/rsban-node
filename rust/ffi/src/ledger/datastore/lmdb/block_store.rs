@@ -1,8 +1,4 @@
-use std::{
-    ffi::c_void,
-    ptr, slice,
-    sync::{Arc, RwLock},
-};
+use std::{ffi::c_void, ptr, slice, sync::Arc};
 
 use rsnano_core::BlockHash;
 use rsnano_store_lmdb::LmdbBlockStore;
@@ -46,11 +42,9 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_put(
     handle: *mut LmdbBlockStoreHandle,
     txn: *mut TransactionHandle,
     _hash: *const u8,
-    block: *mut BlockHandle,
+    block: &BlockHandle,
 ) {
-    (*handle)
-        .0
-        .put((*txn).as_write_txn(), &(*block).block.read().unwrap());
+    (*handle).0.put((*txn).as_write_txn(), &block);
 }
 
 #[no_mangle]
@@ -96,7 +90,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_get(
     hash: *const u8,
 ) -> *mut BlockHandle {
     match (*handle).0.get((*txn).as_txn(), &BlockHash::from_ptr(hash)) {
-        Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(block))))),
+        Some(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(block)))),
         None => ptr::null_mut(),
     }
 }
@@ -146,7 +140,7 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_random(
     txn: *mut TransactionHandle,
 ) -> *mut BlockHandle {
     match (*handle).0.random((*txn).as_txn()) {
-        Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(block))))),
+        Some(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(block)))),
         None => ptr::null_mut(),
     }
 }

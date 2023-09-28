@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, Mutex},
 };
 
 use rsnano_core::{BlockHash, Root};
@@ -27,7 +27,7 @@ impl LocalVoteHistoryData {
 struct LocalVote {
     root: Root,
     hash: BlockHash,
-    vote: Arc<RwLock<Vote>>,
+    vote: Arc<Vote>,
 }
 
 impl LocalVoteHistory {
@@ -38,8 +38,7 @@ impl LocalVoteHistory {
         }
     }
 
-    pub fn add(&self, root: &Root, hash: &BlockHash, vote: &Arc<RwLock<Vote>>) {
-        let vote_lk = vote.read().unwrap();
+    pub fn add(&self, root: &Root, hash: &BlockHash, vote: &Arc<Vote>) {
         let mut data_lk = self.data.lock().unwrap();
         let data: &mut LocalVoteHistoryData = &mut data_lk;
         clean(data, self.max_cache);
@@ -51,14 +50,13 @@ impl LocalVoteHistory {
         if let Some(ids) = data.history_by_root.get_mut(root) {
             for &i in ids.iter() {
                 let current = &data.history[&i];
-                let current_vote = current.vote.read().unwrap();
                 if &current.hash != hash
-                    || (vote_lk.voting_account == current_vote.voting_account
-                        && current_vote.timestamp() <= vote_lk.timestamp())
+                    || (vote.voting_account == current.vote.voting_account
+                        && current.vote.timestamp() <= vote.timestamp())
                 {
                     ids_to_delete.push(i);
-                } else if vote_lk.voting_account == current_vote.voting_account
-                    && current_vote.timestamp() > vote_lk.timestamp()
+                } else if vote.voting_account == current.vote.voting_account
+                    && current.vote.timestamp() > vote.timestamp()
                 {
                     add_vote = false;
                 }
@@ -107,15 +105,13 @@ impl LocalVoteHistory {
         }
     }
 
-    pub fn votes(&self, root: &Root, hash: &BlockHash, is_final: bool) -> Vec<Arc<RwLock<Vote>>> {
+    pub fn votes(&self, root: &Root, hash: &BlockHash, is_final: bool) -> Vec<Arc<Vote>> {
         let data_lk = self.data.lock().unwrap();
         let mut result = Vec::new();
         if let Some(ids) = data_lk.history_by_root.get(root) {
             for &id in ids.iter() {
                 let entry = &data_lk.history[&id];
-                if &entry.hash == hash
-                    && (!is_final || entry.vote.read().unwrap().timestamp() == u64::MAX)
-                {
+                if &entry.hash == hash && (!is_final || entry.vote.timestamp() == u64::MAX) {
                     result.push(entry.vote.clone())
                 }
             }
@@ -182,7 +178,7 @@ mod tests {
     #[test]
     fn add_one_vote() {
         let history = LocalVoteHistory::new(256);
-        let vote = Arc::new(RwLock::new(Vote::null()));
+        let vote = Arc::new(Vote::null());
         let root = Root::from(1);
         let hash = BlockHash::from(2);
         history.add(&root, &hash, &vote);
@@ -204,8 +200,8 @@ mod tests {
     #[test]
     fn add_two_votes() {
         let history = LocalVoteHistory::new(256);
-        let vote1a = Arc::new(RwLock::new(Vote::null()));
-        let vote1b = Arc::new(RwLock::new(Vote::null()));
+        let vote1a = Arc::new(Vote::null());
+        let vote1b = Arc::new(Vote::null());
         let root = Root::from(1);
         let hash = BlockHash::from(2);
         history.add(&root, &hash, &vote1a);
@@ -221,17 +217,11 @@ mod tests {
         let history = LocalVoteHistory::new(256);
         let root = Root::from(1);
         let hash = BlockHash::from(2);
-        let vote1a = Arc::new(RwLock::new(Vote::null()));
-        let vote1b = Arc::new(RwLock::new(Vote::null()));
+        let vote1a = Arc::new(Vote::null());
+        let vote1b = Arc::new(Vote::null());
         let keys = KeyPair::new();
         let account = Account::from(keys.public_key());
-        let vote2 = Arc::new(RwLock::new(Vote::new(
-            account,
-            &keys.private_key(),
-            0,
-            0,
-            Vec::new(),
-        )));
+        let vote2 = Arc::new(Vote::new(account, &keys.private_key(), 0, 0, Vec::new()));
         history.add(&root, &hash, &vote1a);
         history.add(&root, &hash, &vote1b);
         history.add(&root, &hash, &vote2);
@@ -248,26 +238,14 @@ mod tests {
         let history = LocalVoteHistory::new(256);
         let root = Root::from(1);
         let hash = BlockHash::from(2);
-        let vote1a = Arc::new(RwLock::new(Vote::null()));
-        let vote1b = Arc::new(RwLock::new(Vote::null()));
+        let vote1a = Arc::new(Vote::null());
+        let vote1b = Arc::new(Vote::null());
         let keys1 = KeyPair::new();
         let account1 = Account::from(keys1.public_key());
-        let vote2 = Arc::new(RwLock::new(Vote::new(
-            account1,
-            &keys1.private_key(),
-            0,
-            0,
-            Vec::new(),
-        )));
+        let vote2 = Arc::new(Vote::new(account1, &keys1.private_key(), 0, 0, Vec::new()));
         let keys2 = KeyPair::new();
         let account2 = Account::from(keys2.public_key());
-        let vote3 = Arc::new(RwLock::new(Vote::new(
-            account2,
-            &keys2.private_key(),
-            0,
-            0,
-            Vec::new(),
-        )));
+        let vote3 = Arc::new(Vote::new(account2, &keys2.private_key(), 0, 0, Vec::new()));
         history.add(&root, &hash, &vote1a);
         history.add(&root, &hash, &vote1b);
         history.add(&root, &hash, &vote2);

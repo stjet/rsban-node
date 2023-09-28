@@ -34,11 +34,11 @@ pub extern "C" fn rsn_block_uniquer_unique(
     handle: *mut BlockUniquerHandle,
     block: *mut BlockHandle,
 ) -> *mut BlockHandle {
-    let original = &unsafe { &*block }.block;
+    let original = &unsafe { &*block }.deref();
     let uniqued = unsafe { &*handle }.0.unique(original);
     if Arc::ptr_eq(&uniqued, original) {
         block
     } else {
-        Box::into_raw(Box::new(BlockHandle { block: uniqued }))
+        Box::into_raw(Box::new(BlockHandle(uniqued)))
     }
 }

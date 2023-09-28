@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use anyhow::Result;
 use once_cell::sync::Lazy;
@@ -77,10 +77,9 @@ static TEST_CANARY_PUBLIC_KEY_DATA: Lazy<String> = Lazy::new(|| {
 pub static LEDGER_CONSTANTS_STUB: Lazy<LedgerConstants> =
     Lazy::new(|| LedgerConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork));
 
-pub static DEV_GENESIS: Lazy<Arc<RwLock<BlockEnum>>> =
-    Lazy::new(|| LEDGER_CONSTANTS_STUB.genesis.clone());
-pub static DEV_GENESIS_ACCOUNT: Lazy<Account> = Lazy::new(|| DEV_GENESIS.read().unwrap().account());
-pub static DEV_GENESIS_HASH: Lazy<BlockHash> = Lazy::new(|| DEV_GENESIS.read().unwrap().hash());
+pub static DEV_GENESIS: Lazy<Arc<BlockEnum>> = Lazy::new(|| LEDGER_CONSTANTS_STUB.genesis.clone());
+pub static DEV_GENESIS_ACCOUNT: Lazy<Account> = Lazy::new(|| DEV_GENESIS.account());
+pub static DEV_GENESIS_HASH: Lazy<BlockHash> = Lazy::new(|| DEV_GENESIS.hash());
 
 fn parse_block_from_genesis_data(genesis_data: &str) -> Result<BlockEnum> {
     let ptree = SerdePropertyTree::parse(genesis_data)?;
@@ -108,11 +107,11 @@ pub struct LedgerConstants {
     pub nano_beta_account: Account,
     pub nano_live_account: Account,
     pub nano_test_account: Account,
-    pub nano_dev_genesis: Arc<RwLock<BlockEnum>>,
-    pub nano_beta_genesis: Arc<RwLock<BlockEnum>>,
-    pub nano_live_genesis: Arc<RwLock<BlockEnum>>,
-    pub nano_test_genesis: Arc<RwLock<BlockEnum>>,
-    pub genesis: Arc<RwLock<BlockEnum>>,
+    pub nano_dev_genesis: Arc<BlockEnum>,
+    pub nano_beta_genesis: Arc<BlockEnum>,
+    pub nano_live_genesis: Arc<BlockEnum>,
+    pub nano_test_genesis: Arc<BlockEnum>,
+    pub genesis: Arc<BlockEnum>,
     pub genesis_account: Account,
     pub genesis_amount: Amount,
     pub burn_account: Account,
@@ -244,11 +243,11 @@ impl LedgerConstants {
             nano_beta_account,
             nano_live_account: Account::decode_hex(LIVE_PUBLIC_KEY_DATA).unwrap(),
             nano_test_account,
-            nano_dev_genesis: Arc::new(RwLock::new(nano_dev_genesis)),
-            nano_beta_genesis: Arc::new(RwLock::new(nano_beta_genesis)),
-            nano_live_genesis: Arc::new(RwLock::new(nano_live_genesis)),
-            nano_test_genesis: Arc::new(RwLock::new(nano_test_genesis)),
-            genesis: Arc::new(RwLock::new(genesis)),
+            nano_dev_genesis: Arc::new(nano_dev_genesis),
+            nano_beta_genesis: Arc::new(nano_beta_genesis),
+            nano_live_genesis: Arc::new(nano_live_genesis),
+            nano_test_genesis: Arc::new(nano_test_genesis),
+            genesis: Arc::new(genesis),
             genesis_account,
             genesis_amount: Amount::raw(u128::MAX),
             burn_account: Account::zero(),

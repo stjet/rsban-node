@@ -8,8 +8,8 @@ use num_traits::FromPrimitive;
 use rsnano_core::{
     deserialize_block_enum,
     utils::{OutputListenerMt, OutputTrackerMt, Serialize, StreamAdapter},
-    Amount, Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor, BlockWithSideband,
-    ChangeBlock, Epoch, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
+    Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor, BlockWithSideband,
+    ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
 use std::sync::Arc;
 

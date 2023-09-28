@@ -9,7 +9,7 @@ use rsnano_ledger::Ledger;
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
-        Arc, Condvar, Mutex, RwLock, Weak,
+        Arc, Condvar, Mutex, Weak,
     },
     time::{Duration, Instant},
 };
@@ -127,7 +127,7 @@ impl BootstrapAttempt {
 
     pub fn process_block(
         &self,
-        block: Arc<RwLock<BlockEnum>>,
+        block: Arc<BlockEnum>,
         _known_account: &Account,
         pull_blocks_processed: u64,
         _max_blocks: u32,
@@ -135,7 +135,7 @@ impl BootstrapAttempt {
         _retry_limit: u32,
     ) -> bool {
         let mut stop_pull = false;
-        let hash = { block.read().unwrap().hash() };
+        let hash = block.hash();
         // If block already exists in the ledger, then we can avoid next part of long account chain
         if pull_blocks_processed % bootstrap_limits::PULL_COUNT_PER_CHECK == 0
             && self.ledger.block_or_pruned_exists(&hash)

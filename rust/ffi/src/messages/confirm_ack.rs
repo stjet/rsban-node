@@ -1,8 +1,4 @@
-use std::{
-    ffi::c_void,
-    ops::Deref,
-    sync::{Arc, RwLock},
-};
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use crate::{
     utils::FfiStream,
@@ -51,10 +47,7 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_create2(
             Err(_) => {
                 *is_error = true;
                 //workaround to prevent nullptr:
-                ConfirmAck::new(
-                    &NetworkConstants::empty(),
-                    Arc::new(RwLock::new(Vote::null())),
-                )
+                ConfirmAck::new(&NetworkConstants::empty(), Arc::new(Vote::null()))
             }
         }
     })

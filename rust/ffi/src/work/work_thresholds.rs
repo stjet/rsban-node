@@ -147,12 +147,11 @@ pub unsafe extern "C" fn rsn_work_thresholds_difficulty(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_work_thresholds_difficulty_block(
+pub extern "C" fn rsn_work_thresholds_difficulty_block(
     dto: &WorkThresholdsDto,
-    block: *const BlockHandle,
+    block: &BlockHandle,
 ) -> u64 {
     let thresholds = WorkThresholds::from(dto);
-    let block = (*block).block.read().unwrap();
     thresholds.difficulty_block(&block)
 }
 
@@ -172,11 +171,10 @@ pub unsafe extern "C" fn rsn_work_thresholds_validate_entry(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_work_thresholds_validate_entry_block(
     dto: &WorkThresholdsDto,
-    block: *mut BlockHandle,
+    block: &BlockHandle,
 ) -> bool {
     let thresholds = WorkThresholds::from(dto);
-    let lk = (*block).block.read().unwrap();
-    thresholds.validate_entry_block(&lk)
+    thresholds.validate_entry_block(&block)
 }
 
 pub fn fill_work_thresholds_dto(dto: &mut WorkThresholdsDto, thresholds: &WorkThresholds) {

@@ -74,11 +74,8 @@ pub unsafe extern "C" fn rsn_gap_cache_erase(handle: *mut GapCacheHandle, hash_a
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_gap_cache_vote(
-    handle: *mut GapCacheHandle,
-    vote_handle: *mut VoteHandle,
-) {
-    (*handle).0.vote(&(*vote_handle).0.read().unwrap());
+pub extern "C" fn rsn_gap_cache_vote(handle: &mut GapCacheHandle, vote_handle: &VoteHandle) {
+    handle.0.vote(&vote_handle);
 }
 
 #[no_mangle]

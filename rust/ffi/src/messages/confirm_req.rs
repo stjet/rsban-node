@@ -29,7 +29,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
 ) -> *mut MessageHandle {
     create_message_handle(constants, |consts| {
         if !block.is_null() {
-            let block = (*block).block.clone();
+            let block = Arc::clone((*block).deref());
             ConfirmReq::with_block(consts, block)
         } else {
             let dtos = std::slice::from_raw_parts(roots_hashes, roots_hashes_count);
@@ -66,7 +66,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_block(
     handle: *mut MessageHandle,
 ) -> *mut BlockHandle {
     match downcast_message::<ConfirmReq>(handle).block() {
-        Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::clone(block)))),
+        Some(block) => Box::into_raw(Box::new(BlockHandle(Arc::clone(block)))),
         None => std::ptr::null_mut(),
     }
 }

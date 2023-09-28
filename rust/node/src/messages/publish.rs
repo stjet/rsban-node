@@ -8,7 +8,7 @@ use std::{
     any::Any,
     fmt::{Debug, Display},
     ops::Deref,
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 use super::{Message, MessageHeader, MessageType, MessageVisitor};
@@ -16,14 +16,14 @@ use super::{Message, MessageHeader, MessageType, MessageVisitor};
 #[derive(Clone)]
 pub struct Publish {
     header: MessageHeader,
-    pub block: Option<Arc<RwLock<BlockEnum>>>, //todo remove Option
+    pub block: Option<Arc<BlockEnum>>, //todo remove Option
     pub digest: u128,
 }
 
 impl Publish {
-    pub fn new(constants: &NetworkConstants, block: Arc<RwLock<BlockEnum>>) -> Self {
+    pub fn new(constants: &NetworkConstants, block: Arc<BlockEnum>) -> Self {
         let mut header = MessageHeader::new(constants, MessageType::Publish);
-        header.set_block_type(block.read().unwrap().block_type());
+        header.set_block_type(block.block_type());
 
         Self {
             header,
@@ -86,8 +86,7 @@ impl Message for Publish {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.header().serialize(stream)?;
         let block = self.block.as_ref().ok_or_else(|| anyhow!("no block"))?;
-        let lck = block.read().unwrap();
-        lck.serialize(stream)
+        block.serialize(stream)
     }
 
     fn visit(&self, visitor: &mut dyn MessageVisitor) {
@@ -111,9 +110,7 @@ impl PartialEq for Publish {
 
         if let Some(b1) = &self.block {
             if let Some(b2) = &other.block {
-                let lk1 = b1.read().unwrap();
-                let lk2 = b2.read().unwrap();
-                if lk1.deref() != lk2.deref() {
+                if b1.deref() != b2.deref() {
                     return false;
                 }
             }
@@ -136,15 +133,7 @@ impl Display for Publish {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.header, f)?;
         if let Some(block) = &self.block {
-            write!(
-                f,
-                "\n{}",
-                block
-                    .read()
-                    .unwrap()
-                    .to_json()
-                    .map_err(|_| std::fmt::Error)?
-            )?;
+            write!(f, "\n{}", block.to_json().map_err(|_| std::fmt::Error)?)?;
         }
         Ok(())
     }
@@ -160,7 +149,7 @@ mod tests {
     #[test]
     fn serialize() {
         let block = BlockBuilder::state().build();
-        let block = Arc::new(RwLock::new(block));
+        let block = Arc::new(block);
         let network = &DEV_NETWORK_PARAMS.network;
         let publish1 = Publish::new(network, block);
 

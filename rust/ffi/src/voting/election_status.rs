@@ -4,6 +4,7 @@ use rsnano_core::Amount;
 use rsnano_node::voting::ElectionStatus;
 use std::ops::Deref;
 use std::ptr;
+use std::sync::Arc;
 use std::time::{Duration, UNIX_EPOCH};
 
 pub struct ElectionStatusHandle(pub(crate) ElectionStatus);
@@ -23,10 +24,8 @@ pub unsafe extern "C" fn rsn_election_status_create() -> *mut ElectionStatusHand
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_election_status_create1(
-    winner: *const BlockHandle,
-) -> *mut ElectionStatusHandle {
-    let winner = (*winner).block.clone();
+pub extern "C" fn rsn_election_status_create1(winner: &BlockHandle) -> *mut ElectionStatusHandle {
+    let winner = Arc::clone(winner.deref());
     let info = ElectionStatus {
         winner: Some(winner),
         ..Default::default()
@@ -51,7 +50,7 @@ pub unsafe extern "C" fn rsn_election_status_get_winner(
     handle: *const ElectionStatusHandle,
 ) -> *mut BlockHandle {
     match (*handle).0.winner.clone() {
-        Some(winner) => Box::into_raw(Box::new(BlockHandle::new(winner))),
+        Some(winner) => Box::into_raw(Box::new(BlockHandle(winner))),
         None => ptr::null_mut(),
     }
 }
@@ -120,13 +119,13 @@ pub unsafe extern "C" fn rsn_election_status_get_election_status_type(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_election_status_set_winner(
-    handle: *mut ElectionStatusHandle,
+    handle: &mut ElectionStatusHandle,
     winner: *const BlockHandle,
 ) {
-    (*handle).0.winner = if winner.is_null() {
+    handle.0.winner = if winner.is_null() {
         None
     } else {
-        Some((*winner).block.clone())
+        Some(Arc::clone((*winner).deref()))
     };
 }
 

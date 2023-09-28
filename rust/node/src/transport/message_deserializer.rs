@@ -131,11 +131,7 @@ impl MessageDeserializer {
             if at_end(stream) {
                 match &msg.block {
                     Some(block) => {
-                        if !self
-                            .network_constants
-                            .work
-                            .validate_entry_block(&block.read().unwrap())
-                        {
+                        if !self.network_constants.work.validate_entry_block(&block) {
                             return Some(Box::new(msg));
                         } else {
                             self.set_status(ParseStatus::InsufficientWork);
@@ -159,10 +155,7 @@ impl MessageDeserializer {
         if let Ok(msg) = ConfirmReq::from_stream(stream, header, Some(&self.block_uniquer)) {
             if at_end(stream) {
                 let work_ok = match msg.block() {
-                    Some(block) => !self
-                        .network_constants
-                        .work
-                        .validate_entry_block(&block.read().unwrap()),
+                    Some(block) => !self.network_constants.work.validate_entry_block(&block),
                     None => true,
                 };
                 if work_ok {
@@ -477,10 +470,7 @@ mod tests {
         voting::Vote,
     };
     use rsnano_core::{BlockBuilder, BlockHash, KeyPair};
-    use std::sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        RwLock,
-    };
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
     #[test]
     fn exact_confirm_ack() {
@@ -489,14 +479,14 @@ mod tests {
 
     #[test]
     fn exact_confirm_req() {
-        let block = Arc::new(RwLock::new(BlockBuilder::legacy_send().build()));
+        let block = Arc::new(BlockBuilder::legacy_send().build());
         let message = ConfirmReq::with_block(&STUB_NETWORK_CONSTANTS, block);
         test_deserializer(&message);
     }
 
     #[test]
     fn exact_publish() {
-        let block = Arc::new(RwLock::new(BlockBuilder::legacy_send().build()));
+        let block = Arc::new(BlockBuilder::legacy_send().build());
         let message = Publish::new(&STUB_NETWORK_CONSTANTS, block);
         test_deserializer(&message);
     }
@@ -609,7 +599,7 @@ mod tests {
             vec![BlockHash::from(5)],
         );
 
-        ConfirmAck::new(&STUB_NETWORK_CONSTANTS, Arc::new(RwLock::new(vote)))
+        ConfirmAck::new(&STUB_NETWORK_CONSTANTS, Arc::new(vote))
     }
 
     fn create_read_op(input_source: Vec<u8>) -> ReadQuery {

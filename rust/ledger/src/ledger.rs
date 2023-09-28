@@ -278,8 +278,7 @@ impl<T: Environment + 'static> Ledger<T> {
     }
 
     fn add_genesis_block(&self, txn: &mut LmdbWriteTransaction<T>) {
-        let genesis_block_enum = self.constants.genesis.read().unwrap();
-        let genesis_block = genesis_block_enum.deref();
+        let genesis_block = self.constants.genesis.deref();
         let genesis_hash = genesis_block.hash();
         let genesis_account = genesis_block.account();
         self.store.block.put(txn, genesis_block);
@@ -770,7 +769,7 @@ impl<T: Environment + 'static> Ledger<T> {
     ) -> u64 {
         let mut pruned_count = 0;
         let mut hash = *hash;
-        let genesis_hash = { self.constants.genesis.read().unwrap().hash() };
+        let genesis_hash = self.constants.genesis.hash();
 
         while !hash.is_zero() && hash != genesis_hash {
             if let Some(block) = self.store.block.get(txn, &hash) {

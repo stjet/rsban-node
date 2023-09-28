@@ -73,10 +73,7 @@ impl UncheckedMap {
 
     pub fn put(&self, dependency: HashOrAccount, info: UncheckedInfo) {
         let mut lock = self.mutable.lock().unwrap();
-        let key = UncheckedKey::new(
-            dependency.into(),
-            info.block.clone().unwrap().read().unwrap().hash(),
-        );
+        let key = UncheckedKey::new(dependency.into(), info.block.as_ref().unwrap().hash());
         let inserted = lock.entries_container.insert(Entry::new(key, info));
         if lock.entries_container.len() > MEM_BLOCK_COUNT_MAX {
             lock.entries_container.pop_front();

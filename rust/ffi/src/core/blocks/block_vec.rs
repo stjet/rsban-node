@@ -1,10 +1,8 @@
-use std::sync::{Arc, RwLock};
-
-use rsnano_core::BlockEnum;
-
 use super::BlockHandle;
+use rsnano_core::BlockEnum;
+use std::sync::Arc;
 
-pub struct BlockVecHandle(pub Vec<Arc<RwLock<BlockEnum>>>);
+pub struct BlockVecHandle(pub Vec<Arc<BlockEnum>>);
 
 #[no_mangle]
 pub extern "C" fn rsn_block_vec_create() -> *mut BlockVecHandle {
@@ -22,11 +20,8 @@ pub unsafe extern "C" fn rsn_block_vec_erase_last(handle: *mut BlockVecHandle, c
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_vec_push_back(
-    handle: *mut BlockVecHandle,
-    block: *const BlockHandle,
-) {
-    (*handle).0.push((*block).block.clone())
+pub extern "C" fn rsn_block_vec_push_back(handle: &mut BlockVecHandle, block: &BlockHandle) {
+    handle.0.push(Arc::clone(&block))
 }
 
 #[no_mangle]
@@ -45,5 +40,5 @@ pub unsafe extern "C" fn rsn_block_vec_get_block(
     index: usize,
 ) -> *mut BlockHandle {
     let block = (*handle).0.get(index).unwrap().clone();
-    Box::into_raw(Box::new(BlockHandle::new(block)))
+    Box::into_raw(Box::new(BlockHandle(block)))
 }

@@ -4,14 +4,10 @@ use crate::{
     ledger::{GenerateCacheHandle, LedgerCacheHandle, LedgerConstantsDto},
     StatHandle, StringDto,
 };
-use rsnano_core::{Account, Amount, BlockHash, Epoch, Link, QualifiedRoot};
+use rsnano_core::{Account, Amount, BlockEnum, BlockHash, Epoch, Link, QualifiedRoot};
 use rsnano_ledger::{Ledger, ProcessResult};
 use rsnano_node::stats::LedgerStats;
-use std::{
-    ops::Deref,
-    ptr::null_mut,
-    sync::{Arc, RwLock},
-};
+use std::{ops::Deref, ptr::null_mut, sync::Arc};
 
 use num_traits::FromPrimitive;
 
@@ -247,40 +243,35 @@ pub unsafe extern "C" fn rsn_ledger_block_text(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_is_send(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    block: *const BlockHandle,
+pub extern "C" fn rsn_ledger_is_send(
+    handle: &LedgerHandle,
+    txn: &TransactionHandle,
+    block: &BlockHandle,
 ) -> bool {
-    (*handle).0.is_send(
-        (*txn).as_txn(),
-        (*block).block.read().unwrap().deref().deref(),
-    )
+    handle
+        .0
+        .is_send(txn.as_txn(), block.deref().deref().as_block())
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_block_destination(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    block: *const BlockHandle,
+    handle: &LedgerHandle,
+    txn: &TransactionHandle,
+    block: &BlockHandle,
     result: *mut u8,
 ) {
-    let destination = (*handle)
-        .0
-        .block_destination((*txn).as_txn(), &(*block).block.read().unwrap());
+    let destination = handle.0.block_destination(txn.as_txn(), &block);
     copy_account_bytes(destination, result);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_block_source(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    block: *const BlockHandle,
+    handle: &LedgerHandle,
+    txn: &TransactionHandle,
+    block: &BlockHandle,
     result: *mut u8,
 ) {
-    let source = (*handle)
-        .0
-        .block_source((*txn).as_txn(), &(*block).block.read().unwrap());
+    let source = handle.0.block_source(txn.as_txn(), &block);
     copy_hash_bytes(source, result);
 }
 
@@ -449,7 +440,7 @@ pub unsafe extern "C" fn rsn_ledger_find_receive_block_by_send_hash(
         &BlockHash::from_ptr(send_block_hash),
     );
     match block {
-        Some(b) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(b))))),
+        Some(b) => Box::into_raw(Box::new(BlockHandle(Arc::new(b)))),
         None => null_mut(),
     }
 }
@@ -509,7 +500,7 @@ pub unsafe extern "C" fn rsn_ledger_successor(
         .successor((*txn).as_txn(), &QualifiedRoot::from_ptr(root));
 
     match successor {
-        Some(block) => Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(block))))),
+        Some(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(block)))),
         None => null_mut(),
     }
 }
@@ -593,49 +584,43 @@ pub unsafe extern "C" fn rsn_ledger_bootstrap_weight_reached(handle: *mut Ledger
 pub unsafe extern "C" fn rsn_ledger_dependent_blocks(
     handle: *mut LedgerHandle,
     txn: *mut TransactionHandle,
-    block: *mut BlockHandle,
+    block: &BlockHandle,
     result1: *mut u8,
     result2: *mut u8,
 ) {
-    let (first, second) = (*handle)
-        .0
-        .dependent_blocks((*txn).as_txn(), &(*block).block.read().unwrap());
+    let (first, second) = (*handle).0.dependent_blocks((*txn).as_txn(), &block);
     copy_hash_bytes(first, result1);
     copy_hash_bytes(second, result2);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_could_fit(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    block: *mut BlockHandle,
+pub extern "C" fn rsn_ledger_could_fit(
+    handle: &LedgerHandle,
+    txn: &TransactionHandle,
+    block: &BlockHandle,
 ) -> bool {
-    (*handle)
-        .0
-        .could_fit((*txn).as_txn(), &(*block).block.read().unwrap())
+    handle.0.could_fit(txn.as_txn(), &block)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_dependents_confirmed(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    block: *mut BlockHandle,
+pub extern "C" fn rsn_ledger_dependents_confirmed(
+    handle: &LedgerHandle,
+    txn: &TransactionHandle,
+    block: &BlockHandle,
 ) -> bool {
-    (*handle)
-        .0
-        .dependents_confirmed((*txn).as_txn(), &(*block).block.read().unwrap())
+    handle.0.dependents_confirmed(txn.as_txn(), &block)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_representative(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
+    handle: &LedgerHandle,
+    txn: &TransactionHandle,
     hash: *const u8,
     result: *mut u8,
 ) {
-    let representative = (*handle)
+    let representative = handle
         .0
-        .representative_block_hash((*txn).as_txn(), &BlockHash::from_ptr(hash));
+        .representative_block_hash(txn.as_txn(), &BlockHash::from_ptr(hash));
     copy_hash_bytes(representative, result);
 }
 
@@ -651,10 +636,7 @@ pub unsafe extern "C" fn rsn_ledger_rollback(
         .rollback((*txn).as_write_txn(), &BlockHash::from_ptr(hash))
     {
         Ok(mut block_list) => {
-            let block_list = block_list
-                .drain(..)
-                .map(|b| Arc::new(RwLock::new(b)))
-                .collect();
+            let block_list = block_list.drain(..).map(|b| Arc::new(b)).collect();
             copy_block_array_dto(block_list, result);
             false
         }
@@ -676,17 +658,16 @@ impl From<ProcessResult> for ProcessReturnDto {
     }
 }
 
-//pub fn process(&self, txn: &mut dyn WriteTransaction, block: &mut dyn Block, verification: SignatureVerification) -> ProcessReturn{
 #[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_process(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    block: *mut BlockHandle,
+    handle: &LedgerHandle,
+    txn: &mut TransactionHandle,
+    block: &mut BlockHandle,
     result: *mut ProcessReturnDto,
 ) {
-    let res = (*handle)
-        .0
-        .process((*txn).as_write_txn(), &mut (*block).block.write().unwrap());
+    // this is undefined behaviour and should be fixed ASAP:
+    let block_ptr = Arc::as_ptr(&block) as *mut BlockEnum;
+    let res = handle.0.process(txn.as_write_txn(), &mut *block_ptr);
     let res = match res {
         Ok(()) => ProcessResult::Progress,
         Err(res) => res,

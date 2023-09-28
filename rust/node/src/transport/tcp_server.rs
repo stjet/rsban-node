@@ -462,7 +462,7 @@ impl HandshakeMessageVisitorImpl {
         v2: bool,
     ) -> NodeIdHandshakeResponse {
         if v2 {
-            let genesis = self.server.network.ledger.genesis.read().unwrap().hash();
+            let genesis = self.server.network.ledger.genesis.hash();
             NodeIdHandshakeResponse::new_v2(&query.cookie, &self.node_id, genesis)
         } else {
             NodeIdHandshakeResponse::new_v1(&query.cookie, &self.node_id)
@@ -536,7 +536,7 @@ impl HandshakeMessageVisitorImpl {
 
         // Prevent mismatched genesis
         if let Some(v2) = &response.v2 {
-            if v2.genesis != self.server.network.ledger.genesis.read().unwrap().hash() {
+            if v2.genesis != self.server.network.ledger.genesis.hash() {
                 self.stats.inc(
                     StatType::Handshake,
                     DetailType::InvalidGenesis,

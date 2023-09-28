@@ -143,16 +143,16 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_total_blocks_inc(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_process_block(
-    handle: *const BootstrapAttemptHandle,
-    block: *const BlockHandle,
+    handle: &BootstrapAttemptHandle,
+    block: &BlockHandle,
     known_account: *const u8,
     pull_blocks_processed: u64,
     max_blocks: u32,
     block_expected: bool,
     retry_limit: u32,
 ) -> bool {
-    let block = (*block).block.clone();
-    (*handle).0.attempt().process_block(
+    let block = Arc::clone(&block);
+    handle.0.attempt().process_block(
         block,
         &Account::from_ptr(known_account),
         pull_blocks_processed,

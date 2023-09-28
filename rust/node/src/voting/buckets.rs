@@ -3,23 +3,21 @@ use rsnano_core::{Amount, BlockEnum};
 use std::{
     cmp::{max, Ordering},
     collections::{BTreeSet, VecDeque},
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 /// Information on the value type
 #[derive(Clone, Debug)]
 pub struct ValueType {
     pub time: u64,
-    pub block: Arc<RwLock<BlockEnum>>,
+    pub block: Arc<BlockEnum>,
 }
 
 impl Ord for ValueType {
     fn cmp(&self, other: &Self) -> Ordering {
         let mut result = self.time.cmp(&other.time);
         if result == Ordering::Equal {
-            let block1 = self.block.read().unwrap();
-            let block2 = other.block.read().unwrap();
-            result = block1.hash().number().cmp(&block2.hash().number())
+            result = self.block.hash().number().cmp(&other.block.hash().number())
         }
         result
     }
@@ -40,7 +38,7 @@ impl PartialEq for ValueType {
 impl Eq for ValueType {}
 
 impl ValueType {
-    pub fn new(time: u64, block: Arc<RwLock<BlockEnum>>) -> Self {
+    pub fn new(time: u64, block: Arc<BlockEnum>) -> Self {
         Self { time, block }
     }
 }
@@ -59,7 +57,7 @@ impl Bucket {
         }
     }
 
-    pub fn top(&self) -> &Arc<RwLock<BlockEnum>> {
+    pub fn top(&self) -> &Arc<BlockEnum> {
         debug_assert!(!self.queue.is_empty());
         &self.queue.first().unwrap().block
     }
@@ -69,7 +67,7 @@ impl Bucket {
         self.queue.pop_first();
     }
 
-    pub fn push(&mut self, time: u64, block: Arc<RwLock<BlockEnum>>) {
+    pub fn push(&mut self, time: u64, block: Arc<BlockEnum>) {
         self.queue.insert(ValueType::new(time, block));
         if self.queue.len() > self.maximum {
             self.queue.pop_last();
@@ -86,7 +84,7 @@ impl Bucket {
 
     pub fn dump(&self) {
         for item in &self.queue {
-            eprintln!("{} {}", item.time, item.block.read().unwrap().hash());
+            eprintln!("{} {}", item.time, item.block.hash());
         }
     }
 }
@@ -155,7 +153,7 @@ impl Buckets {
 
     /// Push a block and its associated time into the prioritization container.
     /// The time is given here because sideband might not exist in the case of state blocks.
-    pub fn push(&mut self, time: u64, block: Arc<RwLock<BlockEnum>>, priority: Amount) {
+    pub fn push(&mut self, time: u64, block: Arc<BlockEnum>, priority: Amount) {
         let was_empty = self.empty();
         let index = self.index(&priority);
         let bucket = &mut self.buckets[index];
@@ -175,7 +173,7 @@ impl Buckets {
     }
 
     /// Return the highest priority block of the current bucket
-    pub fn top(&mut self) -> &Arc<RwLock<BlockEnum>> {
+    pub fn top(&self) -> &Arc<BlockEnum> {
         debug_assert!(!self.empty());
         self.buckets[self.current].top()
     }

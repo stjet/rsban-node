@@ -1,7 +1,7 @@
 use std::{
     ffi::{c_char, c_void, CStr},
     ops::Deref,
-    sync::{Arc, RwLock},
+    sync::Arc,
     time::Duration,
 };
 
@@ -65,13 +65,11 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_unpause(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_add(
-    handle: *mut ConfirmationHeightProcessorHandle,
-    block: *const BlockHandle,
+pub extern "C" fn rsn_confirmation_height_processor_add(
+    handle: &mut ConfirmationHeightProcessorHandle,
+    block: &BlockHandle,
 ) {
-    (*handle)
-        .0
-        .add(Arc::new((*block).block.read().unwrap().clone()));
+    handle.0.add(Arc::clone(&block));
 }
 
 #[no_mangle]
@@ -99,9 +97,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_set_cemented_observer
 ) {
     let context_wrapper = ContextWrapper::new(context, delete_context);
     let callback_wrapper = Box::new(move |block: &Arc<BlockEnum>| {
-        let block_handle = Box::into_raw(Box::new(BlockHandle::new(Arc::new(RwLock::new(
-            block.deref().clone(),
-        )))));
+        let block_handle = Box::into_raw(Box::new(BlockHandle(Arc::new(block.deref().clone()))));
         callback(context_wrapper.get_context(), block_handle);
         drop(Box::from_raw(block_handle));
     });

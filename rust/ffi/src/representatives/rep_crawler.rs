@@ -54,11 +54,11 @@ pub unsafe extern "C" fn rsn_rep_crawler_active_insert(
 pub unsafe extern "C" fn rsn_rep_crawler_response_insert(
     handle: *mut RepCrawlerHandle,
     channel: *mut ChannelHandle,
-    vote: *mut VoteHandle,
+    vote: &VoteHandle,
 ) {
     (*handle)
         .0
-        .insert_response((*channel).0.clone(), (*vote).0.clone());
+        .insert_response((*channel).0.clone(), vote.0.clone());
 }
 
 #[no_mangle]

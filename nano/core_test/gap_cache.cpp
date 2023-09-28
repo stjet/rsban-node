@@ -1,5 +1,6 @@
 #include "nano/lib/numbers.hpp"
 
+#include <nano/store/block.hpp>
 #include <nano/test_common/system.hpp>
 #include <nano/test_common/testutil.hpp>
 

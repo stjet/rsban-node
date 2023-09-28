@@ -11,7 +11,7 @@
 
 namespace
 {
-void reset_confirmation_heights (nano::write_transaction const & transaction, nano::ledger_constants & constants, nano::store::component & store);
+void reset_confirmation_heights (nano::store::write_transaction const & transaction, nano::ledger_constants & constants, nano::store::component & store);
 }
 
 std::string nano::error_cli_messages::message (int ev) const
@@ -1264,7 +1264,7 @@ std::unique_ptr<nano::inactive_node> nano::default_inactive_node (boost::filesys
 
 namespace
 {
-void reset_confirmation_heights (nano::write_transaction const & transaction, nano::ledger_constants & constants, nano::store::component & store)
+void reset_confirmation_heights (nano::store::write_transaction const & transaction, nano::ledger_constants & constants, nano::store::component & store)
 {
 	// First do a clean sweep
 	store.confirmation_height ().clear (transaction);

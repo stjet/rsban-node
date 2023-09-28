@@ -11,6 +11,11 @@
 #include <condition_variable>
 #include <thread>
 
+namespace nano::store
+{
+class component;
+class transaction;
+}
 namespace nano
 {
 class stats;
@@ -46,7 +51,7 @@ public:
 	/** Notify about AEC vacancy */
 	void notify ();
 
-	void set_activate_callback (std::function<void (nano::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)>);
+	void set_activate_callback (std::function<void (nano::store::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)>);
 
 private:
 	rsnano::BacklogPopulationHandle * handle;

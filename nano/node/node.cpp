@@ -17,7 +17,6 @@
 #include <nano/node/websocket.hpp>
 #include <nano/secure/buffer.hpp>
 #include <nano/store/component.hpp>
-#include <nano/store/rocksdb/rocksdb.hpp>
 
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -232,7 +231,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, boost::filesystem::path co
 		this->block_processor.add (info.get_block ());
 	});
 
-	backlog.set_activate_callback ([this] (nano::transaction const & transaction, nano::account const & account, nano::account_info const & account_info, nano::confirmation_height_info const & conf_info) {
+	backlog.set_activate_callback ([this] (nano::store::transaction const & transaction, nano::account const & account, nano::account_info const & account_info, nano::confirmation_height_info const & conf_info) {
 		scheduler.priority.activate (account, transaction);
 		scheduler.optimistic.activate (account, account_info, conf_info);
 	});
@@ -620,7 +619,7 @@ void nano::node::process_active (std::shared_ptr<nano::block> const & incoming)
 	block_processor.process_active (incoming);
 }
 
-[[nodiscard]] nano::process_return nano::node::process (nano::write_transaction const & transaction, nano::block & block)
+[[nodiscard]] nano::process_return nano::node::process (store::write_transaction const & transaction, nano::block & block)
 {
 	return ledger.process (transaction, block);
 }
@@ -1347,7 +1346,7 @@ void nano::node::ongoing_online_weight_calculation ()
 	ongoing_online_weight_calculation_queue ();
 }
 
-void nano::node::receive_confirmed (nano::transaction const & block_transaction_a, nano::block_hash const & hash_a, nano::account const & destination_a)
+void nano::node::receive_confirmed (store::transaction const & block_transaction_a, nano::block_hash const & hash_a, nano::account const & destination_a)
 {
 	nano::unique_lock<nano::mutex> lk{ wallets.mutex };
 	auto wallets_l = wallets.get_wallets ();
@@ -1381,7 +1380,7 @@ void nano::node::receive_confirmed (nano::transaction const & block_transaction_
 	}
 }
 
-void nano::node::process_confirmed_data (nano::transaction const & transaction_a, std::shared_ptr<nano::block> const & block_a, nano::block_hash const & hash_a, nano::account & account_a, nano::uint128_t & amount_a, bool & is_state_send_a, bool & is_state_epoch_a, nano::account & pending_account_a)
+void nano::node::process_confirmed_data (store::transaction const & transaction_a, std::shared_ptr<nano::block> const & block_a, nano::block_hash const & hash_a, nano::account & account_a, nano::uint128_t & amount_a, bool & is_state_send_a, bool & is_state_epoch_a, nano::account & pending_account_a)
 {
 	// Faster account calculation
 	account_a = block_a->account ();
@@ -1515,7 +1514,7 @@ void nano::node::bootstrap_block (const nano::block_hash & hash)
 }
 
 /** Convenience function to easily return the confirmation height of an account. */
-uint64_t nano::node::get_confirmation_height (nano::transaction const & transaction_a, nano::account & account_a)
+uint64_t nano::node::get_confirmation_height (store::transaction const & transaction_a, nano::account & account_a)
 {
 	nano::confirmation_height_info info;
 	store.confirmation_height ().get (transaction_a, account_a, info);

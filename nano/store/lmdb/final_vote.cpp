@@ -3,37 +3,35 @@
 
 namespace
 {
-nano::store_iterator<nano::qualified_root, nano::block_hash> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
+nano::store::iterator<nano::qualified_root, nano::block_hash> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
 {
 	if (it_handle == nullptr)
 	{
-		return nano::store_iterator<nano::qualified_root, nano::block_hash> (nullptr);
+		return nano::store::iterator<nano::qualified_root, nano::block_hash> (nullptr);
 	}
 
-	return nano::store_iterator<nano::qualified_root, nano::block_hash> (
-	std::make_unique<nano::mdb_iterator<nano::qualified_root, nano::block_hash>> (it_handle));
+	return nano::store::iterator<nano::qualified_root, nano::block_hash> (
+	std::make_unique<nano::store::lmdb::iterator<nano::qualified_root, nano::block_hash>> (it_handle));
 }
 }
 
-;
-
-nano::lmdb::final_vote_store::final_vote_store (rsnano::LmdbFinalVoteStoreHandle * handle_a) :
+nano::store::lmdb::final_vote::final_vote (rsnano::LmdbFinalVoteStoreHandle * handle_a) :
 	handle{ handle_a }
 {
 }
 
-nano::lmdb::final_vote_store::~final_vote_store ()
+nano::store::lmdb::final_vote::~final_vote ()
 {
 	if (handle != nullptr)
 		rsnano::rsn_lmdb_final_vote_store_destroy (handle);
 }
 
-bool nano::lmdb::final_vote_store::put (nano::write_transaction const & transaction, nano::qualified_root const & root, nano::block_hash const & hash)
+bool nano::store::lmdb::final_vote::put (nano::store::write_transaction const & transaction, nano::qualified_root const & root, nano::block_hash const & hash)
 {
 	return rsnano::rsn_lmdb_final_vote_store_put (handle, transaction.get_rust_handle (), root.bytes.data (), hash.bytes.data ());
 }
 
-std::vector<nano::block_hash> nano::lmdb::final_vote_store::get (nano::transaction const & transaction, nano::root const & root_a)
+std::vector<nano::block_hash> nano::store::lmdb::final_vote::get (nano::store::transaction const & transaction, nano::root const & root_a)
 {
 	rsnano::BlockHashArrayDto dto;
 	rsnano::rsn_lmdb_final_vote_store_get (handle, transaction.get_rust_handle (), root_a.bytes.data (), &dto);
@@ -48,49 +46,49 @@ std::vector<nano::block_hash> nano::lmdb::final_vote_store::get (nano::transacti
 	return result;
 }
 
-void nano::lmdb::final_vote_store::del (nano::write_transaction const & transaction, nano::root const & root)
+void nano::store::lmdb::final_vote::del (nano::store::write_transaction const & transaction, nano::root const & root)
 {
 	rsnano::rsn_lmdb_final_vote_store_del (handle, transaction.get_rust_handle (), root.bytes.data ());
 }
 
-size_t nano::lmdb::final_vote_store::count (nano::transaction const & transaction_a) const
+size_t nano::store::lmdb::final_vote::count (nano::store::transaction const & transaction_a) const
 {
 	return rsnano::rsn_lmdb_final_vote_store_count (handle, transaction_a.get_rust_handle ());
 }
 
-void nano::lmdb::final_vote_store::clear (nano::write_transaction const & transaction_a, nano::root const & root_a)
+void nano::store::lmdb::final_vote::clear (nano::store::write_transaction const & transaction_a, nano::root const & root_a)
 {
 	del (transaction_a, root_a);
 }
 
-void nano::lmdb::final_vote_store::clear (nano::write_transaction const & transaction_a)
+void nano::store::lmdb::final_vote::clear (nano::store::write_transaction const & transaction_a)
 {
 	rsnano::rsn_lmdb_final_vote_store_clear (handle, transaction_a.get_rust_handle ());
 }
 
-nano::store_iterator<nano::qualified_root, nano::block_hash> nano::lmdb::final_vote_store::begin (nano::transaction const & transaction, nano::qualified_root const & root) const
+nano::store::iterator<nano::qualified_root, nano::block_hash> nano::store::lmdb::final_vote::begin (nano::store::transaction const & transaction, nano::qualified_root const & root) const
 {
 	auto it_handle{ rsnano::rsn_lmdb_final_vote_store_begin_at_root (handle, transaction.get_rust_handle (), root.bytes.data ()) };
 	return to_iterator (it_handle);
 }
 
-nano::store_iterator<nano::qualified_root, nano::block_hash> nano::lmdb::final_vote_store::begin (nano::transaction const & transaction) const
+nano::store::iterator<nano::qualified_root, nano::block_hash> nano::store::lmdb::final_vote::begin (nano::store::transaction const & transaction) const
 {
 	auto it_handle{ rsnano::rsn_lmdb_final_vote_store_begin (handle, transaction.get_rust_handle ()) };
 	return to_iterator (it_handle);
 }
 
-nano::store_iterator<nano::qualified_root, nano::block_hash> nano::lmdb::final_vote_store::end () const
+nano::store::iterator<nano::qualified_root, nano::block_hash> nano::store::lmdb::final_vote::end () const
 {
-	return nano::store_iterator<nano::qualified_root, nano::block_hash> (nullptr);
+	return nano::store::iterator<nano::qualified_root, nano::block_hash> (nullptr);
 }
 
 namespace
 {
 void for_each_par_wrapper (void * context, rsnano::TransactionHandle * txn_handle, rsnano::LmdbIteratorHandle * begin_handle, rsnano::LmdbIteratorHandle * end_handle)
 {
-	auto action = static_cast<std::function<void (nano::read_transaction const &, nano::store_iterator<nano::qualified_root, nano::block_hash>, nano::store_iterator<nano::qualified_root, nano::block_hash>)> const *> (context);
-	nano::read_mdb_txn txn{ txn_handle };
+	auto action = static_cast<std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::qualified_root, nano::block_hash>, nano::store::iterator<nano::qualified_root, nano::block_hash>)> const *> (context);
+	nano::store::lmdb::read_transaction_impl txn{ txn_handle };
 	auto begin{ to_iterator (begin_handle) };
 	auto end{ to_iterator (end_handle) };
 	(*action) (txn, std::move (begin), std::move (end));
@@ -100,7 +98,7 @@ void for_each_par_delete_context (void * context)
 }
 }
 
-void nano::lmdb::final_vote_store::for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::qualified_root, nano::block_hash>, nano::store_iterator<nano::qualified_root, nano::block_hash>)> const & action_a) const
+void nano::store::lmdb::final_vote::for_each_par (std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::qualified_root, nano::block_hash>, nano::store::iterator<nano::qualified_root, nano::block_hash>)> const & action_a) const
 {
 	auto context = (void *)&action_a;
 	rsnano::rsn_lmdb_final_vote_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);

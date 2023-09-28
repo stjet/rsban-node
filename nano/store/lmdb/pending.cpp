@@ -3,21 +3,21 @@
 
 namespace
 {
-nano::store_iterator<nano::pending_key, nano::pending_info> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
+nano::store::iterator<nano::pending_key, nano::pending_info> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
 {
 	if (it_handle == nullptr)
 	{
 		return { nullptr };
 	}
 
-	return { std::make_unique<nano::mdb_iterator<nano::pending_key, nano::pending_info>> (it_handle) };
+	return { std::make_unique<nano::store::lmdb::iterator<nano::pending_key, nano::pending_info>> (it_handle) };
 }
 }
 
-nano::lmdb::pending_store::pending_store (rsnano::LmdbPendingStoreHandle * handle_a) :
+nano::store::lmdb::pending::pending (rsnano::LmdbPendingStoreHandle * handle_a) :
 	handle{ handle_a } {};
 
-nano::lmdb::pending_store::~pending_store ()
+nano::store::lmdb::pending::~pending ()
 {
 	if (handle != nullptr)
 		rsnano::rsn_lmdb_pending_store_destroy (handle);
@@ -43,20 +43,20 @@ rsnano::PendingInfoDto value_to_dto (nano::pending_info const & value)
 }
 }
 
-void nano::lmdb::pending_store::put (nano::write_transaction const & transaction, nano::pending_key const & key, nano::pending_info const & pending)
+void nano::store::lmdb::pending::put (nano::store::write_transaction const & transaction, nano::pending_key const & key, nano::pending_info const & pending)
 {
 	auto key_dto{ key_to_dto (key) };
 	auto value_dto{ value_to_dto (pending) };
 	rsnano::rsn_lmdb_pending_store_put (handle, transaction.get_rust_handle (), &key_dto, &value_dto);
 }
 
-void nano::lmdb::pending_store::del (nano::write_transaction const & transaction, nano::pending_key const & key)
+void nano::store::lmdb::pending::del (nano::store::write_transaction const & transaction, nano::pending_key const & key)
 {
 	auto key_dto{ key_to_dto (key) };
 	rsnano::rsn_lmdb_pending_store_del (handle, transaction.get_rust_handle (), &key_dto);
 }
 
-bool nano::lmdb::pending_store::get (nano::transaction const & transaction, nano::pending_key const & key, nano::pending_info & pending_a)
+bool nano::store::lmdb::pending::get (nano::store::transaction const & transaction, nano::pending_key const & key, nano::pending_info & pending_a)
 {
 	auto key_dto{ key_to_dto (key) };
 	rsnano::PendingInfoDto value_dto;
@@ -70,41 +70,41 @@ bool nano::lmdb::pending_store::get (nano::transaction const & transaction, nano
 	return result;
 }
 
-bool nano::lmdb::pending_store::exists (nano::transaction const & transaction_a, nano::pending_key const & key_a)
+bool nano::store::lmdb::pending::exists (nano::store::transaction const & transaction_a, nano::pending_key const & key_a)
 {
 	auto key_dto{ key_to_dto (key_a) };
 	return rsnano::rsn_lmdb_pending_store_exists (handle, transaction_a.get_rust_handle (), &key_dto);
 }
 
-bool nano::lmdb::pending_store::any (nano::transaction const & transaction_a, nano::account const & account_a)
+bool nano::store::lmdb::pending::any (nano::store::transaction const & transaction_a, nano::account const & account_a)
 {
 	return rsnano::rsn_lmdb_pending_store_any (handle, transaction_a.get_rust_handle (), account_a.bytes.data ());
 }
 
-nano::store_iterator<nano::pending_key, nano::pending_info> nano::lmdb::pending_store::begin (nano::transaction const & transaction_a, nano::pending_key const & key_a) const
+nano::store::iterator<nano::pending_key, nano::pending_info> nano::store::lmdb::pending::begin (nano::store::transaction const & transaction_a, nano::pending_key const & key_a) const
 {
 	auto key_dto{ key_to_dto (key_a) };
 	auto it_handle{ rsnano::rsn_lmdb_pending_store_begin_at_key (handle, transaction_a.get_rust_handle (), &key_dto) };
 	return to_iterator (it_handle);
 }
 
-nano::store_iterator<nano::pending_key, nano::pending_info> nano::lmdb::pending_store::begin (nano::transaction const & transaction_a) const
+nano::store::iterator<nano::pending_key, nano::pending_info> nano::store::lmdb::pending::begin (nano::store::transaction const & transaction_a) const
 {
 	auto it_handle{ rsnano::rsn_lmdb_pending_store_begin (handle, transaction_a.get_rust_handle ()) };
 	return to_iterator (it_handle);
 }
 
-nano::store_iterator<nano::pending_key, nano::pending_info> nano::lmdb::pending_store::end () const
+nano::store::iterator<nano::pending_key, nano::pending_info> nano::store::lmdb::pending::end () const
 {
-	return nano::store_iterator<nano::pending_key, nano::pending_info> (nullptr);
+	return nano::store::iterator<nano::pending_key, nano::pending_info> (nullptr);
 }
 
 namespace
 {
 void for_each_par_wrapper (void * context, rsnano::TransactionHandle * txn_handle, rsnano::LmdbIteratorHandle * begin_handle, rsnano::LmdbIteratorHandle * end_handle)
 {
-	auto action = static_cast<std::function<void (nano::read_transaction const &, nano::store_iterator<nano::pending_key, nano::pending_info>, nano::store_iterator<nano::pending_key, nano::pending_info>)> const *> (context);
-	nano::read_mdb_txn txn{ txn_handle };
+	auto action = static_cast<std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::pending_key, nano::pending_info>, nano::store::iterator<nano::pending_key, nano::pending_info>)> const *> (context);
+	nano::store::lmdb::read_transaction_impl txn{ txn_handle };
 	auto begin{ to_iterator (begin_handle) };
 	auto end{ to_iterator (end_handle) };
 	(*action) (txn, std::move (begin), std::move (end));
@@ -114,7 +114,7 @@ void for_each_par_delete_context (void * context)
 }
 }
 
-void nano::lmdb::pending_store::for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::pending_key, nano::pending_info>, nano::store_iterator<nano::pending_key, nano::pending_info>)> const & action_a) const
+void nano::store::lmdb::pending::for_each_par (std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::pending_key, nano::pending_info>, nano::store::iterator<nano::pending_key, nano::pending_info>)> const & action_a) const
 {
 	auto context = (void *)&action_a;
 	rsnano::rsn_lmdb_pending_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);

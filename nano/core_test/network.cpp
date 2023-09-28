@@ -1,4 +1,4 @@
-#include "nano/secure/store.hpp"
+#include "nano/store/component.hpp"
 
 #include <nano/node/network.hpp>
 #include <nano/node/nodeconfig.hpp>

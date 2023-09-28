@@ -2,31 +2,27 @@
 
 #include <nano/store/pruned.hpp>
 
-namespace nano
+namespace nano::store::lmdb
 {
-namespace lmdb
+class pruned : public nano::store::pruned
 {
-	class store;
-	class pruned_store : public nano::pruned_store
-	{
-	private:
-		rsnano::LmdbPrunedStoreHandle * handle;
+private:
+	rsnano::LmdbPrunedStoreHandle * handle;
 
-	public:
-		explicit pruned_store (rsnano::LmdbPrunedStoreHandle * handle_a);
-		~pruned_store ();
-		pruned_store (pruned_store const &) = delete;
-		pruned_store (pruned_store &&) = delete;
-		void put (nano::write_transaction const & transaction_a, nano::block_hash const & hash_a) override;
-		void del (nano::write_transaction const & transaction_a, nano::block_hash const & hash_a) override;
-		bool exists (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const override;
-		nano::block_hash random (nano::transaction const & transaction_a) override;
-		size_t count (nano::transaction const & transaction_a) const override;
-		void clear (nano::write_transaction const & transaction_a) override;
-		nano::store_iterator<nano::block_hash, std::nullptr_t> begin (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const override;
-		nano::store_iterator<nano::block_hash, std::nullptr_t> begin (nano::transaction const & transaction_a) const override;
-		nano::store_iterator<nano::block_hash, std::nullptr_t> end () const override;
-		void for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::block_hash, std::nullptr_t>, nano::store_iterator<nano::block_hash, std::nullptr_t>)> const & action_a) const override;
-	};
-}
+public:
+	explicit pruned (rsnano::LmdbPrunedStoreHandle * handle_a);
+	~pruned ();
+	pruned (pruned const &) = delete;
+	pruned (pruned &&) = delete;
+	void put (nano::store::write_transaction const & transaction_a, nano::block_hash const & hash_a) override;
+	void del (nano::store::write_transaction const & transaction_a, nano::block_hash const & hash_a) override;
+	bool exists (nano::store::transaction const & transaction_a, nano::block_hash const & hash_a) const override;
+	nano::block_hash random (nano::store::transaction const & transaction_a) override;
+	size_t count (nano::store::transaction const & transaction_a) const override;
+	void clear (nano::store::write_transaction const & transaction_a) override;
+	nano::store::iterator<nano::block_hash, std::nullptr_t> begin (nano::store::transaction const & transaction_a, nano::block_hash const & hash_a) const override;
+	nano::store::iterator<nano::block_hash, std::nullptr_t> begin (nano::store::transaction const & transaction_a) const override;
+	nano::store::iterator<nano::block_hash, std::nullptr_t> end () const override;
+	void for_each_par (std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::block_hash, std::nullptr_t>, nano::store::iterator<nano::block_hash, std::nullptr_t>)> const & action_a) const override;
+};
 }

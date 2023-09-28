@@ -63,14 +63,14 @@ nano::uint128_t nano::ledger::balance (nano::block const & block)
 }
 
 // Balance for account containing hash
-nano::uint128_t nano::ledger::balance (nano::transaction const & transaction, nano::block_hash const & hash) const
+nano::uint128_t nano::ledger::balance (store::transaction const & transaction, nano::block_hash const & hash) const
 {
 	nano::amount result;
 	rsnano::rsn_ledger_balance (handle, transaction.get_rust_handle (), hash.bytes.data (), result.bytes.data ());
 	return result.number ();
 }
 
-nano::uint128_t nano::ledger::balance_safe (nano::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
+nano::uint128_t nano::ledger::balance_safe (store::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
 {
 	nano::amount result;
 	auto success = rsnano::rsn_ledger_balance_safe (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
@@ -79,21 +79,21 @@ nano::uint128_t nano::ledger::balance_safe (nano::transaction const & transactio
 }
 
 // Balance for an account by account number
-nano::uint128_t nano::ledger::account_balance (nano::transaction const & transaction_a, nano::account const & account_a, bool only_confirmed_a)
+nano::uint128_t nano::ledger::account_balance (store::transaction const & transaction_a, nano::account const & account_a, bool only_confirmed_a)
 {
 	nano::amount result;
 	rsnano::rsn_ledger_account_balance (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), only_confirmed_a, result.bytes.data ());
 	return result.number ();
 }
 
-nano::uint128_t nano::ledger::account_receivable (nano::transaction const & transaction_a, nano::account const & account_a, bool only_confirmed_a)
+nano::uint128_t nano::ledger::account_receivable (store::transaction const & transaction_a, nano::account const & account_a, bool only_confirmed_a)
 {
 	nano::amount result;
 	rsnano::rsn_ledger_account_receivable (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), only_confirmed_a, result.bytes.data ());
 	return result.number ();
 }
 
-std::optional<nano::pending_info> nano::ledger::pending_info (nano::transaction const & transaction, nano::pending_key const & key) const
+std::optional<nano::pending_info> nano::ledger::pending_info (store::transaction const & transaction, nano::pending_key const & key) const
 {
 	nano::pending_info result;
 	if (!store.pending ().get (transaction, key, result))
@@ -103,7 +103,7 @@ std::optional<nano::pending_info> nano::ledger::pending_info (nano::transaction 
 	return std::nullopt;
 }
 
-nano::process_return nano::ledger::process (nano::write_transaction const & transaction_a, nano::block & block_a)
+nano::process_return nano::ledger::process (store::write_transaction const & transaction_a, nano::block & block_a)
 {
 	rsnano::ProcessReturnDto result_dto;
 	rsnano::rsn_ledger_process (handle, transaction_a.get_rust_handle (), block_a.get_handle (), &result_dto);
@@ -112,7 +112,7 @@ nano::process_return nano::ledger::process (nano::write_transaction const & tran
 	return result;
 }
 
-nano::block_hash nano::ledger::representative (nano::transaction const & transaction_a, nano::block_hash const & hash_a)
+nano::block_hash nano::ledger::representative (store::transaction const & transaction_a, nano::block_hash const & hash_a)
 {
 	nano::block_hash result;
 	rsnano::rsn_ledger_representative (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
@@ -124,7 +124,7 @@ bool nano::ledger::block_or_pruned_exists (nano::block_hash const & hash_a) cons
 	return rsnano::rsn_ledger_block_or_pruned_exists (handle, hash_a.bytes.data ());
 }
 
-bool nano::ledger::block_or_pruned_exists (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
+bool nano::ledger::block_or_pruned_exists (store::transaction const & transaction_a, nano::block_hash const & hash_a) const
 {
 	return rsnano::rsn_ledger_block_or_pruned_exists_txn (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());
 }
@@ -141,26 +141,26 @@ std::string nano::ledger::block_text (nano::block_hash const & hash_a)
 	return rsnano::convert_dto_to_string (dto);
 }
 
-bool nano::ledger::is_send (nano::transaction const & transaction_a, nano::block const & block_a) const
+bool nano::ledger::is_send (store::transaction const & transaction_a, nano::block const & block_a) const
 {
 	return rsnano::rsn_ledger_is_send (handle, transaction_a.get_rust_handle (), block_a.get_handle ());
 }
 
-nano::account nano::ledger::block_destination (nano::transaction const & transaction_a, nano::block const & block_a)
+nano::account nano::ledger::block_destination (nano::store::transaction const & transaction_a, nano::block const & block_a)
 {
 	nano::account destination_l;
 	rsnano::rsn_ledger_block_destination (handle, transaction_a.get_rust_handle (), block_a.get_handle (), destination_l.bytes.data ());
 	return destination_l;
 }
 
-nano::block_hash nano::ledger::block_source (nano::transaction const & transaction_a, nano::block const & block_a)
+nano::block_hash nano::ledger::block_source (store::transaction const & transaction_a, nano::block const & block_a)
 {
 	nano::block_hash source_l;
 	rsnano::rsn_ledger_block_source (handle, transaction_a.get_rust_handle (), block_a.get_handle (), source_l.bytes.data ());
 	return source_l;
 }
 
-std::pair<nano::block_hash, nano::block_hash> nano::ledger::hash_root_random (nano::transaction const & transaction_a) const
+std::pair<nano::block_hash, nano::block_hash> nano::ledger::hash_root_random (store::transaction const & transaction_a) const
 {
 	nano::block_hash hash;
 	nano::block_hash root;
@@ -177,7 +177,7 @@ nano::uint128_t nano::ledger::weight (nano::account const & account_a)
 }
 
 // Rollback blocks until `block_a' doesn't exist or it tries to penetrate the confirmation height
-bool nano::ledger::rollback (nano::write_transaction const & transaction_a, nano::block_hash const & block_a, std::vector<std::shared_ptr<nano::block>> & list_a)
+bool nano::ledger::rollback (store::write_transaction const & transaction_a, nano::block_hash const & block_a, std::vector<std::shared_ptr<nano::block>> & list_a)
 {
 	rsnano::BlockArrayDto list_dto;
 	auto error = rsnano::rsn_ledger_rollback (handle, transaction_a.get_rust_handle (), block_a.bytes.data (), &list_dto);
@@ -185,7 +185,7 @@ bool nano::ledger::rollback (nano::write_transaction const & transaction_a, nano
 	return error;
 }
 
-bool nano::ledger::rollback (nano::write_transaction const & transaction_a, nano::block_hash const & block_a)
+bool nano::ledger::rollback (store::write_transaction const & transaction_a, nano::block_hash const & block_a)
 {
 	std::vector<std::shared_ptr<nano::block>> rollback_list;
 	return rollback (transaction_a, block_a, rollback_list);
@@ -203,14 +203,14 @@ nano::account nano::ledger::account (nano::block const & block) const
 	return result;
 }
 
-nano::account nano::ledger::account (nano::transaction const & transaction, nano::block_hash const & hash) const
+nano::account nano::ledger::account (store::transaction const & transaction, nano::block_hash const & hash) const
 {
 	nano::account result;
 	rsnano::rsn_ledger_account (handle, transaction.get_rust_handle (), hash.bytes.data (), result.bytes.data ());
 	return result;
 }
 
-nano::account nano::ledger::account_safe (nano::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
+nano::account nano::ledger::account_safe (store::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
 {
 	nano::account result;
 	bool success = rsnano::rsn_ledger_account_safe (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
@@ -221,32 +221,32 @@ nano::account nano::ledger::account_safe (nano::transaction const & transaction_
 	return result;
 }
 
-nano::account nano::ledger::account_safe (nano::transaction const & transaction, nano::block_hash const & hash) const
+nano::account nano::ledger::account_safe (store::transaction const & transaction, nano::block_hash const & hash) const
 {
 	bool ignored;
 	return account_safe (transaction, hash, ignored);
 }
 
-std::optional<nano::account_info> nano::ledger::account_info (nano::transaction const & transaction, nano::account const & account) const
+std::optional<nano::account_info> nano::ledger::account_info (store::transaction const & transaction, nano::account const & account) const
 {
 	return store.account ().get (transaction, account);
 }
 
 // Return amount decrease or increase for block
-nano::uint128_t nano::ledger::amount (nano::transaction const & transaction_a, nano::account const & account_a)
+nano::uint128_t nano::ledger::amount (store::transaction const & transaction_a, nano::account const & account_a)
 {
 	release_assert (account_a == constants.genesis->account ());
 	return nano::dev::constants.genesis_amount;
 }
 
-nano::uint128_t nano::ledger::amount (nano::transaction const & transaction_a, nano::block_hash const & hash_a)
+nano::uint128_t nano::ledger::amount (store::transaction const & transaction_a, nano::block_hash const & hash_a)
 {
 	nano::amount result;
 	rsnano::rsn_ledger_amount (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
 	return result.number ();
 }
 
-nano::uint128_t nano::ledger::amount_safe (nano::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
+nano::uint128_t nano::ledger::amount_safe (store::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
 {
 	nano::amount result;
 	auto success = rsnano::rsn_ledger_amount_safe (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
@@ -258,7 +258,7 @@ nano::uint128_t nano::ledger::amount_safe (nano::transaction const & transaction
 }
 
 // Return latest block for account
-nano::block_hash nano::ledger::latest (nano::transaction const & transaction_a, nano::account const & account_a)
+nano::block_hash nano::ledger::latest (store::transaction const & transaction_a, nano::account const & account_a)
 {
 	nano::block_hash latest_l;
 	rsnano::rsn_ledger_latest (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), latest_l.bytes.data ());
@@ -266,19 +266,19 @@ nano::block_hash nano::ledger::latest (nano::transaction const & transaction_a, 
 }
 
 // Return latest root for account, account number if there are no blocks for this account.
-nano::root nano::ledger::latest_root (nano::transaction const & transaction_a, nano::account const & account_a)
+nano::root nano::ledger::latest_root (store::transaction const & transaction_a, nano::account const & account_a)
 {
 	nano::root latest_l;
 	rsnano::rsn_ledger_latest_root (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), latest_l.bytes.data ());
 	return latest_l;
 }
 
-bool nano::ledger::could_fit (nano::transaction const & transaction_a, nano::block const & block_a) const
+bool nano::ledger::could_fit (store::transaction const & transaction_a, nano::block const & block_a) const
 {
 	return rsnano::rsn_ledger_could_fit (handle, transaction_a.get_rust_handle (), block_a.get_handle ());
 }
 
-bool nano::ledger::dependents_confirmed (nano::transaction const & transaction_a, nano::block const & block_a) const
+bool nano::ledger::dependents_confirmed (store::transaction const & transaction_a, nano::block const & block_a) const
 {
 	return rsnano::rsn_ledger_dependents_confirmed (handle, transaction_a.get_rust_handle (), block_a.get_handle ());
 }
@@ -288,7 +288,7 @@ bool nano::ledger::is_epoch_link (nano::link const & link_a) const
 	return rsnano::rsn_ledger_is_epoch_link (handle, link_a.bytes.data ());
 }
 
-std::array<nano::block_hash, 2> nano::ledger::dependent_blocks (nano::transaction const & transaction_a, nano::block const & block_a) const
+std::array<nano::block_hash, 2> nano::ledger::dependent_blocks (store::transaction const & transaction_a, nano::block const & block_a) const
 {
 	std::array<nano::block_hash, 2> result;
 	rsnano::rsn_ledger_dependent_blocks (handle, transaction_a.get_rust_handle (), block_a.get_handle (), result[0].bytes.data (), result[1].bytes.data ());
@@ -299,7 +299,7 @@ std::array<nano::block_hash, 2> nano::ledger::dependent_blocks (nano::transactio
  *  The send block hash is not checked in any way, it is assumed to be correct.
  * @return Return the receive block on success and null on failure
  */
-std::shared_ptr<nano::block> nano::ledger::find_receive_block_by_send_hash (nano::transaction const & transaction, nano::account const & destination, nano::block_hash const & send_block_hash)
+std::shared_ptr<nano::block> nano::ledger::find_receive_block_by_send_hash (store::transaction const & transaction, nano::account const & destination, nano::block_hash const & send_block_hash)
 {
 	auto block_handle = rsnano::rsn_ledger_find_receive_block_by_send_hash (handle, transaction.get_rust_handle (), destination.bytes.data (), send_block_hash.bytes.data ());
 	return nano::block_handle_to_block (block_handle);
@@ -319,18 +319,18 @@ nano::link nano::ledger::epoch_link (nano::epoch epoch_a) const
 	return link;
 }
 
-void nano::ledger::update_account (nano::write_transaction const & transaction_a, nano::account const & account_a, nano::account_info const & old_a, nano::account_info const & new_a)
+void nano::ledger::update_account (store::write_transaction const & transaction_a, nano::account const & account_a, nano::account_info const & old_a, nano::account_info const & new_a)
 {
 	rsnano::rsn_ledger_update_account (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), old_a.handle, new_a.handle);
 }
 
-std::shared_ptr<nano::block> nano::ledger::successor (nano::transaction const & transaction_a, nano::qualified_root const & root_a)
+std::shared_ptr<nano::block> nano::ledger::successor (store::transaction const & transaction_a, nano::qualified_root const & root_a)
 {
 	auto block_handle = rsnano::rsn_ledger_successor (handle, transaction_a.get_rust_handle (), root_a.bytes.data ());
 	return nano::block_handle_to_block (block_handle);
 }
 
-std::shared_ptr<nano::block> nano::ledger::head_block (nano::transaction const & transaction, nano::account const & account)
+std::shared_ptr<nano::block> nano::ledger::head_block (store::transaction const & transaction, nano::account const & account)
 {
 	auto info = store.account ().get (transaction, account);
 	if (info)
@@ -340,12 +340,12 @@ std::shared_ptr<nano::block> nano::ledger::head_block (nano::transaction const &
 	return nullptr;
 }
 
-bool nano::ledger::block_confirmed (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const
+bool nano::ledger::block_confirmed (store::transaction const & transaction_a, nano::block_hash const & hash_a) const
 {
 	return rsnano::rsn_ledger_block_confirmed (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());
 }
 
-uint64_t nano::ledger::pruning_action (nano::write_transaction & transaction_a, nano::block_hash const & hash_a, uint64_t const batch_size_a)
+uint64_t nano::ledger::pruning_action (store::write_transaction & transaction_a, nano::block_hash const & hash_a, uint64_t const batch_size_a)
 {
 	return rsnano::rsn_ledger_pruning_action (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), batch_size_a);
 }
@@ -443,13 +443,13 @@ nano::epoch nano::ledger::version (nano::block const & block)
 	return nano::epoch::epoch_0;
 }
 
-nano::epoch nano::ledger::version (nano::transaction const & transaction, nano::block_hash const & hash) const
+nano::epoch nano::ledger::version (store::transaction const & transaction, nano::block_hash const & hash) const
 {
 	auto epoch = rsnano::rsn_ledger_version (handle, transaction.get_rust_handle (), hash.bytes.data ());
 	return static_cast<nano::epoch> (epoch);
 }
 
-uint64_t nano::ledger::height (nano::transaction const & transaction, nano::block_hash const & hash) const
+uint64_t nano::ledger::height (store::transaction const & transaction, nano::block_hash const & hash) const
 {
 	return rsnano::rsn_ledger_account_height (handle, transaction.get_rust_handle (), hash.bytes.data ());
 }

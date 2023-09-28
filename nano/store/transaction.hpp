@@ -6,33 +6,11 @@
 
 namespace rsnano
 {
-	class TransactionHandle;
+class TransactionHandle;
 }
 
-namespace nano
+namespace nano::store
 {
-class transaction_impl
-{
-public:
-	virtual ~transaction_impl () = default;
-	virtual void * get_handle () const = 0;
-};
-
-class read_transaction_impl : public transaction_impl
-{
-public:
-	virtual void reset () = 0;
-	virtual void renew () = 0;
-};
-
-class write_transaction_impl : public transaction_impl
-{
-public:
-	virtual void commit () = 0;
-	virtual void renew () = 0;
-	virtual bool contains (nano::tables table_a) const = 0;
-};
-
 class transaction
 {
 public:
@@ -80,4 +58,4 @@ public:
 	virtual void refresh () = 0;
 	virtual bool contains (nano::tables table_a) const = 0;
 };
-} // namespace nano
+} // namespace nano::store

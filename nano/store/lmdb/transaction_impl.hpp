@@ -3,17 +3,14 @@
 #include <nano/lib/diagnosticsconfig.hpp>
 #include <nano/lib/timer.hpp>
 #include <nano/store/component.hpp>
+#include <nano/store/transaction.hpp>
 
 #include <boost/property_tree/ptree_fwd.hpp>
 #include <boost/stacktrace/stacktrace_fwd.hpp>
 
-namespace nano
+namespace nano::store::lmdb
 {
-class transaction;
-class logger_mt;
-class mdb_env;
-
-class mdb_txn_callbacks
+class txn_callbacks
 {
 public:
 	// takes a txn_id and is_write
@@ -23,13 +20,13 @@ public:
 	std::function<void (uint64_t)> txn_end{ [] (uint64_t) {} };
 };
 
-class read_mdb_txn final : public read_transaction
+class read_transaction_impl final : public nano::store::read_transaction
 {
 public:
-	read_mdb_txn (read_mdb_txn const &) = delete;
-	read_mdb_txn (read_mdb_txn &&) = delete;
-	read_mdb_txn (rsnano::TransactionHandle * handle_a);
-	~read_mdb_txn () override;
+	read_transaction_impl (read_transaction_impl const &) = delete;
+	read_transaction_impl (read_transaction_impl &&) = delete;
+	read_transaction_impl (rsnano::TransactionHandle * handle_a);
+	~read_transaction_impl () override;
 	void reset () override;
 	void renew () override;
 	void refresh () override;
@@ -41,13 +38,13 @@ public:
 	rsnano::TransactionHandle * txn_handle;
 };
 
-class write_mdb_txn final : public write_transaction
+class write_transaction_impl final : public nano::store::write_transaction
 {
 public:
-	write_mdb_txn (write_mdb_txn const &) = delete;
-	write_mdb_txn (write_mdb_txn &&) = delete;
-	write_mdb_txn (rsnano::TransactionHandle * handle_a);
-	~write_mdb_txn () override;
+	write_transaction_impl (write_transaction_impl const &) = delete;
+	write_transaction_impl (write_transaction_impl &&) = delete;
+	write_transaction_impl (rsnano::TransactionHandle * handle_a);
+	~write_transaction_impl () override;
 	void commit () override;
 	void renew () override;
 	void refresh () override;
@@ -59,4 +56,4 @@ public:
 
 	rsnano::TransactionHandle * txn_handle;
 };
-}
+} // namespace nano

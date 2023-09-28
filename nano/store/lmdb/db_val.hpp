@@ -1,9 +1,9 @@
 #pragma once
 
-#include <nano/store/db_val.hpp>
 #include <nano/lib/rsnano.hpp>
+#include <nano/store/db_val.hpp>
 
-namespace nano
+namespace nano::store::lmdb
 {
-using mdb_val = db_val<rsnano::MdbVal>;
+using db_val = db_val<rsnano::MdbVal>;
 }

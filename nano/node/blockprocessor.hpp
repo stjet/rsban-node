@@ -13,6 +13,11 @@
 #include <memory>
 #include <thread>
 
+namespace nano::store
+{
+class write_transaction;
+}
+
 namespace nano
 {
 class node;
@@ -82,9 +87,9 @@ private:
 
 private:
 	// Roll back block in the ledger that conflicts with 'block'
-	void rollback_competitor (nano::write_transaction const & transaction, nano::block const & block);
-	nano::process_return process_one (nano::write_transaction const &, std::shared_ptr<nano::block> block, bool const = false);
-	void queue_unchecked (nano::write_transaction const &, nano::hash_or_account const &);
+	void rollback_competitor (nano::store::write_transaction const & transaction, nano::block const & block);
+	nano::process_return process_one (nano::store::write_transaction const &, std::shared_ptr<nano::block> block, bool const = false);
+	void queue_unchecked (nano::store::write_transaction const &, nano::hash_or_account const &);
 	std::deque<processed_t> process_batch (nano::block_processor_lock &);
 	void process_verified_state_blocks (std::deque<nano::state_block_signature_verification::value_type> &, std::vector<int> const &, std::vector<nano::block_hash> const &, std::vector<nano::signature> const &);
 	void add_impl (std::shared_ptr<nano::block> block);
@@ -107,7 +112,7 @@ public:
 private:
 	nano::ledger & ledger; // already ported
 	nano::node_flags & flags; // already ported
-	nano::store & store; // already ported
+	nano::store::component & store; // already ported
 	nano::stats & stats; // already ported
 	nano::unchecked_map & unchecked; // already ported
 	nano::gap_cache & gap_cache; // already ported

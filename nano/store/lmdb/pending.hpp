@@ -2,30 +2,26 @@
 
 #include <nano/store/pending.hpp>
 
-namespace nano
+namespace nano::store::lmdb
 {
-namespace lmdb
+class pending : public nano::store::pending
 {
-	class store;
-	class pending_store : public nano::pending_store
-	{
-	private:
-		rsnano::LmdbPendingStoreHandle * handle;
+private:
+	rsnano::LmdbPendingStoreHandle * handle;
 
-	public:
-		explicit pending_store (rsnano::LmdbPendingStoreHandle * handle_a);
-		~pending_store ();
-		pending_store (pending_store const &) = delete;
-		pending_store (pending_store &&) = delete;
-		void put (nano::write_transaction const & transaction_a, nano::pending_key const & key_a, nano::pending_info const & pending_info_a) override;
-		void del (nano::write_transaction const & transaction_a, nano::pending_key const & key_a) override;
-		bool get (nano::transaction const & transaction_a, nano::pending_key const & key_a, nano::pending_info & pending_a) override;
-		bool exists (nano::transaction const & transaction_a, nano::pending_key const & key_a) override;
-		bool any (nano::transaction const & transaction_a, nano::account const & account_a) override;
-		nano::store_iterator<nano::pending_key, nano::pending_info> begin (nano::transaction const & transaction_a, nano::pending_key const & key_a) const override;
-		nano::store_iterator<nano::pending_key, nano::pending_info> begin (nano::transaction const & transaction_a) const override;
-		nano::store_iterator<nano::pending_key, nano::pending_info> end () const override;
-		void for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::pending_key, nano::pending_info>, nano::store_iterator<nano::pending_key, nano::pending_info>)> const & action_a) const override;
-	};
-}
+public:
+	explicit pending (rsnano::LmdbPendingStoreHandle * handle_a);
+	~pending ();
+	pending (pending const &) = delete;
+	pending (pending &&) = delete;
+	void put (nano::store::write_transaction const & transaction_a, nano::pending_key const & key_a, nano::pending_info const & pending_info_a) override;
+	void del (nano::store::write_transaction const & transaction_a, nano::pending_key const & key_a) override;
+	bool get (nano::store::transaction const & transaction_a, nano::pending_key const & key_a, nano::pending_info & pending_a) override;
+	bool exists (nano::store::transaction const & transaction_a, nano::pending_key const & key_a) override;
+	bool any (nano::store::transaction const & transaction_a, nano::account const & account_a) override;
+	nano::store::iterator<nano::pending_key, nano::pending_info> begin (nano::store::transaction const & transaction_a, nano::pending_key const & key_a) const override;
+	nano::store::iterator<nano::pending_key, nano::pending_info> begin (nano::store::transaction const & transaction_a) const override;
+	nano::store::iterator<nano::pending_key, nano::pending_info> end () const override;
+	void for_each_par (std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::pending_key, nano::pending_info>, nano::store::iterator<nano::pending_key, nano::pending_info>)> const & action_a) const override;
+};
 }

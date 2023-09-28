@@ -3,60 +3,60 @@
 
 namespace
 {
-nano::store_iterator<nano::endpoint_key, nano::no_value> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
+nano::store::iterator<nano::endpoint_key, nano::no_value> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
 {
 	if (it_handle == nullptr)
 	{
 		return { nullptr };
 	}
 
-	return { std::make_unique<nano::mdb_iterator<nano::endpoint_key, nano::no_value>> (it_handle) };
+	return { std::make_unique<nano::store::lmdb::iterator<nano::endpoint_key, nano::no_value>> (it_handle) };
 }
 }
 
-nano::lmdb::peer_store::peer_store (rsnano::LmdbPeerStoreHandle * handle_a) :
+nano::store::lmdb::peer::peer (rsnano::LmdbPeerStoreHandle * handle_a) :
 	handle{ handle_a }
 {
 }
 
-nano::lmdb::peer_store::~peer_store ()
+nano::store::lmdb::peer::~peer ()
 {
 	if (handle != nullptr)
 		rsnano::rsn_lmdb_peer_store_destroy (handle);
 }
 
-void nano::lmdb::peer_store::put (nano::write_transaction const & transaction, nano::endpoint_key const & endpoint)
+void nano::store::lmdb::peer::put (nano::store::write_transaction const & transaction, nano::endpoint_key const & endpoint)
 {
 	rsnano::rsn_lmdb_peer_store_put (handle, transaction.get_rust_handle (), endpoint.address_bytes ().data (), endpoint.port ());
 }
 
-void nano::lmdb::peer_store::del (nano::write_transaction const & transaction, nano::endpoint_key const & endpoint)
+void nano::store::lmdb::peer::del (nano::store::write_transaction const & transaction, nano::endpoint_key const & endpoint)
 {
 	rsnano::rsn_lmdb_peer_store_del (handle, transaction.get_rust_handle (), endpoint.address_bytes ().data (), endpoint.port ());
 }
 
-bool nano::lmdb::peer_store::exists (nano::transaction const & transaction, nano::endpoint_key const & endpoint) const
+bool nano::store::lmdb::peer::exists (nano::store::transaction const & transaction, nano::endpoint_key const & endpoint) const
 {
 	return rsnano::rsn_lmdb_peer_store_exists (handle, transaction.get_rust_handle (), endpoint.address_bytes ().data (), endpoint.port ());
 }
 
-size_t nano::lmdb::peer_store::count (nano::transaction const & transaction) const
+size_t nano::store::lmdb::peer::count (nano::store::transaction const & transaction) const
 {
 	return rsnano::rsn_lmdb_peer_store_count (handle, transaction.get_rust_handle ());
 }
 
-void nano::lmdb::peer_store::clear (nano::write_transaction const & transaction)
+void nano::store::lmdb::peer::clear (nano::store::write_transaction const & transaction)
 {
 	rsnano::rsn_lmdb_peer_store_clear (handle, transaction.get_rust_handle ());
 }
 
-nano::store_iterator<nano::endpoint_key, nano::no_value> nano::lmdb::peer_store::begin (nano::transaction const & transaction) const
+nano::store::iterator<nano::endpoint_key, nano::no_value> nano::store::lmdb::peer::begin (nano::store::transaction const & transaction) const
 {
 	auto it_handle{ rsnano::rsn_lmdb_peer_store_begin (handle, transaction.get_rust_handle ()) };
 	return to_iterator (it_handle);
 }
 
-nano::store_iterator<nano::endpoint_key, nano::no_value> nano::lmdb::peer_store::end () const
+nano::store::iterator<nano::endpoint_key, nano::no_value> nano::store::lmdb::peer::end () const
 {
-	return nano::store_iterator<nano::endpoint_key, nano::no_value> (nullptr);
+	return nano::store::iterator<nano::endpoint_key, nano::no_value> (nullptr);
 }

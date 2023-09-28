@@ -1,6 +1,6 @@
 #include <nano/store/lmdb/wallet_value.hpp>
 
-nano::wallet_value::wallet_value (nano::db_val<rsnano::MdbVal> const & val_a)
+nano::wallet_value::wallet_value (nano::store::db_val<rsnano::MdbVal> const & val_a)
 {
 	debug_assert (val_a.size () == sizeof (*this));
 	std::copy (reinterpret_cast<uint8_t const *> (val_a.data ()), reinterpret_cast<uint8_t const *> (val_a.data ()) + sizeof (key), key.chars.begin ());

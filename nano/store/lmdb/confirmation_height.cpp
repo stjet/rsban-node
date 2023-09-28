@@ -3,88 +3,88 @@
 
 namespace
 {
-nano::store_iterator<nano::account, nano::confirmation_height_info> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
+nano::store::iterator<nano::account, nano::confirmation_height_info> to_iterator (rsnano::LmdbIteratorHandle * it_handle)
 {
 	if (it_handle == nullptr)
 	{
-		return nano::store_iterator<nano::account, nano::confirmation_height_info> (nullptr);
+		return nano::store::iterator<nano::account, nano::confirmation_height_info> (nullptr);
 	}
 
-	return nano::store_iterator<nano::account, nano::confirmation_height_info> (
-	std::make_unique<nano::mdb_iterator<nano::account, nano::confirmation_height_info>> (it_handle));
+	return nano::store::iterator<nano::account, nano::confirmation_height_info> (
+	std::make_unique<nano::store::lmdb::iterator<nano::account, nano::confirmation_height_info>> (it_handle));
 }
 }
 
-nano::lmdb::confirmation_height_store::confirmation_height_store (rsnano::LmdbConfirmationHeightStoreHandle * handle_a) :
+nano::store::lmdb::confirmation_height::confirmation_height (rsnano::LmdbConfirmationHeightStoreHandle * handle_a) :
 	handle{ handle_a }
 {
 }
 
-nano::lmdb::confirmation_height_store::~confirmation_height_store ()
+nano::store::lmdb::confirmation_height::~confirmation_height ()
 {
 	if (handle != nullptr)
 		rsnano::rsn_lmdb_confirmation_height_store_destroy (handle);
 }
 
-void nano::lmdb::confirmation_height_store::put (nano::write_transaction const & transaction, nano::account const & account, nano::confirmation_height_info const & confirmation_height_info)
+void nano::store::lmdb::confirmation_height::put (nano::store::write_transaction const & transaction, nano::account const & account, nano::confirmation_height_info const & confirmation_height_info)
 {
 	rsnano::rsn_lmdb_confirmation_height_store_put (handle, transaction.get_rust_handle (), account.bytes.data (), &confirmation_height_info.dto);
 }
 
-bool nano::lmdb::confirmation_height_store::get (nano::transaction const & transaction, nano::account const & account, nano::confirmation_height_info & confirmation_height_info)
+bool nano::store::lmdb::confirmation_height::get (nano::store::transaction const & transaction, nano::account const & account, nano::confirmation_height_info & confirmation_height_info)
 {
 	bool success = rsnano::rsn_lmdb_confirmation_height_store_get (handle, transaction.get_rust_handle (), account.bytes.data (), &confirmation_height_info.dto);
 	return !success;
 }
 
-bool nano::lmdb::confirmation_height_store::exists (nano::transaction const & transaction, nano::account const & account) const
+bool nano::store::lmdb::confirmation_height::exists (nano::store::transaction const & transaction, nano::account const & account) const
 {
 	return rsnano::rsn_lmdb_confirmation_height_store_exists (handle, transaction.get_rust_handle (), account.bytes.data ());
 }
 
-void nano::lmdb::confirmation_height_store::del (nano::write_transaction const & transaction, nano::account const & account)
+void nano::store::lmdb::confirmation_height::del (nano::store::write_transaction const & transaction, nano::account const & account)
 {
 	rsnano::rsn_lmdb_confirmation_height_store_del (handle, transaction.get_rust_handle (), account.bytes.data ());
 }
 
-uint64_t nano::lmdb::confirmation_height_store::count (nano::transaction const & transaction_a)
+uint64_t nano::store::lmdb::confirmation_height::count (nano::store::transaction const & transaction_a)
 {
 	return rsnano::rsn_lmdb_confirmation_height_store_count (handle, transaction_a.get_rust_handle ());
 }
 
-void nano::lmdb::confirmation_height_store::clear (nano::write_transaction const & transaction_a, nano::account const & account_a)
+void nano::store::lmdb::confirmation_height::clear (nano::store::write_transaction const & transaction_a, nano::account const & account_a)
 {
 	del (transaction_a, account_a);
 }
 
-void nano::lmdb::confirmation_height_store::clear (nano::write_transaction const & transaction_a)
+void nano::store::lmdb::confirmation_height::clear (nano::store::write_transaction const & transaction_a)
 {
 	rsnano::rsn_lmdb_confirmation_height_store_clear (handle, transaction_a.get_rust_handle ());
 }
 
-nano::store_iterator<nano::account, nano::confirmation_height_info> nano::lmdb::confirmation_height_store::begin (nano::transaction const & transaction, nano::account const & account) const
+nano::store::iterator<nano::account, nano::confirmation_height_info> nano::store::lmdb::confirmation_height::begin (nano::store::transaction const & transaction, nano::account const & account) const
 {
 	auto it_handle{ rsnano::rsn_lmdb_confirmation_height_store_begin_at_account (handle, transaction.get_rust_handle (), account.bytes.data ()) };
 	return to_iterator (it_handle);
 }
 
-nano::store_iterator<nano::account, nano::confirmation_height_info> nano::lmdb::confirmation_height_store::begin (nano::transaction const & transaction) const
+nano::store::iterator<nano::account, nano::confirmation_height_info> nano::store::lmdb::confirmation_height::begin (nano::store::transaction const & transaction) const
 {
 	auto it_handle{ rsnano::rsn_lmdb_confirmation_height_store_begin (handle, transaction.get_rust_handle ()) };
 	return to_iterator (it_handle);
 }
 
-nano::store_iterator<nano::account, nano::confirmation_height_info> nano::lmdb::confirmation_height_store::end () const
+nano::store::iterator<nano::account, nano::confirmation_height_info> nano::store::lmdb::confirmation_height::end () const
 {
-	return nano::store_iterator<nano::account, nano::confirmation_height_info> (nullptr);
+	return nano::store::iterator<nano::account, nano::confirmation_height_info> (nullptr);
 }
 
 namespace
 {
 void for_each_par_wrapper (void * context, rsnano::TransactionHandle * txn_handle, rsnano::LmdbIteratorHandle * begin_handle, rsnano::LmdbIteratorHandle * end_handle)
 {
-	auto action = static_cast<std::function<void (nano::read_transaction const &, nano::store_iterator<nano::account, nano::confirmation_height_info>, nano::store_iterator<nano::account, nano::confirmation_height_info>)> const *> (context);
-	nano::read_mdb_txn txn{ txn_handle };
+	auto action = static_cast<std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::account, nano::confirmation_height_info>, nano::store::iterator<nano::account, nano::confirmation_height_info>)> const *> (context);
+	nano::store::lmdb::read_transaction_impl txn{ txn_handle };
 	auto begin{ to_iterator (begin_handle) };
 	auto end{ to_iterator (end_handle) };
 	(*action) (txn, std::move (begin), std::move (end));
@@ -94,7 +94,7 @@ void for_each_par_delete_context (void * context)
 }
 }
 
-void nano::lmdb::confirmation_height_store::for_each_par (std::function<void (nano::read_transaction const &, nano::store_iterator<nano::account, nano::confirmation_height_info>, nano::store_iterator<nano::account, nano::confirmation_height_info>)> const & action_a) const
+void nano::store::lmdb::confirmation_height::for_each_par (std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::account, nano::confirmation_height_info>, nano::store::iterator<nano::account, nano::confirmation_height_info>)> const & action_a) const
 {
 	auto context = (void *)&action_a;
 	rsnano::rsn_lmdb_confirmation_height_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);

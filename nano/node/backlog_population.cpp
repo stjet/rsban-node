@@ -6,6 +6,7 @@
 #include <nano/node/nodeconfig.hpp>
 #include <nano/node/scheduler/priority.hpp>
 #include <nano/store/component.hpp>
+#include <nano/store/transaction.hpp>
 
 // Helper functions for wrapping the activate callback
 
@@ -13,7 +14,7 @@ namespace
 {
 void call_activate_callback (void * context, rsnano::TransactionHandle * txn_handle, const uint8_t * account_ptr, rsnano::AccountInfoHandle * account_info_handle, const rsnano::ConfirmationHeightInfoDto * conf_height_dto)
 {
-	auto callback = static_cast<std::function<void (nano::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)> *> (context);
+	auto callback = static_cast<std::function<void (nano::store::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)> *> (context);
 
 	nano::account account;
 	std::copy (account_ptr, account_ptr + 32, std::begin (account.bytes));
@@ -21,7 +22,7 @@ void call_activate_callback (void * context, rsnano::TransactionHandle * txn_han
 	nano::account_info account_info{ rsnano::rsn_account_info_clone (account_info_handle) };
 	nano::confirmation_height_info conf_height{ *conf_height_dto };
 
-	(*callback) (nano::transaction_wrapper{ txn_handle }, account, account_info, conf_height);
+	(*callback) (nano::store::transaction_wrapper{ txn_handle }, account, account_info, conf_height);
 }
 
 void delete_activate_callback (void * callback_ptr)
@@ -67,8 +68,8 @@ void nano::backlog_population::notify ()
 	rsnano::rsn_backlog_population_notify (handle);
 }
 
-void nano::backlog_population::set_activate_callback (std::function<void (nano::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)> callback_a)
+void nano::backlog_population::set_activate_callback (std::function<void (nano::store::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)> callback_a)
 {
-	auto callback_ptr = new std::function<void (nano::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)> (callback_a);
+	auto callback_ptr = new std::function<void (nano::store::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)> (callback_a);
 	rsnano::rsn_backlog_population_set_activate_callback (handle, callback_ptr, call_activate_callback, delete_activate_callback);
 }

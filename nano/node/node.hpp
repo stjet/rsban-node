@@ -81,8 +81,8 @@ public:
 	bool is_stopped () const;
 	std::shared_ptr<nano::node> shared ();
 	int store_version ();
-	void receive_confirmed (nano::transaction const & block_transaction_a, nano::block_hash const & hash_a, nano::account const & destination_a);
-	void process_confirmed_data (nano::transaction const &, std::shared_ptr<nano::block> const &, nano::block_hash const &, nano::account &, nano::uint128_t &, bool &, bool &, nano::account &);
+	void receive_confirmed (store::transaction const & block_transaction_a, nano::block_hash const & hash_a, nano::account const & destination_a);
+	void process_confirmed_data (store::transaction const &, std::shared_ptr<nano::block> const &, nano::block_hash const &, nano::account &, nano::uint128_t &, bool &, bool &, nano::account &);
 	void process_confirmed (nano::election_status const &, uint64_t = 0);
 	void process_active (std::shared_ptr<nano::block> const &);
 	std::optional<nano::process_return> process_local (std::shared_ptr<nano::block> const &);
@@ -125,7 +125,7 @@ public:
 	bool online () const;
 	bool init_error () const;
 	std::pair<uint64_t, std::unordered_map<nano::account, nano::uint128_t>> get_bootstrap_weights () const;
-	uint64_t get_confirmation_height (nano::transaction const &, nano::account &);
+	uint64_t get_confirmation_height (nano::store::transaction const &, nano::account &);
 	/*
 	 * Attempts to bootstrap block. This is the best effort, there is no guarantee that the block will be bootstrapped.
 	 */
@@ -217,7 +217,7 @@ public: // Testing convenience functions
 		Transaction is comitted before function return
 	 */
 	[[nodiscard]] nano::process_return process (nano::block & block);
-	[[nodiscard]] nano::process_return process (nano::write_transaction const &, nano::block & block);
+	[[nodiscard]] nano::process_return process (store::write_transaction const &, nano::block & block);
 	nano::block_hash latest (nano::account const &);
 	nano::uint128_t balance (nano::account const &);
 

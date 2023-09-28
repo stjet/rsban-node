@@ -7,7 +7,7 @@
 
 #include <cstddef>
 
-namespace nano
+namespace nano::store
 {
 /**
  * Encapsulates database specific container
@@ -126,7 +126,7 @@ public:
 		return result;
 	}
 
-	explicit operator nano::block_info () const
+	explicit operator block_info () const
 	{
 		nano::block_info result;
 		debug_assert (size () == sizeof (result));
@@ -217,7 +217,7 @@ public:
 	explicit operator block_w_sideband () const
 	{
 		nano::bufferstream stream (reinterpret_cast<uint8_t const *> (data ()), size ());
-		nano::block_w_sideband block_w_sideband;
+		nano::store::block_w_sideband block_w_sideband;
 		block_w_sideband.block = (nano::deserialize_block (stream));
 		auto error = block_w_sideband.sideband.deserialize (stream, block_w_sideband.block->type ());
 		release_assert (!error);
@@ -327,4 +327,4 @@ private:
 		return result;
 	}
 };
-} // namespace nano
+} // namespace nano::store

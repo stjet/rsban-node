@@ -15,6 +15,7 @@ add_library(
   lmdb/db_val.hpp
   lmdb/final_vote.hpp
   lmdb/frontier.hpp
+  lmdb/iterator.hpp
   lmdb/lmdb.hpp
   lmdb/lmdb_env.hpp
   lmdb/iterator.hpp
@@ -33,7 +34,6 @@ add_library(
   tables.hpp
   transaction.hpp
   version.hpp
-  versioning.hpp
   account.cpp
   block.cpp
   component.cpp
@@ -62,7 +62,6 @@ add_library(
   peer.cpp
   pending.cpp
   pruned.cpp
-  transaction.cpp
   version.cpp)
 
 target_link_libraries(

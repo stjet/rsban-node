@@ -28,20 +28,6 @@ boost::asio::ip::udp::endpoint dto_to_udp_endpoint (rsnano::EndpointDto const & 
 std::string convert_dto_to_string (rsnano::StringDto & dto);
 std::unique_ptr<nano::message> message_handle_to_message (rsnano::MessageHandle * handle);
 
-class io_ctx_wrapper
-{
-public:
-	io_ctx_wrapper (boost::asio::io_context & ctx);
-	io_ctx_wrapper (rsnano::IoContextHandle * handle_a);
-	io_ctx_wrapper (io_ctx_wrapper const &) = delete;
-	~io_ctx_wrapper ();
-	rsnano::IoContextHandle * handle () const;
-	boost::asio::io_context * inner () const;
-
-private:
-	rsnano::IoContextHandle * handle_m;
-};
-
 class async_runtime
 {
 public:

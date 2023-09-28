@@ -205,7 +205,6 @@ std::shared_ptr<nano::node_observers> observers_a,
 std::size_t max_queue_size_a) :
 	handle{ rsnano::rsn_socket_create (
 	static_cast<uint8_t> (endpoint_type_a),
-	new std::shared_ptr<nano::transport::tcp_socket_facade> (std::make_shared<nano::transport::tcp_socket_facade> (async_rt_a.io_ctx)),
 	stats_a.handle,
 	workers_a->handle,
 	default_timeout_a.count (),
@@ -425,12 +424,10 @@ nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio:
 	auto node_config_dto{ node_a.config->to_dto () };
 	auto local_dto{ rsnano::endpoint_to_dto (local_a) };
 	handle = rsnano::rsn_server_socket_create (
-	new std::shared_ptr<nano::transport::tcp_socket_facade> (std::make_shared<nano::transport::tcp_socket_facade> (node_a.io_ctx)),
 	node_a.flags.handle,
 	&network_params_dto,
 	node_a.workers->handle,
 	nano::to_logger_handle (node_a.logger),
-	new std::shared_ptr<nano::transport::tcp_socket_facade_factory> (std::make_shared<nano::transport::tcp_socket_facade_factory> (node_a.io_ctx)),
 	new std::weak_ptr<nano::node_observers> (node_a.observers),
 	node_a.stats->handle,
 	&node_config_dto,

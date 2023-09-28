@@ -1,7 +1,7 @@
 use crate::{
     core::BlockUniquerHandle,
     transport::{EndpointDto, NetworkFilterHandle, SocketHandle, TcpMessageManagerHandle},
-    utils::{IoContextHandle, LoggerHandle, LoggerMT},
+    utils::{LoggerHandle, LoggerMT},
     voting::VoteUniquerHandle,
     NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
 };
@@ -45,7 +45,6 @@ pub struct CreateTcpServerParams {
     pub logger: *mut LoggerHandle,
     pub observer: *mut c_void,
     pub publish_filter: *mut NetworkFilterHandle,
-    pub io_ctx: *mut IoContextHandle,
     pub network: *const NetworkParamsDto,
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,

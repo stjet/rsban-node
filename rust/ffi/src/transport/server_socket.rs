@@ -1,10 +1,9 @@
 use rsnano_node::{
     config::NodeConfig,
     transport::{
-        ServerSocket, ServerSocketExtensions, Socket, TcpSocketFacade, TcpSocketFacadeFactory,
-        TokioSocketFacade, TokioSocketFacadeFactory,
+        ServerSocket, ServerSocketExtensions, Socket, TokioSocketFacade, TokioSocketFacadeFactory,
     },
-    utils::{is_tokio_enabled, ErrorCode},
+    utils::ErrorCode,
     NetworkParams,
 };
 use std::{
@@ -13,10 +12,7 @@ use std::{
     sync::Arc,
 };
 
-use super::{
-    socket::FfiTcpSocketFacadeFactory, EndpointDto, FfiTcpSocketFacade, SocketFfiObserver,
-    SocketHandle,
-};
+use super::{EndpointDto, SocketFfiObserver, SocketHandle};
 use crate::{
     utils::{AsyncRuntimeHandle, ContextWrapper, LoggerHandle, LoggerMT, ThreadPoolHandle},
     ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
@@ -26,12 +22,10 @@ pub struct ServerSocketHandle(Arc<ServerSocket>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_server_socket_create(
-    socket_facade_ptr: *mut c_void,
     flags: &NodeFlagsHandle,
     network_params: &NetworkParamsDto,
     workers: &ThreadPoolHandle,
     logger: *mut LoggerHandle,
-    tcp_socket_facade_factory_handle: *mut c_void,
     callback_handler: *mut c_void,
     stats: &StatHandle,
     node_config: &NodeConfigDto,
@@ -40,17 +34,11 @@ pub unsafe extern "C" fn rsn_server_socket_create(
     async_rt: &AsyncRuntimeHandle,
 ) -> *mut ServerSocketHandle {
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
-    let mut socket_facade: Arc<dyn TcpSocketFacade> =
-        Arc::new(FfiTcpSocketFacade::new(socket_facade_ptr));
     let network_params = NetworkParams::try_from(network_params).unwrap();
-    let mut tcp_socket_facade_factory: Arc<dyn TcpSocketFacadeFactory> =
-        Arc::new(FfiTcpSocketFacadeFactory(tcp_socket_facade_factory_handle));
+    let socket_facade = Arc::new(TokioSocketFacade::new(Arc::clone(&async_rt.0)));
+    let tcp_socket_facade_factory =
+        Arc::new(TokioSocketFacadeFactory::new(Arc::clone(&async_rt.0)));
 
-    if is_tokio_enabled() {
-        socket_facade = Arc::new(TokioSocketFacade::new(Arc::clone(&async_rt.0)));
-        tcp_socket_facade_factory =
-            Arc::new(TokioSocketFacadeFactory::new(Arc::clone(&async_rt.0)));
-    }
     let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
     let stats = Arc::clone(&stats.0);
     let node_config = NodeConfig::try_from(node_config).unwrap();

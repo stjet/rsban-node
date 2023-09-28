@@ -25,4 +25,4 @@ pub use syn_cookies::SynCookiesHandle;
 pub use tcp_message_item::TcpMessageItemHandle;
 pub use tcp_message_manager::TcpMessageManagerHandle;
 
-pub use socket::{FfiTcpSocketFacade, SocketFfiObserver};
+pub use socket::SocketFfiObserver;

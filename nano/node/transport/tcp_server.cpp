@@ -279,14 +279,12 @@ bool allow_bootstrap_a)
 	auto config_dto{ config_a.to_dto () };
 	auto observer_handle = new std::weak_ptr<nano::tcp_server_observer> (observer_a);
 	auto network_dto{ config_a.network_params.to_dto () };
-	rsnano::io_ctx_wrapper io_ctx (io_ctx_a);
 	rsnano::CreateTcpServerParams params;
 	params.socket = socket_a->handle;
 	params.config = &config_dto;
 	params.logger = nano::to_logger_handle (logger_a);
 	params.observer = observer_handle;
 	params.publish_filter = publish_filter_a.handle;
-	params.io_ctx = io_ctx.handle ();
 	params.network = &network_dto;
 	params.disable_bootstrap_listener = flags_a.disable_bootstrap_listener ();
 	params.connections_max = config_a.bootstrap_connections_max;

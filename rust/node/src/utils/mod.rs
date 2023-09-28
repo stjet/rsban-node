@@ -2,7 +2,6 @@ mod async_runtime;
 mod blake2b;
 mod blocks;
 mod buffer;
-mod io_context;
 mod json;
 mod thread_pool;
 mod timer;
@@ -28,7 +27,6 @@ pub use hardened_constants::HardenedConstants;
 pub use blake2b::*;
 pub use blocks::*;
 pub use buffer::*;
-pub use io_context::*;
 pub use json::*;
 pub use thread_pool::*;
 pub use toml::*;
@@ -99,18 +97,6 @@ impl ErrorCode {
 }
 
 static TOKIO_ENABLED_VALUE: OnceLock<bool> = OnceLock::new();
-
-pub fn is_tokio_enabled() -> bool {
-    *TOKIO_ENABLED_VALUE.get_or_init(|| {
-        let enable = std::env::var("NANO_ENABLE_TOKIO")
-            .map(|s| s == "1")
-            .unwrap_or(true);
-        if !enable {
-            println!("TOKIO IS DISABLED");
-        }
-        enable
-    })
-}
 
 pub fn ip_address_hash_raw(address: &Ipv6Addr, port: u16) -> u64 {
     let address_bytes = address.octets();

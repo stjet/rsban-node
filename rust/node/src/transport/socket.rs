@@ -1341,17 +1341,13 @@ impl SocketBuilder {
 
 #[cfg(test)]
 mod tests {
-    use tokio::time::sleep;
-
-    use crate::utils::NullIoContext;
-
     use super::*;
+    use tokio::time::sleep;
 
     #[test]
     #[ignore = "only run manually because it is slow"]
     pub fn test_connect_and_send() {
         let runtime = Arc::new(AsyncRuntime::new(
-            Arc::new(NullIoContext {}),
             tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()

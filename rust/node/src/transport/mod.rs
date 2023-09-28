@@ -12,6 +12,7 @@ mod tcp_channels;
 mod tcp_message_manager;
 mod tcp_server;
 mod tcp_server_factory;
+mod tcp_stream;
 mod token_bucket;
 mod write_queue;
 
@@ -104,17 +105,10 @@ impl ChannelEnum {
             sync::Arc,
         };
 
-        use crate::{
-            stats::Stats,
-            utils::{AsyncRuntime, StubIoContext},
-        };
+        use crate::{stats::Stats, utils::AsyncRuntime};
 
         let limiter = Arc::new(OutboundBandwidthLimiter::default());
-        let io_ctx = Arc::new(StubIoContext::new());
-        let async_rt = Arc::new(AsyncRuntime::new(
-            io_ctx,
-            tokio::runtime::Runtime::new().unwrap(),
-        ));
+        let async_rt = Arc::new(AsyncRuntime::new(tokio::runtime::Runtime::new().unwrap()));
         let stats = Arc::new(Stats::default());
 
         Self::Fake(ChannelFake::new(

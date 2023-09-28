@@ -437,107 +437,10 @@ private:
 	rsnano::VoidFnCallbackHandle * callback_m;
 };
 
-void io_ctx_post (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
-{
-	try
-	{
-		auto io_ctx{ static_cast<boost::asio::io_context *> (handle_a) };
-		auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
-		io_ctx->post ([callback_wrapper] () {
-			callback_wrapper->execute ();
-		});
-	}
-	catch (std::exception e)
-	{
-		std::cerr << "Exception while calling io_ctx::post(): " << e.what () << std::endl;
-	}
-}
-
 void logger_destroy (void * handle_a)
 {
 	auto logger = static_cast<std::shared_ptr<nano::logger_mt> *> (handle_a);
 	delete logger;
-}
-
-class async_connect_callback_wrapper
-{
-public:
-	async_connect_callback_wrapper (rsnano::AsyncConnectCallbackHandle * callback_a) :
-		callback_m{ callback_a }
-	{
-	}
-
-	async_connect_callback_wrapper (async_connect_callback_wrapper const &) = delete;
-
-	~async_connect_callback_wrapper ()
-	{
-		rsnano::rsn_async_connect_callback_destroy (callback_m);
-	}
-
-	void execute (const boost::system::error_code & ec)
-	{
-		auto ec_dto{ rsnano::error_code_to_dto (ec) };
-		rsnano::rsn_async_connect_callback_execute (callback_m, &ec_dto);
-	}
-
-private:
-	rsnano::AsyncConnectCallbackHandle * callback_m;
-};
-
-void tcp_socket_async_connect (void * handle_a, rsnano::EndpointDto const * endpoint_a, rsnano::AsyncConnectCallbackHandle * callback_a)
-{
-	auto callback_wrapper = std::make_shared<async_connect_callback_wrapper> (callback_a);
-	auto endpoint{ rsnano::dto_to_endpoint (*endpoint_a) };
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	(*socket)->async_connect (endpoint, [callback = std::move (callback_wrapper)] (const boost::system::error_code & ec) {
-		callback->execute (ec);
-	});
-}
-
-class async_read_callback_wrapper
-{
-public:
-	async_read_callback_wrapper (rsnano::AsyncReadCallbackHandle * callback_a) :
-		callback_m{ callback_a }
-	{
-	}
-
-	async_read_callback_wrapper (async_read_callback_wrapper const &) = delete;
-
-	~async_read_callback_wrapper ()
-	{
-		rsnano::rsn_async_read_callback_destroy (callback_m);
-	}
-
-	void execute (const boost::system::error_code & ec, std::size_t size)
-	{
-		auto ec_dto{ rsnano::error_code_to_dto (ec) };
-		rsnano::rsn_async_read_callback_execute (callback_m, &ec_dto, size);
-	}
-
-private:
-	rsnano::AsyncReadCallbackHandle * callback_m;
-};
-
-void tcp_socket_async_read (void * handle_a, void * buffer_a, std::size_t size_a, rsnano::AsyncReadCallbackHandle * callback_a)
-{
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	auto buffer{ static_cast<std::shared_ptr<std::vector<uint8_t>> *> (buffer_a) };
-	auto buffer_copy = *buffer;
-	auto callback_wrapper{ std::make_shared<async_read_callback_wrapper> (callback_a) };
-	(*socket)->async_read (buffer_copy, size_a, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
-		callback_wrapper->execute (ec, size);
-	});
-}
-
-void tcp_socket_async_read2 (void * handle_a, rsnano::BufferHandle * buffer_a, std::size_t size_a, rsnano::AsyncReadCallbackHandle * callback_a)
-{
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	auto callback_wrapper{ std::make_shared<async_read_callback_wrapper> (callback_a) };
-	auto buffer{ std::make_shared<nano::transport::buffer_wrapper> (buffer_a) };
-	(*socket)->async_read (buffer, size_a, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
-		callback_wrapper->execute (ec, size);
-	});
 }
 
 class async_write_callback_wrapper
@@ -565,67 +468,6 @@ private:
 	rsnano::AsyncWriteCallbackHandle * callback_m;
 };
 
-void tcp_socket_async_write (void * handle_a, const uint8_t * buffer_a, std::size_t len_a, rsnano::AsyncWriteCallbackHandle * callback_a)
-{
-	try
-	{
-		auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-		nano::shared_const_buffer buffer{ buffer_a, len_a };
-		auto callback_wrapper{ std::make_shared<async_write_callback_wrapper> (callback_a) };
-		(*socket)->async_write (buffer, [callback_wrapper] (const boost::system::error_code & ec, std::size_t size) {
-			callback_wrapper->execute (ec, size);
-		});
-	}
-	catch (std::exception e)
-	{
-		std::cerr << "Exception while writing to socket: " << e.what () << std::endl;
-	}
-}
-
-class async_accept_callback_wrapper
-{
-public:
-	async_accept_callback_wrapper (rsnano::AsyncAcceptCallbackHandle * callback_a) :
-		callback_m{ callback_a }
-	{
-	}
-
-	async_accept_callback_wrapper (async_write_callback_wrapper const &) = delete;
-
-	~async_accept_callback_wrapper ()
-	{
-		rsnano::rsn_async_accept_callback_destroy (callback_m);
-	}
-
-	void execute (const boost::system::error_code & ec, const boost::asio::ip::tcp::endpoint & remote_endpoint)
-	{
-		auto ec_dto{ rsnano::error_code_to_dto (ec) };
-		auto endpoint_dto{ rsnano::endpoint_to_dto (remote_endpoint) };
-		rsnano::rsn_async_accept_callback_execute (callback_m, &ec_dto, &endpoint_dto);
-	}
-
-private:
-	rsnano::AsyncAcceptCallbackHandle * callback_m;
-};
-
-void tcp_socket_async_accept (void * handle_a, void * client_socket_handle, rsnano::AsyncAcceptCallbackHandle * callback_handle)
-{
-	try
-	{
-		auto server_socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-		auto client_socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (client_socket_handle) };
-		auto remote_endpoint = std::make_shared<boost::asio::ip::tcp::endpoint> ();
-		auto callback_wrapper{ std::make_shared<async_accept_callback_wrapper> (callback_handle) };
-		(*server_socket)->async_accept ((*client_socket)->tcp_socket, *remote_endpoint, [callback_wrapper, remote_endpoint] (const boost::system::error_code & ec) {
-			callback_wrapper->execute (ec, *remote_endpoint);
-		});
-	}
-	catch (std::exception e)
-	{
-		std::cerr << "Exception while accepting connection: " << e.what () << std::endl;
-	}
-}
-
 void tcp_socket_open (void * handle_a, const rsnano::EndpointDto * local_a, rsnano::ErrorCodeDto * ec_dto)
 {
 	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
@@ -633,54 +475,6 @@ void tcp_socket_open (void * handle_a, const rsnano::EndpointDto * local_a, rsna
 	auto endpoint{ rsnano::dto_to_endpoint (*local_a) };
 	(*socket)->open (endpoint, ec);
 	*ec_dto = rsnano::error_code_to_dto (ec);
-}
-
-uint16_t tcp_socket_listening_port (void * handle_a)
-{
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	return (*socket)->listening_port ();
-}
-
-void tcp_socket_remote_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a, rsnano::ErrorCodeDto * ec_a)
-{
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	boost::system::error_code ec;
-	auto endpoint{ (*socket)->remote_endpoint (ec) };
-	*endpoint_a = rsnano::endpoint_to_dto (endpoint);
-	*ec_a = rsnano::error_code_to_dto (ec);
-}
-
-void tcp_socket_dispatch (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
-{
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
-	(*socket)->dispatch ([callback_wrapper] () {
-		callback_wrapper->execute ();
-	});
-}
-
-void tcp_socket_post (void * handle_a, rsnano::VoidFnCallbackHandle * callback_a)
-{
-	try
-	{
-		auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-		auto callback_wrapper{ std::make_shared<void_fn_callback_wrapper> (callback_a) };
-		(*socket)->post ([callback_wrapper] () {
-			callback_wrapper->execute ();
-		});
-	}
-	catch (std::exception e)
-	{
-		std::cerr << "Exception while calling tcp_socket_post: " << e.what () << std::endl;
-	}
-}
-
-void tcp_socket_close (void * handle_a, rsnano::ErrorCodeDto * ec_a)
-{
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	boost::system::error_code ec;
-	(*socket)->close (ec);
-	*ec_a = rsnano::error_code_to_dto (ec);
 }
 
 void tcp_socket_local_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a)
@@ -736,18 +530,6 @@ bool tcp_socket_is_acceptor_open (void * handle_a)
 void tcp_socket_destroy (void * handle_a)
 {
 	auto ptr{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	delete ptr;
-}
-
-void * tcp_socket_facade_factory_create_socket (void * handle_a)
-{
-	auto ptr{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade_factory> *> (handle_a) };
-	return new std::shared_ptr<nano::transport::tcp_socket_facade> ((*ptr)->create_socket ());
-}
-
-void tcp_socket_facade_factory_destroy (void * handle_a)
-{
-	auto ptr{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade_factory> *> (handle_a) };
 	delete ptr;
 }
 
@@ -1009,30 +791,9 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_initiator_in_progress (bootstrap_initiator_in_progress);
 	rsnano::rsn_callback_logger_destroy (logger_destroy);
 
-	rsnano::rsn_callback_io_ctx_post (io_ctx_post);
-
-	rsnano::rsn_callback_tcp_socket_async_connect (tcp_socket_async_connect);
-	rsnano::rsn_callback_tcp_socket_async_read (tcp_socket_async_read);
-	rsnano::rsn_callback_tcp_socket_async_read2 (tcp_socket_async_read2);
-	rsnano::rsn_callback_tcp_socket_async_write (tcp_socket_async_write);
-	rsnano::rsn_callback_tcp_socket_remote_endpoint (tcp_socket_remote_endpoint);
-	rsnano::rsn_callback_tcp_socket_dispatch (tcp_socket_dispatch);
-	rsnano::rsn_callback_tcp_socket_post (tcp_socket_post);
-	rsnano::rsn_callback_tcp_socket_close (tcp_socket_close);
-	rsnano::rsn_callback_tcp_socket_destroy (tcp_socket_destroy);
-	rsnano::rsn_callback_tcp_socket_local_endpoint (tcp_socket_local_endpoint);
-	rsnano::rsn_callback_tcp_socket_is_open (tcp_socket_is_open);
 	rsnano::rsn_callback_tcp_socket_connected (tcp_socket_connected);
 	rsnano::rsn_callback_tcp_socket_accepted (tcp_socket_accepted);
 	rsnano::rsn_callback_delete_tcp_socket_callback (tcp_socket_delete_callback);
-	rsnano::rsn_callback_socket_close_acceptor_callback (tcp_socket_close_acceptor);
-	rsnano::rsn_callback_tcp_socket_is_acceptor_open (tcp_socket_is_acceptor_open);
-	rsnano::rsn_callback_tcp_socket_async_accept (tcp_socket_async_accept);
-	rsnano::rsn_callback_tcp_socket_open (tcp_socket_open);
-	rsnano::rsn_callback_tcp_socket_listening_port (tcp_socket_listening_port);
-
-	rsnano::rsn_callback_create_tcp_socket (tcp_socket_facade_factory_create_socket);
-	rsnano::rsn_callback_destroy_tcp_socket_facade_factory (tcp_socket_facade_factory_destroy);
 
 	rsnano::rsn_callback_channel_tcp_observer_data_sent (channel_tcp_data_sent);
 	rsnano::rsn_callback_channel_tcp_observer_host_unreachable (channel_tcp_host_unreachable);

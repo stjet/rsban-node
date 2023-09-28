@@ -1,23 +1,18 @@
 use std::{ffi::c_void, sync::Arc};
 
-use rsnano_node::utils::{is_tokio_enabled, AsyncRuntime};
+use rsnano_node::utils::AsyncRuntime;
 
+use super::ContextWrapper;
 use crate::VoidPointerCallback;
-
-use super::{ContextWrapper, FfiIoContext};
 
 pub struct AsyncRuntimeHandle(pub Arc<AsyncRuntime>);
 
 #[no_mangle]
-pub extern "C" fn rsn_async_runtime_create(
-    io_ctx: *mut c_void,
-    multi_threaded: bool,
-) -> *mut AsyncRuntimeHandle {
+pub extern "C" fn rsn_async_runtime_create(multi_threaded: bool) -> *mut AsyncRuntimeHandle {
     let multi_threaded = true;
     //todo! use single threaded runtime for tests
     if multi_threaded {
         Box::into_raw(Box::new(AsyncRuntimeHandle(Arc::new(AsyncRuntime::new(
-            Arc::new(FfiIoContext::new(io_ctx)),
             tokio::runtime::Builder::new_multi_thread()
                 .thread_name("tokio runtime")
                 .enable_all()
@@ -26,7 +21,6 @@ pub extern "C" fn rsn_async_runtime_create(
         )))))
     } else {
         Box::into_raw(Box::new(AsyncRuntimeHandle(Arc::new(AsyncRuntime::new(
-            Arc::new(FfiIoContext::new(io_ctx)),
             tokio::runtime::Builder::new_current_thread()
                 .thread_name("tokio runtime")
                 .enable_all()
@@ -53,9 +47,4 @@ pub unsafe extern "C" fn rsn_async_runtime_post(
         callback(context_wrapper.get_context());
     });
     handle.0.tokio.spawn_blocking(callback_wrapper);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_async_runtime_tokio_enabled() -> bool {
-    is_tokio_enabled()
 }

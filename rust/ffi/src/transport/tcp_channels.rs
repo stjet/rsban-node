@@ -58,7 +58,6 @@ pub struct TcpChannelsOptionsDto {
     pub syn_cookies: *mut SynCookiesHandle,
     pub workers: *mut ThreadPoolHandle,
     pub socket_observer: *mut c_void,
-    pub tcp_socket_factory: *mut c_void,
 }
 
 impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {

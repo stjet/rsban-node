@@ -31,12 +31,6 @@ namespace filesystem
 }
 }
 
-namespace nano
-{
-class transaction;
-
-}
-
 namespace nano::store::lmdb
 {
 /**

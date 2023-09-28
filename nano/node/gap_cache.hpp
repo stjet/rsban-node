@@ -21,7 +21,6 @@ namespace nano
 {
 class node;
 class ledger;
-class transaction;
 
 /** For each gap in account chains, track arrival time and voters */
 class gap_information final

@@ -99,11 +99,11 @@ include_directories(
 
 target_link_libraries(
   nano_lib
-  crypto_lib
-  secure
   ipc_flatbuffers_lib
+  crypto_lib
   rsnano_ffi
   ${CMAKE_DL_LIBS}
+  Boost::iostreams
   Boost::asio
   Boost::circular_buffer
   Boost::dll

@@ -27,7 +27,7 @@ void call_activate_callback (void * context, rsnano::TransactionHandle * txn_han
 
 void delete_activate_callback (void * callback_ptr)
 {
-	auto callback = static_cast<std::function<void (nano::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)> *> (callback_ptr);
+	auto callback = static_cast<std::function<void (nano::store::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)> *> (callback_ptr);
 
 	delete callback;
 }

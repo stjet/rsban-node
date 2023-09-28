@@ -194,10 +194,10 @@ add_library(
 
 target_link_libraries(
   node
-  nano_store
-  rpc
-  secure
   nano_lib
+  nano_store
+  secure
+  rpc
   libminiupnpc-static
   Boost::beast
   Boost::filesystem

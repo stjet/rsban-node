@@ -708,24 +708,6 @@ void bootstrap_client_observer_weak_destroy (void * handle_a)
 	delete observer;
 }
 
-void txn_callbacks_destroy (void * handle_a)
-{
-	auto callbacks = static_cast<nano::store::lmdb::txn_callbacks *> (handle_a);
-	delete callbacks;
-}
-
-void txn_callbacks_start (void * handle_a, uint64_t txn_id_a, bool is_write_a)
-{
-	auto callbacks = static_cast<nano::store::lmdb::txn_callbacks *> (handle_a);
-	callbacks->txn_start (txn_id_a, is_write_a);
-}
-
-void txn_callbacks_end (void * handle_a, uint64_t txn_id_a)
-{
-	auto callbacks = static_cast<nano::store::lmdb::txn_callbacks *> (handle_a);
-	callbacks->txn_end (txn_id_a);
-}
-
 void election_scheduler_activate (void * scheduler_a, const uint8_t * account_a, rsnano::TransactionHandle * txn_a)
 {
 	auto election_scheduler = static_cast<nano::scheduler::priority *> (scheduler_a);
@@ -822,10 +804,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_client_observer_to_weak (bootstrap_client_observer_to_weak);
 	rsnano::rsn_callback_bootstrap_client_weak_to_observer (bootstrap_client_weak_to_observer);
 	rsnano::rsn_callback_bootstrap_client_observer_weak_destroy (bootstrap_client_observer_weak_destroy);
-
-	rsnano::rsn_callback_txn_callbacks_destroy (txn_callbacks_destroy);
-	rsnano::rsn_callback_txn_callbacks_start (txn_callbacks_start);
-	rsnano::rsn_callback_txn_callbacks_end (txn_callbacks_end);
 
 	rsnano::rsn_callback_memory_intensive_instrumentation (nano::memory_intensive_instrumentation);
 	rsnano::rsn_callback_is_sanitizer_build (nano::is_sanitizer_build);

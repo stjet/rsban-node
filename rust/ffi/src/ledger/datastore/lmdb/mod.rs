@@ -76,27 +76,6 @@ pub enum TransactionType {
     Write(LmdbWriteTransaction),
 }
 
-static mut TXN_CALLBACKS_DESTROY: Option<VoidPointerCallback> = None;
-pub type TxnStartCallback = unsafe extern "C" fn(*mut c_void, u64, bool);
-pub type TxnEndCallback = unsafe extern "C" fn(*mut c_void, u64);
-static mut TXN_START: Option<TxnStartCallback> = None;
-static mut TXN_END: Option<TxnEndCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_txn_callbacks_destroy(f: VoidPointerCallback) {
-    TXN_CALLBACKS_DESTROY = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_txn_callbacks_start(f: TxnStartCallback) {
-    TXN_START = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_txn_callbacks_end(f: TxnEndCallback) {
-    TXN_END = Some(f);
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_read_txn_destroy(handle: *mut TransactionHandle) {
     drop(Box::from_raw(handle))

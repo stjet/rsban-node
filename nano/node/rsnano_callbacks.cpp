@@ -413,30 +413,6 @@ bool bootstrap_initiator_in_progress (void * handle_a)
 	return bootstrap_initiator->in_progress ();
 }
 
-class void_fn_callback_wrapper
-{
-public:
-	void_fn_callback_wrapper (rsnano::VoidFnCallbackHandle * callback_a) :
-		callback_m{ callback_a }
-	{
-	}
-
-	void_fn_callback_wrapper (void_fn_callback_wrapper const &) = delete;
-
-	~void_fn_callback_wrapper ()
-	{
-		rsnano::rsn_void_fn_callback_destroy (callback_m);
-	}
-
-	void execute ()
-	{
-		rsnano::rsn_void_fn_callback_call (callback_m);
-	}
-
-private:
-	rsnano::VoidFnCallbackHandle * callback_m;
-};
-
 void logger_destroy (void * handle_a)
 {
 	auto logger = static_cast<std::shared_ptr<nano::logger_mt> *> (handle_a);
@@ -468,28 +444,6 @@ private:
 	rsnano::AsyncWriteCallbackHandle * callback_m;
 };
 
-void tcp_socket_open (void * handle_a, const rsnano::EndpointDto * local_a, rsnano::ErrorCodeDto * ec_dto)
-{
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	boost::system::error_code ec;
-	auto endpoint{ rsnano::dto_to_endpoint (*local_a) };
-	(*socket)->open (endpoint, ec);
-	*ec_dto = rsnano::error_code_to_dto (ec);
-}
-
-void tcp_socket_local_endpoint (void * handle_a, rsnano::EndpointDto * endpoint_a)
-{
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	auto ep{ (*socket)->tcp_socket.local_endpoint () };
-	(*endpoint_a) = rsnano::endpoint_to_dto (ep);
-}
-
-bool tcp_socket_is_open (void * handle_a)
-{
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	return (*socket)->tcp_socket.is_open ();
-}
-
 void tcp_socket_accepted (void * handle_a, rsnano::SocketHandle * socket_a)
 {
 	auto callback_weak{ static_cast<std::weak_ptr<nano::node_observers> *> (handle_a) };
@@ -515,22 +469,10 @@ void tcp_socket_delete_callback (void * handle_a)
 	delete callback;
 };
 
-void tcp_socket_close_acceptor (void * handle_a)
-{
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	(*socket)->close_acceptor ();
-}
-
 bool tcp_socket_is_acceptor_open (void * handle_a)
 {
 	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
 	return (*socket)->is_acceptor_open ();
-}
-
-void tcp_socket_destroy (void * handle_a)
-{
-	auto ptr{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	delete ptr;
 }
 
 void buffer_destroy (void * handle_a)

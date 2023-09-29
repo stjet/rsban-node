@@ -318,11 +318,7 @@ mod dependents_confirmed {
         let ctx = LedgerContext::empty();
         let txn = ctx.ledger.read_txn();
 
-        assert_eq!(
-            ctx.ledger
-                .dependents_confirmed(&txn, &DEV_GENESIS.read().unwrap()),
-            true
-        );
+        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &DEV_GENESIS), true);
     }
 
     #[test]
@@ -956,11 +952,7 @@ fn unconfirmed_frontiers() {
 fn is_send_genesis() {
     let ctx = LedgerContext::empty();
     let txn = ctx.ledger.read_txn();
-    assert_eq!(
-        ctx.ledger
-            .is_send(&txn, DEV_GENESIS.read().unwrap().deref().deref()),
-        false
-    );
+    assert_eq!(ctx.ledger.is_send(&txn, DEV_GENESIS.as_block()), false);
 }
 
 #[test]

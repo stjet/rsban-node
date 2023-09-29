@@ -166,7 +166,7 @@ mod tests {
             hashes.push(BlockHash::from(i as u64))
         }
         let vote = Vote::new(keys.public_key().into(), &keys.private_key(), 0, 0, hashes);
-        let vote = Arc::new(RwLock::new(vote));
+        let vote = Arc::new(vote);
         let confirm1 = ConfirmAck::new(constants, vote);
 
         let mut stream = MemoryStream::new();

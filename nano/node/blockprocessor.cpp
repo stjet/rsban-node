@@ -1,3 +1,4 @@
+#include "nano/lib/blocks.hpp"
 #include "nano/lib/rsnano.hpp"
 
 #include <nano/lib/threading.hpp>
@@ -13,8 +14,9 @@ namespace nano
 class block_processor_lock
 {
 public:
-	block_processor_lock (rsnano::BlockProcessorHandle * handle_a) :
-		handle{ rsnano::rsn_block_processor_lock (handle_a) }
+	block_processor_lock (nano::block_processor & block_processor_a) :
+		handle{ rsnano::rsn_block_processor_lock (block_processor_a.handle) },
+		block_processor{ block_processor_a }
 	{
 	}
 	block_processor_lock (block_processor_lock const &) = delete;
@@ -30,7 +32,25 @@ public:
 	{
 		rsnano::rsn_block_processor_lock_unlock (handle);
 	}
+
+	void push_back_block (std::shared_ptr<nano::block> & block)
+	{
+		rsnano::rsn_block_processor_push_back_block (handle, block->get_handle ());
+	}
+
+	std::shared_ptr<nano::block> pop_front_block ()
+	{
+		auto block_handle = rsnano::rsn_block_processor_pop_front_block (handle);
+		return nano::block_handle_to_block (block_handle);
+	}
+
+	std::size_t blocks_size () const
+	{
+		return rsnano::rsn_block_processor_blocks_size (handle);
+	}
+
 	rsnano::BlockProcessorLockHandle * handle;
+	nano::block_processor & block_processor;
 };
 }
 
@@ -83,7 +103,7 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 		{
 			{
 				// Prevent a race with condition.wait in block_processor::flush
-				nano::block_processor_lock guard{ this->handle };
+				nano::block_processor_lock guard{ *this };
 			}
 			rsnano::rsn_block_processor_notify_all (this->handle);
 		}
@@ -111,7 +131,7 @@ void nano::block_processor::start ()
 void nano::block_processor::stop ()
 {
 	{
-		nano::block_processor_lock lock{ handle };
+		nano::block_processor_lock lock{ *this };
 		stopped = true;
 	}
 	rsnano::rsn_block_processor_notify_all (handle);
@@ -124,8 +144,8 @@ void nano::block_processor::flush ()
 {
 	checker.flush ();
 	flushing = true;
-	nano::block_processor_lock lock{ handle };
-	while (!stopped && (have_blocks () || active || state_block_signature_verification.is_active ()))
+	nano::block_processor_lock lock{ *this };
+	while (!stopped && (have_blocks (lock) || active || state_block_signature_verification.is_active ()))
 	{
 		rsnano::rsn_block_processor_wait (handle, lock.handle);
 	}
@@ -134,8 +154,8 @@ void nano::block_processor::flush ()
 
 std::size_t nano::block_processor::size ()
 {
-	nano::block_processor_lock lock{ handle };
-	return (blocks.size () + state_block_signature_verification.size () + forced.size ());
+	nano::block_processor_lock lock{ *this };
+	return (lock.blocks_size () + state_block_signature_verification.size () + forced.size ());
 }
 
 bool nano::block_processor::full ()
@@ -223,7 +243,7 @@ void nano::block_processor::rollback_competitor (store::write_transaction const 
 void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 {
 	{
-		nano::block_processor_lock lock{ handle };
+		nano::block_processor_lock lock{ *this };
 		forced.push_back (block_a);
 	}
 	rsnano::rsn_block_processor_notify_all (handle);
@@ -231,10 +251,10 @@ void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 
 void nano::block_processor::process_blocks ()
 {
-	nano::block_processor_lock lock{ handle };
+	nano::block_processor_lock lock{ *this };
 	while (!stopped)
 	{
-		if (have_blocks_ready ())
+		if (have_blocks_ready (lock))
 		{
 			active = true;
 			lock.unlock ();
@@ -263,20 +283,20 @@ bool nano::block_processor::should_log ()
 	return result;
 }
 
-bool nano::block_processor::have_blocks_ready ()
+bool nano::block_processor::have_blocks_ready (nano::block_processor_lock & lock_a)
 {
-	return !blocks.empty () || !forced.empty ();
+	return lock_a.blocks_size () > 0 || !forced.empty ();
 }
 
-bool nano::block_processor::have_blocks ()
+bool nano::block_processor::have_blocks (nano::block_processor_lock & lock_a)
 {
-	return have_blocks_ready () || state_block_signature_verification.size () != 0;
+	return have_blocks_ready (lock_a) || state_block_signature_verification.size () != 0;
 }
 
 void nano::block_processor::process_verified_state_blocks (std::deque<nano::state_block_signature_verification::value_type> & items, std::vector<int> const & verifications, std::vector<nano::block_hash> const & hashes, std::vector<nano::signature> const & blocks_signatures)
 {
 	{
-		nano::block_processor_lock lk{ handle };
+		nano::block_processor_lock lk{ *this };
 		for (auto i (0); i < verifications.size (); ++i)
 		{
 			debug_assert (verifications[i] == 1 || verifications[i] == 0);
@@ -284,21 +304,13 @@ void nano::block_processor::process_verified_state_blocks (std::deque<nano::stat
 			auto & [block] = item;
 			if (!block->link ().is_zero () && ledger.is_epoch_link (block->link ()))
 			{
-				// Epoch blocks
-				if (verifications[i] == 1)
-				{
-					blocks.emplace_back (block);
-				}
-				else
-				{
-					// Possible regular state blocks with epoch link (send subtype)
-					blocks.emplace_back (block);
-				}
+				// Epoch block or possible regular state blocks with epoch link (send subtype)
+				lk.push_back_block (block);
 			}
 			else if (verifications[i] == 1)
 			{
 				// Non epoch blocks
-				blocks.emplace_back (block);
+				lk.push_back_block (block);
 			}
 			items.pop_front ();
 		}
@@ -315,8 +327,8 @@ void nano::block_processor::add_impl (std::shared_ptr<nano::block> block)
 	else
 	{
 		{
-			block_processor_lock lock{ handle };
-			blocks.emplace_back (block);
+			block_processor_lock lock{ *this };
+			lock.push_back_block (block);
 		}
 		rsnano::rsn_block_processor_notify_all (handle);
 	}
@@ -335,19 +347,18 @@ auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) 
 	auto deadline_reached = [&timer_l, deadline = config.block_processor_batch_max_time] { return timer_l.after_deadline (deadline); };
 	auto processor_batch_reached = [&number_of_blocks_processed, max = flags.block_processor_batch_size ()] { return number_of_blocks_processed >= max; };
 	auto store_batch_reached = [&number_of_blocks_processed, max = store.max_block_write_batch_num ()] { return number_of_blocks_processed >= max; };
-	while (have_blocks_ready () && (!deadline_reached () || !processor_batch_reached ()) && !store_batch_reached ())
+	while (have_blocks_ready (lock_a) && (!deadline_reached () || !processor_batch_reached ()) && !store_batch_reached ())
 	{
-		if ((blocks.size () + state_block_signature_verification.size () + forced.size () > 64) && should_log ())
+		if ((lock_a.blocks_size () + state_block_signature_verification.size () + forced.size () > 64) && should_log ())
 		{
-			logger.always_log (boost::str (boost::format ("%1% blocks (+ %2% state blocks) (+ %3% forced) in processing queue") % blocks.size () % state_block_signature_verification.size () % forced.size ()));
+			logger.always_log (boost::str (boost::format ("%1% blocks (+ %2% state blocks) (+ %3% forced) in processing queue") % lock_a.blocks_size () % state_block_signature_verification.size () % forced.size ()));
 		}
 		std::shared_ptr<nano::block> block;
 		nano::block_hash hash (0);
 		bool force (false);
 		if (forced.empty ())
 		{
-			block = blocks.front ();
-			blocks.pop_front ();
+			block = lock_a.pop_front_block ();
 			hash = block->hash ();
 		}
 		else
@@ -535,14 +546,14 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (bl
 	std::size_t forced_count;
 
 	{
-		nano::block_processor_lock lock{ block_processor.handle };
-		blocks_count = block_processor.blocks.size ();
+		nano::block_processor_lock lock{ block_processor };
+		blocks_count = lock.blocks_size ();
 		forced_count = block_processor.forced.size ();
 	}
 
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (collect_container_info (block_processor.state_block_signature_verification, "state_block_signature_verification"));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "blocks", blocks_count, sizeof (decltype (block_processor.blocks)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "blocks", blocks_count, sizeof (std::shared_ptr<nano::block>) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "forced", forced_count, sizeof (decltype (block_processor.forced)::value_type) }));
 	return composite;
 }

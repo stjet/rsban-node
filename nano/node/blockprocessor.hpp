@@ -65,8 +65,8 @@ public:
 	std::optional<nano::process_return> add_blocking (std::shared_ptr<nano::block> const & block);
 	void force (std::shared_ptr<nano::block> const &);
 	bool should_log ();
-	bool have_blocks_ready ();
-	bool have_blocks ();
+	bool have_blocks_ready (nano::block_processor_lock & lock_a);
+	bool have_blocks (nano::block_processor_lock & lock_a);
 	void process_blocks ();
 
 	std::atomic<bool> flushing{ false };
@@ -93,7 +93,6 @@ private:
 	bool stopped{ false };
 	bool active{ false };
 	std::chrono::steady_clock::time_point next_log;
-	std::deque<std::shared_ptr<nano::block>> blocks;
 	std::deque<std::shared_ptr<nano::block>> forced;
 
 	nano::logger_mt & logger; // already ported
@@ -118,6 +117,7 @@ private:
 	std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> blocks_rolled_back;
 
 	friend std::unique_ptr<container_info_component> collect_container_info (block_processor & block_processor, std::string const & name);
+	friend class block_processor_lock;
 };
 std::unique_ptr<nano::container_info_component> collect_container_info (block_processor & block_processor, std::string const & name);
 }

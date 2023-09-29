@@ -1,7 +1,7 @@
 use crate::core::BlockHandle;
 use rsnano_node::block_processing::{
-    BlockProcessor, BLOCKPROCESSOR_ADD_CALLBACK, BLOCKPROCESSOR_HALF_FULL_CALLBACK,
-    BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
+    BlockProcessor, BlockProcessorImpl, BLOCKPROCESSOR_ADD_CALLBACK,
+    BLOCKPROCESSOR_HALF_FULL_CALLBACK, BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
 };
 use std::{
     ffi::c_void,
@@ -30,13 +30,17 @@ pub extern "C" fn rsn_block_processor_destroy(handle: *mut BlockProcessorHandle)
     drop(unsafe { Box::from_raw(handle) });
 }
 
-pub struct BlockProcessorLockHandle(Option<MutexGuard<'static, ()>>);
+pub struct BlockProcessorLockHandle(Option<MutexGuard<'static, BlockProcessorImpl>>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_processor_lock(
-    handle: *mut BlockProcessorHandle,
+    handle: &BlockProcessorHandle,
 ) -> *mut BlockProcessorLockHandle {
-    let guard = (*handle).mutex.lock().unwrap();
+    let guard = handle.mutex.lock().unwrap();
+    let guard = std::mem::transmute::<
+        MutexGuard<BlockProcessorImpl>,
+        MutexGuard<'static, BlockProcessorImpl>,
+    >(guard);
     Box::into_raw(Box::new(BlockProcessorLockHandle(Some(guard))))
 }
 
@@ -47,25 +51,30 @@ pub unsafe extern "C" fn rsn_block_processor_lock_destroy(handle: *mut BlockProc
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_processor_lock_lock(
-    handle: *mut BlockProcessorLockHandle,
-    processor: *mut BlockProcessorHandle,
+    handle: &mut BlockProcessorLockHandle,
+    processor: &BlockProcessorHandle,
 ) {
-    (*handle).0 = Some((*processor).0.mutex.lock().unwrap());
+    let guard = processor.0.mutex.lock().unwrap();
+    let guard = std::mem::transmute::<
+        MutexGuard<BlockProcessorImpl>,
+        MutexGuard<'static, BlockProcessorImpl>,
+    >(guard);
+    handle.0 = Some(guard);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_lock_unlock(handle: *mut BlockProcessorLockHandle) {
-    (*handle).0 = None;
+pub unsafe extern "C" fn rsn_block_processor_lock_unlock(handle: &mut BlockProcessorLockHandle) {
+    handle.0 = None;
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_notify_all(handle: *mut BlockProcessorHandle) {
-    (*handle).0.condition.notify_all();
+pub unsafe extern "C" fn rsn_block_processor_notify_all(handle: &BlockProcessorHandle) {
+    handle.condition.notify_all();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_notify_one(handle: *mut BlockProcessorHandle) {
-    (*handle).0.condition.notify_one();
+pub extern "C" fn rsn_block_processor_notify_one(handle: &BlockProcessorHandle) {
+    handle.condition.notify_one();
 }
 
 #[no_mangle]
@@ -108,4 +117,33 @@ pub unsafe extern "C" fn rsn_callback_block_processor_process_active(f: BlockPro
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_block_processor_half_full(f: BlockProcessorHalfFullCallback) {
     BLOCKPROCESSOR_HALF_FULL_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_push_back_block(
+    handle: &mut BlockProcessorLockHandle,
+    block: &BlockHandle,
+) {
+    handle
+        .0
+        .as_mut()
+        .unwrap()
+        .blocks
+        .push_back(Arc::clone(&block))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_pop_front_block(
+    handle: &mut BlockProcessorLockHandle,
+) -> *mut BlockHandle {
+    let block = handle.0.as_mut().unwrap().blocks.pop_front();
+    match block {
+        Some(b) => Box::into_raw(Box::new(BlockHandle(b))),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_blocks_size(handle: &mut BlockProcessorLockHandle) -> usize {
+    handle.0.as_mut().unwrap().blocks.len()
 }

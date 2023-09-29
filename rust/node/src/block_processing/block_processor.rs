@@ -1,5 +1,6 @@
 use rsnano_core::BlockEnum;
 use std::{
+    collections::VecDeque,
     ffi::c_void,
     sync::{Arc, Condvar, Mutex},
 };
@@ -13,7 +14,7 @@ pub static mut BLOCKPROCESSOR_HALF_FULL_CALLBACK: Option<
 
 pub struct BlockProcessor {
     handle: *mut c_void,
-    pub mutex: Mutex<()>,
+    pub mutex: Mutex<BlockProcessorImpl>,
     pub condition: Condvar,
 }
 
@@ -21,7 +22,9 @@ impl BlockProcessor {
     pub fn new(handle: *mut c_void) -> Self {
         Self {
             handle,
-            mutex: Mutex::new(()),
+            mutex: Mutex::new(BlockProcessorImpl {
+                blocks: VecDeque::new(),
+            }),
             condition: Condvar::new(),
         }
     }
@@ -55,3 +58,7 @@ impl BlockProcessor {
 
 unsafe impl Send for BlockProcessor {}
 unsafe impl Sync for BlockProcessor {}
+
+pub struct BlockProcessorImpl {
+    pub blocks: VecDeque<Arc<BlockEnum>>,
+}

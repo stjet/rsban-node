@@ -1,6 +1,6 @@
 #include <nano/lib/rsnanoutils.hpp>
+#include <nano/lib/stream.hpp>
 #include <nano/lib/utility.hpp>
-#include <nano/secure/buffer.hpp>
 #include <nano/secure/ledger.hpp>
 #include <nano/store/lmdb/iterator.hpp>
 #include <nano/store/lmdb/lmdb.hpp>

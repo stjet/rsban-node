@@ -1,6 +1,6 @@
 #include "nano/lib/rsnano.hpp"
 #include "nano/secure/common.hpp"
-
+#include <nano/lib/stream.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/lib/utility.hpp>
@@ -15,7 +15,6 @@
 #include <nano/node/scheduler/priority.hpp>
 #include <nano/node/telemetry.hpp>
 #include <nano/node/websocket.hpp>
-#include <nano/secure/buffer.hpp>
 #include <nano/store/component.hpp>
 
 #include <boost/filesystem.hpp>

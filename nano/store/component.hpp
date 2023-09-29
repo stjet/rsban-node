@@ -2,7 +2,7 @@
 
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/memory.hpp>
-#include <nano/secure/buffer.hpp>
+#include <nano/lib/stream.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/store/tables.hpp>
 #include <nano/store/transaction.hpp>
@@ -32,8 +32,8 @@ class ledger_cache;
 namespace store
 {
 	/**
- * Store manager
- */
+	 * Store manager
+	 */
 	class component
 	{
 	public:

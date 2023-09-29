@@ -4,7 +4,6 @@
 
 #include <nano/lib/blocks.hpp>
 #include <nano/node/blocking_observer.hpp>
-#include <nano/node/state_block_signature_verification.hpp>
 #include <nano/secure/common.hpp>
 
 #include <chrono>
@@ -35,6 +34,7 @@ class unchecked_map;
 class gap_cache;
 class bootstrap_initiator;
 class vote_cache;
+class signature_checker;
 
 namespace websocket
 {
@@ -67,8 +67,8 @@ public:
 	bool have_blocks_ready (nano::block_processor_lock & lock_a);
 	bool have_blocks (nano::block_processor_lock & lock_a);
 	void process_blocks ();
+	bool flushing ();
 
-	std::atomic<bool> flushing{ false };
 	rsnano::BlockProcessorHandle const * get_handle () const;
 
 public: // Events
@@ -87,17 +87,13 @@ private:
 	nano::process_return process_one (nano::store::write_transaction const &, std::shared_ptr<nano::block> block, bool const = false);
 	void queue_unchecked (nano::store::write_transaction const &, nano::hash_or_account const &);
 	std::deque<processed_t> process_batch (nano::block_processor_lock &);
-	void process_verified_state_blocks (std::deque<nano::state_block_signature_verification::value_type> &, std::vector<int> const &, std::vector<nano::block_hash> const &, std::vector<nano::signature> const &);
-	void add_impl (std::shared_ptr<nano::block> block);
 
 	bool stopped{ false };
 	bool active{ false };
-	std::chrono::steady_clock::time_point next_log;
 
 	nano::logger_mt & logger; // already ported
 	nano::signature_checker & checker; // already ported
 	nano::node_config & config; // already ported
-	nano::state_block_signature_verification state_block_signature_verification; // already ported
 	nano::network_params & network_params; // already ported
 	nano::block_arrival & block_arrival; // already ported
 

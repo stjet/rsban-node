@@ -161,7 +161,7 @@ void nano::bulk_pull_client::throttled_receive_block ()
 		return;
 	}
 	debug_assert (!network_error);
-	if (!node_l->block_processor.half_full () && !node_l->block_processor.flushing)
+	if (!node_l->block_processor.half_full () && !node_l->block_processor.flushing ())
 	{
 		receive_block ();
 	}

@@ -90,10 +90,10 @@ private:
 	std::deque<processed_t> process_batch (nano::block_processor_lock &);
 	void process_verified_state_blocks (std::deque<nano::state_block_signature_verification::value_type> &, std::vector<int> const &, std::vector<nano::block_hash> const &, std::vector<nano::signature> const &);
 	void add_impl (std::shared_ptr<nano::block> block);
+
 	bool stopped{ false };
 	bool active{ false };
 	std::chrono::steady_clock::time_point next_log;
-	std::deque<std::shared_ptr<nano::block>> forced;
 
 	nano::logger_mt & logger; // already ported
 	nano::signature_checker & checker; // already ported

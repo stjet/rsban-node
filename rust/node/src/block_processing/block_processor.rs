@@ -24,6 +24,7 @@ impl BlockProcessor {
             handle,
             mutex: Mutex::new(BlockProcessorImpl {
                 blocks: VecDeque::new(),
+                forced: VecDeque::new(),
             }),
             condition: Condvar::new(),
         }
@@ -61,4 +62,5 @@ unsafe impl Sync for BlockProcessor {}
 
 pub struct BlockProcessorImpl {
     pub blocks: VecDeque<Arc<BlockEnum>>,
+    pub forced: VecDeque<Arc<BlockEnum>>,
 }

@@ -147,3 +147,32 @@ pub extern "C" fn rsn_block_processor_pop_front_block(
 pub extern "C" fn rsn_block_processor_blocks_size(handle: &mut BlockProcessorLockHandle) -> usize {
     handle.0.as_mut().unwrap().blocks.len()
 }
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_push_back_forced(
+    handle: &mut BlockProcessorLockHandle,
+    block: &BlockHandle,
+) {
+    handle
+        .0
+        .as_mut()
+        .unwrap()
+        .forced
+        .push_back(Arc::clone(&block))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_pop_front_forced(
+    handle: &mut BlockProcessorLockHandle,
+) -> *mut BlockHandle {
+    let block = handle.0.as_mut().unwrap().forced.pop_front();
+    match block {
+        Some(b) => Box::into_raw(Box::new(BlockHandle(b))),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_forced_size(handle: &mut BlockProcessorLockHandle) -> usize {
+    handle.0.as_mut().unwrap().forced.len()
+}

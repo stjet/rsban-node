@@ -64,7 +64,6 @@ public:
 	void add (std::shared_ptr<nano::block> const &);
 	std::optional<nano::process_return> add_blocking (std::shared_ptr<nano::block> const & block);
 	void force (std::shared_ptr<nano::block> const &);
-	bool should_log ();
 	bool have_blocks_ready (nano::block_processor_lock & lock_a);
 	bool have_blocks (nano::block_processor_lock & lock_a);
 	void process_blocks ();

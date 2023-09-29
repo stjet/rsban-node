@@ -1,7 +1,10 @@
-use crate::core::BlockHandle;
-use rsnano_node::block_processing::{
-    BlockProcessor, BlockProcessorImpl, BLOCKPROCESSOR_ADD_CALLBACK,
-    BLOCKPROCESSOR_HALF_FULL_CALLBACK, BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
+use crate::{core::BlockHandle, NodeConfigDto};
+use rsnano_node::{
+    block_processing::{
+        BlockProcessor, BlockProcessorImpl, BLOCKPROCESSOR_ADD_CALLBACK,
+        BLOCKPROCESSOR_HALF_FULL_CALLBACK, BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
+    },
+    config::NodeConfig,
 };
 use std::{
     ffi::c_void,
@@ -20,8 +23,12 @@ impl Deref for BlockProcessorHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_block_processor_create(handle: *mut c_void) -> *mut BlockProcessorHandle {
-    let processor = BlockProcessor::new(handle);
+pub extern "C" fn rsn_block_processor_create(
+    handle: *mut c_void,
+    config: &NodeConfigDto,
+) -> *mut BlockProcessorHandle {
+    let config = NodeConfig::try_from(config).unwrap();
+    let processor = BlockProcessor::new(handle, config);
     Box::into_raw(Box::new(BlockProcessorHandle(Arc::new(processor))))
 }
 
@@ -175,4 +182,9 @@ pub extern "C" fn rsn_block_processor_pop_front_forced(
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_forced_size(handle: &mut BlockProcessorLockHandle) -> usize {
     handle.0.as_mut().unwrap().forced.len()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_should_log(handle: &mut BlockProcessorLockHandle) -> bool {
+    handle.0.as_mut().unwrap().should_log()
 }

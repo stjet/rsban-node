@@ -3,7 +3,10 @@ use std::{
     collections::VecDeque,
     ffi::c_void,
     sync::{Arc, Condvar, Mutex},
+    time::{Duration, SystemTime},
 };
+
+use crate::config::NodeConfig;
 
 pub static mut BLOCKPROCESSOR_ADD_CALLBACK: Option<fn(*mut c_void, Arc<BlockEnum>)> = None;
 pub static mut BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK: Option<fn(*mut c_void, Arc<BlockEnum>)> =
@@ -19,12 +22,14 @@ pub struct BlockProcessor {
 }
 
 impl BlockProcessor {
-    pub fn new(handle: *mut c_void) -> Self {
+    pub fn new(handle: *mut c_void, config: NodeConfig) -> Self {
         Self {
             handle,
             mutex: Mutex::new(BlockProcessorImpl {
                 blocks: VecDeque::new(),
                 forced: VecDeque::new(),
+                next_log: SystemTime::now(),
+                config,
             }),
             condition: Condvar::new(),
         }
@@ -63,4 +68,23 @@ unsafe impl Sync for BlockProcessor {}
 pub struct BlockProcessorImpl {
     pub blocks: VecDeque<Arc<BlockEnum>>,
     pub forced: VecDeque<Arc<BlockEnum>>,
+    pub next_log: SystemTime,
+    config: NodeConfig,
+}
+
+impl BlockProcessorImpl {
+    pub fn should_log(&mut self) -> bool {
+        let now = SystemTime::now();
+        if self.next_log < now {
+            let delay = if self.config.logging.timing_logging_value {
+                Duration::from_secs(2)
+            } else {
+                Duration::from_secs(15)
+            };
+            self.next_log = now + delay;
+            true
+        } else {
+            false
+        }
+    }
 }

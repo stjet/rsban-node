@@ -69,13 +69,18 @@ public:
 		return rsnano::rsn_block_processor_forced_size (handle);
 	}
 
+	bool should_log ()
+	{
+		return rsnano::rsn_block_processor_should_log (handle);
+	}
+
+
 	rsnano::BlockProcessorLockHandle * handle;
 	nano::block_processor & block_processor;
 };
 }
 
 nano::block_processor::block_processor (nano::node & node_a, nano::write_database_queue & write_database_queue_a) :
-	next_log (std::chrono::steady_clock::now ()),
 	logger (*node_a.logger),
 	checker (node_a.checker),
 	config (*node_a.config),
@@ -104,7 +109,8 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 		}
 	};
 
-	handle = rsnano::rsn_block_processor_create (this);
+	auto config_dto {config.to_dto()};
+	handle = rsnano::rsn_block_processor_create (this, &config_dto);
 
 	batch_processed.add ([this] (auto const & items) {
 		// For every batch item: notify the 'processed' observer.
@@ -291,18 +297,6 @@ void nano::block_processor::process_blocks ()
 	}
 }
 
-bool nano::block_processor::should_log ()
-{
-	auto result (false);
-	auto now (std::chrono::steady_clock::now ());
-	if (next_log < now)
-	{
-		next_log = now + (config.logging.timing_logging () ? std::chrono::seconds (2) : std::chrono::seconds (15));
-		result = true;
-	}
-	return result;
-}
-
 bool nano::block_processor::have_blocks_ready (nano::block_processor_lock & lock_a)
 {
 	return lock_a.blocks_size () > 0 || lock_a.forced_size () > 0;
@@ -369,7 +363,7 @@ auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) 
 	auto store_batch_reached = [&number_of_blocks_processed, max = store.max_block_write_batch_num ()] { return number_of_blocks_processed >= max; };
 	while (have_blocks_ready (lock_a) && (!deadline_reached () || !processor_batch_reached ()) && !store_batch_reached ())
 	{
-		if ((lock_a.blocks_size () + state_block_signature_verification.size () + lock_a.forced_size () > 64) && should_log ())
+		if ((lock_a.blocks_size () + state_block_signature_verification.size () + lock_a.forced_size () > 64) && lock_a.should_log ())
 		{
 			logger.always_log (boost::str (boost::format ("%1% blocks (+ %2% state blocks) (+ %3% forced) in processing queue") % lock_a.blocks_size () % state_block_signature_verification.size () % lock_a.forced_size ()));
 		}

@@ -32,8 +32,6 @@ public:
 
 	std::function<void (std::deque<value_type> &, std::vector<int> const &, std::vector<nano::block_hash> const &, std::vector<nano::signature> const &)> blocks_verified_callback;
 	std::function<void ()> transition_inactive_callback;
-
-private:
 	rsnano::StateBlockSignatureVerificationHandle * handle;
 };
 

@@ -83,9 +83,12 @@ pub unsafe extern "C" fn rsn_lmdb_store_create(
             *error = false;
             Box::into_raw(Box::new(LmdbStoreHandle(Arc::new(s))))
         }
-        Err(_) => {
+        Err(e) => {
             *error = true;
-            eprintln!("Could not create LMDB store");
+            eprintln!(
+                "Could not create LMDB store: {:?}. LMDB options: {:?}",
+                e, options
+            );
             std::ptr::null_mut()
         }
     }

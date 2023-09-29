@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/numbers.hpp>
@@ -1029,39 +1031,7 @@ void nano::generate_cache::enable_block_count (bool enable)
 
 nano::stat::detail nano::to_stat_detail (nano::process_result process_result)
 {
-	switch (process_result)
-	{
-		case process_result::progress:
-			return nano::stat::detail::progress;
-		case process_result::bad_signature:
-			return nano::stat::detail::bad_signature;
-		case process_result::old:
-			return nano::stat::detail::old;
-		case process_result::negative_spend:
-			return nano::stat::detail::negative_spend;
-		case process_result::fork:
-			return nano::stat::detail::fork;
-		case process_result::unreceivable:
-			return nano::stat::detail::unreceivable;
-		case process_result::gap_previous:
-			return nano::stat::detail::gap_previous;
-		case process_result::gap_source:
-			return nano::stat::detail::gap_source;
-		case process_result::gap_epoch_open_pending:
-			return nano::stat::detail::gap_epoch_open_pending;
-		case process_result::opened_burn_account:
-			return nano::stat::detail::opened_burn_account;
-		case process_result::balance_mismatch:
-			return nano::stat::detail::balance_mismatch;
-		case process_result::representative_mismatch:
-			return nano::stat::detail::representative_mismatch;
-		case process_result::block_position:
-			return nano::stat::detail::block_position;
-		case process_result::insufficient_work:
-			return nano::stat::detail::insufficient_work;
-	}
-	debug_assert (false && "There should be always a defined nano::stat::detail that is not _last");
-	throw std::runtime_error ("There should be always a defined nano::stat::detail that is not _last");
+	return static_cast<nano::stat::detail> (rsnano::rsn_process_result_into_detail (static_cast<uint8_t> (process_result)));
 }
 
 nano::ledger_cache::ledger_cache () :

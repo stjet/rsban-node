@@ -36,7 +36,7 @@ pub struct UncementedInfo {
     pub account: Account,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
 #[repr(u8)]
 pub enum ProcessResult {
     Progress,      // Hasn't been seen before, signed correctly

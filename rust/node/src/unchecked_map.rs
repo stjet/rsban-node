@@ -17,7 +17,7 @@ struct UncheckedMapFlags {
 }
 
 pub struct UncheckedMap {
-    join_handle: Option<JoinHandle<()>>,
+    join_handle: Mutex<Option<JoinHandle<()>>>,
     thread: Arc<UncheckedMapThread>,
     mutable: Arc<Mutex<ThreadMutableData>>,
     condition: Arc<Condvar>,
@@ -46,7 +46,7 @@ impl UncheckedMap {
             .unwrap();
 
         Self {
-            join_handle: Some(join_handle),
+            join_handle: Mutex::new(Some(join_handle)),
             thread,
             mutable,
             condition,
@@ -54,14 +54,15 @@ impl UncheckedMap {
         }
     }
 
-    pub fn stop(&mut self) {
-        let mut lock = self.mutable.lock().unwrap();
-        if !lock.stopped {
-            lock.stopped = true;
-            self.condition.notify_all();
+    pub fn stop(&self) {
+        {
+            let mut lock = self.mutable.lock().unwrap();
+            if !lock.stopped {
+                lock.stopped = true;
+                self.condition.notify_all();
+            }
         }
-        drop(lock);
-        if let Some(handle) = self.join_handle.take() {
+        if let Some(handle) = self.join_handle.lock().unwrap().take() {
             handle.join().unwrap();
         }
     }

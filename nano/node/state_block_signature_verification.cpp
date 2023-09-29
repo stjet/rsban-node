@@ -96,7 +96,6 @@ std::size_t nano::state_block_signature_verification::size ()
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (state_block_signature_verification & state_block_signature_verification, std::string const & name)
 {
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "state_blocks", state_block_signature_verification.size (), sizeof (state_block_signature_verification::value_type) }));
-	return composite;
+	auto info_handle = rsnano::rsn_state_block_signature_verification_collect_container_info (state_block_signature_verification.handle, name.c_str ());
+	return std::make_unique<nano::container_info_composite> (info_handle);
 }

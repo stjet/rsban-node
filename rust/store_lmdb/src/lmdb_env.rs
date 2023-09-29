@@ -623,7 +623,7 @@ impl Environment for EnvironmentStub {
 // Environment
 // --------------------------------------------------------------------------------
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct EnvOptions {
     pub config: LmdbConfig,
     pub use_no_mem_init: bool,

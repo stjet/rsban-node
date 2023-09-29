@@ -109,7 +109,19 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	};
 
 	auto config_dto{ config.to_dto () };
-	handle = rsnano::rsn_block_processor_create (this, &config_dto, checker.get_handle (), config.network_params.ledger.epochs.get_handle (), nano::to_logger_handle (node_a.logger), node_a.flags.handle, node_a.ledger.handle);
+	auto logger_handle = nano::to_logger_handle (node_a.logger);
+	handle = rsnano::rsn_block_processor_create (
+	this,
+	&config_dto,
+	checker.get_handle (),
+	config.network_params.ledger.epochs.get_handle (),
+	logger_handle,
+	node_a.flags.handle,
+	node_a.ledger.handle,
+	node_a.unchecked.handle,
+	node_a.gap_cache.handle,
+	node_a.stats->handle,
+	&node_a.config->network_params.work.dto);
 
 	batch_processed.add ([this] (auto const & items) {
 		// For every batch item: notify the 'processed' observer.
@@ -353,171 +365,17 @@ auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) 
 
 nano::process_return nano::block_processor::process_one (store::write_transaction const & transaction_a, std::shared_ptr<nano::block> block, bool const forced_a)
 {
-	nano::process_return result;
-	auto hash (block->hash ());
-	result = ledger.process (transaction_a, *block);
-	switch (result.code)
-	{
-		case nano::process_result::progress:
-		{
-			if (config.logging.ledger_logging ())
-			{
-				std::string block_string;
-				block->serialize_json (block_string, config.logging.single_line_record ());
-				logger.try_log (boost::str (boost::format ("Processing block %1%: %2%") % hash.to_string () % block_string));
-			}
-			queue_unchecked (transaction_a, hash);
-			/* For send blocks check epoch open unchecked (gap pending).
-			For state blocks check only send subtype and only if block epoch is not last epoch.
-			If epoch is last, then pending entry shouldn't trigger same epoch open block for destination account. */
-			if (block->type () == nano::block_type::send || (block->type () == nano::block_type::state && block->sideband ().details ().is_send () && std::underlying_type_t<nano::epoch> (block->sideband ().details ().epoch ()) < std::underlying_type_t<nano::epoch> (nano::epoch::max)))
-			{
-				/* block->destination () for legacy send blocks
-				block->link () for state blocks (send subtype) */
-				queue_unchecked (transaction_a, block->destination ().is_zero () ? block->link () : block->destination ());
-			}
-			break;
-		}
-		case nano::process_result::gap_previous:
-		{
-			if (config.logging.ledger_logging ())
-			{
-				logger.try_log (boost::str (boost::format ("Gap previous for: %1%") % hash.to_string ()));
-			}
-			unchecked.put (block->previous (), block);
-			stats.inc (nano::stat::type::ledger, nano::stat::detail::gap_previous);
-			break;
-		}
-		case nano::process_result::gap_source:
-		{
-			if (config.logging.ledger_logging ())
-			{
-				logger.try_log (boost::str (boost::format ("Gap source for: %1%") % hash.to_string ()));
-			}
-			unchecked.put (ledger.block_source (transaction_a, *block), block);
-			stats.inc (nano::stat::type::ledger, nano::stat::detail::gap_source);
-			break;
-		}
-		case nano::process_result::gap_epoch_open_pending:
-		{
-			if (config.logging.ledger_logging ())
-			{
-				logger.try_log (boost::str (boost::format ("Gap pending entries for epoch open: %1%") % hash.to_string ()));
-			}
-			unchecked.put (block->account (), block); // Specific unchecked key starting with epoch open block account public key
-			stats.inc (nano::stat::type::ledger, nano::stat::detail::gap_source);
-			break;
-		}
-		case nano::process_result::old:
-		{
-			if (config.logging.ledger_duplicate_logging ())
-			{
-				logger.try_log (boost::str (boost::format ("Old for: %1%") % hash.to_string ()));
-			}
-			stats.inc (nano::stat::type::ledger, nano::stat::detail::old);
-			break;
-		}
-		case nano::process_result::bad_signature:
-		{
-			if (config.logging.ledger_logging ())
-			{
-				logger.try_log (boost::str (boost::format ("Bad signature for: %1%") % hash.to_string ()));
-			}
-			break;
-		}
-		case nano::process_result::negative_spend:
-		{
-			if (config.logging.ledger_logging ())
-			{
-				logger.try_log (boost::str (boost::format ("Negative spend for: %1%") % hash.to_string ()));
-			}
-			break;
-		}
-		case nano::process_result::unreceivable:
-		{
-			if (config.logging.ledger_logging ())
-			{
-				logger.try_log (boost::str (boost::format ("Unreceivable for: %1%") % hash.to_string ()));
-			}
-			break;
-		}
-		case nano::process_result::fork:
-		{
-			stats.inc (nano::stat::type::ledger, nano::stat::detail::fork);
-			if (config.logging.ledger_logging ())
-			{
-				logger.try_log (boost::str (boost::format ("Fork for: %1% root: %2%") % hash.to_string () % block->root ().to_string ()));
-			}
-			break;
-		}
-		case nano::process_result::opened_burn_account:
-		{
-			if (config.logging.ledger_logging ())
-			{
-				logger.try_log (boost::str (boost::format ("Rejecting open block for burn account: %1%") % hash.to_string ()));
-			}
-			break;
-		}
-		case nano::process_result::balance_mismatch:
-		{
-			if (config.logging.ledger_logging ())
-			{
-				logger.try_log (boost::str (boost::format ("Balance mismatch for: %1%") % hash.to_string ()));
-			}
-			break;
-		}
-		case nano::process_result::representative_mismatch:
-		{
-			if (config.logging.ledger_logging ())
-			{
-				logger.try_log (boost::str (boost::format ("Representative mismatch for: %1%") % hash.to_string ()));
-			}
-			break;
-		}
-		case nano::process_result::block_position:
-		{
-			if (config.logging.ledger_logging ())
-			{
-				logger.try_log (boost::str (boost::format ("Block %1% cannot follow predecessor %2%") % hash.to_string () % block->previous ().to_string ()));
-			}
-			break;
-		}
-		case nano::process_result::insufficient_work:
-		{
-			if (config.logging.ledger_logging ())
-			{
-				logger.try_log (boost::str (boost::format ("Insufficient work for %1% : %2% (difficulty %3%)") % hash.to_string () % nano::to_string_hex (block->block_work ()) % nano::to_string_hex (network_params.work.difficulty (*block))));
-			}
-			break;
-		}
-	}
-
-	stats.inc (nano::stat::type::blockprocessor, nano::to_stat_detail (result.code));
-
-	return result;
+	auto result = rsnano::rsn_block_processor_process_one (handle, transaction_a.get_rust_handle (), block->get_handle ());
+	return nano::process_return{ static_cast<nano::process_result> (result) };
 }
 
-void nano::block_processor::queue_unchecked (store::write_transaction const & transaction_a, nano::hash_or_account const & hash_or_account_a)
+void nano::block_processor::queue_unchecked (nano::hash_or_account const & hash_or_account_a)
 {
-	unchecked.trigger (hash_or_account_a);
-	gap_cache.erase (hash_or_account_a.hash);
+	rsnano::rsn_block_processor_queue_unchecked (handle, hash_or_account_a.bytes.data ());
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (block_processor & block_processor, std::string const & name)
 {
-	std::size_t blocks_count;
-	std::size_t forced_count;
-
-	{
-		nano::block_processor_lock lock{ block_processor };
-		blocks_count = lock.blocks_size ();
-		forced_count = lock.forced_size ();
-	}
-
-	auto composite = std::make_unique<container_info_composite> (name);
-	// TODO enable again:
-	//composite->add_component (collect_container_info (block_processor.state_block_signature_verification, "state_block_signature_verification"));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "blocks", blocks_count, sizeof (std::shared_ptr<nano::block>) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "forced", forced_count, sizeof (std::shared_ptr<nano::block>) }));
-	return composite;
+	auto info_handle = rsnano::rsn_block_processor_collect_container_info (block_processor.handle, name.c_str ());
+	return std::make_unique<nano::container_info_composite> (info_handle);
 }

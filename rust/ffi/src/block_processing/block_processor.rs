@@ -1,9 +1,13 @@
 use crate::{
     core::{BlockHandle, EpochsHandle},
-    ledger::datastore::LedgerHandle,
-    utils::{LoggerHandle, LoggerMT},
-    NodeConfigDto, NodeFlagsHandle, SignatureCheckerHandle,
+    gap_cache::GapCacheHandle,
+    ledger::datastore::{LedgerHandle, TransactionHandle},
+    unchecked_map::UncheckedMapHandle,
+    utils::{ContainerInfoComponentHandle, LoggerHandle, LoggerMT},
+    work::WorkThresholdsDto,
+    NodeConfigDto, NodeFlagsHandle, SignatureCheckerHandle, StatHandle,
 };
+use rsnano_core::{work::WorkThresholds, HashOrAccount};
 use rsnano_node::{
     block_processing::{
         BlockProcessor, BlockProcessorExt, BlockProcessorImpl, BLOCKPROCESSOR_ADD_CALLBACK,
@@ -12,7 +16,7 @@ use rsnano_node::{
     config::NodeConfig,
 };
 use std::{
-    ffi::c_void,
+    ffi::{c_char, c_void, CStr},
     ops::Deref,
     sync::{atomic::Ordering, Arc, MutexGuard},
 };
@@ -36,15 +40,33 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     logger: *mut LoggerHandle,
     flags: &NodeFlagsHandle,
     ledger: &LedgerHandle,
+    unchecked_map: &UncheckedMapHandle,
+    gap_cache: &GapCacheHandle,
+    stats: &StatHandle,
+    work: &WorkThresholdsDto,
 ) -> *mut BlockProcessorHandle {
-    let config = NodeConfig::try_from(config).unwrap();
+    let config = Arc::new(NodeConfig::try_from(config).unwrap());
     let checker = Arc::clone(&checker);
     let epochs = Arc::new(epochs.epochs.clone());
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let flags = Arc::new(flags.lock().unwrap().clone());
     let ledger = Arc::clone(&ledger);
+    let unchecked_map = Arc::clone(&unchecked_map);
+    let gap_cache = Arc::clone(&gap_cache);
+    let stats = Arc::clone(&stats);
+    let work = Arc::new(WorkThresholds::from(work));
     let processor = Arc::new(BlockProcessor::new(
-        handle, config, checker, epochs, logger, flags, ledger,
+        handle,
+        config,
+        checker,
+        epochs,
+        logger,
+        flags,
+        ledger,
+        unchecked_map,
+        gap_cache,
+        stats,
+        work,
     ));
     processor.init();
     Box::into_raw(Box::new(BlockProcessorHandle(processor)))
@@ -250,4 +272,34 @@ pub extern "C" fn rsn_block_processor_add_impl(
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_set_flushing(handle: &mut BlockProcessorHandle, value: bool) {
     handle.flushing.store(value, Ordering::SeqCst);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_processor_queue_unchecked(
+    handle: &BlockProcessorHandle,
+    hash_or_account: *const u8,
+) {
+    let hash_or_account = HashOrAccount::from_ptr(hash_or_account);
+    handle.queue_unchecked(&hash_or_account);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_processor_process_one(
+    handle: &BlockProcessorHandle,
+    txn: &mut TransactionHandle,
+    block: &BlockHandle,
+) -> u8 {
+    let result = handle.process_one(txn.as_write_txn(), &block);
+    result as u8
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_processor_collect_container_info(
+    handle: &BlockProcessorHandle,
+    name: *const c_char,
+) -> *mut ContainerInfoComponentHandle {
+    let container_info = handle
+        .0
+        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
+    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }

@@ -58,6 +58,10 @@ impl Logging {
         self.network_logging_value && self.network_node_id_handshake_logging_value
     }
 
+    pub fn ledger_duplicate_logging(&self) -> bool {
+        self.ledger_logging_value && self.ledger_duplicate_logging_value
+    }
+
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {
         toml.put_bool(
             "ledger",

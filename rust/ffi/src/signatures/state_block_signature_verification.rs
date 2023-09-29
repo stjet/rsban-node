@@ -1,4 +1,8 @@
-use std::{ffi::c_void, ops::Deref, sync::Arc};
+use std::{
+    ffi::{c_char, c_void, CStr},
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
 use rsnano_node::signatures::{
     StateBlockSignatureVerification, StateBlockSignatureVerificationResult,
@@ -7,13 +11,25 @@ use rsnano_node::signatures::{
 
 use crate::{
     core::{BlockHandle, EpochsHandle},
-    utils::{LoggerHandle, LoggerMT},
+    utils::{ContainerInfoComponentHandle, LoggerHandle, LoggerMT},
 };
 
 use super::SignatureCheckerHandle;
 
-pub struct StateBlockSignatureVerificationHandle {
-    verification: StateBlockSignatureVerification,
+pub struct StateBlockSignatureVerificationHandle(StateBlockSignatureVerification);
+
+impl Deref for StateBlockSignatureVerificationHandle {
+    type Target = StateBlockSignatureVerification;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for StateBlockSignatureVerificationHandle {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }
 
 #[repr(C)]
@@ -49,9 +65,9 @@ pub unsafe extern "C" fn rsn_state_block_signature_verification_create(
         .verification_size(verification_size)
         .spawn()
         .unwrap();
-    Box::into_raw(Box::new(StateBlockSignatureVerificationHandle {
+    Box::into_raw(Box::new(StateBlockSignatureVerificationHandle(
         verification,
-    }))
+    )))
 }
 
 #[no_mangle]
@@ -77,12 +93,10 @@ unsafe impl Sync for ContextHandle {}
 
 #[no_mangle]
 pub extern "C" fn rsn_state_block_signature_verification_verified_callback(
-    handle: *mut StateBlockSignatureVerificationHandle,
+    handle: &mut StateBlockSignatureVerificationHandle,
     callback: StateBlockVerifiedCallback,
     context: *mut c_void,
 ) {
-    let handle = unsafe { &mut *handle };
-
     let context_handle = ContextHandle(context);
 
     let callback_adapter = Box::new(move |result: StateBlockSignatureVerificationResult| {
@@ -107,66 +121,67 @@ pub extern "C" fn rsn_state_block_signature_verification_verified_callback(
         }
     });
 
-    handle
-        .verification
-        .set_blocks_verified_callback(callback_adapter);
+    handle.set_blocks_verified_callback(callback_adapter);
 }
 
 type TransitionInactiveCallback = unsafe extern "C" fn(*mut c_void);
 
 #[no_mangle]
 pub extern "C" fn rsn_state_block_signature_verification_transition_inactive_callback(
-    handle: *mut StateBlockSignatureVerificationHandle,
+    handle: &mut StateBlockSignatureVerificationHandle,
     callback: TransitionInactiveCallback,
     context: *mut c_void,
 ) {
-    let handle = unsafe { &mut *handle };
     let context_handle = ContextHandle(context);
 
     let callback_adapter = Box::new(move || unsafe {
         (callback)(context_handle.get());
     });
 
-    handle
-        .verification
-        .set_transition_inactive_callback(callback_adapter);
+    handle.set_transition_inactive_callback(callback_adapter);
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_state_block_signature_verification_stop(
-    handle: *mut StateBlockSignatureVerificationHandle,
+    handle: &mut StateBlockSignatureVerificationHandle,
 ) {
-    let verification = unsafe { &mut (*handle).verification };
-    verification.stop().unwrap();
+    handle.stop().unwrap();
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_state_block_signature_verification_is_active(
-    handle: *const StateBlockSignatureVerificationHandle,
+    handle: &StateBlockSignatureVerificationHandle,
 ) -> bool {
-    let verification = unsafe { &(*handle).verification };
-    verification.is_active()
+    handle.is_active()
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_state_block_signature_verification_add(
-    handle: *mut StateBlockSignatureVerificationHandle,
-    block: *const StateBlockSignatureVerificationValueDto,
+    handle: &mut StateBlockSignatureVerificationHandle,
+    block: &StateBlockSignatureVerificationValueDto,
 ) {
-    let verification = unsafe { &mut (*handle).verification };
-    let block = unsafe { &*block };
     let block = StateBlockSignatureVerificationValue {
         block: Arc::clone(unsafe { &*block.block }.deref()),
     };
-    verification.add(block);
+    handle.add(block);
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_state_block_signature_verification_size(
-    handle: *const StateBlockSignatureVerificationHandle,
+    handle: &StateBlockSignatureVerificationHandle,
 ) -> usize {
-    let verification = unsafe { &(*handle).verification };
-    verification.size()
+    handle.size()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_state_block_signature_verification_collect_container_info(
+    handle: &StateBlockSignatureVerificationHandle,
+    name: *const c_char,
+) -> *mut ContainerInfoComponentHandle {
+    let name = CStr::from_ptr(name).to_str().unwrap().to_owned();
+    Box::into_raw(Box::new(ContainerInfoComponentHandle(
+        handle.collect_container_info(name),
+    )))
 }
 
 impl From<&StateBlockSignatureVerificationValue> for StateBlockSignatureVerificationValueDto {

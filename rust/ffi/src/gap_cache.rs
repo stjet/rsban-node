@@ -14,10 +14,19 @@ use rsnano_core::{
 use rsnano_node::{config::NodeConfig, GapCache};
 use std::{
     ffi::{c_char, CStr},
-    sync::Arc,
+    ops::Deref,
+    sync::{Arc, Mutex},
 };
 
-pub struct GapCacheHandle(GapCache);
+pub struct GapCacheHandle(Arc<Mutex<GapCache>>);
+
+impl Deref for GapCacheHandle {
+    type Target = Arc<Mutex<GapCache>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_gap_cache_create(
@@ -47,7 +56,7 @@ pub unsafe extern "C" fn rsn_gap_cache_create(
         node_flags,
         start_bootstrap_callback,
     );
-    Box::into_raw(Box::new(GapCacheHandle(gap_cache)))
+    Box::into_raw(Box::new(GapCacheHandle(Arc::new(Mutex::new(gap_cache)))))
 }
 
 #[no_mangle]
@@ -64,18 +73,20 @@ pub unsafe extern "C" fn rsn_gap_cache_add(
     let hash = BlockHash::from_ptr(hash_a);
     (*handle)
         .0
+        .lock()
+        .unwrap()
         .add(&hash, system_time_from_nanoseconds(time_point));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_gap_cache_erase(handle: *mut GapCacheHandle, hash_a: *const u8) {
     let hash = BlockHash::from_ptr(hash_a);
-    (*handle).0.erase(&hash);
+    (*handle).0.lock().unwrap().erase(&hash);
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_gap_cache_vote(handle: &mut GapCacheHandle, vote_handle: &VoteHandle) {
-    handle.0.vote(&vote_handle);
+    handle.0.lock().unwrap().vote(&vote_handle);
 }
 
 #[no_mangle]
@@ -95,6 +106,8 @@ pub unsafe extern "C" fn rsn_gap_cache_bootstrap_check(
 
     (*handle)
         .0
+        .lock()
+        .unwrap()
         .bootstrap_check(&voters, &BlockHash::from_ptr(hash))
 }
 
@@ -103,13 +116,13 @@ pub unsafe extern "C" fn rsn_gap_cache_bootstrap_threshold(
     handle: *mut GapCacheHandle,
     result: *mut u8,
 ) {
-    let threshold = (*handle).0.bootstrap_threshold();
+    let threshold = (*handle).0.lock().unwrap().bootstrap_threshold();
     copy_amount_bytes(threshold, result);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_gap_cache_size(handle: *mut GapCacheHandle) -> usize {
-    (*handle).0.size()
+    (*handle).0.lock().unwrap().size()
 }
 
 #[no_mangle]
@@ -118,13 +131,15 @@ pub unsafe extern "C" fn rsn_gap_cache_block_exists(
     hash_a: *const u8,
 ) -> bool {
     let hash = BlockHash::from_ptr(hash_a);
-    (*handle).0.block_exists(&hash)
+    (*handle).0.lock().unwrap().block_exists(&hash)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_gap_cache_earliest(handle: *mut GapCacheHandle) -> u64 {
     (*handle)
         .0
+        .lock()
+        .unwrap()
         .earliest()
         .map(system_time_as_nanoseconds)
         .unwrap_or_default()
@@ -136,7 +151,7 @@ pub unsafe extern "C" fn rsn_gap_cache_block_arrival(
     hash_a: *const u8,
 ) -> u64 {
     let hash = BlockHash::from_ptr(hash_a);
-    system_time_as_nanoseconds((*handle).0.block_arrival(&hash))
+    system_time_as_nanoseconds((*handle).0.lock().unwrap().block_arrival(&hash))
 }
 
 pub type StartBootstrapCallback = unsafe extern "C" fn(*mut c_void, *const u8);
@@ -162,6 +177,8 @@ pub unsafe extern "C" fn rsn_gap_cache_collect_container_info(
 ) -> *mut ContainerInfoComponentHandle {
     let container_info = (*handle)
         .0
+        .lock()
+        .unwrap()
         .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
     Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }

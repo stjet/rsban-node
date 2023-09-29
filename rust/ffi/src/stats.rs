@@ -6,6 +6,7 @@ use std::{
 
 use num::FromPrimitive;
 
+use rsnano_ledger::ProcessResult;
 use rsnano_node::{
     messages::MessageType,
     stats::{
@@ -232,4 +233,11 @@ pub unsafe extern "C" fn rsn_stat_count(
 #[no_mangle]
 pub extern "C" fn rsn_message_type_to_stat_detail(message_type: u8) -> u8 {
     DetailType::from(MessageType::from_u8(message_type).unwrap()) as u8
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_process_result_into_detail(process_result: u8) -> u8 {
+    let pr: ProcessResult = FromPrimitive::from_u8(process_result).unwrap();
+    let result: DetailType = pr.into();
+    result as u8
 }

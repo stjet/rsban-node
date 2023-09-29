@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    mem::size_of,
     ops::Deref,
     sync::{Arc, Condvar, Mutex},
     thread::JoinHandle,
@@ -7,7 +8,7 @@ use std::{
 };
 
 use rsnano_core::{
-    utils::{Logger, NullLogger},
+    utils::{ContainerInfo, ContainerInfoComponent, Logger, NullLogger},
     Account, Block, BlockEnum, BlockHash, Epochs, PublicKey, Signature,
 };
 
@@ -150,6 +151,17 @@ impl StateBlockSignatureVerification {
     pub fn is_active(&self) -> bool {
         let lk = self.thread.mutable.lock().unwrap();
         lk.active
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "state_blocks".to_owned(),
+                count: self.size(),
+                sizeof_element: size_of::<Arc<BlockEnum>>(),
+            })],
+        )
     }
 }
 

@@ -1,4 +1,4 @@
-use std::ffi::c_void;
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use rsnano_core::{BlockHash, HashOrAccount, UncheckedInfo, UncheckedKey};
 use rsnano_node::unchecked_map::UncheckedMap;
@@ -33,7 +33,15 @@ impl From<&UncheckedKey> for UncheckedKeyDto {
     }
 }
 
-pub struct UncheckedMapHandle(UncheckedMap);
+pub struct UncheckedMapHandle(Arc<UncheckedMap>);
+
+impl Deref for UncheckedMapHandle {
+    type Target = Arc<UncheckedMap>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_unchecked_map_create(
@@ -41,7 +49,7 @@ pub unsafe extern "C" fn rsn_unchecked_map_create(
     disable_delete: bool,
 ) -> *mut UncheckedMapHandle {
     let unchecked_map = UncheckedMap::new((*stats_handle).0.clone(), disable_delete);
-    Box::into_raw(Box::new(UncheckedMapHandle(unchecked_map)))
+    Box::into_raw(Box::new(UncheckedMapHandle(Arc::new(unchecked_map))))
 }
 
 #[no_mangle]

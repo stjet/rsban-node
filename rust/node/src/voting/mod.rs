@@ -1,3 +1,4 @@
+mod active_transactions;
 mod local_vote_history;
 mod vote;
 mod vote_spacing;
@@ -24,3 +25,5 @@ pub use election_scheduler::{
     ElectionScheduler, ElectionSchedulerActivateInternalCallback,
     ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK,
 };
+
+pub use active_transactions::ActiveTransactions;

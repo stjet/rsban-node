@@ -10,6 +10,9 @@
 
 #include <boost/format.hpp>
 
+#include <cstdint>
+#include <memory>
+
 namespace nano
 {
 class block_processor_lock
@@ -121,7 +124,9 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	node_a.unchecked.handle,
 	node_a.gap_cache.handle,
 	node_a.stats->handle,
-	&node_a.config->network_params.work.dto);
+	&node_a.config->network_params.work.dto,
+	write_database_queue_a.handle,
+	node_a.history.handle);
 
 	batch_processed.add ([this] (auto const & items) {
 		// For every batch item: notify the 'processed' observer.
@@ -312,6 +317,20 @@ bool nano::block_processor::have_blocks (nano::block_processor_lock & lock_a)
 
 auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) -> std::deque<processed_t>
 {
+	//TODO enable the Rust port:
+	//auto result_handle = rsnano::rsn_block_processor_process_batch (handle);
+	//std::deque<processed_t> result;
+	//auto size = rsnano::rsn_process_batch_result_size(result_handle);
+	//for (auto i = 0; i < size; ++i) {
+	//	uint8_t result_code = 0;
+	//	nano::process_return ret{static_cast<nano::process_result>(result_code)};
+	//	auto block_handle = rsnano::rsn_process_batch_result_get(result_handle, i, &result_code);
+	//	auto block = nano::block_handle_to_block(block_handle);
+	//	result.emplace_back(ret, block);
+	//}
+	//rsnano::rsn_process_batch_result_destroy(result_handle);
+	//return result;
+
 	std::deque<processed_t> processed;
 	auto scoped_write_guard = write_database_queue.wait (nano::writer::process_batch);
 	auto transaction (store.tx_begin_write ({ tables::accounts, tables::blocks, tables::frontiers, tables::pending }));

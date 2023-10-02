@@ -1,9 +1,17 @@
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 use num_traits::FromPrimitive;
 use rsnano_ledger::{WriteDatabaseQueue, WriteGuard, Writer};
 
 pub struct WriteDatabaseQueueHandle(pub Arc<WriteDatabaseQueue>);
+
+impl Deref for WriteDatabaseQueueHandle {
+    type Target = Arc<WriteDatabaseQueue>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_write_database_queue_create(use_noop: bool) -> *mut WriteDatabaseQueueHandle {

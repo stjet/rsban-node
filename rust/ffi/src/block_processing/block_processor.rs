@@ -1,21 +1,25 @@
 use crate::{
     core::{BlockHandle, EpochsHandle},
     gap_cache::GapCacheHandle,
-    ledger::datastore::{LedgerHandle, TransactionHandle},
+    ledger::datastore::{LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle},
     unchecked_map::UncheckedMapHandle,
     utils::{ContainerInfoComponentHandle, LoggerHandle, LoggerMT},
+    voting::LocalVoteHistoryHandle,
     work::WorkThresholdsDto,
     NodeConfigDto, NodeFlagsHandle, SignatureCheckerHandle, StatHandle,
 };
-use rsnano_core::{work::WorkThresholds, HashOrAccount};
+use rsnano_core::{work::WorkThresholds, BlockEnum, HashOrAccount};
+use rsnano_ledger::ProcessResult;
 use rsnano_node::{
     block_processing::{
         BlockProcessor, BlockProcessorExt, BlockProcessorImpl, BLOCKPROCESSOR_ADD_CALLBACK,
         BLOCKPROCESSOR_HALF_FULL_CALLBACK, BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
     },
     config::NodeConfig,
+    voting::{ActiveTransactions, LocalVoteHistory},
 };
 use std::{
+    collections::VecDeque,
     ffi::{c_char, c_void, CStr},
     ops::Deref,
     sync::{atomic::Ordering, Arc, MutexGuard},
@@ -44,6 +48,8 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     gap_cache: &GapCacheHandle,
     stats: &StatHandle,
     work: &WorkThresholdsDto,
+    write_database_queue: &WriteDatabaseQueueHandle,
+    history: &LocalVoteHistoryHandle,
 ) -> *mut BlockProcessorHandle {
     let config = Arc::new(NodeConfig::try_from(config).unwrap());
     let checker = Arc::clone(&checker);
@@ -55,6 +61,9 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     let gap_cache = Arc::clone(&gap_cache);
     let stats = Arc::clone(&stats);
     let work = Arc::new(WorkThresholds::from(work));
+    let write_database_queue = Arc::clone(write_database_queue);
+    let active = Arc::new(ActiveTransactions::new()); // TODO use real instance
+    let history = Arc::clone(&history);
     let processor = Arc::new(BlockProcessor::new(
         handle,
         config,
@@ -67,6 +76,9 @@ pub unsafe extern "C" fn rsn_block_processor_create(
         gap_cache,
         stats,
         work,
+        write_database_queue,
+        history,
+        active,
     ));
     processor.init();
     Box::into_raw(Box::new(BlockProcessorHandle(processor)))
@@ -291,6 +303,37 @@ pub unsafe extern "C" fn rsn_block_processor_process_one(
 ) -> u8 {
     let result = handle.process_one(txn.as_write_txn(), &block);
     result as u8
+}
+
+pub struct ProcessBatchResult(VecDeque<(ProcessResult, Arc<BlockEnum>)>);
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_process_batch(
+    handle: &BlockProcessorHandle,
+) -> *mut ProcessBatchResult {
+    let result = handle.process_batch();
+    Box::into_raw(Box::new(ProcessBatchResult(result)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_process_batch_result_destroy(handle: *mut ProcessBatchResult) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_process_batch_result_size(handle: &ProcessBatchResult) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_process_batch_result_get(
+    handle: &ProcessBatchResult,
+    index: usize,
+    result: &mut u8,
+) -> *mut BlockHandle {
+    let (res, block) = &handle.0[index];
+    *result = (*res) as u8;
+    Box::into_raw(Box::new(BlockHandle(Arc::clone(block))))
 }
 
 #[no_mangle]

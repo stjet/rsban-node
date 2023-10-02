@@ -13,3 +13,4 @@ mod inactive_cache_status;
 
 mod election_scheduler;
 mod recently_cemented_cache;
+pub use local_vote_history::LocalVoteHistoryHandle;

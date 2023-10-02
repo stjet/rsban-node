@@ -2,9 +2,9 @@ use rsnano_core::{
     to_hex_string,
     utils::{ContainerInfo, ContainerInfoComponent, Logger},
     work::WorkThresholds,
-    BlockEnum, BlockType, Epoch, Epochs, HashOrAccount, UncheckedInfo,
+    BlockEnum, BlockHash, BlockType, Epoch, Epochs, HashOrAccount, UncheckedInfo,
 };
-use rsnano_ledger::{Ledger, ProcessResult};
+use rsnano_ledger::{Ledger, ProcessResult, WriteDatabaseQueue, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
     collections::VecDeque,
@@ -14,7 +14,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex, RwLock,
     },
-    time::{Duration, SystemTime},
+    time::{Duration, Instant, SystemTime},
 };
 
 use crate::{
@@ -25,6 +25,7 @@ use crate::{
     },
     stats::{DetailType, Direction, StatType, Stats},
     unchecked_map::UncheckedMap,
+    voting::{ActiveTransactions, LocalVoteHistory},
     GapCache,
 };
 
@@ -48,6 +49,10 @@ pub struct BlockProcessor {
     logger: Arc<dyn Logger>,
     stats: Arc<Stats>,
     work: Arc<WorkThresholds>,
+    write_database_queue: Arc<WriteDatabaseQueue>,
+    flags: Arc<NodeFlags>,
+    history: Arc<LocalVoteHistory>,
+    active: Arc<ActiveTransactions>,
 }
 
 impl BlockProcessor {
@@ -63,6 +68,9 @@ impl BlockProcessor {
         gap_cache: Arc<Mutex<GapCache>>,
         stats: Arc<Stats>,
         work: Arc<WorkThresholds>,
+        write_database_queue: Arc<WriteDatabaseQueue>,
+        history: Arc<LocalVoteHistory>,
+        active: Arc<ActiveTransactions>,
     ) -> Self {
         let state_block_signature_verification = RwLock::new(
             StateBlockSignatureVerification::builder()
@@ -93,6 +101,10 @@ impl BlockProcessor {
             logger,
             stats,
             work,
+            write_database_queue,
+            flags,
+            history,
+            active,
         }
     }
 
@@ -164,6 +176,85 @@ impl BlockProcessor {
             .lock()
             .unwrap()
             .erase(&hash_or_account.into())
+    }
+
+    pub fn process_batch(&self) -> VecDeque<(ProcessResult, Arc<BlockEnum>)> {
+        let mut processed = VecDeque::new();
+        let _scoped_write_guard = self.write_database_queue.wait(Writer::ProcessBatch);
+        let mut transaction = self.ledger.rw_txn();
+        let mut lock_a = self.mutex.lock().unwrap();
+        let timer_l = Instant::now();
+        // Processing blocks
+        let mut number_of_blocks_processed = 0;
+        let mut number_of_forced_processed = 0;
+
+        let deadline_reached = || {
+            timer_l.elapsed()
+                > Duration::from_millis(self.config.block_processor_batch_max_time_ms as u64)
+        };
+
+        while lock_a.have_blocks_ready()
+            && (!deadline_reached()
+                || number_of_blocks_processed < self.flags.block_processor_batch_size)
+        {
+            if (lock_a.blocks.len()
+                + self
+                    .state_block_signature_verification
+                    .read()
+                    .unwrap()
+                    .size()
+                + lock_a.forced.len()
+                > 64)
+                && lock_a.should_log()
+            {
+                self.logger.always_log(&format!(
+                    "{} blocks (+ {} state blocks) (+ {} forced) in processing queue",
+                    lock_a.blocks.len(),
+                    self.state_block_signature_verification
+                        .read()
+                        .unwrap()
+                        .size(),
+                    lock_a.forced.len()
+                ));
+            }
+
+            let block: Arc<BlockEnum>;
+            let hash: BlockHash;
+            let force: bool;
+            if lock_a.forced.len() == 0 {
+                block = lock_a.blocks.pop_front().unwrap();
+                hash = block.hash();
+                force = false;
+            } else {
+                block = lock_a.forced.pop_front().unwrap();
+                hash = block.hash();
+                force = true;
+                number_of_forced_processed += 1;
+            }
+            drop(lock_a);
+
+            if force {
+                self.rollback_competitor(&mut transaction, &block);
+            }
+            number_of_blocks_processed += 1;
+            let result = self.process_one(&mut transaction, &block);
+            processed.push_back((result, block));
+            lock_a = self.mutex.lock().unwrap();
+        }
+        drop(lock_a);
+
+        if self.config.logging.timing_logging_value
+            && number_of_blocks_processed != 0
+            && timer_l.elapsed() > Duration::from_millis(100)
+        {
+            self.logger.always_log(&format!(
+                "Processed {} blocks ({} blocks were forced) in {} ms",
+                number_of_blocks_processed,
+                number_of_forced_processed,
+                timer_l.elapsed().as_millis(),
+            ));
+        }
+        processed
     }
 
     pub fn process_one(
@@ -314,6 +405,57 @@ impl BlockProcessor {
         result
     }
 
+    pub fn rollback_competitor(
+        &self,
+        transaction: &mut LmdbWriteTransaction,
+        block: &Arc<BlockEnum>,
+    ) {
+        let hash = block.hash();
+        if let Some(successor) = self.ledger.successor(transaction, &block.qualified_root()) {
+            if successor.hash() != hash {
+                // Replace our block with the winner and roll back any dependent blocks
+                if self.config.logging.ledger_rollback_logging_value {
+                    self.logger.always_log(&format!(
+                        "Rolling back {} and replacing with {}",
+                        successor.hash(),
+                        hash
+                    ));
+                }
+                let rollback_list = match self.ledger.rollback(transaction, &successor.hash()) {
+                    Ok(rollback_list) => {
+                        if self.config.logging.ledger_rollback_logging_value {
+                            self.logger
+                                .always_log(&format!("{} blocks rolled back", rollback_list.len()));
+                        }
+                        rollback_list
+                    }
+                    Err(_) => {
+                        self.stats
+                            .inc(StatType::Ledger, DetailType::RollbackFailed, Direction::In);
+                        self.logger.always_log(&format!(
+                            "Failed to roll back {} because it or a successor was confirmed",
+                            successor.hash()
+                        ));
+                        Vec::new()
+                    }
+                };
+
+                self.blocks_rolled_back(rollback_list, successor);
+            }
+        }
+    }
+
+    fn blocks_rolled_back(&self, rolled_back: Vec<BlockEnum>, initial_block: BlockEnum) {
+        // Deleting from votes cache, stop active transaction
+        for i in &rolled_back {
+            self.history.erase(&i.root());
+            // Stop all rolled back active transactions except initial
+            if i.hash() != initial_block.hash() {
+                self.active.erase(i);
+            }
+        }
+    }
+
     pub fn stop(&self) -> std::thread::Result<()> {
         self.state_block_signature_verification
             .write()
@@ -359,6 +501,10 @@ pub struct BlockProcessorImpl {
 }
 
 impl BlockProcessorImpl {
+    pub fn have_blocks_ready(&self) -> bool {
+        return self.blocks.len() > 0 || self.forced.len() > 0;
+    }
+
     pub fn should_log(&mut self) -> bool {
         let now = SystemTime::now();
         if self.next_log < now {

@@ -11,9 +11,10 @@ use std::{
     },
     time::Duration,
 };
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpListener;
 
 use super::{
+    tcp_stream::{TcpStream, TcpStreamFactory},
     write_queue::{WriteCallback, WriteQueue},
     TrafficType,
 };
@@ -75,6 +76,7 @@ pub struct TokioSocketFacade {
     state: Arc<Mutex<TokioSocketState>>,
     // make sure we call the current callback if we close the socket
     current_action: Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
+    tcp_stream_factory: Arc<TcpStreamFactory>,
 }
 
 enum TokioSocketState {
@@ -90,6 +92,7 @@ impl TokioSocketFacade {
             runtime: Arc::downgrade(&runtime),
             state: Arc::new(Mutex::new(TokioSocketState::Closed)),
             current_action: Mutex::new(None),
+            tcp_stream_factory: Arc::new(TcpStreamFactory::new()),
         }
     }
 }
@@ -128,8 +131,9 @@ impl TcpSocketFacade for TokioSocketFacade {
             return;
         };
         let runtime_w = Weak::clone(&self.runtime);
+        let tcp_stream_factory = Arc::clone(&self.tcp_stream_factory);
         runtime.tokio.spawn(async move {
-            let Ok(stream) = TcpStream::connect(endpoint).await else {
+            let Ok(stream) = tcp_stream_factory.connect(endpoint).await else {
                 if let Some(cb) = callback.lock().unwrap().take() {
                     let Some(runtime) = runtime_w.upgrade() else {
                         return;
@@ -468,6 +472,8 @@ impl TcpSocketFacade for TokioSocketFacade {
                         .as_any()
                         .downcast_ref::<TokioSocketFacade>()
                         .expect("not a Tokio socket");
+                    // wrap the tokio stream in our stream:
+                    let stream = TcpStream::new(stream);
                     *socket.state.lock().unwrap() = TokioSocketState::Client(Arc::new(stream));
                     let Some(runtime) = runtime_w.upgrade() else {
                         return;

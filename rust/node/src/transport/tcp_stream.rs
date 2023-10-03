@@ -1,16 +1,20 @@
 use std::{
     cmp::min,
+    net::SocketAddr,
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-use tokio::io::ErrorKind;
-
 use async_trait::async_trait;
+use tokio::{io::ErrorKind, net::ToSocketAddrs};
 
 #[async_trait]
-trait InternalTcpStream {
+trait InternalTcpStream: Send + Sync {
     async fn readable(&self) -> tokio::io::Result<()>;
     fn try_read(&self, buf: &mut [u8]) -> tokio::io::Result<usize>;
+    fn local_addr(&self) -> std::io::Result<SocketAddr>;
+    fn peer_addr(&self) -> std::io::Result<SocketAddr>;
+    async fn writable(&self) -> tokio::io::Result<()>;
+    fn try_write(&self, buf: &[u8]) -> tokio::io::Result<usize>;
 }
 
 struct TokioTcpStreamWrapper(tokio::net::TcpStream);
@@ -23,6 +27,22 @@ impl InternalTcpStream for TokioTcpStreamWrapper {
 
     fn try_read(&self, buf: &mut [u8]) -> tokio::io::Result<usize> {
         self.0.try_read(buf)
+    }
+
+    fn local_addr(&self) -> std::io::Result<SocketAddr> {
+        self.0.local_addr()
+    }
+
+    fn peer_addr(&self) -> std::io::Result<SocketAddr> {
+        self.0.peer_addr()
+    }
+
+    async fn writable(&self) -> tokio::io::Result<()> {
+        self.0.writable().await
+    }
+
+    fn try_write(&self, buf: &[u8]) -> tokio::io::Result<usize> {
+        self.0.try_write(buf)
     }
 }
 
@@ -70,6 +90,22 @@ impl InternalTcpStream for TcpStreamStub {
             Ok(read_count)
         }
     }
+
+    fn local_addr(&self) -> std::io::Result<SocketAddr> {
+        todo!()
+    }
+
+    fn peer_addr(&self) -> std::io::Result<SocketAddr> {
+        todo!()
+    }
+
+    async fn writable(&self) -> tokio::io::Result<()> {
+        todo!()
+    }
+
+    fn try_write(&self, _buf: &[u8]) -> tokio::io::Result<usize> {
+        todo!()
+    }
 }
 
 pub struct TcpStream {
@@ -102,6 +138,35 @@ impl TcpStream {
     pub fn try_read(&self, buf: &mut [u8]) -> tokio::io::Result<usize> {
         self.stream.try_read(buf)
     }
+
+    pub fn local_addr(&self) -> std::io::Result<SocketAddr> {
+        self.stream.local_addr()
+    }
+
+    pub fn peer_addr(&self) -> std::io::Result<SocketAddr> {
+        self.stream.peer_addr()
+    }
+
+    pub async fn writable(&self) -> tokio::io::Result<()> {
+        self.stream.writable().await
+    }
+
+    pub fn try_write(&self, buf: &[u8]) -> tokio::io::Result<usize> {
+        self.stream.try_write(buf)
+    }
+}
+
+pub struct TcpStreamFactory {}
+
+impl TcpStreamFactory {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    pub async fn connect<A: ToSocketAddrs>(&self, addr: A) -> tokio::io::Result<TcpStream> {
+        let tokio_stream = tokio::net::TcpStream::connect(addr).await?;
+        Ok(TcpStream::new(tokio_stream))
+    }
 }
 
 #[cfg(test)]
@@ -118,11 +183,9 @@ mod tests {
         let endpoint = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8088);
         start_test_tcp_server(endpoint).await;
 
-        let tokio_stream = tokio::net::TcpStream::connect("127.0.0.1:8088")
-            .await
-            .unwrap();
+        let stream_factory = TcpStreamFactory::new();
+        let stream = stream_factory.connect("127.0.0.1:8088").await.unwrap();
 
-        let stream = TcpStream::new(tokio_stream);
         let mut buf = [0; 3];
         loop {
             stream.readable().await.unwrap();

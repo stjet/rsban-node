@@ -14,9 +14,9 @@ use std::{
 use tokio::net::TcpListener;
 
 use super::{
-    tcp_stream::{TcpStream, TcpStreamFactory},
+    tcp_stream::TcpStream,
     write_queue::{WriteCallback, WriteQueue},
-    TrafficType,
+    TcpStreamFactory, TrafficType,
 };
 
 /// Policy to affect at which stage a buffer can be dropped
@@ -87,13 +87,26 @@ enum TokioSocketState {
 }
 
 impl TokioSocketFacade {
-    pub fn new(runtime: Arc<AsyncRuntime>) -> Self {
+    pub fn new(runtime: Arc<AsyncRuntime>, tcp_stream_factory: Arc<TcpStreamFactory>) -> Self {
         Self {
             runtime: Arc::downgrade(&runtime),
             state: Arc::new(Mutex::new(TokioSocketState::Closed)),
             current_action: Mutex::new(None),
-            tcp_stream_factory: Arc::new(TcpStreamFactory::new()),
+            tcp_stream_factory,
         }
+    }
+
+    pub fn create(runtime: Arc<AsyncRuntime>) -> Self {
+        Self::new(runtime, Arc::new(TcpStreamFactory::new()))
+    }
+
+    pub fn create_null() -> Self {
+        let runtime = Arc::new(AsyncRuntime::new(
+            tokio::runtime::Builder::new_current_thread()
+                .build()
+                .unwrap(),
+        ));
+        Self::new(runtime, Arc::new(TcpStreamFactory::create_null()))
     }
 }
 
@@ -603,7 +616,7 @@ impl TokioSocketFacadeFactory {
 
 impl TcpSocketFacadeFactory for TokioSocketFacadeFactory {
     fn create_tcp_socket(&self) -> Arc<dyn TcpSocketFacade> {
-        Arc::new(TokioSocketFacade::new(Arc::clone(&self.runtime)))
+        Arc::new(TokioSocketFacade::create(Arc::clone(&self.runtime)))
     }
 }
 
@@ -855,7 +868,7 @@ pub struct Socket {
 
 impl Socket {
     pub fn create_null() -> Arc<Socket> {
-        let tcp_facade = Arc::new(NullTcpSocketFacade::default());
+        let tcp_facade = Arc::new(TokioSocketFacade::create_null());
         let thread_pool = Arc::new(ThreadPoolImpl::create_null());
         SocketBuilder::endpoint_type(EndpointType::Client, tcp_facade, thread_pool).build()
     }

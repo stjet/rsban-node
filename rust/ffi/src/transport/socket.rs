@@ -84,7 +84,7 @@ pub unsafe extern "C" fn rsn_socket_create(
     async_rt: &AsyncRuntimeHandle,
 ) -> *mut SocketHandle {
     let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
-    let tcp_facade = Arc::new(TokioSocketFacade::new(Arc::clone(&async_rt.0)));
+    let tcp_facade = Arc::new(TokioSocketFacade::create(Arc::clone(&async_rt.0)));
     let thread_pool = thread_pool.0.clone();
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let stats = (*stats_handle).deref().clone();

@@ -5,7 +5,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use tokio::{io::ErrorKind, net::ToSocketAddrs};
+use tokio::io::ErrorKind;
 
 #[async_trait]
 trait InternalTcpStream: Send + Sync {
@@ -156,21 +156,10 @@ impl TcpStream {
     }
 }
 
-pub struct TcpStreamFactory {}
-
-impl TcpStreamFactory {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    pub async fn connect<A: ToSocketAddrs>(&self, addr: A) -> tokio::io::Result<TcpStream> {
-        let tokio_stream = tokio::net::TcpStream::connect(addr).await?;
-        Ok(TcpStream::new(tokio_stream))
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::transport::TcpStreamFactory;
+
     use super::*;
     use std::{
         io::ErrorKind,

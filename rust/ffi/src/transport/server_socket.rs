@@ -35,7 +35,7 @@ pub unsafe extern "C" fn rsn_server_socket_create(
 ) -> *mut ServerSocketHandle {
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let network_params = NetworkParams::try_from(network_params).unwrap();
-    let socket_facade = Arc::new(TokioSocketFacade::new(Arc::clone(&async_rt.0)));
+    let socket_facade = Arc::new(TokioSocketFacade::create(Arc::clone(&async_rt.0)));
     let tcp_socket_facade_factory =
         Arc::new(TokioSocketFacadeFactory::new(Arc::clone(&async_rt.0)));
 

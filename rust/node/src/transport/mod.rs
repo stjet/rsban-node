@@ -13,6 +13,7 @@ mod tcp_message_manager;
 mod tcp_server;
 mod tcp_server_factory;
 mod tcp_stream;
+mod tcp_stream_factory;
 mod token_bucket;
 mod write_queue;
 
@@ -43,6 +44,8 @@ pub use tcp_server::{
     TcpServerExt, TcpServerObserver,
 };
 pub use tcp_server_factory::TcpServerFactory;
+pub use tcp_stream::TcpStream;
+pub use tcp_stream_factory::TcpStreamFactory;
 use token_bucket::TokenBucket;
 pub use write_queue::WriteCallback;
 

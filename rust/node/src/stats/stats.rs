@@ -115,7 +115,6 @@ pub enum StatType {
     Vote,
     Election,
     HttpCallback,
-    Peering,
     Ipc,
     Tcp,
     ConfirmationHeight,
@@ -141,11 +140,7 @@ pub enum StatType {
     OptimisticScheduler,
     Handshake,
 
-    BootstrapServerRequests,
-    BootstrapServerResponses,
     BootstrapAscending,
-    BootstrapAscendingConnections,
-    BootstrapAscendingThread,
     BootstrapAscendingAccounts,
 }
 
@@ -177,7 +172,6 @@ pub enum DetailType {
     Batch,
 
     // error specific
-    BadSender,
     InsufficientWork,
     HttpCallback,
     UnreachableHost,
@@ -215,7 +209,6 @@ pub enum DetailType {
     Invalid,
     Keepalive,
     Publish,
-    RepublishVote,
     ConfirmReq,
     ConfirmAck,
     NodeIdHandshake,
@@ -233,17 +226,13 @@ pub enum DetailType {
     // bootstrap specific
     BulkPull,
     BulkPullAccount,
-    BulkPullDeserializeReceiveBlock,
     BulkPullErrorStartingRequest,
     BulkPullFailedAccount,
-    BulkPullReceiveBlockFailure,
     BulkPullRequestFailure,
     BulkPush,
     FrontierReq,
     FrontierConfirmationFailed,
-    FrontierConfirmationSuccessful,
     ErrorSocketClose,
-    RequestUnderflow,
 
     // vote specific
     VoteValid,
@@ -256,14 +245,7 @@ pub enum DetailType {
     VoteNew,
     VoteProcessed,
     VoteCached,
-    LateBlock,
-    LateBlockSeconds,
     ElectionBlockConflict,
-    ElectionRestart,
-    ElectionNotConfirmed,
-    ElectionHintedOverflow,
-    ElectionHintedConfirmed,
-    ElectionHintedDrop,
     GenerateVote,
     GenerateVoteNormal,
     GenerateVoteFinal,
@@ -308,9 +290,6 @@ pub enum DetailType {
     // ipc
     Invocations,
 
-    // peering
-    Handshake,
-
     // confirmation height
     BlocksConfirmed,
 
@@ -323,8 +302,6 @@ pub enum DetailType {
     RequestsGeneratedHashes,
     RequestsCachedVotes,
     RequestsGeneratedVotes,
-    RequestsCachedLateHashes,
-    RequestsCachedLateVotes,
     RequestsCannotVote,
     RequestsUnknown,
 
@@ -333,7 +310,6 @@ pub enum DetailType {
 
     // telemetry
     InvalidSignature,
-    DifferentGenesisHash,
     NodeIdMismatch,
     GenesisMismatch,
     RequestWithinProtectionCacheZone,
@@ -342,7 +318,6 @@ pub enum DetailType {
     FailedSendTelemetryReq,
     EmptyPayload,
     CleanupOutdated,
-    CleanupDead,
 
     // vote generator
     GeneratorBroadcasts,
@@ -355,11 +330,8 @@ pub enum DetailType {
 
     // bootstrap server
     Response,
-    WriteDrop,
     WriteError,
     Blocks,
-    Drop,
-    BadCount,
     ResponseBlocks,
     ResponseAccountInfo,
     ChannelFull,
@@ -390,22 +362,10 @@ pub enum DetailType {
     // bootstrap ascending
     MissingTag,
     Reply,
+    Throttled,
     Track,
     Timeout,
     NothingNew,
-
-    // bootstrap ascending connections
-    Connect,
-    ConnectMissing,
-    ConnectFailed,
-    ConnectSuccess,
-    Reuse,
-
-    // bootstrap ascending thread
-    ReadBlock,
-    ReadBlockDone,
-    ReadBlockEnd,
-    ReadBlockError,
 
     // bootstrap ascending accounts
     Prioritize,
@@ -426,14 +386,6 @@ pub enum DetailType {
     PriorityEraseOverflow,
     Deprioritize,
     DeprioritizeFailed,
-
-    // active
-    StartedHinted,
-    StartedOptimistic,
-
-    // optimistic
-    PopGap,
-    PopLeaf,
 }
 
 impl DetailType {

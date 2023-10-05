@@ -4,6 +4,8 @@ use std::{
     sync::{Arc, MutexGuard},
 };
 
+use crate::{copy_root_bytes, core::BlockHandle};
+
 use super::election_status::ElectionStatusHandle;
 
 pub struct ElectionHandle(Arc<Election>);
@@ -17,8 +19,10 @@ impl Deref for ElectionHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_election_create() -> *mut ElectionHandle {
-    Box::into_raw(Box::new(ElectionHandle(Arc::new(Election::new()))))
+pub extern "C" fn rsn_election_create(block: &BlockHandle) -> *mut ElectionHandle {
+    Box::into_raw(Box::new(ElectionHandle(Arc::new(Election::new(
+        Arc::clone(block),
+    )))))
 }
 
 #[no_mangle]
@@ -35,6 +39,11 @@ pub extern "C" fn rsn_election_lock(handle: &ElectionHandle) -> *mut ElectionLoc
         )
     };
     Box::into_raw(Box::new(ElectionLockHandle(Some(guard))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_root(handle: &ElectionHandle, result: *mut u8) {
+    copy_root_bytes(handle.root, result);
 }
 
 pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionStatus>>);

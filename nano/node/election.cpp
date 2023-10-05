@@ -56,10 +56,8 @@ nano::election::election (nano::node & node_a, std::shared_ptr<nano::block> cons
 	live_vote_action (live_vote_action_a),
 	node (node_a),
 	behavior_m (election_behavior_a),
-	height (block_a->sideband ().height ()),
-	root (block_a->root ()),
 	qualified_root (block_a->qualified_root ()),
-	handle{ rsnano::rsn_election_create () }
+	handle{ rsnano::rsn_election_create (block_a->get_handle()) }
 {
 	nano::election_status status;
 	status.set_winner (block_a);
@@ -77,6 +75,13 @@ nano::election::election (nano::node & node_a, std::shared_ptr<nano::block> cons
 nano::election::~election ()
 {
 	rsnano::rsn_election_destroy (handle);
+}
+
+nano::root nano::election::root() const
+{
+	nano::root root;
+	rsnano::rsn_election_root (handle, root.bytes.data());
+	return root;
 }
 
 void nano::election::confirm_once (nano::election_lock & lock_a, nano::election_status_type type_a)
@@ -428,7 +433,7 @@ void nano::election::confirm_if_quorum (nano::election_lock & lock_a)
 		{
 			auto hash = status_l.get_winner ()->hash ();
 			lock_a.unlock ();
-			node.final_generator.add (root, hash);
+			node.final_generator.add (root (), hash);
 			lock_a.lock ();
 		}
 		if (!node.ledger.cache.final_votes_confirmation_canary () || final_weight >= node.online_reps.delta ())
@@ -480,7 +485,7 @@ void nano::election::log_votes (nano::tally_t const & tally_a, std::string const
 {
 	std::stringstream tally;
 	std::string line_end (node.config->logging.single_line_record () ? "\t" : "\n");
-	tally << boost::str (boost::format ("%1%%2%Vote tally for root %3%, final weight:%4%") % prefix_a % line_end % root.to_string () % final_weight);
+	tally << boost::str (boost::format ("%1%%2%Vote tally for root %3%, final weight:%4%") % prefix_a % line_end % root ().to_string () % final_weight);
 	for (auto i (tally_a.begin ()), n (tally_a.end ()); i != n; ++i)
 	{
 		tally << boost::str (boost::format ("%1%Block %2% weight %3%") % line_end % i->second->hash ().to_string () % i->first.convert_to<std::string> ());
@@ -640,12 +645,12 @@ void nano::election::broadcast_vote_impl (nano::election_lock & lock)
 		if (confirmed (lock) || have_quorum (tally_impl ()))
 		{
 			node.stats->inc (nano::stat::type::election, nano::stat::detail::generate_vote_final);
-			node.final_generator.add (root, lock.status ().get_winner ()->hash ()); // Broadcasts vote to the network
+			node.final_generator.add (root (), lock.status ().get_winner ()->hash ()); // Broadcasts vote to the network
 		}
 		else
 		{
 			node.stats->inc (nano::stat::type::election, nano::stat::detail::generate_vote_normal);
-			node.generator.add (root, lock.status ().get_winner ()->hash ()); // Broadcasts vote to the network
+			node.generator.add (root (), lock.status ().get_winner ()->hash ()); // Broadcasts vote to the network
 		}
 	}
 }
@@ -655,13 +660,13 @@ void nano::election::remove_votes (nano::block_hash const & hash_a)
 	if (node.config->enable_voting && node.wallets.reps ().voting > 0)
 	{
 		// Remove votes from election
-		auto list_generated_votes (node.history.votes (root, hash_a));
+		auto list_generated_votes (node.history.votes (root (), hash_a));
 		for (auto const & vote : list_generated_votes)
 		{
 			last_votes.erase (vote->account ());
 		}
 		// Clear votes cache
-		node.history.erase (root);
+		node.history.erase (root ());
 	}
 }
 

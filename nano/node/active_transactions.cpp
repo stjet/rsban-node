@@ -154,7 +154,7 @@ void nano::active_transactions::handle_confirmation (nano::store::read_transacti
 
 void nano::active_transactions::update_recently_cemented (std::shared_ptr<nano::election> const & election)
 {
-	recently_cemented.put (election->get_status());
+	recently_cemented.put (election->get_status ());
 }
 
 void nano::active_transactions::handle_block_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block, nano::block_hash const & hash, nano::account & account, nano::uint128_t & amount, bool & is_state_send, bool & is_state_epoch, nano::account & pending_account)
@@ -166,7 +166,7 @@ void nano::active_transactions::handle_block_confirmation (nano::store::read_tra
 
 void nano::active_transactions::notify_observers (std::shared_ptr<nano::election> const & election, nano::account const & account, nano::uint128_t amount, bool is_state_send, bool is_state_epoch, nano::account const & pending_account)
 {
-	auto status = election->status;
+	auto status = election->get_status ();
 	auto votes = election->votes_with_weight ();
 
 	node.observers->blocks.notify (status, votes, account, amount, is_state_send, is_state_epoch);

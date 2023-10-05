@@ -71,17 +71,31 @@ struct election_extended_status final
 	nano::tally_t tally;
 };
 
+class election;
 
 class election_lock
 {
-	public:
-		election_lock(nano::mutex & mutex) : guard{ mutex } {}
-		election_lock(election_lock const &) = delete; 
-		bool owns_lock() const {return guard.owns_lock() ;}
-		void unlock() { guard.unlock();}
-		void lock() { guard.lock();}
-	private:
+public:
+	election_lock (nano::election const & election);
+	election_lock (election_lock const &) = delete;
+	bool owns_lock () const
+	{
+		return guard.owns_lock ();
+	}
+	void unlock ()
+	{
+		guard.unlock ();
+	}
+	void lock ()
+	{
+		guard.lock ();
+	}
+	nano::election_status status () const;
+	void set_status (nano::election_status status);
+
+private:
 	nano::unique_lock<nano::mutex> guard;
+	nano::election & election;
 };
 
 class election final : public std::enable_shared_from_this<nano::election>
@@ -141,12 +155,11 @@ public: // Status
 	bool failed () const;
 	nano::election_extended_status current_status () const;
 	std::shared_ptr<nano::block> winner () const;
-	std::atomic<unsigned> confirmation_request_count{ 0 };
-
 	void log_votes (nano::tally_t const &, std::string const & = "") const;
 	nano::tally_t tally () const;
 	bool have_quorum (nano::tally_t const &) const;
 
+	std::atomic<unsigned> confirmation_request_count{ 0 };
 	// Guarded by mutex
 	nano::election_status status;
 
@@ -178,6 +191,7 @@ public: // Interface
 	nano::vote_info get_last_vote (nano::account const & account);
 	void set_last_vote (nano::account const & account, nano::vote_info vote_info);
 	nano::election_status get_status () const;
+	void set_status (nano::election_status status_a);
 
 private: // Dependencies
 	nano::node & node;
@@ -223,6 +237,7 @@ private:
 	nano::election_behavior const behavior_m{ nano::election_behavior::normal };
 	std::chrono::steady_clock::time_point const election_start = { std::chrono::steady_clock::now () };
 
+public:
 	mutable nano::mutex mutex;
 
 private: // Constants

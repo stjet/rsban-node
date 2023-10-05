@@ -414,14 +414,11 @@ boost::optional<nano::election_status_type> nano::election::try_confirm (nano::b
 	return status_type;
 }
 
-nano::election_status nano::election::set_status_type (nano::election_status_type status_type)
+void nano::election::set_status_type (nano::election_status_type status_type)
 {
 	nano::unique_lock<nano::mutex> election_lk{ mutex };
 	status.set_election_status_type (status_type);
 	status.set_confirmation_request_count (confirmation_request_count);
-	nano::election_status status_l{ status };
-	election_lk.unlock ();
-	return status_l;
 }
 
 void nano::election::log_votes (nano::tally_t const & tally_a, std::string const & prefix_a) const

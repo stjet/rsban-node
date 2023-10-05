@@ -25,14 +25,15 @@ void nano::confirmation_solicitor::prepare (std::vector<nano::representative> co
 	prepared = true;
 }
 
-bool nano::confirmation_solicitor::broadcast (nano::election const & election_a)
+bool nano::confirmation_solicitor::broadcast (nano::election const & election_a, nano::election_lock const & lock_a)
 {
 	debug_assert (prepared);
 	bool error (true);
 	if (rebroadcasted++ < max_block_broadcasts)
 	{
-		auto hash{ election_a.status.get_winner ()->hash () };
-		nano::publish winner{ config.network_params.network, election_a.status.get_winner () };
+		auto winner_block{ lock_a.status ().get_winner () };
+		auto hash{ winner_block->hash () };
+		nano::publish winner{ config.network_params.network, winner_block };
 		unsigned count = 0;
 		// Directed broadcasting to principal representatives
 		for (auto i (representatives_broadcasts.begin ()), n (representatives_broadcasts.end ()); i != n && count < max_election_broadcasts; ++i)
@@ -53,12 +54,13 @@ bool nano::confirmation_solicitor::broadcast (nano::election const & election_a)
 	return error;
 }
 
-bool nano::confirmation_solicitor::add (nano::election const & election_a)
+bool nano::confirmation_solicitor::add (nano::election const & election_a, nano::election_lock const & lock_a)
 {
 	debug_assert (prepared);
 	bool error (true);
 	unsigned count = 0;
-	auto hash{ election_a.status.get_winner ()->hash () };
+	auto winner{ lock_a.status ().get_winner () };
+	auto hash{ winner->hash () };
 	for (auto i (representatives_requests.begin ()); i != representatives_requests.end () && count < max_election_requests;)
 	{
 		bool full_queue (false);
@@ -77,7 +79,7 @@ bool nano::confirmation_solicitor::add (nano::election const & election_a)
 			}
 			if (!channel->max ())
 			{
-				request_queue.emplace_back (election_a.status.get_winner ()->hash (), election_a.status.get_winner ()->root ());
+				request_queue.emplace_back (winner->hash (), winner->root ());
 				count += different ? 0 : 1;
 				error = false;
 			}

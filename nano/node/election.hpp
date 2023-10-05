@@ -141,6 +141,7 @@ private: // State management
 	bool confirmed (nano::election_lock & lock) const;
 
 public: // State transitions
+	nano::election_lock lock () const;
 	bool transition_time (nano::confirmation_solicitor &);
 	void transition_active ();
 
@@ -215,7 +216,7 @@ private:
 	 */
 	void broadcast_vote_impl (nano::election_lock & lock);
 	void remove_votes (nano::block_hash const &);
-	void remove_block (nano::block_hash const &);
+	void remove_block (nano::election_lock & lock, nano::block_hash const &);
 	bool replace_by_weight (nano::election_lock & lock_a, nano::block_hash const &);
 	std::chrono::milliseconds time_to_live () const;
 	/**

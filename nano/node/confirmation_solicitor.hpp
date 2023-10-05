@@ -18,9 +18,9 @@ public:
 	/** Prepare object for batching election confirmation requests*/
 	void prepare (std::vector<nano::representative> const &);
 	/** Broadcast the winner of an election if the broadcast limit has not been reached. Returns false if the broadcast was performed */
-	bool broadcast (nano::election const &);
+	bool broadcast (nano::election const &, nano::election_lock const & lock_a);
 	/** Add an election that needs to be confirmed. Returns false if successfully added */
-	bool add (nano::election const &);
+	bool add (nano::election const &, nano::election_lock const & lock_a);
 	/** Dispatch bundled requests to each channel*/
 	void flush ();
 	/** Global maximum amount of block broadcasts */

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/vote_cache.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>
@@ -78,24 +80,14 @@ class election_lock
 public:
 	election_lock (nano::election const & election);
 	election_lock (election_lock const &) = delete;
-	bool owns_lock () const
-	{
-		return guard.owns_lock ();
-	}
-	void unlock ()
-	{
-		guard.unlock ();
-	}
-	void lock ()
-	{
-		guard.lock ();
-	}
+	~election_lock ();
+	void unlock ();
+	void lock ();
 	nano::election_status status () const;
 	void set_status (nano::election_status status);
 
-private:
-	nano::unique_lock<nano::mutex> guard;
 	nano::election & election;
+	rsnano::ElectionLockHandle * handle;
 };
 
 class election final : public std::enable_shared_from_this<nano::election>
@@ -161,11 +153,12 @@ public: // Status
 	bool have_quorum (nano::tally_t const &) const;
 
 	std::atomic<unsigned> confirmation_request_count{ 0 };
-	// Guarded by mutex
-	nano::election_status status;
 
 public: // Interface
 	election (nano::node &, std::shared_ptr<nano::block> const & block, std::function<void (std::shared_ptr<nano::block> const &)> const & confirmation_action, std::function<void (nano::account const &)> const & vote_action, nano::election_behavior behavior);
+	election (election const &) = delete;
+	election (election &&) = delete;
+	~election ();
 
 	std::shared_ptr<nano::block> find (nano::block_hash const &) const;
 	/*
@@ -238,9 +231,6 @@ private:
 	nano::election_behavior const behavior_m{ nano::election_behavior::normal };
 	std::chrono::steady_clock::time_point const election_start = { std::chrono::steady_clock::now () };
 
-public:
-	mutable nano::mutex mutex;
-
 private: // Constants
 	static std::size_t constexpr max_blocks{ 10 };
 
@@ -256,5 +246,6 @@ public: // Only used in tests
 	friend class confirmation_solicitor_bypass_max_requests_cap_Test;
 	friend class votes_add_existing_Test;
 	friend class votes_add_old_Test;
+	rsnano::ElectionHandle * handle;
 };
 }

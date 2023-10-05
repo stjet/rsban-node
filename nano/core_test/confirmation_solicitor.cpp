@@ -44,14 +44,14 @@ TEST (confirmation_solicitor, batches)
 		for (size_t i (0); i < nano::network::confirm_req_hashes_max; ++i)
 		{
 			auto election (std::make_shared<nano::election> (node2, send, nullptr, nullptr, nano::election_behavior::normal));
-			auto guard {election->lock ()};
+			auto guard{ election->lock () };
 			ASSERT_FALSE (solicitor.add (*election, guard));
 		}
 		// Reached the maximum amount of requests for the channel
 		auto election (std::make_shared<nano::election> (node2, send, nullptr, nullptr, nano::election_behavior::normal));
 		// Broadcasting should be immediate
 		ASSERT_EQ (0, node2.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::out));
-		auto guard2 {election->lock ()};
+		auto guard2{ election->lock () };
 		ASSERT_FALSE (solicitor.broadcast (*election, guard2));
 	}
 	// One publish through directed broadcasting and another through random flooding
@@ -95,7 +95,7 @@ TEST (confirmation_solicitor, different_hash)
 	// Add a vote for something else, not the winner
 	election->last_votes[representative.get_account ()] = { std::chrono::steady_clock::now (), 1, 1 };
 	// Ensure the request and broadcast goes through
-	auto guard {election->lock()};
+	auto guard{ election->lock () };
 	ASSERT_FALSE (solicitor.add (*election, guard));
 	ASSERT_FALSE (solicitor.broadcast (*election, guard));
 	// One publish through directed broadcasting and another through random flooding
@@ -143,7 +143,7 @@ TEST (confirmation_solicitor, bypass_max_requests_cap)
 		election->set_last_vote (rep.get_account (), { std::chrono::steady_clock::now (), 1, 1 });
 	}
 	{
-		auto guard { election->lock() };
+		auto guard{ election->lock () };
 		ASSERT_FALSE (solicitor.add (*election, guard));
 		ASSERT_FALSE (solicitor.broadcast (*election, guard));
 	}
@@ -153,7 +153,7 @@ TEST (confirmation_solicitor, bypass_max_requests_cap)
 
 	solicitor.prepare (representatives);
 	auto election2 (std::make_shared<nano::election> (node2, send, nullptr, nullptr, nano::election_behavior::normal));
-	auto guard2{election2->lock()};
+	auto guard2{ election2->lock () };
 	ASSERT_FALSE (solicitor.add (*election2, guard2));
 	ASSERT_FALSE (solicitor.broadcast (*election2, guard2));
 

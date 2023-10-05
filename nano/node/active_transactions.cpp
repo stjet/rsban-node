@@ -110,9 +110,7 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 				election_winners_lk.unlock ();
 				if (election->confirmed () && election->winner ()->hash () == hash)
 				{
-					nano::unique_lock<nano::mutex> election_lk{ election->mutex };
-					auto status_l = election->status;
-					election_lk.unlock ();
+					auto status_l = election->get_status ();
 					recently_cemented.put (status_l);
 					auto destination (block_a->link ().is_zero () ? block_a->destination () : block_a->link ().as_account ());
 					node.receive_confirmed (*transaction, hash, destination);
@@ -122,11 +120,7 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 					bool is_state_epoch (false);
 					nano::account pending_account{};
 					node.process_confirmed_data (*transaction, block_a, hash, account, amount, is_state_send, is_state_epoch, pending_account);
-					election_lk.lock ();
-					election->status.set_election_status_type (*election_status_type);
-					election->status.set_confirmation_request_count (election->confirmation_request_count);
-					status_l = election->status;
-					election_lk.unlock ();
+					status_l = election->set_status_type (*election_status_type);
 					auto votes (election->votes_with_weight ());
 					node.observers->blocks.notify (status_l, votes, account, amount, is_state_send, is_state_epoch);
 					if (amount > 0)
@@ -648,29 +642,7 @@ boost::optional<nano::election_status_type> nano::active_transactions::confirm_b
 	boost::optional<nano::election_status_type> status_type;
 	if (election)
 	{
-		nano::unique_lock<nano::mutex> election_lock{ election->mutex };
-		auto winner = election->status.get_winner ();
-		if (winner && winner->hash () == hash)
-		{
-			// Determine if the block was confirmed explicitly via election confirmation or implicitly via confirmation height
-			if (!election->status_confirmed ())
-			{
-				election->confirm_once (election_lock, nano::election_status_type::active_confirmation_height);
-				status_type = nano::election_status_type::active_confirmation_height;
-			}
-			else
-			{
-#ifndef NDEBUG
-				nano::unique_lock<nano::mutex> election_winners_lk{ election_winner_details_mutex };
-				debug_assert (election_winner_details.find (hash) != election_winner_details.cend ());
-#endif
-				status_type = nano::election_status_type::active_confirmed_quorum;
-			}
-		}
-		else
-		{
-			status_type = boost::optional<nano::election_status_type>{};
-		}
+		status_type = election->try_confirm (hash);
 	}
 	else
 	{

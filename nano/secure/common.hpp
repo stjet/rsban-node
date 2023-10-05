@@ -590,7 +590,7 @@ public:
 	election_status ();
 	election_status (rsnano::ElectionStatusHandle * handle);
 	election_status (std::shared_ptr<nano::block> const & winner_a);
-	election_status (election_status &&) = delete;
+	election_status (election_status &&);
 	election_status (election_status const &);
 	~election_status ();
 	nano::election_status & operator= (const nano::election_status &);

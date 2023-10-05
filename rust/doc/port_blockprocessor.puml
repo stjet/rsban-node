@@ -12,7 +12,7 @@ class vote_processor
 class vote_spacing #PaleGreen
 class wallets #PaleGreen
 class local_vote_history #PaleGreen
-class inactive_vote_cache #PaleGoldenRod
+class vote_cache #PaleGreen
 class signature_checker #PaleGreen
 
 interface message_visitor
@@ -56,7 +56,7 @@ election --> block_processor
 election --> vote_generator
 election --> network
 election --> local_vote_history
-election --> inactive_vote_cache
+election --> vote_cache
 election ..> confirmation_solicitor
 
 vote_generator --> vote_broadcaster

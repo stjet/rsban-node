@@ -1134,6 +1134,12 @@ nano::election_status::election_status (std::shared_ptr<nano::block> const & win
 {
 }
 
+nano::election_status::election_status (nano::election_status && other_a) :
+	handle{ other_a.handle }
+{
+	other_a.handle = nullptr;
+}
+
 nano::election_status::election_status (nano::election_status const & other_a) :
 	handle (rsnano::rsn_election_status_clone (other_a.handle))
 {

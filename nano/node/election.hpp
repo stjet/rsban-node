@@ -71,6 +71,19 @@ struct election_extended_status final
 	nano::tally_t tally;
 };
 
+
+class election_lock
+{
+	public:
+		election_lock(nano::mutex & mutex) : guard{ mutex } {}
+		election_lock(election_lock const &) = delete; 
+		bool owns_lock() const {return guard.owns_lock() ;}
+		void unlock() { guard.unlock();}
+		void lock() { guard.lock();}
+	private:
+	nano::unique_lock<nano::mutex> guard;
+};
+
 class election final : public std::enable_shared_from_this<nano::election>
 {
 public:
@@ -111,7 +124,7 @@ private: // State management
 
 	bool valid_change (nano::election::state_t, nano::election::state_t) const;
 	bool state_change (nano::election::state_t, nano::election::state_t);
-	bool confirmed (nano::unique_lock<nano::mutex> & lock) const;
+	bool confirmed (nano::election_lock & lock) const;
 
 public: // State transitions
 	bool transition_time (nano::confirmation_solicitor &);
@@ -153,7 +166,7 @@ public: // Interface
 
 	bool publish (std::shared_ptr<nano::block> const & block_a);
 	// Confirm this block if quorum is met
-	void confirm_if_quorum (nano::unique_lock<nano::mutex> &);
+	void confirm_if_quorum (nano::election_lock &);
 	boost::optional<nano::election_status_type> try_confirm (nano::block_hash const & hash);
 	void set_status_type (nano::election_status_type status_type);
 
@@ -179,17 +192,17 @@ public: // Information
 private:
 	nano::tally_t tally_impl () const;
 	// lock_a does not own the mutex on return
-	void confirm_once (nano::unique_lock<nano::mutex> & lock_a, nano::election_status_type = nano::election_status_type::active_confirmed_quorum);
+	void confirm_once (nano::election_lock & lock_a, nano::election_status_type = nano::election_status_type::active_confirmed_quorum);
 	void broadcast_block (nano::confirmation_solicitor &);
 	void send_confirm_req (nano::confirmation_solicitor &);
 	/**
 	 * Broadcast vote for current election winner. Generates final vote if reached quorum or already confirmed
 	 * Requires mutex lock
 	 */
-	void broadcast_vote_impl (nano::unique_lock<nano::mutex> & lock);
+	void broadcast_vote_impl (nano::election_lock & lock);
 	void remove_votes (nano::block_hash const &);
 	void remove_block (nano::block_hash const &);
-	bool replace_by_weight (nano::unique_lock<nano::mutex> & lock_a, nano::block_hash const &);
+	bool replace_by_weight (nano::election_lock & lock_a, nano::block_hash const &);
 	std::chrono::milliseconds time_to_live () const;
 	/**
 	 * Calculates minimum time delay between subsequent votes when processing non-final votes

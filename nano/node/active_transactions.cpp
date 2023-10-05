@@ -154,8 +154,7 @@ void nano::active_transactions::handle_confirmation (nano::store::read_transacti
 
 void nano::active_transactions::update_recently_cemented (std::shared_ptr<nano::election> const & election)
 {
-	nano::unique_lock<nano::mutex> election_lk{ election->mutex };
-	recently_cemented.put (election->status);
+	recently_cemented.put (election->get_status());
 }
 
 void nano::active_transactions::handle_block_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block, nano::block_hash const & hash, nano::account & account, nano::uint128_t & amount, bool & is_state_send, bool & is_state_epoch, nano::account & pending_account)

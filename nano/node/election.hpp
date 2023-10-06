@@ -150,11 +150,18 @@ public:
 	void lock ();
 	nano::election_status status () const;
 	void set_status (nano::election_status status);
+
 	void insert_or_assign_last_block (std::shared_ptr<nano::block> const & block);
 	void erase_last_block (nano::block_hash const & hash);
 	size_t last_blocks_size () const;
 	std::unordered_map<nano::block_hash, std::shared_ptr<nano::block>> last_blocks () const;
 	std::shared_ptr<nano::block> find_block (nano::block_hash const & hash);
+
+	void insert_or_assign_vote (nano::account const & account, nano::vote_info const & vote_info);
+	std::optional<nano::vote_info> find_vote (nano::account const & account) const;
+	size_t last_votes_size () const;
+	std::unordered_map<nano::account, nano::vote_info> last_votes() const;
+	void erase_vote (nano::account const & account);
 
 	nano::election & election;
 	rsnano::ElectionLockHandle * handle;
@@ -218,7 +225,7 @@ public: // Status
 	bool failed () const;
 	nano::election_extended_status current_status () const;
 	std::shared_ptr<nano::block> winner () const;
-	void log_votes (nano::tally_t const &, std::string const & = "") const;
+	void log_votes (nano::election_lock & lock, nano::tally_t const &, std::string const & = "") const;
 	nano::tally_t tally () const;
 	bool have_quorum (nano::tally_t const &) const;
 
@@ -277,7 +284,7 @@ private:
 	 * Requires mutex lock
 	 */
 	void broadcast_vote_impl (nano::election_lock & lock);
-	void remove_votes (nano::block_hash const &);
+	void remove_votes (nano::election_lock & lock, nano::block_hash const &);
 	void remove_block (nano::election_lock & lock, nano::block_hash const &);
 	bool replace_by_weight (nano::election_lock & lock_a, nano::block_hash const &);
 	std::chrono::milliseconds time_to_live () const;
@@ -290,8 +297,9 @@ private:
 	 */
 	std::chrono::milliseconds confirm_req_time () const;
 
-private:
+public:
 	std::unordered_map<nano::account, nano::vote_info> last_votes;
+private:
 	std::atomic<bool> is_quorum{ false };
 	mutable nano::uint128_t final_weight{ 0 };
 	mutable std::unordered_map<nano::block_hash, nano::uint128_t> last_tally;

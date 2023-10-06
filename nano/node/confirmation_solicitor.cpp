@@ -38,9 +38,9 @@ bool nano::confirmation_solicitor::broadcast (nano::election const & election_a,
 		// Directed broadcasting to principal representatives
 		for (auto i (representatives_broadcasts.begin ()), n (representatives_broadcasts.end ()); i != n && count < max_election_broadcasts; ++i)
 		{
-			auto existing (election_a.last_votes.find (i->get_account ()));
-			bool const exists (existing != election_a.last_votes.end ());
-			bool const different (exists && existing->second.get_hash () != hash);
+			auto existing {lock_a.find_vote (i->get_account ())};
+			bool const exists (existing.has_value());
+			bool const different (exists && existing->get_hash () != hash);
 			if (!exists || different)
 			{
 				i->get_channel ()->send (winner);
@@ -65,10 +65,10 @@ bool nano::confirmation_solicitor::add (nano::election const & election_a, nano:
 	{
 		bool full_queue (false);
 		auto rep (*i);
-		auto existing (election_a.last_votes.find (rep.get_account ()));
-		bool const exists (existing != election_a.last_votes.end ());
-		bool const is_final (exists && (!election_a.is_quorum.load () || existing->second.get_timestamp () == std::numeric_limits<uint64_t>::max ()));
-		bool const different (exists && existing->second.get_hash () != hash);
+		auto existing {lock_a.find_vote (rep.get_account ())};
+		bool const exists {existing.has_value()};
+		bool const is_final (exists && (!election_a.is_quorum.load () || existing->get_timestamp () == std::numeric_limits<uint64_t>::max ()));
+		bool const different (exists && existing->get_hash () != hash);
 		if (!exists || !is_final || different)
 		{
 			auto channel{ rep.get_channel () };

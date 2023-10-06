@@ -92,10 +92,10 @@ TEST (confirmation_solicitor, different_hash)
 				.build_shared ();
 	send->sideband_set ({});
 	auto election (std::make_shared<nano::election> (node2, send, nullptr, nullptr, nano::election_behavior::normal));
-	// Add a vote for something else, not the winner
-	election->last_votes[representative.get_account ()] = { 1, 1 };
-	// Ensure the request and broadcast goes through
 	auto guard{ election->lock () };
+	// Add a vote for something else, not the winner
+	guard.insert_or_assign_vote(representative.get_account (), { 1, 1 });
+	// Ensure the request and broadcast goes through
 	ASSERT_FALSE (solicitor.add (*election, guard));
 	ASSERT_FALSE (solicitor.broadcast (*election, guard));
 	// One publish through directed broadcasting and another through random flooding

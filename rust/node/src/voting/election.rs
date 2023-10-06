@@ -4,6 +4,7 @@ use super::ElectionStatus;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
+    time::SystemTime,
 };
 
 pub struct Election {
@@ -28,9 +29,19 @@ pub struct ElectionData {
     pub last_blocks: HashMap<BlockHash, Arc<BlockEnum>>,
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct VoteInfo {
-    pub time: i64,
+    pub time: SystemTime, // TODO use Instant
     pub timestamp: u64,
     pub hash: BlockHash,
+}
+
+impl Default for VoteInfo {
+    fn default() -> Self {
+        Self {
+            time: SystemTime::now(),
+            timestamp: 0,
+            hash: BlockHash::zero(),
+        }
+    }
 }

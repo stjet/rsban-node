@@ -584,7 +584,7 @@ nano::election_vote_result nano::election::vote (nano::account const & rep, uint
 		if (vote_source_a == vote_source::live)
 		{
 			const auto cooldown = cooldown_time (weight);
-			past_cooldown = last_vote_l.get_time () <= std::chrono::steady_clock::now () - cooldown;
+			past_cooldown = last_vote_l.get_time () <= std::chrono::system_clock::now () - cooldown;
 		}
 
 		if (!max_vote && !past_cooldown)

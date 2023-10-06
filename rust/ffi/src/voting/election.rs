@@ -1,8 +1,9 @@
-use rsnano_core::{BlockEnum, BlockHash};
+use rsnano_core::{utils::system_time_as_nanoseconds, BlockEnum, BlockHash};
 use rsnano_node::voting::{Election, ElectionData, VoteInfo};
 use std::{
     ops::Deref,
     sync::{Arc, MutexGuard},
+    time::{Duration, SystemTime},
 };
 
 use crate::{
@@ -181,12 +182,11 @@ pub unsafe extern "C" fn rsn_vote_info_create1() -> *mut VoteInfoHandle {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_info_create2(
-    time: i64,
     timestamp: u64,
     hash: *const u8,
 ) -> *mut VoteInfoHandle {
     VoteInfoHandle::new(VoteInfo {
-        time,
+        time: SystemTime::now(),
         timestamp,
         hash: BlockHash::from_ptr(hash),
     })
@@ -203,8 +203,8 @@ pub unsafe extern "C" fn rsn_vote_info_destroy(handle: *mut VoteInfoHandle) {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_vote_info_time(handle: &VoteInfoHandle) -> i64 {
-    handle.0.time
+pub extern "C" fn rsn_vote_info_time_ns(handle: &VoteInfoHandle) -> u64 {
+    system_time_as_nanoseconds(handle.0.time)
 }
 
 #[no_mangle]
@@ -215,4 +215,21 @@ pub extern "C" fn rsn_vote_info_timestamp(handle: &VoteInfoHandle) -> u64 {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_info_hash(handle: &VoteInfoHandle, hash: *mut u8) {
     copy_hash_bytes(handle.0.hash, hash);
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_vote_info_with_relative_time(
+    handle: &VoteInfoHandle,
+    seconds: i64,
+) -> *mut VoteInfoHandle {
+    let delta = Duration::from_secs(seconds.abs() as u64);
+    VoteInfoHandle::new(VoteInfo {
+        time: if seconds < 0 {
+            SystemTime::now() - delta
+        } else {
+            SystemTime::now() + delta
+        },
+        timestamp: handle.0.timestamp,
+        hash: handle.0.hash,
+    })
 }

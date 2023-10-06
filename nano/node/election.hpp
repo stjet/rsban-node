@@ -22,6 +22,24 @@ class node;
 class vote_info final
 {
 public:
+	std::chrono::steady_clock::time_point get_time () const
+	{
+		return time;
+	}
+	void set_time (std::chrono::steady_clock::time_point t)
+	{
+		time = t;
+	}
+	uint64_t get_timestamp () const
+	{
+		return timestamp;
+	}
+	nano::block_hash get_hash () const
+	{
+		return hash;
+	}
+
+private:
 	std::chrono::steady_clock::time_point time;
 	uint64_t timestamp;
 	nano::block_hash hash;

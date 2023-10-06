@@ -219,7 +219,7 @@ TEST (vote_processor, no_broadcast_local)
 	auto votes (election->votes ());
 	auto existing (votes.find (nano::dev::genesis_key.pub));
 	ASSERT_NE (votes.end (), existing);
-	ASSERT_EQ (vote->timestamp (), existing->second.timestamp);
+	ASSERT_EQ (vote->timestamp (), existing->second.get_timestamp ());
 	// Ensure the vote, from a local representative, was not broadcast on processing - it should be flooded on vote generation instead.
 	ASSERT_EQ (0, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::out));
@@ -267,7 +267,7 @@ TEST (vote_processor, local_broadcast_without_a_representative)
 	auto votes (election->votes ());
 	auto existing (votes.find (nano::dev::genesis_key.pub));
 	ASSERT_NE (votes.end (), existing);
-	ASSERT_EQ (vote->timestamp (), existing->second.timestamp);
+	ASSERT_EQ (vote->timestamp (), existing->second.get_timestamp ());
 	// Ensure the vote was broadcast
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::out));
@@ -320,7 +320,7 @@ TEST (vote_processor, no_broadcast_local_with_a_principal_representative)
 	auto votes (election->votes ());
 	auto existing (votes.find (nano::dev::genesis_key.pub));
 	ASSERT_NE (votes.end (), existing);
-	ASSERT_EQ (vote->timestamp (), existing->second.timestamp);
+	ASSERT_EQ (vote->timestamp (), existing->second.get_timestamp ());
 	// Ensure the vote was not broadcast.
 	ASSERT_EQ (0, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::out));

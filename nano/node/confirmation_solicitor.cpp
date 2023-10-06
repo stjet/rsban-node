@@ -40,7 +40,7 @@ bool nano::confirmation_solicitor::broadcast (nano::election const & election_a,
 		{
 			auto existing (election_a.last_votes.find (i->get_account ()));
 			bool const exists (existing != election_a.last_votes.end ());
-			bool const different (exists && existing->second.hash != hash);
+			bool const different (exists && existing->second.get_hash () != hash);
 			if (!exists || different)
 			{
 				i->get_channel ()->send (winner);
@@ -67,8 +67,8 @@ bool nano::confirmation_solicitor::add (nano::election const & election_a, nano:
 		auto rep (*i);
 		auto existing (election_a.last_votes.find (rep.get_account ()));
 		bool const exists (existing != election_a.last_votes.end ());
-		bool const is_final (exists && (!election_a.is_quorum.load () || existing->second.timestamp == std::numeric_limits<uint64_t>::max ()));
-		bool const different (exists && existing->second.hash != hash);
+		bool const is_final (exists && (!election_a.is_quorum.load () || existing->second.get_timestamp () == std::numeric_limits<uint64_t>::max ()));
+		bool const different (exists && existing->second.get_hash () != hash);
 		if (!exists || !is_final || different)
 		{
 			auto channel{ rep.get_channel () };

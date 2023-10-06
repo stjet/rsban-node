@@ -2107,7 +2107,7 @@ void nano::json_handler::confirmation_info ()
 					std::multimap<nano::uint128_t, nano::account, std::greater<nano::uint128_t>> representatives;
 					for (auto const & [representative, vote] : info.votes)
 					{
-						if (block->hash () == vote.hash)
+						if (block->hash () == vote.get_hash ())
 						{
 							auto amount (node.ledger.cache.rep_weights ().representation_get (representative));
 							representatives.emplace (std::move (amount), representative);

@@ -357,8 +357,8 @@ TEST (active_transactions, inactive_votes_cache_existing_vote)
 	ASSERT_TIMELY (5s, election->votes ().size () == 2);
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_new));
 	auto last_vote1 (election->votes ()[key.pub]);
-	ASSERT_EQ (send->hash (), last_vote1.hash);
-	ASSERT_EQ (nano::vote::timestamp_min * 1, last_vote1.timestamp);
+	ASSERT_EQ (send->hash (), last_vote1.get_hash ());
+	ASSERT_EQ (nano::vote::timestamp_min * 1, last_vote1.get_timestamp ());
 	// Attempt to change vote with inactive_votes_cache
 	nano::unique_lock<nano::mutex> active_lock (node.active.mutex);
 	node.inactive_vote_cache.vote (send->hash (), vote1, rep_weight);
@@ -369,9 +369,9 @@ TEST (active_transactions, inactive_votes_cache_existing_vote)
 	// Check that election data is not changed
 	ASSERT_EQ (2, election->votes ().size ());
 	auto last_vote2 (election->votes ()[key.pub]);
-	ASSERT_EQ (last_vote1.hash, last_vote2.hash);
-	ASSERT_EQ (last_vote1.timestamp, last_vote2.timestamp);
-	ASSERT_EQ (last_vote1.time, last_vote2.time);
+	ASSERT_EQ (last_vote1.get_hash (), last_vote2.get_hash ());
+	ASSERT_EQ (last_vote1.get_timestamp (), last_vote2.get_timestamp ());
+	ASSERT_EQ (last_vote1.get_time (), last_vote2.get_time ());
 	ASSERT_EQ (0, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached));
 }
 

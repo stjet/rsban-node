@@ -422,10 +422,10 @@ nano::tally_t nano::election::tally_impl (nano::election_lock & lock) const
 	for (auto const & [account, info] : last_votes)
 	{
 		auto rep_weight (node.ledger.weight (account));
-		block_weights[info.hash] += rep_weight;
-		if (info.timestamp == std::numeric_limits<uint64_t>::max ())
+		block_weights[info.get_hash ()] += rep_weight;
+		if (info.get_timestamp () == std::numeric_limits<uint64_t>::max ())
 		{
-			final_weights_l[info.hash] += rep_weight;
+			final_weights_l[info.get_hash ()] += rep_weight;
 		}
 	}
 	last_tally = block_weights;
@@ -543,7 +543,7 @@ void nano::election::log_votes (nano::tally_t const & tally_a, std::string const
 	{
 		if (i->first != nullptr)
 		{
-			tally << boost::str (boost::format ("%1%%2% %3% %4%") % line_end % i->first.to_account () % std::to_string (i->second.timestamp) % i->second.hash.to_string ());
+			tally << boost::str (boost::format ("%1%%2% %3% %4%") % line_end % i->first.to_account () % std::to_string (i->second.get_timestamp ()) % i->second.get_hash ().to_string ());
 		}
 	}
 	node.logger->try_log (tally.str ());
@@ -568,23 +568,23 @@ nano::election_vote_result nano::election::vote (nano::account const & rep, uint
 	if (last_vote_it != last_votes.end ())
 	{
 		auto last_vote_l (last_vote_it->second);
-		if (last_vote_l.timestamp > timestamp_a)
+		if (last_vote_l.get_timestamp () > timestamp_a)
 		{
 			return nano::election_vote_result (true, false);
 		}
-		if (last_vote_l.timestamp == timestamp_a && !(last_vote_l.hash < block_hash_a))
+		if (last_vote_l.get_timestamp () == timestamp_a && !(last_vote_l.get_hash () < block_hash_a))
 		{
 			return nano::election_vote_result (true, false);
 		}
 
-		auto max_vote = timestamp_a == std::numeric_limits<uint64_t>::max () && last_vote_l.timestamp < timestamp_a;
+		auto max_vote = timestamp_a == std::numeric_limits<uint64_t>::max () && last_vote_l.get_timestamp () < timestamp_a;
 
 		bool past_cooldown = true;
 		// Only cooldown live votes
 		if (vote_source_a == vote_source::live)
 		{
 			const auto cooldown = cooldown_time (weight);
-			past_cooldown = last_vote_l.time <= std::chrono::steady_clock::now () - cooldown;
+			past_cooldown = last_vote_l.get_time () <= std::chrono::steady_clock::now () - cooldown;
 		}
 
 		if (!max_vote && !past_cooldown)
@@ -722,7 +722,7 @@ void nano::election::remove_block (nano::election_lock & lock, nano::block_hash 
 		{
 			for (auto i (last_votes.begin ()); i != last_votes.end ();)
 			{
-				if (i->second.hash == hash_a)
+				if (i->second.get_hash () == hash_a)
 				{
 					i = last_votes.erase (i);
 				}
@@ -820,7 +820,7 @@ std::vector<nano::vote_with_weight_info> nano::election::votes_with_weight () co
 		if (vote_l.first != nullptr)
 		{
 			auto amount (node.ledger.cache.rep_weights ().representation_get (vote_l.first));
-			nano::vote_with_weight_info vote_info{ vote_l.first, vote_l.second.time, vote_l.second.timestamp, vote_l.second.hash, amount };
+			nano::vote_with_weight_info vote_info{ vote_l.first, vote_l.second.get_time (), vote_l.second.get_timestamp (), vote_l.second.get_hash (), amount };
 			sorted_votes.emplace (std::move (amount), vote_info);
 		}
 	}

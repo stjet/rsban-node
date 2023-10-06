@@ -1,5 +1,7 @@
 use rsnano_core::{Account, BlockEnum, BlockHash, QualifiedRoot, Root};
 
+use crate::utils::HardenedConstants;
+
 use super::ElectionStatus;
 use std::{
     collections::HashMap,
@@ -15,10 +17,29 @@ pub struct Election {
 
 impl Election {
     pub fn new(block: Arc<BlockEnum>) -> Self {
+        let root = block.root();
+        let qualified_root = block.qualified_root();
+
+        let data = ElectionData {
+            status: ElectionStatus {
+                winner: Some(Arc::clone(&block)),
+                election_end: Some(SystemTime::now()),
+                block_count: 1,
+                election_status_type: super::ElectionStatusType::Ongoing,
+                ..Default::default()
+            },
+            last_votes: HashMap::from([(
+                HardenedConstants::get().not_an_account,
+                VoteInfo::new(0, block.hash()),
+            )]),
+            last_blocks: HashMap::from([(block.hash(), block)]),
+            ..Default::default()
+        };
+
         Self {
-            mutex: Mutex::new(ElectionData::default()),
-            root: block.root(),
-            qualified_root: block.qualified_root(),
+            mutex: Mutex::new(data),
+            root,
+            qualified_root,
         }
     }
 }
@@ -37,12 +58,18 @@ pub struct VoteInfo {
     pub hash: BlockHash,
 }
 
-impl Default for VoteInfo {
-    fn default() -> Self {
+impl VoteInfo {
+    pub fn new(timestamp: u64, hash: BlockHash) -> Self {
         Self {
             time: SystemTime::now(),
-            timestamp: 0,
-            hash: BlockHash::zero(),
+            timestamp,
+            hash,
         }
+    }
+}
+
+impl Default for VoteInfo {
+    fn default() -> Self {
+        Self::new(0, BlockHash::zero())
     }
 }

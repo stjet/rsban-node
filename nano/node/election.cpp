@@ -145,17 +145,6 @@ nano::election::election (nano::node & node_a, std::shared_ptr<nano::block> cons
 	behavior_m (election_behavior_a),
 	handle{ rsnano::rsn_election_create (block_a->get_handle ()) }
 {
-	nano::election_status status;
-	status.set_winner (block_a);
-	status.set_election_end (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()));
-	status.set_block_count (1);
-	status.set_election_status_type (nano::election_status_type::ongoing);
-	{
-		auto guard{ lock () };
-		guard.set_status (status);
-		guard.insert_or_assign_vote (nano::account::null (), nano::vote_info{ 0, block_a->hash () });
-		guard.insert_or_assign_last_block (block_a);
-	}
 }
 
 nano::election::~election ()

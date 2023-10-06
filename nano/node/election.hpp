@@ -22,18 +22,39 @@ class node;
 class vote_info final
 {
 public:
+	vote_info ()
+	{
+	}
+
+	vote_info (std::chrono::steady_clock::time_point time, uint64_t timestamp, nano::block_hash hash) :
+		time{ time },
+		timestamp{ timestamp },
+		hash{ hash }
+	{
+	}
+
+	vote_info (vote_info const & other) :
+		time{ other.time },
+		timestamp{ other.timestamp },
+		hash{ other.hash }
+	{
+	}
+
 	std::chrono::steady_clock::time_point get_time () const
 	{
 		return time;
 	}
-	void set_time (std::chrono::steady_clock::time_point t)
+
+	vote_info with_time (std::chrono::steady_clock::time_point t)
 	{
-		time = t;
+		return { t, timestamp, hash };
 	}
+
 	uint64_t get_timestamp () const
 	{
 		return timestamp;
 	}
+
 	nano::block_hash get_hash () const
 	{
 		return hash;

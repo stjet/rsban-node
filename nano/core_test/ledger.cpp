@@ -130,13 +130,13 @@ TEST (votes, add_existing)
 	// Pretend we've waited the timeout
 
 	auto vote_info = election1->get_last_vote (nano::dev::genesis_key.pub);
-	vote_info = vote_info.with_time (std::chrono::steady_clock::now () - std::chrono::seconds (20));
+	vote_info = vote_info.with_relative_time (std::chrono::seconds (-20));
 	election1->set_last_vote (nano::dev::genesis_key.pub, vote_info);
 	ASSERT_EQ (nano::vote_code::vote, node1.active.vote (vote2));
 	ASSERT_EQ (nano::vote::timestamp_min * 2, election1->last_votes[nano::dev::genesis_key.pub].get_timestamp ());
 	// Also resend the old vote, and see if we respect the timestamp
 	auto vote_info2 = election1->get_last_vote (nano::dev::genesis_key.pub);
-	vote_info2 = vote_info2.with_time (std::chrono::steady_clock::now () - std::chrono::seconds (20));
+	vote_info2 = vote_info2.with_relative_time (std::chrono::seconds (-20));
 	election1->set_last_vote (nano::dev::genesis_key.pub, vote_info2);
 	ASSERT_EQ (nano::vote_code::replay, node1.active.vote (vote1));
 	ASSERT_EQ (nano::vote::timestamp_min * 2, election1->votes ()[nano::dev::genesis_key.pub].get_timestamp ());
@@ -184,7 +184,7 @@ TEST (votes, add_old)
 	auto vote2 = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::vote::timestamp_min * 1, 0, std::vector<nano::block_hash>{ send2->hash () });
 	{
 		auto vote_info = election1->get_last_vote (nano::dev::genesis_key.pub);
-		vote_info = vote_info.with_time (std::chrono::steady_clock::now () - std::chrono::seconds (20));
+		vote_info = vote_info.with_relative_time (std::chrono::seconds (-20));
 		election1->set_last_vote (nano::dev::genesis_key.pub, vote_info);
 	}
 	node1.vote_processor.vote_blocking (vote2, channel);

@@ -1,5 +1,5 @@
 use rsnano_core::{BlockEnum, BlockHash};
-use rsnano_node::voting::{Election, ElectionData};
+use rsnano_node::voting::{Election, ElectionData, VoteInfo};
 use std::{
     ops::Deref,
     sync::{Arc, MutexGuard},
@@ -164,4 +164,55 @@ pub unsafe extern "C" fn rsn_election_lock_blocks(
         .collect();
 
     copy_block_array_dto(blocks, result);
+}
+
+pub struct VoteInfoHandle(VoteInfo);
+
+impl VoteInfoHandle {
+    pub fn new(info: VoteInfo) -> *mut VoteInfoHandle {
+        Box::into_raw(Box::new(VoteInfoHandle(info)))
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_info_create1() -> *mut VoteInfoHandle {
+    VoteInfoHandle::new(Default::default())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_info_create2(
+    time: i64,
+    timestamp: u64,
+    hash: *const u8,
+) -> *mut VoteInfoHandle {
+    VoteInfoHandle::new(VoteInfo {
+        time,
+        timestamp,
+        hash: BlockHash::from_ptr(hash),
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_vote_info_clone(handle: &VoteInfoHandle) -> *mut VoteInfoHandle {
+    VoteInfoHandle::new(handle.0.clone())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_info_destroy(handle: *mut VoteInfoHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_vote_info_time(handle: &VoteInfoHandle) -> i64 {
+    handle.0.time
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_vote_info_timestamp(handle: &VoteInfoHandle) -> u64 {
+    handle.0.timestamp
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_info_hash(handle: &VoteInfoHandle, hash: *mut u8) {
+    copy_hash_bytes(handle.0.hash, hash);
 }

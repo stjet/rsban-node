@@ -27,3 +27,10 @@ pub struct ElectionData {
     pub status: ElectionStatus,
     pub last_blocks: HashMap<BlockHash, Arc<BlockEnum>>,
 }
+
+#[derive(Default, Clone)]
+pub struct VoteInfo {
+    pub time: i64,
+    pub timestamp: u64,
+    pub hash: BlockHash,
+}

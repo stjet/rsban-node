@@ -93,7 +93,7 @@ TEST (confirmation_solicitor, different_hash)
 	send->sideband_set ({});
 	auto election (std::make_shared<nano::election> (node2, send, nullptr, nullptr, nano::election_behavior::normal));
 	// Add a vote for something else, not the winner
-	election->last_votes[representative.get_account ()] = { std::chrono::steady_clock::now (), 1, 1 };
+	election->last_votes[representative.get_account ()] = { 1, 1 };
 	// Ensure the request and broadcast goes through
 	auto guard{ election->lock () };
 	ASSERT_FALSE (solicitor.add (*election, guard));
@@ -140,7 +140,7 @@ TEST (confirmation_solicitor, bypass_max_requests_cap)
 	// Add a vote for something else, not the winner
 	for (auto const & rep : representatives)
 	{
-		election->set_last_vote (rep.get_account (), { std::chrono::steady_clock::now (), 1, 1 });
+		election->set_last_vote (rep.get_account (), { 1, 1 });
 	}
 	{
 		auto guard{ election->lock () };

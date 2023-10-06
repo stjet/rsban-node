@@ -22,27 +22,73 @@ class node;
 class vote_info final
 {
 public:
-	vote_info ()
+	vote_info () : handle {rsnano::rsn_vote_info_create1()}
 	{
 	}
 
-	vote_info (std::chrono::steady_clock::time_point time, uint64_t timestamp, nano::block_hash hash) :
-		time{ time },
+	vote_info (uint64_t timestamp, nano::block_hash hash) :
+		handle{rsnano::rsn_vote_info_create1()},
+		time{ std::chrono::steady_clock::now () },
 		timestamp{ timestamp },
 		hash{ hash }
 	{
 	}
 
+private:
+	vote_info (std::chrono::steady_clock::time_point time, uint64_t timestamp, nano::block_hash hash) :
+		handle{rsnano::rsn_vote_info_create1()},
+		time{ time },
+		timestamp{ timestamp },
+		hash{ hash }
+	{
+	}
+public:
+
+	vote_info(vote_info && other) : 
+		handle{other.handle},
+		time{other.time},
+		timestamp{other.timestamp},
+		hash{other.hash}
+	{
+		other.handle = nullptr;
+	}
+
 	vote_info (vote_info const & other) :
+		handle{ rsnano::rsn_vote_info_clone(other.handle)},
 		time{ other.time },
 		timestamp{ other.timestamp },
 		hash{ other.hash }
 	{
 	}
 
+	~vote_info()
+	{
+		if (handle != nullptr)
+		{
+			rsnano::rsn_vote_info_destroy(handle);
+		}
+	}
+
+	vote_info & operator= (vote_info const & other)
+	{
+		if (handle != nullptr){
+			rsnano::rsn_vote_info_destroy(handle);
+		}
+		handle = rsnano::rsn_vote_info_clone(other.handle);
+		time = other.time;
+		timestamp = other.timestamp;
+		hash = other.hash;
+		return *this;
+	}
+
 	std::chrono::steady_clock::time_point get_time () const
 	{
 		return time;
+	}
+
+	vote_info with_relative_time (std::chrono::seconds seconds)
+	{
+		return { std::chrono::steady_clock::now() + seconds, timestamp, hash };
 	}
 
 	vote_info with_time (std::chrono::steady_clock::time_point t)
@@ -64,6 +110,7 @@ private:
 	std::chrono::steady_clock::time_point time;
 	uint64_t timestamp;
 	nano::block_hash hash;
+	rsnano::VoteInfoHandle * handle;
 };
 
 class vote_with_weight_info final

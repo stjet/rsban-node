@@ -629,7 +629,7 @@ pub unsafe extern "C" fn rsn_ledger_rollback(
     handle: *mut LedgerHandle,
     txn: *mut TransactionHandle,
     hash: *const u8,
-    result: *mut BlockArrayDto,
+    result: &mut BlockArrayDto,
 ) -> bool {
     match (*handle)
         .0

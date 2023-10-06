@@ -85,6 +85,11 @@ public:
 	void lock ();
 	nano::election_status status () const;
 	void set_status (nano::election_status status);
+	void insert_or_assign_last_block (std::shared_ptr<nano::block> const & block);
+	void erase_last_block (nano::block_hash const & hash);
+	size_t last_blocks_size () const;
+	std::unordered_map<nano::block_hash, std::shared_ptr<nano::block>> last_blocks () const;
+	std::shared_ptr<nano::block> find_block (nano::block_hash const & hash);
 
 	nano::election & election;
 	rsnano::ElectionLockHandle * handle;
@@ -191,13 +196,13 @@ private: // Dependencies
 	nano::node & node;
 
 public: // Information
-	nano::root root() const;
-	nano::qualified_root const qualified_root;
+	nano::root root () const;
+	nano::qualified_root qualified_root () const;
 	std::vector<nano::vote_with_weight_info> votes_with_weight () const;
 	nano::election_behavior behavior () const;
 
 private:
-	nano::tally_t tally_impl () const;
+	nano::tally_t tally_impl (nano::election_lock & lock) const;
 	// lock_a does not own the mutex on return
 	void confirm_once (nano::election_lock & lock_a, nano::election_status_type = nano::election_status_type::active_confirmed_quorum);
 	void broadcast_block (nano::confirmation_solicitor &);
@@ -221,7 +226,6 @@ private:
 	std::chrono::milliseconds confirm_req_time () const;
 
 private:
-	std::unordered_map<nano::block_hash, std::shared_ptr<nano::block>> last_blocks;
 	std::unordered_map<nano::account, nano::vote_info> last_votes;
 	std::atomic<bool> is_quorum{ false };
 	mutable nano::uint128_t final_weight{ 0 };

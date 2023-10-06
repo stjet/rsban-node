@@ -134,31 +134,31 @@ public:
 	nano::telemetry_data local_telemetry () const;
 
 public:
-	nano::write_database_queue write_database_queue;
-	rsnano::async_runtime & async_rt;
+	nano::write_database_queue write_database_queue; // ported
+	rsnano::async_runtime & async_rt; // ported
 	boost::asio::io_context & io_ctx;
 	boost::latch node_initialized_latch;
 	std::shared_ptr<nano::node_observers> observers;
-	std::shared_ptr<nano::node_config> config;
-	nano::network_params network_params;
+	std::shared_ptr<nano::node_config> config; // ported
+	nano::network_params network_params; // ported
 	std::shared_ptr<nano::logger_mt> logger;
-	nano::keypair node_id;
-	std::shared_ptr<nano::stats> stats;
-	std::shared_ptr<nano::thread_pool> workers;
-	std::shared_ptr<nano::thread_pool> bootstrap_workers;
-	nano::node_flags flags;
-	nano::work_pool & work;
+	nano::keypair node_id; // ported
+	std::shared_ptr<nano::stats> stats; // ported
+	std::shared_ptr<nano::thread_pool> workers; // ported
+	std::shared_ptr<nano::thread_pool> bootstrap_workers; // ported
+	nano::node_flags flags; // ported
+	nano::work_pool & work; // ported
 	nano::distributed_work_factory distributed_work;
-	std::unique_ptr<nano::store::component> store_impl;
-	nano::store::component & store;
-	nano::unchecked_map unchecked;
-	std::unique_ptr<nano::wallets_store> wallets_store_impl;
-	nano::wallets_store & wallets_store;
-	nano::ledger ledger;
-	nano::signature_checker checker;
-	nano::outbound_bandwidth_limiter outbound_limiter;
-	nano::block_uniquer block_uniquer;
-	nano::vote_uniquer vote_uniquer;
+	std::unique_ptr<nano::store::component> store_impl; // ported
+	nano::store::component & store; // ported
+	nano::unchecked_map unchecked; // ported
+	std::unique_ptr<nano::wallets_store> wallets_store_impl; // ported
+	nano::wallets_store & wallets_store; // ported
+	nano::ledger ledger; // ported
+	nano::signature_checker checker; // ported
+	nano::outbound_bandwidth_limiter outbound_limiter; // ported
+	nano::block_uniquer block_uniquer; // ported
+	nano::vote_uniquer vote_uniquer; // ported
 	std::shared_ptr<nano::network> network;
 	std::shared_ptr<nano::telemetry> telemetry;
 	nano::bootstrap_initiator bootstrap_initiator;
@@ -166,16 +166,16 @@ public:
 	std::shared_ptr<nano::transport::tcp_listener> tcp_listener;
 	boost::filesystem::path application_path;
 	nano::port_mapping port_mapping;
-	nano::online_reps online_reps;
-	nano::gap_cache gap_cache;
+	nano::online_reps online_reps; // ported
+	nano::gap_cache gap_cache; // ported
 	nano::rep_crawler rep_crawler;
 	nano::vote_processor vote_processor;
 	unsigned warmed_up;
-	nano::local_vote_history history;
-	nano::block_arrival block_arrival;
+	nano::local_vote_history history; // ported
+	nano::block_arrival block_arrival; // ported
 	nano::block_processor block_processor;
-	nano::confirmation_height_processor confirmation_height_processor;
-	nano::vote_cache inactive_vote_cache;
+	nano::confirmation_height_processor confirmation_height_processor; // ported
+	nano::vote_cache inactive_vote_cache; // ported
 	nano::vote_generator generator;
 	nano::vote_generator final_generator;
 	nano::active_transactions active;
@@ -187,7 +187,7 @@ public:
 	nano::scheduler::component & scheduler;
 	nano::request_aggregator aggregator;
 	nano::wallets wallets;
-	nano::backlog_population backlog;
+	nano::backlog_population backlog; // ported
 	nano::bootstrap_ascending::service ascendboot;
 	nano::websocket_server websocket;
 	nano::epoch_upgrader epoch_upgrader;

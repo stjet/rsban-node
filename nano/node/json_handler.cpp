@@ -1994,7 +1994,7 @@ void nano::json_handler::confirmation_active ()
 			if (!election->confirmed ())
 			{
 				boost::property_tree::ptree entry;
-				entry.put ("", election->qualified_root.to_string ());
+				entry.put ("", election->qualified_root ().to_string ());
 				elections.push_back (std::make_pair ("", entry));
 			}
 			else

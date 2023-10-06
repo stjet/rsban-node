@@ -305,7 +305,7 @@ void nano::active_transactions::request_confirm (nano::unique_lock<nano::mutex> 
 
 		if (confirmed_l || election_l->transition_time (solicitor))
 		{
-			erase (election_l->qualified_root);
+			erase (election_l->qualified_root ());
 		}
 	}
 
@@ -336,7 +336,7 @@ void nano::active_transactions::cleanup_election (nano::unique_lock<nano::mutex>
 		debug_assert (erased == 1);
 		node.inactive_vote_cache.erase (hash);
 	}
-	roots.get<tag_root> ().erase (roots.get<tag_root> ().find (election->qualified_root));
+	roots.get<tag_root> ().erase (roots.get<tag_root> ().find (election->qualified_root ()));
 
 	lock_a.unlock ();
 	vacancy_update ();
@@ -357,7 +357,7 @@ void nano::active_transactions::cleanup_election (nano::unique_lock<nano::mutex>
 
 	if (node.config->logging.election_result_logging ())
 	{
-		node.logger->try_log (boost::str (boost::format ("Election erased for root %1%, confirmed: %2$b") % election->qualified_root.to_string () % election->confirmed ()));
+		node.logger->try_log (boost::str (boost::format ("Election erased for root %1%, confirmed: %2$b") % election->qualified_root ().to_string () % election->confirmed ()));
 	}
 }
 

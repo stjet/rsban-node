@@ -1,10 +1,14 @@
-use rsnano_node::voting::{Election, ElectionStatus};
+use rsnano_core::{BlockEnum, BlockHash};
+use rsnano_node::voting::{Election, ElectionData};
 use std::{
     ops::Deref,
     sync::{Arc, MutexGuard},
 };
 
-use crate::{copy_root_bytes, core::BlockHandle};
+use crate::{
+    copy_hash_bytes, copy_root_bytes,
+    core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
+};
 
 use super::election_status::ElectionStatusHandle;
 
@@ -34,9 +38,7 @@ pub unsafe extern "C" fn rsn_election_destroy(handle: *mut ElectionHandle) {
 pub extern "C" fn rsn_election_lock(handle: &ElectionHandle) -> *mut ElectionLockHandle {
     let guard = handle.mutex.lock().unwrap();
     let guard = unsafe {
-        std::mem::transmute::<MutexGuard<ElectionStatus>, MutexGuard<'static, ElectionStatus>>(
-            guard,
-        )
+        std::mem::transmute::<MutexGuard<ElectionData>, MutexGuard<'static, ElectionData>>(guard)
     };
     Box::into_raw(Box::new(ElectionLockHandle(Some(guard))))
 }
@@ -46,7 +48,17 @@ pub unsafe extern "C" fn rsn_election_root(handle: &ElectionHandle, result: *mut
     copy_root_bytes(handle.root, result);
 }
 
-pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionStatus>>);
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_qualified_root(
+    handle: &ElectionHandle,
+    root: *mut u8,
+    previous: *mut u8,
+) {
+    copy_root_bytes(handle.qualified_root.root, root);
+    copy_hash_bytes(handle.qualified_root.previous, previous);
+}
+
+pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionData>>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_election_lock_destroy(handle: *mut ElectionLockHandle) {
@@ -58,7 +70,7 @@ pub extern "C" fn rsn_election_lock_status(
     handle: &ElectionLockHandle,
 ) -> *mut ElectionStatusHandle {
     Box::into_raw(Box::new(ElectionStatusHandle(
-        handle.0.as_ref().unwrap().deref().clone(),
+        handle.0.as_ref().unwrap().status.clone(),
     )))
 }
 
@@ -68,7 +80,7 @@ pub extern "C" fn rsn_election_lock_status_set(
     status: &ElectionStatusHandle,
 ) {
     let current = handle.0.as_mut().unwrap();
-    **current = status.deref().clone();
+    current.status = status.deref().clone();
 }
 
 #[no_mangle]
@@ -84,9 +96,72 @@ pub extern "C" fn rsn_election_lock_lock(
     assert!(handle.0.is_none());
     let guard = election.mutex.lock().unwrap();
     let guard = unsafe {
-        std::mem::transmute::<MutexGuard<ElectionStatus>, MutexGuard<'static, ElectionStatus>>(
-            guard,
-        )
+        std::mem::transmute::<MutexGuard<ElectionData>, MutexGuard<'static, ElectionData>>(guard)
     };
     handle.0 = Some(guard);
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_lock_add_block(
+    handle: &mut ElectionLockHandle,
+    block: &BlockHandle,
+) {
+    handle
+        .0
+        .as_mut()
+        .unwrap()
+        .last_blocks
+        .insert(block.hash(), Arc::clone(block));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_lock_erase_block(
+    handle: &mut ElectionLockHandle,
+    hash: *const u8,
+) {
+    handle
+        .0
+        .as_mut()
+        .unwrap()
+        .last_blocks
+        .remove(&BlockHash::from_ptr(hash));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_lock_blocks_size(handle: &ElectionLockHandle) -> usize {
+    handle.0.as_ref().unwrap().last_blocks.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_lock_blocks_find(
+    handle: &ElectionLockHandle,
+    hash: *const u8,
+) -> *mut BlockHandle {
+    match handle
+        .0
+        .as_ref()
+        .unwrap()
+        .last_blocks
+        .get(&BlockHash::from_ptr(hash))
+    {
+        Some(block) => Box::into_raw(Box::new(BlockHandle(Arc::clone(block)))),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_lock_blocks(
+    handle: &ElectionLockHandle,
+    result: &mut BlockArrayDto,
+) {
+    let blocks: Vec<Arc<BlockEnum>> = handle
+        .0
+        .as_ref()
+        .unwrap()
+        .last_blocks
+        .values()
+        .cloned()
+        .collect();
+
+    copy_block_array_dto(blocks, result);
 }

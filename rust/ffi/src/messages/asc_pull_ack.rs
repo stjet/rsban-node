@@ -85,7 +85,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_type(handle: *mut Mess
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_blocks(
     handle: *mut MessageHandle,
-    blocks: *mut BlockArrayDto,
+    blocks: &mut BlockArrayDto,
 ) {
     match downcast_message::<AscPullAck>(handle).payload() {
         AscPullAckPayload::Blocks(blks) => {

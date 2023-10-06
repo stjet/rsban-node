@@ -1,18 +1,29 @@
-use rsnano_core::{BlockEnum, Root};
+use rsnano_core::{BlockEnum, BlockHash, QualifiedRoot, Root};
 
 use super::ElectionStatus;
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 pub struct Election {
-    pub mutex: Mutex<ElectionStatus>,
+    pub mutex: Mutex<ElectionData>,
     pub root: Root,
+    pub qualified_root: QualifiedRoot,
 }
 
 impl Election {
     pub fn new(block: Arc<BlockEnum>) -> Self {
         Self {
-            mutex: Mutex::new(ElectionStatus::default()),
+            mutex: Mutex::new(ElectionData::default()),
             root: block.root(),
+            qualified_root: block.qualified_root(),
         }
     }
+}
+
+#[derive(Default)]
+pub struct ElectionData {
+    pub status: ElectionStatus,
+    pub last_blocks: HashMap<BlockHash, Arc<BlockEnum>>,
 }

@@ -160,7 +160,7 @@ public:
 	void insert_or_assign_vote (nano::account const & account, nano::vote_info const & vote_info);
 	std::optional<nano::vote_info> find_vote (nano::account const & account) const;
 	size_t last_votes_size () const;
-	std::unordered_map<nano::account, nano::vote_info> last_votes() const;
+	std::unordered_map<nano::account, nano::vote_info> last_votes () const;
 	void erase_vote (nano::account const & account);
 
 	nano::election & election;
@@ -297,8 +297,6 @@ private:
 	 */
 	std::chrono::milliseconds confirm_req_time () const;
 
-public:
-	std::unordered_map<nano::account, nano::vote_info> last_votes;
 private:
 	std::atomic<bool> is_quorum{ false };
 	mutable nano::uint128_t final_weight{ 0 };

@@ -94,7 +94,7 @@ TEST (confirmation_solicitor, different_hash)
 	auto election (std::make_shared<nano::election> (node2, send, nullptr, nullptr, nano::election_behavior::normal));
 	auto guard{ election->lock () };
 	// Add a vote for something else, not the winner
-	guard.insert_or_assign_vote(representative.get_account (), { 1, 1 });
+	guard.insert_or_assign_vote (representative.get_account (), { 1, 1 });
 	// Ensure the request and broadcast goes through
 	ASSERT_FALSE (solicitor.add (*election, guard));
 	ASSERT_FALSE (solicitor.broadcast (*election, guard));

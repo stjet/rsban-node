@@ -1,4 +1,4 @@
-use rsnano_core::{BlockEnum, BlockHash, QualifiedRoot, Root};
+use rsnano_core::{Account, BlockEnum, BlockHash, QualifiedRoot, Root};
 
 use super::ElectionStatus;
 use std::{
@@ -27,6 +27,7 @@ impl Election {
 pub struct ElectionData {
     pub status: ElectionStatus,
     pub last_blocks: HashMap<BlockHash, Arc<BlockEnum>>,
+    pub last_votes: HashMap<Account, VoteInfo>,
 }
 
 #[derive(Clone)]

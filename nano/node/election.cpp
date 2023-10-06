@@ -201,47 +201,7 @@ void nano::election::confirm_once (nano::election_lock & lock_a, nano::election_
 
 bool nano::election::valid_change (nano::election::state_t expected_a, nano::election::state_t desired_a) const
 {
-	bool result = false;
-	switch (expected_a)
-	{
-		case nano::election::state_t::passive:
-			switch (desired_a)
-			{
-				case nano::election::state_t::active:
-				case nano::election::state_t::confirmed:
-				case nano::election::state_t::expired_unconfirmed:
-					result = true;
-					break;
-				default:
-					break;
-			}
-			break;
-		case nano::election::state_t::active:
-			switch (desired_a)
-			{
-				case nano::election::state_t::confirmed:
-				case nano::election::state_t::expired_unconfirmed:
-					result = true;
-					break;
-				default:
-					break;
-			}
-			break;
-		case nano::election::state_t::confirmed:
-			switch (desired_a)
-			{
-				case nano::election::state_t::expired_confirmed:
-					result = true;
-					break;
-				default:
-					break;
-			}
-			break;
-		case nano::election::state_t::expired_unconfirmed:
-		case nano::election::state_t::expired_confirmed:
-			break;
-	}
-	return result;
+	return rsnano::rsn_election_valid_change (static_cast<uint8_t> (expected_a), static_cast<uint8_t> (desired_a));
 }
 
 bool nano::election::state_change (nano::election::state_t expected_a, nano::election::state_t desired_a)

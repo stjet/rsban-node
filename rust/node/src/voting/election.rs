@@ -42,6 +42,26 @@ impl Election {
             qualified_root,
         }
     }
+
+    pub fn valid_change(expected: ElectionState, desired: ElectionState) -> bool {
+        match expected {
+            ElectionState::Passive => match desired {
+                ElectionState::Active
+                | ElectionState::Confirmed
+                | ElectionState::ExpiredUnconfirmed => true,
+                _ => false,
+            },
+            ElectionState::Active => match desired {
+                ElectionState::Confirmed | ElectionState::ExpiredUnconfirmed => true,
+                _ => false,
+            },
+            ElectionState::Confirmed => match desired {
+                ElectionState::ExpiredConfirmed => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -72,4 +92,14 @@ impl Default for VoteInfo {
     fn default() -> Self {
         Self::new(0, BlockHash::zero())
     }
+}
+
+#[derive(FromPrimitive)]
+#[repr(u8)]
+pub enum ElectionState {
+    Passive,   // only listening for incoming votes
+    Active,    // actively request confirmations
+    Confirmed, // confirmed but still listening for votes
+    ExpiredConfirmed,
+    ExpiredUnconfirmed,
 }

@@ -1,5 +1,6 @@
+use num_traits::FromPrimitive;
 use rsnano_core::{utils::system_time_as_nanoseconds, Account, BlockEnum, BlockHash};
-use rsnano_node::voting::{Election, ElectionData, VoteInfo};
+use rsnano_node::voting::{Election, ElectionData, ElectionState, VoteInfo};
 use std::{
     ops::Deref,
     sync::{Arc, MutexGuard},
@@ -57,6 +58,14 @@ pub unsafe extern "C" fn rsn_election_qualified_root(
 ) {
     copy_root_bytes(handle.qualified_root.root, root);
     copy_hash_bytes(handle.qualified_root.previous, previous);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_valid_change(expected: u8, desired: u8) -> bool {
+    Election::valid_change(
+        FromPrimitive::from_u8(expected).unwrap(),
+        FromPrimitive::from_u8(desired).unwrap(),
+    )
 }
 
 pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionData>>);

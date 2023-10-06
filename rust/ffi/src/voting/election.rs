@@ -68,6 +68,30 @@ pub unsafe extern "C" fn rsn_election_valid_change(expected: u8, desired: u8) ->
     )
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_state(handle: &ElectionHandle) -> u8 {
+    handle.0.state() as u8
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_state_exchange(handle: &ElectionHandle, new_state: u8) -> u8 {
+    handle
+        .0
+        .swap_state(FromPrimitive::from_u8(new_state).unwrap()) as u8
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_state_compare_exchange(
+    handle: &ElectionHandle,
+    expected: u8,
+    desired: u8,
+) -> bool {
+    handle.0.compare_exhange_state(
+        FromPrimitive::from_u8(expected).unwrap(),
+        FromPrimitive::from_u8(desired).unwrap(),
+    )
+}
+
 pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionData>>);
 
 #[no_mangle]

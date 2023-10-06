@@ -1,3 +1,4 @@
+use num_traits::FromPrimitive;
 use rsnano_core::{Account, BlockEnum, BlockHash, QualifiedRoot, Root};
 
 use crate::utils::HardenedConstants;
@@ -5,7 +6,10 @@ use crate::utils::HardenedConstants;
 use super::ElectionStatus;
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicU8, Ordering},
+        Arc, Mutex,
+    },
     time::SystemTime,
 };
 
@@ -13,6 +17,7 @@ pub struct Election {
     pub mutex: Mutex<ElectionData>,
     pub root: Root,
     pub qualified_root: QualifiedRoot,
+    pub state_value: AtomicU8,
 }
 
 impl Election {
@@ -40,6 +45,7 @@ impl Election {
             mutex: Mutex::new(data),
             root,
             qualified_root,
+            state_value: AtomicU8::new(ElectionState::Passive as u8),
         }
     }
 
@@ -61,6 +67,25 @@ impl Election {
             },
             _ => false,
         }
+    }
+
+    pub fn state(&self) -> ElectionState {
+        FromPrimitive::from_u8(self.state_value.load(Ordering::SeqCst)).unwrap()
+    }
+
+    pub fn swap_state(&self, new_state: ElectionState) -> ElectionState {
+        FromPrimitive::from_u8(self.state_value.swap(new_state as u8, Ordering::SeqCst)).unwrap()
+    }
+
+    pub fn compare_exhange_state(&self, expected: ElectionState, desired: ElectionState) -> bool {
+        self.state_value
+            .compare_exchange(
+                expected as u8,
+                desired as u8,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            )
+            .is_ok()
     }
 }
 

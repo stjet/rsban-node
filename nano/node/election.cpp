@@ -171,7 +171,8 @@ void nano::election::confirm_once (nano::election_lock & lock_a, nano::election_
 	// This must be kept above the setting of election state, as dependent confirmed elections require up to date changes to election_winner_details
 	nano::unique_lock<nano::mutex> election_winners_lk{ node.active.election_winner_details_mutex };
 	auto status_l{ lock_a.status () };
-	if (state_m.exchange (nano::election::state_t::confirmed) != nano::election::state_t::confirmed && (node.active.election_winner_details.count (status_l.get_winner ()->hash ()) == 0))
+	auto old_state = static_cast<nano::election::state_t> (rsnano::rsn_election_state_exchange (handle, static_cast<uint8_t> (nano::election::state_t::confirmed)));
+	if (old_state != nano::election::state_t::confirmed && (node.active.election_winner_details.count (status_l.get_winner ()->hash ()) == 0))
 	{
 		node.active.election_winner_details.emplace (status_l.get_winner ()->hash (), shared_from_this ());
 		election_winners_lk.unlock ();
@@ -209,7 +210,7 @@ bool nano::election::state_change (nano::election::state_t expected_a, nano::ele
 	bool result = true;
 	if (valid_change (expected_a, desired_a))
 	{
-		if (state_m.compare_exchange_strong (expected_a, desired_a))
+		if (rsnano::rsn_election_state_compare_exchange (handle, static_cast<uint8_t> (expected_a), static_cast<uint8_t> (desired_a)))
 		{
 			state_start = std::chrono::steady_clock::now ().time_since_epoch ();
 			result = false;
@@ -263,12 +264,14 @@ bool nano::election::confirmed () const
 
 bool nano::election::status_confirmed () const
 {
-	return state_m == nano::election::state_t::confirmed || state_m == nano::election::state_t::expired_confirmed;
+	auto state_l = static_cast<nano::election::state_t> (rsnano::rsn_election_state (handle));
+	return state_l == nano::election::state_t::confirmed || state_l == nano::election::state_t::expired_confirmed;
 }
 
 bool nano::election::failed () const
 {
-	return state_m == nano::election::state_t::expired_unconfirmed;
+	auto state_l = static_cast<nano::election::state_t> (rsnano::rsn_election_state (handle));
+	return state_l == nano::election::state_t::expired_unconfirmed;
 }
 
 void nano::election::broadcast_block (nano::confirmation_solicitor & solicitor_a)
@@ -319,7 +322,8 @@ nano::election_lock nano::election::lock () const
 bool nano::election::transition_time (nano::confirmation_solicitor & solicitor_a)
 {
 	bool result = false;
-	switch (state_m)
+	auto state_l = static_cast<nano::election::state_t> (rsnano::rsn_election_state (handle));
+	switch (state_l)
 	{
 		case nano::election::state_t::passive:
 			if (base_latency () * passive_duration_factor < std::chrono::steady_clock::now ().time_since_epoch () - state_start.load ())
@@ -347,7 +351,8 @@ bool nano::election::transition_time (nano::confirmation_solicitor & solicitor_a
 		auto guard{ lock () };
 		// It is possible the election confirmed while acquiring the mutex
 		// state_change returning true would indicate it
-		if (!state_change (state_m.load (), nano::election::state_t::expired_unconfirmed))
+		state_l = static_cast<nano::election::state_t> (rsnano::rsn_election_state (handle));
+		if (!state_change (state_l, nano::election::state_t::expired_unconfirmed))
 		{
 			result = true; // Return true to indicate this election should be cleaned up
 			if (node.config->logging.election_expiration_tally_logging ())

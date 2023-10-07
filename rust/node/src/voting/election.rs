@@ -1,5 +1,5 @@
 use num_traits::FromPrimitive;
-use rsnano_core::{Account, BlockEnum, BlockHash, QualifiedRoot, Root};
+use rsnano_core::{Account, Amount, BlockEnum, BlockHash, QualifiedRoot, Root};
 
 use crate::utils::HardenedConstants;
 
@@ -7,10 +7,10 @@ use super::ElectionStatus;
 use std::{
     collections::HashMap,
     sync::{
-        atomic::{AtomicBool, AtomicU8, Ordering},
-        Arc, Mutex,
+        atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering},
+        Arc, Mutex, RwLock,
     },
-    time::SystemTime,
+    time::{Duration, Instant, SystemTime},
 };
 
 pub struct Election {
@@ -19,6 +19,9 @@ pub struct Election {
     pub qualified_root: QualifiedRoot,
     pub state_value: AtomicU8,
     pub is_quorum: AtomicBool,
+    pub confirmation_request_count: AtomicUsize,
+    // These are modified while not holding the mutex from transition_time only
+    last_block: RwLock<Instant>,
 }
 
 impl Election {
@@ -48,6 +51,8 @@ impl Election {
             qualified_root,
             state_value: AtomicU8::new(ElectionState::Passive as u8),
             is_quorum: AtomicBool::new(false),
+            confirmation_request_count: AtomicUsize::new(0),
+            last_block: RwLock::new(Instant::now()),
         }
     }
 
@@ -69,6 +74,14 @@ impl Election {
             },
             _ => false,
         }
+    }
+
+    pub fn set_last_block(&self) {
+        *self.last_block.write().unwrap() = Instant::now();
+    }
+
+    pub fn last_block_elapsed(&self) -> Duration {
+        self.last_block.read().unwrap().elapsed()
     }
 
     pub fn state(&self) -> ElectionState {
@@ -96,6 +109,8 @@ pub struct ElectionData {
     pub status: ElectionStatus,
     pub last_blocks: HashMap<BlockHash, Arc<BlockEnum>>,
     pub last_votes: HashMap<Account, VoteInfo>,
+    pub final_weight: Amount,
+    pub last_tally: HashMap<BlockHash, Amount>,
 }
 
 #[derive(Clone)]

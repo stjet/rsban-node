@@ -1,5 +1,5 @@
 use num_traits::FromPrimitive;
-use rsnano_core::{utils::system_time_as_nanoseconds, Account, BlockEnum, BlockHash};
+use rsnano_core::{utils::system_time_as_nanoseconds, Account, Amount, BlockEnum, BlockHash};
 use rsnano_node::voting::{Election, ElectionData, ElectionState, VoteInfo};
 use std::{
     ops::Deref,
@@ -8,7 +8,7 @@ use std::{
 };
 
 use crate::{
-    copy_account_bytes, copy_hash_bytes, copy_root_bytes,
+    copy_account_bytes, copy_amount_bytes, copy_hash_bytes, copy_root_bytes,
     core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
 };
 
@@ -105,6 +105,29 @@ pub unsafe extern "C" fn rsn_election_is_quorum_exchange(
     handle.0.is_quorum.swap(value, Ordering::SeqCst)
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_last_block_elapsed_ms(handle: &ElectionHandle) -> u64 {
+    handle.0.last_block_elapsed().as_millis() as u64
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_set_last_block(handle: &ElectionHandle) {
+    handle.0.set_last_block();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_confirmation_request_count(handle: &ElectionHandle) -> usize {
+    handle.0.confirmation_request_count.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_confirmation_request_count_inc(handle: &ElectionHandle) {
+    handle
+        .0
+        .confirmation_request_count
+        .fetch_add(1, Ordering::SeqCst);
+}
+
 pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionData>>);
 
 #[no_mangle]
@@ -149,6 +172,22 @@ pub extern "C" fn rsn_election_lock_lock(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_election_lock_final_weight(
+    handle: &ElectionLockHandle,
+    weight: *mut u8,
+) {
+    copy_amount_bytes(handle.0.as_ref().unwrap().final_weight, weight);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_lock_final_weight_set(
+    handle: &mut ElectionLockHandle,
+    weight: *const u8,
+) {
+    handle.0.as_mut().unwrap().final_weight = Amount::from_ptr(weight);
+}
+
+#[no_mangle]
 pub extern "C" fn rsn_election_lock_add_block(
     handle: &mut ElectionLockHandle,
     block: &BlockHandle,
@@ -166,6 +205,69 @@ pub unsafe extern "C" fn rsn_election_lock_erase_block(
     handle: &mut ElectionLockHandle,
     hash: *const u8,
 ) {
+    handle
+        .0
+        .as_mut()
+        .unwrap()
+        .last_blocks
+        .remove(&BlockHash::from_ptr(hash));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_lock_last_tally_add(
+    handle: &mut ElectionLockHandle,
+    hash: *const u8,
+    amount: *const u8,
+) {
+    handle
+        .0
+        .as_mut()
+        .unwrap()
+        .last_tally
+        .insert(BlockHash::from_ptr(hash), Amount::from_ptr(amount));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_lock_last_tally(
+    handle: &ElectionLockHandle,
+) -> *mut TallyHandle {
+    let tally_vec = handle
+        .0
+        .as_ref()
+        .unwrap()
+        .last_tally
+        .iter()
+        .map(|(k, v)| (*k, *v))
+        .collect();
+    Box::into_raw(Box::new(TallyHandle(tally_vec)))
+}
+
+pub struct TallyHandle(Vec<(BlockHash, Amount)>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tally_destroy(handle: *mut TallyHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tally_len(handle: &TallyHandle) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tally_get(
+    handle: &TallyHandle,
+    index: usize,
+    hash: *mut u8,
+    tally: *mut u8,
+) {
+    let (hash_value, tally_value) = &handle.0[index];
+    copy_hash_bytes(*hash_value, hash);
+    copy_amount_bytes(*tally_value, tally);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_lock_(handle: &mut ElectionLockHandle, hash: *const u8) {
     handle
         .0
         .as_mut()

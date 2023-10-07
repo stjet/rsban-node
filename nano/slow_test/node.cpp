@@ -2217,9 +2217,9 @@ TEST (system, block_sequence)
 				for (auto const & j : i->active.roots)
 				{
 					auto election = j.election;
-					if (election->confirmation_request_count > 10)
+					if (election->get_confirmation_request_count () > 10)
 					{
-						message += boost::str (boost::format ("\t r:%1% i:%2%\n") % j.root.to_string () % std::to_string (election->confirmation_request_count));
+						message += boost::str (boost::format ("\t r:%1% i:%2%\n") % j.root.to_string () % std::to_string (election->get_confirmation_request_count ()));
 						for (auto const & k : election->votes ())
 						{
 							message += boost::str (boost::format ("\t\t r:%1% t:%2%\n") % k.first.to_account () % std::to_string (k.second.get_timestamp ()));

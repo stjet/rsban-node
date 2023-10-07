@@ -162,6 +162,8 @@ public:
 	size_t last_votes_size () const;
 	std::unordered_map<nano::account, nano::vote_info> last_votes () const;
 	void erase_vote (nano::account const & account);
+	void set_final_weight (nano::amount const & weight);
+	nano::amount final_weight () const;
 
 	nano::election & election;
 	rsnano::ElectionLockHandle * handle;
@@ -199,7 +201,6 @@ private: // State management
 	std::atomic<std::chrono::steady_clock::duration> state_start{ std::chrono::steady_clock::now ().time_since_epoch () };
 
 	// These are modified while not holding the mutex from transition_time only
-	std::chrono::steady_clock::time_point last_block = { std::chrono::steady_clock::now () };
 	std::chrono::steady_clock::time_point last_req = {};
 	/** The last time vote for this election was generated */
 	std::chrono::steady_clock::time_point last_vote = {};
@@ -227,8 +228,8 @@ public: // Status
 	void log_votes (nano::election_lock & lock, nano::tally_t const &, std::string const & = "") const;
 	nano::tally_t tally () const;
 	bool have_quorum (nano::tally_t const &) const;
-
-	std::atomic<unsigned> confirmation_request_count{ 0 };
+	unsigned get_confirmation_request_count () const;
+	void inc_confirmation_request_count ();
 
 public: // Interface
 	election (nano::node &, std::shared_ptr<nano::block> const & block, std::function<void (std::shared_ptr<nano::block> const &)> const & confirmation_action, std::function<void (nano::account const &)> const & vote_action, nano::election_behavior behavior);
@@ -298,9 +299,6 @@ private:
 	bool is_quorum () const;
 
 private:
-	mutable nano::uint128_t final_weight{ 0 };
-	mutable std::unordered_map<nano::block_hash, nano::uint128_t> last_tally;
-
 	nano::election_behavior const behavior_m{ nano::election_behavior::normal };
 	std::chrono::steady_clock::time_point const election_start = { std::chrono::steady_clock::now () };
 

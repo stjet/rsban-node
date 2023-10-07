@@ -77,7 +77,7 @@ TEST (active_transactions, confirm_election_by_request)
 	ASSERT_FALSE (election->confirmed ());
 
 	// Expect that node2 has nobody to send a confirmation_request to (no reps)
-	ASSERT_EQ (0, election->confirmation_request_count);
+	ASSERT_EQ (0, election->get_confirmation_request_count ());
 
 	// Get random peer list (of size 1) from node2 -- so basically just node2
 	auto const peers = node2.network->random_channels (1);
@@ -94,7 +94,7 @@ TEST (active_transactions, confirm_election_by_request)
 
 	// There needs to be at least one request to get the election confirmed,
 	// Rep has this block already confirmed so should reply with final vote only
-	ASSERT_TIMELY (5s, election->confirmation_request_count >= 1);
+	ASSERT_TIMELY (5s, election->get_confirmation_request_count () >= 1);
 
 	// Expect election was confirmed
 	ASSERT_TIMELY (5s, election->confirmed ());
@@ -147,7 +147,7 @@ TEST (active_transactions, confirm_frontier)
 	auto election2 = node2.active.election (send->qualified_root ());
 	ASSERT_NE (nullptr, election2);
 	ASSERT_TIMELY (5s, node2.ledger.cache.cemented_count () == 2 && node2.active.empty ());
-	ASSERT_GT (election2->confirmation_request_count, 0u);
+	ASSERT_GT (election2->get_confirmation_request_count (), 0u);
 }
 }
 

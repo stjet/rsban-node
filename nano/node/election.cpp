@@ -9,6 +9,8 @@
 
 #include <boost/format.hpp>
 
+#include <chrono>
+
 using namespace std::chrono;
 
 std::chrono::milliseconds nano::election::base_latency () const
@@ -128,6 +130,18 @@ void nano::election_lock::erase_vote (nano::account const & account)
 	rsnano::rsn_election_lock_votes_erase (handle, account.bytes.data ());
 }
 
+void nano::election_lock::set_final_weight (nano::amount const & weight)
+{
+	rsnano::rsn_election_lock_final_weight_set (handle, weight.bytes.data ());
+}
+
+nano::amount nano::election_lock::final_weight () const
+{
+	nano::amount weight;
+	rsnano::rsn_election_lock_final_weight (handle, weight.bytes.data ());
+	return weight;
+}
+
 void nano::election_lock::unlock ()
 {
 	rsnano::rsn_election_lock_unlock (handle);
@@ -178,7 +192,7 @@ void nano::election::confirm_once (nano::election_lock & lock_a, nano::election_
 		election_winners_lk.unlock ();
 		status_l.set_election_end (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()));
 		status_l.set_election_duration (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now () - election_start));
-		status_l.set_confirmation_request_count (confirmation_request_count);
+		status_l.set_confirmation_request_count (get_confirmation_request_count ());
 		status_l.set_block_count (nano::narrow_cast<decltype (status_l.get_block_count ())> (lock_a.last_blocks_size ()));
 		status_l.set_voter_count (nano::narrow_cast<decltype (status_l.get_voter_count ())> (lock_a.last_votes_size ()));
 		status_l.set_election_status_type (type_a);
@@ -251,7 +265,7 @@ void nano::election::send_confirm_req (nano::confirmation_solicitor & solicitor_
 		if (!solicitor_a.add (*this, guard))
 		{
 			last_req = std::chrono::steady_clock::now ();
-			++confirmation_request_count;
+			inc_confirmation_request_count ();
 		}
 	}
 }
@@ -281,12 +295,12 @@ bool nano::election::failed () const
 
 void nano::election::broadcast_block (nano::confirmation_solicitor & solicitor_a)
 {
-	if (base_latency () * 15 < std::chrono::steady_clock::now () - last_block)
+	if (base_latency () * 15 < std::chrono::milliseconds{ rsnano::rsn_election_last_block_elapsed_ms (handle) })
 	{
 		auto guard{ lock () };
 		if (!solicitor_a.broadcast (*this, guard))
 		{
-			last_block = std::chrono::steady_clock::now ();
+			rsnano::rsn_election_set_last_block (handle);
 		}
 	}
 }
@@ -412,6 +426,16 @@ bool nano::election::have_quorum (nano::tally_t const & tally_a) const
 	return result;
 }
 
+unsigned nano::election::get_confirmation_request_count () const
+{
+	return rsnano::rsn_election_confirmation_request_count (handle);
+}
+
+void nano::election::inc_confirmation_request_count ()
+{
+	rsnano::rsn_election_confirmation_request_count_inc (handle);
+}
+
 nano::tally_t nano::election::tally () const
 {
 	auto guard{ lock () };
@@ -431,7 +455,11 @@ nano::tally_t nano::election::tally_impl (nano::election_lock & lock) const
 			final_weights_l[info.get_hash ()] += rep_weight;
 		}
 	}
-	last_tally = block_weights;
+	for (const auto & item : block_weights)
+	{
+		nano::amount a{ item.second };
+		rsnano::rsn_election_lock_last_tally_add (lock.handle, item.first.bytes.data (), a.bytes.data ());
+	}
 	nano::tally_t result;
 	for (auto const & [hash, amount] : block_weights)
 	{
@@ -448,7 +476,7 @@ nano::tally_t nano::election::tally_impl (nano::election_lock & lock) const
 		auto find_final (final_weights_l.find (winner_hash));
 		if (find_final != final_weights_l.end ())
 		{
-			final_weight = find_final->second;
+			lock.set_final_weight (find_final->second);
 		}
 	}
 	return result;
@@ -463,7 +491,7 @@ void nano::election::confirm_if_quorum (nano::election_lock & lock_a)
 	auto winner_hash_l{ block_l->hash () };
 	auto status_l{ lock_a.status () };
 	status_l.set_tally (winner->first);
-	status_l.set_final_tally (final_weight);
+	status_l.set_final_tally (lock_a.final_weight ());
 	auto status_winner_hash_l{ status_l.get_winner ()->hash () };
 	nano::uint128_t sum (0);
 	for (auto & i : tally_l)
@@ -488,7 +516,7 @@ void nano::election::confirm_if_quorum (nano::election_lock & lock_a)
 			node.final_generator.add (root (), hash);
 			lock_a.lock ();
 		}
-		if (!node.ledger.cache.final_votes_confirmation_canary () || final_weight >= node.online_reps.delta ())
+		if (!node.ledger.cache.final_votes_confirmation_canary () || lock_a.final_weight ().number () >= node.online_reps.delta ())
 		{
 			if (node.config->logging.vote_logging () || (node.config->logging.election_fork_tally_logging () && lock_a.last_blocks_size () > 1))
 			{
@@ -529,7 +557,7 @@ void nano::election::set_status_type (nano::election_status_type status_type)
 	nano::election_lock election_lk{ *this };
 	auto st{ election_lk.status () };
 	st.set_election_status_type (status_type);
-	st.set_confirmation_request_count (confirmation_request_count);
+	st.set_confirmation_request_count (get_confirmation_request_count ());
 	election_lk.set_status (st);
 }
 
@@ -537,7 +565,7 @@ void nano::election::log_votes (nano::election_lock & lock, nano::tally_t const 
 {
 	std::stringstream tally;
 	std::string line_end (node.config->logging.single_line_record () ? "\t" : "\n");
-	tally << boost::str (boost::format ("%1%%2%Vote tally for root %3%, final weight:%4%") % prefix_a % line_end % root ().to_string () % final_weight);
+	tally << boost::str (boost::format ("%1%%2%Vote tally for root %3%, final weight:%4%") % prefix_a % line_end % root ().to_string () % lock.final_weight ().number ());
 	for (auto i (tally_a.begin ()), n (tally_a.end ()); i != n; ++i)
 	{
 		tally << boost::str (boost::format ("%1%Block %2% weight %3%") % line_end % i->second->hash ().to_string () % i->first.convert_to<std::string> ());
@@ -671,7 +699,7 @@ nano::election_extended_status nano::election::current_status () const
 {
 	nano::election_lock guard{ *this };
 	nano::election_status status_l = guard.status ();
-	status_l.set_confirmation_request_count (confirmation_request_count);
+	status_l.set_confirmation_request_count (get_confirmation_request_count ());
 	status_l.set_block_count (nano::narrow_cast<decltype (status_l.get_block_count ())> (guard.last_blocks_size ()));
 	status_l.set_voter_count (nano::narrow_cast<decltype (status_l.get_voter_count ())> (guard.last_votes_size ()));
 	return nano::election_extended_status{ status_l, guard.last_votes (), tally_impl (guard) };
@@ -743,8 +771,17 @@ bool nano::election::replace_by_weight (nano::election_lock & lock_a, nano::bloc
 	auto winner_hash (lock_a.status ().get_winner ()->hash ());
 	// Sort existing blocks tally
 	std::vector<std::pair<nano::block_hash, nano::uint128_t>> sorted;
-	sorted.reserve (last_tally.size ());
-	std::copy (last_tally.begin (), last_tally.end (), std::back_inserter (sorted));
+	auto last_tally_handle = rsnano::rsn_election_lock_last_tally (lock_a.handle);
+	auto tally_len = rsnano::rsn_tally_len (last_tally_handle);
+	sorted.reserve (tally_len);
+	for (auto i = 0; i < tally_len; ++i)
+	{
+		nano::block_hash h;
+		nano::amount a;
+		rsnano::rsn_tally_get (last_tally_handle, i, h.bytes.data (), a.bytes.data ());
+		sorted.emplace_back (h, a.number ());
+	}
+	rsnano::rsn_tally_destroy (last_tally_handle);
 	lock_a.unlock ();
 	// Sort in ascending order
 	std::sort (sorted.begin (), sorted.end (), [] (auto const & left, auto const & right) { return left.second < right.second; });

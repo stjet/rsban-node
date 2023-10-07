@@ -1989,7 +1989,7 @@ void nano::json_handler::confirmation_active ()
 	auto active_elections = node.active.list_active ();
 	for (auto const & election : active_elections)
 	{
-		if (election->confirmation_request_count >= announcements)
+		if (election->get_confirmation_request_count () >= announcements)
 		{
 			if (!election->confirmed ())
 			{

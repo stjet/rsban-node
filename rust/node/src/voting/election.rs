@@ -7,7 +7,7 @@ use super::ElectionStatus;
 use std::{
     collections::HashMap,
     sync::{
-        atomic::{AtomicU8, Ordering},
+        atomic::{AtomicBool, AtomicU8, Ordering},
         Arc, Mutex,
     },
     time::SystemTime,
@@ -18,6 +18,7 @@ pub struct Election {
     pub root: Root,
     pub qualified_root: QualifiedRoot,
     pub state_value: AtomicU8,
+    pub is_quorum: AtomicBool,
 }
 
 impl Election {
@@ -46,6 +47,7 @@ impl Election {
             root,
             qualified_root,
             state_value: AtomicU8::new(ElectionState::Passive as u8),
+            is_quorum: AtomicBool::new(false),
         }
     }
 

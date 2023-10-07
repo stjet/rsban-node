@@ -3,7 +3,7 @@ use rsnano_core::{utils::system_time_as_nanoseconds, Account, BlockEnum, BlockHa
 use rsnano_node::voting::{Election, ElectionData, ElectionState, VoteInfo};
 use std::{
     ops::Deref,
-    sync::{Arc, MutexGuard},
+    sync::{atomic::Ordering, Arc, MutexGuard},
     time::{Duration, SystemTime},
 };
 
@@ -90,6 +90,19 @@ pub unsafe extern "C" fn rsn_election_state_compare_exchange(
         FromPrimitive::from_u8(expected).unwrap(),
         FromPrimitive::from_u8(desired).unwrap(),
     )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_is_quorum(handle: &ElectionHandle) -> bool {
+    handle.0.is_quorum.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_is_quorum_exchange(
+    handle: &ElectionHandle,
+    value: bool,
+) -> bool {
+    handle.0.is_quorum.swap(value, Ordering::SeqCst)
 }
 
 pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionData>>);

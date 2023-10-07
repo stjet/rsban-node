@@ -238,6 +238,11 @@ std::chrono::milliseconds nano::election::confirm_req_time () const
 	return {};
 }
 
+bool nano::election::is_quorum () const
+{
+	return rsnano::rsn_election_is_quorum (handle);
+}
+
 void nano::election::send_confirm_req (nano::confirmation_solicitor & solicitor_a)
 {
 	if (confirm_req_time () < (std::chrono::steady_clock::now () - last_req))
@@ -476,7 +481,7 @@ void nano::election::confirm_if_quorum (nano::election_lock & lock_a)
 
 	if (have_quorum (tally_l))
 	{
-		if (node.ledger.cache.final_votes_confirmation_canary () && !is_quorum.exchange (true) && node.config->enable_voting && node.wallets.reps ().voting > 0)
+		if (node.ledger.cache.final_votes_confirmation_canary () && !rsnano::rsn_election_is_quorum_exchange (handle, true) && node.config->enable_voting && node.wallets.reps ().voting > 0)
 		{
 			auto hash = status_l.get_winner ()->hash ();
 			lock_a.unlock ();

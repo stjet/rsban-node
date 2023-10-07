@@ -295,9 +295,9 @@ private:
 	 * Calculates time delay between broadcasting confirmation requests
 	 */
 	std::chrono::milliseconds confirm_req_time () const;
+	bool is_quorum () const;
 
 private:
-	std::atomic<bool> is_quorum{ false };
 	mutable nano::uint128_t final_weight{ 0 };
 	mutable std::unordered_map<nano::block_hash, nano::uint128_t> last_tally;
 

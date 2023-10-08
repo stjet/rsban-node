@@ -134,6 +134,11 @@ pub extern "C" fn rsn_election_behavior(handle: &ElectionHandle) -> u8 {
     handle.0.behavior as u8
 }
 
+#[no_mangle]
+pub extern "C" fn rsn_election_elapsed_ms(handle: &ElectionHandle) -> u64 {
+    handle.0.election_start.elapsed().as_millis() as u64
+}
+
 pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionData>>);
 
 #[no_mangle]

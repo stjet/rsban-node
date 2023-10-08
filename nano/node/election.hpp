@@ -298,9 +298,6 @@ private:
 	std::chrono::milliseconds confirm_req_time () const;
 	bool is_quorum () const;
 
-private:
-	std::chrono::steady_clock::time_point const election_start = { std::chrono::steady_clock::now () };
-
 private: // Constants
 	static std::size_t constexpr max_blocks{ 10 };
 

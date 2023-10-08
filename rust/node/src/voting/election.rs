@@ -23,6 +23,7 @@ pub struct Election {
     // These are modified while not holding the mutex from transition_time only
     last_block: RwLock<Instant>,
     pub behavior: ElectionBehavior,
+    pub election_start: Instant,
 }
 
 impl Election {
@@ -55,6 +56,7 @@ impl Election {
             confirmation_request_count: AtomicUsize::new(0),
             last_block: RwLock::new(Instant::now()),
             behavior,
+            election_start: Instant::now(),
         }
     }
 

@@ -190,7 +190,7 @@ void nano::election::confirm_once (nano::election_lock & lock_a, nano::election_
 		node.active.election_winner_details.emplace (status_l.get_winner ()->hash (), shared_from_this ());
 		election_winners_lk.unlock ();
 		status_l.set_election_end (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()));
-		status_l.set_election_duration (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now () - election_start));
+		status_l.set_election_duration (std::chrono::milliseconds{ rsnano::rsn_election_elapsed_ms (handle) });
 		status_l.set_confirmation_request_count (get_confirmation_request_count ());
 		status_l.set_block_count (nano::narrow_cast<decltype (status_l.get_block_count ())> (lock_a.last_blocks_size ()));
 		status_l.set_voter_count (nano::narrow_cast<decltype (status_l.get_voter_count ())> (lock_a.last_votes_size ()));
@@ -364,7 +364,7 @@ bool nano::election::transition_time (nano::confirmation_solicitor & solicitor_a
 			break;
 	}
 
-	if (!confirmed () && time_to_live () < std::chrono::steady_clock::now () - election_start)
+	if (!confirmed () && time_to_live () < std::chrono::milliseconds{ rsnano::rsn_election_last_block_elapsed_ms (handle) })
 	{
 		auto guard{ lock () };
 		// It is possible the election confirmed while acquiring the mutex

@@ -299,7 +299,6 @@ private:
 	bool is_quorum () const;
 
 private:
-	nano::election_behavior const behavior_m{ nano::election_behavior::normal };
 	std::chrono::steady_clock::time_point const election_start = { std::chrono::steady_clock::now () };
 
 private: // Constants

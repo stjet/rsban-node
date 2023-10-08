@@ -156,8 +156,7 @@ nano::election::election (nano::node & node_a, std::shared_ptr<nano::block> cons
 	confirmation_action (confirmation_action_a),
 	live_vote_action (live_vote_action_a),
 	node (node_a),
-	behavior_m (election_behavior_a),
-	handle{ rsnano::rsn_election_create (block_a->get_handle ()) }
+	handle{ rsnano::rsn_election_create (block_a->get_handle (), static_cast<uint8_t> (election_behavior_a)) }
 {
 }
 
@@ -890,5 +889,5 @@ nano::stat::detail nano::to_stat_detail (nano::election_behavior behavior)
 
 nano::election_behavior nano::election::behavior () const
 {
-	return behavior_m;
+	return static_cast<nano::election_behavior> (rsnano::rsn_election_behavior (handle));
 }

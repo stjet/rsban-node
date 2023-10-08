@@ -1,6 +1,6 @@
 use num_traits::FromPrimitive;
 use rsnano_core::{utils::system_time_as_nanoseconds, Account, Amount, BlockEnum, BlockHash};
-use rsnano_node::voting::{Election, ElectionData, ElectionState, VoteInfo};
+use rsnano_node::voting::{Election, ElectionBehavior, ElectionData, VoteInfo};
 use std::{
     ops::Deref,
     sync::{atomic::Ordering, Arc, MutexGuard},
@@ -25,9 +25,10 @@ impl Deref for ElectionHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_election_create(block: &BlockHandle) -> *mut ElectionHandle {
+pub extern "C" fn rsn_election_create(block: &BlockHandle, behavior: u8) -> *mut ElectionHandle {
     Box::into_raw(Box::new(ElectionHandle(Arc::new(Election::new(
         Arc::clone(block),
+        ElectionBehavior::from_u8(behavior).unwrap(),
     )))))
 }
 
@@ -126,6 +127,11 @@ pub unsafe extern "C" fn rsn_election_confirmation_request_count_inc(handle: &El
         .0
         .confirmation_request_count
         .fetch_add(1, Ordering::SeqCst);
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_behavior(handle: &ElectionHandle) -> u8 {
+    handle.0.behavior as u8
 }
 
 pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionData>>);

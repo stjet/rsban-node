@@ -22,10 +22,11 @@ pub struct Election {
     pub confirmation_request_count: AtomicUsize,
     // These are modified while not holding the mutex from transition_time only
     last_block: RwLock<Instant>,
+    pub behavior: ElectionBehavior,
 }
 
 impl Election {
-    pub fn new(block: Arc<BlockEnum>) -> Self {
+    pub fn new(block: Arc<BlockEnum>, behavior: ElectionBehavior) -> Self {
         let root = block.root();
         let qualified_root = block.qualified_root();
 
@@ -53,6 +54,7 @@ impl Election {
             is_quorum: AtomicBool::new(false),
             confirmation_request_count: AtomicUsize::new(0),
             last_block: RwLock::new(Instant::now()),
+            behavior,
         }
     }
 
@@ -144,4 +146,23 @@ pub enum ElectionState {
     Confirmed, // confirmed but still listening for votes
     ExpiredConfirmed,
     ExpiredUnconfirmed,
+}
+
+#[derive(FromPrimitive, Copy, Clone, Debug)]
+#[repr(u8)]
+pub enum ElectionBehavior {
+    Normal,
+    /**
+     * Hinted elections:
+     * - shorter timespan
+     * - limited space inside AEC
+     */
+    Hinted,
+    /**
+     * Optimistic elections:
+     * - shorter timespan
+     * - limited space inside AEC
+     * - more frequent confirmation requests
+     */
+    Optimistic,
 }

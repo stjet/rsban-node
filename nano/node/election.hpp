@@ -196,6 +196,13 @@ public:
 	 * Checks if sufficient amount of time (`vote_generation_interval`) passed since the last vote generation
 	 */
 	void broadcast_vote (nano::election & election);
+	bool transition_time (nano::confirmation_solicitor & solicitor_a, nano::election & election);
+	void broadcast_block (nano::confirmation_solicitor & solicitor_a, nano::election & election);
+	void send_confirm_req (nano::confirmation_solicitor & solicitor_a, nano::election & election);
+	/**
+	 * Calculates time delay between broadcasting confirmation requests
+	 */
+	std::chrono::milliseconds confirm_req_time (nano::election & election) const;
 
 private:
 	nano::node & node;
@@ -234,7 +241,6 @@ private: // State management
 
 public: // State transitions
 	nano::election_lock lock () const;
-	bool transition_time (nano::confirmation_solicitor &, nano::election_helper & helper);
 	void transition_active ();
 
 public: // Status
@@ -289,16 +295,10 @@ public: // Information
 
 private:
 	nano::tally_t tally_impl (nano::election_lock & lock) const;
-	void broadcast_block (nano::confirmation_solicitor &, nano::election_helper &);
-	void send_confirm_req (nano::confirmation_solicitor &, nano::election_helper &);
 	void remove_votes (nano::election_lock & lock, nano::block_hash const &);
 	void remove_block (nano::election_lock & lock, nano::block_hash const &);
 	bool replace_by_weight (nano::election_lock & lock_a, nano::block_hash const &);
 	std::chrono::milliseconds time_to_live () const;
-	/**
-	 * Calculates time delay between broadcasting confirmation requests
-	 */
-	std::chrono::milliseconds confirm_req_time (nano::election_helper & helper) const;
 	bool is_quorum () const;
 
 private: // Constants

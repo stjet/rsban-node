@@ -255,6 +255,11 @@ pub unsafe extern "C" fn rsn_election_lock_erase_block(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_election_lock_last_tally_clear(handle: &mut ElectionLockHandle) {
+    handle.0.as_mut().unwrap().last_tally.clear();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_election_lock_last_tally_add(
     handle: &mut ElectionLockHandle,
     hash: *const u8,

@@ -454,6 +454,7 @@ nano::tally_t nano::election::tally_impl (nano::election_lock & lock) const
 			final_weights_l[info.get_hash ()] += rep_weight;
 		}
 	}
+	rsnano::rsn_election_lock_last_tally_clear (lock.handle);
 	for (const auto & item : block_weights)
 	{
 		nano::amount a{ item.second };

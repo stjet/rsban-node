@@ -4,7 +4,7 @@ use rsnano_node::voting::{Election, ElectionBehavior, ElectionData, VoteInfo};
 use std::{
     ops::Deref,
     sync::{atomic::Ordering, Arc, MutexGuard},
-    time::{Duration, SystemTime},
+    time::{Duration, Instant, SystemTime},
 };
 
 use crate::{
@@ -137,6 +137,36 @@ pub extern "C" fn rsn_election_behavior(handle: &ElectionHandle) -> u8 {
 #[no_mangle]
 pub extern "C" fn rsn_election_elapsed_ms(handle: &ElectionHandle) -> u64 {
     handle.0.election_start.elapsed().as_millis() as u64
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_state_start_elapsed_ms(handle: &ElectionHandle) -> u64 {
+    handle.0.state_start.read().unwrap().elapsed().as_millis() as u64
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_state_start_set(handle: &ElectionHandle) {
+    *handle.0.state_start.write().unwrap() = Instant::now();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_last_req_set(handle: &ElectionHandle) {
+    handle.0.set_last_req();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_last_req_elapsed_ms(handle: &ElectionHandle) -> u64 {
+    handle.0.last_req_elapsed().as_millis() as u64
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_last_vote_set(handle: &ElectionHandle) {
+    handle.0.set_last_vote();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_last_vote_elapsed_ms(handle: &ElectionHandle) -> u64 {
+    handle.0.last_vote_elapsed().as_millis() as u64
 }
 
 pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionData>>);

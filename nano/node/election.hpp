@@ -198,12 +198,6 @@ private: // State management
 	static unsigned constexpr active_request_count_min = 2;
 
 	static_assert (std::is_trivial<std::chrono::steady_clock::duration> ());
-	std::atomic<std::chrono::steady_clock::duration> state_start{ std::chrono::steady_clock::now ().time_since_epoch () };
-
-	// These are modified while not holding the mutex from transition_time only
-	std::chrono::steady_clock::time_point last_req = {};
-	/** The last time vote for this election was generated */
-	std::chrono::steady_clock::time_point last_vote = {};
 
 	bool valid_change (nano::election::state_t, nano::election::state_t) const;
 	bool state_change (nano::election::state_t, nano::election::state_t);

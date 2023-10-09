@@ -20,10 +20,14 @@ pub struct Election {
     pub state_value: AtomicU8,
     pub is_quorum: AtomicBool,
     pub confirmation_request_count: AtomicUsize,
+    pub state_start: RwLock<Instant>,
     // These are modified while not holding the mutex from transition_time only
     last_block: RwLock<Instant>,
     pub behavior: ElectionBehavior,
     pub election_start: Instant,
+    pub last_req: RwLock<Option<Instant>>,
+    /** The last time vote for this election was generated */
+    last_vote: RwLock<Option<Instant>>,
 }
 
 impl Election {
@@ -57,6 +61,31 @@ impl Election {
             last_block: RwLock::new(Instant::now()),
             behavior,
             election_start: Instant::now(),
+            state_start: RwLock::new(Instant::now()),
+            last_req: RwLock::new(None),
+            last_vote: RwLock::new(None),
+        }
+    }
+
+    pub fn set_last_req(&self) {
+        *self.last_req.write().unwrap() = Some(Instant::now());
+    }
+
+    pub fn last_req_elapsed(&self) -> Duration {
+        match self.last_req.read().unwrap().as_ref() {
+            Some(i) => i.elapsed(),
+            None => Duration::MAX,
+        }
+    }
+
+    pub fn set_last_vote(&self) {
+        *self.last_vote.write().unwrap() = Some(Instant::now());
+    }
+
+    pub fn last_vote_elapsed(&self) -> Duration {
+        match self.last_vote.read().unwrap().as_ref() {
+            Some(i) => i.elapsed(),
+            None => Duration::MAX,
         }
     }
 

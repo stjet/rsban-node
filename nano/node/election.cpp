@@ -225,7 +225,7 @@ bool nano::election::state_change (nano::election::state_t expected_a, nano::ele
 	{
 		if (rsnano::rsn_election_state_compare_exchange (handle, static_cast<uint8_t> (expected_a), static_cast<uint8_t> (desired_a)))
 		{
-			state_start = std::chrono::steady_clock::now ().time_since_epoch ();
+			rsnano::rsn_election_state_start_set (handle);
 			result = false;
 		}
 	}
@@ -258,12 +258,12 @@ bool nano::election::is_quorum () const
 
 void nano::election::send_confirm_req (nano::confirmation_solicitor & solicitor_a)
 {
-	if (confirm_req_time () < (std::chrono::steady_clock::now () - last_req))
+	if (confirm_req_time () < std::chrono::milliseconds{ rsnano::rsn_election_last_req_elapsed_ms (handle) })
 	{
 		auto guard{ lock () };
 		if (!solicitor_a.add (*this, guard))
 		{
-			last_req = std::chrono::steady_clock::now ();
+			rsnano::rsn_election_last_req_set (handle);
 			inc_confirmation_request_count ();
 		}
 	}
@@ -307,10 +307,10 @@ void nano::election::broadcast_block (nano::confirmation_solicitor & solicitor_a
 void nano::election::broadcast_vote ()
 {
 	nano::election_lock guard{ *this };
-	if (last_vote + std::chrono::milliseconds (node.config->network_params.network.vote_broadcast_interval) < std::chrono::steady_clock::now ())
+	if (std::chrono::milliseconds{ rsnano::rsn_election_last_vote_elapsed_ms (handle) } >= std::chrono::milliseconds (node.config->network_params.network.vote_broadcast_interval))
 	{
 		broadcast_vote_impl (guard);
-		last_vote = std::chrono::steady_clock::now ();
+		rsnano::rsn_election_last_vote_set (handle);
 	}
 }
 
@@ -344,7 +344,7 @@ bool nano::election::transition_time (nano::confirmation_solicitor & solicitor_a
 	switch (state_l)
 	{
 		case nano::election::state_t::passive:
-			if (base_latency () * passive_duration_factor < std::chrono::steady_clock::now ().time_since_epoch () - state_start.load ())
+			if (base_latency () * passive_duration_factor < std::chrono::milliseconds{ rsnano::rsn_election_state_start_elapsed_ms (handle) })
 			{
 				state_change (nano::election::state_t::passive, nano::election::state_t::active);
 			}
@@ -364,7 +364,7 @@ bool nano::election::transition_time (nano::confirmation_solicitor & solicitor_a
 			break;
 	}
 
-	if (!confirmed () && time_to_live () < std::chrono::milliseconds{ rsnano::rsn_election_last_block_elapsed_ms (handle) })
+	if (!confirmed () && time_to_live () < std::chrono::milliseconds{ rsnano::rsn_election_elapsed_ms (handle) })
 	{
 		auto guard{ lock () };
 		// It is possible the election confirmed while acquiring the mutex

@@ -240,6 +240,16 @@ void nano::election_helper::broadcast_vote_impl (nano::election_lock & lock, nan
 	}
 }
 
+void nano::election_helper::broadcast_vote (nano::election & election)
+{
+	nano::election_lock guard{ election };
+	if (std::chrono::milliseconds{ rsnano::rsn_election_last_vote_elapsed_ms (election.handle) } >= std::chrono::milliseconds (node.config->network_params.network.vote_broadcast_interval))
+	{
+		broadcast_vote_impl (guard, election);
+		rsnano::rsn_election_last_vote_set (election.handle);
+	}
+}
+
 /* 
  * election
  */
@@ -342,16 +352,6 @@ void nano::election::broadcast_block (nano::confirmation_solicitor & solicitor_a
 	}
 }
 
-void nano::election::broadcast_vote (nano::election_helper & helper)
-{
-	nano::election_lock guard{ *this };
-	if (std::chrono::milliseconds{ rsnano::rsn_election_last_vote_elapsed_ms (handle) } >= std::chrono::milliseconds (node.config->network_params.network.vote_broadcast_interval))
-	{
-		helper.broadcast_vote_impl (guard, *this);
-		rsnano::rsn_election_last_vote_set (handle);
-	}
-}
-
 nano::vote_info nano::election::get_last_vote (nano::account const & account)
 {
 	auto guard{ lock () };
@@ -388,7 +388,7 @@ bool nano::election::transition_time (nano::confirmation_solicitor & solicitor_a
 			}
 			break;
 		case nano::election::state_t::active:
-			broadcast_vote (helper);
+			helper.broadcast_vote (*this);
 			broadcast_block (solicitor_a, helper);
 			send_confirm_req (solicitor_a, helper);
 			break;

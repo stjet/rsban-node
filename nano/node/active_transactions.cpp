@@ -491,7 +491,7 @@ nano::election_insertion_result nano::active_transactions::insert_impl (nano::un
 		// Votes are generated for inserted or ongoing elections
 		if (result.election)
 		{
-			result.election->broadcast_vote (node.election_helper);
+			node.election_helper.broadcast_vote (*result.election);
 		}
 		trim ();
 	}

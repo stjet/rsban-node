@@ -191,6 +191,11 @@ public:
 	 * Requires mutex lock
 	 */
 	void broadcast_vote_impl (nano::election_lock & lock, nano::election & election);
+	/**
+	 * Broadcasts vote for the current winner of this election
+	 * Checks if sufficient amount of time (`vote_generation_interval`) passed since the last vote generation
+	 */
+	void broadcast_vote (nano::election & election);
 
 private:
 	nano::node & node;
@@ -268,11 +273,6 @@ public: // Interface
 	boost::optional<nano::election_status_type> try_confirm (nano::block_hash const & hash, nano::election_helper & helper);
 	void set_status_type (nano::election_status_type status_type);
 
-	/**
-	 * Broadcasts vote for the current winner of this election
-	 * Checks if sufficient amount of time (`vote_generation_interval`) passed since the last vote generation
-	 */
-	void broadcast_vote (nano::election_helper & helper);
 	nano::vote_info get_last_vote (nano::account const & account);
 	void set_last_vote (nano::account const & account, nano::vote_info vote_info);
 	nano::election_status get_status () const;

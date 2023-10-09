@@ -907,7 +907,7 @@ TEST (node, fork_open)
 	auto channel1 = std::make_shared<nano::transport::fake::channel> (node);
 	node.network->inbound (publish1, channel1);
 	ASSERT_TIMELY (5s, (election = node.active.election (publish1.get_block ()->qualified_root ())) != nullptr);
-	election->force_confirm ();
+	election->force_confirm (node.election_helper);
 	ASSERT_TIMELY (5s, node.active.empty () && node.block_confirmed (publish1.get_block ()->hash ()));
 
 	// register key for genesis account, not sure why we do this, it seems needless,
@@ -1340,7 +1340,7 @@ TEST (node, DISABLED_broadcast_elected)
 		node->start_election (block);
 		auto election (node->active.election (block->qualified_root ()));
 		ASSERT_NE (nullptr, election);
-		election->force_confirm ();
+		election->force_confirm (node->election_helper);
 		ASSERT_TIMELY (5s, 4 == node->ledger.cache.cemented_count ())
 	}
 
@@ -1408,7 +1408,7 @@ TEST (node, rep_self_vote)
 	node0->start_election (node0->block (open_big.hash ()));
 	std::shared_ptr<nano::election> election;
 	ASSERT_TIMELY (5s, election = node0->active.election (open_big.qualified_root ()));
-	election->force_confirm ();
+	election->force_confirm (node0->election_helper);
 
 	system.wallet (0)->insert_adhoc (rep_big.prv);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
@@ -1557,7 +1557,7 @@ TEST (node, bootstrap_fork_open)
 		ASSERT_TIMELY (1s, node->active.election (send0.qualified_root ()));
 		auto election = node->active.election (send0.qualified_root ());
 		ASSERT_NE (nullptr, election);
-		election->force_confirm ();
+		election->force_confirm (node->election_helper);
 		ASSERT_TIMELY (2s, node->active.empty ());
 	}
 	ASSERT_TIMELY (3s, node0->block_confirmed (send0.hash ()));
@@ -2203,7 +2203,7 @@ TEST (node, local_votes_cache)
 	node.start_election (send2);
 	std::shared_ptr<nano::election> election;
 	ASSERT_TIMELY (5s, election = node.active.election (send2->qualified_root ()));
-	election->force_confirm ();
+	election->force_confirm (node.election_helper);
 	ASSERT_TIMELY (3s, node.ledger.cache.cemented_count () == 3);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::confirm_req message1{ nano::dev::network_params.network, send1 };
@@ -3429,7 +3429,7 @@ TEST (node, rollback_vote_self)
 
 		ASSERT_EQ (0, election->votes_with_weight ().size ());
 		// Vote with key to switch the winner
-		election->vote (key.pub, 0, fork->hash ());
+		election->vote (node.election_helper, key.pub, 0, fork->hash ());
 		ASSERT_EQ (1, election->votes_with_weight ().size ());
 		// The winner changed
 		ASSERT_EQ (election->winner ()->hash (), fork->hash ());
@@ -3982,7 +3982,7 @@ TEST (node, deferred_dependent_elections)
 	ASSERT_FALSE (node.active.active (send2->qualified_root ()));
 
 	// Confirming send1 will automatically start elections for the dependents
-	election_send1->force_confirm ();
+	election_send1->force_confirm (node.election_helper);
 	ASSERT_TIMELY (5s, node.block_confirmed (send1->hash ()));
 	ASSERT_TIMELY (5s, node.active.active (open->qualified_root ()));
 	ASSERT_TIMELY (5s, node.active.active (send2->qualified_root ()));
@@ -3994,7 +3994,7 @@ TEST (node, deferred_dependent_elections)
 	// Confirm one of the dependents of the receive but not the other, to ensure both have to be confirmed to start an election on processing
 	ASSERT_EQ (nano::process_result::progress, node.process (*receive).code);
 	ASSERT_FALSE (node.active.active (receive->qualified_root ()));
-	election_open->force_confirm ();
+	election_open->force_confirm (node.election_helper);
 	ASSERT_TIMELY (5s, node.block_confirmed (open->hash ()));
 	ASSERT_FALSE (node.ledger.dependents_confirmed (*node.store.tx_begin_read (), *receive));
 	ASSERT_NEVER (0.5s, node.active.active (receive->qualified_root ()));
@@ -4010,7 +4010,7 @@ TEST (node, deferred_dependent_elections)
 	ASSERT_NEVER (0.5s, node.active.active (receive->qualified_root ()));
 
 	// Confirming the other dependency allows starting an election from a fork
-	election_send2->force_confirm ();
+	election_send2->force_confirm (node.election_helper);
 	ASSERT_TIMELY (5s, node.block_confirmed (send2->hash ()));
 	ASSERT_TIMELY (5s, node.active.active (receive->qualified_root ()));
 }

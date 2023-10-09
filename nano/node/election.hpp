@@ -169,6 +169,23 @@ public:
 	rsnano::ElectionLockHandle * handle;
 };
 
+class election_helper
+{
+public:
+	election_helper (nano::node & node_a);
+	/**
+	 * Calculates minimum time delay between subsequent votes when processing non-final votes
+	 */
+	std::chrono::seconds cooldown_time (nano::uint128_t weight) const;
+	// Minimum time between broadcasts of the current winner of an election, as a backup to requesting confirmations
+	std::chrono::milliseconds base_latency () const;
+	// lock_a does not own the mutex on return
+	void confirm_once (nano::election_lock & lock_a, nano::election_status_type type_a, nano::election & election);
+
+private:
+	nano::node & node;
+};
+
 class election final : public std::enable_shared_from_this<nano::election>
 {
 public:
@@ -179,8 +196,6 @@ public:
 	};
 
 private:
-	// Minimum time between broadcasts of the current winner of an election, as a backup to requesting confirmations
-	std::chrono::milliseconds base_latency () const;
 	std::function<void (std::shared_ptr<nano::block> const &)> confirmation_action;
 	std::function<void (nano::account const &)> live_vote_action;
 
@@ -205,7 +220,7 @@ private: // State management
 
 public: // State transitions
 	nano::election_lock lock () const;
-	bool transition_time (nano::confirmation_solicitor &);
+	bool transition_time (nano::confirmation_solicitor &, nano::election_helper & helper);
 	void transition_active ();
 
 public: // Status
@@ -236,16 +251,16 @@ public: // Interface
 	 * Process vote. Internally uses cooldown to throttle non-final votes
 	 * If the election reaches consensus, it will be confirmed
 	 */
-	nano::election_vote_result vote (nano::account const & representative, uint64_t timestamp, nano::block_hash const & block_hash, vote_source = vote_source::live);
+	nano::election_vote_result vote (nano::election_helper & helper, nano::account const & representative, uint64_t timestamp, nano::block_hash const & block_hash, vote_source = vote_source::live);
 	/**
 	* Inserts votes stored in the cache entry into this election
 	*/
-	std::size_t fill_from_cache (nano::vote_cache::entry const & entry);
+	std::size_t fill_from_cache (nano::election_helper & helper, nano::vote_cache::entry const & entry);
 
 	bool publish (std::shared_ptr<nano::block> const & block_a);
 	// Confirm this block if quorum is met
-	void confirm_if_quorum (nano::election_lock &);
-	boost::optional<nano::election_status_type> try_confirm (nano::block_hash const & hash);
+	void confirm_if_quorum (nano::election_lock &, nano::election_helper &);
+	boost::optional<nano::election_status_type> try_confirm (nano::block_hash const & hash, nano::election_helper & helper);
 	void set_status_type (nano::election_status_type status_type);
 
 	/**
@@ -269,10 +284,8 @@ public: // Information
 
 private:
 	nano::tally_t tally_impl (nano::election_lock & lock) const;
-	// lock_a does not own the mutex on return
-	void confirm_once (nano::election_lock & lock_a, nano::election_status_type = nano::election_status_type::active_confirmed_quorum);
-	void broadcast_block (nano::confirmation_solicitor &);
-	void send_confirm_req (nano::confirmation_solicitor &);
+	void broadcast_block (nano::confirmation_solicitor &, nano::election_helper &);
+	void send_confirm_req (nano::confirmation_solicitor &, nano::election_helper &);
 	/**
 	 * Broadcast vote for current election winner. Generates final vote if reached quorum or already confirmed
 	 * Requires mutex lock
@@ -283,13 +296,9 @@ private:
 	bool replace_by_weight (nano::election_lock & lock_a, nano::block_hash const &);
 	std::chrono::milliseconds time_to_live () const;
 	/**
-	 * Calculates minimum time delay between subsequent votes when processing non-final votes
-	 */
-	std::chrono::seconds cooldown_time (nano::uint128_t weight) const;
-	/**
 	 * Calculates time delay between broadcasting confirmation requests
 	 */
-	std::chrono::milliseconds confirm_req_time () const;
+	std::chrono::milliseconds confirm_req_time (nano::election_helper & helper) const;
 	bool is_quorum () const;
 
 private: // Constants
@@ -297,9 +306,10 @@ private: // Constants
 
 	friend class active_transactions;
 	friend class confirmation_solicitor;
+	friend class election_helper;
 
 public: // Only used in tests
-	void force_confirm (nano::election_status_type = nano::election_status_type::active_confirmed_quorum);
+	void force_confirm (nano::election_helper & helper, nano::election_status_type = nano::election_status_type::active_confirmed_quorum);
 	std::unordered_map<nano::account, nano::vote_info> votes () const;
 	std::unordered_map<nano::block_hash, std::shared_ptr<nano::block>> blocks () const;
 

@@ -303,7 +303,7 @@ void nano::active_transactions::request_confirm (nano::unique_lock<nano::mutex> 
 		bool const confirmed_l (election_l->confirmed ());
 		unconfirmed_count_l += !confirmed_l;
 
-		if (confirmed_l || election_l->transition_time (solicitor))
+		if (confirmed_l || election_l->transition_time (solicitor, node.election_helper))
 		{
 			erase (election_l->qualified_root ());
 		}
@@ -471,7 +471,7 @@ nano::election_insertion_result nano::active_transactions::insert_impl (nano::un
 				lock_a.unlock ();
 				if (auto const cache = node.inactive_vote_cache.find (hash); cache)
 				{
-					result.election->fill_from_cache (*cache);
+					result.election->fill_from_cache (node.election_helper, *cache);
 				}
 				node.stats->inc (nano::stat::type::active_started, nano::to_stat_detail (election_behavior_a));
 				node.observers->active_started.notify (hash);
@@ -540,7 +540,7 @@ nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> con
 		bool processed (false);
 		for (auto const & [election, block_hash] : process)
 		{
-			auto const result_l = election->vote (vote_a->account (), vote_a->timestamp (), block_hash);
+			auto const result_l = election->vote (node.election_helper, vote_a->account (), vote_a->timestamp (), block_hash);
 			processed = processed || result_l.processed;
 			replay = replay || result_l.replay;
 		}
@@ -670,7 +670,7 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 			lock.unlock ();
 			if (auto const cache = node.inactive_vote_cache.find (block_a->hash ()); cache)
 			{
-				election->fill_from_cache (*cache);
+				election->fill_from_cache (node.election_helper, *cache);
 			}
 			node.stats->inc (nano::stat::type::active, nano::stat::detail::election_block_conflict);
 		}
@@ -695,7 +695,7 @@ boost::optional<nano::election_status_type> nano::active_transactions::confirm_b
 	boost::optional<nano::election_status_type> status_type;
 	if (election)
 	{
-		status_type = election->try_confirm (hash);
+		status_type = election->try_confirm (hash, node.election_helper);
 	}
 	else
 	{

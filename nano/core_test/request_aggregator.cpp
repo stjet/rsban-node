@@ -292,7 +292,7 @@ TEST (request_aggregator, split)
 	node.start_election (blocks.back ());
 	std::shared_ptr<nano::election> election;
 	ASSERT_TIMELY (5s, election = node.active.election (blocks.back ()->qualified_root ()));
-	election->force_confirm ();
+	election->force_confirm (node.election_helper);
 	ASSERT_TIMELY (5s, max_vbh + 2 == node.ledger.cache.cemented_count ());
 	ASSERT_EQ (max_vbh + 1, request.size ());
 	auto client = nano::transport::create_client_socket (node);
@@ -510,7 +510,7 @@ TEST (request_aggregator, cannot_vote)
 	node.start_election (send1);
 	std::shared_ptr<nano::election> election;
 	ASSERT_TIMELY (5s, election = node.active.election (send1->qualified_root ()));
-	election->force_confirm ();
+	election->force_confirm (node.election_helper);
 	ASSERT_TIMELY (3s, node.ledger.dependents_confirmed (*node.store.tx_begin_read (), *send2));
 	node.aggregator.add (dummy_channel, request);
 	ASSERT_EQ (1, node.aggregator.size ());

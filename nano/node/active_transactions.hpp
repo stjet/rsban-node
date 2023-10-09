@@ -234,6 +234,7 @@ private:
 	std::thread thread;
 
 	friend class election;
+	friend class election_helper;
 	friend std::unique_ptr<container_info_component> collect_container_info (active_transactions &, std::string const &);
 
 public: // Tests

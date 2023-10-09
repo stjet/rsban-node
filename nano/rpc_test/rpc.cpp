@@ -6880,7 +6880,7 @@ TEST (rpc, confirmation_active)
 	ASSERT_EQ (2, node1->active.size ());
 	auto election (node1->active.election (send1->qualified_root ()));
 	ASSERT_NE (nullptr, election);
-	election->force_confirm ();
+	election->force_confirm (node1->election_helper);
 	ASSERT_TIMELY (5s, election->confirmed ());
 
 	boost::property_tree::ptree request;

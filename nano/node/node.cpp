@@ -215,7 +215,8 @@ nano::node::node (rsnano::async_runtime & async_rt_a, boost::filesystem::path co
 	block_broadcast{ *network, block_arrival, !flags.disable_block_processor_republishing () },
 	block_publisher{ active },
 	gap_tracker{ gap_cache },
-	process_live_dispatcher{ ledger, scheduler.priority, inactive_vote_cache, websocket }
+	process_live_dispatcher{ ledger, scheduler.priority, inactive_vote_cache, websocket },
+	election_helper{ *this }
 {
 	logger->always_log ("Node ID: ", node_id.pub.to_node_id ());
 	network->tcp_channels->set_observer (tcp_listener);

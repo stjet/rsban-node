@@ -186,7 +186,7 @@ TEST (active_transactions, keep_local)
 		std::shared_ptr<nano::election> election{};
 		ASSERT_TIMELY (5s, (election = node.active.election (block->qualified_root ())) != nullptr);
 		node.process_confirmed (nano::election_status{ block });
-		election->force_confirm ();
+		election->force_confirm (node.election_helper);
 		ASSERT_TIMELY (5s, node.block_confirmed (block->hash ()));
 	}
 
@@ -365,7 +365,7 @@ TEST (active_transactions, inactive_votes_cache_existing_vote)
 	auto cache = node.inactive_vote_cache.find (send->hash ());
 	ASSERT_TRUE (cache);
 	ASSERT_EQ (1, cache->voters.size ());
-	election->fill_from_cache (*cache);
+	election->fill_from_cache (node.election_helper, *cache);
 	// Check that election data is not changed
 	ASSERT_EQ (2, election->votes ().size ());
 	auto last_vote2 (election->votes ()[key.pub]);
@@ -664,7 +664,7 @@ TEST (active_transactions, dropped_cleanup)
 
 	election = nano::test::start_election (system, node, hash);
 	ASSERT_NE (nullptr, election);
-	election->force_confirm ();
+	election->force_confirm (node.election_helper);
 	ASSERT_TIMELY (5s, election->confirmed ());
 	node.active.erase (*chain[0]);
 
@@ -1155,7 +1155,7 @@ TEST (active_transactions, activate_account_chain)
 	node.scheduler.priority.activate (nano::dev::genesis_key.pub, *node.store.tx_begin_read ());
 	auto election2 = node.active.election (send->qualified_root ());
 	ASSERT_EQ (election2, election1);
-	election1->force_confirm ();
+	election1->force_confirm (node.election_helper);
 	ASSERT_TIMELY (3s, node.block_confirmed (send->hash ()));
 	// On cementing, the next election is started
 	ASSERT_TIMELY (3s, node.active.active (send2->qualified_root ()));
@@ -1163,7 +1163,7 @@ TEST (active_transactions, activate_account_chain)
 	auto election3 = node.active.election (send2->qualified_root ());
 	ASSERT_NE (nullptr, election3);
 	ASSERT_EQ (1, election3->blocks ().count (send2->hash ()));
-	election3->force_confirm ();
+	election3->force_confirm (node.election_helper);
 	ASSERT_TIMELY (3s, node.block_confirmed (send2->hash ()));
 	// On cementing, the next election is started
 	ASSERT_TIMELY (3s, node.active.active (open->qualified_root ()));
@@ -1176,12 +1176,12 @@ TEST (active_transactions, activate_account_chain)
 	auto election5 = node.active.election (open->qualified_root ());
 	ASSERT_NE (nullptr, election5);
 	ASSERT_EQ (1, election5->blocks ().count (open->hash ()));
-	election5->force_confirm ();
+	election5->force_confirm (node.election_helper);
 	ASSERT_TIMELY (3s, node.block_confirmed (open->hash ()));
 	// Until send3 is also confirmed, the receive block should not activate
 	std::this_thread::sleep_for (200ms);
 	node.scheduler.priority.activate (key.pub, *node.store.tx_begin_read ());
-	election4->force_confirm ();
+	election4->force_confirm (node.election_helper);
 	ASSERT_TIMELY (3s, node.block_confirmed (send3->hash ()));
 	ASSERT_TIMELY (3s, node.active.active (receive->qualified_root ()));
 }
@@ -1230,7 +1230,7 @@ TEST (active_transactions, activate_inactive)
 
 	auto election = nano::test::start_election (system, node, send2->hash ());
 	ASSERT_NE (nullptr, election);
-	election->force_confirm ();
+	election->force_confirm (node.election_helper);
 
 	ASSERT_TIMELY (5s, !node.confirmation_height_processor.is_processing_added_block (send2->hash ()));
 	ASSERT_TIMELY (5s, node.block_confirmed (send2->hash ()));
@@ -1331,7 +1331,7 @@ TEST (active_transactions, vacancy)
 		ASSERT_EQ (1, node.active.size ());
 		auto election1 = node.active.election (send->qualified_root ());
 		ASSERT_NE (nullptr, election1);
-		election1->force_confirm ();
+		election1->force_confirm (node.election_helper);
 		ASSERT_TIMELY (1s, updated);
 		ASSERT_EQ (1, node.active.vacancy ());
 		ASSERT_EQ (0, node.active.size ());

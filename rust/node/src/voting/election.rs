@@ -74,7 +74,7 @@ impl Election {
     pub fn last_req_elapsed(&self) -> Duration {
         match self.last_req.read().unwrap().as_ref() {
             Some(i) => i.elapsed(),
-            None => Duration::MAX,
+            None => Duration::from_secs(60 * 60 * 24 * 365), // Duration::MAX caused problems with C++
         }
     }
 
@@ -85,7 +85,7 @@ impl Election {
     pub fn last_vote_elapsed(&self) -> Duration {
         match self.last_vote.read().unwrap().as_ref() {
             Some(i) => i.elapsed(),
-            None => Duration::MAX,
+            None => Duration::from_secs(60 * 60 * 24 * 365), // Duration::MAX caused problems with C++
         }
     }
 

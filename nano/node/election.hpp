@@ -186,6 +186,11 @@ public:
 	// Later once the confirmation height processor has updated the confirmation height it will be confirmed on disk
 	// It is possible for an election to be confirmed on disk but not in memory, for instance if implicitly confirmed via confirmation height
 	bool confirmed (nano::election & election) const;
+	/**
+	 * Broadcast vote for current election winner. Generates final vote if reached quorum or already confirmed
+	 * Requires mutex lock
+	 */
+	void broadcast_vote_impl (nano::election_lock & lock, nano::election & election);
 
 private:
 	nano::node & node;
@@ -286,11 +291,6 @@ private:
 	nano::tally_t tally_impl (nano::election_lock & lock) const;
 	void broadcast_block (nano::confirmation_solicitor &, nano::election_helper &);
 	void send_confirm_req (nano::confirmation_solicitor &, nano::election_helper &);
-	/**
-	 * Broadcast vote for current election winner. Generates final vote if reached quorum or already confirmed
-	 * Requires mutex lock
-	 */
-	void broadcast_vote_impl (nano::election_lock & lock, nano::election_helper & helper);
 	void remove_votes (nano::election_lock & lock, nano::block_hash const &);
 	void remove_block (nano::election_lock & lock, nano::block_hash const &);
 	bool replace_by_weight (nano::election_lock & lock_a, nano::block_hash const &);

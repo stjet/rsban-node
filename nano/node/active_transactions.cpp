@@ -128,7 +128,7 @@ void nano::active_transactions::process_active_confirmation (nano::store::read_t
 		auto election = existing->second;
 		election_winner_details.erase (hash);
 		election_winners_lk.unlock ();
-		if (election->confirmed () && election->winner ()->hash () == hash)
+		if (node.election_helper.confirmed (*election) && election->winner ()->hash () == hash)
 		{
 			handle_confirmation (transaction, block, election, status_type);
 		}
@@ -300,7 +300,7 @@ void nano::active_transactions::request_confirm (nano::unique_lock<nano::mutex> 
 	 */
 	for (auto const & election_l : elections_l)
 	{
-		bool const confirmed_l (election_l->confirmed ());
+		bool const confirmed_l (node.election_helper.confirmed (*election_l));
 		unconfirmed_count_l += !confirmed_l;
 
 		if (confirmed_l || election_l->transition_time (solicitor, node.election_helper))
@@ -343,12 +343,12 @@ void nano::active_transactions::cleanup_election (nano::unique_lock<nano::mutex>
 	for (auto const & [hash, block] : blocks_l)
 	{
 		// Notify observers about dropped elections & blocks lost confirmed elections
-		if (!election->confirmed () || hash != election->winner ()->hash ())
+		if (!node.election_helper.confirmed (*election) || hash != election->winner ()->hash ())
 		{
 			node.observers->active_stopped.notify (hash);
 		}
 
-		if (!election->confirmed ())
+		if (!node.election_helper.confirmed (*election))
 		{
 			// Clear from publish filter
 			node.network->tcp_channels->publish_filter->clear (block);
@@ -357,7 +357,7 @@ void nano::active_transactions::cleanup_election (nano::unique_lock<nano::mutex>
 
 	if (node.config->logging.election_result_logging ())
 	{
-		node.logger->try_log (boost::str (boost::format ("Election erased for root %1%, confirmed: %2$b") % election->qualified_root ().to_string () % election->confirmed ()));
+		node.logger->try_log (boost::str (boost::format ("Election erased for root %1%, confirmed: %2$b") % election->qualified_root ().to_string () % node.election_helper.confirmed (*election)));
 	}
 }
 
@@ -491,7 +491,7 @@ nano::election_insertion_result nano::active_transactions::insert_impl (nano::un
 		// Votes are generated for inserted or ongoing elections
 		if (result.election)
 		{
-			result.election->broadcast_vote ();
+			result.election->broadcast_vote (node.election_helper);
 		}
 		trim ();
 	}
@@ -662,7 +662,7 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 	{
 		auto election (existing->election);
 		lock.unlock ();
-		result = election->publish (block_a);
+		result = election->publish (block_a, node.election_helper);
 		if (!result)
 		{
 			lock.lock ();

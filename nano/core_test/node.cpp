@@ -234,7 +234,7 @@ TEST (node, node_receive_quorum)
 	ASSERT_TIMELY (10s, node1.active.election (nano::qualified_root (previous, previous)) != nullptr);
 	auto election (node1.active.election (nano::qualified_root (previous, previous)));
 	ASSERT_NE (nullptr, election);
-	ASSERT_FALSE (election->confirmed ());
+	ASSERT_FALSE (node1.election_helper.confirmed (*election));
 	ASSERT_EQ (1, election->votes ().size ());
 
 	nano::test::system system2;
@@ -945,7 +945,7 @@ TEST (node, fork_open)
 
 	// wait for a second and check that the election did not get confirmed
 	system.delay_ms (1000ms);
-	ASSERT_FALSE (election->confirmed ());
+	ASSERT_FALSE (node.election_helper.confirmed (*election));
 
 	// check that only the first block is saved to the ledger
 	ASSERT_TIMELY (5s, node.block (publish2.get_block ()->hash ()));
@@ -2154,7 +2154,7 @@ TEST (node, confirm_quorum)
 	ASSERT_TIMELY (2s, node1.active.election (send1->qualified_root ()));
 	auto election = node1.active.election (send1->qualified_root ());
 	ASSERT_NE (nullptr, election);
-	ASSERT_FALSE (election->confirmed ());
+	ASSERT_FALSE (node1.election_helper.confirmed (*election));
 	ASSERT_EQ (1, election->votes ().size ());
 	ASSERT_EQ (0, node1.balance (nano::dev::genesis_key.pub));
 }

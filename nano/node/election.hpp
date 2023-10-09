@@ -181,6 +181,11 @@ public:
 	std::chrono::milliseconds base_latency () const;
 	// lock_a does not own the mutex on return
 	void confirm_once (nano::election_lock & lock_a, nano::election_status_type type_a, nano::election & election);
+	bool confirmed (nano::election_lock & lock) const;
+	// Returns true when the winning block is durably confirmed in the ledger.
+	// Later once the confirmation height processor has updated the confirmation height it will be confirmed on disk
+	// It is possible for an election to be confirmed on disk but not in memory, for instance if implicitly confirmed via confirmation height
+	bool confirmed (nano::election & election) const;
 
 private:
 	nano::node & node;
@@ -216,7 +221,6 @@ private: // State management
 
 	bool valid_change (nano::election::state_t, nano::election::state_t) const;
 	bool state_change (nano::election::state_t, nano::election::state_t);
-	bool confirmed (nano::election_lock & lock) const;
 
 public: // State transitions
 	nano::election_lock lock () const;
@@ -227,10 +231,6 @@ public: // Status
 	// Returns true when the election is confirmed in memory
 	// Elections will first confirm in memory once sufficient votes have been received
 	bool status_confirmed () const;
-	// Returns true when the winning block is durably confirmed in the ledger.
-	// Later once the confirmation height processor has updated the confirmation height it will be confirmed on disk
-	// It is possible for an election to be confirmed on disk but not in memory, for instance if implicitly confirmed via confirmation height
-	bool confirmed () const;
 	bool failed () const;
 	nano::election_extended_status current_status () const;
 	std::shared_ptr<nano::block> winner () const;
@@ -257,7 +257,7 @@ public: // Interface
 	*/
 	std::size_t fill_from_cache (nano::election_helper & helper, nano::vote_cache::entry const & entry);
 
-	bool publish (std::shared_ptr<nano::block> const & block_a);
+	bool publish (std::shared_ptr<nano::block> const & block_a, nano::election_helper & helper);
 	// Confirm this block if quorum is met
 	void confirm_if_quorum (nano::election_lock &, nano::election_helper &);
 	boost::optional<nano::election_status_type> try_confirm (nano::block_hash const & hash, nano::election_helper & helper);
@@ -267,7 +267,7 @@ public: // Interface
 	 * Broadcasts vote for the current winner of this election
 	 * Checks if sufficient amount of time (`vote_generation_interval`) passed since the last vote generation
 	 */
-	void broadcast_vote ();
+	void broadcast_vote (nano::election_helper & helper);
 	nano::vote_info get_last_vote (nano::account const & account);
 	void set_last_vote (nano::account const & account, nano::vote_info vote_info);
 	nano::election_status get_status () const;
@@ -290,7 +290,7 @@ private:
 	 * Broadcast vote for current election winner. Generates final vote if reached quorum or already confirmed
 	 * Requires mutex lock
 	 */
-	void broadcast_vote_impl (nano::election_lock & lock);
+	void broadcast_vote_impl (nano::election_lock & lock, nano::election_helper & helper);
 	void remove_votes (nano::election_lock & lock, nano::block_hash const &);
 	void remove_block (nano::election_lock & lock, nano::block_hash const &);
 	bool replace_by_weight (nano::election_lock & lock_a, nano::block_hash const &);

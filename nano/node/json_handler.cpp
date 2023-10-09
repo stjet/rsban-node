@@ -1991,7 +1991,7 @@ void nano::json_handler::confirmation_active ()
 	{
 		if (election->get_confirmation_request_count () >= announcements)
 		{
-			if (!election->confirmed ())
+			if (!node.election_helper.confirmed (*election))
 			{
 				boost::property_tree::ptree entry;
 				entry.put ("", election->qualified_root ().to_string ());
@@ -2074,7 +2074,7 @@ void nano::json_handler::confirmation_info ()
 	if (!root.decode_hex (root_text))
 	{
 		auto election (node.active.election (root));
-		if (election != nullptr && !election->confirmed ())
+		if (election != nullptr && !node.election_helper.confirmed (*election))
 		{
 			auto info = election->current_status ();
 			response_l.put ("announcements", std::to_string (info.status.get_confirmation_request_count ()));

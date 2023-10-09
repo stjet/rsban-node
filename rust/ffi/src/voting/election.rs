@@ -1,6 +1,11 @@
 use num_traits::FromPrimitive;
 use rsnano_core::{utils::system_time_as_nanoseconds, Account, Amount, BlockEnum, BlockHash};
-use rsnano_node::voting::{Election, ElectionBehavior, ElectionData, VoteInfo};
+use rsnano_node::{
+    stats::DetailType,
+    voting::{
+        Election, ElectionBehavior, ElectionData, ElectionState, ElectionStatusType, VoteInfo,
+    },
+};
 use std::{
     ops::Deref,
     sync::{atomic::Ordering, Arc, MutexGuard},
@@ -117,7 +122,7 @@ pub unsafe extern "C" fn rsn_election_set_last_block(handle: &ElectionHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_election_confirmation_request_count(handle: &ElectionHandle) -> usize {
+pub unsafe extern "C" fn rsn_election_confirmation_request_count(handle: &ElectionHandle) -> u32 {
     handle.0.confirmation_request_count.load(Ordering::SeqCst)
 }
 
@@ -169,6 +174,17 @@ pub extern "C" fn rsn_election_last_vote_elapsed_ms(handle: &ElectionHandle) -> 
     handle.0.last_vote_elapsed().as_millis() as u64
 }
 
+#[no_mangle]
+pub extern "C" fn rsn_election_state_change(
+    handle: &ElectionHandle,
+    expected_state: u8,
+    desired_state: u8,
+) -> bool {
+    let expected = ElectionState::from_u8(expected_state).unwrap();
+    let desired = ElectionState::from_u8(desired_state).unwrap();
+    handle.0.state_change(expected, desired).is_err()
+}
+
 pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionData>>);
 
 #[no_mangle]
@@ -183,6 +199,20 @@ pub extern "C" fn rsn_election_lock_status(
     Box::into_raw(Box::new(ElectionStatusHandle(
         handle.0.as_ref().unwrap().status.clone(),
     )))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_lock_update_status_to_confirmed(
+    lock_handle: &mut ElectionLockHandle,
+    election_handle: &ElectionHandle,
+    status_type: u8,
+) {
+    let status_type = ElectionStatusType::from_u8(status_type).unwrap();
+    lock_handle
+        .0
+        .as_mut()
+        .unwrap()
+        .update_status_to_confirmed(status_type, &election_handle.0);
 }
 
 #[no_mangle]
@@ -514,4 +544,10 @@ pub extern "C" fn rsn_vote_info_with_relative_time(
         timestamp: handle.0.timestamp,
         hash: handle.0.hash,
     })
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_behaviour_into_stat_detail(behaviour: u8) -> u8 {
+    let detail: DetailType = ElectionBehavior::from_u8(behaviour).unwrap().into();
+    detail as u8
 }

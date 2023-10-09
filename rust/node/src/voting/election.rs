@@ -1,13 +1,13 @@
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, QualifiedRoot, Root};
 
-use crate::utils::HardenedConstants;
+use crate::{stats::DetailType, utils::HardenedConstants};
 
-use super::ElectionStatus;
+use super::{ElectionStatus, ElectionStatusType};
 use std::{
     collections::HashMap,
     sync::{
-        atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering},
         Arc, Mutex, RwLock,
     },
     time::{Duration, Instant, SystemTime},
@@ -19,7 +19,7 @@ pub struct Election {
     pub qualified_root: QualifiedRoot,
     pub state_value: AtomicU8,
     pub is_quorum: AtomicBool,
-    pub confirmation_request_count: AtomicUsize,
+    pub confirmation_request_count: AtomicU32,
     pub state_start: RwLock<Instant>,
     // These are modified while not holding the mutex from transition_time only
     last_block: RwLock<Instant>,
@@ -57,7 +57,7 @@ impl Election {
             qualified_root,
             state_value: AtomicU8::new(ElectionState::Passive as u8),
             is_quorum: AtomicBool::new(false),
-            confirmation_request_count: AtomicUsize::new(0),
+            confirmation_request_count: AtomicU32::new(0),
             last_block: RwLock::new(Instant::now()),
             behavior,
             election_start: Instant::now(),
@@ -87,6 +87,16 @@ impl Election {
             Some(i) => i.elapsed(),
             None => Duration::from_secs(60 * 60 * 24 * 365), // Duration::MAX caused problems with C++
         }
+    }
+    pub fn state_change(&self, expected: ElectionState, desired: ElectionState) -> Result<(), ()> {
+        if Self::valid_change(expected, desired) {
+            if self.compare_exhange_state(expected, desired) {
+                *self.state_start.write().unwrap() = Instant::now();
+                return Ok(());
+            }
+        }
+
+        Err(())
     }
 
     pub fn valid_change(expected: ElectionState, desired: ElectionState) -> bool {
@@ -146,6 +156,22 @@ pub struct ElectionData {
     pub last_tally: HashMap<BlockHash, Amount>,
 }
 
+impl ElectionData {
+    pub fn update_status_to_confirmed(
+        &mut self,
+        status_type: ElectionStatusType,
+        election: &Election,
+    ) {
+        self.status.election_end = Some(SystemTime::now());
+        self.status.election_duration = election.election_start.elapsed();
+        self.status.confirmation_request_count =
+            election.confirmation_request_count.load(Ordering::SeqCst);
+        self.status.block_count = self.last_blocks.len() as u32;
+        self.status.voter_count = self.last_votes.len() as u32;
+        self.status.election_status_type = status_type;
+    }
+}
+
 #[derive(Clone)]
 pub struct VoteInfo {
     pub time: SystemTime, // TODO use Instant
@@ -169,7 +195,7 @@ impl Default for VoteInfo {
     }
 }
 
-#[derive(FromPrimitive)]
+#[derive(FromPrimitive, Copy, Clone, Debug)]
 #[repr(u8)]
 pub enum ElectionState {
     Passive,   // only listening for incoming votes
@@ -196,4 +222,14 @@ pub enum ElectionBehavior {
      * - more frequent confirmation requests
      */
     Optimistic,
+}
+
+impl From<ElectionBehavior> for DetailType {
+    fn from(value: ElectionBehavior) -> Self {
+        match value {
+            ElectionBehavior::Normal => DetailType::Normal,
+            ElectionBehavior::Hinted => DetailType::Hinted,
+            ElectionBehavior::Optimistic => DetailType::Optimistic,
+        }
+    }
 }

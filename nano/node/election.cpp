@@ -189,13 +189,9 @@ void nano::election::confirm_once (nano::election_lock & lock_a, nano::election_
 	{
 		node.active.election_winner_details.emplace (status_l.get_winner ()->hash (), shared_from_this ());
 		election_winners_lk.unlock ();
-		status_l.set_election_end (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()));
-		status_l.set_election_duration (std::chrono::milliseconds{ rsnano::rsn_election_elapsed_ms (handle) });
-		status_l.set_confirmation_request_count (get_confirmation_request_count ());
-		status_l.set_block_count (nano::narrow_cast<decltype (status_l.get_block_count ())> (lock_a.last_blocks_size ()));
-		status_l.set_voter_count (nano::narrow_cast<decltype (status_l.get_voter_count ())> (lock_a.last_votes_size ()));
-		status_l.set_election_status_type (type_a);
-		lock_a.set_status (status_l);
+
+		rsnano::rsn_election_lock_update_status_to_confirmed (lock_a.handle, handle, static_cast<uint8_t> (type_a));
+		status_l = lock_a.status ();
 		lock_a.unlock ();
 
 		node.background ([node_l = node.shared (), status_l, confirmation_action_l = confirmation_action] () {
@@ -220,16 +216,7 @@ bool nano::election::valid_change (nano::election::state_t expected_a, nano::ele
 
 bool nano::election::state_change (nano::election::state_t expected_a, nano::election::state_t desired_a)
 {
-	bool result = true;
-	if (valid_change (expected_a, desired_a))
-	{
-		if (rsnano::rsn_election_state_compare_exchange (handle, static_cast<uint8_t> (expected_a), static_cast<uint8_t> (desired_a)))
-		{
-			rsnano::rsn_election_state_start_set (handle);
-			result = false;
-		}
-	}
-	return result;
+	return rsnano::rsn_election_state_change (handle, static_cast<uint8_t> (expected_a), static_cast<uint8_t> (desired_a));
 }
 
 bool nano::election::confirmed (nano::election_lock & lock) const
@@ -868,24 +855,8 @@ std::vector<nano::vote_with_weight_info> nano::election::votes_with_weight () co
 
 nano::stat::detail nano::to_stat_detail (nano::election_behavior behavior)
 {
-	switch (behavior)
-	{
-		case nano::election_behavior::normal:
-		{
-			return nano::stat::detail::normal;
-		}
-		case nano::election_behavior::hinted:
-		{
-			return nano::stat::detail::hinted;
-		}
-		case nano::election_behavior::optimistic:
-		{
-			return nano::stat::detail::optimistic;
-		}
-	}
-
-	debug_assert (false, "unknown election behavior");
-	return {};
+	auto val = rsnano::rsn_election_behaviour_into_stat_detail (static_cast<uint8_t> (behavior));
+	return static_cast<nano::stat::detail> (val);
 }
 
 nano::election_behavior nano::election::behavior () const

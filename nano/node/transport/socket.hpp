@@ -55,75 +55,6 @@ enum class buffer_drop_policy
 
 class server_socket;
 
-class buffer_wrapper
-{
-public:
-	buffer_wrapper (std::size_t len);
-	buffer_wrapper (rsnano::BufferHandle * handle_a);
-	buffer_wrapper (buffer_wrapper const &) = delete;
-	buffer_wrapper (buffer_wrapper && other_a);
-	~buffer_wrapper ();
-	std::uint8_t * data ();
-	std::size_t len () const;
-	rsnano::BufferHandle * handle;
-};
-
-class tcp_socket_facade : public std::enable_shared_from_this<nano::transport::tcp_socket_facade>
-{
-public:
-	tcp_socket_facade (boost::asio::io_context & io_ctx);
-	~tcp_socket_facade ();
-
-	void async_connect (boost::asio::ip::tcp::endpoint endpoint_a,
-	std::function<void (boost::system::error_code const &)> callback_a);
-
-	void async_read (std::shared_ptr<std::vector<uint8_t>> const & buffer_a, size_t len_a,
-	std::function<void (boost::system::error_code const &, std::size_t)> callback_a);
-
-	void async_read (std::shared_ptr<buffer_wrapper> const & buffer_a, size_t len_a,
-	std::function<void (boost::system::error_code const &, std::size_t)> callback_a);
-
-	void async_write (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a);
-	bool running_in_this_thread ();
-	void async_accept (
-	boost::asio::ip::tcp::socket & client_socket,
-	boost::asio::ip::tcp::endpoint & peer,
-	std::function<void (boost::system::error_code const &)> callback_a);
-
-	bool is_acceptor_open ();
-
-	boost::asio::ip::tcp::endpoint remote_endpoint (boost::system::error_code & ec);
-
-	void dispatch (std::function<void ()> callback_a);
-	void post (std::function<void ()> callback_a);
-	void close (boost::system::error_code & ec);
-	void close_acceptor ();
-	uint16_t listening_port ()
-	{
-		return acceptor.local_endpoint ().port ();
-	}
-
-	void open (const boost::asio::ip::tcp::endpoint & local, boost::system::error_code & ec_a);
-
-	boost::asio::strand<boost::asio::io_context::executor_type> strand;
-	boost::asio::ip::tcp::socket tcp_socket;
-	boost::asio::io_context & io_ctx;
-	boost::asio::ip::tcp::acceptor acceptor;
-
-private:
-	std::atomic<bool> closed{ false };
-};
-
-class tcp_socket_facade_factory
-{
-public:
-	tcp_socket_facade_factory (boost::asio::io_context & io_ctx);
-	std::shared_ptr<nano::transport::tcp_socket_facade> create_socket ();
-
-private:
-	boost::asio::io_context & io_ctx;
-};
-
 void async_read_adapter (void * context_a, rsnano::ErrorCodeDto const * error_a, std::size_t size_a);
 void async_read_delete_context (void * context_a);
 
@@ -168,7 +99,6 @@ public:
 
 	void async_connect (boost::asio::ip::tcp::endpoint const &, std::function<void (boost::system::error_code const &)>);
 	void async_read (std::shared_ptr<std::vector<uint8_t>> const &, std::size_t, std::function<void (boost::system::error_code const &, std::size_t)>);
-	void async_read (std::shared_ptr<buffer_wrapper> const &, std::size_t, std::function<void (boost::system::error_code const &, std::size_t)>);
 	void async_write (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> = {}, nano::transport::traffic_type = nano::transport::traffic_type::generic);
 
 	virtual void close ();

@@ -21,37 +21,6 @@ use crate::{
     ErrorCodeDto, StatHandle, StringDto, VoidPointerCallback,
 };
 
-pub struct BufferHandle(Arc<Mutex<Vec<u8>>>);
-
-impl Deref for BufferHandle {
-    type Target = Arc<Mutex<Vec<u8>>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_buffer_create(len: usize) -> *mut BufferHandle {
-    Box::into_raw(Box::new(BufferHandle(Arc::new(Mutex::new(vec![0; len])))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_buffer_destroy(handle: *mut BufferHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_buffer_data(handle: *mut BufferHandle) -> *mut u8 {
-    let ptr = (*handle).0.lock().unwrap().as_ptr();
-    std::mem::transmute::<*const u8, *mut u8>(ptr)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_buffer_len(handle: *mut BufferHandle) -> usize {
-    (*handle).0.lock().unwrap().len()
-}
-
 pub struct SocketHandle(pub Arc<Socket>);
 pub struct SocketWeakHandle(Weak<Socket>);
 
@@ -250,22 +219,6 @@ pub unsafe extern "C" fn rsn_socket_async_read(
     });
     let buffer_wrapper = Arc::new(FfiBufferWrapper::new(buffer));
     (*handle).async_read(buffer_wrapper, size, cb);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_async_read2(
-    handle: *mut SocketHandle,
-    buffer: *mut BufferHandle,
-    size: usize,
-    callback: SocketReadCallback,
-    destroy_context: SocketDestroyContext,
-    context: *mut c_void,
-) {
-    let cb_wrapper = ReadCallbackWrapper::new(callback, destroy_context, context);
-    let cb = Box::new(move |ec, size| {
-        cb_wrapper.execute(ec, size);
-    });
-    (*handle).async_read2(Arc::clone(&(*buffer)), size, cb);
 }
 
 #[no_mangle]

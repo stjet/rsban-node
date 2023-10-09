@@ -469,12 +469,6 @@ void tcp_socket_delete_callback (void * handle_a)
 	delete callback;
 };
 
-bool tcp_socket_is_acceptor_open (void * handle_a)
-{
-	auto socket{ static_cast<std::shared_ptr<nano::transport::tcp_socket_facade> *> (handle_a) };
-	return (*socket)->is_acceptor_open ();
-}
-
 void buffer_destroy (void * handle_a)
 {
 	auto ptr{ static_cast<std::shared_ptr<std::vector<uint8_t>> *> (handle_a) };

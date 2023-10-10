@@ -84,7 +84,7 @@ std::size_t nano::inactive_cache_information::fill (std::shared_ptr<nano::electi
 	std::size_t inserted = 0;
 	for (auto const & [rep, timestamp] : get_voters ())
 	{
-		auto [is_replay, processed] = election->vote (helper, rep, timestamp, get_hash (), nano::election::vote_source::cache);
+		auto [is_replay, processed] = helper.vote (*election, rep, timestamp, get_hash (), nano::vote_source::cache);
 		if (processed)
 		{
 			inserted++;

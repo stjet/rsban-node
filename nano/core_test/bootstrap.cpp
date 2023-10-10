@@ -2065,21 +2065,21 @@ TEST (bulk, DISABLED_genesis_pruning)
 	{
 		auto election = node1->active.election (send1->qualified_root ());
 		ASSERT_NE (nullptr, election);
-		election->force_confirm (node1->election_helper);
+		node1->election_helper.force_confirm (*election);
 	}
 	ASSERT_TIMELY (2s, node1->block_confirmed (send1->hash ()) && node1->active.active (send2->qualified_root ()));
 	ASSERT_EQ (0, node1->ledger.cache.pruned_count ());
 	{
 		auto election = node1->active.election (send2->qualified_root ());
 		ASSERT_NE (nullptr, election);
-		election->force_confirm (node1->election_helper);
+		node1->election_helper.force_confirm (*election);
 	}
 	ASSERT_TIMELY (2s, node1->block_confirmed (send2->hash ()) && node1->active.active (send3->qualified_root ()));
 	ASSERT_EQ (0, node1->ledger.cache.pruned_count ());
 	{
 		auto election = node1->active.election (send3->qualified_root ());
 		ASSERT_NE (nullptr, election);
-		election->force_confirm (node1->election_helper);
+		node1->election_helper.force_confirm (*election);
 	}
 	ASSERT_TIMELY (2s, node1->active.empty () && node1->block_confirmed (send3->hash ()));
 	node1->ledger_pruning (2, false, false);

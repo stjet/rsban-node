@@ -1118,7 +1118,7 @@ TEST (wallet, search_receivable)
 	wallet.store.erase (*node.wallets.tx_begin_write (), nano::dev::genesis->account ());
 
 	// Now confirm the election
-	election->force_confirm (node.election_helper);
+	node.election_helper.force_confirm (*election);
 
 	ASSERT_TIMELY (5s, node.block_confirmed (send->hash ()) && node.active.empty ());
 

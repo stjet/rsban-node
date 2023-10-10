@@ -169,6 +169,12 @@ public:
 	rsnano::ElectionLockHandle * handle;
 };
 
+enum class vote_source
+{
+	live,
+	cache,
+};
+
 class election_helper
 {
 public:
@@ -209,6 +215,18 @@ public:
 	nano::election_extended_status current_status (nano::election & election) const;
 	// Confirm this block if quorum is met
 	void confirm_if_quorum (nano::election_lock & lock_a, nano::election & election);
+	void log_votes (nano::election & election, nano::election_lock & lock, nano::tally_t const & tally_a, std::string const & prefix_a = "") const;
+	/*
+	 * Process vote. Internally uses cooldown to throttle non-final votes
+	 * If the election reaches consensus, it will be confirmed
+	 */
+	nano::election_vote_result vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a = nano::vote_source::live);
+	bool publish (std::shared_ptr<nano::block> const & block_a, nano::election & election);
+	void remove_votes (nano::election & election, nano::election_lock & lock, nano::block_hash const & hash_a);
+	void remove_block (nano::election_lock & lock, nano::block_hash const & hash_a);
+	bool replace_by_weight (nano::election & election, nano::election_lock & lock_a, nano::block_hash const & hash_a);
+	void force_confirm (nano::election & election, nano::election_status_type type_a = nano::election_status_type::active_confirmed_quorum);
+	std::vector<nano::vote_with_weight_info> votes_with_weight (nano::election & election) const;
 
 private:
 	nano::node & node;
@@ -216,13 +234,6 @@ private:
 
 class election final : public std::enable_shared_from_this<nano::election>
 {
-public:
-	enum class vote_source
-	{
-		live,
-		cache,
-	};
-
 private:
 	std::function<void (std::shared_ptr<nano::block> const &)> confirmation_action;
 	std::function<void (nano::account const &)> live_vote_action;
@@ -255,7 +266,6 @@ public: // Status
 	bool status_confirmed () const;
 	bool failed () const;
 	std::shared_ptr<nano::block> winner () const;
-	void log_votes (nano::election_lock & lock, nano::tally_t const &, std::string const & = "") const;
 	unsigned get_confirmation_request_count () const;
 	void inc_confirmation_request_count ();
 
@@ -266,17 +276,11 @@ public: // Interface
 	~election ();
 
 	std::shared_ptr<nano::block> find (nano::block_hash const &) const;
-	/*
-	 * Process vote. Internally uses cooldown to throttle non-final votes
-	 * If the election reaches consensus, it will be confirmed
-	 */
-	nano::election_vote_result vote (nano::election_helper & helper, nano::account const & representative, uint64_t timestamp, nano::block_hash const & block_hash, vote_source = vote_source::live);
 	/**
 	* Inserts votes stored in the cache entry into this election
 	*/
 	std::size_t fill_from_cache (nano::election_helper & helper, nano::vote_cache::entry const & entry);
 
-	bool publish (std::shared_ptr<nano::block> const & block_a, nano::election_helper & helper);
 	boost::optional<nano::election_status_type> try_confirm (nano::block_hash const & hash, nano::election_helper & helper);
 	void set_status_type (nano::election_status_type status_type);
 
@@ -285,19 +289,12 @@ public: // Interface
 	nano::election_status get_status () const;
 	void set_status (nano::election_status status_a);
 
-private: // Dependencies
-	nano::node & node;
-
 public: // Information
 	nano::root root () const;
 	nano::qualified_root qualified_root () const;
-	std::vector<nano::vote_with_weight_info> votes_with_weight () const;
 	nano::election_behavior behavior () const;
 
 private:
-	void remove_votes (nano::election_lock & lock, nano::block_hash const &);
-	void remove_block (nano::election_lock & lock, nano::block_hash const &);
-	bool replace_by_weight (nano::election_lock & lock_a, nano::block_hash const &);
 	std::chrono::milliseconds time_to_live () const;
 	bool is_quorum () const;
 
@@ -309,7 +306,6 @@ private: // Constants
 	friend class election_helper;
 
 public: // Only used in tests
-	void force_confirm (nano::election_helper & helper, nano::election_status_type = nano::election_status_type::active_confirmed_quorum);
 	std::unordered_map<nano::account, nano::vote_info> votes () const;
 	std::unordered_map<nano::block_hash, std::shared_ptr<nano::block>> blocks () const;
 

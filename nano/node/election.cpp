@@ -288,7 +288,7 @@ bool nano::election_helper::transition_time (nano::confirmation_solicitor & soli
 			result = true; // Return true to indicate this election should be cleaned up
 			if (node.config->logging.election_expiration_tally_logging ())
 			{
-				election.log_votes (guard, tally_impl (guard), "Election expired: ");
+				log_votes (election, guard, tally_impl (guard), "Election expired: ");
 			}
 			auto st{ guard.status () };
 			st.set_election_status_type (nano::election_status_type::stopped);
@@ -424,7 +424,7 @@ void nano::election_helper::confirm_if_quorum (nano::election_lock & lock_a, nan
 	if (sum >= node.online_reps.delta () && winner_hash_l != status_winner_hash_l)
 	{
 		status_l.set_winner (block_l);
-		election.remove_votes (lock_a, status_winner_hash_l);
+		remove_votes (election, lock_a, status_winner_hash_l);
 		node.block_processor.force (block_l);
 	}
 
@@ -443,11 +443,249 @@ void nano::election_helper::confirm_if_quorum (nano::election_lock & lock_a, nan
 		{
 			if (node.config->logging.vote_logging () || (node.config->logging.election_fork_tally_logging () && lock_a.last_blocks_size () > 1))
 			{
-				election.log_votes (lock_a, tally_l);
+				log_votes (election, lock_a, tally_l);
 			}
 			confirm_once (lock_a, nano::election_status_type::active_confirmed_quorum, election);
 		}
 	}
+}
+
+void nano::election_helper::log_votes (nano::election & election, nano::election_lock & lock, nano::tally_t const & tally_a, std::string const & prefix_a) const
+{
+	std::stringstream tally;
+	std::string line_end (node.config->logging.single_line_record () ? "\t" : "\n");
+	tally << boost::str (boost::format ("%1%%2%Vote tally for root %3%, final weight:%4%") % prefix_a % line_end % election.root ().to_string () % lock.final_weight ().number ());
+	for (auto i (tally_a.begin ()), n (tally_a.end ()); i != n; ++i)
+	{
+		tally << boost::str (boost::format ("%1%Block %2% weight %3%") % line_end % i->second->hash ().to_string () % i->first.convert_to<std::string> ());
+	}
+	auto votes{ lock.last_votes () };
+	for (auto i (votes.begin ()), n (votes.end ()); i != n; ++i)
+	{
+		if (i->first != nullptr)
+		{
+			tally << boost::str (boost::format ("%1%%2% %3% %4%") % line_end % i->first.to_account () % std::to_string (i->second.get_timestamp ()) % i->second.get_hash ().to_string ());
+		}
+	}
+	node.logger->try_log (tally.str ());
+}
+
+nano::election_vote_result nano::election_helper::vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a)
+{
+	auto weight = node.ledger.weight (rep);
+	if (!node.network_params.network.is_dev_network () && weight <= node.minimum_principal_weight ())
+	{
+		return nano::election_vote_result (false, false);
+	}
+	nano::election_lock lock{ election };
+
+	auto last_vote_l{ lock.find_vote (rep) };
+	if (last_vote_l.has_value ())
+	{
+		if (last_vote_l->get_timestamp () > timestamp_a)
+		{
+			return nano::election_vote_result (true, false);
+		}
+		if (last_vote_l->get_timestamp () == timestamp_a && !(last_vote_l->get_hash () < block_hash_a))
+		{
+			return nano::election_vote_result (true, false);
+		}
+
+		auto max_vote = timestamp_a == std::numeric_limits<uint64_t>::max () && last_vote_l->get_timestamp () < timestamp_a;
+
+		bool past_cooldown = true;
+		// Only cooldown live votes
+		if (vote_source_a == nano::vote_source::live)
+		{
+			const auto cooldown = cooldown_time (weight);
+			past_cooldown = last_vote_l->get_time () <= std::chrono::system_clock::now () - cooldown;
+		}
+
+		if (!max_vote && !past_cooldown)
+		{
+			return nano::election_vote_result (false, false);
+		}
+	}
+	lock.insert_or_assign_vote (rep, { timestamp_a, block_hash_a });
+	if (vote_source_a == nano::vote_source::live)
+	{
+		election.live_vote_action (rep);
+	}
+
+	node.stats->inc (nano::stat::type::election, vote_source_a == nano::vote_source::live ? nano::stat::detail::vote_new : nano::stat::detail::vote_cached);
+
+	if (!confirmed (lock))
+	{
+		confirm_if_quorum (lock, election);
+	}
+	return nano::election_vote_result (false, true);
+}
+
+bool nano::election_helper::publish (std::shared_ptr<nano::block> const & block_a, nano::election & election)
+{
+	nano::election_lock lock{ election };
+
+	// Do not insert new blocks if already confirmed
+	auto result = confirmed (lock);
+	if (!result && lock.last_blocks_size () >= election.max_blocks && lock.find_block (block_a->hash ()) == nullptr)
+	{
+		if (!replace_by_weight (election, lock, block_a->hash ()))
+		{
+			result = true;
+			node.network->tcp_channels->publish_filter->clear (block_a);
+		}
+	}
+	if (!result)
+	{
+		auto existing = lock.find_block (block_a->hash ());
+		if (existing == nullptr)
+		{
+			lock.insert_or_assign_last_block (block_a);
+		}
+		else
+		{
+			result = true;
+			lock.insert_or_assign_last_block (block_a);
+			auto st{ lock.status () };
+			if (st.get_winner ()->hash () == block_a->hash ())
+			{
+				st.set_winner (block_a);
+				lock.set_status (st);
+				node.network->flood_block (block_a, nano::transport::buffer_drop_policy::no_limiter_drop);
+			}
+		}
+	}
+	/*
+	Result is true if:
+	1) election is confirmed or expired
+	2) given election contains 10 blocks & new block didn't receive enough votes to replace existing blocks
+	3) given block in already in election & election contains less than 10 blocks (replacing block content with new)
+	*/
+	return result;
+}
+
+void nano::election_helper::remove_votes (nano::election & election, nano::election_lock & lock, nano::block_hash const & hash_a)
+{
+	if (node.config->enable_voting && node.wallets.reps ().voting > 0)
+	{
+		// Remove votes from election
+		auto list_generated_votes (node.history.votes (election.root (), hash_a));
+		for (auto const & vote : list_generated_votes)
+		{
+			lock.erase_vote (vote->account ());
+		}
+		// Clear votes cache
+		node.history.erase (election.root ());
+	}
+}
+
+void nano::election_helper::remove_block (nano::election_lock & lock, nano::block_hash const & hash_a)
+{
+	if (lock.status ().get_winner ()->hash () != hash_a)
+	{
+		if (auto existing = lock.find_block (hash_a); existing != nullptr)
+		{
+			auto votes{ lock.last_votes () };
+			for (auto & i : votes)
+			{
+				if (i.second.get_hash () == hash_a)
+				{
+					lock.erase_vote (i.first);
+				}
+			}
+			node.network->tcp_channels->publish_filter->clear (existing);
+			lock.erase_last_block (hash_a);
+		}
+	}
+}
+
+bool nano::election_helper::replace_by_weight (nano::election & election, nano::election_lock & lock_a, nano::block_hash const & hash_a)
+{
+	nano::block_hash replaced_block (0);
+	auto winner_hash (lock_a.status ().get_winner ()->hash ());
+	// Sort existing blocks tally
+	std::vector<std::pair<nano::block_hash, nano::uint128_t>> sorted;
+	auto last_tally_handle = rsnano::rsn_election_lock_last_tally (lock_a.handle);
+	auto tally_len = rsnano::rsn_tally_len (last_tally_handle);
+	sorted.reserve (tally_len);
+	for (auto i = 0; i < tally_len; ++i)
+	{
+		nano::block_hash h;
+		nano::amount a;
+		rsnano::rsn_tally_get (last_tally_handle, i, h.bytes.data (), a.bytes.data ());
+		sorted.emplace_back (h, a.number ());
+	}
+	rsnano::rsn_tally_destroy (last_tally_handle);
+	lock_a.unlock ();
+	// Sort in ascending order
+	std::sort (sorted.begin (), sorted.end (), [] (auto const & left, auto const & right) { return left.second < right.second; });
+	// Replace if lowest tally is below inactive cache new block weight
+	auto inactive_existing = node.inactive_vote_cache.find (hash_a);
+	auto inactive_tally = inactive_existing ? inactive_existing->tally : 0;
+	if (inactive_tally > 0 && sorted.size () < election.max_blocks)
+	{
+		// If count of tally items is less than 10, remove any block without tally
+		for (auto const & [hash, block] : election.blocks ())
+		{
+			if (std::find_if (sorted.begin (), sorted.end (), [&hash = hash] (auto const & item_a) { return item_a.first == hash; }) == sorted.end () && hash != winner_hash)
+			{
+				replaced_block = hash;
+				break;
+			}
+		}
+	}
+	else if (inactive_tally > 0 && inactive_tally > sorted.front ().second)
+	{
+		if (sorted.front ().first != winner_hash)
+		{
+			replaced_block = sorted.front ().first;
+		}
+		else if (inactive_tally > sorted[1].second)
+		{
+			// Avoid removing winner
+			replaced_block = sorted[1].first;
+		}
+	}
+
+	bool replaced (false);
+	if (!replaced_block.is_zero ())
+	{
+		node.active.erase_hash (replaced_block);
+		lock_a.lock ();
+		remove_block (lock_a, replaced_block);
+		replaced = true;
+	}
+	else
+	{
+		lock_a.lock ();
+	}
+	return replaced;
+}
+
+void nano::election_helper::force_confirm (nano::election & election, nano::election_status_type type_a)
+{
+	release_assert (node.network_params.network.is_dev_network ());
+	nano::election_lock lock{ election };
+	confirm_once (lock, type_a, election);
+}
+
+std::vector<nano::vote_with_weight_info> nano::election_helper::votes_with_weight (nano::election & election) const
+{
+	std::multimap<nano::uint128_t, nano::vote_with_weight_info, std::greater<nano::uint128_t>> sorted_votes;
+	std::vector<nano::vote_with_weight_info> result;
+	auto votes_l (election.votes ());
+	for (auto const & vote_l : votes_l)
+	{
+		if (vote_l.first != nullptr)
+		{
+			auto amount (node.ledger.cache.rep_weights ().representation_get (vote_l.first));
+			nano::vote_with_weight_info vote_info{ vote_l.first, vote_l.second.get_time (), vote_l.second.get_timestamp (), vote_l.second.get_hash (), amount };
+			sorted_votes.emplace (std::move (amount), vote_info);
+		}
+	}
+	result.reserve (sorted_votes.size ());
+	std::transform (sorted_votes.begin (), sorted_votes.end (), std::back_inserter (result), [] (auto const & entry) { return entry.second; });
+	return result;
 }
 
 /* 
@@ -457,7 +695,6 @@ void nano::election_helper::confirm_if_quorum (nano::election_lock & lock_a, nan
 nano::election::election (nano::node & node_a, std::shared_ptr<nano::block> const & block_a, std::function<void (std::shared_ptr<nano::block> const &)> const & confirmation_action_a, std::function<void (nano::account const &)> const & live_vote_action_a, nano::election_behavior election_behavior_a) :
 	confirmation_action (confirmation_action_a),
 	live_vote_action (live_vote_action_a),
-	node (node_a),
 	handle{ rsnano::rsn_election_create (block_a->get_handle (), static_cast<uint8_t> (election_behavior_a)) }
 {
 }
@@ -594,81 +831,10 @@ void nano::election::set_status_type (nano::election_status_type status_type)
 	election_lk.set_status (st);
 }
 
-void nano::election::log_votes (nano::election_lock & lock, nano::tally_t const & tally_a, std::string const & prefix_a) const
-{
-	std::stringstream tally;
-	std::string line_end (node.config->logging.single_line_record () ? "\t" : "\n");
-	tally << boost::str (boost::format ("%1%%2%Vote tally for root %3%, final weight:%4%") % prefix_a % line_end % root ().to_string () % lock.final_weight ().number ());
-	for (auto i (tally_a.begin ()), n (tally_a.end ()); i != n; ++i)
-	{
-		tally << boost::str (boost::format ("%1%Block %2% weight %3%") % line_end % i->second->hash ().to_string () % i->first.convert_to<std::string> ());
-	}
-	auto votes{ lock.last_votes () };
-	for (auto i (votes.begin ()), n (votes.end ()); i != n; ++i)
-	{
-		if (i->first != nullptr)
-		{
-			tally << boost::str (boost::format ("%1%%2% %3% %4%") % line_end % i->first.to_account () % std::to_string (i->second.get_timestamp ()) % i->second.get_hash ().to_string ());
-		}
-	}
-	node.logger->try_log (tally.str ());
-}
-
 std::shared_ptr<nano::block> nano::election::find (nano::block_hash const & hash_a) const
 {
 	nano::election_lock guard{ *this };
 	return guard.find_block (hash_a);
-}
-
-nano::election_vote_result nano::election::vote (nano::election_helper & helper, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, vote_source vote_source_a)
-{
-	auto weight = node.ledger.weight (rep);
-	if (!node.network_params.network.is_dev_network () && weight <= node.minimum_principal_weight ())
-	{
-		return nano::election_vote_result (false, false);
-	}
-	nano::election_lock lock{ *this };
-
-	auto last_vote_l{ lock.find_vote (rep) };
-	if (last_vote_l.has_value ())
-	{
-		if (last_vote_l->get_timestamp () > timestamp_a)
-		{
-			return nano::election_vote_result (true, false);
-		}
-		if (last_vote_l->get_timestamp () == timestamp_a && !(last_vote_l->get_hash () < block_hash_a))
-		{
-			return nano::election_vote_result (true, false);
-		}
-
-		auto max_vote = timestamp_a == std::numeric_limits<uint64_t>::max () && last_vote_l->get_timestamp () < timestamp_a;
-
-		bool past_cooldown = true;
-		// Only cooldown live votes
-		if (vote_source_a == vote_source::live)
-		{
-			const auto cooldown = helper.cooldown_time (weight);
-			past_cooldown = last_vote_l->get_time () <= std::chrono::system_clock::now () - cooldown;
-		}
-
-		if (!max_vote && !past_cooldown)
-		{
-			return nano::election_vote_result (false, false);
-		}
-	}
-	lock.insert_or_assign_vote (rep, { timestamp_a, block_hash_a });
-	if (vote_source_a == vote_source::live)
-	{
-		live_vote_action (rep);
-	}
-
-	node.stats->inc (nano::stat::type::election, vote_source_a == vote_source::live ? nano::stat::detail::vote_new : nano::stat::detail::vote_cached);
-
-	if (!helper.confirmed (lock))
-	{
-		helper.confirm_if_quorum (lock, *this);
-	}
-	return nano::election_vote_result (false, true);
 }
 
 std::size_t nano::election::fill_from_cache (nano::election_helper & helper, nano::vote_cache::entry const & entry)
@@ -676,7 +842,7 @@ std::size_t nano::election::fill_from_cache (nano::election_helper & helper, nan
 	std::size_t inserted = 0;
 	for (const auto & [rep, timestamp] : entry.voters)
 	{
-		auto [is_replay, processed] = vote (helper, rep, timestamp, entry.hash, nano::election::vote_source::cache);
+		auto [is_replay, processed] = helper.vote (*this, rep, timestamp, entry.hash, nano::vote_source::cache);
 		if (processed)
 		{
 			inserted++;
@@ -685,158 +851,10 @@ std::size_t nano::election::fill_from_cache (nano::election_helper & helper, nan
 	return inserted;
 }
 
-bool nano::election::publish (std::shared_ptr<nano::block> const & block_a, nano::election_helper & helper)
-{
-	nano::election_lock lock{ *this };
-
-	// Do not insert new blocks if already confirmed
-	auto result = helper.confirmed (lock);
-	if (!result && lock.last_blocks_size () >= max_blocks && lock.find_block (block_a->hash ()) == nullptr)
-	{
-		if (!replace_by_weight (lock, block_a->hash ()))
-		{
-			result = true;
-			node.network->tcp_channels->publish_filter->clear (block_a);
-		}
-	}
-	if (!result)
-	{
-		auto existing = lock.find_block (block_a->hash ());
-		if (existing == nullptr)
-		{
-			lock.insert_or_assign_last_block (block_a);
-		}
-		else
-		{
-			result = true;
-			lock.insert_or_assign_last_block (block_a);
-			auto st{ lock.status () };
-			if (st.get_winner ()->hash () == block_a->hash ())
-			{
-				st.set_winner (block_a);
-				lock.set_status (st);
-				node.network->flood_block (block_a, nano::transport::buffer_drop_policy::no_limiter_drop);
-			}
-		}
-	}
-	/*
-	Result is true if:
-	1) election is confirmed or expired
-	2) given election contains 10 blocks & new block didn't receive enough votes to replace existing blocks
-	3) given block in already in election & election contains less than 10 blocks (replacing block content with new)
-	*/
-	return result;
-}
-
 std::shared_ptr<nano::block> nano::election::winner () const
 {
 	nano::election_lock guard{ *this };
 	return guard.status ().get_winner ();
-}
-
-void nano::election::remove_votes (nano::election_lock & lock, nano::block_hash const & hash_a)
-{
-	if (node.config->enable_voting && node.wallets.reps ().voting > 0)
-	{
-		// Remove votes from election
-		auto list_generated_votes (node.history.votes (root (), hash_a));
-		for (auto const & vote : list_generated_votes)
-		{
-			lock.erase_vote (vote->account ());
-		}
-		// Clear votes cache
-		node.history.erase (root ());
-	}
-}
-
-void nano::election::remove_block (nano::election_lock & lock, nano::block_hash const & hash_a)
-{
-	if (lock.status ().get_winner ()->hash () != hash_a)
-	{
-		if (auto existing = lock.find_block (hash_a); existing != nullptr)
-		{
-			auto votes{ lock.last_votes () };
-			for (auto & i : votes)
-			{
-				if (i.second.get_hash () == hash_a)
-				{
-					lock.erase_vote (i.first);
-				}
-			}
-			node.network->tcp_channels->publish_filter->clear (existing);
-			lock.erase_last_block (hash_a);
-		}
-	}
-}
-
-bool nano::election::replace_by_weight (nano::election_lock & lock_a, nano::block_hash const & hash_a)
-{
-	nano::block_hash replaced_block (0);
-	auto winner_hash (lock_a.status ().get_winner ()->hash ());
-	// Sort existing blocks tally
-	std::vector<std::pair<nano::block_hash, nano::uint128_t>> sorted;
-	auto last_tally_handle = rsnano::rsn_election_lock_last_tally (lock_a.handle);
-	auto tally_len = rsnano::rsn_tally_len (last_tally_handle);
-	sorted.reserve (tally_len);
-	for (auto i = 0; i < tally_len; ++i)
-	{
-		nano::block_hash h;
-		nano::amount a;
-		rsnano::rsn_tally_get (last_tally_handle, i, h.bytes.data (), a.bytes.data ());
-		sorted.emplace_back (h, a.number ());
-	}
-	rsnano::rsn_tally_destroy (last_tally_handle);
-	lock_a.unlock ();
-	// Sort in ascending order
-	std::sort (sorted.begin (), sorted.end (), [] (auto const & left, auto const & right) { return left.second < right.second; });
-	// Replace if lowest tally is below inactive cache new block weight
-	auto inactive_existing = node.inactive_vote_cache.find (hash_a);
-	auto inactive_tally = inactive_existing ? inactive_existing->tally : 0;
-	if (inactive_tally > 0 && sorted.size () < max_blocks)
-	{
-		// If count of tally items is less than 10, remove any block without tally
-		for (auto const & [hash, block] : blocks ())
-		{
-			if (std::find_if (sorted.begin (), sorted.end (), [&hash = hash] (auto const & item_a) { return item_a.first == hash; }) == sorted.end () && hash != winner_hash)
-			{
-				replaced_block = hash;
-				break;
-			}
-		}
-	}
-	else if (inactive_tally > 0 && inactive_tally > sorted.front ().second)
-	{
-		if (sorted.front ().first != winner_hash)
-		{
-			replaced_block = sorted.front ().first;
-		}
-		else if (inactive_tally > sorted[1].second)
-		{
-			// Avoid removing winner
-			replaced_block = sorted[1].first;
-		}
-	}
-
-	bool replaced (false);
-	if (!replaced_block.is_zero ())
-	{
-		node.active.erase_hash (replaced_block);
-		lock_a.lock ();
-		remove_block (lock_a, replaced_block);
-		replaced = true;
-	}
-	else
-	{
-		lock_a.lock ();
-	}
-	return replaced;
-}
-
-void nano::election::force_confirm (nano::election_helper & helper, nano::election_status_type type_a)
-{
-	release_assert (node.network_params.network.is_dev_network ());
-	nano::election_lock lock{ *this };
-	helper.confirm_once (lock, type_a, *this);
 }
 
 std::unordered_map<nano::block_hash, std::shared_ptr<nano::block>> nano::election::blocks () const
@@ -849,25 +867,6 @@ std::unordered_map<nano::account, nano::vote_info> nano::election::votes () cons
 {
 	nano::election_lock guard{ *this };
 	return guard.last_votes ();
-}
-
-std::vector<nano::vote_with_weight_info> nano::election::votes_with_weight () const
-{
-	std::multimap<nano::uint128_t, nano::vote_with_weight_info, std::greater<nano::uint128_t>> sorted_votes;
-	std::vector<nano::vote_with_weight_info> result;
-	auto votes_l (votes ());
-	for (auto const & vote_l : votes_l)
-	{
-		if (vote_l.first != nullptr)
-		{
-			auto amount (node.ledger.cache.rep_weights ().representation_get (vote_l.first));
-			nano::vote_with_weight_info vote_info{ vote_l.first, vote_l.second.get_time (), vote_l.second.get_timestamp (), vote_l.second.get_hash (), amount };
-			sorted_votes.emplace (std::move (amount), vote_info);
-		}
-	}
-	result.reserve (sorted_votes.size ());
-	std::transform (sorted_votes.begin (), sorted_votes.end (), std::back_inserter (result), [] (auto const & entry) { return entry.second; });
-	return result;
 }
 
 nano::stat::detail nano::to_stat_detail (nano::election_behavior behavior)

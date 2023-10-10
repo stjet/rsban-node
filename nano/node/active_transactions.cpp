@@ -167,7 +167,7 @@ void nano::active_transactions::handle_block_confirmation (nano::store::read_tra
 void nano::active_transactions::notify_observers (std::shared_ptr<nano::election> const & election, nano::account const & account, nano::uint128_t amount, bool is_state_send, bool is_state_epoch, nano::account const & pending_account)
 {
 	auto status = election->get_status ();
-	auto votes = election->votes_with_weight ();
+	auto votes = node.election_helper.votes_with_weight (*election);
 
 	node.observers->blocks.notify (status, votes, account, amount, is_state_send, is_state_epoch);
 
@@ -540,7 +540,7 @@ nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> con
 		bool processed (false);
 		for (auto const & [election, block_hash] : process)
 		{
-			auto const result_l = election->vote (node.election_helper, vote_a->account (), vote_a->timestamp (), block_hash);
+			auto const result_l = node.election_helper.vote (*election, vote_a->account (), vote_a->timestamp (), block_hash);
 			processed = processed || result_l.processed;
 			replay = replay || result_l.replay;
 		}
@@ -662,7 +662,7 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 	{
 		auto election (existing->election);
 		lock.unlock ();
-		result = election->publish (block_a, node.election_helper);
+		result = node.election_helper.publish (block_a, *election);
 		if (!result)
 		{
 			lock.lock ();

@@ -4,7 +4,7 @@ use crate::{
 };
 use primitive_types::U512;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq, Eq, Hash)]
 pub struct QualifiedRoot {
     pub root: Root,
     pub previous: BlockHash,

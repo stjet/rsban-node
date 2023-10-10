@@ -40,7 +40,7 @@ TEST (confirmation_solicitor, batches)
 				.build_shared ();
 	send->sideband_set ({});
 	{
-		nano::lock_guard<nano::mutex> guard (node2.active.mutex);
+		auto guard{ node2.active.lock () };
 		for (size_t i (0); i < nano::network::confirm_req_hashes_max; ++i)
 		{
 			auto election (std::make_shared<nano::election> (node2, send, nullptr, nullptr, nano::election_behavior::normal));

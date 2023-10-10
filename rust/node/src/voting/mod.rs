@@ -28,4 +28,4 @@ pub use election_scheduler::{
     ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK,
 };
 
-pub use active_transactions::ActiveTransactions;
+pub use active_transactions::{ActiveTransactions, ActiveTransactionsData};

@@ -1,3 +1,4 @@
+mod active_transactions;
 mod election;
 mod local_vote_history;
 mod vote;
@@ -14,4 +15,5 @@ mod inactive_cache_status;
 
 mod election_scheduler;
 mod recently_cemented_cache;
+pub use active_transactions::{ActiveTransactionsHandle, ActiveTransactionsLockHandle};
 pub use local_vote_history::LocalVoteHistoryHandle;

@@ -4,6 +4,7 @@ mod stream;
 use std::{
     ffi::c_void,
     net::{Ipv6Addr, SocketAddrV6},
+    time::Instant,
 };
 
 pub use async_runtime::AsyncRuntimeHandle;
@@ -93,4 +94,21 @@ pub(crate) unsafe fn ptr_into_ipv6addr(ipv6_bytes: *const u8) -> Ipv6Addr {
 pub extern "C" fn rsn_reserved_address(endpoint: &EndpointDto, allow_local_peers: bool) -> bool {
     let endpoint = SocketAddrV6::from(endpoint);
     reserved_address(&endpoint, allow_local_peers)
+}
+
+pub struct InstantHandle(pub Instant);
+
+#[no_mangle]
+pub extern "C" fn rsn_instant_now() -> *mut InstantHandle {
+    Box::into_raw(Box::new(InstantHandle(Instant::now())))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_instant_destroy(handle: *mut InstantHandle) {
+    drop(Box::from_raw(handle));
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_instant_elapsed_ms(handle: &InstantHandle) -> u64 {
+    handle.0.elapsed().as_millis() as u64
 }

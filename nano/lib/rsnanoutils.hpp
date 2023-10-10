@@ -7,6 +7,7 @@
 #include <nano/lib/rsnano.hpp>
 #include <nano/node/messages.hpp>
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -219,5 +220,24 @@ public:
 };
 
 std::chrono::system_clock::time_point time_point_from_nanoseconds (uint64_t nanoseconds);
+
+class instant
+{
+public:
+	instant () :
+		handle{ rsnano::rsn_instant_now () }
+	{
+	}
+	instant (instant const &) = delete;
+	~instant ()
+	{
+		rsnano::rsn_instant_destroy (handle);
+	}
+	std::chrono::milliseconds elapsed () const
+	{
+		return std::chrono::milliseconds{ rsnano::rsn_instant_elapsed_ms (handle) };
+	}
+	rsnano::InstantHandle * handle;
+};
 
 }

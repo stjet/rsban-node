@@ -7,6 +7,7 @@ use rsnano_node::{
     },
 };
 use std::{
+    ffi::c_void,
     ops::Deref,
     sync::{atomic::Ordering, Arc, MutexGuard},
     time::{Duration, Instant, SystemTime},
@@ -15,11 +16,13 @@ use std::{
 use crate::{
     copy_account_bytes, copy_amount_bytes, copy_hash_bytes, copy_root_bytes,
     core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
+    utils::ContextWrapper,
+    VoidPointerCallback,
 };
 
 use super::election_status::ElectionStatusHandle;
 
-pub struct ElectionHandle(Arc<Election>);
+pub struct ElectionHandle(pub Arc<Election>);
 
 impl Deref for ElectionHandle {
     type Target = Arc<Election>;
@@ -29,11 +32,40 @@ impl Deref for ElectionHandle {
     }
 }
 
+pub type ConfirmationAction = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
+pub type LiveVoteAction = unsafe extern "C" fn(*mut c_void, *const u8);
+
 #[no_mangle]
-pub extern "C" fn rsn_election_create(block: &BlockHandle, behavior: u8) -> *mut ElectionHandle {
+pub unsafe extern "C" fn rsn_election_create(
+    block: &BlockHandle,
+    behavior: u8,
+    confirmation_action: ConfirmationAction,
+    confirmation_action_context: *mut c_void,
+    confirmation_action_context_delete: VoidPointerCallback,
+    live_vote_action: LiveVoteAction,
+    live_vote_action_context: *mut c_void,
+    live_vote_action_context_delete: VoidPointerCallback,
+) -> *mut ElectionHandle {
+    let confirmation_context = ContextWrapper::new(
+        confirmation_action_context,
+        confirmation_action_context_delete,
+    );
+
+    let live_vote_context =
+        ContextWrapper::new(live_vote_action_context, live_vote_action_context_delete);
+
     Box::into_raw(Box::new(ElectionHandle(Arc::new(Election::new(
         Arc::clone(block),
         ElectionBehavior::from_u8(behavior).unwrap(),
+        Box::new(move |block| {
+            confirmation_action(
+                confirmation_context.get_context(),
+                Box::into_raw(Box::new(BlockHandle(block))),
+            );
+        }),
+        Box::new(move |account| {
+            live_vote_action(live_vote_context.get_context(), account.as_bytes().as_ptr())
+        }),
     )))))
 }
 
@@ -183,6 +215,24 @@ pub extern "C" fn rsn_election_state_change(
     let expected = ElectionState::from_u8(expected_state).unwrap();
     let desired = ElectionState::from_u8(desired_state).unwrap();
     handle.0.state_change(expected, desired).is_err()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_live_vote_action(
+    handle: &ElectionHandle,
+    account: *const u8,
+) {
+    let account = Account::from_ptr(account);
+    (handle.0.live_vote_action)(account);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_confirmation_action(
+    handle: &ElectionHandle,
+    block: &BlockHandle,
+) {
+    let block = Arc::clone(block);
+    (handle.0.confirmation_action)(block);
 }
 
 pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionData>>);

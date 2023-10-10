@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/thread_runner.hpp>
 #include <nano/lib/threading.hpp>
@@ -315,8 +317,10 @@ TEST (node, fork_storm)
 			}
 			else
 			{
-				nano::unique_lock<nano::mutex> lock{ node_a->active.mutex };
-				auto election = node_a->active.roots.begin ()->election;
+				auto lock{ node_a->active.lock () };
+				auto elections_handle = rsnano::rsn_active_transactions_lock_roots_get_elections (lock.handle);
+				auto election = std::make_shared<nano::election> (rsnano::rsn_election_vec_get (elections_handle, 0));
+				rsnano::rsn_election_vec_destroy (elections_handle);
 				lock.unlock ();
 				if (election->votes ().size () == 1)
 				{
@@ -1848,8 +1852,8 @@ TEST (node, mass_block_new)
 		node.block_processor.flush ();
 		// Clear all active
 		{
-			nano::lock_guard<nano::mutex> guard{ node.active.mutex };
-			node.active.roots.clear ();
+			auto guard{ node.active.lock () };
+			rsnano::rsn_active_transactions_lock_roots_clear (guard.handle);
 			node.active.blocks.clear ();
 		}
 	};
@@ -2213,19 +2217,6 @@ TEST (system, block_sequence)
 			for (auto i : system.nodes)
 			{
 				message += boost::str (boost::format ("N:%1% b:%2% c:%3% a:%4% s:%5% p:%6%\n") % std::to_string (i->network->get_port ()) % std::to_string (i->ledger.cache.block_count ()) % std::to_string (i->ledger.cache.cemented_count ()) % std::to_string (i->active.size ()) % std::to_string (i->scheduler.priority.size ()) % std::to_string (i->network->size ()));
-				nano::lock_guard<nano::mutex> lock{ i->active.mutex };
-				for (auto const & j : i->active.roots)
-				{
-					auto election = j.election;
-					if (election->get_confirmation_request_count () > 10)
-					{
-						message += boost::str (boost::format ("\t r:%1% i:%2%\n") % j.root.to_string () % std::to_string (election->get_confirmation_request_count ()));
-						for (auto const & k : election->votes ())
-						{
-							message += boost::str (boost::format ("\t\t r:%1% t:%2%\n") % k.first.to_account () % std::to_string (k.second.get_timestamp ()));
-						}
-					}
-				}
 			}
 			std::cerr << message << std::endl;
 			last = std::chrono::system_clock::now ();

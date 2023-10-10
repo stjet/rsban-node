@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/numbers.hpp>
 #include <nano/node/election.hpp>
 #include <nano/node/election_insertion_result.hpp>
@@ -96,6 +98,23 @@ public: // Container info
 	std::unique_ptr<container_info_component> collect_container_info (std::string const &);
 };
 
+class active_transactions;
+
+class active_transactions_lock
+{
+public:
+	active_transactions_lock (nano::active_transactions const & active_transactions);
+	active_transactions_lock (active_transactions_lock const &) = delete;
+	~active_transactions_lock ();
+
+	void lock ();
+	void unlock ();
+	bool owns_lock ();
+
+	rsnano::ActiveTransactionsLockHandle * handle;
+	nano::active_transactions const & active_transactions;
+};
+
 /**
  * Core class for determining consensus
  * Holds all active blocks i.e. recently added blocks that need confirmation
@@ -111,27 +130,11 @@ private: // Elections
 	};
 
 	friend class nano::election;
-
-	// clang-format off
-	class tag_account {};
-	class tag_root {};
-	class tag_sequenced {};
-	class tag_uncemented {};
-	class tag_arrival {};
-	class tag_hash {};
-
-	using ordered_roots = boost::multi_index_container<conflict_info,
-	mi::indexed_by<
-		mi::sequenced<mi::tag<tag_sequenced>>,
-		mi::hashed_unique<mi::tag<tag_root>,
-			mi::member<conflict_info, nano::qualified_root, &conflict_info::root>>
-	>>;
-	// clang-format on
-	ordered_roots roots;
 	std::unordered_map<nano::block_hash, std::shared_ptr<nano::election>> blocks;
 
 public:
 	active_transactions (nano::node &, nano::confirmation_height_processor &);
+	active_transactions (active_transactions const &) = delete;
 	~active_transactions ();
 
 	void start ();
@@ -178,20 +181,21 @@ public:
 	std::size_t election_winner_details_size ();
 	void add_election_winner_details (nano::block_hash const &, std::shared_ptr<nano::election> const &);
 	void remove_election_winner_details (nano::block_hash const &);
+	nano::active_transactions_lock lock () const;
 
 private:
 	// Erase elections if we're over capacity
 	void trim ();
 	// Call action with confirmed block, may be different than what we started with
-	nano::election_insertion_result insert_impl (nano::unique_lock<nano::mutex> &, std::shared_ptr<nano::block> const &, nano::election_behavior = nano::election_behavior::normal, std::function<void (std::shared_ptr<nano::block> const &)> const & = nullptr);
+	nano::election_insertion_result insert_impl (nano::active_transactions_lock &, std::shared_ptr<nano::block> const &, nano::election_behavior = nano::election_behavior::normal, std::function<void (std::shared_ptr<nano::block> const &)> const & = nullptr);
 	void request_loop ();
-	void request_confirm (nano::unique_lock<nano::mutex> &);
+	void request_confirm (nano::active_transactions_lock &);
 	void erase (nano::qualified_root const &);
 	// Erase all blocks from active and, if not confirmed, clear digests from network filters
-	void cleanup_election (nano::unique_lock<nano::mutex> & lock_a, std::shared_ptr<nano::election>);
+	void cleanup_election (nano::active_transactions_lock & lock_a, std::shared_ptr<nano::election>);
 	nano::stat::type completion_type (nano::election const & election) const;
 	// Returns a list of elections sorted by difficulty, mutex must be locked
-	std::vector<std::shared_ptr<nano::election>> list_active_impl (std::size_t) const;
+	std::vector<std::shared_ptr<nano::election>> list_active_impl (std::size_t, nano::active_transactions_lock & guard) const;
 	/**
 	 * Checks if vote passes minimum representative weight threshold and adds it to inactive vote cache
 	 * TODO: Should be moved to `vote_cache` class
@@ -215,10 +219,6 @@ public:
 	recently_confirmed_cache recently_confirmed;
 	recently_cemented_cache recently_cemented;
 
-	// TODO: This mutex is currently public because many tests access it
-	// TODO: This is bad. Remove the need to explicitly lock this from any code outside of this class
-	mutable nano::mutex mutex{ mutex_identifier (mutexes::active) };
-
 private:
 	nano::mutex election_winner_details_mutex{ mutex_identifier (mutexes::election_winner_details) };
 	std::unordered_map<nano::block_hash, std::shared_ptr<nano::election>> election_winner_details;
@@ -229,12 +229,15 @@ private:
 	/** Keeps track of number of elections by election behavior (normal, hinted, optimistic) */
 	nano::enum_array<nano::election_behavior, int64_t> count_by_behavior;
 
-	nano::condition_variable condition;
-	bool stopped{ false };
 	std::thread thread;
 
+public:
+	rsnano::ActiveTransactionsHandle * handle;
+
+private:
 	friend class election;
 	friend class election_helper;
+	friend class active_transactions_lock;
 	friend std::unique_ptr<container_info_component> collect_container_info (active_transactions &, std::string const &);
 
 public: // Tests

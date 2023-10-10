@@ -4,7 +4,7 @@ use crate::{
     ledger::datastore::{LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle},
     unchecked_map::UncheckedMapHandle,
     utils::{ContainerInfoComponentHandle, LoggerHandle, LoggerMT},
-    voting::LocalVoteHistoryHandle,
+    voting::{ActiveTransactionsHandle, LocalVoteHistoryHandle},
     work::WorkThresholdsDto,
     NodeConfigDto, NodeFlagsHandle, SignatureCheckerHandle, StatHandle,
 };
@@ -16,7 +16,6 @@ use rsnano_node::{
         BLOCKPROCESSOR_HALF_FULL_CALLBACK, BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
     },
     config::NodeConfig,
-    voting::{ActiveTransactions, LocalVoteHistory},
 };
 use std::{
     collections::VecDeque,
@@ -50,6 +49,7 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     work: &WorkThresholdsDto,
     write_database_queue: &WriteDatabaseQueueHandle,
     history: &LocalVoteHistoryHandle,
+    active: &ActiveTransactionsHandle,
 ) -> *mut BlockProcessorHandle {
     let config = Arc::new(NodeConfig::try_from(config).unwrap());
     let checker = Arc::clone(&checker);
@@ -62,7 +62,7 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     let stats = Arc::clone(&stats);
     let work = Arc::new(WorkThresholds::from(work));
     let write_database_queue = Arc::clone(write_database_queue);
-    let active = Arc::new(ActiveTransactions::new()); // TODO use real instance
+    let active = Arc::clone(active);
     let history = Arc::clone(&history);
     let processor = Arc::new(BlockProcessor::new(
         handle,

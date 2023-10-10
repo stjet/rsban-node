@@ -28,10 +28,17 @@ pub struct Election {
     pub last_req: RwLock<Option<Instant>>,
     /** The last time vote for this election was generated */
     last_vote: RwLock<Option<Instant>>,
+    pub confirmation_action: Box<dyn Fn(Arc<BlockEnum>)>,
+    pub live_vote_action: Box<dyn Fn(Account)>,
 }
 
 impl Election {
-    pub fn new(block: Arc<BlockEnum>, behavior: ElectionBehavior) -> Self {
+    pub fn new(
+        block: Arc<BlockEnum>,
+        behavior: ElectionBehavior,
+        confirmation_action: Box<dyn Fn(Arc<BlockEnum>)>,
+        live_vote_action: Box<dyn Fn(Account)>,
+    ) -> Self {
         let root = block.root();
         let qualified_root = block.qualified_root();
 
@@ -64,6 +71,8 @@ impl Election {
             state_start: RwLock::new(Instant::now()),
             last_req: RwLock::new(None),
             last_vote: RwLock::new(None),
+            confirmation_action,
+            live_vote_action,
         }
     }
 

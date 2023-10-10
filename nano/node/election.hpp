@@ -234,10 +234,6 @@ private:
 
 class election final : public std::enable_shared_from_this<nano::election>
 {
-private:
-	std::function<void (std::shared_ptr<nano::block> const &)> confirmation_action;
-	std::function<void (nano::account const &)> live_vote_action;
-
 private: // State management
 	enum class state_t
 	{
@@ -271,6 +267,7 @@ public: // Status
 
 public: // Interface
 	election (nano::node &, std::shared_ptr<nano::block> const & block, std::function<void (std::shared_ptr<nano::block> const &)> const & confirmation_action, std::function<void (nano::account const &)> const & vote_action, nano::election_behavior behavior);
+	election (rsnano::ElectionHandle * handle_a);
 	election (election const &) = delete;
 	election (election &&) = delete;
 	~election ();

@@ -10,6 +10,7 @@
 #include <boost/format.hpp>
 
 #include <chrono>
+#include <iostream>
 
 using namespace std::chrono;
 
@@ -195,13 +196,10 @@ void nano::election_helper::confirm_once (nano::election_lock & lock_a, nano::el
 		status_l = lock_a.status ();
 		lock_a.unlock ();
 
-		node.background ([node_l = node.shared (), status_l, confirmation_action_l = election.confirmation_action] () {
+		node.background ([node_l = node.shared (), status_l, election_l = election.shared_from_this ()] () {
 			node_l->process_confirmed (status_l);
 
-			if (confirmation_action_l)
-			{
-				confirmation_action_l (status_l.get_winner ());
-			}
+			rsnano::rsn_election_confirmation_action (election_l->handle, status_l.get_winner ()->get_handle ());
 		});
 	}
 	else
@@ -509,7 +507,7 @@ nano::election_vote_result nano::election_helper::vote (nano::election & electio
 	lock.insert_or_assign_vote (rep, { timestamp_a, block_hash_a });
 	if (vote_source_a == nano::vote_source::live)
 	{
-		election.live_vote_action (rep);
+		rsnano::rsn_election_live_vote_action (election.handle, rep.bytes.data ());
 	}
 
 	node.stats->inc (nano::stat::type::election, vote_source_a == nano::vote_source::live ? nano::stat::detail::vote_new : nano::stat::detail::vote_cached);
@@ -692,10 +690,72 @@ std::vector<nano::vote_with_weight_info> nano::election_helper::votes_with_weigh
  * election
  */
 
+namespace
+{
+void confirmation_callback (void * context, rsnano::BlockHandle * block_handle)
+{
+	try
+	{
+		auto callback = static_cast<std::function<void (std::shared_ptr<nano::block> const &)> *> (context);
+		auto block{ nano::block_handle_to_block (block_handle) };
+		if ((*callback) != nullptr)
+		{
+			(*callback) (block);
+		}
+	}
+	catch (std::exception e)
+	{
+		std::cerr << "Exception in confirmation_callback: " << e.what () << std::endl;
+	}
+}
+
+void delete_confirmation_context (void * context)
+{
+	auto callback = static_cast<std::function<void (std::shared_ptr<nano::block> const &)> *> (context);
+	delete callback;
+}
+
+void live_vote_callback (void * context, uint8_t const * account_bytes)
+{
+	try
+	{
+		auto callback = static_cast<std::function<void (nano::account const &)> *> (context);
+		auto account = nano::account::from_bytes (account_bytes);
+		if ((*callback) != nullptr)
+		{
+			(*callback) (account);
+		}
+	}
+	catch (std::exception e)
+	{
+		std::cerr << "Exception in live_vote_callback: " << e.what () << std::endl;
+	}
+}
+
+void delete_live_vote_context (void * context)
+{
+	auto callback = static_cast<std::function<void (nano::account const &)> *> (context);
+	delete callback;
+}
+}
+
 nano::election::election (nano::node & node_a, std::shared_ptr<nano::block> const & block_a, std::function<void (std::shared_ptr<nano::block> const &)> const & confirmation_action_a, std::function<void (nano::account const &)> const & live_vote_action_a, nano::election_behavior election_behavior_a) :
-	confirmation_action (confirmation_action_a),
-	live_vote_action (live_vote_action_a),
-	handle{ rsnano::rsn_election_create (block_a->get_handle (), static_cast<uint8_t> (election_behavior_a)) }
+	handle{
+		rsnano::rsn_election_create (
+		block_a->get_handle (),
+		static_cast<uint8_t> (election_behavior_a),
+		confirmation_callback,
+		new std::function<void (std::shared_ptr<nano::block> const &)> (confirmation_action_a),
+		delete_confirmation_context,
+		live_vote_callback,
+		new std::function<void (nano::account const &)> (live_vote_action_a),
+		delete_live_vote_context)
+	}
+{
+}
+
+nano::election::election (rsnano::ElectionHandle * handle_a) :
+	handle{ handle_a }
 {
 }
 

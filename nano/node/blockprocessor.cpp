@@ -126,7 +126,8 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	node_a.stats->handle,
 	&node_a.config->network_params.work.dto,
 	write_database_queue_a.handle,
-	node_a.history.handle);
+	node_a.history.handle,
+	node_a.active.handle);
 
 	batch_processed.add ([this] (auto const & items) {
 		// For every batch item: notify the 'processed' observer.

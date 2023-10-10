@@ -203,6 +203,12 @@ public:
 	 * Calculates time delay between broadcasting confirmation requests
 	 */
 	std::chrono::milliseconds confirm_req_time (nano::election & election) const;
+	bool have_quorum (nano::tally_t const & tally_a) const;
+	nano::tally_t tally_impl (nano::election_lock & lock) const;
+	nano::tally_t tally (nano::election & election) const;
+	nano::election_extended_status current_status (nano::election & election) const;
+	// Confirm this block if quorum is met
+	void confirm_if_quorum (nano::election_lock & lock_a, nano::election & election);
 
 private:
 	nano::node & node;
@@ -248,11 +254,8 @@ public: // Status
 	// Elections will first confirm in memory once sufficient votes have been received
 	bool status_confirmed () const;
 	bool failed () const;
-	nano::election_extended_status current_status () const;
 	std::shared_ptr<nano::block> winner () const;
 	void log_votes (nano::election_lock & lock, nano::tally_t const &, std::string const & = "") const;
-	nano::tally_t tally () const;
-	bool have_quorum (nano::tally_t const &) const;
 	unsigned get_confirmation_request_count () const;
 	void inc_confirmation_request_count ();
 
@@ -274,8 +277,6 @@ public: // Interface
 	std::size_t fill_from_cache (nano::election_helper & helper, nano::vote_cache::entry const & entry);
 
 	bool publish (std::shared_ptr<nano::block> const & block_a, nano::election_helper & helper);
-	// Confirm this block if quorum is met
-	void confirm_if_quorum (nano::election_lock &, nano::election_helper &);
 	boost::optional<nano::election_status_type> try_confirm (nano::block_hash const & hash, nano::election_helper & helper);
 	void set_status_type (nano::election_status_type status_type);
 
@@ -294,7 +295,6 @@ public: // Information
 	nano::election_behavior behavior () const;
 
 private:
-	nano::tally_t tally_impl (nano::election_lock & lock) const;
 	void remove_votes (nano::election_lock & lock, nano::block_hash const &);
 	void remove_block (nano::election_lock & lock, nano::block_hash const &);
 	bool replace_by_weight (nano::election_lock & lock_a, nano::block_hash const &);

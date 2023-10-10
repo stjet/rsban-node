@@ -77,7 +77,7 @@ TEST (votes, add_one)
 	ASSERT_NE (votes1.end (), existing1);
 	ASSERT_EQ (send1->hash (), existing1->second.get_hash ());
 	nano::lock_guard<nano::mutex> guard{ node1.active.mutex };
-	auto winner (*election1->tally ().begin ());
+	auto winner (*node1.election_helper.tally (*election1).begin ());
 	ASSERT_EQ (*send1, *winner.second);
 	ASSERT_EQ (nano::dev::constants.genesis_amount - 100, winner.first);
 }
@@ -144,7 +144,7 @@ TEST (votes, add_existing)
 	ASSERT_EQ (2, votes.size ());
 	ASSERT_NE (votes.end (), votes.find (nano::dev::genesis_key.pub));
 	ASSERT_EQ (send2->hash (), votes[nano::dev::genesis_key.pub].get_hash ());
-	ASSERT_EQ (*send2, *election1->tally ().begin ()->second);
+	ASSERT_EQ (*send2, *node1.election_helper.tally (*election1).begin ()->second);
 }
 
 // Lower timestamps are ignored

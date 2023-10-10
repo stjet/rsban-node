@@ -596,7 +596,7 @@ TEST (node, fork_publish)
 		auto existing1 (votes1.find (nano::dev::genesis_key.pub));
 		ASSERT_NE (votes1.end (), existing1);
 		ASSERT_EQ (send1->hash (), existing1->second.get_hash ());
-		auto winner (*election->tally ().begin ());
+		auto winner (*node1.election_helper.tally (*election).begin ());
 		ASSERT_EQ (*send1, *winner.second);
 		ASSERT_EQ (nano::dev::constants.genesis_amount - 100, winner.first);
 	}
@@ -697,7 +697,7 @@ TEST (node, fork_keep)
 	auto transaction0 (node1.store.tx_begin_read ());
 	auto transaction1 (node2.store.tx_begin_read ());
 	// The vote should be in agreement with what we already have.
-	auto winner (*election1->tally ().begin ());
+	auto winner (*node2.election_helper.tally (*election1).begin ());
 	ASSERT_EQ (*send1, *winner.second);
 	ASSERT_EQ (nano::dev::constants.genesis_amount - 100, winner.first);
 	ASSERT_TRUE (node1.store.block ().exists (*transaction0, send1->hash ()));
@@ -748,7 +748,7 @@ TEST (node, fork_flip)
 	ASSERT_NE (nullptr, node1.block (publish1.get_block ()->hash ()));
 	ASSERT_NE (nullptr, node2.block (publish2.get_block ()->hash ()));
 	ASSERT_TIMELY (10s, node2.ledger.block_or_pruned_exists (publish1.get_block ()->hash ()));
-	auto winner (*election1->tally ().begin ());
+	auto winner (*node2.election_helper.tally (*election1).begin ());
 	ASSERT_EQ (*publish1.get_block (), *winner.second);
 	ASSERT_EQ (nano::dev::constants.genesis_amount - 100, winner.first);
 	ASSERT_TRUE (node1.ledger.block_or_pruned_exists (publish1.get_block ()->hash ()));
@@ -818,7 +818,7 @@ TEST (node, fork_multi_flip)
 	ASSERT_TRUE (node2.ledger.block_or_pruned_exists (publish2.get_block ()->hash ()));
 	ASSERT_TRUE (node2.ledger.block_or_pruned_exists (publish3.get_block ()->hash ()));
 	ASSERT_TIMELY (10s, node2.ledger.block_or_pruned_exists (publish1.get_block ()->hash ()));
-	auto winner (*election1->tally ().begin ());
+	auto winner (*node2.election_helper.tally (*election1).begin ());
 	ASSERT_EQ (*publish1.get_block (), *winner.second);
 	ASSERT_EQ (nano::dev::constants.genesis_amount - 100, winner.first);
 	ASSERT_TRUE (node1.ledger.block_or_pruned_exists (publish1.get_block ()->hash ()));
@@ -1028,7 +1028,7 @@ TEST (node, fork_open_flip)
 	// Node2 should eventually settle on open1
 	ASSERT_TIMELY (10s, node2.block (open1->hash ()));
 	ASSERT_TIMELY (5s, node1.block_confirmed (open1->hash ()));
-	auto winner = *election->tally ().begin ();
+	auto winner = *node2.election_helper.tally (*election).begin ();
 	ASSERT_EQ (*open1, *winner.second);
 	ASSERT_EQ (nano::dev::constants.genesis_amount - 1, winner.first);
 

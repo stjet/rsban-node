@@ -274,7 +274,7 @@ TEST (active_transactions, inactive_votes_cache_non_final)
 	std::shared_ptr<nano::election> election;
 	ASSERT_TIMELY (5s, election = node.active.election (send->qualified_root ()));
 	ASSERT_TIMELY_EQ (5s, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached), 1);
-	ASSERT_TIMELY_EQ (5s, nano::dev::constants.genesis_amount - 100, election->tally ().begin ()->first);
+	ASSERT_TIMELY_EQ (5s, nano::dev::constants.genesis_amount - 100, node.election_helper.tally (*election).begin ()->first);
 	ASSERT_FALSE (node.election_helper.confirmed (*election));
 }
 

@@ -2076,7 +2076,7 @@ void nano::json_handler::confirmation_info ()
 		auto election (node.active.election (root));
 		if (election != nullptr && !node.election_helper.confirmed (*election))
 		{
-			auto info = election->current_status ();
+			auto info = node.election_helper.current_status (*election);
 			response_l.put ("announcements", std::to_string (info.status.get_confirmation_request_count ()));
 			response_l.put ("voters", std::to_string (info.votes.size ()));
 			response_l.put ("last_winner", info.status.get_winner ()->hash ().to_string ());

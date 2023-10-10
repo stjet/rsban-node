@@ -11,7 +11,7 @@ use std::{
     },
     time::Duration,
 };
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, task::spawn_blocking};
 
 use super::{
     tcp_stream::TcpStream,
@@ -202,98 +202,6 @@ impl TokioSocketFacade {
                                 runtime.tokio.spawn_blocking(move || {
                                     if let Some(cb) = callback.lock().unwrap().take() {
                                         cb(ErrorCode::fault(), 0)
-                                    }
-                                });
-                                break;
-                            }
-                        };
-                    }
-                    Err(_) => {
-                        let Some(runtime) = runtime_w.upgrade() else {
-                            break;
-                        };
-                        runtime.tokio.spawn_blocking(move || {
-                            if let Some(cb) = callback.lock().unwrap().take() {
-                                cb(ErrorCode::fault(), 0);
-                            }
-                        });
-                        break;
-                    }
-                }
-            }
-        });
-    }
-
-    pub fn async_read2(
-        &self,
-        buffer: &Arc<Mutex<Vec<u8>>>,
-        len: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    ) {
-        let callback = Arc::new(Mutex::new(Some(callback)));
-        let callback_clone = Arc::clone(&callback);
-        *self.current_action.lock().unwrap() = Some(Box::new(move || {
-            if let Some(f) = callback_clone.lock().unwrap().take() {
-                f(ErrorCode::fault(), 0);
-            }
-        }));
-
-        let buffer = Arc::clone(buffer);
-        let stream = {
-            let guard = self.state.lock().unwrap();
-            let TokioSocketState::Client(stream) = guard.deref() else {
-                return;
-            };
-            Arc::clone(stream)
-        };
-        let Some(runtime) = self.runtime.upgrade() else {
-            return;
-        };
-        let runtime_w = Weak::clone(&self.runtime);
-        runtime.tokio.spawn(async move {
-            let mut read = 0;
-            loop {
-                match stream.readable().await {
-                    Ok(_) => {
-                        let mut buf = buffer.lock().unwrap();
-                        match stream.try_read(&mut buf.as_mut_slice()[read..len]) {
-                            Ok(0) => {
-                                drop(buf);
-                                let Some(runtime) = runtime_w.upgrade() else {
-                                    break;
-                                };
-                                runtime.tokio.spawn_blocking(move || {
-                                    if let Some(cb) = callback.lock().unwrap().take() {
-                                        cb(ErrorCode::fault(), 0);
-                                    }
-                                });
-                                break;
-                            }
-                            Ok(n) => {
-                                drop(buf);
-                                read += n;
-                                if read >= len {
-                                    let Some(runtime) = runtime_w.upgrade() else {
-                                        break;
-                                    };
-                                    runtime.tokio.spawn_blocking(move || {
-                                        if let Some(cb) = callback.lock().unwrap().take() {
-                                            cb(ErrorCode::new(), read);
-                                        }
-                                    });
-                                    break;
-                                }
-                            }
-                            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                continue;
-                            }
-                            Err(_) => {
-                                let Some(runtime) = runtime_w.upgrade() else {
-                                    break;
-                                };
-                                runtime.tokio.spawn_blocking(move || {
-                                    if let Some(cb) = callback.lock().unwrap().take() {
-                                        cb(ErrorCode::fault(), 0);
                                     }
                                 });
                                 break;
@@ -970,9 +878,7 @@ impl SocketExtensions for Arc<Socket> {
                 self.set_default_timeout();
                 let self_clone = self.clone();
 
-                self.tcp_socket.async_read2(
-                    &buffer,
-                    size,
+                let callback: Box<dyn FnOnce(ErrorCode, usize) + Send> =
                     Box::new(move |ec, len| {
                         if ec.is_err() {
                             self_clone.observer.read_error();
@@ -982,8 +888,57 @@ impl SocketExtensions for Arc<Socket> {
                             self_clone.set_last_receive_time();
                         }
                         callback(ec, len);
-                    }),
-                );
+                    });
+                let stream = {
+                    let guard = self.tcp_socket.state.lock().unwrap();
+                    let TokioSocketState::Client(stream) = guard.deref() else { return; };
+                    Arc::clone(stream)
+                };
+                let Some(runtime) = self.tcp_socket.runtime.upgrade() else { return; };
+                runtime.tokio.spawn(async move {
+                    let mut read = 0;
+                    loop {
+                        match stream.readable().await {
+                            Ok(_) => {
+                                let mut buf = buffer.lock().unwrap();
+                                match stream.try_read(&mut buf.as_mut_slice()[read..size]) {
+                                    Ok(0) => {
+                                        drop(buf);
+                                        spawn_blocking(move || {
+                                            callback(ErrorCode::fault(), 0);
+                                        });
+                                        break;
+                                    }
+                                    Ok(n) => {
+                                        drop(buf);
+                                        read += n;
+                                        if read >= size {
+                                            spawn_blocking(move || {
+                                                callback(ErrorCode::new(), read);
+                                            });
+                                            break;
+                                        }
+                                    }
+                                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                        continue;
+                                    }
+                                    Err(_) => {
+                                        spawn_blocking(move || {
+                                            callback(ErrorCode::fault(), 0);
+                                        });
+                                        break;
+                                    }
+                                };
+                            }
+                            Err(_) => {
+                                spawn_blocking(move || {
+                                    callback(ErrorCode::fault(), 0);
+                                });
+                                break;
+                            }
+                        }
+                    }
+                });
             }
         } else {
             debug_assert!(false); // async_read called with incorrect buffer size

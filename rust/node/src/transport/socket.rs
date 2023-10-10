@@ -31,44 +31,7 @@ pub enum BufferDropPolicy {
 }
 
 pub trait TcpSocketFacadeFactory: Send + Sync {
-    fn create_tcp_socket(&self) -> Arc<dyn TcpSocketFacade>;
-}
-
-pub trait TcpSocketFacade: Send + Sync {
-    fn local_endpoint(&self) -> SocketAddr;
-    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>);
-    fn async_read(
-        &self,
-        buffer: &Arc<dyn BufferWrapper>,
-        len: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    );
-    fn async_read2(
-        &self,
-        buffer: &Arc<Mutex<Vec<u8>>>,
-        len: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    );
-    fn async_write(
-        &self,
-        buffer: &Arc<Vec<u8>>,
-        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    );
-    fn async_accept(
-        &self,
-        client_socket: &Arc<dyn TcpSocketFacade>,
-        callback: Box<dyn FnOnce(SocketAddr, ErrorCode) + Send>,
-    );
-    fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode>;
-    fn post(&self, f: Box<dyn FnOnce() + Send>);
-    fn dispatch(&self, f: Box<dyn FnOnce() + Send>);
-    fn close_acceptor(&self);
-    fn is_acceptor_open(&self) -> bool;
-    fn close(&self) -> Result<(), ErrorCode>;
-    fn as_any(&self) -> &dyn Any;
-    fn is_open(&self) -> bool;
-    fn open(&self, endpoint: &SocketAddr) -> ErrorCode;
-    fn listening_port(&self) -> u16;
+    fn create_tcp_socket(&self) -> Arc<TokioSocketFacade>;
 }
 
 pub struct TokioSocketFacade {
@@ -108,10 +71,8 @@ impl TokioSocketFacade {
         ));
         Self::new(runtime, Arc::new(TcpStreamFactory::create_null()))
     }
-}
 
-impl TcpSocketFacade for TokioSocketFacade {
-    fn local_endpoint(&self) -> SocketAddr {
+    pub fn local_endpoint(&self) -> SocketAddr {
         let guard = self.state.lock().unwrap();
         match guard.deref() {
             TokioSocketState::Closed => SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0),
@@ -125,7 +86,7 @@ impl TcpSocketFacade for TokioSocketFacade {
         }
     }
 
-    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
+    pub fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
         let callback = Arc::new(Mutex::new(Some(callback)));
         let callback_clone = Arc::clone(&callback);
         *self.current_action.lock().unwrap() = Some(Box::new(move || {
@@ -173,7 +134,7 @@ impl TcpSocketFacade for TokioSocketFacade {
         });
     }
 
-    fn async_read(
+    pub fn async_read(
         &self,
         buffer: &Arc<dyn BufferWrapper>,
         len: usize,
@@ -263,7 +224,7 @@ impl TcpSocketFacade for TokioSocketFacade {
         });
     }
 
-    fn async_read2(
+    pub fn async_read2(
         &self,
         buffer: &Arc<Mutex<Vec<u8>>>,
         len: usize,
@@ -355,7 +316,7 @@ impl TcpSocketFacade for TokioSocketFacade {
         });
     }
 
-    fn async_write(
+    pub fn async_write(
         &self,
         buffer: &Arc<Vec<u8>>,
         callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
@@ -430,9 +391,9 @@ impl TcpSocketFacade for TokioSocketFacade {
         });
     }
 
-    fn async_accept(
+    pub fn async_accept(
         &self,
-        client_socket: &Arc<dyn TcpSocketFacade>,
+        client_socket: &Arc<TokioSocketFacade>,
         callback: Box<dyn FnOnce(SocketAddr, ErrorCode) + Send>,
     ) {
         {
@@ -514,7 +475,7 @@ impl TcpSocketFacade for TokioSocketFacade {
         });
     }
 
-    fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode> {
+    pub fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode> {
         let guard = self.state.lock().unwrap();
         match guard.deref() {
             TokioSocketState::Client(stream) => stream.peer_addr().map_err(|_| ErrorCode::fault()),
@@ -522,7 +483,7 @@ impl TcpSocketFacade for TokioSocketFacade {
         }
     }
 
-    fn post(&self, f: Box<dyn FnOnce() + Send>) {
+    pub fn post(&self, f: Box<dyn FnOnce() + Send>) {
         let Some(runtime) = self.runtime.upgrade() else {
             return;
         };
@@ -531,7 +492,7 @@ impl TcpSocketFacade for TokioSocketFacade {
         });
     }
 
-    fn dispatch(&self, f: Box<dyn FnOnce() + Send>) {
+    pub fn dispatch(&self, f: Box<dyn FnOnce() + Send>) {
         let Some(runtime) = self.runtime.upgrade() else {
             return;
         };
@@ -540,18 +501,18 @@ impl TcpSocketFacade for TokioSocketFacade {
         });
     }
 
-    fn close_acceptor(&self) {
+    pub fn close_acceptor(&self) {
         *self.state.lock().unwrap() = TokioSocketState::Closed;
     }
 
-    fn is_acceptor_open(&self) -> bool {
+    pub fn is_acceptor_open(&self) -> bool {
         matches!(
             self.state.lock().unwrap().deref(),
             TokioSocketState::Server(_)
         )
     }
 
-    fn close(&self) -> Result<(), ErrorCode> {
+    pub fn close(&self) -> Result<(), ErrorCode> {
         *self.state.lock().unwrap() = TokioSocketState::Closed;
         if let Some(cb) = self.current_action.lock().unwrap().take() {
             cb();
@@ -559,11 +520,11 @@ impl TcpSocketFacade for TokioSocketFacade {
         Ok(())
     }
 
-    fn as_any(&self) -> &dyn Any {
+    pub fn as_any(&self) -> &dyn Any {
         self
     }
 
-    fn is_open(&self) -> bool {
+    pub fn is_open(&self) -> bool {
         let guard = self.state.lock().unwrap();
         match guard.deref() {
             TokioSocketState::Closed => false,
@@ -571,7 +532,7 @@ impl TcpSocketFacade for TokioSocketFacade {
         }
     }
 
-    fn open(&self, endpoint: &SocketAddr) -> ErrorCode {
+    pub fn open(&self, endpoint: &SocketAddr) -> ErrorCode {
         {
             let guard = self.state.lock().unwrap();
             debug_assert!(matches!(guard.deref(), TokioSocketState::Closed));
@@ -591,7 +552,7 @@ impl TcpSocketFacade for TokioSocketFacade {
         }
     }
 
-    fn listening_port(&self) -> u16 {
+    pub fn listening_port(&self) -> u16 {
         let guard = self.state.lock().unwrap();
         match guard.deref() {
             TokioSocketState::Closed => 0,
@@ -615,82 +576,8 @@ impl TokioSocketFacadeFactory {
 }
 
 impl TcpSocketFacadeFactory for TokioSocketFacadeFactory {
-    fn create_tcp_socket(&self) -> Arc<dyn TcpSocketFacade> {
+    fn create_tcp_socket(&self) -> Arc<TokioSocketFacade> {
         Arc::new(TokioSocketFacade::create(Arc::clone(&self.runtime)))
-    }
-}
-
-#[derive(Default)]
-pub struct NullTcpSocketFacade {}
-
-impl TcpSocketFacade for NullTcpSocketFacade {
-    fn local_endpoint(&self) -> SocketAddr {
-        SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 42)
-    }
-
-    fn async_connect(&self, _endpoint: SocketAddr, _callback: Box<dyn FnOnce(ErrorCode) + Send>) {}
-
-    fn async_read(
-        &self,
-        _buffer: &Arc<dyn BufferWrapper>,
-        _len: usize,
-        _callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    ) {
-    }
-
-    fn async_read2(
-        &self,
-        _buffer: &Arc<Mutex<Vec<u8>>>,
-        _len: usize,
-        _callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    ) {
-    }
-
-    fn async_write(
-        &self,
-        _buffer: &Arc<Vec<u8>>,
-        _callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    ) {
-    }
-
-    fn remote_endpoint(&self) -> Result<SocketAddr, ErrorCode> {
-        Err(ErrorCode::not_supported())
-    }
-
-    fn post(&self, _: Box<dyn FnOnce() + Send>) {}
-    fn dispatch(&self, _: Box<dyn FnOnce() + Send>) {}
-
-    fn close(&self) -> Result<(), ErrorCode> {
-        Ok(())
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn is_open(&self) -> bool {
-        false
-    }
-
-    fn close_acceptor(&self) {}
-
-    fn is_acceptor_open(&self) -> bool {
-        false
-    }
-
-    fn async_accept(
-        &self,
-        _client_socket: &Arc<dyn TcpSocketFacade>,
-        _callback: Box<dyn FnOnce(SocketAddr, ErrorCode) + Send>,
-    ) {
-    }
-
-    fn open(&self, _endpoint: &SocketAddr) -> ErrorCode {
-        ErrorCode::new()
-    }
-
-    fn listening_port(&self) -> u16 {
-        0
     }
 }
 
@@ -842,7 +729,7 @@ pub struct Socket {
 
     idle_timeout: Duration,
 
-    pub tcp_socket: Arc<dyn TcpSocketFacade>,
+    pub tcp_socket: Arc<TokioSocketFacade>,
     thread_pool: Arc<dyn ThreadPool>,
     endpoint_type: EndpointType,
     /// used in real time server sockets, number of seconds of no receive traffic that will cause the socket to timeout
@@ -1277,7 +1164,7 @@ impl SocketExtensions for Arc<Socket> {
 
 pub struct SocketBuilder {
     endpoint_type: EndpointType,
-    tcp_facade: Arc<dyn TcpSocketFacade>,
+    tcp_facade: Arc<TokioSocketFacade>,
     thread_pool: Arc<dyn ThreadPool>,
     default_timeout: Duration,
     silent_connection_tolerance_time: Duration,
@@ -1289,7 +1176,7 @@ pub struct SocketBuilder {
 impl SocketBuilder {
     pub fn endpoint_type(
         endpoint_type: EndpointType,
-        tcp_facade: Arc<dyn TcpSocketFacade>,
+        tcp_facade: Arc<TokioSocketFacade>,
         thread_pool: Arc<dyn ThreadPool>,
     ) -> Self {
         Self {

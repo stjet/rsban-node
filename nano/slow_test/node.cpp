@@ -682,7 +682,7 @@ TEST (confirmation_height, many_accounts_single_confirmation)
 		node->scheduler.manual.push (block);
 		std::shared_ptr<nano::election> election;
 		ASSERT_TIMELY (10s, (election = node->active.election (block->qualified_root ())) != nullptr);
-		election->force_confirm (node->election_helper);
+		node->election_helper.force_confirm (*election);
 	}
 
 	ASSERT_TIMELY (120s, node->ledger.block_confirmed (*node->store.tx_begin_read (), last_open_hash));
@@ -763,7 +763,7 @@ TEST (confirmation_height, many_accounts_many_confirmations)
 		node->scheduler.manual.push (open_block);
 		std::shared_ptr<nano::election> election;
 		ASSERT_TIMELY (10s, (election = node->active.election (open_block->qualified_root ())) != nullptr);
-		election->force_confirm (node->election_helper);
+		node->election_helper.force_confirm (*election);
 	}
 
 	auto const num_blocks_to_confirm = (num_accounts - 1) * 2;
@@ -899,7 +899,7 @@ TEST (confirmation_height, long_chains)
 		node->scheduler.manual.push (receive1);
 		std::shared_ptr<nano::election> election;
 		ASSERT_TIMELY (10s, (election = node->active.election (receive1->qualified_root ())) != nullptr);
-		election->force_confirm (node->election_helper);
+		node->election_helper.force_confirm (*election);
 	}
 
 	ASSERT_TIMELY (30s, node->ledger.block_confirmed (*node->store.tx_begin_read (), receive1->hash ()));
@@ -1034,7 +1034,7 @@ TEST (confirmation_height, many_accounts_send_receive_self)
 		node->start_election (open_block);
 		std::shared_ptr<nano::election> election;
 		ASSERT_TIMELY (10s, (election = node->active.election (open_block->qualified_root ())) != nullptr);
-		election->force_confirm (node->election_helper);
+		node->election_helper.force_confirm (*election);
 	}
 
 	system.deadline_set (100s);
@@ -2121,7 +2121,7 @@ TEST (node, wallet_create_block_confirm_conflicts)
 			node->scheduler.manual.push (block);
 			std::shared_ptr<nano::election> election;
 			ASSERT_TIMELY (10s, (election = node->active.election (block->qualified_root ())) != nullptr);
-			election->force_confirm (node->election_helper);
+			node->election_helper.force_confirm (*election);
 		}
 
 		ASSERT_TIMELY (120s, node->ledger.block_confirmed (*node->store.tx_begin_read (), latest) && node->confirmation_height_processor.current () == 0);

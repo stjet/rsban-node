@@ -37,7 +37,10 @@ struct NullTcpStreamFactory {}
 #[async_trait]
 impl InternalTcpStreamFactory for NullTcpStreamFactory {
     async fn connect(&self, _addr: SocketAddr) -> tokio::io::Result<TcpStream> {
-        Err(tokio::io::Error::new(std::io::ErrorKind::NotFound, "aaaa"))
+        Err(tokio::io::Error::new(
+            std::io::ErrorKind::Other,
+            "nulled TcpStreamFactory has no configured connections",
+        ))
     }
 }
 

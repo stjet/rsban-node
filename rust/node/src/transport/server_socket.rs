@@ -19,12 +19,12 @@ use crate::{
 
 use super::{
     CompositeSocketObserver, EndpointType, Socket, SocketBuilder, SocketExtensions, SocketObserver,
-    TcpSocketFacade, TcpSocketFacadeFactory,
+    TcpSocketFacadeFactory, TokioSocketFacade,
 };
 
 pub struct ServerSocket {
     socket: Arc<Socket>,
-    socket_facade: Arc<dyn TcpSocketFacade>,
+    socket_facade: Arc<TokioSocketFacade>,
     connections_per_address: Mutex<ConnectionsPerAddress>,
     node_flags: NodeFlags,
     network_params: NetworkParams,
@@ -40,7 +40,7 @@ pub struct ServerSocket {
 
 impl ServerSocket {
     pub fn new(
-        socket_facade: Arc<dyn TcpSocketFacade>,
+        socket_facade: Arc<TokioSocketFacade>,
         node_flags: NodeFlags,
         network_params: NetworkParams,
         workers: Arc<dyn ThreadPool>,

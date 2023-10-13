@@ -1,5 +1,6 @@
+use num_traits::FromPrimitive;
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
-use rsnano_node::voting::{ActiveTransactions, ActiveTransactionsData, Election};
+use rsnano_node::voting::{ActiveTransactions, ActiveTransactionsData, Election, ElectionBehavior};
 use std::{
     ops::Deref,
     sync::{Arc, MutexGuard},
@@ -176,6 +177,44 @@ pub unsafe extern "C" fn rsn_active_transactions_lock_roots_find(
         Some(election) => Box::into_raw(Box::new(ElectionHandle(Arc::clone(election)))),
         None => std::ptr::null_mut(),
     }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_lock_count_by_behavior(
+    handle: &ActiveTransactionsLockHandle,
+    behavior: u8,
+) -> u64 {
+    handle
+        .0
+        .as_ref()
+        .unwrap()
+        .count_by_behavior(FromPrimitive::from_u8(behavior).unwrap())
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_lock_count_by_behavior_inc(
+    handle: &mut ActiveTransactionsLockHandle,
+    behavior: u8,
+) {
+    let count = handle
+        .0
+        .as_mut()
+        .unwrap()
+        .count_by_behavior_mut(FromPrimitive::from_u8(behavior).unwrap());
+    *count += 1;
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_lock_count_by_behavior_dec(
+    handle: &mut ActiveTransactionsLockHandle,
+    behavior: u8,
+) {
+    let count = handle
+        .0
+        .as_mut()
+        .unwrap()
+        .count_by_behavior_mut(FromPrimitive::from_u8(behavior).unwrap());
+    *count -= 1;
 }
 
 #[no_mangle]

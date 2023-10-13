@@ -54,7 +54,6 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 {
 	auto network_dto{ node_a.network_params.to_dto () };
 	handle = rsnano::rsn_active_transactions_create (&network_dto);
-	count_by_behavior.fill (0); // Zero initialize array
 
 	// Register a callback which will get called after a block is cemented
 	confirmation_height_processor.set_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
@@ -310,7 +309,7 @@ int64_t nano::active_transactions::vacancy (nano::election_behavior behavior) co
 			return limit () - static_cast<int64_t> (rsnano::rsn_active_transactions_lock_roots_size (guard.handle));
 		case nano::election_behavior::hinted:
 		case nano::election_behavior::optimistic:
-			return limit (behavior) - count_by_behavior[behavior];
+			return limit (behavior) - rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (behavior));
 	}
 	debug_assert (false); // Unknown enum
 	return 0;
@@ -365,8 +364,8 @@ void nano::active_transactions::cleanup_election (nano::active_transactions_lock
 
 	node.stats->inc (completion_type (*election), nano::to_stat_detail (election->behavior ()));
 	// Keep track of election count by election type
-	debug_assert (count_by_behavior[election->behavior ()] > 0);
-	count_by_behavior[election->behavior ()]--;
+	debug_assert (rsnano::rsn_active_transactions_lock_count_by_behavior (lock_a.handle, static_cast<uint8_t> (election->behavior ())) > 0);
+	rsnano::rsn_active_transactions_lock_count_by_behavior_dec (lock_a.handle, static_cast<uint8_t> (election->behavior ()));
 
 	auto blocks_l = election->blocks ();
 	for (auto const & [hash, block] : blocks_l)
@@ -508,9 +507,8 @@ nano::election_insertion_result nano::active_transactions::insert_impl (nano::ac
 				rsnano::rsn_active_transactions_lock_roots_insert (lock_a.handle, root.root ().bytes.data (), root.previous ().bytes.data (), result.election->handle);
 				blocks.emplace (hash, result.election);
 				// Keep track of election count by election type
-				debug_assert (count_by_behavior[result.election->behavior ()] >= 0);
-				count_by_behavior[result.election->behavior ()]++;
-
+				debug_assert (rsnano::rsn_active_transactions_lock_count_by_behavior (lock_a.handle, static_cast<uint8_t> (result.election->behavior ())) >= 0);
+				rsnano::rsn_active_transactions_lock_count_by_behavior_inc (lock_a.handle, static_cast<uint8_t> (result.election->behavior ()));
 				lock_a.unlock ();
 				if (auto const cache = node.inactive_vote_cache.find (hash); cache)
 				{
@@ -785,9 +783,9 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (ac
 
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "blocks", active_transactions.blocks.size (), sizeof (decltype (active_transactions.blocks)::value_type) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "election_winner_details", active_transactions.election_winner_details_size (), sizeof (decltype (active_transactions.election_winner_details)::value_type) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "normal", static_cast<std::size_t> (active_transactions.count_by_behavior[nano::election_behavior::normal]), 0 }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "hinted", static_cast<std::size_t> (active_transactions.count_by_behavior[nano::election_behavior::hinted]), 0 }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "optimistic", static_cast<std::size_t> (active_transactions.count_by_behavior[nano::election_behavior::optimistic]), 0 }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "normal", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::normal))), 0 }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "hinted", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::hinted))), 0 }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "optimistic", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::optimistic))), 0 }));
 
 	composite->add_component (active_transactions.recently_confirmed.collect_container_info ("recently_confirmed"));
 	composite->add_component (active_transactions.recently_cemented.collect_container_info ("recently_cemented"));

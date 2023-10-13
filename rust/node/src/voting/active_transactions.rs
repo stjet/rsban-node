@@ -8,7 +8,7 @@ use std::{
 
 use crate::NetworkParams;
 
-use super::Election;
+use super::{Election, ElectionBehavior};
 
 pub struct ActiveTransactions {
     pub mutex: Mutex<ActiveTransactionsData>,
@@ -22,13 +22,22 @@ impl ActiveTransactions {
             mutex: Mutex::new(ActiveTransactionsData {
                 roots: OrderedRoots::default(),
                 stopped: false,
+                normal_count: 0,
+                hinted_count: 0,
+                optimistic_count: 0,
             }),
             condition: Condvar::new(),
             network,
         }
     }
 
-    pub fn erase(&self, _block: &BlockEnum) {}
+    pub fn erase_block(&self, block: &BlockEnum) {
+        self.erase_root(&block.qualified_root());
+    }
+
+    pub fn erase_root(&self, _root: &QualifiedRoot) {
+        todo!()
+    }
 
     pub fn request_loop<'a>(
         &self,
@@ -58,6 +67,27 @@ impl ActiveTransactions {
 pub struct ActiveTransactionsData {
     pub roots: OrderedRoots,
     pub stopped: bool,
+    pub normal_count: u64,
+    pub hinted_count: u64,
+    pub optimistic_count: u64,
+}
+
+impl ActiveTransactionsData {
+    pub fn count_by_behavior(&self, behavior: ElectionBehavior) -> u64 {
+        match behavior {
+            ElectionBehavior::Normal => self.normal_count,
+            ElectionBehavior::Hinted => self.hinted_count,
+            ElectionBehavior::Optimistic => self.optimistic_count,
+        }
+    }
+
+    pub fn count_by_behavior_mut(&mut self, behavior: ElectionBehavior) -> &mut u64 {
+        match behavior {
+            ElectionBehavior::Normal => &mut self.normal_count,
+            ElectionBehavior::Hinted => &mut self.hinted_count,
+            ElectionBehavior::Optimistic => &mut self.optimistic_count,
+        }
+    }
 }
 
 #[derive(Default)]

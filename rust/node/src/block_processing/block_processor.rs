@@ -451,7 +451,7 @@ impl BlockProcessor {
             self.history.erase(&i.root());
             // Stop all rolled back active transactions except initial
             if i.hash() != initial_block.hash() {
-                self.active.erase(i);
+                self.active.erase_block(i);
             }
         }
     }

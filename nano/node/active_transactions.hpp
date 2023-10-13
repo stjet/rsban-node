@@ -226,9 +226,6 @@ private:
 	// Maximum time an election can be kept active if it is extending the container
 	std::chrono::seconds const election_time_to_live;
 
-	/** Keeps track of number of elections by election behavior (normal, hinted, optimistic) */
-	nano::enum_array<nano::election_behavior, int64_t> count_by_behavior;
-
 	std::thread thread;
 
 public:

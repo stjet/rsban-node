@@ -891,10 +891,14 @@ impl SocketExtensions for Arc<Socket> {
                     });
                 let stream = {
                     let guard = self.tcp_socket.state.lock().unwrap();
-                    let TokioSocketState::Client(stream) = guard.deref() else { return; };
+                    let TokioSocketState::Client(stream) = guard.deref() else {
+                        return;
+                    };
                     Arc::clone(stream)
                 };
-                let Some(runtime) = self.tcp_socket.runtime.upgrade() else { return; };
+                let Some(runtime) = self.tcp_socket.runtime.upgrade() else {
+                    return;
+                };
                 runtime.tokio.spawn(async move {
                     let mut read = 0;
                     loop {

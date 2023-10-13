@@ -130,7 +130,6 @@ private: // Elections
 	};
 
 	friend class nano::election;
-	std::unordered_map<nano::block_hash, std::shared_ptr<nano::election>> blocks;
 
 public:
 	active_transactions (nano::node &, nano::confirmation_height_processor &);

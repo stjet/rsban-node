@@ -218,6 +218,56 @@ pub extern "C" fn rsn_active_transactions_lock_count_by_behavior_dec(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_lock_blocks_insert(
+    handle: &mut ActiveTransactionsLockHandle,
+    hash: *const u8,
+    election: &ElectionHandle,
+) {
+    let hash = BlockHash::from_ptr(hash);
+    handle
+        .0
+        .as_mut()
+        .unwrap()
+        .blocks
+        .insert(hash, Arc::clone(election));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_lock_blocks_erase(
+    handle: &mut ActiveTransactionsLockHandle,
+    hash: *const u8,
+) -> bool {
+    let hash = BlockHash::from_ptr(hash);
+    handle.0.as_mut().unwrap().blocks.remove(&hash).is_some()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_lock_blocks_len(
+    handle: &ActiveTransactionsLockHandle,
+) -> usize {
+    handle.0.as_ref().unwrap().blocks.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_lock_blocks_clear(
+    handle: &mut ActiveTransactionsLockHandle,
+) {
+    handle.0.as_mut().unwrap().blocks.clear();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_lock_blocks_find(
+    handle: &ActiveTransactionsLockHandle,
+    hash: *const u8,
+) -> *mut ElectionHandle {
+    let hash = BlockHash::from_ptr(hash);
+    match handle.0.as_ref().unwrap().blocks.get(&hash) {
+        Some(election) => Box::into_raw(Box::new(ElectionHandle(Arc::clone(election)))),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn rsn_active_transactions_lock_roots_get_elections(
     handle: &ActiveTransactionsLockHandle,
 ) -> *mut ElectionVecHandle {

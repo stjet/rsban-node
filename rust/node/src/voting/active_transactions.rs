@@ -1,4 +1,4 @@
-use rsnano_core::{BlockEnum, QualifiedRoot};
+use rsnano_core::{BlockEnum, BlockHash, QualifiedRoot};
 use std::{
     cmp::max,
     collections::HashMap,
@@ -25,6 +25,7 @@ impl ActiveTransactions {
                 normal_count: 0,
                 hinted_count: 0,
                 optimistic_count: 0,
+                blocks: HashMap::new(),
             }),
             condition: Condvar::new(),
             network,
@@ -70,6 +71,7 @@ pub struct ActiveTransactionsData {
     pub normal_count: u64,
     pub hinted_count: u64,
     pub optimistic_count: u64,
+    pub blocks: HashMap<BlockHash, Arc<Election>>,
 }
 
 impl ActiveTransactionsData {

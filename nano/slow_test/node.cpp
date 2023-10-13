@@ -1854,7 +1854,7 @@ TEST (node, mass_block_new)
 		{
 			auto guard{ node.active.lock () };
 			rsnano::rsn_active_transactions_lock_roots_clear (guard.handle);
-			node.active.blocks.clear ();
+			rsnano::rsn_active_transactions_lock_blocks_clear (guard.handle);
 		}
 	};
 

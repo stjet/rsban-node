@@ -370,9 +370,9 @@ void nano::active_transactions::cleanup_election (nano::active_transactions_lock
 	auto blocks_l = election->blocks ();
 	for (auto const & [hash, block] : blocks_l)
 	{
-		auto erased (blocks.erase (hash));
+		auto erased (rsnano::rsn_active_transactions_lock_blocks_erase (lock_a.handle, hash.bytes.data ()));
 		(void)erased;
-		debug_assert (erased == 1);
+		debug_assert (erased);
 		node.inactive_vote_cache.erase (hash);
 	}
 
@@ -505,7 +505,7 @@ nano::election_insertion_result nano::active_transactions::insert_impl (nano::ac
 				election_behavior_a);
 
 				rsnano::rsn_active_transactions_lock_roots_insert (lock_a.handle, root.root ().bytes.data (), root.previous ().bytes.data (), result.election->handle);
-				blocks.emplace (hash, result.election);
+				rsnano::rsn_active_transactions_lock_blocks_insert (lock_a.handle, hash.bytes.data (), result.election->handle);
 				// Keep track of election count by election type
 				debug_assert (rsnano::rsn_active_transactions_lock_count_by_behavior (lock_a.handle, static_cast<uint8_t> (result.election->behavior ())) >= 0);
 				rsnano::rsn_active_transactions_lock_count_by_behavior_inc (lock_a.handle, static_cast<uint8_t> (result.election->behavior ()));
@@ -553,10 +553,11 @@ nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> con
 		auto guard{ lock () };
 		for (auto const & hash : vote_a->hashes ())
 		{
-			auto existing (blocks.find (hash));
-			if (existing != blocks.end ())
+			auto existing_handle = rsnano::rsn_active_transactions_lock_blocks_find (guard.handle, hash.bytes.data ());
+			if (existing_handle != nullptr)
 			{
-				process.emplace_back (existing->second, hash);
+				auto existing = std::make_shared<nano::election> (existing_handle);
+				process.emplace_back (existing, hash);
 			}
 			else if (!recently_confirmed.exists (hash))
 			{
@@ -615,14 +616,26 @@ bool nano::active_transactions::active (nano::block const & block_a) const
 	auto guard{ lock () };
 	auto root{ block_a.qualified_root () };
 	auto hash{ block_a.hash () };
-	auto exists = rsnano::rsn_active_transactions_lock_roots_exists (guard.handle, root.root ().bytes.data (), root.previous ().bytes.data ());
-	return exists && blocks.find (hash) != blocks.end ();
+	auto root_exists = rsnano::rsn_active_transactions_lock_roots_exists (guard.handle, root.root ().bytes.data (), root.previous ().bytes.data ());
+	auto existing_handle = rsnano::rsn_active_transactions_lock_blocks_find (guard.handle, hash.bytes.data ());
+	bool block_exists = existing_handle != nullptr;
+	if (block_exists)
+	{
+		rsnano::rsn_election_destroy (existing_handle);
+	}
+	return root_exists && block_exists;
 }
 
 bool nano::active_transactions::active (const nano::block_hash & hash) const
 {
 	auto guard{ lock () };
-	return blocks.find (hash) != blocks.end ();
+	auto existing_handle = rsnano::rsn_active_transactions_lock_blocks_find (guard.handle, hash.bytes.data ());
+	bool block_exists = existing_handle != nullptr;
+	if (block_exists)
+	{
+		rsnano::rsn_election_destroy (existing_handle);
+	}
+	return block_exists;
 }
 
 std::shared_ptr<nano::election> nano::active_transactions::election (nano::qualified_root const & root_a) const
@@ -641,10 +654,10 @@ std::shared_ptr<nano::block> nano::active_transactions::winner (nano::block_hash
 {
 	std::shared_ptr<nano::block> result;
 	auto guard{ lock () };
-	auto existing = blocks.find (hash_a);
-	if (existing != blocks.end ())
+	auto existing_handle = rsnano::rsn_active_transactions_lock_blocks_find (guard.handle, hash_a.bytes.data ());
+	if (existing_handle != nullptr)
 	{
-		auto election = existing->second;
+		auto election = std::make_shared<nano::election> (existing_handle);
 		guard.unlock ();
 		result = election->winner ();
 	}
@@ -670,8 +683,8 @@ void nano::active_transactions::erase (nano::qualified_root const & root_a)
 void nano::active_transactions::erase_hash (nano::block_hash const & hash_a)
 {
 	auto guard{ lock () };
-	[[maybe_unused]] auto erased (blocks.erase (hash_a));
-	debug_assert (erased == 1);
+	[[maybe_unused]] auto erased (rsnano::rsn_active_transactions_lock_blocks_erase (guard.handle, hash_a.bytes.data ()));
+	debug_assert (erased);
 }
 
 void nano::active_transactions::erase_oldest ()
@@ -710,7 +723,7 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 		if (!result)
 		{
 			guard.lock ();
-			blocks.emplace (block_a->hash (), election);
+			rsnano::rsn_active_transactions_lock_blocks_insert (guard.handle, block_a->hash ().bytes.data (), election->handle);
 			guard.unlock ();
 			if (auto const cache = node.inactive_vote_cache.find (block_a->hash ()); cache)
 			{
@@ -729,10 +742,10 @@ boost::optional<nano::election_status_type> nano::active_transactions::confirm_b
 	std::shared_ptr<nano::election> election = nullptr;
 	{
 		auto guard{ lock () };
-		auto existing = blocks.find (hash);
-		if (existing != blocks.end ())
+		auto existing_handle = rsnano::rsn_active_transactions_lock_blocks_find (guard.handle, hash.bytes.data ());
+		if (existing_handle != nullptr)
 		{
-			election = existing->second;
+			election = std::make_shared<nano::election> (existing_handle);
 		}
 	}
 
@@ -768,7 +781,7 @@ void nano::active_transactions::clear ()
 {
 	{
 		auto guard{ lock () };
-		blocks.clear ();
+		rsnano::rsn_active_transactions_lock_blocks_clear (guard.handle);
 		rsnano::rsn_active_transactions_lock_roots_clear (guard.handle);
 	}
 	vacancy_update ();
@@ -781,7 +794,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (ac
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "roots", rsnano::rsn_active_transactions_lock_roots_size (guard.handle), sizeof (intptr_t) }));
 
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "blocks", active_transactions.blocks.size (), sizeof (decltype (active_transactions.blocks)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "blocks", rsnano::rsn_active_transactions_lock_blocks_len (guard.handle), sizeof (intptr_t) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "election_winner_details", active_transactions.election_winner_details_size (), sizeof (decltype (active_transactions.election_winner_details)::value_type) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "normal", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::normal))), 0 }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "hinted", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::hinted))), 0 }));

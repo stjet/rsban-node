@@ -365,7 +365,7 @@ TEST (active_transactions, inactive_votes_cache_existing_vote)
 	auto cache = node.inactive_vote_cache.find (send->hash ());
 	ASSERT_TRUE (cache);
 	ASSERT_EQ (1, cache->voters.size ());
-	election->fill_from_cache (node.election_helper, *cache);
+	node.election_helper.fill_from_cache (*election, *cache);
 	// Check that election data is not changed
 	ASSERT_EQ (2, election->votes ().size ());
 	auto last_vote2 (election->votes ()[key.pub]);

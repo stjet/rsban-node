@@ -195,7 +195,7 @@ void nano::election_helper::confirm_once (nano::election_lock & lock_a, nano::el
 		lock_a.unlock ();
 
 		node.background ([node_l = node.shared (), status_l, election_l = election.shared_from_this ()] () {
-			node_l->process_confirmed (status_l);
+			node_l->active.process_confirmed (status_l);
 
 			rsnano::rsn_election_confirmation_action (election_l->handle, status_l.get_winner ()->get_handle ());
 		});
@@ -208,13 +208,19 @@ void nano::election_helper::confirm_once (nano::election_lock & lock_a, nano::el
 
 bool nano::election_helper::confirmed (nano::election_lock & lock) const
 {
-	return node.block_confirmed (lock.status ().get_winner ()->hash ());
+	return confirmed (lock.status ().get_winner ()->hash ());
 }
 
 bool nano::election_helper::confirmed (nano::election & election) const
 {
 	auto guard{ election.lock () };
 	return confirmed (guard);
+}
+
+bool nano::election_helper::confirmed (nano::block_hash const & hash) const
+{
+	auto transaction (node.store.tx_begin_read ());
+	return node.ledger.block_confirmed (*transaction, hash);
 }
 
 void nano::election_helper::broadcast_vote_impl (nano::election_lock & lock, nano::election & election)
@@ -464,6 +470,20 @@ void nano::election_helper::log_votes (nano::election & election, nano::election
 		}
 	}
 	node.logger->try_log (tally.str ());
+}
+
+std::size_t nano::election_helper::fill_from_cache (nano::election & election, nano::vote_cache::entry const & entry)
+{
+	std::size_t inserted = 0;
+	for (const auto & [rep, timestamp] : entry.voters)
+	{
+		auto [is_replay, processed] = vote (election, rep, timestamp, entry.hash, nano::vote_source::cache);
+		if (processed)
+		{
+			inserted++;
+		}
+	}
+	return inserted;
 }
 
 nano::election_vote_result nano::election_helper::vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a)
@@ -855,31 +875,6 @@ void nano::election::inc_confirmation_request_count ()
 	rsnano::rsn_election_confirmation_request_count_inc (handle);
 }
 
-boost::optional<nano::election_status_type> nano::election::try_confirm (nano::block_hash const & hash, nano::election_helper & helper)
-{
-	boost::optional<nano::election_status_type> status_type;
-	auto guard{ lock () };
-	auto winner = guard.status ().get_winner ();
-	if (winner && winner->hash () == hash)
-	{
-		// Determine if the block was confirmed explicitly via election confirmation or implicitly via confirmation height
-		if (!status_confirmed ())
-		{
-			helper.confirm_once (guard, nano::election_status_type::active_confirmation_height, *this);
-			status_type = nano::election_status_type::active_confirmation_height;
-		}
-		else
-		{
-			status_type = nano::election_status_type::active_confirmed_quorum;
-		}
-	}
-	else
-	{
-		status_type = boost::optional<nano::election_status_type>{};
-	}
-	return status_type;
-}
-
 void nano::election::set_status_type (nano::election_status_type status_type)
 {
 	nano::election_lock election_lk{ *this };
@@ -893,20 +888,6 @@ std::shared_ptr<nano::block> nano::election::find (nano::block_hash const & hash
 {
 	nano::election_lock guard{ *this };
 	return guard.find_block (hash_a);
-}
-
-std::size_t nano::election::fill_from_cache (nano::election_helper & helper, nano::vote_cache::entry const & entry)
-{
-	std::size_t inserted = 0;
-	for (const auto & [rep, timestamp] : entry.voters)
-	{
-		auto [is_replay, processed] = helper.vote (*this, rep, timestamp, entry.hash, nano::vote_source::cache);
-		if (processed)
-		{
-			inserted++;
-		}
-	}
-	return inserted;
 }
 
 std::shared_ptr<nano::block> nano::election::winner () const

@@ -194,6 +194,7 @@ public:
 	// Later once the confirmation height processor has updated the confirmation height it will be confirmed on disk
 	// It is possible for an election to be confirmed on disk but not in memory, for instance if implicitly confirmed via confirmation height
 	bool confirmed (nano::election & election) const;
+	bool confirmed (nano::block_hash const & hash) const;
 	/**
 	 * Broadcast vote for current election winner. Generates final vote if reached quorum or already confirmed
 	 * Requires mutex lock
@@ -223,6 +224,10 @@ public:
 	 * If the election reaches consensus, it will be confirmed
 	 */
 	nano::election_vote_result vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a = nano::vote_source::live);
+	/**
+	* Inserts votes stored in the cache entry into this election
+	*/
+	std::size_t fill_from_cache (nano::election & election, nano::vote_cache::entry const & entry);
 	bool publish (std::shared_ptr<nano::block> const & block_a, nano::election & election);
 	void remove_votes (nano::election & election, nano::election_lock & lock, nano::block_hash const & hash_a);
 	void remove_block (nano::election_lock & lock, nano::block_hash const & hash_a);
@@ -277,12 +282,6 @@ public: // Interface
 	~election ();
 
 	std::shared_ptr<nano::block> find (nano::block_hash const &) const;
-	/**
-	* Inserts votes stored in the cache entry into this election
-	*/
-	std::size_t fill_from_cache (nano::election_helper & helper, nano::vote_cache::entry const & entry);
-
-	boost::optional<nano::election_status_type> try_confirm (nano::block_hash const & hash, nano::election_helper & helper);
 	void set_status_type (nano::election_status_type status_type);
 
 	nano::vote_info get_last_vote (nano::account const & account);

@@ -1309,8 +1309,7 @@ void nano::node::start_election (std::shared_ptr<nano::block> const & block)
 
 bool nano::node::block_confirmed (nano::block_hash const & hash_a)
 {
-	auto transaction (store.tx_begin_read ());
-	return ledger.block_confirmed (*transaction, hash_a);
+	return election_helper.confirmed (hash_a);
 }
 
 bool nano::node::block_confirmed_or_being_confirmed (nano::block_hash const & hash_a)
@@ -1422,34 +1421,7 @@ void nano::node::process_confirmed_data (store::transaction const & transaction_
 
 void nano::node::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)
 {
-	auto hash (status_a.get_winner ()->hash ());
-	decltype (iteration_a) const num_iters = (config->block_processor_batch_max_time / network_params.node.process_confirmed_interval) * 4;
-	std::shared_ptr<nano::block> block_l;
-	{
-		auto tx{ ledger.store.tx_begin_read () };
-		block_l = ledger.store.block ().get (*tx, hash);
-	}
-	if (block_l)
-	{
-		active.recently_confirmed.put (block_l->qualified_root (), hash);
-		confirmation_height_processor.add (block_l);
-	}
-	else if (iteration_a < num_iters)
-	{
-		iteration_a++;
-		std::weak_ptr<nano::node> node_w (shared ());
-		workers->add_timed_task (std::chrono::steady_clock::now () + network_params.node.process_confirmed_interval, [node_w, status_a, iteration_a] () {
-			if (auto node_l = node_w.lock ())
-			{
-				node_l->process_confirmed (status_a, iteration_a);
-			}
-		});
-	}
-	else
-	{
-		// Do some cleanup due to this block never being processed by confirmation height processor
-		active.remove_election_winner_details (hash);
-	}
+	active.process_confirmed(status_a, iteration_a);
 }
 
 std::shared_ptr<nano::node> nano::node::shared ()

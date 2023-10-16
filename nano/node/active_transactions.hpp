@@ -163,6 +163,7 @@ public:
 	std::size_t size () const;
 	bool publish (std::shared_ptr<nano::block> const &);
 	boost::optional<nano::election_status_type> confirm_block (store::transaction const &, std::shared_ptr<nano::block> const &);
+	boost::optional<nano::election_status_type> try_confirm (nano::election & election, nano::block_hash const & hash);
 	void block_cemented_callback (std::shared_ptr<nano::block> const &);
 	void block_already_cemented_callback (nano::block_hash const &);
 
@@ -181,6 +182,7 @@ public:
 	void add_election_winner_details (nano::block_hash const &, std::shared_ptr<nano::election> const &);
 	void remove_election_winner_details (nano::block_hash const &);
 	nano::active_transactions_lock lock () const;
+	void process_confirmed (nano::election_status const & status_a, uint64_t iteration_a = 0);
 
 private:
 	// Erase elections if we're over capacity
@@ -209,6 +211,7 @@ private:
 	void update_recently_cemented (std::shared_ptr<nano::election> const & election);
 	void handle_block_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block, nano::block_hash const & hash, nano::account & account, nano::uint128_t & amount, bool & is_state_send, bool & is_state_epoch, nano::account & pending_account);
 	void notify_observers (std::shared_ptr<nano::election> const & election, nano::account const & account, nano::uint128_t amount, bool is_state_send, bool is_state_epoch, nano::account const & pending_account);
+	bool confirmed (nano::election & election) const;
 
 private: // Dependencies
 	nano::confirmation_height_processor & confirmation_height_processor;

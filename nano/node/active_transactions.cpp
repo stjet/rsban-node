@@ -162,11 +162,19 @@ void nano::active_transactions::process_active_confirmation (nano::store::read_t
 		auto election = existing->second;
 		election_winner_details.erase (hash);
 		election_winners_lk.unlock ();
-		if (node.election_helper.confirmed (*election) && election->winner ()->hash () == hash)
+		if (confirmed (*election) && election->winner ()->hash () == hash)
 		{
 			handle_confirmation (transaction, block, election, status_type);
 		}
 	}
+}
+
+bool nano::active_transactions::confirmed (nano::election & election) const
+{
+	auto guard{ election.lock () };
+	auto hash = guard.status ().get_winner ()->hash ();
+	auto transaction (node.store.tx_begin_read ());
+	return node.ledger.block_confirmed (*transaction, hash);
 }
 
 void nano::active_transactions::handle_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block, std::shared_ptr<nano::election> election, nano::election_status_type status_type)
@@ -267,6 +275,38 @@ nano::active_transactions_lock nano::active_transactions::lock () const
 	return nano::active_transactions_lock{ *this };
 }
 
+void nano::active_transactions::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)
+{
+	auto hash (status_a.get_winner ()->hash ());
+	decltype (iteration_a) const num_iters = (node.config->block_processor_batch_max_time / node.network_params.node.process_confirmed_interval) * 4;
+	std::shared_ptr<nano::block> block_l;
+	{
+		auto tx{ node.ledger.store.tx_begin_read () };
+		block_l = node.ledger.store.block ().get (*tx, hash);
+	}
+	if (block_l)
+	{
+		recently_confirmed.put (block_l->qualified_root (), hash);
+		confirmation_height_processor.add (block_l);
+	}
+	else if (iteration_a < num_iters)
+	{
+		iteration_a++;
+		std::weak_ptr<nano::node> node_w (node.shared ());
+		node.workers->add_timed_task (std::chrono::steady_clock::now () + node.network_params.node.process_confirmed_interval, [node_w, status_a, iteration_a] () {
+			if (auto node_l = node_w.lock ())
+			{
+				node_l->active.process_confirmed (status_a, iteration_a);
+			}
+		});
+	}
+	else
+	{
+		// Do some cleanup due to this block never being processed by confirmation height processor
+		remove_election_winner_details (hash);
+	}
+}
+
 void nano::active_transactions::block_already_cemented_callback (nano::block_hash const & hash_a)
 {
 	// Depending on timing there is a situation where the election_winner_details is not reset.
@@ -340,7 +380,7 @@ void nano::active_transactions::request_confirm (nano::active_transactions_lock 
 	 */
 	for (auto const & election_l : elections_l)
 	{
-		bool const confirmed_l (node.election_helper.confirmed (*election_l));
+		bool const confirmed_l (confirmed (*election_l));
 		unconfirmed_count_l += !confirmed_l;
 
 		if (confirmed_l || node.election_helper.transition_time (solicitor, *election_l))
@@ -384,12 +424,12 @@ void nano::active_transactions::cleanup_election (nano::active_transactions_lock
 	for (auto const & [hash, block] : blocks_l)
 	{
 		// Notify observers about dropped elections & blocks lost confirmed elections
-		if (!node.election_helper.confirmed (*election) || hash != election->winner ()->hash ())
+		if (!confirmed (*election) || hash != election->winner ()->hash ())
 		{
 			node.observers->active_stopped.notify (hash);
 		}
 
-		if (!node.election_helper.confirmed (*election))
+		if (!confirmed (*election))
 		{
 			// Clear from publish filter
 			node.network->tcp_channels->publish_filter->clear (block);
@@ -398,7 +438,7 @@ void nano::active_transactions::cleanup_election (nano::active_transactions_lock
 
 	if (node.config->logging.election_result_logging ())
 	{
-		node.logger->try_log (boost::str (boost::format ("Election erased for root %1%, confirmed: %2$b") % election->qualified_root ().to_string () % node.election_helper.confirmed (*election)));
+		node.logger->try_log (boost::str (boost::format ("Election erased for root %1%, confirmed: %2$b") % election->qualified_root ().to_string () % confirmed (*election)));
 	}
 }
 
@@ -512,7 +552,7 @@ nano::election_insertion_result nano::active_transactions::insert_impl (nano::ac
 				lock_a.unlock ();
 				if (auto const cache = node.inactive_vote_cache.find (hash); cache)
 				{
-					result.election->fill_from_cache (node.election_helper, *cache);
+					node.election_helper.fill_from_cache (*result.election, *cache);
 				}
 				node.stats->inc (nano::stat::type::active_started, nano::to_stat_detail (election_behavior_a));
 				node.observers->active_started.notify (hash);
@@ -727,7 +767,7 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 			guard.unlock ();
 			if (auto const cache = node.inactive_vote_cache.find (block_a->hash ()); cache)
 			{
-				election->fill_from_cache (node.election_helper, *cache);
+				node.election_helper.fill_from_cache (*election, *cache);
 			}
 			node.stats->inc (nano::stat::type::active, nano::stat::detail::election_block_conflict);
 		}
@@ -752,13 +792,38 @@ boost::optional<nano::election_status_type> nano::active_transactions::confirm_b
 	boost::optional<nano::election_status_type> status_type;
 	if (election)
 	{
-		status_type = election->try_confirm (hash, node.election_helper);
+		status_type = try_confirm (*election, hash);
 	}
 	else
 	{
 		status_type = nano::election_status_type::inactive_confirmation_height;
 	}
 
+	return status_type;
+}
+
+boost::optional<nano::election_status_type> nano::active_transactions::try_confirm (nano::election & election, nano::block_hash const & hash)
+{
+	boost::optional<nano::election_status_type> status_type;
+	auto guard{ election.lock () };
+	auto winner = guard.status ().get_winner ();
+	if (winner && winner->hash () == hash)
+	{
+		// Determine if the block was confirmed explicitly via election confirmation or implicitly via confirmation height
+		if (!election.status_confirmed ())
+		{
+			node.election_helper.confirm_once (guard, nano::election_status_type::active_confirmation_height, election);
+			status_type = nano::election_status_type::active_confirmation_height;
+		}
+		else
+		{
+			status_type = nano::election_status_type::active_confirmed_quorum;
+		}
+	}
+	else
+	{
+		status_type = boost::optional<nano::election_status_type>{};
+	}
 	return status_type;
 }
 

@@ -83,15 +83,12 @@ private:
 	blocking_observer blocking;
 
 private:
-	// Roll back block in the ledger that conflicts with 'block'
-	void rollback_competitor (nano::store::write_transaction const & transaction, nano::block const & block);
-	nano::process_return process_one (nano::store::write_transaction const &, std::shared_ptr<nano::block> block, bool const = false);
-	void queue_unchecked (nano::hash_or_account const &);
 	std::deque<processed_t> process_batch (nano::block_processor_lock &);
 
 	bool stopped{ false };
 	bool active{ false };
 
+	nano::stats & stats;
 	nano::logger_mt & logger; // already ported
 	nano::signature_checker & checker; // already ported
 	nano::node_config & config; // already ported
@@ -102,15 +99,8 @@ public:
 	rsnano::BlockProcessorHandle * handle;
 
 private:
-	nano::ledger & ledger; // already ported
 	nano::node_flags & flags; // already ported
-	nano::store::component & store; // already ported
-	nano::stats & stats; // already ported
-	nano::unchecked_map & unchecked; // already ported
-	nano::gap_cache & gap_cache; // already ported
-	nano::write_database_queue & write_database_queue; // already ported
 	std::thread processing_thread;
-	std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> blocks_rolled_back;
 
 	friend std::unique_ptr<container_info_component> collect_container_info (block_processor & block_processor, std::string const & name);
 	friend class block_processor_lock;

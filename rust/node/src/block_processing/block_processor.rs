@@ -2,7 +2,7 @@ use rsnano_core::{
     to_hex_string,
     utils::{ContainerInfo, ContainerInfoComponent, Logger},
     work::WorkThresholds,
-    BlockEnum, BlockHash, BlockType, Epoch, Epochs, HashOrAccount, UncheckedInfo,
+    BlockEnum, BlockType, Epoch, Epochs, HashOrAccount, UncheckedInfo,
 };
 use rsnano_ledger::{Ledger, ProcessResult, WriteDatabaseQueue, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
@@ -221,15 +221,12 @@ impl BlockProcessor {
             }
 
             let block: Arc<BlockEnum>;
-            let hash: BlockHash;
             let force: bool;
             if lock_a.forced.len() == 0 {
                 block = lock_a.blocks.pop_front().unwrap();
-                hash = block.hash();
                 force = false;
             } else {
                 block = lock_a.forced.pop_front().unwrap();
-                hash = block.hash();
                 force = true;
                 number_of_forced_processed += 1;
             }

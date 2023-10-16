@@ -177,8 +177,8 @@ public:
 	nano::vote_cache inactive_vote_cache; // ported
 	nano::vote_generator generator;
 	nano::vote_generator final_generator;
-	nano::active_transactions active;
 	nano::block_processor block_processor;
+	nano::active_transactions active;
 	nano::election_helper election_helper;
 
 private: // Placed here to maintain initialization order

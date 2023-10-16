@@ -107,17 +107,10 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	checker (node_a.checker),
 	config (*node_a.config),
 	network_params (node_a.network_params),
-	ledger (node_a.ledger),
 	flags (node_a.flags),
-	store (node_a.store),
-	stats (*node_a.stats),
 	block_arrival (node_a.block_arrival),
-	unchecked (node_a.unchecked),
-	gap_cache (node_a.gap_cache),
-	write_database_queue (write_database_queue_a)
+	stats{ *node_a.stats }
 {
-	blocks_rolled_back = [] (std::vector<std::shared_ptr<nano::block>> const & rolled_back, std::shared_ptr<nano::block> const & initial_block) {};
-
 	auto config_dto{ config.to_dto () };
 	auto logger_handle = nano::to_logger_handle (node_a.logger);
 	handle = rsnano::rsn_block_processor_create (
@@ -250,31 +243,6 @@ std::optional<nano::process_return> nano::block_processor::add_blocking (std::sh
 	return result;
 }
 
-void nano::block_processor::rollback_competitor (store::write_transaction const & transaction, nano::block const & block)
-{
-	auto hash = block.hash ();
-	auto successor = ledger.successor (transaction, block.qualified_root ());
-	if (successor != nullptr && successor->hash () != hash)
-	{
-		// Replace our block with the winner and roll back any dependent blocks
-		if (config.logging.ledger_rollback_logging ())
-		{
-			logger.always_log (boost::str (boost::format ("Rolling back %1% and replacing with %2%") % successor->hash ().to_string () % hash.to_string ()));
-		}
-		std::vector<std::shared_ptr<nano::block>> rollback_list;
-		if (ledger.rollback (transaction, successor->hash (), rollback_list))
-		{
-			stats.inc (nano::stat::type::ledger, nano::stat::detail::rollback_failed);
-			logger.always_log (nano::severity_level::error, boost::str (boost::format ("Failed to roll back %1% because it or a successor was confirmed") % successor->hash ().to_string ()));
-		}
-		else if (config.logging.ledger_rollback_logging ())
-		{
-			logger.always_log (boost::str (boost::format ("%1% blocks rolled back") % rollback_list.size ()));
-		}
-		blocks_rolled_back (rollback_list, successor);
-	}
-}
-
 void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 {
 	{
@@ -318,8 +286,6 @@ void nano::block_processor::set_blocks_rolled_back_callback (std::function<void 
 	blocks_rolled_back_wrapper,
 	new std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> (callback),
 	blocks_rolled_back_delete);
-
-	blocks_rolled_back = callback;
 }
 
 bool nano::block_processor::have_blocks_ready (nano::block_processor_lock & lock_a)
@@ -334,80 +300,19 @@ bool nano::block_processor::have_blocks (nano::block_processor_lock & lock_a)
 
 auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) -> std::deque<processed_t>
 {
-	//TODO enable the Rust port:
-	//auto result_handle = rsnano::rsn_block_processor_process_batch (handle);
-	//std::deque<processed_t> result;
-	//auto size = rsnano::rsn_process_batch_result_size(result_handle);
-	//for (auto i = 0; i < size; ++i) {
-	//	uint8_t result_code = 0;
-	//	nano::process_return ret{static_cast<nano::process_result>(result_code)};
-	//	auto block_handle = rsnano::rsn_process_batch_result_get(result_handle, i, &result_code);
-	//	auto block = nano::block_handle_to_block(block_handle);
-	//	result.emplace_back(ret, block);
-	//}
-	//rsnano::rsn_process_batch_result_destroy(result_handle);
-	//return result;
-
-	std::deque<processed_t> processed;
-	auto scoped_write_guard = write_database_queue.wait (nano::writer::process_batch);
-	auto transaction (store.tx_begin_write ({ tables::accounts, tables::blocks, tables::frontiers, tables::pending }));
-	nano::timer<std::chrono::milliseconds> timer_l;
-	lock_a.lock (handle);
-	timer_l.start ();
-	// Processing blocks
-	unsigned number_of_blocks_processed (0), number_of_forced_processed (0);
-	auto deadline_reached = [&timer_l, deadline = config.block_processor_batch_max_time] { return timer_l.after_deadline (deadline); };
-	auto processor_batch_reached = [&number_of_blocks_processed, max = flags.block_processor_batch_size ()] { return number_of_blocks_processed >= max; };
-	auto store_batch_reached = [&number_of_blocks_processed, max = store.max_block_write_batch_num ()] { return number_of_blocks_processed >= max; };
-	while (have_blocks_ready (lock_a) && (!deadline_reached () || !processor_batch_reached ()) && !store_batch_reached ())
+	auto result_handle = rsnano::rsn_block_processor_process_batch (handle);
+	std::deque<processed_t> result;
+	auto size = rsnano::rsn_process_batch_result_size (result_handle);
+	for (auto i = 0; i < size; ++i)
 	{
-		if ((lock_a.blocks_size () + rsnano::rsn_block_processor_signature_verifier_size (handle) + lock_a.forced_size () > 64) && lock_a.should_log ())
-		{
-			logger.always_log (boost::str (boost::format ("%1% blocks (+ %2% state blocks) (+ %3% forced) in processing queue") % lock_a.blocks_size () % rsnano::rsn_block_processor_signature_verifier_size (handle) % lock_a.forced_size ()));
-		}
-		std::shared_ptr<nano::block> block;
-		nano::block_hash hash (0);
-		bool force (false);
-		if (lock_a.forced_size () == 0)
-		{
-			block = lock_a.pop_front_block ();
-			hash = block->hash ();
-		}
-		else
-		{
-			block = lock_a.pop_front_forced ();
-			hash = block->hash ();
-			force = true;
-			number_of_forced_processed++;
-		}
-		lock_a.unlock ();
-		if (force)
-		{
-			rollback_competitor (*transaction, *block);
-		}
-		number_of_blocks_processed++;
-		auto result = process_one (*transaction, block, force);
-		processed.emplace_back (result, block);
-		lock_a.lock (handle);
+		uint8_t result_code = 0;
+		auto block_handle = rsnano::rsn_process_batch_result_get (result_handle, i, &result_code);
+		auto block = nano::block_handle_to_block (block_handle);
+		nano::process_return ret{ static_cast<nano::process_result> (result_code) };
+		result.emplace_back (ret, block);
 	}
-	lock_a.unlock ();
-
-	if (config.logging.timing_logging () && number_of_blocks_processed != 0 && timer_l.stop () > std::chrono::milliseconds (100))
-	{
-		logger.always_log (boost::str (boost::format ("Processed %1% blocks (%2% blocks were forced) in %3% %4%") % number_of_blocks_processed % number_of_forced_processed % timer_l.value ().count () % timer_l.unit ()));
-	}
-	return processed;
-}
-
-nano::process_return nano::block_processor::process_one (store::write_transaction const & transaction_a, std::shared_ptr<nano::block> block, bool const forced_a)
-{
-	auto result = rsnano::rsn_block_processor_process_one (handle, transaction_a.get_rust_handle (), block->get_handle ());
-	return nano::process_return{ static_cast<nano::process_result> (result) };
-}
-
-void nano::block_processor::queue_unchecked (nano::hash_or_account const & hash_or_account_a)
-{
-	rsnano::rsn_block_processor_queue_unchecked (handle, hash_or_account_a.bytes.data ());
+	rsnano::rsn_process_batch_result_destroy (result_handle);
+	return result;
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (block_processor & block_processor, std::string const & name)

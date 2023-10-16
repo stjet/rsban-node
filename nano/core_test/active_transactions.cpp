@@ -74,7 +74,7 @@ TEST (active_transactions, confirm_election_by_request)
 
 	// Ensure election on node2 did not get confirmed without us requesting votes
 	WAIT (1s);
-	ASSERT_FALSE (node2.election_helper.confirmed (*election));
+	ASSERT_FALSE (node2.active.confirmed (*election));
 
 	// Expect that node2 has nobody to send a confirmation_request to (no reps)
 	ASSERT_EQ (0, election->get_confirmation_request_count ());
@@ -97,7 +97,7 @@ TEST (active_transactions, confirm_election_by_request)
 	ASSERT_TIMELY (5s, election->get_confirmation_request_count () >= 1);
 
 	// Expect election was confirmed
-	ASSERT_TIMELY (5s, node2.election_helper.confirmed (*election));
+	ASSERT_TIMELY (5s, node2.active.confirmed (*election));
 	ASSERT_TIMELY (5s, nano::test::confirmed (node1, { send1 }));
 	ASSERT_TIMELY (5s, nano::test::confirmed (node2, { send1 }));
 }
@@ -274,8 +274,8 @@ TEST (active_transactions, inactive_votes_cache_non_final)
 	std::shared_ptr<nano::election> election;
 	ASSERT_TIMELY (5s, election = node.active.election (send->qualified_root ()));
 	ASSERT_TIMELY_EQ (5s, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached), 1);
-	ASSERT_TIMELY_EQ (5s, nano::dev::constants.genesis_amount - 100, node.election_helper.tally (*election).begin ()->first);
-	ASSERT_FALSE (node.election_helper.confirmed (*election));
+	ASSERT_TIMELY_EQ (5s, nano::dev::constants.genesis_amount - 100, node.active.tally (*election).begin ()->first);
+	ASSERT_FALSE (node.active.confirmed (*election));
 }
 
 TEST (active_transactions, inactive_votes_cache_fork)
@@ -365,7 +365,7 @@ TEST (active_transactions, inactive_votes_cache_existing_vote)
 	auto cache = node.inactive_vote_cache.find (send->hash ());
 	ASSERT_TRUE (cache);
 	ASSERT_EQ (1, cache->voters.size ());
-	node.election_helper.fill_from_cache (*election, *cache);
+	node.active.fill_from_cache (*election, *cache);
 	// Check that election data is not changed
 	ASSERT_EQ (2, election->votes ().size ());
 	auto last_vote2 (election->votes ()[key.pub]);
@@ -647,7 +647,7 @@ TEST (active_transactions, dropped_cleanup)
 	ASSERT_TRUE (node.active.active (hash));
 
 	// Now simulate dropping the election
-	ASSERT_FALSE (node.election_helper.confirmed (*election));
+	ASSERT_FALSE (node.active.confirmed (*election));
 	node.active.erase (*chain[0]);
 
 	// The filter must have been cleared
@@ -665,7 +665,7 @@ TEST (active_transactions, dropped_cleanup)
 	election = nano::test::start_election (system, node, hash);
 	ASSERT_NE (nullptr, election);
 	node.active.force_confirm (*election);
-	ASSERT_TIMELY (5s, node.election_helper.confirmed (*election));
+	ASSERT_TIMELY (5s, node.active.confirmed (*election));
 	node.active.erase (*chain[0]);
 
 	// The filter should not have been cleared
@@ -740,7 +740,7 @@ TEST (active_transactions, republish_winner)
 	node1.vote_processor.vote (vote, std::make_shared<nano::transport::inproc::channel> (node1, node1));
 	node1.vote_processor.flush ();
 	node1.block_processor.flush ();
-	ASSERT_TIMELY (5s, node1.election_helper.confirmed (*election));
+	ASSERT_TIMELY (5s, node1.active.confirmed (*election));
 	ASSERT_EQ (fork->hash (), election->get_status ().get_winner ()->hash ());
 	ASSERT_TIMELY (5s, node2.block_confirmed (fork->hash ()));
 }
@@ -1083,7 +1083,7 @@ TEST (active_transactions, conflicting_block_vote_existing_election)
 	// Election must be confirmed
 	auto election (node.active.election (fork->qualified_root ()));
 	ASSERT_NE (nullptr, election);
-	ASSERT_TIMELY (3s, node.election_helper.confirmed (*election));
+	ASSERT_TIMELY (3s, node.active.confirmed (*election));
 }
 
 TEST (active_transactions, activate_account_chain)

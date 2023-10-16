@@ -215,8 +215,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, boost::filesystem::path co
 	block_broadcast{ *network, block_arrival, !flags.disable_block_processor_republishing () },
 	block_publisher{ active },
 	gap_tracker{ gap_cache },
-	process_live_dispatcher{ ledger, scheduler.priority, inactive_vote_cache, websocket },
-	election_helper{ *this }
+	process_live_dispatcher{ ledger, scheduler.priority, inactive_vote_cache, websocket }
 {
 	std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> handle_roll_back =
 	[node_a = &(*this)] (std::vector<std::shared_ptr<nano::block>> const & rolled_back, std::shared_ptr<nano::block> const & initial_block) {
@@ -1323,7 +1322,7 @@ void nano::node::start_election (std::shared_ptr<nano::block> const & block)
 
 bool nano::node::block_confirmed (nano::block_hash const & hash_a)
 {
-	return election_helper.confirmed (hash_a);
+	return active.confirmed (hash_a);
 }
 
 bool nano::node::block_confirmed_or_being_confirmed (nano::block_hash const & hash_a)

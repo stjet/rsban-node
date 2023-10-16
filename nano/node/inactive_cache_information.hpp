@@ -7,7 +7,7 @@
 
 namespace nano
 {
-class election_helper;
+class active_transactions;
 class inactive_cache_information final
 {
 public:
@@ -35,7 +35,7 @@ public:
 	 * Inserts votes stored in this entry into an election
 	 * @return number of votes inserted
 	 */
-	std::size_t fill (std::shared_ptr<nano::election> election, nano::election_helper & helper) const;
+	std::size_t fill (std::shared_ptr<nano::election> election, nano::active_transactions & active) const;
 };
 
 }

@@ -179,7 +179,6 @@ public:
 	nano::vote_generator final_generator;
 	nano::block_processor block_processor;
 	nano::active_transactions active;
-	nano::election_helper election_helper;
 
 private: // Placed here to maintain initialization order
 	std::unique_ptr<nano::scheduler::component> scheduler_impl;

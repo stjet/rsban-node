@@ -1,6 +1,5 @@
 mod active_transactions;
 mod election;
-mod election_helper;
 mod local_vote_history;
 mod vote;
 mod vote_spacing;

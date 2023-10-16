@@ -71,7 +71,7 @@ TEST (election, quorum_minimum_flip_success)
 	auto vote = nano::test::make_final_vote (nano::dev::genesis_key, { send2->hash () });
 	ASSERT_EQ (nano::vote_code::vote, node1.active.vote (vote));
 
-	ASSERT_TIMELY (5s, node1.election_helper.confirmed (*election));
+	ASSERT_TIMELY (5s, node1.active.confirmed (*election));
 	auto const winner = election->winner ();
 	ASSERT_NE (nullptr, winner);
 	ASSERT_EQ (*winner, *send2);
@@ -123,7 +123,7 @@ TEST (election, quorum_minimum_flip_fail)
 	// give the election some time before asserting it is not confirmed so that in case
 	// it would be wrongfully confirmed, have that immediately fail instead of race
 	WAIT (1s);
-	ASSERT_FALSE (node.election_helper.confirmed (*election));
+	ASSERT_FALSE (node.active.confirmed (*election));
 	ASSERT_FALSE (node.block_confirmed (send2->hash ()));
 }
 
@@ -156,7 +156,7 @@ TEST (election, quorum_minimum_confirm_success)
 	auto vote = nano::test::make_final_vote (nano::dev::genesis_key, { send1->hash () });
 	ASSERT_EQ (nano::vote_code::vote, node1.active.vote (vote));
 	ASSERT_NE (nullptr, node1.block (send1->hash ()));
-	ASSERT_TIMELY (5s, node1.election_helper.confirmed (*election));
+	ASSERT_TIMELY (5s, node1.active.confirmed (*election));
 }
 
 // checks that block cannot be confirmed if there is no enough votes to reach quorum
@@ -192,7 +192,7 @@ TEST (election, quorum_minimum_confirm_fail)
 
 	// it should not confirm because there should not be enough quorum
 	ASSERT_TRUE (node1.block (send1->hash ()));
-	ASSERT_FALSE (node1.election_helper.confirmed (*election));
+	ASSERT_FALSE (node1.active.confirmed (*election));
 }
 
 namespace nano
@@ -256,13 +256,13 @@ TEST (election, quorum_minimum_update_weight_before_quorum_checks)
 	auto vote2 = nano::test::make_final_vote (key1, { send1->hash () });
 	ASSERT_FALSE (node1.rep_crawler.response (channel, vote2, true));
 
-	ASSERT_FALSE (node1.election_helper.confirmed (*election));
+	ASSERT_FALSE (node1.active.confirmed (*election));
 	{
 		// Modify online_m for online_reps to more than is available, this checks that voting below updates it to current online reps.
 		node1.online_reps.set_online (node_config.online_weight_minimum.number () + 20);
 	}
 	ASSERT_EQ (nano::vote_code::vote, node1.active.vote (vote2));
-	ASSERT_TIMELY (5s, node1.election_helper.confirmed (*election));
+	ASSERT_TIMELY (5s, node1.active.confirmed (*election));
 	ASSERT_NE (nullptr, node1.block (send1->hash ()));
 }
 }

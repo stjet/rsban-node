@@ -1,4 +1,5 @@
 #include <nano/lib/rsnanoutils.hpp>
+#include <nano/node/active_transactions.hpp>
 #include <nano/node/election.hpp>
 #include <nano/node/inactive_cache_information.hpp>
 
@@ -79,12 +80,12 @@ std::string nano::inactive_cache_information::to_string () const
 	return rsnano::convert_dto_to_string (result);
 }
 
-std::size_t nano::inactive_cache_information::fill (std::shared_ptr<nano::election> election, nano::election_helper & helper) const
+std::size_t nano::inactive_cache_information::fill (std::shared_ptr<nano::election> election, nano::active_transactions & active) const
 {
 	std::size_t inserted = 0;
 	for (auto const & [rep, timestamp] : get_voters ())
 	{
-		auto [is_replay, processed] = helper.vote (*election, rep, timestamp, get_hash (), nano::vote_source::cache);
+		auto [is_replay, processed] = active.vote (*election, rep, timestamp, get_hash (), nano::vote_source::cache);
 		if (processed)
 		{
 			inserted++;

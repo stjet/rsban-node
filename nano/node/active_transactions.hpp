@@ -196,6 +196,27 @@ public:
 	 * Calculates minimum time delay between subsequent votes when processing non-final votes
 	 */
 	std::chrono::seconds cooldown_time (nano::uint128_t weight) const;
+	// Returns true when the winning block is durably confirmed in the ledger.
+	// Later once the confirmation height processor has updated the confirmation height it will be confirmed on disk
+	// It is possible for an election to be confirmed on disk but not in memory, for instance if implicitly confirmed via confirmation height
+	bool confirmed (nano::election & election) const;
+	bool confirmed (nano::election_lock & lock) const;
+	bool confirmed (nano::block_hash const & hash) const;
+	void remove_block (nano::election_lock & lock, nano::block_hash const & hash_a);
+	bool replace_by_weight (nano::election & election, nano::election_lock & lock_a, nano::block_hash const & hash_a);
+	std::vector<nano::vote_with_weight_info> votes_with_weight (nano::election & election) const;
+	bool publish (std::shared_ptr<nano::block> const & block_a, nano::election & election);
+	/*
+	 * Process vote. Internally uses cooldown to throttle non-final votes
+	 * If the election reaches consensus, it will be confirmed
+	 */
+	nano::election_vote_result vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a = nano::vote_source::live);
+	/**
+	* Inserts votes stored in the cache entry into this election
+	*/
+	std::size_t fill_from_cache (nano::election & election, nano::vote_cache::entry const & entry);
+	nano::election_extended_status current_status (nano::election & election) const;
+	nano::tally_t tally (nano::election & election) const;
 
 private:
 	// Erase elections if we're over capacity
@@ -224,7 +245,25 @@ private:
 	void update_recently_cemented (std::shared_ptr<nano::election> const & election);
 	void handle_block_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block, nano::block_hash const & hash, nano::account & account, nano::uint128_t & amount, bool & is_state_send, bool & is_state_epoch, nano::account & pending_account);
 	void notify_observers (std::shared_ptr<nano::election> const & election, nano::account const & account, nano::uint128_t amount, bool is_state_send, bool is_state_epoch, nano::account const & pending_account);
-	bool confirmed (nano::election & election) const;
+	/**
+	 * Broadcast vote for current election winner. Generates final vote if reached quorum or already confirmed
+	 * Requires mutex lock
+	 */
+	void broadcast_vote_impl (nano::election_lock & lock, nano::election & election);
+	/**
+	 * Broadcasts vote for the current winner of this election
+	 * Checks if sufficient amount of time (`vote_generation_interval`) passed since the last vote generation
+	 */
+	void broadcast_vote (nano::election & election);
+	void broadcast_block (nano::confirmation_solicitor & solicitor_a, nano::election & election);
+	// Minimum time between broadcasts of the current winner of an election, as a backup to requesting confirmations
+	std::chrono::milliseconds base_latency () const;
+	/**
+	 * Calculates time delay between broadcasting confirmation requests
+	 */
+	std::chrono::milliseconds confirm_req_time (nano::election & election) const;
+	void send_confirm_req (nano::confirmation_solicitor & solicitor_a, nano::election & election);
+	bool transition_time (nano::confirmation_solicitor & solicitor_a, nano::election & election);
 
 private: // Dependencies
 	nano::confirmation_height_processor & confirmation_height_processor;
@@ -248,7 +287,6 @@ public:
 
 private:
 	friend class election;
-	friend class election_helper;
 	friend class active_transactions_lock;
 	friend std::unique_ptr<container_info_component> collect_container_info (active_transactions &, std::string const &);
 

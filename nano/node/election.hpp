@@ -174,59 +174,6 @@ enum class vote_source
 	cache,
 };
 
-class election_helper
-{
-public:
-	election_helper (nano::node & node_a);
-	election_helper (election_helper const &) = delete;
-	~election_helper ();
-	// Minimum time between broadcasts of the current winner of an election, as a backup to requesting confirmations
-	std::chrono::milliseconds base_latency () const;
-	bool confirmed (nano::election_lock & lock) const;
-	// Returns true when the winning block is durably confirmed in the ledger.
-	// Later once the confirmation height processor has updated the confirmation height it will be confirmed on disk
-	// It is possible for an election to be confirmed on disk but not in memory, for instance if implicitly confirmed via confirmation height
-	bool confirmed (nano::election & election) const;
-	bool confirmed (nano::block_hash const & hash) const;
-	/**
-	 * Broadcast vote for current election winner. Generates final vote if reached quorum or already confirmed
-	 * Requires mutex lock
-	 */
-	void broadcast_vote_impl (nano::election_lock & lock, nano::election & election);
-	/**
-	 * Broadcasts vote for the current winner of this election
-	 * Checks if sufficient amount of time (`vote_generation_interval`) passed since the last vote generation
-	 */
-	void broadcast_vote (nano::election & election);
-	bool transition_time (nano::confirmation_solicitor & solicitor_a, nano::election & election);
-	void broadcast_block (nano::confirmation_solicitor & solicitor_a, nano::election & election);
-	void send_confirm_req (nano::confirmation_solicitor & solicitor_a, nano::election & election);
-	/**
-	 * Calculates time delay between broadcasting confirmation requests
-	 */
-	std::chrono::milliseconds confirm_req_time (nano::election & election) const;
-	nano::tally_t tally (nano::election & election) const;
-	nano::election_extended_status current_status (nano::election & election) const;
-	/*
-	 * Process vote. Internally uses cooldown to throttle non-final votes
-	 * If the election reaches consensus, it will be confirmed
-	 */
-	nano::election_vote_result vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a = nano::vote_source::live);
-	/**
-	* Inserts votes stored in the cache entry into this election
-	*/
-	std::size_t fill_from_cache (nano::election & election, nano::vote_cache::entry const & entry);
-	bool publish (std::shared_ptr<nano::block> const & block_a, nano::election & election);
-	void remove_block (nano::election_lock & lock, nano::block_hash const & hash_a);
-	bool replace_by_weight (nano::election & election, nano::election_lock & lock_a, nano::block_hash const & hash_a);
-	std::vector<nano::vote_with_weight_info> votes_with_weight (nano::election & election) const;
-
-	rsnano::ElectionHelperHandle * handle;
-
-private:
-	nano::node & node;
-};
-
 class election final : public std::enable_shared_from_this<nano::election>
 {
 private: // State management

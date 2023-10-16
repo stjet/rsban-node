@@ -179,33 +179,6 @@ std::chrono::milliseconds nano::election_helper::base_latency () const
 	return node.network_params.network.is_dev_network () ? 25ms : 1000ms;
 }
 
-void nano::election_helper::confirm_once (nano::election_lock & lock_a, nano::election_status_type type_a, nano::election & election)
-{
-	// This must be kept above the setting of election state, as dependent confirmed elections require up to date changes to election_winner_details
-	nano::unique_lock<nano::mutex> election_winners_lk{ node.active.election_winner_details_mutex };
-	auto status_l{ lock_a.status () };
-	auto old_state = static_cast<nano::election::state_t> (rsnano::rsn_election_state_exchange (election.handle, static_cast<uint8_t> (nano::election::state_t::confirmed)));
-	if (old_state != nano::election::state_t::confirmed && (node.active.election_winner_details.count (status_l.get_winner ()->hash ()) == 0))
-	{
-		node.active.election_winner_details.emplace (status_l.get_winner ()->hash (), election.shared_from_this ());
-		election_winners_lk.unlock ();
-
-		rsnano::rsn_election_lock_update_status_to_confirmed (lock_a.handle, election.handle, static_cast<uint8_t> (type_a));
-		status_l = lock_a.status ();
-		lock_a.unlock ();
-
-		node.background ([node_l = node.shared (), status_l, election_l = election.shared_from_this ()] () {
-			node_l->active.process_confirmed (status_l);
-
-			rsnano::rsn_election_confirmation_action (election_l->handle, status_l.get_winner ()->get_handle ());
-		});
-	}
-	else
-	{
-		lock_a.unlock ();
-	}
-}
-
 bool nano::election_helper::confirmed (nano::election_lock & lock) const
 {
 	return confirmed (lock.status ().get_winner ()->hash ());
@@ -229,7 +202,7 @@ void nano::election_helper::broadcast_vote_impl (nano::election_lock & lock, nan
 	{
 		node.stats->inc (nano::stat::type::election, nano::stat::detail::generate_vote);
 
-		if (confirmed (lock) || have_quorum (tally_impl (lock)))
+		if (confirmed (lock) || have_quorum (node.active.tally_impl (lock)))
 		{
 			node.stats->inc (nano::stat::type::election, nano::stat::detail::generate_vote_final);
 			node.final_generator.add (election.root (), lock.status ().get_winner ()->hash ()); // Broadcasts vote to the network
@@ -290,7 +263,7 @@ bool nano::election_helper::transition_time (nano::confirmation_solicitor & soli
 			result = true; // Return true to indicate this election should be cleaned up
 			if (node.config->logging.election_expiration_tally_logging ())
 			{
-				log_votes (election, guard, tally_impl (guard), "Election expired: ");
+				log_votes (election, guard, node.active.tally_impl (guard), "Election expired: ");
 			}
 			auto st{ guard.status () };
 			st.set_election_status_type (nano::election_status_type::stopped);
@@ -350,51 +323,10 @@ bool nano::election_helper::have_quorum (nano::tally_t const & tally_a) const
 	return result;
 }
 
-nano::tally_t nano::election_helper::tally_impl (nano::election_lock & lock) const
-{
-	std::unordered_map<nano::block_hash, nano::uint128_t> block_weights;
-	std::unordered_map<nano::block_hash, nano::uint128_t> final_weights_l;
-	for (auto const & [account, info] : lock.last_votes ())
-	{
-		auto rep_weight (node.ledger.weight (account));
-		block_weights[info.get_hash ()] += rep_weight;
-		if (info.get_timestamp () == std::numeric_limits<uint64_t>::max ())
-		{
-			final_weights_l[info.get_hash ()] += rep_weight;
-		}
-	}
-	rsnano::rsn_election_lock_last_tally_clear (lock.handle);
-	for (const auto & item : block_weights)
-	{
-		nano::amount a{ item.second };
-		rsnano::rsn_election_lock_last_tally_add (lock.handle, item.first.bytes.data (), a.bytes.data ());
-	}
-	nano::tally_t result;
-	for (auto const & [hash, amount] : block_weights)
-	{
-		auto block (lock.find_block (hash));
-		if (block != nullptr)
-		{
-			result.emplace (amount, block);
-		}
-	}
-	// Calculate final votes sum for winner
-	if (!final_weights_l.empty () && !result.empty ())
-	{
-		auto winner_hash (result.begin ()->second->hash ());
-		auto find_final (final_weights_l.find (winner_hash));
-		if (find_final != final_weights_l.end ())
-		{
-			lock.set_final_weight (find_final->second);
-		}
-	}
-	return result;
-}
-
 nano::tally_t nano::election_helper::tally (nano::election & election) const
 {
 	auto guard{ election.lock () };
-	return tally_impl (guard);
+	return node.active.tally_impl (guard);
 }
 
 nano::election_extended_status nano::election_helper::current_status (nano::election & election) const
@@ -404,12 +336,12 @@ nano::election_extended_status nano::election_helper::current_status (nano::elec
 	status_l.set_confirmation_request_count (election.get_confirmation_request_count ());
 	status_l.set_block_count (nano::narrow_cast<decltype (status_l.get_block_count ())> (guard.last_blocks_size ()));
 	status_l.set_voter_count (nano::narrow_cast<decltype (status_l.get_voter_count ())> (guard.last_votes_size ()));
-	return nano::election_extended_status{ status_l, guard.last_votes (), tally_impl (guard) };
+	return nano::election_extended_status{ status_l, guard.last_votes (), node.active.tally_impl (guard) };
 }
 
 void nano::election_helper::confirm_if_quorum (nano::election_lock & lock_a, nano::election & election)
 {
-	auto tally_l (tally_impl (lock_a));
+	auto tally_l (node.active.tally_impl (lock_a));
 	debug_assert (!tally_l.empty ());
 	auto winner (tally_l.begin ());
 	auto block_l (winner->second);
@@ -447,7 +379,7 @@ void nano::election_helper::confirm_if_quorum (nano::election_lock & lock_a, nan
 			{
 				log_votes (election, lock_a, tally_l);
 			}
-			confirm_once (lock_a, nano::election_status_type::active_confirmed_quorum, election);
+			node.active.confirm_once (lock_a, nano::election_status_type::active_confirmed_quorum, election);
 		}
 	}
 }
@@ -682,7 +614,7 @@ void nano::election_helper::force_confirm (nano::election & election, nano::elec
 {
 	release_assert (node.network_params.network.is_dev_network ());
 	nano::election_lock lock{ election };
-	confirm_once (lock, type_a, election);
+	node.active.confirm_once (lock, type_a, election);
 }
 
 std::vector<nano::vote_with_weight_info> nano::election_helper::votes_with_weight (nano::election & election) const

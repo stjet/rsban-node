@@ -218,6 +218,20 @@ nano::node::node (rsnano::async_runtime & async_rt_a, boost::filesystem::path co
 	process_live_dispatcher{ ledger, scheduler.priority, inactive_vote_cache, websocket },
 	election_helper{ *this }
 {
+	std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> handle_roll_back =
+	[node_a = &(*this)] (std::vector<std::shared_ptr<nano::block>> const & rolled_back, std::shared_ptr<nano::block> const & initial_block) {
+		// Deleting from votes cache, stop active transaction
+		for (auto & i : rolled_back)
+		{
+			node_a->history.erase (i->root ());
+			// Stop all rolled back active transactions except initial
+			if (i->hash () != initial_block->hash ())
+			{
+				node_a->active.erase (*i);
+			}
+		}
+	};
+	block_processor.set_blocks_rolled_back_callback (handle_roll_back);
 	logger->always_log ("Node ID: ", node_id.pub.to_node_id ());
 	network->tcp_channels->set_observer (tcp_listener);
 	nano::transport::request_response_visitor_factory visitor_factory{ *this };
@@ -1421,7 +1435,7 @@ void nano::node::process_confirmed_data (store::transaction const & transaction_
 
 void nano::node::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)
 {
-	active.process_confirmed(status_a, iteration_a);
+	active.process_confirmed (status_a, iteration_a);
 }
 
 std::shared_ptr<nano::node> nano::node::shared ()

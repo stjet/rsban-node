@@ -1,12 +1,11 @@
 use crate::{
-    core::{BlockHandle, EpochsHandle},
+    core::{BlockArrayDto, BlockHandle, BlockVecHandle, EpochsHandle},
     gap_cache::GapCacheHandle,
     ledger::datastore::{LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle},
     unchecked_map::UncheckedMapHandle,
-    utils::{ContainerInfoComponentHandle, LoggerHandle, LoggerMT},
-    voting::{ActiveTransactionsHandle, LocalVoteHistoryHandle},
+    utils::{ContainerInfoComponentHandle, ContextWrapper, LoggerHandle, LoggerMT},
     work::WorkThresholdsDto,
-    NodeConfigDto, NodeFlagsHandle, SignatureCheckerHandle, StatHandle,
+    NodeConfigDto, NodeFlagsHandle, SignatureCheckerHandle, StatHandle, VoidPointerCallback,
 };
 use rsnano_core::{work::WorkThresholds, BlockEnum, HashOrAccount};
 use rsnano_ledger::ProcessResult;
@@ -48,8 +47,6 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     stats: &StatHandle,
     work: &WorkThresholdsDto,
     write_database_queue: &WriteDatabaseQueueHandle,
-    history: &LocalVoteHistoryHandle,
-    active: &ActiveTransactionsHandle,
 ) -> *mut BlockProcessorHandle {
     let config = Arc::new(NodeConfig::try_from(config).unwrap());
     let checker = Arc::clone(&checker);
@@ -62,8 +59,6 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     let stats = Arc::clone(&stats);
     let work = Arc::new(WorkThresholds::from(work));
     let write_database_queue = Arc::clone(write_database_queue);
-    let active = Arc::clone(active);
-    let history = Arc::clone(&history);
     let processor = Arc::new(BlockProcessor::new(
         handle,
         config,
@@ -77,8 +72,6 @@ pub unsafe extern "C" fn rsn_block_processor_create(
         stats,
         work,
         write_database_queue,
-        history,
-        active,
     ));
     processor.init();
     Box::into_raw(Box::new(BlockProcessorHandle(processor)))
@@ -92,6 +85,27 @@ pub extern "C" fn rsn_block_processor_destroy(handle: *mut BlockProcessorHandle)
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_stop(handle: &BlockProcessorHandle) {
     handle.stop().unwrap();
+}
+
+pub type BlocksRolledBackCallback =
+    extern "C" fn(*mut c_void, *mut BlockVecHandle, *mut BlockHandle);
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_set_blocks_rolled_back_callback(
+    handle: &BlockProcessorHandle,
+    callback: BlocksRolledBackCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let context = ContextWrapper::new(context, delete_context);
+    handle.set_blocks_rolled_back_callback(Box::new(move |rolled_back, initial_block| {
+        let initial_block = BlockHandle::new(Arc::new(initial_block));
+        callback(
+            context.get_context(),
+            BlockVecHandle::new2(rolled_back),
+            initial_block,
+        );
+    }));
 }
 
 #[no_mangle]

@@ -183,6 +183,9 @@ public:
 	void remove_election_winner_details (nano::block_hash const &);
 	nano::active_transactions_lock lock () const;
 	void process_confirmed (nano::election_status const & status_a, uint64_t iteration_a = 0);
+	// lock_a does not own the mutex on return
+	void confirm_once (nano::election_lock & lock_a, nano::election_status_type type_a, nano::election & election);
+	nano::tally_t tally_impl (nano::election_lock & lock) const;
 
 private:
 	// Erase elections if we're over capacity

@@ -307,6 +307,74 @@ void nano::active_transactions::process_confirmed (nano::election_status const &
 	}
 }
 
+void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano::election_status_type type_a, nano::election & election)
+{
+	// This must be kept above the setting of election state, as dependent confirmed elections require up to date changes to election_winner_details
+	nano::unique_lock<nano::mutex> election_winners_lk{ election_winner_details_mutex };
+	auto status_l{ lock_a.status () };
+	auto old_state = static_cast<nano::election::state_t> (rsnano::rsn_election_state_exchange (election.handle, static_cast<uint8_t> (nano::election::state_t::confirmed)));
+	if (old_state != nano::election::state_t::confirmed && (election_winner_details.count (status_l.get_winner ()->hash ()) == 0))
+	{
+		election_winner_details.emplace (status_l.get_winner ()->hash (), election.shared_from_this ());
+		election_winners_lk.unlock ();
+
+		rsnano::rsn_election_lock_update_status_to_confirmed (lock_a.handle, election.handle, static_cast<uint8_t> (type_a));
+		status_l = lock_a.status ();
+		lock_a.unlock ();
+
+		node.background ([node_l = node.shared (), status_l, election_l = election.shared_from_this ()] () {
+			node_l->active.process_confirmed (status_l);
+
+			rsnano::rsn_election_confirmation_action (election_l->handle, status_l.get_winner ()->get_handle ());
+		});
+	}
+	else
+	{
+		lock_a.unlock ();
+	}
+}
+
+nano::tally_t nano::active_transactions::tally_impl (nano::election_lock & lock) const
+{
+	std::unordered_map<nano::block_hash, nano::uint128_t> block_weights;
+	std::unordered_map<nano::block_hash, nano::uint128_t> final_weights_l;
+	for (auto const & [account, info] : lock.last_votes ())
+	{
+		auto rep_weight (node.ledger.weight (account));
+		block_weights[info.get_hash ()] += rep_weight;
+		if (info.get_timestamp () == std::numeric_limits<uint64_t>::max ())
+		{
+			final_weights_l[info.get_hash ()] += rep_weight;
+		}
+	}
+	rsnano::rsn_election_lock_last_tally_clear (lock.handle);
+	for (const auto & item : block_weights)
+	{
+		nano::amount a{ item.second };
+		rsnano::rsn_election_lock_last_tally_add (lock.handle, item.first.bytes.data (), a.bytes.data ());
+	}
+	nano::tally_t result;
+	for (auto const & [hash, amount] : block_weights)
+	{
+		auto block (lock.find_block (hash));
+		if (block != nullptr)
+		{
+			result.emplace (amount, block);
+		}
+	}
+	// Calculate final votes sum for winner
+	if (!final_weights_l.empty () && !result.empty ())
+	{
+		auto winner_hash (result.begin ()->second->hash ());
+		auto find_final (final_weights_l.find (winner_hash));
+		if (find_final != final_weights_l.end ())
+		{
+			lock.set_final_weight (find_final->second);
+		}
+	}
+	return result;
+}
+
 void nano::active_transactions::block_already_cemented_callback (nano::block_hash const & hash_a)
 {
 	// Depending on timing there is a situation where the election_winner_details is not reset.
@@ -812,7 +880,7 @@ boost::optional<nano::election_status_type> nano::active_transactions::try_confi
 		// Determine if the block was confirmed explicitly via election confirmation or implicitly via confirmation height
 		if (!election.status_confirmed ())
 		{
-			node.election_helper.confirm_once (guard, nano::election_status_type::active_confirmation_height, election);
+			confirm_once (guard, nano::election_status_type::active_confirmation_height, election);
 			status_type = nano::election_status_type::active_confirmation_height;
 		}
 		else

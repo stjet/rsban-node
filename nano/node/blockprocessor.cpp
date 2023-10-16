@@ -1,6 +1,7 @@
 #include "nano/lib/blocks.hpp"
 #include "nano/lib/logger_mt.hpp"
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/rsnanoutils.hpp"
 
 #include <nano/lib/threading.hpp>
 #include <nano/lib/timer.hpp>
@@ -83,6 +84,24 @@ public:
 };
 }
 
+namespace
+{
+void blocks_rolled_back_wrapper (void * context, rsnano::BlockVecHandle * rolled_back, rsnano::BlockHandle * initial_block)
+{
+	auto callback = static_cast<std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> *> (context);
+	auto initial = nano::block_handle_to_block (initial_block);
+	rsnano::block_vec blocks{ rolled_back };
+	auto vec{ blocks.to_vector () };
+	(*callback) (vec, initial);
+}
+
+void blocks_rolled_back_delete (void * context)
+{
+	auto callback = static_cast<std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> *> (context);
+	delete callback;
+}
+}
+
 nano::block_processor::block_processor (nano::node & node_a, nano::write_database_queue & write_database_queue_a) :
 	logger (*node_a.logger),
 	checker (node_a.checker),
@@ -97,19 +116,7 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	gap_cache (node_a.gap_cache),
 	write_database_queue (write_database_queue_a)
 {
-	blocks_rolled_back =
-	[&node_a] (std::vector<std::shared_ptr<nano::block>> const & rolled_back, std::shared_ptr<nano::block> const & initial_block) {
-		// Deleting from votes cache, stop active transaction
-		for (auto & i : rolled_back)
-		{
-			node_a.history.erase (i->root ());
-			// Stop all rolled back active transactions except initial
-			if (i->hash () != initial_block->hash ())
-			{
-				node_a.active.erase (*i);
-			}
-		}
-	};
+	blocks_rolled_back = [] (std::vector<std::shared_ptr<nano::block>> const & rolled_back, std::shared_ptr<nano::block> const & initial_block) {};
 
 	auto config_dto{ config.to_dto () };
 	auto logger_handle = nano::to_logger_handle (node_a.logger);
@@ -125,9 +132,7 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	node_a.gap_cache.handle,
 	node_a.stats->handle,
 	&node_a.config->network_params.work.dto,
-	write_database_queue_a.handle,
-	node_a.history.handle,
-	node_a.active.handle);
+	write_database_queue_a.handle);
 
 	batch_processed.add ([this] (auto const & items) {
 		// For every batch item: notify the 'processed' observer.
@@ -304,6 +309,17 @@ void nano::block_processor::process_blocks ()
 bool nano::block_processor::flushing ()
 {
 	return rsnano::rsn_block_processor_flushing (handle);
+}
+
+void nano::block_processor::set_blocks_rolled_back_callback (std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> callback)
+{
+	rsnano::rsn_block_processor_set_blocks_rolled_back_callback (
+	handle,
+	blocks_rolled_back_wrapper,
+	new std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> (callback),
+	blocks_rolled_back_delete);
+
+	blocks_rolled_back = callback;
 }
 
 bool nano::block_processor::have_blocks_ready (nano::block_processor_lock & lock_a)

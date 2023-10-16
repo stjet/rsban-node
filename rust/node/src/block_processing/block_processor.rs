@@ -25,7 +25,6 @@ use crate::{
     },
     stats::{DetailType, Direction, StatType, Stats},
     unchecked_map::UncheckedMap,
-    voting::{ActiveTransactions, LocalVoteHistory},
     GapCache,
 };
 
@@ -51,8 +50,7 @@ pub struct BlockProcessor {
     work: Arc<WorkThresholds>,
     write_database_queue: Arc<WriteDatabaseQueue>,
     flags: Arc<NodeFlags>,
-    history: Arc<LocalVoteHistory>,
-    active: Arc<ActiveTransactions>,
+    blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<BlockEnum>, BlockEnum)>>>,
 }
 
 impl BlockProcessor {
@@ -69,8 +67,6 @@ impl BlockProcessor {
         stats: Arc<Stats>,
         work: Arc<WorkThresholds>,
         write_database_queue: Arc<WriteDatabaseQueue>,
-        history: Arc<LocalVoteHistory>,
-        active: Arc<ActiveTransactions>,
     ) -> Self {
         let state_block_signature_verification = RwLock::new(
             StateBlockSignatureVerification::builder()
@@ -103,9 +99,15 @@ impl BlockProcessor {
             work,
             write_database_queue,
             flags,
-            history,
-            active,
+            blocks_rolled_back: Mutex::new(None),
         }
+    }
+
+    pub fn set_blocks_rolled_back_callback(
+        &self,
+        callback: Box<dyn Fn(Vec<BlockEnum>, BlockEnum)>,
+    ) {
+        *self.blocks_rolled_back.lock().unwrap() = Some(callback);
     }
 
     pub fn process_active(&self, block: Arc<BlockEnum>) {
@@ -440,18 +442,10 @@ impl BlockProcessor {
                     }
                 };
 
-                self.blocks_rolled_back(rollback_list, successor);
-            }
-        }
-    }
-
-    fn blocks_rolled_back(&self, rolled_back: Vec<BlockEnum>, initial_block: BlockEnum) {
-        // Deleting from votes cache, stop active transaction
-        for i in &rolled_back {
-            self.history.erase(&i.root());
-            // Stop all rolled back active transactions except initial
-            if i.hash() != initial_block.hash() {
-                self.active.erase_block(i);
+                let callback_guard = self.blocks_rolled_back.lock().unwrap();
+                if let Some(callback) = callback_guard.as_ref() {
+                    callback(rollback_list, successor);
+                }
             }
         }
     }

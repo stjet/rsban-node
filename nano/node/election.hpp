@@ -1,5 +1,4 @@
 #pragma once
-
 #include "nano/lib/rsnano.hpp"
 
 #include <nano/node/vote_cache.hpp>
@@ -187,8 +186,6 @@ public:
 	std::chrono::seconds cooldown_time (nano::uint128_t weight) const;
 	// Minimum time between broadcasts of the current winner of an election, as a backup to requesting confirmations
 	std::chrono::milliseconds base_latency () const;
-	// lock_a does not own the mutex on return
-	void confirm_once (nano::election_lock & lock_a, nano::election_status_type type_a, nano::election & election);
 	bool confirmed (nano::election_lock & lock) const;
 	// Returns true when the winning block is durably confirmed in the ledger.
 	// Later once the confirmation height processor has updated the confirmation height it will be confirmed on disk
@@ -213,7 +210,6 @@ public:
 	 */
 	std::chrono::milliseconds confirm_req_time (nano::election & election) const;
 	bool have_quorum (nano::tally_t const & tally_a) const;
-	nano::tally_t tally_impl (nano::election_lock & lock) const;
 	nano::tally_t tally (nano::election & election) const;
 	nano::election_extended_status current_status (nano::election & election) const;
 	// Confirm this block if quorum is met

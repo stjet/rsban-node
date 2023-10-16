@@ -95,6 +95,9 @@ pub unsafe extern "C" fn rsn_block_has_sideband(block: &BlockHandle) -> bool {
 pub struct BlockHandle(pub Arc<BlockEnum>);
 
 impl BlockHandle {
+    pub fn new(block: Arc<BlockEnum>) -> *mut Self {
+        Box::into_raw(Box::new(Self(block)))
+    }
     pub fn get_mut(&mut self) -> &mut BlockEnum {
         Arc::get_mut(&mut self.0).expect("Could not make block mutable")
     }
@@ -246,6 +249,23 @@ impl BlockArrayDto {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_array_destroy(dto: *mut BlockArrayDto) {
     drop(Box::from_raw((*dto).raw_ptr))
+}
+
+impl From<Vec<BlockEnum>> for BlockArrayDto {
+    fn from(value: Vec<BlockEnum>) -> Self {
+        let mut raw_block_array = Box::new(BlockArrayRawPtr(Vec::new()));
+        for block in value {
+            raw_block_array
+                .0
+                .push(Box::into_raw(Box::new(BlockHandle(Arc::new(block)))));
+        }
+
+        Self {
+            blocks: raw_block_array.0.as_ptr(),
+            count: raw_block_array.0.len(),
+            raw_ptr: Box::into_raw(raw_block_array),
+        }
+    }
 }
 
 pub type BlockCallback = extern "C" fn(*mut c_void, *mut BlockHandle);

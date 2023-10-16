@@ -77,6 +77,7 @@ public: // Events
 
 	// The batch observer feeds the processed obsever
 	nano::observer_set<std::deque<processed_t> const &> batch_processed;
+	void set_blocks_rolled_back_callback (std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> callback);
 
 private:
 	blocking_observer blocking;

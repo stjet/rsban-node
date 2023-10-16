@@ -1,4 +1,4 @@
-use rsnano_core::{BlockEnum, BlockHash, QualifiedRoot};
+use rsnano_core::{Amount, BlockEnum, BlockHash, QualifiedRoot};
 use std::{
     cmp::max,
     collections::HashMap,
@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::NetworkParams;
+use crate::{NetworkParams, OnlineReps};
 
 use super::{Election, ElectionBehavior};
 
@@ -14,10 +14,11 @@ pub struct ActiveTransactions {
     pub mutex: Mutex<ActiveTransactionsData>,
     pub condition: Condvar,
     network: NetworkParams,
+    pub online_reps: Arc<Mutex<OnlineReps>>,
 }
 
 impl ActiveTransactions {
-    pub fn new(network: NetworkParams) -> Self {
+    pub fn new(network: NetworkParams, online_reps: Arc<Mutex<OnlineReps>>) -> Self {
         Self {
             mutex: Mutex::new(ActiveTransactionsData {
                 roots: OrderedRoots::default(),
@@ -29,6 +30,7 @@ impl ActiveTransactions {
             }),
             condition: Condvar::new(),
             network,
+            online_reps,
         }
     }
 
@@ -61,6 +63,20 @@ impl ActiveTransactions {
                 .0
         } else {
             guard
+        }
+    }
+
+    pub fn cooldown_time(&self, weight: Amount) -> Duration {
+        let online_stake = { self.online_reps.lock().unwrap().trended() };
+        if weight > online_stake / 20 {
+            // Reps with more than 5% weight
+            Duration::from_secs(1)
+        } else if weight > online_stake / 100 {
+            // Reps with more than 1% weight
+            Duration::from_secs(5)
+        } else {
+            // The rest of smaller reps
+            Duration::from_secs(15)
         }
     }
 }

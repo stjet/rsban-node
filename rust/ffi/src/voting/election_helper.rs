@@ -32,14 +32,6 @@ pub unsafe extern "C" fn rsn_election_helper_destroy(handle: *mut ElectionHelper
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_election_helper_cooldown_time_s(
-    handle: &ElectionHelperHandle,
-    weight: *const u8,
-) -> u64 {
-    handle.cooldown_time(Amount::from_ptr(weight)).as_secs()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_election_helper_base_latency_ms(handle: &ElectionHelperHandle) -> u64 {
     handle.base_latency().as_millis() as u64
 }

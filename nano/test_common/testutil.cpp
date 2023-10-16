@@ -234,7 +234,7 @@ bool nano::test::start_elections (nano::test::system & system_a, nano::node & no
 		}
 		if (forced_a)
 		{
-			node_a.election_helper.force_confirm (*election);
+			node_a.active.force_confirm (*election);
 		}
 	}
 	return true;

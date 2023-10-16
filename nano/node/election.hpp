@@ -180,10 +180,6 @@ public:
 	election_helper (nano::node & node_a);
 	election_helper (election_helper const &) = delete;
 	~election_helper ();
-	/**
-	 * Calculates minimum time delay between subsequent votes when processing non-final votes
-	 */
-	std::chrono::seconds cooldown_time (nano::uint128_t weight) const;
 	// Minimum time between broadcasts of the current winner of an election, as a backup to requesting confirmations
 	std::chrono::milliseconds base_latency () const;
 	bool confirmed (nano::election_lock & lock) const;
@@ -209,12 +205,8 @@ public:
 	 * Calculates time delay between broadcasting confirmation requests
 	 */
 	std::chrono::milliseconds confirm_req_time (nano::election & election) const;
-	bool have_quorum (nano::tally_t const & tally_a) const;
 	nano::tally_t tally (nano::election & election) const;
 	nano::election_extended_status current_status (nano::election & election) const;
-	// Confirm this block if quorum is met
-	void confirm_if_quorum (nano::election_lock & lock_a, nano::election & election);
-	void log_votes (nano::election & election, nano::election_lock & lock, nano::tally_t const & tally_a, std::string const & prefix_a = "") const;
 	/*
 	 * Process vote. Internally uses cooldown to throttle non-final votes
 	 * If the election reaches consensus, it will be confirmed
@@ -225,10 +217,8 @@ public:
 	*/
 	std::size_t fill_from_cache (nano::election & election, nano::vote_cache::entry const & entry);
 	bool publish (std::shared_ptr<nano::block> const & block_a, nano::election & election);
-	void remove_votes (nano::election & election, nano::election_lock & lock, nano::block_hash const & hash_a);
 	void remove_block (nano::election_lock & lock, nano::block_hash const & hash_a);
 	bool replace_by_weight (nano::election & election, nano::election_lock & lock_a, nano::block_hash const & hash_a);
-	void force_confirm (nano::election & election, nano::election_status_type type_a = nano::election_status_type::active_confirmed_quorum);
 	std::vector<nano::vote_with_weight_info> votes_with_weight (nano::election & election) const;
 
 	rsnano::ElectionHelperHandle * handle;

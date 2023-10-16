@@ -53,7 +53,7 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	election_time_to_live{ node_a.network_params.network.is_dev_network () ? 0s : 2s }
 {
 	auto network_dto{ node_a.network_params.to_dto () };
-	handle = rsnano::rsn_active_transactions_create (&network_dto);
+	handle = rsnano::rsn_active_transactions_create (&network_dto, node_a.online_reps.get_handle ());
 
 	// Register a callback which will get called after a block is cemented
 	confirmation_height_processor.set_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
@@ -373,6 +373,110 @@ nano::tally_t nano::active_transactions::tally_impl (nano::election_lock & lock)
 		}
 	}
 	return result;
+}
+
+void nano::active_transactions::remove_votes (nano::election & election, nano::election_lock & lock, nano::block_hash const & hash_a)
+{
+	if (node.config->enable_voting && node.wallets.reps ().voting > 0)
+	{
+		// Remove votes from election
+		auto list_generated_votes (node.history.votes (election.root (), hash_a));
+		for (auto const & vote : list_generated_votes)
+		{
+			lock.erase_vote (vote->account ());
+		}
+		// Clear votes cache
+		node.history.erase (election.root ());
+	}
+}
+
+bool nano::active_transactions::have_quorum (nano::tally_t const & tally_a) const
+{
+	auto i (tally_a.begin ());
+	++i;
+	auto second (i != tally_a.end () ? i->first : 0);
+	auto delta_l (node.online_reps.delta ());
+	release_assert (tally_a.begin ()->first >= second);
+	bool result{ (tally_a.begin ()->first - second) >= delta_l };
+	return result;
+}
+
+void nano::active_transactions::log_votes (nano::election & election, nano::election_lock & lock, nano::tally_t const & tally_a, std::string const & prefix_a) const
+{
+	std::stringstream tally;
+	std::string line_end (node.config->logging.single_line_record () ? "\t" : "\n");
+	tally << boost::str (boost::format ("%1%%2%Vote tally for root %3%, final weight:%4%") % prefix_a % line_end % election.root ().to_string () % lock.final_weight ().number ());
+	for (auto i (tally_a.begin ()), n (tally_a.end ()); i != n; ++i)
+	{
+		tally << boost::str (boost::format ("%1%Block %2% weight %3%") % line_end % i->second->hash ().to_string () % i->first.convert_to<std::string> ());
+	}
+	auto votes{ lock.last_votes () };
+	for (auto i (votes.begin ()), n (votes.end ()); i != n; ++i)
+	{
+		if (i->first != nullptr)
+		{
+			tally << boost::str (boost::format ("%1%%2% %3% %4%") % line_end % i->first.to_account () % std::to_string (i->second.get_timestamp ()) % i->second.get_hash ().to_string ());
+		}
+	}
+	node.logger->try_log (tally.str ());
+}
+
+void nano::active_transactions::confirm_if_quorum (nano::election_lock & lock_a, nano::election & election)
+{
+	auto tally_l (node.active.tally_impl (lock_a));
+	debug_assert (!tally_l.empty ());
+	auto winner (tally_l.begin ());
+	auto block_l (winner->second);
+	auto winner_hash_l{ block_l->hash () };
+	auto status_l{ lock_a.status () };
+	status_l.set_tally (winner->first);
+	status_l.set_final_tally (lock_a.final_weight ());
+	auto status_winner_hash_l{ status_l.get_winner ()->hash () };
+	nano::uint128_t sum (0);
+	for (auto & i : tally_l)
+	{
+		sum += i.first;
+	}
+	if (sum >= node.online_reps.delta () && winner_hash_l != status_winner_hash_l)
+	{
+		status_l.set_winner (block_l);
+		node.active.remove_votes (election, lock_a, status_winner_hash_l);
+		node.block_processor.force (block_l);
+	}
+
+	lock_a.set_status (status_l);
+
+	if (node.active.have_quorum (tally_l))
+	{
+		if (node.ledger.cache.final_votes_confirmation_canary () && !rsnano::rsn_election_is_quorum_exchange (election.handle, true) && node.config->enable_voting && node.wallets.reps ().voting > 0)
+		{
+			auto hash = status_l.get_winner ()->hash ();
+			lock_a.unlock ();
+			node.final_generator.add (election.root (), hash);
+			lock_a.lock ();
+		}
+		if (!node.ledger.cache.final_votes_confirmation_canary () || lock_a.final_weight ().number () >= node.online_reps.delta ())
+		{
+			if (node.config->logging.vote_logging () || (node.config->logging.election_fork_tally_logging () && lock_a.last_blocks_size () > 1))
+			{
+				node.active.log_votes (election, lock_a, tally_l);
+			}
+			node.active.confirm_once (lock_a, nano::election_status_type::active_confirmed_quorum, election);
+		}
+	}
+}
+
+void nano::active_transactions::force_confirm (nano::election & election, nano::election_status_type type_a)
+{
+	release_assert (node.network_params.network.is_dev_network ());
+	nano::election_lock lock{ election };
+	node.active.confirm_once (lock, type_a, election);
+}
+
+std::chrono::seconds nano::active_transactions::cooldown_time (nano::uint128_t weight) const
+{
+	nano::amount weight_amount{ weight };
+	return std::chrono::seconds{ rsnano::rsn_active_transactions_cooldown_time_s (handle, weight_amount.bytes.data ()) };
 }
 
 void nano::active_transactions::block_already_cemented_callback (nano::block_hash const & hash_a)

@@ -186,6 +186,16 @@ public:
 	// lock_a does not own the mutex on return
 	void confirm_once (nano::election_lock & lock_a, nano::election_status_type type_a, nano::election & election);
 	nano::tally_t tally_impl (nano::election_lock & lock) const;
+	void remove_votes (nano::election & election, nano::election_lock & lock, nano::block_hash const & hash_a);
+	bool have_quorum (nano::tally_t const & tally_a) const;
+	void log_votes (nano::election & election, nano::election_lock & lock, nano::tally_t const & tally_a, std::string const & prefix_a = "") const;
+	// Confirm this block if quorum is met
+	void confirm_if_quorum (nano::election_lock & lock_a, nano::election & election);
+	void force_confirm (nano::election & election, nano::election_status_type type_a = nano::election_status_type::active_confirmed_quorum);
+	/**
+	 * Calculates minimum time delay between subsequent votes when processing non-final votes
+	 */
+	std::chrono::seconds cooldown_time (nano::uint128_t weight) const;
 
 private:
 	// Erase elections if we're over capacity

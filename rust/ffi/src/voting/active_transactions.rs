@@ -1,12 +1,12 @@
 use num_traits::FromPrimitive;
-use rsnano_core::{BlockHash, QualifiedRoot, Root};
-use rsnano_node::voting::{ActiveTransactions, ActiveTransactionsData, Election, ElectionBehavior};
+use rsnano_core::{Amount, BlockHash, QualifiedRoot, Root};
+use rsnano_node::voting::{ActiveTransactions, ActiveTransactionsData, Election};
 use std::{
     ops::Deref,
     sync::{Arc, MutexGuard},
 };
 
-use crate::{utils::InstantHandle, NetworkParamsDto};
+use crate::{representatives::OnlineRepsHandle, utils::InstantHandle, NetworkParamsDto};
 
 use super::election::ElectionHandle;
 
@@ -23,9 +23,10 @@ impl Deref for ActiveTransactionsHandle {
 #[no_mangle]
 pub extern "C" fn rsn_active_transactions_create(
     network: &NetworkParamsDto,
+    online_reps: &OnlineRepsHandle,
 ) -> *mut ActiveTransactionsHandle {
     Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::new(
-        ActiveTransactions::new(network.try_into().unwrap()),
+        ActiveTransactions::new(network.try_into().unwrap(), Arc::clone(online_reps)),
     ))))
 }
 
@@ -301,4 +302,12 @@ pub extern "C" fn rsn_election_vec_get(
     index: usize,
 ) -> *mut ElectionHandle {
     Box::into_raw(Box::new(ElectionHandle(Arc::clone(&handle.0[index]))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_cooldown_time_s(
+    handle: &ActiveTransactionsHandle,
+    weight: *const u8,
+) -> u64 {
+    handle.cooldown_time(Amount::from_ptr(weight)).as_secs()
 }

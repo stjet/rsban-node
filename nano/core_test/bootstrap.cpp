@@ -355,13 +355,10 @@ TEST (bootstrap_processor, process_two)
 	auto node0 (system.add_node (config, node_flags));
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::block_hash hash1 (node0->latest (nano::dev::genesis_key.pub));
-	std::cout << "hash1: " << hash1.to_string () << std::endl;
 	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, 50));
 	nano::block_hash hash2 (node0->latest (nano::dev::genesis_key.pub));
-	std::cout << "hash2: " << hash2.to_string () << std::endl;
 	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, 50));
 	nano::block_hash hash3 (node0->latest (nano::dev::genesis_key.pub));
-	std::cout << "hash3: " << hash3.to_string () << std::endl;
 	ASSERT_NE (hash1, hash2);
 	ASSERT_NE (hash1, hash3);
 	ASSERT_NE (hash2, hash3);
@@ -2068,21 +2065,21 @@ TEST (bulk, DISABLED_genesis_pruning)
 	{
 		auto election = node1->active.election (send1->qualified_root ());
 		ASSERT_NE (nullptr, election);
-		node1->election_helper.force_confirm (*election);
+		node1->active.force_confirm (*election);
 	}
 	ASSERT_TIMELY (2s, node1->block_confirmed (send1->hash ()) && node1->active.active (send2->qualified_root ()));
 	ASSERT_EQ (0, node1->ledger.cache.pruned_count ());
 	{
 		auto election = node1->active.election (send2->qualified_root ());
 		ASSERT_NE (nullptr, election);
-		node1->election_helper.force_confirm (*election);
+		node1->active.force_confirm (*election);
 	}
 	ASSERT_TIMELY (2s, node1->block_confirmed (send2->hash ()) && node1->active.active (send3->qualified_root ()));
 	ASSERT_EQ (0, node1->ledger.cache.pruned_count ());
 	{
 		auto election = node1->active.election (send3->qualified_root ());
 		ASSERT_NE (nullptr, election);
-		node1->election_helper.force_confirm (*election);
+		node1->active.force_confirm (*election);
 	}
 	ASSERT_TIMELY (2s, node1->active.empty () && node1->block_confirmed (send3->hash ()));
 	node1->ledger_pruning (2, false, false);

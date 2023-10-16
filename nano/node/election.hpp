@@ -179,6 +179,8 @@ class election_helper
 {
 public:
 	election_helper (nano::node & node_a);
+	election_helper (election_helper const &) = delete;
+	~election_helper ();
 	/**
 	 * Calculates minimum time delay between subsequent votes when processing non-final votes
 	 */
@@ -227,6 +229,8 @@ public:
 	bool replace_by_weight (nano::election & election, nano::election_lock & lock_a, nano::block_hash const & hash_a);
 	void force_confirm (nano::election & election, nano::election_status_type type_a = nano::election_status_type::active_confirmed_quorum);
 	std::vector<nano::vote_with_weight_info> votes_with_weight (nano::election & election) const;
+
+	rsnano::ElectionHelperHandle * handle;
 
 private:
 	nano::node & node;

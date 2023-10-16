@@ -159,21 +159,19 @@ void nano::election_lock::lock ()
 nano::election_helper::election_helper (nano::node & node_a) :
 	node{ node_a }
 {
+	auto network_params_dto{ node_a.network_params.to_dto () };
+	handle = rsnano::rsn_election_helper_create (node_a.online_reps.get_handle (), &network_params_dto);
+}
+
+nano::election_helper::~election_helper ()
+{
+	rsnano::rsn_election_helper_destroy (handle);
 }
 
 std::chrono::seconds nano::election_helper::cooldown_time (nano::uint128_t weight) const
 {
-	auto online_stake = node.online_reps.trended ();
-	if (weight > online_stake / 20) // Reps with more than 5% weight
-	{
-		return std::chrono::seconds{ 1 };
-	}
-	if (weight > online_stake / 100) // Reps with more than 1% weight
-	{
-		return std::chrono::seconds{ 5 };
-	}
-	// The rest of smaller reps
-	return std::chrono::seconds{ 15 };
+	nano::amount weight_amount{ weight };
+	return std::chrono::seconds{ rsnano::rsn_election_helper_cooldown_time_s (handle, weight_amount.bytes.data ()) };
 }
 
 std::chrono::milliseconds nano::election_helper::base_latency () const

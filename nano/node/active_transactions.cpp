@@ -144,7 +144,7 @@ void nano::active_transactions::process_inactive_confirmation (nano::store::read
 	bool is_state_send = false;
 	bool is_state_epoch = false;
 	nano::account pending_account{};
-	node.process_confirmed_data (transaction, block, block->hash (), account, amount, is_state_send, is_state_epoch, pending_account);
+	process_confirmed_data (transaction, block, block->hash (), account, amount, is_state_send, is_state_epoch, pending_account);
 	nano::election_status status{ block };
 	status.set_election_end (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()));
 	status.set_block_count (1);
@@ -386,8 +386,9 @@ void nano::active_transactions::update_recently_cemented (std::shared_ptr<nano::
 void nano::active_transactions::handle_block_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block, nano::block_hash const & hash, nano::account & account, nano::uint128_t & amount, bool & is_state_send, bool & is_state_epoch, nano::account & pending_account)
 {
 	auto destination = block->link ().is_zero () ? block->destination () : block->link ().as_account ();
+	// todo use callback for receive_confirmed
 	node.receive_confirmed (transaction, hash, destination);
-	node.process_confirmed_data (transaction, block, hash, account, amount, is_state_send, is_state_epoch, pending_account);
+	process_confirmed_data (transaction, block, hash, account, amount, is_state_send, is_state_epoch, pending_account);
 }
 
 void nano::active_transactions::notify_observers (std::shared_ptr<nano::election> const & election, nano::account const & account, nano::uint128_t amount, bool is_state_send, bool is_state_epoch, nano::account const & pending_account)
@@ -1013,6 +1014,52 @@ bool nano::active_transactions::transition_time (nano::confirmation_solicitor & 
 		}
 	}
 	return result;
+}
+
+void nano::active_transactions::process_confirmed_data (store::transaction const & transaction_a, std::shared_ptr<nano::block> const & block_a, nano::block_hash const & hash_a, nano::account & account_a, nano::uint128_t & amount_a, bool & is_state_send_a, bool & is_state_epoch_a, nano::account & pending_account_a)
+{
+	// Faster account calculation
+	account_a = block_a->account ();
+	if (account_a.is_zero ())
+	{
+		account_a = block_a->sideband ().account ();
+	}
+	// Faster amount calculation
+	auto previous (block_a->previous ());
+	bool error (false);
+	auto previous_balance (node.ledger.balance_safe (transaction_a, previous, error));
+	auto block_balance = node.ledger.balance (*block_a);
+	if (hash_a != node.ledger.constants.genesis->account ())
+	{
+		if (!error)
+		{
+			amount_a = block_balance > previous_balance ? block_balance - previous_balance : previous_balance - block_balance;
+		}
+		else
+		{
+			amount_a = 0;
+		}
+	}
+	else
+	{
+		amount_a = nano::dev::constants.genesis_amount;
+	}
+	if (auto state = dynamic_cast<nano::state_block *> (block_a.get ()))
+	{
+		if (state->balance () < previous_balance)
+		{
+			is_state_send_a = true;
+		}
+		if (amount_a == 0 && node.network_params.ledger.epochs.is_epoch_link (state->link ()))
+		{
+			is_state_epoch_a = true;
+		}
+		pending_account_a = state->link ().as_account ();
+	}
+	if (auto send = dynamic_cast<nano::send_block *> (block_a.get ()))
+	{
+		pending_account_a = send->destination ();
+	}
 }
 
 nano::election_extended_status nano::active_transactions::current_status (nano::election & election) const

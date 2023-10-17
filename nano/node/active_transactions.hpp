@@ -264,6 +264,7 @@ private:
 	std::chrono::milliseconds confirm_req_time (nano::election & election) const;
 	void send_confirm_req (nano::confirmation_solicitor & solicitor_a, nano::election & election);
 	bool transition_time (nano::confirmation_solicitor & solicitor_a, nano::election & election);
+	void process_confirmed_data (store::transaction const &, std::shared_ptr<nano::block> const &, nano::block_hash const &, nano::account &, nano::uint128_t &, bool &, bool &, nano::account &);
 
 private: // Dependencies
 	nano::confirmation_height_processor & confirmation_height_processor;

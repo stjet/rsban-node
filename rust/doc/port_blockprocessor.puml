@@ -1,7 +1,7 @@
 @startuml "Port Blockprocessor"
-class block_processor #PaleGoldenRod
+class block_processor #PaleGreen
 class active_transactions
-class election
+class election #PaleGreen
 class confirmation_solicitor
 class election_status #PaleGreen
 class online_reps #PaleGreen
@@ -46,18 +46,17 @@ package "Bootstrapping"{
 }
 
 active_transactions --> election
+active_transactions --> online_reps
+active_transactions --> ledger
+active_transactions --> block_processor
+active_transactions --> vote_generator
+active_transactions --> network
+active_transactions --> local_vote_history
+active_transactions --> vote_cache
+active_transactions ..> confirmation_solicitor
 confirmation_solicitor --> network
 
-election --> active_transactions
 election --> election_status
-election --> online_reps
-election --> ledger
-election --> block_processor
-election --> vote_generator
-election --> network
-election --> local_vote_history
-election --> vote_cache
-election ..> confirmation_solicitor
 
 vote_generator --> vote_broadcaster
 vote_broadcaster --> vote_processor

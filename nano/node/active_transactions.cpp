@@ -338,7 +338,7 @@ void nano::active_transactions::broadcast_vote_impl (nano::election_lock & lock,
 	{
 		node.stats->inc (nano::stat::type::election, nano::stat::detail::generate_vote);
 
-		if (confirmed (lock) || have_quorum (node.active.tally_impl (lock)))
+		if (confirmed (lock) || have_quorum (tally_impl (lock)))
 		{
 			node.stats->inc (nano::stat::type::election, nano::stat::detail::generate_vote_final);
 			node.final_generator.add (election.root (), lock.status ().get_winner ()->hash ()); // Broadcasts vote to the network
@@ -608,7 +608,7 @@ void nano::active_transactions::log_votes (nano::election & election, nano::elec
 
 void nano::active_transactions::confirm_if_quorum (nano::election_lock & lock_a, nano::election & election)
 {
-	auto tally_l (node.active.tally_impl (lock_a));
+	auto tally_l (tally_impl (lock_a));
 	debug_assert (!tally_l.empty ());
 	auto winner (tally_l.begin ());
 	auto block_l (winner->second);
@@ -625,13 +625,13 @@ void nano::active_transactions::confirm_if_quorum (nano::election_lock & lock_a,
 	if (sum >= node.online_reps.delta () && winner_hash_l != status_winner_hash_l)
 	{
 		status_l.set_winner (block_l);
-		node.active.remove_votes (election, lock_a, status_winner_hash_l);
+		remove_votes (election, lock_a, status_winner_hash_l);
 		node.block_processor.force (block_l);
 	}
 
 	lock_a.set_status (status_l);
 
-	if (node.active.have_quorum (tally_l))
+	if (have_quorum (tally_l))
 	{
 		if (node.ledger.cache.final_votes_confirmation_canary () && !rsnano::rsn_election_is_quorum_exchange (election.handle, true) && node.config->enable_voting && node.wallets.reps ().voting > 0)
 		{
@@ -644,9 +644,9 @@ void nano::active_transactions::confirm_if_quorum (nano::election_lock & lock_a,
 		{
 			if (node.config->logging.vote_logging () || (node.config->logging.election_fork_tally_logging () && lock_a.last_blocks_size () > 1))
 			{
-				node.active.log_votes (election, lock_a, tally_l);
+				log_votes (election, lock_a, tally_l);
 			}
-			node.active.confirm_once (lock_a, nano::election_status_type::active_confirmed_quorum, election);
+			confirm_once (lock_a, nano::election_status_type::active_confirmed_quorum, election);
 		}
 	}
 }
@@ -655,7 +655,7 @@ void nano::active_transactions::force_confirm (nano::election & election, nano::
 {
 	release_assert (node.network_params.network.is_dev_network ());
 	nano::election_lock lock{ election };
-	node.active.confirm_once (lock, type_a, election);
+	confirm_once (lock, type_a, election);
 }
 
 std::chrono::seconds nano::active_transactions::cooldown_time (nano::uint128_t weight) const

@@ -410,7 +410,7 @@ void nano::active_transactions::notify_observers (std::shared_ptr<nano::election
 
 void nano::active_transactions::handle_final_votes_confirmation (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction, nano::election_status_type status)
 {
-	auto const & account = !block->account ().is_zero () ? block->account () : block->sideband ().account ();
+	auto const account = !block->account ().is_zero () ? block->account () : block->sideband ().account ();
 
 	bool is_canary_not_set = !node.ledger.cache.final_votes_confirmation_canary ();
 	bool is_canary_account = account == node.network_params.ledger.final_votes_canary_account;
@@ -421,25 +421,9 @@ void nano::active_transactions::handle_final_votes_confirmation (std::shared_ptr
 		node.ledger.cache.set_final_votes_confirmation_canary (true);
 	}
 
-	bool cemented_bootstrap_count_reached = node.ledger.cache.cemented_count () >= node.ledger.get_bootstrap_weight_max_blocks ();
-	bool was_active = status == nano::election_status_type::active_confirmed_quorum || status == nano::election_status_type::active_confirmation_height;
-
-	// Next-block activations are only done for blocks with previously active elections
-	if (cemented_bootstrap_count_reached && was_active)
+	if (block_confirmed_callback != nullptr)
 	{
-		activate_successors (account, block, transaction);
-	}
-}
-
-void nano::active_transactions::activate_successors (const nano::account & account, std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction)
-{
-	node.scheduler.priority.activate (account, transaction);
-	auto const & destination = node.ledger.block_destination (transaction, *block);
-
-	// Start or vote for the next unconfirmed block in the destination account
-	if (!destination.is_zero () && destination != account)
-	{
-		node.scheduler.priority.activate (destination, transaction);
+		block_confirmed_callback (block, transaction, status);
 	}
 }
 
@@ -1060,6 +1044,11 @@ void nano::active_transactions::process_confirmed_data (store::transaction const
 	{
 		pending_account_a = send->destination ();
 	}
+}
+
+void nano::active_transactions::on_block_confirmed (std::function<void (std::shared_ptr<nano::block> const &, nano::store::read_transaction const &, nano::election_status_type)> callback)
+{
+	block_confirmed_callback = std::move (callback);
 }
 
 nano::election_extended_status nano::active_transactions::current_status (nano::election & election) const

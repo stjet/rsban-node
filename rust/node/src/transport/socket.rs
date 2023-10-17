@@ -1,4 +1,5 @@
 use crate::utils::{AsyncRuntime, BufferWrapper, ErrorCode, ThreadPool, ThreadPoolImpl};
+use async_trait::async_trait;
 use num_traits::FromPrimitive;
 use rsnano_core::utils::seconds_since_epoch;
 use std::{
@@ -761,6 +762,7 @@ impl Drop for Socket {
     }
 }
 
+#[async_trait]
 pub trait SocketExtensions {
     fn start(&self);
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>);
@@ -776,6 +778,7 @@ pub trait SocketExtensions {
         size: usize,
         callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     );
+    async fn read(&self, buffer: Arc<Mutex<Vec<u8>>>, size: usize) -> anyhow::Result<()>;
     fn async_write(
         &self,
         buffer: &Arc<Vec<u8>>,
@@ -789,15 +792,20 @@ pub trait SocketExtensions {
     fn set_remote(&self, endpoint: SocketAddr);
     fn has_timed_out(&self) -> bool;
     fn set_silent_connection_tolerance_time(&self, time_s: u64);
+    async fn async_read_impl(&self, data: Arc<Mutex<Vec<u8>>>, size: usize) -> anyhow::Result<()>;
+
+    // TODO: delete this:
     fn read_impl(
         &self,
         data: Arc<Mutex<Vec<u8>>>,
         size: usize,
         callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
     );
+
     fn write_queued_messages(&self);
 }
 
+#[async_trait]
 impl SocketExtensions for Arc<Socket> {
     fn start(&self) {
         self.ongoing_checkup();
@@ -831,6 +839,62 @@ impl SocketExtensions for Arc<Socket> {
                 callback(ec);
             }),
         );
+    }
+
+    async fn read(&self, buffer: Arc<Mutex<Vec<u8>>>, size: usize) -> anyhow::Result<()> {
+        let buffer_len = { buffer.lock().unwrap().len() };
+        if size > buffer_len {
+            return Err(anyhow!("buffer is too small for read count"));
+        }
+
+        if self.is_closed() {
+            return Err(anyhow!("Tried to read from a closed TcpStream"));
+        }
+
+        self.set_default_timeout();
+        let stream = {
+            let guard = self.tcp_socket.state.lock().unwrap();
+            let TokioSocketState::Client(stream) = guard.deref() else {
+                        return Err(anyhow!("no tcp stream open"));
+                    };
+            Arc::clone(stream)
+        };
+
+        let mut read = 0;
+        loop {
+            match stream.readable().await {
+                Ok(_) => {
+                    let mut buf = buffer.lock().unwrap();
+                    match stream.try_read(&mut buf.as_mut_slice()[read..size]) {
+                        Ok(0) => {
+                            self.observer.read_error();
+                            return Err(anyhow!("read count was 0"));
+                        }
+                        Ok(n) => {
+                            drop(buf);
+                            read += n;
+                            if read >= size {
+                                self.observer.read_successful(size);
+                                self.set_last_completion();
+                                self.set_last_receive_time();
+                                return Ok(());
+                            }
+                        }
+                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                            continue;
+                        }
+                        Err(e) => {
+                            self.observer.read_error();
+                            return Err(e.into());
+                        }
+                    };
+                }
+                Err(e) => {
+                    self.observer.read_error();
+                    return Err(e.into());
+                }
+            }
+        }
     }
 
     fn async_read(
@@ -1097,6 +1161,15 @@ impl SocketExtensions for Arc<Socket> {
                 .silent_connection_tolerance_time
                 .store(time_s, Ordering::SeqCst);
         }));
+    }
+
+    async fn async_read_impl(&self, data: Arc<Mutex<Vec<u8>>>, size: usize) -> anyhow::Result<()> {
+        // Increase timeout to receive TCP header (idle server socket)
+        let prev_timeout = self.default_timeout_value();
+        self.set_default_timeout_value(self.idle_timeout.as_secs());
+        let result = self.read(data, size).await;
+        self.set_default_timeout_value(prev_timeout);
+        result
     }
 
     fn read_impl(

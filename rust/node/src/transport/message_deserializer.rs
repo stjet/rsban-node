@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 
+use async_trait::async_trait;
 use rsnano_core::utils::{Stream, StreamAdapter};
 
 use crate::{
@@ -21,6 +22,348 @@ const HEADER_SIZE: usize = 8;
 pub type ReadQuery =
     Box<dyn Fn(Arc<Mutex<Vec<u8>>>, usize, Box<dyn FnOnce(ErrorCode, usize) + Send>) + Send + Sync>;
 
+#[async_trait]
+pub trait BufferReader {
+    async fn read(&self, buffer: Arc<Mutex<Vec<u8>>>, count: usize) -> anyhow::Result<()>;
+}
+
+pub struct MessageDeserializerV2 {
+    network_constants: NetworkConstants,
+    publish_filter: Arc<NetworkFilter>,
+    block_uniquer: Arc<BlockUniquer>,
+    vote_uniquer: Arc<VoteUniquer>,
+    read_buffer: Arc<Mutex<Vec<u8>>>,
+    status: Mutex<ParseStatus>,
+    buffer_reader: Box<dyn BufferReader>,
+}
+
+impl MessageDeserializerV2 {
+    pub fn new(
+        network_constants: NetworkConstants,
+        network_filter: Arc<NetworkFilter>,
+        block_uniquer: Arc<BlockUniquer>,
+        vote_uniquer: Arc<VoteUniquer>,
+        buffer_reader: Box<dyn BufferReader>,
+    ) -> Self {
+        Self {
+            network_constants,
+            publish_filter: network_filter,
+            block_uniquer,
+            vote_uniquer,
+            status: Mutex::new(ParseStatus::None),
+            read_buffer: Arc::new(Mutex::new(vec![0; MAX_MESSAGE_SIZE])),
+            buffer_reader,
+        }
+    }
+
+    pub fn status(&self) -> ParseStatus {
+        *self.status.lock().unwrap()
+    }
+
+    fn set_status(&self, status: ParseStatus) {
+        let mut guard = self.status.lock().unwrap();
+        *guard = status;
+    }
+
+    fn received_message(
+        &self,
+        header: MessageHeader,
+        payload_size: usize,
+    ) -> Result<Option<Box<dyn Message>>, ParseStatus> {
+        match self.deserialize(header, payload_size) {
+            Some(message) => {
+                debug_assert!(self.status() == ParseStatus::None);
+                self.set_status(ParseStatus::Success);
+                Ok(Some(message))
+            }
+            None => {
+                debug_assert!(self.status() != ParseStatus::None);
+                Err(self.status())
+            }
+        }
+    }
+
+    fn deserialize(&self, header: MessageHeader, payload_size: usize) -> Option<Box<dyn Message>> {
+        assert!(payload_size <= MAX_MESSAGE_SIZE);
+        let buffer = self.read_buffer.lock().unwrap();
+        let mut stream = StreamAdapter::new(&buffer[..payload_size]);
+        match header.message_type() {
+            MessageType::Keepalive => self.deserialize_keepalive(&mut stream, header),
+            MessageType::Publish => {
+                // Early filtering to not waste time deserializing duplicate blocks
+                let (digest, existed) = self.publish_filter.apply(&buffer[..payload_size]);
+                if !existed {
+                    self.deserialize_publish(&mut stream, header, digest)
+                } else {
+                    self.set_status(ParseStatus::DuplicatePublishMessage);
+                    None
+                }
+            }
+            MessageType::ConfirmReq => self.deserialize_confirm_req(&mut stream, header),
+            MessageType::ConfirmAck => self.deserialize_confirm_ack(&mut stream, header),
+            MessageType::NodeIdHandshake => self.deserialize_node_id_handshake(&mut stream, header),
+            MessageType::TelemetryReq => self.deserialize_telemetry_req(&mut stream, header),
+            MessageType::TelemetryAck => self.deserialize_telemetry_ack(&mut stream, header),
+            MessageType::BulkPull => self.deserialize_bulk_pull(&mut stream, header),
+            MessageType::BulkPullAccount => self.deserialize_bulk_pull_account(&mut stream, header),
+            MessageType::BulkPush => self.deserialize_bulk_push(&mut stream, header),
+            MessageType::FrontierReq => self.deserialize_frontier_req(&mut stream, header),
+            MessageType::AscPullReq => self.deserialize_asc_pull_req(&mut stream, header),
+            MessageType::AscPullAck => self.deserialize_asc_pull_ack(&mut stream, header),
+            MessageType::Invalid | MessageType::NotAType => {
+                self.set_status(ParseStatus::InvalidMessageType);
+                None
+            }
+        }
+    }
+
+    fn deserialize_keepalive(
+        &self,
+        stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        if let Ok(msg) = Keepalive::from_stream(header, stream) {
+            if at_end(stream) {
+                return Some(Box::new(msg));
+            }
+        }
+        self.set_status(ParseStatus::InvalidKeepaliveMessage);
+        None
+    }
+
+    fn deserialize_publish(
+        &self,
+        stream: &mut impl Stream,
+        header: MessageHeader,
+        digest: u128,
+    ) -> Option<Box<dyn Message>> {
+        if let Ok(msg) = Publish::from_stream(stream, header, digest, Some(&self.block_uniquer)) {
+            if at_end(stream) {
+                match &msg.block {
+                    Some(block) => {
+                        if !self.network_constants.work.validate_entry_block(&block) {
+                            return Some(Box::new(msg));
+                        } else {
+                            self.set_status(ParseStatus::InsufficientWork);
+                            return None;
+                        }
+                    }
+                    None => unreachable!(), // successful deserialization always returns a block
+                }
+            }
+        }
+
+        self.set_status(ParseStatus::InvalidPublishMessage);
+        None
+    }
+
+    fn deserialize_confirm_req(
+        &self,
+        stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        if let Ok(msg) = ConfirmReq::from_stream(stream, header, Some(&self.block_uniquer)) {
+            if at_end(stream) {
+                let work_ok = match msg.block() {
+                    Some(block) => !self.network_constants.work.validate_entry_block(&block),
+                    None => true,
+                };
+                if work_ok {
+                    return Some(Box::new(msg));
+                } else {
+                    self.set_status(ParseStatus::InsufficientWork);
+                    return None;
+                }
+            }
+        }
+        self.set_status(ParseStatus::InvalidConfirmReqMessage);
+        None
+    }
+
+    fn deserialize_confirm_ack(
+        &self,
+        stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        if let Ok(msg) = ConfirmAck::with_header(header, stream, Some(&self.vote_uniquer)) {
+            if at_end(stream) {
+                return Some(Box::new(msg));
+            }
+        }
+        self.set_status(ParseStatus::InvalidConfirmAckMessage);
+        None
+    }
+
+    fn deserialize_node_id_handshake(
+        &self,
+        stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        if let Ok(msg) = NodeIdHandshake::from_stream(stream, header) {
+            if at_end(stream) {
+                return Some(Box::new(msg));
+            }
+        }
+
+        self.set_status(ParseStatus::InvalidNodeIdHandshakeMessage);
+        None
+    }
+
+    fn deserialize_telemetry_req(
+        &self,
+        _stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        // Message does not use stream payload (header only)
+        Some(Box::new(TelemetryReq::with_header(header)))
+    }
+
+    fn deserialize_telemetry_ack(
+        &self,
+        stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        if let Ok(msg) = TelemetryAck::from_stream(stream, header) {
+            // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
+            return Some(Box::new(msg));
+        }
+        self.set_status(ParseStatus::InvalidTelemetryAckMessage);
+        None
+    }
+
+    fn deserialize_bulk_pull(
+        &self,
+        stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        if let Ok(msg) = BulkPull::from_stream(stream, header) {
+            if at_end(stream) {
+                return Some(Box::new(msg));
+            }
+        }
+        self.set_status(ParseStatus::InvalidBulkPullMessage);
+        None
+    }
+
+    fn deserialize_bulk_pull_account(
+        &self,
+        stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        if let Ok(msg) = BulkPullAccount::from_stream(stream, header) {
+            if at_end(stream) {
+                return Some(Box::new(msg));
+            }
+        }
+        self.set_status(ParseStatus::InvalidBulkPullAccountMessage);
+        None
+    }
+
+    fn deserialize_frontier_req(
+        &self,
+        stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        if let Ok(msg) = FrontierReq::from_stream(stream, header) {
+            if at_end(stream) {
+                return Some(Box::new(msg));
+            }
+        }
+        self.set_status(ParseStatus::InvalidFrontierReqMessage);
+        None
+    }
+
+    fn deserialize_bulk_push(
+        &self,
+        _stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        // Message does not use stream payload (header only)
+        Some(Box::new(BulkPush::with_header(header)))
+    }
+
+    fn deserialize_asc_pull_req(
+        &self,
+        stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
+        match AscPullReq::from_stream(stream, header) {
+            Ok(msg) => Some(Box::new(msg)),
+            Err(_) => {
+                self.set_status(ParseStatus::InvalidAscPullReqMessage);
+                None
+            }
+        }
+    }
+
+    fn deserialize_asc_pull_ack(
+        &self,
+        stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> Option<Box<dyn Message>> {
+        // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
+        match AscPullAck::from_stream(stream, header) {
+            Ok(msg) => Some(Box::new(msg)),
+            Err(_) => {
+                self.set_status(ParseStatus::InvalidAscPullAckMessage);
+                None
+            }
+        }
+    }
+
+    pub async fn read(&self) -> Result<Option<Box<dyn Message>>, ParseStatus> {
+        self.set_status(ParseStatus::None);
+        self.buffer_reader
+            .read(Arc::clone(&self.read_buffer), HEADER_SIZE)
+            .await
+            .map_err(|_| ParseStatus::None)?; // TODO return correct error
+
+        self.received_header().await
+    }
+
+    async fn received_header(&self) -> Result<Option<Box<dyn Message>>, ParseStatus> {
+        let buffer = self.read_buffer.lock().unwrap();
+        let mut stream = StreamAdapter::new(&buffer[..HEADER_SIZE]);
+
+        let header =
+            MessageHeader::from_stream(&mut stream).map_err(|_| ParseStatus::InvalidHeader)?;
+
+        if header.network() != self.network_constants.current_network {
+            self.set_status(ParseStatus::InvalidNetwork);
+            return Err(ParseStatus::InvalidNetwork);
+        }
+        if header.version_using() < self.network_constants.protocol_version_min {
+            self.set_status(ParseStatus::OutdatedVersion);
+            return Err(ParseStatus::OutdatedVersion);
+        }
+        if !header.is_valid_message_type() {
+            self.set_status(ParseStatus::InvalidHeader);
+            return Err(ParseStatus::InvalidHeader);
+        }
+
+        let payload_size = header.payload_length();
+        if payload_size > MAX_MESSAGE_SIZE {
+            self.set_status(ParseStatus::MessageSizeTooBig);
+            return Err(ParseStatus::MessageSizeTooBig);
+        }
+        debug_assert!(payload_size <= buffer.capacity());
+        drop(buffer);
+
+        if payload_size == 0 {
+            // Payload size will be 0 for `bulk_push` & `telemetry_req` message type
+            self.received_message(header, 0)
+        } else {
+            self.buffer_reader
+                .read(Arc::clone(&self.read_buffer), payload_size)
+                .await
+                .map_err(|_| ParseStatus::None)?; // TODO return correct error code
+            self.received_message(header, payload_size)
+        }
+    }
+}
+
+// TODO delete
 pub struct MessageDeserializer {
     network_constants: NetworkConstants,
     publish_filter: Arc<NetworkFilter>,

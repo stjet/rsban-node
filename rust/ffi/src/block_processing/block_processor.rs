@@ -1,13 +1,13 @@
 use crate::{
-    core::{BlockArrayDto, BlockHandle, BlockVecHandle, EpochsHandle},
+    core::{BlockHandle, BlockVecHandle, EpochsHandle},
     gap_cache::GapCacheHandle,
-    ledger::datastore::{LedgerHandle, TransactionHandle, WriteDatabaseQueueHandle},
+    ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
     unchecked_map::UncheckedMapHandle,
     utils::{ContainerInfoComponentHandle, ContextWrapper, LoggerHandle, LoggerMT},
     work::WorkThresholdsDto,
     NodeConfigDto, NodeFlagsHandle, SignatureCheckerHandle, StatHandle, VoidPointerCallback,
 };
-use rsnano_core::{work::WorkThresholds, BlockEnum, HashOrAccount};
+use rsnano_core::{work::WorkThresholds, BlockEnum};
 use rsnano_ledger::ProcessResult;
 use rsnano_node::{
     block_processing::{
@@ -298,25 +298,6 @@ pub extern "C" fn rsn_block_processor_add_impl(
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_set_flushing(handle: &mut BlockProcessorHandle, value: bool) {
     handle.flushing.store(value, Ordering::SeqCst);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_queue_unchecked(
-    handle: &BlockProcessorHandle,
-    hash_or_account: *const u8,
-) {
-    let hash_or_account = HashOrAccount::from_ptr(hash_or_account);
-    handle.queue_unchecked(&hash_or_account);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_process_one(
-    handle: &BlockProcessorHandle,
-    txn: &mut TransactionHandle,
-    block: &BlockHandle,
-) -> u8 {
-    let result = handle.process_one(txn.as_write_txn(), &block);
-    result as u8
 }
 
 pub struct ProcessBatchResult(VecDeque<(ProcessResult, Arc<BlockEnum>)>);

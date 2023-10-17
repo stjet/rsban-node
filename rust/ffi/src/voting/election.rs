@@ -10,7 +10,7 @@ use std::{
     ffi::c_void,
     ops::Deref,
     sync::{atomic::Ordering, Arc, MutexGuard},
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, SystemTime},
 };
 
 use crate::{
@@ -119,18 +119,6 @@ pub unsafe extern "C" fn rsn_election_state_exchange(handle: &ElectionHandle, ne
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_election_state_compare_exchange(
-    handle: &ElectionHandle,
-    expected: u8,
-    desired: u8,
-) -> bool {
-    handle.0.compare_exhange_state(
-        FromPrimitive::from_u8(expected).unwrap(),
-        FromPrimitive::from_u8(desired).unwrap(),
-    )
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_election_is_quorum(handle: &ElectionHandle) -> bool {
     handle.0.is_quorum.load(Ordering::SeqCst)
 }
@@ -179,11 +167,6 @@ pub extern "C" fn rsn_election_elapsed_ms(handle: &ElectionHandle) -> u64 {
 #[no_mangle]
 pub extern "C" fn rsn_election_state_start_elapsed_ms(handle: &ElectionHandle) -> u64 {
     handle.0.state_start.read().unwrap().elapsed().as_millis() as u64
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_election_state_start_set(handle: &ElectionHandle) {
-    *handle.0.state_start.write().unwrap() = Instant::now();
 }
 
 #[no_mangle]

@@ -28,17 +28,6 @@ pub unsafe extern "C" fn rsn_election_scheduler_destroy(handle: *mut ElectionSch
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_election_scheduler_activate(
-    handle: *mut ElectionSchedulerHandle,
-    account: *const u8,
-    txn: *const TransactionHandle,
-) {
-    (*handle)
-        .0
-        .activate(&Account::from_ptr(account), (*txn).as_txn());
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_callback_election_scheduler_activate(
     f: ElectionSchedulerActivateCallback,
 ) {

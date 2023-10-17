@@ -12,7 +12,7 @@ use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6},
     ops::Deref,
-    sync::{Arc, Mutex, Weak},
+    sync::{Arc, Weak},
     time::Duration,
 };
 
@@ -256,14 +256,6 @@ pub unsafe extern "C" fn rsn_socket_local_endpoint(
     set_enpoint_dto(&ep, &mut (*endpoint))
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_set_remote_endpoint(
-    handle: *mut SocketHandle,
-    endpoint: *const EndpointDto,
-) {
-    (*handle).set_remote(SocketAddr::from(&*endpoint))
-}
-
 fn set_enpoint_dto(endpoint: &SocketAddr, result: &mut EndpointDto) {
     result.port = endpoint.port();
     match endpoint {
@@ -350,8 +342,6 @@ pub unsafe extern "C" fn rsn_socket_checkup(handle: *mut SocketHandle) {
 
 pub struct AsyncWriteCallbackHandle(Option<Box<dyn FnOnce(ErrorCode, usize)>>);
 
-pub struct AsyncAcceptCallbackHandle(Option<Box<dyn FnOnce(SocketAddr, ErrorCode)>>);
-
 type SocketConnectedCallback = unsafe extern "C" fn(*mut c_void, *mut SocketHandle);
 static mut SOCKET_CONNECTED_CALLBACK: Option<SocketConnectedCallback> = None;
 static mut SOCKET_ACCEPTED_CALLBACK: Option<SocketConnectedCallback> = None;
@@ -370,13 +360,6 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_accepted(f: SocketConnectedCall
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_delete_tcp_socket_callback(f: VoidPointerCallback) {
     DELETE_TCP_SOCKET_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_async_accept_callback_destroy(
-    callback: *mut AsyncAcceptCallbackHandle,
-) {
-    drop(Box::from_raw(callback))
 }
 
 #[no_mangle]

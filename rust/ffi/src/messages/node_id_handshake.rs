@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use rsnano_core::{Account, BlockHash, KeyPair, PublicKey, Signature};
+use rsnano_core::{Account, BlockHash, PublicKey, Signature};
 
 use crate::{
     copy_account_bytes, copy_hash_bytes, copy_signature_bytes, utils::FfiStream,
@@ -175,53 +175,6 @@ impl From<NodeIdHandshakeResponse> for HandshakeResponseDto {
             },
         }
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_node_id_handshake_response_create(
-    cookie: *const u8,
-    priv_key: *const u8,
-    genesis: *const u8,
-    result: *mut HandshakeResponseDto,
-) {
-    let cookie = std::slice::from_raw_parts(cookie, 32).try_into().unwrap();
-    let key = KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(priv_key, 32)).unwrap();
-    let response = if genesis.is_null() {
-        NodeIdHandshakeResponse::new_v1(cookie, &key)
-    } else {
-        let genesis = BlockHash::from_ptr(genesis);
-        NodeIdHandshakeResponse::new_v2(cookie, &key, genesis)
-    };
-    *result = response.into();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_node_id_handshake_response_validate(
-    cookie: *const u8,
-    node_id: *const u8,
-    signature: *const u8,
-    salt: *const u8,
-    genesis: *const u8,
-) -> bool {
-    let node_id = Account::from_ptr(node_id);
-    let signature = Signature::from_ptr(signature);
-    let cookie = std::slice::from_raw_parts(cookie, 32).try_into().unwrap();
-
-    let v2 = if !salt.is_null() {
-        Some(V2Payload {
-            salt: std::slice::from_raw_parts(salt, 32).try_into().unwrap(),
-            genesis: BlockHash::from_ptr(genesis),
-        })
-    } else {
-        None
-    };
-
-    let response = NodeIdHandshakeResponse {
-        node_id,
-        signature,
-        v2,
-    };
-    response.validate(&cookie).is_ok()
 }
 
 #[no_mangle]

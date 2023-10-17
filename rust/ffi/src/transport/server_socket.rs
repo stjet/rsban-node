@@ -6,11 +6,7 @@ use rsnano_node::{
     utils::ErrorCode,
     NetworkParams,
 };
-use std::{
-    ffi::c_void,
-    net::{SocketAddr, SocketAddrV6},
-    sync::Arc,
-};
+use std::{ffi::c_void, sync::Arc};
 
 use super::{EndpointDto, SocketFfiObserver, SocketHandle};
 use crate::{
@@ -65,69 +61,6 @@ pub unsafe extern "C" fn rsn_server_socket_destroy(handle: *mut ServerSocketHand
 #[no_mangle]
 pub extern "C" fn rsn_server_socket_close(handle: &mut ServerSocketHandle) {
     handle.0.close();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_server_socket_count_subnetwork_connections(
-    handle: &ServerSocketHandle,
-    endpoint: &EndpointDto,
-    ipv6_subnetwork_prefix_for_limiting: usize,
-) -> usize {
-    let address = SocketAddrV6::from(endpoint);
-    handle
-        .0
-        .count_subnetwork_connections(address.ip(), ipv6_subnetwork_prefix_for_limiting)
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_server_socket_count_connections_for_ip(
-    handle: &ServerSocketHandle,
-    endpoint: &EndpointDto,
-) -> usize {
-    let endpoint = SocketAddr::from(endpoint);
-    let ip = match endpoint.ip() {
-        std::net::IpAddr::V4(ip) => ip.to_ipv6_mapped(),
-        std::net::IpAddr::V6(ip) => ip,
-    };
-    handle.0.count_connections_for_ip(&ip)
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_server_socket_count_connections(handle: &ServerSocketHandle) -> usize {
-    handle.0.count_connections()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_server_socket_insert_connection(
-    handle: &ServerSocketHandle,
-    connection: &SocketHandle,
-) {
-    handle.0.insert_connection(&connection.0);
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_server_socket_evict_dead_connections(handle: &ServerSocketHandle) {
-    handle.0.evict_dead_connections();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_server_socket_limit_reached_for_incoming_subnetwork_connections(
-    handle: &ServerSocketHandle,
-    new_conenction: &SocketHandle,
-) -> bool {
-    handle
-        .0
-        .limit_reached_for_incoming_subnetwork_connections(&new_conenction.0)
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_server_socket_limit_reached_for_incoming_ip_connections(
-    handle: &ServerSocketHandle,
-    new_conenction: &SocketHandle,
-) -> bool {
-    handle
-        .0
-        .limit_reached_for_incoming_ip_connections(&new_conenction.0)
 }
 
 pub type OnConnectionCallback =

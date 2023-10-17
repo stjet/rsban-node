@@ -37,8 +37,7 @@ pub use ipc::*;
 pub use property_tree::*;
 use rsnano_core::{
     utils::{IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION},
-    Account, Amount, BlockHash, HashOrAccount, Link, PublicKey, QualifiedRoot, RawKey, Root,
-    Signature,
+    Account, Amount, BlockHash, HashOrAccount, Link, PublicKey, RawKey, Root, Signature,
 };
 pub type MemoryIntensiveInstrumentationCallback = extern "C" fn() -> bool;
 pub use secure::*;

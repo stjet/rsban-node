@@ -62,11 +62,6 @@ pub unsafe extern "C" fn rsn_rep_crawler_response_insert(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_rep_crawler_responses_clear(handle: *mut RepCrawlerHandle) {
-    (*handle).0.clear_responses();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_rep_crawler_collect_container_info(
     handle: *const RepCrawlerHandle,
     name: *const c_char,

@@ -3,11 +3,7 @@ use std::{ffi::c_void, ops::Deref, sync::Arc};
 use rsnano_core::{BlockHash, HashOrAccount, UncheckedInfo, UncheckedKey};
 use rsnano_node::unchecked_map::UncheckedMap;
 
-use crate::{
-    core::{BlockHandle, UncheckedInfoHandle},
-    utils::ContextWrapper,
-    StatHandle, VoidPointerCallback,
-};
+use crate::{core::UncheckedInfoHandle, utils::ContextWrapper, StatHandle, VoidPointerCallback};
 
 #[repr(C)]
 pub struct UncheckedKeyDto {
@@ -209,26 +205,6 @@ pub unsafe extern "C" fn rsn_unchecked_map_for_each2(
         &notify_observers_callback2,
     );
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_map_destroy_dto(vector: *mut InfoVecDto) {
-    drop(Box::from_raw((*vector).raw_data))
-}
-
-#[repr(C)]
-pub struct InfoItemDto {
-    block: *mut BlockHandle,
-    modified: u64,
-}
-
-#[repr(C)]
-pub struct InfoVecDto {
-    pub items: *const InfoItemDto,
-    pub count: usize,
-    pub raw_data: *mut InfoVecRawPtr,
-}
-
-pub struct InfoVecRawPtr(Vec<InfoItemDto>);
 
 pub type UncheckedMapSatisifiedCallback = extern "C" fn(*mut c_void, *mut UncheckedInfoHandle);
 

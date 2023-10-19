@@ -164,21 +164,22 @@ void nano::vote_cache::trigger (const nano::block_hash & hash)
 
 std::vector<nano::vote_cache::top_entry> nano::vote_cache::top (const nano::uint128_t & min_tally) const
 {
-	nano::amount min_tally_amount {min_tally};
-	auto vec_handle = rsnano::rsn_vote_cache_top(handle, min_tally_amount.bytes.data());
-	
+	nano::amount min_tally_amount{ min_tally };
+	auto vec_handle = rsnano::rsn_vote_cache_top (handle, min_tally_amount.bytes.data ());
+
 	std::vector<top_entry> results;
 	auto len = rsnano::rsn_top_entry_vec_len (vec_handle);
-	for (auto i = 0; i < len; ++i) {
+	for (auto i = 0; i < len; ++i)
+	{
 		rsnano::TopEntryDto dto;
-		rsnano::rsn_top_entry_vec_get(vec_handle, i, &dto);
-		results.push_back({
-				nano::block_hash::from_bytes(&dto.hash[0]),
-				nano::amount::from_bytes(&dto.tally[0]).number(),
-				nano::amount::from_bytes(&dto.final_tally[0]).number(),
-				});
+		rsnano::rsn_top_entry_vec_get (vec_handle, i, &dto);
+		results.push_back ({
+		nano::block_hash::from_bytes (&dto.hash[0]),
+		nano::amount::from_bytes (&dto.tally[0]).number (),
+		nano::amount::from_bytes (&dto.final_tally[0]).number (),
+		});
 	}
-	rsnano::rsn_top_entry_vec_destroy(vec_handle);
+	rsnano::rsn_top_entry_vec_destroy (vec_handle);
 	return results;
 }
 

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use rsnano_core::utils::TomlWriter;
 
 pub struct OptimisticSchedulerConfig {
@@ -31,5 +33,30 @@ impl OptimisticSchedulerConfig {
             self.max_size,
             "Maximum number of candidates stored in memory\ntype:uint64",
         )
+    }
+}
+
+pub struct HintedSchedulerConfig {
+    pub check_interval: Duration,
+    pub block_cooldown: Duration,
+    pub hinting_theshold_percent: u32,
+}
+
+impl HintedSchedulerConfig {
+    pub fn default_for_dev_network() -> Self {
+        Self {
+            check_interval: Duration::from_millis(100),
+            ..Default::default()
+        }
+    }
+}
+
+impl Default for HintedSchedulerConfig {
+    fn default() -> Self {
+        Self {
+            check_interval: Duration::from_millis(5000),
+            block_cooldown: Duration::from_millis(10000),
+            hinting_theshold_percent: 10,
+        }
     }
 }

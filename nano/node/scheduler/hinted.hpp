@@ -13,6 +13,8 @@
 #include <thread>
 #include <unordered_map>
 
+namespace mi = boost::multi_index;
+
 namespace nano
 {
 class node;
@@ -21,23 +23,33 @@ class active_transactions;
 class vote_cache;
 class online_reps;
 }
+
 namespace nano::scheduler
 {
+class hinted_config final
+{
+public:
+	hinted_config();
+	explicit hinted_config (nano::network_constants const &);
+
+	void load_dto (rsnano::HintedSchedulerConfigDto const & dto_a);
+	rsnano::HintedSchedulerConfigDto into_dto () const;
+	nano::error deserialize (nano::tomlconfig & toml);
+	nano::error serialize (nano::tomlconfig & toml) const;
+
+public:
+	std::chrono::milliseconds check_interval;
+	std::chrono::milliseconds block_cooldown;
+	unsigned hinting_threshold_percent;
+};
+
 /*
  * Monitors inactive vote cache and schedules elections with the highest observed vote tally.
  */
 class hinted final
 {
-public: // Config
-	struct config final
-	{
-		explicit config (node_config const & config);
-		// Interval of wakeup to check inactive vote cache when idle
-		uint64_t vote_cache_check_interval_ms;
-	};
-
 public:
-	hinted (config const &, nano::node &, nano::vote_cache &, nano::active_transactions &, nano::online_reps &, nano::stats &);
+	hinted (hinted_config const &, nano::node &, nano::vote_cache &, nano::active_transactions &, nano::online_reps &, nano::stats &);
 	~hinted ();
 
 	void start ();
@@ -65,7 +77,7 @@ private: // Dependencies
 	nano::stats & stats;
 
 private:
-	config const config;
+	hinted_config const & config;
 
 	bool stopped{ false };
 	nano::condition_variable condition;

@@ -6,8 +6,9 @@ use std::{
 use num::FromPrimitive;
 
 use crate::{
-    fill_ipc_config_dto, fill_stat_config_dto, utils::FfiToml, IpcConfigDto, NetworkParamsDto,
-    OptimisticSchedulerConfigDto, StatConfigDto, WebsocketConfigDto,
+    fill_ipc_config_dto, fill_stat_config_dto, utils::FfiToml, HintedSchedulerConfigDto,
+    IpcConfigDto, NetworkParamsDto, OptimisticSchedulerConfigDto, StatConfigDto,
+    WebsocketConfigDto,
 };
 use rsnano_core::{Account, Amount};
 use rsnano_node::{
@@ -26,11 +27,11 @@ use super::{
 pub struct NodeConfigDto {
     pub peering_port: u16,
     pub optimistic_scheduler: OptimisticSchedulerConfigDto,
+    pub hinted_scheduler: HintedSchedulerConfigDto,
     pub peering_port_defined: bool,
     pub bootstrap_fraction_numerator: u32,
     pub receive_minimum: [u8; 16],
     pub online_weight_minimum: [u8; 16],
-    pub election_hint_weight_percent: u32,
     pub password_fanout: u32,
     pub io_threads: u32,
     pub network_threads: u32,
@@ -131,11 +132,11 @@ pub unsafe extern "C" fn rsn_node_config_create(
 pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.peering_port = cfg.peering_port.unwrap_or_default();
     dto.optimistic_scheduler = (&cfg.optimistic_scheduler).into();
+    dto.hinted_scheduler = (&cfg.hinted_scheduler).into();
     dto.peering_port_defined = cfg.peering_port.is_some();
     dto.bootstrap_fraction_numerator = cfg.bootstrap_fraction_numerator;
     dto.receive_minimum = cfg.receive_minimum.to_be_bytes();
     dto.online_weight_minimum = cfg.online_weight_minimum.to_be_bytes();
-    dto.election_hint_weight_percent = cfg.election_hint_weight_percent;
     dto.password_fanout = cfg.password_fanout;
     dto.io_threads = cfg.io_threads;
     dto.network_threads = cfg.network_threads;
@@ -301,10 +302,10 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
                 None
             },
             optimistic_scheduler: (&value.optimistic_scheduler).into(),
+            hinted_scheduler: (&value.hinted_scheduler).into(),
             bootstrap_fraction_numerator: value.bootstrap_fraction_numerator,
             receive_minimum: Amount::from_be_bytes(value.receive_minimum),
             online_weight_minimum: Amount::from_be_bytes(value.online_weight_minimum),
-            election_hint_weight_percent: value.election_hint_weight_percent,
             password_fanout: value.password_fanout,
             io_threads: value.io_threads,
             network_threads: value.network_threads,

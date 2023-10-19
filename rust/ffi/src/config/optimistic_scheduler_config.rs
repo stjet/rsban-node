@@ -1,4 +1,6 @@
-use rsnano_node::config::OptimisticSchedulerConfig;
+use std::time::Duration;
+
+use rsnano_node::config::{HintedSchedulerConfig, OptimisticSchedulerConfig};
 
 #[repr(C)]
 pub struct OptimisticSchedulerConfigDto {
@@ -32,4 +34,44 @@ pub unsafe extern "C" fn rsn_optimistic_scheduler_config_create(
     dto: *mut OptimisticSchedulerConfigDto,
 ) {
     *dto = (&OptimisticSchedulerConfig::new()).into()
+}
+
+#[repr(C)]
+pub struct HintedSchedulerConfigDto {
+    pub check_interval_ms: u32,
+    pub block_cooldown_ms: u32,
+    pub hinting_threshold_percent: u32,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_hinted_scheduler_config_create(
+    is_dev_network: bool,
+    dto: *mut HintedSchedulerConfigDto,
+) {
+    let config = if is_dev_network {
+        HintedSchedulerConfig::default_for_dev_network()
+    } else {
+        HintedSchedulerConfig::default()
+    };
+    *dto = (&config).into()
+}
+
+impl From<&HintedSchedulerConfig> for HintedSchedulerConfigDto {
+    fn from(value: &HintedSchedulerConfig) -> Self {
+        Self {
+            check_interval_ms: value.check_interval.as_millis() as u32,
+            block_cooldown_ms: value.block_cooldown.as_millis() as u32,
+            hinting_threshold_percent: value.hinting_theshold_percent,
+        }
+    }
+}
+
+impl From<&HintedSchedulerConfigDto> for HintedSchedulerConfig {
+    fn from(value: &HintedSchedulerConfigDto) -> Self {
+        Self {
+            check_interval: Duration::from_millis(value.check_interval_ms as u64),
+            block_cooldown: Duration::from_millis(value.block_cooldown_ms as u64),
+            hinting_theshold_percent: value.hinting_threshold_percent,
+        }
+    }
 }

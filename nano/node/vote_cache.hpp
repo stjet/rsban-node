@@ -96,8 +96,8 @@ public:
 	bool cache_empty () const;
 	bool queue_empty () const;
 
-
 	rsnano::VoteCacheHandle * handle;
+
 public:
 	struct top_entry
 	{

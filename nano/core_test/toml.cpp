@@ -175,7 +175,6 @@ TEST (toml, daemon_config_deserialize_defaults)
 	ASSERT_EQ (conf.node.secondary_work_peers, defaults.node.secondary_work_peers);
 	ASSERT_EQ (conf.node.online_weight_minimum, defaults.node.online_weight_minimum);
 	ASSERT_EQ (conf.node.rep_crawler_weight_minimum, defaults.node.rep_crawler_weight_minimum);
-	ASSERT_EQ (conf.node.election_hint_weight_percent, defaults.node.election_hint_weight_percent);
 	ASSERT_EQ (conf.node.password_fanout, defaults.node.password_fanout);
 	ASSERT_EQ (conf.node.peering_port, defaults.node.peering_port);
 	ASSERT_EQ (conf.node.pow_sleep_interval, defaults.node.pow_sleep_interval);
@@ -267,6 +266,10 @@ TEST (toml, daemon_config_deserialize_defaults)
 	ASSERT_EQ (conf.node.optimistic_scheduler.enabled, defaults.node.optimistic_scheduler.enabled);
 	ASSERT_EQ (conf.node.optimistic_scheduler.gap_threshold, defaults.node.optimistic_scheduler.gap_threshold);
 	ASSERT_EQ (conf.node.optimistic_scheduler.max_size, defaults.node.optimistic_scheduler.max_size);
+
+	ASSERT_EQ (conf.node.hinted_scheduler.hinting_threshold_percent, defaults.node.hinted_scheduler.hinting_threshold_percent);
+	ASSERT_EQ (conf.node.hinted_scheduler.check_interval.count (), defaults.node.hinted_scheduler.check_interval.count ());
+	ASSERT_EQ (conf.node.hinted_scheduler.block_cooldown.count (), defaults.node.hinted_scheduler.block_cooldown.count ());
 }
 
 TEST (toml, optional_child)
@@ -420,7 +423,6 @@ TEST (toml, daemon_config_deserialize_no_defaults)
 	background_threads = 999
 	online_weight_minimum = "999"
 	rep_crawler_weight_minimum = "999"
-	election_hint_weight_percent = 19
 	password_fanout = 999
 	peering_port = 999
 	pow_sleep_interval= 999
@@ -529,6 +531,11 @@ TEST (toml, daemon_config_deserialize_no_defaults)
 	gap_threshold = 999
 	max_size = 999
 
+	[node.hinted_scheduler]
+	hinting_threshold = 99
+	check_interval = 999
+	block_cooldown = 999
+
 	[node.experimental]
 	secondary_work_peers = ["dev.org:998"]
 	max_pruning_age = 999
@@ -596,7 +603,6 @@ TEST (toml, daemon_config_deserialize_no_defaults)
 	ASSERT_NE (conf.node.max_pruning_depth, defaults.node.max_pruning_depth);
 	ASSERT_NE (conf.node.online_weight_minimum, defaults.node.online_weight_minimum);
 	ASSERT_NE (conf.node.rep_crawler_weight_minimum, defaults.node.rep_crawler_weight_minimum);
-	ASSERT_NE (conf.node.election_hint_weight_percent, defaults.node.election_hint_weight_percent);
 	ASSERT_NE (conf.node.password_fanout, defaults.node.password_fanout);
 	ASSERT_NE (conf.node.peering_port, defaults.node.peering_port);
 	ASSERT_NE (conf.node.pow_sleep_interval, defaults.node.pow_sleep_interval);
@@ -688,6 +694,10 @@ TEST (toml, daemon_config_deserialize_no_defaults)
 	ASSERT_NE (conf.node.optimistic_scheduler.enabled, defaults.node.optimistic_scheduler.enabled);
 	ASSERT_NE (conf.node.optimistic_scheduler.gap_threshold, defaults.node.optimistic_scheduler.gap_threshold);
 	ASSERT_NE (conf.node.optimistic_scheduler.max_size, defaults.node.optimistic_scheduler.max_size);
+
+	ASSERT_NE (conf.node.hinted_scheduler.hinting_threshold_percent, defaults.node.hinted_scheduler.hinting_threshold_percent);
+	ASSERT_NE (conf.node.hinted_scheduler.check_interval.count (), defaults.node.hinted_scheduler.check_interval.count ());
+	ASSERT_NE (conf.node.hinted_scheduler.block_cooldown.count (), defaults.node.hinted_scheduler.block_cooldown.count ());
 }
 
 /** There should be no required values **/
@@ -817,36 +827,6 @@ TEST (toml, daemon_config_deserialize_errors)
 
 		ASSERT_EQ (toml.get_error ().get_message (), "frontiers_confirmation value is invalid (available: always, auto, disabled)");
 		ASSERT_EQ (conf.node.frontiers_confirmation, nano::frontiers_confirmation_mode::invalid);
-	}
-
-	{
-		std::stringstream ss;
-		ss << R"toml(
-		[node]
-		election_hint_weight_percent = 4
-		)toml";
-
-		nano::tomlconfig toml;
-		toml.read (ss);
-		nano::daemon_config conf;
-		conf.deserialize_toml (toml);
-
-		ASSERT_EQ (toml.get_error ().get_message (), "election_hint_weight_percent must be a number between 5 and 50");
-	}
-
-	{
-		std::stringstream ss;
-		ss << R"toml(
-		[node]
-		election_hint_weight_percent = 51
-		)toml";
-
-		nano::tomlconfig toml;
-		toml.read (ss);
-		nano::daemon_config conf;
-		conf.deserialize_toml (toml);
-
-		ASSERT_EQ (toml.get_error ().get_message (), "election_hint_weight_percent must be a number between 5 and 50");
 	}
 
 	{

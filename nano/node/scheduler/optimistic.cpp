@@ -181,6 +181,15 @@ void nano::scheduler::optimistic_config::load_dto (rsnano::OptimisticSchedulerCo
 	max_size = dto_a.max_size;
 }
 
+rsnano::OptimisticSchedulerConfigDto nano::scheduler::optimistic_config::into_dto () const
+{
+	rsnano::OptimisticSchedulerConfigDto dto;
+	dto.enabled = enabled;
+	dto.gap_threshold = gap_threshold;
+	dto.max_size = max_size;
+	return dto;
+}
+
 nano::error nano::scheduler::optimistic_config::deserialize (nano::tomlconfig & toml)
 {
 	toml.get ("enabled", enabled);

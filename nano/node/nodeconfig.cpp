@@ -19,12 +19,13 @@ char const * pow_sleep_interval_key = "pow_sleep_interval";
 rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 {
 	rsnano::NodeConfigDto dto;
+	dto.optimistic_scheduler = config.optimistic_scheduler.into_dto ();
+	dto.hinted_scheduler = config.hinted_scheduler.into_dto ();
 	dto.peering_port = config.peering_port.value_or (0);
 	dto.peering_port_defined = config.peering_port.has_value ();
 	dto.bootstrap_fraction_numerator = config.bootstrap_fraction_numerator;
 	std::copy (std::begin (config.receive_minimum.bytes), std::end (config.receive_minimum.bytes), std::begin (dto.receive_minimum));
 	std::copy (std::begin (config.online_weight_minimum.bytes), std::end (config.online_weight_minimum.bytes), std::begin (dto.online_weight_minimum));
-	dto.election_hint_weight_percent = config.election_hint_weight_percent;
 	dto.password_fanout = config.password_fanout;
 	dto.io_threads = config.io_threads;
 	dto.network_threads = config.network_threads;
@@ -143,10 +144,10 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 		peering_port = std::nullopt;
 	}
 	optimistic_scheduler.load_dto (dto.optimistic_scheduler);
+	hinted_scheduler.load_dto (dto.hinted_scheduler);
 	bootstrap_fraction_numerator = dto.bootstrap_fraction_numerator;
 	std::copy (std::begin (dto.receive_minimum), std::end (dto.receive_minimum), std::begin (receive_minimum.bytes));
 	std::copy (std::begin (dto.online_weight_minimum), std::end (dto.online_weight_minimum), std::begin (online_weight_minimum.bytes));
-	election_hint_weight_percent = dto.election_hint_weight_percent;
 	password_fanout = dto.password_fanout;
 	io_threads = dto.io_threads;
 	network_threads = dto.network_threads;
@@ -282,6 +283,12 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 			optimistic_scheduler.deserialize (config_l);
 		}
 
+		if (toml.has_key ("hinted_scheduler"))
+		{
+			auto config_l = toml.get_required_child ("hinted_scheduler");
+			hinted_scheduler.deserialize (config_l);
+		}
+
 		if (toml.has_key ("bootstrap_ascending"))
 		{
 			auto config_l = toml.get_required_child ("bootstrap_ascending");
@@ -382,7 +389,6 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		}
 
 		toml.get<unsigned> ("bootstrap_fraction_numerator", bootstrap_fraction_numerator);
-		toml.get<unsigned> ("election_hint_weight_percent", election_hint_weight_percent);
 		toml.get<unsigned> ("password_fanout", password_fanout);
 		toml.get<unsigned> ("io_threads", io_threads);
 		toml.get<unsigned> ("work_threads", work_threads);
@@ -467,11 +473,6 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 			experimental_config_l.get<uint64_t> ("max_pruning_depth", max_pruning_depth);
 		}
 
-		// Validate ranges
-		if (election_hint_weight_percent < 5 || election_hint_weight_percent > 50)
-		{
-			toml.get_error ().set ("election_hint_weight_percent must be a number between 5 and 50");
-		}
 		if (password_fanout < 16 || password_fanout > 1024 * 1024)
 		{
 			toml.get_error ().set ("password_fanout must be a number between 16 and 1048576");

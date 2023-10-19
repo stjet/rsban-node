@@ -10,8 +10,8 @@ use rsnano_core::{
 use rsnano_store_lmdb::LmdbConfig;
 
 use super::{
-    BootstrapAscendingConfig, DiagnosticsConfig, Logging, Networks, OptimisticSchedulerConfig,
-    WebsocketConfig,
+    BootstrapAscendingConfig, DiagnosticsConfig, HintedSchedulerConfig, Logging, Networks,
+    OptimisticSchedulerConfig, WebsocketConfig,
 };
 
 #[repr(u8)]
@@ -26,10 +26,10 @@ pub enum FrontiersConfirmationMode {
 pub struct NodeConfig {
     pub peering_port: Option<u16>,
     pub optimistic_scheduler: OptimisticSchedulerConfig,
+    pub hinted_scheduler: HintedSchedulerConfig,
     pub bootstrap_fraction_numerator: u32,
     pub receive_minimum: Amount,
     pub online_weight_minimum: Amount,
-    pub election_hint_weight_percent: u32,
     pub password_fanout: u32,
     pub io_threads: u32,
     pub network_threads: u32,
@@ -214,7 +214,6 @@ impl NodeConfig {
             bootstrap_fraction_numerator: 1,
             receive_minimum: Amount::raw(*XRB_RATIO),
             online_weight_minimum: Amount::raw(60000 * *GXRB_RATIO),
-            election_hint_weight_percent: 50,
             password_fanout: 1024,
             io_threads: std::cmp::max(get_cpu_count() as u32, 4),
             network_threads: std::cmp::max(get_cpu_count() as u32, 4),
@@ -289,6 +288,11 @@ impl NodeConfig {
             backlog_scan_batch_size: 10 * 1000,
             backlog_scan_frequency: 10,
             optimistic_scheduler: OptimisticSchedulerConfig::new(),
+            hinted_scheduler: if network_params.network.is_dev_network() {
+                HintedSchedulerConfig::default_for_dev_network()
+            } else {
+                HintedSchedulerConfig::default()
+            },
         }
     }
 
@@ -300,7 +304,6 @@ impl NodeConfig {
         toml.put_u32("bootstrap_fraction_numerator", self.bootstrap_fraction_numerator, "Change bootstrap threshold (online stake / 256 * bootstrap_fraction_numerator).\ntype:uint32")?;
         toml.put_str("receive_minimum", &self.receive_minimum.to_string_dec (), "Minimum receive amount. Only affects node wallets. A large amount is recommended to avoid automatic work generation for tiny transactions.\ntype:string,amount,raw")?;
         toml.put_str("online_weight_minimum", &self.online_weight_minimum.to_string_dec (), "When calculating online weight, the node is forced to assume at least this much voting weight is online, thus setting a floor for voting weight to confirm transactions at online_weight_minimum * \"quorum delta\".\ntype:string,amount,raw")?;
-        toml.put_u32("election_hint_weight_percent", self.election_hint_weight_percent, "Percentage of online weight to hint at starting an election. Defaults to 10.\ntype:uint32,[5,50]")?;
         toml.put_u32(
             "password_fanout",
             self.password_fanout,

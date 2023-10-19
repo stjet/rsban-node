@@ -37,6 +37,7 @@ public:
 	optimistic_config ();
 	nano::error deserialize (nano::tomlconfig & toml);
 	void load_dto (rsnano::OptimisticSchedulerConfigDto const & dto_a);
+	rsnano::OptimisticSchedulerConfigDto into_dto () const;
 
 public:
 	bool enabled;

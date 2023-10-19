@@ -9,7 +9,7 @@
 nano::amount nano::amount::from_bytes (const uint8_t * bytes)
 {
 	nano::amount result;
-	std::copy(bytes, bytes + 16, std::begin(result.bytes));
+	std::copy (bytes, bytes + 16, std::begin (result.bytes));
 	return result;
 }
 

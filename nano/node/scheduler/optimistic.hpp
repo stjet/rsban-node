@@ -47,16 +47,17 @@ public:
 	/** Maximum number of candidates stored in memory */
 	std::size_t max_size;
 };
+
 class optimistic final
 {
-	friend class component;
-	void start ();
-	void stop ();
 	struct entry;
 
 public:
 	optimistic (optimistic_config const &, nano::node &, nano::ledger &, nano::active_transactions &, nano::network_constants const & network_constants, nano::stats &);
 	~optimistic ();
+
+	void start ();
+	void stop ();
 
 	/**
 	 * Called from backlog population to process accounts with unconfirmed blocks

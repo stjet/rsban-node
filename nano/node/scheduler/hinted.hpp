@@ -29,7 +29,7 @@ namespace nano::scheduler
 class hinted_config final
 {
 public:
-	hinted_config();
+	hinted_config ();
 	explicit hinted_config (nano::network_constants const &);
 
 	void load_dto (rsnano::HintedSchedulerConfigDto const & dto_a);

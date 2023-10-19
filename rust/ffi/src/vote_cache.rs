@@ -34,22 +34,12 @@ pub unsafe extern "C" fn rsn_vote_cache_vote(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_cache_cache_empty(handle: *const VoteCacheHandle) -> bool {
-    (*handle).0.lock().unwrap().cache_empty()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_queue_empty(handle: *const VoteCacheHandle) -> bool {
-    (*handle).0.lock().unwrap().queue_empty()
+    (*handle).0.lock().unwrap().empty()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_cache_cache_size(handle: *const VoteCacheHandle) -> usize {
-    (*handle).0.lock().unwrap().cache_size()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_queue_size(handle: *const VoteCacheHandle) -> usize {
-    (*handle).0.lock().unwrap().queue_size()
+    (*handle).0.lock().unwrap().size()
 }
 
 #[no_mangle]
@@ -91,36 +81,6 @@ pub unsafe extern "C" fn rsn_vote_cache_erase(
     let hash = BlockHash::from_ptr(hash);
     let mut guard = (*handle).0.lock().unwrap();
     guard.erase(&hash)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_pop(
-    handle: *mut VoteCacheHandle,
-    min_tally: *const u8,
-    result: *mut VoteCacheEntryDto,
-) -> bool {
-    let min_tally = Amount::from_ptr(min_tally);
-    let mut guard = (*handle).0.lock().unwrap();
-    let entry = guard.pop_min_tally(min_tally);
-    fill_entry_dto(entry.as_ref(), result)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_peek(
-    handle: *mut VoteCacheHandle,
-    min_tally: *const u8,
-    result: *mut VoteCacheEntryDto,
-) -> bool {
-    let min_tally = Amount::from_ptr(min_tally);
-    let guard = (*handle).0.lock().unwrap();
-    let entry = guard.peek_min_tally(min_tally);
-    fill_entry_dto(entry, result)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_trigger(handle: *mut VoteCacheHandle, hash: *const u8) {
-    let hash = BlockHash::from_ptr(hash);
-    (*handle).0.lock().unwrap().trigger(&hash);
 }
 
 #[no_mangle]

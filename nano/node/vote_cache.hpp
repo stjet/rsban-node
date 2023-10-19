@@ -74,27 +74,9 @@ public:
 	 * @return true if hash existed and was erased, false otherwise
 	 */
 	bool erase (nano::block_hash const & hash);
-	/**
-	 * Returns an entry with the highest tally.
-	 * @param min_tally minimum tally threshold, entries below with their voting weight below this will be ignored
-	 */
-	std::optional<entry> peek (nano::uint128_t const & min_tally = 0) const;
-	/**
-	 * Returns an entry with the highest tally and removes it from container.
-	 * @param min_tally minimum tally threshold, entries below with their voting weight below this will be ignored
-	 */
-	std::optional<entry> pop (nano::uint128_t const & min_tally = 0);
-	/**
-	 * Reinserts a block into the queue.
-	 * It is possible that we dequeue a hash that doesn't have a received block yet (for eg. if publish message was lost).
-	 * We need a way to reinsert that hash into the queue when we finally receive the block
-	 */
-	void trigger (const nano::block_hash & hash);
 
-	std::size_t cache_size () const;
-	std::size_t queue_size () const;
-	bool cache_empty () const;
-	bool queue_empty () const;
+	std::size_t size () const;
+	bool empty () const;
 
 	rsnano::VoteCacheHandle * handle;
 
@@ -107,7 +89,9 @@ public:
 	};
 
 	/**
-	 * Returns blocks with highest observed tally, greater than `min_tally`
+	 * Returns blocks with highest observed tally
+	 * The blocks are sorted in descending order by final tally, then by tally
+	 * @param min_tally minimum tally threshold, entries below with their voting weight below this will be ignored
 	 */
 	std::vector<top_entry> top (nano::uint128_t const & min_tally) const;
 

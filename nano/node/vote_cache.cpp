@@ -100,24 +100,14 @@ void nano::vote_cache::vote (const nano::block_hash & hash, const std::shared_pt
 	rsnano::rsn_vote_cache_vote (handle, hash.bytes.data (), vote->get_handle (), rep_weight_amount.bytes.data ());
 }
 
-bool nano::vote_cache::cache_empty () const
+bool nano::vote_cache::empty () const
 {
 	return rsnano::rsn_vote_cache_cache_empty (handle);
 }
 
-bool nano::vote_cache::queue_empty () const
-{
-	return rsnano::rsn_vote_cache_queue_empty (handle);
-}
-
-std::size_t nano::vote_cache::cache_size () const
+std::size_t nano::vote_cache::size () const
 {
 	return rsnano::rsn_vote_cache_cache_size (handle);
-}
-
-std::size_t nano::vote_cache::queue_size () const
-{
-	return rsnano::rsn_vote_cache_queue_size (handle);
 }
 
 std::optional<nano::vote_cache::entry> nano::vote_cache::find (const nano::block_hash & hash) const
@@ -133,33 +123,6 @@ std::optional<nano::vote_cache::entry> nano::vote_cache::find (const nano::block
 bool nano::vote_cache::erase (const nano::block_hash & hash)
 {
 	return rsnano::rsn_vote_cache_erase (handle, hash.bytes.data ());
-}
-
-std::optional<nano::vote_cache::entry> nano::vote_cache::pop (nano::uint128_t const & min_tally)
-{
-	nano::amount min_tally_amount{ min_tally };
-	rsnano::VoteCacheEntryDto result{};
-	if (rsnano::rsn_vote_cache_pop (handle, min_tally_amount.bytes.data (), &result))
-	{
-		return nano::vote_cache::entry{ result };
-	}
-	return {};
-}
-
-std::optional<nano::vote_cache::entry> nano::vote_cache::peek (nano::uint128_t const & min_tally) const
-{
-	nano::amount min_tally_amount{ min_tally };
-	rsnano::VoteCacheEntryDto result{};
-	if (rsnano::rsn_vote_cache_peek (handle, min_tally_amount.bytes.data (), &result))
-	{
-		return nano::vote_cache::entry{ result };
-	}
-	return {};
-}
-
-void nano::vote_cache::trigger (const nano::block_hash & hash)
-{
-	rsnano::rsn_vote_cache_trigger (handle, hash.bytes.data ());
 }
 
 std::vector<nano::vote_cache::top_entry> nano::vote_cache::top (const nano::uint128_t & min_tally) const

@@ -12,14 +12,9 @@ use crate::voting::Vote;
 ///
 ///	Cache: Stores votes associated with a particular block hash with a bounded maximum number of votes per hash.
 ///			When cache size exceeds `max_size` oldest entries are evicted first.
-///
-///	Queue: Keeps track of block hashes ordered by total cached vote tally.
-///			When inserting a new vote into cache, the queue is atomically updated.
-///			When queue size exceeds `max_size` oldest entries are evicted first.
 pub struct VoteCache {
     max_size: usize,
     cache: MultiIndexCacheEntryMap,
-    queue: MultiIndexQueueEntryMap,
     next_id: usize,
 }
 
@@ -28,7 +23,6 @@ impl VoteCache {
         VoteCache {
             max_size,
             cache: MultiIndexCacheEntryMap::default(),
-            queue: MultiIndexQueueEntryMap::default(),
             next_id: 0,
         }
     }
@@ -41,14 +35,7 @@ impl VoteCache {
         let cache_entry_exists = self
             .cache
             .modify_by_hash(hash, |existing| {
-                let modified = existing.vote(&vote.voting_account, vote.timestamp(), rep_weight);
-
-                if modified {
-                    self.queue.modify_by_hash(hash, |ent| {
-                        ent.tally = existing.tally;
-                        ent.final_tally = existing.final_tally;
-                    });
-                }
+                existing.vote(&vote.voting_account, vote.timestamp(), rep_weight);
             })
             .is_some();
 
@@ -58,32 +45,21 @@ impl VoteCache {
             let mut cache_entry = CacheEntry::new(id, *hash);
             cache_entry.vote(&vote.voting_account, vote.timestamp(), rep_weight);
 
-            let queue_entry =
-                QueueEntry::new(id, *hash, cache_entry.tally, cache_entry.final_tally);
             self.cache.insert(cache_entry);
 
-            // If a stale entry for the same hash already exists in queue, replace it by a new entry with fresh tally
-            self.queue.remove_by_hash(hash);
-            self.queue.insert(queue_entry);
-
-            self.trim_overflow_locked();
+            // When cache overflown remove the oldest entry
+            if self.cache.len() > self.max_size {
+                self.cache.pop_front();
+            }
         }
     }
 
-    pub fn cache_empty(&self) -> bool {
+    pub fn empty(&self) -> bool {
         self.cache.is_empty()
     }
 
-    pub fn queue_empty(&self) -> bool {
-        self.queue.is_empty()
-    }
-
-    pub fn cache_size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.cache.len()
-    }
-
-    pub fn queue_size(&self) -> usize {
-        self.queue.len()
     }
 
     /// Tries to find an entry associated with block hash
@@ -94,76 +70,13 @@ impl VoteCache {
     /// Removes an entry associated with block hash, does nothing if entry does not exist
     /// return true if hash existed and was erased, false otherwise
     pub fn erase(&mut self, hash: &BlockHash) -> bool {
-        let result = self.cache.remove_by_hash(hash).is_some();
-        self.queue.remove_by_hash(hash);
-        result
+        self.cache.remove_by_hash(hash).is_some()
     }
 
-    /// Returns an entry with the highest tally and removes it from container.
-    pub fn pop(&mut self) -> Option<CacheEntry> {
-        self.pop_min_tally(Amount::zero())
-    }
-
-    /// Returns an entry with the highest tally and removes it from container.
-    /// param min_tally minimum tally threshold, entries below with their voting weight below this will be ignored
-    pub fn pop_min_tally(&mut self, min_tally: Amount) -> Option<CacheEntry> {
-        if self.queue.is_empty() {
-            return None;
-        };
-
-        let top = self.queue.iter_by_tally().rev().next()?.clone();
-        let cache_entry = self.find(&top.hash)?.clone(); // element with the highest tally
-
-        // Here we check whether our best candidate passes the minimum vote tally threshold
-        // If yes, erase it from the queue (but still keep the votes in cache)
-        if cache_entry.tally < min_tally {
-            return None;
-        }
-
-        self.queue.remove_by_id(&top.id);
-        Some(cache_entry)
-    }
-
-    /// Returns an entry with the highest tally.
-    pub fn peek(&self) -> Option<&CacheEntry> {
-        self.peek_min_tally(Amount::zero())
-    }
-
-    /// Returns an entry with the highest tally.
-    /// param min_tally minimum tally threshold, entries below with their voting weight below this will be ignored
-    pub fn peek_min_tally(&self, min_tally: Amount) -> Option<&CacheEntry> {
-        if self.queue.is_empty() {
-            return None;
-        }
-
-        let top = self.queue.iter_by_tally().rev().next()?; // element with the highest tally
-        let cache_entry = self.find(&top.hash)?;
-
-        match cache_entry.tally >= min_tally {
-            true => Some(cache_entry),
-            false => None,
-        }
-    }
-
-    /// Reinserts a block into the queue.
-    /// It is possible that we dequeue a hash that doesn't have a received block yet (for eg. if publish message was lost).
-    /// We need a way to reinsert that hash into the queue when we finally receive the block
-    pub fn trigger(&mut self, hash: &BlockHash) {
-        // Only reinsert to queue if it is not already in queue and there are votes in passive cache
-        if self.queue.get_by_hash(hash).is_none() {
-            if let Some(existing_cache_entry) = self.find(hash) {
-                self.queue.insert(QueueEntry::new(
-                    self.next_id,
-                    *hash,
-                    existing_cache_entry.tally,
-                    existing_cache_entry.final_tally,
-                ));
-                self.next_id += 1;
-                self.trim_overflow_locked();
-            }
-        }
-    }
     /// Returns blocks with highest observed tally, greater than `min_tally`
+    /// The blocks are sorted in descending order by final tally, then by tally
+    /// @param min_tally minimum tally threshold, entries below with their voting weight
+    /// below this will be ignore
     pub fn top(&self, min_tally: Amount) -> Vec<TopEntry> {
         let mut results = Vec::new();
         for entry in self.cache.iter_by_tally() {
@@ -193,30 +106,12 @@ impl VoteCache {
     pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
             name,
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "cache".to_owned(),
-                    count: self.cache_size(),
-                    sizeof_element: size_of::<CacheEntry>(),
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "queue".to_owned(),
-                    count: self.queue_size(),
-                    sizeof_element: size_of::<QueueEntry>(),
-                }),
-            ],
+            vec![ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "cache".to_owned(),
+                count: self.size(),
+                sizeof_element: size_of::<CacheEntry>(),
+            })],
         )
-    }
-
-    fn trim_overflow_locked(&mut self) {
-        // When cache overflown remove the oldest entry
-        if self.cache.len() > self.max_size {
-            self.cache.pop_front();
-        }
-
-        if self.queue.len() > self.max_size {
-            self.queue.pop_front();
-        }
     }
 }
 
@@ -236,7 +131,6 @@ pub struct CacheEntry {
     pub voters: Vec<VoterEntry>,
     #[multi_index(ordered_non_unique)]
     pub tally: Amount,
-    #[multi_index(ordered_non_unique)]
     pub final_tally: Amount,
 }
 
@@ -309,38 +203,8 @@ impl CacheEntry {
     }
 }
 
-#[derive(MultiIndexMap, Debug, Clone)]
-pub struct QueueEntry {
-    #[multi_index(ordered_unique)]
-    id: usize,
-    #[multi_index(hashed_unique)]
-    hash: BlockHash,
-    #[multi_index(ordered_non_unique)]
-    tally: Amount,
-    #[multi_index(ordered_non_unique)]
-    final_tally: Amount,
-}
-
-impl QueueEntry {
-    pub fn new(id: usize, hash: BlockHash, tally: Amount, final_tally: Amount) -> Self {
-        QueueEntry {
-            id,
-            hash,
-            tally,
-            final_tally,
-        }
-    }
-}
-
 impl MultiIndexCacheEntryMap {
     fn pop_front(&mut self) -> Option<CacheEntry> {
-        let id = self.iter_by_id().next()?.id;
-        self.remove_by_id(&id)
-    }
-}
-
-impl MultiIndexQueueEntryMap {
-    fn pop_front(&mut self) -> Option<QueueEntry> {
         let id = self.iter_by_id().next()?.id;
         self.remove_by_id(&id)
     }
@@ -365,8 +229,8 @@ mod tests {
     #[test]
     fn construction() {
         let cache = VoteCache::new(10);
-        assert_eq!(cache.cache_size(), 0);
-        assert!(cache.cache_empty());
+        assert_eq!(cache.size(), 0);
+        assert!(cache.empty());
         let hash = BlockHash::random();
         assert!(cache.find(&hash).is_none());
     }
@@ -380,7 +244,7 @@ mod tests {
 
         cache.vote(&hash, &vote, Amount::raw(7));
 
-        assert_eq!(cache.cache_size(), 1);
+        assert_eq!(cache.size(), 1);
         assert!(cache.find(&hash).is_some());
         let peek = cache.peek().unwrap();
         assert_eq!(peek.hash, hash);
@@ -413,7 +277,7 @@ mod tests {
         cache.vote(&hash, &vote2, Amount::raw(9));
         cache.vote(&hash, &vote3, Amount::raw(11));
         // We have 3 votes but for a single hash, so just one entry in vote cache
-        assert_eq!(cache.cache_size(), 1);
+        assert_eq!(cache.size(), 1);
         let peek = cache.peek().unwrap();
         assert_eq!(peek.voters.len(), 3);
         // Tally must be the sum of rep weights
@@ -447,7 +311,7 @@ mod tests {
         cache.vote(&hash3, &vote3, Amount::raw(11));
 
         // Ensure all of those are properly inserted
-        assert_eq!(cache.cache_size(), 3);
+        assert_eq!(cache.size(), 3);
         assert!(cache.find(&hash1).is_some());
         assert!(cache.find(&hash2).is_some());
         assert!(cache.find(&hash3).is_some());
@@ -500,7 +364,7 @@ mod tests {
         cache.vote(&hash, &vote1, Amount::raw(9));
         cache.vote(&hash, &vote2, Amount::raw(9));
 
-        assert_eq!(cache.cache_size(), 1)
+        assert_eq!(cache.size(), 1)
     }
 
     /*
@@ -525,7 +389,7 @@ mod tests {
         cache.vote(&hash, &vote2, Amount::raw(9));
 
         let peek2 = cache.peek().unwrap();
-        assert_eq!(cache.cache_size(), 1);
+        assert_eq!(cache.size(), 1);
         assert_eq!(peek2.voters.len(), 1);
         assert_eq!(peek2.voters.first().unwrap().timestamp, u64::MAX); // final timestamp
     }
@@ -546,7 +410,7 @@ mod tests {
         cache.vote(&hash, &vote2, Amount::raw(9));
         let peek2 = cache.peek().unwrap();
 
-        assert_eq!(cache.cache_size(), 1);
+        assert_eq!(cache.size(), 1);
         assert_eq!(peek2.voters.len(), 1);
         assert_eq!(
             peek2.voters.first().unwrap().timestamp,
@@ -576,21 +440,21 @@ mod tests {
         cache.vote(&hash2, &vote2, Amount::raw(9));
         cache.vote(&hash3, &vote3, Amount::raw(11));
 
-        assert_eq!(cache.cache_size(), 3);
+        assert_eq!(cache.size(), 3);
         assert!(cache.find(&hash1).is_some());
         assert!(cache.find(&hash2).is_some());
         assert!(cache.find(&hash3).is_some());
 
         cache.erase(&hash2);
 
-        assert_eq!(cache.cache_size(), 2);
+        assert_eq!(cache.size(), 2);
         assert!(cache.find(&hash1).is_some());
         assert!(cache.find(&hash2).is_none());
         assert!(cache.find(&hash3).is_some());
         cache.erase(&hash1);
         cache.erase(&hash3);
 
-        assert!(cache.cache_empty());
+        assert!(cache.empty());
     }
 
     /*
@@ -622,7 +486,7 @@ mod tests {
         let vote4 = create_vote(&rep4, &hash4, 1);
         cache.vote(&hash4, &vote4, Amount::raw(4));
 
-        assert_eq!(cache.cache_size(), 3);
+        assert_eq!(cache.size(), 3);
 
         // Check that oldest votes are dropped first
         assert_eq!(cache.pop().unwrap().tally, Amount::raw(4));
@@ -650,6 +514,6 @@ mod tests {
         let vote3 = create_vote(&rep3, &hash, 1);
         cache.vote(&hash, &vote3, Amount::raw(9));
 
-        assert_eq!(cache.cache_size(), 1);
+        assert_eq!(cache.size(), 1);
     }
 }

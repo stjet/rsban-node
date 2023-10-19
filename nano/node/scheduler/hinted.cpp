@@ -206,7 +206,7 @@ bool nano::scheduler::hinted::cooldown (const nano::block_hash & hash)
  * hinted_config
  */
 
-nano::scheduler::hinted_config::hinted_config()
+nano::scheduler::hinted_config::hinted_config ()
 {
 	rsnano::HintedSchedulerConfigDto dto;
 	rsnano::rsn_hinted_scheduler_config_create (false, &dto);

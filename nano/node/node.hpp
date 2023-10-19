@@ -56,7 +56,6 @@ class work_pool;
 namespace scheduler
 {
 	class component;
-	class successor_scheduler;
 }
 
 std::unique_ptr<container_info_component> collect_container_info (rep_crawler & rep_crawler, std::string const & name);
@@ -179,7 +178,6 @@ public:
 	nano::vote_generator final_generator;
 	nano::block_processor block_processor;
 	nano::active_transactions active;
-	std::unique_ptr<nano::scheduler::successor_scheduler> successor_scheduler;
 
 private: // Placed here to maintain initialization order
 	std::unique_ptr<nano::scheduler::component> scheduler_impl;

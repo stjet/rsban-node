@@ -204,7 +204,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, boost::filesystem::path co
 	active (*this, confirmation_height_processor),
 	scheduler_impl{ std::make_unique<nano::scheduler::component> (*this) },
 	scheduler{ *scheduler_impl },
-	successor_scheduler{ std::make_unique<nano::scheduler::successor_scheduler> (*this) },
 	aggregator (*config, *stats, generator, final_generator, history, ledger, wallets, active),
 	wallets (wallets_store.init_error (), *this),
 	backlog{ nano::backlog_population_config (*config), ledger, *stats },
@@ -232,9 +231,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, boost::filesystem::path co
 		}
 	};
 	block_processor.set_blocks_rolled_back_callback (handle_roll_back);
-	active.on_block_confirmed ([node_a = &(*this)] (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & txn, nano::election_status_type status) {
-		node_a->successor_scheduler->schedule (block, txn, status);
-	});
 	logger->always_log ("Node ID: ", node_id.pub.to_node_id ());
 	network->tcp_channels->set_observer (tcp_listener);
 	nano::transport::request_response_visitor_factory visitor_factory{ *this };

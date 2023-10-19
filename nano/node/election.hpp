@@ -199,9 +199,6 @@ public: // State transitions
 	void transition_active ();
 
 public: // Status
-	// Returns true when the election is confirmed in memory
-	// Elections will first confirm in memory once sufficient votes have been received
-	bool status_confirmed () const;
 	bool failed () const;
 	std::shared_ptr<nano::block> winner () const;
 	unsigned get_confirmation_request_count () const;

@@ -199,7 +199,7 @@ public:
 	// Returns true when the winning block is durably confirmed in the ledger.
 	// Later once the confirmation height processor has updated the confirmation height it will be confirmed on disk
 	// It is possible for an election to be confirmed on disk but not in memory, for instance if implicitly confirmed via confirmation height
-	bool confirmed (nano::election & election) const;
+	bool confirmed (nano::election const & election) const;
 	bool confirmed (nano::election_lock & lock) const;
 	bool confirmed (nano::block_hash const & hash) const;
 	void remove_block (nano::election_lock & lock, nano::block_hash const & hash_a);

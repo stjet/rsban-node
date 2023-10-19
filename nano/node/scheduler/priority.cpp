@@ -96,7 +96,7 @@ bool nano::scheduler::priority::predicate () const
 
 void nano::scheduler::priority::run ()
 {
-	std::weak_ptr<nano::node> node_w{node.shared()};
+	std::weak_ptr<nano::node> node_w{ node.shared () };
 	node.active.on_block_confirmed ([this] (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & txn, nano::election_status_type status) {
 		try_schedule_successors (block, txn, status);
 	});
@@ -138,7 +138,7 @@ void nano::scheduler::priority::run ()
 	}
 }
 
-void nano::scheduler::priority::try_schedule_successors  (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction, nano::election_status_type status)
+void nano::scheduler::priority::try_schedule_successors (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction, nano::election_status_type status)
 {
 	auto const account = !block->account ().is_zero () ? block->account () : block->sideband ().account ();
 	bool cemented_bootstrap_count_reached = node.ledger.cache.cemented_count () >= node.ledger.get_bootstrap_weight_max_blocks ();

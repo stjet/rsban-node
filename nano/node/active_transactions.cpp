@@ -169,7 +169,7 @@ void nano::active_transactions::process_active_confirmation (nano::store::read_t
 	}
 }
 
-bool nano::active_transactions::confirmed (nano::election & election) const
+bool nano::active_transactions::confirmed (nano::election const & election) const
 {
 	auto guard{ election.lock () };
 	return confirmed (guard);
@@ -724,7 +724,7 @@ void nano::active_transactions::request_confirm (nano::active_transactions_lock 
 		bool const confirmed_l (confirmed (*election_l));
 		unconfirmed_count_l += !confirmed_l;
 
-		if (confirmed_l || transition_time (solicitor, *election_l))
+		if (transition_time (solicitor, *election_l))
 		{
 			erase (election_l->qualified_root ());
 		}
@@ -785,7 +785,7 @@ void nano::active_transactions::cleanup_election (nano::active_transactions_lock
 
 nano::stat::type nano::active_transactions::completion_type (nano::election const & election) const
 {
-	if (election.status_confirmed ())
+	if (confirmed (election))
 	{
 		return nano::stat::type::active_confirmed;
 	}
@@ -1374,8 +1374,7 @@ boost::optional<nano::election_status_type> nano::active_transactions::try_confi
 	auto winner = guard.status ().get_winner ();
 	if (winner && winner->hash () == hash)
 	{
-		// Determine if the block was confirmed explicitly via election confirmation or implicitly via confirmation height
-		if (!election.status_confirmed ())
+		if (!confirmed (guard))
 		{
 			confirm_once (guard, nano::election_status_type::active_confirmation_height, election);
 			status_type = nano::election_status_type::active_confirmation_height;

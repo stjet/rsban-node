@@ -855,8 +855,8 @@ impl SocketExtensions for Arc<Socket> {
         let stream = {
             let guard = self.tcp_socket.state.lock().unwrap();
             let TokioSocketState::Client(stream) = guard.deref() else {
-                        return Err(anyhow!("no tcp stream open"));
-                    };
+                return Err(anyhow!("no tcp stream open"));
+            };
             Arc::clone(stream)
         };
 

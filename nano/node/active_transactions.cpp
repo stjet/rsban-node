@@ -754,7 +754,6 @@ void nano::active_transactions::cleanup_election (nano::active_transactions_lock
 		auto erased (rsnano::rsn_active_transactions_lock_blocks_erase (lock_a.handle, hash.bytes.data ()));
 		(void)erased;
 		debug_assert (erased);
-		node.vote_cache.erase (hash);
 	}
 
 	auto election_root{ election->qualified_root () };

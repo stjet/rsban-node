@@ -59,6 +59,7 @@ class amount : public uint128_union
 {
 public:
 	using uint128_union::uint128_union;
+	static amount from_bytes (const uint8_t *);
 };
 class raw_key;
 class uint256_union

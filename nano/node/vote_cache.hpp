@@ -16,17 +16,6 @@ class node;
 class active_transactions;
 class vote;
 
-/**
- *	A container holding votes that do not match any active or recently finished elections.
- *	It keeps track of votes in two internal structures: cache and queue
- *
- *	Cache: Stores votes associated with a particular block hash with a bounded maximum number of votes per hash.
- *			When cache size exceeds `max_size` oldest entries are evicted first.
- *
- *	Queue: Keeps track of block hashes ordered by total cached vote tally.
- *			When inserting a new vote into cache, the queue is atomically updated.
- *			When queue size exceeds `max_size` oldest entries are evicted first.
- */
 class vote_cache final
 {
 public:
@@ -37,7 +26,7 @@ public:
 	};
 
 	/**
-	 * Class that stores votes associated with a single block hash
+	 * Stores votes associated with a single block hash
 	 */
 	class entry final
 	{
@@ -52,9 +41,6 @@ public:
 		explicit entry (nano::block_hash const & hash);
 		explicit entry (rsnano::VoteCacheEntryDto & dto);
 
-		/*
-		 * Size of this entry
-		 */
 		std::size_t size () const;
 
 		nano::block_hash hash () const;
@@ -69,6 +55,7 @@ public:
 		nano::uint128_t final_tally_m{ 0 };
 	};
 
+public:
 	explicit vote_cache (const config);
 	vote_cache (vote_cache const &) = delete;
 	vote_cache (vote_cache &&) = delete;
@@ -109,8 +96,22 @@ public:
 	bool cache_empty () const;
 	bool queue_empty () const;
 
-	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);
 
 	rsnano::VoteCacheHandle * handle;
+public:
+	struct top_entry
+	{
+		nano::block_hash hash;
+		nano::uint128_t tally;
+		nano::uint128_t final_tally;
+	};
+
+	/**
+	 * Returns blocks with highest observed tally, greater than `min_tally`
+	 */
+	std::vector<top_entry> top (nano::uint128_t const & min_tally) const;
+
+public: // Container info
+	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);
 };
 }

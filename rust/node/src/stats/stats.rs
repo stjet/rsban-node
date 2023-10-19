@@ -327,6 +327,11 @@ pub enum DetailType {
 
     // hinting
     MissingBlock,
+    DependentUnconfirmed,
+    AlreadyConfirmed,
+    Activate,
+    ActivateImmediate,
+    DependentActivated,
 
     // bootstrap server
     Response,

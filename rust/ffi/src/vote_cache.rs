@@ -1,6 +1,6 @@
 use crate::{copy_account_bytes, utils::ContainerInfoComponentHandle, voting::VoteHandle};
 use rsnano_core::{Amount, BlockHash};
-use rsnano_node::vote_cache::{VoteCache, VoterEntry};
+use rsnano_node::vote_cache::{TopEntry, VoteCache, VoterEntry};
 use std::{
     ffi::{c_char, CStr},
     sync::{Arc, Mutex},
@@ -163,3 +163,43 @@ pub struct VoteCacheEntryDto {
 }
 
 pub struct VoterListDto(Vec<VoterEntry>);
+
+#[repr(C)]
+pub struct TopEntryDto {
+    pub hash: [u8; 32],
+    pub tally: [u8; 16],
+    pub final_tally: [u8; 16],
+}
+
+pub struct TopEntryVecHandle(Vec<TopEntry>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_cache_top(
+    handle: &VoteCacheHandle,
+    min_tally: *const u8,
+) -> *mut TopEntryVecHandle {
+    let result = handle.0.lock().unwrap().top(Amount::from_ptr(min_tally));
+    Box::into_raw(Box::new(TopEntryVecHandle(result)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_top_entry_vec_destroy(handle: *mut TopEntryVecHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_top_entry_vec_len(handle: &TopEntryVecHandle) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_top_entry_vec_get(
+    handle: &TopEntryVecHandle,
+    index: usize,
+    result: &mut TopEntryDto,
+) {
+    let entry = handle.0.get(index).unwrap();
+    result.hash = *entry.hash.as_bytes();
+    result.tally = entry.tally.to_be_bytes();
+    result.final_tally = entry.final_tally.to_be_bytes();
+}

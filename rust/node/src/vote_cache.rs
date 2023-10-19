@@ -3,7 +3,7 @@ use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Account, Amount, BlockHash,
 };
-use std::{fmt::Debug, mem::size_of};
+use std::{cmp::Ordering, fmt::Debug, mem::size_of};
 
 use crate::voting::Vote;
 
@@ -41,10 +41,14 @@ impl VoteCache {
         let cache_entry_exists = self
             .cache
             .modify_by_hash(hash, |existing| {
-                existing.vote(&vote.voting_account, vote.timestamp(), rep_weight);
+                let modified = existing.vote(&vote.voting_account, vote.timestamp(), rep_weight);
 
-                self.queue
-                    .modify_by_hash(hash, |ent| ent.tally = existing.tally);
+                if modified {
+                    self.queue.modify_by_hash(hash, |ent| {
+                        ent.tally = existing.tally;
+                        ent.final_tally = existing.final_tally;
+                    });
+                }
             })
             .is_some();
 
@@ -54,7 +58,8 @@ impl VoteCache {
             let mut cache_entry = CacheEntry::new(id, *hash);
             cache_entry.vote(&vote.voting_account, vote.timestamp(), rep_weight);
 
-            let queue_entry = QueueEntry::new(id, *hash, cache_entry.tally);
+            let queue_entry =
+                QueueEntry::new(id, *hash, cache_entry.tally, cache_entry.final_tally);
             self.cache.insert(cache_entry);
 
             // If a stale entry for the same hash already exists in queue, replace it by a new entry with fresh tally
@@ -151,11 +156,38 @@ impl VoteCache {
                     self.next_id,
                     *hash,
                     existing_cache_entry.tally,
+                    existing_cache_entry.final_tally,
                 ));
                 self.next_id += 1;
                 self.trim_overflow_locked();
             }
         }
+    }
+    /// Returns blocks with highest observed tally, greater than `min_tally`
+    pub fn top(&self, min_tally: Amount) -> Vec<TopEntry> {
+        let mut results = Vec::new();
+        for entry in self.cache.iter_by_tally() {
+            if entry.tally < min_tally {
+                break;
+            }
+            results.push(TopEntry {
+                hash: entry.hash,
+                tally: entry.tally,
+                final_tally: entry.final_tally,
+            });
+        }
+
+        // Sort by final tally then by normal tally, descending
+        results.sort_by(|a, b| {
+            let res = b.final_tally.cmp(&b.final_tally);
+            if res == Ordering::Equal {
+                b.tally.cmp(&a.tally)
+            } else {
+                res
+            }
+        });
+
+        results
     }
 
     pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
@@ -188,6 +220,12 @@ impl VoteCache {
     }
 }
 
+pub struct TopEntry {
+    pub hash: BlockHash,
+    pub tally: Amount,
+    pub final_tally: Amount,
+}
+
 /// Stores votes associated with a single block hash
 #[derive(MultiIndexMap, Default, Debug, Clone)]
 pub struct CacheEntry {
@@ -196,7 +234,9 @@ pub struct CacheEntry {
     #[multi_index(hashed_unique)]
     pub hash: BlockHash,
     pub voters: Vec<VoterEntry>,
+    #[multi_index(ordered_non_unique)]
     pub tally: Amount,
+    #[multi_index(ordered_non_unique)]
     pub final_tally: Amount,
 }
 
@@ -277,11 +317,18 @@ pub struct QueueEntry {
     hash: BlockHash,
     #[multi_index(ordered_non_unique)]
     tally: Amount,
+    #[multi_index(ordered_non_unique)]
+    final_tally: Amount,
 }
 
 impl QueueEntry {
-    pub fn new(id: usize, hash: BlockHash, tally: Amount) -> Self {
-        QueueEntry { id, hash, tally }
+    pub fn new(id: usize, hash: BlockHash, tally: Amount, final_tally: Amount) -> Self {
+        QueueEntry {
+            id,
+            hash,
+            tally,
+            final_tally,
+        }
     }
 }
 

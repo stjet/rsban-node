@@ -5,7 +5,7 @@ use rsnano_store_lmdb::LmdbWallets;
 
 use crate::{copy_hash_bytes, U256ArrayDto};
 
-use super::{store::LmdbStoreHandle, TransactionHandle};
+use super::TransactionHandle;
 
 pub struct LmdbWalletsHandle(LmdbWallets);
 
@@ -23,12 +23,8 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_destroy(handle: *mut LmdbWalletsHandle
 pub unsafe extern "C" fn rsn_lmdb_wallets_init(
     handle: *mut LmdbWalletsHandle,
     txn: *mut TransactionHandle,
-    store: *mut LmdbStoreHandle,
 ) -> bool {
-    (*handle)
-        .0
-        .initialize((*txn).as_write_txn(), &(*store).env)
-        .is_ok()
+    (*handle).0.initialize((*txn).as_write_txn()).is_ok()
 }
 
 #[no_mangle]

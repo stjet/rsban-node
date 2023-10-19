@@ -924,7 +924,7 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 	{
 		auto transaction (tx_begin_write ());
 		auto store_l = dynamic_cast<nano::store::lmdb::component *> (&node.store);
-		int status = !rsnano::rsn_lmdb_wallets_init (rust_handle, transaction->get_rust_handle (), store_l->handle);
+		int status = !rsnano::rsn_lmdb_wallets_init (rust_handle, transaction->get_rust_handle ());
 
 		auto wallet_ids{ get_wallet_ids (*transaction) };
 		for (auto id : wallet_ids)

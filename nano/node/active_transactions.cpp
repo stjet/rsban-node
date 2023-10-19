@@ -229,7 +229,7 @@ bool nano::active_transactions::replace_by_weight (nano::election & election, na
 	std::sort (sorted.begin (), sorted.end (), [] (auto const & left, auto const & right) { return left.second < right.second; });
 	// Replace if lowest tally is below inactive cache new block weight
 	auto inactive_existing = node.inactive_vote_cache.find (hash_a);
-	auto inactive_tally = inactive_existing ? inactive_existing->tally : 0;
+	auto inactive_tally = inactive_existing ? inactive_existing->tally () : 0;
 	if (inactive_tally > 0 && sorted.size () < election.max_blocks)
 	{
 		// If count of tally items is less than 10, remove any block without tally
@@ -1329,9 +1329,9 @@ nano::election_vote_result nano::active_transactions::vote (nano::election & ele
 std::size_t nano::active_transactions::fill_from_cache (nano::election & election, nano::vote_cache::entry const & entry)
 {
 	std::size_t inserted = 0;
-	for (const auto & [rep, timestamp] : entry.voters)
+	for (const auto & voter : entry.voters_m)
 	{
-		auto [is_replay, processed] = vote (election, rep, timestamp, entry.hash, nano::vote_source::cache);
+		auto [is_replay, processed] = vote (election, voter.representative, voter.timestamp, entry.hash_m, nano::vote_source::cache);
 		if (processed)
 		{
 			inserted++;

@@ -1,6 +1,6 @@
 use crate::{copy_account_bytes, utils::ContainerInfoComponentHandle, voting::VoteHandle};
-use rsnano_core::{Account, Amount, BlockHash};
-use rsnano_node::vote_cache::VoteCache;
+use rsnano_core::{Amount, BlockHash};
+use rsnano_node::vote_cache::{VoteCache, VoterEntry};
 use std::{
     ffi::{c_char, CStr},
     sync::{Arc, Mutex},
@@ -72,6 +72,9 @@ unsafe fn fill_entry_dto(
         Some(entry) => {
             (*result).hash.copy_from_slice(entry.hash.as_bytes());
             (*result).tally.copy_from_slice(&entry.tally.to_be_bytes());
+            (*result)
+                .final_tally
+                .copy_from_slice(&entry.final_tally.to_be_bytes());
             (*result).voters_count = entry.voters.len();
             (*result).voters = Box::into_raw(Box::new(VoterListDto(entry.voters.clone())));
             true
@@ -132,9 +135,9 @@ pub unsafe extern "C" fn rsn_vote_cache_entry_get_voter(
     account: *mut u8,
     timestamp: *mut u64,
 ) {
-    let (rep, ts) = (*(*entry).voters).0.get(index).unwrap();
-    copy_account_bytes(*rep, account);
-    *timestamp = *ts;
+    let voter = (*(*entry).voters).0.get(index).unwrap();
+    copy_account_bytes(voter.representative, account);
+    *timestamp = voter.timestamp;
 }
 
 #[no_mangle]
@@ -154,8 +157,9 @@ pub unsafe extern "C" fn rsn_vote_cache_collect_container_info(
 pub struct VoteCacheEntryDto {
     pub hash: [u8; 32],
     pub tally: [u8; 16],
+    pub final_tally: [u8; 16],
     pub voters: *mut VoterListDto,
     pub voters_count: usize,
 }
 
-pub struct VoterListDto(Vec<(Account, u64)>);
+pub struct VoterListDto(Vec<VoterEntry>);

@@ -195,13 +195,28 @@ pub struct CacheEntry {
     id: usize,
     #[multi_index(hashed_unique)]
     pub hash: BlockHash,
-    /// <rep, timestamp> pair
-    pub voters: Vec<(Account, u64)>,
+    pub voters: Vec<VoterEntry>,
     pub tally: Amount,
+    pub final_tally: Amount,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VoterEntry {
+    pub representative: Account,
+    pub timestamp: u64,
+}
+
+impl VoterEntry {
+    pub fn new(representative: Account, timestamp: u64) -> Self {
+        Self {
+            representative,
+            timestamp,
+        }
+    }
 }
 
 impl CacheEntry {
-    const MAX_VOTERS: usize = 40;
+    const MAX_VOTERS: usize = 80;
 
     pub fn new(id: usize, hash: BlockHash) -> Self {
         CacheEntry {
@@ -209,6 +224,7 @@ impl CacheEntry {
             hash,
             voters: Vec::new(),
             tally: Amount::zero(),
+            final_tally: Amount::zero(),
         }
     }
 
@@ -218,22 +234,31 @@ impl CacheEntry {
         if let Some(existing) = self
             .voters
             .iter_mut()
-            .find(|(key, _)| key == representative)
+            .find(|voter| voter.representative == *representative)
         {
             // We already have a vote from this rep
             // Update timestamp if newer but tally remains unchanged as we already counted this rep weight
             // It is not essential to keep tally up to date if rep voting weight changes, elections do tally calculations independently, so in the worst case scenario only our queue ordering will be a bit off
-            if timestamp > existing.1 {
-                existing.1 = timestamp
+            if timestamp > existing.timestamp {
+                existing.timestamp = timestamp;
+                if Vote::is_final_timestamp(timestamp) {
+                    self.final_tally.wrapping_add(rep_weight);
+                }
+                return true;
+            } else {
+                return false;
             }
-            return false;
         }
         // Vote from an unseen representative, add to list and update tally
         if self.voters.len() < Self::MAX_VOTERS {
-            self.voters.push((*representative, timestamp));
+            self.voters
+                .push(VoterEntry::new(*representative, timestamp));
 
             // the test vote_processor.weights sometimes causes an overflow. TODO: find out why
             self.tally = self.tally.wrapping_add(rep_weight);
+            if Vote::is_final_timestamp(timestamp) {
+                self.final_tally.wrapping_add(rep_weight);
+            }
             return true;
         }
         false
@@ -313,7 +338,10 @@ mod tests {
         let peek = cache.peek().unwrap();
         assert_eq!(peek.hash, hash);
         assert_eq!(peek.voters.len(), 1);
-        assert_eq!(peek.voters.first(), Some(&(rep.public_key(), 1024 * 1024)));
+        assert_eq!(
+            peek.voters.first(),
+            Some(&VoterEntry::new(rep.public_key(), 1024 * 1024))
+        );
         assert_eq!(peek.tally, Amount::raw(7))
     }
 
@@ -452,7 +480,7 @@ mod tests {
         let peek2 = cache.peek().unwrap();
         assert_eq!(cache.cache_size(), 1);
         assert_eq!(peek2.voters.len(), 1);
-        assert_eq!(peek2.voters.first().unwrap().1, u64::MAX); // final timestamp
+        assert_eq!(peek2.voters.first().unwrap().timestamp, u64::MAX); // final timestamp
     }
 
     /*
@@ -474,8 +502,8 @@ mod tests {
         assert_eq!(cache.cache_size(), 1);
         assert_eq!(peek2.voters.len(), 1);
         assert_eq!(
-            peek2.voters.first().unwrap().1,
-            peek1.voters.first().unwrap().1
+            peek2.voters.first().unwrap().timestamp,
+            peek1.voters.first().unwrap().timestamp
         ); // timestamp2 == timestamp1
     }
 

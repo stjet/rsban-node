@@ -49,6 +49,11 @@ impl Vote {
         result
     }
 
+    /// Check if timestamp represents a final vote
+    pub fn is_final_timestamp(timestamp: u64) -> bool {
+        timestamp == u64::MAX
+    }
+
     /// Returns the timestamp of the vote (with the duration bits masked, set to zero)
     /// If it is a final vote, all the bits including duration bits are returned as they are, all FF
     pub fn timestamp(&self) -> u64 {

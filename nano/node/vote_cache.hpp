@@ -42,18 +42,31 @@ public:
 	class entry final
 	{
 	public:
-		constexpr static int max_voters = 40;
+		struct voter_entry
+		{
+			nano::account representative;
+			uint64_t timestamp;
+		};
 
+	public:
 		explicit entry (nano::block_hash const & hash);
-
-		nano::block_hash hash;
-		std::vector<std::pair<nano::account, uint64_t>> voters; // <rep, timestamp> pair
-		nano::uint128_t tally{ 0 };
+		explicit entry (rsnano::VoteCacheEntryDto & dto);
 
 		/*
 		 * Size of this entry
 		 */
 		std::size_t size () const;
+
+		nano::block_hash hash () const;
+		nano::uint128_t tally () const;
+		nano::uint128_t final_tally () const;
+		std::vector<voter_entry> voters () const;
+
+		nano::block_hash const hash_m;
+		std::vector<voter_entry> voters_m;
+
+		nano::uint128_t tally_m{ 0 };
+		nano::uint128_t final_tally_m{ 0 };
 	};
 
 	explicit vote_cache (const config);

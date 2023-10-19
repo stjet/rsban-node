@@ -8,15 +8,63 @@
 #include <memory>
 #include <vector>
 
+/*
+ * entry
+ */
+
 nano::vote_cache::entry::entry (const nano::block_hash & hash) :
-	hash{ hash }
+	hash_m{ hash }
 {
+}
+
+nano::vote_cache::entry::entry (rsnano::VoteCacheEntryDto & dto) :
+	hash_m{ nano::block_hash::from_bytes (&dto.hash[0]) }
+{
+	nano::amount tally;
+	nano::amount final_tally;
+	std::copy (std::begin (dto.tally), std::end (dto.tally), std::begin (tally.bytes));
+	std::copy (std::begin (dto.final_tally), std::end (dto.final_tally), std::begin (final_tally.bytes));
+	tally_m = tally.number ();
+	final_tally_m = final_tally.number ();
+	voters_m.reserve (dto.voters_count);
+	for (auto i = 0; i < dto.voters_count; ++i)
+	{
+		nano::account account;
+		uint64_t timestamp;
+		rsnano::rsn_vote_cache_entry_get_voter (&dto, i, account.bytes.data (), &timestamp);
+		voters_m.emplace_back (account, timestamp);
+	}
+	rsnano::rsn_vote_cache_entry_destroy (&dto);
 }
 
 std::size_t nano::vote_cache::entry::size () const
 {
-	return voters.size ();
+	return voters_m.size ();
 }
+
+nano::block_hash nano::vote_cache::entry::hash () const
+{
+	return hash_m;
+}
+
+nano::uint128_t nano::vote_cache::entry::tally () const
+{
+	return tally_m;
+}
+
+nano::uint128_t nano::vote_cache::entry::final_tally () const
+{
+	return final_tally_m;
+}
+
+std::vector<nano::vote_cache::entry::voter_entry> nano::vote_cache::entry::voters () const
+{
+	return voters_m;
+}
+
+/*
+ * vote_cache
+ */
 
 namespace
 {
@@ -72,33 +120,12 @@ std::size_t nano::vote_cache::queue_size () const
 	return rsnano::rsn_vote_cache_queue_size (handle);
 }
 
-namespace
-{
-nano::vote_cache::entry entry_from_dto (rsnano::VoteCacheEntryDto & dto)
-{
-	nano::vote_cache::entry entry{ nano::block_hash::from_bytes (&dto.hash[0]) };
-	nano::amount tally;
-	std::copy (std::begin (dto.tally), std::end (dto.tally), std::begin (tally.bytes));
-	entry.tally = tally.number ();
-	entry.voters.reserve (dto.voters_count);
-	for (auto i = 0; i < dto.voters_count; ++i)
-	{
-		nano::account account;
-		uint64_t timestamp;
-		rsnano::rsn_vote_cache_entry_get_voter (&dto, i, account.bytes.data (), &timestamp);
-		entry.voters.emplace_back (account, timestamp);
-	}
-	rsnano::rsn_vote_cache_entry_destroy (&dto);
-	return entry;
-}
-}
-
 std::optional<nano::vote_cache::entry> nano::vote_cache::find (const nano::block_hash & hash) const
 {
 	rsnano::VoteCacheEntryDto result{};
 	if (rsnano::rsn_vote_cache_find (handle, hash.bytes.data (), &result))
 	{
-		return entry_from_dto (result);
+		return nano::vote_cache::entry{ result };
 	}
 	return {};
 }
@@ -114,7 +141,7 @@ std::optional<nano::vote_cache::entry> nano::vote_cache::pop (nano::uint128_t co
 	rsnano::VoteCacheEntryDto result{};
 	if (rsnano::rsn_vote_cache_pop (handle, min_tally_amount.bytes.data (), &result))
 	{
-		return entry_from_dto (result);
+		return nano::vote_cache::entry{ result };
 	}
 	return {};
 }
@@ -125,7 +152,7 @@ std::optional<nano::vote_cache::entry> nano::vote_cache::peek (nano::uint128_t c
 	rsnano::VoteCacheEntryDto result{};
 	if (rsnano::rsn_vote_cache_peek (handle, min_tally_amount.bytes.data (), &result))
 	{
-		return entry_from_dto (result);
+		return nano::vote_cache::entry{ result };
 	}
 	return {};
 }

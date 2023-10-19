@@ -173,7 +173,7 @@ public:
 	nano::local_vote_history history; // ported
 	nano::block_arrival block_arrival; // ported
 	nano::confirmation_height_processor confirmation_height_processor; // ported
-	nano::vote_cache inactive_vote_cache; // ported
+	nano::vote_cache vote_cache; // ported
 	nano::vote_generator generator;
 	nano::vote_generator final_generator;
 	nano::block_processor block_processor;

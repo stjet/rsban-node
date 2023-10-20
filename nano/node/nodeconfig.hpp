@@ -12,6 +12,7 @@
 #include <nano/node/logging.hpp>
 #include <nano/node/scheduler/hinted.hpp>
 #include <nano/node/scheduler/optimistic.hpp>
+#include <nano/node/vote_cache.hpp>
 #include <nano/node/websocketconfig.hpp>
 #include <nano/secure/common.hpp>
 
@@ -124,6 +125,7 @@ public:
 	unsigned backlog_scan_batch_size;
 	/** Number of times per second to run backlog population batches. Number of accounts per single batch is `backlog_scan_batch_size / backlog_scan_frequency` */
 	unsigned backlog_scan_frequency;
+	nano::vote_cache_config vote_cache;
 	nano::frontiers_confirmation_mode deserialize_frontiers_confirmation (std::string const &);
 	/** Entry is ignored if it cannot be parsed as a valid address:port */
 	void deserialize_address (std::string const &, std::vector<std::pair<std::string, uint16_t>> &) const;
@@ -208,8 +210,6 @@ public:
 	void set_block_processor_full_size (std::size_t size);
 	std::size_t block_processor_verification_size () const;
 	void set_block_processor_verification_size (std::size_t size);
-	std::size_t inactive_votes_cache_size () const;
-	void set_inactive_votes_cache_size (std::size_t size);
 	std::size_t vote_processor_capacity () const;
 	void set_vote_processor_capacity (std::size_t size);
 	std::size_t bootstrap_interval () const; // For testing only

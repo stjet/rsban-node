@@ -2,6 +2,7 @@
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/utility.hpp"
 
+#include <nano/lib/tomlconfig.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/vote_cache.hpp>
 
@@ -66,27 +67,10 @@ std::vector<nano::vote_cache::entry::voter_entry> nano::vote_cache::entry::voter
  * vote_cache
  */
 
-namespace
+nano::vote_cache::vote_cache (vote_cache_config const & config_a)
 {
-void execute_rep_weight_query (void * handle_a, uint8_t const * account_a, uint8_t * amount_a)
-{
-	auto fp = static_cast<std::function<nano::uint128_t (nano::account const &)> *> (handle_a);
-	nano::account acc{};
-	std::copy (account_a, account_a + 32, std::begin (acc.bytes));
-	nano::amount weight{ (*fp) (acc) };
-	std::copy (std::begin (weight.bytes), std::end (weight.bytes), amount_a);
-}
-
-void delete_rep_weight_query (void * handle_a)
-{
-	auto fp = static_cast<std::function<nano::uint128_t (nano::account const &)> *> (handle_a);
-	delete fp;
-}
-}
-
-nano::vote_cache::vote_cache (const config config_a) :
-	handle{ rsnano::rsn_vote_cache_create (config_a.max_size) }
-{
+	auto config_dto{ config_a.to_dto () };
+	handle = rsnano::rsn_vote_cache_create (&config_dto);
 }
 
 nano::vote_cache::~vote_cache ()
@@ -150,4 +134,24 @@ std::unique_ptr<nano::container_info_component> nano::vote_cache::collect_contai
 {
 	auto info_handle = rsnano::rsn_vote_cache_collect_container_info (handle, name.c_str ());
 	return std::make_unique<nano::container_info_composite> (info_handle);
+}
+
+/*
+ * vote_cache_config
+ */
+
+nano::error nano::vote_cache_config::deserialize (nano::tomlconfig & toml)
+{
+	toml.get ("max_size", max_size);
+	toml.get ("max_voters", max_voters);
+
+	return toml.get_error ();
+}
+
+rsnano::VoteCacheConfigDto nano::vote_cache_config::to_dto () const
+{
+	return {
+		max_size,
+		max_voters
+	};
 }

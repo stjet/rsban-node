@@ -1,6 +1,6 @@
 use crate::{copy_account_bytes, utils::ContainerInfoComponentHandle, voting::VoteHandle};
 use rsnano_core::{Amount, BlockHash};
-use rsnano_node::vote_cache::{TopEntry, VoteCache, VoterEntry};
+use rsnano_node::vote_cache::{TopEntry, VoteCache, VoteCacheConfig, VoterEntry};
 use std::{
     ffi::{c_char, CStr},
     sync::{Arc, Mutex},
@@ -9,9 +9,10 @@ use std::{
 pub struct VoteCacheHandle(Arc<Mutex<VoteCache>>);
 
 #[no_mangle]
-pub extern "C" fn rsn_vote_cache_create(max_size: usize) -> *mut VoteCacheHandle {
+pub extern "C" fn rsn_vote_cache_create(config: &VoteCacheConfigDto) -> *mut VoteCacheHandle {
+    let config = VoteCacheConfig::from(config);
     Box::into_raw(Box::new(VoteCacheHandle(Arc::new(Mutex::new(
-        VoteCache::new(max_size),
+        VoteCache::new(config),
     )))))
 }
 
@@ -162,4 +163,28 @@ pub extern "C" fn rsn_top_entry_vec_get(
     result.hash = *entry.hash.as_bytes();
     result.tally = entry.tally.to_be_bytes();
     result.final_tally = entry.final_tally.to_be_bytes();
+}
+
+#[repr(C)]
+pub struct VoteCacheConfigDto {
+    pub max_size: usize,
+    pub max_voters: usize,
+}
+
+impl From<&VoteCacheConfig> for VoteCacheConfigDto {
+    fn from(value: &VoteCacheConfig) -> Self {
+        Self {
+            max_size: value.max_size,
+            max_voters: value.max_voters,
+        }
+    }
+}
+
+impl From<&VoteCacheConfigDto> for VoteCacheConfig {
+    fn from(value: &VoteCacheConfigDto) -> Self {
+        Self {
+            max_size: value.max_size,
+            max_voters: value.max_voters,
+        }
+    }
 }

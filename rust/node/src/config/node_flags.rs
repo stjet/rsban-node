@@ -37,7 +37,6 @@ pub struct NodeFlags {
     pub block_processor_batch_size: usize,
     pub block_processor_full_size: usize,
     pub block_processor_verification_size: usize,
-    pub inactive_votes_cache_size: usize,
     pub vote_processor_capacity: usize,
     pub bootstrap_interval: usize, // For testing only
 }
@@ -80,7 +79,6 @@ impl NodeFlags {
             block_processor_batch_size: 0,
             block_processor_full_size: 65536,
             block_processor_verification_size: 0,
-            inactive_votes_cache_size: 1024 * 128,
             vote_processor_capacity: 144 * 1024,
             bootstrap_interval: 0,
         }

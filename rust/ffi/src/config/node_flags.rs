@@ -147,7 +147,6 @@ pub struct NodeFlagsDto {
     pub block_processor_batch_size: usize,
     pub block_processor_full_size: usize,
     pub block_processor_verification_size: usize,
-    pub inactive_votes_cache_size: usize,
     pub vote_processor_capacity: usize,
     pub bootstrap_interval: usize,
 }
@@ -192,7 +191,6 @@ pub unsafe extern "C" fn rsn_node_flags_get(
     result.block_processor_batch_size = lock.block_processor_batch_size;
     result.block_processor_full_size = lock.block_processor_full_size;
     result.block_processor_verification_size = lock.block_processor_verification_size;
-    result.inactive_votes_cache_size = lock.inactive_votes_cache_size;
     result.vote_processor_capacity = lock.vote_processor_capacity;
     result.bootstrap_interval = lock.bootstrap_interval;
 }
@@ -237,7 +235,6 @@ pub unsafe extern "C" fn rsn_node_flags_set(
     lock.block_processor_batch_size = flags.block_processor_batch_size;
     lock.block_processor_full_size = flags.block_processor_full_size;
     lock.block_processor_verification_size = flags.block_processor_verification_size;
-    lock.inactive_votes_cache_size = flags.inactive_votes_cache_size;
     lock.vote_processor_capacity = flags.vote_processor_capacity;
     lock.bootstrap_interval = flags.bootstrap_interval;
 }

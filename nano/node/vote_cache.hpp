@@ -15,16 +15,24 @@ namespace nano
 class node;
 class active_transactions;
 class vote;
+}
+
+namespace nano
+{
+class vote_cache_config final
+{
+public:
+	nano::error deserialize (nano::tomlconfig & toml);
+	rsnano::VoteCacheConfigDto to_dto () const;
+
+public:
+	std::size_t max_size{ 1024 * 128 };
+	std::size_t max_voters{ 128 };
+};
 
 class vote_cache final
 {
 public:
-	class config final
-	{
-	public:
-		std::size_t max_size;
-	};
-
 	/**
 	 * Stores votes associated with a single block hash
 	 */
@@ -41,6 +49,12 @@ public:
 		explicit entry (nano::block_hash const & hash);
 		explicit entry (rsnano::VoteCacheEntryDto & dto);
 
+		/**
+		 * Adds a vote into a list, checks for duplicates and updates timestamp if new one is greater
+		 * @return true if current tally changed, false otherwise
+		 */
+		bool vote (nano::account const & representative, uint64_t const & timestamp, nano::uint128_t const & rep_weight, std::size_t max_voters);
+
 		std::size_t size () const;
 
 		nano::block_hash hash () const;
@@ -56,7 +70,7 @@ public:
 	};
 
 public:
-	explicit vote_cache (const config);
+	explicit vote_cache (vote_cache_config const &);
 	vote_cache (vote_cache const &) = delete;
 	vote_cache (vote_cache &&) = delete;
 	~vote_cache ();

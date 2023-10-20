@@ -6,9 +6,9 @@ use std::{
 use num::FromPrimitive;
 
 use crate::{
-    fill_ipc_config_dto, fill_stat_config_dto, utils::FfiToml, HintedSchedulerConfigDto,
-    IpcConfigDto, NetworkParamsDto, OptimisticSchedulerConfigDto, StatConfigDto,
-    WebsocketConfigDto,
+    fill_ipc_config_dto, fill_stat_config_dto, utils::FfiToml, vote_cache::VoteCacheConfigDto,
+    HintedSchedulerConfigDto, IpcConfigDto, NetworkParamsDto, OptimisticSchedulerConfigDto,
+    StatConfigDto, WebsocketConfigDto,
 };
 use rsnano_core::{Account, Amount};
 use rsnano_node::{
@@ -96,6 +96,7 @@ pub struct NodeConfigDto {
     pub lmdb_config: LmdbConfigDto,
     pub backlog_scan_batch_size: u32,
     pub backlog_scan_frequency: u32,
+    pub vote_cache: VoteCacheConfigDto,
 }
 
 #[repr(C)]
@@ -249,6 +250,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     fill_lmdb_config_dto(&mut dto.lmdb_config, &cfg.lmdb_config);
     dto.backlog_scan_frequency = cfg.backlog_scan_frequency;
     dto.backlog_scan_batch_size = cfg.backlog_scan_batch_size;
+    dto.vote_cache = (&cfg.vote_cache).into();
 }
 
 #[no_mangle]
@@ -375,6 +377,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             lmdb_config: (&value.lmdb_config).into(),
             backlog_scan_batch_size: value.backlog_scan_batch_size,
             backlog_scan_frequency: value.backlog_scan_frequency,
+            vote_cache: (&value.vote_cache).into(),
         };
 
         Ok(cfg)

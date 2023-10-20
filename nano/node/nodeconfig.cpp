@@ -295,6 +295,12 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 			bootstrap_ascending.deserialize (config_l);
 		}
 
+		if (toml.has_key ("vote_cache"))
+		{
+			auto config_l = toml.get_required_child ("vote_cache");
+			vote_cache.deserialize (config_l);
+		}
+
 		if (toml.has_key ("work_peers"))
 		{
 			work_peers.clear ();
@@ -933,14 +939,6 @@ std::size_t nano::node_flags::block_processor_verification_size () const
 void nano::node_flags::set_block_processor_verification_size (std::size_t size)
 {
 	set_flag ([size] (rsnano::NodeFlagsDto & dto) { dto.block_processor_verification_size = size; });
-}
-std::size_t nano::node_flags::inactive_votes_cache_size () const
-{
-	return flags_dto ().inactive_votes_cache_size;
-}
-void nano::node_flags::set_inactive_votes_cache_size (std::size_t size)
-{
-	set_flag ([size] (rsnano::NodeFlagsDto & dto) { dto.inactive_votes_cache_size = size; });
 }
 std::size_t nano::node_flags::vote_processor_capacity () const
 {

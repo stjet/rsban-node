@@ -1,11 +1,41 @@
 use multi_index_map::MultiIndexMap;
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, TomlWriter},
     Account, Amount, BlockHash,
 };
 use std::{cmp::Ordering, fmt::Debug, mem::size_of};
 
 use crate::voting::Vote;
+
+pub struct VoteCacheConfig {
+    pub max_size: usize,
+    pub max_voters: usize,
+}
+
+impl VoteCacheConfig {
+    pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
+        toml.put_usize(
+            "max_size",
+            self.max_size,
+            "Maximum number of blocks to cache votes for. \ntype:uint64",
+        )?;
+
+        toml.put_usize(
+            "max_voters",
+            self.max_voters,
+            "Maximum number of voters to cache per block. \ntype:uint64",
+        )
+    }
+}
+
+impl Default for VoteCacheConfig {
+    fn default() -> Self {
+        Self {
+            max_size: 1024 * 128,
+            max_voters: 128,
+        }
+    }
+}
 
 ///	A container holding votes that do not match any active or recently finished elections.
 ///	It keeps track of votes in two internal structures: cache and queue
@@ -13,15 +43,15 @@ use crate::voting::Vote;
 ///	Cache: Stores votes associated with a particular block hash with a bounded maximum number of votes per hash.
 ///			When cache size exceeds `max_size` oldest entries are evicted first.
 pub struct VoteCache {
-    max_size: usize,
+    config: VoteCacheConfig,
     cache: MultiIndexCacheEntryMap,
     next_id: usize,
 }
 
 impl VoteCache {
-    pub fn new(max_size: usize) -> Self {
+    pub fn new(config: VoteCacheConfig) -> Self {
         VoteCache {
-            max_size,
+            config,
             cache: MultiIndexCacheEntryMap::default(),
             next_id: 0,
         }
@@ -35,7 +65,12 @@ impl VoteCache {
         let cache_entry_exists = self
             .cache
             .modify_by_hash(hash, |existing| {
-                existing.vote(&vote.voting_account, vote.timestamp(), rep_weight);
+                existing.vote(
+                    &vote.voting_account,
+                    vote.timestamp(),
+                    rep_weight,
+                    self.config.max_voters,
+                );
             })
             .is_some();
 
@@ -43,12 +78,17 @@ impl VoteCache {
             let id = self.next_id;
             self.next_id += 1;
             let mut cache_entry = CacheEntry::new(id, *hash);
-            cache_entry.vote(&vote.voting_account, vote.timestamp(), rep_weight);
+            cache_entry.vote(
+                &vote.voting_account,
+                vote.timestamp(),
+                rep_weight,
+                self.config.max_voters,
+            );
 
             self.cache.insert(cache_entry);
 
             // When cache overflown remove the oldest entry
-            if self.cache.len() > self.max_size {
+            if self.cache.len() > self.config.max_size {
                 self.cache.pop_front();
             }
         }
@@ -150,8 +190,6 @@ impl VoterEntry {
 }
 
 impl CacheEntry {
-    const MAX_VOTERS: usize = 80;
-
     pub fn new(id: usize, hash: BlockHash) -> Self {
         CacheEntry {
             id,
@@ -164,7 +202,13 @@ impl CacheEntry {
 
     /// Adds a vote into a list, checks for duplicates and updates timestamp if new one is greater
     /// returns true if current tally changed, false otherwise
-    pub fn vote(&mut self, representative: &Account, timestamp: u64, rep_weight: Amount) -> bool {
+    pub fn vote(
+        &mut self,
+        representative: &Account,
+        timestamp: u64,
+        rep_weight: Amount,
+        max_voters: usize,
+    ) -> bool {
         if let Some(existing) = self
             .voters
             .iter_mut()
@@ -184,7 +228,7 @@ impl CacheEntry {
             }
         }
         // Vote from an unseen representative, add to list and update tally
-        if self.voters.len() < Self::MAX_VOTERS {
+        if self.voters.len() < max_voters {
             self.voters
                 .push(VoterEntry::new(*representative, timestamp));
 
@@ -226,9 +270,16 @@ mod tests {
         )
     }
 
+    fn create_vote_cache() -> VoteCache {
+        VoteCache::new(VoteCacheConfig {
+            max_size: 3,
+            max_voters: 80,
+        })
+    }
+
     #[test]
     fn construction() {
-        let cache = VoteCache::new(10);
+        let cache = create_vote_cache();
         assert_eq!(cache.size(), 0);
         assert!(cache.empty());
         let hash = BlockHash::random();
@@ -237,7 +288,7 @@ mod tests {
 
     #[test]
     fn insert_one_hash() {
-        let mut cache = VoteCache::new(10);
+        let mut cache = create_vote_cache();
         let rep = KeyPair::new();
         let hash = BlockHash::from(1);
         let vote = create_vote(&rep, &hash, 1);
@@ -245,8 +296,7 @@ mod tests {
         cache.vote(&hash, &vote, Amount::raw(7));
 
         assert_eq!(cache.size(), 1);
-        assert!(cache.find(&hash).is_some());
-        let peek = cache.peek().unwrap();
+        let peek = cache.find(&hash).unwrap();
         assert_eq!(peek.hash, hash);
         assert_eq!(peek.voters.len(), 1);
         assert_eq!(
@@ -262,7 +312,7 @@ mod tests {
      */
     #[test]
     fn insert_one_hash_many_votes() {
-        let mut cache = VoteCache::new(10);
+        let mut cache = create_vote_cache();
 
         let hash = BlockHash::random();
         let rep1 = KeyPair::new();
@@ -278,7 +328,7 @@ mod tests {
         cache.vote(&hash, &vote3, Amount::raw(11));
         // We have 3 votes but for a single hash, so just one entry in vote cache
         assert_eq!(cache.size(), 1);
-        let peek = cache.peek().unwrap();
+        let peek = cache.find(&hash).unwrap();
         assert_eq!(peek.voters.len(), 3);
         // Tally must be the sum of rep weights
         assert_eq!(peek.tally, Amount::raw(7 + 9 + 11));
@@ -286,7 +336,7 @@ mod tests {
 
     #[test]
     fn insert_many_hashes_many_votes() {
-        let mut cache = VoteCache::new(10);
+        let mut cache = create_vote_cache();
 
         // There will be 3 hashes to vote for
         let hash1 = BlockHash::from(1);
@@ -316,8 +366,7 @@ mod tests {
         assert!(cache.find(&hash2).is_some());
         assert!(cache.find(&hash3).is_some());
 
-        // Ensure that first entry in queue is the one for hash3 (rep3 has the highest weight of the first 3 reps)
-        let peek1 = cache.peek().unwrap();
+        let peek1 = cache.find(&hash3).unwrap();
         assert_eq!(peek1.voters.len(), 1);
         assert_eq!(peek1.tally, Amount::raw(11));
         assert_eq!(peek1.hash, hash3);
@@ -325,28 +374,21 @@ mod tests {
         // Now add a vote from rep4 with the highest voting weight
         cache.vote(&hash1, &vote4, Amount::raw(13));
 
-        // Ensure that the first entry in queue is now the one for hash1 (rep1 + rep4 tally weight)
-        let pop1 = cache.pop().unwrap();
+        let pop1 = cache.find(&hash1).unwrap();
         assert_eq!(pop1.voters.len(), 2);
         assert_eq!(pop1.tally, Amount::raw(7 + 13));
         assert_eq!(pop1.hash, hash1);
-        assert!(cache.find(&hash1).is_some()); // Only pop from queue, votes should still be stored in cache
 
-        // After popping the previous entry, the next entry in queue should be hash3 (rep3 tally weight)
-        let pop2 = cache.pop().unwrap();
+        let pop2 = cache.find(&hash3).unwrap();
         assert_eq!(pop2.voters.len(), 1);
         assert_eq!(pop2.tally, Amount::raw(11));
         assert_eq!(pop2.hash, hash3);
-        assert!(cache.find(&hash3).is_some());
 
         // And last one should be hash2 with rep2 tally weight
-        let pop3 = cache.pop().unwrap();
+        let pop3 = cache.find(&hash2).unwrap();
         assert_eq!(pop3.voters.len(), 1);
         assert_eq!(pop3.tally, Amount::raw(9));
         assert_eq!(pop3.hash, hash2);
-        assert!(cache.find(&hash2).is_some());
-
-        assert!(cache.queue_empty());
     }
 
     /*
@@ -354,7 +396,7 @@ mod tests {
      */
     #[test]
     fn insert_duplicate() {
-        let mut cache = VoteCache::new(10);
+        let mut cache = create_vote_cache();
 
         let hash = BlockHash::from(1);
         let rep = KeyPair::new();
@@ -372,7 +414,7 @@ mod tests {
      */
     #[test]
     fn insert_newer() {
-        let mut cache = VoteCache::new(10);
+        let mut cache = create_vote_cache();
 
         let hash = BlockHash::from(1);
         let rep = KeyPair::new();
@@ -388,7 +430,7 @@ mod tests {
         );
         cache.vote(&hash, &vote2, Amount::raw(9));
 
-        let peek2 = cache.peek().unwrap();
+        let peek2 = cache.find(&hash).unwrap();
         assert_eq!(cache.size(), 1);
         assert_eq!(peek2.voters.len(), 1);
         assert_eq!(peek2.voters.first().unwrap().timestamp, u64::MAX); // final timestamp
@@ -399,16 +441,16 @@ mod tests {
      */
     #[test]
     fn insert_older() {
-        let mut cache = VoteCache::new(10);
+        let mut cache = create_vote_cache();
         let hash = BlockHash::from(1);
         let rep = KeyPair::new();
         let vote1 = create_vote(&rep, &hash, 2);
         cache.vote(&hash, &vote1, Amount::raw(9));
-        let peek1 = cache.peek().unwrap().clone();
+        let peek1 = cache.find(&hash).unwrap().clone();
 
         let vote2 = create_vote(&rep, &hash, 1);
         cache.vote(&hash, &vote2, Amount::raw(9));
-        let peek2 = cache.peek().unwrap();
+        let peek2 = cache.find(&hash).unwrap();
 
         assert_eq!(cache.size(), 1);
         assert_eq!(peek2.voters.len(), 1);
@@ -423,7 +465,7 @@ mod tests {
      */
     #[test]
     fn erase() {
-        let mut cache = VoteCache::new(10);
+        let mut cache = create_vote_cache();
         let hash1 = BlockHash::from(1);
         let hash2 = BlockHash::from(2);
         let hash3 = BlockHash::from(3);
@@ -462,7 +504,7 @@ mod tests {
      */
     #[test]
     fn overfill() {
-        let mut cache = VoteCache::new(3);
+        let mut cache = create_vote_cache();
 
         let hash1 = BlockHash::from(1);
         let hash2 = BlockHash::from(2);
@@ -489,9 +531,10 @@ mod tests {
         assert_eq!(cache.size(), 3);
 
         // Check that oldest votes are dropped first
-        assert_eq!(cache.pop().unwrap().tally, Amount::raw(4));
-        assert_eq!(cache.pop().unwrap().tally, Amount::raw(3));
-        assert_eq!(cache.pop().unwrap().tally, Amount::raw(2));
+        assert!(cache.find(&hash4).is_some());
+        assert!(cache.find(&hash3).is_some());
+        assert!(cache.find(&hash2).is_some());
+        assert!(cache.find(&hash1).is_none());
     }
 
     /*
@@ -499,7 +542,7 @@ mod tests {
      */
     #[test]
     fn overfill_entry() {
-        let mut cache = VoteCache::new(3);
+        let mut cache = create_vote_cache();
         let hash = BlockHash::from(1);
 
         let rep1 = KeyPair::new();

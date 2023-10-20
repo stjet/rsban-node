@@ -1,6 +1,6 @@
 use std::net::Ipv6Addr;
 
-use crate::{stats::StatsConfig, IpcConfig, NetworkParams};
+use crate::{stats::StatsConfig, vote_cache::VoteCacheConfig, IpcConfig, NetworkParams};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 use rsnano_core::{
@@ -93,6 +93,7 @@ pub struct NodeConfig {
     pub backlog_scan_batch_size: u32,
     /// Number of times per second to run backlog population batches. Number of accounts per single batch is `backlog_scan_batch_size / backlog_scan_frequency`
     pub backlog_scan_frequency: u32,
+    pub vote_cache: VoteCacheConfig,
 }
 
 pub struct Peer {
@@ -293,6 +294,7 @@ impl NodeConfig {
             } else {
                 HintedSchedulerConfig::default()
             },
+            vote_cache: Default::default(),
         }
     }
 
@@ -466,6 +468,10 @@ impl NodeConfig {
 
         toml.put_child("bootstrap_ascending", &mut |writer| {
             self.bootstrap_ascending.serialize_toml(writer)
+        })?;
+
+        toml.put_child("vote_cache", &mut |writer| {
+            self.vote_cache.serialize_toml(writer)
         })?;
 
         Ok(())

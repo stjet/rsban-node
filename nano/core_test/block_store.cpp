@@ -30,4 +30,3 @@ TEST (block_store, empty_bootstrap)
 	});
 	ASSERT_EQ (count, 0);
 }
-

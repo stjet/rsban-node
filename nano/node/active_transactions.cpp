@@ -364,7 +364,7 @@ void nano::active_transactions::broadcast_vote (nano::election & election)
 void nano::active_transactions::handle_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block, std::shared_ptr<nano::election> election, nano::election_status_type status_type)
 {
 	nano::block_hash hash = block->hash ();
-	update_recently_cemented (election);
+	recently_cemented.put (election->get_status ());
 
 	nano::account account;
 	nano::uint128_t amount (0);
@@ -375,12 +375,9 @@ void nano::active_transactions::handle_confirmation (nano::store::read_transacti
 	handle_block_confirmation (transaction, block, hash, account, amount, is_state_send, is_state_epoch, pending_account);
 
 	election->set_status_type (status_type);
-	notify_observers (election, account, amount, is_state_send, is_state_epoch, pending_account);
-}
-
-void nano::active_transactions::update_recently_cemented (std::shared_ptr<nano::election> const & election)
-{
-	recently_cemented.put (election->get_status ());
+	auto status = election->get_status ();
+	auto votes = votes_with_weight (*election);
+	notify_observers (status, votes, account, amount, is_state_send, is_state_epoch, pending_account);
 }
 
 void nano::active_transactions::handle_block_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block, nano::block_hash const & hash, nano::account & account, nano::uint128_t & amount, bool & is_state_send, bool & is_state_epoch, nano::account & pending_account)
@@ -391,11 +388,8 @@ void nano::active_transactions::handle_block_confirmation (nano::store::read_tra
 	process_confirmed_data (transaction, block, hash, account, amount, is_state_send, is_state_epoch, pending_account);
 }
 
-void nano::active_transactions::notify_observers (std::shared_ptr<nano::election> const & election, nano::account const & account, nano::uint128_t amount, bool is_state_send, bool is_state_epoch, nano::account const & pending_account)
+void nano::active_transactions::notify_observers (nano::election_status const & status, std::vector<nano::vote_with_weight_info> const & votes, nano::account const & account, nano::uint128_t amount, bool is_state_send, bool is_state_epoch, nano::account const & pending_account)
 {
-	auto status = election->get_status ();
-	auto votes = votes_with_weight (*election);
-
 	node.observers->blocks.notify (status, votes, account, amount, is_state_send, is_state_epoch);
 
 	if (amount > 0)
@@ -1373,6 +1367,7 @@ boost::optional<nano::election_status_type> nano::active_transactions::try_confi
 	auto winner = guard.status ().get_winner ();
 	if (winner && winner->hash () == hash)
 	{
+		// Determine if the block was confirmed explicitly via election confirmation or implicitly via confirmation height
 		if (!confirmed (guard))
 		{
 			confirm_once (guard, nano::election_status_type::active_confirmation_height, election);

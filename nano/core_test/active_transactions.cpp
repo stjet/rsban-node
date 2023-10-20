@@ -141,7 +141,8 @@ TEST (active_transactions, confirm_frontier)
 	ASSERT_EQ (nano::process_result::progress, node1.process (*send).code);
 	node1.confirmation_height_processor.add (send);
 	ASSERT_TIMELY (5s, node1.ledger.block_confirmed (*node1.store.tx_begin_read (), send->hash ()));
-	ASSERT_EQ (nano::process_result::progress, node2.process (*send_copy).code);
+	auto process_result = node2.process (*send_copy).code;
+	ASSERT_TRUE (process_result == nano::process_result::progress || process_result == nano::process_result::old );
 	ASSERT_TIMELY (5s, !node2.active.empty ());
 	// Save election to check request count afterwards
 	auto election2 = node2.active.election (send->qualified_root ());

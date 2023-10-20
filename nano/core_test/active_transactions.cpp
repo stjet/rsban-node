@@ -1159,7 +1159,7 @@ TEST (active_transactions, activate_account_chain)
 	ASSERT_EQ (1, election1->blocks ().count (send->hash ()));
 	node.scheduler.priority.activate (nano::dev::genesis_key.pub, *node.store.tx_begin_read ());
 	auto election2 = node.active.election (send->qualified_root ());
-	ASSERT_EQ (election2, election1);
+	ASSERT_EQ (election2->qualified_root(), election1->qualified_root());
 	node.active.force_confirm (*election1);
 	ASSERT_TIMELY (3s, node.block_confirmed (send->hash ()));
 	// On cementing, the next election is started

@@ -86,12 +86,6 @@ pub unsafe extern "C" fn rsn_socket_start(handle: *mut SocketHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_socket_inner_ptr(handle: *mut SocketHandle) -> *const c_void {
-    let p = Arc::as_ptr(&(*handle).0);
-    p as *const c_void
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_socket_to_weak_handle(
     handle: *mut SocketHandle,
 ) -> *mut SocketWeakHandle {

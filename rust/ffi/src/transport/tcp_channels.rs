@@ -16,7 +16,7 @@ use rsnano_node::{
 };
 
 use crate::{
-    bootstrap::{FfiBootstrapServerObserver, RequestResponseVisitorFactoryHandle, TcpServerHandle},
+    bootstrap::{FfiBootstrapServerObserver, RequestResponseVisitorFactoryHandle},
     core::BlockUniquerHandle,
     messages::MessageHandle,
     utils::{
@@ -29,8 +29,7 @@ use crate::{
 
 use super::{
     peer_exclusion::PeerExclusionHandle, ChannelHandle, EndpointDto, NetworkFilterHandle,
-    OutboundBandwidthLimiterHandle, SocketFfiObserver, SocketHandle, SynCookiesHandle,
-    TcpMessageManagerHandle,
+    OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle, TcpMessageManagerHandle,
 };
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
@@ -201,14 +200,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_list_channels(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_keepalive_list(
-    handle: &mut TcpChannelsHandle,
-) -> *mut ChannelListHandle {
-    let channels = handle.0.tcp_channels.lock().unwrap().keepalive_list();
-    Box::into_raw(Box::new(ChannelListHandle(channels)))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_update_channel(
     handle: &mut TcpChannelsHandle,
     endpoint: &EndpointDto,
@@ -345,28 +336,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_set_message_visitor(
     handle
         .0
         .set_message_visitor_factory(visitor_factory.0.clone())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_create_tcp_server(
-    handle: &TcpChannelsHandle,
-    channel: &ChannelHandle,
-    socket: &SocketHandle,
-) -> *mut TcpServerHandle {
-    let ChannelEnum::Tcp(channel_tcp) = channel.0.as_ref() else {
-        panic!("not a tcp channel")
-    };
-    TcpServerHandle::new(
-        handle
-            .0
-            .tcp_channels
-            .lock()
-            .unwrap()
-            .tcp_server_factory
-            .lock()
-            .unwrap()
-            .create_tcp_server(channel_tcp, socket.0.clone()),
-    )
 }
 
 #[no_mangle]

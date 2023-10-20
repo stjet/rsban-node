@@ -33,6 +33,37 @@ namespace transport
 	class channel;
 }
 
+class vote_processor_queue
+{
+public:
+	vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a);
+
+	std::size_t size ();
+	bool empty ();
+	bool half_full ();
+	/** Returns false if the vote was processed */
+	bool vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a);
+	void calculate_weights ();
+	void stop ();
+
+	std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> votes;
+	nano::mutex mutex{ mutex_identifier (mutexes::vote_processor) };
+	nano::condition_variable condition;
+	std::size_t const max_votes;
+	nano::stats & stats;
+	nano::online_reps & online_reps;
+	nano::ledger & ledger;
+
+	/** Representatives levels for random early detection */
+	std::unordered_set<nano::account> representatives_1;
+	std::unordered_set<nano::account> representatives_2;
+	std::unordered_set<nano::account> representatives_3;
+	bool stopped;
+	friend std::unique_ptr<container_info_component> collect_container_info (vote_processor_queue & queue, std::string const & name);
+};
+
+std::unique_ptr<container_info_component> collect_container_info (vote_processor_queue & queue, std::string const & name);
+
 class vote_processor final
 {
 public:
@@ -66,21 +97,13 @@ private:
 	nano::rep_crawler & rep_crawler;
 	nano::ledger & ledger;
 	nano::network_params & network_params;
-	std::size_t const max_votes;
-	std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> votes;
-	/** Representatives levels for random early detection */
-	std::unordered_set<nano::account> representatives_1;
-	std::unordered_set<nano::account> representatives_2;
-	std::unordered_set<nano::account> representatives_3;
-	nano::condition_variable condition;
-	nano::mutex mutex{ mutex_identifier (mutexes::vote_processor) };
 	bool started;
-	bool stopped;
 	std::thread thread;
 
-	friend std::unique_ptr<container_info_component> collect_container_info (vote_processor & vote_processor, std::string const & name);
+public:
+	nano::vote_processor_queue queue;
+
 	friend class vote_processor_weights_Test;
 };
 
-std::unique_ptr<container_info_component> collect_container_info (vote_processor & vote_processor, std::string const & name);
 }

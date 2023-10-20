@@ -8,7 +8,6 @@
 #include <nano/node/wallet.hpp>
 #include <nano/store/lmdb/iterator.hpp>
 
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/polymorphic_cast.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -217,7 +216,7 @@ void nano::wallet_store::serialize_json (store::transaction const & transaction_
 	string_a = rsnano::convert_dto_to_string (dto);
 }
 
-void nano::wallet_store::write_backup (store::transaction const & transaction_a, boost::filesystem::path const & path_a)
+void nano::wallet_store::write_backup (store::transaction const & transaction_a, std::filesystem::path const & path_a)
 {
 	rsnano::rsn_lmdb_wallet_store_write_backup (rust_handle, transaction_a.get_rust_handle (), path_a.c_str ());
 }
@@ -1336,7 +1335,7 @@ nano::store::iterator<nano::account, nano::wallet_value> nano::wallet_store::end
 {
 	return { nullptr };
 }
-nano::mdb_wallets_store::mdb_wallets_store (boost::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a) :
+nano::mdb_wallets_store::mdb_wallets_store (std::filesystem::path const & path_a, nano::lmdb_config const & lmdb_config_a) :
 	environment (error, path_a, nano::store::lmdb::env::options::make ().set_config (lmdb_config_a).override_config_sync (nano::lmdb_config::sync_strategy::always).override_config_map_size (1ULL * 1024 * 1024 * 1024))
 {
 }

@@ -3,27 +3,27 @@
 #include <nano/secure/utility.hpp>
 #include <nano/secure/working.hpp>
 
-#include <boost/filesystem.hpp>
+#include <random>
 
-boost::filesystem::path nano::working_path (nano::networks network)
+std::filesystem::path nano::working_path (nano::networks network)
 {
 	uint8_t buffer[256];
 	int len = rsnano::rsn_working_path (static_cast<uint16_t> (network), buffer, sizeof (buffer));
 	if (len < 0)
 		throw std::runtime_error ("could not get working path");
 	std::string s (reinterpret_cast<const char *> (buffer), len);
-	boost::filesystem::path result (s);
+	std::filesystem::path result (s);
 	return result;
 }
 
-boost::filesystem::path nano::unique_path (nano::networks network)
+std::filesystem::path nano::unique_path (nano::networks network)
 {
 	uint8_t buffer[256];
 	int len = rsnano::rsn_unique_path (static_cast<uint16_t> (network), buffer, sizeof (buffer));
 	if (len < 0)
 		throw std::runtime_error ("could not get unique path");
 	std::string s (reinterpret_cast<const char *> (buffer), len);
-	boost::filesystem::path result (s);
+	std::filesystem::path result (s);
 	return result;
 }
 

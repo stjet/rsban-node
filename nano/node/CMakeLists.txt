@@ -200,7 +200,6 @@ target_link_libraries(
   rpc
   libminiupnpc-static
   Boost::beast
-  Boost::filesystem
   Boost::log_setup
   Boost::log
   Boost::program_options

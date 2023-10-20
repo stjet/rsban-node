@@ -23,14 +23,6 @@
 
 #include <boost/optional.hpp>
 
-namespace boost
-{
-namespace filesystem
-{
-	class path;
-}
-}
-
 namespace nano::store::lmdb
 {
 /**
@@ -57,7 +49,7 @@ private:
 	nano::store::lmdb::version version_store;
 
 public:
-	component (std::shared_ptr<nano::logger_mt>, boost::filesystem::path const &, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a = nano::txn_tracking_config{}, std::chrono::milliseconds block_processor_batch_max_time_a = std::chrono::milliseconds (5000), nano::lmdb_config const & lmdb_config_a = nano::lmdb_config{}, bool backup_before_upgrade = false);
+	component (std::shared_ptr<nano::logger_mt>, std::filesystem::path const &, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a = nano::txn_tracking_config{}, std::chrono::milliseconds block_processor_batch_max_time_a = std::chrono::milliseconds (5000), nano::lmdb_config const & lmdb_config_a = nano::lmdb_config{}, bool backup_before_upgrade = false);
 	~component ();
 	component (store const &) = delete;
 	component (store &&) = delete;
@@ -77,7 +69,7 @@ public:
 	nano::store::confirmation_height & confirmation_height () override;
 	nano::store::final_vote & final_vote () override;
 	nano::store::version & version () override;
-	bool copy_db (boost::filesystem::path const & destination_file) override;
+	bool copy_db (std::filesystem::path const & destination_file) override;
 	void rebuild_db (nano::store::write_transaction const & transaction_a) override;
 	bool init_error () const override;
 	rsnano::LmdbStoreHandle * get_handle () const override;

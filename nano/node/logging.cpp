@@ -5,7 +5,6 @@
 #include <nano/node/logging.hpp>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/log/expressions.hpp>
 #include <boost/log/utility/exception_handler.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
@@ -99,7 +98,7 @@ rsnano::LoggingDto nano::logging::to_dto () const
 	return dto;
 }
 
-void nano::logging::init (boost::filesystem::path const & application_path_a)
+void nano::logging::init (std::filesystem::path const & application_path_a)
 {
 	if (!logging_already_added.test_and_set ())
 	{
@@ -155,7 +154,7 @@ void nano::logging::init (boost::filesystem::path const & application_path_a)
 			boost::log::keywords::max_size = max_size, // max total size in bytes of all log files
 			boost::log::keywords::format = format_with_timestamp);
 
-			if (!boost::filesystem::exists (file_name))
+			if (!std::filesystem::exists (file_name))
 			{
 				// Create temp stream to first create the file
 				std::ofstream stream (file_name.string ());

@@ -7,7 +7,6 @@
 #include <nano/store/lmdb/wallet_value.hpp>
 #include <nano/store/version.hpp>
 
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/polymorphic_cast.hpp>
 
@@ -15,7 +14,7 @@
 
 namespace
 {
-rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, boost::filesystem::path const & path_a, nano::store::lmdb::env::options options_a, const std::shared_ptr<nano::logger_mt> & logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, bool backup_before_upgrade)
+rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, std::filesystem::path const & path_a, nano::store::lmdb::env::options options_a, const std::shared_ptr<nano::logger_mt> & logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, bool backup_before_upgrade)
 {
 	auto path_string{ path_a.string () };
 	auto config_dto{ options_a.config.to_dto () };
@@ -24,7 +23,7 @@ rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, boost::filesystem
 }
 }
 
-nano::store::lmdb::component::component (std::shared_ptr<nano::logger_mt> logger_a, boost::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
+nano::store::lmdb::component::component (std::shared_ptr<nano::logger_mt> logger_a, std::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
 	handle{ create_store_handle (error, path_a, nano::store::lmdb::env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true), logger_a, txn_tracking_config_a, block_processor_batch_max_time_a, backup_before_upgrade_a) },
 	block_store{ rsnano::rsn_lmdb_store_block (handle) },
 	frontier_store{ rsnano::rsn_lmdb_store_frontier (handle) },
@@ -72,7 +71,7 @@ std::string nano::store::lmdb::component::vendor_get () const
 	return rsnano::convert_dto_to_string (dto);
 }
 
-bool nano::store::lmdb::component::copy_db (boost::filesystem::path const & destination_file)
+bool nano::store::lmdb::component::copy_db (std::filesystem::path const & destination_file)
 {
 	return !rsnano::rsn_lmdb_store_copy_db (handle, reinterpret_cast<const int8_t *> (destination_file.string ().c_str ()));
 }

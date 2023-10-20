@@ -10,14 +10,6 @@
 #include <thread>
 #include <vector>
 
-namespace boost
-{
-namespace filesystem
-{
-	class path;
-}
-}
-
 namespace nano
 {
 class tomlconfig;
@@ -90,5 +82,5 @@ public:
 	std::shared_ptr<nano::tls_config> tls_config;
 };
 
-nano::error read_rpc_config_toml (boost::filesystem::path const & data_path_a, nano::rpc_config & config_a, std::vector<std::string> const & config_overrides = std::vector<std::string> ());
+nano::error read_rpc_config_toml (std::filesystem::path const & data_path_a, nano::rpc_config & config_a, std::vector<std::string> const & config_overrides = std::vector<std::string> ());
 }

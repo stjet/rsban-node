@@ -13,8 +13,6 @@
 
 #include <gtest/gtest.h>
 
-#include <boost/filesystem.hpp>
-
 #include <cstdlib>
 #include <fstream>
 #include <unordered_set>
@@ -32,3 +30,4 @@ TEST (block_store, empty_bootstrap)
 	});
 	ASSERT_EQ (count, 0);
 }
+

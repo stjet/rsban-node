@@ -55,8 +55,8 @@ impl HintedSchedulerConfig {
 impl Default for HintedSchedulerConfig {
     fn default() -> Self {
         Self {
-            check_interval: Duration::from_millis(5000),
-            block_cooldown: Duration::from_millis(10000),
+            check_interval: Duration::from_millis(1000),
+            block_cooldown: Duration::from_millis(5000),
             hinting_theshold_percent: 10,
         }
     }

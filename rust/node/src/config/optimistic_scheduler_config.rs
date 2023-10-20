@@ -46,6 +46,7 @@ impl HintedSchedulerConfig {
     pub fn default_for_dev_network() -> Self {
         Self {
             check_interval: Duration::from_millis(100),
+            block_cooldown: Duration::from_millis(100),
             ..Default::default()
         }
     }

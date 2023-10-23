@@ -68,14 +68,14 @@ public:
 	/** When a rep request is made, this is called to update the last-request timestamp. */
 	void on_rep_request (std::shared_ptr<nano::transport::channel> const & channel_a);
 
-	/** Protects the probable_reps container */
-	mutable nano::mutex probable_reps_mutex;
-
 	/** Clean representatives with inactive channels */
 	void cleanup_reps ();
 
 	/** Request a list of the top \p count_a known representatives in descending order of weight, with at least \p weight_a voting weight, and optionally with a minimum version \p opt_version_min_a */
 	std::vector<nano::representative> representatives (std::size_t count_a = std::numeric_limits<std::size_t>::max (), nano::uint128_t const weight_a = 0, boost::optional<decltype (nano::network_constants::protocol_version)> const & opt_version_min_a = boost::none);
+
+	/** Request a list of the top \p count_a known principal representatives in descending order of weight, optionally with a minimum version \p opt_version_min_a */
+	std::vector<representative> principal_representatives (std::size_t count_a = std::numeric_limits<std::size_t>::max (), boost::optional<decltype (nano::network_constants::protocol_version)> const & opt_version_min_a = boost::none);
 
 	/** Total number of representatives */
 	std::size_t representative_count ();
@@ -100,6 +100,9 @@ private:
 	/** Probable representatives */
 	probably_rep_t probable_reps;
 
+	/** Protects the probable_reps container */
+	mutable nano::mutex probable_reps_mutex;
+
 	nano::node & node;
 };
 
@@ -110,9 +113,6 @@ private:
 class rep_crawler final
 {
 	friend std::unique_ptr<container_info_component> collect_container_info (rep_crawler & rep_crawler, std::string const & name);
-
-public:
-	nano::representative_register representative_register;
 
 public:
 	rep_crawler (nano::node & node_a);
@@ -147,9 +147,6 @@ public:
 	 * @return false if any vote passed the checks and was added to the response queue of the rep crawler
 	 */
 	bool response (std::shared_ptr<nano::transport::channel> const &, std::shared_ptr<nano::vote> const &, bool force = false);
-
-	/** Request a list of the top \p count_a known principal representatives in descending order of weight, optionally with a minimum version \p opt_version_min_a */
-	std::vector<representative> principal_representatives (std::size_t count_a = std::numeric_limits<std::size_t>::max (), boost::optional<decltype (nano::network_constants::protocol_version)> const & opt_version_min_a = boost::none);
 
 	/** Request a list of the top \p count_a known representative endpoints. */
 	std::vector<std::shared_ptr<nano::transport::channel>> representative_endpoints (std::size_t count_a);

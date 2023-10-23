@@ -180,6 +180,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (network->get_port (), *this) },
 	application_path (application_path_a),
 	port_mapping (*this),
+	representative_register (*this),
 	rep_crawler (*this),
 	vote_processor_queue{ flags_a.vote_processor_capacity (), *stats, online_reps, ledger, logger },
 	vote_processor (vote_processor_queue, checker, active, *observers, *stats, *config, *logger, rep_crawler, network_params),
@@ -1341,7 +1342,7 @@ void nano::node::ongoing_online_weight_calculation_queue ()
 
 bool nano::node::online () const
 {
-	return rep_crawler.representative_register.total_weight () > online_reps.delta ();
+	return representative_register.total_weight () > online_reps.delta ();
 }
 
 void nano::node::ongoing_online_weight_calculation ()

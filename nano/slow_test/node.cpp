@@ -2024,7 +2024,7 @@ TEST (node, aggressive_flooding)
 	ASSERT_TIMELY (!nano::slow_instrumentation () ? 10s : 40s, node1.ledger.cache.block_count () == 1 + 2 * nodes_wallets.size ());
 
 	// Wait until the main node sees all representatives
-	ASSERT_TIMELY (!nano::slow_instrumentation () ? 10s : 40s, node1.rep_crawler.principal_representatives ().size () == nodes_wallets.size ());
+	ASSERT_TIMELY (!nano::slow_instrumentation () ? 10s : 40s, node1.representative_register.principal_representatives ().size () == nodes_wallets.size ());
 
 	// Generate blocks and ensure they are sent to all representatives
 	nano::state_block_builder builder;
@@ -2178,7 +2178,7 @@ TEST (system, block_sequence)
 	}
 	while (std::any_of (system.nodes.begin (), system.nodes.end (), [] (std::shared_ptr<nano::node> const & node) {
 		// std::cerr << node->rep_crawler.representative_count () << ' ';
-		return node->rep_crawler.representative_register.representative_count () < 3;
+		return node->representative_register.representative_count () < 3;
 	}))
 	{
 		system.poll ();
@@ -2186,7 +2186,7 @@ TEST (system, block_sequence)
 	for (auto & node : system.nodes)
 	{
 		std::cerr << std::to_string (node->network->get_port ()) << ": ";
-		auto prs = node->rep_crawler.principal_representatives ();
+		auto prs = node->representative_register.principal_representatives ();
 		for (auto pr : prs)
 		{
 			std::cerr << pr.get_account ().to_account () << ' ';

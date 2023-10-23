@@ -701,7 +701,7 @@ void nano::active_transactions::request_confirm (nano::active_transactions_lock 
 	lock_a.unlock ();
 
 	nano::confirmation_solicitor solicitor (*node.network, *node.config);
-	solicitor.prepare (node.rep_crawler.principal_representatives (std::numeric_limits<std::size_t>::max ()));
+	solicitor.prepare (node.representative_register.principal_representatives (std::numeric_limits<std::size_t>::max ()));
 
 	std::size_t unconfirmed_count_l (0);
 	nano::timer<std::chrono::milliseconds> elapsed (nano::timer_state::started);

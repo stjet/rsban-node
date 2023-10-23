@@ -205,6 +205,11 @@ std::vector<nano::representative> nano::representative_register::representatives
 	return result;
 }
 
+std::vector<nano::representative> nano::representative_register::principal_representatives (std::size_t count_a, boost::optional<decltype (nano::network_constants::protocol_version)> const & opt_version_min_a)
+{
+	return representatives (count_a, node.minimum_principal_weight (), opt_version_min_a);
+}
+
 /** Total number of representatives */
 std::size_t nano::representative_register::representative_count ()
 {
@@ -213,7 +218,6 @@ std::size_t nano::representative_register::representative_count ()
 }
 
 nano::rep_crawler::rep_crawler (nano::node & node_a) :
-	representative_register{ node_a },
 	node (node_a),
 	handle{ rsnano::rsn_rep_crawler_create () }
 {
@@ -277,14 +281,14 @@ void nano::rep_crawler::validate ()
 			continue;
 		}
 
-		representative_register.update_or_insert (vote->account (), channel);
+		node.representative_register.update_or_insert (vote->account (), channel);
 	}
 }
 
 void nano::rep_crawler::ongoing_crawl ()
 {
-	auto total_weight_l (representative_register.total_weight ());
-	representative_register.cleanup_reps ();
+	auto total_weight_l (node.representative_register.total_weight ());
+	node.representative_register.cleanup_reps ();
 	validate ();
 	query (get_crawl_targets (total_weight_l));
 	auto sufficient_weight (total_weight_l > node.online_reps.delta ());
@@ -348,7 +352,7 @@ void nano::rep_crawler::query (std::vector<std::shared_ptr<nano::transport::chan
 	for (auto i (channels_a.begin ()), n (channels_a.end ()); i != n; ++i)
 	{
 		debug_assert (*i != nullptr);
-		representative_register.on_rep_request (*i);
+		node.representative_register.on_rep_request (*i);
 		// Confirmation request with hash + root
 		nano::confirm_req req (node.network_params.network, hash_root.first, hash_root.second);
 		(*i)->send (req);
@@ -417,15 +421,10 @@ bool nano::rep_crawler::response (std::shared_ptr<nano::transport::channel> cons
 	return error;
 }
 
-std::vector<nano::representative> nano::rep_crawler::principal_representatives (std::size_t count_a, boost::optional<decltype (nano::network_constants::protocol_version)> const & opt_version_min_a)
-{
-	return representative_register.representatives (count_a, node.minimum_principal_weight (), opt_version_min_a);
-}
-
 std::vector<std::shared_ptr<nano::transport::channel>> nano::rep_crawler::representative_endpoints (std::size_t count_a)
 {
 	std::vector<std::shared_ptr<nano::transport::channel>> result;
-	auto reps (representative_register.representatives (count_a));
+	auto reps (node.representative_register.representatives (count_a));
 	for (auto const & rep : reps)
 	{
 		result.push_back (rep.get_channel ());

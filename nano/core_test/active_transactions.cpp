@@ -84,7 +84,7 @@ TEST (active_transactions, confirm_election_by_request)
 	ASSERT_FALSE (peers.empty ());
 
 	// Add representative (node1) to disabled rep crawler of node2
-	node2.rep_crawler.representative_register.update_or_insert (nano::dev::genesis_key.pub, *peers.cbegin ());
+	node2.representative_register.update_or_insert (nano::dev::genesis_key.pub, *peers.cbegin ());
 
 	// Expect a vote to come back
 	ASSERT_TIMELY (5s, election->votes ().size () >= 1);
@@ -119,7 +119,7 @@ TEST (active_transactions, confirm_frontier)
 	// Add representative to disabled rep crawler
 	auto peers (node2.network->random_channels (1));
 	ASSERT_FALSE (peers.empty ());
-	node2.rep_crawler.representative_register.update_or_insert (nano::dev::genesis_key.pub, *peers.begin ());
+	node2.representative_register.update_or_insert (nano::dev::genesis_key.pub, *peers.begin ());
 
 	nano::state_block_builder builder;
 	auto send = builder

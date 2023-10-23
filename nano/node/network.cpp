@@ -192,7 +192,7 @@ void nano::network::flood_block (std::shared_ptr<nano::block> const & block_a, n
 void nano::network::flood_block_initial (std::shared_ptr<nano::block> const & block_a)
 {
 	nano::publish message (node.network_params.network, block_a);
-	for (auto const & i : node.rep_crawler.principal_representatives ())
+	for (auto const & i : node.representative_register.principal_representatives ())
 	{
 		i.get_channel ()->send (message, nullptr, nano::transport::buffer_drop_policy::no_limiter_drop);
 	}
@@ -214,7 +214,7 @@ void nano::network::flood_vote (std::shared_ptr<nano::vote> const & vote_a, floa
 void nano::network::flood_vote_pr (std::shared_ptr<nano::vote> const & vote_a)
 {
 	nano::confirm_ack message{ node.network_params.network, vote_a };
-	for (auto const & i : node.rep_crawler.principal_representatives ())
+	for (auto const & i : node.representative_register.principal_representatives ())
 	{
 		i.get_channel ()->send (message, nullptr, nano::transport::buffer_drop_policy::no_limiter_drop);
 	}
@@ -460,7 +460,7 @@ std::deque<std::shared_ptr<nano::transport::channel>> nano::network::list_non_pr
 	tcp_channels->list (result);
 	nano::random_pool_shuffle (result.begin (), result.end ());
 	result.erase (std::remove_if (result.begin (), result.end (), [this] (std::shared_ptr<nano::transport::channel> const & channel) {
-		return this->node.rep_crawler.representative_register.is_pr (*channel);
+		return this->node.representative_register.is_pr (*channel);
 	}),
 	result.end ());
 	if (result.size () > count_a)

@@ -39,11 +39,6 @@ bool nano::vote_processor_queue::empty ()
 	return votes.empty ();
 }
 
-bool nano::vote_processor_queue::half_full ()
-{
-	return size () >= max_votes / 2;
-}
-
 bool nano::vote_processor_queue::vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a)
 {
 	debug_assert (channel_a != nullptr);
@@ -345,29 +340,4 @@ void nano::vote_processor::stop ()
 	{
 		thread.join ();
 	}
-}
-
-void nano::vote_processor::flush ()
-{
-	queue.flush ();
-}
-
-std::size_t nano::vote_processor::size ()
-{
-	return queue.size ();
-}
-
-bool nano::vote_processor::empty ()
-{
-	return queue.empty ();
-}
-
-bool nano::vote_processor::half_full ()
-{
-	return queue.half_full ();
-}
-
-void nano::vote_processor::calculate_weights ()
-{
-	queue.calculate_weights ();
 }

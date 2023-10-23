@@ -257,7 +257,7 @@ void nano::rep_crawler::query (std::vector<std::shared_ptr<nano::transport::chan
 	node.workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (5), [node_w, hash = hash_root.first] () {
 		if (auto node_l = node_w.lock ())
 		{
-			auto target_finished_processed (node_l->vote_processor.total_processed + node_l->vote_processor.size ());
+			auto target_finished_processed (node_l->vote_processor.total_processed + node_l->vote_processor_queue.size ());
 			node_l->rep_crawler.throttled_remove (hash, target_finished_processed);
 		}
 	});

@@ -743,8 +743,8 @@ TEST (active_transactions, republish_winner)
 	auto election = node1.active.election (fork->qualified_root ());
 	ASSERT_NE (nullptr, election);
 	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::vote::timestamp_max, nano::vote::duration_max, std::vector<nano::block_hash>{ fork->hash () });
-	node1.vote_processor.vote (vote, std::make_shared<nano::transport::inproc::channel> (node1, node1));
-	node1.vote_processor.flush ();
+	node1.vote_processor_queue.vote (vote, std::make_shared<nano::transport::inproc::channel> (node1, node1));
+	node1.vote_processor_queue.flush ();
 	node1.block_processor.flush ();
 	ASSERT_TIMELY (5s, node1.active.confirmed (*election));
 	ASSERT_EQ (fork->hash (), election->get_status ().get_winner ()->hash ());
@@ -924,8 +924,8 @@ TEST (active_transactions, fork_replacement_tally)
 					.work (*system.work.generate (latest))
 					.build_shared ();
 		auto vote (std::make_shared<nano::vote> (keys[i].pub, keys[i].prv, 0, 0, std::vector<nano::block_hash>{ fork->hash () }));
-		node1.vote_processor.vote (vote, std::make_shared<nano::transport::inproc::channel> (node1, node1));
-		node1.vote_processor.flush ();
+		node1.vote_processor_queue.vote (vote, std::make_shared<nano::transport::inproc::channel> (node1, node1));
+		node1.vote_processor_queue.flush ();
 		node1.process_active (fork);
 	}
 
@@ -969,8 +969,8 @@ TEST (active_transactions, fork_replacement_tally)
 
 	// Process vote for correct block & replace existing lowest tally block
 	auto vote (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash>{ send_last->hash () }));
-	node1.vote_processor.vote (vote, std::make_shared<nano::transport::inproc::channel> (node1, node1));
-	node1.vote_processor.flush ();
+	node1.vote_processor_queue.vote (vote, std::make_shared<nano::transport::inproc::channel> (node1, node1));
+	node1.vote_processor_queue.flush ();
 	// ensure vote arrives before the block
 	ASSERT_TIMELY (5s, node1.vote_cache.find (send_last->hash ()));
 	ASSERT_TIMELY (5s, 1 == node1.vote_cache.find (send_last->hash ())->size ());

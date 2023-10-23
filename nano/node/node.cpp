@@ -856,7 +856,7 @@ void nano::node::long_inactivity_cleanup ()
 void nano::node::ongoing_rep_calculation ()
 {
 	auto now (std::chrono::steady_clock::now ());
-	vote_processor.calculate_weights ();
+	vote_processor_queue.calculate_weights ();
 	std::weak_ptr<nano::node> node_w (shared_from_this ());
 	workers->add_timed_task (now + std::chrono::minutes (10), [node_w] () {
 		if (auto node_l = node_w.lock ())

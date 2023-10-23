@@ -40,11 +40,11 @@ public:
 
 	std::size_t size ();
 	bool empty ();
-	bool half_full ();
 	/** Returns false if the vote was processed */
 	bool vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a);
 	void calculate_weights ();
 	bool wait_and_swap (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> & votes_a);
+	/** Function blocks until the queue is empty */
 	void flush ();
 	void clear ();
 	void stop ();
@@ -91,17 +91,9 @@ public:
 	/** Note: node.active.mutex lock is required */
 	nano::vote_code vote_blocking (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &, bool = false);
 	void verify_votes (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> const &);
-	/** Function blocks until either the current queue size (a established flush boundary as it'll continue to increase)
-	 * is processed or the queue is empty (end condition or cutoff's guard, as it is positioned ahead) */
-	void flush ();
-	std::size_t size ();
-	bool empty ();
-	bool half_full ();
-	void calculate_weights ();
 	void stop ();
 	std::atomic<uint64_t> total_processed{ 0 };
 
-private:
 	void process_loop ();
 
 	nano::signature_checker & checker;

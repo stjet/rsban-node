@@ -53,10 +53,10 @@ TEST (vote_processor, flush)
 	for (unsigned i = 0; i < 2000; ++i)
 	{
 		auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::vote::timestamp_min * (1 + i), 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
-		node.vote_processor.vote (vote, channel);
+		node.vote_processor_queue.vote (vote, channel);
 	}
-	node.vote_processor.flush ();
-	ASSERT_TRUE (node.vote_processor.empty ());
+	node.vote_processor_queue.flush ();
+	ASSERT_TRUE (node.vote_processor_queue.empty ());
 }
 
 TEST (vote_processor, invalid_signature)
@@ -152,7 +152,7 @@ TEST (vote_processor, weights)
 
 	// Wait for representatives
 	ASSERT_TIMELY (10s, node.ledger.cache.rep_weights ().get_rep_amounts ().size () == 4);
-	node.vote_processor.calculate_weights ();
+	node.vote_processor_queue.calculate_weights ();
 
 	ASSERT_EQ (node.vote_processor_queue.representatives_1.end (), node.vote_processor_queue.representatives_1.find (key0.pub));
 	ASSERT_EQ (node.vote_processor_queue.representatives_2.end (), node.vote_processor_queue.representatives_2.find (key0.pub));

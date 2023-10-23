@@ -34,9 +34,9 @@ TEST (vote_processor, producer_consumer)
 	auto consumer = [&node, &number_of_votes] () -> void {
 		while (node.vote_processor.total_processed.load () < number_of_votes)
 		{
-			if (node.vote_processor.size () >= number_of_votes / 100)
+			if (node.vote_processor_queue.size () >= number_of_votes / 100)
 			{
-				node.vote_processor.flush ();
+				node.vote_processor_queue.flush ();
 			}
 		}
 	};
@@ -45,7 +45,7 @@ TEST (vote_processor, producer_consumer)
 		while (node.vote_processor.total_processed.load () < number_of_votes)
 		{
 			std::this_thread::sleep_for (std::chrono::milliseconds (50));
-			if (node.vote_processor.empty ())
+			if (node.vote_processor_queue.empty ())
 			{
 				++consumer_wins;
 			}

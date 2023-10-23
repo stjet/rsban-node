@@ -168,6 +168,7 @@ public:
 	nano::online_reps online_reps; // ported
 	nano::gap_cache gap_cache; // ported
 	nano::rep_crawler rep_crawler;
+	nano::vote_processor_queue vote_processor_queue;
 	nano::vote_processor vote_processor;
 	unsigned warmed_up;
 	nano::local_vote_history history; // ported

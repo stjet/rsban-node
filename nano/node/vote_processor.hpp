@@ -49,6 +49,7 @@ public:
 	void clear ();
 	void stop ();
 
+private:
 	std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> votes;
 	nano::mutex mutex{ mutex_identifier (mutexes::vote_processor) };
 	nano::condition_variable condition;
@@ -58,10 +59,13 @@ public:
 	nano::ledger & ledger;
 	nano::logger_mt & logger;
 
+public:
 	/** Representatives levels for random early detection */
 	std::unordered_set<nano::account> representatives_1;
 	std::unordered_set<nano::account> representatives_2;
 	std::unordered_set<nano::account> representatives_3;
+
+private:
 	bool stopped;
 	friend std::unique_ptr<container_info_component> collect_container_info (vote_processor_queue & queue, std::string const & name);
 };
@@ -71,7 +75,16 @@ std::unique_ptr<container_info_component> collect_container_info (vote_processor
 class vote_processor final
 {
 public:
-	vote_processor (nano::signature_checker & checker_a, nano::active_transactions & active_a, nano::node_observers & observers_a, nano::stats & stats_a, nano::node_config & config_a, nano::node_flags & flags_a, nano::logger_mt & logger_a, nano::online_reps & online_reps_a, nano::rep_crawler & rep_crawler_a, nano::ledger & ledger_a, nano::network_params & network_params_a);
+	vote_processor (
+	nano::vote_processor_queue & queue_a,
+	nano::signature_checker & checker_a,
+	nano::active_transactions & active_a,
+	nano::node_observers & observers_a,
+	nano::stats & stats_a,
+	nano::node_config & config_a,
+	nano::logger_mt & logger_a,
+	nano::rep_crawler & rep_crawler_a,
+	nano::network_params & network_params_a);
 
 	/** Returns false if the vote was processed */
 	bool vote (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &);
@@ -97,15 +110,15 @@ private:
 	nano::stats & stats;
 	nano::node_config & config;
 	nano::logger_mt & logger;
-	nano::online_reps & online_reps;
 	nano::rep_crawler & rep_crawler;
-	nano::ledger & ledger;
 	nano::network_params & network_params;
 	bool started;
 	std::thread thread;
+	nano::condition_variable condition;
+	nano::mutex mutex{ mutex_identifier (mutexes::vote_processor) };
 
 public:
-	nano::vote_processor_queue queue;
+	nano::vote_processor_queue & queue;
 
 	friend class vote_processor_weights_Test;
 };

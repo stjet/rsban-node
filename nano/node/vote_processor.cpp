@@ -192,27 +192,34 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (vo
 	return composite;
 }
 
-nano::vote_processor::vote_processor (nano::signature_checker & checker_a, nano::active_transactions & active_a, nano::node_observers & observers_a, nano::stats & stats_a, nano::node_config & config_a, nano::node_flags & flags_a, nano::logger_mt & logger_a, nano::online_reps & online_reps_a, nano::rep_crawler & rep_crawler_a, nano::ledger & ledger_a, nano::network_params & network_params_a) :
+nano::vote_processor::vote_processor (
+nano::vote_processor_queue & queue_a,
+nano::signature_checker & checker_a,
+nano::active_transactions & active_a,
+nano::node_observers & observers_a,
+nano::stats & stats_a,
+nano::node_config & config_a,
+nano::logger_mt & logger_a,
+nano::rep_crawler & rep_crawler_a,
+nano::network_params & network_params_a) :
 	checker (checker_a),
 	active (active_a),
 	observers (observers_a),
 	stats (stats_a),
 	config (config_a),
 	logger (logger_a),
-	online_reps (online_reps_a),
 	rep_crawler (rep_crawler_a),
-	ledger (ledger_a),
 	network_params (network_params_a),
 	started (false),
-	queue{ flags_a.vote_processor_capacity (), stats_a, online_reps_a, ledger_a, logger_a },
+	queue{ queue_a },
 	thread ([this] () {
 		nano::thread_role::set (nano::thread_role::name::vote_processing);
 		process_loop ();
 		queue.clear ();
 	})
 {
-	nano::unique_lock<nano::mutex> lock{ queue.mutex };
-	queue.condition.wait (lock, [&started = started] { return started; });
+	nano::unique_lock<nano::mutex> lock{ mutex };
+	condition.wait (lock, [&started = started] { return started; });
 }
 
 void nano::vote_processor::process_loop ()
@@ -220,13 +227,12 @@ void nano::vote_processor::process_loop ()
 	nano::timer<std::chrono::milliseconds> elapsed;
 	bool log_this_iteration;
 
-	nano::unique_lock<nano::mutex> lock{ queue.mutex };
+	nano::unique_lock<nano::mutex> lock{ mutex };
 	started = true;
-
 	lock.unlock ();
-	queue.condition.notify_all ();
+	condition.notify_all ();
 
-	decltype (queue.votes) votes_l;
+	std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> votes_l;
 	while (queue.wait_and_swap (votes_l))
 	{
 		log_this_iteration = false;
@@ -256,7 +262,7 @@ bool nano::vote_processor::vote (std::shared_ptr<nano::vote> const & vote_a, std
 	return queue.vote (vote_a, channel_a);
 }
 
-void nano::vote_processor::verify_votes (decltype (queue.votes) const & votes_a)
+void nano::vote_processor::verify_votes (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> const & votes_a)
 {
 	auto size (votes_a.size ());
 	std::vector<unsigned char const *> messages;

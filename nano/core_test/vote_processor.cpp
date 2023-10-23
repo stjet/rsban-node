@@ -154,21 +154,21 @@ TEST (vote_processor, weights)
 	ASSERT_TIMELY (10s, node.ledger.cache.rep_weights ().get_rep_amounts ().size () == 4);
 	node.vote_processor.calculate_weights ();
 
-	ASSERT_EQ (node.vote_processor.queue.representatives_1.end (), node.vote_processor.queue.representatives_1.find (key0.pub));
-	ASSERT_EQ (node.vote_processor.queue.representatives_2.end (), node.vote_processor.queue.representatives_2.find (key0.pub));
-	ASSERT_EQ (node.vote_processor.queue.representatives_3.end (), node.vote_processor.queue.representatives_3.find (key0.pub));
+	ASSERT_EQ (node.vote_processor_queue.representatives_1.end (), node.vote_processor_queue.representatives_1.find (key0.pub));
+	ASSERT_EQ (node.vote_processor_queue.representatives_2.end (), node.vote_processor_queue.representatives_2.find (key0.pub));
+	ASSERT_EQ (node.vote_processor_queue.representatives_3.end (), node.vote_processor_queue.representatives_3.find (key0.pub));
 
-	ASSERT_NE (node.vote_processor.queue.representatives_1.end (), node.vote_processor.queue.representatives_1.find (key1.pub));
-	ASSERT_EQ (node.vote_processor.queue.representatives_2.end (), node.vote_processor.queue.representatives_2.find (key1.pub));
-	ASSERT_EQ (node.vote_processor.queue.representatives_3.end (), node.vote_processor.queue.representatives_3.find (key1.pub));
+	ASSERT_NE (node.vote_processor_queue.representatives_1.end (), node.vote_processor_queue.representatives_1.find (key1.pub));
+	ASSERT_EQ (node.vote_processor_queue.representatives_2.end (), node.vote_processor_queue.representatives_2.find (key1.pub));
+	ASSERT_EQ (node.vote_processor_queue.representatives_3.end (), node.vote_processor_queue.representatives_3.find (key1.pub));
 
-	ASSERT_NE (node.vote_processor.queue.representatives_1.end (), node.vote_processor.queue.representatives_1.find (key2.pub));
-	ASSERT_NE (node.vote_processor.queue.representatives_2.end (), node.vote_processor.queue.representatives_2.find (key2.pub));
-	ASSERT_EQ (node.vote_processor.queue.representatives_3.end (), node.vote_processor.queue.representatives_3.find (key2.pub));
+	ASSERT_NE (node.vote_processor_queue.representatives_1.end (), node.vote_processor_queue.representatives_1.find (key2.pub));
+	ASSERT_NE (node.vote_processor_queue.representatives_2.end (), node.vote_processor_queue.representatives_2.find (key2.pub));
+	ASSERT_EQ (node.vote_processor_queue.representatives_3.end (), node.vote_processor_queue.representatives_3.find (key2.pub));
 
-	ASSERT_NE (node.vote_processor.queue.representatives_1.end (), node.vote_processor.queue.representatives_1.find (nano::dev::genesis_key.pub));
-	ASSERT_NE (node.vote_processor.queue.representatives_2.end (), node.vote_processor.queue.representatives_2.find (nano::dev::genesis_key.pub));
-	ASSERT_NE (node.vote_processor.queue.representatives_3.end (), node.vote_processor.queue.representatives_3.find (nano::dev::genesis_key.pub));
+	ASSERT_NE (node.vote_processor_queue.representatives_1.end (), node.vote_processor_queue.representatives_1.find (nano::dev::genesis_key.pub));
+	ASSERT_NE (node.vote_processor_queue.representatives_2.end (), node.vote_processor_queue.representatives_2.find (nano::dev::genesis_key.pub));
+	ASSERT_NE (node.vote_processor_queue.representatives_3.end (), node.vote_processor_queue.representatives_3.find (nano::dev::genesis_key.pub));
 }
 }
 

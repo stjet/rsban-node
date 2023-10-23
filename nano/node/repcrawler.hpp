@@ -59,13 +59,28 @@ class representative_register
 public:
 	representative_register (nano::node & node_a);
 
-	//TODO delete insert?
-	void insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
 	void update_or_insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
+	/** Query if a peer manages a principle representative */
+	bool is_pr (nano::transport::channel const & channel_a) const;
+	/** Get total available weight from representatives */
+	nano::uint128_t total_weight () const;
+
+	/** When a rep request is made, this is called to update the last-request timestamp. */
+	void on_rep_request (std::shared_ptr<nano::transport::channel> const & channel_a);
 
 	/** Protects the probable_reps container */
 	mutable nano::mutex probable_reps_mutex;
-	//
+
+	/** Clean representatives with inactive channels */
+	void cleanup_reps ();
+
+	/** Request a list of the top \p count_a known representatives in descending order of weight, with at least \p weight_a voting weight, and optionally with a minimum version \p opt_version_min_a */
+	std::vector<nano::representative> representatives (std::size_t count_a = std::numeric_limits<std::size_t>::max (), nano::uint128_t const weight_a = 0, boost::optional<decltype (nano::network_constants::protocol_version)> const & opt_version_min_a = boost::none);
+
+	/** Total number of representatives */
+	std::size_t representative_count ();
+
+private:
 	// clang-format off
 	class tag_account {};
 	class tag_channel_id {};
@@ -84,7 +99,6 @@ public:
 
 	/** Probable representatives */
 	probably_rep_t probable_reps;
-
 
 	nano::node & node;
 };
@@ -120,9 +134,6 @@ public:
 	/** Attempt to determine if the peer manages one or more representative accounts */
 	void query (std::shared_ptr<nano::transport::channel> const & channel_a);
 
-	/** Query if a peer manages a principle representative */
-	bool is_pr (nano::transport::channel const &) const;
-
 	/** Only for tests*/
 	void insert_active (nano::block_hash const & hash_a);
 
@@ -137,20 +148,11 @@ public:
 	 */
 	bool response (std::shared_ptr<nano::transport::channel> const &, std::shared_ptr<nano::vote> const &, bool force = false);
 
-	/** Get total available weight from representatives */
-	nano::uint128_t total_weight () const;
-
-	/** Request a list of the top \p count_a known representatives in descending order of weight, with at least \p weight_a voting weight, and optionally with a minimum version \p opt_version_min_a */
-	std::vector<representative> representatives (std::size_t count_a = std::numeric_limits<std::size_t>::max (), nano::uint128_t const weight_a = 0, boost::optional<decltype (nano::network_constants::protocol_version)> const & opt_version_min_a = boost::none);
-
 	/** Request a list of the top \p count_a known principal representatives in descending order of weight, optionally with a minimum version \p opt_version_min_a */
 	std::vector<representative> principal_representatives (std::size_t count_a = std::numeric_limits<std::size_t>::max (), boost::optional<decltype (nano::network_constants::protocol_version)> const & opt_version_min_a = boost::none);
 
 	/** Request a list of the top \p count_a known representative endpoints. */
 	std::vector<std::shared_ptr<nano::transport::channel>> representative_endpoints (std::size_t count_a);
-
-	/** Total number of representatives */
-	std::size_t representative_count ();
 
 private:
 	nano::node & node;
@@ -166,13 +168,6 @@ private:
 
 	/** Returns a list of endpoints to crawl. The total weight is passed in to avoid computing it twice. */
 	std::vector<std::shared_ptr<nano::transport::channel>> get_crawl_targets (nano::uint128_t total_weight_a);
-
-	/** When a rep request is made, this is called to update the last-request timestamp. */
-	void on_rep_request (std::shared_ptr<nano::transport::channel> const & channel_a);
-
-	/** Clean representatives with inactive channels */
-	void cleanup_reps ();
-
 
 	friend class active_transactions_confirm_election_by_request_Test;
 	friend class active_transactions_confirm_frontier_Test;

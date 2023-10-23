@@ -1268,7 +1268,7 @@ int main (int argc, char * const * argv)
 			auto wallet (node1->wallets.create (nano::random_wallet_id ()));
 			wallet->insert_adhoc (nano::dev::genesis_key.prv);
 			node2->network->merge_peer (node1->network->endpoint ());
-			while (node2->rep_crawler.representative_count () == 0)
+			while (node2->rep_crawler.representative_register.representative_count () == 0)
 			{
 				std::this_thread::sleep_for (std::chrono::milliseconds (10));
 				if (++iteration % 500 == 0)

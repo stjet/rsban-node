@@ -1341,7 +1341,7 @@ void nano::node::ongoing_online_weight_calculation_queue ()
 
 bool nano::node::online () const
 {
-	return rep_crawler.total_weight () > online_reps.delta ();
+	return rep_crawler.representative_register.total_weight () > online_reps.delta ();
 }
 
 void nano::node::ongoing_online_weight_calculation ()

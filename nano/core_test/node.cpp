@@ -1679,12 +1679,12 @@ TEST (node, rep_list)
 	nano::keypair key1;
 	// Broadcast a confirm so others should know this is a rep node
 	wallet0->send_action (nano::dev::genesis_key.pub, key1.pub, nano::Mxrb_ratio);
-	ASSERT_EQ (0, node1.rep_crawler.representatives (1).size ());
+	ASSERT_EQ (0, node1.rep_crawler.representative_register.representatives (1).size ());
 	system.deadline_set (10s);
 	auto done (false);
 	while (!done)
 	{
-		auto reps = node1.rep_crawler.representatives (1);
+		auto reps = node1.rep_crawler.representative_register.representatives (1);
 		if (!reps.empty ())
 		{
 			if (!node1.ledger.weight (reps[0].get_account ()).is_zero ())
@@ -1761,7 +1761,7 @@ TEST (node, rep_weight)
 		ASSERT_EQ (nano::process_result::progress, node.ledger.process (*transaction, *block3).code);
 		ASSERT_EQ (nano::process_result::progress, node.ledger.process (*transaction, *block4).code);
 	}
-	ASSERT_TRUE (node.rep_crawler.representatives (1).empty ());
+	ASSERT_TRUE (node.rep_crawler.representative_register.representatives (1).empty ());
 	std::shared_ptr<nano::transport::channel> channel1 = nano::test::establish_tcp (system, node, node1.network->endpoint ());
 	ASSERT_NE (nullptr, channel1);
 	std::shared_ptr<nano::transport::channel> channel2 = nano::test::establish_tcp (system, node, node2.network->endpoint ());
@@ -1774,16 +1774,16 @@ TEST (node, rep_weight)
 	node.rep_crawler.response (channel1, vote0);
 	node.rep_crawler.response (channel2, vote1);
 	node.rep_crawler.response (channel3, vote2);
-	ASSERT_TIMELY (5s, node.rep_crawler.representative_count () == 2);
+	ASSERT_TIMELY (5s, node.rep_crawler.representative_register.representative_count () == 2);
 	// Make sure we get the rep with the most weight first
-	auto reps = node.rep_crawler.representatives (1);
+	auto reps = node.rep_crawler.representative_register.representatives (1);
 	ASSERT_EQ (1, reps.size ());
 	ASSERT_EQ (node.balance (nano::dev::genesis_key.pub), node.ledger.weight (reps[0].get_account ()));
 	ASSERT_EQ (nano::dev::genesis_key.pub, reps[0].get_account ());
 	ASSERT_EQ (channel1->channel_id (), reps[0].channel_id ());
-	ASSERT_TRUE (node.rep_crawler.is_pr (*channel1));
-	ASSERT_FALSE (node.rep_crawler.is_pr (*channel2));
-	ASSERT_TRUE (node.rep_crawler.is_pr (*channel3));
+	ASSERT_TRUE (node.rep_crawler.representative_register.is_pr (*channel1));
+	ASSERT_FALSE (node.rep_crawler.representative_register.is_pr (*channel2));
+	ASSERT_TRUE (node.rep_crawler.representative_register.is_pr (*channel3));
 }
 
 // Test that rep_crawler removes unreachable reps from its search results.
@@ -1858,8 +1858,8 @@ TEST (node, rep_remove)
 	// Ensure Rep1 is found by the rep_crawler after receiving a vote from it
 	auto vote_rep1 = std::make_shared<nano::vote> (keys_rep1.pub, keys_rep1.prv, 0, 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
 	ASSERT_FALSE (searching_node.rep_crawler.response (channel_rep1, vote_rep1, true));
-	ASSERT_TIMELY (5s, searching_node.rep_crawler.representative_count () == 1);
-	auto reps (searching_node.rep_crawler.representatives (1));
+	ASSERT_TIMELY (5s, searching_node.rep_crawler.representative_register.representative_count () == 1);
+	auto reps (searching_node.rep_crawler.representative_register.representatives (1));
 	ASSERT_EQ (1, reps.size ());
 	ASSERT_EQ (searching_node.minimum_principal_weight () * 2, searching_node.ledger.weight (reps[0].get_account ()));
 	ASSERT_EQ (keys_rep1.pub, reps[0].get_account ());
@@ -1867,7 +1867,7 @@ TEST (node, rep_remove)
 
 	// When rep1 disconnects then rep1 should not be found anymore
 	channel_rep1->close ();
-	ASSERT_TIMELY (5s, searching_node.rep_crawler.representative_count () == 0);
+	ASSERT_TIMELY (5s, searching_node.rep_crawler.representative_register.representative_count () == 0);
 
 	// Add working node for genesis representative
 	auto node_genesis_rep = system.add_node (nano::node_config (system.get_available_port (), system.logging));
@@ -1878,7 +1878,7 @@ TEST (node, rep_remove)
 	// genesis_rep should be found as principal representative after receiving a vote from it
 	auto vote_genesis_rep = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
 	searching_node.rep_crawler.response (channel_genesis_rep, vote_genesis_rep, true);
-	ASSERT_TIMELY (10s, searching_node.rep_crawler.representative_count () == 1);
+	ASSERT_TIMELY (10s, searching_node.rep_crawler.representative_register.representative_count () == 1);
 
 	// Start a node for Rep2 and wait until it is connected
 	auto node_rep2 (std::make_shared<nano::node> (system.async_rt, nano::unique_path (), nano::node_config (system.get_available_port (), system.logging), system.work));
@@ -1890,14 +1890,14 @@ TEST (node, rep_remove)
 	// Rep2 should be found as a principal representative after receiving a vote from it
 	auto vote_rep2 = std::make_shared<nano::vote> (keys_rep2.pub, keys_rep2.prv, 0, 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
 	ASSERT_FALSE (searching_node.rep_crawler.response (channel_rep2, vote_rep2, true));
-	ASSERT_TIMELY (10s, searching_node.rep_crawler.representative_count () == 2);
+	ASSERT_TIMELY (10s, searching_node.rep_crawler.representative_register.representative_count () == 2);
 
 	// When Rep2 is stopped, it should not be found as principal representative anymore
 	node_rep2->stop ();
-	ASSERT_TIMELY (10s, searching_node.rep_crawler.representative_count () == 1);
+	ASSERT_TIMELY (10s, searching_node.rep_crawler.representative_register.representative_count () == 1);
 
 	// Now only genesisRep should be found:
-	reps = searching_node.rep_crawler.representatives (1);
+	reps = searching_node.rep_crawler.representative_register.representatives (1);
 	ASSERT_EQ (nano::dev::genesis_key.pub, reps[0].get_account ());
 	ASSERT_TIMELY_EQ (5s, searching_node.network->size (), 1);
 	auto list (searching_node.network->list (1));
@@ -1911,10 +1911,10 @@ TEST (node, rep_connection_close)
 	auto & node2 (*system.nodes[1]);
 	// Add working representative (node 2)
 	system.wallet (1)->insert_adhoc (nano::dev::genesis_key.prv);
-	ASSERT_TIMELY (10s, node1.rep_crawler.representative_count () == 1);
+	ASSERT_TIMELY (10s, node1.rep_crawler.representative_register.representative_count () == 1);
 	node2.stop ();
 	// Remove representative with closed channel
-	ASSERT_TIMELY (10s, node1.rep_crawler.representative_count () == 0);
+	ASSERT_TIMELY (10s, node1.rep_crawler.representative_register.representative_count () == 0);
 }
 
 // Test that nodes can disable representative voting
@@ -3299,7 +3299,7 @@ TEST (node, bidirectional_tcp)
 	// Test block confirmation from node 1 (add representative to node 1)
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	// Wait to find new reresentative
-	ASSERT_TIMELY (10s, node2->rep_crawler.representative_count () != 0);
+	ASSERT_TIMELY (10s, node2->rep_crawler.representative_register.representative_count () != 0);
 	/* Wait for confirmation
 	To check connection we need only node 2 confirmation status
 	Node 1 election can be unconfirmed because representative private key was inserted after election start (and node 2 isn't flooding new votes to principal representatives) */
@@ -3333,7 +3333,7 @@ TEST (node, bidirectional_tcp)
 	// Test block confirmation from node 2 (add representative to node 2)
 	system.wallet (1)->insert_adhoc (nano::dev::genesis_key.prv);
 	// Wait to find changed reresentative
-	ASSERT_TIMELY (10s, node1->rep_crawler.representative_count () != 0);
+	ASSERT_TIMELY (10s, node1->rep_crawler.representative_register.representative_count () != 0);
 	/* Wait for confirmation
 	To check connection we need only node 1 confirmation status
 	Node 2 election can be unconfirmed because representative private key was inserted after election start (and node 1 isn't flooding new votes to principal representatives) */
@@ -4028,7 +4028,7 @@ TEST (rep_crawler, recently_confirmed)
 	auto channel = node1.network->find_node_id (node2.get_node_id ());
 	ASSERT_NE (nullptr, channel);
 	node1.rep_crawler.query (channel);
-	ASSERT_TIMELY (3s, node1.rep_crawler.representative_count () == 1);
+	ASSERT_TIMELY (3s, node1.rep_crawler.representative_register.representative_count () == 1);
 }
 
 namespace nano
@@ -4044,7 +4044,7 @@ TEST (rep_crawler, local)
 	node.rep_crawler.insert_active (nano::dev::genesis->hash ());
 	node.rep_crawler.insert_response (loopback, vote);
 	node.rep_crawler.validate ();
-	ASSERT_EQ (0, node.rep_crawler.representative_count ());
+	ASSERT_EQ (0, node.rep_crawler.representative_register.representative_count ());
 }
 }
 

@@ -2178,7 +2178,7 @@ TEST (system, block_sequence)
 	}
 	while (std::any_of (system.nodes.begin (), system.nodes.end (), [] (std::shared_ptr<nano::node> const & node) {
 		// std::cerr << node->rep_crawler.representative_count () << ' ';
-		return node->rep_crawler.representative_count () < 3;
+		return node->rep_crawler.representative_register.representative_count () < 3;
 	}))
 	{
 		system.poll ();

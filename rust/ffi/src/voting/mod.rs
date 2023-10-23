@@ -3,6 +3,7 @@ mod election;
 mod local_vote_history;
 mod vote;
 mod vote_cache;
+mod vote_processor_queue;
 mod vote_spacing;
 mod vote_uniquer;
 

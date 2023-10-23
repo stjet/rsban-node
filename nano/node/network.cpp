@@ -368,7 +368,7 @@ public:
 
 		if (!message_a.get_vote ()->account ().is_zero ())
 		{
-			node.vote_processor.vote (message_a.get_vote (), channel);
+			node.vote_processor_queue.vote (message_a.get_vote (), channel);
 		}
 	}
 

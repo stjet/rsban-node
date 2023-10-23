@@ -242,7 +242,7 @@ TEST (active_transactions, inactive_votes_cache)
 				.work (*system.work.generate (latest))
 				.build_shared ();
 	auto vote (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::vote::timestamp_max, nano::vote::duration_max, std::vector<nano::block_hash> (1, send->hash ())));
-	node.vote_processor.vote (vote, std::make_shared<nano::transport::inproc::channel> (node, node));
+	node.vote_processor_queue.vote (vote, std::make_shared<nano::transport::inproc::channel> (node, node));
 	ASSERT_TIMELY (5s, node.vote_cache.size () == 1);
 	node.process_active (send);
 	node.block_processor.flush ();
@@ -268,7 +268,7 @@ TEST (active_transactions, inactive_votes_cache_non_final)
 
 	// Non-final vote
 	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash> (1, send->hash ()));
-	node.vote_processor.vote (vote, std::make_shared<nano::transport::inproc::channel> (node, node));
+	node.vote_processor_queue.vote (vote, std::make_shared<nano::transport::inproc::channel> (node, node));
 	ASSERT_TIMELY (5s, node.vote_cache.size () == 1);
 
 	node.process_active (send);
@@ -305,7 +305,7 @@ TEST (active_transactions, inactive_votes_cache_fork)
 				 .build_shared ();
 
 	auto const vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::vote::timestamp_max, nano::vote::duration_max, std::vector<nano::block_hash> (1, send1->hash ()));
-	node.vote_processor.vote (vote, std::make_shared<nano::transport::inproc::channel> (node, node));
+	node.vote_processor_queue.vote (vote, std::make_shared<nano::transport::inproc::channel> (node, node));
 	ASSERT_TIMELY (5s, node.vote_cache.size () == 1);
 
 	node.process_active (send2);
@@ -354,7 +354,7 @@ TEST (active_transactions, inactive_votes_cache_existing_vote)
 	ASSERT_GT (node.weight (key.pub), node.minimum_principal_weight ());
 	// Insert vote
 	auto vote1 (std::make_shared<nano::vote> (key.pub, key.prv, nano::vote::timestamp_min * 1, 0, std::vector<nano::block_hash> (1, send->hash ())));
-	node.vote_processor.vote (vote1, std::make_shared<nano::transport::inproc::channel> (node, node));
+	node.vote_processor_queue.vote (vote1, std::make_shared<nano::transport::inproc::channel> (node, node));
 	ASSERT_TIMELY (5s, election->votes ().size () == 2);
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_new));
 	auto last_vote1 (election->votes ()[key.pub]);
@@ -417,10 +417,10 @@ TEST (active_transactions, inactive_votes_cache_multiple_votes)
 
 	// Process votes
 	auto vote1 (std::make_shared<nano::vote> (key1.pub, key1.prv, 0, 0, std::vector<nano::block_hash> (1, send1->hash ())));
-	node.vote_processor.vote (vote1, std::make_shared<nano::transport::inproc::channel> (node, node));
+	node.vote_processor_queue.vote (vote1, std::make_shared<nano::transport::inproc::channel> (node, node));
 
 	auto vote2 (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash> (1, send1->hash ())));
-	node.vote_processor.vote (vote2, std::make_shared<nano::transport::inproc::channel> (node, node));
+	node.vote_processor_queue.vote (vote2, std::make_shared<nano::transport::inproc::channel> (node, node));
 
 	ASSERT_TIMELY (5s, node.vote_cache.find (send1->hash ()));
 	ASSERT_TIMELY (5s, node.vote_cache.find (send1->hash ())->voters ().size () == 2);
@@ -503,21 +503,21 @@ TEST (active_transactions, inactive_votes_cache_election_start)
 
 	// Inactive votes
 	auto vote1 = nano::test::make_vote (key1, { open1, open2, send4 });
-	node.vote_processor.vote (vote1, std::make_shared<nano::transport::inproc::channel> (node, node));
+	node.vote_processor_queue.vote (vote1, std::make_shared<nano::transport::inproc::channel> (node, node));
 	ASSERT_TIMELY (5s, node.vote_cache.size () == 3);
 	ASSERT_TRUE (node.active.empty ());
 	ASSERT_EQ (1, node.ledger.cache.cemented_count ());
 
 	// 2 votes are required to start election (dev network)
 	auto vote2 = nano::test::make_vote (key2, { open1, open2, send4 });
-	node.vote_processor.vote (vote2, std::make_shared<nano::transport::inproc::channel> (node, node));
+	node.vote_processor_queue.vote (vote2, std::make_shared<nano::transport::inproc::channel> (node, node));
 	// Only election for send1 should start, other blocks are missing dependencies and don't have enough final weight
 	ASSERT_TIMELY_EQ (5s, 1, node.active.size ());
 	ASSERT_TRUE (node.active.active (send1->hash ()));
 
 	// Confirm elections with weight quorum
 	auto vote0 = nano::test::make_final_vote (nano::dev::genesis_key, { open1, open2, send4 });
-	node.vote_processor.vote (vote0, std::make_shared<nano::transport::inproc::channel> (node, node));
+	node.vote_processor_queue.vote (vote0, std::make_shared<nano::transport::inproc::channel> (node, node));
 	ASSERT_TIMELY_EQ (5s, 0, node.active.size ());
 	ASSERT_TIMELY (5s, 5 == node.ledger.cache.cemented_count ());
 	ASSERT_TRUE (nano::test::confirmed (node, { send1, send2, open1, open2 }));
@@ -875,7 +875,7 @@ TEST (active_transactions, fork_replacement_tally)
 		node1.process_active (open);
 		// Confirmation
 		auto vote (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::vote::timestamp_max, nano::vote::duration_max, std::vector<nano::block_hash>{ send->hash (), open->hash () }));
-		node1.vote_processor.vote (vote, std::make_shared<nano::transport::inproc::channel> (node1, node1));
+		node1.vote_processor_queue.vote (vote, std::make_shared<nano::transport::inproc::channel> (node1, node1));
 	}
 	ASSERT_TIMELY (5s, node1.ledger.cache.cemented_count () == 1 + 2 * reps_count);
 
@@ -1457,7 +1457,7 @@ TEST (active_transactions, limit_vote_hinted_elections)
 
 	// Inactive vote
 	auto vote1 = nano::test::make_vote (rep1, { open0, open1 });
-	node.vote_processor.vote (vote1, nano::test::fake_channel (node));
+	node.vote_processor_queue.vote (vote1, nano::test::fake_channel (node));
 	// Ensure new inactive vote cache entries were created
 	ASSERT_TIMELY (5s, node.vote_cache.size () == 2);
 	// And no elections are getting started yet
@@ -1467,21 +1467,21 @@ TEST (active_transactions, limit_vote_hinted_elections)
 
 	// This vote should trigger election hinting for first receive block
 	auto vote2 = nano::test::make_vote (rep2, { open0 });
-	node.vote_processor.vote (vote2, nano::test::fake_channel (node));
+	node.vote_processor_queue.vote (vote2, nano::test::fake_channel (node));
 	// Ensure an election got started for open0 block
 	ASSERT_TIMELY (5s, node.active.size () == 1);
 	ASSERT_TIMELY (5s, nano::test::active (node, { open0 }));
 
 	// This vote should trigger election hinting but not become active due to limit of active hinted elections
 	auto vote3 = nano::test::make_vote (rep2, { open1 });
-	node.vote_processor.vote (vote3, nano::test::fake_channel (node));
+	node.vote_processor_queue.vote (vote3, nano::test::fake_channel (node));
 	// Ensure no new election are getting started
 	ASSERT_NEVER (1s, nano::test::active (node, { open1 }));
 	ASSERT_EQ (node.active.size (), 1);
 
 	// This final vote should confirm the first receive block
 	auto vote4 = nano::test::make_final_vote (nano::dev::genesis_key, { open0 });
-	node.vote_processor.vote (vote4, nano::test::fake_channel (node));
+	node.vote_processor_queue.vote (vote4, nano::test::fake_channel (node));
 	// Ensure election for open0 block got confirmed
 	ASSERT_TIMELY (5s, nano::test::confirmed (node, { open0 }));
 

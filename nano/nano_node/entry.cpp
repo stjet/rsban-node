@@ -1102,7 +1102,7 @@ int main (int argc, char * const * argv)
 			{
 				auto vote (votes.front ());
 				auto channel (std::make_shared<nano::transport::inproc::channel> (*node, *node));
-				node->vote_processor.vote (vote, channel);
+				node->vote_processor_queue.vote (vote, channel);
 				votes.pop_front ();
 			}
 			while (!node->active.empty ())

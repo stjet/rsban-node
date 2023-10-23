@@ -35,6 +35,14 @@ impl ChannelHandle {
     }
 }
 
+impl Deref for ChannelHandle {
+    type Target = Arc<ChannelEnum>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 pub unsafe fn as_fake_channel(handle: *mut ChannelHandle) -> &'static ChannelFake {
     match (*handle).0.as_ref() {
         ChannelEnum::Fake(fake) => fake,

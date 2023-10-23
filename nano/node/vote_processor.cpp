@@ -1,3 +1,6 @@
+#include "nano/lib/rsnano.hpp"
+#include "nano/node/transport/tcp.hpp"
+
 #include <nano/lib/logger_mt.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/threading.hpp>
@@ -17,174 +20,71 @@
 #include <chrono>
 using namespace std::chrono_literals;
 
-nano::vote_processor_queue::vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, nano::logger_mt & logger_a) :
-	max_votes{ max_votes },
-	stats (stats_a),
-	online_reps{ online_reps_a },
-	ledger{ ledger_a },
-	logger{ logger_a },
-	stopped (false)
+nano::vote_processor_queue::vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, std::shared_ptr<nano::logger_mt> & logger_a) :
+	handle{ rsnano::rsn_vote_processor_queue_create (max_votes, stats_a.handle, online_reps_a.get_handle (), ledger_a.handle, nano::to_logger_handle (logger_a)) }
 {
+}
+
+nano::vote_processor_queue::~vote_processor_queue ()
+{
+	rsnano::rsn_vote_processor_queue_destroy (handle);
 }
 
 std::size_t nano::vote_processor_queue::size ()
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	return votes.size ();
+	return rsnano::rsn_vote_processor_queue_len (handle);
 }
 
 bool nano::vote_processor_queue::empty ()
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	return votes.empty ();
+	return rsnano::rsn_vote_processor_queue_is_empty (handle);
 }
 
 bool nano::vote_processor_queue::vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a)
 {
-	debug_assert (channel_a != nullptr);
-	bool process (false);
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	if (!stopped)
-	{
-		// Level 0 (< 0.1%)
-		if (votes.size () < 6.0 / 9.0 * max_votes)
-		{
-			process = true;
-		}
-		// Level 1 (0.1-1%)
-		else if (votes.size () < 7.0 / 9.0 * max_votes)
-		{
-			process = (representatives_1.find (vote_a->account ()) != representatives_1.end ());
-		}
-		// Level 2 (1-5%)
-		else if (votes.size () < 8.0 / 9.0 * max_votes)
-		{
-			process = (representatives_2.find (vote_a->account ()) != representatives_2.end ());
-		}
-		// Level 3 (> 5%)
-		else if (votes.size () < max_votes)
-		{
-			process = (representatives_3.find (vote_a->account ()) != representatives_3.end ());
-		}
-		if (process)
-		{
-			votes.emplace_back (vote_a, channel_a);
-			lock.unlock ();
-			condition.notify_all ();
-			// Lock no longer required
-		}
-		else
-		{
-			stats.inc (nano::stat::type::vote, nano::stat::detail::vote_overflow);
-		}
-	}
-	return !process;
+	return rsnano::rsn_vote_processor_queue_vote (handle, vote_a->get_handle (), channel_a->handle);
 }
 
 void nano::vote_processor_queue::calculate_weights ()
 {
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	if (!stopped)
-	{
-		representatives_1.clear ();
-		representatives_2.clear ();
-		representatives_3.clear ();
-		auto supply (online_reps.trended ());
-		auto rep_amounts = ledger.cache.rep_weights ().get_rep_amounts ();
-		for (auto const & rep_amount : rep_amounts)
-		{
-			nano::account const & representative (rep_amount.first);
-			auto weight (ledger.weight (representative));
-			if (weight > supply / 1000) // 0.1% or above (level 1)
-			{
-				representatives_1.insert (representative);
-				if (weight > supply / 100) // 1% or above (level 2)
-				{
-					representatives_2.insert (representative);
-					if (weight > supply / 20) // 5% or above (level 3)
-					{
-						representatives_3.insert (representative);
-					}
-				}
-			}
-		}
-	}
+	rsnano::rsn_vote_processor_queue_calculate_weights (handle);
 }
 
-bool nano::vote_processor_queue::wait_and_swap (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> & votes_a)
+bool nano::vote_processor_queue::wait_and_take (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> & votes_a)
 {
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	while (true)
+	auto queue_handle = rsnano::rsn_vote_processor_queue_wait_and_take (handle);
+	auto len = rsnano::rsn_raw_vote_processor_queue_len (queue_handle);
+	votes_a.clear ();
+	for (auto i = 0; i < len; ++i)
 	{
-		if (stopped)
-		{
-			return false;
-		}
-
-		if (!votes.empty ())
-		{
-			votes_a.swap (votes);
-			lock.unlock ();
-			condition.notify_all ();
-			return true;
-		}
-		else
-		{
-			condition.wait (lock);
-		}
+		rsnano::VoteHandle * vote = nullptr;
+		rsnano::ChannelHandle * channel = nullptr;
+		rsnano::rsn_raw_vote_processor_queue_get (queue_handle, i, &vote, &channel);
+		votes_a.emplace_back (std::make_shared<nano::vote> (vote), nano::transport::channel_handle_to_channel (channel));
 	}
+	rsnano::rsn_raw_vote_processor_queue_destroy (queue_handle);
+	return len > 0;
 }
 
 void nano::vote_processor_queue::flush ()
 {
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	bool success = condition.wait_for (lock, 60s, [this] () {
-		return stopped || votes.empty () /*|| total_processed.load (std::memory_order_relaxed) >= cutoff*/;
-	});
-	if (!success)
-	{
-		logger.always_log ("WARNING: vote_processor_queue::flush timeout while waiting for flush");
-		debug_assert (false && "vote_processor_queue::flush timeout while waiting for flush");
-	}
+	rsnano::rsn_vote_processor_queue_flush (handle);
 }
 
 void nano::vote_processor_queue::clear ()
 {
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	votes.clear ();
-	condition.notify_all ();
+	rsnano::rsn_vote_processor_queue_clear (handle);
 }
 
 void nano::vote_processor_queue::stop ()
 {
-	{
-		nano::lock_guard<nano::mutex> lock{ mutex };
-		stopped = true;
-	}
-	condition.notify_all ();
+	rsnano::rsn_vote_processor_queue_stop (handle);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (vote_processor_queue & queue, std::string const & name)
 {
-	std::size_t votes_count;
-	std::size_t representatives_1_count;
-	std::size_t representatives_2_count;
-	std::size_t representatives_3_count;
-
-	{
-		nano::lock_guard<nano::mutex> guard{ queue.mutex };
-		votes_count = queue.votes.size ();
-		representatives_1_count = queue.representatives_1.size ();
-		representatives_2_count = queue.representatives_2.size ();
-		representatives_3_count = queue.representatives_3.size ();
-	}
-
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "votes", votes_count, sizeof (decltype (queue.votes)::value_type) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "representatives_1", representatives_1_count, sizeof (decltype (queue.representatives_1)::value_type) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "representatives_2", representatives_2_count, sizeof (decltype (queue.representatives_2)::value_type) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "representatives_3", representatives_3_count, sizeof (decltype (queue.representatives_3)::value_type) }));
-	return composite;
+	auto info_handle = rsnano::rsn_vote_processor_collect_container_info (queue.handle, name.c_str ());
+	return std::make_unique<nano::container_info_composite> (info_handle);
 }
 
 nano::vote_processor::vote_processor (
@@ -228,7 +128,7 @@ void nano::vote_processor::process_loop ()
 	condition.notify_all ();
 
 	std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> votes_l;
-	while (queue.wait_and_swap (votes_l))
+	while (queue.wait_and_take (votes_l))
 	{
 		log_this_iteration = false;
 		if (config.logging.network_logging () && votes_l.size () > 50)
@@ -249,12 +149,6 @@ void nano::vote_processor::process_loop ()
 			logger.try_log (boost::str (boost::format ("Processed %1% votes in %2% milliseconds (rate of %3% votes per second)") % votes_l.size () % elapsed.value ().count () % ((votes_l.size () * 1000ULL) / elapsed.value ().count ())));
 		}
 	}
-}
-
-// TODO call queue.vote() directly
-bool nano::vote_processor::vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a)
-{
-	return queue.vote (vote_a, channel_a);
 }
 
 void nano::vote_processor::verify_votes (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> const & votes_a)

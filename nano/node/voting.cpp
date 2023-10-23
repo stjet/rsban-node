@@ -105,8 +105,8 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (na
 	return composite;
 }
 
-nano::vote_broadcaster::vote_broadcaster (nano::vote_processor & vote_processor_a, nano::network & network_a) :
-	vote_processor{ vote_processor_a },
+nano::vote_broadcaster::vote_broadcaster (nano::vote_processor_queue & vote_processor_queue_a, nano::network & network_a) :
+	vote_processor_queue{ vote_processor_queue_a },
 	network{ network_a }
 {
 }
@@ -115,16 +115,16 @@ void nano::vote_broadcaster::broadcast (std::shared_ptr<nano::vote> const & vote
 {
 	network.flood_vote_pr (vote_a);
 	network.flood_vote (vote_a, 2.0f);
-	vote_processor.vote (vote_a, std::make_shared<nano::transport::inproc::channel> (network.node, network.node));
+	vote_processor_queue.vote (vote_a, std::make_shared<nano::transport::inproc::channel> (network.node, network.node));
 }
 
-nano::vote_generator::vote_generator (nano::node_config const & config_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::local_vote_history & history_a, nano::network & network_a, nano::stats & stats_a, bool is_final_a) :
+nano::vote_generator::vote_generator (nano::node_config const & config_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::vote_processor_queue & vote_processor_queue_a, nano::local_vote_history & history_a, nano::network & network_a, nano::stats & stats_a, bool is_final_a) :
 	config (config_a),
 	ledger (ledger_a),
 	wallets (wallets_a),
 	history (history_a),
 	spacing{ config_a.network_params.voting.delay },
-	vote_broadcaster{ vote_processor_a, network_a },
+	vote_broadcaster{ vote_processor_queue_a, network_a },
 	stats (stats_a),
 	is_final (is_final_a),
 	vote_generation_queue{ stats, nano::stat::type::vote_generator, nano::thread_role::name::vote_generator_queue, /* single threaded */ 1, /* max queue size */ 1024 * 32, /* max batch size */ 1024 * 4 }

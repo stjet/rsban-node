@@ -2401,7 +2401,7 @@ TEST (node, local_votes_cache_fork)
 	ASSERT_EQ (nano::process_result::progress, node1.process (*send1).code);
 	// Cache vote
 	auto vote (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash> (1, send1->hash ())));
-	node1.vote_processor.vote (vote, std::make_shared<nano::transport::fake::channel> (node1));
+	node1.vote_processor_queue.vote (vote, std::make_shared<nano::transport::fake::channel> (node1));
 	node1.history.add (send1->root (), send1->hash (), vote);
 	auto votes2 (node1.history.votes (send1->root (), send1->hash ()));
 	ASSERT_EQ (1, votes2.size ());
@@ -2455,7 +2455,7 @@ TEST (node, vote_republish)
 
 	// the vote causes the election to reach quorum and for the vote (and block?) to be published from node1 to node2
 	auto vote (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::vote::timestamp_max, nano::vote::duration_max, std::vector<nano::block_hash>{ send2->hash () }));
-	node1.vote_processor.vote (vote, std::make_shared<nano::transport::fake::channel> (node1));
+	node1.vote_processor_queue.vote (vote, std::make_shared<nano::transport::fake::channel> (node1));
 
 	// FIXME: there is a race condition here, if the vote arrives before the block then the vote is wasted and the test fails
 	// we could resend the vote but then there is a race condition between the vote resending and the election reaching quorum on node1
@@ -2572,7 +2572,7 @@ TEST (node, vote_by_hash_republish)
 	std::vector<nano::block_hash> vote_blocks;
 	vote_blocks.push_back (send2->hash ());
 	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::vote::timestamp_max, nano::vote::duration_max, vote_blocks);
-	node1.vote_processor.vote (vote, std::make_shared<nano::transport::fake::channel> (node1));
+	node1.vote_processor_queue.vote (vote, std::make_shared<nano::transport::fake::channel> (node1));
 
 	// send2 should win on both nodes
 	ASSERT_TIMELY (5s, node1.block_confirmed (send2->hash ()));
@@ -2617,7 +2617,7 @@ TEST (node, DISABLED_vote_by_hash_epoch_block_republish)
 	auto vote (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, vote_blocks));
 	ASSERT_TRUE (node1.active.active (*send1));
 	ASSERT_TRUE (node2.active.active (*send1));
-	node1.vote_processor.vote (vote, std::make_shared<nano::transport::fake::channel> (node1));
+	node1.vote_processor_queue.vote (vote, std::make_shared<nano::transport::fake::channel> (node1));
 	ASSERT_TIMELY (10s, node1.block (epoch1->hash ()));
 	ASSERT_TIMELY (10s, node2.block (epoch1->hash ()));
 	ASSERT_FALSE (node1.block (send1->hash ()));

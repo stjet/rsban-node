@@ -36,38 +36,22 @@ namespace transport
 class vote_processor_queue
 {
 public:
-	vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, nano::logger_mt & logger_a);
+	vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, std::shared_ptr<nano::logger_mt> & logger_a);
+	vote_processor_queue (vote_processor_queue const &) = delete;
+	~vote_processor_queue ();
 
 	std::size_t size ();
 	bool empty ();
 	/** Returns false if the vote was processed */
 	bool vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a);
 	void calculate_weights ();
-	bool wait_and_swap (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> & votes_a);
+	bool wait_and_take (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> & votes_a);
 	/** Function blocks until the queue is empty */
 	void flush ();
 	void clear ();
 	void stop ();
 
-private:
-	std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> votes;
-	nano::mutex mutex{ mutex_identifier (mutexes::vote_processor) };
-	nano::condition_variable condition;
-	std::size_t const max_votes;
-	nano::stats & stats;
-	nano::online_reps & online_reps;
-	nano::ledger & ledger;
-	nano::logger_mt & logger;
-
-public:
-	/** Representatives levels for random early detection */
-	std::unordered_set<nano::account> representatives_1;
-	std::unordered_set<nano::account> representatives_2;
-	std::unordered_set<nano::account> representatives_3;
-
-private:
-	bool stopped;
-	friend std::unique_ptr<container_info_component> collect_container_info (vote_processor_queue & queue, std::string const & name);
+	rsnano::VoteProcessorQueueHandle * handle;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (vote_processor_queue & queue, std::string const & name);
@@ -86,8 +70,6 @@ public:
 	nano::rep_crawler & rep_crawler_a,
 	nano::network_params & network_params_a);
 
-	/** Returns false if the vote was processed */
-	bool vote (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &);
 	/** Note: node.active.mutex lock is required */
 	nano::vote_code vote_blocking (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &, bool = false);
 	void verify_votes (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> const &);

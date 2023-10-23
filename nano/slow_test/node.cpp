@@ -528,7 +528,7 @@ TEST (store, vote_load)
 	for (auto i = 0u; i < 1000000u; ++i)
 	{
 		auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, i, 0, std::vector<nano::block_hash>{ i });
-		node.vote_processor.vote (vote, std::make_shared<nano::transport::inproc::channel> (node, node));
+		node.vote_processor_queue.vote (vote, std::make_shared<nano::transport::inproc::channel> (node, node));
 	}
 }
 

@@ -93,7 +93,7 @@ void nano::representative_register::update_or_insert (nano::account account_a, s
 	auto existing (probable_reps.find (account_a));
 	if (existing != probable_reps.end ())
 	{
-		probable_reps.modify (existing, [rep_weight, &updated, &account_a, &channel_a, &prev_channel] (nano::representative & info) {
+		probable_reps.modify (existing, [&updated, &account_a, &channel_a, &prev_channel] (nano::representative & info) {
 			info.set_last_response (std::chrono::steady_clock::now ());
 
 			auto info_channel = info.get_channel ();

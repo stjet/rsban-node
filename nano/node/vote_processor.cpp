@@ -17,11 +17,12 @@
 #include <chrono>
 using namespace std::chrono_literals;
 
-nano::vote_processor_queue::vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a) :
+nano::vote_processor_queue::vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, nano::logger_mt & logger_a) :
 	max_votes{ max_votes },
 	stats (stats_a),
 	online_reps{ online_reps_a },
 	ledger{ ledger_a },
+	logger{ logger_a },
 	stopped (false)
 {
 }
@@ -115,6 +116,50 @@ void nano::vote_processor_queue::calculate_weights ()
 	}
 }
 
+bool nano::vote_processor_queue::wait_and_swap (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> & votes_a)
+{
+	nano::unique_lock<nano::mutex> lock{ mutex };
+	while (true)
+	{
+		if (stopped)
+		{
+			return false;
+		}
+
+		if (!votes.empty ())
+		{
+			votes_a.swap (votes);
+			lock.unlock ();
+			condition.notify_all ();
+			return true;
+		}
+		else
+		{
+			condition.wait (lock);
+		}
+	}
+}
+
+void nano::vote_processor_queue::flush ()
+{
+	nano::unique_lock<nano::mutex> lock{ mutex };
+	bool success = condition.wait_for (lock, 60s, [this] () {
+		return stopped || votes.empty () /*|| total_processed.load (std::memory_order_relaxed) >= cutoff*/;
+	});
+	if (!success)
+	{
+		logger.always_log ("WARNING: vote_processor_queue::flush timeout while waiting for flush");
+		debug_assert (false && "vote_processor_queue::flush timeout while waiting for flush");
+	}
+}
+
+void nano::vote_processor_queue::clear ()
+{
+	nano::unique_lock<nano::mutex> lock{ mutex };
+	votes.clear ();
+	condition.notify_all ();
+}
+
 void nano::vote_processor_queue::stop ()
 {
 	{
@@ -159,13 +204,11 @@ nano::vote_processor::vote_processor (nano::signature_checker & checker_a, nano:
 	ledger (ledger_a),
 	network_params (network_params_a),
 	started (false),
-	queue{ flags_a.vote_processor_capacity (), stats_a, online_reps_a, ledger_a },
+	queue{ flags_a.vote_processor_capacity (), stats_a, online_reps_a, ledger_a, logger_a },
 	thread ([this] () {
 		nano::thread_role::set (nano::thread_role::name::vote_processing);
 		process_loop ();
-		nano::unique_lock<nano::mutex> lock{ queue.mutex };
-		queue.votes.clear ();
-		queue.condition.notify_all ();
+		queue.clear ();
 	})
 {
 	nano::unique_lock<nano::mutex> lock{ queue.mutex };
@@ -182,39 +225,27 @@ void nano::vote_processor::process_loop ()
 
 	lock.unlock ();
 	queue.condition.notify_all ();
-	lock.lock ();
 
-	while (!queue.stopped)
+	decltype (queue.votes) votes_l;
+	while (queue.wait_and_swap (votes_l))
 	{
-		if (!queue.votes.empty ())
+		log_this_iteration = false;
+		if (config.logging.network_logging () && votes_l.size () > 50)
 		{
-			decltype (queue.votes) votes_l;
-			votes_l.swap (queue.votes);
-			lock.unlock ();
-			queue.condition.notify_all ();
-
-			log_this_iteration = false;
-			if (config.logging.network_logging () && votes_l.size () > 50)
-			{
-				/*
-				 * Only log the timing information for this iteration if
-				 * there are a sufficient number of items for it to be relevant
-				 */
-				log_this_iteration = true;
-				elapsed.restart ();
-			}
-			verify_votes (votes_l);
-			total_processed += votes_l.size ();
-
-			if (log_this_iteration && elapsed.stop () > std::chrono::milliseconds (100))
-			{
-				logger.try_log (boost::str (boost::format ("Processed %1% votes in %2% milliseconds (rate of %3% votes per second)") % votes_l.size () % elapsed.value ().count () % ((votes_l.size () * 1000ULL) / elapsed.value ().count ())));
-			}
-			lock.lock ();
+			/*
+				* Only log the timing information for this iteration if
+				* there are a sufficient number of items for it to be relevant
+				*/
+			log_this_iteration = true;
+			elapsed.restart ();
 		}
-		else
+		verify_votes (votes_l);
+		total_processed += votes_l.size ();
+		votes_l.clear ();
+
+		if (log_this_iteration && elapsed.stop () > std::chrono::milliseconds (100))
 		{
-			queue.condition.wait (lock);
+			logger.try_log (boost::str (boost::format ("Processed %1% votes in %2% milliseconds (rate of %3% votes per second)") % votes_l.size () % elapsed.value ().count () % ((votes_l.size () * 1000ULL) / elapsed.value ().count ())));
 		}
 	}
 }
@@ -312,16 +343,7 @@ void nano::vote_processor::stop ()
 
 void nano::vote_processor::flush ()
 {
-	nano::unique_lock<nano::mutex> lock{ queue.mutex };
-	auto const cutoff = total_processed.load (std::memory_order_relaxed) + queue.votes.size ();
-	bool success = queue.condition.wait_for (lock, 60s, [this, &cutoff] () {
-		return queue.stopped || queue.votes.empty () /*|| total_processed.load (std::memory_order_relaxed) >= cutoff*/;
-	});
-	if (!success)
-	{
-		logger.always_log ("WARNING: vote_processor::flush timeout while waiting for flush");
-		debug_assert (false && "vote_processor::flush timeout while waiting for flush");
-	}
+	queue.flush ();
 }
 
 std::size_t nano::vote_processor::size ()

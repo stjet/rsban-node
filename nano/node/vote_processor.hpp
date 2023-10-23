@@ -36,7 +36,7 @@ namespace transport
 class vote_processor_queue
 {
 public:
-	vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a);
+	vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, nano::logger_mt & logger_a);
 
 	std::size_t size ();
 	bool empty ();
@@ -44,6 +44,9 @@ public:
 	/** Returns false if the vote was processed */
 	bool vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a);
 	void calculate_weights ();
+	bool wait_and_swap (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> & votes_a);
+	void flush ();
+	void clear ();
 	void stop ();
 
 	std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> votes;
@@ -53,6 +56,7 @@ public:
 	nano::stats & stats;
 	nano::online_reps & online_reps;
 	nano::ledger & ledger;
+	nano::logger_mt & logger;
 
 	/** Representatives levels for random early detection */
 	std::unordered_set<nano::account> representatives_1;

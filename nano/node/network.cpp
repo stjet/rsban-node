@@ -244,42 +244,6 @@ void nano::network::flood_block_many (std::deque<std::shared_ptr<nano::block>> b
 	}
 }
 
-void nano::network::send_confirm_req (std::shared_ptr<nano::transport::channel> const & channel_a, std::pair<nano::block_hash, nano::block_hash> const & hash_root_a)
-{
-	// Confirmation request with hash + root
-	nano::confirm_req req (node.network_params.network, hash_root_a.first, hash_root_a.second);
-	channel_a->send (req);
-}
-
-void nano::network::broadcast_confirm_req_base (std::shared_ptr<nano::block> const & block_a, std::shared_ptr<std::vector<std::shared_ptr<nano::transport::channel>>> const & endpoints_a, unsigned delay_a, bool resumption)
-{
-	std::size_t const max_reps = 10;
-	if (!resumption && node.config->logging.network_logging ())
-	{
-		node.logger->try_log (boost::str (boost::format ("Broadcasting confirm req for block %1% to %2% representatives") % block_a->hash ().to_string () % endpoints_a->size ()));
-	}
-	auto count (0);
-	while (!endpoints_a->empty () && count < max_reps)
-	{
-		auto channel (endpoints_a->back ());
-		send_confirm_req (channel, std::make_pair (block_a->hash (), block_a->root ().as_block_hash ()));
-		endpoints_a->pop_back ();
-		count++;
-	}
-	if (!endpoints_a->empty ())
-	{
-		delay_a += std::rand () % broadcast_interval_ms;
-
-		std::weak_ptr<nano::node> node_w (node.shared ());
-		node.workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_a), [node_w, block_a, endpoints_a, delay_a] () {
-			if (auto node_l = node_w.lock ())
-			{
-				node_l->network->broadcast_confirm_req_base (block_a, endpoints_a, delay_a, true);
-			}
-		});
-	}
-}
-
 namespace
 {
 class network_message_visitor : public nano::message_visitor

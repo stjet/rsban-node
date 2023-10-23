@@ -249,7 +249,9 @@ void nano::rep_crawler::query (std::vector<std::shared_ptr<nano::transport::chan
 	{
 		debug_assert (*i != nullptr);
 		on_rep_request (*i);
-		node.network->send_confirm_req (*i, hash_root);
+		// Confirmation request with hash + root
+		nano::confirm_req req (node.network_params.network, hash_root.first, hash_root.second);
+		(*i)->send(req);
 	}
 
 	// A representative must respond with a vote within the deadline

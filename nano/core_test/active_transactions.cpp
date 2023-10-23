@@ -85,8 +85,8 @@ TEST (active_transactions, confirm_election_by_request)
 
 	// Add representative (node1) to disabled rep crawler of node2
 	{
-		nano::lock_guard<nano::mutex> guard (node2.rep_crawler.probable_reps_mutex);
-		node2.rep_crawler.probable_reps.emplace (nano::dev::genesis_key.pub, *peers.cbegin ());
+		nano::lock_guard<nano::mutex> guard (node2.rep_crawler.representative_register.probable_reps_mutex);
+		node2.rep_crawler.representative_register.insert (nano::dev::genesis_key.pub, *peers.cbegin ());
 	}
 
 	// Expect a vote to come back
@@ -123,8 +123,8 @@ TEST (active_transactions, confirm_frontier)
 	auto peers (node2.network->random_channels (1));
 	ASSERT_FALSE (peers.empty ());
 	{
-		nano::lock_guard<nano::mutex> guard (node2.rep_crawler.probable_reps_mutex);
-		node2.rep_crawler.probable_reps.emplace (nano::dev::genesis_key.pub, *peers.begin ());
+		nano::lock_guard<nano::mutex> guard (node2.rep_crawler.representative_register.probable_reps_mutex);
+		node2.rep_crawler.representative_register.insert (nano::dev::genesis_key.pub, *peers.begin ());
 	}
 
 	nano::state_block_builder builder;

@@ -71,7 +71,64 @@ void nano::representative::set_last_response (std::chrono::steady_clock::time_po
 	rsnano::rsn_representative_set_last_response (handle, time_point.time_since_epoch ().count ());
 }
 
+nano::representative_register::representative_register  (nano::node & node_a) : 
+	node{node_a}
+{
+}
+
+void nano::representative_register::insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a)
+{
+	//TODO mutex lock!?
+	probable_reps.emplace(account_a, channel_a);
+}
+
+void nano::representative_register::update_or_insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a)
+{
+	// temporary data used for logging after dropping the lock
+	auto inserted = false;
+	auto updated = false;
+	std::shared_ptr<nano::transport::channel> prev_channel;
+	nano::unique_lock<nano::mutex> lock{ probable_reps_mutex };
+
+	auto existing (probable_reps.find (account_a));
+	if (existing != probable_reps.end ())
+	{
+		probable_reps.modify (existing, [rep_weight, &updated, &account_a, &channel_a, &prev_channel] (nano::representative & info) {
+			info.set_last_response (std::chrono::steady_clock::now ());
+
+			auto info_channel = info.get_channel ();
+			// Update if representative channel was changed
+			if (info_channel->get_remote_endpoint () != channel_a->get_remote_endpoint ())
+			{
+				debug_assert (info.get_account () == account_a);
+				updated = true;
+				prev_channel = info_channel;
+				info.set_channel (channel_a);
+			}
+		});
+	}
+	else
+	{
+		insert (account_a, channel_a);
+		// rsnano::rsn_rep_crawler_add (handle, rep.handle);
+		inserted = true;
+	}
+
+	lock.unlock ();
+
+	if (inserted)
+	{
+		node.logger->try_log (boost::str (boost::format ("Found representative %1% at %2%") % account_a.to_account () % channel_a->to_string ()));
+	}
+
+	if (updated)
+	{
+		node.logger->try_log (boost::str (boost::format ("Updated representative %1% at %2% (was at: %3%)") % account_a.to_account () % channel_a->to_string () % prev_channel->to_string ()));
+	}
+}
+
 nano::rep_crawler::rep_crawler (nano::node & node_a) :
+	representative_register{node_a},
 	node (node_a),
 	handle{ rsnano::rsn_rep_crawler_create () }
 {
@@ -134,18 +191,21 @@ void nano::rep_crawler::validate ()
 			}
 			continue;
 		}
+		//
+		//---------------------------
+		// new function: insert_or_update() ?
 
 		// temporary data used for logging after dropping the lock
 		auto inserted = false;
 		auto updated = false;
 		std::shared_ptr<nano::transport::channel> prev_channel;
 
-		nano::unique_lock<nano::mutex> lock{ probable_reps_mutex };
+		nano::unique_lock<nano::mutex> lock{ representative_register.probable_reps_mutex };
 
-		auto existing (probable_reps.find (vote->account ()));
-		if (existing != probable_reps.end ())
+		auto existing (representative_register.probable_reps.find (vote->account ()));
+		if (existing != representative_register.probable_reps.end ())
 		{
-			probable_reps.modify (existing, [rep_weight, &updated, &vote, &channel, &prev_channel] (nano::representative & info) {
+			representative_register.probable_reps.modify (existing, [rep_weight, &updated, &vote, &channel, &prev_channel] (nano::representative & info) {
 				info.set_last_response (std::chrono::steady_clock::now ());
 
 				auto info_channel = info.get_channel ();
@@ -161,8 +221,7 @@ void nano::rep_crawler::validate ()
 		}
 		else
 		{
-			nano::representative rep{ vote->account (), channel };
-			probable_reps.emplace (rep);
+			representative_register.insert (vote->account (), channel);
 			// rsnano::rsn_rep_crawler_add (handle, rep.handle);
 			inserted = true;
 		}
@@ -178,6 +237,7 @@ void nano::rep_crawler::validate ()
 		{
 			node.logger->try_log (boost::str (boost::format ("Updated representative %1% at %2% (was at: %3%)") % vote->account ().to_account () % channel->to_string () % prev_channel->to_string ()));
 		}
+		//---------------------------
 	}
 }
 
@@ -292,10 +352,10 @@ void nano::rep_crawler::throttled_remove (nano::block_hash const & hash_a, uint6
 
 bool nano::rep_crawler::is_pr (nano::transport::channel const & channel_a) const
 {
-	nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
-	auto existing = probable_reps.get<tag_channel_id> ().find (channel_a.channel_id ());
+	nano::lock_guard<nano::mutex> lock{ representative_register.probable_reps_mutex };
+	auto existing = representative_register.probable_reps.get<nano::representative_register::tag_channel_id> ().find (channel_a.channel_id ());
 	bool result = false;
-	if (existing != probable_reps.get<tag_channel_id> ().end ())
+	if (existing != representative_register.probable_reps.get<nano::representative_register::tag_channel_id> ().end ())
 	{
 		result = node.ledger.weight (existing->get_account ()) > node.minimum_principal_weight ();
 	}
@@ -331,9 +391,9 @@ bool nano::rep_crawler::response (std::shared_ptr<nano::transport::channel> cons
 
 nano::uint128_t nano::rep_crawler::total_weight () const
 {
-	nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
+	nano::lock_guard<nano::mutex> lock{ representative_register.probable_reps_mutex };
 	nano::uint128_t result (0);
-	for (auto i (probable_reps.get<tag_account> ().begin ()), n (probable_reps.get<tag_account> ().end ()); i != n; ++i)
+	for (auto i (representative_register.probable_reps.get<nano::representative_register::tag_account> ().begin ()), n (representative_register.probable_reps.get<nano::representative_register::tag_account> ().end ()); i != n; ++i)
 	{
 		if (i->get_channel ()->alive ())
 		{
@@ -345,10 +405,10 @@ nano::uint128_t nano::rep_crawler::total_weight () const
 
 void nano::rep_crawler::on_rep_request (std::shared_ptr<nano::transport::channel> const & channel_a)
 {
-	nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
+	nano::lock_guard<nano::mutex> lock{ representative_register.probable_reps_mutex };
 	if (channel_a->get_tcp_remote_endpoint ().address () != boost::asio::ip::address_v6::any ())
 	{
-		probably_rep_t::index<tag_channel_id>::type & channel_id_index = probable_reps.get<tag_channel_id> ();
+		nano::representative_register::probably_rep_t::index<nano::representative_register::tag_channel_id>::type & channel_id_index = representative_register.probable_reps.get<nano::representative_register::tag_channel_id> ();
 
 		// Find and update the timestamp on all reps available on the endpoint (a single host may have multiple reps)
 		auto itr_pair = channel_id_index.equal_range (channel_a->channel_id ());
@@ -364,9 +424,9 @@ void nano::rep_crawler::on_rep_request (std::shared_ptr<nano::transport::channel
 void nano::rep_crawler::cleanup_reps ()
 {
 	// Check known rep channels
-	nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
-	auto iterator (probable_reps.get<tag_last_request> ().begin ());
-	while (iterator != probable_reps.get<tag_last_request> ().end ())
+	nano::lock_guard<nano::mutex> lock{ representative_register.probable_reps_mutex };
+	auto iterator (representative_register.probable_reps.get<nano::representative_register::tag_last_request> ().begin ());
+	while (iterator != representative_register.probable_reps.get<nano::representative_register::tag_last_request> ().end ())
 	{
 		if (iterator->get_channel ()->alive ())
 		{
@@ -375,7 +435,7 @@ void nano::rep_crawler::cleanup_reps ()
 		else
 		{
 			// Remove reps with closed channels
-			iterator = probable_reps.get<tag_last_request> ().erase (iterator);
+			iterator = representative_register.probable_reps.get<nano::representative_register::tag_last_request> ().erase (iterator);
 		}
 	}
 }
@@ -384,8 +444,8 @@ std::vector<nano::representative> nano::rep_crawler::representatives (std::size_
 {
 	auto version_min (opt_version_min_a.value_or (node.network_params.network.protocol_version_min));
 	std::multimap<nano::amount, representative, std::greater<nano::amount>> ordered;
-	nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
-	for (auto i (probable_reps.get<tag_account> ().begin ()), n (probable_reps.get<tag_account> ().end ()); i != n; ++i)
+	nano::lock_guard<nano::mutex> lock{ representative_register.probable_reps_mutex };
+	for (auto i (representative_register.probable_reps.get<nano::representative_register::tag_account> ().begin ()), n (representative_register.probable_reps.get<nano::representative_register::tag_account> ().end ()); i != n; ++i)
 	{
 		auto weight = node.ledger.weight (i->get_account ());
 		if (weight > weight_a && i->get_channel ()->get_network_version () >= version_min)
@@ -420,6 +480,6 @@ std::vector<std::shared_ptr<nano::transport::channel>> nano::rep_crawler::repres
 /** Total number of representatives */
 std::size_t nano::rep_crawler::representative_count ()
 {
-	nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
-	return probable_reps.size ();
+	nano::lock_guard<nano::mutex> lock{ representative_register.probable_reps_mutex };
+	return representative_register.probable_reps.size ();
 }

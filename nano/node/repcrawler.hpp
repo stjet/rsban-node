@@ -54,14 +54,18 @@ public:
 	rsnano::RepresentativeHandle * handle;
 };
 
-/**
- * Crawls the network for representatives. Queries are performed by requesting confirmation of a
- * random block and observing the corresponding vote.
- */
-class rep_crawler final
+class representative_register
 {
-	friend std::unique_ptr<container_info_component> collect_container_info (rep_crawler & rep_crawler, std::string const & name);
+public:
+	representative_register (nano::node & node_a);
 
+	//TODO delete insert?
+	void insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
+	void update_or_insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
+
+	/** Protects the probable_reps container */
+	mutable nano::mutex probable_reps_mutex;
+	//
 	// clang-format off
 	class tag_account {};
 	class tag_channel_id {};
@@ -77,6 +81,24 @@ class rep_crawler final
 		mi::hashed_non_unique<mi::tag<tag_channel_id>,
 			mi::const_mem_fun<representative, size_t, &representative::channel_id>>>>;
 	// clang-format on
+
+	/** Probable representatives */
+	probably_rep_t probable_reps;
+
+
+	nano::node & node;
+};
+
+/**
+ * Crawls the network for representatives. Queries are performed by requesting confirmation of a
+ * random block and observing the corresponding vote.
+ */
+class rep_crawler final
+{
+	friend std::unique_ptr<container_info_component> collect_container_info (rep_crawler & rep_crawler, std::string const & name);
+
+public:
+	nano::representative_register representative_register;
 
 public:
 	rep_crawler (nano::node & node_a);
@@ -151,11 +173,6 @@ private:
 	/** Clean representatives with inactive channels */
 	void cleanup_reps ();
 
-	/** Protects the probable_reps container */
-	mutable nano::mutex probable_reps_mutex;
-
-	/** Probable representatives */
-	probably_rep_t probable_reps;
 
 	friend class active_transactions_confirm_election_by_request_Test;
 	friend class active_transactions_confirm_frontier_Test;

@@ -155,6 +155,17 @@ impl VoteProcessorQueue {
         }
     }
 
+    pub fn reps_contains(&self, reps_id: u8, account: &Account) -> bool {
+        let guard = self.data.lock().unwrap();
+        let resp = match reps_id {
+            1 => &guard.representatives_1,
+            2 => &guard.representatives_2,
+            _ => &guard.representatives_3,
+        };
+
+        resp.contains(account)
+    }
+
     pub fn clear(&self) {
         {
             let mut guard = self.data.lock().unwrap();

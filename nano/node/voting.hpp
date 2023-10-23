@@ -89,7 +89,7 @@ private:
 	using queue_entry_t = std::pair<nano::root, nano::block_hash>;
 
 public:
-	vote_generator (nano::node_config const & config_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::vote_processor_queue & vote_processor_queue_a,  nano::local_vote_history & history_a, nano::network & network_a, nano::stats & stats_a, bool is_final_a);
+	vote_generator (nano::node_config const & config_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::vote_processor_queue & vote_processor_queue_a, nano::local_vote_history & history_a, nano::network & network_a, nano::stats & stats_a, bool is_final_a);
 	~vote_generator ();
 
 	/** Queue items for vote generation, or broadcast votes already in cache */

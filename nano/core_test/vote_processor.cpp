@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/jsonconfig.hpp>
 #include <nano/node/transport/inproc.hpp>
 #include <nano/node/vote_processor.hpp>
@@ -121,56 +123,56 @@ TEST (vote_processor, overflow)
 	ASSERT_LT (std::chrono::system_clock::now () - start_time, 10s);
 }
 
-//namespace nano
-//{
-//TEST (vote_processor, weights)
-//{
-//	nano::test::system system (4);
-//	auto & node (*system.nodes[0]);
-//
-//	// Create representatives of different weight levels
-//	// The online stake will be the minimum configurable due to online_reps sampling in tests
-//	auto const online = node.config->online_weight_minimum.number ();
-//	auto const level0 = online / 5000; // 0.02%
-//	auto const level1 = online / 500; // 0.2%
-//	auto const level2 = online / 50; // 2%
-//
-//	nano::keypair key0;
-//	nano::keypair key1;
-//	nano::keypair key2;
-//
-//	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-//	system.wallet (1)->insert_adhoc (key0.prv);
-//	system.wallet (2)->insert_adhoc (key1.prv);
-//	system.wallet (3)->insert_adhoc (key2.prv);
-//	system.wallet (1)->store.representative_set (*system.nodes[1]->wallets.tx_begin_write (), key0.pub);
-//	system.wallet (2)->store.representative_set (*system.nodes[2]->wallets.tx_begin_write (), key1.pub);
-//	system.wallet (3)->store.representative_set (*system.nodes[3]->wallets.tx_begin_write (), key2.pub);
-//	system.wallet (0)->send_sync (nano::dev::genesis_key.pub, key0.pub, level0);
-//	system.wallet (0)->send_sync (nano::dev::genesis_key.pub, key1.pub, level1);
-//	system.wallet (0)->send_sync (nano::dev::genesis_key.pub, key2.pub, level2);
-//
-//	// Wait for representatives
-//	ASSERT_TIMELY (10s, node.ledger.cache.rep_weights ().get_rep_amounts ().size () == 4);
-//	node.vote_processor_queue.calculate_weights ();
-//
-//	ASSERT_EQ (node.vote_processor_queue.representatives_1.end (), node.vote_processor_queue.representatives_1.find (key0.pub));
-//	ASSERT_EQ (node.vote_processor_queue.representatives_2.end (), node.vote_processor_queue.representatives_2.find (key0.pub));
-//	ASSERT_EQ (node.vote_processor_queue.representatives_3.end (), node.vote_processor_queue.representatives_3.find (key0.pub));
-//
-//	ASSERT_NE (node.vote_processor_queue.representatives_1.end (), node.vote_processor_queue.representatives_1.find (key1.pub));
-//	ASSERT_EQ (node.vote_processor_queue.representatives_2.end (), node.vote_processor_queue.representatives_2.find (key1.pub));
-//	ASSERT_EQ (node.vote_processor_queue.representatives_3.end (), node.vote_processor_queue.representatives_3.find (key1.pub));
-//
-//	ASSERT_NE (node.vote_processor_queue.representatives_1.end (), node.vote_processor_queue.representatives_1.find (key2.pub));
-//	ASSERT_NE (node.vote_processor_queue.representatives_2.end (), node.vote_processor_queue.representatives_2.find (key2.pub));
-//	ASSERT_EQ (node.vote_processor_queue.representatives_3.end (), node.vote_processor_queue.representatives_3.find (key2.pub));
-//
-//	ASSERT_NE (node.vote_processor_queue.representatives_1.end (), node.vote_processor_queue.representatives_1.find (nano::dev::genesis_key.pub));
-//	ASSERT_NE (node.vote_processor_queue.representatives_2.end (), node.vote_processor_queue.representatives_2.find (nano::dev::genesis_key.pub));
-//	ASSERT_NE (node.vote_processor_queue.representatives_3.end (), node.vote_processor_queue.representatives_3.find (nano::dev::genesis_key.pub));
-//}
-//}
+namespace nano
+{
+TEST (vote_processor, weights)
+{
+	nano::test::system system (4);
+	auto & node (*system.nodes[0]);
+
+	// Create representatives of different weight levels
+	// The online stake will be the minimum configurable due to online_reps sampling in tests
+	auto const online = node.config->online_weight_minimum.number ();
+	auto const level0 = online / 5000; // 0.02%
+	auto const level1 = online / 500; // 0.2%
+	auto const level2 = online / 50; // 2%
+
+	nano::keypair key0;
+	nano::keypair key1;
+	nano::keypair key2;
+
+	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	system.wallet (1)->insert_adhoc (key0.prv);
+	system.wallet (2)->insert_adhoc (key1.prv);
+	system.wallet (3)->insert_adhoc (key2.prv);
+	system.wallet (1)->store.representative_set (*system.nodes[1]->wallets.tx_begin_write (), key0.pub);
+	system.wallet (2)->store.representative_set (*system.nodes[2]->wallets.tx_begin_write (), key1.pub);
+	system.wallet (3)->store.representative_set (*system.nodes[3]->wallets.tx_begin_write (), key2.pub);
+	system.wallet (0)->send_sync (nano::dev::genesis_key.pub, key0.pub, level0);
+	system.wallet (0)->send_sync (nano::dev::genesis_key.pub, key1.pub, level1);
+	system.wallet (0)->send_sync (nano::dev::genesis_key.pub, key2.pub, level2);
+
+	// Wait for representatives
+	ASSERT_TIMELY (10s, node.ledger.cache.rep_weights ().get_rep_amounts ().size () == 4);
+	node.vote_processor_queue.calculate_weights ();
+
+	ASSERT_FALSE (rsnano::rsn_vote_processor_queue_reps_contains (node.vote_processor_queue.handle, 1, key0.pub.bytes.data ()));
+	ASSERT_FALSE (rsnano::rsn_vote_processor_queue_reps_contains (node.vote_processor_queue.handle, 2, key0.pub.bytes.data ()));
+	ASSERT_FALSE (rsnano::rsn_vote_processor_queue_reps_contains (node.vote_processor_queue.handle, 3, key0.pub.bytes.data ()));
+
+	ASSERT_TRUE (rsnano::rsn_vote_processor_queue_reps_contains (node.vote_processor_queue.handle, 1, key1.pub.bytes.data ()));
+	ASSERT_FALSE (rsnano::rsn_vote_processor_queue_reps_contains (node.vote_processor_queue.handle, 2, key1.pub.bytes.data ()));
+	ASSERT_FALSE (rsnano::rsn_vote_processor_queue_reps_contains (node.vote_processor_queue.handle, 3, key1.pub.bytes.data ()));
+
+	ASSERT_TRUE (rsnano::rsn_vote_processor_queue_reps_contains (node.vote_processor_queue.handle, 1, key2.pub.bytes.data ()));
+	ASSERT_TRUE (rsnano::rsn_vote_processor_queue_reps_contains (node.vote_processor_queue.handle, 2, key2.pub.bytes.data ()));
+	ASSERT_FALSE (rsnano::rsn_vote_processor_queue_reps_contains (node.vote_processor_queue.handle, 3, key2.pub.bytes.data ()));
+
+	ASSERT_TRUE (rsnano::rsn_vote_processor_queue_reps_contains (node.vote_processor_queue.handle, 1, nano::dev::genesis_key.pub.bytes.data ()));
+	ASSERT_TRUE (rsnano::rsn_vote_processor_queue_reps_contains (node.vote_processor_queue.handle, 2, nano::dev::genesis_key.pub.bytes.data ()));
+	ASSERT_TRUE (rsnano::rsn_vote_processor_queue_reps_contains (node.vote_processor_queue.handle, 3, nano::dev::genesis_key.pub.bytes.data ()));
+}
+}
 
 // Issue that tracks last changes on this test: https://github.com/nanocurrency/nano-node/issues/3485
 // Reopen in case the nondeterministic failure appears again.

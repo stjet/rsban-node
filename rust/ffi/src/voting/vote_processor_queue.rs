@@ -4,6 +4,7 @@ use std::{
     sync::Arc,
 };
 
+use rsnano_core::Account;
 use rsnano_node::{
     transport::ChannelEnum,
     voting::{Vote, VoteProcessorQueue},
@@ -91,6 +92,15 @@ pub extern "C" fn rsn_vote_processor_queue_clear(handle: &VoteProcessorQueueHand
 #[no_mangle]
 pub extern "C" fn rsn_vote_processor_queue_stop(handle: &VoteProcessorQueueHandle) {
     handle.0.stop();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_processor_queue_reps_contains(
+    handle: &VoteProcessorQueueHandle,
+    reps_id: u8,
+    account: *const u8,
+) -> bool {
+    handle.0.reps_contains(reps_id, &Account::from_ptr(account))
 }
 
 #[no_mangle]

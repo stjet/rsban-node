@@ -1,6 +1,6 @@
 use crate::{copy_account_bytes, utils::ContainerInfoComponentHandle, voting::VoteHandle};
 use rsnano_core::{Amount, BlockHash};
-use rsnano_node::vote_cache::{TopEntry, VoteCache, VoteCacheConfig, VoterEntry};
+use rsnano_node::voting::{TopEntry, VoteCache, VoteCacheConfig, VoterEntry};
 use std::{
     ffi::{c_char, CStr},
     sync::{Arc, Mutex},
@@ -56,7 +56,7 @@ pub unsafe extern "C" fn rsn_vote_cache_find(
 }
 
 unsafe fn fill_entry_dto(
-    entry: Option<&rsnano_node::vote_cache::CacheEntry>,
+    entry: Option<&rsnano_node::voting::CacheEntry>,
     result: *mut VoteCacheEntryDto,
 ) -> bool {
     match entry {

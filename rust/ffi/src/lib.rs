@@ -21,7 +21,6 @@ mod stats;
 mod transport;
 mod unchecked_map;
 mod utils;
-mod vote_cache;
 mod voting;
 mod wallet;
 mod websocket;

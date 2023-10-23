@@ -6,7 +6,7 @@ use std::{
 use num::FromPrimitive;
 
 use crate::{
-    fill_ipc_config_dto, fill_stat_config_dto, utils::FfiToml, vote_cache::VoteCacheConfigDto,
+    fill_ipc_config_dto, fill_stat_config_dto, utils::FfiToml, voting::VoteCacheConfigDto,
     HintedSchedulerConfigDto, IpcConfigDto, NetworkParamsDto, OptimisticSchedulerConfigDto,
     StatConfigDto, WebsocketConfigDto,
 };

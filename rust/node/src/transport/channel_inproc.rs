@@ -7,21 +7,22 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use message_deserializer::MessageDeserializer;
+use async_trait::async_trait;
 use rsnano_core::Account;
+use tokio::task::spawn_blocking;
 
 use crate::{
     config::NetworkConstants,
     messages::Message,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::message_deserializer,
     utils::{AsyncRuntime, BlockUniquer, ErrorCode},
     voting::VoteUniquer,
 };
 
 use super::{
-    message_deserializer::ReadQuery, BandwidthLimitType, BufferDropPolicy, Channel, ChannelEnum,
-    MessageDeserializerExt, NetworkFilter, OutboundBandwidthLimiter, TrafficType, WriteCallback,
+    message_deserializer::{AsyncMessageDeserializer, BufferReader, ReadQuery},
+    BandwidthLimitType, BufferDropPolicy, Channel, ChannelEnum, NetworkFilter,
+    OutboundBandwidthLimiter, TrafficType, WriteCallback,
 };
 
 pub struct InProcChannelData {
@@ -194,31 +195,55 @@ impl ChannelInProc {
         buffer: &[u8],
         callback_msg: Box<dyn FnOnce(ErrorCode, Option<Box<dyn Message>>) + Send>,
     ) {
-        let offset = AtomicUsize::new(0);
-        let buffer_copy = buffer.to_vec();
-        let buffer_read_fn: ReadQuery = Box::new(move |data, size, callback| {
-            let os = offset.load(Ordering::SeqCst);
-            debug_assert!(buffer_copy.len() >= (os + size));
-            let mut data_lock = data.lock().unwrap();
-            data_lock.resize(size, 0);
-            data_lock.copy_from_slice(&buffer_copy[os..(os + size)]);
-            drop(data_lock);
-            offset.fetch_add(size, Ordering::SeqCst);
-            callback(ErrorCode::new(), size);
-        });
+        if let Some(rt) = self.async_rt.upgrade() {
+            let message_deserializer = Arc::new(AsyncMessageDeserializer::new(
+                self.network_constants.clone(),
+                self.network_filter.clone(),
+                Arc::new(BlockUniquer::new()),
+                Arc::new(VoteUniquer::new()),
+                VecBufferReader::new(buffer.to_vec()),
+            ));
 
-        let message_deserializer = Arc::new(MessageDeserializer::new(
-            self.network_constants.clone(),
-            self.network_filter.clone(),
-            Arc::new(BlockUniquer::new()),
-            Arc::new(VoteUniquer::new()),
-            buffer_read_fn,
-        ));
-        message_deserializer.read(callback_msg);
+            rt.tokio.spawn(async move {
+                let result = message_deserializer.read().await;
+                spawn_blocking(move || match result {
+                    Ok(msg) => callback_msg(ErrorCode::new(), msg),
+                    Err(_) => callback_msg(ErrorCode::fault(), None),
+                });
+            });
+        }
     }
 
     pub fn network_version(&self) -> u8 {
         self.network_constants.protocol_version
+    }
+}
+
+struct VecBufferReader {
+    buffer: Vec<u8>,
+    position: AtomicUsize,
+}
+
+impl VecBufferReader {
+    fn new(buffer: Vec<u8>) -> Self {
+        Self {
+            buffer,
+            position: AtomicUsize::new(0),
+        }
+    }
+}
+
+#[async_trait]
+impl BufferReader for VecBufferReader {
+    async fn read(&self, buffer: Arc<Mutex<Vec<u8>>>, count: usize) -> anyhow::Result<()> {
+        let pos = self.position.load(Ordering::SeqCst);
+        if count > self.buffer.len() - pos {
+            bail!("no more data to read");
+        }
+        let mut guard = buffer.lock().unwrap();
+        guard[..count].copy_from_slice(&self.buffer[pos..pos + count]);
+        self.position.fetch_add(count, Ordering::SeqCst);
+        Ok(())
     }
 }
 
@@ -274,5 +299,52 @@ impl Channel for ChannelInProc {
 
     fn get_type(&self) -> super::TransportType {
         super::TransportType::Loopback
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn empty_vec() {
+        let reader = VecBufferReader::new(Vec::new());
+        let buffer = Arc::new(Mutex::new(vec![0u8; 3]));
+        let result = reader.read(buffer, 1).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn read_one_byte() {
+        let reader = VecBufferReader::new(vec![42]);
+        let buffer = Arc::new(Mutex::new(vec![0u8; 1]));
+        let result = reader.read(Arc::clone(&buffer), 1).await;
+        assert!(result.is_ok());
+        let guard = buffer.lock().unwrap();
+        assert_eq!(guard[0], 42);
+    }
+
+    #[tokio::test]
+    async fn multiple_reads() {
+        let reader = VecBufferReader::new(vec![1, 2, 3, 4, 5]);
+        let buffer = Arc::new(Mutex::new(vec![0u8; 2]));
+        reader.read(Arc::clone(&buffer), 1).await.unwrap();
+        {
+            let guard = buffer.lock().unwrap();
+            assert_eq!(guard[0], 1);
+        }
+        reader.read(Arc::clone(&buffer), 2).await.unwrap();
+        {
+            let guard = buffer.lock().unwrap();
+            assert_eq!(guard[0], 2);
+            assert_eq!(guard[1], 3);
+        }
+        reader.read(Arc::clone(&buffer), 2).await.unwrap();
+        {
+            let guard = buffer.lock().unwrap();
+            assert_eq!(guard[0], 4);
+            assert_eq!(guard[1], 5);
+        }
+        assert!(reader.read(Arc::clone(&buffer), 1).await.is_err());
     }
 }

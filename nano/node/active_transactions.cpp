@@ -1126,7 +1126,8 @@ nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> con
 			auto const reps (node.wallets.reps ());
 			if (!reps.have_half_rep () && !reps.exists (vote_a->account ()))
 			{
-				node.network->flood_vote (vote_a, 0.5f);
+				nano::confirm_ack ack{ node.network_params.network, vote_a };
+				node.network->tcp_channels->flood_message (ack, 0.5f);
 			}
 		}
 		result = replay ? nano::vote_code::replay : nano::vote_code::vote;

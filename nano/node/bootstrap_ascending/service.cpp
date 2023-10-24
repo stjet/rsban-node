@@ -332,7 +332,7 @@ void nano::bootstrap_ascending::service::run_timeouts ()
 	nano::unique_lock<nano::mutex> lock{ mutex };
 	while (!stopped)
 	{
-		scoring.sync (network.list ());
+		scoring.sync (network.tcp_channels->list ());
 		scoring.timeout ();
 		throttle.resize (compute_throttle_size ());
 		auto & tags_by_order = tags.get<tag_sequenced> ();

@@ -1900,7 +1900,7 @@ TEST (node, rep_remove)
 	reps = searching_node.representative_register.representatives (1);
 	ASSERT_EQ (nano::dev::genesis_key.pub, reps[0].get_account ());
 	ASSERT_TIMELY_EQ (5s, searching_node.network->size (), 1);
-	auto list (searching_node.network->list (1));
+	auto list (searching_node.network->tcp_channels->list (1));
 	ASSERT_EQ (node_genesis_rep->network->endpoint (), list[0]->get_remote_endpoint ());
 }
 
@@ -2755,11 +2755,13 @@ TEST (node, DISABLED_fork_invalid_block_signature)
 	node1.process_active (send1);
 	ASSERT_TIMELY (5s, node1.block (send1->hash ()));
 	// Send the vote with the corrupt block signature
-	node2.network->flood_vote (vote_corrupt, 1.0f);
+	nano::confirm_ack ack{ node1.network_params.network, vote_corrupt };
+	node2.network->tcp_channels->flood_message (ack, 1.0f);
 	// Wait for the rollback
 	ASSERT_TIMELY (5s, node1.stats->count (nano::stat::type::rollback, nano::stat::detail::all));
 	// Send the vote with the correct block
-	node2.network->flood_vote (vote, 1.0f);
+	nano::confirm_ack ack2{ node1.network_params.network, vote };
+	node2.network->tcp_channels->flood_message (ack2, 1.0f);
 	ASSERT_TIMELY (10s, !node1.block (send1->hash ()));
 	ASSERT_TIMELY (10s, node1.block (send2->hash ()));
 	ASSERT_EQ (node1.block (send2->hash ())->block_signature (), send2->block_signature ());
@@ -3122,11 +3124,11 @@ TEST (node, peers)
 	ASSERT_TIMELY (10s, node1->tcp_listener->get_realtime_count () != 0 && node2->tcp_listener->get_realtime_count () != 0);
 	// Confirm that the peers match with the endpoints we are expecting
 	ASSERT_EQ (1, node1->network->size ());
-	auto list1 (node1->network->list (2));
+	auto list1 (node1->network->tcp_channels->list (2));
 	ASSERT_EQ (node2->get_node_id (), list1[0]->get_node_id ());
 	ASSERT_EQ (nano::transport::transport_type::tcp, list1[0]->get_type ());
 	ASSERT_EQ (1, node2->network->size ());
-	auto list2 (node2->network->list (2));
+	auto list2 (node2->network->tcp_channels->list (2));
 	ASSERT_EQ (node1->get_node_id (), list2[0]->get_node_id ());
 	ASSERT_EQ (nano::transport::transport_type::tcp, list2[0]->get_type ());
 
@@ -3162,7 +3164,7 @@ TEST (node, peer_cache_restart)
 		node2->start ();
 		ASSERT_TIMELY (10s, !node2->network->empty ());
 		// Confirm that the peers match with the endpoints we are expecting
-		auto list (node2->network->list (2));
+		auto list (node2->network->tcp_channels->list (2));
 		ASSERT_EQ (node1->network->endpoint (), list[0]->get_remote_endpoint ());
 		ASSERT_EQ (1, node2->network->size ());
 		node2->stop ();
@@ -3185,7 +3187,7 @@ TEST (node, peer_cache_restart)
 		}
 		ASSERT_TIMELY (10s, !node3->network->empty ());
 		// Confirm that the peers match with the endpoints we are expecting
-		auto list (node3->network->list (2));
+		auto list (node3->network->tcp_channels->list (2));
 		ASSERT_EQ (node1->network->endpoint (), list[0]->get_remote_endpoint ());
 		ASSERT_EQ (1, node3->network->size ());
 		node3->stop ();
@@ -3274,11 +3276,11 @@ TEST (node, bidirectional_tcp)
 	// Check network connections
 	ASSERT_EQ (1, node1->network->size ());
 	ASSERT_EQ (1, node2->network->size ());
-	auto list1 (node1->network->list (1));
+	auto list1 (node1->network->tcp_channels->list (1));
 	ASSERT_EQ (nano::transport::transport_type::tcp, list1[0]->get_type ());
 	ASSERT_NE (node2->network->endpoint (), list1[0]->get_remote_endpoint ()); // Ephemeral port
 	ASSERT_EQ (node2->node_id.pub, list1[0]->get_node_id ());
-	auto list2 (node2->network->list (1));
+	auto list2 (node2->network->tcp_channels->list (1));
 	ASSERT_EQ (nano::transport::transport_type::tcp, list2[0]->get_type ());
 	ASSERT_EQ (node1->network->endpoint (), list2[0]->get_remote_endpoint ());
 	ASSERT_EQ (node1->node_id.pub, list2[0]->get_node_id ());

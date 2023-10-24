@@ -11,6 +11,7 @@
 #include "nano/secure/common.hpp"
 #include "nano/secure/network_filter.hpp"
 
+#include <nano/crypto_lib/random_pool_shuffle.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/node/node.hpp>
@@ -253,6 +254,42 @@ void nano::transport::tcp_channels::erase_temporary_channel (nano::tcp_endpoint 
 std::size_t nano::transport::tcp_channels::size () const
 {
 	return rsnano::rsn_tcp_channels_channel_count (handle);
+}
+
+float nano::transport::tcp_channels::size_sqrt () const
+{
+	return static_cast<float> (std::sqrt (size ()));
+}
+
+// Simulating with sqrt_broadcast_simulate shows we only need to broadcast to sqrt(total_peers) random peers in order to successfully publish to everyone with high probability
+std::size_t nano::transport::tcp_channels::fanout (float scale) const
+{
+	return static_cast<std::size_t> (std::ceil (scale * size_sqrt ()));
+}
+
+std::deque<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::list (std::size_t count_a, uint8_t minimum_version_a, bool include_tcp_temporary_channels_a)
+{
+	std::deque<std::shared_ptr<nano::transport::channel>> result;
+	list (result, minimum_version_a, include_tcp_temporary_channels_a);
+	nano::random_pool_shuffle (result.begin (), result.end ());
+	if (count_a > 0 && result.size () > count_a)
+	{
+		result.resize (count_a, nullptr);
+	}
+	return result;
+}
+
+std::deque<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::random_fanout (float scale)
+{
+	return list (fanout (scale));
+}
+
+void nano::transport::tcp_channels::flood_message (nano::message & msg, float scale)
+{
+	for (auto & i : random_fanout (scale))
+	{
+		i->send (msg, nullptr);
+	}
 }
 
 std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::find_channel (nano::tcp_endpoint const & endpoint_a) const

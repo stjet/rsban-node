@@ -203,7 +203,7 @@ void nano::telemetry::run ()
 
 void nano::telemetry::run_requests ()
 {
-	auto peers = network.list ();
+	auto peers = network.tcp_channels->list ();
 
 	for (auto & channel : peers)
 	{
@@ -222,7 +222,7 @@ void nano::telemetry::request (std::shared_ptr<nano::transport::channel> & chann
 void nano::telemetry::run_broadcasts ()
 {
 	auto telemetry = node.local_telemetry ();
-	auto peers = network.list ();
+	auto peers = network.tcp_channels->list ();
 
 	for (auto & channel : peers)
 	{

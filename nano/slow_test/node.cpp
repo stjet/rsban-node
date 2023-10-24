@@ -1591,7 +1591,7 @@ TEST (telemetry, many_nodes)
 	auto node_client = system.nodes.front ();
 
 	std::vector<nano::telemetry_data> telemetry_datas;
-	auto peers = node_client->network->list (num_nodes - 1);
+	auto peers = node_client->network->tcp_channels->list (num_nodes - 1);
 	ASSERT_EQ (peers.size (), num_nodes - 1);
 	for (auto const & peer : peers)
 	{
@@ -1978,7 +1978,7 @@ TEST (node, aggressive_flooding)
 
 	// This test is only valid if a non-aggressive flood would not reach every peer
 	ASSERT_TIMELY (5s, node1.network->size () == nodes_wallets.size ());
-	ASSERT_LT (node1.network->fanout (), nodes_wallets.size ());
+	ASSERT_LT (node1.network->tcp_channels->fanout (), nodes_wallets.size ());
 
 	// Each new node should see genesis representative
 	ASSERT_TIMELY (10s, std::all_of (nodes_wallets.begin (), nodes_wallets.end (), [] (auto const & node_wallet) { return node_wallet.first->rep_crawler.principal_representatives ().size () != 0; }));

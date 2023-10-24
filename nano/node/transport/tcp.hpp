@@ -133,6 +133,9 @@ namespace transport
 		void erase (nano::tcp_endpoint const &);
 		void erase_temporary_channel (nano::tcp_endpoint const &);
 		std::size_t size () const;
+		float size_sqrt () const;
+		// Desired fanout for a given scale
+		std::size_t fanout (float scale = 1.0f) const;
 		std::shared_ptr<nano::transport::channel_tcp> find_channel (nano::tcp_endpoint const &) const;
 		std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t, uint8_t = 0, bool = false) const;
 		std::shared_ptr<nano::transport::channel_tcp> find_node_id (nano::account const &);
@@ -148,6 +151,9 @@ namespace transport
 		void purge (std::chrono::system_clock::time_point const &);
 		void ongoing_keepalive ();
 		void list (std::deque<std::shared_ptr<nano::transport::channel>> &, uint8_t = 0, bool = true);
+		std::deque<std::shared_ptr<nano::transport::channel>> list (std::size_t max_count = 0, uint8_t = 0, bool = true);
+		std::deque<std::shared_ptr<nano::transport::channel>> random_fanout (float scale = 1.0f);
+		void flood_message (nano::message & msg, float scale);
 		void modify_last_packet_sent (nano::endpoint const & endpoint_a, std::chrono::system_clock::time_point const & time_a);
 		void update (nano::tcp_endpoint const &);
 		// Connection start

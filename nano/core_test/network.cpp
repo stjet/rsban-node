@@ -97,10 +97,10 @@ TEST (network, send_node_id_handshake_tcp)
 	ASSERT_TIMELY (5s, node1->stats->count (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in) >= initial_keepalive + 2);
 	ASSERT_EQ (1, node0->network->size ());
 	ASSERT_EQ (1, node1->network->size ());
-	auto list1 (node0->network->list (1));
+	auto list1 (node0->network->tcp_channels->list (1));
 	ASSERT_EQ (nano::transport::transport_type::tcp, list1[0]->get_type ());
 	ASSERT_EQ (node1->get_node_id (), list1[0]->get_node_id ());
-	auto list2 (node1->network->list (1));
+	auto list2 (node1->network->tcp_channels->list (1));
 	ASSERT_EQ (nano::transport::transport_type::tcp, list2[0]->get_type ());
 	ASSERT_EQ (node0->get_node_id (), list2[0]->get_node_id ());
 	node1->stop ();
@@ -1126,7 +1126,7 @@ TEST (network, purge_dead_channel_outgoing)
 	ASSERT_ALWAYS_EQ (1s, node1.network->size (), 1);
 
 	// Store reference to the only channel
-	auto channels = node1.network->list ();
+	auto channels = node1.network->tcp_channels->list ();
 	ASSERT_EQ (channels.size (), 1);
 	auto channel = channels.front ();
 	ASSERT_TRUE (channel);
@@ -1141,7 +1141,7 @@ TEST (network, purge_dead_channel_outgoing)
 	ASSERT_ALWAYS_EQ (1s, connected_count, 2);
 
 	// Check that a new channel is healthy
-	auto channels2 = node1.network->list ();
+	auto channels2 = node1.network->tcp_channels->list ();
 	ASSERT_EQ (channels2.size (), 1);
 	auto channel2 = channels2.front ();
 	ASSERT_TRUE (channel2);
@@ -1198,7 +1198,7 @@ TEST (network, purge_dead_channel_incoming)
 	ASSERT_ALWAYS_EQ (1s, node2.network->size (), 1);
 
 	// Store reference to the only channel
-	auto channels = node2.network->list ();
+	auto channels = node2.network->tcp_channels->list ();
 	ASSERT_EQ (channels.size (), 1);
 	auto channel = channels.front ();
 	ASSERT_TRUE (channel);
@@ -1213,7 +1213,7 @@ TEST (network, purge_dead_channel_incoming)
 	ASSERT_ALWAYS_EQ (1s, accepted_count, 2);
 
 	// Check that a new channel is healthy
-	auto channels2 = node2.network->list ();
+	auto channels2 = node2.network->tcp_channels->list ();
 	ASSERT_EQ (channels2.size (), 1);
 	auto channel2 = channels2.front ();
 	ASSERT_TRUE (channel2);

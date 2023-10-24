@@ -54,8 +54,6 @@ public:
 	void flood_message (nano::message &, nano::transport::buffer_drop_policy const = nano::transport::buffer_drop_policy::limiter, float const = 1.0f);
 	void flood_keepalive (float const scale_a = 1.0f);
 	void flood_keepalive_self (float const scale_a = 0.5f);
-	void flood_vote (std::shared_ptr<nano::vote> const &, float scale);
-	void flood_vote_pr (std::shared_ptr<nano::vote> const &);
 	// Flood block to all PRs and a random selection of non-PRs
 	void flood_block_initial (std::shared_ptr<nano::block> const &);
 	// Flood block to a random selection of peers
@@ -70,10 +68,7 @@ public:
 	std::shared_ptr<nano::transport::channel> find_channel (nano::endpoint const &);
 	// Should we reach out to this endpoint with a keepalive message
 	bool reachout (nano::endpoint const &, bool = false);
-	std::deque<std::shared_ptr<nano::transport::channel>> list (std::size_t max_count = 0, uint8_t = 0, bool = true);
 	std::deque<std::shared_ptr<nano::transport::channel>> list_non_pr (std::size_t);
-	// Desired fanout for a given scale
-	std::size_t fanout (float scale = 1.0f) const;
 	void fill_keepalive_self (std::array<nano::endpoint, 8> &) const;
 	// Note: The minimum protocol version is used after the random selection, so number of peers can be less than expected.
 	std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t count, uint8_t min_version = 0, bool include_temporary_channels = false) const;
@@ -87,7 +82,6 @@ public:
 	void ongoing_syn_cookie_cleanup ();
 	void ongoing_keepalive ();
 	std::size_t size () const;
-	float size_sqrt () const;
 	bool empty () const;
 	void erase (nano::transport::channel const &);
 	/** Disconnects and adds peer to exclusion list */

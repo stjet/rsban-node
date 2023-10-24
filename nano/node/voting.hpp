@@ -32,6 +32,7 @@ class representative_register;
 namespace transport
 {
 	class channel;
+	class tcp_channels;
 }
 
 class vote_spacing final
@@ -74,16 +75,17 @@ std::unique_ptr<container_info_component> collect_container_info (local_vote_his
 class vote_broadcaster
 {
 public:
-	vote_broadcaster (nano::vote_processor_queue & vote_processor_queue_a, nano::network & network_a, nano::representative_register & representative_register_a, nano::network_params const & network_params_a);
+	vote_broadcaster (nano::node & node_a, nano::vote_processor_queue & vote_processor_queue_a, nano::network & network_a, nano::representative_register & representative_register_a, nano::network_params const & network_params_a, nano::transport::tcp_channels & tcp_channels_a);
 	void broadcast (std::shared_ptr<nano::vote> const &) const;
 
 private:
 	void flood_vote_pr (std::shared_ptr<nano::vote> const & vote_a) const;
 
+	nano::node & node;
 	nano::vote_processor_queue & vote_processor_queue;
-	nano::network & network;
 	nano::representative_register & representative_register;
 	nano::network_params const & network_params;
+	nano::transport::tcp_channels & tcp_channels;
 };
 
 class vote_generator final
@@ -94,7 +96,7 @@ private:
 	using queue_entry_t = std::pair<nano::root, nano::block_hash>;
 
 public:
-	vote_generator (nano::node_config const & config_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::vote_processor_queue & vote_processor_queue_a, nano::local_vote_history & history_a, nano::network & network_a, nano::stats & stats_a, nano::representative_register & representative_register_a, bool is_final_a);
+	vote_generator (nano::node & node_a, nano::node_config const & config_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::vote_processor_queue & vote_processor_queue_a, nano::local_vote_history & history_a, nano::network & network_a, nano::stats & stats_a, nano::representative_register & representative_register_a, bool is_final_a);
 	~vote_generator ();
 
 	/** Queue items for vote generation, or broadcast votes already in cache */

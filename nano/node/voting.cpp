@@ -4,6 +4,7 @@
 #include <nano/lib/threading.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/node/network.hpp>
+#include <nano/node/node.hpp>
 #include <nano/node/nodeconfig.hpp>
 #include <nano/node/transport/inproc.hpp>
 #include <nano/node/vote_processor.hpp>
@@ -107,11 +108,12 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (na
 	return composite;
 }
 
-nano::vote_broadcaster::vote_broadcaster (nano::vote_processor_queue & vote_processor_queue_a, nano::network & network_a, nano::representative_register & representative_register_a, nano::network_params const & network_params_a) :
+nano::vote_broadcaster::vote_broadcaster (nano::node & node_a, nano::vote_processor_queue & vote_processor_queue_a, nano::network & network_a, nano::representative_register & representative_register_a, nano::network_params const & network_params_a, nano::transport::tcp_channels & tcp_channels_a) :
+	node{ node_a },
 	vote_processor_queue{ vote_processor_queue_a },
-	network{ network_a },
 	representative_register{ representative_register_a },
-	network_params{ network_params_a }
+	network_params{ network_params_a },
+	tcp_channels{ tcp_channels_a }
 {
 }
 
@@ -119,8 +121,21 @@ void nano::vote_broadcaster::broadcast (std::shared_ptr<nano::vote> const & vote
 {
 	flood_vote_pr (vote_a);
 	nano::confirm_ack ack{ network_params.network, vote_a };
-	network.tcp_channels->flood_message (ack, 2.0f);
-	vote_processor_queue.vote (vote_a, std::make_shared<nano::transport::inproc::channel> (network.node, network.node));
+	tcp_channels.flood_message (ack, 2.0f);
+	auto loopback_channel = std::make_shared<nano::transport::inproc::channel> (
+	tcp_channels.get_next_channel_id (),
+	*tcp_channels.publish_filter,
+	node.network_params.network,
+	*node.stats,
+	node.outbound_limiter,
+	node.async_rt,
+	node.network->endpoint (),
+	node.node_id.pub,
+	node.network->inbound,
+	node.network->endpoint (),
+	node.node_id.pub,
+	node.network->inbound);
+	vote_processor_queue.vote (vote_a, loopback_channel);
 }
 
 void nano::vote_broadcaster::flood_vote_pr (std::shared_ptr<nano::vote> const & vote_a) const
@@ -132,13 +147,13 @@ void nano::vote_broadcaster::flood_vote_pr (std::shared_ptr<nano::vote> const & 
 	}
 }
 
-nano::vote_generator::vote_generator (nano::node_config const & config_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::vote_processor_queue & vote_processor_queue_a, nano::local_vote_history & history_a, nano::network & network_a, nano::stats & stats_a, nano::representative_register & representative_register_a, bool is_final_a) :
+nano::vote_generator::vote_generator (nano::node & node_a, nano::node_config const & config_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::vote_processor_queue & vote_processor_queue_a, nano::local_vote_history & history_a, nano::network & network_a, nano::stats & stats_a, nano::representative_register & representative_register_a, bool is_final_a) :
 	config (config_a),
 	ledger (ledger_a),
 	wallets (wallets_a),
 	history (history_a),
 	spacing{ config_a.network_params.voting.delay },
-	vote_broadcaster{ vote_processor_queue_a, network_a, representative_register_a, config_a.network_params },
+	vote_broadcaster{ node_a, vote_processor_queue_a, network_a, representative_register_a, config_a.network_params, *network_a.tcp_channels },
 	stats (stats_a),
 	is_final (is_final_a),
 	vote_generation_queue{ stats, nano::stat::type::vote_generator, nano::thread_role::name::vote_generator_queue, /* single threaded */ 1, /* max queue size */ 1024 * 32, /* max batch size */ 1024 * 4 }

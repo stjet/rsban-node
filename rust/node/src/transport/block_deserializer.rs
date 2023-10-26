@@ -31,6 +31,7 @@ impl BlockDeserializer {
             1,
             Box::new(move |ec, _len| {
                 if ec.is_err() {
+                    println!("a");
                     callback(ec, None);
                 } else {
                     received_type(buffer_clone, &socket_clone, callback);
@@ -53,7 +54,9 @@ fn received_type(
     let buffer_clone = Arc::clone(&buffer);
 
     match BlockType::from_u8(block_type_byte) {
-        Some(BlockType::NotABlock) | Some(BlockType::Invalid) => callback(ErrorCode::fault(), None),
+        Some(BlockType::NotABlock) | Some(BlockType::Invalid) => {
+            callback(ErrorCode::new(), None);
+        }
         Some(block_type) => {
             let block_size = serialized_block_size(block_type);
             socket.async_read(
@@ -61,6 +64,7 @@ fn received_type(
                 block_size,
                 Box::new(move |ec, len| {
                     if ec.is_err() {
+                        println!("b");
                         callback(ErrorCode::fault(), None);
                     } else {
                         let guard = buffer_clone.lock().unwrap();
@@ -69,7 +73,10 @@ fn received_type(
                         drop(guard);
                         match result {
                             Ok(block) => callback(ErrorCode::new(), Some(block)),
-                            Err(_) => callback(ErrorCode::fault(), None),
+                            Err(_) => {
+                                println!("c");
+                                callback(ErrorCode::fault(), None);
+                            }
                         }
                     }
                 }),

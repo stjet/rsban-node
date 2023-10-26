@@ -1981,7 +1981,7 @@ TEST (node, aggressive_flooding)
 	ASSERT_LT (node1.network->tcp_channels->fanout (), nodes_wallets.size ());
 
 	// Each new node should see genesis representative
-	ASSERT_TIMELY (10s, std::all_of (nodes_wallets.begin (), nodes_wallets.end (), [] (auto const & node_wallet) { return node_wallet.first->rep_crawler.principal_representatives ().size () != 0; }));
+	ASSERT_TIMELY (10s, std::all_of (nodes_wallets.begin (), nodes_wallets.end (), [] (auto const & node_wallet) { return node_wallet.first->representative_register.principal_representatives ().size () != 0; }));
 
 	// Send a large amount to create a principal representative in each node
 	auto large_amount = (nano::dev::constants.genesis_amount / 2) / nodes_wallets.size ();

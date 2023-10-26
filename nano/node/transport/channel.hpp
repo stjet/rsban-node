@@ -98,13 +98,6 @@ public:
 	nano::transport::traffic_type = nano::transport::traffic_type::generic)
 	= 0;
 
-	// TODO: investigate clang-tidy warning about default parameters on virtual/override functions
-	virtual void send_buffer (nano::shared_const_buffer const &,
-	std::function<void (boost::system::error_code const &, std::size_t)> const & = nullptr,
-	nano::transport::buffer_drop_policy = nano::transport::buffer_drop_policy::limiter,
-	nano::transport::traffic_type = nano::transport::traffic_type::generic)
-	= 0;
-
 	virtual std::string to_string () const = 0;
 	virtual nano::endpoint get_remote_endpoint () const = 0;
 	virtual nano::tcp_endpoint get_tcp_remote_endpoint () const = 0;

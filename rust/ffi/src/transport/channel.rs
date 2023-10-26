@@ -262,50 +262,6 @@ pub unsafe extern "C" fn rsn_channel_fake_endpoint(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_channel_inproc_send_buffer(
-    handle: *mut ChannelHandle,
-    buffer: *const u8,
-    buffer_len: usize,
-    callback: ChannelTcpSendBufferCallback,
-    delete_callback: VoidPointerCallback,
-    callback_context: *mut c_void,
-    policy: u8,
-    traffic_type: u8,
-) {
-    let buffer = Arc::new(std::slice::from_raw_parts(buffer, buffer_len).to_vec());
-    let callback_wrapper =
-        SendBufferCallbackWrapper::new(callback, callback_context, delete_callback);
-    let cb = Box::new(move |ec, size| {
-        callback_wrapper.call(ec, size);
-    });
-    let policy = FromPrimitive::from_u8(policy).unwrap();
-    let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
-    as_inproc_channel(handle).send_buffer_2(&buffer, Some(cb), policy, traffic_type);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_fake_send_buffer(
-    handle: *mut ChannelHandle,
-    buffer: *const u8,
-    buffer_len: usize,
-    callback: ChannelTcpSendBufferCallback,
-    delete_callback: VoidPointerCallback,
-    callback_context: *mut c_void,
-    policy: u8,
-    traffic_type: u8,
-) {
-    let buffer = Arc::new(std::slice::from_raw_parts(buffer, buffer_len).to_vec());
-    let callback_wrapper =
-        SendBufferCallbackWrapper::new(callback, callback_context, delete_callback);
-    let cb = Box::new(move |ec, size| {
-        callback_wrapper.call(ec, size);
-    });
-    let policy = FromPrimitive::from_u8(policy).unwrap();
-    let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
-    as_fake_channel(handle).send_buffer(&buffer, Some(cb), policy, traffic_type);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_channel_inproc_send(
     handle: *mut ChannelHandle,
     message: *const MessageHandle,

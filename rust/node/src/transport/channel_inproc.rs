@@ -20,7 +20,7 @@ use crate::{
 };
 
 use super::{
-    message_deserializer::{AsyncMessageDeserializer, BufferReader, ReadQuery},
+    message_deserializer::{AsyncMessageDeserializer, BufferReader},
     BandwidthLimitType, BufferDropPolicy, Channel, ChannelEnum, NetworkFilter,
     OutboundBandwidthLimiter, TrafficType, WriteCallback,
 };

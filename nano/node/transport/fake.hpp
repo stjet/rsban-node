@@ -45,7 +45,7 @@ namespace transport
 
 			nano::tcp_endpoint get_tcp_remote_endpoint () const override
 			{
-				return nano::transport::map_endpoint_to_tcp (get_remote_endpoint());
+				return nano::transport::map_endpoint_to_tcp (get_remote_endpoint ());
 			}
 
 			nano::transport::transport_type get_type () const override
@@ -58,7 +58,7 @@ namespace transport
 
 			void close ()
 			{
-				rsnano::rsn_channel_fake_close(handle);
+				rsnano::rsn_channel_fake_close (handle);
 			}
 
 			bool alive () const override;

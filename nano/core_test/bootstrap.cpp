@@ -2158,8 +2158,3 @@ TEST (bulk_pull_account, basics)
 		ASSERT_EQ (nullptr, block_data.second.get ());
 	}
 }
-
-TEST (block_deserializer, construction)
-{
-	auto deserializer = std::make_shared<nano::bootstrap::block_deserializer> ();
-}

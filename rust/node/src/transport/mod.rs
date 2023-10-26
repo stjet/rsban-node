@@ -1,4 +1,5 @@
 mod bandwidth_limiter;
+mod block_deserializer;
 mod channel_fake;
 mod channel_inproc;
 mod channel_tcp;
@@ -22,6 +23,7 @@ use std::time::SystemTime;
 pub use bandwidth_limiter::{
     BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
 };
+pub use block_deserializer::BlockDeserializer;
 pub use channel_fake::ChannelFake;
 pub use channel_inproc::ChannelInProc;
 pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr, TcpChannelData};

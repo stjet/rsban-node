@@ -1,13 +1,10 @@
-use std::ffi::c_void;
-
 use rsnano_core::{Account, BlockHash, PublicKey, Signature};
 
 use crate::{
-    copy_account_bytes, copy_hash_bytes, copy_signature_bytes, utils::FfiStream,
-    NetworkConstantsDto, StringDto,
+    copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto, StringDto,
 };
 use rsnano_node::messages::{
-    Message, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse, V2Payload,
+    NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse, V2Payload,
 };
 
 use super::{

@@ -67,6 +67,11 @@ impl Debug for MessageType {
 const BLOCK_TYPE_MASK: u16 = 0x0f00;
 const COUNT_MASK: u16 = 0xf000;
 
+#[derive(Default)]
+pub struct MessageHeaderExtensions {
+    extensions: BitArray<u16>,
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct MessageHeader {
     message_type: MessageType,
@@ -78,6 +83,8 @@ pub struct MessageHeader {
 }
 
 impl MessageHeader {
+    pub const SERIALIZED_SIZE: usize = 8;
+
     pub fn new(constants: &NetworkConstants, message_type: MessageType) -> Self {
         let version_using = constants.protocol_version;
         Self::with_version_using(constants, message_type, version_using)
@@ -188,7 +195,7 @@ impl MessageHeader {
         self.extensions |= BitArray::new((count as u16) << 12)
     }
 
-    pub fn serialized_size() -> usize {
+    pub const fn serialized_size() -> usize {
         size_of::<u8>() // version_using
         + size_of::<u8>() // version_min
         + size_of::<u8>() // version_max

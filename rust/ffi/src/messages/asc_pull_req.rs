@@ -5,11 +5,10 @@ use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
-use crate::{copy_hash_or_account_bytes, utils::FfiStream, NetworkConstantsDto};
+use crate::{copy_hash_or_account_bytes, NetworkConstantsDto};
 use rsnano_node::messages::{
-    AccountInfoReqPayload, AscPullReq, AscPullReqPayload, BlocksReqPayload, Message,
+    AccountInfoReqPayload, AscPullReq, AscPullReqPayload, BlocksReqPayload,
 };
-use std::ffi::c_void;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_req_create(

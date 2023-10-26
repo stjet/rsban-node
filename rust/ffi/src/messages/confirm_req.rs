@@ -1,11 +1,7 @@
-use std::{ffi::c_void, ops::Deref, sync::Arc};
+use std::{ops::Deref, sync::Arc};
 
-use crate::{
-    core::{BlockHandle, BlockUniquerHandle},
-    utils::FfiStream,
-    NetworkConstantsDto, StringDto,
-};
-use rsnano_node::messages::{ConfirmReq, Message};
+use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
+use rsnano_node::messages::ConfirmReq;
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,

@@ -1,15 +1,11 @@
 use rsnano_core::{Account, BlockHash, KeyPair, Signature};
 
-use std::{
-    ffi::c_void,
-    time::{Duration, SystemTime},
-};
+use std::time::{Duration, SystemTime};
 
 use crate::{
-    copy_account_bytes, copy_hash_bytes, copy_signature_bytes, utils::FfiStream,
-    NetworkConstantsDto, StringDto,
+    copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto, StringDto,
 };
-use rsnano_node::messages::{Message, TelemetryAck, TelemetryData};
+use rsnano_node::messages::{TelemetryAck, TelemetryData};
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,

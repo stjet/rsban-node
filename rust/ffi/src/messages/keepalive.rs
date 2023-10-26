@@ -1,12 +1,12 @@
-use std::{ffi::c_void, net::SocketAddr};
+use std::net::SocketAddr;
 
-use rsnano_node::messages::{Keepalive, Message};
+use rsnano_node::messages::Keepalive;
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
-use crate::{transport::EndpointDto, utils::FfiStream, NetworkConstantsDto, StringDto};
+use crate::{transport::EndpointDto, NetworkConstantsDto, StringDto};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_keepalive_create(

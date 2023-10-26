@@ -1,12 +1,7 @@
-use std::ffi::c_void;
+use crate::NetworkConstantsDto;
+use rsnano_node::messages::BulkPush;
 
-use crate::{utils::FfiStream, NetworkConstantsDto};
-use rsnano_node::messages::{BulkPush, Message};
-
-use super::{
-    create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
-    MessageHandle, MessageHeaderHandle,
-};
+use super::{create_message_handle, create_message_handle2, MessageHandle, MessageHeaderHandle};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_bulk_push_create(

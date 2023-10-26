@@ -4,6 +4,7 @@ mod channel_fake;
 mod channel_inproc;
 mod channel_tcp;
 mod message_deserializer;
+mod message_deserializer_impl;
 mod network_filter;
 mod peer_exclusion;
 mod server_socket;
@@ -27,9 +28,8 @@ pub use block_deserializer::BlockDeserializer;
 pub use channel_fake::ChannelFake;
 pub use channel_inproc::ChannelInProc;
 pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr, TcpChannelData};
-pub use message_deserializer::{
-    MessageDeserializer, MessageDeserializerExt, ParseStatus, ReadQuery,
-};
+pub use message_deserializer::{MessageDeserializer, MessageDeserializerExt, ReadQuery};
+pub use message_deserializer_impl::{MessageDeserializerImpl, ParseStatus, MAX_MESSAGE_SIZE};
 pub use network_filter::NetworkFilter;
 pub use peer_exclusion::PeerExclusion;
 use rsnano_core::Account;

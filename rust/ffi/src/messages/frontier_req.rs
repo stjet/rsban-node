@@ -1,14 +1,11 @@
-use std::ffi::c_void;
-
 use rsnano_core::Account;
-
-use rsnano_node::messages::{FrontierReq, Message};
+use rsnano_node::messages::FrontierReq;
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
     MessageHandle, MessageHeaderHandle,
 };
-use crate::{copy_account_bytes, utils::FfiStream, NetworkConstantsDto, StringDto};
+use crate::{copy_account_bytes, NetworkConstantsDto, StringDto};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_frontier_req_create(

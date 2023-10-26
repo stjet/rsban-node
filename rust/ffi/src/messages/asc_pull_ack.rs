@@ -6,13 +6,12 @@ use super::{
 };
 use crate::{
     core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
-    utils::FfiStream,
     NetworkConstantsDto,
 };
 use rsnano_node::messages::{
-    AccountInfoAckPayload, AscPullAck, AscPullAckPayload, BlocksAckPayload, Message,
+    AccountInfoAckPayload, AscPullAck, AscPullAckPayload, BlocksAckPayload,
 };
-use std::{borrow::Borrow, ffi::c_void, ops::Deref, sync::Arc};
+use std::{borrow::Borrow, ops::Deref, sync::Arc};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_create(

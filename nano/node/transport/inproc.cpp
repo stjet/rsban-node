@@ -156,55 +156,10 @@ bool nano::transport::inproc::channel::operator== (nano::transport::channel cons
 	return get_remote_endpoint () == other_a.get_remote_endpoint ();
 }
 
-/**
- *  This function is called for every message received by the inproc channel.
- *  Note that it is called from inside the context of nano::transport::inproc::channel::send_buffer
- */
-class message_visitor_inbound : public nano::message_visitor
-{
-public:
-	message_visitor_inbound (decltype (nano::network::inbound) & inbound, std::shared_ptr<nano::transport::inproc::channel> channel) :
-		inbound{ inbound },
-		channel{ channel }
-	{
-	}
-
-	decltype (nano::network::inbound) & inbound;
-
-	// the channel to reply to, if a reply is generated
-	std::shared_ptr<nano::transport::inproc::channel> channel;
-
-	void default_handler (nano::message const & message) override
-	{
-		inbound (message, channel);
-	}
-};
-
 void nano::transport::inproc::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::transport::traffic_type traffic_type)
 {
 	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
 	rsnano::rsn_channel_inproc_send (handle, message_a.handle, nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a), static_cast<uint8_t> (traffic_type));
-}
-
-namespace
-{
-void message_received_callback (void * context, const rsnano::ErrorCodeDto * ec_dto, rsnano::MessageHandle * msg_handle)
-{
-	auto callback = static_cast<std::function<void (boost::system::error_code, std::unique_ptr<nano::message>)> *> (context);
-	auto ec = rsnano::dto_to_error_code (*ec_dto);
-	std::unique_ptr<nano::message> message;
-	if (msg_handle != nullptr)
-	{
-		message = rsnano::message_handle_to_message (rsnano::rsn_message_clone (msg_handle));
-	}
-	(*callback) (ec, std::move (message));
-}
-
-void delete_callback_context (void * context)
-{
-	auto callback = static_cast<std::function<void (boost::system::error_code, std::unique_ptr<nano::message>)> *> (context);
-	delete callback;
-}
 }
 
 std::string nano::transport::inproc::channel::to_string () const

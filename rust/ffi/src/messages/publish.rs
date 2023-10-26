@@ -1,16 +1,11 @@
-use std::{ffi::c_void, ops::Deref, sync::Arc};
-
-use rsnano_node::messages::{Message, Publish};
+use rsnano_node::messages::Publish;
+use std::{ops::Deref, sync::Arc};
 
 use super::{
     create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
-use crate::{
-    core::{BlockHandle, BlockUniquerHandle},
-    utils::FfiStream,
-    NetworkConstantsDto, StringDto,
-};
+use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_publish_create(

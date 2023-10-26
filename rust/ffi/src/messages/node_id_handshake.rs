@@ -116,17 +116,6 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_response(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_node_id_handshake_deserialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message_mut::<NodeIdHandshake>(handle)
-        .deserialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_node_id_handshake_is_v2(handle: *mut MessageHandle) -> bool {
     downcast_message::<NodeIdHandshake>(handle).is_v2()
 }
@@ -182,17 +171,6 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_size(
     header: *mut MessageHeaderHandle,
 ) -> usize {
     NodeIdHandshake::serialized_size(&*header)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_node_id_handshake_serialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message::<NodeIdHandshake>(handle)
-        .serialize(&mut stream)
-        .is_ok()
 }
 
 #[no_mangle]

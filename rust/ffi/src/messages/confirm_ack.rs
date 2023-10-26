@@ -76,17 +76,6 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_size(count: usize) -> usize {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_confirm_ack_serialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message::<ConfirmAck>(handle)
-        .serialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_ack_to_string(
     handle: *mut MessageHandle,
     result: *mut StringDto,

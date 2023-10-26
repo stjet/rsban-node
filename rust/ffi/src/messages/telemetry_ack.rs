@@ -338,25 +338,6 @@ pub extern "C" fn rsn_telemetry_data_size() -> usize {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_telemetry_data_serialize(
-    handle: *mut TelemetryDataHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    (*handle).0.serialize(&mut stream).is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_telemetry_data_deserialize(
-    handle: *mut TelemetryDataHandle,
-    stream: *mut c_void,
-    payload_len: u16,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    (*handle).0.deserialize(&mut stream, payload_len).is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_telemetry_data_sign(
     handle: *mut TelemetryDataHandle,
     prv_key: *const u8,
@@ -412,26 +393,6 @@ pub unsafe extern "C" fn rsn_message_telemetry_ack_data(
 ) -> *mut TelemetryDataHandle {
     let data = downcast_message::<TelemetryAck>(handle).data.clone();
     Box::into_raw(Box::new(TelemetryDataHandle(data)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_telemetry_ack_deserialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let ack = downcast_message_mut::<TelemetryAck>(handle);
-    let mut stream = FfiStream::new(stream);
-    ack.deserialize(&mut stream).is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_telemetry_ack_serialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let ack = downcast_message::<TelemetryAck>(handle);
-    let mut stream = FfiStream::new(stream);
-    ack.serialize(&mut stream).is_ok()
 }
 
 #[no_mangle]

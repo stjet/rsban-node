@@ -56,28 +56,6 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_size(header: *mut MessageHeade
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_deserialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message_mut::<AscPullAck>(handle)
-        .deserialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_serialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message::<AscPullAck>(handle)
-        .serialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_type(handle: *mut MessageHandle) -> u8 {
     downcast_message::<AscPullAck>(handle).payload_type() as u8
 }

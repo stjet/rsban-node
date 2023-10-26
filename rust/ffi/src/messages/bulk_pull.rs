@@ -77,28 +77,6 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_set_ascending(handle: *mut Messag
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_serialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message::<BulkPull>(handle)
-        .serialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_deserialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message_mut::<BulkPull>(handle)
-        .deserialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_bulk_pull_is_count_present(
     handle: *mut MessageHandle,
 ) -> bool {

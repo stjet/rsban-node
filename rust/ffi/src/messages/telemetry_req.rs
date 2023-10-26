@@ -29,28 +29,6 @@ pub unsafe extern "C" fn rsn_message_telemetry_req_clone(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_telemetry_req_deserialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message_mut::<TelemetryReq>(handle)
-        .deserialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_telemetry_req_serialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message::<TelemetryReq>(handle)
-        .serialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_telemetry_req_to_string(
     handle: *mut MessageHandle,
     result: *mut StringDto,

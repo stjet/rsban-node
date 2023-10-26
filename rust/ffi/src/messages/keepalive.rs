@@ -66,28 +66,6 @@ pub unsafe extern "C" fn rsn_message_keepalive_set_peers(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_keepalive_serialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message::<Keepalive>(handle)
-        .serialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_keepalive_deserialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message_mut::<Keepalive>(handle)
-        .deserialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_keepalive_size() -> usize {
     Keepalive::serialized_size()
 }

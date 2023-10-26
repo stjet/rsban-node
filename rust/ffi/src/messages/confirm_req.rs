@@ -94,34 +94,6 @@ pub unsafe extern "C" fn rsn_message_confirm_req_roots_hashes(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_confirm_req_serialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message_mut::<ConfirmReq>(handle)
-        .serialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_confirm_req_deserialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-    uniquer: *mut BlockUniquerHandle,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    let uniquer = if uniquer.is_null() {
-        None
-    } else {
-        Some((*uniquer).deref().as_ref())
-    };
-    downcast_message_mut::<ConfirmReq>(handle)
-        .deserialize(&mut stream, uniquer)
-        .is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_req_equals(
     handle_a: *mut MessageHandle,
     handle_b: *mut MessageHandle,

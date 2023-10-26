@@ -427,11 +427,11 @@ impl MessageDeserializerImpl {
             MessageType::ConfirmReq => self.deserialize_confirm_req(&mut stream, header),
             MessageType::ConfirmAck => self.deserialize_confirm_ack(&mut stream, header),
             MessageType::NodeIdHandshake => self.deserialize_node_id_handshake(&mut stream, header),
-            MessageType::TelemetryReq => self.deserialize_telemetry_req(&mut stream, header),
+            MessageType::TelemetryReq => self.deserialize_telemetry_req(header),
             MessageType::TelemetryAck => self.deserialize_telemetry_ack(&mut stream, header),
             MessageType::BulkPull => self.deserialize_bulk_pull(&mut stream, header),
             MessageType::BulkPullAccount => self.deserialize_bulk_pull_account(&mut stream, header),
-            MessageType::BulkPush => self.deserialize_bulk_push(&mut stream, header),
+            MessageType::BulkPush => self.deserialize_bulk_push(header),
             MessageType::FrontierReq => self.deserialize_frontier_req(&mut stream, header),
             MessageType::AscPullReq => self.deserialize_asc_pull_req(&mut stream, header),
             MessageType::AscPullAck => self.deserialize_asc_pull_ack(&mut stream, header),
@@ -526,7 +526,6 @@ impl MessageDeserializerImpl {
 
     fn deserialize_telemetry_req(
         &self,
-        _stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
         // Message does not use stream payload (header only)
@@ -586,7 +585,6 @@ impl MessageDeserializerImpl {
 
     fn deserialize_bulk_push(
         &self,
-        _stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
         // Message does not use stream payload (header only)

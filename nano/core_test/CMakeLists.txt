@@ -28,7 +28,6 @@ add_executable(
   logger.cpp
   memory_pool.cpp
   network.cpp
-  network_filter.cpp
   node.cpp
   optimistic_scheduler.cpp
   processing_queue.cpp

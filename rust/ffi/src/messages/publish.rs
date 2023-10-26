@@ -40,34 +40,6 @@ pub unsafe extern "C" fn rsn_message_publish_clone(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_publish_serialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message::<Publish>(handle)
-        .serialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_publish_deserialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-    uniquer: *mut BlockUniquerHandle,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    let uniquer = if uniquer.is_null() {
-        None
-    } else {
-        Some((*uniquer).deref().as_ref())
-    };
-    downcast_message_mut::<Publish>(handle)
-        .deserialize(&mut stream, uniquer)
-        .is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_publish_block(handle: *mut MessageHandle) -> *mut BlockHandle {
     match &downcast_message::<Publish>(handle).block {
         Some(b) => Box::into_raw(Box::new(BlockHandle(b.clone()))),

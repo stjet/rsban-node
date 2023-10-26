@@ -50,15 +50,6 @@ nano::message_header::message_header (rsnano::MessageHeaderHandle * handle_a) :
 {
 }
 
-nano::message_header::message_header (bool & error_a, nano::stream & stream_a) :
-	handle{ rsnano::rsn_message_header_empty () }
-{
-	if (!error_a)
-	{
-		error_a = deserialize (stream_a);
-	}
-}
-
 nano::message_header & nano::message_header::operator= (nano::message_header && other_a)
 {
 	if (handle != nullptr)
@@ -80,20 +71,6 @@ nano::message_header::~message_header ()
 {
 	if (handle != nullptr)
 		rsnano::rsn_message_header_destroy (handle);
-}
-
-void nano::message_header::serialize (nano::stream & stream_a) const
-{
-	if (!rsnano::rsn_message_header_serialize (handle, &stream_a))
-	{
-		throw new std::runtime_error ("could not serialize message header");
-	}
-}
-
-bool nano::message_header::deserialize (nano::stream & stream_a)
-{
-	auto error = !rsnano::rsn_message_header_deserialize (handle, &stream_a);
-	return error;
 }
 
 nano::block_type nano::message_header::block_type () const
@@ -160,19 +137,6 @@ nano::message::message (rsnano::MessageHandle * handle_a) :
 nano::message::~message ()
 {
 	rsnano::rsn_message_destroy (handle);
-}
-
-std::shared_ptr<std::vector<uint8_t>> nano::message::to_bytes () const
-{
-	auto bytes = std::make_shared<std::vector<uint8_t>> ();
-	nano::vectorstream stream (*bytes);
-	serialize (stream);
-	return bytes;
-}
-
-nano::shared_const_buffer nano::message::to_shared_const_buffer () const
-{
-	return shared_const_buffer (to_bytes ());
 }
 
 nano::message_header nano::message::get_header () const
@@ -269,15 +233,6 @@ nano::keepalive::keepalive (rsnano::MessageHandle * handle_a) :
 {
 }
 
-nano::keepalive::keepalive (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-	message (rsnano::rsn_message_keepalive_create2 (header_a.handle))
-{
-	if (!error_a)
-	{
-		error_a = deserialize (stream_a);
-	}
-}
-
 nano::keepalive::keepalive (keepalive const & other_a) :
 	message (rsnano::rsn_message_keepalive_clone (other_a.handle))
 {
@@ -286,20 +241,6 @@ nano::keepalive::keepalive (keepalive const & other_a) :
 void nano::keepalive::visit (nano::message_visitor & visitor_a) const
 {
 	visitor_a.keepalive (*this);
-}
-
-void nano::keepalive::serialize (nano::stream & stream_a) const
-{
-	if (!rsnano::rsn_message_keepalive_serialize (handle, &stream_a))
-	{
-		throw std::runtime_error ("could not serialize keepalive");
-	}
-}
-
-bool nano::keepalive::deserialize (nano::stream & stream_a)
-{
-	bool error = !rsnano::rsn_message_keepalive_deserialize (handle, &stream_a);
-	return error;
 }
 
 bool nano::keepalive::operator== (nano::keepalive const & other_a) const
@@ -352,15 +293,6 @@ rsnano::MessageHandle * create_publish_handle2 (nano::message_header const & hea
 	return rsnano::rsn_message_publish_create2 (header_a.handle, &bytes[0]);
 }
 
-nano::publish::publish (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::uint128_t const & digest_a, nano::block_uniquer * uniquer_a) :
-	message (create_publish_handle2 (header_a, digest_a))
-{
-	if (!error_a)
-	{
-		error_a = deserialize (stream_a, uniquer_a);
-	}
-}
-
 rsnano::MessageHandle * create_publish_handle (nano::network_constants const & constants, std::shared_ptr<nano::block> const & block_a)
 {
 	auto constants_dto{ constants.to_dto () };
@@ -380,25 +312,6 @@ nano::publish::publish (nano::publish const & other_a) :
 nano::publish::publish (rsnano::MessageHandle * handle_a) :
 	message (handle_a)
 {
-}
-
-void nano::publish::serialize (nano::stream & stream_a) const
-{
-	if (!rsnano::rsn_message_publish_serialize (handle, &stream_a))
-	{
-		throw std::runtime_error ("could not serialize publish message");
-	}
-}
-
-bool nano::publish::deserialize (nano::stream & stream_a, nano::block_uniquer * uniquer_a)
-{
-	rsnano::BlockUniquerHandle * uniquer_handle = nullptr;
-	if (uniquer_a != nullptr)
-	{
-		uniquer_handle = uniquer_a->handle;
-	}
-	bool error = !rsnano::rsn_message_publish_deserialize (handle, &stream_a, uniquer_handle);
-	return error;
 }
 
 void nano::publish::visit (nano::message_visitor & visitor_a) const
@@ -469,15 +382,6 @@ rsnano::MessageHandle * create_confirm_req_handle (nano::network_constants const
 	return rsnano::rsn_message_confirm_req_create (&constants_dto, block_handle, dtos.data (), hashes_count);
 }
 
-nano::confirm_req::confirm_req (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::block_uniquer * uniquer_a) :
-	message (rsnano::rsn_message_confirm_req_create2 (header_a.handle))
-{
-	if (!error_a)
-	{
-		error_a = deserialize (stream_a, uniquer_a);
-	}
-}
-
 nano::confirm_req::confirm_req (nano::network_constants const & constants, std::shared_ptr<nano::block> const & block_a) :
 	message (create_confirm_req_handle (constants, block_a.get (), std::vector<std::pair<nano::block_hash, nano::root>> ()))
 {
@@ -538,26 +442,6 @@ void nano::confirm_req::visit (nano::message_visitor & visitor_a) const
 	visitor_a.confirm_req (*this);
 }
 
-void nano::confirm_req::serialize (nano::stream & stream_a) const
-{
-	if (!rsnano::rsn_message_confirm_req_serialize (handle, &stream_a))
-	{
-		throw std::runtime_error ("could not serialize confirm_req");
-	}
-}
-
-bool nano::confirm_req::deserialize (nano::stream & stream_a, nano::block_uniquer * uniquer_a)
-{
-	rsnano::BlockUniquerHandle * uniquer_handle = nullptr;
-	if (uniquer_a != nullptr)
-	{
-		uniquer_handle = uniquer_a->handle;
-	}
-
-	bool error = !rsnano::rsn_message_confirm_req_deserialize (handle, &stream_a, uniquer_handle);
-	return error;
-}
-
 bool nano::confirm_req::operator== (nano::confirm_req const & other_a) const
 {
 	return rsnano::rsn_message_confirm_req_equals (handle, other_a.handle);
@@ -602,11 +486,6 @@ rsnano::MessageHandle * create_confirm_ack_handle (bool & error_a, nano::stream 
 	return rsnano::rsn_message_confirm_ack_create2 (header_a.handle, &stream_a, uniquer_handle, &error_a);
 }
 
-nano::confirm_ack::confirm_ack (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::vote_uniquer * uniquer_a) :
-	message (create_confirm_ack_handle (error_a, stream_a, header_a, uniquer_a))
-{
-}
-
 nano::confirm_ack::confirm_ack (nano::network_constants const & constants, std::shared_ptr<nano::vote> const & vote_a) :
 	message (create_confirm_ack_handle (constants, *vote_a))
 {
@@ -620,14 +499,6 @@ nano::confirm_ack::confirm_ack (nano::confirm_ack const & other_a) :
 nano::confirm_ack::confirm_ack (rsnano::MessageHandle * handle_a) :
 	message (handle_a)
 {
-}
-
-void nano::confirm_ack::serialize (nano::stream & stream_a) const
-{
-	if (!rsnano::rsn_message_confirm_ack_serialize (handle, &stream_a))
-	{
-		throw std::runtime_error ("could not serialize confirm_ack");
-	}
 }
 
 bool nano::confirm_ack::operator== (nano::confirm_ack const & other_a) const
@@ -679,15 +550,6 @@ nano::frontier_req::frontier_req (nano::network_constants const & constants) :
 {
 }
 
-nano::frontier_req::frontier_req (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-	message (rsnano::rsn_message_frontier_req_create2 (header_a.handle))
-{
-	if (!error_a)
-	{
-		error_a = deserialize (stream_a);
-	}
-}
-
 nano::frontier_req::frontier_req (rsnano::MessageHandle * handle_a) :
 	message (handle_a)
 {
@@ -696,18 +558,6 @@ nano::frontier_req::frontier_req (rsnano::MessageHandle * handle_a) :
 nano::frontier_req::frontier_req (frontier_req const & other_a) :
 	message (rsnano::rsn_message_frontier_req_clone (other_a.handle))
 {
-}
-
-void nano::frontier_req::serialize (nano::stream & stream_a) const
-{
-	if (!rsnano::rsn_message_frontier_req_serialize (handle, &stream_a))
-		throw std::runtime_error ("could not serialize frontier_req");
-}
-
-bool nano::frontier_req::deserialize (nano::stream & stream_a)
-{
-	bool error = !rsnano::rsn_message_frontier_req_deserialize (handle, &stream_a);
-	return error;
 }
 
 void nano::frontier_req::visit (nano::message_visitor & visitor_a) const
@@ -784,15 +634,6 @@ nano::bulk_pull::bulk_pull (nano::network_constants const & constants) :
 {
 }
 
-nano::bulk_pull::bulk_pull (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-	message (rsnano::rsn_message_bulk_pull_create2 (header_a.handle))
-{
-	if (!error_a)
-	{
-		error_a = deserialize (stream_a);
-	}
-}
-
 nano::bulk_pull::bulk_pull (rsnano::MessageHandle * handle_a) :
 	message (handle_a)
 {
@@ -842,18 +683,6 @@ void nano::bulk_pull::visit (nano::message_visitor & visitor_a) const
 	visitor_a.bulk_pull (*this);
 }
 
-void nano::bulk_pull::serialize (nano::stream & stream_a) const
-{
-	if (!rsnano::rsn_message_bulk_pull_serialize (handle, &stream_a))
-		throw std::runtime_error ("could not serialize bulk_pull");
-}
-
-bool nano::bulk_pull::deserialize (nano::stream & stream_a)
-{
-	bool error = !rsnano::rsn_message_bulk_pull_deserialize (handle, &stream_a);
-	return error;
-}
-
 bool nano::bulk_pull::is_count_present () const
 {
 	return rsnano::rsn_message_bulk_pull_is_count_present (handle);
@@ -894,15 +723,6 @@ rsnano::MessageHandle * create_bulk_pull_account_handle (nano::network_constants
 nano::bulk_pull_account::bulk_pull_account (nano::network_constants const & constants) :
 	message (create_bulk_pull_account_handle (constants))
 {
-}
-
-nano::bulk_pull_account::bulk_pull_account (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-	message (rsnano::rsn_message_bulk_pull_account_create2 (header_a.handle))
-{
-	if (!error_a)
-	{
-		error_a = deserialize (stream_a);
-	}
 }
 
 nano::bulk_pull_account::bulk_pull_account (rsnano::MessageHandle * handle_a) :
@@ -959,18 +779,6 @@ void nano::bulk_pull_account::set_flags (nano::bulk_pull_account_flags flags_a)
 	rsnano::rsn_message_bulk_pull_account_set_flags (handle, static_cast<uint8_t> (flags_a));
 }
 
-void nano::bulk_pull_account::serialize (nano::stream & stream_a) const
-{
-	if (!rsnano::rsn_message_bulk_pull_account_serialize (handle, &stream_a))
-		throw std::runtime_error ("bulk_pull_account could not be serialized");
-}
-
-bool nano::bulk_pull_account::deserialize (nano::stream & stream_a)
-{
-	bool error = !rsnano::rsn_message_bulk_pull_account_deserialize (handle, &stream_a);
-	return error;
-}
-
 std::string nano::bulk_pull_account::to_string () const
 {
 	rsnano::StringDto dto;
@@ -1001,18 +809,6 @@ nano::bulk_push::bulk_push (nano::message_header const & header_a) :
 nano::bulk_push::bulk_push (rsnano::MessageHandle * handle_a) :
 	message (handle_a)
 {
-}
-
-bool nano::bulk_push::deserialize (nano::stream & stream_a)
-{
-	bool error = !rsnano::rsn_message_bulk_push_deserialize (handle, &stream_a);
-	return error;
-}
-
-void nano::bulk_push::serialize (nano::stream & stream_a) const
-{
-	if (!rsnano::rsn_message_bulk_push_serialize (handle, &stream_a))
-		throw std::runtime_error ("could not serialize bulk_push");
 }
 
 void nano::bulk_push::visit (nano::message_visitor & visitor_a) const
@@ -1048,18 +844,6 @@ nano::telemetry_req::telemetry_req (nano::telemetry_req const & other_a) :
 nano::telemetry_req::telemetry_req (rsnano::MessageHandle * handle_a) :
 	message (handle_a)
 {
-}
-
-bool nano::telemetry_req::deserialize (nano::stream & stream_a)
-{
-	bool error = !rsnano::rsn_message_telemetry_req_deserialize (handle, &stream_a);
-	return error;
-}
-
-void nano::telemetry_req::serialize (nano::stream & stream_a) const
-{
-	if (!rsnano::rsn_message_telemetry_req_serialize (handle, &stream_a))
-		throw std::runtime_error ("could not serialize telemetry_req");
 }
 
 void nano::telemetry_req::visit (nano::message_visitor & visitor_a) const
@@ -1099,15 +883,6 @@ nano::telemetry_ack::telemetry_ack (nano::network_constants const & constants) :
 {
 }
 
-nano::telemetry_ack::telemetry_ack (bool & error_a, nano::stream & stream_a, nano::message_header const & message_header) :
-	message (rsnano::rsn_message_telemetry_ack_create2 (message_header.handle))
-{
-	if (!error_a)
-	{
-		error_a = deserialize (stream_a);
-	}
-}
-
 nano::telemetry_ack::telemetry_ack (nano::telemetry_ack const & other_a) :
 	message (rsnano::rsn_message_telemetry_ack_clone (other_a.handle))
 {
@@ -1124,18 +899,6 @@ nano::telemetry_ack & nano::telemetry_ack::operator= (telemetry_ack const & othe
 		rsnano::rsn_message_destroy (handle);
 	handle = rsnano::rsn_message_telemetry_ack_clone (other_a.handle);
 	return *this;
-}
-
-void nano::telemetry_ack::serialize (nano::stream & stream_a) const
-{
-	if (!rsnano::rsn_message_telemetry_ack_serialize (handle, &stream_a))
-		throw std::runtime_error ("could not serialize telemetry_ack");
-}
-
-bool nano::telemetry_ack::deserialize (nano::stream & stream_a)
-{
-	bool error = !rsnano::rsn_message_telemetry_ack_deserialize (handle, &stream_a);
-	return error;
 }
 
 void nano::telemetry_ack::visit (nano::message_visitor & visitor_a) const
@@ -1410,17 +1173,6 @@ void nano::telemetry_data::set_unknown_data (std::vector<uint8_t> data_a)
 	rsnano::rsn_telemetry_data_set_unknown_data (handle, data_a.data (), data_a.size ());
 }
 
-void nano::telemetry_data::deserialize (nano::stream & stream_a, uint16_t payload_length_a)
-{
-	if (!rsnano::rsn_telemetry_data_deserialize (handle, &stream_a, payload_length_a))
-		throw std::runtime_error ("could not deserialize telemetry data");
-}
-
-void nano::telemetry_data::serialize (nano::stream & stream_a) const
-{
-	rsnano::rsn_telemetry_data_serialize (handle, &stream_a);
-}
-
 nano::error nano::telemetry_data::serialize_json (nano::jsonconfig & json, bool ignore_identification_metrics_a) const
 {
 	json.put ("block_count", get_block_count ());
@@ -1617,12 +1369,6 @@ rsnano::MessageHandle * create_node_id_handshake_handle (nano::network_constants
 
 }
 
-nano::node_id_handshake::node_id_handshake (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-	message (rsnano::rsn_message_node_id_handshake_create2 (header_a.handle))
-{
-	error_a = deserialize (stream_a);
-}
-
 nano::node_id_handshake::node_id_handshake (node_id_handshake const & other_a) :
 	message{ rsnano::rsn_message_node_id_handshake_clone (other_a.handle) }
 {
@@ -1636,18 +1382,6 @@ nano::node_id_handshake::node_id_handshake (nano::network_constants const & cons
 nano::node_id_handshake::node_id_handshake (rsnano::MessageHandle * handle_a) :
 	message (handle_a)
 {
-}
-
-void nano::node_id_handshake::serialize (nano::stream & stream) const
-{
-	if (!rsnano::rsn_message_node_id_handshake_serialize (handle, &stream))
-		throw std::runtime_error ("could not serialize node_id_handshake");
-}
-
-bool nano::node_id_handshake::deserialize (nano::stream & stream)
-{
-	bool error = !rsnano::rsn_message_node_id_handshake_deserialize (handle, &stream);
-	return error;
 }
 
 std::optional<nano::node_id_handshake::query_payload> nano::node_id_handshake::get_query () const
@@ -1732,14 +1466,6 @@ nano::asc_pull_req::asc_pull_req (const nano::network_constants & constants) :
 {
 }
 
-nano::asc_pull_req::asc_pull_req (bool & error_a, nano::stream & stream_a, const nano::message_header & header_a) :
-	message (rsnano::rsn_message_asc_pull_req_create2 (header_a.handle))
-{
-	if (!error_a)
-	{
-		error_a = deserialize (stream_a);
-	}
-}
 nano::asc_pull_req::asc_pull_req (nano::asc_pull_req const & other_a) :
 	message{ rsnano::rsn_message_asc_pull_req_clone (other_a.handle) }
 {
@@ -1768,18 +1494,6 @@ nano::asc_pull_type nano::asc_pull_req::pull_type () const
 void nano::asc_pull_req::visit (nano::message_visitor & visitor) const
 {
 	visitor.asc_pull_req (*this);
-}
-
-void nano::asc_pull_req::serialize (nano::stream & stream_a) const
-{
-	if (!rsnano::rsn_message_asc_pull_req_serialize (handle, &stream_a))
-		throw std::runtime_error ("could not serialize asc_pull_req");
-}
-
-bool nano::asc_pull_req::deserialize (nano::stream & stream_a)
-{
-	bool error = !rsnano::rsn_message_asc_pull_req_deserialize (handle, &stream_a);
-	return error;
 }
 
 std::size_t nano::asc_pull_req::size (const nano::message_header & header)
@@ -1839,14 +1553,6 @@ nano::asc_pull_ack::asc_pull_ack (const nano::network_constants & constants) :
 {
 }
 
-nano::asc_pull_ack::asc_pull_ack (bool & error_a, nano::stream & stream_a, const nano::message_header & header_a) :
-	message (rsnano::rsn_message_asc_pull_ack_create2 (header_a.handle))
-{
-	if (!error_a)
-	{
-		error_a = deserialize (stream_a);
-	}
-}
 nano::asc_pull_ack::asc_pull_ack (nano::asc_pull_ack const & other_a) :
 	message{ rsnano::rsn_message_asc_pull_ack_clone (other_a.handle) }
 {
@@ -1875,18 +1581,6 @@ nano::asc_pull_type nano::asc_pull_ack::pull_type () const
 void nano::asc_pull_ack::visit (nano::message_visitor & visitor) const
 {
 	visitor.asc_pull_ack (*this);
-}
-
-void nano::asc_pull_ack::serialize (nano::stream & stream) const
-{
-	if (!rsnano::rsn_message_asc_pull_ack_serialize (handle, &stream))
-		throw std::runtime_error ("could not serialize asc_pull_ack");
-}
-
-bool nano::asc_pull_ack::deserialize (nano::stream & stream)
-{
-	bool error = !rsnano::rsn_message_asc_pull_ack_deserialize (handle, &stream);
-	return error;
 }
 
 std::size_t nano::asc_pull_ack::size (const nano::message_header & header)

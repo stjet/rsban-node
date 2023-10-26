@@ -21,25 +21,3 @@ pub unsafe extern "C" fn rsn_message_bulk_push_create2(
 ) -> *mut MessageHandle {
     create_message_handle2(header, BulkPush::with_header)
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_push_deserialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message_mut::<BulkPush>(handle)
-        .deserialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_push_serialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message::<BulkPush>(handle)
-        .serialize(&mut stream)
-        .is_ok()
-}

@@ -87,28 +87,6 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_account_size() -> usize {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_account_serialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message::<BulkPullAccount>(handle)
-        .serialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_account_deserialize(
-    handle: *mut MessageHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    downcast_message_mut::<BulkPullAccount>(handle)
-        .deserialize(&mut stream)
-        .is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_bulk_pull_account_to_string(
     handle: *mut MessageHandle,
     result: *mut StringDto,

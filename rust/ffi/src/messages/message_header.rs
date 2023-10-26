@@ -83,24 +83,6 @@ pub unsafe extern "C" fn rsn_message_header_type(handle: *mut MessageHeaderHandl
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_header_deserialize(
-    handle: *mut MessageHeaderHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    (*handle).0.deserialize(&mut stream).is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_header_serialize(
-    handle: *mut MessageHeaderHandle,
-    stream: *mut c_void,
-) -> bool {
-    let mut stream = FfiStream::new(stream);
-    (*handle).0.serialize(&mut stream).is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_block_type(handle: *mut MessageHeaderHandle) -> u8 {
     (*handle).0.block_type() as u8
 }

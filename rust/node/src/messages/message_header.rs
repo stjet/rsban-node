@@ -67,11 +67,6 @@ impl Debug for MessageType {
 const BLOCK_TYPE_MASK: u16 = 0x0f00;
 const COUNT_MASK: u16 = 0xf000;
 
-#[derive(Default)]
-pub struct MessageHeaderExtensions {
-    extensions: BitArray<u16>,
-}
-
 #[derive(Clone, PartialEq, Eq)]
 pub struct MessageHeader {
     message_type: MessageType,

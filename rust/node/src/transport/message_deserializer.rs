@@ -192,33 +192,21 @@ impl MessageDeserializer {
     }
 
     fn received_message(&self, header: MessageHeader, payload_size: usize, callback: CallbackType) {
-        match self.deserialize(header, payload_size) {
-            Some(message) => {
-                debug_assert!(self.status() == ParseStatus::None);
+        assert!(payload_size <= MAX_MESSAGE_SIZE);
+        let result = {
+            let buffer = self.read_buffer.lock().unwrap();
+            self.deserializer_impl
+                .deserialize(header, &buffer[..payload_size])
+        };
+
+        match result {
+            Ok(message) => {
                 self.set_status(ParseStatus::Success);
                 callback(ErrorCode::new(), Some(message));
             }
-            None => {
-                debug_assert!(self.status() != ParseStatus::None);
-                callback(ErrorCode::new(), None);
-            }
-        }
-    }
-
-    fn deserialize(&self, header: MessageHeader, payload_size: usize) -> Option<Box<dyn Message>> {
-        assert!(payload_size <= MAX_MESSAGE_SIZE);
-        let buffer = self.read_buffer.lock().unwrap();
-        match self
-            .deserializer_impl
-            .deserialize(header, &buffer[..payload_size])
-        {
-            Ok(msg) => {
-                self.set_status(ParseStatus::Success);
-                Some(msg)
-            }
             Err(status) => {
                 self.set_status(status);
-                None
+                callback(ErrorCode::new(), None);
             }
         }
     }

@@ -95,7 +95,7 @@ impl BootstrapClient {
 
     pub fn read_async(&self, size: usize, callback: Box<dyn FnOnce(ErrorCode, usize) + Send>) {
         self.socket
-            .async_read2(Arc::clone(&self.receive_buffer), size, callback);
+            .async_read(Arc::clone(&self.receive_buffer), size, callback);
     }
 
     pub fn receive_buffer(&self) -> Vec<u8> {

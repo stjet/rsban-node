@@ -113,7 +113,7 @@ impl BulkPushServerImpl {
                     .try_log("Aborting bulk_push because a bootstrap attempt is in progress");
             }
         } else {
-            self.connection.socket.async_read2(
+            self.connection.socket.async_read(
                 Arc::clone(&self.receive_buffer),
                 1,
                 Box::new(move |ec, _len| {
@@ -140,7 +140,7 @@ impl BulkPushServerImpl {
             Some(BlockType::LegacySend) => {
                 self.stats
                     .inc(StatType::Bootstrap, DetailType::Send, Direction::In);
-                self.connection.socket.async_read2(
+                self.connection.socket.async_read(
                     Arc::clone(&self.receive_buffer),
                     SendBlock::serialized_size(),
                     Box::new(move |ec, len| {
@@ -156,7 +156,7 @@ impl BulkPushServerImpl {
             Some(BlockType::LegacyReceive) => {
                 self.stats
                     .inc(StatType::Bootstrap, DetailType::Receive, Direction::In);
-                self.connection.socket.async_read2(
+                self.connection.socket.async_read(
                     Arc::clone(&self.receive_buffer),
                     ReceiveBlock::serialized_size(),
                     Box::new(move |ec, len| {
@@ -172,7 +172,7 @@ impl BulkPushServerImpl {
             Some(BlockType::LegacyOpen) => {
                 self.stats
                     .inc(StatType::Bootstrap, DetailType::Open, Direction::In);
-                self.connection.socket.async_read2(
+                self.connection.socket.async_read(
                     Arc::clone(&self.receive_buffer),
                     OpenBlock::serialized_size(),
                     Box::new(move |ec, len| {
@@ -188,7 +188,7 @@ impl BulkPushServerImpl {
             Some(BlockType::LegacyChange) => {
                 self.stats
                     .inc(StatType::Bootstrap, DetailType::Change, Direction::In);
-                self.connection.socket.async_read2(
+                self.connection.socket.async_read(
                     Arc::clone(&self.receive_buffer),
                     ChangeBlock::serialized_size(),
                     Box::new(move |ec, len| {
@@ -204,7 +204,7 @@ impl BulkPushServerImpl {
             Some(BlockType::State) => {
                 self.stats
                     .inc(StatType::Bootstrap, DetailType::StateBlock, Direction::In);
-                self.connection.socket.async_read2(
+                self.connection.socket.async_read(
                     Arc::clone(&self.receive_buffer),
                     StateBlock::serialized_size(),
                     Box::new(move |ec, len| {

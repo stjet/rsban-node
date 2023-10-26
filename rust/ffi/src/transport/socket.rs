@@ -6,7 +6,7 @@ use rsnano_node::{
         CompositeSocketObserver, Socket, SocketBuilder, SocketExtensions, SocketObserver,
         SocketType, TokioSocketFacade, WriteCallback,
     },
-    utils::{BufferWrapper, ErrorCode},
+    utils::ErrorCode,
 };
 use std::{
     ffi::c_void,
@@ -199,23 +199,6 @@ unsafe impl Sync for ReadCallbackWrapper {}
 pub type SocketReadCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, usize);
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_socket_async_read(
-    handle: *mut SocketHandle,
-    buffer: *mut c_void,
-    size: usize,
-    callback: SocketReadCallback,
-    destroy_context: SocketDestroyContext,
-    context: *mut c_void,
-) {
-    let cb_wrapper = ReadCallbackWrapper::new(callback, destroy_context, context);
-    let cb = Box::new(move |ec, size| {
-        cb_wrapper.execute(ec, size);
-    });
-    let buffer_wrapper = Arc::new(FfiBufferWrapper::new(buffer));
-    (*handle).async_read(buffer_wrapper, size, cb);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_socket_async_write(
     handle: *mut SocketHandle,
     buffer: *const u8,
@@ -394,29 +377,6 @@ pub unsafe extern "C" fn rsn_socket_type_to_string(socket_type: u8, result: *mut
     *result = StringDto::from(SocketType::from_u8(socket_type).unwrap().as_str())
 }
 
-static mut BUFFER_DESTROY_CALLBACK: Option<VoidPointerCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_buffer_destroy(f: VoidPointerCallback) {
-    BUFFER_DESTROY_CALLBACK = Some(f);
-}
-
-type BufferSizeCallback = unsafe extern "C" fn(*mut c_void) -> usize;
-static mut BUFFER_SIZE_CALLBACK: Option<BufferSizeCallback> = None;
-
-type BufferGetSliceCallback = unsafe extern "C" fn(*mut c_void) -> *mut u8;
-static mut BUFFER_GET_SLICE: Option<BufferGetSliceCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_buffer_size(f: BufferSizeCallback) {
-    BUFFER_SIZE_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_buffer_get_slice(f: BufferGetSliceCallback) {
-    BUFFER_GET_SLICE = Some(f);
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_async_write_callback_execute(
     callback: *mut AsyncWriteCallbackHandle,
@@ -432,43 +392,6 @@ pub unsafe extern "C" fn rsn_async_write_callback_execute(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_async_write_callback_destroy(callback: *mut AsyncWriteCallbackHandle) {
     drop(Box::from_raw(callback))
-}
-
-struct FfiBufferWrapper {
-    handle: *mut c_void,
-}
-
-impl FfiBufferWrapper {
-    fn new(handle: *mut c_void) -> Self {
-        Self { handle }
-    }
-}
-
-unsafe impl Send for FfiBufferWrapper {}
-unsafe impl Sync for FfiBufferWrapper {}
-
-impl Drop for FfiBufferWrapper {
-    fn drop(&mut self) {
-        unsafe { BUFFER_DESTROY_CALLBACK.expect("BUFFER_DESTROY_CALLBACK missing")(self.handle) }
-    }
-}
-
-impl BufferWrapper for FfiBufferWrapper {
-    fn len(&self) -> usize {
-        unsafe { BUFFER_SIZE_CALLBACK.expect("BUFFER_SIZE_CALLBACK missing")(self.handle) }
-    }
-
-    fn handle(&self) -> *mut c_void {
-        self.handle
-    }
-
-    fn get_slice_mut(&self) -> &mut [u8] {
-        unsafe {
-            let ptr = BUFFER_GET_SLICE.expect("BUFFER_GET_SLICE missing")(self.handle);
-            let len = self.len();
-            std::slice::from_raw_parts_mut(ptr, len)
-        }
-    }
 }
 
 pub struct SocketFfiObserver {

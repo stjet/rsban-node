@@ -1,4 +1,4 @@
-use crate::utils::{AsyncRuntime, BufferWrapper, ErrorCode, ThreadPool, ThreadPoolImpl};
+use crate::utils::{AsyncRuntime, ErrorCode, ThreadPool, ThreadPoolImpl};
 use async_trait::async_trait;
 use num_traits::FromPrimitive;
 use rsnano_core::utils::seconds_since_epoch;
@@ -132,96 +132,6 @@ impl TokioSocketFacade {
                     cb(ErrorCode::new())
                 }
             });
-        });
-    }
-
-    pub fn async_read(
-        &self,
-        buffer: &Arc<dyn BufferWrapper>,
-        len: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    ) {
-        let callback = Arc::new(Mutex::new(Some(callback)));
-        let callback_clone = Arc::clone(&callback);
-        *self.current_action.lock().unwrap() = Some(Box::new(move || {
-            if let Some(f) = callback_clone.lock().unwrap().take() {
-                f(ErrorCode::fault(), 0);
-            }
-        }));
-
-        let buffer = Arc::clone(buffer);
-        let stream = {
-            let guard = self.state.lock().unwrap();
-            let TokioSocketState::Client(stream) = guard.deref() else {
-                return;
-            };
-            Arc::clone(stream)
-        };
-        let Some(runtime) = self.runtime.upgrade() else {
-            return;
-        };
-        let runtime_w = Weak::clone(&self.runtime);
-        runtime.tokio.spawn(async move {
-            let mut read = 0;
-            loop {
-                match stream.readable().await {
-                    Ok(_) => {
-                        let buf = buffer.get_slice_mut();
-                        match stream.try_read(&mut buf[read..len]) {
-                            Ok(0) => {
-                                let Some(runtime) = runtime_w.upgrade() else {
-                                    break;
-                                };
-                                runtime.tokio.spawn_blocking(move || {
-                                    if let Some(cb) = callback.lock().unwrap().take() {
-                                        cb(ErrorCode::fault(), 0);
-                                    }
-                                });
-                                break;
-                            }
-                            Ok(n) => {
-                                read += n;
-                                if read >= len {
-                                    let Some(runtime) = runtime_w.upgrade() else {
-                                        break;
-                                    };
-                                    runtime.tokio.spawn_blocking(move || {
-                                        if let Some(cb) = callback.lock().unwrap().take() {
-                                            cb(ErrorCode::new(), read);
-                                        }
-                                    });
-                                    break;
-                                }
-                            }
-                            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                continue;
-                            }
-                            Err(_) => {
-                                let Some(runtime) = runtime_w.upgrade() else {
-                                    break;
-                                };
-                                runtime.tokio.spawn_blocking(move || {
-                                    if let Some(cb) = callback.lock().unwrap().take() {
-                                        cb(ErrorCode::fault(), 0)
-                                    }
-                                });
-                                break;
-                            }
-                        };
-                    }
-                    Err(_) => {
-                        let Some(runtime) = runtime_w.upgrade() else {
-                            break;
-                        };
-                        runtime.tokio.spawn_blocking(move || {
-                            if let Some(cb) = callback.lock().unwrap().take() {
-                                cb(ErrorCode::fault(), 0);
-                            }
-                        });
-                        break;
-                    }
-                }
-            }
         });
     }
 
@@ -768,12 +678,6 @@ pub trait SocketExtensions {
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>);
     fn async_read(
         &self,
-        buffer: Arc<dyn BufferWrapper>,
-        size: usize,
-        callback: Box<dyn Fn(ErrorCode, usize) + Send>,
-    );
-    fn async_read2(
-        &self,
         buffer: Arc<Mutex<Vec<u8>>>,
         size: usize,
         callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
@@ -898,39 +802,6 @@ impl SocketExtensions for Arc<Socket> {
     }
 
     fn async_read(
-        &self,
-        buffer: Arc<dyn BufferWrapper>,
-        size: usize,
-        callback: Box<dyn Fn(ErrorCode, usize) + Send>,
-    ) {
-        if size <= buffer.len() {
-            if !self.is_closed() {
-                self.set_default_timeout();
-                let self_clone = self.clone();
-
-                self.tcp_socket.async_read(
-                    &buffer,
-                    size,
-                    Box::new(move |ec, len| {
-                        if ec.is_err() {
-                            self_clone.observer.read_error();
-                            self_clone.close();
-                        } else {
-                            self_clone.observer.read_successful(len);
-                            self_clone.set_last_completion();
-                            self_clone.set_last_receive_time();
-                        }
-                        callback(ec, len);
-                    }),
-                );
-            }
-        } else {
-            debug_assert!(false); // async_read called with incorrect buffer size
-            callback(ErrorCode::no_buffer_space(), 0);
-        }
-    }
-
-    fn async_read2(
         &self,
         buffer: Arc<Mutex<Vec<u8>>>,
         size: usize,
@@ -1183,7 +1054,7 @@ impl SocketExtensions for Arc<Socket> {
         self.set_default_timeout_value(self.idle_timeout.as_secs());
 
         let self_clone = Arc::clone(self);
-        self.async_read2(
+        self.async_read(
             data,
             size,
             Box::new(move |ec, s| {

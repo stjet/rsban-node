@@ -650,40 +650,6 @@ TEST (node, port_mapping)
 	}
 }
 
-TEST (tcp_listener, tcp_node_id_handshake)
-{
-	nano::test::system system (1);
-	auto socket (nano::transport::create_client_socket (*system.nodes[0]));
-	auto bootstrap_endpoint (system.nodes[0]->tcp_listener->endpoint ());
-	auto cookie (system.nodes[0]->network->syn_cookies->assign (nano::transport::map_tcp_to_endpoint (bootstrap_endpoint)));
-	ASSERT_TRUE (cookie);
-	nano::node_id_handshake::query_payload query{ *cookie };
-	nano::node_id_handshake node_id_handshake{ nano::dev::network_params.network, query };
-	auto input (node_id_handshake.to_shared_const_buffer ());
-	std::atomic<bool> write_done (false);
-	socket->async_connect (bootstrap_endpoint, [&input, socket, &write_done] (boost::system::error_code const & ec) {
-		ASSERT_FALSE (ec);
-		socket->async_write (input, [&input, &write_done] (boost::system::error_code const & ec, size_t size_a) {
-			ASSERT_FALSE (ec);
-			ASSERT_EQ (input.size (), size_a);
-			write_done = true;
-		});
-	});
-
-	ASSERT_TIMELY (5s, write_done);
-
-	nano::node_id_handshake::response_payload response_zero{ 0 };
-	nano::node_id_handshake node_id_handshake_response{ nano::dev::network_params.network, std::nullopt, response_zero };
-	auto output (node_id_handshake_response.to_bytes ());
-	std::atomic<bool> done (false);
-	socket->async_read (output, output->size (), [&output, &done] (boost::system::error_code const & ec, size_t size_a) {
-		ASSERT_FALSE (ec);
-		ASSERT_EQ (output->size (), size_a);
-		done = true;
-	});
-	ASSERT_TIMELY (5s, done);
-}
-
 // Test disabled because it's failing intermittently.
 // PR in which it got disabled: https://github.com/nanocurrency/nano-node/pull/3611
 // Issue for investigating it: https://github.com/nanocurrency/nano-node/issues/3615

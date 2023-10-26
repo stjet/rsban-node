@@ -131,15 +131,6 @@ void nano::transport::async_read_delete_context (void * context_a)
 	delete callback;
 }
 
-void nano::transport::socket::async_read (std::shared_ptr<std::vector<uint8_t>> const & buffer_a, std::size_t size_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a)
-{
-	auto cb_wrapper = new std::function<void (boost::system::error_code const &, std::size_t)> ([callback = std::move (callback_a), this_l = shared_from_this ()] (boost::system::error_code const & ec, std::size_t size) {
-		callback (ec, size);
-	});
-	auto buffer_ptr{ new std::shared_ptr<std::vector<uint8_t>> (buffer_a) };
-	rsnano::rsn_socket_async_read (handle, buffer_ptr, size_a, nano::transport::async_read_adapter, nano::transport::async_read_delete_context, cb_wrapper);
-}
-
 void nano::transport::socket::async_write (nano::shared_const_buffer const & buffer_a, std::function<void (boost::system::error_code const &, std::size_t)> callback_a, nano::transport::traffic_type traffic_type)
 {
 	auto cb_wrapper = new std::function<void (boost::system::error_code const &, std::size_t)> ([callback = std::move (callback_a), this_l = shared_from_this ()] (boost::system::error_code const & ec, std::size_t size) {

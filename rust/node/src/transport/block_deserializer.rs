@@ -26,7 +26,7 @@ impl BlockDeserializer {
     ) {
         let buffer_clone = Arc::clone(&self.buffer);
         let socket_clone = Arc::clone(socket);
-        socket.async_read2(
+        socket.async_read(
             Arc::clone(&self.buffer),
             1,
             Box::new(move |ec, _len| {
@@ -56,7 +56,7 @@ fn received_type(
         Some(BlockType::NotABlock) | Some(BlockType::Invalid) => callback(ErrorCode::fault(), None),
         Some(block_type) => {
             let block_size = serialized_block_size(block_type);
-            socket.async_read2(
+            socket.async_read(
                 buffer,
                 block_size,
                 Box::new(move |ec, len| {

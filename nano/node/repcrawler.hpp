@@ -46,20 +46,30 @@ public:
 	std::shared_ptr<nano::transport::channel> get_channel () const;
 	void set_channel (std::shared_ptr<nano::transport::channel> new_channel);
 
-	std::chrono::steady_clock::time_point get_last_request () const;
-	void set_last_request (std::chrono::steady_clock::time_point time_point);
-	std::chrono::steady_clock::time_point get_last_response () const;
-	void set_last_response (std::chrono::steady_clock::time_point time_point);
+	std::chrono::system_clock::time_point get_last_request () const;
+	void set_last_request (std::chrono::system_clock::time_point time_point);
+	std::chrono::system_clock::time_point get_last_response () const;
+	void set_last_response (std::chrono::system_clock::time_point time_point);
 
 	rsnano::RepresentativeHandle * handle;
 };
 
+
 class representative_register
 {
 public:
-	representative_register (nano::node & node_a);
+	class insert_result{
+		public:
+			bool inserted{false};
+			bool updated{false};
+			std::shared_ptr<nano::transport::channel> prev_channel{};
+	};
 
-	void update_or_insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
+	representative_register (nano::node & node_a);
+	representative_register (representative_register const &) = delete;
+	~representative_register ();
+
+	insert_result update_or_insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
 	/** Query if a peer manages a principle representative */
 	bool is_pr (nano::transport::channel const & channel_a) const;
 	/** Get total available weight from representatives */
@@ -80,6 +90,8 @@ public:
 	/** Total number of representatives */
 	std::size_t representative_count ();
 
+	rsnano::RepresentativeRegisterHandle * handle;
+
 private:
 	// clang-format off
 	class tag_account {};
@@ -92,7 +104,7 @@ private:
 		mi::hashed_unique<mi::tag<tag_account>, mi::const_mem_fun<representative, nano::account, &representative::get_account>>,
 		mi::sequenced<mi::tag<tag_sequenced>>,
 		mi::ordered_non_unique<mi::tag<tag_last_request>,
-			mi::const_mem_fun<representative, std::chrono::steady_clock::time_point, &representative::get_last_request>>,
+			mi::const_mem_fun<representative, std::chrono::system_clock::time_point, &representative::get_last_request>>,
 		mi::hashed_non_unique<mi::tag<tag_channel_id>,
 			mi::const_mem_fun<representative, size_t, &representative::channel_id>>>>;
 	// clang-format on

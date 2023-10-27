@@ -1,4 +1,8 @@
-use rsnano_core::Account;
+use rsnano_core::{
+    utils::{system_time_as_nanoseconds, system_time_from_nanoseconds},
+    Account,
+};
+
 use rsnano_node::representatives::Representative;
 
 use crate::{copy_account_bytes, transport::ChannelHandle};
@@ -40,7 +44,7 @@ pub unsafe extern "C" fn rsn_representative_account(
 pub unsafe extern "C" fn rsn_representative_last_request(
     handle: *const RepresentativeHandle,
 ) -> u64 {
-    (*handle).0.last_request()
+    system_time_as_nanoseconds((*handle).0.last_request())
 }
 
 #[no_mangle]
@@ -48,14 +52,16 @@ pub unsafe extern "C" fn rsn_representative_set_last_request(
     handle: *mut RepresentativeHandle,
     value: u64,
 ) {
-    (*handle).0.set_last_request(value);
+    (*handle)
+        .0
+        .set_last_request(system_time_from_nanoseconds(value));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_representative_last_response(
     handle: *const RepresentativeHandle,
 ) -> u64 {
-    (*handle).0.last_request()
+    system_time_as_nanoseconds((*handle).0.last_request())
 }
 
 #[no_mangle]
@@ -63,7 +69,9 @@ pub unsafe extern "C" fn rsn_representative_set_last_response(
     handle: *mut RepresentativeHandle,
     value: u64,
 ) {
-    (*handle).0.set_last_response(value);
+    (*handle)
+        .0
+        .set_last_response(system_time_from_nanoseconds(value));
 }
 
 #[no_mangle]

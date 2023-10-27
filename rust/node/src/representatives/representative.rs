@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::SystemTime};
 
 use rsnano_core::Account;
 
@@ -8,8 +8,8 @@ use crate::transport::ChannelEnum;
 pub struct Representative {
     account: Account,
     channel: Arc<ChannelEnum>,
-    last_request: u64,
-    last_response: u64,
+    last_request: SystemTime,
+    last_response: SystemTime,
 }
 
 impl Representative {
@@ -17,8 +17,8 @@ impl Representative {
         Self {
             account,
             channel,
-            last_request: 0,
-            last_response: 0,
+            last_request: SystemTime::now(),
+            last_response: SystemTime::now(),
         }
     }
 
@@ -34,19 +34,19 @@ impl Representative {
         self.channel = channel;
     }
 
-    pub fn last_request(&self) -> u64 {
+    pub fn last_request(&self) -> SystemTime {
         self.last_request
     }
 
-    pub fn set_last_request(&mut self, value: u64) {
+    pub fn set_last_request(&mut self, value: SystemTime) {
         self.last_request = value
     }
 
-    pub fn last_response(&mut self) -> u64 {
+    pub fn last_response(&mut self) -> SystemTime {
         self.last_response
     }
 
-    pub fn set_last_response(&mut self, value: u64) {
+    pub fn set_last_response(&mut self, value: SystemTime) {
         self.last_response = value
     }
 

@@ -48,55 +48,57 @@ void nano::representative::set_channel (std::shared_ptr<nano::transport::channel
 	rsnano::rsn_representative_set_channel (handle, new_channel->handle);
 }
 
-std::chrono::steady_clock::time_point nano::representative::get_last_request () const
+std::chrono::system_clock::time_point nano::representative::get_last_request () const
 {
-	return std::chrono::steady_clock::time_point (
-	std::chrono::steady_clock::duration (rsnano::rsn_representative_last_request (handle)));
+	return std::chrono::system_clock::time_point (std::chrono::nanoseconds(rsnano::rsn_representative_last_request(handle)));
 }
 
-void nano::representative::set_last_request (std::chrono::steady_clock::time_point time_point)
+void nano::representative::set_last_request (std::chrono::system_clock::time_point time_point)
 {
 	auto timepoint_ns = std::chrono::duration_cast<std::chrono::nanoseconds> (time_point.time_since_epoch ()).count ();
 	rsnano::rsn_representative_set_last_request (handle, timepoint_ns);
 }
 
-std::chrono::steady_clock::time_point nano::representative::get_last_response () const
+std::chrono::system_clock::time_point nano::representative::get_last_response () const
 {
-	return std::chrono::steady_clock::time_point (
-	std::chrono::steady_clock::duration (rsnano::rsn_representative_last_response (handle)));
+	return std::chrono::system_clock::time_point (
+	std::chrono::nanoseconds (rsnano::rsn_representative_last_response (handle)));
 }
 
-void nano::representative::set_last_response (std::chrono::steady_clock::time_point time_point)
+void nano::representative::set_last_response (std::chrono::system_clock::time_point time_point)
 {
-	rsnano::rsn_representative_set_last_response (handle, time_point.time_since_epoch ().count ());
+	rsnano::rsn_representative_set_last_response (handle, std::chrono::nanoseconds(time_point.time_since_epoch ()).count());
 }
 
 nano::representative_register::representative_register (nano::node & node_a) :
-	node{ node_a }
+	node{ node_a },
+	handle{rsnano::rsn_representative_register_create()}
 {
 }
 
-void nano::representative_register::update_or_insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a)
+nano::representative_register::~representative_register () 
 {
-	// temporary data used for logging after dropping the lock
-	auto inserted = false;
-	auto updated = false;
-	std::shared_ptr<nano::transport::channel> prev_channel;
+	rsnano::rsn_representative_register_destroy (handle);
+}
+
+nano::representative_register::insert_result nano::representative_register::update_or_insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a)
+{
+	nano::representative_register::insert_result result;
 	nano::unique_lock<nano::mutex> lock{ probable_reps_mutex };
 
 	auto existing (probable_reps.find (account_a));
 	if (existing != probable_reps.end ())
 	{
-		probable_reps.modify (existing, [&updated, &account_a, &channel_a, &prev_channel] (nano::representative & info) {
-			info.set_last_response (std::chrono::steady_clock::now ());
+		probable_reps.modify (existing, [&result, &account_a, &channel_a] (nano::representative & info) {
+			info.set_last_response (std::chrono::system_clock::now ());
 
 			auto info_channel = info.get_channel ();
 			// Update if representative channel was changed
 			if (info_channel->get_remote_endpoint () != channel_a->get_remote_endpoint ())
 			{
 				debug_assert (info.get_account () == account_a);
-				updated = true;
-				prev_channel = info_channel;
+				result.updated = true;
+				result.prev_channel = info_channel;
 				info.set_channel (channel_a);
 			}
 		});
@@ -105,20 +107,11 @@ void nano::representative_register::update_or_insert (nano::account account_a, s
 	{
 		probable_reps.emplace (account_a, channel_a);
 		// rsnano::rsn_rep_crawler_add (handle, rep.handle);
-		inserted = true;
+		result.inserted = true;
 	}
 
 	lock.unlock ();
-
-	if (inserted)
-	{
-		node.logger->try_log (boost::str (boost::format ("Found representative %1% at %2%") % account_a.to_account () % channel_a->to_string ()));
-	}
-
-	if (updated)
-	{
-		node.logger->try_log (boost::str (boost::format ("Updated representative %1% at %2% (was at: %3%)") % account_a.to_account () % channel_a->to_string () % prev_channel->to_string ()));
-	}
+	return result;
 }
 
 bool nano::representative_register::is_pr (nano::transport::channel const & channel_a) const
@@ -159,7 +152,7 @@ void nano::representative_register::on_rep_request (std::shared_ptr<nano::transp
 		for (; itr_pair.first != itr_pair.second; itr_pair.first++)
 		{
 			channel_id_index.modify (itr_pair.first, [] (nano::representative & value_a) {
-				value_a.set_last_request (std::chrono::steady_clock::now ());
+				value_a.set_last_request (std::chrono::system_clock::now ());
 			});
 		}
 	}
@@ -281,7 +274,17 @@ void nano::rep_crawler::validate ()
 			continue;
 		}
 
-		node.representative_register.update_or_insert (vote->account (), channel);
+		auto insert_result {node.representative_register.update_or_insert (vote->account (), channel)};
+		if (insert_result.inserted)
+       {
+               node.logger->try_log (boost::str (boost::format ("Found representative %1% at %2%") % vote->account ().to_account () % channel->to_string ()));
+       }
+
+       if (insert_result.updated)
+       {
+               node.logger->try_log (boost::str (boost::format ("Updated representative %1% at %2% (was at: %3%)") % vote->account ().to_account () % channel->to_string () % insert_result.prev_channel->to_string ()));
+       }
+
 	}
 }
 

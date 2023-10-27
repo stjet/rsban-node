@@ -2,7 +2,7 @@ use crate::{
     block_processing::BlockProcessorHandle,
     ledger::datastore::LedgerHandle,
     transport::SynCookiesHandle,
-    utils::{LoggerHandle, LoggerMT, ThreadPoolHandle},
+    utils::{AsyncRuntimeHandle, LoggerHandle, LoggerMT, ThreadPoolHandle},
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
 };
 use rsnano_core::{utils::Logger, KeyPair};
@@ -16,6 +16,7 @@ pub struct RequestResponseVisitorFactoryHandle(pub Arc<BootstrapMessageVisitorFa
 
 #[repr(C)]
 pub struct RequestResponseVisitorFactoryParams {
+    pub async_rt: *mut AsyncRuntimeHandle,
     pub config: *const NodeConfigDto,
     pub logger: *mut LoggerHandle,
     pub workers: *mut ThreadPoolHandle,
@@ -33,6 +34,7 @@ pub struct RequestResponseVisitorFactoryParams {
 pub unsafe extern "C" fn rsn_request_response_visitor_factory_create(
     params: &RequestResponseVisitorFactoryParams,
 ) -> *mut RequestResponseVisitorFactoryHandle {
+    let async_rt = Arc::clone(&(*params.async_rt).0);
     let config = Arc::new(NodeConfig::try_from(&*params.config).unwrap());
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(params.logger)));
     let workers = (*params.workers).0.clone();
@@ -47,6 +49,7 @@ pub unsafe extern "C" fn rsn_request_response_visitor_factory_create(
         KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(params.node_id_prv, 32)).unwrap(),
     );
     let mut visitor_factory = BootstrapMessageVisitorFactory::new(
+        async_rt,
         Arc::clone(&logger),
         Arc::clone(&*params.syn_cookies),
         Arc::clone(&stats),

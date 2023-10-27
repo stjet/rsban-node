@@ -339,6 +339,7 @@ rsnano::RequestResponseVisitorFactoryHandle * create_request_response_message_vi
 	auto config_dto{ node_a.config->to_dto () };
 	auto network_dto{ node_a.config->network_params.to_dto () };
 	rsnano::RequestResponseVisitorFactoryParams params;
+	params.async_rt = node_a.async_rt.handle;
 	params.config = &config_dto;
 	params.logger = nano::to_logger_handle (node_a.logger);
 	params.workers = node_a.bootstrap_workers->handle;

@@ -8,7 +8,7 @@ use crate::{
     block_processing::BlockProcessor,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{SocketExtensions, TcpServer, TcpServerExt},
-    utils::{ErrorCode, ThreadPool},
+    utils::{AsyncRuntime, ErrorCode, ThreadPool},
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{
@@ -18,6 +18,7 @@ use rsnano_core::{
     BlockType, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
 use rsnano_ledger::Ledger;
+use tokio::task::spawn_blocking;
 
 /// Server side of a bulk_push request. Receives blocks and puts them in the block processor to be processed.
 pub struct BulkPushServer {
@@ -26,6 +27,7 @@ pub struct BulkPushServer {
 
 impl BulkPushServer {
     pub fn new(
+        async_rt: Arc<AsyncRuntime>,
         connection: Arc<TcpServer>,
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
@@ -38,6 +40,7 @@ impl BulkPushServer {
         work_thresholds: WorkThresholds,
     ) -> Self {
         let server_impl = BulkPushServerImpl {
+            async_rt,
             connection,
             enable_logging,
             enable_network_logging,
@@ -66,6 +69,7 @@ impl BulkPushServer {
 }
 
 struct BulkPushServerImpl {
+    async_rt: Arc<AsyncRuntime>,
     ledger: Arc<Ledger>,
     logger: Arc<dyn Logger>,
     enable_logging: bool,
@@ -113,23 +117,27 @@ impl BulkPushServerImpl {
                     .try_log("Aborting bulk_push because a bootstrap attempt is in progress");
             }
         } else {
-            self.connection.socket.async_read(
-                Arc::clone(&self.receive_buffer),
-                1,
-                Box::new(move |ec, _len| {
-                    let server_impl2 = Arc::clone(&server_impl);
+            let socket = Arc::clone(&self.connection.socket);
+            let buffer = Arc::clone(&self.receive_buffer);
+            let server_impl2 = Arc::clone(&server_impl);
+            self.async_rt.tokio.spawn(async move {
+                let result = socket.read_raw(buffer, 1).await;
+                spawn_blocking(Box::new(move || {
                     let guard = server_impl.lock().unwrap();
-                    if ec.is_ok() {
-                        guard.received_type(server_impl2);
-                    } else {
-                        if guard.enable_logging {
-                            guard
-                                .logger
-                                .try_log(&format!("Error receiving block type: {:?}", ec));
+                    match result {
+                        Ok(()) => {
+                            guard.received_type(server_impl2);
+                        }
+                        Err(e) => {
+                            if guard.enable_logging {
+                                guard
+                                    .logger
+                                    .try_log(&format!("Error receiving block type: {:?}", e));
+                            }
                         }
                     }
-                }),
-            );
+                }));
+            });
         }
     }
 

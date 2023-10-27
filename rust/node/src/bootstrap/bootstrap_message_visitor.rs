@@ -9,7 +9,7 @@ use crate::{
     messages::{BulkPull, BulkPullAccount, BulkPush, FrontierReq, MessageVisitor},
     stats::Stats,
     transport::{BootstrapMessageVisitor, TcpServer},
-    utils::ThreadPool,
+    utils::{AsyncRuntime, ThreadPool},
 };
 
 use super::{
@@ -17,6 +17,7 @@ use super::{
 };
 
 pub struct BootstrapMessageVisitorImpl {
+    pub async_rt: Arc<AsyncRuntime>,
     pub ledger: Arc<Ledger>,
     pub logger: Arc<dyn Logger>,
     pub connection: Arc<TcpServer>,
@@ -130,9 +131,11 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
         let enable_packet_logging = self.logging_config.network_packet_logging();
         let stats = Arc::clone(&self.stats);
         let work_thresholds = self.work_thresholds.clone();
+        let async_rt = Arc::clone(&self.async_rt);
         thread_pool.push_task(Box::new(move || {
             // original code TODO: Add completion callback to bulk pull server
             let bulk_push_server = BulkPushServer::new(
+                async_rt,
                 connection,
                 ledger,
                 logger,

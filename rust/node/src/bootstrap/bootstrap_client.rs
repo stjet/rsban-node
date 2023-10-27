@@ -7,6 +7,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use tokio::task::spawn_blocking;
+
 use crate::{
     messages::Message,
     transport::{
@@ -98,8 +100,15 @@ impl BootstrapClient {
 
     //TODO delete and use async read() directly
     pub fn read_async(&self, size: usize, callback: Box<dyn FnOnce(ErrorCode, usize) + Send>) {
-        self.socket
-            .async_read(Arc::clone(&self.receive_buffer), size, callback);
+        let socket = Arc::clone(&self.socket);
+        let buffer = Arc::clone(&self.receive_buffer);
+        self.async_rt.tokio.spawn(async move {
+            let result = socket.read_raw(buffer, size).await;
+            spawn_blocking(Box::new(move || match result {
+                Ok(()) => callback(ErrorCode::new(), size),
+                Err(_) => callback(ErrorCode::fault(), 0),
+            }));
+        });
     }
 
     pub async fn read(&self, size: usize) -> anyhow::Result<()> {

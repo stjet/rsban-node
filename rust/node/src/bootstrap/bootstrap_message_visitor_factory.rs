@@ -11,12 +11,13 @@ use crate::{
         BootstrapMessageVisitor, HandshakeMessageVisitor, HandshakeMessageVisitorImpl,
         RealtimeMessageVisitor, RealtimeMessageVisitorImpl, SynCookies, TcpServer,
     },
-    utils::ThreadPool,
+    utils::{AsyncRuntime, ThreadPool},
 };
 
 use super::{BootstrapInitiator, BootstrapMessageVisitorImpl};
 
 pub struct BootstrapMessageVisitorFactory {
+    async_rt: Arc<AsyncRuntime>,
     logger: Arc<dyn Logger>,
     syn_cookies: Arc<SynCookies>,
     stats: Arc<Stats>,
@@ -33,6 +34,7 @@ pub struct BootstrapMessageVisitorFactory {
 
 impl BootstrapMessageVisitorFactory {
     pub fn new(
+        async_rt: Arc<AsyncRuntime>,
         logger: Arc<dyn Logger>,
         syn_cookies: Arc<SynCookies>,
         stats: Arc<Stats>,
@@ -46,6 +48,7 @@ impl BootstrapMessageVisitorFactory {
         logging_config: Logging,
     ) -> Self {
         Self {
+            async_rt,
             logger,
             syn_cookies,
             stats,
@@ -84,6 +87,7 @@ impl BootstrapMessageVisitorFactory {
 
     pub fn bootstrap_visitor(&self, server: Arc<TcpServer>) -> Box<dyn BootstrapMessageVisitor> {
         Box::new(BootstrapMessageVisitorImpl {
+            async_rt: Arc::clone(&self.async_rt),
             ledger: Arc::clone(&self.ledger),
             logger: Arc::clone(&self.logger),
             connection: server,

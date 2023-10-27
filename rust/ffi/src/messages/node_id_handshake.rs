@@ -8,8 +8,8 @@ use rsnano_node::messages::{
 };
 
 use super::{
-    create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
-    message_handle_clone, MessageHandle, MessageHeaderHandle,
+    create_message_handle, create_message_handle2, create_message_handle3, downcast_message,
+    downcast_message_mut, message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 
 #[no_mangle]
@@ -49,8 +49,8 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
     } else {
         None
     };
-    create_message_handle(constants, move |consts| {
-        NodeIdHandshake::new(consts, query, response)
+    create_message_handle3(constants, move |protocol_info| {
+        NodeIdHandshake::new(protocol_info, query, response)
     })
 }
 

@@ -1,5 +1,4 @@
 use crate::{
-    config::NetworkConstants,
     messages::MessageType,
     voting::{Vote, VoteUniquer},
 };
@@ -12,7 +11,7 @@ use std::{
     sync::Arc,
 };
 
-use super::{Message, MessageHeader, MessageVisitor};
+use super::{Message, MessageHeader, MessageVisitor, ProtocolInfo};
 
 #[derive(Clone)]
 pub struct ConfirmAck {
@@ -23,8 +22,8 @@ pub struct ConfirmAck {
 impl ConfirmAck {
     pub const HASHES_MAX: usize = 12;
 
-    pub fn new(constants: &NetworkConstants, vote: Arc<Vote>) -> Self {
-        let mut header = MessageHeader::new(MessageType::ConfirmAck, &constants.protocol_info());
+    pub fn new(protocol_info: &ProtocolInfo, vote: Arc<Vote>) -> Self {
+        let mut header = MessageHeader::new(MessageType::ConfirmAck, protocol_info);
         header.set_block_type(BlockType::NotABlock);
         debug_assert!(vote.hashes.len() < 16);
         header.set_count(vote.hashes.len() as u8);
@@ -34,6 +33,7 @@ impl ConfirmAck {
             vote: Some(vote),
         }
     }
+
     pub fn with_header(
         header: MessageHeader,
         stream: &mut impl Stream,
@@ -159,7 +159,6 @@ mod tests {
 
     #[test]
     fn serialize() -> Result<()> {
-        let constants = &NetworkConstants::empty();
         let keys = KeyPair::new();
         let mut hashes = Vec::new();
         for i in 0..ConfirmAck::HASHES_MAX {
@@ -167,7 +166,7 @@ mod tests {
         }
         let vote = Vote::new(keys.public_key().into(), &keys.private_key(), 0, 0, hashes);
         let vote = Arc::new(vote);
-        let confirm1 = ConfirmAck::new(constants, vote);
+        let confirm1 = ConfirmAck::new(&Default::default(), vote);
 
         let mut stream = MemoryStream::new();
         confirm1.serialize(&mut stream)?;

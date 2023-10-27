@@ -8,7 +8,7 @@ use crate::{
 use rsnano_node::{config::NetworkConstants, messages::ConfirmAck, voting::Vote};
 
 use super::{
-    create_message_handle, create_message_handle2, downcast_message, message_handle_clone,
+    create_message_handle2, create_message_handle3, downcast_message, message_handle_clone,
     MessageHandle, MessageHeaderHandle,
 };
 
@@ -17,7 +17,7 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_create(
     constants: *mut NetworkConstantsDto,
     vote: *mut VoteHandle,
 ) -> *mut MessageHandle {
-    create_message_handle(constants, |consts| {
+    create_message_handle3(constants, |consts| {
         let vote = (*vote).clone();
         ConfirmAck::new(consts, vote)
     })
@@ -43,7 +43,7 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_create2(
             Err(_) => {
                 *is_error = true;
                 //workaround to prevent nullptr:
-                ConfirmAck::new(&NetworkConstants::empty(), Arc::new(Vote::null()))
+                ConfirmAck::new(&Default::default(), Arc::new(Vote::null()))
             }
         }
     })

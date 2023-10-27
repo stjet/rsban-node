@@ -1,7 +1,4 @@
-use crate::{
-    config::NetworkConstants,
-    utils::{deserialize_block, BlockUniquer},
-};
+use crate::utils::{deserialize_block, BlockUniquer};
 use anyhow::Result;
 use rsnano_core::{
     serialized_block_size,
@@ -15,7 +12,7 @@ use std::{
     sync::Arc,
 };
 
-use super::{Message, MessageHeader, MessageType, MessageVisitor};
+use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 
 #[derive(Clone)]
 pub struct ConfirmReq {
@@ -25,8 +22,8 @@ pub struct ConfirmReq {
 }
 
 impl ConfirmReq {
-    pub fn with_block(constants: &NetworkConstants, block: Arc<BlockEnum>) -> Self {
-        let mut header = MessageHeader::new(MessageType::ConfirmReq, &constants.protocol_info());
+    pub fn with_block(protocol_info: &ProtocolInfo, block: Arc<BlockEnum>) -> Self {
+        let mut header = MessageHeader::new(MessageType::ConfirmReq, protocol_info);
         header.set_block_type(block.block_type());
 
         Self {
@@ -37,10 +34,10 @@ impl ConfirmReq {
     }
 
     pub fn with_roots_hashes(
-        constants: &NetworkConstants,
+        protocol_info: &ProtocolInfo,
         roots_hashes: Vec<(BlockHash, Root)>,
     ) -> Self {
-        let mut header = MessageHeader::new(MessageType::ConfirmReq, &constants.protocol_info());
+        let mut header = MessageHeader::new(MessageType::ConfirmReq, protocol_info);
         // not_a_block (1) block type for hashes + roots request
         header.set_block_type(BlockType::NotABlock);
 
@@ -227,8 +224,7 @@ mod tests {
     #[test]
     fn serialize_block() -> Result<()> {
         let block = Arc::new(StateBlockBuilder::new().build());
-        let constants = NetworkConstants::empty();
-        let confirm_req1 = ConfirmReq::with_block(&constants, block);
+        let confirm_req1 = ConfirmReq::with_block(&Default::default(), block);
         let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;
         assert_eq!(confirm_req1, confirm_req2);
         Ok(())
@@ -236,9 +232,8 @@ mod tests {
 
     #[test]
     fn serialze_roots_hashes() -> Result<()> {
-        let constants = NetworkConstants::empty();
         let roots_hashes = vec![(BlockHash::from(1), Root::from(2))];
-        let confirm_req1 = ConfirmReq::with_roots_hashes(&constants, roots_hashes);
+        let confirm_req1 = ConfirmReq::with_roots_hashes(&Default::default(), roots_hashes);
         let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;
         assert_eq!(confirm_req1, confirm_req2);
         Ok(())
@@ -246,12 +241,11 @@ mod tests {
 
     #[test]
     fn serialze_many_roots_hashes() -> Result<()> {
-        let constants = NetworkConstants::empty();
         let roots_hashes = (0..7)
             .into_iter()
             .map(|i| (BlockHash::from(i), Root::from(i + 1)))
             .collect();
-        let confirm_req1 = ConfirmReq::with_roots_hashes(&constants, roots_hashes);
+        let confirm_req1 = ConfirmReq::with_roots_hashes(&Default::default(), roots_hashes);
         let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;
         assert_eq!(confirm_req1, confirm_req2);
         Ok(())

@@ -1,5 +1,4 @@
-use super::{Message, MessageHeader, MessageType, MessageVisitor};
-use crate::config::NetworkConstants;
+use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 use anyhow::Result;
 use rsnano_core::utils::Stream;
 use std::any::Any;
@@ -10,9 +9,9 @@ pub struct BulkPush {
 }
 
 impl BulkPush {
-    pub fn new(constants: &NetworkConstants) -> Self {
+    pub fn new(protocol_info: &ProtocolInfo) -> Self {
         Self {
-            header: MessageHeader::new(MessageType::BulkPush, &constants.protocol_info()),
+            header: MessageHeader::new(MessageType::BulkPush, protocol_info),
         }
     }
 

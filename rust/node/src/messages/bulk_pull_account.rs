@@ -1,4 +1,4 @@
-use super::{Message, MessageHeader, MessageType, MessageVisitor};
+use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 use crate::config::NetworkConstants;
 use anyhow::Result;
 use num_traits::FromPrimitive;
@@ -25,9 +25,9 @@ pub struct BulkPullAccount {
 }
 
 impl BulkPullAccount {
-    pub fn new(constants: &NetworkConstants) -> Self {
+    pub fn new(protocol_info: &ProtocolInfo) -> Self {
         Self {
-            header: MessageHeader::new(MessageType::BulkPullAccount, &constants.protocol_info()),
+            header: MessageHeader::new(MessageType::BulkPullAccount, protocol_info),
             account: Account::zero(),
             minimum_amount: Amount::zero(),
             flags: BulkPullAccountFlags::PendingHashAndAmount,

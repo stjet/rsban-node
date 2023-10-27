@@ -481,8 +481,11 @@ impl HandshakeMessageVisitorImpl {
     fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool) {
         let response = self.prepare_handshake_response(query, v2);
         let own_query = self.prepare_handshake_query(&self.server.remote_endpoint());
-        let handshake_response =
-            NodeIdHandshake::new(&self.network_constants, own_query, Some(response));
+        let handshake_response = NodeIdHandshake::new(
+            &self.network_constants.protocol_info(),
+            own_query,
+            Some(response),
+        );
 
         let mut stream = MemoryStream::new();
         handshake_response.serialize(&mut stream).unwrap();

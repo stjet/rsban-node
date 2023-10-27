@@ -2,7 +2,7 @@ use rsnano_core::Account;
 use rsnano_node::messages::FrontierReq;
 
 use super::{
-    create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
+    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
     MessageHandle, MessageHeaderHandle,
 };
 use crate::{copy_account_bytes, NetworkConstantsDto, StringDto};
@@ -11,7 +11,7 @@ use crate::{copy_account_bytes, NetworkConstantsDto, StringDto};
 pub unsafe extern "C" fn rsn_message_frontier_req_create(
     constants: *mut NetworkConstantsDto,
 ) -> *mut MessageHandle {
-    create_message_handle(constants, FrontierReq::new)
+    create_message_handle3(constants, FrontierReq::new)
 }
 
 #[no_mangle]

@@ -1,9 +1,9 @@
 use std::net::SocketAddr;
 
-use rsnano_node::messages::Keepalive;
+use rsnano_node::messages::{Keepalive, ProtocolInfo};
 
 use super::{
-    create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
+    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 use crate::{transport::EndpointDto, NetworkConstantsDto, StringDto};
@@ -13,11 +13,15 @@ pub unsafe extern "C" fn rsn_message_keepalive_create(
     constants: *mut NetworkConstantsDto,
     version_using: i16,
 ) -> *mut MessageHandle {
-    create_message_handle(constants, |consts| {
+    create_message_handle3(constants, |protocol_info| {
         if version_using < 0 {
-            Keepalive::new(consts)
+            Keepalive::new(protocol_info)
         } else {
-            Keepalive::with_version_using(consts, version_using as u8)
+            let protocol_info = ProtocolInfo {
+                version_using: version_using as u8,
+                ..*protocol_info
+            };
+            Keepalive::new(&protocol_info)
         }
     })
 }

@@ -6,7 +6,7 @@ use rsnano_core::{
 };
 use std::{any::Any, fmt::Display, mem::size_of};
 
-use super::{Message, MessageHeader, MessageType, MessageVisitor};
+use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FrontierReq {
@@ -17,9 +17,9 @@ pub struct FrontierReq {
 }
 
 impl FrontierReq {
-    pub fn new(constants: &NetworkConstants) -> Self {
+    pub fn new(protocol_info: &ProtocolInfo) -> Self {
         Self {
-            header: MessageHeader::new(MessageType::FrontierReq, &constants.protocol_info()),
+            header: MessageHeader::new(MessageType::FrontierReq, protocol_info),
             start: Account::zero(),
             age: 0,
             count: 0,
@@ -121,8 +121,7 @@ mod tests {
 
     #[test]
     fn serialize() -> Result<()> {
-        let constants = NetworkConstants::empty();
-        let mut request1 = FrontierReq::new(&constants);
+        let mut request1 = FrontierReq::new(&Default::default());
         request1.start = Account::from(1);
         request1.age = 2;
         request1.count = 3;

@@ -594,7 +594,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
     fn ongoing_keepalive(&self) {
         let mut peers = [SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0); 8];
         self.random_fill(&mut peers);
-        let message = Keepalive::new_with_peers(&self.network.network, peers);
+        let message = Keepalive::new_with_peers(&self.network.network.protocol_info(), peers);
         // Wake up channels
         let send_list = {
             let guard = self.tcp_channels.lock().unwrap();
@@ -764,8 +764,11 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             tcp.set_last_packet_received(SystemTime::now());
 
             let response = this_l.prepare_handshake_response(query, handshake.is_v2());
-            let handshake_response =
-                NodeIdHandshake::new(&this_l.network.network, None, Some(response));
+            let handshake_response = NodeIdHandshake::new(
+                &this_l.network.network.protocol_info(),
+                None,
+                Some(response),
+            );
 
             if this_l
                 .node_config
@@ -899,7 +902,11 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 // TCP node ID handshake
                 let query = this_l.prepare_handshake_query(endpoint);
-                let message = NodeIdHandshake::new(&this_l.network.network, query.clone(), None);
+                let message = NodeIdHandshake::new(
+                    &this_l.network.network.protocol_info(),
+                    query.clone(),
+                    None,
+                );
 
                 if this_l
                     .node_config

@@ -4,7 +4,7 @@ use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
 use rsnano_node::messages::ConfirmReq;
 
 use super::{
-    create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
+    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 use num_traits::FromPrimitive;
@@ -23,10 +23,10 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
     roots_hashes: *const HashRootPair,
     roots_hashes_count: usize,
 ) -> *mut MessageHandle {
-    create_message_handle(constants, |consts| {
+    create_message_handle3(constants, |protocol_info| {
         if !block.is_null() {
             let block = Arc::clone((*block).deref());
-            ConfirmReq::with_block(consts, block)
+            ConfirmReq::with_block(protocol_info, block)
         } else {
             let dtos = std::slice::from_raw_parts(roots_hashes, roots_hashes_count);
             let roots_hashes = dtos
@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
                     )
                 })
                 .collect();
-            ConfirmReq::with_roots_hashes(consts, roots_hashes)
+            ConfirmReq::with_roots_hashes(protocol_info, roots_hashes)
         }
     })
 }

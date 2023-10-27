@@ -1,5 +1,4 @@
-use super::{Message, MessageHeader, MessageType, MessageVisitor};
-use crate::config::NetworkConstants;
+use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 use anyhow::Result;
 use rsnano_core::utils::Stream;
 use std::{
@@ -15,30 +14,17 @@ pub struct Keepalive {
 }
 
 impl Keepalive {
-    pub fn new(constants: &NetworkConstants) -> Self {
+    pub fn new(protocol_info: &ProtocolInfo) -> Self {
         Self {
-            header: MessageHeader::new(MessageType::Keepalive, &constants.protocol_info()),
+            header: MessageHeader::new(MessageType::Keepalive, protocol_info),
             peers: empty_peers(),
         }
     }
 
-    pub fn new_with_peers(constants: &NetworkConstants, peers: [SocketAddr; 8]) -> Self {
+    pub fn new_with_peers(protocol_info: &ProtocolInfo, peers: [SocketAddr; 8]) -> Self {
         Self {
-            header: MessageHeader::new(MessageType::Keepalive, &constants.protocol_info()),
+            header: MessageHeader::new(MessageType::Keepalive, protocol_info),
             peers,
-        }
-    }
-
-    pub fn with_version_using(constants: &NetworkConstants, version_using: u8) -> Self {
-        Self {
-            header: MessageHeader {
-                message_type: MessageType::Keepalive,
-                version_using,
-                version_max: constants.protocol_version,
-                version_min: constants.protocol_version_min,
-                ..Default::default()
-            },
-            peers: empty_peers(),
         }
     }
 
@@ -155,11 +141,11 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::{messages::ProtocolInfo, DEV_NETWORK_PARAMS};
+    use crate::messages::ProtocolInfo;
 
     #[test]
     fn serialize_no_peers() -> Result<()> {
-        let request1 = Keepalive::new(&DEV_NETWORK_PARAMS.network);
+        let request1 = Keepalive::new(&ProtocolInfo::dev_network());
         let mut stream = MemoryStream::new();
         request1.serialize(&mut stream)?;
         let header = MessageHeader::from_stream(&mut stream)?;
@@ -170,7 +156,7 @@ mod tests {
 
     #[test]
     fn serialize_peers() -> Result<()> {
-        let mut request1 = Keepalive::new(&DEV_NETWORK_PARAMS.network);
+        let mut request1 = Keepalive::new(&ProtocolInfo::dev_network());
 
         let mut peers = request1.peers().clone();
         peers[0] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 10000);
@@ -187,7 +173,7 @@ mod tests {
     #[test]
     fn keepalive_with_no_peers_to_string() {
         let hdr = MessageHeader::new(MessageType::Keepalive, &ProtocolInfo::dev_network());
-        let keepalive = Keepalive::new2(&DEV_NETWORK_PARAMS.network);
+        let keepalive = Keepalive::new(&ProtocolInfo::dev_network());
         let expected =
             hdr.to_string() + "\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0";
         assert_eq!(keepalive.to_string(), expected);
@@ -197,7 +183,7 @@ mod tests {
     fn keepalive_string() {
         let hdr = MessageHeader::new(MessageType::Keepalive, &ProtocolInfo::dev_network());
 
-        let mut keepalive = Keepalive::new(&DEV_NETWORK_PARAMS.network);
+        let mut keepalive = Keepalive::new(&ProtocolInfo::dev_network());
         keepalive.peers[1] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 45);
         keepalive.peers[2] = SocketAddr::new(
             IpAddr::from_str("2001:db8:85a3:8d3:1319:8a2e:370:7348").unwrap(),

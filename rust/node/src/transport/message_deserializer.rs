@@ -326,7 +326,7 @@ mod tests {
     #[test]
     fn exact_confirm_req() {
         let block = Arc::new(BlockBuilder::legacy_send().build());
-        let message = ConfirmReq::with_block(&STUB_NETWORK_CONSTANTS, block);
+        let message = ConfirmReq::with_block(&Default::default(), block);
         test_deserializer(&message);
     }
 
@@ -339,12 +339,12 @@ mod tests {
 
     #[test]
     fn exact_keepalive() {
-        test_deserializer(&Keepalive::new(&STUB_NETWORK_CONSTANTS));
+        test_deserializer(&Keepalive::new(&ProtocolInfo::dev_network()));
     }
 
     #[test]
     fn exact_frontier_req() {
-        test_deserializer(&FrontierReq::new(&STUB_NETWORK_CONSTANTS));
+        test_deserializer(&FrontierReq::new(&Default::default()));
     }
 
     #[test]
@@ -367,18 +367,18 @@ mod tests {
 
     #[test]
     fn exact_bulk_pull_account() {
-        test_deserializer(&BulkPullAccount::new(&STUB_NETWORK_CONSTANTS));
+        test_deserializer(&BulkPullAccount::new(&ProtocolInfo::dev_network()));
     }
 
     #[test]
     fn exact_bulk_push() {
-        test_deserializer(&BulkPush::new(&STUB_NETWORK_CONSTANTS));
+        test_deserializer(&BulkPush::new(&ProtocolInfo::dev_network()));
     }
 
     #[test]
     fn exact_node_id_handshake() {
         test_deserializer(&NodeIdHandshake::new(
-            &STUB_NETWORK_CONSTANTS,
+            &ProtocolInfo::dev_network(),
             Some(NodeIdHandshakeQuery { cookie: [1; 32] }),
             None,
         ));
@@ -445,7 +445,7 @@ mod tests {
             vec![BlockHash::from(5)],
         );
 
-        ConfirmAck::new(&STUB_NETWORK_CONSTANTS, Arc::new(vote))
+        ConfirmAck::new(&ProtocolInfo::dev_network(), Arc::new(vote))
     }
 
     fn create_read_op(input_source: Vec<u8>) -> ReadQuery {

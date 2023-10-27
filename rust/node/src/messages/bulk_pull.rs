@@ -22,7 +22,7 @@ impl BulkPull {
 
     pub fn new(protocol_info: &ProtocolInfo) -> Self {
         Self {
-            header: MessageHeader::new(MessageType::BulkPull, &protocol_info),
+            header: MessageHeader::new(MessageType::BulkPull, protocol_info),
             start: HashOrAccount::zero(),
             end: BlockHash::zero(),
             count: 0,

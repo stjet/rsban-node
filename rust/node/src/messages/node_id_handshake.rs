@@ -1,8 +1,5 @@
-use super::{Message, MessageHeader, MessageType, MessageVisitor};
-use crate::{
-    config::{NetworkConstants, STUB_NETWORK_CONSTANTS},
-    transport::Cookie,
-};
+use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
+use crate::{config::NetworkConstants, transport::Cookie};
 use anyhow::Result;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
@@ -144,12 +141,11 @@ pub struct NodeIdHandshake {
 
 impl NodeIdHandshake {
     pub fn new(
-        constants: &NetworkConstants,
+        protocol_info: &ProtocolInfo,
         query: Option<NodeIdHandshakeQuery>,
         response: Option<NodeIdHandshakeResponse>,
     ) -> Self {
-        let mut header =
-            MessageHeader::new(MessageType::NodeIdHandshake, &constants.protocol_info());
+        let mut header = MessageHeader::new(MessageType::NodeIdHandshake, protocol_info);
 
         if query.is_some() {
             header.set_flag(Self::QUERY_FLAG as u8);
@@ -230,7 +226,7 @@ impl NodeIdHandshake {
 
     pub fn test_query() -> Self {
         let query = NodeIdHandshakeQuery { cookie: [42; 32] };
-        Self::new(&STUB_NETWORK_CONSTANTS, Some(query), None)
+        Self::new(&ProtocolInfo::dev_network(), Some(query), None)
     }
 
     pub fn test_response_v1() -> Self {
@@ -239,7 +235,7 @@ impl NodeIdHandshake {
             signature: Signature::from_bytes([42; 64]),
             v2: None,
         };
-        Self::new(&STUB_NETWORK_CONSTANTS, None, Some(response))
+        Self::new(&ProtocolInfo::dev_network(), None, Some(response))
     }
 
     pub fn test_response_v2() -> Self {
@@ -251,7 +247,7 @@ impl NodeIdHandshake {
                 genesis: BlockHash::from(3),
             }),
         };
-        NodeIdHandshake::new(&STUB_NETWORK_CONSTANTS, None, Some(response))
+        NodeIdHandshake::new(&ProtocolInfo::dev_network(), None, Some(response))
     }
 }
 

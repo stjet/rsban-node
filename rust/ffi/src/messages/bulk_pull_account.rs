@@ -2,7 +2,7 @@ use crate::{copy_account_bytes, copy_amount_bytes, NetworkConstantsDto, StringDt
 use rsnano_node::messages::{BulkPullAccount, BulkPullAccountFlags};
 
 use super::{
-    create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
+    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
     MessageHandle, MessageHeaderHandle,
 };
 use num_traits::FromPrimitive;
@@ -12,7 +12,7 @@ use rsnano_core::{Account, Amount};
 pub unsafe extern "C" fn rsn_message_bulk_pull_account_create(
     constants: *mut NetworkConstantsDto,
 ) -> *mut MessageHandle {
-    create_message_handle(constants, BulkPullAccount::new)
+    create_message_handle3(constants, BulkPullAccount::new)
 }
 
 #[no_mangle]

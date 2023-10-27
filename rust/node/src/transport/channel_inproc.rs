@@ -20,7 +20,7 @@ use crate::{
 };
 
 use super::{
-    message_deserializer::{AsyncMessageDeserializer, BufferReader},
+    message_deserializer::{AsyncBufferReader, AsyncMessageDeserializer},
     BandwidthLimitType, BufferDropPolicy, Channel, ChannelEnum, NetworkFilter,
     OutboundBandwidthLimiter, TrafficType, WriteCallback,
 };
@@ -234,7 +234,7 @@ impl VecBufferReader {
 }
 
 #[async_trait]
-impl BufferReader for VecBufferReader {
+impl AsyncBufferReader for VecBufferReader {
     async fn read(&self, buffer: Arc<Mutex<Vec<u8>>>, count: usize) -> anyhow::Result<()> {
         let pos = self.position.load(Ordering::SeqCst);
         if count > self.buffer.len() - pos {

@@ -15,11 +15,11 @@ pub type ReadQuery =
     Box<dyn Fn(Arc<Mutex<Vec<u8>>>, usize, Box<dyn FnOnce(ErrorCode, usize) + Send>) + Send + Sync>;
 
 #[async_trait]
-pub trait BufferReader {
+pub trait AsyncBufferReader {
     async fn read(&self, buffer: Arc<Mutex<Vec<u8>>>, count: usize) -> anyhow::Result<()>;
 }
 
-pub struct AsyncMessageDeserializer<T: BufferReader + Send> {
+pub struct AsyncMessageDeserializer<T: AsyncBufferReader + Send> {
     deserializer_impl: MessageDeserializerImpl,
     network_constants: NetworkConstants,
     read_buffer: Arc<Mutex<Vec<u8>>>,
@@ -27,7 +27,7 @@ pub struct AsyncMessageDeserializer<T: BufferReader + Send> {
     buffer_reader: T,
 }
 
-impl<T: BufferReader + Send> AsyncMessageDeserializer<T> {
+impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
     pub fn new(
         network_constants: NetworkConstants,
         network_filter: Arc<NetworkFilter>,

@@ -15,7 +15,7 @@ use std::{
 use tokio::{net::TcpListener, task::spawn_blocking};
 
 use super::{
-    message_deserializer::BufferReader,
+    message_deserializer::AsyncBufferReader,
     tcp_stream::TcpStream,
     write_queue::{WriteCallback, WriteQueue},
     TcpStreamFactory, TrafficType,
@@ -1057,7 +1057,7 @@ impl SocketExtensions for Arc<Socket> {
 }
 
 #[async_trait]
-impl BufferReader for Arc<Socket> {
+impl AsyncBufferReader for Arc<Socket> {
     async fn read(&self, buffer: Arc<Mutex<Vec<u8>>>, count: usize) -> anyhow::Result<()> {
         // Increase timeout to receive TCP header (idle server socket)
         let prev_timeout = self.default_timeout_value();

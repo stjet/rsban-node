@@ -142,98 +142,156 @@ impl BulkPushServerImpl {
     }
 
     fn received_type(&self, server_impl: Arc<Mutex<Self>>) {
+        let stats = Arc::clone(&self.stats);
         let server_impl2 = Arc::clone(&server_impl);
         let block_type = { BlockType::from_u8(self.receive_buffer.lock().unwrap()[0]) };
+        let socket = Arc::clone(&self.connection.socket);
+        let buffer = Arc::clone(&self.receive_buffer);
+
         match block_type {
-            Some(BlockType::LegacySend) => {
-                self.stats
-                    .inc(StatType::Bootstrap, DetailType::Send, Direction::In);
-                self.connection.socket.async_read(
-                    Arc::clone(&self.receive_buffer),
-                    SendBlock::serialized_size(),
-                    Box::new(move |ec, len| {
+            Some(BlockType::NotABlock) => {
+                self.connection.start();
+                return;
+            }
+            Some(BlockType::Invalid) | None => {
+                if self.enable_network_logging {
+                    self.logger.try_log("Unknown type received as block type");
+                }
+                return;
+            }
+            _ => {}
+        }
+
+        self.async_rt.tokio.spawn(async move {
+            match block_type {
+                Some(BlockType::LegacySend) => {
+                    stats.inc(StatType::Bootstrap, DetailType::Send, Direction::In);
+                    let result = socket.read_raw(buffer, SendBlock::serialized_size()).await;
+                    let ec;
+                    let len;
+                    match result {
+                        Ok(()) => {
+                            ec = ErrorCode::new();
+                            len = SendBlock::serialized_size();
+                        }
+                        Err(_) => {
+                            ec = ErrorCode::fault();
+                            len = 0;
+                        }
+                    }
+
+                    spawn_blocking(Box::new(move || {
                         server_impl.lock().unwrap().received_block(
                             server_impl2,
                             ec,
                             len,
                             BlockType::LegacySend,
                         );
-                    }),
-                );
-            }
-            Some(BlockType::LegacyReceive) => {
-                self.stats
-                    .inc(StatType::Bootstrap, DetailType::Receive, Direction::In);
-                self.connection.socket.async_read(
-                    Arc::clone(&self.receive_buffer),
-                    ReceiveBlock::serialized_size(),
-                    Box::new(move |ec, len| {
+                    }));
+                }
+                Some(BlockType::LegacyReceive) => {
+                    stats.inc(StatType::Bootstrap, DetailType::Receive, Direction::In);
+                    let result = socket
+                        .read_raw(buffer, ReceiveBlock::serialized_size())
+                        .await;
+                    let ec;
+                    let len;
+                    match result {
+                        Ok(()) => {
+                            ec = ErrorCode::new();
+                            len = SendBlock::serialized_size();
+                        }
+                        Err(_) => {
+                            ec = ErrorCode::fault();
+                            len = 0;
+                        }
+                    }
+                    spawn_blocking(Box::new(move || {
                         server_impl.lock().unwrap().received_block(
                             server_impl2,
                             ec,
                             len,
                             BlockType::LegacyReceive,
                         );
-                    }),
-                );
-            }
-            Some(BlockType::LegacyOpen) => {
-                self.stats
-                    .inc(StatType::Bootstrap, DetailType::Open, Direction::In);
-                self.connection.socket.async_read(
-                    Arc::clone(&self.receive_buffer),
-                    OpenBlock::serialized_size(),
-                    Box::new(move |ec, len| {
+                    }));
+                }
+                Some(BlockType::LegacyOpen) => {
+                    stats.inc(StatType::Bootstrap, DetailType::Open, Direction::In);
+                    let result = socket.read_raw(buffer, OpenBlock::serialized_size()).await;
+                    let ec;
+                    let len;
+                    match result {
+                        Ok(()) => {
+                            ec = ErrorCode::new();
+                            len = SendBlock::serialized_size();
+                        }
+                        Err(_) => {
+                            ec = ErrorCode::fault();
+                            len = 0;
+                        }
+                    }
+                    spawn_blocking(Box::new(move || {
                         server_impl.lock().unwrap().received_block(
                             server_impl2,
                             ec,
                             len,
                             BlockType::LegacyOpen,
                         );
-                    }),
-                );
-            }
-            Some(BlockType::LegacyChange) => {
-                self.stats
-                    .inc(StatType::Bootstrap, DetailType::Change, Direction::In);
-                self.connection.socket.async_read(
-                    Arc::clone(&self.receive_buffer),
-                    ChangeBlock::serialized_size(),
-                    Box::new(move |ec, len| {
+                    }));
+                }
+                Some(BlockType::LegacyChange) => {
+                    stats.inc(StatType::Bootstrap, DetailType::Change, Direction::In);
+                    let result = socket
+                        .read_raw(buffer, ChangeBlock::serialized_size())
+                        .await;
+                    let ec;
+                    let len;
+                    match result {
+                        Ok(()) => {
+                            ec = ErrorCode::new();
+                            len = SendBlock::serialized_size();
+                        }
+                        Err(_) => {
+                            ec = ErrorCode::fault();
+                            len = 0;
+                        }
+                    }
+                    spawn_blocking(Box::new(move || {
                         server_impl.lock().unwrap().received_block(
                             server_impl2,
                             ec,
                             len,
                             BlockType::LegacyChange,
                         );
-                    }),
-                );
-            }
-            Some(BlockType::State) => {
-                self.stats
-                    .inc(StatType::Bootstrap, DetailType::StateBlock, Direction::In);
-                self.connection.socket.async_read(
-                    Arc::clone(&self.receive_buffer),
-                    StateBlock::serialized_size(),
-                    Box::new(move |ec, len| {
+                    }));
+                }
+                Some(BlockType::State) => {
+                    stats.inc(StatType::Bootstrap, DetailType::StateBlock, Direction::In);
+                    let result = socket.read_raw(buffer, StateBlock::serialized_size()).await;
+                    let ec;
+                    let len;
+                    match result {
+                        Ok(()) => {
+                            ec = ErrorCode::new();
+                            len = SendBlock::serialized_size();
+                        }
+                        Err(_) => {
+                            ec = ErrorCode::fault();
+                            len = 0;
+                        }
+                    }
+                    spawn_blocking(Box::new(move || {
                         server_impl.lock().unwrap().received_block(
                             server_impl2,
                             ec,
                             len,
                             BlockType::State,
                         );
-                    }),
-                );
-            }
-            Some(BlockType::NotABlock) => {
-                self.connection.start();
-            }
-            Some(BlockType::Invalid) | None => {
-                if self.enable_network_logging {
-                    self.logger.try_log("Unknown type received as block type");
+                    }));
                 }
+                Some(BlockType::NotABlock) | Some(BlockType::Invalid) | None => unreachable!(),
             }
-        }
+        });
     }
 
     fn received_block(

@@ -58,6 +58,23 @@ impl ParseStatus {
     }
 }
 
+pub fn validate_header(
+    header: &MessageHeader,
+    expected_protocol: &ProtocolInfo,
+) -> Result<(), ParseStatus> {
+    if header.network != expected_protocol.network {
+        Err(ParseStatus::InvalidNetwork)
+    } else if header.version_using < expected_protocol.version_min {
+        Err(ParseStatus::OutdatedVersion)
+    } else if !header.is_valid_message_type() {
+        Err(ParseStatus::InvalidHeader)
+    } else if header.payload_length() > MAX_MESSAGE_SIZE {
+        Err(ParseStatus::MessageSizeTooBig)
+    } else {
+        Ok(())
+    }
+}
+
 fn at_end(stream: &mut impl Stream) -> bool {
     stream.read_u8().is_err()
 }

@@ -4,7 +4,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::{
     config::NetworkConstants,
-    messages::{Message, MessageHeader},
+    messages::{Message, MessageHeader, ProtocolInfo},
+    transport::validate_header,
     utils::{BlockUniquer, ErrorCode},
     voting::VoteUniquer,
 };
@@ -21,7 +22,7 @@ pub trait AsyncBufferReader {
 
 pub struct AsyncMessageDeserializer<T: AsyncBufferReader + Send> {
     deserializer_impl: MessageDeserializerImpl,
-    network_constants: NetworkConstants,
+    protocol_info: ProtocolInfo,
     read_buffer: Arc<Mutex<Vec<u8>>>,
     status: Mutex<ParseStatus>,
     buffer_reader: T,
@@ -42,7 +43,7 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
                 block_uniquer,
                 vote_uniquer,
             ),
-            network_constants,
+            protocol_info: network_constants.protocol_info(),
             status: Mutex::new(ParseStatus::None),
             read_buffer: Arc::new(Mutex::new(vec![0; MAX_MESSAGE_SIZE])),
             buffer_reader,
@@ -108,36 +109,14 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
     }
 
     async fn received_header(&self) -> Result<Option<Box<dyn Message>>, ParseStatus> {
-        let payload_size;
-        let header;
-        {
+        let header = {
             let buffer = self.read_buffer.lock().unwrap();
             let mut stream = StreamAdapter::new(&buffer[..MessageHeader::SERIALIZED_SIZE]);
+            MessageHeader::from_stream(&mut stream).map_err(|_| ParseStatus::InvalidHeader)?
+        };
 
-            header =
-                MessageHeader::from_stream(&mut stream).map_err(|_| ParseStatus::InvalidHeader)?;
-
-            if header.network != self.network_constants.current_network {
-                self.set_status(ParseStatus::InvalidNetwork);
-                return Err(ParseStatus::InvalidNetwork);
-            }
-            if header.version_using < self.network_constants.protocol_version_min {
-                self.set_status(ParseStatus::OutdatedVersion);
-                return Err(ParseStatus::OutdatedVersion);
-            }
-            if !header.is_valid_message_type() {
-                self.set_status(ParseStatus::InvalidHeader);
-                return Err(ParseStatus::InvalidHeader);
-            }
-
-            payload_size = header.payload_length();
-            if payload_size > MAX_MESSAGE_SIZE {
-                self.set_status(ParseStatus::MessageSizeTooBig);
-                return Err(ParseStatus::MessageSizeTooBig);
-            }
-            debug_assert!(payload_size <= buffer.capacity());
-        }
-
+        validate_header(&header, &self.protocol_info)?;
+        let payload_size = header.payload_length();
         if payload_size == 0 {
             // Payload size will be 0 for `bulk_push` & `telemetry_req` message type
             self.received_message(header, 0)
@@ -252,9 +231,13 @@ impl MessageDeserializerExt for Arc<MessageDeserializer> {
     }
 
     fn received_header(&self, callback: CallbackType) {
-        let buffer = self.read_buffer.lock().unwrap();
-        let mut stream = StreamAdapter::new(&buffer[..MessageHeader::SERIALIZED_SIZE]);
-        let header = match MessageHeader::from_stream(&mut stream) {
+        let header = {
+            let buffer = self.read_buffer.lock().unwrap();
+            let mut stream = StreamAdapter::new(&buffer[..MessageHeader::SERIALIZED_SIZE]);
+            MessageHeader::from_stream(&mut stream)
+        };
+
+        let header = match header {
             Ok(header) => header,
             Err(_) => {
                 callback(ErrorCode::fault(), None);
@@ -262,30 +245,13 @@ impl MessageDeserializerExt for Arc<MessageDeserializer> {
             }
         };
 
-        if header.network != self.network_constants.current_network {
-            self.set_status(ParseStatus::InvalidNetwork);
-            callback(ErrorCode::fault(), None);
-            return;
-        }
-        if header.version_using < self.network_constants.protocol_version_min {
-            self.set_status(ParseStatus::OutdatedVersion);
-            callback(ErrorCode::fault(), None);
-            return;
-        }
-        if !header.is_valid_message_type() {
-            self.set_status(ParseStatus::InvalidHeader);
+        if let Err(status) = validate_header(&header, &self.network_constants.protocol_info()) {
+            self.set_status(status);
             callback(ErrorCode::fault(), None);
             return;
         }
 
         let payload_size = header.payload_length();
-        if payload_size > MAX_MESSAGE_SIZE {
-            self.set_status(ParseStatus::MessageSizeTooBig);
-            callback(ErrorCode::fault(), None);
-            return;
-        }
-        debug_assert!(payload_size <= buffer.capacity());
-        drop(buffer);
 
         if payload_size == 0 {
             // Payload size will be 0 for `bulk_push` & `telemetry_req` message type

@@ -2,7 +2,7 @@ use rsnano_node::messages::Publish;
 use std::{ops::Deref, sync::Arc};
 
 use super::{
-    create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
+    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
@@ -12,9 +12,9 @@ pub unsafe extern "C" fn rsn_message_publish_create(
     constants: *mut NetworkConstantsDto,
     block: &BlockHandle,
 ) -> *mut MessageHandle {
-    create_message_handle(constants, |consts| {
+    create_message_handle3(constants, |protocol_info| {
         let block = Arc::clone((*block).deref());
-        Publish::new(consts, block)
+        Publish::new(protocol_info, block)
     })
 }
 

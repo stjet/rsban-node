@@ -1,5 +1,5 @@
 use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
-use crate::{config::NetworkConstants, transport::Cookie};
+use crate::transport::Cookie;
 use anyhow::Result;
 use rand::{thread_rng, Rng};
 use rsnano_core::{

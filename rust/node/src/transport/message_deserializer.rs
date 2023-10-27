@@ -333,7 +333,7 @@ mod tests {
     #[test]
     fn exact_publish() {
         let block = Arc::new(BlockBuilder::legacy_send().build());
-        let message = Publish::new(&STUB_NETWORK_CONSTANTS, block);
+        let message = Publish::new(&ProtocolInfo::dev_network(), block);
         test_deserializer(&message);
     }
 
@@ -349,7 +349,7 @@ mod tests {
 
     #[test]
     fn exact_telemetry_req() {
-        test_deserializer(&TelemetryReq::new(&STUB_NETWORK_CONSTANTS));
+        test_deserializer(&TelemetryReq::new(&Default::default()));
     }
 
     #[test]
@@ -357,7 +357,7 @@ mod tests {
         let mut data = TelemetryData::default();
         data.unknown_data.push(0xFF);
 
-        test_deserializer(&TelemetryAck::new(&STUB_NETWORK_CONSTANTS, data));
+        test_deserializer(&TelemetryAck::new(&Default::default(), data));
     }
 
     #[test]

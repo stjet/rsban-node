@@ -1,7 +1,4 @@
-use crate::{
-    config::NetworkConstants,
-    utils::{deserialize_block, BlockUniquer},
-};
+use crate::utils::{deserialize_block, BlockUniquer};
 use anyhow::Result;
 use rsnano_core::{utils::Stream, BlockEnum};
 use std::{
@@ -11,7 +8,7 @@ use std::{
     sync::Arc,
 };
 
-use super::{Message, MessageHeader, MessageType, MessageVisitor};
+use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 
 #[derive(Clone)]
 pub struct Publish {
@@ -21,8 +18,8 @@ pub struct Publish {
 }
 
 impl Publish {
-    pub fn new(constants: &NetworkConstants, block: Arc<BlockEnum>) -> Self {
-        let mut header = MessageHeader::new(MessageType::Publish, &constants.protocol_info());
+    pub fn new(protocol_info: &ProtocolInfo, block: Arc<BlockEnum>) -> Self {
+        let mut header = MessageHeader::new(MessageType::Publish, protocol_info);
         header.set_block_type(block.block_type());
 
         Self {
@@ -151,7 +148,7 @@ mod tests {
         let block = BlockBuilder::state().build();
         let block = Arc::new(block);
         let network = &DEV_NETWORK_PARAMS.network;
-        let publish1 = Publish::new(network, block);
+        let publish1 = Publish::new(&ProtocolInfo::dev_network(), block);
 
         let mut stream = MemoryStream::new();
         publish1.serialize(&mut stream).unwrap();

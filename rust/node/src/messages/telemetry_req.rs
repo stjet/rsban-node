@@ -1,5 +1,4 @@
-use super::{Message, MessageHeader, MessageType, MessageVisitor};
-use crate::config::NetworkConstants;
+use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 use anyhow::Result;
 use rsnano_core::utils::Stream;
 use std::{any::Any, fmt::Display};
@@ -10,9 +9,9 @@ pub struct TelemetryReq {
 }
 
 impl TelemetryReq {
-    pub fn new(constants: &NetworkConstants) -> Self {
+    pub fn new(protocol_info: &ProtocolInfo) -> Self {
         Self {
-            header: MessageHeader::new(MessageType::TelemetryReq, &constants.protocol_info()),
+            header: MessageHeader::new(MessageType::TelemetryReq, protocol_info),
         }
     }
 

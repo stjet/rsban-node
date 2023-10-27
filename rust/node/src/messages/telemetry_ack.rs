@@ -10,7 +10,7 @@ use std::fmt::Display;
 use std::mem::size_of;
 use std::time::{Duration, SystemTime};
 
-use super::{Message, MessageHeader, MessageType, MessageVisitor};
+use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 
 #[repr(u8)]
 #[derive(FromPrimitive, Copy, Clone, PartialEq, Eq)]
@@ -253,12 +253,12 @@ pub struct TelemetryAck {
 impl TelemetryAck {
     const SIZE_MASK: u16 = 0x3ff;
 
-    pub fn new(constants: &NetworkConstants, data: TelemetryData) -> Self {
+    pub fn new(protocol_info: &ProtocolInfo, data: TelemetryData) -> Self {
         debug_assert!(
             TelemetryData::serialized_size_of_known_data() + data.unknown_data.len()
                 <= TelemetryAck::SIZE_MASK as usize
         ); // Maximum size the mask allows
-        let mut header = MessageHeader::new(MessageType::TelemetryAck, &constants.protocol_info());
+        let mut header = MessageHeader::new(MessageType::TelemetryAck, protocol_info);
         header.extensions.data &= !TelemetryAck::SIZE_MASK;
         header.extensions.data |=
             TelemetryData::serialized_size_of_known_data() as u16 + data.unknown_data.len() as u16;

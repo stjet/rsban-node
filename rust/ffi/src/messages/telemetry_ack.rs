@@ -8,7 +8,7 @@ use crate::{
 use rsnano_node::messages::{TelemetryAck, TelemetryData};
 
 use super::{
-    create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
+    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 
@@ -358,7 +358,9 @@ pub unsafe extern "C" fn rsn_message_telemetry_ack_create(
     data: *const TelemetryDataHandle,
 ) -> *mut MessageHandle {
     let data = (*data).0.clone();
-    create_message_handle(constants, move |consts| TelemetryAck::new(consts, data))
+    create_message_handle3(constants, move |protocol_info| {
+        TelemetryAck::new(protocol_info, data)
+    })
 }
 
 #[no_mangle]

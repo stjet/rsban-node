@@ -28,6 +28,5 @@ public:
 	virtual nano::store::iterator<nano::account, nano::account_info> begin (store::transaction const &, nano::account const &) const = 0;
 	virtual nano::store::iterator<nano::account, nano::account_info> begin (store::transaction const &) const = 0;
 	virtual nano::store::iterator<nano::account, nano::account_info> end () const = 0;
-	virtual void for_each_par (std::function<void (store::read_transaction const &, nano::store::iterator<nano::account, nano::account_info>, nano::store::iterator<nano::account, nano::account_info>)> const &) const = 0;
 };
 } // namespace nano::store

@@ -23,7 +23,6 @@ public:
 	nano::store::iterator<nano::account, nano::account_info> begin (nano::store::transaction const & transaction_a, nano::account const & account_a) const override;
 	nano::store::iterator<nano::account, nano::account_info> begin (nano::store::transaction const & transaction_a) const override;
 	nano::store::iterator<nano::account, nano::account_info> end () const override;
-	void for_each_par (std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::account, nano::account_info>, nano::store::iterator<nano::account, nano::account_info>)> const & action_a) const override;
 
 private:
 	rsnano::LmdbAccountStoreHandle * handle;

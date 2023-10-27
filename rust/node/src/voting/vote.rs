@@ -2,7 +2,7 @@ use anyhow::Result;
 use rsnano_core::{
     sign_message,
     utils::{Deserialize, PropertyTreeWriter, SerdePropertyTree, Serialize, Stream},
-    validate_message, Account, BlockHash, BlockHashBuilder, FullHash, RawKey, Signature,
+    validate_message, Account, BlockHash, BlockHashBuilder, FullHash, KeyPair, RawKey, Signature,
 };
 use std::time::Duration;
 
@@ -47,6 +47,18 @@ impl Vote {
         };
         result.signature = sign_message(prv, &result.voting_account, result.hash().as_bytes());
         result
+    }
+
+    pub fn create_test_instance() -> Self {
+        let key = KeyPair::new();
+
+        Self::new(
+            key.public_key(),
+            &key.private_key(),
+            1,
+            2,
+            vec![BlockHash::from(5)],
+        )
     }
 
     /// Check if timestamp represents a final vote

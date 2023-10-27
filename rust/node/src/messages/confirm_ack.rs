@@ -53,6 +53,11 @@ impl ConfirmAck {
         })
     }
 
+    pub fn create_test_instance() -> Self {
+        let vote = Vote::create_test_instance();
+        Self::new(&ProtocolInfo::dev_network(), Arc::new(vote))
+    }
+
     pub fn vote(&self) -> Option<&Arc<Vote>> {
         self.vote.as_ref()
     }
@@ -151,11 +156,8 @@ impl Display for ConfirmAck {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::{utils::MemoryStream, BlockHash, KeyPair};
-
-    use crate::config::NetworkConstants;
-
     use super::*;
+    use rsnano_core::{utils::MemoryStream, BlockHash, KeyPair};
 
     #[test]
     fn serialize() -> Result<()> {

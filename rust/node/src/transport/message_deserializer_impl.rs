@@ -292,3 +292,117 @@ impl MessageDeserializerImpl {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::STUB_NETWORK_CONSTANTS;
+    use rsnano_core::BlockBuilder;
+
+    #[test]
+    fn exact_confirm_ack() {
+        test_deserializer(&ConfirmAck::create_test_instance());
+    }
+
+    #[test]
+    fn exact_confirm_req() {
+        let block = Arc::new(BlockBuilder::legacy_send().build());
+        let message = ConfirmReq::with_block(&Default::default(), block);
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_publish() {
+        let block = Arc::new(BlockBuilder::legacy_send().build());
+        let message = Publish::new(&ProtocolInfo::dev_network(), block);
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_keepalive() {
+        test_deserializer(&Keepalive::new(&ProtocolInfo::dev_network()));
+    }
+
+    #[test]
+    fn exact_frontier_req() {
+        test_deserializer(&FrontierReq::new(&Default::default()));
+    }
+
+    #[test]
+    fn exact_telemetry_req() {
+        test_deserializer(&TelemetryReq::new(&Default::default()));
+    }
+
+    #[test]
+    fn exact_telemetry_ack() {
+        let mut data = TelemetryData::default();
+        data.unknown_data.push(0xFF);
+
+        test_deserializer(&TelemetryAck::new(&Default::default(), data));
+    }
+
+    #[test]
+    fn exact_bulk_pull() {
+        test_deserializer(&BulkPull::new(&ProtocolInfo::dev_network()));
+    }
+
+    #[test]
+    fn exact_bulk_pull_account() {
+        test_deserializer(&BulkPullAccount::new(&ProtocolInfo::dev_network()));
+    }
+
+    #[test]
+    fn exact_bulk_push() {
+        test_deserializer(&BulkPush::new(&ProtocolInfo::dev_network()));
+    }
+
+    #[test]
+    fn exact_node_id_handshake() {
+        test_deserializer(&NodeIdHandshake::new(
+            &ProtocolInfo::dev_network(),
+            Some(NodeIdHandshakeQuery { cookie: [1; 32] }),
+            None,
+        ));
+    }
+
+    #[test]
+    fn exact_asc_pull_req() {
+        let mut message = AscPullReq::new(&ProtocolInfo::dev_network());
+        message
+            .request_account_info(AccountInfoReqPayload::test_data())
+            .unwrap();
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_asc_pull_ack() {
+        let mut message = AscPullAck::new(&ProtocolInfo::dev_network());
+        message
+            .request_account_info(AccountInfoAckPayload::test_data())
+            .unwrap();
+        test_deserializer(&message);
+    }
+
+    fn test_deserializer(original_message: &dyn Message) {
+        let network_filter = Arc::new(NetworkFilter::new(1));
+        let block_uniquer = Arc::new(BlockUniquer::new());
+        let vote_uniquer = Arc::new(VoteUniquer::new());
+
+        let deserializer = Arc::new(MessageDeserializerImpl::new(
+            STUB_NETWORK_CONSTANTS.clone(),
+            network_filter,
+            block_uniquer,
+            vote_uniquer,
+        ));
+
+        let original_bytes = original_message.to_bytes();
+        let mut stream = StreamAdapter::new(&original_bytes);
+        let deserialized_header = MessageHeader::from_stream(&mut stream).unwrap();
+
+        let deserialized_msg = deserializer
+            .deserialize(deserialized_header, stream.remaining())
+            .unwrap();
+
+        assert_eq!(deserialized_msg.to_bytes(), original_bytes);
+    }
+}

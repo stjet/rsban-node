@@ -186,6 +186,10 @@ impl<'a> StreamAdapter<'a> {
             read_index: 0,
         }
     }
+
+    pub fn remaining(&self) -> &[u8] {
+        &self.bytes[self.read_index..]
+    }
 }
 
 impl<'a> Stream for StreamAdapter<'a> {

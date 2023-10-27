@@ -1,7 +1,7 @@
 use crate::{
     core::BlockUniquerHandle,
     transport::{EndpointDto, NetworkFilterHandle, SocketHandle, TcpMessageManagerHandle},
-    utils::{LoggerHandle, LoggerMT},
+    utils::{AsyncRuntimeHandle, LoggerHandle, LoggerMT},
     voting::VoteUniquerHandle,
     NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
 };
@@ -40,6 +40,7 @@ pub struct BootstrapServerWeakHandle(Weak<TcpServer>);
 
 #[repr(C)]
 pub struct CreateTcpServerParams {
+    pub async_rt: *mut AsyncRuntimeHandle,
     pub socket: *mut SocketHandle,
     pub config: *const NodeConfigDto,
     pub logger: *mut LoggerHandle,
@@ -62,6 +63,7 @@ pub struct CreateTcpServerParams {
 pub unsafe extern "C" fn rsn_bootstrap_server_create(
     params: &CreateTcpServerParams,
 ) -> *mut TcpServerHandle {
+    let async_rt = Arc::clone(&(*params.async_rt).0);
     let socket = Arc::clone(&(*params.socket));
     let config = Arc::new(NodeConfig::try_from(&*params.config).unwrap());
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(params.logger)));
@@ -74,6 +76,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let vote_uniquer = Arc::clone(&*params.vote_uniquer);
     let tcp_message_manager = Arc::clone(&*params.tcp_message_manager);
     let mut server = TcpServer::new(
+        async_rt,
         socket,
         config,
         logger,

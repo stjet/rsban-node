@@ -20,7 +20,7 @@ std::shared_ptr<nano::transport::tcp_server> create_bootstrap_server (const std:
 
 	auto req_resp_visitor_factory = std::make_shared<nano::transport::request_response_visitor_factory> (*node);
 	return std::make_shared<nano::transport::tcp_server> (
-	node->io_ctx, socket, node->logger,
+	node->async_rt, socket, node->logger,
 	*node->stats, node->flags, *node->config,
 	node->tcp_listener,
 	req_resp_visitor_factory,
@@ -1657,7 +1657,7 @@ TEST (frontier_req_response, DISABLED_destruction)
 			auto & node = *system.nodes[0];
 			auto req_resp_visitor_factory = std::make_shared<nano::transport::request_response_visitor_factory> (node);
 			auto connection (std::make_shared<nano::transport::tcp_server> (
-			node.io_ctx, nullptr, node.logger,
+			node.async_rt, nullptr, node.logger,
 			*node.stats, node.flags, *node.config,
 			node.tcp_listener, req_resp_visitor_factory,
 			node.bootstrap_workers,

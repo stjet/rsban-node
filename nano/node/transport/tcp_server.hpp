@@ -116,7 +116,7 @@ class tcp_server final : public std::enable_shared_from_this<nano::transport::tc
 {
 public:
 	tcp_server (
-	boost::asio::io_context & io_ctx_a,
+	rsnano::async_runtime & async_rt,
 	std::shared_ptr<nano::transport::socket> const & socket_a,
 	std::shared_ptr<nano::logger_mt> const & logger_a,
 	nano::stats const & stats_a,

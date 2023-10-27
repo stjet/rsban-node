@@ -96,6 +96,7 @@ impl TcpChannels {
         let node_config = Arc::new(options.node_config);
         let network = Arc::new(options.network);
         let tcp_server_factory = Arc::new(Mutex::new(TcpServerFactory {
+            async_rt: Arc::clone(&options.async_rt),
             config: node_config.clone(),
             logger: options.logger.clone(),
             observer: Arc::new(NullTcpServerObserver {}),

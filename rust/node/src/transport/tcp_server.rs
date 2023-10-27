@@ -25,7 +25,7 @@ use crate::{
         MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketExtensions,
         SocketType, SynCookies, TcpMessageItem, TcpMessageManager,
     },
-    utils::BlockUniquer,
+    utils::{AsyncRuntime, BlockUniquer},
     voting::VoteUniquer,
     NetworkParams,
 };
@@ -67,6 +67,7 @@ impl TcpServerObserver for NullTcpServerObserver {
 }
 
 pub struct TcpServer {
+    async_rt: Arc<AsyncRuntime>,
     pub socket: Arc<Socket>,
     config: Arc<NodeConfig>,
     logger: Arc<dyn Logger>,
@@ -96,6 +97,7 @@ static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
 
 impl TcpServer {
     pub fn new(
+        async_rt: Arc<AsyncRuntime>,
         socket: Arc<Socket>,
         config: Arc<NodeConfig>,
         logger: Arc<dyn Logger>,
@@ -112,6 +114,7 @@ impl TcpServer {
         let network_constants = network.network.clone();
         let socket_clone = Arc::clone(&socket);
         Self {
+            async_rt,
             socket,
             config,
             logger,

@@ -3,8 +3,12 @@ use std::{sync::Arc, time::SystemTime};
 use rsnano_core::utils::Logger;
 
 use crate::{
-    bootstrap::BootstrapMessageVisitorFactory, config::NodeConfig, stats::Stats,
-    utils::BlockUniquer, voting::VoteUniquer, NetworkParams,
+    bootstrap::BootstrapMessageVisitorFactory,
+    config::NodeConfig,
+    stats::Stats,
+    utils::{AsyncRuntime, BlockUniquer},
+    voting::VoteUniquer,
+    NetworkParams,
 };
 
 use super::{
@@ -13,6 +17,7 @@ use super::{
 };
 
 pub struct TcpServerFactory {
+    pub async_rt: Arc<AsyncRuntime>,
     pub config: Arc<NodeConfig>,
     pub logger: Arc<dyn Logger>,
     pub observer: Arc<dyn TcpServerObserver>,
@@ -28,6 +33,7 @@ impl TcpServerFactory {
     pub fn create_tcp_server(&self, channel: &ChannelTcp, socket: Arc<Socket>) -> Arc<TcpServer> {
         channel.set_last_packet_sent(SystemTime::now());
         let response_server = TcpServer::new(
+            Arc::clone(&self.async_rt),
             socket,
             Arc::clone(&self.config),
             Arc::clone(&self.logger),

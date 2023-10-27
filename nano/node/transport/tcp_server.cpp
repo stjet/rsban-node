@@ -205,7 +205,7 @@ void nano::transport::tcp_listener::accept_action (boost::system::error_code con
 	{
 		auto req_resp_visitor_factory = std::make_shared<nano::transport::request_response_visitor_factory> (node);
 		auto server (std::make_shared<nano::transport::tcp_server> (
-		node.io_ctx, socket_a, logger,
+		node.async_rt, socket_a, logger,
 		*node.stats, node.flags, *config,
 		node.tcp_listener, req_resp_visitor_factory,
 		node.bootstrap_workers,
@@ -256,7 +256,7 @@ std::unique_ptr<nano::container_info_component> nano::transport::collect_contain
 }
 
 nano::transport::tcp_server::tcp_server (
-boost::asio::io_context & io_ctx_a,
+rsnano::async_runtime & async_rt,
 std::shared_ptr<nano::transport::socket> const & socket_a,
 std::shared_ptr<nano::logger_mt> const & logger_a,
 nano::stats const & stats_a,
@@ -280,6 +280,7 @@ bool allow_bootstrap_a)
 	auto observer_handle = new std::weak_ptr<nano::tcp_server_observer> (observer_a);
 	auto network_dto{ config_a.network_params.to_dto () };
 	rsnano::CreateTcpServerParams params;
+	params.async_rt = async_rt.handle;
 	params.socket = socket_a->handle;
 	params.config = &config_dto;
 	params.logger = nano::to_logger_handle (logger_a);

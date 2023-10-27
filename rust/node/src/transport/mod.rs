@@ -28,7 +28,10 @@ pub use block_deserializer::BlockDeserializer;
 pub use channel_fake::ChannelFake;
 pub use channel_inproc::ChannelInProc;
 pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr, TcpChannelData};
-pub use message_deserializer::{MessageDeserializer, MessageDeserializerExt, ReadQuery};
+pub use message_deserializer::{
+    AsyncBufferReader, AsyncMessageDeserializer, MessageDeserializer, MessageDeserializerExt,
+    ReadQuery,
+};
 pub use message_deserializer_impl::{
     validate_header, MessageDeserializerImpl, ParseStatus, MAX_MESSAGE_SIZE,
 };

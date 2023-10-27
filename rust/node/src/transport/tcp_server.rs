@@ -11,6 +11,7 @@ use rsnano_core::{
     utils::{Logger, MemoryStream},
     Account, KeyPair,
 };
+use tokio::task::spawn_blocking;
 
 use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
@@ -22,15 +23,15 @@ use crate::{
     },
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
-        MessageDeserializer, MessageDeserializerExt, ParseStatus, Socket, SocketExtensions,
-        SocketType, SynCookies, TcpMessageItem, TcpMessageManager,
+        ParseStatus, Socket, SocketExtensions, SocketType, SynCookies, TcpMessageItem,
+        TcpMessageManager,
     },
     utils::{AsyncRuntime, BlockUniquer},
     voting::VoteUniquer,
     NetworkParams,
 };
 
-use super::NetworkFilter;
+use super::{AsyncMessageDeserializer, NetworkFilter};
 
 pub trait TcpServerObserver: Send + Sync {
     fn bootstrap_server_timeout(&self, inner_ptr: usize);
@@ -88,7 +89,7 @@ pub struct TcpServer {
     pub disable_tcp_realtime: bool,
     handshake_query_received: AtomicBool,
     message_visitor_factory: Arc<BootstrapMessageVisitorFactory>,
-    message_deserializer: Arc<MessageDeserializer>,
+    message_deserializer: Arc<AsyncMessageDeserializer<Arc<Socket>>>,
     tcp_message_manager: Arc<TcpMessageManager>,
     allow_bootstrap: bool,
 }
@@ -135,14 +136,12 @@ impl TcpServer {
             disable_tcp_realtime: false,
             handshake_query_received: AtomicBool::new(false),
             message_visitor_factory,
-            message_deserializer: Arc::new(MessageDeserializer::new(
+            message_deserializer: Arc::new(AsyncMessageDeserializer::new(
                 network_constants,
                 publish_filter,
                 block_uniquer,
                 vote_uniquer,
-                Box::new(move |data, size, callback| {
-                    socket_clone.read_impl(data, size, callback);
-                }),
+                socket_clone,
             )),
             tcp_message_manager,
             allow_bootstrap,
@@ -284,7 +283,7 @@ pub trait TcpServerExt {
     fn timeout(&self);
 
     fn receive_message(&self);
-    fn received_message(&self, message: Option<Box<dyn Message>>);
+    fn received_message(&self, message: Box<dyn Message>);
     fn process_message(&self, message: Box<dyn Message>) -> bool;
 }
 
@@ -314,46 +313,32 @@ impl TcpServerExt for Arc<TcpServer> {
         }
 
         let self_clone = Arc::clone(self);
-        self.message_deserializer.read(Box::new(move |ec, msg| {
-            if ec.is_err() {
-                // IO error or critical error when deserializing message
-                let _ = self_clone.stats.inc(
-                    StatType::Error,
-                    DetailType::from(self_clone.message_deserializer.status()),
-                    Direction::In,
-                );
-                self_clone.stop();
-                return;
-            }
-            self_clone.received_message(msg);
-        }));
+        self.async_rt.tokio.spawn(async move {
+            let result = self_clone.message_deserializer.read().await;
+            spawn_blocking(Box::new(move || {
+                match result {
+                    Ok(msg) => self_clone.received_message(msg),
+                    Err(ParseStatus::DuplicatePublishMessage) => {
+                        self_clone.stats.inc(
+                            StatType::Filter,
+                            DetailType::DuplicatePublish,
+                            Direction::In,
+                        );
+                    }
+                    Err(e) => {
+                        // IO error or critical error when deserializing message
+                        self_clone
+                            .stats
+                            .inc(StatType::Error, DetailType::from(e), Direction::In);
+                        self_clone.stop();
+                    }
+                }
+            }));
+        });
     }
 
-    fn received_message(&self, message: Option<Box<dyn Message>>) {
-        let mut should_continue = true;
-        match message {
-            Some(message) => {
-                should_continue = self.process_message(message);
-            }
-            None => {
-                // Error while deserializing message
-                debug_assert!(self.message_deserializer.status() != ParseStatus::Success);
-                let _ = self.stats.inc(
-                    StatType::Error,
-                    DetailType::from(self.message_deserializer.status()),
-                    Direction::In,
-                );
-                if self.message_deserializer.status() == ParseStatus::DuplicatePublishMessage {
-                    let _ = self.stats.inc(
-                        StatType::Filter,
-                        DetailType::DuplicatePublish,
-                        Direction::In,
-                    );
-                }
-            }
-        }
-
-        if should_continue {
+    fn received_message(&self, message: Box<dyn Message>) {
+        if self.process_message(message) {
             self.receive_message();
         }
     }

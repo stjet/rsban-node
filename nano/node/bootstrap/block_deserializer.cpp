@@ -23,8 +23,8 @@ void block_deserialized_context_destroy (void * context)
 }
 }
 
-nano::bootstrap::block_deserializer::block_deserializer () :
-	handle{ rsnano::rsn_block_deserializer_create () }
+nano::bootstrap::block_deserializer::block_deserializer (rsnano::async_runtime const & async_rt) :
+	handle{ rsnano::rsn_block_deserializer_create (async_rt.handle) }
 {
 }
 

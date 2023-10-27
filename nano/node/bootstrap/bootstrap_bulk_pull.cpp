@@ -59,7 +59,7 @@ nano::bulk_pull_client::bulk_pull_client (std::shared_ptr<nano::node> const & no
 	connection{ connection_a },
 	attempt{ attempt_a },
 	pull{ pull_a },
-	block_deserializer{ std::make_shared<nano::bootstrap::block_deserializer> () },
+	block_deserializer{ std::make_shared<nano::bootstrap::block_deserializer> (node_a->async_rt) },
 	logging_enabled{ node_a->config->logging.bulk_pull_logging () },
 	network_logging{ node_a->config->logging.network_logging () },
 	logger{ *node_a->logger }

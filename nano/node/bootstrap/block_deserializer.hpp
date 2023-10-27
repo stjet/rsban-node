@@ -5,6 +5,10 @@
 #include <memory>
 #include <vector>
 
+namespace rsnano
+{
+class async_runtime;
+}
 namespace nano
 {
 class block;
@@ -24,7 +28,7 @@ namespace bootstrap
 	public:
 		using callback_type = std::function<void (boost::system::error_code, std::shared_ptr<nano::block>)>;
 
-		block_deserializer ();
+		block_deserializer (rsnano::async_runtime const & async_rt);
 		block_deserializer (block_deserializer const &) = delete;
 		~block_deserializer ();
 		/**

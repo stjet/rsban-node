@@ -1,4 +1,8 @@
-use crate::{core::BlockHandle, utils::ContextWrapper, ErrorCodeDto, VoidPointerCallback};
+use crate::{
+    core::BlockHandle,
+    utils::{AsyncRuntimeHandle, ContextWrapper},
+    ErrorCodeDto, VoidPointerCallback,
+};
 use rsnano_node::transport::BlockDeserializer;
 use std::{ffi::c_void, sync::Arc};
 
@@ -7,8 +11,12 @@ use super::SocketHandle;
 pub struct BlockDeserializerHandle(BlockDeserializer);
 
 #[no_mangle]
-pub extern "C" fn rsn_block_deserializer_create() -> *mut BlockDeserializerHandle {
-    Box::into_raw(Box::new(BlockDeserializerHandle(BlockDeserializer::new())))
+pub extern "C" fn rsn_block_deserializer_create(
+    async_rt: &AsyncRuntimeHandle,
+) -> *mut BlockDeserializerHandle {
+    Box::into_raw(Box::new(BlockDeserializerHandle(BlockDeserializer::new(
+        Arc::clone(&async_rt.0),
+    ))))
 }
 
 #[no_mangle]

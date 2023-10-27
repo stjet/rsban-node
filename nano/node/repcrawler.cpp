@@ -50,7 +50,7 @@ void nano::representative::set_channel (std::shared_ptr<nano::transport::channel
 
 std::chrono::system_clock::time_point nano::representative::get_last_request () const
 {
-	return std::chrono::system_clock::time_point (std::chrono::nanoseconds(rsnano::rsn_representative_last_request(handle)));
+	return std::chrono::system_clock::time_point (std::chrono::nanoseconds (rsnano::rsn_representative_last_request (handle)));
 }
 
 void nano::representative::set_last_request (std::chrono::system_clock::time_point time_point)
@@ -67,16 +67,16 @@ std::chrono::system_clock::time_point nano::representative::get_last_response ()
 
 void nano::representative::set_last_response (std::chrono::system_clock::time_point time_point)
 {
-	rsnano::rsn_representative_set_last_response (handle, std::chrono::nanoseconds(time_point.time_since_epoch ()).count());
+	rsnano::rsn_representative_set_last_response (handle, std::chrono::nanoseconds (time_point.time_since_epoch ()).count ());
 }
 
 nano::representative_register::representative_register (nano::node & node_a) :
 	node{ node_a },
-	handle{rsnano::rsn_representative_register_create()}
+	handle{ rsnano::rsn_representative_register_create () }
 {
 }
 
-nano::representative_register::~representative_register () 
+nano::representative_register::~representative_register ()
 {
 	rsnano::rsn_representative_register_destroy (handle);
 }
@@ -274,17 +274,16 @@ void nano::rep_crawler::validate ()
 			continue;
 		}
 
-		auto insert_result {node.representative_register.update_or_insert (vote->account (), channel)};
+		auto insert_result{ node.representative_register.update_or_insert (vote->account (), channel) };
 		if (insert_result.inserted)
-       {
-               node.logger->try_log (boost::str (boost::format ("Found representative %1% at %2%") % vote->account ().to_account () % channel->to_string ()));
-       }
+		{
+			node.logger->try_log (boost::str (boost::format ("Found representative %1% at %2%") % vote->account ().to_account () % channel->to_string ()));
+		}
 
-       if (insert_result.updated)
-       {
-               node.logger->try_log (boost::str (boost::format ("Updated representative %1% at %2% (was at: %3%)") % vote->account ().to_account () % channel->to_string () % insert_result.prev_channel->to_string ()));
-       }
-
+		if (insert_result.updated)
+		{
+			node.logger->try_log (boost::str (boost::format ("Updated representative %1% at %2% (was at: %3%)") % vote->account ().to_account () % channel->to_string () % insert_result.prev_channel->to_string ()));
+		}
 	}
 }
 

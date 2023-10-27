@@ -54,15 +54,15 @@ public:
 	rsnano::RepresentativeHandle * handle;
 };
 
-
 class representative_register
 {
 public:
-	class insert_result{
-		public:
-			bool inserted{false};
-			bool updated{false};
-			std::shared_ptr<nano::transport::channel> prev_channel{};
+	class insert_result
+	{
+	public:
+		bool inserted{ false };
+		bool updated{ false };
+		std::shared_ptr<nano::transport::channel> prev_channel{};
 	};
 
 	representative_register (nano::node & node_a);

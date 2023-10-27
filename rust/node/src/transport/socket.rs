@@ -698,7 +698,7 @@ pub trait SocketExtensions {
     fn has_timed_out(&self) -> bool;
     fn set_silent_connection_tolerance_time(&self, time_s: u64);
 
-    // TODO: delete this:
+    // TODO: delete this and use AsyncBufferReader::read()
     fn read_impl(
         &self,
         data: Arc<Mutex<Vec<u8>>>,

@@ -15,6 +15,7 @@ use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, Logger},
     KeyPair, PublicKey,
 };
+use tokio::task::spawn_blocking;
 
 use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
@@ -34,11 +35,12 @@ use crate::{
 };
 
 use super::{
-    BufferDropPolicy, ChannelEnum, ChannelTcp, ChannelTcpObserver, CompositeSocketObserver,
-    EndpointType, IChannelTcpObserverWeakPtr, MessageDeserializer, MessageDeserializerExt,
-    NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket,
-    SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpMessageManager, TcpServer,
-    TcpServerFactory, TcpServerObserver, TcpSocketFacadeFactory, TrafficType,
+    message_deserializer::AsyncMessageDeserializer, BufferDropPolicy, ChannelEnum, ChannelTcp,
+    ChannelTcpObserver, CompositeSocketObserver, EndpointType, IChannelTcpObserverWeakPtr,
+    MessageDeserializer, MessageDeserializerExt, NetworkFilter, NullTcpServerObserver,
+    OutboundBandwidthLimiter, PeerExclusion, Socket, SocketBuilder, SocketExtensions,
+    SocketObserver, SynCookies, TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver,
+    TcpSocketFacadeFactory, TrafficType,
 };
 
 pub struct TcpChannelsOptions {
@@ -645,184 +647,206 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         };
 
         let channel_clone = channel.clone();
-        let callback = Box::new(move |ec: ErrorCode, message: Option<Box<dyn Message>>| {
-            let Some(this_l) = this_w.upgrade() else {
-                return;
-            };
-            let Some(message) = message else {
-                return;
-            };
-            let channel = channel_clone;
-            let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
-                return;
-            };
+        let callback: Box<dyn FnOnce(ErrorCode, Option<Box<dyn Message>>) + Send + Sync> =
+            Box::new(move |ec: ErrorCode, message: Option<Box<dyn Message>>| {
+                let Some(this_l) = this_w.upgrade() else {
+                    return;
+                };
+                let Some(message) = message else {
+                    return;
+                };
+                let channel = channel_clone;
+                let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
+                    return;
+                };
 
-            if ec.is_err() {
-                if this_l
-                    .node_config
-                    .logging
-                    .network_node_id_handshake_logging()
-                {
-                    this_l.logger.try_log(&format!(
-                        "Error reading node_id_handshake from {}",
-                        endpoint
-                    ));
-                }
-                cleanup_node_id_handshake_socket();
-                return;
-            }
-            this_l.stats.inc(
-                StatType::Message,
-                DetailType::NodeIdHandshake,
-                Direction::In,
-            );
-
-            // the header type should in principle be checked after checking the network bytes and the version numbers, I will not change it here since the benefits do not outweight the difficulties
-
-            let Some(handshake) = message.as_any().downcast_ref::<NodeIdHandshake>() else {
-                if this_l
-                    .node_config
-                    .logging
-                    .network_node_id_handshake_logging()
-                {
-                    this_l.logger.try_log(&format!(
-                        "Error reading node_id_handshake message header from {}",
-                        endpoint
-                    ));
-                }
-                cleanup_node_id_handshake_socket();
-                return;
-            };
-
-            if handshake.header().network != this_l.network.network.current_network
-                || handshake.header().version_using < this_l.network.network.protocol_version_min
-            {
-                // error handling, either the networks bytes or the version is wrong
-                if message.header().network == this_l.network.network.current_network {
-                    this_l
-                        .stats
-                        .inc(StatType::Message, DetailType::InvalidNetwork, Direction::In);
-                } else {
-                    this_l.stats.inc(
-                        StatType::Message,
-                        DetailType::OutdatedVersion,
-                        Direction::In,
-                    );
-                }
-
-                cleanup_node_id_handshake_socket();
-                // Cleanup attempt
-                {
-                    let mut guard = this_l.tcp_channels.lock().unwrap();
-                    guard.attempts.remove(&endpoint);
-                }
-                return;
-            }
-
-            let invalid_handshake = || {
-                if this_l
-                    .node_config
-                    .logging
-                    .network_node_id_handshake_logging()
-                {
-                    this_l.logger.try_log(&format!(
-                        "Error reading node_id_handshake from {}",
-                        endpoint
-                    ));
-                }
-                cleanup_node_id_handshake_socket();
-            };
-
-            let Some(response) = handshake.response.as_ref() else {
-                invalid_handshake();
-                return;
-            };
-
-            let Some(query) = handshake.query.as_ref() else {
-                invalid_handshake();
-                return;
-            };
-
-            tcp.set_network_version(handshake.header().version_using);
-
-            let node_id = response.node_id;
-
-            if !this_l.verify_handshake_response(response, endpoint) {
-                cleanup_node_id_handshake_socket();
-                return;
-            }
-
-            /* If node ID is known, don't establish new connection
-            Exception: temporary channels from tcp_server */
-            if let Some(existing_channel) = this_l.find_node_id(&node_id) {
-                if !existing_channel.as_channel().is_temporary() {
+                if ec.is_err() {
+                    if this_l
+                        .node_config
+                        .logging
+                        .network_node_id_handshake_logging()
+                    {
+                        this_l.logger.try_log(&format!(
+                            "Error reading node_id_handshake from {}",
+                            endpoint
+                        ));
+                    }
                     cleanup_node_id_handshake_socket();
                     return;
                 }
-            }
-            tcp.set_node_id(node_id);
-            tcp.set_last_packet_received(SystemTime::now());
+                this_l.stats.inc(
+                    StatType::Message,
+                    DetailType::NodeIdHandshake,
+                    Direction::In,
+                );
 
-            let response = this_l.prepare_handshake_response(query, handshake.is_v2());
-            let handshake_response = NodeIdHandshake::new(
-                &this_l.network.network.protocol_info(),
-                None,
-                Some(response),
-            );
+                // the header type should in principle be checked after checking the network bytes and the version numbers, I will not change it here since the benefits do not outweight the difficulties
 
-            if this_l
-                .node_config
-                .logging
-                .network_node_id_handshake_logging()
-            {
-                this_l.logger.try_log(&format!(
-                    "Node ID handshake response sent with node ID {} to {}: query {:?}",
-                    this_l.node_id.public_key().to_node_id(),
-                    endpoint,
-                    query.cookie
-                ));
-            }
+                let Some(handshake) = message.as_any().downcast_ref::<NodeIdHandshake>() else {
+                    if this_l
+                        .node_config
+                        .logging
+                        .network_node_id_handshake_logging()
+                    {
+                        this_l.logger.try_log(&format!(
+                            "Error reading node_id_handshake message header from {}",
+                            endpoint
+                        ));
+                    }
+                    cleanup_node_id_handshake_socket();
+                    return;
+                };
 
-            let channel_clone = channel.clone();
-            tcp.send(
-                &handshake_response,
-                Some(Box::new(move |ec, _| {
-                    let Some(this_l) = this_w.upgrade() else {
-                        return;
-                    };
-                    let channel = channel_clone;
-                    let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
-                        return;
-                    };
-                    if ec.is_err() {
-                        if this_l
-                            .node_config
-                            .logging
-                            .network_node_id_handshake_logging()
-                        {
-                            this_l.logger.try_log(&format!(
-                                "Error sending node_id_handshake to {}: {:?}",
-                                endpoint, ec
-                            ));
-                        }
+                if handshake.header().network != this_l.network.network.current_network
+                    || handshake.header().version_using
+                        < this_l.network.network.protocol_version_min
+                {
+                    // error handling, either the networks bytes or the version is wrong
+                    if message.header().network == this_l.network.network.current_network {
+                        this_l.stats.inc(
+                            StatType::Message,
+                            DetailType::InvalidNetwork,
+                            Direction::In,
+                        );
+                    } else {
+                        this_l.stats.inc(
+                            StatType::Message,
+                            DetailType::OutdatedVersion,
+                            Direction::In,
+                        );
+                    }
+
+                    cleanup_node_id_handshake_socket();
+                    // Cleanup attempt
+                    {
+                        let mut guard = this_l.tcp_channels.lock().unwrap();
+                        guard.attempts.remove(&endpoint);
+                    }
+                    return;
+                }
+
+                let invalid_handshake = || {
+                    if this_l
+                        .node_config
+                        .logging
+                        .network_node_id_handshake_logging()
+                    {
+                        this_l.logger.try_log(&format!(
+                            "Error reading node_id_handshake from {}",
+                            endpoint
+                        ));
+                    }
+                    cleanup_node_id_handshake_socket();
+                };
+
+                let Some(response) = handshake.response.as_ref() else {
+                    invalid_handshake();
+                    return;
+                };
+
+                let Some(query) = handshake.query.as_ref() else {
+                    invalid_handshake();
+                    return;
+                };
+
+                tcp.set_network_version(handshake.header().version_using);
+
+                let node_id = response.node_id;
+
+                if !this_l.verify_handshake_response(response, endpoint) {
+                    cleanup_node_id_handshake_socket();
+                    return;
+                }
+
+                /* If node ID is known, don't establish new connection
+                Exception: temporary channels from tcp_server */
+                if let Some(existing_channel) = this_l.find_node_id(&node_id) {
+                    if !existing_channel.as_channel().is_temporary() {
                         cleanup_node_id_handshake_socket();
                         return;
                     }
-                    // Insert new node ID connection
-                    let Some(socket_l) = tcp.socket() else {
-                        return;
-                    };
-                    let response_server = this_l
-                        .tcp_server_factory
-                        .lock()
-                        .unwrap()
-                        .create_tcp_server(&tcp, socket_l.clone());
-                    let _ = this_l.insert(&channel, &socket_l, Some(response_server));
-                })),
-                BufferDropPolicy::Limiter,
-                TrafficType::Generic,
-            );
-        });
+                }
+                tcp.set_node_id(node_id);
+                tcp.set_last_packet_received(SystemTime::now());
+
+                let response = this_l.prepare_handshake_response(query, handshake.is_v2());
+                let handshake_response = NodeIdHandshake::new(
+                    &this_l.network.network.protocol_info(),
+                    None,
+                    Some(response),
+                );
+
+                if this_l
+                    .node_config
+                    .logging
+                    .network_node_id_handshake_logging()
+                {
+                    this_l.logger.try_log(&format!(
+                        "Node ID handshake response sent with node ID {} to {}: query {:?}",
+                        this_l.node_id.public_key().to_node_id(),
+                        endpoint,
+                        query.cookie
+                    ));
+                }
+
+                let channel_clone = channel.clone();
+                tcp.send(
+                    &handshake_response,
+                    Some(Box::new(move |ec, _| {
+                        let Some(this_l) = this_w.upgrade() else {
+                            return;
+                        };
+                        let channel = channel_clone;
+                        let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
+                            return;
+                        };
+                        if ec.is_err() {
+                            if this_l
+                                .node_config
+                                .logging
+                                .network_node_id_handshake_logging()
+                            {
+                                this_l.logger.try_log(&format!(
+                                    "Error sending node_id_handshake to {}: {:?}",
+                                    endpoint, ec
+                                ));
+                            }
+                            cleanup_node_id_handshake_socket();
+                            return;
+                        }
+                        // Insert new node ID connection
+                        let Some(socket_l) = tcp.socket() else {
+                            return;
+                        };
+                        let response_server = this_l
+                            .tcp_server_factory
+                            .lock()
+                            .unwrap()
+                            .create_tcp_server(&tcp, socket_l.clone());
+                        let _ = this_l.insert(&channel, &socket_l, Some(response_server));
+                    })),
+                    BufferDropPolicy::Limiter,
+                    TrafficType::Generic,
+                );
+            });
+
+        //if let Some(rt) = self.async_rt.upgrade() {
+        //    let deserializer = Arc::new(AsyncMessageDeserializer::new(
+        //        self.network.network.clone(),
+        //        self.publish_filter.clone(),
+        //        self.block_uniquer.clone(),
+        //        self.vote_uniquer.clone(),
+        //        socket_l,
+        //    ));
+
+        //    rt.tokio.spawn(async move {
+        //        let result = deserializer.read().await;
+        //        spawn_blocking(Box::new(move || match result {
+        //            Ok(msg) => callback(ErrorCode::new(), Some(msg)),
+        //            Err(_) => callback(ErrorCode::fault(), None),
+        //        }));
+        //    });
+        //}
 
         let read_op = Box::new(move |data, size, callback| {
             socket_l.read_impl(data, size, callback);

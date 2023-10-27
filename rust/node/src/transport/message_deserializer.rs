@@ -24,7 +24,6 @@ pub struct AsyncMessageDeserializer<T: AsyncBufferReader + Send> {
     deserializer_impl: MessageDeserializerImpl,
     protocol_info: ProtocolInfo,
     read_buffer: Arc<Mutex<Vec<u8>>>,
-    status: Mutex<ParseStatus>,
     buffer_reader: T,
 }
 
@@ -44,71 +43,24 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
                 vote_uniquer,
             ),
             protocol_info: network_constants.protocol_info(),
-            status: Mutex::new(ParseStatus::None),
             read_buffer: Arc::new(Mutex::new(vec![0; MAX_MESSAGE_SIZE])),
             buffer_reader,
         }
     }
 
-    pub fn status(&self) -> ParseStatus {
-        *self.status.lock().unwrap()
-    }
-
-    fn set_status(&self, status: ParseStatus) {
-        let mut guard = self.status.lock().unwrap();
-        *guard = status;
-    }
-
-    fn received_message(
-        &self,
-        header: MessageHeader,
-        payload_size: usize,
-    ) -> Result<Option<Box<dyn Message>>, ParseStatus> {
-        match self.deserialize(header, payload_size) {
-            Some(message) => {
-                debug_assert!(self.status() == ParseStatus::None);
-                self.set_status(ParseStatus::Success);
-                Ok(Some(message))
-            }
-            None => {
-                debug_assert!(self.status() != ParseStatus::None);
-                Err(self.status())
-            }
-        }
-    }
-
-    fn deserialize(&self, header: MessageHeader, payload_size: usize) -> Option<Box<dyn Message>> {
-        assert!(payload_size <= MAX_MESSAGE_SIZE);
-        let buffer = self.read_buffer.lock().unwrap();
-        match self
-            .deserializer_impl
-            .deserialize(header, &buffer[..payload_size])
-        {
-            Ok(msg) => {
-                self.set_status(ParseStatus::Success);
-                Some(msg)
-            }
-            Err(status) => {
-                self.set_status(status);
-                None
-            }
-        }
-    }
-
-    pub async fn read(&self) -> Result<Option<Box<dyn Message>>, ParseStatus> {
-        self.set_status(ParseStatus::None);
+    pub async fn read(&self) -> Result<Box<dyn Message>, ParseStatus> {
         self.buffer_reader
             .read(
                 Arc::clone(&self.read_buffer),
                 MessageHeader::SERIALIZED_SIZE,
             )
             .await
-            .map_err(|_| ParseStatus::None)?; // TODO return correct error
+            .map_err(|_| ParseStatus::None)?;
 
         self.received_header().await
     }
 
-    async fn received_header(&self) -> Result<Option<Box<dyn Message>>, ParseStatus> {
+    async fn received_header(&self) -> Result<Box<dyn Message>, ParseStatus> {
         let header = {
             let buffer = self.read_buffer.lock().unwrap();
             let mut stream = StreamAdapter::new(&buffer[..MessageHeader::SERIALIZED_SIZE]);
@@ -127,6 +79,16 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
                 .map_err(|_| ParseStatus::None)?; // TODO return correct error code
             self.received_message(header, payload_size)
         }
+    }
+
+    fn received_message(
+        &self,
+        header: MessageHeader,
+        payload_size: usize,
+    ) -> Result<Box<dyn Message>, ParseStatus> {
+        let buffer = self.read_buffer.lock().unwrap();
+        self.deserializer_impl
+            .deserialize(header, &buffer[..payload_size])
     }
 }
 

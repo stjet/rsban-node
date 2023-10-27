@@ -5,7 +5,7 @@ use crate::{
     voting::{VoteHandle, VoteUniquerHandle},
     NetworkConstantsDto, StringDto,
 };
-use rsnano_node::{config::NetworkConstants, messages::ConfirmAck, voting::Vote};
+use rsnano_node::{messages::ConfirmAck, voting::Vote};
 
 use super::{
     create_message_handle2, create_message_handle3, downcast_message, message_handle_clone,

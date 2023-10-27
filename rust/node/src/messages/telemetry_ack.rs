@@ -1,4 +1,3 @@
-use crate::config::NetworkConstants;
 use anyhow::Result;
 use rsnano_core::utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt};
 use rsnano_core::{

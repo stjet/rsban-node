@@ -25,8 +25,8 @@ impl RepresentativeRegister {
     /// Returns the old channel if the representative was already in the collection
     pub fn update_or_insert(
         &mut self,
-        account: Account,
-        channel: Arc<ChannelEnum>,
+        _account: Account,
+        _channel: Arc<ChannelEnum>,
     ) -> RegisterRepresentativeResult {
         todo!()
         //if let Some(rep) = self.by_account.get_mut(&account) {

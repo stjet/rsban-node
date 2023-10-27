@@ -29,7 +29,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
     let limiter = Arc::clone(&*limiter);
     let async_rt = Arc::clone(&async_rt.0);
     ChannelHandle::new(Arc::new(ChannelEnum::Tcp(ChannelTcp::new(
-        (*socket).deref(),
+        Arc::clone((*socket).deref()),
         SystemTime::now(),
         observer,
         limiter,

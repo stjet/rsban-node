@@ -1,5 +1,4 @@
 use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
-use crate::config::NetworkConstants;
 use anyhow::Result;
 use num_traits::FromPrimitive;
 use rsnano_core::{

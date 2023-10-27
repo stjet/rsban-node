@@ -13,19 +13,13 @@ use crate::{
 
 pub struct ChannelTcpWrapper {
     pub channel: Arc<ChannelEnum>,
-    socket: Arc<Socket>,
     pub response_server: Option<Arc<TcpServer>>,
 }
 
 impl ChannelTcpWrapper {
-    pub fn new(
-        channel: Arc<ChannelEnum>,
-        socket: Arc<Socket>,
-        response_server: Option<Arc<TcpServer>>,
-    ) -> Self {
+    pub fn new(channel: Arc<ChannelEnum>, response_server: Option<Arc<TcpServer>>) -> Self {
         Self {
             channel,
-            socket,
             response_server,
         }
     }
@@ -56,8 +50,8 @@ impl ChannelTcpWrapper {
         self.channel.as_channel().get_last_bootstrap_attempt()
     }
 
-    pub fn socket(&self) -> Option<Arc<Socket>> {
-        self.tcp_channel().socket()
+    pub fn socket(&self) -> &Arc<Socket> {
+        &self.tcp_channel().socket
     }
 
     pub fn node_id(&self) -> Option<Account> {

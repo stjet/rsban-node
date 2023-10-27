@@ -37,10 +37,9 @@ use crate::{
 use super::{
     message_deserializer::AsyncMessageDeserializer, BufferDropPolicy, ChannelEnum, ChannelTcp,
     ChannelTcpObserver, CompositeSocketObserver, EndpointType, IChannelTcpObserverWeakPtr,
-    MessageDeserializer, MessageDeserializerExt, NetworkFilter, NullTcpServerObserver,
-    OutboundBandwidthLimiter, PeerExclusion, Socket, SocketBuilder, SocketExtensions,
-    SocketObserver, SynCookies, TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver,
-    TcpSocketFacadeFactory, TrafficType,
+    NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket,
+    SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpMessageManager, TcpServer,
+    TcpServerFactory, TcpServerObserver, TcpSocketFacadeFactory, TrafficType,
 };
 
 pub struct TcpChannelsOptions {
@@ -168,7 +167,6 @@ impl TcpChannels {
     pub fn insert(
         &self,
         channel: &Arc<ChannelEnum>,
-        socket: &Arc<Socket>,
         server: Option<Arc<TcpServer>>,
     ) -> Result<(), ()> {
         let ChannelEnum::Tcp(tcp_channel) = channel.as_ref() else {
@@ -188,11 +186,7 @@ impl TcpChannels {
                     lock.channels.remove_by_node_id(&node_id);
                 }
 
-                let wrapper = Arc::new(ChannelTcpWrapper::new(
-                    channel.clone(),
-                    socket.clone(),
-                    server,
-                ));
+                let wrapper = Arc::new(ChannelTcpWrapper::new(channel.clone(), server));
                 lock.channels.insert(wrapper);
                 lock.attempts.remove(&endpoint_v6);
                 let observer = lock.new_channel_observer.clone();
@@ -555,7 +549,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         let channel_observer =
                             Arc::downgrade(self.channel_observer.lock().unwrap().as_ref().unwrap());
                         let temporary_channel = ChannelTcp::new(
-                            socket,
+                            Arc::clone(socket),
                             SystemTime::now(),
                             Arc::new(ChannelTcpObserverWeakPtr(channel_observer)),
                             self.limiter.clone(),
@@ -574,7 +568,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         );
                         // Don't insert temporary channels for response_server
                         if socket_type == SocketType::Realtime {
-                            let _ = self.insert(&temporary_channel, socket, None);
+                            let _ = self.insert(&temporary_channel, None);
                         }
                         (self.sink)(message.clone_box(), temporary_channel);
                     } else {
@@ -815,52 +809,35 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                             return;
                         }
                         // Insert new node ID connection
-                        let Some(socket_l) = tcp.socket() else {
-                            return;
-                        };
                         let response_server = this_l
                             .tcp_server_factory
                             .lock()
                             .unwrap()
-                            .create_tcp_server(&tcp, socket_l.clone());
-                        let _ = this_l.insert(&channel, &socket_l, Some(response_server));
+                            .create_tcp_server(&tcp, Arc::clone(&tcp.socket));
+                        let _ = this_l.insert(&channel, Some(response_server));
                     })),
                     BufferDropPolicy::Limiter,
                     TrafficType::Generic,
                 );
             });
 
-        //if let Some(rt) = self.async_rt.upgrade() {
-        //    let deserializer = Arc::new(AsyncMessageDeserializer::new(
-        //        self.network.network.clone(),
-        //        self.publish_filter.clone(),
-        //        self.block_uniquer.clone(),
-        //        self.vote_uniquer.clone(),
-        //        socket_l,
-        //    ));
+        if let Some(rt) = self.async_rt.upgrade() {
+            let deserializer = Arc::new(AsyncMessageDeserializer::new(
+                self.network.network.clone(),
+                self.publish_filter.clone(),
+                self.block_uniquer.clone(),
+                self.vote_uniquer.clone(),
+                socket_l,
+            ));
 
-        //    rt.tokio.spawn(async move {
-        //        let result = deserializer.read().await;
-        //        spawn_blocking(Box::new(move || match result {
-        //            Ok(msg) => callback(ErrorCode::new(), Some(msg)),
-        //            Err(_) => callback(ErrorCode::fault(), None),
-        //        }));
-        //    });
-        //}
-
-        let read_op = Box::new(move |data, size, callback| {
-            socket_l.read_impl(data, size, callback);
-        });
-
-        let deserializer = Arc::new(MessageDeserializer::new(
-            self.network.network.clone(),
-            self.publish_filter.clone(),
-            self.block_uniquer.clone(),
-            self.vote_uniquer.clone(),
-            read_op,
-        ));
-
-        deserializer.read(callback);
+            rt.tokio.spawn(async move {
+                let result = deserializer.read().await;
+                spawn_blocking(Box::new(move || match result {
+                    Ok(msg) => callback(ErrorCode::new(), Some(msg)),
+                    Err(_) => callback(ErrorCode::fault(), None),
+                }));
+            });
+        }
     }
 
     fn start_tcp(&self, endpoint: SocketAddrV6) {
@@ -897,7 +874,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         let observer: Arc<dyn ChannelTcpObserver> =
             Arc::clone(self.channel_observer.lock().unwrap().as_ref().unwrap());
         let channel = Arc::new(ChannelEnum::Tcp(ChannelTcp::new(
-            &socket,
+            Arc::clone(&socket),
             SystemTime::now(),
             Arc::new(ChannelTcpObserverWeakPtr(Arc::downgrade(&observer))),
             self.limiter.clone(),
@@ -1028,9 +1005,7 @@ impl TcpChannelsImpl {
 
     pub fn close_channels(&mut self) {
         for channel in self.channels.iter() {
-            if let Some(socket) = channel.socket() {
-                socket.close();
-            }
+            channel.socket().close();
             // Remove response server
             if let Some(server) = &channel.response_server {
                 server.stop();

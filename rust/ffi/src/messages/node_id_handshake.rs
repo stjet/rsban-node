@@ -8,8 +8,8 @@ use rsnano_node::messages::{
 };
 
 use super::{
-    create_message_handle, create_message_handle2, create_message_handle3, downcast_message,
-    downcast_message_mut, message_handle_clone, MessageHandle, MessageHeaderHandle,
+    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
+    message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 
 #[no_mangle]

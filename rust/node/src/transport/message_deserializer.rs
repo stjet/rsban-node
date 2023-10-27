@@ -87,8 +87,10 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
         payload_size: usize,
     ) -> Result<Box<dyn Message>, ParseStatus> {
         let buffer = self.read_buffer.lock().unwrap();
-        self.deserializer_impl
-            .deserialize(header, &buffer[..payload_size])
+        let result = self
+            .deserializer_impl
+            .deserialize(header, &buffer[..payload_size]);
+        result
     }
 }
 

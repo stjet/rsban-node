@@ -59,14 +59,6 @@ pub unsafe extern "C" fn rsn_message_type(handle: *mut MessageHandle) -> u8 {
     (*handle).message_type() as u8
 }
 
-pub(crate) unsafe fn create_message_handle<T: 'static + Message>(
-    constants: *mut NetworkConstantsDto,
-    f: impl FnOnce(&NetworkConstants) -> T,
-) -> *mut MessageHandle {
-    let constants = NetworkConstants::try_from(&*constants).unwrap();
-    MessageHandle::new(Box::new(f(&constants)))
-}
-
 pub(crate) unsafe fn create_message_handle2<T: 'static + Message>(
     header: *mut MessageHeaderHandle,
     f: impl FnOnce(MessageHeader) -> T,

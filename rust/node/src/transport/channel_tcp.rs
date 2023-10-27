@@ -44,7 +44,7 @@ pub struct TcpChannelData {
 pub struct ChannelTcp {
     channel_id: usize,
     channel_mutex: Mutex<TcpChannelData>,
-    socket: Weak<Socket>,
+    pub socket: Arc<Socket>,
     /* Mark for temporary channels. Usually remote ports of these channels are ephemeral and received from incoming connections to server.
     If remote part has open listening port, temporary channel will be replaced with direct connection to listening port soon.
     But if other side is behing NAT or firewall this connection can be pemanent. */
@@ -57,7 +57,7 @@ pub struct ChannelTcp {
 
 impl ChannelTcp {
     pub fn new(
-        socket: &Arc<Socket>,
+        socket: Arc<Socket>,
         now: SystemTime,
         observer: Arc<dyn IChannelTcpObserverWeakPtr>,
         limiter: Arc<OutboundBandwidthLimiter>,
@@ -74,7 +74,7 @@ impl ChannelTcp {
                 remote_endpoint: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
                 peering_endpoint: None,
             }),
-            socket: Arc::downgrade(socket),
+            socket,
             temporary: AtomicBool::new(false),
             network_version: AtomicU8::new(0),
             observer,
@@ -84,7 +84,7 @@ impl ChannelTcp {
     }
 
     pub fn socket(&self) -> Option<Arc<Socket>> {
-        self.socket.upgrade()
+        Some(Arc::clone(&self.socket))
     }
 
     pub fn lock(&self) -> MutexGuard<TcpChannelData> {
@@ -189,10 +189,7 @@ impl ChannelTcp {
     }
 
     pub fn max(&self, traffic_type: TrafficType) -> bool {
-        self.socket
-            .upgrade()
-            .map(|s| s.max(traffic_type))
-            .unwrap_or(true)
+        self.socket.max(traffic_type)
     }
 
     pub fn send(
@@ -289,29 +286,16 @@ impl Channel for ChannelTcp {
 impl Drop for ChannelTcp {
     fn drop(&mut self) {
         // Close socket. Exception: socket is used by bootstrap_server
-        if let Some(socket) = self.socket.upgrade() {
-            if !self.temporary.load(Ordering::Relaxed) {
-                socket.close();
-            }
+        if !self.temporary.load(Ordering::Relaxed) {
+            self.socket.close();
         }
     }
 }
 
 impl PartialEq for ChannelTcp {
     fn eq(&self, other: &Self) -> bool {
-        let my_socket = self.socket.upgrade();
-        let other_socket = other.socket.upgrade();
-
-        if my_socket.is_some() != other_socket.is_some() {
+        if Arc::as_ptr(&self.socket) != Arc::as_ptr(&other.socket) {
             return false;
-        }
-
-        if let Some(my_socket) = my_socket {
-            if let Some(other_socket) = other_socket {
-                if Arc::as_ptr(&my_socket) != Arc::as_ptr(&other_socket) {
-                    return false;
-                }
-            }
         }
 
         true

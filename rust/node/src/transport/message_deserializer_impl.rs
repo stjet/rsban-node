@@ -90,7 +90,7 @@ impl MessageDeserializerImpl {
         payload_bytes: &[u8],
     ) -> Result<Box<dyn Message>, ParseStatus> {
         let mut stream = StreamAdapter::new(payload_bytes);
-        match header.message_type() {
+        match header.message_type {
             MessageType::Keepalive => self.deserialize_keepalive(&mut stream, header),
             MessageType::Publish => {
                 // Early filtering to not waste time deserializing duplicate blocks

@@ -358,7 +358,7 @@ impl TcpServerExt for Arc<TcpServer> {
     fn process_message(&self, message: Box<dyn Message>) -> bool {
         let _ = self.stats.inc(
             StatType::TcpServer,
-            DetailType::from(message.header().message_type()),
+            DetailType::from(message.header().message_type),
             Direction::In,
         );
 

@@ -24,7 +24,7 @@ impl ConfirmAck {
     pub const HASHES_MAX: usize = 12;
 
     pub fn new(constants: &NetworkConstants, vote: Arc<Vote>) -> Self {
-        let mut header = MessageHeader::new(constants, MessageType::ConfirmAck);
+        let mut header = MessageHeader::new(MessageType::ConfirmAck, &constants.protocol_info());
         header.set_block_type(BlockType::NotABlock);
         debug_assert!(vote.hashes.len() < 16);
         header.set_count(vote.hashes.len() as u8);

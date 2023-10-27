@@ -17,25 +17,27 @@ pub struct Keepalive {
 impl Keepalive {
     pub fn new(constants: &NetworkConstants) -> Self {
         Self {
-            header: MessageHeader::new(constants, MessageType::Keepalive),
+            header: MessageHeader::new(MessageType::Keepalive, &constants.protocol_info()),
             peers: empty_peers(),
         }
     }
 
     pub fn new_with_peers(constants: &NetworkConstants, peers: [SocketAddr; 8]) -> Self {
         Self {
-            header: MessageHeader::new(constants, MessageType::Keepalive),
+            header: MessageHeader::new(MessageType::Keepalive, &constants.protocol_info()),
             peers,
         }
     }
 
     pub fn with_version_using(constants: &NetworkConstants, version_using: u8) -> Self {
         Self {
-            header: MessageHeader::with_version_using(
-                constants,
-                MessageType::Keepalive,
+            header: MessageHeader {
+                message_type: MessageType::Keepalive,
                 version_using,
-            ),
+                version_max: constants.protocol_version,
+                version_min: constants.protocol_version_min,
+                ..Default::default()
+            },
             peers: empty_peers(),
         }
     }
@@ -65,7 +67,7 @@ impl Keepalive {
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        debug_assert!(self.header().message_type() == MessageType::Keepalive);
+        debug_assert!(self.header().message_type == MessageType::Keepalive);
 
         for i in 0..8 {
             let mut addr_buffer = [0u8; 16];
@@ -153,7 +155,7 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::DEV_NETWORK_PARAMS;
+    use crate::{messages::ProtocolInfo, DEV_NETWORK_PARAMS};
 
     #[test]
     fn serialize_no_peers() -> Result<()> {
@@ -184,8 +186,8 @@ mod tests {
 
     #[test]
     fn keepalive_with_no_peers_to_string() {
-        let hdr = MessageHeader::new(&DEV_NETWORK_PARAMS.network, MessageType::Keepalive);
-        let keepalive = Keepalive::new(&DEV_NETWORK_PARAMS.network);
+        let hdr = MessageHeader::new(MessageType::Keepalive, &ProtocolInfo::dev_network());
+        let keepalive = Keepalive::new2(&DEV_NETWORK_PARAMS.network);
         let expected =
             hdr.to_string() + "\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0";
         assert_eq!(keepalive.to_string(), expected);
@@ -193,7 +195,7 @@ mod tests {
 
     #[test]
     fn keepalive_string() {
-        let hdr = MessageHeader::new(&DEV_NETWORK_PARAMS.network, MessageType::Keepalive);
+        let hdr = MessageHeader::new(MessageType::Keepalive, &ProtocolInfo::dev_network());
 
         let mut keepalive = Keepalive::new(&DEV_NETWORK_PARAMS.network);
         keepalive.peers[1] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 45);

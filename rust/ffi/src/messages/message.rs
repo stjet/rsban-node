@@ -2,7 +2,7 @@ use super::MessageHeaderHandle;
 use crate::NetworkConstantsDto;
 use rsnano_node::{
     config::NetworkConstants,
-    messages::{Message, MessageHeader},
+    messages::{Message, MessageHeader, ProtocolInfo},
 };
 
 use std::ops::Deref;
@@ -73,6 +73,14 @@ pub(crate) unsafe fn create_message_handle2<T: 'static + Message>(
 ) -> *mut MessageHandle {
     let msg = f((*header).deref().clone());
     MessageHandle::new(Box::new(msg))
+}
+
+pub(crate) unsafe fn create_message_handle3<T: 'static + Message>(
+    constants: *mut NetworkConstantsDto,
+    f: impl FnOnce(&ProtocolInfo) -> T,
+) -> *mut MessageHandle {
+    let constants = NetworkConstants::try_from(&*constants).unwrap();
+    MessageHandle::new(Box::new(f(&constants.protocol_info())))
 }
 
 pub(crate) unsafe fn message_handle_clone<T: 'static + Message + Clone>(

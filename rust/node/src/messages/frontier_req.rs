@@ -19,7 +19,7 @@ pub struct FrontierReq {
 impl FrontierReq {
     pub fn new(constants: &NetworkConstants) -> Self {
         Self {
-            header: MessageHeader::new(constants, MessageType::FrontierReq),
+            header: MessageHeader::new(MessageType::FrontierReq, &constants.protocol_info()),
             start: Account::zero(),
             age: 0,
             count: 0,
@@ -48,7 +48,7 @@ impl FrontierReq {
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        debug_assert!(self.header.message_type() == MessageType::FrontierReq);
+        debug_assert!(self.header.message_type == MessageType::FrontierReq);
         self.start = Account::deserialize(stream)?;
         let mut buffer = [0u8; 4];
         stream.read_bytes(&mut buffer, 4)?;
@@ -59,7 +59,7 @@ impl FrontierReq {
     }
 
     pub fn is_confirmed_present(&self) -> bool {
-        self.header.test_extension(Self::ONLY_CONFIRMED)
+        self.header.extensions[Self::ONLY_CONFIRMED]
     }
 
     pub const ONLY_CONFIRMED: usize = 1;

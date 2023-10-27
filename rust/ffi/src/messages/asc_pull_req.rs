@@ -2,7 +2,7 @@ use num::FromPrimitive;
 use rsnano_core::HashOrAccount;
 
 use super::{
-    create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
+    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
     message_handle_clone, MessageHandle, MessageHeaderHandle,
 };
 use crate::{copy_hash_or_account_bytes, NetworkConstantsDto};
@@ -14,7 +14,7 @@ use rsnano_node::messages::{
 pub unsafe extern "C" fn rsn_message_asc_pull_req_create(
     constants: *mut NetworkConstantsDto,
 ) -> *mut MessageHandle {
-    create_message_handle(constants, AscPullReq::new)
+    create_message_handle3(constants, AscPullReq::new)
 }
 
 #[no_mangle]

@@ -4,7 +4,7 @@ use crate::{copy_hash_bytes, copy_hash_or_account_bytes, NetworkConstantsDto, St
 use rsnano_node::messages::BulkPull;
 
 use super::{
-    create_message_handle, create_message_handle2, downcast_message, downcast_message_mut,
+    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
     MessageHandle, MessageHeaderHandle,
 };
 
@@ -12,7 +12,7 @@ use super::{
 pub unsafe extern "C" fn rsn_message_bulk_pull_create(
     constants: *mut NetworkConstantsDto,
 ) -> *mut MessageHandle {
-    create_message_handle(constants, BulkPull::new)
+    create_message_handle3(constants, BulkPull::new)
 }
 
 #[no_mangle]

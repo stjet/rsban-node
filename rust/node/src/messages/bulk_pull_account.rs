@@ -27,7 +27,7 @@ pub struct BulkPullAccount {
 impl BulkPullAccount {
     pub fn new(constants: &NetworkConstants) -> Self {
         Self {
-            header: MessageHeader::new(constants, MessageType::BulkPullAccount),
+            header: MessageHeader::new(MessageType::BulkPullAccount, &constants.protocol_info()),
             account: Account::zero(),
             minimum_amount: Amount::zero(),
             flags: BulkPullAccountFlags::PendingHashAndAmount,
@@ -54,7 +54,7 @@ impl BulkPullAccount {
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        debug_assert!(self.header.message_type() == MessageType::BulkPullAccount);
+        debug_assert!(self.header.message_type == MessageType::BulkPullAccount);
         self.account = Account::deserialize(stream)?;
         self.minimum_amount = Amount::deserialize(stream)?;
         self.flags = BulkPullAccountFlags::from_u8(stream.read_u8()?)

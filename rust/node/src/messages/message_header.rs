@@ -1,4 +1,3 @@
-use crate::config::NetworkConstants;
 use anyhow::Result;
 use bitvec::prelude::*;
 use num_traits::FromPrimitive;
@@ -67,25 +66,45 @@ impl Debug for MessageType {
 const BLOCK_TYPE_MASK: u16 = 0x0f00;
 const COUNT_MASK: u16 = 0xf000;
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct MessageHeader {
-    message_type: MessageType,
-    version_using: u8,
-    version_max: u8,
-    version_min: u8,
-    network: Networks,
-    extensions: BitArray<u16>,
+pub struct ProtocolInfo {
+    pub version_using: u8,
+    pub version_max: u8,
+    pub version_min: u8,
+    pub network: Networks,
 }
 
-impl MessageHeader {
-    pub const SERIALIZED_SIZE: usize = 8;
-
-    pub fn new(constants: &NetworkConstants, message_type: MessageType) -> Self {
-        let version_using = constants.protocol_version;
-        Self::with_version_using(constants, message_type, version_using)
+impl Default for ProtocolInfo {
+    fn default() -> Self {
+        Self {
+            version_using: 0x13,
+            version_max: 0x13,
+            version_min: 0x12,
+            network: Networks::NanoLiveNetwork,
+        }
     }
+}
 
-    pub fn empty() -> Self {
+impl ProtocolInfo {
+    pub fn dev_network() -> Self {
+        Self {
+            network: Networks::NanoDevNetwork,
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct MessageHeader {
+    pub message_type: MessageType,
+    pub version_using: u8,
+    pub version_max: u8,
+    pub version_min: u8,
+    pub network: Networks,
+    pub extensions: BitArray<u16>,
+}
+
+impl Default for MessageHeader {
+    fn default() -> Self {
         Self {
             message_type: MessageType::Invalid,
             version_using: 0,
@@ -95,66 +114,26 @@ impl MessageHeader {
             extensions: BitArray::ZERO,
         }
     }
+}
 
-    pub fn from_stream(stream: &mut impl Stream) -> Result<MessageHeader> {
-        let mut header = Self::empty();
-        header.deserialize(stream)?;
-        Ok(header)
-    }
+impl MessageHeader {
+    pub const SERIALIZED_SIZE: usize = 8;
 
-    pub fn with_version_using(
-        constants: &NetworkConstants,
-        message_type: MessageType,
-        version_using: u8,
-    ) -> Self {
+    pub fn new(message_type: MessageType, protocol: &ProtocolInfo) -> Self {
         Self {
             message_type,
-            version_using,
-            version_max: constants.protocol_version,
-            version_min: constants.protocol_version_min,
-            network: constants.current_network,
-            extensions: BitArray::ZERO,
+            version_using: protocol.version_using,
+            version_max: protocol.version_max,
+            version_min: protocol.version_min,
+            network: protocol.network,
+            ..Default::default()
         }
     }
 
-    pub fn version_using(&self) -> u8 {
-        self.version_using
-    }
-
-    pub fn set_version_using(&mut self, version: u8) {
-        self.version_using = version;
-    }
-
-    pub fn version_max(&self) -> u8 {
-        self.version_max
-    }
-
-    pub fn version_min(&self) -> u8 {
-        self.version_min
-    }
-
-    pub fn network(&self) -> Networks {
-        self.network
-    }
-
-    pub fn set_network(&mut self, network: Networks) {
-        self.network = network;
-    }
-
-    pub fn message_type(&self) -> MessageType {
-        self.message_type
-    }
-
-    pub fn extensions(&self) -> u16 {
-        self.extensions.data
-    }
-
-    pub fn set_extensions(&mut self, value: u16) {
-        self.extensions.data = value;
-    }
-
-    pub fn test_extension(&self, position: usize) -> bool {
-        self.extensions[position]
+    pub fn from_stream(stream: &mut impl Stream) -> Result<MessageHeader> {
+        let mut header = Self::default();
+        header.deserialize(stream)?;
+        Ok(header)
     }
 
     pub fn set_extension(&mut self, position: usize, value: bool) {
@@ -164,7 +143,7 @@ impl MessageHeader {
     pub fn set_flag(&mut self, flag: u8) {
         // Flags from 8 are block_type & count
         debug_assert!(flag < 8);
-        self.set_extension(flag as usize, true);
+        self.extensions.set(flag as usize, true);
     }
 
     pub fn block_type(&self) -> BlockType {
@@ -218,20 +197,20 @@ impl MessageHeader {
     }
 
     pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        stream.write_bytes(&(self.network() as u16).to_be_bytes())?;
-        stream.write_u8(self.version_max())?;
-        stream.write_u8(self.version_using())?;
-        stream.write_u8(self.version_min())?;
-        stream.write_u8(self.message_type() as u8)?;
-        stream.write_bytes(&self.extensions().to_le_bytes())?;
+        stream.write_bytes(&(self.network as u16).to_be_bytes())?;
+        stream.write_u8(self.version_max)?;
+        stream.write_u8(self.version_using)?;
+        stream.write_u8(self.version_min)?;
+        stream.write_u8(self.message_type as u8)?;
+        stream.write_bytes(&self.extensions.data.to_le_bytes())?;
         Ok(())
     }
 
     const BULK_PULL_COUNT_PRESENT_FLAG: usize = 0;
 
     pub fn bulk_pull_is_count_present(&self) -> bool {
-        self.message_type() == MessageType::BulkPull
-            && self.test_extension(Self::BULK_PULL_COUNT_PRESENT_FLAG)
+        self.message_type == MessageType::BulkPull
+            && self.extensions[Self::BULK_PULL_COUNT_PRESENT_FLAG]
     }
 
     pub fn payload_length(&self) -> usize {
@@ -267,21 +246,19 @@ impl Display for MessageHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "NetID: {:04X}({}), ",
-            self.network() as u16,
-            self.network().as_str()
+            self.network as u16,
+            self.network.as_str()
         ))?;
         f.write_fmt(format_args!(
             "VerMaxUsingMin: {}/{}/{}, ",
-            self.version_max(),
-            self.version_using(),
-            self.version_min()
+            self.version_max, self.version_using, self.version_min
         ))?;
         f.write_fmt(format_args!(
             "MsgType: {}({}), ",
-            self.message_type() as u8,
-            self.message_type().as_str()
+            self.message_type as u8,
+            self.message_type.as_str()
         ))?;
-        f.write_fmt(format_args!("Extensions: {:04X}", self.extensions()))
+        f.write_fmt(format_args!("Extensions: {:04X}", self.extensions.data))
     }
 }
 
@@ -338,8 +315,8 @@ mod tests {
 
     #[test]
     fn serialize_header() -> Result<()> {
-        let network = &DEV_NETWORK_PARAMS.network;
-        let mut header = MessageHeader::new(&network, MessageType::Publish);
+        let protocol_info = ProtocolInfo::dev_network();
+        let mut header = MessageHeader::new(MessageType::Publish, &protocol_info);
         header.set_block_type(BlockType::State);
 
         let mut stream = MemoryStream::new();
@@ -349,9 +326,9 @@ mod tests {
         assert_eq!(bytes.len(), 8);
         assert_eq!(bytes[0], 0x52);
         assert_eq!(bytes[1], 0x41);
-        assert_eq!(bytes[2], network.protocol_version);
-        assert_eq!(bytes[3], network.protocol_version);
-        assert_eq!(bytes[4], network.protocol_version_min);
+        assert_eq!(bytes[2], protocol_info.version_using);
+        assert_eq!(bytes[3], protocol_info.version_max);
+        assert_eq!(bytes[4], protocol_info.version_min);
         assert_eq!(bytes[5], 0x03); // publish
         assert_eq!(bytes[6], 0x00); // extensions
         assert_eq!(bytes[7], 0x06); // state block

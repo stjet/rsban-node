@@ -2,10 +2,7 @@ use num::FromPrimitive;
 use rsnano_core::Networks;
 use std::ops::Deref;
 
-use rsnano_node::{
-    config::NetworkConstants,
-    messages::{MessageHeader, MessageType},
-};
+use rsnano_node::messages::{MessageHeader, MessageType, ProtocolInfo};
 
 pub struct MessageHeaderHandle(MessageHeader);
 
@@ -25,9 +22,8 @@ impl Deref for MessageHeaderHandle {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_empty() -> *mut MessageHeaderHandle {
-    let message_type = MessageType::Invalid;
-    let constants = NetworkConstants::empty();
-    let header = MessageHeader::new(&constants, message_type);
+    let protocol = ProtocolInfo::default();
+    let header = MessageHeader::new(MessageType::Invalid, &protocol);
     Box::into_raw(Box::new(MessageHeaderHandle(header)))
 }
 
@@ -45,7 +41,7 @@ pub unsafe extern "C" fn rsn_message_header_destroy(handle: *mut MessageHeaderHa
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_version_using(handle: *mut MessageHeaderHandle) -> u8 {
-    (*handle).0.version_using()
+    (*handle).0.version_using
 }
 
 #[no_mangle]
@@ -53,12 +49,12 @@ pub unsafe extern "C" fn rsn_message_header_set_version_using(
     handle: *mut MessageHeaderHandle,
     version: u8,
 ) {
-    (*handle).0.set_version_using(version);
+    (*handle).0.version_using = version;
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_network(handle: *mut MessageHeaderHandle) -> u16 {
-    (*handle).0.network() as u16
+    (*handle).0.network as u16
 }
 
 #[no_mangle]
@@ -66,9 +62,7 @@ pub unsafe extern "C" fn rsn_message_header_set_network(
     handle: *mut MessageHeaderHandle,
     network: u16,
 ) {
-    (*handle)
-        .0
-        .set_network(Networks::from_u16(network).unwrap())
+    (*handle).0.network = Networks::from_u16(network).unwrap()
 }
 
 #[no_mangle]
@@ -78,7 +72,7 @@ pub unsafe extern "C" fn rsn_message_header_size() -> usize {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_header_type(handle: *mut MessageHeaderHandle) -> u8 {
-    (*handle).0.message_type() as u8
+    (*handle).0.message_type as u8
 }
 
 #[no_mangle]
@@ -92,5 +86,5 @@ pub unsafe extern "C" fn rsn_message_header_set_extension(
     position: usize,
     value: bool,
 ) {
-    (*handle).0.set_extension(position, value)
+    (*handle).0.extensions.set(position, value)
 }

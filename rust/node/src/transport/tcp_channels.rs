@@ -440,7 +440,7 @@ impl ChannelTcpObserver for ChannelTcpObserverImpl {
 
     fn message_sent(&self, message: &dyn Message) {
         self.execute(|channels| {
-            let detail = DetailType::from(message.header().message_type());
+            let detail = DetailType::from(message.header().message_type);
             channels
                 .stats
                 .inc(StatType::Message, detail, Direction::Out);
@@ -533,7 +533,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         };
         let socket_type = socket.socket_type();
         if !self.stopped.load(Ordering::SeqCst)
-            && message.header().version_using() >= self.network.network.protocol_version_min
+            && message.header().version_using >= self.network.network.protocol_version_min
         {
             if let Some(channel) = self.find_channel(endpoint) {
                 (self.sink)(message.clone_box(), Arc::clone(&channel));
@@ -563,7 +563,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         temporary_channel.set_remote_endpoint();
                         debug_assert!(*endpoint == temporary_channel.remote_endpoint());
                         temporary_channel.set_node_id(node_id);
-                        temporary_channel.set_network_version(message.header().version_using());
+                        temporary_channel.set_network_version(message.header().version_using);
                         temporary_channel.set_temporary(true);
                         let temporary_channel = Arc::new(ChannelEnum::Tcp(temporary_channel));
                         debug_assert!(
@@ -578,7 +578,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     } else {
                         // Initial node_id_handshake request without node ID
                         debug_assert!(
-                            message.header().message_type() == MessageType::NodeIdHandshake
+                            message.header().message_type == MessageType::NodeIdHandshake
                         );
                         self.stats.inc(
                             StatType::Message,
@@ -694,11 +694,11 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 return;
             };
 
-            if handshake.header().network() != this_l.network.network.current_network
-                || handshake.header().version_using() < this_l.network.network.protocol_version_min
+            if handshake.header().network != this_l.network.network.current_network
+                || handshake.header().version_using < this_l.network.network.protocol_version_min
             {
                 // error handling, either the networks bytes or the version is wrong
-                if message.header().network() == this_l.network.network.current_network {
+                if message.header().network == this_l.network.network.current_network {
                     this_l
                         .stats
                         .inc(StatType::Message, DetailType::InvalidNetwork, Direction::In);
@@ -743,7 +743,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 return;
             };
 
-            tcp.set_network_version(handshake.header().version_using());
+            tcp.set_network_version(handshake.header().version_using);
 
             let node_id = response.node_id;
 

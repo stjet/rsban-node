@@ -125,8 +125,8 @@ impl NodeIdHandshakeResponse {
 }
 
 fn is_v2(header: &MessageHeader) -> bool {
-    debug_assert!(header.message_type() == MessageType::NodeIdHandshake);
-    header.test_extension(NodeIdHandshake::V2_FLAG)
+    debug_assert!(header.message_type == MessageType::NodeIdHandshake);
+    header.extensions[NodeIdHandshake::V2_FLAG]
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -148,7 +148,8 @@ impl NodeIdHandshake {
         query: Option<NodeIdHandshakeQuery>,
         response: Option<NodeIdHandshakeResponse>,
     ) -> Self {
-        let mut header = MessageHeader::new(constants, MessageType::NodeIdHandshake);
+        let mut header =
+            MessageHeader::new(MessageType::NodeIdHandshake, &constants.protocol_info());
 
         if query.is_some() {
             header.set_flag(Self::QUERY_FLAG as u8);
@@ -188,13 +189,13 @@ impl NodeIdHandshake {
     const V2_FLAG: usize = 2;
 
     fn is_query(header: &MessageHeader) -> bool {
-        header.message_type() == MessageType::NodeIdHandshake
-            && header.test_extension(NodeIdHandshake::QUERY_FLAG)
+        header.message_type == MessageType::NodeIdHandshake
+            && header.extensions[NodeIdHandshake::QUERY_FLAG]
     }
 
     fn is_response(header: &MessageHeader) -> bool {
-        header.message_type() == MessageType::NodeIdHandshake
-            && header.test_extension(NodeIdHandshake::RESPONSE_FLAG)
+        header.message_type == MessageType::NodeIdHandshake
+            && header.extensions[NodeIdHandshake::RESPONSE_FLAG]
     }
 
     pub fn is_v2(&self) -> bool {
@@ -202,7 +203,7 @@ impl NodeIdHandshake {
     }
 
     pub fn deserialize(&mut self, stream: &mut dyn Stream) -> Result<()> {
-        debug_assert!(self.header.message_type() == MessageType::NodeIdHandshake);
+        debug_assert!(self.header.message_type == MessageType::NodeIdHandshake);
         if Self::is_query(&self.header) {
             let mut cookie = [0u8; 32];
             stream.read_bytes(&mut cookie, 32)?;

@@ -1,4 +1,3 @@
-use crate::config::NetworkConstants;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{Deserialize, MemoryStream, Stream, StreamExt},
@@ -6,7 +5,7 @@ use rsnano_core::{
 };
 use std::{any::Any, fmt::Display, mem::size_of};
 
-use super::{Message, MessageHeader, MessageType, MessageVisitor};
+use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 
 /**
  * Type of requested asc pull data
@@ -99,9 +98,9 @@ pub struct AscPullReq {
 }
 
 impl AscPullReq {
-    pub fn new(constants: &NetworkConstants) -> Self {
+    pub fn new(protocol_info: &ProtocolInfo) -> Self {
         Self {
-            header: MessageHeader::new(constants, MessageType::AscPullReq),
+            header: MessageHeader::new(MessageType::AscPullReq, protocol_info),
             payload: AscPullReqPayload::Invalid,
             id: 0,
         }
@@ -126,7 +125,7 @@ impl AscPullReq {
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> anyhow::Result<()> {
-        debug_assert!(self.header.message_type() == MessageType::AscPullReq);
+        debug_assert!(self.header.message_type == MessageType::AscPullReq);
         let pull_type =
             AscPullPayloadId::from_u8(stream.read_u8()?).unwrap_or(AscPullPayloadId::Invalid);
         self.id = stream.read_u64_be()?;
@@ -148,7 +147,7 @@ impl AscPullReq {
     }
 
     pub fn serialized_size(header: &MessageHeader) -> usize {
-        let payload_len = header.extensions() as usize;
+        let payload_len = header.extensions.data as usize;
         Self::partial_size() + payload_len
     }
 
@@ -160,7 +159,7 @@ impl AscPullReq {
         let mut stream = MemoryStream::new();
         self.serialize_payload(&mut stream)?;
         let payload_len: u16 = stream.as_bytes().len().try_into()?;
-        self.header.set_extensions(payload_len);
+        self.header.extensions.data = payload_len;
         Ok(())
     }
 
@@ -198,7 +197,7 @@ impl AscPullReq {
 
     pub fn request_invalid(&mut self) {
         self.payload = AscPullReqPayload::Invalid;
-        self.header.set_extensions(0);
+        self.header.extensions.data = 0;
     }
 }
 
@@ -272,7 +271,7 @@ mod tests {
 
     #[test]
     fn serialize_header() -> anyhow::Result<()> {
-        let mut original = AscPullReq::new(&DEV_NETWORK_PARAMS.network);
+        let mut original = AscPullReq::new(&ProtocolInfo::dev_network());
         original.request_blocks(BlocksReqPayload {
             start: HashOrAccount::from(3),
             count: 111,
@@ -283,13 +282,13 @@ mod tests {
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::from_stream(&mut stream)?;
-        assert_eq!(header.message_type(), MessageType::AscPullReq);
+        assert_eq!(header.message_type, MessageType::AscPullReq);
         Ok(())
     }
 
     #[test]
     fn missing_payload() {
-        let original = AscPullReq::new(&DEV_NETWORK_PARAMS.network);
+        let original = AscPullReq::new(&ProtocolInfo::dev_network());
         let mut stream = MemoryStream::new();
         let result = original.serialize(&mut stream);
         match result {
@@ -300,7 +299,7 @@ mod tests {
 
     #[test]
     fn serialize_blocks() -> anyhow::Result<()> {
-        let mut original = AscPullReq::new(&DEV_NETWORK_PARAMS.network);
+        let mut original = AscPullReq::new(&ProtocolInfo::dev_network());
         original.id = 7;
         original.request_blocks(BlocksReqPayload {
             start: HashOrAccount::from(3),
@@ -321,7 +320,7 @@ mod tests {
 
     #[test]
     fn serialize_account_info() -> anyhow::Result<()> {
-        let mut original = AscPullReq::new(&DEV_NETWORK_PARAMS.network);
+        let mut original = AscPullReq::new(&ProtocolInfo::dev_network());
         original.id = 7;
         original.request_account_info(AccountInfoReqPayload {
             target: HashOrAccount::from(123),
@@ -341,7 +340,7 @@ mod tests {
 
     #[test]
     fn display_blocks_payload() {
-        let mut req = AscPullReq::new(&DEV_NETWORK_PARAMS.network);
+        let mut req = AscPullReq::new(&ProtocolInfo::dev_network());
         req.id = 7;
         req.request_blocks(BlocksReqPayload {
             start: 1.into(),
@@ -354,14 +353,14 @@ mod tests {
 
     #[test]
     fn display_invalid_payload() {
-        let mut req = AscPullReq::new(&DEV_NETWORK_PARAMS.network);
+        let mut req = AscPullReq::new(&ProtocolInfo::dev_network());
         req.id = 7;
         assert_eq!(req.to_string(), "NetID: 5241(dev), VerMaxUsingMin: 19/19/18, MsgType: 14(asc_pull_req), Extensions: 0000\nmissing payload");
     }
 
     #[test]
     fn display_account_info_payload() {
-        let mut req = AscPullReq::new(&DEV_NETWORK_PARAMS.network);
+        let mut req = AscPullReq::new(&ProtocolInfo::dev_network());
         req.id = 7;
         req.request_account_info(AccountInfoReqPayload {
             target: HashOrAccount::from(123),

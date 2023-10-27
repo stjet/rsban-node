@@ -7,6 +7,8 @@ use rsnano_core::{
 };
 use std::{sync::Mutex, time::Duration};
 
+use crate::messages::ProtocolInfo;
+
 //todo: make configurable in builld script again!
 static ACTIVE_NETWORK: Lazy<Mutex<Networks>> = Lazy::new(|| Mutex::new(Networks::NanoDevNetwork));
 
@@ -74,14 +76,24 @@ impl NetworkConstants {
         }
     }
 
+    pub fn protocol_info(&self) -> ProtocolInfo {
+        ProtocolInfo {
+            version_using: self.protocol_version,
+            version_max: self.protocol_version,
+            version_min: self.protocol_version_min,
+            network: self.current_network,
+        }
+    }
+
     fn live(work: WorkThresholds) -> Self {
         let cleanup_period_s = 60;
         let max_peers_per_ip = 10;
+        let protocol_info = ProtocolInfo::default();
         Self {
             work,
             current_network: Networks::NanoLiveNetwork,
-            protocol_version: 0x13,
-            protocol_version_min: 0x12,
+            protocol_version: protocol_info.version_using,
+            protocol_version_min: protocol_info.version_min,
             bootstrap_protocol_version_min: 0x13,
             principal_weight_factor: 1000, // 0.1%
             default_node_port: 7075,

@@ -26,7 +26,7 @@ pub struct ConfirmReq {
 
 impl ConfirmReq {
     pub fn with_block(constants: &NetworkConstants, block: Arc<BlockEnum>) -> Self {
-        let mut header = MessageHeader::new(constants, MessageType::ConfirmReq);
+        let mut header = MessageHeader::new(MessageType::ConfirmReq, &constants.protocol_info());
         header.set_block_type(block.block_type());
 
         Self {
@@ -40,7 +40,7 @@ impl ConfirmReq {
         constants: &NetworkConstants,
         roots_hashes: Vec<(BlockHash, Root)>,
     ) -> Self {
-        let mut header = MessageHeader::new(constants, MessageType::ConfirmReq);
+        let mut header = MessageHeader::new(MessageType::ConfirmReq, &constants.protocol_info());
         // not_a_block (1) block type for hashes + roots request
         header.set_block_type(BlockType::NotABlock);
 
@@ -85,7 +85,7 @@ impl ConfirmReq {
         stream: &mut impl Stream,
         uniquer: Option<&BlockUniquer>,
     ) -> Result<()> {
-        debug_assert!(self.header().message_type() == MessageType::ConfirmReq);
+        debug_assert!(self.header().message_type == MessageType::ConfirmReq);
 
         if self.header().block_type() == BlockType::NotABlock {
             let count = self.header().count() as usize;

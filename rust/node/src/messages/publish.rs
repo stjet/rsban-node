@@ -22,7 +22,7 @@ pub struct Publish {
 
 impl Publish {
     pub fn new(constants: &NetworkConstants, block: Arc<BlockEnum>) -> Self {
-        let mut header = MessageHeader::new(constants, MessageType::Publish);
+        let mut header = MessageHeader::new(MessageType::Publish, &constants.protocol_info());
         header.set_block_type(block.block_type());
 
         Self {
@@ -56,7 +56,7 @@ impl Publish {
         stream: &mut impl Stream,
         uniquer: Option<&BlockUniquer>,
     ) -> Result<()> {
-        debug_assert!(self.header.message_type() == MessageType::Publish);
+        debug_assert!(self.header.message_type == MessageType::Publish);
         self.block = Some(deserialize_block(
             self.header.block_type(),
             stream,

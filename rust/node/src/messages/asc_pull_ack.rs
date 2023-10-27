@@ -1,4 +1,3 @@
-use crate::config::NetworkConstants;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     deserialize_block_enum, serialize_block_enum,
@@ -7,7 +6,7 @@ use rsnano_core::{
 };
 use std::{any::Any, fmt::Display, mem::size_of};
 
-use super::{AscPullPayloadId, Message, MessageHeader, MessageType, MessageVisitor};
+use super::{AscPullPayloadId, Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct BlocksAckPayload {
@@ -98,9 +97,9 @@ pub struct AscPullAck {
 }
 
 impl AscPullAck {
-    pub fn new(constants: &NetworkConstants) -> Self {
+    pub fn new(protocol_info: &ProtocolInfo) -> Self {
         Self {
-            header: MessageHeader::new(constants, MessageType::AscPullAck),
+            header: MessageHeader::new(MessageType::AscPullAck, protocol_info),
             payload: AscPullAckPayload::Invalid,
             id: 0,
         }
@@ -141,7 +140,7 @@ impl AscPullAck {
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> anyhow::Result<()> {
-        debug_assert!(self.header.message_type() == MessageType::AscPullAck);
+        debug_assert!(self.header.message_type == MessageType::AscPullAck);
         let pull_type_code =
             AscPullPayloadId::from_u8(stream.read_u8()?).unwrap_or(AscPullPayloadId::Invalid);
         self.id = stream.read_u64_be()?;
@@ -174,7 +173,7 @@ impl AscPullAck {
     + size_of::<u64>(); // id
 
     pub fn serialized_size(header: &MessageHeader) -> usize {
-        let payload_length = header.extensions() as usize;
+        let payload_length = header.extensions.data as usize;
         Self::PARTIAL_SIZE + payload_length
     }
 
@@ -182,7 +181,7 @@ impl AscPullAck {
         let mut stream = MemoryStream::new();
         self.serialize_payload(&mut stream)?;
         let payload_len: u16 = stream.as_bytes().len().try_into()?;
-        self.header.set_extensions(payload_len);
+        self.header.extensions.data = payload_len;
         Ok(())
     }
 
@@ -198,7 +197,7 @@ impl AscPullAck {
 
     pub fn request_invalid(&mut self) {
         self.payload = AscPullAckPayload::Invalid;
-        self.header.set_extensions(0);
+        self.header.extensions.data = 0;
     }
 }
 
@@ -224,7 +223,7 @@ impl Message for AscPullAck {
             bail!("invalid payload");
         }
 
-        if self.header.extensions() == 0 {
+        if self.header.extensions.data == 0 {
             bail!("Block payload must have least `not_a_block` terminator");
         }
 
@@ -276,27 +275,25 @@ impl Display for AscPullAck {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::{utils::MemoryStream, BlockBuilder};
-
     use super::*;
-    use crate::DEV_NETWORK_PARAMS;
+    use rsnano_core::{utils::MemoryStream, BlockBuilder};
 
     #[test]
     fn serialize_header() -> anyhow::Result<()> {
-        let mut original = AscPullAck::new(&DEV_NETWORK_PARAMS.network);
+        let mut original = AscPullAck::new(&ProtocolInfo::dev_network());
         original.request_blocks(BlocksAckPayload { blocks: vec![] })?;
 
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::from_stream(&mut stream)?;
-        assert_eq!(header.message_type(), MessageType::AscPullAck);
+        assert_eq!(header.message_type, MessageType::AscPullAck);
         Ok(())
     }
 
     #[test]
     fn missing_payload() {
-        let original = AscPullAck::new(&DEV_NETWORK_PARAMS.network);
+        let original = AscPullAck::new(&ProtocolInfo::dev_network());
         let mut stream = MemoryStream::new();
         let result = original.serialize(&mut stream);
         match result {
@@ -307,7 +304,7 @@ mod tests {
 
     #[test]
     fn serialize_blocks() -> anyhow::Result<()> {
-        let mut original = AscPullAck::new(&DEV_NETWORK_PARAMS.network);
+        let mut original = AscPullAck::new(&ProtocolInfo::dev_network());
         original.id = 7;
         original.request_blocks(BlocksAckPayload {
             blocks: vec![BlockBuilder::state().build(), BlockBuilder::state().build()],
@@ -326,7 +323,7 @@ mod tests {
 
     #[test]
     fn serialize_account_info() -> anyhow::Result<()> {
-        let mut original = AscPullAck::new(&DEV_NETWORK_PARAMS.network);
+        let mut original = AscPullAck::new(&ProtocolInfo::dev_network());
         original.id = 7;
         original.request_account_info(AccountInfoAckPayload {
             account: Account::from(1),
@@ -350,7 +347,7 @@ mod tests {
 
     #[test]
     fn display() {
-        let mut ack = AscPullAck::new(&DEV_NETWORK_PARAMS.network);
+        let mut ack = AscPullAck::new(&ProtocolInfo::dev_network());
         ack.id = 7;
         ack.request_account_info(AccountInfoAckPayload {
             account: Account::from(1),

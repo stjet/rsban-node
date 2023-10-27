@@ -258,12 +258,10 @@ impl TelemetryAck {
             TelemetryData::serialized_size_of_known_data() + data.unknown_data.len()
                 <= TelemetryAck::SIZE_MASK as usize
         ); // Maximum size the mask allows
-        let mut header = MessageHeader::new(constants, MessageType::TelemetryAck);
-        let mut extensions = header.extensions();
-        extensions &= !TelemetryAck::SIZE_MASK;
-        extensions |=
+        let mut header = MessageHeader::new(MessageType::TelemetryAck, &constants.protocol_info());
+        header.extensions.data &= !TelemetryAck::SIZE_MASK;
+        header.extensions.data |=
             TelemetryData::serialized_size_of_known_data() as u16 + data.unknown_data.len() as u16;
-        header.set_extensions(extensions);
 
         Self { header, data }
     }
@@ -282,16 +280,16 @@ impl TelemetryAck {
     }
 
     pub fn deserialize(&mut self, stream: &mut dyn Stream) -> Result<()> {
-        debug_assert!(self.header.message_type() == MessageType::TelemetryAck);
+        debug_assert!(self.header.message_type == MessageType::TelemetryAck);
         if !self.is_empty_payload() {
-            self.data.deserialize(stream, self.header.extensions())?;
+            self.data.deserialize(stream, self.header.extensions.data)?;
         }
 
         Ok(())
     }
 
     pub fn size_from_header(header: &MessageHeader) -> usize {
-        (header.extensions() & TelemetryAck::SIZE_MASK) as usize
+        (header.extensions.data & TelemetryAck::SIZE_MASK) as usize
     }
 
     pub fn size(&self) -> usize {

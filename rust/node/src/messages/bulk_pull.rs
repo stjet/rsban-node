@@ -1,4 +1,3 @@
-use crate::config::NetworkConstants;
 use anyhow::Result;
 use rsnano_core::{
     utils::{Deserialize, Serialize, Stream},
@@ -6,7 +5,7 @@ use rsnano_core::{
 };
 use std::{any::Any, fmt::Display, mem::size_of};
 
-use super::{Message, MessageHeader, MessageType, MessageVisitor};
+use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct BulkPull {
@@ -21,9 +20,9 @@ impl BulkPull {
     const ASCENDING_FLAG: usize = 1;
     pub const EXTENDED_PARAMETERS_SIZE: usize = 8;
 
-    pub fn new(constants: &NetworkConstants) -> Self {
+    pub fn new(protocol_info: &ProtocolInfo) -> Self {
         Self {
-            header: MessageHeader::new(constants, MessageType::BulkPull),
+            header: MessageHeader::new(MessageType::BulkPull, &protocol_info),
             start: HashOrAccount::zero(),
             end: BlockHash::zero(),
             count: 0,
@@ -64,23 +63,25 @@ impl BulkPull {
     }
 
     pub fn is_count_present_in_header(header: &MessageHeader) -> bool {
-        header.test_extension(Self::COUNT_PRESENT_FLAG)
+        header.extensions[Self::COUNT_PRESENT_FLAG]
     }
 
     pub fn set_count_present(&mut self, present: bool) {
-        self.header.set_extension(Self::COUNT_PRESENT_FLAG, present);
+        self.header
+            .extensions
+            .set(Self::COUNT_PRESENT_FLAG, present);
     }
 
     pub fn is_ascending(&self) -> bool {
-        self.header.test_extension(Self::ASCENDING_FLAG)
+        self.header.extensions[Self::ASCENDING_FLAG]
     }
 
     pub fn set_ascending(&mut self) {
-        self.header.set_extension(Self::ASCENDING_FLAG, true);
+        self.header.extensions.set(Self::ASCENDING_FLAG, true);
     }
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        debug_assert!(self.header.message_type() == MessageType::BulkPull);
+        debug_assert!(self.header.message_type == MessageType::BulkPull);
 
         self.start = HashOrAccount::deserialize(stream)?;
         self.end = BlockHash::deserialize(stream)?;
@@ -175,14 +176,12 @@ impl Display for BulkPull {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::utils::MemoryStream;
-
     use super::*;
-    use crate::DEV_NETWORK_PARAMS;
+    use rsnano_core::utils::MemoryStream;
 
     #[test]
     fn bulk_pull_serialization() -> Result<()> {
-        let mut message_in = BulkPull::new(&DEV_NETWORK_PARAMS.network);
+        let mut message_in = BulkPull::new(&ProtocolInfo::dev_network());
         message_in.header.set_flag(BulkPull::ASCENDING_FLAG as u8);
         let mut stream = MemoryStream::new();
         message_in.serialize(&mut stream)?;

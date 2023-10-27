@@ -117,11 +117,11 @@ impl<T: BufferReader + Send> AsyncMessageDeserializer<T> {
             header =
                 MessageHeader::from_stream(&mut stream).map_err(|_| ParseStatus::InvalidHeader)?;
 
-            if header.network() != self.network_constants.current_network {
+            if header.network != self.network_constants.current_network {
                 self.set_status(ParseStatus::InvalidNetwork);
                 return Err(ParseStatus::InvalidNetwork);
             }
-            if header.version_using() < self.network_constants.protocol_version_min {
+            if header.version_using < self.network_constants.protocol_version_min {
                 self.set_status(ParseStatus::OutdatedVersion);
                 return Err(ParseStatus::OutdatedVersion);
             }
@@ -262,12 +262,12 @@ impl MessageDeserializerExt for Arc<MessageDeserializer> {
             }
         };
 
-        if header.network() != self.network_constants.current_network {
+        if header.network != self.network_constants.current_network {
             self.set_status(ParseStatus::InvalidNetwork);
             callback(ErrorCode::fault(), None);
             return;
         }
-        if header.version_using() < self.network_constants.protocol_version_min {
+        if header.version_using < self.network_constants.protocol_version_min {
             self.set_status(ParseStatus::OutdatedVersion);
             callback(ErrorCode::fault(), None);
             return;
@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn exact_bulk_pull() {
-        test_deserializer(&BulkPull::new(&STUB_NETWORK_CONSTANTS));
+        test_deserializer(&BulkPull::new(&ProtocolInfo::dev_network()));
     }
 
     #[test]
@@ -386,7 +386,7 @@ mod tests {
 
     #[test]
     fn exact_asc_pull_req() {
-        let mut message = AscPullReq::new(&STUB_NETWORK_CONSTANTS);
+        let mut message = AscPullReq::new(&ProtocolInfo::dev_network());
         message
             .request_account_info(AccountInfoReqPayload::test_data())
             .unwrap();
@@ -395,7 +395,7 @@ mod tests {
 
     #[test]
     fn exact_asc_pull_ack() {
-        let mut message = AscPullAck::new(&STUB_NETWORK_CONSTANTS);
+        let mut message = AscPullAck::new(&ProtocolInfo::dev_network());
         message
             .request_account_info(AccountInfoAckPayload::test_data())
             .unwrap();

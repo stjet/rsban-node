@@ -12,7 +12,7 @@ pub struct TelemetryReq {
 impl TelemetryReq {
     pub fn new(constants: &NetworkConstants) -> Self {
         Self {
-            header: MessageHeader::new(constants, MessageType::TelemetryReq),
+            header: MessageHeader::new(MessageType::TelemetryReq, &constants.protocol_info()),
         }
     }
 
@@ -21,7 +21,7 @@ impl TelemetryReq {
     }
 
     pub fn deserialize(&mut self, _stream: &mut impl Stream) -> Result<()> {
-        debug_assert!(self.header.message_type() == MessageType::TelemetryReq);
+        debug_assert!(self.header.message_type == MessageType::TelemetryReq);
         Ok(())
     }
 }

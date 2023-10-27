@@ -18,8 +18,8 @@ constexpr double nano::bootstrap_limits::bootstrap_minimum_termination_time_sec;
 constexpr unsigned nano::bootstrap_limits::bootstrap_max_new_connections;
 constexpr unsigned nano::bootstrap_limits::requeued_pulls_processed_blocks_factor;
 
-nano::bootstrap_client::bootstrap_client (std::shared_ptr<nano::bootstrap_client_observer> const & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::transport::socket> const & socket_a) :
-	handle{ rsnano::rsn_bootstrap_client_create (new std::shared_ptr<nano::bootstrap_client_observer> (observer_a), channel_a->handle, socket_a->handle) }
+nano::bootstrap_client::bootstrap_client (rsnano::async_runtime & async_rt, std::shared_ptr<nano::bootstrap_client_observer> const & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::transport::socket> const & socket_a) :
+	handle{ rsnano::rsn_bootstrap_client_create (async_rt.handle, new std::shared_ptr<nano::bootstrap_client_observer> (observer_a), channel_a->handle, socket_a->handle) }
 {
 }
 
@@ -234,7 +234,7 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 			}
 
 			auto channel_id = this_l->node.network->tcp_channels->get_next_channel_id ();
-			auto client (std::make_shared<nano::bootstrap_client> (this_l, std::make_shared<nano::transport::channel_tcp> (this_l->node.async_rt, this_l->node.outbound_limiter, this_l->node.config->network_params.network, socket, this_l->node.network->tcp_channels, channel_id), socket));
+			auto client (std::make_shared<nano::bootstrap_client> (this_l->node.async_rt, this_l, std::make_shared<nano::transport::channel_tcp> (this_l->node.async_rt, this_l->node.outbound_limiter, this_l->node.config->network_params.network, socket, this_l->node.network->tcp_channels, channel_id), socket));
 			this_l->connections_count++;
 			this_l->pool_connection (client, true, push_front);
 		}

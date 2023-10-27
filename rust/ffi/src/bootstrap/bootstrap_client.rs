@@ -7,6 +7,7 @@ use crate::{
         ChannelTcpSendCallbackWrapper, EndpointDto, ReadCallbackWrapper, SendBufferCallbackWrapper,
         SocketDestroyContext, SocketHandle, SocketReadCallback,
     },
+    utils::AsyncRuntimeHandle,
     StringDto, VoidPointerCallback,
 };
 use rsnano_node::{
@@ -21,6 +22,7 @@ pub struct BootstrapClientHandle(BootstrapClient);
 /// `observer` is a `shared_ptr<bootstrap_client_observer>*`
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_client_create(
+    async_rt: *mut AsyncRuntimeHandle,
     observer: *mut c_void,
     channel: *mut ChannelHandle,
     socket: *mut SocketHandle,
@@ -28,8 +30,9 @@ pub unsafe extern "C" fn rsn_bootstrap_client_create(
     let observer = Arc::new(FfiBootstrapClientObserver::new(observer));
     let channel = (*channel).0.clone();
     let socket = (*socket).deref().clone();
+    let async_rt = Arc::clone(&(*async_rt).0);
     Box::into_raw(Box::new(BootstrapClientHandle(BootstrapClient::new(
-        observer, channel, socket,
+        async_rt, observer, channel, socket,
     ))))
 }
 

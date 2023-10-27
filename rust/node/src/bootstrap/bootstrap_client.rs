@@ -13,7 +13,7 @@ use crate::{
         BufferDropPolicy, ChannelEnum, ChannelTcp, Socket, SocketExtensions, TrafficType,
         WriteCallback,
     },
-    utils::ErrorCode,
+    utils::{AsyncRuntime, ErrorCode},
 };
 
 use super::bootstrap_limits;
@@ -28,6 +28,7 @@ pub trait BootstrapClientObserverWeakPtr {
 }
 
 pub struct BootstrapClient {
+    async_rt: Arc<AsyncRuntime>,
     observer: Box<dyn BootstrapClientObserverWeakPtr>,
     channel: Arc<ChannelEnum>,
     socket: Arc<Socket>,
@@ -41,6 +42,7 @@ pub struct BootstrapClient {
 
 impl BootstrapClient {
     pub fn new(
+        async_rt: Arc<AsyncRuntime>,
         observer: Arc<dyn BootstrapClientObserver>,
         channel: Arc<ChannelEnum>,
         socket: Arc<Socket>,
@@ -49,6 +51,7 @@ impl BootstrapClient {
             tcp.set_remote_endpoint();
         }
         Self {
+            async_rt,
             observer: observer.to_weak(),
             channel,
             socket,
@@ -93,9 +96,16 @@ impl BootstrapClient {
         &self.socket
     }
 
+    //TODO delete and use async read() directly
     pub fn read_async(&self, size: usize, callback: Box<dyn FnOnce(ErrorCode, usize) + Send>) {
         self.socket
             .async_read(Arc::clone(&self.receive_buffer), size, callback);
+    }
+
+    pub async fn read(&self, size: usize) -> anyhow::Result<()> {
+        self.socket
+            .read_raw(Arc::clone(&self.receive_buffer), size)
+            .await
     }
 
     pub fn receive_buffer(&self) -> Vec<u8> {

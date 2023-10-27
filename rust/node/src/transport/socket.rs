@@ -677,6 +677,7 @@ impl Drop for Socket {
 pub trait SocketExtensions {
     fn start(&self);
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>);
+    // TODO delete. Use read_raw instead
     fn async_read(
         &self,
         buffer: Arc<Mutex<Vec<u8>>>,
@@ -697,14 +698,6 @@ pub trait SocketExtensions {
     fn set_remote(&self, endpoint: SocketAddr);
     fn has_timed_out(&self) -> bool;
     fn set_silent_connection_tolerance_time(&self, time_s: u64);
-
-    // TODO: delete this and use AsyncBufferReader::read()
-    fn read_impl(
-        &self,
-        data: Arc<Mutex<Vec<u8>>>,
-        size: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    );
 
     fn write_queued_messages(&self);
 }
@@ -1032,27 +1025,6 @@ impl SocketExtensions for Arc<Socket> {
                 .silent_connection_tolerance_time
                 .store(time_s, Ordering::SeqCst);
         }));
-    }
-
-    fn read_impl(
-        &self,
-        data: Arc<Mutex<Vec<u8>>>,
-        size: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    ) {
-        // Increase timeout to receive TCP header (idle server socket)
-        let prev_timeout = self.default_timeout_value();
-        self.set_default_timeout_value(self.idle_timeout.as_secs());
-
-        let self_clone = Arc::clone(self);
-        self.async_read(
-            data,
-            size,
-            Box::new(move |ec, s| {
-                self_clone.set_default_timeout_value(prev_timeout);
-                callback(ec, s);
-            }),
-        );
     }
 }
 

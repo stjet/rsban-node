@@ -677,13 +677,6 @@ impl Drop for Socket {
 pub trait SocketExtensions {
     fn start(&self);
     fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>);
-    // TODO delete. Use read_raw instead
-    fn async_read(
-        &self,
-        buffer: Arc<Mutex<Vec<u8>>>,
-        size: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    );
     async fn read_raw(&self, buffer: Arc<Mutex<Vec<u8>>>, size: usize) -> anyhow::Result<()>;
     fn async_write(
         &self,
@@ -791,90 +784,6 @@ impl SocketExtensions for Arc<Socket> {
                     return Err(e.into());
                 }
             }
-        }
-    }
-
-    fn async_read(
-        &self,
-        buffer: Arc<Mutex<Vec<u8>>>,
-        size: usize,
-        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    ) {
-        let buffer_len = { buffer.lock().unwrap().len() };
-        if size <= buffer_len {
-            if !self.is_closed() {
-                self.set_default_timeout();
-                let self_clone = self.clone();
-
-                let callback: Box<dyn FnOnce(ErrorCode, usize) + Send> =
-                    Box::new(move |ec, len| {
-                        if ec.is_err() {
-                            self_clone.observer.read_error();
-                        } else {
-                            self_clone.observer.read_successful(len);
-                            self_clone.set_last_completion();
-                            self_clone.set_last_receive_time();
-                        }
-                        callback(ec, len);
-                    });
-                let stream = {
-                    let guard = self.tcp_socket.state.lock().unwrap();
-                    let TokioSocketState::Client(stream) = guard.deref() else {
-                        return;
-                    };
-                    Arc::clone(stream)
-                };
-                let Some(runtime) = self.tcp_socket.runtime.upgrade() else {
-                    return;
-                };
-                runtime.tokio.spawn(async move {
-                    let mut read = 0;
-                    loop {
-                        match stream.readable().await {
-                            Ok(_) => {
-                                let mut buf = buffer.lock().unwrap();
-                                match stream.try_read(&mut buf.as_mut_slice()[read..size]) {
-                                    Ok(0) => {
-                                        drop(buf);
-                                        spawn_blocking(move || {
-                                            callback(ErrorCode::fault(), 0);
-                                        });
-                                        break;
-                                    }
-                                    Ok(n) => {
-                                        drop(buf);
-                                        read += n;
-                                        if read >= size {
-                                            spawn_blocking(move || {
-                                                callback(ErrorCode::new(), read);
-                                            });
-                                            break;
-                                        }
-                                    }
-                                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                        continue;
-                                    }
-                                    Err(_) => {
-                                        spawn_blocking(move || {
-                                            callback(ErrorCode::fault(), 0);
-                                        });
-                                        break;
-                                    }
-                                };
-                            }
-                            Err(_) => {
-                                spawn_blocking(move || {
-                                    callback(ErrorCode::fault(), 0);
-                                });
-                                break;
-                            }
-                        }
-                    }
-                });
-            }
-        } else {
-            debug_assert!(false); // async_read called with incorrect buffer size
-            callback(ErrorCode::no_buffer_space(), 0);
         }
     }
 

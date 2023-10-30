@@ -324,6 +324,7 @@ impl TcpServerExt for Arc<TcpServer> {
                             DetailType::DuplicatePublish,
                             Direction::In,
                         );
+                        self_clone.receive_message();
                     }
                     Err(e) => {
                         // IO error or critical error when deserializing message

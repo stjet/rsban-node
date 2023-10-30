@@ -718,7 +718,7 @@ void nano::active_transactions::request_confirm (nano::active_transactions_lock 
 		bool const confirmed_l (confirmed (*election_l));
 		unconfirmed_count_l += !confirmed_l;
 
-		if (transition_time (solicitor, *election_l))
+		if (confirmed_l || transition_time (solicitor, *election_l))
 		{
 			erase (election_l->qualified_root ());
 		}

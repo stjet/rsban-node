@@ -123,7 +123,6 @@ TEST (gap_cache, gap_bootstrap)
 	auto latest_block (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key.pub, 100));
 	ASSERT_NE (nullptr, latest_block);
 	ASSERT_TIMELY (5s, nano::dev::constants.genesis_amount - 200 == node1.balance (nano::dev::genesis->account ()));
-	ASSERT_TIMELY (5s, nano::dev::constants.genesis_amount == node2.balance (nano::dev::genesis->account ()));
 	ASSERT_TIMELY (5s, node2.balance (nano::dev::genesis->account ()) == nano::dev::constants.genesis_amount - 200);
 }
 

@@ -37,9 +37,9 @@ use crate::{
 use super::{
     message_deserializer::AsyncMessageDeserializer, BufferDropPolicy, ChannelEnum, ChannelTcp,
     ChannelTcpObserver, CompositeSocketObserver, EndpointType, IChannelTcpObserverWeakPtr,
-    NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket,
-    SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpMessageManager, TcpServer,
-    TcpServerFactory, TcpServerObserver, TcpSocketFacadeFactory, TrafficType,
+    NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter, ParseStatus, PeerExclusion,
+    Socket, SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpMessageManager,
+    TcpServer, TcpServerFactory, TcpServerObserver, TcpSocketFacadeFactory, TrafficType,
 };
 
 pub struct TcpChannelsOptions {
@@ -835,6 +835,8 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 let result = deserializer.read().await;
                 spawn_blocking(Box::new(move || match result {
                     Ok(msg) => callback(ErrorCode::new(), Some(msg)),
+                    Err(ParseStatus::DuplicatePublishMessage) => callback(ErrorCode::new(), None),
+                    Err(ParseStatus::InsufficientWork) => callback(ErrorCode::new(), None),
                     Err(_) => callback(ErrorCode::fault(), None),
                 }));
             });

@@ -22,7 +22,7 @@ use crate::{
 use super::{
     message_deserializer::{AsyncBufferReader, AsyncMessageDeserializer},
     BandwidthLimitType, BufferDropPolicy, Channel, ChannelEnum, NetworkFilter,
-    OutboundBandwidthLimiter, TrafficType, WriteCallback,
+    OutboundBandwidthLimiter, ParseStatus, TrafficType, WriteCallback,
 };
 
 pub struct InProcChannelData {
@@ -208,6 +208,10 @@ impl ChannelInProc {
                 let result = message_deserializer.read().await;
                 spawn_blocking(move || match result {
                     Ok(msg) => callback_msg(ErrorCode::new(), Some(msg)),
+                    Err(ParseStatus::DuplicatePublishMessage) => {
+                        callback_msg(ErrorCode::new(), None)
+                    }
+                    Err(ParseStatus::InsufficientWork) => callback_msg(ErrorCode::new(), None),
                     Err(_) => callback_msg(ErrorCode::fault(), None),
                 });
             });

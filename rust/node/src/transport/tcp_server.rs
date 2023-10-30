@@ -326,6 +326,15 @@ impl TcpServerExt for Arc<TcpServer> {
                         );
                         self_clone.receive_message();
                     }
+                    Err(ParseStatus::InsufficientWork) => {
+                        // IO error or critical error when deserializing message
+                        self_clone.stats.inc(
+                            StatType::Error,
+                            DetailType::InsufficientWork,
+                            Direction::In,
+                        );
+                        self_clone.receive_message();
+                    }
                     Err(e) => {
                         // IO error or critical error when deserializing message
                         self_clone

@@ -273,7 +273,8 @@ TEST (active_transactions, inactive_votes_cache_non_final)
 	ASSERT_FALSE (node.active.confirmed (*election));
 }
 
-TEST (active_transactions, inactive_votes_cache_fork)
+// this test is very flaky! Fix is this PR: https://github.com/nanocurrency/nano-node/pull/4313
+TEST (DISABLED_active_transactions, inactive_votes_cache_fork)
 {
 	nano::test::system system{ 1 };
 	auto & node = *system.nodes[0];

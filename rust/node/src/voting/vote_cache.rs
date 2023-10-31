@@ -219,8 +219,8 @@ impl CacheEntry {
             // It is not essential to keep tally up to date if rep voting weight changes, elections do tally calculations independently, so in the worst case scenario only our queue ordering will be a bit off
             if timestamp > existing.timestamp {
                 existing.timestamp = timestamp;
-                if Vote::is_final_timestamp(timestamp) {
-                    self.final_tally.wrapping_add(rep_weight);
+                if timestamp == Vote::FINAL_TIMESTAMP {
+                    self.final_tally = self.final_tally.wrapping_add(rep_weight);
                 }
                 return true;
             } else {
@@ -234,8 +234,8 @@ impl CacheEntry {
 
             // the test vote_processor.weights sometimes causes an overflow. TODO: find out why
             self.tally = self.tally.wrapping_add(rep_weight);
-            if Vote::is_final_timestamp(timestamp) {
-                self.final_tally.wrapping_add(rep_weight);
+            if timestamp == Vote::FINAL_TIMESTAMP {
+                self.final_tally = self.final_tally.wrapping_add(rep_weight);
             }
             return true;
         }
@@ -257,7 +257,7 @@ impl MultiIndexCacheEntryMap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::voting::{DURATION_MAX, TIMESTAMP_MAX};
+    use crate::voting::Vote;
     use rsnano_core::KeyPair;
 
     fn create_vote(rep: &KeyPair, hash: &BlockHash, timestamp_offset: u64) -> Vote {
@@ -268,6 +268,10 @@ mod tests {
             0,
             vec![*hash],
         )
+    }
+
+    fn create_final_vote(rep: &KeyPair, hash: &BlockHash) -> Vote {
+        Vote::new_final(rep, vec![*hash])
     }
 
     fn create_vote_cache() -> VoteCache {
@@ -424,8 +428,8 @@ mod tests {
         let vote2 = Vote::new(
             rep.public_key(),
             &rep.private_key(),
-            TIMESTAMP_MAX,
-            DURATION_MAX,
+            Vote::TIMESTAMP_MAX,
+            Vote::DURATION_MAX,
             vec![hash],
         );
         cache.vote(&hash, &vote2, Amount::raw(9));
@@ -558,5 +562,35 @@ mod tests {
         cache.vote(&hash, &vote3, Amount::raw(9));
 
         assert_eq!(cache.size(), 1);
+    }
+
+    #[test]
+    fn change_vote_to_final_vote() {
+        let mut cache = create_vote_cache();
+        let hash = BlockHash::from(1);
+
+        let rep = KeyPair::new();
+        let vote = create_vote(&rep, &hash, 1);
+        let final_vote = create_final_vote(&rep, &hash);
+        cache.vote(&hash, &vote, Amount::raw(9));
+        cache.vote(&hash, &final_vote, Amount::raw(9));
+
+        let entry = cache.find(&hash).unwrap();
+        assert_eq!(entry.tally, Amount::raw(9));
+        assert_eq!(entry.final_tally, Amount::raw(9));
+    }
+
+    #[test]
+    fn add_final_vote() {
+        let mut cache = create_vote_cache();
+        let hash = BlockHash::from(1);
+
+        let rep = KeyPair::new();
+        let vote = create_final_vote(&rep, &hash);
+        cache.vote(&hash, &vote, Amount::raw(9));
+
+        let entry = cache.find(&hash).unwrap();
+        assert_eq!(entry.tally, Amount::raw(9));
+        assert_eq!(entry.final_tally, Amount::raw(9));
     }
 }

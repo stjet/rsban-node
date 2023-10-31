@@ -32,6 +32,16 @@ impl Vote {
         }
     }
 
+    pub fn new_final(key: &KeyPair, hashes: Vec<BlockHash>) -> Self {
+        Self::new(
+            key.public_key(),
+            &key.private_key(),
+            Self::TIMESTAMP_MAX,
+            Self::DURATION_MAX,
+            hashes,
+        )
+    }
+
     pub fn new(
         account: Account,
         prv: &RawKey,
@@ -61,18 +71,19 @@ impl Vote {
         )
     }
 
-    /// Check if timestamp represents a final vote
-    pub fn is_final_timestamp(timestamp: u64) -> bool {
-        timestamp == u64::MAX
-    }
+    /// Timestamp for final vote
+    pub const FINAL_TIMESTAMP: u64 = u64::MAX;
+    pub const DURATION_MAX: u8 = 0x0F;
+    pub const TIMESTAMP_MAX: u64 = 0xFFFF_FFFF_FFFF_FFF0;
+    const TIMESTAMP_MASK: u64 = 0xFFFF_FFFF_FFFF_FFF0;
 
     /// Returns the timestamp of the vote (with the duration bits masked, set to zero)
     /// If it is a final vote, all the bits including duration bits are returned as they are, all FF
     pub fn timestamp(&self) -> u64 {
-        if self.timestamp == u64::MAX {
+        if self.timestamp == Vote::FINAL_TIMESTAMP {
             self.timestamp //final vote
         } else {
-            self.timestamp & TIMESTAMP_MASK
+            self.timestamp & Self::TIMESTAMP_MASK
         }
     }
 
@@ -80,7 +91,7 @@ impl Vote {
         // Duration field is specified in the 4 low-order bits of the timestamp.
         // This makes the timestamp have a minimum granularity of 16ms
         // The duration is specified as 2^(duration + 4) giving it a range of 16-524,288ms in power of two increments
-        let result = self.timestamp & !TIMESTAMP_MASK;
+        let result = self.timestamp & !Self::TIMESTAMP_MASK;
         result as u8
     }
 
@@ -187,12 +198,8 @@ impl FullHash for Vote {
     }
 }
 
-pub const DURATION_MAX: u8 = 0x0F;
-pub const TIMESTAMP_MAX: u64 = 0xFFFF_FFFF_FFFF_FFF0;
-pub const TIMESTAMP_MASK: u64 = 0xFFFF_FFFF_FFFF_FFF0;
-
 fn packed_timestamp(timestamp: u64, duration: u8) -> u64 {
-    debug_assert!(duration <= DURATION_MAX);
-    debug_assert!(timestamp != TIMESTAMP_MAX || duration == DURATION_MAX);
-    (timestamp & TIMESTAMP_MASK) | (duration as u64)
+    debug_assert!(duration <= Vote::DURATION_MAX);
+    debug_assert!(timestamp != Vote::TIMESTAMP_MAX || duration == Vote::DURATION_MAX);
+    (timestamp & Vote::TIMESTAMP_MASK) | (duration as u64)
 }

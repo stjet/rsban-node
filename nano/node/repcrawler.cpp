@@ -10,8 +10,6 @@
 #include <chrono>
 #include <memory>
 
-#include <bits/chrono.h>
-
 nano::representative::representative (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a) :
 	handle{ rsnano::rsn_representative_create (account_a.bytes.data (), channel_a->handle) }
 {

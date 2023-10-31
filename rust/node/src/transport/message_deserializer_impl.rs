@@ -138,7 +138,7 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = Keepalive::from_stream(header, stream) {
+        if let Ok(msg) = Keepalive::deserialize(header, stream) {
             if at_end(stream) {
                 return Ok(Box::new(msg));
             }

@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use rsnano_node::messages::{Keepalive, ProtocolInfo};
+use rsnano_node::messages::{Keepalive, KeepalivePayload, Payload, ProtocolInfo};
 
 use super::{
     create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
@@ -46,11 +46,9 @@ pub unsafe extern "C" fn rsn_message_keepalive_peers(
     result: *mut EndpointDto,
 ) {
     let dtos = std::slice::from_raw_parts_mut(result, 8);
-    let peers: Vec<_> = downcast_message::<Keepalive>(handle)
-        .peers()
-        .iter()
-        .map(EndpointDto::from)
-        .collect();
+    let message = downcast_message::<Keepalive>(handle);
+    let Payload::Keepalive(payload) = &message.payload else {panic!("not a keepalive payload")};
+    let peers: Vec<_> = payload.peers.iter().map(EndpointDto::from).collect();
     dtos.clone_from_slice(&peers);
 }
 
@@ -66,7 +64,8 @@ pub unsafe extern "C" fn rsn_message_keepalive_set_peers(
         .collect::<Vec<_>>()
         .try_into()
         .unwrap();
-    downcast_message_mut::<Keepalive>(handle).set_peers(&peers);
+    downcast_message_mut::<Keepalive>(handle).payload =
+        Payload::Keepalive(KeepalivePayload { peers });
 }
 
 #[no_mangle]

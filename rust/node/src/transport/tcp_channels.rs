@@ -21,8 +21,8 @@ use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
     config::{NetworkConstants, NodeConfig, NodeFlags},
     messages::{
-        Keepalive, Message, MessageType, NodeIdHandshake, NodeIdHandshakeQuery,
-        NodeIdHandshakeResponse,
+        KeepalivePayload, Message, MessageEnum, MessageHeader, MessageType, NodeIdHandshake,
+        NodeIdHandshakeQuery, NodeIdHandshakeResponse, Payload,
     },
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     transport::{Channel, SocketType},
@@ -591,7 +591,13 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
     fn ongoing_keepalive(&self) {
         let mut peers = [SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0); 8];
         self.random_fill(&mut peers);
-        let message = Keepalive::new_with_peers(&self.network.network.protocol_info(), peers);
+        let message = MessageEnum {
+            header: MessageHeader::new(
+                MessageType::Keepalive,
+                &self.network.network.protocol_info(),
+            ),
+            payload: Payload::Keepalive(KeepalivePayload { peers }),
+        };
         // Wake up channels
         let send_list = {
             let guard = self.tcp_channels.lock().unwrap();

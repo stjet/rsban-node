@@ -9,7 +9,7 @@ use std::{
 
 use super::{
     AscPullAck, AscPullReq, BulkPull, BulkPullAccount, ConfirmAck, ConfirmReq, FrontierReq,
-    Keepalive, NodeIdHandshake, TelemetryAck,
+    MessageEnum, NodeIdHandshake, TelemetryAck,
 };
 
 /// Message types are serialized to the network and existing values must thus never change as
@@ -215,7 +215,7 @@ impl MessageHeader {
 
     pub fn payload_length(&self) -> usize {
         match self.message_type {
-            MessageType::Keepalive => Keepalive::serialized_size(),
+            MessageType::Keepalive => MessageEnum::serialized_size(),
             MessageType::Publish => serialized_block_size(self.block_type()),
             MessageType::ConfirmReq => ConfirmReq::serialized_size(self.block_type(), self.count()),
             MessageType::ConfirmAck => ConfirmAck::serialized_size(self.count()),

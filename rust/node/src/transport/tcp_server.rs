@@ -18,7 +18,7 @@ use crate::{
     config::{NetworkConstants, NodeConfig},
     messages::{
         AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
-        FrontierReq, Keepalive, Message, MessageVisitor, NodeIdHandshake, NodeIdHandshakeQuery,
+        FrontierReq, Message, MessageEnum, MessageVisitor, NodeIdHandshake, NodeIdHandshakeQuery,
         NodeIdHandshakeResponse, Publish, TelemetryAck, TelemetryReq,
     },
     stats::{DetailType, Direction, StatType, Stats},
@@ -669,7 +669,7 @@ impl RealtimeMessageVisitorImpl {
 }
 
 impl MessageVisitor for RealtimeMessageVisitorImpl {
-    fn keepalive(&mut self, _message: &Keepalive) {
+    fn keepalive(&mut self, _message: &MessageEnum) {
         self.process = true;
     }
     fn publish(&mut self, _message: &Publish) {

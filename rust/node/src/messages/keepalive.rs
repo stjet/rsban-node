@@ -8,8 +8,8 @@ use std::{
 };
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Keepalive {
-    header: MessageHeader,
+pub struct MessageEnum {
+    pub header: MessageHeader,
     pub payload: Payload,
 }
 
@@ -97,7 +97,7 @@ impl Display for KeepalivePayload {
     }
 }
 
-impl Keepalive {
+impl MessageEnum {
     pub fn new(protocol_info: &ProtocolInfo) -> Self {
         Self {
             header: MessageHeader::new(MessageType::Keepalive, protocol_info),
@@ -105,26 +105,14 @@ impl Keepalive {
         }
     }
 
-    pub fn new_with_peers(protocol_info: &ProtocolInfo, peers: [SocketAddr; 8]) -> Self {
-        Self {
-            header: MessageHeader::new(MessageType::Keepalive, protocol_info),
-            payload: Payload::Keepalive(KeepalivePayload { peers }),
-        }
-    }
-
-    pub fn with_header(header: MessageHeader) -> Self {
-        Self {
-            header,
-            payload: Payload::Keepalive(Default::default()),
-        }
-    }
-
     pub fn deserialize(header: MessageHeader, stream: &mut impl Stream) -> Result<Self> {
-        let payload = KeepalivePayload::deserialize(&header, stream)?;
-        Ok(Self {
-            header,
-            payload: Payload::Keepalive(payload),
-        })
+        let payload = match header.message_type {
+            MessageType::Keepalive => {
+                Payload::Keepalive(KeepalivePayload::deserialize(&header, stream)?)
+            }
+            _ => unimplemented!(),
+        };
+        Ok(Self { header, payload })
     }
 
     pub fn serialized_size() -> usize {
@@ -136,7 +124,7 @@ fn empty_peers() -> [SocketAddr; 8] {
     [SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0); 8]
 }
 
-impl Message for Keepalive {
+impl Message for MessageEnum {
     fn header(&self) -> &MessageHeader {
         &self.header
     }
@@ -171,7 +159,7 @@ impl Message for Keepalive {
     }
 }
 
-impl Display for Keepalive {
+impl Display for MessageEnum {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.header.fmt(f)?;
         self.payload.fmt(f)
@@ -188,18 +176,18 @@ mod tests {
 
     #[test]
     fn serialize_no_peers() -> Result<()> {
-        let request1 = Keepalive::new(&ProtocolInfo::dev_network());
+        let request1 = MessageEnum::new(&ProtocolInfo::dev_network());
         let mut stream = MemoryStream::new();
         request1.serialize(&mut stream)?;
         let header = MessageHeader::from_stream(&mut stream)?;
-        let request2 = Keepalive::deserialize(header, &mut stream)?;
+        let request2 = MessageEnum::deserialize(header, &mut stream)?;
         assert_eq!(request1, request2);
         Ok(())
     }
 
     #[test]
     fn serialize_peers() -> Result<()> {
-        let mut request1 = Keepalive::new(&ProtocolInfo::dev_network());
+        let mut request1 = MessageEnum::new(&ProtocolInfo::dev_network());
 
         let mut keepalive = KeepalivePayload::default();
         keepalive.peers[0] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 10000);
@@ -215,7 +203,7 @@ mod tests {
     #[test]
     fn keepalive_with_no_peers_to_string() {
         let hdr = MessageHeader::new(MessageType::Keepalive, &ProtocolInfo::dev_network());
-        let keepalive = Keepalive::new(&ProtocolInfo::dev_network());
+        let keepalive = MessageEnum::new(&ProtocolInfo::dev_network());
         let expected =
             hdr.to_string() + "\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0";
         assert_eq!(keepalive.to_string(), expected);

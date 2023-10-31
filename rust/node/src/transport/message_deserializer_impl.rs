@@ -138,7 +138,7 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = Keepalive::deserialize(header, stream) {
+        if let Ok(msg) = MessageEnum::deserialize(header, stream) {
             if at_end(stream) {
                 return Ok(Box::new(msg));
             }
@@ -337,7 +337,7 @@ mod tests {
 
     #[test]
     fn exact_keepalive() {
-        test_deserializer(&Keepalive::new(&ProtocolInfo::dev_network()));
+        test_deserializer(&MessageEnum::new(&ProtocolInfo::dev_network()));
     }
 
     #[test]

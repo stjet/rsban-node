@@ -1,4 +1,4 @@
-use rsnano_node::messages::Publish;
+use rsnano_node::messages::{Publish, PublishPayload};
 use std::{ops::Deref, sync::Arc};
 
 use super::{
@@ -24,7 +24,13 @@ pub unsafe extern "C" fn rsn_message_publish_create2(
     digest: *const u8,
 ) -> *mut MessageHandle {
     let digest = u128::from_be_bytes(std::slice::from_raw_parts(digest, 16).try_into().unwrap());
-    create_message_handle2(header, |consts| Publish::with_header(consts, digest))
+    create_message_handle2(header, |header| Publish {
+        header,
+        payload: PublishPayload {
+            block: None,
+            digest,
+        },
+    })
 }
 
 #[no_mangle]

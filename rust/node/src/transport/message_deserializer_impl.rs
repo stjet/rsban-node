@@ -152,7 +152,9 @@ impl MessageDeserializerImpl {
         header: MessageHeader,
         digest: u128,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = Publish::from_stream(stream, header, digest, Some(&self.block_uniquer)) {
+        if let Ok(msg) =
+            Publish::deserialize_publish(stream, header, digest, Some(&self.block_uniquer))
+        {
             if at_end(stream) {
                 match &msg.payload.block {
                     Some(block) => {

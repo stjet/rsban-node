@@ -286,13 +286,6 @@ std::string nano::keepalive::to_string () const
  * publish
  */
 
-rsnano::MessageHandle * create_publish_handle2 (nano::message_header const & header_a, nano::uint128_t const & digest_a)
-{
-	uint8_t bytes[16] = { 0 };
-	boost::multiprecision::export_bits (digest_a, std::rbegin (bytes), 8, false);
-	return rsnano::rsn_message_publish_create2 (header_a.handle, &bytes[0]);
-}
-
 rsnano::MessageHandle * create_publish_handle (nano::network_constants const & constants, std::shared_ptr<nano::block> const & block_a)
 {
 	auto constants_dto{ constants.to_dto () };

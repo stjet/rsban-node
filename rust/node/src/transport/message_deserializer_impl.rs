@@ -154,7 +154,7 @@ impl MessageDeserializerImpl {
     ) -> Result<Box<dyn Message>, ParseStatus> {
         if let Ok(msg) = Publish::from_stream(stream, header, digest, Some(&self.block_uniquer)) {
             if at_end(stream) {
-                match &msg.block {
+                match &msg.payload.block {
                     Some(block) => {
                         if !self.network_constants.work.validate_entry_block(&block) {
                             return Ok(Box::new(msg));

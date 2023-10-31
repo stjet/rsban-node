@@ -12,7 +12,12 @@ use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 
 #[derive(Clone)]
 pub struct Publish {
-    header: MessageHeader,
+    pub header: MessageHeader,
+    pub payload: PublishPayload,
+}
+
+#[derive(Clone)]
+pub struct PublishPayload {
     pub block: Option<Arc<BlockEnum>>, //todo remove Option
     pub digest: u128,
 }
@@ -24,16 +29,20 @@ impl Publish {
 
         Self {
             header,
-            block: Some(block),
-            digest: 0,
+            payload: PublishPayload {
+                block: Some(block),
+                digest: 0,
+            },
         }
     }
 
     pub fn with_header(header: MessageHeader, digest: u128) -> Self {
         Self {
             header,
-            block: None,
-            digest,
+            payload: PublishPayload {
+                block: None,
+                digest,
+            },
         }
     }
 
@@ -54,11 +63,16 @@ impl Publish {
         uniquer: Option<&BlockUniquer>,
     ) -> Result<()> {
         debug_assert!(self.header.message_type == MessageType::Publish);
-        self.block = Some(deserialize_block(
-            self.header.block_type(),
-            stream,
-            uniquer,
-        )?);
+        let payload = PublishPayload {
+            block: Some(deserialize_block(
+                self.header.block_type(),
+                stream,
+                uniquer,
+            )?),
+            digest: self.payload.digest,
+        };
+
+        self.payload = payload;
         Ok(())
     }
 }
@@ -82,7 +96,11 @@ impl Message for Publish {
 
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.header().serialize(stream)?;
-        let block = self.block.as_ref().ok_or_else(|| anyhow!("no block"))?;
+        let block = self
+            .payload
+            .block
+            .as_ref()
+            .ok_or_else(|| anyhow!("no block"))?;
         block.serialize(stream)
     }
 
@@ -101,19 +119,19 @@ impl Message for Publish {
 
 impl PartialEq for Publish {
     fn eq(&self, other: &Self) -> bool {
-        if self.block.is_some() != other.block.is_some() {
+        if self.payload.block.is_some() != other.payload.block.is_some() {
             return false;
         }
 
-        if let Some(b1) = &self.block {
-            if let Some(b2) = &other.block {
+        if let Some(b1) = &self.payload.block {
+            if let Some(b2) = &other.payload.block {
                 if b1.deref() != b2.deref() {
                     return false;
                 }
             }
         }
 
-        self.header == other.header && self.digest == other.digest
+        self.header == other.header && self.payload.digest == other.payload.digest
     }
 }
 
@@ -121,7 +139,7 @@ impl Debug for Publish {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Publish")
             .field("header", &self.header)
-            .field("digest", &self.digest)
+            .field("digest", &self.payload.digest)
             .finish()
     }
 }
@@ -129,7 +147,7 @@ impl Debug for Publish {
 impl Display for Publish {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.header, f)?;
-        if let Some(block) = &self.block {
+        if let Some(block) = &self.payload.block {
             write!(f, "\n{}", block.to_json().map_err(|_| std::fmt::Error)?)?;
         }
         Ok(())

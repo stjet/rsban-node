@@ -1,4 +1,5 @@
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/rsnanoutils.hpp"
 #include "nano/node/transport/tcp.hpp"
 
 #include <nano/node/node.hpp>
@@ -8,6 +9,8 @@
 
 #include <chrono>
 #include <memory>
+
+#include <bits/chrono.h>
 
 nano::representative::representative (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a) :
 	handle{ rsnano::rsn_representative_create (account_a.bytes.data (), channel_a->handle) }
@@ -50,7 +53,7 @@ void nano::representative::set_channel (std::shared_ptr<nano::transport::channel
 
 std::chrono::system_clock::time_point nano::representative::get_last_request () const
 {
-	return std::chrono::system_clock::time_point (std::chrono::nanoseconds (rsnano::rsn_representative_last_request (handle)));
+	return rsnano::time_point_from_nanoseconds (rsnano::rsn_representative_last_request (handle));
 }
 
 void nano::representative::set_last_request (std::chrono::system_clock::time_point time_point)
@@ -61,8 +64,7 @@ void nano::representative::set_last_request (std::chrono::system_clock::time_poi
 
 std::chrono::system_clock::time_point nano::representative::get_last_response () const
 {
-	return std::chrono::system_clock::time_point (
-	std::chrono::nanoseconds (rsnano::rsn_representative_last_response (handle)));
+	return rsnano::time_point_from_nanoseconds (rsnano::rsn_representative_last_response (handle));
 }
 
 void nano::representative::set_last_response (std::chrono::system_clock::time_point time_point)

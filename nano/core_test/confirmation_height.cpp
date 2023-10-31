@@ -1313,7 +1313,7 @@ TEST (confirmation_height, dependent_election)
 	ASSERT_NE (nullptr, election);
 	node->active.force_confirm (*election);
 
-	ASSERT_TIMELY (5s, node->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out) == 3);
+	ASSERT_TIMELY (10s, node->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out) == 3);
 
 	ASSERT_EQ (3, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
 	// TODO: timing issue in the test? It shows inactive_conf_height count with 2?

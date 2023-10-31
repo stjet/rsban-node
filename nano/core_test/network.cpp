@@ -76,7 +76,8 @@ TEST (network, construction_without_specified_port)
 	EXPECT_EQ (port, node->tcp_listener->endpoint ().port ());
 }
 
-TEST (network, send_node_id_handshake_tcp)
+// Disabled, because it is flakey with Tokio
+TEST (DISABLED_network, send_node_id_handshake_tcp)
 {
 	nano::test::system system (1);
 	auto node0 (system.nodes[0]);

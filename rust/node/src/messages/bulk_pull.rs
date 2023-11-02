@@ -8,102 +8,121 @@ use std::{any::Any, fmt::Display, mem::size_of};
 use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct BulkPull {
-    header: MessageHeader,
+pub struct BulkPullPayload {
     pub start: HashOrAccount,
     pub end: BlockHash,
     pub count: u32,
+    pub ascending: bool,
 }
 
-impl BulkPull {
+impl BulkPullPayload {
     const COUNT_PRESENT_FLAG: usize = 0;
     const ASCENDING_FLAG: usize = 1;
     pub const EXTENDED_PARAMETERS_SIZE: usize = 8;
 
-    pub fn new(protocol_info: &ProtocolInfo) -> Self {
+    pub fn create_test_instance() -> BulkPullPayload {
         Self {
-            header: MessageHeader::new(MessageType::BulkPull, protocol_info),
-            start: HashOrAccount::zero(),
-            end: BlockHash::zero(),
-            count: 0,
+            start: 1.into(),
+            end: 2.into(),
+            count: 3,
+            ascending: true,
         }
-    }
-
-    pub fn with_header(header: MessageHeader) -> Self {
-        Self {
-            header,
-            start: HashOrAccount::zero(),
-            end: BlockHash::zero(),
-            count: 0,
-        }
-    }
-
-    pub fn from_stream(stream: &mut impl Stream, header: MessageHeader) -> Result<Self> {
-        let mut msg = Self::with_header(header);
-        msg.deserialize(stream)?;
-        Ok(msg)
-    }
-
-    fn clone_box(&self) -> Box<dyn Message> {
-        Box::new(self.clone())
     }
 
     pub fn serialized_size(header: &MessageHeader) -> usize {
         HashOrAccount::serialized_size()
             + BlockHash::serialized_size()
-            + (if BulkPull::is_count_present_in_header(header) {
-                BulkPull::EXTENDED_PARAMETERS_SIZE
+            + (if header.extensions[BulkPullPayload::COUNT_PRESENT_FLAG] {
+                BulkPullPayload::EXTENDED_PARAMETERS_SIZE
             } else {
                 0
             })
     }
 
-    pub fn is_count_present(&self) -> bool {
-        Self::is_count_present_in_header(&self.header)
-    }
+    pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
+        debug_assert!(header.message_type == MessageType::BulkPull);
+        let start = HashOrAccount::deserialize(stream)?;
+        let end = BlockHash::deserialize(stream)?;
 
-    pub fn is_count_present_in_header(header: &MessageHeader) -> bool {
-        header.extensions[Self::COUNT_PRESENT_FLAG]
-    }
-
-    pub fn set_count_present(&mut self, present: bool) {
-        self.header
-            .extensions
-            .set(Self::COUNT_PRESENT_FLAG, present);
-    }
-
-    pub fn is_ascending(&self) -> bool {
-        self.header.extensions[Self::ASCENDING_FLAG]
-    }
-
-    pub fn set_ascending(&mut self) {
-        self.header.extensions.set(Self::ASCENDING_FLAG, true);
-    }
-
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        debug_assert!(self.header.message_type == MessageType::BulkPull);
-
-        self.start = HashOrAccount::deserialize(stream)?;
-        self.end = BlockHash::deserialize(stream)?;
-
-        if self.is_count_present() {
-            let mut extended_parameters_buffers = [0u8; Self::EXTENDED_PARAMETERS_SIZE];
-            const_assert!(size_of::<u32>() < (BulkPull::EXTENDED_PARAMETERS_SIZE - 1)); // "count must fit within buffer")
+        let count = if header.extensions[BulkPullPayload::COUNT_PRESENT_FLAG] {
+            let mut extended_parameters_buffers = [0u8; BulkPullPayload::EXTENDED_PARAMETERS_SIZE];
+            const_assert!(size_of::<u32>() < (BulkPullPayload::EXTENDED_PARAMETERS_SIZE - 1)); // "count must fit within buffer")
 
             stream.read_bytes(
                 &mut extended_parameters_buffers,
-                Self::EXTENDED_PARAMETERS_SIZE,
+                BulkPullPayload::EXTENDED_PARAMETERS_SIZE,
             )?;
             if extended_parameters_buffers[0] != 0 {
                 bail!("extended parameters front was not 0");
             } else {
-                self.count =
-                    u32::from_le_bytes(extended_parameters_buffers[1..5].try_into().unwrap());
+                u32::from_le_bytes(extended_parameters_buffers[1..5].try_into().unwrap())
             }
         } else {
-            self.count = 0;
+            0
+        };
+
+        let ascending = header.extensions[BulkPullPayload::ASCENDING_FLAG];
+
+        Ok(BulkPullPayload {
+            start,
+            end,
+            count,
+            ascending,
+        })
+    }
+}
+
+impl Serialize for BulkPullPayload {
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.start.serialize(stream)?;
+        self.end.serialize(stream)?;
+
+        if self.count > 0 {
+            let mut count_buffer = [0u8; BulkPullPayload::EXTENDED_PARAMETERS_SIZE];
+            const_assert!(size_of::<u32>() < (BulkPullPayload::EXTENDED_PARAMETERS_SIZE - 1)); // count must fit within buffer
+
+            count_buffer[1..5].copy_from_slice(&self.count.to_le_bytes());
+            stream.write_bytes(&count_buffer)?;
         }
         Ok(())
+    }
+}
+
+impl Display for BulkPullPayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "\nstart={} end={} cnt={}",
+            self.start, self.end, self.count
+        )
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct BulkPull {
+    header: MessageHeader,
+    pub payload: BulkPullPayload,
+}
+
+impl BulkPull {
+    pub fn new_bulk_pull(protocol_info: &ProtocolInfo, payload: BulkPullPayload) -> Self {
+        let mut header = MessageHeader::new(MessageType::BulkPull, protocol_info);
+        header
+            .extensions
+            .set(BulkPullPayload::COUNT_PRESENT_FLAG, payload.count > 0);
+        header
+            .extensions
+            .set(BulkPullPayload::ASCENDING_FLAG, payload.ascending);
+        Self { header, payload }
+    }
+
+    pub fn deserialize(stream: &mut impl Stream, header: MessageHeader) -> Result<Self> {
+        let payload = BulkPullPayload::deserialize(stream, &header)?;
+        Ok(BulkPull { header, payload })
+    }
+
+    fn clone_box(&self) -> Box<dyn Message> {
+        Box::new(self.clone())
     }
 }
 
@@ -125,29 +144,8 @@ impl Message for BulkPull {
     }
 
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        // Ensure the "count_present" flag is set if there
-        // is a limit specifed.  Additionally, do not allow
-        // the "count_present" flag with a value of 0, since
-        // that is a sentinel which we use to mean "all blocks"
-        // and that is the behavior of not having the flag set
-        // so it is wasteful to do this.
-        debug_assert!(
-            (self.count == 0 && !self.is_count_present())
-                || (self.count != 0 && self.is_count_present())
-        );
-
         self.header.serialize(stream)?;
-        self.start.serialize(stream)?;
-        self.end.serialize(stream)?;
-
-        if self.is_count_present() {
-            let mut count_buffer = [0u8; Self::EXTENDED_PARAMETERS_SIZE];
-            const_assert!(size_of::<u32>() < (BulkPull::EXTENDED_PARAMETERS_SIZE - 1)); // count must fit within buffer
-
-            count_buffer[1..5].copy_from_slice(&self.count.to_le_bytes());
-            stream.write_bytes(&count_buffer)?;
-        }
-        Ok(())
+        self.payload.serialize(stream)
     }
 
     fn visit(&self, visitor: &mut dyn MessageVisitor) {
@@ -166,11 +164,7 @@ impl Message for BulkPull {
 impl Display for BulkPull {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.header.fmt(f)?;
-        write!(
-            f,
-            "\nstart={} end={} cnt={}",
-            self.start, self.end, self.count
-        )
+        self.payload.fmt(f)
     }
 }
 
@@ -181,14 +175,16 @@ mod tests {
 
     #[test]
     fn bulk_pull_serialization() -> Result<()> {
-        let mut message_in = BulkPull::new(&ProtocolInfo::dev_network());
-        message_in.header.set_flag(BulkPull::ASCENDING_FLAG as u8);
+        let message_in = BulkPull::new_bulk_pull(
+            &ProtocolInfo::dev_network(),
+            BulkPullPayload::create_test_instance(),
+        );
         let mut stream = MemoryStream::new();
         message_in.serialize(&mut stream)?;
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = BulkPull::from_stream(&mut stream, header)?;
+        let message_out = BulkPull::deserialize(&mut stream, header)?;
         assert_eq!(message_in, message_out);
-        assert!(message_out.is_ascending());
+        assert!(message_out.payload.ascending);
         Ok(())
     }
 }

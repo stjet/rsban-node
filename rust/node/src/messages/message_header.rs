@@ -12,8 +12,8 @@ use std::{
 };
 
 use super::{
-    AscPullAckPayload, AscPullReqPayload, BulkPull, BulkPullAccount, ConfirmAck, ConfirmReq,
-    FrontierReq, KeepalivePayload, NodeIdHandshake, TelemetryAck,
+    AscPullAckPayload, AscPullReqPayload, BulkPull, BulkPullAccount, BulkPullPayload, ConfirmAck,
+    ConfirmReq, FrontierReq, KeepalivePayload, NodeIdHandshake, TelemetryAck,
 };
 
 /// Message types are serialized to the network and existing values must thus never change as
@@ -237,7 +237,7 @@ impl MessageHeader {
             MessageType::Publish => serialized_block_size(self.block_type()),
             MessageType::ConfirmReq => ConfirmReq::serialized_size(self.block_type(), self.count()),
             MessageType::ConfirmAck => ConfirmAck::serialized_size(self.count()),
-            MessageType::BulkPull => BulkPull::serialized_size(self),
+            MessageType::BulkPull => BulkPullPayload::serialized_size(self),
             MessageType::BulkPush | MessageType::TelemetryReq => 0,
             MessageType::FrontierReq => FrontierReq::serialized_size(),
             MessageType::NodeIdHandshake => NodeIdHandshake::serialized_size(self),

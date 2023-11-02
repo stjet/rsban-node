@@ -121,7 +121,7 @@ struct BulkPullServerImpl {
 
 impl BulkPullServerImpl {
     fn ascending(&self) -> bool {
-        self.request.is_ascending()
+        self.request.payload.ascending
     }
 
     fn set_current_end(&mut self) {
@@ -131,20 +131,20 @@ impl BulkPullServerImpl {
             .ledger
             .store
             .block
-            .exists(&transaction, &self.request.end)
+            .exists(&transaction, &self.request.payload.end)
         {
             if self.enable_logging {
                 self.logger.try_log(&format!(
                     "Bulk pull end block doesn't exist: {}, sending everything",
-                    self.request.end
+                    self.request.payload.end
                 ));
             }
-            self.request.end = BlockHash::zero();
+            self.request.payload.end = BlockHash::zero();
         }
 
         let raw_block_exists = {
             let this = &self.ledger.store.block;
-            let hash = &self.request.start.into();
+            let hash = &self.request.payload.start.into();
             this.block_raw_get(&transaction, hash).is_some()
         };
 
@@ -152,7 +152,7 @@ impl BulkPullServerImpl {
             if self.enable_logging {
                 self.logger.try_log(&format!(
                     "Bulk pull request for block hash: {}",
-                    self.request.start
+                    self.request.payload.start
                 ));
             }
 
@@ -160,53 +160,49 @@ impl BulkPullServerImpl {
                 self.ledger
                     .store
                     .block
-                    .successor(&transaction, &self.request.start.into())
+                    .successor(&transaction, &self.request.payload.start.into())
                     .unwrap_or_default()
             } else {
-                self.request.start.into()
+                self.request.payload.start.into()
             };
             self.include_start = true;
         } else if let Some(info) = self
             .ledger
-            .account_info(&transaction, &self.request.start.into())
+            .account_info(&transaction, &self.request.payload.start.into())
         {
             self.current = if self.ascending() {
                 info.open_block
             } else {
                 info.head
             };
-            if !self.request.end.is_zero() {
+            if !self.request.payload.end.is_zero() {
                 let account = self
                     .ledger
-                    .account(&transaction, &self.request.end)
+                    .account(&transaction, &self.request.payload.end)
                     .unwrap_or_default();
-                if account != self.request.start.into() {
+                if account != self.request.payload.start.into() {
                     if self.enable_logging {
                         self.logger.try_log(&format!(
                             "Request for block that is not on account chain: {} not on {}",
-                            self.request.end,
-                            Account::from(self.request.start).encode_account()
+                            self.request.payload.end,
+                            Account::from(self.request.payload.start).encode_account()
                         ));
                     }
-                    self.current = self.request.end;
+                    self.current = self.request.payload.end;
                 }
             }
         } else {
             if self.enable_logging {
                 self.logger.try_log(&format!(
                     "Request for unknown account: {}",
-                    Account::from(self.request.start).encode_account()
+                    Account::from(self.request.payload.start).encode_account()
                 ));
             }
-            self.current = self.request.end;
+            self.current = self.request.payload.end;
         }
 
         self.sent_count = 0;
-        if self.request.is_count_present() {
-            self.max_count = self.request.count;
-        } else {
-            self.max_count = 0;
-        }
+        self.max_count = self.request.payload.count;
     }
 
     pub fn get_next(&mut self) -> Option<BlockEnum> {
@@ -222,9 +218,9 @@ impl BulkPullServerImpl {
          * Unless we are including the "start" member and this is the
          * start member, then include it anyway.
          */
-        if self.current != self.request.end {
+        if self.current != self.request.payload.end {
             send_current = true;
-        } else if self.current == self.request.end && self.include_start {
+        } else if self.current == self.request.payload.end && self.include_start {
             send_current = true;
 
             /*
@@ -260,13 +256,13 @@ impl BulkPullServerImpl {
                     if !next.is_zero() {
                         self.current = next;
                     } else {
-                        self.current = self.request.end;
+                        self.current = self.request.payload.end;
                     }
                 } else {
-                    self.current = self.request.end;
+                    self.current = self.request.payload.end;
                 }
             } else {
-                self.current = self.request.end;
+                self.current = self.request.payload.end;
             }
 
             self.sent_count += 1;

@@ -1,25 +1,32 @@
 use rsnano_core::{BlockHash, HashOrAccount};
 
 use crate::{copy_hash_bytes, copy_hash_or_account_bytes, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::BulkPull;
+use rsnano_node::messages::{BulkPull, BulkPullPayload};
 
-use super::{
-    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
-    MessageHandle, MessageHeaderHandle,
-};
+use super::{create_message_handle3, downcast_message, downcast_message_mut, MessageHandle};
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_create(
-    constants: *mut NetworkConstantsDto,
-) -> *mut MessageHandle {
-    create_message_handle3(constants, BulkPull::new)
+#[repr(C)]
+pub struct BulkPullPayloadDto {
+    pub start: [u8; 32],
+    pub end: [u8; 32],
+    pub count: u32,
+    pub ascending: bool,
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_create2(
-    header: *mut MessageHeaderHandle,
+pub unsafe extern "C" fn rsn_message_bulk_pull_create3(
+    constants: *mut NetworkConstantsDto,
+    dto: &BulkPullPayloadDto,
 ) -> *mut MessageHandle {
-    create_message_handle2(header, BulkPull::with_header)
+    create_message_handle3(constants, |protocol| {
+        let payload = BulkPullPayload {
+            start: HashOrAccount::from_bytes(dto.start),
+            end: BlockHash::from_bytes(dto.end),
+            count: dto.count,
+            ascending: dto.ascending,
+        };
+        BulkPull::new_bulk_pull(protocol, payload)
+    })
 }
 
 #[no_mangle]
@@ -30,61 +37,8 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_req_clone(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_start(handle: *mut MessageHandle, start: *mut u8) {
-    copy_hash_or_account_bytes(downcast_message::<BulkPull>(handle).start, start);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_set_start(
-    handle: *mut MessageHandle,
-    start: *const u8,
-) {
-    downcast_message_mut::<BulkPull>(handle).start = HashOrAccount::from_ptr(start);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_bulk_pull_end(handle: *mut MessageHandle, end: *mut u8) {
-    copy_hash_bytes(downcast_message::<BulkPull>(handle).end, end);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_set_end(handle: *mut MessageHandle, end: *const u8) {
-    downcast_message_mut::<BulkPull>(handle).end = BlockHash::from_ptr(end);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_count(handle: *mut MessageHandle) -> u32 {
-    downcast_message::<BulkPull>(handle).count
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_set_count(handle: *mut MessageHandle, count: u32) {
-    downcast_message_mut::<BulkPull>(handle).count = count;
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_is_ascending(handle: *mut MessageHandle) -> bool {
-    downcast_message::<BulkPull>(handle).is_ascending()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_set_ascending(handle: *mut MessageHandle) {
-    downcast_message_mut::<BulkPull>(handle).set_ascending();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_is_count_present(
-    handle: *mut MessageHandle,
-) -> bool {
-    downcast_message::<BulkPull>(handle).is_count_present()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_set_count_present(
-    handle: *mut MessageHandle,
-    present: bool,
-) {
-    downcast_message_mut::<BulkPull>(handle).set_count_present(present)
+    copy_hash_bytes(downcast_message::<BulkPull>(handle).payload.end, end);
 }
 
 #[no_mangle]

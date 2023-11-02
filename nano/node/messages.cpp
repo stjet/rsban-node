@@ -616,14 +616,28 @@ std::string nano::frontier_req::to_string () const
  * bulk_pull
  */
 
-rsnano::MessageHandle * create_bulk_pull_handle (nano::network_constants const & constants)
+namespace
+{
+rsnano::MessageHandle * create_bulk_pull_handle2 (nano::network_constants const & constants, nano::bulk_pull::bulk_pull_payload & payload)
 {
 	auto constants_dto{ constants.to_dto () };
-	return rsnano::rsn_message_bulk_pull_create (&constants_dto);
+	auto payload_dto{ payload.to_dto () };
+	return rsnano::rsn_message_bulk_pull_create3 (&constants_dto, &payload_dto);
+}
 }
 
-nano::bulk_pull::bulk_pull (nano::network_constants const & constants) :
-	message (create_bulk_pull_handle (constants))
+rsnano::BulkPullPayloadDto nano::bulk_pull::bulk_pull_payload::to_dto () const
+{
+	rsnano::BulkPullPayloadDto dto;
+	std::copy (std::begin (dto.start), std::end (dto.start), std::begin (dto.start));
+	std::copy (std::begin (dto.end), std::end (dto.end), std::begin (dto.end));
+	dto.count = count;
+	dto.ascending = ascending;
+	return dto;
+}
+
+nano::bulk_pull::bulk_pull (nano::network_constants const & constants, nano::bulk_pull::bulk_pull_payload & payload) :
+	message (create_bulk_pull_handle2 (constants, payload))
 {
 }
 
@@ -637,13 +651,6 @@ nano::bulk_pull::bulk_pull (bulk_pull const & other_a) :
 {
 }
 
-nano::hash_or_account nano::bulk_pull::get_start () const
-{
-	nano::hash_or_account start;
-	rsnano::rsn_message_bulk_pull_start (handle, start.bytes.data ());
-	return start;
-}
-
 nano::block_hash nano::bulk_pull::get_end () const
 {
 	nano::block_hash end;
@@ -651,49 +658,9 @@ nano::block_hash nano::bulk_pull::get_end () const
 	return end;
 }
 
-uint32_t nano::bulk_pull::get_count () const
-{
-	return rsnano::rsn_message_bulk_pull_count (handle);
-}
-
-void nano::bulk_pull::set_start (nano::hash_or_account start_a)
-{
-	rsnano::rsn_message_bulk_pull_set_start (handle, start_a.bytes.data ());
-}
-
-void nano::bulk_pull::set_end (nano::block_hash end_a)
-{
-	rsnano::rsn_message_bulk_pull_set_end (handle, end_a.bytes.data ());
-}
-
-void nano::bulk_pull::set_count (uint32_t count_a)
-{
-	rsnano::rsn_message_bulk_pull_set_count (handle, count_a);
-}
-
 void nano::bulk_pull::visit (nano::message_visitor & visitor_a) const
 {
 	visitor_a.bulk_pull (*this);
-}
-
-bool nano::bulk_pull::is_count_present () const
-{
-	return rsnano::rsn_message_bulk_pull_is_count_present (handle);
-}
-
-void nano::bulk_pull::set_count_present (bool value_a)
-{
-	rsnano::rsn_message_bulk_pull_set_count_present (handle, value_a);
-}
-
-bool nano::bulk_pull::is_ascending () const
-{
-	return rsnano::rsn_message_bulk_pull_is_ascending (handle);
-}
-
-void nano::bulk_pull::set_ascending ()
-{
-	rsnano::rsn_message_bulk_pull_set_ascending (handle);
 }
 
 std::string nano::bulk_pull::to_string () const

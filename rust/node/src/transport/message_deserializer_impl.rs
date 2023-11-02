@@ -245,7 +245,7 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = BulkPull::from_stream(stream, header) {
+        if let Ok(msg) = BulkPull::deserialize(stream, header) {
             if at_end(stream) {
                 return Ok(Box::new(msg));
             }
@@ -362,7 +362,10 @@ mod tests {
 
     #[test]
     fn exact_bulk_pull() {
-        test_deserializer(&BulkPull::new(&ProtocolInfo::dev_network()));
+        test_deserializer(&BulkPull::new_bulk_pull(
+            &ProtocolInfo::dev_network(),
+            BulkPullPayload::create_test_instance(),
+        ));
     }
 
     #[test]

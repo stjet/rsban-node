@@ -106,20 +106,21 @@ void nano::bulk_pull_client::request ()
 	}
 	debug_assert (!pull.head.is_zero () || pull.retry_limit <= node_l->network_params.bootstrap.lazy_retry_limit);
 	expected = pull.head;
-	nano::bulk_pull req{ node_l->network_params.network };
+	nano::bulk_pull::bulk_pull_payload payload;
 	if (pull.head == pull.head_original && pull.attempts % 4 < 3)
 	{
 		// Account for new pulls
-		req.set_start (pull.account_or_head);
+		payload.start = pull.account_or_head;
 	}
 	else
 	{
 		// Head for cached pulls or accounts with public key equal to existing block hash (25% of attempts)
-		req.set_start (pull.head);
+		payload.start = pull.account_or_head;
 	}
-	req.set_end (pull.end);
-	req.set_count (pull.count);
-	req.set_count_present (pull.count != 0);
+	payload.end = pull.end;
+	payload.count = pull.count;
+	payload.ascending = false;
+	nano::bulk_pull req{ node_l->network_params.network, payload };
 
 	if (logging_enabled)
 	{

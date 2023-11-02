@@ -44,9 +44,9 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
         if self.logging_config.bulk_pull_logging() {
             self.logger.try_log(&format!(
                 "Received bulk pull for {} down to {}, maximum of {} from {}",
-                message.start,
-                message.end,
-                message.count,
+                message.payload.start,
+                message.payload.end,
+                message.payload.count,
                 self.connection.remote_endpoint()
             ));
         }

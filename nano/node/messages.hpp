@@ -283,20 +283,22 @@ class bulk_pull final : public message
 {
 public:
 	using count_t = uint32_t;
-	explicit bulk_pull (nano::network_constants const & constants);
+	class bulk_pull_payload
+	{
+	public:
+		rsnano::BulkPullPayloadDto to_dto () const;
+
+		nano::hash_or_account start{};
+		nano::block_hash end{};
+		count_t count{ 0 };
+		bool ascending{ false };
+	};
+
+	bulk_pull (nano::network_constants const & constants, bulk_pull_payload & payload);
 	bulk_pull (rsnano::MessageHandle * handle_a);
 	bulk_pull (bulk_pull const & other_a);
 	void visit (nano::message_visitor &) const override;
-	bool is_count_present () const;
-	void set_count_present (bool);
-	bool is_ascending () const;
-	void set_ascending ();
-	nano::hash_or_account get_start () const;
 	nano::block_hash get_end () const;
-	count_t get_count () const;
-	void set_start (nano::hash_or_account start_a);
-	void set_end (nano::block_hash end_a);
-	void set_count (count_t count_a);
 	std::string to_string () const;
 };
 

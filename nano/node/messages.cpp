@@ -629,8 +629,8 @@ rsnano::MessageHandle * create_bulk_pull_handle2 (nano::network_constants const 
 rsnano::BulkPullPayloadDto nano::bulk_pull::bulk_pull_payload::to_dto () const
 {
 	rsnano::BulkPullPayloadDto dto;
-	std::copy (std::begin (dto.start), std::end (dto.start), std::begin (dto.start));
-	std::copy (std::begin (dto.end), std::end (dto.end), std::begin (dto.end));
+	std::copy (std::begin (start.bytes), std::end (start.bytes), std::begin (dto.start));
+	std::copy (std::begin (end.bytes), std::end (end.bytes), std::begin (dto.end));
 	dto.count = count;
 	dto.ascending = ascending;
 	return dto;

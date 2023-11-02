@@ -40,8 +40,8 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 }
 
                 let Some(thread_pool) = self.thread_pool.upgrade() else {
-            return;
-        };
+                    return;
+                };
 
                 if self.logging_config.bulk_pull_logging() {
                     self.logger.try_log(&format!(

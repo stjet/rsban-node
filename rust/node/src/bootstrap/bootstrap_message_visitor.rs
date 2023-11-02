@@ -6,7 +6,7 @@ use rsnano_ledger::Ledger;
 use crate::{
     block_processing::BlockProcessor,
     config::{Logging, NodeFlags},
-    messages::{BulkPull, BulkPullAccount, BulkPush, FrontierReq, MessageVisitor},
+    messages::{BulkPullAccount, BulkPush, FrontierReq, MessageEnum, MessageVisitor, Payload},
     stats::Stats,
     transport::{BootstrapMessageVisitor, TcpServer},
     utils::{AsyncRuntime, ThreadPool},
@@ -32,46 +32,51 @@ pub struct BootstrapMessageVisitorImpl {
 }
 
 impl MessageVisitor for BootstrapMessageVisitorImpl {
-    fn bulk_pull(&mut self, message: &BulkPull) {
-        if self.flags.disable_bootstrap_bulk_pull_server {
-            return;
-        }
+    fn keepalive(&mut self, message: &MessageEnum) {
+        match &message.payload {
+            Payload::BulkPull(payload) => {
+                if self.flags.disable_bootstrap_bulk_pull_server {
+                    return;
+                }
 
-        let Some(thread_pool) = self.thread_pool.upgrade() else {
+                let Some(thread_pool) = self.thread_pool.upgrade() else {
             return;
         };
 
-        if self.logging_config.bulk_pull_logging() {
-            self.logger.try_log(&format!(
-                "Received bulk pull for {} down to {}, maximum of {} from {}",
-                message.payload.start,
-                message.payload.end,
-                message.payload.count,
-                self.connection.remote_endpoint()
-            ));
+                if self.logging_config.bulk_pull_logging() {
+                    self.logger.try_log(&format!(
+                        "Received bulk pull for {} down to {}, maximum of {} from {}",
+                        payload.start,
+                        payload.end,
+                        payload.count,
+                        self.connection.remote_endpoint()
+                    ));
+                }
+
+                let payload = payload.clone();
+                let connection = Arc::clone(&self.connection);
+                let ledger = Arc::clone(&self.ledger);
+                let logger = Arc::clone(&self.logger);
+                let thread_pool2 = Arc::clone(&thread_pool);
+                let enable_logging = self.logging_config.bulk_pull_logging();
+                thread_pool.push_task(Box::new(move || {
+                    // TODO from original code: Add completion callback to bulk pull server
+                    // TODO from original code: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
+                    let mut bulk_pull_server = BulkPullServer::new(
+                        payload,
+                        connection,
+                        ledger,
+                        logger,
+                        thread_pool2,
+                        enable_logging,
+                    );
+                    bulk_pull_server.send_next();
+                }));
+
+                self.processed = true;
+            }
+            _ => {}
         }
-
-        let message = message.clone();
-        let connection = Arc::clone(&self.connection);
-        let ledger = Arc::clone(&self.ledger);
-        let logger = Arc::clone(&self.logger);
-        let thread_pool2 = Arc::clone(&thread_pool);
-        let enable_logging = self.logging_config.bulk_pull_logging();
-        thread_pool.push_task(Box::new(move || {
-            // TODO from original code: Add completion callback to bulk pull server
-            // TODO from original code: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
-            let mut bulk_pull_server = BulkPullServer::new(
-                message,
-                connection,
-                ledger,
-                logger,
-                thread_pool2,
-                enable_logging,
-            );
-            bulk_pull_server.send_next();
-        }));
-
-        self.processed = true;
     }
 
     fn bulk_pull_account(&mut self, message: &BulkPullAccount) {

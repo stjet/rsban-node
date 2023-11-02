@@ -12,8 +12,8 @@ use std::{
 };
 
 use super::{
-    AscPullAckPayload, AscPullReqPayload, BulkPull, BulkPullAccount, BulkPullPayload, ConfirmAck,
-    ConfirmReq, FrontierReq, KeepalivePayload, NodeIdHandshake, TelemetryAck,
+    AscPullAckPayload, AscPullReqPayload, BulkPullAccount, BulkPullPayload, ConfirmAck, ConfirmReq,
+    FrontierReq, KeepalivePayload, NodeIdHandshake, TelemetryAck,
 };
 
 /// Message types are serialized to the network and existing values must thus never change as

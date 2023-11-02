@@ -1,11 +1,10 @@
+use super::{MessageHeader, MessageType};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{Deserialize, Serialize, Stream, StreamExt},
     HashOrAccount,
 };
-use std::{any::Any, fmt::Display, mem::size_of};
-
-use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
+use std::{fmt::Display, mem::size_of};
 
 /**
  * Type of requested asc pull data
@@ -109,14 +108,14 @@ impl Display for AscPullReqPayload {
             AscPullReqType::Blocks(blocks) => {
                 write!(
                     f,
-                    "acc:{} max block count:{} hash type: {}",
+                    "\nacc:{} max block count:{} hash type: {}",
                     blocks.start, blocks.count, blocks.start_type as u8
                 )?;
             }
             AscPullReqType::AccountInfo(info) => {
                 write!(
                     f,
-                    "target:{} hash type:{}",
+                    "\ntarget:{} hash type:{}",
                     info.target, info.target_type as u8
                 )?;
             }
@@ -172,7 +171,7 @@ impl Serialize for AscPullReqPayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::MessageEnum;
+    use crate::messages::{Message, MessageEnum, ProtocolInfo};
 
     use super::*;
     use rsnano_core::utils::MemoryStream;
@@ -213,7 +212,7 @@ mod tests {
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = MessageEnum::deserialize(header, &mut stream, 0, None)?;
+        let message_out = MessageEnum::deserialize(&mut stream, header, 0, None)?;
         assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());
         Ok(())
@@ -234,7 +233,7 @@ mod tests {
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = MessageEnum::deserialize(header, &mut stream, 0, None)?;
+        let message_out = MessageEnum::deserialize(&mut stream, header, 0, None)?;
         assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());
         Ok(())

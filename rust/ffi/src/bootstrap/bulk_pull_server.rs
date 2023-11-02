@@ -1,5 +1,8 @@
 use rsnano_core::utils::Logger;
-use rsnano_node::{bootstrap::BulkPullServer, messages::BulkPull};
+use rsnano_node::{
+    bootstrap::BulkPullServer,
+    messages::{MessageEnum, Payload},
+};
 use std::sync::Arc;
 
 use crate::{
@@ -23,10 +26,11 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_create(
     thread_pool: *mut ThreadPoolHandle,
     logging_enabled: bool,
 ) -> *mut BulkPullServerHandle {
-    let msg = downcast_message::<BulkPull>(request);
+    let msg = downcast_message::<MessageEnum>(request);
+    let Payload::BulkPull(payload) = &msg.payload else {panic!("not a bulk_pull message")};
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     Box::into_raw(Box::new(BulkPullServerHandle(BulkPullServer::new(
-        msg.clone(),
+        payload.clone(),
         (*server).0.clone(),
         (*ledger).0.clone(),
         logger,
@@ -64,9 +68,11 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_current(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bulk_pull_server_request(
-    handle: *mut BulkPullServerHandle,
+    handle: &BulkPullServerHandle,
 ) -> *mut MessageHandle {
-    MessageHandle::new(Box::new((*handle).0.request()))
+    // only for tests
+    let msg = MessageEnum::new_bulk_pull(&Default::default(), handle.0.request());
+    MessageHandle::new(Box::new(msg))
 }
 
 #[no_mangle]

@@ -2,8 +2,9 @@ use crate::utils::BlockUniquer;
 
 use super::{
     AccountInfoAckPayload, AccountInfoReqPayload, AscPullAckPayload, AscPullAckType,
-    AscPullReqPayload, AscPullReqType, BlocksAckPayload, BlocksReqPayload, KeepalivePayload,
-    Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo, PublishPayload,
+    AscPullReqPayload, AscPullReqType, BlocksAckPayload, BlocksReqPayload, BulkPullPayload,
+    KeepalivePayload, Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo,
+    PublishPayload,
 };
 use anyhow::Result;
 use rsnano_core::{
@@ -24,6 +25,7 @@ pub enum Payload {
     Publish(PublishPayload),
     AscPullAck(AscPullAckPayload),
     AscPullReq(AscPullReqPayload),
+    BulkPull(BulkPullPayload),
 }
 
 impl Payload {
@@ -33,6 +35,7 @@ impl Payload {
             Payload::Publish(x) => x.serialize(stream),
             Payload::AscPullAck(x) => x.serialize(stream),
             Payload::AscPullReq(x) => x.serialize(stream),
+            Payload::BulkPull(x) => x.serialize(stream),
         }
     }
 }
@@ -44,6 +47,7 @@ impl Display for Payload {
             Payload::Publish(x) => x.fmt(f),
             Payload::AscPullAck(x) => x.fmt(f),
             Payload::AscPullReq(x) => x.fmt(f),
+            Payload::BulkPull(x) => x.fmt(f),
         }
     }
 }
@@ -145,9 +149,23 @@ impl MessageEnum {
         }
     }
 
+    pub fn new_bulk_pull(protocol_info: &ProtocolInfo, payload: BulkPullPayload) -> Self {
+        let mut header = MessageHeader::new(MessageType::BulkPull, protocol_info);
+        header
+            .extensions
+            .set(BulkPullPayload::COUNT_PRESENT_FLAG, payload.count > 0);
+        header
+            .extensions
+            .set(BulkPullPayload::ASCENDING_FLAG, payload.ascending);
+        Self {
+            header,
+            payload: Payload::BulkPull(payload),
+        }
+    }
+
     pub fn deserialize(
-        header: MessageHeader,
         stream: &mut impl Stream,
+        header: MessageHeader,
         digest: u128,
         uniquer: Option<&BlockUniquer>,
     ) -> Result<Self> {
@@ -163,6 +181,9 @@ impl MessageEnum {
             }
             MessageType::AscPullReq => {
                 Payload::AscPullReq(AscPullReqPayload::deserialize(stream, &header)?)
+            }
+            MessageType::BulkPull => {
+                Payload::BulkPull(BulkPullPayload::deserialize(stream, &header)?)
             }
             _ => unimplemented!(),
         };
@@ -208,7 +229,6 @@ impl Message for MessageEnum {
 impl Display for MessageEnum {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.header.fmt(f)?;
-        writeln!(f)?;
         self.payload.fmt(f)
     }
 }

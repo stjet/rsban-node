@@ -8,7 +8,7 @@ use rsnano_core::{
 use rsnano_ledger::Ledger;
 
 use crate::{
-    messages::BulkPull,
+    messages::BulkPullPayload,
     transport::{SocketExtensions, TcpServer, TcpServerExt},
     utils::{ErrorCode, ThreadPool},
 };
@@ -34,7 +34,7 @@ pub struct BulkPullServer {
 
 impl BulkPullServer {
     pub fn new(
-        request: BulkPull,
+        request: BulkPullPayload,
         connection: Arc<TcpServer>,
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
@@ -60,7 +60,7 @@ impl BulkPullServer {
         }
     }
 
-    pub fn request(&self) -> BulkPull {
+    pub fn request(&self) -> BulkPullPayload {
         self.server_impl.lock().unwrap().request.clone()
     }
 
@@ -116,12 +116,12 @@ struct BulkPullServerImpl {
     sent_count: u32,
     max_count: u32,
     current: BlockHash,
-    request: BulkPull,
+    request: BulkPullPayload,
 }
 
 impl BulkPullServerImpl {
     fn ascending(&self) -> bool {
-        self.request.payload.ascending
+        self.request.ascending
     }
 
     fn set_current_end(&mut self) {
@@ -131,20 +131,20 @@ impl BulkPullServerImpl {
             .ledger
             .store
             .block
-            .exists(&transaction, &self.request.payload.end)
+            .exists(&transaction, &self.request.end)
         {
             if self.enable_logging {
                 self.logger.try_log(&format!(
                     "Bulk pull end block doesn't exist: {}, sending everything",
-                    self.request.payload.end
+                    self.request.end
                 ));
             }
-            self.request.payload.end = BlockHash::zero();
+            self.request.end = BlockHash::zero();
         }
 
         let raw_block_exists = {
             let this = &self.ledger.store.block;
-            let hash = &self.request.payload.start.into();
+            let hash = &self.request.start.into();
             this.block_raw_get(&transaction, hash).is_some()
         };
 
@@ -152,7 +152,7 @@ impl BulkPullServerImpl {
             if self.enable_logging {
                 self.logger.try_log(&format!(
                     "Bulk pull request for block hash: {}",
-                    self.request.payload.start
+                    self.request.start
                 ));
             }
 
@@ -160,49 +160,49 @@ impl BulkPullServerImpl {
                 self.ledger
                     .store
                     .block
-                    .successor(&transaction, &self.request.payload.start.into())
+                    .successor(&transaction, &self.request.start.into())
                     .unwrap_or_default()
             } else {
-                self.request.payload.start.into()
+                self.request.start.into()
             };
             self.include_start = true;
         } else if let Some(info) = self
             .ledger
-            .account_info(&transaction, &self.request.payload.start.into())
+            .account_info(&transaction, &self.request.start.into())
         {
             self.current = if self.ascending() {
                 info.open_block
             } else {
                 info.head
             };
-            if !self.request.payload.end.is_zero() {
+            if !self.request.end.is_zero() {
                 let account = self
                     .ledger
-                    .account(&transaction, &self.request.payload.end)
+                    .account(&transaction, &self.request.end)
                     .unwrap_or_default();
-                if account != self.request.payload.start.into() {
+                if account != self.request.start.into() {
                     if self.enable_logging {
                         self.logger.try_log(&format!(
                             "Request for block that is not on account chain: {} not on {}",
-                            self.request.payload.end,
-                            Account::from(self.request.payload.start).encode_account()
+                            self.request.end,
+                            Account::from(self.request.start).encode_account()
                         ));
                     }
-                    self.current = self.request.payload.end;
+                    self.current = self.request.end;
                 }
             }
         } else {
             if self.enable_logging {
                 self.logger.try_log(&format!(
                     "Request for unknown account: {}",
-                    Account::from(self.request.payload.start).encode_account()
+                    Account::from(self.request.start).encode_account()
                 ));
             }
-            self.current = self.request.payload.end;
+            self.current = self.request.end;
         }
 
         self.sent_count = 0;
-        self.max_count = self.request.payload.count;
+        self.max_count = self.request.count;
     }
 
     pub fn get_next(&mut self) -> Option<BlockEnum> {
@@ -218,9 +218,9 @@ impl BulkPullServerImpl {
          * Unless we are including the "start" member and this is the
          * start member, then include it anyway.
          */
-        if self.current != self.request.payload.end {
+        if self.current != self.request.end {
             send_current = true;
-        } else if self.current == self.request.payload.end && self.include_start {
+        } else if self.current == self.request.end && self.include_start {
             send_current = true;
 
             /*
@@ -256,13 +256,13 @@ impl BulkPullServerImpl {
                     if !next.is_zero() {
                         self.current = next;
                     } else {
-                        self.current = self.request.payload.end;
+                        self.current = self.request.end;
                     }
                 } else {
-                    self.current = self.request.payload.end;
+                    self.current = self.request.end;
                 }
             } else {
-                self.current = self.request.payload.end;
+                self.current = self.request.end;
             }
 
             self.sent_count += 1;

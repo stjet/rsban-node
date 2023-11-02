@@ -64,7 +64,7 @@ impl Default for KeepalivePayload {
 impl Display for KeepalivePayload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for peer in &self.peers {
-            writeln!(f, "{}", peer)?;
+            write!(f, "\n{}", peer)?;
         }
         Ok(())
     }
@@ -87,7 +87,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         request1.serialize(&mut stream).unwrap();
         let header = MessageHeader::deserialize(&mut stream).unwrap();
-        let request2 = MessageEnum::deserialize(header, &mut stream, 0, None).unwrap();
+        let request2 = MessageEnum::deserialize(&mut stream, header, 0, None).unwrap();
         let Payload::Keepalive(payload1) = request1.payload else { panic!("not a keepalive message")};
         let Payload::Keepalive(payload2) = request2.payload else { panic!("not a keepalive message")};
         assert_eq!(payload1, payload2);
@@ -111,7 +111,7 @@ mod tests {
         let hdr = MessageHeader::new(MessageType::Keepalive, &ProtocolInfo::dev_network());
         let keepalive = MessageEnum::new_keepalive(&ProtocolInfo::dev_network());
         let expected =
-            hdr.to_string() + "\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n";
+            hdr.to_string() + "\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0";
         assert_eq!(keepalive.to_string(), expected);
     }
 
@@ -130,14 +130,14 @@ mod tests {
         keepalive.peers[7] = SocketAddr::new(IpAddr::from_str("::ffff:1.2.3.4").unwrap(), 1234);
 
         let mut expected = String::new();
-        expected.push_str("[::]:0\n");
-        expected.push_str("[::1]:45\n");
-        expected.push_str("[2001:db8:85a3:8d3:1319:8a2e:370:7348]:0\n");
-        expected.push_str("[::]:65535\n");
-        expected.push_str("[::ffff:1.2.3.4]:1234\n");
-        expected.push_str("[::ffff:1.2.3.4]:1234\n");
-        expected.push_str("[::ffff:1.2.3.4]:1234\n");
-        expected.push_str("[::ffff:1.2.3.4]:1234\n");
+        expected.push_str("\n[::]:0");
+        expected.push_str("\n[::1]:45");
+        expected.push_str("\n[2001:db8:85a3:8d3:1319:8a2e:370:7348]:0");
+        expected.push_str("\n[::]:65535");
+        expected.push_str("\n[::ffff:1.2.3.4]:1234");
+        expected.push_str("\n[::ffff:1.2.3.4]:1234");
+        expected.push_str("\n[::ffff:1.2.3.4]:1234");
+        expected.push_str("\n[::ffff:1.2.3.4]:1234");
 
         assert_eq!(keepalive.to_string(), expected);
     }

@@ -82,7 +82,7 @@ impl Display for AscPullAckPayload {
             AscPullAckType::AccountInfo(info) => {
                 write!(
                     f,
-                    "account public key:{} account open:{} account head:{} block count:{} confirmation frontier:{} confirmation height:{}",
+                    "\naccount public key:{} account open:{} account head:{} block count:{} confirmation frontier:{} confirmation height:{}",
                     info.account.encode_account(),
                     info.account_open,
                     info.account_head,
@@ -202,7 +202,7 @@ mod tests {
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = MessageEnum::deserialize(header, &mut stream, 0, None)?;
+        let message_out = MessageEnum::deserialize(&mut stream, header, 0, None)?;
         assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());
         Ok(())
@@ -227,7 +227,7 @@ mod tests {
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = MessageEnum::deserialize(header, &mut stream, 0, None)?;
+        let message_out = MessageEnum::deserialize(&mut stream, header, 0, None)?;
         assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());
         Ok(())

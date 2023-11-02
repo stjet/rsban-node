@@ -138,7 +138,7 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(header, stream, 0, Some(&self.block_uniquer)) {
+        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, Some(&self.block_uniquer)) {
             if at_end(stream) {
                 return Ok(Box::new(msg));
             }
@@ -152,7 +152,7 @@ impl MessageDeserializerImpl {
         header: MessageHeader,
         digest: u128,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(header, stream, digest, Some(&self.block_uniquer))
+        if let Ok(msg) = MessageEnum::deserialize(stream, header, digest, Some(&self.block_uniquer))
         {
             if at_end(stream) {
                 let Payload::Publish(payload) = &msg.payload else { unreachable!()};
@@ -245,7 +245,7 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = BulkPull::deserialize(stream, header) {
+        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None) {
             if at_end(stream) {
                 return Ok(Box::new(msg));
             }
@@ -293,7 +293,7 @@ impl MessageDeserializerImpl {
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
         // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
-        match MessageEnum::deserialize(header, stream, 0, None) {
+        match MessageEnum::deserialize(stream, header, 0, None) {
             Ok(msg) => Ok(Box::new(msg)),
             Err(_) => Err(ParseStatus::InvalidAscPullReqMessage),
         }
@@ -305,7 +305,7 @@ impl MessageDeserializerImpl {
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
         // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
-        match MessageEnum::deserialize(header, stream, 0, None) {
+        match MessageEnum::deserialize(stream, header, 0, None) {
             Ok(msg) => Ok(Box::new(msg)),
             Err(_) => Err(ParseStatus::InvalidAscPullAckMessage),
         }
@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn exact_bulk_pull() {
-        test_deserializer(&BulkPull::new_bulk_pull(
+        test_deserializer(&MessageEnum::new_bulk_pull(
             &ProtocolInfo::dev_network(),
             BulkPullPayload::create_test_instance(),
         ));

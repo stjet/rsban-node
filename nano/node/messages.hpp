@@ -409,7 +409,6 @@ public: // Payload definitions
 public:
 	using id_t = uint64_t;
 
-	explicit asc_pull_req (nano::network_constants const &);
 	asc_pull_req (nano::network_constants const &, uint64_t id, account_info_payload & payload_a);
 	asc_pull_req (nano::network_constants const &, uint64_t id, blocks_payload & payload_a);
 	asc_pull_req (rsnano::MessageHandle * handle_a);

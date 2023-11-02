@@ -27,7 +27,6 @@ impl AscPullAckPayload {
             .ok_or_else(|| anyhow!("Unknown asc_pull_type"))?;
         let id = stream.read_u64_be()?;
         let pull_type = match pull_type_code {
-            AscPullPayloadId::Invalid => bail!("Unknown asc_pull_type"),
             AscPullPayloadId::Blocks => {
                 let mut payload = BlocksAckPayload::default();
                 payload.deserialize(stream)?;

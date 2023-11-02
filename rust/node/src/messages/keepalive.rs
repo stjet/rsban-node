@@ -1,11 +1,15 @@
 use crate::utils::BlockUniquer;
 
 use super::{
-    AccountInfoAckPayload, AscPullAckPayload, AscPullAckType, BlocksAckPayload, Message,
-    MessageHeader, MessageType, MessageVisitor, ProtocolInfo, PublishPayload,
+    AccountInfoAckPayload, AccountInfoReqPayload, AscPullAckPayload, AscPullAckType,
+    AscPullReqPayload, AscPullReqType, BlocksAckPayload, BlocksReqPayload, Message, MessageHeader,
+    MessageType, MessageVisitor, ProtocolInfo, PublishPayload,
 };
 use anyhow::Result;
-use rsnano_core::{utils::Stream, BlockEnum};
+use rsnano_core::{
+    utils::{Serialize, Stream},
+    BlockEnum,
+};
 use std::{
     any::Any,
     fmt::Display,
@@ -24,6 +28,7 @@ pub enum Payload {
     Keepalive(KeepalivePayload),
     Publish(PublishPayload),
     AscPullAck(AscPullAckPayload),
+    AscPullReq(AscPullReqPayload),
 }
 
 impl Payload {
@@ -32,6 +37,7 @@ impl Payload {
             Payload::Keepalive(x) => x.serialize(stream),
             Payload::Publish(x) => x.serialize(stream),
             Payload::AscPullAck(x) => x.serialize(stream),
+            Payload::AscPullReq(x) => x.serialize(stream),
         }
     }
 }
@@ -42,6 +48,7 @@ impl Display for Payload {
             Payload::Keepalive(x) => x.fmt(f),
             Payload::Publish(x) => x.fmt(f),
             Payload::AscPullAck(x) => x.fmt(f),
+            Payload::AscPullReq(x) => x.fmt(f),
         }
     }
 }
@@ -166,6 +173,47 @@ impl MessageEnum {
         }
     }
 
+    pub fn new_asc_pull_req_blocks(
+        protocol_info: &ProtocolInfo,
+        id: u64,
+        blocks: BlocksReqPayload,
+    ) -> Self {
+        let payload = AscPullReqPayload {
+            req_type: AscPullReqType::Blocks(blocks),
+            id,
+        };
+
+        let header = MessageHeader::new_with_payload_len(
+            MessageType::AscPullReq,
+            protocol_info,
+            &payload.req_type,
+        );
+        Self {
+            header,
+            payload: Payload::AscPullReq(payload),
+        }
+    }
+
+    pub fn new_asc_pull_req_accounts(
+        protocol_info: &ProtocolInfo,
+        id: u64,
+        payload: AccountInfoReqPayload,
+    ) -> Self {
+        let payload = AscPullReqPayload {
+            req_type: AscPullReqType::AccountInfo(payload),
+            id,
+        };
+        let header = MessageHeader::new_with_payload_len(
+            MessageType::AscPullReq,
+            protocol_info,
+            &payload.req_type,
+        );
+        Self {
+            header,
+            payload: Payload::AscPullReq(payload),
+        }
+    }
+
     pub fn deserialize(
         header: MessageHeader,
         stream: &mut impl Stream,
@@ -181,6 +229,9 @@ impl MessageEnum {
             )?),
             MessageType::AscPullAck => {
                 Payload::AscPullAck(AscPullAckPayload::deserialize(stream, &header)?)
+            }
+            MessageType::AscPullReq => {
+                Payload::AscPullReq(AscPullReqPayload::deserialize(stream, &header)?)
             }
             _ => unimplemented!(),
         };

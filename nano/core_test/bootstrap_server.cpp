@@ -118,7 +118,7 @@ TEST (bootstrap_server, serve_hash)
 	request_payload.start = blocks.front ()->hash ();
 	request_payload.count = nano::bootstrap_server::max_blocks;
 	request_payload.start_type = nano::asc_pull_req::hash_type::block;
-	nano::asc_pull_req request{ node.network_params.network, 7, request_payload};
+	nano::asc_pull_req request{ node.network_params.network, 7, request_payload };
 
 	node.network->inbound (request, nano::test::fake_channel (node));
 
@@ -159,7 +159,7 @@ TEST (bootstrap_server, serve_hash_one)
 	request_payload.start = blocks.front ()->hash ();
 	request_payload.count = 1;
 	request_payload.start_type = nano::asc_pull_req::hash_type::block;
-	nano::asc_pull_req request{ node.network_params.network, 7, request_payload};
+	nano::asc_pull_req request{ node.network_params.network, 7, request_payload };
 
 	node.network->inbound (request, nano::test::fake_channel (node));
 
@@ -195,7 +195,7 @@ TEST (bootstrap_server, serve_end_of_chain)
 	request_payload.start = blocks.back ()->hash ();
 	request_payload.count = nano::bootstrap_server::max_blocks;
 	request_payload.start_type = nano::asc_pull_req::hash_type::block;
-	nano::asc_pull_req request{ node.network_params.network, 7, request_payload};
+	nano::asc_pull_req request{ node.network_params.network, 7, request_payload };
 
 	node.network->inbound (request, nano::test::fake_channel (node));
 

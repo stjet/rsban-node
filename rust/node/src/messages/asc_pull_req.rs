@@ -1,6 +1,6 @@
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::{Deserialize, MemoryStream, Stream, StreamExt},
+    utils::{Deserialize, Serialize, Stream, StreamExt},
     HashOrAccount,
 };
 use std::{any::Any, fmt::Display, mem::size_of};
@@ -15,16 +15,23 @@ use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 #[repr(u8)]
 #[derive(Clone, FromPrimitive)]
 pub enum AscPullPayloadId {
-    Invalid = 0x0,
     Blocks = 0x1,
     AccountInfo = 0x2,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum AscPullReqPayload {
-    Invalid,
+pub enum AscPullReqType {
     Blocks(BlocksReqPayload),
     AccountInfo(AccountInfoReqPayload),
+}
+
+impl Serialize for AscPullReqType {
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        match &self {
+            AscPullReqType::Blocks(blocks) => blocks.serialize(stream),
+            AscPullReqType::AccountInfo(account_info) => account_info.serialize(stream),
+        }
+    }
 }
 
 #[derive(FromPrimitive, PartialEq, Eq, Clone, Copy, Debug, Default)]
@@ -90,175 +97,23 @@ impl AccountInfoReqPayload {
 }
 
 /// Ascending bootstrap pull request
-#[derive(Clone)]
-pub struct AscPullReq {
-    header: MessageHeader,
-    payload: AscPullReqPayload,
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct AscPullReqPayload {
+    pub req_type: AscPullReqType,
     pub id: u64,
 }
 
-impl AscPullReq {
-    pub fn new(protocol_info: &ProtocolInfo) -> Self {
-        Self {
-            header: MessageHeader::new(MessageType::AscPullReq, protocol_info),
-            payload: AscPullReqPayload::Invalid,
-            id: 0,
-        }
-    }
-
-    pub fn new_asc_pull_req_blocks(
-        protocol_info: &ProtocolInfo,
-        id: u64,
-        payload: BlocksReqPayload,
-    ) -> Self {
-        let mut msg = Self {
-            header: MessageHeader::new(MessageType::AscPullReq, protocol_info),
-            payload: AscPullReqPayload::Blocks(payload),
-            id,
-        };
-        msg.update_header().unwrap();
-        msg
-    }
-
-    pub fn new_asc_pull_req_accounts(
-        protocol_info: &ProtocolInfo,
-        id: u64,
-        payload: AccountInfoReqPayload,
-    ) -> Self {
-        let mut msg = Self {
-            header: MessageHeader::new(MessageType::AscPullReq, protocol_info),
-            payload: AscPullReqPayload::AccountInfo(payload),
-            id,
-        };
-        msg.update_header().unwrap();
-        msg
-    }
-
-    pub fn with_header(header: MessageHeader) -> Self {
-        Self {
-            header,
-            payload: AscPullReqPayload::Invalid,
-            id: 0,
-        }
-    }
-
-    pub fn deserialize(stream: &mut impl Stream, header: MessageHeader) -> anyhow::Result<Self> {
-        debug_assert!(header.message_type == MessageType::AscPullReq);
-        let mut msg = Self::with_header(header);
-        let pull_type = AscPullPayloadId::from_u8(stream.read_u8()?)
-            .ok_or_else(|| anyhow!("Unknown asc_pull_type"))?;
-        msg.id = stream.read_u64_be()?;
-
-        msg.payload = match pull_type {
-            AscPullPayloadId::Blocks => {
-                let mut payload = BlocksReqPayload::default();
-                payload.deserialize(stream)?;
-                AscPullReqPayload::Blocks(payload)
-            }
-            AscPullPayloadId::AccountInfo => {
-                let mut payload = AccountInfoReqPayload::default();
-                payload.deserialize(stream)?;
-                AscPullReqPayload::AccountInfo(payload)
-            }
-            AscPullPayloadId::Invalid => bail!("Unknown asc_pull_type"),
-        };
-        Ok(msg)
-    }
-
-    pub fn payload(&self) -> &AscPullReqPayload {
-        &self.payload
-    }
-
-    pub fn serialized_size(header: &MessageHeader) -> usize {
-        let payload_len = header.extensions.data as usize;
-        Self::partial_size() + payload_len
-    }
-
-    /**
-     * Update payload size stored in header
-     * IMPORTANT: Must be called after any update to the payload
-     */
-    fn update_header(&mut self) -> anyhow::Result<()> {
-        let mut stream = MemoryStream::new();
-        self.serialize_payload(&mut stream)?;
-        let payload_len: u16 = stream.as_bytes().len().try_into()?;
-        self.header.extensions.data = payload_len;
-        Ok(())
-    }
-
-    fn serialize_payload(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        match &self.payload {
-            AscPullReqPayload::Invalid => bail!("invalid payload"),
-            AscPullReqPayload::Blocks(blocks) => blocks.serialize(stream),
-            AscPullReqPayload::AccountInfo(account_info) => account_info.serialize(stream),
-        }
-    }
-
-    pub fn payload_type(&self) -> AscPullPayloadId {
-        match self.payload {
-            AscPullReqPayload::Invalid => AscPullPayloadId::Invalid,
-            AscPullReqPayload::Blocks(_) => AscPullPayloadId::Blocks,
-            AscPullReqPayload::AccountInfo(_) => AscPullPayloadId::AccountInfo,
-        }
-    }
-
-    /** Size of message without payload */
-    const fn partial_size() -> usize {
-        size_of::<u8>() // pull type
-        + size_of::<u64>() // id
-    }
-}
-
-impl Message for AscPullReq {
-    fn header(&self) -> &MessageHeader {
-        &self.header
-    }
-
-    fn set_header(&mut self, header: &MessageHeader) {
-        self.header = header.clone();
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        self.header.serialize(stream)?;
-        stream.write_u8(self.payload_type() as u8)?;
-        stream.write_u64_be(self.id)?;
-        self.serialize_payload(stream)
-    }
-
-    fn visit(&self, visitor: &mut dyn MessageVisitor) {
-        visitor.asc_pull_req(self);
-    }
-
-    fn clone_box(&self) -> Box<dyn Message> {
-        Box::new(self.clone())
-    }
-
-    fn message_type(&self) -> MessageType {
-        MessageType::AscPullReq
-    }
-}
-
-impl Display for AscPullReq {
+impl Display for AscPullReqPayload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", self.header)?;
-        match self.payload() {
-            AscPullReqPayload::Invalid => write!(f, "missing payload")?,
-            AscPullReqPayload::Blocks(blocks) => {
+        match &self.req_type {
+            AscPullReqType::Blocks(blocks) => {
                 write!(
                     f,
                     "acc:{} max block count:{} hash type: {}",
                     blocks.start, blocks.count, blocks.start_type as u8
                 )?;
             }
-            AscPullReqPayload::AccountInfo(info) => {
+            AscPullReqType::AccountInfo(info) => {
                 write!(
                     f,
                     "target:{} hash type:{}",
@@ -270,14 +125,61 @@ impl Display for AscPullReq {
     }
 }
 
+impl AscPullReqPayload {
+    pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> anyhow::Result<Self> {
+        debug_assert!(header.message_type == MessageType::AscPullReq);
+        let pull_type = AscPullPayloadId::from_u8(stream.read_u8()?)
+            .ok_or_else(|| anyhow!("Unknown asc_pull_type"))?;
+        let id = stream.read_u64_be()?;
+
+        let req_type = match pull_type {
+            AscPullPayloadId::Blocks => {
+                let mut payload = BlocksReqPayload::default();
+                payload.deserialize(stream)?;
+                AscPullReqType::Blocks(payload)
+            }
+            AscPullPayloadId::AccountInfo => {
+                let mut payload = AccountInfoReqPayload::default();
+                payload.deserialize(stream)?;
+                AscPullReqType::AccountInfo(payload)
+            }
+        };
+        Ok(Self { id, req_type })
+    }
+
+    pub fn payload_type(&self) -> AscPullPayloadId {
+        match &self.req_type {
+            AscPullReqType::Blocks(_) => AscPullPayloadId::Blocks,
+            AscPullReqType::AccountInfo(_) => AscPullPayloadId::AccountInfo,
+        }
+    }
+
+    pub fn serialized_size(header: &MessageHeader) -> usize {
+        let payload_len = header.extensions.data as usize;
+        size_of::<u8>() // pull type
+        + size_of::<u64>() // id
+        + payload_len
+    }
+}
+
+impl Serialize for AscPullReqPayload {
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        stream.write_u8(self.payload_type() as u8)?;
+        stream.write_u64_be(self.id)?;
+        self.req_type.serialize(stream)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::messages::MessageEnum;
+
     use super::*;
     use rsnano_core::utils::MemoryStream;
 
     #[test]
     fn serialize_header() -> anyhow::Result<()> {
-        let original = AscPullReq::new_asc_pull_req_blocks(
+        let original = MessageEnum::new_asc_pull_req_blocks(
             &ProtocolInfo::dev_network(),
             7,
             BlocksReqPayload {
@@ -296,19 +198,8 @@ mod tests {
     }
 
     #[test]
-    fn missing_payload() {
-        let original = AscPullReq::new(&ProtocolInfo::dev_network());
-        let mut stream = MemoryStream::new();
-        let result = original.serialize(&mut stream);
-        match result {
-            Ok(_) => panic!("serialize should fail"),
-            Err(e) => assert_eq!(e.to_string(), "invalid payload"),
-        }
-    }
-
-    #[test]
     fn serialize_blocks() -> anyhow::Result<()> {
-        let original = AscPullReq::new_asc_pull_req_blocks(
+        let original = MessageEnum::new_asc_pull_req_blocks(
             &ProtocolInfo::dev_network(),
             7,
             BlocksReqPayload {
@@ -322,16 +213,15 @@ mod tests {
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = AscPullReq::deserialize(&mut stream, header)?;
-        assert_eq!(message_out.id, original.id);
-        assert_eq!(message_out.payload(), original.payload());
+        let message_out = MessageEnum::deserialize(header, &mut stream, 0, None)?;
+        assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());
         Ok(())
     }
 
     #[test]
     fn serialize_account_info() -> anyhow::Result<()> {
-        let original = AscPullReq::new_asc_pull_req_accounts(
+        let original = MessageEnum::new_asc_pull_req_accounts(
             &ProtocolInfo::dev_network(),
             7,
             AccountInfoReqPayload {
@@ -344,16 +234,15 @@ mod tests {
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = AscPullReq::deserialize(&mut stream, header)?;
-        assert_eq!(message_out.id, original.id);
-        assert_eq!(message_out.payload(), original.payload());
+        let message_out = MessageEnum::deserialize(header, &mut stream, 0, None)?;
+        assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());
         Ok(())
     }
 
     #[test]
     fn display_blocks_payload() {
-        let req = AscPullReq::new_asc_pull_req_blocks(
+        let req = MessageEnum::new_asc_pull_req_blocks(
             &ProtocolInfo::dev_network(),
             7,
             BlocksReqPayload {
@@ -366,15 +255,8 @@ mod tests {
     }
 
     #[test]
-    fn display_invalid_payload() {
-        let mut req = AscPullReq::new(&ProtocolInfo::dev_network());
-        req.id = 7;
-        assert_eq!(req.to_string(), "NetID: 5241(dev), VerMaxUsingMin: 19/19/18, MsgType: 14(asc_pull_req), Extensions: 0000\nmissing payload");
-    }
-
-    #[test]
     fn display_account_info_payload() {
-        let req = AscPullReq::new_asc_pull_req_accounts(
+        let req = MessageEnum::new_asc_pull_req_accounts(
             &ProtocolInfo::dev_network(),
             7,
             AccountInfoReqPayload {

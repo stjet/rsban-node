@@ -384,21 +384,6 @@ class empty_payload
  */
 class asc_pull_req final : public message
 {
-public:
-	using id_t = uint64_t;
-
-	explicit asc_pull_req (nano::network_constants const &);
-	asc_pull_req (rsnano::MessageHandle * handle_a);
-	asc_pull_req (asc_pull_req const & other_a);
-
-	uint64_t id () const;
-	void set_id (uint64_t id_a);
-	nano::asc_pull_type pull_type () const;
-
-	void visit (nano::message_visitor &) const override;
-
-	static std::size_t size (nano::message_header const &);
-
 public: // Payload definitions
 	enum class hash_type : uint8_t
 	{
@@ -421,8 +406,22 @@ public: // Payload definitions
 		asc_pull_req::hash_type target_type{ 0 };
 	};
 
-	void request_blocks (blocks_payload & payload_a);
-	void request_account_info (account_info_payload & payload_a);
+public:
+	using id_t = uint64_t;
+
+	explicit asc_pull_req (nano::network_constants const &);
+	asc_pull_req (nano::network_constants const &, uint64_t id, account_info_payload & payload_a);
+	asc_pull_req (nano::network_constants const &, uint64_t id, blocks_payload & payload_a);
+	asc_pull_req (rsnano::MessageHandle * handle_a);
+	asc_pull_req (asc_pull_req const & other_a);
+
+	uint64_t id () const;
+	void set_id (uint64_t id_a);
+	nano::asc_pull_type pull_type () const;
+
+	void visit (nano::message_visitor &) const override;
+
+	static std::size_t size (nano::message_header const &);
 	std::variant<empty_payload, blocks_payload, account_info_payload> payload () const;
 };
 

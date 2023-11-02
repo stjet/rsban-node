@@ -83,15 +83,12 @@ void nano::bootstrap_ascending::service::send (std::shared_ptr<nano::transport::
 {
 	debug_assert (tag.type == async_tag::query_type::blocks_by_hash || tag.type == async_tag::query_type::blocks_by_account);
 
-	nano::asc_pull_req request{ network_consts };
-	request.set_id (tag.id);
 
 	nano::asc_pull_req::blocks_payload request_payload;
 	request_payload.start = tag.start;
 	request_payload.count = config.bootstrap_ascending.pull_count;
 	request_payload.start_type = (tag.type == async_tag::query_type::blocks_by_hash) ? nano::asc_pull_req::hash_type::block : nano::asc_pull_req::hash_type::account;
-
-	request.request_blocks (request_payload);
+	nano::asc_pull_req request{ network_consts, tag.id, request_payload };
 
 	stats.inc (nano::stat::type::bootstrap_ascending, nano::stat::detail::request, nano::stat::dir::out);
 

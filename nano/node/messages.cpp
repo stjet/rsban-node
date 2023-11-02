@@ -1448,14 +1448,39 @@ std::string nano::node_id_handshake::to_string () const
 /*
  * asc_pull_req
  */
+namespace
+{
 rsnano::MessageHandle * create_asc_pull_req_handle (nano::network_constants const & constants)
 {
 	auto constants_dto{ constants.to_dto () };
 	return rsnano::rsn_message_asc_pull_req_create (&constants_dto);
 }
 
+rsnano::MessageHandle * create_asc_pull_req_accounts_handle (nano::network_constants const & constants, uint64_t id, nano::asc_pull_req::account_info_payload & payload_a)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_asc_pull_req_create_accounts (&constants_dto, id, payload_a.target.bytes.data (), static_cast<uint8_t> (payload_a.target_type));
+}
+
+rsnano::MessageHandle * create_asc_pull_req_blocks_handle (nano::network_constants const & constants, uint64_t id, nano::asc_pull_req::blocks_payload & payload_a)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_asc_pull_req_create_blocks (&constants_dto, id, payload_a.start.bytes.data (), payload_a.count, static_cast<uint8_t> (payload_a.start_type));
+}
+}
+
 nano::asc_pull_req::asc_pull_req (const nano::network_constants & constants) :
 	message (create_asc_pull_req_handle (constants))
+{
+}
+
+nano::asc_pull_req::asc_pull_req (nano::network_constants const & constants, uint64_t id, account_info_payload & payload_a) :
+	message (create_asc_pull_req_accounts_handle (constants, id, payload_a))
+{
+}
+
+nano::asc_pull_req::asc_pull_req (nano::network_constants const & constants, uint64_t id, blocks_payload & payload_a) :
+	message (create_asc_pull_req_blocks_handle (constants, id, payload_a))
 {
 }
 
@@ -1492,16 +1517,6 @@ void nano::asc_pull_req::visit (nano::message_visitor & visitor) const
 std::size_t nano::asc_pull_req::size (const nano::message_header & header)
 {
 	return rsnano::rsn_message_asc_pull_req_size (header.handle);
-}
-
-void nano::asc_pull_req::request_blocks (blocks_payload & payload_a)
-{
-	rsnano::rsn_message_asc_pull_req_request_blocks (handle, payload_a.start.bytes.data (), payload_a.count, static_cast<uint8_t> (payload_a.start_type));
-}
-
-void nano::asc_pull_req::request_account_info (account_info_payload & payload_a)
-{
-	rsnano::rsn_message_asc_pull_req_request_account_info (handle, payload_a.target.bytes.data (), static_cast<uint8_t> (payload_a.target_type));
 }
 
 std::variant<nano::empty_payload, nano::asc_pull_req::blocks_payload, nano::asc_pull_req::account_info_payload> nano::asc_pull_req::payload () const

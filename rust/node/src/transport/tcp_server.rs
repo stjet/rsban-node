@@ -17,8 +17,8 @@ use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::{NetworkConstants, NodeConfig},
     messages::{
-        AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
-        FrontierReq, Message, MessageEnum, MessageVisitor, NodeIdHandshake, NodeIdHandshakeQuery,
+        AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq,
+        Message, MessageEnum, MessageVisitor, NodeIdHandshake, NodeIdHandshakeQuery,
         NodeIdHandshakeResponse, Payload, TelemetryAck, TelemetryReq,
     },
     stats::{DetailType, Direction, StatType, Stats},

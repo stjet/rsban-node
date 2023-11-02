@@ -81,7 +81,7 @@ impl AccountInfoReqPayload {
         Ok(())
     }
 
-    pub fn test_data() -> Self {
+    pub fn create_test_instance() -> Self {
         Self {
             target: HashOrAccount::from(42),
             target_type: HashType::Account,
@@ -106,6 +106,34 @@ impl AscPullReq {
         }
     }
 
+    pub fn new_asc_pull_req_blocks(
+        protocol_info: &ProtocolInfo,
+        id: u64,
+        payload: BlocksReqPayload,
+    ) -> Self {
+        let mut msg = Self {
+            header: MessageHeader::new(MessageType::AscPullReq, protocol_info),
+            payload: AscPullReqPayload::Blocks(payload),
+            id,
+        };
+        msg.update_header().unwrap();
+        msg
+    }
+
+    pub fn new_asc_pull_req_accounts(
+        protocol_info: &ProtocolInfo,
+        id: u64,
+        payload: AccountInfoReqPayload,
+    ) -> Self {
+        let mut msg = Self {
+            header: MessageHeader::new(MessageType::AscPullReq, protocol_info),
+            payload: AscPullReqPayload::AccountInfo(payload),
+            id,
+        };
+        msg.update_header().unwrap();
+        msg
+    }
+
     pub fn with_header(header: MessageHeader) -> Self {
         Self {
             header,
@@ -114,23 +142,14 @@ impl AscPullReq {
         }
     }
 
-    pub fn from_stream(stream: &mut impl Stream, header: MessageHeader) -> anyhow::Result<Self> {
+    pub fn deserialize(stream: &mut impl Stream, header: MessageHeader) -> anyhow::Result<Self> {
+        debug_assert!(header.message_type == MessageType::AscPullReq);
         let mut msg = Self::with_header(header);
-        msg.deserialize(stream)?;
-        Ok(msg)
-    }
-
-    pub fn payload(&self) -> &AscPullReqPayload {
-        &self.payload
-    }
-
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> anyhow::Result<()> {
-        debug_assert!(self.header.message_type == MessageType::AscPullReq);
         let pull_type = AscPullPayloadId::from_u8(stream.read_u8()?)
             .ok_or_else(|| anyhow!("Unknown asc_pull_type"))?;
-        self.id = stream.read_u64_be()?;
+        msg.id = stream.read_u64_be()?;
 
-        self.payload = match pull_type {
+        msg.payload = match pull_type {
             AscPullPayloadId::Blocks => {
                 let mut payload = BlocksReqPayload::default();
                 payload.deserialize(stream)?;
@@ -143,7 +162,11 @@ impl AscPullReq {
             }
             AscPullPayloadId::Invalid => bail!("Unknown asc_pull_type"),
         };
-        Ok(())
+        Ok(msg)
+    }
+
+    pub fn payload(&self) -> &AscPullReqPayload {
+        &self.payload
     }
 
     pub fn serialized_size(header: &MessageHeader) -> usize {
@@ -183,16 +206,6 @@ impl AscPullReq {
     const fn partial_size() -> usize {
         size_of::<u8>() // pull type
         + size_of::<u64>() // id
-    }
-
-    pub fn request_blocks(&mut self, payload: BlocksReqPayload) -> anyhow::Result<()> {
-        self.payload = AscPullReqPayload::Blocks(payload);
-        self.update_header()
-    }
-
-    pub fn request_account_info(&mut self, payload: AccountInfoReqPayload) -> anyhow::Result<()> {
-        self.payload = AscPullReqPayload::AccountInfo(payload);
-        self.update_header()
     }
 }
 
@@ -264,12 +277,15 @@ mod tests {
 
     #[test]
     fn serialize_header() -> anyhow::Result<()> {
-        let mut original = AscPullReq::new(&ProtocolInfo::dev_network());
-        original.request_blocks(BlocksReqPayload {
-            start: HashOrAccount::from(3),
-            count: 111,
-            start_type: HashType::Block,
-        })?;
+        let original = AscPullReq::new_asc_pull_req_blocks(
+            &ProtocolInfo::dev_network(),
+            7,
+            BlocksReqPayload {
+                start: HashOrAccount::from(3),
+                count: 111,
+                start_type: HashType::Block,
+            },
+        );
 
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
@@ -292,19 +308,21 @@ mod tests {
 
     #[test]
     fn serialize_blocks() -> anyhow::Result<()> {
-        let mut original = AscPullReq::new(&ProtocolInfo::dev_network());
-        original.id = 7;
-        original.request_blocks(BlocksReqPayload {
-            start: HashOrAccount::from(3),
-            count: 111,
-            start_type: HashType::Block,
-        })?;
+        let original = AscPullReq::new_asc_pull_req_blocks(
+            &ProtocolInfo::dev_network(),
+            7,
+            BlocksReqPayload {
+                start: HashOrAccount::from(3),
+                count: 111,
+                start_type: HashType::Block,
+            },
+        );
 
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = AscPullReq::from_stream(&mut stream, header)?;
+        let message_out = AscPullReq::deserialize(&mut stream, header)?;
         assert_eq!(message_out.id, original.id);
         assert_eq!(message_out.payload(), original.payload());
         assert!(stream.at_end());
@@ -313,18 +331,20 @@ mod tests {
 
     #[test]
     fn serialize_account_info() -> anyhow::Result<()> {
-        let mut original = AscPullReq::new(&ProtocolInfo::dev_network());
-        original.id = 7;
-        original.request_account_info(AccountInfoReqPayload {
-            target: HashOrAccount::from(123),
-            target_type: HashType::Block,
-        })?;
+        let original = AscPullReq::new_asc_pull_req_accounts(
+            &ProtocolInfo::dev_network(),
+            7,
+            AccountInfoReqPayload {
+                target: HashOrAccount::from(123),
+                target_type: HashType::Block,
+            },
+        );
 
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = AscPullReq::from_stream(&mut stream, header)?;
+        let message_out = AscPullReq::deserialize(&mut stream, header)?;
         assert_eq!(message_out.id, original.id);
         assert_eq!(message_out.payload(), original.payload());
         assert!(stream.at_end());
@@ -333,14 +353,15 @@ mod tests {
 
     #[test]
     fn display_blocks_payload() {
-        let mut req = AscPullReq::new(&ProtocolInfo::dev_network());
-        req.id = 7;
-        req.request_blocks(BlocksReqPayload {
-            start: 1.into(),
-            count: 2,
-            start_type: HashType::Block,
-        })
-        .unwrap();
+        let req = AscPullReq::new_asc_pull_req_blocks(
+            &ProtocolInfo::dev_network(),
+            7,
+            BlocksReqPayload {
+                start: 1.into(),
+                count: 2,
+                start_type: HashType::Block,
+            },
+        );
         assert_eq!(req.to_string(), "NetID: 5241(dev), VerMaxUsingMin: 19/19/18, MsgType: 14(asc_pull_req), Extensions: 0022\nacc:0000000000000000000000000000000000000000000000000000000000000001 max block count:2 hash type: 1");
     }
 
@@ -353,13 +374,14 @@ mod tests {
 
     #[test]
     fn display_account_info_payload() {
-        let mut req = AscPullReq::new(&ProtocolInfo::dev_network());
-        req.id = 7;
-        req.request_account_info(AccountInfoReqPayload {
-            target: HashOrAccount::from(123),
-            target_type: HashType::Block,
-        })
-        .unwrap();
+        let req = AscPullReq::new_asc_pull_req_accounts(
+            &ProtocolInfo::dev_network(),
+            7,
+            AccountInfoReqPayload {
+                target: HashOrAccount::from(123),
+                target_type: HashType::Block,
+            },
+        );
         assert_eq!(req.to_string(), "NetID: 5241(dev), VerMaxUsingMin: 19/19/18, MsgType: 14(asc_pull_req), Extensions: 0021\ntarget:000000000000000000000000000000000000000000000000000000000000007B hash type:1");
     }
 }

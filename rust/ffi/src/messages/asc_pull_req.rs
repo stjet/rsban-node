@@ -25,6 +25,40 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_create2(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_message_asc_pull_req_create_accounts(
+    constants: *mut NetworkConstantsDto,
+    id: u64,
+    target: *const u8,
+    target_type: u8,
+) -> *mut MessageHandle {
+    let payload = AccountInfoReqPayload {
+        target: HashOrAccount::from_ptr(target),
+        target_type: FromPrimitive::from_u8(target_type).unwrap(),
+    };
+    create_message_handle3(constants, |protocol| {
+        AscPullReq::new_asc_pull_req_accounts(protocol, id, payload)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_asc_pull_req_create_blocks(
+    constants: *mut NetworkConstantsDto,
+    id: u64,
+    start: *const u8,
+    count: u8,
+    start_type: u8,
+) -> *mut MessageHandle {
+    let payload = BlocksReqPayload {
+        start: HashOrAccount::from_ptr(start),
+        count,
+        start_type: FromPrimitive::from_u8(start_type).unwrap(),
+    };
+    create_message_handle3(constants, |protocol| {
+        AscPullReq::new_asc_pull_req_blocks(protocol, id, payload)
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_req_clone(
     handle: *mut MessageHandle,
 ) -> *mut MessageHandle {
@@ -86,36 +120,4 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_payload_account_info(
         }
         _ => panic!("not an account_info payload"),
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_req_request_blocks(
-    handle: *mut MessageHandle,
-    start: *const u8,
-    count: u8,
-    start_type: u8,
-) {
-    let payload = BlocksReqPayload {
-        start: HashOrAccount::from_ptr(start),
-        count,
-        start_type: FromPrimitive::from_u8(start_type).unwrap(),
-    };
-    downcast_message_mut::<AscPullReq>(handle)
-        .request_blocks(payload)
-        .unwrap();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_req_request_account_info(
-    handle: *mut MessageHandle,
-    target: *const u8,
-    target_type: u8,
-) {
-    let payload = AccountInfoReqPayload {
-        target: HashOrAccount::from_ptr(target),
-        target_type: FromPrimitive::from_u8(target_type).unwrap(),
-    };
-    downcast_message_mut::<AscPullReq>(handle)
-        .request_account_info(payload)
-        .unwrap();
 }

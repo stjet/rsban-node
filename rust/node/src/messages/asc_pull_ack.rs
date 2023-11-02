@@ -102,8 +102,12 @@ pub struct BlocksAckPayload(Vec<BlockEnum>);
 
 impl BlocksAckPayload {
     pub fn new(blocks: Vec<BlockEnum>) -> Self {
-        if blocks.len() >= Self::MAX_BLOCKS {
-            panic!("too many blocks for BlocksAckPayload")
+        if blocks.len() > Self::MAX_BLOCKS {
+            panic!(
+                "too many blocks for BlocksAckPayload. Maximum is {}, but was {}",
+                Self::MAX_BLOCKS,
+                blocks.len()
+            );
         }
         Self(blocks)
     }
@@ -178,12 +182,6 @@ impl Serialize for AccountInfoAckPayload {
         self.account_conf_frontier.serialize(stream)?;
         stream.write_u64_be(self.account_conf_height)
     }
-}
-
-#[derive(Clone)]
-pub struct AscPullAck {
-    pub header: MessageHeader,
-    pub payload: AscPullAckPayload,
 }
 
 #[cfg(test)]

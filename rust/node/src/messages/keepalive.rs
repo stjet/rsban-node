@@ -1,6 +1,9 @@
 use crate::utils::BlockUniquer;
 
-use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo, PublishPayload};
+use super::{
+    AccountInfoAckPayload, AscPullAckPayload, AscPullAckType, BlocksAckPayload, Message,
+    MessageHeader, MessageType, MessageVisitor, ProtocolInfo, PublishPayload,
+};
 use anyhow::Result;
 use rsnano_core::{utils::Stream, BlockEnum};
 use std::{
@@ -10,16 +13,17 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MessageEnum {
     pub header: MessageHeader,
     pub payload: Payload,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Payload {
     Keepalive(KeepalivePayload),
     Publish(PublishPayload),
+    AscPullAck(AscPullAckPayload),
 }
 
 impl Payload {
@@ -27,6 +31,7 @@ impl Payload {
         match &self {
             Payload::Keepalive(x) => x.serialize(stream),
             Payload::Publish(x) => x.serialize(stream),
+            Payload::AscPullAck(x) => x.serialize(stream),
         }
     }
 }
@@ -36,6 +41,7 @@ impl Display for Payload {
         match &self {
             Payload::Keepalive(x) => x.fmt(f),
             Payload::Publish(x) => x.fmt(f),
+            Payload::AscPullAck(x) => x.fmt(f),
         }
     }
 }
@@ -98,7 +104,7 @@ impl Default for KeepalivePayload {
 impl Display for KeepalivePayload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for peer in &self.peers {
-            write!(f, "\n{}", peer)?;
+            writeln!(f, "{}", peer)?;
         }
         Ok(())
     }
@@ -125,6 +131,41 @@ impl MessageEnum {
         }
     }
 
+    pub fn new_asc_pull_ack_blocks(
+        protocol_info: &ProtocolInfo,
+        id: u64,
+        blocks: Vec<BlockEnum>,
+    ) -> Self {
+        let blocks = BlocksAckPayload::new(blocks);
+        let header =
+            MessageHeader::new_with_payload_len(MessageType::AscPullAck, protocol_info, &blocks);
+
+        Self {
+            header,
+            payload: Payload::AscPullAck(AscPullAckPayload {
+                id,
+                pull_type: AscPullAckType::Blocks(blocks),
+            }),
+        }
+    }
+
+    pub fn new_asc_pull_ack_accounts(
+        protocol_info: &ProtocolInfo,
+        id: u64,
+        accounts: AccountInfoAckPayload,
+    ) -> Self {
+        let header =
+            MessageHeader::new_with_payload_len(MessageType::AscPullAck, protocol_info, &accounts);
+
+        Self {
+            header,
+            payload: Payload::AscPullAck(AscPullAckPayload {
+                id,
+                pull_type: AscPullAckType::AccountInfo(accounts),
+            }),
+        }
+    }
+
     pub fn deserialize(
         header: MessageHeader,
         stream: &mut impl Stream,
@@ -138,6 +179,9 @@ impl MessageEnum {
             MessageType::Publish => Payload::Publish(PublishPayload::deserialize(
                 stream, &header, digest, uniquer,
             )?),
+            MessageType::AscPullAck => {
+                Payload::AscPullAck(AscPullAckPayload::deserialize(stream, &header)?)
+            }
             _ => unimplemented!(),
         };
         Ok(Self { header, payload })
@@ -186,6 +230,7 @@ impl Message for MessageEnum {
 impl Display for MessageEnum {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.header.fmt(f)?;
+        writeln!(f)?;
         self.payload.fmt(f)
     }
 }
@@ -211,8 +256,6 @@ mod tests {
 
     #[test]
     fn serialize_peers() -> Result<()> {
-        let mut request1 = MessageEnum::new_keepalive(&ProtocolInfo::dev_network());
-
         let mut keepalive = KeepalivePayload::default();
         keepalive.peers[0] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 10000);
 
@@ -229,14 +272,12 @@ mod tests {
         let hdr = MessageHeader::new(MessageType::Keepalive, &ProtocolInfo::dev_network());
         let keepalive = MessageEnum::new_keepalive(&ProtocolInfo::dev_network());
         let expected =
-            hdr.to_string() + "\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0";
+            hdr.to_string() + "\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n";
         assert_eq!(keepalive.to_string(), expected);
     }
 
     #[test]
     fn keepalive_string() {
-        let hdr = MessageHeader::new(MessageType::Keepalive, &ProtocolInfo::dev_network());
-
         let mut keepalive = KeepalivePayload::default();
         keepalive.peers[1] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 45);
         keepalive.peers[2] = SocketAddr::new(
@@ -250,14 +291,14 @@ mod tests {
         keepalive.peers[7] = SocketAddr::new(IpAddr::from_str("::ffff:1.2.3.4").unwrap(), 1234);
 
         let mut expected = String::new();
-        expected.push_str("\n[::]:0");
-        expected.push_str("\n[::1]:45");
-        expected.push_str("\n[2001:db8:85a3:8d3:1319:8a2e:370:7348]:0");
-        expected.push_str("\n[::]:65535");
-        expected.push_str("\n[::ffff:1.2.3.4]:1234");
-        expected.push_str("\n[::ffff:1.2.3.4]:1234");
-        expected.push_str("\n[::ffff:1.2.3.4]:1234");
-        expected.push_str("\n[::ffff:1.2.3.4]:1234");
+        expected.push_str("[::]:0\n");
+        expected.push_str("[::1]:45\n");
+        expected.push_str("[2001:db8:85a3:8d3:1319:8a2e:370:7348]:0\n");
+        expected.push_str("[::]:65535\n");
+        expected.push_str("[::ffff:1.2.3.4]:1234\n");
+        expected.push_str("[::ffff:1.2.3.4]:1234\n");
+        expected.push_str("[::ffff:1.2.3.4]:1234\n");
+        expected.push_str("[::ffff:1.2.3.4]:1234\n");
 
         assert_eq!(keepalive.to_string(), expected);
     }

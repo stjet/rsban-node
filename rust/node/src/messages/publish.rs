@@ -9,9 +9,9 @@ use std::{
 
 use super::{MessageHeader, MessageType};
 
-#[derive(Clone)]
+#[derive(Clone, Eq)]
 pub struct PublishPayload {
-    pub block: Option<Arc<BlockEnum>>, //todo remove Option
+    pub block: Option<Arc<BlockEnum>>, //TODO remove Option
     pub digest: u128,
 }
 

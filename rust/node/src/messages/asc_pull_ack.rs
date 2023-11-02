@@ -4,9 +4,9 @@ use rsnano_core::{
     utils::{Deserialize, Serialize, Stream, StreamExt},
     Account, BlockEnum, BlockHash, BlockType,
 };
-use std::{any::Any, fmt::Display, mem::size_of};
+use std::{fmt::Display, mem::size_of};
 
-use super::{AscPullPayloadId, Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
+use super::{AscPullPayloadId, MessageHeader, MessageType};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum AscPullAckType {
@@ -57,7 +57,7 @@ impl AscPullAckPayload {
         }
     }
 
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+    pub fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         stream.write_u8(self.payload_type() as u8)?;
         stream.write_u64_be(self.id)?;
         self.serialize_pull_type(stream)
@@ -186,109 +186,16 @@ pub struct AscPullAck {
     pub payload: AscPullAckPayload,
 }
 
-impl AscPullAck {
-    pub fn ack_blocks(protocol_info: &ProtocolInfo, id: u64, blocks: Vec<BlockEnum>) -> Self {
-        let blocks = BlocksAckPayload::new(blocks);
-        let header =
-            MessageHeader::new_with_payload_len(MessageType::AscPullAck, protocol_info, &blocks);
-
-        Self {
-            header,
-            payload: AscPullAckPayload {
-                id,
-                pull_type: AscPullAckType::Blocks(blocks),
-            },
-        }
-    }
-
-    pub fn ack_accounts(
-        protocol_info: &ProtocolInfo,
-        id: u64,
-        accounts: AccountInfoAckPayload,
-    ) -> Self {
-        let header =
-            MessageHeader::new_with_payload_len(MessageType::AscPullAck, protocol_info, &accounts);
-
-        Self {
-            header,
-            payload: AscPullAckPayload {
-                id,
-                pull_type: AscPullAckType::AccountInfo(accounts),
-            },
-        }
-    }
-
-    pub fn deserialize_asc_pull_ack(
-        stream: &mut impl Stream,
-        header: MessageHeader,
-    ) -> anyhow::Result<Self> {
-        let payload = AscPullAckPayload::deserialize(stream, &header)?;
-        Ok(Self { header, payload })
-    }
-}
-
-impl Message for AscPullAck {
-    fn header(&self) -> &MessageHeader {
-        &self.header
-    }
-
-    fn set_header(&mut self, header: &MessageHeader) {
-        self.header = header.clone();
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        self.header.serialize(stream)?;
-        self.payload.serialize(stream)
-    }
-
-    fn visit(&self, visitor: &mut dyn MessageVisitor) {
-        visitor.asc_pull_ack(self);
-    }
-
-    fn clone_box(&self) -> Box<dyn Message> {
-        Box::new(self.clone())
-    }
-
-    fn message_type(&self) -> MessageType {
-        MessageType::AscPullAck
-    }
-}
-
-impl Display for AscPullAck {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", self.header)?;
-        self.payload.fmt(f)
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::messages::{Message, MessageEnum, ProtocolInfo};
+
     use super::*;
     use rsnano_core::{utils::MemoryStream, BlockBuilder};
 
     #[test]
-    fn serialize_header() -> anyhow::Result<()> {
-        let original = AscPullAck::ack_blocks(&ProtocolInfo::dev_network(), 0, vec![]);
-
-        let mut stream = MemoryStream::new();
-        original.serialize(&mut stream)?;
-
-        let header = MessageHeader::deserialize(&mut stream)?;
-        assert_eq!(header.message_type, MessageType::AscPullAck);
-        Ok(())
-    }
-
-    #[test]
     fn serialize_blocks() -> anyhow::Result<()> {
-        let original = AscPullAck::ack_blocks(
+        let original = MessageEnum::new_asc_pull_ack_blocks(
             &ProtocolInfo::dev_network(),
             7,
             vec![BlockBuilder::state().build(), BlockBuilder::state().build()],
@@ -298,7 +205,7 @@ mod tests {
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = AscPullAck::deserialize_asc_pull_ack(&mut stream, header)?;
+        let message_out = MessageEnum::deserialize(header, &mut stream, 0, None)?;
         assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());
         Ok(())
@@ -306,7 +213,7 @@ mod tests {
 
     #[test]
     fn serialize_account_info() -> anyhow::Result<()> {
-        let original = AscPullAck::ack_accounts(
+        let original = MessageEnum::new_asc_pull_ack_accounts(
             &ProtocolInfo::dev_network(),
             7,
             AccountInfoAckPayload {
@@ -323,7 +230,7 @@ mod tests {
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = AscPullAck::deserialize_asc_pull_ack(&mut stream, header)?;
+        let message_out = MessageEnum::deserialize(header, &mut stream, 0, None)?;
         assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());
         Ok(())
@@ -331,7 +238,7 @@ mod tests {
 
     #[test]
     fn display() {
-        let ack = AscPullAck::ack_accounts(
+        let ack = MessageEnum::new_asc_pull_ack_accounts(
             &ProtocolInfo::dev_network(),
             7,
             AccountInfoAckPayload {

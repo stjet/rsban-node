@@ -73,7 +73,6 @@ pub trait MessageVisitor {
     fn telemetry_req(&mut self, _message: &TelemetryReq) {}
     fn telemetry_ack(&mut self, _message: &TelemetryAck) {}
     fn asc_pull_req(&mut self, _message: &AscPullReq) {}
-    fn asc_pull_ack(&mut self, _message: &AscPullAck) {}
 }
 
 pub trait MessageExt {

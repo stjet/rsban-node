@@ -671,7 +671,9 @@ impl RealtimeMessageVisitorImpl {
 impl MessageVisitor for RealtimeMessageVisitorImpl {
     fn keepalive(&mut self, message: &MessageEnum) {
         match &message.payload {
-            Payload::Keepalive(_) | Payload::Publish(_) => self.process = true,
+            Payload::Keepalive(_) | Payload::Publish(_) | Payload::AscPullAck(_) => {
+                self.process = true
+            }
         }
     }
     fn confirm_req(&mut self, _message: &ConfirmReq) {
@@ -697,10 +699,6 @@ impl MessageVisitor for RealtimeMessageVisitorImpl {
         }
     }
     fn telemetry_ack(&mut self, _message: &TelemetryAck) {
-        self.process = true;
-    }
-
-    fn asc_pull_ack(&mut self, _message: &AscPullAck) {
         self.process = true;
     }
 

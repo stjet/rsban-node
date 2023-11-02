@@ -8,7 +8,9 @@ use crate::{
     core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
     NetworkConstantsDto,
 };
-use rsnano_node::messages::{AccountInfoAckPayload, AscPullAck, AscPullAckPayload, AscPullAckType};
+use rsnano_node::messages::{
+    AccountInfoAckPayload, AscPullAckPayload, AscPullAckType, MessageEnum, Payload,
+};
 use std::{borrow::Borrow, ops::Deref, sync::Arc};
 
 #[no_mangle]
@@ -19,7 +21,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_create2(
 ) -> *mut MessageHandle {
     let payload = (*payload).borrow().into();
     create_message_handle3(constants, move |protocol_info| {
-        AscPullAck::ack_accounts(protocol_info, id, payload)
+        MessageEnum::new_asc_pull_ack_accounts(protocol_info, id, payload)
     })
 }
 
@@ -37,7 +39,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_create3(
         .collect();
 
     create_message_handle3(constants, move |protocol_info| {
-        AscPullAck::ack_blocks(protocol_info, id, blocks)
+        MessageEnum::new_asc_pull_ack_blocks(protocol_info, id, blocks)
     })
 }
 
@@ -45,24 +47,34 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_create3(
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_clone(
     handle: *mut MessageHandle,
 ) -> *mut MessageHandle {
-    message_handle_clone::<AscPullAck>(handle)
+    message_handle_clone::<MessageEnum>(handle)
+}
+
+unsafe fn get_payload_mut(handle: *mut MessageHandle) -> &'static mut AscPullAckPayload {
+    let msg = downcast_message_mut::<MessageEnum>(handle);
+    let Payload::AscPullAck(payload) = &mut msg.payload else { panic!("not an asc_pull_ack")};
+    payload
+}
+
+unsafe fn get_payload(handle: *mut MessageHandle) -> &'static AscPullAckPayload {
+    let msg = downcast_message::<MessageEnum>(handle);
+    let Payload::AscPullAck(payload) = &msg.payload else { panic!("not an asc_pull_ack")};
+    payload
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_set_id(handle: *mut MessageHandle, id: u64) {
-    downcast_message_mut::<AscPullAck>(handle).payload.id = id;
+    get_payload_mut(handle).id = id;
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_get_id(handle: *mut MessageHandle) -> u64 {
-    downcast_message::<AscPullAck>(handle).payload.id
+    get_payload(handle).id
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_pull_type(handle: *mut MessageHandle) -> u8 {
-    downcast_message::<AscPullAck>(handle)
-        .payload
-        .payload_type() as u8
+    get_payload(handle).payload_type() as u8
 }
 
 #[no_mangle]
@@ -75,7 +87,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_blocks(
     handle: *mut MessageHandle,
     blocks: &mut BlockArrayDto,
 ) {
-    match &downcast_message::<AscPullAck>(handle).payload.pull_type {
+    match &get_payload(handle).pull_type {
         AscPullAckType::Blocks(blks) => {
             let list = blks.blocks().iter().map(|b| Arc::new(b.clone())).collect();
             copy_block_array_dto(list, blocks)
@@ -125,7 +137,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_account_info(
     handle: *mut MessageHandle,
     result: *mut AccountInfoAckPayloadDto,
 ) {
-    match &downcast_message::<AscPullAck>(handle).payload.pull_type {
+    match &get_payload(handle).pull_type {
         AscPullAckType::AccountInfo(account_info) => (*result) = account_info.into(),
         _ => panic!("not an account_info payload"),
     }

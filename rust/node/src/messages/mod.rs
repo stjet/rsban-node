@@ -1,5 +1,8 @@
 use std::any::Any;
 
+mod message_enum;
+pub use message_enum::*;
+
 mod message_header;
 pub use message_header::*;
 

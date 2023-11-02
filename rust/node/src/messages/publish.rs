@@ -2,19 +2,12 @@ use crate::utils::{deserialize_block, BlockUniquer};
 use anyhow::Result;
 use rsnano_core::{utils::Stream, BlockEnum};
 use std::{
-    any::Any,
     fmt::{Debug, Display},
     ops::Deref,
     sync::Arc,
 };
 
-use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct Publish {
-    pub header: MessageHeader,
-    pub payload: PublishPayload,
-}
+use super::{MessageHeader, MessageType};
 
 #[derive(Clone)]
 pub struct PublishPayload {
@@ -76,73 +69,6 @@ impl Display for PublishPayload {
             write!(f, "\n{}", block.to_json().map_err(|_| std::fmt::Error)?)?;
         }
         Ok(())
-    }
-}
-
-impl Publish {
-    pub fn new(protocol_info: &ProtocolInfo, block: Arc<BlockEnum>) -> Self {
-        let mut header = MessageHeader::new(MessageType::Publish, protocol_info);
-        header.set_block_type(block.block_type());
-
-        Self {
-            header,
-            payload: PublishPayload {
-                block: Some(block),
-                digest: 0,
-            },
-        }
-    }
-
-    pub fn deserialize_publish(
-        stream: &mut impl Stream,
-        header: MessageHeader,
-        digest: u128,
-        uniquer: Option<&BlockUniquer>,
-    ) -> Result<Self> {
-        let payload = PublishPayload::deserialize(stream, &header, digest, uniquer)?;
-        Ok(Self { header, payload })
-    }
-}
-
-impl Message for Publish {
-    fn header(&self) -> &MessageHeader {
-        &self.header
-    }
-
-    fn set_header(&mut self, header: &MessageHeader) {
-        self.header = header.clone();
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.header().serialize(stream)?;
-        self.payload.serialize(stream)
-    }
-
-    fn visit(&self, visitor: &mut dyn MessageVisitor) {
-        visitor.publish(self)
-    }
-
-    fn clone_box(&self) -> Box<dyn Message> {
-        Box::new(self.clone())
-    }
-
-    fn message_type(&self) -> MessageType {
-        MessageType::Publish
-    }
-}
-
-impl Display for Publish {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.header, f)?;
-        std::fmt::Display::fmt(&self.payload, f)
     }
 }
 

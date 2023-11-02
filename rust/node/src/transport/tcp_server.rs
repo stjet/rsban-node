@@ -19,7 +19,7 @@ use crate::{
     messages::{
         AscPullAck, AscPullReq, BulkPull, BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq,
         FrontierReq, Message, MessageEnum, MessageVisitor, NodeIdHandshake, NodeIdHandshakeQuery,
-        NodeIdHandshakeResponse, Publish, TelemetryAck, TelemetryReq,
+        NodeIdHandshakeResponse, Payload, TelemetryAck, TelemetryReq,
     },
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
@@ -669,11 +669,10 @@ impl RealtimeMessageVisitorImpl {
 }
 
 impl MessageVisitor for RealtimeMessageVisitorImpl {
-    fn keepalive(&mut self, _message: &MessageEnum) {
-        self.process = true;
-    }
-    fn publish(&mut self, _message: &Publish) {
-        self.process = true;
+    fn keepalive(&mut self, message: &MessageEnum) {
+        match &message.payload {
+            Payload::Keepalive(_) | Payload::Publish(_) => self.process = true,
+        }
     }
     fn confirm_req(&mut self, _message: &ConfirmReq) {
         self.process = true;

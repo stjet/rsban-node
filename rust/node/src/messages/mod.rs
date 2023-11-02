@@ -63,7 +63,6 @@ pub trait Message: Send {
 
 pub trait MessageVisitor {
     fn keepalive(&mut self, _message: &MessageEnum) {}
-    fn publish(&mut self, _message: &Publish) {}
     fn confirm_req(&mut self, _message: &ConfirmReq) {}
     fn confirm_ack(&mut self, _message: &ConfirmAck) {}
     fn bulk_pull(&mut self, _message: &BulkPull) {}

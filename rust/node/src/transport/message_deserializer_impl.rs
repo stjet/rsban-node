@@ -138,7 +138,7 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(header, stream) {
+        if let Ok(msg) = MessageEnum::deserialize(header, stream, 0, Some(&self.block_uniquer)) {
             if at_end(stream) {
                 return Ok(Box::new(msg));
             }
@@ -152,11 +152,11 @@ impl MessageDeserializerImpl {
         header: MessageHeader,
         digest: u128,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) =
-            Publish::deserialize_publish(stream, header, digest, Some(&self.block_uniquer))
+        if let Ok(msg) = MessageEnum::deserialize(header, stream, digest, Some(&self.block_uniquer))
         {
             if at_end(stream) {
-                match &msg.payload.block {
+                let Payload::Publish(payload) = &msg.payload else { unreachable!()};
+                match &payload.block {
                     Some(block) => {
                         if !self.network_constants.work.validate_entry_block(&block) {
                             return Ok(Box::new(msg));
@@ -333,13 +333,13 @@ mod tests {
     #[test]
     fn exact_publish() {
         let block = Arc::new(BlockBuilder::legacy_send().build());
-        let message = Publish::new(&ProtocolInfo::dev_network(), block);
+        let message = MessageEnum::new_publish(&ProtocolInfo::dev_network(), block);
         test_deserializer(&message);
     }
 
     #[test]
     fn exact_keepalive() {
-        test_deserializer(&MessageEnum::new(&ProtocolInfo::dev_network()));
+        test_deserializer(&MessageEnum::new_keepalive(&ProtocolInfo::dev_network()));
     }
 
     #[test]

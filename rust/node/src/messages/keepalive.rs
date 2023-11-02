@@ -1,26 +1,32 @@
-use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
+use crate::utils::BlockUniquer;
+
+use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo, PublishPayload};
 use anyhow::Result;
-use rsnano_core::utils::Stream;
+use rsnano_core::{utils::Stream, BlockEnum};
 use std::{
     any::Any,
     fmt::Display,
     net::{IpAddr, Ipv6Addr, SocketAddr},
+    sync::Arc,
 };
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug)]
 pub struct MessageEnum {
     pub header: MessageHeader,
     pub payload: Payload,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug)]
 pub enum Payload {
     Keepalive(KeepalivePayload),
+    Publish(PublishPayload),
 }
+
 impl Payload {
     fn serialize(&self, stream: &mut dyn Stream) -> std::result::Result<(), anyhow::Error> {
         match &self {
             Payload::Keepalive(x) => x.serialize(stream),
+            Payload::Publish(x) => x.serialize(stream),
         }
     }
 }
@@ -29,6 +35,7 @@ impl Display for Payload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
             Payload::Keepalive(x) => x.fmt(f),
+            Payload::Publish(x) => x.fmt(f),
         }
     }
 }
@@ -98,25 +105,42 @@ impl Display for KeepalivePayload {
 }
 
 impl MessageEnum {
-    pub fn new(protocol_info: &ProtocolInfo) -> Self {
+    pub fn new_keepalive(protocol_info: &ProtocolInfo) -> Self {
         Self {
             header: MessageHeader::new(MessageType::Keepalive, protocol_info),
             payload: Payload::Keepalive(Default::default()),
         }
     }
 
-    pub fn deserialize(header: MessageHeader, stream: &mut impl Stream) -> Result<Self> {
+    pub fn new_publish(protocol_info: &ProtocolInfo, block: Arc<BlockEnum>) -> Self {
+        let mut header = MessageHeader::new(MessageType::Publish, protocol_info);
+        header.set_block_type(block.block_type());
+
+        Self {
+            header,
+            payload: Payload::Publish(PublishPayload {
+                block: Some(block),
+                digest: 0,
+            }),
+        }
+    }
+
+    pub fn deserialize(
+        header: MessageHeader,
+        stream: &mut impl Stream,
+        digest: u128,
+        uniquer: Option<&BlockUniquer>,
+    ) -> Result<Self> {
         let payload = match header.message_type {
             MessageType::Keepalive => {
                 Payload::Keepalive(KeepalivePayload::deserialize(&header, stream)?)
             }
+            MessageType::Publish => Payload::Publish(PublishPayload::deserialize(
+                stream, &header, digest, uniquer,
+            )?),
             _ => unimplemented!(),
         };
         Ok(Self { header, payload })
-    }
-
-    pub fn serialized_size() -> usize {
-        KeepalivePayload::serialized_size()
     }
 }
 
@@ -168,26 +192,26 @@ impl Display for MessageEnum {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::messages::ProtocolInfo;
     use rsnano_core::utils::MemoryStream;
     use std::str::FromStr;
 
-    use super::*;
-    use crate::messages::ProtocolInfo;
-
     #[test]
-    fn serialize_no_peers() -> Result<()> {
-        let request1 = MessageEnum::new(&ProtocolInfo::dev_network());
+    fn serialize_no_peers() {
+        let request1 = MessageEnum::new_keepalive(&ProtocolInfo::dev_network());
         let mut stream = MemoryStream::new();
-        request1.serialize(&mut stream)?;
-        let header = MessageHeader::from_stream(&mut stream)?;
-        let request2 = MessageEnum::deserialize(header, &mut stream)?;
-        assert_eq!(request1, request2);
-        Ok(())
+        request1.serialize(&mut stream).unwrap();
+        let header = MessageHeader::from_stream(&mut stream).unwrap();
+        let request2 = MessageEnum::deserialize(header, &mut stream, 0, None).unwrap();
+        let Payload::Keepalive(payload1) = request1.payload else { panic!("not a keepalive message")};
+        let Payload::Keepalive(payload2) = request2.payload else { panic!("not a keepalive message")};
+        assert_eq!(payload1, payload2);
     }
 
     #[test]
     fn serialize_peers() -> Result<()> {
-        let mut request1 = MessageEnum::new(&ProtocolInfo::dev_network());
+        let mut request1 = MessageEnum::new_keepalive(&ProtocolInfo::dev_network());
 
         let mut keepalive = KeepalivePayload::default();
         keepalive.peers[0] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 10000);
@@ -203,7 +227,7 @@ mod tests {
     #[test]
     fn keepalive_with_no_peers_to_string() {
         let hdr = MessageHeader::new(MessageType::Keepalive, &ProtocolInfo::dev_network());
-        let keepalive = MessageEnum::new(&ProtocolInfo::dev_network());
+        let keepalive = MessageEnum::new_keepalive(&ProtocolInfo::dev_network());
         let expected =
             hdr.to_string() + "\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0";
         assert_eq!(keepalive.to_string(), expected);

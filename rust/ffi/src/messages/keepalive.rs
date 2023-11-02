@@ -15,13 +15,13 @@ pub unsafe extern "C" fn rsn_message_keepalive_create(
 ) -> *mut MessageHandle {
     create_message_handle3(constants, |protocol_info| {
         if version_using < 0 {
-            MessageEnum::new(protocol_info)
+            MessageEnum::new_keepalive(protocol_info)
         } else {
             let protocol_info = ProtocolInfo {
                 version_using: version_using as u8,
                 ..*protocol_info
             };
-            MessageEnum::new(&protocol_info)
+            MessageEnum::new_keepalive(&protocol_info)
         }
     })
 }
@@ -73,7 +73,7 @@ pub unsafe extern "C" fn rsn_message_keepalive_set_peers(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_keepalive_size() -> usize {
-    MessageEnum::serialized_size()
+    KeepalivePayload::serialized_size()
 }
 
 #[no_mangle]

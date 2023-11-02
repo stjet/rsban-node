@@ -398,7 +398,7 @@ mod tests {
         let message = AscPullAck::ack_accounts(
             &ProtocolInfo::dev_network(),
             7,
-            AccountInfoAckPayload::test_data(),
+            AccountInfoAckPayload::create_test_instance(),
         );
         test_deserializer(&message);
     }

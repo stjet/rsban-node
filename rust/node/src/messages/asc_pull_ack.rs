@@ -1,7 +1,7 @@
 use num_traits::FromPrimitive;
 use rsnano_core::{
     deserialize_block_enum, serialize_block_enum,
-    utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
+    utils::{Deserialize, Serialize, Stream, StreamExt},
     Account, BlockEnum, BlockHash, BlockType,
 };
 use std::{any::Any, fmt::Display, mem::size_of};
@@ -157,7 +157,7 @@ impl AccountInfoAckPayload {
         Ok(())
     }
 
-    pub(crate) fn test_data() -> AccountInfoAckPayload {
+    pub(crate) fn create_test_instance() -> AccountInfoAckPayload {
         Self {
             account: Account::from(1),
             account_open: BlockHash::from(2),
@@ -206,11 +206,9 @@ impl AscPullAck {
         id: u64,
         accounts: AccountInfoAckPayload,
     ) -> Self {
-        let mut header = MessageHeader::new(MessageType::AscPullAck, protocol_info);
-        let mut stream = MemoryStream::new();
-        accounts.serialize(&mut stream).unwrap(); // can't fail
-        let payload_len: u16 = stream.bytes_written() as u16;
-        header.extensions.data = payload_len;
+        let header =
+            MessageHeader::new_with_payload_len(MessageType::AscPullAck, protocol_info, &accounts);
+
         Self {
             header,
             payload: AscPullAckPayload {

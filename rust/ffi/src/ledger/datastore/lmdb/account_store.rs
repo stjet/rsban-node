@@ -93,20 +93,3 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_count(
 ) -> usize {
     (*handle).0.count((*txn).as_txn()) as usize
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_account_store_for_each_par(
-    handle: *mut LmdbAccountStoreHandle,
-    action: ForEachParCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let wrapper = ForEachParWrapper {
-        action,
-        context,
-        delete_context,
-    };
-    (*handle)
-        .0
-        .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
-}

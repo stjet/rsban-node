@@ -194,11 +194,6 @@ impl AscPullReq {
         self.payload = AscPullReqPayload::AccountInfo(payload);
         self.update_header()
     }
-
-    pub fn request_invalid(&mut self) {
-        self.payload = AscPullReqPayload::Invalid;
-        self.header.extensions.data = 0;
-    }
 }
 
 impl Message for AscPullReq {

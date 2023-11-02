@@ -119,8 +119,3 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_request_account_info(
         .request_account_info(payload)
         .unwrap();
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_req_request_invalid(handle: *mut MessageHandle) {
-    downcast_message_mut::<AscPullReq>(handle).request_invalid();
-}

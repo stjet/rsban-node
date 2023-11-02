@@ -61,7 +61,7 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
         let header = {
             let buffer = self.read_buffer.lock().unwrap();
             let mut stream = StreamAdapter::new(&buffer[..MessageHeader::SERIALIZED_SIZE]);
-            MessageHeader::from_stream(&mut stream).map_err(|_| ParseStatus::InvalidHeader)?
+            MessageHeader::deserialize(&mut stream).map_err(|_| ParseStatus::InvalidHeader)?
         };
 
         validate_header(&header, &self.protocol_info)?;

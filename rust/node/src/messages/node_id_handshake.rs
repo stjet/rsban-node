@@ -401,7 +401,7 @@ mod tests {
             MessageHeader::serialized_size() + NodeIdHandshake::serialized_size(original.header())
         );
 
-        let header = MessageHeader::from_stream(&mut stream).unwrap();
+        let header = MessageHeader::deserialize(&mut stream).unwrap();
         let deserialized = NodeIdHandshake::from_stream(&mut stream, header).unwrap();
 
         assert_eq!(deserialized, original);

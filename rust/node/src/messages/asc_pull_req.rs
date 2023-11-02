@@ -279,7 +279,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
 
-        let header = MessageHeader::from_stream(&mut stream)?;
+        let header = MessageHeader::deserialize(&mut stream)?;
         assert_eq!(header.message_type, MessageType::AscPullReq);
         Ok(())
     }
@@ -308,7 +308,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
 
-        let header = MessageHeader::from_stream(&mut stream)?;
+        let header = MessageHeader::deserialize(&mut stream)?;
         let message_out = AscPullReq::from_stream(&mut stream, header)?;
         assert_eq!(message_out.id, original.id);
         assert_eq!(message_out.payload(), original.payload());
@@ -328,7 +328,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
 
-        let header = MessageHeader::from_stream(&mut stream)?;
+        let header = MessageHeader::deserialize(&mut stream)?;
         let message_out = AscPullReq::from_stream(&mut stream, header)?;
         assert_eq!(message_out.id, original.id);
         assert_eq!(message_out.payload(), original.payload());

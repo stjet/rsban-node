@@ -1,7 +1,11 @@
 use anyhow::Result;
 use bitvec::prelude::*;
 use num_traits::FromPrimitive;
-use rsnano_core::{serialized_block_size, utils::Stream, BlockType, Networks};
+use rsnano_core::{
+    serialized_block_size,
+    utils::{MemoryStream, Serialize, Stream},
+    BlockType, Networks,
+};
 use std::{
     fmt::{Debug, Display},
     mem::size_of,
@@ -130,9 +134,41 @@ impl MessageHeader {
         }
     }
 
-    pub fn from_stream(stream: &mut impl Stream) -> Result<MessageHeader> {
+    pub fn new_with_payload_len(
+        message_type: MessageType,
+        protocol: &ProtocolInfo,
+        payload: &impl Serialize,
+    ) -> Self {
+        let mut stream = MemoryStream::new();
+        payload.serialize(&mut stream).unwrap(); // can't fail
+        let payload_len: u16 = stream.bytes_written() as u16;
+
+        Self {
+            message_type,
+            version_using: protocol.version_using,
+            version_max: protocol.version_max,
+            version_min: protocol.version_min,
+            network: protocol.network,
+            extensions: payload_len.into(),
+        }
+    }
+
+    pub fn deserialize(stream: &mut impl Stream) -> Result<MessageHeader> {
         let mut header = Self::default();
-        header.deserialize(stream)?;
+        let mut buffer = [0; 2];
+
+        stream.read_bytes(&mut buffer, 2)?;
+        header.network = Networks::from_u16(u16::from_be_bytes(buffer))
+            .ok_or_else(|| anyhow!("invalid network"))?;
+
+        header.version_max = stream.read_u8()?;
+        header.version_using = stream.read_u8()?;
+        header.version_min = stream.read_u8()?;
+        header.message_type = MessageType::from_u8(stream.read_u8()?)
+            .ok_or_else(|| anyhow!("invalid message type"))?;
+
+        stream.read_bytes(&mut buffer, 2)?;
+        header.extensions.data = u16::from_le_bytes(buffer);
         Ok(header)
     }
 
@@ -176,24 +212,6 @@ impl MessageHeader {
         + size_of::<Networks>()
         + size_of::<MessageType>()
         + size_of::<u16>() // extensions
-    }
-
-    pub fn deserialize(&mut self, stream: &mut dyn Stream) -> Result<()> {
-        let mut buffer = [0; 2];
-
-        stream.read_bytes(&mut buffer, 2)?;
-        self.network = Networks::from_u16(u16::from_be_bytes(buffer))
-            .ok_or_else(|| anyhow!("invalid network"))?;
-
-        self.version_max = stream.read_u8()?;
-        self.version_using = stream.read_u8()?;
-        self.version_min = stream.read_u8()?;
-        self.message_type = MessageType::from_u8(stream.read_u8()?)
-            .ok_or_else(|| anyhow!("invalid message type"))?;
-
-        stream.read_bytes(&mut buffer, 2)?;
-        self.extensions.data = u16::from_le_bytes(buffer);
-        Ok(())
     }
 
     pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
@@ -270,10 +288,8 @@ impl Debug for MessageHeader {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::utils::MemoryStream;
-
     use super::*;
-    use crate::DEV_NETWORK_PARAMS;
+    use rsnano_core::utils::MemoryStream;
 
     #[test]
     fn message_header_to_string() {
@@ -288,7 +304,7 @@ mod tests {
         let original = test_header();
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
-        let deserialized = MessageHeader::from_stream(&mut stream)?;
+        let deserialized = MessageHeader::deserialize(&mut stream)?;
         assert_eq!(original, deserialized);
         Ok(())
     }

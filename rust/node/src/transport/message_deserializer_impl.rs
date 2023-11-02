@@ -417,7 +417,7 @@ mod tests {
 
         let original_bytes = original_message.to_bytes();
         let mut stream = StreamAdapter::new(&original_bytes);
-        let deserialized_header = MessageHeader::from_stream(&mut stream).unwrap();
+        let deserialized_header = MessageHeader::deserialize(&mut stream).unwrap();
 
         let deserialized_msg = deserializer
             .deserialize(deserialized_header, stream.remaining())

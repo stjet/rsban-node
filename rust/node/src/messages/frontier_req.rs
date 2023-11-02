@@ -127,7 +127,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         request1.serialize(&mut stream)?;
 
-        let header = MessageHeader::from_stream(&mut stream)?;
+        let header = MessageHeader::deserialize(&mut stream)?;
         let mut request2 = FrontierReq::with_header(header);
         request2.deserialize(&mut stream)?;
 

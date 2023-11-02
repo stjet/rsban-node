@@ -254,7 +254,7 @@ mod tests {
     fn serialize_and_deserialize(confirm_req1: &ConfirmReq) -> Result<ConfirmReq, anyhow::Error> {
         let mut stream = MemoryStream::new();
         confirm_req1.serialize(&mut stream)?;
-        let header = MessageHeader::from_stream(&mut stream)?;
+        let header = MessageHeader::deserialize(&mut stream)?;
         let mut confirm_req2 = ConfirmReq::with_header(header);
         confirm_req2.deserialize(&mut stream, None)?;
         Ok(confirm_req2)

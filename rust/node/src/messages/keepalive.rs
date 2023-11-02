@@ -202,7 +202,7 @@ mod tests {
         let request1 = MessageEnum::new_keepalive(&ProtocolInfo::dev_network());
         let mut stream = MemoryStream::new();
         request1.serialize(&mut stream).unwrap();
-        let header = MessageHeader::from_stream(&mut stream).unwrap();
+        let header = MessageHeader::deserialize(&mut stream).unwrap();
         let request2 = MessageEnum::deserialize(header, &mut stream, 0, None).unwrap();
         let Payload::Keepalive(payload1) = request1.payload else { panic!("not a keepalive message")};
         let Payload::Keepalive(payload2) = request2.payload else { panic!("not a keepalive message")};

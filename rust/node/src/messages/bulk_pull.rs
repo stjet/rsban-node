@@ -185,7 +185,7 @@ mod tests {
         message_in.header.set_flag(BulkPull::ASCENDING_FLAG as u8);
         let mut stream = MemoryStream::new();
         message_in.serialize(&mut stream)?;
-        let header = MessageHeader::from_stream(&mut stream)?;
+        let header = MessageHeader::deserialize(&mut stream)?;
         let message_out = BulkPull::from_stream(&mut stream, header)?;
         assert_eq!(message_in, message_out);
         assert!(message_out.is_ascending());

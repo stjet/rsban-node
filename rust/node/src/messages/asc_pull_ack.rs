@@ -76,7 +76,7 @@ impl Display for AscPullAckPayload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.pull_type {
             AscPullAckType::Blocks(blocks) => {
-                for block in &blocks.blocks {
+                for block in blocks.blocks() {
                     write!(f, "{}", block.to_json().map_err(|_| std::fmt::Error)?)?;
                 }
             }
@@ -98,30 +98,37 @@ impl Display for AscPullAckPayload {
 }
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
-pub struct BlocksAckPayload {
-    pub blocks: Vec<BlockEnum>,
-}
+pub struct BlocksAckPayload(Vec<BlockEnum>);
 
 impl BlocksAckPayload {
+    pub fn new(blocks: Vec<BlockEnum>) -> Self {
+        if blocks.len() >= Self::MAX_BLOCKS {
+            panic!("too many blocks for BlocksAckPayload")
+        }
+        Self(blocks)
+    }
+
     /* Header allows for 16 bit extensions; 65535 bytes / 500 bytes (block size with some future margin) ~ 131 */
     pub const MAX_BLOCKS: usize = 128;
 
+    pub fn blocks(&self) -> &Vec<BlockEnum> {
+        &self.0
+    }
+
     pub fn deserialize(&mut self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         while let Ok(current) = deserialize_block_enum(stream) {
-            if self.blocks.len() >= Self::MAX_BLOCKS {
+            if self.0.len() >= Self::MAX_BLOCKS {
                 bail!("too many blocks")
             }
-            self.blocks.push(current);
+            self.0.push(current);
         }
         Ok(())
     }
+}
 
-    pub fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        if self.blocks.len() > Self::MAX_BLOCKS {
-            bail!("too many blocks");
-        }
-
-        for block in &self.blocks {
+impl Serialize for BlocksAckPayload {
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        for block in self.blocks() {
             serialize_block_enum(stream, block)?;
         }
         // For convenience, end with null block terminator
@@ -140,15 +147,6 @@ pub struct AccountInfoAckPayload {
 }
 
 impl AccountInfoAckPayload {
-    pub fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        self.account.serialize(stream)?;
-        self.account_open.serialize(stream)?;
-        self.account_head.serialize(stream)?;
-        stream.write_u64_be(self.account_block_count)?;
-        self.account_conf_frontier.serialize(stream)?;
-        stream.write_u64_be(self.account_conf_height)
-    }
-
     pub fn deserialize(&mut self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.account = Account::deserialize(stream)?;
         self.account_open = BlockHash::deserialize(stream)?;
@@ -171,6 +169,17 @@ impl AccountInfoAckPayload {
     }
 }
 
+impl Serialize for AccountInfoAckPayload {
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        self.account.serialize(stream)?;
+        self.account_open.serialize(stream)?;
+        self.account_head.serialize(stream)?;
+        stream.write_u64_be(self.account_block_count)?;
+        self.account_conf_frontier.serialize(stream)?;
+        stream.write_u64_be(self.account_conf_height)
+    }
+}
+
 #[derive(Clone)]
 pub struct AscPullAck {
     pub header: MessageHeader,
@@ -179,12 +188,10 @@ pub struct AscPullAck {
 
 impl AscPullAck {
     pub fn ack_blocks(protocol_info: &ProtocolInfo, id: u64, blocks: Vec<BlockEnum>) -> Self {
-        let mut header = MessageHeader::new(MessageType::AscPullAck, protocol_info);
-        let mut stream = MemoryStream::new();
-        let blocks = BlocksAckPayload { blocks };
-        blocks.serialize(&mut stream).unwrap(); // can't fail
-        let payload_len: u16 = stream.bytes_written() as u16;
-        header.extensions.data = payload_len;
+        let blocks = BlocksAckPayload::new(blocks);
+        let header =
+            MessageHeader::new_with_payload_len(MessageType::AscPullAck, protocol_info, &blocks);
+
         Self {
             header,
             payload: AscPullAckPayload {
@@ -276,7 +283,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
 
-        let header = MessageHeader::from_stream(&mut stream)?;
+        let header = MessageHeader::deserialize(&mut stream)?;
         assert_eq!(header.message_type, MessageType::AscPullAck);
         Ok(())
     }
@@ -292,7 +299,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
 
-        let header = MessageHeader::from_stream(&mut stream)?;
+        let header = MessageHeader::deserialize(&mut stream)?;
         let message_out = AscPullAck::deserialize_asc_pull_ack(&mut stream, header)?;
         assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());
@@ -317,7 +324,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
 
-        let header = MessageHeader::from_stream(&mut stream)?;
+        let header = MessageHeader::deserialize(&mut stream)?;
         let message_out = AscPullAck::deserialize_asc_pull_ack(&mut stream, header)?;
         assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());

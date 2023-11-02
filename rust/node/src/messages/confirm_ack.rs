@@ -172,7 +172,7 @@ mod tests {
 
         let mut stream = MemoryStream::new();
         confirm1.serialize(&mut stream)?;
-        let header = MessageHeader::from_stream(&mut stream)?;
+        let header = MessageHeader::deserialize(&mut stream)?;
         let confirm2 = ConfirmAck::with_header(header, &mut stream, None)?;
         assert_eq!(confirm1, confirm2);
         Ok(())

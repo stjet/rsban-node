@@ -73,12 +73,14 @@ macro_rules! u256_struct {
         }
 
         impl $crate::utils::Serialize for $name {
-            fn serialized_size() -> usize {
-                32
-            }
-
             fn serialize(&self, stream: &mut dyn $crate::utils::Stream) -> anyhow::Result<()> {
                 stream.write_bytes(&self.0)
+            }
+        }
+
+        impl $crate::utils::FixedSizeSerialize for $name {
+            fn serialized_size() -> usize {
+                32
             }
         }
 

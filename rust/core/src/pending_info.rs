@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use crate::{
-    utils::{Deserialize, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account, Amount, Epoch,
 };
 use num::FromPrimitive;
@@ -46,14 +46,16 @@ impl PendingInfo {
 }
 
 impl Serialize for PendingInfo {
-    fn serialized_size() -> usize {
-        Account::serialized_size() + Amount::serialized_size() + size_of::<u8>()
-    }
-
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.source.serialize(stream)?;
         self.amount.serialize(stream)?;
         stream.write_u8(self.epoch as u8)
+    }
+}
+
+impl FixedSizeSerialize for PendingInfo {
+    fn serialized_size() -> usize {
+        Account::serialized_size() + Amount::serialized_size() + size_of::<u8>()
     }
 }
 

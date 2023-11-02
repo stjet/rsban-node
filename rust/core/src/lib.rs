@@ -246,11 +246,13 @@ pub trait FullHash {
 #[derive(PartialEq, Eq, Debug)]
 pub struct NoValue {}
 
-impl utils::Serialize for NoValue {
+impl utils::FixedSizeSerialize for NoValue {
     fn serialized_size() -> usize {
         0
     }
+}
 
+impl utils::Serialize for NoValue {
     fn serialize(&self, _stream: &mut dyn utils::Stream) -> anyhow::Result<()> {
         Ok(())
     }

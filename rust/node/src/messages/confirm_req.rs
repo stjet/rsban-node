@@ -2,7 +2,7 @@ use crate::utils::{deserialize_block, BlockUniquer};
 use anyhow::Result;
 use rsnano_core::{
     serialized_block_size,
-    utils::{Deserialize, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, Stream},
     BlockEnum, BlockHash, BlockType, Root,
 };
 use std::{

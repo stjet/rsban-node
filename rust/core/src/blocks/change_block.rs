@@ -1,6 +1,8 @@
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
-    utils::{Deserialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
+    utils::{
+        Deserialize, FixedSizeSerialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream,
+    },
     Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, LazyBlockHash, Link,
     PublicKey, RawKey, Root, Signature,
 };

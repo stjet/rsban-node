@@ -7,7 +7,7 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     deserialize_block_enum,
-    utils::{OutputListenerMt, OutputTrackerMt, Serialize, StreamAdapter},
+    utils::{FixedSizeSerialize, OutputListenerMt, OutputTrackerMt, StreamAdapter},
     Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor, BlockWithSideband,
     ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };

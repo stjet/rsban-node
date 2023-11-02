@@ -21,8 +21,11 @@ mod container_info;
 pub use container_info::{ContainerInfo, ContainerInfoComponent};
 
 pub trait Serialize {
-    fn serialized_size() -> usize;
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()>;
+}
+
+pub trait FixedSizeSerialize: Serialize {
+    fn serialized_size() -> usize;
 }
 
 pub trait Deserialize {
@@ -31,12 +34,14 @@ pub trait Deserialize {
 }
 
 impl Serialize for u64 {
-    fn serialized_size() -> usize {
-        std::mem::size_of::<u64>()
-    }
-
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         stream.write_u64_be(*self)
+    }
+}
+
+impl FixedSizeSerialize for u64 {
+    fn serialized_size() -> usize {
+        std::mem::size_of::<u64>()
     }
 }
 
@@ -48,12 +53,14 @@ impl Deserialize for u64 {
 }
 
 impl Serialize for [u8; 64] {
-    fn serialized_size() -> usize {
-        64
-    }
-
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         stream.write_bytes(self)
+    }
+}
+
+impl FixedSizeSerialize for [u8; 64] {
+    fn serialized_size() -> usize {
+        64
     }
 }
 

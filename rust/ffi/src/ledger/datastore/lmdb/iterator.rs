@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use rsnano_core::utils::{Deserialize, Serialize};
+use rsnano_core::utils::{Deserialize, FixedSizeSerialize};
 use rsnano_store_lmdb::{
     BinaryDbIterator, DbIterator, DbIteratorImpl, EnvironmentWrapper, LmdbIteratorImpl,
     LmdbReadTransaction,
@@ -38,7 +38,7 @@ impl LmdbIteratorHandle {
 
     pub fn new2<K, V>(it: Box<dyn DbIterator<K, V>>) -> *mut Self
     where
-        K: Serialize + Deserialize<Target = K> + 'static,
+        K: FixedSizeSerialize + Deserialize<Target = K> + 'static,
         V: Deserialize<Target = V> + 'static,
     {
         Box::into_raw(Box::new(LmdbIteratorHandle(IteratorType::Lmdb(
@@ -83,7 +83,7 @@ pub unsafe extern "C" fn rsn_lmdb_iterator_next(handle: *mut LmdbIteratorHandle)
 
 pub fn to_lmdb_iterator_handle<K, V>(iterator: Box<dyn DbIterator<K, V>>) -> *mut LmdbIteratorHandle
 where
-    K: Serialize + Deserialize<Target = K> + 'static,
+    K: FixedSizeSerialize + Deserialize<Target = K> + 'static,
     V: Deserialize<Target = V> + 'static,
 {
     LmdbIteratorHandle::new(take_iterator_impl(iterator))
@@ -109,7 +109,7 @@ impl ForEachParWrapper {
         begin: Box<dyn DbIterator<K, V>>,
         end: Box<dyn DbIterator<K, V>>,
     ) where
-        K: Serialize + Deserialize<Target = K> + 'static,
+        K: FixedSizeSerialize + Deserialize<Target = K> + 'static,
         V: Deserialize<Target = V> + 'static,
     {
         let lmdb_txn = unsafe {
@@ -135,7 +135,7 @@ pub(crate) fn take_iterator_impl<K, V>(
     mut it: Box<dyn DbIterator<K, V>>,
 ) -> LmdbIteratorImpl<EnvironmentWrapper>
 where
-    K: Serialize + Deserialize<Target = K> + 'static,
+    K: FixedSizeSerialize + Deserialize<Target = K> + 'static,
     V: Deserialize<Target = V> + 'static,
 {
     let it = it

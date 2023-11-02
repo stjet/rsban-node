@@ -6,7 +6,10 @@ use anyhow::bail;
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
     deterministic_key,
-    utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamAdapter, StreamExt},
+    utils::{
+        Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream, StreamAdapter,
+        StreamExt,
+    },
     Account, KeyDerivationFunction, PublicKey, RawKey,
 };
 use std::{
@@ -50,13 +53,15 @@ impl WalletValue {
 }
 
 impl Serialize for WalletValue {
-    fn serialized_size() -> usize {
-        RawKey::serialized_size()
-    }
-
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.key.serialize(stream)?;
         stream.write_u64_ne(self.work)
+    }
+}
+
+impl FixedSizeSerialize for WalletValue {
+    fn serialized_size() -> usize {
+        RawKey::serialized_size()
     }
 }
 

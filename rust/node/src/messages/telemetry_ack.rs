@@ -1,5 +1,7 @@
 use anyhow::Result;
-use rsnano_core::utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt};
+use rsnano_core::utils::{
+    Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
+};
 use rsnano_core::{
     sign_message, to_hex_string, validate_message, Account, BlockHash, KeyPair, Signature,
 };

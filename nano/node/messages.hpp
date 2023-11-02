@@ -423,7 +423,6 @@ public: // Payload definitions
 
 	void request_blocks (blocks_payload & payload_a);
 	void request_account_info (account_info_payload & payload_a);
-	void request_invalid ();
 	std::variant<empty_payload, blocks_payload, account_info_payload> payload () const;
 };
 
@@ -432,21 +431,6 @@ public: // Payload definitions
  */
 class asc_pull_ack final : public message
 {
-public:
-	using id_t = asc_pull_req::id_t;
-
-	explicit asc_pull_ack (nano::network_constants const &);
-	asc_pull_ack (rsnano::MessageHandle * handle_a);
-	asc_pull_ack (asc_pull_ack const & other_a);
-
-	uint64_t id () const;
-	void set_id (uint64_t id_a);
-	nano::asc_pull_type pull_type () const;
-
-	void visit (nano::message_visitor &) const override;
-
-	static std::size_t size (nano::message_header const &);
-
 public: // Payload definitions
 	class blocks_payload
 	{
@@ -469,9 +453,20 @@ public: // Payload definitions
 		uint64_t account_conf_height{ 0 };
 	};
 
-	void request_blocks (blocks_payload & payload_a);
-	void request_account_info (account_info_payload & payload_a);
-	void request_invalid ();
+public:
+	using id_t = asc_pull_req::id_t;
+
+	asc_pull_ack (nano::network_constants const &, uint64_t id, account_info_payload & payload_a);
+	asc_pull_ack (nano::network_constants const &, uint64_t id, blocks_payload & payload_a);
+	asc_pull_ack (rsnano::MessageHandle * handle_a);
+	asc_pull_ack (asc_pull_ack const & other_a);
+
+	uint64_t id () const;
+	void set_id (uint64_t id_a);
+	nano::asc_pull_type pull_type () const;
+
+	void visit (nano::message_visitor &) const override;
+	static std::size_t size (nano::message_header const &);
 	std::variant<empty_payload, blocks_payload, account_info_payload> payload () const;
 };
 

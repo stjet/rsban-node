@@ -1,5 +1,5 @@
 use crate::{
-    utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt},
+    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream, StreamExt},
     BlockHash,
 };
 
@@ -30,13 +30,15 @@ impl ConfirmationHeightInfo {
 }
 
 impl Serialize for ConfirmationHeightInfo {
-    fn serialized_size() -> usize {
-        std::mem::size_of::<u64>() + BlockHash::serialized_size()
-    }
-
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         stream.write_u64_ne(self.height)?;
         self.frontier.serialize(stream)
+    }
+}
+
+impl FixedSizeSerialize for ConfirmationHeightInfo {
+    fn serialized_size() -> usize {
+        std::mem::size_of::<u64>() + BlockHash::serialized_size()
     }
 }
 

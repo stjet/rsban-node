@@ -2,7 +2,7 @@ use super::MessageHeaderHandle;
 use crate::NetworkConstantsDto;
 use rsnano_node::{
     config::NetworkConstants,
-    messages::{Message, MessageEnum, MessageHeader, ProtocolInfo},
+    messages::{Message, MessageHeader, ProtocolInfo},
 };
 
 use std::ops::Deref;

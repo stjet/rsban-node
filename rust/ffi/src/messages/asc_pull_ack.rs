@@ -1,30 +1,44 @@
 use rsnano_core::{Account, BlockHash};
 
 use super::{
-    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
-    message_handle_clone, MessageHandle, MessageHeaderHandle,
+    create_message_handle3, downcast_message, downcast_message_mut, message_handle_clone,
+    MessageHandle, MessageHeaderHandle,
 };
 use crate::{
     core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
     NetworkConstantsDto,
 };
-use rsnano_node::messages::{
-    AccountInfoAckPayload, AscPullAck, AscPullAckPayload, BlocksAckPayload,
-};
+use rsnano_node::messages::{AccountInfoAckPayload, AscPullAck, AscPullAckPayload, AscPullAckType};
 use std::{borrow::Borrow, ops::Deref, sync::Arc};
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_create(
+pub unsafe extern "C" fn rsn_message_asc_pull_ack_create2(
     constants: *mut NetworkConstantsDto,
+    id: u64,
+    payload: *const AccountInfoAckPayloadDto,
 ) -> *mut MessageHandle {
-    create_message_handle3(constants, AscPullAck::new)
+    let payload = (*payload).borrow().into();
+    create_message_handle3(constants, move |protocol_info| {
+        AscPullAck::ack_accounts(protocol_info, id, payload)
+    })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_create2(
-    header: *mut MessageHeaderHandle,
+pub unsafe extern "C" fn rsn_message_asc_pull_ack_create3(
+    constants: *mut NetworkConstantsDto,
+    id: u64,
+    blocks: *const *const BlockHandle,
+    count: usize,
 ) -> *mut MessageHandle {
-    create_message_handle2(header, AscPullAck::with_header)
+    let blocks = std::slice::from_raw_parts(blocks, count);
+    let blocks = blocks
+        .iter()
+        .map(|&b| (*b).deref().deref().clone())
+        .collect();
+
+    create_message_handle3(constants, move |protocol_info| {
+        AscPullAck::ack_blocks(protocol_info, id, blocks)
+    })
 }
 
 #[no_mangle]
@@ -36,27 +50,24 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_clone(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_set_id(handle: *mut MessageHandle, id: u64) {
-    downcast_message_mut::<AscPullAck>(handle).id = id;
+    downcast_message_mut::<AscPullAck>(handle).payload.id = id;
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_get_id(handle: *mut MessageHandle) -> u64 {
-    downcast_message::<AscPullAck>(handle).id
+    downcast_message::<AscPullAck>(handle).payload.id
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_pull_type(handle: *mut MessageHandle) -> u8 {
-    downcast_message::<AscPullAck>(handle).payload_type() as u8
+    downcast_message::<AscPullAck>(handle)
+        .payload
+        .payload_type() as u8
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_size(header: *mut MessageHeaderHandle) -> usize {
-    AscPullAck::serialized_size(&*header)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_type(handle: *mut MessageHandle) -> u8 {
-    downcast_message::<AscPullAck>(handle).payload_type() as u8
+    AscPullAckPayload::serialized_size(&*header)
 }
 
 #[no_mangle]
@@ -64,8 +75,8 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_blocks(
     handle: *mut MessageHandle,
     blocks: &mut BlockArrayDto,
 ) {
-    match downcast_message::<AscPullAck>(handle).payload() {
-        AscPullAckPayload::Blocks(blks) => {
+    match &downcast_message::<AscPullAck>(handle).payload.pull_type {
+        AscPullAckType::Blocks(blks) => {
             let list = blks.blocks.iter().map(|b| Arc::new(b.clone())).collect();
             copy_block_array_dto(list, blocks)
         }
@@ -114,42 +125,8 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_account_info(
     handle: *mut MessageHandle,
     result: *mut AccountInfoAckPayloadDto,
 ) {
-    match downcast_message::<AscPullAck>(handle).payload() {
-        AscPullAckPayload::AccountInfo(account_info) => (*result) = account_info.into(),
+    match &downcast_message::<AscPullAck>(handle).payload.pull_type {
+        AscPullAckType::AccountInfo(account_info) => (*result) = account_info.into(),
         _ => panic!("not an account_info payload"),
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_request_blocks(
-    handle: *mut MessageHandle,
-    blocks: *const *const BlockHandle,
-    count: usize,
-) {
-    let blocks = std::slice::from_raw_parts(blocks, count);
-    let payload = BlocksAckPayload {
-        blocks: blocks
-            .iter()
-            .map(|&b| (*b).deref().deref().clone())
-            .collect(),
-    };
-    downcast_message_mut::<AscPullAck>(handle)
-        .request_blocks(payload)
-        .unwrap();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_request_account_info(
-    handle: *mut MessageHandle,
-    payload: *const AccountInfoAckPayloadDto,
-) {
-    let payload = (*payload).borrow().into();
-    downcast_message_mut::<AscPullAck>(handle)
-        .request_account_info(payload)
-        .unwrap();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_request_invalid(handle: *mut MessageHandle) {
-    downcast_message_mut::<AscPullAck>(handle).request_invalid();
 }

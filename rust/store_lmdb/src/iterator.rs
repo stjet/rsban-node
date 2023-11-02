@@ -3,7 +3,7 @@ use std::{any::Any, ffi::c_uint};
 use crate::{lmdb_env::RoCursor, Environment, Transaction};
 
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
-use rsnano_core::utils::{Deserialize, Serialize, StreamAdapter};
+use rsnano_core::utils::{Deserialize, FixedSizeSerialize, StreamAdapter};
 
 pub trait DbIterator<K, V> {
     fn is_end(&self) -> bool;
@@ -21,7 +21,7 @@ pub trait DbIteratorImpl: PartialEq {
 
 pub struct BinaryDbIterator<K, V, I>
 where
-    K: Serialize + Deserialize<Target = K>,
+    K: FixedSizeSerialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
     I: DbIteratorImpl + PartialEq,
 {
@@ -31,7 +31,7 @@ where
 
 impl<K, V, I> PartialEq for BinaryDbIterator<K, V, I>
 where
-    K: Serialize + Deserialize<Target = K>,
+    K: FixedSizeSerialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
     I: DbIteratorImpl + PartialEq,
 {
@@ -42,7 +42,7 @@ where
 
 impl<K, V, I> BinaryDbIterator<K, V, I>
 where
-    K: Serialize + Deserialize<Target = K>,
+    K: FixedSizeSerialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
     I: DbIteratorImpl + PartialEq,
 {
@@ -77,7 +77,7 @@ where
 
 impl<K, V, I> DbIterator<K, V> for BinaryDbIterator<K, V, I>
 where
-    K: Serialize + Deserialize<Target = K> + 'static,
+    K: FixedSizeSerialize + Deserialize<Target = K> + 'static,
     V: Deserialize<Target = V> + 'static,
     I: DbIteratorImpl + PartialEq + 'static,
 {
@@ -124,7 +124,7 @@ impl<E: Environment + 'static> LmdbIteratorImpl<E> {
         direction_asc: bool,
     ) -> Box<dyn DbIterator<K, V>>
     where
-        K: Serialize + Deserialize<Target = K> + 'static,
+        K: FixedSizeSerialize + Deserialize<Target = K> + 'static,
         V: Deserialize<Target = V> + 'static,
     {
         let iterator_impl = Self::new(txn, dbi, key_val, direction_asc);
@@ -133,7 +133,7 @@ impl<E: Environment + 'static> LmdbIteratorImpl<E> {
 
     pub fn null_iterator<K, V>() -> Box<dyn DbIterator<K, V>>
     where
-        K: Serialize + Deserialize<Target = K> + 'static,
+        K: FixedSizeSerialize + Deserialize<Target = K> + 'static,
         V: Deserialize<Target = V> + 'static,
     {
         Box::new(BinaryDbIterator::new(Self::null()))

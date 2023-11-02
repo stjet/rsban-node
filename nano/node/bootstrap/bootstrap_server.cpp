@@ -159,12 +159,8 @@ nano::asc_pull_ack nano::bootstrap_server::process (store::transaction const & t
 
 nano::asc_pull_ack nano::bootstrap_server::process (const store::transaction &, nano::asc_pull_req::id_t id, const nano::empty_payload & request)
 {
-	// Empty payload should never be possible, but return empty response anyway
-	debug_assert (false, "missing payload");
-	nano::asc_pull_ack response{ network_constants };
-	response.set_id (id);
-	response.request_invalid ();
-	return response;
+	// Empty payload should never be possible!
+	throw std::runtime_error ("missing payload");
 }
 
 /*
@@ -208,23 +204,17 @@ nano::asc_pull_ack nano::bootstrap_server::prepare_response (store::transaction 
 	auto blocks = prepare_blocks (transaction, start_block, count);
 	debug_assert (blocks.size () <= count);
 
-	nano::asc_pull_ack response{ network_constants };
-	response.set_id (id);
-
 	nano::asc_pull_ack::blocks_payload response_payload;
 	response_payload.blocks = blocks;
-	response.request_blocks (response_payload);
+
+	nano::asc_pull_ack response{ network_constants, id, response_payload };
 	return response;
 }
 
 nano::asc_pull_ack nano::bootstrap_server::prepare_empty_blocks_response (nano::asc_pull_req::id_t id)
 {
-	nano::asc_pull_ack response{ network_constants };
-	response.set_id (id);
-
 	nano::asc_pull_ack::blocks_payload empty_payload{};
-	response.request_blocks (empty_payload);
-
+	nano::asc_pull_ack response{ network_constants, id, empty_payload };
 	return response;
 }
 
@@ -253,9 +243,6 @@ std::vector<std::shared_ptr<nano::block>> nano::bootstrap_server::prepare_blocks
 
 nano::asc_pull_ack nano::bootstrap_server::process (const store::transaction & transaction, nano::asc_pull_req::id_t id, const nano::asc_pull_req::account_info_payload & request)
 {
-	nano::asc_pull_ack response{ network_constants };
-	response.set_id (id);
-
 	nano::account target{ 0 };
 	switch (request.target_type)
 	{
@@ -290,6 +277,7 @@ nano::asc_pull_ack nano::bootstrap_server::process (const store::transaction & t
 		}
 	}
 	// If account is missing the response payload will contain all 0 fields, except for the target
-	response.request_account_info (response_payload);
+	//
+	nano::asc_pull_ack response{ network_constants, id, response_payload };
 	return response;
 }

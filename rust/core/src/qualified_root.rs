@@ -1,5 +1,5 @@
 use crate::{
-    utils::{Deserialize, MutStreamAdapter, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
     BlockHash, Root,
 };
 use primitive_types::U512;
@@ -35,13 +35,15 @@ impl QualifiedRoot {
 }
 
 impl Serialize for QualifiedRoot {
-    fn serialized_size() -> usize {
-        Root::serialized_size() + BlockHash::serialized_size()
-    }
-
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.root.serialize(stream)?;
         self.previous.serialize(stream)
+    }
+}
+
+impl FixedSizeSerialize for QualifiedRoot {
+    fn serialized_size() -> usize {
+        Root::serialized_size() + BlockHash::serialized_size()
     }
 }
 

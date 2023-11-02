@@ -1,7 +1,9 @@
 use anyhow::Result;
 use rsnano_core::{
     sign_message,
-    utils::{Deserialize, PropertyTreeWriter, SerdePropertyTree, Serialize, Stream},
+    utils::{
+        Deserialize, FixedSizeSerialize, PropertyTreeWriter, SerdePropertyTree, Serialize, Stream,
+    },
     validate_message, Account, BlockHash, BlockHashBuilder, FullHash, KeyPair, RawKey, Signature,
 };
 use std::time::Duration;

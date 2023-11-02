@@ -1,4 +1,4 @@
-use crate::utils::{Deserialize, MutStreamAdapter, Serialize, Stream};
+use crate::utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream};
 
 #[derive(Default, PartialEq, Eq, Debug, Clone)]
 pub struct EndpointKey {
@@ -28,13 +28,15 @@ impl EndpointKey {
 }
 
 impl Serialize for EndpointKey {
-    fn serialized_size() -> usize {
-        18
-    }
-
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         stream.write_bytes(&self.address)?;
         stream.write_bytes(&self.port.to_be_bytes())
+    }
+}
+
+impl FixedSizeSerialize for EndpointKey {
+    fn serialized_size() -> usize {
+        18
     }
 }
 

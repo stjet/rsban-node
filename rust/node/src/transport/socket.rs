@@ -12,7 +12,7 @@ use std::{
     },
     time::Duration,
 };
-use tokio::{net::TcpListener, task::spawn_blocking};
+use tokio::net::TcpListener;
 
 use super::{
     message_deserializer::AsyncBufferReader,

@@ -126,8 +126,8 @@ impl AscPullReq {
 
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> anyhow::Result<()> {
         debug_assert!(self.header.message_type == MessageType::AscPullReq);
-        let pull_type =
-            AscPullPayloadId::from_u8(stream.read_u8()?).unwrap_or(AscPullPayloadId::Invalid);
+        let pull_type = AscPullPayloadId::from_u8(stream.read_u8()?)
+            .ok_or_else(|| anyhow!("Unknown asc_pull_type"))?;
         self.id = stream.read_u64_be()?;
 
         self.payload = match pull_type {
@@ -264,10 +264,8 @@ impl Display for AscPullReq {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::utils::MemoryStream;
-
     use super::*;
-    use crate::DEV_NETWORK_PARAMS;
+    use rsnano_core::utils::MemoryStream;
 
     #[test]
     fn serialize_header() -> anyhow::Result<()> {

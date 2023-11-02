@@ -8,6 +8,95 @@ use std::{any::Any, fmt::Display, mem::size_of};
 
 use super::{AscPullPayloadId, Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum AscPullAckType {
+    Blocks(BlocksAckPayload),
+    AccountInfo(AccountInfoAckPayload),
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct AscPullAckPayload {
+    pub id: u64,
+    pub pull_type: AscPullAckType,
+}
+
+impl AscPullAckPayload {
+    pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> anyhow::Result<Self> {
+        debug_assert!(header.message_type == MessageType::AscPullAck);
+        let pull_type_code = AscPullPayloadId::from_u8(stream.read_u8()?)
+            .ok_or_else(|| anyhow!("Unknown asc_pull_type"))?;
+        let id = stream.read_u64_be()?;
+        let pull_type = match pull_type_code {
+            AscPullPayloadId::Invalid => bail!("Unknown asc_pull_type"),
+            AscPullPayloadId::Blocks => {
+                let mut payload = BlocksAckPayload::default();
+                payload.deserialize(stream)?;
+                AscPullAckType::Blocks(payload)
+            }
+            AscPullPayloadId::AccountInfo => {
+                let mut payload = AccountInfoAckPayload::default();
+                payload.deserialize(stream)?;
+                AscPullAckType::AccountInfo(payload)
+            }
+        };
+
+        Ok(AscPullAckPayload { id, pull_type })
+    }
+
+    pub fn payload_type(&self) -> AscPullPayloadId {
+        match self.pull_type {
+            AscPullAckType::Blocks(_) => AscPullPayloadId::Blocks,
+            AscPullAckType::AccountInfo(_) => AscPullPayloadId::AccountInfo,
+        }
+    }
+
+    fn serialize_pull_type(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        match &self.pull_type {
+            AscPullAckType::Blocks(blocks) => blocks.serialize(stream),
+            AscPullAckType::AccountInfo(account_info) => account_info.serialize(stream),
+        }
+    }
+
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        stream.write_u8(self.payload_type() as u8)?;
+        stream.write_u64_be(self.id)?;
+        self.serialize_pull_type(stream)
+    }
+
+    pub fn serialized_size(header: &MessageHeader) -> usize {
+        let payload_length = header.extensions.data as usize;
+
+        size_of::<u8>() // type code 
+        + size_of::<u64>() // id
+        + payload_length
+    }
+}
+
+impl Display for AscPullAckPayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.pull_type {
+            AscPullAckType::Blocks(blocks) => {
+                for block in &blocks.blocks {
+                    write!(f, "{}", block.to_json().map_err(|_| std::fmt::Error)?)?;
+                }
+            }
+            AscPullAckType::AccountInfo(info) => {
+                write!(
+                    f,
+                    "account public key:{} account open:{} account head:{} block count:{} confirmation frontier:{} confirmation height:{}",
+                    info.account.encode_account(),
+                    info.account_open,
+                    info.account_head,
+                    info.account_block_count,
+                    info.account_conf_frontier,
+                    info.account_conf_height,
+                )?;
+            }
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct BlocksAckPayload {
     pub blocks: Vec<BlockEnum>,
@@ -82,122 +171,54 @@ impl AccountInfoAckPayload {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum AscPullAckPayload {
-    Invalid,
-    Blocks(BlocksAckPayload),
-    AccountInfo(AccountInfoAckPayload),
-}
-
 #[derive(Clone)]
 pub struct AscPullAck {
-    header: MessageHeader,
-    payload: AscPullAckPayload,
-    pub id: u64,
+    pub header: MessageHeader,
+    pub payload: AscPullAckPayload,
 }
 
 impl AscPullAck {
-    pub fn new(protocol_info: &ProtocolInfo) -> Self {
-        Self {
-            header: MessageHeader::new(MessageType::AscPullAck, protocol_info),
-            payload: AscPullAckPayload::Invalid,
-            id: 0,
-        }
-    }
-
-    pub fn with_header(header: MessageHeader) -> Self {
+    pub fn ack_blocks(protocol_info: &ProtocolInfo, id: u64, blocks: Vec<BlockEnum>) -> Self {
+        let mut header = MessageHeader::new(MessageType::AscPullAck, protocol_info);
+        let mut stream = MemoryStream::new();
+        let blocks = BlocksAckPayload { blocks };
+        blocks.serialize(&mut stream).unwrap(); // can't fail
+        let payload_len: u16 = stream.bytes_written() as u16;
+        header.extensions.data = payload_len;
         Self {
             header,
-            payload: AscPullAckPayload::Invalid,
-            id: 0,
+            payload: AscPullAckPayload {
+                id,
+                pull_type: AscPullAckType::Blocks(blocks),
+            },
         }
     }
 
-    pub fn from_stream(stream: &mut impl Stream, header: MessageHeader) -> anyhow::Result<Self> {
-        let mut msg = Self::with_header(header);
-        msg.deserialize(stream)?;
-        Ok(msg)
-    }
-
-    pub fn payload_type(&self) -> AscPullPayloadId {
-        match self.payload {
-            AscPullAckPayload::Invalid => AscPullPayloadId::Invalid,
-            AscPullAckPayload::Blocks(_) => AscPullPayloadId::Blocks,
-            AscPullAckPayload::AccountInfo(_) => AscPullPayloadId::AccountInfo,
-        }
-    }
-
-    pub fn payload(&self) -> &AscPullAckPayload {
-        &self.payload
-    }
-
-    fn serialize_payload(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        match &self.payload {
-            AscPullAckPayload::Invalid => Err(anyhow!("missing payload")),
-            AscPullAckPayload::Blocks(blocks) => blocks.serialize(stream),
-            AscPullAckPayload::AccountInfo(account_info) => account_info.serialize(stream),
-        }
-    }
-
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> anyhow::Result<()> {
-        debug_assert!(self.header.message_type == MessageType::AscPullAck);
-        let pull_type_code =
-            AscPullPayloadId::from_u8(stream.read_u8()?).unwrap_or(AscPullPayloadId::Invalid);
-        self.id = stream.read_u64_be()?;
-        self.deserialize_payload(stream, pull_type_code)
-    }
-
-    fn deserialize_payload(
-        &mut self,
-        stream: &mut impl Stream,
-        pull_type_code: AscPullPayloadId,
-    ) -> anyhow::Result<()> {
-        self.payload = match pull_type_code {
-            AscPullPayloadId::Invalid => bail!("Unknown asc_pull_type"),
-            AscPullPayloadId::Blocks => {
-                let mut payload = BlocksAckPayload::default();
-                payload.deserialize(stream)?;
-                AscPullAckPayload::Blocks(payload)
-            }
-            AscPullPayloadId::AccountInfo => {
-                let mut payload = AccountInfoAckPayload::default();
-                payload.deserialize(stream)?;
-                AscPullAckPayload::AccountInfo(payload)
-            }
-        };
-        Ok(())
-    }
-
-    /// Size of message without payload
-    const PARTIAL_SIZE: usize = size_of::<u8>() // type code 
-    + size_of::<u64>(); // id
-
-    pub fn serialized_size(header: &MessageHeader) -> usize {
-        let payload_length = header.extensions.data as usize;
-        Self::PARTIAL_SIZE + payload_length
-    }
-
-    fn update_header(&mut self) -> anyhow::Result<()> {
+    pub fn ack_accounts(
+        protocol_info: &ProtocolInfo,
+        id: u64,
+        accounts: AccountInfoAckPayload,
+    ) -> Self {
+        let mut header = MessageHeader::new(MessageType::AscPullAck, protocol_info);
         let mut stream = MemoryStream::new();
-        self.serialize_payload(&mut stream)?;
-        let payload_len: u16 = stream.as_bytes().len().try_into()?;
-        self.header.extensions.data = payload_len;
-        Ok(())
+        accounts.serialize(&mut stream).unwrap(); // can't fail
+        let payload_len: u16 = stream.bytes_written() as u16;
+        header.extensions.data = payload_len;
+        Self {
+            header,
+            payload: AscPullAckPayload {
+                id,
+                pull_type: AscPullAckType::AccountInfo(accounts),
+            },
+        }
     }
 
-    pub fn request_blocks(&mut self, payload: BlocksAckPayload) -> anyhow::Result<()> {
-        self.payload = AscPullAckPayload::Blocks(payload);
-        self.update_header()
-    }
-
-    pub fn request_account_info(&mut self, payload: AccountInfoAckPayload) -> anyhow::Result<()> {
-        self.payload = AscPullAckPayload::AccountInfo(payload);
-        self.update_header()
-    }
-
-    pub fn request_invalid(&mut self) {
-        self.payload = AscPullAckPayload::Invalid;
-        self.header.extensions.data = 0;
+    pub fn deserialize_asc_pull_ack(
+        stream: &mut impl Stream,
+        header: MessageHeader,
+    ) -> anyhow::Result<Self> {
+        let payload = AscPullAckPayload::deserialize(stream, &header)?;
+        Ok(Self { header, payload })
     }
 }
 
@@ -219,18 +240,8 @@ impl Message for AscPullAck {
     }
 
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        if self.payload == AscPullAckPayload::Invalid {
-            bail!("invalid payload");
-        }
-
-        if self.header.extensions.data == 0 {
-            bail!("Block payload must have least `not_a_block` terminator");
-        }
-
         self.header.serialize(stream)?;
-        stream.write_u8(self.payload_type() as u8)?;
-        stream.write_u64_be(self.id)?;
-        self.serialize_payload(stream)
+        self.payload.serialize(stream)
     }
 
     fn visit(&self, visitor: &mut dyn MessageVisitor) {
@@ -249,27 +260,7 @@ impl Message for AscPullAck {
 impl Display for AscPullAck {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}", self.header)?;
-        match self.payload() {
-            AscPullAckPayload::Invalid => write!(f, "missing payload")?,
-            AscPullAckPayload::Blocks(blocks) => {
-                for block in &blocks.blocks {
-                    write!(f, "{}", block.to_json().map_err(|_| std::fmt::Error)?)?;
-                }
-            }
-            AscPullAckPayload::AccountInfo(info) => {
-                write!(
-                    f,
-                    "account public key:{} account open:{} account head:{} block count:{} confirmation frontier:{} confirmation height:{}",
-                    info.account.encode_account(),
-                    info.account_open,
-                    info.account_head,
-                    info.account_block_count,
-                    info.account_conf_frontier,
-                    info.account_conf_height,
-                )?;
-            }
-        }
-        Ok(())
+        self.payload.fmt(f)
     }
 }
 
@@ -280,8 +271,7 @@ mod tests {
 
     #[test]
     fn serialize_header() -> anyhow::Result<()> {
-        let mut original = AscPullAck::new(&ProtocolInfo::dev_network());
-        original.request_blocks(BlocksAckPayload { blocks: vec![] })?;
+        let original = AscPullAck::ack_blocks(&ProtocolInfo::dev_network(), 0, vec![]);
 
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
@@ -292,72 +282,62 @@ mod tests {
     }
 
     #[test]
-    fn missing_payload() {
-        let original = AscPullAck::new(&ProtocolInfo::dev_network());
-        let mut stream = MemoryStream::new();
-        let result = original.serialize(&mut stream);
-        match result {
-            Ok(_) => panic!("serialize should fail"),
-            Err(e) => assert_eq!(e.to_string(), "invalid payload"),
-        }
-    }
-
-    #[test]
     fn serialize_blocks() -> anyhow::Result<()> {
-        let mut original = AscPullAck::new(&ProtocolInfo::dev_network());
-        original.id = 7;
-        original.request_blocks(BlocksAckPayload {
-            blocks: vec![BlockBuilder::state().build(), BlockBuilder::state().build()],
-        })?;
+        let original = AscPullAck::ack_blocks(
+            &ProtocolInfo::dev_network(),
+            7,
+            vec![BlockBuilder::state().build(), BlockBuilder::state().build()],
+        );
 
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::from_stream(&mut stream)?;
-        let message_out = AscPullAck::from_stream(&mut stream, header)?;
-        assert_eq!(message_out.id, original.id);
-        assert_eq!(message_out.payload(), original.payload());
+        let message_out = AscPullAck::deserialize_asc_pull_ack(&mut stream, header)?;
+        assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());
         Ok(())
     }
 
     #[test]
     fn serialize_account_info() -> anyhow::Result<()> {
-        let mut original = AscPullAck::new(&ProtocolInfo::dev_network());
-        original.id = 7;
-        original.request_account_info(AccountInfoAckPayload {
-            account: Account::from(1),
-            account_open: BlockHash::from(2),
-            account_head: BlockHash::from(3),
-            account_block_count: 4,
-            account_conf_frontier: BlockHash::from(5),
-            account_conf_height: 6,
-        })?;
+        let original = AscPullAck::ack_accounts(
+            &ProtocolInfo::dev_network(),
+            7,
+            AccountInfoAckPayload {
+                account: Account::from(1),
+                account_open: BlockHash::from(2),
+                account_head: BlockHash::from(3),
+                account_block_count: 4,
+                account_conf_frontier: BlockHash::from(5),
+                account_conf_height: 6,
+            },
+        );
 
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::from_stream(&mut stream)?;
-        let message_out = AscPullAck::from_stream(&mut stream, header)?;
-        assert_eq!(message_out.id, original.id);
-        assert_eq!(message_out.payload(), original.payload());
+        let message_out = AscPullAck::deserialize_asc_pull_ack(&mut stream, header)?;
+        assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());
         Ok(())
     }
 
     #[test]
     fn display() {
-        let mut ack = AscPullAck::new(&ProtocolInfo::dev_network());
-        ack.id = 7;
-        ack.request_account_info(AccountInfoAckPayload {
-            account: Account::from(1),
-            account_open: BlockHash::from(2),
-            account_head: BlockHash::from(3),
-            account_block_count: 4,
-            account_conf_frontier: BlockHash::from(5),
-            account_conf_height: 6,
-        })
-        .unwrap();
+        let ack = AscPullAck::ack_accounts(
+            &ProtocolInfo::dev_network(),
+            7,
+            AccountInfoAckPayload {
+                account: Account::from(1),
+                account_open: BlockHash::from(2),
+                account_head: BlockHash::from(3),
+                account_block_count: 4,
+                account_conf_frontier: BlockHash::from(5),
+                account_conf_height: 6,
+            },
+        );
 
         assert_eq!(ack.to_string(), "NetID: 5241(dev), VerMaxUsingMin: 19/19/18, MsgType: 15(asc_pull_ack), Extensions: 0090\naccount public key:nano_1111111111111111111111111111111111111111111111111113b8661hfk account open:0000000000000000000000000000000000000000000000000000000000000002 account head:0000000000000000000000000000000000000000000000000000000000000003 block count:4 confirmation frontier:0000000000000000000000000000000000000000000000000000000000000005 confirmation height:6");
     }

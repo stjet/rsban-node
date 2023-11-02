@@ -4,7 +4,7 @@ use anyhow::Result;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     sign_message,
-    utils::{Deserialize, MemoryStream, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream},
     validate_message, write_hex_bytes, Account, BlockHash, KeyPair, PublicKey, Signature,
 };
 use std::{any::Any, fmt::Display};

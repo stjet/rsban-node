@@ -2,7 +2,7 @@ use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 use anyhow::Result;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::{Deserialize, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account, Amount,
 };
 use std::{any::Any, fmt::Display, mem::size_of};

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use rsnano_core::{
-    utils::{Deserialize, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account,
 };
 use std::{any::Any, fmt::Display, mem::size_of};

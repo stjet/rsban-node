@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use crate::{
-    utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt},
+    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream, StreamExt},
     Account, Amount,
 };
 use anyhow::Result;
@@ -44,16 +44,6 @@ impl AccountInfo {
 }
 
 impl Serialize for AccountInfo {
-    fn serialized_size() -> usize {
-        BlockHash::serialized_size()  // head
-        + Account::serialized_size() // representative
-        + BlockHash::serialized_size() // open_block
-        + Amount::serialized_size() // balance
-        + size_of::<u64>() // modified
-        + size_of::<u64>() // block_count
-        + size_of::<Epoch>()
-    }
-
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.head.serialize(stream)?;
         self.representative.serialize(stream)?;
@@ -62,6 +52,18 @@ impl Serialize for AccountInfo {
         stream.write_u64_ne(self.modified)?;
         stream.write_u64_ne(self.block_count)?;
         stream.write_u8(self.epoch as u8)
+    }
+}
+
+impl FixedSizeSerialize for AccountInfo {
+    fn serialized_size() -> usize {
+        BlockHash::serialized_size()  // head
+        + Account::serialized_size() // representative
+        + BlockHash::serialized_size() // open_block
+        + Amount::serialized_size() // balance
+        + size_of::<u64>() // modified
+        + size_of::<u64>() // block_count
+        + size_of::<Epoch>()
     }
 }
 

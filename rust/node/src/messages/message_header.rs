@@ -8,8 +8,8 @@ use std::{
 };
 
 use super::{
-    AscPullAck, AscPullReq, BulkPull, BulkPullAccount, ConfirmAck, ConfirmReq, FrontierReq,
-    KeepalivePayload, MessageEnum, NodeIdHandshake, TelemetryAck,
+    AscPullAckPayload, AscPullReq, BulkPull, BulkPullAccount, ConfirmAck, ConfirmReq, FrontierReq,
+    KeepalivePayload, NodeIdHandshake, TelemetryAck,
 };
 
 /// Message types are serialized to the network and existing values must thus never change as
@@ -226,7 +226,7 @@ impl MessageHeader {
             MessageType::BulkPullAccount => BulkPullAccount::serialized_size(),
             MessageType::TelemetryAck => TelemetryAck::size_from_header(self),
             MessageType::AscPullReq => AscPullReq::serialized_size(self),
-            MessageType::AscPullAck => AscPullAck::serialized_size(self),
+            MessageType::AscPullAck => AscPullAckPayload::serialized_size(self),
             MessageType::Invalid | MessageType::NotAType => {
                 debug_assert!(false);
                 0

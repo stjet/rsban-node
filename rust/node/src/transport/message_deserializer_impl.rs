@@ -305,7 +305,7 @@ impl MessageDeserializerImpl {
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
         // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
-        match AscPullAck::from_stream(stream, header) {
+        match AscPullAck::deserialize_asc_pull_ack(stream, header) {
             Ok(msg) => Ok(Box::new(msg)),
             Err(_) => Err(ParseStatus::InvalidAscPullAckMessage),
         }
@@ -395,10 +395,11 @@ mod tests {
 
     #[test]
     fn exact_asc_pull_ack() {
-        let mut message = AscPullAck::new(&ProtocolInfo::dev_network());
-        message
-            .request_account_info(AccountInfoAckPayload::test_data())
-            .unwrap();
+        let message = AscPullAck::ack_accounts(
+            &ProtocolInfo::dev_network(),
+            7,
+            AccountInfoAckPayload::test_data(),
+        );
         test_deserializer(&message);
     }
 

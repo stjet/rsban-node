@@ -6,7 +6,7 @@ use std::{
 use super::BlockHash;
 use crate::{
     deserialize_block_enum, serialize_block_enum,
-    utils::{Deserialize, MemoryStream, Serialize, Stream, StreamExt},
+    utils::{Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt},
     BlockEnum,
 };
 
@@ -46,10 +46,6 @@ impl UncheckedInfo {
 }
 
 impl Serialize for UncheckedInfo {
-    fn serialized_size() -> usize {
-        0 //todo remove
-    }
-
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         serialize_block_enum(stream, self.block.as_ref().unwrap())?;
         stream.write_u64_ne(self.modified)
@@ -99,12 +95,14 @@ impl Deserialize for UncheckedKey {
 }
 
 impl Serialize for UncheckedKey {
-    fn serialized_size() -> usize {
-        BlockHash::serialized_size() * 2
-    }
-
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.previous.serialize(stream)?;
         self.hash.serialize(stream)
+    }
+}
+
+impl FixedSizeSerialize for UncheckedKey {
+    fn serialized_size() -> usize {
+        BlockHash::serialized_size() * 2
     }
 }

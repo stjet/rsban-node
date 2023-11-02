@@ -6,7 +6,7 @@ use std::{
 use crate::utils::FfiStream;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::{Deserialize, Serialize},
+    utils::{Deserialize, FixedSizeSerialize, Serialize},
     Account, AccountInfo, Amount, BlockHash, Epoch,
 };
 

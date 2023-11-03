@@ -125,7 +125,7 @@ impl MessageDeserializerImpl {
             MessageType::TelemetryAck => self.deserialize_telemetry_ack(&mut stream, header),
             MessageType::BulkPull => self.deserialize_bulk_pull(&mut stream, header),
             MessageType::BulkPullAccount => self.deserialize_bulk_pull_account(&mut stream, header),
-            MessageType::BulkPush => self.deserialize_bulk_push(header),
+            MessageType::BulkPush => self.deserialize_bulk_push(&mut stream, header),
             MessageType::FrontierReq => self.deserialize_frontier_req(&mut stream, header),
             MessageType::AscPullReq => self.deserialize_asc_pull_req(&mut stream, header),
             MessageType::AscPullAck => self.deserialize_asc_pull_ack(&mut stream, header),
@@ -281,10 +281,14 @@ impl MessageDeserializerImpl {
 
     fn deserialize_bulk_push(
         &self,
+        stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
         // Message does not use stream payload (header only)
-        Ok(Box::new(BulkPush::with_header(header)))
+        match MessageEnum::deserialize(stream, header, 0, None) {
+            Ok(msg) => Ok(Box::new(msg)),
+            Err(_) => Err(ParseStatus::InvalidMessageType), // TODO correct error type
+        }
     }
 
     fn deserialize_asc_pull_req(
@@ -378,7 +382,7 @@ mod tests {
 
     #[test]
     fn exact_bulk_push() {
-        test_deserializer(&BulkPush::new(&ProtocolInfo::dev_network()));
+        test_deserializer(&MessageEnum::new_bulk_push(&ProtocolInfo::dev_network()));
     }
 
     #[test]

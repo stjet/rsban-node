@@ -30,9 +30,6 @@ pub use bulk_pull::*;
 mod bulk_pull_account;
 pub use bulk_pull_account::*;
 
-mod bulk_push;
-pub use bulk_push::*;
-
 mod telemetry_req;
 use rsnano_core::utils::{MemoryStream, Stream};
 pub use telemetry_req::*;
@@ -68,7 +65,6 @@ pub trait MessageVisitor {
     fn keepalive(&mut self, _message: &MessageEnum) {}
     fn confirm_req(&mut self, _message: &ConfirmReq) {}
     fn confirm_ack(&mut self, _message: &ConfirmAck) {}
-    fn bulk_push(&mut self, _message: &BulkPush) {}
     fn frontier_req(&mut self, _message: &FrontierReq) {}
     fn node_id_handshake(&mut self, _message: &NodeIdHandshake) {}
     fn telemetry_req(&mut self, _message: &TelemetryReq) {}

@@ -27,6 +27,7 @@ pub enum Payload {
     AscPullReq(AscPullReqPayload),
     BulkPull(BulkPullPayload),
     BulkPullAccount(BulkPullAccountPayload),
+    BulkPush,
 }
 
 impl Payload {
@@ -38,6 +39,7 @@ impl Payload {
             Payload::AscPullReq(x) => x.serialize(stream),
             Payload::BulkPull(x) => x.serialize(stream),
             Payload::BulkPullAccount(x) => x.serialize(stream),
+            Payload::BulkPush => Ok(()),
         }
     }
 }
@@ -51,6 +53,7 @@ impl Display for Payload {
             Payload::AscPullReq(x) => x.fmt(f),
             Payload::BulkPull(x) => x.fmt(f),
             Payload::BulkPullAccount(x) => x.fmt(f),
+            Payload::BulkPush => Ok(()),
         }
     }
 }
@@ -176,6 +179,13 @@ impl MessageEnum {
         }
     }
 
+    pub fn new_bulk_push(protocol_info: &ProtocolInfo) -> Self {
+        Self {
+            header: MessageHeader::new(MessageType::BulkPush, protocol_info),
+            payload: Payload::BulkPush,
+        }
+    }
+
     pub fn deserialize(
         stream: &mut impl Stream,
         header: MessageHeader,
@@ -201,6 +211,7 @@ impl MessageEnum {
             MessageType::BulkPullAccount => {
                 Payload::BulkPullAccount(BulkPullAccountPayload::deserialize(stream, &header)?)
             }
+            MessageType::BulkPush => Payload::BulkPush,
             _ => unimplemented!(),
         };
         Ok(Self { header, payload })

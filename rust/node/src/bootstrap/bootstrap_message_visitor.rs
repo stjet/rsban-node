@@ -6,7 +6,7 @@ use rsnano_ledger::Ledger;
 use crate::{
     block_processing::BlockProcessor,
     config::{Logging, NodeFlags},
-    messages::{BulkPush, FrontierReq, MessageEnum, MessageVisitor, Payload},
+    messages::{FrontierReq, MessageEnum, MessageVisitor, Payload},
     stats::Stats,
     transport::{BootstrapMessageVisitor, TcpServer},
     utils::{AsyncRuntime, ThreadPool},
@@ -113,48 +113,47 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
 
                 self.processed = true;
             }
+            Payload::BulkPush => {
+                let Some(thread_pool) = self.thread_pool.upgrade() else {
+                    return;
+                };
+                let Some(block_processor) = self.block_processor.upgrade() else {
+                    return;
+                };
+                let Some(bootstrap_initiator) = self.bootstrap_initiator.upgrade() else {
+                    return;
+                };
+                let connection = Arc::clone(&self.connection);
+                let ledger = Arc::clone(&self.ledger);
+                let thread_pool2 = Arc::clone(&thread_pool);
+                let logger = Arc::clone(&self.logger);
+                let enable_logging = self.logging_config.bulk_pull_logging();
+                let enable_packet_logging = self.logging_config.network_packet_logging();
+                let stats = Arc::clone(&self.stats);
+                let work_thresholds = self.work_thresholds.clone();
+                let async_rt = Arc::clone(&self.async_rt);
+                thread_pool.push_task(Box::new(move || {
+                    // original code TODO: Add completion callback to bulk pull server
+                    let bulk_push_server = BulkPushServer::new(
+                        async_rt,
+                        connection,
+                        ledger,
+                        logger,
+                        thread_pool2,
+                        enable_logging,
+                        enable_packet_logging,
+                        block_processor,
+                        bootstrap_initiator,
+                        stats,
+                        work_thresholds,
+                    );
+                    bulk_push_server.throttled_receive();
+                }));
+
+                self.processed = true;
+            }
             _ => {}
         }
-    }
-
-    fn bulk_push(&mut self, _message: &BulkPush) {
-        let Some(thread_pool) = self.thread_pool.upgrade() else {
-            return;
-        };
-        let Some(block_processor) = self.block_processor.upgrade() else {
-            return;
-        };
-        let Some(bootstrap_initiator) = self.bootstrap_initiator.upgrade() else {
-            return;
-        };
-        let connection = Arc::clone(&self.connection);
-        let ledger = Arc::clone(&self.ledger);
-        let thread_pool2 = Arc::clone(&thread_pool);
-        let logger = Arc::clone(&self.logger);
-        let enable_logging = self.logging_config.bulk_pull_logging();
-        let enable_packet_logging = self.logging_config.network_packet_logging();
-        let stats = Arc::clone(&self.stats);
-        let work_thresholds = self.work_thresholds.clone();
-        let async_rt = Arc::clone(&self.async_rt);
-        thread_pool.push_task(Box::new(move || {
-            // original code TODO: Add completion callback to bulk pull server
-            let bulk_push_server = BulkPushServer::new(
-                async_rt,
-                connection,
-                ledger,
-                logger,
-                thread_pool2,
-                enable_logging,
-                enable_packet_logging,
-                block_processor,
-                bootstrap_initiator,
-                stats,
-                work_thresholds,
-            );
-            bulk_push_server.throttled_receive();
-        }));
-
-        self.processed = true;
     }
 
     fn frontier_req(&mut self, message: &FrontierReq) {

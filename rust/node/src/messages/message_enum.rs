@@ -2,9 +2,9 @@ use crate::utils::BlockUniquer;
 
 use super::{
     AccountInfoAckPayload, AccountInfoReqPayload, AscPullAckPayload, AscPullAckType,
-    AscPullReqPayload, AscPullReqType, BlocksAckPayload, BlocksReqPayload, BulkPullPayload,
-    KeepalivePayload, Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo,
-    PublishPayload,
+    AscPullReqPayload, AscPullReqType, BlocksAckPayload, BlocksReqPayload, BulkPullAccountPayload,
+    BulkPullPayload, KeepalivePayload, Message, MessageHeader, MessageType, MessageVisitor,
+    ProtocolInfo, PublishPayload,
 };
 use anyhow::Result;
 use rsnano_core::{
@@ -26,6 +26,7 @@ pub enum Payload {
     AscPullAck(AscPullAckPayload),
     AscPullReq(AscPullReqPayload),
     BulkPull(BulkPullPayload),
+    BulkPullAccount(BulkPullAccountPayload),
 }
 
 impl Payload {
@@ -36,6 +37,7 @@ impl Payload {
             Payload::AscPullAck(x) => x.serialize(stream),
             Payload::AscPullReq(x) => x.serialize(stream),
             Payload::BulkPull(x) => x.serialize(stream),
+            Payload::BulkPullAccount(x) => x.serialize(stream),
         }
     }
 }
@@ -48,6 +50,7 @@ impl Display for Payload {
             Payload::AscPullAck(x) => x.fmt(f),
             Payload::AscPullReq(x) => x.fmt(f),
             Payload::BulkPull(x) => x.fmt(f),
+            Payload::BulkPullAccount(x) => x.fmt(f),
         }
     }
 }
@@ -163,6 +166,16 @@ impl MessageEnum {
         }
     }
 
+    pub fn new_bulk_pull_account(
+        protocol_info: &ProtocolInfo,
+        payload: BulkPullAccountPayload,
+    ) -> Self {
+        Self {
+            header: MessageHeader::new(MessageType::BulkPullAccount, protocol_info),
+            payload: Payload::BulkPullAccount(payload),
+        }
+    }
+
     pub fn deserialize(
         stream: &mut impl Stream,
         header: MessageHeader,
@@ -184,6 +197,9 @@ impl MessageEnum {
             }
             MessageType::BulkPull => {
                 Payload::BulkPull(BulkPullPayload::deserialize(stream, &header)?)
+            }
+            MessageType::BulkPullAccount => {
+                Payload::BulkPullAccount(BulkPullAccountPayload::deserialize(stream, &header)?)
             }
             _ => unimplemented!(),
         };

@@ -258,7 +258,7 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = BulkPullAccount::from_stream(stream, header) {
+        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None) {
             if at_end(stream) {
                 return Ok(Box::new(msg));
             }
@@ -370,7 +370,10 @@ mod tests {
 
     #[test]
     fn exact_bulk_pull_account() {
-        test_deserializer(&BulkPullAccount::new(&ProtocolInfo::dev_network()));
+        test_deserializer(&MessageEnum::new_bulk_pull_account(
+            &ProtocolInfo::dev_network(),
+            BulkPullAccountPayload::create_test_instance(),
+        ));
     }
 
     #[test]

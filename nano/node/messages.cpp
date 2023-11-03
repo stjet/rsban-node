@@ -674,14 +674,24 @@ std::string nano::bulk_pull::to_string () const
  * bulk_pull_account
  */
 
-rsnano::MessageHandle * create_bulk_pull_account_handle (nano::network_constants const & constants)
+rsnano::MessageHandle * create_bulk_pull_account_handle2 (nano::network_constants const & constants, nano::bulk_pull_account::payload const & payload)
 {
 	auto constants_dto{ constants.to_dto () };
-	return rsnano::rsn_message_bulk_pull_account_create (&constants_dto);
+	auto payload_dto{ payload.to_dto () };
+	return rsnano::rsn_message_bulk_pull_account_create3 (&constants_dto, &payload_dto);
 }
 
-nano::bulk_pull_account::bulk_pull_account (nano::network_constants const & constants) :
-	message (create_bulk_pull_account_handle (constants))
+rsnano::BulkPullAccountPayloadDto nano::bulk_pull_account::payload::to_dto () const
+{
+	rsnano::BulkPullAccountPayloadDto dto;
+	account.copy_bytes_to (&dto.account[0]);
+	std::copy (std::begin (minimum_amount.bytes), std::end (minimum_amount.bytes), std::begin (dto.minimum_amount));
+	dto.flags = static_cast<uint8_t> (flags);
+	return dto;
+}
+
+nano::bulk_pull_account::bulk_pull_account (nano::network_constants const & constants, nano::bulk_pull_account::payload const & payload) :
+	message (create_bulk_pull_account_handle2 (constants, payload))
 {
 }
 

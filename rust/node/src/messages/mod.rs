@@ -68,7 +68,6 @@ pub trait MessageVisitor {
     fn keepalive(&mut self, _message: &MessageEnum) {}
     fn confirm_req(&mut self, _message: &ConfirmReq) {}
     fn confirm_ack(&mut self, _message: &ConfirmAck) {}
-    fn bulk_pull_account(&mut self, _message: &BulkPullAccount) {}
     fn bulk_push(&mut self, _message: &BulkPush) {}
     fn frontier_req(&mut self, _message: &FrontierReq) {}
     fn node_id_handshake(&mut self, _message: &NodeIdHandshake) {}

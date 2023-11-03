@@ -17,9 +17,9 @@ use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::{NetworkConstants, NodeConfig},
     messages::{
-        BulkPullAccount, BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Message, MessageEnum,
-        MessageVisitor, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse, Payload,
-        TelemetryAck, TelemetryReq,
+        BulkPush, ConfirmAck, ConfirmReq, FrontierReq, Message, MessageEnum, MessageVisitor,
+        NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse, Payload, TelemetryAck,
+        TelemetryReq,
     },
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
@@ -573,11 +573,10 @@ impl HandshakeMessageVisitorImpl {
 
 impl MessageVisitor for HandshakeMessageVisitorImpl {
     fn keepalive(&mut self, message: &MessageEnum) {
-        self.bootstrap = matches!(&message.payload, Payload::BulkPull(_));
-    }
-
-    fn bulk_pull_account(&mut self, _message: &BulkPullAccount) {
-        self.bootstrap = true;
+        self.bootstrap = matches!(
+            &message.payload,
+            Payload::BulkPull(_) | Payload::BulkPullAccount(_)
+        );
     }
 
     fn bulk_push(&mut self, _message: &BulkPush) {

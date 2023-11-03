@@ -285,10 +285,11 @@ void nano::bulk_pull_account_client::request ()
 	{
 		return;
 	}
-	nano::bulk_pull_account req{ node_l->network_params.network };
-	req.set_account (account);
-	req.set_minimum_amount (node_l->config->receive_minimum);
-	req.set_flags (nano::bulk_pull_account_flags::pending_hash_and_amount);
+	nano::bulk_pull_account::payload payload{};
+	payload.account = account;
+	payload.minimum_amount = node_l->config->receive_minimum;
+	payload.flags = nano::bulk_pull_account_flags::pending_hash_and_amount;
+	nano::bulk_pull_account req{ node_l->network_params.network, payload };
 	if (node_l->config->logging.bulk_pull_logging ())
 	{
 		node_l->logger->try_log (boost::str (boost::format ("Requesting pending for account %1% from %2%. %3% accounts in queue") % req.get_account ().to_account () % connection->channel_string () % attempt->wallet_size ()));

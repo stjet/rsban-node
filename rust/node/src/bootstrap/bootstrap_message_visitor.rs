@@ -6,7 +6,7 @@ use rsnano_ledger::Ledger;
 use crate::{
     block_processing::BlockProcessor,
     config::{Logging, NodeFlags},
-    messages::{BulkPullAccount, BulkPush, FrontierReq, MessageEnum, MessageVisitor, Payload},
+    messages::{BulkPush, FrontierReq, MessageEnum, MessageVisitor, Payload},
     stats::Stats,
     transport::{BootstrapMessageVisitor, TcpServer},
     utils::{AsyncRuntime, ThreadPool},
@@ -75,47 +75,46 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
 
                 self.processed = true;
             }
+            Payload::BulkPullAccount(payload) => {
+                if self.flags.disable_bootstrap_bulk_pull_server {
+                    return;
+                }
+                let Some(thread_pool) = self.thread_pool.upgrade() else {
+                    return;
+                };
+
+                if self.logging_config.bulk_pull_logging() {
+                    self.logger.try_log(&format!(
+                        "Received bulk pull account for {} with a minimum amount of {}",
+                        payload.account.encode_account(),
+                        payload.minimum_amount.format_balance(10)
+                    ));
+                }
+
+                let payload = payload.clone();
+                let connection = Arc::clone(&self.connection);
+                let ledger = Arc::clone(&self.ledger);
+                let thread_pool2 = Arc::clone(&thread_pool);
+                let logger = Arc::clone(&self.logger);
+                let enable_logging = self.logging_config.bulk_pull_logging();
+                thread_pool.push_task(Box::new(move || {
+                    // original code TODO: Add completion callback to bulk pull server
+                    // original code TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
+                    let bulk_pull_account_server = BulkPullAccountServer::new(
+                        connection,
+                        payload,
+                        logger,
+                        thread_pool2,
+                        ledger,
+                        enable_logging,
+                    );
+                    bulk_pull_account_server.send_frontier();
+                }));
+
+                self.processed = true;
+            }
             _ => {}
         }
-    }
-
-    fn bulk_pull_account(&mut self, message: &BulkPullAccount) {
-        if self.flags.disable_bootstrap_bulk_pull_server {
-            return;
-        }
-        let Some(thread_pool) = self.thread_pool.upgrade() else {
-            return;
-        };
-
-        if self.logging_config.bulk_pull_logging() {
-            self.logger.try_log(&format!(
-                "Received bulk pull account for {} with a minimum amount of {}",
-                message.account.encode_account(),
-                message.minimum_amount.format_balance(10)
-            ));
-        }
-
-        let message = message.clone();
-        let connection = Arc::clone(&self.connection);
-        let ledger = Arc::clone(&self.ledger);
-        let thread_pool2 = Arc::clone(&thread_pool);
-        let logger = Arc::clone(&self.logger);
-        let enable_logging = self.logging_config.bulk_pull_logging();
-        thread_pool.push_task(Box::new(move || {
-            // original code TODO: Add completion callback to bulk pull server
-            // original code TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
-            let bulk_pull_account_server = BulkPullAccountServer::new(
-                connection,
-                message,
-                logger,
-                thread_pool2,
-                ledger,
-                enable_logging,
-            );
-            bulk_pull_account_server.send_frontier();
-        }));
-
-        self.processed = true;
     }
 
     fn bulk_push(&mut self, _message: &BulkPush) {

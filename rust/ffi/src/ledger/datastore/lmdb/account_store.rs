@@ -1,17 +1,13 @@
 use std::{
-    ffi::c_void,
     ops::{Deref, DerefMut},
     sync::Arc,
 };
 
-use crate::{core::AccountInfoHandle, VoidPointerCallback};
+use crate::core::AccountInfoHandle;
 use rsnano_core::Account;
 use rsnano_store_lmdb::LmdbAccountStore;
 
-use super::{
-    iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},
-    TransactionHandle,
-};
+use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 
 pub struct LmdbAccountStoreHandle(Arc<LmdbAccountStore>);
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/asio.hpp>
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/config.hpp>
@@ -305,7 +307,16 @@ public:
 class bulk_pull_account final : public message
 {
 public:
-	explicit bulk_pull_account (nano::network_constants const & constants);
+	class payload
+	{
+	public:
+		nano::account account{};
+		nano::amount minimum_amount{};
+		bulk_pull_account_flags flags{};
+		rsnano::BulkPullAccountPayloadDto to_dto () const;
+	};
+
+	bulk_pull_account (nano::network_constants const & constants, bulk_pull_account::payload const & payload);
 	bulk_pull_account (rsnano::MessageHandle * handle_a);
 	bulk_pull_account (bulk_pull_account const & other_a);
 	void visit (nano::message_visitor &) const override;

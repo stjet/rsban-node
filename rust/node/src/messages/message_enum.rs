@@ -28,6 +28,7 @@ pub enum Payload {
     BulkPush,
     ConfirmAck(ConfirmAckPayload),
     ConfirmReq(ConfirmReqPayload),
+    FrontierReq(FrontierReqPayload),
 }
 
 impl Payload {
@@ -41,6 +42,7 @@ impl Payload {
             Payload::BulkPullAccount(x) => x.serialize(stream),
             Payload::ConfirmAck(x) => x.serialize(stream),
             Payload::ConfirmReq(x) => x.serialize(stream),
+            Payload::FrontierReq(x) => x.serialize(stream),
             Payload::BulkPush => Ok(()),
         }
     }
@@ -57,6 +59,7 @@ impl Display for Payload {
             Payload::BulkPullAccount(x) => x.fmt(f),
             Payload::ConfirmAck(x) => x.fmt(f),
             Payload::ConfirmReq(x) => x.fmt(f),
+            Payload::FrontierReq(x) => x.fmt(f),
             Payload::BulkPush => Ok(()),
         }
     }
@@ -235,6 +238,17 @@ impl MessageEnum {
         }
     }
 
+    pub fn new_frontier_req(protocol_info: &ProtocolInfo, payload: FrontierReqPayload) -> Self {
+        let mut header = MessageHeader::new(MessageType::FrontierReq, protocol_info);
+        header
+            .extensions
+            .set(FrontierReqPayload::ONLY_CONFIRMED, payload.only_confirmed);
+        Self {
+            header,
+            payload: Payload::FrontierReq(payload),
+        }
+    }
+
     pub fn deserialize(
         stream: &mut impl Stream,
         header: MessageHeader,
@@ -273,6 +287,9 @@ impl MessageEnum {
                 &header,
                 block_uniquer,
             )?),
+            MessageType::FrontierReq => {
+                Payload::FrontierReq(FrontierReqPayload::deserialize(stream, &header)?)
+            }
             _ => unimplemented!(),
         };
         Ok(Self { header, payload })

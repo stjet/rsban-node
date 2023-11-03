@@ -238,7 +238,7 @@ impl MessageHeader {
             MessageType::ConfirmAck => ConfirmAckPayload::serialized_size(self.count()),
             MessageType::BulkPull => BulkPullPayload::serialized_size(self),
             MessageType::BulkPush | MessageType::TelemetryReq => 0,
-            MessageType::FrontierReq => FrontierReq::serialized_size(),
+            MessageType::FrontierReq => FrontierReqPayload::serialized_size(),
             MessageType::NodeIdHandshake => NodeIdHandshake::serialized_size(self),
             MessageType::BulkPullAccount => BulkPullAccountPayload::serialized_size(),
             MessageType::TelemetryAck => TelemetryAck::size_from_header(self),

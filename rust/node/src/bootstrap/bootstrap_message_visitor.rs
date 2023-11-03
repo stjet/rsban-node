@@ -6,7 +6,7 @@ use rsnano_ledger::Ledger;
 use crate::{
     block_processing::BlockProcessor,
     config::{Logging, NodeFlags},
-    messages::{FrontierReq, MessageEnum, MessageVisitor, Payload},
+    messages::{MessageEnum, MessageVisitor, Payload},
     stats::Stats,
     transport::{BootstrapMessageVisitor, TcpServer},
     utils::{AsyncRuntime, ThreadPool},
@@ -152,44 +152,43 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
 
                 self.processed = true;
             }
+            Payload::FrontierReq(payload) => {
+                let Some(thread_pool) = self.thread_pool.upgrade() else {
+                    return;
+                };
+                if self.logging_config.bulk_pull_logging() {
+                    self.logger.try_log(&format!(
+                        "Received frontier request for {} with age {}",
+                        payload.start.encode_account(),
+                        payload.age
+                    ));
+                }
+
+                let request = payload.clone();
+                let connection = Arc::clone(&self.connection);
+                let ledger = Arc::clone(&self.ledger);
+                let logger = Arc::clone(&self.logger);
+                let enable_logging = self.logging_config.bulk_pull_logging();
+                let enable_network_logging = self.logging_config.network_logging_value;
+                let thread_pool2 = Arc::clone(&thread_pool);
+                thread_pool.push_task(Box::new(move || {
+                    // original code TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
+                    let response = FrontierReqServer::new(
+                        connection,
+                        request,
+                        thread_pool2,
+                        logger,
+                        enable_logging,
+                        enable_network_logging,
+                        ledger,
+                    );
+                    response.send_next();
+                }));
+
+                self.processed = true;
+            }
             _ => {}
         }
-    }
-
-    fn frontier_req(&mut self, message: &FrontierReq) {
-        let Some(thread_pool) = self.thread_pool.upgrade() else {
-            return;
-        };
-        if self.logging_config.bulk_pull_logging() {
-            self.logger.try_log(&format!(
-                "Received frontier request for {} with age {}",
-                message.start.encode_account(),
-                message.age
-            ));
-        }
-
-        let request = message.clone();
-        let connection = Arc::clone(&self.connection);
-        let ledger = Arc::clone(&self.ledger);
-        let logger = Arc::clone(&self.logger);
-        let enable_logging = self.logging_config.bulk_pull_logging();
-        let enable_network_logging = self.logging_config.network_logging_value;
-        let thread_pool2 = Arc::clone(&thread_pool);
-        thread_pool.push_task(Box::new(move || {
-            // original code TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
-            let response = FrontierReqServer::new(
-                connection,
-                request,
-                thread_pool2,
-                logger,
-                enable_logging,
-                enable_network_logging,
-                ledger,
-            );
-            response.send_next();
-        }));
-
-        self.processed = true;
     }
 }
 

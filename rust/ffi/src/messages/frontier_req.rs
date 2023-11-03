@@ -1,57 +1,51 @@
 use rsnano_core::Account;
-use rsnano_node::messages::FrontierReq;
+use rsnano_node::messages::{FrontierReqPayload, MessageEnum, Payload};
 
-use super::{
-    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
-    MessageHandle, MessageHeaderHandle,
-};
+use super::{create_message_handle3, downcast_message, downcast_message_mut, MessageHandle};
 use crate::{copy_account_bytes, NetworkConstantsDto, StringDto};
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_frontier_req_create(
-    constants: *mut NetworkConstantsDto,
-) -> *mut MessageHandle {
-    create_message_handle3(constants, FrontierReq::new)
+#[repr(C)]
+pub struct FrontierReqPayloadDto {
+    pub start: [u8; 32],
+    pub age: u32,
+    pub count: u32,
+    pub only_confirmed: bool,
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_frontier_req_create2(
-    header: *mut MessageHeaderHandle,
+pub unsafe extern "C" fn rsn_message_frontier_req_create3(
+    constants: *mut NetworkConstantsDto,
+    payload: &FrontierReqPayloadDto,
 ) -> *mut MessageHandle {
-    create_message_handle2(header, FrontierReq::with_header)
+    create_message_handle3(constants, |protocol| {
+        MessageEnum::new_frontier_req(
+            protocol,
+            FrontierReqPayload {
+                start: Account::from_bytes(payload.start),
+                age: payload.age,
+                count: payload.count,
+                only_confirmed: payload.only_confirmed,
+            },
+        )
+    })
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_frontier_req_clone(
     other: *mut MessageHandle,
 ) -> *mut MessageHandle {
-    MessageHandle::from_message(downcast_message::<FrontierReq>(other).clone())
+    MessageHandle::from_message(downcast_message::<MessageEnum>(other).clone())
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_frontier_req_set_start(
-    handle: *mut MessageHandle,
-    account: *const u8,
-) {
-    downcast_message_mut::<FrontierReq>(handle).start = Account::from_ptr(account);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_frontier_req_set_age(handle: *mut MessageHandle, age: u32) {
-    downcast_message_mut::<FrontierReq>(handle).age = age;
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_frontier_req_set_count(
-    handle: *mut MessageHandle,
-    count: u32,
-) {
-    downcast_message_mut::<FrontierReq>(handle).count = count;
+unsafe fn get_payload(handle: *mut MessageHandle) -> &'static FrontierReqPayload {
+    let msg = downcast_message::<MessageEnum>(handle);
+    let Payload::FrontierReq(payload) = &msg.payload else { panic!("not a frontier_req")};
+    payload
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_frontier_size() -> usize {
-    FrontierReq::serialized_size()
+    FrontierReqPayload::serialized_size()
 }
 
 #[no_mangle]
@@ -59,25 +53,25 @@ pub unsafe extern "C" fn rsn_message_frontier_req_start(
     handle: *mut MessageHandle,
     account: *mut u8,
 ) {
-    let start = downcast_message::<FrontierReq>(handle).start;
+    let start = get_payload(handle).start;
     copy_account_bytes(start, account);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_frontier_req_age(handle: *mut MessageHandle) -> u32 {
-    downcast_message::<FrontierReq>(handle).age
+    get_payload(handle).age
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_frontier_req_count(handle: *mut MessageHandle) -> u32 {
-    downcast_message::<FrontierReq>(handle).count
+    get_payload(handle).count
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_frontier_req_is_confirmed_present(
     handle: *mut MessageHandle,
 ) -> bool {
-    downcast_message::<FrontierReq>(handle).is_confirmed_present()
+    get_payload(handle).only_confirmed
 }
 
 #[no_mangle]
@@ -85,7 +79,7 @@ pub unsafe extern "C" fn rsn_message_frontier_req_to_string(
     handle: *mut MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = downcast_message_mut::<FrontierReq>(handle)
+    (*result) = downcast_message_mut::<MessageEnum>(handle)
         .to_string()
         .into();
 }

@@ -24,10 +24,11 @@ void nano::frontier_req_client::run (nano::account const & start_account_a, uint
 	{
 		return;
 	}
-	nano::frontier_req request{ node->network_params.network };
-	request.set_start ((start_account_a.is_zero () || start_account_a.number () == std::numeric_limits<nano::uint256_t>::max ()) ? start_account_a : start_account_a.number () + 1);
-	request.set_age (frontiers_age_a);
-	request.set_count (count_a);
+	nano::frontier_req::frontier_req_payload payload{};
+	payload.start = (start_account_a.is_zero () || start_account_a.number () == std::numeric_limits<nano::uint256_t>::max ()) ? start_account_a : start_account_a.number () + 1;
+	payload.age = frontiers_age_a;
+	payload.count = count_a;
+	nano::frontier_req request{ node->network_params.network, payload };
 	current = start_account_a;
 	frontiers_age = frontiers_age_a;
 	count_limit = count_a;

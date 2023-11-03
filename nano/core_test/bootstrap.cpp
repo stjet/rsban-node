@@ -1682,10 +1682,11 @@ TEST (frontier_req_response, DISABLED_destruction)
 			node.bootstrap_initiator,
 			node.node_id));
 
-			auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
-			req->set_start (nano::account (0));
-			req->set_age (std::numeric_limits<decltype (req->get_age ())>::max ());
-			req->set_count (std::numeric_limits<decltype (req->get_count ())>::max ());
+			nano::frontier_req::frontier_req_payload payload{};
+			payload.start = nano::account (0);
+			payload.age = std::numeric_limits<uint32_t>::max ();
+			payload.count = std::numeric_limits<uint32_t>::max ();
+			auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload);
 			hold = std::make_shared<nano::frontier_req_server> (system.nodes[0], connection, std::move (req));
 		}
 	}
@@ -1696,10 +1697,11 @@ TEST (frontier_req, begin)
 {
 	nano::test::system system (1);
 	auto connection (create_bootstrap_server (system.nodes[0]));
-	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
-	req->set_start (0);
-	req->set_age (std::numeric_limits<std::uint32_t>::max ());
-	req->set_count (std::numeric_limits<std::uint32_t>::max ());
+	nano::frontier_req::frontier_req_payload payload{};
+	payload.start = 0;
+	payload.age = std::numeric_limits<std::uint32_t>::max ();
+	payload.count = std::numeric_limits<std::uint32_t>::max ();
+	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload);
 	auto request (std::make_shared<nano::frontier_req_server> (system.nodes[0], connection, std::move (req)));
 	ASSERT_EQ (nano::dev::genesis_key.pub, request->current ());
 	ASSERT_EQ (nano::dev::genesis->hash (), request->frontier ());
@@ -1709,10 +1711,11 @@ TEST (frontier_req, end)
 {
 	nano::test::system system (1);
 	auto connection (create_bootstrap_server (system.nodes[0]));
-	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
-	req->set_start (nano::dev::genesis_key.pub.number () + 1);
-	req->set_age (std::numeric_limits<decltype (req->get_age ())>::max ());
-	req->set_count (std::numeric_limits<decltype (req->get_count ())>::max ());
+	nano::frontier_req::frontier_req_payload payload{};
+	payload.start = nano::dev::genesis_key.pub.number () + 1;
+	payload.age = std::numeric_limits<uint32_t>::max ();
+	payload.count = std::numeric_limits<uint32_t>::max ();
+	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload);
 	auto request (std::make_shared<nano::frontier_req_server> (system.nodes[0], connection, std::move (req)));
 	ASSERT_TRUE (request->current ().is_zero ());
 }
@@ -1750,10 +1753,11 @@ TEST (frontier_req, count)
 	ASSERT_EQ (nano::process_result::progress, node1->process (*receive1).code);
 
 	auto connection (create_bootstrap_server (node1));
-	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
-	req->set_start (0);
-	req->set_age (std::numeric_limits<decltype (req->get_age ())>::max ());
-	req->set_count (1);
+	nano::frontier_req::frontier_req_payload payload{};
+	payload.start = 0;
+	payload.age = std::numeric_limits<uint32_t>::max ();
+	payload.count = 1;
+	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload);
 	auto request (std::make_shared<nano::frontier_req_server> (node1, connection, std::move (req)));
 	ASSERT_EQ (nano::dev::genesis_key.pub, request->current ());
 	ASSERT_EQ (send1->hash (), request->frontier ());
@@ -1763,18 +1767,20 @@ TEST (frontier_req, time_bound)
 {
 	nano::test::system system (1);
 	auto connection (create_bootstrap_server (system.nodes[0]));
-	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
-	req->set_start (0);
-	req->set_age (1);
-	req->set_count (std::numeric_limits<decltype (req->get_count ())>::max ());
+	nano::frontier_req::frontier_req_payload payload{};
+	payload.start = 0;
+	payload.age = 1;
+	payload.count = std::numeric_limits<uint32_t>::max ();
+	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload);
 	auto request (std::make_shared<nano::frontier_req_server> (system.nodes[0], connection, std::move (req)));
 	ASSERT_EQ (nano::dev::genesis_key.pub, request->current ());
 	// Wait 2 seconds until age of account will be > 1 seconds
 	std::this_thread::sleep_for (std::chrono::milliseconds (2100));
-	auto req2 (std::make_unique<nano::frontier_req> (nano::dev::network_params.network));
-	req2->set_start (0);
-	req2->set_age (1);
-	req2->set_count (std::numeric_limits<decltype (req2->get_count ())>::max ());
+	nano::frontier_req::frontier_req_payload payload2{};
+	payload2.start = 0;
+	payload2.age = 1;
+	payload2.count = std::numeric_limits<uint32_t>::max ();
+	auto req2 (std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload2));
 	auto connection2 (create_bootstrap_server (system.nodes[0]));
 	auto request2 (std::make_shared<nano::frontier_req_server> (system.nodes[0], connection, std::move (req2)));
 	ASSERT_TRUE (request2->current ().is_zero ());
@@ -1784,19 +1790,21 @@ TEST (frontier_req, time_cutoff)
 {
 	nano::test::system system (1);
 	auto connection (create_bootstrap_server (system.nodes[0]));
-	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
-	req->set_start (0);
-	req->set_age (3);
-	req->set_count (std::numeric_limits<decltype (req->get_count ())>::max ());
+	nano::frontier_req::frontier_req_payload payload{};
+	payload.start = 0;
+	payload.age = 3;
+	payload.count = std::numeric_limits<uint32_t>::max ();
+	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload);
 	auto request (std::make_shared<nano::frontier_req_server> (system.nodes[0], connection, std::move (req)));
 	ASSERT_EQ (nano::dev::genesis_key.pub, request->current ());
 	ASSERT_EQ (nano::dev::genesis->hash (), request->frontier ());
 	// Wait 4 seconds until age of account will be > 3 seconds
 	std::this_thread::sleep_for (std::chrono::milliseconds (4100));
-	auto req2 (std::make_unique<nano::frontier_req> (nano::dev::network_params.network));
-	req2->set_start (0);
-	req2->set_age (3);
-	req2->set_count (std::numeric_limits<decltype (req2->get_count ())>::max ());
+	nano::frontier_req::frontier_req_payload payload2{};
+	payload2.start = 0;
+	payload2.age = 3;
+	payload2.count = std::numeric_limits<uint32_t>::max ();
+	auto req2 (std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload2));
 	auto connection2 (create_bootstrap_server (system.nodes[0]));
 	auto request2 (std::make_shared<nano::frontier_req_server> (system.nodes[0], connection, std::move (req2)));
 	ASSERT_TRUE (request2->frontier ().is_zero ());
@@ -1870,14 +1878,12 @@ TEST (frontier_req, confirmed_frontier)
 
 	// Request for all accounts (confirmed only)
 	auto connection (create_bootstrap_server (node1));
-	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
-	req->set_start (0);
-	req->set_age (std::numeric_limits<decltype (req->get_age ())>::max ());
-	req->set_count (std::numeric_limits<decltype (req->get_count ())>::max ());
-	ASSERT_FALSE (req->is_only_confirmed_present ());
-	auto header1{ req->get_header () };
-	header1.flag_set (nano::message_header::frontier_req_only_confirmed);
-	req->set_header (header1);
+	nano::frontier_req::frontier_req_payload payload{};
+	payload.start = 0;
+	payload.age = std::numeric_limits<uint32_t>::max ();
+	payload.count = std::numeric_limits<uint32_t>::max ();
+	payload.only_confirmed = true;
+	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload);
 	ASSERT_TRUE (req->is_only_confirmed_present ());
 	auto request (std::make_shared<nano::frontier_req_server> (node1, connection, std::move (req)));
 	ASSERT_EQ (nano::dev::genesis_key.pub, request->current ());
@@ -1885,29 +1891,24 @@ TEST (frontier_req, confirmed_frontier)
 
 	// Request starting with account before genesis (confirmed only)
 	auto connection2 (create_bootstrap_server (node1));
-	auto req2 = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
-	req2->set_start (key_before_genesis.pub);
-	req2->set_age (std::numeric_limits<decltype (req2->get_age ())>::max ());
-	req2->set_count (std::numeric_limits<decltype (req2->get_count ())>::max ());
-	ASSERT_FALSE (req2->is_only_confirmed_present ());
-	auto header2{ req2->get_header () };
-	header2.flag_set (nano::message_header::frontier_req_only_confirmed);
-	req2->set_header (header2);
-	ASSERT_TRUE (req2->is_only_confirmed_present ());
+	nano::frontier_req::frontier_req_payload payload2{};
+	payload2.start = key_before_genesis.pub;
+	payload2.age = std::numeric_limits<uint32_t>::max ();
+	payload2.count = std::numeric_limits<uint32_t>::max ();
+	payload2.only_confirmed = true;
+	auto req2 = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload2);
 	auto request2 (std::make_shared<nano::frontier_req_server> (node1, connection2, std::move (req2)));
 	ASSERT_EQ (nano::dev::genesis_key.pub, request2->current ());
 	ASSERT_EQ (nano::dev::genesis->hash (), request2->frontier ());
 
 	// Request starting with account after genesis (confirmed only)
 	auto connection3 (create_bootstrap_server (node1));
-	auto req3 = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
-	req3->set_start (key_after_genesis.pub);
-	req3->set_age (std::numeric_limits<decltype (req3->get_age ())>::max ());
-	req3->set_count (std::numeric_limits<decltype (req3->get_count ())>::max ());
-	ASSERT_FALSE (req3->is_only_confirmed_present ());
-	auto header3{ req3->get_header () };
-	header3.flag_set (nano::message_header::frontier_req_only_confirmed);
-	req3->set_header (header3);
+	nano::frontier_req::frontier_req_payload payload3{};
+	payload3.start = key_after_genesis.pub;
+	payload3.age = std::numeric_limits<uint32_t>::max ();
+	payload3.count = std::numeric_limits<uint32_t>::max ();
+	payload3.only_confirmed = true;
+	auto req3 = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload3);
 	ASSERT_TRUE (req3->is_only_confirmed_present ());
 	auto request3 (std::make_shared<nano::frontier_req_server> (node1, connection3, std::move (req3)));
 	ASSERT_TRUE (request3->current ().is_zero ());
@@ -1915,10 +1916,11 @@ TEST (frontier_req, confirmed_frontier)
 
 	// Request for all accounts (unconfirmed blocks)
 	auto connection4 (create_bootstrap_server (node1));
-	auto req4 = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
-	req4->set_start (0);
-	req4->set_age (std::numeric_limits<decltype (req4->get_age ())>::max ());
-	req4->set_count (std::numeric_limits<decltype (req4->get_count ())>::max ());
+	nano::frontier_req::frontier_req_payload payload4{};
+	payload4.start = 0;
+	payload4.age = std::numeric_limits<uint32_t>::max ();
+	payload4.count = std::numeric_limits<uint32_t>::max ();
+	auto req4 = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload4);
 	ASSERT_FALSE (req4->is_only_confirmed_present ());
 	auto request4 (std::make_shared<nano::frontier_req_server> (node1, connection4, std::move (req4)));
 	ASSERT_EQ (key_before_genesis.pub, request4->current ());
@@ -1926,10 +1928,11 @@ TEST (frontier_req, confirmed_frontier)
 
 	// Request starting with account after genesis (unconfirmed blocks)
 	auto connection5 (create_bootstrap_server (node1));
-	auto req5 = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
-	req5->set_start (key_after_genesis.pub);
-	req5->set_age (std::numeric_limits<decltype (req5->get_age ())>::max ());
-	req5->set_count (std::numeric_limits<decltype (req5->get_count ())>::max ());
+	nano::frontier_req::frontier_req_payload payload5{};
+	payload5.start = key_after_genesis.pub;
+	payload5.age = std::numeric_limits<uint32_t>::max ();
+	payload5.count = std::numeric_limits<uint32_t>::max ();
+	auto req5 = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload5);
 	ASSERT_FALSE (req5->is_only_confirmed_present ());
 	auto request5 (std::make_shared<nano::frontier_req_server> (node1, connection5, std::move (req5)));
 	ASSERT_EQ (key_after_genesis.pub, request5->current ());
@@ -1939,15 +1942,12 @@ TEST (frontier_req, confirmed_frontier)
 	ASSERT_TRUE (nano::test::start_elections (system, *node1, { send1, receive1 }, true));
 	ASSERT_TIMELY (5s, node1->block_confirmed (send1->hash ()) && node1->block_confirmed (receive1->hash ()));
 	auto connection6 (create_bootstrap_server (node1));
-	auto req6 = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
-	req6->set_start (key_before_genesis.pub);
-	req6->set_age (std::numeric_limits<decltype (req6->get_age ())>::max ());
-	req6->set_count (std::numeric_limits<decltype (req6->get_count ())>::max ());
-	ASSERT_FALSE (req6->is_only_confirmed_present ());
-	auto header6{ req6->get_header () };
-	header6.flag_set (nano::message_header::frontier_req_only_confirmed);
-	req6->set_header (header6);
-	ASSERT_TRUE (req6->is_only_confirmed_present ());
+	nano::frontier_req::frontier_req_payload payload6{};
+	payload6.start = key_before_genesis.pub;
+	payload6.age = std::numeric_limits<uint32_t>::max ();
+	payload6.count = std::numeric_limits<uint32_t>::max ();
+	payload6.only_confirmed = true;
+	auto req6 = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload6);
 	auto request6 (std::make_shared<nano::frontier_req_server> (node1, connection6, std::move (req6)));
 	ASSERT_EQ (key_before_genesis.pub, request6->current ());
 	ASSERT_EQ (receive1->hash (), request6->frontier ());
@@ -1956,15 +1956,12 @@ TEST (frontier_req, confirmed_frontier)
 	ASSERT_TRUE (nano::test::start_elections (system, *node1, { send2, receive2 }, true));
 	ASSERT_TIMELY (5s, node1->block_confirmed (send2->hash ()) && node1->block_confirmed (receive2->hash ()));
 	auto connection7 (create_bootstrap_server (node1));
-	auto req7 = std::make_unique<nano::frontier_req> (nano::dev::network_params.network);
-	req7->set_start (key_after_genesis.pub);
-	req7->set_age (std::numeric_limits<decltype (req7->get_age ())>::max ());
-	req7->set_count (std::numeric_limits<decltype (req7->get_count ())>::max ());
-	ASSERT_FALSE (req7->is_only_confirmed_present ());
-	auto header7{ req7->get_header () };
-	header7.flag_set (nano::message_header::frontier_req_only_confirmed);
-	req7->set_header (header7);
-	ASSERT_TRUE (req7->is_only_confirmed_present ());
+	nano::frontier_req::frontier_req_payload payload7{};
+	payload7.start = key_after_genesis.pub;
+	payload7.age = std::numeric_limits<uint32_t>::max ();
+	payload7.count = std::numeric_limits<uint32_t>::max ();
+	payload7.only_confirmed = true;
+	auto req7 = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload7);
 	auto request7 (std::make_shared<nano::frontier_req_server> (node1, connection7, std::move (req7)));
 	ASSERT_EQ (key_after_genesis.pub, request7->current ());
 	ASSERT_EQ (receive2->hash (), request7->frontier ());

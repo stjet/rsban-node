@@ -17,7 +17,7 @@ use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::{NetworkConstants, NodeConfig},
     messages::{
-        FrontierReq, Message, MessageEnum, MessageVisitor, NodeIdHandshake, NodeIdHandshakeQuery,
+        Message, MessageEnum, MessageVisitor, NodeIdHandshake, NodeIdHandshakeQuery,
         NodeIdHandshakeResponse, Payload, TelemetryAck, TelemetryReq,
     },
     stats::{DetailType, Direction, StatType, Stats},
@@ -574,12 +574,11 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
     fn keepalive(&mut self, message: &MessageEnum) {
         self.bootstrap = matches!(
             &message.payload,
-            Payload::BulkPull(_) | Payload::BulkPullAccount(_) | Payload::BulkPush
+            Payload::BulkPull(_)
+                | Payload::BulkPullAccount(_)
+                | Payload::BulkPush
+                | Payload::FrontierReq(_)
         );
-    }
-
-    fn frontier_req(&mut self, _message: &FrontierReq) {
-        self.bootstrap = true;
     }
 
     fn node_id_handshake(&mut self, message: &NodeIdHandshake) {
@@ -670,12 +669,10 @@ impl MessageVisitor for RealtimeMessageVisitorImpl {
             | Payload::AscPullAck(_)
             | Payload::AscPullReq(_)
             | Payload::ConfirmAck(_)
-            | Payload::ConfirmReq(_) => self.process = true,
+            | Payload::ConfirmReq(_)
+            | Payload::FrontierReq(_) => self.process = true,
             _ => {}
         }
-    }
-    fn frontier_req(&mut self, _message: &FrontierReq) {
-        self.process = true;
     }
     fn telemetry_req(&mut self, _message: &TelemetryReq) {
         // Only handle telemetry requests if they are outside of the cooldown period

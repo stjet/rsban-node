@@ -10,7 +10,7 @@ use rsnano_core::{
 use rsnano_ledger::Ledger;
 
 use crate::{
-    messages::FrontierReq,
+    messages::FrontierReqPayload,
     transport::{SocketExtensions, TcpServer, TcpServerExt, TrafficType},
     utils::{ErrorCode, ThreadPool},
 };
@@ -23,7 +23,7 @@ pub struct FrontierReqServer {
 impl FrontierReqServer {
     pub fn new(
         connection: Arc<TcpServer>,
-        request: FrontierReq,
+        request: FrontierReqPayload,
         thread_pool: Arc<dyn ThreadPool>,
         logger: Arc<dyn Logger>,
         enable_logging: bool,
@@ -67,7 +67,7 @@ struct FrontierReqServerImpl {
     connection: Arc<TcpServer>,
     current: Account,
     frontier: BlockHash,
-    request: FrontierReq,
+    request: FrontierReqPayload,
     count: usize,
     accounts: VecDeque<(Account, BlockHash)>,
     logger: Arc<dyn Logger>,
@@ -90,7 +90,7 @@ impl FrontierReqServerImpl {
     }
 
     pub fn send_confirmed(&self) -> bool {
-        self.request.is_confirmed_present()
+        self.request.only_confirmed
     }
 
     pub fn send_finished(&self, server: Arc<Mutex<FrontierReqServerImpl>>) {

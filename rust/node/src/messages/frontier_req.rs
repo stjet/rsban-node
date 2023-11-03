@@ -1,43 +1,27 @@
+use super::{MessageHeader, MessageType};
 use anyhow::Result;
 use rsnano_core::{
     utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account,
 };
-use std::{any::Any, fmt::Display, mem::size_of};
-
-use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
+use std::{fmt::Display, mem::size_of};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FrontierReq {
-    header: MessageHeader,
+pub struct FrontierReqPayload {
     pub start: Account,
     pub age: u32,
     pub count: u32,
+    pub only_confirmed: bool,
 }
 
-impl FrontierReq {
-    pub fn new(protocol_info: &ProtocolInfo) -> Self {
+impl FrontierReqPayload {
+    pub fn create_test_instance() -> Self {
         Self {
-            header: MessageHeader::new(MessageType::FrontierReq, protocol_info),
-            start: Account::zero(),
-            age: 0,
-            count: 0,
+            start: 1.into(),
+            age: 2,
+            count: 3,
+            only_confirmed: false,
         }
-    }
-
-    pub fn with_header(header: MessageHeader) -> Self {
-        Self {
-            header,
-            start: Account::zero(),
-            age: 0,
-            count: 0,
-        }
-    }
-
-    pub fn from_stream(stream: &mut impl Stream, header: MessageHeader) -> Result<Self> {
-        let mut msg = Self::with_header(header);
-        msg.deserialize(stream)?;
-        Ok(msg)
     }
 
     pub fn serialized_size() -> usize {
@@ -46,64 +30,39 @@ impl FrontierReq {
         + size_of::<u32>() //count
     }
 
-    pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
-        debug_assert!(self.header.message_type == MessageType::FrontierReq);
-        self.start = Account::deserialize(stream)?;
-        let mut buffer = [0u8; 4];
-        stream.read_bytes(&mut buffer, 4)?;
-        self.age = u32::from_le_bytes(buffer);
-        stream.read_bytes(&mut buffer, 4)?;
-        self.count = u32::from_le_bytes(buffer);
-        Ok(())
-    }
-
-    pub fn is_confirmed_present(&self) -> bool {
-        self.header.extensions[Self::ONLY_CONFIRMED]
-    }
-
     pub const ONLY_CONFIRMED: usize = 1;
-}
 
-impl Message for FrontierReq {
-    fn header(&self) -> &MessageHeader {
-        &self.header
+    pub fn is_confirmed_present(header: &MessageHeader) -> bool {
+        header.extensions[FrontierReqPayload::ONLY_CONFIRMED]
     }
 
-    fn set_header(&mut self, header: &MessageHeader) {
-        self.header = header.clone();
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.header.serialize(stream)?;
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.start.serialize(stream)?;
         stream.write_bytes(&self.age.to_le_bytes())?;
         stream.write_bytes(&self.count.to_le_bytes())
     }
 
-    fn visit(&self, visitor: &mut dyn MessageVisitor) {
-        visitor.frontier_req(self)
-    }
+    pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
+        debug_assert!(header.message_type == MessageType::FrontierReq);
+        let start = Account::deserialize(stream)?;
+        let mut buffer = [0u8; 4];
+        stream.read_bytes(&mut buffer, 4)?;
+        let age = u32::from_le_bytes(buffer);
+        stream.read_bytes(&mut buffer, 4)?;
+        let count = u32::from_le_bytes(buffer);
+        let only_confirmed = Self::is_confirmed_present(header);
 
-    fn clone_box(&self) -> Box<dyn Message> {
-        Box::new(self.clone())
-    }
-
-    fn message_type(&self) -> MessageType {
-        MessageType::FrontierReq
+        Ok(FrontierReqPayload {
+            start,
+            age,
+            count,
+            only_confirmed,
+        })
     }
 }
 
-impl Display for FrontierReq {
+impl Display for FrontierReqPayload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.header.fmt(f)?;
         write!(
             f,
             "\nstart={} maxage={} count={}",
@@ -114,23 +73,21 @@ impl Display for FrontierReq {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::utils::MemoryStream;
-
     use super::*;
+    use crate::messages::{Message, MessageEnum};
+    use rsnano_core::utils::MemoryStream;
 
     #[test]
     fn serialize() -> Result<()> {
-        let mut request1 = FrontierReq::new(&Default::default());
-        request1.start = Account::from(1);
-        request1.age = 2;
-        request1.count = 3;
+        let request1 = MessageEnum::new_frontier_req(
+            &Default::default(),
+            FrontierReqPayload::create_test_instance(),
+        );
         let mut stream = MemoryStream::new();
         request1.serialize(&mut stream)?;
 
         let header = MessageHeader::deserialize(&mut stream)?;
-        let mut request2 = FrontierReq::with_header(header);
-        request2.deserialize(&mut stream)?;
-
+        let request2 = MessageEnum::deserialize(&mut stream, header, 0, None, None)?;
         assert_eq!(request1, request2);
         Ok(())
     }

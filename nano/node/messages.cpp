@@ -532,14 +532,25 @@ std::string nano::confirm_ack::to_string () const
  * frontier_req
  */
 
-rsnano::MessageHandle * create_frontier_req_handle (nano::network_constants const & constants)
+rsnano::MessageHandle * create_frontier_req_handle2 (nano::network_constants const & constants, nano::frontier_req::frontier_req_payload & payload)
 {
 	auto constants_dto{ constants.to_dto () };
-	return rsnano::rsn_message_frontier_req_create (&constants_dto);
+	auto payload_dto{ payload.to_dto () };
+	return rsnano::rsn_message_frontier_req_create3 (&constants_dto, &payload_dto);
 }
 
-nano::frontier_req::frontier_req (nano::network_constants const & constants) :
-	message (create_frontier_req_handle (constants))
+rsnano::FrontierReqPayloadDto nano::frontier_req::frontier_req_payload::to_dto () const
+{
+	rsnano::FrontierReqPayloadDto dto;
+	std::copy (std::begin (start.bytes), std::end (start.bytes), std::begin (dto.start));
+	dto.age = age;
+	dto.count = count;
+	dto.only_confirmed = only_confirmed;
+	return dto;
+}
+
+nano::frontier_req::frontier_req (nano::network_constants const & constants, frontier_req_payload & payload) :
+	message (create_frontier_req_handle2 (constants, payload))
 {
 }
 
@@ -583,21 +594,6 @@ uint32_t nano::frontier_req::get_age () const
 uint32_t nano::frontier_req::get_count () const
 {
 	return rsnano::rsn_message_frontier_req_count (handle);
-}
-
-void nano::frontier_req::set_start (nano::account const & account)
-{
-	rsnano::rsn_message_frontier_req_set_start (handle, account.bytes.data ());
-}
-
-void nano::frontier_req::set_age (uint32_t age_a)
-{
-	rsnano::rsn_message_frontier_req_set_age (handle, age_a);
-}
-
-void nano::frontier_req::set_count (uint32_t count_a)
-{
-	rsnano::rsn_message_frontier_req_set_count (handle, count_a);
 }
 
 std::size_t nano::frontier_req::size ()

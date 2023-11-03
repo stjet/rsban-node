@@ -71,8 +71,6 @@ public:
 	std::string to_string () const;
 
 	void flag_set (uint8_t, bool enable = true);
-	static uint8_t constexpr frontier_req_only_confirmed = 1;
-
 	nano::networks get_network () const;
 	void set_network (nano::networks network);
 	uint8_t get_version_using () const;
@@ -166,7 +164,18 @@ public:
 class frontier_req final : public message
 {
 public:
-	explicit frontier_req (nano::network_constants const & constants);
+	class frontier_req_payload
+	{
+	public:
+		rsnano::FrontierReqPayloadDto to_dto () const;
+
+		nano::account start{};
+		uint32_t age{ 0 };
+		uint32_t count{ 0 };
+		bool only_confirmed{ false };
+	};
+
+	frontier_req (nano::network_constants const & constants, frontier_req_payload & payload);
 	frontier_req (rsnano::MessageHandle * handle_a);
 	frontier_req (frontier_req const &);
 	void visit (nano::message_visitor &) const override;
@@ -174,11 +183,8 @@ public:
 	bool is_only_confirmed_present () const;
 	static std::size_t size ();
 	nano::account get_start () const;
-	void set_start (nano::account const & account);
 	uint32_t get_age () const;
-	void set_age (uint32_t age);
 	uint32_t get_count () const;
-	void set_count (uint32_t count);
 	std::string to_string () const;
 };
 

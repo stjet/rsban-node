@@ -64,7 +64,6 @@ pub trait Message: Send {
 pub trait MessageVisitor {
     fn keepalive(&mut self, _message: &MessageEnum) {}
     fn telemetry_req(&mut self, _message: &TelemetryReq) {}
-    fn telemetry_ack(&mut self, _message: &TelemetryAck) {}
 }
 
 pub trait MessageExt {

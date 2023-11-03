@@ -248,7 +248,7 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = TelemetryAck::from_stream(stream, header) {
+        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
             // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
             return Ok(Box::new(msg));
         }
@@ -382,7 +382,7 @@ mod tests {
         let mut data = TelemetryData::default();
         data.unknown_data.push(0xFF);
 
-        test_deserializer(&TelemetryAck::new(&Default::default(), data));
+        test_deserializer(&MessageEnum::new_telemetry_ack(&Default::default(), data));
     }
 
     #[test]

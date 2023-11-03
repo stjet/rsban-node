@@ -18,7 +18,7 @@ use crate::{
     config::{NetworkConstants, NodeConfig},
     messages::{
         Message, MessageEnum, MessageVisitor, NodeIdHandshakeQuery, NodeIdHandshakeResponse,
-        Payload, TelemetryAck, TelemetryReq,
+        Payload, TelemetryReq,
     },
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
@@ -675,7 +675,8 @@ impl MessageVisitor for RealtimeMessageVisitorImpl {
             | Payload::AscPullReq(_)
             | Payload::ConfirmAck(_)
             | Payload::ConfirmReq(_)
-            | Payload::FrontierReq(_) => self.process = true,
+            | Payload::FrontierReq(_)
+            | Payload::TelemetryAck(_) => self.process = true,
             _ => {}
         }
     }
@@ -691,9 +692,6 @@ impl MessageVisitor for RealtimeMessageVisitorImpl {
                 Direction::In,
             );
         }
-    }
-    fn telemetry_ack(&mut self, _message: &TelemetryAck) {
-        self.process = true;
     }
 }
 

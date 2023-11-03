@@ -30,6 +30,7 @@ pub enum Payload {
     ConfirmReq(ConfirmReqPayload),
     FrontierReq(FrontierReqPayload),
     NodeIdHandshake(NodeIdHandshakePayload),
+    TelemetryAck(TelemetryData),
 }
 
 impl Payload {
@@ -45,6 +46,7 @@ impl Payload {
             Payload::ConfirmReq(x) => x.serialize(stream),
             Payload::FrontierReq(x) => x.serialize(stream),
             Payload::NodeIdHandshake(x) => x.serialize(stream),
+            Payload::TelemetryAck(x) => x.serialize(stream),
             Payload::BulkPush => Ok(()),
         }
     }
@@ -63,6 +65,7 @@ impl Display for Payload {
             Payload::ConfirmReq(x) => x.fmt(f),
             Payload::FrontierReq(x) => x.fmt(f),
             Payload::NodeIdHandshake(x) => x.fmt(f),
+            Payload::TelemetryAck(x) => x.fmt(f),
             Payload::BulkPush => Ok(()),
         }
     }
@@ -310,6 +313,22 @@ impl MessageEnum {
         }
     }
 
+    pub fn new_telemetry_ack(protocol_info: &ProtocolInfo, data: TelemetryData) -> Self {
+        debug_assert!(
+            TelemetryData::serialized_size_of_known_data() + data.unknown_data.len()
+                <= TelemetryData::SIZE_MASK as usize
+        ); // Maximum size the mask allows
+        let mut header = MessageHeader::new(MessageType::TelemetryAck, protocol_info);
+        header.extensions.data &= !TelemetryData::SIZE_MASK;
+        header.extensions.data |=
+            TelemetryData::serialized_size_of_known_data() as u16 + data.unknown_data.len() as u16;
+
+        Self {
+            header,
+            payload: Payload::TelemetryAck(data),
+        }
+    }
+
     pub fn deserialize(
         stream: &mut impl Stream,
         header: MessageHeader,
@@ -353,6 +372,9 @@ impl MessageEnum {
             }
             MessageType::NodeIdHandshake => {
                 Payload::NodeIdHandshake(NodeIdHandshakePayload::deserialize(stream, &header)?)
+            }
+            MessageType::TelemetryAck => {
+                Payload::TelemetryAck(TelemetryData::deserialize(stream, &header)?)
             }
             _ => unimplemented!(),
         };

@@ -20,7 +20,7 @@ pub enum TelemetryMaker {
     NfPrunedNode = 1,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TelemetryData {
     pub signature: Signature,
     pub node_id: Account,
@@ -44,6 +44,8 @@ pub struct TelemetryData {
 }
 
 impl TelemetryData {
+    pub const SIZE_MASK: u16 = 0x3ff;
+
     pub fn new() -> Self {
         Self {
             signature: Signature::new(),
@@ -90,6 +92,10 @@ impl TelemetryData {
           + size_of::<u64>() //active_difficulty)
     }
 
+    pub fn size_from_header(header: &MessageHeader) -> usize {
+        (header.extensions.data & TelemetryData::SIZE_MASK) as usize
+    }
+
     /// This needs to be updated for each new telemetry version
     pub fn latest_size() -> usize {
         Self::serialized_size_of_known_data()
@@ -127,34 +133,42 @@ impl TelemetryData {
         Ok(())
     }
 
-    pub fn deserialize(&mut self, stream: &mut dyn Stream, payload_length: u16) -> Result<()> {
-        self.signature = Signature::deserialize(stream)?;
-        self.node_id = Account::deserialize(stream)?;
-        self.block_count = stream.read_u64_be()?;
-        self.cemented_count = stream.read_u64_be()?;
-        self.unchecked_count = stream.read_u64_be()?;
-        self.account_count = stream.read_u64_be()?;
-        self.bandwidth_cap = stream.read_u64_be()?;
-        self.peer_count = stream.read_u32_be()?;
-        self.protocol_version = stream.read_u8()?;
-        self.uptime = stream.read_u64_be()?;
-        self.genesis_block = BlockHash::deserialize(stream)?;
-        self.major_version = stream.read_u8()?;
-        self.minor_version = stream.read_u8()?;
-        self.patch_version = stream.read_u8()?;
-        self.pre_release_version = stream.read_u8()?;
-        self.maker = stream.read_u8()?;
+    pub fn deserialize(stream: &mut dyn Stream, header: &MessageHeader) -> Result<Self> {
+        let payload_length = Self::size_from_header(header);
+        if payload_length == 0 {
+            return Ok(Self::new());
+        }
 
-        let timestamp_ms = stream.read_u64_be()?;
-        self.timestamp = SystemTime::UNIX_EPOCH + Duration::from_millis(timestamp_ms);
-        self.active_difficulty = stream.read_u64_be()?;
-
+        let mut result = Self {
+            signature: Signature::deserialize(stream)?,
+            node_id: Account::deserialize(stream)?,
+            block_count: stream.read_u64_be()?,
+            cemented_count: stream.read_u64_be()?,
+            unchecked_count: stream.read_u64_be()?,
+            account_count: stream.read_u64_be()?,
+            bandwidth_cap: stream.read_u64_be()?,
+            peer_count: stream.read_u32_be()?,
+            protocol_version: stream.read_u8()?,
+            uptime: stream.read_u64_be()?,
+            genesis_block: BlockHash::deserialize(stream)?,
+            major_version: stream.read_u8()?,
+            minor_version: stream.read_u8()?,
+            patch_version: stream.read_u8()?,
+            pre_release_version: stream.read_u8()?,
+            maker: stream.read_u8()?,
+            timestamp: {
+                let timestamp_ms = stream.read_u64_be()?;
+                SystemTime::UNIX_EPOCH + Duration::from_millis(timestamp_ms)
+            },
+            active_difficulty: stream.read_u64_be()?,
+            unknown_data: Vec::new(),
+        };
         if payload_length as usize > Self::latest_size() {
             let unknown_len = (payload_length as usize) - Self::latest_size();
-            self.unknown_data.resize(unknown_len, 0);
-            stream.read_bytes(&mut self.unknown_data, unknown_len)?;
+            result.unknown_data.resize(unknown_len, 0);
+            stream.read_bytes(&mut result.unknown_data, unknown_len)?;
         }
-        Ok(())
+        Ok(result)
     }
 
     pub fn sign(&mut self, keys: &KeyPair) -> Result<()> {
@@ -245,110 +259,10 @@ impl Default for TelemetryData {
     }
 }
 
-#[derive(Clone)]
-pub struct TelemetryAck {
-    header: MessageHeader,
-    pub data: TelemetryData,
-}
-
-impl TelemetryAck {
-    const SIZE_MASK: u16 = 0x3ff;
-
-    pub fn new(protocol_info: &ProtocolInfo, data: TelemetryData) -> Self {
-        debug_assert!(
-            TelemetryData::serialized_size_of_known_data() + data.unknown_data.len()
-                <= TelemetryAck::SIZE_MASK as usize
-        ); // Maximum size the mask allows
-        let mut header = MessageHeader::new(MessageType::TelemetryAck, protocol_info);
-        header.extensions.data &= !TelemetryAck::SIZE_MASK;
-        header.extensions.data |=
-            TelemetryData::serialized_size_of_known_data() as u16 + data.unknown_data.len() as u16;
-
-        Self { header, data }
-    }
-
-    pub fn from_stream(stream: &mut impl Stream, header: MessageHeader) -> Result<Self> {
-        let mut msg = TelemetryAck::with_header(header);
-        msg.deserialize(stream)?;
-        Ok(msg)
-    }
-
-    pub fn with_header(header: MessageHeader) -> Self {
-        Self {
-            header,
-            data: TelemetryData::new(),
-        }
-    }
-
-    pub fn deserialize(&mut self, stream: &mut dyn Stream) -> Result<()> {
-        debug_assert!(self.header.message_type == MessageType::TelemetryAck);
-        if !self.is_empty_payload() {
-            self.data.deserialize(stream, self.header.extensions.data)?;
-        }
-
-        Ok(())
-    }
-
-    pub fn size_from_header(header: &MessageHeader) -> usize {
-        (header.extensions.data & TelemetryAck::SIZE_MASK) as usize
-    }
-
-    pub fn size(&self) -> usize {
-        TelemetryAck::size_from_header(&self.header)
-    }
-
-    pub fn is_empty_payload(&self) -> bool {
-        self.size() == 0
-    }
-}
-
-impl Message for TelemetryAck {
-    fn header(&self) -> &MessageHeader {
-        &self.header
-    }
-
-    fn set_header(&mut self, header: &MessageHeader) {
-        self.header = header.clone();
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.header.serialize(stream)?;
-        if !self.is_empty_payload() {
-            self.data.serialize(stream)?;
-        }
-        Ok(())
-    }
-
-    fn visit(&self, visitor: &mut dyn MessageVisitor) {
-        visitor.telemetry_ack(self)
-    }
-
-    fn clone_box(&self) -> Box<dyn Message> {
-        Box::new(self.clone())
-    }
-
-    fn message_type(&self) -> MessageType {
-        MessageType::TelemetryAck
-    }
-}
-
-impl Display for TelemetryAck {
+impl Display for TelemetryData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.header.fmt(f)?;
         writeln!(f)?;
-        if self.is_empty_payload() {
-            write!(f, "empty telemetry payload")?;
-        } else {
-            write!(f, "{}", self.data.to_json().map_err(|_| std::fmt::Error)?)?;
-        }
+        write!(f, "{}", self.to_json().map_err(|_| std::fmt::Error)?)?;
         Ok(())
     }
 }

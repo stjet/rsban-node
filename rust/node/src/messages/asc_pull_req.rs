@@ -1,4 +1,4 @@
-use super::{MessageHeader, MessageType};
+use super::{MessageHeader, MessageType, MessageVariant};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{Deserialize, Serialize, Stream, StreamExt},
@@ -166,6 +166,12 @@ impl Serialize for AscPullReqPayload {
         stream.write_u8(self.payload_type() as u8)?;
         stream.write_u64_be(self.id)?;
         self.req_type.serialize(stream)
+    }
+}
+
+impl MessageVariant for AscPullReqPayload {
+    fn message_type(&self) -> MessageType {
+        MessageType::AscPullReq
     }
 }
 

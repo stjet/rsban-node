@@ -6,7 +6,7 @@ use rsnano_core::{
 };
 use std::{fmt::Display, mem::size_of};
 
-use super::{AscPullPayloadId, MessageHeader, MessageType};
+use super::{AscPullPayloadId, MessageHeader, MessageType, MessageVariant};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum AscPullAckType {
@@ -56,18 +56,26 @@ impl AscPullAckPayload {
         }
     }
 
-    pub fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        stream.write_u8(self.payload_type() as u8)?;
-        stream.write_u64_be(self.id)?;
-        self.serialize_pull_type(stream)
-    }
-
     pub fn serialized_size(header: &MessageHeader) -> usize {
         let payload_length = header.extensions.data as usize;
 
         size_of::<u8>() // type code 
         + size_of::<u64>() // id
         + payload_length
+    }
+}
+
+impl Serialize for AscPullAckPayload {
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        stream.write_u8(self.payload_type() as u8)?;
+        stream.write_u64_be(self.id)?;
+        self.serialize_pull_type(stream)
+    }
+}
+
+impl MessageVariant for AscPullAckPayload {
+    fn message_type(&self) -> MessageType {
+        MessageType::AscPullAck
     }
 }
 
@@ -185,10 +193,9 @@ impl Serialize for AccountInfoAckPayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{assert_deserializable, MessageEnum, ProtocolInfo};
-
     use super::*;
-    use rsnano_core::{utils::MemoryStream, BlockBuilder};
+    use crate::messages::{assert_deserializable, MessageEnum, ProtocolInfo};
+    use rsnano_core::BlockBuilder;
 
     #[test]
     fn serialize_blocks() {

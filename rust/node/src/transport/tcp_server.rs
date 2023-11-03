@@ -485,7 +485,6 @@ impl HandshakeMessageVisitorImpl {
 
         let mut stream = MemoryStream::new();
         handshake_response.serialize(&mut stream).unwrap();
-
         let shared_const_buffer = Arc::new(stream.to_vec());
         let server_weak = Arc::downgrade(&self.server);
         let logger = Arc::clone(&self.logger);
@@ -575,7 +574,7 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
             &message.payload,
             Payload::BulkPull(_)
                 | Payload::BulkPullAccount(_)
-                | Payload::BulkPush
+                | Payload::BulkPush(_)
                 | Payload::FrontierReq(_)
         ) {
             self.bootstrap = true;
@@ -676,7 +675,7 @@ impl MessageVisitor for RealtimeMessageVisitorImpl {
             | Payload::ConfirmReq(_)
             | Payload::FrontierReq(_)
             | Payload::TelemetryAck(_) => self.process = true,
-            Payload::TelemetryReq => {
+            Payload::TelemetryReq(_) => {
                 // Only handle telemetry requests if they are outside of the cooldown period
                 if self.server.is_outside_cooldown_period() {
                     self.server.set_last_telemetry_req();

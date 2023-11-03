@@ -1,4 +1,4 @@
-use super::{MessageHeader, MessageType};
+use super::{MessageHeader, MessageType, MessageVariant};
 use anyhow::Result;
 use rsnano_core::{
     utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
@@ -36,12 +36,6 @@ impl FrontierReqPayload {
         header.extensions[FrontierReqPayload::ONLY_CONFIRMED]
     }
 
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.start.serialize(stream)?;
-        stream.write_bytes(&self.age.to_le_bytes())?;
-        stream.write_bytes(&self.count.to_le_bytes())
-    }
-
     pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
         debug_assert!(header.message_type == MessageType::FrontierReq);
         let start = Account::deserialize(stream)?;
@@ -58,6 +52,20 @@ impl FrontierReqPayload {
             count,
             only_confirmed,
         })
+    }
+}
+
+impl Serialize for FrontierReqPayload {
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.start.serialize(stream)?;
+        stream.write_bytes(&self.age.to_le_bytes())?;
+        stream.write_bytes(&self.count.to_le_bytes())
+    }
+}
+
+impl MessageVariant for FrontierReqPayload {
+    fn message_type(&self) -> MessageType {
+        MessageType::FrontierReq
     }
 }
 

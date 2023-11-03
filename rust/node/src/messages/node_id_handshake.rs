@@ -1,4 +1,4 @@
-use super::{MessageHeader, MessageType};
+use super::{MessageHeader, MessageType, MessageVariant};
 use crate::transport::Cookie;
 use anyhow::Result;
 use rand::{thread_rng, Rng};
@@ -186,16 +186,6 @@ impl NodeIdHandshakePayload {
         })
     }
 
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        if let Some(query) = &self.query {
-            stream.write_bytes(&query.cookie)?;
-        }
-        if let Some(response) = &self.response {
-            response.serialize(stream)?;
-        }
-        Ok(())
-    }
-
     pub fn create_test_query() -> Self {
         let query = NodeIdHandshakeQuery { cookie: [42; 32] };
         Self {
@@ -232,6 +222,24 @@ impl NodeIdHandshakePayload {
             response: Some(response),
             is_v2: true,
         }
+    }
+}
+
+impl Serialize for NodeIdHandshakePayload {
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        if let Some(query) = &self.query {
+            stream.write_bytes(&query.cookie)?;
+        }
+        if let Some(response) = &self.response {
+            response.serialize(stream)?;
+        }
+        Ok(())
+    }
+}
+
+impl MessageVariant for NodeIdHandshakePayload {
+    fn message_type(&self) -> MessageType {
+        MessageType::NodeIdHandshake
     }
 }
 

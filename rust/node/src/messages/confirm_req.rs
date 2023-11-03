@@ -2,7 +2,7 @@ use crate::utils::{deserialize_block, BlockUniquer};
 use anyhow::Result;
 use rsnano_core::{
     serialized_block_size,
-    utils::{Deserialize, FixedSizeSerialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
     BlockEnum, BlockHash, BlockType, Root,
 };
 use std::{
@@ -10,7 +10,7 @@ use std::{
     sync::Arc,
 };
 
-use super::{MessageHeader, MessageType};
+use super::{MessageHeader, MessageType, MessageVariant};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct ConfirmReq {
@@ -65,19 +65,6 @@ impl ConfirmReqPayload {
         Ok(roots_hashes)
     }
 
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        if let Some(block) = &self.block {
-            block.serialize(stream)?;
-        } else {
-            // Write hashes & roots
-            for (hash, root) in &self.roots_hashes {
-                stream.write_bytes(hash.as_bytes())?;
-                stream.write_bytes(root.as_bytes())?;
-            }
-        }
-        Ok(())
-    }
-
     pub fn roots_string(&self) -> String {
         let mut result = String::new();
         for (hash, root) in &self.roots_hashes {
@@ -94,6 +81,27 @@ impl ConfirmReqPayload {
             result = count as usize * (BlockHash::serialized_size() + Root::serialized_size());
         }
         result
+    }
+}
+
+impl Serialize for ConfirmReqPayload {
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        if let Some(block) = &self.block {
+            block.serialize(stream)?;
+        } else {
+            // Write hashes & roots
+            for (hash, root) in &self.roots_hashes {
+                stream.write_bytes(hash.as_bytes())?;
+                stream.write_bytes(root.as_bytes())?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl MessageVariant for ConfirmReqPayload {
+    fn message_type(&self) -> MessageType {
+        MessageType::ConfirmReq
     }
 }
 

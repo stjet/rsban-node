@@ -1,13 +1,16 @@
 use crate::utils::{deserialize_block, BlockUniquer};
 use anyhow::Result;
-use rsnano_core::{utils::Stream, BlockEnum};
+use rsnano_core::{
+    utils::{Serialize, Stream},
+    BlockEnum,
+};
 use std::{
     fmt::{Debug, Display},
     ops::Deref,
     sync::Arc,
 };
 
-use super::{MessageHeader, MessageType};
+use super::{MessageHeader, MessageType, MessageVariant};
 
 #[derive(Clone, Eq)]
 pub struct PublishPayload {
@@ -30,10 +33,18 @@ impl PublishPayload {
 
         Ok(payload)
     }
+}
 
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+impl Serialize for PublishPayload {
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         let block = self.block.as_ref().ok_or_else(|| anyhow!("no block"))?;
         block.serialize(stream)
+    }
+}
+
+impl MessageVariant for PublishPayload {
+    fn message_type(&self) -> MessageType {
+        MessageType::Publish
     }
 }
 

@@ -6,6 +6,8 @@ use std::{
     sync::Arc,
 };
 
+use super::{MessageType, MessageVariant};
+
 #[derive(Clone, Debug)]
 pub struct ConfirmAckPayload {
     pub vote: Arc<Vote>,
@@ -40,6 +42,12 @@ impl ConfirmAckPayload {
 impl Serialize for ConfirmAckPayload {
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.vote.serialize(stream)
+    }
+}
+
+impl MessageVariant for ConfirmAckPayload {
+    fn message_type(&self) -> MessageType {
+        MessageType::ConfirmAck
     }
 }
 

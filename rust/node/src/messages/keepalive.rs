@@ -1,6 +1,6 @@
-use super::{MessageHeader, MessageType};
+use super::{MessageHeader, MessageType, MessageVariant};
 use anyhow::Result;
-use rsnano_core::utils::Stream;
+use rsnano_core::utils::{Serialize, Stream};
 use std::{
     fmt::Display,
     net::{IpAddr, Ipv6Addr, SocketAddr},
@@ -32,7 +32,21 @@ impl KeepalivePayload {
         Ok(Self { peers })
     }
 
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+    pub fn serialized_size() -> usize {
+        8 * (16 + 2)
+    }
+}
+
+impl Default for KeepalivePayload {
+    fn default() -> Self {
+        Self {
+            peers: empty_peers(),
+        }
+    }
+}
+
+impl Serialize for KeepalivePayload {
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         for peer in &self.peers {
             match peer {
                 SocketAddr::V4(_) => panic!("ipv6 expected but was ipv4"), //todo make peers IpAddrV6?
@@ -47,17 +61,11 @@ impl KeepalivePayload {
         }
         Ok(())
     }
-
-    pub fn serialized_size() -> usize {
-        8 * (16 + 2)
-    }
 }
 
-impl Default for KeepalivePayload {
-    fn default() -> Self {
-        Self {
-            peers: empty_peers(),
-        }
+impl MessageVariant for KeepalivePayload {
+    fn message_type(&self) -> MessageType {
+        MessageType::Keepalive
     }
 }
 
@@ -77,7 +85,7 @@ fn empty_peers() -> [SocketAddr; 8] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, MessageEnum, Payload, ProtocolInfo};
+    use crate::messages::{assert_deserializable, MessageEnum, ProtocolInfo};
     use std::str::FromStr;
 
     #[test]
@@ -90,6 +98,7 @@ mod tests {
     fn serialize_peers() {
         let mut keepalive = KeepalivePayload::default();
         keepalive.peers[0] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 10000);
+        let request1 = MessageEnum::new_keepalive(&ProtocolInfo::dev_network());
         assert_deserializable(&request1);
     }
 

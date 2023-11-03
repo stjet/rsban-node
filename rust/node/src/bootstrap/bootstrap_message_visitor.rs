@@ -113,7 +113,7 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
 
                 self.processed = true;
             }
-            Payload::BulkPush => {
+            Payload::BulkPush(_) => {
                 let Some(thread_pool) = self.thread_pool.upgrade() else {
                     return;
                 };

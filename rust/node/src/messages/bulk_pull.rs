@@ -1,4 +1,4 @@
-use super::{MessageHeader, MessageType};
+use super::{MessageHeader, MessageType, MessageVariant};
 use anyhow::Result;
 use rsnano_core::{
     utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
@@ -84,6 +84,12 @@ impl Serialize for BulkPullPayload {
             stream.write_bytes(&count_buffer)?;
         }
         Ok(())
+    }
+}
+
+impl MessageVariant for BulkPullPayload {
+    fn message_type(&self) -> MessageType {
+        MessageType::BulkPull
     }
 }
 

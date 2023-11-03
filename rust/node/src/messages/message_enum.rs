@@ -9,12 +9,16 @@ use rsnano_core::{
     utils::{MemoryStream, Serialize, Stream},
     BlockEnum, BlockHash, BlockType, Root,
 };
-use std::{fmt::Display, sync::Arc};
+use std::{fmt::Display, ops::Deref, sync::Arc};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MessageEnum {
     pub header: MessageHeader,
     pub payload: Payload,
+}
+
+pub trait MessageVariant: Serialize + Display {
+    fn message_type(&self) -> MessageType;
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -25,49 +29,22 @@ pub enum Payload {
     AscPullReq(AscPullReqPayload),
     BulkPull(BulkPullPayload),
     BulkPullAccount(BulkPullAccountPayload),
-    BulkPush,
+    BulkPush(BulkPushPayload),
     ConfirmAck(ConfirmAckPayload),
     ConfirmReq(ConfirmReqPayload),
     FrontierReq(FrontierReqPayload),
     NodeIdHandshake(NodeIdHandshakePayload),
     TelemetryAck(TelemetryData),
-    TelemetryReq,
+    TelemetryReq(TelemetryReqPayload),
 }
 
 impl Payload {
-    fn serialize(&self, stream: &mut dyn Stream) -> std::result::Result<(), anyhow::Error> {
-        match &self {
-            Payload::Keepalive(x) => x.serialize(stream),
-            Payload::Publish(x) => x.serialize(stream),
-            Payload::AscPullAck(x) => x.serialize(stream),
-            Payload::AscPullReq(x) => x.serialize(stream),
-            Payload::BulkPull(x) => x.serialize(stream),
-            Payload::BulkPullAccount(x) => x.serialize(stream),
-            Payload::ConfirmAck(x) => x.serialize(stream),
-            Payload::ConfirmReq(x) => x.serialize(stream),
-            Payload::FrontierReq(x) => x.serialize(stream),
-            Payload::NodeIdHandshake(x) => x.serialize(stream),
-            Payload::TelemetryAck(x) => x.serialize(stream),
-            Payload::BulkPush | Payload::TelemetryReq => Ok(()),
-        }
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        self.deref().serialize(stream)
     }
 
     pub fn message_type(&self) -> MessageType {
-        match &self {
-            Payload::Keepalive(_) => MessageType::Keepalive,
-            Payload::Publish(_) => MessageType::Publish,
-            Payload::AscPullAck(_) => MessageType::AscPullAck,
-            Payload::AscPullReq(_) => MessageType::AscPullReq,
-            Payload::BulkPull(_) => MessageType::BulkPull,
-            Payload::BulkPullAccount(_) => MessageType::BulkPullAccount,
-            Payload::BulkPush => MessageType::BulkPush,
-            Payload::ConfirmAck(_) => MessageType::ConfirmAck,
-            Payload::ConfirmReq(_) => MessageType::ConfirmReq,
-            Payload::FrontierReq(_) => MessageType::FrontierReq,
-            Payload::NodeIdHandshake(_) => MessageType::NodeIdHandshake,
-            Payload::TelemetryAck(_) => MessageType::TelemetryAck,
-            Payload::TelemetryReq => MessageType::TelemetryReq,
-        }
+        self.deref().message_type()
     }
 
     pub fn deserialize(
@@ -99,7 +76,9 @@ impl Payload {
             MessageType::BulkPullAccount => {
                 Payload::BulkPullAccount(BulkPullAccountPayload::deserialize(stream, &header)?)
             }
-            MessageType::BulkPush => Payload::BulkPush,
+            MessageType::BulkPush => {
+                Payload::BulkPush(BulkPushPayload::deserialize(stream, &header)?)
+            }
             MessageType::ConfirmAck => {
                 Payload::ConfirmAck(ConfirmAckPayload::deserialize(stream, vote_uniquer)?)
             }
@@ -117,29 +96,40 @@ impl Payload {
             MessageType::TelemetryAck => {
                 Payload::TelemetryAck(TelemetryData::deserialize(stream, &header)?)
             }
-            MessageType::TelemetryReq => Payload::TelemetryReq,
+            MessageType::TelemetryReq => {
+                Payload::TelemetryReq(TelemetryReqPayload::deserialize(stream, &header)?)
+            }
             MessageType::Invalid | MessageType::NotAType => bail!("invalid message type"),
         };
         Ok(msg)
     }
 }
 
+impl Deref for Payload {
+    type Target = dyn MessageVariant;
+
+    fn deref(&self) -> &Self::Target {
+        match &self {
+            Payload::Keepalive(x) => x,
+            Payload::Publish(x) => x,
+            Payload::AscPullAck(x) => x,
+            Payload::AscPullReq(x) => x,
+            Payload::BulkPull(x) => x,
+            Payload::BulkPullAccount(x) => x,
+            Payload::BulkPush(x) => x,
+            Payload::ConfirmAck(x) => x,
+            Payload::ConfirmReq(x) => x,
+            Payload::FrontierReq(x) => x,
+            Payload::NodeIdHandshake(x) => x,
+            Payload::TelemetryAck(x) => x,
+            Payload::TelemetryReq(x) => x,
+        }
+    }
+}
+
 impl Display for Payload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self {
-            Payload::Keepalive(x) => x.fmt(f),
-            Payload::Publish(x) => x.fmt(f),
-            Payload::AscPullAck(x) => x.fmt(f),
-            Payload::AscPullReq(x) => x.fmt(f),
-            Payload::BulkPull(x) => x.fmt(f),
-            Payload::BulkPullAccount(x) => x.fmt(f),
-            Payload::ConfirmAck(x) => x.fmt(f),
-            Payload::ConfirmReq(x) => x.fmt(f),
-            Payload::FrontierReq(x) => x.fmt(f),
-            Payload::NodeIdHandshake(x) => x.fmt(f),
-            Payload::TelemetryAck(x) => x.fmt(f),
-            Payload::BulkPush | Payload::TelemetryReq => Ok(()),
-        }
+        self.deref().fmt(f)
     }
 }
 
@@ -267,7 +257,7 @@ impl MessageEnum {
     pub fn new_bulk_push(protocol_info: &ProtocolInfo) -> Self {
         Self {
             header: MessageHeader::new(MessageType::BulkPush, protocol_info),
-            payload: Payload::BulkPush,
+            payload: Payload::BulkPush(BulkPushPayload {}),
         }
     }
 
@@ -404,7 +394,7 @@ impl MessageEnum {
     pub fn new_telemetry_req(protocol_info: &ProtocolInfo) -> Self {
         Self {
             header: MessageHeader::new(MessageType::TelemetryReq, protocol_info),
-            payload: Payload::TelemetryReq,
+            payload: Payload::TelemetryReq(TelemetryReqPayload {}),
         }
     }
 

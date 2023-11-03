@@ -1,4 +1,4 @@
-use super::MessageHeader;
+use super::{MessageHeader, MessageType, MessageVariant};
 use anyhow::Result;
 use rsnano_core::utils::{
     Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
@@ -97,11 +97,6 @@ impl TelemetryData {
     /// This needs to be updated for each new telemetry version
     pub fn latest_size() -> usize {
         Self::serialized_size_of_known_data()
-    }
-
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.signature.serialize(stream)?;
-        self.serialize_without_signature(stream)
     }
 
     fn serialize_without_signature(&self, stream: &mut dyn Stream) -> Result<()> {
@@ -223,6 +218,19 @@ impl TelemetryData {
         };
 
         serde_json::to_string_pretty(&json_dto)
+    }
+}
+
+impl Serialize for TelemetryData {
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.signature.serialize(stream)?;
+        self.serialize_without_signature(stream)
+    }
+}
+
+impl MessageVariant for TelemetryData {
+    fn message_type(&self) -> MessageType {
+        MessageType::TelemetryAck
     }
 }
 

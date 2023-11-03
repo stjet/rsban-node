@@ -105,7 +105,7 @@ impl MessageDeserializerImpl {
         &self,
         header: MessageHeader,
         payload_bytes: &[u8],
-    ) -> Result<Box<dyn Message>, ParseStatus> {
+    ) -> Result<Box<MessageEnum>, ParseStatus> {
         let mut stream = StreamAdapter::new(payload_bytes);
         match header.message_type {
             MessageType::Keepalive => Ok(self.deserialize_keepalive(&mut stream, header)?),

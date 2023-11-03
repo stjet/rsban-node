@@ -1,9 +1,11 @@
+use std::ops::Deref;
+
 use rsnano_core::{BlockHash, HashOrAccount};
 
 use crate::{copy_hash_bytes, NetworkConstantsDto, StringDto};
 use rsnano_node::messages::{BulkPullPayload, MessageEnum, Payload};
 
-use super::{create_message_handle3, downcast_message, downcast_message_mut, MessageHandle};
+use super::{create_message_handle3, MessageHandle};
 
 #[repr(C)]
 pub struct BulkPullPayloadDto {
@@ -31,28 +33,25 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_create3(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_bulk_pull_req_clone(
-    other: *mut MessageHandle,
+    other: &MessageHandle,
 ) -> *mut MessageHandle {
-    MessageHandle::from_message(downcast_message::<MessageEnum>(other).clone())
+    MessageHandle::new(other.deref().clone())
 }
 
-unsafe fn get_payload(handle: *mut MessageHandle) -> &'static BulkPullPayload {
-    let message = downcast_message::<MessageEnum>(handle);
-    let Payload::BulkPull(payload) = &message.payload else {panic!("not a bulk_pull message")};
+unsafe fn get_payload(handle: &MessageHandle) -> &BulkPullPayload {
+    let Payload::BulkPull(payload) = &handle.payload else {panic!("not a bulk_pull message")};
     payload
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_bulk_pull_end(handle: *mut MessageHandle, end: *mut u8) {
+pub unsafe extern "C" fn rsn_message_bulk_pull_end(handle: &MessageHandle, end: *mut u8) {
     copy_hash_bytes(get_payload(handle).end, end);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_bulk_pull_to_string(
-    handle: *mut MessageHandle,
+    handle: &MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = downcast_message_mut::<MessageEnum>(handle)
-        .to_string()
-        .into();
+    (*result) = handle.to_string().into();
 }

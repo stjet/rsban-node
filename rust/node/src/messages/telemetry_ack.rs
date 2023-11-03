@@ -1,3 +1,4 @@
+use super::MessageHeader;
 use anyhow::Result;
 use rsnano_core::utils::{
     Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
@@ -6,12 +7,9 @@ use rsnano_core::{
     sign_message, to_hex_string, validate_message, Account, BlockHash, KeyPair, Signature,
 };
 use serde_derive::Serialize;
-use std::any::Any;
 use std::fmt::Display;
 use std::mem::size_of;
 use std::time::{Duration, SystemTime};
-
-use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
 
 #[repr(u8)]
 #[derive(FromPrimitive, Copy, Clone, PartialEq, Eq)]

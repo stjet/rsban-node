@@ -54,7 +54,7 @@ pub struct TcpChannelsOptions {
     pub tcp_message_manager: Arc<TcpMessageManager>,
     pub port: u16,
     pub flags: NodeFlags,
-    pub sink: Box<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>) + Sync + Send>,
+    pub sink: Box<dyn Fn(Box<MessageEnum>, Arc<ChannelEnum>) + Sync + Send>,
     pub limiter: Arc<OutboundBandwidthLimiter>,
     pub node_id: KeyPair,
     pub syn_cookies: Arc<SynCookies>,
@@ -71,7 +71,7 @@ pub struct TcpChannels {
     tcp_message_manager: Arc<TcpMessageManager>,
     flags: NodeFlags,
     stats: Arc<Stats>,
-    sink: Box<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>) + Send + Sync>,
+    sink: Box<dyn Fn(Box<MessageEnum>, Arc<ChannelEnum>) + Send + Sync>,
     next_channel_id: AtomicUsize,
     network: Arc<NetworkParams>,
     pub excluded_peers: Arc<Mutex<PeerExclusion>>,
@@ -435,7 +435,7 @@ impl ChannelTcpObserver for ChannelTcpObserverImpl {
         });
     }
 
-    fn message_sent(&self, message: &dyn Message) {
+    fn message_sent(&self, message: &MessageEnum) {
         self.execute(|channels| {
             let detail = DetailType::from(message.header().message_type);
             channels
@@ -444,7 +444,7 @@ impl ChannelTcpObserver for ChannelTcpObserverImpl {
         });
     }
 
-    fn message_dropped(&self, message: &dyn Message, buffer_size: usize) {
+    fn message_dropped(&self, message: &MessageEnum, buffer_size: usize) {
         self.execute(|channels| {
             let detail_type = message.message_type().into();
             channels
@@ -491,7 +491,7 @@ pub trait TcpChannelsExtension {
     fn process_messages(&self);
     fn process_message(
         &self,
-        message: &dyn Message,
+        message: &MessageEnum,
         endpoint: &SocketAddr,
         node_id: PublicKey,
         socket: &Arc<Socket>,
@@ -520,7 +520,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
     fn process_message(
         &self,
-        message: &dyn Message,
+        message: &MessageEnum,
         endpoint: &SocketAddr,
         node_id: PublicKey,
         socket: &Arc<Socket>,
@@ -533,13 +533,13 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             && message.header().version_using >= self.network.network.protocol_version_min
         {
             if let Some(channel) = self.find_channel(endpoint) {
-                (self.sink)(message.clone_box(), Arc::clone(&channel));
+                (self.sink)(Box::new(message.clone()), Arc::clone(&channel));
                 channel
                     .as_channel()
                     .set_last_packet_received(SystemTime::now());
             } else {
                 if let Some(channel) = self.find_node_id(&node_id) {
-                    (self.sink)(message.clone_box(), Arc::clone(&channel));
+                    (self.sink)(Box::new(message.clone()), Arc::clone(&channel));
                     channel
                         .as_channel()
                         .set_last_packet_received(SystemTime::now());
@@ -571,7 +571,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         if socket_type == SocketType::Realtime {
                             let _ = self.insert(&temporary_channel, None);
                         }
-                        (self.sink)(message.clone_box(), temporary_channel);
+                        (self.sink)(Box::new(message.clone()), temporary_channel);
                     } else {
                         // Initial node_id_handshake request without node ID
                         debug_assert!(

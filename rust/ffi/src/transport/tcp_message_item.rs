@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rsn_tcp_message_item_create(
     let message = if message.is_null() {
         None
     } else {
-        Some((*message).clone_box())
+        Some((*message).clone())
     };
     let endpoint = SocketAddr::from(&*endpoint);
     let node_id = Account::from_ptr(node_id);
@@ -88,7 +88,7 @@ pub unsafe extern "C" fn rsn_tcp_message_item_message(
     handle: *mut TcpMessageItemHandle,
 ) -> *mut MessageHandle {
     match &(*handle).0.message {
-        Some(msg) => MessageHandle::new(msg.clone_box()),
+        Some(msg) => MessageHandle::new(msg.clone()),
         None => std::ptr::null_mut(),
     }
 }

@@ -2,28 +2,30 @@ use super::MessageHeaderHandle;
 use crate::NetworkConstantsDto;
 use rsnano_node::{
     config::NetworkConstants,
-    messages::{Message, MessageHeader, ProtocolInfo},
+    messages::{Message, MessageEnum, MessageHeader, ProtocolInfo},
 };
 
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
-pub struct MessageHandle(pub Box<dyn Message>);
+pub struct MessageHandle(pub Box<MessageEnum>);
 
 impl MessageHandle {
-    pub fn new(msg: Box<dyn Message>) -> *mut Self {
+    pub fn new(msg: Box<MessageEnum>) -> *mut Self {
         Box::into_raw(Box::new(Self(msg)))
-    }
-
-    pub fn from_message<T: 'static + Message>(msg: T) -> *mut Self {
-        Box::into_raw(Box::new(Self(Box::new(msg))))
     }
 }
 
 impl Deref for MessageHandle {
-    type Target = Box<dyn Message>;
+    type Target = Box<MessageEnum>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl DerefMut for MessageHandle {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -46,7 +48,7 @@ pub unsafe extern "C" fn rsn_message_set_header(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_clone(handle: *mut MessageHandle) -> *mut MessageHandle {
-    MessageHandle::new((*handle).0.clone_box())
+    MessageHandle::new((*handle).0.clone())
 }
 
 #[no_mangle]
@@ -59,37 +61,22 @@ pub unsafe extern "C" fn rsn_message_type(handle: *mut MessageHandle) -> u8 {
     (*handle).message_type() as u8
 }
 
-pub(crate) unsafe fn create_message_handle2<T: 'static + Message>(
+pub(crate) unsafe fn create_message_handle2(
     header: *mut MessageHeaderHandle,
-    f: impl FnOnce(MessageHeader) -> T,
+    f: impl FnOnce(MessageHeader) -> MessageEnum,
 ) -> *mut MessageHandle {
     let msg = f((*header).deref().clone());
     MessageHandle::new(Box::new(msg))
 }
 
-pub(crate) unsafe fn create_message_handle3<T: 'static + Message>(
+pub(crate) unsafe fn create_message_handle3(
     constants: *mut NetworkConstantsDto,
-    f: impl FnOnce(&ProtocolInfo) -> T,
+    f: impl FnOnce(&ProtocolInfo) -> MessageEnum,
 ) -> *mut MessageHandle {
     let constants = NetworkConstants::try_from(&*constants).unwrap();
     MessageHandle::new(Box::new(f(&constants.protocol_info())))
 }
 
-pub(crate) unsafe fn message_handle_clone<T: 'static + Message + Clone>(
-    handle: *mut MessageHandle,
-) -> *mut MessageHandle {
-    let msg = downcast_message::<T>(handle);
-    MessageHandle::new(Box::new(msg.clone()))
-}
-
-pub(crate) unsafe fn downcast_message<T: 'static + Message>(
-    handle: *mut MessageHandle,
-) -> &'static T {
-    (*handle).0.as_any().downcast_ref::<T>().unwrap()
-}
-
-pub(crate) unsafe fn downcast_message_mut<T: 'static + Message>(
-    handle: *mut MessageHandle,
-) -> &'static mut T {
-    (*handle).0.as_any_mut().downcast_mut::<T>().unwrap()
+pub(crate) fn message_handle_clone(handle: &MessageHandle) -> *mut MessageHandle {
+    MessageHandle::new(handle.deref().clone())
 }

@@ -1,16 +1,10 @@
-use rsnano_core::{Account, BlockHash, KeyPair, Signature};
-
-use std::time::{Duration, SystemTime};
-
+use super::{create_message_handle3, message_handle_clone, MessageHandle, MessageHeaderHandle};
 use crate::{
     copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto, StringDto,
 };
-use rsnano_node::messages::{Message, MessageEnum, Payload, TelemetryData};
-
-use super::{
-    create_message_handle3, downcast_message, downcast_message_mut, message_handle_clone,
-    MessageHandle, MessageHeaderHandle,
-};
+use rsnano_core::{Account, BlockHash, KeyPair, Signature};
+use rsnano_node::messages::{MessageEnum, Payload, TelemetryData};
+use std::time::{Duration, SystemTime};
 
 pub struct TelemetryDataHandle(TelemetryData);
 
@@ -372,53 +366,41 @@ pub unsafe extern "C" fn rsn_telemetry_data_to_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_telemetry_ack_clone(
-    handle: *mut MessageHandle,
-) -> *mut MessageHandle {
-    message_handle_clone::<MessageEnum>(handle)
+pub extern "C" fn rsn_message_telemetry_ack_clone(handle: &MessageHandle) -> *mut MessageHandle {
+    message_handle_clone(handle)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_telemetry_ack_data(
-    handle: *mut MessageHandle,
+    handle: &MessageHandle,
 ) -> *mut TelemetryDataHandle {
-    let data = get_payload(handle).clone();
-    Box::into_raw(Box::new(TelemetryDataHandle(data)))
+    let Payload::TelemetryAck(data) = &handle.payload else {panic!("not a telemetry_ack")};
+    Box::into_raw(Box::new(TelemetryDataHandle(data.clone())))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_telemetry_ack_size_from_header(
-    header: *const MessageHeaderHandle,
+    header: &MessageHeaderHandle,
 ) -> u16 {
-    TelemetryData::size_from_header(&*header) as u16
-}
-
-unsafe fn get_payload(handle: *mut MessageHandle) -> &'static TelemetryData {
-    let msg = downcast_message::<MessageEnum>(handle);
-    let Payload::TelemetryAck(payload) = &msg.payload else {panic!("not a telemetry_ack")};
-    payload
+    TelemetryData::size_from_header(header) as u16
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_telemetry_ack_size(handle: *mut MessageHandle) -> u16 {
-    let msg = downcast_message::<MessageEnum>(handle);
-    TelemetryData::size_from_header(msg.header()) as u16
+pub unsafe extern "C" fn rsn_message_telemetry_ack_size(handle: &MessageHandle) -> u16 {
+    TelemetryData::size_from_header(&handle.header) as u16
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_telemetry_ack_is_empty_payload(
-    handle: *mut MessageHandle,
+    handle: &MessageHandle,
 ) -> bool {
-    let msg = downcast_message::<MessageEnum>(handle);
-    TelemetryData::size_from_header(msg.header()) == 0
+    TelemetryData::size_from_header(&handle.header) == 0
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_telemetry_ack_to_string(
-    handle: *mut MessageHandle,
+    handle: &MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = downcast_message_mut::<MessageEnum>(handle)
-        .to_string()
-        .into();
+    (*result) = handle.to_string().into();
 }

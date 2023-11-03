@@ -10,7 +10,7 @@ use std::{
 use tokio::task::spawn_blocking;
 
 use crate::{
-    messages::Message,
+    messages::MessageEnum,
     transport::{
         BufferDropPolicy, ChannelEnum, ChannelTcp, Socket, SocketExtensions, TrafficType,
         WriteCallback,
@@ -145,7 +145,7 @@ impl BootstrapClient {
 
     pub fn send(
         &self,
-        message: &dyn Message,
+        message: &MessageEnum,
         callback: Option<WriteCallback>,
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,

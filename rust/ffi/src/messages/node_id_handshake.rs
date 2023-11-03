@@ -8,10 +8,7 @@ use rsnano_node::messages::{
     V2Payload,
 };
 
-use super::{
-    create_message_handle3, downcast_message, downcast_message_mut, message_handle_clone,
-    MessageHandle, MessageHeaderHandle,
-};
+use super::{create_message_handle3, message_handle_clone, MessageHandle, MessageHeaderHandle};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
@@ -56,21 +53,20 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_node_id_handshake_clone(
-    handle: *mut MessageHandle,
+pub extern "C" fn rsn_message_node_id_handshake_clone(
+    handle: &MessageHandle,
 ) -> *mut MessageHandle {
-    message_handle_clone::<MessageEnum>(handle)
+    message_handle_clone(handle)
 }
 
-unsafe fn get_payload(handle: *mut MessageHandle) -> &'static NodeIdHandshakePayload {
-    let msg = downcast_message::<MessageEnum>(handle);
-    let Payload::NodeIdHandshake(payload) = &msg.payload else {panic!("not a node_id_handshake")};
+fn get_payload(handle: &MessageHandle) -> &NodeIdHandshakePayload {
+    let Payload::NodeIdHandshake(payload) = &handle.payload else {panic!("not a node_id_handshake")};
     payload
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_node_id_handshake_query(
-    handle: *mut MessageHandle,
+    handle: &MessageHandle,
     result: *mut u8,
 ) -> bool {
     match &get_payload(handle).query {
@@ -84,7 +80,7 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_query(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_node_id_handshake_response(
-    handle: *mut MessageHandle,
+    handle: &MessageHandle,
     account: *mut u8,
     signature: *mut u8,
     is_v2: *mut bool,
@@ -113,7 +109,7 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_response(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_node_id_handshake_is_v2(handle: *mut MessageHandle) -> bool {
+pub unsafe extern "C" fn rsn_message_node_id_handshake_is_v2(handle: &MessageHandle) -> bool {
     get_payload(handle).is_v2
 }
 
@@ -172,10 +168,8 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_size(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_node_id_handshake_to_string(
-    handle: *mut MessageHandle,
+    handle: &MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = downcast_message_mut::<MessageEnum>(handle)
-        .to_string()
-        .into();
+    (*result) = handle.to_string().into();
 }

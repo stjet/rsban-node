@@ -4,23 +4,19 @@ use super::bootstrap_server::TcpServerHandle;
 use crate::{
     copy_account_bytes, copy_hash_bytes,
     ledger::datastore::LedgerHandle,
-    messages::{downcast_message, MessageHandle},
+    messages::MessageHandle,
     utils::{LoggerHandle, LoggerMT, ThreadPoolHandle},
     NodeConfigDto,
 };
 use rsnano_core::utils::Logger;
-use rsnano_node::{
-    bootstrap::FrontierReqServer,
-    config::NodeConfig,
-    messages::{MessageEnum, Payload},
-};
+use rsnano_node::{bootstrap::FrontierReqServer, config::NodeConfig, messages::Payload};
 
 pub struct FrontierReqServerHandle(FrontierReqServer);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_frontier_req_server_create(
     tcp_server: *mut TcpServerHandle,
-    request: *mut MessageHandle,
+    request: &MessageHandle,
     thread_pool: *mut ThreadPoolHandle,
     logger: *mut LoggerHandle,
     config: *const NodeConfigDto,
@@ -28,8 +24,7 @@ pub unsafe extern "C" fn rsn_frontier_req_server_create(
 ) -> *mut FrontierReqServerHandle {
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let config: NodeConfig = (&*config).try_into().unwrap();
-    let msg = downcast_message::<MessageEnum>(request);
-    let Payload::FrontierReq(request) = &msg.payload else { panic!("not a frontier_req")};
+    let Payload::FrontierReq(request) = &request.payload else { panic!("not a frontier_req")};
     Box::into_raw(Box::new(FrontierReqServerHandle(FrontierReqServer::new(
         (*tcp_server).0.clone(),
         request.clone(),

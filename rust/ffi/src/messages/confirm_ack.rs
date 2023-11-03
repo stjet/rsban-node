@@ -11,8 +11,8 @@ use rsnano_node::{
 };
 
 use super::{
-    create_message_handle2, create_message_handle3, downcast_message, message_handle_clone,
-    MessageHandle, MessageHeaderHandle,
+    create_message_handle2, create_message_handle3, message_handle_clone, MessageHandle,
+    MessageHeaderHandle,
 };
 
 #[no_mangle]
@@ -53,22 +53,17 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_create2(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_confirm_ack_clone(
-    handle: *mut MessageHandle,
-) -> *mut MessageHandle {
-    message_handle_clone::<MessageEnum>(handle)
+pub extern "C" fn rsn_message_confirm_ack_clone(handle: &MessageHandle) -> *mut MessageHandle {
+    message_handle_clone(handle)
 }
 
-unsafe fn get_payload(handle: *mut MessageHandle) -> &'static ConfirmAckPayload {
-    let msg = downcast_message::<MessageEnum>(handle);
-    let Payload::ConfirmAck(payload) = &msg.payload else {panic!("not a confirm_ack message")};
+unsafe fn get_payload(handle: &MessageHandle) -> &ConfirmAckPayload {
+    let Payload::ConfirmAck(payload) = &handle.payload else {panic!("not a confirm_ack message")};
     payload
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_confirm_ack_vote(
-    handle: *mut MessageHandle,
-) -> *mut VoteHandle {
+pub unsafe extern "C" fn rsn_message_confirm_ack_vote(handle: &MessageHandle) -> *mut VoteHandle {
     let vote = get_payload(handle).vote.clone();
     Box::into_raw(Box::new(VoteHandle::new(vote)))
 }
@@ -80,8 +75,8 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_size(count: usize) -> usize {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_ack_to_string(
-    handle: *mut MessageHandle,
+    handle: &MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = downcast_message::<MessageEnum>(handle).to_string().into();
+    (*result) = handle.to_string().into();
 }

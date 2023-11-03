@@ -4,14 +4,12 @@ use std::{
     sync::{Arc, Condvar, Mutex},
 };
 
+use super::Socket;
+use crate::messages::MessageEnum;
 use rsnano_core::Account;
 
-use crate::messages::Message;
-
-use super::Socket;
-
 pub struct TcpMessageItem {
-    pub message: Option<Box<dyn Message>>,
+    pub message: Option<Box<MessageEnum>>,
     pub endpoint: SocketAddr,
     pub node_id: Account,
     pub socket: Option<Arc<Socket>>,
@@ -20,7 +18,7 @@ pub struct TcpMessageItem {
 impl Clone for TcpMessageItem {
     fn clone(&self) -> Self {
         Self {
-            message: self.message.as_ref().map(|m| m.clone_box()),
+            message: self.message.clone(),
             endpoint: self.endpoint,
             node_id: self.node_id,
             socket: self.socket.clone(),

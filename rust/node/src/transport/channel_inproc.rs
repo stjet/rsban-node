@@ -13,7 +13,7 @@ use tokio::task::spawn_blocking;
 
 use crate::{
     config::NetworkConstants,
-    messages::Message,
+    messages::{Message, MessageEnum},
     stats::{DetailType, Direction, StatType, Stats},
     utils::{AsyncRuntime, BlockUniquer, ErrorCode},
     voting::VoteUniquer,
@@ -32,7 +32,7 @@ pub struct InProcChannelData {
     node_id: Option<Account>,
 }
 
-pub type InboundCallback = Arc<dyn Fn(Box<dyn Message>, Arc<ChannelEnum>) + Send + Sync>;
+pub type InboundCallback = Arc<dyn Fn(Box<MessageEnum>, Arc<ChannelEnum>) + Send + Sync>;
 
 pub struct ChannelInProc {
     channel_id: usize,
@@ -92,7 +92,7 @@ impl ChannelInProc {
 
     pub fn send(
         &self,
-        message_a: &dyn Message,
+        message_a: &MessageEnum,
         callback_a: Option<WriteCallback>,
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,
@@ -138,7 +138,7 @@ impl ChannelInProc {
         let destination_node_id = self.destination_node_id;
         let async_rt = self.async_rt.clone();
 
-        let callback_wrapper = Box::new(move |ec: ErrorCode, msg: Option<Box<dyn Message>>| {
+        let callback_wrapper = Box::new(move |ec: ErrorCode, msg: Option<Box<MessageEnum>>| {
             if ec.is_err() {
                 return;
             }
@@ -193,7 +193,7 @@ impl ChannelInProc {
     fn send_buffer_impl(
         &self,
         buffer: &[u8],
-        callback_msg: Box<dyn FnOnce(ErrorCode, Option<Box<dyn Message>>) + Send>,
+        callback_msg: Box<dyn FnOnce(ErrorCode, Option<Box<MessageEnum>>) + Send>,
     ) {
         if let Some(rt) = self.async_rt.upgrade() {
             let message_deserializer = Arc::new(AsyncMessageDeserializer::new(

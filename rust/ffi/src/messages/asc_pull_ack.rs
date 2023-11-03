@@ -1,9 +1,6 @@
 use rsnano_core::{Account, BlockHash};
 
-use super::{
-    create_message_handle3, downcast_message, downcast_message_mut, message_handle_clone,
-    MessageHandle, MessageHeaderHandle,
-};
+use super::{create_message_handle3, message_handle_clone, MessageHandle, MessageHeaderHandle};
 use crate::{
     core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
     NetworkConstantsDto,
@@ -44,47 +41,43 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_create3(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_clone(
-    handle: *mut MessageHandle,
-) -> *mut MessageHandle {
-    message_handle_clone::<MessageEnum>(handle)
+pub extern "C" fn rsn_message_asc_pull_ack_clone(handle: &MessageHandle) -> *mut MessageHandle {
+    message_handle_clone(handle)
 }
 
-unsafe fn get_payload_mut(handle: *mut MessageHandle) -> &'static mut AscPullAckPayload {
-    let msg = downcast_message_mut::<MessageEnum>(handle);
-    let Payload::AscPullAck(payload) = &mut msg.payload else { panic!("not an asc_pull_ack")};
+fn get_payload_mut(handle: &mut MessageHandle) -> &mut AscPullAckPayload {
+    let Payload::AscPullAck(payload) = &mut handle.payload else { panic!("not an asc_pull_ack")};
     payload
 }
 
-unsafe fn get_payload(handle: *mut MessageHandle) -> &'static AscPullAckPayload {
-    let msg = downcast_message::<MessageEnum>(handle);
-    let Payload::AscPullAck(payload) = &msg.payload else { panic!("not an asc_pull_ack")};
+fn get_payload(handle: &MessageHandle) -> &AscPullAckPayload {
+    let Payload::AscPullAck(payload) = &handle.payload else { panic!("not an asc_pull_ack")};
     payload
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_set_id(handle: *mut MessageHandle, id: u64) {
+pub unsafe extern "C" fn rsn_message_asc_pull_ack_set_id(handle: &mut MessageHandle, id: u64) {
     get_payload_mut(handle).id = id;
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_get_id(handle: *mut MessageHandle) -> u64 {
+pub unsafe extern "C" fn rsn_message_asc_pull_ack_get_id(handle: &MessageHandle) -> u64 {
     get_payload(handle).id
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_pull_type(handle: *mut MessageHandle) -> u8 {
+pub unsafe extern "C" fn rsn_message_asc_pull_ack_pull_type(handle: &MessageHandle) -> u8 {
     get_payload(handle).payload_type() as u8
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_size(header: *mut MessageHeaderHandle) -> usize {
+pub unsafe extern "C" fn rsn_message_asc_pull_ack_size(header: &MessageHeaderHandle) -> usize {
     AscPullAckPayload::serialized_size(&*header)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_blocks(
-    handle: *mut MessageHandle,
+    handle: &MessageHandle,
     blocks: &mut BlockArrayDto,
 ) {
     match &get_payload(handle).pull_type {
@@ -134,7 +127,7 @@ impl From<&AccountInfoAckPayloadDto> for AccountInfoAckPayload {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_account_info(
-    handle: *mut MessageHandle,
+    handle: &MessageHandle,
     result: *mut AccountInfoAckPayloadDto,
 ) {
     match &get_payload(handle).pull_type {

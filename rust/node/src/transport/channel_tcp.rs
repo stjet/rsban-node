@@ -15,7 +15,7 @@ use super::{
     SocketExtensions, TrafficType,
 };
 use crate::{
-    messages::Message,
+    messages::{Message, MessageEnum},
     utils::{AsyncRuntime, ErrorCode},
 };
 
@@ -26,8 +26,8 @@ pub trait IChannelTcpObserverWeakPtr: Send + Sync {
 pub trait ChannelTcpObserver: Send + Sync {
     fn data_sent(&self, endpoint: &SocketAddr);
     fn host_unreachable(&self);
-    fn message_sent(&self, message: &dyn Message);
-    fn message_dropped(&self, message: &dyn Message, buffer_size: usize);
+    fn message_sent(&self, message: &MessageEnum);
+    fn message_dropped(&self, message: &MessageEnum, buffer_size: usize);
     fn no_socket_drop(&self);
     fn write_drop(&self);
 }
@@ -194,7 +194,7 @@ impl ChannelTcp {
 
     pub fn send(
         &self,
-        message: &dyn Message,
+        message: &MessageEnum,
         callback: Option<WriteCallback>,
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,

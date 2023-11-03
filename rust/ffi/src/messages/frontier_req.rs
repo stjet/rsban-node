@@ -1,7 +1,7 @@
 use rsnano_core::Account;
 use rsnano_node::messages::{FrontierReqPayload, MessageEnum, Payload};
 
-use super::{create_message_handle3, downcast_message, downcast_message_mut, MessageHandle};
+use super::{create_message_handle3, MessageHandle};
 use crate::{copy_account_bytes, NetworkConstantsDto, StringDto};
 
 #[repr(C)]
@@ -32,14 +32,13 @@ pub unsafe extern "C" fn rsn_message_frontier_req_create3(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_frontier_req_clone(
-    other: *mut MessageHandle,
+    other: &MessageHandle,
 ) -> *mut MessageHandle {
-    MessageHandle::from_message(downcast_message::<MessageEnum>(other).clone())
+    MessageHandle::new(other.0.clone())
 }
 
-unsafe fn get_payload(handle: *mut MessageHandle) -> &'static FrontierReqPayload {
-    let msg = downcast_message::<MessageEnum>(handle);
-    let Payload::FrontierReq(payload) = &msg.payload else { panic!("not a frontier_req")};
+unsafe fn get_payload(handle: &MessageHandle) -> &FrontierReqPayload {
+    let Payload::FrontierReq(payload) = &handle.payload else { panic!("not a frontier_req")};
     payload
 }
 
@@ -49,37 +48,32 @@ pub unsafe extern "C" fn rsn_message_frontier_size() -> usize {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_frontier_req_start(
-    handle: *mut MessageHandle,
-    account: *mut u8,
-) {
+pub unsafe extern "C" fn rsn_message_frontier_req_start(handle: &MessageHandle, account: *mut u8) {
     let start = get_payload(handle).start;
     copy_account_bytes(start, account);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_frontier_req_age(handle: *mut MessageHandle) -> u32 {
+pub unsafe extern "C" fn rsn_message_frontier_req_age(handle: &MessageHandle) -> u32 {
     get_payload(handle).age
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_frontier_req_count(handle: *mut MessageHandle) -> u32 {
+pub unsafe extern "C" fn rsn_message_frontier_req_count(handle: &mut MessageHandle) -> u32 {
     get_payload(handle).count
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_frontier_req_is_confirmed_present(
-    handle: *mut MessageHandle,
+    handle: &mut MessageHandle,
 ) -> bool {
     get_payload(handle).only_confirmed
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_frontier_req_to_string(
-    handle: *mut MessageHandle,
+    handle: &MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = downcast_message_mut::<MessageEnum>(handle)
-        .to_string()
-        .into();
+    (*result) = handle.to_string().into();
 }

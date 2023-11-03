@@ -1,7 +1,7 @@
 use std::{ffi::c_void, net::SocketAddr, sync::Arc};
 
 use rsnano_node::{
-    messages::Message,
+    messages::{Message, MessageEnum},
     transport::{ChannelTcpObserver, IChannelTcpObserverWeakPtr},
 };
 
@@ -66,20 +66,20 @@ impl ChannelTcpObserver for FfiChannelTcpObserver {
         }
     }
 
-    fn message_sent(&self, message: &dyn Message) {
+    fn message_sent(&self, message: &MessageEnum) {
         unsafe {
             MESSAGE_SENT.expect("MESSAGE_SENT missing")(
                 self.handle,
-                MessageHandle::new(message.clone_box()),
+                MessageHandle::new(Box::new(message.clone())),
             );
         }
     }
 
-    fn message_dropped(&self, message: &dyn Message, buffer_size: usize) {
+    fn message_dropped(&self, message: &MessageEnum, buffer_size: usize) {
         unsafe {
             MESSAGE_DROPPED.expect("MESSAGE_DROPPED missing")(
                 self.handle,
-                MessageHandle::new(message.clone_box()),
+                MessageHandle::new(Box::new(message.clone())),
                 buffer_size,
             );
         }

@@ -9,7 +9,7 @@ use crate::{
     copy_hash_bytes,
     core::BlockHandle,
     ledger::datastore::LedgerHandle,
-    messages::{downcast_message, MessageHandle},
+    messages::MessageHandle,
     utils::{LoggerHandle, LoggerMT, ThreadPoolHandle},
 };
 
@@ -19,15 +19,14 @@ pub struct BulkPullServerHandle(BulkPullServer);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bulk_pull_server_create(
-    request: *mut MessageHandle,
+    request: &MessageHandle,
     server: *mut TcpServerHandle,
     ledger: *mut LedgerHandle,
     logger: *mut LoggerHandle,
     thread_pool: *mut ThreadPoolHandle,
     logging_enabled: bool,
 ) -> *mut BulkPullServerHandle {
-    let msg = downcast_message::<MessageEnum>(request);
-    let Payload::BulkPull(payload) = &msg.payload else {panic!("not a bulk_pull message")};
+    let Payload::BulkPull(payload) = &request.payload else {panic!("not a bulk_pull message")};
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     Box::into_raw(Box::new(BulkPullServerHandle(BulkPullServer::new(
         payload.clone(),

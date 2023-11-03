@@ -69,10 +69,8 @@ unsafe fn get_payload(handle: *mut MessageHandle) -> &'static ConfirmAckPayload 
 pub unsafe extern "C" fn rsn_message_confirm_ack_vote(
     handle: *mut MessageHandle,
 ) -> *mut VoteHandle {
-    match &get_payload(handle).vote {
-        Some(vote) => Box::into_raw(Box::new(VoteHandle::new(vote.clone()))),
-        None => std::ptr::null_mut(),
-    }
+    let vote = get_payload(handle).vote.clone();
+    Box::into_raw(Box::new(VoteHandle::new(vote)))
 }
 
 #[no_mangle]

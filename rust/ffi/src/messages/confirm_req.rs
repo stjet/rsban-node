@@ -1,11 +1,11 @@
 use std::{ops::Deref, sync::Arc};
 
 use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::ConfirmReq;
+use rsnano_node::messages::{ConfirmReqPayload, MessageEnum, Payload};
 
 use super::{
-    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
-    message_handle_clone, MessageHandle, MessageHeaderHandle,
+    create_message_handle3, downcast_message, downcast_message_mut, message_handle_clone,
+    MessageHandle,
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{BlockHash, BlockType, Root};
@@ -26,7 +26,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
     create_message_handle3(constants, |protocol_info| {
         if !block.is_null() {
             let block = Arc::clone((*block).deref());
-            ConfirmReq::with_block(protocol_info, block)
+            MessageEnum::new_confirm_req_with_block(protocol_info, block)
         } else {
             let dtos = std::slice::from_raw_parts(roots_hashes, roots_hashes_count);
             let roots_hashes = dtos
@@ -38,30 +38,29 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
                     )
                 })
                 .collect();
-            ConfirmReq::with_roots_hashes(protocol_info, roots_hashes)
+            MessageEnum::new_confirm_req_with_roots_hashes(protocol_info, roots_hashes)
         }
     })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_confirm_req_create2(
-    header: *mut MessageHeaderHandle,
-) -> *mut MessageHandle {
-    create_message_handle2(header, ConfirmReq::with_header)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_req_clone(
     handle: *mut MessageHandle,
 ) -> *mut MessageHandle {
-    message_handle_clone::<ConfirmReq>(handle)
+    message_handle_clone::<MessageEnum>(handle)
+}
+
+unsafe fn get_payload(handle: *mut MessageHandle) -> &'static ConfirmReqPayload {
+    let msg = &downcast_message::<MessageEnum>(handle);
+    let Payload::ConfirmReq(payload) = &msg.payload else {panic!("not a confirm_req_payload")};
+    payload
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_req_block(
     handle: *mut MessageHandle,
 ) -> *mut BlockHandle {
-    match downcast_message::<ConfirmReq>(handle).block() {
+    match &get_payload(handle).block {
         Some(block) => Box::into_raw(Box::new(BlockHandle(Arc::clone(block)))),
         None => std::ptr::null_mut(),
     }
@@ -71,7 +70,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_block(
 pub unsafe extern "C" fn rsn_message_confirm_req_roots_hashes_count(
     handle: *mut MessageHandle,
 ) -> usize {
-    downcast_message::<ConfirmReq>(handle).roots_hashes().len()
+    get_payload(handle).roots_hashes.len()
 }
 
 #[no_mangle]
@@ -79,9 +78,9 @@ pub unsafe extern "C" fn rsn_message_confirm_req_roots_hashes(
     handle: *mut MessageHandle,
     result: *mut HashRootPair,
 ) {
-    let req = downcast_message::<ConfirmReq>(handle);
-    let result_slice = std::slice::from_raw_parts_mut(result, req.roots_hashes().len());
-    for (i, (hash, root)) in req.roots_hashes().iter().enumerate() {
+    let payload = get_payload(handle);
+    let result_slice = std::slice::from_raw_parts_mut(result, payload.roots_hashes.len());
+    for (i, (hash, root)) in payload.roots_hashes.iter().enumerate() {
         result_slice[i] = HashRootPair {
             block_hash: *hash.as_bytes(),
             root: *root.as_bytes(),
@@ -94,8 +93,8 @@ pub unsafe extern "C" fn rsn_message_confirm_req_equals(
     handle_a: *mut MessageHandle,
     handle_b: *mut MessageHandle,
 ) -> bool {
-    let a = downcast_message_mut::<ConfirmReq>(handle_a);
-    let b = downcast_message_mut::<ConfirmReq>(handle_b);
+    let a = downcast_message_mut::<MessageEnum>(handle_a);
+    let b = downcast_message_mut::<MessageEnum>(handle_b);
     a == b
 }
 
@@ -104,13 +103,12 @@ pub unsafe extern "C" fn rsn_message_confirm_req_roots_string(
     handle: *mut MessageHandle,
     result: *mut StringDto,
 ) {
-    let req = downcast_message_mut::<ConfirmReq>(handle);
-    (*result) = req.roots_string().into();
+    (*result) = get_payload(handle).roots_string().into();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_req_size(block_type: u8, count: usize) -> usize {
-    ConfirmReq::serialized_size(BlockType::from_u8(block_type).unwrap(), count as u8)
+    ConfirmReqPayload::serialized_size(BlockType::from_u8(block_type).unwrap(), count as u8)
 }
 
 #[no_mangle]
@@ -118,7 +116,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_to_string(
     handle: *mut MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = downcast_message_mut::<ConfirmReq>(handle)
+    (*result) = downcast_message_mut::<MessageEnum>(handle)
         .to_string()
         .into();
 }

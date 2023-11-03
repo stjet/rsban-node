@@ -63,7 +63,6 @@ pub trait Message: Send {
 
 pub trait MessageVisitor {
     fn keepalive(&mut self, _message: &MessageEnum) {}
-    fn confirm_req(&mut self, _message: &ConfirmReq) {}
     fn frontier_req(&mut self, _message: &FrontierReq) {}
     fn node_id_handshake(&mut self, _message: &NodeIdHandshake) {}
     fn telemetry_req(&mut self, _message: &TelemetryReq) {}

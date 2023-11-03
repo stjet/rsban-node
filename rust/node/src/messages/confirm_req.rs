@@ -6,111 +6,81 @@ use rsnano_core::{
     BlockEnum, BlockHash, BlockType, Root,
 };
 use std::{
-    any::Any,
     fmt::{Debug, Display, Write},
-    ops::Deref,
     sync::Arc,
 };
 
-use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
+use super::{MessageHeader, MessageType};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ConfirmReq {
     header: MessageHeader,
-    block: Option<Arc<BlockEnum>>,
-    roots_hashes: Vec<(BlockHash, Root)>,
+    pub payload: ConfirmReqPayload,
 }
 
-impl ConfirmReq {
-    pub fn with_block(protocol_info: &ProtocolInfo, block: Arc<BlockEnum>) -> Self {
-        let mut header = MessageHeader::new(MessageType::ConfirmReq, protocol_info);
-        header.set_block_type(block.block_type());
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct ConfirmReqPayload {
+    pub block: Option<Arc<BlockEnum>>,
+    pub roots_hashes: Vec<(BlockHash, Root)>,
+}
 
-        Self {
-            header,
-            block: Some(block),
-            roots_hashes: Vec::new(),
-        }
-    }
-
-    pub fn with_roots_hashes(
-        protocol_info: &ProtocolInfo,
-        roots_hashes: Vec<(BlockHash, Root)>,
-    ) -> Self {
-        let mut header = MessageHeader::new(MessageType::ConfirmReq, protocol_info);
-        // not_a_block (1) block type for hashes + roots request
-        header.set_block_type(BlockType::NotABlock);
-
-        debug_assert!(roots_hashes.len() < 16);
-        header.set_count(roots_hashes.len() as u8);
-
-        Self {
-            header,
-            block: None,
-            roots_hashes,
-        }
-    }
-
-    pub fn with_header(header: MessageHeader) -> Self {
-        Self {
-            header,
-            block: None,
-            roots_hashes: Vec::new(),
-        }
-    }
-
-    pub fn from_stream(
+impl ConfirmReqPayload {
+    pub fn deserialize(
         stream: &mut impl Stream,
-        header: MessageHeader,
+        header: &MessageHeader,
         uniquer: Option<&BlockUniquer>,
     ) -> Result<Self> {
-        let mut msg = Self::with_header(header);
-        msg.deserialize(stream, uniquer)?;
-        Ok(msg)
-    }
-
-    pub fn block(&self) -> Option<&Arc<BlockEnum>> {
-        self.block.as_ref()
-    }
-
-    pub fn roots_hashes(&self) -> &[(BlockHash, Root)] {
-        &self.roots_hashes
-    }
-
-    pub fn deserialize(
-        &mut self,
-        stream: &mut impl Stream,
-        uniquer: Option<&BlockUniquer>,
-    ) -> Result<()> {
-        debug_assert!(self.header().message_type == MessageType::ConfirmReq);
-
-        if self.header().block_type() == BlockType::NotABlock {
-            let count = self.header().count() as usize;
-            for _ in 0..count {
-                let block_hash = BlockHash::deserialize(stream)?;
-                let root = Root::deserialize(stream)?;
-                if !block_hash.is_zero() || !root.is_zero() {
-                    self.roots_hashes.push((block_hash, root));
-                }
-            }
-
-            if self.roots_hashes.is_empty() || self.roots_hashes.len() != count {
-                bail!("roots hashes empty or incorrect count");
-            }
+        debug_assert!(header.message_type == MessageType::ConfirmReq);
+        if header.block_type() == BlockType::NotABlock {
+            Ok(Self {
+                block: None,
+                roots_hashes: Self::deserialize_roots(stream, &header)?,
+            })
         } else {
-            self.block = Some(deserialize_block(
-                self.header().block_type(),
-                stream,
-                uniquer,
-            )?);
+            Ok(Self {
+                block: Some(deserialize_block(header.block_type(), stream, uniquer)?),
+                roots_hashes: Vec::new(),
+            })
+        }
+    }
+
+    fn deserialize_roots(
+        stream: &mut impl Stream,
+        header: &MessageHeader,
+    ) -> Result<Vec<(BlockHash, Root)>> {
+        let count = header.count() as usize;
+        let mut roots_hashes = Vec::with_capacity(count);
+        for _ in 0..count {
+            let block_hash = BlockHash::deserialize(stream)?;
+            let root = Root::deserialize(stream)?;
+            if !block_hash.is_zero() || !root.is_zero() {
+                roots_hashes.push((block_hash, root));
+            }
         }
 
+        if roots_hashes.is_empty() || roots_hashes.len() != count {
+            bail!("roots hashes empty or incorrect count");
+        }
+
+        Ok(roots_hashes)
+    }
+
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        if let Some(block) = &self.block {
+            block.serialize(stream)?;
+        } else {
+            // Write hashes & roots
+            for (hash, root) in &self.roots_hashes {
+                stream.write_bytes(hash.as_bytes())?;
+                stream.write_bytes(root.as_bytes())?;
+            }
+        }
         Ok(())
     }
 
     pub fn roots_string(&self) -> String {
         let mut result = String::new();
-        for (hash, root) in self.roots_hashes() {
+        for (hash, root) in &self.roots_hashes {
             write!(&mut result, "{}:{}, ", hash, root).unwrap();
         }
         result
@@ -127,90 +97,14 @@ impl ConfirmReq {
     }
 }
 
-impl Message for ConfirmReq {
-    fn header(&self) -> &MessageHeader {
-        &self.header
-    }
-
-    fn set_header(&mut self, header: &MessageHeader) {
-        self.header = header.clone();
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.header().serialize(stream)?;
-        if self.header().block_type() == BlockType::NotABlock {
-            debug_assert!(!self.roots_hashes().is_empty());
-            // Write hashes & roots
-            for (hash, root) in self.roots_hashes() {
-                stream.write_bytes(hash.as_bytes())?;
-                stream.write_bytes(root.as_bytes())?;
-            }
+impl Display for ConfirmReqPayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(block) = &self.block {
+            write!(f, "\n{}", block.to_json().map_err(|_| std::fmt::Error)?)?;
         } else {
-            match self.block() {
-                Some(block) => {
-                    block.serialize(stream)?;
-                }
-                None => bail!("block not set"),
-            }
-        }
-
-        Ok(())
-    }
-
-    fn visit(&self, visitor: &mut dyn MessageVisitor) {
-        visitor.confirm_req(self)
-    }
-
-    fn clone_box(&self) -> Box<dyn Message> {
-        Box::new(self.clone())
-    }
-
-    fn message_type(&self) -> MessageType {
-        MessageType::ConfirmReq
-    }
-}
-
-impl PartialEq for ConfirmReq {
-    fn eq(&self, other: &Self) -> bool {
-        let mut equal = false;
-        if let Some(block_a) = self.block() {
-            if let Some(block_b) = other.block() {
-                equal = block_a.deref().eq(&block_b.deref());
-            }
-        } else if !self.roots_hashes().is_empty() && !other.roots_hashes().is_empty() {
-            equal = self.roots_hashes() == other.roots_hashes()
-        }
-
-        equal
-    }
-}
-
-impl Debug for ConfirmReq {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ConfirmReq")
-            .field("header", &self.header)
-            .field("roots_hashes", &self.roots_hashes)
-            .finish()
-    }
-}
-
-impl Display for ConfirmReq {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.header, f)?;
-        if self.header.block_type() == BlockType::NotABlock {
             for (hash, root) in &self.roots_hashes {
                 write!(f, "\n{}:{}", hash, root)?;
             }
-        } else if let Some(block) = &self.block {
-            write!(f, "\n{}", block.to_json().map_err(|_| std::fmt::Error)?)?;
         }
         Ok(())
     }
@@ -218,13 +112,15 @@ impl Display for ConfirmReq {
 
 #[cfg(test)]
 mod tests {
+    use crate::messages::{Message, MessageEnum};
+
     use super::*;
     use rsnano_core::{utils::MemoryStream, StateBlockBuilder};
 
     #[test]
     fn serialize_block() -> Result<()> {
         let block = Arc::new(StateBlockBuilder::new().build());
-        let confirm_req1 = ConfirmReq::with_block(&Default::default(), block);
+        let confirm_req1 = MessageEnum::new_confirm_req_with_block(&Default::default(), block);
         let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;
         assert_eq!(confirm_req1, confirm_req2);
         Ok(())
@@ -233,7 +129,8 @@ mod tests {
     #[test]
     fn serialze_roots_hashes() -> Result<()> {
         let roots_hashes = vec![(BlockHash::from(1), Root::from(2))];
-        let confirm_req1 = ConfirmReq::with_roots_hashes(&Default::default(), roots_hashes);
+        let confirm_req1 =
+            MessageEnum::new_confirm_req_with_roots_hashes(&Default::default(), roots_hashes);
         let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;
         assert_eq!(confirm_req1, confirm_req2);
         Ok(())
@@ -245,18 +142,17 @@ mod tests {
             .into_iter()
             .map(|i| (BlockHash::from(i), Root::from(i + 1)))
             .collect();
-        let confirm_req1 = ConfirmReq::with_roots_hashes(&Default::default(), roots_hashes);
+        let confirm_req1 =
+            MessageEnum::new_confirm_req_with_roots_hashes(&Default::default(), roots_hashes);
         let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;
         assert_eq!(confirm_req1, confirm_req2);
         Ok(())
     }
 
-    fn serialize_and_deserialize(confirm_req1: &ConfirmReq) -> Result<ConfirmReq, anyhow::Error> {
+    fn serialize_and_deserialize(confirm_req1: &MessageEnum) -> Result<MessageEnum, anyhow::Error> {
         let mut stream = MemoryStream::new();
         confirm_req1.serialize(&mut stream)?;
         let header = MessageHeader::deserialize(&mut stream)?;
-        let mut confirm_req2 = ConfirmReq::with_header(header);
-        confirm_req2.deserialize(&mut stream, None)?;
-        Ok(confirm_req2)
+        MessageEnum::deserialize(&mut stream, header, 0, None, None)
     }
 }

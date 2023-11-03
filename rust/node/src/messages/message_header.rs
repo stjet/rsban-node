@@ -11,10 +11,7 @@ use std::{
     mem::size_of,
 };
 
-use super::{
-    AscPullAckPayload, AscPullReqPayload, BulkPullAccountPayload, BulkPullPayload,
-    ConfirmAckPayload, ConfirmReq, FrontierReq, KeepalivePayload, NodeIdHandshake, TelemetryAck,
-};
+use super::*;
 
 /// Message types are serialized to the network and existing values must thus never change as
 /// types are added, removed and reordered in the enum.
@@ -235,7 +232,9 @@ impl MessageHeader {
         match self.message_type {
             MessageType::Keepalive => KeepalivePayload::serialized_size(),
             MessageType::Publish => serialized_block_size(self.block_type()),
-            MessageType::ConfirmReq => ConfirmReq::serialized_size(self.block_type(), self.count()),
+            MessageType::ConfirmReq => {
+                ConfirmReqPayload::serialized_size(self.block_type(), self.count())
+            }
             MessageType::ConfirmAck => ConfirmAckPayload::serialized_size(self.count()),
             MessageType::BulkPull => BulkPullPayload::serialized_size(self),
             MessageType::BulkPush | MessageType::TelemetryReq => 0,

@@ -188,9 +188,12 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = ConfirmReq::from_stream(stream, header, Some(&self.block_uniquer)) {
+        if let Ok(msg) =
+            MessageEnum::deserialize(stream, header, 0, Some(&self.block_uniquer), None)
+        {
             if at_end(stream) {
-                let work_ok = match msg.block() {
+                let Payload::ConfirmReq(payload) = &msg.payload else {unreachable!()};
+                let work_ok = match &payload.block {
                     Some(block) => !self.network_constants.work.validate_entry_block(&block),
                     None => true,
                 };
@@ -345,7 +348,7 @@ mod tests {
     #[test]
     fn exact_confirm_req() {
         let block = Arc::new(BlockBuilder::legacy_send().build());
-        let message = ConfirmReq::with_block(&Default::default(), block);
+        let message = MessageEnum::new_confirm_req_with_block(&Default::default(), block);
         test_deserializer(&message);
     }
 

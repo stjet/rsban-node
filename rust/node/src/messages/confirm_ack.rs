@@ -3,13 +3,12 @@ use anyhow::Result;
 use rsnano_core::utils::{Serialize, Stream};
 use std::{
     fmt::{Debug, Display},
-    ops::Deref,
     sync::Arc,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ConfirmAckPayload {
-    pub vote: Option<Arc<Vote>>,
+    pub vote: Arc<Vote>,
 }
 
 impl ConfirmAckPayload {
@@ -28,55 +27,33 @@ impl ConfirmAckPayload {
             vote = uniquer.unique(&vote);
         }
 
-        Ok(ConfirmAckPayload { vote: Some(vote) })
+        Ok(ConfirmAckPayload { vote })
     }
 
     pub fn create_test_instance() -> Self {
-        let vote = Arc::new(Vote::create_test_instance());
-        Self { vote: Some(vote) }
+        Self {
+            vote: Arc::new(Vote::create_test_instance()),
+        }
     }
 }
 
 impl Serialize for ConfirmAckPayload {
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        self.vote.as_ref().unwrap().serialize(stream)
+        self.vote.serialize(stream)
     }
 }
 
 impl PartialEq for ConfirmAckPayload {
     fn eq(&self, other: &Self) -> bool {
-        if let Some(v1) = &self.vote {
-            if let Some(v2) = &other.vote {
-                return v1.deref() == v2.deref();
-            }
-        }
-        false
+        *self.vote == *other.vote
     }
 }
 
 impl Eq for ConfirmAckPayload {}
 
-impl Debug for ConfirmAckPayload {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut builder = f.debug_struct("ConfirmAckPayload");
-        match &self.vote {
-            Some(v) => {
-                builder.field("vote", v.deref());
-            }
-            None => {
-                builder.field("vote", &"None");
-            }
-        };
-        builder.finish()
-    }
-}
-
 impl Display for ConfirmAckPayload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(vote) = &self.vote {
-            write!(f, "\n{}", vote.to_json().map_err(|_| std::fmt::Error)?)?;
-        }
-        Ok(())
+        write!(f, "\n{}", self.vote.to_json().map_err(|_| std::fmt::Error)?)
     }
 }
 

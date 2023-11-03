@@ -7,7 +7,7 @@ use super::*;
 use anyhow::Result;
 use rsnano_core::{
     utils::{Serialize, Stream},
-    BlockEnum, BlockType,
+    BlockEnum, BlockHash, BlockType, Root,
 };
 use std::{any::Any, fmt::Display, sync::Arc};
 
@@ -27,6 +27,7 @@ pub enum Payload {
     BulkPullAccount(BulkPullAccountPayload),
     BulkPush,
     ConfirmAck(ConfirmAckPayload),
+    ConfirmReq(ConfirmReqPayload),
 }
 
 impl Payload {
@@ -39,6 +40,7 @@ impl Payload {
             Payload::BulkPull(x) => x.serialize(stream),
             Payload::BulkPullAccount(x) => x.serialize(stream),
             Payload::ConfirmAck(x) => x.serialize(stream),
+            Payload::ConfirmReq(x) => x.serialize(stream),
             Payload::BulkPush => Ok(()),
         }
     }
@@ -54,6 +56,7 @@ impl Display for Payload {
             Payload::BulkPull(x) => x.fmt(f),
             Payload::BulkPullAccount(x) => x.fmt(f),
             Payload::ConfirmAck(x) => x.fmt(f),
+            Payload::ConfirmReq(x) => x.fmt(f),
             Payload::BulkPush => Ok(()),
         }
     }
@@ -195,7 +198,40 @@ impl MessageEnum {
 
         Self {
             header,
-            payload: Payload::ConfirmAck(ConfirmAckPayload { vote: Some(vote) }),
+            payload: Payload::ConfirmAck(ConfirmAckPayload { vote }),
+        }
+    }
+
+    pub fn new_confirm_req_with_block(protocol_info: &ProtocolInfo, block: Arc<BlockEnum>) -> Self {
+        let mut header = MessageHeader::new(MessageType::ConfirmReq, protocol_info);
+        header.set_block_type(block.block_type());
+
+        Self {
+            header,
+            payload: Payload::ConfirmReq(ConfirmReqPayload {
+                block: Some(block),
+                roots_hashes: Vec::new(),
+            }),
+        }
+    }
+
+    pub fn new_confirm_req_with_roots_hashes(
+        protocol_info: &ProtocolInfo,
+        roots_hashes: Vec<(BlockHash, Root)>,
+    ) -> Self {
+        let mut header = MessageHeader::new(MessageType::ConfirmReq, protocol_info);
+        // not_a_block (1) block type for hashes + roots request
+        header.set_block_type(BlockType::NotABlock);
+
+        debug_assert!(roots_hashes.len() < 16);
+        header.set_count(roots_hashes.len() as u8);
+
+        Self {
+            header,
+            payload: Payload::ConfirmReq(ConfirmReqPayload {
+                block: None,
+                roots_hashes,
+            }),
         }
     }
 
@@ -232,6 +268,11 @@ impl MessageEnum {
             MessageType::ConfirmAck => {
                 Payload::ConfirmAck(ConfirmAckPayload::deserialize(stream, vote_uniquer)?)
             }
+            MessageType::ConfirmReq => Payload::ConfirmReq(ConfirmReqPayload::deserialize(
+                stream,
+                &header,
+                block_uniquer,
+            )?),
             _ => unimplemented!(),
         };
         Ok(Self { header, payload })

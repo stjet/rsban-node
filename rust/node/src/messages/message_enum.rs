@@ -29,6 +29,7 @@ pub enum Payload {
     ConfirmAck(ConfirmAckPayload),
     ConfirmReq(ConfirmReqPayload),
     FrontierReq(FrontierReqPayload),
+    NodeIdHandshake(NodeIdHandshakePayload),
 }
 
 impl Payload {
@@ -43,6 +44,7 @@ impl Payload {
             Payload::ConfirmAck(x) => x.serialize(stream),
             Payload::ConfirmReq(x) => x.serialize(stream),
             Payload::FrontierReq(x) => x.serialize(stream),
+            Payload::NodeIdHandshake(x) => x.serialize(stream),
             Payload::BulkPush => Ok(()),
         }
     }
@@ -60,6 +62,7 @@ impl Display for Payload {
             Payload::ConfirmAck(x) => x.fmt(f),
             Payload::ConfirmReq(x) => x.fmt(f),
             Payload::FrontierReq(x) => x.fmt(f),
+            Payload::NodeIdHandshake(x) => x.fmt(f),
             Payload::BulkPush => Ok(()),
         }
     }
@@ -249,6 +252,64 @@ impl MessageEnum {
         }
     }
 
+    pub fn new_node_id_handshake(
+        protocol_info: &ProtocolInfo,
+        query: Option<NodeIdHandshakeQuery>,
+        response: Option<NodeIdHandshakeResponse>,
+    ) -> Self {
+        let mut header = MessageHeader::new(MessageType::NodeIdHandshake, protocol_info);
+        let mut is_v2 = false;
+
+        if query.is_some() {
+            header.set_flag(NodeIdHandshakePayload::QUERY_FLAG as u8);
+            is_v2 = true;
+        }
+
+        if let Some(response) = &response {
+            header.set_flag(NodeIdHandshakePayload::RESPONSE_FLAG as u8);
+            if response.v2.is_some() {
+                is_v2 = true;
+            }
+        }
+
+        if is_v2 {
+            header.set_flag(NodeIdHandshakePayload::V2_FLAG as u8); // Always indicate support for V2 handshake when querying, old peers will just ignore it
+        }
+
+        Self {
+            header,
+            payload: Payload::NodeIdHandshake(NodeIdHandshakePayload {
+                query,
+                response,
+                is_v2,
+            }),
+        }
+    }
+
+    pub fn new_node_id_handshake2(
+        protocol_info: &ProtocolInfo,
+        payload: NodeIdHandshakePayload,
+    ) -> Self {
+        let mut header = MessageHeader::new(MessageType::NodeIdHandshake, protocol_info);
+
+        if payload.query.is_some() {
+            header.set_flag(NodeIdHandshakePayload::QUERY_FLAG as u8);
+        }
+
+        if payload.response.is_some() {
+            header.set_flag(NodeIdHandshakePayload::RESPONSE_FLAG as u8);
+        }
+
+        if payload.is_v2 {
+            header.set_flag(NodeIdHandshakePayload::V2_FLAG as u8); // Always indicate support for V2 handshake when querying, old peers will just ignore it
+        }
+
+        Self {
+            header,
+            payload: Payload::NodeIdHandshake(payload),
+        }
+    }
+
     pub fn deserialize(
         stream: &mut impl Stream,
         header: MessageHeader,
@@ -289,6 +350,9 @@ impl MessageEnum {
             )?),
             MessageType::FrontierReq => {
                 Payload::FrontierReq(FrontierReqPayload::deserialize(stream, &header)?)
+            }
+            MessageType::NodeIdHandshake => {
+                Payload::NodeIdHandshake(NodeIdHandshakePayload::deserialize(stream, &header)?)
             }
             _ => unimplemented!(),
         };

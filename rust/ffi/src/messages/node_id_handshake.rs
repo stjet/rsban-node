@@ -4,12 +4,13 @@ use crate::{
     copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto, StringDto,
 };
 use rsnano_node::messages::{
-    NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse, V2Payload,
+    MessageEnum, NodeIdHandshakePayload, NodeIdHandshakeQuery, NodeIdHandshakeResponse, Payload,
+    V2Payload,
 };
 
 use super::{
-    create_message_handle2, create_message_handle3, downcast_message, downcast_message_mut,
-    message_handle_clone, MessageHandle, MessageHeaderHandle,
+    create_message_handle3, downcast_message, downcast_message_mut, message_handle_clone,
+    MessageHandle, MessageHeaderHandle,
 };
 
 #[no_mangle]
@@ -50,22 +51,21 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
         None
     };
     create_message_handle3(constants, move |protocol_info| {
-        NodeIdHandshake::new(protocol_info, query, response)
+        MessageEnum::new_node_id_handshake(protocol_info, query, response)
     })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_node_id_handshake_create2(
-    header: *mut MessageHeaderHandle,
-) -> *mut MessageHandle {
-    create_message_handle2(header, NodeIdHandshake::with_header)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_node_id_handshake_clone(
     handle: *mut MessageHandle,
 ) -> *mut MessageHandle {
-    message_handle_clone::<NodeIdHandshake>(handle)
+    message_handle_clone::<MessageEnum>(handle)
+}
+
+unsafe fn get_payload(handle: *mut MessageHandle) -> &'static NodeIdHandshakePayload {
+    let msg = downcast_message::<MessageEnum>(handle);
+    let Payload::NodeIdHandshake(payload) = &msg.payload else {panic!("not a node_id_handshake")};
+    payload
 }
 
 #[no_mangle]
@@ -73,7 +73,7 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_query(
     handle: *mut MessageHandle,
     result: *mut u8,
 ) -> bool {
-    match &downcast_message::<NodeIdHandshake>(handle).query {
+    match &get_payload(handle).query {
         Some(query) => {
             std::slice::from_raw_parts_mut(result, 32).copy_from_slice(&query.cookie);
             true
@@ -91,7 +91,7 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_response(
     salt: *mut u8,
     genesis: *mut u8,
 ) -> bool {
-    match &downcast_message::<NodeIdHandshake>(handle).response {
+    match &get_payload(handle).response {
         Some(response) => {
             copy_account_bytes(response.node_id, account);
             copy_signature_bytes(&response.signature, signature);
@@ -114,7 +114,7 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_response(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_node_id_handshake_is_v2(handle: *mut MessageHandle) -> bool {
-    downcast_message::<NodeIdHandshake>(handle).is_v2()
+    get_payload(handle).is_v2
 }
 
 #[repr(C)]
@@ -167,7 +167,7 @@ impl From<NodeIdHandshakeResponse> for HandshakeResponseDto {
 pub unsafe extern "C" fn rsn_message_node_id_handshake_size(
     header: *mut MessageHeaderHandle,
 ) -> usize {
-    NodeIdHandshake::serialized_size(&*header)
+    NodeIdHandshakePayload::serialized_size(&*header)
 }
 
 #[no_mangle]
@@ -175,7 +175,7 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_to_string(
     handle: *mut MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = downcast_message_mut::<NodeIdHandshake>(handle)
+    (*result) = downcast_message_mut::<MessageEnum>(handle)
         .to_string()
         .into();
 }

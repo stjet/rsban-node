@@ -74,16 +74,13 @@ impl Display for PublishPayload {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::{utils::MemoryStream, BlockBuilder, BlockType};
-
     use super::*;
-    use crate::DEV_NETWORK_PARAMS;
+    use rsnano_core::{utils::MemoryStream, BlockBuilder, BlockType};
 
     #[test]
     fn serialize() {
         let block = BlockBuilder::state().build();
         let block = Arc::new(block);
-        let network = &DEV_NETWORK_PARAMS.network;
         let publish1 = PublishPayload {
             block: Some(block),
             digest: 123,

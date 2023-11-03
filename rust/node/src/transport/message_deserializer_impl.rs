@@ -226,7 +226,7 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = NodeIdHandshake::from_stream(stream, header) {
+        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
             if at_end(stream) {
                 return Ok(Box::new(msg));
             }
@@ -408,7 +408,7 @@ mod tests {
 
     #[test]
     fn exact_node_id_handshake() {
-        test_deserializer(&NodeIdHandshake::new(
+        test_deserializer(&MessageEnum::new_node_id_handshake(
             &ProtocolInfo::dev_network(),
             Some(NodeIdHandshakeQuery { cookie: [1; 32] }),
             None,

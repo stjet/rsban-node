@@ -17,8 +17,8 @@ use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::{NetworkConstants, NodeConfig},
     messages::{
-        Message, MessageEnum, MessageVisitor, NodeIdHandshake, NodeIdHandshakeQuery,
-        NodeIdHandshakeResponse, Payload, TelemetryAck, TelemetryReq,
+        Message, MessageEnum, MessageVisitor, NodeIdHandshakeQuery, NodeIdHandshakeResponse,
+        Payload, TelemetryAck, TelemetryReq,
     },
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
@@ -478,7 +478,7 @@ impl HandshakeMessageVisitorImpl {
     fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool) {
         let response = self.prepare_handshake_response(query, v2);
         let own_query = self.prepare_handshake_query(&self.server.remote_endpoint());
-        let handshake_response = NodeIdHandshake::new(
+        let handshake_response = MessageEnum::new_node_id_handshake(
             &self.network_constants.protocol_info(),
             own_query,
             Some(response),
@@ -572,62 +572,67 @@ impl HandshakeMessageVisitorImpl {
 
 impl MessageVisitor for HandshakeMessageVisitorImpl {
     fn keepalive(&mut self, message: &MessageEnum) {
-        self.bootstrap = matches!(
+        if matches!(
             &message.payload,
             Payload::BulkPull(_)
                 | Payload::BulkPullAccount(_)
                 | Payload::BulkPush
                 | Payload::FrontierReq(_)
-        );
-    }
+        ) {
+            self.bootstrap = true;
+        };
 
-    fn node_id_handshake(&mut self, message: &NodeIdHandshake) {
-        if self.disable_tcp_realtime {
-            if self.handshake_logging {
-                self.logger.try_log(&format!(
-                    "Disabled realtime TCP for handshake {}",
-                    self.server.remote_endpoint()
-                ));
+        match &message.payload {
+            Payload::NodeIdHandshake(payload) => {
+                if self.disable_tcp_realtime {
+                    if self.handshake_logging {
+                        self.logger.try_log(&format!(
+                            "Disabled realtime TCP for handshake {}",
+                            self.server.remote_endpoint()
+                        ));
+                    }
+                    // Stop invalid handshake
+                    self.server.stop();
+                    return;
+                }
+
+                if payload.query.is_some() && self.server.was_handshake_query_received() {
+                    if self.handshake_logging {
+                        self.logger.try_log(&format!(
+                            "Detected multiple node_id_handshake query from {}",
+                            self.server.remote_endpoint()
+                        ));
+                    }
+                    // Stop invalid handshake
+                    self.server.stop();
+                    return;
+                }
+
+                self.server.handshake_query_received();
+
+                if self.handshake_logging {
+                    self.logger.try_log(&format!(
+                        "Received node_id_handshake message from {}",
+                        self.server.remote_endpoint()
+                    ));
+                }
+
+                if let Some(query) = &payload.query {
+                    self.send_handshake_response(query, payload.is_v2);
+                } else if let Some(response) = &payload.response {
+                    if self.verify_handshake_response(response, &self.server.remote_endpoint()) {
+                        self.server.to_realtime_connection(&response.node_id);
+                    } else {
+                        // Stop invalid handshake
+                        self.server.stop();
+                        return;
+                    }
+                }
+
+                self.process = true;
             }
-            // Stop invalid handshake
-            self.server.stop();
-            return;
+            _ => {}
         }
-
-        if message.query.is_some() && self.server.was_handshake_query_received() {
-            if self.handshake_logging {
-                self.logger.try_log(&format!(
-                    "Detected multiple node_id_handshake query from {}",
-                    self.server.remote_endpoint()
-                ));
-            }
-            // Stop invalid handshake
-            self.server.stop();
-            return;
-        }
-
-        self.server.handshake_query_received();
-
-        if self.handshake_logging {
-            self.logger.try_log(&format!(
-                "Received node_id_handshake message from {}",
-                self.server.remote_endpoint()
-            ));
-        }
-
-        if let Some(query) = &message.query {
-            self.send_handshake_response(query, message.is_v2());
-        } else if let Some(response) = &message.response {
-            if self.verify_handshake_response(response, &self.server.remote_endpoint()) {
-                self.server.to_realtime_connection(&response.node_id);
-            } else {
-                // Stop invalid handshake
-                self.server.stop();
-                return;
-            }
-        }
-
-        self.process = true;
     }
 }
 

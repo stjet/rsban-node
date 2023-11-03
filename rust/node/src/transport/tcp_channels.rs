@@ -21,7 +21,7 @@ use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
     config::{NetworkConstants, NodeConfig, NodeFlags},
     messages::{
-        KeepalivePayload, Message, MessageEnum, MessageHeader, MessageType, NodeIdHandshake,
+        KeepalivePayload, Message, MessageEnum, MessageHeader, MessageType, NodeIdHandshakePayload,
         NodeIdHandshakeQuery, NodeIdHandshakeResponse, Payload,
     },
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
@@ -683,7 +683,12 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 // the header type should in principle be checked after checking the network bytes and the version numbers, I will not change it here since the benefits do not outweight the difficulties
 
-                let Some(handshake) = message.as_any().downcast_ref::<NodeIdHandshake>() else {
+                let mut handshake: Option<NodeIdHandshakePayload> = None;
+                if let Some(msg_enum) = message.as_any().downcast_ref::<MessageEnum>() {
+                    let Payload::NodeIdHandshake(payload) = &msg_enum.payload else {unreachable!()};
+                    handshake = Some(payload.clone());
+                }
+                let Some(handshake) = handshake else {
                     if this_l
                         .node_config
                         .logging
@@ -698,9 +703,8 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     return;
                 };
 
-                if handshake.header().network != this_l.network.network.current_network
-                    || handshake.header().version_using
-                        < this_l.network.network.protocol_version_min
+                if message.header().network != this_l.network.network.current_network
+                    || message.header().version_using < this_l.network.network.protocol_version_min
                 {
                     // error handling, either the networks bytes or the version is wrong
                     if message.header().network == this_l.network.network.current_network {
@@ -750,7 +754,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     return;
                 };
 
-                tcp.set_network_version(handshake.header().version_using);
+                tcp.set_network_version(message.header().version_using);
 
                 let node_id = response.node_id;
 
@@ -770,8 +774,8 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 tcp.set_node_id(node_id);
                 tcp.set_last_packet_received(SystemTime::now());
 
-                let response = this_l.prepare_handshake_response(query, handshake.is_v2());
-                let handshake_response = NodeIdHandshake::new(
+                let response = this_l.prepare_handshake_response(query, handshake.is_v2);
+                let handshake_response = MessageEnum::new_node_id_handshake(
                     &this_l.network.network.protocol_info(),
                     None,
                     Some(response),
@@ -912,7 +916,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 // TCP node ID handshake
                 let query = this_l.prepare_handshake_query(endpoint);
-                let message = NodeIdHandshake::new(
+                let message = MessageEnum::new_node_id_handshake(
                     &this_l.network.network.protocol_info(),
                     query.clone(),
                     None,

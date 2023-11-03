@@ -239,7 +239,7 @@ impl MessageHeader {
             MessageType::BulkPull => BulkPullPayload::serialized_size(self),
             MessageType::BulkPush | MessageType::TelemetryReq => 0,
             MessageType::FrontierReq => FrontierReqPayload::serialized_size(),
-            MessageType::NodeIdHandshake => NodeIdHandshake::serialized_size(self),
+            MessageType::NodeIdHandshake => NodeIdHandshakePayload::serialized_size(self),
             MessageType::BulkPullAccount => BulkPullAccountPayload::serialized_size(),
             MessageType::TelemetryAck => TelemetryAck::size_from_header(self),
             MessageType::AscPullReq => AscPullReqPayload::serialized_size(self),

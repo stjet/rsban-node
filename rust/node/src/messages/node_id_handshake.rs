@@ -1,4 +1,4 @@
-use super::{Message, MessageHeader, MessageType, MessageVisitor, ProtocolInfo};
+use super::{MessageHeader, MessageType};
 use crate::transport::Cookie;
 use anyhow::Result;
 use rand::{thread_rng, Rng};
@@ -7,7 +7,7 @@ use rsnano_core::{
     utils::{Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream},
     validate_message, write_hex_bytes, Account, BlockHash, KeyPair, PublicKey, Signature,
 };
-use std::{any::Any, fmt::Display};
+use std::fmt::Display;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct NodeIdHandshakeQuery {
@@ -87,7 +87,7 @@ impl NodeIdHandshakeResponse {
     }
 
     pub fn deserialize(stream: &mut dyn Stream, header: &MessageHeader) -> Result<Self> {
-        if is_v2(header) {
+        if NodeIdHandshakePayload::has_v2_flag(header) {
             let node_id = Account::deserialize(stream)?;
             let mut salt = [0u8; 32];
             stream.read_bytes(&mut salt, 32)?;
@@ -110,7 +110,7 @@ impl NodeIdHandshakeResponse {
     }
 
     pub fn serialized_size(header: &MessageHeader) -> usize {
-        if is_v2(header) {
+        if NodeIdHandshakePayload::has_v2_flag(header) {
             Account::serialized_size()
                 + 32 // salt
                 + BlockHash::serialized_size()
@@ -121,11 +121,6 @@ impl NodeIdHandshakeResponse {
     }
 }
 
-fn is_v2(header: &MessageHeader) -> bool {
-    debug_assert!(header.message_type == MessageType::NodeIdHandshake);
-    header.extensions[NodeIdHandshake::V2_FLAG]
-}
-
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct V2Payload {
     pub salt: [u8; 32],
@@ -133,84 +128,30 @@ pub struct V2Payload {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct NodeIdHandshake {
-    header: MessageHeader,
+pub struct NodeIdHandshakePayload {
     pub query: Option<NodeIdHandshakeQuery>,
     pub response: Option<NodeIdHandshakeResponse>,
+    pub is_v2: bool,
 }
 
-impl NodeIdHandshake {
-    pub fn new(
-        protocol_info: &ProtocolInfo,
-        query: Option<NodeIdHandshakeQuery>,
-        response: Option<NodeIdHandshakeResponse>,
-    ) -> Self {
-        let mut header = MessageHeader::new(MessageType::NodeIdHandshake, protocol_info);
+impl NodeIdHandshakePayload {
+    pub const QUERY_FLAG: usize = 0;
+    pub const RESPONSE_FLAG: usize = 1;
+    pub const V2_FLAG: usize = 2;
 
-        if query.is_some() {
-            header.set_flag(Self::QUERY_FLAG as u8);
-            header.set_flag(Self::V2_FLAG as u8); // Always indicate support for V2 handshake when querying, old peers will just ignore it
-        }
-
-        if let Some(response) = &response {
-            header.set_flag(Self::RESPONSE_FLAG as u8);
-            if response.v2.is_some() {
-                header.set_flag(Self::V2_FLAG as u8); // We only use V2 handshake when replying to peers that indicated support for it
-            }
-        }
-
-        Self {
-            header,
-            query,
-            response,
-        }
-    }
-
-    pub fn with_header(header: MessageHeader) -> Self {
-        Self {
-            header,
-            query: None,
-            response: None,
-        }
-    }
-
-    pub fn from_stream(stream: &mut dyn Stream, header: MessageHeader) -> Result<Self> {
-        let mut request = NodeIdHandshake::with_header(header);
-        request.deserialize(stream)?;
-        Ok(request)
-    }
-
-    const QUERY_FLAG: usize = 0;
-    const RESPONSE_FLAG: usize = 1;
-    const V2_FLAG: usize = 2;
-
-    fn is_query(header: &MessageHeader) -> bool {
+    pub fn is_query(header: &MessageHeader) -> bool {
         header.message_type == MessageType::NodeIdHandshake
-            && header.extensions[NodeIdHandshake::QUERY_FLAG]
+            && header.extensions[NodeIdHandshakePayload::QUERY_FLAG]
     }
 
-    fn is_response(header: &MessageHeader) -> bool {
+    pub fn is_response(header: &MessageHeader) -> bool {
         header.message_type == MessageType::NodeIdHandshake
-            && header.extensions[NodeIdHandshake::RESPONSE_FLAG]
+            && header.extensions[NodeIdHandshakePayload::RESPONSE_FLAG]
     }
 
-    pub fn is_v2(&self) -> bool {
-        is_v2(self.header())
-    }
-
-    pub fn deserialize(&mut self, stream: &mut dyn Stream) -> Result<()> {
-        debug_assert!(self.header.message_type == MessageType::NodeIdHandshake);
-        if Self::is_query(&self.header) {
-            let mut cookie = [0u8; 32];
-            stream.read_bytes(&mut cookie, 32)?;
-            self.query = Some(NodeIdHandshakeQuery { cookie });
-        }
-
-        if Self::is_response(&self.header) {
-            self.response = Some(NodeIdHandshakeResponse::deserialize(stream, &self.header)?)
-        }
-
-        Ok(())
+    pub fn has_v2_flag(header: &MessageHeader) -> bool {
+        debug_assert!(header.message_type == MessageType::NodeIdHandshake);
+        header.extensions[NodeIdHandshakePayload::V2_FLAG]
     }
 
     pub fn serialized_size(header: &MessageHeader) -> usize {
@@ -224,52 +165,28 @@ impl NodeIdHandshake {
         size
     }
 
-    pub fn test_query() -> Self {
-        let query = NodeIdHandshakeQuery { cookie: [42; 32] };
-        Self::new(&ProtocolInfo::dev_network(), Some(query), None)
-    }
-
-    pub fn test_response_v1() -> Self {
-        let response = NodeIdHandshakeResponse {
-            node_id: PublicKey::from(1),
-            signature: Signature::from_bytes([42; 64]),
-            v2: None,
+    pub fn deserialize(stream: &mut dyn Stream, header: &MessageHeader) -> Result<Self> {
+        debug_assert!(header.message_type == MessageType::NodeIdHandshake);
+        let query = if NodeIdHandshakePayload::is_query(&header) {
+            let mut cookie = [0u8; 32];
+            stream.read_bytes(&mut cookie, 32)?;
+            Some(NodeIdHandshakeQuery { cookie })
+        } else {
+            None
         };
-        Self::new(&ProtocolInfo::dev_network(), None, Some(response))
-    }
-
-    pub fn test_response_v2() -> Self {
-        let response = NodeIdHandshakeResponse {
-            node_id: PublicKey::from(1),
-            signature: Signature::from_bytes([42; 64]),
-            v2: Some(V2Payload {
-                salt: [7; 32],
-                genesis: BlockHash::from(3),
-            }),
+        let response = if NodeIdHandshakePayload::is_response(&header) {
+            Some(NodeIdHandshakeResponse::deserialize(stream, &header)?)
+        } else {
+            None
         };
-        NodeIdHandshake::new(&ProtocolInfo::dev_network(), None, Some(response))
-    }
-}
-
-impl Message for NodeIdHandshake {
-    fn header(&self) -> &MessageHeader {
-        &self.header
+        Ok(Self {
+            query,
+            response,
+            is_v2: Self::has_v2_flag(header),
+        })
     }
 
-    fn set_header(&mut self, header: &MessageHeader) {
-        self.header = header.clone();
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.header.serialize(stream)?;
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         if let Some(query) = &self.query {
             stream.write_bytes(&query.cookie)?;
         }
@@ -279,22 +196,47 @@ impl Message for NodeIdHandshake {
         Ok(())
     }
 
-    fn visit(&self, visitor: &mut dyn MessageVisitor) {
-        visitor.node_id_handshake(self)
+    pub fn create_test_query() -> Self {
+        let query = NodeIdHandshakeQuery { cookie: [42; 32] };
+        Self {
+            query: Some(query),
+            response: None,
+            is_v2: true,
+        }
     }
 
-    fn clone_box(&self) -> Box<dyn Message> {
-        Box::new(self.clone())
+    pub fn create_test_response_v1() -> Self {
+        let response = NodeIdHandshakeResponse {
+            node_id: PublicKey::from(1),
+            signature: Signature::from_bytes([42; 64]),
+            v2: None,
+        };
+        Self {
+            query: None,
+            response: Some(response),
+            is_v2: false,
+        }
     }
 
-    fn message_type(&self) -> MessageType {
-        MessageType::NodeIdHandshake
+    pub fn create_test_response_v2() -> Self {
+        let response = NodeIdHandshakeResponse {
+            node_id: PublicKey::from(1),
+            signature: Signature::from_bytes([42; 64]),
+            v2: Some(V2Payload {
+                salt: [7; 32],
+                genesis: BlockHash::from(3),
+            }),
+        };
+        Self {
+            query: None,
+            response: Some(response),
+            is_v2: true,
+        }
     }
 }
 
-impl Display for NodeIdHandshake {
+impl Display for NodeIdHandshakePayload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.header.fmt(f)?;
         if let Some(query) = &self.query {
             write!(f, "\ncookie=")?;
             write_hex_bytes(&query.cookie, f)?;
@@ -315,21 +257,32 @@ impl Display for NodeIdHandshake {
 
 #[cfg(test)]
 mod tests {
+    use crate::messages::{Message, MessageEnum};
+
     use super::*;
 
     #[test]
     fn serialize_query() {
-        test_serialization(NodeIdHandshake::test_query());
+        test_serialization(MessageEnum::new_node_id_handshake2(
+            &Default::default(),
+            NodeIdHandshakePayload::create_test_query(),
+        ));
     }
 
     #[test]
     fn serialize_response_v1() {
-        test_serialization(NodeIdHandshake::test_response_v1())
+        test_serialization(MessageEnum::new_node_id_handshake2(
+            &Default::default(),
+            NodeIdHandshakePayload::create_test_response_v1(),
+        ));
     }
 
     #[test]
     fn serialize_response_v2() {
-        test_serialization(NodeIdHandshake::test_response_v2())
+        test_serialization(MessageEnum::new_node_id_handshake2(
+            &Default::default(),
+            NodeIdHandshakePayload::create_test_response_v2(),
+        ));
     }
 
     #[test]
@@ -392,17 +345,17 @@ mod tests {
         assert!(copy.validate(&cookie).is_err());
     }
 
-    fn test_serialization(original: NodeIdHandshake) {
+    fn test_serialization(original: MessageEnum) {
         let mut stream = MemoryStream::new();
         original.serialize(&mut stream).unwrap();
-
         assert_eq!(
             stream.bytes_written(),
-            MessageHeader::serialized_size() + NodeIdHandshake::serialized_size(original.header())
+            MessageHeader::serialized_size()
+                + NodeIdHandshakePayload::serialized_size(&original.header)
         );
 
         let header = MessageHeader::deserialize(&mut stream).unwrap();
-        let deserialized = NodeIdHandshake::from_stream(&mut stream, header).unwrap();
+        let deserialized = MessageEnum::deserialize(&mut stream, header, 0, None, None).unwrap();
 
         assert_eq!(deserialized, original);
     }

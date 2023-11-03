@@ -113,7 +113,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         message_in.serialize(&mut stream)?;
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = MessageEnum::deserialize(&mut stream, header, 0, None)?;
+        let message_out = MessageEnum::deserialize(&mut stream, header, 0, None, None)?;
         assert_eq!(message_in, message_out);
         Ok(())
     }

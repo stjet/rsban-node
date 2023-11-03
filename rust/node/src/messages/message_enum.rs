@@ -1,15 +1,13 @@
-use crate::utils::BlockUniquer;
-
-use super::{
-    AccountInfoAckPayload, AccountInfoReqPayload, AscPullAckPayload, AscPullAckType,
-    AscPullReqPayload, AscPullReqType, BlocksAckPayload, BlocksReqPayload, BulkPullAccountPayload,
-    BulkPullPayload, KeepalivePayload, Message, MessageHeader, MessageType, MessageVisitor,
-    ProtocolInfo, PublishPayload,
+use crate::{
+    utils::BlockUniquer,
+    voting::{Vote, VoteUniquer},
 };
+
+use super::*;
 use anyhow::Result;
 use rsnano_core::{
     utils::{Serialize, Stream},
-    BlockEnum,
+    BlockEnum, BlockType,
 };
 use std::{any::Any, fmt::Display, sync::Arc};
 
@@ -28,6 +26,7 @@ pub enum Payload {
     BulkPull(BulkPullPayload),
     BulkPullAccount(BulkPullAccountPayload),
     BulkPush,
+    ConfirmAck(ConfirmAckPayload),
 }
 
 impl Payload {
@@ -39,6 +38,7 @@ impl Payload {
             Payload::AscPullReq(x) => x.serialize(stream),
             Payload::BulkPull(x) => x.serialize(stream),
             Payload::BulkPullAccount(x) => x.serialize(stream),
+            Payload::ConfirmAck(x) => x.serialize(stream),
             Payload::BulkPush => Ok(()),
         }
     }
@@ -53,6 +53,7 @@ impl Display for Payload {
             Payload::AscPullReq(x) => x.fmt(f),
             Payload::BulkPull(x) => x.fmt(f),
             Payload::BulkPullAccount(x) => x.fmt(f),
+            Payload::ConfirmAck(x) => x.fmt(f),
             Payload::BulkPush => Ok(()),
         }
     }
@@ -186,18 +187,34 @@ impl MessageEnum {
         }
     }
 
+    pub fn new_confirm_ack(protocol_info: &ProtocolInfo, vote: Arc<Vote>) -> Self {
+        let mut header = MessageHeader::new(MessageType::ConfirmAck, protocol_info);
+        header.set_block_type(BlockType::NotABlock);
+        debug_assert!(vote.hashes.len() < 16);
+        header.set_count(vote.hashes.len() as u8);
+
+        Self {
+            header,
+            payload: Payload::ConfirmAck(ConfirmAckPayload { vote: Some(vote) }),
+        }
+    }
+
     pub fn deserialize(
         stream: &mut impl Stream,
         header: MessageHeader,
         digest: u128,
-        uniquer: Option<&BlockUniquer>,
+        block_uniquer: Option<&BlockUniquer>,
+        vote_uniquer: Option<&VoteUniquer>,
     ) -> Result<Self> {
         let payload = match header.message_type {
             MessageType::Keepalive => {
                 Payload::Keepalive(KeepalivePayload::deserialize(&header, stream)?)
             }
             MessageType::Publish => Payload::Publish(PublishPayload::deserialize(
-                stream, &header, digest, uniquer,
+                stream,
+                &header,
+                digest,
+                block_uniquer,
             )?),
             MessageType::AscPullAck => {
                 Payload::AscPullAck(AscPullAckPayload::deserialize(stream, &header)?)
@@ -212,6 +229,9 @@ impl MessageEnum {
                 Payload::BulkPullAccount(BulkPullAccountPayload::deserialize(stream, &header)?)
             }
             MessageType::BulkPush => Payload::BulkPush,
+            MessageType::ConfirmAck => {
+                Payload::ConfirmAck(ConfirmAckPayload::deserialize(stream, vote_uniquer)?)
+            }
             _ => unimplemented!(),
         };
         Ok(Self { header, payload })

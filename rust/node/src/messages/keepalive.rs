@@ -87,7 +87,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         request1.serialize(&mut stream).unwrap();
         let header = MessageHeader::deserialize(&mut stream).unwrap();
-        let request2 = MessageEnum::deserialize(&mut stream, header, 0, None).unwrap();
+        let request2 = MessageEnum::deserialize(&mut stream, header, 0, None, None).unwrap();
         let Payload::Keepalive(payload1) = request1.payload else { panic!("not a keepalive message")};
         let Payload::Keepalive(payload2) = request2.payload else { panic!("not a keepalive message")};
         assert_eq!(payload1, payload2);

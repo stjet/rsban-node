@@ -138,7 +138,13 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, Some(&self.block_uniquer)) {
+        if let Ok(msg) = MessageEnum::deserialize(
+            stream,
+            header,
+            0,
+            Some(&self.block_uniquer),
+            Some(&self.vote_uniquer),
+        ) {
             if at_end(stream) {
                 return Ok(Box::new(msg));
             }
@@ -152,8 +158,13 @@ impl MessageDeserializerImpl {
         header: MessageHeader,
         digest: u128,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(stream, header, digest, Some(&self.block_uniquer))
-        {
+        if let Ok(msg) = MessageEnum::deserialize(
+            stream,
+            header,
+            digest,
+            Some(&self.block_uniquer),
+            Some(&self.vote_uniquer),
+        ) {
             if at_end(stream) {
                 let Payload::Publish(payload) = &msg.payload else { unreachable!()};
                 match &payload.block {
@@ -198,7 +209,8 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = ConfirmAck::with_header(header, stream, Some(&self.vote_uniquer)) {
+        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, Some(&self.vote_uniquer))
+        {
             if at_end(stream) {
                 return Ok(Box::new(msg));
             }
@@ -245,7 +257,7 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None) {
+        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
             if at_end(stream) {
                 return Ok(Box::new(msg));
             }
@@ -258,7 +270,7 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None) {
+        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
             if at_end(stream) {
                 return Ok(Box::new(msg));
             }
@@ -285,7 +297,7 @@ impl MessageDeserializerImpl {
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
         // Message does not use stream payload (header only)
-        match MessageEnum::deserialize(stream, header, 0, None) {
+        match MessageEnum::deserialize(stream, header, 0, None, None) {
             Ok(msg) => Ok(Box::new(msg)),
             Err(_) => Err(ParseStatus::InvalidMessageType), // TODO correct error type
         }
@@ -297,7 +309,7 @@ impl MessageDeserializerImpl {
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
         // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
-        match MessageEnum::deserialize(stream, header, 0, None) {
+        match MessageEnum::deserialize(stream, header, 0, None, None) {
             Ok(msg) => Ok(Box::new(msg)),
             Err(_) => Err(ParseStatus::InvalidAscPullReqMessage),
         }
@@ -309,7 +321,7 @@ impl MessageDeserializerImpl {
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
         // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
-        match MessageEnum::deserialize(stream, header, 0, None) {
+        match MessageEnum::deserialize(stream, header, 0, None, None) {
             Ok(msg) => Ok(Box::new(msg)),
             Err(_) => Err(ParseStatus::InvalidAscPullAckMessage),
         }
@@ -319,12 +331,15 @@ impl MessageDeserializerImpl {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::STUB_NETWORK_CONSTANTS;
+    use crate::{config::STUB_NETWORK_CONSTANTS, voting::Vote};
     use rsnano_core::BlockBuilder;
 
     #[test]
     fn exact_confirm_ack() {
-        test_deserializer(&ConfirmAck::create_test_instance());
+        test_deserializer(&MessageEnum::new_confirm_ack(
+            &Default::default(),
+            Arc::new(Vote::create_test_instance()),
+        ));
     }
 
     #[test]

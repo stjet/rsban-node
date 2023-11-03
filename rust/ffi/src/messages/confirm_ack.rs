@@ -5,7 +5,10 @@ use crate::{
     voting::{VoteHandle, VoteUniquerHandle},
     NetworkConstantsDto, StringDto,
 };
-use rsnano_node::{messages::ConfirmAck, voting::Vote};
+use rsnano_node::{
+    messages::{ConfirmAckPayload, MessageEnum, Payload},
+    voting::Vote,
+};
 
 use super::{
     create_message_handle2, create_message_handle3, downcast_message, message_handle_clone,
@@ -19,7 +22,7 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_create(
 ) -> *mut MessageHandle {
     create_message_handle3(constants, |consts| {
         let vote = (*vote).clone();
-        ConfirmAck::new(consts, vote)
+        MessageEnum::new_confirm_ack(consts, vote)
     })
 }
 
@@ -38,12 +41,12 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_create2(
             Some((*uniquer).deref().as_ref())
         };
 
-        match ConfirmAck::with_header(hdr, &mut stream, uniquer) {
+        match MessageEnum::deserialize(&mut stream, hdr, 0, None, uniquer) {
             Ok(i) => i,
             Err(_) => {
                 *is_error = true;
                 //workaround to prevent nullptr:
-                ConfirmAck::new(&Default::default(), Arc::new(Vote::null()))
+                MessageEnum::new_confirm_ack(&Default::default(), Arc::new(Vote::null()))
             }
         }
     })
@@ -53,14 +56,20 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_create2(
 pub unsafe extern "C" fn rsn_message_confirm_ack_clone(
     handle: *mut MessageHandle,
 ) -> *mut MessageHandle {
-    message_handle_clone::<ConfirmAck>(handle)
+    message_handle_clone::<MessageEnum>(handle)
+}
+
+unsafe fn get_payload(handle: *mut MessageHandle) -> &'static ConfirmAckPayload {
+    let msg = downcast_message::<MessageEnum>(handle);
+    let Payload::ConfirmAck(payload) = &msg.payload else {panic!("not a confirm_ack message")};
+    payload
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_ack_vote(
     handle: *mut MessageHandle,
 ) -> *mut VoteHandle {
-    match downcast_message::<ConfirmAck>(handle).vote() {
+    match &get_payload(handle).vote {
         Some(vote) => Box::into_raw(Box::new(VoteHandle::new(vote.clone()))),
         None => std::ptr::null_mut(),
     }
@@ -68,7 +77,7 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_vote(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_ack_size(count: usize) -> usize {
-    ConfirmAck::serialized_size(count as u8)
+    ConfirmAckPayload::serialized_size(count as u8)
 }
 
 #[no_mangle]
@@ -76,5 +85,5 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_to_string(
     handle: *mut MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = downcast_message::<ConfirmAck>(handle).to_string().into();
+    (*result) = downcast_message::<MessageEnum>(handle).to_string().into();
 }

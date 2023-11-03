@@ -1,44 +1,25 @@
-use crate::{
-    messages::MessageType,
-    voting::{Vote, VoteUniquer},
-};
+use crate::voting::{Vote, VoteUniquer};
 use anyhow::Result;
-use rsnano_core::{utils::Stream, BlockType};
+use rsnano_core::utils::{Serialize, Stream};
 use std::{
-    any::Any,
     fmt::{Debug, Display},
     ops::Deref,
     sync::Arc,
 };
 
-use super::{Message, MessageHeader, MessageVisitor, ProtocolInfo};
-
 #[derive(Clone)]
-pub struct ConfirmAck {
-    header: MessageHeader,
-    vote: Option<Arc<Vote>>,
+pub struct ConfirmAckPayload {
+    pub vote: Option<Arc<Vote>>,
 }
 
-impl ConfirmAck {
+impl ConfirmAckPayload {
     pub const HASHES_MAX: usize = 12;
 
-    pub fn new(protocol_info: &ProtocolInfo, vote: Arc<Vote>) -> Self {
-        let mut header = MessageHeader::new(MessageType::ConfirmAck, protocol_info);
-        header.set_block_type(BlockType::NotABlock);
-        debug_assert!(vote.hashes.len() < 16);
-        header.set_count(vote.hashes.len() as u8);
-
-        Self {
-            header,
-            vote: Some(vote),
-        }
+    pub fn serialized_size(count: u8) -> usize {
+        Vote::serialized_size(count as usize)
     }
 
-    pub fn with_header(
-        header: MessageHeader,
-        stream: &mut impl Stream,
-        uniquer: Option<&VoteUniquer>,
-    ) -> Result<Self> {
+    pub fn deserialize(stream: &mut impl Stream, uniquer: Option<&VoteUniquer>) -> Result<Self> {
         let mut vote = Vote::null();
         vote.deserialize(stream)?;
         let mut vote = Arc::new(vote);
@@ -47,91 +28,37 @@ impl ConfirmAck {
             vote = uniquer.unique(&vote);
         }
 
-        Ok(Self {
-            header,
-            vote: Some(vote),
-        })
+        Ok(ConfirmAckPayload { vote: Some(vote) })
     }
 
     pub fn create_test_instance() -> Self {
-        let vote = Vote::create_test_instance();
-        Self::new(&ProtocolInfo::dev_network(), Arc::new(vote))
-    }
-
-    pub fn vote(&self) -> Option<&Arc<Vote>> {
-        self.vote.as_ref()
-    }
-
-    pub fn serialized_size(count: u8) -> usize {
-        Vote::serialized_size(count as usize)
+        let vote = Arc::new(Vote::create_test_instance());
+        Self { vote: Some(vote) }
     }
 }
 
-impl Message for ConfirmAck {
-    fn header(&self) -> &MessageHeader {
-        &self.header
-    }
-
-    fn set_header(&mut self, header: &MessageHeader) {
-        self.header = header.clone();
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        debug_assert!(
-            self.header().block_type() == BlockType::NotABlock
-                || self.header().block_type() == BlockType::LegacySend
-                || self.header().block_type() == BlockType::LegacyReceive
-                || self.header().block_type() == BlockType::LegacyOpen
-                || self.header.block_type() == BlockType::LegacyChange
-                || self.header.block_type() == BlockType::State
-        );
-        self.header().serialize(stream)?;
-        self.vote().unwrap().serialize(stream)
-    }
-
-    fn visit(&self, visitor: &mut dyn MessageVisitor) {
-        visitor.confirm_ack(self)
-    }
-
-    fn clone_box(&self) -> Box<dyn Message> {
-        Box::new(self.clone())
-    }
-
-    fn message_type(&self) -> MessageType {
-        MessageType::ConfirmAck
+impl Serialize for ConfirmAckPayload {
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        self.vote.as_ref().unwrap().serialize(stream)
     }
 }
 
-impl PartialEq for ConfirmAck {
+impl PartialEq for ConfirmAckPayload {
     fn eq(&self, other: &Self) -> bool {
-        if self.vote.is_some() != other.vote.is_some() {
-            return false;
-        }
-
         if let Some(v1) = &self.vote {
             if let Some(v2) = &other.vote {
-                if v1.deref() != v2.deref() {
-                    return false;
-                }
+                return v1.deref() == v2.deref();
             }
         }
-        self.header == other.header
+        false
     }
 }
 
-impl Debug for ConfirmAck {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut builder = f.debug_struct("ConfirmAck");
-        builder.field("header", &self.header);
+impl Eq for ConfirmAckPayload {}
 
+impl Debug for ConfirmAckPayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut builder = f.debug_struct("ConfirmAckPayload");
         match &self.vote {
             Some(v) => {
                 builder.field("vote", v.deref());
@@ -144,9 +71,8 @@ impl Debug for ConfirmAck {
     }
 }
 
-impl Display for ConfirmAck {
+impl Display for ConfirmAckPayload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.header, f)?;
         if let Some(vote) = &self.vote {
             write!(f, "\n{}", vote.to_json().map_err(|_| std::fmt::Error)?)?;
         }
@@ -156,6 +82,8 @@ impl Display for ConfirmAck {
 
 #[cfg(test)]
 mod tests {
+    use crate::messages::{Message, MessageEnum, MessageHeader};
+
     use super::*;
     use rsnano_core::{utils::MemoryStream, BlockHash, KeyPair};
 
@@ -163,17 +91,17 @@ mod tests {
     fn serialize() -> Result<()> {
         let keys = KeyPair::new();
         let mut hashes = Vec::new();
-        for i in 0..ConfirmAck::HASHES_MAX {
+        for i in 0..ConfirmAckPayload::HASHES_MAX {
             hashes.push(BlockHash::from(i as u64))
         }
         let vote = Vote::new(keys.public_key().into(), &keys.private_key(), 0, 0, hashes);
         let vote = Arc::new(vote);
-        let confirm1 = ConfirmAck::new(&Default::default(), vote);
+        let confirm1 = MessageEnum::new_confirm_ack(&Default::default(), vote);
 
         let mut stream = MemoryStream::new();
         confirm1.serialize(&mut stream)?;
         let header = MessageHeader::deserialize(&mut stream)?;
-        let confirm2 = ConfirmAck::with_header(header, &mut stream, None)?;
+        let confirm2 = MessageEnum::deserialize(&mut stream, header, 0, None, None)?;
         assert_eq!(confirm1, confirm2);
         Ok(())
     }

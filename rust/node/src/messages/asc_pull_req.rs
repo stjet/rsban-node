@@ -212,7 +212,7 @@ mod tests {
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = MessageEnum::deserialize(&mut stream, header, 0, None)?;
+        let message_out = MessageEnum::deserialize(&mut stream, header, 0, None, None)?;
         assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());
         Ok(())
@@ -233,7 +233,7 @@ mod tests {
         original.serialize(&mut stream)?;
 
         let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = MessageEnum::deserialize(&mut stream, header, 0, None)?;
+        let message_out = MessageEnum::deserialize(&mut stream, header, 0, None, None)?;
         assert_eq!(message_out.payload, original.payload);
         assert!(stream.at_end());
         Ok(())

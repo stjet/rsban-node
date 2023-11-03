@@ -17,7 +17,7 @@ use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::{NetworkConstants, NodeConfig},
     messages::{
-        ConfirmAck, ConfirmReq, FrontierReq, Message, MessageEnum, MessageVisitor, NodeIdHandshake,
+        ConfirmReq, FrontierReq, Message, MessageEnum, MessageVisitor, NodeIdHandshake,
         NodeIdHandshakeQuery, NodeIdHandshakeResponse, Payload, TelemetryAck, TelemetryReq,
     },
     stats::{DetailType, Direction, StatType, Stats},
@@ -668,14 +668,12 @@ impl MessageVisitor for RealtimeMessageVisitorImpl {
             Payload::Keepalive(_)
             | Payload::Publish(_)
             | Payload::AscPullAck(_)
-            | Payload::AscPullReq(_) => self.process = true,
+            | Payload::AscPullReq(_)
+            | Payload::ConfirmAck(_) => self.process = true,
             _ => {}
         }
     }
     fn confirm_req(&mut self, _message: &ConfirmReq) {
-        self.process = true;
-    }
-    fn confirm_ack(&mut self, _message: &ConfirmAck) {
         self.process = true;
     }
     fn frontier_req(&mut self, _message: &FrontierReq) {

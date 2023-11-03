@@ -105,10 +105,10 @@ impl MessageDeserializerImpl {
         &self,
         header: MessageHeader,
         payload_bytes: &[u8],
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         let mut stream = StreamAdapter::new(payload_bytes);
         match header.message_type {
-            MessageType::Keepalive => Ok(self.deserialize_keepalive(&mut stream, header)?),
+            MessageType::Keepalive => self.deserialize_keepalive(&mut stream, header),
             MessageType::Publish => {
                 // Early filtering to not waste time deserializing duplicate blocks
                 let (digest, existed) = self.publish_filter.apply(payload_bytes);
@@ -118,21 +118,17 @@ impl MessageDeserializerImpl {
                     Err(ParseStatus::DuplicatePublishMessage)
                 }
             }
-            MessageType::ConfirmReq => Ok(self.deserialize_confirm_req(&mut stream, header)?),
-            MessageType::ConfirmAck => Ok(self.deserialize_confirm_ack(&mut stream, header)?),
-            MessageType::NodeIdHandshake => {
-                Ok(self.deserialize_node_id_handshake(&mut stream, header)?)
-            }
-            MessageType::TelemetryReq => Ok(self.deserialize_telemetry_req(&mut stream, header)?),
-            MessageType::TelemetryAck => Ok(self.deserialize_telemetry_ack(&mut stream, header)?),
-            MessageType::BulkPull => Ok(self.deserialize_bulk_pull(&mut stream, header)?),
-            MessageType::BulkPullAccount => {
-                Ok(self.deserialize_bulk_pull_account(&mut stream, header)?)
-            }
-            MessageType::BulkPush => Ok(self.deserialize_bulk_push(&mut stream, header)?),
-            MessageType::FrontierReq => Ok(self.deserialize_frontier_req(&mut stream, header)?),
-            MessageType::AscPullReq => Ok(self.deserialize_asc_pull_req(&mut stream, header)?),
-            MessageType::AscPullAck => Ok(self.deserialize_asc_pull_ack(&mut stream, header)?),
+            MessageType::ConfirmReq => self.deserialize_confirm_req(&mut stream, header),
+            MessageType::ConfirmAck => self.deserialize_confirm_ack(&mut stream, header),
+            MessageType::NodeIdHandshake => self.deserialize_node_id_handshake(&mut stream, header),
+            MessageType::TelemetryReq => self.deserialize_telemetry_req(&mut stream, header),
+            MessageType::TelemetryAck => self.deserialize_telemetry_ack(&mut stream, header),
+            MessageType::BulkPull => self.deserialize_bulk_pull(&mut stream, header),
+            MessageType::BulkPullAccount => self.deserialize_bulk_pull_account(&mut stream, header),
+            MessageType::BulkPush => self.deserialize_bulk_push(&mut stream, header),
+            MessageType::FrontierReq => self.deserialize_frontier_req(&mut stream, header),
+            MessageType::AscPullReq => self.deserialize_asc_pull_req(&mut stream, header),
+            MessageType::AscPullAck => self.deserialize_asc_pull_ack(&mut stream, header),
             MessageType::Invalid | MessageType::NotAType => Err(ParseStatus::InvalidMessageType),
         }
     }
@@ -141,7 +137,7 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         if let Ok(msg) = MessageEnum::deserialize(
             stream,
             header,
@@ -150,7 +146,7 @@ impl MessageDeserializerImpl {
             Some(&self.vote_uniquer),
         ) {
             if at_end(stream) {
-                return Ok(Box::new(msg));
+                return Ok(msg);
             }
         }
         Err(ParseStatus::InvalidKeepaliveMessage)
@@ -161,7 +157,7 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
         digest: u128,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         if let Ok(msg) = MessageEnum::deserialize(
             stream,
             header,
@@ -174,7 +170,7 @@ impl MessageDeserializerImpl {
                 match &payload.block {
                     Some(block) => {
                         if !self.network_constants.work.validate_entry_block(&block) {
-                            return Ok(Box::new(msg));
+                            return Ok(msg);
                         } else {
                             return Err(ParseStatus::InsufficientWork);
                         }
@@ -191,7 +187,7 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         if let Ok(msg) =
             MessageEnum::deserialize(stream, header, 0, Some(&self.block_uniquer), None)
         {
@@ -202,7 +198,7 @@ impl MessageDeserializerImpl {
                     None => true,
                 };
                 if work_ok {
-                    return Ok(Box::new(msg));
+                    return Ok(msg);
                 } else {
                     return Err(ParseStatus::InsufficientWork);
                 }
@@ -215,11 +211,11 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, Some(&self.vote_uniquer))
         {
             if at_end(stream) {
-                return Ok(Box::new(msg));
+                return Ok(msg);
             }
         }
         Err(ParseStatus::InvalidConfirmAckMessage)
@@ -229,10 +225,10 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
             if at_end(stream) {
-                return Ok(Box::new(msg));
+                return Ok(msg);
             }
         }
 
@@ -243,22 +239,20 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         // Message does not use stream payload (header only)
-        Ok(Box::new(
-            MessageEnum::deserialize(stream, header, 0, None, None)
-                .map_err(|_| ParseStatus::InvalidTelemetryReqMessage)?,
-        ))
+        MessageEnum::deserialize(stream, header, 0, None, None)
+            .map_err(|_| ParseStatus::InvalidTelemetryReqMessage)
     }
 
     fn deserialize_telemetry_ack(
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
             // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
-            return Ok(Box::new(msg));
+            return Ok(msg);
         }
         Err(ParseStatus::InvalidTelemetryAckMessage)
     }
@@ -267,10 +261,10 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
             if at_end(stream) {
-                return Ok(Box::new(msg));
+                return Ok(msg);
             }
         }
         Err(ParseStatus::InvalidBulkPullMessage)
@@ -280,10 +274,10 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
             if at_end(stream) {
-                return Ok(Box::new(msg));
+                return Ok(msg);
             }
         }
         Err(ParseStatus::InvalidBulkPullAccountMessage)
@@ -293,10 +287,10 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
             if at_end(stream) {
-                return Ok(Box::new(msg));
+                return Ok(msg);
             }
         }
         Err(ParseStatus::InvalidFrontierReqMessage)
@@ -306,10 +300,10 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         // Message does not use stream payload (header only)
         match MessageEnum::deserialize(stream, header, 0, None, None) {
-            Ok(msg) => Ok(Box::new(msg)),
+            Ok(msg) => Ok(msg),
             Err(_) => Err(ParseStatus::InvalidMessageType), // TODO correct error type
         }
     }
@@ -318,10 +312,10 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
         match MessageEnum::deserialize(stream, header, 0, None, None) {
-            Ok(msg) => Ok(Box::new(msg)),
+            Ok(msg) => Ok(msg),
             Err(_) => Err(ParseStatus::InvalidAscPullReqMessage),
         }
     }
@@ -330,10 +324,10 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
         match MessageEnum::deserialize(stream, header, 0, None, None) {
-            Ok(msg) => Ok(Box::new(msg)),
+            Ok(msg) => Ok(msg),
             Err(_) => Err(ParseStatus::InvalidAscPullAckMessage),
         }
     }

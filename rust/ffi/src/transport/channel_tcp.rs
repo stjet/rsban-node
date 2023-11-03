@@ -186,7 +186,7 @@ unsafe impl Sync for ChannelTcpSendCallbackWrapper {}
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_send(
     handle: *mut ChannelHandle,
-    msg: *mut MessageHandle,
+    msg: &MessageHandle,
     callback: ChannelTcpSendCallback,
     delete_callback: VoidPointerCallback,
     context: *mut c_void,
@@ -198,7 +198,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_send(
         callback_wrapper.call(ec, size);
     });
     as_tcp_channel(handle).send(
-        (*msg).as_ref(),
+        msg,
         Some(callback_box),
         BufferDropPolicy::from_u8(policy).unwrap(),
         TrafficType::from_u8(traffic_type).unwrap(),

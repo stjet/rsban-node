@@ -71,7 +71,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_request(
 ) -> *mut MessageHandle {
     // only for tests
     let msg = MessageEnum::new_bulk_pull(&Default::default(), handle.0.request());
-    MessageHandle::new(Box::new(msg))
+    MessageHandle::new(msg)
 }
 
 #[no_mangle]

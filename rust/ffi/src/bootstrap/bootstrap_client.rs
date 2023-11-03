@@ -126,7 +126,7 @@ pub unsafe extern "C" fn rsn_bootstrap_client_send_buffer(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_client_send(
     handle: *mut BootstrapClientHandle,
-    msg: *mut MessageHandle,
+    msg: &MessageHandle,
     callback: ChannelTcpSendCallback,
     delete_callback: VoidPointerCallback,
     context: *mut c_void,
@@ -138,7 +138,7 @@ pub unsafe extern "C" fn rsn_bootstrap_client_send(
         callback_wrapper.call(ec, size);
     });
     (*handle).0.send(
-        (*msg).as_ref(),
+        msg,
         Some(callback_box),
         BufferDropPolicy::from_u8(policy).unwrap(),
         TrafficType::from_u8(traffic_type).unwrap(),

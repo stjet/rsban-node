@@ -264,7 +264,7 @@ pub unsafe extern "C" fn rsn_channel_fake_endpoint(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_inproc_send(
     handle: *mut ChannelHandle,
-    message: *const MessageHandle,
+    message: &MessageHandle,
     callback: ChannelTcpSendBufferCallback,
     delete_callback: VoidPointerCallback,
     callback_context: *mut c_void,
@@ -278,13 +278,13 @@ pub unsafe extern "C" fn rsn_channel_inproc_send(
     });
     let policy = FromPrimitive::from_u8(policy).unwrap();
     let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
-    as_inproc_channel(handle).send((*message).0.as_ref(), Some(cb), policy, traffic_type);
+    as_inproc_channel(handle).send(message, Some(cb), policy, traffic_type);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_fake_send(
     handle: *mut ChannelHandle,
-    message: *const MessageHandle,
+    message: &MessageHandle,
     callback: ChannelTcpSendBufferCallback,
     delete_callback: VoidPointerCallback,
     callback_context: *mut c_void,
@@ -298,7 +298,7 @@ pub unsafe extern "C" fn rsn_channel_fake_send(
     });
     let policy = FromPrimitive::from_u8(policy).unwrap();
     let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
-    as_fake_channel(handle).send((*message).0.as_ref(), Some(cb), policy, traffic_type);
+    as_fake_channel(handle).send(message, Some(cb), policy, traffic_type);
 }
 
 #[no_mangle]

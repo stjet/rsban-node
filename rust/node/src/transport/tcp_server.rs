@@ -238,7 +238,7 @@ impl TcpServer {
         self.socket.is_realtime_connection()
     }
 
-    pub fn queue_realtime(&self, message: Box<MessageEnum>) {
+    pub fn queue_realtime(&self, message: MessageEnum) {
         self.tcp_message_manager.put_message(TcpMessageItem {
             message: Some(message),
             endpoint: *self.remote_endpoint.lock().unwrap(),
@@ -281,8 +281,8 @@ pub trait TcpServerExt {
     fn timeout(&self);
 
     fn receive_message(&self);
-    fn received_message(&self, message: Box<MessageEnum>);
-    fn process_message(&self, message: Box<MessageEnum>) -> bool;
+    fn received_message(&self, message: MessageEnum);
+    fn process_message(&self, message: MessageEnum) -> bool;
 }
 
 impl TcpServerExt for Arc<TcpServer> {
@@ -345,13 +345,13 @@ impl TcpServerExt for Arc<TcpServer> {
         });
     }
 
-    fn received_message(&self, message: Box<MessageEnum>) {
+    fn received_message(&self, message: MessageEnum) {
         if self.process_message(message) {
             self.receive_message();
         }
     }
 
-    fn process_message(&self, message: Box<MessageEnum>) -> bool {
+    fn process_message(&self, message: MessageEnum) -> bool {
         let _ = self.stats.inc(
             StatType::TcpServer,
             DetailType::from(message.header.message_type),

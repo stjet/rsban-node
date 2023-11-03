@@ -32,7 +32,7 @@ pub struct InProcChannelData {
     node_id: Option<Account>,
 }
 
-pub type InboundCallback = Arc<dyn Fn(Box<MessageEnum>, Arc<ChannelEnum>) + Send + Sync>;
+pub type InboundCallback = Arc<dyn Fn(MessageEnum, Arc<ChannelEnum>) + Send + Sync>;
 
 pub struct ChannelInProc {
     channel_id: usize,
@@ -138,7 +138,7 @@ impl ChannelInProc {
         let destination_node_id = self.destination_node_id;
         let async_rt = self.async_rt.clone();
 
-        let callback_wrapper = Box::new(move |ec: ErrorCode, msg: Option<Box<MessageEnum>>| {
+        let callback_wrapper = Box::new(move |ec: ErrorCode, msg: Option<MessageEnum>| {
             if ec.is_err() {
                 return;
             }
@@ -193,7 +193,7 @@ impl ChannelInProc {
     fn send_buffer_impl(
         &self,
         buffer: &[u8],
-        callback_msg: Box<dyn FnOnce(ErrorCode, Option<Box<MessageEnum>>) + Send>,
+        callback_msg: Box<dyn FnOnce(ErrorCode, Option<MessageEnum>) + Send>,
     ) {
         if let Some(rt) = self.async_rt.upgrade() {
             let message_deserializer = Arc::new(AsyncMessageDeserializer::new(

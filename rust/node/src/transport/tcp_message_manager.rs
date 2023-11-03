@@ -9,7 +9,7 @@ use crate::messages::MessageEnum;
 use rsnano_core::Account;
 
 pub struct TcpMessageItem {
-    pub message: Option<Box<MessageEnum>>,
+    pub message: Option<MessageEnum>,
     pub endpoint: SocketAddr,
     pub node_id: Account,
     pub socket: Option<Arc<Socket>>,

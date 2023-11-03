@@ -70,7 +70,7 @@ impl ChannelTcpObserver for FfiChannelTcpObserver {
         unsafe {
             MESSAGE_SENT.expect("MESSAGE_SENT missing")(
                 self.handle,
-                MessageHandle::new(Box::new(message.clone())),
+                MessageHandle::new(message.clone()),
             );
         }
     }
@@ -79,7 +79,7 @@ impl ChannelTcpObserver for FfiChannelTcpObserver {
         unsafe {
             MESSAGE_DROPPED.expect("MESSAGE_DROPPED missing")(
                 self.handle,
-                MessageHandle::new(Box::new(message.clone())),
+                MessageHandle::new(message.clone()),
                 buffer_size,
             );
         }

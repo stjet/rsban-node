@@ -45,7 +45,7 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
         }
     }
 
-    pub async fn read(&self) -> Result<Box<MessageEnum>, ParseStatus> {
+    pub async fn read(&self) -> Result<MessageEnum, ParseStatus> {
         self.buffer_reader
             .read(
                 Arc::clone(&self.read_buffer),
@@ -57,7 +57,7 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
         self.received_header().await
     }
 
-    async fn received_header(&self) -> Result<Box<MessageEnum>, ParseStatus> {
+    async fn received_header(&self) -> Result<MessageEnum, ParseStatus> {
         let header = {
             let buffer = self.read_buffer.lock().unwrap();
             let mut stream = StreamAdapter::new(&buffer[..MessageHeader::SERIALIZED_SIZE]);
@@ -82,7 +82,7 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
         &self,
         header: MessageHeader,
         payload_size: usize,
-    ) -> Result<Box<MessageEnum>, ParseStatus> {
+    ) -> Result<MessageEnum, ParseStatus> {
         let buffer = self.read_buffer.lock().unwrap();
         let result = self
             .deserializer_impl

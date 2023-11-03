@@ -77,7 +77,7 @@ fn empty_peers() -> [SocketAddr; 8] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{Message, MessageEnum, Payload, ProtocolInfo};
+    use crate::messages::{MessageEnum, Payload, ProtocolInfo};
     use rsnano_core::utils::MemoryStream;
     use std::str::FromStr;
 

@@ -257,7 +257,7 @@ impl Display for NodeIdHandshakePayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{Message, MessageEnum};
+    use crate::messages::MessageEnum;
 
     use super::*;
 

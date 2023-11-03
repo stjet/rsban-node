@@ -112,7 +112,7 @@ impl Display for ConfirmReqPayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{Message, MessageEnum};
+    use crate::messages::MessageEnum;
 
     use super::*;
     use rsnano_core::{utils::MemoryStream, StateBlockBuilder};

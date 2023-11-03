@@ -15,7 +15,7 @@ use super::{
     SocketExtensions, TrafficType,
 };
 use crate::{
-    messages::{Message, MessageEnum},
+    messages::MessageEnum,
     utils::{AsyncRuntime, ErrorCode},
 };
 

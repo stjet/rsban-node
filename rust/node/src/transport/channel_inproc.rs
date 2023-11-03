@@ -13,7 +13,7 @@ use tokio::task::spawn_blocking;
 
 use crate::{
     config::NetworkConstants,
-    messages::{Message, MessageEnum},
+    messages::MessageEnum,
     stats::{DetailType, Direction, StatType, Stats},
     utils::{AsyncRuntime, BlockUniquer, ErrorCode},
     voting::VoteUniquer,
@@ -98,7 +98,7 @@ impl ChannelInProc {
         traffic_type: TrafficType,
     ) {
         let buffer = Arc::new(message_a.to_bytes());
-        let detail = DetailType::from(message_a.header().message_type);
+        let detail = DetailType::from(message_a.header.message_type);
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
         let should_pass = self
             .limiter
@@ -170,7 +170,7 @@ impl ChannelInProc {
             {
                 stats.inc(
                     StatType::Message,
-                    DetailType::from(msg.header().message_type),
+                    DetailType::from(msg.header.message_type),
                     Direction::In,
                 );
 

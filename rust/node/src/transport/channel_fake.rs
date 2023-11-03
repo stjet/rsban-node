@@ -10,7 +10,7 @@ use std::{
 use rsnano_core::Account;
 
 use crate::{
-    messages::Message,
+    messages::MessageEnum,
     stats::{DetailType, Direction, StatType, Stats},
     utils::{AsyncRuntime, ErrorCode},
 };
@@ -69,13 +69,13 @@ impl ChannelFake {
 
     pub fn send(
         &self,
-        message_a: &dyn Message,
+        message_a: &MessageEnum,
         callback_a: Option<WriteCallback>,
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,
     ) {
         let buffer = Arc::new(message_a.to_bytes());
-        let detail = DetailType::from(message_a.header().message_type);
+        let detail = DetailType::from(message_a.header.message_type);
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
         let should_pass = self
             .limiter

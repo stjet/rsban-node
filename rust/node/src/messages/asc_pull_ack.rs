@@ -185,7 +185,7 @@ impl Serialize for AccountInfoAckPayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{Message, MessageEnum, ProtocolInfo};
+    use crate::messages::{MessageEnum, ProtocolInfo};
 
     use super::*;
     use rsnano_core::{utils::MemoryStream, BlockBuilder};

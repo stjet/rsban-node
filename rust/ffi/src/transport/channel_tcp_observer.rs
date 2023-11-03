@@ -1,7 +1,7 @@
 use std::{ffi::c_void, net::SocketAddr, sync::Arc};
 
 use rsnano_node::{
-    messages::{Message, MessageEnum},
+    messages::MessageEnum,
     transport::{ChannelTcpObserver, IChannelTcpObserverWeakPtr},
 };
 

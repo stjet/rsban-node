@@ -21,8 +21,8 @@ use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
     config::{NetworkConstants, NodeConfig, NodeFlags},
     messages::{
-        KeepalivePayload, Message, MessageEnum, MessageHeader, MessageType, NodeIdHandshakePayload,
-        NodeIdHandshakeQuery, NodeIdHandshakeResponse, Payload,
+        KeepalivePayload, MessageEnum, MessageHeader, MessageType, NodeIdHandshakeQuery,
+        NodeIdHandshakeResponse, Payload,
     },
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     transport::{Channel, SocketType},
@@ -437,7 +437,7 @@ impl ChannelTcpObserver for ChannelTcpObserverImpl {
 
     fn message_sent(&self, message: &MessageEnum) {
         self.execute(|channels| {
-            let detail = DetailType::from(message.header().message_type);
+            let detail = DetailType::from(message.header.message_type);
             channels
                 .stats
                 .inc(StatType::Message, detail, Direction::Out);
@@ -446,7 +446,7 @@ impl ChannelTcpObserver for ChannelTcpObserverImpl {
 
     fn message_dropped(&self, message: &MessageEnum, buffer_size: usize) {
         self.execute(|channels| {
-            let detail_type = message.message_type().into();
+            let detail_type = message.header.message_type.into();
             channels
                 .stats
                 .inc(StatType::Drop, detail_type, Direction::Out);
@@ -530,7 +530,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         };
         let socket_type = socket.socket_type();
         if !self.stopped.load(Ordering::SeqCst)
-            && message.header().version_using >= self.network.network.protocol_version_min
+            && message.header.version_using >= self.network.network.protocol_version_min
         {
             if let Some(channel) = self.find_channel(endpoint) {
                 (self.sink)(Box::new(message.clone()), Arc::clone(&channel));
@@ -560,7 +560,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         temporary_channel.set_remote_endpoint();
                         debug_assert!(*endpoint == temporary_channel.remote_endpoint());
                         temporary_channel.set_node_id(node_id);
-                        temporary_channel.set_network_version(message.header().version_using);
+                        temporary_channel.set_network_version(message.header.version_using);
                         temporary_channel.set_temporary(true);
                         let temporary_channel = Arc::new(ChannelEnum::Tcp(temporary_channel));
                         debug_assert!(
@@ -574,9 +574,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         (self.sink)(Box::new(message.clone()), temporary_channel);
                     } else {
                         // Initial node_id_handshake request without node ID
-                        debug_assert!(
-                            message.header().message_type == MessageType::NodeIdHandshake
-                        );
+                        debug_assert!(message.header.message_type == MessageType::NodeIdHandshake);
                         self.stats.inc(
                             StatType::Message,
                             DetailType::NodeIdHandshake,
@@ -648,8 +646,8 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         };
 
         let channel_clone = channel.clone();
-        let callback: Box<dyn FnOnce(ErrorCode, Option<Box<dyn Message>>) + Send + Sync> =
-            Box::new(move |ec: ErrorCode, message: Option<Box<dyn Message>>| {
+        let callback: Box<dyn FnOnce(ErrorCode, Option<Box<MessageEnum>>) + Send + Sync> =
+            Box::new(move |ec: ErrorCode, message: Option<Box<MessageEnum>>| {
                 let Some(this_l) = this_w.upgrade() else {
                     return;
                 };
@@ -683,12 +681,8 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 // the header type should in principle be checked after checking the network bytes and the version numbers, I will not change it here since the benefits do not outweight the difficulties
 
-                let mut handshake: Option<NodeIdHandshakePayload> = None;
-                if let Some(msg_enum) = message.as_any().downcast_ref::<MessageEnum>() {
-                    let Payload::NodeIdHandshake(payload) = &msg_enum.payload else {unreachable!()};
-                    handshake = Some(payload.clone());
-                }
-                let Some(handshake) = handshake else {
+                let Payload::NodeIdHandshake(handshake) = &message.payload 
+                else {
                     if this_l
                         .node_config
                         .logging
@@ -703,11 +697,11 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     return;
                 };
 
-                if message.header().network != this_l.network.network.current_network
-                    || message.header().version_using < this_l.network.network.protocol_version_min
+                if message.header.network != this_l.network.network.current_network
+                    || message.header.version_using < this_l.network.network.protocol_version_min
                 {
                     // error handling, either the networks bytes or the version is wrong
-                    if message.header().network == this_l.network.network.current_network {
+                    if message.header.network == this_l.network.network.current_network {
                         this_l.stats.inc(
                             StatType::Message,
                             DetailType::InvalidNetwork,
@@ -754,7 +748,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     return;
                 };
 
-                tcp.set_network_version(message.header().version_using);
+                tcp.set_network_version(message.header.version_using);
 
                 let node_id = response.node_id;
 

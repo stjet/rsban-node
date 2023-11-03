@@ -2,7 +2,7 @@ use super::MessageHeaderHandle;
 use crate::NetworkConstantsDto;
 use rsnano_node::{
     config::NetworkConstants,
-    messages::{Message, MessageEnum, MessageHeader, ProtocolInfo},
+    messages::{MessageEnum, MessageHeader, ProtocolInfo},
 };
 
 use std::ops::{Deref, DerefMut};
@@ -34,16 +34,16 @@ pub unsafe extern "C" fn rsn_message_header(
     handle: *mut MessageHandle,
 ) -> *mut MessageHeaderHandle {
     Box::into_raw(Box::new(MessageHeaderHandle::new(
-        (*handle).0.header().clone(),
+        (*handle).0.header.clone(),
     )))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_set_header(
     handle: *mut MessageHandle,
-    header: *mut MessageHeaderHandle,
+    header: &MessageHeaderHandle,
 ) {
-    (*handle).0.set_header((*header).deref())
+    (*handle).0.header = header.deref().clone()
 }
 
 #[no_mangle]
@@ -58,7 +58,7 @@ pub unsafe extern "C" fn rsn_message_destroy(handle: *mut MessageHandle) {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_type(handle: *mut MessageHandle) -> u8 {
-    (*handle).message_type() as u8
+    (*handle).header.message_type as u8
 }
 
 pub(crate) unsafe fn create_message_handle2(

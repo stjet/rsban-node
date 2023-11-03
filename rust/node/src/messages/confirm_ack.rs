@@ -59,7 +59,7 @@ impl Display for ConfirmAckPayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{Message, MessageEnum, MessageHeader};
+    use crate::messages::{MessageEnum, MessageHeader};
 
     use super::*;
     use rsnano_core::{utils::MemoryStream, BlockHash, KeyPair};

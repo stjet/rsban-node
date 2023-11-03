@@ -74,7 +74,7 @@ impl Display for FrontierReqPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{Message, MessageEnum};
+    use crate::messages::MessageEnum;
     use rsnano_core::utils::MemoryStream;
 
     #[test]

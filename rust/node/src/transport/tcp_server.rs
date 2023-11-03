@@ -17,8 +17,7 @@ use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::{NetworkConstants, NodeConfig},
     messages::{
-        Message, MessageEnum, MessageVisitor, NodeIdHandshakeQuery, NodeIdHandshakeResponse,
-        Payload,
+        MessageEnum, MessageVisitor, NodeIdHandshakeQuery, NodeIdHandshakeResponse, Payload,
     },
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
@@ -355,7 +354,7 @@ impl TcpServerExt for Arc<TcpServer> {
     fn process_message(&self, message: Box<MessageEnum>) -> bool {
         let _ = self.stats.inc(
             StatType::TcpServer,
-            DetailType::from(message.header().message_type),
+            DetailType::from(message.header.message_type),
             Direction::In,
         );
 
@@ -380,7 +379,7 @@ impl TcpServerExt for Arc<TcpServer> {
             let mut handshake_visitor = self
                 .message_visitor_factory
                 .handshake_visitor(Arc::clone(self));
-            message.visit(handshake_visitor.as_message_visitor());
+            handshake_visitor.received(&message);
 
             if handshake_visitor.process() {
                 self.queue_realtime(message);
@@ -398,7 +397,7 @@ impl TcpServerExt for Arc<TcpServer> {
             let mut realtime_visitor = self
                 .message_visitor_factory
                 .realtime_visitor(Arc::clone(self));
-            message.visit(realtime_visitor.as_message_visitor());
+            realtime_visitor.received(&message);
             if realtime_visitor.process() {
                 self.queue_realtime(message);
             }
@@ -409,7 +408,7 @@ impl TcpServerExt for Arc<TcpServer> {
             let mut bootstrap_visitor = self
                 .message_visitor_factory
                 .bootstrap_visitor(Arc::clone(self));
-            message.visit(bootstrap_visitor.as_message_visitor());
+            bootstrap_visitor.received(&message);
             return !bootstrap_visitor.processed(); // Stop receiving new messages if bootstrap serving started
         }
         debug_assert!(false);

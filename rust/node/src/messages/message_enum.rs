@@ -6,10 +6,10 @@ use crate::{
 use super::*;
 use anyhow::Result;
 use rsnano_core::{
-    utils::{Serialize, Stream},
+    utils::{MemoryStream, Serialize, Stream},
     BlockEnum, BlockHash, BlockType, Root,
 };
-use std::{any::Any, fmt::Display, sync::Arc};
+use std::{fmt::Display, sync::Arc};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MessageEnum {
@@ -389,40 +389,16 @@ impl MessageEnum {
         };
         Ok(Self { header, payload })
     }
-}
 
-impl Message for MessageEnum {
-    fn header(&self) -> &MessageHeader {
-        &self.header
-    }
-
-    fn set_header(&mut self, header: &MessageHeader) {
-        self.header = header.clone();
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.header().serialize(stream)?;
+    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.header.serialize(stream)?;
         self.payload.serialize(stream)
     }
 
-    fn visit(&self, visitor: &mut dyn MessageVisitor) {
-        visitor.received(self)
-    }
-
-    fn clone_box(&self) -> Box<dyn Message> {
-        Box::new(self.clone())
-    }
-
-    fn message_type(&self) -> MessageType {
-        self.header.message_type
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut stream = MemoryStream::new();
+        self.serialize(&mut stream).unwrap();
+        stream.to_vec()
     }
 }
 

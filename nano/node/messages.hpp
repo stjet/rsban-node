@@ -264,7 +264,6 @@ class telemetry_req final : public message
 {
 public:
 	explicit telemetry_req (nano::network_constants const & constants);
-	explicit telemetry_req (nano::message_header const &);
 	telemetry_req (nano::telemetry_req const &);
 	telemetry_req (rsnano::MessageHandle * handle_a);
 	void visit (nano::message_visitor &) const override;

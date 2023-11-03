@@ -31,6 +31,7 @@ pub enum Payload {
     FrontierReq(FrontierReqPayload),
     NodeIdHandshake(NodeIdHandshakePayload),
     TelemetryAck(TelemetryData),
+    TelemetryReq,
 }
 
 impl Payload {
@@ -47,7 +48,7 @@ impl Payload {
             Payload::FrontierReq(x) => x.serialize(stream),
             Payload::NodeIdHandshake(x) => x.serialize(stream),
             Payload::TelemetryAck(x) => x.serialize(stream),
-            Payload::BulkPush => Ok(()),
+            Payload::BulkPush | Payload::TelemetryReq => Ok(()),
         }
     }
 }
@@ -66,7 +67,7 @@ impl Display for Payload {
             Payload::FrontierReq(x) => x.fmt(f),
             Payload::NodeIdHandshake(x) => x.fmt(f),
             Payload::TelemetryAck(x) => x.fmt(f),
-            Payload::BulkPush => Ok(()),
+            Payload::BulkPush | Payload::TelemetryReq => Ok(()),
         }
     }
 }
@@ -329,6 +330,13 @@ impl MessageEnum {
         }
     }
 
+    pub fn new_telemetry_req(protocol_info: &ProtocolInfo) -> Self {
+        Self {
+            header: MessageHeader::new(MessageType::TelemetryReq, protocol_info),
+            payload: Payload::TelemetryReq,
+        }
+    }
+
     pub fn deserialize(
         stream: &mut impl Stream,
         header: MessageHeader,
@@ -376,7 +384,8 @@ impl MessageEnum {
             MessageType::TelemetryAck => {
                 Payload::TelemetryAck(TelemetryData::deserialize(stream, &header)?)
             }
-            _ => unimplemented!(),
+            MessageType::TelemetryReq => Payload::TelemetryReq,
+            MessageType::Invalid | MessageType::NotAType => bail!("invalid message type"),
         };
         Ok(Self { header, payload })
     }
@@ -405,7 +414,7 @@ impl Message for MessageEnum {
     }
 
     fn visit(&self, visitor: &mut dyn MessageVisitor) {
-        visitor.keepalive(self)
+        visitor.received(self)
     }
 
     fn clone_box(&self) -> Box<dyn Message> {

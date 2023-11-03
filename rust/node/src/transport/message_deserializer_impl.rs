@@ -121,7 +121,7 @@ impl MessageDeserializerImpl {
             MessageType::ConfirmReq => self.deserialize_confirm_req(&mut stream, header),
             MessageType::ConfirmAck => self.deserialize_confirm_ack(&mut stream, header),
             MessageType::NodeIdHandshake => self.deserialize_node_id_handshake(&mut stream, header),
-            MessageType::TelemetryReq => self.deserialize_telemetry_req(header),
+            MessageType::TelemetryReq => self.deserialize_telemetry_req(&mut stream, header),
             MessageType::TelemetryAck => self.deserialize_telemetry_ack(&mut stream, header),
             MessageType::BulkPull => self.deserialize_bulk_pull(&mut stream, header),
             MessageType::BulkPullAccount => self.deserialize_bulk_pull_account(&mut stream, header),
@@ -237,10 +237,14 @@ impl MessageDeserializerImpl {
 
     fn deserialize_telemetry_req(
         &self,
+        stream: &mut impl Stream,
         header: MessageHeader,
     ) -> Result<Box<dyn Message>, ParseStatus> {
         // Message does not use stream payload (header only)
-        Ok(Box::new(TelemetryReq::with_header(header)))
+        Ok(Box::new(
+            MessageEnum::deserialize(stream, header, 0, None, None)
+                .map_err(|_| ParseStatus::InvalidTelemetryReqMessage)?,
+        ))
     }
 
     fn deserialize_telemetry_ack(
@@ -374,7 +378,7 @@ mod tests {
 
     #[test]
     fn exact_telemetry_req() {
-        test_deserializer(&TelemetryReq::new(&Default::default()));
+        test_deserializer(&MessageEnum::new_telemetry_req(&Default::default()));
     }
 
     #[test]
@@ -435,7 +439,7 @@ mod tests {
         test_deserializer(&message);
     }
 
-    fn test_deserializer(original_message: &dyn Message) {
+    fn test_deserializer(original_message: &MessageEnum) {
         let network_filter = Arc::new(NetworkFilter::new(1));
         let block_uniquer = Arc::new(BlockUniquer::new());
         let vote_uniquer = Arc::new(VoteUniquer::new());

@@ -797,11 +797,6 @@ nano::telemetry_req::telemetry_req (nano::network_constants const & constants) :
 {
 }
 
-nano::telemetry_req::telemetry_req (nano::message_header const & header_a) :
-	message (rsnano::rsn_message_telemetry_req_create2 (header_a.handle))
-{
-}
-
 nano::telemetry_req::telemetry_req (nano::telemetry_req const & other_a) :
 	message (rsnano::rsn_message_telemetry_req_clone (other_a.handle))
 {

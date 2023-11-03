@@ -30,9 +30,7 @@ pub use bulk_pull::*;
 mod bulk_pull_account;
 pub use bulk_pull_account::*;
 
-mod telemetry_req;
 use rsnano_core::utils::{MemoryStream, Stream};
-pub use telemetry_req::*;
 
 mod telemetry_ack;
 pub use telemetry_ack::*;
@@ -62,8 +60,7 @@ pub trait Message: Send {
 }
 
 pub trait MessageVisitor {
-    fn keepalive(&mut self, _message: &MessageEnum) {}
-    fn telemetry_req(&mut self, _message: &TelemetryReq) {}
+    fn received(&mut self, message: &MessageEnum) {}
 }
 
 pub trait MessageExt {

@@ -18,7 +18,7 @@ use crate::{
     config::{NetworkConstants, NodeConfig},
     messages::{
         Message, MessageEnum, MessageVisitor, NodeIdHandshakeQuery, NodeIdHandshakeResponse,
-        Payload, TelemetryReq,
+        Payload,
     },
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
@@ -571,7 +571,7 @@ impl HandshakeMessageVisitorImpl {
 }
 
 impl MessageVisitor for HandshakeMessageVisitorImpl {
-    fn keepalive(&mut self, message: &MessageEnum) {
+    fn received(&mut self, message: &MessageEnum) {
         if matches!(
             &message.payload,
             Payload::BulkPull(_)
@@ -667,7 +667,7 @@ impl RealtimeMessageVisitorImpl {
 }
 
 impl MessageVisitor for RealtimeMessageVisitorImpl {
-    fn keepalive(&mut self, message: &MessageEnum) {
+    fn received(&mut self, message: &MessageEnum) {
         match &message.payload {
             Payload::Keepalive(_)
             | Payload::Publish(_)
@@ -677,20 +677,20 @@ impl MessageVisitor for RealtimeMessageVisitorImpl {
             | Payload::ConfirmReq(_)
             | Payload::FrontierReq(_)
             | Payload::TelemetryAck(_) => self.process = true,
+            Payload::TelemetryReq => {
+                // Only handle telemetry requests if they are outside of the cooldown period
+                if self.server.is_outside_cooldown_period() {
+                    self.server.set_last_telemetry_req();
+                    self.process = true;
+                } else {
+                    self.stats.inc(
+                        StatType::Telemetry,
+                        DetailType::RequestWithinProtectionCacheZone,
+                        Direction::In,
+                    );
+                }
+            }
             _ => {}
-        }
-    }
-    fn telemetry_req(&mut self, _message: &TelemetryReq) {
-        // Only handle telemetry requests if they are outside of the cooldown period
-        if self.server.is_outside_cooldown_period() {
-            self.server.set_last_telemetry_req();
-            self.process = true;
-        } else {
-            let _ = self.stats.inc(
-                StatType::Telemetry,
-                DetailType::RequestWithinProtectionCacheZone,
-                Direction::In,
-            );
         }
     }
 }

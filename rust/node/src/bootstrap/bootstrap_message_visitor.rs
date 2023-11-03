@@ -32,7 +32,7 @@ pub struct BootstrapMessageVisitorImpl {
 }
 
 impl MessageVisitor for BootstrapMessageVisitorImpl {
-    fn keepalive(&mut self, message: &MessageEnum) {
+    fn received(&mut self, message: &MessageEnum) {
         match &message.payload {
             Payload::BulkPull(payload) => {
                 if self.flags.disable_bootstrap_bulk_pull_server {

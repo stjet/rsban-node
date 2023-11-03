@@ -57,30 +57,6 @@ enum class bulk_pull_account_flags : uint8_t
 };
 
 class message_visitor;
-class message_header final
-{
-public:
-	message_header (message_header const &);
-	message_header (message_header &&);
-	message_header (rsnano::MessageHeaderHandle * handle_a);
-	~message_header ();
-
-	message_header & operator= (message_header && other_a);
-	message_header & operator= (message_header const & other_a);
-	nano::block_type block_type () const;
-	std::string to_string () const;
-
-	void flag_set (uint8_t, bool enable = true);
-	nano::networks get_network () const;
-	void set_network (nano::networks network);
-	uint8_t get_version_using () const;
-	void set_version_using (uint8_t version_a);
-	nano::message_type get_type () const;
-	void set_extension (std::size_t position, bool value);
-	static std::size_t size ();
-	rsnano::MessageHeaderHandle * handle;
-};
-
 class message
 {
 public:
@@ -92,8 +68,6 @@ public:
 	message & operator= (message &&) = delete;
 
 	virtual void visit (nano::message_visitor &) const = 0;
-	nano::message_header get_header () const;
-	void set_header (nano::message_header const & header);
 	nano::message_type type () const;
 	rsnano::MessageHandle * handle;
 };
@@ -282,7 +256,6 @@ public:
 	uint16_t size () const;
 	bool is_empty_payload () const;
 	std::string to_string () const;
-	static uint16_t size (nano::message_header const &);
 	nano::telemetry_data get_data () const;
 };
 
@@ -339,7 +312,6 @@ class bulk_push final : public message
 {
 public:
 	explicit bulk_push (nano::network_constants const & constants);
-	explicit bulk_push (nano::message_header const &);
 	bulk_push (rsnano::MessageHandle * handle_a);
 	void visit (nano::message_visitor &) const override;
 };
@@ -373,8 +345,6 @@ public:
 	node_id_handshake (rsnano::MessageHandle * handle_a);
 
 	void visit (nano::message_visitor &) const override;
-	std::size_t size () const;
-	static std::size_t size (nano::message_header const &);
 	std::optional<query_payload> get_query () const;
 	std::optional<response_payload> get_response () const;
 	std::string to_string () const;
@@ -438,7 +408,6 @@ public:
 
 	void visit (nano::message_visitor &) const override;
 
-	static std::size_t size (nano::message_header const &);
 	std::variant<empty_payload, blocks_payload, account_info_payload> payload () const;
 };
 
@@ -482,7 +451,6 @@ public:
 	nano::asc_pull_type pull_type () const;
 
 	void visit (nano::message_visitor &) const override;
-	static std::size_t size (nano::message_header const &);
 	std::variant<empty_payload, blocks_payload, account_info_payload> payload () const;
 };
 

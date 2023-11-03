@@ -30,99 +30,9 @@
 #include <utility>
 #include <vector>
 
-/*
- * message_header
- */
-
-nano::message_header::message_header (nano::message_header const & other_a) :
-	handle{ rsnano::rsn_message_header_clone (other_a.handle) }
-{
-}
-
-nano::message_header::message_header (nano::message_header && other_a) :
-	handle{ other_a.handle }
-{
-	other_a.handle = nullptr;
-}
-
-nano::message_header::message_header (rsnano::MessageHeaderHandle * handle_a) :
-	handle{ handle_a }
-{
-}
-
-nano::message_header & nano::message_header::operator= (nano::message_header && other_a)
-{
-	if (handle != nullptr)
-		rsnano::rsn_message_header_destroy (handle);
-	handle = other_a.handle;
-	other_a.handle = nullptr;
-	return *this;
-}
-
-nano::message_header & nano::message_header::operator= (message_header const & other_a)
-{
-	if (handle != nullptr)
-		rsnano::rsn_message_header_destroy (handle);
-	handle = rsnano::rsn_message_header_clone (other_a.handle);
-	return *this;
-}
-
-nano::message_header::~message_header ()
-{
-	if (handle != nullptr)
-		rsnano::rsn_message_header_destroy (handle);
-}
-
-nano::block_type nano::message_header::block_type () const
-{
-	return static_cast<nano::block_type> (rsnano::rsn_message_header_block_type (handle));
-}
-
-void nano::message_header::flag_set (uint8_t flag_a, bool enable)
-{
-	// Flags from 8 are block_type & count
-	debug_assert (flag_a < 8);
-	set_extension (flag_a, enable);
-}
-
-nano::networks nano::message_header::get_network () const
-{
-	return static_cast<nano::networks> (rsnano::rsn_message_header_network (handle));
-}
-
-void nano::message_header::set_network (nano::networks network)
-{
-	rsnano::rsn_message_header_set_network (handle, static_cast<uint16_t> (network));
-}
-
-uint8_t nano::message_header::get_version_using () const
-{
-	return rsnano::rsn_message_header_version_using (handle);
-}
-
-void nano::message_header::set_version_using (uint8_t version_a)
-{
-	rsnano::rsn_message_header_set_version_using (handle, version_a);
-}
-
-nano::message_type nano::message_header::get_type () const
-{
-	return static_cast<nano::message_type> (rsnano::rsn_message_header_type (handle));
-}
-
 nano::stat::detail nano::to_stat_detail (nano::message_type message_type)
 {
 	return static_cast<nano::stat::detail> (rsnano::rsn_message_type_to_stat_detail (static_cast<uint8_t> (message_type)));
-}
-
-void nano::message_header::set_extension (std::size_t position, bool value)
-{
-	rsnano::rsn_message_header_set_extension (handle, position, value);
-}
-
-size_t nano::message_header::size ()
-{
-	return rsnano::rsn_message_header_size ();
 }
 
 /*
@@ -139,19 +49,9 @@ nano::message::~message ()
 	rsnano::rsn_message_destroy (handle);
 }
 
-nano::message_header nano::message::get_header () const
-{
-	return nano::message_header{ rsnano::rsn_message_header (handle) };
-}
-
-void nano::message::set_header (nano::message_header const & header_a)
-{
-	rsnano::rsn_message_set_header (handle, header_a.handle);
-}
-
 nano::message_type nano::message::type () const
 {
-	return get_header ().get_type ();
+	return static_cast<nano::message_type> (rsnano::rsn_message_type (handle));
 }
 
 std::unique_ptr<nano::message> nano::message_handle_to_message (rsnano::MessageHandle * handle_a)
@@ -297,13 +197,13 @@ nano::publish::publish (nano::network_constants const & constants, std::shared_p
 {
 }
 
-nano::publish::publish (nano::publish const & other_a) :
-	message (rsnano::rsn_message_publish_clone (other_a.handle))
+nano::publish::publish (rsnano::MessageHandle * handle) :
+	message (handle)
 {
 }
 
-nano::publish::publish (rsnano::MessageHandle * handle_a) :
-	message (handle_a)
+nano::publish::publish (nano::publish const & other_a) :
+	message (rsnano::rsn_message_publish_clone (other_a.handle))
 {
 }
 
@@ -467,16 +367,6 @@ rsnano::MessageHandle * create_confirm_ack_handle (nano::network_constants const
 {
 	auto constants_dto{ constants.to_dto () };
 	return rsnano::rsn_message_confirm_ack_create (&constants_dto, vote_a.get_handle ());
-}
-
-rsnano::MessageHandle * create_confirm_ack_handle (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::vote_uniquer * uniquer_a)
-{
-	rsnano::VoteUniquerHandle * uniquer_handle = nullptr;
-	if (uniquer_a != nullptr)
-	{
-		uniquer_handle = uniquer_a->handle;
-	}
-	return rsnano::rsn_message_confirm_ack_create2 (header_a.handle, &stream_a, uniquer_handle, &error_a);
 }
 
 nano::confirm_ack::confirm_ack (nano::network_constants const & constants, std::shared_ptr<nano::vote> const & vote_a) :
@@ -767,11 +657,6 @@ nano::bulk_push::bulk_push (nano::network_constants const & constants) :
 {
 }
 
-nano::bulk_push::bulk_push (nano::message_header const & header_a) :
-	message (rsnano::rsn_message_bulk_push_create2 (header_a.handle))
-{
-}
-
 nano::bulk_push::bulk_push (rsnano::MessageHandle * handle_a) :
 	message (handle_a)
 {
@@ -870,11 +755,6 @@ void nano::telemetry_ack::visit (nano::message_visitor & visitor_a) const
 uint16_t nano::telemetry_ack::size () const
 {
 	return rsnano::rsn_message_telemetry_ack_size (handle);
-}
-
-uint16_t nano::telemetry_ack::size (nano::message_header const & message_header_a)
-{
-	return rsnano::rsn_message_telemetry_ack_size_from_header (message_header_a.handle);
 }
 
 nano::telemetry_data nano::telemetry_ack::get_data () const
@@ -1396,16 +1276,6 @@ void nano::node_id_handshake::visit (nano::message_visitor & visitor_a) const
 	visitor_a.node_id_handshake (*this);
 }
 
-std::size_t nano::node_id_handshake::size () const
-{
-	return size (get_header ());
-}
-
-std::size_t nano::node_id_handshake::size (nano::message_header const & header)
-{
-	return rsnano::rsn_message_node_id_handshake_size (header.handle);
-}
-
 std::string nano::node_id_handshake::to_string () const
 {
 	rsnano::StringDto dto;
@@ -1469,11 +1339,6 @@ nano::asc_pull_type nano::asc_pull_req::pull_type () const
 void nano::asc_pull_req::visit (nano::message_visitor & visitor) const
 {
 	visitor.asc_pull_req (*this);
-}
-
-std::size_t nano::asc_pull_req::size (const nano::message_header & header)
-{
-	return rsnano::rsn_message_asc_pull_req_size (header.handle);
 }
 
 std::variant<nano::empty_payload, nano::asc_pull_req::blocks_payload, nano::asc_pull_req::account_info_payload> nano::asc_pull_req::payload () const
@@ -1568,11 +1433,6 @@ nano::asc_pull_type nano::asc_pull_ack::pull_type () const
 void nano::asc_pull_ack::visit (nano::message_visitor & visitor) const
 {
 	visitor.asc_pull_ack (*this);
-}
-
-std::size_t nano::asc_pull_ack::size (const nano::message_header & header)
-{
-	return rsnano::rsn_message_asc_pull_ack_size (header.handle);
 }
 
 std::variant<nano::empty_payload, nano::asc_pull_ack::blocks_payload, nano::asc_pull_ack::account_info_payload> nano::asc_pull_ack::payload () const

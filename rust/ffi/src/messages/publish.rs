@@ -1,11 +1,7 @@
+use super::{create_message_handle3, message_handle_clone, MessageHandle};
+use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
 use rsnano_node::messages::{MessageEnum, Payload, PublishPayload};
 use std::{ops::Deref, sync::Arc};
-
-use super::{
-    create_message_handle2, create_message_handle3, message_handle_clone, MessageHandle,
-    MessageHeaderHandle,
-};
-use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_publish_create(
@@ -15,21 +11,6 @@ pub unsafe extern "C" fn rsn_message_publish_create(
     create_message_handle3(constants, |protocol_info| {
         let block = Arc::clone((*block).deref());
         MessageEnum::new_publish(protocol_info, block)
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_publish_create2(
-    header: *mut MessageHeaderHandle,
-    digest: *const u8,
-) -> *mut MessageHandle {
-    let digest = u128::from_be_bytes(std::slice::from_raw_parts(digest, 16).try_into().unwrap());
-    create_message_handle2(header, |header| MessageEnum {
-        header,
-        payload: Payload::Publish(PublishPayload {
-            block: None,
-            digest,
-        }),
     })
 }
 

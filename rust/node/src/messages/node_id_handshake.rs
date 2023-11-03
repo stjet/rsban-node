@@ -257,32 +257,35 @@ impl Display for NodeIdHandshakePayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::MessageEnum;
+    use crate::messages::{assert_deserializable, MessageEnum};
 
     use super::*;
 
     #[test]
     fn serialize_query() {
-        test_serialization(MessageEnum::new_node_id_handshake2(
+        let original = MessageEnum::new_node_id_handshake2(
             &Default::default(),
             NodeIdHandshakePayload::create_test_query(),
-        ));
+        );
+        assert_deserializable(&original);
     }
 
     #[test]
     fn serialize_response_v1() {
-        test_serialization(MessageEnum::new_node_id_handshake2(
+        let original = MessageEnum::new_node_id_handshake2(
             &Default::default(),
             NodeIdHandshakePayload::create_test_response_v1(),
-        ));
+        );
+        assert_deserializable(&original);
     }
 
     #[test]
     fn serialize_response_v2() {
-        test_serialization(MessageEnum::new_node_id_handshake2(
+        let original = MessageEnum::new_node_id_handshake2(
             &Default::default(),
             NodeIdHandshakePayload::create_test_response_v2(),
-        ));
+        );
+        assert_deserializable(&original);
     }
 
     #[test]
@@ -343,20 +346,5 @@ mod tests {
         let mut copy = response.clone();
         copy.v2.as_mut().unwrap().genesis = BlockHash::from(123);
         assert!(copy.validate(&cookie).is_err());
-    }
-
-    fn test_serialization(original: MessageEnum) {
-        let mut stream = MemoryStream::new();
-        original.serialize(&mut stream).unwrap();
-        assert_eq!(
-            stream.bytes_written(),
-            MessageHeader::serialized_size()
-                + NodeIdHandshakePayload::serialized_size(&original.header)
-        );
-
-        let header = MessageHeader::deserialize(&mut stream).unwrap();
-        let deserialized = MessageEnum::deserialize(&mut stream, header, 0, None, None).unwrap();
-
-        assert_eq!(deserialized, original);
     }
 }

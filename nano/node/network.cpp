@@ -20,8 +20,6 @@ nano::network::network (nano::node & node_a, uint16_t port_a) :
 	id (nano::network_constants::active_network ()),
 	syn_cookies{ std::make_shared<nano::syn_cookies> (node_a.network_params.network.max_peers_per_ip) },
 	inbound{ [this] (nano::message const & message, std::shared_ptr<nano::transport::channel> const & channel) {
-		debug_assert (message.get_header ().get_network () == node.network_params.network.current_network);
-		debug_assert (message.get_header ().get_version_using () >= node.network_params.network.protocol_version_min);
 		process_message (message, channel);
 	} },
 	resolver (node_a.io_ctx),

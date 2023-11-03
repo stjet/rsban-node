@@ -112,47 +112,34 @@ impl Display for ConfirmReqPayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::MessageEnum;
+    use crate::messages::{assert_deserializable, MessageEnum};
 
     use super::*;
-    use rsnano_core::{utils::MemoryStream, StateBlockBuilder};
+    use rsnano_core::StateBlockBuilder;
 
     #[test]
-    fn serialize_block() -> Result<()> {
+    fn serialize_block() {
         let block = Arc::new(StateBlockBuilder::new().build());
-        let confirm_req1 = MessageEnum::new_confirm_req_with_block(&Default::default(), block);
-        let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;
-        assert_eq!(confirm_req1, confirm_req2);
-        Ok(())
+        let confirm_req = MessageEnum::new_confirm_req_with_block(&Default::default(), block);
+        assert_deserializable(&confirm_req);
     }
 
     #[test]
-    fn serialze_roots_hashes() -> Result<()> {
+    fn serialze_roots_hashes() {
         let roots_hashes = vec![(BlockHash::from(1), Root::from(2))];
-        let confirm_req1 =
+        let confirm_req =
             MessageEnum::new_confirm_req_with_roots_hashes(&Default::default(), roots_hashes);
-        let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;
-        assert_eq!(confirm_req1, confirm_req2);
-        Ok(())
+        assert_deserializable(&confirm_req);
     }
 
     #[test]
-    fn serialze_many_roots_hashes() -> Result<()> {
+    fn serialze_many_roots_hashes() {
         let roots_hashes = (0..7)
             .into_iter()
             .map(|i| (BlockHash::from(i), Root::from(i + 1)))
             .collect();
-        let confirm_req1 =
+        let confirm_req =
             MessageEnum::new_confirm_req_with_roots_hashes(&Default::default(), roots_hashes);
-        let confirm_req2 = serialize_and_deserialize(&confirm_req1)?;
-        assert_eq!(confirm_req1, confirm_req2);
-        Ok(())
-    }
-
-    fn serialize_and_deserialize(confirm_req1: &MessageEnum) -> Result<MessageEnum, anyhow::Error> {
-        let mut stream = MemoryStream::new();
-        confirm_req1.serialize(&mut stream)?;
-        let header = MessageHeader::deserialize(&mut stream)?;
-        MessageEnum::deserialize(&mut stream, header, 0, None, None)
+        assert_deserializable(&confirm_req);
     }
 }

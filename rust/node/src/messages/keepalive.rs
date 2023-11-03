@@ -77,33 +77,20 @@ fn empty_peers() -> [SocketAddr; 8] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{MessageEnum, Payload, ProtocolInfo};
-    use rsnano_core::utils::MemoryStream;
+    use crate::messages::{assert_deserializable, MessageEnum, Payload, ProtocolInfo};
     use std::str::FromStr;
 
     #[test]
     fn serialize_no_peers() {
         let request1 = MessageEnum::new_keepalive(&ProtocolInfo::dev_network());
-        let mut stream = MemoryStream::new();
-        request1.serialize(&mut stream).unwrap();
-        let header = MessageHeader::deserialize(&mut stream).unwrap();
-        let request2 = MessageEnum::deserialize(&mut stream, header, 0, None, None).unwrap();
-        let Payload::Keepalive(payload1) = request1.payload else { panic!("not a keepalive message")};
-        let Payload::Keepalive(payload2) = request2.payload else { panic!("not a keepalive message")};
-        assert_eq!(payload1, payload2);
+        assert_deserializable(&request1);
     }
 
     #[test]
-    fn serialize_peers() -> Result<()> {
+    fn serialize_peers() {
         let mut keepalive = KeepalivePayload::default();
         keepalive.peers[0] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 10000);
-
-        let mut stream = MemoryStream::new();
-        keepalive.serialize(&mut stream)?;
-        let header = MessageHeader::new(MessageType::Keepalive, &ProtocolInfo::default());
-        let deserialized = KeepalivePayload::deserialize(&header, &mut stream)?;
-        assert_eq!(keepalive, deserialized);
-        Ok(())
+        assert_deserializable(&request1);
     }
 
     #[test]

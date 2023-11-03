@@ -40,3 +40,13 @@ pub use asc_pull_ack::*;
 pub trait MessageVisitor {
     fn received(&mut self, message: &MessageEnum);
 }
+
+#[cfg(test)]
+pub(crate) fn assert_deserializable(original: &MessageEnum) {
+    let mut stream = rsnano_core::utils::MemoryStream::new();
+    original.serialize(&mut stream).unwrap();
+
+    let header = MessageHeader::deserialize(&mut stream).unwrap();
+    let message_out = MessageEnum::deserialize(&mut stream, header, 0, None, None).unwrap();
+    assert_eq!(message_out, *original);
+}

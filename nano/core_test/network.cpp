@@ -934,10 +934,9 @@ TEST (network, filter_invalid_network_bytes)
 	ASSERT_NE (nullptr, channel);
 
 	// send a keepalive, from node2 to node1, with the wrong network bytes
-	nano::keepalive keepalive{ nano::dev::network_params.network };
-	auto header{ keepalive.get_header () };
-	header.set_network (nano::networks::invalid);
-	keepalive.set_header (header);
+	auto network{ nano::dev::network_params.network };
+	network.set_active_network (nano::networks::invalid);
+	nano::keepalive keepalive{ network };
 	channel->send (keepalive);
 
 	ASSERT_TIMELY (5s, 1 == node1.stats->count (nano::stat::type::error, nano::stat::detail::invalid_network));
@@ -955,10 +954,9 @@ TEST (network, filter_invalid_version_using)
 	ASSERT_NE (nullptr, channel);
 
 	// send a keepalive, from node2 to node1, with the wrong version_using
-	nano::keepalive keepalive{ nano::dev::network_params.network };
-	auto header{ keepalive.get_header () };
-	header.set_version_using (nano::dev::network_params.network.protocol_version_min - 1);
-	keepalive.set_header (header);
+	auto network{ nano::dev::network_params.network };
+	network.protocol_version = network.protocol_version_min - 1;
+	nano::keepalive keepalive{ network };
 	channel->send (keepalive);
 
 	ASSERT_TIMELY (5s, 1 == node1.stats->count (nano::stat::type::error, nano::stat::detail::outdated_version));

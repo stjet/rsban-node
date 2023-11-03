@@ -171,13 +171,11 @@ impl Serialize for AscPullReqPayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{MessageEnum, ProtocolInfo};
-
     use super::*;
-    use rsnano_core::utils::MemoryStream;
+    use crate::messages::{assert_deserializable, MessageEnum, ProtocolInfo};
 
     #[test]
-    fn serialize_header() -> anyhow::Result<()> {
+    fn serialize_blocks() {
         let original = MessageEnum::new_asc_pull_req_blocks(
             &ProtocolInfo::dev_network(),
             7,
@@ -188,38 +186,11 @@ mod tests {
             },
         );
 
-        let mut stream = MemoryStream::new();
-        original.serialize(&mut stream)?;
-
-        let header = MessageHeader::deserialize(&mut stream)?;
-        assert_eq!(header.message_type, MessageType::AscPullReq);
-        Ok(())
+        assert_deserializable(&original);
     }
 
     #[test]
-    fn serialize_blocks() -> anyhow::Result<()> {
-        let original = MessageEnum::new_asc_pull_req_blocks(
-            &ProtocolInfo::dev_network(),
-            7,
-            BlocksReqPayload {
-                start: HashOrAccount::from(3),
-                count: 111,
-                start_type: HashType::Block,
-            },
-        );
-
-        let mut stream = MemoryStream::new();
-        original.serialize(&mut stream)?;
-
-        let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = MessageEnum::deserialize(&mut stream, header, 0, None, None)?;
-        assert_eq!(message_out.payload, original.payload);
-        assert!(stream.at_end());
-        Ok(())
-    }
-
-    #[test]
-    fn serialize_account_info() -> anyhow::Result<()> {
+    fn serialize_account_info() {
         let original = MessageEnum::new_asc_pull_req_accounts(
             &ProtocolInfo::dev_network(),
             7,
@@ -229,14 +200,7 @@ mod tests {
             },
         );
 
-        let mut stream = MemoryStream::new();
-        original.serialize(&mut stream)?;
-
-        let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = MessageEnum::deserialize(&mut stream, header, 0, None, None)?;
-        assert_eq!(message_out.payload, original.payload);
-        assert!(stream.at_end());
-        Ok(())
+        assert_deserializable(&original);
     }
 
     #[test]

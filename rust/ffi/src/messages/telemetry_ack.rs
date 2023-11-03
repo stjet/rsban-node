@@ -1,4 +1,4 @@
-use super::{create_message_handle3, message_handle_clone, MessageHandle, MessageHeaderHandle};
+use super::{create_message_handle3, message_handle_clone, MessageHandle};
 use crate::{
     copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto, StringDto,
 };
@@ -376,13 +376,6 @@ pub unsafe extern "C" fn rsn_message_telemetry_ack_data(
 ) -> *mut TelemetryDataHandle {
     let Payload::TelemetryAck(data) = &handle.payload else {panic!("not a telemetry_ack")};
     Box::into_raw(Box::new(TelemetryDataHandle(data.clone())))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_telemetry_ack_size_from_header(
-    header: &MessageHeaderHandle,
-) -> u16 {
-    TelemetryData::size_from_header(header) as u16
 }
 
 #[no_mangle]

@@ -508,12 +508,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         while !self.stopped.load(Ordering::SeqCst) {
             let item = self.tcp_message_manager.get_message();
             if let Some(message) = &item.message {
-                self.process_message(
-                    message,
-                    &item.endpoint,
-                    item.node_id,
-                    &item.socket.unwrap(),
-                );
+                self.process_message(message, &item.endpoint, item.node_id, &item.socket.unwrap());
             }
         }
     }
@@ -681,7 +676,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 // the header type should in principle be checked after checking the network bytes and the version numbers, I will not change it here since the benefits do not outweight the difficulties
 
-                let Payload::NodeIdHandshake(handshake) = &message.payload 
+                let Payload::NodeIdHandshake(handshake) = &message.payload
                 else {
                     if this_l
                         .node_config

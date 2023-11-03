@@ -51,6 +51,77 @@ impl Payload {
             Payload::BulkPush | Payload::TelemetryReq => Ok(()),
         }
     }
+
+    pub fn message_type(&self) -> MessageType {
+        match &self {
+            Payload::Keepalive(_) => MessageType::Keepalive,
+            Payload::Publish(_) => MessageType::Publish,
+            Payload::AscPullAck(_) => MessageType::AscPullAck,
+            Payload::AscPullReq(_) => MessageType::AscPullReq,
+            Payload::BulkPull(_) => MessageType::BulkPull,
+            Payload::BulkPullAccount(_) => MessageType::BulkPullAccount,
+            Payload::BulkPush => MessageType::BulkPush,
+            Payload::ConfirmAck(_) => MessageType::ConfirmAck,
+            Payload::ConfirmReq(_) => MessageType::ConfirmReq,
+            Payload::FrontierReq(_) => MessageType::FrontierReq,
+            Payload::NodeIdHandshake(_) => MessageType::NodeIdHandshake,
+            Payload::TelemetryAck(_) => MessageType::TelemetryAck,
+            Payload::TelemetryReq => MessageType::TelemetryReq,
+        }
+    }
+
+    pub fn deserialize(
+        stream: &mut impl Stream,
+        header: &MessageHeader,
+        digest: u128,
+        block_uniquer: Option<&BlockUniquer>,
+        vote_uniquer: Option<&VoteUniquer>,
+    ) -> Result<Self> {
+        let msg = match header.message_type {
+            MessageType::Keepalive => {
+                Payload::Keepalive(KeepalivePayload::deserialize(&header, stream)?)
+            }
+            MessageType::Publish => Payload::Publish(PublishPayload::deserialize(
+                stream,
+                &header,
+                digest,
+                block_uniquer,
+            )?),
+            MessageType::AscPullAck => {
+                Payload::AscPullAck(AscPullAckPayload::deserialize(stream, &header)?)
+            }
+            MessageType::AscPullReq => {
+                Payload::AscPullReq(AscPullReqPayload::deserialize(stream, &header)?)
+            }
+            MessageType::BulkPull => {
+                Payload::BulkPull(BulkPullPayload::deserialize(stream, &header)?)
+            }
+            MessageType::BulkPullAccount => {
+                Payload::BulkPullAccount(BulkPullAccountPayload::deserialize(stream, &header)?)
+            }
+            MessageType::BulkPush => Payload::BulkPush,
+            MessageType::ConfirmAck => {
+                Payload::ConfirmAck(ConfirmAckPayload::deserialize(stream, vote_uniquer)?)
+            }
+            MessageType::ConfirmReq => Payload::ConfirmReq(ConfirmReqPayload::deserialize(
+                stream,
+                &header,
+                block_uniquer,
+            )?),
+            MessageType::FrontierReq => {
+                Payload::FrontierReq(FrontierReqPayload::deserialize(stream, &header)?)
+            }
+            MessageType::NodeIdHandshake => {
+                Payload::NodeIdHandshake(NodeIdHandshakePayload::deserialize(stream, &header)?)
+            }
+            MessageType::TelemetryAck => {
+                Payload::TelemetryAck(TelemetryData::deserialize(stream, &header)?)
+            }
+            MessageType::TelemetryReq => Payload::TelemetryReq,
+            MessageType::Invalid | MessageType::NotAType => bail!("invalid message type"),
+        };
+        Ok(msg)
+    }
 }
 
 impl Display for Payload {
@@ -344,50 +415,12 @@ impl MessageEnum {
         block_uniquer: Option<&BlockUniquer>,
         vote_uniquer: Option<&VoteUniquer>,
     ) -> Result<Self> {
-        let payload = match header.message_type {
-            MessageType::Keepalive => {
-                Payload::Keepalive(KeepalivePayload::deserialize(&header, stream)?)
-            }
-            MessageType::Publish => Payload::Publish(PublishPayload::deserialize(
-                stream,
-                &header,
-                digest,
-                block_uniquer,
-            )?),
-            MessageType::AscPullAck => {
-                Payload::AscPullAck(AscPullAckPayload::deserialize(stream, &header)?)
-            }
-            MessageType::AscPullReq => {
-                Payload::AscPullReq(AscPullReqPayload::deserialize(stream, &header)?)
-            }
-            MessageType::BulkPull => {
-                Payload::BulkPull(BulkPullPayload::deserialize(stream, &header)?)
-            }
-            MessageType::BulkPullAccount => {
-                Payload::BulkPullAccount(BulkPullAccountPayload::deserialize(stream, &header)?)
-            }
-            MessageType::BulkPush => Payload::BulkPush,
-            MessageType::ConfirmAck => {
-                Payload::ConfirmAck(ConfirmAckPayload::deserialize(stream, vote_uniquer)?)
-            }
-            MessageType::ConfirmReq => Payload::ConfirmReq(ConfirmReqPayload::deserialize(
-                stream,
-                &header,
-                block_uniquer,
-            )?),
-            MessageType::FrontierReq => {
-                Payload::FrontierReq(FrontierReqPayload::deserialize(stream, &header)?)
-            }
-            MessageType::NodeIdHandshake => {
-                Payload::NodeIdHandshake(NodeIdHandshakePayload::deserialize(stream, &header)?)
-            }
-            MessageType::TelemetryAck => {
-                Payload::TelemetryAck(TelemetryData::deserialize(stream, &header)?)
-            }
-            MessageType::TelemetryReq => Payload::TelemetryReq,
-            MessageType::Invalid | MessageType::NotAType => bail!("invalid message type"),
-        };
+        let payload = Payload::deserialize(stream, &header, digest, block_uniquer, vote_uniquer)?;
         Ok(Self { header, payload })
+    }
+
+    pub fn message_type(&self) -> MessageType {
+        self.payload.message_type()
     }
 
     pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {

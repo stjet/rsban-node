@@ -59,13 +59,13 @@ impl Display for ConfirmAckPayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{MessageEnum, MessageHeader};
+    use crate::messages::{assert_deserializable, MessageEnum};
 
     use super::*;
-    use rsnano_core::{utils::MemoryStream, BlockHash, KeyPair};
+    use rsnano_core::{BlockHash, KeyPair};
 
     #[test]
-    fn serialize() -> Result<()> {
+    fn serialize() {
         let keys = KeyPair::new();
         let mut hashes = Vec::new();
         for i in 0..ConfirmAckPayload::HASHES_MAX {
@@ -75,11 +75,6 @@ mod tests {
         let vote = Arc::new(vote);
         let confirm1 = MessageEnum::new_confirm_ack(&Default::default(), vote);
 
-        let mut stream = MemoryStream::new();
-        confirm1.serialize(&mut stream)?;
-        let header = MessageHeader::deserialize(&mut stream)?;
-        let confirm2 = MessageEnum::deserialize(&mut stream, header, 0, None, None)?;
-        assert_eq!(confirm1, confirm2);
-        Ok(())
+        assert_deserializable(&confirm1);
     }
 }

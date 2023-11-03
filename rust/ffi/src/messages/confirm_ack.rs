@@ -1,19 +1,6 @@
-use std::{ffi::c_void, ops::Deref, sync::Arc};
-
-use crate::{
-    utils::FfiStream,
-    voting::{VoteHandle, VoteUniquerHandle},
-    NetworkConstantsDto, StringDto,
-};
-use rsnano_node::{
-    messages::{ConfirmAckPayload, MessageEnum, Payload},
-    voting::Vote,
-};
-
-use super::{
-    create_message_handle2, create_message_handle3, message_handle_clone, MessageHandle,
-    MessageHeaderHandle,
-};
+use super::{create_message_handle3, message_handle_clone, MessageHandle};
+use crate::{voting::VoteHandle, NetworkConstantsDto, StringDto};
+use rsnano_node::messages::{ConfirmAckPayload, MessageEnum, Payload};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_ack_create(
@@ -23,32 +10,6 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_create(
     create_message_handle3(constants, |consts| {
         let vote = (*vote).clone();
         MessageEnum::new_confirm_ack(consts, vote)
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_confirm_ack_create2(
-    header: *mut MessageHeaderHandle,
-    stream: *mut c_void,
-    uniquer: *mut VoteUniquerHandle,
-    is_error: *mut bool,
-) -> *mut MessageHandle {
-    create_message_handle2(header, |hdr| {
-        let mut stream = FfiStream::new(stream);
-        let uniquer = if uniquer.is_null() {
-            None
-        } else {
-            Some((*uniquer).deref().as_ref())
-        };
-
-        match MessageEnum::deserialize(&mut stream, hdr, 0, None, uniquer) {
-            Ok(i) => i,
-            Err(_) => {
-                *is_error = true;
-                //workaround to prevent nullptr:
-                MessageEnum::new_confirm_ack(&Default::default(), Arc::new(Vote::null()))
-            }
-        }
     })
 }
 

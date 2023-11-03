@@ -1,7 +1,7 @@
 use num::FromPrimitive;
 use rsnano_core::HashOrAccount;
 
-use super::{create_message_handle3, message_handle_clone, MessageHandle, MessageHeaderHandle};
+use super::{create_message_handle3, message_handle_clone, MessageHandle};
 use crate::{copy_hash_or_account_bytes, NetworkConstantsDto};
 use rsnano_node::messages::{
     AccountInfoReqPayload, AscPullReqPayload, AscPullReqType, BlocksReqPayload, MessageEnum,
@@ -70,11 +70,6 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_get_id(handle: &MessageHandle)
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_req_pull_type(handle: &MessageHandle) -> u8 {
     get_payload(handle).payload_type() as u8
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_req_size(header: &MessageHeaderHandle) -> usize {
-    AscPullReqPayload::serialized_size(&*header)
 }
 
 #[no_mangle]

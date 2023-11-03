@@ -1,6 +1,6 @@
 use rsnano_core::{Account, BlockHash};
 
-use super::{create_message_handle3, message_handle_clone, MessageHandle, MessageHeaderHandle};
+use super::{create_message_handle3, message_handle_clone, MessageHandle};
 use crate::{
     core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
     NetworkConstantsDto,
@@ -68,11 +68,6 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_get_id(handle: &MessageHandle)
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_asc_pull_ack_pull_type(handle: &MessageHandle) -> u8 {
     get_payload(handle).payload_type() as u8
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_asc_pull_ack_size(header: &MessageHeaderHandle) -> usize {
-    AscPullAckPayload::serialized_size(&*header)
 }
 
 #[no_mangle]

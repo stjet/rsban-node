@@ -1,5 +1,6 @@
 use rsnano_core::{Account, BlockHash, PublicKey, Signature};
 
+use super::{create_message_handle3, message_handle_clone, MessageHandle};
 use crate::{
     copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto, StringDto,
 };
@@ -7,8 +8,6 @@ use rsnano_node::messages::{
     MessageEnum, NodeIdHandshakePayload, NodeIdHandshakeQuery, NodeIdHandshakeResponse, Payload,
     V2Payload,
 };
-
-use super::{create_message_handle3, message_handle_clone, MessageHandle, MessageHeaderHandle};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
@@ -157,13 +156,6 @@ impl From<NodeIdHandshakeResponse> for HandshakeResponseDto {
             },
         }
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_node_id_handshake_size(
-    header: *mut MessageHeaderHandle,
-) -> usize {
-    NodeIdHandshakePayload::serialized_size(&*header)
 }
 
 #[no_mangle]

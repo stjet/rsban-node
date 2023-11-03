@@ -74,21 +74,14 @@ impl Display for FrontierReqPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::MessageEnum;
-    use rsnano_core::utils::MemoryStream;
+    use crate::messages::{assert_deserializable, MessageEnum};
 
     #[test]
-    fn serialize() -> Result<()> {
+    fn serialize() {
         let request1 = MessageEnum::new_frontier_req(
             &Default::default(),
             FrontierReqPayload::create_test_instance(),
         );
-        let mut stream = MemoryStream::new();
-        request1.serialize(&mut stream)?;
-
-        let header = MessageHeader::deserialize(&mut stream)?;
-        let request2 = MessageEnum::deserialize(&mut stream, header, 0, None, None)?;
-        assert_eq!(request1, request2);
-        Ok(())
+        assert_deserializable(&request1);
     }
 }

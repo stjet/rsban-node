@@ -99,22 +99,15 @@ impl Display for BulkPullPayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{MessageEnum, ProtocolInfo};
-
     use super::*;
-    use rsnano_core::utils::MemoryStream;
+    use crate::messages::{assert_deserializable, MessageEnum, ProtocolInfo};
 
     #[test]
-    fn bulk_pull_serialization() -> Result<()> {
+    fn bulk_pull_serialization() {
         let message_in = MessageEnum::new_bulk_pull(
             &ProtocolInfo::dev_network(),
             BulkPullPayload::create_test_instance(),
         );
-        let mut stream = MemoryStream::new();
-        message_in.serialize(&mut stream)?;
-        let header = MessageHeader::deserialize(&mut stream)?;
-        let message_out = MessageEnum::deserialize(&mut stream, header, 0, None, None)?;
-        assert_eq!(message_in, message_out);
-        Ok(())
+        assert_deserializable(&message_in);
     }
 }

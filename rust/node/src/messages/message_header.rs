@@ -230,7 +230,7 @@ impl MessageHeader {
             MessageType::FrontierReq => FrontierReqPayload::serialized_size(),
             MessageType::NodeIdHandshake => NodeIdHandshakePayload::serialized_size(self),
             MessageType::BulkPullAccount => BulkPullAccountPayload::serialized_size(),
-            MessageType::TelemetryAck => TelemetryData::size_from_header(self),
+            MessageType::TelemetryAck => TelemetryAckPayload::size_from_header(self),
             MessageType::AscPullReq => AscPullReqPayload::serialized_size(self),
             MessageType::AscPullAck => AscPullAckPayload::serialized_size(self),
             MessageType::Invalid | MessageType::NotAType => {

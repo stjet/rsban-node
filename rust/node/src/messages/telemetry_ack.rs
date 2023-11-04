@@ -91,15 +91,6 @@ impl TelemetryData {
           + size_of::<u64>() //active_difficulty)
     }
 
-    pub fn size_from_header(header: &MessageHeader) -> usize {
-        (header.extensions.data & TelemetryData::SIZE_MASK) as usize
-    }
-
-    /// This needs to be updated for each new telemetry version
-    pub fn latest_size() -> usize {
-        Self::serialized_size_of_known_data()
-    }
-
     fn serialize_without_signature(&self, stream: &mut dyn Stream) -> Result<()> {
         // All values should be serialized in big endian
         self.node_id.serialize(stream)?;
@@ -125,44 +116,6 @@ impl TelemetryData {
         stream.write_u64_be(self.active_difficulty)?;
         stream.write_bytes(&self.unknown_data)?;
         Ok(())
-    }
-
-    pub fn deserialize(stream: &mut dyn Stream, header: &MessageHeader) -> Result<Self> {
-        let payload_length = Self::size_from_header(header);
-        if payload_length == 0 {
-            return Ok(Self::new());
-        }
-
-        let mut result = Self {
-            signature: Signature::deserialize(stream)?,
-            node_id: Account::deserialize(stream)?,
-            block_count: stream.read_u64_be()?,
-            cemented_count: stream.read_u64_be()?,
-            unchecked_count: stream.read_u64_be()?,
-            account_count: stream.read_u64_be()?,
-            bandwidth_cap: stream.read_u64_be()?,
-            peer_count: stream.read_u32_be()?,
-            protocol_version: stream.read_u8()?,
-            uptime: stream.read_u64_be()?,
-            genesis_block: BlockHash::deserialize(stream)?,
-            major_version: stream.read_u8()?,
-            minor_version: stream.read_u8()?,
-            patch_version: stream.read_u8()?,
-            pre_release_version: stream.read_u8()?,
-            maker: stream.read_u8()?,
-            timestamp: {
-                let timestamp_ms = stream.read_u64_be()?;
-                SystemTime::UNIX_EPOCH + Duration::from_millis(timestamp_ms)
-            },
-            active_difficulty: stream.read_u64_be()?,
-            unknown_data: Vec::new(),
-        };
-        if payload_length as usize > Self::latest_size() {
-            let unknown_len = (payload_length as usize) - Self::latest_size();
-            result.unknown_data.resize(unknown_len, 0);
-            stream.read_bytes(&mut result.unknown_data, unknown_len)?;
-        }
-        Ok(result)
     }
 
     pub fn sign(&mut self, keys: &KeyPair) -> Result<()> {
@@ -222,22 +175,83 @@ impl TelemetryData {
     }
 }
 
-impl Serialize for TelemetryData {
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.signature.serialize(stream)?;
-        self.serialize_without_signature(stream)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TelemetryAckPayload(pub Option<TelemetryData>);
+
+impl TelemetryAckPayload {
+    pub fn size_from_header(header: &MessageHeader) -> usize {
+        (header.extensions.data & TelemetryData::SIZE_MASK) as usize
+    }
+
+    pub fn deserialize(stream: &mut dyn Stream, header: &MessageHeader) -> Result<Self> {
+        let payload_length = Self::size_from_header(header);
+        if payload_length == 0 {
+            return Ok(Self(None));
+        }
+
+        let mut result = TelemetryData {
+            signature: Signature::deserialize(stream)?,
+            node_id: Account::deserialize(stream)?,
+            block_count: stream.read_u64_be()?,
+            cemented_count: stream.read_u64_be()?,
+            unchecked_count: stream.read_u64_be()?,
+            account_count: stream.read_u64_be()?,
+            bandwidth_cap: stream.read_u64_be()?,
+            peer_count: stream.read_u32_be()?,
+            protocol_version: stream.read_u8()?,
+            uptime: stream.read_u64_be()?,
+            genesis_block: BlockHash::deserialize(stream)?,
+            major_version: stream.read_u8()?,
+            minor_version: stream.read_u8()?,
+            patch_version: stream.read_u8()?,
+            pre_release_version: stream.read_u8()?,
+            maker: stream.read_u8()?,
+            timestamp: {
+                let timestamp_ms = stream.read_u64_be()?;
+                SystemTime::UNIX_EPOCH + Duration::from_millis(timestamp_ms)
+            },
+            active_difficulty: stream.read_u64_be()?,
+            unknown_data: Vec::new(),
+        };
+        if payload_length as usize > TelemetryData::serialized_size_of_known_data() {
+            let unknown_len =
+                (payload_length as usize) - TelemetryData::serialized_size_of_known_data();
+            result.unknown_data.resize(unknown_len, 0);
+            stream.read_bytes(&mut result.unknown_data, unknown_len)?;
+        }
+        Ok(Self(Some(result)))
     }
 }
 
-impl MessageVariant for TelemetryData {
+impl Display for TelemetryAckPayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "telemetry_ack")
+    }
+}
+
+impl Serialize for TelemetryAckPayload {
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        if let Some(data) = &self.0 {
+            data.signature.serialize(stream)?;
+            data.serialize_without_signature(stream)?;
+        }
+        Ok(())
+    }
+}
+
+impl MessageVariant for TelemetryAckPayload {
     fn message_type(&self) -> MessageType {
         MessageType::TelemetryAck
     }
 
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
-        BitArray::new(
-            TelemetryData::serialized_size_of_known_data() as u16 + self.unknown_data.len() as u16,
-        )
+        match &self.0 {
+            Some(data) => BitArray::new(
+                TelemetryData::serialized_size_of_known_data() as u16
+                    + data.unknown_data.len() as u16,
+            ),
+            None => Default::default(),
+        }
     }
 }
 

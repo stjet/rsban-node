@@ -1,5 +1,5 @@
 use super::socket::EndpointDto;
-use crate::{copy_account_bytes, messages::MessageHandle};
+use crate::copy_account_bytes;
 use rsnano_node::transport::TcpMessageItem;
 use std::ops::Deref;
 

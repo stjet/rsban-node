@@ -39,7 +39,7 @@ pub enum Payload {
     ConfirmReq(ConfirmReqPayload),
     FrontierReq(FrontierReqPayload),
     NodeIdHandshake(NodeIdHandshakePayload),
-    TelemetryAck(TelemetryData),
+    TelemetryAck(TelemetryAckPayload),
     TelemetryReq(TelemetryReqPayload),
 }
 
@@ -99,7 +99,7 @@ impl Payload {
                 Payload::NodeIdHandshake(NodeIdHandshakePayload::deserialize(stream, &header)?)
             }
             MessageType::TelemetryAck => {
-                Payload::TelemetryAck(TelemetryData::deserialize(stream, &header)?)
+                Payload::TelemetryAck(TelemetryAckPayload::deserialize(stream, &header)?)
             }
             MessageType::TelemetryReq => {
                 Payload::TelemetryReq(TelemetryReqPayload::deserialize(stream, &header)?)
@@ -447,7 +447,7 @@ impl MessageEnum {
 
         Self {
             header,
-            payload: Payload::TelemetryAck(data),
+            payload: Payload::TelemetryAck(TelemetryAckPayload(Some(data))),
         }
     }
 

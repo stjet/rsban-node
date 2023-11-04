@@ -249,8 +249,7 @@ mod tests {
     fn exact_telemetry_ack() {
         let mut data = TelemetryData::default();
         data.unknown_data.push(0xFF);
-
-        test_deserializer(&Payload::TelemetryAck(data));
+        test_deserializer(&Payload::TelemetryAck(TelemetryAckPayload(Some(data))));
     }
 
     #[test]

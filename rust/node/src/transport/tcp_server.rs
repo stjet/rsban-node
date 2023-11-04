@@ -29,7 +29,7 @@ use crate::{
     NetworkParams,
 };
 
-use super::{AsyncMessageDeserializer, NetworkFilter};
+use super::{AsyncMessageDeserializer, DeserializedMessage, NetworkFilter};
 
 pub trait TcpServerObserver: Send + Sync {
     fn bootstrap_server_timeout(&self, inner_ptr: usize);
@@ -281,8 +281,8 @@ pub trait TcpServerExt {
     fn timeout(&self);
 
     fn receive_message(&self);
-    fn received_message(&self, message: MessageEnum);
-    fn process_message(&self, message: MessageEnum) -> bool;
+    fn received_message(&self, message: DeserializedMessage);
+    fn process_message(&self, message: DeserializedMessage) -> bool;
 }
 
 impl TcpServerExt for Arc<TcpServer> {
@@ -345,16 +345,16 @@ impl TcpServerExt for Arc<TcpServer> {
         });
     }
 
-    fn received_message(&self, message: MessageEnum) {
+    fn received_message(&self, message: DeserializedMessage) {
         if self.process_message(message) {
             self.receive_message();
         }
     }
 
-    fn process_message(&self, message: MessageEnum) -> bool {
-        let _ = self.stats.inc(
+    fn process_message(&self, message: DeserializedMessage) -> bool {
+        self.stats.inc(
             StatType::TcpServer,
-            DetailType::from(message.header.message_type),
+            DetailType::from(message.message.message_type()),
             Direction::In,
         );
 
@@ -379,10 +379,10 @@ impl TcpServerExt for Arc<TcpServer> {
             let mut handshake_visitor = self
                 .message_visitor_factory
                 .handshake_visitor(Arc::clone(self));
-            handshake_visitor.received(&message);
+            handshake_visitor.received(&message.into_enum());
 
             if handshake_visitor.process() {
-                self.queue_realtime(message);
+                self.queue_realtime(message.into_enum());
                 return true;
             } else if handshake_visitor.bootstrap() {
                 if !self.to_bootstrap_connection() {
@@ -397,9 +397,9 @@ impl TcpServerExt for Arc<TcpServer> {
             let mut realtime_visitor = self
                 .message_visitor_factory
                 .realtime_visitor(Arc::clone(self));
-            realtime_visitor.received(&message);
+            realtime_visitor.received(&message.into_enum());
             if realtime_visitor.process() {
-                self.queue_realtime(message);
+                self.queue_realtime(message.into_enum());
             }
             return true;
         }
@@ -408,7 +408,7 @@ impl TcpServerExt for Arc<TcpServer> {
             let mut bootstrap_visitor = self
                 .message_visitor_factory
                 .bootstrap_visitor(Arc::clone(self));
-            bootstrap_visitor.received(&message);
+            bootstrap_visitor.received(&message.into_enum());
             return !bootstrap_visitor.processed(); // Stop receiving new messages if bootstrap serving started
         }
         debug_assert!(false);
@@ -478,7 +478,7 @@ impl HandshakeMessageVisitorImpl {
         let response = self.prepare_handshake_response(query, v2);
         let own_query = self.prepare_handshake_query(&self.server.remote_endpoint());
         let handshake_response = MessageEnum::new_node_id_handshake(
-            &self.network_constants.protocol_info(),
+            self.network_constants.protocol_info(),
             own_query,
             Some(response),
         );

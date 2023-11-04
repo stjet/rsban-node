@@ -525,7 +525,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         };
         let socket_type = socket.socket_type();
         if !self.stopped.load(Ordering::SeqCst)
-            && message.header.version_using >= self.network.network.protocol_version_min
+            && message.header.protocol.version_using >= self.network.network.protocol_version_min
         {
             if let Some(channel) = self.find_channel(endpoint) {
                 (self.sink)(message.clone(), Arc::clone(&channel));
@@ -555,7 +555,8 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         temporary_channel.set_remote_endpoint();
                         debug_assert!(*endpoint == temporary_channel.remote_endpoint());
                         temporary_channel.set_node_id(node_id);
-                        temporary_channel.set_network_version(message.header.version_using);
+                        temporary_channel
+                            .set_network_version(message.header.protocol.version_using);
                         temporary_channel.set_temporary(true);
                         let temporary_channel = Arc::new(ChannelEnum::Tcp(temporary_channel));
                         debug_assert!(
@@ -587,7 +588,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         let message = MessageEnum {
             header: MessageHeader::new(
                 MessageType::Keepalive,
-                &self.network.network.protocol_info(),
+                self.network.network.protocol_info(),
             ),
             payload: Payload::Keepalive(KeepalivePayload { peers }),
         };
@@ -692,11 +693,12 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     return;
                 };
 
-                if message.header.network != this_l.network.network.current_network
-                    || message.header.version_using < this_l.network.network.protocol_version_min
+                if message.header.protocol.network != this_l.network.network.current_network
+                    || message.header.protocol.version_using
+                        < this_l.network.network.protocol_version_min
                 {
                     // error handling, either the networks bytes or the version is wrong
-                    if message.header.network == this_l.network.network.current_network {
+                    if message.header.protocol.network == this_l.network.network.current_network {
                         this_l.stats.inc(
                             StatType::Message,
                             DetailType::InvalidNetwork,
@@ -743,7 +745,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     return;
                 };
 
-                tcp.set_network_version(message.header.version_using);
+                tcp.set_network_version(message.header.protocol.version_using);
 
                 let node_id = response.node_id;
 
@@ -765,7 +767,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 let response = this_l.prepare_handshake_response(query, handshake.is_v2);
                 let handshake_response = MessageEnum::new_node_id_handshake(
-                    &this_l.network.network.protocol_info(),
+                    this_l.network.network.protocol_info(),
                     None,
                     Some(response),
                 );
@@ -833,7 +835,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             rt.tokio.spawn(async move {
                 let result = deserializer.read().await;
                 spawn_blocking(Box::new(move || match result {
-                    Ok(msg) => callback(ErrorCode::new(), Some(msg)),
+                    Ok(msg) => callback(ErrorCode::new(), Some(msg.into_enum())),
                     Err(ParseStatus::DuplicatePublishMessage) => callback(ErrorCode::new(), None),
                     Err(ParseStatus::InsufficientWork) => callback(ErrorCode::new(), None),
                     Err(_) => callback(ErrorCode::fault(), None),
@@ -906,7 +908,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 // TCP node ID handshake
                 let query = this_l.prepare_handshake_query(endpoint);
                 let message = MessageEnum::new_node_id_handshake(
-                    &this_l.network.network.protocol_info(),
+                    this_l.network.network.protocol_info(),
                     query.clone(),
                     None,
                 );

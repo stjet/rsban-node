@@ -29,9 +29,7 @@ pub use channel_fake::ChannelFake;
 pub use channel_inproc::ChannelInProc;
 pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr, TcpChannelData};
 pub use message_deserializer::{AsyncBufferReader, AsyncMessageDeserializer};
-pub use message_deserializer_impl::{
-    validate_header, MessageDeserializerImpl, ParseStatus, MAX_MESSAGE_SIZE,
-};
+pub use message_deserializer_impl::*;
 pub use network_filter::NetworkFilter;
 pub use peer_exclusion::PeerExclusion;
 use rsnano_core::Account;

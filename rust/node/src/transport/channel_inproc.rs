@@ -207,7 +207,7 @@ impl ChannelInProc {
             rt.tokio.spawn(async move {
                 let result = message_deserializer.read().await;
                 spawn_blocking(move || match result {
-                    Ok(msg) => callback_msg(ErrorCode::new(), Some(msg)),
+                    Ok(msg) => callback_msg(ErrorCode::new(), Some(msg.into_enum())),
                     Err(ParseStatus::DuplicatePublishMessage) => {
                         callback_msg(ErrorCode::new(), None)
                     }

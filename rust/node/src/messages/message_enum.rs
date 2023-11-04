@@ -109,7 +109,7 @@ impl Payload {
         Ok(msg)
     }
 
-    pub fn into_message_enum(self, protocol: &ProtocolInfo) -> MessageEnum {
+    pub fn into_message_enum(self, protocol: ProtocolInfo) -> MessageEnum {
         let mut payload_stream = MemoryStream::new();
         self.serialize(&mut payload_stream).unwrap();
 
@@ -176,7 +176,7 @@ impl MessageSerializer {
             message.serialize(&mut payload_stream)?;
 
             let mut header_stream = MutStreamAdapter::new(&mut self.header_bytes);
-            let mut header = MessageHeader::new(message.message_type(), &self.protocol);
+            let mut header = MessageHeader::new(message.message_type(), self.protocol);
             header.extensions = message.header_extensions(payload_stream.bytes_written() as u16);
             header.serialize(&mut header_stream)?;
 
@@ -197,14 +197,14 @@ impl Default for MessageSerializer {
 }
 
 impl MessageEnum {
-    pub fn new_keepalive(protocol_info: &ProtocolInfo) -> Self {
+    pub fn new_keepalive(protocol_info: ProtocolInfo) -> Self {
         Self {
             header: MessageHeader::new(MessageType::Keepalive, protocol_info),
             payload: Payload::Keepalive(Default::default()),
         }
     }
 
-    pub fn new_publish(protocol_info: &ProtocolInfo, block: Arc<BlockEnum>) -> Self {
+    pub fn new_publish(protocol_info: ProtocolInfo, block: Arc<BlockEnum>) -> Self {
         let mut header = MessageHeader::new(MessageType::Publish, protocol_info);
         header.set_block_type(block.block_type());
 
@@ -215,7 +215,7 @@ impl MessageEnum {
     }
 
     pub fn new_asc_pull_ack_blocks(
-        protocol_info: &ProtocolInfo,
+        protocol_info: ProtocolInfo,
         id: u64,
         blocks: Vec<BlockEnum>,
     ) -> Self {
@@ -233,7 +233,7 @@ impl MessageEnum {
     }
 
     pub fn new_asc_pull_ack_accounts(
-        protocol_info: &ProtocolInfo,
+        protocol_info: ProtocolInfo,
         id: u64,
         accounts: AccountInfoAckPayload,
     ) -> Self {
@@ -250,7 +250,7 @@ impl MessageEnum {
     }
 
     pub fn new_asc_pull_req_blocks(
-        protocol_info: &ProtocolInfo,
+        protocol_info: ProtocolInfo,
         id: u64,
         blocks: BlocksReqPayload,
     ) -> Self {
@@ -271,7 +271,7 @@ impl MessageEnum {
     }
 
     pub fn new_asc_pull_req_accounts(
-        protocol_info: &ProtocolInfo,
+        protocol_info: ProtocolInfo,
         id: u64,
         payload: AccountInfoReqPayload,
     ) -> Self {
@@ -290,7 +290,7 @@ impl MessageEnum {
         }
     }
 
-    pub fn new_bulk_pull(protocol_info: &ProtocolInfo, payload: BulkPullPayload) -> Self {
+    pub fn new_bulk_pull(protocol_info: ProtocolInfo, payload: BulkPullPayload) -> Self {
         let mut header = MessageHeader::new(MessageType::BulkPull, protocol_info);
         header
             .extensions
@@ -305,7 +305,7 @@ impl MessageEnum {
     }
 
     pub fn new_bulk_pull_account(
-        protocol_info: &ProtocolInfo,
+        protocol_info: ProtocolInfo,
         payload: BulkPullAccountPayload,
     ) -> Self {
         Self {
@@ -314,14 +314,14 @@ impl MessageEnum {
         }
     }
 
-    pub fn new_bulk_push(protocol_info: &ProtocolInfo) -> Self {
+    pub fn new_bulk_push(protocol_info: ProtocolInfo) -> Self {
         Self {
             header: MessageHeader::new(MessageType::BulkPush, protocol_info),
             payload: Payload::BulkPush(BulkPushPayload {}),
         }
     }
 
-    pub fn new_confirm_ack(protocol_info: &ProtocolInfo, vote: Arc<Vote>) -> Self {
+    pub fn new_confirm_ack(protocol_info: ProtocolInfo, vote: Arc<Vote>) -> Self {
         let mut header = MessageHeader::new(MessageType::ConfirmAck, protocol_info);
         header.set_block_type(BlockType::NotABlock);
         debug_assert!(vote.hashes.len() < 16);
@@ -333,7 +333,7 @@ impl MessageEnum {
         }
     }
 
-    pub fn new_confirm_req_with_block(protocol_info: &ProtocolInfo, block: Arc<BlockEnum>) -> Self {
+    pub fn new_confirm_req_with_block(protocol_info: ProtocolInfo, block: Arc<BlockEnum>) -> Self {
         let mut header = MessageHeader::new(MessageType::ConfirmReq, protocol_info);
         header.set_block_type(block.block_type());
 
@@ -347,7 +347,7 @@ impl MessageEnum {
     }
 
     pub fn new_confirm_req_with_roots_hashes(
-        protocol_info: &ProtocolInfo,
+        protocol_info: ProtocolInfo,
         roots_hashes: Vec<(BlockHash, Root)>,
     ) -> Self {
         let mut header = MessageHeader::new(MessageType::ConfirmReq, protocol_info);
@@ -366,7 +366,7 @@ impl MessageEnum {
         }
     }
 
-    pub fn new_frontier_req(protocol_info: &ProtocolInfo, payload: FrontierReqPayload) -> Self {
+    pub fn new_frontier_req(protocol_info: ProtocolInfo, payload: FrontierReqPayload) -> Self {
         let mut header = MessageHeader::new(MessageType::FrontierReq, protocol_info);
         header
             .extensions
@@ -378,7 +378,7 @@ impl MessageEnum {
     }
 
     pub fn new_node_id_handshake(
-        protocol_info: &ProtocolInfo,
+        protocol_info: ProtocolInfo,
         query: Option<NodeIdHandshakeQuery>,
         response: Option<NodeIdHandshakeResponse>,
     ) -> Self {
@@ -412,7 +412,7 @@ impl MessageEnum {
     }
 
     pub fn new_node_id_handshake2(
-        protocol_info: &ProtocolInfo,
+        protocol_info: ProtocolInfo,
         payload: NodeIdHandshakePayload,
     ) -> Self {
         let mut header = MessageHeader::new(MessageType::NodeIdHandshake, protocol_info);
@@ -435,7 +435,7 @@ impl MessageEnum {
         }
     }
 
-    pub fn new_telemetry_ack(protocol_info: &ProtocolInfo, data: TelemetryData) -> Self {
+    pub fn new_telemetry_ack(protocol_info: ProtocolInfo, data: TelemetryData) -> Self {
         debug_assert!(
             TelemetryData::serialized_size_of_known_data() + data.unknown_data.len()
                 <= TelemetryData::SIZE_MASK as usize
@@ -451,7 +451,7 @@ impl MessageEnum {
         }
     }
 
-    pub fn new_telemetry_req(protocol_info: &ProtocolInfo) -> Self {
+    pub fn new_telemetry_req(protocol_info: ProtocolInfo) -> Self {
         Self {
             header: MessageHeader::new(MessageType::TelemetryReq, protocol_info),
             payload: Payload::TelemetryReq(TelemetryReqPayload {}),

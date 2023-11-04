@@ -10,7 +10,9 @@ use crate::{
     voting::VoteUniquer,
 };
 
-use super::{MessageDeserializerImpl, NetworkFilter, ParseStatus, MAX_MESSAGE_SIZE};
+use super::{
+    DeserializedMessage, MessageDeserializerImpl, NetworkFilter, ParseStatus, MAX_MESSAGE_SIZE,
+};
 
 #[async_trait]
 pub trait AsyncBufferReader {
@@ -45,7 +47,7 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
         }
     }
 
-    pub async fn read(&self) -> Result<MessageEnum, ParseStatus> {
+    pub async fn read(&self) -> Result<DeserializedMessage, ParseStatus> {
         self.buffer_reader
             .read(
                 Arc::clone(&self.read_buffer),
@@ -57,7 +59,7 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
         self.received_header().await
     }
 
-    async fn received_header(&self) -> Result<MessageEnum, ParseStatus> {
+    async fn received_header(&self) -> Result<DeserializedMessage, ParseStatus> {
         let header = {
             let buffer = self.read_buffer.lock().unwrap();
             let mut stream = StreamAdapter::new(&buffer[..MessageHeader::SERIALIZED_SIZE]);
@@ -82,11 +84,9 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
         &self,
         header: MessageHeader,
         payload_size: usize,
-    ) -> Result<MessageEnum, ParseStatus> {
+    ) -> Result<DeserializedMessage, ParseStatus> {
         let buffer = self.read_buffer.lock().unwrap();
-        let result = self
-            .deserializer_impl
-            .deserialize(header, &buffer[..payload_size]);
-        result.map(|x| x.into_message_enum(&self.protocol_info))
+        self.deserializer_impl
+            .deserialize(header, &buffer[..payload_size])
     }
 }

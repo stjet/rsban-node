@@ -235,7 +235,7 @@ mod tests {
     #[test]
     fn display() {
         let ack = MessageEnum::new_asc_pull_ack_accounts(
-            &ProtocolInfo::dev_network(),
+            ProtocolInfo::dev_network(),
             7,
             AccountInfoAckPayload {
                 account: Account::from(1),

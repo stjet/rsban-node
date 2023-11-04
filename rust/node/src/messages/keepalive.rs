@@ -104,8 +104,8 @@ mod tests {
 
     #[test]
     fn keepalive_with_no_peers_to_string() {
-        let hdr = MessageHeader::new(MessageType::Keepalive, &ProtocolInfo::dev_network());
-        let keepalive = MessageEnum::new_keepalive(&ProtocolInfo::dev_network());
+        let hdr = MessageHeader::new(MessageType::Keepalive, ProtocolInfo::dev_network());
+        let keepalive = MessageEnum::new_keepalive(ProtocolInfo::dev_network());
         let expected =
             hdr.to_string() + "\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0";
         assert_eq!(keepalive.to_string(), expected);

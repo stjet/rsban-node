@@ -215,7 +215,7 @@ mod tests {
     #[test]
     fn display_blocks_payload() {
         let req = MessageEnum::new_asc_pull_req_blocks(
-            &ProtocolInfo::dev_network(),
+            ProtocolInfo::dev_network(),
             7,
             BlocksReqPayload {
                 start: 1.into(),
@@ -229,7 +229,7 @@ mod tests {
     #[test]
     fn display_account_info_payload() {
         let req = MessageEnum::new_asc_pull_req_accounts(
-            &ProtocolInfo::dev_network(),
+            ProtocolInfo::dev_network(),
             7,
             AccountInfoReqPayload {
                 target: HashOrAccount::from(123),

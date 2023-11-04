@@ -1,11 +1,8 @@
-use std::ops::Deref;
-
-use rsnano_core::{BlockHash, HashOrAccount};
-
-use crate::{copy_hash_bytes, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{BulkPullPayload, MessageEnum, Payload};
-
 use super::{create_message_handle3, MessageHandle};
+use crate::{copy_hash_bytes, NetworkConstantsDto, StringDto};
+use rsnano_core::{BlockHash, HashOrAccount};
+use rsnano_node::messages::{BulkPullPayload, MessageEnum, Payload};
+use std::ops::Deref;
 
 #[repr(C)]
 pub struct BulkPullPayloadDto {

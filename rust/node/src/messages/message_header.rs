@@ -67,6 +67,7 @@ impl Debug for MessageType {
 const BLOCK_TYPE_MASK: u16 = 0x0f00;
 const COUNT_MASK: u16 = 0xf000;
 
+#[derive(Clone, Debug, PartialEq, Eq, Copy)]
 pub struct ProtocolInfo {
     pub version_using: u8,
     pub version_max: u8,
@@ -97,10 +98,7 @@ impl ProtocolInfo {
 #[derive(Clone, PartialEq, Eq)]
 pub struct MessageHeader {
     pub message_type: MessageType,
-    pub version_using: u8,
-    pub version_max: u8,
-    pub version_min: u8,
-    pub network: Networks,
+    pub protocol: ProtocolInfo,
     pub extensions: BitArray<u16>,
 }
 
@@ -108,10 +106,7 @@ impl Default for MessageHeader {
     fn default() -> Self {
         Self {
             message_type: MessageType::Invalid,
-            version_using: 0,
-            version_max: 0,
-            version_min: 0,
-            network: Networks::NanoDevNetwork,
+            protocol: Default::default(),
             extensions: BitArray::ZERO,
         }
     }
@@ -120,20 +115,17 @@ impl Default for MessageHeader {
 impl MessageHeader {
     pub const SERIALIZED_SIZE: usize = 8;
 
-    pub fn new(message_type: MessageType, protocol: &ProtocolInfo) -> Self {
+    pub fn new(message_type: MessageType, protocol: ProtocolInfo) -> Self {
         Self {
             message_type,
-            version_using: protocol.version_using,
-            version_max: protocol.version_max,
-            version_min: protocol.version_min,
-            network: protocol.network,
+            protocol,
             ..Default::default()
         }
     }
 
     pub fn new_with_payload_len(
         message_type: MessageType,
-        protocol: &ProtocolInfo,
+        protocol: ProtocolInfo,
         payload: &impl Serialize,
     ) -> Self {
         let mut stream = MemoryStream::new();
@@ -142,10 +134,7 @@ impl MessageHeader {
 
         Self {
             message_type,
-            version_using: protocol.version_using,
-            version_max: protocol.version_max,
-            version_min: protocol.version_min,
-            network: protocol.network,
+            protocol,
             extensions: payload_len.into(),
         }
     }
@@ -155,12 +144,12 @@ impl MessageHeader {
         let mut buffer = [0; 2];
 
         stream.read_bytes(&mut buffer, 2)?;
-        header.network = Networks::from_u16(u16::from_be_bytes(buffer))
+        header.protocol.network = Networks::from_u16(u16::from_be_bytes(buffer))
             .ok_or_else(|| anyhow!("invalid network"))?;
 
-        header.version_max = stream.read_u8()?;
-        header.version_using = stream.read_u8()?;
-        header.version_min = stream.read_u8()?;
+        header.protocol.version_max = stream.read_u8()?;
+        header.protocol.version_using = stream.read_u8()?;
+        header.protocol.version_min = stream.read_u8()?;
         header.message_type = MessageType::from_u8(stream.read_u8()?)
             .ok_or_else(|| anyhow!("invalid message type"))?;
 
@@ -212,10 +201,10 @@ impl MessageHeader {
     }
 
     pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        stream.write_bytes(&(self.network as u16).to_be_bytes())?;
-        stream.write_u8(self.version_max)?;
-        stream.write_u8(self.version_using)?;
-        stream.write_u8(self.version_min)?;
+        stream.write_bytes(&(self.protocol.network as u16).to_be_bytes())?;
+        stream.write_u8(self.protocol.version_max)?;
+        stream.write_u8(self.protocol.version_using)?;
+        stream.write_u8(self.protocol.version_min)?;
         stream.write_u8(self.message_type as u8)?;
         stream.write_bytes(&self.extensions.data.to_le_bytes())?;
         Ok(())
@@ -263,12 +252,12 @@ impl Display for MessageHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "NetID: {:04X}({}), ",
-            self.network as u16,
-            self.network.as_str()
+            self.protocol.network as u16,
+            self.protocol.network.as_str()
         ))?;
         f.write_fmt(format_args!(
             "VerMaxUsingMin: {}/{}/{}, ",
-            self.version_max, self.version_using, self.version_min
+            self.protocol.version_max, self.protocol.version_using, self.protocol.version_min
         ))?;
         f.write_fmt(format_args!(
             "MsgType: {}({}), ",
@@ -317,21 +306,23 @@ mod tests {
     }
 
     fn test_header() -> MessageHeader {
-        let header = MessageHeader {
-            message_type: MessageType::Keepalive,
+        let protocol = ProtocolInfo {
             version_using: 2,
             version_max: 3,
             version_min: 1,
             network: Networks::NanoDevNetwork,
-            extensions: BitArray::from(14),
         };
-        header
+        MessageHeader {
+            message_type: MessageType::Keepalive,
+            protocol,
+            extensions: BitArray::from(14),
+        }
     }
 
     #[test]
     fn serialize_header() -> Result<()> {
         let protocol_info = ProtocolInfo::dev_network();
-        let mut header = MessageHeader::new(MessageType::Publish, &protocol_info);
+        let mut header = MessageHeader::new(MessageType::Publish, protocol_info);
         header.set_block_type(BlockType::State);
 
         let mut stream = MemoryStream::new();

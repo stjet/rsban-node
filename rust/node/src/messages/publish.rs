@@ -91,7 +91,7 @@ mod tests {
         let mut stream = MemoryStream::new();
         publish1.serialize(&mut stream).unwrap();
 
-        let mut header = MessageHeader::new(MessageType::Publish, &Default::default());
+        let mut header = MessageHeader::new(MessageType::Publish, Default::default());
         header.set_block_type(BlockType::State);
 
         let publish2 = PublishPayload::deserialize(&mut stream, &header, 123, None).unwrap();

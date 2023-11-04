@@ -15,9 +15,9 @@ pub unsafe extern "C" fn rsn_message_keepalive_create(
         } else {
             let protocol_info = ProtocolInfo {
                 version_using: version_using as u8,
-                ..*protocol_info
+                ..protocol_info
             };
-            MessageEnum::new_keepalive(&protocol_info)
+            MessageEnum::new_keepalive(protocol_info)
         }
     })
 }

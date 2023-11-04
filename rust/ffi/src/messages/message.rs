@@ -45,10 +45,10 @@ pub unsafe extern "C" fn rsn_message_type(handle: *mut MessageHandle) -> u8 {
 
 pub(crate) unsafe fn create_message_handle3(
     constants: *mut NetworkConstantsDto,
-    f: impl FnOnce(&ProtocolInfo) -> MessageEnum,
+    f: impl FnOnce(ProtocolInfo) -> MessageEnum,
 ) -> *mut MessageHandle {
     let constants = NetworkConstants::try_from(&*constants).unwrap();
-    MessageHandle::new(f(&constants.protocol_info()))
+    MessageHandle::new(f(constants.protocol_info()))
 }
 
 pub(crate) fn message_handle_clone(handle: &MessageHandle) -> *mut MessageHandle {

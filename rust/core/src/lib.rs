@@ -278,7 +278,7 @@ pub fn deterministic_key(seed: &RawKey, index: u32) -> RawKey {
  * Network variants with different genesis blocks and network parameters
  */
 #[repr(u16)]
-#[derive(Clone, Copy, FromPrimitive, PartialEq, Eq)]
+#[derive(Clone, Copy, FromPrimitive, PartialEq, Eq, Debug)]
 pub enum Networks {
     Invalid = 0x0,
     // Low work parameters, publicly known genesis key, dev IP ports

@@ -1,6 +1,6 @@
 use super::NetworkFilter;
 use crate::{config::NetworkConstants, messages::*, utils::BlockUniquer, voting::VoteUniquer};
-use rsnano_core::utils::StreamAdapter;
+use rsnano_core::utils::{MemoryStream, StreamAdapter};
 use std::sync::Arc;
 
 pub const MAX_MESSAGE_SIZE: usize = 1024 * 65;
@@ -58,13 +58,37 @@ impl ParseStatus {
     }
 }
 
+pub struct DeserializedMessage {
+    pub message: Payload,
+    pub protocol: ProtocolInfo,
+}
+
+impl DeserializedMessage {
+    pub fn new(message: Payload, protocol: ProtocolInfo) -> Self {
+        Self { message, protocol }
+    }
+
+    pub fn into_enum(&self) -> MessageEnum {
+        let mut header = MessageHeader::new(self.message.message_type(), self.protocol);
+        let mut stream = MemoryStream::new();
+        self.message.serialize(&mut stream).unwrap();
+        header.extensions = self
+            .message
+            .header_extensions(stream.bytes_written() as u16);
+        MessageEnum {
+            header,
+            payload: self.message.clone(),
+        }
+    }
+}
+
 pub fn validate_header(
     header: &MessageHeader,
     expected_protocol: &ProtocolInfo,
 ) -> Result<(), ParseStatus> {
-    if header.network != expected_protocol.network {
+    if header.protocol.network != expected_protocol.network {
         Err(ParseStatus::InvalidNetwork)
-    } else if header.version_using < expected_protocol.version_min {
+    } else if header.protocol.version_using < expected_protocol.version_min {
         Err(ParseStatus::OutdatedVersion)
     } else if !header.is_valid_message_type() {
         Err(ParseStatus::InvalidHeader)
@@ -101,7 +125,7 @@ impl MessageDeserializerImpl {
         &self,
         header: MessageHeader,
         payload_bytes: &[u8],
-    ) -> Result<Payload, ParseStatus> {
+    ) -> Result<DeserializedMessage, ParseStatus> {
         let digest = self.filter_duplicate_publish_messages(header.message_type, payload_bytes)?;
 
         let mut stream = StreamAdapter::new(payload_bytes);
@@ -115,7 +139,7 @@ impl MessageDeserializerImpl {
         .map_err(|_| Self::get_error(header.message_type));
 
         self.validate_work(&result)?;
-        result
+        result.map(|r| DeserializedMessage::new(r, header.protocol))
     }
 
     fn get_error(message_type: MessageType) -> ParseStatus {
@@ -294,6 +318,6 @@ mod tests {
             .deserialize(deserialized_header, payload)
             .unwrap();
 
-        assert_eq!(deserialized, *original);
+        assert_eq!(deserialized.message, *original);
     }
 }

@@ -1,5 +1,6 @@
 use super::{MessageHeader, MessageType, MessageVariant};
 use anyhow::Result;
+use bitvec::prelude::BitArray;
 use rsnano_core::{
     utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account,
@@ -67,6 +68,12 @@ impl MessageVariant for FrontierReqPayload {
     fn message_type(&self) -> MessageType {
         MessageType::FrontierReq
     }
+
+    fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
+        let mut extensions = BitArray::default();
+        extensions.set(Self::ONLY_CONFIRMED, self.only_confirmed);
+        extensions
+    }
 }
 
 impl Display for FrontierReqPayload {
@@ -82,14 +89,11 @@ impl Display for FrontierReqPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, MessageEnum};
+    use crate::messages::{assert_deserializable, Payload};
 
     #[test]
     fn serialize() {
-        let request1 = MessageEnum::new_frontier_req(
-            &Default::default(),
-            FrontierReqPayload::create_test_instance(),
-        );
-        assert_deserializable(&request1);
+        let request = Payload::FrontierReq(FrontierReqPayload::create_test_instance());
+        assert_deserializable(&request);
     }
 }

@@ -1,5 +1,6 @@
 use crate::utils::{deserialize_block, BlockUniquer};
 use anyhow::Result;
+use bitvec::prelude::BitArray;
 use rsnano_core::{
     serialized_block_size,
     utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
@@ -103,6 +104,18 @@ impl MessageVariant for ConfirmReqPayload {
     fn message_type(&self) -> MessageType {
         MessageType::ConfirmReq
     }
+
+    fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
+        let block_type = match &self.block {
+            Some(b) => b.block_type(),
+            None => BlockType::NotABlock,
+        };
+        debug_assert!(self.roots_hashes.len() < 16);
+        let mut extensions = BitArray::default();
+        extensions |= BitArray::new((self.roots_hashes.len() as u16) << 12);
+        extensions |= BitArray::new((block_type as u16) << 8);
+        extensions
+    }
 }
 
 impl Display for ConfirmReqPayload {
@@ -120,7 +133,7 @@ impl Display for ConfirmReqPayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{assert_deserializable, MessageEnum};
+    use crate::messages::{assert_deserializable, Payload};
 
     use super::*;
     use rsnano_core::StateBlockBuilder;
@@ -128,26 +141,32 @@ mod tests {
     #[test]
     fn serialize_block() {
         let block = Arc::new(StateBlockBuilder::new().build());
-        let confirm_req = MessageEnum::new_confirm_req_with_block(&Default::default(), block);
+        let confirm_req = Payload::ConfirmReq(ConfirmReqPayload {
+            block: Some(block),
+            roots_hashes: Vec::new(),
+        });
         assert_deserializable(&confirm_req);
     }
 
     #[test]
-    fn serialze_roots_hashes() {
-        let roots_hashes = vec![(BlockHash::from(1), Root::from(2))];
-        let confirm_req =
-            MessageEnum::new_confirm_req_with_roots_hashes(&Default::default(), roots_hashes);
+    fn serialize_roots_hashes() {
+        let confirm_req = Payload::ConfirmReq(ConfirmReqPayload {
+            block: None,
+            roots_hashes: vec![(BlockHash::from(1), Root::from(2))],
+        });
         assert_deserializable(&confirm_req);
     }
 
     #[test]
-    fn serialze_many_roots_hashes() {
+    fn serialize_many_roots_hashes() {
         let roots_hashes = (0..7)
             .into_iter()
             .map(|i| (BlockHash::from(i), Root::from(i + 1)))
             .collect();
-        let confirm_req =
-            MessageEnum::new_confirm_req_with_roots_hashes(&Default::default(), roots_hashes);
+        let confirm_req = Payload::ConfirmReq(ConfirmReqPayload {
+            block: None,
+            roots_hashes,
+        });
         assert_deserializable(&confirm_req);
     }
 }

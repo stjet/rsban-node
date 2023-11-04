@@ -1,4 +1,5 @@
 use super::{MessageHeader, MessageType, MessageVariant};
+use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{Deserialize, Serialize, Stream, StreamExt},
@@ -173,38 +174,40 @@ impl MessageVariant for AscPullReqPayload {
     fn message_type(&self) -> MessageType {
         MessageType::AscPullReq
     }
+
+    fn header_extensions(&self, payload_len: u16) -> BitArray<u16> {
+        BitArray::new(payload_len)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, MessageEnum, ProtocolInfo};
+    use crate::messages::{assert_deserializable, MessageEnum, Payload, ProtocolInfo};
 
     #[test]
     fn serialize_blocks() {
-        let original = MessageEnum::new_asc_pull_req_blocks(
-            &ProtocolInfo::dev_network(),
-            7,
-            BlocksReqPayload {
+        let original = Payload::AscPullReq(AscPullReqPayload {
+            id: 7,
+            req_type: AscPullReqType::Blocks(BlocksReqPayload {
                 start: HashOrAccount::from(3),
                 count: 111,
                 start_type: HashType::Block,
-            },
-        );
+            }),
+        });
 
         assert_deserializable(&original);
     }
 
     #[test]
     fn serialize_account_info() {
-        let original = MessageEnum::new_asc_pull_req_accounts(
-            &ProtocolInfo::dev_network(),
-            7,
-            AccountInfoReqPayload {
+        let original = Payload::AscPullReq(AscPullReqPayload {
+            id: 7,
+            req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload {
                 target: HashOrAccount::from(123),
                 target_type: HashType::Block,
-            },
-        );
+            }),
+        });
 
         assert_deserializable(&original);
     }

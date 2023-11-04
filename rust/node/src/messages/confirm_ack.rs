@@ -1,6 +1,10 @@
 use crate::voting::{Vote, VoteUniquer};
 use anyhow::Result;
-use rsnano_core::utils::{Serialize, Stream};
+use bitvec::prelude::BitArray;
+use rsnano_core::{
+    utils::{Serialize, Stream},
+    BlockType,
+};
 use std::{
     fmt::{Debug, Display},
     sync::Arc,
@@ -49,6 +53,14 @@ impl MessageVariant for ConfirmAckPayload {
     fn message_type(&self) -> MessageType {
         MessageType::ConfirmAck
     }
+
+    fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
+        let mut extensions = BitArray::default();
+        extensions |= BitArray::new((BlockType::NotABlock as u16) << 8);
+        debug_assert!(self.vote.hashes.len() < 16);
+        extensions |= BitArray::new((self.vote.hashes.len() as u16) << 12);
+        extensions
+    }
 }
 
 impl PartialEq for ConfirmAckPayload {
@@ -67,9 +79,8 @@ impl Display for ConfirmAckPayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{assert_deserializable, MessageEnum};
-
     use super::*;
+    use crate::messages::{assert_deserializable, Payload};
     use rsnano_core::{BlockHash, KeyPair};
 
     #[test]
@@ -81,8 +92,8 @@ mod tests {
         }
         let vote = Vote::new(keys.public_key().into(), &keys.private_key(), 0, 0, hashes);
         let vote = Arc::new(vote);
-        let confirm1 = MessageEnum::new_confirm_ack(&Default::default(), vote);
+        let confirm = Payload::ConfirmAck(ConfirmAckPayload { vote });
 
-        assert_deserializable(&confirm1);
+        assert_deserializable(&confirm);
     }
 }

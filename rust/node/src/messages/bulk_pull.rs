@@ -1,5 +1,6 @@
 use super::{MessageHeader, MessageType, MessageVariant};
 use anyhow::Result;
+use bitvec::prelude::BitArray;
 use rsnano_core::{
     utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
     BlockHash, HashOrAccount,
@@ -91,6 +92,13 @@ impl MessageVariant for BulkPullPayload {
     fn message_type(&self) -> MessageType {
         MessageType::BulkPull
     }
+
+    fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
+        let mut extensions = BitArray::default();
+        extensions.set(BulkPullPayload::COUNT_PRESENT_FLAG, self.count > 0);
+        extensions.set(BulkPullPayload::ASCENDING_FLAG, self.ascending);
+        extensions
+    }
 }
 
 impl Display for BulkPullPayload {
@@ -106,14 +114,11 @@ impl Display for BulkPullPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, MessageEnum, ProtocolInfo};
+    use crate::messages::{assert_deserializable, Payload};
 
     #[test]
     fn bulk_pull_serialization() {
-        let message_in = MessageEnum::new_bulk_pull(
-            &ProtocolInfo::dev_network(),
-            BulkPullPayload::create_test_instance(),
-        );
-        assert_deserializable(&message_in);
+        let message = Payload::BulkPull(BulkPullPayload::create_test_instance());
+        assert_deserializable(&message);
     }
 }

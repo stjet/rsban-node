@@ -1,12 +1,14 @@
 use crate::{
+    transport::MAX_MESSAGE_SIZE,
     utils::BlockUniquer,
     voting::{Vote, VoteUniquer},
 };
 
 use super::*;
 use anyhow::Result;
+use bitvec::prelude::BitArray;
 use rsnano_core::{
-    utils::{MemoryStream, Serialize, Stream},
+    utils::{MemoryStream, MutStreamAdapter, Serialize, Stream},
     BlockEnum, BlockHash, BlockType, Root,
 };
 use std::{fmt::Display, ops::Deref, sync::Arc};
@@ -17,8 +19,11 @@ pub struct MessageEnum {
     pub payload: Payload,
 }
 
-pub trait MessageVariant: Serialize + Display {
+pub trait MessageVariant: Serialize + Display + std::fmt::Debug {
     fn message_type(&self) -> MessageType;
+    fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
+        Default::default()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -129,7 +134,53 @@ impl Deref for Payload {
 
 impl Display for Payload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.deref().fmt(f)
+        std::fmt::Display::fmt(&self.deref(), f)
+    }
+}
+
+pub struct MessageSerializer {
+    protocol: ProtocolInfo,
+    header_bytes: [u8; MessageHeader::SERIALIZED_SIZE],
+    payload_bytes: [u8; MAX_MESSAGE_SIZE],
+}
+
+impl MessageSerializer {
+    pub fn new(protocol: ProtocolInfo) -> Self {
+        Self {
+            protocol,
+            header_bytes: Default::default(),
+            payload_bytes: [0; MAX_MESSAGE_SIZE],
+        }
+    }
+
+    pub fn serialize(
+        &'_ mut self,
+        message: &dyn MessageVariant,
+    ) -> anyhow::Result<(&'_ [u8], &'_ [u8])> {
+        let header_len;
+        let payload_len;
+        {
+            let mut payload_stream = MutStreamAdapter::new(&mut self.payload_bytes);
+            message.serialize(&mut payload_stream)?;
+
+            let mut header_stream = MutStreamAdapter::new(&mut self.header_bytes);
+            let mut header = MessageHeader::new(message.message_type(), &self.protocol);
+            header.extensions = message.header_extensions(payload_stream.bytes_written() as u16);
+            header.serialize(&mut header_stream)?;
+
+            header_len = header_stream.bytes_written();
+            payload_len = payload_stream.bytes_written();
+        }
+        Ok((
+            &self.header_bytes[..header_len],
+            &self.payload_bytes[..payload_len],
+        ))
+    }
+}
+
+impl Default for MessageSerializer {
+    fn default() -> Self {
+        Self::new(ProtocolInfo::default())
     }
 }
 
@@ -147,10 +198,7 @@ impl MessageEnum {
 
         Self {
             header,
-            payload: Payload::Publish(PublishPayload {
-                block: Some(block),
-                digest: 0,
-            }),
+            payload: Payload::Publish(PublishPayload { block, digest: 0 }),
         }
     }
 

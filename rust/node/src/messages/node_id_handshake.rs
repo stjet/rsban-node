@@ -1,6 +1,7 @@
 use super::{MessageHeader, MessageType, MessageVariant};
 use crate::transport::Cookie;
 use anyhow::Result;
+use bitvec::prelude::BitArray;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     sign_message,
@@ -241,6 +242,17 @@ impl MessageVariant for NodeIdHandshakePayload {
     fn message_type(&self) -> MessageType {
         MessageType::NodeIdHandshake
     }
+
+    fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
+        let mut extensions = BitArray::default();
+        extensions.set(NodeIdHandshakePayload::QUERY_FLAG, self.query.is_some());
+        extensions.set(
+            NodeIdHandshakePayload::RESPONSE_FLAG,
+            self.response.is_some(),
+        );
+        extensions.set(Self::V2_FLAG, self.is_v2);
+        extensions
+    }
 }
 
 impl Display for NodeIdHandshakePayload {
@@ -265,35 +277,25 @@ impl Display for NodeIdHandshakePayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{assert_deserializable, MessageEnum};
-
     use super::*;
+    use crate::messages::{assert_deserializable, Payload};
 
     #[test]
     fn serialize_query() {
-        let original = MessageEnum::new_node_id_handshake2(
-            &Default::default(),
-            NodeIdHandshakePayload::create_test_query(),
-        );
-        assert_deserializable(&original);
+        let message = Payload::NodeIdHandshake(NodeIdHandshakePayload::create_test_query());
+        assert_deserializable(&message);
     }
 
     #[test]
     fn serialize_response_v1() {
-        let original = MessageEnum::new_node_id_handshake2(
-            &Default::default(),
-            NodeIdHandshakePayload::create_test_response_v1(),
-        );
-        assert_deserializable(&original);
+        let message = Payload::NodeIdHandshake(NodeIdHandshakePayload::create_test_response_v1());
+        assert_deserializable(&message);
     }
 
     #[test]
     fn serialize_response_v2() {
-        let original = MessageEnum::new_node_id_handshake2(
-            &Default::default(),
-            NodeIdHandshakePayload::create_test_response_v2(),
-        );
-        assert_deserializable(&original);
+        let message = Payload::NodeIdHandshake(NodeIdHandshakePayload::create_test_response_v2());
+        assert_deserializable(&message);
     }
 
     #[test]

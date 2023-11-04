@@ -167,15 +167,14 @@ impl MessageDeserializerImpl {
         ) {
             if at_end(stream) {
                 let Payload::Publish(payload) = &msg.payload else { unreachable!()};
-                match &payload.block {
-                    Some(block) => {
-                        if !self.network_constants.work.validate_entry_block(&block) {
-                            return Ok(msg);
-                        } else {
-                            return Err(ParseStatus::InsufficientWork);
-                        }
-                    }
-                    None => unreachable!(), // successful deserialization always returns a block
+                if !self
+                    .network_constants
+                    .work
+                    .validate_entry_block(&payload.block)
+                {
+                    return Ok(msg);
+                } else {
+                    return Err(ParseStatus::InsufficientWork);
                 }
             }
         }

@@ -48,11 +48,16 @@ pub trait MessageVisitor {
 }
 
 #[cfg(test)]
-pub(crate) fn assert_deserializable(original: &MessageEnum) {
-    let mut stream = rsnano_core::utils::MemoryStream::new();
-    original.serialize(&mut stream).unwrap();
+pub(crate) fn assert_deserializable(original: &Payload) {
+    use rsnano_core::utils::StreamAdapter;
+    use std::ops::Deref;
 
+    let mut serializer = MessageSerializer::default();
+    let (header, payload) = serializer.serialize(original.deref()).unwrap();
+
+    let mut stream = StreamAdapter::new(header);
     let header = MessageHeader::deserialize(&mut stream).unwrap();
-    let message_out = MessageEnum::deserialize(&mut stream, header, 0, None, None).unwrap();
+    let mut stream = StreamAdapter::new(payload);
+    let message_out = Payload::deserialize(&mut stream, &header, 0, None, None).unwrap();
     assert_eq!(message_out, *original);
 }

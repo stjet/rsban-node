@@ -85,21 +85,21 @@ fn empty_peers() -> [SocketAddr; 8] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, MessageEnum, ProtocolInfo};
+    use crate::messages::{assert_deserializable, MessageEnum, Payload, ProtocolInfo};
     use std::str::FromStr;
 
     #[test]
     fn serialize_no_peers() {
-        let request1 = MessageEnum::new_keepalive(&ProtocolInfo::dev_network());
-        assert_deserializable(&request1);
+        let request = Payload::Keepalive(KeepalivePayload::default());
+        assert_deserializable(&request);
     }
 
     #[test]
     fn serialize_peers() {
         let mut keepalive = KeepalivePayload::default();
         keepalive.peers[0] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 10000);
-        let request1 = MessageEnum::new_keepalive(&ProtocolInfo::dev_network());
-        assert_deserializable(&request1);
+        let request = Payload::Keepalive(keepalive);
+        assert_deserializable(&request);
     }
 
     #[test]

@@ -1,5 +1,6 @@
 use super::{MessageHeader, MessageType, MessageVariant};
 use anyhow::Result;
+use bitvec::prelude::BitArray;
 use rsnano_core::utils::{
     Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
 };
@@ -231,6 +232,12 @@ impl Serialize for TelemetryData {
 impl MessageVariant for TelemetryData {
     fn message_type(&self) -> MessageType {
         MessageType::TelemetryAck
+    }
+
+    fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
+        BitArray::new(
+            TelemetryData::serialized_size_of_known_data() as u16 + self.unknown_data.len() as u16,
+        )
     }
 }
 

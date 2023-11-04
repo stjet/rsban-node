@@ -128,6 +128,10 @@ impl<'a> MutStreamAdapter<'a> {
             write_index: 0,
         }
     }
+
+    pub fn bytes_written(&self) -> usize {
+        self.write_index
+    }
 }
 
 impl<'a> Stream for MutStreamAdapter<'a> {

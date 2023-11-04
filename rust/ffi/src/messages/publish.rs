@@ -31,10 +31,7 @@ fn get_publish_payload_mut(handle: &mut MessageHandle) -> &mut PublishPayload {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_publish_block(handle: &MessageHandle) -> *mut BlockHandle {
-    match &get_publish_payload(handle).block {
-        Some(b) => Box::into_raw(Box::new(BlockHandle(b.clone()))),
-        None => std::ptr::null_mut(),
-    }
+    BlockHandle::new(get_publish_payload(handle).block.clone())
 }
 
 #[no_mangle]

@@ -1,3 +1,4 @@
+use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     deserialize_block_enum, serialize_block_enum,
@@ -76,6 +77,10 @@ impl Serialize for AscPullAckPayload {
 impl MessageVariant for AscPullAckPayload {
     fn message_type(&self) -> MessageType {
         MessageType::AscPullAck
+    }
+
+    fn header_extensions(&self, payload_len: u16) -> BitArray<u16> {
+        BitArray::new(payload_len)
     }
 }
 
@@ -194,34 +199,35 @@ impl Serialize for AccountInfoAckPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, MessageEnum, ProtocolInfo};
+    use crate::messages::{assert_deserializable, MessageEnum, Payload, ProtocolInfo};
     use rsnano_core::BlockBuilder;
 
     #[test]
     fn serialize_blocks() {
-        let original = MessageEnum::new_asc_pull_ack_blocks(
-            &ProtocolInfo::dev_network(),
-            7,
-            vec![BlockBuilder::state().build(), BlockBuilder::state().build()],
-        );
+        let original = Payload::AscPullAck(AscPullAckPayload {
+            id: 7,
+            pull_type: AscPullAckType::Blocks(BlocksAckPayload::new(vec![
+                BlockBuilder::state().build(),
+                BlockBuilder::state().build(),
+            ])),
+        });
 
         assert_deserializable(&original);
     }
 
     #[test]
     fn serialize_account_info() {
-        let original = MessageEnum::new_asc_pull_ack_accounts(
-            &ProtocolInfo::dev_network(),
-            7,
-            AccountInfoAckPayload {
+        let original = Payload::AscPullAck(AscPullAckPayload {
+            id: 7,
+            pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload {
                 account: Account::from(1),
                 account_open: BlockHash::from(2),
                 account_head: BlockHash::from(3),
                 account_block_count: 4,
                 account_conf_frontier: BlockHash::from(5),
                 account_conf_height: 6,
-            },
-        );
+            }),
+        });
 
         assert_deserializable(&original);
     }

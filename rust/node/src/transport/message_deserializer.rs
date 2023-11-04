@@ -87,6 +87,6 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
         let result = self
             .deserializer_impl
             .deserialize(header, &buffer[..payload_size]);
-        result
+        result.map(|x| x.into_message_enum(&self.protocol_info))
     }
 }

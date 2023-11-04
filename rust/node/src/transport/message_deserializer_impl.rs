@@ -105,7 +105,7 @@ impl MessageDeserializerImpl {
         &self,
         header: MessageHeader,
         payload_bytes: &[u8],
-    ) -> Result<MessageEnum, ParseStatus> {
+    ) -> Result<Payload, ParseStatus> {
         let mut stream = StreamAdapter::new(payload_bytes);
         match header.message_type {
             MessageType::Keepalive => self.deserialize_keepalive(&mut stream, header),
@@ -137,10 +137,10 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<MessageEnum, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(
+    ) -> Result<Payload, ParseStatus> {
+        if let Ok(msg) = Payload::deserialize(
             stream,
-            header,
+            &header,
             0,
             Some(&self.block_uniquer),
             Some(&self.vote_uniquer),
@@ -157,16 +157,16 @@ impl MessageDeserializerImpl {
         stream: &mut impl Stream,
         header: MessageHeader,
         digest: u128,
-    ) -> Result<MessageEnum, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(
+    ) -> Result<Payload, ParseStatus> {
+        if let Ok(msg) = Payload::deserialize(
             stream,
-            header,
+            &header,
             digest,
             Some(&self.block_uniquer),
             Some(&self.vote_uniquer),
         ) {
             if at_end(stream) {
-                let Payload::Publish(payload) = &msg.payload else { unreachable!()};
+                let Payload::Publish(payload) = &msg else { unreachable!()};
                 if !self
                     .network_constants
                     .work
@@ -186,12 +186,10 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<MessageEnum, ParseStatus> {
-        if let Ok(msg) =
-            MessageEnum::deserialize(stream, header, 0, Some(&self.block_uniquer), None)
-        {
+    ) -> Result<Payload, ParseStatus> {
+        if let Ok(msg) = Payload::deserialize(stream, &header, 0, Some(&self.block_uniquer), None) {
             if at_end(stream) {
-                let Payload::ConfirmReq(payload) = &msg.payload else {unreachable!()};
+                let Payload::ConfirmReq(payload) = &msg else {unreachable!()};
                 let work_ok = match &payload.block {
                     Some(block) => !self.network_constants.work.validate_entry_block(&block),
                     None => true,
@@ -210,9 +208,8 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<MessageEnum, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, Some(&self.vote_uniquer))
-        {
+    ) -> Result<Payload, ParseStatus> {
+        if let Ok(msg) = Payload::deserialize(stream, &header, 0, None, Some(&self.vote_uniquer)) {
             if at_end(stream) {
                 return Ok(msg);
             }
@@ -224,8 +221,8 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<MessageEnum, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
+    ) -> Result<Payload, ParseStatus> {
+        if let Ok(msg) = Payload::deserialize(stream, &header, 0, None, None) {
             if at_end(stream) {
                 return Ok(msg);
             }
@@ -238,9 +235,9 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<MessageEnum, ParseStatus> {
+    ) -> Result<Payload, ParseStatus> {
         // Message does not use stream payload (header only)
-        MessageEnum::deserialize(stream, header, 0, None, None)
+        Payload::deserialize(stream, &header, 0, None, None)
             .map_err(|_| ParseStatus::InvalidTelemetryReqMessage)
     }
 
@@ -248,8 +245,8 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<MessageEnum, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
+    ) -> Result<Payload, ParseStatus> {
+        if let Ok(msg) = Payload::deserialize(stream, &header, 0, None, None) {
             // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
             return Ok(msg);
         }
@@ -260,8 +257,8 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<MessageEnum, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
+    ) -> Result<Payload, ParseStatus> {
+        if let Ok(msg) = Payload::deserialize(stream, &header, 0, None, None) {
             if at_end(stream) {
                 return Ok(msg);
             }
@@ -273,8 +270,8 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<MessageEnum, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
+    ) -> Result<Payload, ParseStatus> {
+        if let Ok(msg) = Payload::deserialize(stream, &header, 0, None, None) {
             if at_end(stream) {
                 return Ok(msg);
             }
@@ -286,8 +283,8 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<MessageEnum, ParseStatus> {
-        if let Ok(msg) = MessageEnum::deserialize(stream, header, 0, None, None) {
+    ) -> Result<Payload, ParseStatus> {
+        if let Ok(msg) = Payload::deserialize(stream, &header, 0, None, None) {
             if at_end(stream) {
                 return Ok(msg);
             }
@@ -299,9 +296,9 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<MessageEnum, ParseStatus> {
+    ) -> Result<Payload, ParseStatus> {
         // Message does not use stream payload (header only)
-        match MessageEnum::deserialize(stream, header, 0, None, None) {
+        match Payload::deserialize(stream, &header, 0, None, None) {
             Ok(msg) => Ok(msg),
             Err(_) => Err(ParseStatus::InvalidMessageType), // TODO correct error type
         }
@@ -311,9 +308,9 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<MessageEnum, ParseStatus> {
+    ) -> Result<Payload, ParseStatus> {
         // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
-        match MessageEnum::deserialize(stream, header, 0, None, None) {
+        match Payload::deserialize(stream, &header, 0, None, None) {
             Ok(msg) => Ok(msg),
             Err(_) => Err(ParseStatus::InvalidAscPullReqMessage),
         }
@@ -323,9 +320,9 @@ impl MessageDeserializerImpl {
         &self,
         stream: &mut impl Stream,
         header: MessageHeader,
-    ) -> Result<MessageEnum, ParseStatus> {
+    ) -> Result<Payload, ParseStatus> {
         // Intentionally not checking if at the end of stream, because these messages support backwards/forwards compatibility
-        match MessageEnum::deserialize(stream, header, 0, None, None) {
+        match Payload::deserialize(stream, &header, 0, None, None) {
             Ok(msg) => Ok(msg),
             Err(_) => Err(ParseStatus::InvalidAscPullAckMessage),
         }
@@ -334,48 +331,51 @@ impl MessageDeserializerImpl {
 
 #[cfg(test)]
 mod tests {
+    use std::ops::Deref;
+
     use super::*;
     use crate::{config::STUB_NETWORK_CONSTANTS, voting::Vote};
     use rsnano_core::BlockBuilder;
 
     #[test]
     fn exact_confirm_ack() {
-        test_deserializer(&MessageEnum::new_confirm_ack(
-            &Default::default(),
-            Arc::new(Vote::create_test_instance()),
-        ));
+        let message = Payload::ConfirmAck(ConfirmAckPayload {
+            vote: Arc::new(Vote::create_test_instance()),
+        });
+        test_deserializer(&message);
     }
 
     #[test]
     fn exact_confirm_req() {
         let block = Arc::new(BlockBuilder::legacy_send().build());
-        let message = MessageEnum::new_confirm_req_with_block(&Default::default(), block);
+        let message = Payload::ConfirmReq(ConfirmReqPayload {
+            block: Some(block),
+            roots_hashes: Vec::new(),
+        });
         test_deserializer(&message);
     }
 
     #[test]
     fn exact_publish() {
         let block = Arc::new(BlockBuilder::legacy_send().build());
-        let message = MessageEnum::new_publish(&ProtocolInfo::dev_network(), block);
+        let message = Payload::Publish(PublishPayload { block, digest: 8 });
         test_deserializer(&message);
     }
 
     #[test]
     fn exact_keepalive() {
-        test_deserializer(&MessageEnum::new_keepalive(&ProtocolInfo::dev_network()));
+        test_deserializer(&Payload::Keepalive(KeepalivePayload::default()));
     }
 
     #[test]
     fn exact_frontier_req() {
-        test_deserializer(&MessageEnum::new_frontier_req(
-            &Default::default(),
-            FrontierReqPayload::create_test_instance(),
-        ));
+        let message = Payload::FrontierReq(FrontierReqPayload::create_test_instance());
+        test_deserializer(&message);
     }
 
     #[test]
     fn exact_telemetry_req() {
-        test_deserializer(&MessageEnum::new_telemetry_req(&Default::default()));
+        test_deserializer(&Payload::TelemetryReq(TelemetryReqPayload {}));
     }
 
     #[test]
@@ -383,60 +383,55 @@ mod tests {
         let mut data = TelemetryData::default();
         data.unknown_data.push(0xFF);
 
-        test_deserializer(&MessageEnum::new_telemetry_ack(&Default::default(), data));
+        test_deserializer(&Payload::TelemetryAck(data));
     }
 
     #[test]
     fn exact_bulk_pull() {
-        test_deserializer(&MessageEnum::new_bulk_pull(
-            &ProtocolInfo::dev_network(),
-            BulkPullPayload::create_test_instance(),
-        ));
+        let message = Payload::BulkPull(BulkPullPayload::create_test_instance());
+        test_deserializer(&message);
     }
 
     #[test]
     fn exact_bulk_pull_account() {
-        test_deserializer(&MessageEnum::new_bulk_pull_account(
-            &ProtocolInfo::dev_network(),
-            BulkPullAccountPayload::create_test_instance(),
-        ));
+        let message = Payload::BulkPullAccount(BulkPullAccountPayload::create_test_instance());
+        test_deserializer(&message);
     }
 
     #[test]
     fn exact_bulk_push() {
-        test_deserializer(&MessageEnum::new_bulk_push(&ProtocolInfo::dev_network()));
+        test_deserializer(&Payload::BulkPush(BulkPushPayload {}));
     }
 
     #[test]
     fn exact_node_id_handshake() {
-        test_deserializer(&MessageEnum::new_node_id_handshake(
-            &ProtocolInfo::dev_network(),
-            Some(NodeIdHandshakeQuery { cookie: [1; 32] }),
-            None,
-        ));
+        let message = Payload::NodeIdHandshake(NodeIdHandshakePayload {
+            query: Some(NodeIdHandshakeQuery { cookie: [1; 32] }),
+            response: None,
+            is_v2: true,
+        });
+        test_deserializer(&message);
     }
 
     #[test]
     fn exact_asc_pull_req() {
-        let message = MessageEnum::new_asc_pull_req_accounts(
-            &ProtocolInfo::dev_network(),
-            7,
-            AccountInfoReqPayload::create_test_instance(),
-        );
+        let message = Payload::AscPullReq(AscPullReqPayload {
+            req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload::create_test_instance()),
+            id: 7,
+        });
         test_deserializer(&message);
     }
 
     #[test]
     fn exact_asc_pull_ack() {
-        let message = MessageEnum::new_asc_pull_ack_accounts(
-            &ProtocolInfo::dev_network(),
-            7,
-            AccountInfoAckPayload::create_test_instance(),
-        );
+        let message = Payload::AscPullAck(AscPullAckPayload {
+            id: 7,
+            pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload::create_test_instance()),
+        });
         test_deserializer(&message);
     }
 
-    fn test_deserializer(original_message: &MessageEnum) {
+    fn test_deserializer(original: &Payload) {
         let network_filter = Arc::new(NetworkFilter::new(1));
         let block_uniquer = Arc::new(BlockUniquer::new());
         let vote_uniquer = Arc::new(VoteUniquer::new());
@@ -448,14 +443,15 @@ mod tests {
             vote_uniquer,
         ));
 
-        let original_bytes = original_message.to_bytes();
-        let mut stream = StreamAdapter::new(&original_bytes);
+        let mut serializer = MessageSerializer::new(STUB_NETWORK_CONSTANTS.protocol_info());
+        let (header, payload) = serializer.serialize(original.deref()).unwrap();
+        let mut stream = StreamAdapter::new(header);
         let deserialized_header = MessageHeader::deserialize(&mut stream).unwrap();
 
-        let deserialized_msg = deserializer
-            .deserialize(deserialized_header, stream.remaining())
+        let deserialized = deserializer
+            .deserialize(deserialized_header, payload)
             .unwrap();
 
-        assert_eq!(deserialized_msg.to_bytes(), original_bytes);
+        assert_eq!(deserialized, *original);
     }
 }

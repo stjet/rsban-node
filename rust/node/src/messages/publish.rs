@@ -12,7 +12,7 @@ use std::{
 
 use super::{MessageHeader, MessageType, MessageVariant};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Eq)]
 pub struct PublishPayload {
     pub block: Arc<BlockEnum>,
     pub digest: u128,
@@ -34,6 +34,12 @@ impl PublishPayload {
         };
 
         Ok(payload)
+    }
+}
+
+impl PartialEq for PublishPayload {
+    fn eq(&self, other: &Self) -> bool {
+        self.block == other.block
     }
 }
 

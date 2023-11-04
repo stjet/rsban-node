@@ -108,6 +108,18 @@ impl Payload {
         };
         Ok(msg)
     }
+
+    pub fn into_message_enum(self, protocol: &ProtocolInfo) -> MessageEnum {
+        let mut payload_stream = MemoryStream::new();
+        self.serialize(&mut payload_stream).unwrap();
+
+        let mut header = MessageHeader::new(self.message_type(), protocol);
+        header.extensions = self.header_extensions(payload_stream.bytes_written() as u16);
+        MessageEnum {
+            header,
+            payload: self,
+        }
+    }
 }
 
 impl Deref for Payload {

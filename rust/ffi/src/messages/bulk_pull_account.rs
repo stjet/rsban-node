@@ -8,12 +8,12 @@ use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount};
 
 unsafe fn get_payload_mut(message_handle: &mut MessageHandle) -> &mut BulkPullAccountPayload {
-    let Payload::BulkPullAccount(payload) = &mut message_handle.payload else {panic!("not a bulk_pull_account message")};
+    let Payload::BulkPullAccount(payload) = &mut message_handle.message else {panic!("not a bulk_pull_account message")};
     payload
 }
 
 unsafe fn get_payload(message_handle: &MessageHandle) -> &BulkPullAccountPayload {
-    let Payload::BulkPullAccount(payload) = &message_handle.payload else {panic!("not a bulk_pull_account message")};
+    let Payload::BulkPullAccount(payload) = &message_handle.message else {panic!("not a bulk_pull_account message")};
     payload
 }
 
@@ -36,7 +36,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_account_create3(
 pub unsafe extern "C" fn rsn_message_bulk_pull_account_clone(
     other: &MessageHandle,
 ) -> *mut MessageHandle {
-    MessageHandle::new(other.deref().clone())
+    MessageHandle::new2(other.deref().clone())
 }
 
 #[no_mangle]
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_account_to_string(
     handle: &MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = handle.to_string().into();
+    (*result) = handle.message.to_string().into();
 }
 
 #[repr(C)]

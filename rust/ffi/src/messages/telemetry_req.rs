@@ -21,5 +21,5 @@ pub unsafe extern "C" fn rsn_message_telemetry_req_to_string(
     handle: &MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = handle.to_string().into();
+    (*result) = handle.message.to_string().into();
 }

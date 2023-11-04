@@ -752,11 +752,6 @@ void nano::telemetry_ack::visit (nano::message_visitor & visitor_a) const
 	visitor_a.telemetry_ack (*this);
 }
 
-uint16_t nano::telemetry_ack::size () const
-{
-	return rsnano::rsn_message_telemetry_ack_size (handle);
-}
-
 nano::telemetry_data nano::telemetry_ack::get_data () const
 {
 	auto data_handle = rsnano::rsn_message_telemetry_ack_data (handle);

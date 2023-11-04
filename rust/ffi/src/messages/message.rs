@@ -2,20 +2,27 @@ use crate::NetworkConstantsDto;
 use rsnano_node::{
     config::NetworkConstants,
     messages::{MessageEnum, ProtocolInfo},
+    transport::DeserializedMessage,
 };
 
 use std::ops::{Deref, DerefMut};
 
-pub struct MessageHandle(pub MessageEnum);
+pub struct MessageHandle(pub DeserializedMessage);
 
 impl MessageHandle {
     pub fn new(msg: MessageEnum) -> *mut Self {
+        Box::into_raw(Box::new(Self(DeserializedMessage {
+            message: msg.payload,
+            protocol: msg.header.protocol,
+        })))
+    }
+    pub fn new2(msg: DeserializedMessage) -> *mut Self {
         Box::into_raw(Box::new(Self(msg)))
     }
 }
 
 impl Deref for MessageHandle {
-    type Target = MessageEnum;
+    type Target = DeserializedMessage;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -30,7 +37,7 @@ impl DerefMut for MessageHandle {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_clone(handle: *mut MessageHandle) -> *mut MessageHandle {
-    MessageHandle::new((*handle).0.clone())
+    MessageHandle::new2((*handle).0.clone())
 }
 
 #[no_mangle]
@@ -40,7 +47,7 @@ pub unsafe extern "C" fn rsn_message_destroy(handle: *mut MessageHandle) {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_type(handle: *mut MessageHandle) -> u8 {
-    (*handle).message_type() as u8
+    (*handle).message.message_type() as u8
 }
 
 pub(crate) unsafe fn create_message_handle3(
@@ -52,5 +59,5 @@ pub(crate) unsafe fn create_message_handle3(
 }
 
 pub(crate) fn message_handle_clone(handle: &MessageHandle) -> *mut MessageHandle {
-    MessageHandle::new(handle.deref().clone())
+    MessageHandle::new2(handle.deref().clone())
 }

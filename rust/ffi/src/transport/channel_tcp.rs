@@ -198,7 +198,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_send(
         callback_wrapper.call(ec, size);
     });
     as_tcp_channel(handle).send(
-        msg,
+        &msg.into_enum(),
         Some(callback_box),
         BufferDropPolicy::from_u8(policy).unwrap(),
         TrafficType::from_u8(traffic_type).unwrap(),

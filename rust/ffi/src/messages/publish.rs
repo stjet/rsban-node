@@ -20,12 +20,12 @@ pub extern "C" fn rsn_message_publish_clone(handle: &MessageHandle) -> *mut Mess
 }
 
 fn get_publish_payload(handle: &MessageHandle) -> &PublishPayload {
-    let Payload::Publish(payload) = &handle.payload else {panic!("not a payload message")};
+    let Payload::Publish(payload) = &handle.message else {panic!("not a payload message")};
     payload
 }
 
 fn get_publish_payload_mut(handle: &mut MessageHandle) -> &mut PublishPayload {
-    let Payload::Publish(payload) = &mut handle.payload else {panic!("not a payload message")};
+    let Payload::Publish(payload) = &mut handle.message else {panic!("not a payload message")};
     payload
 }
 
@@ -56,5 +56,5 @@ pub unsafe extern "C" fn rsn_message_publish_to_string(
     handle: &mut MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = handle.to_string().into();
+    (*result) = handle.message.to_string().into();
 }

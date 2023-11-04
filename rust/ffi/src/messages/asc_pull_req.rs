@@ -48,12 +48,12 @@ pub extern "C" fn rsn_message_asc_pull_req_clone(handle: &MessageHandle) -> *mut
 }
 
 fn get_payload(handle: &MessageHandle) -> &AscPullReqPayload {
-    let Payload::AscPullReq(payload) = &handle.payload else {panic!("not an asc_pull_req")};
+    let Payload::AscPullReq(payload) = &handle.message else {panic!("not an asc_pull_req")};
     payload
 }
 
 fn get_payload_mut(handle: &mut MessageHandle) -> &mut AscPullReqPayload {
-    let Payload::AscPullReq(payload) = &mut handle.payload else {panic!("not an asc_pull_req")};
+    let Payload::AscPullReq(payload) = &mut handle.message else {panic!("not an asc_pull_req")};
     payload
 }
 

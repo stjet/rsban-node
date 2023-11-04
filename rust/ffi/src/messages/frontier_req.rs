@@ -34,11 +34,11 @@ pub unsafe extern "C" fn rsn_message_frontier_req_create3(
 pub unsafe extern "C" fn rsn_message_frontier_req_clone(
     other: &MessageHandle,
 ) -> *mut MessageHandle {
-    MessageHandle::new(other.0.clone())
+    MessageHandle::new2(other.0.clone())
 }
 
 unsafe fn get_payload(handle: &MessageHandle) -> &FrontierReqPayload {
-    let Payload::FrontierReq(payload) = &handle.payload else { panic!("not a frontier_req")};
+    let Payload::FrontierReq(payload) = &handle.message else { panic!("not a frontier_req")};
     payload
 }
 
@@ -75,5 +75,5 @@ pub unsafe extern "C" fn rsn_message_frontier_req_to_string(
     handle: &MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = handle.to_string().into();
+    (*result) = handle.message.to_string().into();
 }

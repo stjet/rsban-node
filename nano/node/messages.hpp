@@ -253,7 +253,6 @@ public:
 	telemetry_ack (rsnano::MessageHandle * handle_a);
 	telemetry_ack & operator= (telemetry_ack const & other_a);
 	void visit (nano::message_visitor &) const override;
-	uint16_t size () const;
 	bool is_empty_payload () const;
 	std::string to_string () const;
 	nano::telemetry_data get_data () const;

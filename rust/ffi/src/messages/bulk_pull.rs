@@ -32,11 +32,11 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_create3(
 pub unsafe extern "C" fn rsn_message_bulk_pull_req_clone(
     other: &MessageHandle,
 ) -> *mut MessageHandle {
-    MessageHandle::new(other.deref().clone())
+    MessageHandle::new2(other.deref().clone())
 }
 
 unsafe fn get_payload(handle: &MessageHandle) -> &BulkPullPayload {
-    let Payload::BulkPull(payload) = &handle.payload else {panic!("not a bulk_pull message")};
+    let Payload::BulkPull(payload) = &handle.message else {panic!("not a bulk_pull message")};
     payload
 }
 
@@ -50,5 +50,5 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_to_string(
     handle: &MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = handle.to_string().into();
+    (*result) = handle.message.to_string().into();
 }

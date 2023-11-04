@@ -46,7 +46,7 @@ pub extern "C" fn rsn_message_confirm_req_clone(handle: &MessageHandle) -> *mut 
 }
 
 unsafe fn get_payload(handle: &MessageHandle) -> &ConfirmReqPayload {
-    let Payload::ConfirmReq(payload) = &handle.payload else {panic!("not a confirm_req_payload")};
+    let Payload::ConfirmReq(payload) = &handle.message else {panic!("not a confirm_req_payload")};
     payload
 }
 
@@ -106,5 +106,5 @@ pub unsafe extern "C" fn rsn_message_confirm_req_to_string(
     handle: &MessageHandle,
     result: *mut StringDto,
 ) {
-    (*result) = handle.to_string().into();
+    (*result) = handle.message.to_string().into();
 }

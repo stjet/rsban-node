@@ -833,13 +833,32 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 socket_l,
             ));
 
+            let stats = Arc::clone(&self.stats);
             rt.tokio.spawn(async move {
                 let result = deserializer.read().await;
-                spawn_blocking(Box::new(move || match result {
-                    Ok(msg) => callback(ErrorCode::new(), Some(msg)),
-                    Err(ParseStatus::DuplicatePublishMessage) => callback(ErrorCode::new(), None),
-                    Err(ParseStatus::InsufficientWork) => callback(ErrorCode::new(), None),
-                    Err(_) => callback(ErrorCode::fault(), None),
+                spawn_blocking(Box::new(move || {
+                    match &result {
+                        Ok(payload) => stats.inc(
+                            StatType::Message,
+                            payload.message.message_type().into(),
+                            Direction::In,
+                        ),
+                        Err(ParseStatus::InsufficientWork) => stats.inc(
+                            StatType::Filter,
+                            DetailType::DuplicatePublish,
+                            Direction::In,
+                        ),
+                        Err(e) => stats.inc(StatType::Error, (*e).into(), Direction::In),
+                    }
+
+                    match result {
+                        Ok(msg) => callback(ErrorCode::new(), Some(msg)),
+                        Err(ParseStatus::DuplicatePublishMessage) => {
+                            callback(ErrorCode::new(), None)
+                        }
+                        Err(ParseStatus::InsufficientWork) => callback(ErrorCode::new(), None),
+                        Err(_) => callback(ErrorCode::fault(), None),
+                    }
                 }));
             });
         }

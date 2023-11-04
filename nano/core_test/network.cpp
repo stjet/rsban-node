@@ -1,3 +1,4 @@
+#include "nano/lib/config.hpp"
 #include "nano/store/component.hpp"
 
 #include <nano/node/network.hpp>
@@ -935,7 +936,7 @@ TEST (network, filter_invalid_network_bytes)
 
 	// send a keepalive, from node2 to node1, with the wrong network bytes
 	auto network{ nano::dev::network_params.network };
-	network.set_active_network (nano::networks::invalid);
+	network.current_network = nano::networks::invalid;
 	nano::keepalive keepalive{ network };
 	channel->send (keepalive);
 

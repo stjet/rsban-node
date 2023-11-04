@@ -21,7 +21,7 @@ use crate::{
 
 use super::{
     message_deserializer::{AsyncBufferReader, AsyncMessageDeserializer},
-    BandwidthLimitType, BufferDropPolicy, Channel, ChannelEnum, NetworkFilter,
+    BandwidthLimitType, BufferDropPolicy, Channel, ChannelEnum, DeserializedMessage, NetworkFilter,
     OutboundBandwidthLimiter, ParseStatus, TrafficType, WriteCallback,
 };
 
@@ -32,7 +32,7 @@ pub struct InProcChannelData {
     node_id: Option<Account>,
 }
 
-pub type InboundCallback = Arc<dyn Fn(MessageEnum, Arc<ChannelEnum>) + Send + Sync>;
+pub type InboundCallback = Arc<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>;
 
 pub struct ChannelInProc {
     channel_id: usize,
@@ -138,7 +138,7 @@ impl ChannelInProc {
         let destination_node_id = self.destination_node_id;
         let async_rt = self.async_rt.clone();
 
-        let callback_wrapper = Box::new(move |ec: ErrorCode, msg: Option<MessageEnum>| {
+        let callback_wrapper = Box::new(move |ec: ErrorCode, msg: Option<DeserializedMessage>| {
             if ec.is_err() {
                 return;
             }
@@ -170,7 +170,7 @@ impl ChannelInProc {
             {
                 stats.inc(
                     StatType::Message,
-                    DetailType::from(msg.header.message_type),
+                    msg.message.message_type().into(),
                     Direction::In,
                 );
 
@@ -193,7 +193,7 @@ impl ChannelInProc {
     fn send_buffer_impl(
         &self,
         buffer: &[u8],
-        callback_msg: Box<dyn FnOnce(ErrorCode, Option<MessageEnum>) + Send>,
+        callback_msg: Box<dyn FnOnce(ErrorCode, Option<DeserializedMessage>) + Send>,
     ) {
         if let Some(rt) = self.async_rt.upgrade() {
             let message_deserializer = Arc::new(AsyncMessageDeserializer::new(
@@ -207,7 +207,7 @@ impl ChannelInProc {
             rt.tokio.spawn(async move {
                 let result = message_deserializer.read().await;
                 spawn_blocking(move || match result {
-                    Ok(msg) => callback_msg(ErrorCode::new(), Some(msg.into_enum())),
+                    Ok(msg) => callback_msg(ErrorCode::new(), Some(msg)),
                     Err(ParseStatus::DuplicatePublishMessage) => {
                         callback_msg(ErrorCode::new(), None)
                     }

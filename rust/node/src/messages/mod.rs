@@ -44,7 +44,7 @@ mod asc_pull_ack;
 pub use asc_pull_ack::*;
 
 pub trait MessageVisitor {
-    fn received(&mut self, message: &MessageEnum);
+    fn received(&mut self, message: &Payload);
 }
 
 #[cfg(test)]

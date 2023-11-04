@@ -36,10 +36,11 @@ use crate::{
 
 use super::{
     message_deserializer::AsyncMessageDeserializer, BufferDropPolicy, ChannelEnum, ChannelTcp,
-    ChannelTcpObserver, CompositeSocketObserver, EndpointType, IChannelTcpObserverWeakPtr,
-    NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter, ParseStatus, PeerExclusion,
-    Socket, SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpMessageManager,
-    TcpServer, TcpServerFactory, TcpServerObserver, TcpSocketFacadeFactory, TrafficType,
+    ChannelTcpObserver, CompositeSocketObserver, DeserializedMessage, EndpointType,
+    IChannelTcpObserverWeakPtr, NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter,
+    ParseStatus, PeerExclusion, Socket, SocketBuilder, SocketExtensions, SocketObserver,
+    SynCookies, TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver,
+    TcpSocketFacadeFactory, TrafficType,
 };
 
 pub struct TcpChannelsOptions {
@@ -54,7 +55,7 @@ pub struct TcpChannelsOptions {
     pub tcp_message_manager: Arc<TcpMessageManager>,
     pub port: u16,
     pub flags: NodeFlags,
-    pub sink: Box<dyn Fn(MessageEnum, Arc<ChannelEnum>) + Sync + Send>,
+    pub sink: Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Sync + Send>,
     pub limiter: Arc<OutboundBandwidthLimiter>,
     pub node_id: KeyPair,
     pub syn_cookies: Arc<SynCookies>,
@@ -71,7 +72,7 @@ pub struct TcpChannels {
     tcp_message_manager: Arc<TcpMessageManager>,
     flags: NodeFlags,
     stats: Arc<Stats>,
-    sink: Box<dyn Fn(MessageEnum, Arc<ChannelEnum>) + Send + Sync>,
+    sink: Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>,
     next_channel_id: AtomicUsize,
     network: Arc<NetworkParams>,
     pub excluded_peers: Arc<Mutex<PeerExclusion>>,
@@ -491,7 +492,7 @@ pub trait TcpChannelsExtension {
     fn process_messages(&self);
     fn process_message(
         &self,
-        message: &MessageEnum,
+        message: &DeserializedMessage,
         endpoint: &SocketAddr,
         node_id: PublicKey,
         socket: &Arc<Socket>,
@@ -515,7 +516,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
     fn process_message(
         &self,
-        message: &MessageEnum,
+        message: &DeserializedMessage,
         endpoint: &SocketAddr,
         node_id: PublicKey,
         socket: &Arc<Socket>,
@@ -525,7 +526,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         };
         let socket_type = socket.socket_type();
         if !self.stopped.load(Ordering::SeqCst)
-            && message.header.protocol.version_using >= self.network.network.protocol_version_min
+            && message.protocol.version_using >= self.network.network.protocol_version_min
         {
             if let Some(channel) = self.find_channel(endpoint) {
                 (self.sink)(message.clone(), Arc::clone(&channel));
@@ -555,8 +556,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         temporary_channel.set_remote_endpoint();
                         debug_assert!(*endpoint == temporary_channel.remote_endpoint());
                         temporary_channel.set_node_id(node_id);
-                        temporary_channel
-                            .set_network_version(message.header.protocol.version_using);
+                        temporary_channel.set_network_version(message.protocol.version_using);
                         temporary_channel.set_temporary(true);
                         let temporary_channel = Arc::new(ChannelEnum::Tcp(temporary_channel));
                         debug_assert!(
@@ -570,7 +570,9 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         (self.sink)(message.clone(), temporary_channel);
                     } else {
                         // Initial node_id_handshake request without node ID
-                        debug_assert!(message.header.message_type == MessageType::NodeIdHandshake);
+                        debug_assert!(
+                            message.message.message_type() == MessageType::NodeIdHandshake
+                        );
                         self.stats.inc(
                             StatType::Message,
                             DetailType::NodeIdHandshake,
@@ -642,8 +644,8 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         };
 
         let channel_clone = channel.clone();
-        let callback: Box<dyn FnOnce(ErrorCode, Option<MessageEnum>) + Send + Sync> =
-            Box::new(move |ec: ErrorCode, message: Option<MessageEnum>| {
+        let callback: Box<dyn FnOnce(ErrorCode, Option<DeserializedMessage>) + Send + Sync> =
+            Box::new(move |ec, message| {
                 let Some(this_l) = this_w.upgrade() else {
                     return;
                 };
@@ -677,7 +679,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 // the header type should in principle be checked after checking the network bytes and the version numbers, I will not change it here since the benefits do not outweight the difficulties
 
-                let Payload::NodeIdHandshake(handshake) = &message.payload
+                let Payload::NodeIdHandshake(handshake) = &message.message
                 else {
                     if this_l
                         .node_config
@@ -693,12 +695,11 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     return;
                 };
 
-                if message.header.protocol.network != this_l.network.network.current_network
-                    || message.header.protocol.version_using
-                        < this_l.network.network.protocol_version_min
+                if message.protocol.network != this_l.network.network.current_network
+                    || message.protocol.version_using < this_l.network.network.protocol_version_min
                 {
                     // error handling, either the networks bytes or the version is wrong
-                    if message.header.protocol.network == this_l.network.network.current_network {
+                    if message.protocol.network == this_l.network.network.current_network {
                         this_l.stats.inc(
                             StatType::Message,
                             DetailType::InvalidNetwork,
@@ -745,7 +746,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     return;
                 };
 
-                tcp.set_network_version(message.header.protocol.version_using);
+                tcp.set_network_version(message.protocol.version_using);
 
                 let node_id = response.node_id;
 
@@ -835,7 +836,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             rt.tokio.spawn(async move {
                 let result = deserializer.read().await;
                 spawn_blocking(Box::new(move || match result {
-                    Ok(msg) => callback(ErrorCode::new(), Some(msg.into_enum())),
+                    Ok(msg) => callback(ErrorCode::new(), Some(msg)),
                     Err(ParseStatus::DuplicatePublishMessage) => callback(ErrorCode::new(), None),
                     Err(ParseStatus::InsufficientWork) => callback(ErrorCode::new(), None),
                     Err(_) => callback(ErrorCode::fault(), None),

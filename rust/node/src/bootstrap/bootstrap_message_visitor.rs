@@ -6,7 +6,7 @@ use rsnano_ledger::Ledger;
 use crate::{
     block_processing::BlockProcessor,
     config::{Logging, NodeFlags},
-    messages::{MessageEnum, MessageVisitor, Payload},
+    messages::{MessageVisitor, Payload},
     stats::Stats,
     transport::{BootstrapMessageVisitor, TcpServer},
     utils::{AsyncRuntime, ThreadPool},
@@ -32,8 +32,8 @@ pub struct BootstrapMessageVisitorImpl {
 }
 
 impl MessageVisitor for BootstrapMessageVisitorImpl {
-    fn received(&mut self, message: &MessageEnum) {
-        match &message.payload {
+    fn received(&mut self, message: &Payload) {
+        match message {
             Payload::BulkPull(payload) => {
                 if self.flags.disable_bootstrap_bulk_pull_server {
                     return;

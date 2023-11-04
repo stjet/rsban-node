@@ -29,13 +29,11 @@ class tcp_message_item final
 public:
 	tcp_message_item ();
 	explicit tcp_message_item (rsnano::TcpMessageItemHandle * handle_a);
-	tcp_message_item (std::shared_ptr<nano::message> message_a, nano::tcp_endpoint endpoint_a, nano::account node_id_a, std::shared_ptr<nano::transport::socket> socket_a);
 	tcp_message_item (nano::tcp_message_item const & other_a);
 	tcp_message_item (nano::tcp_message_item && other_a) noexcept;
 	~tcp_message_item ();
 	tcp_message_item & operator= (tcp_message_item const & other_a);
 	tcp_message_item & operator= (tcp_message_item && other_a);
-	std::shared_ptr<nano::message> get_message () const;
 	nano::tcp_endpoint get_endpoint () const;
 	nano::account get_node_id () const;
 	rsnano::TcpMessageItemHandle * handle;

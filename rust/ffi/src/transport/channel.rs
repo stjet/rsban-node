@@ -11,7 +11,10 @@ use rsnano_core::{
 };
 use rsnano_node::{
     config::NetworkConstants,
-    transport::{Channel, ChannelEnum, ChannelFake, ChannelInProc, ChannelTcp, TrafficType},
+    transport::{
+        Channel, ChannelEnum, ChannelFake, ChannelInProc, ChannelTcp, DeserializedMessage,
+        TrafficType,
+    },
 };
 use std::{
     ffi::c_void,
@@ -176,20 +179,20 @@ pub unsafe extern "C" fn rsn_channel_inproc_create(
     let network_constants = NetworkConstants::try_from(&*network_constants).unwrap();
     let network_filter = (*network_filter).deref().clone();
     let source_context = ContextWrapper::new(source_inbound_context, delete_context);
-    let source_inbound = Arc::new(move |msg, channel| {
+    let source_inbound = Arc::new(move |msg: DeserializedMessage, channel| {
         let context = source_context.get_context();
         source_inbound_callback(
             context,
-            MessageHandle::new(msg),
+            MessageHandle::new(msg.into_enum()),
             ChannelHandle::new(channel),
         );
     });
     let destination_context = ContextWrapper::new(destination_inbound_context, delete_context);
-    let destination_inbound = Arc::new(move |msg, channel| {
+    let destination_inbound = Arc::new(move |msg: DeserializedMessage, channel| {
         let context = destination_context.get_context();
         destination_inbound_callback(
             context,
-            MessageHandle::new(msg),
+            MessageHandle::new(msg.into_enum()),
             ChannelHandle::new(channel),
         );
     });

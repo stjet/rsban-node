@@ -4,12 +4,11 @@ use std::{
     sync::{Arc, Condvar, Mutex},
 };
 
-use super::Socket;
-use crate::messages::MessageEnum;
+use super::{DeserializedMessage, Socket};
 use rsnano_core::Account;
 
 pub struct TcpMessageItem {
-    pub message: Option<MessageEnum>,
+    pub message: Option<DeserializedMessage>,
     pub endpoint: SocketAddr,
     pub node_id: Account,
     pub socket: Option<Arc<Socket>>,

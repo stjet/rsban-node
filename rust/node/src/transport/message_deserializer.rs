@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::{
     config::NetworkConstants,
-    messages::{MessageEnum, MessageHeader, ProtocolInfo},
+    messages::{MessageHeader, ProtocolInfo},
     transport::validate_header,
     utils::BlockUniquer,
     voting::VoteUniquer,

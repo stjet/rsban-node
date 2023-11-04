@@ -58,6 +58,7 @@ impl ParseStatus {
     }
 }
 
+#[derive(Clone)]
 pub struct DeserializedMessage {
     pub message: Payload,
     pub protocol: ProtocolInfo,

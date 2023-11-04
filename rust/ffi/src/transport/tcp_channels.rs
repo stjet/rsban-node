@@ -9,7 +9,7 @@ use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
 use rsnano_node::{
     config::NodeConfig,
     transport::{
-        ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions,
+        ChannelEnum, DeserializedMessage, TcpChannels, TcpChannelsExtension, TcpChannelsOptions,
         TokioSocketFacadeFactory,
     },
     NetworkParams,
@@ -66,10 +66,10 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
         unsafe {
             let context_wrapper = ContextWrapper::new(value.sink_handle, value.delete_sink);
             let callback = value.sink_callback;
-            let sink = Box::new(move |msg, channel| {
+            let sink = Box::new(move |msg: DeserializedMessage, channel| {
                 callback(
                     context_wrapper.get_context(),
-                    MessageHandle::new(msg),
+                    MessageHandle::new(msg.into_enum()),
                     ChannelHandle::new(channel),
                 )
             });

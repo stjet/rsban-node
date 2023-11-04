@@ -238,7 +238,7 @@ impl TcpServer {
         self.socket.is_realtime_connection()
     }
 
-    pub fn queue_realtime(&self, message: MessageEnum) {
+    pub fn queue_realtime(&self, message: DeserializedMessage) {
         self.tcp_message_manager.put_message(TcpMessageItem {
             message: Some(message),
             endpoint: *self.remote_endpoint.lock().unwrap(),
@@ -379,10 +379,10 @@ impl TcpServerExt for Arc<TcpServer> {
             let mut handshake_visitor = self
                 .message_visitor_factory
                 .handshake_visitor(Arc::clone(self));
-            handshake_visitor.received(&message.into_enum());
+            handshake_visitor.received(&message.message);
 
             if handshake_visitor.process() {
-                self.queue_realtime(message.into_enum());
+                self.queue_realtime(message);
                 return true;
             } else if handshake_visitor.bootstrap() {
                 if !self.to_bootstrap_connection() {
@@ -397,9 +397,9 @@ impl TcpServerExt for Arc<TcpServer> {
             let mut realtime_visitor = self
                 .message_visitor_factory
                 .realtime_visitor(Arc::clone(self));
-            realtime_visitor.received(&message.into_enum());
+            realtime_visitor.received(&message.message);
             if realtime_visitor.process() {
-                self.queue_realtime(message.into_enum());
+                self.queue_realtime(message);
             }
             return true;
         }
@@ -408,7 +408,7 @@ impl TcpServerExt for Arc<TcpServer> {
             let mut bootstrap_visitor = self
                 .message_visitor_factory
                 .bootstrap_visitor(Arc::clone(self));
-            bootstrap_visitor.received(&message.into_enum());
+            bootstrap_visitor.received(&message.message);
             return !bootstrap_visitor.processed(); // Stop receiving new messages if bootstrap serving started
         }
         debug_assert!(false);
@@ -569,9 +569,9 @@ impl HandshakeMessageVisitorImpl {
 }
 
 impl MessageVisitor for HandshakeMessageVisitorImpl {
-    fn received(&mut self, message: &MessageEnum) {
+    fn received(&mut self, message: &Payload) {
         if matches!(
-            &message.payload,
+            message,
             Payload::BulkPull(_)
                 | Payload::BulkPullAccount(_)
                 | Payload::BulkPush(_)
@@ -580,7 +580,7 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
             self.bootstrap = true;
         };
 
-        match &message.payload {
+        match message {
             Payload::NodeIdHandshake(payload) => {
                 if self.disable_tcp_realtime {
                     if self.handshake_logging {
@@ -665,8 +665,8 @@ impl RealtimeMessageVisitorImpl {
 }
 
 impl MessageVisitor for RealtimeMessageVisitorImpl {
-    fn received(&mut self, message: &MessageEnum) {
-        match &message.payload {
+    fn received(&mut self, message: &Payload) {
+        match message {
             Payload::Keepalive(_)
             | Payload::Publish(_)
             | Payload::AscPullAck(_)

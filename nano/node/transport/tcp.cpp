@@ -61,6 +61,28 @@ void nano::tcp_message_manager::stop ()
  * channel_tcp
  */
 
+namespace{
+	rsnano::ChannelHandle * create_tcp_channel_handle(
+rsnano::async_runtime & async_rt_a,
+nano::outbound_bandwidth_limiter & limiter_a,
+nano::network_constants const & network_a,
+std::shared_ptr<nano::transport::socket> const & socket_a,
+std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a,
+size_t channel_id
+)
+	{
+		auto network_dto{network_a.to_dto()};
+return rsnano::rsn_channel_tcp_create (
+	socket_a->handle,
+	new std::weak_ptr<nano::transport::channel_tcp_observer> (observer_a),
+	limiter_a.handle,
+	async_rt_a.handle,
+	channel_id,
+	&network_dto
+	);
+	}
+}
+
 nano::transport::channel_tcp::channel_tcp (
 rsnano::async_runtime & async_rt_a,
 nano::outbound_bandwidth_limiter & limiter_a,
@@ -68,12 +90,7 @@ nano::network_constants const & network_a,
 std::shared_ptr<nano::transport::socket> const & socket_a,
 std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a,
 size_t channel_id) :
-	channel (rsnano::rsn_channel_tcp_create (
-	socket_a->handle,
-	new std::weak_ptr<nano::transport::channel_tcp_observer> (observer_a),
-	limiter_a.handle,
-	async_rt_a.handle,
-	channel_id))
+	channel (create_tcp_channel_handle(async_rt_a, limiter_a, network_a, socket_a, observer_a, channel_id))
 {
 	set_network_version (network_a.protocol_version);
 }

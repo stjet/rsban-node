@@ -436,18 +436,17 @@ impl ChannelTcpObserver for ChannelTcpObserverImpl {
         });
     }
 
-    fn message_sent(&self, message: &MessageEnum) {
+    fn message_sent(&self, message: &Payload) {
         self.execute(|channels| {
-            let detail = DetailType::from(message.header.message_type);
             channels
                 .stats
-                .inc(StatType::Message, detail, Direction::Out);
+                .inc(StatType::Message, message.into(), Direction::Out);
         });
     }
 
-    fn message_dropped(&self, message: &MessageEnum, buffer_size: usize) {
+    fn message_dropped(&self, message: &Payload, buffer_size: usize) {
         self.execute(|channels| {
-            let detail_type = message.header.message_type.into();
+            let detail_type = message.into();
             channels
                 .stats
                 .inc(StatType::Drop, detail_type, Direction::Out);
@@ -552,6 +551,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                             self.limiter.clone(),
                             &async_rt,
                             channel_id,
+                            self.network.network.protocol_info(),
                         );
                         temporary_channel.set_remote_endpoint();
                         debug_assert!(*endpoint == temporary_channel.remote_endpoint());
@@ -904,6 +904,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             self.limiter.clone(),
             &async_rt,
             channel_id,
+            self.network.network.protocol_info(),
         )));
         let this_w = Arc::downgrade(self);
         let socket_clone = Arc::clone(&socket);

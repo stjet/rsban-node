@@ -15,7 +15,7 @@ use super::{
     SocketExtensions, TrafficType,
 };
 use crate::{
-    messages::MessageEnum,
+    messages::{MessageEnum, MessageSerializer, Payload, ProtocolInfo},
     utils::{AsyncRuntime, ErrorCode},
 };
 
@@ -26,8 +26,8 @@ pub trait IChannelTcpObserverWeakPtr: Send + Sync {
 pub trait ChannelTcpObserver: Send + Sync {
     fn data_sent(&self, endpoint: &SocketAddr);
     fn host_unreachable(&self);
-    fn message_sent(&self, message: &MessageEnum);
-    fn message_dropped(&self, message: &MessageEnum, buffer_size: usize);
+    fn message_sent(&self, message: &Payload);
+    fn message_dropped(&self, message: &Payload, buffer_size: usize);
     fn no_socket_drop(&self);
     fn write_drop(&self);
 }
@@ -53,6 +53,7 @@ pub struct ChannelTcp {
     pub observer: Arc<dyn IChannelTcpObserverWeakPtr>,
     pub limiter: Arc<OutboundBandwidthLimiter>,
     pub async_rt: Weak<AsyncRuntime>,
+    protocol: ProtocolInfo,
 }
 
 impl ChannelTcp {
@@ -63,6 +64,7 @@ impl ChannelTcp {
         limiter: Arc<OutboundBandwidthLimiter>,
         async_rt: &Arc<AsyncRuntime>,
         channel_id: usize,
+        protocol: ProtocolInfo,
     ) -> Self {
         Self {
             channel_id,
@@ -80,6 +82,7 @@ impl ChannelTcp {
             observer,
             limiter,
             async_rt: Arc::downgrade(async_rt),
+            protocol,
         }
     }
 
@@ -205,7 +208,7 @@ impl ChannelTcp {
         if !is_droppable_by_limiter || should_pass {
             self.send_buffer(&buffer, callback, drop_policy, traffic_type);
             if let Some(observer) = self.observer.lock() {
-                observer.message_sent(message);
+                observer.message_sent(&message.payload);
             }
         } else {
             if let Some(callback) = callback {
@@ -217,7 +220,7 @@ impl ChannelTcp {
             }
 
             if let Some(observer) = self.observer.lock() {
-                observer.message_dropped(message, buffer.len());
+                observer.message_dropped(&message.payload, buffer.len());
             }
         }
     }

@@ -1,4 +1,5 @@
 use crate::{
+    stats::DetailType,
     transport::MAX_MESSAGE_SIZE,
     utils::BlockUniquer,
     voting::{Vote, VoteUniquer},
@@ -119,6 +120,12 @@ impl Payload {
             header,
             payload: self,
         }
+    }
+}
+
+impl From<&Payload> for DetailType {
+    fn from(value: &Payload) -> Self {
+        value.message_type().into()
     }
 }
 

@@ -159,41 +159,33 @@ impl Display for Payload {
 
 pub struct MessageSerializer {
     protocol: ProtocolInfo,
-    header_bytes: [u8; MessageHeader::SERIALIZED_SIZE],
-    payload_bytes: [u8; MAX_MESSAGE_SIZE],
+    buffer: [u8; Self::BUFFER_SIZE],
 }
 
 impl MessageSerializer {
+    const BUFFER_SIZE: usize = MessageHeader::SERIALIZED_SIZE + MAX_MESSAGE_SIZE;
     pub fn new(protocol: ProtocolInfo) -> Self {
         Self {
             protocol,
-            header_bytes: Default::default(),
-            payload_bytes: [0; MAX_MESSAGE_SIZE],
+            buffer: [0; Self::BUFFER_SIZE],
         }
     }
 
-    pub fn serialize(
-        &'_ mut self,
-        message: &dyn MessageVariant,
-    ) -> anyhow::Result<(&'_ [u8], &'_ [u8])> {
-        let header_len;
+    pub fn serialize(&'_ mut self, message: &dyn MessageVariant) -> anyhow::Result<&'_ [u8]> {
         let payload_len;
         {
-            let mut payload_stream = MutStreamAdapter::new(&mut self.payload_bytes);
+            let mut payload_stream =
+                MutStreamAdapter::new(&mut self.buffer[MessageHeader::SERIALIZED_SIZE..]);
             message.serialize(&mut payload_stream)?;
-
-            let mut header_stream = MutStreamAdapter::new(&mut self.header_bytes);
-            let mut header = MessageHeader::new(message.message_type(), self.protocol);
-            header.extensions = message.header_extensions(payload_stream.bytes_written() as u16);
-            header.serialize(&mut header_stream)?;
-
-            header_len = header_stream.bytes_written();
             payload_len = payload_stream.bytes_written();
+
+            let mut header_stream =
+                MutStreamAdapter::new(&mut self.buffer[..MessageHeader::SERIALIZED_SIZE]);
+            let mut header = MessageHeader::new(message.message_type(), self.protocol);
+            header.extensions = message.header_extensions(payload_len as u16);
+            header.serialize(&mut header_stream)?;
         }
-        Ok((
-            &self.header_bytes[..header_len],
-            &self.payload_bytes[..payload_len],
-        ))
+        Ok(&self.buffer[..MessageHeader::SERIALIZED_SIZE + payload_len])
     }
 }
 

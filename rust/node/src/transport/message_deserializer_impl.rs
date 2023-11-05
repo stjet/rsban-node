@@ -310,13 +310,16 @@ mod tests {
         ));
 
         let mut serializer = MessageSerializer::new(STUB_NETWORK_CONSTANTS.protocol_info());
-        let (header, payload) = serializer.serialize(original.deref()).unwrap();
-        let mut stream = StreamAdapter::new(header);
+        let serialized = serializer.serialize(original.deref()).unwrap();
+        let mut stream = StreamAdapter::new(serialized);
         let deserialized_header = MessageHeader::deserialize(&mut stream).unwrap();
-        assert_eq!(deserialized_header.payload_length(), payload.len());
+        assert_eq!(
+            deserialized_header.payload_length(),
+            serialized.len() - MessageHeader::SERIALIZED_SIZE
+        );
 
         let deserialized = deserializer
-            .deserialize(deserialized_header, payload)
+            .deserialize(deserialized_header, stream.remaining())
             .unwrap();
 
         assert_eq!(deserialized.message, *original);

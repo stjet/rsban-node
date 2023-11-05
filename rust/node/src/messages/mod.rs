@@ -53,11 +53,9 @@ pub(crate) fn assert_deserializable(original: &Payload) {
     use std::ops::Deref;
 
     let mut serializer = MessageSerializer::default();
-    let (header, payload) = serializer.serialize(original.deref()).unwrap();
-
-    let mut stream = StreamAdapter::new(header);
+    let serialized = serializer.serialize(original.deref()).unwrap();
+    let mut stream = StreamAdapter::new(serialized);
     let header = MessageHeader::deserialize(&mut stream).unwrap();
-    let mut stream = StreamAdapter::new(payload);
     let message_out = Payload::deserialize(&mut stream, &header, 0, None, None).unwrap();
     assert_eq!(message_out, *original);
 }

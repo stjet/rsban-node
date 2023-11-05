@@ -112,19 +112,14 @@ std::unique_ptr<nano::message> nano::message_handle_to_message (rsnano::MessageH
  * keepalive
  */
 
-rsnano::MessageHandle * create_keepalive_handle (nano::network_constants const & constants, int16_t version_using)
+rsnano::MessageHandle * create_keepalive_handle (nano::network_constants const & constants)
 {
 	auto constants_dto{ constants.to_dto () };
-	return rsnano::rsn_message_keepalive_create (&constants_dto, version_using);
+	return rsnano::rsn_message_keepalive_create (&constants_dto);
 }
 
 nano::keepalive::keepalive (nano::network_constants const & constants) :
-	message (create_keepalive_handle (constants, -1))
-{
-}
-
-nano::keepalive::keepalive (nano::network_constants const & constants, uint8_t version_using_a) :
-	message (create_keepalive_handle (constants, version_using_a))
+	message (create_keepalive_handle (constants))
 {
 }
 

@@ -85,7 +85,7 @@ fn empty_peers() -> [SocketAddr; 8] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, MessageEnum, Payload, ProtocolInfo};
+    use crate::messages::{assert_deserializable, Payload};
     use std::str::FromStr;
 
     #[test]
@@ -104,10 +104,8 @@ mod tests {
 
     #[test]
     fn keepalive_with_no_peers_to_string() {
-        let hdr = MessageHeader::new(MessageType::Keepalive, ProtocolInfo::dev_network());
-        let keepalive = MessageEnum::new_keepalive(ProtocolInfo::dev_network());
-        let expected =
-            hdr.to_string() + "\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0";
+        let keepalive = Payload::Keepalive(Default::default());
+        let expected = "\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0";
         assert_eq!(keepalive.to_string(), expected);
     }
 

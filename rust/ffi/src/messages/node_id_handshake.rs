@@ -1,12 +1,11 @@
 use rsnano_core::{Account, BlockHash, PublicKey, Signature};
 
-use super::{create_message_handle3, message_handle_clone, MessageHandle};
+use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{
     copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto, StringDto,
 };
 use rsnano_node::messages::{
-    MessageEnum, NodeIdHandshakePayload, NodeIdHandshakeQuery, NodeIdHandshakeResponse, Payload,
-    V2Payload,
+    NodeIdHandshakePayload, NodeIdHandshakeQuery, NodeIdHandshakeResponse, Payload, V2Payload,
 };
 
 #[no_mangle]
@@ -18,8 +17,10 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
     resp_salt: *const u8,
     resp_genesis: *const u8,
 ) -> *mut MessageHandle {
+    let mut is_v2 = false;
     let query = if !query.is_null() {
         let cookie = std::slice::from_raw_parts(query, 32).try_into().unwrap();
+        is_v2 = true;
         Some(NodeIdHandshakeQuery { cookie })
     } else {
         None
@@ -31,6 +32,7 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
         let v2 = if resp_salt.is_null() {
             None
         } else {
+            is_v2 = true;
             Some(V2Payload {
                 salt: std::slice::from_raw_parts(resp_salt, 32)
                     .try_into()
@@ -46,8 +48,12 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
     } else {
         None
     };
-    create_message_handle3(constants, move |protocol_info| {
-        MessageEnum::new_node_id_handshake(protocol_info, query, response)
+    create_message_handle2(constants, move || {
+        Payload::NodeIdHandshake(NodeIdHandshakePayload {
+            query,
+            response,
+            is_v2,
+        })
     })
 }
 

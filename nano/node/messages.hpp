@@ -80,7 +80,6 @@ class keepalive final : public message
 {
 public:
 	explicit keepalive (nano::network_constants const & constants);
-	explicit keepalive (nano::network_constants const & constants, uint8_t version_using_a);
 	keepalive (rsnano::MessageHandle * handle_a);
 	keepalive (keepalive const & other_a);
 	void visit (nano::message_visitor &) const override;

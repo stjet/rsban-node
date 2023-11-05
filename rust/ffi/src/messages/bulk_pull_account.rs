@@ -1,9 +1,9 @@
 use std::ops::Deref;
 
 use crate::{copy_account_bytes, copy_amount_bytes, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{BulkPullAccountFlags, BulkPullAccountPayload, MessageEnum, Payload};
+use rsnano_node::messages::{BulkPullAccountFlags, BulkPullAccountPayload, Payload};
 
-use super::{create_message_handle3, MessageHandle};
+use super::{create_message_handle2, MessageHandle};
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount};
 
@@ -27,9 +27,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_account_create3(
         minimum_amount: Amount::from_be_bytes(payload.minimum_amount),
         flags: FromPrimitive::from_u8(payload.flags).unwrap(),
     };
-    create_message_handle3(constants, |protocol| {
-        MessageEnum::new_bulk_pull_account(protocol, payload)
-    })
+    create_message_handle2(constants, || Payload::BulkPullAccount(payload))
 }
 
 #[no_mangle]

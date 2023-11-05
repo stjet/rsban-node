@@ -1,25 +1,14 @@
-use rsnano_node::messages::{KeepalivePayload, MessageEnum, Payload, ProtocolInfo};
+use rsnano_node::messages::{KeepalivePayload, Payload};
 use std::net::SocketAddr;
 
-use super::{create_message_handle3, message_handle_clone, MessageHandle};
+use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{transport::EndpointDto, NetworkConstantsDto, StringDto};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_keepalive_create(
     constants: *mut NetworkConstantsDto,
-    version_using: i16,
 ) -> *mut MessageHandle {
-    create_message_handle3(constants, |protocol_info| {
-        if version_using < 0 {
-            MessageEnum::new_keepalive(protocol_info)
-        } else {
-            let protocol_info = ProtocolInfo {
-                version_using: version_using as u8,
-                ..protocol_info
-            };
-            MessageEnum::new_keepalive(protocol_info)
-        }
-    })
+    create_message_handle2(constants, || Payload::Keepalive(Default::default()))
 }
 
 #[no_mangle]

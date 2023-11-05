@@ -1,8 +1,5 @@
 use rsnano_core::utils::Logger;
-use rsnano_node::{
-    bootstrap::BulkPullServer,
-    messages::{MessageEnum, Payload},
-};
+use rsnano_node::{bootstrap::BulkPullServer, messages::Payload, transport::DeserializedMessage};
 use std::sync::Arc;
 
 use crate::{
@@ -70,8 +67,10 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_request(
     handle: &BulkPullServerHandle,
 ) -> *mut MessageHandle {
     // only for tests
-    let msg = MessageEnum::new_bulk_pull(Default::default(), handle.0.request());
-    MessageHandle::new(msg)
+    MessageHandle::new2(DeserializedMessage::new(
+        Payload::BulkPull(handle.0.request()),
+        Default::default(),
+    ))
 }
 
 #[no_mangle]

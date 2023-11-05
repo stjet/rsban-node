@@ -203,7 +203,7 @@ impl Serialize for AccountInfoAckPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, MessageEnum, Payload, ProtocolInfo};
+    use crate::messages::{assert_deserializable, Payload};
     use rsnano_core::BlockBuilder;
 
     #[test]
@@ -238,19 +238,17 @@ mod tests {
 
     #[test]
     fn display() {
-        let ack = MessageEnum::new_asc_pull_ack_accounts(
-            ProtocolInfo::dev_network(),
-            7,
-            AccountInfoAckPayload {
+        let ack = Payload::AscPullAck(AscPullAckPayload {
+            id: 7,
+            pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload {
                 account: Account::from(1),
                 account_open: BlockHash::from(2),
                 account_head: BlockHash::from(3),
                 account_block_count: 4,
                 account_conf_frontier: BlockHash::from(5),
                 account_conf_height: 6,
-            },
-        );
-
-        assert_eq!(ack.to_string(), "NetID: 5241(dev), VerMaxUsingMin: 19/19/18, MsgType: 15(asc_pull_ack), Extensions: 0090\naccount public key:nano_1111111111111111111111111111111111111111111111111113b8661hfk account open:0000000000000000000000000000000000000000000000000000000000000002 account head:0000000000000000000000000000000000000000000000000000000000000003 block count:4 confirmation frontier:0000000000000000000000000000000000000000000000000000000000000005 confirmation height:6");
+            }),
+        });
+        assert_eq!(ack.to_string(), "\naccount public key:nano_1111111111111111111111111111111111111111111111111113b8661hfk account open:0000000000000000000000000000000000000000000000000000000000000002 account head:0000000000000000000000000000000000000000000000000000000000000003 block count:4 confirmation frontier:0000000000000000000000000000000000000000000000000000000000000005 confirmation height:6");
     }
 }

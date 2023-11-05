@@ -1,15 +1,15 @@
-use super::{create_message_handle3, message_handle_clone, MessageHandle};
+use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{voting::VoteHandle, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{ConfirmAckPayload, MessageEnum, Payload};
+use rsnano_node::messages::{ConfirmAckPayload, Payload};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_ack_create(
     constants: *mut NetworkConstantsDto,
     vote: *mut VoteHandle,
 ) -> *mut MessageHandle {
-    create_message_handle3(constants, |consts| {
+    create_message_handle2(constants, || {
         let vote = (*vote).clone();
-        MessageEnum::new_confirm_ack(consts, vote)
+        Payload::ConfirmAck(ConfirmAckPayload { vote })
     })
 }
 

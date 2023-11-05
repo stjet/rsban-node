@@ -1,9 +1,9 @@
 use std::{ops::Deref, sync::Arc};
 
 use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{ConfirmReqPayload, MessageEnum, Payload};
+use rsnano_node::messages::{ConfirmReqPayload, Payload};
 
-use super::{create_message_handle3, message_handle_clone, MessageHandle};
+use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use num_traits::FromPrimitive;
 use rsnano_core::{BlockHash, BlockType, Root};
 
@@ -20,10 +20,13 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
     roots_hashes: *const HashRootPair,
     roots_hashes_count: usize,
 ) -> *mut MessageHandle {
-    create_message_handle3(constants, |protocol_info| {
+    create_message_handle2(constants, || {
         if !block.is_null() {
             let block = Arc::clone((*block).deref());
-            MessageEnum::new_confirm_req_with_block(protocol_info, block)
+            Payload::ConfirmReq(ConfirmReqPayload {
+                block: Some(block),
+                roots_hashes: Vec::new(),
+            })
         } else {
             let dtos = std::slice::from_raw_parts(roots_hashes, roots_hashes_count);
             let roots_hashes = dtos
@@ -35,7 +38,10 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
                     )
                 })
                 .collect();
-            MessageEnum::new_confirm_req_with_roots_hashes(protocol_info, roots_hashes)
+            Payload::ConfirmReq(ConfirmReqPayload {
+                block: None,
+                roots_hashes,
+            })
         }
     })
 }

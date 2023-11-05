@@ -1,11 +1,10 @@
 use num::FromPrimitive;
 use rsnano_core::HashOrAccount;
 
-use super::{create_message_handle3, message_handle_clone, MessageHandle};
+use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{copy_hash_or_account_bytes, NetworkConstantsDto};
 use rsnano_node::messages::{
-    AccountInfoReqPayload, AscPullReqPayload, AscPullReqType, BlocksReqPayload, MessageEnum,
-    Payload,
+    AccountInfoReqPayload, AscPullReqPayload, AscPullReqType, BlocksReqPayload, Payload,
 };
 
 #[no_mangle]
@@ -19,8 +18,11 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_create_accounts(
         target: HashOrAccount::from_ptr(target),
         target_type: FromPrimitive::from_u8(target_type).unwrap(),
     };
-    create_message_handle3(constants, |protocol| {
-        MessageEnum::new_asc_pull_req_accounts(protocol, id, payload)
+    create_message_handle2(constants, || {
+        Payload::AscPullReq(AscPullReqPayload {
+            req_type: AscPullReqType::AccountInfo(payload),
+            id,
+        })
     })
 }
 
@@ -37,8 +39,11 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_create_blocks(
         count,
         start_type: FromPrimitive::from_u8(start_type).unwrap(),
     };
-    create_message_handle3(constants, |protocol| {
-        MessageEnum::new_asc_pull_req_blocks(protocol, id, payload)
+    create_message_handle2(constants, || {
+        Payload::AscPullReq(AscPullReqPayload {
+            req_type: AscPullReqType::Blocks(payload),
+            id,
+        })
     })
 }
 

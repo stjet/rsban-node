@@ -1,12 +1,12 @@
 use rsnano_core::{Account, BlockHash};
 
-use super::{create_message_handle3, message_handle_clone, MessageHandle};
+use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{
     core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
     NetworkConstantsDto,
 };
 use rsnano_node::messages::{
-    AccountInfoAckPayload, AscPullAckPayload, AscPullAckType, MessageEnum, Payload,
+    AccountInfoAckPayload, AscPullAckPayload, AscPullAckType, BlocksAckPayload, Payload,
 };
 use std::{borrow::Borrow, ops::Deref, sync::Arc};
 
@@ -17,8 +17,11 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_create2(
     payload: *const AccountInfoAckPayloadDto,
 ) -> *mut MessageHandle {
     let payload = (*payload).borrow().into();
-    create_message_handle3(constants, move |protocol_info| {
-        MessageEnum::new_asc_pull_ack_accounts(protocol_info, id, payload)
+    create_message_handle2(constants, move || {
+        Payload::AscPullAck(AscPullAckPayload {
+            id,
+            pull_type: AscPullAckType::AccountInfo(payload),
+        })
     })
 }
 
@@ -35,8 +38,11 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_create3(
         .map(|&b| (*b).deref().deref().clone())
         .collect();
 
-    create_message_handle3(constants, move |protocol_info| {
-        MessageEnum::new_asc_pull_ack_blocks(protocol_info, id, blocks)
+    create_message_handle2(constants, move || {
+        Payload::AscPullAck(AscPullAckPayload {
+            id,
+            pull_type: AscPullAckType::Blocks(BlocksAckPayload::new(blocks)),
+        })
     })
 }
 

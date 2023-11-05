@@ -1,9 +1,9 @@
-use super::{create_message_handle3, message_handle_clone, MessageHandle};
+use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{
     copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto, StringDto,
 };
 use rsnano_core::{Account, BlockHash, KeyPair, Signature};
-use rsnano_node::messages::{MessageEnum, Payload, TelemetryData};
+use rsnano_node::messages::{Payload, TelemetryAckPayload, TelemetryData};
 use std::time::{Duration, SystemTime};
 
 pub struct TelemetryDataHandle(TelemetryData);
@@ -352,8 +352,8 @@ pub unsafe extern "C" fn rsn_message_telemetry_ack_create(
     data: *const TelemetryDataHandle,
 ) -> *mut MessageHandle {
     let data = (*data).0.clone();
-    create_message_handle3(constants, move |protocol_info| {
-        MessageEnum::new_telemetry_ack(protocol_info, data)
+    create_message_handle2(constants, move || {
+        Payload::TelemetryAck(TelemetryAckPayload(Some(data)))
     })
 }
 

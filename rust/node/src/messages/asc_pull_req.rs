@@ -187,7 +187,7 @@ impl MessageVariant for AscPullReqPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, MessageEnum, Payload, ProtocolInfo};
+    use crate::messages::{assert_deserializable, Payload};
 
     #[test]
     fn serialize_blocks() {
@@ -218,28 +218,29 @@ mod tests {
 
     #[test]
     fn display_blocks_payload() {
-        let req = MessageEnum::new_asc_pull_req_blocks(
-            ProtocolInfo::dev_network(),
-            7,
-            BlocksReqPayload {
+        let req = Payload::AscPullReq(AscPullReqPayload {
+            req_type: AscPullReqType::Blocks(BlocksReqPayload {
                 start: 1.into(),
                 count: 2,
                 start_type: HashType::Block,
-            },
-        );
-        assert_eq!(req.to_string(), "NetID: 5241(dev), VerMaxUsingMin: 19/19/18, MsgType: 14(asc_pull_req), Extensions: 0022\nacc:0000000000000000000000000000000000000000000000000000000000000001 max block count:2 hash type: 1");
+            }),
+            id: 7,
+        });
+        assert_eq!(req.to_string(), "\nacc:0000000000000000000000000000000000000000000000000000000000000001 max block count:2 hash type: 1");
     }
 
     #[test]
     fn display_account_info_payload() {
-        let req = MessageEnum::new_asc_pull_req_accounts(
-            ProtocolInfo::dev_network(),
-            7,
-            AccountInfoReqPayload {
+        let req = Payload::AscPullReq(AscPullReqPayload {
+            req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload {
                 target: HashOrAccount::from(123),
                 target_type: HashType::Block,
-            },
+            }),
+            id: 7,
+        });
+        assert_eq!(
+            req.to_string(),
+            "\ntarget:000000000000000000000000000000000000000000000000000000000000007B hash type:1"
         );
-        assert_eq!(req.to_string(), "NetID: 5241(dev), VerMaxUsingMin: 19/19/18, MsgType: 14(asc_pull_req), Extensions: 0021\ntarget:000000000000000000000000000000000000000000000000000000000000007B hash type:1");
     }
 }

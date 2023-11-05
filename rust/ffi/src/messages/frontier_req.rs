@@ -1,7 +1,7 @@
 use rsnano_core::Account;
-use rsnano_node::messages::{FrontierReqPayload, MessageEnum, Payload};
+use rsnano_node::messages::{FrontierReqPayload, Payload};
 
-use super::{create_message_handle3, MessageHandle};
+use super::{create_message_handle2, MessageHandle};
 use crate::{copy_account_bytes, NetworkConstantsDto, StringDto};
 
 #[repr(C)]
@@ -17,16 +17,13 @@ pub unsafe extern "C" fn rsn_message_frontier_req_create3(
     constants: *mut NetworkConstantsDto,
     payload: &FrontierReqPayloadDto,
 ) -> *mut MessageHandle {
-    create_message_handle3(constants, |protocol| {
-        MessageEnum::new_frontier_req(
-            protocol,
-            FrontierReqPayload {
-                start: Account::from_bytes(payload.start),
-                age: payload.age,
-                count: payload.count,
-                only_confirmed: payload.only_confirmed,
-            },
-        )
+    create_message_handle2(constants, || {
+        Payload::FrontierReq(FrontierReqPayload {
+            start: Account::from_bytes(payload.start),
+            age: payload.age,
+            count: payload.count,
+            only_confirmed: payload.only_confirmed,
+        })
     })
 }
 

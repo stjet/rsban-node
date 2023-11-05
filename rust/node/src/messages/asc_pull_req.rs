@@ -176,7 +176,11 @@ impl MessageVariant for AscPullReqPayload {
     }
 
     fn header_extensions(&self, payload_len: u16) -> BitArray<u16> {
-        BitArray::new(payload_len)
+        BitArray::new(
+            payload_len
+            -1 // pull_type
+            - 8, // ID
+        )
     }
 }
 

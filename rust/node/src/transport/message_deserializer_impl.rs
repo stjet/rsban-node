@@ -313,6 +313,7 @@ mod tests {
         let (header, payload) = serializer.serialize(original.deref()).unwrap();
         let mut stream = StreamAdapter::new(header);
         let deserialized_header = MessageHeader::deserialize(&mut stream).unwrap();
+        assert_eq!(deserialized_header.payload_length(), payload.len());
 
         let deserialized = deserializer
             .deserialize(deserialized_header, payload)

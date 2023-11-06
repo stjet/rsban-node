@@ -1,6 +1,6 @@
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{Message, PublishPayload};
+use rsnano_node::messages::{Message, Publish};
 use std::{ops::Deref, sync::Arc};
 
 #[no_mangle]
@@ -10,7 +10,7 @@ pub unsafe extern "C" fn rsn_message_publish_create(
 ) -> *mut MessageHandle {
     create_message_handle2(constants, || {
         let block = Arc::clone((*block).deref());
-        Message::Publish(PublishPayload { block, digest: 0 })
+        Message::Publish(Publish { block, digest: 0 })
     })
 }
 
@@ -19,12 +19,12 @@ pub extern "C" fn rsn_message_publish_clone(handle: &MessageHandle) -> *mut Mess
     message_handle_clone(handle)
 }
 
-fn get_publish_payload(handle: &MessageHandle) -> &PublishPayload {
+fn get_publish_payload(handle: &MessageHandle) -> &Publish {
     let Message::Publish(payload) = &handle.message else {panic!("not a payload message")};
     payload
 }
 
-fn get_publish_payload_mut(handle: &mut MessageHandle) -> &mut PublishPayload {
+fn get_publish_payload_mut(handle: &mut MessageHandle) -> &mut Publish {
     let Message::Publish(payload) = &mut handle.message else {panic!("not a payload message")};
     payload
 }

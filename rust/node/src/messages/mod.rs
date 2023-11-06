@@ -28,9 +28,6 @@ pub use frontier_req::*;
 mod bulk_pull;
 pub use bulk_pull::*;
 
-mod bulk_push;
-pub use bulk_push::*;
-
 mod bulk_pull_account;
 pub use bulk_pull_account::*;
 

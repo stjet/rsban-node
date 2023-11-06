@@ -4,7 +4,7 @@ use rsnano_core::HashOrAccount;
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{copy_hash_or_account_bytes, NetworkConstantsDto};
 use rsnano_node::messages::{
-    AccountInfoReqPayload, AscPullReqPayload, AscPullReqType, BlocksReqPayload, Message,
+    AccountInfoReqPayload, AscPullReq, AscPullReqType, BlocksReqPayload, Message,
 };
 
 #[no_mangle]
@@ -19,7 +19,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_create_accounts(
         target_type: FromPrimitive::from_u8(target_type).unwrap(),
     };
     create_message_handle2(constants, || {
-        Message::AscPullReq(AscPullReqPayload {
+        Message::AscPullReq(AscPullReq {
             req_type: AscPullReqType::AccountInfo(payload),
             id,
         })
@@ -40,7 +40,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_create_blocks(
         start_type: FromPrimitive::from_u8(start_type).unwrap(),
     };
     create_message_handle2(constants, || {
-        Message::AscPullReq(AscPullReqPayload {
+        Message::AscPullReq(AscPullReq {
             req_type: AscPullReqType::Blocks(payload),
             id,
         })
@@ -52,12 +52,12 @@ pub extern "C" fn rsn_message_asc_pull_req_clone(handle: &MessageHandle) -> *mut
     message_handle_clone(handle)
 }
 
-fn get_payload(handle: &MessageHandle) -> &AscPullReqPayload {
+fn get_payload(handle: &MessageHandle) -> &AscPullReq {
     let Message::AscPullReq(payload) = &handle.message else {panic!("not an asc_pull_req")};
     payload
 }
 
-fn get_payload_mut(handle: &mut MessageHandle) -> &mut AscPullReqPayload {
+fn get_payload_mut(handle: &mut MessageHandle) -> &mut AscPullReq {
     let Message::AscPullReq(payload) = &mut handle.message else {panic!("not an asc_pull_req")};
     payload
 }

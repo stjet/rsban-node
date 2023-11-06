@@ -16,13 +16,13 @@ pub enum BulkPullAccountFlags {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BulkPullAccountPayload {
+pub struct BulkPullAccount {
     pub account: Account,
     pub minimum_amount: Amount,
     pub flags: BulkPullAccountFlags,
 }
 
-impl BulkPullAccountPayload {
+impl BulkPullAccount {
     pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
         debug_assert!(header.message_type == MessageType::BulkPullAccount);
         let payload = Self {
@@ -38,7 +38,7 @@ impl BulkPullAccountPayload {
         Account::serialized_size() + Amount::serialized_size() + size_of::<BulkPullAccountFlags>()
     }
 
-    pub fn create_test_instance() -> BulkPullAccountPayload {
+    pub fn create_test_instance() -> BulkPullAccount {
         Self {
             account: 1.into(),
             minimum_amount: 42.into(),
@@ -47,7 +47,7 @@ impl BulkPullAccountPayload {
     }
 }
 
-impl Serialize for BulkPullAccountPayload {
+impl Serialize for BulkPullAccount {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.account.serialize(stream)?;
         self.minimum_amount.serialize(stream)?;
@@ -55,13 +55,13 @@ impl Serialize for BulkPullAccountPayload {
     }
 }
 
-impl MessageVariant for BulkPullAccountPayload {
+impl MessageVariant for BulkPullAccount {
     fn message_type(&self) -> MessageType {
         MessageType::BulkPullAccount
     }
 }
 
-impl Display for BulkPullAccountPayload {
+impl Display for BulkPullAccount {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,

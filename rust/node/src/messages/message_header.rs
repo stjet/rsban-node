@@ -219,20 +219,20 @@ impl MessageHeader {
 
     pub fn payload_length(&self) -> usize {
         match self.message_type {
-            MessageType::Keepalive => KeepalivePayload::serialized_size(),
+            MessageType::Keepalive => Keepalive::serialized_size(),
             MessageType::Publish => serialized_block_size(self.block_type()),
             MessageType::ConfirmReq => {
                 ConfirmReqPayload::serialized_size(self.block_type(), self.count())
             }
             MessageType::ConfirmAck => ConfirmAckPayload::serialized_size(self.count()),
-            MessageType::BulkPull => BulkPullPayload::serialized_size(self),
+            MessageType::BulkPull => BulkPull::serialized_size(self),
             MessageType::BulkPush | MessageType::TelemetryReq => 0,
             MessageType::FrontierReq => FrontierReqPayload::serialized_size(),
             MessageType::NodeIdHandshake => NodeIdHandshakePayload::serialized_size(self),
-            MessageType::BulkPullAccount => BulkPullAccountPayload::serialized_size(),
+            MessageType::BulkPullAccount => BulkPullAccount::serialized_size(),
             MessageType::TelemetryAck => TelemetryAckPayload::size_from_header(self),
-            MessageType::AscPullReq => AscPullReqPayload::serialized_size(self),
-            MessageType::AscPullAck => AscPullAckPayload::serialized_size(self),
+            MessageType::AscPullReq => AscPullReq::serialized_size(self),
+            MessageType::AscPullAck => AscPullAck::serialized_size(self),
             MessageType::Invalid | MessageType::NotAType => {
                 debug_assert!(false);
                 0

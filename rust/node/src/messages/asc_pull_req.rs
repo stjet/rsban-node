@@ -98,12 +98,12 @@ impl AccountInfoReqPayload {
 
 /// Ascending bootstrap pull request
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct AscPullReqPayload {
+pub struct AscPullReq {
     pub req_type: AscPullReqType,
     pub id: u64,
 }
 
-impl Display for AscPullReqPayload {
+impl Display for AscPullReq {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.req_type {
             AscPullReqType::Blocks(blocks) => {
@@ -125,7 +125,7 @@ impl Display for AscPullReqPayload {
     }
 }
 
-impl AscPullReqPayload {
+impl AscPullReq {
     pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> anyhow::Result<Self> {
         debug_assert!(header.message_type == MessageType::AscPullReq);
         let pull_type = AscPullPayloadId::from_u8(stream.read_u8()?)
@@ -162,7 +162,7 @@ impl AscPullReqPayload {
     }
 }
 
-impl Serialize for AscPullReqPayload {
+impl Serialize for AscPullReq {
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         stream.write_u8(self.payload_type() as u8)?;
         stream.write_u64_be(self.id)?;
@@ -170,7 +170,7 @@ impl Serialize for AscPullReqPayload {
     }
 }
 
-impl MessageVariant for AscPullReqPayload {
+impl MessageVariant for AscPullReq {
     fn message_type(&self) -> MessageType {
         MessageType::AscPullReq
     }
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn serialize_blocks() {
-        let original = Message::AscPullReq(AscPullReqPayload {
+        let original = Message::AscPullReq(AscPullReq {
             id: 7,
             req_type: AscPullReqType::Blocks(BlocksReqPayload {
                 start: HashOrAccount::from(3),
@@ -205,7 +205,7 @@ mod tests {
 
     #[test]
     fn serialize_account_info() {
-        let original = Message::AscPullReq(AscPullReqPayload {
+        let original = Message::AscPullReq(AscPullReq {
             id: 7,
             req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload {
                 target: HashOrAccount::from(123),
@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn display_blocks_payload() {
-        let req = Message::AscPullReq(AscPullReqPayload {
+        let req = Message::AscPullReq(AscPullReq {
             req_type: AscPullReqType::Blocks(BlocksReqPayload {
                 start: 1.into(),
                 count: 2,
@@ -231,7 +231,7 @@ mod tests {
 
     #[test]
     fn display_account_info_payload() {
-        let req = Message::AscPullReq(AscPullReqPayload {
+        let req = Message::AscPullReq(AscPullReq {
             req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload {
                 target: HashOrAccount::from(123),
                 target_type: HashType::Block,

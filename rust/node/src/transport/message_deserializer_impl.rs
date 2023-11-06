@@ -210,13 +210,13 @@ mod tests {
     #[test]
     fn exact_publish() {
         let block = Arc::new(BlockBuilder::legacy_send().build());
-        let message = Message::Publish(PublishPayload { block, digest: 8 });
+        let message = Message::Publish(Publish { block, digest: 8 });
         test_deserializer(&message);
     }
 
     #[test]
     fn exact_keepalive() {
-        test_deserializer(&Message::Keepalive(KeepalivePayload::default()));
+        test_deserializer(&Message::Keepalive(Keepalive::default()));
     }
 
     #[test]
@@ -239,13 +239,13 @@ mod tests {
 
     #[test]
     fn exact_bulk_pull() {
-        let message = Message::BulkPull(BulkPullPayload::create_test_instance());
+        let message = Message::BulkPull(BulkPull::create_test_instance());
         test_deserializer(&message);
     }
 
     #[test]
     fn exact_bulk_pull_account() {
-        let message = Message::BulkPullAccount(BulkPullAccountPayload::create_test_instance());
+        let message = Message::BulkPullAccount(BulkPullAccount::create_test_instance());
         test_deserializer(&message);
     }
 
@@ -266,7 +266,7 @@ mod tests {
 
     #[test]
     fn exact_asc_pull_req() {
-        let message = Message::AscPullReq(AscPullReqPayload {
+        let message = Message::AscPullReq(AscPullReq {
             req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload::create_test_instance()),
             id: 7,
         });
@@ -275,7 +275,7 @@ mod tests {
 
     #[test]
     fn exact_asc_pull_ack() {
-        let message = Message::AscPullAck(AscPullAckPayload {
+        let message = Message::AscPullAck(AscPullAck {
             id: 7,
             pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload::create_test_instance()),
         });

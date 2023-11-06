@@ -572,7 +572,7 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
             message,
             Message::BulkPull(_)
                 | Message::BulkPullAccount(_)
-                | Message::BulkPush(_)
+                | Message::BulkPush
                 | Message::FrontierReq(_)
         ) {
             self.bootstrap = true;

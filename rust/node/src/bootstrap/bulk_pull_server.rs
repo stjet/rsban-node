@@ -8,7 +8,7 @@ use rsnano_core::{
 use rsnano_ledger::Ledger;
 
 use crate::{
-    messages::BulkPullPayload,
+    messages::BulkPull,
     transport::{SocketExtensions, TcpServer, TcpServerExt},
     utils::{ErrorCode, ThreadPool},
 };
@@ -34,7 +34,7 @@ pub struct BulkPullServer {
 
 impl BulkPullServer {
     pub fn new(
-        request: BulkPullPayload,
+        request: BulkPull,
         connection: Arc<TcpServer>,
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
@@ -60,7 +60,7 @@ impl BulkPullServer {
         }
     }
 
-    pub fn request(&self) -> BulkPullPayload {
+    pub fn request(&self) -> BulkPull {
         self.server_impl.lock().unwrap().request.clone()
     }
 
@@ -116,7 +116,7 @@ struct BulkPullServerImpl {
     sent_count: u32,
     max_count: u32,
     current: BlockHash,
-    request: BulkPullPayload,
+    request: BulkPull,
 }
 
 impl BulkPullServerImpl {

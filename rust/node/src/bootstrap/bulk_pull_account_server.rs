@@ -7,14 +7,14 @@ use rsnano_core::{utils::Logger, Account, Amount, BlockHash, PendingInfo, Pendin
 use rsnano_ledger::Ledger;
 
 use crate::{
-    messages::{BulkPullAccountFlags, BulkPullAccountPayload},
+    messages::{BulkPullAccount, BulkPullAccountFlags},
     transport::{SocketExtensions, TcpServer, TcpServerExt, TrafficType},
     utils::{ErrorCode, ThreadPool},
 };
 
 struct BulkPullAccountServerImpl {
     connection: Arc<TcpServer>,
-    request: BulkPullAccountPayload,
+    request: BulkPullAccount,
     logger: Arc<dyn Logger>,
     thread_pool: Weak<dyn ThreadPool>,
     ledger: Arc<Ledger>,
@@ -305,7 +305,7 @@ pub struct BulkPullAccountServer {
 impl BulkPullAccountServer {
     pub fn new(
         connection: Arc<TcpServer>,
-        request: BulkPullAccountPayload,
+        request: BulkPullAccount,
         logger: Arc<dyn Logger>,
         thread_pool: Arc<dyn ThreadPool>,
         ledger: Arc<Ledger>,

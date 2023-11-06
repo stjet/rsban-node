@@ -7,14 +7,13 @@ use std::{
 };
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct KeepalivePayload {
+pub struct Keepalive {
     pub peers: [SocketAddr; 8],
 }
 
-impl KeepalivePayload {
+impl Keepalive {
     pub fn deserialize(header: &MessageHeader, stream: &mut impl Stream) -> Result<Self> {
         debug_assert!(header.message_type == MessageType::Keepalive);
-
         let mut peers = empty_peers();
 
         for i in 0..8 {
@@ -37,7 +36,7 @@ impl KeepalivePayload {
     }
 }
 
-impl Default for KeepalivePayload {
+impl Default for Keepalive {
     fn default() -> Self {
         Self {
             peers: empty_peers(),
@@ -45,7 +44,7 @@ impl Default for KeepalivePayload {
     }
 }
 
-impl Serialize for KeepalivePayload {
+impl Serialize for Keepalive {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         for peer in &self.peers {
             match peer {
@@ -63,13 +62,13 @@ impl Serialize for KeepalivePayload {
     }
 }
 
-impl MessageVariant for KeepalivePayload {
+impl MessageVariant for Keepalive {
     fn message_type(&self) -> MessageType {
         MessageType::Keepalive
     }
 }
 
-impl Display for KeepalivePayload {
+impl Display for Keepalive {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for peer in &self.peers {
             write!(f, "\n{}", peer)?;
@@ -90,13 +89,13 @@ mod tests {
 
     #[test]
     fn serialize_no_peers() {
-        let request = Message::Keepalive(KeepalivePayload::default());
+        let request = Message::Keepalive(Keepalive::default());
         assert_deserializable(&request);
     }
 
     #[test]
     fn serialize_peers() {
-        let mut keepalive = KeepalivePayload::default();
+        let mut keepalive = Keepalive::default();
         keepalive.peers[0] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 10000);
         let request = Message::Keepalive(keepalive);
         assert_deserializable(&request);
@@ -111,7 +110,7 @@ mod tests {
 
     #[test]
     fn keepalive_string() {
-        let mut keepalive = KeepalivePayload::default();
+        let mut keepalive = Keepalive::default();
         keepalive.peers[1] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 45);
         keepalive.peers[2] = SocketAddr::new(
             IpAddr::from_str("2001:db8:85a3:8d3:1319:8a2e:370:7348").unwrap(),

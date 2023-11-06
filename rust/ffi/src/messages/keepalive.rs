@@ -1,4 +1,4 @@
-use rsnano_node::messages::{KeepalivePayload, Message};
+use rsnano_node::messages::{Keepalive, Message};
 use std::net::SocketAddr;
 
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
@@ -39,12 +39,12 @@ pub unsafe extern "C" fn rsn_message_keepalive_set_peers(
         .collect::<Vec<_>>()
         .try_into()
         .unwrap();
-    handle.message = Message::Keepalive(KeepalivePayload { peers });
+    handle.message = Message::Keepalive(Keepalive { peers });
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_keepalive_size() -> usize {
-    KeepalivePayload::serialized_size()
+    Keepalive::serialized_size()
 }
 
 #[no_mangle]

@@ -16,12 +16,12 @@ pub enum AscPullAckType {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct AscPullAckPayload {
+pub struct AscPullAck {
     pub id: u64,
     pub pull_type: AscPullAckType,
 }
 
-impl AscPullAckPayload {
+impl AscPullAck {
     pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> anyhow::Result<Self> {
         debug_assert!(header.message_type == MessageType::AscPullAck);
         let pull_type_code = AscPullPayloadId::from_u8(stream.read_u8()?)
@@ -40,7 +40,7 @@ impl AscPullAckPayload {
             }
         };
 
-        Ok(AscPullAckPayload { id, pull_type })
+        Ok(AscPullAck { id, pull_type })
     }
 
     pub fn payload_type(&self) -> AscPullPayloadId {
@@ -66,7 +66,7 @@ impl AscPullAckPayload {
     }
 }
 
-impl Serialize for AscPullAckPayload {
+impl Serialize for AscPullAck {
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         stream.write_u8(self.payload_type() as u8)?;
         stream.write_u64_be(self.id)?;
@@ -74,7 +74,7 @@ impl Serialize for AscPullAckPayload {
     }
 }
 
-impl MessageVariant for AscPullAckPayload {
+impl MessageVariant for AscPullAck {
     fn message_type(&self) -> MessageType {
         MessageType::AscPullAck
     }
@@ -88,7 +88,7 @@ impl MessageVariant for AscPullAckPayload {
     }
 }
 
-impl Display for AscPullAckPayload {
+impl Display for AscPullAck {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.pull_type {
             AscPullAckType::Blocks(blocks) => {
@@ -208,7 +208,7 @@ mod tests {
 
     #[test]
     fn serialize_blocks() {
-        let original = Message::AscPullAck(AscPullAckPayload {
+        let original = Message::AscPullAck(AscPullAck {
             id: 7,
             pull_type: AscPullAckType::Blocks(BlocksAckPayload::new(vec![
                 BlockBuilder::state().build(),
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn serialize_account_info() {
-        let original = Message::AscPullAck(AscPullAckPayload {
+        let original = Message::AscPullAck(AscPullAck {
             id: 7,
             pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload {
                 account: Account::from(1),
@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     fn display() {
-        let ack = Message::AscPullAck(AscPullAckPayload {
+        let ack = Message::AscPullAck(AscPullAck {
             id: 7,
             pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload {
                 account: Account::from(1),

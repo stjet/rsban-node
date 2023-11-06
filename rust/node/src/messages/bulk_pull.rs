@@ -8,19 +8,19 @@ use rsnano_core::{
 use std::{fmt::Display, mem::size_of};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct BulkPullPayload {
+pub struct BulkPull {
     pub start: HashOrAccount,
     pub end: BlockHash,
     pub count: u32,
     pub ascending: bool,
 }
 
-impl BulkPullPayload {
+impl BulkPull {
     pub const COUNT_PRESENT_FLAG: usize = 0;
     pub const ASCENDING_FLAG: usize = 1;
     pub const EXTENDED_PARAMETERS_SIZE: usize = 8;
 
-    pub fn create_test_instance() -> BulkPullPayload {
+    pub fn create_test_instance() -> BulkPull {
         Self {
             start: 1.into(),
             end: 2.into(),
@@ -32,8 +32,8 @@ impl BulkPullPayload {
     pub fn serialized_size(header: &MessageHeader) -> usize {
         HashOrAccount::serialized_size()
             + BlockHash::serialized_size()
-            + (if header.extensions[BulkPullPayload::COUNT_PRESENT_FLAG] {
-                BulkPullPayload::EXTENDED_PARAMETERS_SIZE
+            + (if header.extensions[BulkPull::COUNT_PRESENT_FLAG] {
+                BulkPull::EXTENDED_PARAMETERS_SIZE
             } else {
                 0
             })
@@ -44,13 +44,13 @@ impl BulkPullPayload {
         let start = HashOrAccount::deserialize(stream)?;
         let end = BlockHash::deserialize(stream)?;
 
-        let count = if header.extensions[BulkPullPayload::COUNT_PRESENT_FLAG] {
-            let mut extended_parameters_buffers = [0u8; BulkPullPayload::EXTENDED_PARAMETERS_SIZE];
-            const_assert!(size_of::<u32>() < (BulkPullPayload::EXTENDED_PARAMETERS_SIZE - 1)); // "count must fit within buffer")
+        let count = if header.extensions[BulkPull::COUNT_PRESENT_FLAG] {
+            let mut extended_parameters_buffers = [0u8; BulkPull::EXTENDED_PARAMETERS_SIZE];
+            const_assert!(size_of::<u32>() < (BulkPull::EXTENDED_PARAMETERS_SIZE - 1)); // "count must fit within buffer")
 
             stream.read_bytes(
                 &mut extended_parameters_buffers,
-                BulkPullPayload::EXTENDED_PARAMETERS_SIZE,
+                BulkPull::EXTENDED_PARAMETERS_SIZE,
             )?;
             if extended_parameters_buffers[0] != 0 {
                 bail!("extended parameters front was not 0");
@@ -61,9 +61,9 @@ impl BulkPullPayload {
             0
         };
 
-        let ascending = header.extensions[BulkPullPayload::ASCENDING_FLAG];
+        let ascending = header.extensions[BulkPull::ASCENDING_FLAG];
 
-        Ok(BulkPullPayload {
+        Ok(BulkPull {
             start,
             end,
             count,
@@ -72,14 +72,14 @@ impl BulkPullPayload {
     }
 }
 
-impl Serialize for BulkPullPayload {
+impl Serialize for BulkPull {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.start.serialize(stream)?;
         self.end.serialize(stream)?;
 
         if self.count > 0 {
-            let mut count_buffer = [0u8; BulkPullPayload::EXTENDED_PARAMETERS_SIZE];
-            const_assert!(size_of::<u32>() < (BulkPullPayload::EXTENDED_PARAMETERS_SIZE - 1)); // count must fit within buffer
+            let mut count_buffer = [0u8; BulkPull::EXTENDED_PARAMETERS_SIZE];
+            const_assert!(size_of::<u32>() < (BulkPull::EXTENDED_PARAMETERS_SIZE - 1)); // count must fit within buffer
 
             count_buffer[1..5].copy_from_slice(&self.count.to_le_bytes());
             stream.write_bytes(&count_buffer)?;
@@ -88,20 +88,20 @@ impl Serialize for BulkPullPayload {
     }
 }
 
-impl MessageVariant for BulkPullPayload {
+impl MessageVariant for BulkPull {
     fn message_type(&self) -> MessageType {
         MessageType::BulkPull
     }
 
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
-        extensions.set(BulkPullPayload::COUNT_PRESENT_FLAG, self.count > 0);
-        extensions.set(BulkPullPayload::ASCENDING_FLAG, self.ascending);
+        extensions.set(BulkPull::COUNT_PRESENT_FLAG, self.count > 0);
+        extensions.set(BulkPull::ASCENDING_FLAG, self.ascending);
         extensions
     }
 }
 
-impl Display for BulkPullPayload {
+impl Display for BulkPull {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -118,7 +118,7 @@ mod tests {
 
     #[test]
     fn bulk_pull_serialization() {
-        let message = Message::BulkPull(BulkPullPayload::create_test_instance());
+        let message = Message::BulkPull(BulkPull::create_test_instance());
         assert_deserializable(&message);
     }
 }

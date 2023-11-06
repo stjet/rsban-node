@@ -110,7 +110,7 @@ impl ChannelEnum {
             sync::Arc,
         };
 
-        use crate::{stats::Stats, utils::AsyncRuntime};
+        use crate::{messages::ProtocolInfo, stats::Stats, utils::AsyncRuntime};
 
         let limiter = Arc::new(OutboundBandwidthLimiter::default());
         let async_rt = Arc::new(AsyncRuntime::new(tokio::runtime::Runtime::new().unwrap()));
@@ -123,7 +123,7 @@ impl ChannelEnum {
             limiter,
             stats,
             SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 123),
-            3,
+            ProtocolInfo::dev_network(),
         ))
     }
 }

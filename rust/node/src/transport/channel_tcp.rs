@@ -15,7 +15,7 @@ use super::{
     SocketExtensions, TrafficType,
 };
 use crate::{
-    messages::{MessageEnum, MessageSerializer, Payload, ProtocolInfo},
+    messages::{MessageSerializer, Payload, ProtocolInfo},
     utils::{AsyncRuntime, ErrorCode},
 };
 

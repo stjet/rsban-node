@@ -50,10 +50,9 @@ pub trait MessageVisitor {
 #[cfg(test)]
 pub(crate) fn assert_deserializable(original: &Payload) {
     use rsnano_core::utils::StreamAdapter;
-    use std::ops::Deref;
 
     let mut serializer = MessageSerializer::default();
-    let serialized = serializer.serialize(original.deref()).unwrap();
+    let serialized = serializer.serialize(original).unwrap();
     let mut stream = StreamAdapter::new(serialized);
     let header = MessageHeader::deserialize(&mut stream).unwrap();
     let message_out = Payload::deserialize(&mut stream, &header, 0, None, None).unwrap();

@@ -31,7 +31,7 @@ pub unsafe extern "C" fn rsn_message_frontier_req_create3(
 pub unsafe extern "C" fn rsn_message_frontier_req_clone(
     other: &MessageHandle,
 ) -> *mut MessageHandle {
-    MessageHandle::new2(other.0.clone())
+    MessageHandle::new(other.0.clone())
 }
 
 unsafe fn get_payload(handle: &MessageHandle) -> &FrontierReqPayload {

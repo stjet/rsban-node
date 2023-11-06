@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_request(
     handle: &BulkPullServerHandle,
 ) -> *mut MessageHandle {
     // only for tests
-    MessageHandle::new2(DeserializedMessage::new(
+    MessageHandle::new(DeserializedMessage::new(
         Payload::BulkPull(handle.0.request()),
         Default::default(),
     ))

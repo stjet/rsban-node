@@ -69,7 +69,7 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
             let sink = Box::new(move |msg: DeserializedMessage, channel| {
                 callback(
                     context_wrapper.get_context(),
-                    MessageHandle::new(msg.into_enum()),
+                    MessageHandle::new(msg),
                     ChannelHandle::new(channel),
                 )
             });

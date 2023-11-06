@@ -10,7 +10,7 @@ use std::{
 use rsnano_core::Account;
 
 use crate::{
-    messages::{MessageEnum, MessageSerializer, Payload},
+    messages::{MessageSerializer, Payload, ProtocolInfo},
     stats::{DetailType, Direction, StatType, Stats},
     utils::{AsyncRuntime, ErrorCode},
 };
@@ -36,7 +36,7 @@ pub struct ChannelFake {
     stats: Arc<Stats>,
     endpoint: SocketAddr,
     closed: AtomicBool,
-    network_version: u8,
+    protocol: ProtocolInfo,
 }
 
 impl ChannelFake {
@@ -47,7 +47,7 @@ impl ChannelFake {
         limiter: Arc<OutboundBandwidthLimiter>,
         stats: Arc<Stats>,
         endpoint: SocketAddr,
-        network_version: u8,
+        protocol: ProtocolInfo,
     ) -> Self {
         Self {
             channel_id,
@@ -63,29 +63,31 @@ impl ChannelFake {
             stats,
             endpoint,
             closed: AtomicBool::new(false),
-            network_version,
+            protocol,
         }
     }
 
     pub fn send(
         &self,
-        message_a: &MessageEnum,
-        callback_a: Option<WriteCallback>,
+        message: &Payload,
+        callback: Option<WriteCallback>,
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,
     ) {
-        let buffer = Arc::new(message_a.to_bytes());
-        let detail = DetailType::from(message_a.header.message_type);
+        let mut serializer = MessageSerializer::new(self.protocol);
+        let buffer = serializer.serialize(message).unwrap();
+        let buffer = Arc::new(Vec::from(buffer)); // TODO don't copy into vec!
+        let detail = DetailType::from(message);
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
         let should_pass = self
             .limiter
             .should_pass(buffer.len(), BandwidthLimitType::from(traffic_type));
 
         if !is_droppable_by_limiter || should_pass {
-            self.send_buffer(&buffer, callback_a, drop_policy, traffic_type);
+            self.send_buffer(&buffer, callback, drop_policy, traffic_type);
             self.stats.inc(StatType::Message, detail, Direction::Out);
         } else {
-            if let Some(cb) = callback_a {
+            if let Some(cb) = callback {
                 if let Some(async_rt) = self.async_rt.upgrade() {
                     async_rt.post(Box::new(move || {
                         cb(ErrorCode::not_supported(), 0);
@@ -123,7 +125,7 @@ impl ChannelFake {
     }
 
     pub fn network_version(&self) -> u8 {
-        self.network_version
+        self.protocol.version_using
     }
 }
 

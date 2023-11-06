@@ -70,7 +70,7 @@ impl ChannelTcpObserver for FfiChannelTcpObserver {
         unsafe {
             MESSAGE_SENT.expect("MESSAGE_SENT missing")(
                 self.handle,
-                MessageHandle::new2(DeserializedMessage::new(
+                MessageHandle::new(DeserializedMessage::new(
                     message.clone(),
                     Default::default(),
                 )),
@@ -82,7 +82,7 @@ impl ChannelTcpObserver for FfiChannelTcpObserver {
         unsafe {
             MESSAGE_DROPPED.expect("MESSAGE_DROPPED missing")(
                 self.handle,
-                MessageHandle::new2(DeserializedMessage::new(
+                MessageHandle::new(DeserializedMessage::new(
                     message.clone(),
                     Default::default(),
                 )),

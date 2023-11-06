@@ -13,7 +13,7 @@ use tokio::task::spawn_blocking;
 
 use crate::{
     config::NetworkConstants,
-    messages::MessageEnum,
+    messages::{MessageSerializer, Payload},
     stats::{DetailType, Direction, StatType, Stats},
     utils::{AsyncRuntime, BlockUniquer, ErrorCode},
     voting::VoteUniquer,
@@ -90,25 +90,27 @@ impl ChannelInProc {
         }
     }
 
-    pub fn send(
+    pub fn send_new(
         &self,
-        message_a: &MessageEnum,
-        callback_a: Option<WriteCallback>,
+        message: &Payload,
+        callback: Option<WriteCallback>,
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,
     ) {
-        let buffer = Arc::new(message_a.to_bytes());
-        let detail = DetailType::from(message_a.header.message_type);
+        let mut serializer = MessageSerializer::new(self.network_constants.protocol_info());
+        let buffer = serializer.serialize(message).unwrap();
+        let buffer = Arc::new(Vec::from(buffer)); // TODO don't copy buffer
+        let detail = DetailType::from(message);
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
         let should_pass = self
             .limiter
             .should_pass(buffer.len(), BandwidthLimitType::from(traffic_type));
 
         if !is_droppable_by_limiter || should_pass {
-            self.send_buffer_2(&buffer, callback_a, drop_policy, traffic_type);
+            self.send_buffer_2(&buffer, callback, drop_policy, traffic_type);
             self.stats.inc(StatType::Message, detail, Direction::Out);
         } else {
-            if let Some(cb) = callback_a {
+            if let Some(cb) = callback {
                 if let Some(async_rt) = self.async_rt.upgrade() {
                     async_rt.post(Box::new(move || {
                         cb(ErrorCode::not_supported(), 0);

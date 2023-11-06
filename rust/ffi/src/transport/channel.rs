@@ -183,7 +183,7 @@ pub unsafe extern "C" fn rsn_channel_inproc_create(
         let context = source_context.get_context();
         source_inbound_callback(
             context,
-            MessageHandle::new(msg.into_enum()),
+            MessageHandle::new(msg),
             ChannelHandle::new(channel),
         );
     });
@@ -192,7 +192,7 @@ pub unsafe extern "C" fn rsn_channel_inproc_create(
         let context = destination_context.get_context();
         destination_inbound_callback(
             context,
-            MessageHandle::new(msg.into_enum()),
+            MessageHandle::new(msg),
             ChannelHandle::new(channel),
         );
     });
@@ -241,7 +241,7 @@ pub unsafe extern "C" fn rsn_channel_fake_create(
     limiter: *mut OutboundBandwidthLimiterHandle,
     stats: *mut StatHandle,
     endpoint: *const EndpointDto,
-    network_version: u8,
+    network_constants: &NetworkConstantsDto,
 ) -> *mut ChannelHandle {
     Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelEnum::Fake(
         ChannelFake::new(
@@ -251,7 +251,9 @@ pub unsafe extern "C" fn rsn_channel_fake_create(
             (*limiter).0.clone(),
             (*stats).0.clone(),
             SocketAddr::from(&(*endpoint)),
-            network_version,
+            NetworkConstants::try_from(network_constants)
+                .unwrap()
+                .protocol_info(),
         ),
     )))))
 }
@@ -281,7 +283,7 @@ pub unsafe extern "C" fn rsn_channel_inproc_send(
     });
     let policy = FromPrimitive::from_u8(policy).unwrap();
     let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
-    as_inproc_channel(handle).send(&message.into_enum(), Some(cb), policy, traffic_type);
+    as_inproc_channel(handle).send_new(&message.message, Some(cb), policy, traffic_type);
 }
 
 #[no_mangle]
@@ -301,7 +303,7 @@ pub unsafe extern "C" fn rsn_channel_fake_send(
     });
     let policy = FromPrimitive::from_u8(policy).unwrap();
     let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
-    as_fake_channel(handle).send(&message.into_enum(), Some(cb), policy, traffic_type);
+    as_fake_channel(handle).send(&message.message, Some(cb), policy, traffic_type);
 }
 
 #[no_mangle]

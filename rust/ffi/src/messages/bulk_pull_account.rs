@@ -34,7 +34,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_account_create3(
 pub unsafe extern "C" fn rsn_message_bulk_pull_account_clone(
     other: &MessageHandle,
 ) -> *mut MessageHandle {
-    MessageHandle::new2(other.deref().clone())
+    MessageHandle::new(other.deref().clone())
 }
 
 #[no_mangle]

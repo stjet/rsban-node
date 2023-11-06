@@ -68,19 +68,6 @@ impl DeserializedMessage {
     pub fn new(message: Payload, protocol: ProtocolInfo) -> Self {
         Self { message, protocol }
     }
-
-    pub fn into_enum(&self) -> MessageEnum {
-        let mut header = MessageHeader::new(self.message.message_type(), self.protocol);
-        let mut stream = MemoryStream::new();
-        self.message.serialize(&mut stream).unwrap();
-        header.extensions = self
-            .message
-            .header_extensions(stream.bytes_written() as u16);
-        MessageEnum {
-            header,
-            payload: self.message.clone(),
-        }
-    }
 }
 
 pub fn validate_header(
@@ -198,8 +185,6 @@ impl MessageDeserializerImpl {
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Deref;
-
     use super::*;
     use crate::{config::STUB_NETWORK_CONSTANTS, voting::Vote};
     use rsnano_core::BlockBuilder;
@@ -310,7 +295,7 @@ mod tests {
         ));
 
         let mut serializer = MessageSerializer::new(STUB_NETWORK_CONSTANTS.protocol_info());
-        let serialized = serializer.serialize(original.deref()).unwrap();
+        let serialized = serializer.serialize(original).unwrap();
         let mut stream = StreamAdapter::new(serialized);
         let deserialized_header = MessageHeader::deserialize(&mut stream).unwrap();
         assert_eq!(

@@ -21,7 +21,7 @@ use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
     config::{NetworkConstants, NodeConfig, NodeFlags},
     messages::{
-        KeepalivePayload, MessageEnum, MessageHeader, MessageType, NodeIdHandshakeQuery,
+        KeepalivePayload, MessageType, NodeIdHandshakePayload, NodeIdHandshakeQuery,
         NodeIdHandshakeResponse, Payload,
     },
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
@@ -587,13 +587,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
     fn ongoing_keepalive(&self) {
         let mut peers = [SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0); 8];
         self.random_fill(&mut peers);
-        let message = MessageEnum {
-            header: MessageHeader::new(
-                MessageType::Keepalive,
-                self.network.network.protocol_info(),
-            ),
-            payload: Payload::Keepalive(KeepalivePayload { peers }),
-        };
+        let message = Payload::Keepalive(KeepalivePayload { peers });
         // Wake up channels
         let send_list = {
             let guard = self.tcp_channels.lock().unwrap();
@@ -604,7 +598,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 continue;
             };
             tcp.send(
-                &message.payload,
+                &message,
                 None,
                 BufferDropPolicy::Limiter,
                 TrafficType::Generic,
@@ -767,11 +761,11 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 tcp.set_last_packet_received(SystemTime::now());
 
                 let response = this_l.prepare_handshake_response(query, handshake.is_v2);
-                let handshake_response = MessageEnum::new_node_id_handshake(
-                    this_l.network.network.protocol_info(),
-                    None,
-                    Some(response),
-                );
+                let handshake_response = Payload::NodeIdHandshake(NodeIdHandshakePayload {
+                    query: None,
+                    is_v2: response.v2.is_some(),
+                    response: Some(response),
+                });
 
                 if this_l
                     .node_config
@@ -788,7 +782,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 let channel_clone = channel.clone();
                 tcp.send(
-                    &handshake_response.payload,
+                    &handshake_response,
                     Some(Box::new(move |ec, _| {
                         let Some(this_l) = this_w.upgrade() else {
                             return;

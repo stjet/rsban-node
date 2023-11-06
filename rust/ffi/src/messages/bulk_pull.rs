@@ -32,7 +32,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_create3(
 pub unsafe extern "C" fn rsn_message_bulk_pull_req_clone(
     other: &MessageHandle,
 ) -> *mut MessageHandle {
-    MessageHandle::new2(other.deref().clone())
+    MessageHandle::new(other.deref().clone())
 }
 
 unsafe fn get_payload(handle: &MessageHandle) -> &BulkPullPayload {

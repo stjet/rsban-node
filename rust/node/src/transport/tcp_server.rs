@@ -7,17 +7,15 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rsnano_core::{
-    utils::{Logger, MemoryStream},
-    Account, KeyPair,
-};
+use rsnano_core::{utils::Logger, Account, KeyPair};
 use tokio::task::spawn_blocking;
 
 use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::{NetworkConstants, NodeConfig},
     messages::{
-        MessageEnum, MessageVisitor, NodeIdHandshakeQuery, NodeIdHandshakeResponse, Payload,
+        MessageSerializer, MessageVisitor, NodeIdHandshakePayload, NodeIdHandshakeQuery,
+        NodeIdHandshakeResponse, Payload,
     },
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
@@ -477,15 +475,15 @@ impl HandshakeMessageVisitorImpl {
     fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool) {
         let response = self.prepare_handshake_response(query, v2);
         let own_query = self.prepare_handshake_query(&self.server.remote_endpoint());
-        let handshake_response = MessageEnum::new_node_id_handshake(
-            self.network_constants.protocol_info(),
-            own_query,
-            Some(response),
-        );
+        let handshake_response = Payload::NodeIdHandshake(NodeIdHandshakePayload {
+            is_v2: own_query.is_some() || response.v2.is_some(),
+            query: own_query,
+            response: Some(response),
+        });
 
-        let mut stream = MemoryStream::new();
-        handshake_response.serialize(&mut stream).unwrap();
-        let shared_const_buffer = Arc::new(stream.to_vec());
+        let mut serializer = MessageSerializer::new(self.network_constants.protocol_info());
+        let buffer = serializer.serialize(&handshake_response).unwrap();
+        let shared_const_buffer = Arc::new(Vec::from(buffer)); // TODO don't copy buffer
         let server_weak = Arc::downgrade(&self.server);
         let logger = Arc::clone(&self.logger);
         let stats = Arc::clone(&self.stats);

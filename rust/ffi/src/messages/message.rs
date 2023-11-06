@@ -1,7 +1,7 @@
 use crate::NetworkConstantsDto;
 use rsnano_node::{
     config::NetworkConstants,
-    messages::{MessageEnum, Payload, ProtocolInfo},
+    messages::{MessageEnum, Payload},
     transport::DeserializedMessage,
 };
 
@@ -57,14 +57,6 @@ pub(crate) unsafe fn create_message_handle2(
     let constants = NetworkConstants::try_from(&*constants).unwrap();
     let msg = DeserializedMessage::new(f(), constants.protocol_info());
     MessageHandle::new2(msg)
-}
-
-pub(crate) unsafe fn create_message_handle3(
-    constants: *mut NetworkConstantsDto,
-    f: impl FnOnce(ProtocolInfo) -> MessageEnum,
-) -> *mut MessageHandle {
-    let constants = NetworkConstants::try_from(&*constants).unwrap();
-    MessageHandle::new(f(constants.protocol_info()))
 }
 
 pub(crate) fn message_handle_clone(handle: &MessageHandle) -> *mut MessageHandle {

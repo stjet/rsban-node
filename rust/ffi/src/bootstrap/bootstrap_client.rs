@@ -138,7 +138,7 @@ pub unsafe extern "C" fn rsn_bootstrap_client_send(
         callback_wrapper.call(ec, size);
     });
     (*handle).0.send(
-        &msg.into_enum(),
+        &msg.message,
         Some(callback_box),
         BufferDropPolicy::from_u8(policy).unwrap(),
         TrafficType::from_u8(traffic_type).unwrap(),

@@ -10,7 +10,7 @@ use std::{
 use rsnano_core::Account;
 
 use crate::{
-    messages::MessageEnum,
+    messages::{MessageEnum, MessageSerializer, Payload},
     stats::{DetailType, Direction, StatType, Stats},
     utils::{AsyncRuntime, ErrorCode},
 };

@@ -604,7 +604,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 continue;
             };
             tcp.send(
-                &message,
+                &message.payload,
                 None,
                 BufferDropPolicy::Limiter,
                 TrafficType::Generic,
@@ -788,7 +788,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 let channel_clone = channel.clone();
                 tcp.send(
-                    &handshake_response,
+                    &handshake_response.payload,
                     Some(Box::new(move |ec, _| {
                         let Some(this_l) = this_w.upgrade() else {
                             return;
@@ -928,11 +928,11 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 // TCP node ID handshake
                 let query = this_l.prepare_handshake_query(endpoint);
-                let message = MessageEnum::new_node_id_handshake(
-                    this_l.network.network.protocol_info(),
-                    query.clone(),
-                    None,
-                );
+                let message = Payload::NodeIdHandshake(crate::messages::NodeIdHandshakePayload {
+                    query: query.clone(),
+                    response: None,
+                    is_v2: query.is_some(),
+                });
 
                 if this_l
                     .node_config

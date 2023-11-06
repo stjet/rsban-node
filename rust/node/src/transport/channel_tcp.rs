@@ -197,18 +197,20 @@ impl ChannelTcp {
 
     pub fn send(
         &self,
-        message: &MessageEnum,
+        message: &Payload,
         callback: Option<WriteCallback>,
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,
     ) {
-        let buffer = Arc::new(message.to_bytes());
+        let mut serializer = MessageSerializer::new(self.protocol);
+        let buffer = serializer.serialize(message).unwrap();
+        let buffer = Arc::new(Vec::from(buffer)); // TODO don't copy into vec. Pass slice directly
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
         let should_pass = self.limiter.should_pass(buffer.len(), traffic_type.into());
         if !is_droppable_by_limiter || should_pass {
             self.send_buffer(&buffer, callback, drop_policy, traffic_type);
             if let Some(observer) = self.observer.lock() {
-                observer.message_sent(&message.payload);
+                observer.message_sent(message);
             }
         } else {
             if let Some(callback) = callback {
@@ -220,7 +222,7 @@ impl ChannelTcp {
             }
 
             if let Some(observer) = self.observer.lock() {
-                observer.message_dropped(&message.payload, buffer.len());
+                observer.message_dropped(message, buffer.len());
             }
         }
     }

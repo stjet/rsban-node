@@ -109,18 +109,6 @@ impl Payload {
         };
         Ok(msg)
     }
-
-    pub fn into_message_enum(self, protocol: ProtocolInfo) -> MessageEnum {
-        let mut payload_stream = MemoryStream::new();
-        self.serialize(&mut payload_stream).unwrap();
-
-        let mut header = MessageHeader::new(self.message_type(), protocol);
-        header.extensions = self.header_extensions(payload_stream.bytes_written() as u16);
-        MessageEnum {
-            header,
-            payload: self,
-        }
-    }
 }
 
 impl From<&Payload> for DetailType {
@@ -171,7 +159,7 @@ impl MessageSerializer {
         }
     }
 
-    pub fn serialize(&'_ mut self, message: &dyn MessageVariant) -> anyhow::Result<&'_ [u8]> {
+    pub fn serialize(&'_ mut self, message: &Payload) -> anyhow::Result<&'_ [u8]> {
         let payload_len;
         {
             let mut payload_stream =

@@ -50,10 +50,6 @@ impl Serialize for Publish {
 }
 
 impl MessageVariant for Publish {
-    fn message_type(&self) -> MessageType {
-        MessageType::Publish
-    }
-
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         BitArray::new((self.block.block_type() as u16) << 8)
     }

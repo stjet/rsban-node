@@ -1,4 +1,4 @@
-use super::{MessageHeader, MessageType, MessageVariant};
+use super::{MessageHeader, MessageVariant};
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::utils::{
@@ -240,10 +240,6 @@ impl Serialize for TelemetryAckPayload {
 }
 
 impl MessageVariant for TelemetryAckPayload {
-    fn message_type(&self) -> MessageType {
-        MessageType::TelemetryAck
-    }
-
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         match &self.0 {
             Some(data) => BitArray::new(

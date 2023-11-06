@@ -6,7 +6,6 @@ use rsnano_core::utils::{Serialize, Stream};
 use std::{fmt::Display, ops::Deref};
 
 pub trait MessageVariant: Serialize + Display + std::fmt::Debug {
-    fn message_type(&self) -> MessageType;
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         Default::default()
     }
@@ -49,24 +48,35 @@ impl Message {
     }
 
     pub fn message_type(&self) -> MessageType {
-        self.deref().message_type()
+        match &self {
+            Message::Keepalive(_) => MessageType::Keepalive,
+            Message::Publish(_) => MessageType::Publish,
+            Message::AscPullAck(_) => MessageType::AscPullAck,
+            Message::AscPullReq(_) => MessageType::AscPullReq,
+            Message::BulkPull(_) => MessageType::BulkPull,
+            Message::BulkPullAccount(_) => MessageType::BulkPullAccount,
+            Message::BulkPush => MessageType::BulkPush,
+            Message::ConfirmAck(_) => MessageType::ConfirmAck,
+            Message::ConfirmReq(_) => MessageType::ConfirmReq,
+            Message::FrontierReq(_) => MessageType::FrontierReq,
+            Message::NodeIdHandshake(_) => MessageType::NodeIdHandshake,
+            Message::TelemetryAck(_) => MessageType::TelemetryAck,
+            Message::TelemetryReq(_) => MessageType::TelemetryReq,
+        }
     }
 
     pub fn header_extensions(&self, payload_len: u16) -> BitArray<u16> {
         match &self {
-            Message::Keepalive(x) => x.header_extensions(payload_len),
             Message::Publish(x) => x.header_extensions(payload_len),
             Message::AscPullAck(x) => x.header_extensions(payload_len),
             Message::AscPullReq(x) => x.header_extensions(payload_len),
             Message::BulkPull(x) => x.header_extensions(payload_len),
-            Message::BulkPullAccount(x) => x.header_extensions(payload_len),
-            Message::BulkPush => Default::default(),
             Message::ConfirmAck(x) => x.header_extensions(payload_len),
             Message::ConfirmReq(x) => x.header_extensions(payload_len),
             Message::FrontierReq(x) => x.header_extensions(payload_len),
             Message::NodeIdHandshake(x) => x.header_extensions(payload_len),
             Message::TelemetryAck(x) => x.header_extensions(payload_len),
-            Message::TelemetryReq(x) => x.header_extensions(payload_len),
+            _ => Default::default(),
         }
     }
 

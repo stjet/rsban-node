@@ -1,4 +1,4 @@
-use super::{MessageHeader, MessageType, MessageVariant};
+use super::{MessageHeader, MessageType};
 use anyhow::Result;
 use rsnano_core::utils::{Serialize, Stream};
 use std::{
@@ -59,12 +59,6 @@ impl Serialize for Keepalive {
             }
         }
         Ok(())
-    }
-}
-
-impl MessageVariant for Keepalive {
-    fn message_type(&self) -> MessageType {
-        MessageType::Keepalive
     }
 }
 

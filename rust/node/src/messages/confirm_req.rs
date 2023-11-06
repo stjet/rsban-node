@@ -101,10 +101,6 @@ impl Serialize for ConfirmReqPayload {
 }
 
 impl MessageVariant for ConfirmReqPayload {
-    fn message_type(&self) -> MessageType {
-        MessageType::ConfirmReq
-    }
-
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let block_type = match &self.block {
             Some(b) => b.block_type(),

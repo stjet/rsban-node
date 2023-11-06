@@ -75,10 +75,6 @@ impl Serialize for AscPullAck {
 }
 
 impl MessageVariant for AscPullAck {
-    fn message_type(&self) -> MessageType {
-        MessageType::AscPullAck
-    }
-
     fn header_extensions(&self, payload_len: u16) -> BitArray<u16> {
         BitArray::new(
             payload_len

@@ -171,10 +171,6 @@ impl Serialize for AscPullReq {
 }
 
 impl MessageVariant for AscPullReq {
-    fn message_type(&self) -> MessageType {
-        MessageType::AscPullReq
-    }
-
     fn header_extensions(&self, payload_len: u16) -> BitArray<u16> {
         BitArray::new(
             payload_len

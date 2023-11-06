@@ -239,10 +239,6 @@ impl Serialize for NodeIdHandshakePayload {
 }
 
 impl MessageVariant for NodeIdHandshakePayload {
-    fn message_type(&self) -> MessageType {
-        MessageType::NodeIdHandshake
-    }
-
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions.set(NodeIdHandshakePayload::QUERY_FLAG, self.query.is_some());

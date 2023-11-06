@@ -10,7 +10,7 @@ use std::{
     sync::Arc,
 };
 
-use super::{MessageType, MessageVariant};
+use super::MessageVariant;
 
 #[derive(Clone, Debug)]
 pub struct ConfirmAckPayload {
@@ -50,10 +50,6 @@ impl Serialize for ConfirmAckPayload {
 }
 
 impl MessageVariant for ConfirmAckPayload {
-    fn message_type(&self) -> MessageType {
-        MessageType::ConfirmAck
-    }
-
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions |= BitArray::new((BlockType::NotABlock as u16) << 8);

@@ -1,4 +1,4 @@
-use super::{MessageHeader, MessageType, MessageVariant};
+use super::{MessageHeader, MessageType};
 use anyhow::Result;
 use num_traits::FromPrimitive;
 use rsnano_core::{
@@ -52,12 +52,6 @@ impl Serialize for BulkPullAccount {
         self.account.serialize(stream)?;
         self.minimum_amount.serialize(stream)?;
         stream.write_u8(self.flags as u8)
-    }
-}
-
-impl MessageVariant for BulkPullAccount {
-    fn message_type(&self) -> MessageType {
-        MessageType::BulkPullAccount
     }
 }
 

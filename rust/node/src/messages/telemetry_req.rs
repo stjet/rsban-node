@@ -1,8 +1,7 @@
-use std::fmt::Display;
-
-use super::{MessageHeader, MessageVariant};
+use super::MessageHeader;
 use crate::messages::MessageType;
 use rsnano_core::utils::{Serialize, Stream};
+use std::fmt::Display;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TelemetryReqPayload;
@@ -17,12 +16,6 @@ impl TelemetryReqPayload {
 impl Serialize for TelemetryReqPayload {
     fn serialize(&self, _stream: &mut dyn Stream) -> anyhow::Result<()> {
         Ok(())
-    }
-}
-
-impl MessageVariant for TelemetryReqPayload {
-    fn message_type(&self) -> MessageType {
-        MessageType::TelemetryReq
     }
 }
 

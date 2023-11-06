@@ -89,10 +89,6 @@ impl Serialize for BulkPull {
 }
 
 impl MessageVariant for BulkPull {
-    fn message_type(&self) -> MessageType {
-        MessageType::BulkPull
-    }
-
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions.set(BulkPull::COUNT_PRESENT_FLAG, self.count > 0);

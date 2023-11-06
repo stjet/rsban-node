@@ -65,10 +65,6 @@ impl Serialize for FrontierReqPayload {
 }
 
 impl MessageVariant for FrontierReqPayload {
-    fn message_type(&self) -> MessageType {
-        MessageType::FrontierReq
-    }
-
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions.set(Self::ONLY_CONFIRMED, self.only_confirmed);

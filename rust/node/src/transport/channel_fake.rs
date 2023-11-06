@@ -10,7 +10,7 @@ use std::{
 use rsnano_core::Account;
 
 use crate::{
-    messages::{MessageSerializer, Payload, ProtocolInfo},
+    messages::{Message, MessageSerializer, ProtocolInfo},
     stats::{DetailType, Direction, StatType, Stats},
     utils::{AsyncRuntime, ErrorCode},
 };
@@ -69,7 +69,7 @@ impl ChannelFake {
 
     pub fn send(
         &self,
-        message: &Payload,
+        message: &Message,
         callback: Option<WriteCallback>,
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,

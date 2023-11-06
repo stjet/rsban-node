@@ -5,7 +5,7 @@ use crate::{
     copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto, StringDto,
 };
 use rsnano_node::messages::{
-    NodeIdHandshakePayload, NodeIdHandshakeQuery, NodeIdHandshakeResponse, Payload, V2Payload,
+    Message, NodeIdHandshakePayload, NodeIdHandshakeQuery, NodeIdHandshakeResponse, V2Payload,
 };
 
 #[no_mangle]
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
         None
     };
     create_message_handle2(constants, move || {
-        Payload::NodeIdHandshake(NodeIdHandshakePayload {
+        Message::NodeIdHandshake(NodeIdHandshakePayload {
             query,
             response,
             is_v2,
@@ -65,7 +65,7 @@ pub extern "C" fn rsn_message_node_id_handshake_clone(
 }
 
 fn get_payload(handle: &MessageHandle) -> &NodeIdHandshakePayload {
-    let Payload::NodeIdHandshake(payload) = &handle.message else {panic!("not a node_id_handshake")};
+    let Message::NodeIdHandshake(payload) = &handle.message else {panic!("not a node_id_handshake")};
     payload
 }
 

@@ -1,7 +1,7 @@
 use std::{ops::Deref, sync::Arc};
 
 use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{ConfirmReqPayload, Payload};
+use rsnano_node::messages::{ConfirmReqPayload, Message};
 
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use num_traits::FromPrimitive;
@@ -23,7 +23,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
     create_message_handle2(constants, || {
         if !block.is_null() {
             let block = Arc::clone((*block).deref());
-            Payload::ConfirmReq(ConfirmReqPayload {
+            Message::ConfirmReq(ConfirmReqPayload {
                 block: Some(block),
                 roots_hashes: Vec::new(),
             })
@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
                     )
                 })
                 .collect();
-            Payload::ConfirmReq(ConfirmReqPayload {
+            Message::ConfirmReq(ConfirmReqPayload {
                 block: None,
                 roots_hashes,
             })
@@ -52,7 +52,7 @@ pub extern "C" fn rsn_message_confirm_req_clone(handle: &MessageHandle) -> *mut 
 }
 
 unsafe fn get_payload(handle: &MessageHandle) -> &ConfirmReqPayload {
-    let Payload::ConfirmReq(payload) = &handle.message else {panic!("not a confirm_req_payload")};
+    let Message::ConfirmReq(payload) = &handle.message else {panic!("not a confirm_req_payload")};
     payload
 }
 

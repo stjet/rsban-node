@@ -278,23 +278,23 @@ impl Display for NodeIdHandshakePayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, Payload};
+    use crate::messages::{assert_deserializable, Message};
 
     #[test]
     fn serialize_query() {
-        let message = Payload::NodeIdHandshake(NodeIdHandshakePayload::create_test_query());
+        let message = Message::NodeIdHandshake(NodeIdHandshakePayload::create_test_query());
         assert_deserializable(&message);
     }
 
     #[test]
     fn serialize_response_v1() {
-        let message = Payload::NodeIdHandshake(NodeIdHandshakePayload::create_test_response_v1());
+        let message = Message::NodeIdHandshake(NodeIdHandshakePayload::create_test_response_v1());
         assert_deserializable(&message);
     }
 
     #[test]
     fn serialize_response_v2() {
-        let message = Payload::NodeIdHandshake(NodeIdHandshakePayload::create_test_response_v2());
+        let message = Message::NodeIdHandshake(NodeIdHandshakePayload::create_test_response_v2());
         assert_deserializable(&message);
     }
 

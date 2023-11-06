@@ -1,19 +1,19 @@
 use std::ops::Deref;
 
 use crate::{copy_account_bytes, copy_amount_bytes, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{BulkPullAccountFlags, BulkPullAccountPayload, Payload};
+use rsnano_node::messages::{BulkPullAccountFlags, BulkPullAccountPayload, Message};
 
 use super::{create_message_handle2, MessageHandle};
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount};
 
 unsafe fn get_payload_mut(message_handle: &mut MessageHandle) -> &mut BulkPullAccountPayload {
-    let Payload::BulkPullAccount(payload) = &mut message_handle.message else {panic!("not a bulk_pull_account message")};
+    let Message::BulkPullAccount(payload) = &mut message_handle.message else {panic!("not a bulk_pull_account message")};
     payload
 }
 
 unsafe fn get_payload(message_handle: &MessageHandle) -> &BulkPullAccountPayload {
-    let Payload::BulkPullAccount(payload) = &message_handle.message else {panic!("not a bulk_pull_account message")};
+    let Message::BulkPullAccount(payload) = &message_handle.message else {panic!("not a bulk_pull_account message")};
     payload
 }
 
@@ -27,7 +27,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_account_create3(
         minimum_amount: Amount::from_be_bytes(payload.minimum_amount),
         flags: FromPrimitive::from_u8(payload.flags).unwrap(),
     };
-    create_message_handle2(constants, || Payload::BulkPullAccount(payload))
+    create_message_handle2(constants, || Message::BulkPullAccount(payload))
 }
 
 #[no_mangle]

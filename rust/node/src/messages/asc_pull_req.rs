@@ -187,11 +187,11 @@ impl MessageVariant for AscPullReqPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, Payload};
+    use crate::messages::{assert_deserializable, Message};
 
     #[test]
     fn serialize_blocks() {
-        let original = Payload::AscPullReq(AscPullReqPayload {
+        let original = Message::AscPullReq(AscPullReqPayload {
             id: 7,
             req_type: AscPullReqType::Blocks(BlocksReqPayload {
                 start: HashOrAccount::from(3),
@@ -205,7 +205,7 @@ mod tests {
 
     #[test]
     fn serialize_account_info() {
-        let original = Payload::AscPullReq(AscPullReqPayload {
+        let original = Message::AscPullReq(AscPullReqPayload {
             id: 7,
             req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload {
                 target: HashOrAccount::from(123),
@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn display_blocks_payload() {
-        let req = Payload::AscPullReq(AscPullReqPayload {
+        let req = Message::AscPullReq(AscPullReqPayload {
             req_type: AscPullReqType::Blocks(BlocksReqPayload {
                 start: 1.into(),
                 count: 2,
@@ -231,7 +231,7 @@ mod tests {
 
     #[test]
     fn display_account_info_payload() {
-        let req = Payload::AscPullReq(AscPullReqPayload {
+        let req = Message::AscPullReq(AscPullReqPayload {
             req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload {
                 target: HashOrAccount::from(123),
                 target_type: HashType::Block,

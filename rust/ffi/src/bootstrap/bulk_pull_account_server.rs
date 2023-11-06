@@ -8,7 +8,7 @@ use crate::{
     utils::{LoggerHandle, LoggerMT, ThreadPoolHandle},
 };
 use rsnano_core::utils::Logger;
-use rsnano_node::{bootstrap::BulkPullAccountServer, messages::Payload};
+use rsnano_node::{bootstrap::BulkPullAccountServer, messages::Message};
 use std::sync::Arc;
 
 pub struct BulkPullAccountServerHandle(BulkPullAccountServer);
@@ -22,7 +22,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_account_server_create(
     thread_pool: *mut ThreadPoolHandle,
     logging_enabled: bool,
 ) -> *mut BulkPullAccountServerHandle {
-    let Payload::BulkPullAccount(payload) = &request.message else {panic!("not a bulk_pull_account message")};
+    let Message::BulkPullAccount(payload) = &request.message else {panic!("not a bulk_pull_account message")};
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     Box::into_raw(Box::new(BulkPullAccountServerHandle(
         BulkPullAccountServer::new(

@@ -1,5 +1,8 @@
-mod message_enum;
-pub use message_enum::*;
+mod message;
+pub use message::*;
+
+mod message_serializer;
+pub use message_serializer::*;
 
 mod message_header;
 pub use message_header::*;
@@ -44,17 +47,17 @@ mod asc_pull_ack;
 pub use asc_pull_ack::*;
 
 pub trait MessageVisitor {
-    fn received(&mut self, message: &Payload);
+    fn received(&mut self, message: &Message);
 }
 
 #[cfg(test)]
-pub(crate) fn assert_deserializable(original: &Payload) {
+pub(crate) fn assert_deserializable(original: &Message) {
     use rsnano_core::utils::StreamAdapter;
 
     let mut serializer = MessageSerializer::default();
     let serialized = serializer.serialize(original).unwrap();
     let mut stream = StreamAdapter::new(serialized);
     let header = MessageHeader::deserialize(&mut stream).unwrap();
-    let message_out = Payload::deserialize(&mut stream, &header, 0, None, None).unwrap();
+    let message_out = Message::deserialize(&mut stream, &header, 0, None, None).unwrap();
     assert_eq!(message_out, *original);
 }

@@ -21,8 +21,8 @@ use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
     config::{NetworkConstants, NodeConfig, NodeFlags},
     messages::{
-        KeepalivePayload, MessageType, NodeIdHandshakePayload, NodeIdHandshakeQuery,
-        NodeIdHandshakeResponse, Payload,
+        KeepalivePayload, Message, MessageType, NodeIdHandshakePayload, NodeIdHandshakeQuery,
+        NodeIdHandshakeResponse,
     },
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     transport::{Channel, SocketType},
@@ -436,7 +436,7 @@ impl ChannelTcpObserver for ChannelTcpObserverImpl {
         });
     }
 
-    fn message_sent(&self, message: &Payload) {
+    fn message_sent(&self, message: &Message) {
         self.execute(|channels| {
             channels
                 .stats
@@ -444,7 +444,7 @@ impl ChannelTcpObserver for ChannelTcpObserverImpl {
         });
     }
 
-    fn message_dropped(&self, message: &Payload, buffer_size: usize) {
+    fn message_dropped(&self, message: &Message, buffer_size: usize) {
         self.execute(|channels| {
             let detail_type = message.into();
             channels
@@ -587,7 +587,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
     fn ongoing_keepalive(&self) {
         let mut peers = [SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0); 8];
         self.random_fill(&mut peers);
-        let message = Payload::Keepalive(KeepalivePayload { peers });
+        let message = Message::Keepalive(KeepalivePayload { peers });
         // Wake up channels
         let send_list = {
             let guard = self.tcp_channels.lock().unwrap();
@@ -673,7 +673,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 // the header type should in principle be checked after checking the network bytes and the version numbers, I will not change it here since the benefits do not outweight the difficulties
 
-                let Payload::NodeIdHandshake(handshake) = &message.message
+                let Message::NodeIdHandshake(handshake) = &message.message
                 else {
                     if this_l
                         .node_config
@@ -761,7 +761,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 tcp.set_last_packet_received(SystemTime::now());
 
                 let response = this_l.prepare_handshake_response(query, handshake.is_v2);
-                let handshake_response = Payload::NodeIdHandshake(NodeIdHandshakePayload {
+                let handshake_response = Message::NodeIdHandshake(NodeIdHandshakePayload {
                     query: None,
                     is_v2: response.v2.is_some(),
                     response: Some(response),
@@ -922,7 +922,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 // TCP node ID handshake
                 let query = this_l.prepare_handshake_query(endpoint);
-                let message = Payload::NodeIdHandshake(crate::messages::NodeIdHandshakePayload {
+                let message = Message::NodeIdHandshake(crate::messages::NodeIdHandshakePayload {
                     query: query.clone(),
                     response: None,
                     is_v2: query.is_some(),

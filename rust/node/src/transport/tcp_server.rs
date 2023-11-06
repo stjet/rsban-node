@@ -14,8 +14,8 @@ use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::{NetworkConstants, NodeConfig},
     messages::{
-        MessageSerializer, MessageVisitor, NodeIdHandshakePayload, NodeIdHandshakeQuery,
-        NodeIdHandshakeResponse, Payload,
+        Message, MessageSerializer, MessageVisitor, NodeIdHandshakePayload, NodeIdHandshakeQuery,
+        NodeIdHandshakeResponse,
     },
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
@@ -475,7 +475,7 @@ impl HandshakeMessageVisitorImpl {
     fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool) {
         let response = self.prepare_handshake_response(query, v2);
         let own_query = self.prepare_handshake_query(&self.server.remote_endpoint());
-        let handshake_response = Payload::NodeIdHandshake(NodeIdHandshakePayload {
+        let handshake_response = Message::NodeIdHandshake(NodeIdHandshakePayload {
             is_v2: own_query.is_some() || response.v2.is_some(),
             query: own_query,
             response: Some(response),
@@ -567,19 +567,19 @@ impl HandshakeMessageVisitorImpl {
 }
 
 impl MessageVisitor for HandshakeMessageVisitorImpl {
-    fn received(&mut self, message: &Payload) {
+    fn received(&mut self, message: &Message) {
         if matches!(
             message,
-            Payload::BulkPull(_)
-                | Payload::BulkPullAccount(_)
-                | Payload::BulkPush(_)
-                | Payload::FrontierReq(_)
+            Message::BulkPull(_)
+                | Message::BulkPullAccount(_)
+                | Message::BulkPush(_)
+                | Message::FrontierReq(_)
         ) {
             self.bootstrap = true;
         };
 
         match message {
-            Payload::NodeIdHandshake(payload) => {
+            Message::NodeIdHandshake(payload) => {
                 if self.disable_tcp_realtime {
                     if self.handshake_logging {
                         self.logger.try_log(&format!(
@@ -663,17 +663,17 @@ impl RealtimeMessageVisitorImpl {
 }
 
 impl MessageVisitor for RealtimeMessageVisitorImpl {
-    fn received(&mut self, message: &Payload) {
+    fn received(&mut self, message: &Message) {
         match message {
-            Payload::Keepalive(_)
-            | Payload::Publish(_)
-            | Payload::AscPullAck(_)
-            | Payload::AscPullReq(_)
-            | Payload::ConfirmAck(_)
-            | Payload::ConfirmReq(_)
-            | Payload::FrontierReq(_)
-            | Payload::TelemetryAck(_) => self.process = true,
-            Payload::TelemetryReq(_) => {
+            Message::Keepalive(_)
+            | Message::Publish(_)
+            | Message::AscPullAck(_)
+            | Message::AscPullReq(_)
+            | Message::ConfirmAck(_)
+            | Message::ConfirmReq(_)
+            | Message::FrontierReq(_)
+            | Message::TelemetryAck(_) => self.process = true,
+            Message::TelemetryReq(_) => {
                 // Only handle telemetry requests if they are outside of the cooldown period
                 if self.server.is_outside_cooldown_period() {
                     self.server.set_last_telemetry_req();

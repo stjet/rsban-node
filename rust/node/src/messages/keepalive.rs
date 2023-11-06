@@ -85,12 +85,12 @@ fn empty_peers() -> [SocketAddr; 8] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, Payload};
+    use crate::messages::{assert_deserializable, Message};
     use std::str::FromStr;
 
     #[test]
     fn serialize_no_peers() {
-        let request = Payload::Keepalive(KeepalivePayload::default());
+        let request = Message::Keepalive(KeepalivePayload::default());
         assert_deserializable(&request);
     }
 
@@ -98,13 +98,13 @@ mod tests {
     fn serialize_peers() {
         let mut keepalive = KeepalivePayload::default();
         keepalive.peers[0] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 10000);
-        let request = Payload::Keepalive(keepalive);
+        let request = Message::Keepalive(keepalive);
         assert_deserializable(&request);
     }
 
     #[test]
     fn keepalive_with_no_peers_to_string() {
-        let keepalive = Payload::Keepalive(Default::default());
+        let keepalive = Message::Keepalive(Default::default());
         let expected = "\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0\n[::]:0";
         assert_eq!(keepalive.to_string(), expected);
     }

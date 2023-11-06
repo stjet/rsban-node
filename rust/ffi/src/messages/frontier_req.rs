@@ -1,5 +1,5 @@
 use rsnano_core::Account;
-use rsnano_node::messages::{FrontierReqPayload, Payload};
+use rsnano_node::messages::{FrontierReqPayload, Message};
 
 use super::{create_message_handle2, MessageHandle};
 use crate::{copy_account_bytes, NetworkConstantsDto, StringDto};
@@ -18,7 +18,7 @@ pub unsafe extern "C" fn rsn_message_frontier_req_create3(
     payload: &FrontierReqPayloadDto,
 ) -> *mut MessageHandle {
     create_message_handle2(constants, || {
-        Payload::FrontierReq(FrontierReqPayload {
+        Message::FrontierReq(FrontierReqPayload {
             start: Account::from_bytes(payload.start),
             age: payload.age,
             count: payload.count,
@@ -35,7 +35,7 @@ pub unsafe extern "C" fn rsn_message_frontier_req_clone(
 }
 
 unsafe fn get_payload(handle: &MessageHandle) -> &FrontierReqPayload {
-    let Payload::FrontierReq(payload) = &handle.message else { panic!("not a frontier_req")};
+    let Message::FrontierReq(payload) = &handle.message else { panic!("not a frontier_req")};
     payload
 }
 

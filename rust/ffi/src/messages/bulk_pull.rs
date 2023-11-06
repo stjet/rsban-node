@@ -1,7 +1,7 @@
 use super::{create_message_handle2, MessageHandle};
 use crate::{copy_hash_bytes, NetworkConstantsDto, StringDto};
 use rsnano_core::{BlockHash, HashOrAccount};
-use rsnano_node::messages::{BulkPullPayload, Payload};
+use rsnano_node::messages::{BulkPullPayload, Message};
 use std::ops::Deref;
 
 #[repr(C)]
@@ -24,7 +24,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_create3(
             count: dto.count,
             ascending: dto.ascending,
         };
-        Payload::BulkPull(payload)
+        Message::BulkPull(payload)
     })
 }
 
@@ -36,7 +36,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_req_clone(
 }
 
 unsafe fn get_payload(handle: &MessageHandle) -> &BulkPullPayload {
-    let Payload::BulkPull(payload) = &handle.message else {panic!("not a bulk_pull message")};
+    let Message::BulkPull(payload) = &handle.message else {panic!("not a bulk_pull message")};
     payload
 }
 

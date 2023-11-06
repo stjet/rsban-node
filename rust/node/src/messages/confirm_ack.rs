@@ -80,7 +80,7 @@ impl Display for ConfirmAckPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, Payload};
+    use crate::messages::{assert_deserializable, Message};
     use rsnano_core::{BlockHash, KeyPair};
 
     #[test]
@@ -92,7 +92,7 @@ mod tests {
         }
         let vote = Vote::new(keys.public_key().into(), &keys.private_key(), 0, 0, hashes);
         let vote = Arc::new(vote);
-        let confirm = Payload::ConfirmAck(ConfirmAckPayload { vote });
+        let confirm = Message::ConfirmAck(ConfirmAckPayload { vote });
 
         assert_deserializable(&confirm);
     }

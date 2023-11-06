@@ -6,7 +6,7 @@ use crate::{
     NetworkConstantsDto,
 };
 use rsnano_node::messages::{
-    AccountInfoAckPayload, AscPullAckPayload, AscPullAckType, BlocksAckPayload, Payload,
+    AccountInfoAckPayload, AscPullAckPayload, AscPullAckType, BlocksAckPayload, Message,
 };
 use std::{borrow::Borrow, ops::Deref, sync::Arc};
 
@@ -18,7 +18,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_create2(
 ) -> *mut MessageHandle {
     let payload = (*payload).borrow().into();
     create_message_handle2(constants, move || {
-        Payload::AscPullAck(AscPullAckPayload {
+        Message::AscPullAck(AscPullAckPayload {
             id,
             pull_type: AscPullAckType::AccountInfo(payload),
         })
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_create3(
         .collect();
 
     create_message_handle2(constants, move || {
-        Payload::AscPullAck(AscPullAckPayload {
+        Message::AscPullAck(AscPullAckPayload {
             id,
             pull_type: AscPullAckType::Blocks(BlocksAckPayload::new(blocks)),
         })
@@ -52,12 +52,12 @@ pub extern "C" fn rsn_message_asc_pull_ack_clone(handle: &MessageHandle) -> *mut
 }
 
 fn get_payload_mut(handle: &mut MessageHandle) -> &mut AscPullAckPayload {
-    let Payload::AscPullAck(payload) = &mut handle.message else { panic!("not an asc_pull_ack")};
+    let Message::AscPullAck(payload) = &mut handle.message else { panic!("not an asc_pull_ack")};
     payload
 }
 
 fn get_payload(handle: &MessageHandle) -> &AscPullAckPayload {
-    let Payload::AscPullAck(payload) = &handle.message else { panic!("not an asc_pull_ack")};
+    let Message::AscPullAck(payload) = &handle.message else { panic!("not an asc_pull_ack")};
     payload
 }
 

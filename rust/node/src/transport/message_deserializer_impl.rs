@@ -1,6 +1,6 @@
 use super::NetworkFilter;
 use crate::{config::NetworkConstants, messages::*, utils::BlockUniquer, voting::VoteUniquer};
-use rsnano_core::utils::{MemoryStream, StreamAdapter};
+use rsnano_core::utils::StreamAdapter;
 use std::sync::Arc;
 
 pub const MAX_MESSAGE_SIZE: usize = 1024 * 65;
@@ -60,12 +60,12 @@ impl ParseStatus {
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct DeserializedMessage {
-    pub message: Payload,
+    pub message: Message,
     pub protocol: ProtocolInfo,
 }
 
 impl DeserializedMessage {
-    pub fn new(message: Payload, protocol: ProtocolInfo) -> Self {
+    pub fn new(message: Message, protocol: ProtocolInfo) -> Self {
         Self { message, protocol }
     }
 }
@@ -117,7 +117,7 @@ impl MessageDeserializerImpl {
         let digest = self.filter_duplicate_publish_messages(header.message_type, payload_bytes)?;
 
         let mut stream = StreamAdapter::new(payload_bytes);
-        let result = Payload::deserialize(
+        let result = Message::deserialize(
             &mut stream,
             &header,
             digest,
@@ -167,10 +167,10 @@ impl MessageDeserializerImpl {
         }
     }
 
-    fn validate_work(&self, result: &Result<Payload, ParseStatus>) -> Result<(), ParseStatus> {
+    fn validate_work(&self, result: &Result<Message, ParseStatus>) -> Result<(), ParseStatus> {
         let block = match result {
-            Ok(Payload::Publish(msg)) => Some(&msg.block),
-            Ok(Payload::ConfirmReq(msg)) => msg.block.as_ref(),
+            Ok(Message::Publish(msg)) => Some(&msg.block),
+            Ok(Message::ConfirmReq(msg)) => msg.block.as_ref(),
             _ => None,
         };
 
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn exact_confirm_ack() {
-        let message = Payload::ConfirmAck(ConfirmAckPayload {
+        let message = Message::ConfirmAck(ConfirmAckPayload {
             vote: Arc::new(Vote::create_test_instance()),
         });
         test_deserializer(&message);
@@ -200,7 +200,7 @@ mod tests {
     #[test]
     fn exact_confirm_req() {
         let block = Arc::new(BlockBuilder::legacy_send().build());
-        let message = Payload::ConfirmReq(ConfirmReqPayload {
+        let message = Message::ConfirmReq(ConfirmReqPayload {
             block: Some(block),
             roots_hashes: Vec::new(),
         });
@@ -210,53 +210,53 @@ mod tests {
     #[test]
     fn exact_publish() {
         let block = Arc::new(BlockBuilder::legacy_send().build());
-        let message = Payload::Publish(PublishPayload { block, digest: 8 });
+        let message = Message::Publish(PublishPayload { block, digest: 8 });
         test_deserializer(&message);
     }
 
     #[test]
     fn exact_keepalive() {
-        test_deserializer(&Payload::Keepalive(KeepalivePayload::default()));
+        test_deserializer(&Message::Keepalive(KeepalivePayload::default()));
     }
 
     #[test]
     fn exact_frontier_req() {
-        let message = Payload::FrontierReq(FrontierReqPayload::create_test_instance());
+        let message = Message::FrontierReq(FrontierReqPayload::create_test_instance());
         test_deserializer(&message);
     }
 
     #[test]
     fn exact_telemetry_req() {
-        test_deserializer(&Payload::TelemetryReq(TelemetryReqPayload {}));
+        test_deserializer(&Message::TelemetryReq(TelemetryReqPayload {}));
     }
 
     #[test]
     fn exact_telemetry_ack() {
         let mut data = TelemetryData::default();
         data.unknown_data.push(0xFF);
-        test_deserializer(&Payload::TelemetryAck(TelemetryAckPayload(Some(data))));
+        test_deserializer(&Message::TelemetryAck(TelemetryAckPayload(Some(data))));
     }
 
     #[test]
     fn exact_bulk_pull() {
-        let message = Payload::BulkPull(BulkPullPayload::create_test_instance());
+        let message = Message::BulkPull(BulkPullPayload::create_test_instance());
         test_deserializer(&message);
     }
 
     #[test]
     fn exact_bulk_pull_account() {
-        let message = Payload::BulkPullAccount(BulkPullAccountPayload::create_test_instance());
+        let message = Message::BulkPullAccount(BulkPullAccountPayload::create_test_instance());
         test_deserializer(&message);
     }
 
     #[test]
     fn exact_bulk_push() {
-        test_deserializer(&Payload::BulkPush(BulkPushPayload {}));
+        test_deserializer(&Message::BulkPush(BulkPushPayload {}));
     }
 
     #[test]
     fn exact_node_id_handshake() {
-        let message = Payload::NodeIdHandshake(NodeIdHandshakePayload {
+        let message = Message::NodeIdHandshake(NodeIdHandshakePayload {
             query: Some(NodeIdHandshakeQuery { cookie: [1; 32] }),
             response: None,
             is_v2: true,
@@ -266,7 +266,7 @@ mod tests {
 
     #[test]
     fn exact_asc_pull_req() {
-        let message = Payload::AscPullReq(AscPullReqPayload {
+        let message = Message::AscPullReq(AscPullReqPayload {
             req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload::create_test_instance()),
             id: 7,
         });
@@ -275,14 +275,14 @@ mod tests {
 
     #[test]
     fn exact_asc_pull_ack() {
-        let message = Payload::AscPullAck(AscPullAckPayload {
+        let message = Message::AscPullAck(AscPullAckPayload {
             id: 7,
             pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload::create_test_instance()),
         });
         test_deserializer(&message);
     }
 
-    fn test_deserializer(original: &Payload) {
+    fn test_deserializer(original: &Message) {
         let network_filter = Arc::new(NetworkFilter::new(1));
         let block_uniquer = Arc::new(BlockUniquer::new());
         let vote_uniquer = Arc::new(VoteUniquer::new());

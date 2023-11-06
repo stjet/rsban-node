@@ -13,7 +13,7 @@ use tokio::task::spawn_blocking;
 
 use crate::{
     config::NetworkConstants,
-    messages::{MessageSerializer, Payload},
+    messages::{Message, MessageSerializer},
     stats::{DetailType, Direction, StatType, Stats},
     utils::{AsyncRuntime, BlockUniquer, ErrorCode},
     voting::VoteUniquer,
@@ -92,7 +92,7 @@ impl ChannelInProc {
 
     pub fn send_new(
         &self,
-        message: &Payload,
+        message: &Message,
         callback: Option<WriteCallback>,
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,

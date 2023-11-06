@@ -203,12 +203,12 @@ impl Serialize for AccountInfoAckPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, Payload};
+    use crate::messages::{assert_deserializable, Message};
     use rsnano_core::BlockBuilder;
 
     #[test]
     fn serialize_blocks() {
-        let original = Payload::AscPullAck(AscPullAckPayload {
+        let original = Message::AscPullAck(AscPullAckPayload {
             id: 7,
             pull_type: AscPullAckType::Blocks(BlocksAckPayload::new(vec![
                 BlockBuilder::state().build(),
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn serialize_account_info() {
-        let original = Payload::AscPullAck(AscPullAckPayload {
+        let original = Message::AscPullAck(AscPullAckPayload {
             id: 7,
             pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload {
                 account: Account::from(1),
@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     fn display() {
-        let ack = Payload::AscPullAck(AscPullAckPayload {
+        let ack = Message::AscPullAck(AscPullAckPayload {
             id: 7,
             pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload {
                 account: Account::from(1),

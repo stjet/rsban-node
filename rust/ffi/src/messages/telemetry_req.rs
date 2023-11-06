@@ -1,12 +1,12 @@
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{Payload, TelemetryReqPayload};
+use rsnano_node::messages::{Message, TelemetryReqPayload};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_telemetry_req_create(
     constants: *mut NetworkConstantsDto,
 ) -> *mut MessageHandle {
-    create_message_handle2(constants, || Payload::TelemetryReq(TelemetryReqPayload {}))
+    create_message_handle2(constants, || Message::TelemetryReq(TelemetryReqPayload {}))
 }
 
 #[no_mangle]

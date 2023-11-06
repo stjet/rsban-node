@@ -89,11 +89,11 @@ impl Display for FrontierReqPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, Payload};
+    use crate::messages::{assert_deserializable, Message};
 
     #[test]
     fn serialize() {
-        let request = Payload::FrontierReq(FrontierReqPayload::create_test_instance());
+        let request = Message::FrontierReq(FrontierReqPayload::create_test_instance());
         assert_deserializable(&request);
     }
 }

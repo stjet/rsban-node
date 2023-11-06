@@ -114,11 +114,11 @@ impl Display for BulkPullPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, Payload};
+    use crate::messages::{assert_deserializable, Message};
 
     #[test]
     fn bulk_pull_serialization() {
-        let message = Payload::BulkPull(BulkPullPayload::create_test_instance());
+        let message = Message::BulkPull(BulkPullPayload::create_test_instance());
         assert_deserializable(&message);
     }
 }

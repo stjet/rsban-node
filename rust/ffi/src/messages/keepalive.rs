@@ -1,4 +1,4 @@
-use rsnano_node::messages::{KeepalivePayload, Payload};
+use rsnano_node::messages::{KeepalivePayload, Message};
 use std::net::SocketAddr;
 
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
@@ -8,7 +8,7 @@ use crate::{transport::EndpointDto, NetworkConstantsDto, StringDto};
 pub unsafe extern "C" fn rsn_message_keepalive_create(
     constants: *mut NetworkConstantsDto,
 ) -> *mut MessageHandle {
-    create_message_handle2(constants, || Payload::Keepalive(Default::default()))
+    create_message_handle2(constants, || Message::Keepalive(Default::default()))
 }
 
 #[no_mangle]
@@ -22,7 +22,7 @@ pub unsafe extern "C" fn rsn_message_keepalive_peers(
     result: *mut EndpointDto,
 ) {
     let dtos = std::slice::from_raw_parts_mut(result, 8);
-    let Payload::Keepalive(payload) = &handle.message else {panic!("not a keepalive payload")};
+    let Message::Keepalive(payload) = &handle.message else {panic!("not a keepalive payload")};
     let peers: Vec<_> = payload.peers.iter().map(EndpointDto::from).collect();
     dtos.clone_from_slice(&peers);
 }
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rsn_message_keepalive_set_peers(
         .collect::<Vec<_>>()
         .try_into()
         .unwrap();
-    handle.message = Payload::Keepalive(KeepalivePayload { peers });
+    handle.message = Message::Keepalive(KeepalivePayload { peers });
 }
 
 #[no_mangle]

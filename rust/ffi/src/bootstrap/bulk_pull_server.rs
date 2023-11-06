@@ -1,5 +1,5 @@
 use rsnano_core::utils::Logger;
-use rsnano_node::{bootstrap::BulkPullServer, messages::Payload, transport::DeserializedMessage};
+use rsnano_node::{bootstrap::BulkPullServer, messages::Message, transport::DeserializedMessage};
 use std::sync::Arc;
 
 use crate::{
@@ -23,7 +23,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_create(
     thread_pool: *mut ThreadPoolHandle,
     logging_enabled: bool,
 ) -> *mut BulkPullServerHandle {
-    let Payload::BulkPull(payload) = &request.message else {panic!("not a bulk_pull message")};
+    let Message::BulkPull(payload) = &request.message else {panic!("not a bulk_pull message")};
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     Box::into_raw(Box::new(BulkPullServerHandle(BulkPullServer::new(
         payload.clone(),
@@ -68,7 +68,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_request(
 ) -> *mut MessageHandle {
     // only for tests
     MessageHandle::new(DeserializedMessage::new(
-        Payload::BulkPull(handle.0.request()),
+        Message::BulkPull(handle.0.request()),
         Default::default(),
     ))
 }

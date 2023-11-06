@@ -133,7 +133,7 @@ impl Display for ConfirmReqPayload {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{assert_deserializable, Payload};
+    use crate::messages::{assert_deserializable, Message};
 
     use super::*;
     use rsnano_core::StateBlockBuilder;
@@ -141,7 +141,7 @@ mod tests {
     #[test]
     fn serialize_block() {
         let block = Arc::new(StateBlockBuilder::new().build());
-        let confirm_req = Payload::ConfirmReq(ConfirmReqPayload {
+        let confirm_req = Message::ConfirmReq(ConfirmReqPayload {
             block: Some(block),
             roots_hashes: Vec::new(),
         });
@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn serialize_roots_hashes() {
-        let confirm_req = Payload::ConfirmReq(ConfirmReqPayload {
+        let confirm_req = Message::ConfirmReq(ConfirmReqPayload {
             block: None,
             roots_hashes: vec![(BlockHash::from(1), Root::from(2))],
         });
@@ -163,7 +163,7 @@ mod tests {
             .into_iter()
             .map(|i| (BlockHash::from(i), Root::from(i + 1)))
             .collect();
-        let confirm_req = Payload::ConfirmReq(ConfirmReqPayload {
+        let confirm_req = Message::ConfirmReq(ConfirmReqPayload {
             block: None,
             roots_hashes,
         });

@@ -6,7 +6,7 @@ use rsnano_ledger::Ledger;
 use crate::{
     block_processing::BlockProcessor,
     config::{Logging, NodeFlags},
-    messages::{MessageVisitor, Payload},
+    messages::{Message, MessageVisitor},
     stats::Stats,
     transport::{BootstrapMessageVisitor, TcpServer},
     utils::{AsyncRuntime, ThreadPool},
@@ -32,9 +32,9 @@ pub struct BootstrapMessageVisitorImpl {
 }
 
 impl MessageVisitor for BootstrapMessageVisitorImpl {
-    fn received(&mut self, message: &Payload) {
+    fn received(&mut self, message: &Message) {
         match message {
-            Payload::BulkPull(payload) => {
+            Message::BulkPull(payload) => {
                 if self.flags.disable_bootstrap_bulk_pull_server {
                     return;
                 }
@@ -75,7 +75,7 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
 
                 self.processed = true;
             }
-            Payload::BulkPullAccount(payload) => {
+            Message::BulkPullAccount(payload) => {
                 if self.flags.disable_bootstrap_bulk_pull_server {
                     return;
                 }
@@ -113,7 +113,7 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
 
                 self.processed = true;
             }
-            Payload::BulkPush(_) => {
+            Message::BulkPush(_) => {
                 let Some(thread_pool) = self.thread_pool.upgrade() else {
                     return;
                 };
@@ -152,7 +152,7 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
 
                 self.processed = true;
             }
-            Payload::FrontierReq(payload) => {
+            Message::FrontierReq(payload) => {
                 let Some(thread_pool) = self.thread_pool.upgrade() else {
                     return;
                 };

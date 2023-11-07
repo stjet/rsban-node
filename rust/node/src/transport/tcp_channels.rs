@@ -21,7 +21,7 @@ use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
     config::{NetworkConstants, NodeConfig, NodeFlags},
     messages::{
-        Keepalive, Message, MessageType, NodeIdHandshakePayload, NodeIdHandshakeQuery,
+        Keepalive, Message, MessageType, NodeIdHandshake, NodeIdHandshakeQuery,
         NodeIdHandshakeResponse,
     },
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
@@ -761,7 +761,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 tcp.set_last_packet_received(SystemTime::now());
 
                 let response = this_l.prepare_handshake_response(query, handshake.is_v2);
-                let handshake_response = Message::NodeIdHandshake(NodeIdHandshakePayload {
+                let handshake_response = Message::NodeIdHandshake(NodeIdHandshake {
                     query: None,
                     is_v2: response.v2.is_some(),
                     response: Some(response),
@@ -922,7 +922,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 // TCP node ID handshake
                 let query = this_l.prepare_handshake_query(endpoint);
-                let message = Message::NodeIdHandshake(crate::messages::NodeIdHandshakePayload {
+                let message = Message::NodeIdHandshake(crate::messages::NodeIdHandshake {
                     query: query.clone(),
                     response: None,
                     is_v2: query.is_some(),

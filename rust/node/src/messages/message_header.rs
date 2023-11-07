@@ -221,16 +221,14 @@ impl MessageHeader {
         match self.message_type {
             MessageType::Keepalive => Keepalive::serialized_size(),
             MessageType::Publish => serialized_block_size(self.block_type()),
-            MessageType::ConfirmReq => {
-                ConfirmReqPayload::serialized_size(self.block_type(), self.count())
-            }
-            MessageType::ConfirmAck => ConfirmAckPayload::serialized_size(self.count()),
+            MessageType::ConfirmReq => ConfirmReq::serialized_size(self.block_type(), self.count()),
+            MessageType::ConfirmAck => ConfirmAck::serialized_size(self.count()),
             MessageType::BulkPull => BulkPull::serialized_size(self),
             MessageType::BulkPush | MessageType::TelemetryReq => 0,
-            MessageType::FrontierReq => FrontierReqPayload::serialized_size(),
-            MessageType::NodeIdHandshake => NodeIdHandshakePayload::serialized_size(self),
+            MessageType::FrontierReq => FrontierReq::serialized_size(),
+            MessageType::NodeIdHandshake => NodeIdHandshake::serialized_size(self),
             MessageType::BulkPullAccount => BulkPullAccount::serialized_size(),
-            MessageType::TelemetryAck => TelemetryAckPayload::size_from_header(self),
+            MessageType::TelemetryAck => TelemetryAck::size_from_header(self),
             MessageType::AscPullReq => AscPullReq::serialized_size(self),
             MessageType::AscPullAck => AscPullAck::serialized_size(self),
             MessageType::Invalid | MessageType::NotAType => {

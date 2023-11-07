@@ -3,7 +3,7 @@ use crate::{
     copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto, StringDto,
 };
 use rsnano_core::{Account, BlockHash, KeyPair, Signature};
-use rsnano_node::messages::{Message, TelemetryAckPayload, TelemetryData};
+use rsnano_node::messages::{Message, TelemetryAck, TelemetryData};
 use std::time::{Duration, SystemTime};
 
 pub struct TelemetryDataHandle(TelemetryData);
@@ -353,7 +353,7 @@ pub unsafe extern "C" fn rsn_message_telemetry_ack_create(
 ) -> *mut MessageHandle {
     let data = (*data).0.clone();
     create_message_handle2(constants, move || {
-        Message::TelemetryAck(TelemetryAckPayload(Some(data)))
+        Message::TelemetryAck(TelemetryAck(Some(data)))
     })
 }
 

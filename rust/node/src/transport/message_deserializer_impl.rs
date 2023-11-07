@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn exact_confirm_ack() {
-        let message = Message::ConfirmAck(ConfirmAckPayload {
+        let message = Message::ConfirmAck(ConfirmAck {
             vote: Arc::new(Vote::create_test_instance()),
         });
         test_deserializer(&message);
@@ -200,7 +200,7 @@ mod tests {
     #[test]
     fn exact_confirm_req() {
         let block = Arc::new(BlockBuilder::legacy_send().build());
-        let message = Message::ConfirmReq(ConfirmReqPayload {
+        let message = Message::ConfirmReq(ConfirmReq {
             block: Some(block),
             roots_hashes: Vec::new(),
         });
@@ -221,20 +221,20 @@ mod tests {
 
     #[test]
     fn exact_frontier_req() {
-        let message = Message::FrontierReq(FrontierReqPayload::create_test_instance());
+        let message = Message::FrontierReq(FrontierReq::create_test_instance());
         test_deserializer(&message);
     }
 
     #[test]
     fn exact_telemetry_req() {
-        test_deserializer(&Message::TelemetryReq(TelemetryReqPayload {}));
+        test_deserializer(&Message::TelemetryReq(TelemetryReq {}));
     }
 
     #[test]
     fn exact_telemetry_ack() {
         let mut data = TelemetryData::default();
         data.unknown_data.push(0xFF);
-        test_deserializer(&Message::TelemetryAck(TelemetryAckPayload(Some(data))));
+        test_deserializer(&Message::TelemetryAck(TelemetryAck(Some(data))));
     }
 
     #[test]
@@ -256,7 +256,7 @@ mod tests {
 
     #[test]
     fn exact_node_id_handshake() {
-        let message = Message::NodeIdHandshake(NodeIdHandshakePayload {
+        let message = Message::NodeIdHandshake(NodeIdHandshake {
             query: Some(NodeIdHandshakeQuery { cookie: [1; 32] }),
             response: None,
             is_v2: true,

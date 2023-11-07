@@ -20,12 +20,12 @@ pub enum Message {
     BulkPull(BulkPull),
     BulkPullAccount(BulkPullAccount),
     BulkPush,
-    ConfirmAck(ConfirmAckPayload),
-    ConfirmReq(ConfirmReqPayload),
-    FrontierReq(FrontierReqPayload),
-    NodeIdHandshake(NodeIdHandshakePayload),
-    TelemetryAck(TelemetryAckPayload),
-    TelemetryReq(TelemetryReqPayload),
+    ConfirmAck(ConfirmAck),
+    ConfirmReq(ConfirmReq),
+    FrontierReq(FrontierReq),
+    NodeIdHandshake(NodeIdHandshake),
+    TelemetryAck(TelemetryAck),
+    TelemetryReq(TelemetryReq),
 }
 
 impl Message {
@@ -107,24 +107,22 @@ impl Message {
             }
             MessageType::BulkPush => Message::BulkPush,
             MessageType::ConfirmAck => {
-                Message::ConfirmAck(ConfirmAckPayload::deserialize(stream, vote_uniquer)?)
+                Message::ConfirmAck(ConfirmAck::deserialize(stream, vote_uniquer)?)
             }
-            MessageType::ConfirmReq => Message::ConfirmReq(ConfirmReqPayload::deserialize(
-                stream,
-                &header,
-                block_uniquer,
-            )?),
+            MessageType::ConfirmReq => {
+                Message::ConfirmReq(ConfirmReq::deserialize(stream, &header, block_uniquer)?)
+            }
             MessageType::FrontierReq => {
-                Message::FrontierReq(FrontierReqPayload::deserialize(stream, &header)?)
+                Message::FrontierReq(FrontierReq::deserialize(stream, &header)?)
             }
             MessageType::NodeIdHandshake => {
-                Message::NodeIdHandshake(NodeIdHandshakePayload::deserialize(stream, &header)?)
+                Message::NodeIdHandshake(NodeIdHandshake::deserialize(stream, &header)?)
             }
             MessageType::TelemetryAck => {
-                Message::TelemetryAck(TelemetryAckPayload::deserialize(stream, &header)?)
+                Message::TelemetryAck(TelemetryAck::deserialize(stream, &header)?)
             }
             MessageType::TelemetryReq => {
-                Message::TelemetryReq(TelemetryReqPayload::deserialize(stream, &header)?)
+                Message::TelemetryReq(TelemetryReq::deserialize(stream, &header)?)
             }
             MessageType::Invalid | MessageType::NotAType => bail!("invalid message type"),
         };

@@ -176,9 +176,9 @@ impl TelemetryData {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TelemetryAckPayload(pub Option<TelemetryData>);
+pub struct TelemetryAck(pub Option<TelemetryData>);
 
-impl TelemetryAckPayload {
+impl TelemetryAck {
     pub fn size_from_header(header: &MessageHeader) -> usize {
         (header.extensions.data & TelemetryData::SIZE_MASK) as usize
     }
@@ -223,13 +223,13 @@ impl TelemetryAckPayload {
     }
 }
 
-impl Display for TelemetryAckPayload {
+impl Display for TelemetryAck {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "telemetry_ack")
     }
 }
 
-impl Serialize for TelemetryAckPayload {
+impl Serialize for TelemetryAck {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         if let Some(data) = &self.0 {
             data.signature.serialize(stream)?;
@@ -239,7 +239,7 @@ impl Serialize for TelemetryAckPayload {
     }
 }
 
-impl MessageVariant for TelemetryAckPayload {
+impl MessageVariant for TelemetryAck {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         match &self.0 {
             Some(data) => BitArray::new(

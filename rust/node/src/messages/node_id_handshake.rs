@@ -88,7 +88,7 @@ impl NodeIdHandshakeResponse {
     }
 
     pub fn deserialize(stream: &mut dyn Stream, header: &MessageHeader) -> Result<Self> {
-        if NodeIdHandshakePayload::has_v2_flag(header) {
+        if NodeIdHandshake::has_v2_flag(header) {
             let node_id = Account::deserialize(stream)?;
             let mut salt = [0u8; 32];
             stream.read_bytes(&mut salt, 32)?;
@@ -111,7 +111,7 @@ impl NodeIdHandshakeResponse {
     }
 
     pub fn serialized_size(header: &MessageHeader) -> usize {
-        if NodeIdHandshakePayload::has_v2_flag(header) {
+        if NodeIdHandshake::has_v2_flag(header) {
             Account::serialized_size()
                 + 32 // salt
                 + BlockHash::serialized_size()
@@ -129,30 +129,30 @@ pub struct V2Payload {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct NodeIdHandshakePayload {
+pub struct NodeIdHandshake {
     pub query: Option<NodeIdHandshakeQuery>,
     pub response: Option<NodeIdHandshakeResponse>,
     pub is_v2: bool,
 }
 
-impl NodeIdHandshakePayload {
+impl NodeIdHandshake {
     pub const QUERY_FLAG: usize = 0;
     pub const RESPONSE_FLAG: usize = 1;
     pub const V2_FLAG: usize = 2;
 
     pub fn is_query(header: &MessageHeader) -> bool {
         header.message_type == MessageType::NodeIdHandshake
-            && header.extensions[NodeIdHandshakePayload::QUERY_FLAG]
+            && header.extensions[NodeIdHandshake::QUERY_FLAG]
     }
 
     pub fn is_response(header: &MessageHeader) -> bool {
         header.message_type == MessageType::NodeIdHandshake
-            && header.extensions[NodeIdHandshakePayload::RESPONSE_FLAG]
+            && header.extensions[NodeIdHandshake::RESPONSE_FLAG]
     }
 
     pub fn has_v2_flag(header: &MessageHeader) -> bool {
         debug_assert!(header.message_type == MessageType::NodeIdHandshake);
-        header.extensions[NodeIdHandshakePayload::V2_FLAG]
+        header.extensions[NodeIdHandshake::V2_FLAG]
     }
 
     pub fn serialized_size(header: &MessageHeader) -> usize {
@@ -168,14 +168,14 @@ impl NodeIdHandshakePayload {
 
     pub fn deserialize(stream: &mut dyn Stream, header: &MessageHeader) -> Result<Self> {
         debug_assert!(header.message_type == MessageType::NodeIdHandshake);
-        let query = if NodeIdHandshakePayload::is_query(&header) {
+        let query = if NodeIdHandshake::is_query(&header) {
             let mut cookie = [0u8; 32];
             stream.read_bytes(&mut cookie, 32)?;
             Some(NodeIdHandshakeQuery { cookie })
         } else {
             None
         };
-        let response = if NodeIdHandshakePayload::is_response(&header) {
+        let response = if NodeIdHandshake::is_response(&header) {
             Some(NodeIdHandshakeResponse::deserialize(stream, &header)?)
         } else {
             None
@@ -226,7 +226,7 @@ impl NodeIdHandshakePayload {
     }
 }
 
-impl Serialize for NodeIdHandshakePayload {
+impl Serialize for NodeIdHandshake {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         if let Some(query) = &self.query {
             stream.write_bytes(&query.cookie)?;
@@ -238,20 +238,17 @@ impl Serialize for NodeIdHandshakePayload {
     }
 }
 
-impl MessageVariant for NodeIdHandshakePayload {
+impl MessageVariant for NodeIdHandshake {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
-        extensions.set(NodeIdHandshakePayload::QUERY_FLAG, self.query.is_some());
-        extensions.set(
-            NodeIdHandshakePayload::RESPONSE_FLAG,
-            self.response.is_some(),
-        );
+        extensions.set(NodeIdHandshake::QUERY_FLAG, self.query.is_some());
+        extensions.set(NodeIdHandshake::RESPONSE_FLAG, self.response.is_some());
         extensions.set(Self::V2_FLAG, self.is_v2);
         extensions
     }
 }
 
-impl Display for NodeIdHandshakePayload {
+impl Display for NodeIdHandshake {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(query) = &self.query {
             write!(f, "\ncookie=")?;
@@ -278,19 +275,19 @@ mod tests {
 
     #[test]
     fn serialize_query() {
-        let message = Message::NodeIdHandshake(NodeIdHandshakePayload::create_test_query());
+        let message = Message::NodeIdHandshake(NodeIdHandshake::create_test_query());
         assert_deserializable(&message);
     }
 
     #[test]
     fn serialize_response_v1() {
-        let message = Message::NodeIdHandshake(NodeIdHandshakePayload::create_test_response_v1());
+        let message = Message::NodeIdHandshake(NodeIdHandshake::create_test_response_v1());
         assert_deserializable(&message);
     }
 
     #[test]
     fn serialize_response_v2() {
-        let message = Message::NodeIdHandshake(NodeIdHandshakePayload::create_test_response_v2());
+        let message = Message::NodeIdHandshake(NodeIdHandshake::create_test_response_v2());
         assert_deserializable(&message);
     }
 

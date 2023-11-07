@@ -8,14 +8,14 @@ use rsnano_core::{
 use std::{fmt::Display, mem::size_of};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FrontierReqPayload {
+pub struct FrontierReq {
     pub start: Account,
     pub age: u32,
     pub count: u32,
     pub only_confirmed: bool,
 }
 
-impl FrontierReqPayload {
+impl FrontierReq {
     pub fn create_test_instance() -> Self {
         Self {
             start: 1.into(),
@@ -34,7 +34,7 @@ impl FrontierReqPayload {
     pub const ONLY_CONFIRMED: usize = 1;
 
     pub fn is_confirmed_present(header: &MessageHeader) -> bool {
-        header.extensions[FrontierReqPayload::ONLY_CONFIRMED]
+        header.extensions[FrontierReq::ONLY_CONFIRMED]
     }
 
     pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
@@ -47,7 +47,7 @@ impl FrontierReqPayload {
         let count = u32::from_le_bytes(buffer);
         let only_confirmed = Self::is_confirmed_present(header);
 
-        Ok(FrontierReqPayload {
+        Ok(FrontierReq {
             start,
             age,
             count,
@@ -56,7 +56,7 @@ impl FrontierReqPayload {
     }
 }
 
-impl Serialize for FrontierReqPayload {
+impl Serialize for FrontierReq {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.start.serialize(stream)?;
         stream.write_bytes(&self.age.to_le_bytes())?;
@@ -64,7 +64,7 @@ impl Serialize for FrontierReqPayload {
     }
 }
 
-impl MessageVariant for FrontierReqPayload {
+impl MessageVariant for FrontierReq {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions.set(Self::ONLY_CONFIRMED, self.only_confirmed);
@@ -72,7 +72,7 @@ impl MessageVariant for FrontierReqPayload {
     }
 }
 
-impl Display for FrontierReqPayload {
+impl Display for FrontierReq {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn serialize() {
-        let request = Message::FrontierReq(FrontierReqPayload::create_test_instance());
+        let request = Message::FrontierReq(FrontierReq::create_test_instance());
         assert_deserializable(&request);
     }
 }

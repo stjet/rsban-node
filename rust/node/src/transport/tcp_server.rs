@@ -14,7 +14,7 @@ use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::{NetworkConstants, NodeConfig},
     messages::{
-        Message, MessageSerializer, MessageVisitor, NodeIdHandshakePayload, NodeIdHandshakeQuery,
+        Message, MessageSerializer, MessageVisitor, NodeIdHandshake, NodeIdHandshakeQuery,
         NodeIdHandshakeResponse,
     },
     stats::{DetailType, Direction, StatType, Stats},
@@ -475,7 +475,7 @@ impl HandshakeMessageVisitorImpl {
     fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool) {
         let response = self.prepare_handshake_response(query, v2);
         let own_query = self.prepare_handshake_query(&self.server.remote_endpoint());
-        let handshake_response = Message::NodeIdHandshake(NodeIdHandshakePayload {
+        let handshake_response = Message::NodeIdHandshake(NodeIdHandshake {
             is_v2: own_query.is_some() || response.v2.is_some(),
             query: own_query,
             response: Some(response),

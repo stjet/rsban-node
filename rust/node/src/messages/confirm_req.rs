@@ -13,19 +13,13 @@ use std::{
 
 use super::{MessageHeader, MessageType, MessageVariant};
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct ConfirmReq {
-    header: MessageHeader,
-    pub payload: ConfirmReqPayload,
-}
-
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct ConfirmReqPayload {
+pub struct ConfirmReq {
     pub block: Option<Arc<BlockEnum>>,
     pub roots_hashes: Vec<(BlockHash, Root)>,
 }
 
-impl ConfirmReqPayload {
+impl ConfirmReq {
     pub fn deserialize(
         stream: &mut impl Stream,
         header: &MessageHeader,
@@ -85,7 +79,7 @@ impl ConfirmReqPayload {
     }
 }
 
-impl Serialize for ConfirmReqPayload {
+impl Serialize for ConfirmReq {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         if let Some(block) = &self.block {
             block.serialize(stream)?;
@@ -100,7 +94,7 @@ impl Serialize for ConfirmReqPayload {
     }
 }
 
-impl MessageVariant for ConfirmReqPayload {
+impl MessageVariant for ConfirmReq {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let block_type = match &self.block {
             Some(b) => b.block_type(),
@@ -114,7 +108,7 @@ impl MessageVariant for ConfirmReqPayload {
     }
 }
 
-impl Display for ConfirmReqPayload {
+impl Display for ConfirmReq {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(block) = &self.block {
             write!(f, "\n{}", block.to_json().map_err(|_| std::fmt::Error)?)?;
@@ -137,7 +131,7 @@ mod tests {
     #[test]
     fn serialize_block() {
         let block = Arc::new(StateBlockBuilder::new().build());
-        let confirm_req = Message::ConfirmReq(ConfirmReqPayload {
+        let confirm_req = Message::ConfirmReq(ConfirmReq {
             block: Some(block),
             roots_hashes: Vec::new(),
         });
@@ -146,7 +140,7 @@ mod tests {
 
     #[test]
     fn serialize_roots_hashes() {
-        let confirm_req = Message::ConfirmReq(ConfirmReqPayload {
+        let confirm_req = Message::ConfirmReq(ConfirmReq {
             block: None,
             roots_hashes: vec![(BlockHash::from(1), Root::from(2))],
         });
@@ -159,7 +153,7 @@ mod tests {
             .into_iter()
             .map(|i| (BlockHash::from(i), Root::from(i + 1)))
             .collect();
-        let confirm_req = Message::ConfirmReq(ConfirmReqPayload {
+        let confirm_req = Message::ConfirmReq(ConfirmReq {
             block: None,
             roots_hashes,
         });

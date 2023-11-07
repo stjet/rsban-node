@@ -13,11 +13,11 @@ use std::{
 use super::MessageVariant;
 
 #[derive(Clone, Debug)]
-pub struct ConfirmAckPayload {
+pub struct ConfirmAck {
     pub vote: Arc<Vote>,
 }
 
-impl ConfirmAckPayload {
+impl ConfirmAck {
     pub const HASHES_MAX: usize = 12;
 
     pub fn serialized_size(count: u8) -> usize {
@@ -33,7 +33,7 @@ impl ConfirmAckPayload {
             vote = uniquer.unique(&vote);
         }
 
-        Ok(ConfirmAckPayload { vote })
+        Ok(ConfirmAck { vote })
     }
 
     pub fn create_test_instance() -> Self {
@@ -43,13 +43,13 @@ impl ConfirmAckPayload {
     }
 }
 
-impl Serialize for ConfirmAckPayload {
+impl Serialize for ConfirmAck {
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.vote.serialize(stream)
     }
 }
 
-impl MessageVariant for ConfirmAckPayload {
+impl MessageVariant for ConfirmAck {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions |= BitArray::new((BlockType::NotABlock as u16) << 8);
@@ -59,15 +59,15 @@ impl MessageVariant for ConfirmAckPayload {
     }
 }
 
-impl PartialEq for ConfirmAckPayload {
+impl PartialEq for ConfirmAck {
     fn eq(&self, other: &Self) -> bool {
         *self.vote == *other.vote
     }
 }
 
-impl Eq for ConfirmAckPayload {}
+impl Eq for ConfirmAck {}
 
-impl Display for ConfirmAckPayload {
+impl Display for ConfirmAck {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "\n{}", self.vote.to_json().map_err(|_| std::fmt::Error)?)
     }
@@ -83,12 +83,12 @@ mod tests {
     fn serialize() {
         let keys = KeyPair::new();
         let mut hashes = Vec::new();
-        for i in 0..ConfirmAckPayload::HASHES_MAX {
+        for i in 0..ConfirmAck::HASHES_MAX {
             hashes.push(BlockHash::from(i as u64))
         }
         let vote = Vote::new(keys.public_key().into(), &keys.private_key(), 0, 0, hashes);
         let vote = Arc::new(vote);
-        let confirm = Message::ConfirmAck(ConfirmAckPayload { vote });
+        let confirm = Message::ConfirmAck(ConfirmAck { vote });
 
         assert_deserializable(&confirm);
     }

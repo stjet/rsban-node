@@ -1,7 +1,7 @@
 use std::{ops::Deref, sync::Arc};
 
 use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{ConfirmReqPayload, Message};
+use rsnano_node::messages::{ConfirmReq, Message};
 
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use num_traits::FromPrimitive;
@@ -23,7 +23,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
     create_message_handle2(constants, || {
         if !block.is_null() {
             let block = Arc::clone((*block).deref());
-            Message::ConfirmReq(ConfirmReqPayload {
+            Message::ConfirmReq(ConfirmReq {
                 block: Some(block),
                 roots_hashes: Vec::new(),
             })
@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
                     )
                 })
                 .collect();
-            Message::ConfirmReq(ConfirmReqPayload {
+            Message::ConfirmReq(ConfirmReq {
                 block: None,
                 roots_hashes,
             })
@@ -51,7 +51,7 @@ pub extern "C" fn rsn_message_confirm_req_clone(handle: &MessageHandle) -> *mut 
     message_handle_clone(handle)
 }
 
-unsafe fn get_payload(handle: &MessageHandle) -> &ConfirmReqPayload {
+unsafe fn get_payload(handle: &MessageHandle) -> &ConfirmReq {
     let Message::ConfirmReq(payload) = &handle.message else {panic!("not a confirm_req_payload")};
     payload
 }
@@ -104,7 +104,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_roots_string(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_req_size(block_type: u8, count: usize) -> usize {
-    ConfirmReqPayload::serialized_size(BlockType::from_u8(block_type).unwrap(), count as u8)
+    ConfirmReq::serialized_size(BlockType::from_u8(block_type).unwrap(), count as u8)
 }
 
 #[no_mangle]

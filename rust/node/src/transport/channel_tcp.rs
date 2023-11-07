@@ -140,21 +140,21 @@ impl ChannelTcp {
 
     pub fn send_buffer(
         &self,
-        buffer_a: &Arc<Vec<u8>>,
-        callback_a: Option<WriteCallback>,
-        policy_a: BufferDropPolicy,
+        buffer: &Arc<Vec<u8>>,
+        callback: Option<WriteCallback>,
+        policy: BufferDropPolicy,
         traffic_type: TrafficType,
     ) {
         if let Some(socket_l) = self.socket() {
             if !socket_l.max(traffic_type)
-                || (policy_a == BufferDropPolicy::NoSocketDrop && !socket_l.full(traffic_type))
+                || (policy == BufferDropPolicy::NoSocketDrop && !socket_l.full(traffic_type))
             {
                 let observer_weak_l = self.observer.clone();
                 let endpoint = socket_l
                     .get_remote()
                     .unwrap_or_else(|| SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0));
                 socket_l.async_write(
-                    buffer_a,
+                    buffer,
                     Some(Box::new(move |ec, size| {
                         if let Some(observer_l) = observer_weak_l.lock() {
                             if ec.is_ok() {
@@ -164,7 +164,7 @@ impl ChannelTcp {
                                 observer_l.host_unreachable();
                             }
                         }
-                        if let Some(callback) = callback_a {
+                        if let Some(callback) = callback {
                             callback(ec, size);
                         }
                     })),
@@ -172,17 +172,17 @@ impl ChannelTcp {
                 );
             } else {
                 if let Some(observer_l) = self.observer.lock() {
-                    if policy_a == BufferDropPolicy::NoSocketDrop {
+                    if policy == BufferDropPolicy::NoSocketDrop {
                         observer_l.no_socket_drop();
                     } else {
                         observer_l.write_drop();
                     }
                 }
-                if let Some(callback_a) = callback_a {
+                if let Some(callback_a) = callback {
                     callback_a(ErrorCode::no_buffer_space(), 0);
                 }
             }
-        } else if let Some(callback_a) = callback_a {
+        } else if let Some(callback_a) = callback {
             if let Some(async_rt) = self.async_rt.upgrade() {
                 async_rt.post(Box::new(|| {
                     callback_a(ErrorCode::not_supported(), 0);

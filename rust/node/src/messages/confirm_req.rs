@@ -1,3 +1,4 @@
+use super::MessageHeaderExtender;
 use crate::utils::{deserialize_block, BlockUniquer};
 use anyhow::Result;
 use bitvec::prelude::BitArray;
@@ -11,8 +12,6 @@ use std::{
     fmt::{Debug, Display, Write},
     sync::Arc,
 };
-
-use super::{MessageHeader, MessageHeaderExtender, MessageType};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ConfirmReq {

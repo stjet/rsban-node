@@ -88,129 +88,6 @@ impl TokioSocketFacade {
         }
     }
 
-    pub fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
-        let callback = Arc::new(Mutex::new(Some(callback)));
-        let callback_clone = Arc::clone(&callback);
-        *self.current_action.lock().unwrap() = Some(Box::new(move || {
-            if let Some(f) = callback_clone.lock().unwrap().take() {
-                f(ErrorCode::fault());
-            }
-        }));
-
-        {
-            let mut guard = self.state.lock().unwrap();
-            debug_assert!(matches!(*guard, TokioSocketState::Closed));
-            *guard = TokioSocketState::Connecting;
-        }
-        let state = Arc::clone(&self.state);
-        let Some(runtime) = self.runtime.upgrade() else {
-            return;
-        };
-        let runtime_w = Weak::clone(&self.runtime);
-        let tcp_stream_factory = Arc::clone(&self.tcp_stream_factory);
-        runtime.tokio.spawn(async move {
-            let Ok(stream) = tcp_stream_factory.connect(endpoint).await else {
-                if let Some(cb) = callback.lock().unwrap().take() {
-                    let Some(runtime) = runtime_w.upgrade() else {
-                        return;
-                    };
-                    runtime.tokio.spawn_blocking(move || {
-                        cb(ErrorCode::fault());
-                    });
-                }
-                return;
-            };
-            {
-                let mut guard = state.lock().unwrap();
-                debug_assert!(matches!(*guard, TokioSocketState::Connecting));
-                *guard = TokioSocketState::Client(Arc::new(stream));
-            }
-            let Some(runtime) = runtime_w.upgrade() else {
-                return;
-            };
-            runtime.tokio.spawn_blocking(move || {
-                if let Some(cb) = callback.lock().unwrap().take() {
-                    cb(ErrorCode::new())
-                }
-            });
-        });
-    }
-
-    pub fn async_write(
-        &self,
-        buffer: &Arc<Vec<u8>>,
-        callback: Box<dyn FnOnce(ErrorCode, usize) + Send>,
-    ) {
-        let callback = Arc::new(Mutex::new(Some(callback)));
-        let callback_clone = Arc::clone(&callback);
-        *self.current_action.lock().unwrap() = Some(Box::new(move || {
-            if let Some(f) = callback_clone.lock().unwrap().take() {
-                f(ErrorCode::fault(), 0);
-            }
-        }));
-
-        let stream = {
-            let guard = self.state.lock().unwrap();
-            let TokioSocketState::Client(stream) = guard.deref() else {
-                return;
-            };
-            Arc::clone(stream)
-        };
-        let Some(runtime) = self.runtime.upgrade() else {
-            return;
-        };
-        let runtime_w = Weak::clone(&self.runtime);
-        let buffer = Arc::clone(buffer);
-        runtime.tokio.spawn(async move {
-            let mut written = 0;
-            loop {
-                match stream.writable().await {
-                    Ok(()) => match stream.try_write(&buffer[written..]) {
-                        Ok(n) => {
-                            written += n;
-                            if written >= buffer.len() {
-                                let Some(runtime) = runtime_w.upgrade() else {
-                                    break;
-                                };
-                                runtime.tokio.spawn_blocking(move || {
-                                    if let Some(cb) = callback.lock().unwrap().take() {
-                                        cb(ErrorCode::new(), written);
-                                    }
-                                });
-                                break;
-                            }
-                        }
-                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                            continue;
-                        }
-                        Err(_) => {
-                            let Some(runtime) = runtime_w.upgrade() else {
-                                break;
-                            };
-                            runtime.tokio.spawn_blocking(move || {
-                                if let Some(cb) = callback.lock().unwrap().take() {
-                                    cb(ErrorCode::fault(), 0);
-                                }
-                            });
-                            break;
-                        }
-                    },
-                    Err(_) => {
-                        let Some(runtime) = runtime_w.upgrade() else {
-                            break;
-                        };
-                        runtime.tokio.spawn_blocking(move || {
-                            if let Some(cb) = callback.lock().unwrap().take() {
-                                cb(ErrorCode::fault(), 0);
-                            }
-                        });
-                        break;
-                    }
-                }
-            }
-        });
-    }
-
     pub fn async_accept(
         &self,
         client_socket: &Arc<TokioSocketFacade>,
@@ -228,15 +105,6 @@ impl TokioSocketFacade {
         }
 
         let callback = Arc::new(Mutex::new(Some(callback)));
-        let callback_clone = Arc::clone(&callback);
-        *self.current_action.lock().unwrap() = Some(Box::new(move || {
-            if let Some(f) = callback_clone.lock().unwrap().take() {
-                f(
-                    SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
-                    ErrorCode::fault(),
-                );
-            }
-        }));
 
         let listener = {
             let guard = self.state.lock().unwrap();
@@ -332,14 +200,6 @@ impl TokioSocketFacade {
         )
     }
 
-    pub fn close(&self) -> Result<(), ErrorCode> {
-        *self.state.lock().unwrap() = TokioSocketState::Closed;
-        if let Some(cb) = self.current_action.lock().unwrap().take() {
-            cb();
-        }
-        Ok(())
-    }
-
     pub fn as_any(&self) -> &dyn Any {
         self
     }
@@ -429,7 +289,6 @@ impl SocketType {
 pub trait SocketObserver: Send + Sync {
     fn socket_connected(&self, _socket: Arc<Socket>) {}
     fn socket_accepted(&self, _socket: Arc<Socket>) {}
-    fn close_socket_failed(&self, _ec: ErrorCode) {}
     fn disconnect_due_to_timeout(&self, _endpoint: SocketAddr) {}
     fn connect_error(&self) {}
     fn read_error(&self) {}
@@ -465,12 +324,6 @@ impl SocketObserver for CompositeSocketObserver {
     fn socket_connected(&self, socket: Arc<Socket>) {
         for child in &self.children {
             child.socket_connected(Arc::clone(&socket));
-        }
-    }
-
-    fn close_socket_failed(&self, ec: ErrorCode) {
-        for child in &self.children {
-            child.close_socket_failed(ec);
         }
     }
 
@@ -549,7 +402,7 @@ pub struct Socket {
 
     idle_timeout: Duration,
 
-    pub tcp_socket: Arc<TokioSocketFacade>,
+    tcp_socket: Arc<TokioSocketFacade>,
     thread_pool: Arc<dyn ThreadPool>,
     endpoint_type: EndpointType,
     /// used in real time server sockets, number of seconds of no receive traffic that will cause the socket to timeout
@@ -617,8 +470,9 @@ impl Socket {
             self.send_queue.clear();
             self.set_default_timeout_value(0);
 
-            if let Err(ec) = self.tcp_socket.close() {
-                self.observer.close_socket_failed(ec);
+            *self.tcp_socket.state.lock().unwrap() = TokioSocketState::Closed;
+            if let Some(cb) = self.tcp_socket.current_action.lock().unwrap().take() {
+                cb();
             }
         }
     }
@@ -708,27 +562,70 @@ impl SocketExtensions for Arc<Socket> {
         self.start();
         self.set_default_timeout();
 
-        self.tcp_socket.async_connect(
-            endpoint,
-            Box::new(move |ec| {
-                if !ec.is_err() {
-                    self_clone.set_last_completion()
-                }
-                {
-                    let mut lk = self_clone.remote.lock().unwrap();
-                    *lk = Some(endpoint);
-                }
+        let callback: Box<dyn FnOnce(ErrorCode) + Send> = Box::new(move |ec| {
+            if !ec.is_err() {
+                self_clone.set_last_completion()
+            }
+            {
+                let mut lk = self_clone.remote.lock().unwrap();
+                *lk = Some(endpoint);
+            }
 
-                if ec.is_err() {
-                    self_clone.observer.connect_error();
-                    self_clone.close();
+            if ec.is_err() {
+                self_clone.observer.connect_error();
+                self_clone.close();
+            }
+            self_clone
+                .observer
+                .socket_connected(Arc::clone(&self_clone));
+            callback(ec);
+        });
+
+        let callback = Arc::new(Mutex::new(Some(callback)));
+        let callback_clone = Arc::clone(&callback);
+        *self.tcp_socket.current_action.lock().unwrap() = Some(Box::new(move || {
+            if let Some(f) = callback_clone.lock().unwrap().take() {
+                f(ErrorCode::fault());
+            }
+        }));
+
+        {
+            let mut guard = self.tcp_socket.state.lock().unwrap();
+            debug_assert!(matches!(*guard, TokioSocketState::Closed));
+            *guard = TokioSocketState::Connecting;
+        }
+        let state = Arc::clone(&self.tcp_socket.state);
+        let Some(runtime) = self.tcp_socket.runtime.upgrade() else {
+            return;
+        };
+        let runtime_w = Weak::clone(&self.tcp_socket.runtime);
+        let tcp_stream_factory = Arc::clone(&self.tcp_socket.tcp_stream_factory);
+        runtime.tokio.spawn(async move {
+            let Ok(stream) = tcp_stream_factory.connect(endpoint).await else {
+                if let Some(cb) = callback.lock().unwrap().take() {
+                    let Some(runtime) = runtime_w.upgrade() else {
+                        return;
+                    };
+                    runtime.tokio.spawn_blocking(move || {
+                        cb(ErrorCode::fault());
+                    });
                 }
-                self_clone
-                    .observer
-                    .socket_connected(Arc::clone(&self_clone));
-                callback(ec);
-            }),
-        );
+                return;
+            };
+            {
+                let mut guard = state.lock().unwrap();
+                debug_assert!(matches!(*guard, TokioSocketState::Connecting));
+                *guard = TokioSocketState::Client(Arc::new(stream));
+            }
+            let Some(runtime) = runtime_w.upgrade() else {
+                return;
+            };
+            runtime.tokio.spawn_blocking(move || {
+                if let Some(cb) = callback.lock().unwrap().take() {
+                    cb(ErrorCode::new())
+                }
+            });
+        });
     }
 
     async fn read_raw(&self, buffer: Arc<Mutex<Vec<u8>>>, size: usize) -> anyhow::Result<()> {
@@ -833,9 +730,9 @@ impl SocketExtensions for Arc<Socket> {
         self.set_default_timeout();
         self.write_in_progress.store(true, Ordering::SeqCst);
         let self_clone = Arc::clone(self);
-        self.tcp_socket.async_write(
-            &next.buffer,
-            Box::new(move |ec, size| {
+
+        let callback: Arc<Mutex<Option<Box<dyn FnOnce(ErrorCode, usize) + Send>>>> =
+            Arc::new(Mutex::new(Some(Box::new(move |ec, size| {
                 self_clone.write_in_progress.store(false, Ordering::SeqCst);
 
                 if ec.is_err() {
@@ -853,8 +750,75 @@ impl SocketExtensions for Arc<Socket> {
                 if ec.is_ok() {
                     self_clone.write_queued_messages();
                 }
-            }),
-        );
+            }))));
+
+        let callback_clone = Arc::clone(&callback);
+        *self.tcp_socket.current_action.lock().unwrap() = Some(Box::new(move || {
+            if let Some(f) = callback_clone.lock().unwrap().take() {
+                f(ErrorCode::fault(), 0);
+            }
+        }));
+
+        let stream = {
+            let guard = self.tcp_socket.state.lock().unwrap();
+            let TokioSocketState::Client(stream) = guard.deref() else {
+                return;
+            };
+            Arc::clone(stream)
+        };
+        let Some(runtime) = self.tcp_socket.runtime.upgrade() else {
+            return;
+        };
+        let runtime_w = Weak::clone(&self.tcp_socket.runtime);
+        let buffer = Arc::clone(&next.buffer);
+        runtime.tokio.spawn(async move {
+            let mut written = 0;
+            loop {
+                match stream.writable().await {
+                    Ok(()) => match stream.try_write(&buffer[written..]) {
+                        Ok(n) => {
+                            written += n;
+                            if written >= buffer.len() {
+                                let Some(runtime) = runtime_w.upgrade() else {
+                                    break;
+                                };
+                                runtime.tokio.spawn_blocking(move || {
+                                    if let Some(cb) = callback.lock().unwrap().take() {
+                                        cb(ErrorCode::new(), written);
+                                    }
+                                });
+                                break;
+                            }
+                        }
+                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                            continue;
+                        }
+                        Err(_) => {
+                            let Some(runtime) = runtime_w.upgrade() else {
+                                break;
+                            };
+                            runtime.tokio.spawn_blocking(move || {
+                                if let Some(cb) = callback.lock().unwrap().take() {
+                                    cb(ErrorCode::fault(), 0);
+                                }
+                            });
+                            break;
+                        }
+                    },
+                    Err(_) => {
+                        let Some(runtime) = runtime_w.upgrade() else {
+                            break;
+                        };
+                        runtime.tokio.spawn_blocking(move || {
+                            if let Some(cb) = callback.lock().unwrap().take() {
+                                cb(ErrorCode::fault(), 0);
+                            }
+                        });
+                        break;
+                    }
+                }
+            }
+        });
     }
 
     fn close(&self) {

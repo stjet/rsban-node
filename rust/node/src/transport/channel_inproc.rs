@@ -130,9 +130,9 @@ impl ChannelInProc {
 
     pub fn send_buffer_2(
         &self,
-        buffer_a: &Arc<Vec<u8>>,
-        callback_a: Option<WriteCallback>,
-        _policy_a: BufferDropPolicy,
+        buffer: &Arc<Vec<u8>>,
+        callback: Option<WriteCallback>,
+        _policy: BufferDropPolicy,
         _traffic_type: TrafficType,
     ) {
         let stats = self.stats.clone();
@@ -186,10 +186,10 @@ impl ChannelInProc {
             }
         });
 
-        self.send_buffer_impl(buffer_a, callback_wrapper);
+        self.send_buffer_impl(buffer, callback_wrapper);
 
-        if let Some(cb) = callback_a {
-            let buffer_size = buffer_a.len();
+        if let Some(cb) = callback {
+            let buffer_size = buffer.len();
             if let Some(async_rt) = self.async_rt.upgrade() {
                 async_rt.post(Box::new(move || {
                     cb(ErrorCode::new(), buffer_size);

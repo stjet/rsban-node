@@ -2,10 +2,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use rsnano_core::utils::Logger;
 
-use crate::{
-    transport::{EndpointType, SocketObserver},
-    utils::ErrorCode,
-};
+use crate::transport::{EndpointType, SocketObserver};
 
 use super::{DetailType, Direction, StatType, Stats};
 
@@ -26,16 +23,6 @@ impl SocketStats {
 }
 
 impl SocketObserver for SocketStats {
-    fn close_socket_failed(&self, ec: ErrorCode) {
-        self.logger
-            .try_log(&format!("Failed to close socket gracefully: {:?}", ec));
-        let _ = self.stats.inc(
-            StatType::Bootstrap,
-            DetailType::ErrorSocketClose,
-            Direction::In,
-        );
-    }
-
     fn disconnect_due_to_timeout(&self, endpoint: SocketAddr) {
         if self.enable_timeout_logging {
             self.logger

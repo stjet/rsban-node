@@ -4,8 +4,7 @@ use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
 use rsnano_node::messages::{ConfirmReq, Message};
 
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
-use num_traits::FromPrimitive;
-use rsnano_core::{BlockHash, BlockType, Root};
+use rsnano_core::{BlockHash, Root};
 
 #[repr(C)]
 pub struct HashRootPair {

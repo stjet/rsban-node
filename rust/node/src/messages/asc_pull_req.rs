@@ -1,4 +1,4 @@
-use super::{MessageHeader, MessageHeaderExtender, MessageType};
+use super::MessageHeaderExtender;
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{

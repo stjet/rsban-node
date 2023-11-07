@@ -6,7 +6,7 @@ use std::{
 use crate::utils::FfiStream;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::{Deserialize, FixedSizeSerialize, Serialize},
+    utils::{Deserialize, FixedSizeSerialize},
     Account, AccountInfo, Amount, BlockHash, Epoch,
 };
 
@@ -57,14 +57,6 @@ pub unsafe extern "C" fn rsn_account_info_clone(
     handle: *mut AccountInfoHandle,
 ) -> *mut AccountInfoHandle {
     Box::into_raw(Box::new(AccountInfoHandle((*handle).0.clone())))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_account_info_serialize(
-    handle: *mut AccountInfoHandle,
-    stream: *mut c_void,
-) -> bool {
-    (*handle).0.serialize(&mut FfiStream::new(stream)).is_ok()
 }
 
 #[no_mangle]

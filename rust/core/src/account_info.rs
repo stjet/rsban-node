@@ -26,7 +26,7 @@ impl AccountInfo {
     pub fn to_bytes(&self) -> [u8; 129] {
         let mut buffer = [0; 129];
         let mut stream = MutStreamAdapter::new(&mut buffer);
-        self.serialize(&mut stream).unwrap();
+        self.serialize_safe(&mut stream);
         buffer
     }
 

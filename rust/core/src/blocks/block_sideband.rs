@@ -1,5 +1,5 @@
 use crate::{
-    utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
     Account, Amount, BlockDetails, BlockHash, BlockType, Epoch,
 };
 use num::FromPrimitive;
@@ -92,6 +92,32 @@ impl BlockSideband {
         }
 
         Ok(())
+    }
+
+    pub fn serialize_safe(&self, stream: &mut MutStreamAdapter, block_type: BlockType) {
+        self.successor.serialize_safe(stream);
+
+        if block_type != BlockType::State && block_type != BlockType::LegacyOpen {
+            self.account.serialize_safe(stream);
+        }
+
+        if block_type != BlockType::LegacyOpen {
+            stream.write_bytes_safe(&self.height.to_be_bytes());
+        }
+
+        if block_type == BlockType::LegacyReceive
+            || block_type == BlockType::LegacyChange
+            || block_type == BlockType::LegacyOpen
+        {
+            self.balance.serialize_safe(stream);
+        }
+
+        stream.write_bytes_safe(&self.timestamp.to_be_bytes());
+
+        if block_type == BlockType::State {
+            self.details.serialize_safe(stream);
+            stream.write_u8_safe(self.source_epoch as u8);
+        }
     }
 
     pub fn from_stream(stream: &mut dyn Stream, block_type: BlockType) -> anyhow::Result<Self> {

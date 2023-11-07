@@ -52,16 +52,6 @@ public:
 	{
 	}
 
-	db_val (nano::account_info const & val_a) :
-		buffer (std::make_shared<std::vector<uint8_t>> ())
-	{
-		{
-			nano::vectorstream stream (*buffer);
-			val_a.serialize (stream);
-		}
-		convert_buffer_to_value ();
-	}
-
 	db_val (nano::pending_info const & val_a) :
 		db_val (val_a.db_size (), const_cast<nano::pending_info *> (&val_a))
 	{

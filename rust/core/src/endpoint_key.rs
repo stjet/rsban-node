@@ -18,7 +18,7 @@ impl EndpointKey {
     pub fn to_bytes(&self) -> [u8; 18] {
         let mut buffer = [0; 18];
         let mut stream = MutStreamAdapter::new(&mut buffer);
-        self.serialize(&mut stream).unwrap();
+        self.serialize_safe(&mut stream);
         buffer
     }
 
@@ -62,7 +62,7 @@ impl Deserialize for EndpointKey {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::MemoryStream;
+    use crate::utils::{MemoryStream, StreamAdapter};
     use std::{net::Ipv6Addr, str::FromStr};
 
     use super::*;
@@ -71,9 +71,10 @@ mod tests {
     fn deserialize() {
         let ip = Ipv6Addr::from_str("::ffff:127.0.0.1").unwrap();
         let key = EndpointKey::new(ip.octets(), 123);
-        let mut stream = MemoryStream::new();
-        key.serialize(&mut stream).unwrap();
-        let deserialized = EndpointKey::deserialize(&mut stream).unwrap();
+        let mut buf = [0; 18];
+        let mut stream = MutStreamAdapter::new(&mut buf);
+        key.serialize_safe(&mut stream);
+        let deserialized = EndpointKey::deserialize(&mut StreamAdapter::new(&buf)).unwrap();
         assert_eq!(deserialized, key);
     }
 

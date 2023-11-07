@@ -383,12 +383,6 @@ nano::account_info & nano::account_info::operator= (nano::account_info const & o
 	return *this;
 }
 
-bool nano::account_info::serialize (nano::stream & stream_a) const
-{
-	bool success = rsnano::rsn_account_info_serialize (handle, &stream_a);
-	return !success;
-}
-
 bool nano::account_info::deserialize (nano::stream & stream_a)
 {
 	bool success = rsnano::rsn_account_info_deserialize (handle, &stream_a);

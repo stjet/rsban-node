@@ -17,7 +17,7 @@ impl ConfirmationHeightInfo {
     pub fn to_bytes(&self) -> [u8; 40] {
         let mut buffer = [0; 40];
         let mut stream = MutStreamAdapter::new(&mut buffer);
-        self.serialize(&mut stream).unwrap();
+        self.serialize_safe(&mut stream);
         buffer
     }
 

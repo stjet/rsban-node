@@ -1,4 +1,7 @@
-use crate::{utils::Stream, Epoch};
+use crate::{
+    utils::{MutStreamAdapter, Serialize, Stream},
+    Epoch,
+};
 use anyhow::Result;
 use num::FromPrimitive;
 
@@ -22,10 +25,6 @@ impl BlockDetails {
 
     pub const fn serialized_size() -> usize {
         1
-    }
-
-    pub fn serialize(&self, stream: &mut impl Stream) -> Result<()> {
-        stream.write_u8(self.packed())
     }
 
     pub fn deserialize(stream: &mut dyn Stream) -> Result<BlockDetails> {
@@ -61,6 +60,16 @@ impl BlockDetails {
             is_receive: (0b0100_0000 & value) != 0,
             is_epoch: (0b0010_0000 & value) != 0,
         })
+    }
+}
+
+impl Serialize for BlockDetails {
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        stream.write_u8(self.packed())
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        stream.write_u8_safe(self.packed())
     }
 }
 

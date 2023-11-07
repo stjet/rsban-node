@@ -118,7 +118,6 @@ public:
 	account_info (account_info &&);
 	~account_info ();
 	account_info & operator= (account_info const &);
-	bool serialize (nano::stream &) const;
 	bool deserialize (nano::stream &);
 	bool operator== (nano::account_info const &) const;
 	bool operator!= (nano::account_info const &) const;

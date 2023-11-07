@@ -45,12 +45,6 @@ impl PendingInfo {
 }
 
 impl Serialize for PendingInfo {
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        self.source.serialize(stream)?;
-        self.amount.serialize(stream)?;
-        stream.write_u8(self.epoch as u8)
-    }
-
     fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         self.source.serialize_safe(stream);
         self.amount.serialize_safe(stream);

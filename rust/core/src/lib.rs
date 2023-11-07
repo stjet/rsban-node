@@ -254,10 +254,6 @@ impl utils::FixedSizeSerialize for NoValue {
 }
 
 impl utils::Serialize for NoValue {
-    fn serialize(&self, _stream: &mut dyn utils::Stream) -> anyhow::Result<()> {
-        Ok(())
-    }
-
     fn serialize_safe(&self, _writer: &mut dyn BufferWriter) {}
 }
 

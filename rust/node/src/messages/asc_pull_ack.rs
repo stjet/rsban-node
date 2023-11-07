@@ -1,7 +1,7 @@
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    deserialize_block_enum, serialize_block_enum, serialize_block_enum_safe,
+    deserialize_block_enum, serialize_block_enum_safe,
     utils::{BufferWriter, Deserialize, Serialize, Stream, StreamExt},
     Account, BlockEnum, BlockHash, BlockType,
 };
@@ -49,17 +49,10 @@ impl AscPullAck {
         }
     }
 
-    fn serialize_pull_type_safe(&self, writer: &mut dyn BufferWriter) {
+    fn serialize_pull_type(&self, writer: &mut dyn BufferWriter) {
         match &self.pull_type {
             AscPullAckType::Blocks(blocks) => blocks.serialize_safe(writer),
             AscPullAckType::AccountInfo(account_info) => account_info.serialize_safe(writer),
-        }
-    }
-
-    fn serialize_pull_type(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        match &self.pull_type {
-            AscPullAckType::Blocks(blocks) => blocks.serialize(stream),
-            AscPullAckType::AccountInfo(account_info) => account_info.serialize(stream),
         }
     }
 
@@ -73,16 +66,10 @@ impl AscPullAck {
 }
 
 impl Serialize for AscPullAck {
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        stream.write_u8(self.payload_type() as u8)?;
-        stream.write_u64_be(self.id)?;
-        self.serialize_pull_type(stream)
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         writer.write_u8_safe(self.payload_type() as u8);
         writer.write_u64_be_safe(self.id);
-        self.serialize_pull_type_safe(writer);
+        self.serialize_pull_type(writer);
     }
 }
 
@@ -155,14 +142,6 @@ impl BlocksAckPayload {
 }
 
 impl Serialize for BlocksAckPayload {
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        for block in self.blocks() {
-            serialize_block_enum(stream, block)?;
-        }
-        // For convenience, end with null block terminator
-        stream.write_u8(BlockType::NotABlock as u8)
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         for block in self.blocks() {
             serialize_block_enum_safe(writer, block);
@@ -206,15 +185,6 @@ impl AccountInfoAckPayload {
 }
 
 impl Serialize for AccountInfoAckPayload {
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        self.account.serialize(stream)?;
-        self.account_open.serialize(stream)?;
-        self.account_head.serialize(stream)?;
-        stream.write_u64_be(self.account_block_count)?;
-        self.account_conf_frontier.serialize(stream)?;
-        stream.write_u64_be(self.account_conf_height)
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         self.account.serialize_safe(writer);
         self.account_open.serialize_safe(writer);

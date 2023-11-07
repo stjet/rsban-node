@@ -97,19 +97,6 @@ impl ConfirmReq {
 }
 
 impl Serialize for ConfirmReq {
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        if let Some(block) = &self.block {
-            block.serialize(stream)?;
-        } else {
-            // Write hashes & roots
-            for (hash, root) in &self.roots_hashes {
-                stream.write_bytes(hash.as_bytes())?;
-                stream.write_bytes(root.as_bytes())?;
-            }
-        }
-        Ok(())
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         if let Some(block) = &self.block {
             block.serialize_safe(writer);

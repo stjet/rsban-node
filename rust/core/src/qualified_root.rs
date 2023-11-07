@@ -18,7 +18,7 @@ impl QualifiedRoot {
     pub fn to_bytes(&self) -> [u8; 64] {
         let mut buffer = [0; 64];
         let mut stream = MutStreamAdapter::new(&mut buffer);
-        self.serialize(&mut stream).unwrap();
+        self.serialize_safe(&mut stream);
         buffer
     }
 
@@ -35,11 +35,6 @@ impl QualifiedRoot {
 }
 
 impl Serialize for QualifiedRoot {
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        self.root.serialize(stream)?;
-        self.previous.serialize(stream)
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         self.root.serialize_safe(writer);
         self.previous.serialize_safe(writer);

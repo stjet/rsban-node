@@ -178,10 +178,8 @@ pub unsafe extern "C" fn rsn_vote_full_hash(handle: &VoteHandle, result: *mut u8
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_serialize(handle: &VoteHandle, stream: *mut c_void) -> i32 {
     let mut stream = FfiStream::new(stream);
-    match handle.serialize(&mut stream) {
-        Ok(_) => 0,
-        Err(_) => -1,
-    }
+    handle.serialize_safe(&mut stream);
+    0
 }
 
 #[no_mangle]

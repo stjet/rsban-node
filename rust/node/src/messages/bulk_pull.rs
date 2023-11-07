@@ -72,20 +72,6 @@ impl BulkPull {
 }
 
 impl Serialize for BulkPull {
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.start.serialize(stream)?;
-        self.end.serialize(stream)?;
-
-        if self.count > 0 {
-            let mut count_buffer = [0u8; BulkPull::EXTENDED_PARAMETERS_SIZE];
-            const_assert!(size_of::<u32>() < (BulkPull::EXTENDED_PARAMETERS_SIZE - 1)); // count must fit within buffer
-
-            count_buffer[1..5].copy_from_slice(&self.count.to_le_bytes());
-            stream.write_bytes(&count_buffer)?;
-        }
-        Ok(())
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         self.start.serialize_safe(writer);
         self.end.serialize_safe(writer);

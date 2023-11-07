@@ -47,17 +47,12 @@ impl WalletValue {
     pub fn to_bytes(&self) -> [u8; 40] {
         let mut buffer = [0; 40];
         let mut stream = MutStreamAdapter::new(&mut buffer);
-        self.serialize(&mut stream).unwrap();
+        self.serialize_safe(&mut stream);
         buffer
     }
 }
 
 impl Serialize for WalletValue {
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        self.key.serialize(stream)?;
-        stream.write_u64_ne(self.work)
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         self.key.serialize_safe(writer);
         writer.write_u64_ne_safe(self.work);

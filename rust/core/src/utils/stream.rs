@@ -78,6 +78,28 @@ impl MemoryStream {
     }
 }
 
+impl BufferWriter for MemoryStream {
+    fn write_bytes_safe(&mut self, bytes: &[u8]) {
+        self.bytes.extend_from_slice(bytes);
+    }
+
+    fn write_u8_safe(&mut self, value: u8) {
+        self.bytes.push(value);
+    }
+
+    fn write_u32_be_safe(&mut self, value: u32) {
+        self.write_bytes_safe(&value.to_be_bytes());
+    }
+
+    fn write_u64_be_safe(&mut self, value: u64) {
+        self.write_bytes_safe(&value.to_be_bytes());
+    }
+
+    fn write_u64_ne_safe(&mut self, value: u64) {
+        self.write_bytes_safe(&value.to_ne_bytes());
+    }
+}
+
 impl Stream for MemoryStream {
     fn write_u8(&mut self, value: u8) -> anyhow::Result<()> {
         self.bytes.push(value);

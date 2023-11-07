@@ -482,7 +482,7 @@ impl HandshakeMessageVisitorImpl {
         });
 
         let mut serializer = MessageSerializer::new(self.network_constants.protocol_info());
-        let buffer = serializer.serialize(&handshake_response).unwrap();
+        let buffer = serializer.serialize(&handshake_response);
         let shared_const_buffer = Arc::new(Vec::from(buffer)); // TODO don't copy buffer
         let server_weak = Arc::downgrade(&self.server);
         let logger = Arc::clone(&self.logger);

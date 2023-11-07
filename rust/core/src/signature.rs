@@ -66,10 +66,6 @@ impl Signature {
 }
 
 impl Serialize for Signature {
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        stream.write_bytes(&self.bytes)
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         writer.write_bytes_safe(&self.bytes)
     }

@@ -30,11 +30,6 @@ impl EndpointKey {
 }
 
 impl Serialize for EndpointKey {
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        stream.write_bytes(&self.address)?;
-        stream.write_bytes(&self.port.to_be_bytes())
-    }
-
     fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         stream.write_bytes_safe(&self.address);
         stream.write_bytes_safe(&self.port.to_be_bytes());
@@ -85,7 +80,7 @@ mod tests {
         let ip = Ipv6Addr::from_str("::ffff:127.0.0.1").unwrap();
         let key = EndpointKey::new(ip.octets(), 100);
         let mut stream = MemoryStream::new();
-        key.serialize(&mut stream).unwrap();
+        key.serialize_safe(&mut stream);
         let bytes = stream.as_bytes();
         assert_eq!(bytes.len(), 18);
         assert_eq!(bytes[10], 0xFF);

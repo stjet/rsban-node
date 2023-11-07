@@ -47,22 +47,6 @@ impl Default for Keepalive {
 impl MessageVariant for Keepalive {}
 
 impl Serialize for Keepalive {
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        for peer in &self.peers {
-            match peer {
-                SocketAddr::V4(_) => panic!("ipv6 expected but was ipv4"), //todo make peers IpAddrV6?
-                SocketAddr::V6(addr) => {
-                    let ip_bytes = addr.ip().octets();
-                    stream.write_bytes(&ip_bytes)?;
-
-                    let port_bytes = addr.port().to_le_bytes();
-                    stream.write_bytes(&port_bytes)?;
-                }
-            }
-        }
-        Ok(())
-    }
-
     fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         for peer in &self.peers {
             match peer {

@@ -295,7 +295,7 @@ mod tests {
         ));
 
         let mut serializer = MessageSerializer::new(STUB_NETWORK_CONSTANTS.protocol_info());
-        let serialized = serializer.serialize(original).unwrap();
+        let serialized = serializer.serialize(original);
         let mut stream = StreamAdapter::new(serialized);
         let deserialized_header = MessageHeader::deserialize(&mut stream).unwrap();
         assert_eq!(

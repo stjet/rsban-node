@@ -44,11 +44,6 @@ impl PendingKey {
 }
 
 impl Serialize for PendingKey {
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        self.account.serialize(stream)?;
-        self.hash.serialize(stream)
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         self.account.serialize_safe(writer);
         self.hash.serialize_safe(writer);

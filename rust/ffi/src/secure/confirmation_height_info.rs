@@ -39,7 +39,8 @@ pub unsafe extern "C" fn rsn_confirmation_height_info_serialize(
 ) -> bool {
     let info = ConfirmationHeightInfo::from(&*info);
     let mut stream = FfiStream::new(stream);
-    info.serialize(&mut stream).is_ok()
+    info.serialize_safe(&mut stream);
+    true
 }
 
 #[no_mangle]

@@ -117,7 +117,6 @@ pub trait Block: FullHash {
     fn set_work(&mut self, work: u64);
     fn previous(&self) -> BlockHash;
     fn serialize_safe(&self, writer: &mut dyn BufferWriter);
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()>;
     fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> anyhow::Result<()>;
     fn to_json(&self) -> anyhow::Result<String> {
         let mut writer = SerdePropertyTree::new();
@@ -282,11 +281,10 @@ impl BlockEnum {
     pub fn serialize_with_sideband(&self) -> Vec<u8> {
         let mut stream = MemoryStream::new();
         stream.write_u8(self.block_type() as u8).unwrap();
-        self.serialize(&mut stream).unwrap();
+        self.serialize_safe(&mut stream);
         self.sideband()
             .unwrap()
-            .serialize(&mut stream, self.block_type())
-            .unwrap();
+            .serialize_safe(&mut stream, self.block_type());
         stream.to_vec()
     }
 
@@ -371,12 +369,6 @@ pub fn serialize_block_enum_safe(stream: &mut dyn BufferWriter, block: &BlockEnu
     block.serialize_safe(stream);
 }
 
-pub fn serialize_block_enum(stream: &mut dyn Stream, block: &BlockEnum) -> anyhow::Result<()> {
-    let block_type = block.block_type() as u8;
-    stream.write_u8(block_type)?;
-    block.serialize(stream)
-}
-
 pub fn deserialize_block_enum(stream: &mut dyn Stream) -> anyhow::Result<BlockEnum> {
     let block_type =
         BlockType::from_u8(stream.read_u8()?).ok_or_else(|| anyhow!("invalid block type"))?;
@@ -413,9 +405,9 @@ impl Deserialize for BlockWithSideband {
     }
 }
 
-pub fn serialize_block<T: Stream>(stream: &mut T, block: &BlockEnum) -> anyhow::Result<()> {
-    stream.write_u8(block.block_type() as u8)?;
-    block.serialize(stream)
+pub fn serialize_block(writer: &mut dyn BufferWriter, block: &BlockEnum) {
+    writer.write_u8_safe(block.block_type() as u8);
+    block.serialize_safe(writer);
 }
 
 static DEV_PRIVATE_KEY_DATA: &str =

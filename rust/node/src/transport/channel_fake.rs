@@ -78,7 +78,7 @@ impl ChannelFake {
     ) {
         let buffer = {
             let mut serializer = self.message_serializer.lock().unwrap();
-            let buffer = serializer.serialize(message).unwrap();
+            let buffer = serializer.serialize(message);
             Arc::new(Vec::from(buffer)) // TODO don't copy into vec!
         };
         let detail = DetailType::from(message);

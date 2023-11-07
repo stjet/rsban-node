@@ -91,7 +91,7 @@ impl TelemetryData {
           + size_of::<u64>() //active_difficulty)
     }
 
-    fn serialize_without_signature_safe(&self, writer: &mut dyn BufferWriter) {
+    fn serialize_without_signature(&self, writer: &mut dyn BufferWriter) {
         // All values should be serialized in big endian
         self.node_id.serialize_safe(writer);
         writer.write_u64_be_safe(self.block_count);
@@ -118,48 +118,18 @@ impl TelemetryData {
         writer.write_bytes_safe(&self.unknown_data);
     }
 
-    fn serialize_without_signature(&self, stream: &mut dyn Stream) -> Result<()> {
-        // All values should be serialized in big endian
-        self.node_id.serialize(stream)?;
-        stream.write_u64_be(self.block_count)?;
-        stream.write_u64_be(self.cemented_count)?;
-        stream.write_u64_be(self.unchecked_count)?;
-        stream.write_u64_be(self.account_count)?;
-        stream.write_u64_be(self.bandwidth_cap)?;
-        stream.write_u32_be(self.peer_count)?;
-        stream.write_u8(self.protocol_version)?;
-        stream.write_u64_be(self.uptime)?;
-        self.genesis_block.serialize(stream)?;
-        stream.write_u8(self.major_version)?;
-        stream.write_u8(self.minor_version)?;
-        stream.write_u8(self.patch_version)?;
-        stream.write_u8(self.pre_release_version)?;
-        stream.write_u8(self.maker)?;
-        stream.write_u64_be(
-            self.timestamp
-                .duration_since(SystemTime::UNIX_EPOCH)?
-                .as_millis() as u64,
-        )?;
-        stream.write_u64_be(self.active_difficulty)?;
-        stream.write_bytes(&self.unknown_data)?;
-        Ok(())
-    }
-
     pub fn sign(&mut self, keys: &KeyPair) -> Result<()> {
         debug_assert!(keys.public_key() == self.node_id);
         let mut stream = MemoryStream::new();
-        self.serialize_without_signature(&mut stream)?;
+        self.serialize_without_signature(&mut stream);
         self.signature = sign_message(&keys.private_key(), &keys.public_key(), stream.as_bytes());
         Ok(())
     }
 
     pub fn validate_signature(&self) -> bool {
         let mut stream = MemoryStream::new();
-        if self.serialize_without_signature(&mut stream).is_ok() {
-            validate_message(&self.node_id, stream.as_bytes(), &self.signature).is_ok()
-        } else {
-            false
-        }
+        self.serialize_without_signature(&mut stream);
+        validate_message(&self.node_id, stream.as_bytes(), &self.signature).is_ok()
     }
 
     pub fn to_json(&self) -> serde_json::Result<String> {
@@ -257,18 +227,10 @@ impl Display for TelemetryAck {
 }
 
 impl Serialize for TelemetryAck {
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        if let Some(data) = &self.0 {
-            data.signature.serialize(stream)?;
-            data.serialize_without_signature(stream)?;
-        }
-        Ok(())
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         if let Some(data) = &self.0 {
             data.signature.serialize_safe(writer);
-            data.serialize_without_signature_safe(writer);
+            data.serialize_without_signature(writer);
         }
     }
 }

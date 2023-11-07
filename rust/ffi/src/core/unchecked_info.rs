@@ -65,7 +65,8 @@ pub unsafe extern "C" fn rsn_unchecked_info_serialize(
     stream: *mut c_void,
 ) -> bool {
     let mut stream = FfiStream::new(stream);
-    (*handle).0.serialize(&mut stream).is_ok()
+    (*handle).0.serialize_safe(&mut stream);
+    true
 }
 
 #[no_mangle]

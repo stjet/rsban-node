@@ -173,15 +173,6 @@ impl Block for OpenBlock {
         BlockHash::zero()
     }
 
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.hashables.source.serialize(stream)?;
-        self.hashables.representative.serialize(stream)?;
-        self.hashables.account.serialize(stream)?;
-        self.signature.serialize(stream)?;
-        stream.write_bytes(&self.work.to_be_bytes())?;
-        Ok(())
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         self.hashables.source.serialize_safe(writer);
         self.hashables.representative.serialize_safe(writer);
@@ -303,7 +294,7 @@ mod tests {
             0,
         );
         let mut stream = MemoryStream::new();
-        block1.serialize(&mut stream).unwrap();
+        block1.serialize_safe(&mut stream);
         assert_eq!(OpenBlock::serialized_size(), stream.bytes_written());
 
         let block2 = OpenBlock::deserialize(&mut stream).unwrap();

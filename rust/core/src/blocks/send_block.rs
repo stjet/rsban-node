@@ -50,13 +50,6 @@ impl SendHashables {
 }
 
 impl Serialize for SendHashables {
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.previous.serialize(stream)?;
-        self.destination.serialize(stream)?;
-        self.balance.serialize(stream)?;
-        Ok(())
-    }
-
     fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         self.previous.serialize_safe(stream);
         self.destination.serialize_safe(stream);
@@ -241,12 +234,6 @@ impl Block for SendBlock {
         self.hashables.previous
     }
 
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.hashables.serialize(stream)?;
-        self.signature.serialize(stream)?;
-        stream.write_bytes(&self.work.to_be_bytes())
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         self.hashables.serialize_safe(writer);
         self.signature.serialize_safe(writer);
@@ -338,7 +325,7 @@ mod tests {
             5,
         );
         let mut stream = MemoryStream::new();
-        block1.serialize(&mut stream).unwrap();
+        block1.serialize_safe(&mut stream);
         assert_eq!(SendBlock::serialized_size(), stream.bytes_written());
 
         let block2 = SendBlock::deserialize(&mut stream).unwrap();

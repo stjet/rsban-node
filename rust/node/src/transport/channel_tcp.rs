@@ -204,7 +204,7 @@ impl ChannelTcp {
     ) {
         let buffer = {
             let mut serializer = self.message_serializer.lock().unwrap();
-            let buffer = serializer.serialize(message).unwrap();
+            let buffer = serializer.serialize(message);
             Arc::new(Vec::from(buffer)) // TODO don't copy into vec. Pass slice directly
         };
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;

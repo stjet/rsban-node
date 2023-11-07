@@ -2,7 +2,7 @@ use anyhow::Result;
 use bitvec::prelude::*;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::{MemoryStream, Serialize, Stream},
+    utils::{BufferWriter, MemoryStream, Serialize, Stream},
     Networks,
 };
 use std::{
@@ -125,7 +125,7 @@ impl MessageHeader {
         payload: &impl Serialize,
     ) -> Self {
         let mut stream = MemoryStream::new();
-        payload.serialize(&mut stream).unwrap(); // can't fail
+        payload.serialize_safe(&mut stream);
         let payload_len: u16 = stream.bytes_written() as u16;
 
         Self {
@@ -173,14 +173,13 @@ impl MessageHeader {
         + size_of::<u16>() // extensions
     }
 
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        stream.write_bytes(&(self.protocol.network as u16).to_be_bytes())?;
-        stream.write_u8(self.protocol.version_max)?;
-        stream.write_u8(self.protocol.version_using)?;
-        stream.write_u8(self.protocol.version_min)?;
-        stream.write_u8(self.message_type as u8)?;
-        stream.write_bytes(&self.extensions.data.to_le_bytes())?;
-        Ok(())
+    pub fn serialize(&self, stream: &mut dyn BufferWriter) {
+        stream.write_bytes_safe(&(self.protocol.network as u16).to_be_bytes());
+        stream.write_u8_safe(self.protocol.version_max);
+        stream.write_u8_safe(self.protocol.version_using);
+        stream.write_u8_safe(self.protocol.version_min);
+        stream.write_u8_safe(self.message_type as u8);
+        stream.write_bytes_safe(&self.extensions.data.to_le_bytes());
     }
 
     const BULK_PULL_COUNT_PRESENT_FLAG: usize = 0;
@@ -259,13 +258,12 @@ mod tests {
     }
 
     #[test]
-    fn serialize_and_deserialize() -> Result<()> {
+    fn serialize_and_deserialize() {
         let original = test_header();
         let mut stream = MemoryStream::new();
-        original.serialize(&mut stream)?;
-        let deserialized = MessageHeader::deserialize(&mut stream)?;
+        original.serialize(&mut stream);
+        let deserialized = MessageHeader::deserialize(&mut stream).unwrap();
         assert_eq!(original, deserialized);
-        Ok(())
     }
 
     fn test_header() -> MessageHeader {
@@ -283,13 +281,13 @@ mod tests {
     }
 
     #[test]
-    fn serialize_header() -> Result<()> {
+    fn serialize_header() {
         let protocol_info = ProtocolInfo::dev_network();
         let mut header = MessageHeader::new(MessageType::Publish, protocol_info);
         header.extensions = 0xABCD.into();
 
         let mut stream = MemoryStream::new();
-        header.serialize(&mut stream)?;
+        header.serialize(&mut stream);
 
         let bytes = stream.as_bytes();
         assert_eq!(bytes.len(), 8);
@@ -301,6 +299,5 @@ mod tests {
         assert_eq!(bytes[5], 0x03); // publish
         assert_eq!(bytes[6], 0xCD); // extensions
         assert_eq!(bytes[7], 0xAB); // extensions
-        Ok(())
     }
 }

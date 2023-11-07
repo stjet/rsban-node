@@ -47,16 +47,6 @@ impl AccountInfo {
 }
 
 impl Serialize for AccountInfo {
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.head.serialize(stream)?;
-        self.representative.serialize(stream)?;
-        self.open_block.serialize(stream)?;
-        self.balance.serialize(stream)?;
-        stream.write_u64_ne(self.modified)?;
-        stream.write_u64_ne(self.block_count)?;
-        stream.write_u8(self.epoch as u8)
-    }
-
     fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         self.head.serialize_safe(stream);
         self.representative.serialize_safe(stream);

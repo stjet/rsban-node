@@ -45,10 +45,6 @@ impl ConfirmAck {
 }
 
 impl Serialize for ConfirmAck {
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        self.vote.serialize(stream)
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         self.vote.serialize_safe(writer);
     }

@@ -2,7 +2,7 @@ use super::*;
 use crate::{stats::DetailType, utils::BlockUniquer, voting::VoteUniquer};
 use anyhow::Result;
 use bitvec::prelude::BitArray;
-use rsnano_core::utils::{Serialize, Stream};
+use rsnano_core::utils::{BufferWriter, Serialize, Stream};
 use std::fmt::Display;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -64,10 +64,9 @@ impl Message {
         }
     }
 
-    pub fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        match self.as_message_variant() {
-            Some(variant) => variant.serialize(stream),
-            None => Ok(()),
+    pub fn serialize(&self, stream: &mut dyn BufferWriter) {
+        if let Some(variant) = self.as_message_variant() {
+            variant.serialize_safe(stream);
         }
     }
 

@@ -173,16 +173,6 @@ impl Vote {
 }
 
 impl Serialize for Vote {
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.voting_account.serialize(stream)?;
-        self.signature.serialize(stream)?;
-        stream.write_bytes(&self.timestamp.to_le_bytes())?;
-        for hash in &self.hashes {
-            hash.serialize(stream)?;
-        }
-        Ok(())
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         self.voting_account.serialize_safe(writer);
         self.signature.serialize_safe(writer);

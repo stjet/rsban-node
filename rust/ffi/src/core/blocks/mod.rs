@@ -178,11 +178,8 @@ pub unsafe extern "C" fn rsn_block_full_hash(handle: &BlockHandle, hash: *mut u8
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_serialize(handle: &BlockHandle, stream: *mut c_void) -> i32 {
     let mut stream = FfiStream::new(stream);
-    if handle.deref().serialize(&mut stream).is_ok() {
-        0
-    } else {
-        -1
-    }
+    handle.deref().serialize_safe(&mut stream);
+    0
 }
 
 #[no_mangle]

@@ -33,11 +33,6 @@ impl ConfirmationHeightInfo {
 }
 
 impl Serialize for ConfirmationHeightInfo {
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        stream.write_u64_ne(self.height)?;
-        self.frontier.serialize(stream)
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         writer.write_u64_ne_safe(self.height);
         self.frontier.serialize_safe(writer);

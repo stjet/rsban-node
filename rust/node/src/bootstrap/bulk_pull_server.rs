@@ -301,7 +301,7 @@ impl BulkPullServerImpl {
         if let Some(block) = self.get_next() {
             let mut stream = MemoryStream::new();
 
-            serialize_block(&mut stream, &block).unwrap();
+            serialize_block(&mut stream, &block);
             let send_buffer = Arc::new(stream.to_vec());
             if self.enable_logging {
                 self.logger

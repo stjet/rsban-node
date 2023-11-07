@@ -185,14 +185,6 @@ impl Block for ChangeBlock {
         writer.write_bytes_safe(&self.work.to_be_bytes());
     }
 
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.hashables.previous.serialize(stream)?;
-        self.hashables.representative.serialize(stream)?;
-        self.signature.serialize(stream)?;
-        stream.write_bytes(&self.work.to_be_bytes())?;
-        Ok(())
-    }
-
     fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()> {
         writer.put_string("type", "change")?;
         writer.put_string("previous", &self.hashables.previous.encode_hex())?;
@@ -273,7 +265,7 @@ mod tests {
             5,
         );
         let mut stream = MemoryStream::new();
-        block1.serialize(&mut stream).unwrap();
+        block1.serialize_safe(&mut stream);
         assert_eq!(ChangeBlock::serialized_size(), stream.bytes_written());
 
         let block2 = ChangeBlock::deserialize(&mut stream).unwrap();

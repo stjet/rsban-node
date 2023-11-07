@@ -52,12 +52,6 @@ impl FrontierReq {
 }
 
 impl Serialize for FrontierReq {
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.start.serialize(stream)?;
-        stream.write_bytes(&self.age.to_le_bytes())?;
-        stream.write_bytes(&self.count.to_le_bytes())
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         self.start.serialize_safe(writer);
         writer.write_bytes_safe(&self.age.to_le_bytes());

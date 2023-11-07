@@ -50,12 +50,6 @@ impl BulkPullAccount {
 impl MessageVariant for BulkPullAccount {}
 
 impl Serialize for BulkPullAccount {
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.account.serialize(stream)?;
-        self.minimum_amount.serialize(stream)?;
-        stream.write_u8(self.flags as u8)
-    }
-
     fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         self.account.serialize_safe(writer);
         self.minimum_amount.serialize_safe(writer);

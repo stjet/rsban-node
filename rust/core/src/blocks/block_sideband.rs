@@ -1,5 +1,5 @@
 use crate::{
-    utils::{BufferWriter, Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
+    utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account, Amount, BlockDetails, BlockHash, BlockType, Epoch,
 };
 use num::FromPrimitive;
@@ -66,35 +66,7 @@ impl BlockSideband {
         size
     }
 
-    pub fn serialize(&self, stream: &mut impl Stream, block_type: BlockType) -> anyhow::Result<()> {
-        self.successor.serialize(stream)?;
-
-        if block_type != BlockType::State && block_type != BlockType::LegacyOpen {
-            self.account.serialize(stream)?;
-        }
-
-        if block_type != BlockType::LegacyOpen {
-            stream.write_bytes(&self.height.to_be_bytes())?;
-        }
-
-        if block_type == BlockType::LegacyReceive
-            || block_type == BlockType::LegacyChange
-            || block_type == BlockType::LegacyOpen
-        {
-            self.balance.serialize(stream)?;
-        }
-
-        stream.write_bytes(&self.timestamp.to_be_bytes())?;
-
-        if block_type == BlockType::State {
-            self.details.serialize(stream)?;
-            stream.write_u8(self.source_epoch as u8)?;
-        }
-
-        Ok(())
-    }
-
-    pub fn serialize_safe(&self, stream: &mut MutStreamAdapter, block_type: BlockType) {
+    pub fn serialize_safe(&self, stream: &mut dyn BufferWriter, block_type: BlockType) {
         self.successor.serialize_safe(stream);
 
         if block_type != BlockType::State && block_type != BlockType::LegacyOpen {
@@ -209,9 +181,7 @@ mod tests {
             Epoch::Epoch0,
         );
         let mut stream = MemoryStream::new();
-        sideband
-            .serialize(&mut stream, BlockType::LegacyReceive)
-            .unwrap();
+        sideband.serialize_safe(&mut stream, BlockType::LegacyReceive);
         let deserialized =
             BlockSideband::from_stream(&mut stream, BlockType::LegacyReceive).unwrap();
         assert_eq!(deserialized, sideband);

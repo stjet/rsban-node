@@ -36,7 +36,7 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
     ) -> Self {
         Self {
             deserializer_impl: MessageDeserializerImpl::new(
-                network_constants.clone(),
+                network_constants.work.clone(),
                 network_filter,
                 block_uniquer,
                 vote_uniquer,

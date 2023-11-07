@@ -1,6 +1,6 @@
 use super::NetworkFilter;
-use crate::{config::NetworkConstants, messages::*, utils::BlockUniquer, voting::VoteUniquer};
-use rsnano_core::utils::StreamAdapter;
+use crate::{messages::*, utils::BlockUniquer, voting::VoteUniquer};
+use rsnano_core::{utils::StreamAdapter, work::WorkThresholds};
 use std::sync::Arc;
 
 pub const MAX_MESSAGE_SIZE: usize = 1024 * 65;
@@ -88,7 +88,7 @@ pub fn validate_header(
 }
 
 pub struct MessageDeserializerImpl {
-    network_constants: NetworkConstants,
+    work_thresholds: WorkThresholds,
     publish_filter: Arc<NetworkFilter>,
     block_uniquer: Arc<BlockUniquer>,
     vote_uniquer: Arc<VoteUniquer>,
@@ -96,13 +96,13 @@ pub struct MessageDeserializerImpl {
 
 impl MessageDeserializerImpl {
     pub fn new(
-        network_constants: NetworkConstants,
+        work_thresholds: WorkThresholds,
         publish_filter: Arc<NetworkFilter>,
         block_uniquer: Arc<BlockUniquer>,
         vote_uniquer: Arc<VoteUniquer>,
     ) -> Self {
         Self {
-            network_constants,
+            work_thresholds,
             publish_filter,
             block_uniquer,
             vote_uniquer,
@@ -175,7 +175,7 @@ impl MessageDeserializerImpl {
         };
 
         if let Some(block) = block {
-            if self.network_constants.work.validate_entry_block(block) {
+            if self.work_thresholds.validate_entry_block(block) {
                 return Err(ParseStatus::InsufficientWork);
             }
         }
@@ -187,7 +187,7 @@ impl MessageDeserializerImpl {
 mod tests {
     use super::*;
     use crate::{config::STUB_NETWORK_CONSTANTS, voting::Vote};
-    use rsnano_core::BlockBuilder;
+    use rsnano_core::{work::WORK_THRESHOLDS_STUB, BlockBuilder};
 
     #[test]
     fn exact_confirm_ack() {
@@ -288,7 +288,7 @@ mod tests {
         let vote_uniquer = Arc::new(VoteUniquer::new());
 
         let deserializer = Arc::new(MessageDeserializerImpl::new(
-            STUB_NETWORK_CONSTANTS.clone(),
+            WORK_THRESHOLDS_STUB.clone(),
             network_filter,
             block_uniquer,
             vote_uniquer,

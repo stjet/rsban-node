@@ -130,13 +130,10 @@ impl TokioSocketFacade {
         runtime.tokio.spawn(async move {
             match listener.accept().await {
                 Ok((stream, remote)) => {
-                    let socket = client_socket
-                        .as_any()
-                        .downcast_ref::<TokioSocketFacade>()
-                        .expect("not a Tokio socket");
                     // wrap the tokio stream in our stream:
                     let stream = TcpStream::new(stream);
-                    *socket.state.lock().unwrap() = TokioSocketState::Client(Arc::new(stream));
+                    *client_socket.state.lock().unwrap() =
+                        TokioSocketState::Client(Arc::new(stream));
                     let Some(runtime) = runtime_w.upgrade() else {
                         return;
                     };

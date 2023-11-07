@@ -38,6 +38,7 @@ pub unsafe extern "C" fn rsn_server_socket_create(
     let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
     let stats = Arc::clone(&stats.0);
     let node_config = NodeConfig::try_from(node_config).unwrap();
+    let runtime = Arc::downgrade(&async_rt.0);
     Box::into_raw(Box::new(ServerSocketHandle(Arc::new(ServerSocket::new(
         socket_facade,
         flags.0.lock().unwrap().clone(),
@@ -50,6 +51,7 @@ pub unsafe extern "C" fn rsn_server_socket_create(
         ffi_observer,
         max_inbound_connections,
         local.into(),
+        runtime,
     )))))
 }
 

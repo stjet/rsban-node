@@ -61,7 +61,8 @@ pub unsafe extern "C" fn rsn_socket_create(
     let socket_stats = Arc::new(SocketStats::new(stats, logger, network_timeout_logging));
     let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
 
-    let socket = SocketBuilder::endpoint_type(endpoint_type, tcp_facade, thread_pool)
+    let runtime = Arc::downgrade(&async_rt.0);
+    let socket = SocketBuilder::endpoint_type(endpoint_type, tcp_facade, thread_pool, runtime)
         .default_timeout(Duration::from_secs(default_timeout_s))
         .silent_connection_tolerance_time(Duration::from_secs(silent_connection_tolerance_time_s))
         .idle_timeout(Duration::from_secs(idle_timeout_s))

@@ -17,7 +17,10 @@ mod tcp_server_factory;
 mod tcp_stream;
 mod tcp_stream_factory;
 mod token_bucket;
+mod tokio_socket_facade;
 mod write_queue;
+
+pub use tokio_socket_facade::*;
 
 use std::time::SystemTime;
 

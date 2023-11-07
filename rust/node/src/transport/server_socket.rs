@@ -12,7 +12,7 @@ use crate::{
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     utils::{
         first_ipv6_subnet_address, into_ipv6_address, is_ipv4_or_v4_mapped_address,
-        last_ipv6_subnet_address, ErrorCode, ThreadPool,
+        last_ipv6_subnet_address, AsyncRuntime, ErrorCode, ThreadPool,
     },
     NetworkParams,
 };
@@ -36,6 +36,7 @@ pub struct ServerSocket {
     socket_observer: Arc<dyn SocketObserver>,
     max_inbound_connections: usize,
     local: SocketAddr,
+    runtime: Weak<AsyncRuntime>,
 }
 
 impl ServerSocket {
@@ -51,6 +52,7 @@ impl ServerSocket {
         socket_observer: Arc<dyn SocketObserver>,
         max_inbound_connections: usize,
         local: SocketAddr,
+        runtime: Weak<AsyncRuntime>,
     ) -> Self {
         let socket_stats = Arc::new(SocketStats::new(
             Arc::clone(&stats),
@@ -63,6 +65,7 @@ impl ServerSocket {
             EndpointType::Server,
             Arc::clone(&socket_facade),
             Arc::clone(&workers),
+            Weak::clone(&runtime),
         )
         .default_timeout(Duration::MAX)
         .silent_connection_tolerance_time(Duration::from_secs(
@@ -91,6 +94,7 @@ impl ServerSocket {
             socket_observer,
             max_inbound_connections,
             local,
+            runtime,
         }
     }
 
@@ -298,6 +302,7 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
                 EndpointType::Server,
                 Arc::clone(&client_socket),
                 Arc::clone(&this_l.workers),
+                Weak::clone(&this_l.runtime),
             )
             .default_timeout(Duration::from_secs(
                 this_l.node_config.tcp_io_timeout_s as u64,

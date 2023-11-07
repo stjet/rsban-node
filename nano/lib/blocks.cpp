@@ -1153,15 +1153,6 @@ bool nano::block_details::is_epoch () const
 	return dto.is_epoch;
 }
 
-void nano::block_details::serialize (nano::stream & stream_a) const
-{
-	auto result = rsnano::rsn_block_details_serialize (&dto, &stream_a);
-	if (result < 0)
-	{
-		throw new std::runtime_error ("could not serialize block details");
-	}
-}
-
 bool nano::block_details::deserialize (nano::stream & stream_a)
 {
 	auto result = rsnano::rsn_block_details_deserialize (&dto, &stream_a);

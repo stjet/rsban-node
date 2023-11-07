@@ -1,10 +1,9 @@
-use std::mem::size_of;
-
 use crate::{
-    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
+    utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account, Amount, Epoch,
 };
 use num::FromPrimitive;
+use std::mem::size_of;
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct PendingInfo {
@@ -52,7 +51,7 @@ impl Serialize for PendingInfo {
         stream.write_u8(self.epoch as u8)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         self.source.serialize_safe(stream);
         self.amount.serialize_safe(stream);
         stream.write_u8_safe(self.epoch as u8);

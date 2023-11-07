@@ -22,7 +22,7 @@ pub use container_info::{ContainerInfo, ContainerInfoComponent};
 
 pub trait Serialize {
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()>;
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter);
+    fn serialize_safe(&self, stream: &mut dyn BufferWriter);
 }
 
 pub trait FixedSizeSerialize: Serialize {
@@ -39,7 +39,7 @@ impl Serialize for u64 {
         stream.write_u64_be(*self)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         stream.write_u64_be_safe(*self)
     }
 }
@@ -62,7 +62,7 @@ impl Serialize for [u8; 64] {
         stream.write_bytes(self)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         stream.write_bytes_safe(self)
     }
 }

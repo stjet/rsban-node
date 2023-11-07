@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rsnano_core::utils::{MutStreamAdapter, Serialize, Stream};
+use rsnano_core::utils::{BufferWriter, Serialize, Stream};
 use std::{
     fmt::Display,
     net::{IpAddr, Ipv6Addr, SocketAddr},
@@ -63,7 +63,7 @@ impl Serialize for Keepalive {
         Ok(())
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         for peer in &self.peers {
             match peer {
                 SocketAddr::V4(_) => panic!("ipv6 expected but was ipv4"), //todo make peers IpAddrV6?

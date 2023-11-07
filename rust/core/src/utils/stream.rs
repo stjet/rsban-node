@@ -120,6 +120,15 @@ pub struct MutStreamAdapter<'a> {
     write_index: usize,
 }
 
+pub trait BufferWriter {
+    fn bytes_written(&self) -> usize;
+    fn write_bytes_safe(&mut self, bytes: &[u8]);
+    fn write_u8_safe(&mut self, value: u8);
+    fn write_u32_be_safe(&mut self, value: u32);
+    fn write_u64_be_safe(&mut self, value: u64);
+    fn write_u64_ne_safe(&mut self, value: u64);
+}
+
 impl<'a> MutStreamAdapter<'a> {
     pub fn new(bytes: &'a mut [u8]) -> Self {
         Self {
@@ -128,12 +137,14 @@ impl<'a> MutStreamAdapter<'a> {
             write_index: 0,
         }
     }
+}
 
-    pub fn bytes_written(&self) -> usize {
+impl<'a> BufferWriter for MutStreamAdapter<'a> {
+    fn bytes_written(&self) -> usize {
         self.write_index
     }
 
-    pub fn write_bytes_safe(&mut self, bytes: &[u8]) {
+    fn write_bytes_safe(&mut self, bytes: &[u8]) {
         if self.write_index + bytes.len() > self.bytes.len() {
             panic!("buffer full");
         }
@@ -141,7 +152,7 @@ impl<'a> MutStreamAdapter<'a> {
         self.write_index += bytes.len();
     }
 
-    pub fn write_u8_safe(&mut self, value: u8) {
+    fn write_u8_safe(&mut self, value: u8) {
         if self.write_index >= self.bytes.len() {
             panic!("buffer full");
         }
@@ -149,15 +160,15 @@ impl<'a> MutStreamAdapter<'a> {
         self.write_index += 1;
     }
 
-    pub fn write_u32_be_safe(&mut self, value: u32) {
+    fn write_u32_be_safe(&mut self, value: u32) {
         self.write_bytes_safe(&value.to_be_bytes())
     }
 
-    pub fn write_u64_be_safe(&mut self, value: u64) {
+    fn write_u64_be_safe(&mut self, value: u64) {
         self.write_bytes_safe(&value.to_be_bytes())
     }
 
-    pub fn write_u64_ne_safe(&mut self, value: u64) {
+    fn write_u64_ne_safe(&mut self, value: u64) {
         self.write_bytes_safe(&value.to_ne_bytes())
     }
 }

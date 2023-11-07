@@ -2,7 +2,7 @@ use anyhow::Result;
 use rsnano_core::{
     sign_message,
     utils::{
-        Deserialize, FixedSizeSerialize, MutStreamAdapter, PropertyTreeWriter, SerdePropertyTree,
+        BufferWriter, Deserialize, FixedSizeSerialize, PropertyTreeWriter, SerdePropertyTree,
         Serialize, Stream,
     },
     validate_message, Account, BlockHash, BlockHashBuilder, FullHash, KeyPair, RawKey, Signature,
@@ -183,12 +183,12 @@ impl Serialize for Vote {
         Ok(())
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        self.voting_account.serialize_safe(stream);
-        self.signature.serialize_safe(stream);
-        stream.write_bytes_safe(&self.timestamp.to_le_bytes());
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        self.voting_account.serialize_safe(writer);
+        self.signature.serialize_safe(writer);
+        writer.write_bytes_safe(&self.timestamp.to_le_bytes());
         for hash in &self.hashes {
-            hash.serialize_safe(stream);
+            hash.serialize_safe(writer);
         }
     }
 }

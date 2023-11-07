@@ -7,8 +7,7 @@ use super::BlockHash;
 use crate::{
     deserialize_block_enum, serialize_block_enum, serialize_block_enum_safe,
     utils::{
-        Deserialize, FixedSizeSerialize, MemoryStream, MutStreamAdapter, Serialize, Stream,
-        StreamExt,
+        BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
     },
     BlockEnum,
 };
@@ -54,7 +53,7 @@ impl Serialize for UncheckedInfo {
         stream.write_u64_ne(self.modified)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         serialize_block_enum_safe(stream, self.block.as_ref().unwrap());
         stream.write_u64_ne_safe(self.modified);
     }
@@ -108,9 +107,9 @@ impl Serialize for UncheckedKey {
         self.hash.serialize(stream)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        self.previous.serialize_safe(stream);
-        self.hash.serialize_safe(stream);
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        self.previous.serialize_safe(writer);
+        self.hash.serialize_safe(writer);
     }
 }
 

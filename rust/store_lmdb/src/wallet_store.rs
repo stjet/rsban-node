@@ -7,8 +7,8 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
     deterministic_key,
     utils::{
-        Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream, StreamAdapter,
-        StreamExt,
+        BufferWriter, Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream,
+        StreamAdapter, StreamExt,
     },
     Account, KeyDerivationFunction, PublicKey, RawKey,
 };
@@ -58,9 +58,9 @@ impl Serialize for WalletValue {
         stream.write_u64_ne(self.work)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        self.key.serialize_safe(stream);
-        stream.write_u64_ne_safe(self.work);
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        self.key.serialize_safe(writer);
+        writer.write_u64_ne_safe(self.work);
     }
 }
 

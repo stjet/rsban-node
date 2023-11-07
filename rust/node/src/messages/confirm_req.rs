@@ -5,7 +5,7 @@ use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     serialized_block_size,
-    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
+    utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     BlockEnum, BlockHash, BlockType, Root,
 };
 use std::{
@@ -110,14 +110,14 @@ impl Serialize for ConfirmReq {
         Ok(())
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         if let Some(block) = &self.block {
-            block.serialize_safe(stream);
+            block.serialize_safe(writer);
         } else {
             // Write hashes & roots
             for (hash, root) in &self.roots_hashes {
-                stream.write_bytes_safe(hash.as_bytes());
-                stream.write_bytes_safe(root.as_bytes());
+                writer.write_bytes_safe(hash.as_bytes());
+                writer.write_bytes_safe(root.as_bytes());
             }
         }
     }

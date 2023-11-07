@@ -5,7 +5,7 @@ use bitvec::prelude::BitArray;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     sign_message,
-    utils::{Deserialize, FixedSizeSerialize, MemoryStream, MutStreamAdapter, Serialize, Stream},
+    utils::{BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream},
     validate_message, write_hex_bytes, Account, BlockHash, KeyPair, PublicKey, Signature,
 };
 use std::fmt::Display;
@@ -123,7 +123,7 @@ impl Serialize for NodeIdHandshakeResponse {
         Ok(())
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         match &self.v2 {
             Some(v2) => {
                 self.node_id.serialize_safe(stream);
@@ -250,12 +250,12 @@ impl Serialize for NodeIdHandshake {
         Ok(())
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         if let Some(query) = &self.query {
-            stream.write_bytes_safe(&query.cookie);
+            writer.write_bytes_safe(&query.cookie);
         }
         if let Some(response) = &self.response {
-            response.serialize_safe(stream);
+            response.serialize_safe(writer);
         }
     }
 }

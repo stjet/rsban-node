@@ -42,7 +42,6 @@ public:
 		return 1;
 	}
 	bool operator== (block_details const & other_a) const;
-	void serialize (nano::stream &) const;
 	bool deserialize (nano::stream &);
 	nano::epoch epoch () const;
 	bool is_send () const;

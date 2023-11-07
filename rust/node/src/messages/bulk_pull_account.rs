@@ -1,7 +1,7 @@
 use anyhow::Result;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
+    utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account, Amount,
 };
 use std::{fmt::Display, mem::size_of};
@@ -56,10 +56,10 @@ impl Serialize for BulkPullAccount {
         stream.write_u8(self.flags as u8)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        self.account.serialize_safe(stream);
-        self.minimum_amount.serialize_safe(stream);
-        stream.write_u8_safe(self.flags as u8);
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        self.account.serialize_safe(writer);
+        self.minimum_amount.serialize_safe(writer);
+        writer.write_u8_safe(self.flags as u8);
     }
 }
 

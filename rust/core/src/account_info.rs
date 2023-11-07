@@ -1,7 +1,10 @@
 use std::mem::size_of;
 
 use crate::{
-    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream, StreamExt},
+    utils::{
+        BufferWriter, Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream,
+        StreamExt,
+    },
     Account, Amount,
 };
 use anyhow::Result;
@@ -54,7 +57,7 @@ impl Serialize for AccountInfo {
         stream.write_u8(self.epoch as u8)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         self.head.serialize_safe(stream);
         self.representative.serialize_safe(stream);
         self.open_block.serialize_safe(stream);

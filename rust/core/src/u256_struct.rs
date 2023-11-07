@@ -77,8 +77,8 @@ macro_rules! u256_struct {
                 stream.write_bytes(&self.0)
             }
 
-            fn serialize_safe(&self, stream: &mut $crate::utils::MutStreamAdapter) {
-                stream.write_bytes_safe(&self.0)
+            fn serialize_safe(&self, writer: &mut dyn $crate::utils::BufferWriter) {
+                writer.write_bytes_safe(&self.0)
             }
         }
 

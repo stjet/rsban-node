@@ -5,7 +5,7 @@ use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     serialized_block_size,
-    utils::{MutStreamAdapter, Serialize, Stream},
+    utils::{BufferWriter, Serialize, Stream},
     BlockEnum, BlockType,
 };
 use std::{
@@ -58,8 +58,8 @@ impl Serialize for Publish {
         self.block.serialize(stream)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        self.block.serialize_safe(stream);
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        self.block.serialize_safe(writer);
     }
 }
 
@@ -90,7 +90,7 @@ impl Display for Publish {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{utils::MemoryStream, BlockBuilder, BlockType};
+    use rsnano_core::{utils::MemoryStream, BlockBuilder};
 
     #[test]
     fn serialize() {

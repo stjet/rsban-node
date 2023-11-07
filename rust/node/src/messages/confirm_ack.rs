@@ -2,7 +2,7 @@ use crate::voting::{Vote, VoteUniquer};
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::{
-    utils::{MutStreamAdapter, Serialize, Stream},
+    utils::{BufferWriter, Serialize, Stream},
     BlockType,
 };
 use std::{
@@ -49,8 +49,8 @@ impl Serialize for ConfirmAck {
         self.vote.serialize(stream)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        self.vote.serialize_safe(stream);
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        self.vote.serialize_safe(writer);
     }
 }
 

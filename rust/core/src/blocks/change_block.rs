@@ -1,7 +1,7 @@
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{
-        Deserialize, FixedSizeSerialize, MutStreamAdapter, PropertyTreeReader, PropertyTreeWriter,
+        BufferWriter, Deserialize, FixedSizeSerialize, PropertyTreeReader, PropertyTreeWriter,
         Serialize, Stream,
     },
     Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, LazyBlockHash, Link,
@@ -178,11 +178,11 @@ impl Block for ChangeBlock {
         self.hashables.previous
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        self.hashables.previous.serialize_safe(stream);
-        self.hashables.representative.serialize_safe(stream);
-        self.signature.serialize_safe(stream);
-        stream.write_bytes_safe(&self.work.to_be_bytes());
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        self.hashables.previous.serialize_safe(writer);
+        self.hashables.representative.serialize_safe(writer);
+        self.signature.serialize_safe(writer);
+        writer.write_bytes_safe(&self.work.to_be_bytes());
     }
 
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {

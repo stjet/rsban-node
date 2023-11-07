@@ -70,7 +70,7 @@ pub use unchecked_info::{UncheckedInfo, UncheckedKey};
 
 mod kdf;
 pub use kdf::KeyDerivationFunction;
-use utils::MutStreamAdapter;
+use utils::BufferWriter;
 
 use std::fmt::Write;
 use std::num::ParseIntError;
@@ -258,7 +258,7 @@ impl utils::Serialize for NoValue {
         Ok(())
     }
 
-    fn serialize_safe(&self, _stream: &mut MutStreamAdapter) {}
+    fn serialize_safe(&self, _writer: &mut dyn BufferWriter) {}
 }
 
 impl utils::Deserialize for NoValue {

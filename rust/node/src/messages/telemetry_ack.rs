@@ -2,7 +2,7 @@ use super::MessageVariant;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::utils::{
-    Deserialize, FixedSizeSerialize, MemoryStream, MutStreamAdapter, Serialize, Stream, StreamExt,
+    BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
 };
 use rsnano_core::{
     sign_message, to_hex_string, validate_message, Account, BlockHash, KeyPair, Signature,
@@ -91,31 +91,31 @@ impl TelemetryData {
           + size_of::<u64>() //active_difficulty)
     }
 
-    fn serialize_without_signature_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_without_signature_safe(&self, writer: &mut dyn BufferWriter) {
         // All values should be serialized in big endian
-        self.node_id.serialize_safe(stream);
-        stream.write_u64_be_safe(self.block_count);
-        stream.write_u64_be_safe(self.cemented_count);
-        stream.write_u64_be_safe(self.unchecked_count);
-        stream.write_u64_be_safe(self.account_count);
-        stream.write_u64_be_safe(self.bandwidth_cap);
-        stream.write_u32_be_safe(self.peer_count);
-        stream.write_u8_safe(self.protocol_version);
-        stream.write_u64_be_safe(self.uptime);
-        self.genesis_block.serialize_safe(stream);
-        stream.write_u8_safe(self.major_version);
-        stream.write_u8_safe(self.minor_version);
-        stream.write_u8_safe(self.patch_version);
-        stream.write_u8_safe(self.pre_release_version);
-        stream.write_u8_safe(self.maker);
-        stream.write_u64_be_safe(
+        self.node_id.serialize_safe(writer);
+        writer.write_u64_be_safe(self.block_count);
+        writer.write_u64_be_safe(self.cemented_count);
+        writer.write_u64_be_safe(self.unchecked_count);
+        writer.write_u64_be_safe(self.account_count);
+        writer.write_u64_be_safe(self.bandwidth_cap);
+        writer.write_u32_be_safe(self.peer_count);
+        writer.write_u8_safe(self.protocol_version);
+        writer.write_u64_be_safe(self.uptime);
+        self.genesis_block.serialize_safe(writer);
+        writer.write_u8_safe(self.major_version);
+        writer.write_u8_safe(self.minor_version);
+        writer.write_u8_safe(self.patch_version);
+        writer.write_u8_safe(self.pre_release_version);
+        writer.write_u8_safe(self.maker);
+        writer.write_u64_be_safe(
             self.timestamp
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap()
                 .as_millis() as u64,
         );
-        stream.write_u64_be_safe(self.active_difficulty);
-        stream.write_bytes_safe(&self.unknown_data);
+        writer.write_u64_be_safe(self.active_difficulty);
+        writer.write_bytes_safe(&self.unknown_data);
     }
 
     fn serialize_without_signature(&self, stream: &mut dyn Stream) -> Result<()> {
@@ -265,10 +265,10 @@ impl Serialize for TelemetryAck {
         Ok(())
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         if let Some(data) = &self.0 {
-            data.signature.serialize_safe(stream);
-            data.serialize_without_signature_safe(stream);
+            data.signature.serialize_safe(writer);
+            data.serialize_without_signature_safe(writer);
         }
     }
 }

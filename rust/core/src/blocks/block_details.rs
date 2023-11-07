@@ -1,5 +1,5 @@
 use crate::{
-    utils::{MutStreamAdapter, Serialize, Stream},
+    utils::{BufferWriter, Serialize, Stream},
     Epoch,
 };
 use anyhow::Result;
@@ -68,7 +68,7 @@ impl Serialize for BlockDetails {
         stream.write_u8(self.packed())
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         stream.write_u8_safe(self.packed())
     }
 }

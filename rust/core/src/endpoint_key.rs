@@ -1,4 +1,6 @@
-use crate::utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream};
+use crate::utils::{
+    BufferWriter, Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream,
+};
 
 #[derive(Default, PartialEq, Eq, Debug, Clone)]
 pub struct EndpointKey {
@@ -33,7 +35,7 @@ impl Serialize for EndpointKey {
         stream.write_bytes(&self.port.to_be_bytes())
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
         stream.write_bytes_safe(&self.address);
         stream.write_bytes_safe(&self.port.to_be_bytes());
     }

@@ -1,8 +1,6 @@
 use crate::utils::FfiStream;
 use num::FromPrimitive;
-use rsnano_core::{
-    utils::Serialize, Account, Amount, BlockDetails, BlockHash, BlockSideband, BlockType, Epoch,
-};
+use rsnano_core::{Account, Amount, BlockDetails, BlockHash, BlockSideband, BlockType, Epoch};
 use std::{convert::TryFrom, ffi::c_void};
 
 #[repr(C)]
@@ -29,20 +27,6 @@ pub extern "C" fn rsn_block_details_create(
     let details = BlockDetails::new(epoch, is_send, is_receive, is_epoch);
     set_block_details_dto(&details, result);
     0
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_details_serialize(
-    dto: &BlockDetailsDto,
-    stream: *mut c_void,
-) -> i32 {
-    if let Ok(details) = BlockDetails::try_from(dto) {
-        let mut stream = FfiStream::new(stream);
-        if details.serialize(&mut stream).is_ok() {
-            return 0;
-        }
-    }
-    -1
 }
 
 #[no_mangle]

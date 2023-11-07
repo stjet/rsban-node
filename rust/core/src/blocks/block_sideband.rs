@@ -1,5 +1,5 @@
 use crate::{
-    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
+    utils::{BufferWriter, Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
     Account, Amount, BlockDetails, BlockHash, BlockType, Epoch,
 };
 use num::FromPrimitive;

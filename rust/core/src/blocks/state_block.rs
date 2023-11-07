@@ -1,7 +1,7 @@
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{
-        Deserialize, FixedSizeSerialize, MutStreamAdapter, PropertyTreeReader, PropertyTreeWriter,
+        BufferWriter, Deserialize, FixedSizeSerialize, PropertyTreeReader, PropertyTreeWriter,
         Serialize, Stream,
     },
     Account, Amount, BlockHash, BlockHashBuilder, LazyBlockHash, Link, PublicKey, RawKey, Root,
@@ -254,14 +254,14 @@ impl Block for StateBlock {
         Ok(())
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        self.hashables.account.serialize_safe(stream);
-        self.hashables.previous.serialize_safe(stream);
-        self.hashables.representative.serialize_safe(stream);
-        self.hashables.balance.serialize_safe(stream);
-        self.hashables.link.serialize_safe(stream);
-        self.signature.serialize_safe(stream);
-        stream.write_bytes_safe(&self.work.to_be_bytes());
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        self.hashables.account.serialize_safe(writer);
+        self.hashables.previous.serialize_safe(writer);
+        self.hashables.representative.serialize_safe(writer);
+        self.hashables.balance.serialize_safe(writer);
+        self.hashables.link.serialize_safe(writer);
+        self.signature.serialize_safe(writer);
+        writer.write_bytes_safe(&self.work.to_be_bytes());
     }
 
     fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()> {

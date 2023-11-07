@@ -1,6 +1,5 @@
+use crate::utils::{BufferWriter, Serialize, Stream};
 use std::fmt::Write;
-
-use crate::utils::{MutStreamAdapter, Serialize, Stream};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Signature {
@@ -71,7 +70,7 @@ impl Serialize for Signature {
         stream.write_bytes(&self.bytes)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        stream.write_bytes_safe(&self.bytes)
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        writer.write_bytes_safe(&self.bytes)
     }
 }

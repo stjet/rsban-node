@@ -2,7 +2,7 @@ use super::MessageVariant;
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt},
+    utils::{BufferWriter, Deserialize, Serialize, Stream, StreamExt},
     HashOrAccount,
 };
 use std::{fmt::Display, mem::size_of};
@@ -26,10 +26,10 @@ pub enum AscPullReqType {
 }
 
 impl Serialize for AscPullReqType {
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
         match &self {
-            AscPullReqType::Blocks(blocks) => blocks.serialize_safe(stream),
-            AscPullReqType::AccountInfo(account_info) => account_info.serialize_safe(stream),
+            AscPullReqType::Blocks(blocks) => blocks.serialize_safe(writer),
+            AscPullReqType::AccountInfo(account_info) => account_info.serialize_safe(writer),
         }
     }
 
@@ -78,10 +78,10 @@ impl Serialize for BlocksReqPayload {
         Ok(())
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        stream.write_bytes_safe(self.start.as_bytes());
-        stream.write_u8_safe(self.count);
-        stream.write_u8_safe(self.start_type as u8);
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        writer.write_bytes_safe(self.start.as_bytes());
+        writer.write_u8_safe(self.count);
+        writer.write_u8_safe(self.start_type as u8);
     }
 }
 
@@ -112,9 +112,9 @@ impl Serialize for AccountInfoReqPayload {
         stream.write_u8(self.target_type as u8)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        stream.write_bytes_safe(self.target.as_bytes());
-        stream.write_u8_safe(self.target_type as u8);
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        writer.write_bytes_safe(self.target.as_bytes());
+        writer.write_u8_safe(self.target_type as u8);
     }
 }
 
@@ -190,10 +190,10 @@ impl Serialize for AscPullReq {
         self.req_type.serialize(stream)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        stream.write_u8_safe(self.payload_type() as u8);
-        stream.write_u64_be_safe(self.id);
-        self.req_type.serialize_safe(stream);
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        writer.write_u8_safe(self.payload_type() as u8);
+        writer.write_u64_be_safe(self.id);
+        self.req_type.serialize_safe(writer);
     }
 }
 

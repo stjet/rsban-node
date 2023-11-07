@@ -1,5 +1,8 @@
 use crate::{
-    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream, StreamExt},
+    utils::{
+        BufferWriter, Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream,
+        StreamExt,
+    },
     BlockHash,
 };
 
@@ -35,9 +38,9 @@ impl Serialize for ConfirmationHeightInfo {
         self.frontier.serialize(stream)
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        stream.write_u64_ne_safe(self.height);
-        self.frontier.serialize_safe(stream);
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        writer.write_u64_ne_safe(self.height);
+        self.frontier.serialize_safe(writer);
     }
 }
 

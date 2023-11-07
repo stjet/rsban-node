@@ -2,7 +2,7 @@ use super::MessageVariant;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::{
-    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
+    utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     BlockHash, HashOrAccount,
 };
 use std::{fmt::Display, mem::size_of};
@@ -86,16 +86,16 @@ impl Serialize for BulkPull {
         Ok(())
     }
 
-    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
-        self.start.serialize_safe(stream);
-        self.end.serialize_safe(stream);
+    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+        self.start.serialize_safe(writer);
+        self.end.serialize_safe(writer);
 
         if self.count > 0 {
             let mut count_buffer = [0u8; BulkPull::EXTENDED_PARAMETERS_SIZE];
             const_assert!(size_of::<u32>() < (BulkPull::EXTENDED_PARAMETERS_SIZE - 1)); // count must fit within buffer
 
             count_buffer[1..5].copy_from_slice(&self.count.to_le_bytes());
-            stream.write_bytes_safe(&count_buffer);
+            writer.write_bytes_safe(&count_buffer);
         }
     }
 }

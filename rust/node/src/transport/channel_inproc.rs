@@ -49,6 +49,7 @@ pub struct ChannelInProc {
     pub destination_endpoint: SocketAddr,
     source_node_id: Account,
     destination_node_id: Account,
+    message_serializer: Mutex<MessageSerializer>, // TODO remove Mutex!
 }
 
 impl ChannelInProc {
@@ -76,6 +77,9 @@ impl ChannelInProc {
                 last_packet_sent: now,
                 node_id: Some(source_node_id),
             }),
+            message_serializer: Mutex::new(MessageSerializer::new(
+                network_constants.protocol_info(),
+            )),
             network_constants,
             network_filter,
             stats,
@@ -97,9 +101,11 @@ impl ChannelInProc {
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,
     ) {
-        let mut serializer = MessageSerializer::new(self.network_constants.protocol_info());
-        let buffer = serializer.serialize(message).unwrap();
-        let buffer = Arc::new(Vec::from(buffer)); // TODO don't copy buffer
+        let buffer = {
+            let mut serializer = self.message_serializer.lock().unwrap();
+            let buffer = serializer.serialize(message).unwrap();
+            Arc::new(Vec::from(buffer)) // TODO don't copy buffer
+        };
         let detail = DetailType::from(message);
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
         let should_pass = self

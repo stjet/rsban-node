@@ -232,7 +232,7 @@ TEST (peer_container, reachout)
 // is from an outdated node version.
 //
 // Disabled because there is currently no way to use different network version
-TEST (DISABLE_peer_container, depeer_on_outdated_version)
+TEST (DISABLED_peer_container, depeer_on_outdated_version)
 {
 	nano::test::system system{ 2 };
 	auto & node1 = *system.nodes[0];

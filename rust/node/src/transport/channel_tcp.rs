@@ -53,7 +53,7 @@ pub struct ChannelTcp {
     pub observer: Arc<dyn IChannelTcpObserverWeakPtr>,
     pub limiter: Arc<OutboundBandwidthLimiter>,
     pub async_rt: Weak<AsyncRuntime>,
-    protocol: ProtocolInfo,
+    message_serializer: Mutex<MessageSerializer>, // TODO remove mutex
 }
 
 impl ChannelTcp {
@@ -82,7 +82,7 @@ impl ChannelTcp {
             observer,
             limiter,
             async_rt: Arc::downgrade(async_rt),
-            protocol,
+            message_serializer: Mutex::new(MessageSerializer::new(protocol)),
         }
     }
 
@@ -202,9 +202,11 @@ impl ChannelTcp {
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,
     ) {
-        let mut serializer = MessageSerializer::new(self.protocol);
-        let buffer = serializer.serialize(message).unwrap();
-        let buffer = Arc::new(Vec::from(buffer)); // TODO don't copy into vec. Pass slice directly
+        let buffer = {
+            let mut serializer = self.message_serializer.lock().unwrap();
+            let buffer = serializer.serialize(message).unwrap();
+            Arc::new(Vec::from(buffer)) // TODO don't copy into vec. Pass slice directly
+        };
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
         let should_pass = self.limiter.should_pass(buffer.len(), traffic_type.into());
         if !is_droppable_by_limiter || should_pass {

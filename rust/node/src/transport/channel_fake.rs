@@ -37,6 +37,7 @@ pub struct ChannelFake {
     endpoint: SocketAddr,
     closed: AtomicBool,
     protocol: ProtocolInfo,
+    message_serializer: Mutex<MessageSerializer>, // TODO remove Mutex!
 }
 
 impl ChannelFake {
@@ -64,6 +65,7 @@ impl ChannelFake {
             endpoint,
             closed: AtomicBool::new(false),
             protocol,
+            message_serializer: Mutex::new(MessageSerializer::new(protocol)),
         }
     }
 
@@ -74,9 +76,11 @@ impl ChannelFake {
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,
     ) {
-        let mut serializer = MessageSerializer::new(self.protocol);
-        let buffer = serializer.serialize(message).unwrap();
-        let buffer = Arc::new(Vec::from(buffer)); // TODO don't copy into vec!
+        let buffer = {
+            let mut serializer = self.message_serializer.lock().unwrap();
+            let buffer = serializer.serialize(message).unwrap();
+            Arc::new(Vec::from(buffer)) // TODO don't copy into vec!
+        };
         let detail = DetailType::from(message);
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
         let should_pass = self

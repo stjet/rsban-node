@@ -925,7 +925,7 @@ TEST (network, loopback_channel)
 
 // Ensure the network filters messages with the incorrect magic number
 // Disabled, because there is currently no way to send messages with a given network id
-TEST (DISABLE_network, filter_invalid_network_bytes)
+TEST (DISABLED_network, filter_invalid_network_bytes)
 {
 	nano::test::system system{ 2 };
 	auto & node1 = *system.nodes[0];
@@ -946,7 +946,7 @@ TEST (DISABLE_network, filter_invalid_network_bytes)
 
 // Ensure the network filters messages with the incorrect minimum version
 // Disabled, because there is currently no way to send messages with a given version
-TEST (DISABLE_network, filter_invalid_version_using)
+TEST (DISABLED_network, filter_invalid_version_using)
 {
 	nano::test::system system{ 2 };
 	auto & node1 = *system.nodes[0];

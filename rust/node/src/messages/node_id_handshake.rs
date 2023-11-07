@@ -1,11 +1,11 @@
-use super::MessageHeaderExtender;
+use super::MessageVariant;
 use crate::transport::Cookie;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     sign_message,
-    utils::{Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, MemoryStream, MutStreamAdapter, Serialize, Stream},
     validate_message, write_hex_bytes, Account, BlockHash, KeyPair, PublicKey, Signature,
 };
 use std::fmt::Display;
@@ -71,22 +71,6 @@ impl NodeIdHandshakeResponse {
         stream.to_vec()
     }
 
-    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        match &self.v2 {
-            Some(v2) => {
-                self.node_id.serialize(stream)?;
-                stream.write_bytes(&v2.salt)?;
-                v2.genesis.serialize(stream)?;
-                self.signature.serialize(stream)?;
-            }
-            None => {
-                self.node_id.serialize(stream)?;
-                self.signature.serialize(stream)?;
-            }
-        }
-        Ok(())
-    }
-
     pub fn deserialize(stream: &mut dyn Stream, extensions: BitArray<u16>) -> Result<Self> {
         if NodeIdHandshake::has_v2_flag(extensions) {
             let node_id = Account::deserialize(stream)?;
@@ -118,6 +102,39 @@ impl NodeIdHandshakeResponse {
                 + Signature::serialized_size()
         } else {
             Account::serialized_size() + Signature::serialized_size()
+        }
+    }
+}
+
+impl Serialize for NodeIdHandshakeResponse {
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        match &self.v2 {
+            Some(v2) => {
+                self.node_id.serialize(stream)?;
+                stream.write_bytes(&v2.salt)?;
+                v2.genesis.serialize(stream)?;
+                self.signature.serialize(stream)?;
+            }
+            None => {
+                self.node_id.serialize(stream)?;
+                self.signature.serialize(stream)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        match &self.v2 {
+            Some(v2) => {
+                self.node_id.serialize_safe(stream);
+                stream.write_bytes_safe(&v2.salt);
+                v2.genesis.serialize_safe(stream);
+                self.signature.serialize_safe(stream);
+            }
+            None => {
+                self.node_id.serialize_safe(stream);
+                self.signature.serialize_safe(stream);
+            }
         }
     }
 }
@@ -232,9 +249,18 @@ impl Serialize for NodeIdHandshake {
         }
         Ok(())
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        if let Some(query) = &self.query {
+            stream.write_bytes_safe(&query.cookie);
+        }
+        if let Some(response) = &self.response {
+            response.serialize_safe(stream);
+        }
+    }
 }
 
-impl MessageHeaderExtender for NodeIdHandshake {
+impl MessageVariant for NodeIdHandshake {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions.set(NodeIdHandshake::QUERY_FLAG, self.query.is_some());

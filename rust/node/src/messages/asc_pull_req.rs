@@ -1,8 +1,8 @@
-use super::MessageHeaderExtender;
+use super::MessageVariant;
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::{Deserialize, Serialize, Stream, StreamExt},
+    utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt},
     HashOrAccount,
 };
 use std::{fmt::Display, mem::size_of};
@@ -26,6 +26,13 @@ pub enum AscPullReqType {
 }
 
 impl Serialize for AscPullReqType {
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        match &self {
+            AscPullReqType::Blocks(blocks) => blocks.serialize_safe(stream),
+            AscPullReqType::AccountInfo(account_info) => account_info.serialize_safe(stream),
+        }
+    }
+
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         match &self {
             AscPullReqType::Blocks(blocks) => blocks.serialize(stream),
@@ -55,6 +62,15 @@ pub struct BlocksReqPayload {
 }
 
 impl BlocksReqPayload {
+    fn deserialize(&mut self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        self.start = HashOrAccount::deserialize(stream)?;
+        self.count = stream.read_u8()?;
+        self.start_type = HashType::deserialize(stream)?;
+        Ok(())
+    }
+}
+
+impl Serialize for BlocksReqPayload {
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         stream.write_bytes(self.start.as_bytes())?;
         stream.write_u8(self.count)?;
@@ -62,11 +78,10 @@ impl BlocksReqPayload {
         Ok(())
     }
 
-    fn deserialize(&mut self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        self.start = HashOrAccount::deserialize(stream)?;
-        self.count = stream.read_u8()?;
-        self.start_type = HashType::deserialize(stream)?;
-        Ok(())
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        stream.write_bytes_safe(self.start.as_bytes());
+        stream.write_u8_safe(self.count);
+        stream.write_u8_safe(self.start_type as u8);
     }
 }
 
@@ -77,11 +92,6 @@ pub struct AccountInfoReqPayload {
 }
 
 impl AccountInfoReqPayload {
-    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        stream.write_bytes(self.target.as_bytes())?;
-        stream.write_u8(self.target_type as u8)
-    }
-
     fn deserialize(&mut self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.target = HashOrAccount::deserialize(stream)?;
         self.target_type = HashType::deserialize(stream)?;
@@ -93,6 +103,18 @@ impl AccountInfoReqPayload {
             target: HashOrAccount::from(42),
             target_type: HashType::Account,
         }
+    }
+}
+
+impl Serialize for AccountInfoReqPayload {
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        stream.write_bytes(self.target.as_bytes())?;
+        stream.write_u8(self.target_type as u8)
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        stream.write_bytes_safe(self.target.as_bytes());
+        stream.write_u8_safe(self.target_type as u8);
     }
 }
 
@@ -167,9 +189,15 @@ impl Serialize for AscPullReq {
         stream.write_u64_be(self.id)?;
         self.req_type.serialize(stream)
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        stream.write_u8_safe(self.payload_type() as u8);
+        stream.write_u64_be_safe(self.id);
+        self.req_type.serialize_safe(stream);
+    }
 }
 
-impl MessageHeaderExtender for AscPullReq {
+impl MessageVariant for AscPullReq {
     fn header_extensions(&self, payload_len: u16) -> BitArray<u16> {
         BitArray::new(
             payload_len

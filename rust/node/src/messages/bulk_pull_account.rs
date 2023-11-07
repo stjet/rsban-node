@@ -1,10 +1,12 @@
 use anyhow::Result;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
     Account, Amount,
 };
 use std::{fmt::Display, mem::size_of};
+
+use super::MessageVariant;
 
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive, Debug)]
 #[repr(u8)]
@@ -45,11 +47,19 @@ impl BulkPullAccount {
     }
 }
 
+impl MessageVariant for BulkPullAccount {}
+
 impl Serialize for BulkPullAccount {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.account.serialize(stream)?;
         self.minimum_amount.serialize(stream)?;
         stream.write_u8(self.flags as u8)
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.account.serialize_safe(stream);
+        self.minimum_amount.serialize_safe(stream);
+        stream.write_u8_safe(self.flags as u8);
     }
 }
 

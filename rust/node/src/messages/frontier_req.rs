@@ -1,8 +1,8 @@
-use super::MessageHeaderExtender;
+use super::MessageVariant;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::{
-    utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
     Account,
 };
 use std::{fmt::Display, mem::size_of};
@@ -57,9 +57,15 @@ impl Serialize for FrontierReq {
         stream.write_bytes(&self.age.to_le_bytes())?;
         stream.write_bytes(&self.count.to_le_bytes())
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.start.serialize_safe(stream);
+        stream.write_bytes_safe(&self.age.to_le_bytes());
+        stream.write_bytes_safe(&self.count.to_le_bytes());
+    }
 }
 
-impl MessageHeaderExtender for FrontierReq {
+impl MessageVariant for FrontierReq {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions.set(Self::ONLY_CONFIRMED, self.only_confirmed);

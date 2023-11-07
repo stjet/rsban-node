@@ -1,11 +1,11 @@
-use super::MessageHeaderExtender;
+use super::MessageVariant;
 use crate::utils::{deserialize_block, BlockUniquer};
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     serialized_block_size,
-    utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
     BlockEnum, BlockHash, BlockType, Root,
 };
 use std::{
@@ -109,9 +109,21 @@ impl Serialize for ConfirmReq {
         }
         Ok(())
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        if let Some(block) = &self.block {
+            block.serialize_safe(stream);
+        } else {
+            // Write hashes & roots
+            for (hash, root) in &self.roots_hashes {
+                stream.write_bytes_safe(hash.as_bytes());
+                stream.write_bytes_safe(root.as_bytes());
+            }
+        }
+    }
 }
 
-impl MessageHeaderExtender for ConfirmReq {
+impl MessageVariant for ConfirmReq {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let block_type = match &self.block {
             Some(b) => b.block_type(),

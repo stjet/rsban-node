@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use crate::{
-    utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
     Account, Amount, Epoch,
 };
 use num::FromPrimitive;
@@ -50,6 +50,12 @@ impl Serialize for PendingInfo {
         self.source.serialize(stream)?;
         self.amount.serialize(stream)?;
         stream.write_u8(self.epoch as u8)
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.source.serialize_safe(stream);
+        self.amount.serialize_safe(stream);
+        stream.write_u8_safe(self.epoch as u8);
     }
 }
 

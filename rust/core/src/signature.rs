@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use crate::utils::Stream;
+use crate::utils::{MutStreamAdapter, Serialize, Stream};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Signature {
@@ -28,10 +28,6 @@ impl Signature {
 
     pub const fn serialized_size() -> usize {
         64
-    }
-
-    pub fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        stream.write_bytes(&self.bytes)
     }
 
     pub fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Signature> {
@@ -67,5 +63,15 @@ impl Signature {
         let mut bytes = [0; 64];
         bytes.copy_from_slice(std::slice::from_raw_parts(ptr, 64));
         Signature::from_bytes(bytes)
+    }
+}
+
+impl Serialize for Signature {
+    fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        stream.write_bytes(&self.bytes)
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        stream.write_bytes_safe(&self.bytes)
     }
 }

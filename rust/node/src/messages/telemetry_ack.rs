@@ -1,8 +1,8 @@
-use super::MessageHeaderExtender;
+use super::MessageVariant;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::utils::{
-    Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
+    Deserialize, FixedSizeSerialize, MemoryStream, MutStreamAdapter, Serialize, Stream, StreamExt,
 };
 use rsnano_core::{
     sign_message, to_hex_string, validate_message, Account, BlockHash, KeyPair, Signature,
@@ -89,6 +89,33 @@ impl TelemetryData {
           + size_of::<u8>() // maker 
           + size_of::<u64>() // timestamp 
           + size_of::<u64>() //active_difficulty)
+    }
+
+    fn serialize_without_signature_safe(&self, stream: &mut MutStreamAdapter) {
+        // All values should be serialized in big endian
+        self.node_id.serialize_safe(stream);
+        stream.write_u64_be_safe(self.block_count);
+        stream.write_u64_be_safe(self.cemented_count);
+        stream.write_u64_be_safe(self.unchecked_count);
+        stream.write_u64_be_safe(self.account_count);
+        stream.write_u64_be_safe(self.bandwidth_cap);
+        stream.write_u32_be_safe(self.peer_count);
+        stream.write_u8_safe(self.protocol_version);
+        stream.write_u64_be_safe(self.uptime);
+        self.genesis_block.serialize_safe(stream);
+        stream.write_u8_safe(self.major_version);
+        stream.write_u8_safe(self.minor_version);
+        stream.write_u8_safe(self.patch_version);
+        stream.write_u8_safe(self.pre_release_version);
+        stream.write_u8_safe(self.maker);
+        stream.write_u64_be_safe(
+            self.timestamp
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64,
+        );
+        stream.write_u64_be_safe(self.active_difficulty);
+        stream.write_bytes_safe(&self.unknown_data);
     }
 
     fn serialize_without_signature(&self, stream: &mut dyn Stream) -> Result<()> {
@@ -237,9 +264,16 @@ impl Serialize for TelemetryAck {
         }
         Ok(())
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        if let Some(data) = &self.0 {
+            data.signature.serialize_safe(stream);
+            data.serialize_without_signature_safe(stream);
+        }
+    }
 }
 
-impl MessageHeaderExtender for TelemetryAck {
+impl MessageVariant for TelemetryAck {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         match &self.0 {
             Some(data) => BitArray::new(

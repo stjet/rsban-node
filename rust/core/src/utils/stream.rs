@@ -132,6 +132,34 @@ impl<'a> MutStreamAdapter<'a> {
     pub fn bytes_written(&self) -> usize {
         self.write_index
     }
+
+    pub fn write_bytes_safe(&mut self, bytes: &[u8]) {
+        if self.write_index + bytes.len() > self.bytes.len() {
+            panic!("buffer full");
+        }
+        self.bytes[self.write_index..self.write_index + bytes.len()].copy_from_slice(bytes);
+        self.write_index += bytes.len();
+    }
+
+    pub fn write_u8_safe(&mut self, value: u8) {
+        if self.write_index >= self.bytes.len() {
+            panic!("buffer full");
+        }
+        self.bytes[self.write_index] = value;
+        self.write_index += 1;
+    }
+
+    pub fn write_u32_be_safe(&mut self, value: u32) {
+        self.write_bytes_safe(&value.to_be_bytes())
+    }
+
+    pub fn write_u64_be_safe(&mut self, value: u64) {
+        self.write_bytes_safe(&value.to_be_bytes())
+    }
+
+    pub fn write_u64_ne_safe(&mut self, value: u64) {
+        self.write_bytes_safe(&value.to_ne_bytes())
+    }
 }
 
 impl<'a> Stream for MutStreamAdapter<'a> {

@@ -57,6 +57,11 @@ impl Serialize for WalletValue {
         self.key.serialize(stream)?;
         stream.write_u64_ne(self.work)
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.key.serialize_safe(stream);
+        stream.write_u64_ne_safe(self.work);
+    }
 }
 
 impl FixedSizeSerialize for WalletValue {

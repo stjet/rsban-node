@@ -32,6 +32,11 @@ impl Serialize for EndpointKey {
         stream.write_bytes(&self.address)?;
         stream.write_bytes(&self.port.to_be_bytes())
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        stream.write_bytes_safe(&self.address);
+        stream.write_bytes_safe(&self.port.to_be_bytes());
+    }
 }
 
 impl FixedSizeSerialize for EndpointKey {

@@ -1,4 +1,4 @@
-use crate::utils::{Deserialize, FixedSizeSerialize, Serialize, Stream};
+use crate::utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 
@@ -119,6 +119,10 @@ impl From<u128> for Amount {
 impl Serialize for Amount {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         stream.write_bytes(&self.raw.to_be_bytes())
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        stream.write_bytes_safe(&self.raw.to_be_bytes());
     }
 }
 

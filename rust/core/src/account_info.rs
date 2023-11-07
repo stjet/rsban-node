@@ -53,6 +53,16 @@ impl Serialize for AccountInfo {
         stream.write_u64_ne(self.block_count)?;
         stream.write_u8(self.epoch as u8)
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.head.serialize_safe(stream);
+        self.representative.serialize_safe(stream);
+        self.open_block.serialize_safe(stream);
+        self.balance.serialize_safe(stream);
+        stream.write_u64_ne_safe(self.modified);
+        stream.write_u64_ne_safe(self.block_count);
+        stream.write_u8_safe(self.epoch as u8)
+    }
 }
 
 impl FixedSizeSerialize for AccountInfo {

@@ -1,11 +1,11 @@
-use super::MessageHeaderExtender;
+use super::MessageVariant;
 use crate::utils::{deserialize_block, BlockUniquer};
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     serialized_block_size,
-    utils::{Serialize, Stream},
+    utils::{MutStreamAdapter, Serialize, Stream},
     BlockEnum, BlockType,
 };
 use std::{
@@ -57,9 +57,13 @@ impl Serialize for Publish {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         self.block.serialize(stream)
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.block.serialize_safe(stream);
+    }
 }
 
-impl MessageHeaderExtender for Publish {
+impl MessageVariant for Publish {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         BitArray::new((self.block.block_type() as u16) << 8)
     }

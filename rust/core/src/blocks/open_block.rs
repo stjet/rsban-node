@@ -1,7 +1,8 @@
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{
-        Deserialize, FixedSizeSerialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream,
+        Deserialize, FixedSizeSerialize, MutStreamAdapter, PropertyTreeReader, PropertyTreeWriter,
+        Serialize, Stream,
     },
     Account, Amount, BlockHash, BlockHashBuilder, LazyBlockHash, Link, PublicKey, RawKey, Root,
     Signature,
@@ -179,6 +180,14 @@ impl Block for OpenBlock {
         self.signature.serialize(stream)?;
         stream.write_bytes(&self.work.to_be_bytes())?;
         Ok(())
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.hashables.source.serialize_safe(stream);
+        self.hashables.representative.serialize_safe(stream);
+        self.hashables.account.serialize_safe(stream);
+        self.signature.serialize_safe(stream);
+        stream.write_bytes_safe(&self.work.to_be_bytes());
     }
 
     fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()> {

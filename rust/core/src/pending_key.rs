@@ -1,5 +1,5 @@
 use crate::{
-    utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
     Account, Block, BlockEnum, BlockHash, StateBlock,
 };
 use primitive_types::U512;
@@ -47,6 +47,11 @@ impl Serialize for PendingKey {
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.account.serialize(stream)?;
         self.hash.serialize(stream)
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.account.serialize_safe(stream);
+        self.hash.serialize_safe(stream);
     }
 }
 

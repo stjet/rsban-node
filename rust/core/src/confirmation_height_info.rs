@@ -34,6 +34,11 @@ impl Serialize for ConfirmationHeightInfo {
         stream.write_u64_ne(self.height)?;
         self.frontier.serialize(stream)
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        stream.write_u64_ne_safe(self.height);
+        self.frontier.serialize_safe(stream);
+    }
 }
 
 impl FixedSizeSerialize for ConfirmationHeightInfo {

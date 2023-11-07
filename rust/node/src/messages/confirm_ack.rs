@@ -2,7 +2,7 @@ use crate::voting::{Vote, VoteUniquer};
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::{
-    utils::{Serialize, Stream},
+    utils::{MutStreamAdapter, Serialize, Stream},
     BlockType,
 };
 use std::{
@@ -10,7 +10,7 @@ use std::{
     sync::Arc,
 };
 
-use super::{ConfirmReq, MessageHeaderExtender};
+use super::{ConfirmReq, MessageVariant};
 
 #[derive(Clone, Debug)]
 pub struct ConfirmAck {
@@ -48,9 +48,13 @@ impl Serialize for ConfirmAck {
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.vote.serialize(stream)
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.vote.serialize_safe(stream);
+    }
 }
 
-impl MessageHeaderExtender for ConfirmAck {
+impl MessageVariant for ConfirmAck {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions |= BitArray::new((BlockType::NotABlock as u16) << 8);

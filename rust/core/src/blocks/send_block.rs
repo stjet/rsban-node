@@ -1,6 +1,9 @@
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
-    utils::{FixedSizeSerialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream},
+    utils::{
+        FixedSizeSerialize, MutStreamAdapter, PropertyTreeReader, PropertyTreeWriter, Serialize,
+        Stream,
+    },
     Account, Amount, BlockHash, BlockHashBuilder, LazyBlockHash, Link, PendingKey, PublicKey,
     RawKey, Root, Signature,
 };
@@ -18,13 +21,6 @@ pub struct SendHashables {
 impl SendHashables {
     pub fn serialized_size() -> usize {
         BlockHash::serialized_size() + Account::serialized_size() + Amount::serialized_size()
-    }
-
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.previous.serialize(stream)?;
-        self.destination.serialize(stream)?;
-        self.balance.serialize(stream)?;
-        Ok(())
     }
 
     pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
@@ -51,6 +47,21 @@ impl SendHashables {
         self.previous = BlockHash::zero();
         self.destination = Account::zero();
         self.balance = Amount::raw(0);
+    }
+}
+
+impl Serialize for SendHashables {
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.previous.serialize(stream)?;
+        self.destination.serialize(stream)?;
+        self.balance.serialize(stream)?;
+        Ok(())
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.previous.serialize_safe(stream);
+        self.destination.serialize_safe(stream);
+        self.balance.serialize_safe(stream);
     }
 }
 
@@ -235,6 +246,12 @@ impl Block for SendBlock {
         self.hashables.serialize(stream)?;
         self.signature.serialize(stream)?;
         stream.write_bytes(&self.work.to_be_bytes())
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.hashables.serialize_safe(stream);
+        self.signature.serialize_safe(stream);
+        stream.write_bytes_safe(&self.work.to_be_bytes());
     }
 
     fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()> {

@@ -2,7 +2,8 @@ use anyhow::Result;
 use rsnano_core::{
     sign_message,
     utils::{
-        Deserialize, FixedSizeSerialize, PropertyTreeWriter, SerdePropertyTree, Serialize, Stream,
+        Deserialize, FixedSizeSerialize, MutStreamAdapter, PropertyTreeWriter, SerdePropertyTree,
+        Serialize, Stream,
     },
     validate_message, Account, BlockHash, BlockHashBuilder, FullHash, KeyPair, RawKey, Signature,
 };
@@ -142,16 +143,6 @@ impl Vote {
         builder.update(self.timestamp.to_ne_bytes()).build()
     }
 
-    pub fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
-        self.voting_account.serialize(stream)?;
-        self.signature.serialize(stream)?;
-        stream.write_bytes(&self.timestamp.to_le_bytes())?;
-        for hash in &self.hashes {
-            hash.serialize(stream)?;
-        }
-        Ok(())
-    }
-
     pub fn deserialize(&mut self, stream: &mut impl Stream) -> Result<()> {
         self.voting_account = Account::deserialize(stream)?;
         self.signature = Signature::deserialize(stream)?;
@@ -178,6 +169,27 @@ impl Vote {
         + Signature::serialized_size()
         + std::mem::size_of::<u64>() // timestamp
         + (BlockHash::serialized_size() * count)
+    }
+}
+
+impl Serialize for Vote {
+    fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
+        self.voting_account.serialize(stream)?;
+        self.signature.serialize(stream)?;
+        stream.write_bytes(&self.timestamp.to_le_bytes())?;
+        for hash in &self.hashes {
+            hash.serialize(stream)?;
+        }
+        Ok(())
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.voting_account.serialize_safe(stream);
+        self.signature.serialize_safe(stream);
+        stream.write_bytes_safe(&self.timestamp.to_le_bytes());
+        for hash in &self.hashes {
+            hash.serialize_safe(stream);
+        }
     }
 }
 

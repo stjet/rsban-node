@@ -1,9 +1,11 @@
 use anyhow::Result;
-use rsnano_core::utils::{Serialize, Stream};
+use rsnano_core::utils::{MutStreamAdapter, Serialize, Stream};
 use std::{
     fmt::Display,
     net::{IpAddr, Ipv6Addr, SocketAddr},
 };
+
+use super::MessageVariant;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Keepalive {
@@ -42,6 +44,8 @@ impl Default for Keepalive {
     }
 }
 
+impl MessageVariant for Keepalive {}
+
 impl Serialize for Keepalive {
     fn serialize(&self, stream: &mut dyn Stream) -> Result<()> {
         for peer in &self.peers {
@@ -57,6 +61,21 @@ impl Serialize for Keepalive {
             }
         }
         Ok(())
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        for peer in &self.peers {
+            match peer {
+                SocketAddr::V4(_) => panic!("ipv6 expected but was ipv4"), //todo make peers IpAddrV6?
+                SocketAddr::V6(addr) => {
+                    let ip_bytes = addr.ip().octets();
+                    stream.write_bytes_safe(&ip_bytes);
+
+                    let port_bytes = addr.port().to_le_bytes();
+                    stream.write_bytes_safe(&port_bytes);
+                }
+            }
+        }
     }
 }
 

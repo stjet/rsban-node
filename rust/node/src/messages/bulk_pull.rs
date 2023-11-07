@@ -1,8 +1,8 @@
-use super::MessageHeaderExtender;
+use super::MessageVariant;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::{
-    utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
+    utils::{Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
     BlockHash, HashOrAccount,
 };
 use std::{fmt::Display, mem::size_of};
@@ -85,9 +85,22 @@ impl Serialize for BulkPull {
         }
         Ok(())
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.start.serialize_safe(stream);
+        self.end.serialize_safe(stream);
+
+        if self.count > 0 {
+            let mut count_buffer = [0u8; BulkPull::EXTENDED_PARAMETERS_SIZE];
+            const_assert!(size_of::<u32>() < (BulkPull::EXTENDED_PARAMETERS_SIZE - 1)); // count must fit within buffer
+
+            count_buffer[1..5].copy_from_slice(&self.count.to_le_bytes());
+            stream.write_bytes_safe(&count_buffer);
+        }
+    }
 }
 
-impl MessageHeaderExtender for BulkPull {
+impl MessageVariant for BulkPull {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions.set(BulkPull::COUNT_PRESENT_FLAG, self.count > 0);

@@ -1,13 +1,13 @@
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    deserialize_block_enum, serialize_block_enum,
-    utils::{Deserialize, Serialize, Stream, StreamExt},
+    deserialize_block_enum, serialize_block_enum, serialize_block_enum_safe,
+    utils::{Deserialize, MutStreamAdapter, Serialize, Stream, StreamExt},
     Account, BlockEnum, BlockHash, BlockType,
 };
 use std::{fmt::Display, mem::size_of};
 
-use super::{AscPullPayloadId, MessageHeaderExtender};
+use super::{AscPullPayloadId, MessageVariant};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum AscPullAckType {
@@ -49,6 +49,13 @@ impl AscPullAck {
         }
     }
 
+    fn serialize_pull_type_safe(&self, stream: &mut MutStreamAdapter) {
+        match &self.pull_type {
+            AscPullAckType::Blocks(blocks) => blocks.serialize_safe(stream),
+            AscPullAckType::AccountInfo(account_info) => account_info.serialize_safe(stream),
+        }
+    }
+
     fn serialize_pull_type(&self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         match &self.pull_type {
             AscPullAckType::Blocks(blocks) => blocks.serialize(stream),
@@ -71,9 +78,15 @@ impl Serialize for AscPullAck {
         stream.write_u64_be(self.id)?;
         self.serialize_pull_type(stream)
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        stream.write_u8_safe(self.payload_type() as u8);
+        stream.write_u64_be_safe(self.id);
+        self.serialize_pull_type_safe(stream);
+    }
 }
 
-impl MessageHeaderExtender for AscPullAck {
+impl MessageVariant for AscPullAck {
     fn header_extensions(&self, payload_len: u16) -> BitArray<u16> {
         BitArray::new(
             payload_len
@@ -149,6 +162,14 @@ impl Serialize for BlocksAckPayload {
         // For convenience, end with null block terminator
         stream.write_u8(BlockType::NotABlock as u8)
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        for block in self.blocks() {
+            serialize_block_enum_safe(stream, block);
+        }
+        // For convenience, end with null block terminator
+        stream.write_u8_safe(BlockType::NotABlock as u8)
+    }
 }
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
@@ -192,6 +213,15 @@ impl Serialize for AccountInfoAckPayload {
         stream.write_u64_be(self.account_block_count)?;
         self.account_conf_frontier.serialize(stream)?;
         stream.write_u64_be(self.account_conf_height)
+    }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.account.serialize_safe(stream);
+        self.account_open.serialize_safe(stream);
+        self.account_head.serialize_safe(stream);
+        stream.write_u64_be_safe(self.account_block_count);
+        self.account_conf_frontier.serialize_safe(stream);
+        stream.write_u64_be_safe(self.account_conf_height);
     }
 }
 

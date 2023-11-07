@@ -39,6 +39,11 @@ impl Serialize for QualifiedRoot {
         self.root.serialize(stream)?;
         self.previous.serialize(stream)
     }
+
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter) {
+        self.root.serialize_safe(stream);
+        self.previous.serialize_safe(stream);
+    }
 }
 
 impl FixedSizeSerialize for QualifiedRoot {

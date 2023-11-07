@@ -25,8 +25,8 @@ pub use builders::*;
 
 use crate::{
     utils::{
-        Deserialize, MemoryStream, PropertyTreeReader, PropertyTreeWriter, SerdePropertyTree,
-        Stream, StreamAdapter,
+        Deserialize, MemoryStream, MutStreamAdapter, PropertyTreeReader, PropertyTreeWriter,
+        SerdePropertyTree, Stream, StreamAdapter,
     },
     Account, Amount, BlockHash, BlockHashBuilder, Epoch, FullHash, KeyPair, Link, QualifiedRoot,
     Root, Signature, WorkVersion,
@@ -116,6 +116,7 @@ pub trait Block: FullHash {
     fn work(&self) -> u64;
     fn set_work(&mut self, work: u64);
     fn previous(&self) -> BlockHash;
+    fn serialize_safe(&self, stream: &mut MutStreamAdapter);
     fn serialize(&self, stream: &mut dyn Stream) -> anyhow::Result<()>;
     fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> anyhow::Result<()>;
     fn to_json(&self) -> anyhow::Result<String> {
@@ -362,6 +363,12 @@ pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result
         "state" => StateBlock::deserialize_json(ptree).map(BlockEnum::State),
         _ => Err(anyhow!("unsupported block type")),
     }
+}
+
+pub fn serialize_block_enum_safe(stream: &mut MutStreamAdapter, block: &BlockEnum) {
+    let block_type = block.block_type() as u8;
+    stream.write_u8_safe(block_type);
+    block.serialize_safe(stream);
 }
 
 pub fn serialize_block_enum(stream: &mut dyn Stream, block: &BlockEnum) -> anyhow::Result<()> {

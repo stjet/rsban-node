@@ -1,6 +1,6 @@
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
-use rsnano_core::{Account, BlockHash, FullHash, RawKey, Signature};
+use rsnano_core::{utils::Serialize, Account, BlockHash, FullHash, RawKey, Signature};
 
 use crate::{utils::FfiStream, FfiPropertyTreeWriter, StringDto};
 use rsnano_node::voting::Vote;

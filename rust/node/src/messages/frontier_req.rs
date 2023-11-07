@@ -1,4 +1,4 @@
-use super::{MessageHeader, MessageType, MessageVariant};
+use super::MessageHeaderExtender;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::{
@@ -33,19 +33,14 @@ impl FrontierReq {
 
     pub const ONLY_CONFIRMED: usize = 1;
 
-    pub fn is_confirmed_present(header: &MessageHeader) -> bool {
-        header.extensions[FrontierReq::ONLY_CONFIRMED]
-    }
-
-    pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
-        debug_assert!(header.message_type == MessageType::FrontierReq);
+    pub fn deserialize(stream: &mut impl Stream, extensions: BitArray<u16>) -> Result<Self> {
         let start = Account::deserialize(stream)?;
         let mut buffer = [0u8; 4];
         stream.read_bytes(&mut buffer, 4)?;
         let age = u32::from_le_bytes(buffer);
         stream.read_bytes(&mut buffer, 4)?;
         let count = u32::from_le_bytes(buffer);
-        let only_confirmed = Self::is_confirmed_present(header);
+        let only_confirmed = extensions[FrontierReq::ONLY_CONFIRMED];
 
         Ok(FrontierReq {
             start,
@@ -64,7 +59,7 @@ impl Serialize for FrontierReq {
     }
 }
 
-impl MessageVariant for FrontierReq {
+impl MessageHeaderExtender for FrontierReq {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions.set(Self::ONLY_CONFIRMED, self.only_confirmed);

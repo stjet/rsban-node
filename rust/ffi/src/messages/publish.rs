@@ -20,12 +20,16 @@ pub extern "C" fn rsn_message_publish_clone(handle: &MessageHandle) -> *mut Mess
 }
 
 fn get_publish_payload(handle: &MessageHandle) -> &Publish {
-    let Message::Publish(payload) = &handle.message else {panic!("not a payload message")};
+    let Message::Publish(payload) = &handle.message else {
+        panic!("not a payload message")
+    };
     payload
 }
 
 fn get_publish_payload_mut(handle: &mut MessageHandle) -> &mut Publish {
-    let Message::Publish(payload) = &mut handle.message else {panic!("not a payload message")};
+    let Message::Publish(payload) = &mut handle.message else {
+        panic!("not a payload message")
+    };
     payload
 }
 

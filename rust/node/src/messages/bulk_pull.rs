@@ -1,4 +1,4 @@
-use super::{MessageHeader, MessageType, MessageVariant};
+use super::{MessageHeader, MessageHeaderExtender, MessageType};
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::{
@@ -29,22 +29,21 @@ impl BulkPull {
         }
     }
 
-    pub fn serialized_size(header: &MessageHeader) -> usize {
+    pub fn serialized_size(extensions: BitArray<u16>) -> usize {
         HashOrAccount::serialized_size()
             + BlockHash::serialized_size()
-            + (if header.extensions[BulkPull::COUNT_PRESENT_FLAG] {
+            + (if extensions[BulkPull::COUNT_PRESENT_FLAG] {
                 BulkPull::EXTENDED_PARAMETERS_SIZE
             } else {
                 0
             })
     }
 
-    pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
-        debug_assert!(header.message_type == MessageType::BulkPull);
+    pub fn deserialize(stream: &mut impl Stream, extensions: BitArray<u16>) -> Result<Self> {
         let start = HashOrAccount::deserialize(stream)?;
         let end = BlockHash::deserialize(stream)?;
 
-        let count = if header.extensions[BulkPull::COUNT_PRESENT_FLAG] {
+        let count = if extensions[BulkPull::COUNT_PRESENT_FLAG] {
             let mut extended_parameters_buffers = [0u8; BulkPull::EXTENDED_PARAMETERS_SIZE];
             const_assert!(size_of::<u32>() < (BulkPull::EXTENDED_PARAMETERS_SIZE - 1)); // "count must fit within buffer")
 
@@ -61,7 +60,7 @@ impl BulkPull {
             0
         };
 
-        let ascending = header.extensions[BulkPull::ASCENDING_FLAG];
+        let ascending = extensions[BulkPull::ASCENDING_FLAG];
 
         Ok(BulkPull {
             start,
@@ -88,7 +87,7 @@ impl Serialize for BulkPull {
     }
 }
 
-impl MessageVariant for BulkPull {
+impl MessageHeaderExtender for BulkPull {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions.set(BulkPull::COUNT_PRESENT_FLAG, self.count > 0);

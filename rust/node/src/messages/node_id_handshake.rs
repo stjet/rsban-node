@@ -1,4 +1,4 @@
-use super::{MessageHeader, MessageType, MessageVariant};
+use super::MessageHeaderExtender;
 use crate::transport::Cookie;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
@@ -87,8 +87,8 @@ impl NodeIdHandshakeResponse {
         Ok(())
     }
 
-    pub fn deserialize(stream: &mut dyn Stream, header: &MessageHeader) -> Result<Self> {
-        if NodeIdHandshake::has_v2_flag(header) {
+    pub fn deserialize(stream: &mut dyn Stream, extensions: BitArray<u16>) -> Result<Self> {
+        if NodeIdHandshake::has_v2_flag(extensions) {
             let node_id = Account::deserialize(stream)?;
             let mut salt = [0u8; 32];
             stream.read_bytes(&mut salt, 32)?;
@@ -110,8 +110,8 @@ impl NodeIdHandshakeResponse {
         }
     }
 
-    pub fn serialized_size(header: &MessageHeader) -> usize {
-        if NodeIdHandshake::has_v2_flag(header) {
+    pub fn serialized_size(extensions: BitArray<u16>) -> usize {
+        if NodeIdHandshake::has_v2_flag(extensions) {
             Account::serialized_size()
                 + 32 // salt
                 + BlockHash::serialized_size()
@@ -140,50 +140,46 @@ impl NodeIdHandshake {
     pub const RESPONSE_FLAG: usize = 1;
     pub const V2_FLAG: usize = 2;
 
-    pub fn is_query(header: &MessageHeader) -> bool {
-        header.message_type == MessageType::NodeIdHandshake
-            && header.extensions[NodeIdHandshake::QUERY_FLAG]
+    pub fn is_query(extensions: BitArray<u16>) -> bool {
+        extensions[NodeIdHandshake::QUERY_FLAG]
     }
 
-    pub fn is_response(header: &MessageHeader) -> bool {
-        header.message_type == MessageType::NodeIdHandshake
-            && header.extensions[NodeIdHandshake::RESPONSE_FLAG]
+    pub fn is_response(extensions: BitArray<u16>) -> bool {
+        extensions[NodeIdHandshake::RESPONSE_FLAG]
     }
 
-    pub fn has_v2_flag(header: &MessageHeader) -> bool {
-        debug_assert!(header.message_type == MessageType::NodeIdHandshake);
-        header.extensions[NodeIdHandshake::V2_FLAG]
+    pub fn has_v2_flag(extensions: BitArray<u16>) -> bool {
+        extensions[NodeIdHandshake::V2_FLAG]
     }
 
-    pub fn serialized_size(header: &MessageHeader) -> usize {
+    pub fn serialized_size(extensions: BitArray<u16>) -> usize {
         let mut size = 0;
-        if Self::is_query(header) {
+        if Self::is_query(extensions) {
             size += 32
         }
-        if Self::is_response(header) {
-            size += NodeIdHandshakeResponse::serialized_size(header);
+        if Self::is_response(extensions) {
+            size += NodeIdHandshakeResponse::serialized_size(extensions);
         }
         size
     }
 
-    pub fn deserialize(stream: &mut dyn Stream, header: &MessageHeader) -> Result<Self> {
-        debug_assert!(header.message_type == MessageType::NodeIdHandshake);
-        let query = if NodeIdHandshake::is_query(&header) {
+    pub fn deserialize(stream: &mut dyn Stream, extensions: BitArray<u16>) -> Result<Self> {
+        let query = if NodeIdHandshake::is_query(extensions) {
             let mut cookie = [0u8; 32];
             stream.read_bytes(&mut cookie, 32)?;
             Some(NodeIdHandshakeQuery { cookie })
         } else {
             None
         };
-        let response = if NodeIdHandshake::is_response(&header) {
-            Some(NodeIdHandshakeResponse::deserialize(stream, &header)?)
+        let response = if NodeIdHandshake::is_response(extensions) {
+            Some(NodeIdHandshakeResponse::deserialize(stream, extensions)?)
         } else {
             None
         };
         Ok(Self {
             query,
             response,
-            is_v2: Self::has_v2_flag(header),
+            is_v2: Self::has_v2_flag(extensions),
         })
     }
 
@@ -238,7 +234,7 @@ impl Serialize for NodeIdHandshake {
     }
 }
 
-impl MessageVariant for NodeIdHandshake {
+impl MessageHeaderExtender for NodeIdHandshake {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions.set(NodeIdHandshake::QUERY_FLAG, self.query.is_some());

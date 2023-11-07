@@ -10,7 +10,7 @@ use std::{
     sync::Arc,
 };
 
-use super::MessageVariant;
+use super::{ConfirmReq, MessageHeaderExtender};
 
 #[derive(Clone, Debug)]
 pub struct ConfirmAck {
@@ -20,7 +20,8 @@ pub struct ConfirmAck {
 impl ConfirmAck {
     pub const HASHES_MAX: usize = 12;
 
-    pub fn serialized_size(count: u8) -> usize {
+    pub fn serialized_size(extensions: BitArray<u16>) -> usize {
+        let count = ConfirmReq::count(extensions);
         Vote::serialized_size(count as usize)
     }
 
@@ -49,7 +50,7 @@ impl Serialize for ConfirmAck {
     }
 }
 
-impl MessageVariant for ConfirmAck {
+impl MessageHeaderExtender for ConfirmAck {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
         extensions |= BitArray::new((BlockType::NotABlock as u16) << 8);

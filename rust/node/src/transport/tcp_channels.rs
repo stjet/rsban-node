@@ -673,8 +673,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 // the header type should in principle be checked after checking the network bytes and the version numbers, I will not change it here since the benefits do not outweight the difficulties
 
-                let Message::NodeIdHandshake(handshake) = &message.message
-                else {
+                let Message::NodeIdHandshake(handshake) = &message.message else {
                     if this_l
                         .node_config
                         .logging

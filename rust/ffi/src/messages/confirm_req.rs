@@ -52,7 +52,9 @@ pub extern "C" fn rsn_message_confirm_req_clone(handle: &MessageHandle) -> *mut 
 }
 
 unsafe fn get_payload(handle: &MessageHandle) -> &ConfirmReq {
-    let Message::ConfirmReq(payload) = &handle.message else {panic!("not a confirm_req_payload")};
+    let Message::ConfirmReq(payload) = &handle.message else {
+        panic!("not a confirm_req_payload")
+    };
     payload
 }
 
@@ -100,11 +102,6 @@ pub unsafe extern "C" fn rsn_message_confirm_req_roots_string(
     result: *mut StringDto,
 ) {
     (*result) = get_payload(handle).roots_string().into();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_confirm_req_size(block_type: u8, count: usize) -> usize {
-    ConfirmReq::serialized_size(BlockType::from_u8(block_type).unwrap(), count as u8)
 }
 
 #[no_mangle]

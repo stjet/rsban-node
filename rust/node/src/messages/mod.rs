@@ -34,9 +34,6 @@ pub use bulk_pull_account::*;
 mod telemetry_ack;
 pub use telemetry_ack::*;
 
-mod telemetry_req;
-pub use telemetry_req::*;
-
 mod asc_pull_req;
 pub use asc_pull_req::*;
 

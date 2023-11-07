@@ -36,7 +36,9 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_req_clone(
 }
 
 unsafe fn get_payload(handle: &MessageHandle) -> &BulkPull {
-    let Message::BulkPull(payload) = &handle.message else {panic!("not a bulk_pull message")};
+    let Message::BulkPull(payload) = &handle.message else {
+        panic!("not a bulk_pull message")
+    };
     payload
 }
 

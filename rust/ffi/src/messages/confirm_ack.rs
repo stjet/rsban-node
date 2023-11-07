@@ -19,7 +19,9 @@ pub extern "C" fn rsn_message_confirm_ack_clone(handle: &MessageHandle) -> *mut 
 }
 
 unsafe fn get_payload(handle: &MessageHandle) -> &ConfirmAck {
-    let Message::ConfirmAck(payload) = &handle.message else {panic!("not a confirm_ack message")};
+    let Message::ConfirmAck(payload) = &handle.message else {
+        panic!("not a confirm_ack message")
+    };
     payload
 }
 
@@ -27,11 +29,6 @@ unsafe fn get_payload(handle: &MessageHandle) -> &ConfirmAck {
 pub unsafe extern "C" fn rsn_message_confirm_ack_vote(handle: &MessageHandle) -> *mut VoteHandle {
     let vote = get_payload(handle).vote.clone();
     Box::into_raw(Box::new(VoteHandle::new(vote)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_confirm_ack_size(count: usize) -> usize {
-    ConfirmAck::serialized_size(count as u8)
 }
 
 #[no_mangle]

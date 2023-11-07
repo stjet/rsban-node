@@ -342,11 +342,6 @@ std::string nano::confirm_req::roots_string () const
 	return rsnano::convert_dto_to_string (dto);
 }
 
-std::size_t nano::confirm_req::size (nano::block_type type_a, std::size_t count)
-{
-	return rsnano::rsn_message_confirm_req_size (static_cast<uint8_t> (type_a), count);
-}
-
 std::string nano::confirm_req::to_string () const
 {
 	rsnano::StringDto string_dto;
@@ -388,11 +383,6 @@ bool nano::confirm_ack::operator== (nano::confirm_ack const & other_a) const
 void nano::confirm_ack::visit (nano::message_visitor & visitor_a) const
 {
 	visitor_a.confirm_ack (*this);
-}
-
-std::size_t nano::confirm_ack::size (std::size_t count)
-{
-	return rsnano::rsn_message_confirm_ack_size (count);
 }
 
 std::shared_ptr<nano::vote> nano::confirm_ack::get_vote () const

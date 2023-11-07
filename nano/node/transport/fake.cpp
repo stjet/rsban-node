@@ -15,7 +15,7 @@ namespace
 rsnano::ChannelHandle * create_fake_channel (nano::node & node)
 {
 	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (node.network->endpoint ()) };
-	auto network_dto { node.network_params.network.to_dto() };
+	auto network_dto{ node.network_params.network.to_dto () };
 	return rsnano::rsn_channel_fake_create (
 	node.network->tcp_channels->get_next_channel_id (),
 	node.async_rt.handle,

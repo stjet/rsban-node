@@ -1,4 +1,3 @@
-use super::{MessageHeader, MessageType};
 use anyhow::Result;
 use rsnano_core::utils::{Serialize, Stream};
 use std::{
@@ -12,8 +11,7 @@ pub struct Keepalive {
 }
 
 impl Keepalive {
-    pub fn deserialize(header: &MessageHeader, stream: &mut impl Stream) -> Result<Self> {
-        debug_assert!(header.message_type == MessageType::Keepalive);
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
         let mut peers = empty_peers();
 
         for i in 0..8 {

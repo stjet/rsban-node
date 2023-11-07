@@ -1,4 +1,4 @@
-use super::{MessageHeader, MessageVariant};
+use super::{MessageHeader, MessageHeaderExtender};
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::utils::{
@@ -179,12 +179,12 @@ impl TelemetryData {
 pub struct TelemetryAck(pub Option<TelemetryData>);
 
 impl TelemetryAck {
-    pub fn size_from_header(header: &MessageHeader) -> usize {
-        (header.extensions.data & TelemetryData::SIZE_MASK) as usize
+    pub fn serialized_size(extensions: BitArray<u16>) -> usize {
+        (extensions.data & TelemetryData::SIZE_MASK) as usize
     }
 
-    pub fn deserialize(stream: &mut dyn Stream, header: &MessageHeader) -> Result<Self> {
-        let payload_length = Self::size_from_header(header);
+    pub fn deserialize(stream: &mut dyn Stream, extensions: BitArray<u16>) -> Result<Self> {
+        let payload_length = Self::serialized_size(extensions);
         if payload_length == 0 {
             return Ok(Self(None));
         }
@@ -239,7 +239,7 @@ impl Serialize for TelemetryAck {
     }
 }
 
-impl MessageVariant for TelemetryAck {
+impl MessageHeaderExtender for TelemetryAck {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         match &self.0 {
             Some(data) => BitArray::new(

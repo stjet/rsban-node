@@ -35,7 +35,9 @@ pub unsafe extern "C" fn rsn_message_frontier_req_clone(
 }
 
 unsafe fn get_payload(handle: &MessageHandle) -> &FrontierReq {
-    let Message::FrontierReq(payload) = &handle.message else { panic!("not a frontier_req")};
+    let Message::FrontierReq(payload) = &handle.message else {
+        panic!("not a frontier_req")
+    };
     payload
 }
 

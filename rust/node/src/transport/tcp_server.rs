@@ -673,7 +673,7 @@ impl MessageVisitor for RealtimeMessageVisitorImpl {
             | Message::ConfirmReq(_)
             | Message::FrontierReq(_)
             | Message::TelemetryAck(_) => self.process = true,
-            Message::TelemetryReq(_) => {
+            Message::TelemetryReq => {
                 // Only handle telemetry requests if they are outside of the cooldown period
                 if self.server.is_outside_cooldown_period() {
                     self.server.set_last_telemetry_req();

@@ -7,7 +7,7 @@ use rsnano_core::{
 };
 use std::{fmt::Display, mem::size_of};
 
-use super::{AscPullPayloadId, MessageHeader, MessageType, MessageVariant};
+use super::{AscPullPayloadId, MessageHeaderExtender};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum AscPullAckType {
@@ -22,8 +22,7 @@ pub struct AscPullAck {
 }
 
 impl AscPullAck {
-    pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> anyhow::Result<Self> {
-        debug_assert!(header.message_type == MessageType::AscPullAck);
+    pub fn deserialize(stream: &mut impl Stream) -> anyhow::Result<Self> {
         let pull_type_code = AscPullPayloadId::from_u8(stream.read_u8()?)
             .ok_or_else(|| anyhow!("Unknown asc_pull_type"))?;
         let id = stream.read_u64_be()?;
@@ -57,8 +56,8 @@ impl AscPullAck {
         }
     }
 
-    pub fn serialized_size(header: &MessageHeader) -> usize {
-        let payload_length = header.extensions.data as usize;
+    pub fn serialized_size(extensions: BitArray<u16>) -> usize {
+        let payload_length = extensions.data as usize;
 
         size_of::<u8>() // type code 
         + size_of::<u64>() // id
@@ -74,7 +73,7 @@ impl Serialize for AscPullAck {
     }
 }
 
-impl MessageVariant for AscPullAck {
+impl MessageHeaderExtender for AscPullAck {
     fn header_extensions(&self, payload_len: u16) -> BitArray<u16> {
         BitArray::new(
             payload_len

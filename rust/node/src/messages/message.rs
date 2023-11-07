@@ -3,13 +3,7 @@ use crate::{stats::DetailType, utils::BlockUniquer, voting::VoteUniquer};
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::utils::{Serialize, Stream};
-use std::{fmt::Display, ops::Deref};
-
-pub trait MessageVariant: Serialize + Display + std::fmt::Debug {
-    fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
-        Default::default()
-    }
-}
+use std::fmt::Display;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Message {
@@ -25,7 +19,13 @@ pub enum Message {
     FrontierReq(FrontierReq),
     NodeIdHandshake(NodeIdHandshake),
     TelemetryAck(TelemetryAck),
-    TelemetryReq(TelemetryReq),
+    TelemetryReq,
+}
+
+pub trait MessageHeaderExtender {
+    fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
+        Default::default()
+    }
 }
 
 impl Message {
@@ -42,8 +42,7 @@ impl Message {
             Message::FrontierReq(x) => x.serialize(stream),
             Message::NodeIdHandshake(x) => x.serialize(stream),
             Message::TelemetryAck(x) => x.serialize(stream),
-            Message::TelemetryReq(x) => x.serialize(stream),
-            Message::BulkPush => Ok(()),
+            _ => Ok(()),
         }
     }
 
@@ -61,7 +60,7 @@ impl Message {
             Message::FrontierReq(_) => MessageType::FrontierReq,
             Message::NodeIdHandshake(_) => MessageType::NodeIdHandshake,
             Message::TelemetryAck(_) => MessageType::TelemetryAck,
-            Message::TelemetryReq(_) => MessageType::TelemetryReq,
+            Message::TelemetryReq => MessageType::TelemetryReq,
         }
     }
 
@@ -88,42 +87,40 @@ impl Message {
         vote_uniquer: Option<&VoteUniquer>,
     ) -> Result<Self> {
         let msg = match header.message_type {
-            MessageType::Keepalive => Message::Keepalive(Keepalive::deserialize(&header, stream)?),
+            MessageType::Keepalive => Message::Keepalive(Keepalive::deserialize(stream)?),
             MessageType::Publish => Message::Publish(Publish::deserialize(
                 stream,
-                &header,
+                header.extensions,
                 digest,
                 block_uniquer,
             )?),
-            MessageType::AscPullAck => {
-                Message::AscPullAck(AscPullAck::deserialize(stream, &header)?)
+            MessageType::AscPullAck => Message::AscPullAck(AscPullAck::deserialize(stream)?),
+            MessageType::AscPullReq => Message::AscPullReq(AscPullReq::deserialize(stream)?),
+            MessageType::BulkPull => {
+                Message::BulkPull(BulkPull::deserialize(stream, header.extensions)?)
             }
-            MessageType::AscPullReq => {
-                Message::AscPullReq(AscPullReq::deserialize(stream, &header)?)
-            }
-            MessageType::BulkPull => Message::BulkPull(BulkPull::deserialize(stream, &header)?),
             MessageType::BulkPullAccount => {
-                Message::BulkPullAccount(BulkPullAccount::deserialize(stream, &header)?)
+                Message::BulkPullAccount(BulkPullAccount::deserialize(stream)?)
             }
             MessageType::BulkPush => Message::BulkPush,
             MessageType::ConfirmAck => {
                 Message::ConfirmAck(ConfirmAck::deserialize(stream, vote_uniquer)?)
             }
-            MessageType::ConfirmReq => {
-                Message::ConfirmReq(ConfirmReq::deserialize(stream, &header, block_uniquer)?)
-            }
+            MessageType::ConfirmReq => Message::ConfirmReq(ConfirmReq::deserialize(
+                stream,
+                header.extensions,
+                block_uniquer,
+            )?),
             MessageType::FrontierReq => {
-                Message::FrontierReq(FrontierReq::deserialize(stream, &header)?)
+                Message::FrontierReq(FrontierReq::deserialize(stream, header.extensions)?)
             }
             MessageType::NodeIdHandshake => {
-                Message::NodeIdHandshake(NodeIdHandshake::deserialize(stream, &header)?)
+                Message::NodeIdHandshake(NodeIdHandshake::deserialize(stream, header.extensions)?)
             }
             MessageType::TelemetryAck => {
-                Message::TelemetryAck(TelemetryAck::deserialize(stream, &header)?)
+                Message::TelemetryAck(TelemetryAck::deserialize(stream, header.extensions)?)
             }
-            MessageType::TelemetryReq => {
-                Message::TelemetryReq(TelemetryReq::deserialize(stream, &header)?)
-            }
+            MessageType::TelemetryReq => Message::TelemetryReq,
             MessageType::Invalid | MessageType::NotAType => bail!("invalid message type"),
         };
         Ok(msg)
@@ -138,6 +135,19 @@ impl From<&Message> for DetailType {
 
 impl Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.deref(), f)
+        match &self {
+            Message::Keepalive(x) => x.fmt(f),
+            Message::Publish(x) => x.fmt(f),
+            Message::AscPullAck(x) => x.fmt(f),
+            Message::AscPullReq(x) => x.fmt(f),
+            Message::BulkPull(x) => x.fmt(f),
+            Message::BulkPullAccount(x) => x.fmt(f),
+            Message::ConfirmAck(x) => x.fmt(f),
+            Message::ConfirmReq(x) => x.fmt(f),
+            Message::FrontierReq(x) => x.fmt(f),
+            Message::NodeIdHandshake(x) => x.fmt(f),
+            Message::TelemetryAck(x) => x.fmt(f),
+            _ => Ok(()),
+        }
     }
 }

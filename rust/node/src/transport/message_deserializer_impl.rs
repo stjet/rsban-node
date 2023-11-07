@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn exact_telemetry_req() {
-        test_deserializer(&Message::TelemetryReq(TelemetryReq {}));
+        test_deserializer(&Message::TelemetryReq);
     }
 
     #[test]
@@ -251,7 +251,7 @@ mod tests {
 
     #[test]
     fn exact_bulk_push() {
-        test_deserializer(&Message::BulkPush(BulkPushPayload {}));
+        test_deserializer(&Message::BulkPush);
     }
 
     #[test]

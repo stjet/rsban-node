@@ -115,7 +115,6 @@ public:
 	void visit (nano::message_visitor &) const override;
 	bool operator== (nano::confirm_req const &) const;
 	std::string roots_string () const;
-	static std::size_t size (nano::block_type, std::size_t = 0);
 	std::shared_ptr<nano::block> get_block () const;
 	std::vector<std::pair<nano::block_hash, nano::root>> get_roots_hashes () const;
 	std::string to_string () const;
@@ -129,7 +128,6 @@ public:
 	confirm_ack (rsnano::MessageHandle * handle_a);
 	void visit (nano::message_visitor &) const override;
 	bool operator== (nano::confirm_ack const &) const;
-	static std::size_t size (std::size_t count);
 	std::shared_ptr<nano::vote> get_vote () const;
 	std::string to_string () const;
 };

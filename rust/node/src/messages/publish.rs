@@ -1,16 +1,17 @@
+use super::MessageHeaderExtender;
 use crate::utils::{deserialize_block, BlockUniquer};
 use anyhow::Result;
 use bitvec::prelude::BitArray;
+use num_traits::FromPrimitive;
 use rsnano_core::{
+    serialized_block_size,
     utils::{Serialize, Stream},
-    BlockEnum,
+    BlockEnum, BlockType,
 };
 use std::{
     fmt::{Debug, Display},
     sync::Arc,
 };
-
-use super::{MessageHeader, MessageType, MessageVariant};
 
 #[derive(Clone, Eq)]
 pub struct Publish {
@@ -23,17 +24,26 @@ impl Publish {
 
     pub fn deserialize(
         stream: &mut impl Stream,
-        header: &MessageHeader,
+        extensions: BitArray<u16>,
         digest: u128,
         uniquer: Option<&BlockUniquer>,
     ) -> Result<Self> {
-        debug_assert!(header.message_type == MessageType::Publish);
         let payload = Publish {
-            block: deserialize_block(header.block_type(), stream, uniquer)?,
+            block: deserialize_block(Self::block_type(extensions), stream, uniquer)?,
             digest,
         };
 
         Ok(payload)
+    }
+
+    pub fn serialized_size(extensions: BitArray<u16>) -> usize {
+        serialized_block_size(Self::block_type(extensions))
+    }
+
+    fn block_type(extensions: BitArray<u16>) -> BlockType {
+        let mut value = extensions & BitArray::new(Self::BLOCK_TYPE_MASK);
+        value.shift_left(8);
+        FromPrimitive::from_u16(value.data).unwrap_or(BlockType::Invalid)
     }
 }
 
@@ -49,7 +59,7 @@ impl Serialize for Publish {
     }
 }
 
-impl MessageVariant for Publish {
+impl MessageHeaderExtender for Publish {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         BitArray::new((self.block.block_type() as u16) << 8)
     }
@@ -87,10 +97,8 @@ mod tests {
         let mut stream = MemoryStream::new();
         publish1.serialize(&mut stream).unwrap();
 
-        let mut header = MessageHeader::new(MessageType::Publish, Default::default());
-        header.set_block_type(BlockType::State);
-
-        let publish2 = Publish::deserialize(&mut stream, &header, 123, None).unwrap();
+        let extensions = publish1.header_extensions(0);
+        let publish2 = Publish::deserialize(&mut stream, extensions, 123, None).unwrap();
         assert_eq!(publish1, publish2);
     }
 }

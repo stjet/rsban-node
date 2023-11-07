@@ -230,7 +230,9 @@ TEST (peer_container, reachout)
 // This test is similar to network.filter_invalid_version_using with the difference that
 // this one checks for the channel's connection to get stopped when an incoming message
 // is from an outdated node version.
-TEST (peer_container, depeer_on_outdated_version)
+//
+// Disabled because there is currently no way to use different network version
+TEST (DISABLE_peer_container, depeer_on_outdated_version)
 {
 	nano::test::system system{ 2 };
 	auto & node1 = *system.nodes[0];

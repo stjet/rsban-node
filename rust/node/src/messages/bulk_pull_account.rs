@@ -23,8 +23,7 @@ pub struct BulkPullAccount {
 }
 
 impl BulkPullAccount {
-    pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> Result<Self> {
-        debug_assert!(header.message_type == MessageType::BulkPullAccount);
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
         let payload = Self {
             account: Account::deserialize(stream)?,
             minimum_amount: Amount::deserialize(stream)?,

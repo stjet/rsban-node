@@ -1,4 +1,4 @@
-use super::{MessageHeader, MessageType, MessageVariant};
+use super::{MessageHeader, MessageHeaderExtender, MessageType};
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
@@ -126,8 +126,7 @@ impl Display for AscPullReq {
 }
 
 impl AscPullReq {
-    pub fn deserialize(stream: &mut impl Stream, header: &MessageHeader) -> anyhow::Result<Self> {
-        debug_assert!(header.message_type == MessageType::AscPullReq);
+    pub fn deserialize(stream: &mut impl Stream) -> anyhow::Result<Self> {
         let pull_type = AscPullPayloadId::from_u8(stream.read_u8()?)
             .ok_or_else(|| anyhow!("Unknown asc_pull_type"))?;
         let id = stream.read_u64_be()?;
@@ -154,8 +153,8 @@ impl AscPullReq {
         }
     }
 
-    pub fn serialized_size(header: &MessageHeader) -> usize {
-        let payload_len = header.extensions.data as usize;
+    pub fn serialized_size(extensions: BitArray<u16>) -> usize {
+        let payload_len = extensions.data as usize;
         size_of::<u8>() // pull type
         + size_of::<u64>() // id
         + payload_len
@@ -170,7 +169,7 @@ impl Serialize for AscPullReq {
     }
 }
 
-impl MessageVariant for AscPullReq {
+impl MessageHeaderExtender for AscPullReq {
     fn header_extensions(&self, payload_len: u16) -> BitArray<u16> {
         BitArray::new(
             payload_len

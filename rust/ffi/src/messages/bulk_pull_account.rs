@@ -8,12 +8,16 @@ use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount};
 
 unsafe fn get_payload_mut(message_handle: &mut MessageHandle) -> &mut BulkPullAccount {
-    let Message::BulkPullAccount(payload) = &mut message_handle.message else {panic!("not a bulk_pull_account message")};
+    let Message::BulkPullAccount(payload) = &mut message_handle.message else {
+        panic!("not a bulk_pull_account message")
+    };
     payload
 }
 
 unsafe fn get_payload(message_handle: &MessageHandle) -> &BulkPullAccount {
-    let Message::BulkPullAccount(payload) = &message_handle.message else {panic!("not a bulk_pull_account message")};
+    let Message::BulkPullAccount(payload) = &message_handle.message else {
+        panic!("not a bulk_pull_account message")
+    };
     payload
 }
 

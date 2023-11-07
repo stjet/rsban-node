@@ -2,9 +2,8 @@ use anyhow::Result;
 use bitvec::prelude::*;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    serialized_block_size,
     utils::{MemoryStream, Serialize, Stream},
-    BlockType, Networks,
+    Networks,
 };
 use std::{
     fmt::{Debug, Display},
@@ -63,9 +62,6 @@ impl Debug for MessageType {
         f.write_str(self.as_str())
     }
 }
-
-const BLOCK_TYPE_MASK: u16 = 0x0f00;
-const COUNT_MASK: u16 = 0xf000;
 
 #[derive(Clone, Debug, PartialEq, Eq, Copy)]
 pub struct ProtocolInfo {
@@ -168,29 +164,6 @@ impl MessageHeader {
         self.extensions.set(flag as usize, true);
     }
 
-    pub fn block_type(&self) -> BlockType {
-        let mut value = self.extensions & BitArray::new(BLOCK_TYPE_MASK);
-        value.shift_left(8);
-        BlockType::from_u16(value.data).unwrap_or(BlockType::Invalid)
-    }
-
-    pub fn set_block_type(&mut self, block_type: BlockType) {
-        self.extensions &= BitArray::new(!BLOCK_TYPE_MASK);
-        self.extensions |= BitArray::new((block_type as u16) << 8);
-    }
-
-    pub fn count(&self) -> u8 {
-        let mut value = self.extensions & BitArray::new(COUNT_MASK);
-        value.shift_left(12);
-        value.data as u8
-    }
-
-    pub fn set_count(&mut self, count: u8) {
-        debug_assert!(count < 16);
-        self.extensions &= BitArray::new(!COUNT_MASK);
-        self.extensions |= BitArray::new((count as u16) << 12)
-    }
-
     pub const fn serialized_size() -> usize {
         size_of::<u8>() // version_using
         + size_of::<u8>() // version_min
@@ -220,17 +193,17 @@ impl MessageHeader {
     pub fn payload_length(&self) -> usize {
         match self.message_type {
             MessageType::Keepalive => Keepalive::serialized_size(),
-            MessageType::Publish => serialized_block_size(self.block_type()),
-            MessageType::ConfirmReq => ConfirmReq::serialized_size(self.block_type(), self.count()),
-            MessageType::ConfirmAck => ConfirmAck::serialized_size(self.count()),
-            MessageType::BulkPull => BulkPull::serialized_size(self),
+            MessageType::Publish => Publish::serialized_size(self.extensions),
+            MessageType::ConfirmReq => ConfirmReq::serialized_size(self.extensions),
+            MessageType::ConfirmAck => ConfirmAck::serialized_size(self.extensions),
+            MessageType::BulkPull => BulkPull::serialized_size(self.extensions),
             MessageType::BulkPush | MessageType::TelemetryReq => 0,
             MessageType::FrontierReq => FrontierReq::serialized_size(),
-            MessageType::NodeIdHandshake => NodeIdHandshake::serialized_size(self),
+            MessageType::NodeIdHandshake => NodeIdHandshake::serialized_size(self.extensions),
             MessageType::BulkPullAccount => BulkPullAccount::serialized_size(),
-            MessageType::TelemetryAck => TelemetryAck::size_from_header(self),
-            MessageType::AscPullReq => AscPullReq::serialized_size(self),
-            MessageType::AscPullAck => AscPullAck::serialized_size(self),
+            MessageType::TelemetryAck => TelemetryAck::serialized_size(self.extensions),
+            MessageType::AscPullReq => AscPullReq::serialized_size(self.extensions),
+            MessageType::AscPullAck => AscPullAck::serialized_size(self.extensions),
             MessageType::Invalid | MessageType::NotAType => {
                 debug_assert!(false);
                 0
@@ -295,14 +268,6 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn block_type() {
-        let mut header = test_header();
-        assert_eq!(header.block_type(), BlockType::Invalid);
-        header.set_block_type(BlockType::LegacyReceive);
-        assert_eq!(header.block_type(), BlockType::LegacyReceive);
-    }
-
     fn test_header() -> MessageHeader {
         let protocol = ProtocolInfo {
             version_using: 2,
@@ -321,7 +286,7 @@ mod tests {
     fn serialize_header() -> Result<()> {
         let protocol_info = ProtocolInfo::dev_network();
         let mut header = MessageHeader::new(MessageType::Publish, protocol_info);
-        header.set_block_type(BlockType::State);
+        header.extensions = 0xABCD.into();
 
         let mut stream = MemoryStream::new();
         header.serialize(&mut stream)?;
@@ -334,8 +299,8 @@ mod tests {
         assert_eq!(bytes[3], protocol_info.version_max);
         assert_eq!(bytes[4], protocol_info.version_min);
         assert_eq!(bytes[5], 0x03); // publish
-        assert_eq!(bytes[6], 0x00); // extensions
-        assert_eq!(bytes[7], 0x06); // state block
+        assert_eq!(bytes[6], 0xCD); // extensions
+        assert_eq!(bytes[7], 0xAB); // extensions
         Ok(())
     }
 }

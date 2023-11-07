@@ -65,7 +65,9 @@ pub extern "C" fn rsn_message_node_id_handshake_clone(
 }
 
 fn get_payload(handle: &MessageHandle) -> &NodeIdHandshake {
-    let Message::NodeIdHandshake(payload) = &handle.message else {panic!("not a node_id_handshake")};
+    let Message::NodeIdHandshake(payload) = &handle.message else {
+        panic!("not a node_id_handshake")
+    };
     payload
 }
 

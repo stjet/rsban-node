@@ -374,7 +374,9 @@ pub extern "C" fn rsn_message_telemetry_ack_clone(handle: &MessageHandle) -> *mu
 pub unsafe extern "C" fn rsn_message_telemetry_ack_data(
     handle: &MessageHandle,
 ) -> *mut TelemetryDataHandle {
-    let Message::TelemetryAck(ack) = &handle.message else {panic!("not a telemetry_ack")};
+    let Message::TelemetryAck(ack) = &handle.message else {
+        panic!("not a telemetry_ack")
+    };
     let data = ack.0.clone().unwrap_or_default();
     Box::into_raw(Box::new(TelemetryDataHandle(data)))
 }
@@ -383,7 +385,9 @@ pub unsafe extern "C" fn rsn_message_telemetry_ack_data(
 pub unsafe extern "C" fn rsn_message_telemetry_ack_is_empty_payload(
     handle: &MessageHandle,
 ) -> bool {
-    let Message::TelemetryAck(ack) = &handle.message else {panic!("not a telemetry_ack")};
+    let Message::TelemetryAck(ack) = &handle.message else {
+        panic!("not a telemetry_ack")
+    };
     ack.0.is_none()
 }
 

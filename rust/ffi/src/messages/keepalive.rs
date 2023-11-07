@@ -22,7 +22,9 @@ pub unsafe extern "C" fn rsn_message_keepalive_peers(
     result: *mut EndpointDto,
 ) {
     let dtos = std::slice::from_raw_parts_mut(result, 8);
-    let Message::Keepalive(payload) = &handle.message else {panic!("not a keepalive payload")};
+    let Message::Keepalive(payload) = &handle.message else {
+        panic!("not a keepalive payload")
+    };
     let peers: Vec<_> = payload.peers.iter().map(EndpointDto::from).collect();
     dtos.clone_from_slice(&peers);
 }

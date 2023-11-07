@@ -1,6 +1,7 @@
 use crate::utils::{deserialize_block, BlockUniquer};
 use anyhow::Result;
 use bitvec::prelude::BitArray;
+use num_traits::FromPrimitive;
 use rsnano_core::{
     serialized_block_size,
     utils::{Deserialize, FixedSizeSerialize, Serialize, Stream},
@@ -11,7 +12,7 @@ use std::{
     sync::Arc,
 };
 
-use super::{MessageHeader, MessageType, MessageVariant};
+use super::{MessageHeader, MessageHeaderExtender, MessageType};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ConfirmReq {
@@ -20,20 +21,35 @@ pub struct ConfirmReq {
 }
 
 impl ConfirmReq {
+    const BLOCK_TYPE_MASK: u16 = 0x0f00;
+    const COUNT_MASK: u16 = 0xf000;
+
+    fn block_type(extensions: BitArray<u16>) -> BlockType {
+        let mut value = extensions & BitArray::new(Self::BLOCK_TYPE_MASK);
+        value.shift_left(8);
+        FromPrimitive::from_u16(value.data).unwrap_or(BlockType::Invalid)
+    }
+
+    pub fn count(extensions: BitArray<u16>) -> u8 {
+        let mut value = extensions & BitArray::new(Self::COUNT_MASK);
+        value.shift_left(12);
+        value.data as u8
+    }
+
     pub fn deserialize(
         stream: &mut impl Stream,
-        header: &MessageHeader,
+        extensions: BitArray<u16>,
         uniquer: Option<&BlockUniquer>,
     ) -> Result<Self> {
-        debug_assert!(header.message_type == MessageType::ConfirmReq);
-        if header.block_type() == BlockType::NotABlock {
+        let block_type = Self::block_type(extensions);
+        if block_type == BlockType::NotABlock {
             Ok(Self {
                 block: None,
-                roots_hashes: Self::deserialize_roots(stream, &header)?,
+                roots_hashes: Self::deserialize_roots(stream, extensions)?,
             })
         } else {
             Ok(Self {
-                block: Some(deserialize_block(header.block_type(), stream, uniquer)?),
+                block: Some(deserialize_block(block_type, stream, uniquer)?),
                 roots_hashes: Vec::new(),
             })
         }
@@ -41,9 +57,9 @@ impl ConfirmReq {
 
     fn deserialize_roots(
         stream: &mut impl Stream,
-        header: &MessageHeader,
+        extensions: BitArray<u16>,
     ) -> Result<Vec<(BlockHash, Root)>> {
-        let count = header.count() as usize;
+        let count = Self::count(extensions) as usize;
         let mut roots_hashes = Vec::with_capacity(count);
         for _ in 0..count {
             let block_hash = BlockHash::deserialize(stream)?;
@@ -68,8 +84,10 @@ impl ConfirmReq {
         result
     }
 
-    pub fn serialized_size(block_type: BlockType, count: u8) -> usize {
+    pub fn serialized_size(extensions: BitArray<u16>) -> usize {
+        let count = Self::count(extensions);
         let mut result = 0;
+        let block_type = Self::block_type(extensions);
         if block_type != BlockType::Invalid && block_type != BlockType::NotABlock {
             result = serialized_block_size(block_type);
         } else if block_type == BlockType::NotABlock {
@@ -94,7 +112,7 @@ impl Serialize for ConfirmReq {
     }
 }
 
-impl MessageVariant for ConfirmReq {
+impl MessageHeaderExtender for ConfirmReq {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let block_type = match &self.block {
             Some(b) => b.block_type(),
@@ -126,7 +144,7 @@ mod tests {
     use crate::messages::{assert_deserializable, Message};
 
     use super::*;
-    use rsnano_core::StateBlockBuilder;
+    use rsnano_core::{LegacyReceiveBlockBuilder, StateBlockBuilder};
 
     #[test]
     fn serialize_block() {
@@ -158,5 +176,30 @@ mod tests {
             roots_hashes,
         });
         assert_deserializable(&confirm_req);
+    }
+
+    #[test]
+    fn set_block_type_extension() {
+        let block = Arc::new(StateBlockBuilder::new().build());
+        let confirm_req = ConfirmReq {
+            block: Some(block),
+            roots_hashes: Vec::new(),
+        };
+        let extensions = confirm_req.header_extensions(0);
+        assert_eq!(ConfirmReq::block_type(extensions), BlockType::State);
+    }
+
+    #[test]
+    fn get_block_type_from_header() {
+        let extensions = Default::default();
+        assert_eq!(ConfirmReq::block_type(extensions), BlockType::Invalid);
+
+        let block = Arc::new(LegacyReceiveBlockBuilder::new().build());
+        let confirm_req = ConfirmReq {
+            block: Some(block),
+            roots_hashes: Vec::new(),
+        };
+        let extensions = confirm_req.header_extensions(0);
+        assert_eq!(ConfirmReq::block_type(extensions), BlockType::LegacyReceive);
     }
 }

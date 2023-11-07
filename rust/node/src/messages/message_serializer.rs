@@ -1,6 +1,6 @@
 use super::{Message, MessageHeader, ProtocolInfo};
 use crate::transport::MAX_MESSAGE_SIZE;
-use rsnano_core::utils::{BufferWriter, MutStreamAdapter};
+use rsnano_core::utils::MutStreamAdapter;
 
 pub struct MessageSerializer {
     protocol: ProtocolInfo,

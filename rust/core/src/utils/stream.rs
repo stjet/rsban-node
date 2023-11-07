@@ -121,7 +121,6 @@ pub struct MutStreamAdapter<'a> {
 }
 
 pub trait BufferWriter {
-    fn bytes_written(&self) -> usize;
     fn write_bytes_safe(&mut self, bytes: &[u8]);
     fn write_u8_safe(&mut self, value: u8);
     fn write_u32_be_safe(&mut self, value: u32);
@@ -137,13 +136,13 @@ impl<'a> MutStreamAdapter<'a> {
             write_index: 0,
         }
     }
+
+    pub fn bytes_written(&self) -> usize {
+        self.write_index
+    }
 }
 
 impl<'a> BufferWriter for MutStreamAdapter<'a> {
-    fn bytes_written(&self) -> usize {
-        self.write_index
-    }
-
     fn write_bytes_safe(&mut self, bytes: &[u8]) {
         if self.write_index + bytes.len() > self.bytes.len() {
             panic!("buffer full");

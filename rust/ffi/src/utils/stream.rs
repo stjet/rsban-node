@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use rsnano_core::utils::Stream;
+use rsnano_core::utils::{BufferWriter, Stream, StreamExt};
 
 type WriteU8Callback = unsafe extern "C" fn(*mut c_void, u8) -> i32;
 type WriteBytesCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize) -> i32;
@@ -46,6 +46,28 @@ pub struct FfiStream {
 impl FfiStream {
     pub fn new(stream_handle: *mut c_void) -> Self {
         Self { stream_handle }
+    }
+}
+
+impl BufferWriter for FfiStream {
+    fn write_bytes_safe(&mut self, bytes: &[u8]) {
+        self.write_bytes(bytes).unwrap();
+    }
+
+    fn write_u8_safe(&mut self, value: u8) {
+        self.write_u8(value).unwrap();
+    }
+
+    fn write_u32_be_safe(&mut self, value: u32) {
+        self.write_u32_be(value).unwrap();
+    }
+
+    fn write_u64_be_safe(&mut self, value: u64) {
+        self.write_u64_be(value).unwrap();
+    }
+
+    fn write_u64_ne_safe(&mut self, value: u64) {
+        self.write_u64_ne(value).unwrap();
     }
 }
 

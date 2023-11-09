@@ -100,7 +100,6 @@ set_property(
            active
            block_arrival
            block_processor
-           block_uniquer
            confirmation_height_processor
            dropped_elections,
            election_winner_details
@@ -112,7 +111,6 @@ set_property(
            telemetry
            vote_generator
            vote_processor
-           vote_uniquer
            votes_cache
            work_pool)
 set(NANO_ASIO_HANDLER_TRACKING

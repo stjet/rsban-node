@@ -156,7 +156,6 @@ public:
 	nano::ledger ledger; // ported
 	nano::signature_checker checker; // ported
 	nano::outbound_bandwidth_limiter outbound_limiter; // ported
-	nano::vote_uniquer vote_uniquer; // ported
 	std::shared_ptr<nano::network> network;
 	std::shared_ptr<nano::telemetry> telemetry;
 	nano::bootstrap_initiator bootstrap_initiator;

@@ -1,7 +1,6 @@
 use crate::{
     transport::{EndpointDto, NetworkFilterHandle, SocketHandle, TcpMessageManagerHandle},
     utils::{AsyncRuntimeHandle, LoggerHandle, LoggerMT},
-    voting::VoteUniquerHandle,
     NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
 };
 use rsnano_core::{utils::Logger, Account};
@@ -52,7 +51,6 @@ pub struct CreateTcpServerParams {
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
     pub request_response_visitor_factory: *mut RequestResponseVisitorFactoryHandle,
-    pub vote_uniquer: *mut VoteUniquerHandle,
     pub tcp_message_manager: *mut TcpMessageManagerHandle,
     pub allow_bootstrap: bool,
 }
@@ -70,7 +68,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let network = Arc::new(NetworkParams::try_from(&*params.network).unwrap());
     let stats = Arc::clone(&(*params.stats));
     let visitor_factory = Arc::clone(&(*params.request_response_visitor_factory).0);
-    let vote_uniquer = Arc::clone(&*params.vote_uniquer);
     let tcp_message_manager = Arc::clone(&*params.tcp_message_manager);
     let mut server = TcpServer::new(
         async_rt,
@@ -81,7 +78,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
         publish_filter,
         network,
         stats,
-        vote_uniquer,
         tcp_message_manager,
         visitor_factory,
         params.allow_bootstrap,

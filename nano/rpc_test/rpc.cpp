@@ -5787,30 +5787,11 @@ TEST (rpc, memory_stats)
 	auto node = add_ipc_enabled_node (system);
 	auto const rpc_ctx = add_rpc (system, node);
 
-	// Preliminary test adding to the vote uniquer and checking json output is correct
-	nano::keypair key;
-	nano::block_builder builder;
-	auto block = builder
-				 .state ()
-				 .account (0)
-				 .previous (0)
-				 .representative (0)
-				 .balance (0)
-				 .link (0)
-				 .sign (key.prv, key.pub)
-				 .work (0)
-				 .build_shared ();
-	std::vector<nano::block_hash> hashes;
-	hashes.push_back (block->hash ());
-	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, 0, 0, hashes));
-	node->vote_uniquer.unique (vote);
 	boost::property_tree::ptree request;
 	request.put ("action", "stats");
 	request.put ("type", "objects");
 	{
 		auto response (wait_response (system, rpc_ctx, request));
-
-		ASSERT_EQ (response.get_child ("node").get_child ("vote_uniquer").get_child ("votes").get<std::string> ("count"), "1");
 	}
 
 	request.put ("type", "database");

@@ -23,7 +23,6 @@ use crate::{
         TcpMessageManager,
     },
     utils::AsyncRuntime,
-    voting::VoteUniquer,
     NetworkParams,
 };
 
@@ -102,7 +101,6 @@ impl TcpServer {
         publish_filter: Arc<NetworkFilter>,
         network: Arc<NetworkParams>,
         stats: Arc<Stats>,
-        vote_uniquer: Arc<VoteUniquer>,
         tcp_message_manager: Arc<TcpMessageManager>,
         message_visitor_factory: Arc<BootstrapMessageVisitorFactory>,
         allow_bootstrap: bool,
@@ -134,7 +132,6 @@ impl TcpServer {
             message_deserializer: Arc::new(AsyncMessageDeserializer::new(
                 network_constants,
                 publish_filter,
-                vote_uniquer,
                 socket_clone,
             )),
             tcp_message_manager,

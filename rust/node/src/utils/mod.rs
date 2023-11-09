@@ -6,7 +6,6 @@ mod thread_pool;
 mod timer;
 mod toml;
 
-mod uniquer;
 use std::{
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddrV6},
     sync::OnceLock,
@@ -18,7 +17,6 @@ use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
-pub use uniquer::Uniquer;
 
 mod hardened_constants;
 pub use hardened_constants::HardenedConstants;

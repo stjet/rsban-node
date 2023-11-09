@@ -5,10 +5,8 @@ mod vote;
 mod vote_cache;
 mod vote_processor_queue;
 mod vote_spacing;
-mod vote_uniquer;
 
 pub use vote::VoteHandle;
-pub use vote_uniquer::VoteUniquerHandle;
 
 mod buckets;
 mod election_status;

@@ -90,19 +90,13 @@ pub fn validate_header(
 pub struct MessageDeserializerImpl {
     work_thresholds: WorkThresholds,
     publish_filter: Arc<NetworkFilter>,
-    vote_uniquer: Arc<VoteUniquer>,
 }
 
 impl MessageDeserializerImpl {
-    pub fn new(
-        work_thresholds: WorkThresholds,
-        publish_filter: Arc<NetworkFilter>,
-        vote_uniquer: Arc<VoteUniquer>,
-    ) -> Self {
+    pub fn new(work_thresholds: WorkThresholds, publish_filter: Arc<NetworkFilter>) -> Self {
         Self {
             work_thresholds,
             publish_filter,
-            vote_uniquer,
         }
     }
 
@@ -114,7 +108,7 @@ impl MessageDeserializerImpl {
         let digest = self.filter_duplicate_publish_messages(header.message_type, payload_bytes)?;
 
         let mut stream = StreamAdapter::new(payload_bytes);
-        let result = Message::deserialize(&mut stream, &header, digest, Some(&self.vote_uniquer))
+        let result = Message::deserialize(&mut stream, &header, digest)
             .map_err(|_| Self::get_error(header.message_type));
 
         self.validate_work(&result)?;
@@ -275,12 +269,10 @@ mod tests {
 
     fn test_deserializer(original: &Message) {
         let network_filter = Arc::new(NetworkFilter::new(1));
-        let vote_uniquer = Arc::new(VoteUniquer::new());
 
         let deserializer = Arc::new(MessageDeserializerImpl::new(
             WORK_THRESHOLDS_STUB.clone(),
             network_filter,
-            vote_uniquer,
         ));
 
         let mut serializer = MessageSerializer::new(STUB_NETWORK_CONSTANTS.protocol_info());

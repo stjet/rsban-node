@@ -126,7 +126,6 @@ public:
 	std::shared_ptr<nano::transport::request_response_visitor_factory> visitor_factory_a,
 	std::shared_ptr<nano::thread_pool> const & workers_a,
 	nano::network_filter const & publish_filter_a,
-	nano::vote_uniquer & vote_uniquer_a,
 	nano::tcp_message_manager & tcp_message_manager_a,
 	nano::syn_cookies & syn_cookies_a,
 	nano::ledger & ledger_a,

@@ -1,5 +1,5 @@
 use super::*;
-use crate::{stats::DetailType, voting::VoteUniquer};
+use crate::stats::DetailType;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::utils::{BufferWriter, Serialize, Stream};
@@ -81,7 +81,6 @@ impl Message {
         stream: &mut impl Stream,
         header: &MessageHeader,
         digest: u128,
-        vote_uniquer: Option<&VoteUniquer>,
     ) -> Result<Self> {
         let msg = match header.message_type {
             MessageType::Keepalive => Message::Keepalive(Keepalive::deserialize(stream)?),
@@ -97,9 +96,7 @@ impl Message {
                 Message::BulkPullAccount(BulkPullAccount::deserialize(stream)?)
             }
             MessageType::BulkPush => Message::BulkPush,
-            MessageType::ConfirmAck => {
-                Message::ConfirmAck(ConfirmAck::deserialize(stream, vote_uniquer)?)
-            }
+            MessageType::ConfirmAck => Message::ConfirmAck(ConfirmAck::deserialize(stream)?),
             MessageType::ConfirmReq => {
                 Message::ConfirmReq(ConfirmReq::deserialize(stream, header.extensions)?)
             }

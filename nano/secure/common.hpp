@@ -313,24 +313,6 @@ private:
 public:
 	static std::string const hash_prefix;
 };
-/**
- * This class serves to find and return unique variants of a vote in order to minimize memory usage
- */
-class vote_uniquer final
-{
-public:
-	using value_type = std::pair<nano::block_hash const, std::weak_ptr<nano::vote>>;
-
-	vote_uniquer (nano::vote_uniquer &&) = delete;
-	vote_uniquer (const nano::vote_uniquer &) = delete;
-	~vote_uniquer ();
-	std::shared_ptr<nano::vote> unique (std::shared_ptr<nano::vote> const &);
-	size_t size ();
-	vote_uniquer & operator= (vote_uniquer const &) = delete;
-	rsnano::VoteUniquerHandle * handle;
-};
-
-std::unique_ptr<container_info_component> collect_container_info (vote_uniquer & vote_uniquer, std::string const & name);
 
 enum class vote_code
 {

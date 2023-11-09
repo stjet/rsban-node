@@ -827,45 +827,6 @@ nano::block_hash nano::iterate_vote_blocks_as_hash::operator() (nano::block_hash
 	return item;
 }
 
-nano::vote_uniquer::~vote_uniquer ()
-{
-	if (handle != nullptr)
-	{
-		rsnano::rsn_vote_uniquer_destroy (handle);
-	}
-}
-
-std::shared_ptr<nano::vote> nano::vote_uniquer::unique (std::shared_ptr<nano::vote> const & vote_a)
-{
-	if (vote_a == nullptr)
-	{
-		return nullptr;
-	}
-	auto uniqued (rsnano::rsn_vote_uniquer_unique (handle, vote_a->get_handle ()));
-	if (uniqued == vote_a->get_handle ())
-	{
-		return vote_a;
-	}
-	else
-	{
-		return std::make_shared<nano::vote> (uniqued);
-	}
-}
-
-size_t nano::vote_uniquer::size ()
-{
-	return rsnano::rsn_vote_uniquer_size (handle);
-}
-
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (vote_uniquer & vote_uniquer, std::string const & name)
-{
-	auto count = vote_uniquer.size ();
-	auto sizeof_element = sizeof (vote_uniquer::value_type);
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "votes", count, sizeof_element }));
-	return composite;
-}
-
 nano::wallet_id nano::random_wallet_id ()
 {
 	nano::wallet_id wallet_id;

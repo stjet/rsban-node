@@ -30,7 +30,6 @@ enum class mutexes
 	telemetry,
 	vote_generator,
 	vote_processor,
-	vote_uniquer,
 	votes_cache,
 	work_pool
 };

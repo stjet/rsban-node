@@ -270,8 +270,6 @@ char const * nano::mutex_identifier (mutexes mutex)
 			return "vote_generator";
 		case mutexes::vote_processor:
 			return "vote_processor";
-		case mutexes::vote_uniquer:
-			return "vote_uniquer";
 		case mutexes::votes_cache:
 			return "votes_cache";
 		case mutexes::work_pool:

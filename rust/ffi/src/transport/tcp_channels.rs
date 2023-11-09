@@ -21,7 +21,6 @@ use crate::{
         AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, LoggerHandle, LoggerMT,
         ThreadPoolHandle,
     },
-    voting::VoteUniquerHandle,
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
 
@@ -42,7 +41,6 @@ pub struct TcpChannelsOptionsDto {
     pub async_rt: *mut AsyncRuntimeHandle,
     pub network: *mut NetworkParamsDto,
     pub stats: *mut StatHandle,
-    pub vote_uniquer: *mut VoteUniquerHandle,
     pub tcp_message_manager: *mut TcpMessageManagerHandle,
     pub port: u16,
     pub flags: *mut NodeFlagsHandle,
@@ -79,7 +77,6 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 network: NetworkParams::try_from(&*value.network)?,
                 async_rt: Arc::clone(&(*value.async_rt).0),
                 stats: (*value.stats).0.clone(),
-                vote_uniquer: (*value.vote_uniquer).deref().clone(),
                 tcp_message_manager: (*value.tcp_message_manager).deref().clone(),
                 port: value.port,
                 flags: (*value.flags).0.lock().unwrap().clone(),

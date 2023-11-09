@@ -227,7 +227,6 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	options.async_rt = node.async_rt.handle;
 	options.network = &network_dto;
 	options.stats = node.stats->handle;
-	options.vote_uniquer = node.vote_uniquer.handle;
 	options.tcp_message_manager = tcp_message_manager.handle;
 	options.port = port;
 	options.flags = node.flags.handle;

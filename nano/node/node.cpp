@@ -190,7 +190,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	gap_cache (*this),
 	online_reps (ledger, *config),
 	history{ config_a.network_params.voting },
-	vote_uniquer (block_uniquer),
 	confirmation_height_processor (ledger, *stats, write_database_queue, config_a.conf_height_processor_batch_min_time, config->logging, logger, node_initialized_latch),
 	vote_cache{ config_a.vote_cache },
 	generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* non-final */ false },
@@ -601,7 +600,6 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (no
 	composite->add_component (collect_container_info (node.block_arrival, "block_arrival"));
 	composite->add_component (collect_container_info (node.online_reps, "online_reps"));
 	composite->add_component (collect_container_info (node.history, "history"));
-	composite->add_component (collect_container_info (node.block_uniquer, "block_uniquer"));
 	composite->add_component (collect_container_info (node.vote_uniquer, "vote_uniquer"));
 	composite->add_component (node.confirmation_height_processor.collect_container_info ("confirmation_height_processor"));
 	composite->add_component (collect_container_info (node.distributed_work, "distributed_work"));

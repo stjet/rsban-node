@@ -1,5 +1,5 @@
 use super::*;
-use crate::{stats::DetailType, utils::BlockUniquer, voting::VoteUniquer};
+use crate::{stats::DetailType, voting::VoteUniquer};
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::utils::{BufferWriter, Serialize, Stream};
@@ -81,17 +81,13 @@ impl Message {
         stream: &mut impl Stream,
         header: &MessageHeader,
         digest: u128,
-        block_uniquer: Option<&BlockUniquer>,
         vote_uniquer: Option<&VoteUniquer>,
     ) -> Result<Self> {
         let msg = match header.message_type {
             MessageType::Keepalive => Message::Keepalive(Keepalive::deserialize(stream)?),
-            MessageType::Publish => Message::Publish(Publish::deserialize(
-                stream,
-                header.extensions,
-                digest,
-                block_uniquer,
-            )?),
+            MessageType::Publish => {
+                Message::Publish(Publish::deserialize(stream, header.extensions, digest)?)
+            }
             MessageType::AscPullAck => Message::AscPullAck(AscPullAck::deserialize(stream)?),
             MessageType::AscPullReq => Message::AscPullReq(AscPullReq::deserialize(stream)?),
             MessageType::BulkPull => {
@@ -104,11 +100,9 @@ impl Message {
             MessageType::ConfirmAck => {
                 Message::ConfirmAck(ConfirmAck::deserialize(stream, vote_uniquer)?)
             }
-            MessageType::ConfirmReq => Message::ConfirmReq(ConfirmReq::deserialize(
-                stream,
-                header.extensions,
-                block_uniquer,
-            )?),
+            MessageType::ConfirmReq => {
+                Message::ConfirmReq(ConfirmReq::deserialize(stream, header.extensions)?)
+            }
             MessageType::FrontierReq => {
                 Message::FrontierReq(FrontierReq::deserialize(stream, header.extensions)?)
             }

@@ -1,5 +1,5 @@
 use super::MessageVariant;
-use crate::utils::{deserialize_block, BlockUniquer};
+use crate::utils::deserialize_block;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
@@ -26,10 +26,9 @@ impl Publish {
         stream: &mut impl Stream,
         extensions: BitArray<u16>,
         digest: u128,
-        uniquer: Option<&BlockUniquer>,
     ) -> Result<Self> {
         let payload = Publish {
-            block: deserialize_block(Self::block_type(extensions), stream, uniquer)?,
+            block: deserialize_block(Self::block_type(extensions), stream)?,
             digest,
         };
 

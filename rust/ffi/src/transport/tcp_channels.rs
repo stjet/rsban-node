@@ -16,7 +16,6 @@ use rsnano_node::{
 
 use crate::{
     bootstrap::{FfiBootstrapServerObserver, RequestResponseVisitorFactoryHandle},
-    core::BlockUniquerHandle,
     messages::MessageHandle,
     utils::{
         AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, LoggerHandle, LoggerMT,
@@ -43,7 +42,6 @@ pub struct TcpChannelsOptionsDto {
     pub async_rt: *mut AsyncRuntimeHandle,
     pub network: *mut NetworkParamsDto,
     pub stats: *mut StatHandle,
-    pub block_uniquer: *mut BlockUniquerHandle,
     pub vote_uniquer: *mut VoteUniquerHandle,
     pub tcp_message_manager: *mut TcpMessageManagerHandle,
     pub port: u16,
@@ -81,7 +79,6 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 network: NetworkParams::try_from(&*value.network)?,
                 async_rt: Arc::clone(&(*value.async_rt).0),
                 stats: (*value.stats).0.clone(),
-                block_uniquer: (*value.block_uniquer).deref().clone(),
                 vote_uniquer: (*value.vote_uniquer).deref().clone(),
                 tcp_message_manager: (*value.tcp_message_manager).deref().clone(),
                 port: value.port,

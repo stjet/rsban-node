@@ -291,30 +291,10 @@ public:
 	virtual void state_block (nano::state_block &) = 0;
 	virtual ~mutable_block_visitor () = default;
 };
-/**
- * This class serves to find and return unique variants of a block in order to minimize memory usage
- */
-class block_uniquer
-{
-public:
-	block_uniquer ();
-	~block_uniquer ();
-	block_uniquer (const nano::block_uniquer &) = delete;
-	block_uniquer (nano::block_uniquer &&) = delete;
-	using value_type = std::pair<nano::uint256_union const, std::weak_ptr<nano::block>>;
-
-	std::shared_ptr<nano::block> unique (std::shared_ptr<nano::block> const &);
-	size_t size ();
-
-	block_uniquer & operator= (block_uniquer const &) = delete;
-	rsnano::BlockUniquerHandle * handle;
-};
-
-std::unique_ptr<container_info_component> collect_container_info (block_uniquer & block_uniquer, std::string const & name);
 
 std::shared_ptr<nano::block> deserialize_block (nano::stream &);
-std::shared_ptr<nano::block> deserialize_block (nano::stream &, nano::block_type, nano::block_uniquer * = nullptr);
-std::shared_ptr<nano::block> deserialize_block_json (boost::property_tree::ptree const &, nano::block_uniquer * = nullptr);
+std::shared_ptr<nano::block> deserialize_block (nano::stream &, nano::block_type);
+std::shared_ptr<nano::block> deserialize_block_json (boost::property_tree::ptree const &);
 /**
  * Serialize block type as an 8-bit value
  */

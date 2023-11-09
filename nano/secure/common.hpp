@@ -321,7 +321,6 @@ class vote_uniquer final
 public:
 	using value_type = std::pair<nano::block_hash const, std::weak_ptr<nano::vote>>;
 
-	vote_uniquer (nano::block_uniquer &);
 	vote_uniquer (nano::vote_uniquer &&) = delete;
 	vote_uniquer (const nano::vote_uniquer &) = delete;
 	~vote_uniquer ();

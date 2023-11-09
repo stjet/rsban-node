@@ -1,5 +1,5 @@
 use super::MessageVariant;
-use crate::utils::{deserialize_block, BlockUniquer};
+use crate::utils::deserialize_block;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
@@ -35,11 +35,7 @@ impl ConfirmReq {
         value.data as u8
     }
 
-    pub fn deserialize(
-        stream: &mut impl Stream,
-        extensions: BitArray<u16>,
-        uniquer: Option<&BlockUniquer>,
-    ) -> Result<Self> {
+    pub fn deserialize(stream: &mut impl Stream, extensions: BitArray<u16>) -> Result<Self> {
         let block_type = Self::block_type(extensions);
         if block_type == BlockType::NotABlock {
             Ok(Self {
@@ -48,7 +44,7 @@ impl ConfirmReq {
             })
         } else {
             Ok(Self {
-                block: Some(deserialize_block(block_type, stream, uniquer)?),
+                block: Some(deserialize_block(block_type, stream)?),
                 roots_hashes: Vec::new(),
             })
         }

@@ -15,7 +15,7 @@ use crate::{
     config::NetworkConstants,
     messages::{Message, MessageSerializer},
     stats::{DetailType, Direction, StatType, Stats},
-    utils::{AsyncRuntime, BlockUniquer, ErrorCode},
+    utils::{AsyncRuntime, ErrorCode},
     voting::VoteUniquer,
 };
 
@@ -207,7 +207,6 @@ impl ChannelInProc {
             let message_deserializer = Arc::new(AsyncMessageDeserializer::new(
                 self.network_constants.clone(),
                 self.network_filter.clone(),
-                Arc::new(BlockUniquer::new()),
                 Arc::new(VoteUniquer::new()),
                 VecBufferReader::new(buffer.to_vec()),
             ));

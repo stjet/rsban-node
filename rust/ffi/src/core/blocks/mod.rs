@@ -1,5 +1,4 @@
 mod block_details;
-mod block_uniquer;
 mod change_block;
 mod open_block;
 mod receive_block;
@@ -14,7 +13,6 @@ use std::{
 };
 
 pub use block_details::*;
-pub use block_uniquer::BlockUniquerHandle;
 pub use change_block::*;
 pub use open_block::*;
 pub use receive_block::*;
@@ -195,7 +193,6 @@ pub unsafe extern "C" fn rsn_block_serialize_json(handle: &BlockHandle, ptree: *
 pub unsafe extern "C" fn rsn_deserialize_block(
     block_type: u8,
     stream: *mut c_void,
-    uniquer: *mut BlockUniquerHandle,
 ) -> *mut BlockHandle {
     let mut stream = FfiStream::new(stream);
     let block_type = match BlockType::from_u8(block_type) {
@@ -203,13 +200,7 @@ pub unsafe extern "C" fn rsn_deserialize_block(
         None => return std::ptr::null_mut(),
     };
 
-    let uniquer = if uniquer.is_null() {
-        None
-    } else {
-        Some((*uniquer).deref().as_ref())
-    };
-
-    match deserialize_block(block_type, &mut stream, uniquer) {
+    match deserialize_block(block_type, &mut stream) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle(block))),
         Err(_) => std::ptr::null_mut(),
     }

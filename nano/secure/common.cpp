@@ -827,11 +827,6 @@ nano::block_hash nano::iterate_vote_blocks_as_hash::operator() (nano::block_hash
 	return item;
 }
 
-nano::vote_uniquer::vote_uniquer (nano::block_uniquer & uniquer_a) :
-	handle (rsnano::rsn_vote_uniquer_create ())
-{
-}
-
 nano::vote_uniquer::~vote_uniquer ()
 {
 	if (handle != nullptr)

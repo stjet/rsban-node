@@ -102,12 +102,6 @@ TEST (blocks, work_version)
 	ASSERT_EQ (nano::work_version::work_1, nano::state_block ().work_version ());
 }
 
-TEST (block_uniquer, null)
-{
-	nano::block_uniquer uniquer;
-	ASSERT_EQ (nullptr, uniquer.unique (nullptr));
-}
-
 TEST (block_builder, state_missing_rep)
 {
 	// Test against a random hash from the live network

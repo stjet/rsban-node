@@ -28,7 +28,7 @@ use crate::{
     transport::{Channel, SocketType},
     utils::{
         ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address, AsyncRuntime,
-        BlockUniquer, ErrorCode, ThreadPool,
+        ErrorCode, ThreadPool,
     },
     voting::VoteUniquer,
     NetworkParams,
@@ -49,7 +49,6 @@ pub struct TcpChannelsOptions {
     pub async_rt: Arc<AsyncRuntime>,
     pub network: NetworkParams,
     pub stats: Arc<Stats>,
-    pub block_uniquer: Arc<BlockUniquer>,
     pub vote_uniquer: Arc<VoteUniquer>,
     pub tcp_message_manager: Arc<TcpMessageManager>,
     pub port: u16,
@@ -82,7 +81,6 @@ pub struct TcpChannels {
     syn_cookies: Arc<SynCookies>,
     workers: Arc<dyn ThreadPool>,
     publish_filter: Arc<NetworkFilter>,
-    block_uniquer: Arc<BlockUniquer>,
     vote_uniquer: Arc<VoteUniquer>,
     tcp_server_factory: Arc<Mutex<TcpServerFactory>>,
     observer: Arc<dyn SocketObserver>,
@@ -101,7 +99,6 @@ impl TcpChannels {
             publish_filter: options.publish_filter.clone(),
             network: network.clone(),
             stats: options.stats.clone(),
-            block_uniquer: options.block_uniquer.clone(),
             vote_uniquer: options.vote_uniquer.clone(),
             tcp_message_manager: options.tcp_message_manager.clone(),
             message_visitor_factory: None,
@@ -132,7 +129,6 @@ impl TcpChannels {
             syn_cookies: options.syn_cookies,
             workers: options.workers,
             publish_filter: options.publish_filter,
-            block_uniquer: options.block_uniquer,
             vote_uniquer: options.vote_uniquer,
             tcp_server_factory,
             observer: options.observer,
@@ -817,7 +813,6 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             let deserializer = Arc::new(AsyncMessageDeserializer::new(
                 self.network.network.clone(),
                 self.publish_filter.clone(),
-                self.block_uniquer.clone(),
                 self.vote_uniquer.clone(),
                 socket_l,
             ));

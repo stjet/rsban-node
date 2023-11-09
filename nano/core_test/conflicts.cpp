@@ -177,9 +177,3 @@ TEST (conflicts, add_two)
 	ASSERT_TIMELY (5s, node->active.size () == 2);
 }
 
-TEST (vote_uniquer, null)
-{
-	nano::block_uniquer block_uniquer;
-	nano::vote_uniquer uniquer (block_uniquer);
-	ASSERT_EQ (nullptr, uniquer.unique (nullptr));
-}

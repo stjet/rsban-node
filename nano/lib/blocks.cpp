@@ -913,7 +913,7 @@ std::size_t nano::state_block::size ()
 	return rsnano::rsn_state_block_size ();
 }
 
-std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree::ptree const & tree_a, nano::block_uniquer * uniquer_a)
+std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree::ptree const & tree_a)
 {
 	std::shared_ptr<nano::block> result;
 	rsnano::BlockHandle * block_handle (rsnano::rsn_deserialize_block_json (&tree_a));
@@ -921,11 +921,6 @@ std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree:
 		return result;
 
 	result = nano::block_handle_to_block (block_handle);
-
-	if (uniquer_a != nullptr)
-	{
-		result = uniquer_a->unique (result);
-	}
 	return result;
 }
 
@@ -952,14 +947,9 @@ std::shared_ptr<nano::block> nano::deserialize_block (nano::stream & stream_a)
 	return result;
 }
 
-std::shared_ptr<nano::block> nano::deserialize_block (nano::stream & stream_a, nano::block_type type_a, nano::block_uniquer * uniquer_a)
+std::shared_ptr<nano::block> nano::deserialize_block (nano::stream & stream_a, nano::block_type type_a)
 {
-	rsnano::BlockUniquerHandle * uniquer_handle = nullptr;
-	if (uniquer_a != nullptr)
-	{
-		uniquer_handle = uniquer_a->handle;
-	}
-	auto block_handle = rsnano::rsn_deserialize_block (static_cast<uint8_t> (type_a), &stream_a, uniquer_handle);
+	auto block_handle = rsnano::rsn_deserialize_block (static_cast<uint8_t> (type_a), &stream_a);
 	if (block_handle == nullptr)
 	{
 		return nullptr;
@@ -1306,47 +1296,6 @@ nano::amount nano::block_sideband::balance () const
 	nano::amount result;
 	std::copy (std::begin (dto.balance), std::end (dto.balance), std::begin (result.bytes));
 	return result;
-}
-
-nano::block_uniquer::block_uniquer () :
-	handle (rsnano::rsn_block_uniquer_create ())
-{
-}
-
-nano::block_uniquer::~block_uniquer ()
-{
-	rsnano::rsn_block_uniquer_destroy (handle);
-}
-
-std::shared_ptr<nano::block> nano::block_uniquer::unique (std::shared_ptr<nano::block> const & block_a)
-{
-	if (block_a == nullptr)
-	{
-		return nullptr;
-	}
-	auto uniqued (rsnano::rsn_block_uniquer_unique (handle, block_a->get_handle ()));
-	if (uniqued == block_a->get_handle ())
-	{
-		return block_a;
-	}
-	else
-	{
-		return block_handle_to_block (uniqued);
-	}
-}
-
-size_t nano::block_uniquer::size ()
-{
-	return rsnano::rsn_block_uniquer_size (handle);
-}
-
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (block_uniquer & block_uniquer, std::string const & name)
-{
-	auto count = block_uniquer.size ();
-	auto sizeof_element = sizeof (block_uniquer::value_type);
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "blocks", count, sizeof_element }));
-	return composite;
 }
 
 std::shared_ptr<nano::block> nano::block_handle_to_block (rsnano::BlockHandle * handle)

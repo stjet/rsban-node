@@ -22,7 +22,7 @@ use crate::{
         ParseStatus, Socket, SocketExtensions, SocketType, SynCookies, TcpMessageItem,
         TcpMessageManager,
     },
-    utils::{AsyncRuntime, BlockUniquer},
+    utils::AsyncRuntime,
     voting::VoteUniquer,
     NetworkParams,
 };
@@ -102,7 +102,6 @@ impl TcpServer {
         publish_filter: Arc<NetworkFilter>,
         network: Arc<NetworkParams>,
         stats: Arc<Stats>,
-        block_uniquer: Arc<BlockUniquer>,
         vote_uniquer: Arc<VoteUniquer>,
         tcp_message_manager: Arc<TcpMessageManager>,
         message_visitor_factory: Arc<BootstrapMessageVisitorFactory>,
@@ -135,7 +134,6 @@ impl TcpServer {
             message_deserializer: Arc::new(AsyncMessageDeserializer::new(
                 network_constants,
                 publish_filter,
-                block_uniquer,
                 vote_uniquer,
                 socket_clone,
             )),

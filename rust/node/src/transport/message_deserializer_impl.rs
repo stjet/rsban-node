@@ -1,5 +1,5 @@
 use super::NetworkFilter;
-use crate::{messages::*, utils::BlockUniquer, voting::VoteUniquer};
+use crate::{messages::*, voting::VoteUniquer};
 use rsnano_core::{utils::StreamAdapter, work::WorkThresholds};
 use std::sync::Arc;
 
@@ -90,7 +90,6 @@ pub fn validate_header(
 pub struct MessageDeserializerImpl {
     work_thresholds: WorkThresholds,
     publish_filter: Arc<NetworkFilter>,
-    block_uniquer: Arc<BlockUniquer>,
     vote_uniquer: Arc<VoteUniquer>,
 }
 
@@ -98,13 +97,11 @@ impl MessageDeserializerImpl {
     pub fn new(
         work_thresholds: WorkThresholds,
         publish_filter: Arc<NetworkFilter>,
-        block_uniquer: Arc<BlockUniquer>,
         vote_uniquer: Arc<VoteUniquer>,
     ) -> Self {
         Self {
             work_thresholds,
             publish_filter,
-            block_uniquer,
             vote_uniquer,
         }
     }
@@ -117,14 +114,8 @@ impl MessageDeserializerImpl {
         let digest = self.filter_duplicate_publish_messages(header.message_type, payload_bytes)?;
 
         let mut stream = StreamAdapter::new(payload_bytes);
-        let result = Message::deserialize(
-            &mut stream,
-            &header,
-            digest,
-            Some(&self.block_uniquer),
-            Some(&self.vote_uniquer),
-        )
-        .map_err(|_| Self::get_error(header.message_type));
+        let result = Message::deserialize(&mut stream, &header, digest, Some(&self.vote_uniquer))
+            .map_err(|_| Self::get_error(header.message_type));
 
         self.validate_work(&result)?;
         result.map(|r| DeserializedMessage::new(r, header.protocol))
@@ -284,13 +275,11 @@ mod tests {
 
     fn test_deserializer(original: &Message) {
         let network_filter = Arc::new(NetworkFilter::new(1));
-        let block_uniquer = Arc::new(BlockUniquer::new());
         let vote_uniquer = Arc::new(VoteUniquer::new());
 
         let deserializer = Arc::new(MessageDeserializerImpl::new(
             WORK_THRESHOLDS_STUB.clone(),
             network_filter,
-            block_uniquer,
             vote_uniquer,
         ));
 

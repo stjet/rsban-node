@@ -6,7 +6,6 @@ use crate::{
     config::NetworkConstants,
     messages::{MessageHeader, ProtocolInfo},
     transport::validate_header,
-    utils::BlockUniquer,
     voting::VoteUniquer,
 };
 
@@ -30,7 +29,6 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
     pub fn new(
         network_constants: NetworkConstants,
         network_filter: Arc<NetworkFilter>,
-        block_uniquer: Arc<BlockUniquer>,
         vote_uniquer: Arc<VoteUniquer>,
         buffer_reader: T,
     ) -> Self {
@@ -38,7 +36,6 @@ impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
             deserializer_impl: MessageDeserializerImpl::new(
                 network_constants.work.clone(),
                 network_filter,
-                block_uniquer,
                 vote_uniquer,
             ),
             protocol_info: network_constants.protocol_info(),

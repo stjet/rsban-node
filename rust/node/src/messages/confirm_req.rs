@@ -93,9 +93,9 @@ impl ConfirmReq {
 }
 
 impl Serialize for ConfirmReq {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
         if let Some(block) = &self.block {
-            block.serialize_safe(writer);
+            block.serialize(writer);
         } else {
             // Write hashes & roots
             for (hash, root) in &self.roots_hashes {

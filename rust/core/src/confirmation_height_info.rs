@@ -20,7 +20,7 @@ impl ConfirmationHeightInfo {
     pub fn to_bytes(&self) -> [u8; 40] {
         let mut buffer = [0; 40];
         let mut stream = MutStreamAdapter::new(&mut buffer);
-        self.serialize_safe(&mut stream);
+        self.serialize(&mut stream);
         buffer
     }
 
@@ -33,9 +33,9 @@ impl ConfirmationHeightInfo {
 }
 
 impl Serialize for ConfirmationHeightInfo {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
         writer.write_u64_ne_safe(self.height);
-        self.frontier.serialize_safe(writer);
+        self.frontier.serialize(writer);
     }
 }
 

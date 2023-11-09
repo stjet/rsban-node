@@ -254,7 +254,7 @@ impl utils::FixedSizeSerialize for NoValue {
 }
 
 impl utils::Serialize for NoValue {
-    fn serialize_safe(&self, _writer: &mut dyn BufferWriter) {}
+    fn serialize(&self, _writer: &mut dyn BufferWriter) {}
 }
 
 impl utils::Deserialize for NoValue {

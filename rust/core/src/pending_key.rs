@@ -44,9 +44,9 @@ impl PendingKey {
 }
 
 impl Serialize for PendingKey {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
-        self.account.serialize_safe(writer);
-        self.hash.serialize_safe(writer);
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
+        self.account.serialize(writer);
+        self.hash.serialize(writer);
     }
 }
 

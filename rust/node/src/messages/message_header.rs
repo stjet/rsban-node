@@ -125,7 +125,7 @@ impl MessageHeader {
         payload: &impl Serialize,
     ) -> Self {
         let mut stream = MemoryStream::new();
-        payload.serialize_safe(&mut stream);
+        payload.serialize(&mut stream);
         let payload_len: u16 = stream.bytes_written() as u16;
 
         Self {

@@ -66,7 +66,7 @@ impl Signature {
 }
 
 impl Serialize for Signature {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
         writer.write_bytes_safe(&self.bytes)
     }
 }

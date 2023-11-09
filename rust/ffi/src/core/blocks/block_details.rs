@@ -97,7 +97,7 @@ pub extern "C" fn rsn_block_sideband_serialize(
     if let Ok(block_type) = BlockType::try_from(block_type) {
         if let Ok(sideband) = BlockSideband::try_from(dto) {
             let mut stream = FfiStream::new(stream);
-            sideband.serialize_safe(&mut stream, block_type);
+            sideband.serialize(&mut stream, block_type);
             return 0;
         }
     }

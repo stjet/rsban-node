@@ -50,9 +50,9 @@ impl BulkPullAccount {
 impl MessageVariant for BulkPullAccount {}
 
 impl Serialize for BulkPullAccount {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
-        self.account.serialize_safe(writer);
-        self.minimum_amount.serialize_safe(writer);
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
+        self.account.serialize(writer);
+        self.minimum_amount.serialize(writer);
         writer.write_u8_safe(self.flags as u8);
     }
 }

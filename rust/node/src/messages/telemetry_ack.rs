@@ -93,7 +93,7 @@ impl TelemetryData {
 
     fn serialize_without_signature(&self, writer: &mut dyn BufferWriter) {
         // All values should be serialized in big endian
-        self.node_id.serialize_safe(writer);
+        self.node_id.serialize(writer);
         writer.write_u64_be_safe(self.block_count);
         writer.write_u64_be_safe(self.cemented_count);
         writer.write_u64_be_safe(self.unchecked_count);
@@ -102,7 +102,7 @@ impl TelemetryData {
         writer.write_u32_be_safe(self.peer_count);
         writer.write_u8_safe(self.protocol_version);
         writer.write_u64_be_safe(self.uptime);
-        self.genesis_block.serialize_safe(writer);
+        self.genesis_block.serialize(writer);
         writer.write_u8_safe(self.major_version);
         writer.write_u8_safe(self.minor_version);
         writer.write_u8_safe(self.patch_version);
@@ -227,9 +227,9 @@ impl Display for TelemetryAck {
 }
 
 impl Serialize for TelemetryAck {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
         if let Some(data) = &self.0 {
-            data.signature.serialize_safe(writer);
+            data.signature.serialize(writer);
             data.serialize_without_signature(writer);
         }
     }

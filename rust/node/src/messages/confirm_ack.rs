@@ -40,8 +40,8 @@ impl ConfirmAck {
 }
 
 impl Serialize for ConfirmAck {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
-        self.vote.serialize_safe(writer);
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
+        self.vote.serialize(writer);
     }
 }
 

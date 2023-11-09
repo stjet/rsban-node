@@ -72,9 +72,9 @@ impl BulkPull {
 }
 
 impl Serialize for BulkPull {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
-        self.start.serialize_safe(writer);
-        self.end.serialize_safe(writer);
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
+        self.start.serialize(writer);
+        self.end.serialize(writer);
 
         if self.count > 0 {
             let mut count_buffer = [0u8; BulkPull::EXTENDED_PARAMETERS_SIZE];

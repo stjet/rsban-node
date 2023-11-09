@@ -66,7 +66,7 @@ impl Message {
 
     pub fn serialize(&self, stream: &mut dyn BufferWriter) {
         if let Some(variant) = self.as_message_variant() {
-            variant.serialize_safe(stream);
+            variant.serialize(stream);
         }
     }
 

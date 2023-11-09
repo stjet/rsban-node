@@ -53,8 +53,8 @@ impl PartialEq for Publish {
 }
 
 impl Serialize for Publish {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
-        self.block.serialize_safe(writer);
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
+        self.block.serialize(writer);
     }
 }
 
@@ -94,7 +94,7 @@ mod tests {
         let publish1 = Publish { block, digest: 123 };
 
         let mut stream = MemoryStream::new();
-        publish1.serialize_safe(&mut stream);
+        publish1.serialize(&mut stream);
 
         let extensions = publish1.header_extensions(0);
         let publish2 = Publish::deserialize(&mut stream, extensions, 123, None).unwrap();

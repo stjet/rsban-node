@@ -64,7 +64,7 @@ impl BlockDetails {
 }
 
 impl Serialize for BlockDetails {
-    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
+    fn serialize(&self, stream: &mut dyn BufferWriter) {
         stream.write_u8_safe(self.packed())
     }
 }
@@ -137,7 +137,7 @@ mod test {
     fn serialize() {
         let details = BlockDetails::new(Epoch::Epoch2, false, true, false);
         let mut stream = MemoryStream::new();
-        details.serialize_safe(&mut stream);
+        details.serialize(&mut stream);
         let deserialized = BlockDetails::deserialize(&mut stream).unwrap();
         assert_eq!(deserialized, details);
     }

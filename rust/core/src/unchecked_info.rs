@@ -42,13 +42,13 @@ impl UncheckedInfo {
 
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut stream = MemoryStream::new();
-        self.serialize_safe(&mut stream);
+        self.serialize(&mut stream);
         stream.to_vec()
     }
 }
 
 impl Serialize for UncheckedInfo {
-    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
+    fn serialize(&self, stream: &mut dyn BufferWriter) {
         serialize_block_enum_safe(stream, self.block.as_ref().unwrap());
         stream.write_u64_ne_safe(self.modified);
     }
@@ -97,9 +97,9 @@ impl Deserialize for UncheckedKey {
 }
 
 impl Serialize for UncheckedKey {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
-        self.previous.serialize_safe(writer);
-        self.hash.serialize_safe(writer);
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
+        self.previous.serialize(writer);
+        self.hash.serialize(writer);
     }
 }
 

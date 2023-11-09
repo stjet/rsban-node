@@ -26,10 +26,10 @@ pub enum AscPullReqType {
 }
 
 impl Serialize for AscPullReqType {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
         match &self {
-            AscPullReqType::Blocks(blocks) => blocks.serialize_safe(writer),
-            AscPullReqType::AccountInfo(account_info) => account_info.serialize_safe(writer),
+            AscPullReqType::Blocks(blocks) => blocks.serialize(writer),
+            AscPullReqType::AccountInfo(account_info) => account_info.serialize(writer),
         }
     }
 }
@@ -64,7 +64,7 @@ impl BlocksReqPayload {
 }
 
 impl Serialize for BlocksReqPayload {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
         writer.write_bytes_safe(self.start.as_bytes());
         writer.write_u8_safe(self.count);
         writer.write_u8_safe(self.start_type as u8);
@@ -93,7 +93,7 @@ impl AccountInfoReqPayload {
 }
 
 impl Serialize for AccountInfoReqPayload {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
         writer.write_bytes_safe(self.target.as_bytes());
         writer.write_u8_safe(self.target_type as u8);
     }
@@ -165,10 +165,10 @@ impl AscPullReq {
 }
 
 impl Serialize for AscPullReq {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
         writer.write_u8_safe(self.payload_type() as u8);
         writer.write_u64_be_safe(self.id);
-        self.req_type.serialize_safe(writer);
+        self.req_type.serialize(writer);
     }
 }
 

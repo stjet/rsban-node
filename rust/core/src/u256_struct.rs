@@ -73,7 +73,7 @@ macro_rules! u256_struct {
         }
 
         impl $crate::utils::Serialize for $name {
-            fn serialize_safe(&self, writer: &mut dyn $crate::utils::BufferWriter) {
+            fn serialize(&self, writer: &mut dyn $crate::utils::BufferWriter) {
                 writer.write_bytes_safe(&self.0)
             }
         }

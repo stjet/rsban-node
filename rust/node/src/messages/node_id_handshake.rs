@@ -64,7 +64,7 @@ impl NodeIdHandshakeResponse {
             Some(v2) => {
                 stream.write_bytes_safe(cookie);
                 stream.write_bytes_safe(&v2.salt);
-                v2.genesis.serialize_safe(&mut stream);
+                v2.genesis.serialize(&mut stream);
             }
             None => stream.write_bytes_safe(cookie),
         }
@@ -107,17 +107,17 @@ impl NodeIdHandshakeResponse {
 }
 
 impl Serialize for NodeIdHandshakeResponse {
-    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
+    fn serialize(&self, stream: &mut dyn BufferWriter) {
         match &self.v2 {
             Some(v2) => {
-                self.node_id.serialize_safe(stream);
+                self.node_id.serialize(stream);
                 stream.write_bytes_safe(&v2.salt);
-                v2.genesis.serialize_safe(stream);
-                self.signature.serialize_safe(stream);
+                v2.genesis.serialize(stream);
+                self.signature.serialize(stream);
             }
             None => {
-                self.node_id.serialize_safe(stream);
-                self.signature.serialize_safe(stream);
+                self.node_id.serialize(stream);
+                self.signature.serialize(stream);
             }
         }
     }
@@ -224,12 +224,12 @@ impl NodeIdHandshake {
 }
 
 impl Serialize for NodeIdHandshake {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
         if let Some(query) = &self.query {
             writer.write_bytes_safe(&query.cookie);
         }
         if let Some(response) = &self.response {
-            response.serialize_safe(writer);
+            response.serialize(writer);
         }
     }
 }

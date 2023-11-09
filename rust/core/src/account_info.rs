@@ -29,7 +29,7 @@ impl AccountInfo {
     pub fn to_bytes(&self) -> [u8; 129] {
         let mut buffer = [0; 129];
         let mut stream = MutStreamAdapter::new(&mut buffer);
-        self.serialize_safe(&mut stream);
+        self.serialize(&mut stream);
         buffer
     }
 
@@ -47,11 +47,11 @@ impl AccountInfo {
 }
 
 impl Serialize for AccountInfo {
-    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
-        self.head.serialize_safe(stream);
-        self.representative.serialize_safe(stream);
-        self.open_block.serialize_safe(stream);
-        self.balance.serialize_safe(stream);
+    fn serialize(&self, stream: &mut dyn BufferWriter) {
+        self.head.serialize(stream);
+        self.representative.serialize(stream);
+        self.open_block.serialize(stream);
+        self.balance.serialize(stream);
         stream.write_u64_ne_safe(self.modified);
         stream.write_u64_ne_safe(self.block_count);
         stream.write_u8_safe(self.epoch as u8)

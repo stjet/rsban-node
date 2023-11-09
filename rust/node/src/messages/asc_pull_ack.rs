@@ -51,8 +51,8 @@ impl AscPullAck {
 
     fn serialize_pull_type(&self, writer: &mut dyn BufferWriter) {
         match &self.pull_type {
-            AscPullAckType::Blocks(blocks) => blocks.serialize_safe(writer),
-            AscPullAckType::AccountInfo(account_info) => account_info.serialize_safe(writer),
+            AscPullAckType::Blocks(blocks) => blocks.serialize(writer),
+            AscPullAckType::AccountInfo(account_info) => account_info.serialize(writer),
         }
     }
 
@@ -66,7 +66,7 @@ impl AscPullAck {
 }
 
 impl Serialize for AscPullAck {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
         writer.write_u8_safe(self.payload_type() as u8);
         writer.write_u64_be_safe(self.id);
         self.serialize_pull_type(writer);
@@ -142,7 +142,7 @@ impl BlocksAckPayload {
 }
 
 impl Serialize for BlocksAckPayload {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
         for block in self.blocks() {
             serialize_block_enum_safe(writer, block);
         }
@@ -185,12 +185,12 @@ impl AccountInfoAckPayload {
 }
 
 impl Serialize for AccountInfoAckPayload {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
-        self.account.serialize_safe(writer);
-        self.account_open.serialize_safe(writer);
-        self.account_head.serialize_safe(writer);
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
+        self.account.serialize(writer);
+        self.account_open.serialize(writer);
+        self.account_head.serialize(writer);
         writer.write_u64_be_safe(self.account_block_count);
-        self.account_conf_frontier.serialize_safe(writer);
+        self.account_conf_frontier.serialize(writer);
         writer.write_u64_be_safe(self.account_conf_height);
     }
 }

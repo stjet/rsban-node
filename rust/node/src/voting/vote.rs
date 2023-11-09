@@ -173,12 +173,12 @@ impl Vote {
 }
 
 impl Serialize for Vote {
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
-        self.voting_account.serialize_safe(writer);
-        self.signature.serialize_safe(writer);
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
+        self.voting_account.serialize(writer);
+        self.signature.serialize(writer);
         writer.write_bytes_safe(&self.timestamp.to_le_bytes());
         for hash in &self.hashes {
-            hash.serialize_safe(writer);
+            hash.serialize(writer);
         }
     }
 }

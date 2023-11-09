@@ -117,7 +117,7 @@ impl From<u128> for Amount {
 }
 
 impl Serialize for Amount {
-    fn serialize_safe(&self, stream: &mut dyn BufferWriter) {
+    fn serialize(&self, stream: &mut dyn BufferWriter) {
         stream.write_bytes_safe(&self.raw.to_be_bytes());
     }
 }

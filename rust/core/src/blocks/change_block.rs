@@ -178,10 +178,10 @@ impl Block for ChangeBlock {
         self.hashables.previous
     }
 
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
-        self.hashables.previous.serialize_safe(writer);
-        self.hashables.representative.serialize_safe(writer);
-        self.signature.serialize_safe(writer);
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
+        self.hashables.previous.serialize(writer);
+        self.hashables.representative.serialize(writer);
+        self.signature.serialize(writer);
         writer.write_bytes_safe(&self.work.to_be_bytes());
     }
 
@@ -265,7 +265,7 @@ mod tests {
             5,
         );
         let mut stream = MemoryStream::new();
-        block1.serialize_safe(&mut stream);
+        block1.serialize(&mut stream);
         assert_eq!(ChangeBlock::serialized_size(), stream.bytes_written());
 
         let block2 = ChangeBlock::deserialize(&mut stream).unwrap();

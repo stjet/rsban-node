@@ -243,13 +243,13 @@ impl Block for StateBlock {
         self.hashables.previous
     }
 
-    fn serialize_safe(&self, writer: &mut dyn BufferWriter) {
-        self.hashables.account.serialize_safe(writer);
-        self.hashables.previous.serialize_safe(writer);
-        self.hashables.representative.serialize_safe(writer);
-        self.hashables.balance.serialize_safe(writer);
-        self.hashables.link.serialize_safe(writer);
-        self.signature.serialize_safe(writer);
+    fn serialize(&self, writer: &mut dyn BufferWriter) {
+        self.hashables.account.serialize(writer);
+        self.hashables.previous.serialize(writer);
+        self.hashables.representative.serialize(writer);
+        self.hashables.balance.serialize(writer);
+        self.hashables.link.serialize(writer);
+        self.signature.serialize(writer);
         writer.write_bytes_safe(&self.work.to_be_bytes());
     }
 
@@ -323,7 +323,7 @@ mod tests {
     fn serialization() {
         let block1 = BlockBuilder::state().work(5).build();
         let mut stream = MemoryStream::new();
-        block1.serialize_safe(&mut stream);
+        block1.serialize(&mut stream);
         assert_eq!(StateBlock::serialized_size(), stream.bytes_written());
         assert_eq!(stream.byte_at(215), 0x5); // Ensure work is serialized big-endian
 

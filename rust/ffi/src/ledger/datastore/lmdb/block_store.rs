@@ -1,14 +1,8 @@
-use std::{ffi::c_void, ptr, slice, sync::Arc};
-
+use super::TransactionHandle;
+use crate::{copy_hash_bytes, core::BlockHandle};
 use rsnano_core::BlockHash;
 use rsnano_store_lmdb::LmdbBlockStore;
-
-use crate::{copy_hash_bytes, core::BlockHandle, VoidPointerCallback};
-
-use super::{
-    iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},
-    TransactionHandle,
-};
+use std::{ptr, slice, sync::Arc};
 
 pub struct LmdbBlockStoreHandle(Arc<LmdbBlockStore>);
 
@@ -115,26 +109,6 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_count(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_begin(
-    handle: *mut LmdbBlockStoreHandle,
-    txn: *mut TransactionHandle,
-) -> *mut LmdbIteratorHandle {
-    let iterator = (*handle).0.begin((*txn).as_txn());
-    LmdbIteratorHandle::new2(iterator)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_begin_at_hash(
-    handle: *mut LmdbBlockStoreHandle,
-    txn: *mut TransactionHandle,
-    hash: *const u8,
-) -> *mut LmdbIteratorHandle {
-    let hash = BlockHash::from_ptr(hash);
-    let iterator = (*handle).0.begin_at_hash((*txn).as_txn(), &hash);
-    LmdbIteratorHandle::new2(iterator)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_block_store_random(
     handle: *mut LmdbBlockStoreHandle,
     txn: *mut TransactionHandle,
@@ -143,21 +117,4 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_random(
         Some(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(block)))),
         None => ptr::null_mut(),
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_block_store_for_each_par(
-    handle: *mut LmdbBlockStoreHandle,
-    action: ForEachParCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let wrapper = ForEachParWrapper {
-        action,
-        context,
-        delete_context,
-    };
-    (*handle)
-        .0
-        .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
 }

@@ -205,17 +205,6 @@ public:
 		return result;
 	}
 
-	explicit operator block_w_sideband () const
-	{
-		nano::bufferstream stream (reinterpret_cast<uint8_t const *> (data ()), size ());
-		nano::store::block_w_sideband block_w_sideband;
-		block_w_sideband.block = (nano::deserialize_block (stream));
-		auto error = block_w_sideband.sideband.deserialize (stream, block_w_sideband.block->type ());
-		release_assert (!error);
-		block_w_sideband.block->sideband_set (block_w_sideband.sideband);
-		return block_w_sideband;
-	}
-
 	explicit operator std::nullptr_t () const
 	{
 		return nullptr;
@@ -224,13 +213,6 @@ public:
 	explicit operator nano::no_value () const
 	{
 		return no_value::dummy;
-	}
-
-	explicit operator std::shared_ptr<nano::block> () const
-	{
-		nano::bufferstream stream (reinterpret_cast<uint8_t const *> (data ()), size ());
-		std::shared_ptr<nano::block> result (nano::deserialize_block (stream));
-		return result;
 	}
 
 	template <typename Block>

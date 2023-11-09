@@ -292,7 +292,6 @@ public:
 	virtual ~mutable_block_visitor () = default;
 };
 
-std::shared_ptr<nano::block> deserialize_block (nano::stream &);
 std::shared_ptr<nano::block> deserialize_block (nano::stream &, nano::block_type);
 std::shared_ptr<nano::block> deserialize_block_json (boost::property_tree::ptree const &);
 /**

@@ -1,17 +1,6 @@
 #include <nano/store/lmdb/block.hpp>
 #include <nano/store/lmdb/lmdb.hpp>
 
-nano::store::iterator<nano::block_hash, nano::store::block_w_sideband> to_block_iterator (rsnano::LmdbIteratorHandle * it_handle)
-{
-	if (it_handle == nullptr)
-	{
-		return nano::store::iterator<nano::block_hash, nano::store::block_w_sideband> (nullptr);
-	}
-
-	return nano::store::iterator<nano::block_hash, nano::store::block_w_sideband> (
-	std::make_unique<nano::store::lmdb::iterator<nano::block_hash, nano::store::block_w_sideband>> (it_handle));
-}
-
 nano::store::lmdb::block::block (rsnano::LmdbBlockStoreHandle * handle_a) :
 	handle{ handle_a }
 {
@@ -75,41 +64,4 @@ bool nano::store::lmdb::block::exists (nano::store::transaction const & transact
 uint64_t nano::store::lmdb::block::count (nano::store::transaction const & transaction_a)
 {
 	return rsnano::rsn_lmdb_block_store_count (handle, transaction_a.get_rust_handle ());
-}
-nano::store::iterator<nano::block_hash, nano::store::block_w_sideband> nano::store::lmdb::block::begin (nano::store::transaction const & transaction) const
-{
-	auto it_handle{ rsnano::rsn_lmdb_block_store_begin (handle, transaction.get_rust_handle ()) };
-	return to_block_iterator (it_handle);
-}
-
-nano::store::iterator<nano::block_hash, nano::store::block_w_sideband> nano::store::lmdb::block::begin (nano::store::transaction const & transaction, nano::block_hash const & hash) const
-{
-	auto it_handle{ rsnano::rsn_lmdb_block_store_begin_at_hash (handle, transaction.get_rust_handle (), hash.bytes.data ()) };
-	return to_block_iterator (it_handle);
-}
-
-nano::store::iterator<nano::block_hash, nano::store::block_w_sideband> nano::store::lmdb::block::end () const
-{
-	return nano::store::iterator<nano::block_hash, nano::store::block_w_sideband> (nullptr);
-}
-
-namespace
-{
-void for_each_par_wrapper (void * context, rsnano::TransactionHandle * txn_handle, rsnano::LmdbIteratorHandle * begin_handle, rsnano::LmdbIteratorHandle * end_handle)
-{
-	auto action = static_cast<std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::block_hash, nano::store::block_w_sideband>, nano::store::iterator<nano::block_hash, nano::store::block_w_sideband>)> const *> (context);
-	nano::store::lmdb::read_transaction_impl txn{ txn_handle };
-	auto begin{ to_block_iterator (begin_handle) };
-	auto end{ to_block_iterator (end_handle) };
-	(*action) (txn, std::move (begin), std::move (end));
-}
-void for_each_par_delete_context (void * context)
-{
-}
-}
-
-void nano::store::lmdb::block::for_each_par (std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::block_hash, block_w_sideband>, nano::store::iterator<nano::block_hash, nano::store::block_w_sideband>)> const & action_a) const
-{
-	auto context = (void *)&action_a;
-	rsnano::rsn_lmdb_block_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);
 }

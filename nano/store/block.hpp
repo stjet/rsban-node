@@ -13,12 +13,6 @@ class block_hash;
 }
 namespace nano::store
 {
-class block_w_sideband
-{
-public:
-	std::shared_ptr<nano::block> block;
-	nano::block_sideband sideband;
-};
 /**
  * Manages block storage and iteration
  */
@@ -37,9 +31,5 @@ public:
 	virtual void del (store::write_transaction const &, nano::block_hash const &) = 0;
 	virtual bool exists (store::transaction const &, nano::block_hash const &) = 0;
 	virtual uint64_t count (store::transaction const &) = 0;
-	virtual nano::store::iterator<nano::block_hash, block_w_sideband> begin (store::transaction const &, nano::block_hash const &) const = 0;
-	virtual nano::store::iterator<nano::block_hash, block_w_sideband> begin (store::transaction const &) const = 0;
-	virtual nano::store::iterator<nano::block_hash, block_w_sideband> end () const = 0;
-	virtual void for_each_par (std::function<void (store::read_transaction const &, nano::store::iterator<nano::block_hash, block_w_sideband>, nano::store::iterator<nano::block_hash, block_w_sideband>)> const & action_a) const = 0;
 };
 } // namespace nano::store

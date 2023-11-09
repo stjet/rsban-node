@@ -176,4 +176,3 @@ TEST (conflicts, add_two)
 	//
 	ASSERT_TIMELY (5s, node->active.size () == 2);
 }
-

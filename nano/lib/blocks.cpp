@@ -935,18 +935,6 @@ void nano::serialize_block (nano::stream & stream_a, nano::block const & block_a
 	block_a.serialize (stream_a);
 }
 
-std::shared_ptr<nano::block> nano::deserialize_block (nano::stream & stream_a)
-{
-	nano::block_type type;
-	auto error (try_read (stream_a, type));
-	std::shared_ptr<nano::block> result;
-	if (!error)
-	{
-		result = nano::deserialize_block (stream_a, type);
-	}
-	return result;
-}
-
 std::shared_ptr<nano::block> nano::deserialize_block (nano::stream & stream_a, nano::block_type type_a)
 {
 	auto block_handle = rsnano::rsn_deserialize_block (static_cast<uint8_t> (type_a), &stream_a);

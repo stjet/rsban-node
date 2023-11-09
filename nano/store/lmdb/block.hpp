@@ -23,9 +23,5 @@ public:
 	void del (nano::store::write_transaction const & transaction_a, nano::block_hash const & hash_a) override;
 	bool exists (nano::store::transaction const & transaction_a, nano::block_hash const & hash_a) override;
 	uint64_t count (nano::store::transaction const & transaction_a) override;
-	nano::store::iterator<nano::block_hash, nano::store::block_w_sideband> begin (nano::store::transaction const & transaction_a) const override;
-	nano::store::iterator<nano::block_hash, nano::store::block_w_sideband> begin (nano::store::transaction const & transaction_a, nano::block_hash const & hash_a) const override;
-	nano::store::iterator<nano::block_hash, nano::store::block_w_sideband> end () const override;
-	void for_each_par (std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::block_hash, block_w_sideband>, nano::store::iterator<nano::block_hash, nano::store::block_w_sideband>)> const & action_a) const override;
 };
 }

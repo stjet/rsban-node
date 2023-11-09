@@ -64,7 +64,7 @@ use std::{
     cmp::{max, min},
     mem,
     sync::Arc,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use primitive_types::{U256, U512};
@@ -79,6 +79,7 @@ pub trait Transaction {
     type RoCursor: RoCursor;
     fn as_any(&self) -> &dyn Any;
     fn refresh(&mut self);
+    fn refresh_if_needed(&mut self, max_age: Duration);
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]>;
     fn exists(&self, db: Self::Database, key: &[u8]) -> bool {
         match self.get(db, key) {
@@ -139,6 +140,7 @@ pub struct LmdbReadTransaction<T: Environment + 'static = EnvironmentWrapper> {
     txn_id: u64,
     callbacks: Arc<dyn TransactionTracker>,
     txn: RoTxnState<T::RoTxnImpl, T::InactiveTxnImpl>,
+    start: Instant,
 }
 
 impl<T: Environment + 'static> LmdbReadTransaction<T> {
@@ -150,6 +152,7 @@ impl<T: Environment + 'static> LmdbReadTransaction<T> {
             txn_id,
             callbacks,
             txn: RoTxnState::Active(txn),
+            start: Instant::now(),
         })
     }
 
@@ -178,6 +181,7 @@ impl<T: Environment + 'static> LmdbReadTransaction<T> {
             RoTxnState::Transitioning => unreachable!(),
         };
         self.callbacks.txn_start(self.txn_id, false);
+        self.start = Instant::now();
     }
 }
 
@@ -203,6 +207,12 @@ impl<T: Environment + 'static> Transaction for LmdbReadTransaction<T> {
     fn refresh(&mut self) {
         self.reset();
         self.renew();
+    }
+
+    fn refresh_if_needed(&mut self, max_age: Duration) {
+        if self.start.elapsed() > max_age {
+            self.refresh();
+        }
     }
 
     fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
@@ -251,6 +261,7 @@ pub struct LmdbWriteTransaction<T: Environment + 'static = EnvironmentWrapper> {
     delete_listener: OutputListener<DeleteEvent<T::Database>>,
     #[cfg(feature = "output_tracking")]
     clear_listener: OutputListener<T::Database>,
+    start: Instant,
 }
 
 impl<T: Environment> LmdbWriteTransaction<T> {
@@ -271,6 +282,7 @@ impl<T: Environment> LmdbWriteTransaction<T> {
             delete_listener: OutputListener::new(),
             #[cfg(feature = "output_tracking")]
             clear_listener: OutputListener::new(),
+            start: Instant::now(),
         };
         tx.renew();
         Ok(tx)
@@ -298,6 +310,7 @@ impl<T: Environment> LmdbWriteTransaction<T> {
             RwTxnState::Transitioning => unreachable!(),
         };
         self.callbacks.txn_start(self.txn_id, true);
+        self.start = Instant::now();
     }
 
     pub fn commit(&mut self) {
@@ -403,6 +416,12 @@ impl<T: Environment> Transaction for LmdbWriteTransaction<T> {
 
     fn count(&self, database: Self::Database) -> u64 {
         self.rw_txn().count(database)
+    }
+
+    fn refresh_if_needed(&mut self, max_age: Duration) {
+        if self.start.elapsed() > max_age {
+            self.refresh();
+        }
     }
 }
 

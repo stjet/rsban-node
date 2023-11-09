@@ -30,6 +30,7 @@ public:
 	void reset () override;
 	void renew () override;
 	void refresh () override;
+	void refresh_if_needed (std::chrono::milliseconds max_age) const override;
 	rsnano::TransactionHandle * get_rust_handle () const override
 	{
 		return txn_handle;
@@ -48,6 +49,7 @@ public:
 	void commit () override;
 	void renew () override;
 	void refresh () override;
+	void refresh_if_needed (std::chrono::milliseconds max_age) override;
 	bool contains (nano::tables table_a) const override;
 	rsnano::TransactionHandle * get_rust_handle () const override
 	{

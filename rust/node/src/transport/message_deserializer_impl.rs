@@ -1,5 +1,5 @@
 use super::NetworkFilter;
-use crate::{messages::*, voting::VoteUniquer};
+use crate::messages::*;
 use rsnano_core::{utils::StreamAdapter, work::WorkThresholds};
 use std::sync::Arc;
 

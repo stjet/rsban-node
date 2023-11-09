@@ -16,7 +16,6 @@ use crate::{
     messages::{Message, MessageSerializer},
     stats::{DetailType, Direction, StatType, Stats},
     utils::{AsyncRuntime, ErrorCode},
-    voting::VoteUniquer,
 };
 
 use super::{
@@ -207,7 +206,6 @@ impl ChannelInProc {
             let message_deserializer = Arc::new(AsyncMessageDeserializer::new(
                 self.network_constants.clone(),
                 self.network_filter.clone(),
-                Arc::new(VoteUniquer::new()),
                 VecBufferReader::new(buffer.to_vec()),
             ));
 

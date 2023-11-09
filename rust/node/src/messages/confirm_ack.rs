@@ -1,4 +1,4 @@
-use crate::voting::{Vote, VoteUniquer};
+use crate::voting::Vote;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::{
@@ -25,15 +25,10 @@ impl ConfirmAck {
         Vote::serialized_size(count as usize)
     }
 
-    pub fn deserialize(stream: &mut impl Stream, uniquer: Option<&VoteUniquer>) -> Result<Self> {
+    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
         let mut vote = Vote::null();
         vote.deserialize(stream)?;
         let mut vote = Arc::new(vote);
-
-        if let Some(uniquer) = uniquer {
-            vote = uniquer.unique(&vote);
-        }
-
         Ok(ConfirmAck { vote })
     }
 

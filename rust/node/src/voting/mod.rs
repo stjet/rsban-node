@@ -11,8 +11,6 @@ pub use local_vote_history::*;
 pub use vote::*;
 pub use vote_spacing::VoteSpacing;
 
-pub type VoteUniquer = crate::utils::Uniquer<Vote>;
-
 mod election_status;
 
 pub use election_status::{ElectionStatus, ElectionStatusType};

@@ -22,7 +22,6 @@
 namespace rsnano
 {
 class VoteHandle;
-class VoteUniquerHandle;
 }
 
 namespace boost

@@ -21,8 +21,8 @@ use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
     config::{NetworkConstants, NodeConfig, NodeFlags},
     messages::{
-        Keepalive, Message, MessageType, NodeIdHandshake, NodeIdHandshakeQuery,
-        NodeIdHandshakeResponse,
+        DeserializedMessage, Keepalive, Message, MessageType, NodeIdHandshake,
+        NodeIdHandshakeQuery, NodeIdHandshakeResponse, ParseMessageError,
     },
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     transport::{Channel, SocketType},
@@ -34,11 +34,11 @@ use crate::{
 };
 
 use super::{
-    message_deserializer::AsyncMessageDeserializer, BufferDropPolicy, ChannelEnum, ChannelTcp,
-    ChannelTcpObserver, CompositeSocketObserver, DeserializedMessage, EndpointType,
-    IChannelTcpObserverWeakPtr, NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter,
-    ParseStatus, PeerExclusion, Socket, SocketBuilder, SocketExtensions, SocketObserver,
-    SynCookies, TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver, TrafficType,
+    message_deserializer::MessageDeserializer, BufferDropPolicy, ChannelEnum, ChannelTcp,
+    ChannelTcpObserver, CompositeSocketObserver, EndpointType, IChannelTcpObserverWeakPtr,
+    NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket,
+    SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpMessageManager, TcpServer,
+    TcpServerFactory, TcpServerObserver, TrafficType,
 };
 
 pub struct TcpChannelsOptions {
@@ -805,8 +805,9 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             });
 
         if let Some(rt) = self.async_rt.upgrade() {
-            let deserializer = Arc::new(AsyncMessageDeserializer::new(
-                self.network.network.clone(),
+            let deserializer = Arc::new(MessageDeserializer::new(
+                self.network.network.protocol_info(),
+                self.network.work.clone(),
                 self.publish_filter.clone(),
                 socket_l,
             ));
@@ -821,7 +822,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                             payload.message.message_type().into(),
                             Direction::In,
                         ),
-                        Err(ParseStatus::InsufficientWork) => stats.inc(
+                        Err(ParseMessageError::InsufficientWork) => stats.inc(
                             StatType::Filter,
                             DetailType::DuplicatePublish,
                             Direction::In,
@@ -831,10 +832,12 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                     match result {
                         Ok(msg) => callback(ErrorCode::new(), Some(msg)),
-                        Err(ParseStatus::DuplicatePublishMessage) => {
+                        Err(ParseMessageError::DuplicatePublishMessage) => {
                             callback(ErrorCode::new(), None)
                         }
-                        Err(ParseStatus::InsufficientWork) => callback(ErrorCode::new(), None),
+                        Err(ParseMessageError::InsufficientWork) => {
+                            callback(ErrorCode::new(), None)
+                        }
                         Err(_) => callback(ErrorCode::fault(), None),
                     }
                 }));

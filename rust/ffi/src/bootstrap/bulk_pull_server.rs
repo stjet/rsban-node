@@ -1,5 +1,8 @@
 use rsnano_core::utils::Logger;
-use rsnano_node::{bootstrap::BulkPullServer, messages::Message, transport::DeserializedMessage};
+use rsnano_node::{
+    bootstrap::BulkPullServer,
+    messages::{DeserializedMessage, Message},
+};
 use std::sync::Arc;
 
 use crate::{

@@ -1,4 +1,3 @@
-use anyhow::Result;
 use rsnano_core::utils::{BufferWriter, Serialize, Stream};
 use std::{
     fmt::Display,
@@ -13,14 +12,14 @@ pub struct Keepalive {
 }
 
 impl Keepalive {
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut impl Stream) -> Option<Self> {
         let mut peers = empty_peers();
 
         for i in 0..8 {
             let mut addr_buffer = [0u8; 16];
             let mut port_buffer = [0u8; 2];
-            stream.read_bytes(&mut addr_buffer, 16)?;
-            stream.read_bytes(&mut port_buffer, 2)?;
+            stream.read_bytes(&mut addr_buffer, 16).ok()?;
+            stream.read_bytes(&mut port_buffer, 2).ok()?;
 
             let port = u16::from_le_bytes(port_buffer);
             let ip_addr = Ipv6Addr::from(addr_buffer);
@@ -28,7 +27,7 @@ impl Keepalive {
             peers[i] = SocketAddr::new(IpAddr::V6(ip_addr), port);
         }
 
-        Ok(Self { peers })
+        Some(Self { peers })
     }
 
     pub fn serialized_size() -> usize {

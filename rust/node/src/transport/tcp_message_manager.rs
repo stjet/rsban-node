@@ -1,11 +1,12 @@
+use crate::messages::DeserializedMessage;
+
+use super::Socket;
+use rsnano_core::Account;
 use std::{
     collections::VecDeque,
     net::{IpAddr, Ipv6Addr, SocketAddr},
     sync::{Arc, Condvar, Mutex},
 };
-
-use super::{DeserializedMessage, Socket};
-use rsnano_core::Account;
 
 pub struct TcpMessageItem {
     pub message: Option<DeserializedMessage>,

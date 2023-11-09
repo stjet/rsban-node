@@ -1,5 +1,4 @@
 use super::MessageVariant;
-use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
@@ -39,20 +38,22 @@ impl BulkPull {
             })
     }
 
-    pub fn deserialize(stream: &mut impl Stream, extensions: BitArray<u16>) -> Result<Self> {
-        let start = HashOrAccount::deserialize(stream)?;
-        let end = BlockHash::deserialize(stream)?;
+    pub fn deserialize(stream: &mut impl Stream, extensions: BitArray<u16>) -> Option<Self> {
+        let start = HashOrAccount::deserialize(stream).ok()?;
+        let end = BlockHash::deserialize(stream).ok()?;
 
         let count = if extensions[BulkPull::COUNT_PRESENT_FLAG] {
             let mut extended_parameters_buffers = [0u8; BulkPull::EXTENDED_PARAMETERS_SIZE];
             const_assert!(size_of::<u32>() < (BulkPull::EXTENDED_PARAMETERS_SIZE - 1)); // "count must fit within buffer")
 
-            stream.read_bytes(
-                &mut extended_parameters_buffers,
-                BulkPull::EXTENDED_PARAMETERS_SIZE,
-            )?;
+            stream
+                .read_bytes(
+                    &mut extended_parameters_buffers,
+                    BulkPull::EXTENDED_PARAMETERS_SIZE,
+                )
+                .ok()?;
             if extended_parameters_buffers[0] != 0 {
-                bail!("extended parameters front was not 0");
+                return None;
             } else {
                 u32::from_le_bytes(extended_parameters_buffers[1..5].try_into().unwrap())
             }
@@ -62,7 +63,7 @@ impl BulkPull {
 
         let ascending = extensions[BulkPull::ASCENDING_FLAG];
 
-        Ok(BulkPull {
+        Some(BulkPull {
             start,
             end,
             count,

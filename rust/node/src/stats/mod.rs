@@ -1,5 +1,5 @@
 mod histogram;
-mod message_parse_status;
+mod parse_message_error;
 mod socket_stats;
 mod stats;
 mod stats_config;

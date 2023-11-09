@@ -13,15 +13,15 @@ use tokio::task::spawn_blocking;
 
 use crate::{
     config::NetworkConstants,
-    messages::{Message, MessageSerializer},
+    messages::{DeserializedMessage, Message, MessageSerializer, ParseMessageError},
     stats::{DetailType, Direction, StatType, Stats},
     utils::{AsyncRuntime, ErrorCode},
 };
 
 use super::{
-    message_deserializer::{AsyncBufferReader, AsyncMessageDeserializer},
-    BandwidthLimitType, BufferDropPolicy, Channel, ChannelEnum, DeserializedMessage, NetworkFilter,
-    OutboundBandwidthLimiter, ParseStatus, TrafficType, WriteCallback,
+    message_deserializer::{AsyncBufferReader, MessageDeserializer},
+    BandwidthLimitType, BufferDropPolicy, Channel, ChannelEnum, NetworkFilter,
+    OutboundBandwidthLimiter, TrafficType, WriteCallback,
 };
 
 pub struct InProcChannelData {
@@ -203,9 +203,10 @@ impl ChannelInProc {
         callback_msg: Box<dyn FnOnce(ErrorCode, Option<DeserializedMessage>) + Send>,
     ) {
         if let Some(rt) = self.async_rt.upgrade() {
-            let message_deserializer = Arc::new(AsyncMessageDeserializer::new(
-                self.network_constants.clone(),
-                self.network_filter.clone(),
+            let message_deserializer = Arc::new(MessageDeserializer::new(
+                self.network_constants.protocol_info(),
+                self.network_constants.work.clone(),
+                Arc::clone(&self.network_filter),
                 VecBufferReader::new(buffer.to_vec()),
             ));
 
@@ -213,10 +214,12 @@ impl ChannelInProc {
                 let result = message_deserializer.read().await;
                 spawn_blocking(move || match result {
                     Ok(msg) => callback_msg(ErrorCode::new(), Some(msg)),
-                    Err(ParseStatus::DuplicatePublishMessage) => {
+                    Err(ParseMessageError::DuplicatePublishMessage) => {
                         callback_msg(ErrorCode::new(), None)
                     }
-                    Err(ParseStatus::InsufficientWork) => callback_msg(ErrorCode::new(), None),
+                    Err(ParseMessageError::InsufficientWork) => {
+                        callback_msg(ErrorCode::new(), None)
+                    }
                     Err(_) => callback_msg(ErrorCode::fault(), None),
                 });
             });

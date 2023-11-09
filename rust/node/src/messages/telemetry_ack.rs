@@ -180,43 +180,45 @@ impl TelemetryAck {
         (extensions.data & TelemetryData::SIZE_MASK) as usize
     }
 
-    pub fn deserialize(stream: &mut dyn Stream, extensions: BitArray<u16>) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream, extensions: BitArray<u16>) -> Option<Self> {
         let payload_length = Self::serialized_size(extensions);
         if payload_length == 0 {
-            return Ok(Self(None));
+            return Some(Self(None));
         }
 
         let mut result = TelemetryData {
-            signature: Signature::deserialize(stream)?,
-            node_id: Account::deserialize(stream)?,
-            block_count: stream.read_u64_be()?,
-            cemented_count: stream.read_u64_be()?,
-            unchecked_count: stream.read_u64_be()?,
-            account_count: stream.read_u64_be()?,
-            bandwidth_cap: stream.read_u64_be()?,
-            peer_count: stream.read_u32_be()?,
-            protocol_version: stream.read_u8()?,
-            uptime: stream.read_u64_be()?,
-            genesis_block: BlockHash::deserialize(stream)?,
-            major_version: stream.read_u8()?,
-            minor_version: stream.read_u8()?,
-            patch_version: stream.read_u8()?,
-            pre_release_version: stream.read_u8()?,
-            maker: stream.read_u8()?,
+            signature: Signature::deserialize(stream).ok()?,
+            node_id: Account::deserialize(stream).ok()?,
+            block_count: stream.read_u64_be().ok()?,
+            cemented_count: stream.read_u64_be().ok()?,
+            unchecked_count: stream.read_u64_be().ok()?,
+            account_count: stream.read_u64_be().ok()?,
+            bandwidth_cap: stream.read_u64_be().ok()?,
+            peer_count: stream.read_u32_be().ok()?,
+            protocol_version: stream.read_u8().ok()?,
+            uptime: stream.read_u64_be().ok()?,
+            genesis_block: BlockHash::deserialize(stream).ok()?,
+            major_version: stream.read_u8().ok()?,
+            minor_version: stream.read_u8().ok()?,
+            patch_version: stream.read_u8().ok()?,
+            pre_release_version: stream.read_u8().ok()?,
+            maker: stream.read_u8().ok()?,
             timestamp: {
-                let timestamp_ms = stream.read_u64_be()?;
+                let timestamp_ms = stream.read_u64_be().ok()?;
                 SystemTime::UNIX_EPOCH + Duration::from_millis(timestamp_ms)
             },
-            active_difficulty: stream.read_u64_be()?,
+            active_difficulty: stream.read_u64_be().ok()?,
             unknown_data: Vec::new(),
         };
         if payload_length as usize > TelemetryData::serialized_size_of_known_data() {
             let unknown_len =
                 (payload_length as usize) - TelemetryData::serialized_size_of_known_data();
             result.unknown_data.resize(unknown_len, 0);
-            stream.read_bytes(&mut result.unknown_data, unknown_len)?;
+            stream
+                .read_bytes(&mut result.unknown_data, unknown_len)
+                .ok()?;
         }
-        Ok(Self(Some(result)))
+        Some(Self(Some(result)))
     }
 }
 

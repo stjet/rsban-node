@@ -164,20 +164,20 @@ impl NodeIdHandshake {
         size
     }
 
-    pub fn deserialize(stream: &mut dyn Stream, extensions: BitArray<u16>) -> Result<Self> {
+    pub fn deserialize(stream: &mut dyn Stream, extensions: BitArray<u16>) -> Option<Self> {
         let query = if NodeIdHandshake::is_query(extensions) {
             let mut cookie = [0u8; 32];
-            stream.read_bytes(&mut cookie, 32)?;
+            stream.read_bytes(&mut cookie, 32).ok()?;
             Some(NodeIdHandshakeQuery { cookie })
         } else {
             None
         };
         let response = if NodeIdHandshake::is_response(extensions) {
-            Some(NodeIdHandshakeResponse::deserialize(stream, extensions)?)
+            Some(NodeIdHandshakeResponse::deserialize(stream, extensions).ok()?)
         } else {
             None
         };
-        Ok(Self {
+        Some(Self {
             query,
             response,
             is_v2: Self::has_v2_flag(extensions),

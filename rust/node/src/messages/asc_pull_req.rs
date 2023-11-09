@@ -129,24 +129,23 @@ impl Display for AscPullReq {
 }
 
 impl AscPullReq {
-    pub fn deserialize(stream: &mut impl Stream) -> anyhow::Result<Self> {
-        let pull_type = AscPullPayloadId::from_u8(stream.read_u8()?)
-            .ok_or_else(|| anyhow!("Unknown asc_pull_type"))?;
-        let id = stream.read_u64_be()?;
+    pub fn deserialize(stream: &mut impl Stream) -> Option<Self> {
+        let pull_type = AscPullPayloadId::from_u8(stream.read_u8().ok()?)?;
+        let id = stream.read_u64_be().ok()?;
 
         let req_type = match pull_type {
             AscPullPayloadId::Blocks => {
                 let mut payload = BlocksReqPayload::default();
-                payload.deserialize(stream)?;
+                payload.deserialize(stream).ok()?;
                 AscPullReqType::Blocks(payload)
             }
             AscPullPayloadId::AccountInfo => {
                 let mut payload = AccountInfoReqPayload::default();
-                payload.deserialize(stream)?;
+                payload.deserialize(stream).ok()?;
                 AscPullReqType::AccountInfo(payload)
             }
         };
-        Ok(Self { id, req_type })
+        Some(Self { id, req_type })
     }
 
     pub fn payload_type(&self) -> AscPullPayloadId {

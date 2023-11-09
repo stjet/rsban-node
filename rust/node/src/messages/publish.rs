@@ -1,5 +1,4 @@
 use super::MessageVariant;
-use anyhow::Result;
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
@@ -22,13 +21,13 @@ impl Publish {
         stream: &mut impl Stream,
         extensions: BitArray<u16>,
         digest: u128,
-    ) -> Result<Self> {
+    ) -> Option<Self> {
         let payload = Publish {
-            block: BlockEnum::deserialize_block_type(Self::block_type(extensions), stream)?,
+            block: BlockEnum::deserialize_block_type(Self::block_type(extensions), stream).ok()?,
             digest,
         };
 
-        Ok(payload)
+        Some(payload)
     }
 
     pub fn serialized_size(extensions: BitArray<u16>) -> usize {

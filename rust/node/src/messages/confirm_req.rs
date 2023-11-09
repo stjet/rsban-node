@@ -31,16 +31,16 @@ impl ConfirmReq {
         value.data as u8
     }
 
-    pub fn deserialize(stream: &mut impl Stream, extensions: BitArray<u16>) -> Result<Self> {
+    pub fn deserialize(stream: &mut impl Stream, extensions: BitArray<u16>) -> Option<Self> {
         let block_type = Self::block_type(extensions);
         if block_type == BlockType::NotABlock {
-            Ok(Self {
+            Some(Self {
                 block: None,
-                roots_hashes: Self::deserialize_roots(stream, extensions)?,
+                roots_hashes: Self::deserialize_roots(stream, extensions).ok()?,
             })
         } else {
-            Ok(Self {
-                block: Some(BlockEnum::deserialize_block_type(block_type, stream)?),
+            Some(Self {
+                block: Some(BlockEnum::deserialize_block_type(block_type, stream).ok()?),
                 roots_hashes: Vec::new(),
             })
         }

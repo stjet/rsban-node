@@ -1,5 +1,4 @@
 use super::{Message, MessageHeader, ProtocolInfo};
-use crate::transport::MAX_MESSAGE_SIZE;
 use rsnano_core::utils::MutStreamAdapter;
 
 pub struct MessageSerializer {
@@ -8,7 +7,7 @@ pub struct MessageSerializer {
 }
 
 impl MessageSerializer {
-    const BUFFER_SIZE: usize = MessageHeader::SERIALIZED_SIZE + MAX_MESSAGE_SIZE;
+    const BUFFER_SIZE: usize = MessageHeader::SERIALIZED_SIZE + Message::MAX_MESSAGE_SIZE;
     pub fn new(protocol: ProtocolInfo) -> Self {
         Self {
             protocol,
@@ -19,16 +18,16 @@ impl MessageSerializer {
     pub fn serialize(&'_ mut self, message: &Message) -> &'_ [u8] {
         let payload_len;
         {
-            let mut payload_stream =
+            let mut payload_writer =
                 MutStreamAdapter::new(&mut self.buffer[MessageHeader::SERIALIZED_SIZE..]);
-            message.serialize(&mut payload_stream);
-            payload_len = payload_stream.bytes_written();
+            message.serialize(&mut payload_writer);
+            payload_len = payload_writer.bytes_written();
 
-            let mut header_stream =
+            let mut header_writer =
                 MutStreamAdapter::new(&mut self.buffer[..MessageHeader::SERIALIZED_SIZE]);
             let mut header = MessageHeader::new(message.message_type(), self.protocol);
             header.extensions = message.header_extensions(payload_len as u16);
-            header.serialize(&mut header_stream);
+            header.serialize(&mut header_writer);
         }
         &self.buffer[..MessageHeader::SERIALIZED_SIZE + payload_len]
     }

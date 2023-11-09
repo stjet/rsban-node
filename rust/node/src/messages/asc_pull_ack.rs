@@ -21,24 +21,23 @@ pub struct AscPullAck {
 }
 
 impl AscPullAck {
-    pub fn deserialize(stream: &mut impl Stream) -> anyhow::Result<Self> {
-        let pull_type_code = AscPullPayloadId::from_u8(stream.read_u8()?)
-            .ok_or_else(|| anyhow!("Unknown asc_pull_type"))?;
-        let id = stream.read_u64_be()?;
+    pub fn deserialize(stream: &mut impl Stream) -> Option<Self> {
+        let pull_type_code = AscPullPayloadId::from_u8(stream.read_u8().ok()?)?;
+        let id = stream.read_u64_be().ok()?;
         let pull_type = match pull_type_code {
             AscPullPayloadId::Blocks => {
                 let mut payload = BlocksAckPayload::default();
-                payload.deserialize(stream)?;
+                payload.deserialize(stream).ok()?;
                 AscPullAckType::Blocks(payload)
             }
             AscPullPayloadId::AccountInfo => {
                 let mut payload = AccountInfoAckPayload::default();
-                payload.deserialize(stream)?;
+                payload.deserialize(stream).ok()?;
                 AscPullAckType::AccountInfo(payload)
             }
         };
 
-        Ok(AscPullAck { id, pull_type })
+        Some(AscPullAck { id, pull_type })
     }
 
     pub fn payload_type(&self) -> AscPullPayloadId {

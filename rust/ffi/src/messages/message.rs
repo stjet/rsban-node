@@ -1,6 +1,8 @@
 use crate::NetworkConstantsDto;
-use rsnano_node::{config::NetworkConstants, messages::Message, transport::DeserializedMessage};
-
+use rsnano_node::{
+    config::NetworkConstants,
+    messages::{DeserializedMessage, Message},
+};
 use std::ops::{Deref, DerefMut};
 
 pub struct MessageHandle(pub DeserializedMessage);

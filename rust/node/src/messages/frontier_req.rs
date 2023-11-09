@@ -1,5 +1,4 @@
 use super::MessageVariant;
-use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
@@ -33,16 +32,16 @@ impl FrontierReq {
 
     pub const ONLY_CONFIRMED: usize = 1;
 
-    pub fn deserialize(stream: &mut impl Stream, extensions: BitArray<u16>) -> Result<Self> {
-        let start = Account::deserialize(stream)?;
+    pub fn deserialize(stream: &mut impl Stream, extensions: BitArray<u16>) -> Option<Self> {
+        let start = Account::deserialize(stream).ok()?;
         let mut buffer = [0u8; 4];
-        stream.read_bytes(&mut buffer, 4)?;
+        stream.read_bytes(&mut buffer, 4).ok()?;
         let age = u32::from_le_bytes(buffer);
-        stream.read_bytes(&mut buffer, 4)?;
+        stream.read_bytes(&mut buffer, 4).ok()?;
         let count = u32::from_le_bytes(buffer);
         let only_confirmed = extensions[FrontierReq::ONLY_CONFIRMED];
 
-        Ok(FrontierReq {
+        Some(FrontierReq {
             start,
             age,
             count,

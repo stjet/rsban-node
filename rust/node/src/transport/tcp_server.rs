@@ -1,3 +1,19 @@
+use super::{MessageDeserializer, NetworkFilter};
+use crate::{
+    bootstrap::BootstrapMessageVisitorFactory,
+    config::{NetworkConstants, NodeConfig},
+    messages::{
+        DeserializedMessage, Message, MessageSerializer, MessageVisitor, NodeIdHandshake,
+        NodeIdHandshakeQuery, NodeIdHandshakeResponse, ParseMessageError,
+    },
+    stats::{DetailType, Direction, StatType, Stats},
+    transport::{
+        Socket, SocketExtensions, SocketType, SynCookies, TcpMessageItem, TcpMessageManager,
+    },
+    utils::AsyncRuntime,
+    NetworkParams,
+};
+use rsnano_core::{utils::Logger, Account, KeyPair};
 use std::{
     net::{Ipv6Addr, SocketAddr},
     sync::{
@@ -6,27 +22,7 @@ use std::{
     },
     time::{Duration, Instant},
 };
-
-use rsnano_core::{utils::Logger, Account, KeyPair};
 use tokio::task::spawn_blocking;
-
-use crate::{
-    bootstrap::BootstrapMessageVisitorFactory,
-    config::{NetworkConstants, NodeConfig},
-    messages::{
-        Message, MessageSerializer, MessageVisitor, NodeIdHandshake, NodeIdHandshakeQuery,
-        NodeIdHandshakeResponse,
-    },
-    stats::{DetailType, Direction, StatType, Stats},
-    transport::{
-        ParseStatus, Socket, SocketExtensions, SocketType, SynCookies, TcpMessageItem,
-        TcpMessageManager,
-    },
-    utils::AsyncRuntime,
-    NetworkParams,
-};
-
-use super::{AsyncMessageDeserializer, DeserializedMessage, NetworkFilter};
 
 pub trait TcpServerObserver: Send + Sync {
     fn bootstrap_server_timeout(&self, inner_ptr: usize);
@@ -84,7 +80,7 @@ pub struct TcpServer {
     pub disable_tcp_realtime: bool,
     handshake_query_received: AtomicBool,
     message_visitor_factory: Arc<BootstrapMessageVisitorFactory>,
-    message_deserializer: Arc<AsyncMessageDeserializer<Arc<Socket>>>,
+    message_deserializer: Arc<MessageDeserializer<Arc<Socket>>>,
     tcp_message_manager: Arc<TcpMessageManager>,
     allow_bootstrap: bool,
 }
@@ -129,8 +125,9 @@ impl TcpServer {
             disable_tcp_realtime: false,
             handshake_query_received: AtomicBool::new(false),
             message_visitor_factory,
-            message_deserializer: Arc::new(AsyncMessageDeserializer::new(
-                network_constants,
+            message_deserializer: Arc::new(MessageDeserializer::new(
+                network_constants.protocol_info(),
+                network_constants.work.clone(),
                 publish_filter,
                 socket_clone,
             )),
@@ -309,7 +306,7 @@ impl TcpServerExt for Arc<TcpServer> {
             spawn_blocking(Box::new(move || {
                 match result {
                     Ok(msg) => self_clone.received_message(msg),
-                    Err(ParseStatus::DuplicatePublishMessage) => {
+                    Err(ParseMessageError::DuplicatePublishMessage) => {
                         self_clone.stats.inc(
                             StatType::Filter,
                             DetailType::DuplicatePublish,
@@ -317,7 +314,7 @@ impl TcpServerExt for Arc<TcpServer> {
                         );
                         self_clone.receive_message();
                     }
-                    Err(ParseStatus::InsufficientWork) => {
+                    Err(ParseMessageError::InsufficientWork) => {
                         // IO error or critical error when deserializing message
                         self_clone.stats.inc(
                             StatType::Error,

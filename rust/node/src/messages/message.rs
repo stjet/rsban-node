@@ -1,8 +1,7 @@
 use super::*;
 use crate::stats::DetailType;
-use anyhow::Result;
 use bitvec::prelude::BitArray;
-use rsnano_core::utils::{BufferWriter, Serialize, Stream};
+use rsnano_core::utils::{BufferWriter, Serialize, StreamAdapter};
 use std::fmt::Display;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -28,7 +27,34 @@ pub trait MessageVariant: Display + Serialize {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ParseMessageError {
+    Other,
+    InsufficientWork,
+    InvalidHeader,
+    InvalidMessageType,
+    InvalidMessage(MessageType),
+    InvalidNetwork,
+    OutdatedVersion,
+    DuplicatePublishMessage,
+    MessageSizeTooBig,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct DeserializedMessage {
+    pub message: Message,
+    pub protocol: ProtocolInfo,
+}
+
+impl DeserializedMessage {
+    pub fn new(message: Message, protocol: ProtocolInfo) -> Self {
+        Self { message, protocol }
+    }
+}
+
 impl Message {
+    pub const MAX_MESSAGE_SIZE: usize = 1024 * 65;
+
     pub fn message_type(&self) -> MessageType {
         match &self {
             Message::Keepalive(_) => MessageType::Keepalive,
@@ -77,42 +103,43 @@ impl Message {
         }
     }
 
-    pub fn deserialize(
-        stream: &mut impl Stream,
-        header: &MessageHeader,
-        digest: u128,
-    ) -> Result<Self> {
+    pub fn deserialize(payload_bytes: &[u8], header: &MessageHeader, digest: u128) -> Option<Self> {
+        let mut stream = StreamAdapter::new(payload_bytes);
         let msg = match header.message_type {
-            MessageType::Keepalive => Message::Keepalive(Keepalive::deserialize(stream)?),
-            MessageType::Publish => {
-                Message::Publish(Publish::deserialize(stream, header.extensions, digest)?)
-            }
-            MessageType::AscPullAck => Message::AscPullAck(AscPullAck::deserialize(stream)?),
-            MessageType::AscPullReq => Message::AscPullReq(AscPullReq::deserialize(stream)?),
+            MessageType::Keepalive => Message::Keepalive(Keepalive::deserialize(&mut stream)?),
+            MessageType::Publish => Message::Publish(Publish::deserialize(
+                &mut stream,
+                header.extensions,
+                digest,
+            )?),
+            MessageType::AscPullAck => Message::AscPullAck(AscPullAck::deserialize(&mut stream)?),
+            MessageType::AscPullReq => Message::AscPullReq(AscPullReq::deserialize(&mut stream)?),
             MessageType::BulkPull => {
-                Message::BulkPull(BulkPull::deserialize(stream, header.extensions)?)
+                Message::BulkPull(BulkPull::deserialize(&mut stream, header.extensions)?)
             }
             MessageType::BulkPullAccount => {
-                Message::BulkPullAccount(BulkPullAccount::deserialize(stream)?)
+                Message::BulkPullAccount(BulkPullAccount::deserialize(&mut stream)?)
             }
             MessageType::BulkPush => Message::BulkPush,
-            MessageType::ConfirmAck => Message::ConfirmAck(ConfirmAck::deserialize(stream)?),
+            MessageType::ConfirmAck => Message::ConfirmAck(ConfirmAck::deserialize(&mut stream)?),
             MessageType::ConfirmReq => {
-                Message::ConfirmReq(ConfirmReq::deserialize(stream, header.extensions)?)
+                Message::ConfirmReq(ConfirmReq::deserialize(&mut stream, header.extensions)?)
             }
             MessageType::FrontierReq => {
-                Message::FrontierReq(FrontierReq::deserialize(stream, header.extensions)?)
+                Message::FrontierReq(FrontierReq::deserialize(&mut stream, header.extensions)?)
             }
-            MessageType::NodeIdHandshake => {
-                Message::NodeIdHandshake(NodeIdHandshake::deserialize(stream, header.extensions)?)
-            }
+            MessageType::NodeIdHandshake => Message::NodeIdHandshake(NodeIdHandshake::deserialize(
+                &mut stream,
+                header.extensions,
+            )?),
             MessageType::TelemetryAck => {
-                Message::TelemetryAck(TelemetryAck::deserialize(stream, header.extensions)?)
+                Message::TelemetryAck(TelemetryAck::deserialize(&mut stream, header.extensions)?)
             }
             MessageType::TelemetryReq => Message::TelemetryReq,
-            MessageType::Invalid | MessageType::NotAType => bail!("invalid message type"),
+            MessageType::Invalid | MessageType::NotAType => return None,
         };
-        Ok(msg)
+
+        Some(msg)
     }
 }
 
@@ -128,5 +155,128 @@ impl Display for Message {
             Some(variant) => variant.fmt(f),
             None => Ok(()),
         }
+    }
+}
+
+pub fn validate_header(
+    header: &MessageHeader,
+    expected_protocol: &ProtocolInfo,
+) -> Result<(), ParseMessageError> {
+    if header.protocol.network != expected_protocol.network {
+        Err(ParseMessageError::InvalidNetwork)
+    } else if header.protocol.version_using < expected_protocol.version_min {
+        Err(ParseMessageError::OutdatedVersion)
+    } else if !header.is_valid_message_type() {
+        Err(ParseMessageError::InvalidHeader)
+    } else if header.payload_length() > Message::MAX_MESSAGE_SIZE {
+        Err(ParseMessageError::MessageSizeTooBig)
+    } else {
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::*;
+    use crate::voting::Vote;
+    use rsnano_core::BlockBuilder;
+
+    #[test]
+    fn exact_confirm_ack() {
+        let message = Message::ConfirmAck(ConfirmAck {
+            vote: Arc::new(Vote::create_test_instance()),
+        });
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_confirm_req() {
+        let block = BlockBuilder::legacy_send().build();
+        let message = Message::ConfirmReq(ConfirmReq {
+            block: Some(block),
+            roots_hashes: Vec::new(),
+        });
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_publish() {
+        let block = BlockBuilder::legacy_send().build();
+        let message = Message::Publish(Publish { block, digest: 8 });
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_keepalive() {
+        test_deserializer(&Message::Keepalive(Keepalive::default()));
+    }
+
+    #[test]
+    fn exact_frontier_req() {
+        let message = Message::FrontierReq(FrontierReq::create_test_instance());
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_telemetry_req() {
+        test_deserializer(&Message::TelemetryReq);
+    }
+
+    #[test]
+    fn exact_telemetry_ack() {
+        let mut data = TelemetryData::default();
+        data.unknown_data.push(0xFF);
+        test_deserializer(&Message::TelemetryAck(TelemetryAck(Some(data))));
+    }
+
+    #[test]
+    fn exact_bulk_pull() {
+        let message = Message::BulkPull(BulkPull::create_test_instance());
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_bulk_pull_account() {
+        let message = Message::BulkPullAccount(BulkPullAccount::create_test_instance());
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_bulk_push() {
+        test_deserializer(&Message::BulkPush);
+    }
+
+    #[test]
+    fn exact_node_id_handshake() {
+        let message = Message::NodeIdHandshake(NodeIdHandshake {
+            query: Some(NodeIdHandshakeQuery { cookie: [1; 32] }),
+            response: None,
+            is_v2: true,
+        });
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_asc_pull_req() {
+        let message = Message::AscPullReq(AscPullReq {
+            req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload::create_test_instance()),
+            id: 7,
+        });
+        test_deserializer(&message);
+    }
+
+    #[test]
+    fn exact_asc_pull_ack() {
+        let message = Message::AscPullAck(AscPullAck {
+            id: 7,
+            pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload::create_test_instance()),
+        });
+        test_deserializer(&message);
+    }
+
+    fn test_deserializer(original: &Message) {
+        assert_deserializable(original);
     }
 }

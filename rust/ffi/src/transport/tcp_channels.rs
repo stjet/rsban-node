@@ -8,9 +8,8 @@ use std::{
 use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
 use rsnano_node::{
     config::NodeConfig,
-    transport::{
-        ChannelEnum, DeserializedMessage, TcpChannels, TcpChannelsExtension, TcpChannelsOptions,
-    },
+    messages::DeserializedMessage,
+    transport::{ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions},
     NetworkParams,
 };
 

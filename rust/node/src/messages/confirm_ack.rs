@@ -1,5 +1,4 @@
 use crate::voting::Vote;
-use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::{
     utils::{BufferWriter, Serialize, Stream},
@@ -25,11 +24,11 @@ impl ConfirmAck {
         Vote::serialized_size(count as usize)
     }
 
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut impl Stream) -> Option<Self> {
         let mut vote = Vote::null();
-        vote.deserialize(stream)?;
+        vote.deserialize(stream).ok()?;
         let vote = Arc::new(vote);
-        Ok(ConfirmAck { vote })
+        Some(ConfirmAck { vote })
     }
 
     pub fn create_test_instance() -> Self {

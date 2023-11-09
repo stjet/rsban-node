@@ -11,10 +11,8 @@ use rsnano_core::{
 };
 use rsnano_node::{
     config::NetworkConstants,
-    transport::{
-        Channel, ChannelEnum, ChannelFake, ChannelInProc, ChannelTcp, DeserializedMessage,
-        TrafficType,
-    },
+    messages::DeserializedMessage,
+    transport::{Channel, ChannelEnum, ChannelFake, ChannelInProc, ChannelTcp, TrafficType},
 };
 use std::{
     ffi::c_void,

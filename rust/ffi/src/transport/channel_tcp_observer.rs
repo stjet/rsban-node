@@ -1,13 +1,10 @@
-use std::{ffi::c_void, net::SocketAddr, sync::Arc};
-
-use rsnano_node::{
-    messages::Message,
-    transport::{ChannelTcpObserver, DeserializedMessage, IChannelTcpObserverWeakPtr},
-};
-
-use crate::{messages::MessageHandle, VoidPointerCallback};
-
 use super::socket::EndpointDto;
+use crate::{messages::MessageHandle, VoidPointerCallback};
+use rsnano_node::{
+    messages::{DeserializedMessage, Message},
+    transport::{ChannelTcpObserver, IChannelTcpObserverWeakPtr},
+};
+use std::{ffi::c_void, net::SocketAddr, sync::Arc};
 
 pub static mut DROP_WEAK_PTR: Option<VoidPointerCallback> = None;
 

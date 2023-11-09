@@ -1,86 +1,119 @@
+use super::NetworkFilter;
+use crate::messages::{
+    validate_header, DeserializedMessage, Message, MessageHeader, MessageType, ParseMessageError,
+    ProtocolInfo,
+};
 use async_trait::async_trait;
-use rsnano_core::utils::StreamAdapter;
+use rsnano_core::{utils::StreamAdapter, work::WorkThresholds};
 use std::sync::{Arc, Mutex};
-
-use crate::{
-    config::NetworkConstants,
-    messages::{MessageHeader, ProtocolInfo},
-    transport::validate_header,
-};
-
-use super::{
-    DeserializedMessage, MessageDeserializerImpl, NetworkFilter, ParseStatus, MAX_MESSAGE_SIZE,
-};
 
 #[async_trait]
 pub trait AsyncBufferReader {
     async fn read(&self, buffer: Arc<Mutex<Vec<u8>>>, count: usize) -> anyhow::Result<()>;
 }
 
-pub struct AsyncMessageDeserializer<T: AsyncBufferReader + Send> {
-    deserializer_impl: MessageDeserializerImpl,
+pub struct MessageDeserializer<T: AsyncBufferReader + Send> {
+    network_filter: Arc<NetworkFilter>,
+    work_thresholds: WorkThresholds,
     protocol_info: ProtocolInfo,
     read_buffer: Arc<Mutex<Vec<u8>>>,
     buffer_reader: T,
 }
 
-impl<T: AsyncBufferReader + Send> AsyncMessageDeserializer<T> {
+impl<T: AsyncBufferReader + Send> MessageDeserializer<T> {
     pub fn new(
-        network_constants: NetworkConstants,
+        protocol_info: ProtocolInfo,
+        work_thresholds: WorkThresholds,
         network_filter: Arc<NetworkFilter>,
         buffer_reader: T,
     ) -> Self {
         Self {
-            deserializer_impl: MessageDeserializerImpl::new(
-                network_constants.work.clone(),
-                network_filter,
-            ),
-            protocol_info: network_constants.protocol_info(),
-            read_buffer: Arc::new(Mutex::new(vec![0; MAX_MESSAGE_SIZE])),
+            protocol_info,
+            read_buffer: Arc::new(Mutex::new(vec![0; Message::MAX_MESSAGE_SIZE])),
             buffer_reader,
+            work_thresholds,
+            network_filter,
         }
     }
 
-    pub async fn read(&self) -> Result<DeserializedMessage, ParseStatus> {
+    pub async fn read(&self) -> Result<DeserializedMessage, ParseMessageError> {
         self.buffer_reader
             .read(
                 Arc::clone(&self.read_buffer),
                 MessageHeader::SERIALIZED_SIZE,
             )
             .await
-            .map_err(|_| ParseStatus::None)?;
+            .map_err(|_| ParseMessageError::Other)?;
 
         self.received_header().await
     }
 
-    async fn received_header(&self) -> Result<DeserializedMessage, ParseStatus> {
+    async fn received_header(&self) -> Result<DeserializedMessage, ParseMessageError> {
         let header = {
             let buffer = self.read_buffer.lock().unwrap();
             let mut stream = StreamAdapter::new(&buffer[..MessageHeader::SERIALIZED_SIZE]);
-            MessageHeader::deserialize(&mut stream).map_err(|_| ParseStatus::InvalidHeader)?
+            MessageHeader::deserialize(&mut stream).map_err(|_| ParseMessageError::InvalidHeader)?
         };
 
         validate_header(&header, &self.protocol_info)?;
         let payload_size = header.payload_length();
         if payload_size == 0 {
             // Payload size will be 0 for `bulk_push` & `telemetry_req` message type
-            self.received_message(header, 0)
+            self.parse_message(header, 0)
         } else {
             self.buffer_reader
                 .read(Arc::clone(&self.read_buffer), payload_size)
                 .await
-                .map_err(|_| ParseStatus::None)?; // TODO return correct error code
-            self.received_message(header, payload_size)
+                .map_err(|_| ParseMessageError::Other)?; // TODO return correct error code
+            self.parse_message(header, payload_size)
         }
     }
 
-    fn received_message(
+    fn parse_message(
         &self,
         header: MessageHeader,
         payload_size: usize,
-    ) -> Result<DeserializedMessage, ParseStatus> {
+    ) -> Result<DeserializedMessage, ParseMessageError> {
         let buffer = self.read_buffer.lock().unwrap();
-        self.deserializer_impl
-            .deserialize(header, &buffer[..payload_size])
+        let payload_bytes = &buffer[..payload_size];
+        let digest = self.filter_duplicate_publish_messages(header.message_type, payload_bytes)?;
+        let message = Message::deserialize(payload_bytes, &header, digest)
+            .ok_or(ParseMessageError::InvalidMessage(header.message_type))?;
+        self.validate_work(&message)?;
+        Ok(DeserializedMessage::new(message, header.protocol))
+    }
+
+    fn validate_work(&self, message: &Message) -> Result<(), ParseMessageError> {
+        let block = match message {
+            Message::Publish(msg) => Some(&msg.block),
+            Message::ConfirmReq(msg) => msg.block.as_ref(),
+            _ => None,
+        };
+
+        if let Some(block) = block {
+            if self.work_thresholds.validate_entry_block(block) {
+                return Err(ParseMessageError::InsufficientWork);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn filter_duplicate_publish_messages(
+        &self,
+        message_type: MessageType,
+        payload_bytes: &[u8],
+    ) -> Result<u128, ParseMessageError> {
+        if message_type == MessageType::Publish {
+            // Early filtering to not waste time deserializing duplicate blocks
+            let (digest, existed) = self.network_filter.apply(payload_bytes);
+            if existed {
+                Err(ParseMessageError::DuplicatePublishMessage)
+            } else {
+                Ok(digest)
+            }
+        } else {
+            Ok(0)
+        }
     }
 }

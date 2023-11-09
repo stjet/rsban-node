@@ -1,4 +1,3 @@
-use anyhow::Result;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
@@ -24,14 +23,13 @@ pub struct BulkPullAccount {
 }
 
 impl BulkPullAccount {
-    pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
+    pub fn deserialize(stream: &mut impl Stream) -> Option<Self> {
         let payload = Self {
-            account: Account::deserialize(stream)?,
-            minimum_amount: Amount::deserialize(stream)?,
-            flags: BulkPullAccountFlags::from_u8(stream.read_u8()?)
-                .ok_or_else(|| anyhow!("invalid bulk pull account flag"))?,
+            account: Account::deserialize(stream).ok()?,
+            minimum_amount: Amount::deserialize(stream).ok()?,
+            flags: BulkPullAccountFlags::from_u8(stream.read_u8().ok()?)?,
         };
-        Ok(payload)
+        Some(payload)
     }
 
     pub fn serialized_size() -> usize {

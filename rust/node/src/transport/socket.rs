@@ -14,7 +14,6 @@ use std::{
 
 use super::{
     message_deserializer::AsyncBufferReader,
-    tokio_socket_facade::TokioSocketState,
     write_queue::{WriteCallback, WriteQueue},
     TcpStream, TcpStreamFactory, TrafficType,
 };
@@ -195,7 +194,8 @@ pub struct Socket {
     runtime: Weak<AsyncRuntime>,
     tcp_stream_factory: Arc<TcpStreamFactory>,
     current_action: Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
-    state: Arc<Mutex<TokioSocketState>>,
+    stream: Arc<Mutex<Option<Arc<TcpStream>>>>,
+    is_connecting: AtomicBool,
 }
 
 impl Socket {
@@ -241,7 +241,8 @@ impl Socket {
             self.send_queue.clear();
             self.set_default_timeout_value(0);
 
-            *self.state.lock().unwrap() = TokioSocketState::Closed;
+            self.is_connecting.store(false, Ordering::SeqCst);
+            *self.stream.lock().unwrap() = None;
             if let Some(cb) = self.current_action.lock().unwrap().take() {
                 cb();
             }
@@ -261,14 +262,12 @@ impl Socket {
     }
 
     pub fn local_endpoint(&self) -> SocketAddr {
-        let guard = self.state.lock().unwrap();
+        let guard = self.stream.lock().unwrap();
         match guard.deref() {
-            TokioSocketState::Closed => SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0),
-            TokioSocketState::Client(stream) => stream
+            Some(stream) => stream
                 .local_addr()
                 .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0)),
-            TokioSocketState::Connecting => SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0),
-            _ => unreachable!(),
+            None => SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0),
         }
     }
 
@@ -296,16 +295,13 @@ impl Socket {
     }
 
     pub fn is_alive(&self) -> bool {
-        let guard = self.state.lock().unwrap();
-        let is_socket_open = match guard.deref() {
-            TokioSocketState::Closed => false,
-            _ => true,
-        };
-        !self.is_closed() && is_socket_open
+        let guard = self.stream.lock().unwrap();
+        let is_socket_open = guard.is_some();
+        !self.is_closed() && (is_socket_open || self.is_connecting.load(Ordering::SeqCst))
     }
 
     pub fn set_stream(&self, stream: TcpStream) {
-        *self.state.lock().unwrap() = TokioSocketState::Client(Arc::new(stream));
+        *self.stream.lock().unwrap() = Some(Arc::new(stream));
     }
 }
 
@@ -377,12 +373,8 @@ impl SocketExtensions for Arc<Socket> {
             }
         }));
 
-        {
-            let mut guard = self.state.lock().unwrap();
-            debug_assert!(matches!(*guard, TokioSocketState::Closed));
-            *guard = TokioSocketState::Connecting;
-        }
-        let state = Arc::clone(&self.state);
+        let stream_clone = Arc::clone(&self.stream);
+        self.is_connecting.store(true, Ordering::SeqCst);
         let Some(runtime) = self.runtime.upgrade() else {
             return;
         };
@@ -401,9 +393,9 @@ impl SocketExtensions for Arc<Socket> {
                 return;
             };
             {
-                let mut guard = state.lock().unwrap();
-                debug_assert!(matches!(*guard, TokioSocketState::Connecting));
-                *guard = TokioSocketState::Client(Arc::new(stream));
+                let mut guard = stream_clone.lock().unwrap();
+                debug_assert!(guard.is_none());
+                *guard = Some(Arc::new(stream));
             }
             let Some(runtime) = runtime_w.upgrade() else {
                 return;
@@ -428,8 +420,8 @@ impl SocketExtensions for Arc<Socket> {
 
         self.set_default_timeout();
         let stream = {
-            let guard = self.state.lock().unwrap();
-            let TokioSocketState::Client(stream) = guard.deref() else {
+            let guard = self.stream.lock().unwrap();
+            let Some(stream) = guard.deref() else {
                 return Err(anyhow!("no tcp stream open"));
             };
             Arc::clone(stream)
@@ -547,8 +539,8 @@ impl SocketExtensions for Arc<Socket> {
         }));
 
         let stream = {
-            let guard = self.state.lock().unwrap();
-            let TokioSocketState::Client(stream) = guard.deref() else {
+            let guard = self.stream.lock().unwrap();
+            let Some(stream) = guard.deref() else {
                 return;
             };
             Arc::clone(stream)
@@ -775,7 +767,8 @@ impl SocketBuilder {
                 runtime: self.async_runtime,
                 tcp_stream_factory: self.tcp_stream_factory,
                 current_action: Mutex::new(None),
-                state: Arc::new(Mutex::new(TokioSocketState::Closed)),
+                stream: Arc::new(Mutex::new(None)),
+                is_connecting: AtomicBool::new(false),
             }
         })
     }

@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use num_traits::FromPrimitive;
 use rsnano_core::utils::seconds_since_epoch;
 use std::{
-    net::SocketAddr,
+    net::{IpAddr, Ipv6Addr, SocketAddr},
     ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
@@ -14,9 +14,9 @@ use std::{
 
 use super::{
     message_deserializer::AsyncBufferReader,
-    tokio_socket_facade::{TokioSocketFacade, TokioSocketState},
+    tokio_socket_facade::TokioSocketState,
     write_queue::{WriteCallback, WriteQueue},
-    TrafficType,
+    TcpStream, TcpStreamFactory, TrafficType,
 };
 
 /// Policy to affect at which stage a buffer can be dropped
@@ -171,7 +171,6 @@ pub struct Socket {
 
     idle_timeout: Duration,
 
-    tcp_socket: Arc<TokioSocketFacade>,
     thread_pool: Arc<dyn ThreadPool>,
     endpoint_type: EndpointType,
     /// used in real time server sockets, number of seconds of no receive traffic that will cause the socket to timeout
@@ -194,14 +193,15 @@ pub struct Socket {
 
     send_queue: WriteQueue,
     runtime: Weak<AsyncRuntime>,
+    tcp_stream_factory: Arc<TcpStreamFactory>,
+    current_action: Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
+    state: Arc<Mutex<TokioSocketState>>,
 }
 
 impl Socket {
     pub fn create_null() -> Arc<Socket> {
-        let tcp_facade = Arc::new(TokioSocketFacade::create_null());
-        let runtime = Weak::clone(&tcp_facade.runtime);
         let thread_pool = Arc::new(ThreadPoolImpl::create_null());
-        SocketBuilder::endpoint_type(EndpointType::Client, tcp_facade, thread_pool, runtime).build()
+        SocketBuilder::endpoint_type(EndpointType::Client, thread_pool, Weak::new()).build()
     }
 
     pub fn is_closed(&self) -> bool {
@@ -241,8 +241,8 @@ impl Socket {
             self.send_queue.clear();
             self.set_default_timeout_value(0);
 
-            *self.tcp_socket.state.lock().unwrap() = TokioSocketState::Closed;
-            if let Some(cb) = self.tcp_socket.current_action.lock().unwrap().take() {
+            *self.state.lock().unwrap() = TokioSocketState::Closed;
+            if let Some(cb) = self.current_action.lock().unwrap().take() {
                 cb();
             }
         }
@@ -261,7 +261,15 @@ impl Socket {
     }
 
     pub fn local_endpoint(&self) -> SocketAddr {
-        self.tcp_socket.local_endpoint()
+        let guard = self.state.lock().unwrap();
+        match guard.deref() {
+            TokioSocketState::Closed => SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0),
+            TokioSocketState::Client(stream) => stream
+                .local_addr()
+                .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0)),
+            TokioSocketState::Connecting => SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0),
+            _ => unreachable!(),
+        }
     }
 
     pub fn is_realtime_connection(&self) -> bool {
@@ -288,7 +296,16 @@ impl Socket {
     }
 
     pub fn is_alive(&self) -> bool {
-        !self.is_closed() && self.tcp_socket.is_open()
+        let guard = self.state.lock().unwrap();
+        let is_socket_open = match guard.deref() {
+            TokioSocketState::Closed => false,
+            _ => true,
+        };
+        !self.is_closed() && is_socket_open
+    }
+
+    pub fn set_stream(&self, stream: TcpStream) {
+        *self.state.lock().unwrap() = TokioSocketState::Client(Arc::new(stream));
     }
 }
 
@@ -354,23 +371,23 @@ impl SocketExtensions for Arc<Socket> {
 
         let callback = Arc::new(Mutex::new(Some(callback)));
         let callback_clone = Arc::clone(&callback);
-        *self.tcp_socket.current_action.lock().unwrap() = Some(Box::new(move || {
+        *self.current_action.lock().unwrap() = Some(Box::new(move || {
             if let Some(f) = callback_clone.lock().unwrap().take() {
                 f(ErrorCode::fault());
             }
         }));
 
         {
-            let mut guard = self.tcp_socket.state.lock().unwrap();
+            let mut guard = self.state.lock().unwrap();
             debug_assert!(matches!(*guard, TokioSocketState::Closed));
             *guard = TokioSocketState::Connecting;
         }
-        let state = Arc::clone(&self.tcp_socket.state);
+        let state = Arc::clone(&self.state);
         let Some(runtime) = self.runtime.upgrade() else {
             return;
         };
         let runtime_w = Weak::clone(&self.runtime);
-        let tcp_stream_factory = Arc::clone(&self.tcp_socket.tcp_stream_factory);
+        let tcp_stream_factory = Arc::clone(&self.tcp_stream_factory);
         runtime.tokio.spawn(async move {
             let Ok(stream) = tcp_stream_factory.connect(endpoint).await else {
                 if let Some(cb) = callback.lock().unwrap().take() {
@@ -411,7 +428,7 @@ impl SocketExtensions for Arc<Socket> {
 
         self.set_default_timeout();
         let stream = {
-            let guard = self.tcp_socket.state.lock().unwrap();
+            let guard = self.state.lock().unwrap();
             let TokioSocketState::Client(stream) = guard.deref() else {
                 return Err(anyhow!("no tcp stream open"));
             };
@@ -523,14 +540,14 @@ impl SocketExtensions for Arc<Socket> {
             }))));
 
         let callback_clone = Arc::clone(&callback);
-        *self.tcp_socket.current_action.lock().unwrap() = Some(Box::new(move || {
+        *self.current_action.lock().unwrap() = Some(Box::new(move || {
             if let Some(f) = callback_clone.lock().unwrap().take() {
                 f(ErrorCode::fault(), 0);
             }
         }));
 
         let stream = {
-            let guard = self.tcp_socket.state.lock().unwrap();
+            let guard = self.state.lock().unwrap();
             let TokioSocketState::Client(stream) = guard.deref() else {
                 return;
             };
@@ -678,7 +695,6 @@ impl AsyncBufferReader for Arc<Socket> {
 
 pub struct SocketBuilder {
     endpoint_type: EndpointType,
-    tcp_facade: Arc<TokioSocketFacade>,
     thread_pool: Arc<dyn ThreadPool>,
     default_timeout: Duration,
     silent_connection_tolerance_time: Duration,
@@ -686,18 +702,17 @@ pub struct SocketBuilder {
     observer: Option<Arc<dyn SocketObserver>>,
     max_write_queue_len: usize,
     async_runtime: Weak<AsyncRuntime>,
+    tcp_stream_factory: Arc<TcpStreamFactory>,
 }
 
 impl SocketBuilder {
     pub fn endpoint_type(
         endpoint_type: EndpointType,
-        tcp_facade: Arc<TokioSocketFacade>,
         thread_pool: Arc<dyn ThreadPool>,
         async_runtime: Weak<AsyncRuntime>,
     ) -> Self {
         Self {
             endpoint_type,
-            tcp_facade,
             thread_pool,
             default_timeout: Duration::from_secs(15),
             silent_connection_tolerance_time: Duration::from_secs(120),
@@ -705,6 +720,7 @@ impl SocketBuilder {
             observer: None,
             max_write_queue_len: Socket::MAX_QUEUE_SIZE,
             async_runtime,
+            tcp_stream_factory: Arc::new(TcpStreamFactory::new()),
         }
     }
 
@@ -742,7 +758,6 @@ impl SocketBuilder {
                 remote: Mutex::new(None),
                 last_completion_time_or_init: AtomicU64::new(seconds_since_epoch()),
                 last_receive_time_or_init: AtomicU64::new(seconds_since_epoch()),
-                tcp_socket: self.tcp_facade,
                 default_timeout: AtomicU64::new(self.default_timeout.as_secs()),
                 timeout_seconds: AtomicU64::new(u64::MAX),
                 idle_timeout: self.idle_timeout,
@@ -758,6 +773,9 @@ impl SocketBuilder {
                 write_in_progress: AtomicBool::new(false),
                 send_queue: WriteQueue::new(self.max_write_queue_len),
                 runtime: self.async_runtime,
+                tcp_stream_factory: self.tcp_stream_factory,
+                current_action: Mutex::new(None),
+                state: Arc::new(Mutex::new(TokioSocketState::Closed)),
             }
         })
     }

@@ -9,7 +9,7 @@ use tokio::net::TcpListener;
 
 use crate::utils::{AsyncRuntime, ErrorCode};
 
-use super::{TcpStream, TcpStreamFactory};
+use super::{Socket, TcpStream, TcpStreamFactory};
 
 pub trait TcpSocketFacadeFactory: Send + Sync {
     fn create_tcp_socket(&self) -> Arc<TokioSocketFacade>;
@@ -69,20 +69,9 @@ impl TokioSocketFacade {
 
     pub fn async_accept(
         &self,
-        client_socket: &Arc<TokioSocketFacade>,
+        client_socket: &Arc<Socket>,
         callback: Box<dyn FnOnce(SocketAddr, ErrorCode) + Send>,
     ) {
-        {
-            let socket = client_socket
-                .as_any()
-                .downcast_ref::<TokioSocketFacade>()
-                .expect("not a Tokio socket");
-            debug_assert!(matches!(
-                socket.state.lock().unwrap().deref(),
-                TokioSocketState::Closed
-            ));
-        }
-
         let callback = Arc::new(Mutex::new(Some(callback)));
 
         let listener = {
@@ -111,8 +100,7 @@ impl TokioSocketFacade {
                 Ok((stream, remote)) => {
                     // wrap the tokio stream in our stream:
                     let stream = TcpStream::new(stream);
-                    *client_socket.state.lock().unwrap() =
-                        TokioSocketState::Client(Arc::new(stream));
+                    client_socket.set_stream(stream);
                     let Some(runtime) = runtime_w.upgrade() else {
                         return;
                     };

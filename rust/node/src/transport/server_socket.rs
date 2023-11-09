@@ -63,7 +63,6 @@ impl ServerSocket {
 
         let socket = SocketBuilder::endpoint_type(
             EndpointType::Server,
-            Arc::clone(&socket_facade),
             Arc::clone(&workers),
             Weak::clone(&runtime),
         )
@@ -296,11 +295,9 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
             ));
             let ffi_observer = Arc::clone(&this_l.socket_observer);
 
-            let client_socket = this_l.tcp_socket_facade_factory.create_tcp_socket();
             // Prepare new connection
             let new_connection = SocketBuilder::endpoint_type(
                 EndpointType::Server,
-                Arc::clone(&client_socket),
                 Arc::clone(&this_l.workers),
                 Weak::clone(&this_l.runtime),
             )
@@ -326,11 +323,12 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
             .build();
 
             let this_clone = Arc::clone(&this_l);
+            let connection_clone = Arc::clone(&new_connection);
             this_l.socket_facade.async_accept(
-                &client_socket,
+                &new_connection,
                 Box::new(move |remote_endpoint, ec| {
                     let this_l = this_clone;
-                    new_connection.set_remote(remote_endpoint);
+                    connection_clone.set_remote(remote_endpoint);
                     this_l.evict_dead_connections();
 
                     if this_l.connections_per_address.lock().unwrap().count_connections() >= this_l.max_inbound_connections {
@@ -340,8 +338,8 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
                         return;
                     }
 
-                    if this_l.limit_reached_for_incoming_ip_connections (&new_connection) {
-                        let remote_ip_address = new_connection.get_remote().unwrap().ip();
+                    if this_l.limit_reached_for_incoming_ip_connections (&connection_clone) {
+                        let remote_ip_address = connection_clone.get_remote().unwrap().ip();
                         let log_message = format!("Network: max connections per IP (max_peers_per_ip) was reached for {}, unable to open new connection", remote_ip_address);
                         this_l.logger.try_log(&log_message);
                         this_l.stats.inc (StatType::Tcp, DetailType::TcpMaxPerIp, Direction::In);
@@ -349,8 +347,8 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
                         return;
                     }
 
-                    if this_l.limit_reached_for_incoming_subnetwork_connections (&new_connection) {
-                        let remote_ip_address = new_connection.get_remote().unwrap().ip();
+                    if this_l.limit_reached_for_incoming_subnetwork_connections (&connection_clone) {
+                        let remote_ip_address = connection_clone.get_remote().unwrap().ip();
                         let IpAddr::V6(remote_ip_address) = remote_ip_address else { panic!("not a v6 IP address")};
                         let remote_subnet = first_ipv6_subnet_address(&remote_ip_address, this_l.network_params.network.max_peers_per_subnetwork as u8);
                         let log_message = format!("Network: max connections per subnetwork (max_peers_per_subnetwork) was reached for subnetwork {} (remote IP: {}), unable to open new connection",
@@ -363,12 +361,12 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
                    			if ec.is_ok() {
                     				// Make sure the new connection doesn't idle. Note that in most cases, the callback is going to start
                     				// an IO operation immediately, which will start a timer.
-                    				new_connection.start ();
-                    				new_connection.set_timeout (Duration::from_secs(this_l.network_params.network.idle_timeout_s as u64));
+                    				connection_clone.start ();
+                    				connection_clone.set_timeout (Duration::from_secs(this_l.network_params.network.idle_timeout_s as u64));
                     				this_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptSuccess, Direction::In);
-                                    this_l.connections_per_address.lock().unwrap().insert(&new_connection);
-                    				this_l.socket_observer.socket_accepted(Arc::clone(&new_connection));
-                    				if callback (new_connection, ec)
+                                    this_l.connections_per_address.lock().unwrap().insert(&connection_clone);
+                    				this_l.socket_observer.socket_accepted(Arc::clone(&connection_clone));
+                    				if callback (connection_clone, ec)
                     				{
                     					this_l.on_connection (callback);
                     					return;
@@ -389,7 +387,7 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
                     			}
 
                     			// if it is not a temporary error, check how the listener wants to handle this error
-                    			if callback(new_connection, ec)
+                    			if callback(connection_clone, ec)
                     			{
                     				this_l.on_connection_requeue_delayed (callback);
                     				return;

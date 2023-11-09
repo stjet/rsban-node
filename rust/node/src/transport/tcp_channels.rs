@@ -39,8 +39,7 @@ use super::{
     ChannelTcpObserver, CompositeSocketObserver, DeserializedMessage, EndpointType,
     IChannelTcpObserverWeakPtr, NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter,
     ParseStatus, PeerExclusion, Socket, SocketBuilder, SocketExtensions, SocketObserver,
-    SynCookies, TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver,
-    TcpSocketFacadeFactory, TrafficType,
+    SynCookies, TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver, TrafficType,
 };
 
 pub struct TcpChannelsOptions {
@@ -60,7 +59,6 @@ pub struct TcpChannelsOptions {
     pub node_id: KeyPair,
     pub syn_cookies: Arc<SynCookies>,
     pub workers: Arc<dyn ThreadPool>,
-    pub tcp_socket_factory: Arc<dyn TcpSocketFacadeFactory>,
     pub observer: Arc<dyn SocketObserver>,
 }
 
@@ -87,7 +85,6 @@ pub struct TcpChannels {
     block_uniquer: Arc<BlockUniquer>,
     vote_uniquer: Arc<VoteUniquer>,
     tcp_server_factory: Arc<Mutex<TcpServerFactory>>,
-    tcp_socket_factory: Arc<dyn TcpSocketFacadeFactory>,
     observer: Arc<dyn SocketObserver>,
     channel_observer: Mutex<Option<Arc<dyn ChannelTcpObserver>>>,
 }
@@ -140,7 +137,6 @@ impl TcpChannels {
             tcp_server_factory,
             observer: options.observer,
             channel_observer: Mutex::new(None),
-            tcp_socket_factory: options.tcp_socket_factory,
             async_rt: Arc::downgrade(&options.async_rt),
         }
     }
@@ -869,7 +865,6 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
         let socket = SocketBuilder::endpoint_type(
             EndpointType::Client,
-            self.tcp_socket_factory.create_tcp_socket(),
             self.workers.clone(),
             Weak::clone(&self.async_rt),
         )

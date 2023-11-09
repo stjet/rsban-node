@@ -10,7 +10,6 @@ use rsnano_node::{
     config::NodeConfig,
     transport::{
         ChannelEnum, DeserializedMessage, TcpChannels, TcpChannelsExtension, TcpChannelsOptions,
-        TokioSocketFacadeFactory,
     },
     NetworkParams,
 };
@@ -74,9 +73,6 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 )
             });
             let observer = Arc::new(SocketFfiObserver::new(value.socket_observer));
-            let tcp_socket_factory = Arc::new(TokioSocketFacadeFactory::new(Arc::clone(
-                &(*value.async_rt).0,
-            )));
 
             Ok(Self {
                 node_config: NodeConfig::try_from(&*value.node_config)?,
@@ -99,7 +95,6 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 .unwrap(),
                 syn_cookies: (*value.syn_cookies).0.clone(),
                 workers: (*value.workers).0.clone(),
-                tcp_socket_factory,
                 observer,
             })
         }

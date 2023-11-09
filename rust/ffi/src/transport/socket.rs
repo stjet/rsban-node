@@ -4,7 +4,7 @@ use rsnano_node::{
     stats::SocketStats,
     transport::{
         CompositeSocketObserver, Socket, SocketBuilder, SocketExtensions, SocketObserver,
-        SocketType, TokioSocketFacade, WriteCallback,
+        SocketType, WriteCallback,
     },
     utils::ErrorCode,
 };
@@ -53,7 +53,6 @@ pub unsafe extern "C" fn rsn_socket_create(
     async_rt: &AsyncRuntimeHandle,
 ) -> *mut SocketHandle {
     let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
-    let tcp_facade = Arc::new(TokioSocketFacade::create(Arc::clone(&async_rt.0)));
     let thread_pool = thread_pool.0.clone();
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let stats = (*stats_handle).deref().clone();
@@ -62,7 +61,7 @@ pub unsafe extern "C" fn rsn_socket_create(
     let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
 
     let runtime = Arc::downgrade(&async_rt.0);
-    let socket = SocketBuilder::endpoint_type(endpoint_type, tcp_facade, thread_pool, runtime)
+    let socket = SocketBuilder::endpoint_type(endpoint_type, thread_pool, runtime)
         .default_timeout(Duration::from_secs(default_timeout_s))
         .silent_connection_tolerance_time(Duration::from_secs(silent_connection_tolerance_time_s))
         .idle_timeout(Duration::from_secs(idle_timeout_s))

@@ -1,12 +1,8 @@
-use std::sync::{Arc, Mutex};
-
 use super::{Socket, SocketExtensions};
 use crate::utils::{AsyncRuntime, ErrorCode};
 use num_traits::FromPrimitive;
-use rsnano_core::{
-    deserialize_block_enum_with_type, serialized_block_size, utils::StreamAdapter, BlockEnum,
-    BlockType,
-};
+use rsnano_core::{serialized_block_size, utils::StreamAdapter, BlockEnum, BlockType};
+use std::sync::{Arc, Mutex};
 use tokio::task::spawn_blocking;
 
 pub struct BlockDeserializer {
@@ -72,7 +68,7 @@ async fn received_type(
                     let result = {
                         let guard = buffer_clone.lock().unwrap();
                         let mut stream = StreamAdapter::new(&guard[..block_size]);
-                        deserialize_block_enum_with_type(block_type, &mut stream)
+                        BlockEnum::deserialize_block_type(block_type, &mut stream)
                     };
 
                     spawn_blocking(Box::new(move || match result {

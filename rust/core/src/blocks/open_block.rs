@@ -173,7 +173,7 @@ impl Block for OpenBlock {
         BlockHash::zero()
     }
 
-    fn serialize(&self, writer: &mut dyn BufferWriter) {
+    fn serialize_without_block_type(&self, writer: &mut dyn BufferWriter) {
         self.hashables.source.serialize(writer);
         self.hashables.representative.serialize(writer);
         self.hashables.account.serialize(writer);
@@ -294,7 +294,7 @@ mod tests {
             0,
         );
         let mut stream = MemoryStream::new();
-        block1.serialize(&mut stream);
+        block1.serialize_without_block_type(&mut stream);
         assert_eq!(OpenBlock::serialized_size(), stream.bytes_written());
 
         let block2 = OpenBlock::deserialize(&mut stream).unwrap();

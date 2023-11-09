@@ -3,7 +3,7 @@ use anyhow::Result;
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    deserialize_block_enum_with_type, serialized_block_size,
+    serialized_block_size,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     BlockEnum, BlockHash, BlockType, Root,
 };
@@ -40,7 +40,7 @@ impl ConfirmReq {
             })
         } else {
             Ok(Self {
-                block: Some(deserialize_block_enum_with_type(block_type, stream)?),
+                block: Some(BlockEnum::deserialize_block_type(block_type, stream)?),
                 roots_hashes: Vec::new(),
             })
         }
@@ -91,7 +91,7 @@ impl ConfirmReq {
 impl Serialize for ConfirmReq {
     fn serialize(&self, writer: &mut dyn BufferWriter) {
         if let Some(block) = &self.block {
-            block.serialize(writer);
+            block.serialize_without_block_type(writer);
         } else {
             // Write hashes & roots
             for (hash, root) in &self.roots_hashes {

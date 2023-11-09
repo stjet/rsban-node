@@ -5,7 +5,6 @@ use std::{
 
 use super::BlockHash;
 use crate::{
-    deserialize_block_enum, serialize_block_enum_safe,
     utils::{
         BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
     },
@@ -49,7 +48,7 @@ impl UncheckedInfo {
 
 impl Serialize for UncheckedInfo {
     fn serialize(&self, stream: &mut dyn BufferWriter) {
-        serialize_block_enum_safe(stream, self.block.as_ref().unwrap());
+        self.block.as_ref().unwrap().serialize(stream);
         stream.write_u64_ne_safe(self.modified);
     }
 }
@@ -58,7 +57,7 @@ impl Deserialize for UncheckedInfo {
     type Target = Self;
 
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
-        let block = deserialize_block_enum(stream)?;
+        let block = BlockEnum::deserialize(stream)?;
         let modified = stream.read_u64_ne()?;
         Ok(Self {
             block: Some(Arc::new(block)),

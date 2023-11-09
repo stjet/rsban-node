@@ -116,7 +116,7 @@ pub trait Block: FullHash {
     fn work(&self) -> u64;
     fn set_work(&mut self, work: u64);
     fn previous(&self) -> BlockHash;
-    fn serialize(&self, writer: &mut dyn BufferWriter);
+    fn serialize_without_block_type(&self, writer: &mut dyn BufferWriter);
     fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> anyhow::Result<()>;
     fn to_json(&self) -> anyhow::Result<String> {
         let mut writer = SerdePropertyTree::new();
@@ -278,9 +278,14 @@ impl BlockEnum {
         self.sideband().unwrap().details.epoch
     }
 
+    pub fn serialize(&self, stream: &mut dyn BufferWriter) {
+        let block_type = self.block_type() as u8;
+        stream.write_u8_safe(block_type);
+        self.serialize_without_block_type(stream);
+    }
+
     pub fn serialize_with_sideband(&self) -> Vec<u8> {
         let mut stream = MemoryStream::new();
-        stream.write_u8(self.block_type() as u8).unwrap();
         self.serialize(&mut stream);
         self.sideband()
             .unwrap()
@@ -290,7 +295,7 @@ impl BlockEnum {
 
     pub fn deserialize_with_sideband(bytes: &[u8]) -> anyhow::Result<BlockEnum> {
         let mut stream = StreamAdapter::new(bytes);
-        let mut block = deserialize_block_enum(&mut stream)?;
+        let mut block = BlockEnum::deserialize(&mut stream)?;
         let mut sideband = BlockSideband::from_stream(&mut stream, block.block_type())?;
         // BlockSideband does not serialize all data depending on the block type.
         // That's why we fill in the missing data here:
@@ -316,6 +321,27 @@ impl BlockEnum {
         }
         block.as_block_mut().set_sideband(sideband);
         Ok(block)
+    }
+
+    pub fn deserialize_block_type(
+        block_type: BlockType,
+        stream: &mut dyn Stream,
+    ) -> anyhow::Result<Self> {
+        let block = match block_type {
+            BlockType::LegacyReceive => Self::LegacyReceive(ReceiveBlock::deserialize(stream)?),
+            BlockType::LegacyOpen => Self::LegacyOpen(OpenBlock::deserialize(stream)?),
+            BlockType::LegacyChange => Self::LegacyChange(ChangeBlock::deserialize(stream)?),
+            BlockType::State => Self::State(StateBlock::deserialize(stream)?),
+            BlockType::LegacySend => Self::LegacySend(SendBlock::deserialize(stream)?),
+            BlockType::Invalid | BlockType::NotABlock => bail!("invalid block type"),
+        };
+        Ok(block)
+    }
+
+    pub fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<BlockEnum> {
+        let block_type =
+            BlockType::from_u8(stream.read_u8()?).ok_or_else(|| anyhow!("invalid block type"))?;
+        Self::deserialize_block_type(block_type, stream)
     }
 }
 
@@ -363,33 +389,6 @@ pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result
     }
 }
 
-pub fn serialize_block_enum_safe(stream: &mut dyn BufferWriter, block: &BlockEnum) {
-    let block_type = block.block_type() as u8;
-    stream.write_u8_safe(block_type);
-    block.serialize(stream);
-}
-
-pub fn deserialize_block_enum(stream: &mut dyn Stream) -> anyhow::Result<BlockEnum> {
-    let block_type =
-        BlockType::from_u8(stream.read_u8()?).ok_or_else(|| anyhow!("invalid block type"))?;
-    deserialize_block_enum_with_type(block_type, stream)
-}
-
-pub fn deserialize_block_enum_with_type(
-    block_type: BlockType,
-    stream: &mut dyn Stream,
-) -> anyhow::Result<BlockEnum> {
-    let block = match block_type {
-        BlockType::LegacyReceive => BlockEnum::LegacyReceive(ReceiveBlock::deserialize(stream)?),
-        BlockType::LegacyOpen => BlockEnum::LegacyOpen(OpenBlock::deserialize(stream)?),
-        BlockType::LegacyChange => BlockEnum::LegacyChange(ChangeBlock::deserialize(stream)?),
-        BlockType::State => BlockEnum::State(StateBlock::deserialize(stream)?),
-        BlockType::LegacySend => BlockEnum::LegacySend(SendBlock::deserialize(stream)?),
-        BlockType::Invalid | BlockType::NotABlock => bail!("invalid block type"),
-    };
-    Ok(block)
-}
-
 pub struct BlockWithSideband {
     pub block: BlockEnum,
     pub sideband: BlockSideband,
@@ -398,16 +397,11 @@ pub struct BlockWithSideband {
 impl Deserialize for BlockWithSideband {
     type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {
-        let mut block = deserialize_block_enum(stream)?;
+        let mut block = BlockEnum::deserialize(stream)?;
         let sideband = BlockSideband::from_stream(stream, block.block_type())?;
         block.as_block_mut().set_sideband(sideband.clone());
         Ok(BlockWithSideband { block, sideband })
     }
-}
-
-pub fn serialize_block(writer: &mut dyn BufferWriter, block: &BlockEnum) {
-    writer.write_u8_safe(block.block_type() as u8);
-    block.serialize(writer);
 }
 
 static DEV_PRIVATE_KEY_DATA: &str =

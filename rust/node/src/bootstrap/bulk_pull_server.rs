@@ -1,7 +1,6 @@
 use std::sync::{Arc, Mutex, Weak};
 
 use rsnano_core::{
-    serialize_block,
     utils::{Logger, MemoryStream},
     Account, BlockEnum, BlockHash, BlockType,
 };
@@ -301,7 +300,7 @@ impl BulkPullServerImpl {
         if let Some(block) = self.get_next() {
             let mut stream = MemoryStream::new();
 
-            serialize_block(&mut stream, &block);
+            block.serialize(&mut stream);
             let send_buffer = Arc::new(stream.to_vec());
             if self.enable_logging {
                 self.logger

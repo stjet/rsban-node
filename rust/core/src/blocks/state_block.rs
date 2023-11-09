@@ -243,7 +243,7 @@ impl Block for StateBlock {
         self.hashables.previous
     }
 
-    fn serialize(&self, writer: &mut dyn BufferWriter) {
+    fn serialize_without_block_type(&self, writer: &mut dyn BufferWriter) {
         self.hashables.account.serialize(writer);
         self.hashables.previous.serialize(writer);
         self.hashables.representative.serialize(writer);
@@ -323,7 +323,7 @@ mod tests {
     fn serialization() {
         let block1 = BlockBuilder::state().work(5).build();
         let mut stream = MemoryStream::new();
-        block1.serialize(&mut stream);
+        block1.serialize_without_block_type(&mut stream);
         assert_eq!(StateBlock::serialized_size(), stream.bytes_written());
         assert_eq!(stream.byte_at(215), 0x5); // Ensure work is serialized big-endian
 

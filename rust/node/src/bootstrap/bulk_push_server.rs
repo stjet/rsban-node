@@ -12,10 +12,9 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    deserialize_block_enum_with_type,
     utils::{Logger, StreamAdapter},
     work::WorkThresholds,
-    BlockType, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
+    BlockEnum, BlockType, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
 use rsnano_ledger::Ledger;
 use tokio::task::spawn_blocking;
@@ -308,7 +307,7 @@ impl BulkPushServerImpl {
         if ec.is_ok() {
             let guard = self.receive_buffer.lock().unwrap();
             let block =
-                deserialize_block_enum_with_type(block_type, &mut StreamAdapter::new(&guard));
+                BlockEnum::deserialize_block_type(block_type, &mut StreamAdapter::new(&guard));
             drop(guard);
             match block {
                 Ok(block) => {

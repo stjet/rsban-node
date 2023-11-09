@@ -3,7 +3,7 @@ use anyhow::Result;
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    deserialize_block_enum_with_type, serialized_block_size,
+    serialized_block_size,
     utils::{BufferWriter, Serialize, Stream},
     BlockEnum, BlockType,
 };
@@ -24,7 +24,7 @@ impl Publish {
         digest: u128,
     ) -> Result<Self> {
         let payload = Publish {
-            block: deserialize_block_enum_with_type(Self::block_type(extensions), stream)?,
+            block: BlockEnum::deserialize_block_type(Self::block_type(extensions), stream)?,
             digest,
         };
 
@@ -50,7 +50,7 @@ impl PartialEq for Publish {
 
 impl Serialize for Publish {
     fn serialize(&self, writer: &mut dyn BufferWriter) {
-        self.block.serialize(writer);
+        self.block.serialize_without_block_type(writer);
     }
 }
 

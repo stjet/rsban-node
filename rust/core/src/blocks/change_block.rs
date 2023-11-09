@@ -178,7 +178,7 @@ impl Block for ChangeBlock {
         self.hashables.previous
     }
 
-    fn serialize(&self, writer: &mut dyn BufferWriter) {
+    fn serialize_without_block_type(&self, writer: &mut dyn BufferWriter) {
         self.hashables.previous.serialize(writer);
         self.hashables.representative.serialize(writer);
         self.signature.serialize(writer);
@@ -265,7 +265,7 @@ mod tests {
             5,
         );
         let mut stream = MemoryStream::new();
-        block1.serialize(&mut stream);
+        block1.serialize_without_block_type(&mut stream);
         assert_eq!(ChangeBlock::serialized_size(), stream.bytes_written());
 
         let block2 = ChangeBlock::deserialize(&mut stream).unwrap();

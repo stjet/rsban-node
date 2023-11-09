@@ -17,8 +17,7 @@ pub use change_block::*;
 pub use open_block::*;
 pub use receive_block::*;
 use rsnano_core::{
-    deserialize_block_enum_with_type, deserialize_block_json, serialized_block_size, BlockEnum,
-    BlockSideband, BlockType, Signature,
+    deserialize_block_json, serialized_block_size, BlockEnum, BlockSideband, BlockType, Signature,
 };
 pub use send_block::*;
 pub use state_block::*;
@@ -176,7 +175,7 @@ pub unsafe extern "C" fn rsn_block_full_hash(handle: &BlockHandle, hash: *mut u8
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_serialize(handle: &BlockHandle, stream: *mut c_void) -> i32 {
     let mut stream = FfiStream::new(stream);
-    handle.deref().serialize(&mut stream);
+    handle.deref().serialize_without_block_type(&mut stream);
     0
 }
 
@@ -200,7 +199,7 @@ pub unsafe extern "C" fn rsn_deserialize_block(
         None => return std::ptr::null_mut(),
     };
 
-    match deserialize_block_enum_with_type(block_type, &mut stream) {
+    match BlockEnum::deserialize_block_type(block_type, &mut stream) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(block)))),
         Err(_) => std::ptr::null_mut(),
     }

@@ -1,7 +1,6 @@
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    deserialize_block_enum, serialize_block_enum_safe,
     utils::{BufferWriter, Deserialize, Serialize, Stream, StreamExt},
     Account, BlockEnum, BlockHash, BlockType,
 };
@@ -131,7 +130,7 @@ impl BlocksAckPayload {
     }
 
     pub fn deserialize(&mut self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        while let Ok(current) = deserialize_block_enum(stream) {
+        while let Ok(current) = BlockEnum::deserialize(stream) {
             if self.0.len() >= Self::MAX_BLOCKS {
                 bail!("too many blocks")
             }
@@ -144,7 +143,7 @@ impl BlocksAckPayload {
 impl Serialize for BlocksAckPayload {
     fn serialize(&self, writer: &mut dyn BufferWriter) {
         for block in self.blocks() {
-            serialize_block_enum_safe(writer, block);
+            block.serialize(writer);
         }
         // For convenience, end with null block terminator
         writer.write_u8_safe(BlockType::NotABlock as u8)

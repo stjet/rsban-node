@@ -1,10 +1,8 @@
-use std::{ops::Deref, sync::Arc};
-
-use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{ConfirmReq, Message};
-
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
+use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
 use rsnano_core::{BlockHash, Root};
+use rsnano_node::messages::{ConfirmReq, Message};
+use std::{ops::Deref, sync::Arc};
 
 #[repr(C)]
 pub struct HashRootPair {
@@ -21,7 +19,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
 ) -> *mut MessageHandle {
     create_message_handle2(constants, || {
         if !block.is_null() {
-            let block = Arc::clone((*block).deref());
+            let block = (*block).deref().deref().clone();
             Message::ConfirmReq(ConfirmReq {
                 block: Some(block),
                 roots_hashes: Vec::new(),
@@ -60,7 +58,7 @@ unsafe fn get_payload(handle: &MessageHandle) -> &ConfirmReq {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_req_block(handle: &MessageHandle) -> *mut BlockHandle {
     match &get_payload(handle).block {
-        Some(block) => Box::into_raw(Box::new(BlockHandle(Arc::clone(block)))),
+        Some(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(block.clone())))),
         None => std::ptr::null_mut(),
     }
 }

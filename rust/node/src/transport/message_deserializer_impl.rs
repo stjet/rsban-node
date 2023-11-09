@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn exact_confirm_req() {
-        let block = Arc::new(BlockBuilder::legacy_send().build());
+        let block = BlockBuilder::legacy_send().build();
         let message = Message::ConfirmReq(ConfirmReq {
             block: Some(block),
             roots_hashes: Vec::new(),
@@ -194,7 +194,7 @@ mod tests {
 
     #[test]
     fn exact_publish() {
-        let block = Arc::new(BlockBuilder::legacy_send().build());
+        let block = BlockBuilder::legacy_send().build();
         let message = Message::Publish(Publish { block, digest: 8 });
         test_deserializer(&message);
     }

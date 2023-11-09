@@ -17,14 +17,14 @@ pub use change_block::*;
 pub use open_block::*;
 pub use receive_block::*;
 use rsnano_core::{
-    deserialize_block_json, serialized_block_size, BlockEnum, BlockSideband, BlockType, Signature,
+    deserialize_block_enum_with_type, deserialize_block_json, serialized_block_size, BlockEnum,
+    BlockSideband, BlockType, Signature,
 };
 pub use send_block::*;
 pub use state_block::*;
 
 use crate::{utils::FfiStream, FfiPropertyTreeReader, FfiPropertyTreeWriter};
 use num::FromPrimitive;
-use rsnano_node::utils::deserialize_block;
 
 mod block_vec;
 pub use block_vec::BlockVecHandle;
@@ -200,8 +200,8 @@ pub unsafe extern "C" fn rsn_deserialize_block(
         None => return std::ptr::null_mut(),
     };
 
-    match deserialize_block(block_type, &mut stream) {
-        Ok(block) => Box::into_raw(Box::new(BlockHandle(block))),
+    match deserialize_block_enum_with_type(block_type, &mut stream) {
+        Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(block)))),
         Err(_) => std::ptr::null_mut(),
     }
 }

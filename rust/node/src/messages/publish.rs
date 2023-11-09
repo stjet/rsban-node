@@ -1,21 +1,17 @@
 use super::MessageVariant;
-use crate::utils::deserialize_block;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    serialized_block_size,
+    deserialize_block_enum_with_type, serialized_block_size,
     utils::{BufferWriter, Serialize, Stream},
     BlockEnum, BlockType,
 };
-use std::{
-    fmt::{Debug, Display},
-    sync::Arc,
-};
+use std::fmt::{Debug, Display};
 
 #[derive(Clone, Eq)]
 pub struct Publish {
-    pub block: Arc<BlockEnum>,
+    pub block: BlockEnum,
     pub digest: u128,
 }
 
@@ -28,7 +24,7 @@ impl Publish {
         digest: u128,
     ) -> Result<Self> {
         let payload = Publish {
-            block: deserialize_block(Self::block_type(extensions), stream)?,
+            block: deserialize_block_enum_with_type(Self::block_type(extensions), stream)?,
             digest,
         };
 
@@ -90,14 +86,13 @@ mod tests {
     #[test]
     fn serialize() {
         let block = BlockBuilder::state().build();
-        let block = Arc::new(block);
         let publish1 = Publish { block, digest: 123 };
 
         let mut stream = MemoryStream::new();
         publish1.serialize(&mut stream);
 
         let extensions = publish1.header_extensions(0);
-        let publish2 = Publish::deserialize(&mut stream, extensions, 123, None).unwrap();
+        let publish2 = Publish::deserialize(&mut stream, extensions, 123).unwrap();
         assert_eq!(publish1, publish2);
     }
 }

@@ -28,7 +28,7 @@ impl ConfirmAck {
     pub fn deserialize(stream: &mut impl Stream) -> Result<Self> {
         let mut vote = Vote::null();
         vote.deserialize(stream)?;
-        let mut vote = Arc::new(vote);
+        let vote = Arc::new(vote);
         Ok(ConfirmAck { vote })
     }
 

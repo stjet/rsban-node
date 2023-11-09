@@ -1,21 +1,17 @@
 use super::MessageVariant;
-use crate::utils::deserialize_block;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    serialized_block_size,
+    deserialize_block_enum_with_type, serialized_block_size,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     BlockEnum, BlockHash, BlockType, Root,
 };
-use std::{
-    fmt::{Debug, Display, Write},
-    sync::Arc,
-};
+use std::fmt::{Debug, Display, Write};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ConfirmReq {
-    pub block: Option<Arc<BlockEnum>>,
+    pub block: Option<BlockEnum>,
     pub roots_hashes: Vec<(BlockHash, Root)>,
 }
 
@@ -44,7 +40,7 @@ impl ConfirmReq {
             })
         } else {
             Ok(Self {
-                block: Some(deserialize_block(block_type, stream)?),
+                block: Some(deserialize_block_enum_with_type(block_type, stream)?),
                 roots_hashes: Vec::new(),
             })
         }
@@ -135,14 +131,13 @@ impl Display for ConfirmReq {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{assert_deserializable, Message};
-
     use super::*;
+    use crate::messages::{assert_deserializable, Message};
     use rsnano_core::{LegacyReceiveBlockBuilder, StateBlockBuilder};
 
     #[test]
     fn serialize_block() {
-        let block = Arc::new(StateBlockBuilder::new().build());
+        let block = StateBlockBuilder::new().build();
         let confirm_req = Message::ConfirmReq(ConfirmReq {
             block: Some(block),
             roots_hashes: Vec::new(),
@@ -174,7 +169,7 @@ mod tests {
 
     #[test]
     fn set_block_type_extension() {
-        let block = Arc::new(StateBlockBuilder::new().build());
+        let block = StateBlockBuilder::new().build();
         let confirm_req = ConfirmReq {
             block: Some(block),
             roots_hashes: Vec::new(),
@@ -188,7 +183,7 @@ mod tests {
         let extensions = Default::default();
         assert_eq!(ConfirmReq::block_type(extensions), BlockType::Invalid);
 
-        let block = Arc::new(LegacyReceiveBlockBuilder::new().build());
+        let block = LegacyReceiveBlockBuilder::new().build();
         let confirm_req = ConfirmReq {
             block: Some(block),
             roots_hashes: Vec::new(),

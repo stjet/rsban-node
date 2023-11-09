@@ -1,6 +1,5 @@
 mod async_runtime;
 mod blake2b;
-mod blocks;
 mod json;
 mod thread_pool;
 mod timer;
@@ -22,7 +21,6 @@ mod hardened_constants;
 pub use hardened_constants::HardenedConstants;
 
 pub use blake2b::*;
-pub use blocks::*;
 pub use json::*;
 pub use thread_pool::*;
 pub use toml::*;

@@ -52,6 +52,6 @@ pub(crate) fn assert_deserializable(original: &Message) {
     let serialized = serializer.serialize(original);
     let mut stream = StreamAdapter::new(serialized);
     let header = MessageHeader::deserialize(&mut stream).unwrap();
-    let message_out = Message::deserialize(&mut stream, &header, 0, None, None).unwrap();
+    let message_out = Message::deserialize(&mut stream, &header, 0).unwrap();
     assert_eq!(message_out, *original);
 }

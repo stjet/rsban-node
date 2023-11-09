@@ -9,7 +9,7 @@ pub unsafe extern "C" fn rsn_message_publish_create(
     block: &BlockHandle,
 ) -> *mut MessageHandle {
     create_message_handle2(constants, || {
-        let block = Arc::clone((*block).deref());
+        let block = block.deref().deref().clone();
         Message::Publish(Publish { block, digest: 0 })
     })
 }
@@ -35,7 +35,7 @@ fn get_publish_payload_mut(handle: &mut MessageHandle) -> &mut Publish {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_publish_block(handle: &MessageHandle) -> *mut BlockHandle {
-    BlockHandle::new(get_publish_payload(handle).block.clone())
+    BlockHandle::new(Arc::new(get_publish_payload(handle).block.clone()))
 }
 
 #[no_mangle]

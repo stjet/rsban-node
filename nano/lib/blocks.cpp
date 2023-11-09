@@ -935,17 +935,6 @@ void nano::serialize_block (nano::stream & stream_a, nano::block const & block_a
 	block_a.serialize (stream_a);
 }
 
-std::shared_ptr<nano::block> nano::deserialize_block (nano::stream & stream_a, nano::block_type type_a)
-{
-	auto block_handle = rsnano::rsn_deserialize_block (static_cast<uint8_t> (type_a), &stream_a);
-	if (block_handle == nullptr)
-	{
-		return nullptr;
-	}
-
-	return nano::block_handle_to_block (block_handle);
-}
-
 void nano::receive_block::visit (nano::block_visitor & visitor_a) const
 {
 	visitor_a.receive_block (*this);

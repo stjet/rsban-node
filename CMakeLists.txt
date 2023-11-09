@@ -115,9 +115,6 @@ set_property(
            vote_uniquer
            votes_cache
            work_pool)
-set(NANO_FUZZER_TEST
-    OFF
-    CACHE BOOL "")
 set(NANO_ASIO_HANDLER_TRACKING
     0
     CACHE STRING "")
@@ -257,11 +254,6 @@ else()
     endif()
   endif()
 
-  if(NANO_FUZZER_TEST)
-    add_compile_options(-fsanitize=fuzzer-no-link -fno-omit-frame-pointer)
-    add_definitions(-DNANO_FUZZER_TEST)
-  endif()
-
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(i.86|x86(_64)?)$")
     if(NANO_SIMD_OPTIMIZATIONS
        OR RAIBLOCKS_SIMD_OPTIMIZATIONS
@@ -327,9 +319,6 @@ else()
           "${PLATFORM_LINK_FLAGS} -fsanitize-blacklist=${PROJECT_SOURCE_DIR}/tsan_clang_blacklist"
       )
     endif()
-  endif()
-  if(NANO_FUZZER_TEST)
-    set(PLATFORM_LINK_FLAGS "${PLATFORM_LINK_FLAGS} -fsanitize=fuzzer-no-link")
   endif()
 endif()
 
@@ -497,14 +486,6 @@ add_custom_target(
   COMMAND echo "BATCH BUILDING node + rpc"
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   DEPENDS nano_node nano_rpc)
-
-if(NANO_FUZZER_TEST)
-  if(NOT WIN32)
-    add_subdirectory(nano/fuzzer_test)
-  else()
-    message(WARNING "Fuzzing is not supported on Windows")
-  endif()
-endif()
 
 if(NANO_TEST OR RAIBLOCKS_TEST)
   if(WIN32)

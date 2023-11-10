@@ -30,8 +30,8 @@ impl Representative {
         &self.channel
     }
 
-    pub fn set_channel(&mut self, channel: Arc<ChannelEnum>) {
-        self.channel = channel;
+    pub fn set_channel(&mut self, channel: Arc<ChannelEnum>) -> Arc<ChannelEnum> {
+        std::mem::replace(&mut self.channel, channel)
     }
 
     pub fn last_request(&self) -> SystemTime {

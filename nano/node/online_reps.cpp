@@ -32,6 +32,13 @@ void nano::online_reps::sample ()
 	rsnano::rsn_online_reps_sample (handle);
 }
 
+nano::uint128_t nano::online_reps::minimum_principal_weight () const
+{
+	nano::amount minimum;
+	rsnano::rsn_online_reps_minimum_principal_weight (handle, minimum.bytes.data ());
+	return minimum.number ();
+}
+
 nano::uint128_t nano::online_reps::trended () const
 {
 	nano::amount trended;

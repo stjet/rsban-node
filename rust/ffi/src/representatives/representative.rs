@@ -86,5 +86,5 @@ pub unsafe extern "C" fn rsn_representative_set_channel(
     handle: *mut RepresentativeHandle,
     channel: *const ChannelHandle,
 ) {
-    (*handle).0.set_channel((*channel).0.clone())
+    (*handle).0.set_channel((*channel).0.clone());
 }

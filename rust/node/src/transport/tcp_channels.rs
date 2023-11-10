@@ -170,8 +170,8 @@ impl TcpChannels {
         {
             let mut lock = self.tcp_channels.lock().unwrap();
             if !lock.channels.exists(&endpoint) {
-                let node_id = channel.as_channel().get_node_id().unwrap_or_default();
-                if !channel.as_channel().is_temporary() {
+                let node_id = channel.get_node_id().unwrap_or_default();
+                if !channel.is_temporary() {
                     lock.channels.remove_by_node_id(&node_id);
                 }
 
@@ -516,15 +516,11 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         {
             if let Some(channel) = self.find_channel(endpoint) {
                 (self.sink)(message.clone(), Arc::clone(&channel));
-                channel
-                    .as_channel()
-                    .set_last_packet_received(SystemTime::now());
+                channel.set_last_packet_received(SystemTime::now());
             } else {
                 if let Some(channel) = self.find_node_id(&node_id) {
                     (self.sink)(message.clone(), Arc::clone(&channel));
-                    channel
-                        .as_channel()
-                        .set_last_packet_received(SystemTime::now());
+                    channel.set_last_packet_received(SystemTime::now());
                 } else if !self.excluded_peers.lock().unwrap().is_excluded(endpoint) {
                     if !node_id.is_zero() {
                         // Add temporary channel
@@ -738,7 +734,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 /* If node ID is known, don't establish new connection
                 Exception: temporary channels from tcp_server */
                 if let Some(existing_channel) = this_l.find_node_id(&node_id) {
-                    if !existing_channel.as_channel().is_temporary() {
+                    if !existing_channel.is_temporary() {
                         cleanup_node_id_handshake_socket();
                         return;
                     }
@@ -1038,7 +1034,7 @@ impl TcpChannelsImpl {
             .iter()
             .filter(|c| {
                 c.tcp_channel().network_version() >= min_version
-                    && (include_temporary_channels || !c.channel.as_channel().is_temporary())
+                    && (include_temporary_channels || !c.channel.is_temporary())
             })
             .map(|c| c.channel.clone())
             .collect()
@@ -1089,14 +1085,14 @@ impl TcpChannelsImpl {
             for _ in 0..random_cutoff {
                 let index = rng.gen_range(0..peers_size);
                 let wrapper = self.channels.get_by_index(index).unwrap();
-                if !wrapper.channel.as_channel().is_alive() {
+                if !wrapper.channel.is_alive() {
                     continue;
                 }
 
                 if wrapper.tcp_channel().network_version() >= min_version
-                    && (include_temporary_channels || !wrapper.channel.as_channel().is_temporary())
+                    && (include_temporary_channels || !wrapper.channel.is_temporary())
                 {
-                    if channel_ids.insert(wrapper.channel.as_channel().channel_id()) {
+                    if channel_ids.insert(wrapper.channel.channel_id()) {
                         result.push(wrapper.channel.clone())
                     }
                 }
@@ -1128,7 +1124,7 @@ impl TcpChannelsImpl {
 
     pub fn erase_temporary_channel(&mut self, endpoint: &SocketAddr) {
         if let Some(channel) = self.channels.remove_by_endpoint(endpoint) {
-            channel.as_channel().set_temporary(false);
+            channel.set_temporary(false);
         }
     }
 
@@ -1301,7 +1297,7 @@ impl ChannelContainer {
     pub fn set_last_packet_sent(&mut self, endpoint: &SocketAddr, time: SystemTime) {
         if let Some(channel) = self.by_endpoint.get(endpoint) {
             let old_time = channel.last_packet_sent();
-            channel.channel.as_channel().set_last_packet_sent(time);
+            channel.channel.set_last_packet_sent(time);
             remove_endpoint_btree(&mut self.by_last_packet_sent, &old_time, endpoint);
             self.by_last_packet_sent
                 .entry(time)
@@ -1313,10 +1309,7 @@ impl ChannelContainer {
     pub fn set_last_bootstrap_attempt(&mut self, endpoint: &SocketAddr, attempt_time: SystemTime) {
         if let Some(channel) = self.by_endpoint.get(endpoint) {
             let old_time = channel.last_bootstrap_attempt();
-            channel
-                .channel
-                .as_channel()
-                .set_last_bootstrap_attempt(attempt_time);
+            channel.channel.set_last_bootstrap_attempt(attempt_time);
             remove_endpoint_btree(
                 &mut self.by_bootstrap_attempt,
                 &old_time,
@@ -1371,7 +1364,7 @@ impl ChannelContainer {
         let dead_channels: Vec<_> = self
             .by_endpoint
             .values()
-            .filter(|c| !c.channel.as_channel().is_alive())
+            .filter(|c| !c.channel.is_alive())
             .cloned()
             .collect();
 

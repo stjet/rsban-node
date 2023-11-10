@@ -10,7 +10,6 @@ use crate::work::{fill_work_thresholds_dto, WorkThresholdsDto};
 pub struct NetworkConstantsDto {
     pub current_network: u16,
     pub work: WorkThresholdsDto,
-    pub principal_weight_factor: u32,
     pub default_node_port: u16,
     pub default_rpc_port: u16,
     pub default_ipc_port: u16,
@@ -59,7 +58,6 @@ pub fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &Net
     dto.protocol_version = constants.protocol_version;
     dto.protocol_version_min = constants.protocol_version_min;
     dto.bootstrap_protocol_version_min = constants.bootstrap_protocol_version_min;
-    dto.principal_weight_factor = constants.principal_weight_factor;
     dto.default_node_port = constants.default_node_port;
     dto.default_rpc_port = constants.default_rpc_port;
     dto.default_ipc_port = constants.default_ipc_port;
@@ -157,7 +155,6 @@ impl TryFrom<&NetworkConstantsDto> for NetworkConstants {
     fn try_from(value: &NetworkConstantsDto) -> Result<Self, Self::Error> {
         Ok(NetworkConstants {
             work: WorkThresholds::from(&value.work),
-            principal_weight_factor: value.principal_weight_factor,
             current_network: FromPrimitive::from_u16(value.current_network)
                 .ok_or_else(|| anyhow!("invalid current network"))?,
             protocol_version: value.protocol_version,

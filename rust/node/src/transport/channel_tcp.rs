@@ -108,10 +108,6 @@ impl ChannelTcp {
             .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0))
     }
 
-    pub fn remote_endpoint(&self) -> SocketAddr {
-        self.channel_mutex.lock().unwrap().remote_endpoint
-    }
-
     pub fn set_remote_endpoint(&self) {
         let mut lock = self.channel_mutex.lock().unwrap();
         debug_assert!(
@@ -287,6 +283,10 @@ impl Channel for ChannelTcp {
 
     fn get_type(&self) -> super::TransportType {
         super::TransportType::Tcp
+    }
+
+    fn remote_endpoint(&self) -> SocketAddr {
+        self.channel_mutex.lock().unwrap().remote_endpoint
     }
 }
 

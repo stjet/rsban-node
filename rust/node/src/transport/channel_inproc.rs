@@ -44,8 +44,8 @@ pub struct ChannelInProc {
     source_inbound: InboundCallback,
     destination_inbound: InboundCallback,
     async_rt: Weak<AsyncRuntime>,
-    pub source_endpoint: SocketAddr,
-    pub destination_endpoint: SocketAddr,
+    pub local_endpoint: SocketAddr,
+    remote_endpoint: SocketAddr,
     source_node_id: Account,
     destination_node_id: Account,
     message_serializer: Mutex<MessageSerializer>, // TODO remove Mutex!
@@ -62,8 +62,8 @@ impl ChannelInProc {
         source_inbound: InboundCallback,
         destination_inbound: InboundCallback,
         async_rt: &Arc<AsyncRuntime>,
-        source_endpoint: SocketAddr,
-        destination_endpoint: SocketAddr,
+        local_endpoint: SocketAddr,
+        remote_endpoint: SocketAddr,
         source_node_id: Account,
         destination_node_id: Account,
     ) -> Self {
@@ -86,8 +86,8 @@ impl ChannelInProc {
             source_inbound,
             destination_inbound,
             async_rt: Arc::downgrade(async_rt),
-            source_endpoint,
-            destination_endpoint,
+            local_endpoint,
+            remote_endpoint,
             source_node_id,
             destination_node_id,
         }
@@ -139,8 +139,8 @@ impl ChannelInProc {
         let limiter = self.limiter.clone();
         let source_inbound = self.source_inbound.clone();
         let destination_inbound = self.destination_inbound.clone();
-        let source_endpoint = self.source_endpoint;
-        let destination_endpoint = self.destination_endpoint;
+        let source_endpoint = self.local_endpoint;
+        let destination_endpoint = self.remote_endpoint;
         let source_node_id = self.source_node_id;
         let destination_node_id = self.destination_node_id;
         let async_rt = self.async_rt.clone();
@@ -311,6 +311,10 @@ impl Channel for ChannelInProc {
 
     fn get_type(&self) -> super::TransportType {
         super::TransportType::Loopback
+    }
+
+    fn remote_endpoint(&self) -> SocketAddr {
+        self.remote_endpoint
     }
 }
 

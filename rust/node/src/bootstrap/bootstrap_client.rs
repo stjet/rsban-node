@@ -12,7 +12,7 @@ use tokio::task::spawn_blocking;
 use crate::{
     messages::Message,
     transport::{
-        BufferDropPolicy, ChannelEnum, ChannelTcp, Socket, SocketExtensions, TrafficType,
+        BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, Socket, SocketExtensions, TrafficType,
         WriteCallback,
     },
     utils::{AsyncRuntime, ErrorCode},

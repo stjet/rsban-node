@@ -104,6 +104,21 @@ pub unsafe extern "C" fn rsn_online_reps_set_online(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_online_reps_minimum_principal_weight(
+    handle: &OnlineRepsHandle,
+    result: *mut u8,
+) {
+    copy_amount_bytes(
+        handle
+            .online_reps
+            .lock()
+            .unwrap()
+            .minimum_principal_weight(),
+        result,
+    )
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_online_reps_online_weight_quorum() -> u8 {
     ONLINE_WEIGHT_QUORUM
 }

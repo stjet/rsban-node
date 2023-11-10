@@ -72,7 +72,7 @@ void nano::representative::set_last_response (std::chrono::system_clock::time_po
 
 nano::representative_register::representative_register (nano::node & node_a) :
 	node{ node_a },
-	handle{ rsnano::rsn_representative_register_create () }
+	handle{ rsnano::rsn_representative_register_create (node_a.ledger.handle, node_a.online_reps.get_handle()) }
 {
 }
 

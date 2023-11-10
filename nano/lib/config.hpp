@@ -185,7 +185,6 @@ public:
 	nano::networks current_network{ nano::network_constants::active_network () };
 	nano::work_thresholds work;
 
-	unsigned principal_weight_factor;
 	uint16_t default_node_port;
 	uint16_t default_rpc_port;
 	uint16_t default_ipc_port;

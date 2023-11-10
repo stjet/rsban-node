@@ -1,9 +1,11 @@
+use crate::ledger::datastore::LedgerHandle;
+use rsnano_node::representatives::RepresentativeRegister;
 use std::{
     ops::Deref,
     sync::{Arc, Mutex},
 };
 
-use rsnano_node::representatives::RepresentativeRegister;
+use super::OnlineRepsHandle;
 
 pub struct RepresentativeRegisterHandle(Arc<Mutex<RepresentativeRegister>>);
 
@@ -16,9 +18,15 @@ impl Deref for RepresentativeRegisterHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_representative_register_create() -> *mut RepresentativeRegisterHandle {
+pub extern "C" fn rsn_representative_register_create(
+    ledger: &LedgerHandle,
+    online_reps: &OnlineRepsHandle,
+) -> *mut RepresentativeRegisterHandle {
     Box::into_raw(Box::new(RepresentativeRegisterHandle(Arc::new(
-        Mutex::new(RepresentativeRegister::new()),
+        Mutex::new(RepresentativeRegister::new(
+            Arc::clone(ledger),
+            Arc::clone(online_reps),
+        )),
     ))))
 }
 

@@ -21,7 +21,7 @@ mod write_queue;
 
 pub use tokio_socket_facade::*;
 
-use std::time::SystemTime;
+use std::{net::SocketAddr, ops::Deref, time::SystemTime};
 
 pub use bandwidth_limiter::{
     BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
@@ -75,6 +75,7 @@ pub trait Channel {
     fn set_node_id(&self, id: Account);
     fn is_alive(&self) -> bool;
     fn get_type(&self) -> TransportType;
+    fn remote_endpoint(&self) -> SocketAddr;
 }
 
 #[derive(FromPrimitive, Copy, Clone, Debug)]
@@ -91,14 +92,6 @@ pub enum ChannelEnum {
 }
 
 impl ChannelEnum {
-    pub fn as_channel(&self) -> &dyn Channel {
-        match &self {
-            ChannelEnum::Tcp(tcp) => tcp,
-            ChannelEnum::InProc(inproc) => inproc,
-            ChannelEnum::Fake(fake) => fake,
-        }
-    }
-
     #[cfg(test)]
     pub(crate) fn create_test_instance() -> Self {
         Self::create_test_instance_with_channel_id(42)
@@ -126,5 +119,17 @@ impl ChannelEnum {
             SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 123),
             ProtocolInfo::dev_network(),
         ))
+    }
+}
+
+impl Deref for ChannelEnum {
+    type Target = dyn Channel;
+
+    fn deref(&self) -> &Self::Target {
+        match &self {
+            ChannelEnum::Tcp(tcp) => tcp,
+            ChannelEnum::InProc(inproc) => inproc,
+            ChannelEnum::Fake(fake) => fake,
+        }
     }
 }

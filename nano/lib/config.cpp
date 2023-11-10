@@ -202,7 +202,6 @@ void nano::network_constants::read_dto (rsnano::NetworkConstantsDto const & dto)
 	protocol_version = dto.protocol_version;
 	protocol_version_min = dto.protocol_version_min;
 	bootstrap_protocol_version_min = dto.bootstrap_protocol_version_min;
-	principal_weight_factor = dto.principal_weight_factor;
 	default_node_port = dto.default_node_port;
 	default_rpc_port = dto.default_rpc_port;
 	default_ipc_port = dto.default_ipc_port;
@@ -291,7 +290,6 @@ rsnano::NetworkConstantsDto nano::network_constants::to_dto () const
 	dto.protocol_version = protocol_version;
 	dto.protocol_version_min = protocol_version_min;
 	dto.bootstrap_protocol_version_min = bootstrap_protocol_version_min;
-	dto.principal_weight_factor = principal_weight_factor;
 	dto.default_node_port = default_node_port;
 	dto.default_rpc_port = default_rpc_port;
 	dto.default_ipc_port = default_ipc_port;

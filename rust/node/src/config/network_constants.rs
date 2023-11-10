@@ -18,8 +18,6 @@ pub static STUB_NETWORK_CONSTANTS: Lazy<NetworkConstants> =
 #[derive(Clone)]
 pub struct NetworkConstants {
     pub work: WorkThresholds,
-    // A representative is classified as principal based on its weight and this factor
-    pub principal_weight_factor: u32,
     pub default_node_port: u16,
     pub default_rpc_port: u16,
     pub default_ipc_port: u16,
@@ -95,7 +93,6 @@ impl NetworkConstants {
             protocol_version: protocol_info.version_using,
             protocol_version_min: protocol_info.version_min,
             bootstrap_protocol_version_min: 0x13,
-            principal_weight_factor: 1000, // 0.1%
             default_node_port: 7075,
             default_rpc_port: 7076,
             default_ipc_port: 7077,

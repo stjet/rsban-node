@@ -34,6 +34,7 @@ public:
 	nano::uint128_t delta () const;
 	/** List of online representatives, both the currently sampling ones and the ones observed in the previous sampling period */
 	std::vector<nano::account> list ();
+	nano::uint128_t minimum_principal_weight () const;
 	void clear ();
 	static uint8_t online_weight_quorum ();
 	void set_online (nano::uint128_t);

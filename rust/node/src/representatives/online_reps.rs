@@ -77,6 +77,10 @@ impl OnlineReps {
         self.online
     }
 
+    pub fn minimum_principal_weight(&self) -> Amount {
+        self.trended / 1000 // 0.1% of trended online weight
+    }
+
     /** Returns the quorum required for confirmation*/
     pub fn delta(&self) -> Amount {
         // Using a larger container to ensure maximum precision

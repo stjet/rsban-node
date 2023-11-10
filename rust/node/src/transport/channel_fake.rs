@@ -124,10 +124,6 @@ impl ChannelFake {
         self.closed.store(true, Ordering::SeqCst);
     }
 
-    pub fn endpoint(&self) -> &SocketAddr {
-        &self.endpoint
-    }
-
     pub fn network_version(&self) -> u8 {
         self.protocol.version_using
     }
@@ -184,5 +180,9 @@ impl Channel for ChannelFake {
 
     fn get_type(&self) -> super::TransportType {
         super::TransportType::Fake
+    }
+
+    fn remote_endpoint(&self) -> SocketAddr {
+        self.endpoint
     }
 }

@@ -66,12 +66,12 @@ pub unsafe fn as_tcp_channel(handle: *mut ChannelHandle) -> &'static ChannelTcp 
 }
 
 pub unsafe fn as_channel(handle: *mut ChannelHandle) -> &'static dyn Channel {
-    (*handle).0.as_channel()
+    (*handle).0.deref().deref()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_type(handle: *mut ChannelHandle) -> u8 {
-    (*handle).0.as_channel().get_type() as u8
+    (*handle).0.get_type() as u8
 }
 
 #[no_mangle]
@@ -229,7 +229,7 @@ pub unsafe extern "C" fn rsn_channel_inproc_endpoint(
     result: *mut EndpointDto,
 ) {
     let inproc = as_inproc_channel(handle);
-    (*result) = inproc.source_endpoint.into()
+    (*result) = inproc.local_endpoint.into()
 }
 
 #[no_mangle]
@@ -261,7 +261,7 @@ pub unsafe extern "C" fn rsn_channel_fake_endpoint(
     handle: *mut ChannelHandle,
     result: *mut EndpointDto,
 ) {
-    *result = as_fake_channel(handle).endpoint().into();
+    *result = as_fake_channel(handle).remote_endpoint().into();
 }
 
 #[no_mangle]

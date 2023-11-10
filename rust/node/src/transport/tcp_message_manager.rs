@@ -1,16 +1,15 @@
-use crate::messages::DeserializedMessage;
-
 use super::Socket;
+use crate::messages::DeserializedMessage;
 use rsnano_core::Account;
 use std::{
     collections::VecDeque,
-    net::{IpAddr, Ipv6Addr, SocketAddr},
+    net::{Ipv6Addr, SocketAddrV6},
     sync::{Arc, Condvar, Mutex},
 };
 
 pub struct TcpMessageItem {
     pub message: Option<DeserializedMessage>,
-    pub endpoint: SocketAddr,
+    pub endpoint: SocketAddrV6,
     pub node_id: Account,
     pub socket: Option<Arc<Socket>>,
 }
@@ -30,7 +29,7 @@ impl TcpMessageItem {
     pub fn new() -> Self {
         Self {
             message: None,
-            endpoint: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
+            endpoint: SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
             node_id: Account::zero(),
             socket: None,
         }

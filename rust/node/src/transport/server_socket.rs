@@ -1,6 +1,6 @@
 use std::{
     collections::BTreeMap,
-    net::{IpAddr, Ipv6Addr, SocketAddr},
+    net::{Ipv6Addr, SocketAddr},
     sync::{Arc, Mutex, Weak},
     time::Duration,
 };
@@ -11,8 +11,8 @@ use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     utils::{
-        first_ipv6_subnet_address, into_ipv6_address, is_ipv4_or_v4_mapped_address,
-        last_ipv6_subnet_address, AsyncRuntime, ErrorCode, ThreadPool,
+        first_ipv6_subnet_address, is_ipv4_mapped, last_ipv6_subnet_address, AsyncRuntime,
+        ErrorCode, ThreadPool,
     },
     NetworkParams,
 };
@@ -102,7 +102,7 @@ impl ServerSocket {
             return false;
         }
 
-        let ip = into_ipv6_address(new_connection.get_remote().unwrap().ip());
+        let ip = new_connection.get_remote().unwrap().ip().clone();
         let counted_connections = self
             .connections_per_address
             .lock()
@@ -119,21 +119,18 @@ impl ServerSocket {
         let endpoint = new_connection
             .get_remote()
             .expect("new connection has no remote endpoint set");
-        if self.node_flags.disable_max_peers_per_subnetwork
-            || is_ipv4_or_v4_mapped_address(&endpoint.ip())
-        {
+        if self.node_flags.disable_max_peers_per_subnetwork || is_ipv4_mapped(&endpoint.ip()) {
             // If the limit is disabled, then it is unreachable.
             // If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6 /64.
             return false;
         }
-        let ip_address = into_ipv6_address(endpoint.ip());
 
         let counted_connections = self
             .connections_per_address
             .lock()
             .unwrap()
             .count_subnetwork_connections(
-                &ip_address,
+                endpoint.ip(),
                 self.network_params
                     .network
                     .ipv6_subnetwork_prefix_for_limiting,
@@ -233,9 +230,7 @@ impl ConnectionsPerAddress {
     }
 
     pub fn insert(&mut self, connection: &Arc<Socket>) {
-        let SocketAddr::V6(endpoint) = connection.get_remote().unwrap() else {
-            panic!("socket doesn't have a v6 remote endpoint'");
-        };
+        let endpoint = connection.get_remote().unwrap();
         self.connections
             .entry(*endpoint.ip())
             .or_default()
@@ -327,6 +322,7 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
             this_l.socket_facade.async_accept(
                 &new_connection,
                 Box::new(move |remote_endpoint, ec| {
+                    let SocketAddr::V6(remote_endpoint) = remote_endpoint else {panic!("not a v6 address")};
                     let this_l = this_clone;
                     connection_clone.set_remote(remote_endpoint);
                     this_l.evict_dead_connections();
@@ -339,7 +335,7 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
                     }
 
                     if this_l.limit_reached_for_incoming_ip_connections (&connection_clone) {
-                        let remote_ip_address = connection_clone.get_remote().unwrap().ip();
+                        let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
                         let log_message = format!("Network: max connections per IP (max_peers_per_ip) was reached for {}, unable to open new connection", remote_ip_address);
                         this_l.logger.try_log(&log_message);
                         this_l.stats.inc (StatType::Tcp, DetailType::TcpMaxPerIp, Direction::In);
@@ -348,8 +344,7 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
                     }
 
                     if this_l.limit_reached_for_incoming_subnetwork_connections (&connection_clone) {
-                        let remote_ip_address = connection_clone.get_remote().unwrap().ip();
-                        let IpAddr::V6(remote_ip_address) = remote_ip_address else { panic!("not a v6 IP address")};
+                        let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
                         let remote_subnet = first_ipv6_subnet_address(&remote_ip_address, this_l.network_params.network.max_peers_per_subnetwork as u8);
                         let log_message = format!("Network: max connections per subnetwork (max_peers_per_subnetwork) was reached for subnetwork {} (remote IP: {}), unable to open new connection",
                             remote_subnet, remote_ip_address);
@@ -422,7 +417,7 @@ fn is_temporary_error(ec: ErrorCode) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::net::IpAddr;
+    use std::net::SocketAddrV6;
 
     #[test]
     fn count_subnetwork_connections() {
@@ -450,7 +445,7 @@ mod tests {
         let mut connections = ConnectionsPerAddress::default();
         for ip in addresses {
             let socket = Socket::create_null();
-            socket.set_remote(SocketAddr::new(IpAddr::V6(ip), 42));
+            socket.set_remote(SocketAddrV6::new(ip, 42, 0, 0));
             connections.insert(&socket);
         }
 

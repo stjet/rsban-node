@@ -1,6 +1,6 @@
 use rsnano_node::transport::PeerExclusion;
 use std::{
-    net::SocketAddr,
+    net::SocketAddrV6,
     sync::{Arc, Mutex},
 };
 
@@ -29,7 +29,7 @@ pub unsafe extern "C" fn rsn_peer_exclusion_add(
         .0
         .lock()
         .unwrap()
-        .peer_misbehaved(&SocketAddr::from(&*endpoint))
+        .peer_misbehaved(&SocketAddrV6::from(&*endpoint))
 }
 
 #[no_mangle]
@@ -41,7 +41,7 @@ pub unsafe extern "C" fn rsn_peer_exclusion_check(
         .0
         .lock()
         .unwrap()
-        .is_excluded(&SocketAddr::from(&*endpoint))
+        .is_excluded(&SocketAddrV6::from(&*endpoint))
 }
 
 #[no_mangle]
@@ -53,7 +53,7 @@ pub unsafe extern "C" fn rsn_peer_exclusion_score(
         .0
         .lock()
         .unwrap()
-        .score(&SocketAddr::from(&*endpoint))
+        .score(&SocketAddrV6::from(&*endpoint))
 }
 
 #[no_mangle]
@@ -65,7 +65,7 @@ pub unsafe extern "C" fn rsn_peer_exclusion_contains(
         .0
         .lock()
         .unwrap()
-        .contains(&SocketAddr::from(&*endpoint))
+        .contains(&SocketAddrV6::from(&*endpoint))
 }
 
 #[no_mangle]
@@ -77,7 +77,7 @@ pub unsafe extern "C" fn rsn_peer_exclusion_remove(
         .0
         .lock()
         .unwrap()
-        .remove(&SocketAddr::from(&*endpoint))
+        .remove(&SocketAddrV6::from(&*endpoint))
 }
 
 #[no_mangle]

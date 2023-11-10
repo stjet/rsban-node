@@ -6,7 +6,7 @@ mod timer;
 mod toml;
 
 use std::{
-    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddrV6},
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::OnceLock,
 };
 
@@ -151,6 +151,12 @@ pub fn is_ipv4_mapped(input: &Ipv6Addr) -> bool {
         input.octets(),
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, _, _, _, _]
     )
+}
+pub fn into_ipv6_socket_address(input: SocketAddr) -> SocketAddrV6 {
+    match input {
+        SocketAddr::V4(a) => SocketAddrV6::new(a.ip().to_ipv6_mapped(), a.port(), 0, 0),
+        SocketAddr::V6(a) => a,
+    }
 }
 
 pub fn into_ipv6_address(input: IpAddr) -> Ipv6Addr {

@@ -1,5 +1,5 @@
 use std::{
-    net::SocketAddr,
+    net::SocketAddrV6,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex, Weak,
@@ -34,7 +34,7 @@ pub struct ChannelFake {
     channel_mutex: Mutex<FakeChannelData>,
     limiter: Arc<OutboundBandwidthLimiter>,
     stats: Arc<Stats>,
-    endpoint: SocketAddr,
+    endpoint: SocketAddrV6,
     closed: AtomicBool,
     protocol: ProtocolInfo,
     message_serializer: Mutex<MessageSerializer>, // TODO remove Mutex!
@@ -47,7 +47,7 @@ impl ChannelFake {
         async_rt: &Arc<AsyncRuntime>,
         limiter: Arc<OutboundBandwidthLimiter>,
         stats: Arc<Stats>,
-        endpoint: SocketAddr,
+        endpoint: SocketAddrV6,
         protocol: ProtocolInfo,
     ) -> Self {
         Self {
@@ -182,7 +182,7 @@ impl Channel for ChannelFake {
         super::TransportType::Fake
     }
 
-    fn remote_endpoint(&self) -> SocketAddr {
+    fn remote_endpoint(&self) -> SocketAddrV6 {
         self.endpoint
     }
 }

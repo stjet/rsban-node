@@ -16,7 +16,7 @@ use rsnano_node::{
 };
 use std::{
     ffi::c_void,
-    net::SocketAddr,
+    net::SocketAddrV6,
     ops::Deref,
     sync::{Arc, Weak},
     time::SystemTime,
@@ -248,7 +248,7 @@ pub unsafe extern "C" fn rsn_channel_fake_create(
             &async_rt.0,
             (*limiter).0.clone(),
             (*stats).0.clone(),
-            SocketAddr::from(&(*endpoint)),
+            SocketAddrV6::from(&(*endpoint)),
             NetworkConstants::try_from(network_constants)
                 .unwrap()
                 .protocol_info(),

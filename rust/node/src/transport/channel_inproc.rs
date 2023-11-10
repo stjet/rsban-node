@@ -1,5 +1,5 @@
 use std::{
-    net::SocketAddr,
+    net::{SocketAddr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
@@ -45,7 +45,7 @@ pub struct ChannelInProc {
     destination_inbound: InboundCallback,
     async_rt: Weak<AsyncRuntime>,
     pub local_endpoint: SocketAddr,
-    remote_endpoint: SocketAddr,
+    remote_endpoint: SocketAddrV6,
     source_node_id: Account,
     destination_node_id: Account,
     message_serializer: Mutex<MessageSerializer>, // TODO remove Mutex!
@@ -63,7 +63,7 @@ impl ChannelInProc {
         destination_inbound: InboundCallback,
         async_rt: &Arc<AsyncRuntime>,
         local_endpoint: SocketAddr,
-        remote_endpoint: SocketAddr,
+        remote_endpoint: SocketAddrV6,
         source_node_id: Account,
         destination_node_id: Account,
     ) -> Self {
@@ -313,7 +313,7 @@ impl Channel for ChannelInProc {
         super::TransportType::Loopback
     }
 
-    fn remote_endpoint(&self) -> SocketAddr {
+    fn remote_endpoint(&self) -> SocketAddrV6 {
         self.remote_endpoint
     }
 }

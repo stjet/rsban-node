@@ -1,14 +1,14 @@
 use rsnano_core::utils::{BufferWriter, Serialize, Stream};
 use std::{
     fmt::Display,
-    net::{IpAddr, Ipv6Addr, SocketAddr},
+    net::{Ipv6Addr, SocketAddrV6},
 };
 
 use super::MessageVariant;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Keepalive {
-    pub peers: [SocketAddr; 8],
+    pub peers: [SocketAddrV6; 8],
 }
 
 impl Keepalive {
@@ -24,7 +24,7 @@ impl Keepalive {
             let port = u16::from_le_bytes(port_buffer);
             let ip_addr = Ipv6Addr::from(addr_buffer);
 
-            peers[i] = SocketAddr::new(IpAddr::V6(ip_addr), port);
+            peers[i] = SocketAddrV6::new(ip_addr, port, 0, 0);
         }
 
         Some(Self { peers })
@@ -48,16 +48,11 @@ impl MessageVariant for Keepalive {}
 impl Serialize for Keepalive {
     fn serialize(&self, stream: &mut dyn BufferWriter) {
         for peer in &self.peers {
-            match peer {
-                SocketAddr::V4(_) => panic!("ipv6 expected but was ipv4"), //todo make peers IpAddrV6?
-                SocketAddr::V6(addr) => {
-                    let ip_bytes = addr.ip().octets();
-                    stream.write_bytes_safe(&ip_bytes);
+            let ip_bytes = peer.ip().octets();
+            stream.write_bytes_safe(&ip_bytes);
 
-                    let port_bytes = addr.port().to_le_bytes();
-                    stream.write_bytes_safe(&port_bytes);
-                }
-            }
+            let port_bytes = peer.port().to_le_bytes();
+            stream.write_bytes_safe(&port_bytes);
         }
     }
 }
@@ -71,15 +66,16 @@ impl Display for Keepalive {
     }
 }
 
-fn empty_peers() -> [SocketAddr; 8] {
-    [SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0); 8]
+fn empty_peers() -> [SocketAddrV6; 8] {
+    [SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0); 8]
 }
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
     use crate::messages::{assert_deserializable, Message};
-    use std::str::FromStr;
 
     #[test]
     fn serialize_no_peers() {
@@ -90,7 +86,7 @@ mod tests {
     #[test]
     fn serialize_peers() {
         let mut keepalive = Keepalive::default();
-        keepalive.peers[0] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 10000);
+        keepalive.peers[0] = SocketAddrV6::new(Ipv6Addr::LOCALHOST, 10000, 0, 0);
         let request = Message::Keepalive(keepalive);
         assert_deserializable(&request);
     }
@@ -105,16 +101,22 @@ mod tests {
     #[test]
     fn keepalive_string() {
         let mut keepalive = Keepalive::default();
-        keepalive.peers[1] = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 45);
-        keepalive.peers[2] = SocketAddr::new(
-            IpAddr::from_str("2001:db8:85a3:8d3:1319:8a2e:370:7348").unwrap(),
+        keepalive.peers[1] = SocketAddrV6::new(Ipv6Addr::LOCALHOST, 45, 0, 0);
+        keepalive.peers[2] = SocketAddrV6::new(
+            Ipv6Addr::from_str("2001:db8:85a3:8d3:1319:8a2e:370:7348").unwrap(),
+            0,
+            0,
             0,
         );
-        keepalive.peers[3] = SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 65535);
-        keepalive.peers[4] = SocketAddr::new(IpAddr::from_str("::ffff:1.2.3.4").unwrap(), 1234);
-        keepalive.peers[5] = SocketAddr::new(IpAddr::from_str("::ffff:1.2.3.4").unwrap(), 1234);
-        keepalive.peers[6] = SocketAddr::new(IpAddr::from_str("::ffff:1.2.3.4").unwrap(), 1234);
-        keepalive.peers[7] = SocketAddr::new(IpAddr::from_str("::ffff:1.2.3.4").unwrap(), 1234);
+        keepalive.peers[3] = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 65535, 0, 0);
+        keepalive.peers[4] =
+            SocketAddrV6::new(Ipv6Addr::from_str("::ffff:1.2.3.4").unwrap(), 1234, 0, 0);
+        keepalive.peers[5] =
+            SocketAddrV6::new(Ipv6Addr::from_str("::ffff:1.2.3.4").unwrap(), 1234, 0, 0);
+        keepalive.peers[6] =
+            SocketAddrV6::new(Ipv6Addr::from_str("::ffff:1.2.3.4").unwrap(), 1234, 0, 0);
+        keepalive.peers[7] =
+            SocketAddrV6::new(Ipv6Addr::from_str("::ffff:1.2.3.4").unwrap(), 1234, 0, 0);
 
         let mut expected = String::new();
         expected.push_str("\n[::]:0");

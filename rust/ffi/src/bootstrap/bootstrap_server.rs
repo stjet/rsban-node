@@ -11,7 +11,7 @@ use rsnano_node::{
 };
 use std::{
     ffi::c_void,
-    net::SocketAddr,
+    net::SocketAddrV6,
     ops::Deref,
     sync::{Arc, Weak},
 };
@@ -261,7 +261,7 @@ impl TcpServerObserver for FfiBootstrapServerObserver {
         &self,
         socket_type: SocketType,
         inner_ptr: usize,
-        endpoint: SocketAddr,
+        endpoint: SocketAddrV6,
     ) {
         let endpoint_dto = EndpointDto::from(&endpoint);
         unsafe {

@@ -4,7 +4,7 @@ use rsnano_node::{
     messages::{DeserializedMessage, Message},
     transport::{ChannelTcpObserver, IChannelTcpObserverWeakPtr},
 };
-use std::{ffi::c_void, net::SocketAddr, sync::Arc};
+use std::{ffi::c_void, net::SocketAddrV6, sync::Arc};
 
 pub static mut DROP_WEAK_PTR: Option<VoidPointerCallback> = None;
 
@@ -50,7 +50,7 @@ unsafe impl Send for FfiChannelTcpObserver {}
 unsafe impl Sync for FfiChannelTcpObserver {}
 
 impl ChannelTcpObserver for FfiChannelTcpObserver {
-    fn data_sent(&self, endpoint: &SocketAddr) {
+    fn data_sent(&self, endpoint: &SocketAddrV6) {
         let dto = EndpointDto::from(endpoint);
         unsafe {
             DATA_SENT.expect("DATA_SENT missing")(self.handle, &dto);

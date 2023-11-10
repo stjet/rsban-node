@@ -1,5 +1,5 @@
 use std::{
-    net::{IpAddr, Ipv6Addr, SocketAddr},
+    net::{Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
@@ -190,16 +190,18 @@ impl BootstrapClient {
     }
 
     pub fn remote_endpoint(&self) -> SocketAddr {
-        self.socket
-            .get_remote()
-            .unwrap_or_else(|| SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0))
+        SocketAddr::V6(
+            self.socket
+                .get_remote()
+                .unwrap_or_else(|| SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)),
+        )
     }
 
     pub fn channel_string(&self) -> String {
         self.tcp_channel().to_string()
     }
 
-    pub fn tcp_endpoint(&self) -> SocketAddr {
+    pub fn tcp_endpoint(&self) -> SocketAddrV6 {
         self.tcp_channel().remote_endpoint()
     }
 }

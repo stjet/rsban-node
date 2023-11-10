@@ -15,7 +15,7 @@ use crate::{
 };
 use rsnano_core::{utils::Logger, Account, KeyPair};
 use std::{
-    net::{Ipv6Addr, SocketAddr},
+    net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex,
@@ -30,7 +30,7 @@ pub trait TcpServerObserver: Send + Sync {
         &self,
         socket_type: SocketType,
         unique_id: usize,
-        endpoint: SocketAddr,
+        endpoint: SocketAddrV6,
     );
     fn get_bootstrap_count(&self) -> usize;
     fn inc_bootstrap_count(&self);
@@ -45,7 +45,7 @@ impl TcpServerObserver for NullTcpServerObserver {
         &self,
         _socket_type: SocketType,
         _unique_id: usize,
-        _endpoint: SocketAddr,
+        _endpoint: SocketAddrV6,
     ) {
     }
 
@@ -69,7 +69,7 @@ pub struct TcpServer {
     pub connections_max: usize,
 
     // Remote enpoint used to remove response channel even after socket closing
-    remote_endpoint: Mutex<SocketAddr>,
+    remote_endpoint: Mutex<SocketAddrV6>,
     pub remote_node_id: Mutex<Account>,
 
     network: Arc<NetworkParams>,
@@ -112,10 +112,7 @@ impl TcpServer {
             stopped: AtomicBool::new(false),
             disable_bootstrap_listener: false,
             connections_max: 64,
-            remote_endpoint: Mutex::new(SocketAddr::new(
-                std::net::IpAddr::V6(Ipv6Addr::UNSPECIFIED),
-                0,
-            )),
+            remote_endpoint: Mutex::new(SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)),
             remote_node_id: Mutex::new(Account::zero()),
             last_telemetry_req: Mutex::new(None),
             network,
@@ -154,7 +151,7 @@ impl TcpServer {
         self.handshake_query_received.store(true, Ordering::SeqCst);
     }
 
-    pub fn remote_endpoint(&self) -> SocketAddr {
+    pub fn remote_endpoint(&self) -> SocketAddrV6 {
         *self.remote_endpoint.lock().unwrap()
     }
 
@@ -457,7 +454,7 @@ impl HandshakeMessageVisitorImpl {
 
     fn prepare_handshake_query(
         &self,
-        remote_endpoint: &SocketAddr,
+        remote_endpoint: &SocketAddrV6,
     ) -> Option<NodeIdHandshakeQuery> {
         self.syn_cookies
             .assign(remote_endpoint)
@@ -510,7 +507,7 @@ impl HandshakeMessageVisitorImpl {
     fn verify_handshake_response(
         &self,
         response: &NodeIdHandshakeResponse,
-        remote_endpoint: &SocketAddr,
+        remote_endpoint: &SocketAddrV6,
     ) -> bool {
         // Prevent connection with ourselves
         if response.node_id == self.node_id.public_key() {

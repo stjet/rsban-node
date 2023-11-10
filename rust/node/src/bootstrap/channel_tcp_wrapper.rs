@@ -1,5 +1,5 @@
 use std::{
-    net::{Ipv6Addr, SocketAddr, SocketAddrV6},
+    net::{Ipv6Addr, SocketAddrV6},
     sync::Arc,
     time::SystemTime,
 };
@@ -31,14 +31,7 @@ impl ChannelTcpWrapper {
         }
     }
 
-    pub fn endpoint_v6(&self) -> SocketAddrV6 {
-        let SocketAddr::V6(endpoint) = self.tcp_channel().remote_endpoint() else {
-            panic!("not a v6 address");
-        };
-        endpoint
-    }
-
-    pub fn endpoint(&self) -> SocketAddr {
+    pub fn endpoint(&self) -> SocketAddrV6 {
         self.tcp_channel().remote_endpoint()
     }
 
@@ -63,10 +56,10 @@ impl ChannelTcpWrapper {
     }
 
     pub fn ip_address(&self) -> Ipv6Addr {
-        ipv4_address_or_ipv6_subnet(self.endpoint_v6().ip())
+        ipv4_address_or_ipv6_subnet(self.endpoint().ip())
     }
 
     pub fn subnetwork(&self) -> Ipv6Addr {
-        map_address_to_subnetwork(self.endpoint_v6().ip())
+        map_address_to_subnetwork(self.endpoint().ip())
     }
 }

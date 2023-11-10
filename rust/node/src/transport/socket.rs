@@ -1,9 +1,9 @@
-use crate::utils::{AsyncRuntime, ErrorCode, ThreadPool, ThreadPoolImpl};
+use crate::utils::{into_ipv6_socket_address, AsyncRuntime, ErrorCode, ThreadPool, ThreadPoolImpl};
 use async_trait::async_trait;
 use num_traits::FromPrimitive;
 use rsnano_core::utils::seconds_since_epoch;
 use std::{
-    net::{IpAddr, Ipv6Addr, SocketAddr},
+    net::{Ipv6Addr, SocketAddrV6},
     ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
@@ -57,7 +57,7 @@ impl SocketType {
 pub trait SocketObserver: Send + Sync {
     fn socket_connected(&self, _socket: Arc<Socket>) {}
     fn socket_accepted(&self, _socket: Arc<Socket>) {}
-    fn disconnect_due_to_timeout(&self, _endpoint: SocketAddr) {}
+    fn disconnect_due_to_timeout(&self, _endpoint: SocketAddrV6) {}
     fn connect_error(&self) {}
     fn read_error(&self) {}
     fn read_successful(&self, _len: usize) {}
@@ -95,7 +95,7 @@ impl SocketObserver for CompositeSocketObserver {
         }
     }
 
-    fn disconnect_due_to_timeout(&self, endpoint: SocketAddr) {
+    fn disconnect_due_to_timeout(&self, endpoint: SocketAddrV6) {
         for child in &self.children {
             child.disconnect_due_to_timeout(endpoint);
         }
@@ -152,7 +152,7 @@ impl SocketObserver for CompositeSocketObserver {
 
 pub struct Socket {
     /// The other end of the connection
-    remote: Mutex<Option<SocketAddr>>,
+    remote: Mutex<Option<SocketAddrV6>>,
 
     /// the timestamp (in seconds since epoch) of the last time there was successful activity on the socket
     /// activity is any successful connect, send or receive event
@@ -261,13 +261,14 @@ impl Socket {
         self.endpoint_type
     }
 
-    pub fn local_endpoint(&self) -> SocketAddr {
+    pub fn local_endpoint_v6(&self) -> SocketAddrV6 {
         let guard = self.stream.lock().unwrap();
         match guard.deref() {
             Some(stream) => stream
                 .local_addr()
-                .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0)),
-            None => SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0),
+                .map(|addr| into_ipv6_socket_address(addr))
+                .unwrap_or(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0)),
+            None => SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0),
         }
     }
 
@@ -314,7 +315,7 @@ impl Drop for Socket {
 #[async_trait]
 pub trait SocketExtensions {
     fn start(&self);
-    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>);
+    fn async_connect(&self, endpoint: SocketAddrV6, callback: Box<dyn FnOnce(ErrorCode) + Send>);
     async fn read_raw(&self, buffer: Arc<Mutex<Vec<u8>>>, size: usize) -> anyhow::Result<()>;
     fn async_write(
         &self,
@@ -325,8 +326,8 @@ pub trait SocketExtensions {
     fn close(&self);
     fn ongoing_checkup(&self);
 
-    fn get_remote(&self) -> Option<SocketAddr>;
-    fn set_remote(&self, endpoint: SocketAddr);
+    fn get_remote(&self) -> Option<SocketAddrV6>;
+    fn set_remote(&self, endpoint: SocketAddrV6);
     fn has_timed_out(&self) -> bool;
     fn set_silent_connection_tolerance_time(&self, time_s: u64);
 
@@ -339,7 +340,7 @@ impl SocketExtensions for Arc<Socket> {
         self.ongoing_checkup();
     }
 
-    fn async_connect(&self, endpoint: SocketAddr, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
+    fn async_connect(&self, endpoint: SocketAddrV6, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
         let self_clone = self.clone();
         debug_assert!(self.endpoint_type == EndpointType::Client);
 
@@ -654,11 +655,11 @@ impl SocketExtensions for Arc<Socket> {
         );
     }
 
-    fn get_remote(&self) -> Option<SocketAddr> {
+    fn get_remote(&self) -> Option<SocketAddrV6> {
         *self.remote.lock().unwrap()
     }
 
-    fn set_remote(&self, endpoint: SocketAddr) {
+    fn set_remote(&self, endpoint: SocketAddrV6) {
         let mut lk = self.remote.lock().unwrap();
         *lk = Some(endpoint);
     }

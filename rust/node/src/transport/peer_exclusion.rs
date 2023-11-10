@@ -4,7 +4,7 @@ use mock_instant::Instant;
 use std::time::Instant;
 use std::{
     collections::{BTreeMap, HashMap},
-    net::{IpAddr, SocketAddr, SocketAddrV6},
+    net::{Ipv6Addr, SocketAddrV6},
     time::Duration,
 };
 
@@ -12,7 +12,7 @@ use std::{
 /// Peers are excluded for a while if they behave badly
 pub struct PeerExclusion {
     ordered_by_date: PeersOrderedByExclusionDate,
-    by_ip: HashMap<IpAddr, Peer>,
+    by_ip: HashMap<Ipv6Addr, Peer>,
     max_size: usize,
 }
 
@@ -32,7 +32,7 @@ impl PeerExclusion {
     /// Excludes the given `endpoint` for a while. If the endpoint was already
     /// excluded its exclusion duration gets increased.
     /// Returns the new score for the peer.
-    pub fn peer_misbehaved(&mut self, endpoint: &SocketAddr) -> u64 {
+    pub fn peer_misbehaved(&mut self, endpoint: &SocketAddrV6) -> u64 {
         if let Some(peer) = self.by_ip.get_mut(&endpoint.ip()) {
             let old_exclution_end = peer.exclude_until;
             peer.misbehaved();
@@ -49,30 +49,25 @@ impl PeerExclusion {
         }
     }
 
-    pub fn score(&self, endpoint: &SocketAddr) -> u64 {
+    pub fn score(&self, endpoint: &SocketAddrV6) -> u64 {
         self.by_ip
             .get(&endpoint.ip())
             .map(|peer| peer.score)
             .unwrap_or_default()
     }
 
-    pub fn contains(&self, endpoint: &SocketAddr) -> bool {
+    pub fn contains(&self, endpoint: &SocketAddrV6) -> bool {
         self.by_ip.contains_key(&endpoint.ip())
     }
 
-    pub fn excluded_until(&self, endpoint: &SocketAddr) -> Option<Instant> {
+    pub fn excluded_until(&self, endpoint: &SocketAddrV6) -> Option<Instant> {
         self.by_ip
             .get(&endpoint.ip())
             .map(|item| item.exclude_until)
     }
 
     /// Checks if an endpoint is currently excluded.
-    pub fn is_excluded2(&mut self, endpoint: &SocketAddrV6) -> bool {
-        self.is_excluded(&SocketAddr::V6(*endpoint))
-    }
-
-    /// Checks if an endpoint is currently excluded.
-    pub fn is_excluded(&mut self, endpoint: &SocketAddr) -> bool {
+    pub fn is_excluded(&mut self, endpoint: &SocketAddrV6) -> bool {
         if let Some(peer) = self.by_ip.get(&endpoint.ip()).cloned() {
             if peer.has_expired() {
                 self.remove(&peer.address);
@@ -83,7 +78,7 @@ impl PeerExclusion {
         }
     }
 
-    pub fn remove(&mut self, endpoint: &SocketAddr) {
+    pub fn remove(&mut self, endpoint: &SocketAddrV6) {
         if let Some(item) = self.by_ip.remove(&endpoint.ip()) {
             self.ordered_by_date
                 .remove(&item.address.ip(), item.exclude_until);
@@ -107,8 +102,8 @@ impl PeerExclusion {
 
     fn insert(&mut self, peer: &Peer) {
         self.ordered_by_date
-            .insert(peer.address.ip(), peer.exclude_until);
-        self.by_ip.insert(peer.address.ip(), peer.clone());
+            .insert(*peer.address.ip(), peer.exclude_until);
+        self.by_ip.insert(*peer.address.ip(), peer.clone());
     }
 }
 
@@ -122,14 +117,14 @@ impl Default for PeerExclusion {
 #[derive(Clone)]
 struct Peer {
     exclude_until: Instant,
-    address: SocketAddr,
+    address: SocketAddrV6,
 
     /// gets increased for each bad behaviour
     score: u64,
 }
 
 impl Peer {
-    fn new(address: SocketAddr) -> Self {
+    fn new(address: SocketAddrV6) -> Self {
         let score = 1;
         Self {
             address,
@@ -164,14 +159,14 @@ impl Peer {
     }
 }
 
-struct PeersOrderedByExclusionDate(BTreeMap<Instant, Vec<IpAddr>>);
+struct PeersOrderedByExclusionDate(BTreeMap<Instant, Vec<Ipv6Addr>>);
 
 impl PeersOrderedByExclusionDate {
     pub fn new() -> Self {
         Self(BTreeMap::new())
     }
 
-    fn pop(&mut self) -> Option<IpAddr> {
+    fn pop(&mut self) -> Option<Ipv6Addr> {
         let (&instant, ips) = self.0.iter_mut().next()?;
         let ip = ips.pop().unwrap(); // ips is never empty
         if ips.is_empty() {
@@ -182,15 +177,15 @@ impl PeersOrderedByExclusionDate {
 
     fn update_exclusion_end(&mut self, old_date: Instant, peer: &Peer) {
         self.remove(&peer.address.ip(), old_date);
-        self.insert(peer.address.ip(), peer.exclude_until);
+        self.insert(*peer.address.ip(), peer.exclude_until);
     }
 
-    pub fn insert(&mut self, ip: IpAddr, exclude_until: Instant) {
+    pub fn insert(&mut self, ip: Ipv6Addr, exclude_until: Instant) {
         let entries = self.0.entry(exclude_until).or_default();
         entries.push(ip);
     }
 
-    pub fn remove(&mut self, ip: &IpAddr, exclude_until: Instant) {
+    pub fn remove(&mut self, ip: &Ipv6Addr, exclude_until: Instant) {
         let entries = self.0.get_mut(&exclude_until).unwrap();
         entries.retain(|x| x != ip);
         if entries.is_empty() {
@@ -291,7 +286,7 @@ mod tests {
         assert_eq!(excluded_peers.contains(&test_endpoint(6)), true);
     }
 
-    fn test_endpoint(i: usize) -> SocketAddr {
-        SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, i as u16)), 0)
+    fn test_endpoint(i: usize) -> SocketAddrV6 {
+        SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, i as u16), 0, 0, 0)
     }
 }

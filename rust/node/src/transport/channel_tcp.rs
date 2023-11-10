@@ -1,6 +1,6 @@
 use std::{
     fmt::Display,
-    net::{IpAddr, Ipv6Addr, SocketAddr},
+    net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU8, Ordering},
         Arc, Mutex, MutexGuard, Weak,
@@ -24,7 +24,7 @@ pub trait IChannelTcpObserverWeakPtr: Send + Sync {
 }
 
 pub trait ChannelTcpObserver: Send + Sync {
-    fn data_sent(&self, endpoint: &SocketAddr);
+    fn data_sent(&self, endpoint: &SocketAddrV6);
     fn host_unreachable(&self);
     fn message_sent(&self, message: &Message);
     fn message_dropped(&self, message: &Message, buffer_size: usize);
@@ -37,8 +37,8 @@ pub struct TcpChannelData {
     last_packet_received: SystemTime,
     last_packet_sent: SystemTime,
     node_id: Option<Account>,
-    pub remote_endpoint: SocketAddr,
-    pub peering_endpoint: Option<SocketAddr>,
+    pub remote_endpoint: SocketAddrV6,
+    pub peering_endpoint: Option<SocketAddrV6>,
 }
 
 pub struct ChannelTcp {
@@ -73,7 +73,7 @@ impl ChannelTcp {
                 last_packet_received: now,
                 last_packet_sent: now,
                 node_id: None,
-                remote_endpoint: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
+                remote_endpoint: SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
                 peering_endpoint: None,
             }),
             socket,
@@ -104,16 +104,14 @@ impl ChannelTcp {
 
     pub fn local_endpoint(&self) -> SocketAddr {
         self.socket()
-            .map(|s| s.local_endpoint())
+            .map(|s| SocketAddr::V6(s.local_endpoint_v6()))
             .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0))
     }
 
     pub fn set_remote_endpoint(&self) {
         let mut lock = self.channel_mutex.lock().unwrap();
-        debug_assert!(
-            lock.remote_endpoint == SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0)
-        ); // Not initialized endpoint value
-           // Calculate TCP socket endpoint
+        debug_assert!(lock.remote_endpoint == SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)); // Not initialized endpoint value
+                                                                                                  // Calculate TCP socket endpoint
         if let Some(socket) = self.socket() {
             if let Some(ep) = socket.get_remote() {
                 lock.remote_endpoint = ep;
@@ -121,7 +119,7 @@ impl ChannelTcp {
         }
     }
 
-    pub fn peering_endpoint(&self) -> SocketAddr {
+    pub fn peering_endpoint(&self) -> SocketAddrV6 {
         let lock = self.channel_mutex.lock().unwrap();
         match lock.peering_endpoint {
             Some(addr) => addr,
@@ -129,7 +127,7 @@ impl ChannelTcp {
         }
     }
 
-    pub fn set_peering_endpoint(&self, address: SocketAddr) {
+    pub fn set_peering_endpoint(&self, address: SocketAddrV6) {
         let mut lock = self.channel_mutex.lock().unwrap();
         lock.peering_endpoint = Some(address);
     }
@@ -148,7 +146,7 @@ impl ChannelTcp {
                 let observer_weak_l = self.observer.clone();
                 let endpoint = socket_l
                     .get_remote()
-                    .unwrap_or_else(|| SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0));
+                    .unwrap_or_else(|| SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0));
                 socket_l.async_write(
                     buffer,
                     Some(Box::new(move |ec, size| {
@@ -285,7 +283,7 @@ impl Channel for ChannelTcp {
         super::TransportType::Tcp
     }
 
-    fn remote_endpoint(&self) -> SocketAddr {
+    fn remote_endpoint(&self) -> SocketAddrV6 {
         self.channel_mutex.lock().unwrap().remote_endpoint
     }
 }

@@ -1,8 +1,7 @@
-use rsnano_node::messages::{Keepalive, Message};
-use std::net::SocketAddr;
-
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{transport::EndpointDto, NetworkConstantsDto, StringDto};
+use rsnano_node::messages::{Keepalive, Message};
+use std::net::SocketAddrV6;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_keepalive_create(
@@ -35,9 +34,9 @@ pub unsafe extern "C" fn rsn_message_keepalive_set_peers(
     result: *const EndpointDto,
 ) {
     let dtos = std::slice::from_raw_parts(result, 8);
-    let peers: [SocketAddr; 8] = dtos
+    let peers: [SocketAddrV6; 8] = dtos
         .iter()
-        .map(SocketAddr::from)
+        .map(SocketAddrV6::from)
         .collect::<Vec<_>>()
         .try_into()
         .unwrap();

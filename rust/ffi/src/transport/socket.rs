@@ -229,22 +229,14 @@ pub unsafe extern "C" fn rsn_socket_local_endpoint(
     handle: *mut SocketHandle,
     endpoint: *mut EndpointDto,
 ) {
-    let ep = (*handle).local_endpoint();
-    set_enpoint_dto(&ep, &mut (*endpoint))
+    let ep = (*handle).local_endpoint_v6();
+    set_endpoint_v6_dto(&ep, &mut (*endpoint))
 }
 
-fn set_enpoint_dto(endpoint: &SocketAddr, result: &mut EndpointDto) {
+fn set_endpoint_v6_dto(endpoint: &SocketAddrV6, result: &mut EndpointDto) {
     result.port = endpoint.port();
-    match endpoint {
-        SocketAddr::V4(addr) => {
-            result.v6 = false;
-            result.bytes[..4].copy_from_slice(&addr.ip().octets());
-        }
-        SocketAddr::V6(addr) => {
-            result.v6 = true;
-            result.bytes.copy_from_slice(&addr.ip().octets());
-        }
-    }
+    result.v6 = true;
+    result.bytes.copy_from_slice(&endpoint.ip().octets());
 }
 
 #[no_mangle]
@@ -254,7 +246,7 @@ pub unsafe extern "C" fn rsn_socket_get_remote(
 ) {
     match (*handle).get_remote() {
         Some(ep) => {
-            set_enpoint_dto(&ep, &mut *result);
+            set_endpoint_v6_dto(&ep, &mut *result);
         }
         None => {
             (*result).port = 0;
@@ -465,6 +457,16 @@ impl From<&EndpointDto> for SocketAddrV6 {
             SocketAddrV6::new(Ipv6Addr::from(dto.bytes), dto.port, 0, 0)
         } else {
             panic!("not a v6 ip address")
+        }
+    }
+}
+
+impl From<&SocketAddrV6> for EndpointDto {
+    fn from(value: &SocketAddrV6) -> Self {
+        Self {
+            bytes: value.ip().octets(),
+            port: value.port(),
+            v6: true,
         }
     }
 }

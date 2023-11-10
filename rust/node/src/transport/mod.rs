@@ -21,7 +21,7 @@ mod write_queue;
 
 pub use tokio_socket_facade::*;
 
-use std::{net::SocketAddr, ops::Deref, time::SystemTime};
+use std::{net::SocketAddrV6, ops::Deref, time::SystemTime};
 
 pub use bandwidth_limiter::{
     BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
@@ -75,7 +75,7 @@ pub trait Channel {
     fn set_node_id(&self, id: Account);
     fn is_alive(&self) -> bool;
     fn get_type(&self) -> TransportType;
-    fn remote_endpoint(&self) -> SocketAddr;
+    fn remote_endpoint(&self) -> SocketAddrV6;
 }
 
 #[derive(FromPrimitive, Copy, Clone, Debug)]
@@ -99,10 +99,7 @@ impl ChannelEnum {
 
     #[cfg(test)]
     pub(crate) fn create_test_instance_with_channel_id(channel_id: usize) -> Self {
-        use std::{
-            net::{IpAddr, Ipv6Addr, SocketAddr},
-            sync::Arc,
-        };
+        use std::{net::Ipv6Addr, sync::Arc};
 
         use crate::{messages::ProtocolInfo, stats::Stats, utils::AsyncRuntime};
 
@@ -116,7 +113,7 @@ impl ChannelEnum {
             &async_rt,
             limiter,
             stats,
-            SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 123),
+            SocketAddrV6::new(Ipv6Addr::LOCALHOST, 123, 0, 0),
             ProtocolInfo::dev_network(),
         ))
     }

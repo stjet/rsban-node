@@ -1,6 +1,6 @@
 use std::{
     ffi::{c_char, c_void, CStr},
-    net::{IpAddr, Ipv6Addr, SocketAddr},
+    net::{Ipv6Addr, SocketAddrV6},
     ops::Deref,
     sync::{atomic::Ordering, Arc},
 };
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_erase_channel_by_endpoint(
         .lock()
         .unwrap()
         .channels
-        .remove_by_endpoint(&SocketAddr::from(endpoint));
+        .remove_by_endpoint(&SocketAddrV6::from(endpoint));
 }
 
 #[no_mangle]
@@ -298,7 +298,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_random_fill(
     endpoints: *mut EndpointDto,
 ) {
     let endpoints = std::slice::from_raw_parts_mut(endpoints, 8);
-    let null_endpoint = SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0);
+    let null_endpoint = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0);
     let mut tmp = [null_endpoint; 8];
     handle.0.random_fill(&mut tmp);
     endpoints
@@ -366,7 +366,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_start_tcp(
     handle.0.start_tcp(endpoint.into());
 }
 
-pub struct EndpointListHandle(Vec<SocketAddr>);
+pub struct EndpointListHandle(Vec<SocketAddrV6>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_endpoint_list_len(handle: &EndpointListHandle) -> usize {

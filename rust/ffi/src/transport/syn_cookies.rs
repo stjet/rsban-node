@@ -1,6 +1,6 @@
 use rsnano_core::{Account, Signature};
 use rsnano_node::transport::SynCookies;
-use std::{net::SocketAddr, ops::Deref, sync::Arc, time::Duration};
+use std::{net::SocketAddrV6, ops::Deref, sync::Arc, time::Duration};
 
 use super::EndpointDto;
 
@@ -32,7 +32,7 @@ pub unsafe extern "C" fn rsn_syn_cookies_assign(
     endpoint: *const EndpointDto,
     result: *mut u8,
 ) -> bool {
-    match (*handle).0.assign(&SocketAddr::from(&*endpoint)) {
+    match (*handle).0.assign(&SocketAddrV6::from(&*endpoint)) {
         Some(cookie) => {
             let result = std::slice::from_raw_parts_mut(result, 32);
             result.copy_from_slice(&cookie);
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rsn_syn_cookies_validate(
     node_id: *const u8,
     signature: *const u8,
 ) -> bool {
-    let endpoint = SocketAddr::from(&*endpoint);
+    let endpoint = SocketAddrV6::from(&*endpoint);
     let node_id = Account::from_ptr(node_id);
     let signature = Signature::from_ptr(signature);
     (*handle)
@@ -69,7 +69,7 @@ pub unsafe extern "C" fn rsn_syn_cookies_cookie(
     endpoint: *const EndpointDto,
     result: *mut u8,
 ) -> bool {
-    let endpoint = SocketAddr::from(&*endpoint);
+    let endpoint = SocketAddrV6::from(&*endpoint);
     match (*handle).0.cookie(&endpoint) {
         Some(cookie) => {
             let result = std::slice::from_raw_parts_mut(result, 32);

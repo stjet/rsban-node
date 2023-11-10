@@ -16,7 +16,7 @@ use rsnano_node::{
     transport::{BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, TrafficType},
     utils::ErrorCode,
 };
-use std::{ffi::c_void, net::SocketAddr, ops::Deref, sync::Arc, time::SystemTime};
+use std::{ffi::c_void, net::SocketAddrV6, ops::Deref, sync::Arc, time::SystemTime};
 
 #[no_mangle]
 /// observer is `weak_ptr<channel_tcp_observer> *`
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_set_peering_endpoint(
     handle: *mut ChannelHandle,
     endpoint: *const EndpointDto,
 ) {
-    let address = SocketAddr::from(&*endpoint);
+    let address = SocketAddrV6::from(&*endpoint);
     as_tcp_channel(handle).set_peering_endpoint(address);
 }
 

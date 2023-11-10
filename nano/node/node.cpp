@@ -828,7 +828,7 @@ nano::block_hash nano::node::rep_block (nano::account const & account_a)
 
 nano::uint128_t nano::node::minimum_principal_weight ()
 {
-	return online_reps.minimum_principal_weight();
+	return online_reps.minimum_principal_weight ();
 }
 
 void nano::node::long_inactivity_cleanup ()

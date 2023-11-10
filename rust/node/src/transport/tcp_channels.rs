@@ -2,7 +2,7 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     hash::Hash,
     mem::size_of,
-    net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
+    net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
@@ -162,10 +162,7 @@ impl TcpChannels {
             panic!("not a tcp channel")
         };
         let endpoint = tcp_channel.remote_endpoint();
-        let SocketAddr::V6(endpoint_v6) = endpoint else {
-            panic!("not a v6 address")
-        };
-        if !self.not_a_peer(&endpoint_v6, self.allow_local_peers)
+        if !self.not_a_peer(&endpoint, self.allow_local_peers)
             && !self.stopped.load(Ordering::SeqCst)
         {
             let mut lock = self.tcp_channels.lock().unwrap();
@@ -177,7 +174,7 @@ impl TcpChannels {
 
                 let wrapper = Arc::new(ChannelTcpWrapper::new(channel.clone(), server));
                 lock.channels.insert(wrapper);
-                lock.attempts.remove(&endpoint_v6);
+                lock.attempts.remove(&endpoint);
                 let observer = lock.new_channel_observer.clone();
                 drop(lock);
                 if let Some(callback) = observer {
@@ -189,7 +186,7 @@ impl TcpChannels {
         Err(())
     }
 
-    pub fn find_channel(&self, endpoint: &SocketAddr) -> Option<Arc<ChannelEnum>> {
+    pub fn find_channel(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
         self.tcp_channels.lock().unwrap().find_channel(endpoint)
     }
 
@@ -206,7 +203,7 @@ impl TcpChannels {
         )
     }
 
-    pub fn get_peers(&self) -> Vec<SocketAddr> {
+    pub fn get_peers(&self) -> Vec<SocketAddrV6> {
         self.tcp_channels.lock().unwrap().get_peers()
     }
 
@@ -225,14 +222,14 @@ impl TcpChannels {
             .collect_container_info(name)
     }
 
-    pub fn erase_temporary_channel(&self, endpoint: &SocketAddr) {
+    pub fn erase_temporary_channel(&self, endpoint: &SocketAddrV6) {
         self.tcp_channels
             .lock()
             .unwrap()
             .erase_temporary_channel(endpoint);
     }
 
-    pub fn random_fill(&self, endpoints: &mut [SocketAddr]) {
+    pub fn random_fill(&self, endpoints: &mut [SocketAddrV6]) {
         self.tcp_channels.lock().unwrap().random_fill(endpoints);
     }
 
@@ -309,7 +306,7 @@ impl TcpChannels {
             }
         }
 
-        let Some(cookie) = self.syn_cookies.cookie(&SocketAddr::V6(remote_endpoint)) else {
+        let Some(cookie) = self.syn_cookies.cookie(&remote_endpoint) else {
             self.stats.inc(
                 StatType::Handshake,
                 DetailType::MissingCookie,
@@ -350,7 +347,7 @@ impl TcpChannels {
         remote_endpoint: SocketAddrV6,
     ) -> Option<NodeIdHandshakeQuery> {
         self.syn_cookies
-            .assign(&SocketAddr::V6(remote_endpoint))
+            .assign(&remote_endpoint)
             .map(|cookie| NodeIdHandshakeQuery { cookie })
     }
 
@@ -380,12 +377,12 @@ impl TcpChannels {
 
     pub fn reachout(&self, endpoint: &SocketAddrV6) -> bool {
         // Don't overload single IP
-        let mut error = self.excluded_peers.lock().unwrap().is_excluded2(endpoint)
+        let mut error = self.excluded_peers.lock().unwrap().is_excluded(endpoint)
             || self.max_ip_or_subnetwork_connections(endpoint);
 
         if !error && !self.flags.disable_tcp_realtime {
             // Don't keepalive to nodes that already sent us something
-            if self.find_channel(&SocketAddr::V6(*endpoint)).is_some() {
+            if self.find_channel(endpoint).is_some() {
                 error = true;
             }
 
@@ -411,7 +408,7 @@ impl ChannelTcpObserverImpl {
 }
 
 impl ChannelTcpObserver for ChannelTcpObserverImpl {
-    fn data_sent(&self, endpoint: &SocketAddr) {
+    fn data_sent(&self, endpoint: &SocketAddrV6) {
         self.execute(|channels| channels.tcp_channels.lock().unwrap().update(endpoint));
     }
 
@@ -479,7 +476,7 @@ pub trait TcpChannelsExtension {
     fn process_message(
         &self,
         message: &DeserializedMessage,
-        endpoint: &SocketAddr,
+        endpoint: &SocketAddrV6,
         node_id: PublicKey,
         socket: &Arc<Socket>,
     );
@@ -503,7 +500,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
     fn process_message(
         &self,
         message: &DeserializedMessage,
-        endpoint: &SocketAddr,
+        endpoint: &SocketAddrV6,
         node_id: PublicKey,
         socket: &Arc<Socket>,
     ) {
@@ -568,7 +565,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
     }
 
     fn ongoing_keepalive(&self) {
-        let mut peers = [SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0); 8];
+        let mut peers = [SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0); 8];
         self.random_fill(&mut peers);
         let message = Message::Keepalive(Keepalive { peers });
         // Wake up channels
@@ -886,7 +883,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         let this_w = Arc::downgrade(self);
         let socket_clone = Arc::clone(&socket);
         socket.async_connect(
-            SocketAddr::V6(endpoint),
+            endpoint,
             Box::new(move |ec| {
                 let _socket = socket_clone; //keep socket alive!
                 let Some(this_l) = this_w.upgrade() else {
@@ -982,7 +979,7 @@ pub struct TcpChannelsImpl {
 }
 
 impl TcpChannelsImpl {
-    pub fn bootstrap_peer(&mut self) -> SocketAddr {
+    pub fn bootstrap_peer(&mut self) -> SocketAddrV6 {
         let mut channel_endpoint = None;
         let mut peering_endpoint = None;
         for channel in self.channels.iter_by_last_bootstrap_attempt() {
@@ -1001,7 +998,7 @@ impl TcpChannelsImpl {
                     .set_last_bootstrap_attempt(&ep, SystemTime::now());
                 peering
             }
-            _ => SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
+            _ => SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
         }
     }
 
@@ -1053,16 +1050,16 @@ impl TcpChannelsImpl {
         result
     }
 
-    pub fn update(&mut self, endpoint: &SocketAddr) {
+    pub fn update(&mut self, endpoint: &SocketAddrV6) {
         self.channels
             .set_last_packet_sent(endpoint, SystemTime::now());
     }
 
-    pub fn set_last_packet_sent(&mut self, endpoint: &SocketAddr, time: SystemTime) {
+    pub fn set_last_packet_sent(&mut self, endpoint: &SocketAddrV6, time: SystemTime) {
         self.channels.set_last_packet_sent(endpoint, time);
     }
 
-    pub fn find_channel(&self, endpoint: &SocketAddr) -> Option<Arc<ChannelEnum>> {
+    pub fn find_channel(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
         self.channels.get(endpoint).map(|c| c.channel.clone())
     }
 
@@ -1106,7 +1103,7 @@ impl TcpChannelsImpl {
         result
     }
 
-    pub fn get_peers(&self) -> Vec<SocketAddr> {
+    pub fn get_peers(&self) -> Vec<SocketAddrV6> {
         // We can't hold the mutex while starting a write transaction, so
         // we collect endpoints to be saved and then release the lock.
         self.channels.iter().map(|c| c.endpoint()).collect()
@@ -1122,16 +1119,16 @@ impl TcpChannelsImpl {
             .map(|c| c.channel.clone())
     }
 
-    pub fn erase_temporary_channel(&mut self, endpoint: &SocketAddr) {
+    pub fn erase_temporary_channel(&mut self, endpoint: &SocketAddrV6) {
         if let Some(channel) = self.channels.remove_by_endpoint(endpoint) {
             channel.set_temporary(false);
         }
     }
 
-    pub fn random_fill(&self, endpoints: &mut [SocketAddr]) {
+    pub fn random_fill(&self, endpoints: &mut [SocketAddrV6]) {
         // Don't include channels with ephemeral remote ports
         let peers = self.random_channels(endpoints.len(), 0, false);
-        let null_endpoint = SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0);
+        let null_endpoint = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0);
         for (i, target) in endpoints.iter_mut().enumerate() {
             let endpoint = if i < peers.len() {
                 let ChannelEnum::Tcp(tcp) = peers[i].as_ref() else {
@@ -1166,14 +1163,14 @@ impl TcpChannelsImpl {
 
 #[derive(Default)]
 pub struct ChannelContainer {
-    by_endpoint: HashMap<SocketAddr, Arc<ChannelTcpWrapper>>,
-    by_random_access: Vec<SocketAddr>,
-    by_bootstrap_attempt: BTreeMap<SystemTime, Vec<SocketAddr>>,
-    by_node_id: HashMap<PublicKey, Vec<SocketAddr>>,
-    by_last_packet_sent: BTreeMap<SystemTime, Vec<SocketAddr>>,
-    by_network_version: BTreeMap<u8, Vec<SocketAddr>>,
-    by_ip_address: HashMap<Ipv6Addr, Vec<SocketAddr>>,
-    by_subnet: HashMap<Ipv6Addr, Vec<SocketAddr>>,
+    by_endpoint: HashMap<SocketAddrV6, Arc<ChannelTcpWrapper>>,
+    by_random_access: Vec<SocketAddrV6>,
+    by_bootstrap_attempt: BTreeMap<SystemTime, Vec<SocketAddrV6>>,
+    by_node_id: HashMap<PublicKey, Vec<SocketAddrV6>>,
+    by_last_packet_sent: BTreeMap<SystemTime, Vec<SocketAddrV6>>,
+    by_network_version: BTreeMap<u8, Vec<SocketAddrV6>>,
+    by_ip_address: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
+    by_subnet: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
 }
 
 impl ChannelContainer {
@@ -1228,7 +1225,7 @@ impl ChannelContainer {
             .flat_map(|(_, v)| v.iter().map(|ep| self.by_endpoint.get(ep).unwrap()))
     }
 
-    pub fn exists(&self, endpoint: &SocketAddr) -> bool {
+    pub fn exists(&self, endpoint: &SocketAddrV6) -> bool {
         self.by_endpoint.contains_key(endpoint)
     }
 
@@ -1240,7 +1237,7 @@ impl ChannelContainer {
         }
     }
 
-    pub fn remove_by_endpoint(&mut self, endpoint: &SocketAddr) -> Option<Arc<ChannelEnum>> {
+    pub fn remove_by_endpoint(&mut self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
         if let Some(wrapper) = self.by_endpoint.remove(endpoint) {
             self.by_random_access.retain(|x| x != endpoint); // todo: linear search is slow?
 
@@ -1276,7 +1273,7 @@ impl ChannelContainer {
         self.by_endpoint.len()
     }
 
-    pub fn get(&self, endpoint: &SocketAddr) -> Option<&Arc<ChannelTcpWrapper>> {
+    pub fn get(&self, endpoint: &SocketAddrV6) -> Option<&Arc<ChannelTcpWrapper>> {
         self.by_endpoint.get(endpoint)
     }
 
@@ -1294,7 +1291,7 @@ impl ChannelContainer {
             .flatten()
     }
 
-    pub fn set_last_packet_sent(&mut self, endpoint: &SocketAddr, time: SystemTime) {
+    pub fn set_last_packet_sent(&mut self, endpoint: &SocketAddrV6, time: SystemTime) {
         if let Some(channel) = self.by_endpoint.get(endpoint) {
             let old_time = channel.last_packet_sent();
             channel.channel.set_last_packet_sent(time);
@@ -1306,7 +1303,11 @@ impl ChannelContainer {
         }
     }
 
-    pub fn set_last_bootstrap_attempt(&mut self, endpoint: &SocketAddr, attempt_time: SystemTime) {
+    pub fn set_last_bootstrap_attempt(
+        &mut self,
+        endpoint: &SocketAddrV6,
+        attempt_time: SystemTime,
+    ) {
         if let Some(channel) = self.by_endpoint.get(endpoint) {
             let old_time = channel.last_bootstrap_attempt();
             channel.channel.set_last_bootstrap_attempt(attempt_time);
@@ -1388,9 +1389,9 @@ impl ChannelContainer {
 }
 
 fn remove_endpoint_btree<K: Ord>(
-    tree: &mut BTreeMap<K, Vec<SocketAddr>>,
+    tree: &mut BTreeMap<K, Vec<SocketAddrV6>>,
     key: &K,
-    endpoint: &SocketAddr,
+    endpoint: &SocketAddrV6,
 ) {
     let endpoints = tree.get_mut(key).unwrap();
     if endpoints.len() > 1 {
@@ -1401,9 +1402,9 @@ fn remove_endpoint_btree<K: Ord>(
 }
 
 fn remove_endpoint_map<K: Eq + PartialEq + Hash>(
-    map: &mut HashMap<K, Vec<SocketAddr>>,
+    map: &mut HashMap<K, Vec<SocketAddrV6>>,
     key: &K,
-    endpoint: &SocketAddr,
+    endpoint: &SocketAddrV6,
 ) {
     let endpoints = map.get_mut(key).unwrap();
     if endpoints.len() > 1 {

@@ -94,10 +94,6 @@ impl ChannelTcp {
         self.channel_mutex.lock().unwrap()
     }
 
-    pub fn network_version(&self) -> u8 {
-        self.network_version.load(Ordering::Relaxed)
-    }
-
     pub fn set_network_version(&self, version: u8) {
         self.network_version.store(version, Ordering::Relaxed)
     }
@@ -285,6 +281,10 @@ impl Channel for ChannelTcp {
 
     fn remote_endpoint(&self) -> SocketAddrV6 {
         self.channel_mutex.lock().unwrap().remote_endpoint
+    }
+
+    fn network_version(&self) -> u8 {
+        self.network_version.load(Ordering::Relaxed)
     }
 }
 

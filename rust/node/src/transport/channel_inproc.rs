@@ -225,10 +225,6 @@ impl ChannelInProc {
             });
         }
     }
-
-    pub fn network_version(&self) -> u8 {
-        self.network_constants.protocol_version
-    }
 }
 
 struct VecBufferReader {
@@ -315,6 +311,10 @@ impl Channel for ChannelInProc {
 
     fn remote_endpoint(&self) -> SocketAddrV6 {
         self.remote_endpoint
+    }
+
+    fn network_version(&self) -> u8 {
+        self.network_constants.protocol_version
     }
 }
 

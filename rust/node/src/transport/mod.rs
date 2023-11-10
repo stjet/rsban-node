@@ -76,6 +76,7 @@ pub trait Channel {
     fn is_alive(&self) -> bool;
     fn get_type(&self) -> TransportType;
     fn remote_endpoint(&self) -> SocketAddrV6;
+    fn network_version(&self) -> u8;
 }
 
 #[derive(FromPrimitive, Copy, Clone, Debug)]

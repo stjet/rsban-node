@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nano/lib/rsnano.hpp"
+#include "nano/node/common.hpp"
 
 #include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
@@ -31,6 +32,7 @@ class representative
 public:
 	representative (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
 	representative (representative const & other_a);
+	representative (rsnano::RepresentativeHandle * handle_a);
 	~representative ();
 	representative & operator= (representative const & other_a);
 	size_t channel_id () const
@@ -62,7 +64,7 @@ public:
 	public:
 		bool inserted{ false };
 		bool updated{ false };
-		std::shared_ptr<nano::transport::channel> prev_channel{};
+		nano::tcp_endpoint prev_endpoint{};
 	};
 
 	representative_register (nano::node & node_a);

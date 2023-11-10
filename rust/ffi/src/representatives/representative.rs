@@ -1,11 +1,9 @@
+use crate::{copy_account_bytes, transport::ChannelHandle};
 use rsnano_core::{
     utils::{system_time_as_nanoseconds, system_time_from_nanoseconds},
     Account,
 };
-
 use rsnano_node::representatives::Representative;
-
-use crate::{copy_account_bytes, transport::ChannelHandle};
 
 pub struct RepresentativeHandle(pub Representative);
 

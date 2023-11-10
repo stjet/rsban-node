@@ -369,7 +369,8 @@ impl SocketExtensions for Arc<Socket> {
         let callback = Arc::new(Mutex::new(Some(callback)));
         let callback_clone = Arc::clone(&callback);
         *self.current_action.lock().unwrap() = Some(Box::new(move || {
-            if let Some(f) = callback_clone.lock().unwrap().take() {
+            let f = { callback_clone.lock().unwrap().take() };
+            if let Some(f) = f {
                 f(ErrorCode::fault());
             }
         }));
@@ -383,7 +384,8 @@ impl SocketExtensions for Arc<Socket> {
         let tcp_stream_factory = Arc::clone(&self.tcp_stream_factory);
         runtime.tokio.spawn(async move {
             let Ok(stream) = tcp_stream_factory.connect(endpoint).await else {
-                if let Some(cb) = callback.lock().unwrap().take() {
+                let f = { callback.lock().unwrap().take() };
+                if let Some(cb) = f {
                     let Some(runtime) = runtime_w.upgrade() else {
                         return;
                     };
@@ -402,7 +404,8 @@ impl SocketExtensions for Arc<Socket> {
                 return;
             };
             runtime.tokio.spawn_blocking(move || {
-                if let Some(cb) = callback.lock().unwrap().take() {
+                let f = { callback.lock().unwrap().take() };
+                if let Some(cb) = f {
                     cb(ErrorCode::new())
                 }
             });
@@ -533,11 +536,14 @@ impl SocketExtensions for Arc<Socket> {
             }))));
 
         let callback_clone = Arc::clone(&callback);
-        *self.current_action.lock().unwrap() = Some(Box::new(move || {
-            if let Some(f) = callback_clone.lock().unwrap().take() {
-                f(ErrorCode::fault(), 0);
-            }
-        }));
+        {
+            *self.current_action.lock().unwrap() = Some(Box::new(move || {
+                let f = { callback_clone.lock().unwrap().take() };
+                if let Some(f) = f {
+                    f(ErrorCode::fault(), 0);
+                }
+            }));
+        }
 
         let stream = {
             let guard = self.stream.lock().unwrap();
@@ -563,7 +569,8 @@ impl SocketExtensions for Arc<Socket> {
                                     break;
                                 };
                                 runtime.tokio.spawn_blocking(move || {
-                                    if let Some(cb) = callback.lock().unwrap().take() {
+                                    let f = { callback.lock().unwrap().take() };
+                                    if let Some(cb) = f {
                                         cb(ErrorCode::new(), written);
                                     }
                                 });
@@ -578,7 +585,8 @@ impl SocketExtensions for Arc<Socket> {
                                 break;
                             };
                             runtime.tokio.spawn_blocking(move || {
-                                if let Some(cb) = callback.lock().unwrap().take() {
+                                let f = { callback.lock().unwrap().take() };
+                                if let Some(cb) = f {
                                     cb(ErrorCode::fault(), 0);
                                 }
                             });
@@ -590,7 +598,8 @@ impl SocketExtensions for Arc<Socket> {
                             break;
                         };
                         runtime.tokio.spawn_blocking(move || {
-                            if let Some(cb) = callback.lock().unwrap().take() {
+                            let f = { callback.lock().unwrap().take() };
+                            if let Some(cb) = f {
                                 cb(ErrorCode::fault(), 0);
                             }
                         });

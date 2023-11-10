@@ -123,13 +123,13 @@ impl ChannelFake {
     pub fn close(&self) {
         self.closed.store(true, Ordering::SeqCst);
     }
-
-    pub fn network_version(&self) -> u8 {
-        self.protocol.version_using
-    }
 }
 
 impl Channel for ChannelFake {
+    fn channel_id(&self) -> usize {
+        self.channel_id
+    }
+
     fn is_temporary(&self) -> bool {
         self.temporary.load(Ordering::SeqCst)
     }
@@ -174,15 +174,15 @@ impl Channel for ChannelFake {
         !self.closed.load(Ordering::SeqCst)
     }
 
-    fn channel_id(&self) -> usize {
-        self.channel_id
-    }
-
     fn get_type(&self) -> super::TransportType {
         super::TransportType::Fake
     }
 
     fn remote_endpoint(&self) -> SocketAddrV6 {
         self.endpoint
+    }
+
+    fn network_version(&self) -> u8 {
+        self.protocol.version_using
     }
 }

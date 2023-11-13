@@ -174,7 +174,7 @@ impl BacklogPopulationThread {
         while !lock.stopped && !done {
             drop(lock);
             {
-                let transaction = self.ledger.store.tx_begin_read();
+                let mut transaction = self.ledger.store.tx_begin_read();
 
                 let mut count = 0u32;
                 let mut i = self.ledger.store.account.begin_account(&transaction, &next);
@@ -183,6 +183,7 @@ impl BacklogPopulationThread {
                     if count >= chunk_size {
                         break;
                     }
+                    transaction.refresh_if_needed(Duration::from_millis(500));
 
                     let _ = self
                         .stats

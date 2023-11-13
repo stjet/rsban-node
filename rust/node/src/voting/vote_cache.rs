@@ -3,13 +3,19 @@ use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, TomlWriter},
     Account, Amount, BlockHash,
 };
-use std::{cmp::Ordering, fmt::Debug, mem::size_of};
+use std::{
+    cmp::Ordering,
+    fmt::Debug,
+    mem::size_of,
+    time::{Duration, Instant, SystemTime},
+};
 
 use crate::voting::Vote;
 
 pub struct VoteCacheConfig {
     pub max_size: usize,
     pub max_voters: usize,
+    pub age_cutoff: Duration,
 }
 
 impl VoteCacheConfig {
@@ -33,6 +39,7 @@ impl Default for VoteCacheConfig {
         Self {
             max_size: 1024 * 128,
             max_voters: 128,
+            age_cutoff: Duration::from_secs(5 * 60),
         }
     }
 }
@@ -46,11 +53,13 @@ pub struct VoteCache {
     config: VoteCacheConfig,
     cache: MultiIndexCacheEntryMap,
     next_id: usize,
+    last_cleanup: Instant,
 }
 
 impl VoteCache {
     pub fn new(config: VoteCacheConfig) -> Self {
         VoteCache {
+            last_cleanup: Instant::now(),
             config,
             cache: MultiIndexCacheEntryMap::default(),
             next_id: 0,
@@ -117,7 +126,12 @@ impl VoteCache {
     /// The blocks are sorted in descending order by final tally, then by tally
     /// @param min_tally minimum tally threshold, entries below with their voting weight
     /// below this will be ignore
-    pub fn top(&self, min_tally: Amount) -> Vec<TopEntry> {
+    pub fn top(&mut self, min_tally: Amount) -> Vec<TopEntry> {
+        if self.last_cleanup.elapsed() >= self.config.age_cutoff / 2 {
+            self.cleanup();
+            self.last_cleanup = Instant::now();
+        }
+
         let mut results = Vec::new();
         for entry in self.cache.iter_by_tally() {
             if entry.tally < min_tally {
@@ -143,6 +157,19 @@ impl VoteCache {
         results
     }
 
+    fn cleanup(&mut self) {
+        let cutoff = SystemTime::now() - self.config.age_cutoff;
+        let to_delete: Vec<_> = self
+            .cache
+            .iter()
+            .filter(|(_, i)| i.last_vote < cutoff)
+            .map(|(_, i)| i.hash)
+            .collect();
+        for hash in to_delete {
+            self.cache.remove_by_hash(&hash);
+        }
+    }
+
     pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
             name,
@@ -162,7 +189,7 @@ pub struct TopEntry {
 }
 
 /// Stores votes associated with a single block hash
-#[derive(MultiIndexMap, Default, Debug, Clone)]
+#[derive(MultiIndexMap, Debug, Clone)]
 pub struct CacheEntry {
     #[multi_index(ordered_unique)]
     id: usize,
@@ -172,6 +199,7 @@ pub struct CacheEntry {
     #[multi_index(ordered_non_unique)]
     pub tally: Amount,
     pub final_tally: Amount,
+    pub last_vote: SystemTime,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -197,12 +225,27 @@ impl CacheEntry {
             voters: Vec::new(),
             tally: Amount::zero(),
             final_tally: Amount::zero(),
+            last_vote: SystemTime::UNIX_EPOCH,
         }
     }
 
     /// Adds a vote into a list, checks for duplicates and updates timestamp if new one is greater
     /// returns true if current tally changed, false otherwise
     pub fn vote(
+        &mut self,
+        representative: &Account,
+        timestamp: u64,
+        rep_weight: Amount,
+        max_voters: usize,
+    ) -> bool {
+        let updated = self.vote_impl(representative, timestamp, rep_weight, max_voters);
+        if updated {
+            self.last_vote = SystemTime::now();
+        }
+        updated
+    }
+
+    fn vote_impl(
         &mut self,
         representative: &Account,
         timestamp: u64,
@@ -278,6 +321,7 @@ mod tests {
         VoteCache::new(VoteCacheConfig {
             max_size: 3,
             max_voters: 80,
+            ..Default::default()
         })
     }
 

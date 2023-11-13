@@ -1,9 +1,10 @@
 use crate::{copy_account_bytes, utils::ContainerInfoComponentHandle, voting::VoteHandle};
-use rsnano_core::{Amount, BlockHash};
+use rsnano_core::{utils::system_time_as_nanoseconds, Amount, BlockHash};
 use rsnano_node::voting::{TopEntry, VoteCache, VoteCacheConfig, VoterEntry};
 use std::{
     ffi::{c_char, CStr},
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
 pub struct VoteCacheHandle(Arc<Mutex<VoteCache>>);
@@ -68,6 +69,7 @@ unsafe fn fill_entry_dto(
                 .copy_from_slice(&entry.final_tally.to_be_bytes());
             (*result).voters_count = entry.voters.len();
             (*result).voters = Box::into_raw(Box::new(VoterListDto(entry.voters.clone())));
+            (*result).last_vote_ns = system_time_as_nanoseconds(entry.last_vote);
             true
         }
         None => false,
@@ -121,6 +123,7 @@ pub struct VoteCacheEntryDto {
     pub final_tally: [u8; 16],
     pub voters: *mut VoterListDto,
     pub voters_count: usize,
+    pub last_vote_ns: u64,
 }
 
 pub struct VoterListDto(Vec<VoterEntry>);
@@ -169,6 +172,7 @@ pub extern "C" fn rsn_top_entry_vec_get(
 pub struct VoteCacheConfigDto {
     pub max_size: usize,
     pub max_voters: usize,
+    pub age_cutoff_s: u64,
 }
 
 impl From<&VoteCacheConfig> for VoteCacheConfigDto {
@@ -176,6 +180,7 @@ impl From<&VoteCacheConfig> for VoteCacheConfigDto {
         Self {
             max_size: value.max_size,
             max_voters: value.max_voters,
+            age_cutoff_s: value.age_cutoff.as_secs(),
         }
     }
 }
@@ -185,6 +190,7 @@ impl From<&VoteCacheConfigDto> for VoteCacheConfig {
         Self {
             max_size: value.max_size,
             max_voters: value.max_voters,
+            age_cutoff: Duration::from_secs(value.age_cutoff_s),
         }
     }
 }

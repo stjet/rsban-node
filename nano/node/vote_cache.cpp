@@ -1,5 +1,6 @@
 #include "nano/lib/numbers.hpp"
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/rsnanoutils.hpp"
 #include "nano/lib/utility.hpp"
 
 #include <nano/lib/tomlconfig.hpp>
@@ -34,6 +35,7 @@ nano::vote_cache::entry::entry (rsnano::VoteCacheEntryDto & dto) :
 		rsnano::rsn_vote_cache_entry_get_voter (&dto, i, e.representative.bytes.data (), &e.timestamp);
 		voters_m.push_back (e);
 	}
+	last_vote_m = rsnano::time_point_from_nanoseconds (dto.last_vote_ns);
 	rsnano::rsn_vote_cache_entry_destroy (&dto);
 }
 
@@ -60,6 +62,11 @@ nano::uint128_t nano::vote_cache::entry::final_tally () const
 std::vector<nano::vote_cache::entry::voter_entry> nano::vote_cache::entry::voters () const
 {
 	return voters_m;
+}
+
+std::chrono::system_clock::time_point nano::vote_cache::entry::last_vote () const
+{
+	return last_vote_m;
 }
 
 /*
@@ -108,7 +115,7 @@ bool nano::vote_cache::erase (const nano::block_hash & hash)
 	return rsnano::rsn_vote_cache_erase (handle, hash.bytes.data ());
 }
 
-std::vector<nano::vote_cache::top_entry> nano::vote_cache::top (const nano::uint128_t & min_tally) const
+std::vector<nano::vote_cache::top_entry> nano::vote_cache::top (const nano::uint128_t & min_tally)
 {
 	nano::amount min_tally_amount{ min_tally };
 	auto vec_handle = rsnano::rsn_vote_cache_top (handle, min_tally_amount.bytes.data ());
@@ -149,8 +156,10 @@ nano::error nano::vote_cache_config::deserialize (nano::tomlconfig & toml)
 
 rsnano::VoteCacheConfigDto nano::vote_cache_config::to_dto () const
 {
+	auto age_cutoff_s = static_cast<uint64_t> (age_cutoff.count ());
 	return {
 		max_size,
-		max_voters
+		max_voters,
+		age_cutoff_s
 	};
 }

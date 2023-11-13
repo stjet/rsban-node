@@ -95,7 +95,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> bool {
-        self.block_raw_get(transaction, hash).is_some()
+        transaction.exists(self.database, hash.as_bytes())
     }
 
     pub fn successor(

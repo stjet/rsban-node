@@ -161,7 +161,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	wallets_store_impl (std::make_unique<nano::mdb_wallets_store> (application_path_a / "wallets.ldb", config_a.lmdb_config)),
 	wallets_store (*wallets_store_impl),
 	ledger (store, *stats, network_params.ledger, flags_a.generate_cache ()),
-	checker (config_a.signature_checker_threads),
 	outbound_limiter{ outbound_bandwidth_limiter_config (config_a) },
 	// empty `config.peering_port` means the user made no port choice at all;
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
@@ -758,7 +757,6 @@ void nano::node::stop ()
 	bootstrap_initiator.stop ();
 	tcp_listener->stop ();
 	port_mapping.stop ();
-	checker.stop ();
 	wallets.stop ();
 	stats->stop ();
 	epoch_upgrader.stop ();

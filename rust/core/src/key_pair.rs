@@ -78,22 +78,6 @@ pub fn validate_message(
     Ok(())
 }
 
-pub fn validate_message_batch(
-    messages: &[Vec<u8>],
-    public_keys: &[PublicKey],
-    signatures: &[Signature],
-    valid: &mut [i32],
-) {
-    let len = messages.len();
-    assert!(public_keys.len() == len && signatures.len() == len && valid.len() == len);
-    for i in 0..len {
-        valid[i] = match validate_message(&public_keys[i], &messages[i], &signatures[i]) {
-            Ok(_) => 1,
-            Err(_) => 0,
-        }
-    }
-}
-
 pub fn validate_block_signature(block: &BlockEnum) -> anyhow::Result<()> {
     validate_message(
         &block.account(),

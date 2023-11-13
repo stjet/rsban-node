@@ -351,11 +351,6 @@ bool nano::validate_message (nano::public_key const & public_key, nano::uint256_
 	return validate_message (public_key, message.bytes.data (), sizeof (message.bytes), signature);
 }
 
-bool nano::validate_message_batch (const unsigned char ** m, size_t * mlen, const unsigned char ** pk, const unsigned char ** RS, size_t num, int * valid)
-{
-	return rsnano::rsn_validate_batch (m, mlen, pk, RS, num, valid);
-}
-
 nano::uint128_union::uint128_union (std::string const & string_a)
 {
 	auto error (decode_hex (string_a));

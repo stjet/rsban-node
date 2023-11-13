@@ -16,7 +16,6 @@ pub mod messages;
 mod property_tree;
 pub mod representatives;
 mod secure;
-mod signatures;
 mod stats;
 mod transport;
 mod unchecked_map;
@@ -40,7 +39,6 @@ use rsnano_core::{
 };
 pub type MemoryIntensiveInstrumentationCallback = extern "C" fn() -> bool;
 pub use secure::*;
-pub use signatures::*;
 pub use stats::*;
 pub(crate) use websocket::*;
 

@@ -29,7 +29,6 @@
 #include <nano/node/process_live_dispatcher.hpp>
 #include <nano/node/repcrawler.hpp>
 #include <nano/node/request_aggregator.hpp>
-#include <nano/node/signatures.hpp>
 #include <nano/node/telemetry.hpp>
 #include <nano/node/transport/tcp_server.hpp>
 #include <nano/node/unchecked_map.hpp>
@@ -154,7 +153,6 @@ public:
 	std::unique_ptr<nano::wallets_store> wallets_store_impl; // ported
 	nano::wallets_store & wallets_store; // ported
 	nano::ledger ledger; // ported
-	nano::signature_checker checker; // ported
 	nano::outbound_bandwidth_limiter outbound_limiter; // ported
 	std::shared_ptr<nano::network> network;
 	std::shared_ptr<nano::telemetry> telemetry;

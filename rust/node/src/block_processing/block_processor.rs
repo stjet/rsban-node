@@ -2,7 +2,7 @@ use rsnano_core::{
     to_hex_string,
     utils::{ContainerInfo, ContainerInfoComponent, Logger},
     work::WorkThresholds,
-    BlockEnum, BlockType, Epoch, Epochs, HashOrAccount, UncheckedInfo,
+    BlockEnum, BlockType, Epoch, HashOrAccount, UncheckedInfo,
 };
 use rsnano_ledger::{Ledger, ProcessResult, WriteDatabaseQueue, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
@@ -10,19 +10,12 @@ use std::{
     collections::VecDeque,
     ffi::c_void,
     mem::size_of,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Condvar, Mutex, RwLock,
-    },
+    sync::{atomic::AtomicBool, Arc, Condvar, Mutex},
     time::{Duration, Instant, SystemTime},
 };
 
 use crate::{
     config::{NodeConfig, NodeFlags},
-    signatures::{
-        SignatureChecker, StateBlockSignatureVerification, StateBlockSignatureVerificationResult,
-        StateBlockSignatureVerificationValue,
-    },
     stats::{DetailType, Direction, StatType, Stats},
     unchecked_map::UncheckedMap,
     GapCache,
@@ -39,7 +32,6 @@ pub struct BlockProcessor {
     handle: *mut c_void,
     pub mutex: Mutex<BlockProcessorImpl>,
     pub condition: Condvar,
-    pub state_block_signature_verification: RwLock<StateBlockSignatureVerification>,
     pub flushing: AtomicBool,
     pub ledger: Arc<Ledger>,
     pub unchecked_map: Arc<UncheckedMap>,
@@ -57,8 +49,6 @@ impl BlockProcessor {
     pub fn new(
         handle: *mut c_void,
         config: Arc<NodeConfig>,
-        signature_checker: Arc<SignatureChecker>,
-        epochs: Arc<Epochs>,
         logger: Arc<dyn Logger>,
         flags: Arc<NodeFlags>,
         ledger: Arc<Ledger>,
@@ -68,17 +58,6 @@ impl BlockProcessor {
         work: Arc<WorkThresholds>,
         write_database_queue: Arc<WriteDatabaseQueue>,
     ) -> Self {
-        let state_block_signature_verification = RwLock::new(
-            StateBlockSignatureVerification::builder()
-                .signature_checker(signature_checker)
-                .epochs(epochs)
-                .logger(Arc::clone(&logger))
-                .enable_timing_logging(config.logging.timing_logging_value)
-                .verification_size(flags.block_processor_verification_size)
-                .spawn()
-                .unwrap(),
-        );
-
         Self {
             handle,
             mutex: Mutex::new(BlockProcessorImpl {
@@ -88,7 +67,6 @@ impl BlockProcessor {
                 config: Arc::clone(&config),
             }),
             condition: Condvar::new(),
-            state_block_signature_verification,
             flushing: AtomicBool::new(false),
             ledger,
             unchecked_map,
@@ -144,24 +122,6 @@ impl BlockProcessor {
         self.condition.notify_all();
     }
 
-    pub fn process_verified_state_blocks(&self, mut result: StateBlockSignatureVerificationResult) {
-        {
-            let mut lk = self.mutex.lock().unwrap();
-            for i in 0..result.verifications.len() {
-                debug_assert!(result.verifications[i] == 1 || result.verifications[i] == 0);
-                let block = result.items.pop_front().unwrap();
-                if !block.block.link().is_zero() && self.ledger.is_epoch_link(&block.block.link()) {
-                    // Epoch block or possible regular state blocks with epoch link (send subtype)
-                    lk.blocks.push_back(block.block);
-                } else if result.verifications[i] == 1 {
-                    // Non epoch blocks
-                    lk.blocks.push_back(block.block);
-                }
-            }
-        }
-        self.condition.notify_all();
-    }
-
     pub fn queue_unchecked(&self, hash_or_account: &HashOrAccount) {
         self.unchecked_map.trigger(hash_or_account);
         self.gap_cache
@@ -189,27 +149,6 @@ impl BlockProcessor {
             && (!deadline_reached()
                 || number_of_blocks_processed < self.flags.block_processor_batch_size)
         {
-            if (lock_a.blocks.len()
-                + self
-                    .state_block_signature_verification
-                    .read()
-                    .unwrap()
-                    .size()
-                + lock_a.forced.len()
-                > 64)
-                && lock_a.should_log()
-            {
-                self.logger.always_log(&format!(
-                    "{} blocks (+ {} state blocks) (+ {} forced) in processing queue",
-                    lock_a.blocks.len(),
-                    self.state_block_signature_verification
-                        .read()
-                        .unwrap()
-                        .size(),
-                    lock_a.forced.len()
-                ));
-            }
-
             let block: Arc<BlockEnum>;
             let force: bool;
             if lock_a.forced.len() == 0 {
@@ -438,10 +377,7 @@ impl BlockProcessor {
     }
 
     pub fn stop(&self) -> std::thread::Result<()> {
-        self.state_block_signature_verification
-            .write()
-            .unwrap()
-            .stop()
+        Ok(())
     }
 
     pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
@@ -452,10 +388,6 @@ impl BlockProcessor {
         ContainerInfoComponent::Composite(
             name,
             vec![
-                self.state_block_signature_verification
-                    .read()
-                    .unwrap()
-                    .collect_container_info("state_block_signature_verification"),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "blocks".to_owned(),
                     count: blocks_count,
@@ -499,34 +431,5 @@ impl BlockProcessorImpl {
         } else {
             false
         }
-    }
-}
-
-pub trait BlockProcessorExt {
-    fn init(&self);
-}
-
-impl BlockProcessorExt for Arc<BlockProcessor> {
-    fn init(&self) {
-        let self_weak = Arc::downgrade(&self);
-        let lock = self.state_block_signature_verification.read().unwrap();
-        lock.set_blocks_verified_callback(Box::new(move |result| {
-            if let Some(processor) = self_weak.upgrade() {
-                processor.process_verified_state_blocks(result);
-            }
-        }));
-
-        let self_weak = Arc::downgrade(&self);
-        lock.set_transition_inactive_callback(Box::new(move || {
-            if let Some(processor) = self_weak.upgrade() {
-                if processor.flushing.load(Ordering::SeqCst) {
-                    {
-                        // Prevent a race with condition.wait in block_processor::flush
-                        let _guard = processor.mutex.lock().unwrap();
-                    }
-                    processor.condition.notify_all();
-                }
-            }
-        }))
     }
 }

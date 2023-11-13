@@ -11,8 +11,8 @@ pub use epoch::EpochsHandle;
 
 mod unchecked_info;
 use rsnano_core::{
-    deterministic_key, sign_message, validate_message, validate_message_batch, Account, BlockHash,
-    DifficultyV1, KeyPair, PublicKey, RawKey, Signature,
+    deterministic_key, sign_message, validate_message, Account, BlockHash, DifficultyV1, KeyPair,
+    PublicKey, RawKey, Signature,
 };
 pub use unchecked_info::*;
 
@@ -83,52 +83,6 @@ pub unsafe extern "C" fn rsn_validate_message(
     let message = std::slice::from_raw_parts(message, len);
     let signature = Signature::from_bytes(*signature);
     validate_message(&public_key, message, &signature).is_err()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_validate_batch(
-    messages: *const *const u8,
-    message_lengths: *const usize,
-    public_keys: *const *const u8,
-    signatures: *const *const u8,
-    num: usize,
-    valid: *mut i32,
-) -> bool {
-    let message_lengths = std::slice::from_raw_parts(message_lengths, num);
-
-    let messages = std::slice::from_raw_parts(messages, num)
-        .iter()
-        .enumerate()
-        .map(|(i, &m)| {
-            let msg = std::slice::from_raw_parts(m, message_lengths[i]);
-            msg.to_owned()
-        })
-        .collect::<Vec<_>>();
-
-    let mut key_buffer = [0_u8; 32];
-    let public_keys = std::slice::from_raw_parts(public_keys, num)
-        .iter()
-        .map(|&bytes| {
-            let bytes = std::slice::from_raw_parts(bytes, 32);
-            key_buffer.copy_from_slice(bytes);
-            PublicKey::from_bytes(key_buffer)
-        })
-        .collect::<Vec<_>>();
-
-    let mut sig_buffer = [0_u8; 64];
-    let signatures = std::slice::from_raw_parts(signatures, num)
-        .iter()
-        .map(|&bytes| {
-            let bytes = std::slice::from_raw_parts(bytes, 64);
-            sig_buffer.copy_from_slice(bytes);
-            Signature::from_bytes(sig_buffer)
-        })
-        .collect::<Vec<_>>();
-
-    let valid = std::slice::from_raw_parts_mut(valid, num);
-
-    validate_message_batch(&messages, &public_keys, &signatures, valid);
-    true
 }
 
 #[no_mangle]

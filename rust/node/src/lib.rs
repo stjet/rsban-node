@@ -24,7 +24,6 @@ pub use representatives::{OnlineReps, OnlineWeightSampler, ONLINE_WEIGHT_QUORUM}
 
 pub mod representatives;
 mod secure;
-pub mod signatures;
 pub mod stats;
 pub mod transport;
 pub mod unchecked_map;

@@ -21,9 +21,7 @@ use blake2::{
 pub use block_hash::{BlockHash, BlockHashBuilder};
 
 mod key_pair;
-pub use key_pair::{
-    sign_message, validate_block_signature, validate_message, validate_message_batch, KeyPair,
-};
+pub use key_pair::{sign_message, validate_block_signature, validate_message, KeyPair};
 
 mod raw_key;
 pub use raw_key::RawKey;

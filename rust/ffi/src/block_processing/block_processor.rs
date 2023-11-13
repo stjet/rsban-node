@@ -1,17 +1,17 @@
 use crate::{
-    core::{BlockHandle, BlockVecHandle, EpochsHandle},
+    core::{BlockHandle, BlockVecHandle},
     gap_cache::GapCacheHandle,
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
     unchecked_map::UncheckedMapHandle,
     utils::{ContainerInfoComponentHandle, ContextWrapper, LoggerHandle, LoggerMT},
     work::WorkThresholdsDto,
-    NodeConfigDto, NodeFlagsHandle, SignatureCheckerHandle, StatHandle, VoidPointerCallback,
+    NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
 use rsnano_core::{work::WorkThresholds, BlockEnum};
 use rsnano_ledger::ProcessResult;
 use rsnano_node::{
     block_processing::{
-        BlockProcessor, BlockProcessorExt, BlockProcessorImpl, BLOCKPROCESSOR_ADD_CALLBACK,
+        BlockProcessor, BlockProcessorImpl, BLOCKPROCESSOR_ADD_CALLBACK,
         BLOCKPROCESSOR_HALF_FULL_CALLBACK, BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
     },
     config::NodeConfig,
@@ -37,8 +37,6 @@ impl Deref for BlockProcessorHandle {
 pub unsafe extern "C" fn rsn_block_processor_create(
     handle: *mut c_void,
     config: &NodeConfigDto,
-    checker: &SignatureCheckerHandle,
-    epochs: &EpochsHandle,
     logger: *mut LoggerHandle,
     flags: &NodeFlagsHandle,
     ledger: &LedgerHandle,
@@ -49,8 +47,6 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     write_database_queue: &WriteDatabaseQueueHandle,
 ) -> *mut BlockProcessorHandle {
     let config = Arc::new(NodeConfig::try_from(config).unwrap());
-    let checker = Arc::clone(&checker);
-    let epochs = Arc::new(epochs.epochs.clone());
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let flags = Arc::new(flags.lock().unwrap().clone());
     let ledger = Arc::clone(&ledger);
@@ -62,8 +58,6 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     let processor = Arc::new(BlockProcessor::new(
         handle,
         config,
-        checker,
-        epochs,
         logger,
         flags,
         ledger,
@@ -73,7 +67,6 @@ pub unsafe extern "C" fn rsn_block_processor_create(
         work,
         write_database_queue,
     ));
-    processor.init();
     Box::into_raw(Box::new(BlockProcessorHandle(processor)))
 }
 
@@ -111,28 +104,6 @@ pub extern "C" fn rsn_block_processor_set_blocks_rolled_back_callback(
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_flushing(handle: &BlockProcessorHandle) -> bool {
     handle.flushing.load(Ordering::SeqCst)
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_is_signature_verifier_active(
-    handle: &BlockProcessorHandle,
-) -> bool {
-    handle
-        .state_block_signature_verification
-        .read()
-        .unwrap()
-        .is_active()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_signature_verifier_size(
-    handle: &BlockProcessorHandle,
-) -> usize {
-    handle
-        .state_block_signature_verification
-        .read()
-        .unwrap()
-        .size()
 }
 
 pub struct BlockProcessorLockHandle(Option<MutexGuard<'static, BlockProcessorImpl>>);

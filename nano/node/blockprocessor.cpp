@@ -104,7 +104,6 @@ void blocks_rolled_back_delete (void * context)
 
 nano::block_processor::block_processor (nano::node & node_a, nano::write_database_queue & write_database_queue_a) :
 	logger (*node_a.logger),
-	checker (node_a.checker),
 	config (*node_a.config),
 	network_params (node_a.network_params),
 	flags (node_a.flags),
@@ -116,8 +115,6 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	handle = rsnano::rsn_block_processor_create (
 	this,
 	&config_dto,
-	checker.get_handle (),
-	config.network_params.ledger.epochs.get_handle (),
 	logger_handle,
 	node_a.flags.handle,
 	node_a.ledger.handle,
@@ -170,10 +167,9 @@ void nano::block_processor::stop ()
 
 void nano::block_processor::flush ()
 {
-	checker.flush ();
 	rsnano::rsn_block_processor_set_flushing (handle, true);
 	nano::block_processor_lock lock{ *this };
-	while (!stopped && (have_blocks (lock) || active || rsnano::rsn_block_processor_is_signature_verifier_active (handle)))
+	while (!stopped && (have_blocks (lock) || active))
 	{
 		rsnano::rsn_block_processor_wait (handle, lock.handle);
 	}
@@ -183,7 +179,7 @@ void nano::block_processor::flush ()
 std::size_t nano::block_processor::size ()
 {
 	nano::block_processor_lock lock{ *this };
-	return (lock.blocks_size () + rsnano::rsn_block_processor_signature_verifier_size (handle) + lock.forced_size ());
+	return (lock.blocks_size () + lock.forced_size ());
 }
 
 bool nano::block_processor::full ()
@@ -295,7 +291,7 @@ bool nano::block_processor::have_blocks_ready (nano::block_processor_lock & lock
 
 bool nano::block_processor::have_blocks (nano::block_processor_lock & lock_a)
 {
-	return have_blocks_ready (lock_a) || rsnano::rsn_block_processor_signature_verifier_size (handle) != 0;
+	return have_blocks_ready (lock_a);
 }
 
 auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) -> std::deque<processed_t>

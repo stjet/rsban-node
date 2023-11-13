@@ -7,10 +7,14 @@ use std::{
     cmp::Ordering,
     fmt::Debug,
     mem::size_of,
+    sync::Arc,
     time::{Duration, Instant, SystemTime},
 };
 
-use crate::voting::Vote;
+use crate::{
+    stats::{DetailType, Direction, StatType, Stats},
+    voting::Vote,
+};
 
 pub struct VoteCacheConfig {
     pub max_size: usize,
@@ -54,15 +58,17 @@ pub struct VoteCache {
     cache: MultiIndexCacheEntryMap,
     next_id: usize,
     last_cleanup: Instant,
+    stats: Arc<Stats>,
 }
 
 impl VoteCache {
-    pub fn new(config: VoteCacheConfig) -> Self {
+    pub fn new(config: VoteCacheConfig, stats: Arc<Stats>) -> Self {
         VoteCache {
             last_cleanup: Instant::now(),
             config,
             cache: MultiIndexCacheEntryMap::default(),
             next_id: 0,
+            stats,
         }
     }
 
@@ -83,7 +89,12 @@ impl VoteCache {
             })
             .is_some();
 
-        if !cache_entry_exists {
+        if cache_entry_exists {
+            self.stats
+                .inc(StatType::VoteCache, DetailType::Update, Direction::In)
+        } else {
+            self.stats
+                .inc(StatType::VoteCache, DetailType::Insert, Direction::In);
             let id = self.next_id;
             self.next_id += 1;
             let mut cache_entry = CacheEntry::new(id, *hash);
@@ -127,6 +138,8 @@ impl VoteCache {
     /// @param min_tally minimum tally threshold, entries below with their voting weight
     /// below this will be ignore
     pub fn top(&mut self, min_tally: Amount) -> Vec<TopEntry> {
+        self.stats
+            .inc(StatType::VoteCache, DetailType::Top, Direction::In);
         if self.last_cleanup.elapsed() >= self.config.age_cutoff / 2 {
             self.cleanup();
             self.last_cleanup = Instant::now();
@@ -158,6 +171,8 @@ impl VoteCache {
     }
 
     fn cleanup(&mut self) {
+        self.stats
+            .inc(StatType::VoteCache, DetailType::Cleanup, Direction::In);
         let cutoff = SystemTime::now() - self.config.age_cutoff;
         let to_delete: Vec<_> = self
             .cache
@@ -318,11 +333,14 @@ mod tests {
     }
 
     fn create_vote_cache() -> VoteCache {
-        VoteCache::new(VoteCacheConfig {
-            max_size: 3,
-            max_voters: 80,
-            ..Default::default()
-        })
+        VoteCache::new(
+            VoteCacheConfig {
+                max_size: 3,
+                max_voters: 80,
+                age_cutoff: Duration::from_secs(5 * 60),
+            },
+            Arc::new(Stats::new(Default::default())),
+        )
     }
 
     #[test]

@@ -60,6 +60,8 @@ enum class detail : uint8_t
 	update,
 	request,
 	broadcast,
+	cleanup,
+	top,
 
 	// processing queue
 	queue,

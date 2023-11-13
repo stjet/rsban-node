@@ -73,10 +73,10 @@ std::chrono::system_clock::time_point nano::vote_cache::entry::last_vote () cons
  * vote_cache
  */
 
-nano::vote_cache::vote_cache (vote_cache_config const & config_a)
+nano::vote_cache::vote_cache (vote_cache_config const & config_a, nano::stats & stats_a)
 {
 	auto config_dto{ config_a.to_dto () };
-	handle = rsnano::rsn_vote_cache_create (&config_dto);
+	handle = rsnano::rsn_vote_cache_create (&config_dto, stats_a.handle);
 }
 
 nano::vote_cache::~vote_cache ()
@@ -136,7 +136,7 @@ std::vector<nano::vote_cache::top_entry> nano::vote_cache::top (const nano::uint
 	return results;
 }
 
-std::unique_ptr<nano::container_info_component> nano::vote_cache::collect_container_info (const std::string & name)
+std::unique_ptr<nano::container_info_component> nano::vote_cache::collect_container_info (const std::string & name) const
 {
 	auto info_handle = rsnano::rsn_vote_cache_collect_container_info (handle, name.c_str ());
 	return std::make_unique<nano::container_info_composite> (info_handle);

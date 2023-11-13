@@ -190,7 +190,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	online_reps (ledger, *config),
 	history{ config_a.network_params.voting },
 	confirmation_height_processor (ledger, *stats, write_database_queue, config_a.conf_height_processor_batch_min_time, config->logging, logger, node_initialized_latch),
-	vote_cache{ config_a.vote_cache },
+	vote_cache{ config_a.vote_cache, *stats },
 	generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* non-final */ false },
 	final_generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* final */ true },
 	active (*this, confirmation_height_processor),

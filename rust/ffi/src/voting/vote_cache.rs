@@ -1,4 +1,6 @@
-use crate::{copy_account_bytes, utils::ContainerInfoComponentHandle, voting::VoteHandle};
+use crate::{
+    copy_account_bytes, utils::ContainerInfoComponentHandle, voting::VoteHandle, StatHandle,
+};
 use rsnano_core::{utils::system_time_as_nanoseconds, Amount, BlockHash};
 use rsnano_node::voting::{TopEntry, VoteCache, VoteCacheConfig, VoterEntry};
 use std::{
@@ -10,10 +12,13 @@ use std::{
 pub struct VoteCacheHandle(Arc<Mutex<VoteCache>>);
 
 #[no_mangle]
-pub extern "C" fn rsn_vote_cache_create(config: &VoteCacheConfigDto) -> *mut VoteCacheHandle {
+pub extern "C" fn rsn_vote_cache_create(
+    config: &VoteCacheConfigDto,
+    stats: &StatHandle,
+) -> *mut VoteCacheHandle {
     let config = VoteCacheConfig::from(config);
     Box::into_raw(Box::new(VoteCacheHandle(Arc::new(Mutex::new(
-        VoteCache::new(config),
+        VoteCache::new(config, Arc::clone(stats)),
     )))))
 }
 

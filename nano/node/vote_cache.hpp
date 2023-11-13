@@ -68,7 +68,7 @@ public:
 	};
 
 public:
-	explicit vote_cache (vote_cache_config const &);
+	explicit vote_cache (vote_cache_config const &, nano::stats &);
 	vote_cache (vote_cache const &) = delete;
 	vote_cache (vote_cache &&) = delete;
 	~vote_cache ();
@@ -108,6 +108,6 @@ public:
 	std::vector<top_entry> top (nano::uint128_t const & min_tally);
 
 public: // Container info
-	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);
+	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name) const;
 };
 }

@@ -165,6 +165,8 @@ pub enum DetailType {
     Update,
     Request,
     Broadcast,
+    Cleanup,
+    Top,
 
     // processing queue
     Queue,

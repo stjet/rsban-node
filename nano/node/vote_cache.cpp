@@ -30,10 +30,9 @@ nano::vote_cache::entry::entry (rsnano::VoteCacheEntryDto & dto) :
 	voters_m.reserve (dto.voters_count);
 	for (auto i = 0; i < dto.voters_count; ++i)
 	{
-		nano::account account;
-		uint64_t timestamp;
-		rsnano::rsn_vote_cache_entry_get_voter (&dto, i, account.bytes.data (), &timestamp);
-		voters_m.emplace_back (account, timestamp);
+		nano::vote_cache::entry::voter_entry e;
+		rsnano::rsn_vote_cache_entry_get_voter (&dto, i, e.representative.bytes.data (), &e.timestamp);
+		voters_m.push_back (e);
 	}
 	rsnano::rsn_vote_cache_entry_destroy (&dto);
 }

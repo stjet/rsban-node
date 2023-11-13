@@ -156,7 +156,7 @@ std::vector<nano::representative> nano::representative_register::representatives
 	{
 		result.emplace_back (rsnano::rsn_representative_list_get (result_handle, i));
 	}
-	rsnano::rsn_representative_list_destroy(result_handle);
+	rsnano::rsn_representative_list_destroy (result_handle);
 	return result;
 }
 

@@ -137,21 +137,11 @@ impl BlockProcessor {
     }
 
     pub fn add_impl(&self, block: Arc<BlockEnum>) {
-        match block.block_type() {
-            BlockType::State | BlockType::LegacyOpen => {
-                self.state_block_signature_verification
-                    .read()
-                    .unwrap()
-                    .add(StateBlockSignatureVerificationValue { block });
-            }
-            _ => {
-                {
-                    let mut lock = self.mutex.lock().unwrap();
-                    lock.blocks.push_back(block);
-                }
-                self.condition.notify_all();
-            }
+        {
+            let mut lock = self.mutex.lock().unwrap();
+            lock.blocks.push_back(block);
         }
+        self.condition.notify_all();
     }
 
     pub fn process_verified_state_blocks(&self, mut result: StateBlockSignatureVerificationResult) {

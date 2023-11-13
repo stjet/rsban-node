@@ -1,6 +1,6 @@
 use super::BlockValidationTest;
 use crate::ProcessResult;
-use rsnano_core::{Amount, Epoch};
+use rsnano_core::{epoch_v2_link, Amount, Epoch, KeyPair};
 
 #[test]
 fn fails_if_directly_upgrading_from_epoch_0_to_epoch_2() {
@@ -69,4 +69,17 @@ fn open_new_account_straight_to_epoch_2() {
         .assert_is_valid();
     assert_eq!(instructions.set_account_info.epoch, Epoch::Epoch2);
     assert_eq!(instructions.set_sideband.details.epoch, Epoch::Epoch2);
+}
+
+#[test]
+fn fails_with_bad_signature_if_signature_is_invalid() {
+    BlockValidationTest::for_epoch1_account()
+        .block_to_validate(|chain| {
+            chain
+                .new_epoch1_block()
+                .link(epoch_v2_link())
+                .sign(&KeyPair::new())
+                .build()
+        })
+        .assert_validation_fails_with(ProcessResult::BadSignature);
 }

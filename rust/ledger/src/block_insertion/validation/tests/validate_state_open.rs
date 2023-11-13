@@ -1,5 +1,7 @@
 use crate::{block_insertion::validation::tests::BlockValidationTest, ProcessResult};
-use rsnano_core::{AccountInfo, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, PendingKey};
+use rsnano_core::{
+    AccountInfo, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, PendingKey,
+};
 
 #[test]
 fn valid_open_block() {
@@ -62,4 +64,19 @@ fn fails_with_gap_source_if_link_missing() {
         .with_pending_receive(Amount::raw(10), Epoch::Epoch2)
         .block_to_validate(|chain| chain.new_open_block().balance(10).link(0).build())
         .assert_validation_fails_with(ProcessResult::GapSource);
+}
+
+#[test]
+fn fails_with_bad_signature_if_signature_is_invalid() {
+    BlockValidationTest::for_unopened_account()
+        .with_pending_receive(Amount::raw(10), Epoch::Epoch1)
+        .block_to_validate(|chain| {
+            chain
+                .new_open_block()
+                .balance(10)
+                .link(0)
+                .sign(&KeyPair::new())
+                .build()
+        })
+        .assert_validation_fails_with(ProcessResult::BadSignature);
 }

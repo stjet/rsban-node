@@ -61,7 +61,6 @@ class vote_processor final
 public:
 	vote_processor (
 	nano::vote_processor_queue & queue_a,
-	nano::signature_checker & checker_a,
 	nano::active_transactions & active_a,
 	nano::node_observers & observers_a,
 	nano::stats & stats_a,
@@ -78,7 +77,6 @@ public:
 
 	void process_loop ();
 
-	nano::signature_checker & checker;
 	nano::active_transactions & active;
 	nano::node_observers & observers;
 	nano::stats & stats;

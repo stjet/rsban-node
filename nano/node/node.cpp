@@ -183,7 +183,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	representative_register (*this),
 	rep_crawler (*this),
 	vote_processor_queue{ flags_a.vote_processor_capacity (), *stats, online_reps, ledger, logger },
-	vote_processor (vote_processor_queue, checker, active, *observers, *stats, *config, *logger, rep_crawler, network_params),
+	vote_processor (vote_processor_queue, active, *observers, *stats, *config, *logger, rep_crawler, network_params),
 	warmed_up (0),
 	block_arrival{},
 	block_processor (*this, write_database_queue),

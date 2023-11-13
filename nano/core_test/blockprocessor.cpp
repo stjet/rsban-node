@@ -39,4 +39,3 @@ TEST (block_processor, broadcast_block_on_arrival)
 	// Checks whether the block was broadcast.
 	ASSERT_TIMELY (5s, node2->ledger.block_or_pruned_exists (send1->hash ()));
 }
-

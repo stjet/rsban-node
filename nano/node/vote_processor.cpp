@@ -10,7 +10,6 @@
 #include <nano/node/nodeconfig.hpp>
 #include <nano/node/online_reps.hpp>
 #include <nano/node/repcrawler.hpp>
-#include <nano/node/signatures.hpp>
 #include <nano/node/vote_processor.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>
@@ -89,7 +88,6 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (vo
 
 nano::vote_processor::vote_processor (
 nano::vote_processor_queue & queue_a,
-nano::signature_checker & checker_a,
 nano::active_transactions & active_a,
 nano::node_observers & observers_a,
 nano::stats & stats_a,
@@ -97,7 +95,6 @@ nano::node_config & config_a,
 nano::logger_mt & logger_a,
 nano::rep_crawler & rep_crawler_a,
 nano::network_params & network_params_a) :
-	checker (checker_a),
 	active (active_a),
 	observers (observers_a),
 	stats (stats_a),
@@ -153,42 +150,12 @@ void nano::vote_processor::process_loop ()
 
 void nano::vote_processor::verify_votes (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> const & votes_a)
 {
-	auto size (votes_a.size ());
-	std::vector<unsigned char const *> messages;
-	messages.reserve (size);
-	std::vector<nano::block_hash> hashes;
-	hashes.reserve (size);
-	std::vector<std::size_t> lengths (size, sizeof (nano::block_hash));
-	std::vector<unsigned char const *> pub_keys;
-	pub_keys.reserve (size);
-	std::vector<unsigned char const *> signatures;
-	signatures.reserve (size);
-	std::vector<int> verifications;
-	verifications.resize (size);
-	std::vector<nano::account> tmp_accounts;
-	tmp_accounts.reserve (size);
-	std::vector<nano::signature> tmp_signatures;
-	tmp_signatures.reserve (size);
 	for (auto const & vote : votes_a)
 	{
-		hashes.push_back (vote.first->hash ());
-		messages.push_back (hashes.back ().bytes.data ());
-		tmp_accounts.push_back (vote.first->account ());
-		tmp_signatures.push_back (vote.first->signature ());
-		pub_keys.push_back (tmp_accounts.back ().bytes.data ());
-		signatures.push_back (tmp_signatures.back ().bytes.data ());
-	}
-	nano::signature_check_set check = { size, messages.data (), lengths.data (), pub_keys.data (), signatures.data (), verifications.data () };
-	checker.verify (check);
-	auto i (0);
-	for (auto const & vote : votes_a)
-	{
-		debug_assert (verifications[i] == 1 || verifications[i] == 0);
-		if (verifications[i] == 1)
+		if (!nano::validate_message (vote.first->account (), vote.first->hash (), vote.first->signature ()))
 		{
 			vote_blocking (vote.first, vote.second, true);
 		}
-		++i;
 	}
 }
 

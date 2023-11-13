@@ -49,7 +49,7 @@ void nano::scheduler::hinted::notify ()
 {
 	// Avoid notifying when there is very little space inside AEC
 	auto const limit = active.limit (nano::election_behavior::hinted);
-	if (active.vacancy (nano::election_behavior::hinted) >= (limit / 5))
+	if (active.vacancy (nano::election_behavior::hinted) >= (limit * config.vaccancy_threshold_percent / 100))
 	{
 		condition.notify_all ();
 	}
@@ -109,7 +109,8 @@ void nano::scheduler::hinted::activate (const nano::store::read_transaction & tr
 		else
 		{
 			stats.inc (nano::stat::type::hinting, nano::stat::detail::missing_block);
-			node.bootstrap_block (current_hash);
+
+			// TODO: Block is missing, bootstrap it
 		}
 	}
 }
@@ -250,6 +251,7 @@ rsnano::HintedSchedulerConfigDto nano::scheduler::hinted_config::into_dto () con
 {
 	rsnano::HintedSchedulerConfigDto dto;
 	dto.hinting_threshold_percent = hinting_threshold_percent;
+	dto.vaccancy_threshold_percent = vaccancy_threshold_percent;
 	dto.check_interval_ms = static_cast<uint32_t> (check_interval.count ());
 	dto.block_cooldown_ms = static_cast<uint32_t> (block_cooldown.count ());
 	return dto;
@@ -260,6 +262,7 @@ void nano::scheduler::hinted_config::load_dto (rsnano::HintedSchedulerConfigDto 
 	check_interval = std::chrono::milliseconds{ dto_a.check_interval_ms };
 	block_cooldown = std::chrono::milliseconds{ dto_a.block_cooldown_ms };
 	hinting_threshold_percent = dto_a.hinting_threshold_percent;
+	vaccancy_threshold_percent = dto_a.vaccancy_threshold_percent;
 }
 
 nano::error nano::scheduler::hinted_config::serialize (nano::tomlconfig & toml) const

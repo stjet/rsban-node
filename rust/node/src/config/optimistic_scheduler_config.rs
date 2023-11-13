@@ -40,6 +40,7 @@ pub struct HintedSchedulerConfig {
     pub check_interval: Duration,
     pub block_cooldown: Duration,
     pub hinting_theshold_percent: u32,
+    pub vaccancy_threshold_percent: u32,
 }
 
 impl HintedSchedulerConfig {
@@ -58,6 +59,7 @@ impl Default for HintedSchedulerConfig {
             check_interval: Duration::from_millis(1000),
             block_cooldown: Duration::from_millis(5000),
             hinting_theshold_percent: 10,
+            vaccancy_threshold_percent: 20,
         }
     }
 }

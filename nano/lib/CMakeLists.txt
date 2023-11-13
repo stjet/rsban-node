@@ -35,6 +35,7 @@ add_library(
   epoch.cpp
   errors.hpp
   errors.cpp
+  interval.hpp
   ipc.hpp
   ipc.cpp
   ipc_client.hpp

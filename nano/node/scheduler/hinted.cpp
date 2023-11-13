@@ -165,10 +165,14 @@ void nano::scheduler::hinted::run ()
 
 		if (!stopped)
 		{
+			lock.unlock ();
+
 			if (predicate ())
 			{
 				run_iterative ();
 			}
+
+			lock.lock ();
 		}
 	}
 }
@@ -187,6 +191,8 @@ nano::uint128_t nano::scheduler::hinted::final_tally_threshold () const
 
 bool nano::scheduler::hinted::cooldown (const nano::block_hash & hash)
 {
+	nano::lock_guard<nano::mutex> guard{ mutex };
+
 	auto const now = std::chrono::steady_clock::now ();
 
 	// Check if the hash is still in the cooldown period using the hashed index
@@ -211,6 +217,15 @@ bool nano::scheduler::hinted::cooldown (const nano::block_hash & hash)
 	}
 
 	return false; // No need to cooldown
+}
+
+std::unique_ptr<nano::container_info_component> nano::scheduler::hinted::collect_container_info (const std::string & name) const
+{
+	nano::lock_guard<nano::mutex> guard{ mutex };
+
+	auto composite = std::make_unique<container_info_composite> (name);
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "cooldowns", cooldowns_m.size (), sizeof (decltype (cooldowns_m)::value_type) }));
+	return composite;
 }
 
 /*

@@ -197,6 +197,7 @@ impl VoteCache {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
 pub struct TopEntry {
     pub hash: BlockHash,
     pub tally: Amount,
@@ -654,5 +655,81 @@ mod tests {
         let entry = cache.find(&hash).unwrap();
         assert_eq!(entry.tally, Amount::raw(9));
         assert_eq!(entry.final_tally, Amount::raw(9));
+    }
+
+    #[test]
+    fn top_empty() {
+        let mut cache = create_vote_cache();
+        assert_eq!(cache.top(Amount::zero()), Vec::new());
+    }
+
+    #[test]
+    fn top_one_entry() {
+        let mut cache = create_vote_cache();
+        let hash = BlockHash::from(1);
+        add_test_vote(&mut cache, &hash, Amount::raw(1));
+
+        assert_eq!(
+            cache.top(Amount::zero()),
+            vec![TopEntry {
+                hash,
+                tally: Amount::raw(1),
+                final_tally: Amount::zero()
+            }]
+        );
+    }
+
+    #[test]
+    fn top_multiple_entries_sorted_by_tally() {
+        let mut cache = create_vote_cache();
+        let hash1 = BlockHash::from(1);
+        let hash2 = BlockHash::from(2);
+        let hash3 = BlockHash::from(3);
+        add_test_vote(&mut cache, &hash1, Amount::raw(1));
+        add_test_vote(&mut cache, &hash2, Amount::raw(4));
+        add_test_vote(&mut cache, &hash3, Amount::raw(3));
+        add_test_final_vote(&mut cache, &hash2, Amount::raw(5));
+        add_test_final_vote(&mut cache, &hash3, Amount::raw(5));
+
+        let top = cache.top(Amount::zero());
+
+        assert_eq!(top.len(), 3);
+        assert_eq!(top[0].hash, hash2);
+        assert_eq!(top[1].hash, hash3);
+        assert_eq!(top[2].hash, hash1);
+    }
+
+    #[test]
+    fn top_min_tally() {
+        let mut cache = create_vote_cache();
+        let hash1 = BlockHash::from(1);
+        let hash2 = BlockHash::from(2);
+        let hash3 = BlockHash::from(3);
+        add_test_vote(&mut cache, &hash1, Amount::raw(1));
+        add_test_vote(&mut cache, &hash2, Amount::raw(2));
+        add_test_vote(&mut cache, &hash3, Amount::raw(3));
+
+        let top = cache.top(Amount::raw(2));
+        assert_eq!(top.len(), 2);
+        assert_eq!(top[0].hash, hash3);
+        assert_eq!(top[1].hash, hash3);
+    }
+
+    #[test]
+    fn top_age_cutoff() {
+        let mut cache = create_vote_cache();
+        let hash = BlockHash::from(1);
+        add_test_vote(&mut cache, &hash, Amount::raw(1));
+        // TODO
+    }
+
+    fn add_test_vote(cache: &mut VoteCache, hash: &BlockHash, rep_weight: Amount) {
+        let vote = create_vote(&KeyPair::new(), &hash, 0);
+        cache.vote(&hash, &vote, rep_weight);
+    }
+
+    fn add_test_final_vote(cache: &mut VoteCache, hash: &BlockHash, rep_weight: Amount) {
+        let vote = create_final_vote(&KeyPair::new(), &hash);
+        cache.vote(&hash, &vote, rep_weight);
     }
 }

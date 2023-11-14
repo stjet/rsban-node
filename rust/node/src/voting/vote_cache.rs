@@ -8,13 +8,18 @@ use std::{
     fmt::Debug,
     mem::size_of,
     sync::Arc,
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, SystemTime},
 };
 
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     voting::Vote,
 };
+
+#[cfg(test)]
+use mock_instant::Instant;
+#[cfg(not(test))]
+use std::time::Instant;
 
 pub struct VoteCacheConfig {
     pub max_size: usize,
@@ -134,7 +139,8 @@ impl VoteCache {
     /// The blocks are sorted in descending order by final tally, then by tally
     /// @param min_tally minimum tally threshold, entries below with their voting weight
     /// below this will be ignore
-    pub fn top(&mut self, min_tally: Amount) -> Vec<TopEntry> {
+    pub fn top(&mut self, min_tally: impl Into<Amount>) -> Vec<TopEntry> {
+        let min_tally = min_tally.into();
         self.stats
             .inc(StatType::VoteCache, DetailType::Top, Direction::In);
         if self.last_cleanup.elapsed() >= self.config.age_cutoff / 2 {
@@ -170,11 +176,10 @@ impl VoteCache {
     fn cleanup(&mut self) {
         self.stats
             .inc(StatType::VoteCache, DetailType::Cleanup, Direction::In);
-        let cutoff = SystemTime::now() - self.config.age_cutoff;
         let to_delete: Vec<_> = self
             .cache
             .iter()
-            .filter(|i| i.last_vote < cutoff)
+            .filter(|i| i.last_vote.elapsed() >= self.config.age_cutoff)
             .map(|i| i.hash)
             .collect();
         for hash in to_delete {
@@ -209,7 +214,7 @@ pub struct CacheEntry {
     pub voters: Vec<VoterEntry>,
     pub tally: Amount,
     pub final_tally: Amount,
-    pub last_vote: SystemTime,
+    pub last_vote: Instant,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VoterEntry {
@@ -234,7 +239,7 @@ impl CacheEntry {
             voters: Vec::new(),
             tally: Amount::zero(),
             final_tally: Amount::zero(),
-            last_vote: SystemTime::UNIX_EPOCH,
+            last_vote: Instant::now(),
         }
     }
 
@@ -249,7 +254,7 @@ impl CacheEntry {
     ) -> bool {
         let updated = self.vote_impl(representative, timestamp, rep_weight, max_voters);
         if updated {
-            self.last_vote = SystemTime::now();
+            self.last_vote = Instant::now();
         }
         updated
     }
@@ -396,6 +401,7 @@ impl CacheEntryCollection {
 mod tests {
     use super::*;
     use crate::voting::Vote;
+    use mock_instant::MockClock;
     use rsnano_core::KeyPair;
 
     fn create_vote(rep: &KeyPair, hash: &BlockHash, timestamp_offset: u64) -> Vote {
@@ -412,15 +418,16 @@ mod tests {
         Vote::new_final(rep, vec![*hash])
     }
 
+    fn test_config() -> VoteCacheConfig {
+        VoteCacheConfig {
+            max_size: 3,
+            max_voters: 80,
+            age_cutoff: Duration::from_secs(5 * 60),
+        }
+    }
+
     fn create_vote_cache() -> VoteCache {
-        VoteCache::new(
-            VoteCacheConfig {
-                max_size: 3,
-                max_voters: 80,
-                age_cutoff: Duration::from_secs(5 * 60),
-            },
-            Arc::new(Stats::new(Default::default())),
-        )
+        VoteCache::new(test_config(), Arc::new(Stats::new(Default::default())))
     }
 
     #[test]
@@ -739,7 +746,7 @@ mod tests {
     #[test]
     fn top_empty() {
         let mut cache = create_vote_cache();
-        assert_eq!(cache.top(Amount::zero()), Vec::new());
+        assert_eq!(cache.top(0), Vec::new());
     }
 
     #[test]
@@ -749,7 +756,7 @@ mod tests {
         add_test_vote(&mut cache, &hash, Amount::raw(1));
 
         assert_eq!(
-            cache.top(Amount::zero()),
+            cache.top(0),
             vec![TopEntry {
                 hash,
                 tally: Amount::raw(1),
@@ -770,7 +777,7 @@ mod tests {
         add_test_final_vote(&mut cache, &hash2, Amount::raw(5));
         add_test_final_vote(&mut cache, &hash3, Amount::raw(5));
 
-        let top = cache.top(Amount::zero());
+        let top = cache.top(0);
 
         assert_eq!(top.len(), 3);
         assert_eq!(top[0].hash, hash2);
@@ -788,7 +795,7 @@ mod tests {
         add_test_vote(&mut cache, &hash2, Amount::raw(2));
         add_test_vote(&mut cache, &hash3, Amount::raw(3));
 
-        let top = cache.top(Amount::raw(2));
+        let top = cache.top(2);
         assert_eq!(top.len(), 2);
         assert_eq!(top[0].hash, hash3);
         assert_eq!(top[1].hash, hash2);
@@ -796,10 +803,26 @@ mod tests {
 
     #[test]
     fn top_age_cutoff() {
-        let mut cache = create_vote_cache();
+        let stats = Arc::new(Stats::new(Default::default()));
+        let mut cache = VoteCache::new(test_config(), Arc::clone(&stats));
         let hash = BlockHash::from(1);
         add_test_vote(&mut cache, &hash, Amount::raw(1));
-        // TODO
+        assert_eq!(
+            stats.count(StatType::VoteCache, DetailType::Cleanup, Direction::In),
+            0
+        );
+        MockClock::advance(Duration::from_secs(150));
+        assert_eq!(cache.top(0).len(), 1);
+        assert_eq!(
+            stats.count(StatType::VoteCache, DetailType::Cleanup, Direction::In),
+            1
+        );
+        MockClock::advance(Duration::from_secs(150));
+        assert_eq!(cache.top(0).len(), 0);
+        assert_eq!(
+            stats.count(StatType::VoteCache, DetailType::Cleanup, Direction::In),
+            2
+        );
     }
 
     fn add_test_vote(cache: &mut VoteCache, hash: &BlockHash, rep_weight: Amount) {

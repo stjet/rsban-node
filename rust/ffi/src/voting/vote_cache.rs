@@ -74,7 +74,6 @@ unsafe fn fill_entry_dto(
                 .copy_from_slice(&entry.final_tally.to_be_bytes());
             (*result).voters_count = entry.voters.len();
             (*result).voters = Box::into_raw(Box::new(VoterListDto(entry.voters.clone())));
-            (*result).last_vote_ns = system_time_as_nanoseconds(entry.last_vote);
             true
         }
         None => false,
@@ -128,7 +127,6 @@ pub struct VoteCacheEntryDto {
     pub final_tally: [u8; 16],
     pub voters: *mut VoterListDto,
     pub voters_count: usize,
-    pub last_vote_ns: u64,
 }
 
 pub struct VoterListDto(Vec<VoterEntry>);

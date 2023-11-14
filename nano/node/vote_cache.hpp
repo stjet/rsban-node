@@ -57,7 +57,6 @@ public:
 		nano::uint128_t tally () const;
 		nano::uint128_t final_tally () const;
 		std::vector<voter_entry> voters () const;
-		std::chrono::system_clock::time_point last_vote () const;
 
 		nano::block_hash const hash_m;
 		std::vector<voter_entry> voters_m;

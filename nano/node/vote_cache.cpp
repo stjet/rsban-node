@@ -35,7 +35,6 @@ nano::vote_cache::entry::entry (rsnano::VoteCacheEntryDto & dto) :
 		rsnano::rsn_vote_cache_entry_get_voter (&dto, i, e.representative.bytes.data (), &e.timestamp);
 		voters_m.push_back (e);
 	}
-	last_vote_m = rsnano::time_point_from_nanoseconds (dto.last_vote_ns);
 	rsnano::rsn_vote_cache_entry_destroy (&dto);
 }
 
@@ -62,11 +61,6 @@ nano::uint128_t nano::vote_cache::entry::final_tally () const
 std::vector<nano::vote_cache::entry::voter_entry> nano::vote_cache::entry::voters () const
 {
 	return voters_m;
-}
-
-std::chrono::system_clock::time_point nano::vote_cache::entry::last_vote () const
-{
-	return last_vote_m;
 }
 
 /*

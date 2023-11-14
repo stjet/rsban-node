@@ -1,8 +1,6 @@
 use crate::{
     core::{BlockHandle, BlockVecHandle},
-    gap_cache::GapCacheHandle,
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
-    unchecked_map::UncheckedMapHandle,
     utils::{ContainerInfoComponentHandle, ContextWrapper, LoggerHandle, LoggerMT},
     work::WorkThresholdsDto,
     NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
@@ -22,6 +20,8 @@ use std::{
     ops::Deref,
     sync::{atomic::Ordering, Arc, MutexGuard},
 };
+
+use super::{gap_cache::GapCacheHandle, unchecked_map::UncheckedMapHandle};
 
 pub struct BlockProcessorHandle(Arc<BlockProcessor>);
 

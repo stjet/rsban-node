@@ -17,9 +17,9 @@ use std::{
 use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
-    unchecked_map::UncheckedMap,
-    GapCache,
 };
+
+use super::{GapCache, UncheckedMap};
 
 pub static mut BLOCKPROCESSOR_ADD_CALLBACK: Option<fn(*mut c_void, Arc<BlockEnum>)> = None;
 pub static mut BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK: Option<fn(*mut c_void, Arc<BlockEnum>)> =

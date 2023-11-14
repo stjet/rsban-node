@@ -1,9 +1,7 @@
-use std::{ffi::c_void, ops::Deref, sync::Arc};
-
-use rsnano_core::{BlockHash, HashOrAccount, UncheckedInfo, UncheckedKey};
-use rsnano_node::unchecked_map::UncheckedMap;
-
 use crate::{core::UncheckedInfoHandle, utils::ContextWrapper, StatHandle, VoidPointerCallback};
+use rsnano_core::{BlockHash, HashOrAccount, UncheckedInfo, UncheckedKey};
+use rsnano_node::block_processing::UncheckedMap;
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 #[repr(C)]
 pub struct UncheckedKeyDto {

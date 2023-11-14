@@ -11,7 +11,7 @@ use rsnano_core::{
     utils::{system_time_as_nanoseconds, system_time_from_nanoseconds},
     Account, BlockHash,
 };
-use rsnano_node::{config::NodeConfig, GapCache};
+use rsnano_node::{block_processing::GapCache, config::NodeConfig};
 use std::{
     ffi::{c_char, CStr},
     ops::Deref,

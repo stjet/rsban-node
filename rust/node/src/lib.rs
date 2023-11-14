@@ -18,8 +18,6 @@ pub mod config;
 mod ipc;
 pub mod messages;
 
-mod gap_cache;
-pub use gap_cache::GapCache;
 pub use representatives::{OnlineReps, OnlineWeightSampler, ONLINE_WEIGHT_QUORUM};
 
 pub mod consensus;
@@ -27,7 +25,6 @@ pub mod representatives;
 mod secure;
 pub mod stats;
 pub mod transport;
-pub mod unchecked_map;
 pub mod utils;
 pub mod websocket;
 

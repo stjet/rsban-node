@@ -1,10 +1,10 @@
-use multi_index_map::MultiIndexMap;
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, TomlWriter},
     Account, Amount, BlockHash,
 };
 use std::{
     cmp::Ordering,
+    collections::{BTreeMap, HashMap},
     fmt::Debug,
     mem::size_of,
     sync::Arc,
@@ -55,7 +55,7 @@ impl Default for VoteCacheConfig {
 ///			When cache size exceeds `max_size` oldest entries are evicted first.
 pub struct VoteCache {
     config: VoteCacheConfig,
-    cache: MultiIndexCacheEntryMap,
+    cache: CacheEntryCollection,
     next_id: usize,
     last_cleanup: Instant,
     stats: Arc<Stats>,
@@ -66,7 +66,7 @@ impl VoteCache {
         VoteCache {
             last_cleanup: Instant::now(),
             config,
-            cache: MultiIndexCacheEntryMap::default(),
+            cache: CacheEntryCollection::default(),
             next_id: 0,
             stats,
         }
@@ -77,17 +77,14 @@ impl VoteCache {
          * If there is no cache entry for the block hash, create a new entry for both cache and queue.
          * Otherwise update existing cache entry and, if queue contains entry for the block hash, update the queue entry
          */
-        let cache_entry_exists = self
-            .cache
-            .modify_by_hash(hash, |existing| {
-                existing.vote(
-                    &vote.voting_account,
-                    vote.timestamp(),
-                    rep_weight,
-                    self.config.max_voters,
-                );
-            })
-            .is_some();
+        let cache_entry_exists = self.cache.modify_by_hash(hash, |existing| {
+            existing.vote(
+                &vote.voting_account,
+                vote.timestamp(),
+                rep_weight,
+                self.config.max_voters,
+            );
+        });
 
         if cache_entry_exists {
             self.stats
@@ -177,8 +174,8 @@ impl VoteCache {
         let to_delete: Vec<_> = self
             .cache
             .iter()
-            .filter(|(_, i)| i.last_vote < cutoff)
-            .map(|(_, i)| i.hash)
+            .filter(|i| i.last_vote < cutoff)
+            .map(|i| i.hash)
             .collect();
         for hash in to_delete {
             self.cache.remove_by_hash(&hash);
@@ -205,19 +202,15 @@ pub struct TopEntry {
 }
 
 /// Stores votes associated with a single block hash
-#[derive(MultiIndexMap, Debug, Clone)]
+#[derive(Clone)]
 pub struct CacheEntry {
-    #[multi_index(ordered_unique)]
     id: usize,
-    #[multi_index(hashed_unique)]
     pub hash: BlockHash,
     pub voters: Vec<VoterEntry>,
-    #[multi_index(ordered_non_unique)]
     pub tally: Amount,
     pub final_tally: Amount,
     pub last_vote: SystemTime,
 }
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VoterEntry {
     pub representative: Account,
@@ -306,10 +299,96 @@ impl CacheEntry {
     }
 }
 
-impl MultiIndexCacheEntryMap {
-    fn pop_front(&mut self) -> Option<CacheEntry> {
-        let id = self.iter_by_id().next()?.id;
-        self.remove_by_id(&id)
+#[derive(Default)]
+pub struct CacheEntryCollection {
+    sequential: BTreeMap<usize, BlockHash>,
+    by_hash: HashMap<BlockHash, CacheEntry>,
+    by_tally: BTreeMap<Amount, Vec<BlockHash>>,
+}
+
+impl CacheEntryCollection {
+    pub fn insert(&mut self, entry: CacheEntry) {
+        let old = self.sequential.insert(entry.id, entry.hash);
+        debug_assert!(old.is_none());
+        self.insert_by_tally(entry.tally, entry.hash);
+        let old = self.by_hash.insert(entry.hash, entry);
+        debug_assert!(old.is_none());
+    }
+
+    pub fn modify_by_hash<F>(&mut self, hash: &BlockHash, f: F) -> bool
+    where
+        F: FnOnce(&mut CacheEntry),
+    {
+        if let Some(entry) = self.by_hash.get_mut(hash) {
+            let old_tally = entry.tally;
+            f(entry);
+            let new_tally = entry.tally;
+            if new_tally != old_tally {
+                self.remove_by_tally(&old_tally, hash);
+                self.insert_by_tally(new_tally, *hash);
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    fn remove_by_tally(&mut self, tally: &Amount, hash: &BlockHash) {
+        let hashes = self.by_tally.get_mut(tally).unwrap();
+        if hashes.len() == 1 {
+            self.by_tally.remove(tally);
+        } else {
+            hashes.retain(|x| x != hash);
+        }
+    }
+
+    fn insert_by_tally(&mut self, tally: Amount, hash: BlockHash) {
+        self.by_tally.entry(tally).or_default().push(hash);
+    }
+
+    pub fn iter_by_tally(&self) -> impl Iterator<Item = &CacheEntry> {
+        self.by_tally
+            .iter()
+            .rev()
+            .flat_map(|(_, hashes)| hashes.iter().map(|h| self.by_hash.get(h).unwrap()))
+    }
+
+    pub fn pop_front(&mut self) -> Option<CacheEntry> {
+        match self.sequential.pop_first() {
+            Some((_, front_hash)) => {
+                let entry = self.by_hash.remove(&front_hash).unwrap();
+                self.remove_by_tally(&entry.tally, &front_hash);
+                Some(entry)
+            }
+            None => None,
+        }
+    }
+
+    pub fn get_by_hash(&self, hash: &BlockHash) -> Option<&CacheEntry> {
+        self.by_hash.get(hash)
+    }
+
+    pub fn remove_by_hash(&mut self, hash: &BlockHash) -> Option<CacheEntry> {
+        match self.by_hash.remove(hash) {
+            Some(entry) => {
+                self.remove_by_tally(&entry.tally, hash);
+                self.sequential.remove(&entry.id);
+                Some(entry)
+            }
+            None => None,
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &CacheEntry> {
+        self.by_hash.values()
+    }
+
+    pub fn len(&self) -> usize {
+        self.sequential.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.sequential.is_empty()
     }
 }
 
@@ -712,7 +791,7 @@ mod tests {
         let top = cache.top(Amount::raw(2));
         assert_eq!(top.len(), 2);
         assert_eq!(top[0].hash, hash3);
-        assert_eq!(top[1].hash, hash3);
+        assert_eq!(top[1].hash, hash2);
     }
 
     #[test]

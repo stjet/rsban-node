@@ -41,7 +41,7 @@ pub struct HintedSchedulerConfigDto {
     pub check_interval_ms: u32,
     pub block_cooldown_ms: u32,
     pub hinting_threshold_percent: u32,
-    pub vaccancy_threshold_percent: u32,
+    pub vacancy_threshold_percent: u32,
 }
 
 #[no_mangle]
@@ -63,7 +63,7 @@ impl From<&HintedSchedulerConfig> for HintedSchedulerConfigDto {
             check_interval_ms: value.check_interval.as_millis() as u32,
             block_cooldown_ms: value.block_cooldown.as_millis() as u32,
             hinting_threshold_percent: value.hinting_theshold_percent,
-            vaccancy_threshold_percent: value.vaccancy_threshold_percent,
+            vacancy_threshold_percent: value.vacancy_threshold_percent,
         }
     }
 }
@@ -74,7 +74,7 @@ impl From<&HintedSchedulerConfigDto> for HintedSchedulerConfig {
             check_interval: Duration::from_millis(value.check_interval_ms as u64),
             block_cooldown: Duration::from_millis(value.block_cooldown_ms as u64),
             hinting_theshold_percent: value.hinting_threshold_percent,
-            vaccancy_threshold_percent: value.vaccancy_threshold_percent,
+            vacancy_threshold_percent: value.vacancy_threshold_percent,
         }
     }
 }

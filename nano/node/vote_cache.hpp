@@ -63,7 +63,6 @@ public:
 
 		nano::uint128_t tally_m{ 0 };
 		nano::uint128_t final_tally_m{ 0 };
-		std::chrono::system_clock::time_point last_vote_m{};
 	};
 
 public:

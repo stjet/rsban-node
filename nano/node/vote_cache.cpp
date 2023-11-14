@@ -145,6 +145,10 @@ nano::error nano::vote_cache_config::deserialize (nano::tomlconfig & toml)
 	toml.get ("max_size", max_size);
 	toml.get ("max_voters", max_voters);
 
+	auto age_cutoff_l = age_cutoff.count ();
+	toml.get ("age_cutoff", age_cutoff_l);
+	age_cutoff = std::chrono::seconds{ age_cutoff_l };
+
 	return toml.get_error ();
 }
 

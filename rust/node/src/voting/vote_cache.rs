@@ -8,7 +8,7 @@ use std::{
     fmt::Debug,
     mem::size_of,
     sync::Arc,
-    time::{Duration, SystemTime},
+    time::Duration,
 };
 
 use crate::{
@@ -39,6 +39,12 @@ impl VoteCacheConfig {
             "max_voters",
             self.max_voters,
             "Maximum number of voters to cache per block. \ntype:uint64",
+        )?;
+
+        toml.put_u64(
+            "age_cutoff",
+            self.age_cutoff.as_secs(),
+            "Maximum age of votes to keep in cache. \ntype:seconds",
         )
     }
 }

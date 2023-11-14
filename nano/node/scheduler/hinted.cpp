@@ -49,7 +49,7 @@ void nano::scheduler::hinted::notify ()
 {
 	// Avoid notifying when there is very little space inside AEC
 	auto const limit = active.limit (nano::election_behavior::hinted);
-	if (active.vacancy (nano::election_behavior::hinted) >= (limit * config.vaccancy_threshold_percent / 100))
+	if (active.vacancy (nano::election_behavior::hinted) >= (limit * config.vacancy_threshold_percent / 100))
 	{
 		condition.notify_all ();
 	}
@@ -251,7 +251,7 @@ rsnano::HintedSchedulerConfigDto nano::scheduler::hinted_config::into_dto () con
 {
 	rsnano::HintedSchedulerConfigDto dto;
 	dto.hinting_threshold_percent = hinting_threshold_percent;
-	dto.vaccancy_threshold_percent = vaccancy_threshold_percent;
+	dto.vacancy_threshold_percent = vacancy_threshold_percent;
 	dto.check_interval_ms = static_cast<uint32_t> (check_interval.count ());
 	dto.block_cooldown_ms = static_cast<uint32_t> (block_cooldown.count ());
 	return dto;
@@ -262,7 +262,7 @@ void nano::scheduler::hinted_config::load_dto (rsnano::HintedSchedulerConfigDto 
 	check_interval = std::chrono::milliseconds{ dto_a.check_interval_ms };
 	block_cooldown = std::chrono::milliseconds{ dto_a.block_cooldown_ms };
 	hinting_threshold_percent = dto_a.hinting_threshold_percent;
-	vaccancy_threshold_percent = dto_a.vaccancy_threshold_percent;
+	vacancy_threshold_percent = dto_a.vacancy_threshold_percent;
 }
 
 nano::error nano::scheduler::hinted_config::serialize (nano::tomlconfig & toml) const
@@ -270,6 +270,7 @@ nano::error nano::scheduler::hinted_config::serialize (nano::tomlconfig & toml) 
 	toml.put ("hinting_threshold", hinting_threshold_percent, "Percentage of online weight needed to start a hinted election. \ntype:uint32,[0,100]");
 	toml.put ("check_interval", check_interval.count (), "Interval between scans of the vote cache for possible hinted elections. \ntype:milliseconds");
 	toml.put ("block_cooldown", block_cooldown.count (), "Cooldown period for blocks that failed to start an election. \ntype:milliseconds");
+	toml.put ("vacancy_threshold", vacancy_threshold_percent, "Percentage of available space in the active elections container needed to trigger a scan for hinted elections (before the check interval elapses). \ntype:uint32,[0,100]");
 
 	return toml.get_error ();
 }
@@ -286,9 +287,15 @@ nano::error nano::scheduler::hinted_config::deserialize (nano::tomlconfig & toml
 	toml.get ("block_cooldown", block_cooldown_l);
 	block_cooldown = std::chrono::milliseconds{ block_cooldown_l };
 
+	toml.get ("vacancy_threshold", vacancy_threshold_percent);
+
 	if (hinting_threshold_percent > 100)
 	{
 		toml.get_error ().set ("hinting_threshold must be a number between 0 and 100");
+	}
+	if (vacancy_threshold_percent > 100)
+	{
+		toml.get_error ().set ("vacancy_threshold must be a number between 0 and 100");
 	}
 
 	return toml.get_error ();

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::core::BlockHandle;
 use rsnano_core::Amount;
-use rsnano_node::voting::Buckets;
+use rsnano_node::consensus::Buckets;
 
 pub struct PrioritizationHandle(Buckets);
 

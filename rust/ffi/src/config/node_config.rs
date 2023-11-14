@@ -1,26 +1,23 @@
-use std::{
-    convert::{TryFrom, TryInto},
-    ffi::c_void,
-};
-
-use num::FromPrimitive;
-
-use crate::{
-    fill_ipc_config_dto, fill_stat_config_dto, utils::FfiToml, voting::VoteCacheConfigDto,
-    HintedSchedulerConfigDto, IpcConfigDto, NetworkParamsDto, OptimisticSchedulerConfigDto,
-    StatConfigDto, WebsocketConfigDto,
-};
-use rsnano_core::{Account, Amount};
-use rsnano_node::{
-    config::{Logging, NodeConfig, Peer},
-    NetworkParams,
-};
-
 use super::{
     bootstrap_config::BootstrapAscendingConfigDto,
     fill_logging_dto, fill_txn_tracking_config_dto, fill_websocket_config_dto,
     lmdb_config::{fill_lmdb_config_dto, LmdbConfigDto},
     LoggingDto, TxnTrackingConfigDto,
+};
+use crate::{
+    consensus::VoteCacheConfigDto, fill_ipc_config_dto, fill_stat_config_dto, utils::FfiToml,
+    HintedSchedulerConfigDto, IpcConfigDto, NetworkParamsDto, OptimisticSchedulerConfigDto,
+    StatConfigDto, WebsocketConfigDto,
+};
+use num::FromPrimitive;
+use rsnano_core::{Account, Amount};
+use rsnano_node::{
+    config::{Logging, NodeConfig, Peer},
+    NetworkParams,
+};
+use std::{
+    convert::{TryFrom, TryInto},
+    ffi::c_void,
 };
 
 #[repr(C)]

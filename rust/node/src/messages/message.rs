@@ -177,11 +177,10 @@ pub fn validate_header(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use super::*;
-    use crate::voting::Vote;
+    use crate::consensus::Vote;
     use rsnano_core::BlockBuilder;
+    use std::sync::Arc;
 
     #[test]
     fn exact_confirm_ack() {

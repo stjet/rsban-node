@@ -1,6 +1,6 @@
 use std::net::Ipv6Addr;
 
-use crate::{stats::StatsConfig, voting::VoteCacheConfig, IpcConfig, NetworkParams};
+use crate::{consensus::VoteCacheConfig, stats::StatsConfig, IpcConfig, NetworkParams};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 use rsnano_core::{

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use rsnano_core::{BlockHash, Root};
-use rsnano_node::voting::VoteSpacing;
+use rsnano_node::consensus::VoteSpacing;
 
 pub struct VoteSpacingHandle(VoteSpacing);
 

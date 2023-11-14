@@ -1,4 +1,4 @@
-use crate::voting::Vote;
+use crate::consensus::Vote;
 use bitvec::prelude::BitArray;
 use rsnano_core::{
     utils::{BufferWriter, Serialize, Stream},

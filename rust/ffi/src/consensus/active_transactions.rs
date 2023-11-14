@@ -1,14 +1,12 @@
+use super::election::ElectionHandle;
+use crate::{representatives::OnlineRepsHandle, utils::InstantHandle, NetworkParamsDto};
 use num_traits::FromPrimitive;
 use rsnano_core::{Amount, BlockHash, QualifiedRoot, Root};
-use rsnano_node::voting::{ActiveTransactions, ActiveTransactionsData, Election};
+use rsnano_node::consensus::{ActiveTransactions, ActiveTransactionsData, Election};
 use std::{
     ops::Deref,
     sync::{Arc, MutexGuard},
 };
-
-use crate::{representatives::OnlineRepsHandle, utils::InstantHandle, NetworkParamsDto};
-
-use super::election::ElectionHandle;
 
 pub struct ActiveTransactionsHandle(Arc<ActiveTransactions>);
 

@@ -1,6 +1,6 @@
 use crate::{
     config::{NodeConfig, NodeFlags},
-    voting::Vote,
+    consensus::Vote,
     OnlineReps,
 };
 use rsnano_core::{

@@ -12,8 +12,8 @@ use std::{
 };
 
 use crate::{
+    consensus::Vote,
     stats::{DetailType, Direction, StatType, Stats},
-    voting::Vote,
 };
 
 #[cfg(test)]
@@ -406,7 +406,7 @@ impl CacheEntryCollection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::voting::Vote;
+    use crate::consensus::Vote;
     use mock_instant::MockClock;
     use rsnano_core::KeyPair;
 

@@ -6,8 +6,8 @@ use std::{
 
 use rsnano_core::Account;
 use rsnano_node::{
+    consensus::{Vote, VoteProcessorQueue},
     transport::ChannelEnum,
-    voting::{Vote, VoteProcessorQueue},
 };
 
 use crate::{

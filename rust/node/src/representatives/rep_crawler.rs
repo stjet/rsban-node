@@ -5,7 +5,7 @@ use std::{
 };
 
 use super::Representative;
-use crate::{transport::ChannelEnum, voting::Vote};
+use crate::{consensus::Vote, transport::ChannelEnum};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Account, BlockHash,

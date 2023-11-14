@@ -1,13 +1,11 @@
+use super::representative::RepresentativeHandle;
+use crate::{consensus::VoteHandle, transport::ChannelHandle, utils::ContainerInfoComponentHandle};
 use rsnano_core::BlockHash;
 use rsnano_node::representatives::RepCrawler;
 use std::{
     ffi::{c_char, CStr},
     sync::Arc,
 };
-
-use crate::{transport::ChannelHandle, utils::ContainerInfoComponentHandle, voting::VoteHandle};
-
-use super::representative::RepresentativeHandle;
 
 pub struct RepCrawlerHandle(pub Arc<RepCrawler>);
 

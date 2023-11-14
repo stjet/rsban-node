@@ -1,10 +1,10 @@
 use num_traits::FromPrimitive;
 use rsnano_core::{utils::system_time_as_nanoseconds, Account, Amount, BlockEnum, BlockHash};
 use rsnano_node::{
-    stats::DetailType,
-    voting::{
+    consensus::{
         Election, ElectionBehavior, ElectionData, ElectionState, ElectionStatusType, VoteInfo,
     },
+    stats::DetailType,
 };
 use std::{
     ffi::c_void,

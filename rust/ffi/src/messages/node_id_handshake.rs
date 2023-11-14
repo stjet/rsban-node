@@ -1,9 +1,8 @@
-use rsnano_core::{Account, BlockHash, PublicKey, Signature};
-
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{
     copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto, StringDto,
 };
+use rsnano_core::{Account, BlockHash, PublicKey, Signature};
 use rsnano_node::messages::{
     Message, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse, V2Payload,
 };

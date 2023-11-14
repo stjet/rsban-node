@@ -1,6 +1,6 @@
 use rsnano_core::{Account, BlockHash};
 
-use crate::voting::InactiveCacheStatus;
+use crate::consensus::InactiveCacheStatus;
 use std::fmt::{Display, Formatter};
 
 /// Information on the status of inactive cache information

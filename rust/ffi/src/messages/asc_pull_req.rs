@@ -1,8 +1,7 @@
-use num::FromPrimitive;
-use rsnano_core::HashOrAccount;
-
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{copy_hash_or_account_bytes, NetworkConstantsDto};
+use num::FromPrimitive;
+use rsnano_core::HashOrAccount;
 use rsnano_node::messages::{
     AccountInfoReqPayload, AscPullReq, AscPullReqType, BlocksReqPayload, Message,
 };

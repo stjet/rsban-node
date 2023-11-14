@@ -1,6 +1,8 @@
-use crate::{copy_hash_bytes, voting::inactive_cache_status::InactiveCacheStatusHandle, StringDto};
+use crate::{
+    consensus::inactive_cache_status::InactiveCacheStatusHandle, copy_hash_bytes, StringDto,
+};
 use rsnano_core::{Account, BlockHash};
-use rsnano_node::voting::InactiveCacheInformation;
+use rsnano_node::consensus::InactiveCacheInformation;
 
 pub struct InactiveCacheInformationHandle(InactiveCacheInformation);
 

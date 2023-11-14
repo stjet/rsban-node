@@ -1,11 +1,9 @@
-use std::ops::Deref;
-
-use crate::{copy_account_bytes, copy_amount_bytes, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{BulkPullAccount, BulkPullAccountFlags, Message};
-
 use super::{create_message_handle2, MessageHandle};
+use crate::{copy_account_bytes, copy_amount_bytes, NetworkConstantsDto, StringDto};
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount};
+use rsnano_node::messages::{BulkPullAccount, BulkPullAccountFlags, Message};
+use std::ops::Deref;
 
 unsafe fn get_payload_mut(message_handle: &mut MessageHandle) -> &mut BulkPullAccount {
     let Message::BulkPullAccount(payload) = &mut message_handle.message else {

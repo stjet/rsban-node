@@ -1,8 +1,7 @@
-use rsnano_core::Account;
-use rsnano_node::messages::{FrontierReq, Message};
-
 use super::{create_message_handle2, MessageHandle};
 use crate::{copy_account_bytes, NetworkConstantsDto, StringDto};
+use rsnano_core::Account;
+use rsnano_node::messages::{FrontierReq, Message};
 
 #[repr(C)]
 pub struct FrontierReqPayloadDto {

@@ -1,9 +1,9 @@
 use crate::{
+    consensus::VoteHandle,
     copy_amount_bytes,
     ledger::datastore::LedgerHandle,
     representatives::OnlineRepsHandle,
     utils::{ContainerInfoComponentHandle, ContextWrapper},
-    voting::VoteHandle,
     NodeConfigDto, NodeFlagsHandle, VoidPointerCallback,
 };
 use core::ffi::c_void;

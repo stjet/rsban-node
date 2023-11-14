@@ -1,9 +1,7 @@
-use std::{ops::Deref, sync::Arc};
-
-use rsnano_core::{BlockHash, Root};
-use rsnano_node::voting::LocalVoteHistory;
-
 use super::vote::VoteHandle;
+use rsnano_core::{BlockHash, Root};
+use rsnano_node::consensus::LocalVoteHistory;
+use std::{ops::Deref, sync::Arc};
 
 pub struct LocalVoteHistoryHandle(Arc<LocalVoteHistory>);
 

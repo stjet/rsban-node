@@ -1,10 +1,9 @@
-use rsnano_core::{Account, BlockHash};
-
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{
     core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
     NetworkConstantsDto,
 };
+use rsnano_core::{Account, BlockHash};
 use rsnano_node::messages::{
     AccountInfoAckPayload, AscPullAck, AscPullAckType, BlocksAckPayload, Message,
 };

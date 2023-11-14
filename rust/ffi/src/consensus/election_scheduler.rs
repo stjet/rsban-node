@@ -1,7 +1,7 @@
 use std::ffi::c_void;
 
 use rsnano_core::Account;
-use rsnano_node::voting::{ElectionScheduler, ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK};
+use rsnano_node::consensus::{ElectionScheduler, ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK};
 use rsnano_store_lmdb::{RoCursorWrapper, Transaction};
 
 use crate::ledger::datastore::{into_read_txn_handle, TransactionHandle};

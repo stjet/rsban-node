@@ -1,7 +1,7 @@
 use crate::{copy_amount_bytes, core::BlockHandle};
 use num_traits::FromPrimitive;
 use rsnano_core::Amount;
-use rsnano_node::voting::ElectionStatus;
+use rsnano_node::consensus::ElectionStatus;
 use std::ops::Deref;
 use std::ptr;
 use std::sync::Arc;

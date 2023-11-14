@@ -1,6 +1,6 @@
-use crate::voting::election_status::ElectionStatusHandle;
+use crate::consensus::election_status::ElectionStatusHandle;
 use bounded_vec_deque::BoundedVecDeque;
-use rsnano_node::voting::ElectionStatus;
+use rsnano_node::consensus::ElectionStatus;
 use std::sync::{Arc, Mutex};
 
 pub struct RecentlyCementedCacheHandle(Arc<Mutex<BoundedVecDeque<ElectionStatus>>>);

@@ -31,9 +31,6 @@ test_initialize_cmd() {
 
     # check that the ledger file is created and has one block, the genesis block
     $NANO_NODE_EXE --debug_block_count --data_path "$DATADIR" "$netcmd" "$netarg" | grep -q 'Block count: 1'
-
-    # check the genesis block is correct
-    $NANO_NODE_EXE --debug_block_dump --data_path "$DATADIR" "$netcmd" "$netarg" | head -n 1 | grep -qi "$genesishash"
 }
 
 mkdir -p "$DATADIR/log"

@@ -1,3 +1,4 @@
+#include "nano/lib/rsnano.hpp"
 #include "nano/node/repcrawler.hpp"
 
 #include <nano/lib/stats.hpp>
@@ -115,13 +116,21 @@ nano::vote_broadcaster::vote_broadcaster (nano::node & node_a, nano::vote_proces
 	network_params{ network_params_a },
 	tcp_channels{ tcp_channels_a }
 {
+	handle = rsnano::rsn_vote_broadcaster_create (representative_register_a.handle);
+}
+
+nano::vote_broadcaster::~vote_broadcaster ()
+{
+	rsnano::rsn_vote_broadcaster_destroy (handle);
 }
 
 void nano::vote_broadcaster::broadcast (std::shared_ptr<nano::vote> const & vote_a) const
 {
-	flood_vote_pr (vote_a);
+	rsnano::rsn_vote_broadcaster_broadcast (handle, vote_a->get_handle ());
+
 	nano::confirm_ack ack{ network_params.network, vote_a };
 	tcp_channels.flood_message (ack, 2.0f);
+
 	auto loopback_channel = std::make_shared<nano::transport::inproc::channel> (
 	tcp_channels.get_next_channel_id (),
 	*tcp_channels.publish_filter,
@@ -136,15 +145,6 @@ void nano::vote_broadcaster::broadcast (std::shared_ptr<nano::vote> const & vote
 	node.node_id.pub,
 	node.network->inbound);
 	vote_processor_queue.vote (vote_a, loopback_channel);
-}
-
-void nano::vote_broadcaster::flood_vote_pr (std::shared_ptr<nano::vote> const & vote_a) const
-{
-	nano::confirm_ack message{ network_params.network, vote_a };
-	for (auto const & i : representative_register.principal_representatives ())
-	{
-		i.get_channel ()->send (message, nullptr, nano::transport::buffer_drop_policy::no_limiter_drop);
-	}
 }
 
 nano::vote_generator::vote_generator (nano::node & node_a, nano::node_config const & config_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::vote_processor_queue & vote_processor_queue_a, nano::local_vote_history & history_a, nano::network & network_a, nano::stats & stats_a, nano::representative_register & representative_register_a, bool is_final_a) :

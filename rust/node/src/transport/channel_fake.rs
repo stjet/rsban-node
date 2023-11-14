@@ -69,40 +69,6 @@ impl ChannelFake {
         }
     }
 
-    pub fn send(
-        &self,
-        message: &Message,
-        callback: Option<WriteCallback>,
-        drop_policy: BufferDropPolicy,
-        traffic_type: TrafficType,
-    ) {
-        let buffer = {
-            let mut serializer = self.message_serializer.lock().unwrap();
-            let buffer = serializer.serialize(message);
-            Arc::new(Vec::from(buffer)) // TODO don't copy into vec!
-        };
-        let detail = DetailType::from(message);
-        let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
-        let should_pass = self
-            .limiter
-            .should_pass(buffer.len(), BandwidthLimitType::from(traffic_type));
-
-        if !is_droppable_by_limiter || should_pass {
-            self.send_buffer(&buffer, callback, drop_policy, traffic_type);
-            self.stats.inc(StatType::Message, detail, Direction::Out);
-        } else {
-            if let Some(cb) = callback {
-                if let Some(async_rt) = self.async_rt.upgrade() {
-                    async_rt.post(Box::new(move || {
-                        cb(ErrorCode::not_supported(), 0);
-                    }))
-                }
-            }
-
-            self.stats.inc(StatType::Drop, detail, Direction::Out);
-        }
-    }
-
     pub fn send_buffer(
         &self,
         buffer_a: &Arc<Vec<u8>>,
@@ -184,5 +150,39 @@ impl Channel for ChannelFake {
 
     fn network_version(&self) -> u8 {
         self.protocol.version_using
+    }
+
+    fn send(
+        &self,
+        message: &Message,
+        callback: Option<WriteCallback>,
+        drop_policy: BufferDropPolicy,
+        traffic_type: TrafficType,
+    ) {
+        let buffer = {
+            let mut serializer = self.message_serializer.lock().unwrap();
+            let buffer = serializer.serialize(message);
+            Arc::new(Vec::from(buffer)) // TODO don't copy into vec!
+        };
+        let detail = DetailType::from(message);
+        let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
+        let should_pass = self
+            .limiter
+            .should_pass(buffer.len(), BandwidthLimitType::from(traffic_type));
+
+        if !is_droppable_by_limiter || should_pass {
+            self.send_buffer(&buffer, callback, drop_policy, traffic_type);
+            self.stats.inc(StatType::Message, detail, Direction::Out);
+        } else {
+            if let Some(cb) = callback {
+                if let Some(async_rt) = self.async_rt.upgrade() {
+                    async_rt.post(Box::new(move || {
+                        cb(ErrorCode::not_supported(), 0);
+                    }))
+                }
+            }
+
+            self.stats.inc(StatType::Drop, detail, Direction::Out);
+        }
     }
 }

@@ -137,10 +137,14 @@ impl RepresentativeRegister {
         }
     }
 
+    pub fn representatives(&self) -> Vec<Representative> {
+        self.representatives_filter(usize::MAX, Amount::zero(), None)
+    }
+
     /// Request a list of the top **max_results** known representatives in descending order
     /// of weight, with at least **weight** voting weight, and optionally with a
     /// minimum version **min_protocol_version**
-    pub fn representatives(
+    pub fn representatives_filter(
         &self,
         max_results: usize,
         min_weight: Amount,

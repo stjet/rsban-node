@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/locks.hpp>
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/processing_queue.hpp>
@@ -76,11 +78,12 @@ class vote_broadcaster
 {
 public:
 	vote_broadcaster (nano::node & node_a, nano::vote_processor_queue & vote_processor_queue_a, nano::network & network_a, nano::representative_register & representative_register_a, nano::network_params const & network_params_a, nano::transport::tcp_channels & tcp_channels_a);
+	~vote_broadcaster ();
 	void broadcast (std::shared_ptr<nano::vote> const &) const;
 
-private:
-	void flood_vote_pr (std::shared_ptr<nano::vote> const & vote_a) const;
+	rsnano::VoteBroadcasterHandle * handle;
 
+private:
 	nano::node & node;
 	nano::vote_processor_queue & vote_processor_queue;
 	nano::representative_register & representative_register;

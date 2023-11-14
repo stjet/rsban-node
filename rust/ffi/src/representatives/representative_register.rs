@@ -118,7 +118,7 @@ pub unsafe extern "C" fn rsn_representative_register_representatives(
     let resp = handle
         .lock()
         .unwrap()
-        .representatives(max_results, min_weight, min_version);
+        .representatives_filter(max_results, min_weight, min_version);
 
     Box::into_raw(Box::new(RepresentativeListHandle(resp)))
 }

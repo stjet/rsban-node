@@ -52,6 +52,8 @@ pub use tcp_stream_factory::TcpStreamFactory;
 use token_bucket::TokenBucket;
 pub use write_queue::WriteCallback;
 
+use crate::messages::Message;
+
 #[repr(u8)]
 #[derive(FromPrimitive)]
 pub enum TransportType {
@@ -77,6 +79,13 @@ pub trait Channel {
     fn get_type(&self) -> TransportType;
     fn remote_endpoint(&self) -> SocketAddrV6;
     fn network_version(&self) -> u8;
+    fn send(
+        &self,
+        message: &Message,
+        callback: Option<WriteCallback>,
+        drop_policy: BufferDropPolicy,
+        traffic_type: TrafficType,
+    );
 }
 
 #[derive(FromPrimitive, Copy, Clone, Debug)]

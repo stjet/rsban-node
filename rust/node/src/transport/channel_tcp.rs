@@ -184,40 +184,6 @@ impl ChannelTcp {
     pub fn max(&self, traffic_type: TrafficType) -> bool {
         self.socket.max(traffic_type)
     }
-
-    pub fn send(
-        &self,
-        message: &Message,
-        callback: Option<WriteCallback>,
-        drop_policy: BufferDropPolicy,
-        traffic_type: TrafficType,
-    ) {
-        let buffer = {
-            let mut serializer = self.message_serializer.lock().unwrap();
-            let buffer = serializer.serialize(message);
-            Arc::new(Vec::from(buffer)) // TODO don't copy into vec. Pass slice directly
-        };
-        let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
-        let should_pass = self.limiter.should_pass(buffer.len(), traffic_type.into());
-        if !is_droppable_by_limiter || should_pass {
-            self.send_buffer(&buffer, callback, drop_policy, traffic_type);
-            if let Some(observer) = self.observer.lock() {
-                observer.message_sent(message);
-            }
-        } else {
-            if let Some(callback) = callback {
-                if let Some(async_rt) = self.async_rt.upgrade() {
-                    async_rt.post(Box::new(move || {
-                        callback(ErrorCode::not_supported(), 0);
-                    }));
-                }
-            }
-
-            if let Some(observer) = self.observer.lock() {
-                observer.message_dropped(message, buffer.len());
-            }
-        }
-    }
 }
 
 impl Display for ChannelTcp {
@@ -285,6 +251,40 @@ impl Channel for ChannelTcp {
 
     fn network_version(&self) -> u8 {
         self.network_version.load(Ordering::Relaxed)
+    }
+
+    fn send(
+        &self,
+        message: &Message,
+        callback: Option<WriteCallback>,
+        drop_policy: BufferDropPolicy,
+        traffic_type: TrafficType,
+    ) {
+        let buffer = {
+            let mut serializer = self.message_serializer.lock().unwrap();
+            let buffer = serializer.serialize(message);
+            Arc::new(Vec::from(buffer)) // TODO don't copy into vec. Pass slice directly
+        };
+        let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
+        let should_pass = self.limiter.should_pass(buffer.len(), traffic_type.into());
+        if !is_droppable_by_limiter || should_pass {
+            self.send_buffer(&buffer, callback, drop_policy, traffic_type);
+            if let Some(observer) = self.observer.lock() {
+                observer.message_sent(message);
+            }
+        } else {
+            if let Some(callback) = callback {
+                if let Some(async_rt) = self.async_rt.upgrade() {
+                    async_rt.post(Box::new(move || {
+                        callback(ErrorCode::not_supported(), 0);
+                    }));
+                }
+            }
+
+            if let Some(observer) = self.observer.lock() {
+                observer.message_dropped(message, buffer.len());
+            }
+        }
     }
 }
 

@@ -385,17 +385,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_fanout(handle: &TcpChannelsHandle, sca
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_tcp_channels_random_list(
-    handle: &TcpChannelsHandle,
-    count: usize,
-    min_version: u8,
-    include_temporary_channels: bool,
-) -> *mut ChannelListHandle {
-    let channels = handle.random_list(count, min_version, include_temporary_channels);
-    Box::into_raw(Box::new(ChannelListHandle(channels)))
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_tcp_channels_random_fanout(
     handle: &TcpChannelsHandle,
     scale: f32,

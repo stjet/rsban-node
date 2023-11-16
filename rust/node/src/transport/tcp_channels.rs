@@ -243,7 +243,7 @@ impl TcpChannels {
         min_version: u8,
         include_temporary_channels: bool,
     ) -> Vec<Arc<ChannelEnum>> {
-        self.tcp_channels.lock().unwrap().random_list(
+        self.tcp_channels.lock().unwrap().random_channels(
             count,
             min_version,
             include_temporary_channels,
@@ -1063,7 +1063,7 @@ impl TcpChannelsImpl {
             .remove_old_protocol_versions(self.network_constants.protocol_version_min);
     }
 
-    pub fn random_list(
+    pub fn random_channels(
         &self,
         count: usize,
         min_version: u8,
@@ -1084,6 +1084,7 @@ impl TcpChannelsImpl {
             .filter(|c| {
                 c.tcp_channel().network_version() >= min_version
                     && (include_temporary_channels || !c.channel.is_temporary())
+                    && c.channel.is_alive()
             })
             .map(|c| c.channel.clone())
             .collect()
@@ -1115,46 +1116,6 @@ impl TcpChannelsImpl {
         self.channels.get(endpoint).map(|c| c.channel.clone())
     }
 
-    pub fn random_channels(
-        &self,
-        count: usize,
-        min_version: u8,
-        include_temporary_channels: bool,
-    ) -> Vec<Arc<ChannelEnum>> {
-        let mut result = Vec::with_capacity(count);
-        let mut channel_ids = HashSet::new();
-
-        // Stop trying to fill result with random samples after this many attempts
-        let random_cutoff = count * 2;
-        let peers_size = self.channels.len();
-        // Usually count will be much smaller than peers_size
-        // Otherwise make sure we have a cutoff on attempting to randomly fill
-        if peers_size > 0 {
-            let mut rng = thread_rng();
-            for _ in 0..random_cutoff {
-                let index = rng.gen_range(0..peers_size);
-                let wrapper = self.channels.get_by_index(index).unwrap();
-                if !wrapper.channel.is_alive() {
-                    continue;
-                }
-
-                if wrapper.tcp_channel().network_version() >= min_version
-                    && (include_temporary_channels || !wrapper.channel.is_temporary())
-                {
-                    if channel_ids.insert(wrapper.channel.channel_id()) {
-                        result.push(wrapper.channel.clone())
-                    }
-                }
-
-                if result.len() == count {
-                    break;
-                }
-            }
-        }
-
-        result
-    }
-
     pub fn get_peers(&self) -> Vec<SocketAddrV6> {
         // We can't hold the mutex while starting a write transaction, so
         // we collect endpoints to be saved and then release the lock.
@@ -1178,7 +1139,7 @@ impl TcpChannelsImpl {
     }
 
     pub fn random_fanout(&self, scale: f32) -> Vec<Arc<ChannelEnum>> {
-        self.random_list(self.fanout(scale), 0, true)
+        self.random_channels(self.fanout(scale), 0, true)
     }
 
     pub fn random_fill(&self, endpoints: &mut [SocketAddrV6]) {

@@ -292,7 +292,7 @@ std::size_t nano::transport::tcp_channels::fanout (float scale) const
 
 std::deque<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::list (std::size_t count_a, uint8_t minimum_version_a, bool include_tcp_temporary_channels_a)
 {
-	auto list_handle = rsnano::rsn_tcp_channels_random_list (handle, count_a, minimum_version_a, include_tcp_temporary_channels_a);
+	auto list_handle = rsnano::rsn_tcp_channels_random_channels (handle, count_a, minimum_version_a, include_tcp_temporary_channels_a);
 	auto vec = into_channel_vector (list_handle);
 	std::deque<std::shared_ptr<nano::transport::channel>> result;
 	std::move (std::begin (vec), std::end (vec), std::back_inserter (result));

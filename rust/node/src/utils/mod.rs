@@ -1,6 +1,7 @@
 mod async_runtime;
 mod blake2b;
 mod json;
+mod processing_queue;
 mod thread_pool;
 mod timer;
 mod toml;

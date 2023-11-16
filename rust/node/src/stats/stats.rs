@@ -101,7 +101,7 @@ impl StatEntry {
 
 /// Primary statistics type
 #[repr(u8)]
-#[derive(FromPrimitive, Serialize)]
+#[derive(FromPrimitive, Serialize, Copy, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum StatType {
     TrafficTcp,

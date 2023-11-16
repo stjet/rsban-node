@@ -163,9 +163,9 @@ public:
 	nano::port_mapping port_mapping;
 	nano::online_reps online_reps; // ported
 	nano::gap_cache gap_cache; // ported
-	nano::representative_register representative_register;
+	nano::representative_register representative_register; // ported
 	nano::rep_crawler rep_crawler;
-	nano::vote_processor_queue vote_processor_queue;
+	nano::vote_processor_queue vote_processor_queue; // ported
 	nano::vote_processor vote_processor;
 	unsigned warmed_up;
 	nano::local_vote_history history; // ported

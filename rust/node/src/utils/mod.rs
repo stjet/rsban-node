@@ -23,6 +23,7 @@ pub use hardened_constants::HardenedConstants;
 
 pub use blake2b::*;
 pub use json::*;
+pub use processing_queue::*;
 pub use thread_pool::*;
 pub use toml::*;
 

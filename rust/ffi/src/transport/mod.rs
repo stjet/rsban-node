@@ -13,7 +13,7 @@ mod tcp_message_item;
 mod tcp_message_manager;
 
 pub use bandwidth_limiter::{BandwidthLimiterHandle, OutboundBandwidthLimiterHandle};
-pub use channel::{as_tcp_channel, ChannelHandle};
+pub use channel::{as_tcp_channel, ChannelHandle, FfiInboundCallback};
 pub use channel_tcp::{
     ChannelTcpSendBufferCallback, ChannelTcpSendCallback, ChannelTcpSendCallbackWrapper,
     SendBufferCallbackWrapper,
@@ -27,3 +27,4 @@ pub use tcp_message_item::TcpMessageItemHandle;
 pub use tcp_message_manager::TcpMessageManagerHandle;
 
 pub use socket::SocketFfiObserver;
+pub use tcp_channels::TcpChannelsHandle;

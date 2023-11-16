@@ -12,6 +12,9 @@ class node;
 
 namespace transport
 {
+	void delete_inbound_context (void * context);
+	void inbound_wrapper (void * context, rsnano::MessageHandle * message_handle, rsnano::ChannelHandle * channel_handle);
+
 	/**
 	 * In-process transport channel. Mostly useful for unit tests
 	 **/

@@ -1,5 +1,5 @@
 use std::{
-    net::{SocketAddr, SocketAddrV6},
+    net::SocketAddrV6,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
@@ -44,7 +44,7 @@ pub struct ChannelInProc {
     source_inbound: InboundCallback,
     destination_inbound: InboundCallback,
     async_rt: Weak<AsyncRuntime>,
-    pub local_endpoint: SocketAddr,
+    pub local_endpoint: SocketAddrV6,
     remote_endpoint: SocketAddrV6,
     source_node_id: Account,
     destination_node_id: Account,
@@ -62,7 +62,7 @@ impl ChannelInProc {
         source_inbound: InboundCallback,
         destination_inbound: InboundCallback,
         async_rt: &Arc<AsyncRuntime>,
-        local_endpoint: SocketAddr,
+        local_endpoint: SocketAddrV6,
         remote_endpoint: SocketAddrV6,
         source_node_id: Account,
         destination_node_id: Account,

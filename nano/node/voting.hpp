@@ -82,13 +82,6 @@ public:
 	void broadcast (std::shared_ptr<nano::vote> const &) const;
 
 	rsnano::VoteBroadcasterHandle * handle;
-
-private:
-	nano::node & node;
-	nano::vote_processor_queue & vote_processor_queue;
-	nano::representative_register & representative_register;
-	nano::network_params const & network_params;
-	nano::transport::tcp_channels & tcp_channels;
 };
 
 class vote_generator final

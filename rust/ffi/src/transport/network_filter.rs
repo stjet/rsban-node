@@ -1,6 +1,5 @@
-use std::{ops::Deref, sync::Arc};
-
 use rsnano_node::transport::NetworkFilter;
+use std::{ops::Deref, sync::Arc};
 
 pub struct NetworkFilterHandle(pub Arc<NetworkFilter>);
 

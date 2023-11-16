@@ -1,4 +1,5 @@
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/rsnanoutils.hpp"
 #include "nano/node/repcrawler.hpp"
 
 #include <nano/lib/stats.hpp>
@@ -109,14 +110,23 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (na
 	return composite;
 }
 
-nano::vote_broadcaster::vote_broadcaster (nano::node & node_a, nano::vote_processor_queue & vote_processor_queue_a, nano::network & network_a, nano::representative_register & representative_register_a, nano::network_params const & network_params_a, nano::transport::tcp_channels & tcp_channels_a) :
-	node{ node_a },
-	vote_processor_queue{ vote_processor_queue_a },
-	representative_register{ representative_register_a },
-	network_params{ network_params_a },
-	tcp_channels{ tcp_channels_a }
+nano::vote_broadcaster::vote_broadcaster (nano::node & node_a, nano::vote_processor_queue & vote_processor_queue_a, nano::network & network_a, nano::representative_register & representative_register_a, nano::network_params const & network_params_a, nano::transport::tcp_channels & tcp_channels_a)
 {
-	handle = rsnano::rsn_vote_broadcaster_create (representative_register_a.handle);
+	auto network_constants_dto{ network_params_a.network.to_dto () };
+	auto context = new std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> (network_a.inbound);
+	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (network_a.endpoint ()) };
+	handle = rsnano::rsn_vote_broadcaster_create (
+	representative_register_a.handle,
+	tcp_channels_a.handle,
+	vote_processor_queue_a.handle,
+	&network_constants_dto,
+	node_a.stats->handle,
+	node_a.async_rt.handle,
+	node_a.node_id.pub.bytes.data (),
+	&endpoint_dto,
+	nano::transport::inbound_wrapper,
+	context,
+	nano::transport::delete_inbound_context);
 }
 
 nano::vote_broadcaster::~vote_broadcaster ()
@@ -127,24 +137,6 @@ nano::vote_broadcaster::~vote_broadcaster ()
 void nano::vote_broadcaster::broadcast (std::shared_ptr<nano::vote> const & vote_a) const
 {
 	rsnano::rsn_vote_broadcaster_broadcast (handle, vote_a->get_handle ());
-
-	nano::confirm_ack ack{ network_params.network, vote_a };
-	tcp_channels.flood_message (ack, 2.0f);
-
-	auto loopback_channel = std::make_shared<nano::transport::inproc::channel> (
-	tcp_channels.get_next_channel_id (),
-	*tcp_channels.publish_filter,
-	node.network_params.network,
-	*node.stats,
-	node.outbound_limiter,
-	node.async_rt,
-	node.network->endpoint (),
-	node.node_id.pub,
-	node.network->inbound,
-	node.network->endpoint (),
-	node.node_id.pub,
-	node.network->inbound);
-	vote_processor_queue.vote (vote_a, loopback_channel);
 }
 
 nano::vote_generator::vote_generator (nano::node & node_a, nano::node_config const & config_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::vote_processor_queue & vote_processor_queue_a, nano::local_vote_history & history_a, nano::network & network_a, nano::stats & stats_a, nano::representative_register & representative_register_a, bool is_final_a) :

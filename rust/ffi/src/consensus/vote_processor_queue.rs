@@ -1,6 +1,7 @@
 use std::{
     collections::VecDeque,
     ffi::{c_char, CStr},
+    ops::Deref,
     sync::Arc,
 };
 
@@ -21,6 +22,14 @@ use crate::{
 use super::VoteHandle;
 
 pub struct VoteProcessorQueueHandle(Arc<VoteProcessorQueue>);
+
+impl Deref for VoteProcessorQueueHandle {
+    type Target = Arc<VoteProcessorQueue>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_processor_queue_create(

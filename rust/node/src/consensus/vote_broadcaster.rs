@@ -1,18 +1,62 @@
-use super::Vote;
+use rsnano_core::Account;
+
+use super::{Vote, VoteProcessorQueue};
 use crate::{
+    config::NetworkConstants,
     messages::{ConfirmAck, Message},
     representatives::RepresentativeRegister,
-    transport::{BufferDropPolicy, TrafficType},
+    stats::Stats,
+    transport::{
+        BufferDropPolicy, ChannelEnum, ChannelInProc, InboundCallback, OutboundBandwidthLimiter,
+        TcpChannels, TrafficType,
+    },
+    utils::AsyncRuntime,
 };
-use std::sync::{Arc, Mutex};
+use std::{
+    net::SocketAddrV6,
+    sync::{Arc, Mutex},
+    time::SystemTime,
+};
 
 pub struct VoteBroadcaster {
     pub representative_register: Arc<Mutex<RepresentativeRegister>>,
+    pub tcp_channels: Arc<TcpChannels>,
+    pub vote_processor_queue: Arc<VoteProcessorQueue>,
+    pub network_constants: NetworkConstants,
+    pub stats: Arc<Stats>,
+    pub async_rt: Arc<AsyncRuntime>,
+    pub node_id: Account,
+    pub local_endpoint: SocketAddrV6,
+    pub inbound: InboundCallback,
 }
 
 impl VoteBroadcaster {
     pub fn broadcast(&self, vote: Arc<Vote>) {
-        self.flood_vote_pr(vote);
+        self.flood_vote_pr(Arc::clone(&vote));
+
+        let ack = Message::ConfirmAck(ConfirmAck {
+            vote: Arc::clone(&vote),
+        });
+        self.tcp_channels.flood_message(&ack, 2.0);
+
+        let loopback_channel = ChannelInProc::new(
+            self.tcp_channels.get_next_channel_id(),
+            SystemTime::now(),
+            self.network_constants.clone(),
+            Arc::clone(&self.tcp_channels.publish_filter),
+            Arc::clone(&self.stats),
+            Arc::new(OutboundBandwidthLimiter::default()),
+            Arc::clone(&self.inbound),
+            Arc::clone(&self.inbound),
+            &self.async_rt,
+            self.local_endpoint,
+            self.local_endpoint,
+            self.node_id,
+            self.node_id,
+        );
+
+        self.vote_processor_queue
+            .vote(&vote, &Arc::new(ChannelEnum::InProc(loopback_channel)));
     }
 
     fn flood_vote_pr(&self, vote: Arc<Vote>) {

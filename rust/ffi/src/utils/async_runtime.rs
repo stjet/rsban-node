@@ -1,4 +1,4 @@
-use std::{ffi::c_void, sync::Arc};
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use rsnano_node::utils::AsyncRuntime;
 
@@ -6,6 +6,14 @@ use super::ContextWrapper;
 use crate::VoidPointerCallback;
 
 pub struct AsyncRuntimeHandle(pub Arc<AsyncRuntime>);
+
+impl Deref for AsyncRuntimeHandle {
+    type Target = Arc<AsyncRuntime>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_async_runtime_create(_multi_threaded: bool) -> *mut AsyncRuntimeHandle {

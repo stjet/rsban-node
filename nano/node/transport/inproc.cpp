@@ -20,15 +20,13 @@
 #include <memory>
 #include <stdexcept>
 
-namespace
-{
-void delete_inbound_context (void * context)
+void nano::transport::delete_inbound_context (void * context)
 {
 	auto callback = static_cast<std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> *> (context);
 	delete callback;
 }
 
-void inbound_wrapper (void * context, rsnano::MessageHandle * message_handle, rsnano::ChannelHandle * channel_handle)
+void nano::transport::inbound_wrapper (void * context, rsnano::MessageHandle * message_handle, rsnano::ChannelHandle * channel_handle)
 {
 	auto callback = static_cast<std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> *> (context);
 	auto message = rsnano::message_handle_to_message (message_handle);
@@ -36,6 +34,8 @@ void inbound_wrapper (void * context, rsnano::MessageHandle * message_handle, rs
 	(*callback) (*message, channel);
 }
 
+namespace
+{
 rsnano::ChannelHandle * create_inproc_handle (
 size_t channel_id,
 nano::network_filter & network_filter,
@@ -62,11 +62,11 @@ nano::account destination_node_id)
 	network_filter.handle,
 	stats.handle,
 	outbound_limiter.handle,
-	inbound_wrapper,
+	nano::transport::inbound_wrapper,
 	source_context,
-	inbound_wrapper,
+	nano::transport::inbound_wrapper,
 	destination_context,
-	delete_inbound_context,
+	nano::transport::delete_inbound_context,
 	async_rt.handle,
 	&source_dto,
 	&destination_dto,

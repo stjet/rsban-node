@@ -153,7 +153,7 @@ pub unsafe extern "C" fn rsn_channel_id(handle: *mut ChannelHandle) -> usize {
     as_channel(handle).channel_id()
 }
 
-pub type InboundCallback =
+pub type FfiInboundCallback =
     unsafe extern "C" fn(*mut c_void, *mut MessageHandle, *mut ChannelHandle);
 
 #[no_mangle]
@@ -163,9 +163,9 @@ pub unsafe extern "C" fn rsn_channel_inproc_create(
     network_filter: *mut NetworkFilterHandle,
     stats: *mut StatHandle,
     limiter: *mut OutboundBandwidthLimiterHandle,
-    source_inbound_callback: InboundCallback,
+    source_inbound_callback: FfiInboundCallback,
     source_inbound_context: *mut c_void,
-    destination_inbound_callback: InboundCallback,
+    destination_inbound_callback: FfiInboundCallback,
     destination_inbound_context: *mut c_void,
     delete_context: VoidPointerCallback,
     async_rt: &mut AsyncRuntimeHandle,

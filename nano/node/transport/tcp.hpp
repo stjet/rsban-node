@@ -179,6 +179,8 @@ namespace transport
 		std::shared_ptr<nano::stats> stats;
 		std::shared_ptr<nano::node_config> config;
 		std::shared_ptr<nano::logger_mt> logger;
+
+	public:
 		rsnano::TcpChannelsHandle * handle;
 
 		friend class network_peer_max_tcp_attempts_subnetwork_Test;

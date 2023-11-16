@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, HashMap},
     hash::Hash,
     mem::size_of,
     net::{Ipv6Addr, SocketAddrV6},
@@ -10,7 +10,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use rand::{seq::SliceRandom, thread_rng, Rng};
+use rand::{seq::SliceRandom, thread_rng};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, Logger},
     KeyPair, PublicKey,
@@ -78,7 +78,7 @@ pub struct TcpChannels {
     pub node_id: KeyPair,
     syn_cookies: Arc<SynCookies>,
     workers: Arc<dyn ThreadPool>,
-    publish_filter: Arc<NetworkFilter>,
+    pub publish_filter: Arc<NetworkFilter>,
     tcp_server_factory: Arc<Mutex<TcpServerFactory>>,
     observer: Arc<dyn SocketObserver>,
     channel_observer: Mutex<Option<Arc<dyn ChannelTcpObserver>>>,

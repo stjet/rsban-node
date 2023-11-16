@@ -4,6 +4,7 @@ mod local_vote_history;
 mod vote;
 mod vote_broadcaster;
 mod vote_cache;
+mod vote_generator;
 mod vote_processor_queue;
 mod vote_spacing;
 
@@ -32,4 +33,5 @@ pub use election_scheduler::{
 
 pub use active_transactions::{ActiveTransactions, ActiveTransactionsData};
 pub use vote_cache::{CacheEntry, TopEntry, VoteCache, VoteCacheConfig, VoterEntry};
+pub use vote_generator::*;
 pub use vote_processor_queue::VoteProcessorQueue;

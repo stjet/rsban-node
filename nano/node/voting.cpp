@@ -150,6 +150,7 @@ nano::vote_generator::vote_generator (nano::node & node_a, nano::node_config con
 	is_final (is_final_a),
 	vote_generation_queue{ stats, nano::stat::type::vote_generator, nano::thread_role::name::vote_generator_queue, /* single threaded */ 1, /* max queue size */ 1024 * 32, /* max batch size */ 1024 * 4 }
 {
+	handle = rsnano::rsn_vote_generator_create (ledger_a.handle, is_final_a);
 	vote_generation_queue.process_batch = [this] (auto & batch) {
 		process_batch (batch);
 	};
@@ -158,23 +159,12 @@ nano::vote_generator::vote_generator (nano::node & node_a, nano::node_config con
 nano::vote_generator::~vote_generator ()
 {
 	stop ();
+	rsnano::rsn_vote_generator_destroy (handle);
 }
 
 bool nano::vote_generator::should_vote (store::write_transaction const & transaction, nano::root const & root_a, nano::block_hash const & hash_a)
 {
-	bool should_vote = false;
-	if (is_final)
-	{
-		auto block (ledger.store.block ().get (transaction, hash_a));
-		should_vote = block != nullptr && ledger.dependents_confirmed (transaction, *block) && ledger.store.final_vote ().put (transaction, block->qualified_root (), hash_a);
-		debug_assert (block == nullptr || root_a == block->root ());
-	}
-	else
-	{
-		auto block (ledger.store.block ().get (transaction, hash_a));
-		should_vote = block != nullptr && ledger.dependents_confirmed (transaction, *block);
-	}
-	return should_vote;
+	return rsnano::rsn_vote_generator_should_vote (handle, transaction.get_rust_handle (), root_a.bytes.data (), hash_a.bytes.data ());
 }
 
 void nano::vote_generator::start ()

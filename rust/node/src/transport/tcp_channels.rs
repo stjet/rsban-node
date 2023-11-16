@@ -10,7 +10,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use rand::{thread_rng, Rng};
+use rand::{seq::SliceRandom, thread_rng, Rng};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, Logger},
     KeyPair, PublicKey,
@@ -233,6 +233,35 @@ impl TcpChannels {
         self.tcp_channels.lock().unwrap().random_fill(endpoints);
     }
 
+    pub fn random_fanout(&self, scale: f32) -> Vec<Arc<ChannelEnum>> {
+        self.tcp_channels.lock().unwrap().random_fanout(scale)
+    }
+
+    pub fn random_list(
+        &self,
+        count: usize,
+        min_version: u8,
+        include_temporary_channels: bool,
+    ) -> Vec<Arc<ChannelEnum>> {
+        self.tcp_channels.lock().unwrap().random_list(
+            count,
+            min_version,
+            include_temporary_channels,
+        )
+    }
+
+    pub fn flood_message(&self, message: &Message, scale: f32) {
+        let channels = self.random_fanout(scale);
+        for channel in channels {
+            channel.send(
+                message,
+                None,
+                BufferDropPolicy::Limiter,
+                TrafficType::Generic,
+            )
+        }
+    }
+
     pub fn set_observer(&self, observer: Arc<dyn TcpServerObserver>) {
         self.tcp_channels
             .lock()
@@ -394,6 +423,14 @@ impl TcpChannels {
             }
         }
         error
+    }
+
+    pub fn len_sqrt(&self) -> f32 {
+        self.tcp_channels.lock().unwrap().len_sqrt()
+    }
+
+    pub fn fanout(&self, scale: f32) -> usize {
+        self.tcp_channels.lock().unwrap().fanout(scale)
     }
 }
 
@@ -1026,6 +1063,21 @@ impl TcpChannelsImpl {
             .remove_old_protocol_versions(self.network_constants.protocol_version_min);
     }
 
+    pub fn random_list(
+        &self,
+        count: usize,
+        min_version: u8,
+        include_temporary_channels: bool,
+    ) -> Vec<Arc<ChannelEnum>> {
+        let mut channels = self.list(min_version, include_temporary_channels);
+        let mut rng = thread_rng();
+        channels.shuffle(&mut rng);
+        if count > 0 {
+            channels.truncate(count)
+        }
+        channels
+    }
+
     pub fn list(&self, min_version: u8, include_temporary_channels: bool) -> Vec<Arc<ChannelEnum>> {
         self.channels
             .iter()
@@ -1125,6 +1177,10 @@ impl TcpChannelsImpl {
         }
     }
 
+    pub fn random_fanout(&self, scale: f32) -> Vec<Arc<ChannelEnum>> {
+        self.random_list(self.fanout(scale), 0, true)
+    }
+
     pub fn random_fill(&self, endpoints: &mut [SocketAddrV6]) {
         // Don't include channels with ephemeral remote ports
         let peers = self.random_channels(endpoints.len(), 0, false);
@@ -1140,6 +1196,14 @@ impl TcpChannelsImpl {
             };
             *target = endpoint;
         }
+    }
+
+    pub fn len_sqrt(&self) -> f32 {
+        f32::sqrt(self.channels.len() as f32)
+    }
+
+    pub fn fanout(&self, scale: f32) -> usize {
+        (self.len_sqrt() * scale).ceil() as usize
     }
 
     pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
@@ -1237,6 +1301,10 @@ impl ChannelContainer {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.by_endpoint.len()
+    }
+
     pub fn remove_by_endpoint(&mut self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
         if let Some(wrapper) = self.by_endpoint.remove(endpoint) {
             self.by_random_access.retain(|x| x != endpoint); // todo: linear search is slow?
@@ -1267,10 +1335,6 @@ impl ChannelContainer {
         } else {
             None
         }
-    }
-
-    pub fn len(&self) -> usize {
-        self.by_endpoint.len()
     }
 
     pub fn get(&self, endpoint: &SocketAddrV6) -> Option<&Arc<ChannelTcpWrapper>> {

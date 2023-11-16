@@ -30,6 +30,14 @@ use super::{
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
 
+impl Deref for TcpChannelsHandle {
+    type Target = Arc<TcpChannels>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 pub type SinkCallback = unsafe extern "C" fn(*mut c_void, *mut MessageHandle, *mut ChannelHandle);
 
 #[repr(C)]
@@ -364,6 +372,45 @@ pub unsafe extern "C" fn rsn_tcp_channels_start_tcp(
     endpoint: &EndpointDto,
 ) {
     handle.0.start_tcp(endpoint.into());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_len_sqrt(handle: &TcpChannelsHandle) -> f32 {
+    handle.len_sqrt()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_fanout(handle: &TcpChannelsHandle, scale: f32) -> usize {
+    handle.fanout(scale)
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_random_list(
+    handle: &TcpChannelsHandle,
+    count: usize,
+    min_version: u8,
+    include_temporary_channels: bool,
+) -> *mut ChannelListHandle {
+    let channels = handle.random_list(count, min_version, include_temporary_channels);
+    Box::into_raw(Box::new(ChannelListHandle(channels)))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_random_fanout(
+    handle: &TcpChannelsHandle,
+    scale: f32,
+) -> *mut ChannelListHandle {
+    let channels = handle.random_fanout(scale);
+    Box::into_raw(Box::new(ChannelListHandle(channels)))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_flood_message(
+    handle: &TcpChannelsHandle,
+    msg: &MessageHandle,
+    scale: f32,
+) {
+    handle.flood_message(&msg.message, scale)
 }
 
 pub struct EndpointListHandle(Vec<SocketAddrV6>);

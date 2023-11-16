@@ -24,6 +24,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <memory>
 #include <stdexcept>
 #include <unordered_set>
@@ -79,6 +80,20 @@ size_t channel_id)
 	async_rt_a.handle,
 	channel_id,
 	&network_dto);
+}
+
+std::vector<std::shared_ptr<nano::transport::channel>> into_channel_vector (rsnano::ChannelListHandle * list_handle)
+{
+	auto len = rsnano::rsn_channel_list_len (list_handle);
+	std::vector<std::shared_ptr<nano::transport::channel>> result;
+	result.reserve (len);
+	for (auto i = 0; i < len; ++i)
+	{
+		auto channel_handle = rsnano::rsn_channel_list_get (list_handle, i);
+		result.push_back (std::make_shared<nano::transport::channel_tcp> (channel_handle));
+	}
+	rsnano::rsn_channel_list_destroy (list_handle);
+	return result;
 }
 }
 
@@ -266,38 +281,36 @@ std::size_t nano::transport::tcp_channels::size () const
 
 float nano::transport::tcp_channels::size_sqrt () const
 {
-	return static_cast<float> (std::sqrt (size ()));
+	return rsnano::rsn_tcp_channels_len_sqrt (handle);
 }
 
 // Simulating with sqrt_broadcast_simulate shows we only need to broadcast to sqrt(total_peers) random peers in order to successfully publish to everyone with high probability
 std::size_t nano::transport::tcp_channels::fanout (float scale) const
 {
-	return static_cast<std::size_t> (std::ceil (scale * size_sqrt ()));
+	return rsnano::rsn_tcp_channels_fanout (handle, scale);
 }
 
 std::deque<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::list (std::size_t count_a, uint8_t minimum_version_a, bool include_tcp_temporary_channels_a)
 {
+	auto list_handle = rsnano::rsn_tcp_channels_random_list (handle, count_a, minimum_version_a, include_tcp_temporary_channels_a);
+	auto vec = into_channel_vector (list_handle);
 	std::deque<std::shared_ptr<nano::transport::channel>> result;
-	list (result, minimum_version_a, include_tcp_temporary_channels_a);
-	nano::random_pool_shuffle (result.begin (), result.end ());
-	if (count_a > 0 && result.size () > count_a)
-	{
-		result.resize (count_a, nullptr);
-	}
+	std::move (std::begin (vec), std::end (vec), std::back_inserter (result));
 	return result;
 }
 
 std::deque<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::random_fanout (float scale)
 {
-	return list (fanout (scale));
+	auto list_handle = rsnano::rsn_tcp_channels_random_fanout (handle, scale);
+	auto vec = into_channel_vector (list_handle);
+	std::deque<std::shared_ptr<nano::transport::channel>> result;
+	std::move (std::begin (vec), std::end (vec), std::back_inserter (result));
+	return result;
 }
 
 void nano::transport::tcp_channels::flood_message (nano::message & msg, float scale)
 {
-	for (auto & i : random_fanout (scale))
-	{
-		i->send (msg, nullptr);
-	}
+	rsnano::rsn_tcp_channels_flood_message (handle, msg.handle, scale);
 }
 
 std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::find_channel (nano::tcp_endpoint const & endpoint_a) const
@@ -315,16 +328,7 @@ std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::fin
 std::vector<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::random_channels (std::size_t count_a, uint8_t min_version, bool include_temporary_channels_a) const
 {
 	auto list_handle = rsnano::rsn_tcp_channels_random_channels (handle, count_a, min_version, include_temporary_channels_a);
-	auto len = rsnano::rsn_channel_list_len (list_handle);
-	std::vector<std::shared_ptr<nano::transport::channel>> result;
-	result.reserve (len);
-	for (auto i = 0; i < len; ++i)
-	{
-		auto channel_handle = rsnano::rsn_channel_list_get (list_handle, i);
-		result.push_back (std::make_shared<nano::transport::channel_tcp> (channel_handle));
-	}
-	rsnano::rsn_channel_list_destroy (list_handle);
-	return result;
+	return into_channel_vector (list_handle);
 }
 
 std::vector<nano::endpoint> nano::transport::tcp_channels::get_peers () const

@@ -279,7 +279,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				auto wallet (inactive_node->node->wallets.open (wallet_id));
 				if (wallet != nullptr)
 				{
-					auto transaction (wallet->wallets.tx_begin_write ());
+					auto transaction (inactive_node->node->wallets.tx_begin_write ());
 					if (!wallet->enter_password (*transaction, password))
 					{
 						auto pub (wallet->store.deterministic_insert (*transaction));
@@ -726,7 +726,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				auto wallet (inactive_node->node->wallets.open (wallet_id));
 				if (wallet != nullptr)
 				{
-					auto transaction (wallet->wallets.tx_begin_write ());
+					auto transaction (inactive_node->node->wallets.tx_begin_write ());
 					if (!wallet->enter_password (*transaction, password))
 					{
 						nano::raw_key key;
@@ -780,7 +780,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				auto wallet (inactive_node->node->wallets.open (wallet_id));
 				if (wallet != nullptr)
 				{
-					auto transaction (wallet->wallets.tx_begin_write ());
+					auto transaction (inactive_node->node->wallets.tx_begin_write ());
 					if (!wallet->enter_password (*transaction, password))
 					{
 						nano::raw_key seed;
@@ -866,7 +866,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				if (vm.count ("password") > 0)
 				{
 					std::string password (vm["password"].as<std::string> ());
-					auto transaction (wallet->wallets.tx_begin_write ());
+					auto transaction (inactive_node->node->wallets.tx_begin_write ());
 					auto error (wallet->store.rekey (*transaction, password));
 					if (error)
 					{
@@ -876,7 +876,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				}
 				if (vm.count ("seed") || vm.count ("key"))
 				{
-					auto transaction (wallet->wallets.tx_begin_write ());
+					auto transaction (inactive_node->node->wallets.tx_begin_write ());
 					wallet->change_seed (*transaction, seed_key);
 				}
 				std::cout << wallet_key.to_string () << std::endl;
@@ -905,7 +905,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				auto existing (inactive_node->node->wallets.items.find (wallet_id));
 				if (existing != inactive_node->node->wallets.items.end ())
 				{
-					auto transaction (existing->second->wallets.tx_begin_write ());
+					auto transaction (inactive_node->node->wallets.tx_begin_write ());
 					if (!existing->second->enter_password (*transaction, password))
 					{
 						nano::raw_key seed;
@@ -1099,7 +1099,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		for (auto i (node->wallets.items.begin ()), n (node->wallets.items.end ()); i != n; ++i)
 		{
 			std::cout << boost::str (boost::format ("Wallet ID: %1%\n") % i->first.to_string ());
-			auto transaction (i->second->wallets.tx_begin_read ());
+			auto transaction (node->wallets.tx_begin_read ());
 			for (auto j (i->second->store.begin (*transaction)), m (i->second->store.end ()); j != m; ++j)
 			{
 				std::cout << nano::account (j->first).to_account () << '\n';
@@ -1121,7 +1121,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					nano::account account_id;
 					if (!account_id.decode_account (vm["account"].as<std::string> ()))
 					{
-						auto transaction (wallet->second->wallets.tx_begin_write ());
+						auto transaction (node->wallets.tx_begin_write ());
 						auto account (wallet->second->store.find (*transaction, account_id));
 						if (account != wallet->second->store.end ())
 						{
@@ -1169,7 +1169,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				auto wallet (node->wallets.items.find (wallet_id));
 				if (wallet != node->wallets.items.end ())
 				{
-					auto transaction (wallet->second->wallets.tx_begin_read ());
+					auto transaction (node->wallets.tx_begin_read ());
 					auto representative (wallet->second->store.representative (*transaction));
 					std::cout << boost::str (boost::format ("Representative: %1%\n") % representative.to_account ());
 				}
@@ -1208,7 +1208,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 						auto wallet (node->wallets.items.find (wallet_id));
 						if (wallet != node->wallets.items.end ())
 						{
-							auto transaction (wallet->second->wallets.tx_begin_write ());
+							auto transaction (node->wallets.tx_begin_write ());
 							wallet->second->store.representative_set (*transaction, account);
 						}
 						else

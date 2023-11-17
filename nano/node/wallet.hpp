@@ -136,6 +136,8 @@ public:
 
 	nano::wallet_store store;
 	nano::wallets & wallets;
+	nano::node & node;
+	nano::store::lmdb::env & env;
 	nano::mutex representatives_mutex;
 	std::unordered_set<nano::account> representatives;
 };

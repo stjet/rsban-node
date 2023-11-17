@@ -263,13 +263,17 @@ void nano::kdf::phs (nano::raw_key & result_a, std::string const & password_a, n
 
 nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a) :
 	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a),
-	wallets (wallets_a)
+	wallets (wallets_a),
+	node{wallets_a.node},
+	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (wallets_a.node.wallets_store_impl.get ())->environment)
 {
 }
 
 nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a, std::string const & json) :
 	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a, json),
-	wallets (wallets_a)
+	wallets (wallets_a),
+	node{wallets_a.node},
+	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (wallets_a.node.wallets_store_impl.get ())->environment)
 {
 }
 
@@ -282,7 +286,7 @@ void nano::wallet::enter_initial_password ()
 	}
 	if (password_l.is_zero ())
 	{
-		auto transaction (wallets.tx_begin_write ());
+		auto transaction (env.tx_begin_write ());
 		if (store.valid_password (*transaction))
 		{
 			// Newly created wallets have a zero key
@@ -301,15 +305,15 @@ bool nano::wallet::enter_password (store::transaction const & transaction_a, std
 	if (!result)
 	{
 		auto this_l (shared_from_this ());
-		wallets.node.background ([this_l] () {
-			auto tx{ this_l->wallets.tx_begin_read () };
+		node.background ([this_l] () {
+			auto tx{ this_l->env.tx_begin_read () };
 			this_l->search_receivable (*tx);
 		});
-		wallets.node.logger->try_log ("Wallet unlocked");
+		node.logger->try_log ("Wallet unlocked");
 	}
 	else
 	{
-		wallets.node.logger->try_log ("Invalid password, wallet locked");
+		node.logger->try_log ("Invalid password, wallet locked");
 	}
 	return result;
 }
@@ -324,7 +328,7 @@ nano::public_key nano::wallet::deterministic_insert (store::transaction const & 
 		{
 			work_ensure (key, key);
 		}
-		auto half_principal_weight (wallets.node.minimum_principal_weight () / 2);
+		auto half_principal_weight (node.minimum_principal_weight () / 2);
 		if (wallets.check_rep (key, half_principal_weight))
 		{
 			nano::lock_guard<nano::mutex> lock{ representatives_mutex };
@@ -336,7 +340,7 @@ nano::public_key nano::wallet::deterministic_insert (store::transaction const & 
 
 nano::public_key nano::wallet::deterministic_insert (uint32_t const index, bool generate_work_a)
 {
-	auto transaction (wallets.tx_begin_write ());
+	auto transaction (env.tx_begin_write ());
 	nano::public_key key{};
 	if (store.valid_password (*transaction))
 	{
@@ -351,7 +355,7 @@ nano::public_key nano::wallet::deterministic_insert (uint32_t const index, bool 
 
 nano::public_key nano::wallet::deterministic_insert (bool generate_work_a)
 {
-	auto transaction (wallets.tx_begin_write ());
+	auto transaction (env.tx_begin_write ());
 	auto result (deterministic_insert (*transaction, generate_work_a));
 	return result;
 }
@@ -359,16 +363,16 @@ nano::public_key nano::wallet::deterministic_insert (bool generate_work_a)
 nano::public_key nano::wallet::insert_adhoc (nano::raw_key const & key_a, bool generate_work_a)
 {
 	nano::public_key key{};
-	auto transaction (wallets.tx_begin_write ());
+	auto transaction (env.tx_begin_write ());
 	if (store.valid_password (*transaction))
 	{
 		key = store.insert_adhoc (*transaction, key_a);
-		auto block_transaction (wallets.node.store.tx_begin_read ());
+		auto block_transaction (node.store.tx_begin_read ());
 		if (generate_work_a)
 		{
-			work_ensure (key, wallets.node.ledger.latest_root (*block_transaction, key));
+			work_ensure (key, node.ledger.latest_root (*block_transaction, key));
 		}
-		auto half_principal_weight (wallets.node.minimum_principal_weight () / 2);
+		auto half_principal_weight (node.minimum_principal_weight () / 2);
 		// Makes sure that the representatives container will
 		// be in sync with any added keys.
 		transaction->commit ();
@@ -388,7 +392,7 @@ bool nano::wallet::insert_watch (store::transaction const & transaction_a, nano:
 
 bool nano::wallet::exists (nano::public_key const & account_a)
 {
-	auto transaction (wallets.tx_begin_read ());
+	auto transaction (env.tx_begin_read ());
 	return store.exists (*transaction, account_a);
 }
 
@@ -397,17 +401,17 @@ bool nano::wallet::import (std::string const & json_a, std::string const & passw
 	auto error (false);
 	std::unique_ptr<nano::wallet_store> temp;
 	{
-		auto transaction (wallets.tx_begin_write ());
+		auto transaction (env.tx_begin_write ());
 		nano::uint256_union id;
 		random_pool::generate_block (id.bytes.data (), id.bytes.size ());
-		temp = std::make_unique<nano::wallet_store> (error, wallets.node.wallets.kdf, *transaction, 0, 1, id.to_string (), json_a);
+		temp = std::make_unique<nano::wallet_store> (error, wallets.kdf, *transaction, 0, 1, id.to_string (), json_a);
 	}
 	if (!error)
 	{
-		auto transaction (wallets.tx_begin_write ());
+		auto transaction (env.tx_begin_write ());
 		error = temp->attempt_password (*transaction, password_a);
 	}
-	auto transaction (wallets.tx_begin_write ());
+	auto transaction (env.tx_begin_write ());
 	if (!error)
 	{
 		error = store.import (*transaction, *temp);
@@ -418,7 +422,7 @@ bool nano::wallet::import (std::string const & json_a, std::string const & passw
 
 void nano::wallet::serialize (std::string & json_a)
 {
-	auto transaction (wallets.tx_begin_read ());
+	auto transaction (env.tx_begin_read ());
 	store.serialize_json (*transaction, json_a);
 }
 
@@ -432,13 +436,13 @@ std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash cons
 {
 	std::shared_ptr<nano::block> block;
 	nano::epoch epoch = nano::epoch::epoch_0;
-	if (wallets.node.config->receive_minimum.number () <= amount_a.number ())
+	if (node.config->receive_minimum.number () <= amount_a.number ())
 	{
-		auto block_transaction (wallets.node.ledger.store.tx_begin_read ());
-		auto transaction (wallets.tx_begin_read ());
-		if (wallets.node.ledger.block_or_pruned_exists (*block_transaction, send_hash_a))
+		auto block_transaction (node.ledger.store.tx_begin_read ());
+		auto transaction (env.tx_begin_read ());
+		if (node.ledger.block_or_pruned_exists (*block_transaction, send_hash_a))
 		{
-			auto pending_info = wallets.node.ledger.pending_info (*block_transaction, nano::pending_key (account_a, send_hash_a));
+			auto pending_info = node.ledger.pending_info (*block_transaction, nano::pending_key (account_a, send_hash_a));
 			if (pending_info)
 			{
 				nano::raw_key prv;
@@ -448,7 +452,7 @@ std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash cons
 					{
 						store.work_get (*transaction, account_a, work_a);
 					}
-					auto info = wallets.node.ledger.account_info (*block_transaction, account_a);
+					auto info = node.ledger.account_info (*block_transaction, account_a);
 					if (info)
 					{
 						block = std::make_shared<nano::state_block> (account_a, info->head (), info->representative (), info->balance ().number () + pending_info->amount.number (), send_hash_a, prv, account_a, work_a);
@@ -462,7 +466,7 @@ std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash cons
 				}
 				else
 				{
-					wallets.node.logger->try_log ("Unable to receive, wallet locked");
+					node.logger->try_log ("Unable to receive, wallet locked");
 				}
 			}
 			else
@@ -477,7 +481,7 @@ std::shared_ptr<nano::block> nano::wallet::receive_action (nano::block_hash cons
 	}
 	else
 	{
-		wallets.node.logger->try_log (boost::str (boost::format ("Not receiving block %1% due to minimum receive threshold") % send_hash_a.to_string ()));
+		node.logger->try_log (boost::str (boost::format ("Not receiving block %1% due to minimum receive threshold") % send_hash_a.to_string ()));
 		// Someone sent us something below the threshold of receiving
 	}
 	if (block != nullptr)
@@ -497,14 +501,14 @@ std::shared_ptr<nano::block> nano::wallet::change_action (nano::account const & 
 	auto epoch = nano::epoch::epoch_0;
 	std::shared_ptr<nano::block> block;
 	{
-		auto transaction (wallets.tx_begin_read ());
-		auto block_transaction (wallets.node.store.tx_begin_read ());
+		auto transaction (env.tx_begin_read ());
+		auto block_transaction (node.store.tx_begin_read ());
 		if (store.valid_password (*transaction))
 		{
 			auto existing (store.find (*transaction, source_a));
-			if (existing != store.end () && !wallets.node.ledger.latest (*block_transaction, source_a).is_zero ())
+			if (existing != store.end () && !node.ledger.latest (*block_transaction, source_a).is_zero ())
 			{
-				auto info = wallets.node.ledger.account_info (*block_transaction, source_a);
+				auto info = node.ledger.account_info (*block_transaction, source_a);
 				debug_assert (info);
 				nano::raw_key prv;
 				auto error2 (store.fetch (*transaction, source_a, prv));
@@ -595,11 +599,11 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 	{
 		if (id_a)
 		{
-			result = prepare_send (wallets.tx_begin_write ());
+			result = prepare_send (env.tx_begin_write ());
 		}
 		else
 		{
-			result = prepare_send (wallets.tx_begin_read ());
+			result = prepare_send (env.tx_begin_read ());
 		}
 	}
 
@@ -627,16 +631,16 @@ bool nano::wallet::action_complete (std::shared_ptr<nano::block> const & block_a
 	wallets.delayed_work->erase (account_a);
 	if (block_a != nullptr)
 	{
-		auto required_difficulty{ wallets.node.network_params.work.threshold (block_a->work_version (), details_a) };
-		if (wallets.node.network_params.work.difficulty (*block_a) < required_difficulty)
+		auto required_difficulty{ node.network_params.work.threshold (block_a->work_version (), details_a) };
+		if (node.network_params.work.difficulty (*block_a) < required_difficulty)
 		{
-			wallets.node.logger->try_log (boost::str (boost::format ("Cached or provided work for block %1% account %2% is invalid, regenerating") % block_a->hash ().to_string () % account_a.to_account ()));
-			debug_assert (required_difficulty <= wallets.node.max_work_generate_difficulty (block_a->work_version ()));
-			error = !wallets.node.work_generate_blocking (*block_a, required_difficulty).is_initialized ();
+			node.logger->try_log (boost::str (boost::format ("Cached or provided work for block %1% account %2% is invalid, regenerating") % block_a->hash ().to_string () % account_a.to_account ()));
+			debug_assert (required_difficulty <= node.max_work_generate_difficulty (block_a->work_version ()));
+			error = !node.work_generate_blocking (*block_a, required_difficulty).is_initialized ();
 		}
 		if (!error)
 		{
-			auto result = wallets.node.process_local (block_a);
+			auto result = node.process_local (block_a);
 			error = !result || result.value ().code != nano::process_result::progress;
 			debug_assert (error || block_a->sideband ().details () == details_a);
 		}
@@ -664,7 +668,7 @@ bool nano::wallet::change_sync (nano::account const & source_a, nano::account co
 void nano::wallet::change_async (nano::account const & source_a, nano::account const & representative_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a)
 {
 	auto this_l (shared_from_this ());
-	wallets.node.wallets.queue_wallet_action (nano::wallets::high_priority, this_l, [this_l, source_a, representative_a, action_a, work_a, generate_work_a] (nano::wallet & wallet_a) {
+	wallets.queue_wallet_action (nano::wallets::high_priority, this_l, [this_l, source_a, representative_a, action_a, work_a, generate_work_a] (nano::wallet & wallet_a) {
 		auto block (wallet_a.change_action (source_a, representative_a, work_a, generate_work_a));
 		action_a (block);
 	});
@@ -686,7 +690,7 @@ bool nano::wallet::receive_sync (std::shared_ptr<nano::block> const & block_a, n
 void nano::wallet::receive_async (nano::block_hash const & hash_a, nano::account const & representative_a, nano::uint128_t const & amount_a, nano::account const & account_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a)
 {
 	auto this_l (shared_from_this ());
-	wallets.node.wallets.queue_wallet_action (amount_a, this_l, [this_l, hash_a, representative_a, amount_a, account_a, action_a, work_a, generate_work_a] (nano::wallet & wallet_a) {
+	wallets.queue_wallet_action (amount_a, this_l, [this_l, hash_a, representative_a, amount_a, account_a, action_a, work_a, generate_work_a] (nano::wallet & wallet_a) {
 		auto block (wallet_a.receive_action (hash_a, representative_a, amount_a, account_a, work_a, generate_work_a));
 		action_a (block);
 	});
@@ -707,7 +711,7 @@ nano::block_hash nano::wallet::send_sync (nano::account const & source_a, nano::
 void nano::wallet::send_async (nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
 {
 	auto this_l (shared_from_this ());
-	wallets.node.wallets.queue_wallet_action (nano::wallets::high_priority, this_l, [this_l, source_a, account_a, amount_a, action_a, work_a, generate_work_a, id_a] (nano::wallet & wallet_a) {
+	wallets.queue_wallet_action (nano::wallets::high_priority, this_l, [this_l, source_a, account_a, amount_a, action_a, work_a, generate_work_a, id_a] (nano::wallet & wallet_a) {
 		auto block (wallet_a.send_action (source_a, account_a, amount_a, work_a, generate_work_a, id_a));
 		action_a (block);
 	});
@@ -716,28 +720,28 @@ void nano::wallet::send_async (nano::account const & source_a, nano::account con
 // Update work for account if latest root is root_a
 void nano::wallet::work_update (store::transaction const & transaction_a, nano::account const & account_a, nano::root const & root_a, uint64_t work_a)
 {
-	debug_assert (!wallets.node.network_params.work.validate_entry (nano::work_version::work_1, root_a, work_a));
+	debug_assert (!node.network_params.work.validate_entry (nano::work_version::work_1, root_a, work_a));
 	debug_assert (store.exists (transaction_a, account_a));
-	auto block_transaction (wallets.node.store.tx_begin_read ());
-	auto latest (wallets.node.ledger.latest_root (*block_transaction, account_a));
+	auto block_transaction (node.store.tx_begin_read ());
+	auto latest (node.ledger.latest_root (*block_transaction, account_a));
 	if (latest == root_a)
 	{
 		store.work_put (transaction_a, account_a, work_a);
 	}
 	else
 	{
-		wallets.node.logger->try_log ("Cached work no longer valid, discarding");
+		node.logger->try_log ("Cached work no longer valid, discarding");
 	}
 }
 
 void nano::wallet::work_ensure (nano::account const & account_a, nano::root const & root_a)
 {
 	using namespace std::chrono_literals;
-	std::chrono::seconds const precache_delay = wallets.node.network_params.network.is_dev_network () ? 1s : 10s;
+	std::chrono::seconds const precache_delay = node.network_params.network.is_dev_network () ? 1s : 10s;
 
 	wallets.delayed_work->operator[] (account_a) = root_a;
 
-	wallets.node.workers->add_timed_task (std::chrono::steady_clock::now () + precache_delay, [this_l = shared_from_this (), account_a, root_a] {
+	node.workers->add_timed_task (std::chrono::steady_clock::now () + precache_delay, [this_l = shared_from_this (), account_a, root_a] {
 		auto delayed_work = this_l->wallets.delayed_work.lock ();
 		auto existing (delayed_work->find (account_a));
 		if (existing != delayed_work->end () && existing->second == root_a)
@@ -757,57 +761,57 @@ bool nano::wallet::search_receivable (store::transaction const & wallet_transact
 	{
 		for (auto i (store.begin (wallet_transaction_a)), n (store.end ()); i != n; ++i)
 		{
-			auto block_transaction (wallets.node.store.tx_begin_read ());
+			auto block_transaction (node.store.tx_begin_read ());
 			nano::account const & account (i->first);
 			// Don't search pending for watch-only accounts
 			if (!nano::wallet_value (i->second).key.is_zero ())
 			{
-				for (auto j (wallets.node.store.pending ().begin (*block_transaction, nano::pending_key (account, 0))), k (wallets.node.store.pending ().end ()); j != k && nano::pending_key (j->first).account == account; ++j)
+				for (auto j (node.store.pending ().begin (*block_transaction, nano::pending_key (account, 0))), k (node.store.pending ().end ()); j != k && nano::pending_key (j->first).account == account; ++j)
 				{
 					nano::pending_key key (j->first);
 					auto hash (key.hash);
 					nano::pending_info pending (j->second);
 					auto amount (pending.amount.number ());
-					if (wallets.node.config->receive_minimum.number () <= amount)
+					if (node.config->receive_minimum.number () <= amount)
 					{
-						wallets.node.logger->try_log (boost::str (boost::format ("Found a receivable block %1% for account %2%") % hash.to_string () % pending.source.to_account ()));
-						if (wallets.node.ledger.block_confirmed (*block_transaction, hash))
+						node.logger->try_log (boost::str (boost::format ("Found a receivable block %1% for account %2%") % hash.to_string () % pending.source.to_account ()));
+						if (node.ledger.block_confirmed (*block_transaction, hash))
 						{
 							auto representative = store.representative (wallet_transaction_a);
 							// Receive confirmed block
 							receive_async (hash, representative, amount, account, [] (std::shared_ptr<nano::block> const &) {});
 						}
-						else if (!wallets.node.confirmation_height_processor.is_processing_block (hash))
+						else if (!node.confirmation_height_processor.is_processing_block (hash))
 						{
-							auto block (wallets.node.store.block ().get (*block_transaction, hash));
+							auto block (node.store.block ().get (*block_transaction, hash));
 							if (block)
 							{
 								// Request confirmation for block which is not being processed yet
-								wallets.node.start_election (block);
+								node.start_election (block);
 							}
 						}
 					}
 				}
 			}
 		}
-		wallets.node.logger->try_log ("Receivable block search phase completed");
+		node.logger->try_log ("Receivable block search phase completed");
 	}
 	else
 	{
-		wallets.node.logger->try_log ("Stopping search, wallet is locked");
+		node.logger->try_log ("Stopping search, wallet is locked");
 	}
 	return result;
 }
 
 uint32_t nano::wallet::deterministic_check (store::transaction const & transaction_a, uint32_t index)
 {
-	auto block_transaction (wallets.node.store.tx_begin_read ());
+	auto block_transaction (node.store.tx_begin_read ());
 	for (uint32_t i (index + 1), n (index + 64); i < n; ++i)
 	{
 		auto prv = store.deterministic_key (transaction_a, i);
 		nano::keypair pair (prv.to_string ());
 		// Check if account received at least 1 block
-		auto latest (wallets.node.ledger.latest (*block_transaction, pair.pub));
+		auto latest (node.ledger.latest (*block_transaction, pair.pub));
 		if (!latest.is_zero ())
 		{
 			index = i;
@@ -818,7 +822,7 @@ uint32_t nano::wallet::deterministic_check (store::transaction const & transacti
 		else
 		{
 			// Check if there are pending blocks for account
-			for (auto ii (wallets.node.store.pending ().begin (*block_transaction, nano::pending_key (pair.pub, 0))), nn (wallets.node.store.pending ().end ()); ii != nn && nano::pending_key (ii->first).account == pair.pub; ++ii)
+			for (auto ii (node.store.pending ().begin (*block_transaction, nano::pending_key (pair.pub, 0))), nn (node.store.pending ().end ()); ii != nn && nano::pending_key (ii->first).account == pair.pub; ++ii)
 			{
 				index = i;
 				n = i + 64 + (i / 64);
@@ -863,21 +867,21 @@ bool nano::wallet::live ()
 
 void nano::wallet::work_cache_blocking (nano::account const & account_a, nano::root const & root_a)
 {
-	if (wallets.node.work_generation_enabled ())
+	if (node.work_generation_enabled ())
 	{
-		auto difficulty (wallets.node.default_difficulty (nano::work_version::work_1));
-		auto opt_work_l (wallets.node.work_generate_blocking (nano::work_version::work_1, root_a, difficulty, account_a));
+		auto difficulty (node.default_difficulty (nano::work_version::work_1));
+		auto opt_work_l (node.work_generate_blocking (nano::work_version::work_1, root_a, difficulty, account_a));
 		if (opt_work_l.is_initialized ())
 		{
-			auto transaction_l (wallets.tx_begin_write ());
+			auto transaction_l (env.tx_begin_write ());
 			if (live () && store.exists (*transaction_l, account_a))
 			{
 				work_update (*transaction_l, account_a, root_a, *opt_work_l);
 			}
 		}
-		else if (!wallets.node.stopped)
+		else if (!node.stopped)
 		{
-			wallets.node.logger->try_log (boost::str (boost::format ("Could not precache work for root %1% due to work generation failure") % root_a.to_string ()));
+			node.logger->try_log (boost::str (boost::format ("Could not precache work for root %1% due to work generation failure") % root_a.to_string ()));
 		}
 	}
 }
@@ -916,7 +920,7 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 	node (node_a),
 	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (node_a.wallets_store_impl.get ())->environment),
 	stopped (false),
-	rust_handle{ rsnano::rsn_lmdb_wallets_create () }
+	rust_handle{ rsnano::rsn_lmdb_wallets_create (node_a.config->enable_voting, env.handle) }
 {
 	nano::unique_lock<nano::mutex> lock{ mutex };
 	if (!error_a)

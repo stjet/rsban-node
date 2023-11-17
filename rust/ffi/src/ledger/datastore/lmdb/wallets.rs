@@ -1,17 +1,23 @@
-use std::ffi::{c_char, CStr};
-
+use super::{lmdb_env::LmdbEnvHandle, TransactionHandle};
+use crate::{copy_hash_bytes, utils::ContextWrapper, U256ArrayDto, VoidPointerCallback};
 use rsnano_core::BlockHash;
 use rsnano_store_lmdb::LmdbWallets;
-
-use crate::{copy_hash_bytes, U256ArrayDto};
-
-use super::TransactionHandle;
+use std::{
+    ffi::{c_char, c_void, CStr},
+    sync::Arc,
+};
 
 pub struct LmdbWalletsHandle(LmdbWallets);
 
 #[no_mangle]
-pub extern "C" fn rsn_lmdb_wallets_create() -> *mut LmdbWalletsHandle {
-    Box::into_raw(Box::new(LmdbWalletsHandle(LmdbWallets::new())))
+pub extern "C" fn rsn_lmdb_wallets_create(
+    enable_voting: bool,
+    lmdb: &LmdbEnvHandle,
+) -> *mut LmdbWalletsHandle {
+    Box::into_raw(Box::new(LmdbWalletsHandle(LmdbWallets::new(
+        enable_voting,
+        Arc::clone(lmdb),
+    ))))
 }
 
 #[no_mangle]
@@ -79,4 +85,21 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_clear_send_ids(
     txn: *mut TransactionHandle,
 ) {
     (*handle).0.clear_send_ids((*txn).as_write_txn())
+}
+
+/// private key + raw_key
+pub type RepresentativeCallback = unsafe extern "C" fn(*mut c_void, *const u8, *const u8);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_foreach_representative(
+    handle: &LmdbWalletsHandle,
+    callback: RepresentativeCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let context = ContextWrapper::new(context, delete_context);
+    handle.0.foreach_representative(move |account, raw_key| {
+        let ctx = context.get_context();
+        callback(ctx, &account.as_bytes()[0], &raw_key.as_bytes()[0]);
+    });
 }

@@ -1,26 +1,30 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
 
 use crate::{
     iterator::{BinaryDbIterator, DbIterator},
     lmdb_env::RwTransaction,
-    Environment, EnvironmentWrapper, LmdbIteratorImpl, LmdbWriteTransaction,
+    Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
-use rsnano_core::{BlockHash, NoValue, RawKey, WalletId};
+use rsnano_core::{Account, BlockHash, NoValue, RawKey, WalletId};
 pub type WalletsIterator<T> = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl<T>>;
 
 pub struct LmdbWallets<T: Environment = EnvironmentWrapper> {
     pub handle: Option<T::Database>,
     pub send_action_ids_handle: Option<T::Database>,
     phantom: PhantomData<T>,
+    enable_voting: bool,
+    _env: Arc<LmdbEnv<T>>,
 }
 
 impl<T: Environment + 'static> LmdbWallets<T> {
-    pub fn new() -> Self {
+    pub fn new(enable_voting: bool, env: Arc<LmdbEnv<T>>) -> Self {
         Self {
             handle: None,
             send_action_ids_handle: None,
             phantom: PhantomData::default(),
+            enable_voting,
+            _env: env,
         }
     }
 
@@ -93,5 +97,21 @@ impl<T: Environment + 'static> LmdbWallets<T> {
 
     pub fn clear_send_ids(&self, txn: &mut LmdbWriteTransaction<T>) {
         txn.clear_db(self.send_action_ids_handle.unwrap()).unwrap();
+    }
+
+    pub fn foreach_representative<F>(&self, _f: F)
+    where
+        F: Fn(&Account, &RawKey),
+    {
+        if !self.enable_voting {
+            return;
+        }
+
+        //let mut action_accounts = Vec::new();
+        //{
+        //    let txn = self.env.tx_begin_read();
+        //}
+        //TODO
+        todo!()
     }
 }

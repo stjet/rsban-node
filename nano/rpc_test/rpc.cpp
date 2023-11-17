@@ -458,7 +458,7 @@ TEST (rpc, wallet_password_change)
 	auto response (wait_response (system, rpc_ctx, request));
 	std::string account_text1 (response.get<std::string> ("changed"));
 	ASSERT_EQ (account_text1, "1");
-	auto transaction (system.wallet (0)->wallets.tx_begin_write ());
+	auto transaction (node->wallets.tx_begin_write ());
 	ASSERT_TRUE (system.wallet (0)->store.valid_password (*transaction));
 	ASSERT_TRUE (system.wallet (0)->enter_password (*transaction, ""));
 	ASSERT_FALSE (system.wallet (0)->store.valid_password (*transaction));
@@ -4988,7 +4988,7 @@ TEST (rpc, wallet_lock)
 	std::string wallet;
 	node->wallets.items.begin ()->first.encode_hex (wallet);
 	{
-		auto transaction (system.wallet (0)->wallets.tx_begin_read ());
+		auto transaction (node->wallets.tx_begin_read ());
 		ASSERT_TRUE (system.wallet (0)->store.valid_password (*transaction));
 	}
 	request.put ("wallet", wallet);
@@ -4996,7 +4996,7 @@ TEST (rpc, wallet_lock)
 	auto response (wait_response (system, rpc_ctx, request));
 	std::string account_text1 (response.get<std::string> ("locked"));
 	ASSERT_EQ (account_text1, "1");
-	auto transaction (system.wallet (0)->wallets.tx_begin_read ());
+	auto transaction (node->wallets.tx_begin_read ());
 	ASSERT_FALSE (system.wallet (0)->store.valid_password (*transaction));
 }
 

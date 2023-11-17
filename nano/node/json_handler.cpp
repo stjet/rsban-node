@@ -2970,12 +2970,12 @@ void nano::json_handler::password_change ()
 
 void nano::json_handler::password_enter ()
 {
-	node.workers->push_task (create_worker_task ([] (std::shared_ptr<nano::json_handler> const & rpc_l) {
+	node.workers->push_task (create_worker_task ([&wallets = node.wallets] (std::shared_ptr<nano::json_handler> const & rpc_l) {
 		auto wallet (rpc_l->wallet_impl ());
 		if (!rpc_l->ec)
 		{
 			std::string password_text (rpc_l->request.get<std::string> ("password"));
-			auto transaction (wallet->wallets.tx_begin_write ());
+			auto transaction (wallets.tx_begin_write ());
 			auto error (wallet->enter_password (*transaction, password_text));
 			rpc_l->response_l.put ("valid", error ? "0" : "1");
 		}
@@ -3736,7 +3736,7 @@ void nano::json_handler::search_receivable ()
 	auto wallet (wallet_impl ());
 	if (!ec)
 	{
-		auto tx{ wallet->wallets.tx_begin_read () };
+		auto tx{ node.wallets.tx_begin_read () };
 		auto error (wallet->search_receivable (*tx));
 		response_l.put ("started", !error);
 	}

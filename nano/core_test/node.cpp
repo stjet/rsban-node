@@ -501,10 +501,7 @@ TEST (node, unlock_search)
 	ASSERT_TIMELY (10s, node->balance (nano::dev::genesis_key.pub) != balance);
 	ASSERT_TIMELY (10s, node->active.empty ());
 	system.wallet (0)->insert_adhoc (key2.prv);
-	{
-		nano::unique_lock<nano::mutex> lock{ system.wallet (0)->store.mutex };
-		system.wallet (0)->store.set_password (nano::keypair ().prv);
-	}
+	system.wallet (0)->store.set_password (nano::keypair ().prv);
 	{
 		auto transaction (node->wallets.tx_begin_write ());
 		ASSERT_FALSE (system.wallet (0)->enter_password (*transaction, ""));

@@ -280,10 +280,7 @@ nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::w
 void nano::wallet::enter_initial_password ()
 {
 	nano::raw_key password_l;
-	{
-		nano::lock_guard<nano::mutex> lock{ store.mutex };
-		store.password (password_l);
-	}
+	store.password (password_l);
 	if (password_l.is_zero ())
 	{
 		auto transaction (env.tx_begin_write ());
@@ -537,8 +534,8 @@ std::shared_ptr<nano::block> nano::wallet::change_action (nano::account const & 
 
 std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
 {
-	auto prepare_send = [&id_a, &wallets = this->wallets, &store = this->store, &source_a, &amount_a, &work_a, &account_a] (auto const & transaction) {
-		auto block_transaction (wallets.node.store.tx_begin_read ());
+	auto prepare_send = [&id_a, &node = this->node, &wallets = this->wallets, &store = this->store, &source_a, &amount_a, &work_a, &account_a] (auto const & transaction) {
+		auto block_transaction (node.store.tx_begin_read ());
 
 		auto error (false);
 		std::shared_ptr<nano::block> block;
@@ -547,7 +544,7 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 			auto hash{ wallets.get_block_hash (error, *transaction, *id_a) };
 			if (!hash.is_zero ())
 			{
-				block = wallets.node.store.block ().get (*block_transaction, hash);
+				block = node.store.block ().get (*block_transaction, hash);
 			}
 		}
 
@@ -556,7 +553,7 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 		if (block != nullptr)
 		{
 			cached_block = true;
-			wallets.node.network->flood_block (block, nano::transport::buffer_drop_policy::no_limiter_drop);
+			node.network->flood_block (block, nano::transport::buffer_drop_policy::no_limiter_drop);
 		}
 		if (!error && block == nullptr)
 		{
@@ -565,10 +562,10 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 				auto existing (store.find (*transaction, source_a));
 				if (existing != store.end ())
 				{
-					auto balance (wallets.node.ledger.account_balance (*block_transaction, source_a));
+					auto balance (node.ledger.account_balance (*block_transaction, source_a));
 					if (!balance.is_zero () && balance >= amount_a)
 					{
-						auto info = wallets.node.ledger.account_info (*block_transaction, source_a);
+						auto info = node.ledger.account_info (*block_transaction, source_a);
 						debug_assert (info);
 						nano::raw_key prv;
 						auto error2 (store.fetch (*transaction, source_a, prv));
@@ -1107,7 +1104,6 @@ void nano::wallets::foreach_representative (std::function<void (nano::public_key
 			for (auto i (items.begin ()), n (items.end ()); i != n; ++i)
 			{
 				auto & wallet (*i->second);
-				nano::lock_guard<nano::mutex> store_lock{ wallet.store.mutex };
 				decltype (wallet.representatives) representatives_l;
 				{
 					nano::lock_guard<nano::mutex> representatives_lock{ wallet.representatives_mutex };

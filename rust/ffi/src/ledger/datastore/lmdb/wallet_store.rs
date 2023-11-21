@@ -5,14 +5,13 @@ use std::{
     ptr,
 };
 
+use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 use crate::{
     copy_account_bytes, copy_public_key_bytes, copy_raw_key_bytes, wallet::kdf::KdfHandle,
     StringDto, U256ArrayDto,
 };
 use rsnano_core::{Account, PublicKey, RawKey};
 use rsnano_store_lmdb::{EnvironmentWrapper, LmdbWalletStore, WalletValue};
-
-use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 
 pub struct LmdbWalletStoreHandle(LmdbWalletStore);
 

@@ -91,7 +91,6 @@ public:
 	static unsigned constexpr version_current = version_4;
 	static int const special_count;
 	nano::kdf & kdf;
-	nano::mutex mutex;
 	unsigned fanout;
 
 private:

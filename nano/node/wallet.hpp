@@ -91,7 +91,7 @@ public:
 	static unsigned constexpr version_current = version_4;
 	static int const special_count;
 	nano::kdf & kdf;
-	std::recursive_mutex mutex;
+	nano::mutex mutex;
 	unsigned fanout;
 
 private:

@@ -990,7 +990,7 @@ void nano::node::bootstrap_wallet ()
 		for (auto i (wallets.items.begin ()), n (wallets.items.end ()); i != n && accounts.size () < 128; ++i)
 		{
 			auto & wallet (*i->second);
-			nano::lock_guard<std::recursive_mutex> wallet_lock{ wallet.store.mutex };
+			nano::lock_guard<nano::mutex> wallet_lock{ wallet.store.mutex };
 			for (auto j (wallet.store.begin (*transaction)), m (wallet.store.end ()); j != m && accounts.size () < 128; ++j)
 			{
 				nano::account account (j->first);

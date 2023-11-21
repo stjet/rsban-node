@@ -1,3 +1,4 @@
+#include "nano/lib/locks.hpp"
 #include <nano/lib/config.hpp>
 #include <nano/node/election.hpp>
 #include <nano/node/make_store.hpp>
@@ -501,7 +502,7 @@ TEST (node, unlock_search)
 	ASSERT_TIMELY (10s, node->active.empty ());
 	system.wallet (0)->insert_adhoc (key2.prv);
 	{
-		nano::lock_guard<std::recursive_mutex> lock{ system.wallet (0)->store.mutex };
+		nano::unique_lock<nano::mutex> lock{ system.wallet (0)->store.mutex };
 		system.wallet (0)->store.set_password (nano::keypair ().prv);
 	}
 	{

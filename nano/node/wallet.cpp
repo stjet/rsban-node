@@ -281,7 +281,7 @@ void nano::wallet::enter_initial_password ()
 {
 	nano::raw_key password_l;
 	{
-		nano::lock_guard<std::recursive_mutex> lock{ store.mutex };
+		nano::lock_guard<nano::mutex> lock{ store.mutex };
 		store.password (password_l);
 	}
 	if (password_l.is_zero ())
@@ -1107,7 +1107,7 @@ void nano::wallets::foreach_representative (std::function<void (nano::public_key
 			for (auto i (items.begin ()), n (items.end ()); i != n; ++i)
 			{
 				auto & wallet (*i->second);
-				nano::lock_guard<std::recursive_mutex> store_lock{ wallet.store.mutex };
+				nano::lock_guard<nano::mutex> store_lock{ wallet.store.mutex };
 				decltype (wallet.representatives) representatives_l;
 				{
 					nano::lock_guard<nano::mutex> representatives_lock{ wallet.representatives_mutex };

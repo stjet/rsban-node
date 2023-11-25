@@ -1,4 +1,5 @@
 #include "nano/lib/locks.hpp"
+
 #include <nano/lib/config.hpp>
 #include <nano/node/election.hpp>
 #include <nano/node/make_store.hpp>

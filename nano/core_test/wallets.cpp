@@ -91,7 +91,7 @@ TEST (wallets, DISABLED_reload)
 	ASSERT_FALSE (error);
 	ASSERT_EQ (1, node1.wallets.items.size ());
 	{
-		nano::lock_guard<nano::mutex> lock_wallet (node1.wallets.mutex);
+		auto lock_wallet (node1.wallets.mutex.lock ());
 		nano::node_flags flags{ nano::inactive_node_flag_defaults () };
 		nano::inactive_node node (node1.application_path, flags);
 		auto wallet (node.node->wallets.create (one));
@@ -202,9 +202,11 @@ TEST (wallets, search_receivable)
 		flags.set_disable_search_pending (true);
 		auto & node (*system.add_node (config, flags));
 
-		nano::unique_lock<nano::mutex> lk (node.wallets.mutex);
-		auto wallets = node.wallets.get_wallets ();
-		lk.unlock ();
+		std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> wallets;
+		{
+			auto lk (node.wallets.mutex.lock ());
+			wallets = node.wallets.get_wallets ();
+		}
 		ASSERT_EQ (1, wallets.size ());
 		auto wallet_id = wallets.begin ()->first;
 		auto wallet = wallets.begin ()->second;

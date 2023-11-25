@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/lmdbconfig.hpp>
 #include <nano/lib/locks.hpp>
 #include <nano/lib/work.hpp>
@@ -170,6 +172,26 @@ public:
 class wallets final
 {
 public:
+	class wallets_mutex_lock
+	{
+	public:
+		wallets_mutex_lock (rsnano::WalletsMutexLockHandle * handle);
+		wallets_mutex_lock (wallets_mutex_lock &&);
+		wallets_mutex_lock (wallets_mutex_lock const &) = delete;
+		~wallets_mutex_lock ();
+		rsnano::WalletsMutexLockHandle * handle;
+	};
+
+	class wallets_mutex
+	{
+	public:
+		wallets_mutex (rsnano::LmdbWalletsHandle * handle);
+		wallets_mutex (wallets_mutex_lock const &) = delete;
+		boost::optional<wallets_mutex_lock> try_lock ();
+		wallets_mutex_lock lock ();
+		rsnano::LmdbWalletsHandle * handle;
+	};
+
 	wallets (bool, nano::node &);
 	~wallets ();
 	std::shared_ptr<nano::wallet> open (nano::wallet_id const &);
@@ -198,7 +220,6 @@ public:
 	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> items;
 	std::multimap<nano::uint128_t, std::pair<std::shared_ptr<nano::wallet>, std::function<void (nano::wallet &)>>, std::greater<nano::uint128_t>> actions;
 	nano::locked<std::unordered_map<nano::account, nano::root>> delayed_work;
-	nano::mutex mutex;
 	nano::mutex action_mutex;
 	nano::condition_variable condition;
 	nano::kdf kdf;
@@ -220,6 +241,7 @@ private:
 
 public:
 	rsnano::LmdbWalletsHandle * rust_handle;
+	wallets_mutex mutex;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (wallets & wallets, std::string const & name);

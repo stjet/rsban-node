@@ -1,4 +1,7 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::{
+    marker::PhantomData,
+    sync::{Arc, Mutex},
+};
 
 use crate::{
     iterator::{BinaryDbIterator, DbIterator},
@@ -15,6 +18,7 @@ pub struct LmdbWallets<T: Environment = EnvironmentWrapper> {
     phantom: PhantomData<T>,
     enable_voting: bool,
     _env: Arc<LmdbEnv<T>>,
+    pub mutex: Mutex<()>,
 }
 
 impl<T: Environment + 'static> LmdbWallets<T> {
@@ -24,6 +28,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
             send_action_ids_handle: None,
             phantom: PhantomData::default(),
             enable_voting,
+            mutex: Mutex::new(()),
             _env: env,
         }
     }

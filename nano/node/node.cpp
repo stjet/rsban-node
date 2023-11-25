@@ -985,7 +985,7 @@ void nano::node::bootstrap_wallet ()
 {
 	std::deque<nano::account> accounts;
 	{
-		nano::lock_guard<nano::mutex> lock{ wallets.mutex };
+		auto lock{ wallets.mutex.lock () };
 		auto const transaction (wallets.tx_begin_read ());
 		for (auto i (wallets.items.begin ()), n (wallets.items.end ()); i != n && accounts.size () < 128; ++i)
 		{
@@ -1347,10 +1347,13 @@ void nano::node::ongoing_online_weight_calculation ()
 
 void nano::node::receive_confirmed (store::transaction const & block_transaction_a, nano::block_hash const & hash_a, nano::account const & destination_a)
 {
-	nano::unique_lock<nano::mutex> lk{ wallets.mutex };
-	auto wallets_l = wallets.get_wallets ();
-	auto wallet_transaction = wallets.tx_begin_read ();
-	lk.unlock ();
+	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> wallets_l;
+	std::unique_ptr<nano::store::read_transaction> wallet_transaction;
+	{
+		auto lk{ wallets.mutex.lock () };
+		wallets_l = wallets.get_wallets ();
+		wallet_transaction = wallets.tx_begin_read ();
+	}
 	for ([[maybe_unused]] auto const & [id, wallet] : wallets_l)
 	{
 		if (wallet->store.exists (*wallet_transaction, destination_a))

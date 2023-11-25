@@ -4,7 +4,7 @@ use rsnano_core::BlockHash;
 use rsnano_store_lmdb::LmdbWallets;
 use std::{
     ffi::{c_char, c_void, CStr},
-    sync::Arc,
+    sync::{Arc, MutexGuard},
 };
 
 pub struct LmdbWalletsHandle(LmdbWallets);
@@ -102,4 +102,37 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_foreach_representative(
         let ctx = context.get_context();
         callback(ctx, &account.as_bytes()[0], &raw_key.as_bytes()[0]);
     });
+}
+
+pub struct WalletsMutexLockHandle(MutexGuard<'static, ()>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_lock(
+    handle: &LmdbWalletsHandle,
+) -> *mut WalletsMutexLockHandle {
+    let guard = unsafe {
+        let guard = handle.0.mutex.lock().unwrap();
+        std::mem::transmute::<MutexGuard<'_, ()>, MutexGuard<'static, ()>>(guard)
+    };
+    Box::into_raw(Box::new(WalletsMutexLockHandle(guard)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_try_lock(
+    handle: &LmdbWalletsHandle,
+) -> *mut WalletsMutexLockHandle {
+    match handle.0.mutex.try_lock() {
+        Ok(guard) => {
+            let guard = unsafe {
+                std::mem::transmute::<MutexGuard<'_, ()>, MutexGuard<'static, ()>>(guard)
+            };
+            Box::into_raw(Box::new(WalletsMutexLockHandle(guard)))
+        }
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_lock_destroy(handle: *mut WalletsMutexLockHandle) {
+    drop(Box::from_raw(handle))
 }

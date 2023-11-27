@@ -98,6 +98,7 @@ public:
 private:
 	rsnano::LmdbWalletStoreHandle * rust_handle;
 };
+
 // A wallet is a set of account keys encrypted by a common encryption key
 class wallet final : public std::enable_shared_from_this<nano::wallet>
 {
@@ -166,6 +167,29 @@ public:
 	representatives_mutex representatives_mutex;
 };
 
+class wallet_action_thread
+{
+public:
+	wallet_action_thread ();
+
+	void start ();
+	void stop ();
+	void queue_wallet_action (nano::uint128_t const &, std::shared_ptr<nano::wallet> const &, std::function<void (nano::wallet &)>);
+	nano::lock_guard<nano::mutex> lock ();
+	size_t size ();
+
+	std::function<void (bool)> observer;
+
+private:
+	void do_wallet_actions ();
+
+	nano::mutex action_mutex;
+	std::atomic<bool> stopped;
+	nano::condition_variable condition;
+	std::multimap<nano::uint128_t, std::pair<std::shared_ptr<nano::wallet>, std::function<void (nano::wallet &)>>, std::greater<nano::uint128_t>> actions;
+	std::thread thread;
+};
+
 class wallet_representatives
 {
 public:
@@ -224,12 +248,8 @@ public:
 	void search_receivable_all ();
 	void destroy (nano::wallet_id const &);
 	void reload ();
-	void do_wallet_actions ();
-	void queue_wallet_action (nano::uint128_t const &, std::shared_ptr<nano::wallet> const &, std::function<void (nano::wallet &)>);
 	void foreach_representative (std::function<void (nano::public_key const &, nano::raw_key const &)> const &);
 	bool exists (store::transaction const &, nano::account const &);
-	void start ();
-	void stop ();
 	void clear_send_ids (store::transaction const &);
 	nano::wallet_representatives reps () const;
 	bool check_rep (nano::account const &, nano::uint128_t const &, bool const = true);
@@ -240,17 +260,12 @@ public:
 	nano::block_hash get_block_hash (bool & error_a, store::transaction const & transaction_a, std::string const & id_a);
 	bool set_block_hash (store::transaction const & transaction_a, std::string const & id_a, nano::block_hash const & hash);
 	nano::network_params & network_params;
-	std::function<void (bool)> observer;
 	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> items;
-	std::multimap<nano::uint128_t, std::pair<std::shared_ptr<nano::wallet>, std::function<void (nano::wallet &)>>, std::greater<nano::uint128_t>> actions;
+	nano::wallet_action_thread wallet_actions;
 	nano::locked<std::unordered_map<nano::account, nano::root>> delayed_work;
-	nano::mutex action_mutex;
-	nano::condition_variable condition;
 	nano::kdf kdf;
 	nano::node & node;
 	nano::store::lmdb::env & env;
-	std::atomic<bool> stopped;
-	std::thread thread;
 	static nano::uint128_t const generate_priority;
 	static nano::uint128_t const high_priority;
 	/** Start read-write transaction */

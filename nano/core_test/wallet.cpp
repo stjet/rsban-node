@@ -1079,7 +1079,7 @@ TEST (wallet, foreach_representative_deadlock)
 	auto & node (*system.nodes[0]);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	node.wallets.compute_reps ();
-	ASSERT_EQ (1, node.wallets.reps ().voting);
+	ASSERT_EQ (1, node.wallets.voting_reps_count ());
 
 	bool set = false;
 	node.wallets.foreach_representative ([&node, &set, &system] (nano::public_key const & pub, nano::raw_key const & prv) {

@@ -408,7 +408,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		{
 			std::ostringstream stream;
 			stream << "Voting is enabled, more system resources will be used";
-			auto voting (wallets.reps ().voting);
+			auto voting (wallets.voting_reps_count ());
 			if (voting > 0)
 			{
 				stream << ". " << voting << " representative(s) are configured";

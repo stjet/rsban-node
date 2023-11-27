@@ -141,7 +141,7 @@ void nano_daemon::daemon::run (std::filesystem::path const & data_path, nano::no
 						  << "Database backend: " << node->store.vendor_get () << "\n"
 						  << "Start time: " << std::put_time (std::gmtime (&dateTime), "%c UTC") << std::endl;
 
-				auto voting (node->wallets.reps ().voting);
+				auto voting (node->wallets.voting_reps_count ());
 				if (voting > 1)
 				{
 					std::cout << "Voting with more than one representative can limit performance: " << voting << " representatives are configured" << std::endl;

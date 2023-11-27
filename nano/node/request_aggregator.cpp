@@ -36,7 +36,7 @@ nano::request_aggregator::request_aggregator (nano::node_config const & config_a
 
 void nano::request_aggregator::add (std::shared_ptr<nano::transport::channel> const & channel_a, std::vector<std::pair<nano::block_hash, nano::root>> const & hashes_roots_a)
 {
-	debug_assert (wallets.reps ().voting > 0);
+	debug_assert (wallets.voting_reps_count () > 0);
 	bool error = true;
 	auto const endpoint (nano::transport::map_endpoint_to_v6 (channel_a->get_remote_endpoint ()));
 	nano::unique_lock<nano::mutex> lock{ mutex };

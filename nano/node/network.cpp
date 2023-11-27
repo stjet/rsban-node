@@ -290,7 +290,7 @@ public:
 		}
 
 		// Don't load nodes with disabled voting
-		if (node.config->enable_voting && node.wallets.reps ().voting > 0)
+		if (node.config->enable_voting && node.wallets.voting_reps_count () > 0)
 		{
 			if (message_a.get_block () != nullptr)
 			{

@@ -1407,7 +1407,7 @@ TEST (node, rep_self_vote)
 
 	system.wallet (0)->insert_adhoc (rep_big.prv);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-	ASSERT_EQ (node0->wallets.reps ().voting, 2);
+	ASSERT_EQ (node0->wallets.voting_reps_count (), 2);
 	auto block0 = builder.send ()
 				  .previous (fund_big.hash ())
 				  .destination (rep_big.pub)

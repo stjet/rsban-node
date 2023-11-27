@@ -334,7 +334,7 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 
 void nano::active_transactions::broadcast_vote_impl (nano::election_lock & lock, nano::election & election)
 {
-	if (node.config->enable_voting && node.wallets.reps ().voting > 0)
+	if (node.config->enable_voting && node.wallets.voting_reps_count () > 0)
 	{
 		node.stats->inc (nano::stat::type::election, nano::stat::detail::generate_vote);
 
@@ -540,7 +540,7 @@ nano::tally_t nano::active_transactions::tally_impl (nano::election_lock & lock)
 
 void nano::active_transactions::remove_votes (nano::election & election, nano::election_lock & lock, nano::block_hash const & hash_a)
 {
-	if (node.config->enable_voting && node.wallets.reps ().voting > 0)
+	if (node.config->enable_voting && node.wallets.voting_reps_count () > 0)
 	{
 		// Remove votes from election
 		auto list_generated_votes (node.history.votes (election.root (), hash_a));
@@ -611,7 +611,7 @@ void nano::active_transactions::confirm_if_quorum (nano::election_lock & lock_a,
 
 	if (have_quorum (tally_l))
 	{
-		if (node.ledger.cache.final_votes_confirmation_canary () && !rsnano::rsn_election_is_quorum_exchange (election.handle, true) && node.config->enable_voting && node.wallets.reps ().voting > 0)
+		if (node.ledger.cache.final_votes_confirmation_canary () && !rsnano::rsn_election_is_quorum_exchange (election.handle, true) && node.config->enable_voting && node.wallets.voting_reps_count () > 0)
 		{
 			auto hash = status_l.get_winner ()->hash ();
 			lock_a.unlock ();
@@ -1123,8 +1123,7 @@ nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> con
 		// Republish vote if it is new and the node does not host a principal representative (or close to)
 		if (processed)
 		{
-			auto const reps (node.wallets.reps ());
-			if (!reps.have_half_rep () && !reps.exists (vote_a->account ()))
+			if (node.wallets.should_republish_vote (vote_a->account ()))
 			{
 				nano::confirm_ack ack{ node.network_params.network, vote_a };
 				node.network->tcp_channels->flood_message (ack, 0.5f);

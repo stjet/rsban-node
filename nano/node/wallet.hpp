@@ -24,6 +24,7 @@ namespace nano
 class node;
 class node_config;
 class wallets;
+class wallet_action_thread;
 class kdf final
 {
 public:
@@ -161,6 +162,7 @@ public:
 
 	nano::wallet_store store;
 	nano::wallets & wallets;
+	nano::wallet_action_thread & wallet_actions;
 	nano::node & node;
 	nano::store::lmdb::env & env;
 	rsnano::WalletHandle * handle;
@@ -251,8 +253,11 @@ public:
 	void foreach_representative (std::function<void (nano::public_key const &, nano::raw_key const &)> const &);
 	bool exists (store::transaction const &, nano::account const &);
 	void clear_send_ids (store::transaction const &);
-	nano::wallet_representatives reps () const;
+	size_t voting_reps_count () const;
+	bool have_half_rep () const;
+	bool rep_exists (nano::account const & rep) const;
 	bool check_rep (nano::account const &, nano::uint128_t const &, bool const = true);
+	bool should_republish_vote (nano::account const & voting_account) const;
 	void compute_reps ();
 	void ongoing_compute_reps ();
 	std::vector<nano::wallet_id> get_wallet_ids (store::transaction const & transaction_a);

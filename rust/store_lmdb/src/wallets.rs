@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     marker::PhantomData,
     sync::{Arc, Mutex},
 };
@@ -6,7 +7,7 @@ use std::{
 use crate::{
     iterator::{BinaryDbIterator, DbIterator},
     lmdb_env::RwTransaction,
-    Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction,
+    Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, Wallet,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{Account, BlockHash, NoValue, RawKey, WalletId};
@@ -18,7 +19,7 @@ pub struct LmdbWallets<T: Environment = EnvironmentWrapper> {
     phantom: PhantomData<T>,
     enable_voting: bool,
     _env: Arc<LmdbEnv<T>>,
-    pub mutex: Mutex<()>,
+    pub mutex: Mutex<HashMap<WalletId, Arc<Wallet>>>,
 }
 
 impl<T: Environment + 'static> LmdbWallets<T> {
@@ -28,7 +29,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
             send_action_ids_handle: None,
             phantom: PhantomData::default(),
             enable_voting,
-            mutex: Mutex::new(()),
+            mutex: Mutex::new(HashMap::new()),
             _env: env,
         }
     }

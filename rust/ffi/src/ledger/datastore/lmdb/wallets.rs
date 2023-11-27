@@ -1,8 +1,9 @@
-use super::{lmdb_env::LmdbEnvHandle, TransactionHandle};
+use super::{lmdb_env::LmdbEnvHandle, wallet::WalletHandle, TransactionHandle};
 use crate::{copy_hash_bytes, utils::ContextWrapper, U256ArrayDto, VoidPointerCallback};
-use rsnano_core::BlockHash;
-use rsnano_store_lmdb::LmdbWallets;
+use rsnano_core::{BlockHash, WalletId};
+use rsnano_store_lmdb::{LmdbWallets, Wallet};
 use std::{
+    collections::HashMap,
     ffi::{c_char, c_void, CStr},
     sync::{Arc, MutexGuard},
 };
@@ -104,7 +105,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_foreach_representative(
     });
 }
 
-pub struct WalletsMutexLockHandle(MutexGuard<'static, ()>);
+pub struct WalletsMutexLockHandle(MutexGuard<'static, HashMap<WalletId, Arc<Wallet>>>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_lock(
@@ -112,7 +113,10 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_lock(
 ) -> *mut WalletsMutexLockHandle {
     let guard = unsafe {
         let guard = handle.0.mutex.lock().unwrap();
-        std::mem::transmute::<MutexGuard<'_, ()>, MutexGuard<'static, ()>>(guard)
+        std::mem::transmute::<
+            MutexGuard<'_, HashMap<WalletId, Arc<Wallet>>>,
+            MutexGuard<'static, HashMap<WalletId, Arc<Wallet>>>,
+        >(guard)
     };
     Box::into_raw(Box::new(WalletsMutexLockHandle(guard)))
 }
@@ -124,7 +128,10 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_try_lock(
     match handle.0.mutex.try_lock() {
         Ok(guard) => {
             let guard = unsafe {
-                std::mem::transmute::<MutexGuard<'_, ()>, MutexGuard<'static, ()>>(guard)
+                std::mem::transmute::<
+                    MutexGuard<'_, HashMap<WalletId, Arc<Wallet>>>,
+                    MutexGuard<'static, HashMap<WalletId, Arc<Wallet>>>,
+                >(guard)
             };
             Box::into_raw(Box::new(WalletsMutexLockHandle(guard)))
         }
@@ -135,4 +142,27 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_try_lock(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_lock_destroy(handle: *mut WalletsMutexLockHandle) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_lock_size(
+    handle: &WalletsMutexLockHandle,
+) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_lock_find(
+    handle: &WalletsMutexLockHandle,
+    wallet_id: *const u8,
+    wallet: *mut *mut WalletHandle,
+) -> bool {
+    let wallet_id = WalletId::from_ptr(wallet_id);
+    match handle.0.get(&wallet_id) {
+        Some(w) => {
+            *wallet = Box::into_raw(Box::new(WalletHandle(Arc::clone(w))));
+            true
+        }
+        None => false,
+    }
 }

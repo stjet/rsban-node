@@ -1,14 +1,17 @@
 use rsnano_core::Account;
 use rsnano_store_lmdb::Wallet;
-use std::{collections::HashSet, sync::MutexGuard};
+use std::{
+    collections::HashSet,
+    sync::{Arc, MutexGuard},
+};
 
 use crate::copy_account_bytes;
 
-pub struct WalletHandle(Wallet);
+pub struct WalletHandle(pub Arc<Wallet>);
 
 #[no_mangle]
 pub extern "C" fn rsn_wallet_create() -> *mut WalletHandle {
-    Box::into_raw(Box::new(WalletHandle(Wallet::new())))
+    Box::into_raw(Box::new(WalletHandle(Arc::new(Wallet::new()))))
 }
 
 #[no_mangle]

@@ -1,17 +1,14 @@
+use super::lmdb::{LmdbStoreHandle, TransactionHandle};
 use crate::{
-    copy_account_bytes, copy_amount_bytes, copy_hash_bytes, copy_link_bytes, copy_root_bytes,
     core::{copy_block_array_dto, AccountInfoHandle, BlockArrayDto, BlockHandle},
     ledger::{GenerateCacheHandle, LedgerCacheHandle, LedgerConstantsDto},
     StatHandle, StringDto,
 };
+use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, Epoch, Link, QualifiedRoot};
 use rsnano_ledger::{Ledger, ProcessResult};
 use rsnano_node::stats::LedgerStats;
 use std::{ops::Deref, ptr::null_mut, sync::Arc};
-
-use num_traits::FromPrimitive;
-
-use super::lmdb::{LmdbStoreHandle, TransactionHandle};
 
 pub struct LedgerHandle(pub Arc<Ledger>);
 
@@ -145,7 +142,7 @@ pub unsafe extern "C" fn rsn_ledger_balance(
     result: *mut u8,
 ) {
     let balance = (*handle).balance((*txn).as_txn(), &BlockHash::from_ptr(hash));
-    copy_amount_bytes(balance, result);
+    balance.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -157,11 +154,11 @@ pub unsafe extern "C" fn rsn_ledger_balance_safe(
 ) -> bool {
     match (*handle).balance_safe((*txn).as_txn(), &BlockHash::from_ptr(hash)) {
         Ok(balance) => {
-            copy_amount_bytes(balance, result);
+            balance.copy_bytes(result);
             true
         }
         Err(_) => {
-            copy_amount_bytes(Amount::zero(), result);
+            Amount::zero().copy_bytes(result);
             false
         }
     }
@@ -179,7 +176,7 @@ pub unsafe extern "C" fn rsn_ledger_account_balance(
         (*handle)
             .0
             .account_balance((*txn).as_txn(), &Account::from_ptr(account), only_confirmed);
-    copy_amount_bytes(balance, result);
+    balance.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -195,7 +192,7 @@ pub unsafe extern "C" fn rsn_ledger_account_receivable(
         &Account::from_ptr(account),
         only_confirmed,
     );
-    copy_amount_bytes(balance, result);
+    balance.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -261,7 +258,7 @@ pub unsafe extern "C" fn rsn_ledger_block_destination(
     result: *mut u8,
 ) {
     let destination = handle.0.block_destination(txn.as_txn(), &block);
-    copy_account_bytes(destination, result);
+    destination.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -272,7 +269,7 @@ pub unsafe extern "C" fn rsn_ledger_block_source(
     result: *mut u8,
 ) {
     let source = handle.0.block_source(txn.as_txn(), &block);
-    copy_hash_bytes(source, result);
+    source.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -286,8 +283,8 @@ pub unsafe extern "C" fn rsn_ledger_hash_root_random(
         .0
         .hash_root_random((*txn).as_txn())
         .unwrap_or_default();
-    copy_hash_bytes(hash, result_hash);
-    copy_hash_bytes(root, result_root);
+    hash.copy_bytes(result_hash);
+    root.copy_bytes(result_root);
 }
 
 #[no_mangle]
@@ -297,7 +294,7 @@ pub unsafe extern "C" fn rsn_ledger_weight(
     result: *mut u8,
 ) {
     let weight = (*handle).0.weight(&Account::from_ptr(account));
-    copy_amount_bytes(weight, result);
+    weight.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -311,7 +308,7 @@ pub unsafe extern "C" fn rsn_ledger_account(
         .0
         .account((*txn).as_txn(), &BlockHash::from_ptr(hash))
         .unwrap_or_default();
-    copy_account_bytes(account, result);
+    account.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -326,11 +323,11 @@ pub unsafe extern "C" fn rsn_ledger_account_safe(
         .account((*txn).as_txn(), &BlockHash::from_ptr(hash));
     match account {
         Some(a) => {
-            copy_account_bytes(a, result);
+            a.copy_bytes(result);
             true
         }
         None => {
-            copy_account_bytes(Account::zero(), result);
+            Account::zero().copy_bytes(result);
             false
         }
     }
@@ -367,7 +364,7 @@ pub unsafe extern "C" fn rsn_ledger_amount(
         .0
         .amount((*txn).as_txn(), &BlockHash::from_ptr(hash))
         .unwrap_or_default();
-    copy_amount_bytes(amount, result);
+    amount.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -382,11 +379,11 @@ pub unsafe extern "C" fn rsn_ledger_amount_safe(
         .amount_safe((*txn).as_txn(), &BlockHash::from_ptr(hash));
     match amount {
         Some(a) => {
-            copy_amount_bytes(a, result);
+            a.copy_bytes(result);
             true
         }
         None => {
-            copy_amount_bytes(Amount::zero(), result);
+            Amount::zero().copy_bytes(result);
             false
         }
     }
@@ -403,7 +400,7 @@ pub unsafe extern "C" fn rsn_ledger_latest(
         .0
         .latest((*txn).as_txn(), &Account::from_ptr(account))
         .unwrap_or_default();
-    copy_hash_bytes(latest, result);
+    latest.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -416,7 +413,7 @@ pub unsafe extern "C" fn rsn_ledger_latest_root(
     let latest = (*handle)
         .0
         .latest_root((*txn).as_txn(), &Account::from_ptr(account));
-    copy_root_bytes(latest, result);
+    latest.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -457,7 +454,7 @@ pub unsafe extern "C" fn rsn_ledger_epoch_signer(
         .epochs
         .epoch_signer(&Link::from_ptr(link))
         .unwrap_or_default();
-    copy_account_bytes(signer, result);
+    signer.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -470,7 +467,7 @@ pub unsafe extern "C" fn rsn_ledger_epoch_link(
         .0
         .epoch_link(Epoch::from_u8(epoch).unwrap())
         .unwrap_or_default();
-    copy_link_bytes(link, result);
+    link.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -589,8 +586,8 @@ pub unsafe extern "C" fn rsn_ledger_dependent_blocks(
     result2: *mut u8,
 ) {
     let (first, second) = (*handle).0.dependent_blocks((*txn).as_txn(), &block);
-    copy_hash_bytes(first, result1);
-    copy_hash_bytes(second, result2);
+    first.copy_bytes(result1);
+    second.copy_bytes(result2);
 }
 
 #[no_mangle]
@@ -621,7 +618,7 @@ pub unsafe extern "C" fn rsn_ledger_representative(
     let representative = handle
         .0
         .representative_block_hash(txn.as_txn(), &BlockHash::from_ptr(hash));
-    copy_hash_bytes(representative, result);
+    representative.copy_bytes(result);
 }
 
 #[no_mangle]

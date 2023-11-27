@@ -1,5 +1,5 @@
 use super::{create_message_handle2, MessageHandle};
-use crate::{copy_account_bytes, NetworkConstantsDto, StringDto};
+use crate::{NetworkConstantsDto, StringDto};
 use rsnano_core::Account;
 use rsnano_node::messages::{FrontierReq, Message};
 
@@ -48,7 +48,7 @@ pub unsafe extern "C" fn rsn_message_frontier_size() -> usize {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_frontier_req_start(handle: &MessageHandle, account: *mut u8) {
     let start = get_payload(handle).start;
-    copy_account_bytes(start, account);
+    start.copy_bytes(account);
 }
 
 #[no_mangle]

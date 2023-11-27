@@ -1,4 +1,4 @@
-use crate::{copy_account_bytes, transport::ChannelHandle};
+use crate::transport::ChannelHandle;
 use rsnano_core::{
     utils::{system_time_as_nanoseconds, system_time_from_nanoseconds},
     Account,
@@ -32,10 +32,10 @@ pub unsafe extern "C" fn rsn_representative_clone(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_representative_account(
-    handle: *const RepresentativeHandle,
+    handle: &RepresentativeHandle,
     account: *mut u8,
 ) {
-    copy_account_bytes(*(*handle).0.account(), account);
+    handle.0.account().copy_bytes(account);
 }
 
 #[no_mangle]

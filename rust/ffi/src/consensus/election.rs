@@ -14,7 +14,6 @@ use std::{
 };
 
 use crate::{
-    copy_account_bytes, copy_amount_bytes, copy_hash_bytes, copy_root_bytes,
     core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
     utils::ContextWrapper,
     VoidPointerCallback,
@@ -85,7 +84,7 @@ pub extern "C" fn rsn_election_lock(handle: &ElectionHandle) -> *mut ElectionLoc
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_election_root(handle: &ElectionHandle, result: *mut u8) {
-    copy_root_bytes(handle.root, result);
+    handle.root.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -94,8 +93,8 @@ pub unsafe extern "C" fn rsn_election_qualified_root(
     root: *mut u8,
     previous: *mut u8,
 ) {
-    copy_root_bytes(handle.qualified_root.root, root);
-    copy_hash_bytes(handle.qualified_root.previous, previous);
+    handle.qualified_root.root.copy_bytes(root);
+    handle.qualified_root.previous.copy_bytes(previous);
 }
 
 #[no_mangle]
@@ -280,7 +279,7 @@ pub unsafe extern "C" fn rsn_election_lock_final_weight(
     handle: &ElectionLockHandle,
     weight: *mut u8,
 ) {
-    copy_amount_bytes(handle.0.as_ref().unwrap().final_weight, weight);
+    handle.0.as_ref().unwrap().final_weight.copy_bytes(weight);
 }
 
 #[no_mangle]
@@ -371,8 +370,8 @@ pub unsafe extern "C" fn rsn_tally_get(
     tally: *mut u8,
 ) {
     let (hash_value, tally_value) = &handle.0[index];
-    copy_hash_bytes(*hash_value, hash);
-    copy_amount_bytes(*tally_value, tally);
+    hash_value.copy_bytes(hash);
+    tally_value.copy_bytes(tally);
 }
 
 #[no_mangle]
@@ -508,7 +507,7 @@ pub unsafe extern "C" fn rsn_vote_info_collection_get(
     account: *mut u8,
 ) -> *mut VoteInfoHandle {
     let (acc, vote) = &handle.0[index];
-    copy_account_bytes(*acc, account);
+    acc.copy_bytes(account);
     return VoteInfoHandle::new(vote.clone());
 }
 
@@ -559,7 +558,7 @@ pub extern "C" fn rsn_vote_info_timestamp(handle: &VoteInfoHandle) -> u64 {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_info_hash(handle: &VoteInfoHandle, hash: *mut u8) {
-    copy_hash_bytes(handle.0.hash, hash);
+    handle.0.hash.copy_bytes(hash);
 }
 
 #[no_mangle]

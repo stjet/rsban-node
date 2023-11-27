@@ -5,8 +5,6 @@ use std::{
     sync::{Arc, MutexGuard},
 };
 
-use crate::copy_account_bytes;
-
 pub struct WalletHandle(pub Arc<Wallet>);
 
 #[no_mangle]
@@ -79,7 +77,7 @@ pub unsafe extern "C" fn rsn_account_vec_get(
     index: usize,
     result: *mut u8,
 ) {
-    copy_account_bytes(handle.0[index], result);
+    handle.0[index].copy_bytes(result);
 }
 
 #[no_mangle]

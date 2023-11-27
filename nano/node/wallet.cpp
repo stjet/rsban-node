@@ -13,6 +13,7 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include <future>
+#include <memory>
 
 nano::uint256_union nano::wallet_store::check (store::transaction const & transaction_a)
 {
@@ -989,6 +990,15 @@ nano::wallets::wallets_mutex_lock::~wallets_mutex_lock ()
 	if (handle != nullptr)
 		rsnano::rsn_lmdb_wallets_mutex_lock_destroy (handle);
 }
+
+//std::shared_ptr<nano::wallet> nano::wallets::wallets_mutex_lock::find (nano::wallet_id const & wallet_id){
+//	rsnano::WalletHandle * wallet_handle = nullptr;
+//	std::shared_ptr<nano::wallet> wallet {};
+//	if (rsnano::rsn_lmdb_wallets_mutex_lock_find(handle, wallet_id.bytes.data(), &wallet_handle)){
+//		wallet = make_shared<nano::wallet>(wallet_handle);
+//	}
+//	return wallet;
+//}
 
 nano::wallets::wallets_mutex::wallets_mutex (rsnano::LmdbWalletsHandle * handle) :
 	handle{ handle }

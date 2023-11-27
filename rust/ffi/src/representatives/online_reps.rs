@@ -1,5 +1,5 @@
 use crate::ledger::datastore::LedgerHandle;
-use crate::{copy_amount_bytes, U256ArrayDto};
+use crate::U256ArrayDto;
 use rsnano_core::{Account, Amount};
 use rsnano_node::representatives::{OnlineReps, ONLINE_WEIGHT_QUORUM};
 use rsnano_node::OnlineWeightSampler;
@@ -77,21 +77,21 @@ pub unsafe extern "C" fn rsn_online_reps_sample(handle: *mut OnlineRepsHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_online_reps_trended(handle: *mut OnlineRepsHandle, result: *mut u8) {
-    let amount = (*handle).online_reps.lock().unwrap().trended();
-    copy_amount_bytes(amount, result);
+pub unsafe extern "C" fn rsn_online_reps_trended(handle: &OnlineRepsHandle, result: *mut u8) {
+    let amount = handle.online_reps.lock().unwrap().trended();
+    amount.copy_bytes(result);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_online_reps_online(handle: *mut OnlineRepsHandle, result: *mut u8) {
-    let amount = (*handle).online_reps.lock().unwrap().online();
-    copy_amount_bytes(amount, result);
+pub unsafe extern "C" fn rsn_online_reps_online(handle: &OnlineRepsHandle, result: *mut u8) {
+    let amount = handle.online_reps.lock().unwrap().online();
+    amount.copy_bytes(result);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_online_reps_delta(handle: *mut OnlineRepsHandle, result: *mut u8) {
-    let amount = (*handle).online_reps.lock().unwrap().delta();
-    copy_amount_bytes(amount, result);
+pub unsafe extern "C" fn rsn_online_reps_delta(handle: &OnlineRepsHandle, result: *mut u8) {
+    let amount = handle.online_reps.lock().unwrap().delta();
+    amount.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -108,14 +108,12 @@ pub unsafe extern "C" fn rsn_online_reps_minimum_principal_weight(
     handle: &OnlineRepsHandle,
     result: *mut u8,
 ) {
-    copy_amount_bytes(
-        handle
-            .online_reps
-            .lock()
-            .unwrap()
-            .minimum_principal_weight(),
-        result,
-    )
+    handle
+        .online_reps
+        .lock()
+        .unwrap()
+        .minimum_principal_weight()
+        .copy_bytes(result)
 }
 
 #[no_mangle]

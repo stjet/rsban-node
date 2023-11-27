@@ -1,5 +1,4 @@
 use super::socket::EndpointDto;
-use crate::copy_account_bytes;
 use rsnano_node::transport::TcpMessageItem;
 use std::ops::Deref;
 
@@ -46,8 +45,8 @@ pub unsafe extern "C" fn rsn_tcp_message_item_endpoint(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_message_item_node_id(
-    handle: *mut TcpMessageItemHandle,
+    handle: &TcpMessageItemHandle,
     node_id: *mut u8,
 ) {
-    copy_account_bytes((*handle).0.node_id, node_id);
+    handle.0.node_id.copy_bytes(node_id);
 }

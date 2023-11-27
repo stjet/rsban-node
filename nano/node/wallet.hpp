@@ -202,6 +202,7 @@ public:
 		wallets_mutex_lock (wallets_mutex_lock &&);
 		wallets_mutex_lock (wallets_mutex_lock const &) = delete;
 		~wallets_mutex_lock ();
+		std::shared_ptr<nano::wallet> find (nano::wallet_id const & wallet_id);
 		rsnano::WalletsMutexLockHandle * handle;
 	};
 

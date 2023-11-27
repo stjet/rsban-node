@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use super::bootstrap_server::TcpServerHandle;
 use crate::{
-    copy_account_bytes, copy_hash_bytes,
     ledger::datastore::LedgerHandle,
     messages::MessageHandle,
     utils::{LoggerHandle, LoggerMT, ThreadPoolHandle},
@@ -53,7 +52,7 @@ pub unsafe extern "C" fn rsn_frontier_req_server_current(
     handle: *mut FrontierReqServerHandle,
     current: *mut u8,
 ) {
-    copy_account_bytes((*handle).0.current(), current);
+    (*handle).0.current().copy_bytes(current);
 }
 
 #[no_mangle]
@@ -61,5 +60,5 @@ pub unsafe extern "C" fn rsn_frontier_req_server_frontier(
     handle: *mut FrontierReqServerHandle,
     frontier: *mut u8,
 ) {
-    copy_hash_bytes((*handle).0.frontier(), frontier);
+    (*handle).0.frontier().copy_bytes(frontier);
 }

@@ -1,27 +1,20 @@
 mod account_info;
-pub use account_info::AccountInfoHandle;
-
 mod blocks;
-pub use blocks::*;
-
-mod random_pool;
-
 mod epoch;
-pub use epoch::EpochsHandle;
-
+mod random_pool;
 mod unchecked_info;
+
+pub use account_info::AccountInfoHandle;
+pub use blocks::*;
+pub use epoch::EpochsHandle;
+use rand::{thread_rng, Rng};
 use rsnano_core::{
     deterministic_key, sign_message, validate_message, Account, BlockHash, DifficultyV1, KeyPair,
     PublicKey, RawKey, Signature,
 };
-pub use unchecked_info::*;
-
-use rand::{thread_rng, Rng};
-use std::{ffi::CStr, net::Ipv6Addr, os::raw::c_char, slice};
-
 use rsnano_node::utils::ip_address_hash_raw;
-
-use super::copy_raw_key_bytes;
+use std::{ffi::CStr, net::Ipv6Addr, os::raw::c_char, slice};
+pub use unchecked_info::*;
 
 #[no_mangle]
 pub extern "C" fn rsn_difficulty_to_multiplier(difficulty: u64, base_difficulty: u64) -> f64 {
@@ -134,7 +127,7 @@ pub unsafe extern "C" fn rsn_ip_address_hash_raw(address: *const u8, port: u16) 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_deterministic_key(seed: *const u8, index: u32, result: *mut u8) {
     let key = deterministic_key(&RawKey::from_ptr(seed), index);
-    copy_raw_key_bytes(key, result);
+    key.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -148,7 +141,7 @@ pub unsafe extern "C" fn rsn_raw_key_encrypt(
     let key = RawKey::from_ptr(key);
     let iv = slice::from_raw_parts(iv, 16).try_into().unwrap();
     let encrypted = cleartext.encrypt(&key, &iv);
-    copy_raw_key_bytes(encrypted, value);
+    encrypted.copy_bytes(value);
 }
 
 #[no_mangle]
@@ -162,7 +155,7 @@ pub unsafe extern "C" fn rsn_raw_key_decrypt(
     let key = RawKey::from_ptr(key);
     let iv = slice::from_raw_parts(iv, 16).try_into().unwrap();
     let decrypted = ciphertext.decrypt(&key, &iv);
-    copy_raw_key_bytes(decrypted, value);
+    decrypted.copy_bytes(value);
 }
 
 //

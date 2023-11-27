@@ -48,6 +48,11 @@ impl Amount {
         self.raw.to_le_bytes()
     }
 
+    pub unsafe fn copy_bytes(&self, target: *mut u8) {
+        let target_slice = std::slice::from_raw_parts_mut(target, 16);
+        target_slice.copy_from_slice(&self.to_be_bytes());
+    }
+
     pub fn encode_hex(&self) -> String {
         format!("{:032X}", self.raw)
     }

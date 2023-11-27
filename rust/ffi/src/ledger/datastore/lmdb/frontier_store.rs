@@ -1,8 +1,7 @@
-use std::{ffi::c_void, sync::Arc};
-
-use crate::{copy_account_bytes, VoidPointerCallback};
+use crate::VoidPointerCallback;
 use rsnano_core::{Account, BlockHash};
 use rsnano_store_lmdb::LmdbFrontierStore;
+use std::{ffi::c_void, sync::Arc};
 
 use super::{
     iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},
@@ -47,7 +46,7 @@ pub unsafe extern "C" fn rsn_lmdb_frontier_store_get(
         .0
         .get((*txn).as_txn(), &BlockHash::from_ptr(hash))
         .unwrap_or_default();
-    copy_account_bytes(result, account);
+    result.copy_bytes(account);
 }
 
 #[no_mangle]

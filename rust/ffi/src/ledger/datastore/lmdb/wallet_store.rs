@@ -6,10 +6,7 @@ use std::{
 };
 
 use super::{iterator::LmdbIteratorHandle, TransactionHandle};
-use crate::{
-    copy_account_bytes, copy_public_key_bytes, copy_raw_key_bytes, wallet::kdf::KdfHandle,
-    StringDto, U256ArrayDto,
-};
+use crate::{wallet::kdf::KdfHandle, StringDto, U256ArrayDto};
 use rsnano_core::{Account, PublicKey, RawKey};
 use rsnano_store_lmdb::{EnvironmentWrapper, LmdbWalletStore, WalletValue};
 
@@ -96,7 +93,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_check(
     result: *mut u8,
 ) {
     let value = (*handle).0.check((*txn).as_txn());
-    copy_raw_key_bytes(value, result);
+    value.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -106,7 +103,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_salt(
     result: *mut u8,
 ) {
     let value = (*handle).0.salt((*txn).as_txn());
-    copy_raw_key_bytes(value, result);
+    value.copy_bytes(result);
 }
 
 #[no_mangle]
@@ -116,7 +113,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_wallet_key(
     txn: *mut TransactionHandle,
 ) {
     let key = (*handle).0.wallet_key((*txn).as_txn());
-    copy_raw_key_bytes(key, prv_key);
+    key.copy_bytes(prv_key);
 }
 
 #[no_mangle]
@@ -126,7 +123,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_seed(
     txn: *mut TransactionHandle,
 ) {
     let key = (*handle).0.seed((*txn).as_txn());
-    copy_raw_key_bytes(key, prv_key);
+    key.copy_bytes(prv_key);
 }
 
 #[no_mangle]
@@ -176,7 +173,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_derive_key(
 ) {
     let password = CStr::from_ptr(password).to_str().unwrap();
     let key = (*handle).0.derive_key((*txn).as_txn(), password);
-    copy_raw_key_bytes(key, prv);
+    key.copy_bytes(prv);
 }
 
 #[no_mangle]
@@ -242,7 +239,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_key(
     key: *mut u8,
 ) {
     let result = (*handle).0.deterministic_key((*txn).as_txn(), index);
-    copy_raw_key_bytes(result, key);
+    result.copy_bytes(key);
 }
 
 #[no_mangle]
@@ -275,7 +272,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_insert(
     key: *mut u8,
 ) {
     let result = (*handle).0.deterministic_insert((*txn).as_write_txn());
-    copy_public_key_bytes(&result, key);
+    result.copy_bytes(key);
 }
 
 #[no_mangle]
@@ -288,7 +285,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_insert_at(
     let result = (*handle)
         .0
         .deterministic_insert_at((*txn).as_write_txn(), index);
-    copy_public_key_bytes(&result, key);
+    result.copy_bytes(key);
 }
 
 #[no_mangle]
@@ -332,7 +329,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_representative(
     account: *mut u8,
 ) {
     let rep = (*handle).0.representative((*txn).as_txn());
-    copy_account_bytes(rep, account);
+    rep.copy_bytes(account);
 }
 
 #[no_mangle]
@@ -356,7 +353,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_insert_adhoc(
     let public_key = (*handle)
         .0
         .insert_adhoc((*txn).as_write_txn(), &RawKey::from_ptr(prv));
-    copy_public_key_bytes(&public_key, pub_key);
+    public_key.copy_bytes(pub_key);
 }
 
 #[no_mangle]
@@ -383,7 +380,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_fetch(
         .fetch((*txn).as_txn(), &Account::from_ptr(pub_key))
     {
         Ok(prv) => {
-            copy_raw_key_bytes(prv, prv_key);
+            prv.copy_bytes(prv_key);
             true
         }
         Err(_) => false,
@@ -485,7 +482,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_password(
     password: *mut u8,
 ) {
     let k = (*handle).0.fans.lock().unwrap().password.value();
-    copy_raw_key_bytes(k, password);
+    k.copy_bytes(password);
 }
 
 #[no_mangle]

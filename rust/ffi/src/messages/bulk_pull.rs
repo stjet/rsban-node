@@ -1,5 +1,5 @@
 use super::{create_message_handle2, MessageHandle};
-use crate::{copy_hash_bytes, NetworkConstantsDto, StringDto};
+use crate::{NetworkConstantsDto, StringDto};
 use rsnano_core::{BlockHash, HashOrAccount};
 use rsnano_node::messages::{BulkPull, Message};
 use std::ops::Deref;
@@ -44,7 +44,7 @@ unsafe fn get_payload(handle: &MessageHandle) -> &BulkPull {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_bulk_pull_end(handle: &MessageHandle, end: *mut u8) {
-    copy_hash_bytes(get_payload(handle).end, end);
+    get_payload(handle).end.copy_bytes(end);
 }
 
 #[no_mangle]

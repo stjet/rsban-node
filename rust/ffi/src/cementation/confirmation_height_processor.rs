@@ -9,7 +9,6 @@ use rsnano_core::{BlockEnum, BlockHash};
 use rsnano_node::{cementation::CementationThread, config::Logging};
 
 use crate::{
-    copy_hash_bytes,
     core::{BlockCallback, BlockHandle, BlockHashCallback},
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
     utils::{ContainerInfoComponentHandle, ContextWrapper, FfiLatch, LoggerHandle, LoggerMT},
@@ -78,7 +77,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_current(
     hash: *mut u8,
 ) {
     let block_hash = (*handle).0.current();
-    copy_hash_bytes(block_hash, hash);
+    block_hash.copy_bytes(hash);
 }
 
 #[no_mangle]

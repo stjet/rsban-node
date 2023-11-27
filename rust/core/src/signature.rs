@@ -40,6 +40,11 @@ impl Signature {
         &self.bytes
     }
 
+    pub unsafe fn copy_bytes(&self, target: *mut u8) {
+        let bytes = std::slice::from_raw_parts_mut(target, 64);
+        bytes.copy_from_slice(self.as_bytes());
+    }
+
     pub fn make_invalid(&mut self) {
         self.bytes[31] ^= 1;
     }

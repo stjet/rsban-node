@@ -1,5 +1,5 @@
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
-use crate::{copy_hash_or_account_bytes, NetworkConstantsDto};
+use crate::NetworkConstantsDto;
 use num::FromPrimitive;
 use rsnano_core::HashOrAccount;
 use rsnano_node::messages::{
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_payload_blocks(
 ) {
     match &get_payload(handle).req_type {
         AscPullReqType::Blocks(blocks) => {
-            copy_hash_or_account_bytes(blocks.start, start);
+            blocks.start.copy_bytes(start);
             (*count) = blocks.count;
             *start_type = blocks.start_type as u8;
         }
@@ -110,7 +110,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_payload_account_info(
 ) {
     match &get_payload(handle).req_type {
         AscPullReqType::AccountInfo(account_info) => {
-            copy_hash_or_account_bytes(account_info.target, target);
+            account_info.target.copy_bytes(target);
             *target_type = account_info.target_type as u8;
         }
         _ => panic!("not an account_info payload"),

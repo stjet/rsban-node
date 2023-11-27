@@ -1,5 +1,4 @@
 use crate::{
-    copy_amount_bytes,
     ledger::datastore::LedgerHandle,
     transport::{ChannelHandle, EndpointDto},
     NetworkConstantsDto,
@@ -83,7 +82,7 @@ pub unsafe extern "C" fn rsn_representative_register_total_weight(
     result: *mut u8,
 ) {
     let weight = handle.lock().unwrap().total_weight();
-    copy_amount_bytes(weight, result);
+    weight.copy_bytes(result);
 }
 
 #[no_mangle]

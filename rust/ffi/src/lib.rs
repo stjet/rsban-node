@@ -65,51 +65,6 @@ pub unsafe extern "C" fn rsn_string_destroy(handle: *mut StringHandle) {
     drop(Box::from_raw(handle))
 }
 
-pub(crate) unsafe fn copy_public_key_bytes(source: &PublicKey, target: *mut u8) {
-    let bytes = std::slice::from_raw_parts_mut(target, 32);
-    bytes.copy_from_slice(source.as_bytes());
-}
-
-pub(crate) unsafe fn copy_raw_key_bytes(source: RawKey, target: *mut u8) {
-    let bytes = std::slice::from_raw_parts_mut(target, 32);
-    bytes.copy_from_slice(source.as_bytes());
-}
-
-pub(crate) unsafe fn copy_hash_bytes(source: BlockHash, target: *mut u8) {
-    let bytes = std::slice::from_raw_parts_mut(target, 32);
-    bytes.copy_from_slice(source.as_bytes());
-}
-
-pub(crate) unsafe fn copy_hash_or_account_bytes(source: HashOrAccount, target: *mut u8) {
-    let bytes = std::slice::from_raw_parts_mut(target, 32);
-    bytes.copy_from_slice(source.as_bytes());
-}
-
-pub(crate) unsafe fn copy_account_bytes(source: Account, target: *mut u8) {
-    let bytes = std::slice::from_raw_parts_mut(target, 32);
-    bytes.copy_from_slice(source.as_bytes());
-}
-
-pub(crate) unsafe fn copy_signature_bytes(source: &Signature, target: *mut u8) {
-    let bytes = std::slice::from_raw_parts_mut(target, 64);
-    bytes.copy_from_slice(source.as_bytes());
-}
-
-pub(crate) unsafe fn copy_amount_bytes(source: Amount, target: *mut u8) {
-    let bytes = std::slice::from_raw_parts_mut(target, 16);
-    bytes.copy_from_slice(&source.to_be_bytes());
-}
-
-pub(crate) unsafe fn copy_root_bytes(source: Root, target: *mut u8) {
-    let bytes = std::slice::from_raw_parts_mut(target, 32);
-    bytes.copy_from_slice(source.as_bytes());
-}
-
-pub(crate) unsafe fn copy_link_bytes(source: Link, target: *mut u8) {
-    let bytes = std::slice::from_raw_parts_mut(target, 32);
-    bytes.copy_from_slice(source.as_bytes());
-}
-
 pub type VoidPointerCallback = unsafe extern "C" fn(*mut c_void);
 
 #[repr(C)]

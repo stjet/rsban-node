@@ -1,5 +1,5 @@
 use super::{lmdb_env::LmdbEnvHandle, wallet::WalletHandle, TransactionHandle};
-use crate::{copy_hash_bytes, utils::ContextWrapper, U256ArrayDto, VoidPointerCallback};
+use crate::{utils::ContextWrapper, U256ArrayDto, VoidPointerCallback};
 use rsnano_core::{BlockHash, WalletId};
 use rsnano_store_lmdb::{LmdbWallets, Wallet};
 use std::{
@@ -55,11 +55,11 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_get_block_hash(
     let id = CStr::from_ptr(id).to_str().unwrap();
     match (*handle).0.get_block_hash((*txn).as_txn(), id) {
         Ok(Some(h)) => {
-            copy_hash_bytes(h, hash);
+            h.copy_bytes(hash);
             true
         }
         Ok(None) => {
-            copy_hash_bytes(BlockHash::zero(), hash);
+            BlockHash::zero().copy_bytes(hash);
             true
         }
         Err(_) => false,
@@ -165,4 +165,39 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_lock_find(
         }
         None => false,
     }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_lmdb_wallets_mutex_lock_get_all(
+    handle: &WalletsMutexLockHandle,
+) -> *mut WalletVecHandle {
+    let wallets = handle
+        .0
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    Box::into_raw(Box::new(WalletVecHandle(wallets)))
+}
+
+pub struct WalletVecHandle(Vec<(WalletId, Arc<Wallet>)>);
+
+#[no_mangle]
+pub extern "C" fn rsn_wallet_vec_len(handle: &WalletVecHandle) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallet_vec_get(
+    handle: &WalletVecHandle,
+    index: usize,
+    wallet_id: *mut u8,
+) -> *mut WalletHandle {
+    let (id, wallet) = handle.0.get(index).unwrap();
+    id.copy_bytes(wallet_id);
+    Box::into_raw(Box::new(WalletHandle(Arc::clone(wallet))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallet_vec_destroy(handle: *mut WalletVecHandle) {
+    drop(Box::from_raw(handle));
 }

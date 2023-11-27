@@ -1,6 +1,4 @@
-use crate::{
-    consensus::VoteHandle, copy_account_bytes, utils::ContainerInfoComponentHandle, StatHandle,
-};
+use crate::{consensus::VoteHandle, utils::ContainerInfoComponentHandle, StatHandle};
 use rsnano_core::{Amount, BlockHash};
 use rsnano_node::consensus::{TopEntry, VoteCache, VoteCacheConfig, VoterEntry};
 use std::{
@@ -103,7 +101,7 @@ pub unsafe extern "C" fn rsn_vote_cache_entry_get_voter(
     timestamp: *mut u64,
 ) {
     let voter = (*(*entry).voters).0.get(index).unwrap();
-    copy_account_bytes(voter.representative, account);
+    voter.representative.copy_bytes(account);
     *timestamp = voter.timestamp;
 }
 

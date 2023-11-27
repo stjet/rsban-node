@@ -1,14 +1,11 @@
-use std::{ffi::c_void, sync::Arc};
-
-use rsnano_core::BlockHash;
-use rsnano_store_lmdb::LmdbPrunedStore;
-
-use crate::{copy_hash_bytes, VoidPointerCallback};
-
 use super::{
     iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},
     TransactionHandle,
 };
+use crate::VoidPointerCallback;
+use rsnano_core::BlockHash;
+use rsnano_store_lmdb::LmdbPrunedStore;
+use std::{ffi::c_void, sync::Arc};
 
 pub struct LmdbPrunedStoreHandle(Arc<LmdbPrunedStore>);
 
@@ -84,7 +81,7 @@ pub unsafe extern "C" fn rsn_lmdb_pruned_store_random(
     hash: *mut u8,
 ) {
     let random = (*handle).0.random((*txn).as_txn()).unwrap_or_default();
-    copy_hash_bytes(random, hash);
+    random.copy_bytes(hash);
 }
 
 #[no_mangle]

@@ -1,6 +1,5 @@
 use crate::{
     consensus::VoteHandle,
-    copy_amount_bytes,
     ledger::datastore::LedgerHandle,
     representatives::OnlineRepsHandle,
     utils::{ContainerInfoComponentHandle, ContextWrapper},
@@ -117,7 +116,7 @@ pub unsafe extern "C" fn rsn_gap_cache_bootstrap_threshold(
     result: *mut u8,
 ) {
     let threshold = (*handle).0.lock().unwrap().bootstrap_threshold();
-    copy_amount_bytes(threshold, result);
+    threshold.copy_bytes(result);
 }
 
 #[no_mangle]

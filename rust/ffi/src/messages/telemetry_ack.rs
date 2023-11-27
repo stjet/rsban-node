@@ -1,7 +1,5 @@
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
-use crate::{
-    copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto, StringDto,
-};
+use crate::{NetworkConstantsDto, StringDto};
 use rsnano_core::{Account, BlockHash, KeyPair, Signature};
 use rsnano_node::messages::{Message, TelemetryAck, TelemetryData};
 use std::time::{Duration, SystemTime};
@@ -27,10 +25,10 @@ pub unsafe extern "C" fn rsn_telemetry_data_clone(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_telemetry_data_get_signature(
-    handle: *mut TelemetryDataHandle,
+    handle: &TelemetryDataHandle,
     signature: *mut u8,
 ) {
-    copy_signature_bytes(&(*handle).0.signature, signature);
+    handle.0.signature.copy_bytes(signature);
 }
 
 #[no_mangle]
@@ -46,7 +44,7 @@ pub unsafe extern "C" fn rsn_telemetry_data_get_node_id(
     handle: *mut TelemetryDataHandle,
     node_id: *mut u8,
 ) {
-    copy_account_bytes((*handle).0.node_id, node_id);
+    (*handle).0.node_id.copy_bytes(node_id);
 }
 
 #[no_mangle]
@@ -180,7 +178,7 @@ pub unsafe extern "C" fn rsn_telemetry_data_get_genesis_block(
     handle: *mut TelemetryDataHandle,
     block: *mut u8,
 ) {
-    copy_hash_bytes((*handle).0.genesis_block, block);
+    (*handle).0.genesis_block.copy_bytes(block);
 }
 
 #[no_mangle]

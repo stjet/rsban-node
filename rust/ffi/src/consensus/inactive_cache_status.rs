@@ -1,4 +1,4 @@
-use crate::{copy_amount_bytes, StringDto};
+use crate::StringDto;
 use rsnano_core::Amount;
 use rsnano_node::consensus::InactiveCacheStatus;
 
@@ -38,10 +38,10 @@ pub unsafe extern "C" fn rsn_inactive_cache_status_confirmed(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_inactive_cache_status_tally(
-    handle: *const InactiveCacheStatusHandle,
+    handle: &InactiveCacheStatusHandle,
     result: *mut u8,
 ) {
-    copy_amount_bytes((*handle).0.tally, result)
+    handle.0.tally.copy_bytes(result)
 }
 
 #[no_mangle]

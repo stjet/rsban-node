@@ -6,7 +6,6 @@ use rsnano_node::{
 use std::sync::Arc;
 
 use crate::{
-    copy_hash_bytes,
     core::BlockHandle,
     ledger::datastore::LedgerHandle,
     messages::MessageHandle,
@@ -64,7 +63,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_current(
     handle: *const BulkPullServerHandle,
     result: *mut u8,
 ) {
-    copy_hash_bytes((*handle).0.current(), result);
+    (*handle).0.current().copy_bytes(result);
 }
 
 #[no_mangle]

@@ -1,7 +1,5 @@
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
-use crate::{
-    copy_account_bytes, copy_hash_bytes, copy_signature_bytes, NetworkConstantsDto, StringDto,
-};
+use crate::{NetworkConstantsDto, StringDto};
 use rsnano_core::{Account, BlockHash, PublicKey, Signature};
 use rsnano_node::messages::{
     Message, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse, V2Payload,
@@ -95,13 +93,13 @@ pub unsafe extern "C" fn rsn_message_node_id_handshake_response(
 ) -> bool {
     match &get_payload(handle).response {
         Some(response) => {
-            copy_account_bytes(response.node_id, account);
-            copy_signature_bytes(&response.signature, signature);
+            response.node_id.copy_bytes(account);
+            response.signature.copy_bytes(signature);
             match &response.v2 {
                 Some(v2) => {
                     let salt_slice = std::slice::from_raw_parts_mut(salt, 32);
                     salt_slice.copy_from_slice(&v2.salt);
-                    copy_hash_bytes(v2.genesis, genesis);
+                    v2.genesis.copy_bytes(genesis);
                     *is_v2 = true;
                 }
                 None => {

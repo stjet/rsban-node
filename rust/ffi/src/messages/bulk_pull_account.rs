@@ -1,5 +1,5 @@
 use super::{create_message_handle2, MessageHandle};
-use crate::{copy_account_bytes, copy_amount_bytes, NetworkConstantsDto, StringDto};
+use crate::{NetworkConstantsDto, StringDto};
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount};
 use rsnano_node::messages::{BulkPullAccount, BulkPullAccountFlags, Message};
@@ -44,7 +44,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_account_account(
     handle: &MessageHandle,
     account: *mut u8,
 ) {
-    copy_account_bytes(get_payload(handle).account, account);
+    get_payload(handle).account.copy_bytes(account);
 }
 
 #[no_mangle]
@@ -60,7 +60,7 @@ pub unsafe extern "C" fn rsn_message_bulk_pull_account_minimum_amount(
     handle: &MessageHandle,
     amount: *mut u8,
 ) {
-    copy_amount_bytes(get_payload(handle).minimum_amount, amount);
+    get_payload(handle).minimum_amount.copy_bytes(amount);
 }
 
 #[no_mangle]

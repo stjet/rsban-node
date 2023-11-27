@@ -1,4 +1,4 @@
-use crate::{copy_amount_bytes, core::BlockHandle};
+use crate::core::BlockHandle;
 use num_traits::FromPrimitive;
 use rsnano_core::Amount;
 use rsnano_node::consensus::ElectionStatus;
@@ -57,18 +57,18 @@ pub unsafe extern "C" fn rsn_election_status_get_winner(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_election_status_get_tally(
-    handle: *const ElectionStatusHandle,
+    handle: &ElectionStatusHandle,
     result: *mut u8,
 ) {
-    copy_amount_bytes((*handle).0.tally, result);
+    handle.0.tally.copy_bytes(result);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_election_status_get_final_tally(
-    handle: *const ElectionStatusHandle,
+    handle: &ElectionStatusHandle,
     result: *mut u8,
 ) {
-    copy_amount_bytes((*handle).0.final_tally, result);
+    handle.0.final_tally.copy_bytes(result);
 }
 
 #[no_mangle]

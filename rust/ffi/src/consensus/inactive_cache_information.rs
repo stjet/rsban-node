@@ -1,6 +1,4 @@
-use crate::{
-    consensus::inactive_cache_status::InactiveCacheStatusHandle, copy_hash_bytes, StringDto,
-};
+use crate::{consensus::inactive_cache_status::InactiveCacheStatusHandle, StringDto};
 use rsnano_core::{Account, BlockHash};
 use rsnano_node::consensus::InactiveCacheInformation;
 
@@ -56,7 +54,7 @@ pub unsafe extern "C" fn rsn_inactive_cache_information_get_hash(
     handle: *const InactiveCacheInformationHandle,
     result: *mut u8,
 ) {
-    copy_hash_bytes((*handle).0.hash, result);
+    (*handle).0.hash.copy_bytes(result);
 }
 
 #[no_mangle]

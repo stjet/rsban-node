@@ -1,12 +1,10 @@
+use rsnano_core::KeyDerivationFunction;
 use std::{
     ffi::{c_char, CStr},
     ops::Deref,
     slice,
 };
 
-use rsnano_core::KeyDerivationFunction;
-
-use crate::copy_raw_key_bytes;
 pub struct KdfHandle(KeyDerivationFunction);
 
 impl Deref for KdfHandle {
@@ -37,5 +35,5 @@ pub unsafe extern "C" fn rsn_kdf_phs(
     let password = CStr::from_ptr(password).to_str().unwrap();
     let salt = slice::from_raw_parts(salt, 32).try_into().unwrap();
     let key = (*handle).0.hash_password(password, salt);
-    copy_raw_key_bytes(key, result);
+    key.copy_bytes(result);
 }

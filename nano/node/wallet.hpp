@@ -108,6 +108,11 @@ public:
 		representatives_lock (rsnano::RepresentativesLockHandle * handle);
 		representatives_lock (representatives_lock const &) = delete;
 		~representatives_lock ();
+		size_t size () const;
+		void insert (nano::public_key const & rep);
+		std::unordered_set<nano::account> get_all ();
+		void set (std::unordered_set<nano::account> reps);
+
 		rsnano::RepresentativesLockHandle * handle;
 	};
 	class representatives_mutex
@@ -157,7 +162,6 @@ public:
 	nano::wallets & wallets;
 	nano::node & node;
 	nano::store::lmdb::env & env;
-	std::unordered_set<nano::account> representatives;
 	rsnano::WalletHandle * handle;
 	representatives_mutex representatives_mutex;
 };

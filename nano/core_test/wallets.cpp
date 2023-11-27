@@ -156,14 +156,14 @@ TEST (wallets, vote_minimum)
 	auto wallet (node1.wallets.items.begin ()->second);
 	{
 		auto representatives_lk (wallet->representatives_mutex.lock ());
-		ASSERT_EQ (0, wallet->representatives.size ());
+		ASSERT_EQ (0, representatives_lk.size ());
 	}
 	wallet->insert_adhoc (nano::dev::genesis_key.prv);
 	wallet->insert_adhoc (key1.prv);
 	wallet->insert_adhoc (key2.prv);
 	node1.wallets.compute_reps ();
 	auto representatives_lk{ wallet->representatives_mutex.lock () };
-	ASSERT_EQ (2, wallet->representatives.size ());
+	ASSERT_EQ (2, representatives_lk.size ());
 }
 
 TEST (wallets, exists)

@@ -11,6 +11,7 @@ mod pending_store;
 mod pruned_store;
 mod store;
 mod version_store;
+mod wallet;
 mod wallet_store;
 mod wallets;
 

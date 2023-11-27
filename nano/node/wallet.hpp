@@ -102,12 +102,30 @@ private:
 class wallet final : public std::enable_shared_from_this<nano::wallet>
 {
 public:
+	class representatives_lock
+	{
+	public:
+		representatives_lock (rsnano::RepresentativesLockHandle * handle);
+		representatives_lock (representatives_lock const &) = delete;
+		~representatives_lock ();
+		rsnano::RepresentativesLockHandle * handle;
+	};
+	class representatives_mutex
+	{
+	public:
+		representatives_mutex (rsnano::WalletHandle * handle);
+		representatives_mutex (representatives_mutex const &) = delete;
+		representatives_lock lock ();
+		rsnano::WalletHandle * handle;
+	};
+	wallet (bool &, store::transaction &, nano::wallets &, std::string const &);
+	wallet (bool &, store::transaction &, nano::wallets &, std::string const &, std::string const &);
+	wallet (wallet const &) = delete;
+	~wallet ();
 	std::shared_ptr<nano::block> change_action (nano::account const &, nano::account const &, uint64_t = 0, bool = true);
 	std::shared_ptr<nano::block> receive_action (nano::block_hash const &, nano::account const &, nano::uint128_union const &, nano::account const &, uint64_t = 0, bool = true);
 	std::shared_ptr<nano::block> send_action (nano::account const &, nano::account const &, nano::uint128_t const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});
 	bool action_complete (std::shared_ptr<nano::block> const &, nano::account const &, bool const, nano::block_details const &);
-	wallet (bool &, store::transaction &, nano::wallets &, std::string const &);
-	wallet (bool &, store::transaction &, nano::wallets &, std::string const &, std::string const &);
 	void enter_initial_password ();
 	bool enter_password (store::transaction const &, std::string const &);
 	nano::public_key insert_adhoc (nano::raw_key const &, bool = true);
@@ -139,8 +157,9 @@ public:
 	nano::wallets & wallets;
 	nano::node & node;
 	nano::store::lmdb::env & env;
-	nano::mutex representatives_mutex;
 	std::unordered_set<nano::account> representatives;
+	rsnano::WalletHandle * handle;
+	representatives_mutex representatives_mutex;
 };
 
 class wallet_representatives

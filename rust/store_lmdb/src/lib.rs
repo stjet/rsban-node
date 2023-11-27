@@ -5,12 +5,16 @@ extern crate num_derive;
 extern crate anyhow;
 
 mod iterator;
-pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl, LmdbIteratorImpl};
-
 mod lmdb_config;
-pub use lmdb_config::{LmdbConfig, SyncStrategy};
-
 mod lmdb_env;
+mod wallet;
+mod wallet_store;
+mod wallets;
+
+pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl, LmdbIteratorImpl};
+pub use lmdb_config::{LmdbConfig, SyncStrategy};
+pub use wallet::*;
+
 pub use lmdb_env::{
     ConfiguredDatabase, DatabaseStub, EnvOptions, Environment, EnvironmentOptions, EnvironmentStub,
     EnvironmentWrapper, LmdbEnv, RoCursorWrapper, TestDbFile, TestLmdbEnv,
@@ -47,13 +51,11 @@ pub use pruned_store::{ConfiguredPrunedDatabaseBuilder, LmdbPrunedStore};
 mod version_store;
 pub use version_store::LmdbVersionStore;
 
-mod wallet_store;
 pub use wallet_store::{Fans, LmdbWalletStore, WalletValue};
 
 mod fan;
 pub use fan::Fan;
 
-mod wallets;
 pub use wallets::LmdbWallets;
 
 mod store;

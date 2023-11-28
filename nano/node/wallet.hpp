@@ -25,6 +25,7 @@ class node;
 class node_config;
 class wallets;
 class wallet_action_thread;
+class wallet_representatives;
 class kdf final
 {
 public:
@@ -163,6 +164,7 @@ public:
 	nano::wallet_store store;
 	nano::wallets & wallets;
 	nano::wallet_action_thread & wallet_actions;
+	nano::wallet_representatives & representatives;
 	nano::node & node;
 	nano::store::lmdb::env & env;
 	rsnano::WalletHandle * handle;
@@ -195,6 +197,7 @@ private:
 class wallet_representatives
 {
 public:
+	wallet_representatives(nano::node & node_a) : node{node_a} {}
 	uint64_t voting{ 0 }; // Number of representatives with at least the configured minimum voting weight
 	bool half_principal{ false }; // has representatives with at least 50% of principal representative requirements
 	std::unordered_set<nano::account> accounts; // Representatives with at least the configured minimum voting weight
@@ -212,6 +215,10 @@ public:
 		half_principal = false;
 		accounts.clear ();
 	}
+	bool check_rep (nano::account const &, nano::uint128_t const &, bool const = true);
+
+	mutable nano::mutex reps_cache_mutex;
+	nano::node & node;
 };
 
 /**
@@ -256,7 +263,6 @@ public:
 	size_t voting_reps_count () const;
 	bool have_half_rep () const;
 	bool rep_exists (nano::account const & rep) const;
-	bool check_rep (nano::account const &, nano::uint128_t const &, bool const = true);
 	bool should_republish_vote (nano::account const & voting_account) const;
 	void compute_reps ();
 	void ongoing_compute_reps ();
@@ -279,11 +285,7 @@ public:
 	/** Start read-only transaction */
 	std::unique_ptr<store::read_transaction> tx_begin_read ();
 
-private:
-	mutable nano::mutex reps_cache_mutex;
 	nano::wallet_representatives representatives;
-
-public:
 	rsnano::LmdbWalletsHandle * rust_handle;
 	wallets_mutex mutex;
 };

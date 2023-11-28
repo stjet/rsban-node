@@ -774,7 +774,7 @@ void nano::json_handler::account_list ()
 void nano::json_handler::account_move ()
 {
 	node.workers->push_task (create_worker_task ([] (std::shared_ptr<nano::json_handler> const & rpc_l) {
-		auto wallet (rpc_l->wallet_impl ());
+		auto wallet_id{ rpc_l->get_wallet_id () };
 		if (!rpc_l->ec)
 		{
 			std::string source_text (rpc_l->request.get<std::string> ("source"));
@@ -782,18 +782,16 @@ void nano::json_handler::account_move ()
 			nano::wallet_id source;
 			if (!source.decode_hex (source_text))
 			{
-				auto existing (rpc_l->node.wallets.items.find (source));
-				if (existing != rpc_l->node.wallets.items.end ())
+				if (rpc_l->node.wallets.wallet_exists (source))
 				{
-					auto source (existing->second);
 					std::vector<nano::public_key> accounts;
 					for (auto i (accounts_text.begin ()), n (accounts_text.end ()); i != n; ++i)
 					{
 						auto account (rpc_l->account_impl (i->second.get<std::string> ("")));
 						accounts.push_back (account);
 					}
-					auto transaction (rpc_l->node.wallets.tx_begin_write ());
-					auto error (wallet->store.move (*transaction, source->store, accounts));
+
+					auto error{ rpc_l->node.wallets.move_accounts (source, wallet_id, accounts) };
 					rpc_l->response_l.put ("moved", error ? "0" : "1");
 				}
 				else
@@ -1552,9 +1550,9 @@ void nano::json_handler::block_create ()
 	}
 	if (!ec && wallet != 0 && account != 0)
 	{
-		auto existing (node.wallets.items.find (wallet));
-		if (existing != node.wallets.items.end ())
+		if (node.wallets.wallet_exists (wallet))
 		{
+			auto existing (node.wallets.items.find (wallet));
 			auto transaction (node.wallets.tx_begin_read ());
 			auto block_transaction (node.store.tx_begin_read ());
 			wallet_locked_impl (*transaction, existing->second);
@@ -4581,8 +4579,7 @@ void nano::json_handler::wallet_create ()
 		{
 			auto wallet_id = random_wallet_id ();
 			auto wallet (rpc_l->node.wallets.create (wallet_id));
-			auto existing (rpc_l->node.wallets.items.find (wallet_id));
-			if (existing != rpc_l->node.wallets.items.end ())
+			if (rpc_l->node.wallets.wallet_exists (wallet_id))
 			{
 				rpc_l->response_l.put ("wallet", wallet_id.to_string ());
 			}
@@ -4611,11 +4608,10 @@ void nano::json_handler::wallet_destroy ()
 		nano::wallet_id wallet;
 		if (!wallet.decode_hex (wallet_text))
 		{
-			auto existing (rpc_l->node.wallets.items.find (wallet));
-			if (existing != rpc_l->node.wallets.items.end ())
+			if (rpc_l->node.wallets.wallet_exists (wallet))
 			{
 				rpc_l->node.wallets.destroy (wallet);
-				bool destroyed (rpc_l->node.wallets.items.find (wallet) == rpc_l->node.wallets.items.end ());
+				bool destroyed (!rpc_l->node.wallets.wallet_exists (wallet));
 				rpc_l->response_l.put ("destroyed", destroyed ? "1" : "0");
 			}
 			else

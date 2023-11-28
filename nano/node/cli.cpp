@@ -1151,11 +1151,10 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			{
 				auto inactive_node = nano::default_inactive_node (data_path, vm);
 				auto node = inactive_node->node;
-				auto wallet (node->wallets.items.find (wallet_id));
-				if (wallet != node->wallets.items.end ())
+				if (node->wallets.wallet_exists (wallet_id))
 				{
 					auto transaction (node->wallets.tx_begin_read ());
-					auto representative (wallet->second->store.representative (*transaction));
+					auto representative{ node->wallets.get_representative (*transaction, wallet_id) };
 					std::cout << boost::str (boost::format ("Representative: %1%\n") % representative.to_account ());
 				}
 				else
@@ -1190,11 +1189,9 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					{
 						auto inactive_node = nano::default_inactive_node (data_path, vm);
 						auto node = inactive_node->node;
-						auto wallet (node->wallets.items.find (wallet_id));
-						if (wallet != node->wallets.items.end ())
+						if (node->wallets.wallet_exists (wallet_id))
 						{
-							auto transaction (node->wallets.tx_begin_write ());
-							wallet->second->store.representative_set (*transaction, account);
+							node->wallets.set_representative (wallet_id, account);
 						}
 						else
 						{

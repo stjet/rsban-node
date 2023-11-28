@@ -1197,6 +1197,14 @@ nano::account nano::wallets::get_representative (store::transaction const & txn,
 	return wallet->second->store.representative (txn);
 }
 
+void nano::wallets::set_representative (nano::wallet_id const & wallet_id, nano::account const & rep)
+{
+	auto lock{ mutex.lock () };
+	auto transaction (tx_begin_write ());
+	auto wallet (items.find (wallet_id));
+	wallet->second->store.representative_set (*transaction, rep);
+}
+
 void nano::wallets::get_seed (nano::raw_key & prv_a, store::transaction const & txn, nano::wallet_id const & id) const
 {
 	auto lock{ mutex.lock () };
@@ -1282,6 +1290,17 @@ bool nano::wallets::remove_account (nano::wallet_id const & wallet_id, nano::acc
 		deleted = true;
 	}
 	return deleted;
+}
+
+bool nano::wallets::move_accounts (nano::wallet_id const & source_id, nano::wallet_id const & target_id, std::vector<nano::public_key> const & accounts)
+{
+	auto lock{ mutex.lock () };
+	auto existing (items.find (source_id));
+	auto source (existing->second);
+	auto transaction (tx_begin_write ());
+	auto target{ items.find (target_id) };
+	auto error (target->second->store.move (*transaction, source->store, accounts));
+	return error;
 }
 
 bool nano::wallets::wallet_exists (nano::wallet_id const & id) const

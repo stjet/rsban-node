@@ -640,16 +640,17 @@ TEST (wallet, insert_locked)
 {
 	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
+	auto wallet_id{ node1.wallets.first_wallet_id () };
 	auto wallet (system.wallet (0));
 	{
 		auto transaction (node1.wallets.tx_begin_write ());
 		wallet->store.rekey (*transaction, "1");
 		ASSERT_TRUE (wallet->store.valid_password (*transaction));
-		wallet->enter_password (*transaction, "");
+		node1.wallets.enter_password (wallet_id, *transaction, "");
 	}
 	auto transaction (node1.wallets.tx_begin_read ());
 	ASSERT_FALSE (wallet->store.valid_password (*transaction));
-	ASSERT_TRUE (wallet->insert_adhoc (nano::keypair ().prv).is_zero ());
+	ASSERT_TRUE (node1.wallets.insert_adhoc (wallet_id, nano::keypair ().prv).is_zero ());
 }
 
 TEST (wallet, deterministic_keys)
@@ -733,10 +734,11 @@ TEST (wallet, insert_deterministic_locked)
 	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
 	auto wallet (system.wallet (0));
+	auto wallet_id{ node1.wallets.first_wallet_id () };
 	auto transaction (node1.wallets.tx_begin_write ());
 	wallet->store.rekey (*transaction, "1");
 	ASSERT_TRUE (wallet->store.valid_password (*transaction));
-	wallet->enter_password (*transaction, "");
+	node1.wallets.enter_password (wallet_id, *transaction, "");
 	ASSERT_FALSE (wallet->store.valid_password (*transaction));
 	ASSERT_TRUE (wallet->deterministic_insert (*transaction).is_zero ());
 }

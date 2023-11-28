@@ -504,8 +504,9 @@ TEST (node, unlock_search)
 	system.wallet (0)->insert_adhoc (key2.prv);
 	system.wallet (0)->store.set_password (nano::keypair ().prv);
 	{
+		auto wallet_id{ node->wallets.first_wallet_id () };
 		auto transaction (node->wallets.tx_begin_write ());
-		ASSERT_FALSE (system.wallet (0)->enter_password (*transaction, ""));
+		ASSERT_FALSE (node->wallets.enter_password (wallet_id, *transaction, ""));
 	}
 	ASSERT_TIMELY (10s, !node->balance (key2.pub).is_zero ());
 }
@@ -535,7 +536,8 @@ TEST (node, confirm_locked)
 	auto node (system.nodes[0]);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	auto transaction (node->wallets.tx_begin_read ());
-	system.wallet (0)->enter_password (*transaction, "1");
+	auto wallet_id{ node->wallets.first_wallet_id () };
+	node->wallets.enter_password (wallet_id, *transaction, "1");
 	auto block = nano::send_block_builder ()
 				 .previous (0)
 				 .destination (0)

@@ -197,7 +197,10 @@ private:
 class wallet_representatives
 {
 public:
-	wallet_representatives(nano::node & node_a) : node{node_a} {}
+	wallet_representatives (nano::node & node_a) :
+		node{ node_a }
+	{
+	}
 	uint64_t voting{ 0 }; // Number of representatives with at least the configured minimum voting weight
 	bool half_principal{ false }; // has representatives with at least 50% of principal representative requirements
 	std::unordered_set<nano::account> accounts; // Representatives with at least the configured minimum voting weight
@@ -253,9 +256,14 @@ public:
 	~wallets ();
 	std::shared_ptr<nano::wallet> open (nano::wallet_id const &);
 	std::shared_ptr<nano::wallet> create (nano::wallet_id const &);
-	size_t wallet_count() const;
-	bool wallet_exists(nano::wallet_id const & id) const;
-	nano::wallet_id first_wallet_id() const;
+	size_t wallet_count () const;
+	size_t representatives_count (nano::wallet_id const & id) const;
+	nano::account get_representative (store::transaction const &, nano::wallet_id const & id) const;
+	void get_seed (nano::raw_key & prv_a, store::transaction const & transaction_a, nano::wallet_id const & id) const;
+	bool wallet_exists (nano::wallet_id const & id) const;
+	nano::wallet_id first_wallet_id () const;
+	nano::public_key insert_adhoc (nano::wallet_id const & id, nano::raw_key const & key_a, bool generate_work_a = true);
+	bool enter_password (nano::wallet_id const & id, store::transaction const & transaction_a, std::string const & password_a);
 	bool search_receivable (nano::wallet_id const &);
 	void search_receivable_all ();
 	void destroy (nano::wallet_id const &);

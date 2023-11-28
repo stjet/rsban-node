@@ -12,6 +12,7 @@
 #include <boost/polymorphic_cast.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
+#include <algorithm>
 #include <cstdint>
 #include <future>
 #include <memory>
@@ -396,7 +397,7 @@ nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::w
 	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a),
 	wallets (wallets_a),
 	wallet_actions{ wallets_a.wallet_actions },
-	representatives{wallets_a.representatives},
+	representatives{ wallets_a.representatives },
 	node{ wallets_a.node },
 	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (wallets_a.node.wallets_store_impl.get ())->environment),
 	handle{ rsnano::rsn_wallet_create () },
@@ -408,7 +409,7 @@ nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::w
 	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a, json),
 	wallets (wallets_a),
 	wallet_actions{ wallets_a.wallet_actions },
-	representatives{wallets_a.representatives},
+	representatives{ wallets_a.representatives },
 	node{ wallets_a.node },
 	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (wallets_a.node.wallets_store_impl.get ())->environment),
 	handle{ rsnano::rsn_wallet_create () },
@@ -1058,7 +1059,6 @@ bool nano::wallet_representatives::check_rep (nano::account const & account_a, n
 	return true;
 }
 
-
 nano::wallets::wallets_mutex_lock::wallets_mutex_lock (rsnano::WalletsMutexLockHandle * handle) :
 	handle{ handle }
 {
@@ -1110,7 +1110,7 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 	kdf{ node_a.config->network_params.kdf_work },
 	node (node_a),
 	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (node_a.wallets_store_impl.get ())->environment),
-	representatives{node_a},
+	representatives{ node_a },
 	rust_handle{ rsnano::rsn_lmdb_wallets_create (node_a.config->enable_voting, env.handle) },
 	mutex{ rust_handle },
 	wallet_actions{}
@@ -1176,22 +1176,58 @@ nano::wallets::~wallets ()
 	rsnano::rsn_lmdb_wallets_destroy (rust_handle);
 }
 
-size_t nano::wallets::wallet_count() const
+size_t nano::wallets::wallet_count () const
 {
 	auto lock{ mutex.lock () };
-	return items.size();
+	return items.size ();
 }
 
-bool nano::wallets::wallet_exists(nano::wallet_id const & id) const
+size_t nano::wallets::representatives_count (nano::wallet_id const & id) const
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (id);
+	auto representatives_lk (wallet->second->representatives_mutex.lock ());
+	return representatives_lk.size ();
+}
+
+nano::account nano::wallets::get_representative (store::transaction const & txn, nano::wallet_id const & id) const
+{
+	auto lock{ mutex.lock () };
+	auto wallet{ items.find (id) };
+	return wallet->second->store.representative (txn);
+}
+
+void nano::wallets::get_seed (nano::raw_key & prv_a, store::transaction const & txn, nano::wallet_id const & id) const
+{
+	auto lock{ mutex.lock () };
+	auto wallet{ items.find (id) };
+	wallet->second->store.seed (prv_a, txn);
+}
+
+bool nano::wallets::wallet_exists (nano::wallet_id const & id) const
 {
 	auto lock{ mutex.lock () };
 	return items.find (id) != items.end ();
 }
 
-nano::wallet_id nano::wallets::first_wallet_id() const
+nano::wallet_id nano::wallets::first_wallet_id () const
 {
 	auto lock{ mutex.lock () };
 	return items.begin ()->first;
+}
+
+nano::public_key nano::wallets::insert_adhoc (nano::wallet_id const & id, nano::raw_key const & key_a, bool generate_work_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet{ items.find (id) };
+	return wallet->second->insert_adhoc (key_a, generate_work_a);
+}
+
+bool nano::wallets::enter_password (nano::wallet_id const & id, store::transaction const & transaction_a, std::string const & password_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet{ items.find (id) };
+	return wallet->second->enter_password (transaction_a, password_a);
 }
 
 std::shared_ptr<nano::wallet> nano::wallets::open (nano::wallet_id const & id_a)

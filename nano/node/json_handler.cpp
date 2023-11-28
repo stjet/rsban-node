@@ -179,6 +179,31 @@ void nano::json_handler::response_errors ()
 	}
 }
 
+nano::wallet_id nano::json_handler::get_wallet_id ()
+{
+	if (!ec)
+	{
+		std::string wallet_text (request.get<std::string> ("wallet"));
+		nano::wallet_id wallet;
+		if (!wallet.decode_hex (wallet_text))
+		{
+			if (auto existing = node.wallets.open (wallet); existing != nullptr)
+			{
+				return wallet;
+			}
+			else
+			{
+				ec = nano::error_common::wallet_not_found;
+			}
+		}
+		else
+		{
+			ec = nano::error_common::bad_wallet_number;
+		}
+	}
+	return nano::wallet_id{};
+}
+
 std::shared_ptr<nano::wallet> nano::json_handler::wallet_impl ()
 {
 	if (!ec)
@@ -2971,12 +2996,12 @@ void nano::json_handler::password_change ()
 void nano::json_handler::password_enter ()
 {
 	node.workers->push_task (create_worker_task ([&wallets = node.wallets] (std::shared_ptr<nano::json_handler> const & rpc_l) {
-		auto wallet (rpc_l->wallet_impl ());
+		auto wallet_id{ rpc_l->get_wallet_id () };
 		if (!rpc_l->ec)
 		{
 			std::string password_text (rpc_l->request.get<std::string> ("password"));
 			auto transaction (wallets.tx_begin_write ());
-			auto error (wallet->enter_password (*transaction, password_text));
+			auto error (wallets.enter_password (wallet_id, *transaction, password_text));
 			rpc_l->response_l.put ("valid", error ? "0" : "1");
 		}
 		rpc_l->response_errors ();

@@ -958,7 +958,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			{
 				auto inactive_node = nano::default_inactive_node (data_path, vm);
 				auto node = inactive_node->node;
-				if (node->wallets.items.find (wallet_id) != node->wallets.items.end ())
+				if (node->wallets.wallet_exists(wallet_id))
 				{
 					node->wallets.destroy (wallet_id);
 				}
@@ -1062,7 +1062,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 								{
 									node->wallets.reload ();
 									auto lock{ node->wallets.mutex.lock () };
-									release_assert (node->wallets.items.find (wallet_id) != node->wallets.items.end ());
+									release_assert (node->wallets.wallet_exists (wallet_id));
 									std::cout << "Import completed\n";
 								}
 							}

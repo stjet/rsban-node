@@ -37,7 +37,7 @@ TEST (node, null_account)
 TEST (node, stop)
 {
 	nano::test::system system (1);
-	ASSERT_NE (system.nodes[0]->wallets.items.end (), system.nodes[0]->wallets.items.begin ());
+	ASSERT_EQ (1, system.nodes[0]->wallets.wallet_count ());
 	system.nodes[0]->stop ();
 	system.io_guard.reset ();
 	system.async_rt.io_ctx.run ();
@@ -78,7 +78,7 @@ TEST (node, block_store_path_failure)
 	logging.init (path);
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
 	auto node (std::make_shared<nano::node> (*service, system.get_available_port (), path, logging, pool));
-	ASSERT_TRUE (node->wallets.items.empty ());
+	ASSERT_EQ (0, node->wallets.wallet_count ());
 	node->stop ();
 }
 

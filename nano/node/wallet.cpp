@@ -1176,6 +1176,24 @@ nano::wallets::~wallets ()
 	rsnano::rsn_lmdb_wallets_destroy (rust_handle);
 }
 
+size_t nano::wallets::wallet_count() const
+{
+	auto lock{ mutex.lock () };
+	return items.size();
+}
+
+bool nano::wallets::wallet_exists(nano::wallet_id const & id) const
+{
+	auto lock{ mutex.lock () };
+	return items.find (id) != items.end ();
+}
+
+nano::wallet_id nano::wallets::first_wallet_id() const
+{
+	auto lock{ mutex.lock () };
+	return items.begin ()->first;
+}
+
 std::shared_ptr<nano::wallet> nano::wallets::open (nano::wallet_id const & id_a)
 {
 	auto lock{ mutex.lock () };

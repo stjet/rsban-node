@@ -253,6 +253,9 @@ public:
 	~wallets ();
 	std::shared_ptr<nano::wallet> open (nano::wallet_id const &);
 	std::shared_ptr<nano::wallet> create (nano::wallet_id const &);
+	size_t wallet_count() const;
+	bool wallet_exists(nano::wallet_id const & id) const;
+	nano::wallet_id first_wallet_id() const;
 	bool search_receivable (nano::wallet_id const &);
 	void search_receivable_all ();
 	void destroy (nano::wallet_id const &);
@@ -287,7 +290,7 @@ public:
 
 	nano::wallet_representatives representatives;
 	rsnano::LmdbWalletsHandle * rust_handle;
-	wallets_mutex mutex;
+	mutable wallets_mutex mutex;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (wallets & wallets, std::string const & name);

@@ -13,7 +13,7 @@ TEST (wallets, open_create)
 	bool error (false);
 	nano::wallets wallets (error, *system.nodes[0]);
 	ASSERT_FALSE (error);
-	ASSERT_EQ (1, wallets.items.size ()); // it starts out with a default wallet
+	ASSERT_EQ (1, wallets.wallet_count ()); // it starts out with a default wallet
 	auto id = nano::random_wallet_id ();
 	ASSERT_EQ (nullptr, wallets.open (id));
 	auto wallet (wallets.create (id));
@@ -29,7 +29,7 @@ TEST (wallets, open_existing)
 		bool error (false);
 		nano::wallets wallets (error, *system.nodes[0]);
 		ASSERT_FALSE (error);
-		ASSERT_EQ (1, wallets.items.size ());
+		ASSERT_EQ (1, wallets.wallet_count ());
 		auto wallet (wallets.create (id));
 		ASSERT_NE (nullptr, wallet);
 		ASSERT_EQ (wallet, wallets.open (id));
@@ -46,7 +46,7 @@ TEST (wallets, open_existing)
 		bool error (false);
 		nano::wallets wallets (error, *system.nodes[0]);
 		ASSERT_FALSE (error);
-		ASSERT_EQ (2, wallets.items.size ());
+		ASSERT_EQ (2, wallets.wallet_count ());
 		ASSERT_NE (nullptr, wallets.open (id));
 		// give it some time so that the receivable blocks search can run
 		std::this_thread::sleep_for (1000ms);
@@ -61,12 +61,12 @@ TEST (wallets, remove)
 		bool error (false);
 		nano::wallets wallets (error, *system.nodes[0]);
 		ASSERT_FALSE (error);
-		ASSERT_EQ (1, wallets.items.size ());
+		ASSERT_EQ (1, wallets.wallet_count ());
 		auto wallet (wallets.create (one));
 		ASSERT_NE (nullptr, wallet);
-		ASSERT_EQ (2, wallets.items.size ());
+		ASSERT_EQ (2, wallets.wallet_count ());
 		wallets.destroy (one);
-		ASSERT_EQ (1, wallets.items.size ());
+		ASSERT_EQ (1, wallets.wallet_count ());
 		// give it some time so that the receivable blocks search can run
 		std::this_thread::sleep_for (1000ms);
 	}
@@ -74,7 +74,7 @@ TEST (wallets, remove)
 		bool error (false);
 		nano::wallets wallets (error, *system.nodes[0]);
 		ASSERT_FALSE (error);
-		ASSERT_EQ (1, wallets.items.size ());
+		ASSERT_EQ (1, wallets.wallet_count ());
 		// give it some time so that the receivable blocks search can run
 		std::this_thread::sleep_for (1000ms);
 	}
@@ -89,7 +89,7 @@ TEST (wallets, DISABLED_reload)
 	nano::wallet_id one (1);
 	bool error (false);
 	ASSERT_FALSE (error);
-	ASSERT_EQ (1, node1.wallets.items.size ());
+	ASSERT_EQ (1, node1.wallets.wallet_count ());
 	{
 		auto lock_wallet (node1.wallets.mutex.lock ());
 		nano::node_flags flags{ nano::inactive_node_flag_defaults () };
@@ -98,7 +98,7 @@ TEST (wallets, DISABLED_reload)
 		ASSERT_NE (wallet, nullptr);
 	}
 	ASSERT_TIMELY (5s, node1.wallets.open (one) != nullptr);
-	ASSERT_EQ (2, node1.wallets.items.size ());
+	ASSERT_EQ (2, node1.wallets.wallet_count ());
 }
 
 TEST (wallets, vote_minimum)

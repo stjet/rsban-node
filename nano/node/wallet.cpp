@@ -1204,6 +1204,46 @@ void nano::wallets::get_seed (nano::raw_key & prv_a, store::transaction const & 
 	wallet->second->store.seed (prv_a, txn);
 }
 
+bool nano::wallets::ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id, std::string const & password_a)
+{
+	auto lock{ mutex.lock () };
+	auto existing{ items.find (wallet_id) };
+	bool valid (false);
+	{
+		auto transaction{ tx_begin_write () };
+		valid = existing->second->store.valid_password (*transaction);
+		if (!valid)
+		{
+			valid = !enter_password (wallet_id, *transaction, password_a);
+		}
+	}
+	return valid;
+}
+
+bool nano::wallets::import (nano::wallet_id const & wallet_id, std::string const & json_a, std::string const & password_a)
+{
+	auto lock{ mutex.lock () };
+	auto existing{ items.find (wallet_id) };
+	return existing->second->import (json_a, password_a);
+}
+
+std::vector<std::pair<nano::account, nano::raw_key>> nano::wallets::decrypt (store::transaction const & txn, nano::wallet_id const & wallet_id) const
+{
+	std::vector<std::pair<nano::account, nano::raw_key>> result;
+	auto lock{ mutex.lock () };
+	auto existing (items.find (wallet_id));
+	for (auto i (existing->second->store.begin (txn)), m (existing->second->store.end ()); i != m; ++i)
+	{
+		nano::account const & account (i->first);
+		nano::raw_key key;
+		auto error (existing->second->store.fetch (txn, account, key));
+		(void)error;
+		debug_assert (!error);
+		result.emplace_back (account, key);
+	}
+	return result;
+}
+
 bool nano::wallets::wallet_exists (nano::wallet_id const & id) const
 {
 	auto lock{ mutex.lock () };

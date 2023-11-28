@@ -260,6 +260,9 @@ public:
 	size_t representatives_count (nano::wallet_id const & id) const;
 	nano::account get_representative (store::transaction const &, nano::wallet_id const & id) const;
 	void get_seed (nano::raw_key & prv_a, store::transaction const & transaction_a, nano::wallet_id const & id) const;
+	bool ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id, std::string const & password_a);
+	bool import (nano::wallet_id const & wallet_id, std::string const & json_a, std::string const & password_a);
+	std::vector<std::pair<nano::account, nano::raw_key>> decrypt (store::transaction const & txn, nano::wallet_id const & wallet_id) const;
 	bool wallet_exists (nano::wallet_id const & id) const;
 	nano::wallet_id first_wallet_id () const;
 	nano::public_key insert_adhoc (nano::wallet_id const & id, nano::raw_key const & key_a, bool generate_work_a = true);

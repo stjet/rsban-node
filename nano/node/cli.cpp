@@ -909,23 +909,18 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				if (wallets.wallet_exists (wallet_id))
 				{
 					auto transaction (wallets.tx_begin_write ());
-					auto existing (wallets.items.find (wallet_id));
 					if (!wallets.enter_password (wallet_id, *transaction, password))
 					{
 						nano::raw_key seed;
 						wallets.get_seed (seed, *transaction, wallet_id);
 						std::cout << boost::str (boost::format ("Seed: %1%\n") % seed.to_string ());
-						for (auto i (existing->second->store.begin (*transaction)), m (existing->second->store.end ()); i != m; ++i)
+						auto keys{ wallets.decrypt (*transaction, wallet_id) };
+						for (auto key : keys)
 						{
-							nano::account const & account (i->first);
-							nano::raw_key key;
-							auto error (existing->second->store.fetch (*transaction, account, key));
-							(void)error;
-							debug_assert (!error);
-							std::cout << boost::str (boost::format ("Pub: %1% Prv: %2%\n") % account.to_account () % key.to_string ());
-							if (nano::pub_key (key) != account)
+							std::cout << boost::str (boost::format ("Pub: %1% Prv: %2%\n") % key.first.to_account () % key.second.to_string ());
+							if (nano::pub_key (key.second) != key.first)
 							{
-								std::cerr << boost::str (boost::format ("Invalid private key %1%\n") % key.to_string ());
+								std::cerr << boost::str (boost::format ("Invalid private key %1%\n") % key.second.to_string ());
 							}
 						}
 					}
@@ -1013,21 +1008,12 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 						auto inactive_node = nano::default_inactive_node (data_path, vm);
 						auto node = inactive_node->node;
 						auto & wallets = inactive_node->node->wallets;
-						auto existing (wallets.items.find (wallet_id));
-						if (existing != wallets.items.end ())
+						if (wallets.wallet_exists (wallet_id))
 						{
-							bool valid (false);
-							{
-								auto transaction (node->wallets.tx_begin_write ());
-								valid = existing->second->store.valid_password (*transaction);
-								if (!valid)
-								{
-									valid = !wallets.enter_password (wallet_id, *transaction, password);
-								}
-							}
+							bool valid = wallets.ensure_wallet_is_unlocked (wallet_id, password);
 							if (valid)
 							{
-								if (existing->second->import (contents.str (), password))
+								if (wallets.import (wallet_id, contents.str (), password))
 								{
 									std::cerr << "Unable to import wallet\n";
 									ec = nano::error_cli::invalid_arguments;

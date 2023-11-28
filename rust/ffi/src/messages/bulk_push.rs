@@ -1,6 +1,6 @@
 use super::{create_message_handle2, MessageHandle};
 use crate::NetworkConstantsDto;
-use rsnano_node::messages::Message;
+use rsnano_messages::Message;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_bulk_push_create(

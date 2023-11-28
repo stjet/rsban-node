@@ -1,6 +1,5 @@
 use crate::{utils::FfiStream, FfiPropertyTreeWriter, StringDto};
-use rsnano_core::{utils::Serialize, Account, BlockHash, FullHash, RawKey, Signature};
-use rsnano_node::consensus::Vote;
+use rsnano_core::{utils::Serialize, Account, BlockHash, FullHash, RawKey, Signature, Vote};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 pub struct VoteHandle(pub Arc<Vote>);

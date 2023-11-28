@@ -2,11 +2,11 @@ use std::sync::{Arc, Weak};
 
 use rsnano_core::{utils::Logger, work::WorkThresholds};
 use rsnano_ledger::Ledger;
+use rsnano_messages::{Message, MessageVisitor};
 
 use crate::{
     block_processing::BlockProcessor,
     config::{Logging, NodeFlags},
-    messages::{Message, MessageVisitor},
     stats::Stats,
     transport::{BootstrapMessageVisitor, TcpServer},
     utils::{AsyncRuntime, ThreadPool},

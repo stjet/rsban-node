@@ -75,7 +75,7 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::messages::{assert_deserializable, Message};
+    use crate::{assert_deserializable, Message};
 
     #[test]
     fn serialize_no_peers() {

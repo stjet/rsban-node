@@ -16,7 +16,6 @@ pub mod bootstrap;
 pub mod cementation;
 pub mod config;
 mod ipc;
-pub mod messages;
 
 pub use representatives::{OnlineReps, OnlineWeightSampler, ONLINE_WEIGHT_QUORUM};
 

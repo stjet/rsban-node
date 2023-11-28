@@ -1,23 +1,19 @@
+use crate::{
+    stats::{DetailType, Direction, StatType, Stats},
+    transport::ChannelEnum,
+    OnlineReps,
+};
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent, Logger},
+    Account, Vote,
+};
+use rsnano_ledger::Ledger;
 use std::{
     collections::{HashSet, VecDeque},
     mem::size_of,
     sync::{Arc, Condvar, Mutex},
     time::Duration,
 };
-
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, Logger},
-    Account,
-};
-use rsnano_ledger::Ledger;
-
-use crate::{
-    stats::{DetailType, Direction, StatType, Stats},
-    transport::ChannelEnum,
-    OnlineReps,
-};
-
-use super::Vote;
 
 pub struct VoteProcessorQueue {
     data: Mutex<VoteProcessorQueueData>,

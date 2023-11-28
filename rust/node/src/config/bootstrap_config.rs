@@ -1,8 +1,6 @@
-use std::time::Duration;
-
 use rsnano_core::utils::TomlWriter;
-
-use crate::messages::BlocksAckPayload;
+use rsnano_messages::BlocksAckPayload;
+use std::time::Duration;
 
 pub struct BootstrapAscendingConfig {
     /// Maximum number of un-responded requests per channel

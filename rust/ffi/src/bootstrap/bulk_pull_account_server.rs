@@ -8,7 +8,8 @@ use crate::{
     utils::{LoggerHandle, LoggerMT, ThreadPoolHandle},
 };
 use rsnano_core::utils::Logger;
-use rsnano_node::{bootstrap::BulkPullAccountServer, messages::Message};
+use rsnano_messages::Message;
+use rsnano_node::bootstrap::BulkPullAccountServer;
 use std::sync::Arc;
 
 pub struct BulkPullAccountServerHandle(BulkPullAccountServer);

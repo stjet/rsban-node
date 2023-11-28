@@ -2,10 +2,6 @@ use super::{MessageDeserializer, NetworkFilter};
 use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::{NetworkConstants, NodeConfig},
-    messages::{
-        DeserializedMessage, Message, MessageSerializer, MessageVisitor, NodeIdHandshake,
-        NodeIdHandshakeQuery, NodeIdHandshakeResponse, ParseMessageError,
-    },
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
         Socket, SocketExtensions, SocketType, SynCookies, TcpMessageItem, TcpMessageManager,
@@ -14,6 +10,7 @@ use crate::{
     NetworkParams,
 };
 use rsnano_core::{utils::Logger, Account, KeyPair};
+use rsnano_messages::*;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{

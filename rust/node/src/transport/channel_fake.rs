@@ -1,3 +1,9 @@
+use crate::{
+    stats::{DetailType, Direction, StatType, Stats},
+    utils::{AsyncRuntime, ErrorCode},
+};
+use rsnano_core::Account;
+use rsnano_messages::{Message, MessageSerializer, ProtocolInfo};
 use std::{
     net::SocketAddrV6,
     sync::{
@@ -5,14 +11,6 @@ use std::{
         Arc, Mutex, Weak,
     },
     time::{SystemTime, UNIX_EPOCH},
-};
-
-use rsnano_core::Account;
-
-use crate::{
-    messages::{Message, MessageSerializer, ProtocolInfo},
-    stats::{DetailType, Direction, StatType, Stats},
-    utils::{AsyncRuntime, ErrorCode},
 };
 
 use super::{

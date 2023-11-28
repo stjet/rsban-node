@@ -1,11 +1,10 @@
 use crate::{
     config::{NodeConfig, NodeFlags},
-    consensus::Vote,
     OnlineReps,
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Account, Amount, BlockHash,
+    Account, Amount, BlockHash, Vote,
 };
 use rsnano_ledger::Ledger;
 use std::{

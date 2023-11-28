@@ -3,15 +3,14 @@ use crate::{
     utils::{AsyncRuntimeHandle, ContextWrapper},
     NetworkConstantsDto, StatHandle, VoidPointerCallback,
 };
-
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{system_time_as_nanoseconds, system_time_from_nanoseconds},
     Account,
 };
+use rsnano_messages::DeserializedMessage;
 use rsnano_node::{
     config::NetworkConstants,
-    messages::DeserializedMessage,
     transport::{Channel, ChannelEnum, ChannelFake, ChannelInProc, ChannelTcp, TrafficType},
 };
 use std::{

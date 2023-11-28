@@ -1,6 +1,7 @@
+use crate::stats::{DetailType, Direction, StatType, Stats};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, TomlWriter},
-    Account, Amount, BlockHash,
+    Account, Amount, BlockHash, Vote,
 };
 use std::{
     cmp::Ordering,
@@ -9,11 +10,6 @@ use std::{
     mem::size_of,
     sync::Arc,
     time::Duration,
-};
-
-use crate::{
-    consensus::Vote,
-    stats::{DetailType, Direction, StatType, Stats},
 };
 
 #[cfg(test)]
@@ -406,7 +402,6 @@ impl CacheEntryCollection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::consensus::Vote;
     use mock_instant::MockClock;
     use rsnano_core::KeyPair;
 

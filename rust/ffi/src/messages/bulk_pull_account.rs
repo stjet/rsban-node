@@ -2,7 +2,7 @@ use super::{create_message_handle2, MessageHandle};
 use crate::{NetworkConstantsDto, StringDto};
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount};
-use rsnano_node::messages::{BulkPullAccount, BulkPullAccountFlags, Message};
+use rsnano_messages::{BulkPullAccount, BulkPullAccountFlags, Message};
 use std::ops::Deref;
 
 unsafe fn get_payload_mut(message_handle: &mut MessageHandle) -> &mut BulkPullAccount {

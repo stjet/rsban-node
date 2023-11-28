@@ -1,16 +1,14 @@
-use std::sync::{Arc, Mutex, Weak};
-
+use crate::{
+    transport::{SocketExtensions, TcpServer, TcpServerExt},
+    utils::{ErrorCode, ThreadPool},
+};
 use rsnano_core::{
     utils::{Logger, MemoryStream},
     Account, BlockEnum, BlockHash, BlockType,
 };
 use rsnano_ledger::Ledger;
-
-use crate::{
-    messages::BulkPull,
-    transport::{SocketExtensions, TcpServer, TcpServerExt},
-    utils::{ErrorCode, ThreadPool},
-};
+use rsnano_messages::BulkPull;
+use std::sync::{Arc, Mutex, Weak};
 
 /**
  * Handle a request for the pull of all blocks associated with an account

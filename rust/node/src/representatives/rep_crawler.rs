@@ -5,10 +5,10 @@ use std::{
 };
 
 use super::Representative;
-use crate::{consensus::Vote, transport::ChannelEnum};
+use crate::transport::ChannelEnum;
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Account, BlockHash,
+    Account, BlockHash, Vote,
 };
 
 pub struct RepCrawler {

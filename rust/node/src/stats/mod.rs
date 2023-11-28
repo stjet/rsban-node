@@ -9,6 +9,7 @@ mod ledger_stats;
 pub use ledger_stats::LedgerStats;
 
 use rsnano_ledger::ProcessResult;
+use rsnano_messages::Message;
 pub use socket_stats::SocketStats;
 pub use stats::{stat_type_as_str, DetailType, Direction, StatType, Stats};
 pub use stats_config::StatsConfig;
@@ -32,5 +33,11 @@ impl From<ProcessResult> for DetailType {
             ProcessResult::BlockPosition => Self::BlockPosition,
             ProcessResult::InsufficientWork => Self::InsufficientWork,
         }
+    }
+}
+
+impl From<&Message> for DetailType {
+    fn from(value: &Message) -> Self {
+        value.message_type().into()
     }
 }

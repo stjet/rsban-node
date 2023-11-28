@@ -1,3 +1,12 @@
+#[macro_use]
+extern crate num_derive;
+
+#[macro_use]
+extern crate anyhow;
+
+#[macro_use]
+extern crate static_assertions;
+
 mod message;
 pub use message::*;
 
@@ -43,6 +52,8 @@ pub use asc_pull_ack::*;
 pub trait MessageVisitor {
     fn received(&mut self, message: &Message);
 }
+
+pub type Cookie = [u8; 32];
 
 #[cfg(test)]
 pub(crate) fn assert_deserializable(original: &Message) {

@@ -1,9 +1,9 @@
-use rsnano_core::Account;
+use rsnano_core::{Account, Vote};
+use rsnano_messages::{ConfirmAck, Message};
 
-use super::{Vote, VoteProcessorQueue};
+use super::VoteProcessorQueue;
 use crate::{
     config::NetworkConstants,
-    messages::{ConfirmAck, Message},
     representatives::RepresentativeRegister,
     stats::Stats,
     transport::{

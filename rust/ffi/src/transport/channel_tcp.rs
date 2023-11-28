@@ -1,5 +1,3 @@
-use num::FromPrimitive;
-
 use super::{
     bandwidth_limiter::OutboundBandwidthLimiterHandle,
     channel::{as_tcp_channel, ChannelHandle},
@@ -11,6 +9,7 @@ use crate::{
     messages::MessageHandle, utils::AsyncRuntimeHandle, ErrorCodeDto, NetworkConstantsDto,
     VoidPointerCallback,
 };
+use num::FromPrimitive;
 use rsnano_node::{
     config::NetworkConstants,
     transport::{BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, TrafficType},

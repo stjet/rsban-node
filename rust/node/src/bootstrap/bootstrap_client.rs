@@ -7,10 +7,10 @@ use std::{
     time::{Duration, Instant},
 };
 
+use rsnano_messages::Message;
 use tokio::task::spawn_blocking;
 
 use crate::{
-    messages::Message,
     transport::{
         BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, Socket, SocketExtensions, TrafficType,
         WriteCallback,

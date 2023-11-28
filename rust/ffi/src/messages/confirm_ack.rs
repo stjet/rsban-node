@@ -1,6 +1,6 @@
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{consensus::VoteHandle, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{ConfirmAck, Message};
+use rsnano_messages::{ConfirmAck, Message};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_ack_create(

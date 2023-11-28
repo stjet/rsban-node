@@ -1,7 +1,7 @@
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{NetworkConstantsDto, StringDto};
 use rsnano_core::{Account, BlockHash, KeyPair, Signature};
-use rsnano_node::messages::{Message, TelemetryAck, TelemetryData};
+use rsnano_messages::{Message, TelemetryAck, TelemetryData};
 use std::time::{Duration, SystemTime};
 
 pub struct TelemetryDataHandle(TelemetryData);

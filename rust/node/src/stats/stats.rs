@@ -2,6 +2,7 @@ use anyhow::Result;
 use bounded_vec_deque::BoundedVecDeque;
 use num::FromPrimitive;
 use once_cell::sync::Lazy;
+use rsnano_messages::MessageType;
 use serde::Serialize;
 use serde_variant::to_variant_name;
 use std::{
@@ -9,8 +10,6 @@ use std::{
     sync::Mutex,
     time::{Duration, Instant, SystemTime},
 };
-
-use crate::messages::MessageType;
 
 use super::histogram::StatHistogram;
 use super::{FileWriter, StatsConfig, StatsLogSink};

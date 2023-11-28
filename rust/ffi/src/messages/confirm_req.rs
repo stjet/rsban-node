@@ -1,7 +1,7 @@
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
 use rsnano_core::{BlockHash, Root};
-use rsnano_node::messages::{ConfirmReq, Message};
+use rsnano_messages::{ConfirmReq, Message};
 use std::{ops::Deref, sync::Arc};
 
 #[repr(C)]

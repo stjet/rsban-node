@@ -19,6 +19,7 @@ mod token_bucket;
 mod tokio_socket_facade;
 mod write_queue;
 
+use rsnano_messages::Message;
 pub use tokio_socket_facade::*;
 
 use std::{net::SocketAddrV6, ops::Deref, time::SystemTime};
@@ -36,7 +37,7 @@ pub use peer_exclusion::PeerExclusion;
 use rsnano_core::Account;
 pub use server_socket::{ServerSocket, ServerSocketExtensions};
 pub use socket::*;
-pub use syn_cookies::{Cookie, SynCookies};
+pub use syn_cookies::SynCookies;
 pub use tcp_channels::{
     TcpChannels, TcpChannelsExtension, TcpChannelsImpl, TcpChannelsOptions, TcpEndpointAttempt,
 };
@@ -51,8 +52,6 @@ pub use tcp_stream::TcpStream;
 pub use tcp_stream_factory::TcpStreamFactory;
 use token_bucket::TokenBucket;
 pub use write_queue::WriteCallback;
-
-use crate::messages::Message;
 
 #[repr(u8)]
 #[derive(FromPrimitive)]
@@ -109,9 +108,9 @@ impl ChannelEnum {
 
     #[cfg(test)]
     pub(crate) fn create_test_instance_with_channel_id(channel_id: usize) -> Self {
+        use crate::{stats::Stats, utils::AsyncRuntime};
+        use rsnano_messages::ProtocolInfo;
         use std::{net::Ipv6Addr, sync::Arc};
-
-        use crate::{messages::ProtocolInfo, stats::Stats, utils::AsyncRuntime};
 
         let limiter = Arc::new(OutboundBandwidthLimiter::default());
         let async_rt = Arc::new(AsyncRuntime::new(tokio::runtime::Runtime::new().unwrap()));

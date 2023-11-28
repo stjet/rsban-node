@@ -1,11 +1,8 @@
+use rsnano_core::{BlockHash, Root, Vote};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     sync::{Arc, Mutex},
 };
-
-use rsnano_core::{BlockHash, Root};
-
-use super::Vote;
 
 pub struct LocalVoteHistory {
     data: Mutex<LocalVoteHistoryData>,

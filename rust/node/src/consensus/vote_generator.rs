@@ -9,20 +9,20 @@ use std::{
     time::Duration,
 };
 
-use rsnano_core::{Account, BlockHash, Root};
+use rsnano_core::{Account, BlockHash, Root, Vote};
 use rsnano_ledger::Ledger;
+use rsnano_messages::ConfirmAck;
 use rsnano_store_lmdb::LmdbWriteTransaction;
 
 use crate::{
     config::NetworkConstants,
-    messages::ConfirmAck,
     representatives::RepresentativeRegister,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{ChannelEnum, InboundCallback, TcpChannels},
     utils::{AsyncRuntime, ProcessingQueue},
 };
 
-use super::{Vote, VoteBroadcaster, VoteProcessorQueue, VoteSpacing};
+use super::{VoteBroadcaster, VoteProcessorQueue, VoteSpacing};
 
 pub struct VoteGenerator {
     ledger: Arc<Ledger>,

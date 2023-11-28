@@ -1,5 +1,4 @@
-use anyhow::Result;
-use rsnano_core::{
+use super::{
     sign_message,
     utils::{
         BufferWriter, Deserialize, FixedSizeSerialize, PropertyTreeWriter, SerdePropertyTree,
@@ -7,6 +6,7 @@ use rsnano_core::{
     },
     validate_message, Account, BlockHash, BlockHashBuilder, FullHash, KeyPair, RawKey, Signature,
 };
+use anyhow::Result;
 use std::time::Duration;
 
 #[derive(Clone, Debug)]

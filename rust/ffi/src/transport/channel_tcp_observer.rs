@@ -1,9 +1,7 @@
 use super::socket::EndpointDto;
 use crate::{messages::MessageHandle, VoidPointerCallback};
-use rsnano_node::{
-    messages::{DeserializedMessage, Message},
-    transport::{ChannelTcpObserver, IChannelTcpObserverWeakPtr},
-};
+use rsnano_messages::{DeserializedMessage, Message};
+use rsnano_node::transport::{ChannelTcpObserver, IChannelTcpObserverWeakPtr};
 use std::{ffi::c_void, net::SocketAddrV6, sync::Arc};
 
 pub static mut DROP_WEAK_PTR: Option<VoidPointerCallback> = None;

@@ -8,9 +8,9 @@ use rsnano_core::{
     Account, BlockHash,
 };
 use rsnano_ledger::Ledger;
+use rsnano_messages::FrontierReq;
 
 use crate::{
-    messages::FrontierReq,
     transport::{SocketExtensions, TcpServer, TcpServerExt, TrafficType},
     utils::{ErrorCode, ThreadPool},
 };

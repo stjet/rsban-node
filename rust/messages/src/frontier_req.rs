@@ -79,7 +79,7 @@ impl Display for FrontierReq {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, Message};
+    use crate::{assert_deserializable, Message};
 
     #[test]
     fn serialize() {

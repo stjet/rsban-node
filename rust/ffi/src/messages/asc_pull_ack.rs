@@ -4,7 +4,7 @@ use crate::{
     NetworkConstantsDto,
 };
 use rsnano_core::{Account, BlockHash};
-use rsnano_node::messages::{
+use rsnano_messages::{
     AccountInfoAckPayload, AscPullAck, AscPullAckType, BlocksAckPayload, Message,
 };
 use std::{borrow::Borrow, ops::Deref, sync::Arc};

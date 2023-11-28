@@ -6,9 +6,9 @@ use std::{
 };
 
 use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
+use rsnano_messages::DeserializedMessage;
 use rsnano_node::{
     config::NodeConfig,
-    messages::DeserializedMessage,
     transport::{ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions},
     NetworkParams,
 };

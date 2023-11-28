@@ -7,9 +7,8 @@ use crate::{
     NetworkConstantsDto, StatHandle, VoidPointerCallback,
 };
 use rsnano_core::Account;
-use rsnano_node::{
-    config::NetworkConstants, consensus::VoteBroadcaster, messages::DeserializedMessage,
-};
+use rsnano_messages::DeserializedMessage;
+use rsnano_node::{config::NetworkConstants, consensus::VoteBroadcaster};
 use std::{ffi::c_void, sync::Arc};
 pub struct VoteBroadcasterHandle(VoteBroadcaster);
 

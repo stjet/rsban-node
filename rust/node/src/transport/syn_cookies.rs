@@ -8,14 +8,13 @@ use std::{
 use anyhow::Result;
 use rand::Rng;
 use rsnano_core::{validate_message, Account, Signature};
+use rsnano_messages::Cookie;
 
 /// Node ID cookies for node ID handshakes
 pub struct SynCookies {
     data: Mutex<LockedSynCookies>,
     max_cookies_per_ip: usize,
 }
-
-pub type Cookie = [u8; 32];
 
 impl SynCookies {
     pub fn new(max_cookies_per_ip: usize) -> Self {

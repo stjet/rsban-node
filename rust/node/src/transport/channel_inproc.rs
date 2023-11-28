@@ -9,11 +9,11 @@ use std::{
 
 use async_trait::async_trait;
 use rsnano_core::Account;
+use rsnano_messages::{DeserializedMessage, Message, MessageSerializer, ParseMessageError};
 use tokio::task::spawn_blocking;
 
 use crate::{
     config::NetworkConstants,
-    messages::{DeserializedMessage, Message, MessageSerializer, ParseMessageError},
     stats::{DetailType, Direction, StatType, Stats},
     utils::{AsyncRuntime, ErrorCode},
 };

@@ -9,15 +9,13 @@ use std::{
 };
 
 use rsnano_core::Account;
+use rsnano_messages::{Message, MessageSerializer, ProtocolInfo};
 
 use super::{
     write_queue::WriteCallback, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket,
     SocketExtensions, TrafficType,
 };
-use crate::{
-    messages::{Message, MessageSerializer, ProtocolInfo},
-    utils::{AsyncRuntime, ErrorCode},
-};
+use crate::utils::{AsyncRuntime, ErrorCode};
 
 pub trait IChannelTcpObserverWeakPtr: Send + Sync {
     fn lock(&self) -> Option<Arc<dyn ChannelTcpObserver>>;

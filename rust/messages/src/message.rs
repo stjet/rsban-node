@@ -1,5 +1,4 @@
 use super::*;
-use crate::stats::DetailType;
 use bitvec::prelude::BitArray;
 use rsnano_core::utils::{BufferWriter, Serialize, StreamAdapter};
 use std::fmt::Display;
@@ -143,12 +142,6 @@ impl Message {
     }
 }
 
-impl From<&Message> for DetailType {
-    fn from(value: &Message) -> Self {
-        value.message_type().into()
-    }
-}
-
 impl Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.as_message_variant() {
@@ -178,8 +171,7 @@ pub fn validate_header(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::consensus::Vote;
-    use rsnano_core::BlockBuilder;
+    use rsnano_core::{BlockBuilder, Vote};
     use std::sync::Arc;
 
     #[test]

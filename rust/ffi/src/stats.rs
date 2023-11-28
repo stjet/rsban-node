@@ -1,17 +1,13 @@
+use num::FromPrimitive;
+use rsnano_ledger::ProcessResult;
+use rsnano_messages::MessageType;
+use rsnano_node::stats::{
+    DetailType, Direction, FileWriter, JsonWriter, StatType, Stats, StatsConfig, StatsLogSink,
+};
 use std::{
     ffi::{c_void, CStr},
     ops::Deref,
     sync::Arc,
-};
-
-use num::FromPrimitive;
-
-use rsnano_ledger::ProcessResult;
-use rsnano_node::{
-    messages::MessageType,
-    stats::{
-        DetailType, Direction, FileWriter, JsonWriter, StatType, Stats, StatsConfig, StatsLogSink,
-    },
 };
 
 use super::FfiPropertyTreeWriter;

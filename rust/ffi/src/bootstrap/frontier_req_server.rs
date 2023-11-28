@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use super::bootstrap_server::TcpServerHandle;
 use crate::{
     ledger::datastore::LedgerHandle,
@@ -8,7 +6,9 @@ use crate::{
     NodeConfigDto,
 };
 use rsnano_core::utils::Logger;
-use rsnano_node::{bootstrap::FrontierReqServer, config::NodeConfig, messages::Message};
+use rsnano_messages::Message;
+use rsnano_node::{bootstrap::FrontierReqServer, config::NodeConfig};
+use std::sync::Arc;
 
 pub struct FrontierReqServerHandle(FrontierReqServer);
 

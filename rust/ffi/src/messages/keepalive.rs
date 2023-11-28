@@ -1,6 +1,6 @@
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{transport::EndpointDto, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{Keepalive, Message};
+use rsnano_messages::{Keepalive, Message};
 use std::net::SocketAddrV6;
 
 #[no_mangle]

@@ -1,10 +1,7 @@
 use super::NetworkFilter;
-use crate::messages::{
-    validate_header, DeserializedMessage, Message, MessageHeader, MessageType, ParseMessageError,
-    ProtocolInfo,
-};
 use async_trait::async_trait;
 use rsnano_core::{utils::StreamAdapter, work::WorkThresholds};
+use rsnano_messages::*;
 use std::sync::{Arc, Mutex};
 
 #[async_trait]

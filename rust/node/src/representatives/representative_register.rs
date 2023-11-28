@@ -1,8 +1,9 @@
 use rsnano_core::{Account, Amount};
 use rsnano_ledger::Ledger;
+use rsnano_messages::ProtocolInfo;
 
 use super::Representative;
-use crate::{messages::ProtocolInfo, transport::ChannelEnum, OnlineReps};
+use crate::{transport::ChannelEnum, OnlineReps};
 use std::{
     collections::HashMap,
     net::SocketAddrV6,

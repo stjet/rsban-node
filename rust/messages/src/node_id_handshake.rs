@@ -1,5 +1,5 @@
 use super::MessageVariant;
-use crate::transport::Cookie;
+use crate::Cookie;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rand::{thread_rng, Rng};
@@ -267,7 +267,7 @@ impl Display for NodeIdHandshake {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, Message};
+    use crate::{assert_deserializable, Message};
 
     #[test]
     fn serialize_query() {

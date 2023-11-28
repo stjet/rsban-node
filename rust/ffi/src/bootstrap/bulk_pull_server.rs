@@ -1,18 +1,14 @@
-use rsnano_core::utils::Logger;
-use rsnano_node::{
-    bootstrap::BulkPullServer,
-    messages::{DeserializedMessage, Message},
-};
-use std::sync::Arc;
-
+use super::bootstrap_server::TcpServerHandle;
 use crate::{
     core::BlockHandle,
     ledger::datastore::LedgerHandle,
     messages::MessageHandle,
     utils::{LoggerHandle, LoggerMT, ThreadPoolHandle},
 };
-
-use super::bootstrap_server::TcpServerHandle;
+use rsnano_core::utils::Logger;
+use rsnano_messages::{DeserializedMessage, Message};
+use rsnano_node::bootstrap::BulkPullServer;
+use std::sync::Arc;
 
 pub struct BulkPullServerHandle(BulkPullServer);
 

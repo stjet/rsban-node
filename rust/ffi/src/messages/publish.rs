@@ -1,6 +1,6 @@
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
-use rsnano_node::messages::{Message, Publish};
+use rsnano_messages::{Message, Publish};
 use std::{ops::Deref, sync::Arc};
 
 #[no_mangle]

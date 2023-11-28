@@ -8,17 +8,18 @@ extern crate num_derive;
 extern crate static_assertions;
 
 mod account;
-pub use account::Account;
-
 mod amount;
-pub use amount::{Amount, GXRB_RATIO, KXRB_RATIO, MXRB_RATIO, XRB_RATIO};
-
 mod block_hash;
+mod vote;
+
+pub use account::Account;
+pub use amount::{Amount, GXRB_RATIO, KXRB_RATIO, MXRB_RATIO, XRB_RATIO};
 use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
 pub use block_hash::{BlockHash, BlockHashBuilder};
+pub use vote::Vote;
 
 mod key_pair;
 pub use key_pair::{sign_message, validate_block_signature, validate_message, KeyPair};

@@ -1,8 +1,7 @@
-use crate::consensus::Vote;
 use bitvec::prelude::BitArray;
 use rsnano_core::{
     utils::{BufferWriter, Serialize, Stream},
-    BlockType,
+    BlockType, Vote,
 };
 use std::{
     fmt::{Debug, Display},
@@ -71,7 +70,7 @@ impl Display for ConfirmAck {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::{assert_deserializable, Message};
+    use crate::{assert_deserializable, Message};
     use rsnano_core::{BlockHash, KeyPair};
 
     #[test]

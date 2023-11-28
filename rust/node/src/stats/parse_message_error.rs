@@ -1,5 +1,5 @@
 use super::DetailType;
-use crate::messages::{MessageType, ParseMessageError};
+use rsnano_messages::{MessageType, ParseMessageError};
 
 impl From<ParseMessageError> for DetailType {
     fn from(status: ParseMessageError) -> Self {

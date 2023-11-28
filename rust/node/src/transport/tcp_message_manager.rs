@@ -1,6 +1,6 @@
 use super::Socket;
-use crate::messages::DeserializedMessage;
 use rsnano_core::Account;
+use rsnano_messages::DeserializedMessage;
 use std::{
     collections::VecDeque,
     net::{Ipv6Addr, SocketAddrV6},

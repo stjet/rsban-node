@@ -1,7 +1,7 @@
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{NetworkConstantsDto, StringDto};
 use rsnano_core::{Account, BlockHash, PublicKey, Signature};
-use rsnano_node::messages::{
+use rsnano_messages::{
     Message, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse, V2Payload,
 };
 

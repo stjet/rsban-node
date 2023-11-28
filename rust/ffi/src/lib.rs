@@ -31,10 +31,7 @@ use std::{
 pub use config::*;
 pub use ipc::*;
 pub use property_tree::*;
-use rsnano_core::{
-    utils::{IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION},
-    Account, Amount, BlockHash, HashOrAccount, Link, PublicKey, RawKey, Root, Signature,
-};
+use rsnano_core::utils::{IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION};
 pub type MemoryIntensiveInstrumentationCallback = extern "C" fn() -> bool;
 pub use secure::*;
 pub use stats::*;

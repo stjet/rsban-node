@@ -15,15 +15,12 @@ use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, Logger},
     KeyPair, PublicKey,
 };
+use rsnano_messages::*;
 use tokio::task::spawn_blocking;
 
 use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
     config::{NetworkConstants, NodeConfig, NodeFlags},
-    messages::{
-        DeserializedMessage, Keepalive, Message, MessageType, NodeIdHandshake,
-        NodeIdHandshakeQuery, NodeIdHandshakeResponse, ParseMessageError,
-    },
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     transport::{Channel, SocketType},
     utils::{
@@ -939,7 +936,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
                 // TCP node ID handshake
                 let query = this_l.prepare_handshake_query(endpoint);
-                let message = Message::NodeIdHandshake(crate::messages::NodeIdHandshake {
+                let message = Message::NodeIdHandshake(NodeIdHandshake {
                     query: query.clone(),
                     response: None,
                     is_v2: query.is_some(),

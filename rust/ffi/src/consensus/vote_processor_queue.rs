@@ -1,16 +1,4 @@
-use std::{
-    collections::VecDeque,
-    ffi::{c_char, CStr},
-    ops::Deref,
-    sync::Arc,
-};
-
-use rsnano_core::Account;
-use rsnano_node::{
-    consensus::{Vote, VoteProcessorQueue},
-    transport::ChannelEnum,
-};
-
+use super::VoteHandle;
 use crate::{
     ledger::datastore::LedgerHandle,
     representatives::OnlineRepsHandle,
@@ -18,8 +6,14 @@ use crate::{
     utils::{ContainerInfoComponentHandle, LoggerHandle, LoggerMT},
     StatHandle,
 };
-
-use super::VoteHandle;
+use rsnano_core::{Account, Vote};
+use rsnano_node::{consensus::VoteProcessorQueue, transport::ChannelEnum};
+use std::{
+    collections::VecDeque,
+    ffi::{c_char, CStr},
+    ops::Deref,
+    sync::Arc,
+};
 
 pub struct VoteProcessorQueueHandle(Arc<VoteProcessorQueue>);
 

@@ -1,3 +1,4 @@
+use super::vote_processor_queue::VoteProcessorQueueHandle;
 use crate::{
     ledger::datastore::{LedgerHandle, TransactionHandle},
     messages::MessageHandle,
@@ -7,12 +8,9 @@ use crate::{
     NetworkConstantsDto, StatHandle, VoidPointerCallback,
 };
 use rsnano_core::{Account, BlockHash, Root};
-use rsnano_node::{
-    config::NetworkConstants, consensus::VoteGenerator, messages::DeserializedMessage,
-};
+use rsnano_messages::DeserializedMessage;
+use rsnano_node::{config::NetworkConstants, consensus::VoteGenerator};
 use std::{ffi::c_void, ops::Deref, sync::Arc, time::Duration};
-
-use super::vote_processor_queue::VoteProcessorQueueHandle;
 
 pub struct VoteGeneratorHandle(VoteGenerator);
 

@@ -5,9 +5,8 @@ use rsnano_core::{
     work::{WorkThresholds, WORK_THRESHOLDS_STUB},
     Networks,
 };
+use rsnano_messages::ProtocolInfo;
 use std::{sync::Mutex, time::Duration};
-
-use crate::messages::ProtocolInfo;
 
 //todo: make configurable in builld script again!
 static ACTIVE_NETWORK: Lazy<Mutex<Networks>> = Lazy::new(|| Mutex::new(Networks::NanoDevNetwork));

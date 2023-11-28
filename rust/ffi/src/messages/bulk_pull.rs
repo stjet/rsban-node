@@ -1,7 +1,7 @@
 use super::{create_message_handle2, MessageHandle};
 use crate::{NetworkConstantsDto, StringDto};
 use rsnano_core::{BlockHash, HashOrAccount};
-use rsnano_node::messages::{BulkPull, Message};
+use rsnano_messages::{BulkPull, Message};
 use std::ops::Deref;
 
 #[repr(C)]

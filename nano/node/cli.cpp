@@ -1087,13 +1087,14 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	{
 		auto inactive_node = nano::default_inactive_node (data_path, vm);
 		auto node = inactive_node->node;
-		for (auto i (node->wallets.items.begin ()), n (node->wallets.items.end ()); i != n; ++i)
+		auto wallet_ids{ node->wallets.get_wallet_ids () };
+		for (auto wallet_id : wallet_ids)
 		{
-			std::cout << boost::str (boost::format ("Wallet ID: %1%\n") % i->first.to_string ());
-			auto transaction (node->wallets.tx_begin_read ());
-			for (auto j (i->second->store.begin (*transaction)), m (i->second->store.end ()); j != m; ++j)
+			std::cout << boost::str (boost::format ("Wallet ID: %1%\n") % wallet_id.to_string ());
+			auto accounts{ node->wallets.get_accounts (wallet_id) };
+			for (auto account : accounts)
 			{
-				std::cout << nano::account (j->first).to_account () << '\n';
+				std::cout << account.to_account () << '\n';
 			}
 		}
 	}
@@ -1106,19 +1107,12 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			nano::wallet_id wallet_id;
 			if (!wallet_id.decode_hex (vm["wallet"].as<std::string> ()))
 			{
-				auto wallet (node->wallets.items.find (wallet_id));
-				if (wallet != node->wallets.items.end ())
+				if (node->wallets.wallet_exists (wallet_id))
 				{
 					nano::account account_id;
 					if (!account_id.decode_account (vm["account"].as<std::string> ()))
 					{
-						auto transaction (node->wallets.tx_begin_write ());
-						auto account (wallet->second->store.find (*transaction, account_id));
-						if (account != wallet->second->store.end ())
-						{
-							wallet->second->store.erase (*transaction, account_id);
-						}
-						else
+						if (!node->wallets.remove_account (wallet_id, account_id))
 						{
 							std::cerr << "Account not found in wallet\n";
 							ec = nano::error_cli::invalid_arguments;

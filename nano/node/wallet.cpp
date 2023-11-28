@@ -1244,6 +1244,46 @@ std::vector<std::pair<nano::account, nano::raw_key>> nano::wallets::decrypt (sto
 	return result;
 }
 
+std::vector<nano::wallet_id> nano::wallets::get_wallet_ids () const
+{
+	auto lock{ mutex.lock () };
+	std::vector<nano::wallet_id> result{};
+	result.reserve (items.size ());
+	for (auto i (items.begin ()), n (items.end ()); i != n; ++i)
+	{
+		result.push_back (i->first);
+	}
+	return result;
+}
+
+std::vector<nano::account> nano::wallets::get_accounts (nano::wallet_id const & wallet_id)
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+	auto transaction (tx_begin_read ());
+	std::vector<nano::account> result;
+	for (auto j (wallet->second->store.begin (*transaction)), m (wallet->second->store.end ()); j != m; ++j)
+	{
+		result.push_back (nano::account (j->first));
+	}
+	return result;
+}
+
+bool nano::wallets::remove_account (nano::wallet_id const & wallet_id, nano::account & account_id)
+{
+	auto lock{ mutex.lock () };
+	auto wallet (items.find (wallet_id));
+	auto transaction (tx_begin_write ());
+	auto account (wallet->second->store.find (*transaction, account_id));
+	bool deleted = false;
+	if (account != wallet->second->store.end ())
+	{
+		wallet->second->store.erase (*transaction, account_id);
+		deleted = true;
+	}
+	return deleted;
+}
+
 bool nano::wallets::wallet_exists (nano::wallet_id const & id) const
 {
 	auto lock{ mutex.lock () };

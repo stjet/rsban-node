@@ -263,6 +263,9 @@ public:
 	bool ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id, std::string const & password_a);
 	bool import (nano::wallet_id const & wallet_id, std::string const & json_a, std::string const & password_a);
 	std::vector<std::pair<nano::account, nano::raw_key>> decrypt (store::transaction const & txn, nano::wallet_id const & wallet_id) const;
+	std::vector<nano::wallet_id> get_wallet_ids () const;
+	std::vector<nano::account> get_accounts (nano::wallet_id const & wallet_id);
+	bool remove_account (nano::wallet_id const & wallet_id, nano::account & account_id);
 	bool wallet_exists (nano::wallet_id const & id) const;
 	nano::wallet_id first_wallet_id () const;
 	nano::public_key insert_adhoc (nano::wallet_id const & id, nano::raw_key const & key_a, bool generate_work_a = true);

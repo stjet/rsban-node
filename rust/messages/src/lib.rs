@@ -41,6 +41,7 @@ mod bulk_pull_account;
 pub use bulk_pull_account::*;
 
 mod telemetry_ack;
+use rsnano_core::utils::BufferReader;
 pub use telemetry_ack::*;
 
 mod asc_pull_req;
@@ -55,18 +56,24 @@ pub trait MessageVisitor {
 
 pub type Cookie = [u8; 32];
 
+pub fn deserialize_message(buffer: &[u8]) -> anyhow::Result<(MessageHeader, Message)> {
+    let (header_bytes, payload_bytes) = buffer.split_at(MessageHeader::SERIALIZED_SIZE);
+    let header = MessageHeader::deserialize_slice(header_bytes)?;
+    let message = Message::deserialize(payload_bytes, &header, 0)
+        .ok_or_else(|| anyhow!("invalid message payload"))?;
+    Ok((header, message))
+}
+
 #[cfg(test)]
 pub(crate) fn assert_deserializable(original: &Message) {
-    use rsnano_core::utils::StreamAdapter;
-
     let mut serializer = MessageSerializer::default();
     let serialized = serializer.serialize(original);
-    let mut stream = StreamAdapter::new(serialized);
-    let header = MessageHeader::deserialize(&mut stream).unwrap();
+    let mut buffer = BufferReader::new(serialized);
+    let header = MessageHeader::deserialize(&mut buffer).unwrap();
     assert_eq!(
         header.payload_length(),
         serialized.len() - MessageHeader::SERIALIZED_SIZE
     );
-    let message_out = Message::deserialize(stream.remaining(), &header, 0).unwrap();
+    let message_out = Message::deserialize(buffer.remaining(), &header, 0).unwrap();
     assert_eq!(message_out, *original);
 }

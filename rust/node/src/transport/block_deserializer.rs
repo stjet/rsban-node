@@ -1,7 +1,7 @@
 use super::{Socket, SocketExtensions};
 use crate::utils::{AsyncRuntime, ErrorCode};
 use num_traits::FromPrimitive;
-use rsnano_core::{serialized_block_size, utils::StreamAdapter, BlockEnum, BlockType};
+use rsnano_core::{serialized_block_size, utils::BufferReader, BlockEnum, BlockType};
 use std::sync::{Arc, Mutex};
 use tokio::task::spawn_blocking;
 
@@ -67,7 +67,7 @@ async fn received_type(
                 Ok(()) => {
                     let result = {
                         let guard = buffer_clone.lock().unwrap();
-                        let mut stream = StreamAdapter::new(&guard[..block_size]);
+                        let mut stream = BufferReader::new(&guard[..block_size]);
                         BlockEnum::deserialize_block_type(block_type, &mut stream)
                     };
 

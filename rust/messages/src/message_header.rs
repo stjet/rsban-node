@@ -135,6 +135,11 @@ impl MessageHeader {
         }
     }
 
+    pub fn deserialize_slice(bytes: &[u8]) -> Result<MessageHeader> {
+        let mut reader = BufferReader::new(bytes);
+        Self::deserialize(&mut reader)
+    }
+
     pub fn deserialize(stream: &mut impl Stream) -> Result<MessageHeader> {
         let mut header = Self::default();
         let mut buffer = [0; 2];

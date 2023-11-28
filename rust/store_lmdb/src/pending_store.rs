@@ -7,7 +7,7 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    utils::{Deserialize, OutputListenerMt, OutputTrackerMt, StreamAdapter},
+    utils::{BufferReader, Deserialize, OutputListenerMt, OutputTrackerMt},
     Account, BlockHash, PendingInfo, PendingKey,
 };
 
@@ -81,7 +81,7 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
         let key_bytes = key.to_bytes();
         match txn.get(self.database, &key_bytes) {
             Ok(bytes) => {
-                let mut stream = StreamAdapter::new(bytes);
+                let mut stream = BufferReader::new(bytes);
                 PendingInfo::deserialize(&mut stream).ok()
             }
             Err(lmdb::Error::NotFound) => None,

@@ -5,7 +5,7 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    utils::{Deserialize, OutputListenerMt, OutputTrackerMt, StreamAdapter},
+    utils::{BufferReader, Deserialize, OutputListenerMt, OutputTrackerMt},
     Account, AccountInfo,
 };
 use std::sync::Arc;
@@ -70,7 +70,7 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         match result {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => {
-                let mut stream = StreamAdapter::new(bytes);
+                let mut stream = BufferReader::new(bytes);
                 AccountInfo::deserialize(&mut stream).ok()
             }
             Err(e) => panic!("Could not load account info {:?}", e),

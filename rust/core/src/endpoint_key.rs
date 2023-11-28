@@ -59,7 +59,7 @@ impl Deserialize for EndpointKey {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::{MemoryStream, StreamAdapter};
+    use crate::utils::{BufferReader, MemoryStream};
     use std::{net::Ipv6Addr, str::FromStr};
 
     use super::*;
@@ -71,7 +71,7 @@ mod tests {
         let mut buf = [0; 18];
         let mut stream = MutStreamAdapter::new(&mut buf);
         key.serialize(&mut stream);
-        let deserialized = EndpointKey::deserialize(&mut StreamAdapter::new(&buf)).unwrap();
+        let deserialized = EndpointKey::deserialize(&mut BufferReader::new(&buf)).unwrap();
         assert_eq!(deserialized, key);
     }
 

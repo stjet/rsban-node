@@ -25,8 +25,8 @@ pub use builders::*;
 
 use crate::{
     utils::{
-        BufferWriter, Deserialize, MemoryStream, PropertyTreeReader, PropertyTreeWriter,
-        SerdePropertyTree, Stream, StreamAdapter,
+        BufferReader, BufferWriter, Deserialize, MemoryStream, PropertyTreeReader,
+        PropertyTreeWriter, SerdePropertyTree, Stream,
     },
     Account, Amount, BlockHash, BlockHashBuilder, Epoch, FullHash, KeyPair, Link, QualifiedRoot,
     Root, Signature, WorkVersion,
@@ -294,7 +294,7 @@ impl BlockEnum {
     }
 
     pub fn deserialize_with_sideband(bytes: &[u8]) -> anyhow::Result<BlockEnum> {
-        let mut stream = StreamAdapter::new(bytes);
+        let mut stream = BufferReader::new(bytes);
         let mut block = BlockEnum::deserialize(&mut stream)?;
         let mut sideband = BlockSideband::from_stream(&mut stream, block.block_type())?;
         // BlockSideband does not serialize all data depending on the block type.

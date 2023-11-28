@@ -1,6 +1,6 @@
 use super::*;
 use bitvec::prelude::BitArray;
-use rsnano_core::utils::{BufferWriter, Serialize, StreamAdapter};
+use rsnano_core::utils::{BufferReader, BufferWriter, Serialize};
 use std::fmt::Display;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -103,7 +103,7 @@ impl Message {
     }
 
     pub fn deserialize(payload_bytes: &[u8], header: &MessageHeader, digest: u128) -> Option<Self> {
-        let mut stream = StreamAdapter::new(payload_bytes);
+        let mut stream = BufferReader::new(payload_bytes);
         let msg = match header.message_type {
             MessageType::Keepalive => Message::Keepalive(Keepalive::deserialize(&mut stream)?),
             MessageType::Publish => Message::Publish(Publish::deserialize(

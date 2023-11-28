@@ -3,7 +3,7 @@ use std::{any::Any, ffi::c_uint};
 use crate::{lmdb_env::RoCursor, Environment, Transaction};
 
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
-use rsnano_core::utils::{Deserialize, FixedSizeSerialize, StreamAdapter};
+use rsnano_core::utils::{BufferReader, Deserialize, FixedSizeSerialize};
 
 pub trait DbIterator<K, V> {
     fn is_end(&self) -> bool;
@@ -61,8 +61,8 @@ where
                 if k.len() < K::serialized_size() {
                     None
                 } else {
-                    let key = K::deserialize(&mut StreamAdapter::new(k)).unwrap();
-                    let value = V::deserialize(&mut StreamAdapter::new(v)).unwrap();
+                    let key = K::deserialize(&mut BufferReader::new(k)).unwrap();
+                    let value = V::deserialize(&mut BufferReader::new(v)).unwrap();
                     Some((key, value))
                 }
             }

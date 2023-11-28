@@ -238,12 +238,12 @@ impl<'a> Stream for MutStreamAdapter<'a> {
     }
 }
 
-pub struct StreamAdapter<'a> {
+pub struct BufferReader<'a> {
     bytes: &'a [u8],
     read_index: usize,
 }
 
-impl<'a> StreamAdapter<'a> {
+impl<'a> BufferReader<'a> {
     pub fn new(bytes: &'a [u8]) -> Self {
         Self {
             bytes,
@@ -256,7 +256,7 @@ impl<'a> StreamAdapter<'a> {
     }
 }
 
-impl<'a> Stream for StreamAdapter<'a> {
+impl<'a> Stream for BufferReader<'a> {
     fn write_u8(&mut self, _value: u8) -> anyhow::Result<()> {
         bail!("not supported");
     }

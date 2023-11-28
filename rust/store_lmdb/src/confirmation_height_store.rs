@@ -4,7 +4,7 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    utils::{Deserialize, StreamAdapter},
+    utils::{BufferReader, Deserialize},
     Account, ConfirmationHeightInfo,
 };
 use std::sync::Arc;
@@ -51,7 +51,7 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
         match txn.get(self.database, account.as_bytes()) {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => {
-                let mut stream = StreamAdapter::new(bytes);
+                let mut stream = BufferReader::new(bytes);
                 ConfirmationHeightInfo::deserialize(&mut stream).ok()
             }
             Err(e) => {

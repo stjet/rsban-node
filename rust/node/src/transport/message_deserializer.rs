@@ -1,6 +1,6 @@
 use super::NetworkFilter;
 use async_trait::async_trait;
-use rsnano_core::{utils::StreamAdapter, work::WorkThresholds};
+use rsnano_core::{utils::BufferReader, work::WorkThresholds};
 use rsnano_messages::*;
 use std::sync::{Arc, Mutex};
 
@@ -48,7 +48,7 @@ impl<T: AsyncBufferReader + Send> MessageDeserializer<T> {
     async fn received_header(&self) -> Result<DeserializedMessage, ParseMessageError> {
         let header = {
             let buffer = self.read_buffer.lock().unwrap();
-            let mut stream = StreamAdapter::new(&buffer[..MessageHeader::SERIALIZED_SIZE]);
+            let mut stream = BufferReader::new(&buffer[..MessageHeader::SERIALIZED_SIZE]);
             MessageHeader::deserialize(&mut stream).map_err(|_| ParseMessageError::InvalidHeader)?
         };
 

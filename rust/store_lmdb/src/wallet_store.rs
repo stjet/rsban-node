@@ -7,8 +7,8 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
     deterministic_key,
     utils::{
-        BufferWriter, Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream,
-        StreamAdapter, StreamExt,
+        BufferReader, BufferWriter, Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize,
+        Stream, StreamExt,
     },
     Account, KeyDerivationFunction, PublicKey, RawKey,
 };
@@ -275,7 +275,7 @@ impl<T: Environment + 'static> LmdbWalletStore<T> {
     ) -> WalletValue {
         match txn.get(self.db_handle(), account.as_bytes()) {
             Ok(bytes) => {
-                let mut stream = StreamAdapter::new(bytes);
+                let mut stream = BufferReader::new(bytes);
                 WalletValue::deserialize(&mut stream).unwrap()
             }
             _ => WalletValue::new(RawKey::zero(), 0),

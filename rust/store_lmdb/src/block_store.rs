@@ -6,7 +6,7 @@ use crate::{
 use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::{FixedSizeSerialize, OutputListenerMt, OutputTrackerMt, StreamAdapter},
+    utils::{BufferReader, FixedSizeSerialize, OutputListenerMt, OutputTrackerMt},
     Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor, BlockWithSideband,
     ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
@@ -145,7 +145,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         match self.block_raw_get(txn, hash) {
             None => None,
             Some(bytes) => {
-                let mut stream = StreamAdapter::new(bytes);
+                let mut stream = BufferReader::new(bytes);
                 Some(BlockEnum::deserialize(&mut stream).unwrap())
             }
         }

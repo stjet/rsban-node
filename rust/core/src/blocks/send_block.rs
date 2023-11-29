@@ -3,10 +3,11 @@ use crate::{
     utils::{
         BufferWriter, FixedSizeSerialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream,
     },
-    Account, Amount, BlockHash, BlockHashBuilder, LazyBlockHash, Link, PendingKey, PublicKey,
-    RawKey, Root, Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, KeyPair, LazyBlockHash, Link, PendingKey,
+    PublicKey, RawKey, Root, Signature,
 };
 use anyhow::Result;
+use serde::ser::SerializeStruct;
 
 use super::{Block, BlockSideband, BlockType, BlockVisitor};
 
@@ -49,7 +50,7 @@ impl SendHashables {
     }
 }
 
-impl Serialize for SendHashables {
+impl crate::utils::Serialize for SendHashables {
     fn serialize(&self, stream: &mut dyn BufferWriter) {
         self.previous.serialize(stream);
         self.destination.serialize(stream);
@@ -101,6 +102,18 @@ impl SendBlock {
             hash,
             sideband: None,
         }
+    }
+
+    pub fn create_test_instance() -> Self {
+        let key = KeyPair::from(42);
+        SendBlock::new(
+            &BlockHash::from(1),
+            &Account::from(2),
+            &Amount::raw(3),
+            &key.private_key(),
+            &key.public_key(),
+            424269420,
+        )
     }
 
     pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
@@ -283,6 +296,22 @@ impl Block for SendBlock {
     }
 }
 
+impl serde::Serialize for SendBlock {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("SendBlock", 1)?;
+        state.serialize_field("type", "send")?;
+        state.serialize_field("previous", &self.hashables.previous.encode_hex())?;
+        state.serialize_field("destination", &self.hashables.destination.encode_account())?;
+        state.serialize_field("balance", &self.hashables.balance.to_string_dec())?;
+        state.serialize_field("work", &to_hex_string(self.work))?;
+        state.serialize_field("signature", &self.signature.encode_hex())?;
+        state.end()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -335,20 +364,29 @@ mod tests {
     // originial test: block.send_serialize_json
     #[test]
     fn serialize_json() {
-        let key = KeyPair::new();
-        let block1 = SendBlock::new(
-            &BlockHash::from(0),
-            &Account::from(1),
-            &Amount::raw(2),
-            &key.private_key(),
-            &key.public_key(),
-            5,
-        );
+        let block1 = SendBlock::create_test_instance();
 
         let mut ptree = TestPropertyTree::new();
         block1.serialize_json(&mut ptree).unwrap();
 
         let block2 = SendBlock::deserialize_json(&ptree).unwrap();
         assert_eq!(block1, block2);
+    }
+
+    #[test]
+    fn serialize_serde() {
+        let block = SendBlock::create_test_instance();
+        let serialized = serde_json::to_string_pretty(&block).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{
+  "type": "send",
+  "previous": "0000000000000000000000000000000000000000000000000000000000000001",
+  "destination": "nano_11111111111111111111111111111111111111111111111111147dcwzp3c",
+  "balance": "3",
+  "work": "000000001949D66C",
+  "signature": "076FF9D1587141EC1DDB05493092B0BFE160B6EEE96D37462B11A81F2622A5211756316A9B48BB403EE4AC57BCCA2023C2075F7214B6B33211B9E5350B76A606"
+}"#
+        );
     }
 }

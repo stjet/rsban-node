@@ -53,6 +53,14 @@ impl KeyPair {
     }
 }
 
+impl From<u64> for KeyPair {
+    fn from(value: u64) -> Self {
+        let mut bytes = [0; 32];
+        bytes[..8].copy_from_slice(&value.to_be_bytes());
+        Self::from_priv_key_bytes(&bytes).unwrap()
+    }
+}
+
 pub fn sign_message(private_key: &RawKey, public_key: &PublicKey, data: &[u8]) -> Signature {
     let secret = ed25519_dalek_blake2b::SecretKey::from_bytes(private_key.as_bytes())
         .expect("could not extract secret key");

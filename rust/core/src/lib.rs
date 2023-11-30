@@ -103,6 +103,15 @@ u256_struct!(PublicKey);
 u256_struct!(Root);
 u256_struct!(WalletId);
 
+impl serde::Serialize for HashOrAccount {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.encode_hex())
+    }
+}
+
 impl From<HashOrAccount> for Account {
     fn from(source: HashOrAccount) -> Self {
         Account::from_bytes(*source.as_bytes())

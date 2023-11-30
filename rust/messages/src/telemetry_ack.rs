@@ -222,6 +222,15 @@ impl TelemetryAck {
     }
 }
 
+impl serde::Serialize for TelemetryAck {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        todo!()
+    }
+}
+
 impl Display for TelemetryAck {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "telemetry_ack")

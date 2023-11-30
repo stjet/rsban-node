@@ -58,6 +58,15 @@ impl Serialize for FrontierReq {
     }
 }
 
+impl serde::Serialize for FrontierReq {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        todo!()
+    }
+}
+
 impl MessageVariant for FrontierReq {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();

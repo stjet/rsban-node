@@ -5,6 +5,7 @@ use rsnano_core::{
     utils::{BufferWriter, Deserialize, Serialize, Stream, StreamExt},
     HashOrAccount,
 };
+use serde_derive::Serialize;
 use std::{fmt::Display, mem::size_of};
 
 /**
@@ -19,7 +20,8 @@ pub enum AscPullPayloadId {
     AccountInfo = 0x2,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
+#[serde(rename_all = "snake_case", tag = "pull_type")]
 pub enum AscPullReqType {
     Blocks(BlocksReqPayload),
     AccountInfo(AccountInfoReqPayload),
@@ -34,7 +36,8 @@ impl Serialize for AscPullReqType {
     }
 }
 
-#[derive(FromPrimitive, PartialEq, Eq, Clone, Copy, Debug, Default)]
+#[derive(FromPrimitive, PartialEq, Eq, Clone, Copy, Debug, Default, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum HashType {
     #[default]
     Account = 0,
@@ -47,14 +50,22 @@ impl HashType {
     }
 }
 
-#[derive(Default, Clone, PartialEq, Eq, Debug)]
+#[derive(Default, Clone, PartialEq, Eq, Debug, Serialize)]
 pub struct BlocksReqPayload {
+    pub start_type: HashType,
     pub start: HashOrAccount,
     pub count: u8,
-    pub start_type: HashType,
 }
 
 impl BlocksReqPayload {
+    pub fn create_test_instance() -> Self {
+        Self {
+            start: HashOrAccount::from(123),
+            count: 100,
+            start_type: HashType::Account,
+        }
+    }
+
     fn deserialize(&mut self, stream: &mut dyn Stream) -> anyhow::Result<()> {
         self.start = HashOrAccount::deserialize(stream)?;
         self.count = stream.read_u8()?;
@@ -71,7 +82,8 @@ impl Serialize for BlocksReqPayload {
     }
 }
 
-#[derive(Default, Clone, PartialEq, Eq, Debug)]
+#[derive(Default, Clone, PartialEq, Eq, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct AccountInfoReqPayload {
     pub target: HashOrAccount,
     pub target_type: HashType,
@@ -100,10 +112,12 @@ impl Serialize for AccountInfoReqPayload {
 }
 
 /// Ascending bootstrap pull request
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct AscPullReq {
-    pub req_type: AscPullReqType,
     pub id: u64,
+    #[serde(flatten)]
+    pub req_type: AscPullReqType,
 }
 
 impl Display for AscPullReq {
@@ -129,6 +143,20 @@ impl Display for AscPullReq {
 }
 
 impl AscPullReq {
+    pub fn create_test_instance_blocks() -> Self {
+        Self {
+            id: 12345,
+            req_type: AscPullReqType::Blocks(BlocksReqPayload::create_test_instance()),
+        }
+    }
+
+    pub fn create_test_instance_account() -> Self {
+        Self {
+            id: 12345,
+            req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload::create_test_instance()),
+        }
+    }
+
     pub fn deserialize(stream: &mut impl Stream) -> Option<Self> {
         let pull_type = AscPullPayloadId::from_u8(stream.read_u8().ok()?)?;
         let id = stream.read_u64_be().ok()?;
@@ -238,6 +266,45 @@ mod tests {
         assert_eq!(
             req.to_string(),
             "\ntarget:000000000000000000000000000000000000000000000000000000000000007B hash type:1"
+        );
+    }
+
+    #[test]
+    fn serialize_json_blocks() {
+        let serialized = serde_json::to_string_pretty(&Message::AscPullReq(
+            AscPullReq::create_test_instance_blocks(),
+        ))
+        .unwrap();
+
+        assert_eq!(
+            serialized,
+            r#"{
+  "message_type": "asc_pull_req",
+  "id": 12345,
+  "pull_type": "blocks",
+  "start_type": "account",
+  "start": "000000000000000000000000000000000000000000000000000000000000007B",
+  "count": 100
+}"#
+        );
+    }
+
+    #[test]
+    fn serialize_json_account() {
+        let serialized = serde_json::to_string_pretty(&Message::AscPullReq(
+            AscPullReq::create_test_instance_account(),
+        ))
+        .unwrap();
+
+        assert_eq!(
+            serialized,
+            r#"{
+  "message_type": "asc_pull_req",
+  "id": 12345,
+  "pull_type": "account_info",
+  "target": "000000000000000000000000000000000000000000000000000000000000002A",
+  "target_type": "account"
+}"#
         );
     }
 }

@@ -4,9 +4,12 @@ use rsnano_core::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     BlockHash, HashOrAccount,
 };
+use serde::ser::SerializeStruct;
+use serde_derive::Serialize;
 use std::{fmt::Display, mem::size_of};
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct BulkPull {
     pub start: HashOrAccount,
     pub end: BlockHash,
@@ -115,5 +118,23 @@ mod tests {
     fn bulk_pull_serialization() {
         let message = Message::BulkPull(BulkPull::create_test_instance());
         assert_deserializable(&message);
+    }
+
+    #[test]
+    fn serialize_json() {
+        let serialized =
+            serde_json::to_string_pretty(&Message::BulkPull(BulkPull::create_test_instance()))
+                .unwrap();
+
+        assert_eq!(
+            serialized,
+            r#"{
+  "message_type": "bulk_pull",
+  "start": "0000000000000000000000000000000000000000000000000000000000000001",
+  "end": "0000000000000000000000000000000000000000000000000000000000000002",
+  "count": 3,
+  "ascending": true
+}"#
+        );
     }
 }

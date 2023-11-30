@@ -186,6 +186,9 @@ pub enum BlockEnum {
 }
 
 impl BlockEnum {
+    pub fn create_test_instance() -> Self {
+        Self::State(StateBlock::create_test_instance())
+    }
     pub fn block_type(&self) -> BlockType {
         self.as_block().block_type()
     }
@@ -373,6 +376,21 @@ impl DerefMut for BlockEnum {
             BlockEnum::LegacyOpen(b) => b,
             BlockEnum::LegacyChange(b) => b,
             BlockEnum::State(b) => b,
+        }
+    }
+}
+
+impl serde::Serialize for BlockEnum {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            BlockEnum::LegacySend(b) => b.serialize(serializer),
+            BlockEnum::LegacyReceive(b) => b.serialize(serializer),
+            BlockEnum::LegacyOpen(b) => b.serialize(serializer),
+            BlockEnum::LegacyChange(b) => b.serialize(serializer),
+            BlockEnum::State(b) => b.serialize(serializer),
         }
     }
 }

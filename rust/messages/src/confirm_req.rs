@@ -102,6 +102,15 @@ impl Serialize for ConfirmReq {
     }
 }
 
+impl serde::Serialize for ConfirmReq {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        todo!()
+    }
+}
+
 impl MessageVariant for ConfirmReq {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let block_type = match &self.block {

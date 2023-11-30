@@ -1,4 +1,6 @@
 use rsnano_core::utils::{BufferWriter, Serialize, Stream};
+use serde::ser::SerializeStruct;
+use serde_derive::Serialize;
 use std::{
     fmt::Display,
     net::{Ipv6Addr, SocketAddrV6},
@@ -6,12 +8,27 @@ use std::{
 
 use super::MessageVariant;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct Keepalive {
     pub peers: [SocketAddrV6; 8],
 }
 
 impl Keepalive {
+    pub fn create_test_instance() -> Self {
+        Self {
+            peers: [
+                "[::ffff:1.2.3.4]:1111".parse().unwrap(),
+                "[::ffff:1.2.3.5]:2222".parse().unwrap(),
+                "[::ffff:1.2.3.6]:3333".parse().unwrap(),
+                "[::ffff:1.2.3.7]:4444".parse().unwrap(),
+                "[::ffff:1.2.3.8]:5555".parse().unwrap(),
+                "[::ffff:1.2.3.9]:6666".parse().unwrap(),
+                "[::ffff:1.2.3.10]:7777".parse().unwrap(),
+                "[::ffff:1.2.3.11]:8888".parse().unwrap(),
+            ],
+        }
+    }
     pub fn deserialize(stream: &mut impl Stream) -> Option<Self> {
         let mut peers = empty_peers();
 
@@ -129,5 +146,28 @@ mod tests {
         expected.push_str("\n[::ffff:1.2.3.4]:1234");
 
         assert_eq!(keepalive.to_string(), expected);
+    }
+
+    #[test]
+    fn serialize() {
+        let serialized =
+            serde_json::to_string_pretty(&Message::Keepalive(Keepalive::create_test_instance()))
+                .unwrap();
+        assert_eq!(
+            serialized,
+            r#"{
+  "message_type": "keepalive",
+  "peers": [
+    "[::ffff:1.2.3.4]:1111",
+    "[::ffff:1.2.3.5]:2222",
+    "[::ffff:1.2.3.6]:3333",
+    "[::ffff:1.2.3.7]:4444",
+    "[::ffff:1.2.3.8]:5555",
+    "[::ffff:1.2.3.9]:6666",
+    "[::ffff:1.2.3.10]:7777",
+    "[::ffff:1.2.3.11]:8888"
+  ]
+}"#
+        );
     }
 }

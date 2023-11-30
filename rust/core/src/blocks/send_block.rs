@@ -303,11 +303,11 @@ impl serde::Serialize for SendBlock {
     {
         let mut state = serializer.serialize_struct("Block", 6)?;
         state.serialize_field("type", "send")?;
-        state.serialize_field("previous", &self.hashables.previous.encode_hex())?;
-        state.serialize_field("destination", &self.hashables.destination.encode_account())?;
+        state.serialize_field("previous", &self.hashables.previous)?;
+        state.serialize_field("destination", &self.hashables.destination)?;
         state.serialize_field("balance", &self.hashables.balance.to_string_dec())?;
         state.serialize_field("work", &to_hex_string(self.work))?;
-        state.serialize_field("signature", &self.signature.encode_hex())?;
+        state.serialize_field("signature", &self.signature)?;
         state.end()
     }
 }

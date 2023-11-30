@@ -3,11 +3,14 @@ use rsnano_core::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account, Amount,
 };
+use serde::ser::SerializeStruct;
+use serde_derive::Serialize;
 use std::{fmt::Display, mem::size_of};
 
 use super::MessageVariant;
 
-#[derive(Clone, Copy, PartialEq, Eq, FromPrimitive, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, FromPrimitive, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 #[repr(u8)]
 pub enum BulkPullAccountFlags {
     PendingHashAndAmount = 0x0,
@@ -71,5 +74,43 @@ impl Display for BulkPullAccount {
         };
 
         write!(f, " {}", flag_str)
+    }
+}
+
+impl serde::Serialize for BulkPullAccount {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("Message", 1)?;
+        state.serialize_field("message_type", "bulk_push")?;
+        state.end()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Message;
+
+    use super::*;
+
+    #[test]
+    #[ignore]
+    fn serialize_json() {
+        let serialized = serde_json::to_string_pretty(&Message::BulkPullAccount(
+            BulkPullAccount::create_test_instance(),
+        ))
+        .unwrap();
+
+        assert_eq!(
+            serialized,
+            r#"{
+  "message_type": "bulk_pull_account",
+  "start": "0000000000000000000000000000000000000000000000000000000000000001",
+  "end": "0000000000000000000000000000000000000000000000000000000000000002",
+  "count": 3,
+  "ascending": true
+}"#
+        );
     }
 }

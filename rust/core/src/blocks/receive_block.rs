@@ -237,10 +237,10 @@ impl serde::Serialize for ReceiveBlock {
     {
         let mut state = serializer.serialize_struct("Block", 5)?;
         state.serialize_field("type", "receive")?;
-        state.serialize_field("previous", &self.hashables.previous.encode_hex())?;
-        state.serialize_field("source", &self.hashables.source.encode_hex())?;
+        state.serialize_field("previous", &self.hashables.previous)?;
+        state.serialize_field("source", &self.hashables.source)?;
         state.serialize_field("work", &to_hex_string(self.work))?;
-        state.serialize_field("signature", &self.signature.encode_hex())?;
+        state.serialize_field("signature", &self.signature)?;
         state.end()
     }
 }

@@ -255,14 +255,11 @@ impl serde::Serialize for OpenBlock {
     {
         let mut state = serializer.serialize_struct("Block", 6)?;
         state.serialize_field("type", "open")?;
-        state.serialize_field("source", &self.hashables.source.encode_hex())?;
-        state.serialize_field(
-            "representative",
-            &self.hashables.representative.encode_account(),
-        )?;
-        state.serialize_field("account", &self.hashables.account.encode_account())?;
+        state.serialize_field("source", &self.hashables.source)?;
+        state.serialize_field("representative", &self.hashables.representative)?;
+        state.serialize_field("account", &self.hashables.account)?;
         state.serialize_field("work", &to_hex_string(self.work))?;
-        state.serialize_field("signature", &self.signature.encode_hex())?;
+        state.serialize_field("signature", &self.signature)?;
         state.end()
     }
 }

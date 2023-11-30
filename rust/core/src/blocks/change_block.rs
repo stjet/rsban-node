@@ -249,13 +249,13 @@ impl serde::Serialize for ChangeBlock {
     {
         let mut state = serializer.serialize_struct("Block", 5)?;
         state.serialize_field("type", "change")?;
-        state.serialize_field("previous", &self.hashables.previous.encode_hex())?;
+        state.serialize_field("previous", &self.hashables.previous)?;
         state.serialize_field(
             "representative",
             &self.hashables.representative.encode_account(),
         )?;
         state.serialize_field("work", &to_hex_string(self.work))?;
-        state.serialize_field("signature", &self.signature.encode_hex())?;
+        state.serialize_field("signature", &self.signature)?;
         state.end()
     }
 }

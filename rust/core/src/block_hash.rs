@@ -16,6 +16,15 @@ impl BlockHash {
     }
 }
 
+impl serde::Serialize for BlockHash {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.encode_hex())
+    }
+}
+
 impl From<&Account> for BlockHash {
     fn from(account: &Account) -> Self {
         Self::from_bytes(*account.as_bytes())

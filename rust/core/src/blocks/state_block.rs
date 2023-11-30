@@ -331,19 +331,13 @@ impl serde::Serialize for StateBlock {
     {
         let mut state = serializer.serialize_struct("Block", 9)?;
         state.serialize_field("type", "state")?;
-        state.serialize_field("account", &self.hashables.account.encode_account())?;
-        state.serialize_field("previous", &self.hashables.previous.encode_hex())?;
-        state.serialize_field(
-            "representative",
-            &self.hashables.representative.encode_account(),
-        )?;
+        state.serialize_field("account", &self.hashables.account)?;
+        state.serialize_field("previous", &self.hashables.previous)?;
+        state.serialize_field("representative", &self.hashables.representative)?;
         state.serialize_field("balance", &self.hashables.balance.to_string_dec())?;
         state.serialize_field("link", &self.hashables.link.encode_hex())?;
-        state.serialize_field(
-            "link_as_account",
-            &Account::from(&self.hashables.link).encode_account(),
-        )?;
-        state.serialize_field("signature", &self.signature.encode_hex())?;
+        state.serialize_field("link_as_account", &Account::from(&self.hashables.link))?;
+        state.serialize_field("signature", &self.signature)?;
         state.serialize_field("work", &to_hex_string(self.work))?;
         state.end()
     }

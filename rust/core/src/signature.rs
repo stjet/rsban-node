@@ -75,3 +75,12 @@ impl Serialize for Signature {
         writer.write_bytes_safe(&self.bytes)
     }
 }
+
+impl serde::Serialize for Signature {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.encode_hex())
+    }
+}

@@ -1,9 +1,11 @@
 use super::*;
 use bitvec::prelude::BitArray;
 use rsnano_core::utils::{BufferReader, BufferWriter, Serialize};
+use serde_derive::Serialize;
 use std::fmt::Display;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(tag = "message_type", rename_all = "snake_case")]
 pub enum Message {
     Keepalive(Keepalive),
     Publish(Publish),
@@ -179,7 +181,7 @@ mod tests {
         let message = Message::ConfirmAck(ConfirmAck {
             vote: Arc::new(Vote::create_test_instance()),
         });
-        test_deserializer(&message);
+        assert_deserializable(&message);
     }
 
     #[test]
@@ -189,54 +191,54 @@ mod tests {
             block: Some(block),
             roots_hashes: Vec::new(),
         });
-        test_deserializer(&message);
+        assert_deserializable(&message);
     }
 
     #[test]
     fn exact_publish() {
         let block = BlockBuilder::legacy_send().build();
         let message = Message::Publish(Publish { block, digest: 8 });
-        test_deserializer(&message);
+        assert_deserializable(&message);
     }
 
     #[test]
     fn exact_keepalive() {
-        test_deserializer(&Message::Keepalive(Keepalive::default()));
+        assert_deserializable(&Message::Keepalive(Keepalive::default()));
     }
 
     #[test]
     fn exact_frontier_req() {
         let message = Message::FrontierReq(FrontierReq::create_test_instance());
-        test_deserializer(&message);
+        assert_deserializable(&message);
     }
 
     #[test]
     fn exact_telemetry_req() {
-        test_deserializer(&Message::TelemetryReq);
+        assert_deserializable(&Message::TelemetryReq);
     }
 
     #[test]
     fn exact_telemetry_ack() {
         let mut data = TelemetryData::default();
         data.unknown_data.push(0xFF);
-        test_deserializer(&Message::TelemetryAck(TelemetryAck(Some(data))));
+        assert_deserializable(&Message::TelemetryAck(TelemetryAck(Some(data))));
     }
 
     #[test]
     fn exact_bulk_pull() {
         let message = Message::BulkPull(BulkPull::create_test_instance());
-        test_deserializer(&message);
+        assert_deserializable(&message);
     }
 
     #[test]
     fn exact_bulk_pull_account() {
         let message = Message::BulkPullAccount(BulkPullAccount::create_test_instance());
-        test_deserializer(&message);
+        assert_deserializable(&message);
     }
 
     #[test]
     fn exact_bulk_push() {
-        test_deserializer(&Message::BulkPush);
+        assert_deserializable(&Message::BulkPush);
     }
 
     #[test]
@@ -246,7 +248,7 @@ mod tests {
             response: None,
             is_v2: true,
         });
-        test_deserializer(&message);
+        assert_deserializable(&message);
     }
 
     #[test]
@@ -255,7 +257,7 @@ mod tests {
             req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload::create_test_instance()),
             id: 7,
         });
-        test_deserializer(&message);
+        assert_deserializable(&message);
     }
 
     #[test]
@@ -264,10 +266,28 @@ mod tests {
             id: 7,
             pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload::create_test_instance()),
         });
-        test_deserializer(&message);
+        assert_deserializable(&message);
     }
 
-    fn test_deserializer(original: &Message) {
-        assert_deserializable(original);
+    #[test]
+    fn serialize_bulk_push() {
+        let serialized = serde_json::to_string_pretty(&Message::BulkPush).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{
+  "message_type": "bulk_push"
+}"#
+        );
+    }
+
+    #[test]
+    fn serialize_telemetry_req() {
+        let serialized = serde_json::to_string_pretty(&Message::TelemetryReq).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{
+  "message_type": "telemetry_req"
+}"#
+        );
     }
 }

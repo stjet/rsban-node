@@ -4,10 +4,11 @@ use crate::{
         BufferWriter, Deserialize, FixedSizeSerialize, PropertyTreeReader, PropertyTreeWriter,
         Serialize, Stream,
     },
-    Account, Amount, BlockHash, BlockHashBuilder, LazyBlockHash, Link, PublicKey, RawKey, Root,
-    Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, KeyPair, LazyBlockHash, Link, PublicKey, RawKey,
+    Root, Signature,
 };
 use anyhow::Result;
+use serde::ser::SerializeStruct;
 
 use super::{Block, BlockSideband, BlockType, BlockVisitor};
 
@@ -87,6 +88,20 @@ impl StateBlock {
             hash,
             sideband: None,
         }
+    }
+
+    pub fn create_test_instance() -> Self {
+        let key = KeyPair::from(42);
+        Self::new(
+            Account::from(123),
+            BlockHash::from(456),
+            Account::from(789),
+            Amount::raw(420),
+            Link::from(111),
+            &key.private_key(),
+            &key.public_key(),
+            69420,
+        )
     }
 
     pub fn with_signature(
@@ -309,6 +324,31 @@ impl Block for StateBlock {
     }
 }
 
+impl serde::Serialize for StateBlock {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("Block", 9)?;
+        state.serialize_field("type", "state")?;
+        state.serialize_field("account", &self.hashables.account.encode_account())?;
+        state.serialize_field("previous", &self.hashables.previous.encode_hex())?;
+        state.serialize_field(
+            "representative",
+            &self.hashables.representative.encode_account(),
+        )?;
+        state.serialize_field("balance", &self.hashables.balance.to_string_dec())?;
+        state.serialize_field("link", &self.hashables.link.encode_hex())?;
+        state.serialize_field(
+            "link_as_account",
+            &Account::from(&self.hashables.link).encode_account(),
+        )?;
+        state.serialize_field("signature", &self.signature.encode_hex())?;
+        state.serialize_field("work", &to_hex_string(self.work))?;
+        state.end()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -360,5 +400,25 @@ mod tests {
         assert_different_hash(BlockBuilder::state().representative(Account::from(1000)));
         assert_different_hash(BlockBuilder::state().balance(Amount::from(1000)));
         assert_different_hash(BlockBuilder::state().link(Link::from(1000)));
+    }
+
+    #[test]
+    fn serialize_serde() {
+        let block = StateBlock::create_test_instance();
+        let serialized = serde_json::to_string_pretty(&block).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{
+  "type": "state",
+  "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549",
+  "previous": "00000000000000000000000000000000000000000000000000000000000001C8",
+  "representative": "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy",
+  "balance": "420",
+  "link": "000000000000000000000000000000000000000000000000000000000000006F",
+  "link_as_account": "nano_111111111111111111111111111111111111111111111111115hkrzwewgm",
+  "signature": "9C6E535FABB72F90E410B72192102BA13B77BDC58D77B94DF8B7A704D74698C5F9BCB01667A5D9788DB02AAFE8F46DCB898488487BB375283BC39CA61A678204",
+  "work": "0000000000010F2C"
+}"#
+        );
     }
 }

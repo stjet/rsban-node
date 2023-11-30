@@ -4,10 +4,11 @@ use crate::{
         BufferWriter, Deserialize, FixedSizeSerialize, PropertyTreeReader, PropertyTreeWriter,
         Serialize, Stream,
     },
-    Account, Amount, BlockHash, BlockHashBuilder, LazyBlockHash, Link, PublicKey, RawKey, Root,
-    Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, KeyPair, LazyBlockHash, Link, PublicKey, RawKey,
+    Root, Signature,
 };
 use anyhow::Result;
+use serde::ser::SerializeStruct;
 
 use super::{Block, BlockSideband, BlockType, BlockVisitor};
 
@@ -69,6 +70,18 @@ impl OpenBlock {
             hash,
             sideband: None,
         }
+    }
+
+    pub fn create_test_instance() -> Self {
+        let key = KeyPair::from(42);
+        Self::new(
+            BlockHash::from(123),
+            Account::from(456),
+            Account::from(789),
+            &key.private_key(),
+            &key.public_key(),
+            69420,
+        )
     }
 
     pub fn mandatory_source(&self) -> BlockHash {
@@ -235,6 +248,25 @@ impl Block for OpenBlock {
     }
 }
 
+impl serde::Serialize for OpenBlock {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("Block", 6)?;
+        state.serialize_field("type", "open")?;
+        state.serialize_field("source", &self.hashables.source.encode_hex())?;
+        state.serialize_field(
+            "representative",
+            &self.hashables.representative.encode_account(),
+        )?;
+        state.serialize_field("account", &self.hashables.account.encode_account())?;
+        state.serialize_field("work", &to_hex_string(self.work))?;
+        state.serialize_field("signature", &self.signature.encode_hex())?;
+        state.end()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -284,20 +316,29 @@ mod tests {
     // original test: open_block.deserialize
     #[test]
     fn serialize() {
-        let key1 = KeyPair::new();
-        let block1 = OpenBlock::new(
-            BlockHash::from(0),
-            Account::from(1),
-            Account::from(0),
-            &key1.private_key(),
-            &key1.public_key(),
-            0,
-        );
+        let block1 = OpenBlock::create_test_instance();
         let mut stream = MemoryStream::new();
         block1.serialize_without_block_type(&mut stream);
         assert_eq!(OpenBlock::serialized_size(), stream.bytes_written());
 
         let block2 = OpenBlock::deserialize(&mut stream).unwrap();
         assert_eq!(block1, block2);
+    }
+
+    #[test]
+    fn serialize_serde() {
+        let block = OpenBlock::create_test_instance();
+        let serialized = serde_json::to_string_pretty(&block).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{
+  "type": "open",
+  "source": "000000000000000000000000000000000000000000000000000000000000007B",
+  "representative": "nano_11111111111111111111111111111111111111111111111111gahteczqci",
+  "account": "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy",
+  "work": "0000000000010F2C",
+  "signature": "791B637D0CB7D333AFC9F4D06870A1B5ADD2857E5C37BBAEEF70C77E0DDC7DF6541CC877EA88BE2483D7E0198BC9455C61E4B7BD98A50352BB5C4AD0E468DF04"
+}"#
+        );
     }
 }

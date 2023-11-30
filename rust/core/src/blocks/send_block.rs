@@ -301,7 +301,7 @@ impl serde::Serialize for SendBlock {
     where
         S: serde::Serializer,
     {
-        let mut state = serializer.serialize_struct("SendBlock", 1)?;
+        let mut state = serializer.serialize_struct("Block", 6)?;
         state.serialize_field("type", "send")?;
         state.serialize_field("previous", &self.hashables.previous.encode_hex())?;
         state.serialize_field("destination", &self.hashables.destination.encode_account())?;

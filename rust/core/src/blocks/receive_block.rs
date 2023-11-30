@@ -4,10 +4,11 @@ use crate::{
         BufferWriter, Deserialize, FixedSizeSerialize, PropertyTreeReader, PropertyTreeWriter,
         Serialize, Stream,
     },
-    Account, Amount, BlockHash, BlockHashBuilder, LazyBlockHash, Link, PublicKey, RawKey, Root,
-    Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, KeyPair, LazyBlockHash, Link, PublicKey, RawKey,
+    Root, Signature,
 };
 use anyhow::Result;
+use serde::ser::SerializeStruct;
 
 use super::{Block, BlockSideband, BlockType, BlockVisitor};
 
@@ -60,6 +61,17 @@ impl ReceiveBlock {
             hash,
             sideband: None,
         }
+    }
+
+    pub fn create_test_instance() -> Self {
+        let key = KeyPair::from(42);
+        ReceiveBlock::new(
+            BlockHash::from(123),
+            BlockHash::from(456),
+            &key.private_key(),
+            &key.public_key(),
+            69420,
+        )
     }
 
     // Receive blocks always have a source
@@ -218,6 +230,21 @@ impl Block for ReceiveBlock {
     }
 }
 
+impl serde::Serialize for ReceiveBlock {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("Block", 5)?;
+        state.serialize_field("type", "receive")?;
+        state.serialize_field("previous", &self.hashables.previous.encode_hex())?;
+        state.serialize_field("source", &self.hashables.source.encode_hex())?;
+        state.serialize_field("work", &to_hex_string(self.work))?;
+        state.serialize_field("signature", &self.signature.encode_hex())?;
+        state.end()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -264,18 +291,27 @@ mod tests {
     // original test: block.receive_serialize_json
     #[test]
     fn serialize_json() {
-        let key1 = KeyPair::new();
-        let block1 = ReceiveBlock::new(
-            BlockHash::from(0),
-            BlockHash::from(1),
-            &key1.private_key(),
-            &key1.public_key(),
-            4,
-        );
+        let block1 = ReceiveBlock::create_test_instance();
         let mut ptree = TestPropertyTree::new();
         block1.serialize_json(&mut ptree).unwrap();
 
         let block2 = ReceiveBlock::deserialize_json(&ptree).unwrap();
         assert_eq!(block1, block2);
+    }
+
+    #[test]
+    fn serialize_serde() {
+        let block = ReceiveBlock::create_test_instance();
+        let serialized = serde_json::to_string_pretty(&block).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{
+  "type": "receive",
+  "previous": "000000000000000000000000000000000000000000000000000000000000007B",
+  "source": "00000000000000000000000000000000000000000000000000000000000001C8",
+  "work": "0000000000010F2C",
+  "signature": "6F6E98FB9C3D0B91CBAF78C8613C7A7AE990AA627B9C1381D1D97AB7118C91D169381E3897A477286A4AFB68F7CD347F3FF16F8AB4C33241D8BF793CE29E730B"
+}"#
+        );
     }
 }

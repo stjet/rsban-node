@@ -7,6 +7,7 @@ use rsnano_core::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     BlockEnum, BlockHash, BlockType, Root,
 };
+use serde::ser::{SerializeSeq, SerializeStruct};
 use std::fmt::{Debug, Display, Write};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -18,6 +19,20 @@ pub struct ConfirmReq {
 impl ConfirmReq {
     const BLOCK_TYPE_MASK: u16 = 0x0f00;
     const COUNT_MASK: u16 = 0xf000;
+
+    pub fn create_test_instance_block() -> Self {
+        Self {
+            block: Some(BlockEnum::create_test_instance()),
+            roots_hashes: Vec::new(),
+        }
+    }
+
+    pub fn create_test_instance_roots() -> Self {
+        Self {
+            block: None,
+            roots_hashes: vec![(BlockHash::from(123), Root::from(456))],
+        }
+    }
 
     fn block_type(extensions: BitArray<u16>) -> BlockType {
         let mut value = extensions & BitArray::new(Self::BLOCK_TYPE_MASK);
@@ -102,12 +117,49 @@ impl Serialize for ConfirmReq {
     }
 }
 
-impl serde::Serialize for ConfirmReq {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+struct SerializableRootsHashes<'a>(&'a Vec<(BlockHash, Root)>);
+
+impl<'a> serde::Serialize for SerializableRootsHashes<'a> {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        todo!()
+        let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
+        for item in self.0.iter() {
+            seq.serialize_element(&SerializableRootHash(item))?;
+        }
+        seq.end()
+    }
+}
+
+struct SerializableRootHash<'a>(&'a (BlockHash, Root));
+
+impl<'a> serde::Serialize for SerializableRootHash<'a> {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut seq = serializer.serialize_struct("RootHash", 2)?;
+        seq.serialize_field("hash", &self.0 .0)?;
+        seq.serialize_field("root", &self.0 .1.encode_hex())?;
+        seq.end()
+    }
+}
+
+impl serde::Serialize for ConfirmReq {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("ConfirmReq", 6)?;
+        if let Some(block) = &self.block {
+            state.serialize_field("confirm_type", "block")?;
+            state.serialize_field("block", block)?;
+        } else {
+            state.serialize_field("confirm_type", "roots_hashes")?;
+            state.serialize_field("roots_hashes", &SerializableRootsHashes(&self.roots_hashes))?;
+        }
+        state.end()
     }
 }
 
@@ -199,5 +251,54 @@ mod tests {
         };
         let extensions = confirm_req.header_extensions(0);
         assert_eq!(ConfirmReq::block_type(extensions), BlockType::LegacyReceive);
+    }
+
+    #[test]
+    fn serialize_json_block() {
+        let serialized = serde_json::to_string_pretty(&Message::ConfirmReq(
+            ConfirmReq::create_test_instance_block(),
+        ))
+        .unwrap();
+
+        assert_eq!(
+            serialized,
+            r#"{
+  "message_type": "confirm_req",
+  "confirm_type": "block",
+  "block": {
+    "type": "state",
+    "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549",
+    "previous": "00000000000000000000000000000000000000000000000000000000000001C8",
+    "representative": "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy",
+    "balance": "420",
+    "link": "000000000000000000000000000000000000000000000000000000000000006F",
+    "link_as_account": "nano_111111111111111111111111111111111111111111111111115hkrzwewgm",
+    "signature": "9C6E535FABB72F90E410B72192102BA13B77BDC58D77B94DF8B7A704D74698C5F9BCB01667A5D9788DB02AAFE8F46DCB898488487BB375283BC39CA61A678204",
+    "work": "0000000000010F2C"
+  }
+}"#
+        );
+    }
+
+    #[test]
+    fn serialize_json_roots_hashes() {
+        let serialized = serde_json::to_string_pretty(&Message::ConfirmReq(
+            ConfirmReq::create_test_instance_roots(),
+        ))
+        .unwrap();
+
+        assert_eq!(
+            serialized,
+            r#"{
+  "message_type": "confirm_req",
+  "confirm_type": "roots_hashes",
+  "roots_hashes": [
+    {
+      "hash": "000000000000000000000000000000000000000000000000000000000000007B",
+      "root": "00000000000000000000000000000000000000000000000000000000000001C8"
+    }
+  ]
+}"#
+        );
     }
 }

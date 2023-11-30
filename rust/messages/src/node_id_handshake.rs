@@ -8,14 +8,31 @@ use rsnano_core::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream},
     validate_message, write_hex_bytes, Account, BlockHash, KeyPair, PublicKey, Signature,
 };
-use std::fmt::Display;
+use serde::ser::SerializeStruct;
+use std::fmt::{Display, Write};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct NodeIdHandshakeQuery {
     pub cookie: [u8; 32],
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+impl serde::Serialize for NodeIdHandshakeQuery {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("NodeIdHandshakeQuery", 1)?;
+
+        let mut short_cookie = String::with_capacity(32 * 2);
+        for b in &self.cookie {
+            write!(short_cookie, "{:02X}", b).unwrap();
+        }
+        state.serialize_field("cookie", &short_cookie)?;
+        state.end()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize)]
 pub struct NodeIdHandshakeResponse {
     pub node_id: Account,
     pub signature: Signature,
@@ -129,7 +146,24 @@ pub struct V2Payload {
     pub genesis: BlockHash,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+impl serde::Serialize for V2Payload {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("V2Payload", 2)?;
+
+        let mut short_salt = String::with_capacity(32 * 2);
+        for b in &self.salt {
+            write!(short_salt, "{:02X}", b).unwrap();
+        }
+        state.serialize_field("salt", &short_salt)?;
+        state.serialize_field("genesis", &self.genesis)?;
+        state.end()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize)]
 pub struct NodeIdHandshake {
     pub query: Option<NodeIdHandshakeQuery>,
     pub response: Option<NodeIdHandshakeResponse>,
@@ -231,15 +265,6 @@ impl Serialize for NodeIdHandshake {
         if let Some(response) = &self.response {
             response.serialize(writer);
         }
-    }
-}
-
-impl serde::Serialize for NodeIdHandshake {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        todo!()
     }
 }
 
@@ -354,5 +379,48 @@ mod tests {
         let mut copy = response.clone();
         copy.v2.as_mut().unwrap().genesis = BlockHash::from(123);
         assert!(copy.validate(&cookie).is_err());
+    }
+
+    #[test]
+    fn serialize_json_query() {
+        let serialized = serde_json::to_string_pretty(&Message::NodeIdHandshake(
+            NodeIdHandshake::create_test_query(),
+        ))
+        .unwrap();
+        assert_eq!(
+            serialized,
+            r#"{
+  "message_type": "node_id_handshake",
+  "query": {
+    "cookie": "2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A"
+  },
+  "response": null,
+  "is_v2": true
+}"#
+        );
+    }
+
+    #[test]
+    fn serialize_json_resonse() {
+        let serialized = serde_json::to_string_pretty(&Message::NodeIdHandshake(
+            NodeIdHandshake::create_test_response_v2(),
+        ))
+        .unwrap();
+        assert_eq!(
+            serialized,
+            r#"{
+  "message_type": "node_id_handshake",
+  "query": null,
+  "response": {
+    "node_id": "nano_1111111111111111111111111111111111111111111111111113b8661hfk",
+    "signature": "2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A",
+    "v2": {
+      "salt": "0707070707070707070707070707070707070707070707070707070707070707",
+      "genesis": "0000000000000000000000000000000000000000000000000000000000000003"
+    }
+  },
+  "is_v2": true
+}"#
+        );
     }
 }

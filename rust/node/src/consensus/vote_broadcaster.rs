@@ -14,6 +14,7 @@ use crate::{
 };
 use std::{
     net::SocketAddrV6,
+    ops::Deref,
     sync::{Arc, Mutex},
     time::SystemTime,
 };
@@ -32,10 +33,10 @@ pub struct VoteBroadcaster {
 
 impl VoteBroadcaster {
     pub fn broadcast(&self, vote: Arc<Vote>) {
-        self.flood_vote_pr(Arc::clone(&vote));
+        self.flood_vote_pr(vote.deref().clone());
 
         let ack = Message::ConfirmAck(ConfirmAck {
-            vote: Arc::clone(&vote),
+            vote: vote.deref().clone(),
         });
         self.tcp_channels.flood_message(&ack, 2.0);
 
@@ -59,7 +60,7 @@ impl VoteBroadcaster {
             .vote(&vote, &Arc::new(ChannelEnum::InProc(loopback_channel)));
     }
 
-    fn flood_vote_pr(&self, vote: Arc<Vote>) {
+    fn flood_vote_pr(&self, vote: Vote) {
         let message = Message::ConfirmAck(ConfirmAck { vote });
         for rep in self
             .representative_register

@@ -1,3 +1,5 @@
+use std::{ops::Deref, sync::Arc};
+
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{consensus::VoteHandle, NetworkConstantsDto, StringDto};
 use rsnano_messages::{ConfirmAck, Message};
@@ -5,10 +7,10 @@ use rsnano_messages::{ConfirmAck, Message};
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_ack_create(
     constants: *mut NetworkConstantsDto,
-    vote: *mut VoteHandle,
+    vote: &VoteHandle,
 ) -> *mut MessageHandle {
     create_message_handle2(constants, || {
-        let vote = (*vote).clone();
+        let vote = vote.0.deref().clone();
         Message::ConfirmAck(ConfirmAck { vote })
     })
 }
@@ -28,7 +30,7 @@ unsafe fn get_payload(handle: &MessageHandle) -> &ConfirmAck {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_ack_vote(handle: &MessageHandle) -> *mut VoteHandle {
     let vote = get_payload(handle).vote.clone();
-    Box::into_raw(Box::new(VoteHandle::new(vote)))
+    Box::into_raw(Box::new(VoteHandle::new(Arc::new(vote))))
 }
 
 #[no_mangle]

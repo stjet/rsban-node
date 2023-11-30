@@ -4,7 +4,6 @@ use rsnano_core::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     BlockHash, HashOrAccount,
 };
-use serde::ser::SerializeStruct;
 use serde_derive::Serialize;
 use std::{fmt::Display, mem::size_of};
 

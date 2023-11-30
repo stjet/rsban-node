@@ -4,9 +4,10 @@ use rsnano_core::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account,
 };
+use serde_derive::Serialize;
 use std::{fmt::Display, mem::size_of};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct FrontierReq {
     pub start: Account,
     pub age: u32,
@@ -58,15 +59,6 @@ impl Serialize for FrontierReq {
     }
 }
 
-impl serde::Serialize for FrontierReq {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        todo!()
-    }
-}
-
 impl MessageVariant for FrontierReq {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
@@ -94,5 +86,24 @@ mod tests {
     fn serialize() {
         let request = Message::FrontierReq(FrontierReq::create_test_instance());
         assert_deserializable(&request);
+    }
+
+    #[test]
+    fn serialize_json() {
+        let serialized = serde_json::to_string_pretty(&Message::FrontierReq(
+            FrontierReq::create_test_instance(),
+        ))
+        .unwrap();
+
+        assert_eq!(
+            serialized,
+            r#"{
+  "message_type": "frontier_req",
+  "start": "nano_1111111111111111111111111111111111111111111111111113b8661hfk",
+  "age": 2,
+  "count": 3,
+  "only_confirmed": false
+}"#
+        );
     }
 }

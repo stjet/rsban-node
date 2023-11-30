@@ -2,14 +2,16 @@ use super::{
     sign_message,
     utils::{
         BufferWriter, Deserialize, FixedSizeSerialize, PropertyTreeWriter, SerdePropertyTree,
-        Serialize, Stream,
+        Stream,
     },
     validate_message, Account, BlockHash, BlockHashBuilder, FullHash, KeyPair, RawKey, Signature,
 };
+use crate::utils::Serialize;
 use anyhow::Result;
 use std::time::Duration;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct Vote {
     pub timestamp: u64,
 
@@ -63,7 +65,7 @@ impl Vote {
     }
 
     pub fn create_test_instance() -> Self {
-        let key = KeyPair::new();
+        let key = KeyPair::from(42);
 
         Self::new(
             key.public_key(),

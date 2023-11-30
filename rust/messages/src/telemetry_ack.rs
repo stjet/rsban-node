@@ -5,8 +5,10 @@ use rsnano_core::utils::{
     BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
 };
 use rsnano_core::{
-    sign_message, to_hex_string, validate_message, Account, BlockHash, KeyPair, Signature,
+    sign_message, to_hex_string, validate_message, Account, BlockHash, KeyPair, PublicKey,
+    Signature,
 };
+use serde::ser::SerializeStruct;
 use serde_derive::Serialize;
 use std::fmt::Display;
 use std::mem::size_of;
@@ -19,7 +21,7 @@ pub enum TelemetryMaker {
     NfPrunedNode = 1,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
 pub struct TelemetryData {
     pub signature: Signature,
     pub node_id: Account,
@@ -37,6 +39,7 @@ pub struct TelemetryData {
     pub patch_version: u8,
     pub pre_release_version: u8,
     pub maker: u8, // Where this telemetry information originated
+    #[serde(skip)] // TODO find a way to serialize the timestamp
     pub timestamp: SystemTime,
     pub active_difficulty: u64,
     pub unknown_data: Vec<u8>,
@@ -67,6 +70,18 @@ impl TelemetryData {
             active_difficulty: 0,
             unknown_data: Vec::new(),
         }
+    }
+
+    pub fn create_test_instance() -> Self {
+        let mut data = TelemetryData::new();
+        data.node_id = PublicKey::from(42);
+        data.major_version = 20;
+        data.minor_version = 1;
+        data.patch_version = 5;
+        data.pre_release_version = 2;
+        data.maker = 1;
+        data.timestamp = SystemTime::UNIX_EPOCH + Duration::from_millis(100);
+        data
     }
 
     /// Size does not include unknown_data
@@ -175,7 +190,25 @@ impl TelemetryData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TelemetryAck(pub Option<TelemetryData>);
 
+impl serde::Serialize for TelemetryAck {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if let Some(data) = &self.0 {
+            let mut state = serializer.serialize_struct("TelemetryAck", 1)?;
+            state.serialize_field("data", data)?;
+            state.end()
+        } else {
+            serializer.serialize_none()
+        }
+    }
+}
+
 impl TelemetryAck {
+    pub fn create_test_instance() -> Self {
+        Self(Some(TelemetryData::create_test_instance()))
+    }
     pub fn serialized_size(extensions: BitArray<u16>) -> usize {
         (extensions.data & TelemetryData::SIZE_MASK) as usize
     }
@@ -219,15 +252,6 @@ impl TelemetryAck {
                 .ok()?;
         }
         Some(Self(Some(result)))
-    }
-}
-
-impl serde::Serialize for TelemetryAck {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        todo!()
     }
 }
 
@@ -299,6 +323,8 @@ impl Display for TelemetryData {
 
 #[cfg(test)]
 mod tests {
+    use crate::Message;
+
     use super::*;
 
     // original test: telemetry.signatures
@@ -326,6 +352,40 @@ mod tests {
         data.sign(&keys)?;
         assert_eq!(data.validate_signature(), true);
         Ok(())
+    }
+
+    #[test]
+    fn serialize_json() {
+        let serialized = serde_json::to_string_pretty(&Message::TelemetryAck(
+            TelemetryAck::create_test_instance(),
+        ))
+        .unwrap();
+        assert_eq!(
+            serialized,
+            r#"{
+  "message_type": "telemetry_ack",
+  "data": {
+    "signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "node_id": "nano_111111111111111111111111111111111111111111111111113cjgseitn9",
+    "block_count": 0,
+    "cemented_count": 0,
+    "unchecked_count": 0,
+    "account_count": 0,
+    "bandwidth_cap": 0,
+    "uptime": 0,
+    "peer_count": 0,
+    "protocol_version": 0,
+    "genesis_block": "0000000000000000000000000000000000000000000000000000000000000000",
+    "major_version": 20,
+    "minor_version": 1,
+    "patch_version": 5,
+    "pre_release_version": 2,
+    "maker": 1,
+    "active_difficulty": 0,
+    "unknown_data": []
+  }
+}"#
+        );
     }
 
     fn test_data(keys: &KeyPair) -> TelemetryData {

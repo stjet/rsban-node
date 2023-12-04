@@ -643,8 +643,8 @@ TEST (rpc, wallet_create_seed)
 	auto account_text (response.get<std::string> ("last_restored_account"));
 	nano::account account;
 	ASSERT_FALSE (account.decode_account (account_text));
-	auto existing (node->wallets.items.find (wallet_id));
-	ASSERT_TRUE (existing->second->exists (account));
+	auto accounts{ node->wallets.get_accounts (wallet_id) };
+	ASSERT_NE (std::find (accounts.begin (), accounts.end (), account), accounts.end ());
 	ASSERT_EQ (pub, account);
 	ASSERT_EQ ("1", response.get<std::string> ("restored_count"));
 }
@@ -3465,9 +3465,7 @@ TEST (rpc, work_get)
 	request.put ("account", nano::dev::genesis_key.pub.to_account ());
 	auto response (wait_response (system, rpc_ctx, request));
 	std::string work_text (response.get<std::string> ("work"));
-	uint64_t work (1);
-	auto transaction (node->wallets.tx_begin_read ());
-	node->wallets.items.begin ()->second->store.work_get (*transaction, nano::dev::genesis->account (), work);
+	auto work = node->wallets.work_get (node->wallets.first_wallet_id (), nano::dev::genesis->account ());
 	ASSERT_EQ (nano::to_string_hex (work), work_text);
 }
 
@@ -3482,14 +3480,12 @@ TEST (rpc, wallet_work_get)
 	request.put ("action", "wallet_work_get");
 	request.put ("wallet", node->wallets.first_wallet_id ().to_string ());
 	auto response (wait_response (system, rpc_ctx, request));
-	auto transaction (node->wallets.tx_begin_read ());
 	for (auto & works : response.get_child ("works"))
 	{
 		std::string account_text (works.first);
 		ASSERT_EQ (nano::dev::genesis_key.pub.to_account (), account_text);
 		std::string work_text (works.second.get<std::string> (""));
-		uint64_t work (1);
-		node->wallets.items.begin ()->second->store.work_get (*transaction, nano::dev::genesis->account (), work);
+		auto work = node->wallets.work_get (node->wallets.first_wallet_id (), nano::dev::genesis->account ());
 		ASSERT_EQ (nano::to_string_hex (work), work_text);
 	}
 }
@@ -3501,17 +3497,16 @@ TEST (rpc, work_set)
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
 	auto const rpc_ctx = add_rpc (system, node);
 	uint64_t work0 (100);
+	auto wallet_id = node->wallets.first_wallet_id ();
 	boost::property_tree::ptree request;
 	request.put ("action", "work_set");
-	request.put ("wallet", node->wallets.first_wallet_id ().to_string ());
+	request.put ("wallet", wallet_id.to_string ());
 	request.put ("account", nano::dev::genesis_key.pub.to_account ());
 	request.put ("work", nano::to_string_hex (work0));
 	auto response (wait_response (system, rpc_ctx, request));
 	std::string success (response.get<std::string> ("success"));
 	ASSERT_TRUE (success.empty ());
-	uint64_t work1 (1);
-	auto transaction (node->wallets.tx_begin_read ());
-	node->wallets.items.begin ()->second->store.work_get (*transaction, nano::dev::genesis->account (), work1);
+	auto work1 = node->wallets.work_get (wallet_id, nano::dev::genesis->account ());
 	ASSERT_EQ (work1, work0);
 }
 
@@ -6589,7 +6584,7 @@ TEST (rpc, receive_work_disabled)
 	auto node = add_ipc_enabled_node (system, config);
 	auto wallet = system.wallet (1);
 	std::string wallet_text;
-	node->wallets.items.begin ()->first.encode_hex (wallet_text);
+	node->wallets.first_wallet_id ().encode_hex (wallet_text);
 	wallet->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::keypair key1;
 	ASSERT_TRUE (worker_node.work_generation_enabled ());
@@ -6623,7 +6618,7 @@ TEST (rpc, receive_pruned)
 	auto wallet1 = system.wallet (0);
 	auto wallet2 = system.wallet (1);
 	std::string wallet_text;
-	node2->wallets.items.begin ()->first.encode_hex (wallet_text);
+	node2->wallets.first_wallet_id ().encode_hex (wallet_text);
 	wallet1->insert_adhoc (nano::dev::genesis_key.prv);
 	nano::keypair key1;
 	wallet2->insert_adhoc (key1.prv);

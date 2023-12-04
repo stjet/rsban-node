@@ -49,7 +49,8 @@ TEST (active_transactions, confirm_election_by_request)
 	ASSERT_TRUE (nano::test::process (node1, { send1 }));
 
 	// Add rep key to node1
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	auto wallet_id = node1.wallets.first_wallet_id ();
+	node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 
 	// Ensure election on node1 is already confirmed before connecting with node2
 	ASSERT_TIMELY (5s, nano::test::confirmed (node1, { send1 }));
@@ -115,7 +116,8 @@ TEST (active_transactions, confirm_frontier)
 	auto & node2 = *system.add_node (node_flags2);
 
 	// Add key to node1
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	auto wallet_id = node1.wallets.first_wallet_id ();
+	node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	// Add representative to disabled rep crawler
 	auto peers (node2.network->random_channels (1));
 	ASSERT_FALSE (peers.empty ());
@@ -158,7 +160,6 @@ TEST (active_transactions, keep_local)
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 
 	auto & node = *system.add_node (node_config);
-	auto & wallet (*system.wallet (0));
 
 	nano::keypair key1{};
 	nano::keypair key2{};
@@ -167,13 +168,14 @@ TEST (active_transactions, keep_local)
 	nano::keypair key5{};
 	nano::keypair key6{};
 
-	wallet.insert_adhoc (nano::dev::genesis_key.prv);
-	auto const send1 = wallet.send_action (nano::dev::genesis_key.pub, key1.pub, node.config->receive_minimum.number ());
-	auto const send2 = wallet.send_action (nano::dev::genesis_key.pub, key2.pub, node.config->receive_minimum.number ());
-	auto const send3 = wallet.send_action (nano::dev::genesis_key.pub, key3.pub, node.config->receive_minimum.number ());
-	auto const send4 = wallet.send_action (nano::dev::genesis_key.pub, key4.pub, node.config->receive_minimum.number ());
-	auto const send5 = wallet.send_action (nano::dev::genesis_key.pub, key5.pub, node.config->receive_minimum.number ());
-	auto const send6 = wallet.send_action (nano::dev::genesis_key.pub, key6.pub, node.config->receive_minimum.number ());
+	auto wallet_id = node.wallets.first_wallet_id ();
+	node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	auto const send1 = node.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, node.config->receive_minimum.number ());
+	auto const send2 = node.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node.config->receive_minimum.number ());
+	auto const send3 = node.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key3.pub, node.config->receive_minimum.number ());
+	auto const send4 = node.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key4.pub, node.config->receive_minimum.number ());
+	auto const send5 = node.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key5.pub, node.config->receive_minimum.number ());
+	auto const send6 = node.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key6.pub, node.config->receive_minimum.number ());
 
 	// force-confirm blocks
 	for (auto const & block : { send1, send2, send3, send4, send5, send6 })
@@ -996,10 +998,11 @@ TEST (active_transactions, confirmation_consistency)
 	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node = *system.add_node (node_config);
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	auto wallet_id = node.wallets.first_wallet_id ();
+	node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	for (unsigned i = 0; i < 10; ++i)
 	{
-		auto block (system.wallet (0)->send_action (nano::dev::genesis_key.pub, nano::public_key (), node.config->receive_minimum.number ()));
+		auto block (node.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, nano::public_key (), node.config->receive_minimum.number ()));
 		ASSERT_NE (nullptr, block);
 		system.deadline_set (5s);
 		while (!node.ledger.block_confirmed (*node.store.tx_begin_read (), block->hash ()))
@@ -1036,7 +1039,8 @@ TEST (active_transactions, DISABLED_confirm_new)
 	ASSERT_TIMELY_EQ (5s, 1, node1.active.size ());
 	auto & node2 = *system.add_node ();
 	// Add key to node2
-	system.wallet (1)->insert_adhoc (nano::dev::genesis_key.prv);
+	auto wallet_id = node2.wallets.first_wallet_id ();
+	node2.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	// Let node2 know about the block
 	ASSERT_TIMELY (5s, node2.block (send->hash ()));
 	// Wait confirmation

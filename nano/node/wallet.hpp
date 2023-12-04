@@ -266,12 +266,16 @@ public:
 	std::vector<std::pair<nano::account, nano::raw_key>> decrypt (store::transaction const & txn, nano::wallet_id const & wallet_id) const;
 	std::vector<nano::wallet_id> get_wallet_ids () const;
 	std::vector<nano::account> get_accounts (nano::wallet_id const & wallet_id);
+	std::vector<nano::account> get_accounts (size_t max_results);
+	uint64_t work_get (nano::wallet_id const & wallet_id, nano::account const & account);
 	bool remove_account (nano::wallet_id const & wallet_id, nano::account & account_id);
 	bool move_accounts (nano::wallet_id const & source_id, nano::wallet_id const & target_id, std::vector<nano::public_key> const & accounts);
 	bool wallet_exists (nano::wallet_id const & id) const;
 	nano::wallet_id first_wallet_id () const;
 	nano::public_key insert_adhoc (nano::wallet_id const & id, nano::raw_key const & key_a, bool generate_work_a = true);
 	bool enter_password (nano::wallet_id const & id, store::transaction const & transaction_a, std::string const & password_a);
+	void backup (std::filesystem::path const & backup_path);
+	std::shared_ptr<nano::block> send_action (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});
 	bool search_receivable (nano::wallet_id const &);
 	void search_receivable_all ();
 	void destroy (nano::wallet_id const &);

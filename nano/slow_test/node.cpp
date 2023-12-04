@@ -2096,8 +2096,8 @@ TEST (system, block_sequence)
 	flags.set_disable_max_peers_per_ip (true);
 	flags.set_disable_ongoing_bootstrap (true);
 	auto root = system.add_node (config, flags);
-	auto wallet = root->wallets.items.begin ()->second;
-	wallet->insert_adhoc (nano::dev::genesis_key.prv);
+	auto wallet_id = root->wallets.first_wallet_id ();
+	root->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	for (auto rep : reps)
 	{
 		system.wallet (0);
@@ -2108,7 +2108,8 @@ TEST (system, block_sequence)
 			config.peering_port = system.get_available_port ();
 			system.add_node (config, flags);
 		}
-		std::cerr << rep.pub.to_account () << ' ' << pr->wallets.items.begin ()->second->exists (rep.pub) << pr->weight (rep.pub) << ' ' << '\n';
+		auto txn{ pr->wallets.tx_begin_read () };
+		std::cerr << rep.pub.to_account () << ' ' << pr->wallets.exists (*txn, rep.pub) << pr->weight (rep.pub) << ' ' << '\n';
 	}
 	while (std::any_of (system.nodes.begin (), system.nodes.end (), [] (std::shared_ptr<nano::node> const & node) {
 		// std::cerr << node->rep_crawler.representative_count () << ' ';
@@ -2136,7 +2137,7 @@ TEST (system, block_sequence)
 		{
 			std::cerr << "Block: " << std::to_string (i) << " ms: " << std::to_string (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now () - start).count ()) << "\n";
 		}
-		auto block = wallet->send_action (nano::dev::genesis_key.pub, key.pub, 1);
+		auto block = root->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, 1);
 		debug_assert (block != nullptr);
 		blocks.push_back (block);
 	}

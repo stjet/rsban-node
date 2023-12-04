@@ -1277,6 +1277,33 @@ std::vector<nano::account> nano::wallets::get_accounts (nano::wallet_id const & 
 	return result;
 }
 
+std::vector<nano::account> nano::wallets::get_accounts (size_t max_results)
+{
+	auto lock{ mutex.lock () };
+	auto const transaction (tx_begin_read ());
+	std::vector<nano::account> accounts;
+	for (auto i (items.begin ()), n (items.end ()); i != n && accounts.size () < max_results; ++i)
+	{
+		auto & wallet (*i->second);
+		for (auto j (wallet.store.begin (*transaction)), m (wallet.store.end ()); j != m && accounts.size () < max_results; ++j)
+		{
+			nano::account account (j->first);
+			accounts.push_back (account);
+		}
+	}
+	return accounts;
+}
+
+uint64_t nano::wallets::work_get (nano::wallet_id const & wallet_id, nano::account const & account)
+{
+	auto lock{ mutex.lock () };
+	auto transaction (tx_begin_read ());
+	auto wallet{ items.find (wallet_id) };
+	uint64_t work (1);
+	wallet->second->store.work_get (*transaction, account, work);
+	return work;
+}
+
 bool nano::wallets::remove_account (nano::wallet_id const & wallet_id, nano::account & account_id)
 {
 	auto lock{ mutex.lock () };
@@ -1327,6 +1354,27 @@ bool nano::wallets::enter_password (nano::wallet_id const & id, store::transacti
 	auto lock{ mutex.lock () };
 	auto wallet{ items.find (id) };
 	return wallet->second->enter_password (transaction_a, password_a);
+}
+
+void nano::wallets::backup (std::filesystem::path const & backup_path)
+{
+	auto lock{ mutex.lock () };
+	auto transaction{ tx_begin_read () };
+	for (auto i (items.begin ()), n (items.end ()); i != n; ++i)
+	{
+		boost::system::error_code error_chmod;
+
+		std::filesystem::create_directories (backup_path);
+		nano::set_secure_perm_directory (backup_path, error_chmod);
+		i->second->store.write_backup (*transaction, backup_path / (i->first.to_string () + ".json"));
+	}
+}
+
+std::shared_ptr<nano::block> nano::wallets::send_action (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+	return wallet->second->send_action (source_a, account_a, amount_a, work_a, generate_work_a, id_a);
 }
 
 std::shared_ptr<nano::wallet> nano::wallets::open (nano::wallet_id const & id_a)

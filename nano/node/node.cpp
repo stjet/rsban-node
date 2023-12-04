@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <future>
+#include <iterator>
 #include <memory>
 #include <sstream>
 
@@ -953,16 +954,8 @@ void nano::node::ongoing_peer_store ()
 
 void nano::node::backup_wallet ()
 {
-	auto transaction (wallets.tx_begin_read ());
-	for (auto i (wallets.items.begin ()), n (wallets.items.end ()); i != n; ++i)
-	{
-		boost::system::error_code error_chmod;
-		auto backup_path (application_path / "backup");
-
-		std::filesystem::create_directories (backup_path);
-		nano::set_secure_perm_directory (backup_path, error_chmod);
-		i->second->store.write_backup (*transaction, backup_path / (i->first.to_string () + ".json"));
-	}
+	auto backup_path (application_path / "backup");
+	wallets.backup (backup_path);
 	auto this_l (shared ());
 	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.node.backup_interval, [this_l] () {
 		this_l->backup_wallet ();
@@ -984,19 +977,8 @@ void nano::node::search_receivable_all ()
 void nano::node::bootstrap_wallet ()
 {
 	std::deque<nano::account> accounts;
-	{
-		auto lock{ wallets.mutex.lock () };
-		auto const transaction (wallets.tx_begin_read ());
-		for (auto i (wallets.items.begin ()), n (wallets.items.end ()); i != n && accounts.size () < 128; ++i)
-		{
-			auto & wallet (*i->second);
-			for (auto j (wallet.store.begin (*transaction)), m (wallet.store.end ()); j != m && accounts.size () < 128; ++j)
-			{
-				nano::account account (j->first);
-				accounts.push_back (account);
-			}
-		}
-	}
+	auto accs{ wallets.get_accounts (128) };
+	std::copy (accs.begin (), accs.end (), std::back_inserter (accounts));
 	if (!accounts.empty ())
 	{
 		bootstrap_initiator.bootstrap_wallet (accounts);

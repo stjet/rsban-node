@@ -1399,11 +1399,39 @@ std::shared_ptr<nano::block> nano::wallets::send_action (nano::wallet_id const &
 	return wallet->second->send_action (source_a, account_a, amount_a, work_a, generate_work_a, id_a);
 }
 
+std::shared_ptr<nano::block> nano::wallets::change_action (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & representative_a, uint64_t work_a, bool generate_work_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+	return wallet->second->change_action (source_a, representative_a, work_a, generate_work_a);
+}
+
+void nano::wallets::send_async (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+	wallet->second->send_async (source_a, account_a, amount_a, action_a, work_a, generate_work_a, id_a);
+}
+
 nano::block_hash nano::wallets::send_sync (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a)
 {
 	auto lock{ mutex.lock () };
 	auto wallet = items.find (wallet_id);
 	return wallet->second->send_sync (source_a, account_a, amount_a);
+}
+
+bool nano::wallets::change_sync (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & representative_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+	return wallet->second->change_sync (source_a, representative_a);
+}
+
+void nano::wallets::serialize (nano::wallet_id const & wallet_id, std::string & json)
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+	wallet->second->serialize (json);
 }
 
 std::shared_ptr<nano::wallet> nano::wallets::open (nano::wallet_id const & id_a)
@@ -1562,6 +1590,18 @@ void nano::wallets::foreach_representative (std::function<void (nano::public_key
 			action_a (representative.first, representative.second);
 		}
 	}
+}
+
+bool nano::wallets::exists (nano::account const & account_a)
+{
+	auto lock{ mutex.lock () };
+	auto txn{ tx_begin_read () };
+	auto result (false);
+	for (auto i (items.begin ()), n (items.end ()); !result && i != n; ++i)
+	{
+		result = i->second->store.exists (*txn, account_a);
+	}
+	return result;
 }
 
 bool nano::wallets::exists (store::transaction const & transaction_a, nano::account const & account_a)

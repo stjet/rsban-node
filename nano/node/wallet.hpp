@@ -279,12 +279,17 @@ public:
 	nano::public_key deterministic_insert (nano::wallet_id const & wallet_id);
 	void backup (std::filesystem::path const & backup_path);
 	std::shared_ptr<nano::block> send_action (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});
+	std::shared_ptr<nano::block> change_action (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, uint64_t = 0, bool = true);
 	nano::block_hash send_sync (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &);
+	void send_async (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});
+	bool change_sync (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &);
+	void serialize (nano::wallet_id const & wallet_id, std::string &);
 	bool search_receivable (nano::wallet_id const &);
 	void search_receivable_all ();
 	void destroy (nano::wallet_id const &);
 	void reload ();
 	void foreach_representative (std::function<void (nano::public_key const &, nano::raw_key const &)> const &);
+	bool exists (nano::account const & account_a);
 	bool exists (store::transaction const &, nano::account const &);
 	void clear_send_ids (store::transaction const &);
 	size_t voting_reps_count () const;

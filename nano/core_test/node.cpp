@@ -1140,7 +1140,7 @@ TEST (node, DISABLED_fork_pre_confirm)
 	node1.wallets.insert_adhoc (wallet_id1, key1.prv);
 	node1.wallets.set_representative (wallet_id1, key1.pub);
 	nano::keypair key2;
-	node2.wallets.insert_adhoc (key2.prv);
+	node2.wallets.insert_adhoc (wallet_id2, key2.prv);
 	node2.wallets.set_representative (wallet_id2, key2.pub);
 	auto block0 (node0.wallets.send_action (wallet_id0, nano::dev::genesis_key.pub, key1.pub, nano::dev::constants.genesis_amount / 3));
 	ASSERT_NE (nullptr, block0);

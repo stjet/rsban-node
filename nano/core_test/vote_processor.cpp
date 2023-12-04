@@ -212,7 +212,7 @@ TEST (vote_processor, no_broadcast_local)
 	ASSERT_TIMELY (10s, !node.active.empty ());
 	ASSERT_EQ (2 * node.config->vote_minimum.number (), node.weight (nano::dev::genesis_key.pub));
 	// Insert account in wallet. Votes on node are not enabled.
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	// Ensure that the node knows the genesis key in its wallet.
 	node.wallets.compute_reps ();
 	ASSERT_TRUE (node.wallets.rep_exists (nano::dev::genesis_key.pub));
@@ -313,7 +313,7 @@ TEST (vote_processor, no_broadcast_local_with_a_principal_representative)
 	ASSERT_TIMELY (10s, !node.active.empty ());
 	ASSERT_EQ (nano::dev::constants.genesis_amount - 2 * node.config->vote_minimum.number (), node.weight (nano::dev::genesis_key.pub));
 	// Insert account in wallet. Votes on node are not enabled.
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	// Ensure that the node knows the genesis key in its wallet.
 	node.wallets.compute_reps ();
 	ASSERT_TRUE (node.wallets.rep_exists (nano::dev::genesis_key.pub));

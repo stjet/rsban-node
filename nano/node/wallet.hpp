@@ -275,6 +275,7 @@ public:
 	nano::public_key insert_adhoc (nano::wallet_id const & id, nano::raw_key const & key_a, bool generate_work_a = true);
 	void set_password (nano::wallet_id const & wallet_id, nano::raw_key const & password);
 	bool enter_password (nano::wallet_id const & id, store::transaction const & transaction_a, std::string const & password_a);
+	bool valid_password (nano::wallet_id const & wallet_id, store::transaction const &);
 	void rekey (nano::wallet_id const wallet_id, std::string const &);
 	nano::public_key deterministic_insert (nano::wallet_id const & wallet_id);
 	void backup (std::filesystem::path const & backup_path);

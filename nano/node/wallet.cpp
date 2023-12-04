@@ -1363,6 +1363,14 @@ bool nano::wallets::enter_password (nano::wallet_id const & id, store::transacti
 	return wallet->second->enter_password (transaction_a, password_a);
 }
 
+void nano::wallets::rekey (nano::wallet_id const wallet_id, std::string const &)
+{
+	auto lock{ mutex.lock () };
+	auto wallet{ items.find (wallet_id) };
+	auto transaction (tx_begin_write ());
+	wallet->second->store.rekey (*transaction, "");
+}
+
 void nano::wallets::backup (std::filesystem::path const & backup_path)
 {
 	auto lock{ mutex.lock () };

@@ -77,10 +77,12 @@ TEST (bulk_pull, no_end)
 TEST (bulk_pull, end_not_owned)
 {
 	nano::test::system system (1);
+	auto node = system.nodes[0];
 	nano::keypair key2;
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, 100));
-	nano::block_hash latest (system.nodes[0]->latest (nano::dev::genesis_key.pub));
+	auto wallet_id = node->wallets.first_wallet_id ();
+	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, 100));
+	nano::block_hash latest (node->latest (nano::dev::genesis_key.pub));
 	nano::keypair key3;
 	nano::block_builder builder;
 	auto open = builder
@@ -96,14 +98,14 @@ TEST (bulk_pull, end_not_owned)
 	open->source_set (latest);
 	open->refresh ();
 	open->signature_set (nano::sign_message (key2.prv, key2.pub, open->hash ()));
-	system.nodes[0]->work_generate_blocking (*open);
-	ASSERT_EQ (nano::process_result::progress, system.nodes[0]->process (*open).code);
-	auto connection{ create_bootstrap_server (system.nodes[0]) };
+	node->work_generate_blocking (*open);
+	ASSERT_EQ (nano::process_result::progress, node->process (*open).code);
+	auto connection{ create_bootstrap_server (node) };
 	nano::bulk_pull::bulk_pull_payload payload{};
 	payload.start = key2.pub;
 	payload.end = nano::dev::genesis->hash ();
 	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network, payload);
-	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
+	auto request (std::make_shared<nano::bulk_pull_server> (node, connection, std::move (req)));
 	ASSERT_EQ (request->get_current (), request->get_request ().get_end ());
 }
 
@@ -338,8 +340,9 @@ TEST (bootstrap_processor, process_one)
 	nano::node_flags node_flags;
 	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	auto node0 = system.add_node (node_config, node_flags);
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-	auto send (system.wallet (0)->send_action (nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, 100));
+	auto wallet_id = node0->wallets.first_wallet_id ();
+	node0->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	auto send (node0->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, 100));
 	ASSERT_NE (nullptr, send);
 
 	node_config.peering_port = system.get_available_port ();
@@ -362,11 +365,12 @@ TEST (bootstrap_processor, process_two)
 	nano::node_flags node_flags;
 	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	auto node0 (system.add_node (config, node_flags));
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	auto wallet_id = node0->wallets.first_wallet_id ();
+	node0->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	nano::block_hash hash1 (node0->latest (nano::dev::genesis_key.pub));
-	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, 50));
+	ASSERT_NE (nullptr, node0->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, 50));
 	nano::block_hash hash2 (node0->latest (nano::dev::genesis_key.pub));
-	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, 50));
+	ASSERT_NE (nullptr, node0->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, 50));
 	nano::block_hash hash3 (node0->latest (nano::dev::genesis_key.pub));
 	ASSERT_NE (hash1, hash2);
 	ASSERT_NE (hash1, hash3);
@@ -391,7 +395,8 @@ TEST (bootstrap_processor, process_state)
 	auto node0 (system.add_node (config, node_flags));
 	nano::state_block_builder builder;
 
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	auto wallet_id = node0->wallets.first_wallet_id ();
+	node0->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	auto block1 = builder
 				  .account (nano::dev::genesis_key.pub)
 				  .previous (node0->latest (nano::dev::genesis_key.pub))
@@ -437,10 +442,12 @@ TEST (bootstrap_processor, process_new)
 	auto node1 (system.add_node (config, node_flags));
 	config.peering_port = system.get_available_port ();
 	auto node2 (system.add_node (config, node_flags));
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	auto wallet_id1 = node1->wallets.first_wallet_id ();
+	auto wallet_id2 = node2->wallets.first_wallet_id ();
+	node1->wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 	nano::keypair key2;
-	system.wallet (1)->insert_adhoc (key2.prv);
-	auto send (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, node1->config->receive_minimum.number ()));
+	node2->wallets.insert_adhoc (wallet_id2, key2.prv);
+	auto send (node1->wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key2.pub, node1->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send);
 	ASSERT_TIMELY (10s, !node1->balance (key2.pub).is_zero ());
 	auto receive (node2->block (node2->latest (key2.pub)));
@@ -1972,14 +1979,15 @@ TEST (bulk, genesis)
 	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	node_flags.set_disable_lazy_bootstrap (true);
 	auto node1 = system.add_node (config, node_flags);
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	auto wallet_id = node1->wallets.first_wallet_id ();
+	node1->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	auto node2 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.logging, system.work));
 	ASSERT_FALSE (node2->init_error ());
 	nano::block_hash latest1 (node1->latest (nano::dev::genesis_key.pub));
 	nano::block_hash latest2 (node2->latest (nano::dev::genesis_key.pub));
 	ASSERT_EQ (latest1, latest2);
 	nano::keypair key2;
-	auto send (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, 100));
+	auto send (node1->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, 100));
 	ASSERT_NE (nullptr, send);
 	nano::block_hash latest3 (node1->latest (nano::dev::genesis_key.pub));
 	ASSERT_NE (latest1, latest3);
@@ -1999,7 +2007,8 @@ TEST (bulk, offline_send)
 	node_flags.set_disable_bootstrap_bulk_push_client (true);
 	node_flags.set_disable_lazy_bootstrap (true);
 	auto node1 = system.add_node (config, node_flags);
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	auto wallet_id = node1->wallets.first_wallet_id ();
+	node1->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	auto node2 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.logging, system.work));
 	ASSERT_FALSE (node2->init_error ());
 	node2->start ();
@@ -2007,7 +2016,8 @@ TEST (bulk, offline_send)
 	nano::keypair key2;
 	auto wallet (node2->wallets.create (nano::random_wallet_id ()));
 	wallet->insert_adhoc (key2.prv);
-	auto send1 (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, node1->config->receive_minimum.number ()));
+	auto wallet_id1 = node1->wallets.first_wallet_id ();
+	auto send1 (node1->wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key2.pub, node1->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send1);
 	ASSERT_NE (std::numeric_limits<nano::uint256_t>::max (), node1->balance (nano::dev::genesis_key.pub));
 	node1->block_processor.flush ();
@@ -2044,7 +2054,8 @@ TEST (bulk, DISABLED_genesis_pruning)
 	node_flags.set_disable_ongoing_bootstrap (true);
 	node_flags.set_enable_pruning (true);
 	auto node1 = system.add_node (config, node_flags);
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	auto wallet_id = node1->wallets.first_wallet_id ();
+	node1->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	node_flags.set_enable_pruning (false);
 	auto node2 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.logging, system.work, node_flags));
 	ASSERT_FALSE (node2->init_error ());
@@ -2052,16 +2063,13 @@ TEST (bulk, DISABLED_genesis_pruning)
 	nano::block_hash latest2 (node2->latest (nano::dev::genesis_key.pub));
 	ASSERT_EQ (latest1, latest2);
 	nano::keypair key2;
-	auto send1 (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, 100));
+	auto send1 (node1->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, 100));
 	ASSERT_NE (nullptr, send1);
-	auto send2 (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, 100));
+	auto send2 (node1->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, 100));
 	ASSERT_NE (nullptr, send2);
-	auto send3 (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, 100));
+	auto send3 (node1->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, 100));
 	ASSERT_NE (nullptr, send3);
-	{
-		auto transaction (node1->wallets.tx_begin_write ());
-		system.wallet (0)->store.erase (*transaction, nano::dev::genesis_key.pub);
-	}
+	node1->wallets.remove_account (wallet_id, nano::dev::genesis_key.pub);
 	nano::block_hash latest3 (node1->latest (nano::dev::genesis_key.pub));
 	ASSERT_NE (latest1, latest3);
 	ASSERT_EQ (send3->hash (), latest3);
@@ -2118,13 +2126,15 @@ TEST (bulk, DISABLED_genesis_pruning)
 TEST (bulk_pull_account, basics)
 {
 	nano::test::system system (1);
-	system.nodes[0]->config->receive_minimum = 20;
+	auto node = system.nodes[0];
+	node->config->receive_minimum = 20;
 	nano::keypair key1;
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-	system.wallet (0)->insert_adhoc (key1.prv);
-	auto send1 (system.wallet (0)->send_action (nano::dev::genesis->account (), key1.pub, 25));
-	auto send2 (system.wallet (0)->send_action (nano::dev::genesis->account (), key1.pub, 10));
-	auto send3 (system.wallet (0)->send_action (nano::dev::genesis->account (), key1.pub, 2));
+	auto wallet_id = node->wallets.first_wallet_id ();
+	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	node->wallets.insert_adhoc (wallet_id, key1.prv);
+	auto send1 (node->wallets.send_action (wallet_id, nano::dev::genesis->account (), key1.pub, 25));
+	auto send2 (node->wallets.send_action (wallet_id, nano::dev::genesis->account (), key1.pub, 10));
+	auto send3 (node->wallets.send_action (wallet_id, nano::dev::genesis->account (), key1.pub, 2));
 	ASSERT_TIMELY (5s, system.nodes[0]->balance (key1.pub) == 25);
 	auto connection (create_bootstrap_server (system.nodes[0]));
 

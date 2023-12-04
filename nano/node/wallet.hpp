@@ -273,6 +273,7 @@ public:
 	bool wallet_exists (nano::wallet_id const & id) const;
 	nano::wallet_id first_wallet_id () const;
 	nano::public_key insert_adhoc (nano::wallet_id const & id, nano::raw_key const & key_a, bool generate_work_a = true);
+	void set_password (nano::wallet_id const & wallet_id, nano::raw_key const & password);
 	bool enter_password (nano::wallet_id const & id, store::transaction const & transaction_a, std::string const & password_a);
 	void backup (std::filesystem::path const & backup_path);
 	std::shared_ptr<nano::block> send_action (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});

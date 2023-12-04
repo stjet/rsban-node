@@ -206,7 +206,8 @@ TEST (election, quorum_minimum_update_weight_before_quorum_checks)
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 
 	auto & node1 = *system.add_node (node_config);
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	auto wallet_id1 = node1.wallets.first_wallet_id ();
+	node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 
 	nano::keypair key1;
 	nano::send_block_builder builder;
@@ -239,8 +240,9 @@ TEST (election, quorum_minimum_update_weight_before_quorum_checks)
 
 	node_config.peering_port = system.get_available_port ();
 	auto & node2 = *system.add_node (node_config);
+	auto wallet_id2 = node2.wallets.first_wallet_id ();
 
-	system.wallet (1)->insert_adhoc (key1.prv);
+	node2.wallets.insert_adhoc (wallet_id2, key1.prv);
 	ASSERT_TIMELY (10s, node2.ledger.cache.block_count () == 4);
 
 	std::shared_ptr<nano::election> election;
@@ -271,7 +273,8 @@ TEST (election, continuous_voting)
 {
 	nano::test::system system{};
 	auto & node1 = *system.add_node ();
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	auto wallet_id = node1.wallets.first_wallet_id ();
+	node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 
 	// We want genesis to have just enough voting weight to be a principal rep, but not enough to confirm blocks on their own
 	nano::keypair key1{};

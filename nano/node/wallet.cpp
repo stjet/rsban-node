@@ -1349,6 +1349,13 @@ nano::public_key nano::wallets::insert_adhoc (nano::wallet_id const & id, nano::
 	return wallet->second->insert_adhoc (key_a, generate_work_a);
 }
 
+void nano::wallets::set_password (nano::wallet_id const & wallet_id, nano::raw_key const & password)
+{
+	auto lock{ mutex.lock () };
+	auto wallet{ items.find (wallet_id) };
+	wallet->second->store.set_password (password);
+}
+
 bool nano::wallets::enter_password (nano::wallet_id const & id, store::transaction const & transaction_a, std::string const & password_a)
 {
 	auto lock{ mutex.lock () };

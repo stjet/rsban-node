@@ -75,7 +75,8 @@ TEST (frontiers_confirmation, mode)
 			auto transaction = node->store.tx_begin_write ();
 			ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send).code);
 		}
-		system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+		auto wallet_id = node->wallets.first_wallet_id ();
+		node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 		std::this_thread::sleep_for (std::chrono::seconds (1));
 		ASSERT_EQ (0, node->active.size ());
 	}

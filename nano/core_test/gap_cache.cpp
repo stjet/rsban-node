@@ -119,8 +119,9 @@ TEST (gap_cache, gap_bootstrap)
 	node1.active.force_confirm (*election);
 	ASSERT_TIMELY (5s, node1.block_confirmed (send->hash ()));
 	node1.active.erase (*send);
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-	auto latest_block (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key.pub, 100));
+	auto wallet_id = node1.wallets.first_wallet_id ();
+	node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	auto latest_block (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, 100));
 	ASSERT_NE (nullptr, latest_block);
 	ASSERT_TIMELY (5s, nano::dev::constants.genesis_amount - 200 == node1.balance (nano::dev::genesis->account ()));
 	ASSERT_TIMELY (5s, node2.balance (nano::dev::genesis->account ()) == nano::dev::constants.genesis_amount - 200);

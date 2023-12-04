@@ -1371,6 +1371,13 @@ void nano::wallets::rekey (nano::wallet_id const wallet_id, std::string const &)
 	wallet->second->store.rekey (*transaction, "");
 }
 
+nano::public_key nano::wallets::deterministic_insert (nano::wallet_id const & wallet_id)
+{
+	auto lock{ mutex.lock () };
+	auto wallet{ items.find (wallet_id) };
+	return wallet->second->deterministic_insert ();
+}
+
 void nano::wallets::backup (std::filesystem::path const & backup_path)
 {
 	auto lock{ mutex.lock () };
@@ -1390,6 +1397,13 @@ std::shared_ptr<nano::block> nano::wallets::send_action (nano::wallet_id const &
 	auto lock{ mutex.lock () };
 	auto wallet = items.find (wallet_id);
 	return wallet->second->send_action (source_a, account_a, amount_a, work_a, generate_work_a, id_a);
+}
+
+nano::block_hash nano::wallets::send_sync (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+	return wallet->second->send_sync (source_a, account_a, amount_a);
 }
 
 std::shared_ptr<nano::wallet> nano::wallets::open (nano::wallet_id const & id_a)

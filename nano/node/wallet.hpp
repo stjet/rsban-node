@@ -276,8 +276,10 @@ public:
 	void set_password (nano::wallet_id const & wallet_id, nano::raw_key const & password);
 	bool enter_password (nano::wallet_id const & id, store::transaction const & transaction_a, std::string const & password_a);
 	void rekey (nano::wallet_id const wallet_id, std::string const &);
+	nano::public_key deterministic_insert (nano::wallet_id const & wallet_id);
 	void backup (std::filesystem::path const & backup_path);
 	std::shared_ptr<nano::block> send_action (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});
+	nano::block_hash send_sync (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &);
 	bool search_receivable (nano::wallet_id const &);
 	void search_receivable_all ();
 	void destroy (nano::wallet_id const &);

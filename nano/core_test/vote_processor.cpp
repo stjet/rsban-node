@@ -141,16 +141,21 @@ TEST (vote_processor, weights)
 	nano::keypair key1;
 	nano::keypair key2;
 
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-	system.wallet (1)->insert_adhoc (key0.prv);
-	system.wallet (2)->insert_adhoc (key1.prv);
-	system.wallet (3)->insert_adhoc (key2.prv);
-	system.wallet (1)->store.representative_set (*system.nodes[1]->wallets.tx_begin_write (), key0.pub);
-	system.wallet (2)->store.representative_set (*system.nodes[2]->wallets.tx_begin_write (), key1.pub);
-	system.wallet (3)->store.representative_set (*system.nodes[3]->wallets.tx_begin_write (), key2.pub);
-	system.wallet (0)->send_sync (nano::dev::genesis_key.pub, key0.pub, level0);
-	system.wallet (0)->send_sync (nano::dev::genesis_key.pub, key1.pub, level1);
-	system.wallet (0)->send_sync (nano::dev::genesis_key.pub, key2.pub, level2);
+	auto wallet_id0 = system.nodes[0]->wallets.first_wallet_id ();
+	auto wallet_id1 = system.nodes[1]->wallets.first_wallet_id ();
+	auto wallet_id2 = system.nodes[2]->wallets.first_wallet_id ();
+	auto wallet_id3 = system.nodes[3]->wallets.first_wallet_id ();
+
+	system.nodes[0]->wallets.insert_adhoc (wallet_id0, nano::dev::genesis_key.prv);
+	system.nodes[1]->wallets.insert_adhoc (wallet_id1, key0.prv);
+	system.nodes[2]->wallets.insert_adhoc (wallet_id2, key1.prv);
+	system.nodes[3]->wallets.insert_adhoc (wallet_id3, key2.prv);
+	system.nodes[1]->wallets.set_representative (wallet_id1, key0.pub);
+	system.nodes[2]->wallets.set_representative (wallet_id2, key1.pub);
+	system.nodes[3]->wallets.set_representative (wallet_id3, key2.pub);
+	system.nodes[0]->wallets.send_sync (wallet_id0, nano::dev::genesis_key.pub, key0.pub, level0);
+	system.nodes[0]->wallets.send_sync (wallet_id0, nano::dev::genesis_key.pub, key1.pub, level1);
+	system.nodes[0]->wallets.send_sync (wallet_id0, nano::dev::genesis_key.pub, key2.pub, level2);
 
 	// Wait for representatives
 	ASSERT_TIMELY (10s, node.ledger.cache.rep_weights ().get_rep_amounts ().size () == 4);

@@ -1216,7 +1216,7 @@ nano::public_key nano::wallets::change_seed (nano::wallet_id const & wallet_id, 
 {
 	auto lock{ mutex.lock () };
 	auto wallet{ items.find (wallet_id) };
-	return wallet->second->change_seed(transaction_a, prv_a, count);
+	return wallet->second->change_seed (transaction_a, prv_a, count);
 }
 
 bool nano::wallets::ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id, std::string const & password_a)
@@ -1374,7 +1374,7 @@ void nano::wallets::enter_initial_password (nano::wallet_id const & wallet_id)
 {
 	auto lock{ mutex.lock () };
 	auto wallet{ items.find (wallet_id) };
-	wallet->second->enter_initial_password();
+	wallet->second->enter_initial_password ();
 }
 
 bool nano::wallets::valid_password (nano::wallet_id const & wallet_id, store::transaction const & txn)
@@ -1388,7 +1388,7 @@ bool nano::wallets::attempt_password (nano::wallet_id const & wallet_id, store::
 {
 	auto lock{ mutex.lock () };
 	auto wallet{ items.find (wallet_id) };
-	return wallet->second->store.attempt_password(txn, password);
+	return wallet->second->store.attempt_password (txn, password);
 }
 
 void nano::wallets::rekey (nano::wallet_id const wallet_id, std::string const & password)
@@ -1404,6 +1404,13 @@ nano::public_key nano::wallets::deterministic_insert (nano::wallet_id const & wa
 	auto lock{ mutex.lock () };
 	auto wallet{ items.find (wallet_id) };
 	return wallet->second->deterministic_insert ();
+}
+
+void nano::wallets::deterministic_restore (nano::wallet_id const & wallet_id, store::transaction const & transaction_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet{ items.find (wallet_id) };
+	wallet->second->deterministic_restore (transaction_a);
 }
 
 void nano::wallets::backup (std::filesystem::path const & backup_path)
@@ -1425,6 +1432,13 @@ std::shared_ptr<nano::block> nano::wallets::send_action (nano::wallet_id const &
 	auto lock{ mutex.lock () };
 	auto wallet = items.find (wallet_id);
 	return wallet->second->send_action (source_a, account_a, amount_a, work_a, generate_work_a, id_a);
+}
+
+std::shared_ptr<nano::block> nano::wallets::receive_action (nano::wallet_id const & wallet_id, nano::block_hash const & send_hash_a, nano::account const & representative_a, nano::uint128_union const & amount_a, nano::account const & account_a, uint64_t work_a, bool generate_work_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+	return wallet->second->receive_action (send_hash_a, representative_a, amount_a, account_a, work_a, generate_work_a);
 }
 
 std::shared_ptr<nano::block> nano::wallets::change_action (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & representative_a, uint64_t work_a, bool generate_work_a)

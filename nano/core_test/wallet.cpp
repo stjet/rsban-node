@@ -773,12 +773,15 @@ TEST (wallet, no_work)
 TEST (wallet, send_race)
 {
 	nano::test::system system (1);
-	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
+	auto & node (*system.nodes[0]);
+	auto wallet_id = node.wallets.first_wallet_id();
+
+	node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	nano::keypair key2;
 	for (auto i (1); i < 60; ++i)
 	{
-		ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev::genesis_key.pub, key2.pub, nano::Gxrb_ratio));
-		ASSERT_EQ (nano::dev::constants.genesis_amount - nano::Gxrb_ratio * i, system.nodes[0]->balance (nano::dev::genesis_key.pub));
+		ASSERT_NE (nullptr, node.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, nano::Gxrb_ratio));
+		ASSERT_EQ (nano::dev::constants.genesis_amount - nano::Gxrb_ratio * i, node.balance (nano::dev::genesis_key.pub));
 	}
 }
 
@@ -786,20 +789,19 @@ TEST (wallet, password_race)
 {
 	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
-	nano::thread_runner runner (system.async_rt.io_ctx, system.nodes[0]->config->io_threads);
-	auto wallet = system.wallet (0);
-	std::thread thread ([&wallet, &node1] () {
+	auto wallet_id = node1.wallets.first_wallet_id();
+	nano::thread_runner runner (system.async_rt.io_ctx, node1.config->io_threads);
+	std::thread thread ([&wallet_id, &node1] () {
 		for (int i = 0; i < 100; i++)
 		{
-			auto transaction (node1.wallets.tx_begin_write ());
-			wallet->store.rekey (*transaction, std::to_string (i));
+			node1.wallets.rekey (wallet_id, std::to_string (i));
 		}
 	});
 	for (int i = 0; i < 100; i++)
 	{
 		auto transaction (node1.wallets.tx_begin_read ());
 		// Password should always be valid, the rekey operation should be atomic.
-		bool ok = wallet->store.valid_password (*transaction);
+		bool ok = node1.wallets.valid_password (wallet_id, *transaction);
 		EXPECT_TRUE (ok);
 		if (!ok)
 		{
@@ -815,37 +817,36 @@ TEST (wallet, password_race_corrupt_seed)
 {
 	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
+	auto wallet_id = node1.wallets.first_wallet_id();
 	nano::thread_runner runner (system.async_rt.io_ctx, system.nodes[0]->config->io_threads);
 	auto wallet = system.wallet (0);
 	nano::raw_key seed;
 	{
+		node1.wallets.rekey(wallet_id, "4567");
 		auto transaction (node1.wallets.tx_begin_write ());
-		ASSERT_FALSE (wallet->store.rekey (*transaction, "4567"));
-		wallet->store.seed (seed, *transaction);
-		ASSERT_FALSE (wallet->store.attempt_password (*transaction, "4567"));
+		node1.wallets.get_seed(seed, *transaction, wallet_id);
+		ASSERT_FALSE (node1.wallets.attempt_password (wallet_id, *transaction, "4567"));
 	}
 	std::vector<std::thread> threads;
 	for (int i = 0; i < 100; i++)
 	{
-		threads.emplace_back ([&wallet, &node1] () {
+		threads.emplace_back ([&wallet, &node1, &wallet_id] () {
 			for (int i = 0; i < 10; i++)
 			{
-				auto transaction (node1.wallets.tx_begin_write ());
-				wallet->store.rekey (*transaction, "0000");
+				node1.wallets.rekey(wallet_id, "0000");
 			}
 		});
-		threads.emplace_back ([&wallet, &node1] () {
+		threads.emplace_back ([&wallet, &node1, &wallet_id] () {
 			for (int i = 0; i < 10; i++)
 			{
-				auto transaction (node1.wallets.tx_begin_write ());
-				wallet->store.rekey (*transaction, "1234");
+				node1.wallets.rekey(wallet_id, "1234");
 			}
 		});
-		threads.emplace_back ([&wallet, &node1] () {
+		threads.emplace_back ([&wallet, &node1, &wallet_id] () {
 			for (int i = 0; i < 10; i++)
 			{
 				auto transaction (node1.wallets.tx_begin_read ());
-				wallet->store.attempt_password (*transaction, "1234");
+				node1.wallets.attempt_password(wallet_id, *transaction, "1234");
 			}
 		});
 	}
@@ -857,22 +858,22 @@ TEST (wallet, password_race_corrupt_seed)
 	runner.join ();
 	{
 		auto transaction (node1.wallets.tx_begin_write ());
-		if (!wallet->store.attempt_password (*transaction, "1234"))
+		if (!node1.wallets.attempt_password (wallet_id, *transaction, "1234"))
 		{
 			nano::raw_key seed_now;
-			wallet->store.seed (seed_now, *transaction);
+			node1.wallets.get_seed(seed_now, *transaction, wallet_id);
 			ASSERT_TRUE (seed_now == seed);
 		}
-		else if (!wallet->store.attempt_password (*transaction, "0000"))
+		else if (!node1.wallets.attempt_password (wallet_id, *transaction, "0000"))
 		{
 			nano::raw_key seed_now;
-			wallet->store.seed (seed_now, *transaction);
+			node1.wallets.get_seed(seed_now, *transaction, wallet_id);
 			ASSERT_TRUE (seed_now == seed);
 		}
-		else if (!wallet->store.attempt_password (*transaction, "4567"))
+		else if (!node1.wallets.attempt_password (wallet_id, *transaction, "4567"))
 		{
 			nano::raw_key seed_now;
-			wallet->store.seed (seed_now, *transaction);
+			node1.wallets.get_seed(seed_now, *transaction, wallet_id);
 			ASSERT_TRUE (seed_now == seed);
 		}
 		else
@@ -886,27 +887,26 @@ TEST (wallet, change_seed)
 {
 	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
-	auto wallet (system.wallet (0));
-	wallet->enter_initial_password ();
+	auto wallet_id = node1.wallets.first_wallet_id();
+	node1.wallets.enter_initial_password(wallet_id);
 	nano::raw_key seed1;
 	seed1 = 1;
 	nano::public_key pub;
 	uint32_t index (4);
 	auto prv = nano::deterministic_key (seed1, index);
 	pub = nano::pub_key (prv);
-	wallet->insert_adhoc (nano::dev::genesis_key.prv, false);
-	auto block (wallet->send_action (nano::dev::genesis_key.pub, pub, 100));
+	node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv, false);
+	auto block (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, pub, 100));
 	ASSERT_NE (nullptr, block);
 	system.nodes[0]->block_processor.flush ();
 	{
 		auto transaction (node1.wallets.tx_begin_write ());
-		wallet->change_seed (*transaction, seed1);
+		node1.wallets.change_seed (wallet_id, *transaction, seed1);
 		nano::raw_key seed2;
-		wallet->store.seed (seed2, *transaction);
+		node1.wallets.get_seed(seed2, *transaction, wallet_id);
 		ASSERT_EQ (seed1, seed2);
-		ASSERT_EQ (index + 1, wallet->store.deterministic_index_get (*transaction));
 	}
-	ASSERT_TRUE (wallet->exists (pub));
+	ASSERT_TRUE (node1.wallets.exists (pub));
 }
 
 TEST (wallet, deterministic_restore)

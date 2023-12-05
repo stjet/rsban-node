@@ -261,6 +261,7 @@ public:
 	nano::account get_representative (store::transaction const &, nano::wallet_id const & id) const;
 	void set_representative (nano::wallet_id const & wallet_id, nano::account const & rep);
 	void get_seed (nano::raw_key & prv_a, store::transaction const & transaction_a, nano::wallet_id const & id) const;
+	nano::public_key change_seed (nano::wallet_id const & wallet_id, store::transaction const & transaction_a, nano::raw_key const & prv_a, uint32_t count = 0);
 	bool ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id, std::string const & password_a);
 	bool import (nano::wallet_id const & wallet_id, std::string const & json_a, std::string const & password_a);
 	std::vector<std::pair<nano::account, nano::raw_key>> decrypt (store::transaction const & txn, nano::wallet_id const & wallet_id) const;
@@ -275,7 +276,9 @@ public:
 	nano::public_key insert_adhoc (nano::wallet_id const & id, nano::raw_key const & key_a, bool generate_work_a = true);
 	void set_password (nano::wallet_id const & wallet_id, nano::raw_key const & password);
 	bool enter_password (nano::wallet_id const & id, store::transaction const & transaction_a, std::string const & password_a);
+	void enter_initial_password (nano::wallet_id const & wallet_id);
 	bool valid_password (nano::wallet_id const & wallet_id, store::transaction const &);
+	bool attempt_password (nano::wallet_id const & wallet_id, store::transaction const &, std::string const &);
 	void rekey (nano::wallet_id const wallet_id, std::string const &);
 	nano::public_key deterministic_insert (nano::wallet_id const & wallet_id);
 	void backup (std::filesystem::path const & backup_path);

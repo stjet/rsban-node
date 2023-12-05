@@ -1212,6 +1212,13 @@ void nano::wallets::get_seed (nano::raw_key & prv_a, store::transaction const & 
 	wallet->second->store.seed (prv_a, txn);
 }
 
+nano::public_key nano::wallets::change_seed (nano::wallet_id const & wallet_id, store::transaction const & transaction_a, nano::raw_key const & prv_a, uint32_t count)
+{
+	auto lock{ mutex.lock () };
+	auto wallet{ items.find (wallet_id) };
+	return wallet->second->change_seed(transaction_a, prv_a, count);
+}
+
 bool nano::wallets::ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id, std::string const & password_a)
 {
 	auto lock{ mutex.lock () };
@@ -1363,11 +1370,25 @@ bool nano::wallets::enter_password (nano::wallet_id const & id, store::transacti
 	return wallet->second->enter_password (transaction_a, password_a);
 }
 
+void nano::wallets::enter_initial_password (nano::wallet_id const & wallet_id)
+{
+	auto lock{ mutex.lock () };
+	auto wallet{ items.find (wallet_id) };
+	wallet->second->enter_initial_password();
+}
+
 bool nano::wallets::valid_password (nano::wallet_id const & wallet_id, store::transaction const & txn)
 {
 	auto lock{ mutex.lock () };
 	auto wallet{ items.find (wallet_id) };
 	return wallet->second->store.valid_password (txn);
+}
+
+bool nano::wallets::attempt_password (nano::wallet_id const & wallet_id, store::transaction const & txn, std::string const & password)
+{
+	auto lock{ mutex.lock () };
+	auto wallet{ items.find (wallet_id) };
+	return wallet->second->store.attempt_password(txn, password);
 }
 
 void nano::wallets::rekey (nano::wallet_id const wallet_id, std::string const & password)

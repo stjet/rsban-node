@@ -284,6 +284,7 @@ public:
 	nano::public_key deterministic_insert (nano::wallet_id const & wallet_id);
 	void deterministic_restore (nano::wallet_id const & wallet_id, store::transaction const & transaction_a);
 	void backup (std::filesystem::path const & backup_path);
+	void work_cache_blocking (nano::wallet_id const & wallet_id, nano::account const & account_a, nano::root const & root_a);
 	std::shared_ptr<nano::block> send_action (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});
 	std::shared_ptr<nano::block> change_action (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, uint64_t = 0, bool = true);
 	std::shared_ptr<nano::block> receive_action (nano::wallet_id const & wallet_id, nano::block_hash const &, nano::account const &, nano::uint128_union const &, nano::account const &, uint64_t = 0, bool = true);

@@ -1434,6 +1434,13 @@ void nano::wallets::backup (std::filesystem::path const & backup_path)
 	}
 }
 
+void nano::wallets::work_cache_blocking (nano::wallet_id const & wallet_id, nano::account const & account_a, nano::root const & root_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet{ items.find (wallet_id) };
+	wallet->second->work_cache_blocking (account_a, root_a);
+}
+
 std::shared_ptr<nano::block> nano::wallets::send_action (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
 {
 	auto lock{ mutex.lock () };

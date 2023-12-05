@@ -5317,7 +5317,7 @@ TEST (rpc, confirmation_history)
 	nano::keypair key;
 	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	ASSERT_TRUE (node->active.recently_cemented.list ().empty ());
-	auto block (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key.pub, nano::Gxrb_ratio));
+	auto block (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, nano::Gxrb_ratio));
 	ASSERT_TIMELY (10s, !node->active.recently_cemented.list ().empty ());
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
@@ -5724,7 +5724,7 @@ TEST (rpc, DISABLED_wallet_history)
 	ASSERT_NE (nullptr, receive);
 	nano::keypair key;
 	auto timestamp3 = nano::seconds_since_epoch ();
-	auto send2 (system.wallet (0)->send_action (nano::dev::genesis_key.pub, key.pub, node->config->receive_minimum.number ()));
+	auto send2 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, node->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send2);
 	system.deadline_set (10s);
 	auto const rpc_ctx = add_rpc (system, node);
@@ -5801,8 +5801,9 @@ TEST (rpc, sign_block)
 {
 	nano::test::system system;
 	auto node1 = add_ipc_enabled_node (system);
+	auto wallet_id = node1->wallets.first_wallet_id();
 	nano::keypair key;
-	system.wallet (0)->insert_adhoc (key.prv);
+	node1->wallets.insert_adhoc (wallet_id, key.prv);
 	nano::block_builder builder;
 	auto send = builder
 				.state ()
@@ -6539,17 +6540,17 @@ TEST (rpc, receive)
 {
 	nano::test::system system;
 	auto node = add_ipc_enabled_node (system);
-	auto wallet = system.wallet (0);
+	auto wallet_id = node->wallets.first_wallet_id();
 	std::string wallet_text;
-	node->wallets.first_wallet_id ().encode_hex (wallet_text);
-	wallet->insert_adhoc (nano::dev::genesis_key.prv);
+	wallet_id.encode_hex (wallet_text);
+	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	nano::keypair key1;
-	wallet->insert_adhoc (key1.prv);
-	auto send1 (wallet->send_action (nano::dev::genesis_key.pub, key1.pub, node->config->receive_minimum.number (), *node->work_generate_blocking (nano::dev::genesis->hash ())));
+	node->wallets.insert_adhoc (wallet_id, key1.prv);
+	auto send1 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, node->config->receive_minimum.number (), *node->work_generate_blocking (nano::dev::genesis->hash ())));
 	ASSERT_TIMELY (5s, node->balance (nano::dev::genesis_key.pub) != nano::dev::constants.genesis_amount);
 	ASSERT_TIMELY (10s, !node->store.account ().exists (*node->store.tx_begin_read (), key1.pub));
 	// Send below minimum receive amount
-	auto send2 (wallet->send_action (nano::dev::genesis_key.pub, key1.pub, node->config->receive_minimum.number () - 1, *node->work_generate_blocking (send1->hash ())));
+	auto send2 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, node->config->receive_minimum.number () - 1, *node->work_generate_blocking (send1->hash ())));
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
 	request.put ("action", "receive");
@@ -6580,17 +6581,17 @@ TEST (rpc, receive_unopened)
 {
 	nano::test::system system;
 	auto node = add_ipc_enabled_node (system);
-	auto wallet = system.wallet (0);
+	auto wallet_id = node->wallets.first_wallet_id();
 	std::string wallet_text;
 	node->wallets.first_wallet_id ().encode_hex (wallet_text);
-	wallet->insert_adhoc (nano::dev::genesis_key.prv);
+	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	// Test receiving for unopened account
 	nano::keypair key1;
-	auto send1 (wallet->send_action (nano::dev::genesis_key.pub, key1.pub, node->config->receive_minimum.number () - 1, *node->work_generate_blocking (nano::dev::genesis->hash ())));
+	auto send1 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, node->config->receive_minimum.number () - 1, *node->work_generate_blocking (nano::dev::genesis->hash ())));
 	ASSERT_TIMELY (5s, !node->balance (nano::dev::genesis_key.pub) != nano::dev::constants.genesis_amount);
 	ASSERT_FALSE (node->store.account ().exists (*node->store.tx_begin_read (), key1.pub));
 	ASSERT_TRUE (node->store.block ().exists (*node->store.tx_begin_read (), send1->hash ()));
-	wallet->insert_adhoc (key1.prv); // should not auto receive, amount sent was lower than minimum
+	node->wallets.insert_adhoc (wallet_id, key1.prv); // should not auto receive, amount sent was lower than minimum
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
 	request.put ("action", "receive");
@@ -6610,13 +6611,13 @@ TEST (rpc, receive_unopened)
 	// Test receiving for an unopened with a different wallet representative
 	nano::keypair key2;
 	auto prev_amount (node->balance (nano::dev::genesis_key.pub));
-	auto send2 (wallet->send_action (nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number () - 1, *node->work_generate_blocking (send1->hash ())));
+	auto send2 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number () - 1, *node->work_generate_blocking (send1->hash ())));
 	ASSERT_TIMELY (5s, !node->balance (nano::dev::genesis_key.pub) != prev_amount);
 	ASSERT_FALSE (node->store.account ().exists (*node->store.tx_begin_read (), key2.pub));
 	ASSERT_TRUE (node->store.block ().exists (*node->store.tx_begin_read (), send2->hash ()));
 	nano::public_key rep;
-	wallet->store.representative_set (*node->wallets.tx_begin_write (), rep);
-	wallet->insert_adhoc (key2.prv); // should not auto receive, amount sent was lower than minimum
+	node->wallets.set_representative(wallet_id, rep);
+	node->wallets.insert_adhoc (wallet_id, key2.prv); // should not auto receive, amount sent was lower than minimum
 	request.put ("account", key2.pub.to_account ());
 	request.put ("block", send2->hash ().to_string ());
 	{
@@ -6638,18 +6639,18 @@ TEST (rpc, receive_work_disabled)
 	config.peering_port = system.get_available_port ();
 	config.work_threads = 0;
 	auto node = add_ipc_enabled_node (system, config);
-	auto wallet = system.wallet (1);
+	auto wallet_id = node->wallets.first_wallet_id();
 	std::string wallet_text;
-	node->wallets.first_wallet_id ().encode_hex (wallet_text);
-	wallet->insert_adhoc (nano::dev::genesis_key.prv);
+	wallet_id.encode_hex (wallet_text);
+	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	nano::keypair key1;
 	ASSERT_TRUE (worker_node.work_generation_enabled ());
-	auto send1 (wallet->send_action (nano::dev::genesis_key.pub, key1.pub, node->config->receive_minimum.number () - 1, *worker_node.work_generate_blocking (nano::dev::genesis->hash ()), false));
+	auto send1 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, node->config->receive_minimum.number () - 1, *worker_node.work_generate_blocking (nano::dev::genesis->hash ()), false));
 	ASSERT_TRUE (send1 != nullptr);
 	ASSERT_TIMELY (5s, node->balance (nano::dev::genesis_key.pub) != nano::dev::constants.genesis_amount);
 	ASSERT_FALSE (node->store.account ().exists (*node->store.tx_begin_read (), key1.pub));
 	ASSERT_TRUE (node->store.block ().exists (*node->store.tx_begin_read (), send1->hash ()));
-	wallet->insert_adhoc (key1.prv);
+	node->wallets.insert_adhoc (wallet_id, key1.prv);
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
 	request.put ("action", "receive");
@@ -6671,20 +6672,20 @@ TEST (rpc, receive_pruned)
 	nano::node_flags node_flags;
 	node_flags.set_enable_pruning (true);
 	auto node2 = add_ipc_enabled_node (system, node_config, node_flags);
-	auto wallet1 = system.wallet (0);
-	auto wallet2 = system.wallet (1);
+	auto wallet_id1 = node1.wallets.first_wallet_id();
+	auto wallet_id2 = node2->wallets.first_wallet_id();
 	std::string wallet_text;
 	node2->wallets.first_wallet_id ().encode_hex (wallet_text);
-	wallet1->insert_adhoc (nano::dev::genesis_key.prv);
+	node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 	nano::keypair key1;
-	wallet2->insert_adhoc (key1.prv);
-	auto send1 (wallet1->send_action (nano::dev::genesis_key.pub, key1.pub, node2->config->receive_minimum.number (), *node2->work_generate_blocking (nano::dev::genesis->hash ())));
+	node2->wallets.insert_adhoc (wallet_id2, key1.prv);
+	auto send1 (node1.wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key1.pub, node2->config->receive_minimum.number (), *node2->work_generate_blocking (nano::dev::genesis->hash ())));
 	ASSERT_TIMELY (5s, node2->balance (nano::dev::genesis_key.pub) != nano::dev::constants.genesis_amount);
 	ASSERT_TIMELY (10s, !node2->store.account ().exists (*node2->store.tx_begin_read (), key1.pub));
 	// Send below minimum receive amount
-	auto send2 (wallet1->send_action (nano::dev::genesis_key.pub, key1.pub, node2->config->receive_minimum.number () - 1, *node2->work_generate_blocking (send1->hash ())));
+	auto send2 (node1.wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key1.pub, node2->config->receive_minimum.number () - 1, *node2->work_generate_blocking (send1->hash ())));
 	// Extra send frontier
-	auto send3 (wallet1->send_action (nano::dev::genesis_key.pub, key1.pub, node2->config->receive_minimum.number (), *node2->work_generate_blocking (send1->hash ())));
+	auto send3 (node1.wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key1.pub, node2->config->receive_minimum.number (), *node2->work_generate_blocking (send1->hash ())));
 	// Pruning
 	ASSERT_TIMELY (5s, node2->block_confirmed (send3->hash ()));
 	{

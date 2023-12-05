@@ -1370,12 +1370,12 @@ bool nano::wallets::valid_password (nano::wallet_id const & wallet_id, store::tr
 	return wallet->second->store.valid_password (txn);
 }
 
-void nano::wallets::rekey (nano::wallet_id const wallet_id, std::string const &)
+void nano::wallets::rekey (nano::wallet_id const wallet_id, std::string const & password)
 {
 	auto lock{ mutex.lock () };
 	auto wallet{ items.find (wallet_id) };
 	auto transaction (tx_begin_write ());
-	wallet->second->store.rekey (*transaction, "");
+	wallet->second->store.rekey (*transaction, password);
 }
 
 nano::public_key nano::wallets::deterministic_insert (nano::wallet_id const & wallet_id)

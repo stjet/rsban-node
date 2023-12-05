@@ -1040,7 +1040,6 @@ TEST (wallet, epoch_2_receive_unopened)
 		node_flags.set_disable_request_loop (true);
 		auto & node (*system.add_node (node_flags));
 		auto wallet_id = node.wallets.first_wallet_id ();
-		auto & wallet (*system.wallet (0));
 
 		// Upgrade the genesis account to epoch 1
 		auto epoch1 = system.upgrade_genesis_epoch (node, nano::epoch::epoch_1);
@@ -1167,17 +1166,17 @@ TEST (wallet, receive_pruned)
 	config.enable_voting = false; // Remove after allowing pruned voting
 	auto & node2 = *system.add_node (config, node_flags);
 
-	auto & wallet1 = *system.wallet (0);
-	auto & wallet2 = *system.wallet (1);
+	auto wallet_id1 = node1.wallets.first_wallet_id ();
+	auto wallet_id2 = node2.wallets.first_wallet_id ();
 
 	nano::keypair key;
 	nano::state_block_builder builder;
 
 	// Send
-	wallet1.insert_adhoc (nano::dev::genesis_key.prv, false);
+	node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv, false);
 	auto amount = node2.config->receive_minimum.number ();
-	auto send1 = wallet1.send_action (nano::dev::genesis_key.pub, key.pub, amount, 1);
-	auto send2 = wallet1.send_action (nano::dev::genesis_key.pub, key.pub, 1, 1);
+	auto send1 = node1.wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key.pub, amount, 1);
+	auto send2 = node1.wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key.pub, 1, 1);
 
 	// Pruning
 	ASSERT_TIMELY (5s, node2.ledger.cache.cemented_count () == 3);
@@ -1189,9 +1188,9 @@ TEST (wallet, receive_pruned)
 	ASSERT_TRUE (node2.ledger.block_or_pruned_exists (send1->hash ()));
 	ASSERT_FALSE (node2.store.block ().exists (*node2.store.tx_begin_read (), send1->hash ()));
 
-	wallet2.insert_adhoc (key.prv, false);
+	node2.wallets.insert_adhoc (wallet_id2, key.prv, false);
 
-	auto open1 = wallet2.receive_action (send1->hash (), key.pub, amount, send1->link ().as_account (), 1);
+	auto open1 = node2.wallets.receive_action (wallet_id2, send1->hash (), key.pub, amount, send1->link ().as_account (), 1);
 	ASSERT_NE (nullptr, open1);
 	ASSERT_EQ (amount, node2.ledger.balance (*node2.store.tx_begin_read (), open1->hash ()));
 	ASSERT_TIMELY (5s, node2.ledger.cache.cemented_count () == 4);

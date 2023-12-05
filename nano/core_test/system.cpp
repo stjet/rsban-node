@@ -123,20 +123,16 @@ TEST (system, DISABLED_generate_send_new)
 	system.generate_send_new (node1, accounts);
 	nano::account new_account{};
 	{
-		auto transaction (node1.wallets.tx_begin_read ());
-		auto iterator2 (system.wallet (0)->store.begin (*transaction));
-		if (iterator2->first != nano::dev::genesis_key.pub)
+		auto accounts{ node1.wallets.get_accounts (wallet_id) };
+		ASSERT_EQ (accounts.size (), 2);
+		if (accounts[0] != nano::dev::genesis_key.pub)
 		{
-			new_account = iterator2->first;
+			new_account = accounts[0];
 		}
-		++iterator2;
-		ASSERT_NE (system.wallet (0)->store.end (), iterator2);
-		if (iterator2->first != nano::dev::genesis_key.pub)
+		if (accounts[1] != nano::dev::genesis_key.pub)
 		{
-			new_account = iterator2->first;
+			new_account = accounts[1];
 		}
-		++iterator2;
-		ASSERT_EQ (system.wallet (0)->store.end (), iterator2);
 		ASSERT_FALSE (new_account.is_zero ());
 	}
 	ASSERT_TIMELY (10s, node1.balance (new_account) != 0);

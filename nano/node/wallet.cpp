@@ -1476,6 +1476,13 @@ nano::block_hash nano::wallets::send_sync (nano::wallet_id const & wallet_id, na
 	return wallet->second->send_sync (source_a, account_a, amount_a);
 }
 
+bool nano::wallets::receive_sync (nano::wallet_id const & wallet_id, std::shared_ptr<nano::block> const & block_a, nano::account const & representative_a, nano::uint128_t const & amount_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+	return wallet->second->receive_sync (block_a, representative_a, amount_a);
+}
+
 bool nano::wallets::change_sync (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & representative_a)
 {
 	auto lock{ mutex.lock () };

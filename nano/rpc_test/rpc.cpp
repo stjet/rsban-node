@@ -4296,7 +4296,7 @@ TEST (rpc, block_info_pruning)
 	nano::node_flags node_flags;
 	node_flags.set_enable_pruning (true);
 	auto node1 = add_ipc_enabled_node (system, node_config1, node_flags);
-	auto wallet_id1 = node1->wallets.first_wallet_id();
+	auto wallet_id1 = node1->wallets.first_wallet_id ();
 	auto latest (node1->latest (nano::dev::genesis_key.pub));
 	nano::block_builder builder;
 	auto send1 = builder
@@ -4358,7 +4358,7 @@ TEST (rpc, pruned_exists)
 	nano::node_config node_config0 = system.default_config ();
 	node_config0.receive_minimum = nano::dev::constants.genesis_amount; // Prevent auto-receive & receive1 block conflicts
 	auto & node0 = *system.add_node (node_config0);
-	auto wallet_id = node0.wallets.first_wallet_id();
+	auto wallet_id = node0.wallets.first_wallet_id ();
 	nano::node_config node_config1 = system.default_config ();
 	node_config1.enable_voting = false; // Remove after allowing pruned voting
 	nano::node_flags node_flags;
@@ -5801,7 +5801,7 @@ TEST (rpc, sign_block)
 {
 	nano::test::system system;
 	auto node1 = add_ipc_enabled_node (system);
-	auto wallet_id = node1->wallets.first_wallet_id();
+	auto wallet_id = node1->wallets.first_wallet_id ();
 	nano::keypair key;
 	node1->wallets.insert_adhoc (wallet_id, key.prv);
 	nano::block_builder builder;
@@ -6540,7 +6540,7 @@ TEST (rpc, receive)
 {
 	nano::test::system system;
 	auto node = add_ipc_enabled_node (system);
-	auto wallet_id = node->wallets.first_wallet_id();
+	auto wallet_id = node->wallets.first_wallet_id ();
 	std::string wallet_text;
 	wallet_id.encode_hex (wallet_text);
 	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
@@ -6581,7 +6581,7 @@ TEST (rpc, receive_unopened)
 {
 	nano::test::system system;
 	auto node = add_ipc_enabled_node (system);
-	auto wallet_id = node->wallets.first_wallet_id();
+	auto wallet_id = node->wallets.first_wallet_id ();
 	std::string wallet_text;
 	node->wallets.first_wallet_id ().encode_hex (wallet_text);
 	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
@@ -6616,7 +6616,7 @@ TEST (rpc, receive_unopened)
 	ASSERT_FALSE (node->store.account ().exists (*node->store.tx_begin_read (), key2.pub));
 	ASSERT_TRUE (node->store.block ().exists (*node->store.tx_begin_read (), send2->hash ()));
 	nano::public_key rep;
-	node->wallets.set_representative(wallet_id, rep);
+	node->wallets.set_representative (wallet_id, rep);
 	node->wallets.insert_adhoc (wallet_id, key2.prv); // should not auto receive, amount sent was lower than minimum
 	request.put ("account", key2.pub.to_account ());
 	request.put ("block", send2->hash ().to_string ());
@@ -6639,7 +6639,7 @@ TEST (rpc, receive_work_disabled)
 	config.peering_port = system.get_available_port ();
 	config.work_threads = 0;
 	auto node = add_ipc_enabled_node (system, config);
-	auto wallet_id = node->wallets.first_wallet_id();
+	auto wallet_id = node->wallets.first_wallet_id ();
 	std::string wallet_text;
 	wallet_id.encode_hex (wallet_text);
 	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
@@ -6672,8 +6672,8 @@ TEST (rpc, receive_pruned)
 	nano::node_flags node_flags;
 	node_flags.set_enable_pruning (true);
 	auto node2 = add_ipc_enabled_node (system, node_config, node_flags);
-	auto wallet_id1 = node1.wallets.first_wallet_id();
-	auto wallet_id2 = node2->wallets.first_wallet_id();
+	auto wallet_id1 = node1.wallets.first_wallet_id ();
+	auto wallet_id2 = node2->wallets.first_wallet_id ();
 	std::string wallet_text;
 	node2->wallets.first_wallet_id ().encode_hex (wallet_text);
 	node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);

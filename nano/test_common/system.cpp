@@ -196,23 +196,13 @@ void nano::test::system::ledger_initialization_set (std::vector<nano::keypair> c
 	}
 }
 
-std::shared_ptr<nano::wallet> nano::test::system::wallet (size_t index_a)
-{
-	debug_assert (nodes.size () > index_a);
-	auto size (nodes[index_a]->wallets.items.size ());
-	(void)size;
-	debug_assert (size == 1);
-	return nodes[index_a]->wallets.items.begin ()->second;
-}
-
 nano::account nano::test::system::account (store::transaction const & transaction_a, size_t index_a)
 {
-	auto wallet_l (wallet (index_a));
-	auto keys (wallet_l->store.begin (transaction_a));
-	debug_assert (keys != wallet_l->store.end ());
-	auto result (keys->first);
-	debug_assert (++keys == wallet_l->store.end ());
-	return nano::account (result);
+	debug_assert (nodes.size () > index_a);
+	auto node = nodes[index_a];
+	auto accounts = node->wallets.get_accounts (node->wallets.first_wallet_id ());
+	debug_assert (accounts.size () == 1);
+	return nano::account (accounts[0]);
 }
 
 uint64_t nano::test::system::work_generate_limited (nano::block_hash const & root_a, uint64_t min_a, uint64_t max_a)
@@ -415,7 +405,7 @@ void nano::test::system::generate_receive (nano::node & node_a)
 	}
 	if (send_block != nullptr)
 	{
-		auto receive_error (wallet (0)->receive_sync (send_block, nano::dev::genesis->account (), std::numeric_limits<nano::uint128_t>::max ()));
+		auto receive_error (nodes[0]->wallets.receive_sync (nodes[0]->wallets.first_wallet_id (), send_block, nano::dev::genesis->account (), std::numeric_limits<nano::uint128_t>::max ()));
 		(void)receive_error;
 	}
 }
@@ -486,7 +476,7 @@ void nano::test::system::generate_send_existing (nano::node & node_a, std::vecto
 	}
 	if (!amount.is_zero ())
 	{
-		auto hash (wallet (0)->send_sync (source, destination, amount));
+		auto hash (nodes[0]->wallets.send_sync (nodes[0]->wallets.first_wallet_id (), source, destination, amount));
 		(void)hash;
 		debug_assert (!hash.is_zero ());
 	}
@@ -498,7 +488,7 @@ void nano::test::system::generate_change_known (nano::node & node_a, std::vector
 	if (!node_a.latest (source).is_zero ())
 	{
 		nano::account destination (get_random_account (accounts_a));
-		auto change_error (wallet (0)->change_sync (source, destination));
+		auto change_error (nodes[0]->wallets.change_sync (nodes[0]->wallets.first_wallet_id (), source, destination));
 		(void)change_error;
 		debug_assert (!change_error);
 	}
@@ -511,7 +501,7 @@ void nano::test::system::generate_change_unknown (nano::node & node_a, std::vect
 	{
 		nano::keypair key;
 		nano::account destination (key.pub);
-		auto change_error (wallet (0)->change_sync (source, destination));
+		auto change_error (nodes[0]->wallets.change_sync (nodes[0]->wallets.first_wallet_id (), source, destination));
 		(void)change_error;
 		debug_assert (!change_error);
 	}
@@ -531,7 +521,7 @@ void nano::test::system::generate_send_new (nano::node & node_a, std::vector<nan
 	{
 		auto pub (node_a.wallets.items.begin ()->second->deterministic_insert ());
 		accounts_a.push_back (pub);
-		auto hash (wallet (0)->send_sync (source, pub, amount));
+		auto hash (nodes[0]->wallets.send_sync (nodes[0]->wallets.first_wallet_id (), source, pub, amount));
 		(void)hash;
 		debug_assert (!hash.is_zero ());
 	}
@@ -541,7 +531,7 @@ void nano::test::system::generate_mass_activity (uint32_t count_a, nano::node & 
 {
 	std::vector<nano::account> accounts;
 	auto dev_genesis_key = nano::dev::genesis_key;
-	wallet (0)->insert_adhoc (dev_genesis_key.prv);
+	nodes[0]->wallets.insert_adhoc (nodes[0]->wallets.first_wallet_id (), dev_genesis_key.prv);
 	accounts.push_back (dev_genesis_key.pub);
 	auto previous (std::chrono::steady_clock::now ());
 	for (uint32_t i (0); i < count_a; ++i)

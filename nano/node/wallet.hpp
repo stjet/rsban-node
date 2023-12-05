@@ -289,6 +289,7 @@ public:
 	std::shared_ptr<nano::block> change_action (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, uint64_t = 0, bool = true);
 	std::shared_ptr<nano::block> receive_action (nano::wallet_id const & wallet_id, nano::block_hash const &, nano::account const &, nano::uint128_union const &, nano::account const &, uint64_t = 0, bool = true);
 	nano::block_hash send_sync (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &);
+	bool receive_sync (nano::wallet_id const & wallet_id, std::shared_ptr<nano::block> const &, nano::account const &, nano::uint128_t const &);
 	void send_async (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});
 	bool change_sync (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &);
 	void serialize (nano::wallet_id const & wallet_id, std::string &);

@@ -443,8 +443,8 @@ void nano::wallet::enter_initial_password ()
 
 bool nano::wallet::enter_password (store::transaction const & transaction_a, std::string const & password_a)
 {
-	auto result (store.attempt_password (transaction_a, password_a));
-	if (!result)
+	auto error (store.attempt_password (transaction_a, password_a));
+	if (!error)
 	{
 		auto this_l (shared_from_this ());
 		node.background ([this_l] () {
@@ -457,7 +457,7 @@ bool nano::wallet::enter_password (store::transaction const & transaction_a, std
 	{
 		node.logger->try_log ("Invalid password, wallet locked");
 	}
-	return result;
+	return error;
 }
 
 nano::public_key nano::wallet::deterministic_insert (store::transaction const & transaction_a, bool generate_work_a)
@@ -1406,6 +1406,24 @@ void nano::wallets::password (nano::wallet_id const & wallet_id, nano::raw_key &
 	wallet->second->store.password (password_a);
 }
 
+nano::wallets_error nano::wallets::enter_password (nano::wallet_id const & wallet_id, std::string const & password_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet (items.find (wallet_id));
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+	auto txn{ tx_begin_write () };
+
+	bool error = wallet->second->enter_password (*txn, password_a);
+	if (error)
+	{
+		return nano::wallets_error::invalid_password;
+	}
+	return nano::wallets_error::none;
+}
+
 bool nano::wallets::enter_password (nano::wallet_id const & id, store::transaction const & transaction_a, std::string const & password_a)
 {
 	auto lock{ mutex.lock () };
@@ -1448,8 +1466,7 @@ nano::wallets_error nano::wallets::rekey (nano::wallet_id const wallet_id, std::
 		return nano::wallets_error::wallet_locked;
 	}
 
-	auto transaction (tx_begin_write ());
-	if (wallet->second->store.rekey (*transaction, password))
+	if (wallet->second->store.rekey (*txn, password))
 	{
 		return nano::wallets_error::generic;
 	}

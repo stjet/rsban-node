@@ -3001,9 +3001,14 @@ void nano::json_handler::password_enter ()
 		if (!rpc_l->ec)
 		{
 			std::string password_text (rpc_l->request.get<std::string> ("password"));
-			auto transaction (wallets.tx_begin_write ());
-			auto error (wallets.enter_password (wallet_id, *transaction, password_text));
-			rpc_l->response_l.put ("valid", error ? "0" : "1");
+			auto error = wallets.enter_password(wallet_id, password_text);
+			if (error == nano::wallets_error::none){
+				rpc_l->response_l.put ("valid", "1");
+			} else if (error == nano::wallets_error::invalid_password){
+				rpc_l->response_l.put ("valid", "0");
+			} else{
+				rpc_l->set_error(error);
+			}
 		}
 		rpc_l->response_errors ();
 	}));

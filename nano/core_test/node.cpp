@@ -510,10 +510,7 @@ TEST (node, unlock_search)
 	ASSERT_TIMELY (10s, node->active.empty ());
 	node->wallets.insert_adhoc (wallet_id, key2.prv);
 	node->wallets.set_password (wallet_id, nano::keypair ().prv);
-	{
-		auto transaction (node->wallets.tx_begin_write ());
-		ASSERT_FALSE (node->wallets.enter_password (wallet_id, *transaction, ""));
-	}
+	ASSERT_EQ (nano::wallets_error::none, node->wallets.enter_password (wallet_id, ""));
 	ASSERT_TIMELY (10s, !node->balance (key2.pub).is_zero ());
 }
 

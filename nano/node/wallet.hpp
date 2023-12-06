@@ -1,5 +1,6 @@
 #pragma once
 
+#include "boost/none.hpp"
 #include "nano/lib/rsnano.hpp"
 
 #include <nano/lib/lmdbconfig.hpp>
@@ -224,6 +225,14 @@ public:
 	nano::node & node;
 };
 
+enum class [[nodiscard]] wallets_error{
+	none = 0,
+	generic,
+	wallet_not_found,
+	wallet_locked,
+	account_not_found,
+};
+
 /**
  * The wallets set is all the wallets a node controls.
  * A node may contain multiple wallets independently encrypted and operated.
@@ -265,6 +274,7 @@ public:
 	bool ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id, std::string const & password_a);
 	bool import (nano::wallet_id const & wallet_id, std::string const & json_a, std::string const & password_a);
 	std::vector<std::pair<nano::account, nano::raw_key>> decrypt (store::transaction const & txn, nano::wallet_id const & wallet_id) const;
+	nano::wallets_error fetch (nano::wallet_id const & wallet_id, nano::account const & pub, nano::raw_key & prv);
 	std::vector<nano::wallet_id> get_wallet_ids () const;
 	std::vector<nano::account> get_accounts (nano::wallet_id const & wallet_id);
 	std::vector<nano::account> get_accounts (size_t max_results);

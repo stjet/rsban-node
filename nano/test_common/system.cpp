@@ -509,7 +509,7 @@ void nano::test::system::generate_change_unknown (nano::node & node_a, std::vect
 
 void nano::test::system::generate_send_new (nano::node & node_a, std::vector<nano::account> & accounts_a)
 {
-	debug_assert (node_a.wallets.items.size () == 1);
+	debug_assert (node_a.wallets.get_wallet_ids ().size () == 1);
 	nano::uint128_t amount;
 	nano::account source;
 	{
@@ -519,7 +519,7 @@ void nano::test::system::generate_send_new (nano::node & node_a, std::vector<nan
 	}
 	if (!amount.is_zero ())
 	{
-		auto pub (node_a.wallets.items.begin ()->second->deterministic_insert ());
+		auto pub{ node_a.wallets.deterministic_insert (node_a.wallets.first_wallet_id ()) };
 		accounts_a.push_back (pub);
 		auto hash (nodes[0]->wallets.send_sync (nodes[0]->wallets.first_wallet_id (), source, pub, amount));
 		(void)hash;

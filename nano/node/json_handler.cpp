@@ -1488,17 +1488,38 @@ void nano::json_handler::block_count ()
 	response_errors ();
 }
 
+void nano::json_handler::set_error (nano::wallets_error const & error)
+{
+	switch (error)
+	{
+		case nano::wallets_error::none:
+			break;
+		case nano::wallets_error::wallet_not_found:
+			ec = nano::error_common::wallet_not_found;
+			break;
+		case nano::wallets_error::wallet_locked:
+			ec = nano::error_common::wallet_locked;
+			break;
+		case nano::wallets_error::account_not_found:
+			ec = nano::error_common::account_not_found_wallet;
+			break;
+		default:
+			ec = nano::error_common::generic;
+			break;
+	}
+}
+
 void nano::json_handler::block_create ()
 {
 	std::string type (request.get<std::string> ("type"));
-	nano::wallet_id wallet (0);
+	nano::wallet_id wallet_id (0);
 	// Default to work_1 if not specified
 	auto work_version (work_version_optional_impl (nano::work_version::work_1));
 	auto difficulty_l (difficulty_optional_impl (work_version));
 	boost::optional<std::string> wallet_text (request.get_optional<std::string> ("wallet"));
 	if (!ec && wallet_text.is_initialized ())
 	{
-		if (wallet.decode_hex (wallet_text.get ()))
+		if (wallet_id.decode_hex (wallet_text.get ()))
 		{
 			ec = nano::error_common::bad_wallet_number;
 		}
@@ -1548,26 +1569,16 @@ void nano::json_handler::block_create ()
 	{
 		ec = nano::error_common::disabled_work_generation;
 	}
-	if (!ec && wallet != 0 && account != 0)
+	if (!ec && wallet_id != 0 && account != 0)
 	{
-		if (node.wallets.wallet_exists (wallet))
+		auto error = node.wallets.fetch (wallet_id, account, prv);
+		if (error == nano::wallets_error::none)
 		{
-			auto existing (node.wallets.items.find (wallet));
-			auto transaction (node.wallets.tx_begin_read ());
 			auto block_transaction (node.store.tx_begin_read ());
-			wallet_locked_impl (*transaction, existing->second);
-			wallet_account_impl (*transaction, existing->second, account);
-			if (!ec)
-			{
-				existing->second->store.fetch (*transaction, account, prv);
-				previous = node.ledger.latest (*block_transaction, account);
-				balance = node.ledger.account_balance (*block_transaction, account);
-			}
+			previous = node.ledger.latest (*block_transaction, account);
+			balance = node.ledger.account_balance (*block_transaction, account);
 		}
-		else
-		{
-			ec = nano::error_common::wallet_not_found;
-		}
+		set_error (error);
 	}
 	boost::optional<std::string> key_text (request.get_optional<std::string> ("key"));
 	if (!ec && key_text.is_initialized ())

@@ -1259,6 +1259,35 @@ std::vector<std::pair<nano::account, nano::raw_key>> nano::wallets::decrypt (sto
 	return result;
 }
 
+nano::wallets_error nano::wallets::fetch (nano::wallet_id const & wallet_id, nano::account const & pub, nano::raw_key & prv)
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+
+	auto txn{ tx_begin_read () };
+	if (!wallet->second->store.valid_password (*txn))
+	{
+		return nano::wallets_error::wallet_locked;
+	}
+
+	if (wallet->second->store.find (*txn, pub) == wallet->second->store.end ())
+	{
+		return nano::wallets_error::account_not_found;
+	}
+
+	if (wallet->second->store.fetch (*txn, pub, prv))
+	{
+		return nano::wallets_error::generic;
+	}
+
+	return nano::wallets_error::none;
+}
+
 std::vector<nano::wallet_id> nano::wallets::get_wallet_ids () const
 {
 	auto lock{ mutex.lock () };

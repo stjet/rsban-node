@@ -540,7 +540,8 @@ TEST (rpc, wallet_representative_set_force)
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
 	std::string wallet;
-	node->wallets.first_wallet_id ().encode_hex (wallet);
+	auto wallet_id = node->wallets.first_wallet_id ();
+	wallet_id.encode_hex (wallet);
 	request.put ("wallet", wallet);
 	nano::keypair key;
 	request.put ("action", "wallet_representative_set");
@@ -549,7 +550,6 @@ TEST (rpc, wallet_representative_set_force)
 	auto response (wait_response (system, rpc_ctx, request));
 	{
 		auto transaction (node->wallets.tx_begin_read ());
-		auto wallet_id{ node->wallets.first_wallet_id () };
 		ASSERT_EQ (key.pub, node->wallets.get_representative (*transaction, wallet_id));
 	}
 	nano::account representative{};

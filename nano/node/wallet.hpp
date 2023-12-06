@@ -271,8 +271,10 @@ public:
 	size_t representatives_count (nano::wallet_id const & id) const;
 	nano::account get_representative (store::transaction const &, nano::wallet_id const & id) const;
 	void set_representative (nano::wallet_id const & wallet_id, nano::account const & rep);
+	nano::wallets_error set_representative2 (nano::wallet_id const & wallet_id, nano::account const & rep, bool update_existing_accounts = false);
 	void get_seed (nano::raw_key & prv_a, store::transaction const & transaction_a, nano::wallet_id const & id) const;
 	nano::public_key change_seed (nano::wallet_id const & wallet_id, store::transaction const & transaction_a, nano::raw_key const & prv_a, uint32_t count = 0);
+	nano::wallets_error change_seed (nano::wallet_id const & wallet_id, nano::raw_key const & prv_a, uint32_t count, nano::public_key & first_account, uint32_t & restored_count);
 	bool ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id, std::string const & password_a);
 	bool import (nano::wallet_id const & wallet_id, std::string const & json_a, std::string const & password_a);
 	std::vector<std::pair<nano::account, nano::raw_key>> decrypt (store::transaction const & txn, nano::wallet_id const & wallet_id) const;
@@ -281,6 +283,7 @@ public:
 	std::vector<nano::account> get_accounts (nano::wallet_id const & wallet_id);
 	std::vector<nano::account> get_accounts (size_t max_results);
 	uint64_t work_get (nano::wallet_id const & wallet_id, nano::account const & account);
+	nano::wallets_error work_set (nano::wallet_id const & wallet_id, nano::account const & account, uint64_t work);
 	nano::wallets_error remove_account (nano::wallet_id const & wallet_id, nano::account & account_id);
 	bool move_accounts (nano::wallet_id const & source_id, nano::wallet_id const & target_id, std::vector<nano::public_key> const & accounts);
 	bool wallet_exists (nano::wallet_id const & id) const;

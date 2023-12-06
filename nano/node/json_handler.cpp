@@ -4422,21 +4422,22 @@ void nano::json_handler::wallet_add_watch ()
 				auto account (rpc_l->account_impl (accs.second.data ()));
 				if (!rpc_l->ec)
 				{
-					accounts.push_back(account);
+					accounts.push_back (account);
 				}
 			}
 
 			if (!rpc_l->ec)
 			{
 				auto error = rpc_l->node.wallets.insert_watch (wallet_id, accounts);
-				if (error == nano::wallets_error::none){
+				if (error == nano::wallets_error::none)
+				{
 					rpc_l->response_l.put ("success", "");
 				}
-				else {
-					rpc_l->set_error(error);
+				else
+				{
+					rpc_l->set_error (error);
 				}
 			}
-
 		}
 		rpc_l->response_errors ();
 	}));
@@ -4535,7 +4536,7 @@ void nano::json_handler::wallet_balances ()
 void nano::json_handler::wallet_change_seed ()
 {
 	node.workers->push_task (create_worker_task ([] (std::shared_ptr<nano::json_handler> const & rpc_l) {
-		auto wallet (rpc_l->wallet_impl ());
+		auto wallet_id (rpc_l->get_wallet_id ());
 		if (!rpc_l->ec)
 		{
 			std::string seed_text (rpc_l->request.get<std::string> ("seed"));
@@ -4543,19 +4544,21 @@ void nano::json_handler::wallet_change_seed ()
 			if (!seed.decode_hex (seed_text))
 			{
 				auto count (static_cast<uint32_t> (rpc_l->count_optional_impl (0)));
-				auto transaction (rpc_l->node.wallets.tx_begin_write ());
-				if (wallet->store.valid_password (*transaction))
+
+				uint32_t restored_count = 0;
+				nano::account first_account;
+
+				auto error = rpc_l->node.wallets.change_seed (wallet_id, seed, count, first_account, restored_count);
+				if (error == nano::wallets_error::none)
 				{
-					nano::public_key account (wallet->change_seed (*transaction, seed, count));
 					rpc_l->response_l.put ("success", "");
-					rpc_l->response_l.put ("last_restored_account", account.to_account ());
-					auto index (wallet->store.deterministic_index_get (*transaction));
-					debug_assert (index > 0);
-					rpc_l->response_l.put ("restored_count", std::to_string (index));
+					rpc_l->response_l.put ("last_restored_account", first_account.to_account ());
+					debug_assert (restored_count > 0);
+					rpc_l->response_l.put ("restored_count", std::to_string (restored_count));
 				}
 				else
 				{
-					rpc_l->ec = nano::error_common::wallet_locked;
+					rpc_l->set_error (error);
 				}
 			}
 			else
@@ -4603,12 +4606,12 @@ void nano::json_handler::wallet_create ()
 			}
 			if (!rpc_l->ec && seed_text.is_initialized ())
 			{
-				auto transaction (rpc_l->node.wallets.tx_begin_write ());
-				nano::public_key account (wallet->change_seed (*transaction, seed));
-				rpc_l->response_l.put ("last_restored_account", account.to_account ());
-				auto index (wallet->store.deterministic_index_get (*transaction));
-				debug_assert (index > 0);
-				rpc_l->response_l.put ("restored_count", std::to_string (index));
+				nano::account first_account;
+				uint32_t restored_count;
+				auto error = rpc_l->node.wallets.change_seed (wallet_id, seed, 0, first_account, restored_count);
+				rpc_l->response_l.put ("last_restored_account", first_account.to_account ());
+				debug_assert (restored_count > 0);
+				rpc_l->response_l.put ("restored_count", std::to_string (restored_count));
 			}
 		}
 		rpc_l->response_errors ();
@@ -4906,49 +4909,20 @@ void nano::json_handler::wallet_representative ()
 void nano::json_handler::wallet_representative_set ()
 {
 	node.workers->push_task (create_worker_task ([] (std::shared_ptr<nano::json_handler> const & rpc_l) {
-		auto wallet (rpc_l->wallet_impl ());
+		auto wallet_id (rpc_l->get_wallet_id ());
 		std::string representative_text (rpc_l->request.get<std::string> ("representative"));
 		auto representative (rpc_l->account_impl (representative_text, nano::error_rpc::bad_representative_number));
 		if (!rpc_l->ec)
 		{
 			bool update_existing_accounts (rpc_l->request.get<bool> ("update_existing_accounts", false));
+			auto error = rpc_l->node.wallets.set_representative2 (wallet_id, representative, update_existing_accounts);
+			if (error == nano::wallets_error::none)
 			{
-				auto transaction (rpc_l->node.wallets.tx_begin_write ());
-				if (wallet->store.valid_password (*transaction) || !update_existing_accounts)
-				{
-					wallet->store.representative_set (*transaction, representative);
-					rpc_l->response_l.put ("set", "1");
-				}
-				else
-				{
-					rpc_l->ec = nano::error_common::wallet_locked;
-				}
+				rpc_l->response_l.put ("set", "1");
 			}
-			// Change representative for all wallet accounts
-			if (!rpc_l->ec && update_existing_accounts)
+			else
 			{
-				std::vector<nano::account> accounts;
-				{
-					auto transaction (rpc_l->node.wallets.tx_begin_read ());
-					auto block_transaction (rpc_l->node.store.tx_begin_read ());
-					for (auto i (wallet->store.begin (*transaction)), n (wallet->store.end ()); i != n; ++i)
-					{
-						nano::account const & account (i->first);
-						auto info = rpc_l->node.ledger.account_info (*block_transaction, account);
-						if (info)
-						{
-							if (info->representative () != representative)
-							{
-								accounts.push_back (account);
-							}
-						}
-					}
-				}
-				for (auto & account : accounts)
-				{
-					wallet->change_async (
-					account, representative, [] (std::shared_ptr<nano::block> const &) {}, 0, false);
-				}
+				rpc_l->set_error (error);
 			}
 		}
 		rpc_l->response_errors ();
@@ -5193,17 +5167,19 @@ void nano::json_handler::work_get ()
 void nano::json_handler::work_set ()
 {
 	node.workers->push_task (create_worker_task ([] (std::shared_ptr<nano::json_handler> const & rpc_l) {
-		auto wallet (rpc_l->wallet_impl ());
+		auto wallet_id (rpc_l->get_wallet_id ());
 		auto account (rpc_l->account_impl ());
 		auto work (rpc_l->work_optional_impl ());
 		if (!rpc_l->ec)
 		{
-			auto transaction (rpc_l->node.wallets.tx_begin_write ());
-			rpc_l->wallet_account_impl (*transaction, wallet, account);
-			if (!rpc_l->ec)
+			auto error = rpc_l->node.wallets.work_set (wallet_id, account, work);
+			if (error == nano::wallets_error::none)
 			{
-				wallet->store.work_put (*transaction, account, work);
 				rpc_l->response_l.put ("success", "");
+			}
+			else
+			{
+				rpc_l->set_error (error);
 			}
 		}
 		rpc_l->response_errors ();

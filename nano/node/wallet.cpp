@@ -1382,6 +1382,7 @@ nano::public_key nano::wallets::insert_adhoc (nano::wallet_id const & id, nano::
 {
 	auto lock{ mutex.lock () };
 	auto wallet{ items.find (id) };
+	debug_assert(wallet != items.end());
 	return wallet->second->insert_adhoc (key_a, generate_work_a);
 }
 

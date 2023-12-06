@@ -4383,7 +4383,7 @@ TEST (rpc, pruned_exists)
 					.work (*node1->work_generate_blocking (send1->hash ()))
 					.build_shared ();
 	node1->process_active (receive1);
-	node1->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	node0.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	ASSERT_TIMELY (5s, node1->block_confirmed (receive1->hash ()));
 	// Pruning action
 	{
@@ -6117,8 +6117,8 @@ TEST (rpc, simultaneous_calls)
 	rpc.stop ();
 	system.stop ();
 	ipc_server.stop ();
-	system.async_rt.stop ();
 	runner.join ();
+	system.async_rt.stop ();
 }
 
 // This tests that the inprocess RPC (i.e without using IPC) works correctly

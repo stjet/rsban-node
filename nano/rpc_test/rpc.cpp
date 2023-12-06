@@ -3242,7 +3242,7 @@ TEST (rpc, wallet_info)
 	ASSERT_TIMELY (5s, node->block_confirmed (send2->hash ()));
 
 	nano::account account (node->wallets.deterministic_insert (wallet_id));
-	ASSERT_EQ(nano::wallets_error::none, node->wallets.remove_account (wallet_id, account));
+	ASSERT_EQ (nano::wallets_error::none, node->wallets.remove_account (wallet_id, account));
 	account = node->wallets.deterministic_insert (wallet_id);
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;

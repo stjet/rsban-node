@@ -654,7 +654,7 @@ TEST (wallet, insert_locked)
 	auto & node1 (*system.nodes[0]);
 	auto wallet_id{ node1.wallets.first_wallet_id () };
 	{
-		node1.wallets.rekey (wallet_id, "1");
+		ASSERT_EQ (nano::wallets_error::none, node1.wallets.rekey (wallet_id, "1"));
 		auto transaction (node1.wallets.tx_begin_write ());
 		ASSERT_TRUE (node1.wallets.valid_password (wallet_id, *transaction));
 		node1.wallets.enter_password (wallet_id, *transaction, "");
@@ -745,7 +745,7 @@ TEST (wallet, insert_deterministic_locked)
 	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
 	auto wallet_id{ node1.wallets.first_wallet_id () };
-	node1.wallets.rekey (wallet_id, "1");
+	ASSERT_EQ (nano::wallets_error::none, node1.wallets.rekey (wallet_id, "1"));
 	{
 		auto transaction (node1.wallets.tx_begin_write ());
 		ASSERT_TRUE (node1.wallets.valid_password (wallet_id, *transaction));
@@ -794,7 +794,7 @@ TEST (wallet, password_race)
 	std::thread thread ([&wallet_id, &node1] () {
 		for (int i = 0; i < 100; i++)
 		{
-			node1.wallets.rekey (wallet_id, std::to_string (i));
+			ASSERT_EQ (nano::wallets_error::none, node1.wallets.rekey (wallet_id, std::to_string (i)));
 		}
 	});
 	for (int i = 0; i < 100; i++)
@@ -821,7 +821,7 @@ TEST (wallet, password_race_corrupt_seed)
 	nano::thread_runner runner (system.async_rt.io_ctx, system.nodes[0]->config->io_threads);
 	nano::raw_key seed;
 	{
-		node1.wallets.rekey (wallet_id, "4567");
+		ASSERT_EQ (nano::wallets_error::none, node1.wallets.rekey (wallet_id, "4567"));
 		auto transaction (node1.wallets.tx_begin_write ());
 		node1.wallets.get_seed (seed, *transaction, wallet_id);
 		ASSERT_FALSE (node1.wallets.attempt_password (wallet_id, *transaction, "4567"));
@@ -832,13 +832,13 @@ TEST (wallet, password_race_corrupt_seed)
 		threads.emplace_back ([&node1, &wallet_id] () {
 			for (int i = 0; i < 10; i++)
 			{
-				node1.wallets.rekey (wallet_id, "0000");
+				ASSERT_EQ (nano::wallets_error::none, node1.wallets.rekey (wallet_id, "0000"));
 			}
 		});
 		threads.emplace_back ([&node1, &wallet_id] () {
 			for (int i = 0; i < 10; i++)
 			{
-				node1.wallets.rekey (wallet_id, "1234");
+				ASSERT_EQ (nano::wallets_error::none, node1.wallets.rekey (wallet_id, "1234"));
 			}
 		});
 		threads.emplace_back ([&node1, &wallet_id] () {
@@ -1134,7 +1134,7 @@ TEST (wallet, search_receivable)
 
 	// Erase the key so the confirmation does not trigger an automatic receive
 	auto genesis_account = nano::dev::genesis->account ();
-	ASSERT_EQ(nano::wallets_error::none, node.wallets.remove_account (wallet_id, genesis_account));
+	ASSERT_EQ (nano::wallets_error::none, node.wallets.remove_account (wallet_id, genesis_account));
 
 	// Now confirm the election
 	node.active.force_confirm (*election);

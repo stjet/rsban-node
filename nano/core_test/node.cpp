@@ -448,7 +448,7 @@ TEST (node, search_receivable_confirmed)
 		confirmed = node->ledger.block_confirmed (*transaction, send2->hash ());
 		ASSERT_NO_ERROR (system.poll ());
 	}
-	ASSERT_EQ(nano::wallets_error::none,node->wallets.remove_account (wallet_id, nano::dev::genesis_key.pub));
+	ASSERT_EQ (nano::wallets_error::none, node->wallets.remove_account (wallet_id, nano::dev::genesis_key.pub));
 	node->wallets.insert_adhoc (wallet_id, key2.prv);
 	ASSERT_FALSE (node->wallets.search_receivable (wallet_id));
 	ASSERT_FALSE (node->active.active (send1->hash ()));
@@ -480,7 +480,7 @@ TEST (node, search_receivable_pruned)
 	ASSERT_TIMELY (10s, node1->active.empty () && node2->active.empty ());
 	ASSERT_TIMELY (5s, node1->ledger.block_confirmed (*node1->store.tx_begin_read (), send2->hash ()));
 	ASSERT_TIMELY (5s, node2->ledger.cache.cemented_count () == 3);
-	ASSERT_EQ(nano::wallets_error::none, node1->wallets.remove_account (wallet_id, nano::dev::genesis_key.pub));
+	ASSERT_EQ (nano::wallets_error::none, node1->wallets.remove_account (wallet_id, nano::dev::genesis_key.pub));
 
 	// Pruning
 	{
@@ -503,7 +503,7 @@ TEST (node, unlock_search)
 	auto wallet_id = node->wallets.first_wallet_id ();
 	nano::keypair key2;
 	nano::uint128_t balance (node->balance (nano::dev::genesis_key.pub));
-	node->wallets.rekey (wallet_id, "");
+	ASSERT_EQ (nano::wallets_error::none, node->wallets.rekey (wallet_id, ""));
 	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 	ASSERT_TIMELY (10s, node->balance (nano::dev::genesis_key.pub) != balance);
@@ -3346,7 +3346,7 @@ TEST (node, bidirectional_tcp)
 		ASSERT_NO_ERROR (system.poll ());
 	}
 	// Test block propagation & confirmation from node 2 (remove representative from node 1)
-	ASSERT_EQ(nano::wallets_error::none, node1->wallets.remove_account (wallet_id1, nano::dev::genesis_key.pub));
+	ASSERT_EQ (nano::wallets_error::none, node1->wallets.remove_account (wallet_id1, nano::dev::genesis_key.pub));
 	/* Test block propagation from node 2
 	Node 2 has only ephemeral TCP port open. Node 1 cannot establish connection to node 2 listening port */
 	auto send2 = builder.make_block ()

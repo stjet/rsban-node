@@ -290,7 +290,7 @@ public:
 	void enter_initial_password (nano::wallet_id const & wallet_id);
 	bool valid_password (nano::wallet_id const & wallet_id, store::transaction const &);
 	bool attempt_password (nano::wallet_id const & wallet_id, store::transaction const &, std::string const &);
-	void rekey (nano::wallet_id const wallet_id, std::string const &);
+	nano::wallets_error rekey (nano::wallet_id const wallet_id, std::string const &);
 	nano::public_key deterministic_insert (nano::wallet_id const & wallet_id);
 	void deterministic_restore (nano::wallet_id const & wallet_id, store::transaction const & transaction_a);
 	void backup (std::filesystem::path const & backup_path);

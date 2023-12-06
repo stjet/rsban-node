@@ -815,13 +815,14 @@ void nano::json_handler::account_remove ()
 		auto account (rpc_l->account_impl ());
 		if (!rpc_l->ec)
 		{
-			auto error = rpc_l->node.wallets.remove_account(wallet_id, account);
-			if (error == nano::wallets_error::none){
+			auto error = rpc_l->node.wallets.remove_account (wallet_id, account);
+			if (error == nano::wallets_error::none)
+			{
 				rpc_l->response_l.put ("removed", "1");
 			}
-			rpc_l->set_error(error);
+			rpc_l->set_error (error);
 		}
-		
+
 		rpc_l->response_errors ();
 	}));
 }
@@ -853,18 +854,14 @@ void nano::json_handler::account_representative_set ()
 			auto work (rpc_l->work_optional_impl ());
 			if (!rpc_l->ec && work)
 			{
-				auto transaction (rpc_l->node.wallets.tx_begin_write ());
+				auto block_transaction (rpc_l->node.store.tx_begin_read ());
+				auto info (rpc_l->account_info_impl (*block_transaction, account));
 				if (!rpc_l->ec)
 				{
-					auto block_transaction (rpc_l->node.store.tx_begin_read ());
-					auto info (rpc_l->account_info_impl (*block_transaction, account));
-					if (!rpc_l->ec)
+					nano::block_details details (info.epoch (), false, false, false);
+					if (rpc_l->node.network_params.work.difficulty (nano::work_version::work_1, info.head (), work) < rpc_l->node.network_params.work.threshold (nano::work_version::work_1, details))
 					{
-						nano::block_details details (info.epoch (), false, false, false);
-						if (rpc_l->node.network_params.work.difficulty (nano::work_version::work_1, info.head (), work) < rpc_l->node.network_params.work.threshold (nano::work_version::work_1, details))
-						{
-							rpc_l->ec = nano::error_common::invalid_work;
-						}
+						rpc_l->ec = nano::error_common::invalid_work;
 					}
 				}
 			}
@@ -880,7 +877,8 @@ void nano::json_handler::account_representative_set ()
 				bool generate_work (work == 0); // Disable work generation if "work" option is provided
 				auto response_a (rpc_l->response);
 				auto response_data (std::make_shared<boost::property_tree::ptree> (rpc_l->response_l));
-				auto error = rpc_l->node.wallets.change_async(wallet_id, account, representative, [response_a, response_data] (std::shared_ptr<nano::block> const & block) {
+				auto error = rpc_l->node.wallets.change_async (
+				wallet_id, account, representative, [response_a, response_data] (std::shared_ptr<nano::block> const & block) {
 					if (block != nullptr)
 					{
 						response_data->put ("block", block->hash ().to_string ());
@@ -895,7 +893,7 @@ void nano::json_handler::account_representative_set ()
 				},
 				work, generate_work);
 
-				rpc_l->set_error(error);
+				rpc_l->set_error (error);
 			}
 		}
 		// Because of change_async
@@ -2979,20 +2977,17 @@ void nano::json_handler::node_id_delete ()
 void nano::json_handler::password_change ()
 {
 	node.workers->push_task (create_worker_task ([] (std::shared_ptr<nano::json_handler> const & rpc_l) {
-		auto wallet (rpc_l->wallet_impl ());
+		auto wallet_id (rpc_l->get_wallet_id ());
 		if (!rpc_l->ec)
 		{
-			auto transaction (rpc_l->node.wallets.tx_begin_write ());
-			rpc_l->wallet_locked_impl (*transaction, wallet);
-			if (!rpc_l->ec)
+			std::string password_text (rpc_l->request.get<std::string> ("password"));
+
+			auto error = rpc_l->node.wallets.rekey (wallet_id, password_text);
+			rpc_l->response_l.put ("changed", error == nano::wallets_error::none ? "1" : "0");
+			rpc_l->set_error (error);
+			if (error == nano::wallets_error::none)
 			{
-				std::string password_text (rpc_l->request.get<std::string> ("password"));
-				bool error (wallet->store.rekey (*transaction, password_text));
-				rpc_l->response_l.put ("changed", error ? "0" : "1");
-				if (!error)
-				{
-					rpc_l->node.logger->try_log ("Wallet password changed");
-				}
+				rpc_l->node.logger->try_log ("Wallet password changed");
 			}
 		}
 		rpc_l->response_errors ();

@@ -1344,7 +1344,8 @@ nano::wallets_error nano::wallets::remove_account (nano::wallet_id const & walle
 {
 	auto lock{ mutex.lock () };
 	auto wallet (items.find (wallet_id));
-	if (wallet == items.end ()) {
+	if (wallet == items.end ())
+	{
 		return nano::wallets_error::wallet_not_found;
 	}
 	auto txn{ tx_begin_write () };
@@ -1387,7 +1388,7 @@ nano::public_key nano::wallets::insert_adhoc (nano::wallet_id const & id, nano::
 {
 	auto lock{ mutex.lock () };
 	auto wallet{ items.find (id) };
-	debug_assert(wallet != items.end());
+	debug_assert (wallet != items.end ());
 	return wallet->second->insert_adhoc (key_a, generate_work_a);
 }
 
@@ -1433,12 +1434,26 @@ bool nano::wallets::attempt_password (nano::wallet_id const & wallet_id, store::
 	return wallet->second->store.attempt_password (txn, password);
 }
 
-void nano::wallets::rekey (nano::wallet_id const wallet_id, std::string const & password)
+nano::wallets_error nano::wallets::rekey (nano::wallet_id const wallet_id, std::string const & password)
 {
 	auto lock{ mutex.lock () };
-	auto wallet{ items.find (wallet_id) };
+	auto wallet (items.find (wallet_id));
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+	auto txn{ tx_begin_write () };
+	if (!wallet->second->store.valid_password (*txn))
+	{
+		return nano::wallets_error::wallet_locked;
+	}
+
 	auto transaction (tx_begin_write ());
-	wallet->second->store.rekey (*transaction, password);
+	if (wallet->second->store.rekey (*transaction, password))
+	{
+		return nano::wallets_error::generic;
+	}
+	return nano::wallets_error::none;
 }
 
 nano::public_key nano::wallets::deterministic_insert (nano::wallet_id const & wallet_id)
@@ -1529,7 +1544,8 @@ nano::wallets_error nano::wallets::change_async (nano::wallet_id const & wallet_
 {
 	auto lock{ mutex.lock () };
 	auto wallet (items.find (wallet_id));
-	if (wallet == items.end ()) {
+	if (wallet == items.end ())
+	{
 		return nano::wallets_error::wallet_not_found;
 	}
 	auto txn{ tx_begin_write () };
@@ -1541,7 +1557,7 @@ nano::wallets_error nano::wallets::change_async (nano::wallet_id const & wallet_
 	{
 		return nano::wallets_error::account_not_found;
 	}
-	wallet->second->change_async(source_a, representative_a, action_a, generate_work_a);
+	wallet->second->change_async (source_a, representative_a, action_a, generate_work_a);
 	return nano::wallets_error::none;
 }
 

@@ -251,6 +251,30 @@ bool copy_database (std::filesystem::path const & data_path, boost::program_opti
 }
 }
 
+namespace
+{
+void set_cli_wallets_error (nano::wallets_error error, std::error_code & ec)
+{
+	switch (error)
+	{
+		case nano::wallets_error::none:
+			break;
+		case nano::wallets_error::invalid_password:
+			std::cerr << "Invalid password\n";
+			ec = nano::error_cli::invalid_arguments;
+			break;
+		case nano::wallets_error::wallet_not_found:
+			std::cerr << "Wallet doesn't exist\n";
+			ec = nano::error_cli::invalid_arguments;
+			break;
+		default:
+			std::cerr << "Unknown error\n";
+			ec = nano::error_cli::generic;
+			break;
+	}
+}
+}
+
 std::error_code nano::handle_node_options (boost::program_options::variables_map const & vm)
 {
 	std::error_code ec;
@@ -277,26 +301,15 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				}
 				auto inactive_node = nano::default_inactive_node (data_path, vm);
 				auto & wallets = inactive_node->node->wallets;
-				auto wallet (wallets.open (wallet_id));
-				if (wallet != nullptr)
+				auto error = wallets.enter_password (wallet_id, password);
+				if (error == nano::wallets_error::none)
 				{
+					auto wallet (wallets.open (wallet_id));
 					auto transaction (wallets.tx_begin_write ());
-					if (!wallets.enter_password (wallet_id, *transaction, password))
-					{
-						auto pub (wallet->store.deterministic_insert (*transaction));
-						std::cout << boost::str (boost::format ("Account: %1%\n") % pub.to_account ());
-					}
-					else
-					{
-						std::cerr << "Invalid password\n";
-						ec = nano::error_cli::invalid_arguments;
-					}
+					auto pub (wallet->store.deterministic_insert (*transaction));
+					std::cout << boost::str (boost::format ("Account: %1%\n") % pub.to_account ());
 				}
-				else
-				{
-					std::cerr << "Wallet doesn't exist\n";
-					ec = nano::error_cli::invalid_arguments;
-				}
+				set_cli_wallets_error (error, ec);
 			}
 			else
 			{
@@ -724,34 +737,24 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					password = vm["password"].as<std::string> ();
 				}
 				auto inactive_node = nano::default_inactive_node (data_path, vm);
-				auto wallet (inactive_node->node->wallets.open (wallet_id));
 				auto & wallets{ inactive_node->node->wallets };
-				if (wallet != nullptr)
+				auto error = wallets.enter_password (wallet_id, password);
+				if (error == nano::wallets_error::none)
 				{
-					auto transaction (wallets.tx_begin_write ());
-					if (!wallets.enter_password (wallet_id, *transaction, password))
+					nano::raw_key key;
+					if (!key.decode_hex (vm["key"].as<std::string> ()))
 					{
-						nano::raw_key key;
-						if (!key.decode_hex (vm["key"].as<std::string> ()))
-						{
-							wallet->store.insert_adhoc (*transaction, key);
-						}
-						else
-						{
-							std::cerr << "Invalid key\n";
-							ec = nano::error_cli::invalid_arguments;
-						}
+						wallets.insert_adhoc (wallet_id, key);
 					}
 					else
 					{
-						std::cerr << "Invalid password\n";
+						std::cerr << "Invalid key\n";
 						ec = nano::error_cli::invalid_arguments;
 					}
 				}
 				else
 				{
-					std::cerr << "Wallet doesn't exist\n";
-					ec = nano::error_cli::invalid_arguments;
+					set_cli_wallets_error (error, ec);
 				}
 			}
 			else
@@ -779,43 +782,35 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					password = vm["password"].as<std::string> ();
 				}
 				auto inactive_node = nano::default_inactive_node (data_path, vm);
-				auto wallet (inactive_node->node->wallets.open (wallet_id));
 				auto & wallets{ inactive_node->node->wallets };
-				if (wallet != nullptr)
+				auto error = wallets.enter_password (wallet_id, password);
+				if (error == nano::wallets_error::none)
 				{
-					auto transaction (wallets.tx_begin_write ());
-					if (!wallets.enter_password (wallet_id, *transaction, password))
+					nano::raw_key seed;
+					if (vm.count ("seed"))
 					{
-						nano::raw_key seed;
-						if (vm.count ("seed"))
+						if (seed.decode_hex (vm["seed"].as<std::string> ()))
 						{
-							if (seed.decode_hex (vm["seed"].as<std::string> ()))
-							{
-								std::cerr << "Invalid seed\n";
-								ec = nano::error_cli::invalid_arguments;
-							}
-						}
-						else if (seed.decode_hex (vm["key"].as<std::string> ()))
-						{
-							std::cerr << "Invalid key seed\n";
+							std::cerr << "Invalid seed\n";
 							ec = nano::error_cli::invalid_arguments;
 						}
-						if (!ec)
-						{
-							std::cout << "Changing seed and caching work. Please wait..." << std::endl;
-							wallet->change_seed (*transaction, seed);
-						}
 					}
-					else
+					else if (seed.decode_hex (vm["key"].as<std::string> ()))
 					{
-						std::cerr << "Invalid password\n";
+						std::cerr << "Invalid key seed\n";
 						ec = nano::error_cli::invalid_arguments;
+					}
+					if (!ec)
+					{
+						std::cout << "Changing seed and caching work. Please wait..." << std::endl;
+						auto wallet (inactive_node->node->wallets.open (wallet_id));
+						auto transaction (wallets.tx_begin_write ());
+						wallet->change_seed (*transaction, seed);
 					}
 				}
 				else
 				{
-					std::cerr << "Wallet doesn't exist\n";
-					ec = nano::error_cli::invalid_arguments;
+					set_cli_wallets_error (error, ec);
 				}
 			}
 			else
@@ -906,34 +901,26 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				auto inactive_node = nano::default_inactive_node (data_path, vm);
 				auto node = inactive_node->node;
 				auto & wallets = node->wallets;
-				if (wallets.wallet_exists (wallet_id))
+				auto error = wallets.enter_password (wallet_id, password);
+				if (error == nano::wallets_error::none)
 				{
+					nano::raw_key seed;
 					auto transaction (wallets.tx_begin_write ());
-					if (!wallets.enter_password (wallet_id, *transaction, password))
+					wallets.get_seed (seed, *transaction, wallet_id);
+					std::cout << boost::str (boost::format ("Seed: %1%\n") % seed.to_string ());
+					auto keys{ wallets.decrypt (*transaction, wallet_id) };
+					for (auto key : keys)
 					{
-						nano::raw_key seed;
-						wallets.get_seed (seed, *transaction, wallet_id);
-						std::cout << boost::str (boost::format ("Seed: %1%\n") % seed.to_string ());
-						auto keys{ wallets.decrypt (*transaction, wallet_id) };
-						for (auto key : keys)
+						std::cout << boost::str (boost::format ("Pub: %1% Prv: %2%\n") % key.first.to_account () % key.second.to_string ());
+						if (nano::pub_key (key.second) != key.first)
 						{
-							std::cout << boost::str (boost::format ("Pub: %1% Prv: %2%\n") % key.first.to_account () % key.second.to_string ());
-							if (nano::pub_key (key.second) != key.first)
-							{
-								std::cerr << boost::str (boost::format ("Invalid private key %1%\n") % key.second.to_string ());
-							}
+							std::cerr << boost::str (boost::format ("Invalid private key %1%\n") % key.second.to_string ());
 						}
-					}
-					else
-					{
-						std::cerr << "Invalid password\n";
-						ec = nano::error_cli::invalid_arguments;
 					}
 				}
 				else
 				{
-					std::cerr << "Wallet doesn't exist\n";
-					ec = nano::error_cli::invalid_arguments;
+					set_cli_wallets_error (error, ec);
 				}
 			}
 			else

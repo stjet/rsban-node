@@ -459,11 +459,17 @@ TEST (rpc, wallet_password_change)
 	auto response (wait_response (system, rpc_ctx, request));
 	std::string account_text1 (response.get<std::string> ("changed"));
 	ASSERT_EQ (account_text1, "1");
+	{
+		auto transaction (node->wallets.tx_begin_write ());
+		ASSERT_TRUE (node->wallets.valid_password (wallet_id, *transaction));
+	}
+	ASSERT_EQ (nano::wallets_error::invalid_password, node->wallets.enter_password (wallet_id, ""));
+	{
+		auto transaction (node->wallets.tx_begin_write ());
+		ASSERT_FALSE (node->wallets.valid_password (wallet_id, *transaction));
+	}
+	ASSERT_EQ (nano::wallets_error::none, node->wallets.enter_password (wallet_id, "test"));
 	auto transaction (node->wallets.tx_begin_write ());
-	ASSERT_TRUE (node->wallets.valid_password (wallet_id, *transaction));
-	ASSERT_TRUE (node->wallets.enter_password (wallet_id, *transaction, ""));
-	ASSERT_FALSE (node->wallets.valid_password (wallet_id, *transaction));
-	ASSERT_FALSE (node->wallets.enter_password (wallet_id, *transaction, "test"));
 	ASSERT_TRUE (node->wallets.valid_password (wallet_id, *transaction));
 }
 

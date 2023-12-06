@@ -539,8 +539,7 @@ TEST (node, confirm_locked)
 	auto node (system.nodes[0]);
 	auto wallet_id{ node->wallets.first_wallet_id () };
 	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	auto transaction (node->wallets.tx_begin_read ());
-	node->wallets.enter_password (wallet_id, *transaction, "1");
+	ASSERT_EQ (nano::wallets_error::invalid_password, node->wallets.enter_password (wallet_id, "1"));
 	auto block = nano::send_block_builder ()
 				 .previous (0)
 				 .destination (0)

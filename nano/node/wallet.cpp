@@ -1229,7 +1229,7 @@ bool nano::wallets::ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id
 		valid = existing->second->store.valid_password (*transaction);
 		if (!valid)
 		{
-			valid = !enter_password (wallet_id, *transaction, password_a);
+			valid = !existing->second->enter_password (*transaction, password_a);
 		}
 	}
 	return valid;
@@ -1422,13 +1422,6 @@ nano::wallets_error nano::wallets::enter_password (nano::wallet_id const & walle
 		return nano::wallets_error::invalid_password;
 	}
 	return nano::wallets_error::none;
-}
-
-bool nano::wallets::enter_password (nano::wallet_id const & id, store::transaction const & transaction_a, std::string const & password_a)
-{
-	auto lock{ mutex.lock () };
-	auto wallet{ items.find (id) };
-	return wallet->second->enter_password (transaction_a, password_a);
 }
 
 void nano::wallets::enter_initial_password (nano::wallet_id const & wallet_id)

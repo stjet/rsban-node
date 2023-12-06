@@ -288,7 +288,6 @@ public:
 	void set_password (nano::wallet_id const & wallet_id, nano::raw_key const & password);
 	void password (nano::wallet_id const & wallet_id, nano::raw_key & password_a) const;
 	nano::wallets_error enter_password (nano::wallet_id const & id, std::string const & password_a);
-	bool enter_password (nano::wallet_id const & id, store::transaction const & transaction_a, std::string const & password_a);
 	void enter_initial_password (nano::wallet_id const & wallet_id);
 	bool valid_password (nano::wallet_id const & wallet_id, store::transaction const &);
 	bool attempt_password (nano::wallet_id const & wallet_id, store::transaction const &, std::string const &);

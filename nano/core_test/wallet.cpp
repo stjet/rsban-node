@@ -655,9 +655,11 @@ TEST (wallet, insert_locked)
 	auto wallet_id{ node1.wallets.first_wallet_id () };
 	{
 		ASSERT_EQ (nano::wallets_error::none, node1.wallets.rekey (wallet_id, "1"));
-		auto transaction (node1.wallets.tx_begin_write ());
-		ASSERT_TRUE (node1.wallets.valid_password (wallet_id, *transaction));
-		node1.wallets.enter_password (wallet_id, *transaction, "");
+		{
+			auto transaction (node1.wallets.tx_begin_write ());
+			ASSERT_TRUE (node1.wallets.valid_password (wallet_id, *transaction));
+		}
+		ASSERT_EQ (nano::wallets_error::invalid_password, node1.wallets.enter_password (wallet_id, ""));
 	}
 	auto transaction (node1.wallets.tx_begin_read ());
 	ASSERT_FALSE (node1.wallets.valid_password (wallet_id, *transaction));
@@ -747,10 +749,15 @@ TEST (wallet, insert_deterministic_locked)
 	auto wallet_id{ node1.wallets.first_wallet_id () };
 	ASSERT_EQ (nano::wallets_error::none, node1.wallets.rekey (wallet_id, "1"));
 	{
-		auto transaction (node1.wallets.tx_begin_write ());
-		ASSERT_TRUE (node1.wallets.valid_password (wallet_id, *transaction));
-		node1.wallets.enter_password (wallet_id, *transaction, "");
-		ASSERT_FALSE (node1.wallets.valid_password (wallet_id, *transaction));
+		{
+			auto transaction (node1.wallets.tx_begin_write ());
+			ASSERT_TRUE (node1.wallets.valid_password (wallet_id, *transaction));
+		}
+		ASSERT_EQ (nano::wallets_error::invalid_password, node1.wallets.enter_password (wallet_id, ""));
+		{
+			auto transaction (node1.wallets.tx_begin_write ());
+			ASSERT_FALSE (node1.wallets.valid_password (wallet_id, *transaction));
+		}
 	}
 	ASSERT_TRUE (node1.wallets.deterministic_insert (wallet_id).is_zero ());
 }

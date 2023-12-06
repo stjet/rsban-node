@@ -1392,6 +1392,31 @@ nano::public_key nano::wallets::insert_adhoc (nano::wallet_id const & id, nano::
 	return wallet->second->insert_adhoc (key_a, generate_work_a);
 }
 
+nano::wallets_error nano::wallets::insert_watch (nano::wallet_id const & wallet_id, std::vector<nano::public_key> const & accounts)
+{
+	auto lock{ mutex.lock () };
+	auto wallet (items.find (wallet_id));
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+	auto txn{ tx_begin_write () };
+	if (!wallet->second->store.valid_password (*txn))
+	{
+		return nano::wallets_error::wallet_locked;
+	}
+
+	for (auto & account : accounts)
+	{
+		if (wallet->second->insert_watch (*txn, account))
+		{
+			return nano::wallets_error::bad_public_key;
+		}
+	}
+
+	return nano::wallets_error::none;
+}
+
 void nano::wallets::set_password (nano::wallet_id const & wallet_id, nano::raw_key const & password)
 {
 	auto lock{ mutex.lock () };

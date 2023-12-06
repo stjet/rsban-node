@@ -1498,6 +1498,9 @@ void nano::json_handler::set_error (nano::wallets_error const & error)
 		case nano::wallets_error::account_not_found:
 			ec = nano::error_common::account_not_found_wallet;
 			break;
+		case nano::wallets_error::bad_public_key:
+			ec = nano::error_common::bad_public_key;
+			break;
 		default:
 			ec = nano::error_common::generic;
 			break;
@@ -4410,32 +4413,30 @@ void nano::json_handler::wallet_add ()
 void nano::json_handler::wallet_add_watch ()
 {
 	node.workers->push_task (create_worker_task ([] (std::shared_ptr<nano::json_handler> const & rpc_l) {
-		auto wallet (rpc_l->wallet_impl ());
+		auto wallet_id (rpc_l->get_wallet_id ());
 		if (!rpc_l->ec)
 		{
-			auto transaction (rpc_l->node.wallets.tx_begin_write ());
-			if (wallet->store.valid_password (*transaction))
+			std::vector<nano::account> accounts;
+			for (auto & accs : rpc_l->request.get_child ("accounts"))
 			{
-				for (auto & accounts : rpc_l->request.get_child ("accounts"))
-				{
-					auto account (rpc_l->account_impl (accounts.second.data ()));
-					if (!rpc_l->ec)
-					{
-						if (wallet->insert_watch (*transaction, account))
-						{
-							rpc_l->ec = nano::error_common::bad_public_key;
-						}
-					}
-				}
+				auto account (rpc_l->account_impl (accs.second.data ()));
 				if (!rpc_l->ec)
 				{
-					rpc_l->response_l.put ("success", "");
+					accounts.push_back(account);
 				}
 			}
-			else
+
+			if (!rpc_l->ec)
 			{
-				rpc_l->ec = nano::error_common::wallet_locked;
+				auto error = rpc_l->node.wallets.insert_watch (wallet_id, accounts);
+				if (error == nano::wallets_error::none){
+					rpc_l->response_l.put ("success", "");
+				}
+				else {
+					rpc_l->set_error(error);
+				}
 			}
+
 		}
 		rpc_l->response_errors ();
 	}));

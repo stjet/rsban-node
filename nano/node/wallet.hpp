@@ -232,6 +232,7 @@ enum class [[nodiscard]] wallets_error{
 	wallet_locked,
 	account_not_found,
 	invalid_password,
+	bad_public_key,
 };
 
 /**
@@ -285,6 +286,7 @@ public:
 	bool wallet_exists (nano::wallet_id const & id) const;
 	nano::wallet_id first_wallet_id () const;
 	nano::public_key insert_adhoc (nano::wallet_id const & id, nano::raw_key const & key_a, bool generate_work_a = true);
+	nano::wallets_error insert_watch (nano::wallet_id const & wallet_id, std::vector<nano::public_key> const & accounts);
 	void set_password (nano::wallet_id const & wallet_id, nano::raw_key const & password);
 	void password (nano::wallet_id const & wallet_id, nano::raw_key & password_a) const;
 	nano::wallets_error enter_password (nano::wallet_id const & id, std::string const & password_a);

@@ -304,9 +304,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				auto error = wallets.enter_password (wallet_id, password);
 				if (error == nano::wallets_error::none)
 				{
-					auto wallet (wallets.open (wallet_id));
-					auto transaction (wallets.tx_begin_write ());
-					auto pub (wallet->store.deterministic_insert (*transaction));
+					auto pub{ wallets.deterministic_insert (wallet_id) };
 					std::cout << boost::str (boost::format ("Account: %1%\n") % pub.to_account ());
 				}
 				set_cli_wallets_error (error, ec);
@@ -803,9 +801,9 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					if (!ec)
 					{
 						std::cout << "Changing seed and caching work. Please wait..." << std::endl;
-						auto wallet (inactive_node->node->wallets.open (wallet_id));
-						auto transaction (wallets.tx_begin_write ());
-						wallet->change_seed (*transaction, seed);
+						nano::account first_account;
+						uint32_t restored_count;
+						(void)inactive_node->node->wallets.change_seed (wallet_id, seed, 0, first_account, restored_count);
 					}
 				}
 				else

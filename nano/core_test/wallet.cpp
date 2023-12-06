@@ -9,6 +9,8 @@
 
 #include <boost/filesystem.hpp>
 
+#include <cstdint>
+
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
@@ -839,13 +841,13 @@ TEST (wallet, password_race_corrupt_seed)
 		threads.emplace_back ([&node1, &wallet_id] () {
 			for (int i = 0; i < 10; i++)
 			{
-				ASSERT_EQ (nano::wallets_error::none, node1.wallets.rekey (wallet_id, "0000"));
+				(void) node1.wallets.rekey (wallet_id, "0000");
 			}
 		});
 		threads.emplace_back ([&node1, &wallet_id] () {
 			for (int i = 0; i < 10; i++)
 			{
-				ASSERT_EQ (nano::wallets_error::none, node1.wallets.rekey (wallet_id, "1234"));
+				(void) node1.wallets.rekey (wallet_id, "1234");
 			}
 		});
 		threads.emplace_back ([&node1, &wallet_id] () {
@@ -906,8 +908,10 @@ TEST (wallet, change_seed)
 	ASSERT_NE (nullptr, block);
 	system.nodes[0]->block_processor.flush ();
 	{
+		nano::account first_account;
+		uint32_t restored_count;
+		ASSERT_EQ (nano::wallets_error::none, node1.wallets.change_seed (wallet_id, seed1, 0, first_account, restored_count));
 		auto transaction (node1.wallets.tx_begin_write ());
-		node1.wallets.change_seed (wallet_id, *transaction, seed1);
 		nano::raw_key seed2;
 		node1.wallets.get_seed (seed2, *transaction, wallet_id);
 		ASSERT_EQ (seed1, seed2);
@@ -926,9 +930,11 @@ TEST (wallet, deterministic_restore)
 	nano::public_key pub;
 	uint32_t index (4);
 	{
-		auto transaction (node1.wallets.tx_begin_write ());
-		node1.wallets.change_seed (wallet_id, *transaction, seed1);
+		nano::account first_account;
+		uint32_t restored_count;
+		ASSERT_EQ (nano::wallets_error::none, node1.wallets.change_seed (wallet_id, seed1, 0, first_account, restored_count));
 		nano::raw_key seed2;
+		auto transaction (node1.wallets.tx_begin_write ());
 		node1.wallets.get_seed (seed2, *transaction, wallet_id);
 		ASSERT_EQ (seed1, seed2);
 		auto prv = nano::deterministic_key (seed1, index);

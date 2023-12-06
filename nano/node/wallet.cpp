@@ -1236,7 +1236,6 @@ nano::wallets_error nano::wallets::set_representative2 (nano::wallet_id const & 
 					}
 				}
 			}
-			
 		}
 	}
 
@@ -1262,13 +1261,6 @@ void nano::wallets::get_seed (nano::raw_key & prv_a, store::transaction const & 
 	auto lock{ mutex.lock () };
 	auto wallet{ items.find (id) };
 	wallet->second->store.seed (prv_a, txn);
-}
-
-nano::public_key nano::wallets::change_seed (nano::wallet_id const & wallet_id, store::transaction const & transaction_a, nano::raw_key const & prv_a, uint32_t count)
-{
-	auto lock{ mutex.lock () };
-	auto wallet{ items.find (wallet_id) };
-	return wallet->second->change_seed (transaction_a, prv_a, count);
 }
 
 nano::wallets_error nano::wallets::change_seed (nano::wallet_id const & wallet_id, nano::raw_key const & prv_a, uint32_t count, nano::public_key & first_account, uint32_t & restored_count)
@@ -1431,7 +1423,7 @@ nano::wallets_error nano::wallets::work_set (nano::wallet_id const & wallet_id, 
 	return nano::wallets_error::none;
 }
 
-nano::wallets_error nano::wallets::remove_account (nano::wallet_id const & wallet_id, nano::account & account_id)
+nano::wallets_error nano::wallets::remove_account (nano::wallet_id const & wallet_id, nano::account const & account_id)
 {
 	auto lock{ mutex.lock () };
 	auto wallet (items.find (wallet_id));
@@ -1687,6 +1679,43 @@ nano::wallets_error nano::wallets::change_async (nano::wallet_id const & wallet_
 	return nano::wallets_error::none;
 }
 
+void nano::wallets::receive_confirmed (store::transaction const & block_transaction_a, nano::block_hash const & hash_a, nano::account const & destination_a)
+{
+	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> wallets_l;
+	std::unique_ptr<nano::store::read_transaction> wallet_transaction;
+	{
+		auto lk{ mutex.lock () };
+		wallets_l = items;
+		wallet_transaction = tx_begin_read ();
+	}
+	for ([[maybe_unused]] auto const & [id, wallet] : wallets_l)
+	{
+		if (wallet->store.exists (*wallet_transaction, destination_a))
+		{
+			nano::account representative;
+			representative = wallet->store.representative (*wallet_transaction);
+			auto pending = node.ledger.pending_info (block_transaction_a, nano::pending_key (destination_a, hash_a));
+			if (pending)
+			{
+				auto amount (pending->amount.number ());
+				wallet->receive_async (hash_a, representative, amount, destination_a, [] (std::shared_ptr<nano::block> const &) {});
+			}
+			else
+			{
+				if (!node.ledger.block_or_pruned_exists (block_transaction_a, hash_a))
+				{
+					node.logger->try_log (boost::str (boost::format ("Confirmed block is missing:  %1%") % hash_a.to_string ()));
+					debug_assert (false && "Confirmed block is missing");
+				}
+				else
+				{
+					node.logger->try_log (boost::str (boost::format ("Block %1% has already been received") % hash_a.to_string ()));
+				}
+			}
+		}
+	}
+}
+
 void nano::wallets::serialize (nano::wallet_id const & wallet_id, std::string & json)
 {
 	auto lock{ mutex.lock () };
@@ -1740,7 +1769,7 @@ void nano::wallets::search_receivable_all ()
 	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> wallets_l;
 	{
 		auto lk{ mutex.lock () };
-		wallets_l = get_wallets ();
+		wallets_l = items;
 	}
 	auto wallet_transaction (tx_begin_read ());
 	for (auto const & [id, wallet] : wallets_l)
@@ -1974,12 +2003,6 @@ nano::block_hash nano::wallets::get_block_hash (bool & error_a, nano::store::tra
 bool nano::wallets::set_block_hash (nano::store::transaction const & transaction_a, std::string const & id_a, nano::block_hash const & hash)
 {
 	return !rsnano::rsn_lmdb_wallets_set_block_hash (rust_handle, transaction_a.get_rust_handle (), id_a.c_str (), hash.bytes.data ());
-}
-
-std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> nano::wallets::get_wallets ()
-{
-	// debug_assert (!mutex.try_lock ());
-	return items;
 }
 
 nano::uint128_t const nano::wallets::generate_priority = std::numeric_limits<nano::uint128_t>::max ();

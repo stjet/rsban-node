@@ -187,7 +187,7 @@ nano::wallet_id nano::json_handler::get_wallet_id ()
 		nano::wallet_id wallet;
 		if (!wallet.decode_hex (wallet_text))
 		{
-			if (auto existing = node.wallets.open (wallet); existing != nullptr)
+			if (node.wallets.wallet_exists (wallet))
 			{
 				return wallet;
 			}

@@ -1329,39 +1329,7 @@ void nano::node::ongoing_online_weight_calculation ()
 
 void nano::node::receive_confirmed (store::transaction const & block_transaction_a, nano::block_hash const & hash_a, nano::account const & destination_a)
 {
-	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> wallets_l;
-	std::unique_ptr<nano::store::read_transaction> wallet_transaction;
-	{
-		auto lk{ wallets.mutex.lock () };
-		wallets_l = wallets.get_wallets ();
-		wallet_transaction = wallets.tx_begin_read ();
-	}
-	for ([[maybe_unused]] auto const & [id, wallet] : wallets_l)
-	{
-		if (wallet->store.exists (*wallet_transaction, destination_a))
-		{
-			nano::account representative;
-			representative = wallet->store.representative (*wallet_transaction);
-			auto pending = ledger.pending_info (block_transaction_a, nano::pending_key (destination_a, hash_a));
-			if (pending)
-			{
-				auto amount (pending->amount.number ());
-				wallet->receive_async (hash_a, representative, amount, destination_a, [] (std::shared_ptr<nano::block> const &) {});
-			}
-			else
-			{
-				if (!ledger.block_or_pruned_exists (block_transaction_a, hash_a))
-				{
-					logger->try_log (boost::str (boost::format ("Confirmed block is missing:  %1%") % hash_a.to_string ()));
-					debug_assert (false && "Confirmed block is missing");
-				}
-				else
-				{
-					logger->try_log (boost::str (boost::format ("Block %1% has already been received") % hash_a.to_string ()));
-				}
-			}
-		}
-	}
+	wallets.receive_confirmed (block_transaction_a, hash_a, destination_a);
 }
 
 void nano::node::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)

@@ -811,19 +811,17 @@ void nano::json_handler::account_move ()
 void nano::json_handler::account_remove ()
 {
 	node.workers->push_task (create_worker_task ([] (std::shared_ptr<nano::json_handler> const & rpc_l) {
-		auto wallet (rpc_l->wallet_impl ());
+		auto wallet_id (rpc_l->get_wallet_id ());
 		auto account (rpc_l->account_impl ());
 		if (!rpc_l->ec)
 		{
-			auto transaction (rpc_l->node.wallets.tx_begin_write ());
-			rpc_l->wallet_locked_impl (*transaction, wallet);
-			rpc_l->wallet_account_impl (*transaction, wallet, account);
-			if (!rpc_l->ec)
-			{
-				wallet->store.erase (*transaction, account);
+			auto error = rpc_l->node.wallets.remove_account(wallet_id, account);
+			if (error == nano::wallets_error::none){
 				rpc_l->response_l.put ("removed", "1");
 			}
+			rpc_l->set_error(error);
 		}
+		
 		rpc_l->response_errors ();
 	}));
 }
@@ -846,7 +844,7 @@ void nano::json_handler::account_representative ()
 void nano::json_handler::account_representative_set ()
 {
 	node.workers->push_task (create_worker_task ([work_generation_enabled = node.work_generation_enabled ()] (std::shared_ptr<nano::json_handler> const & rpc_l) {
-		auto wallet (rpc_l->wallet_impl ());
+		auto wallet_id (rpc_l->get_wallet_id ());
 		auto account (rpc_l->account_impl ());
 		std::string representative_text (rpc_l->request.get<std::string> ("representative"));
 		auto representative (rpc_l->account_impl (representative_text, nano::error_rpc::bad_representative_number));
@@ -856,8 +854,6 @@ void nano::json_handler::account_representative_set ()
 			if (!rpc_l->ec && work)
 			{
 				auto transaction (rpc_l->node.wallets.tx_begin_write ());
-				rpc_l->wallet_locked_impl (*transaction, wallet);
-				rpc_l->wallet_account_impl (*transaction, wallet, account);
 				if (!rpc_l->ec)
 				{
 					auto block_transaction (rpc_l->node.store.tx_begin_read ());
@@ -884,8 +880,7 @@ void nano::json_handler::account_representative_set ()
 				bool generate_work (work == 0); // Disable work generation if "work" option is provided
 				auto response_a (rpc_l->response);
 				auto response_data (std::make_shared<boost::property_tree::ptree> (rpc_l->response_l));
-				wallet->change_async (
-				account, representative, [response_a, response_data] (std::shared_ptr<nano::block> const & block) {
+				auto error = rpc_l->node.wallets.change_async(wallet_id, account, representative, [response_a, response_data] (std::shared_ptr<nano::block> const & block) {
 					if (block != nullptr)
 					{
 						response_data->put ("block", block->hash ().to_string ());
@@ -899,6 +894,8 @@ void nano::json_handler::account_representative_set ()
 					}
 				},
 				work, generate_work);
+
+				rpc_l->set_error(error);
 			}
 		}
 		// Because of change_async

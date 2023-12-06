@@ -1134,7 +1134,7 @@ TEST (wallet, search_receivable)
 
 	// Erase the key so the confirmation does not trigger an automatic receive
 	auto genesis_account = nano::dev::genesis->account ();
-	node.wallets.remove_account (wallet_id, genesis_account);
+	ASSERT_EQ(nano::wallets_error::none, node.wallets.remove_account (wallet_id, genesis_account));
 
 	// Now confirm the election
 	node.active.force_confirm (*election);

@@ -1107,15 +1107,24 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			nano::wallet_id wallet_id;
 			if (!wallet_id.decode_hex (vm["wallet"].as<std::string> ()))
 			{
-				if (node->wallets.wallet_exists (wallet_id))
-				{
 					nano::account account_id;
 					if (!account_id.decode_account (vm["account"].as<std::string> ()))
 					{
-						if (!node->wallets.remove_account (wallet_id, account_id))
-						{
-							std::cerr << "Account not found in wallet\n";
-							ec = nano::error_cli::invalid_arguments;
+						auto error = node->wallets.remove_account (wallet_id, account_id);
+						switch (error){
+							case nano::wallets_error::none: break;
+							case nano::wallets_error::account_not_found:
+								std::cerr << "Account not found in wallet\n";
+								ec = nano::error_cli::invalid_arguments;
+								break;
+							case nano::wallets_error::wallet_not_found:
+								std::cerr << "Wallet not found\n";
+								ec = nano::error_cli::invalid_arguments;
+								break;
+							default:
+								std::cerr << "Unknown error in remove_account\n";
+								ec = nano::error_cli::generic;
+								break;
 						}
 					}
 					else
@@ -1123,12 +1132,6 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 						std::cerr << "Invalid account id\n";
 						ec = nano::error_cli::invalid_arguments;
 					}
-				}
-				else
-				{
-					std::cerr << "Wallet not found\n";
-					ec = nano::error_cli::invalid_arguments;
-				}
 			}
 			else
 			{

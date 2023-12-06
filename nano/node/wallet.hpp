@@ -279,7 +279,7 @@ public:
 	std::vector<nano::account> get_accounts (nano::wallet_id const & wallet_id);
 	std::vector<nano::account> get_accounts (size_t max_results);
 	uint64_t work_get (nano::wallet_id const & wallet_id, nano::account const & account);
-	bool remove_account (nano::wallet_id const & wallet_id, nano::account & account_id);
+	nano::wallets_error remove_account (nano::wallet_id const & wallet_id, nano::account & account_id);
 	bool move_accounts (nano::wallet_id const & source_id, nano::wallet_id const & target_id, std::vector<nano::public_key> const & accounts);
 	bool wallet_exists (nano::wallet_id const & id) const;
 	nano::wallet_id first_wallet_id () const;
@@ -302,6 +302,7 @@ public:
 	bool receive_sync (nano::wallet_id const & wallet_id, std::shared_ptr<nano::block> const &, nano::account const &, nano::uint128_t const &);
 	void send_async (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});
 	bool change_sync (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &);
+	nano::wallets_error change_async (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true);
 	void serialize (nano::wallet_id const & wallet_id, std::string &);
 	bool search_receivable (nano::wallet_id const &);
 	void search_receivable_all ();

@@ -2069,7 +2069,7 @@ TEST (bulk, DISABLED_genesis_pruning)
 	ASSERT_NE (nullptr, send2);
 	auto send3 (node1->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, 100));
 	ASSERT_NE (nullptr, send3);
-	node1->wallets.remove_account (wallet_id, nano::dev::genesis_key.pub);
+	ASSERT_EQ(nano::wallets_error::none, node1->wallets.remove_account (wallet_id, nano::dev::genesis_key.pub));
 	nano::block_hash latest3 (node1->latest (nano::dev::genesis_key.pub));
 	ASSERT_NE (latest1, latest3);
 	ASSERT_EQ (send3->hash (), latest3);

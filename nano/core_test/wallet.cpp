@@ -207,7 +207,7 @@ TEST (wallet, send_async)
 		ASSERT_TIMELY (10s, node->balance (nano::dev::genesis_key.pub).is_zero ());
 	});
 	std::atomic<bool> success (false);
-	ASSERT_EQ(nano::wallets_error::none, node->wallets.send_async (wallet_id, nano::dev::genesis_key.pub, key2.pub, std::numeric_limits<nano::uint128_t>::max (), [&success] (std::shared_ptr<nano::block> const & block_a) { ASSERT_NE (nullptr, block_a); success = true; }));
+	ASSERT_EQ (nano::wallets_error::none, node->wallets.send_async (wallet_id, nano::dev::genesis_key.pub, key2.pub, std::numeric_limits<nano::uint128_t>::max (), [&success] (std::shared_ptr<nano::block> const & block_a) { ASSERT_NE (nullptr, block_a); success = true; }));
 	thread.join ();
 	ASSERT_TIMELY (2s, success);
 }
@@ -540,7 +540,7 @@ TEST (wallet_store, import)
 	nano::keypair key1;
 	node1->wallets.insert_adhoc (wallet_id1, key1.prv);
 	std::string json;
-	node1->wallets.serialize (wallet_id1, json);
+	ASSERT_EQ (nano::wallets_error::none, node1->wallets.serialize (wallet_id1, json));
 	ASSERT_FALSE (node2->wallets.exists (key1.pub));
 	auto error (node2->wallets.import (wallet_id2, json, ""));
 	ASSERT_FALSE (error);
@@ -557,7 +557,7 @@ TEST (wallet_store, fail_import_bad_password)
 	nano::keypair key1;
 	node1->wallets.insert_adhoc (wallet_id1, key1.prv);
 	std::string json;
-	node1->wallets.serialize (wallet_id1, json);
+	ASSERT_EQ (nano::wallets_error::none, node1->wallets.serialize (wallet_id1, json));
 	ASSERT_FALSE (node2->wallets.exists (key1.pub));
 	auto error (node2->wallets.import (wallet_id2, json, "1"));
 	ASSERT_TRUE (error);

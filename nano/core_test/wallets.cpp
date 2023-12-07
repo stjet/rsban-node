@@ -221,7 +221,7 @@ TEST (wallets, search_receivable)
 		}
 		else
 		{
-			node.wallets.search_receivable (wallet_id);
+			(void)node.wallets.search_receivable (wallet_id);
 		}
 		std::shared_ptr<nano::election> election;
 		ASSERT_TIMELY (5s, election = node.active.election (send->qualified_root ()));
@@ -245,7 +245,7 @@ TEST (wallets, search_receivable)
 		}
 		else
 		{
-			node.wallets.search_receivable (wallet_id);
+			(void)node.wallets.search_receivable (wallet_id);
 		}
 		ASSERT_TIMELY (3s, node.balance (nano::dev::genesis->account ()) == nano::dev::constants.genesis_amount);
 		auto receive_hash = node.ledger.latest (*node.store.tx_begin_read (), nano::dev::genesis->account ());

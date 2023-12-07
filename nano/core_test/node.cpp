@@ -390,7 +390,7 @@ TEST (node, search_receivable)
 	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 	node->wallets.insert_adhoc (wallet_id, key2.prv);
-	ASSERT_FALSE (node->wallets.search_receivable (wallet_id));
+	ASSERT_EQ (nano::wallets_error::none, node->wallets.search_receivable (wallet_id));
 	ASSERT_TIMELY (10s, !node->balance (key2.pub).is_zero ());
 }
 
@@ -404,7 +404,7 @@ TEST (node, search_receivable_same)
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 	node->wallets.insert_adhoc (wallet_id, key2.prv);
-	ASSERT_FALSE (node->wallets.search_receivable (wallet_id));
+	ASSERT_EQ (nano::wallets_error::none, node->wallets.search_receivable (wallet_id));
 	ASSERT_TIMELY (10s, node->balance (key2.pub) == 2 * node->config->receive_minimum.number ());
 }
 
@@ -422,7 +422,7 @@ TEST (node, search_receivable_multiple)
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, key3.pub, key2.pub, node->config->receive_minimum.number ()));
 	node->wallets.insert_adhoc (wallet_id, key2.prv);
-	ASSERT_FALSE (node->wallets.search_receivable (wallet_id));
+	ASSERT_EQ (nano::wallets_error::none, node->wallets.search_receivable (wallet_id));
 	ASSERT_TIMELY (10s, node->balance (key2.pub) == 2 * node->config->receive_minimum.number ());
 }
 
@@ -450,7 +450,7 @@ TEST (node, search_receivable_confirmed)
 	}
 	ASSERT_EQ (nano::wallets_error::none, node->wallets.remove_account (wallet_id, nano::dev::genesis_key.pub));
 	node->wallets.insert_adhoc (wallet_id, key2.prv);
-	ASSERT_FALSE (node->wallets.search_receivable (wallet_id));
+	ASSERT_EQ (nano::wallets_error::none, node->wallets.search_receivable (wallet_id));
 	ASSERT_FALSE (node->active.active (send1->hash ()));
 	ASSERT_FALSE (node->active.active (send2->hash ()));
 	ASSERT_TIMELY (10s, node->balance (key2.pub) == 2 * node->config->receive_minimum.number ());
@@ -492,7 +492,7 @@ TEST (node, search_receivable_pruned)
 
 	// Receive pruned block
 	node2->wallets.insert_adhoc (wallet_id2, key2.prv);
-	ASSERT_FALSE (node2->wallets.search_receivable (wallet_id2));
+	ASSERT_EQ (nano::wallets_error::none, node2->wallets.search_receivable (wallet_id2));
 	ASSERT_TIMELY (10s, node2->balance (key2.pub) == 2 * node2->config->receive_minimum.number ());
 }
 

@@ -140,7 +140,6 @@ public:
 	nano::public_key insert_adhoc (nano::raw_key const &, bool = true);
 	bool insert_watch (store::transaction const &, nano::public_key const &);
 	nano::public_key deterministic_insert (store::transaction const &, bool = true);
-	nano::public_key deterministic_insert (uint32_t, bool = true);
 	nano::public_key deterministic_insert (bool = true);
 	bool exists (nano::public_key const &);
 	bool import (std::string const &, std::string const &);
@@ -269,7 +268,9 @@ public:
 	std::shared_ptr<nano::wallet> create (nano::wallet_id const &);
 	size_t wallet_count () const;
 	size_t representatives_count (nano::wallet_id const & id) const;
+	nano::key_type key_type (nano::wallet_id const & wallet_id, nano::raw_key const & key);
 	nano::account get_representative (store::transaction const &, nano::wallet_id const & id) const;
+	nano::wallets_error get_representative (nano::wallet_id const & id, nano::account & representative);
 	void set_representative (nano::wallet_id const & wallet_id, nano::account const & rep);
 	nano::wallets_error set_representative2 (nano::wallet_id const & wallet_id, nano::account const & rep, bool update_existing_accounts = false);
 	void get_seed (nano::raw_key & prv_a, store::transaction const & transaction_a, nano::wallet_id const & id) const;
@@ -277,9 +278,11 @@ public:
 	bool ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id, std::string const & password_a);
 	bool import (nano::wallet_id const & wallet_id, std::string const & json_a, std::string const & password_a);
 	std::vector<std::pair<nano::account, nano::raw_key>> decrypt (store::transaction const & txn, nano::wallet_id const & wallet_id) const;
+	nano::wallets_error decrypt (nano::wallet_id const & wallet_id, std::vector<std::pair<nano::account, nano::raw_key>> accounts) const;
 	nano::wallets_error fetch (nano::wallet_id const & wallet_id, nano::account const & pub, nano::raw_key & prv);
 	std::vector<nano::wallet_id> get_wallet_ids () const;
 	std::vector<nano::account> get_accounts (nano::wallet_id const & wallet_id);
+	nano::wallets_error get_accounts (nano::wallet_id const & wallet_id, std::vector<nano::account> & accounts);
 	std::vector<nano::account> get_accounts (size_t max_results);
 	uint64_t work_get (nano::wallet_id const & wallet_id, nano::account const & account);
 	nano::wallets_error work_set (nano::wallet_id const & wallet_id, nano::account const & account, uint64_t work);
@@ -288,16 +291,21 @@ public:
 	bool wallet_exists (nano::wallet_id const & id) const;
 	nano::wallet_id first_wallet_id () const;
 	nano::public_key insert_adhoc (nano::wallet_id const & id, nano::raw_key const & key_a, bool generate_work_a = true);
+	nano::wallets_error insert_adhoc (nano::wallet_id const & id, nano::raw_key const & key_a, bool generate_work_a, nano::public_key & account);
 	nano::wallets_error insert_watch (nano::wallet_id const & wallet_id, std::vector<nano::public_key> const & accounts);
 	void set_password (nano::wallet_id const & wallet_id, nano::raw_key const & password);
 	void password (nano::wallet_id const & wallet_id, nano::raw_key & password_a) const;
 	nano::wallets_error enter_password (nano::wallet_id const & id, std::string const & password_a);
 	void enter_initial_password (nano::wallet_id const & wallet_id);
 	bool valid_password (nano::wallet_id const & wallet_id, store::transaction const &);
+	bool valid_password (nano::wallet_id const & wallet_id);
 	bool attempt_password (nano::wallet_id const & wallet_id, store::transaction const &, std::string const &);
 	nano::wallets_error rekey (nano::wallet_id const wallet_id, std::string const &);
 	nano::public_key deterministic_insert (nano::wallet_id const & wallet_id);
+	nano::wallets_error deterministic_insert (nano::wallet_id const & wallet_id, uint32_t const index, bool generate_work_a, nano::account & account);
+	nano::wallets_error deterministic_insert (nano::wallet_id const & wallet_id, bool generate_work_a, nano::account & account);
 	void deterministic_restore (nano::wallet_id const & wallet_id, store::transaction const & transaction_a);
+	nano::wallets_error deterministic_index_get (nano::wallet_id const & wallet_id, uint32_t & index);
 	void backup (std::filesystem::path const & backup_path);
 	void work_cache_blocking (nano::wallet_id const & wallet_id, nano::account const & account_a, nano::root const & root_a);
 	std::shared_ptr<nano::block> send_action (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});
@@ -305,12 +313,13 @@ public:
 	std::shared_ptr<nano::block> receive_action (nano::wallet_id const & wallet_id, nano::block_hash const &, nano::account const &, nano::uint128_union const &, nano::account const &, uint64_t = 0, bool = true);
 	nano::block_hash send_sync (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &);
 	bool receive_sync (nano::wallet_id const & wallet_id, std::shared_ptr<nano::block> const &, nano::account const &, nano::uint128_t const &);
-	void send_async (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, nano::uint128_t const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});
 	bool change_sync (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &);
+	nano::wallets_error receive_async (nano::wallet_id const & wallet_id, nano::block_hash const &, nano::account const &, nano::uint128_t const &, nano::account const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true);
 	nano::wallets_error change_async (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true);
+	nano::wallets_error send_async (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a = 0, bool generate_work_a = true, boost::optional<std::string> id_a = {});
 	void receive_confirmed (store::transaction const & block_transaction_a, nano::block_hash const & hash_a, nano::account const & destination_a);
 	void serialize (nano::wallet_id const & wallet_id, std::string &);
-	bool search_receivable (nano::wallet_id const &);
+	nano::wallets_error search_receivable (nano::wallet_id const &);
 	void search_receivable_all ();
 	void destroy (nano::wallet_id const &);
 	void reload ();
@@ -340,7 +349,7 @@ public:
 	std::unique_ptr<store::write_transaction> tx_begin_write ();
 
 	/** Start read-only transaction */
-	std::unique_ptr<store::read_transaction> tx_begin_read ();
+	std::unique_ptr<store::read_transaction> tx_begin_read () const;
 
 	nano::wallet_representatives representatives;
 	rsnano::LmdbWalletsHandle * rust_handle;

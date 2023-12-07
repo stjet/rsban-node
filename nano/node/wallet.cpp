@@ -480,21 +480,6 @@ nano::public_key nano::wallet::deterministic_insert (store::transaction const & 
 	return key;
 }
 
-nano::public_key nano::wallet::deterministic_insert (uint32_t const index, bool generate_work_a)
-{
-	auto transaction (env.tx_begin_write ());
-	nano::public_key key{};
-	if (store.valid_password (*transaction))
-	{
-		key = store.deterministic_insert (*transaction, index);
-		if (generate_work_a)
-		{
-			work_ensure (key, key);
-		}
-	}
-	return key;
-}
-
 nano::public_key nano::wallet::deterministic_insert (bool generate_work_a)
 {
 	auto transaction (env.tx_begin_write ());
@@ -898,8 +883,8 @@ void nano::wallet::work_ensure (nano::account const & account_a, nano::root cons
 
 bool nano::wallet::search_receivable (store::transaction const & wallet_transaction_a)
 {
-	auto result (!store.valid_password (wallet_transaction_a));
-	if (!result)
+	auto error (!store.valid_password (wallet_transaction_a));
+	if (!error)
 	{
 		for (auto i (store.begin (wallet_transaction_a)), n (store.end ()); i != n; ++i)
 		{
@@ -942,7 +927,7 @@ bool nano::wallet::search_receivable (store::transaction const & wallet_transact
 	{
 		node.logger->try_log ("Stopping search, wallet is locked");
 	}
-	return result;
+	return error;
 }
 
 uint32_t nano::wallet::deterministic_check (store::transaction const & transaction_a, uint32_t index)
@@ -1190,11 +1175,41 @@ size_t nano::wallets::representatives_count (nano::wallet_id const & id) const
 	return representatives_lk.size ();
 }
 
+nano::key_type nano::wallets::key_type (nano::wallet_id const & wallet_id, nano::raw_key const & key)
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+
+	if (wallet == items.end ())
+	{
+		return nano::key_type::unknown;
+	}
+
+	auto txn{ tx_begin_read () };
+	nano::wallet_value wallet_val{ key, 0 };
+	return wallet->second->store.key_type (wallet_val);
+}
+
 nano::account nano::wallets::get_representative (store::transaction const & txn, nano::wallet_id const & id) const
 {
 	auto lock{ mutex.lock () };
 	auto wallet{ items.find (id) };
 	return wallet->second->store.representative (txn);
+}
+
+nano::wallets_error nano::wallets::get_representative (nano::wallet_id const & wallet_id, nano::account & representative)
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+
+	auto txn{ tx_begin_read () };
+	representative = wallet->second->store.representative (*txn);
+	return nano::wallets_error::none;
 }
 
 nano::wallets_error nano::wallets::set_representative2 (nano::wallet_id const & wallet_id, nano::account const & rep, bool update_existing_accounts)
@@ -1324,6 +1339,34 @@ std::vector<std::pair<nano::account, nano::raw_key>> nano::wallets::decrypt (sto
 	return result;
 }
 
+nano::wallets_error nano::wallets::decrypt (nano::wallet_id const & wallet_id, std::vector<std::pair<nano::account, nano::raw_key>> accounts) const
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+
+	auto txn{ tx_begin_read () };
+	if (!wallet->second->store.valid_password (*txn))
+	{
+		return nano::wallets_error::wallet_locked;
+	}
+
+	for (auto i (wallet->second->store.begin (*txn)), m (wallet->second->store.end ()); i != m; ++i)
+	{
+		nano::account const & account (i->first);
+		nano::raw_key key;
+		auto error (wallet->second->store.fetch (*txn, account, key));
+		(void)error;
+		debug_assert (!error);
+		accounts.emplace_back (account, key);
+	}
+	return nano::wallets_error::none;
+}
+
 nano::wallets_error nano::wallets::fetch (nano::wallet_id const & wallet_id, nano::account const & pub, nano::raw_key & prv)
 {
 	auto lock{ mutex.lock () };
@@ -1363,6 +1406,25 @@ std::vector<nano::wallet_id> nano::wallets::get_wallet_ids () const
 		result.push_back (i->first);
 	}
 	return result;
+}
+
+nano::wallets_error nano::wallets::get_accounts (nano::wallet_id const & wallet_id, std::vector<nano::account> & accounts)
+{
+	auto lock{ mutex.lock () };
+	auto wallet = items.find (wallet_id);
+
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+	auto txn (tx_begin_read ());
+
+	for (auto j (wallet->second->store.begin (*txn)), m (wallet->second->store.end ()); j != m; ++j)
+	{
+		accounts.push_back (nano::account (j->first));
+	}
+
+	return nano::wallets_error::none;
 }
 
 std::vector<nano::account> nano::wallets::get_accounts (nano::wallet_id const & wallet_id)
@@ -1475,6 +1537,24 @@ nano::public_key nano::wallets::insert_adhoc (nano::wallet_id const & id, nano::
 	return wallet->second->insert_adhoc (key_a, generate_work_a);
 }
 
+nano::wallets_error nano::wallets::insert_adhoc (nano::wallet_id const & wallet_id, nano::raw_key const & key_a, bool generate_work_a, nano::public_key & account)
+{
+	auto lock{ mutex.lock () };
+	auto wallet (items.find (wallet_id));
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+	auto txn{ tx_begin_read () };
+	if (!wallet->second->store.valid_password (*txn))
+	{
+		return nano::wallets_error::wallet_locked;
+	}
+	txn->reset();
+	account = wallet->second->insert_adhoc (key_a, generate_work_a);
+	return nano::wallets_error::none;
+}
+
 nano::wallets_error nano::wallets::insert_watch (nano::wallet_id const & wallet_id, std::vector<nano::public_key> const & accounts)
 {
 	auto lock{ mutex.lock () };
@@ -1539,10 +1619,20 @@ void nano::wallets::enter_initial_password (nano::wallet_id const & wallet_id)
 	wallet->second->enter_initial_password ();
 }
 
+bool nano::wallets::valid_password (nano::wallet_id const & wallet_id)
+{
+	auto txn = tx_begin_read ();
+	return valid_password (wallet_id, *txn);
+}
+
 bool nano::wallets::valid_password (nano::wallet_id const & wallet_id, store::transaction const & txn)
 {
 	auto lock{ mutex.lock () };
 	auto wallet{ items.find (wallet_id) };
+	if (wallet == items.end ())
+	{
+		return false;
+	}
 	return wallet->second->store.valid_password (txn);
 }
 
@@ -1581,11 +1671,65 @@ nano::public_key nano::wallets::deterministic_insert (nano::wallet_id const & wa
 	return wallet->second->deterministic_insert ();
 }
 
+nano::wallets_error nano::wallets::deterministic_insert (nano::wallet_id const & wallet_id, uint32_t const index, bool generate_work_a, nano::account & account)
+{
+	auto lock{ mutex.lock () };
+	auto wallet (items.find (wallet_id));
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+	auto txn{ tx_begin_write () };
+	if (!wallet->second->store.valid_password (*txn))
+	{
+		return nano::wallets_error::wallet_locked;
+	}
+
+	account = wallet->second->store.deterministic_insert (*txn, index);
+	if (generate_work_a)
+	{
+		wallet->second->work_ensure (account, account);
+	}
+	return nano::wallets_error::none;
+}
+
+nano::wallets_error nano::wallets::deterministic_insert (nano::wallet_id const & wallet_id, bool generate_work_a, nano::account & account)
+{
+	auto lock{ mutex.lock () };
+	auto wallet (items.find (wallet_id));
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+	auto txn{ tx_begin_write () };
+	if (!wallet->second->store.valid_password (*txn))
+	{
+		return nano::wallets_error::wallet_locked;
+	}
+
+	account = wallet->second->deterministic_insert (*txn, generate_work_a);
+	return nano::wallets_error::none;
+}
+
 void nano::wallets::deterministic_restore (nano::wallet_id const & wallet_id, store::transaction const & transaction_a)
 {
 	auto lock{ mutex.lock () };
 	auto wallet{ items.find (wallet_id) };
 	wallet->second->deterministic_restore (transaction_a);
+}
+
+nano::wallets_error nano::wallets::deterministic_index_get (nano::wallet_id const & wallet_id, uint32_t & index)
+{
+	index = 0;
+	auto lock{ mutex.lock () };
+	auto wallet (items.find (wallet_id));
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+	auto txn{ tx_begin_read () };
+	index = wallet->second->store.deterministic_index_get (*txn);
+	return nano::wallets_error::none;
 }
 
 void nano::wallets::backup (std::filesystem::path const & backup_path)
@@ -1630,13 +1774,6 @@ std::shared_ptr<nano::block> nano::wallets::change_action (nano::wallet_id const
 	return wallet->second->change_action (source_a, representative_a, work_a, generate_work_a);
 }
 
-void nano::wallets::send_async (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
-{
-	auto lock{ mutex.lock () };
-	auto wallet = items.find (wallet_id);
-	wallet->second->send_async (source_a, account_a, amount_a, action_a, work_a, generate_work_a, id_a);
-}
-
 nano::block_hash nano::wallets::send_sync (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a)
 {
 	auto lock{ mutex.lock () };
@@ -1658,6 +1795,28 @@ bool nano::wallets::change_sync (nano::wallet_id const & wallet_id, nano::accoun
 	return wallet->second->change_sync (source_a, representative_a);
 }
 
+nano::wallets_error nano::wallets::receive_async (nano::wallet_id const & wallet_id, nano::block_hash const & hash_a, nano::account const & representative_a, nano::uint128_t const & amount_a, nano::account const & account_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet (items.find (wallet_id));
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+	auto txn{ tx_begin_write () };
+	if (!wallet->second->store.valid_password (*txn))
+	{
+		return nano::wallets_error::wallet_locked;
+	}
+	if (wallet->second->store.find (*txn, account_a) == wallet->second->store.end ())
+	{
+		return nano::wallets_error::account_not_found;
+	}
+
+	wallet->second->receive_async (hash_a, representative_a, amount_a, account_a, action_a, work_a, generate_work_a);
+	return nano::wallets_error::none;
+}
+
 nano::wallets_error nano::wallets::change_async (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & representative_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a)
 {
 	auto lock{ mutex.lock () };
@@ -1676,6 +1835,28 @@ nano::wallets_error nano::wallets::change_async (nano::wallet_id const & wallet_
 		return nano::wallets_error::account_not_found;
 	}
 	wallet->second->change_async (source_a, representative_a, action_a, generate_work_a);
+	return nano::wallets_error::none;
+}
+
+nano::wallets_error nano::wallets::send_async (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
+{
+	auto lock{ mutex.lock () };
+	auto wallet (items.find (wallet_id));
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+	auto txn{ tx_begin_write () };
+	if (!wallet->second->store.valid_password (*txn))
+	{
+		return nano::wallets_error::wallet_locked;
+	}
+	if (wallet->second->store.find (*txn, source_a) == wallet->second->store.end ())
+	{
+		return nano::wallets_error::account_not_found;
+	}
+
+	wallet->second->send_async (source_a, account_a, amount_a, action_a, work_a, generate_work_a, id_a);
 	return nano::wallets_error::none;
 }
 
@@ -1753,15 +1934,22 @@ std::shared_ptr<nano::wallet> nano::wallets::create (nano::wallet_id const & id_
 	return result;
 }
 
-bool nano::wallets::search_receivable (nano::wallet_id const & wallet_a)
+nano::wallets_error nano::wallets::search_receivable (nano::wallet_id const & wallet_id)
 {
-	auto result (false);
-	if (auto wallet = open (wallet_a); wallet != nullptr)
+	auto lock{ mutex.lock () };
+	auto wallet (items.find (wallet_id));
+	if (wallet == items.end ())
 	{
-		auto tx{ tx_begin_read () };
-		result = wallet->search_receivable (*tx);
+		return nano::wallets_error::wallet_not_found;
 	}
-	return result;
+	auto txn{ tx_begin_read () };
+	if (!wallet->second->store.valid_password (*txn))
+	{
+		return nano::wallets_error::wallet_locked;
+	}
+
+	wallet->second->search_receivable (*txn);
+	return nano::wallets_error::none;
 }
 
 void nano::wallets::search_receivable_all ()
@@ -1909,7 +2097,7 @@ std::unique_ptr<nano::store::write_transaction> nano::wallets::tx_begin_write ()
 	return env.tx_begin_write ();
 }
 
-std::unique_ptr<nano::store::read_transaction> nano::wallets::tx_begin_read ()
+std::unique_ptr<nano::store::read_transaction> nano::wallets::tx_begin_read () const
 {
 	return env.tx_begin_read ();
 }

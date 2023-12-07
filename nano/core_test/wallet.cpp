@@ -207,7 +207,7 @@ TEST (wallet, send_async)
 		ASSERT_TIMELY (10s, node->balance (nano::dev::genesis_key.pub).is_zero ());
 	});
 	std::atomic<bool> success (false);
-	node->wallets.send_async (wallet_id, nano::dev::genesis_key.pub, key2.pub, std::numeric_limits<nano::uint128_t>::max (), [&success] (std::shared_ptr<nano::block> const & block_a) { ASSERT_NE (nullptr, block_a); success = true; });
+	ASSERT_EQ(nano::wallets_error::none, node->wallets.send_async (wallet_id, nano::dev::genesis_key.pub, key2.pub, std::numeric_limits<nano::uint128_t>::max (), [&success] (std::shared_ptr<nano::block> const & block_a) { ASSERT_NE (nullptr, block_a); success = true; }));
 	thread.join ();
 	ASSERT_TIMELY (2s, success);
 }
@@ -841,13 +841,13 @@ TEST (wallet, password_race_corrupt_seed)
 		threads.emplace_back ([&node1, &wallet_id] () {
 			for (int i = 0; i < 10; i++)
 			{
-				(void) node1.wallets.rekey (wallet_id, "0000");
+				(void)node1.wallets.rekey (wallet_id, "0000");
 			}
 		});
 		threads.emplace_back ([&node1, &wallet_id] () {
 			for (int i = 0; i < 10; i++)
 			{
-				(void) node1.wallets.rekey (wallet_id, "1234");
+				(void)node1.wallets.rekey (wallet_id, "1234");
 			}
 		});
 		threads.emplace_back ([&node1, &wallet_id] () {
@@ -1141,7 +1141,7 @@ TEST (wallet, search_receivable)
 
 	// Pending search should start an election
 	ASSERT_TRUE (node.active.empty ());
-	ASSERT_FALSE (node.wallets.search_receivable (wallet_id));
+	ASSERT_EQ (nano::wallets_error::none, node.wallets.search_receivable (wallet_id));
 	std::shared_ptr<nano::election> election;
 	ASSERT_TIMELY (5s, election = node.active.election (send->qualified_root ()));
 
@@ -1159,7 +1159,7 @@ TEST (wallet, search_receivable)
 
 	// Pending search should create the receive block
 	ASSERT_EQ (2, node.ledger.cache.block_count ());
-	ASSERT_FALSE (node.wallets.search_receivable (wallet_id));
+	ASSERT_EQ (nano::wallets_error::none, node.wallets.search_receivable (wallet_id));
 	ASSERT_TIMELY (3s, node.balance (nano::dev::genesis->account ()) == nano::dev::constants.genesis_amount);
 	auto receive_hash = node.ledger.latest (*node.store.tx_begin_read (), nano::dev::genesis->account ());
 	auto receive = node.block (receive_hash);

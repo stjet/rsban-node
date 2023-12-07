@@ -106,16 +106,14 @@ int const nano::wallet_store::special_count (7);
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, store::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a, std::string const & json_a) :
 	kdf (kdf_a),
-	rust_handle{ rsnano::rsn_lmdb_wallet_store_create2 (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), wallet_a.c_str (), json_a.c_str ()) },
-	fanout{ fanout_a }
+	rust_handle{ rsnano::rsn_lmdb_wallet_store_create2 (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), wallet_a.c_str (), json_a.c_str ()) }
 {
 	init_a = rust_handle == nullptr;
 }
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, store::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a) :
 	kdf (kdf_a),
-	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), representative_a.bytes.data (), wallet_a.c_str ()) },
-	fanout{ fanout_a }
+	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), representative_a.bytes.data (), wallet_a.c_str ()) }
 {
 	init_a = rust_handle == nullptr;
 }
@@ -1962,18 +1960,6 @@ nano::wallets_error nano::wallets::serialize (nano::wallet_id const & wallet_id,
 	auto txn{ tx_begin_read () };
 	wallet->second->serialize (json);
 	return nano::wallets_error::none;
-}
-
-std::shared_ptr<nano::wallet> nano::wallets::open (nano::wallet_id const & id_a)
-{
-	auto lock{ mutex.lock () };
-	std::shared_ptr<nano::wallet> result;
-	auto existing (items.find (id_a));
-	if (existing != items.end ())
-	{
-		result = existing->second;
-	}
-	return result;
 }
 
 std::shared_ptr<nano::wallet> nano::wallets::create (nano::wallet_id const & id_a)

@@ -96,7 +96,6 @@ public:
 	static unsigned constexpr version_current = version_4;
 	static int const special_count;
 	nano::kdf & kdf;
-	unsigned fanout;
 
 private:
 	rsnano::LmdbWalletStoreHandle * rust_handle;
@@ -264,7 +263,6 @@ public:
 
 	wallets (bool, nano::node &);
 	~wallets ();
-	std::shared_ptr<nano::wallet> open (nano::wallet_id const &);
 	std::shared_ptr<nano::wallet> create (nano::wallet_id const &);
 	size_t wallet_count () const;
 	size_t representatives_count (nano::wallet_id const & id) const;

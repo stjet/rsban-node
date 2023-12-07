@@ -82,22 +82,6 @@ TEST (node, block_store_path_failure)
 	node->stop ();
 }
 
-TEST (node, password_fanout)
-{
-	nano::test::system system;
-	rsnano::async_runtime async_rt{ false };
-	auto path (nano::unique_path ());
-	nano::node_config config;
-	config.peering_port = system.get_available_port ();
-	config.logging.init (path);
-	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
-	config.password_fanout = 10;
-	nano::node node (async_rt, path, config, pool);
-	auto wallet (node.wallets.create (100));
-	ASSERT_EQ (10, wallet->store.fanout);
-	node.stop ();
-}
-
 TEST (node, balance)
 {
 	nano::test::system system (1);

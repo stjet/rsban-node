@@ -30,8 +30,7 @@ TEST (wallets, open_existing)
 		nano::wallets wallets (error, *system.nodes[0]);
 		ASSERT_FALSE (error);
 		ASSERT_EQ (1, wallets.wallet_count ());
-		auto wallet (wallets.create (id));
-		ASSERT_NE (nullptr, wallet);
+		wallets.create (id);
 		ASSERT_TRUE (wallets.wallet_exists (id));
 		nano::raw_key password;
 		password.clear ();
@@ -39,7 +38,7 @@ TEST (wallets, open_existing)
 		while (password == 0)
 		{
 			ASSERT_NO_ERROR (system.poll ());
-			wallet->store.password (password);
+			wallets.password (id, password);
 		}
 	}
 	{
@@ -62,8 +61,7 @@ TEST (wallets, remove)
 		nano::wallets wallets (error, *system.nodes[0]);
 		ASSERT_FALSE (error);
 		ASSERT_EQ (1, wallets.wallet_count ());
-		auto wallet (wallets.create (one));
-		ASSERT_NE (nullptr, wallet);
+		wallets.create (one);
 		ASSERT_EQ (2, wallets.wallet_count ());
 		wallets.destroy (one);
 		ASSERT_EQ (1, wallets.wallet_count ());

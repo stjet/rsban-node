@@ -91,7 +91,7 @@ TEST (conflicts, add_two)
 	auto const & node = system.add_node ();
 	auto wallet_id = node->wallets.first_wallet_id ();
 
-	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
 
 	// define a functor that sends from given account to given destination,
 	// optionally force-confirming the send blocks *and* receiving on the destination account;

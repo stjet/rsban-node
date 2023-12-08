@@ -742,7 +742,8 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					nano::raw_key key;
 					if (!key.decode_hex (vm["key"].as<std::string> ()))
 					{
-						wallets.insert_adhoc (wallet_id, key);
+						auto error = wallets.insert_adhoc2 (wallet_id, key);
+						set_cli_wallets_error (error, ec);
 					}
 					else
 					{
@@ -894,16 +895,24 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				if (error == nano::wallets_error::none)
 				{
 					nano::raw_key seed;
-					auto transaction (wallets.tx_begin_write ());
-					wallets.get_seed (seed, *transaction, wallet_id);
-					std::cout << boost::str (boost::format ("Seed: %1%\n") % seed.to_string ());
-					auto keys{ wallets.decrypt (*transaction, wallet_id) };
-					for (auto key : keys)
+					error = wallets.get_seed (wallet_id, seed);
+					set_cli_wallets_error (error, ec);
+					if (error == nano::wallets_error::none)
 					{
-						std::cout << boost::str (boost::format ("Pub: %1% Prv: %2%\n") % key.first.to_account () % key.second.to_string ());
-						if (nano::pub_key (key.second) != key.first)
+						std::cout << boost::str (boost::format ("Seed: %1%\n") % seed.to_string ());
+						std::vector<std::pair<nano::account, nano::raw_key>> keys;
+						error = wallets.decrypt (wallet_id, keys);
+						set_cli_wallets_error (error, ec);
+						if (error == nano::wallets_error::none)
 						{
-							std::cerr << boost::str (boost::format ("Invalid private key %1%\n") % key.second.to_string ());
+							for (auto key : keys)
+							{
+								std::cout << boost::str (boost::format ("Pub: %1% Prv: %2%\n") % key.first.to_account () % key.second.to_string ());
+								if (nano::pub_key (key.second) != key.first)
+								{
+									std::cerr << boost::str (boost::format ("Invalid private key %1%\n") % key.second.to_string ());
+								}
+							}
 						}
 					}
 				}
@@ -1067,7 +1076,9 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		for (auto wallet_id : wallet_ids)
 		{
 			std::cout << boost::str (boost::format ("Wallet ID: %1%\n") % wallet_id.to_string ());
-			auto accounts{ node->wallets.get_accounts (wallet_id) };
+			std::vector<nano::account> accounts;
+			auto error = node->wallets.get_accounts (wallet_id, accounts);
+			set_cli_wallets_error (error, ec);
 			for (auto account : accounts)
 			{
 				std::cout << account.to_account () << '\n';

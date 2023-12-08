@@ -40,7 +40,7 @@ TEST (system, DISABLED_generate_send_existing)
 	auto & node1 (*system.nodes[0]);
 	auto wallet_id1 = node1.wallets.first_wallet_id ();
 	nano::thread_runner runner (system.async_rt.io_ctx, node1.config->io_threads);
-	node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc2 (wallet_id1, nano::dev::genesis_key.prv);
 	nano::keypair stake_preserver;
 	auto send_block (node1.wallets.send_action (wallet_id1, nano::dev::genesis->account (), stake_preserver.pub, nano::dev::constants.genesis_amount / 3 * 2, true));
 	auto info1 = node1.ledger.account_info (*node1.store.tx_begin_read (), nano::dev::genesis_key.pub);
@@ -91,7 +91,7 @@ TEST (system, DISABLED_generate_send_new)
 	auto & node1 (*system.nodes[0]);
 	nano::thread_runner runner (system.async_rt.io_ctx, node1.config->io_threads);
 	auto wallet_id = node1.wallets.first_wallet_id ();
-	node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
 	{
 		auto transaction (node1.store.tx_begin_read ());
 		auto iterator1 (node1.store.account ().begin (*transaction));
@@ -123,7 +123,8 @@ TEST (system, DISABLED_generate_send_new)
 	system.generate_send_new (node1, accounts);
 	nano::account new_account{};
 	{
-		auto accounts{ node1.wallets.get_accounts (wallet_id) };
+		std::vector<nano::account> accounts;
+		ASSERT_EQ (nano::wallets_error::none, node1.wallets.get_accounts (wallet_id, accounts));
 		ASSERT_EQ (accounts.size (), 2);
 		if (accounts[0] != nano::dev::genesis_key.pub)
 		{

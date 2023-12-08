@@ -1254,13 +1254,6 @@ nano::wallets_error nano::wallets::set_representative (nano::wallet_id const & w
 	return nano::wallets_error::none;
 }
 
-void nano::wallets::get_seed (nano::raw_key & prv_a, store::transaction const & txn, nano::wallet_id const & id) const
-{
-	auto lock{ mutex.lock () };
-	auto wallet{ items.find (id) };
-	wallet->second->store.seed (prv_a, txn);
-}
-
 nano::wallets_error nano::wallets::get_seed (nano::wallet_id const & wallet_id, nano::raw_key & prv_a) const
 {
 	auto lock{ mutex.lock () };
@@ -1323,23 +1316,6 @@ bool nano::wallets::import (nano::wallet_id const & wallet_id, std::string const
 	auto lock{ mutex.lock () };
 	auto existing{ items.find (wallet_id) };
 	return existing->second->import (json_a, password_a);
-}
-
-std::vector<std::pair<nano::account, nano::raw_key>> nano::wallets::decrypt (store::transaction const & txn, nano::wallet_id const & wallet_id) const
-{
-	std::vector<std::pair<nano::account, nano::raw_key>> result;
-	auto lock{ mutex.lock () };
-	auto existing (items.find (wallet_id));
-	for (auto i (existing->second->store.begin (txn)), m (existing->second->store.end ()); i != m; ++i)
-	{
-		nano::account const & account (i->first);
-		nano::raw_key key;
-		auto error (existing->second->store.fetch (txn, account, key));
-		(void)error;
-		debug_assert (!error);
-		result.emplace_back (account, key);
-	}
-	return result;
 }
 
 nano::wallets_error nano::wallets::decrypt (nano::wallet_id const & wallet_id, std::vector<std::pair<nano::account, nano::raw_key>> accounts) const
@@ -1428,19 +1404,6 @@ nano::wallets_error nano::wallets::get_accounts (nano::wallet_id const & wallet_
 	}
 
 	return nano::wallets_error::none;
-}
-
-std::vector<nano::account> nano::wallets::get_accounts (nano::wallet_id const & wallet_id)
-{
-	auto lock{ mutex.lock () };
-	auto wallet = items.find (wallet_id);
-	auto transaction (tx_begin_read ());
-	std::vector<nano::account> result;
-	for (auto j (wallet->second->store.begin (*transaction)), m (wallet->second->store.end ()); j != m; ++j)
-	{
-		result.push_back (nano::account (j->first));
-	}
-	return result;
 }
 
 std::vector<nano::account> nano::wallets::get_accounts (size_t max_results)
@@ -1549,12 +1512,23 @@ nano::wallet_id nano::wallets::first_wallet_id () const
 	return items.begin ()->first;
 }
 
-nano::public_key nano::wallets::insert_adhoc (nano::wallet_id const & id, nano::raw_key const & key_a, bool generate_work_a)
+nano::wallets_error nano::wallets::insert_adhoc2 (nano::wallet_id const & wallet_id, nano::raw_key const & key_a, bool generate_work_a)
 {
 	auto lock{ mutex.lock () };
-	auto wallet{ items.find (id) };
-	debug_assert (wallet != items.end ());
-	return wallet->second->insert_adhoc (key_a, generate_work_a);
+	auto wallet (items.find (wallet_id));
+	if (wallet == items.end ())
+	{
+		return nano::wallets_error::wallet_not_found;
+	}
+	auto txn{ tx_begin_read () };
+	if (!wallet->second->store.valid_password (*txn))
+	{
+		return nano::wallets_error::wallet_locked;
+	}
+
+	txn->reset ();
+	wallet->second->insert_adhoc (key_a, generate_work_a);
+	return nano::wallets_error::none;
 }
 
 nano::wallets_error nano::wallets::insert_adhoc (nano::wallet_id const & wallet_id, nano::raw_key const & key_a, bool generate_work_a, nano::public_key & account)
@@ -1651,22 +1625,17 @@ nano::wallets_error nano::wallets::valid_password (nano::wallet_id const & walle
 	return nano::wallets_error::none;
 }
 
-bool nano::wallets::valid_password (nano::wallet_id const & wallet_id, store::transaction const & txn)
+nano::wallets_error nano::wallets::attempt_password (nano::wallet_id const & wallet_id, std::string const & password, bool & error)
 {
 	auto lock{ mutex.lock () };
-	auto wallet{ items.find (wallet_id) };
+	auto wallet (items.find (wallet_id));
 	if (wallet == items.end ())
 	{
-		return false;
+		return nano::wallets_error::wallet_not_found;
 	}
-	return wallet->second->store.valid_password (txn);
-}
-
-bool nano::wallets::attempt_password (nano::wallet_id const & wallet_id, store::transaction const & txn, std::string const & password)
-{
-	auto lock{ mutex.lock () };
-	auto wallet{ items.find (wallet_id) };
-	return wallet->second->store.attempt_password (txn, password);
+	auto txn{ tx_begin_write () };
+	error = wallet->second->store.attempt_password (*txn, password);
+	return nano::wallets_error::none;
 }
 
 nano::wallets_error nano::wallets::rekey (nano::wallet_id const wallet_id, std::string const & password)

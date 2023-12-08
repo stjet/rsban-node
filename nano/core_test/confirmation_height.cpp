@@ -39,7 +39,7 @@ TEST (confirmation_height, single)
 	auto node = system.add_node (node_flags);
 	nano::keypair key1;
 	auto wallet_id = node->wallets.first_wallet_id ();
-	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
 	nano::block_hash latest1 (node->latest (nano::dev::genesis_key.pub));
 	nano::block_builder builder;
 	auto send1 = builder
@@ -430,8 +430,8 @@ TEST (confirmation_height, gap_live)
 	auto wallet_id2 = node2->wallets.first_wallet_id ();
 	nano::keypair destination;
 
-	node->wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
-	node2->wallets.insert_adhoc (wallet_id2, destination.prv);
+	(void)node->wallets.insert_adhoc2 (wallet_id1, nano::dev::genesis_key.prv);
+	(void)node2->wallets.insert_adhoc2 (wallet_id2, destination.prv);
 
 	nano::block_builder builder;
 	auto send1 = builder
@@ -1104,7 +1104,7 @@ TEST (confirmation_height, observers)
 	auto node1 = system.add_node (node_flags);
 	nano::keypair key1;
 	auto wallet_id = node1->wallets.first_wallet_id ();
-	node1->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	(void)node1->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
 	nano::block_hash latest1 (node1->latest (nano::dev::genesis_key.pub));
 	nano::block_builder builder;
 	auto send1 = builder
@@ -1139,7 +1139,7 @@ TEST (confirmation_height, pending_observer_callbacks)
 	auto node = system.add_node (node_config, node_flags);
 	auto wallet_id = node->wallets.first_wallet_id ();
 
-	node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
 	nano::block_hash latest (node->latest (nano::dev::genesis_key.pub));
 
 	nano::keypair key1;
@@ -1345,7 +1345,7 @@ TEST (confirmation_height, cemented_gap_below_receive)
 
 	nano::keypair key1;
 	nano::block_builder builder;
-	node->wallets.insert_adhoc (wallet_id, key1.prv);
+	(void)node->wallets.insert_adhoc2 (wallet_id, key1.prv);
 
 	auto send = builder
 				.send ()
@@ -1414,7 +1414,7 @@ TEST (confirmation_height, cemented_gap_below_receive)
 					   .build ();
 
 	nano::keypair key2;
-	node->wallets.insert_adhoc (wallet_id, key2.prv);
+	(void)node->wallets.insert_adhoc2 (wallet_id, key2.prv);
 	auto send3 = builder
 				 .send ()
 				 .previous (dummy_send1->hash ())
@@ -1498,7 +1498,7 @@ TEST (confirmation_height, cemented_gap_below_no_cache)
 	nano::block_hash latest (node->latest (nano::dev::genesis_key.pub));
 
 	nano::keypair key1;
-	node->wallets.insert_adhoc (wallet_id, key1.prv);
+	(void)node->wallets.insert_adhoc2 (wallet_id, key1.prv);
 
 	nano::block_builder builder;
 	auto send = builder
@@ -1568,7 +1568,7 @@ TEST (confirmation_height, cemented_gap_below_no_cache)
 					   .build ();
 
 	nano::keypair key2;
-	node->wallets.insert_adhoc (wallet_id, key2.prv);
+	(void)node->wallets.insert_adhoc2 (wallet_id, key2.prv);
 	auto send3 = builder
 				 .send ()
 				 .previous (dummy_send1->hash ())

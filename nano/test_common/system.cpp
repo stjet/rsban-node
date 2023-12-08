@@ -202,7 +202,8 @@ nano::account nano::test::system::account (store::transaction const & transactio
 {
 	debug_assert (nodes.size () > index_a);
 	auto node = nodes[index_a];
-	auto accounts = node->wallets.get_accounts (node->wallets.first_wallet_id ());
+	std::vector<nano::account> accounts;
+	(void)node->wallets.get_accounts (node->wallets.first_wallet_id (), accounts);
 	debug_assert (accounts.size () == 1);
 	return nano::account (accounts[0]);
 }
@@ -533,7 +534,7 @@ void nano::test::system::generate_mass_activity (uint32_t count_a, nano::node & 
 {
 	std::vector<nano::account> accounts;
 	auto dev_genesis_key = nano::dev::genesis_key;
-	nodes[0]->wallets.insert_adhoc (nodes[0]->wallets.first_wallet_id (), dev_genesis_key.prv);
+	(void)nodes[0]->wallets.insert_adhoc2 (nodes[0]->wallets.first_wallet_id (), dev_genesis_key.prv);
 	accounts.push_back (dev_genesis_key.pub);
 	auto previous (std::chrono::steady_clock::now ());
 	for (uint32_t i (0); i < count_a; ++i)

@@ -146,10 +146,10 @@ TEST (vote_processor, weights)
 	auto wallet_id2 = system.nodes[2]->wallets.first_wallet_id ();
 	auto wallet_id3 = system.nodes[3]->wallets.first_wallet_id ();
 
-	system.nodes[0]->wallets.insert_adhoc (wallet_id0, nano::dev::genesis_key.prv);
-	system.nodes[1]->wallets.insert_adhoc (wallet_id1, key0.prv);
-	system.nodes[2]->wallets.insert_adhoc (wallet_id2, key1.prv);
-	system.nodes[3]->wallets.insert_adhoc (wallet_id3, key2.prv);
+	(void)system.nodes[0]->wallets.insert_adhoc2 (wallet_id0, nano::dev::genesis_key.prv);
+	(void)system.nodes[1]->wallets.insert_adhoc2 (wallet_id1, key0.prv);
+	(void)system.nodes[2]->wallets.insert_adhoc2 (wallet_id2, key1.prv);
+	(void)system.nodes[3]->wallets.insert_adhoc2 (wallet_id3, key2.prv);
 	(void)system.nodes[1]->wallets.set_representative (wallet_id1, key0.pub);
 	(void)system.nodes[2]->wallets.set_representative (wallet_id2, key1.pub);
 	(void)system.nodes[3]->wallets.set_representative (wallet_id3, key2.pub);
@@ -212,7 +212,7 @@ TEST (vote_processor, no_broadcast_local)
 	ASSERT_TIMELY (10s, !node.active.empty ());
 	ASSERT_EQ (2 * node.config->vote_minimum.number (), node.weight (nano::dev::genesis_key.pub));
 	// Insert account in wallet. Votes on node are not enabled.
-	node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc2 (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	// Ensure that the node knows the genesis key in its wallet.
 	node.wallets.compute_reps ();
 	ASSERT_TRUE (node.wallets.rep_exists (nano::dev::genesis_key.pub));
@@ -313,7 +313,7 @@ TEST (vote_processor, no_broadcast_local_with_a_principal_representative)
 	ASSERT_TIMELY (10s, !node.active.empty ());
 	ASSERT_EQ (nano::dev::constants.genesis_amount - 2 * node.config->vote_minimum.number (), node.weight (nano::dev::genesis_key.pub));
 	// Insert account in wallet. Votes on node are not enabled.
-	node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc2 (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	// Ensure that the node knows the genesis key in its wallet.
 	node.wallets.compute_reps ();
 	ASSERT_TRUE (node.wallets.rep_exists (nano::dev::genesis_key.pub));

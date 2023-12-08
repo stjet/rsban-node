@@ -20,7 +20,7 @@ TEST (request_aggregator, one)
 	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
-	node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc2 (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::block_builder builder;
 	auto send1 = builder
 				 .state ()
@@ -67,7 +67,7 @@ TEST (request_aggregator, one_update)
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	auto wallet_id = node.wallets.first_wallet_id ();
-	node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
 	nano::keypair key1;
 	auto send1 = nano::state_block_builder ()
 				 .account (nano::dev::genesis_key.pub)
@@ -133,7 +133,7 @@ TEST (request_aggregator, two)
 	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
-	node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc2 (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::keypair key1;
 	nano::state_block_builder builder;
 	auto send1 = builder.make_block ()
@@ -211,7 +211,7 @@ TEST (request_aggregator, two_endpoints)
 	auto & node1 (*system.add_node (node_config, node_flags));
 	node_config.peering_port = system.get_available_port ();
 	auto & node2 (*system.add_node (node_config, node_flags));
-	node1.wallets.insert_adhoc (node1.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc2 (node1.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::block_builder builder;
 	auto send1 = builder
 				 .state ()
@@ -266,7 +266,7 @@ TEST (request_aggregator, split)
 	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
-	node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc2 (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	std::vector<std::shared_ptr<nano::block>> blocks;
 	auto previous = nano::dev::genesis->hash ();
@@ -320,7 +320,7 @@ TEST (request_aggregator, channel_lifetime)
 	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
-	node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc2 (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::block_builder builder;
 	auto send1 = builder
 				 .state ()
@@ -351,7 +351,7 @@ TEST (request_aggregator, channel_update)
 	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
-	node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc2 (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::block_builder builder;
 	auto send1 = builder
 				 .state ()
@@ -391,7 +391,7 @@ TEST (request_aggregator, channel_max_queue)
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	node_config.max_queued_requests = 1;
 	auto & node (*system.add_node (node_config));
-	node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc2 (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::block_builder builder;
 	auto send1 = builder
 				 .state ()
@@ -419,7 +419,7 @@ TEST (request_aggregator, unique)
 	nano::node_config node_config = system.default_config ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
-	node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc2 (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::block_builder builder;
 	auto send1 = builder
 				 .state ()
@@ -473,7 +473,7 @@ TEST (request_aggregator, cannot_vote)
 				 .build_shared ();
 	ASSERT_EQ (nano::process_result::progress, node.process (*send1).code);
 	ASSERT_EQ (nano::process_result::progress, node.process (*send2).code);
-	node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc2 (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	ASSERT_FALSE (node.ledger.dependents_confirmed (*node.store.tx_begin_read (), *send2));
 
 	std::vector<std::pair<nano::block_hash, nano::root>> request;

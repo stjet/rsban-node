@@ -9,7 +9,6 @@ mod lmdb_config;
 mod lmdb_env;
 mod wallet;
 mod wallet_store;
-mod wallets;
 
 pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl, LmdbIteratorImpl};
 pub use lmdb_config::{LmdbConfig, SyncStrategy};
@@ -17,9 +16,9 @@ pub use wallet::*;
 
 pub use lmdb_env::{
     ConfiguredDatabase, DatabaseStub, EnvOptions, Environment, EnvironmentOptions, EnvironmentStub,
-    EnvironmentWrapper, LmdbEnv, RoCursorWrapper, TestDbFile, TestLmdbEnv,
+    EnvironmentWrapper, LmdbEnv, RoCursorWrapper, RwTransaction, TestDbFile, TestLmdbEnv,
 };
-use lmdb_env::{InactiveTransaction, RoCursor, RoTransaction, RwTransaction};
+use lmdb_env::{InactiveTransaction, RoCursor, RoTransaction};
 
 mod account_store;
 pub use account_store::{ConfiguredAccountDatabaseBuilder, LmdbAccountStore};
@@ -55,8 +54,6 @@ pub use wallet_store::{Fans, LmdbWalletStore, WalletValue};
 
 mod fan;
 pub use fan::Fan;
-
-pub use wallets::LmdbWallets;
 
 mod store;
 pub use store::{create_backup_file, LmdbStore};

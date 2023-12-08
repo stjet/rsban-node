@@ -1,21 +1,22 @@
 use super::{lmdb_env::LmdbEnvHandle, wallet::WalletHandle, TransactionHandle};
 use crate::{utils::ContextWrapper, U256ArrayDto, VoidPointerCallback};
 use rsnano_core::{BlockHash, WalletId};
-use rsnano_store_lmdb::{LmdbWallets, Wallet};
+use rsnano_node::wallets::Wallets;
+use rsnano_store_lmdb::Wallet;
 use std::{
     collections::HashMap,
     ffi::{c_char, c_void, CStr},
     sync::{Arc, MutexGuard},
 };
 
-pub struct LmdbWalletsHandle(LmdbWallets);
+pub struct LmdbWalletsHandle(Wallets);
 
 #[no_mangle]
 pub extern "C" fn rsn_lmdb_wallets_create(
     enable_voting: bool,
     lmdb: &LmdbEnvHandle,
 ) -> *mut LmdbWalletsHandle {
-    Box::into_raw(Box::new(LmdbWalletsHandle(LmdbWallets::new(
+    Box::into_raw(Box::new(LmdbWalletsHandle(Wallets::new(
         enable_voting,
         Arc::clone(lmdb),
     ))))

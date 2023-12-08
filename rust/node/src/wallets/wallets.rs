@@ -1,33 +1,29 @@
 use std::{
     collections::HashMap,
-    marker::PhantomData,
     sync::{Arc, Mutex},
 };
 
-use crate::{
-    iterator::{BinaryDbIterator, DbIterator},
-    lmdb_env::RwTransaction,
-    Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, Wallet,
-};
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{Account, BlockHash, NoValue, RawKey, WalletId};
+use rsnano_store_lmdb::{
+    BinaryDbIterator, DbIterator, Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl,
+    LmdbWriteTransaction, RwTransaction, Transaction, Wallet,
+};
 pub type WalletsIterator<T> = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl<T>>;
 
-pub struct LmdbWallets<T: Environment = EnvironmentWrapper> {
+pub struct Wallets<T: Environment = EnvironmentWrapper> {
     pub handle: Option<T::Database>,
     pub send_action_ids_handle: Option<T::Database>,
-    phantom: PhantomData<T>,
     enable_voting: bool,
     _env: Arc<LmdbEnv<T>>,
     pub mutex: Mutex<HashMap<WalletId, Arc<Wallet>>>,
 }
 
-impl<T: Environment + 'static> LmdbWallets<T> {
+impl<T: Environment + 'static> Wallets<T> {
     pub fn new(enable_voting: bool, env: Arc<LmdbEnv<T>>) -> Self {
         Self {
             handle: None,
             send_action_ids_handle: None,
-            phantom: PhantomData::default(),
             enable_voting,
             mutex: Mutex::new(HashMap::new()),
             _env: env,
@@ -45,7 +41,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
 
     pub fn get_store_it(
         &self,
-        txn: &dyn crate::Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &str,
     ) -> WalletsIterator<T> {
         let hash_bytes: [u8; 64] = hash.as_bytes().try_into().unwrap();
@@ -59,7 +55,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
 
     pub fn get_wallet_ids(
         &self,
-        txn: &dyn crate::Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
     ) -> Vec<WalletId> {
         let mut wallet_ids = Vec::new();
         let beginning = RawKey::from(0).encode_hex();
@@ -74,7 +70,7 @@ impl<T: Environment + 'static> LmdbWallets<T> {
 
     pub fn get_block_hash(
         &self,
-        txn: &dyn crate::Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         id: &str,
     ) -> anyhow::Result<Option<BlockHash>> {
         match txn.get(self.send_action_ids_handle.unwrap(), id.as_bytes()) {

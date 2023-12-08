@@ -133,7 +133,6 @@ public:
 	std::shared_ptr<nano::block> change_action (nano::account const &, nano::account const &, uint64_t = 0, bool = true);
 	std::shared_ptr<nano::block> receive_action (nano::block_hash const &, nano::account const &, nano::uint128_union const &, nano::account const &, uint64_t = 0, bool = true);
 	std::shared_ptr<nano::block> send_action (nano::account const &, nano::account const &, nano::uint128_t const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});
-	bool action_complete (std::shared_ptr<nano::block> const &, nano::account const &, bool const, nano::block_details const &);
 	void enter_initial_password ();
 	bool enter_password (store::transaction const &, std::string const &);
 	nano::public_key insert_adhoc (nano::raw_key const &, bool = true);
@@ -147,11 +146,8 @@ public:
 	void change_async (nano::account const &, nano::account const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true);
 	bool receive_sync (std::shared_ptr<nano::block> const &, nano::account const &, nano::uint128_t const &);
 	void receive_async (nano::block_hash const &, nano::account const &, nano::uint128_t const &, nano::account const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true);
-	void send_async (nano::account const &, nano::account const &, nano::uint128_t const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});
 	void work_cache_blocking (nano::account const &, nano::root const &);
 	void work_update (store::transaction const &, nano::account const &, nano::root const &, uint64_t);
-	// Schedule work generation after a few seconds
-	void work_ensure (nano::account const &, nano::root const &);
 	bool search_receivable (store::transaction const &);
 	uint32_t deterministic_check (store::transaction const & transaction_a, uint32_t index);
 	/** Changes the wallet seed and returns the first account */
@@ -348,6 +344,15 @@ public:
 	bool set_block_hash (store::transaction const & transaction_a, std::string const & id_a, nano::block_hash const & hash);
 	std::vector<nano::wallet_id> get_wallet_ids (store::transaction const & transaction_a);
 	nano::block_hash get_block_hash (bool & error_a, store::transaction const & transaction_a, std::string const & id_a);
+
+private:
+	void send_async (const std::shared_ptr<nano::wallet> wallet, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a);
+	std::shared_ptr<nano::block> send_action (const std::shared_ptr<nano::wallet> wallet, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a);
+
+public: // TODO make private
+	// Schedule work generation after a few seconds
+	void work_ensure (std::shared_ptr<nano::wallet> wallet, nano::account const & account_a, nano::root const & root_a);
+	bool action_complete (std::shared_ptr<nano::wallet> wallet, std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, bool const generate_work_a, nano::block_details const & details_a);
 
 	// fields
 public:

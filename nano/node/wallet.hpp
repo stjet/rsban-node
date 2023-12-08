@@ -130,20 +130,12 @@ public:
 	wallet (bool &, store::transaction &, nano::wallets &, std::string const &, std::string const &);
 	wallet (wallet const &) = delete;
 	~wallet ();
-	std::shared_ptr<nano::block> change_action (nano::account const &, nano::account const &, uint64_t = 0, bool = true);
-	std::shared_ptr<nano::block> receive_action (nano::block_hash const &, nano::account const &, nano::uint128_union const &, nano::account const &, uint64_t = 0, bool = true);
-	std::shared_ptr<nano::block> send_action (nano::account const &, nano::account const &, nano::uint128_t const &, uint64_t = 0, bool = true, boost::optional<std::string> = {});
 	void enter_initial_password ();
 	bool enter_password (store::transaction const &, std::string const &);
-	nano::public_key insert_adhoc (nano::raw_key const &, bool = true);
 	bool insert_watch (store::transaction const &, nano::public_key const &);
-	nano::public_key deterministic_insert (store::transaction const &, bool = true);
-	nano::public_key deterministic_insert (bool = true);
 	bool exists (nano::public_key const &);
-	bool import (std::string const &, std::string const &);
 	void serialize (std::string &);
 	bool change_sync (nano::account const &, nano::account const &);
-	void change_async (nano::account const &, nano::account const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true);
 	bool receive_sync (std::shared_ptr<nano::block> const &, nano::account const &, nano::uint128_t const &);
 	void receive_async (nano::block_hash const &, nano::account const &, nano::uint128_t const &, nano::account const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true);
 	void work_cache_blocking (nano::account const &, nano::root const &);
@@ -157,7 +149,6 @@ public:
 	nano::wallet_store store;
 	nano::wallets & wallets;
 	nano::wallet_action_thread & wallet_actions;
-	nano::wallet_representatives & representatives;
 	nano::node & node;
 	nano::store::lmdb::env & env;
 	rsnano::WalletHandle * handle;
@@ -346,13 +337,18 @@ public:
 	nano::block_hash get_block_hash (bool & error_a, store::transaction const & transaction_a, std::string const & id_a);
 
 private:
-	void send_async (const std::shared_ptr<nano::wallet> wallet, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a);
-	std::shared_ptr<nano::block> send_action (const std::shared_ptr<nano::wallet> wallet, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a);
+	void send_async (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a);
 
 public: // TODO make private
 	// Schedule work generation after a few seconds
 	void work_ensure (std::shared_ptr<nano::wallet> wallet, nano::account const & account_a, nano::root const & root_a);
 	bool action_complete (std::shared_ptr<nano::wallet> wallet, std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, bool const generate_work_a, nano::block_details const & details_a);
+	nano::public_key deterministic_insert (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & transaction_a, bool generate_work_a);
+	nano::public_key insert_adhoc (const std::shared_ptr<nano::wallet> & wallet, nano::raw_key const & key_a, bool generate_work_a);
+	std::shared_ptr<nano::block> receive_action (const std::shared_ptr<nano::wallet> & wallet, nano::block_hash const & send_hash_a, nano::account const & representative_a, nano::uint128_union const & amount_a, nano::account const & account_a, uint64_t work_a, bool generate_work_a);
+	std::shared_ptr<nano::block> change_action (const std::shared_ptr<wallet> & wallet, nano::account const & source_a, nano::account const & representative_a, uint64_t work_a, bool generate_work_a);
+	std::shared_ptr<nano::block> send_action (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a);
+	void change_async (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & representative_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a);
 
 	// fields
 public:

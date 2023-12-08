@@ -12,7 +12,7 @@ TEST (vote_generator, cache)
 	nano::test::system system (1);
 	auto & node (*system.nodes[0]);
 	auto epoch1 = system.upgrade_genesis_epoch (node, nano::epoch::epoch_1);
-	(void)node.wallets.insert_adhoc2 (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	node.generator.add (epoch1->root (), epoch1->hash ());
 	ASSERT_TIMELY (1s, !node.history.votes (epoch1->root (), epoch1->hash ()).empty ());
 	auto votes (node.history.votes (epoch1->root (), epoch1->hash ()));
@@ -27,10 +27,10 @@ TEST (vote_generator, multiple_representatives)
 	auto & node (*system.nodes[0]);
 	auto wallet_id = node.wallets.first_wallet_id ();
 	nano::keypair key1, key2, key3;
-	(void)node.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
-	(void)node.wallets.insert_adhoc2 (wallet_id, key1.prv);
-	(void)node.wallets.insert_adhoc2 (wallet_id, key2.prv);
-	(void)node.wallets.insert_adhoc2 (wallet_id, key3.prv);
+	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc (wallet_id, key1.prv);
+	(void)node.wallets.insert_adhoc (wallet_id, key2.prv);
+	(void)node.wallets.insert_adhoc (wallet_id, key3.prv);
 	auto const amount = 100 * nano::Gxrb_ratio;
 	node.wallets.send_sync (wallet_id, nano::dev::genesis_key.pub, key1.pub, amount);
 	node.wallets.send_sync (wallet_id, nano::dev::genesis_key.pub, key2.pub, amount);
@@ -98,7 +98,7 @@ TEST (vote_spacing, vote_generator)
 	nano::node_flags node_flags;
 	node_flags.set_disable_search_pending (true);
 	auto & node = *system.add_node (config, node_flags);
-	(void)node.wallets.insert_adhoc2 (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::state_block_builder builder;
 	auto send1 = builder.make_block ()
 				 .account (nano::dev::genesis_key.pub)
@@ -141,7 +141,7 @@ TEST (vote_spacing, rapid)
 	nano::node_flags node_flags;
 	node_flags.set_disable_search_pending (true);
 	auto & node = *system.add_node (config, node_flags);
-	(void)node.wallets.insert_adhoc2 (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::state_block_builder builder;
 	auto send1 = builder.make_block ()
 				 .account (nano::dev::genesis_key.pub)

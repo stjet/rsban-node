@@ -974,17 +974,6 @@ nano::public_key nano::wallet::change_seed (store::transaction const & transacti
 	return account;
 }
 
-void nano::wallet::deterministic_restore (store::transaction const & transaction_a)
-{
-	auto index (store.deterministic_index_get (transaction_a));
-	auto new_index (deterministic_check (transaction_a, index));
-	for (uint32_t i (index); i <= new_index && index != new_index; ++i)
-	{
-		// Disable work generation to prevent weak CPU nodes stuck
-		deterministic_insert (transaction_a, false);
-	}
-}
-
 bool nano::wallet::live ()
 {
 	return store.is_open ();
@@ -1311,11 +1300,20 @@ bool nano::wallets::ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id
 	return valid;
 }
 
-bool nano::wallets::import (nano::wallet_id const & wallet_id, std::string const & json_a, std::string const & password_a)
+bool nano::wallets::import_replace (nano::wallet_id const & wallet_id, std::string const & json_a, std::string const & password_a)
 {
 	auto lock{ mutex.lock () };
 	auto existing{ items.find (wallet_id) };
 	return existing->second->import (json_a, password_a);
+}
+
+bool nano::wallets::import (nano::wallet_id const & wallet_id, std::string const & json_a)
+{
+	auto lock{ mutex.lock () };
+	auto txn (tx_begin_write ());
+	bool error = true;
+	nano::wallet wallet (error, *txn, node.wallets, wallet_id.to_string (), json_a);
+	return error;
 }
 
 nano::wallets_error nano::wallets::decrypt (nano::wallet_id const & wallet_id, std::vector<std::pair<nano::account, nano::raw_key>> accounts) const
@@ -1512,7 +1510,7 @@ nano::wallet_id nano::wallets::first_wallet_id () const
 	return items.begin ()->first;
 }
 
-nano::wallets_error nano::wallets::insert_adhoc2 (nano::wallet_id const & wallet_id, nano::raw_key const & key_a, bool generate_work_a)
+nano::wallets_error nano::wallets::insert_adhoc (nano::wallet_id const & wallet_id, nano::raw_key const & key_a, bool generate_work_a)
 {
 	auto lock{ mutex.lock () };
 	auto wallet (items.find (wallet_id));
@@ -1671,13 +1669,6 @@ nano::wallets_error nano::wallets::lock (nano::wallet_id const & wallet_id)
 	return nano::wallets_error::none;
 }
 
-nano::public_key nano::wallets::deterministic_insert (nano::wallet_id const & wallet_id)
-{
-	auto lock{ mutex.lock () };
-	auto wallet{ items.find (wallet_id) };
-	return wallet->second->deterministic_insert ();
-}
-
 nano::wallets_error nano::wallets::deterministic_insert (nano::wallet_id const & wallet_id, uint32_t const index, bool generate_work_a, nano::account & account)
 {
 	auto lock{ mutex.lock () };
@@ -1716,13 +1707,6 @@ nano::wallets_error nano::wallets::deterministic_insert (nano::wallet_id const &
 
 	account = wallet->second->deterministic_insert (*txn, generate_work_a);
 	return nano::wallets_error::none;
-}
-
-void nano::wallets::deterministic_restore (nano::wallet_id const & wallet_id, store::transaction const & transaction_a)
-{
-	auto lock{ mutex.lock () };
-	auto wallet{ items.find (wallet_id) };
-	wallet->second->deterministic_restore (transaction_a);
 }
 
 nano::wallets_error nano::wallets::deterministic_index_get (nano::wallet_id const & wallet_id, uint32_t & index)
@@ -2080,17 +2064,6 @@ bool nano::wallets::exists (nano::account const & account_a)
 	return result;
 }
 
-bool nano::wallets::exists (store::transaction const & transaction_a, nano::account const & account_a)
-{
-	auto lock{ mutex.lock () };
-	auto result (false);
-	for (auto i (items.begin ()), n (items.end ()); !result && i != n; ++i)
-	{
-		result = i->second->store.exists (transaction_a, account_a);
-	}
-	return result;
-}
-
 std::unique_ptr<nano::store::write_transaction> nano::wallets::tx_begin_write ()
 {
 	return env.tx_begin_write ();
@@ -2101,9 +2074,10 @@ std::unique_ptr<nano::store::read_transaction> nano::wallets::tx_begin_read () c
 	return env.tx_begin_read ();
 }
 
-void nano::wallets::clear_send_ids (store::transaction const & transaction_a)
+void nano::wallets::clear_send_ids ()
 {
-	rsnano::rsn_lmdb_wallets_clear_send_ids (rust_handle, transaction_a.get_rust_handle ());
+	auto txn{ env.tx_begin_write () };
+	rsnano::rsn_lmdb_wallets_clear_send_ids (rust_handle, txn->get_rust_handle ());
 }
 
 size_t nano::wallets::voting_reps_count () const

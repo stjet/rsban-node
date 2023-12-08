@@ -87,7 +87,7 @@ TEST (node, balance)
 	nano::test::system system (1);
 	auto node = system.nodes[0];
 	auto wallet_id = node->wallets.first_wallet_id ();
-	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	auto transaction (node->store.tx_begin_write ());
 	ASSERT_EQ (std::numeric_limits<nano::uint128_t>::max (), node->ledger.account_balance (*transaction, nano::dev::genesis_key.pub));
 }
@@ -110,7 +110,7 @@ TEST (node, send_unkeyed)
 	auto node = system.nodes[0];
 	auto wallet_id = node->wallets.first_wallet_id ();
 	nano::keypair key2;
-	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	node->wallets.set_password (wallet_id, nano::keypair ().prv);
 	ASSERT_EQ (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 }
@@ -121,8 +121,8 @@ TEST (node, send_self)
 	nano::keypair key2;
 	auto node = system.nodes[0];
 	auto wallet_id = node->wallets.first_wallet_id ();
-	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
-	(void)node->wallets.insert_adhoc2 (wallet_id, key2.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, key2.prv);
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 	ASSERT_TIMELY (10s, !node->balance (key2.pub).is_zero ());
 	ASSERT_EQ (std::numeric_limits<nano::uint128_t>::max () - node->config->receive_minimum.number (), node->balance (nano::dev::genesis_key.pub));
@@ -136,8 +136,8 @@ TEST (node, send_single)
 	auto node2 = system.nodes[1];
 	auto wallet_id1 = node1->wallets.first_wallet_id ();
 	auto wallet_id2 = node2->wallets.first_wallet_id ();
-	(void)node1->wallets.insert_adhoc2 (wallet_id1, nano::dev::genesis_key.prv);
-	(void)node2->wallets.insert_adhoc2 (wallet_id2, key2.prv);
+	(void)node1->wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
+	(void)node2->wallets.insert_adhoc (wallet_id2, key2.prv);
 	ASSERT_NE (nullptr, node1->wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key2.pub, node1->config->receive_minimum.number ()));
 	ASSERT_EQ (std::numeric_limits<nano::uint128_t>::max () - node1->config->receive_minimum.number (), node1->balance (nano::dev::genesis_key.pub));
 	ASSERT_TRUE (node1->balance (key2.pub).is_zero ());
@@ -152,8 +152,8 @@ TEST (node, send_single_observing_peer)
 	auto node2 = system.nodes[1];
 	auto wallet_id1 = node1->wallets.first_wallet_id ();
 	auto wallet_id2 = node2->wallets.first_wallet_id ();
-	(void)node1->wallets.insert_adhoc2 (wallet_id1, nano::dev::genesis_key.prv);
-	(void)node2->wallets.insert_adhoc2 (wallet_id2, key2.prv);
+	(void)node1->wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
+	(void)node2->wallets.insert_adhoc (wallet_id2, key2.prv);
 	ASSERT_NE (nullptr, node1->wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key2.pub, node1->config->receive_minimum.number ()));
 	ASSERT_EQ (std::numeric_limits<nano::uint128_t>::max () - node1->config->receive_minimum.number (), node1->balance (nano::dev::genesis_key.pub));
 	ASSERT_TRUE (node1->balance (key2.pub).is_zero ());
@@ -201,8 +201,8 @@ TEST (node, quick_confirm)
 	nano::keypair key;
 	nano::block_hash previous (node1.latest (nano::dev::genesis_key.pub));
 	auto genesis_start_balance (node1.balance (nano::dev::genesis_key.pub));
-	(void)node1.wallets.insert_adhoc2 (wallet_id, key.prv);
-	(void)node1.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id, key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	auto send = nano::send_block_builder ()
 				.previous (previous)
 				.destination (key.pub)
@@ -223,7 +223,7 @@ TEST (node, node_receive_quorum)
 	auto wallet_id = node1.wallets.first_wallet_id ();
 	nano::keypair key;
 	nano::block_hash previous (node1.latest (nano::dev::genesis_key.pub));
-	(void)node1.wallets.insert_adhoc2 (wallet_id, key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id, key.prv);
 	auto send = nano::send_block_builder ()
 				.previous (previous)
 				.destination (key.pub)
@@ -244,7 +244,7 @@ TEST (node, node_receive_quorum)
 	auto node2 = system2.nodes[0];
 	auto wallet_id2 = node2->wallets.first_wallet_id ();
 
-	(void)node2->wallets.insert_adhoc2 (wallet_id2, nano::dev::genesis_key.prv);
+	(void)node2->wallets.insert_adhoc (wallet_id2, nano::dev::genesis_key.prv);
 	ASSERT_TRUE (node1.balance (key.pub).is_zero ());
 	node1.network->tcp_channels->start_tcp (node2->network->endpoint ());
 	while (node1.balance (key.pub).is_zero ())
@@ -265,8 +265,8 @@ TEST (node, auto_bootstrap)
 	auto node0 = system.add_node (config, node_flags);
 	auto wallet_id = node0->wallets.first_wallet_id ();
 	nano::keypair key2;
-	(void)node0->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
-	(void)node0->wallets.insert_adhoc2 (wallet_id, key2.prv);
+	(void)node0->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	(void)node0->wallets.insert_adhoc (wallet_id, key2.prv);
 	auto send1 (node0->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node0->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send1);
 	ASSERT_TIMELY (10s, node0->balance (key2.pub) == node0->config->receive_minimum.number ());
@@ -298,8 +298,8 @@ TEST (node, auto_bootstrap_reverse)
 	auto node0 = system.add_node (config, node_flags);
 	auto wallet_id = node0->wallets.first_wallet_id ();
 	nano::keypair key2;
-	(void)node0->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
-	(void)node0->wallets.insert_adhoc2 (wallet_id, key2.prv);
+	(void)node0->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	(void)node0->wallets.insert_adhoc (wallet_id, key2.prv);
 	auto node1 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.logging, system.work, node_flags));
 	ASSERT_FALSE (node1->init_error ());
 	ASSERT_NE (nullptr, node0->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node0->config->receive_minimum.number ()));
@@ -371,9 +371,9 @@ TEST (node, search_receivable)
 	auto node (system.nodes[0]);
 	auto wallet_id = node->wallets.first_wallet_id ();
 	nano::keypair key2;
-	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
-	(void)node->wallets.insert_adhoc2 (wallet_id, key2.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, key2.prv);
 	ASSERT_EQ (nano::wallets_error::none, node->wallets.search_receivable (wallet_id));
 	ASSERT_TIMELY (10s, !node->balance (key2.pub).is_zero ());
 }
@@ -384,10 +384,10 @@ TEST (node, search_receivable_same)
 	auto node (system.nodes[0]);
 	auto wallet_id = node->wallets.first_wallet_id ();
 	nano::keypair key2;
-	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
-	(void)node->wallets.insert_adhoc2 (wallet_id, key2.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, key2.prv);
 	ASSERT_EQ (nano::wallets_error::none, node->wallets.search_receivable (wallet_id));
 	ASSERT_TIMELY (10s, node->balance (key2.pub) == 2 * node->config->receive_minimum.number ());
 }
@@ -399,13 +399,13 @@ TEST (node, search_receivable_multiple)
 	auto wallet_id = node->wallets.first_wallet_id ();
 	nano::keypair key2;
 	nano::keypair key3;
-	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
-	(void)node->wallets.insert_adhoc2 (wallet_id, key3.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, key3.prv);
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key3.pub, node->config->receive_minimum.number ()));
 	ASSERT_TIMELY (10s, !node->balance (key3.pub).is_zero ());
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, key3.pub, key2.pub, node->config->receive_minimum.number ()));
-	(void)node->wallets.insert_adhoc2 (wallet_id, key2.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, key2.prv);
 	ASSERT_EQ (nano::wallets_error::none, node->wallets.search_receivable (wallet_id));
 	ASSERT_TIMELY (10s, node->balance (key2.pub) == 2 * node->config->receive_minimum.number ());
 }
@@ -418,7 +418,7 @@ TEST (node, search_receivable_confirmed)
 	auto node = system.add_node (node_config);
 	auto wallet_id = node->wallets.first_wallet_id ();
 	nano::keypair key2;
-	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	auto send1 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send1);
 	auto send2 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
@@ -433,7 +433,7 @@ TEST (node, search_receivable_confirmed)
 		ASSERT_NO_ERROR (system.poll ());
 	}
 	ASSERT_EQ (nano::wallets_error::none, node->wallets.remove_account (wallet_id, nano::dev::genesis_key.pub));
-	(void)node->wallets.insert_adhoc2 (wallet_id, key2.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, key2.prv);
 	ASSERT_EQ (nano::wallets_error::none, node->wallets.search_receivable (wallet_id));
 	ASSERT_FALSE (node->active.active (send1->hash ()));
 	ASSERT_FALSE (node->active.active (send2->hash ()));
@@ -454,7 +454,7 @@ TEST (node, search_receivable_pruned)
 	auto node2 = system.add_node (config, node_flags);
 	auto wallet_id2 = node2->wallets.first_wallet_id ();
 	nano::keypair key2;
-	(void)node1->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node1->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	auto send1 (node1->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node2->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send1);
 	auto send2 (node1->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node2->config->receive_minimum.number ()));
@@ -475,7 +475,7 @@ TEST (node, search_receivable_pruned)
 	ASSERT_TRUE (node2->ledger.block_or_pruned_exists (send1->hash ())); // true for pruned
 
 	// Receive pruned block
-	(void)node2->wallets.insert_adhoc2 (wallet_id2, key2.prv);
+	(void)node2->wallets.insert_adhoc (wallet_id2, key2.prv);
 	ASSERT_EQ (nano::wallets_error::none, node2->wallets.search_receivable (wallet_id2));
 	ASSERT_TIMELY (10s, node2->balance (key2.pub) == 2 * node2->config->receive_minimum.number ());
 }
@@ -488,11 +488,11 @@ TEST (node, unlock_search)
 	nano::keypair key2;
 	nano::uint128_t balance (node->balance (nano::dev::genesis_key.pub));
 	ASSERT_EQ (nano::wallets_error::none, node->wallets.rekey (wallet_id, ""));
-	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 	ASSERT_TIMELY (10s, node->balance (nano::dev::genesis_key.pub) != balance);
 	ASSERT_TIMELY (10s, node->active.empty ());
-	(void)node->wallets.insert_adhoc2 (wallet_id, key2.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, key2.prv);
 	node->wallets.set_password (wallet_id, nano::keypair ().prv);
 	ASSERT_EQ (nano::wallets_error::none, node->wallets.enter_password (wallet_id, ""));
 	ASSERT_TIMELY (10s, !node->balance (key2.pub).is_zero ());
@@ -522,7 +522,7 @@ TEST (node, confirm_locked)
 	nano::test::system system (1);
 	auto node (system.nodes[0]);
 	auto wallet_id{ node->wallets.first_wallet_id () };
-	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	ASSERT_EQ (nano::wallets_error::invalid_password, node->wallets.enter_password (wallet_id, "1"));
 	auto block = nano::send_block_builder ()
 				 .previous (0)
@@ -553,7 +553,7 @@ TEST (node, fork_publish)
 		auto wallet_id0 = system.nodes[0]->wallets.first_wallet_id ();
 		auto & node1 (*system.nodes[0]);
 		auto wallet_id1 = node1.wallets.first_wallet_id ();
-		(void)system.nodes[0]->wallets.insert_adhoc2 (wallet_id0, nano::dev::genesis_key.prv);
+		(void)system.nodes[0]->wallets.insert_adhoc (wallet_id0, nano::dev::genesis_key.prv);
 		nano::keypair key1;
 		nano::send_block_builder builder;
 		auto send1 = builder.make_block ()
@@ -673,7 +673,7 @@ TEST (node, fork_keep)
 	node2.block_processor.flush ();
 	ASSERT_TIMELY_EQ (5s, 1, node1.active.size ());
 	ASSERT_TIMELY_EQ (5s, 1, node2.active.size ());
-	(void)node1.wallets.insert_adhoc2 (wallet_id1, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 	node1.process_active (send2);
 	node1.block_processor.flush ();
 	node2.process_active (send2);
@@ -729,7 +729,7 @@ TEST (node, fork_flip)
 	node2.block_processor.flush ();
 	ASSERT_TIMELY_EQ (5s, 1, node1.active.size ());
 	ASSERT_TIMELY_EQ (5s, 1, node2.active.size ());
-	(void)node1.wallets.insert_adhoc2 (wallet_id1, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 	node1.network->inbound (publish2, ignored_channel);
 	node1.block_processor.flush ();
 	node2.network->inbound (publish1, ignored_channel);
@@ -796,7 +796,7 @@ TEST (node, fork_multi_flip)
 	node2.block_processor.flush ();
 	ASSERT_TIMELY_EQ (5s, 1, node1.active.size ());
 	ASSERT_TIMELY_EQ (5s, 1, node2.active.size ());
-	(void)node1.wallets.insert_adhoc2 (wallet_id1, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 
 	node1.network->inbound (publish2, channel1);
 	node1.network->inbound (publish3, channel1);
@@ -836,7 +836,7 @@ TEST (node, fork_bootstrap_flip)
 	auto wallet_id1 = node1.wallets.first_wallet_id ();
 	nano::node_config config1 (system.get_available_port (), system1.logging);
 	auto & node2 = *system1.add_node (config1, node_flags);
-	(void)node1.wallets.insert_adhoc2 (wallet_id1, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 	nano::block_hash latest = node1.latest (nano::dev::genesis_key.pub);
 	nano::keypair key1;
 	nano::send_block_builder builder;
@@ -907,7 +907,7 @@ TEST (node, fork_open)
 
 	// register key for genesis account, not sure why we do this, it seems needless,
 	// since the genesis account at this stage has zero voting weight
-	(void)node.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 
 	// create the 1st open block to receive send1, which should be regarded as the winner just because it is first
 	nano::open_block_builder builder;
@@ -1012,7 +1012,7 @@ TEST (node, fork_open_flip)
 	ASSERT_TIMELY (5s, 2 == node2.active.size ());
 
 	// allow node1 to vote and wait for open1 to be confirmed on node1
-	(void)node1.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	ASSERT_TIMELY (5s, node1.block_confirmed (open1->hash ()));
 
 	// Notify both nodes of both blocks, both nodes will become aware that a fork exists
@@ -1045,7 +1045,7 @@ TEST (node, coherent_observer)
 		auto transaction (node1.store.tx_begin_read ());
 		ASSERT_TRUE (node1.store.block ().exists (*transaction, status_a.get_winner ()->hash ()));
 	});
-	(void)node1.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	nano::keypair key;
 	node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, 1);
 }
@@ -1059,10 +1059,12 @@ TEST (node, fork_no_vote_quorum)
 	auto wallet_id = node1.wallets.first_wallet_id ();
 	auto wallet_id2 = node2.wallets.first_wallet_id ();
 	auto wallet_id3 = node3.wallets.first_wallet_id ();
-	(void)node1.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
-	auto key4 (node1.wallets.deterministic_insert (wallet_id));
+	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	nano::public_key key4;
+	(void)node1.wallets.deterministic_insert (wallet_id, true, key4);
 	node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key4, nano::dev::constants.genesis_amount / 4);
-	auto key1 (node2.wallets.deterministic_insert (wallet_id2));
+	nano::public_key key1;
+	(void)node2.wallets.deterministic_insert (wallet_id2, true, key1);
 	(void)node2.wallets.set_representative (wallet_id2, key1);
 	auto block (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1, node1.config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, block);
@@ -1084,7 +1086,8 @@ TEST (node, fork_no_vote_quorum)
 	ASSERT_EQ (nano::process_result::progress, node1.process (*send1).code);
 	ASSERT_EQ (nano::process_result::progress, node2.process (*send1).code);
 	ASSERT_EQ (nano::process_result::progress, node3.process (*send1).code);
-	auto key2 (node3.wallets.deterministic_insert (wallet_id3));
+	nano::public_key key2;
+	(void)node3.wallets.deterministic_insert (wallet_id3, true, key2);
 	auto send2 = nano::send_block_builder ()
 				 .previous (block->hash ())
 				 .destination (key2)
@@ -1093,7 +1096,6 @@ TEST (node, fork_no_vote_quorum)
 				 .work (*system.work.generate (block->hash ()))
 				 .build_shared ();
 	nano::raw_key key3;
-	auto transaction (node2.wallets.tx_begin_read ());
 	auto vote = std::make_shared<nano::vote> (key1, key3, 0, 0, std::vector<nano::block_hash>{ send2->hash () });
 	nano::confirm_ack confirm{ nano::dev::network_params.network, vote };
 	auto channel = node2.network->find_node_id (node3.node_id.pub);
@@ -1115,12 +1117,12 @@ TEST (node, DISABLED_fork_pre_confirm)
 	auto wallet_id0 = node0.wallets.first_wallet_id ();
 	auto wallet_id1 = node1.wallets.first_wallet_id ();
 	auto wallet_id2 = node2.wallets.first_wallet_id ();
-	(void)node0.wallets.insert_adhoc2 (wallet_id0, nano::dev::genesis_key.prv);
+	(void)node0.wallets.insert_adhoc (wallet_id0, nano::dev::genesis_key.prv);
 	nano::keypair key1;
-	(void)node1.wallets.insert_adhoc2 (wallet_id1, key1.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id1, key1.prv);
 	(void)node1.wallets.set_representative (wallet_id1, key1.pub);
 	nano::keypair key2;
-	(void)node2.wallets.insert_adhoc2 (wallet_id2, key2.prv);
+	(void)node2.wallets.insert_adhoc (wallet_id2, key2.prv);
 	(void)node2.wallets.set_representative (wallet_id2, key2.pub);
 	auto block0 (node0.wallets.send_action (wallet_id0, nano::dev::genesis_key.pub, key1.pub, nano::dev::constants.genesis_amount / 3));
 	ASSERT_NE (nullptr, block0);
@@ -1169,7 +1171,7 @@ TEST (node, DISABLED_fork_pre_confirm)
 TEST (node, DISABLED_fork_stale)
 {
 	nano::test::system system1 (1);
-	(void)system1.nodes[0]->wallets.insert_adhoc2 (system1.nodes[0]->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)system1.nodes[0]->wallets.insert_adhoc (system1.nodes[0]->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::test::system system2 (1);
 	auto & node1 (*system1.nodes[0]);
 	auto & node2 (*system2.nodes[0]);
@@ -1335,9 +1337,9 @@ TEST (node, DISABLED_broadcast_elected)
 		ASSERT_TIMELY (5s, 4 == node->ledger.cache.cemented_count ())
 	}
 
-	(void)node0->wallets.insert_adhoc2 (wallet_id0, rep_big.prv);
-	(void)node1->wallets.insert_adhoc2 (wallet_id1, rep_small.prv);
-	(void)node2->wallets.insert_adhoc2 (wallet_id2, rep_other.prv);
+	(void)node0->wallets.insert_adhoc (wallet_id0, rep_big.prv);
+	(void)node1->wallets.insert_adhoc (wallet_id1, rep_small.prv);
+	(void)node2->wallets.insert_adhoc (wallet_id2, rep_other.prv);
 	auto fork0 = builder.send ()
 				 .previous (node2->latest (nano::dev::genesis_key.pub))
 				 .destination (rep_small.pub)
@@ -1356,7 +1358,7 @@ TEST (node, DISABLED_broadcast_elected)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				 .work (*node0->work_generate_blocking (node2->latest (nano::dev::genesis_key.pub)))
 				 .build_shared ();
-	(void)node2->wallets.insert_adhoc2 (wallet_id2, rep_small.prv);
+	(void)node2->wallets.insert_adhoc (wallet_id2, rep_small.prv);
 	node2->process_active (fork1);
 	ASSERT_TIMELY (10s, node0->ledger.block_or_pruned_exists (fork0->hash ()) && node1->ledger.block_or_pruned_exists (fork0->hash ()));
 	system.deadline_set (50s);
@@ -1402,8 +1404,8 @@ TEST (node, rep_self_vote)
 	ASSERT_TIMELY (5s, election = node0->active.election (open_big.qualified_root ()));
 	node0->active.force_confirm (*election);
 
-	(void)node0->wallets.insert_adhoc2 (wallet_id, rep_big.prv);
-	(void)node0->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node0->wallets.insert_adhoc (wallet_id, rep_big.prv);
+	(void)node0->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	ASSERT_EQ (node0->wallets.voting_reps_count (), 2);
 	auto block0 = builder.send ()
 				  .previous (fund_big.hash ())
@@ -1557,7 +1559,7 @@ TEST (node, bootstrap_fork_open)
 	// They disagree about open0/open1
 	ASSERT_EQ (nano::process_result::progress, node0->process (open0).code);
 	ASSERT_EQ (nano::process_result::progress, node1->process (open1).code);
-	(void)node0->wallets.insert_adhoc2 (wallet_id0, nano::dev::genesis_key.prv);
+	(void)node0->wallets.insert_adhoc (wallet_id0, nano::dev::genesis_key.prv);
 	ASSERT_FALSE (node1->ledger.block_or_pruned_exists (open0.hash ()));
 	ASSERT_FALSE (node1->bootstrap_initiator.in_progress ());
 	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
@@ -1575,7 +1577,7 @@ TEST (node, bootstrap_confirm_frontiers)
 	auto node1 = system1.nodes[0];
 	auto wallet_id0 = node0->wallets.first_wallet_id ();
 	auto wallet_id1 = node1->wallets.first_wallet_id ();
-	(void)node0->wallets.insert_adhoc2 (wallet_id0, nano::dev::genesis_key.prv);
+	(void)node0->wallets.insert_adhoc (wallet_id0, nano::dev::genesis_key.prv);
 	nano::keypair key0;
 
 	// create block to send 500 raw from genesis to key0 and save into node0 ledger without immediately triggering an election
@@ -1622,12 +1624,12 @@ TEST (node, unconfirmed_send)
 
 	auto & node1 = *system.add_node ();
 	auto wallet_id1 = node1.wallets.first_wallet_id ();
-	(void)node1.wallets.insert_adhoc2 (wallet_id1, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 
 	nano::keypair key2{};
 	auto & node2 = *system.add_node ();
 	auto wallet_id2 = node2.wallets.first_wallet_id ();
-	(void)node2.wallets.insert_adhoc2 (wallet_id2, key2.prv);
+	(void)node2.wallets.insert_adhoc (wallet_id2, key2.prv);
 
 	// firstly, send two units from node1 to node2 and expect that both nodes see the block as confirmed
 	// (node1 will start an election for it, vote on it and node2 gets synced up)
@@ -1671,7 +1673,7 @@ TEST (node, rep_list)
 	auto wallet_id0 = node0.wallets.first_wallet_id ();
 	auto wallet_id1 = node1.wallets.first_wallet_id ();
 	// Node0 has a rep
-	(void)node0.wallets.insert_adhoc2 (wallet_id0, nano::dev::genesis_key.prv);
+	(void)node0.wallets.insert_adhoc (wallet_id0, nano::dev::genesis_key.prv);
 	nano::keypair key1;
 	// Broadcast a confirm so others should know this is a rep node
 	node0.wallets.send_action (wallet_id0, nano::dev::genesis_key.pub, key1.pub, nano::Mxrb_ratio);
@@ -1868,7 +1870,7 @@ TEST (node, rep_remove)
 	// Add working node for genesis representative
 	auto node_genesis_rep = system.add_node (nano::node_config (system.get_available_port (), system.logging));
 	auto wallet_id = node_genesis_rep->wallets.first_wallet_id ();
-	(void)node_genesis_rep->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node_genesis_rep->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	auto channel_genesis_rep (searching_node.network->find_node_id (node_genesis_rep->get_node_id ()));
 	ASSERT_NE (nullptr, channel_genesis_rep);
 
@@ -1907,7 +1909,7 @@ TEST (node, rep_connection_close)
 	auto & node1 (*system.nodes[0]);
 	auto & node2 (*system.nodes[1]);
 	// Add working representative (node 2)
-	(void)node2.wallets.insert_adhoc2 (node2.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node2.wallets.insert_adhoc (node2.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	ASSERT_TIMELY (10s, node1.representative_register.representative_count () == 1);
 	node2.stop ();
 	// Remove representative with closed channel
@@ -1926,9 +1928,9 @@ TEST (node, no_voting)
 	auto wallet_id0 = node0.wallets.first_wallet_id ();
 	auto wallet_id1 = node1->wallets.first_wallet_id ();
 	// Node1 has a rep
-	(void)node0.wallets.insert_adhoc2 (wallet_id0, nano::dev::genesis_key.prv);
+	(void)node0.wallets.insert_adhoc (wallet_id0, nano::dev::genesis_key.prv);
 	nano::keypair key1;
-	(void)node1->wallets.insert_adhoc2 (wallet_id1, key1.prv);
+	(void)node1->wallets.insert_adhoc (wallet_id1, key1.prv);
 	// Broadcast a confirm so others should know this is a rep node
 	node1->wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key1.pub, nano::Mxrb_ratio);
 	ASSERT_TIMELY (10s, node0.active.empty ());
@@ -1941,8 +1943,8 @@ TEST (node, send_callback)
 	auto & node0 (*system.nodes[0]);
 	auto wallet_id = node0.wallets.first_wallet_id ();
 	nano::keypair key2;
-	(void)node0.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
-	(void)node0.wallets.insert_adhoc2 (wallet_id, key2.prv);
+	(void)node0.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	(void)node0.wallets.insert_adhoc (wallet_id, key2.prv);
 	node0.config->callback_address = "localhost";
 	node0.config->callback_port = 8010;
 	node0.config->callback_target = "/";
@@ -1968,7 +1970,7 @@ TEST (node, balance_observer)
 			balances++;
 		}
 	});
-	(void)node1.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, 1);
 	system.deadline_set (10s);
 	auto done (false);
@@ -2108,7 +2110,7 @@ TEST (node, block_confirm)
 	auto wallet_id2 = node2.wallets.first_wallet_id ();
 	nano::keypair key;
 	nano::state_block_builder builder;
-	(void)node2.wallets.insert_adhoc2 (wallet_id2, nano::dev::genesis_key.prv);
+	(void)node2.wallets.insert_adhoc (wallet_id2, nano::dev::genesis_key.prv);
 	auto send1 = builder.make_block ()
 				 .account (nano::dev::genesis_key.pub)
 				 .previous (nano::dev::genesis->hash ())
@@ -2141,7 +2143,7 @@ TEST (node, confirm_quorum)
 	nano::test::system system (1);
 	auto & node1 = *system.nodes[0];
 	auto wallet_id = node1.wallets.first_wallet_id ();
-	(void)node1.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	// Put greater than node.delta () in pending so quorum can't be reached
 	nano::amount new_balance = node1.online_reps.delta () - nano::Gxrb_ratio;
 	auto send1 = nano::state_block_builder ()
@@ -2210,7 +2212,7 @@ TEST (node, local_votes_cache)
 	ASSERT_TIMELY (5s, election = node.active.election (send2->qualified_root ()));
 	node.active.force_confirm (*election);
 	ASSERT_TIMELY (3s, node.ledger.cache.cemented_count () == 3);
-	(void)node.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	nano::confirm_req message1{ nano::dev::network_params.network, send1 };
 	nano::confirm_req message2{ nano::dev::network_params.network, send2 };
 	auto channel = std::make_shared<nano::transport::fake::channel> (node);
@@ -2260,7 +2262,7 @@ TEST (node, DISABLED_local_votes_cache_batch)
 	auto & node (*system.add_node (node_config));
 	auto wallet_id = node.wallets.first_wallet_id ();
 	ASSERT_GE (node.network_params.voting.max_cache, 2);
-	(void)node.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	nano::keypair key1;
 	auto send1 = nano::state_block_builder ()
 				 .account (nano::dev::genesis_key.pub)
@@ -2333,7 +2335,7 @@ TEST (node, local_votes_cache_generate_new_vote)
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	auto wallet_id = node.wallets.first_wallet_id ();
-	(void)node.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 
 	// Send a confirm req for genesis block to node
 	nano::confirm_req message1{ nano::dev::network_params.network, nano::dev::genesis };
@@ -2387,7 +2389,7 @@ TEST (node, local_votes_cache_fork)
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node1 (*system.add_node (node_config, node_flags));
 	auto wallet_id = node1.wallets.first_wallet_id ();
-	(void)node1.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	auto send1 = nano::state_block_builder ()
 				 .account (nano::dev::genesis_key.pub)
 				 .previous (nano::dev::genesis->hash ())
@@ -2430,7 +2432,7 @@ TEST (node, vote_republish)
 	nano::keypair key2;
 	// by not setting a private key on node1's wallet for genesis account, it is stopped from voting
 	auto wallet_id = node2.wallets.first_wallet_id ();
-	(void)node2.wallets.insert_adhoc2 (wallet_id, key2.prv);
+	(void)node2.wallets.insert_adhoc (wallet_id, key2.prv);
 
 	// send1 and send2 are forks of each other
 	nano::send_block_builder builder;
@@ -2519,9 +2521,9 @@ TEST (node, vote_by_hash_bundle)
 	ASSERT_TRUE (nano::test::start_elections (system, node, { blocks.back () }, true));
 	ASSERT_TIMELY (5s, nano::test::confirmed (node, { blocks.back () }));
 
-	(void)node.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	nano::keypair key1;
-	(void)node.wallets.insert_adhoc2 (wallet_id, key1.prv);
+	(void)node.wallets.insert_adhoc (wallet_id, key1.prv);
 
 	system.nodes[0]->observers->vote.add ([&max_hashes] (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const &, nano::vote_code) {
 		if (vote_a->hashes ().size () > max_hashes)
@@ -2549,7 +2551,7 @@ TEST (node, vote_by_hash_republish)
 	auto & node1 = *system.nodes[0];
 	auto & node2 = *system.nodes[1];
 	nano::keypair key2;
-	(void)node2.wallets.insert_adhoc2 (node2.wallets.first_wallet_id (), key2.prv);
+	(void)node2.wallets.insert_adhoc (node2.wallets.first_wallet_id (), key2.prv);
 
 	// send1 and send2 are forks of each other
 	nano::send_block_builder builder;
@@ -2602,7 +2604,7 @@ TEST (node, DISABLED_vote_by_hash_epoch_block_republish)
 	auto & node1 (*system.nodes[0]);
 	auto & node2 (*system.nodes[1]);
 	nano::keypair key2;
-	(void)node2.wallets.insert_adhoc2 (node2.wallets.first_wallet_id (), key2.prv);
+	(void)node2.wallets.insert_adhoc (node2.wallets.first_wallet_id (), key2.prv);
 	auto send1 = nano::send_block_builder ()
 				 .previous (nano::dev::genesis->hash ())
 				 .destination (key2.pub)
@@ -2717,7 +2719,7 @@ TEST (node, epoch_conflict_confirm)
 	ASSERT_TIMELY (5s, nano::test::active (node0, { change, epoch_open }));
 
 	// Make node1 a representative
-	(void)node1.wallets.insert_adhoc2 (node1.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (node1.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 
 	// Ensure the elections for conflicting blocks have completed
 	ASSERT_TIMELY (5s, nano::test::active (node0, { change, epoch_open }));
@@ -2826,7 +2828,7 @@ TEST (node, block_processor_signatures)
 {
 	nano::test::system system{ 1 };
 	auto & node1 = *system.nodes[0];
-	(void)node1.wallets.insert_adhoc2 (node1.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (node1.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::block_hash latest = system.nodes[0]->latest (nano::dev::genesis_key.pub);
 	nano::state_block_builder builder;
 	nano::keypair key1;
@@ -3311,7 +3313,7 @@ TEST (node, bidirectional_tcp)
 	node1->process_active (send1);
 	ASSERT_TIMELY (10s, node1->ledger.block_or_pruned_exists (send1->hash ()) && node2->ledger.block_or_pruned_exists (send1->hash ()));
 	// Test block confirmation from node 1 (add representative to node 1)
-	(void)node1->wallets.insert_adhoc2 (wallet_id1, nano::dev::genesis_key.prv);
+	(void)node1->wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 	// Wait to find new reresentative
 	ASSERT_TIMELY (10s, node2->representative_register.representative_count () != 0);
 	/* Wait for confirmation
@@ -3342,7 +3344,7 @@ TEST (node, bidirectional_tcp)
 	node2->block_processor.flush ();
 	ASSERT_TIMELY (10s, node1->ledger.block_or_pruned_exists (send2->hash ()) && node2->ledger.block_or_pruned_exists (send2->hash ()));
 	// Test block confirmation from node 2 (add representative to node 2)
-	(void)node2->wallets.insert_adhoc2 (wallet_id2, nano::dev::genesis_key.prv);
+	(void)node2->wallets.insert_adhoc (wallet_id2, nano::dev::genesis_key.prv);
 	// Wait to find changed reresentative
 	ASSERT_TIMELY (10s, node1->representative_register.representative_count () != 0);
 	/* Wait for confirmation
@@ -3447,7 +3449,7 @@ TEST (node, rollback_vote_self)
 		ASSERT_EQ (election->winner ()->hash (), fork->hash ());
 
 		// Insert genesis key in the wallet
-		(void)node.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+		(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 
 		// Even without the rollback being finished, the aggregator must reply with a vote for the new winner, not the old one
 		ASSERT_TRUE (node.history.votes (send2->root (), send2->hash ()).empty ());
@@ -3708,7 +3710,7 @@ TEST (node, dependency_graph)
 	ASSERT_EQ (node.ledger.cache.block_count () - 2, dependency_graph.size ());
 
 	// Start an election for the first block of the dependency graph, and ensure all blocks are eventually confirmed
-	(void)node.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	node.start_election (gen_send1);
 
 	ASSERT_NO_ERROR (system.poll_until_true (15s, [&] {
@@ -3897,7 +3899,7 @@ TEST (node, dependency_graph_frontier)
 	}
 
 	// node1 can vote, but only on the first block
-	(void)node1.wallets.insert_adhoc2 (wallet_id1, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 
 	ASSERT_TIMELY (10s, node2.active.active (gen_send1->qualified_root ()));
 	node1.start_election (gen_send1);
@@ -4040,7 +4042,7 @@ TEST (rep_crawler, recently_confirmed)
 	node1.active.recently_confirmed.put (block->qualified_root (), block->hash ());
 	auto & node2 (*system.add_node ());
 	auto wallet_id2 = node2.wallets.first_wallet_id ();
-	(void)node2.wallets.insert_adhoc2 (wallet_id2, nano::dev::genesis_key.prv);
+	(void)node2.wallets.insert_adhoc (wallet_id2, nano::dev::genesis_key.prv);
 	auto channel = node1.network->find_node_id (node2.get_node_id ());
 	ASSERT_NE (nullptr, channel);
 	node1.rep_crawler.query (channel);

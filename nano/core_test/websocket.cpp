@@ -84,7 +84,7 @@ TEST (websocket, confirmation)
 	ASSERT_TIMELY (5s, ack_ready);
 
 	nano::keypair key;
-	(void)node1->wallets.insert_adhoc2 (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node1->wallets.insert_adhoc (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	auto balance = nano::dev::constants.genesis_amount;
 	auto send_amount = node1->online_reps.delta () + 1;
 	// Quick-confirm a block, legacy blocks should work without filtering
@@ -249,7 +249,7 @@ TEST (websocket, confirmation_options)
 	ASSERT_TIMELY (5s, ack_ready);
 
 	// Confirm a state block for an in-wallet account
-	(void)node1->wallets.insert_adhoc2 (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node1->wallets.insert_adhoc (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::keypair key;
 	auto balance = nano::dev::constants.genesis_amount;
 	auto send_amount = node1->online_reps.delta () + 1;
@@ -391,7 +391,7 @@ TEST (websocket, confirmation_options_votes)
 	ASSERT_TIMELY (10s, ack_ready);
 
 	// Confirm a state block for an in-wallet account
-	(void)node1->wallets.insert_adhoc2 (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node1->wallets.insert_adhoc (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::keypair key;
 	auto balance = nano::dev::constants.genesis_amount;
 	auto send_amount = node1->config->online_weight_minimum.number () + 1;
@@ -478,7 +478,7 @@ TEST (websocket, confirmation_options_sideband)
 	ASSERT_TIMELY (10s, ack_ready);
 
 	// Confirm a state block for an in-wallet account
-	(void)node1->wallets.insert_adhoc2 (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node1->wallets.insert_adhoc (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::keypair key;
 	auto balance = nano::dev::constants.genesis_amount;
 	auto send_amount = node1->config->online_weight_minimum.number () + 1;
@@ -563,7 +563,7 @@ TEST (websocket, confirmation_options_update)
 	ASSERT_TIMELY (5s, added);
 
 	// Confirm a block
-	(void)node1->wallets.insert_adhoc2 (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node1->wallets.insert_adhoc (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::keypair key;
 	nano::state_block_builder builder;
 	auto previous (node1->latest (nano::dev::genesis_key.pub));
@@ -625,7 +625,7 @@ TEST (websocket, vote)
 	// Quick-confirm a block
 	nano::keypair key;
 	nano::state_block_builder builder;
-	(void)node1->wallets.insert_adhoc2 (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node1->wallets.insert_adhoc (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::block_hash previous (node1->latest (nano::dev::genesis_key.pub));
 	auto send = builder
 				.account (nano::dev::genesis_key.pub)
@@ -723,7 +723,7 @@ TEST (websocket, vote_options_representatives)
 	// Quick-confirm a block
 	nano::keypair key;
 	auto balance = nano::dev::constants.genesis_amount;
-	(void)node1->wallets.insert_adhoc2 (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node1->wallets.insert_adhoc (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	auto send_amount = node1->online_reps.delta () + 1;
 	auto confirm_block = [&] () {
 		nano::block_hash previous (node1->latest (nano::dev::genesis_key.pub));

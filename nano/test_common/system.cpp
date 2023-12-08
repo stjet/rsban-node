@@ -198,7 +198,7 @@ void nano::test::system::ledger_initialization_set (std::vector<nano::keypair> c
 	}
 }
 
-nano::account nano::test::system::account (store::transaction const & transaction_a, size_t index_a)
+nano::account nano::test::system::account (size_t index_a)
 {
 	debug_assert (nodes.size () > index_a);
 	auto node = nodes[index_a];
@@ -522,7 +522,8 @@ void nano::test::system::generate_send_new (nano::node & node_a, std::vector<nan
 	}
 	if (!amount.is_zero ())
 	{
-		auto pub{ node_a.wallets.deterministic_insert (node_a.wallets.first_wallet_id ()) };
+		nano::public_key pub;
+		(void)node_a.wallets.deterministic_insert (node_a.wallets.first_wallet_id (), true, pub);
 		accounts_a.push_back (pub);
 		auto hash (nodes[0]->wallets.send_sync (nodes[0]->wallets.first_wallet_id (), source, pub, amount));
 		(void)hash;
@@ -534,7 +535,7 @@ void nano::test::system::generate_mass_activity (uint32_t count_a, nano::node & 
 {
 	std::vector<nano::account> accounts;
 	auto dev_genesis_key = nano::dev::genesis_key;
-	(void)nodes[0]->wallets.insert_adhoc2 (nodes[0]->wallets.first_wallet_id (), dev_genesis_key.prv);
+	(void)nodes[0]->wallets.insert_adhoc (nodes[0]->wallets.first_wallet_id (), dev_genesis_key.prv);
 	accounts.push_back (dev_genesis_key.pub);
 	auto previous (std::chrono::steady_clock::now ());
 	for (uint32_t i (0); i < count_a; ++i)

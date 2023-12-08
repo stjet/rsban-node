@@ -212,8 +212,7 @@ bool copy_database (std::filesystem::path const & data_path, boost::program_opti
 		}
 		if (vm.count ("clear_send_ids"))
 		{
-			auto tx{ node.node->wallets.tx_begin_write () };
-			node.node->wallets.clear_send_ids (*tx);
+			node.node->wallets.clear_send_ids ();
 		}
 		if (vm.count ("online_weight_clear"))
 		{
@@ -304,7 +303,8 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				auto error = wallets.enter_password (wallet_id, password);
 				if (error == nano::wallets_error::none)
 				{
-					auto pub{ wallets.deterministic_insert (wallet_id) };
+					nano::public_key pub;
+					error = wallets.deterministic_insert (wallet_id, true, pub);
 					std::cout << boost::str (boost::format ("Account: %1%\n") % pub.to_account ());
 				}
 				set_cli_wallets_error (error, ec);
@@ -459,8 +459,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		nano::inactive_node node (data_path, node_flags);
 		if (!node.node->init_error ())
 		{
-			auto transaction (node.node->wallets.tx_begin_write ());
-			node.node->wallets.clear_send_ids (*transaction);
+			node.node->wallets.clear_send_ids ();
 			std::cout << "Send IDs deleted" << std::endl;
 		}
 		else
@@ -742,7 +741,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					nano::raw_key key;
 					if (!key.decode_hex (vm["key"].as<std::string> ()))
 					{
-						auto error = wallets.insert_adhoc2 (wallet_id, key);
+						auto error = wallets.insert_adhoc (wallet_id, key);
 						set_cli_wallets_error (error, ec);
 					}
 					else
@@ -998,7 +997,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 							bool valid = wallets.ensure_wallet_is_unlocked (wallet_id, password);
 							if (valid)
 							{
-								if (wallets.import (wallet_id, contents.str (), password))
+								if (wallets.import_replace (wallet_id, contents.str (), password))
 								{
 									std::cerr << "Unable to import wallet\n";
 									ec = nano::error_cli::invalid_arguments;
@@ -1023,12 +1022,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 							}
 							else
 							{
-								bool error (true);
-								{
-									auto lock{ node->wallets.mutex.lock () };
-									auto transaction (node->wallets.tx_begin_write ());
-									nano::wallet wallet (error, *transaction, node->wallets, wallet_id.to_string (), contents.str ());
-								}
+								bool error = node->wallets.import (wallet_id, contents.str ());
 								if (error)
 								{
 									std::cerr << "Unable to import wallet\n";

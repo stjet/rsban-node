@@ -182,7 +182,7 @@ TEST (rpc, receivable_offset_and_sorting)
 	auto node = add_ipc_enabled_node (system);
 	nano::keypair key1;
 	auto wallet_id = node->wallets.first_wallet_id ();
-	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 
 	auto block1 = node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, 200);
 	auto block2 = node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, 100);
@@ -336,7 +336,7 @@ TEST (rpc, receivable_burn)
 	nano::test::system system;
 	auto node = add_ipc_enabled_node (system);
 	auto wallet_id = node->wallets.first_wallet_id ();
-	(void)node->wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	auto block1 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, nano::dev::constants.burn_account, 100));
 	auto const rpc_ctx = add_rpc (system, node);
 	ASSERT_TIMELY (5s, node->block_confirmed (block1->hash ()));
@@ -357,7 +357,7 @@ TEST (rpc, search_receivable)
 {
 	nano::test::system system;
 	auto node = add_ipc_enabled_node (system);
-	(void)node->wallets.insert_adhoc2 (node->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc (node->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	auto wallet (node->wallets.first_wallet_id ().to_string ());
 	auto latest (node->latest (nano::dev::genesis_key.pub));
 	nano::block_builder builder;

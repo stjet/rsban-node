@@ -120,7 +120,7 @@ TEST (gap_cache, gap_bootstrap)
 	ASSERT_TIMELY (5s, node1.block_confirmed (send->hash ()));
 	node1.active.erase (*send);
 	auto wallet_id = node1.wallets.first_wallet_id ();
-	(void)node1.wallets.insert_adhoc2 (wallet_id, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	auto latest_block (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, 100));
 	ASSERT_NE (nullptr, latest_block);
 	ASSERT_TIMELY (5s, nano::dev::constants.genesis_amount - 200 == node1.balance (nano::dev::genesis->account ()));

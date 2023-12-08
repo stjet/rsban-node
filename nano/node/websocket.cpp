@@ -118,7 +118,6 @@ bool nano::websocket::confirmation_options::should_filter (nano::websocket::mess
 		auto source_text_l (message_a.contents.get<std::string> ("message.account"));
 		if (all_local_accounts)
 		{
-			auto transaction_l (wallets.tx_begin_read ());
 			nano::account source_l{};
 			nano::account destination_l{};
 			auto decode_source_ok_l (!source_l.decode_account (source_text_l));
@@ -126,7 +125,7 @@ bool nano::websocket::confirmation_options::should_filter (nano::websocket::mess
 			(void)decode_source_ok_l;
 			(void)decode_destination_ok_l;
 			debug_assert (decode_source_ok_l && decode_destination_ok_l);
-			if (wallets.exists (*transaction_l, source_l) || wallets.exists (*transaction_l, destination_l))
+			if (wallets.exists (source_l) || wallets.exists (destination_l))
 			{
 				should_filter_account = false;
 			}

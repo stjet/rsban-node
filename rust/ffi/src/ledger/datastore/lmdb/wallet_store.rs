@@ -3,6 +3,7 @@ use std::{
     ops::Deref,
     path::PathBuf,
     ptr,
+    sync::Arc,
 };
 
 use super::{iterator::LmdbIteratorHandle, TransactionHandle};
@@ -10,7 +11,15 @@ use crate::{wallets::kdf::KdfHandle, StringDto, U256ArrayDto};
 use rsnano_core::{Account, PublicKey, RawKey};
 use rsnano_store_lmdb::{EnvironmentWrapper, LmdbWalletStore, WalletValue};
 
-pub struct LmdbWalletStoreHandle(LmdbWalletStore);
+pub struct LmdbWalletStoreHandle(Arc<LmdbWalletStore>);
+
+impl Deref for LmdbWalletStoreHandle {
+    type Target = Arc<LmdbWalletStore>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[repr(C)]
 pub struct WalletValueDto {
@@ -51,7 +60,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_create(
         &representative,
         &wallet,
     ) {
-        Box::into_raw(Box::new(LmdbWalletStoreHandle(store)))
+        Box::into_raw(Box::new(LmdbWalletStoreHandle(Arc::new(store))))
     } else {
         ptr::null_mut()
     }
@@ -75,7 +84,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_create2(
         &wallet,
         json,
     ) {
-        Box::into_raw(Box::new(LmdbWalletStoreHandle(store)))
+        Box::into_raw(Box::new(LmdbWalletStoreHandle(Arc::new(store))))
     } else {
         ptr::null_mut()
     }

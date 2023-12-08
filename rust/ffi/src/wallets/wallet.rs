@@ -1,3 +1,4 @@
+use crate::ledger::datastore::{lmdb::LmdbWalletStoreHandle, LedgerHandle};
 use rsnano_core::Account;
 use rsnano_node::wallets::Wallet;
 use std::{
@@ -8,8 +9,14 @@ use std::{
 pub struct WalletHandle(pub Arc<Wallet>);
 
 #[no_mangle]
-pub extern "C" fn rsn_wallet_create() -> *mut WalletHandle {
-    Box::into_raw(Box::new(WalletHandle(Arc::new(Wallet::new()))))
+pub extern "C" fn rsn_wallet_create(
+    store: &LmdbWalletStoreHandle,
+    ledger: &LedgerHandle,
+) -> *mut WalletHandle {
+    Box::into_raw(Box::new(WalletHandle(Arc::new(Wallet::new(
+        Arc::clone(store),
+        Arc::clone(ledger),
+    )))))
 }
 
 #[no_mangle]

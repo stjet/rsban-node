@@ -18,6 +18,7 @@ pub use pending_store::{PendingInfoDto, PendingKeyDto};
 use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, RoCursorWrapper, Transaction};
 use std::{ops::Deref, time::Duration};
 pub use store::LmdbStoreHandle;
+pub use wallet_store::LmdbWalletStoreHandle;
 
 pub struct TransactionHandle(TransactionType);
 

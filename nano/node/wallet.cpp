@@ -394,7 +394,7 @@ nano::wallet::representatives_lock nano::wallet::representatives_mutex::lock ()
 nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a) :
 	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a),
 	node{ wallets_a.node },
-	handle{ rsnano::rsn_wallet_create () },
+	handle{ rsnano::rsn_wallet_create (store.rust_handle, wallets_a.node.ledger.handle) },
 	representatives_mutex{ handle }
 {
 }
@@ -402,7 +402,7 @@ nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::w
 nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a, std::string const & json) :
 	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a, json),
 	node{ wallets_a.node },
-	handle{ rsnano::rsn_wallet_create () },
+	handle{ rsnano::rsn_wallet_create (store.rust_handle, wallets_a.node.ledger.handle) },
 	representatives_mutex{ handle }
 {
 }

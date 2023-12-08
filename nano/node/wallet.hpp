@@ -97,7 +97,6 @@ public:
 	static int const special_count;
 	nano::kdf & kdf;
 
-private:
 	rsnano::LmdbWalletStoreHandle * rust_handle;
 };
 

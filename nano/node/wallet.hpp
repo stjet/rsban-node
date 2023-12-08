@@ -130,27 +130,13 @@ public:
 	wallet (bool &, store::transaction &, nano::wallets &, std::string const &, std::string const &);
 	wallet (wallet const &) = delete;
 	~wallet ();
-	void enter_initial_password ();
-	bool enter_password (store::transaction const &, std::string const &);
 	bool insert_watch (store::transaction const &, nano::public_key const &);
-	bool exists (nano::public_key const &);
-	void serialize (std::string &);
-	bool change_sync (nano::account const &, nano::account const &);
-	bool receive_sync (std::shared_ptr<nano::block> const &, nano::account const &, nano::uint128_t const &);
-	void receive_async (nano::block_hash const &, nano::account const &, nano::uint128_t const &, nano::account const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true);
-	void work_cache_blocking (nano::account const &, nano::root const &);
 	void work_update (store::transaction const &, nano::account const &, nano::root const &, uint64_t);
-	bool search_receivable (store::transaction const &);
 	uint32_t deterministic_check (store::transaction const & transaction_a, uint32_t index);
-	/** Changes the wallet seed and returns the first account */
-	nano::public_key change_seed (store::transaction const & transaction_a, nano::raw_key const & prv_a, uint32_t count = 0);
 	bool live ();
 
 	nano::wallet_store store;
-	nano::wallets & wallets;
-	nano::wallet_action_thread & wallet_actions;
 	nano::node & node;
-	nano::store::lmdb::env & env;
 	rsnano::WalletHandle * handle;
 	representatives_mutex representatives_mutex;
 };
@@ -255,6 +241,7 @@ public:
 	nano::key_type key_type (nano::wallet_id const & wallet_id, nano::raw_key const & key);
 
 	nano::wallets_error get_seed (nano::wallet_id const & wallet_id, nano::raw_key & prv_a) const;
+	/** Changes the wallet seed and returns the first account */
 	nano::wallets_error change_seed (nano::wallet_id const & wallet_id, nano::raw_key const & prv_a, uint32_t count, nano::public_key & first_account, uint32_t & restored_count);
 
 	bool import_replace (nano::wallet_id const & wallet_id, std::string const & json_a, std::string const & password_a);
@@ -349,6 +336,14 @@ public: // TODO make private
 	std::shared_ptr<nano::block> change_action (const std::shared_ptr<wallet> & wallet, nano::account const & source_a, nano::account const & representative_a, uint64_t work_a, bool generate_work_a);
 	std::shared_ptr<nano::block> send_action (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a);
 	void change_async (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & representative_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a);
+	bool change_sync (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & representative_a);
+	void receive_async (const std::shared_ptr<nano::wallet> & wallet, nano::block_hash const & hash_a, nano::account const & representative_a, nano::uint128_t const & amount_a, nano::account const & account_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a);
+	bool receive_sync (const std::shared_ptr<nano::wallet> & wallet, std::shared_ptr<nano::block> const & block_a, nano::account const & representative_a, nano::uint128_t const & amount_a);
+	bool search_receivable (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & wallet_transaction_a);
+	bool enter_password (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & transaction_a, std::string const & password_a);
+	void enter_initial_password (const std::shared_ptr<nano::wallet> & wallet);
+	nano::public_key change_seed (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & transaction_a, nano::raw_key const & prv_a, uint32_t count);
+	void work_cache_blocking (const std::shared_ptr<nano::wallet> & wallet, nano::account const & account_a, nano::root const & root_a);
 
 	// fields
 public:

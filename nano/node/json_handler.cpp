@@ -4605,7 +4605,7 @@ void nano::json_handler::wallet_create ()
 		if (!rpc_l->ec)
 		{
 			auto wallet_id = random_wallet_id ();
-			auto wallet (rpc_l->node.wallets.create (wallet_id));
+			rpc_l->node.wallets.create (wallet_id);
 			if (rpc_l->node.wallets.wallet_exists (wallet_id))
 			{
 				rpc_l->response_l.put ("wallet", wallet_id.to_string ());

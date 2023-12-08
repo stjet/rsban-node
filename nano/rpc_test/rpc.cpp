@@ -698,8 +698,9 @@ TEST (rpc, account_move)
 	node->wallets.insert_adhoc (node->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
 	nano::keypair key;
 	auto source_id = nano::random_wallet_id ();
-	auto source (node->wallets.create (source_id));
-	source->insert_adhoc (key.prv);
+	node->wallets.create (source_id);
+	nano::account account;
+	ASSERT_EQ(nano::wallets_error::none, node->wallets.insert_adhoc(source_id, key.prv, true, account));
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
 	request.put ("action", "account_move");

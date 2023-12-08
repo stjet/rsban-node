@@ -856,32 +856,23 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		{
 			auto inactive_node = nano::default_inactive_node (data_path, vm);
 			auto wallet_key = nano::random_wallet_id ();
-			auto wallet (inactive_node->node->wallets.create (wallet_key));
-			if (wallet != nullptr)
+			inactive_node->node->wallets.create (wallet_key);
+			if (vm.count ("password") > 0)
 			{
-				if (vm.count ("password") > 0)
+				std::string password (vm["password"].as<std::string> ());
+				if (inactive_node->node->wallets.rekey(wallet_key, password) != nano::wallets_error::none)
 				{
-					std::string password (vm["password"].as<std::string> ());
-					auto transaction (inactive_node->node->wallets.tx_begin_write ());
-					auto error (wallet->store.rekey (*transaction, password));
-					if (error)
-					{
-						std::cerr << "Password change error\n";
-						ec = nano::error_cli::invalid_arguments;
-					}
+					std::cerr << "Password change error\n";
+					ec = nano::error_cli::invalid_arguments;
 				}
-				if (vm.count ("seed") || vm.count ("key"))
-				{
-					auto transaction (inactive_node->node->wallets.tx_begin_write ());
-					wallet->change_seed (*transaction, seed_key);
-				}
-				std::cout << wallet_key.to_string () << std::endl;
 			}
-			else
+			if (vm.count ("seed") || vm.count ("key"))
 			{
-				std::cerr << "Wallet creation error\n";
-				ec = nano::error_cli::invalid_arguments;
+				nano::account first_account;
+				uint32_t restored_count;
+				(void)inactive_node->node->wallets.change_seed(wallet_key, seed_key, 0, first_account, restored_count);
 			}
+			std::cout << wallet_key.to_string () << std::endl;
 		}
 	}
 	else if (vm.count ("wallet_decrypt_unsafe"))

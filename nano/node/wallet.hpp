@@ -263,7 +263,7 @@ public:
 
 	wallets (bool, nano::node &);
 	~wallets ();
-	std::shared_ptr<nano::wallet> create (nano::wallet_id const &);
+	void create (nano::wallet_id const &);
 	size_t wallet_count () const;
 	size_t representatives_count (nano::wallet_id const & id) const;
 	nano::key_type key_type (nano::wallet_id const & wallet_id, nano::raw_key const & key);

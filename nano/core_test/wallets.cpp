@@ -16,8 +16,7 @@ TEST (wallets, open_create)
 	ASSERT_EQ (1, wallets.wallet_count ()); // it starts out with a default wallet
 	auto id = nano::random_wallet_id ();
 	ASSERT_FALSE (wallets.wallet_exists (id));
-	auto wallet (wallets.create (id));
-	ASSERT_NE (nullptr, wallet);
+	wallets.create (id);
 	ASSERT_TRUE (wallets.wallet_exists (id));
 }
 
@@ -92,8 +91,7 @@ TEST (wallets, DISABLED_reload)
 		auto lock_wallet (node1.wallets.mutex.lock ());
 		nano::node_flags flags{ nano::inactive_node_flag_defaults () };
 		nano::inactive_node node (node1.application_path, flags);
-		auto wallet (node.node->wallets.create (one));
-		ASSERT_NE (wallet, nullptr);
+		node.node->wallets.create (one);
 	}
 	ASSERT_TIMELY (5s, node1.wallets.wallet_exists (one));
 	ASSERT_EQ (2, node1.wallets.wallet_count ());

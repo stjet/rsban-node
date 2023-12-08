@@ -1962,7 +1962,7 @@ nano::wallets_error nano::wallets::serialize (nano::wallet_id const & wallet_id,
 	return nano::wallets_error::none;
 }
 
-std::shared_ptr<nano::wallet> nano::wallets::create (nano::wallet_id const & id_a)
+void nano::wallets::create (nano::wallet_id const & id_a)
 {
 	auto lock{ mutex.lock () };
 	debug_assert (items.find (id_a) == items.end ());
@@ -1977,7 +1977,6 @@ std::shared_ptr<nano::wallet> nano::wallets::create (nano::wallet_id const & id_
 		items[id_a] = result;
 		result->enter_initial_password ();
 	}
-	return result;
 }
 
 nano::wallets_error nano::wallets::search_receivable (nano::wallet_id const & wallet_id)

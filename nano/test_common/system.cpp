@@ -44,10 +44,12 @@ std::shared_ptr<nano::node> nano::test::system::add_node (nano::node_config cons
 		debug_assert (result.code == nano::process_result::progress);
 	}
 	debug_assert (!node->init_error ());
-	auto wallet = node->wallets.create (nano::random_wallet_id ());
+	auto wallet_id {nano::random_wallet_id ()};
+	node->wallets.create (wallet_id);
 	if (rep)
 	{
-		wallet->insert_adhoc (rep->prv);
+		nano::account account;
+		(void)node->wallets.insert_adhoc(wallet_id, rep->prv, true, account);
 	}
 	node->start ();
 	nodes.reserve (nodes.size () + 1);

@@ -96,9 +96,11 @@ TEST (system, receive_while_synchronizing)
 		nano::keypair key;
 		auto node1 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.logging, system.work));
 		ASSERT_FALSE (node1->init_error ());
-		auto wallet (node1->wallets.create (1));
-		wallet->insert_adhoc (nano::dev::genesis_key.prv); // For voting
-		ASSERT_EQ (key.pub, wallet->insert_adhoc (key.prv));
+		node1->wallets.create (1);
+		nano::account account;
+		ASSERT_EQ(nano::wallets_error::none, node1->wallets.insert_adhoc(1, nano::dev::genesis_key.prv, true, account)); // For voting
+		ASSERT_EQ(nano::wallets_error::none, node1->wallets.insert_adhoc(1, key.prv, true, account));
+		ASSERT_EQ (key.pub, account);
 		node1->start ();
 		system.nodes.push_back (node1);
 		ASSERT_NE (nullptr, nano::test::establish_tcp (system, *node1, node->network->endpoint ()));

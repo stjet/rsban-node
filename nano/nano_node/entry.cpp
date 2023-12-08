@@ -1231,10 +1231,10 @@ int main (int argc, char * const * argv)
 			}
 			// Insert representative
 			std::cout << "Initializing representative\n";
-			auto wallet_id{nano::random_wallet_id ()};
+			auto wallet_id{ nano::random_wallet_id () };
 			node1->wallets.create (wallet_id);
 			nano::account account;
-			(void)node1->wallets.insert_adhoc(wallet_id, nano::dev::genesis_key.prv, true, account);
+			(void)node1->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv, true, account);
 			node2->network->merge_peer (node1->network->endpoint ());
 			while (node2->representative_register.representative_count () == 0)
 			{

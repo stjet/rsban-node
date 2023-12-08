@@ -98,8 +98,8 @@ TEST (system, receive_while_synchronizing)
 		ASSERT_FALSE (node1->init_error ());
 		node1->wallets.create (1);
 		nano::account account;
-		ASSERT_EQ(nano::wallets_error::none, node1->wallets.insert_adhoc(1, nano::dev::genesis_key.prv, true, account)); // For voting
-		ASSERT_EQ(nano::wallets_error::none, node1->wallets.insert_adhoc(1, key.prv, true, account));
+		ASSERT_EQ (nano::wallets_error::none, node1->wallets.insert_adhoc (1, nano::dev::genesis_key.prv, true, account)); // For voting
+		ASSERT_EQ (nano::wallets_error::none, node1->wallets.insert_adhoc (1, key.prv, true, account));
 		ASSERT_EQ (key.pub, account);
 		node1->start ();
 		system.nodes.push_back (node1);
@@ -1937,7 +1937,7 @@ TEST (node, aggressive_flooding)
 	{
 		nano::keypair keypair;
 		auto id = node_wallet->wallets.first_wallet_id ();
-		node_wallet->wallets.set_representative (id, keypair.pub);
+		(void)node_wallet->wallets.set_representative (id, keypair.pub);
 		node_wallet->wallets.insert_adhoc (id, keypair.prv);
 		auto block (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, keypair.pub, large_amount));
 		ASSERT_NE (nullptr, block);
@@ -1963,7 +1963,8 @@ TEST (node, aggressive_flooding)
 	auto all_received = [&nodes_wallets] () {
 		return std::all_of (nodes_wallets.begin (), nodes_wallets.end (), [] (auto const & node_wallet) {
 			auto id = node_wallet->wallets.first_wallet_id ();
-			auto local_representative (node_wallet->wallets.get_representative (*node_wallet->wallets.tx_begin_read (), id));
+			nano::account local_representative;
+			(void)node_wallet->wallets.get_representative (id, local_representative);
 			return node_wallet->ledger.account_balance (*node_wallet->store.tx_begin_read (), local_representative) > 0;
 		});
 	};

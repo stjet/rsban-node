@@ -527,9 +527,10 @@ TEST (rpc, wallet_representative_set)
 	request.put ("action", "wallet_representative_set");
 	request.put ("representative", key.pub.to_account ());
 	auto response (wait_response (system, rpc_ctx, request));
-	auto transaction (node->wallets.tx_begin_read ());
 	auto wallet_id{ node->wallets.first_wallet_id () };
-	ASSERT_EQ (key.pub, node->wallets.get_representative (*transaction, wallet_id));
+	nano::account representative;
+	ASSERT_EQ (nano::wallets_error::none, node->wallets.get_representative (wallet_id, representative));
+	ASSERT_EQ (key.pub, representative);
 }
 
 TEST (rpc, wallet_representative_set_force)
@@ -549,8 +550,9 @@ TEST (rpc, wallet_representative_set_force)
 	request.put ("update_existing_accounts", true);
 	auto response (wait_response (system, rpc_ctx, request));
 	{
-		auto transaction (node->wallets.tx_begin_read ());
-		ASSERT_EQ (key.pub, node->wallets.get_representative (*transaction, wallet_id));
+		nano::account representative;
+		(void)node->wallets.get_representative (wallet_id, representative);
+		ASSERT_EQ (key.pub, representative);
 	}
 	nano::account representative{};
 	while (representative != key.pub)
@@ -700,7 +702,7 @@ TEST (rpc, account_move)
 	auto source_id = nano::random_wallet_id ();
 	node->wallets.create (source_id);
 	nano::account account;
-	ASSERT_EQ(nano::wallets_error::none, node->wallets.insert_adhoc(source_id, key.prv, true, account));
+	ASSERT_EQ (nano::wallets_error::none, node->wallets.insert_adhoc (source_id, key.prv, true, account));
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
 	request.put ("action", "account_move");
@@ -6623,7 +6625,7 @@ TEST (rpc, receive_unopened)
 	ASSERT_FALSE (node->store.account ().exists (*node->store.tx_begin_read (), key2.pub));
 	ASSERT_TRUE (node->store.block ().exists (*node->store.tx_begin_read (), send2->hash ()));
 	nano::public_key rep;
-	node->wallets.set_representative (wallet_id, rep);
+	(void)node->wallets.set_representative (wallet_id, rep);
 	node->wallets.insert_adhoc (wallet_id, key2.prv); // should not auto receive, amount sent was lower than minimum
 	request.put ("account", key2.pub.to_account ());
 	request.put ("block", send2->hash ().to_string ());

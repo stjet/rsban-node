@@ -267,10 +267,8 @@ public:
 	size_t wallet_count () const;
 	size_t representatives_count (nano::wallet_id const & id) const;
 	nano::key_type key_type (nano::wallet_id const & wallet_id, nano::raw_key const & key);
-	nano::account get_representative (store::transaction const &, nano::wallet_id const & id) const;
 	nano::wallets_error get_representative (nano::wallet_id const & id, nano::account & representative);
-	void set_representative (nano::wallet_id const & wallet_id, nano::account const & rep);
-	nano::wallets_error set_representative2 (nano::wallet_id const & wallet_id, nano::account const & rep, bool update_existing_accounts = false);
+	nano::wallets_error set_representative (nano::wallet_id const & wallet_id, nano::account const & rep, bool update_existing_accounts = false);
 
 	void get_seed (nano::raw_key & prv_a, store::transaction const & transaction_a, nano::wallet_id const & id) const;
 	nano::wallets_error get_seed (nano::wallet_id const & wallet_id, nano::raw_key & prv_a) const;

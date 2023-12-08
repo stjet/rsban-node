@@ -461,7 +461,7 @@ TEST (network, receive_weight_change)
 	node1->wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 	nano::keypair key2;
 	node2->wallets.insert_adhoc (wallet_id2, key2.prv);
-	node2->wallets.set_representative (wallet_id2, key2.pub);
+	(void)node2->wallets.set_representative (wallet_id2, key2.pub);
 	ASSERT_NE (nullptr, node1->wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key2.pub, system.nodes[0]->config->receive_minimum.number ()));
 	ASSERT_TIMELY (10s, std::all_of (system.nodes.begin (), system.nodes.end (), [&] (std::shared_ptr<nano::node> const & node_a) { return node_a->weight (key2.pub) == system.nodes[0]->config->receive_minimum.number (); }));
 }

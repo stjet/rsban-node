@@ -860,7 +860,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			if (vm.count ("password") > 0)
 			{
 				std::string password (vm["password"].as<std::string> ());
-				if (inactive_node->node->wallets.rekey(wallet_key, password) != nano::wallets_error::none)
+				if (inactive_node->node->wallets.rekey (wallet_key, password) != nano::wallets_error::none)
 				{
 					std::cerr << "Password change error\n";
 					ec = nano::error_cli::invalid_arguments;
@@ -870,7 +870,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			{
 				nano::account first_account;
 				uint32_t restored_count;
-				(void)inactive_node->node->wallets.change_seed(wallet_key, seed_key, 0, first_account, restored_count);
+				(void)inactive_node->node->wallets.change_seed (wallet_key, seed_key, 0, first_account, restored_count);
 			}
 			std::cout << wallet_key.to_string () << std::endl;
 		}
@@ -1132,16 +1132,12 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			{
 				auto inactive_node = nano::default_inactive_node (data_path, vm);
 				auto node = inactive_node->node;
-				if (node->wallets.wallet_exists (wallet_id))
+				nano::account representative;
+				auto error = node->wallets.get_representative (wallet_id, representative);
+				set_cli_wallets_error (error, ec);
+				if (error == nano::wallets_error::none)
 				{
-					auto transaction (node->wallets.tx_begin_read ());
-					auto representative{ node->wallets.get_representative (*transaction, wallet_id) };
 					std::cout << boost::str (boost::format ("Representative: %1%\n") % representative.to_account ());
-				}
-				else
-				{
-					std::cerr << "Wallet not found\n";
-					ec = nano::error_cli::invalid_arguments;
 				}
 			}
 			else
@@ -1170,15 +1166,8 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					{
 						auto inactive_node = nano::default_inactive_node (data_path, vm);
 						auto node = inactive_node->node;
-						if (node->wallets.wallet_exists (wallet_id))
-						{
-							node->wallets.set_representative (wallet_id, account);
-						}
-						else
-						{
-							std::cerr << "Wallet not found\n";
-							ec = nano::error_cli::invalid_arguments;
-						}
+						auto error = node->wallets.set_representative (wallet_id, account);
+						set_cli_wallets_error (error, ec);
 					}
 					else
 					{

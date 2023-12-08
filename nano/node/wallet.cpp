@@ -1188,13 +1188,6 @@ nano::key_type nano::wallets::key_type (nano::wallet_id const & wallet_id, nano:
 	return wallet->second->store.key_type (wallet_val);
 }
 
-nano::account nano::wallets::get_representative (store::transaction const & txn, nano::wallet_id const & id) const
-{
-	auto lock{ mutex.lock () };
-	auto wallet{ items.find (id) };
-	return wallet->second->store.representative (txn);
-}
-
 nano::wallets_error nano::wallets::get_representative (nano::wallet_id const & wallet_id, nano::account & representative)
 {
 	auto lock{ mutex.lock () };
@@ -1210,7 +1203,7 @@ nano::wallets_error nano::wallets::get_representative (nano::wallet_id const & w
 	return nano::wallets_error::none;
 }
 
-nano::wallets_error nano::wallets::set_representative2 (nano::wallet_id const & wallet_id, nano::account const & rep, bool update_existing_accounts)
+nano::wallets_error nano::wallets::set_representative (nano::wallet_id const & wallet_id, nano::account const & rep, bool update_existing_accounts)
 {
 	std::vector<nano::account> accounts;
 	{
@@ -1259,14 +1252,6 @@ nano::wallets_error nano::wallets::set_representative2 (nano::wallet_id const & 
 	}
 
 	return nano::wallets_error::none;
-}
-
-void nano::wallets::set_representative (nano::wallet_id const & wallet_id, nano::account const & rep)
-{
-	auto lock{ mutex.lock () };
-	auto transaction (tx_begin_write ());
-	auto wallet (items.find (wallet_id));
-	wallet->second->store.representative_set (*transaction, rep);
 }
 
 void nano::wallets::get_seed (nano::raw_key & prv_a, store::transaction const & txn, nano::wallet_id const & id) const

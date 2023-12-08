@@ -4981,7 +4981,7 @@ void nano::json_handler::wallet_representative_set ()
 		if (!rpc_l->ec)
 		{
 			bool update_existing_accounts (rpc_l->request.get<bool> ("update_existing_accounts", false));
-			auto error = rpc_l->node.wallets.set_representative2 (wallet_id, representative, update_existing_accounts);
+			auto error = rpc_l->node.wallets.set_representative (wallet_id, representative, update_existing_accounts);
 			if (error == nano::wallets_error::none)
 			{
 				rpc_l->response_l.put ("set", "1");

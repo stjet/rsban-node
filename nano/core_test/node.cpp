@@ -1063,7 +1063,7 @@ TEST (node, fork_no_vote_quorum)
 	auto key4 (node1.wallets.deterministic_insert (wallet_id));
 	node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key4, nano::dev::constants.genesis_amount / 4);
 	auto key1 (node2.wallets.deterministic_insert (wallet_id2));
-	node2.wallets.set_representative (wallet_id2, key1);
+	(void)node2.wallets.set_representative (wallet_id2, key1);
 	auto block (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1, node1.config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, block);
 	ASSERT_TIMELY (30s, node3.balance (key1) == node1.config->receive_minimum.number () && node2.balance (key1) == node1.config->receive_minimum.number () && node1.balance (key1) == node1.config->receive_minimum.number ());
@@ -1118,10 +1118,10 @@ TEST (node, DISABLED_fork_pre_confirm)
 	node0.wallets.insert_adhoc (wallet_id0, nano::dev::genesis_key.prv);
 	nano::keypair key1;
 	node1.wallets.insert_adhoc (wallet_id1, key1.prv);
-	node1.wallets.set_representative (wallet_id1, key1.pub);
+	(void)node1.wallets.set_representative (wallet_id1, key1.pub);
 	nano::keypair key2;
 	node2.wallets.insert_adhoc (wallet_id2, key2.prv);
-	node2.wallets.set_representative (wallet_id2, key2.pub);
+	(void)node2.wallets.set_representative (wallet_id2, key2.pub);
 	auto block0 (node0.wallets.send_action (wallet_id0, nano::dev::genesis_key.pub, key1.pub, nano::dev::constants.genesis_amount / 3));
 	ASSERT_NE (nullptr, block0);
 	ASSERT_TIMELY (30s, node0.balance (key1.pub) != 0);

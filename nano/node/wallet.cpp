@@ -821,18 +821,6 @@ void nano::wallet::receive_async (nano::block_hash const & hash_a, nano::account
 	});
 }
 
-nano::block_hash nano::wallet::send_sync (nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a)
-{
-	std::promise<nano::block_hash> result;
-	std::future<nano::block_hash> future = result.get_future ();
-	send_async (
-	source_a, account_a, amount_a, [&result] (std::shared_ptr<nano::block> const & block_a) {
-		result.set_value (block_a->hash ());
-	},
-	true);
-	return future.get ();
-}
-
 void nano::wallet::send_async (nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
 {
 	auto this_l (shared_from_this ());
@@ -1769,7 +1757,15 @@ nano::block_hash nano::wallets::send_sync (nano::wallet_id const & wallet_id, na
 {
 	auto lock{ mutex.lock () };
 	auto wallet = items.find (wallet_id);
-	return wallet->second->send_sync (source_a, account_a, amount_a);
+
+	std::promise<nano::block_hash> result;
+	std::future<nano::block_hash> future = result.get_future ();
+	wallet->second->send_async (
+	source_a, account_a, amount_a, [&result] (std::shared_ptr<nano::block> const & block_a) {
+		result.set_value (block_a->hash ());
+	},
+	true);
+	return future.get ();
 }
 
 bool nano::wallets::receive_sync (nano::wallet_id const & wallet_id, std::shared_ptr<nano::block> const & block_a, nano::account const & representative_a, nano::uint128_t const & amount_a)

@@ -1,5 +1,5 @@
 use rsnano_core::Account;
-use rsnano_store_lmdb::Wallet;
+use rsnano_node::wallets::Wallet;
 use std::{
     collections::HashSet,
     sync::{Arc, MutexGuard},

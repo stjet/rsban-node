@@ -6,7 +6,7 @@ use std::{
 };
 
 use super::{iterator::LmdbIteratorHandle, TransactionHandle};
-use crate::{wallet::kdf::KdfHandle, StringDto, U256ArrayDto};
+use crate::{wallets::kdf::KdfHandle, StringDto, U256ArrayDto};
 use rsnano_core::{Account, PublicKey, RawKey};
 use rsnano_store_lmdb::{EnvironmentWrapper, LmdbWalletStore, WalletValue};
 

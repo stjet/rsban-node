@@ -7,8 +7,10 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{Account, BlockHash, NoValue, RawKey, WalletId};
 use rsnano_store_lmdb::{
     BinaryDbIterator, DbIterator, Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl,
-    LmdbWriteTransaction, RwTransaction, Transaction, Wallet,
+    LmdbWriteTransaction, RwTransaction, Transaction,
 };
+
+use super::Wallet;
 pub type WalletsIterator<T> = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl<T>>;
 
 pub struct Wallets<T: Environment = EnvironmentWrapper> {

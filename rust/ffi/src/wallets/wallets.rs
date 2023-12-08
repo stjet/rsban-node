@@ -1,13 +1,17 @@
-use super::{lmdb_env::LmdbEnvHandle, wallet::WalletHandle, TransactionHandle};
-use crate::{utils::ContextWrapper, U256ArrayDto, VoidPointerCallback};
+use crate::{
+    ledger::datastore::{lmdb::LmdbEnvHandle, TransactionHandle},
+    utils::ContextWrapper,
+    U256ArrayDto, VoidPointerCallback,
+};
 use rsnano_core::{BlockHash, WalletId};
-use rsnano_node::wallets::Wallets;
-use rsnano_store_lmdb::Wallet;
+use rsnano_node::wallets::{Wallet, Wallets};
 use std::{
     collections::HashMap,
     ffi::{c_char, c_void, CStr},
     sync::{Arc, MutexGuard},
 };
+
+use super::wallet::WalletHandle;
 
 pub struct LmdbWalletsHandle(Wallets);
 

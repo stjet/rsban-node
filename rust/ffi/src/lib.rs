@@ -19,7 +19,7 @@ mod secure;
 mod stats;
 mod transport;
 mod utils;
-mod wallet;
+mod wallets;
 mod websocket;
 mod work;
 

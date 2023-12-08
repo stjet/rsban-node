@@ -7,12 +7,10 @@ extern crate anyhow;
 mod iterator;
 mod lmdb_config;
 mod lmdb_env;
-mod wallet;
 mod wallet_store;
 
 pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl, LmdbIteratorImpl};
 pub use lmdb_config::{LmdbConfig, SyncStrategy};
-pub use wallet::*;
 
 pub use lmdb_env::{
     ConfiguredDatabase, DatabaseStub, EnvOptions, Environment, EnvironmentOptions, EnvironmentStub,

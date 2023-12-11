@@ -3,22 +3,54 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use rsnano_core::{Account, BlockHash, KeyPair, PendingKey};
+use rsnano_core::{
+    utils::Logger, work::WorkThresholds, Account, BlockHash, KeyPair, PendingKey, Root, WorkVersion,
+};
 use rsnano_ledger::Ledger;
-use rsnano_store_lmdb::{EnvironmentWrapper, LmdbWalletStore, Transaction};
+use rsnano_store_lmdb::{EnvironmentWrapper, LmdbWalletStore, LmdbWriteTransaction, Transaction};
 
 pub struct Wallet {
     pub representatives: Mutex<HashSet<Account>>,
     store: Arc<LmdbWalletStore>,
     ledger: Arc<Ledger>,
+    logger: Arc<dyn Logger>,
+    work_thresholds: WorkThresholds,
 }
 
 impl Wallet {
-    pub fn new(store: Arc<LmdbWalletStore>, ledger: Arc<Ledger>) -> Self {
+    pub fn new(
+        store: Arc<LmdbWalletStore>,
+        ledger: Arc<Ledger>,
+        logger: Arc<dyn Logger>,
+        work_thresholds: WorkThresholds,
+    ) -> Self {
         Self {
             representatives: Mutex::new(HashSet::new()),
             store,
             ledger,
+            logger,
+            work_thresholds,
+        }
+    }
+
+    pub fn work_update(
+        &self,
+        txn: &mut LmdbWriteTransaction,
+        account: &Account,
+        root: &Root,
+        work: u64,
+    ) {
+        debug_assert!(!self
+            .work_thresholds
+            .validate_entry(WorkVersion::Work1, root, work));
+        debug_assert!(self.store.exists(txn, account));
+        let block_txn = self.ledger.read_txn();
+        let latest = self.ledger.latest_root(&block_txn, account);
+        if latest == *root {
+            self.store.work_put(txn, account, work);
+        } else {
+            self.logger
+                .try_log("Cached work no longer valid, discarding");
         }
     }
 

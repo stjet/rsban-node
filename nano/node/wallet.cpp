@@ -391,10 +391,19 @@ nano::wallet::representatives_lock nano::wallet::representatives_mutex::lock ()
 	return { rsnano::rsn_representatives_lock_create (handle) };
 }
 
+namespace
+{
+rsnano::WalletHandle * create_wallet_handle (nano::wallet_store & store, nano::node & node)
+{
+	auto logger{ nano::to_logger_handle (node.logger) };
+	return rsnano::rsn_wallet_create (store.rust_handle, node.ledger.handle, logger, &node.network_params.work.dto);
+}
+}
+
 nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a) :
 	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a),
 	node{ wallets_a.node },
-	handle{ rsnano::rsn_wallet_create (store.rust_handle, wallets_a.node.ledger.handle) },
+	handle{ create_wallet_handle (store, wallets_a.node) },
 	representatives_mutex{ handle }
 {
 }
@@ -402,7 +411,7 @@ nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::w
 nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a, std::string const & json) :
 	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a, json),
 	node{ wallets_a.node },
-	handle{ rsnano::rsn_wallet_create (store.rust_handle, wallets_a.node.ledger.handle) },
+	handle{ create_wallet_handle (store, wallets_a.node) },
 	representatives_mutex{ handle }
 {
 }
@@ -426,28 +435,17 @@ void nano::wallet_store::destroy (store::transaction const & transaction_a)
 // Update work for account if latest root is root_a
 void nano::wallet::work_update (store::transaction const & transaction_a, nano::account const & account_a, nano::root const & root_a, uint64_t work_a)
 {
-	debug_assert (!node.network_params.work.validate_entry (nano::work_version::work_1, root_a, work_a));
-	debug_assert (store.exists (transaction_a, account_a));
-	auto block_transaction (node.store.tx_begin_read ());
-	auto latest (node.ledger.latest_root (*block_transaction, account_a));
-	if (latest == root_a)
-	{
-		store.work_put (transaction_a, account_a, work_a);
-	}
-	else
-	{
-		node.logger->try_log ("Cached work no longer valid, discarding");
-	}
+	rsnano::rsn_wallet_work_update (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), root_a.bytes.data (), work_a);
 }
 
 uint32_t nano::wallet::deterministic_check (store::transaction const & transaction_a, uint32_t index)
 {
-	return rsnano::rsn_wallet_deterministic_check (handle, transaction_a.get_rust_handle(), index);
+	return rsnano::rsn_wallet_deterministic_check (handle, transaction_a.get_rust_handle (), index);
 }
 
 bool nano::wallet::live ()
 {
-	return rsnano::rsn_wallet_live(handle);
+	return rsnano::rsn_wallet_live (handle);
 }
 
 bool nano::wallet_representatives::check_rep (nano::account const & account_a, nano::uint128_t const & half_principal_weight_a, bool const acquire_lock_a)

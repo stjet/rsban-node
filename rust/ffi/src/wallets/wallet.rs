@@ -1,5 +1,9 @@
-use crate::ledger::datastore::{lmdb::LmdbWalletStoreHandle, LedgerHandle, TransactionHandle};
-use rsnano_core::Account;
+use crate::{
+    ledger::datastore::{lmdb::LmdbWalletStoreHandle, LedgerHandle, TransactionHandle},
+    utils::{LoggerHandle, LoggerMT},
+    work::WorkThresholdsDto,
+};
+use rsnano_core::{work::WorkThresholds, Account, Root};
 use rsnano_node::wallets::Wallet;
 use std::{
     collections::HashSet,
@@ -9,19 +13,41 @@ use std::{
 pub struct WalletHandle(pub Arc<Wallet>);
 
 #[no_mangle]
-pub extern "C" fn rsn_wallet_create(
+pub unsafe extern "C" fn rsn_wallet_create(
     store: &LmdbWalletStoreHandle,
     ledger: &LedgerHandle,
+    logger: *mut LoggerHandle,
+    work: &WorkThresholdsDto,
 ) -> *mut WalletHandle {
+    let work = WorkThresholds::from(work);
+    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     Box::into_raw(Box::new(WalletHandle(Arc::new(Wallet::new(
         Arc::clone(store),
         Arc::clone(ledger),
+        logger,
+        work,
     )))))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_wallet_destroy(handle: *mut WalletHandle) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallet_work_update(
+    handle: &WalletHandle,
+    txn: &mut TransactionHandle,
+    account: *const u8,
+    root: *const u8,
+    work: u64,
+) {
+    handle.0.work_update(
+        txn.as_write_txn(),
+        &Account::from_ptr(account),
+        &Root::from_ptr(root),
+        work,
+    );
 }
 
 #[no_mangle]

@@ -442,37 +442,12 @@ void nano::wallet::work_update (store::transaction const & transaction_a, nano::
 
 uint32_t nano::wallet::deterministic_check (store::transaction const & transaction_a, uint32_t index)
 {
-	auto block_transaction (node.store.tx_begin_read ());
-	for (uint32_t i (index + 1), n (index + 64); i < n; ++i)
-	{
-		auto prv = store.deterministic_key (transaction_a, i);
-		nano::keypair pair (prv.to_string ());
-		// Check if account received at least 1 block
-		auto latest (node.ledger.latest (*block_transaction, pair.pub));
-		if (!latest.is_zero ())
-		{
-			index = i;
-			// i + 64 - Check additional 64 accounts
-			// i/64 - Check additional accounts for large wallets. I.e. 64000/64 = 1000 accounts to check
-			n = i + 64 + (i / 64);
-		}
-		else
-		{
-			// Check if there are pending blocks for account
-			for (auto ii (node.store.pending ().begin (*block_transaction, nano::pending_key (pair.pub, 0))), nn (node.store.pending ().end ()); ii != nn && nano::pending_key (ii->first).account == pair.pub; ++ii)
-			{
-				index = i;
-				n = i + 64 + (i / 64);
-				break;
-			}
-		}
-	}
-	return index;
+	return rsnano::rsn_wallet_deterministic_check (handle, transaction_a.get_rust_handle(), index);
 }
 
 bool nano::wallet::live ()
 {
-	return store.is_open ();
+	return rsnano::rsn_wallet_live(handle);
 }
 
 bool nano::wallet_representatives::check_rep (nano::account const & account_a, nano::uint128_t const & half_principal_weight_a, bool const acquire_lock_a)

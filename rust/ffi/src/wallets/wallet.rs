@@ -1,4 +1,4 @@
-use crate::ledger::datastore::{lmdb::LmdbWalletStoreHandle, LedgerHandle};
+use crate::ledger::datastore::{lmdb::LmdbWalletStoreHandle, LedgerHandle, TransactionHandle};
 use rsnano_core::Account;
 use rsnano_node::wallets::Wallet;
 use std::{
@@ -22,6 +22,20 @@ pub extern "C" fn rsn_wallet_create(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_wallet_destroy(handle: *mut WalletHandle) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_wallet_live(handle: &WalletHandle) -> bool {
+    handle.0.live()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_wallet_deterministic_check(
+    handle: &WalletHandle,
+    txn: &TransactionHandle,
+    index: u32,
+) -> u32 {
+    handle.0.deterministic_check(txn.as_txn(), index)
 }
 
 pub struct RepresentativesLockHandle(MutexGuard<'static, HashSet<Account>>);

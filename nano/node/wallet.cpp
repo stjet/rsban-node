@@ -105,17 +105,20 @@ void nano::wallet_store::derive_key (nano::raw_key & prv_a, store::transaction c
 int const nano::wallet_store::special_count (7);
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, store::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a, std::string const & json_a) :
-	kdf (kdf_a),
 	rust_handle{ rsnano::rsn_lmdb_wallet_store_create2 (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), wallet_a.c_str (), json_a.c_str ()) }
 {
 	init_a = rust_handle == nullptr;
 }
 
 nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, store::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a) :
-	kdf (kdf_a),
 	rust_handle{ rsnano::rsn_lmdb_wallet_store_create (fanout_a, kdf_a.handle, transaction_a.get_rust_handle (), representative_a.bytes.data (), wallet_a.c_str ()) }
 {
 	init_a = rust_handle == nullptr;
+}
+
+nano::wallet_store::wallet_store (rsnano::LmdbWalletStoreHandle * handle) :
+	rust_handle{ handle }
+{
 }
 
 nano::wallet_store::~wallet_store ()
@@ -245,6 +248,12 @@ void nano::wallet_store::work_put (store::transaction const & transaction_a, nan
 unsigned nano::wallet_store::version (store::transaction const & transaction_a)
 {
 	return rsnano::rsn_lmdb_wallet_store_version (rust_handle, transaction_a.get_rust_handle ());
+}
+
+void nano::wallet_store::destroy (store::transaction const & transaction_a)
+{
+	if (rust_handle != nullptr)
+		rsnano::rsn_lmdb_wallet_store_destroy2 (rust_handle, transaction_a.get_rust_handle ());
 }
 
 nano::kdf::kdf (unsigned kdf_work) :
@@ -393,25 +402,45 @@ nano::wallet::representatives_lock nano::wallet::representatives_mutex::lock ()
 
 namespace
 {
-rsnano::WalletHandle * create_wallet_handle (nano::wallet_store & store, nano::node & node)
+rsnano::WalletHandle * create_wallet_handle (
+nano::node & node,
+nano::wallets & wallets_a,
+nano::store::transaction & transaction_a,
+nano::account representative,
+std::string const & wallet_path,
+const char * json)
 {
 	auto logger{ nano::to_logger_handle (node.logger) };
-	return rsnano::rsn_wallet_create (store.rust_handle, node.ledger.handle, logger, &node.network_params.work.dto);
+	return rsnano::rsn_wallet_create (
+	node.ledger.handle,
+	logger,
+	&node.network_params.work.dto,
+	node.config->password_fanout,
+	wallets_a.kdf.handle,
+	transaction_a.get_rust_handle (),
+	representative.bytes.data (),
+	wallet_path.c_str (),
+	json);
 }
 }
 
 nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a) :
-	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a),
-	node{ wallets_a.node },
-	handle{ create_wallet_handle (store, wallets_a.node) },
+	handle{ create_wallet_handle (wallets_a.node, wallets_a, transaction_a, wallets_a.node.config->random_representative (), wallet_a, nullptr) },
+	store{ rsnano::rsn_wallet_store (handle) },
 	representatives_mutex{ handle }
 {
 }
 
 nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a, std::string const & json) :
-	store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config->random_representative (), wallets_a.node.config->password_fanout, wallet_a, json),
-	node{ wallets_a.node },
-	handle{ create_wallet_handle (store, wallets_a.node) },
+	handle{ create_wallet_handle (wallets_a.node, wallets_a, transaction_a, wallets_a.node.config->random_representative (), wallet_a, json.c_str ()) },
+	store{ rsnano::rsn_wallet_store (handle) },
+	representatives_mutex{ handle }
+{
+}
+
+nano::wallet::wallet (rsnano::WalletHandle * handle) :
+	store{ rsnano::rsn_wallet_store (handle) },
+	handle{ handle },
 	representatives_mutex{ handle }
 {
 }
@@ -424,12 +453,6 @@ nano::wallet::~wallet ()
 bool nano::wallet::insert_watch (store::transaction const & transaction_a, nano::public_key const & pub_a)
 {
 	return store.insert_watch (transaction_a, pub_a);
-}
-
-void nano::wallet_store::destroy (store::transaction const & transaction_a)
-{
-	if (rust_handle != nullptr)
-		rsnano::rsn_lmdb_wallet_store_destroy2 (rust_handle, transaction_a.get_rust_handle ());
 }
 
 // Update work for account if latest root is root_a
@@ -446,6 +469,30 @@ uint32_t nano::wallet::deterministic_check (store::transaction const & transacti
 bool nano::wallet::live ()
 {
 	return rsnano::rsn_wallet_live (handle);
+}
+
+size_t nano::wallet::representatives_count () const
+{
+	auto representatives_lk (representatives_mutex.lock ());
+	return representatives_lk.size ();
+}
+
+void nano::wallet::insert_representative (nano::account const & rep)
+{
+	auto representatives_lk (representatives_mutex.lock ());
+	representatives_lk.insert (rep);
+}
+
+std::unordered_set<nano::account> nano::wallet::get_representatives ()
+{
+	auto representatives_lk (representatives_mutex.lock ());
+	return representatives_lk.get_all ();
+}
+
+void nano::wallet::set_representatives (std::unordered_set<nano::account> const & reps)
+{
+	auto representatives_lk (representatives_mutex.lock ());
+	representatives_lk.set (reps);
 }
 
 bool nano::wallet_representatives::check_rep (nano::account const & account_a, nano::uint128_t const & half_principal_weight_a, bool const acquire_lock_a)
@@ -606,8 +653,7 @@ size_t nano::wallets::representatives_count (nano::wallet_id const & id) const
 {
 	auto lock{ mutex.lock () };
 	auto wallet = items.find (id);
-	auto representatives_lk (wallet->second->representatives_mutex.lock ());
-	return representatives_lk.size ();
+	return wallet->second->representatives_count ();
 }
 
 nano::key_type nano::wallets::key_type (nano::wallet_id const & wallet_id, nano::raw_key const & key)
@@ -1033,8 +1079,7 @@ nano::public_key nano::wallets::insert_adhoc (const std::shared_ptr<nano::wallet
 		transaction->commit ();
 		if (representatives.check_rep (key, half_principal_weight))
 		{
-			auto lock{ wallet->representatives_mutex.lock () };
-			lock.insert (key);
+			wallet->insert_representative (key);
 		}
 	}
 	return key;
@@ -1534,8 +1579,7 @@ nano::public_key nano::wallets::deterministic_insert (const std::shared_ptr<nano
 		auto half_principal_weight (node.minimum_principal_weight () / 2);
 		if (representatives.check_rep (key, half_principal_weight))
 		{
-			auto lock{ wallet->representatives_mutex.lock () };
-			lock.insert (key);
+			wallet->insert_representative (key);
 		}
 	}
 	return key;
@@ -1894,8 +1938,7 @@ void nano::wallets::foreach_representative (std::function<void (nano::public_key
 				auto & wallet (*i->second);
 				std::unordered_set<nano::account> representatives_l;
 				{
-					auto representatives_lock{ wallet.representatives_mutex.lock () };
-					representatives_l = representatives_lock.get_all ();
+					representatives_l = wallet.get_representatives ();
 				}
 				for (auto const & account : representatives_l)
 				{
@@ -2003,8 +2046,7 @@ void nano::wallets::compute_reps ()
 				representatives_l.insert (account);
 			}
 		}
-		auto representatives_guard{ wallet.representatives_mutex.lock () };
-		representatives_guard.set (representatives_l);
+		wallet.set_representatives (representatives_l);
 	}
 }
 

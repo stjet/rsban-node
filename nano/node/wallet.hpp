@@ -49,6 +49,7 @@ class wallet_store final
 public:
 	wallet_store (bool &, nano::kdf &, store::transaction &, nano::account, unsigned, std::string const &);
 	wallet_store (bool &, nano::kdf &, store::transaction &, nano::account, unsigned, std::string const &, std::string const &);
+	wallet_store (rsnano::LmdbWalletStoreHandle * handle);
 	~wallet_store ();
 	wallet_store (wallet_store const &) = delete;
 	bool is_open () const;
@@ -95,7 +96,6 @@ public:
 	static unsigned const version_4 = 4;
 	static unsigned constexpr version_current = version_4;
 	static int const special_count;
-	nano::kdf & kdf;
 
 	rsnano::LmdbWalletStoreHandle * rust_handle;
 };
@@ -127,17 +127,20 @@ public:
 	};
 	wallet (bool &, store::transaction &, nano::wallets &, std::string const &);
 	wallet (bool &, store::transaction &, nano::wallets &, std::string const &, std::string const &);
+	wallet (rsnano::WalletHandle * handle);
 	wallet (wallet const &) = delete;
 	~wallet ();
 	bool insert_watch (store::transaction const &, nano::public_key const &);
 	void work_update (store::transaction const &, nano::account const &, nano::root const &, uint64_t);
 	uint32_t deterministic_check (store::transaction const & transaction_a, uint32_t index);
 	bool live ();
-
-	nano::wallet_store store;
-	nano::node & node;
+	size_t representatives_count () const;
+	void insert_representative (nano::account const & rep);
+	std::unordered_set<nano::account> get_representatives ();
+	void set_representatives (std::unordered_set<nano::account> const & reps);
 	rsnano::WalletHandle * handle;
-	representatives_mutex representatives_mutex;
+	nano::wallet_store store;
+	mutable representatives_mutex representatives_mutex;
 };
 
 class wallet_action_thread

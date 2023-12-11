@@ -206,37 +206,6 @@ nano::wallet_id nano::json_handler::get_wallet_id ()
 	return nano::wallet_id{};
 }
 
-bool nano::json_handler::wallet_locked_impl (store::transaction const & transaction_a, std::shared_ptr<nano::wallet> const & wallet_a)
-{
-	bool result (false);
-	if (!ec)
-	{
-		if (!wallet_a->store.valid_password (transaction_a))
-		{
-			ec = nano::error_common::wallet_locked;
-			result = true;
-		}
-	}
-	return result;
-}
-
-bool nano::json_handler::wallet_account_impl (store::transaction const & transaction_a, std::shared_ptr<nano::wallet> const & wallet_a, nano::account const & account_a)
-{
-	bool result (false);
-	if (!ec)
-	{
-		if (wallet_a->store.find (transaction_a, account_a) != wallet_a->store.end ())
-		{
-			result = true;
-		}
-		else
-		{
-			ec = nano::error_common::account_not_found_wallet;
-		}
-	}
-	return result;
-}
-
 nano::account nano::json_handler::account_impl (std::string account_text, std::error_code ec_a)
 {
 	nano::account result{};

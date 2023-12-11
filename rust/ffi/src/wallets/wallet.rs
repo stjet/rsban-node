@@ -1,3 +1,4 @@
+use super::kdf::KdfHandle;
 use crate::{
     ledger::datastore::{lmdb::LmdbWalletStoreHandle, LedgerHandle, TransactionHandle},
     utils::{LoggerHandle, LoggerMT},
@@ -5,8 +6,12 @@ use crate::{
 };
 use rsnano_core::{work::WorkThresholds, Account, Root};
 use rsnano_node::wallets::Wallet;
+use rsnano_store_lmdb::LmdbWalletStore;
 use std::{
     collections::HashSet,
+    ffi::{c_char, CStr},
+    ops::Deref,
+    path::PathBuf,
     sync::{Arc, MutexGuard},
 };
 
@@ -14,19 +19,50 @@ pub struct WalletHandle(pub Arc<Wallet>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_wallet_create(
-    store: &LmdbWalletStoreHandle,
     ledger: &LedgerHandle,
     logger: *mut LoggerHandle,
     work: &WorkThresholdsDto,
+    fanout: usize,
+    kdf: &KdfHandle,
+    txn: &mut TransactionHandle,
+    representative: *const u8,
+    wallet_path: *const c_char,
+    json: *const c_char,
 ) -> *mut WalletHandle {
+    let txn = txn.as_write_txn();
+    let representative = Account::from_ptr(representative);
+    let wallet_path = PathBuf::from(CStr::from_ptr(wallet_path).to_str().unwrap());
     let work = WorkThresholds::from(work);
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
-    Box::into_raw(Box::new(WalletHandle(Arc::new(Wallet::new(
-        Arc::clone(store),
-        Arc::clone(ledger),
-        logger,
-        work,
-    )))))
+    let wallet = if json.is_null() {
+        Wallet::new(
+            Arc::clone(ledger),
+            logger,
+            work,
+            txn,
+            fanout,
+            kdf.deref().clone(),
+            representative,
+            &wallet_path,
+        )
+    } else {
+        Wallet::new_from_json(
+            Arc::clone(ledger),
+            logger,
+            work,
+            txn,
+            fanout,
+            kdf.deref().clone(),
+            &wallet_path,
+            CStr::from_ptr(json).to_str().unwrap(),
+        )
+    };
+    Box::into_raw(Box::new(WalletHandle(Arc::new(wallet))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_wallet_store(handle: &WalletHandle) -> *mut LmdbWalletStoreHandle {
+    Box::into_raw(Box::new(LmdbWalletStoreHandle(Arc::clone(&handle.0.store))))
 }
 
 #[no_mangle]

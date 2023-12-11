@@ -1,17 +1,19 @@
 use std::{
     collections::HashSet,
+    path::Path,
     sync::{Arc, Mutex},
 };
 
 use rsnano_core::{
-    utils::Logger, work::WorkThresholds, Account, BlockHash, KeyPair, PendingKey, Root, WorkVersion,
+    utils::Logger, work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, KeyPair,
+    PendingKey, Root, WorkVersion,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{EnvironmentWrapper, LmdbWalletStore, LmdbWriteTransaction, Transaction};
 
 pub struct Wallet {
     pub representatives: Mutex<HashSet<Account>>,
-    store: Arc<LmdbWalletStore>,
+    pub store: Arc<LmdbWalletStore>,
     ledger: Arc<Ledger>,
     logger: Arc<dyn Logger>,
     work_thresholds: WorkThresholds,
@@ -19,14 +21,43 @@ pub struct Wallet {
 
 impl Wallet {
     pub fn new(
-        store: Arc<LmdbWalletStore>,
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
         work_thresholds: WorkThresholds,
+        txn: &mut LmdbWriteTransaction,
+        fanout: usize,
+        kdf: KeyDerivationFunction,
+        representative: Account,
+        wallet_path: &Path,
     ) -> Self {
+        let store = LmdbWalletStore::new(fanout, kdf, txn, &representative, &wallet_path)
+            .expect("could not create store");
+
         Self {
             representatives: Mutex::new(HashSet::new()),
-            store,
+            store: Arc::new(store),
+            ledger,
+            logger,
+            work_thresholds,
+        }
+    }
+
+    pub fn new_from_json(
+        ledger: Arc<Ledger>,
+        logger: Arc<dyn Logger>,
+        work_thresholds: WorkThresholds,
+        txn: &mut LmdbWriteTransaction,
+        fanout: usize,
+        kdf: KeyDerivationFunction,
+        wallet_path: &Path,
+        json: &str,
+    ) -> Self {
+        let store = LmdbWalletStore::new_from_json(fanout, kdf, txn, &wallet_path, json)
+            .expect("could not create store");
+
+        Self {
+            representatives: Mutex::new(HashSet::new()),
+            store: Arc::new(store),
             ledger,
             logger,
             work_thresholds,

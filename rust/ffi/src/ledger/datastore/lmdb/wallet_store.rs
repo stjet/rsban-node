@@ -11,7 +11,7 @@ use crate::{wallets::kdf::KdfHandle, StringDto, U256ArrayDto};
 use rsnano_core::{Account, PublicKey, RawKey};
 use rsnano_store_lmdb::{EnvironmentWrapper, LmdbWalletStore, WalletValue};
 
-pub struct LmdbWalletStoreHandle(Arc<LmdbWalletStore>);
+pub struct LmdbWalletStoreHandle(pub Arc<LmdbWalletStore>);
 
 impl Deref for LmdbWalletStoreHandle {
     type Target = Arc<LmdbWalletStore>;

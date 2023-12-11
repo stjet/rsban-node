@@ -156,8 +156,6 @@ public:
 	std::string action;
 	boost::property_tree::ptree response_l;
 	nano::wallet_id get_wallet_id ();
-	bool wallet_locked_impl (store::transaction const &, std::shared_ptr<nano::wallet> const &);
-	bool wallet_account_impl (store::transaction const &, std::shared_ptr<nano::wallet> const &, nano::account const &);
 	nano::account account_impl (std::string = "", std::error_code = nano::error_common::bad_account_number);
 	nano::account_info account_info_impl (store::transaction const &, nano::account const &);
 	nano::amount amount_impl ();

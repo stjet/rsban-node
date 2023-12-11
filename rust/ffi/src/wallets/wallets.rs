@@ -20,10 +20,9 @@ pub extern "C" fn rsn_lmdb_wallets_create(
     enable_voting: bool,
     lmdb: &LmdbEnvHandle,
 ) -> *mut LmdbWalletsHandle {
-    Box::into_raw(Box::new(LmdbWalletsHandle(Wallets::new(
-        enable_voting,
-        Arc::clone(lmdb),
-    ))))
+    Box::into_raw(Box::new(LmdbWalletsHandle(
+        Wallets::new(enable_voting, Arc::clone(lmdb)).expect("could not create wallet"),
+    )))
 }
 
 #[no_mangle]
@@ -182,6 +181,25 @@ pub extern "C" fn rsn_lmdb_wallets_mutex_lock_get_all(
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
     Box::into_raw(Box::new(WalletVecHandle(wallets)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_lock_insert(
+    handle: &mut WalletsMutexLockHandle,
+    wallet_id: *const u8,
+    wallet: &WalletHandle,
+) {
+    handle
+        .0
+        .insert(WalletId::from_ptr(wallet_id), Arc::clone(&wallet.0));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_lock_erase(
+    handle: &mut WalletsMutexLockHandle,
+    wallet_id: *const u8,
+) {
+    handle.0.remove(&WalletId::from_ptr(wallet_id));
 }
 
 pub struct WalletVecHandle(Vec<(WalletId, Arc<Wallet>)>);

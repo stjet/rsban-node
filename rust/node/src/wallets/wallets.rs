@@ -17,19 +17,27 @@ pub struct Wallets<T: Environment = EnvironmentWrapper> {
     pub handle: Option<T::Database>,
     pub send_action_ids_handle: Option<T::Database>,
     enable_voting: bool,
-    _env: Arc<LmdbEnv<T>>,
+    env: Arc<LmdbEnv<T>>,
     pub mutex: Mutex<HashMap<WalletId, Arc<Wallet>>>,
 }
 
 impl<T: Environment + 'static> Wallets<T> {
-    pub fn new(enable_voting: bool, env: Arc<LmdbEnv<T>>) -> Self {
-        Self {
+    pub fn new(enable_voting: bool, env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
+        let mut wallets = Self {
             handle: None,
             send_action_ids_handle: None,
             enable_voting,
             mutex: Mutex::new(HashMap::new()),
-            _env: env,
-        }
+            env,
+        };
+        //let mut txn = wallets.env.tx_begin_write();
+        //wallets.initialize(&mut txn)?;
+        //let wallet_ids = wallets.get_wallet_ids(&txn);
+        //for id in wallet_ids {
+        //    assert!()
+        //}
+
+        Ok(wallets)
     }
 
     pub fn initialize(&mut self, txn: &mut LmdbWriteTransaction<T>) -> anyhow::Result<()> {

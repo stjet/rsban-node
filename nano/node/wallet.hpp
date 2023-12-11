@@ -221,6 +221,11 @@ public:
 		wallets_mutex_lock (wallets_mutex_lock const &) = delete;
 		~wallets_mutex_lock ();
 		std::shared_ptr<nano::wallet> find (nano::wallet_id const & wallet_id);
+		void insert (nano::wallet_id const & wallet_id, std::shared_ptr<nano::wallet> wallet);
+		std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> get_all();
+		size_t size() const;
+		void erase (nano::wallet_id const & wallet_id);
+
 		rsnano::WalletsMutexLockHandle * handle;
 	};
 
@@ -350,7 +355,6 @@ public: // TODO make private
 	// fields
 public:
 	nano::network_params & network_params;
-	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> items;
 	nano::wallet_action_thread wallet_actions;
 	nano::locked<std::unordered_map<nano::account, nano::root>> delayed_work;
 	nano::kdf kdf;

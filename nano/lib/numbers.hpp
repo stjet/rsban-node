@@ -209,6 +209,7 @@ public:
 	using uint256_union::uint256_union;
 	~raw_key ();
 	void decrypt (nano::uint256_union const &, nano::raw_key const &, uint128_union const &);
+	static nano::raw_key from_bytes (const uint8_t * bytes);
 };
 class uint512_union
 {

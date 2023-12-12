@@ -3,6 +3,7 @@ use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
 use std::net::Ipv6Addr;
 
+#[derive(Clone)]
 pub struct WebsocketConfig {
     pub enabled: bool,
     pub port: u16,

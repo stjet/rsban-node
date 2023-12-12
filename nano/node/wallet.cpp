@@ -1359,6 +1359,12 @@ bool nano::wallets::receive_sync (const std::shared_ptr<nano::wallet> & wallet, 
 
 bool nano::wallets::search_receivable (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & wallet_transaction_a)
 {
+	std::function<void (std::shared_ptr<nano::block> const &)> start_election =
+	[&this_l = *this] (std::shared_ptr<nano::block> const & block) {
+		this_l.node.start_election (block);
+	};
+
+	// TODO port this:
 	auto error (!wallet->store.valid_password (wallet_transaction_a));
 	if (!error)
 	{
@@ -1391,7 +1397,7 @@ bool nano::wallets::search_receivable (const std::shared_ptr<nano::wallet> & wal
 							if (block)
 							{
 								// Request confirmation for block which is not being processed yet
-								node.start_election (block);
+								start_election (block);
 							}
 						}
 					}
@@ -1966,55 +1972,31 @@ void nano::wallets::reload ()
 	}
 }
 
+namespace
+{
+void foreach_representative_action (void * context, const uint8_t * pub_key_bytes, const uint8_t * priv_key_bytes)
+{
+	auto action = static_cast<std::function<void (nano::public_key const & pub_a, nano::raw_key const & prv_a)> *> (context);
+	auto pub_key{ nano::public_key::from_bytes (pub_key_bytes) };
+	auto prv_key{ nano::raw_key::from_bytes (priv_key_bytes) };
+	(*action) (pub_key, prv_key);
+}
+
+void delete_foreach_representative_context (void * context)
+{
+	auto action = static_cast<std::function<void (nano::public_key const & pub_a, nano::raw_key const & prv_a)> *> (context);
+	delete action;
+}
+}
+
 void nano::wallets::foreach_representative (std::function<void (nano::public_key const & pub_a, nano::raw_key const & prv_a)> const & action_a)
 {
-	if (node.config->enable_voting)
-	{
-		std::vector<std::pair<nano::public_key const, nano::raw_key const>> action_accounts_l;
-		{
-			auto transaction_l (tx_begin_read ());
-			auto lock{ mutex.lock () };
-			auto wallets{ lock.get_all () };
-			for (auto i (wallets.begin ()), n (wallets.end ()); i != n; ++i)
-			{
-				auto & wallet (*i->second);
-				std::unordered_set<nano::account> representatives_l;
-				{
-					representatives_l = wallet.get_representatives ();
-				}
-				for (auto const & account : representatives_l)
-				{
-					if (wallet.store.exists (*transaction_l, account))
-					{
-						if (!node.ledger.weight (account).is_zero ())
-						{
-							if (wallet.store.valid_password (*transaction_l))
-							{
-								nano::raw_key prv;
-								auto error (wallet.store.fetch (*transaction_l, account, prv));
-								(void)error;
-								debug_assert (!error);
-								action_accounts_l.emplace_back (account, prv);
-							}
-							else
-							{
-								static auto last_log = std::chrono::steady_clock::time_point ();
-								if (last_log < std::chrono::steady_clock::now () - std::chrono::seconds (60))
-								{
-									last_log = std::chrono::steady_clock::now ();
-									node.logger->always_log (boost::str (boost::format ("Representative locked inside wallet %1%") % i->first.to_string ()));
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		for (auto const & representative : action_accounts_l)
-		{
-			action_a (representative.first, representative.second);
-		}
-	}
+	auto context = new std::function<void (nano::public_key const & pub_a, nano::raw_key const & prv_a)> (action_a);
+	rsnano::rsn_wallets_foreach_representative (
+	rust_handle,
+	foreach_representative_action,
+	context,
+	delete_foreach_representative_context);
 }
 
 bool nano::wallets::exists (nano::account const & account_a)

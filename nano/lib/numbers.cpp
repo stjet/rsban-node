@@ -314,6 +314,13 @@ void nano::raw_key::decrypt (nano::uint256_union const & ciphertext, nano::raw_k
 	rsnano::rsn_raw_key_decrypt (bytes.data (), ciphertext.bytes.data (), key_a.bytes.data (), iv.bytes.data ());
 }
 
+nano::raw_key nano::raw_key::from_bytes (const uint8_t * bytes)
+{
+	nano::raw_key result;
+	std::copy (bytes, bytes + 32, std::begin (result.bytes));
+	return result;
+}
+
 nano::raw_key nano::deterministic_key (nano::raw_key const & seed_a, uint32_t index_a)
 {
 	nano::raw_key prv_key;

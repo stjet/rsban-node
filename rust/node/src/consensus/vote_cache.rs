@@ -17,6 +17,7 @@ use mock_instant::Instant;
 #[cfg(not(test))]
 use std::time::Instant;
 
+#[derive(Clone)]
 pub struct VoteCacheConfig {
     pub max_size: usize,
     pub max_voters: usize,

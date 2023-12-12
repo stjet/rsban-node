@@ -24,6 +24,7 @@ pub enum FrontiersConfirmationMode {
     Invalid,
 }
 
+#[derive(Clone)]
 pub struct NodeConfig {
     pub peering_port: Option<u16>,
     pub optimistic_scheduler: OptimisticSchedulerConfig,
@@ -97,6 +98,7 @@ pub struct NodeConfig {
     pub vote_cache: VoteCacheConfig,
 }
 
+#[derive(Clone)]
 pub struct Peer {
     pub address: String,
     pub port: u16,

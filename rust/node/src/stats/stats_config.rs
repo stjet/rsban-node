@@ -1,6 +1,7 @@
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
 
+#[derive(Clone)]
 pub struct StatsConfig {
     /** If true, sampling of counters is enabled */
     pub sampling_enabled: bool,

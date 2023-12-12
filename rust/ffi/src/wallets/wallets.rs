@@ -112,23 +112,6 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_clear_send_ids(
     (*handle).0.clear_send_ids((*txn).as_write_txn())
 }
 
-/// private key + raw_key
-pub type RepresentativeCallback = unsafe extern "C" fn(*mut c_void, *const u8, *const u8);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallets_foreach_representative(
-    handle: &LmdbWalletsHandle,
-    callback: RepresentativeCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let context = ContextWrapper::new(context, delete_context);
-    handle.0.foreach_representative(move |account, raw_key| {
-        let ctx = context.get_context();
-        callback(ctx, &account.as_bytes()[0], &raw_key.as_bytes()[0]);
-    });
-}
-
 pub struct WalletsMutexLockHandle(MutexGuard<'static, HashMap<WalletId, Arc<Wallet>>>);
 
 #[no_mangle]
@@ -243,4 +226,24 @@ pub unsafe extern "C" fn rsn_wallet_vec_get(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_wallet_vec_destroy(handle: *mut WalletVecHandle) {
     drop(Box::from_raw(handle));
+}
+
+pub type ForeachRepresentativeAction = extern "C" fn(*mut c_void, *const u8, *const u8);
+
+#[no_mangle]
+pub extern "C" fn rsn_wallets_foreach_representative(
+    handle: &mut LmdbWalletsHandle,
+    action: ForeachRepresentativeAction,
+    action_context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let context_wrapper = ContextWrapper::new(action_context, delete_context);
+    handle.0.foreach_representative(move |account, prv_key| {
+        let ctx = context_wrapper.get_context();
+        action(
+            ctx,
+            account.as_bytes().as_ptr(),
+            prv_key.as_bytes().as_ptr(),
+        );
+    });
 }

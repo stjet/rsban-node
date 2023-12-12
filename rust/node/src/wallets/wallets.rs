@@ -2,12 +2,13 @@ use std::{
     collections::HashMap,
     path::PathBuf,
     sync::{Arc, Mutex},
+    time::{Duration, Instant},
 };
 
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::Logger, work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, NoValue,
-    RawKey, WalletId,
+    PublicKey, RawKey, WalletId,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{
@@ -27,6 +28,9 @@ pub struct Wallets<T: Environment = EnvironmentWrapper> {
     env: Arc<LmdbEnv<T>>,
     logger: Arc<dyn Logger>,
     pub mutex: Mutex<HashMap<WalletId, Arc<Wallet<T>>>>,
+    pub node_config: NodeConfig,
+    ledger: Arc<Ledger>,
+    last_log: Option<Instant>,
 }
 
 impl<T: Environment + 'static> Wallets<T> {
@@ -47,6 +51,9 @@ impl<T: Environment + 'static> Wallets<T> {
             mutex: Mutex::new(HashMap::new()),
             logger: Arc::clone(&logger),
             env,
+            node_config: node_config.clone(),
+            ledger: Arc::clone(&ledger),
+            last_log: None,
         };
         let mut txn = wallets.env.tx_begin_write();
         wallets.initialize(&mut txn)?;
@@ -162,19 +169,48 @@ impl<T: Environment + 'static> Wallets<T> {
         txn.clear_db(self.send_action_ids_handle.unwrap()).unwrap();
     }
 
-    pub fn foreach_representative<F>(&self, _f: F)
+    pub fn foreach_representative<F>(&mut self, action: F)
     where
         F: Fn(&Account, &RawKey),
     {
-        if !self.enable_voting {
-            return;
-        }
+        if self.node_config.enable_voting {
+            let mut action_accounts_l: Vec<(PublicKey, RawKey)> = Vec::new();
+            {
+                let transaction_l = self.env.tx_begin_read();
+                let lock = self.mutex.lock().unwrap();
+                for (wallet_id, wallet) in lock.iter() {
+                    let representatives_l = wallet.representatives.lock().unwrap().clone();
+                    for account in representatives_l {
+                        if wallet.store.exists(&transaction_l, &account) {
+                            if !self.ledger.weight(&account).is_zero() {
+                                if wallet.store.valid_password(&transaction_l) {
+                                    let prv = wallet
+                                        .store
+                                        .fetch(&transaction_l, &account)
+                                        .expect("could not fetch account from wallet");
 
-        //let mut action_accounts = Vec::new();
-        //{
-        //    let txn = self.env.tx_begin_read();
-        //}
-        //TODO
-        todo!()
+                                    action_accounts_l.push((account, prv));
+                                } else {
+                                    let should_log = match self.last_log {
+                                        Some(i) => i.elapsed() >= Duration::from_secs(60),
+                                        None => true,
+                                    };
+                                    if should_log {
+                                        self.last_log = Some(Instant::now());
+                                        self.logger.always_log(&format!(
+                                            "Representative locked inside wallet {}",
+                                            wallet_id
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            for (pub_key, prv_key) in action_accounts_l {
+                action(&pub_key, &prv_key);
+            }
+        }
     }
 }

@@ -3,6 +3,7 @@ use rsnano_core::utils::TomlWriter;
 
 use crate::utils::TxnTrackingConfig;
 
+#[derive(Clone)]
 pub struct DiagnosticsConfig {
     pub txn_tracking: TxnTrackingConfig,
 }

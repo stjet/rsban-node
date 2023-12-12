@@ -2,6 +2,7 @@ use rsnano_core::utils::TomlWriter;
 use rsnano_messages::BlocksAckPayload;
 use std::time::Duration;
 
+#[derive(Clone)]
 pub struct BootstrapAscendingConfig {
     /// Maximum number of un-responded requests per channel
     pub requests_limit: usize,
@@ -54,6 +55,7 @@ impl Default for BootstrapAscendingConfig {
     }
 }
 
+#[derive(Clone)]
 pub struct AccountSetsConfig {
     pub consideration_count: usize,
     pub priorities_max: usize,

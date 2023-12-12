@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use rsnano_core::utils::TomlWriter;
 
+#[derive(Clone)]
 pub struct OptimisticSchedulerConfig {
     pub enabled: bool,
 
@@ -36,6 +37,7 @@ impl OptimisticSchedulerConfig {
     }
 }
 
+#[derive(Clone)]
 pub struct HintedSchedulerConfig {
     pub check_interval: Duration,
     pub block_cooldown: Duration,

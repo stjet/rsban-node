@@ -275,9 +275,13 @@ void nano::kdf::phs (nano::raw_key & result_a, std::string const & password_a, n
 }
 
 nano::wallet_action_thread::wallet_action_thread () :
-	observer ([] (bool) {}),
-	stopped (false)
+	handle{ rsnano::rsn_wallet_action_thread_create () }
 {
+}
+
+nano::wallet_action_thread::~wallet_action_thread ()
+{
+	rsnano::rsn_wallet_action_thread_destroy (handle);
 }
 
 void nano::wallet_action_thread::start ()
@@ -290,63 +294,76 @@ void nano::wallet_action_thread::start ()
 
 void nano::wallet_action_thread::stop ()
 {
-	{
-		nano::lock_guard<nano::mutex> action_lock{ action_mutex };
-		stopped = true;
-		actions.clear ();
-	}
-	condition.notify_all ();
+	rsnano::rsn_wallet_action_thread_stop (handle);
 	if (thread.joinable ())
 	{
 		thread.join ();
 	}
 }
 
-void nano::wallet_action_thread::queue_wallet_action (nano::uint128_t const & amount_a, std::shared_ptr<nano::wallet> const & wallet_a, std::function<void (nano::wallet &)> action_a)
+namespace
 {
-	{
-		nano::lock_guard<nano::mutex> action_lock{ action_mutex };
-		actions.emplace (amount_a, std::make_pair (wallet_a, action_a));
-	}
-	condition.notify_all ();
+void wrapped_wallet_action_callback (void * context, rsnano::WalletHandle * wallet_handle)
+{
+	auto action = static_cast<std::function<void (nano::wallet &)> *> (context);
+	auto wallet{ std::make_shared<nano::wallet> (wallet_handle) };
+	(*action) (*wallet);
 }
 
-nano::lock_guard<nano::mutex> nano::wallet_action_thread::lock ()
+void delete_wallet_action_context (void * context)
 {
-	return nano::lock_guard<nano::mutex>{ action_mutex };
+	auto action = static_cast<std::function<void (nano::wallet &)> *> (context);
+	delete action;
+}
+}
+
+void nano::wallet_action_thread::queue_wallet_action (nano::uint128_t const & amount_a, std::shared_ptr<nano::wallet> const & wallet_a, std::function<void (nano::wallet &)> action_a)
+{
+	nano::amount amount{ amount_a };
+	auto context = new std::function<void (nano::wallet &)> (action_a);
+	rsnano::rsn_wallet_action_thread_queue_wallet_action (
+	handle,
+	amount.bytes.data (),
+	wallet_a->handle,
+	wrapped_wallet_action_callback,
+	context,
+	delete_wallet_action_context);
+}
+
+nano::wallet_action_thread::actions_lock nano::wallet_action_thread::lock ()
+{
+	return nano::wallet_action_thread::actions_lock{ rsnano::rsn_wallet_action_lock (handle) };
 }
 
 size_t nano::wallet_action_thread::size ()
 {
-	nano::lock_guard<nano::mutex> action_lock{ action_mutex };
-	return actions.size ();
+	return rsnano::rsn_wallet_action_thread_len (handle);
+}
+
+namespace
+{
+void wrapped_wallet_action_observer (void * context, bool active)
+{
+	auto callback = static_cast<std::function<void (bool)> *> (context);
+	(*callback) (active);
+}
+
+void delete_wallet_action_observer_context (void * context)
+{
+	auto callback = static_cast<std::function<void (bool)> *> (context);
+	delete callback;
+}
+}
+
+void nano::wallet_action_thread::set_observer (std::function<void (bool)> observer_a)
+{
+	auto context = new std::function<void (bool)> (observer_a);
+	rsnano::rsn_wallet_action_thread_set_observer (handle, wrapped_wallet_action_observer, context, delete_wallet_action_observer_context);
 }
 
 void nano::wallet_action_thread::do_wallet_actions ()
 {
-	nano::unique_lock<nano::mutex> action_lock{ action_mutex };
-	while (!stopped)
-	{
-		if (!actions.empty ())
-		{
-			auto first (actions.begin ());
-			auto wallet (first->second.first);
-			auto current (std::move (first->second.second));
-			actions.erase (first);
-			if (wallet->live ())
-			{
-				action_lock.unlock ();
-				observer (true);
-				current (*wallet);
-				observer (false);
-				action_lock.lock ();
-			}
-		}
-		else
-		{
-			condition.wait (action_lock);
-		}
-	}
+	rsnano::rsn_wallet_action_thread_do_wallet_actions (handle);
 }
 
 nano::wallet::representatives_lock::representatives_lock (rsnano::RepresentativesLockHandle * handle) :

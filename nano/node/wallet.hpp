@@ -146,24 +146,39 @@ public:
 class wallet_action_thread
 {
 public:
+	class actions_lock
+	{
+	public:
+		actions_lock (rsnano::WalletActionThreadLock * handle) :
+			handle{ handle }
+		{
+		}
+		actions_lock (actions_lock const &) = delete;
+		~actions_lock ()
+		{
+			rsnano::rsn_wallet_action_thread_lock_destroy (handle);
+		}
+
+	private:
+		rsnano::WalletActionThreadLock * handle;
+	};
 	wallet_action_thread ();
+	wallet_action_thread (const wallet_action_thread &) = delete;
+	~wallet_action_thread ();
 
 	void start ();
 	void stop ();
 	void queue_wallet_action (nano::uint128_t const &, std::shared_ptr<nano::wallet> const &, std::function<void (nano::wallet &)>);
-	nano::lock_guard<nano::mutex> lock ();
+	actions_lock lock ();
 	size_t size ();
-
-	std::function<void (bool)> observer;
+	void set_observer (std::function<void (bool)> observer);
 
 private:
 	void do_wallet_actions ();
-
-	nano::mutex action_mutex;
-	std::atomic<bool> stopped;
-	nano::condition_variable condition;
-	std::multimap<nano::uint128_t, std::pair<std::shared_ptr<nano::wallet>, std::function<void (nano::wallet &)>>, std::greater<nano::uint128_t>> actions;
 	std::thread thread;
+
+public:
+	rsnano::WalletActionThreadHandle * handle;
 };
 
 class wallet_representatives

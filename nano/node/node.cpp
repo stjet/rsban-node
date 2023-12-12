@@ -252,9 +252,9 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 			scheduler.optimistic.notify ();
 		};
 
-		wallets.wallet_actions.observer = [this] (bool active) {
+		wallets.wallet_actions.set_observer ([this] (bool active) {
 			observers->wallet.notify (active);
-		};
+		});
 		network->on_new_channel ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
 			debug_assert (channel_a != nullptr);
 			observers->endpoint.notify (channel_a);

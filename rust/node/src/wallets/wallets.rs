@@ -11,8 +11,8 @@ use rsnano_core::{
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{
-    BinaryDbIterator, DbIterator, Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl,
-    LmdbWriteTransaction, RwTransaction, Transaction,
+    create_backup_file, BinaryDbIterator, DbIterator, Environment, EnvironmentWrapper, LmdbEnv,
+    LmdbIteratorImpl, LmdbWalletStore, LmdbWriteTransaction, RwTransaction, Transaction,
 };
 
 use crate::config::NodeConfig;
@@ -25,6 +25,7 @@ pub struct Wallets<T: Environment = EnvironmentWrapper> {
     pub send_action_ids_handle: Option<T::Database>,
     enable_voting: bool,
     env: Arc<LmdbEnv<T>>,
+    logger: Arc<dyn Logger>,
     pub mutex: Mutex<HashMap<WalletId, Arc<Wallet<T>>>>,
 }
 
@@ -44,6 +45,7 @@ impl<T: Environment + 'static> Wallets<T> {
             send_action_ids_handle: None,
             enable_voting,
             mutex: Mutex::new(HashMap::new()),
+            logger: Arc::clone(&logger),
             env,
         };
         let mut txn = wallets.env.tx_begin_write();
@@ -68,6 +70,22 @@ impl<T: Environment + 'static> Wallets<T> {
 
                 guard.insert(id, Arc::new(wallet));
             }
+
+            // Backup before upgrade wallets
+            let mut backup_required = false;
+            if node_config.backup_before_upgrade {
+                let txn = wallets.env.tx_begin_read();
+                for wallet in guard.values() {
+                    if wallet.store.version(&txn) != LmdbWalletStore::<T>::VERSION_CURRENT {
+                        backup_required = true;
+                        break;
+                    }
+                }
+            }
+            if backup_required {
+                create_backup_file(&wallets.env, logger.as_ref())?;
+            }
+            // TODO port more here...
         }
 
         Ok(wallets)

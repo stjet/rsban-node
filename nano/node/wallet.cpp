@@ -641,25 +641,6 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 		// ported until here...
 
 		auto lock{ mutex.lock () };
-		// Backup before upgrade wallets
-		bool backup_required (false);
-		if (node.config->backup_before_upgrade)
-		{
-			auto transaction (tx_begin_read ());
-			auto wallets = lock.get_all ();
-			for (auto & item : wallets)
-			{
-				if (item.second->store.version (*transaction) != nano::wallet_store::version_current)
-				{
-					backup_required = true;
-					break;
-				}
-			}
-		}
-		if (backup_required)
-		{
-			rsnano::rsn_lmdb_store_create_backup_file (env.handle, nano::to_logger_handle (node_a.logger));
-		}
 		auto wallets = lock.get_all ();
 		for (auto & item : wallets)
 		{

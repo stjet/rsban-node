@@ -83,8 +83,6 @@ pub enum KeyType {
     Deterministic,
 }
 
-const VERSION_CURRENT: u32 = 4;
-
 pub type WalletIterator = Box<dyn DbIterator<Account, WalletValue>>;
 
 pub struct LmdbWalletStore<T: Environment = EnvironmentWrapper> {
@@ -95,6 +93,7 @@ pub struct LmdbWalletStore<T: Environment = EnvironmentWrapper> {
 }
 
 impl<T: Environment + 'static> LmdbWalletStore<T> {
+    pub const VERSION_CURRENT: u32 = 4;
     pub fn new(
         fanout: usize,
         kdf: KeyDerivationFunction,
@@ -111,7 +110,7 @@ impl<T: Environment + 'static> LmdbWalletStore<T> {
         store.initialize(txn, wallet)?;
         let handle = store.db_handle();
         if let Err(lmdb::Error::NotFound) = txn.get(handle, Self::version_special().as_bytes()) {
-            store.version_put(txn, VERSION_CURRENT);
+            store.version_put(txn, Self::VERSION_CURRENT);
             let salt = RawKey::random();
             store.entry_put_raw(txn, &Self::salt_special(), &WalletValue::new(salt, 0));
             // Wallet key is a fixed random key that encrypts all entries
@@ -201,6 +200,10 @@ impl<T: Environment + 'static> LmdbWalletStore<T> {
         guard.wallet_key_mem.value_set(key);
         drop(guard);
         Ok(store)
+    }
+
+    pub fn password(&self) -> RawKey {
+        self.fans.lock().unwrap().password.value()
     }
 
     fn ensure_key_exists(

@@ -469,7 +469,8 @@ nano::wallet::wallet (rsnano::WalletHandle * handle) :
 
 nano::wallet::~wallet ()
 {
-	rsnano::rsn_wallet_destroy (handle);
+	if (handle != nullptr)
+		rsnano::rsn_wallet_destroy (handle);
 }
 
 bool nano::wallet::insert_watch (store::transaction const & transaction_a, nano::public_key const & pub_a)

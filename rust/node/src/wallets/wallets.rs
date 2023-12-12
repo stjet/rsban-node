@@ -1,14 +1,21 @@
 use std::{
     collections::HashMap,
+    path::PathBuf,
     sync::{Arc, Mutex},
 };
 
 use lmdb::{DatabaseFlags, WriteFlags};
-use rsnano_core::{Account, BlockHash, NoValue, RawKey, WalletId};
+use rsnano_core::{
+    utils::Logger, work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, NoValue,
+    RawKey, WalletId,
+};
+use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{
     BinaryDbIterator, DbIterator, Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl,
     LmdbWriteTransaction, RwTransaction, Transaction,
 };
+
+use crate::config::NodeConfig;
 
 use super::Wallet;
 pub type WalletsIterator<T> = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl<T>>;
@@ -18,11 +25,20 @@ pub struct Wallets<T: Environment = EnvironmentWrapper> {
     pub send_action_ids_handle: Option<T::Database>,
     enable_voting: bool,
     env: Arc<LmdbEnv<T>>,
-    pub mutex: Mutex<HashMap<WalletId, Arc<Wallet>>>,
+    pub mutex: Mutex<HashMap<WalletId, Arc<Wallet<T>>>>,
 }
 
 impl<T: Environment + 'static> Wallets<T> {
-    pub fn new(enable_voting: bool, env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
+    pub fn new(
+        enable_voting: bool,
+        env: Arc<LmdbEnv<T>>,
+        ledger: Arc<Ledger>,
+        logger: Arc<dyn Logger>,
+        node_config: &NodeConfig,
+        kdf_work: u32,
+        work: WorkThresholds,
+    ) -> anyhow::Result<Self> {
+        let kdf = KeyDerivationFunction::new(kdf_work);
         let mut wallets = Self {
             handle: None,
             send_action_ids_handle: None,
@@ -30,12 +46,29 @@ impl<T: Environment + 'static> Wallets<T> {
             mutex: Mutex::new(HashMap::new()),
             env,
         };
-        //let mut txn = wallets.env.tx_begin_write();
-        //wallets.initialize(&mut txn)?;
-        //let wallet_ids = wallets.get_wallet_ids(&txn);
-        //for id in wallet_ids {
-        //    assert!()
-        //}
+        let mut txn = wallets.env.tx_begin_write();
+        wallets.initialize(&mut txn)?;
+        {
+            let mut guard = wallets.mutex.lock().unwrap();
+            let wallet_ids = wallets.get_wallet_ids(&txn);
+            for id in wallet_ids {
+                assert!(!guard.contains_key(&id));
+                let representative = node_config.random_representative();
+                let text = PathBuf::from(id.encode_hex());
+                let wallet = Wallet::new(
+                    Arc::clone(&ledger),
+                    Arc::clone(&logger),
+                    work.clone(),
+                    &mut txn,
+                    node_config.password_fanout as usize,
+                    kdf.clone(),
+                    representative,
+                    &text,
+                )?;
+
+                guard.insert(id, Arc::new(wallet));
+            }
+        }
 
         Ok(wallets)
     }

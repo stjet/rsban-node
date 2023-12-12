@@ -222,8 +222,8 @@ public:
 		~wallets_mutex_lock ();
 		std::shared_ptr<nano::wallet> find (nano::wallet_id const & wallet_id);
 		void insert (nano::wallet_id const & wallet_id, std::shared_ptr<nano::wallet> wallet);
-		std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> get_all();
-		size_t size() const;
+		std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> get_all ();
+		size_t size () const;
 		void erase (nano::wallet_id const & wallet_id);
 
 		rsnano::WalletsMutexLockHandle * handle;

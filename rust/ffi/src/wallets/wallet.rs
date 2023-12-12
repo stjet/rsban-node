@@ -6,7 +6,6 @@ use crate::{
 };
 use rsnano_core::{work::WorkThresholds, Account, Root};
 use rsnano_node::wallets::Wallet;
-use rsnano_store_lmdb::LmdbWalletStore;
 use std::{
     collections::HashSet,
     ffi::{c_char, CStr},
@@ -57,12 +56,23 @@ pub unsafe extern "C" fn rsn_wallet_create(
             CStr::from_ptr(json).to_str().unwrap(),
         )
     };
-    Box::into_raw(Box::new(WalletHandle(Arc::new(wallet))))
+    match wallet {
+        Ok(w) => Box::into_raw(Box::new(WalletHandle(Arc::new(w)))),
+        Err(_) => std::ptr::null_mut(),
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_wallet_store(handle: &WalletHandle) -> *mut LmdbWalletStoreHandle {
-    Box::into_raw(Box::new(LmdbWalletStoreHandle(Arc::clone(&handle.0.store))))
+pub unsafe extern "C" fn rsn_wallet_store(
+    handle: *const WalletHandle,
+) -> *mut LmdbWalletStoreHandle {
+    if handle.is_null() {
+        std::ptr::null_mut()
+    } else {
+        Box::into_raw(Box::new(LmdbWalletStoreHandle(Arc::clone(
+            &(*handle).0.store,
+        ))))
+    }
 }
 
 #[no_mangle]

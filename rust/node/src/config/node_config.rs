@@ -3,6 +3,7 @@ use std::net::Ipv6Addr;
 use crate::{consensus::VoteCacheConfig, stats::StatsConfig, IpcConfig, NetworkParams};
 use anyhow::Result;
 use once_cell::sync::Lazy;
+use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{get_cpu_count, get_env_or_default_string, is_sanitizer_build, TomlWriter},
     Account, Amount, GXRB_RATIO, XRB_RATIO,
@@ -475,6 +476,11 @@ impl NodeConfig {
         })?;
 
         Ok(())
+    }
+
+    pub fn random_representative(&self) -> Account {
+        let i = thread_rng().gen_range(0..self.preconfigured_representatives.len());
+        return self.preconfigured_representatives[i];
     }
 }
 

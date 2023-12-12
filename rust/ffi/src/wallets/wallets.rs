@@ -1,27 +1,47 @@
+use super::wallet::WalletHandle;
 use crate::{
-    ledger::datastore::{lmdb::LmdbEnvHandle, TransactionHandle},
-    utils::ContextWrapper,
-    U256ArrayDto, VoidPointerCallback,
+    ledger::datastore::{lmdb::LmdbEnvHandle, LedgerHandle, TransactionHandle},
+    utils::{ContextWrapper, LoggerHandle, LoggerMT},
+    work::WorkThresholdsDto,
+    NodeConfigDto, U256ArrayDto, VoidPointerCallback,
 };
-use rsnano_core::{BlockHash, WalletId};
-use rsnano_node::wallets::{Wallet, Wallets};
+use rsnano_core::{work::WorkThresholds, BlockHash, WalletId};
+use rsnano_node::{
+    config::NodeConfig,
+    wallets::{Wallet, Wallets},
+};
 use std::{
     collections::HashMap,
     ffi::{c_char, c_void, CStr},
     sync::{Arc, MutexGuard},
 };
 
-use super::wallet::WalletHandle;
-
 pub struct LmdbWalletsHandle(Wallets);
 
 #[no_mangle]
-pub extern "C" fn rsn_lmdb_wallets_create(
+pub unsafe extern "C" fn rsn_lmdb_wallets_create(
     enable_voting: bool,
     lmdb: &LmdbEnvHandle,
+    ledger: &LedgerHandle,
+    logger: *mut LoggerHandle,
+    node_config: &NodeConfigDto,
+    kdf_work: u32,
+    work_thresholds: &WorkThresholdsDto,
 ) -> *mut LmdbWalletsHandle {
+    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
+    let node_config = NodeConfig::try_from(node_config).unwrap();
+    let work = WorkThresholds::from(work_thresholds);
     Box::into_raw(Box::new(LmdbWalletsHandle(
-        Wallets::new(enable_voting, Arc::clone(lmdb)).expect("could not create wallet"),
+        Wallets::new(
+            enable_voting,
+            Arc::clone(lmdb),
+            Arc::clone(&ledger.0),
+            logger,
+            &node_config,
+            kdf_work,
+            work,
+        )
+        .expect("could not create wallet"),
     )))
 }
 

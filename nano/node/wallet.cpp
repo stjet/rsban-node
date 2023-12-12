@@ -1,3 +1,6 @@
+#include "nano/lib/logger_mt.hpp"
+#include "nano/store/lmdb/lmdb_env.hpp"
+
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnanoutils.hpp>
@@ -429,6 +432,7 @@ nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::w
 	store{ rsnano::rsn_wallet_store (handle) },
 	representatives_mutex{ handle }
 {
+	init_a = handle == nullptr;
 }
 
 nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a, std::string const & json) :
@@ -436,6 +440,7 @@ nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::w
 	store{ rsnano::rsn_wallet_store (handle) },
 	representatives_mutex{ handle }
 {
+	init_a = handle == nullptr;
 }
 
 nano::wallet::wallet (rsnano::WalletHandle * handle) :
@@ -543,43 +548,46 @@ nano::wallets::wallets_mutex_lock::~wallets_mutex_lock ()
 		rsnano::rsn_lmdb_wallets_mutex_lock_destroy (handle);
 }
 
-std::shared_ptr<nano::wallet> nano::wallets::wallets_mutex_lock::find (nano::wallet_id const & wallet_id){
+std::shared_ptr<nano::wallet> nano::wallets::wallets_mutex_lock::find (nano::wallet_id const & wallet_id)
+{
 	rsnano::WalletHandle * wallet_handle = nullptr;
-	std::shared_ptr<nano::wallet> wallet {};
-	if (rsnano::rsn_lmdb_wallets_mutex_lock_find(handle, wallet_id.bytes.data(), &wallet_handle)){
-		wallet = make_shared<nano::wallet>(wallet_handle);
+	std::shared_ptr<nano::wallet> wallet{};
+	if (rsnano::rsn_lmdb_wallets_mutex_lock_find (handle, wallet_id.bytes.data (), &wallet_handle))
+	{
+		wallet = make_shared<nano::wallet> (wallet_handle);
 	}
 	return wallet;
 }
 
 void nano::wallets::wallets_mutex_lock::insert (nano::wallet_id const & wallet_id, std::shared_ptr<nano::wallet> wallet)
 {
-	rsnano::rsn_lmdb_wallets_mutex_lock_insert(handle, wallet_id.bytes.data(), wallet->handle);
+	rsnano::rsn_lmdb_wallets_mutex_lock_insert (handle, wallet_id.bytes.data (), wallet->handle);
 }
 
-std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> nano::wallets::wallets_mutex_lock::get_all()
+std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> nano::wallets::wallets_mutex_lock::get_all ()
 {
-	auto vec_handle = rsnano::rsn_lmdb_wallets_mutex_lock_get_all(handle);
+	auto vec_handle = rsnano::rsn_lmdb_wallets_mutex_lock_get_all (handle);
 	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> result;
-	auto len = rsnano::rsn_wallet_vec_len(vec_handle);
-	for (auto i = 0; i < len ; ++i) {
+	auto len = rsnano::rsn_wallet_vec_len (vec_handle);
+	for (auto i = 0; i < len; ++i)
+	{
 		nano::wallet_id id;
-		auto wallet_handle = rsnano::rsn_wallet_vec_get(vec_handle, i, id.bytes.data());
-		auto wallet { std::make_shared<nano::wallet>(wallet_handle)};
-		result.emplace(id, wallet);
+		auto wallet_handle = rsnano::rsn_wallet_vec_get (vec_handle, i, id.bytes.data ());
+		auto wallet{ std::make_shared<nano::wallet> (wallet_handle) };
+		result.emplace (id, wallet);
 	}
-	rsnano::rsn_wallet_vec_destroy(vec_handle);
+	rsnano::rsn_wallet_vec_destroy (vec_handle);
 	return result;
 }
 
-size_t nano::wallets::wallets_mutex_lock::size() const
+size_t nano::wallets::wallets_mutex_lock::size () const
 {
-	return rsnano::rsn_lmdb_wallets_mutex_lock_size(handle);
+	return rsnano::rsn_lmdb_wallets_mutex_lock_size (handle);
 }
 
 void nano::wallets::wallets_mutex_lock::erase (nano::wallet_id const & wallet_id)
 {
-	rsnano::rsn_lmdb_wallets_mutex_lock_erase(handle, wallet_id.bytes.data());
+	rsnano::rsn_lmdb_wallets_mutex_lock_erase (handle, wallet_id.bytes.data ());
 }
 
 nano::wallets::wallets_mutex::wallets_mutex (rsnano::LmdbWalletsHandle * handle) :
@@ -602,48 +610,43 @@ boost::optional<nano::wallets::wallets_mutex_lock> nano::wallets::wallets_mutex:
 	return {};
 }
 
+namespace
+{
+rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lmdb::env & env)
+{
+	auto config_dto{ node_a.config->to_dto () };
+
+	return rsnano::rsn_lmdb_wallets_create (
+	node_a.config->enable_voting,
+	env.handle,
+	node_a.ledger.handle,
+	to_logger_handle (node_a.logger),
+	&config_dto,
+	node_a.config->network_params.kdf_work,
+	&node_a.config->network_params.work.dto);
+}
+}
+
 nano::wallets::wallets (bool error_a, nano::node & node_a) :
 	network_params{ node_a.config->network_params },
 	kdf{ node_a.config->network_params.kdf_work },
 	node (node_a),
 	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (node_a.wallets_store_impl.get ())->environment),
 	representatives{ node_a },
-	rust_handle{ rsnano::rsn_lmdb_wallets_create (node_a.config->enable_voting, env.handle) },
+	rust_handle{ create_wallets (node_a, env) },
 	mutex{ rust_handle },
 	wallet_actions{}
 {
 	{
-		auto lock{ mutex.lock () };
-		if (!error_a)
-		{
-			auto transaction (tx_begin_write ());
-			auto store_l = dynamic_cast<nano::store::lmdb::component *> (&node.store);
-			int status = !rsnano::rsn_lmdb_wallets_init (rust_handle, transaction->get_rust_handle ());
+		// ported until here...
 
-			auto wallet_ids{ get_wallet_ids (*transaction) };
-			for (auto id : wallet_ids)
-			{
-				release_assert (lock.find (id) == nullptr);
-				std::string text;
-				id.encode_hex (text);
-				bool error = false;
-				auto wallet (std::make_shared<nano::wallet> (error, *transaction, *this, text));
-				if (!error)
-				{
-					lock.insert(id, wallet);
-				}
-				else
-				{
-					// Couldn't open wallet
-				}
-			}
-		}
+		auto lock{ mutex.lock () };
 		// Backup before upgrade wallets
 		bool backup_required (false);
 		if (node.config->backup_before_upgrade)
 		{
 			auto transaction (tx_begin_read ());
-			auto wallets = lock.get_all();
+			auto wallets = lock.get_all ();
 			for (auto & item : wallets)
 			{
 				if (item.second->store.version (*transaction) != nano::wallet_store::version_current)
@@ -657,7 +660,7 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 		{
 			rsnano::rsn_lmdb_store_create_backup_file (env.handle, nano::to_logger_handle (node_a.logger));
 		}
-		auto wallets = lock.get_all();
+		auto wallets = lock.get_all ();
 		for (auto & item : wallets)
 		{
 			enter_initial_password (item.second);
@@ -678,7 +681,7 @@ nano::wallets::~wallets ()
 size_t nano::wallets::wallet_count () const
 {
 	auto lock{ mutex.lock () };
-	return lock.size();
+	return lock.size ();
 }
 
 size_t nano::wallets::representatives_count (nano::wallet_id const & id) const
@@ -924,7 +927,7 @@ std::vector<nano::wallet_id> nano::wallets::get_wallet_ids () const
 	auto lock{ mutex.lock () };
 	std::vector<nano::wallet_id> result{};
 	result.reserve (lock.size ());
-	auto wallets {lock.get_all()};
+	auto wallets{ lock.get_all () };
 	for (auto i (wallets.begin ()), n (wallets.end ()); i != n; ++i)
 	{
 		result.push_back (i->first);
@@ -956,7 +959,7 @@ std::vector<nano::account> nano::wallets::get_accounts (size_t max_results)
 	auto lock{ mutex.lock () };
 	auto const transaction (tx_begin_read ());
 	std::vector<nano::account> accounts;
-	auto wallets{lock.get_all()};
+	auto wallets{ lock.get_all () };
 	for (auto i (wallets.begin ()), n (wallets.end ()); i != n && accounts.size () < max_results; ++i)
 	{
 		auto & wallet (*i->second);
@@ -1055,7 +1058,7 @@ bool nano::wallets::wallet_exists (nano::wallet_id const & id) const
 nano::wallet_id nano::wallets::first_wallet_id () const
 {
 	auto lock{ mutex.lock () };
-	auto wallets {lock.get_all()};
+	auto wallets{ lock.get_all () };
 	return wallets.begin ()->first;
 }
 
@@ -1679,7 +1682,7 @@ void nano::wallets::backup (std::filesystem::path const & backup_path)
 {
 	auto lock{ mutex.lock () };
 	auto transaction{ tx_begin_read () };
-	auto wallets { lock.get_all()};
+	auto wallets{ lock.get_all () };
 	for (auto i (wallets.begin ()), n (wallets.end ()); i != n; ++i)
 	{
 		boost::system::error_code error_chmod;
@@ -1817,7 +1820,7 @@ void nano::wallets::receive_confirmed (store::transaction const & block_transact
 	std::unique_ptr<nano::store::read_transaction> wallet_transaction;
 	{
 		auto lk{ mutex.lock () };
-		wallets_l = lk.get_all();
+		wallets_l = lk.get_all ();
 		wallet_transaction = tx_begin_read ();
 	}
 	for ([[maybe_unused]] auto const & [id, wallet] : wallets_l)
@@ -1867,14 +1870,14 @@ void nano::wallets::create (nano::wallet_id const & id_a)
 	auto lock{ mutex.lock () };
 	debug_assert (lock.find (id_a) == nullptr);
 	std::shared_ptr<nano::wallet> result;
-	bool error;
+	bool error = false;
 	{
 		auto transaction (tx_begin_write ());
 		result = std::make_shared<nano::wallet> (error, *transaction, *this, id_a.to_string ());
 	}
 	if (!error)
 	{
-		lock.insert(id_a, result);
+		lock.insert (id_a, result);
 		enter_initial_password (result);
 	}
 }
@@ -1902,7 +1905,7 @@ void nano::wallets::search_receivable_all ()
 	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> wallets_l;
 	{
 		auto lk{ mutex.lock () };
-		wallets_l = lk.get_all();
+		wallets_l = lk.get_all ();
 	}
 	auto wallet_transaction (tx_begin_read ());
 	for (auto const & [id, wallet] : wallets_l)
@@ -1920,7 +1923,7 @@ void nano::wallets::destroy (nano::wallet_id const & id_a)
 	auto existing (lock.find (id_a));
 	debug_assert (existing != nullptr);
 	auto wallet (existing);
-	lock.erase(id_a);
+	lock.erase (id_a);
 	wallet->store.destroy (*transaction);
 }
 
@@ -1941,7 +1944,7 @@ void nano::wallets::reload ()
 			auto wallet (std::make_shared<nano::wallet> (error, *transaction, *this, text));
 			if (!error)
 			{
-				lock.insert(id, wallet);
+				lock.insert (id, wallet);
 			}
 		}
 		// List of wallets on disk
@@ -1949,7 +1952,7 @@ void nano::wallets::reload ()
 	}
 	// Delete non existing wallets from memory
 	std::vector<nano::wallet_id> deleted_items;
-	auto wallets { lock.get_all()};
+	auto wallets{ lock.get_all () };
 	for (auto i : wallets)
 	{
 		if (stored_items.find (i.first) == stored_items.end ())
@@ -1972,7 +1975,7 @@ void nano::wallets::foreach_representative (std::function<void (nano::public_key
 		{
 			auto transaction_l (tx_begin_read ());
 			auto lock{ mutex.lock () };
-			auto wallets { lock.get_all()};
+			auto wallets{ lock.get_all () };
 			for (auto i (wallets.begin ()), n (wallets.end ()); i != n; ++i)
 			{
 				auto & wallet (*i->second);
@@ -2020,7 +2023,7 @@ bool nano::wallets::exists (nano::account const & account_a)
 	auto lock{ mutex.lock () };
 	auto txn{ tx_begin_read () };
 	auto result (false);
-	auto wallets { lock.get_all()};
+	auto wallets{ lock.get_all () };
 	for (auto i (wallets.begin ()), n (wallets.end ()); !result && i != n; ++i)
 	{
 		result = i->second->store.exists (*txn, account_a);
@@ -2075,7 +2078,7 @@ void nano::wallets::compute_reps ()
 	representatives.clear ();
 	auto half_principal_weight (node.minimum_principal_weight () / 2);
 	auto transaction (tx_begin_read ());
-	auto wallets { guard.get_all()};
+	auto wallets{ guard.get_all () };
 	for (auto i (wallets.begin ()), n (wallets.end ()); i != n; ++i)
 	{
 		auto & wallet (*i->second);
@@ -2244,7 +2247,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (wa
 		items_count = guard.size ();
 	}
 
-	auto sizeof_item_element = sizeof (nano::wallet_id) + sizeof(uintptr_t);
+	auto sizeof_item_element = sizeof (nano::wallet_id) + sizeof (uintptr_t);
 	auto sizeof_actions_element = sizeof (uintptr_t) * 2;
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "items", items_count, sizeof_item_element }));

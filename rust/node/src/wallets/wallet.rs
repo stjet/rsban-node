@@ -4,69 +4,72 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use anyhow::Context;
 use rsnano_core::{
     utils::Logger, work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, KeyPair,
     PendingKey, Root, WorkVersion,
 };
 use rsnano_ledger::Ledger;
-use rsnano_store_lmdb::{EnvironmentWrapper, LmdbWalletStore, LmdbWriteTransaction, Transaction};
+use rsnano_store_lmdb::{
+    Environment, EnvironmentWrapper, LmdbWalletStore, LmdbWriteTransaction, Transaction,
+};
 
-pub struct Wallet {
+pub struct Wallet<T: Environment = EnvironmentWrapper> {
     pub representatives: Mutex<HashSet<Account>>,
-    pub store: Arc<LmdbWalletStore>,
+    pub store: Arc<LmdbWalletStore<T>>,
     ledger: Arc<Ledger>,
     logger: Arc<dyn Logger>,
     work_thresholds: WorkThresholds,
 }
 
-impl Wallet {
+impl<T: Environment + 'static> Wallet<T> {
     pub fn new(
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
         work_thresholds: WorkThresholds,
-        txn: &mut LmdbWriteTransaction,
+        txn: &mut LmdbWriteTransaction<T>,
         fanout: usize,
         kdf: KeyDerivationFunction,
         representative: Account,
         wallet_path: &Path,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let store = LmdbWalletStore::new(fanout, kdf, txn, &representative, &wallet_path)
-            .expect("could not create store");
+            .context("could not create wallet store")?;
 
-        Self {
+        Ok(Self {
             representatives: Mutex::new(HashSet::new()),
             store: Arc::new(store),
             ledger,
             logger,
             work_thresholds,
-        }
+        })
     }
 
     pub fn new_from_json(
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
         work_thresholds: WorkThresholds,
-        txn: &mut LmdbWriteTransaction,
+        txn: &mut LmdbWriteTransaction<T>,
         fanout: usize,
         kdf: KeyDerivationFunction,
         wallet_path: &Path,
         json: &str,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let store = LmdbWalletStore::new_from_json(fanout, kdf, txn, &wallet_path, json)
-            .expect("could not create store");
+            .context("could not create wallet store")?;
 
-        Self {
+        Ok(Self {
             representatives: Mutex::new(HashSet::new()),
             store: Arc::new(store),
             ledger,
             logger,
             work_thresholds,
-        }
+        })
     }
 
     pub fn work_update(
         &self,
-        txn: &mut LmdbWriteTransaction,
+        txn: &mut LmdbWriteTransaction<T>,
         account: &Account,
         root: &Root,
         work: u64,
@@ -87,10 +90,7 @@ impl Wallet {
 
     pub fn deterministic_check(
         &self,
-        txn: &dyn Transaction<
-            Database = <EnvironmentWrapper as rsnano_store_lmdb::Environment>::Database,
-            RoCursor = <EnvironmentWrapper as rsnano_store_lmdb::Environment>::RoCursor,
-        >,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         index: u32,
     ) -> u32 {
         let mut result = index;

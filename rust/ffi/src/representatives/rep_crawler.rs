@@ -20,14 +20,6 @@ pub unsafe extern "C" fn rsn_rep_crawler_destroy(handle: *mut RepCrawlerHandle) 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_rep_crawler_add(
-    handle: *mut RepCrawlerHandle,
-    rep: *mut RepresentativeHandle,
-) {
-    (*handle).0.add_rep((*rep).0.clone())
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_rep_crawler_remove(handle: *mut RepCrawlerHandle, hash: *const u8) {
     (*handle).0.remove(&BlockHash::from_ptr(hash));
 }

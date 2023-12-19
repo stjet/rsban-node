@@ -137,15 +137,3 @@ pub extern "C" fn rsn_vote_generator_set_reply_action(
         action(ctx, vote_handle, channel_handle);
     }));
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_generator_should_vote(
-    handle: &VoteGeneratorHandle,
-    transaction: &mut TransactionHandle,
-    root: *const u8,
-    hash: *const u8,
-) -> bool {
-    let root = Root::from_ptr(root);
-    let hash = BlockHash::from_ptr(hash);
-    handle.should_vote(transaction.as_write_txn(), &root, &hash)
-}

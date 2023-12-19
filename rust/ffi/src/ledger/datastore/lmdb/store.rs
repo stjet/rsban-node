@@ -210,15 +210,6 @@ pub unsafe extern "C" fn rsn_lmdb_store_version(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_store_create_backup_file(
-    env: *mut LmdbEnvHandle,
-    logger: *mut LoggerHandle,
-) -> bool {
-    let logger = LoggerMT::new(Box::from_raw(logger));
-    create_backup_file(&*env, &logger).is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_store_copy_db(
     handle: *mut LmdbStoreHandle,
     path: *const i8,

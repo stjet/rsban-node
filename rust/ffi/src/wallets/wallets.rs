@@ -13,10 +13,19 @@ use rsnano_node::{
 use std::{
     collections::HashMap,
     ffi::{c_char, c_void, CStr},
+    ops::Deref,
     sync::{Arc, MutexGuard},
 };
 
-pub struct LmdbWalletsHandle(Wallets);
+pub struct LmdbWalletsHandle(pub Arc<Wallets>);
+
+impl Deref for LmdbWalletsHandle {
+    type Target = Arc<Wallets>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallets_create(
@@ -31,7 +40,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
     let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let node_config = NodeConfig::try_from(node_config).unwrap();
     let work = WorkThresholds::from(work_thresholds);
-    Box::into_raw(Box::new(LmdbWalletsHandle(
+    Box::into_raw(Box::new(LmdbWalletsHandle(Arc::new(
         Wallets::new(
             enable_voting,
             Arc::clone(lmdb),
@@ -42,20 +51,12 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
             work,
         )
         .expect("could not create wallet"),
-    )))
+    ))))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallets_destroy(handle: *mut LmdbWalletsHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallets_init(
-    handle: *mut LmdbWalletsHandle,
-    txn: *mut TransactionHandle,
-) -> bool {
-    (*handle).0.initialize((*txn).as_write_txn()).is_ok()
 }
 
 #[no_mangle]

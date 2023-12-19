@@ -1,6 +1,7 @@
 use std::{
     collections::VecDeque,
     net::SocketAddrV6,
+    ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex, MutexGuard,
@@ -9,7 +10,7 @@ use std::{
     time::Duration,
 };
 
-use rsnano_core::{Account, BlockHash, Root, Vote};
+use rsnano_core::{utils::milliseconds_since_epoch, Account, BlockEnum, BlockHash, Root, Vote};
 use rsnano_ledger::Ledger;
 use rsnano_messages::ConfirmAck;
 use rsnano_store_lmdb::LmdbWriteTransaction;
@@ -20,20 +21,26 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::{ChannelEnum, InboundCallback, TcpChannels},
     utils::{AsyncRuntime, ProcessingQueue},
+    wallets::Wallets,
 };
 
-use super::{VoteBroadcaster, VoteProcessorQueue, VoteSpacing};
+use super::{LocalVoteHistory, VoteBroadcaster, VoteProcessorQueue, VoteSpacing};
 
 pub struct VoteGenerator {
     ledger: Arc<Ledger>,
     vote_generation_queue: ProcessingQueue<(Root, BlockHash)>,
     shared_state: Arc<SharedState>,
     thread: Option<JoinHandle<()>>,
+    stats: Arc<Stats>,
 }
 
 impl VoteGenerator {
+    const MAX_REQUESTS: usize = 2048;
+
     pub fn new(
         ledger: Arc<Ledger>,
+        wallets: Arc<Wallets>,
+        history: Arc<LocalVoteHistory>,
         is_final: bool,
         stats: Arc<Stats>,
         representative_register: Arc<Mutex<RepresentativeRegister>>,
@@ -45,6 +52,8 @@ impl VoteGenerator {
         local_endpoint: SocketAddrV6,
         inbound: InboundCallback,
         voting_delay: Duration,
+        vote_generator_delay: Duration,
+        vote_generator_threshold: usize,
     ) -> Self {
         let vote_broadcaster = VoteBroadcaster {
             representative_register,
@@ -60,13 +69,18 @@ impl VoteGenerator {
 
         let shared_state = Arc::new(SharedState {
             ledger: Arc::clone(&ledger),
+            history,
+            wallets,
             condition: Condvar::new(),
             queues: Mutex::new(Queues::default()),
             is_final,
             stopped: AtomicBool::new(false),
             stats: Arc::clone(&stats),
             vote_broadcaster,
-            spacing: VoteSpacing::new(voting_delay),
+            spacing: Mutex::new(VoteSpacing::new(voting_delay)),
+            vote_generator_delay,
+            vote_generator_threshold,
+            reply_action: Mutex::new(None),
         });
 
         let shared_state_clone = Arc::clone(&shared_state);
@@ -75,7 +89,7 @@ impl VoteGenerator {
             shared_state,
             thread: None,
             vote_generation_queue: ProcessingQueue::new(
-                stats,
+                Arc::clone(&stats),
                 StatType::VoteGenerator,
                 "Voting que".to_string(),
                 1,         // single threaded
@@ -85,6 +99,7 @@ impl VoteGenerator {
                     shared_state_clone.process_batch(batch);
                 }),
             ),
+            stats,
         }
     }
 
@@ -108,8 +123,46 @@ impl VoteGenerator {
         }
     }
 
-    // TODO: fn add()
+    /// Queue items for vote generation, or broadcast votes already in cache
+    pub fn add(&self, root: &Root, hash: &BlockHash) {
+        self.vote_generation_queue.add((*root, *hash));
+    }
 
+    /// Queue blocks for vote generation, returning the number of successful candidates.
+    pub fn generate(&self, blocks: &[Arc<BlockEnum>], channel: Arc<ChannelEnum>) -> usize {
+        let req_candidates = {
+            let txn = self.ledger.read_txn();
+            blocks
+                .iter()
+                .filter_map(|i| {
+                    if self.ledger.dependents_confirmed(&txn, i) {
+                        Some((i.root(), i.hash()))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
+
+        let result = req_candidates.len();
+        let mut guard = self.shared_state.queues.lock().unwrap();
+        guard.requests.push_back((req_candidates, channel));
+        while guard.requests.len() > Self::MAX_REQUESTS {
+            // On a large queue of requests, erase the oldest one
+            guard.requests.pop_front();
+            self.stats.inc(
+                StatType::VoteGenerator,
+                DetailType::GeneratorRepliesDiscarded,
+                Direction::In,
+            );
+        }
+
+        result
+    }
+
+    /// Check if block is eligible for vote generation
+    /// @param transaction : needs `tables::final_votes` lock
+    /// @return: Should vote
     pub fn should_vote(
         &self,
         txn: &mut LmdbWriteTransaction,
@@ -128,13 +181,18 @@ impl Drop for VoteGenerator {
 
 struct SharedState {
     ledger: Arc<Ledger>,
+    wallets: Arc<Wallets>,
+    history: Arc<LocalVoteHistory>,
     is_final: bool,
     condition: Condvar,
     stopped: AtomicBool,
     queues: Mutex<Queues>,
     stats: Arc<Stats>,
     vote_broadcaster: VoteBroadcaster,
-    spacing: VoteSpacing,
+    spacing: Mutex<VoteSpacing>,
+    vote_generator_delay: Duration,
+    vote_generator_threshold: usize,
+    reply_action: Mutex<Option<Box<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>) + Send + Sync>>>,
 }
 
 impl SharedState {
@@ -143,10 +201,34 @@ impl SharedState {
         while !self.stopped.load(Ordering::SeqCst) {
             if queues.candidates.len() >= ConfirmAck::HASHES_MAX {
                 queues = self.broadcast(queues);
-            } else if let Some(_request) = queues.requests.pop_front() {
-                //TODO
+            } else if let Some(request) = queues.requests.pop_front() {
+                drop(queues);
+                self.reply(request);
+                queues = self.queues.lock().unwrap();
             } else {
-                // TODO
+                queues = self
+                    .condition
+                    .wait_timeout_while(queues, self.vote_generator_delay, |lk| {
+                        lk.candidates.len() < ConfirmAck::HASHES_MAX
+                    })
+                    .unwrap()
+                    .0;
+
+                if queues.candidates.len() >= self.vote_generator_threshold
+                    && queues.candidates.len() < ConfirmAck::HASHES_MAX
+                {
+                    queues = self
+                        .condition
+                        .wait_timeout_while(queues, self.vote_generator_delay, |lk| {
+                            lk.candidates.len() < ConfirmAck::HASHES_MAX
+                        })
+                        .unwrap()
+                        .0;
+                }
+
+                if !queues.candidates.is_empty() {
+                    queues = self.broadcast(queues);
+                }
             }
         }
     }
@@ -154,40 +236,130 @@ impl SharedState {
     fn broadcast<'a>(&'a self, mut queues: MutexGuard<'a, Queues>) -> MutexGuard<'a, Queues> {
         let mut hashes = Vec::with_capacity(ConfirmAck::HASHES_MAX);
         let mut roots = Vec::with_capacity(ConfirmAck::HASHES_MAX);
-        while let Some((root, hash)) = queues.candidates.pop_front() {
-            if !roots.contains(&root) {
-                if self.spacing.votable(&root, &hash) {
-                    roots.push(root);
-                    hashes.push(hash);
-                } else {
-                    self.stats.inc(
-                        StatType::VoteGenerator,
-                        DetailType::GeneratorSpacing,
-                        Direction::In,
-                    );
+        {
+            let spacing = self.spacing.lock().unwrap();
+            while let Some((root, hash)) = queues.candidates.pop_front() {
+                if !roots.contains(&root) {
+                    if spacing.votable(&root, &hash) {
+                        roots.push(root);
+                        hashes.push(hash);
+                    } else {
+                        self.stats.inc(
+                            StatType::VoteGenerator,
+                            DetailType::GeneratorSpacing,
+                            Direction::In,
+                        );
+                    }
                 }
-            }
-            if hashes.len() == ConfirmAck::HASHES_MAX {
-                break;
+                if hashes.len() == ConfirmAck::HASHES_MAX {
+                    break;
+                }
             }
         }
 
         if !hashes.is_empty() {
             drop(queues);
-            // TODO
-            //self.vote()
+            self.vote(&hashes, &roots, |vote| {
+                self.vote_broadcaster.broadcast(vote);
+                self.stats.inc(
+                    StatType::VoteGenerator,
+                    DetailType::GeneratorBroadcasts,
+                    Direction::In,
+                );
+            });
             queues = self.queues.lock().unwrap();
         }
 
         queues
     }
 
-    fn vote<F>(&self, _hashes: &Vec<BlockHash>, _roots: &Vec<Root>, _f: F)
+    fn vote<F>(&self, hashes: &Vec<BlockHash>, roots: &Vec<Root>, action: F)
     where
         F: Fn(Arc<Vote>),
     {
-        //let mut votes = Vec::new();
-        // TODO
+        debug_assert_eq!(hashes.len(), roots.len());
+        let mut votes = Vec::new();
+        self.wallets.foreach_representative(|pub_key, priv_key| {
+            let timestamp = if self.is_final {
+                Vote::TIMESTAMP_MAX
+            } else {
+                milliseconds_since_epoch()
+            };
+            let duration = if self.is_final {
+                Vote::DURATION_MAX
+            } else {
+                0x9 /*8192ms*/
+            };
+            votes.push(Arc::new(Vote::new(
+                *pub_key,
+                priv_key,
+                timestamp,
+                duration,
+                hashes.clone(),
+            )));
+        });
+
+        for vote in votes {
+            {
+                let mut spacing = self.spacing.lock().unwrap();
+                for i in 0..hashes.len() {
+                    self.history.add(&roots[i], &hashes[i], &vote);
+                    spacing.flag(&roots[i], &hashes[i]);
+                }
+            }
+            action(vote);
+        }
+    }
+
+    fn reply(&self, request: (Vec<(Root, BlockHash)>, Arc<ChannelEnum>)) {
+        let mut i = request.0.iter().peekable();
+        while i.peek().is_some() && !self.stopped.load(Ordering::SeqCst) {
+            let mut hashes = Vec::with_capacity(ConfirmAck::HASHES_MAX);
+            let mut roots = Vec::with_capacity(ConfirmAck::HASHES_MAX);
+            let spacing = self.spacing.lock().unwrap();
+            while hashes.len() < ConfirmAck::HASHES_MAX {
+                let Some((root, hash)) = i.next() else {
+                    break;
+                };
+                if !roots.contains(root) {
+                    if spacing.votable(root, hash) {
+                        roots.push(*root);
+                        hashes.push(*hash);
+                    } else {
+                        self.stats.inc(
+                            StatType::VoteGenerator,
+                            DetailType::GeneratorSpacing,
+                            Direction::In,
+                        );
+                    }
+                }
+            }
+            if !hashes.is_empty() {
+                self.stats.add(
+                    StatType::Requests,
+                    DetailType::RequestsGeneratedHashes,
+                    Direction::In,
+                    hashes.len() as u64,
+                    false,
+                );
+                self.vote(&hashes, &roots, |vote| {
+                    let action = self.reply_action.lock().unwrap();
+                    if let Some(action) = action.deref() {
+                        (action)(&vote, &request.1);
+                    }
+                    self.stats.inc(
+                        StatType::Requests,
+                        DetailType::RequestsGeneratedVotes,
+                        Direction::In,
+                    );
+                });
+            }
+        }
+        self.stats.inc(
+            StatType::VoteGenerator,
+            DetailType::GeneratorReplies,
+            Direction::In,
+        );
     }
 
     fn process_batch(&self, batch: VecDeque<(Root, BlockHash)>) {

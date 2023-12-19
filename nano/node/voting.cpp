@@ -156,6 +156,8 @@ nano::vote_generator::vote_generator (nano::node & node_a, nano::node_config con
 
 	handle = rsnano::rsn_vote_generator_create (
 	ledger_a.handle,
+	node_a.wallets.rust_handle,
+	history_a.handle,
 	is_final_a,
 	stats_a.handle,
 	representative_register_a.handle,
@@ -168,7 +170,10 @@ nano::vote_generator::vote_generator (nano::node & node_a, nano::node_config con
 	nano::transport::inbound_wrapper,
 	context,
 	nano::transport::delete_inbound_context,
-	config_a.network_params.voting.delay.count ());
+	config_a.network_params.voting.delay.count (),
+	config_a.vote_generator_delay.count(),
+	config_a.vote_generator_threshold
+	);
 
 	vote_generation_queue.process_batch = [this] (auto & batch) {
 		process_batch (batch);

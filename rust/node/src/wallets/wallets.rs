@@ -30,7 +30,7 @@ pub struct Wallets<T: Environment = EnvironmentWrapper> {
     pub mutex: Mutex<HashMap<WalletId, Arc<Wallet<T>>>>,
     pub node_config: NodeConfig,
     ledger: Arc<Ledger>,
-    last_log: Option<Instant>,
+    last_log: Mutex<Option<Instant>>,
 }
 
 impl<T: Environment + 'static> Wallets<T> {
@@ -53,7 +53,7 @@ impl<T: Environment + 'static> Wallets<T> {
             env,
             node_config: node_config.clone(),
             ledger: Arc::clone(&ledger),
-            last_log: None,
+            last_log: Mutex::new(None),
         };
         let mut txn = wallets.env.tx_begin_write();
         wallets.initialize(&mut txn)?;
@@ -169,9 +169,9 @@ impl<T: Environment + 'static> Wallets<T> {
         txn.clear_db(self.send_action_ids_handle.unwrap()).unwrap();
     }
 
-    pub fn foreach_representative<F>(&mut self, action: F)
+    pub fn foreach_representative<F>(&self, mut action: F)
     where
-        F: Fn(&Account, &RawKey),
+        F: FnMut(&Account, &RawKey),
     {
         if self.node_config.enable_voting {
             let mut action_accounts_l: Vec<(PublicKey, RawKey)> = Vec::new();
@@ -191,12 +191,13 @@ impl<T: Environment + 'static> Wallets<T> {
 
                                     action_accounts_l.push((account, prv));
                                 } else {
-                                    let should_log = match self.last_log {
+                                    let mut last_log_guard = self.last_log.lock().unwrap();
+                                    let should_log = match last_log_guard.as_ref() {
                                         Some(i) => i.elapsed() >= Duration::from_secs(60),
                                         None => true,
                                     };
                                     if should_log {
-                                        self.last_log = Some(Instant::now());
+                                        *last_log_guard = Some(Instant::now());
                                         self.logger.always_log(&format!(
                                             "Representative locked inside wallet {}",
                                             wallet_id

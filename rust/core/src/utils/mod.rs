@@ -121,6 +121,13 @@ pub fn nano_seconds_since_epoch() -> u64 {
     system_time_as_nanoseconds(SystemTime::now())
 }
 
+pub fn milliseconds_since_epoch() -> u64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64
+}
+
 pub fn seconds_since_epoch() -> u64 {
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)

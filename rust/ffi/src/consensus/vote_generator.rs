@@ -1,10 +1,11 @@
-use super::vote_processor_queue::VoteProcessorQueueHandle;
+use super::{vote_processor_queue::VoteProcessorQueueHandle, LocalVoteHistoryHandle};
 use crate::{
     ledger::datastore::{LedgerHandle, TransactionHandle},
     messages::MessageHandle,
     representatives::RepresentativeRegisterHandle,
     transport::{ChannelHandle, EndpointDto, FfiInboundCallback, TcpChannelsHandle},
     utils::{AsyncRuntimeHandle, ContextWrapper},
+    wallets::LmdbWalletsHandle,
     NetworkConstantsDto, StatHandle, VoidPointerCallback,
 };
 use rsnano_core::{Account, BlockHash, Root};
@@ -25,6 +26,8 @@ impl Deref for VoteGeneratorHandle {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_generator_create(
     ledger: &LedgerHandle,
+    wallets: &LmdbWalletsHandle,
+    history: &LocalVoteHistoryHandle,
     is_final: bool,
     stats: &StatHandle,
     representative_register: &RepresentativeRegisterHandle,
@@ -38,6 +41,8 @@ pub unsafe extern "C" fn rsn_vote_generator_create(
     inbound_context: *mut c_void,
     inbound_context_delete: VoidPointerCallback,
     voting_delay_s: u64,
+    vote_generator_delay_ms: u64,
+    vote_generator_threshold: usize,
 ) -> *mut VoteGeneratorHandle {
     let network_constants = NetworkConstants::try_from(network_constants).unwrap();
     let node_id = Account::from_ptr(node_id);
@@ -52,6 +57,8 @@ pub unsafe extern "C" fn rsn_vote_generator_create(
     });
     Box::into_raw(Box::new(VoteGeneratorHandle(VoteGenerator::new(
         Arc::clone(ledger),
+        Arc::clone(wallets),
+        Arc::clone(history),
         is_final,
         Arc::clone(stats),
         Arc::clone(representative_register),
@@ -63,6 +70,8 @@ pub unsafe extern "C" fn rsn_vote_generator_create(
         local_endpoint.into(),
         inbound,
         Duration::from_secs(voting_delay_s),
+        Duration::from_millis(vote_generator_delay_ms),
+        vote_generator_threshold,
     ))))
 }
 

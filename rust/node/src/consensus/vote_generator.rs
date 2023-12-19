@@ -103,6 +103,14 @@ impl VoteGenerator {
         }
     }
 
+    pub fn set_reply_action(
+        &self,
+        action: Box<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>) + Send + Sync>,
+    ) {
+        let mut guard = self.shared_state.reply_action.lock().unwrap();
+        *guard = Some(action);
+    }
+
     pub fn start(&mut self) {
         let shared_state_clone = Arc::clone(&self.shared_state);
         self.thread = Some(
@@ -316,21 +324,23 @@ impl SharedState {
         while i.peek().is_some() && !self.stopped.load(Ordering::SeqCst) {
             let mut hashes = Vec::with_capacity(ConfirmAck::HASHES_MAX);
             let mut roots = Vec::with_capacity(ConfirmAck::HASHES_MAX);
-            let spacing = self.spacing.lock().unwrap();
-            while hashes.len() < ConfirmAck::HASHES_MAX {
-                let Some((root, hash)) = i.next() else {
-                    break;
-                };
-                if !roots.contains(root) {
-                    if spacing.votable(root, hash) {
-                        roots.push(*root);
-                        hashes.push(*hash);
-                    } else {
-                        self.stats.inc(
-                            StatType::VoteGenerator,
-                            DetailType::GeneratorSpacing,
-                            Direction::In,
-                        );
+            {
+                let spacing = self.spacing.lock().unwrap();
+                while hashes.len() < ConfirmAck::HASHES_MAX {
+                    let Some((root, hash)) = i.next() else {
+                        break;
+                    };
+                    if !roots.contains(root) {
+                        if spacing.votable(root, hash) {
+                            roots.push(*root);
+                            hashes.push(*hash);
+                        } else {
+                            self.stats.inc(
+                                StatType::VoteGenerator,
+                                DetailType::GeneratorSpacing,
+                                Direction::In,
+                            );
+                        }
                     }
                 }
             }

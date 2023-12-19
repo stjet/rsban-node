@@ -172,6 +172,7 @@ public:
 	nano::block_arrival block_arrival; // ported
 	nano::confirmation_height_processor confirmation_height_processor; // ported
 	nano::vote_cache vote_cache; // ported
+	nano::wallets wallets;
 	nano::vote_generator generator;
 	nano::vote_generator final_generator;
 	nano::block_processor block_processor;
@@ -183,7 +184,6 @@ private: // Placed here to maintain initialization order
 public:
 	nano::scheduler::component & scheduler;
 	nano::request_aggregator aggregator;
-	nano::wallets wallets;
 	nano::backlog_population backlog; // ported
 	nano::bootstrap_ascending::service ascendboot;
 	nano::websocket_server websocket;

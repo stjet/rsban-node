@@ -86,11 +86,6 @@ public:
 
 class vote_generator final
 {
-private:
-	using candidate_t = std::pair<nano::root, nano::block_hash>;
-	using request_t = std::pair<std::vector<candidate_t>, std::shared_ptr<nano::transport::channel>>;
-	using queue_entry_t = std::pair<nano::root, nano::block_hash>;
-
 public:
 	vote_generator (nano::node & node_a, nano::node_config const & config_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::vote_processor_queue & vote_processor_queue_a, nano::local_vote_history & history_a, nano::network & network_a, nano::stats & stats_a, nano::representative_register & representative_register_a, bool is_final_a);
 	~vote_generator ();
@@ -103,43 +98,6 @@ public:
 
 	void start ();
 	void stop ();
-
-private:
-	void run ();
-	void broadcast (nano::unique_lock<nano::mutex> &);
-	void reply (nano::unique_lock<nano::mutex> &, request_t &&);
-	void vote (std::vector<nano::block_hash> const &, std::vector<nano::root> const &, std::function<void (std::shared_ptr<nano::vote> const &)> const &);
-	void broadcast_action (std::shared_ptr<nano::vote> const &) const;
-	void process_batch (std::deque<queue_entry_t> & batch);
-	/**
-	 * Check if block is eligible for vote generation
-	 * @param transaction : needs `tables::final_votes` lock
-	 * @return: Should vote
-	 */
-	bool should_vote (store::write_transaction const &, nano::root const &, nano::block_hash const &);
-	std::function<void (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> &)> reply_action; // must be set only during initialization by using set_reply_action
-
-	// already ported to Rust:
-	nano::node_config const & config;
-	nano::local_vote_history & history;
-	nano::stats & stats;
-	nano::vote_spacing spacing;
-
-	// not ported yet:
-	nano::ledger & ledger;
-	nano::wallets & wallets;
-	nano::vote_broadcaster vote_broadcaster;
-	processing_queue<queue_entry_t> vote_generation_queue;
-	const bool is_final;
-	mutable nano::mutex mutex;
-	nano::condition_variable condition;
-	static std::size_t constexpr max_requests{ 2048 };
-	std::deque<request_t> requests;
-	std::deque<candidate_t> candidates;
-	std::atomic<bool> stopped{ false };
-	std::thread thread;
-
-public:
 	rsnano::VoteGeneratorHandle * handle;
 
 	friend std::unique_ptr<container_info_component> collect_container_info (vote_generator & vote_generator, std::string const & name);

@@ -283,20 +283,12 @@ public:
 			{
 				node.logger->try_log (boost::str (boost::format ("Confirm_req message from %1% for hashes:roots %2%") % channel->to_string () % message_a.roots_string ()));
 			}
-			else
-			{
-				node.logger->try_log (boost::str (boost::format ("Confirm_req message from %1% for %2%") % channel->to_string () % message_a.get_block ()->hash ().to_string ()));
-			}
 		}
 
 		// Don't load nodes with disabled voting
 		if (node.config->enable_voting && node.wallets.voting_reps_count () > 0)
 		{
-			if (message_a.get_block () != nullptr)
-			{
-				node.aggregator.add (channel, { { message_a.get_block ()->hash (), message_a.get_block ()->root () } });
-			}
-			else if (!message_a.get_roots_hashes ().empty ())
+			if (!message_a.get_roots_hashes ().empty ())
 			{
 				node.aggregator.add (channel, message_a.get_roots_hashes ());
 			}

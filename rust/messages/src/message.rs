@@ -174,7 +174,6 @@ pub fn validate_header(
 mod tests {
     use super::*;
     use rsnano_core::{BlockBuilder, Vote};
-    use std::sync::Arc;
 
     #[test]
     fn exact_confirm_ack() {
@@ -186,11 +185,7 @@ mod tests {
 
     #[test]
     fn exact_confirm_req() {
-        let block = BlockBuilder::legacy_send().build();
-        let message = Message::ConfirmReq(ConfirmReq {
-            block: Some(block),
-            roots_hashes: Vec::new(),
-        });
+        let message = Message::ConfirmReq(ConfirmReq::create_test_instance());
         assert_deserializable(&message);
     }
 

@@ -247,15 +247,9 @@ std::string nano::publish::to_string () const
  * confirm_req
  */
 
-rsnano::MessageHandle * create_confirm_req_handle (nano::network_constants const & constants, nano::block const * block_a, std::vector<std::pair<nano::block_hash, nano::root>> roots_hashes_a)
+rsnano::MessageHandle * create_confirm_req_handle (nano::network_constants const & constants, std::vector<std::pair<nano::block_hash, nano::root>> roots_hashes_a)
 {
 	auto constants_dto{ constants.to_dto () };
-	rsnano::BlockHandle * block_handle = nullptr;
-	if (block_a != nullptr)
-	{
-		block_handle = block_a->get_handle ();
-	}
-
 	size_t hashes_count = roots_hashes_a.size ();
 	std::vector<rsnano::HashRootPair> dtos;
 	dtos.reserve (hashes_count);
@@ -267,21 +261,16 @@ rsnano::MessageHandle * create_confirm_req_handle (nano::network_constants const
 		dtos.push_back (dto);
 	}
 
-	return rsnano::rsn_message_confirm_req_create (&constants_dto, block_handle, dtos.data (), hashes_count);
-}
-
-nano::confirm_req::confirm_req (nano::network_constants const & constants, std::shared_ptr<nano::block> const & block_a) :
-	message (create_confirm_req_handle (constants, block_a.get (), std::vector<std::pair<nano::block_hash, nano::root>> ()))
-{
+	return rsnano::rsn_message_confirm_req_create (&constants_dto, dtos.data (), hashes_count);
 }
 
 nano::confirm_req::confirm_req (nano::network_constants const & constants, std::vector<std::pair<nano::block_hash, nano::root>> const & roots_hashes_a) :
-	message (create_confirm_req_handle (constants, nullptr, roots_hashes_a))
+	message (create_confirm_req_handle (constants, roots_hashes_a))
 {
 }
 
 nano::confirm_req::confirm_req (nano::network_constants const & constants, nano::block_hash const & hash_a, nano::root const & root_a) :
-	message (create_confirm_req_handle (constants, nullptr, std::vector<std::pair<nano::block_hash, nano::root>> (1, std::make_pair (hash_a, root_a))))
+	message (create_confirm_req_handle (constants, std::vector<std::pair<nano::block_hash, nano::root>> (1, std::make_pair (hash_a, root_a))))
 {
 }
 
@@ -293,17 +282,6 @@ nano::confirm_req::confirm_req (rsnano::MessageHandle * handle_a) :
 nano::confirm_req::confirm_req (nano::confirm_req const & other_a) :
 	message (rsnano::rsn_message_confirm_req_clone (other_a.handle))
 {
-}
-
-std::shared_ptr<nano::block> nano::confirm_req::get_block () const
-{
-	auto block_handle = rsnano::rsn_message_confirm_req_block (handle);
-	std::shared_ptr<nano::block> result;
-	if (block_handle != nullptr)
-	{
-		result = nano::block_handle_to_block (block_handle);
-	}
-	return result;
 }
 
 std::vector<std::pair<nano::block_hash, nano::root>> nano::confirm_req::get_roots_hashes () const

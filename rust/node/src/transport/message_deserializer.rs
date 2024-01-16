@@ -83,7 +83,6 @@ impl<T: AsyncBufferReader + Send> MessageDeserializer<T> {
     fn validate_work(&self, message: &Message) -> Result<(), ParseMessageError> {
         let block = match message {
             Message::Publish(msg) => Some(&msg.block),
-            Message::ConfirmReq(msg) => msg.block.as_ref(),
             _ => None,
         };
 

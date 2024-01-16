@@ -2213,8 +2213,8 @@ TEST (node, local_votes_cache)
 	node.active.force_confirm (*election);
 	ASSERT_TIMELY (3s, node.ledger.cache.cemented_count () == 3);
 	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	nano::confirm_req message1{ nano::dev::network_params.network, send1 };
-	nano::confirm_req message2{ nano::dev::network_params.network, send2 };
+	nano::confirm_req message1{ nano::dev::network_params.network, send1->hash (), send1->root () };
+	nano::confirm_req message2{ nano::dev::network_params.network, send2->hash (), send2->root () };
 	auto channel = std::make_shared<nano::transport::fake::channel> (node);
 	node.network->inbound (message1, channel);
 	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 1);
@@ -2236,7 +2236,7 @@ TEST (node, local_votes_cache)
 		auto transaction (node.store.tx_begin_write ());
 		ASSERT_EQ (nano::process_result::progress, node.ledger.process (*transaction, *send3).code);
 	}
-	nano::confirm_req message3{ nano::dev::network_params.network, send3 };
+	nano::confirm_req message3{ nano::dev::network_params.network, send3->hash (), send3->root () };
 	for (auto i (0); i < 100; ++i)
 	{
 		node.network->inbound (message3, channel);
@@ -2338,7 +2338,7 @@ TEST (node, local_votes_cache_generate_new_vote)
 	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 
 	// Send a confirm req for genesis block to node
-	nano::confirm_req message1{ nano::dev::network_params.network, nano::dev::genesis };
+	nano::confirm_req message1{ nano::dev::network_params.network, nano::dev::genesis->hash (), nano::dev::genesis->root () };
 	auto channel = std::make_shared<nano::transport::fake::channel> (node);
 	node.network->inbound (message1, channel);
 

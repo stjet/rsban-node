@@ -2,7 +2,7 @@ use super::{ConfirmReq, MessageVariant};
 use bitvec::prelude::BitArray;
 use rsnano_core::{
     utils::{BufferWriter, Serialize, Stream},
-    BlockType, Vote,
+    Vote,
 };
 use std::fmt::{Debug, Display};
 
@@ -41,7 +41,6 @@ impl Serialize for ConfirmAck {
 impl MessageVariant for ConfirmAck {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
-        extensions |= BitArray::new((BlockType::NotABlock as u16) << 8);
         debug_assert!(self.vote.hashes.len() < 16);
         extensions |= BitArray::new((self.vote.hashes.len() as u16) << 12);
         extensions

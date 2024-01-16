@@ -1,8 +1,8 @@
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
-use crate::{core::BlockHandle, NetworkConstantsDto, StringDto};
+use crate::{NetworkConstantsDto, StringDto};
 use rsnano_core::{BlockHash, Root};
 use rsnano_messages::{ConfirmReq, Message};
-use std::{ops::Deref, sync::Arc};
+use std::ops::Deref;
 
 #[repr(C)]
 pub struct HashRootPair {
@@ -13,33 +13,21 @@ pub struct HashRootPair {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_req_create(
     constants: *mut NetworkConstantsDto,
-    block: *mut BlockHandle,
     roots_hashes: *const HashRootPair,
     roots_hashes_count: usize,
 ) -> *mut MessageHandle {
     create_message_handle2(constants, || {
-        if !block.is_null() {
-            let block = (*block).deref().deref().clone();
-            Message::ConfirmReq(ConfirmReq {
-                block: Some(block),
-                roots_hashes: Vec::new(),
+        let dtos = std::slice::from_raw_parts(roots_hashes, roots_hashes_count);
+        let roots_hashes = dtos
+            .iter()
+            .map(|dto| {
+                (
+                    BlockHash::from_bytes(dto.block_hash),
+                    Root::from_bytes(dto.root),
+                )
             })
-        } else {
-            let dtos = std::slice::from_raw_parts(roots_hashes, roots_hashes_count);
-            let roots_hashes = dtos
-                .iter()
-                .map(|dto| {
-                    (
-                        BlockHash::from_bytes(dto.block_hash),
-                        Root::from_bytes(dto.root),
-                    )
-                })
-                .collect();
-            Message::ConfirmReq(ConfirmReq {
-                block: None,
-                roots_hashes,
-            })
-        }
+            .collect();
+        Message::ConfirmReq(ConfirmReq { roots_hashes })
     })
 }
 
@@ -53,14 +41,6 @@ unsafe fn get_payload(handle: &MessageHandle) -> &ConfirmReq {
         panic!("not a confirm_req_payload")
     };
     payload
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_confirm_req_block(handle: &MessageHandle) -> *mut BlockHandle {
-    match &get_payload(handle).block {
-        Some(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(block.clone())))),
-        None => std::ptr::null_mut(),
-    }
 }
 
 #[no_mangle]

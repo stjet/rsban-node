@@ -107,7 +107,6 @@ public:
 class confirm_req final : public message
 {
 public:
-	confirm_req (nano::network_constants const & constants, std::shared_ptr<nano::block> const &);
 	confirm_req (nano::network_constants const & constants, std::vector<std::pair<nano::block_hash, nano::root>> const &);
 	confirm_req (nano::network_constants const & constants, nano::block_hash const &, nano::root const &);
 	confirm_req (rsnano::MessageHandle * handle_a);
@@ -115,7 +114,6 @@ public:
 	void visit (nano::message_visitor &) const override;
 	bool operator== (nano::confirm_req const &) const;
 	std::string roots_string () const;
-	std::shared_ptr<nano::block> get_block () const;
 	std::vector<std::pair<nano::block_hash, nano::root>> get_roots_hashes () const;
 	std::string to_string () const;
 };

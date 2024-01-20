@@ -118,22 +118,4 @@ mod tests {
         let message = Message::BulkPull(BulkPull::create_test_instance());
         assert_deserializable(&message);
     }
-
-    #[test]
-    fn serialize_json() {
-        let serialized =
-            serde_json::to_string_pretty(&Message::BulkPull(BulkPull::create_test_instance()))
-                .unwrap();
-
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "bulk_pull",
-  "start": "0000000000000000000000000000000000000000000000000000000000000001",
-  "end": "0000000000000000000000000000000000000000000000000000000000000002",
-  "count": 3,
-  "ascending": true
-}"#
-        );
-    }
 }

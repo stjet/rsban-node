@@ -1,9 +1,10 @@
 use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::NetworkConstantsDto;
 use num::FromPrimitive;
-use rsnano_core::HashOrAccount;
+use rsnano_core::{Account, HashOrAccount};
 use rsnano_messages::{
-    AccountInfoReqPayload, AscPullReq, AscPullReqType, BlocksReqPayload, Message,
+    AccountInfoReqPayload, AscPullReq, AscPullReqType, BlocksReqPayload, FrontiersReqPayload,
+    Message,
 };
 
 #[no_mangle]
@@ -41,6 +42,25 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_create_blocks(
     create_message_handle2(constants, || {
         Message::AscPullReq(AscPullReq {
             req_type: AscPullReqType::Blocks(payload),
+            id,
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_asc_pull_req_create_frontiers(
+    constants: *mut NetworkConstantsDto,
+    id: u64,
+    start: *const u8,
+    count: u16,
+) -> *mut MessageHandle {
+    let payload = FrontiersReqPayload {
+        start: Account::from_ptr(start),
+        count,
+    };
+    create_message_handle2(constants, || {
+        Message::AscPullReq(AscPullReq {
+            req_type: AscPullReqType::Frontiers(payload),
             id,
         })
     })
@@ -114,5 +134,20 @@ pub unsafe extern "C" fn rsn_message_asc_pull_req_payload_account_info(
             *target_type = account_info.target_type as u8;
         }
         _ => panic!("not an account_info payload"),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_asc_pull_req_payload_frontiers(
+    handle: &MessageHandle,
+    start: *mut u8,
+    count: *mut u16,
+) {
+    match &get_payload(handle).req_type {
+        AscPullReqType::Frontiers(frontiers) => {
+            frontiers.start.copy_bytes(start);
+            *count = frontiers.count;
+        }
+        _ => panic!("not a frontiers payload"),
     }
 }

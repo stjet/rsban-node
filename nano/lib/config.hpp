@@ -248,10 +248,12 @@ public:
 
 	/** Initial value is ACTIVE_NETWORK compile flag, but can be overridden by a CLI flag */
 	static nano::networks active_network ();
+
 	/** Current protocol version */
 	uint8_t protocol_version;
 	/** Minimum accepted protocol version */
 	uint8_t protocol_version_min;
+
 	/** Minimum accepted protocol version used when bootstrapping */
 	uint8_t bootstrap_protocol_version_min;
 

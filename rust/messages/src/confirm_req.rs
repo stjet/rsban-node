@@ -186,25 +186,4 @@ mod tests {
         let extensions = confirm_req.header_extensions(0);
         assert_eq!(ConfirmReq::block_type(extensions), BlockType::NotABlock);
     }
-
-    #[test]
-    fn serialize_json() {
-        let serialized =
-            serde_json::to_string_pretty(&Message::ConfirmReq(ConfirmReq::create_test_instance()))
-                .unwrap();
-
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "confirm_req",
-  "confirm_type": "roots_hashes",
-  "roots_hashes": [
-    {
-      "hash": "000000000000000000000000000000000000000000000000000000000000007B",
-      "root": "00000000000000000000000000000000000000000000000000000000000001C8"
-    }
-  ]
-}"#
-        );
-    }
 }

@@ -2,7 +2,7 @@ use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{BufferWriter, Deserialize, Serialize, Stream, StreamExt},
-    Account, BlockEnum, BlockHash, BlockType,
+    Account, BlockEnum, BlockHash, BlockType, Frontier,
 };
 use serde::ser::SerializeStruct;
 use serde_derive::Serialize;
@@ -10,22 +10,22 @@ use std::{fmt::Display, mem::size_of};
 
 use super::{AscPullPayloadId, MessageVariant};
 
-#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
-#[serde(rename_all = "snake_case", tag = "pull_type")]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum AscPullAckType {
     Blocks(BlocksAckPayload),
     AccountInfo(AccountInfoAckPayload),
+    Frontiers(Vec<Frontier>),
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AscPullAck {
     pub id: u64,
-    #[serde(flatten)]
     pub pull_type: AscPullAckType,
 }
 
 impl AscPullAck {
+    const MAX_FRONTIERS: usize = 1000;
+
     pub fn create_test_instance_blocks() -> Self {
         Self {
             id: 12345,
@@ -56,6 +56,15 @@ impl AscPullAck {
                 payload.deserialize(stream).ok()?;
                 AscPullAckType::AccountInfo(payload)
             }
+            AscPullPayloadId::Frontiers => {
+                let mut frontiers = Vec::new();
+                let mut current = Frontier::deserialize(stream).ok()?;
+                while current != Frontier::default() && frontiers.len() < Self::MAX_FRONTIERS {
+                    frontiers.push(current);
+                    current = Frontier::deserialize(stream).ok()?;
+                }
+                AscPullAckType::Frontiers(frontiers)
+            }
         };
 
         Some(AscPullAck { id, pull_type })
@@ -65,6 +74,7 @@ impl AscPullAck {
         match self.pull_type {
             AscPullAckType::Blocks(_) => AscPullPayloadId::Blocks,
             AscPullAckType::AccountInfo(_) => AscPullPayloadId::AccountInfo,
+            AscPullAckType::Frontiers(_) => AscPullPayloadId::Frontiers,
         }
     }
 
@@ -72,6 +82,13 @@ impl AscPullAck {
         match &self.pull_type {
             AscPullAckType::Blocks(blocks) => blocks.serialize(writer),
             AscPullAckType::AccountInfo(account_info) => account_info.serialize(writer),
+            AscPullAckType::Frontiers(frontiers) => {
+                debug_assert!(frontiers.len() <= Self::MAX_FRONTIERS);
+                for frontier in frontiers {
+                    frontier.serialize(writer);
+                }
+                Frontier::default().serialize(writer);
+            }
         }
     }
 
@@ -122,6 +139,7 @@ impl Display for AscPullAck {
                     info.account_conf_height,
                 )?;
             }
+            AscPullAckType::Frontiers(_) => {}
         }
         Ok(())
     }
@@ -275,56 +293,5 @@ mod tests {
             }),
         });
         assert_eq!(ack.to_string(), "\naccount public key:nano_1111111111111111111111111111111111111111111111111113b8661hfk account open:0000000000000000000000000000000000000000000000000000000000000002 account head:0000000000000000000000000000000000000000000000000000000000000003 block count:4 confirmation frontier:0000000000000000000000000000000000000000000000000000000000000005 confirmation height:6");
-    }
-
-    #[test]
-    fn serialize_json_blocks_ack() {
-        let serialized = serde_json::to_string_pretty(&Message::AscPullAck(
-            AscPullAck::create_test_instance_blocks(),
-        ))
-        .unwrap();
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "asc_pull_ack",
-  "id": 12345,
-  "pull_type": "blocks",
-  "blocks": [
-    {
-      "type": "state",
-      "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549",
-      "previous": "00000000000000000000000000000000000000000000000000000000000001C8",
-      "representative": "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy",
-      "balance": "420",
-      "link": "000000000000000000000000000000000000000000000000000000000000006F",
-      "link_as_account": "nano_111111111111111111111111111111111111111111111111115hkrzwewgm",
-      "signature": "9C6E535FABB72F90E410B72192102BA13B77BDC58D77B94DF8B7A704D74698C5F9BCB01667A5D9788DB02AAFE8F46DCB898488487BB375283BC39CA61A678204",
-      "work": "0000000000010F2C"
-    }
-  ]
-}"#
-        );
-    }
-
-    #[test]
-    fn serialize_json_accounts_ack() {
-        let serialized = serde_json::to_string_pretty(&Message::AscPullAck(
-            AscPullAck::create_test_instance_account(),
-        ))
-        .unwrap();
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "asc_pull_ack",
-  "id": 12345,
-  "pull_type": "account_info",
-  "account": "nano_1111111111111111111111111111111111111111111111111113b8661hfk",
-  "account_open": "0000000000000000000000000000000000000000000000000000000000000002",
-  "account_head": "0000000000000000000000000000000000000000000000000000000000000003",
-  "account_block_count": 4,
-  "account_conf_frontier": "0000000000000000000000000000000000000000000000000000000000000005",
-  "account_conf_height": 3
-}"#
-        );
     }
 }

@@ -1,11 +1,9 @@
 use super::*;
 use bitvec::prelude::BitArray;
 use rsnano_core::utils::{BufferReader, BufferWriter, Serialize};
-use serde_derive::Serialize;
 use std::fmt::Display;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(tag = "message_type", rename_all = "snake_case")]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Message {
     Keepalive(Keepalive),
     Publish(Publish),
@@ -262,27 +260,5 @@ mod tests {
             pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload::create_test_instance()),
         });
         assert_deserializable(&message);
-    }
-
-    #[test]
-    fn serialize_bulk_push() {
-        let serialized = serde_json::to_string_pretty(&Message::BulkPush).unwrap();
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "bulk_push"
-}"#
-        );
-    }
-
-    #[test]
-    fn serialize_telemetry_req() {
-        let serialized = serde_json::to_string_pretty(&Message::TelemetryReq).unwrap();
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "telemetry_req"
-}"#
-        );
     }
 }

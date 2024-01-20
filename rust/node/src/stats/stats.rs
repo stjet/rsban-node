@@ -341,6 +341,8 @@ pub enum DetailType {
     ResponseBlocks,
     ResponseAccountInfo,
     ChannelFull,
+    ResponseFrontiers,
+    Frontiers,
 
     // backlog
     Activated,

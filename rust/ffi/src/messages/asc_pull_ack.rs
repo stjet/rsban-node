@@ -3,7 +3,7 @@ use crate::{
     core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
     NetworkConstantsDto,
 };
-use rsnano_core::{Account, BlockHash};
+use rsnano_core::{Account, BlockHash, Frontier};
 use rsnano_messages::{
     AccountInfoAckPayload, AscPullAck, AscPullAckType, BlocksAckPayload, Message,
 };
@@ -41,6 +41,20 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_create3(
         Message::AscPullAck(AscPullAck {
             id,
             pull_type: AscPullAckType::Blocks(BlocksAckPayload::new(blocks)),
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_asc_pull_ack_create4(
+    constants: *mut NetworkConstantsDto,
+    id: u64,
+    frontiers: &FrontierVecHandle,
+) -> *mut MessageHandle {
+    create_message_handle2(constants, move || {
+        Message::AscPullAck(AscPullAck {
+            id,
+            pull_type: AscPullAckType::Frontiers(frontiers.0.clone()),
         })
     })
 }
@@ -138,4 +152,57 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_account_info(
         AscPullAckType::AccountInfo(account_info) => (*result) = account_info.into(),
         _ => panic!("not an account_info payload"),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_frontiers(
+    handle: &MessageHandle,
+) -> *mut FrontierVecHandle {
+    match &get_payload(handle).pull_type {
+        AscPullAckType::Frontiers(frontiers) => {
+            Box::into_raw(Box::new(FrontierVecHandle(frontiers.clone())))
+        }
+        _ => panic!("not a frontier payload"),
+    }
+}
+
+pub struct FrontierVecHandle(Vec<Frontier>);
+
+#[no_mangle]
+pub extern "C" fn rsn_frontier_vec_create() -> *mut FrontierVecHandle {
+    Box::into_raw(Box::new(FrontierVecHandle(Vec::new())))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_frontier_vec_push(
+    handle: &mut FrontierVecHandle,
+    account: *const u8,
+    hash: *const u8,
+) {
+    handle.0.push(Frontier::new(
+        Account::from_ptr(account),
+        BlockHash::from_ptr(hash),
+    ))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_frontier_vec_destroy(handle: *mut FrontierVecHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_frontier_vec_len(handle: &FrontierVecHandle) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_frontier_vec_get(
+    handle: &FrontierVecHandle,
+    index: usize,
+    account: *mut u8,
+    hash: *mut u8,
+) {
+    let frontier = handle.0.get(index).unwrap();
+    frontier.account.copy_bytes(account);
+    frontier.hash.copy_bytes(hash);
 }

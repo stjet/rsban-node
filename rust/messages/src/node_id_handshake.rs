@@ -380,47 +380,4 @@ mod tests {
         copy.v2.as_mut().unwrap().genesis = BlockHash::from(123);
         assert!(copy.validate(&cookie).is_err());
     }
-
-    #[test]
-    fn serialize_json_query() {
-        let serialized = serde_json::to_string_pretty(&Message::NodeIdHandshake(
-            NodeIdHandshake::create_test_query(),
-        ))
-        .unwrap();
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "node_id_handshake",
-  "query": {
-    "cookie": "2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A"
-  },
-  "response": null,
-  "is_v2": true
-}"#
-        );
-    }
-
-    #[test]
-    fn serialize_json_resonse() {
-        let serialized = serde_json::to_string_pretty(&Message::NodeIdHandshake(
-            NodeIdHandshake::create_test_response_v2(),
-        ))
-        .unwrap();
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "node_id_handshake",
-  "query": null,
-  "response": {
-    "node_id": "nano_1111111111111111111111111111111111111111111111111113b8661hfk",
-    "signature": "2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A",
-    "v2": {
-      "salt": "0707070707070707070707070707070707070707070707070707070707070707",
-      "genesis": "0000000000000000000000000000000000000000000000000000000000000003"
-    }
-  },
-  "is_v2": true
-}"#
-        );
-    }
 }

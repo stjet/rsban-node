@@ -87,23 +87,4 @@ mod tests {
         let request = Message::FrontierReq(FrontierReq::create_test_instance());
         assert_deserializable(&request);
     }
-
-    #[test]
-    fn serialize_json() {
-        let serialized = serde_json::to_string_pretty(&Message::FrontierReq(
-            FrontierReq::create_test_instance(),
-        ))
-        .unwrap();
-
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "frontier_req",
-  "start": "nano_1111111111111111111111111111111111111111111111111113b8661hfk",
-  "age": 2,
-  "count": 3,
-  "only_confirmed": false
-}"#
-        );
-    }
 }

@@ -146,27 +146,4 @@ mod tests {
 
         assert_eq!(keepalive.to_string(), expected);
     }
-
-    #[test]
-    fn serialize() {
-        let serialized =
-            serde_json::to_string_pretty(&Message::Keepalive(Keepalive::create_test_instance()))
-                .unwrap();
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "keepalive",
-  "peers": [
-    "[::ffff:1.2.3.4]:1111",
-    "[::ffff:1.2.3.5]:2222",
-    "[::ffff:1.2.3.6]:3333",
-    "[::ffff:1.2.3.7]:4444",
-    "[::ffff:1.2.3.8]:5555",
-    "[::ffff:1.2.3.9]:6666",
-    "[::ffff:1.2.3.10]:7777",
-    "[::ffff:1.2.3.11]:8888"
-  ]
-}"#
-        );
-    }
 }

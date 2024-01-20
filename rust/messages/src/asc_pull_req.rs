@@ -3,7 +3,7 @@ use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{BufferWriter, Deserialize, Serialize, Stream, StreamExt},
-    HashOrAccount,
+    Account, HashOrAccount,
 };
 use serde_derive::Serialize;
 use std::{fmt::Display, mem::size_of};
@@ -18,6 +18,7 @@ use std::{fmt::Display, mem::size_of};
 pub enum AscPullPayloadId {
     Blocks = 0x1,
     AccountInfo = 0x2,
+    Frontiers = 0x3,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize)]
@@ -25,6 +26,7 @@ pub enum AscPullPayloadId {
 pub enum AscPullReqType {
     Blocks(BlocksReqPayload),
     AccountInfo(AccountInfoReqPayload),
+    Frontiers(FrontiersReqPayload),
 }
 
 impl Serialize for AscPullReqType {
@@ -32,6 +34,7 @@ impl Serialize for AscPullReqType {
         match &self {
             AscPullReqType::Blocks(blocks) => blocks.serialize(writer),
             AscPullReqType::AccountInfo(account_info) => account_info.serialize(writer),
+            AscPullReqType::Frontiers(frontiers) => frontiers.serialize(writer),
         }
     }
 }
@@ -111,6 +114,31 @@ impl Serialize for AccountInfoReqPayload {
     }
 }
 
+#[derive(Default, Clone, PartialEq, Eq, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct FrontiersReqPayload {
+    pub start: Account,
+    pub count: u16,
+}
+
+impl FrontiersReqPayload {
+    fn deserialize(&mut self, stream: &mut dyn Stream) -> anyhow::Result<()> {
+        self.start = Account::deserialize(stream)?;
+        let mut count_bytes = [0u8; 2];
+        stream.read_bytes(&mut count_bytes, 2)?;
+        self.count = u16::from_be_bytes(count_bytes);
+        Ok(())
+    }
+}
+
+impl Serialize for FrontiersReqPayload {
+    fn serialize(&self, stream: &mut dyn BufferWriter) {
+        self.start.serialize(stream);
+        let count_bytes = self.count.to_be_bytes();
+        stream.write_bytes_safe(&count_bytes);
+    }
+}
+
 /// Ascending bootstrap pull request
 #[derive(Clone, PartialEq, Eq, Debug, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -136,6 +164,9 @@ impl Display for AscPullReq {
                     "\ntarget:{} hash type:{}",
                     info.target, info.target_type as u8
                 )?;
+            }
+            AscPullReqType::Frontiers(frontiers) => {
+                write!(f, "\nstart:{} count:{}", frontiers.start, frontiers.count)?;
             }
         }
         Ok(())
@@ -172,6 +203,11 @@ impl AscPullReq {
                 payload.deserialize(stream).ok()?;
                 AscPullReqType::AccountInfo(payload)
             }
+            AscPullPayloadId::Frontiers => {
+                let mut payload = FrontiersReqPayload::default();
+                payload.deserialize(stream).ok()?;
+                AscPullReqType::Frontiers(payload)
+            }
         };
         Some(Self { id, req_type })
     }
@@ -180,6 +216,7 @@ impl AscPullReq {
         match &self.req_type {
             AscPullReqType::Blocks(_) => AscPullPayloadId::Blocks,
             AscPullReqType::AccountInfo(_) => AscPullPayloadId::AccountInfo,
+            AscPullReqType::Frontiers(_) => AscPullPayloadId::Frontiers,
         }
     }
 
@@ -266,45 +303,6 @@ mod tests {
         assert_eq!(
             req.to_string(),
             "\ntarget:000000000000000000000000000000000000000000000000000000000000007B hash type:1"
-        );
-    }
-
-    #[test]
-    fn serialize_json_blocks() {
-        let serialized = serde_json::to_string_pretty(&Message::AscPullReq(
-            AscPullReq::create_test_instance_blocks(),
-        ))
-        .unwrap();
-
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "asc_pull_req",
-  "id": 12345,
-  "pull_type": "blocks",
-  "start_type": "account",
-  "start": "000000000000000000000000000000000000000000000000000000000000007B",
-  "count": 100
-}"#
-        );
-    }
-
-    #[test]
-    fn serialize_json_account() {
-        let serialized = serde_json::to_string_pretty(&Message::AscPullReq(
-            AscPullReq::create_test_instance_account(),
-        ))
-        .unwrap();
-
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "asc_pull_req",
-  "id": 12345,
-  "pull_type": "account_info",
-  "target": "000000000000000000000000000000000000000000000000000000000000002A",
-  "target_type": "account"
-}"#
         );
     }
 }

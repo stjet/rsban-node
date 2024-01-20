@@ -69,7 +69,7 @@ pub use unchecked_info::{UncheckedInfo, UncheckedKey};
 
 mod kdf;
 pub use kdf::KeyDerivationFunction;
-use utils::BufferWriter;
+use utils::{BufferWriter, Deserialize, Serialize, Stream};
 
 use std::fmt::Write;
 use std::num::ParseIntError;
@@ -352,6 +352,33 @@ pub fn epoch_v2_link() -> Link {
     let mut link_bytes = [0u8; 32];
     link_bytes[..14].copy_from_slice(b"epoch v2 block");
     Link::from_bytes(link_bytes)
+}
+
+#[derive(PartialEq, Eq, Debug, Default, Clone)]
+pub struct Frontier {
+    pub account: Account,
+    pub hash: BlockHash,
+}
+
+impl Frontier {
+    pub fn new(account: Account, hash: BlockHash) -> Self {
+        Self { account, hash }
+    }
+}
+
+impl Frontier {
+    pub fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {
+        let account = Account::deserialize(stream)?;
+        let hash = BlockHash::deserialize(stream)?;
+        Ok(Self::new(account, hash))
+    }
+}
+
+impl Serialize for Frontier {
+    fn serialize(&self, stream: &mut dyn BufferWriter) {
+        self.account.serialize(stream);
+        self.hash.serialize(stream);
+    }
 }
 
 #[cfg(test)]

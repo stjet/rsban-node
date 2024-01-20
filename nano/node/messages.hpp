@@ -355,9 +355,10 @@ enum class asc_pull_type : uint8_t
 	invalid = 0x0,
 	blocks = 0x1,
 	account_info = 0x2,
+	frontiers = 0x3,
 };
 
-class empty_payload
+struct empty_payload
 {
 };
 
@@ -373,19 +374,23 @@ public: // Payload definitions
 		block = 1,
 	};
 
-	class blocks_payload
+	struct blocks_payload
 	{
-	public:
 		nano::hash_or_account start{ 0 };
 		uint8_t count{ 0 };
-		asc_pull_req::hash_type start_type{ 0 };
+		hash_type start_type{};
 	};
 
-	class account_info_payload
+	struct account_info_payload
 	{
-	public:
 		nano::hash_or_account target{ 0 };
-		asc_pull_req::hash_type target_type{ 0 };
+		hash_type target_type{};
+	};
+
+	struct frontiers_payload
+	{
+		nano::account start{ 0 };
+		uint16_t count{ 0 };
 	};
 
 public:
@@ -393,6 +398,7 @@ public:
 
 	asc_pull_req (nano::network_constants const &, uint64_t id, account_info_payload & payload_a);
 	asc_pull_req (nano::network_constants const &, uint64_t id, blocks_payload & payload_a);
+	asc_pull_req (nano::network_constants const &, uint64_t id, frontiers_payload & payload_a);
 	asc_pull_req (rsnano::MessageHandle * handle_a);
 	asc_pull_req (asc_pull_req const & other_a);
 
@@ -402,7 +408,7 @@ public:
 
 	void visit (nano::message_visitor &) const override;
 
-	std::variant<empty_payload, blocks_payload, account_info_payload> payload () const;
+	std::variant<empty_payload, blocks_payload, account_info_payload, frontiers_payload> payload () const;
 };
 
 /**
@@ -411,19 +417,16 @@ public:
 class asc_pull_ack final : public message
 {
 public: // Payload definitions
-	class blocks_payload
+	struct blocks_payload
 	{
-	public:
-		std::vector<std::shared_ptr<nano::block>> blocks{};
-
-	public:
 		/* Header allows for 16 bit extensions; 65535 bytes / 500 bytes (block size with some future margin) ~ 131 */
 		constexpr static std::size_t max_blocks = 128;
+
+		std::vector<std::shared_ptr<nano::block>> blocks{};
 	};
 
-	class account_info_payload
+	struct account_info_payload
 	{
-	public:
 		nano::account account{ 0 };
 		nano::block_hash account_open{ 0 };
 		nano::block_hash account_head{ 0 };
@@ -432,11 +435,22 @@ public: // Payload definitions
 		uint64_t account_conf_height{ 0 };
 	};
 
+	struct frontiers_payload
+	{
+		/* Header allows for 16 bit extensions; 65536 bytes / 64 bytes (account + frontier) ~ 1024, but we need some space for null frontier terminator */
+		constexpr static std::size_t max_frontiers = 1000;
+		using frontier = std::pair<nano::account, nano::block_hash>;
+
+		// Payload
+		std::vector<frontier> frontiers;
+	};
+
 public:
 	using id_t = asc_pull_req::id_t;
 
 	asc_pull_ack (nano::network_constants const &, uint64_t id, account_info_payload & payload_a);
 	asc_pull_ack (nano::network_constants const &, uint64_t id, blocks_payload & payload_a);
+	asc_pull_ack (nano::network_constants const &, uint64_t id, frontiers_payload & payload_a);
 	asc_pull_ack (rsnano::MessageHandle * handle_a);
 	asc_pull_ack (asc_pull_ack const & other_a);
 
@@ -445,7 +459,7 @@ public:
 	nano::asc_pull_type pull_type () const;
 
 	void visit (nano::message_visitor &) const override;
-	std::variant<empty_payload, blocks_payload, account_info_payload> payload () const;
+	std::variant<empty_payload, blocks_payload, account_info_payload, frontiers_payload> payload () const;
 };
 
 class message_visitor

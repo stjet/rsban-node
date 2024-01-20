@@ -1257,6 +1257,12 @@ rsnano::MessageHandle * create_asc_pull_req_blocks_handle (nano::network_constan
 	auto constants_dto{ constants.to_dto () };
 	return rsnano::rsn_message_asc_pull_req_create_blocks (&constants_dto, id, payload_a.start.bytes.data (), payload_a.count, static_cast<uint8_t> (payload_a.start_type));
 }
+
+rsnano::MessageHandle * create_asc_pull_req_frontiers_handle (nano::network_constants const & constants, uint64_t id, nano::asc_pull_req::frontiers_payload & payload_a)
+{
+	auto constants_dto{ constants.to_dto () };
+	return rsnano::rsn_message_asc_pull_req_create_frontiers (&constants_dto, id, payload_a.start.bytes.data (), payload_a.count);
+}
 }
 
 nano::asc_pull_req::asc_pull_req (nano::network_constants const & constants, uint64_t id, account_info_payload & payload_a) :
@@ -1266,6 +1272,11 @@ nano::asc_pull_req::asc_pull_req (nano::network_constants const & constants, uin
 
 nano::asc_pull_req::asc_pull_req (nano::network_constants const & constants, uint64_t id, blocks_payload & payload_a) :
 	message (create_asc_pull_req_blocks_handle (constants, id, payload_a))
+{
+}
+
+nano::asc_pull_req::asc_pull_req (nano::network_constants const & constants, uint64_t id, frontiers_payload & payload_a) :
+	message (create_asc_pull_req_frontiers_handle (constants, id, payload_a))
 {
 }
 
@@ -1299,7 +1310,7 @@ void nano::asc_pull_req::visit (nano::message_visitor & visitor) const
 	visitor.asc_pull_req (*this);
 }
 
-std::variant<nano::empty_payload, nano::asc_pull_req::blocks_payload, nano::asc_pull_req::account_info_payload> nano::asc_pull_req::payload () const
+std::variant<nano::empty_payload, nano::asc_pull_req::blocks_payload, nano::asc_pull_req::account_info_payload, nano::asc_pull_req::frontiers_payload> nano::asc_pull_req::payload () const
 {
 	std::variant<nano::empty_payload, nano::asc_pull_req::blocks_payload, nano::asc_pull_req::account_info_payload> result;
 	auto payload_type = static_cast<nano::asc_pull_type> (rsnano::rsn_message_asc_pull_req_payload_type (handle));
@@ -1318,6 +1329,12 @@ std::variant<nano::empty_payload, nano::asc_pull_req::blocks_payload, nano::asc_
 		rsnano::rsn_message_asc_pull_req_payload_account_info (handle, account_info.target.bytes.data (), &target_type);
 		account_info.target_type = static_cast<nano::asc_pull_req::hash_type> (target_type);
 		return account_info;
+	}
+	else if (payload_type == nano::asc_pull_type::frontiers)
+	{
+		nano::asc_pull_req::frontiers_payload frontiers;
+		rsnano::rsn_message_asc_pull_req_payload_frontiers (handle, frontiers.start.bytes.data (), &frontiers.count);
+		return frontiers;
 	}
 	return empty_payload{};
 }
@@ -1351,6 +1368,19 @@ rsnano::MessageHandle * create_asc_pull_ack_blocks_handle (nano::network_constan
 	}
 	return rsnano::rsn_message_asc_pull_ack_create3 (&constants_dto, id, block_handles.data (), block_handles.size ());
 }
+
+rsnano::MessageHandle * create_asc_pull_ack_frontiers_handle (nano::network_constants const & constants, uint64_t id, nano::asc_pull_ack::frontiers_payload & payload_a)
+{
+	auto constants_dto{ constants.to_dto () };
+	auto frontier_vec = rsnano::rsn_frontier_vec_create ();
+	for (const auto & frontier : payload_a.frontiers)
+	{
+		rsnano::rsn_frontier_vec_push (frontier_vec, frontier.first.bytes.data (), frontier.second.bytes.data ());
+	}
+	auto message_handle = rsnano::rsn_message_asc_pull_ack_create4 (&constants_dto, id, frontier_vec);
+	rsnano::rsn_frontier_vec_destroy (frontier_vec);
+	return message_handle;
+}
 }
 
 nano::asc_pull_ack::asc_pull_ack (nano::network_constants const & constants, uint64_t id, account_info_payload & payload_a) :
@@ -1360,6 +1390,11 @@ nano::asc_pull_ack::asc_pull_ack (nano::network_constants const & constants, uin
 
 nano::asc_pull_ack::asc_pull_ack (nano::network_constants const & constants, uint64_t id, blocks_payload & payload_a) :
 	message (create_asc_pull_ack_blocks_handle (constants, id, payload_a))
+{
+}
+
+nano::asc_pull_ack::asc_pull_ack (nano::network_constants const & constants, uint64_t id, frontiers_payload & payload_a) :
+	message (create_asc_pull_ack_frontiers_handle (constants, id, payload_a))
 {
 }
 
@@ -1393,7 +1428,7 @@ void nano::asc_pull_ack::visit (nano::message_visitor & visitor) const
 	visitor.asc_pull_ack (*this);
 }
 
-std::variant<nano::empty_payload, nano::asc_pull_ack::blocks_payload, nano::asc_pull_ack::account_info_payload> nano::asc_pull_ack::payload () const
+std::variant<nano::empty_payload, nano::asc_pull_ack::blocks_payload, nano::asc_pull_ack::account_info_payload, nano::asc_pull_ack::frontiers_payload> nano::asc_pull_ack::payload () const
 {
 	std::variant<nano::empty_payload, nano::asc_pull_req::blocks_payload, nano::asc_pull_req::account_info_payload> result;
 	auto payload_type = static_cast<nano::asc_pull_type> (rsnano::rsn_message_asc_pull_ack_pull_type (handle));
@@ -1418,5 +1453,21 @@ std::variant<nano::empty_payload, nano::asc_pull_ack::blocks_payload, nano::asc_
 		account_info.account_conf_height = dto.account_conf_height;
 		return account_info;
 	}
+	else if (payload_type == nano::asc_pull_type::frontiers)
+	{
+		auto frontier_vec = rsnano::rsn_message_asc_pull_ack_payload_frontiers (handle);
+		nano::asc_pull_ack::frontiers_payload payload;
+		auto len = rsnano::rsn_frontier_vec_len (frontier_vec);
+		for (auto i = 0; i < len; ++i)
+		{
+			nano::account account{};
+			nano::block_hash hash{};
+			rsnano::rsn_frontier_vec_get (frontier_vec, i, account.bytes.data (), hash.bytes.data ());
+			payload.frontiers.emplace_back (account, hash);
+		}
+		rsnano::rsn_frontier_vec_destroy (frontier_vec);
+		return payload;
+	}
+
 	return empty_payload{};
 }

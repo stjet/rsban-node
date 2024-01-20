@@ -354,40 +354,6 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn serialize_json() {
-        let serialized = serde_json::to_string_pretty(&Message::TelemetryAck(
-            TelemetryAck::create_test_instance(),
-        ))
-        .unwrap();
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "telemetry_ack",
-  "data": {
-    "signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-    "node_id": "nano_111111111111111111111111111111111111111111111111113cjgseitn9",
-    "block_count": 0,
-    "cemented_count": 0,
-    "unchecked_count": 0,
-    "account_count": 0,
-    "bandwidth_cap": 0,
-    "uptime": 0,
-    "peer_count": 0,
-    "protocol_version": 0,
-    "genesis_block": "0000000000000000000000000000000000000000000000000000000000000000",
-    "major_version": 20,
-    "minor_version": 1,
-    "patch_version": 5,
-    "pre_release_version": 2,
-    "maker": 1,
-    "active_difficulty": 0,
-    "unknown_data": []
-  }
-}"#
-        );
-    }
-
     fn test_data(keys: &KeyPair) -> TelemetryData {
         let mut data = TelemetryData::new();
         data.node_id = keys.public_key().into();

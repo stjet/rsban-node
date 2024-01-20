@@ -87,30 +87,3 @@ impl serde::Serialize for BulkPullAccount {
         state.end()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::Message;
-
-    use super::*;
-
-    #[test]
-    #[ignore]
-    fn serialize_json() {
-        let serialized = serde_json::to_string_pretty(&Message::BulkPullAccount(
-            BulkPullAccount::create_test_instance(),
-        ))
-        .unwrap();
-
-        assert_eq!(
-            serialized,
-            r#"{
-  "message_type": "bulk_pull_account",
-  "start": "0000000000000000000000000000000000000000000000000000000000000001",
-  "end": "0000000000000000000000000000000000000000000000000000000000000002",
-  "count": 3,
-  "ascending": true
-}"#
-        );
-    }
-}

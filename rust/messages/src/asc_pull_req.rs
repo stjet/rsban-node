@@ -279,6 +279,18 @@ mod tests {
     }
 
     #[test]
+    fn serialize_frontiers() {
+        let original = Message::AscPullReq(AscPullReq {
+            id: 7,
+            req_type: AscPullReqType::Frontiers(FrontiersReqPayload {
+                start: Account::from(42),
+                count: 69,
+            }),
+        });
+        assert_deserializable(&original);
+    }
+
+    #[test]
     fn display_blocks_payload() {
         let req = Message::AscPullReq(AscPullReq {
             req_type: AscPullReqType::Blocks(BlocksReqPayload {

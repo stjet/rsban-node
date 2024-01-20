@@ -280,6 +280,19 @@ mod tests {
     }
 
     #[test]
+    fn serialize_frontiers() {
+        let original = Message::AscPullAck(AscPullAck {
+            id: 7,
+            pull_type: AscPullAckType::Frontiers(vec![Frontier::new(
+                Account::from(1),
+                BlockHash::from(2),
+            )]),
+        });
+
+        assert_deserializable(&original);
+    }
+
+    #[test]
     fn display() {
         let ack = Message::AscPullAck(AscPullAck {
             id: 7,

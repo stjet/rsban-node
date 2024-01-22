@@ -9,6 +9,7 @@
 #include <nano/node/transport/socket.hpp>
 
 #include <atomic>
+#include <memory>
 
 namespace rsnano
 {
@@ -68,7 +69,7 @@ class tcp_server;
 /**
  * Server side portion of bootstrap sessions. Listens for new socket connections and spawns tcp_server objects when connected.
  */
-class tcp_listener final : public nano::tcp_server_observer
+class tcp_listener final : public nano::tcp_server_observer, public std::enable_shared_from_this<nano::transport::tcp_listener>
 {
 public:
 	tcp_listener (uint16_t, nano::node &);
@@ -133,6 +134,7 @@ public:
 	nano::bootstrap_initiator & bootstrap_initiator_a,
 	nano::keypair & node_id_a,
 	bool allow_bootstrap_a = true);
+
 	explicit tcp_server (rsnano::TcpServerHandle * handle_a);
 	tcp_server (nano::transport::tcp_server const &) = delete;
 	tcp_server (nano::transport::tcp_server &&) = delete;

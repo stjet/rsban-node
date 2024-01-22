@@ -70,6 +70,7 @@ rsnano::BootstrapAscendingConfigDto nano::bootstrap_ascending_config::to_dto () 
 	dto.timeout_ms = timeout;
 	dto.throttle_coefficient = throttle_coefficient;
 	dto.throttle_wait_ms = throttle_wait;
+	dto.block_wait_count = block_wait_count;
 	dto.account_sets = account_sets.to_dto ();
 	return dto;
 }
@@ -82,6 +83,7 @@ void nano::bootstrap_ascending_config::load_dto (rsnano::BootstrapAscendingConfi
 	timeout = dto.timeout_ms;
 	throttle_coefficient = dto.throttle_coefficient;
 	throttle_wait = dto.throttle_wait_ms;
+	block_wait_count = dto.block_wait_count;
 	account_sets.load_dto (dto.account_sets);
 }
 
@@ -93,6 +95,7 @@ nano::error nano::bootstrap_ascending_config::deserialize (nano::tomlconfig & to
 	toml.get ("timeout", timeout);
 	toml.get ("throttle_coefficient", throttle_coefficient);
 	toml.get ("throttle_wait", throttle_wait);
+	toml.get ("block_wait_count", block_wait_count);
 
 	if (toml.has_key ("account_sets"))
 	{

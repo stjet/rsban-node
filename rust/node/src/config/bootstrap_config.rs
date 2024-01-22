@@ -12,6 +12,7 @@ pub struct BootstrapAscendingConfig {
     pub throttle_coefficient: usize,
     pub throttle_wait: Duration,
     pub account_sets: AccountSetsConfig,
+    pub block_wait_count: usize,
 }
 
 impl BootstrapAscendingConfig {
@@ -34,7 +35,11 @@ impl BootstrapAscendingConfig {
             self.throttle_wait.as_millis() as u64,
             "Length of time to wait between requests when throttled.\ntype:milliseconds",
         )?;
-
+        toml.put_usize(
+            "block_wait_count",
+            self.block_wait_count,
+            "Ascending bootstrap will wait while block processor has more than this many blocks queued.\ntype:uint64",
+        )?;
         toml.put_child("account_sets", &mut |child| {
             self.account_sets.serialize_toml(child)
         })
@@ -51,6 +56,7 @@ impl Default for BootstrapAscendingConfig {
             throttle_coefficient: 16,
             throttle_wait: Duration::from_millis(100),
             account_sets: Default::default(),
+            block_wait_count: 1000,
         }
     }
 }

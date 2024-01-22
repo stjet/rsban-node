@@ -44,6 +44,7 @@ public:
 	nano::millis_t timeout;
 	std::size_t throttle_coefficient;
 	nano::millis_t throttle_wait;
+	std::size_t block_wait_count;
 
 	nano::account_sets_config account_sets;
 };

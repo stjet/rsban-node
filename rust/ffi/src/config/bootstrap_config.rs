@@ -10,6 +10,7 @@ pub struct BootstrapAscendingConfigDto {
     pub throttle_coefficient: usize,
     pub throttle_wait_ms: u64,
     pub account_sets: AccountSetsConfigDto,
+    pub block_wait_count: usize,
 }
 
 #[repr(C)]
@@ -30,6 +31,7 @@ impl From<&BootstrapAscendingConfig> for BootstrapAscendingConfigDto {
             throttle_coefficient: value.throttle_coefficient,
             throttle_wait_ms: value.throttle_wait.as_millis() as u64,
             account_sets: (&value.account_sets).into(),
+            block_wait_count: value.block_wait_count,
         }
     }
 }
@@ -44,6 +46,7 @@ impl From<&BootstrapAscendingConfigDto> for BootstrapAscendingConfig {
             throttle_coefficient: value.throttle_coefficient,
             throttle_wait: Duration::from_millis(value.throttle_wait_ms),
             account_sets: (&value.account_sets).into(),
+            block_wait_count: value.block_wait_count,
         }
     }
 }

@@ -1,10 +1,13 @@
 #include <nano/lib/stats.hpp>
+#include <nano/lib/tomlconfig.hpp>
 #include <nano/node/bootstrap_ascending/service.hpp>
 #include <nano/node/make_store.hpp>
 #include <nano/test_common/system.hpp>
 #include <nano/test_common/testutil.hpp>
 
 #include <gtest/gtest.h>
+
+#include <sstream>
 
 using namespace std::chrono_literals;
 

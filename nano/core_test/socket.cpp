@@ -111,26 +111,22 @@ TEST (socket, max_connections_per_ip)
 	ASSERT_FALSE (node->flags.disable_max_peers_per_ip ());
 
 	auto server_port = system.get_available_port ();
-	boost::asio::ip::tcp::endpoint listen_endpoint{ boost::asio::ip::address_v6::any (), server_port };
 
 	const auto max_ip_connections = node->network_params.network.max_peers_per_ip;
 	ASSERT_TRUE (max_ip_connections >= 1);
 
 	const auto max_global_connections = 1000;
 
-	auto server_socket = std::make_shared<nano::transport::server_socket> (*node, listen_endpoint, max_global_connections);
-	boost::system::error_code ec;
-	server_socket->start (ec);
-	ASSERT_FALSE (ec);
-
-	boost::asio::ip::tcp::endpoint dst_endpoint{ boost::asio::ip::address_v6::loopback (), server_socket->listening_port () };
-
 	// successful incoming connections are stored in server_sockets to keep them alive (server side)
 	std::vector<std::shared_ptr<nano::transport::socket>> server_sockets;
-	server_socket->on_connection ([&server_sockets] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
+
+	auto listener = std::make_shared<nano::transport::tcp_listener>(server_port, *node, max_global_connections);
+	listener->start ([&server_sockets] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
 		server_sockets.push_back (new_connection);
 		return true;
 	});
+
+	boost::asio::ip::tcp::endpoint dst_endpoint{ boost::asio::ip::address_v6::loopback (), listener->endpoint ().port () };
 
 	// client side connection tracking
 	std::atomic<size_t> connection_attempts = 0;
@@ -193,19 +189,16 @@ TEST (socket, max_connections_per_subnetwork)
 
 	const auto max_global_connections = 1000;
 
-	auto server_socket = std::make_shared<nano::transport::server_socket> (*node, listen_endpoint, max_global_connections);
-	boost::system::error_code ec;
-	server_socket->start (ec);
-	ASSERT_FALSE (ec);
-
-	boost::asio::ip::tcp::endpoint dst_endpoint{ boost::asio::ip::address_v6::loopback (), server_socket->listening_port () };
-
 	// successful incoming connections are stored in server_sockets to keep them alive (server side)
 	std::vector<std::shared_ptr<nano::transport::socket>> server_sockets;
-	server_socket->on_connection ([&server_sockets] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
+
+	auto listener = std::make_shared<nano::transport::tcp_listener> (server_port, *node, max_global_connections);
+	listener->start ([&server_sockets] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
 		server_sockets.push_back (new_connection);
 		return true;
 	});
+
+	boost::asio::ip::tcp::endpoint dst_endpoint{ boost::asio::ip::address_v6::loopback (), listener->endpoint ().port () };
 
 	// client side connection tracking
 	std::atomic<size_t> connection_attempts = 0;

@@ -674,10 +674,23 @@ void nano::node::start ()
 	ongoing_rep_calculation ();
 	ongoing_peer_store ();
 	ongoing_online_weight_calculation_queue ();
+
 	bool tcp_enabled (false);
 	if (config->tcp_incoming_connections_max > 0 && !(flags.disable_bootstrap_listener () && flags.disable_tcp_realtime ()))
 	{
-		tcp_listener->start ();
+		auto listener_w{ tcp_listener->weak_from_this () };
+		tcp_listener->start ([listener_w] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
+			auto listener_l{ listener_w.lock () };
+			if (!listener_l)
+			{
+				return false;
+			}
+			if (!ec_a)
+			{
+				listener_l->accept_action (ec_a, new_connection);
+			}
+			return true;
+		});
 		tcp_enabled = true;
 
 		if (network->get_port () != tcp_listener->port)

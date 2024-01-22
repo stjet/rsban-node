@@ -66,7 +66,7 @@ nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_
 {
 }
 
-void nano::transport::tcp_listener::start ()
+void nano::transport::tcp_listener::start (std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> callback_a)
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
 	on = true;
@@ -102,19 +102,7 @@ void nano::transport::tcp_listener::start ()
 		}
 	}
 
-	auto this_w {weak_from_this()};
-	listening_socket->on_connection ([this_w] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
-		auto this_l {this_w.lock()};
-		if (!this_l)
-		{
-			return false; // stop
-		}
-		if (!ec_a)
-		{
-			this_l->accept_action (ec_a, new_connection);
-		}
-		return true;
-	});
+	listening_socket->on_connection (callback_a);
 }
 
 void nano::transport::tcp_listener::stop ()

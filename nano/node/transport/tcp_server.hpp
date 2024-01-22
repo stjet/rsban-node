@@ -73,7 +73,7 @@ class tcp_listener final : public nano::tcp_server_observer, public std::enable_
 {
 public:
 	tcp_listener (uint16_t, nano::node &);
-	void start ();
+	void start (std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> callback_a);
 	void stop ();
 	void accept_action (boost::system::error_code const &, std::shared_ptr<nano::transport::socket> const &);
 	std::size_t connection_count ();

@@ -72,7 +72,8 @@ pub(crate) fn assert_deserializable(original: &Message) {
     let header = MessageHeader::deserialize(&mut buffer).unwrap();
     assert_eq!(
         header.payload_length(),
-        serialized.len() - MessageHeader::SERIALIZED_SIZE
+        serialized.len() - MessageHeader::SERIALIZED_SIZE,
+        "serialized message has incorrect payload length"
     );
     let message_out = Message::deserialize(buffer.remaining(), &header, 0).unwrap();
     assert_eq!(message_out, *original);

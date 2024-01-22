@@ -7,6 +7,8 @@
 
 #include <gtest/gtest.h>
 
+#include <thread>
+
 using namespace std::chrono_literals;
 
 std::shared_ptr<nano::transport::channel> create_dummy_channel (nano::node & node, std::shared_ptr<nano::transport::socket> client)

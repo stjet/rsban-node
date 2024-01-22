@@ -35,9 +35,7 @@ impl VoteBroadcaster {
     pub fn broadcast(&self, vote: Arc<Vote>) {
         self.flood_vote_pr(vote.deref().clone());
 
-        let ack = Message::ConfirmAck(ConfirmAck {
-            vote: vote.deref().clone(),
-        });
+        let ack = Message::ConfirmAck(ConfirmAck::new(vote.deref().clone()));
         self.tcp_channels.flood_message(&ack, 2.0);
 
         let loopback_channel = ChannelInProc::new(
@@ -61,7 +59,7 @@ impl VoteBroadcaster {
     }
 
     fn flood_vote_pr(&self, vote: Vote) {
-        let message = Message::ConfirmAck(ConfirmAck { vote });
+        let message = Message::ConfirmAck(ConfirmAck::new(vote));
         for rep in self
             .representative_register
             .lock()

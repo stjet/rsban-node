@@ -12,7 +12,6 @@ use std::{
 
 use rsnano_core::{utils::milliseconds_since_epoch, Account, BlockEnum, BlockHash, Root, Vote};
 use rsnano_ledger::Ledger;
-use rsnano_messages::ConfirmAck;
 use rsnano_store_lmdb::LmdbWriteTransaction;
 
 use crate::{
@@ -36,6 +35,7 @@ pub struct VoteGenerator {
 
 impl VoteGenerator {
     const MAX_REQUESTS: usize = 2048;
+    const MAX_HASHES: usize = 12;
 
     pub fn new(
         ledger: Arc<Ledger>,
@@ -207,7 +207,7 @@ impl SharedState {
     fn run(&self) {
         let mut queues = self.queues.lock().unwrap();
         while !self.stopped.load(Ordering::SeqCst) {
-            if queues.candidates.len() >= ConfirmAck::HASHES_MAX {
+            if queues.candidates.len() >= VoteGenerator::MAX_HASHES {
                 queues = self.broadcast(queues);
             } else if let Some(request) = queues.requests.pop_front() {
                 drop(queues);
@@ -217,18 +217,18 @@ impl SharedState {
                 queues = self
                     .condition
                     .wait_timeout_while(queues, self.vote_generator_delay, |lk| {
-                        lk.candidates.len() < ConfirmAck::HASHES_MAX
+                        lk.candidates.len() < VoteGenerator::MAX_HASHES
                     })
                     .unwrap()
                     .0;
 
                 if queues.candidates.len() >= self.vote_generator_threshold
-                    && queues.candidates.len() < ConfirmAck::HASHES_MAX
+                    && queues.candidates.len() < VoteGenerator::MAX_HASHES
                 {
                     queues = self
                         .condition
                         .wait_timeout_while(queues, self.vote_generator_delay, |lk| {
-                            lk.candidates.len() < ConfirmAck::HASHES_MAX
+                            lk.candidates.len() < VoteGenerator::MAX_HASHES
                         })
                         .unwrap()
                         .0;
@@ -242,8 +242,8 @@ impl SharedState {
     }
 
     fn broadcast<'a>(&'a self, mut queues: MutexGuard<'a, Queues>) -> MutexGuard<'a, Queues> {
-        let mut hashes = Vec::with_capacity(ConfirmAck::HASHES_MAX);
-        let mut roots = Vec::with_capacity(ConfirmAck::HASHES_MAX);
+        let mut hashes = Vec::with_capacity(VoteGenerator::MAX_HASHES);
+        let mut roots = Vec::with_capacity(VoteGenerator::MAX_HASHES);
         {
             let spacing = self.spacing.lock().unwrap();
             while let Some((root, hash)) = queues.candidates.pop_front() {
@@ -259,7 +259,7 @@ impl SharedState {
                         );
                     }
                 }
-                if hashes.len() == ConfirmAck::HASHES_MAX {
+                if hashes.len() == VoteGenerator::MAX_HASHES {
                     break;
                 }
             }
@@ -322,11 +322,11 @@ impl SharedState {
     fn reply(&self, request: (Vec<(Root, BlockHash)>, Arc<ChannelEnum>)) {
         let mut i = request.0.iter().peekable();
         while i.peek().is_some() && !self.stopped.load(Ordering::SeqCst) {
-            let mut hashes = Vec::with_capacity(ConfirmAck::HASHES_MAX);
-            let mut roots = Vec::with_capacity(ConfirmAck::HASHES_MAX);
+            let mut hashes = Vec::with_capacity(VoteGenerator::MAX_HASHES);
+            let mut roots = Vec::with_capacity(VoteGenerator::MAX_HASHES);
             {
                 let spacing = self.spacing.lock().unwrap();
-                while hashes.len() < ConfirmAck::HASHES_MAX {
+                while hashes.len() < VoteGenerator::MAX_HASHES {
                     let Some((root, hash)) = i.next() else {
                         break;
                     };
@@ -387,7 +387,7 @@ impl SharedState {
             let should_notify = {
                 let mut queues = self.queues.lock().unwrap();
                 queues.candidates.extend(candidates_new);
-                queues.candidates.len() >= ConfirmAck::HASHES_MAX
+                queues.candidates.len() >= VoteGenerator::MAX_HASHES
             };
 
             if should_notify {

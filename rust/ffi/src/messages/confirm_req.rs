@@ -27,7 +27,7 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
                 )
             })
             .collect();
-        Message::ConfirmReq(ConfirmReq { roots_hashes })
+        Message::ConfirmReq(ConfirmReq::new(roots_hashes))
     })
 }
 
@@ -47,7 +47,7 @@ unsafe fn get_payload(handle: &MessageHandle) -> &ConfirmReq {
 pub unsafe extern "C" fn rsn_message_confirm_req_roots_hashes_count(
     handle: &MessageHandle,
 ) -> usize {
-    get_payload(handle).roots_hashes.len()
+    get_payload(handle).roots_hashes().len()
 }
 
 #[no_mangle]
@@ -56,8 +56,8 @@ pub unsafe extern "C" fn rsn_message_confirm_req_roots_hashes(
     result: *mut HashRootPair,
 ) {
     let payload = get_payload(handle);
-    let result_slice = std::slice::from_raw_parts_mut(result, payload.roots_hashes.len());
-    for (i, (hash, root)) in payload.roots_hashes.iter().enumerate() {
+    let result_slice = std::slice::from_raw_parts_mut(result, payload.roots_hashes().len());
+    for (i, (hash, root)) in payload.roots_hashes().iter().enumerate() {
         result_slice[i] = HashRootPair {
             block_hash: *hash.as_bytes(),
             root: *root.as_bytes(),

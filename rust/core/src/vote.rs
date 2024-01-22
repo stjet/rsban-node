@@ -28,6 +28,7 @@ pub struct Vote {
 static HASH_PREFIX: &str = "vote ";
 
 impl Vote {
+    pub const MAX_HASHES: usize = 255;
     pub fn null() -> Self {
         Self {
             timestamp: 0,
@@ -38,6 +39,7 @@ impl Vote {
     }
 
     pub fn new_final(key: &KeyPair, hashes: Vec<BlockHash>) -> Self {
+        assert!(hashes.len() <= Self::MAX_HASHES);
         Self::new(
             key.public_key(),
             &key.private_key(),
@@ -54,6 +56,7 @@ impl Vote {
         duration: u8,
         hashes: Vec<BlockHash>,
     ) -> Self {
+        assert!(hashes.len() <= Self::MAX_HASHES);
         let mut result = Self {
             voting_account: account,
             timestamp: packed_timestamp(timestamp, duration),
@@ -152,7 +155,7 @@ impl Vote {
         stream.read_bytes(&mut buffer, 8)?;
         self.timestamp = u64::from_le_bytes(buffer);
         self.hashes = Vec::new();
-        while stream.in_avail()? > 0 {
+        while stream.in_avail()? > 0 && self.hashes.len() < Self::MAX_HASHES {
             self.hashes.push(BlockHash::deserialize(stream)?);
         }
         Ok(())

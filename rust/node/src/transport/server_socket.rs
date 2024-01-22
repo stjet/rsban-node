@@ -264,15 +264,15 @@ pub trait ServerSocketExtensions {
 impl ServerSocketExtensions for Arc<ServerSocket> {
     fn close(&self) {
         let self_clone = Arc::clone(self);
-        self.socket_facade.dispatch(Box::new(move || {
-            self_clone.socket.close_internal();
-            self_clone.socket_facade.close_acceptor();
-            self_clone
-                .connections_per_address
-                .lock()
-                .unwrap()
-                .close_connections();
-        }))
+        //self.socket_facade.dispatch(Box::new(move || {
+        self_clone.socket.close_internal();
+        self_clone.socket_facade.close_acceptor();
+        self_clone
+            .connections_per_address
+            .lock()
+            .unwrap()
+            .close_connections();
+        //}))
     }
 
     fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>) {

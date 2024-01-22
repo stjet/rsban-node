@@ -175,9 +175,7 @@ mod tests {
 
     #[test]
     fn exact_confirm_ack() {
-        let message = Message::ConfirmAck(ConfirmAck {
-            vote: Vote::create_test_instance(),
-        });
+        let message = Message::ConfirmAck(ConfirmAck::new(Vote::create_test_instance()));
         assert_deserializable(&message);
     }
 

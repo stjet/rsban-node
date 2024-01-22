@@ -138,6 +138,10 @@ impl VoteCache {
         self.cache.remove_by_hash(hash).is_some()
     }
 
+    pub fn clear(&mut self) {
+        self.cache.clear()
+    }
+
     /// Returns blocks with highest observed tally, greater than `min_tally`
     /// The blocks are sorted in descending order by final tally, then by tally
     /// @param min_tally minimum tally threshold, entries below with their voting weight
@@ -397,6 +401,12 @@ impl CacheEntryCollection {
 
     pub fn is_empty(&self) -> bool {
         self.sequential.is_empty()
+    }
+
+    pub fn clear(&mut self) {
+        self.sequential.clear();
+        self.by_hash.clear();
+        self.by_tally.clear();
     }
 }
 

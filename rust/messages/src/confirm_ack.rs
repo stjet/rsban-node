@@ -8,11 +8,20 @@ use std::fmt::{Debug, Display};
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub struct ConfirmAck {
-    pub vote: Vote,
+    vote: Vote,
 }
 
 impl ConfirmAck {
-    pub const HASHES_MAX: usize = 12;
+    pub const HASHES_MAX: usize = 255;
+
+    pub fn new(vote: Vote) -> Self {
+        assert!(vote.hashes.len() <= Self::HASHES_MAX);
+        Self { vote }
+    }
+
+    pub fn vote(&self) -> &Vote {
+        &self.vote
+    }
 
     pub fn serialized_size(extensions: BitArray<u16>) -> usize {
         let count = ConfirmReq::count(extensions);
@@ -22,13 +31,11 @@ impl ConfirmAck {
     pub fn deserialize(stream: &mut impl Stream) -> Option<Self> {
         let mut vote = Vote::null();
         vote.deserialize(stream).ok()?;
-        Some(ConfirmAck { vote })
+        Some(ConfirmAck::new(vote))
     }
 
     pub fn create_test_instance() -> Self {
-        Self {
-            vote: Vote::create_test_instance(),
-        }
+        Self::new(Vote::create_test_instance())
     }
 }
 
@@ -41,8 +48,7 @@ impl Serialize for ConfirmAck {
 impl MessageVariant for ConfirmAck {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
-        debug_assert!(self.vote.hashes.len() < 16);
-        extensions |= BitArray::new((self.vote.hashes.len() as u16) << 12);
+        extensions |= ConfirmReq::count_bits(self.vote.hashes.len() as u8);
         extensions
     }
 }
@@ -68,15 +74,34 @@ mod tests {
     use rsnano_core::{BlockHash, KeyPair};
 
     #[test]
-    fn serialize() {
+    fn serialize_v1() {
+        let keys = KeyPair::new();
+        let hashes = vec![BlockHash::from(1)];
+        let vote = Vote::new(keys.public_key().into(), &keys.private_key(), 0, 0, hashes);
+        let confirm = Message::ConfirmAck(ConfirmAck::new(vote));
+
+        assert_deserializable(&confirm);
+    }
+
+    #[test]
+    fn serialize_v2() {
         let keys = KeyPair::new();
         let mut hashes = Vec::new();
         for i in 0..ConfirmAck::HASHES_MAX {
             hashes.push(BlockHash::from(i as u64))
         }
         let vote = Vote::new(keys.public_key().into(), &keys.private_key(), 0, 0, hashes);
-        let confirm = Message::ConfirmAck(ConfirmAck { vote });
+        let confirm = Message::ConfirmAck(ConfirmAck::new(vote));
 
         assert_deserializable(&confirm);
+    }
+
+    #[test]
+    #[should_panic]
+    fn panics_when_vote_contains_too_many_hashes() {
+        let keys = KeyPair::new();
+        let hashes = vec![BlockHash::from(1); 256];
+        let vote = Vote::new(keys.public_key().into(), &keys.private_key(), 0, 0, hashes);
+        Message::ConfirmAck(ConfirmAck::new(vote));
     }
 }

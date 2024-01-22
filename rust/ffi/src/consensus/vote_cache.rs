@@ -89,6 +89,12 @@ pub unsafe extern "C" fn rsn_vote_cache_erase(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_vote_cache_clear(handle: *mut VoteCacheHandle) {
+    let mut guard = (*handle).0.lock().unwrap();
+    guard.clear()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_cache_entry_destroy(entry: *mut VoteCacheEntryDto) {
     drop(Box::from_raw((*entry).voters));
 }

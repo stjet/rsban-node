@@ -109,6 +109,11 @@ bool nano::vote_cache::erase (const nano::block_hash & hash)
 	return rsnano::rsn_vote_cache_erase (handle, hash.bytes.data ());
 }
 
+void nano::vote_cache::clear ()
+{
+	return rsnano::rsn_vote_cache_clear (handle);
+}
+
 std::vector<nano::vote_cache::top_entry> nano::vote_cache::top (const nano::uint128_t & min_tally)
 {
 	nano::amount min_tally_amount{ min_tally };

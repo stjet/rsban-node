@@ -12,35 +12,51 @@ use std::fmt::{Debug, Display, Write};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ConfirmReq {
-    pub roots_hashes: Vec<(BlockHash, Root)>,
+    roots_hashes: Vec<(BlockHash, Root)>,
 }
 
 impl ConfirmReq {
-    const BLOCK_TYPE_MASK: u16 = 0x0f00;
-    const COUNT_MASK: u16 = 0xf000;
+    // Header extension bits:
+    // ----------------------
+    const COUNT_HIGH_MASK: u16 = 0b1111_0000_0000_0000;
+    const COUNT_HIGH_SHIFT: u16 = 12;
+    const BLOCK_TYPE_MASK: u16 = 0b0000_1111_0000_0000;
+    const BLOCK_TYPE_SHIFT: u16 = 8;
+    const COUNT_LOW_MASK: u16 = 0b0000_0000_1111_0000;
+    const COUNT_LOW_SHIFT: u16 = 4;
+    const V2_FLAG: u16 = 0b0000_0000_0000_0001;
+    // ----------------------
+
+    pub fn new(roots_hashes: Vec<(BlockHash, Root)>) -> Self {
+        if roots_hashes.len() > u8::MAX as usize {
+            panic!("roots_hashes too big");
+        }
+        Self { roots_hashes }
+    }
 
     pub fn create_test_instance() -> Self {
-        Self {
-            roots_hashes: vec![(BlockHash::from(123), Root::from(456))],
-        }
+        Self::new(vec![(BlockHash::from(123), Root::from(456))])
+    }
+
+    pub fn roots_hashes(&self) -> &Vec<(BlockHash, Root)> {
+        &self.roots_hashes
     }
 
     fn block_type(extensions: BitArray<u16>) -> BlockType {
-        let mut value = extensions & BitArray::new(Self::BLOCK_TYPE_MASK);
-        value.shift_left(8);
-        FromPrimitive::from_u16(value.data).unwrap_or(BlockType::Invalid)
+        let value = (extensions.data & Self::BLOCK_TYPE_MASK) >> Self::BLOCK_TYPE_SHIFT;
+        FromPrimitive::from_u16(value).unwrap_or(BlockType::Invalid)
     }
 
     pub fn count(extensions: BitArray<u16>) -> u8 {
-        let mut value = extensions & BitArray::new(Self::COUNT_MASK);
-        value.shift_left(12);
-        value.data as u8
+        if Self::has_v2_flag(extensions) {
+            Self::v2_count(extensions)
+        } else {
+            Self::v1_count(extensions)
+        }
     }
 
     pub fn deserialize(stream: &mut impl Stream, extensions: BitArray<u16>) -> Option<Self> {
-        Some(Self {
-            roots_hashes: Self::deserialize_roots(stream, extensions).ok()?,
-        })
+        Some(Self::new(Self::deserialize_roots(stream, extensions).ok()?))
     }
 
     fn deserialize_roots(
@@ -82,6 +98,53 @@ impl ConfirmReq {
             result = count as usize * (BlockHash::serialized_size() + Root::serialized_size());
         }
         result
+    }
+
+    pub fn count_bits(count: u8) -> BitArray<u16> {
+        // We need those shenanigans because we need to keep compatibility with previous protocol versions (<= V25.1)
+        //
+        // V1:
+        // 0b{CCCC}_0000_0000_0000
+        //  C: count bits
+        //
+        // V2:
+        // 0b{HHHH}_0000_{LLLL}_000{F}
+        //  H: count high bits
+        //  L: count low bits
+        //  F: v2 flag
+        if count <= 16 {
+            // v1. Allows 4 bits
+            BitArray::new((count as u16) << Self::COUNT_HIGH_SHIFT)
+        } else {
+            // v2. Allows 8 bits
+            let mut bits = 0u16;
+            let (left, right) = Self::split_count(count);
+            bits |= Self::V2_FLAG;
+            bits |= (left as u16) << Self::COUNT_HIGH_SHIFT;
+            bits |= (right as u16) << Self::COUNT_LOW_SHIFT;
+            BitArray::new(bits)
+        }
+    }
+
+    /// Splits the count into two 4-bit parts
+    fn split_count(count: u8) -> (u8, u8) {
+        let left = (count >> 4) & 0xf;
+        let right = count & 0xf;
+        (left, right)
+    }
+
+    fn has_v2_flag(bits: BitArray<u16>) -> bool {
+        bits.data & Self::V2_FLAG == Self::V2_FLAG
+    }
+
+    fn v1_count(bits: BitArray<u16>) -> u8 {
+        ((bits.data & Self::COUNT_HIGH_MASK) >> Self::COUNT_HIGH_SHIFT) as u8
+    }
+
+    fn v2_count(bits: BitArray<u16>) -> u8 {
+        let left = (bits.data & Self::COUNT_HIGH_MASK) >> Self::COUNT_HIGH_SHIFT;
+        let right = (bits.data & Self::COUNT_LOW_MASK) >> Self::COUNT_LOW_SHIFT;
+        ((left << 4) | right) as u8
     }
 }
 
@@ -138,11 +201,10 @@ impl serde::Serialize for ConfirmReq {
 impl MessageVariant for ConfirmReq {
     fn header_extensions(&self, _payload_len: u16) -> BitArray<u16> {
         let mut extensions = BitArray::default();
-        extensions |= BitArray::new((self.roots_hashes.len() as u16) << 12);
-
+        extensions |= Self::count_bits(self.roots_hashes.len() as u8);
         // Set NotABlock (1) block type for hashes + roots request
         // This is needed to keep compatibility with previous protocol versions (<= V25.1)
-        extensions |= BitArray::new((BlockType::NotABlock as u16) << 8);
+        extensions |= BitArray::new((BlockType::NotABlock as u16) << Self::BLOCK_TYPE_SHIFT);
         extensions
     }
 }
@@ -173,7 +235,7 @@ mod tests {
             .into_iter()
             .map(|i| (BlockHash::from(i), Root::from(i + 1)))
             .collect();
-        let confirm_req = Message::ConfirmReq(ConfirmReq { roots_hashes });
+        let confirm_req = Message::ConfirmReq(ConfirmReq::new(roots_hashes));
         assert_deserializable(&confirm_req);
     }
 
@@ -185,5 +247,71 @@ mod tests {
         let confirm_req = ConfirmReq::create_test_instance();
         let extensions = confirm_req.header_extensions(0);
         assert_eq!(ConfirmReq::block_type(extensions), BlockType::NotABlock);
+    }
+
+    #[test]
+    fn v1_extensions() {
+        let confirm_req = ConfirmReq::new(vec![(BlockHash::from(1), Root::from(2)); 16]);
+        let extensions = confirm_req.header_extensions(0);
+        // count=16 plus NotABlock flag
+        let mut expected: u16 = 0;
+        expected |= 16 << 12; // count
+        expected |= 1 << 8; // NotABlock flag
+        assert_eq!(extensions.data, expected);
+    }
+
+    #[test]
+    fn split_count() {
+        assert_eq!(ConfirmReq::split_count(0b0), (0b0, 0b0));
+        assert_eq!(ConfirmReq::split_count(0b1), (0b0, 0b1));
+        assert_eq!(ConfirmReq::split_count(0b11), (0b0, 0b11));
+        assert_eq!(ConfirmReq::split_count(0b111), (0b0, 0b111));
+        assert_eq!(ConfirmReq::split_count(0b1111), (0b0, 0b1111));
+        assert_eq!(ConfirmReq::split_count(0b11111), (0b1, 0b1111));
+        assert_eq!(ConfirmReq::split_count(0b111111), (0b11, 0b1111));
+        assert_eq!(ConfirmReq::split_count(0b10101010), (0b1010, 0b1010));
+    }
+
+    #[test]
+    fn extract_v1_count() {
+        assert_eq!(ConfirmReq::count(BitArray::new(0)), 0);
+        assert_eq!(ConfirmReq::count(BitArray::new(0b0001_0000_0000_0000)), 1);
+        assert_eq!(ConfirmReq::count(BitArray::new(0b1010_0000_0000_0000)), 10);
+        assert_eq!(ConfirmReq::count(BitArray::new(0b1111_0000_0000_0000)), 15);
+        assert_eq!(ConfirmReq::count(BitArray::new(0b1111_0000_1111_0000)), 15);
+    }
+
+    #[test]
+    fn extract_v2_count() {
+        assert_eq!(ConfirmReq::count(BitArray::new(0b0000_0000_0000_0001)), 0);
+        assert_eq!(ConfirmReq::count(BitArray::new(0b0000_0000_1010_0001)), 10);
+        assert_eq!(ConfirmReq::count(BitArray::new(0b0000_0000_1111_0001)), 15);
+        assert_eq!(ConfirmReq::count(BitArray::new(0b0001_0000_0000_0001)), 16);
+        assert_eq!(ConfirmReq::count(BitArray::new(0b1111_0000_0001_0001)), 241);
+        assert_eq!(ConfirmReq::count(BitArray::new(0b1111_0000_1111_0001)), 255);
+    }
+
+    #[test]
+    fn v2_extensions() {
+        let confirm_req = ConfirmReq::new(vec![(BlockHash::from(1), Root::from(2)); 0b10001010]);
+        let extensions = confirm_req.header_extensions(0);
+        let expected = 0b1000_0001_1010_0001;
+        assert_eq!(extensions.data, expected);
+    }
+
+    #[test]
+    fn serialize_v2() {
+        let confirm_req =
+            Message::ConfirmReq(ConfirmReq::new(vec![
+                (BlockHash::from(1), Root::from(2));
+                255
+            ]));
+        assert_deserializable(&confirm_req);
+    }
+
+    #[test]
+    #[should_panic]
+    fn panics_when_roots_hashes_are_too_big() {
+        ConfirmReq::new(vec![(BlockHash::from(1), Root::from(2)); 256]);
     }
 }

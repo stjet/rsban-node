@@ -20,26 +20,20 @@ using namespace std::chrono_literals;
 TEST (socket, max_connections)
 {
 	nano::test::system system;
-
 	auto node = system.add_node ();
-
 	auto server_port = system.get_available_port ();
-	boost::asio::ip::tcp::endpoint listen_endpoint{ boost::asio::ip::address_v6::any (), server_port };
-
-	// start a server socket that allows max 2 live connections
-	auto server_socket = std::make_shared<nano::transport::server_socket> (*node, listen_endpoint, 2);
-	boost::system::error_code ec;
-	server_socket->start (ec);
-	ASSERT_FALSE (ec);
-
-	boost::asio::ip::tcp::endpoint dst_endpoint{ boost::asio::ip::address_v6::loopback (), server_socket->listening_port () };
-
+	
 	// successful incoming connections are stored in server_sockets to keep them alive (server side)
 	std::vector<std::shared_ptr<nano::transport::socket>> server_sockets;
-	server_socket->on_connection ([&server_sockets] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
+
+	// start a server socket that allows max 2 live connections
+	auto listener = std::make_shared<nano::transport::tcp_listener> (server_port, *node, 2);
+	listener->start ([&server_sockets] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
 		server_sockets.push_back (new_connection);
 		return true;
 	});
+
+	boost::asio::ip::tcp::endpoint dst_endpoint{ boost::asio::ip::address_v6::loopback (), listener->endpoint ().port () };
 
 	// client side connection tracking
 	std::atomic<size_t> connection_attempts = 0;

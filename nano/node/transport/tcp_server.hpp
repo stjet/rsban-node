@@ -72,7 +72,7 @@ class tcp_server;
 class tcp_listener final : public nano::tcp_server_observer, public std::enable_shared_from_this<nano::transport::tcp_listener>
 {
 public:
-	tcp_listener (uint16_t, nano::node &);
+	tcp_listener (uint16_t, nano::node &, std::size_t);
 	void start (std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> callback_a);
 	void stop ();
 	void accept_action (boost::system::error_code const &, std::shared_ptr<nano::transport::socket> const &);
@@ -102,6 +102,7 @@ public:
 	uint16_t port;
 
 private:
+	std::size_t max_inbound_connections;
 	std::atomic<std::size_t> bootstrap_count{ 0 };
 	std::atomic<std::size_t> realtime_count{ 0 };
 };

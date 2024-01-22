@@ -57,12 +57,13 @@ std::shared_ptr<nano::transport::tcp_server> nano::tcp_server_weak_wrapper::lock
  * tcp_listener
  */
 
-nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_a) :
+nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_a, std::size_t max_inbound_connections) :
 	config{ node_a.config },
 	logger{ node_a.logger },
 	network{ node_a.network },
 	node (node_a),
-	port (port_a)
+	port (port_a),
+	max_inbound_connections{ max_inbound_connections }
 {
 }
 
@@ -70,7 +71,7 @@ void nano::transport::tcp_listener::start (std::function<bool (std::shared_ptr<n
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
 	on = true;
-	listening_socket = std::make_shared<nano::transport::server_socket> (node, boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::any (), port), config->tcp_incoming_connections_max);
+	listening_socket = std::make_shared<nano::transport::server_socket> (node, boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::any (), port), max_inbound_connections);
 	boost::system::error_code ec;
 	listening_socket->start (ec);
 	if (ec)

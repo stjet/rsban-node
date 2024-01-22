@@ -177,7 +177,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	//         Thus, be very careful if you change the order: if `bootstrap` gets constructed before `network`,
 	//         the latter would inherit the port from the former (if TCP is active, otherwise `network` picks first)
 	//
-	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (network->get_port (), *this) },
+	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (network->get_port (), *this, config->tcp_incoming_connections_max) },
 	application_path (application_path_a),
 	port_mapping (*this),
 	representative_register (*this),

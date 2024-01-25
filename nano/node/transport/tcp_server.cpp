@@ -69,13 +69,22 @@ nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_
 {
 	auto config_dto{ node_a.config->to_dto () };
 	auto logger_handle{ nano::to_logger_handle (node_a.logger) };
+	auto network_params_dto { node_a.network_params.to_dto()};
+
 	handle = rsnano::rsn_tcp_listener_create (
 	port_a,
 	max_inbound_connections,
 	&config_dto,
 	logger_handle,
 	node_a.network->tcp_channels->handle,
-	node_a.network->syn_cookies->handle);
+	node_a.network->syn_cookies->handle,
+	&network_params_dto,
+	node_a.flags.handle,
+	node_a.async_rt.handle,
+	node_a.stats->handle,
+	node_a.bootstrap_workers->handle,
+	new std::weak_ptr<nano::node_observers> (node_a.observers)
+	);
 }
 
 nano::transport::tcp_listener::~tcp_listener ()
@@ -88,7 +97,7 @@ void nano::transport::tcp_listener::start (std::function<bool (std::shared_ptr<n
 	nano::lock_guard<nano::mutex> lock{ mutex };
 	rsnano::rsn_tcp_listener_set_on (handle);
 	auto listening_socket = std::make_shared<nano::transport::server_socket> (node, boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::any (), port), max_inbound_connections);
-	rsnano::rsn_tcp_listener_set_listening_socket(handle, listening_socket->handle);
+	rsnano::rsn_tcp_listener_set_listening_socket (handle, listening_socket->handle);
 	boost::system::error_code ec;
 	listening_socket->start (ec);
 	if (ec)
@@ -127,10 +136,10 @@ void nano::transport::tcp_listener::stop ()
 		nano::lock_guard<nano::mutex> lock{ mutex };
 		rsnano::rsn_tcp_listener_set_off (handle);
 		// TODO Old behavior: swap with lock and then clear after lock dropped
-		rsnano::rsn_tcp_listener_connections_clear(handle);
+		rsnano::rsn_tcp_listener_connections_clear (handle);
 	}
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	rsnano::rsn_tcp_listener_close_listening_socket(handle);
+	rsnano::rsn_tcp_listener_close_listening_socket (handle);
 }
 
 std::size_t nano::transport::tcp_listener::connection_count ()
@@ -226,7 +235,6 @@ void nano::transport::tcp_listener::accept_action (boost::system::error_code con
 
 		nano::lock_guard<nano::mutex> lock{ mutex };
 		rsnano::rsn_tcp_listener_connections_add (handle, server->handle);
-		server->start ();
 	}
 	else
 	{
@@ -241,7 +249,7 @@ void nano::transport::tcp_listener::accept_action (boost::system::error_code con
 boost::asio::ip::tcp::endpoint nano::transport::tcp_listener::endpoint ()
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	if (rsnano::rsn_tcp_listener_is_on(handle) && rsnano::rsn_tcp_listener_has_listening_socket (handle))
+	if (rsnano::rsn_tcp_listener_is_on (handle) && rsnano::rsn_tcp_listener_has_listening_socket (handle))
 	{
 		return { boost::asio::ip::address_v6::loopback (), port };
 	}
@@ -259,7 +267,7 @@ std::size_t nano::transport::tcp_listener::connections_count ()
 
 std::unique_ptr<nano::container_info_component> nano::transport::collect_container_info (nano::transport::tcp_listener & bootstrap_listener, std::string const & name)
 {
-	//auto sizeof_element = sizeof (decltype (bootstrap_listener.connections)::value_type);
+	// auto sizeof_element = sizeof (decltype (bootstrap_listener.connections)::value_type);
 	size_t sizeof_element = 1;
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "connections", bootstrap_listener.connection_count (), sizeof_element }));

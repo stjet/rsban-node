@@ -1,5 +1,6 @@
 use crate::config::NetworkConstants;
 
+#[derive(Clone)]
 pub struct PortmappingConstants {
     pub lease_duration_s: i64,
     pub health_check_period_s: i64,

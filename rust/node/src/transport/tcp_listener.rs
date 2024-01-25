@@ -1,8 +1,17 @@
-use super::{ServerSocket, SynCookies, TcpChannels, TcpServer};
-use crate::config::NodeConfig;
+use super::{
+    ServerSocket, ServerSocketExtensions, Socket, SocketObserver, SynCookies, TcpChannels,
+    TcpServer, TcpServerExt, TcpSocketFacadeFactory, TokioSocketFacade, TokioSocketFacadeFactory,
+};
+use crate::{
+    config::{NodeConfig, NodeFlags},
+    stats::Stats,
+    utils::{AsyncRuntime, ErrorCode, ThreadPool},
+    NetworkParams,
+};
 use rsnano_core::utils::Logger;
 use std::{
     collections::HashMap,
+    net::{IpAddr, Ipv6Addr, SocketAddr},
     sync::{Arc, Weak},
 };
 
@@ -13,7 +22,15 @@ pub struct TcpListener {
     logger: Arc<dyn Logger>,
     tcp_channels: Arc<TcpChannels>,
     syn_cookies: Arc<SynCookies>,
+    stats: Arc<Stats>,
     data: TcpListenerData,
+    runtime: Weak<AsyncRuntime>,
+    socket_observer: Arc<dyn SocketObserver>,
+    workers: Arc<dyn ThreadPool>,
+    tcp_socket_facade_factory: Arc<dyn TcpSocketFacadeFactory>,
+    network_params: NetworkParams,
+    node_flags: NodeFlags,
+    socket_facade: Arc<TokioSocketFacade>,
 }
 
 struct TcpListenerData {
@@ -30,7 +47,15 @@ impl TcpListener {
         logger: Arc<dyn Logger>,
         tcp_channels: Arc<TcpChannels>,
         syn_cookies: Arc<SynCookies>,
+        network_params: NetworkParams,
+        node_flags: NodeFlags,
+        runtime: Arc<AsyncRuntime>,
+        socket_observer: Arc<dyn SocketObserver>,
+        stats: Arc<Stats>,
+        workers: Arc<dyn ThreadPool>,
     ) -> Self {
+        let tcp_socket_facade_factory =
+            Arc::new(TokioSocketFacadeFactory::new(Arc::clone(&runtime)));
         Self {
             port,
             max_inbound_connections,
@@ -43,13 +68,41 @@ impl TcpListener {
                 on: false,
                 listening_socket: None,
             },
+            network_params,
+            node_flags,
+            runtime: Arc::downgrade(&runtime),
+            socket_facade: Arc::new(TokioSocketFacade::create(runtime)),
+            socket_observer,
+            tcp_socket_facade_factory,
+            stats,
+            workers,
         }
+    }
+
+    pub fn start(&mut self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>) {
+        self.data.on = true;
+        let listening_socket = Arc::new(ServerSocket::new(
+            Arc::clone(&self.socket_facade),
+            self.node_flags.clone(),
+            self.network_params.clone(),
+            Arc::clone(&self.workers),
+            Arc::clone(&self.logger),
+            Arc::clone(&self.tcp_socket_facade_factory),
+            self.config.clone(),
+            Arc::clone(&self.stats),
+            Arc::clone(&self.socket_observer),
+            self.max_inbound_connections,
+            SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), self.port),
+            Weak::clone(&self.runtime),
+        ));
+        // TODO continue here... and then use this function
     }
 
     pub fn add_connection(&mut self, conn: &Arc<TcpServer>) {
         self.data
             .connections
             .insert(conn.unique_id(), Arc::downgrade(conn));
+        conn.start();
     }
 
     pub fn remove_connection(&mut self, connection_id: usize) {
@@ -82,7 +135,9 @@ impl TcpListener {
     }
 
     pub fn close_listening_socket(&mut self) {
-        self.data.listening_socket = None;
+        if let Some(socket) = self.data.listening_socket.take() {
+            socket.close();
+        }
     }
 
     pub fn has_listening_socket(&self) -> bool {

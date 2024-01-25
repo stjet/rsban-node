@@ -1,5 +1,6 @@
 use std::{
     ffi::{c_char, c_void, CStr},
+    ops::Deref,
     sync::Arc,
     time::Duration,
 };
@@ -12,6 +13,14 @@ use super::ContextWrapper;
 pub struct VoidFnCallbackHandle(Option<Box<dyn FnOnce()>>);
 
 pub struct ThreadPoolHandle(pub Arc<dyn ThreadPool>);
+
+impl Deref for ThreadPoolHandle {
+    type Target = Arc<dyn ThreadPool>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_thread_pool_create(

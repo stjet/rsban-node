@@ -9,6 +9,7 @@ use rsnano_ledger::LedgerConstants;
 pub static DEV_NETWORK_PARAMS: Lazy<NetworkParams> =
     Lazy::new(|| NetworkParams::new(Networks::NanoDevNetwork));
 
+#[derive(Clone)]
 pub struct NetworkParams {
     pub kdf_work: u32,
     pub work: WorkThresholds,

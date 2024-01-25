@@ -26,5 +26,6 @@ pub use syn_cookies::SynCookiesHandle;
 pub use tcp_message_item::TcpMessageItemHandle;
 pub use tcp_message_manager::TcpMessageManagerHandle;
 
+pub use server_socket::ServerSocketHandle;
 pub use socket::SocketFfiObserver;
 pub use tcp_channels::TcpChannelsHandle;

@@ -14,7 +14,7 @@ use crate::{
     ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
     VoidPointerCallback,
 };
-pub struct ServerSocketHandle(Arc<ServerSocket>);
+pub struct ServerSocketHandle(pub Arc<ServerSocket>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_server_socket_create(

@@ -86,8 +86,9 @@ nano::transport::tcp_listener::~tcp_listener ()
 void nano::transport::tcp_listener::start (std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> callback_a)
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	on = true;
-	listening_socket = std::make_shared<nano::transport::server_socket> (node, boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::any (), port), max_inbound_connections);
+	rsnano::rsn_tcp_listener_set_on (handle);
+	auto listening_socket = std::make_shared<nano::transport::server_socket> (node, boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::any (), port), max_inbound_connections);
+	rsnano::rsn_tcp_listener_set_listening_socket(handle, listening_socket->handle);
 	boost::system::error_code ec;
 	listening_socket->start (ec);
 	if (ec)
@@ -124,16 +125,12 @@ void nano::transport::tcp_listener::stop ()
 {
 	{
 		nano::lock_guard<nano::mutex> lock{ mutex };
-		on = false;
+		rsnano::rsn_tcp_listener_set_off (handle);
 		// TODO Old behavior: swap with lock and then clear after lock dropped
 		rsnano::rsn_tcp_listener_connections_clear(handle);
 	}
-	if (listening_socket)
-	{
-		nano::lock_guard<nano::mutex> lock{ mutex };
-		listening_socket->close ();
-		listening_socket = nullptr;
-	}
+	nano::lock_guard<nano::mutex> lock{ mutex };
+	rsnano::rsn_tcp_listener_close_listening_socket(handle);
 }
 
 std::size_t nano::transport::tcp_listener::connection_count ()
@@ -244,7 +241,7 @@ void nano::transport::tcp_listener::accept_action (boost::system::error_code con
 boost::asio::ip::tcp::endpoint nano::transport::tcp_listener::endpoint ()
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	if (on && listening_socket)
+	if (rsnano::rsn_tcp_listener_is_on(handle) && rsnano::rsn_tcp_listener_has_listening_socket (handle))
 	{
 		return { boost::asio::ip::address_v6::loopback (), port };
 	}

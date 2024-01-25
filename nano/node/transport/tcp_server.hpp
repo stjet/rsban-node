@@ -96,18 +96,19 @@ public:
 private:
 	void erase_connection (std::size_t conn_id);
 
-	nano::mutex mutex;
 	std::shared_ptr<nano::node_config> config;
 	std::shared_ptr<nano::logger_mt> logger;
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
 	std::shared_ptr<nano::syn_cookies> syn_cookies;
 	nano::node & node;
-	std::shared_ptr<nano::transport::server_socket> listening_socket;
-	bool on{ false };
-	uint16_t port;
-	std::size_t max_inbound_connections;
+
+	nano::mutex mutex;
+
 	std::atomic<std::size_t> bootstrap_count{ 0 };
 	std::atomic<std::size_t> realtime_count{ 0 };
+	// readonly:
+	uint16_t port;
+	std::size_t max_inbound_connections;
 	rsnano::TcpListenerHandle * handle;
 };
 

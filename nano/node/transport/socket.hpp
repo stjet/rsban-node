@@ -181,8 +181,6 @@ public:
 	/** Register callback for new connections. The callback must return true to keep accepting new connections. */
 	void on_connection (std::function<bool (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const &)>);
 	uint16_t listening_port ();
-
-private:
 	rsnano::ServerSocketHandle * handle;
 };
 

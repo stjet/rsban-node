@@ -1,14 +1,12 @@
-use std::sync::Arc;
-
+use super::TcpServerHandle;
 use crate::{
-    transport::{SynCookiesHandle, TcpChannelsHandle},
+    transport::{ServerSocketHandle, SynCookiesHandle, TcpChannelsHandle},
     utils::{LoggerHandle, LoggerMT},
     NodeConfigDto,
 };
 use rsnano_core::utils::Logger;
 use rsnano_node::transport::TcpListener;
-
-use super::TcpServerHandle;
+use std::sync::Arc;
 
 pub struct TcpListenerHandle(TcpListener);
 
@@ -42,10 +40,7 @@ pub extern "C" fn rsn_tcp_listener_connections_add(
     handle: &mut TcpListenerHandle,
     connection: &TcpServerHandle,
 ) {
-    handle
-        .0
-        .connections
-        .insert(connection.unique_id(), Arc::downgrade(connection));
+    handle.0.add_connection(connection);
 }
 
 #[no_mangle]
@@ -53,16 +48,48 @@ pub extern "C" fn rsn_tcp_listener_connections_erase(
     handle: &mut TcpListenerHandle,
     conn_id: usize,
 ) {
-    handle.0.connections.remove(&conn_id);
+    handle.0.remove_connection(conn_id);
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_listener_connections_len(handle: &TcpListenerHandle) -> usize {
-    handle.0.connections.len()
+    handle.0.connection_count()
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_listener_connections_clear(handle: &mut TcpListenerHandle) {
-    // TODO swap with lock and then clear after lock dropped
-    handle.0.connections.clear();
+    handle.0.clear_connections();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_is_on(handle: &TcpListenerHandle) -> bool {
+    handle.0.is_on()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_set_on(handle: &mut TcpListenerHandle) {
+    handle.0.set_on();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_set_off(handle: &mut TcpListenerHandle) {
+    handle.0.set_off();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_has_listening_socket(handle: &TcpListenerHandle) -> bool {
+    handle.0.has_listening_socket()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_set_listening_socket(
+    handle: &mut TcpListenerHandle,
+    socket: &ServerSocketHandle,
+) {
+    handle.0.set_listening_socket(Arc::clone(&socket.0));
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_close_listening_socket(handle: &mut TcpListenerHandle) {
+    handle.0.close_listening_socket();
 }

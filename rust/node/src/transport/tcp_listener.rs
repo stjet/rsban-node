@@ -11,8 +11,8 @@ use crate::{
 use rsnano_core::utils::Logger;
 use std::{
     collections::HashMap,
-    net::{IpAddr, Ipv6Addr, SocketAddr},
-    sync::{Arc, Weak},
+    net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
+    sync::{Arc, Mutex, Weak},
 };
 
 pub struct TcpListener {
@@ -23,7 +23,6 @@ pub struct TcpListener {
     tcp_channels: Arc<TcpChannels>,
     syn_cookies: Arc<SynCookies>,
     stats: Arc<Stats>,
-    data: TcpListenerData,
     runtime: Weak<AsyncRuntime>,
     socket_observer: Arc<dyn SocketObserver>,
     workers: Arc<dyn ThreadPool>,
@@ -31,6 +30,7 @@ pub struct TcpListener {
     network_params: NetworkParams,
     node_flags: NodeFlags,
     socket_facade: Arc<TokioSocketFacade>,
+    data: Mutex<TcpListenerData>,
 }
 
 struct TcpListenerData {
@@ -63,11 +63,11 @@ impl TcpListener {
             logger,
             tcp_channels,
             syn_cookies,
-            data: TcpListenerData {
+            data: Mutex::new(TcpListenerData {
                 connections: HashMap::new(),
                 on: false,
                 listening_socket: None,
-            },
+            }),
             network_params,
             node_flags,
             runtime: Arc::downgrade(&runtime),
@@ -83,7 +83,8 @@ impl TcpListener {
         &mut self,
         callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
     ) -> anyhow::Result<()> {
-        self.data.on = true;
+        let mut data = self.data.lock().unwrap();
+        data.on = true;
         let listening_socket = Arc::new(ServerSocket::new(
             Arc::clone(&self.socket_facade),
             self.node_flags.clone(),
@@ -126,53 +127,79 @@ impl TcpListener {
         }
 
         listening_socket.on_connection(callback);
-        self.data.listening_socket = Some(listening_socket);
+        data.listening_socket = Some(listening_socket);
         Ok(())
     }
 
+    pub fn stop(&mut self) {
+        let mut conns = HashMap::new();
+        {
+            let mut guard = self.data.lock().unwrap();
+            guard.on = false;
+            std::mem::swap(&mut conns, &mut guard.connections);
+
+            if let Some(socket) = guard.listening_socket.take() {
+                socket.close();
+            }
+        }
+    }
+
+    pub fn connection_count(&self) -> usize {
+        let data = self.data.lock().unwrap();
+        data.connections.len()
+    }
+
+    pub fn endpoint(&self) -> SocketAddrV6 {
+        let guard = self.data.lock().unwrap();
+        if guard.on && guard.listening_socket.is_some() {
+            SocketAddrV6::new(Ipv6Addr::LOCALHOST, self.port, 0, 0)
+        } else {
+            SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0)
+        }
+    }
+
     pub fn add_connection(&mut self, conn: &Arc<TcpServer>) {
-        self.data
-            .connections
+        let mut data = self.data.lock().unwrap();
+        data.connections
             .insert(conn.unique_id(), Arc::downgrade(conn));
         conn.start();
     }
 
     pub fn remove_connection(&mut self, connection_id: usize) {
-        self.data.connections.remove(&connection_id);
-    }
-
-    pub fn connection_count(&self) -> usize {
-        self.data.connections.len()
+        let mut data = self.data.lock().unwrap();
+        data.connections.remove(&connection_id);
     }
 
     pub fn clear_connections(&mut self) {
         // TODO swap with lock and then clear after lock dropped
-        self.data.connections.clear();
+        let mut data = self.data.lock().unwrap();
+        data.connections.clear();
     }
 
     pub fn is_on(&self) -> bool {
-        self.data.on
+        let data = self.data.lock().unwrap();
+        data.on
     }
 
     pub fn set_on(&mut self) {
-        self.data.on = true;
+        let mut data = self.data.lock().unwrap();
+        data.on = true;
     }
 
     pub fn set_off(&mut self) {
-        self.data.on = false;
-    }
-
-    pub fn set_listening_socket(&mut self, socket: Arc<ServerSocket>) {
-        self.data.listening_socket = Some(socket);
+        let mut data = self.data.lock().unwrap();
+        data.on = false;
     }
 
     pub fn close_listening_socket(&mut self) {
-        if let Some(socket) = self.data.listening_socket.take() {
+        let mut data = self.data.lock().unwrap();
+        if let Some(socket) = data.listening_socket.take() {
             socket.close();
         }
     }
 
     pub fn has_listening_socket(&self) -> bool {
-        self.data.listening_socket.is_some()
+        let data = self.data.lock().unwrap();
+        data.listening_socket.is_some()
     }
 }

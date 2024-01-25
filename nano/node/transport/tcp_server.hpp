@@ -102,8 +102,6 @@ private:
 	std::shared_ptr<nano::syn_cookies> syn_cookies;
 	nano::node & node;
 
-	nano::mutex mutex;
-
 	std::atomic<std::size_t> bootstrap_count{ 0 };
 	std::atomic<std::size_t> realtime_count{ 0 };
 	// readonly:

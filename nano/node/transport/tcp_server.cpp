@@ -112,7 +112,6 @@ void delete_on_connection_context (void * handle_a)
 
 void nano::transport::tcp_listener::start (std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> callback_a)
 {
-	nano::lock_guard<nano::mutex> lock{ mutex };
 	auto context = new std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> (callback_a);
 	bool ok = rsnano::rsn_tcp_listener_start (handle, on_connection_callback, context, delete_on_connection_context);
 	if (!ok)
@@ -122,25 +121,16 @@ void nano::transport::tcp_listener::start (std::function<bool (std::shared_ptr<n
 
 void nano::transport::tcp_listener::stop ()
 {
-	{
-		nano::lock_guard<nano::mutex> lock{ mutex };
-		rsnano::rsn_tcp_listener_set_off (handle);
-		// TODO Old behavior: swap with lock and then clear after lock dropped
-		rsnano::rsn_tcp_listener_connections_clear (handle);
-	}
-	nano::lock_guard<nano::mutex> lock{ mutex };
-	rsnano::rsn_tcp_listener_close_listening_socket (handle);
+	rsnano::rsn_tcp_listener_stop (handle);
 }
 
 std::size_t nano::transport::tcp_listener::connection_count ()
 {
-	nano::lock_guard<nano::mutex> lock{ mutex };
-	return rsnano::rsn_tcp_listener_connections_len (handle);
+	return rsnano::rsn_tcp_listener_connection_count (handle);
 }
 
 void nano::transport::tcp_listener::erase_connection (std::size_t conn_id)
 {
-	nano::lock_guard<nano::mutex> lock (mutex);
 	rsnano::rsn_tcp_listener_connections_erase (handle, conn_id);
 }
 
@@ -223,7 +213,6 @@ void nano::transport::tcp_listener::accept_action (boost::system::error_code con
 		node.node_id,
 		true));
 
-		nano::lock_guard<nano::mutex> lock{ mutex };
 		rsnano::rsn_tcp_listener_connections_add (handle, server->handle);
 	}
 	else
@@ -238,21 +227,14 @@ void nano::transport::tcp_listener::accept_action (boost::system::error_code con
 
 boost::asio::ip::tcp::endpoint nano::transport::tcp_listener::endpoint ()
 {
-	nano::lock_guard<nano::mutex> lock{ mutex };
-	if (rsnano::rsn_tcp_listener_is_on (handle) && rsnano::rsn_tcp_listener_has_listening_socket (handle))
-	{
-		return { boost::asio::ip::address_v6::loopback (), port };
-	}
-	else
-	{
-		return { boost::asio::ip::address_v6::loopback (), 0 };
-	}
+	rsnano::EndpointDto endpoint_dto{};
+	rsnano::rsn_tcp_listener_endpoint(handle, &endpoint_dto);
+	return rsnano::dto_to_endpoint(endpoint_dto);
 }
 
 std::size_t nano::transport::tcp_listener::connections_count ()
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	return rsnano::rsn_tcp_listener_connections_len (handle);
+	return rsnano::rsn_tcp_listener_connection_count (handle);
 }
 
 std::unique_ptr<nano::container_info_component> nano::transport::collect_container_info (nano::transport::tcp_listener & bootstrap_listener, std::string const & name)

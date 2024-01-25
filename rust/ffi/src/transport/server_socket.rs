@@ -10,6 +10,7 @@ use std::{ffi::c_void, sync::Arc};
 
 use super::{EndpointDto, SocketFfiObserver, SocketHandle};
 use crate::{
+    bootstrap::OnConnectionCallback,
     utils::{AsyncRuntimeHandle, ContextWrapper, LoggerHandle, LoggerMT, ThreadPoolHandle},
     ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
     VoidPointerCallback,
@@ -64,9 +65,6 @@ pub unsafe extern "C" fn rsn_server_socket_destroy(handle: *mut ServerSocketHand
 pub extern "C" fn rsn_server_socket_close(handle: &mut ServerSocketHandle) {
     handle.0.close();
 }
-
-pub type OnConnectionCallback =
-    extern "C" fn(*mut c_void, *mut SocketHandle, *const ErrorCodeDto) -> bool;
 
 #[no_mangle]
 pub extern "C" fn rsn_server_socket_on_connection(

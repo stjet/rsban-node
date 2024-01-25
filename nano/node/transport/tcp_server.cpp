@@ -13,6 +13,7 @@
 #include <nano/node/transport/tcp_server.hpp>
 
 #include <boost/format.hpp>
+#include <stdexcept>
 
 nano::tcp_server_weak_wrapper::tcp_server_weak_wrapper (std::shared_ptr<nano::transport::tcp_server> const & server) :
 	handle{ rsnano::rsn_bootstrap_server_get_weak (server->handle) }
@@ -92,42 +93,31 @@ nano::transport::tcp_listener::~tcp_listener ()
 	rsnano::rsn_tcp_listener_destroy (handle);
 }
 
+namespace
+{
+bool on_connection_callback (void * context, rsnano::SocketHandle * socket_handle, const rsnano::ErrorCodeDto * ec_dto)
+{
+	auto callback = static_cast<std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> *> (context);
+	auto socket = std::make_shared<nano::transport::socket> (socket_handle);
+	auto ec = rsnano::dto_to_error_code (*ec_dto);
+	return (*callback) (socket, ec);
+}
+
+void delete_on_connection_context (void * handle_a)
+{
+	auto callback = static_cast<std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> *> (handle_a);
+	delete callback;
+}
+}
+
 void nano::transport::tcp_listener::start (std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> callback_a)
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	rsnano::rsn_tcp_listener_set_on (handle);
-	auto listening_socket = std::make_shared<nano::transport::server_socket> (node, boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::any (), port), max_inbound_connections);
-	rsnano::rsn_tcp_listener_set_listening_socket (handle, listening_socket->handle);
-	boost::system::error_code ec;
-	listening_socket->start (ec);
-	if (ec)
-	{
-		logger->always_log (boost::str (boost::format ("Network: Error while binding for incoming TCP/bootstrap on port %1%: %2%") % listening_socket->listening_port () % ec.message ()));
-		throw std::runtime_error (ec.message ());
-	}
-
-	// the user can either specify a port value in the config or it can leave the choice up to the OS:
-	// (1): port specified
-	// (2): port not specified
-	//
-	const auto listening_port = listening_socket->listening_port ();
-	{
-		// (1) -- nothing to do, just check that port values match everywhere
-		//
-		if (port == listening_port)
-		{
-		}
-		// (2) -- OS port choice happened at TCP socket bind time, so propagate this port value back;
-		// the propagation is done here for the `tcp_listener` itself, whereas for `network`, the node does it
-		// after calling `tcp_listener.start ()`
-		//
-		else
-		{
-			port = listening_port;
-		}
-	}
-
-	listening_socket->on_connection (callback_a);
+	auto context = new std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> (callback_a);
+	bool ok = rsnano::rsn_tcp_listener_start (handle, on_connection_callback, context, delete_on_connection_context);
+	if (!ok)
+		throw new std::runtime_error("could not start tcp listener");
+	return;
 }
 
 void nano::transport::tcp_listener::stop ()

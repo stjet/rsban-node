@@ -1,11 +1,17 @@
 use super::TcpServerHandle;
 use crate::{
-    transport::{ServerSocketHandle, SocketFfiObserver, SynCookiesHandle, TcpChannelsHandle},
-    utils::{AsyncRuntimeHandle, LoggerHandle, LoggerMT, ThreadPoolHandle},
-    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
+    transport::{
+        ServerSocketHandle, SocketFfiObserver, SocketHandle, SynCookiesHandle, TcpChannelsHandle,
+    },
+    utils::{AsyncRuntimeHandle, ContextWrapper, LoggerHandle, LoggerMT, ThreadPoolHandle},
+    ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
+    VoidPointerCallback,
 };
 use rsnano_core::utils::Logger;
-use rsnano_node::transport::TcpListener;
+use rsnano_node::{
+    transport::{Socket, TcpListener},
+    utils::ErrorCode,
+};
 use std::{ffi::c_void, sync::Arc};
 
 pub struct TcpListenerHandle(TcpListener);
@@ -46,6 +52,24 @@ pub unsafe extern "C" fn rsn_tcp_listener_create(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_listener_destroy(handle: *mut TcpListenerHandle) {
     drop(Box::from_raw(handle))
+}
+
+pub type OnConnectionCallback =
+    extern "C" fn(*mut c_void, *mut SocketHandle, *const ErrorCodeDto) -> bool;
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_start(
+    handle: &mut TcpListenerHandle,
+    callback: OnConnectionCallback,
+    callback_context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) -> bool {
+    let context = ContextWrapper::new(callback_context, delete_context);
+    let callback_wrapper = Box::new(move |socket: Arc<Socket>, ec: ErrorCode| {
+        let ec_dto = ErrorCodeDto::from(&ec);
+        callback(context.get_context(), SocketHandle::new(socket), &ec_dto)
+    });
+    handle.0.start(callback_wrapper).is_ok()
 }
 
 #[no_mangle]

@@ -1,8 +1,7 @@
 use super::TcpServerHandle;
 use crate::{
     transport::{
-        EndpointDto, ServerSocketHandle, SocketFfiObserver, SocketHandle, SynCookiesHandle,
-        TcpChannelsHandle,
+        EndpointDto, SocketFfiObserver, SocketHandle, SynCookiesHandle, TcpChannelsHandle,
     },
     utils::{AsyncRuntimeHandle, ContextWrapper, LoggerHandle, LoggerMT, ThreadPoolHandle},
     ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
@@ -102,34 +101,4 @@ pub extern "C" fn rsn_tcp_listener_connections_add(
     connection: &TcpServerHandle,
 ) {
     handle.0.add_connection(connection);
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_listener_connections_clear(handle: &mut TcpListenerHandle) {
-    handle.0.clear_connections();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_listener_is_on(handle: &TcpListenerHandle) -> bool {
-    handle.0.is_on()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_listener_set_on(handle: &mut TcpListenerHandle) {
-    handle.0.set_on();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_listener_set_off(handle: &mut TcpListenerHandle) {
-    handle.0.set_off();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_listener_has_listening_socket(handle: &TcpListenerHandle) -> bool {
-    handle.0.has_listening_socket()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_listener_close_listening_socket(handle: &mut TcpListenerHandle) {
-    handle.0.close_listening_socket();
 }

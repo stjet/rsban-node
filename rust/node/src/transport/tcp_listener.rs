@@ -169,37 +169,4 @@ impl TcpListener {
         let mut data = self.data.lock().unwrap();
         data.connections.remove(&connection_id);
     }
-
-    pub fn clear_connections(&mut self) {
-        // TODO swap with lock and then clear after lock dropped
-        let mut data = self.data.lock().unwrap();
-        data.connections.clear();
-    }
-
-    pub fn is_on(&self) -> bool {
-        let data = self.data.lock().unwrap();
-        data.on
-    }
-
-    pub fn set_on(&mut self) {
-        let mut data = self.data.lock().unwrap();
-        data.on = true;
-    }
-
-    pub fn set_off(&mut self) {
-        let mut data = self.data.lock().unwrap();
-        data.on = false;
-    }
-
-    pub fn close_listening_socket(&mut self) {
-        let mut data = self.data.lock().unwrap();
-        if let Some(socket) = data.listening_socket.take() {
-            socket.close();
-        }
-    }
-
-    pub fn has_listening_socket(&self) -> bool {
-        let data = self.data.lock().unwrap();
-        data.listening_socket.is_some()
-    }
 }

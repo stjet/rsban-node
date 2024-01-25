@@ -13,6 +13,7 @@
 #include <nano/node/transport/tcp_server.hpp>
 
 #include <boost/format.hpp>
+
 #include <stdexcept>
 
 nano::tcp_server_weak_wrapper::tcp_server_weak_wrapper (std::shared_ptr<nano::transport::tcp_server> const & server) :
@@ -70,7 +71,7 @@ nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_
 {
 	auto config_dto{ node_a.config->to_dto () };
 	auto logger_handle{ nano::to_logger_handle (node_a.logger) };
-	auto network_params_dto { node_a.network_params.to_dto()};
+	auto network_params_dto{ node_a.network_params.to_dto () };
 
 	handle = rsnano::rsn_tcp_listener_create (
 	port_a,
@@ -84,8 +85,7 @@ nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_
 	node_a.async_rt.handle,
 	node_a.stats->handle,
 	node_a.bootstrap_workers->handle,
-	new std::weak_ptr<nano::node_observers> (node_a.observers)
-	);
+	new std::weak_ptr<nano::node_observers> (node_a.observers));
 }
 
 nano::transport::tcp_listener::~tcp_listener ()
@@ -115,7 +115,7 @@ void nano::transport::tcp_listener::start (std::function<bool (std::shared_ptr<n
 	auto context = new std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> (callback_a);
 	bool ok = rsnano::rsn_tcp_listener_start (handle, on_connection_callback, context, delete_on_connection_context);
 	if (!ok)
-		throw new std::runtime_error("could not start tcp listener");
+		throw new std::runtime_error ("could not start tcp listener");
 	return;
 }
 
@@ -228,8 +228,8 @@ void nano::transport::tcp_listener::accept_action (boost::system::error_code con
 boost::asio::ip::tcp::endpoint nano::transport::tcp_listener::endpoint ()
 {
 	rsnano::EndpointDto endpoint_dto{};
-	rsnano::rsn_tcp_listener_endpoint(handle, &endpoint_dto);
-	return rsnano::dto_to_endpoint(endpoint_dto);
+	rsnano::rsn_tcp_listener_endpoint (handle, &endpoint_dto);
+	return rsnano::dto_to_endpoint (endpoint_dto);
 }
 
 std::size_t nano::transport::tcp_listener::connections_count ()

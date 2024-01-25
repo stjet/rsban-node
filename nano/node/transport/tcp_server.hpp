@@ -32,16 +32,6 @@ namespace transport
 	class tcp_server;
 }
 
-class tcp_server_observer
-{
-public:
-	virtual void tcp_server_timeout (std::size_t conn_id) = 0;
-	virtual void tcp_server_exited (nano::transport::socket::type_t type_a, std::size_t conn_id, nano::tcp_endpoint const &) = 0;
-	virtual std::size_t get_bootstrap_count () = 0;
-	virtual void inc_bootstrap_count () = 0;
-	virtual void inc_realtime_count () = 0;
-};
-
 class tcp_server_weak_wrapper
 {
 public:
@@ -69,7 +59,7 @@ class tcp_server;
 /**
  * Server side portion of bootstrap sessions. Listens for new socket connections and spawns tcp_server objects when connected.
  */
-class tcp_listener final : public nano::tcp_server_observer, public std::enable_shared_from_this<nano::transport::tcp_listener>
+class tcp_listener final : public std::enable_shared_from_this<nano::transport::tcp_listener>
 {
 public:
 	tcp_listener (uint16_t, nano::node &, std::size_t);
@@ -79,34 +69,9 @@ public:
 	void stop ();
 	void accept_action (boost::system::error_code const &, std::shared_ptr<nano::transport::socket> const &);
 	std::size_t connection_count ();
-
-	std::size_t get_bootstrap_count () override;
-	void inc_bootstrap_count () override;
-	void dec_bootstrap_count ();
-
 	std::size_t get_realtime_count ();
-	void inc_realtime_count () override;
-	void dec_realtime_count ();
-
-	void tcp_server_timeout (std::size_t conn_id) override;
-	void tcp_server_exited (nano::transport::socket::type_t type_a, std::size_t conn_id, nano::tcp_endpoint const & endpoint_a) override;
 	nano::tcp_endpoint endpoint ();
 	std::size_t connections_count ();
-
-private:
-	void erase_connection (std::size_t conn_id);
-
-	std::shared_ptr<nano::node_config> config;
-	std::shared_ptr<nano::logger_mt> logger;
-	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
-	std::shared_ptr<nano::syn_cookies> syn_cookies;
-	nano::node & node;
-
-	std::atomic<std::size_t> bootstrap_count{ 0 };
-	std::atomic<std::size_t> realtime_count{ 0 };
-	// readonly:
-	uint16_t port;
-	std::size_t max_inbound_connections;
 	rsnano::TcpListenerHandle * handle;
 };
 
@@ -127,7 +92,7 @@ public:
 	nano::stats const & stats_a,
 	nano::node_flags const & flags_a,
 	nano::node_config const & config_a,
-	std::shared_ptr<nano::tcp_server_observer> const & observer_a,
+	std::shared_ptr<nano::transport::tcp_listener> const & observer_a,
 	std::shared_ptr<nano::transport::request_response_visitor_factory> visitor_factory_a,
 	std::shared_ptr<nano::thread_pool> const & workers_a,
 	nano::network_filter const & publish_filter_a,

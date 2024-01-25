@@ -1,7 +1,7 @@
 use super::{
     ServerSocket, ServerSocketExtensions, Socket, SocketExtensions, SocketObserver, SynCookies,
-    TcpChannels, TcpMessageManager, TcpServer, TcpServerExt, TcpServerObserver,
-    TcpSocketFacadeFactory, TokioSocketFacade, TokioSocketFacadeFactory,
+    TcpChannels, TcpServer, TcpServerExt, TcpServerObserver, TcpSocketFacadeFactory,
+    TokioSocketFacade, TokioSocketFacadeFactory,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -17,17 +17,17 @@ use std::{
     collections::HashMap,
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicU16, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
     },
 };
 
 pub struct TcpListener {
-    port: u16,
+    port: AtomicU16,
     max_inbound_connections: usize,
     config: NodeConfig,
     logger: Arc<dyn Logger>,
-    tcp_channels: Arc<TcpChannels>,
+    tcp_channels: Weak<TcpChannels>,
     syn_cookies: Arc<SynCookies>,
     stats: Arc<Stats>,
     runtime: Arc<AsyncRuntime>,
@@ -74,11 +74,11 @@ impl TcpListener {
         let tcp_socket_facade_factory =
             Arc::new(TokioSocketFacadeFactory::new(Arc::clone(&runtime)));
         Self {
-            port,
+            port: AtomicU16::new(port),
             max_inbound_connections,
             config,
             logger,
-            tcp_channels,
+            tcp_channels: Arc::downgrade(&tcp_channels),
             syn_cookies,
             data: Mutex::new(TcpListenerData {
                 connections: HashMap::new(),
@@ -103,7 +103,7 @@ impl TcpListener {
     }
 
     pub fn start(
-        &mut self,
+        &self,
         callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
     ) -> anyhow::Result<()> {
         let mut data = self.data.lock().unwrap();
@@ -119,7 +119,10 @@ impl TcpListener {
             Arc::clone(&self.stats),
             Arc::clone(&self.socket_observer),
             self.max_inbound_connections,
-            SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), self.port),
+            SocketAddr::new(
+                IpAddr::V6(Ipv6Addr::UNSPECIFIED),
+                self.port.load(Ordering::SeqCst),
+            ),
             Arc::downgrade(&self.runtime),
         ));
         let ec = listening_socket.start();
@@ -139,14 +142,14 @@ impl TcpListener {
 
         // (1) -- nothing to do
         //
-        if self.port == listening_port {
+        if self.port.load(Ordering::SeqCst) == listening_port {
         }
         // (2) -- OS port choice happened at TCP socket bind time, so propagate this port value back;
         // the propagation is done here for the `tcp_listener` itself, whereas for `network`, the node does it
         // after calling `tcp_listener.start ()`
         //
         else {
-            self.port = listening_port;
+            self.port.store(listening_port, Ordering::SeqCst);
         }
 
         listening_socket.on_connection(callback);
@@ -167,6 +170,10 @@ impl TcpListener {
         }
     }
 
+    pub fn get_realtime_count(&self) -> usize {
+        self.realtime_count.load(Ordering::SeqCst)
+    }
+
     pub fn connection_count(&self) -> usize {
         let data = self.data.lock().unwrap();
         data.connections.len()
@@ -175,7 +182,7 @@ impl TcpListener {
     pub fn endpoint(&self) -> SocketAddrV6 {
         let guard = self.data.lock().unwrap();
         if guard.on && guard.listening_socket.is_some() {
-            SocketAddrV6::new(Ipv6Addr::LOCALHOST, self.port, 0, 0)
+            SocketAddrV6::new(Ipv6Addr::LOCALHOST, self.port.load(Ordering::SeqCst), 0, 0)
         } else {
             SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0)
         }
@@ -199,12 +206,14 @@ pub trait TcpListenerExt {
 }
 
 impl TcpListenerExt for Arc<TcpListener> {
-    fn accept_action(&self, ec: ErrorCode, socket: Arc<Socket>) {
+    fn accept_action(&self, _ec: ErrorCode, socket: Arc<Socket>) {
         let Some(remote) = socket.get_remote() else {
             return;
         };
-        if !self
-            .tcp_channels
+        let Some(tcp_channels) = self.tcp_channels.upgrade() else {
+            return;
+        };
+        if !tcp_channels
             .excluded_peers
             .lock()
             .unwrap()
@@ -231,10 +240,10 @@ impl TcpListenerExt for Arc<TcpListener> {
                 Arc::new(self.config.clone()),
                 Arc::clone(&self.logger),
                 observer,
-                Arc::clone(&self.tcp_channels.publish_filter),
+                Arc::clone(&tcp_channels.publish_filter),
                 Arc::new(self.network_params.clone()),
                 Arc::clone(&self.stats),
-                Arc::clone(&self.tcp_channels.tcp_message_manager),
+                Arc::clone(&tcp_channels.tcp_message_manager),
                 message_visitor_factory,
                 true,
             ));
@@ -279,7 +288,9 @@ impl TcpServerObserver for TcpListener {
         } else if socket_type == super::SocketType::Realtime {
             self.realtime_count.fetch_sub(1, Ordering::SeqCst);
             // Clear temporary channel
-            self.tcp_channels.erase_temporary_channel(&endpoint);
+            if let Some(tcp_channels) = self.tcp_channels.upgrade() {
+                tcp_channels.erase_temporary_channel(&endpoint);
+            }
         }
         self.remove_connection(connection_id);
     }
@@ -292,7 +303,15 @@ impl TcpServerObserver for TcpListener {
         self.bootstrap_count.fetch_add(1, Ordering::SeqCst);
     }
 
+    fn dec_bootstrap_count(&self) {
+        self.bootstrap_count.fetch_sub(1, Ordering::SeqCst);
+    }
+
     fn inc_realtime_count(&self) {
         self.realtime_count.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn dec_realtime_count(&self) {
+        self.realtime_count.fetch_sub(1, Ordering::SeqCst);
     }
 }

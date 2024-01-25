@@ -15,7 +15,7 @@ use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, Weak,
     },
     time::{Duration, Instant},
 };
@@ -32,6 +32,8 @@ pub trait TcpServerObserver: Send + Sync {
     fn get_bootstrap_count(&self) -> usize;
     fn inc_bootstrap_count(&self);
     fn inc_realtime_count(&self);
+    fn dec_bootstrap_count(&self);
+    fn dec_realtime_count(&self);
 }
 
 pub struct NullTcpServerObserver {}
@@ -51,17 +53,18 @@ impl TcpServerObserver for NullTcpServerObserver {
     }
 
     fn inc_bootstrap_count(&self) {}
-
     fn inc_realtime_count(&self) {}
+    fn dec_realtime_count(&self) {}
+    fn dec_bootstrap_count(&self) {}
 }
 
 pub struct TcpServer {
-    async_rt: Arc<AsyncRuntime>,
+    async_rt: Weak<AsyncRuntime>,
     pub socket: Arc<Socket>,
     config: Arc<NodeConfig>,
     logger: Arc<dyn Logger>,
     stopped: AtomicBool,
-    observer: Arc<dyn TcpServerObserver>,
+    observer: Weak<dyn TcpServerObserver>,
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,
 
@@ -101,11 +104,11 @@ impl TcpServer {
         let network_constants = network.network.clone();
         let socket_clone = Arc::clone(&socket);
         Self {
-            async_rt,
+            async_rt: Arc::downgrade(&async_rt),
             socket,
             config,
             logger,
-            observer,
+            observer: Arc::downgrade(&observer),
             stopped: AtomicBool::new(false),
             disable_bootstrap_listener: false,
             connections_max: 64,
@@ -174,7 +177,11 @@ impl TcpServer {
             return false;
         }
 
-        if self.observer.get_bootstrap_count() >= self.connections_max {
+        let Some(observer) = self.observer.upgrade() else {
+            return false;
+        };
+
+        if observer.get_bootstrap_count() >= self.connections_max {
             return false;
         }
 
@@ -182,19 +189,23 @@ impl TcpServer {
             return false;
         }
 
-        self.observer.inc_bootstrap_count();
+        observer.inc_bootstrap_count();
         self.socket.set_socket_type(SocketType::Bootstrap);
         true
     }
 
     pub fn to_realtime_connection(&self, node_id: &Account) -> bool {
+        let Some(observer) = self.observer.upgrade() else {
+            return false;
+        };
+
         if self.socket.socket_type() == SocketType::Undefined && !self.disable_tcp_realtime {
             {
                 let mut lk = self.remote_node_id.lock().unwrap();
                 *lk = *node_id;
             }
 
-            self.observer.inc_realtime_count();
+            observer.inc_realtime_count();
             self.socket.set_socket_type(SocketType::Realtime);
             return true;
         }
@@ -235,11 +246,9 @@ impl TcpServer {
 impl Drop for TcpServer {
     fn drop(&mut self) {
         let remote_ep = { *self.remote_endpoint.lock().unwrap() };
-        self.observer.boostrap_server_exited(
-            self.socket.socket_type(),
-            self.unique_id(),
-            remote_ep,
-        );
+        if let Some(observer) = self.observer.upgrade() {
+            observer.boostrap_server_exited(self.socket.socket_type(), self.unique_id(), remote_ep);
+        }
         self.stop();
     }
 }
@@ -284,7 +293,9 @@ impl TcpServerExt for Arc<TcpServer> {
 
     fn timeout(&self) {
         if self.socket.has_timed_out() {
-            self.observer.bootstrap_server_timeout(self.unique_id());
+            if let Some(observer) = self.observer.upgrade() {
+                observer.bootstrap_server_timeout(self.unique_id());
+            }
             self.socket.close();
         }
     }
@@ -294,8 +305,12 @@ impl TcpServerExt for Arc<TcpServer> {
             return;
         }
 
+        let Some(async_rt) = self.async_rt.upgrade() else {
+            return;
+        };
+
         let self_clone = Arc::clone(self);
-        self.async_rt.tokio.spawn(async move {
+        async_rt.tokio.spawn(async move {
             let result = self_clone.message_deserializer.read().await;
             spawn_blocking(Box::new(move || {
                 match result {

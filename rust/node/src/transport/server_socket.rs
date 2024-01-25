@@ -33,7 +33,7 @@ pub struct ServerSocket {
     tcp_socket_facade_factory: Arc<dyn TcpSocketFacadeFactory>,
     node_config: NodeConfig,
     stats: Arc<Stats>,
-    socket_observer: Arc<dyn SocketObserver>,
+    socket_observer: Weak<dyn SocketObserver>,
     max_inbound_connections: usize,
     local: SocketAddr,
     runtime: Weak<AsyncRuntime>,
@@ -90,7 +90,7 @@ impl ServerSocket {
             tcp_socket_facade_factory,
             node_config,
             stats,
-            socket_observer,
+            socket_observer: Arc::downgrade(&socket_observer),
             max_inbound_connections,
             local,
             runtime,
@@ -282,13 +282,13 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
                 this_l.logger.always_log("Network: Acceptor is not open");
                 return;
             }
+            let Some(observer) = this_l.socket_observer.upgrade() else {return;};
 
             let socket_stats = Arc::new(SocketStats::new(
                 Arc::clone(&this_l.stats),
                 Arc::clone(&this_l.logger),
                 this_l.node_config.logging.network_timeout_logging(),
             ));
-            let ffi_observer = Arc::clone(&this_l.socket_observer);
 
             // Prepare new connection
             let new_connection = SocketBuilder::endpoint_type(
@@ -313,7 +313,7 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
             ))
             .observer(Arc::new(CompositeSocketObserver::new(vec![
                 socket_stats,
-                ffi_observer,
+                observer,
             ])))
             .build();
 
@@ -360,7 +360,9 @@ impl ServerSocketExtensions for Arc<ServerSocket> {
                     				connection_clone.set_timeout (Duration::from_secs(this_l.network_params.network.idle_timeout_s as u64));
                     				this_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptSuccess, Direction::In);
                                     this_l.connections_per_address.lock().unwrap().insert(&connection_clone);
-                    				this_l.socket_observer.socket_accepted(Arc::clone(&connection_clone));
+                                    if let Some(observer) = this_l.socket_observer.upgrade(){
+                    				    observer.socket_accepted(Arc::clone(&connection_clone));
+                                    }
                     				if callback (connection_clone, ec)
                     				{
                     					this_l.on_connection (callback);

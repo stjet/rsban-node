@@ -60,14 +60,7 @@ std::shared_ptr<nano::transport::tcp_server> nano::tcp_server_weak_wrapper::lock
  * tcp_listener
  */
 
-nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_a, std::size_t max_inbound_connections) :
-	config{ node_a.config },
-	logger{ node_a.logger },
-	tcp_channels{ node_a.network->tcp_channels },
-	syn_cookies{ node_a.network->syn_cookies },
-	node (node_a),
-	port (port_a),
-	max_inbound_connections{ max_inbound_connections }
+nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_a, std::size_t max_inbound_connections)
 {
 	auto config_dto{ node_a.config->to_dto () };
 	auto logger_handle{ nano::to_logger_handle (node_a.logger) };
@@ -89,8 +82,7 @@ nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_
 	node_a.block_processor.handle,
 	node_a.bootstrap_initiator.handle,
 	node_a.ledger.handle,
-	node_a.node_id.prv.bytes.data()
-	);
+	node_a.node_id.prv.bytes.data ());
 }
 
 nano::transport::tcp_listener::~tcp_listener ()
@@ -134,100 +126,15 @@ std::size_t nano::transport::tcp_listener::connection_count ()
 	return rsnano::rsn_tcp_listener_connection_count (handle);
 }
 
-void nano::transport::tcp_listener::erase_connection (std::size_t conn_id)
-{
-	rsnano::rsn_tcp_listener_connections_erase (handle, conn_id);
-}
-
-std::size_t nano::transport::tcp_listener::get_bootstrap_count ()
-{
-	return bootstrap_count;
-}
-
-void nano::transport::tcp_listener::inc_bootstrap_count ()
-{
-	++bootstrap_count;
-}
-
-void nano::transport::tcp_listener::dec_bootstrap_count ()
-{
-	--bootstrap_count;
-}
-
 std::size_t nano::transport::tcp_listener::get_realtime_count ()
 {
-	return realtime_count;
-}
-
-void nano::transport::tcp_listener::inc_realtime_count ()
-{
-	++realtime_count;
-}
-
-void nano::transport::tcp_listener::dec_realtime_count ()
-{
-	--realtime_count;
-}
-
-void nano::transport::tcp_listener::tcp_server_timeout (std::size_t conn_id)
-{
-	if (config->logging.bulk_pull_logging ())
-	{
-		logger->try_log ("Closing incoming tcp / bootstrap server by timeout");
-	}
-	{
-		erase_connection (conn_id);
-	}
-}
-
-void nano::transport::tcp_listener::tcp_server_exited (nano::transport::socket::type_t type_a, std::size_t conn_id, nano::tcp_endpoint const & endpoint_a)
-{
-	if (config->logging.bulk_pull_logging ())
-	{
-		logger->try_log ("Exiting incoming TCP/bootstrap server");
-	}
-	if (type_a == nano::transport::socket::type_t::bootstrap)
-	{
-		dec_bootstrap_count ();
-	}
-	else if (type_a == nano::transport::socket::type_t::realtime)
-	{
-		dec_realtime_count ();
-		// Clear temporary channel
-		tcp_channels->erase_temporary_channel (endpoint_a);
-	}
-	erase_connection (conn_id);
+	return rsnano::rsn_tcp_listener_realtime_count (handle);
 }
 
 void nano::transport::tcp_listener::accept_action (boost::system::error_code const & ec, std::shared_ptr<nano::transport::socket> const & socket_a)
 {
-	if (!tcp_channels->excluded_peers ().check (socket_a->remote_endpoint ()))
-	{
-		auto req_resp_visitor_factory = std::make_shared<nano::transport::request_response_visitor_factory> (node);
-		auto server (std::make_shared<nano::transport::tcp_server> (
-		node.async_rt, socket_a, logger,
-		*node.stats, node.flags, *config,
-		node.tcp_listener, req_resp_visitor_factory,
-		node.bootstrap_workers,
-		*tcp_channels->publish_filter,
-		tcp_channels->tcp_message_manager,
-		*syn_cookies,
-		node.ledger,
-		node.block_processor,
-		node.bootstrap_initiator,
-		node.node_id,
-		true));
-
-		rsnano::rsn_tcp_listener_connections_add (handle, server->handle);
-	}
-	else
-	{
-		node.stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_excluded);
-		if (config->logging.network_rejected_logging ())
-		{
-			logger->try_log ("Rejected connection from excluded peer ", socket_a->remote_endpoint ());
-		}
-	}
+	auto ec_dto{ rsnano::error_code_to_dto (ec) };
+	rsnano::rsn_tcp_listener_accept_action (handle, &ec_dto, socket_a->handle);
 }
 
 boost::asio::ip::tcp::endpoint nano::transport::tcp_listener::endpoint ()
@@ -258,7 +165,7 @@ std::shared_ptr<nano::logger_mt> const & logger_a,
 nano::stats const & stats_a,
 nano::node_flags const & flags_a,
 nano::node_config const & config_a,
-std::shared_ptr<nano::tcp_server_observer> const & observer_a,
+std::shared_ptr<nano::transport::tcp_listener> const & observer_a,
 std::shared_ptr<nano::transport::request_response_visitor_factory> visitor_factory_a,
 std::shared_ptr<nano::thread_pool> const & bootstrap_workers_a,
 nano::network_filter const & publish_filter_a,
@@ -271,14 +178,13 @@ nano::keypair & node_id_a,
 bool allow_bootstrap_a)
 {
 	auto config_dto{ config_a.to_dto () };
-	auto observer_handle = new std::weak_ptr<nano::tcp_server_observer> (observer_a);
 	auto network_dto{ config_a.network_params.to_dto () };
 	rsnano::CreateTcpServerParams params;
 	params.async_rt = async_rt.handle;
 	params.socket = socket_a->handle;
 	params.config = &config_dto;
 	params.logger = nano::to_logger_handle (logger_a);
-	params.observer = observer_handle;
+	params.observer = observer_a->handle;
 	params.publish_filter = publish_filter_a.handle;
 	params.network = &network_dto;
 	params.disable_bootstrap_listener = flags_a.disable_bootstrap_listener ();

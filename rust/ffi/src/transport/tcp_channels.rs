@@ -9,12 +9,12 @@ use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
 use rsnano_messages::DeserializedMessage;
 use rsnano_node::{
     config::NodeConfig,
-    transport::{ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions},
+    transport::{ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpListener},
     NetworkParams,
 };
 
 use crate::{
-    bootstrap::{FfiBootstrapServerObserver, RequestResponseVisitorFactoryHandle},
+    bootstrap::{RequestResponseVisitorFactoryHandle, TcpListenerHandle},
     messages::MessageHandle,
     utils::{
         AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, LoggerHandle, LoggerMT,
@@ -318,9 +318,9 @@ pub unsafe extern "C" fn rsn_tcp_channels_random_fill(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_set_observer(
     handle: &mut TcpChannelsHandle,
-    observer: *mut c_void,
+    observer: &TcpListenerHandle,
 ) {
-    let observer = Arc::new(FfiBootstrapServerObserver::new(observer));
+    let observer: Arc<TcpListener> = Arc::clone(observer);
     handle.0.set_observer(observer);
 }
 

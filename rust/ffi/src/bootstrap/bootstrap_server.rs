@@ -1,22 +1,22 @@
 use crate::{
     transport::{EndpointDto, NetworkFilterHandle, SocketHandle, TcpMessageManagerHandle},
     utils::{AsyncRuntimeHandle, LoggerHandle, LoggerMT},
-    NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
+    NetworkParamsDto, NodeConfigDto, StatHandle,
 };
 use rsnano_core::{utils::Logger, Account};
 use rsnano_node::{
     config::NodeConfig,
-    transport::{SocketType, TcpServer, TcpServerExt, TcpServerObserver},
+    transport::{TcpServer, TcpServerExt},
     NetworkParams,
 };
 use std::{
-    ffi::c_void,
-    net::SocketAddrV6,
     ops::Deref,
     sync::{Arc, Weak},
 };
 
-use super::request_response_visitor_factory::RequestResponseVisitorFactoryHandle;
+use super::{
+    request_response_visitor_factory::RequestResponseVisitorFactoryHandle, TcpListenerHandle,
+};
 
 pub struct TcpServerHandle(pub Arc<TcpServer>);
 
@@ -42,7 +42,7 @@ pub struct CreateTcpServerParams {
     pub socket: *mut SocketHandle,
     pub config: *const NodeConfigDto,
     pub logger: *mut LoggerHandle,
-    pub observer: *mut c_void,
+    pub observer: *mut TcpListenerHandle,
     pub publish_filter: *mut NetworkFilterHandle,
     pub network: *const NetworkParamsDto,
     pub disable_bootstrap_listener: bool,
@@ -63,7 +63,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let socket = Arc::clone(&(*params.socket));
     let config = Arc::new(NodeConfig::try_from(&*params.config).unwrap());
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(params.logger)));
-    let observer = Arc::new(FfiBootstrapServerObserver::new(params.observer));
+    let observer = Arc::clone(&*params.observer);
     let publish_filter = Arc::clone(&*params.publish_filter);
     let network = Arc::new(NetworkParams::try_from(&*params.network).unwrap());
     let stats = Arc::clone(&(*params.stats));
@@ -176,117 +176,4 @@ pub unsafe extern "C" fn rsn_bootstrap_server_socket(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_timeout(handle: *mut TcpServerHandle) {
     (*handle).timeout();
-}
-
-type BootstrapServerTimeoutCallback = unsafe extern "C" fn(*mut c_void, usize);
-type BootstrapServerExitedCallback =
-    unsafe extern "C" fn(*mut c_void, u8, usize, *const EndpointDto);
-type BootstrapServerBootstrapCountCallback = unsafe extern "C" fn(*mut c_void) -> usize;
-type BootstrapServerIncBootstrapCountCallback = unsafe extern "C" fn(*mut c_void);
-
-static mut DESTROY_OBSERVER_CALLBACK: Option<VoidPointerCallback> = None;
-static mut TIMEOUT_CALLBACK: Option<BootstrapServerTimeoutCallback> = None;
-static mut EXITED_CALLBACK: Option<BootstrapServerExitedCallback> = None;
-static mut BOOTSTRAP_COUNT_CALLBACK: Option<BootstrapServerBootstrapCountCallback> = None;
-static mut INC_BOOTSTRAP_COUNT_CALLBACK: Option<BootstrapServerIncBootstrapCountCallback> = None;
-static mut INC_REALTIME_COUNT_CALLBACK: Option<BootstrapServerIncBootstrapCountCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_observer_destroy(f: VoidPointerCallback) {
-    DESTROY_OBSERVER_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_observer_timeout(
-    f: BootstrapServerTimeoutCallback,
-) {
-    TIMEOUT_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_observer_exited(f: BootstrapServerExitedCallback) {
-    EXITED_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_observer_bootstrap_count(
-    f: BootstrapServerBootstrapCountCallback,
-) {
-    BOOTSTRAP_COUNT_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_observer_inc_bootstrap_count(
-    f: BootstrapServerIncBootstrapCountCallback,
-) {
-    INC_BOOTSTRAP_COUNT_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_observer_inc_realtime_count(
-    f: BootstrapServerIncBootstrapCountCallback,
-) {
-    INC_REALTIME_COUNT_CALLBACK = Some(f);
-}
-
-pub struct FfiBootstrapServerObserver {
-    handle: *mut c_void,
-}
-
-impl FfiBootstrapServerObserver {
-    pub fn new(handle: *mut c_void) -> Self {
-        Self { handle }
-    }
-}
-
-unsafe impl Send for FfiBootstrapServerObserver {}
-unsafe impl Sync for FfiBootstrapServerObserver {}
-
-impl Drop for FfiBootstrapServerObserver {
-    fn drop(&mut self) {
-        unsafe {
-            DESTROY_OBSERVER_CALLBACK.expect("DESTROY_OBSERVER_CALLBACK missing")(self.handle);
-        }
-    }
-}
-
-impl TcpServerObserver for FfiBootstrapServerObserver {
-    fn bootstrap_server_timeout(&self, unique_id: usize) {
-        unsafe {
-            TIMEOUT_CALLBACK.expect("TIMEOUT_CALLBACK missing")(self.handle, unique_id);
-        }
-    }
-
-    fn boostrap_server_exited(
-        &self,
-        socket_type: SocketType,
-        inner_ptr: usize,
-        endpoint: SocketAddrV6,
-    ) {
-        let endpoint_dto = EndpointDto::from(&endpoint);
-        unsafe {
-            EXITED_CALLBACK.expect("EXITED_CALLBACK missing")(
-                self.handle,
-                socket_type as u8,
-                inner_ptr,
-                &endpoint_dto,
-            );
-        }
-    }
-
-    fn get_bootstrap_count(&self) -> usize {
-        unsafe { BOOTSTRAP_COUNT_CALLBACK.expect("BOOTSTRAP_COUNT_CALLBACK missing")(self.handle) }
-    }
-
-    fn inc_bootstrap_count(&self) {
-        unsafe {
-            INC_BOOTSTRAP_COUNT_CALLBACK.expect("INC_BOOTSTRAP_COUNT_CALLBACK missing")(self.handle)
-        }
-    }
-
-    fn inc_realtime_count(&self) {
-        unsafe {
-            INC_REALTIME_COUNT_CALLBACK.expect("INC_REALTIME_COUNT_CALLBACK missing")(self.handle)
-        }
-    }
 }

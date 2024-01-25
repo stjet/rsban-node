@@ -469,61 +469,6 @@ void tcp_socket_delete_callback (void * handle_a)
 	delete callback;
 };
 
-void bootstrap_observer_destroy (void * handle_a)
-{
-	auto observer = static_cast<std::weak_ptr<nano::tcp_server_observer> *> (handle_a);
-	delete observer;
-}
-
-std::size_t bootstrap_observer_bootstrap_count (void * handle_a)
-{
-	auto weak_observer = static_cast<std::weak_ptr<nano::tcp_server_observer> *> (handle_a);
-	auto observer = weak_observer->lock ();
-	if (observer)
-	{
-		return observer->get_bootstrap_count ();
-	}
-	return 0;
-}
-
-void bootstrap_observer_exited (void * handle_a, uint8_t socket_type_a, std::size_t conn_id, const rsnano::EndpointDto * endpoint_a)
-{
-	auto weak_observer = static_cast<std::weak_ptr<nano::tcp_server_observer> *> (handle_a);
-	auto observer = weak_observer->lock ();
-	if (!observer)
-		return;
-	auto socket_type = static_cast<nano::transport::socket::type_t> (socket_type_a);
-	auto endpoint = rsnano::dto_to_endpoint (*endpoint_a);
-	observer->tcp_server_exited (socket_type, conn_id, endpoint);
-}
-
-void bootstrap_observer_inc_bootstrap_count (void * handle_a)
-{
-	auto weak_observer = static_cast<std::weak_ptr<nano::tcp_server_observer> *> (handle_a);
-	auto observer = weak_observer->lock ();
-	if (!observer)
-		return;
-	observer->inc_bootstrap_count ();
-}
-
-void bootstrap_observer_inc_realtime_count (void * handle_a)
-{
-	auto weak_observer = static_cast<std::weak_ptr<nano::tcp_server_observer> *> (handle_a);
-	auto observer = weak_observer->lock ();
-	if (!observer)
-		return;
-	observer->inc_realtime_count ();
-}
-
-void bootstrap_observer_timeout (void * handle_a, std::size_t conn_id)
-{
-	auto weak_observer = static_cast<std::weak_ptr<nano::tcp_server_observer> *> (handle_a);
-	auto observer = weak_observer->lock ();
-	if (!observer)
-		return;
-	observer->tcp_server_timeout (conn_id);
-}
-
 nano::transport::channel_tcp_observer & to_channel_tcp (void * handle_a)
 {
 	auto channel = static_cast<std::shared_ptr<nano::transport::channel_tcp_observer> *> (handle_a);
@@ -705,13 +650,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_channel_tcp_observer_drop_weak (channel_tcp_drop_weak);
 	rsnano::rsn_callback_channel_tcp_observer_clone_weak (channel_tcp_clone_weak);
 	rsnano::rsn_callback_channel_tcp_observer_lock (channel_tcp_observer_lock);
-
-	rsnano::rsn_callback_bootstrap_observer_destroy (bootstrap_observer_destroy);
-	rsnano::rsn_callback_bootstrap_observer_bootstrap_count (bootstrap_observer_bootstrap_count);
-	rsnano::rsn_callback_bootstrap_observer_exited (bootstrap_observer_exited);
-	rsnano::rsn_callback_bootstrap_observer_inc_bootstrap_count (bootstrap_observer_inc_bootstrap_count);
-	rsnano::rsn_callback_bootstrap_observer_inc_realtime_count (bootstrap_observer_inc_realtime_count);
-	rsnano::rsn_callback_bootstrap_observer_timeout (bootstrap_observer_timeout);
 
 	rsnano::rsn_callback_bootstrap_client_observer_closed (bootstrap_client_observer_closed);
 	rsnano::rsn_callback_bootstrap_client_observer_destroy (bootstrap_client_observer_destroy);

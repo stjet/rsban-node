@@ -12,7 +12,6 @@ mod request_response_visitor_factory;
 mod tcp_listener;
 
 pub use bootstrap_initiator::BootstrapInitiatorHandle;
-pub use bootstrap_server::FfiBootstrapServerObserver;
 pub use bootstrap_server::TcpServerHandle;
 pub use request_response_visitor_factory::RequestResponseVisitorFactoryHandle;
-pub use tcp_listener::OnConnectionCallback;
+pub use tcp_listener::{OnConnectionCallback, TcpListenerHandle};

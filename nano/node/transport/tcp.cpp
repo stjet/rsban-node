@@ -363,10 +363,9 @@ void nano::transport::tcp_channels::set_port (uint16_t port_a)
 	rsnano::rsn_tcp_channels_set_port (handle, port_a);
 }
 
-void nano::transport::tcp_channels::set_observer (std::shared_ptr<nano::tcp_server_observer> observer_a)
+void nano::transport::tcp_channels::set_observer (std::shared_ptr<nano::transport::tcp_listener> observer_a)
 {
-	auto observer_handle = new std::weak_ptr<nano::tcp_server_observer> (observer_a);
-	rsnano::rsn_tcp_channels_set_observer (handle, observer_handle);
+	rsnano::rsn_tcp_channels_set_observer (handle, observer_a->handle);
 }
 
 void nano::transport::tcp_channels::set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory)

@@ -4,7 +4,6 @@ use crate::{
     ledger::datastore::LedgerHandle,
     transport::{
         EndpointDto, SocketFfiObserver, SocketHandle, SynCookiesHandle, TcpChannelsHandle,
-        TcpMessageManagerHandle,
     },
     utils::{AsyncRuntimeHandle, ContextWrapper, LoggerHandle, LoggerMT, ThreadPoolHandle},
     ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
@@ -12,12 +11,20 @@ use crate::{
 };
 use rsnano_core::{utils::Logger, KeyPair};
 use rsnano_node::{
-    transport::{Socket, TcpListener},
+    transport::{Socket, TcpListener, TcpListenerExt, TcpServerObserver},
     utils::ErrorCode,
 };
-use std::{ffi::c_void, sync::Arc};
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
-pub struct TcpListenerHandle(TcpListener);
+pub struct TcpListenerHandle(Arc<TcpListener>);
+
+impl Deref for TcpListenerHandle {
+    type Target = Arc<TcpListener>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_listener_create(
@@ -43,7 +50,7 @@ pub unsafe extern "C" fn rsn_tcp_listener_create(
     let node_id = Arc::new(
         KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(node_id_prv, 32)).unwrap(),
     );
-    Box::into_raw(Box::new(TcpListenerHandle(TcpListener::new(
+    Box::into_raw(Box::new(TcpListenerHandle(Arc::new(TcpListener::new(
         port,
         max_inbound_connections,
         config.try_into().unwrap(),
@@ -60,7 +67,7 @@ pub unsafe extern "C" fn rsn_tcp_listener_create(
         Arc::clone(bootstrap_initiator),
         Arc::clone(ledger),
         node_id,
-    ))))
+    )))))
 }
 
 #[no_mangle]
@@ -84,6 +91,45 @@ pub extern "C" fn rsn_tcp_listener_start(
         callback(context.get_context(), SocketHandle::new(socket), &ec_dto)
     });
     handle.0.start(callback_wrapper).is_ok()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_accept_action(
+    handle: &mut TcpListenerHandle,
+    ec: &ErrorCodeDto,
+    socket: &SocketHandle,
+) {
+    handle.0.accept_action(ec.into(), Arc::clone(socket));
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_bootstrap_count(handle: &TcpListenerHandle) -> usize {
+    handle.0.get_bootstrap_count()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_bootstrap_count_inc(handle: &TcpListenerHandle) {
+    handle.0.inc_bootstrap_count()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_bootstrap_count_dec(handle: &TcpListenerHandle) {
+    handle.0.dec_bootstrap_count()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_realtime_count_inc(handle: &TcpListenerHandle) {
+    handle.0.inc_realtime_count()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_realtime_count_dec(handle: &TcpListenerHandle) {
+    handle.0.dec_realtime_count()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_listener_realtime_count(handle: &TcpListenerHandle) -> usize {
+    handle.0.get_realtime_count()
 }
 
 #[no_mangle]

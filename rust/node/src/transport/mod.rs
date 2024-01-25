@@ -42,7 +42,7 @@ pub use syn_cookies::SynCookies;
 pub use tcp_channels::{
     TcpChannels, TcpChannelsExtension, TcpChannelsImpl, TcpChannelsOptions, TcpEndpointAttempt,
 };
-pub use tcp_listener::TcpListener;
+pub use tcp_listener::{TcpListener, TcpListenerExt};
 pub use tcp_message_manager::{TcpMessageItem, TcpMessageManager};
 pub use tcp_server::{
     BootstrapMessageVisitor, HandshakeMessageVisitor, HandshakeMessageVisitorImpl,

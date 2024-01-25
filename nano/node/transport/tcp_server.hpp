@@ -73,6 +73,8 @@ class tcp_listener final : public nano::tcp_server_observer, public std::enable_
 {
 public:
 	tcp_listener (uint16_t, nano::node &, std::size_t);
+	tcp_listener (tcp_listener const &) = delete;
+	~tcp_listener ();
 	void start (std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> callback_a);
 	void stop ();
 	void accept_action (boost::system::error_code const &, std::shared_ptr<nano::transport::socket> const &);
@@ -97,7 +99,8 @@ private:
 	std::unordered_map<std::size_t, tcp_server_weak_wrapper> connections;
 	std::shared_ptr<nano::node_config> config;
 	std::shared_ptr<nano::logger_mt> logger;
-	std::shared_ptr<nano::network> network;
+	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
+	std::shared_ptr<nano::syn_cookies> syn_cookies;
 	nano::node & node;
 	std::shared_ptr<nano::transport::server_socket> listening_socket;
 	bool on{ false };
@@ -105,6 +108,7 @@ private:
 	std::size_t max_inbound_connections;
 	std::atomic<std::size_t> bootstrap_count{ 0 };
 	std::atomic<std::size_t> realtime_count{ 0 };
+	rsnano::TcpListenerHandle * handle;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (tcp_listener & bootstrap_listener, std::string const & name);

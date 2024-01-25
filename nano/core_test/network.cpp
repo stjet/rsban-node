@@ -677,7 +677,7 @@ TEST (tcp_listener, DISABLED_tcp_listener_timeout_empty)
 	system.deadline_set (std::chrono::seconds (6));
 	while (!disconnected)
 	{
-		disconnected = node0->tcp_listener->connections_count() == 0;
+		disconnected = node0->tcp_listener->connections_count () == 0;
 		ASSERT_NO_ERROR (system.poll ());
 	}
 }

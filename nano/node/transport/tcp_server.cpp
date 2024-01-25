@@ -1,3 +1,4 @@
+#include "nano/lib/logger_mt.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/node/bootstrap/bootstrap.hpp"
 #include "nano/secure/common.hpp"
@@ -60,11 +61,26 @@ std::shared_ptr<nano::transport::tcp_server> nano::tcp_server_weak_wrapper::lock
 nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_a, std::size_t max_inbound_connections) :
 	config{ node_a.config },
 	logger{ node_a.logger },
-	network{ node_a.network },
+	tcp_channels{ node_a.network->tcp_channels },
+	syn_cookies{ node_a.network->syn_cookies },
 	node (node_a),
 	port (port_a),
 	max_inbound_connections{ max_inbound_connections }
 {
+	auto config_dto{ node_a.config->to_dto () };
+	auto logger_handle{ nano::to_logger_handle (node_a.logger) };
+	handle = rsnano::rsn_tcp_listener_create (
+	port_a,
+	max_inbound_connections,
+	&config_dto,
+	logger_handle,
+	node_a.network->tcp_channels->handle,
+	node_a.network->syn_cookies->handle);
+}
+
+nano::transport::tcp_listener::~tcp_listener ()
+{
+	rsnano::rsn_tcp_listener_destroy (handle);
 }
 
 void nano::transport::tcp_listener::start (std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> callback_a)
@@ -90,8 +106,6 @@ void nano::transport::tcp_listener::start (std::function<bool (std::shared_ptr<n
 		//
 		if (port == listening_port)
 		{
-			debug_assert (port == network->get_port ());
-			debug_assert (port == network->endpoint ().port ());
 		}
 		// (2) -- OS port choice happened at TCP socket bind time, so propagate this port value back;
 		// the propagation is done here for the `tcp_listener` itself, whereas for `network`, the node does it
@@ -189,14 +203,14 @@ void nano::transport::tcp_listener::tcp_server_exited (nano::transport::socket::
 	{
 		dec_realtime_count ();
 		// Clear temporary channel
-		network->tcp_channels->erase_temporary_channel (endpoint_a);
+		tcp_channels->erase_temporary_channel (endpoint_a);
 	}
 	erase_connection (inner_ptr_a);
 }
 
 void nano::transport::tcp_listener::accept_action (boost::system::error_code const & ec, std::shared_ptr<nano::transport::socket> const & socket_a)
 {
-	if (!network->tcp_channels->excluded_peers ().check (socket_a->remote_endpoint ()))
+	if (!tcp_channels->excluded_peers ().check (socket_a->remote_endpoint ()))
 	{
 		auto req_resp_visitor_factory = std::make_shared<nano::transport::request_response_visitor_factory> (node);
 		auto server (std::make_shared<nano::transport::tcp_server> (
@@ -204,9 +218,9 @@ void nano::transport::tcp_listener::accept_action (boost::system::error_code con
 		*node.stats, node.flags, *config,
 		node.tcp_listener, req_resp_visitor_factory,
 		node.bootstrap_workers,
-		*network->tcp_channels->publish_filter,
-		node.network->tcp_channels->tcp_message_manager,
-		*network->syn_cookies,
+		*tcp_channels->publish_filter,
+		tcp_channels->tcp_message_manager,
+		*syn_cookies,
 		node.ledger,
 		node.block_processor,
 		node.bootstrap_initiator,
@@ -239,9 +253,9 @@ boost::asio::ip::tcp::endpoint nano::transport::tcp_listener::endpoint ()
 	}
 }
 
-std::size_t nano::transport::tcp_listener::connections_count () 
+std::size_t nano::transport::tcp_listener::connections_count ()
 {
-	nano::lock_guard<nano::mutex> guard {mutex};
+	nano::lock_guard<nano::mutex> guard{ mutex };
 	return connections.size ();
 }
 

@@ -10,6 +10,7 @@ mod server_socket;
 mod socket;
 mod syn_cookies;
 mod tcp_channels;
+mod tcp_listener;
 mod tcp_message_manager;
 mod tcp_server;
 mod tcp_server_factory;
@@ -41,6 +42,7 @@ pub use syn_cookies::SynCookies;
 pub use tcp_channels::{
     TcpChannels, TcpChannelsExtension, TcpChannelsImpl, TcpChannelsOptions, TcpEndpointAttempt,
 };
+pub use tcp_listener::TcpListener;
 pub use tcp_message_manager::{TcpMessageItem, TcpMessageManager};
 pub use tcp_server::{
     BootstrapMessageVisitor, HandshakeMessageVisitor, HandshakeMessageVisitorImpl,

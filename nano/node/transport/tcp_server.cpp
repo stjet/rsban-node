@@ -122,11 +122,11 @@ void nano::transport::tcp_listener::start (std::function<bool (std::shared_ptr<n
 
 void nano::transport::tcp_listener::stop ()
 {
-	decltype (connections) connections_l;
 	{
 		nano::lock_guard<nano::mutex> lock{ mutex };
 		on = false;
-		connections_l.swap (connections);
+		// TODO Old behavior: swap with lock and then clear after lock dropped
+		rsnano::rsn_tcp_listener_connections_clear(handle);
 	}
 	if (listening_socket)
 	{
@@ -139,13 +139,13 @@ void nano::transport::tcp_listener::stop ()
 std::size_t nano::transport::tcp_listener::connection_count ()
 {
 	nano::lock_guard<nano::mutex> lock{ mutex };
-	return connections.size ();
+	return rsnano::rsn_tcp_listener_connections_len (handle);
 }
 
-void nano::transport::tcp_listener::erase_connection (std::uintptr_t conn_ptr)
+void nano::transport::tcp_listener::erase_connection (std::size_t conn_id)
 {
 	nano::lock_guard<nano::mutex> lock (mutex);
-	connections.erase (conn_ptr);
+	rsnano::rsn_tcp_listener_connections_erase (handle, conn_id);
 }
 
 std::size_t nano::transport::tcp_listener::get_bootstrap_count ()
@@ -178,18 +178,18 @@ void nano::transport::tcp_listener::dec_realtime_count ()
 	--realtime_count;
 }
 
-void nano::transport::tcp_listener::tcp_server_timeout (std::uintptr_t inner_ptr)
+void nano::transport::tcp_listener::tcp_server_timeout (std::size_t conn_id)
 {
 	if (config->logging.bulk_pull_logging ())
 	{
 		logger->try_log ("Closing incoming tcp / bootstrap server by timeout");
 	}
 	{
-		erase_connection (inner_ptr);
+		erase_connection (conn_id);
 	}
 }
 
-void nano::transport::tcp_listener::tcp_server_exited (nano::transport::socket::type_t type_a, std::uintptr_t inner_ptr_a, nano::tcp_endpoint const & endpoint_a)
+void nano::transport::tcp_listener::tcp_server_exited (nano::transport::socket::type_t type_a, std::size_t conn_id, nano::tcp_endpoint const & endpoint_a)
 {
 	if (config->logging.bulk_pull_logging ())
 	{
@@ -205,7 +205,7 @@ void nano::transport::tcp_listener::tcp_server_exited (nano::transport::socket::
 		// Clear temporary channel
 		tcp_channels->erase_temporary_channel (endpoint_a);
 	}
-	erase_connection (inner_ptr_a);
+	erase_connection (conn_id);
 }
 
 void nano::transport::tcp_listener::accept_action (boost::system::error_code const & ec, std::shared_ptr<nano::transport::socket> const & socket_a)
@@ -226,8 +226,9 @@ void nano::transport::tcp_listener::accept_action (boost::system::error_code con
 		node.bootstrap_initiator,
 		node.node_id,
 		true));
+
 		nano::lock_guard<nano::mutex> lock{ mutex };
-		connections[server->unique_id ()] = nano::tcp_server_weak_wrapper (server);
+		rsnano::rsn_tcp_listener_connections_add (handle, server->handle);
 		server->start ();
 	}
 	else
@@ -256,7 +257,7 @@ boost::asio::ip::tcp::endpoint nano::transport::tcp_listener::endpoint ()
 std::size_t nano::transport::tcp_listener::connections_count ()
 {
 	nano::lock_guard<nano::mutex> guard{ mutex };
-	return connections.size ();
+	return rsnano::rsn_tcp_listener_connections_len (handle);
 }
 
 std::unique_ptr<nano::container_info_component> nano::transport::collect_container_info (nano::transport::tcp_listener & bootstrap_listener, std::string const & name)

@@ -486,7 +486,7 @@ std::size_t bootstrap_observer_bootstrap_count (void * handle_a)
 	return 0;
 }
 
-void bootstrap_observer_exited (void * handle_a, uint8_t socket_type_a, uintptr_t inner_ptr_a, const rsnano::EndpointDto * endpoint_a)
+void bootstrap_observer_exited (void * handle_a, uint8_t socket_type_a, std::size_t conn_id, const rsnano::EndpointDto * endpoint_a)
 {
 	auto weak_observer = static_cast<std::weak_ptr<nano::tcp_server_observer> *> (handle_a);
 	auto observer = weak_observer->lock ();
@@ -494,7 +494,7 @@ void bootstrap_observer_exited (void * handle_a, uint8_t socket_type_a, uintptr_
 		return;
 	auto socket_type = static_cast<nano::transport::socket::type_t> (socket_type_a);
 	auto endpoint = rsnano::dto_to_endpoint (*endpoint_a);
-	observer->tcp_server_exited (socket_type, inner_ptr_a, endpoint);
+	observer->tcp_server_exited (socket_type, conn_id, endpoint);
 }
 
 void bootstrap_observer_inc_bootstrap_count (void * handle_a)
@@ -515,13 +515,13 @@ void bootstrap_observer_inc_realtime_count (void * handle_a)
 	observer->inc_realtime_count ();
 }
 
-void bootstrap_observer_timeout (void * handle_a, uintptr_t inner_ptr_a)
+void bootstrap_observer_timeout (void * handle_a, std::size_t conn_id)
 {
 	auto weak_observer = static_cast<std::weak_ptr<nano::tcp_server_observer> *> (handle_a);
 	auto observer = weak_observer->lock ();
 	if (!observer)
 		return;
-	observer->tcp_server_timeout (inner_ptr_a);
+	observer->tcp_server_timeout (conn_id);
 }
 
 nano::transport::channel_tcp_observer & to_channel_tcp (void * handle_a)

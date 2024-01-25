@@ -1,7 +1,10 @@
-use super::{SynCookies, TcpChannels};
+use super::{SynCookies, TcpChannels, TcpServer};
 use crate::config::NodeConfig;
 use rsnano_core::utils::Logger;
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Weak},
+};
 
 pub struct TcpListener {
     port: u16,
@@ -10,6 +13,7 @@ pub struct TcpListener {
     logger: Arc<dyn Logger>,
     tcp_channels: Arc<TcpChannels>,
     syn_cookies: Arc<SynCookies>,
+    pub connections: HashMap<usize, Weak<TcpServer>>,
 }
 
 impl TcpListener {
@@ -28,6 +32,7 @@ impl TcpListener {
             logger,
             tcp_channels,
             syn_cookies,
+            connections: HashMap::new(),
         }
     }
 }

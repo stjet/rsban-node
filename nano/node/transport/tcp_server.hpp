@@ -35,8 +35,8 @@ namespace transport
 class tcp_server_observer
 {
 public:
-	virtual void tcp_server_timeout (std::uintptr_t inner_ptr) = 0;
-	virtual void tcp_server_exited (nano::transport::socket::type_t type_a, std::uintptr_t inner_ptr, nano::tcp_endpoint const &) = 0;
+	virtual void tcp_server_timeout (std::size_t conn_id) = 0;
+	virtual void tcp_server_exited (nano::transport::socket::type_t type_a, std::size_t conn_id, nano::tcp_endpoint const &) = 0;
 	virtual std::size_t get_bootstrap_count () = 0;
 	virtual void inc_bootstrap_count () = 0;
 	virtual void inc_realtime_count () = 0;
@@ -79,7 +79,6 @@ public:
 	void stop ();
 	void accept_action (boost::system::error_code const &, std::shared_ptr<nano::transport::socket> const &);
 	std::size_t connection_count ();
-	void erase_connection (std::uintptr_t conn_ptr);
 
 	std::size_t get_bootstrap_count () override;
 	void inc_bootstrap_count () override;
@@ -89,14 +88,15 @@ public:
 	void inc_realtime_count () override;
 	void dec_realtime_count ();
 
-	void tcp_server_timeout (std::uintptr_t inner_ptr) override;
-	void tcp_server_exited (nano::transport::socket::type_t type_a, std::uintptr_t inner_ptr_a, nano::tcp_endpoint const & endpoint_a) override;
+	void tcp_server_timeout (std::size_t conn_id) override;
+	void tcp_server_exited (nano::transport::socket::type_t type_a, std::size_t conn_id, nano::tcp_endpoint const & endpoint_a) override;
 	nano::tcp_endpoint endpoint ();
 	std::size_t connections_count ();
 
 private:
+	void erase_connection (std::size_t conn_id);
+
 	nano::mutex mutex;
-	std::unordered_map<std::size_t, tcp_server_weak_wrapper> connections;
 	std::shared_ptr<nano::node_config> config;
 	std::shared_ptr<nano::logger_mt> logger;
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;

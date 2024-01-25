@@ -89,10 +89,12 @@ public:
 
 	void tcp_server_timeout (std::uintptr_t inner_ptr) override;
 	void tcp_server_exited (nano::transport::socket::type_t type_a, std::uintptr_t inner_ptr_a, nano::tcp_endpoint const & endpoint_a) override;
+	nano::tcp_endpoint endpoint ();
+	std::size_t connections_count ();
 
+private:
 	nano::mutex mutex;
 	std::unordered_map<std::size_t, tcp_server_weak_wrapper> connections;
-	nano::tcp_endpoint endpoint ();
 	std::shared_ptr<nano::node_config> config;
 	std::shared_ptr<nano::logger_mt> logger;
 	std::shared_ptr<nano::network> network;
@@ -100,8 +102,6 @@ public:
 	std::shared_ptr<nano::transport::server_socket> listening_socket;
 	bool on{ false };
 	uint16_t port;
-
-private:
 	std::size_t max_inbound_connections;
 	std::atomic<std::size_t> bootstrap_count{ 0 };
 	std::atomic<std::size_t> realtime_count{ 0 };

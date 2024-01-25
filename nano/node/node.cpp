@@ -693,9 +693,9 @@ void nano::node::start ()
 		});
 		tcp_enabled = true;
 
-		if (network->get_port () != tcp_listener->port)
+		if (network->get_port () != tcp_listener->endpoint ().port ())
 		{
-			network->set_port (tcp_listener->port);
+			network->set_port (tcp_listener->endpoint ().port ());
 		}
 
 		logger->always_log (boost::str (boost::format ("Node started with peering port `%1%`.") % network->get_port ()));

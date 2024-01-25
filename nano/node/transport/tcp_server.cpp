@@ -239,6 +239,12 @@ boost::asio::ip::tcp::endpoint nano::transport::tcp_listener::endpoint ()
 	}
 }
 
+std::size_t nano::transport::tcp_listener::connections_count () 
+{
+	nano::lock_guard<nano::mutex> guard {mutex};
+	return connections.size ();
+}
+
 std::unique_ptr<nano::container_info_component> nano::transport::collect_container_info (nano::transport::tcp_listener & bootstrap_listener, std::string const & name)
 {
 	//auto sizeof_element = sizeof (decltype (bootstrap_listener.connections)::value_type);

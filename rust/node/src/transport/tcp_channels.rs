@@ -61,7 +61,7 @@ pub struct TcpChannels {
     pub port: AtomicU16,
     pub stopped: AtomicBool,
     allow_local_peers: bool,
-    tcp_message_manager: Arc<TcpMessageManager>,
+    pub tcp_message_manager: Arc<TcpMessageManager>,
     flags: NodeFlags,
     stats: Arc<Stats>,
     sink: Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>,

@@ -85,7 +85,12 @@ nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_
 	node_a.async_rt.handle,
 	node_a.stats->handle,
 	node_a.bootstrap_workers->handle,
-	new std::weak_ptr<nano::node_observers> (node_a.observers));
+	new std::weak_ptr<nano::node_observers> (node_a.observers),
+	node_a.block_processor.handle,
+	node_a.bootstrap_initiator.handle,
+	node_a.ledger.handle,
+	node_a.node_id.prv.bytes.data()
+	);
 }
 
 nano::transport::tcp_listener::~tcp_listener ()

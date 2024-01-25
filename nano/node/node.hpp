@@ -158,7 +158,6 @@ public:
 	std::shared_ptr<nano::telemetry> telemetry;
 	nano::bootstrap_initiator bootstrap_initiator;
 	nano::bootstrap_server bootstrap_server;
-	std::shared_ptr<nano::transport::tcp_listener> tcp_listener;
 	std::filesystem::path application_path;
 	nano::port_mapping port_mapping;
 	nano::online_reps online_reps; // ported
@@ -177,6 +176,7 @@ public:
 	nano::vote_generator final_generator;
 	nano::block_processor block_processor;
 	nano::active_transactions active;
+	std::shared_ptr<nano::transport::tcp_listener> tcp_listener;
 
 private: // Placed here to maintain initialization order
 	std::unique_ptr<nano::scheduler::component> scheduler_impl;

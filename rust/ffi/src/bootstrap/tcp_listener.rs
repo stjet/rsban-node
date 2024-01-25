@@ -1,13 +1,16 @@
-use super::TcpServerHandle;
+use super::{BootstrapInitiatorHandle, TcpServerHandle};
 use crate::{
+    block_processing::BlockProcessorHandle,
+    ledger::datastore::LedgerHandle,
     transport::{
         EndpointDto, SocketFfiObserver, SocketHandle, SynCookiesHandle, TcpChannelsHandle,
+        TcpMessageManagerHandle,
     },
     utils::{AsyncRuntimeHandle, ContextWrapper, LoggerHandle, LoggerMT, ThreadPoolHandle},
     ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
     VoidPointerCallback,
 };
-use rsnano_core::utils::Logger;
+use rsnano_core::{utils::Logger, KeyPair};
 use rsnano_node::{
     transport::{Socket, TcpListener},
     utils::ErrorCode,
@@ -30,9 +33,16 @@ pub unsafe extern "C" fn rsn_tcp_listener_create(
     stats: &StatHandle,
     workers: &ThreadPoolHandle,
     callback_handler: *mut c_void,
+    block_processor: &BlockProcessorHandle,
+    bootstrap_initiator: &BootstrapInitiatorHandle,
+    ledger: &LedgerHandle,
+    node_id_prv: *const u8,
 ) -> *mut TcpListenerHandle {
     let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
+    let node_id = Arc::new(
+        KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(node_id_prv, 32)).unwrap(),
+    );
     Box::into_raw(Box::new(TcpListenerHandle(TcpListener::new(
         port,
         max_inbound_connections,
@@ -46,6 +56,10 @@ pub unsafe extern "C" fn rsn_tcp_listener_create(
         ffi_observer,
         Arc::clone(stats),
         Arc::clone(workers),
+        Arc::clone(block_processor),
+        Arc::clone(bootstrap_initiator),
+        Arc::clone(ledger),
+        node_id,
     ))))
 }
 

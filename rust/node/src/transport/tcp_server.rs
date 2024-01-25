@@ -22,11 +22,11 @@ use std::{
 use tokio::task::spawn_blocking;
 
 pub trait TcpServerObserver: Send + Sync {
-    fn bootstrap_server_timeout(&self, inner_ptr: usize);
+    fn bootstrap_server_timeout(&self, connection_id: usize);
     fn boostrap_server_exited(
         &self,
         socket_type: SocketType,
-        unique_id: usize,
+        connection_id: usize,
         endpoint: SocketAddrV6,
     );
     fn get_bootstrap_count(&self) -> usize;

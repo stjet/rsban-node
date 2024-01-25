@@ -58,6 +58,10 @@ impl Logging {
         self.network_logging_value && self.network_node_id_handshake_logging_value
     }
 
+    pub fn network_rejected_logging(&self) -> bool {
+        self.network_logging_value && self.network_rejected_logging_value
+    }
+
     pub fn ledger_duplicate_logging(&self) -> bool {
         self.ledger_logging_value && self.ledger_duplicate_logging_value
     }

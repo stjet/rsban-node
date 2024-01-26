@@ -1,15 +1,14 @@
 use super::{
-    CompositeSocketObserver, EndpointType, ServerSocket, ServerSocketExtensions, Socket,
-    SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpServer,
-    TcpServerExt, TcpServerObserver, TcpSocketFacadeFactory, TokioSocketFacade,
-    TokioSocketFacadeFactory,
+    CompositeSocketObserver, EndpointType, ServerSocket, Socket, SocketBuilder, SocketExtensions,
+    SocketObserver, SynCookies, TcpChannels, TcpServer, TcpServerExt, TcpServerObserver,
+    TcpSocketFacadeFactory, TokioSocketFacade, TokioSocketFacadeFactory,
 };
 use crate::{
     block_processing::BlockProcessor,
     bootstrap::{BootstrapInitiator, BootstrapMessageVisitorFactory},
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
-    utils::{first_ipv6_subnet_address, AsyncRuntime, ErrorCode, ThreadPool},
+    utils::{first_ipv6_subnet_address, is_ipv4_mapped, AsyncRuntime, ErrorCode, ThreadPool},
     NetworkParams,
 };
 use rsnano_core::{utils::Logger, KeyPair};
@@ -126,7 +125,13 @@ impl TcpListener {
             std::mem::swap(&mut conns, &mut guard.connections);
 
             if let Some(socket) = guard.listening_socket.take() {
-                socket.close();
+                socket.socket.close_internal();
+                socket.socket_facade.close_acceptor();
+                socket
+                    .connections_per_address
+                    .lock()
+                    .unwrap()
+                    .close_connections();
             }
         }
     }
@@ -152,6 +157,58 @@ impl TcpListener {
     fn remove_connection(&self, connection_id: usize) {
         let mut data = self.data.lock().unwrap();
         data.connections.remove(&connection_id);
+    }
+
+    fn limit_reached_for_incoming_subnetwork_connections(
+        &self,
+        new_connection: &Arc<Socket>,
+    ) -> bool {
+        let endpoint = new_connection
+            .get_remote()
+            .expect("new connection has no remote endpoint set");
+        if self.node_flags.disable_max_peers_per_subnetwork || is_ipv4_mapped(&endpoint.ip()) {
+            // If the limit is disabled, then it is unreachable.
+            // If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6 /64.
+            return false;
+        }
+
+        let guard = self.data.lock().unwrap();
+        let Some(socket) = &guard.listening_socket else {
+            return false;
+        };
+
+        let counted_connections = socket
+            .connections_per_address
+            .lock()
+            .unwrap()
+            .count_subnetwork_connections(
+                endpoint.ip(),
+                self.network_params
+                    .network
+                    .ipv6_subnetwork_prefix_for_limiting,
+            );
+
+        counted_connections >= self.network_params.network.max_peers_per_subnetwork
+    }
+
+    fn limit_reached_for_incoming_ip_connections(&self, new_connection: &Arc<Socket>) -> bool {
+        if self.node_flags.disable_max_peers_per_ip {
+            return false;
+        }
+
+        let guard = self.data.lock().unwrap();
+        let Some(socket) = &guard.listening_socket else {
+            return false;
+        };
+
+        let ip = new_connection.get_remote().unwrap().ip().clone();
+        let counted_connections = socket
+            .connections_per_address
+            .lock()
+            .unwrap()
+            .count_connections_for_ip(&ip);
+
+        counted_connections >= self.network_params.network.max_peers_per_ip
     }
 }
 
@@ -336,7 +393,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                         return;
                     }
 
-                    if socket_l.limit_reached_for_incoming_ip_connections (&connection_clone) {
+                    if this_clone.limit_reached_for_incoming_ip_connections (&connection_clone) {
                         let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
                         let log_message = format!("Network: max connections per IP (max_peers_per_ip) was reached for {}, unable to open new connection", remote_ip_address);
                         socket_l.logger.try_log(&log_message);
@@ -345,7 +402,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                         return;
                     }
 
-                    if socket_l.limit_reached_for_incoming_subnetwork_connections (&connection_clone) {
+                    if this_clone.limit_reached_for_incoming_subnetwork_connections (&connection_clone) {
                         let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
                         let remote_subnet = first_ipv6_subnet_address(&remote_ip_address, socket_l.network_params.network.max_peers_per_subnetwork as u8);
                         let log_message = format!("Network: max connections per subnetwork (max_peers_per_subnetwork) was reached for subnetwork {} (remote IP: {}), unable to open new connection",

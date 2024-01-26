@@ -115,7 +115,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_create(
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_channels_set_port(handle: &mut TcpChannelsHandle, port: u16) {
-    handle.0.port.store(port, Ordering::SeqCst)
+    handle.set_port(port)
 }
 
 pub type NewChannelCallback = unsafe extern "C" fn(*mut c_void, *mut ChannelHandle);
@@ -146,29 +146,22 @@ pub unsafe extern "C" fn rsn_tcp_channels_destroy(handle: *mut TcpChannelsHandle
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_purge(handle: *mut TcpChannelsHandle, cutoff_ns: u64) {
+pub extern "C" fn rsn_tcp_channels_purge(handle: &TcpChannelsHandle, cutoff_ns: u64) {
     let cutoff = system_time_from_nanoseconds(cutoff_ns);
-    let mut guard = (*handle).0.tcp_channels.lock().unwrap();
-    guard.purge(cutoff)
+    handle.purge(cutoff);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_erase_channel_by_endpoint(
+pub extern "C" fn rsn_tcp_channels_erase_channel_by_endpoint(
     handle: &mut TcpChannelsHandle,
     endpoint: &EndpointDto,
 ) {
-    handle
-        .0
-        .tcp_channels
-        .lock()
-        .unwrap()
-        .channels
-        .remove_by_endpoint(&SocketAddrV6::from(endpoint));
+    handle.erase_channel_by_endpoint(&SocketAddrV6::from(endpoint));
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_channels_channel_count(handle: &mut TcpChannelsHandle) -> usize {
-    handle.0.tcp_channels.lock().unwrap().channels.len()
+    handle.count()
 }
 
 #[no_mangle]
@@ -176,8 +169,7 @@ pub extern "C" fn rsn_tcp_channels_bootstrap_peer(
     handle: &mut TcpChannelsHandle,
     result: &mut EndpointDto,
 ) {
-    let peer = handle.0.tcp_channels.lock().unwrap().bootstrap_peer();
-    *result = peer.into();
+    *result = handle.bootstrap_peer().into();
 }
 
 #[no_mangle]
@@ -186,12 +178,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_list_channels(
     min_version: u8,
     include_temporary_channels: bool,
 ) -> *mut ChannelListHandle {
-    let channels = handle
-        .0
-        .tcp_channels
-        .lock()
-        .unwrap()
-        .list(min_version, include_temporary_channels);
+    let channels = handle.list_channels(min_version, include_temporary_channels);
     Box::into_raw(Box::new(ChannelListHandle(channels)))
 }
 
@@ -200,12 +187,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_update_channel(
     handle: &mut TcpChannelsHandle,
     endpoint: &EndpointDto,
 ) {
-    handle
-        .0
-        .tcp_channels
-        .lock()
-        .unwrap()
-        .update(&endpoint.into())
+    handle.update_channel(&endpoint.into())
 }
 
 #[no_mangle]
@@ -214,12 +196,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_set_last_packet_sent(
     endpoint: &EndpointDto,
     time_ns: u64,
 ) {
-    handle
-        .0
-        .tcp_channels
-        .lock()
-        .unwrap()
-        .set_last_packet_sent(&endpoint.into(), system_time_from_nanoseconds(time_ns));
+    handle.set_last_packet_sent(&endpoint.into(), system_time_from_nanoseconds(time_ns));
 }
 
 #[no_mangle]
@@ -228,7 +205,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_not_a_peer(
     endpoint: &EndpointDto,
     allow_local_peers: bool,
 ) -> bool {
-    handle.0.not_a_peer(&endpoint.into(), allow_local_peers)
+    handle.not_a_peer(&endpoint.into(), allow_local_peers)
 }
 
 #[no_mangle]
@@ -236,7 +213,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_find_channel(
     handle: &mut TcpChannelsHandle,
     endpoint: &EndpointDto,
 ) -> *mut ChannelHandle {
-    match handle.0.find_channel(&endpoint.into()) {
+    match handle.find_channel(&endpoint.into()) {
         Some(channel) => ChannelHandle::new(channel),
         None => std::ptr::null_mut(),
     }
@@ -248,9 +225,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_random_channels(
     min_version: u8,
     include_temporary_channels: bool,
 ) -> *mut ChannelListHandle {
-    let channels = handle
-        .0
-        .random_channels(count, min_version, include_temporary_channels);
+    let channels = handle.random_channels(count, min_version, include_temporary_channels);
     Box::into_raw(Box::new(ChannelListHandle(channels)))
 }
 
@@ -258,7 +233,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_random_channels(
 pub unsafe extern "C" fn rsn_tcp_channels_get_peers(
     handle: &mut TcpChannelsHandle,
 ) -> *mut EndpointListHandle {
-    let peers = handle.0.get_peers();
+    let peers = handle.get_peers();
     Box::into_raw(Box::new(EndpointListHandle(peers)))
 }
 
@@ -266,7 +241,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_get_peers(
 pub unsafe extern "C" fn rsn_tcp_channels_get_first_channel(
     handle: &mut TcpChannelsHandle,
 ) -> *mut ChannelHandle {
-    ChannelHandle::new(handle.0.get_first_channel().unwrap())
+    ChannelHandle::new(handle.get_first_channel().unwrap())
 }
 
 #[no_mangle]
@@ -275,7 +250,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_find_node_id(
     node_id: *const u8,
 ) -> *mut ChannelHandle {
     let node_id = PublicKey::from_ptr(node_id);
-    match handle.0.find_node_id(&node_id) {
+    match handle.find_node_id(&node_id) {
         Some(channel) => ChannelHandle::new(channel),
         None => std::ptr::null_mut(),
     }
@@ -286,9 +261,8 @@ pub unsafe extern "C" fn rsn_tcp_channels_collect_container_info(
     handle: &TcpChannelsHandle,
     name: *const c_char,
 ) -> *mut ContainerInfoComponentHandle {
-    let container_info = (*handle)
-        .0
-        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
+    let container_info =
+        (*handle).collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
     Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }
 
@@ -297,7 +271,7 @@ pub extern "C" fn rsn_tcp_channels_erase_temporary_channel(
     handle: &TcpChannelsHandle,
     endpoint: &EndpointDto,
 ) {
-    handle.0.erase_temporary_channel(&endpoint.into())
+    handle.erase_temporary_channel(&endpoint.into())
 }
 
 #[no_mangle]
@@ -308,7 +282,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_random_fill(
     let endpoints = std::slice::from_raw_parts_mut(endpoints, 8);
     let null_endpoint = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0);
     let mut tmp = [null_endpoint; 8];
-    handle.0.random_fill(&mut tmp);
+    handle.random_fill(&mut tmp);
     endpoints
         .iter_mut()
         .zip(&tmp)
@@ -321,7 +295,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_set_observer(
     observer: &TcpListenerHandle,
 ) {
     let observer: Arc<TcpListener> = Arc::clone(observer);
-    handle.0.set_observer(observer);
+    handle.set_observer(observer);
 }
 
 #[no_mangle]
@@ -329,19 +303,17 @@ pub unsafe extern "C" fn rsn_tcp_channels_set_message_visitor(
     handle: &mut TcpChannelsHandle,
     visitor_factory: &RequestResponseVisitorFactoryHandle,
 ) {
-    handle
-        .0
-        .set_message_visitor_factory(visitor_factory.0.clone())
+    handle.set_message_visitor_factory(visitor_factory.0.clone())
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_get_next_channel_id(handle: &TcpChannelsHandle) -> usize {
-    handle.0.get_next_channel_id()
+    handle.get_next_channel_id()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_process_messages(handle: &TcpChannelsHandle) {
-    handle.0.process_messages();
+    handle.process_messages();
 }
 
 #[no_mangle]
@@ -349,21 +321,19 @@ pub unsafe extern "C" fn rsn_tcp_channels_reachout(
     handle: &TcpChannelsHandle,
     endpoint: &EndpointDto,
 ) -> bool {
-    handle.0.reachout(&endpoint.into())
+    handle.reachout(&endpoint.into())
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_excluded_peers(
     handle: &TcpChannelsHandle,
 ) -> *mut PeerExclusionHandle {
-    Box::into_raw(Box::new(PeerExclusionHandle(
-        handle.0.excluded_peers.clone(),
-    )))
+    Box::into_raw(Box::new(PeerExclusionHandle(handle.excluded_peers.clone())))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_ongoing_keepalive(handle: &TcpChannelsHandle) {
-    handle.0.ongoing_keepalive()
+    handle.ongoing_keepalive()
 }
 
 #[no_mangle]
@@ -371,7 +341,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_start_tcp(
     handle: &TcpChannelsHandle,
     endpoint: &EndpointDto,
 ) {
-    handle.0.start_tcp(endpoint.into());
+    handle.start_tcp(endpoint.into());
 }
 
 #[no_mangle]

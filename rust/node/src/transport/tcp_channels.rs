@@ -1,23 +1,10 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    hash::Hash,
-    mem::size_of,
-    net::{Ipv6Addr, SocketAddrV6},
-    sync::{
-        atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
-        Arc, Mutex, Weak,
-    },
-    time::{Duration, SystemTime},
+use super::{
+    BufferDropPolicy, ChannelEnum, ChannelTcp, ChannelTcpObserver, CompositeSocketObserver,
+    EndpointType, IChannelTcpObserverWeakPtr, MessageDeserializer, NetworkFilter,
+    NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket, SocketBuilder,
+    SocketExtensions, SocketObserver, SynCookies, TcpMessageManager, TcpServer, TcpServerFactory,
+    TcpServerObserver, TrafficType,
 };
-
-use rand::{seq::SliceRandom, thread_rng};
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, Logger},
-    KeyPair, PublicKey,
-};
-use rsnano_messages::*;
-use tokio::task::spawn_blocking;
-
 use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
     config::{NetworkConstants, NodeConfig, NodeFlags},
@@ -29,14 +16,24 @@ use crate::{
     },
     NetworkParams,
 };
-
-use super::{
-    message_deserializer::MessageDeserializer, BufferDropPolicy, ChannelEnum, ChannelTcp,
-    ChannelTcpObserver, CompositeSocketObserver, EndpointType, IChannelTcpObserverWeakPtr,
-    NetworkFilter, NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket,
-    SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpMessageManager, TcpServer,
-    TcpServerFactory, TcpServerObserver, TrafficType,
+use rand::{seq::SliceRandom, thread_rng};
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent, Logger},
+    KeyPair, PublicKey,
 };
+use rsnano_messages::*;
+use std::{
+    collections::{BTreeMap, HashMap},
+    hash::Hash,
+    mem::size_of,
+    net::{Ipv6Addr, SocketAddrV6},
+    sync::{
+        atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
+        Arc, Mutex, Weak,
+    },
+    time::{Duration, SystemTime},
+};
+use tokio::task::spawn_blocking;
 
 pub struct TcpChannelsOptions {
     pub node_config: NodeConfig,
@@ -57,9 +54,9 @@ pub struct TcpChannelsOptions {
 }
 
 pub struct TcpChannels {
-    pub tcp_channels: Mutex<TcpChannelsImpl>,
-    pub port: AtomicU16,
-    pub stopped: AtomicBool,
+    tcp_channels: Mutex<TcpChannelsImpl>,
+    port: AtomicU16,
+    stopped: AtomicBool,
     allow_local_peers: bool,
     pub tcp_message_manager: Arc<TcpMessageManager>,
     flags: NodeFlags,
@@ -72,7 +69,7 @@ pub struct TcpChannels {
     async_rt: Weak<AsyncRuntime>,
     node_config: Arc<NodeConfig>,
     logger: Arc<dyn Logger>,
-    pub node_id: KeyPair,
+    node_id: KeyPair,
     syn_cookies: Arc<SynCookies>,
     workers: Arc<dyn ThreadPool>,
     pub publish_filter: Arc<NetworkFilter>,
@@ -428,6 +425,53 @@ impl TcpChannels {
 
     pub fn fanout(&self, scale: f32) -> usize {
         self.tcp_channels.lock().unwrap().fanout(scale)
+    }
+
+    pub fn purge(&self, cutoff: SystemTime) {
+        let mut guard = self.tcp_channels.lock().unwrap();
+        guard.purge(cutoff);
+    }
+
+    pub fn erase_channel_by_endpoint(&self, endpoint: &SocketAddrV6) {
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .channels
+            .remove_by_endpoint(endpoint);
+    }
+
+    pub fn count(&self) -> usize {
+        self.tcp_channels.lock().unwrap().channels.len()
+    }
+
+    pub fn bootstrap_peer(&self) -> SocketAddrV6 {
+        self.tcp_channels.lock().unwrap().bootstrap_peer()
+    }
+
+    pub fn list_channels(
+        &self,
+        min_version: u8,
+        include_temporary_channels: bool,
+    ) -> Vec<Arc<ChannelEnum>> {
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .list(min_version, include_temporary_channels)
+    }
+
+    pub fn update_channel(&self, endpoint: &SocketAddrV6) {
+        self.tcp_channels.lock().unwrap().update(endpoint);
+    }
+
+    pub fn set_last_packet_sent(&self, endpoint: &SocketAddrV6, time: SystemTime) {
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .set_last_packet_sent(endpoint, time);
+    }
+
+    pub fn set_port(&self, port: u16) {
+        self.port.store(port, Ordering::SeqCst);
     }
 }
 

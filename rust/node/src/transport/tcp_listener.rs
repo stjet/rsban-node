@@ -188,14 +188,7 @@ impl TcpListener {
         }
     }
 
-    pub fn add_connection(&self, conn: &Arc<TcpServer>) {
-        let mut data = self.data.lock().unwrap();
-        data.connections
-            .insert(conn.unique_id(), Arc::downgrade(conn));
-        conn.start();
-    }
-
-    pub fn remove_connection(&self, connection_id: usize) {
+    fn remove_connection(&self, connection_id: usize) {
         let mut data = self.data.lock().unwrap();
         data.connections.remove(&connection_id);
     }

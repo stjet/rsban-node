@@ -103,31 +103,6 @@ pub extern "C" fn rsn_tcp_listener_accept_action(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_tcp_listener_bootstrap_count(handle: &TcpListenerHandle) -> usize {
-    handle.0.get_bootstrap_count()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_listener_bootstrap_count_inc(handle: &TcpListenerHandle) {
-    handle.0.inc_bootstrap_count()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_listener_bootstrap_count_dec(handle: &TcpListenerHandle) {
-    handle.0.dec_bootstrap_count()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_listener_realtime_count_inc(handle: &TcpListenerHandle) {
-    handle.0.inc_realtime_count()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_listener_realtime_count_dec(handle: &TcpListenerHandle) {
-    handle.0.dec_realtime_count()
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_tcp_listener_realtime_count(handle: &TcpListenerHandle) -> usize {
     handle.0.get_realtime_count()
 }
@@ -145,20 +120,4 @@ pub extern "C" fn rsn_tcp_listener_connection_count(handle: &TcpListenerHandle) 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_listener_endpoint(handle: &TcpListenerHandle, result: &mut EndpointDto) {
     *result = handle.0.endpoint().into()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_listener_connections_erase(
-    handle: &mut TcpListenerHandle,
-    conn_id: usize,
-) {
-    handle.0.remove_connection(conn_id);
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_listener_connections_add(
-    handle: &mut TcpListenerHandle,
-    connection: &TcpServerHandle,
-) {
-    handle.0.add_connection(connection);
 }

@@ -126,7 +126,7 @@ impl TcpListener {
 
             if let Some(socket) = guard.listening_socket.take() {
                 socket.socket.close_internal();
-                socket.socket_facade.close_acceptor();
+                self.socket_facade.close_acceptor();
                 socket
                     .connections_per_address
                     .lock()
@@ -276,18 +276,7 @@ impl TcpListenerExt for Arc<TcpListener> {
 
         let listening_socket = Arc::new(ServerSocket {
             socket,
-            socket_facade: Arc::clone(&self.socket_facade),
             connections_per_address: Mutex::new(Default::default()),
-            node_flags: self.node_flags.clone(),
-            network_params: self.network_params.clone(),
-            workers: Arc::clone(&self.workers),
-            logger: Arc::clone(&self.logger),
-            tcp_socket_facade_factory: Arc::clone(&self.tcp_socket_facade_factory),
-            node_config: self.config.clone(),
-            stats: Arc::clone(&self.stats),
-            socket_observer: Arc::downgrade(&self.socket_observer),
-            max_inbound_connections: self.max_inbound_connections,
-            runtime: Arc::downgrade(&self.runtime),
         });
 
         let ec = self.socket_facade.open(&SocketAddr::new(
@@ -386,9 +375,9 @@ impl TcpListenerExt for Arc<TcpListener> {
                     data.evict_dead_connections();
                     drop(data);
 
-                    if socket_l.connections_per_address.lock().unwrap().count_connections() >= socket_l.max_inbound_connections {
-                        socket_l.logger.try_log ("Network: max_inbound_connections reached, unable to open new connection");
-                        socket_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
+                    if socket_l.connections_per_address.lock().unwrap().count_connections() >= this_clone.max_inbound_connections {
+                        this_clone.logger.try_log ("Network: max_inbound_connections reached, unable to open new connection");
+                        this_clone.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
                         this_clone.on_connection_requeue_delayed (callback);
                         return;
                     }
@@ -396,19 +385,19 @@ impl TcpListenerExt for Arc<TcpListener> {
                     if this_clone.limit_reached_for_incoming_ip_connections (&connection_clone) {
                         let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
                         let log_message = format!("Network: max connections per IP (max_peers_per_ip) was reached for {}, unable to open new connection", remote_ip_address);
-                        socket_l.logger.try_log(&log_message);
-                        socket_l.stats.inc (StatType::Tcp, DetailType::TcpMaxPerIp, Direction::In);
+                        this_clone.logger.try_log(&log_message);
+                        this_clone.stats.inc (StatType::Tcp, DetailType::TcpMaxPerIp, Direction::In);
                         this_clone.on_connection_requeue_delayed (callback);
                         return;
                     }
 
                     if this_clone.limit_reached_for_incoming_subnetwork_connections (&connection_clone) {
                         let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
-                        let remote_subnet = first_ipv6_subnet_address(&remote_ip_address, socket_l.network_params.network.max_peers_per_subnetwork as u8);
+                        let remote_subnet = first_ipv6_subnet_address(&remote_ip_address, this_clone.network_params.network.max_peers_per_subnetwork as u8);
                         let log_message = format!("Network: max connections per subnetwork (max_peers_per_subnetwork) was reached for subnetwork {} (remote IP: {}), unable to open new connection",
                             remote_subnet, remote_ip_address);
-                        socket_l.logger.try_log(&log_message);
-                        socket_l.stats.inc(StatType::Tcp, DetailType::TcpMaxPerSubnetwork, Direction::In);
+                        this_clone.logger.try_log(&log_message);
+                        this_clone.stats.inc(StatType::Tcp, DetailType::TcpMaxPerSubnetwork, Direction::In);
                         this_clone.on_connection_requeue_delayed (callback);
                         return;
                     }
@@ -416,24 +405,22 @@ impl TcpListenerExt for Arc<TcpListener> {
                     				// Make sure the new connection doesn't idle. Note that in most cases, the callback is going to start
                     				// an IO operation immediately, which will start a timer.
                     				connection_clone.start ();
-                    				connection_clone.set_timeout (Duration::from_secs(socket_l.network_params.network.idle_timeout_s as u64));
-                    				socket_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptSuccess, Direction::In);
+                    				connection_clone.set_timeout (Duration::from_secs(this_clone.network_params.network.idle_timeout_s as u64));
+                    				this_clone.stats.inc (StatType::Tcp, DetailType::TcpAcceptSuccess, Direction::In);
                                     socket_l.connections_per_address.lock().unwrap().insert(&connection_clone);
-                                    if let Some(observer) = socket_l.socket_observer.upgrade(){
-                    				    observer.socket_accepted(Arc::clone(&connection_clone));
-                                    }
+                                    this_clone.socket_observer.socket_accepted(Arc::clone(&connection_clone));
                     				if callback (connection_clone, ec)
                     				{
                     					this_clone.on_connection (callback);
                     					return;
                     				}
-                    				socket_l.logger.always_log ("Network: Stopping to accept connections");
+                    				this_clone.logger.always_log ("Network: Stopping to accept connections");
                     				return;
                    			}
 
                     			// accept error
-                    			socket_l.logger.try_log (&format!("Network: Unable to accept connection: {:?}", ec));
-                    			socket_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
+                    			this_clone.logger.try_log (&format!("Network: Unable to accept connection: {:?}", ec));
+                    			this_clone.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
 
                     			if is_temporary_error (ec)
                     			{
@@ -450,7 +437,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                     			}
 
                     			// No requeue if we reach here, no incoming socket connections will be handled
-                    			socket_l.logger.always_log ("Network: Stopping to accept connections");
+                    			this_clone.logger.always_log ("Network: Stopping to accept connections");
                 }),
             );
         }));

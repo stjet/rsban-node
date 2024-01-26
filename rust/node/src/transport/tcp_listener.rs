@@ -1,13 +1,14 @@
 use super::{
-    ServerSocket, ServerSocketExtensions, Socket, SocketExtensions, SocketObserver, SynCookies,
-    TcpChannels, TcpServer, TcpServerExt, TcpServerObserver, TcpSocketFacadeFactory,
-    TokioSocketFacade, TokioSocketFacadeFactory,
+    CompositeSocketObserver, EndpointType, ServerSocket, ServerSocketExtensions, Socket,
+    SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpServer,
+    TcpServerExt, TcpServerObserver, TcpSocketFacadeFactory, TokioSocketFacade,
+    TokioSocketFacadeFactory,
 };
 use crate::{
     block_processing::BlockProcessor,
     bootstrap::{BootstrapInitiator, BootstrapMessageVisitorFactory},
     config::{NodeConfig, NodeFlags},
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{DetailType, Direction, SocketStats, StatType, Stats},
     utils::{AsyncRuntime, ErrorCode, ThreadPool},
     NetworkParams,
 };
@@ -20,6 +21,7 @@ use std::{
         atomic::{AtomicU16, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
     },
+    time::Duration,
 };
 
 pub struct TcpListener {
@@ -102,61 +104,6 @@ impl TcpListener {
         }
     }
 
-    pub fn start(
-        &self,
-        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
-    ) -> anyhow::Result<()> {
-        let mut data = self.data.lock().unwrap();
-        data.on = true;
-        let listening_socket = Arc::new(ServerSocket::new(
-            Arc::clone(&self.socket_facade),
-            self.node_flags.clone(),
-            self.network_params.clone(),
-            Arc::clone(&self.workers),
-            Arc::clone(&self.logger),
-            Arc::clone(&self.tcp_socket_facade_factory),
-            self.config.clone(),
-            Arc::clone(&self.stats),
-            Arc::clone(&self.socket_observer),
-            self.max_inbound_connections,
-            SocketAddr::new(
-                IpAddr::V6(Ipv6Addr::UNSPECIFIED),
-                self.port.load(Ordering::SeqCst),
-            ),
-            Arc::downgrade(&self.runtime),
-        ));
-        let ec = listening_socket.start();
-        if ec.is_err() {
-            self.logger.always_log(&format!(
-                "Network: Error while binding for incoming TCP/bootstrap on port {}: {:?}",
-                listening_socket.listening_port(),
-                ec
-            ));
-            bail!("Network: Error while binding for incoming TCP/bootstrap");
-        }
-
-        // the user can either specify a port value in the config or it can leave the choice up to the OS:
-        // (1): port specified
-        // (2): port not specified
-        let listening_port = listening_socket.listening_port();
-
-        // (1) -- nothing to do
-        //
-        if self.port.load(Ordering::SeqCst) == listening_port {
-        }
-        // (2) -- OS port choice happened at TCP socket bind time, so propagate this port value back;
-        // the propagation is done here for the `tcp_listener` itself, whereas for `network`, the node does it
-        // after calling `tcp_listener.start ()`
-        //
-        else {
-            self.port.store(listening_port, Ordering::SeqCst);
-        }
-
-        listening_socket.on_connection(callback);
-        data.listening_socket = Some(listening_socket);
-        Ok(())
-    }
-
     pub fn stop(&self) {
         let mut conns = HashMap::new();
         {
@@ -195,10 +142,97 @@ impl TcpListener {
 }
 
 pub trait TcpListenerExt {
+    fn start(
+        &self,
+        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
+    ) -> anyhow::Result<()>;
     fn accept_action(&self, ec: ErrorCode, socket: Arc<Socket>);
 }
 
 impl TcpListenerExt for Arc<TcpListener> {
+    fn start(
+        &self,
+        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
+    ) -> anyhow::Result<()> {
+        let mut data = self.data.lock().unwrap();
+        data.on = true;
+
+        let socket_stats = Arc::new(SocketStats::new(
+            Arc::clone(&self.stats),
+            Arc::clone(&self.logger),
+            self.config.logging.network_timeout_logging(),
+        ));
+
+        let socket = SocketBuilder::endpoint_type(
+            EndpointType::Server,
+            Arc::clone(&self.workers),
+            Arc::downgrade(&self.runtime),
+        )
+        .default_timeout(Duration::MAX)
+        .silent_connection_tolerance_time(Duration::from_secs(
+            self.network_params
+                .network
+                .silent_connection_tolerance_time_s as u64,
+        ))
+        .idle_timeout(Duration::from_secs(
+            self.network_params.network.idle_timeout_s as u64,
+        ))
+        .observer(Arc::new(CompositeSocketObserver::new(vec![
+            socket_stats,
+            Arc::clone(&self.socket_observer),
+        ])))
+        .build();
+
+        let listening_socket = Arc::new(ServerSocket {
+            socket,
+            socket_facade: Arc::clone(&self.socket_facade),
+            connections_per_address: Mutex::new(Default::default()),
+            node_flags: self.node_flags.clone(),
+            network_params: self.network_params.clone(),
+            workers: Arc::clone(&self.workers),
+            logger: Arc::clone(&self.logger),
+            tcp_socket_facade_factory: Arc::clone(&self.tcp_socket_facade_factory),
+            node_config: self.config.clone(),
+            stats: Arc::clone(&self.stats),
+            socket_observer: Arc::downgrade(&self.socket_observer),
+            max_inbound_connections: self.max_inbound_connections,
+            runtime: Arc::downgrade(&self.runtime),
+        });
+
+        let ec = self.socket_facade.open(&SocketAddr::new(
+            IpAddr::V6(Ipv6Addr::UNSPECIFIED),
+            self.port.load(Ordering::SeqCst),
+        ));
+        let listening_port = self.socket_facade.listening_port();
+        if ec.is_err() {
+            self.logger.always_log(&format!(
+                "Network: Error while binding for incoming TCP/bootstrap on port {}: {:?}",
+                listening_port, ec
+            ));
+            bail!("Network: Error while binding for incoming TCP/bootstrap");
+        }
+
+        // the user can either specify a port value in the config or it can leave the choice up to the OS:
+        // (1): port specified
+        // (2): port not specified
+
+        // (1) -- nothing to do
+        //
+        if self.port.load(Ordering::SeqCst) == listening_port {
+        }
+        // (2) -- OS port choice happened at TCP socket bind time, so propagate this port value back;
+        // the propagation is done here for the `tcp_listener` itself, whereas for `network`, the node does it
+        // after calling `tcp_listener.start ()`
+        //
+        else {
+            self.port.store(listening_port, Ordering::SeqCst);
+        }
+
+        listening_socket.on_connection(callback);
+        data.listening_socket = Some(listening_socket);
+        Ok(())
+    }
+
     fn accept_action(&self, _ec: ErrorCode, socket: Arc<Socket>) {
         let Some(remote) = socket.get_remote() else {
             return;

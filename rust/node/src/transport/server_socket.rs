@@ -1,12 +1,7 @@
-use std::{
-    collections::BTreeMap,
-    net::{Ipv6Addr, SocketAddr},
-    sync::{Arc, Mutex, Weak},
-    time::Duration,
+use super::{
+    CompositeSocketObserver, EndpointType, Socket, SocketBuilder, SocketExtensions, SocketObserver,
+    TcpSocketFacadeFactory, TokioSocketFacade,
 };
-
-use rsnano_core::utils::Logger;
-
 use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
@@ -16,87 +11,31 @@ use crate::{
     },
     NetworkParams,
 };
-
-use super::{
-    CompositeSocketObserver, EndpointType, Socket, SocketBuilder, SocketExtensions, SocketObserver,
-    TcpSocketFacadeFactory, TokioSocketFacade,
+use rsnano_core::utils::Logger;
+use std::{
+    collections::BTreeMap,
+    net::{Ipv6Addr, SocketAddr},
+    sync::{Arc, Mutex, Weak},
+    time::Duration,
 };
 
 pub struct ServerSocket {
-    socket: Arc<Socket>,
-    socket_facade: Arc<TokioSocketFacade>,
-    connections_per_address: Mutex<ConnectionsPerAddress>,
-    node_flags: NodeFlags,
-    network_params: NetworkParams,
-    workers: Arc<dyn ThreadPool>,
-    logger: Arc<dyn Logger>,
-    tcp_socket_facade_factory: Arc<dyn TcpSocketFacadeFactory>,
-    node_config: NodeConfig,
-    stats: Arc<Stats>,
-    socket_observer: Weak<dyn SocketObserver>,
-    max_inbound_connections: usize,
-    local: SocketAddr,
-    runtime: Weak<AsyncRuntime>,
+    pub socket: Arc<Socket>,
+    pub socket_facade: Arc<TokioSocketFacade>,
+    pub connections_per_address: Mutex<ConnectionsPerAddress>,
+    pub node_flags: NodeFlags,
+    pub network_params: NetworkParams,
+    pub workers: Arc<dyn ThreadPool>,
+    pub logger: Arc<dyn Logger>,
+    pub tcp_socket_facade_factory: Arc<dyn TcpSocketFacadeFactory>,
+    pub node_config: NodeConfig,
+    pub stats: Arc<Stats>,
+    pub socket_observer: Weak<dyn SocketObserver>,
+    pub max_inbound_connections: usize,
+    pub runtime: Weak<AsyncRuntime>,
 }
 
 impl ServerSocket {
-    pub fn new(
-        socket_facade: Arc<TokioSocketFacade>,
-        node_flags: NodeFlags,
-        network_params: NetworkParams,
-        workers: Arc<dyn ThreadPool>,
-        logger: Arc<dyn Logger>,
-        tcp_socket_facade_factory: Arc<dyn TcpSocketFacadeFactory>,
-        node_config: NodeConfig,
-        stats: Arc<Stats>,
-        socket_observer: Arc<dyn SocketObserver>,
-        max_inbound_connections: usize,
-        local: SocketAddr,
-        runtime: Weak<AsyncRuntime>,
-    ) -> Self {
-        let socket_stats = Arc::new(SocketStats::new(
-            Arc::clone(&stats),
-            Arc::clone(&logger),
-            node_config.logging.network_timeout_logging(),
-        ));
-        let ffi_observer = Arc::clone(&socket_observer);
-
-        let socket = SocketBuilder::endpoint_type(
-            EndpointType::Server,
-            Arc::clone(&workers),
-            Weak::clone(&runtime),
-        )
-        .default_timeout(Duration::MAX)
-        .silent_connection_tolerance_time(Duration::from_secs(
-            network_params.network.silent_connection_tolerance_time_s as u64,
-        ))
-        .idle_timeout(Duration::from_secs(
-            network_params.network.idle_timeout_s as u64,
-        ))
-        .observer(Arc::new(CompositeSocketObserver::new(vec![
-            socket_stats,
-            ffi_observer,
-        ])))
-        .build();
-
-        ServerSocket {
-            socket,
-            socket_facade,
-            connections_per_address: Mutex::new(Default::default()),
-            node_flags,
-            network_params,
-            workers,
-            logger,
-            tcp_socket_facade_factory,
-            node_config,
-            stats,
-            socket_observer: Arc::downgrade(&socket_observer),
-            max_inbound_connections,
-            local,
-            runtime,
-        }
-    }
-
     pub fn limit_reached_for_incoming_ip_connections(&self, new_connection: &Arc<Socket>) -> bool {
         if self.node_flags.disable_max_peers_per_ip {
             return false;
@@ -177,18 +116,10 @@ impl ServerSocket {
             .unwrap()
             .evict_dead_connections();
     }
-
-    pub fn start(&self) -> ErrorCode {
-        self.socket_facade.open(&self.local)
-    }
-
-    pub fn listening_port(&self) -> u16 {
-        self.socket_facade.listening_port()
-    }
 }
 
 #[derive(Default)]
-struct ConnectionsPerAddress {
+pub struct ConnectionsPerAddress {
     connections: BTreeMap<Ipv6Addr, Vec<Weak<Socket>>>,
     count: usize,
 }

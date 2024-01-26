@@ -1,7 +1,7 @@
 use super::{
-    CompositeSocketObserver, EndpointType, ServerSocket, Socket, SocketBuilder, SocketExtensions,
-    SocketObserver, SynCookies, TcpChannels, TcpServer, TcpServerExt, TcpServerObserver,
-    TcpSocketFacadeFactory, TokioSocketFacade, TokioSocketFacadeFactory,
+    CompositeSocketObserver, ConnectionsPerAddress, EndpointType, Socket, SocketBuilder,
+    SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpServer, TcpServerExt,
+    TcpServerObserver, TcpSocketFacadeFactory, TokioSocketFacade, TokioSocketFacadeFactory,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -51,6 +51,11 @@ struct TcpListenerData {
     connections: HashMap<usize, Weak<TcpServer>>,
     on: bool,
     listening_socket: Option<Arc<ServerSocket>>, // TODO remove arc
+}
+
+struct ServerSocket {
+    socket: Arc<Socket>,
+    connections_per_address: Mutex<ConnectionsPerAddress>,
 }
 
 impl TcpListenerData {

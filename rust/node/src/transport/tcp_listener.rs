@@ -244,6 +244,7 @@ impl TcpListenerExt for Arc<TcpListener> {
         let this_l = Arc::clone(self);
         let socket_clone = Arc::clone(&listening_socket);
         data.listening_socket = Some(listening_socket);
+        drop(data);
         self.socket_facade.post(Box::new(move || {
             if !this_l.socket_facade.is_acceptor_open() {
                 this_l.logger.always_log("Network: Acceptor is not open");
@@ -293,9 +294,10 @@ impl TcpListenerExt for Arc<TcpListener> {
                     let socket_l = socket_clone;
                     connection_clone.set_remote(remote_endpoint);
 
-                    //let data = this_clone.data.lock().unwrap();
-                    //data.evict_dead_connections();
-                    socket_l.evict_dead_connections();
+                    let data = this_clone.data.lock().unwrap();
+                    data.evict_dead_connections();
+                    drop(data);
+                    //socket_l.evict_dead_connections();
 
                     if socket_l.connections_per_address.lock().unwrap().count_connections() >= socket_l.max_inbound_connections {
                         socket_l.logger.try_log ("Network: max_inbound_connections reached, unable to open new connection");

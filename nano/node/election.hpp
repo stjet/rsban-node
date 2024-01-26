@@ -139,6 +139,15 @@ struct election_extended_status final
 
 class election;
 
+enum class election_state
+{
+	passive, // only listening for incoming votes
+	active, // actively request confirmations
+	confirmed, // confirmed but still listening for votes
+	expired_confirmed,
+	expired_unconfirmed
+};
+
 class election_lock
 {
 public:
@@ -177,22 +186,14 @@ enum class vote_source
 class election final : public std::enable_shared_from_this<nano::election>
 {
 private: // State management
-	enum class state_t
-	{
-		passive, // only listening for incoming votes
-		active, // actively request confirmations
-		confirmed, // confirmed but still listening for votes
-		expired_confirmed,
-		expired_unconfirmed
-	};
 
 	static unsigned constexpr passive_duration_factor = 5;
 	static unsigned constexpr active_request_count_min = 2;
 
 	static_assert (std::is_trivial<std::chrono::steady_clock::duration> ());
 
-	bool valid_change (nano::election::state_t, nano::election::state_t) const;
-	bool state_change (nano::election::state_t, nano::election::state_t);
+	bool valid_change (nano::election_state, nano::election_state) const;
+	bool state_change (nano::election_state, nano::election_state);
 
 public: // State transitions
 	nano::election_lock lock () const;

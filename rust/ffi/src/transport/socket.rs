@@ -12,17 +12,16 @@ use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6},
     ops::Deref,
-    sync::{Arc, Weak},
+    sync::Arc,
     time::Duration,
 };
 
 use crate::{
     utils::{AsyncRuntimeHandle, LoggerHandle, LoggerMT, ThreadPoolHandle},
-    ErrorCodeDto, StatHandle, StringDto, VoidPointerCallback,
+    ErrorCodeDto, StatHandle, VoidPointerCallback,
 };
 
 pub struct SocketHandle(pub Arc<Socket>);
-pub struct SocketWeakHandle(Weak<Socket>);
 
 impl SocketHandle {
     pub fn new(socket: Arc<Socket>) -> *mut SocketHandle {
@@ -83,33 +82,6 @@ pub unsafe extern "C" fn rsn_socket_destroy(handle: *mut SocketHandle) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_start(handle: *mut SocketHandle) {
     (*handle).start();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_to_weak_handle(
-    handle: *mut SocketHandle,
-) -> *mut SocketWeakHandle {
-    Box::into_raw(Box::new(SocketWeakHandle(Arc::downgrade(&(*handle).0))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_weak_socket_destroy(handle: *mut SocketWeakHandle) {
-    drop(Box::from_raw(handle));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_weak_socket_to_socket(
-    handle: *mut SocketWeakHandle,
-) -> *mut SocketHandle {
-    match (*handle).0.upgrade() {
-        Some(socket) => SocketHandle::new(socket),
-        None => std::ptr::null_mut(),
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_weak_socket_expired(handle: *mut SocketWeakHandle) -> bool {
-    (*handle).0.strong_count() == 0
 }
 
 type SocketConnectCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto);
@@ -362,11 +334,6 @@ pub unsafe extern "C" fn rsn_socket_default_timeout_value(handle: *mut SocketHan
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_is_alive(handle: *mut SocketHandle) -> bool {
     (*handle).is_alive()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_type_to_string(socket_type: u8, result: *mut StringDto) {
-    *result = StringDto::from(SocketType::from_u8(socket_type).unwrap().as_str())
 }
 
 #[no_mangle]

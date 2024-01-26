@@ -25,7 +25,6 @@ class network_v6;
 namespace rsnano
 {
 class SocketHandle;
-class SocketWeakHandle;
 class BufferHandle;
 class ErrorCodeDto;
 class async_runtime;

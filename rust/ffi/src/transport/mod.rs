@@ -5,7 +5,6 @@ mod channel_tcp;
 mod channel_tcp_observer;
 mod network_filter;
 mod peer_exclusion;
-mod server_socket;
 mod socket;
 mod syn_cookies;
 mod tcp_channels;
@@ -26,6 +25,5 @@ pub use syn_cookies::SynCookiesHandle;
 pub use tcp_message_item::TcpMessageItemHandle;
 pub use tcp_message_manager::TcpMessageManagerHandle;
 
-pub use server_socket::ServerSocketHandle;
 pub use socket::SocketFfiObserver;
 pub use tcp_channels::TcpChannelsHandle;

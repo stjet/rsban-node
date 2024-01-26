@@ -156,14 +156,34 @@ impl TcpListener {
 }
 
 pub trait TcpListenerExt {
+    /// If we are unable to accept a socket, for any reason, we wait just a little (1ms) before rescheduling the next connection accept.
+    /// The intention is to throttle back the connection requests and break up any busy loops that could possibly form and
+    /// give the rest of the system a chance to recover.
+    fn on_connection_requeue_delayed(
+        &self,
+        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
+    );
     fn start(
         &self,
         callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
     ) -> anyhow::Result<()>;
+    fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>);
     fn accept_action(&self, ec: ErrorCode, socket: Arc<Socket>);
 }
 
 impl TcpListenerExt for Arc<TcpListener> {
+    fn on_connection_requeue_delayed(
+        &self,
+        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
+    ) {
+        let this_l = Arc::clone(self);
+        self.workers.add_delayed_task(
+            Duration::from_millis(1),
+            Box::new(move || {
+                this_l.on_connection(callback);
+            }),
+        );
+    }
     fn start(
         &self,
         callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
@@ -241,10 +261,21 @@ impl TcpListenerExt for Arc<TcpListener> {
         else {
             self.port.store(listening_port, Ordering::SeqCst);
         }
-        let this_l = Arc::clone(self);
-        let socket_clone = Arc::clone(&listening_socket);
         data.listening_socket = Some(listening_socket);
         drop(data);
+        self.on_connection(callback);
+        Ok(())
+    }
+
+    fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>) {
+        let socket_clone = {
+            let guard = self.data.lock().unwrap();
+            let Some(s) = &guard.listening_socket else {
+                return;
+            };
+            Arc::clone(s)
+        };
+        let this_l = Arc::clone(self);
         self.socket_facade.post(Box::new(move || {
             if !this_l.socket_facade.is_acceptor_open() {
                 this_l.logger.always_log("Network: Acceptor is not open");
@@ -297,12 +328,11 @@ impl TcpListenerExt for Arc<TcpListener> {
                     let data = this_clone.data.lock().unwrap();
                     data.evict_dead_connections();
                     drop(data);
-                    //socket_l.evict_dead_connections();
 
                     if socket_l.connections_per_address.lock().unwrap().count_connections() >= socket_l.max_inbound_connections {
                         socket_l.logger.try_log ("Network: max_inbound_connections reached, unable to open new connection");
                         socket_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
-                        socket_l.on_connection_requeue_delayed (callback);
+                        this_clone.on_connection_requeue_delayed (callback);
                         return;
                     }
 
@@ -311,7 +341,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                         let log_message = format!("Network: max connections per IP (max_peers_per_ip) was reached for {}, unable to open new connection", remote_ip_address);
                         socket_l.logger.try_log(&log_message);
                         socket_l.stats.inc (StatType::Tcp, DetailType::TcpMaxPerIp, Direction::In);
-                        socket_l.on_connection_requeue_delayed (callback);
+                        this_clone.on_connection_requeue_delayed (callback);
                         return;
                     }
 
@@ -322,7 +352,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                             remote_subnet, remote_ip_address);
                         socket_l.logger.try_log(&log_message);
                         socket_l.stats.inc(StatType::Tcp, DetailType::TcpMaxPerSubnetwork, Direction::In);
-                        socket_l.on_connection_requeue_delayed (callback);
+                        this_clone.on_connection_requeue_delayed (callback);
                         return;
                     }
                    			if ec.is_ok() {
@@ -337,7 +367,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                                     }
                     				if callback (connection_clone, ec)
                     				{
-                    					socket_l.on_connection (callback);
+                    					this_clone.on_connection (callback);
                     					return;
                     				}
                     				socket_l.logger.always_log ("Network: Stopping to accept connections");
@@ -351,14 +381,14 @@ impl TcpListenerExt for Arc<TcpListener> {
                     			if is_temporary_error (ec)
                     			{
                     				// if it is a temporary error, just retry it
-                    				socket_l.on_connection_requeue_delayed (callback);
+                    				this_clone.on_connection_requeue_delayed (callback);
                     				return;
                     			}
 
                     			// if it is not a temporary error, check how the listener wants to handle this error
                     			if callback(connection_clone, ec)
                     			{
-                    				socket_l.on_connection_requeue_delayed (callback);
+                    				this_clone.on_connection_requeue_delayed (callback);
                     				return;
                     			}
 
@@ -367,8 +397,6 @@ impl TcpListenerExt for Arc<TcpListener> {
                 }),
             );
         }));
-
-        Ok(())
     }
 
     fn accept_action(&self, _ec: ErrorCode, socket: Arc<Socket>) {

@@ -54,6 +54,20 @@ struct TcpListenerData {
     listening_socket: Option<Arc<ServerSocket>>, // TODO remove arc
 }
 
+impl TcpListenerData {
+    fn evict_dead_connections(&self) {
+        let Some(socket) = &self.listening_socket else {
+            return;
+        };
+
+        socket
+            .connections_per_address
+            .lock()
+            .unwrap()
+            .evict_dead_connections();
+    }
+}
+
 impl TcpListener {
     pub fn new(
         port: u16,
@@ -229,6 +243,7 @@ impl TcpListenerExt for Arc<TcpListener> {
         }
         let this_l = Arc::clone(self);
         let socket_clone = Arc::clone(&listening_socket);
+        data.listening_socket = Some(listening_socket);
         self.socket_facade.post(Box::new(move || {
             if !this_l.socket_facade.is_acceptor_open() {
                 this_l.logger.always_log("Network: Acceptor is not open");
@@ -270,84 +285,87 @@ impl TcpListenerExt for Arc<TcpListener> {
 
             let socket_clone = Arc::clone(&socket_clone);
             let connection_clone = Arc::clone(&new_connection);
+            let this_clone = Arc::clone(&this_l);
             this_l.socket_facade.async_accept(
                 &new_connection,
                 Box::new(move |remote_endpoint, ec| {
                     let SocketAddr::V6(remote_endpoint) = remote_endpoint else {panic!("not a v6 address")};
-                    let this_l = socket_clone;
+                    let socket_l = socket_clone;
                     connection_clone.set_remote(remote_endpoint);
-                    this_l.evict_dead_connections();
 
-                    if this_l.connections_per_address.lock().unwrap().count_connections() >= this_l.max_inbound_connections {
-                        this_l.logger.try_log ("Network: max_inbound_connections reached, unable to open new connection");
-                        this_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
-                        this_l.on_connection_requeue_delayed (callback);
+                    //let data = this_clone.data.lock().unwrap();
+                    //data.evict_dead_connections();
+                    socket_l.evict_dead_connections();
+
+                    if socket_l.connections_per_address.lock().unwrap().count_connections() >= socket_l.max_inbound_connections {
+                        socket_l.logger.try_log ("Network: max_inbound_connections reached, unable to open new connection");
+                        socket_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
+                        socket_l.on_connection_requeue_delayed (callback);
                         return;
                     }
 
-                    if this_l.limit_reached_for_incoming_ip_connections (&connection_clone) {
+                    if socket_l.limit_reached_for_incoming_ip_connections (&connection_clone) {
                         let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
                         let log_message = format!("Network: max connections per IP (max_peers_per_ip) was reached for {}, unable to open new connection", remote_ip_address);
-                        this_l.logger.try_log(&log_message);
-                        this_l.stats.inc (StatType::Tcp, DetailType::TcpMaxPerIp, Direction::In);
-                        this_l.on_connection_requeue_delayed (callback);
+                        socket_l.logger.try_log(&log_message);
+                        socket_l.stats.inc (StatType::Tcp, DetailType::TcpMaxPerIp, Direction::In);
+                        socket_l.on_connection_requeue_delayed (callback);
                         return;
                     }
 
-                    if this_l.limit_reached_for_incoming_subnetwork_connections (&connection_clone) {
+                    if socket_l.limit_reached_for_incoming_subnetwork_connections (&connection_clone) {
                         let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
-                        let remote_subnet = first_ipv6_subnet_address(&remote_ip_address, this_l.network_params.network.max_peers_per_subnetwork as u8);
+                        let remote_subnet = first_ipv6_subnet_address(&remote_ip_address, socket_l.network_params.network.max_peers_per_subnetwork as u8);
                         let log_message = format!("Network: max connections per subnetwork (max_peers_per_subnetwork) was reached for subnetwork {} (remote IP: {}), unable to open new connection",
                             remote_subnet, remote_ip_address);
-                        this_l.logger.try_log(&log_message);
-                        this_l.stats.inc(StatType::Tcp, DetailType::TcpMaxPerSubnetwork, Direction::In);
-                        this_l.on_connection_requeue_delayed (callback);
+                        socket_l.logger.try_log(&log_message);
+                        socket_l.stats.inc(StatType::Tcp, DetailType::TcpMaxPerSubnetwork, Direction::In);
+                        socket_l.on_connection_requeue_delayed (callback);
                         return;
                     }
                    			if ec.is_ok() {
                     				// Make sure the new connection doesn't idle. Note that in most cases, the callback is going to start
                     				// an IO operation immediately, which will start a timer.
                     				connection_clone.start ();
-                    				connection_clone.set_timeout (Duration::from_secs(this_l.network_params.network.idle_timeout_s as u64));
-                    				this_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptSuccess, Direction::In);
-                                    this_l.connections_per_address.lock().unwrap().insert(&connection_clone);
-                                    if let Some(observer) = this_l.socket_observer.upgrade(){
+                    				connection_clone.set_timeout (Duration::from_secs(socket_l.network_params.network.idle_timeout_s as u64));
+                    				socket_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptSuccess, Direction::In);
+                                    socket_l.connections_per_address.lock().unwrap().insert(&connection_clone);
+                                    if let Some(observer) = socket_l.socket_observer.upgrade(){
                     				    observer.socket_accepted(Arc::clone(&connection_clone));
                                     }
                     				if callback (connection_clone, ec)
                     				{
-                    					this_l.on_connection (callback);
+                    					socket_l.on_connection (callback);
                     					return;
                     				}
-                    				this_l.logger.always_log ("Network: Stopping to accept connections");
+                    				socket_l.logger.always_log ("Network: Stopping to accept connections");
                     				return;
                    			}
 
                     			// accept error
-                    			this_l.logger.try_log (&format!("Network: Unable to accept connection: {:?}", ec));
-                    			this_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
+                    			socket_l.logger.try_log (&format!("Network: Unable to accept connection: {:?}", ec));
+                    			socket_l.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
 
                     			if is_temporary_error (ec)
                     			{
                     				// if it is a temporary error, just retry it
-                    				this_l.on_connection_requeue_delayed (callback);
+                    				socket_l.on_connection_requeue_delayed (callback);
                     				return;
                     			}
 
                     			// if it is not a temporary error, check how the listener wants to handle this error
                     			if callback(connection_clone, ec)
                     			{
-                    				this_l.on_connection_requeue_delayed (callback);
+                    				socket_l.on_connection_requeue_delayed (callback);
                     				return;
                     			}
 
                     			// No requeue if we reach here, no incoming socket connections will be handled
-                    			this_l.logger.always_log ("Network: Stopping to accept connections");
+                    			socket_l.logger.always_log ("Network: Stopping to accept connections");
                 }),
             );
         }));
 
-        data.listening_socket = Some(listening_socket);
         Ok(())
     }
 

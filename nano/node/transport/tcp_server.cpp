@@ -16,46 +16,6 @@
 
 #include <stdexcept>
 
-nano::tcp_server_weak_wrapper::tcp_server_weak_wrapper (std::shared_ptr<nano::transport::tcp_server> const & server) :
-	handle{ rsnano::rsn_bootstrap_server_get_weak (server->handle) }
-{
-}
-
-nano::tcp_server_weak_wrapper::tcp_server_weak_wrapper (tcp_server_weak_wrapper const & other_a) :
-	handle{ rsnano::rsn_bootstrap_server_copy_weak (other_a.handle) }
-{
-}
-
-nano::tcp_server_weak_wrapper::tcp_server_weak_wrapper (tcp_server_weak_wrapper && other_a) noexcept :
-	handle{ other_a.handle }
-{
-	other_a.handle = nullptr;
-}
-
-nano::tcp_server_weak_wrapper::~tcp_server_weak_wrapper ()
-{
-	if (handle)
-		rsnano::rsn_bootstrap_server_destroy_weak (handle);
-}
-
-nano::tcp_server_weak_wrapper & nano::tcp_server_weak_wrapper::operator= (tcp_server_weak_wrapper && other_a) noexcept
-{
-	if (handle)
-		rsnano::rsn_bootstrap_server_destroy_weak (handle);
-	handle = other_a.handle;
-	other_a.handle = nullptr;
-	return *this;
-}
-
-std::shared_ptr<nano::transport::tcp_server> nano::tcp_server_weak_wrapper::lock () const
-{
-	auto server_handle = rsnano::rsn_bootstrap_server_lock_weak (handle);
-	if (server_handle)
-		return std::make_shared<nano::transport::tcp_server> (server_handle);
-
-	return {};
-}
-
 /*
  * tcp_listener
  */

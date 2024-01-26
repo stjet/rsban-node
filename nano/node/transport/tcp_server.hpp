@@ -25,28 +25,6 @@ class network;
 class ledger;
 class block_processor;
 class bootstrap_initiator;
-
-namespace transport
-{
-	class tcp_channels;
-	class tcp_server;
-}
-
-class tcp_server_weak_wrapper
-{
-public:
-	tcp_server_weak_wrapper () = default;
-	explicit tcp_server_weak_wrapper (std::shared_ptr<nano::transport::tcp_server> const & server);
-	tcp_server_weak_wrapper (tcp_server_weak_wrapper const &);
-	tcp_server_weak_wrapper (tcp_server_weak_wrapper &&) noexcept;
-	~tcp_server_weak_wrapper ();
-	tcp_server_weak_wrapper & operator= (tcp_server_weak_wrapper && other_a) noexcept;
-	[[nodiscard]] std::shared_ptr<nano::transport::tcp_server> lock () const;
-
-private:
-	rsnano::BootstrapServerWeakHandle * handle{ nullptr };
-};
-class message;
 class tcp_message_manager;
 class syn_cookies;
 }

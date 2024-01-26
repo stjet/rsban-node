@@ -1,3 +1,6 @@
+use super::{
+    request_response_visitor_factory::RequestResponseVisitorFactoryHandle, TcpListenerHandle,
+};
 use crate::{
     transport::{EndpointDto, NetworkFilterHandle, SocketHandle, TcpMessageManagerHandle},
     utils::{AsyncRuntimeHandle, LoggerHandle, LoggerMT},
@@ -9,14 +12,7 @@ use rsnano_node::{
     transport::{TcpServer, TcpServerExt},
     NetworkParams,
 };
-use std::{
-    ops::Deref,
-    sync::{Arc, Weak},
-};
-
-use super::{
-    request_response_visitor_factory::RequestResponseVisitorFactoryHandle, TcpListenerHandle,
-};
+use std::{ops::Deref, sync::Arc};
 
 pub struct TcpServerHandle(pub Arc<TcpServer>);
 
@@ -33,8 +29,6 @@ impl Deref for TcpServerHandle {
         &self.0
     }
 }
-
-pub struct BootstrapServerWeakHandle(Weak<TcpServer>);
 
 #[repr(C)]
 pub struct CreateTcpServerParams {
@@ -97,41 +91,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_destroy(handle: *mut TcpServerHand
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_unique_id(handle: *mut TcpServerHandle) -> usize {
     (*handle).unique_id()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_get_weak(
-    handle: *mut TcpServerHandle,
-) -> *mut BootstrapServerWeakHandle {
-    Box::into_raw(Box::new(BootstrapServerWeakHandle(Arc::downgrade(
-        &*handle,
-    ))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_destroy_weak(handle: *mut BootstrapServerWeakHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_copy_weak(
-    handle: *mut BootstrapServerWeakHandle,
-) -> *mut BootstrapServerWeakHandle {
-    if handle.is_null() {
-        std::ptr::null_mut()
-    } else {
-        Box::into_raw(Box::new(BootstrapServerWeakHandle((*handle).0.clone())))
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_lock_weak(
-    handle: *mut BootstrapServerWeakHandle,
-) -> *mut TcpServerHandle {
-    match (*handle).0.upgrade() {
-        Some(i) => TcpServerHandle::new(i),
-        None => std::ptr::null_mut(),
-    }
 }
 
 #[no_mangle]

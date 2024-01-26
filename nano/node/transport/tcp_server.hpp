@@ -11,12 +11,6 @@
 #include <atomic>
 #include <memory>
 
-namespace rsnano
-{
-class BootstrapServerHandle;
-class BootstrapServerWeakHandle;
-}
-
 namespace nano
 {
 class node_config;
@@ -31,7 +25,6 @@ class syn_cookies;
 
 namespace nano::transport
 {
-class message_deserializer;
 class tcp_server;
 
 /**
@@ -54,11 +47,6 @@ public:
 };
 
 std::unique_ptr<container_info_component> collect_container_info (tcp_listener & bootstrap_listener, std::string const & name);
-
-namespace bootstrap
-{
-	class message_deserializer;
-};
 
 class tcp_server final : public std::enable_shared_from_this<nano::transport::tcp_server>
 {

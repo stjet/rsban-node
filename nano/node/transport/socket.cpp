@@ -256,4 +256,3 @@ std::shared_ptr<nano::transport::socket> nano::transport::create_client_socket (
 	node_a.observers,
 	write_queue_size);
 }
-

@@ -10,3 +10,4 @@ members = [
 	"tools/xtask",
 	"tools/cementation_test",
 ]
+resolver = "2"

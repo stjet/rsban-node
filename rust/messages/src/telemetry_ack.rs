@@ -323,8 +323,6 @@ impl Display for TelemetryData {
 
 #[cfg(test)]
 mod tests {
-    use crate::Message;
-
     use super::*;
 
     // original test: telemetry.signatures

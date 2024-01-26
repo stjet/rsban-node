@@ -1,5 +1,7 @@
-use std::net::Ipv6Addr;
-
+use super::{
+    BootstrapAscendingConfig, DiagnosticsConfig, HintedSchedulerConfig, Logging, Networks,
+    OptimisticSchedulerConfig, WebsocketConfig,
+};
 use crate::{consensus::VoteCacheConfig, stats::StatsConfig, IpcConfig, NetworkParams};
 use anyhow::Result;
 use once_cell::sync::Lazy;
@@ -9,11 +11,7 @@ use rsnano_core::{
     Account, Amount, GXRB_RATIO, XRB_RATIO,
 };
 use rsnano_store_lmdb::LmdbConfig;
-
-use super::{
-    BootstrapAscendingConfig, DiagnosticsConfig, HintedSchedulerConfig, Logging, Networks,
-    OptimisticSchedulerConfig, WebsocketConfig,
-};
+use std::net::Ipv6Addr;
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
@@ -247,20 +245,20 @@ impl NodeConfig {
             pow_sleep_interval_ns: 0,
             external_address: Ipv6Addr::UNSPECIFIED.to_string(),
             external_port: 0,
-            /** Default maximum incoming TCP connections, including realtime network & bootstrap */
+            // Default maximum incoming TCP connections, including realtime network & bootstrap
             tcp_incoming_connections_max: 2048,
             use_memory_pools: true,
             confirmation_history_size: 2048,
             active_elections_size: 5000,
             active_elections_hinted_limit_percentage: 20,
             active_elections_optimistic_limit_percentage: 10,
-            /** Default outbound traffic shaping is 10MB/s */
+            // Default outbound traffic shaping is 10MB/s
             bandwidth_limit: 10 * 1024 * 1024,
-            /** By default, allow bursts of 15MB/s (not sustainable) */
+            // By default, allow bursts of 15MB/s (not sustainable)
             bandwidth_limit_burst_ratio: 3_f64,
-            /** Default boostrap outbound traffic limit is 5MB/s */
+            // Default boostrap outbound traffic limit is 5MB/s
             bootstrap_bandwidth_limit: 5 * 1024 * 1024,
-            /** Bootstrap traffic does not need bursts */
+            // Bootstrap traffic does not need bursts
             bootstrap_bandwidth_burst_ratio: 1.,
             bootstrap_ascending: Default::default(),
             conf_height_processor_batch_min_time_ms: 50,

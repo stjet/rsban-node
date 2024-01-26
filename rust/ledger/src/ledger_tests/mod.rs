@@ -960,14 +960,8 @@ fn is_send_state() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let open = setup_open_block(&ctx, &mut txn);
-    assert_eq!(
-        ctx.ledger.is_send(&txn, open.send_block.deref().deref()),
-        true
-    );
-    assert_eq!(
-        ctx.ledger.is_send(&txn, open.open_block.deref().deref()),
-        false
-    );
+    assert_eq!(ctx.ledger.is_send(&txn, open.send_block.deref()), true);
+    assert_eq!(ctx.ledger.is_send(&txn, open.open_block.deref()), false);
 }
 
 #[test]
@@ -975,14 +969,8 @@ fn is_send_legacy() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let open = setup_legacy_open_block(&ctx, &mut txn);
-    assert_eq!(
-        ctx.ledger.is_send(&txn, open.send_block.deref().deref()),
-        true
-    );
-    assert_eq!(
-        ctx.ledger.is_send(&txn, open.open_block.deref().deref()),
-        false
-    );
+    assert_eq!(ctx.ledger.is_send(&txn, open.send_block.deref()), true);
+    assert_eq!(ctx.ledger.is_send(&txn, open.open_block.deref()), false);
 }
 
 #[test]

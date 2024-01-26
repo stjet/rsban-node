@@ -1,7 +1,7 @@
 use super::{vote_processor_queue::VoteProcessorQueueHandle, LocalVoteHistoryHandle, VoteHandle};
 use crate::{
     core::BlockVecHandle,
-    ledger::datastore::{LedgerHandle, TransactionHandle},
+    ledger::datastore::LedgerHandle,
     messages::MessageHandle,
     representatives::RepresentativeRegisterHandle,
     transport::{ChannelHandle, EndpointDto, FfiInboundCallback, TcpChannelsHandle},

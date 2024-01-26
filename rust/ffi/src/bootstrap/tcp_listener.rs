@@ -1,4 +1,4 @@
-use super::{BootstrapInitiatorHandle, TcpServerHandle};
+use super::BootstrapInitiatorHandle;
 use crate::{
     block_processing::BlockProcessorHandle,
     ledger::datastore::LedgerHandle,
@@ -11,7 +11,7 @@ use crate::{
 };
 use rsnano_core::{utils::Logger, KeyPair};
 use rsnano_node::{
-    transport::{Socket, TcpListener, TcpListenerExt, TcpServerObserver},
+    transport::{Socket, TcpListener, TcpListenerExt},
     utils::ErrorCode,
 };
 use std::{ffi::c_void, ops::Deref, sync::Arc};

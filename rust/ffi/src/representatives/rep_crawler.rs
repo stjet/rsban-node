@@ -1,4 +1,3 @@
-use super::representative::RepresentativeHandle;
 use crate::{consensus::VoteHandle, transport::ChannelHandle, utils::ContainerInfoComponentHandle};
 use rsnano_core::BlockHash;
 use rsnano_node::representatives::RepCrawler;

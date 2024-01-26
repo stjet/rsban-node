@@ -31,7 +31,6 @@ mod signature;
 pub use signature::Signature;
 
 mod u256_struct;
-pub use u256_struct::*;
 
 pub mod utils;
 

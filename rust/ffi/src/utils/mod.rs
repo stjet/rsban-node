@@ -1,39 +1,30 @@
 mod async_runtime;
 mod stream;
 
+pub use async_runtime::AsyncRuntimeHandle;
+use rsnano_node::utils::{
+    ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address,
+};
 use std::{
     ffi::c_void,
     net::{Ipv6Addr, SocketAddrV6},
     time::Instant,
 };
-
-pub use async_runtime::AsyncRuntimeHandle;
-use rsnano_node::utils::{
-    ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address,
-};
 pub use stream::FfiStream;
-
 mod toml;
 pub use toml::FfiToml;
-
-mod thread_pool;
-pub use thread_pool::{ThreadPoolHandle, VoidFnCallbackHandle};
-mod logger_mt;
-pub use logger_mt::*;
-
-mod timer;
-pub use timer::*;
-
 mod atomics;
-pub use atomics::*;
-
-mod latch;
-pub use latch::*;
-
 mod container_info;
-pub use container_info::*;
+mod latch;
+mod logger_mt;
+mod thread_pool;
+mod timer;
 
 use crate::{transport::EndpointDto, VoidPointerCallback};
+pub use container_info::*;
+pub use latch::*;
+pub use logger_mt::*;
+pub use thread_pool::ThreadPoolHandle;
 
 pub struct ContextWrapper {
     context: *mut c_void,

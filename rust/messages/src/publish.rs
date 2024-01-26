@@ -89,8 +89,6 @@ impl Display for Publish {
 
 #[cfg(test)]
 mod tests {
-    use crate::Message;
-
     use super::*;
     use rsnano_core::{utils::MemoryStream, BlockBuilder};
 

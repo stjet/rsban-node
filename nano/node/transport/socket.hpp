@@ -137,52 +137,10 @@ public:
 	rsnano::SocketHandle * handle;
 };
 
-class weak_socket_wrapper
-{
-public:
-	weak_socket_wrapper (rsnano::SocketWeakHandle * handle);
-	weak_socket_wrapper (weak_socket_wrapper const &) = delete;
-	weak_socket_wrapper (weak_socket_wrapper &&) = delete;
-	weak_socket_wrapper (std::shared_ptr<nano::transport::socket> & socket);
-	~weak_socket_wrapper ();
-	std::shared_ptr<nano::transport::socket> lock ();
-	bool expired () const;
-
-private:
-	rsnano::SocketWeakHandle * handle;
-};
-
-std::string socket_type_to_string (socket::type_t type);
-
-using address_socket_mmap = std::multimap<boost::asio::ip::address, weak_socket_wrapper>;
-
 namespace socket_functions
 {
 	boost::asio::ip::network_v6 get_ipv6_subnet_address (boost::asio::ip::address_v6 const &, std::size_t);
 }
-
-/** Socket class for TCP servers */
-class server_socket final : public std::enable_shared_from_this<nano::transport::server_socket>
-{
-public:
-	/**
-	 * Constructor
-	 * @param node_a Owning node
-	 * @param local_a Address and port to listen on
-	 * @param max_connections_a Maximum number of concurrent connections
-	 */
-	explicit server_socket (nano::node & node_a, boost::asio::ip::tcp::endpoint local_a, std::size_t max_connections_a);
-	server_socket (server_socket const &) = delete;
-	~server_socket ();
-	/**Start accepting new connections */
-	void start (boost::system::error_code &);
-	/** Stop accepting new connections */
-	void close ();
-	/** Register callback for new connections. The callback must return true to keep accepting new connections. */
-	void on_connection (std::function<bool (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const &)>);
-	uint16_t listening_port ();
-	rsnano::ServerSocketHandle * handle;
-};
 
 std::shared_ptr<nano::transport::socket> create_client_socket (nano::node & node_a, std::size_t max_queue_size = socket::default_max_queue_size);
 }

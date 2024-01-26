@@ -241,75 +241,9 @@ bool nano::transport::socket::full (nano::transport::traffic_type traffic_type) 
 	return rsnano::rsn_socket_full (handle, static_cast<uint8_t> (traffic_type));
 }
 
-/*
- * server_socket
- */
-
-nano::transport::server_socket::server_socket (nano::node & node_a, boost::asio::ip::tcp::endpoint local_a, std::size_t max_connections_a)
-{
-	auto network_params_dto{ node_a.network_params.to_dto () };
-	auto node_config_dto{ node_a.config->to_dto () };
-	auto local_dto{ rsnano::endpoint_to_dto (local_a) };
-	handle = rsnano::rsn_server_socket_create (
-	node_a.flags.handle,
-	&network_params_dto,
-	node_a.workers->handle,
-	nano::to_logger_handle (node_a.logger),
-	new std::weak_ptr<nano::node_observers> (node_a.observers),
-	node_a.stats->handle,
-	&node_config_dto,
-	max_connections_a,
-	&local_dto,
-	node_a.async_rt.handle);
-}
-
-nano::transport::server_socket::~server_socket ()
-{
-	rsnano::rsn_server_socket_destroy (handle);
-}
-
-void nano::transport::server_socket::start (boost::system::error_code & ec_a)
-{
-	rsnano::rsn_server_socket_start (handle);
-}
-
-void nano::transport::server_socket::close ()
-{
-	rsnano::rsn_server_socket_close (handle);
-}
-
-uint16_t nano::transport::server_socket::listening_port ()
-{
-	return rsnano::rsn_server_socket_listening_port (handle);
-}
-
 boost::asio::ip::network_v6 nano::transport::socket_functions::get_ipv6_subnet_address (boost::asio::ip::address_v6 const & ip_address, std::size_t network_prefix)
 {
 	return boost::asio::ip::make_network_v6 (ip_address, static_cast<unsigned short> (network_prefix));
-}
-
-namespace
-{
-bool on_connection_callback (void * context, rsnano::SocketHandle * socket_handle, const rsnano::ErrorCodeDto * ec_dto)
-{
-	auto callback = static_cast<std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> *> (context);
-	auto socket = std::make_shared<nano::transport::socket> (socket_handle);
-	auto ec = rsnano::dto_to_error_code (*ec_dto);
-	return (*callback) (socket, ec);
-}
-
-void delete_on_connection_context (void * handle_a)
-{
-	auto callback = static_cast<std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> *> (handle_a);
-	delete callback;
-}
-}
-
-void nano::transport::server_socket::on_connection (std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> callback_a)
-{
-	auto context = new std::function<bool (std::shared_ptr<nano::transport::socket> const &, boost::system::error_code const &)> (callback_a);
-	rsnano::rsn_server_socket_on_connection (handle, on_connection_callback, context, delete_on_connection_context);
-	return;
 }
 
 std::shared_ptr<nano::transport::socket> nano::transport::create_client_socket (nano::node & node_a, std::size_t write_queue_size)
@@ -323,40 +257,3 @@ std::shared_ptr<nano::transport::socket> nano::transport::create_client_socket (
 	write_queue_size);
 }
 
-nano::transport::weak_socket_wrapper::weak_socket_wrapper (rsnano::SocketWeakHandle * handle_a) :
-	handle{ handle_a }
-{
-}
-
-nano::transport::weak_socket_wrapper::weak_socket_wrapper (std::shared_ptr<nano::transport::socket> & socket) :
-	handle{ rsnano::rsn_socket_to_weak_handle (socket->handle) }
-{
-}
-
-nano::transport::weak_socket_wrapper::~weak_socket_wrapper ()
-{
-	rsnano::rsn_weak_socket_destroy (handle);
-}
-
-std::shared_ptr<nano::transport::socket> nano::transport::weak_socket_wrapper::lock ()
-{
-	auto socket_handle = rsnano::rsn_weak_socket_to_socket (handle);
-	std::shared_ptr<nano::transport::socket> socket;
-	if (socket_handle)
-	{
-		socket = std::make_shared<nano::transport::socket> (socket_handle);
-	}
-	return socket;
-}
-
-bool nano::transport::weak_socket_wrapper::expired () const
-{
-	return rsnano::rsn_weak_socket_expired (handle);
-}
-
-std::string nano::transport::socket_type_to_string (nano::transport::socket::type_t type)
-{
-	rsnano::StringDto dto;
-	rsnano::rsn_socket_type_to_string (static_cast<uint8_t> (type), &dto);
-	return rsnano::convert_dto_to_string (dto);
-}

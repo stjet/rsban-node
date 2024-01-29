@@ -316,7 +316,7 @@ TEST (ledger, epoch_open_pending)
 	ASSERT_EQ (nano::process_result::gap_epoch_open_pending, process_result.code);
 	node1.block_processor.add (epoch_open);
 	// Waits for the block to get saved in the database
-	ASSERT_TIMELY (10s, 1 == node1.unchecked.count ());
+	ASSERT_TIMELY_EQ (10s, 1, node1.unchecked.count ());
 	ASSERT_FALSE (node1.ledger.block_or_pruned_exists (epoch_open->hash ()));
 	// Open block should be inserted into unchecked
 	auto blocks = node1.unchecked.get (nano::hash_or_account (epoch_open->account ()).hash);
@@ -468,7 +468,7 @@ TEST (ledger, unchecked_epoch)
 	node1.block_processor.add (epoch1);
 	{
 		// Waits for the epoch1 block to pass through block_processor and unchecked.put queues
-		ASSERT_TIMELY (10s, 1 == node1.unchecked.count ());
+		ASSERT_TIMELY_EQ (10s, 1, node1.unchecked.count ());
 		auto blocks = node1.unchecked.get (epoch1->previous ());
 		ASSERT_EQ (blocks.size (), 1);
 	}
@@ -477,7 +477,7 @@ TEST (ledger, unchecked_epoch)
 	ASSERT_TIMELY (5s, node1.store.block ().exists (*node1.store.tx_begin_read (), epoch1->hash ()));
 	{
 		// Waits for the last blocks to pass through block_processor and unchecked.put queues
-		ASSERT_TIMELY (10s, 0 == node1.unchecked.count ());
+		ASSERT_TIMELY_EQ (10s, 0, node1.unchecked.count ());
 		auto info = node1.ledger.account_info (*node1.store.tx_begin_read (), destination.pub);
 		ASSERT_TRUE (info);
 		ASSERT_EQ (info->epoch (), nano::epoch::epoch_1);
@@ -542,7 +542,7 @@ TEST (ledger, unchecked_epoch_invalid)
 	node1.block_processor.add (epoch2);
 	{
 		// Waits for the last blocks to pass through block_processor and unchecked.put queues
-		ASSERT_TIMELY (10s, 2 == node1.unchecked.count ());
+		ASSERT_TIMELY_EQ (10s, 2, node1.unchecked.count ());
 		auto blocks = node1.unchecked.get (epoch1->previous ());
 		ASSERT_EQ (blocks.size (), 2);
 	}
@@ -611,7 +611,7 @@ TEST (ledger, unchecked_open)
 	node1.block_processor.add (open1);
 	{
 		// Waits for the last blocks to pass through block_processor and unchecked.put queues
-		ASSERT_TIMELY (5s, 1 == node1.unchecked.count ());
+		ASSERT_TIMELY_EQ (5s, 1, node1.unchecked.count ());
 		// When open1 existists in unchecked, we know open2 has been processed.
 		auto blocks = node1.unchecked.get (open1->source ());
 		ASSERT_EQ (blocks.size (), 1);

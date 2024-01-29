@@ -154,9 +154,9 @@ TEST (socket, max_connections_per_ip)
 		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
 	};
 
-	ASSERT_TIMELY (5s, get_tcp_accept_successes () == max_ip_connections);
-	ASSERT_TIMELY (5s, get_tcp_max_per_ip () == 1);
-	ASSERT_TIMELY (5s, connection_attempts == max_ip_connections + 1);
+	ASSERT_TIMELY_EQ (5s, get_tcp_accept_successes (), max_ip_connections);
+	ASSERT_TIMELY_EQ (5s, get_tcp_max_per_ip (), 1);
+	ASSERT_TIMELY_EQ (5s, connection_attempts, max_ip_connections + 1);
 
 	node->stop ();
 }
@@ -226,9 +226,9 @@ TEST (socket, max_connections_per_subnetwork)
 		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
 	};
 
-	ASSERT_TIMELY (5s, get_tcp_accept_successes () == max_subnetwork_connections);
-	ASSERT_TIMELY (5s, get_tcp_max_per_subnetwork () == 1);
-	ASSERT_TIMELY (5s, connection_attempts == max_subnetwork_connections + 1);
+	ASSERT_TIMELY_EQ (5s, get_tcp_accept_successes (), max_subnetwork_connections);
+	ASSERT_TIMELY_EQ (5s, get_tcp_max_per_subnetwork (), 1);
+	ASSERT_TIMELY_EQ (5s, connection_attempts, max_subnetwork_connections + 1);
 
 	node->stop ();
 }
@@ -286,9 +286,9 @@ TEST (socket, disabled_max_peers_per_ip)
 		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
 	};
 
-	ASSERT_TIMELY (5s, get_tcp_accept_successes () == max_ip_connections + 1);
-	ASSERT_TIMELY (5s, get_tcp_max_per_ip () == 0);
-	ASSERT_TIMELY (5s, connection_attempts == max_ip_connections + 1);
+	ASSERT_TIMELY_EQ (5s, get_tcp_accept_successes (), max_ip_connections + 1);
+	ASSERT_TIMELY_EQ (5s, get_tcp_max_per_ip (), 0);
+	ASSERT_TIMELY_EQ (5s, connection_attempts, max_ip_connections + 1);
 
 	node->stop ();
 }
@@ -442,7 +442,7 @@ TEST (socket_timeout, connect)
 	});
 
 	// check that the callback was called and we got an error
-	ASSERT_TIMELY (6s, done == true);
+	ASSERT_TIMELY_EQ (6s, done, true);
 	ASSERT_TRUE (ec);
 	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_connect_error, nano::stat::dir::in));
 
@@ -494,7 +494,7 @@ TEST (socket_timeout, write)
 	});
 
 	// check that the callback was called and we got an error
-	ASSERT_TIMELY (10s, done == true);
+	ASSERT_TIMELY_EQ (10s, done, true);
 	ASSERT_TRUE (ec);
 	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_write_error, nano::stat::dir::in));
 
@@ -555,7 +555,7 @@ TEST (socket_timeout, write_overlapped)
 	});
 
 	// check that the callback was called and we got an error
-	ASSERT_TIMELY (10s, done == true);
+	ASSERT_TIMELY_EQ (10s, done, true);
 	ASSERT_TRUE (ec);
 	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_write_error, nano::stat::dir::in));
 

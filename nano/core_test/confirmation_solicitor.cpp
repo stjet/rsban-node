@@ -28,7 +28,7 @@ TEST (confirmation_solicitor, batches)
 	ASSERT_EQ (1, representatives.size ());
 	ASSERT_EQ (channel1->channel_id (), representatives.front ().channel_id ());
 	ASSERT_EQ (nano::dev::genesis_key.pub, representatives.front ().get_account ());
-	ASSERT_TIMELY (3s, node2.network->size () == 1);
+	ASSERT_TIMELY_EQ (3s, node2.network->size (), 1);
 	nano::block_builder builder;
 	auto send = builder
 				.send ()
@@ -80,7 +80,7 @@ TEST (confirmation_solicitor, different_hash)
 	ASSERT_EQ (1, representatives.size ());
 	ASSERT_EQ (channel1->channel_id (), representatives.front ().channel_id ());
 	ASSERT_EQ (nano::dev::genesis_key.pub, representatives.front ().get_account ());
-	ASSERT_TIMELY (3s, node2.network->size () == 1);
+	ASSERT_TIMELY_EQ (3s, node2.network->size (), 1);
 	nano::block_builder builder;
 	auto send = builder
 				.send ()
@@ -125,7 +125,7 @@ TEST (confirmation_solicitor, bypass_max_requests_cap)
 	}
 	ASSERT_EQ (max_representatives + 1, representatives.size ());
 	solicitor.prepare (representatives);
-	ASSERT_TIMELY (3s, node2.network->size () == 1);
+	ASSERT_TIMELY_EQ (3s, node2.network->size (), 1);
 	nano::block_builder builder;
 	auto send = builder
 				.send ()
@@ -149,7 +149,7 @@ TEST (confirmation_solicitor, bypass_max_requests_cap)
 	}
 	solicitor.flush ();
 	// All requests went through, the last one would normally not go through due to the cap but a vote for a different hash does not count towards the cap
-	ASSERT_TIMELY (6s, max_representatives + 1 == node2.stats->count (nano::stat::type::message, nano::stat::detail::confirm_req, nano::stat::dir::out));
+	ASSERT_TIMELY_EQ (6s, max_representatives + 1, node2.stats->count (nano::stat::type::message, nano::stat::detail::confirm_req, nano::stat::dir::out));
 
 	solicitor.prepare (representatives);
 	auto election2 (std::make_shared<nano::election> (node2, send, nullptr, nullptr, nano::election_behavior::normal));

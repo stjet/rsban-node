@@ -80,9 +80,9 @@ TEST (vote_processor, invalid_signature)
 	ASSERT_EQ (1, election->votes ().size ());
 
 	node.vote_processor_queue.vote (vote_invalid, channel);
-	ASSERT_TIMELY (5s, 1 == election->votes ().size ());
+	ASSERT_TIMELY_EQ (5s, 1, election->votes ().size ());
 	node.vote_processor_queue.vote (vote, channel);
-	ASSERT_TIMELY (5s, 2 == election->votes ().size ());
+	ASSERT_TIMELY_EQ (5s, 2, election->votes ().size ());
 }
 
 TEST (vote_processor, no_capacity)
@@ -161,7 +161,7 @@ TEST (vote_processor, weights)
 	system.nodes[0]->wallets.send_sync (wallet_id0, nano::dev::genesis_key.pub, key2.pub, level2);
 
 	// Wait for representatives
-	ASSERT_TIMELY (10s, node.ledger.cache.rep_weights ().get_rep_amounts ().size () == 4);
+	ASSERT_TIMELY_EQ (10s, node.ledger.cache.rep_weights ().get_rep_amounts ().size (), 4);
 	node.vote_processor_queue.calculate_weights ();
 
 	ASSERT_FALSE (rsnano::rsn_vote_processor_queue_reps_contains (node.vote_processor_queue.handle, 1, key0.pub.bytes.data ()));

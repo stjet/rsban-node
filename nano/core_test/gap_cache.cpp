@@ -123,8 +123,9 @@ TEST (gap_cache, gap_bootstrap)
 	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	auto latest_block (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, 100));
 	ASSERT_NE (nullptr, latest_block);
-	ASSERT_TIMELY (5s, nano::dev::constants.genesis_amount - 200 == node1.balance (nano::dev::genesis->account ()));
-	ASSERT_TIMELY (5s, node2.balance (nano::dev::genesis->account ()) == nano::dev::constants.genesis_amount - 200);
+	ASSERT_TIMELY_EQ (5s, nano::dev::constants.genesis_amount - 200, node1.balance (nano::dev::genesis->account ()));
+	ASSERT_TIMELY_EQ (5s, nano::dev::constants.genesis_amount, node2.balance (nano::dev::genesis->account ()));
+	ASSERT_TIMELY_EQ (5s, node2.balance (nano::dev::genesis->account ()), nano::dev::constants.genesis_amount - 200);
 }
 
 TEST (gap_cache, two_dependencies)
@@ -166,7 +167,7 @@ TEST (gap_cache, two_dependencies)
 	ASSERT_EQ (2, node1.gap_cache.size ());
 	node1.block_processor.add (send1);
 	node1.block_processor.flush ();
-	ASSERT_TIMELY (5s, node1.gap_cache.size () == 0);
+	ASSERT_TIMELY_EQ (5s, node1.gap_cache.size (), 0);
 	ASSERT_TIMELY (5s, node1.store.block ().exists (*node1.store.tx_begin_read (), send1->hash ()));
 	ASSERT_TIMELY (5s, node1.store.block ().exists (*node1.store.tx_begin_read (), send2->hash ()));
 	ASSERT_TIMELY (5s, node1.store.block ().exists (*node1.store.tx_begin_read (), open->hash ()));

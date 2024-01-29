@@ -1418,9 +1418,10 @@ bool nano::wallets::enter_password (const std::shared_ptr<nano::wallet> & wallet
 	auto error (wallet->store.attempt_password (transaction_a, password_a));
 	if (!error)
 	{
-		node.background ([&this_l = *this, wallet] () {
+		wallet_actions.queue_wallet_action(nano::wallets::high_priority, wallet, [&this_l = *this] (nano::wallet & wallet) {
+			// Wallets must survive node lifetime
 			auto tx{ this_l.tx_begin_read () };
-			this_l.search_receivable (wallet, *tx);
+			this_l.search_receivable (wallet.shared_from_this(), *tx);
 		});
 		node.logger->try_log ("Wallet unlocked");
 	}

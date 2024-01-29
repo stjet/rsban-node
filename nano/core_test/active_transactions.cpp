@@ -970,17 +970,10 @@ TEST (active_transactions, fork_replacement_tally)
 	node1.vote_processor_queue.flush ();
 	// ensure vote arrives before the block
 	ASSERT_TIMELY (5s, node1.vote_cache.find (send_last->hash ()));
-<<<<<<< HEAD
-	ASSERT_TIMELY (5s, 1 == node1.vote_cache.find (send_last->hash ())->size ());
+	ASSERT_TIMELY_EQ (5s, 1, node1.vote_cache.find (send_last->hash ())->size ());
 	node1.network->tcp_channels->publish_filter->clear ();
 	node2.network->flood_block (send_last);
 	ASSERT_TIMELY (5s, node1.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) > 1);
-=======
-	ASSERT_TIMELY_EQ (5s, 1, node1.vote_cache.find (send_last->hash ())->size ());
-	node1.network.publish_filter.clear ();
-	node2.network.flood_block (send_last);
-	ASSERT_TIMELY (5s, node1.stats.count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) > 1);
->>>>>>> 250ed204aa9e3ecfe46a250a2d9a44a195c03c4f
 
 	// the send_last block should replace one of the existing block of the election because it has higher vote weight
 	auto find_send_last_block = [&election, &send_last] () {

@@ -113,7 +113,7 @@ TEST (socket, max_connections_per_ip)
 	auto server_port = system.get_available_port ();
 
 	const auto max_ip_connections = node->network_params.network.max_peers_per_ip;
-	ASSERT_TRUE (max_ip_connections >= 1);
+	ASSERT_GE (max_ip_connections, 1);
 
 	const auto max_global_connections = 1000;
 
@@ -185,7 +185,7 @@ TEST (socket, max_connections_per_subnetwork)
 	boost::asio::ip::tcp::endpoint listen_endpoint{ boost::asio::ip::address_v6::any (), server_port };
 
 	const auto max_subnetwork_connections = node->network_params.network.max_peers_per_subnetwork;
-	ASSERT_TRUE (max_subnetwork_connections >= 1);
+	ASSERT_GE (max_subnetwork_connections, 1);
 
 	const auto max_global_connections = 1000;
 
@@ -245,7 +245,7 @@ TEST (socket, disabled_max_peers_per_ip)
 	auto server_port = system.get_available_port ();
 
 	const auto max_ip_connections = node->network_params.network.max_peers_per_ip;
-	ASSERT_TRUE (max_ip_connections >= 1);
+	ASSERT_GE (max_ip_connections, 1);
 
 	const auto max_global_connections = 1000;
 

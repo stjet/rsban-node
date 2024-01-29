@@ -31,7 +31,7 @@ TEST (node, null_account)
 
 	nano::account default_account{};
 	ASSERT_FALSE (default_account == nullptr);
-	ASSERT_TRUE (default_account != nullptr);
+	ASSERT_NE (default_account, nullptr);
 }
 
 TEST (node, stop)
@@ -54,7 +54,7 @@ TEST (node, work_generate)
 		auto difficulty = nano::difficulty::from_multiplier (1.5, node.network_params.work.get_base ());
 		auto work = node.work_generate_blocking (version, root, difficulty);
 		ASSERT_TRUE (work.is_initialized ());
-		ASSERT_TRUE (nano::dev::network_params.work.difficulty (version, root, *work) >= difficulty);
+		ASSERT_GE (nano::dev::network_params.work.difficulty (version, root, *work), difficulty);
 	}
 	{
 		auto difficulty = nano::difficulty::from_multiplier (0.5, node.network_params.work.get_base ());
@@ -65,7 +65,7 @@ TEST (node, work_generate)
 		} while (nano::dev::network_params.work.difficulty (version, root, *work) >= node.network_params.work.get_base ());
 		ASSERT_TRUE (work.is_initialized ());
 		ASSERT_TRUE (nano::dev::network_params.work.difficulty (version, root, *work) >= difficulty);
-		ASSERT_FALSE (nano::dev::network_params.work.difficulty (version, root, *work) >= node.network_params.work.get_base ());
+		ASSERT_GE (nano::dev::network_params.work.difficulty (version, root, *work), node.network_params.work.get_base ());
 	}
 }
 

@@ -215,3 +215,36 @@ bool elapsed (nano::clock::time_point const & last, Duration duration)
 	return elapsed (last, duration, nano::clock::now ());
 }
 }
+
+namespace nano::util
+{
+/**
+ * Joins elements with specified delimiter while transforming those elements via specified transform function
+ */
+template <class InputIt, class Func>
+std::string join (InputIt first, InputIt last, std::string_view delimiter, Func transform)
+{
+	bool start = true;
+	std::stringstream ss;
+	while (first != last)
+	{
+		if (start)
+		{
+			start = false;
+		}
+		else
+		{
+			ss << delimiter << " ";
+		}
+		ss << transform (*first);
+		++first;
+	}
+	return ss.str ();
+}
+
+template <class Container, class Func>
+std::string join (Container const & container, std::string_view delimiter, Func transform)
+{
+	return join (container.begin (), container.end (), delimiter, transform);
+}
+}

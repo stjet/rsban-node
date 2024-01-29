@@ -1,11 +1,10 @@
 use super::{ElectionStatus, ElectionStatusType};
 use crate::{stats::DetailType, utils::HardenedConstants};
-use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, QualifiedRoot, Root};
 use std::{
     collections::HashMap,
     sync::{
-        atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering},
+        atomic::{AtomicBool, AtomicU32, Ordering},
         Arc, Mutex, RwLock,
     },
     time::{Duration, Instant, SystemTime},
@@ -15,7 +14,6 @@ pub struct Election {
     pub mutex: Mutex<ElectionData>,
     pub root: Root,
     pub qualified_root: QualifiedRoot,
-    pub state_value: AtomicU8,
     pub is_quorum: AtomicBool,
     pub confirmation_request_count: AtomicU32,
     // These are modified while not holding the mutex from transition_time only
@@ -23,8 +21,6 @@ pub struct Election {
     pub behavior: ElectionBehavior,
     pub election_start: Instant,
     pub last_req: RwLock<Option<Instant>>,
-    /** The last time vote for this election was generated */
-    last_vote: RwLock<Option<Instant>>,
     pub confirmation_action: Box<dyn Fn(Arc<BlockEnum>)>,
     pub live_vote_action: Box<dyn Fn(Account)>,
 }
@@ -56,20 +52,19 @@ impl Election {
             state_start: Instant::now(),
             last_tally: HashMap::new(),
             final_weight: Amount::zero(),
+            last_vote: None,
         };
 
         Self {
             mutex: Mutex::new(data),
             root,
             qualified_root,
-            state_value: AtomicU8::new(ElectionState::Passive as u8),
             is_quorum: AtomicBool::new(false),
             confirmation_request_count: AtomicU32::new(0),
             last_block: RwLock::new(Instant::now()),
             behavior,
             election_start: Instant::now(),
             last_req: RwLock::new(None),
-            last_vote: RwLock::new(None),
             confirmation_action,
             live_vote_action,
         }
@@ -86,41 +81,12 @@ impl Election {
         }
     }
 
-    pub fn set_last_vote(&self) {
-        *self.last_vote.write().unwrap() = Some(Instant::now());
-    }
-
-    pub fn last_vote_elapsed(&self) -> Duration {
-        match self.last_vote.read().unwrap().as_ref() {
-            Some(i) => i.elapsed(),
-            None => Duration::from_secs(60 * 60 * 24 * 365), // Duration::MAX caused problems with C++
-        }
-    }
     pub fn set_last_block(&self) {
         *self.last_block.write().unwrap() = Instant::now();
     }
 
     pub fn last_block_elapsed(&self) -> Duration {
         self.last_block.read().unwrap().elapsed()
-    }
-
-    pub fn state(&self) -> ElectionState {
-        FromPrimitive::from_u8(self.state_value.load(Ordering::SeqCst)).unwrap()
-    }
-
-    pub fn swap_state(&self, new_state: ElectionState) -> ElectionState {
-        FromPrimitive::from_u8(self.state_value.swap(new_state as u8, Ordering::SeqCst)).unwrap()
-    }
-
-    pub fn compare_exhange_state(&self, expected: ElectionState, desired: ElectionState) -> bool {
-        self.state_value
-            .compare_exchange(
-                expected as u8,
-                desired as u8,
-                Ordering::SeqCst,
-                Ordering::SeqCst,
-            )
-            .is_ok()
     }
 }
 
@@ -132,6 +98,8 @@ pub struct ElectionData {
     pub last_votes: HashMap<Account, VoteInfo>,
     pub final_weight: Amount,
     pub last_tally: HashMap<BlockHash, Amount>,
+    /** The last time vote for this election was generated */
+    pub last_vote: Option<Instant>,
 }
 
 impl ElectionData {
@@ -182,6 +150,17 @@ impl ElectionData {
                 _ => false,
             },
             _ => false,
+        }
+    }
+
+    pub fn set_last_vote(&mut self) {
+        self.last_vote = Some(Instant::now());
+    }
+
+    pub fn last_vote_elapsed(&self) -> Duration {
+        match &self.last_vote {
+            Some(i) => i.elapsed(),
+            None => Duration::from_secs(60 * 60 * 24 * 365), // Duration::MAX caused problems with C++
         }
     }
 }

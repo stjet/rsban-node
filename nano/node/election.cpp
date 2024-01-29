@@ -262,7 +262,8 @@ void nano::election::transition_active ()
 
 bool nano::election::failed () const
 {
-	auto state_l = static_cast<nano::election_state> (rsnano::rsn_election_state (handle));
+	auto guard{ lock () };
+	auto state_l = static_cast<nano::election_state> (rsnano::rsn_election_lock_state (guard.handle));
 	return state_l == nano::election_state::expired_unconfirmed;
 }
 

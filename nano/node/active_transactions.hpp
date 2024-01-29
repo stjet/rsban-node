@@ -200,7 +200,7 @@ public:
 	// Later once the confirmation height processor has updated the confirmation height it will be confirmed on disk
 	// It is possible for an election to be confirmed on disk but not in memory, for instance if implicitly confirmed via confirmation height
 	bool confirmed (nano::election const & election) const;
-	bool confirmed (nano::election_lock & lock) const;
+	bool confirmed_locked (nano::election_lock & lock) const;
 	bool confirmed (nano::block_hash const & hash) const;
 	void remove_block (nano::election_lock & lock, nano::block_hash const & hash_a);
 	bool replace_by_weight (nano::election & election, nano::election_lock & lock_a, nano::block_hash const & hash_a);
@@ -248,20 +248,20 @@ private:
 	 * Broadcast vote for current election winner. Generates final vote if reached quorum or already confirmed
 	 * Requires mutex lock
 	 */
-	void broadcast_vote_impl (nano::election_lock & lock, nano::election & election);
+	void broadcast_vote_locked (nano::election_lock & lock, nano::election & election);
 	/**
 	 * Broadcasts vote for the current winner of this election
 	 * Checks if sufficient amount of time (`vote_generation_interval`) passed since the last vote generation
 	 */
-	void broadcast_vote (nano::election & election);
-	void broadcast_block (nano::confirmation_solicitor & solicitor_a, nano::election & election);
+	void broadcast_vote (nano::election & election, nano::election_lock & lock_a);
+	void broadcast_block (nano::confirmation_solicitor & solicitor_a, nano::election & election, nano::election_lock & lock_a);
 	// Minimum time between broadcasts of the current winner of an election, as a backup to requesting confirmations
 	std::chrono::milliseconds base_latency () const;
 	/**
 	 * Calculates time delay between broadcasting confirmation requests
 	 */
 	std::chrono::milliseconds confirm_req_time (nano::election & election) const;
-	void send_confirm_req (nano::confirmation_solicitor & solicitor_a, nano::election & election);
+	void send_confirm_req (nano::confirmation_solicitor & solicitor_a, nano::election & election, nano::election_lock & lock_a);
 	bool transition_time (nano::confirmation_solicitor & solicitor_a, nano::election & election);
 	void process_confirmed_data (store::transaction const &, std::shared_ptr<nano::block> const &, nano::block_hash const &, nano::account &, nano::uint128_t &, bool &, bool &, nano::account &);
 

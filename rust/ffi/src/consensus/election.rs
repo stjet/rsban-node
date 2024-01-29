@@ -98,18 +98,6 @@ pub unsafe extern "C" fn rsn_election_qualified_root(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_election_state(handle: &ElectionHandle) -> u8 {
-    handle.0.state() as u8
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_state_exchange(handle: &ElectionHandle, new_state: u8) -> u8 {
-    handle
-        .0
-        .swap_state(FromPrimitive::from_u8(new_state).unwrap()) as u8
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_election_is_quorum(handle: &ElectionHandle) -> bool {
     handle.0.is_quorum.load(Ordering::SeqCst)
 }
@@ -166,13 +154,13 @@ pub extern "C" fn rsn_election_last_req_elapsed_ms(handle: &ElectionHandle) -> u
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_election_last_vote_set(handle: &ElectionHandle) {
-    handle.0.set_last_vote();
+pub extern "C" fn rsn_election_lock_last_vote_set(handle: &mut ElectionLockHandle) {
+    handle.0.as_mut().unwrap().set_last_vote();
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_election_last_vote_elapsed_ms(handle: &ElectionHandle) -> u64 {
-    handle.0.last_vote_elapsed().as_millis() as u64
+pub extern "C" fn rsn_election_lock_last_vote_elapsed_ms(handle: &ElectionLockHandle) -> u64 {
+    handle.0.as_ref().unwrap().last_vote_elapsed().as_millis() as u64
 }
 
 #[no_mangle]
@@ -251,6 +239,11 @@ pub extern "C" fn rsn_election_lock_status_set(
 ) {
     let current = handle.0.as_mut().unwrap();
     current.status = status.deref().clone();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_lock_state(handle: &ElectionLockHandle) -> u8 {
+    handle.0.as_ref().unwrap().state as u8
 }
 
 #[no_mangle]

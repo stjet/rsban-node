@@ -148,6 +148,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	observers{ std::make_shared<nano::node_observers> () },
 	config{ std::make_shared<nano::node_config> (config_a) },
 	network_params{ config_a.network_params },
+	nlogger{ "node" },
 	logger{ std::make_shared<nano::logger_mt> (config_a.logging.min_time_between_log_output) },
 	node_id{ nano::load_or_create_node_id (application_path_a, *logger) },
 	stats{ std::make_shared<nano::stats> (config_a.stats_config) },

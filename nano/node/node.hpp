@@ -1,6 +1,8 @@
 #pragma once
 
 #include <nano/lib/config.hpp>
+#include <nano/lib/logger_mt.hpp>
+#include <nano/lib/logging.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/thread_pool.hpp>
 #include <nano/lib/work.hpp>
@@ -141,6 +143,7 @@ public:
 	nano::network_params network_params; // ported
 	std::shared_ptr<nano::logger_mt> logger;
 	nano::keypair node_id; // ported
+	nano::nlogger nlogger;
 	std::shared_ptr<nano::stats> stats; // ported
 	std::shared_ptr<nano::thread_pool> workers; // ported
 	std::shared_ptr<nano::thread_pool> bootstrap_workers; // ported

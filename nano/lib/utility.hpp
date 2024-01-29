@@ -3,6 +3,7 @@
 #include <nano/lib/locks.hpp>
 
 #include <boost/current_function.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/preprocessor/facilities/empty.hpp>
 #include <boost/preprocessor/facilities/overload.hpp>
 
@@ -10,6 +11,7 @@
 #include <filesystem>
 #include <functional>
 #include <mutex>
+#include <sstream>
 #include <vector>
 
 #include <magic_enum_containers.hpp>
@@ -246,5 +248,11 @@ template <class Container, class Func>
 std::string join (Container const & container, std::string_view delimiter, Func transform)
 {
 	return join (container.begin (), container.end (), delimiter, transform);
+}
+
+template <class T>
+std::string to_str (T const & val)
+{
+	return boost::lexical_cast<std::string> (val);
 }
 }

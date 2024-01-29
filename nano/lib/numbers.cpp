@@ -824,6 +824,27 @@ std::string nano::to_string (double const value_a, int const precision_a)
 	return stream.str ();
 }
 
+std::ostream & nano::operator<< (std::ostream & os, const uint128_union & val)
+{
+	// TODO: Replace with streaming implementation
+	os << val.to_string ();
+	return os;
+}
+
+std::ostream & nano::operator<< (std::ostream & os, const uint256_union & val)
+{
+	// TODO: Replace with streaming implementation
+	os << val.to_string ();
+	return os;
+}
+
+std::ostream & nano::operator<< (std::ostream & os, const uint512_union & val)
+{
+	// TODO: Replace with streaming implementation
+	os << val.to_string ();
+	return os;
+}
+
 uint64_t nano::difficulty::from_multiplier (double const multiplier_a, uint64_t const base_difficulty_a)
 {
 	return rsnano::rsn_difficulty_from_multiplier (multiplier_a, base_difficulty_a);

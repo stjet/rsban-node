@@ -105,6 +105,8 @@ target_link_libraries(
   crypto_lib
   rsnano_ffi
   ${CMAKE_DL_LIBS}
+  fmt::fmt
+  spdlog::spdlog
   Boost::iostreams
   Boost::asio
   Boost::circular_buffer

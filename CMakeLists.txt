@@ -485,7 +485,8 @@ target_link_libraries(boost_property_tree INTERFACE Boost::any)
 target_link_libraries(boost_property_tree INTERFACE Boost::format)
 target_link_libraries(boost_property_tree INTERFACE Boost::multi_index)
 
-include_directories(cpptoml/include)
+# cpptoml
+include_directories(submodules/cpptoml/include)
 
 # magic_enum
 include_directories(submodules/magic_enum/include)

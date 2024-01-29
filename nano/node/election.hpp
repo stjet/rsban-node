@@ -187,7 +187,6 @@ enum class vote_source
 class election final : public std::enable_shared_from_this<nano::election>
 {
 private: // State management
-
 	static unsigned constexpr passive_duration_factor = 5;
 	static unsigned constexpr active_request_count_min = 2;
 

@@ -454,7 +454,6 @@ void nano::active_transactions::process_confirmed (nano::election_status const &
 	}
 	if (block_l)
 	{
-		recently_confirmed.put (block_l->qualified_root (), hash);
 		confirmation_height_processor.add (block_l);
 	}
 	else if (iteration_a < num_iters)
@@ -482,6 +481,7 @@ void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano
 	auto status_l{ lock_a.status () };
 	auto old_state = static_cast<nano::election_state> (rsnano::rsn_election_lock_state (lock_a.handle));
 	auto just_confirmed = old_state != nano::election_state::confirmed;
+	rsnano::rsn_election_lock_state_set (lock_a.handle, static_cast<uint8_t> (nano::election_state::confirmed));
 	if (just_confirmed && (election_winner_details.count (status_l.get_winner ()->hash ()) == 0))
 	{
 		election_winner_details.emplace (status_l.get_winner ()->hash (), election.shared_from_this ());
@@ -846,7 +846,7 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 		return result;
 
 	auto const root (block_a->qualified_root ());
-	auto const hash = block_a->hash();
+	auto const hash = block_a->hash ();
 	auto const existing_handle = rsnano::rsn_active_transactions_lock_roots_find (guard.handle, root.root ().bytes.data (), root.previous ().bytes.data ());
 	std::shared_ptr<nano::election> existing{};
 	if (existing_handle != nullptr)
@@ -872,7 +872,7 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 			debug_assert (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (result.election->behavior ())) >= 0);
 			rsnano::rsn_active_transactions_lock_count_by_behavior_inc (guard.handle, static_cast<uint8_t> (result.election->behavior ()));
 		}
-		else 
+		else
 		{
 			// result is not set
 		}
@@ -881,7 +881,7 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 	{
 		result.election = existing;
 	}
-	guard.unlock(); // end of critical section
+	guard.unlock (); // end of critical section
 
 	if (result.inserted)
 	{

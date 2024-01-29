@@ -247,6 +247,11 @@ pub extern "C" fn rsn_election_lock_state(handle: &ElectionLockHandle) -> u8 {
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_election_lock_state_set(handle: &mut ElectionLockHandle, state: u8) {
+    handle.0.as_mut().unwrap().state = FromPrimitive::from_u8(state).unwrap()
+}
+
+#[no_mangle]
 pub extern "C" fn rsn_election_lock_unlock(handle: &mut ElectionLockHandle) {
     handle.0.take();
 }

@@ -946,14 +946,15 @@ void nano::active_transactions::send_confirm_req (nano::confirmation_solicitor &
 
 bool nano::active_transactions::transition_time (nano::confirmation_solicitor & solicitor_a, nano::election & election)
 {
+	auto lock { election.lock()};
 	bool result = false;
 	auto state_l = static_cast<nano::election_state> (rsnano::rsn_election_state (election.handle));
 	switch (state_l)
 	{
 		case nano::election_state::passive:
-			if (base_latency () * election.passive_duration_factor < std::chrono::milliseconds{ rsnano::rsn_election_state_start_elapsed_ms (election.handle) })
+			if (base_latency () * election.passive_duration_factor < std::chrono::milliseconds{ rsnano::rsn_election_lock_state_start_elapsed_ms (lock.handle) })
 			{
-				election.state_change (nano::election_state::passive, nano::election_state::active);
+				lock.state_change (nano::election_state::passive, nano::election_state::active);
 			}
 			break;
 		case nano::election_state::active:
@@ -963,7 +964,7 @@ bool nano::active_transactions::transition_time (nano::confirmation_solicitor & 
 			break;
 		case nano::election_state::confirmed:
 			result = true; // Return true to indicate this election should be cleaned up
-			election.state_change (nano::election_state::confirmed, nano::election_state::expired_confirmed);
+			lock.state_change (nano::election_state::confirmed, nano::election_state::expired_confirmed);
 			break;
 		case nano::election_state::expired_unconfirmed:
 		case nano::election_state::expired_confirmed:
@@ -977,7 +978,7 @@ bool nano::active_transactions::transition_time (nano::confirmation_solicitor & 
 		// It is possible the election confirmed while acquiring the mutex
 		// state_change returning true would indicate it
 		state_l = static_cast<nano::election_state> (rsnano::rsn_election_state (election.handle));
-		if (!election.state_change (state_l, nano::election_state::expired_unconfirmed))
+		if (!lock.state_change (state_l, nano::election_state::expired_unconfirmed))
 		{
 			result = true; // Return true to indicate this election should be cleaned up
 			if (node.config->logging.election_expiration_tally_logging ())

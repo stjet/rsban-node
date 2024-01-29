@@ -45,6 +45,11 @@ void nano::election_lock::set_status (nano::election_status status)
 	rsnano::rsn_election_lock_status_set (handle, status.handle);
 }
 
+bool nano::election_lock::state_change (nano::election_state expected_a, nano::election_state desired_a)
+{
+	return rsnano::rsn_election_lock_state_change (handle, static_cast<uint8_t> (expected_a), static_cast<uint8_t> (desired_a));
+}
+
 void nano::election_lock::insert_or_assign_last_block (std::shared_ptr<nano::block> const & block)
 {
 	rsnano::rsn_election_lock_add_block (handle, block->get_handle ());
@@ -244,16 +249,6 @@ nano::root nano::election::root () const
 	return root;
 }
 
-bool nano::election::valid_change (nano::election_state expected_a, nano::election_state desired_a) const
-{
-	return rsnano::rsn_election_valid_change (static_cast<uint8_t> (expected_a), static_cast<uint8_t> (desired_a));
-}
-
-bool nano::election::state_change (nano::election_state expected_a, nano::election_state desired_a)
-{
-	return rsnano::rsn_election_state_change (handle, static_cast<uint8_t> (expected_a), static_cast<uint8_t> (desired_a));
-}
-
 bool nano::election::is_quorum () const
 {
 	return rsnano::rsn_election_is_quorum (handle);
@@ -261,7 +256,8 @@ bool nano::election::is_quorum () const
 
 void nano::election::transition_active ()
 {
-	state_change (nano::election_state::passive, nano::election_state::active);
+	auto guard{ lock () };
+	guard.state_change (nano::election_state::passive, nano::election_state::active);
 }
 
 bool nano::election::failed () const

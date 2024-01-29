@@ -98,14 +98,6 @@ pub unsafe extern "C" fn rsn_election_qualified_root(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_election_valid_change(expected: u8, desired: u8) -> bool {
-    Election::valid_change(
-        FromPrimitive::from_u8(expected).unwrap(),
-        FromPrimitive::from_u8(desired).unwrap(),
-    )
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_election_state(handle: &ElectionHandle) -> u8 {
     handle.0.state() as u8
 }
@@ -164,11 +156,6 @@ pub extern "C" fn rsn_election_elapsed_ms(handle: &ElectionHandle) -> u64 {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_election_state_start_elapsed_ms(handle: &ElectionHandle) -> u64 {
-    handle.0.state_start.read().unwrap().elapsed().as_millis() as u64
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_election_last_req_set(handle: &ElectionHandle) {
     handle.0.set_last_req();
 }
@@ -186,17 +173,6 @@ pub extern "C" fn rsn_election_last_vote_set(handle: &ElectionHandle) {
 #[no_mangle]
 pub extern "C" fn rsn_election_last_vote_elapsed_ms(handle: &ElectionHandle) -> u64 {
     handle.0.last_vote_elapsed().as_millis() as u64
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_election_state_change(
-    handle: &ElectionHandle,
-    expected_state: u8,
-    desired_state: u8,
-) -> bool {
-    let expected = ElectionState::from_u8(expected_state).unwrap();
-    let desired = ElectionState::from_u8(desired_state).unwrap();
-    handle.0.state_change(expected, desired).is_err()
 }
 
 #[no_mangle]
@@ -231,6 +207,27 @@ pub extern "C" fn rsn_election_lock_status(
     Box::into_raw(Box::new(ElectionStatusHandle(
         handle.0.as_ref().unwrap().status.clone(),
     )))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_lock_state_change(
+    handle: &mut ElectionLockHandle,
+    expected_state: u8,
+    desired_state: u8,
+) -> bool {
+    let expected = ElectionState::from_u8(expected_state).unwrap();
+    let desired = ElectionState::from_u8(desired_state).unwrap();
+    handle
+        .0
+        .as_mut()
+        .unwrap()
+        .state_change(expected, desired)
+        .is_err()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_lock_state_start_elapsed_ms(handle: &ElectionLockHandle) -> u64 {
+    handle.0.as_ref().unwrap().state_start.elapsed().as_millis() as u64
 }
 
 #[no_mangle]

@@ -1,9 +1,7 @@
+use super::{ElectionStatus, ElectionStatusType};
+use crate::{stats::DetailType, utils::HardenedConstants};
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, QualifiedRoot, Root};
-
-use crate::{stats::DetailType, utils::HardenedConstants};
-
-use super::{ElectionStatus, ElectionStatusType};
 use std::{
     collections::HashMap,
     sync::{
@@ -20,7 +18,6 @@ pub struct Election {
     pub state_value: AtomicU8,
     pub is_quorum: AtomicBool,
     pub confirmation_request_count: AtomicU32,
-    pub state_start: RwLock<Instant>,
     // These are modified while not holding the mutex from transition_time only
     last_block: RwLock<Instant>,
     pub behavior: ElectionBehavior,
@@ -55,7 +52,10 @@ impl Election {
                 VoteInfo::new(0, block.hash()),
             )]),
             last_blocks: HashMap::from([(block.hash(), block)]),
-            ..Default::default()
+            state: ElectionState::Passive,
+            state_start: Instant::now(),
+            last_tally: HashMap::new(),
+            final_weight: Amount::zero(),
         };
 
         Self {
@@ -68,7 +68,6 @@ impl Election {
             last_block: RwLock::new(Instant::now()),
             behavior,
             election_start: Instant::now(),
-            state_start: RwLock::new(Instant::now()),
             last_req: RwLock::new(None),
             last_vote: RwLock::new(None),
             confirmation_action,
@@ -97,37 +96,6 @@ impl Election {
             None => Duration::from_secs(60 * 60 * 24 * 365), // Duration::MAX caused problems with C++
         }
     }
-    pub fn state_change(&self, expected: ElectionState, desired: ElectionState) -> Result<(), ()> {
-        if Self::valid_change(expected, desired) {
-            if self.compare_exhange_state(expected, desired) {
-                *self.state_start.write().unwrap() = Instant::now();
-                return Ok(());
-            }
-        }
-
-        Err(())
-    }
-
-    pub fn valid_change(expected: ElectionState, desired: ElectionState) -> bool {
-        match expected {
-            ElectionState::Passive => match desired {
-                ElectionState::Active
-                | ElectionState::Confirmed
-                | ElectionState::ExpiredUnconfirmed => true,
-                _ => false,
-            },
-            ElectionState::Active => match desired {
-                ElectionState::Confirmed | ElectionState::ExpiredUnconfirmed => true,
-                _ => false,
-            },
-            ElectionState::Confirmed => match desired {
-                ElectionState::ExpiredConfirmed => true,
-                _ => false,
-            },
-            _ => false,
-        }
-    }
-
     pub fn set_last_block(&self) {
         *self.last_block.write().unwrap() = Instant::now();
     }
@@ -156,9 +124,10 @@ impl Election {
     }
 }
 
-#[derive(Default)]
 pub struct ElectionData {
     pub status: ElectionStatus,
+    pub state: ElectionState,
+    pub state_start: Instant,
     pub last_blocks: HashMap<BlockHash, Arc<BlockEnum>>,
     pub last_votes: HashMap<Account, VoteInfo>,
     pub final_weight: Amount,
@@ -178,6 +147,42 @@ impl ElectionData {
         self.status.block_count = self.last_blocks.len() as u32;
         self.status.voter_count = self.last_votes.len() as u32;
         self.status.election_status_type = status_type;
+    }
+
+    pub fn state_change(
+        &mut self,
+        expected: ElectionState,
+        desired: ElectionState,
+    ) -> Result<(), ()> {
+        if Self::valid_change(expected, desired) {
+            if self.state == expected {
+                self.state = desired;
+                self.state_start = Instant::now();
+                return Ok(());
+            }
+        }
+
+        Err(())
+    }
+
+    fn valid_change(expected: ElectionState, desired: ElectionState) -> bool {
+        match expected {
+            ElectionState::Passive => match desired {
+                ElectionState::Active
+                | ElectionState::Confirmed
+                | ElectionState::ExpiredUnconfirmed => true,
+                _ => false,
+            },
+            ElectionState::Active => match desired {
+                ElectionState::Confirmed | ElectionState::ExpiredUnconfirmed => true,
+                _ => false,
+            },
+            ElectionState::Confirmed => match desired {
+                ElectionState::ExpiredConfirmed => true,
+                _ => false,
+            },
+            _ => false,
+        }
     }
 }
 
@@ -204,7 +209,7 @@ impl Default for VoteInfo {
     }
 }
 
-#[derive(FromPrimitive, Copy, Clone, Debug)]
+#[derive(FromPrimitive, Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum ElectionState {
     Passive,   // only listening for incoming votes

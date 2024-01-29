@@ -158,6 +158,7 @@ public:
 	void lock ();
 	nano::election_status status () const;
 	void set_status (nano::election_status status);
+	bool state_change (nano::election_state expected_a, nano::election_state desired_a);
 
 	void insert_or_assign_last_block (std::shared_ptr<nano::block> const & block);
 	void erase_last_block (nano::block_hash const & hash);
@@ -189,11 +190,6 @@ private: // State management
 
 	static unsigned constexpr passive_duration_factor = 5;
 	static unsigned constexpr active_request_count_min = 2;
-
-	static_assert (std::is_trivial<std::chrono::steady_clock::duration> ());
-
-	bool valid_change (nano::election_state, nano::election_state) const;
-	bool state_change (nano::election_state, nano::election_state);
 
 public: // State transitions
 	nano::election_lock lock () const;

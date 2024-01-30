@@ -89,7 +89,6 @@ private:
 	bool active{ false };
 
 	nano::stats & stats;
-	nano::logger_mt & logger; // already ported
 	nano::node_config & config; // already ported
 	nano::network_params & network_params; // already ported
 	nano::block_arrival & block_arrival; // already ported

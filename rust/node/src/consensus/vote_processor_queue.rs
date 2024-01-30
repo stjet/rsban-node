@@ -4,7 +4,7 @@ use crate::{
     OnlineReps,
 };
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, Logger},
+    utils::{ContainerInfo, ContainerInfoComponent, LogType, Logger},
     Account, Vote,
 };
 use rsnano_ledger::Ledger;
@@ -146,8 +146,10 @@ impl VoteProcessorQueue {
             });
 
         if result.is_err() {
-            self.logger
-                .always_log("WARNING: vote_processor_queue::flush timeout while waiting for flush")
+            self.logger.error(
+                LogType::VoteProcessor,
+                "vote_processor_queue::flush timeout while waiting for flush",
+            )
         }
     }
 

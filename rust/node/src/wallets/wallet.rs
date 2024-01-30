@@ -6,8 +6,9 @@ use std::{
 
 use anyhow::Context;
 use rsnano_core::{
-    utils::Logger, work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, KeyPair,
-    PendingKey, Root, WorkVersion,
+    utils::{LogType, Logger},
+    work::WorkThresholds,
+    Account, BlockHash, KeyDerivationFunction, KeyPair, PendingKey, Root, WorkVersion,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{
@@ -84,7 +85,7 @@ impl<T: Environment + 'static> Wallet<T> {
             self.store.work_put(txn, account, work);
         } else {
             self.logger
-                .try_log("Cached work no longer valid, discarding");
+                .warn(LogType::Wallet, "Cached work no longer valid, discarding");
         }
     }
 

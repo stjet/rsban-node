@@ -7,8 +7,9 @@ use std::{
 
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    utils::Logger, work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, NoValue,
-    PublicKey, RawKey, WalletId,
+    utils::{LogType, Logger},
+    work::WorkThresholds,
+    Account, BlockHash, KeyDerivationFunction, NoValue, PublicKey, RawKey, WalletId,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{
@@ -198,10 +199,13 @@ impl<T: Environment + 'static> Wallets<T> {
                                     };
                                     if should_log {
                                         *last_log_guard = Some(Instant::now());
-                                        self.logger.always_log(&format!(
-                                            "Representative locked inside wallet {}",
-                                            wallet_id
-                                        ));
+                                        self.logger.warn(
+                                            LogType::Wallet,
+                                            &format!(
+                                                "Representative locked inside wallet {}",
+                                                wallet_id
+                                            ),
+                                        );
                                     }
                                 }
                             }

@@ -3,7 +3,7 @@ use crate::{
     ledger::datastore::LedgerHandle,
     representatives::OnlineRepsHandle,
     transport::ChannelHandle,
-    utils::{ContainerInfoComponentHandle, LoggerHandle, LoggerMT},
+    utils::{ContainerInfoComponentHandle, LoggerHandleV2},
     StatHandle,
 };
 use rsnano_core::{Account, Vote};
@@ -31,16 +31,15 @@ pub unsafe extern "C" fn rsn_vote_processor_queue_create(
     stats: &StatHandle,
     online_reps: &OnlineRepsHandle,
     ledger: &LedgerHandle,
-    logger: *mut LoggerHandle,
+    logger: &LoggerHandleV2,
 ) -> *mut VoteProcessorQueueHandle {
-    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
     Box::into_raw(Box::new(VoteProcessorQueueHandle(Arc::new(
         VoteProcessorQueue::new(
             max_votes,
             Arc::clone(stats),
             Arc::clone(online_reps),
             Arc::clone(ledger),
-            logger,
+            logger.into_logger(),
         ),
     ))))
 }

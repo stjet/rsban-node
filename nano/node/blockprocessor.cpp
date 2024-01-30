@@ -104,7 +104,6 @@ void blocks_rolled_back_delete (void * context)
 }
 
 nano::block_processor::block_processor (nano::node & node_a, nano::write_database_queue & write_database_queue_a) :
-	logger (*node_a.logger),
 	config (*node_a.config),
 	network_params (node_a.network_params),
 	flags (node_a.flags),

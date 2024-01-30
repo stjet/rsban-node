@@ -1,4 +1,5 @@
 #include <nano/lib/config.hpp>
+#include <nano/lib/logging.hpp>
 #include <nano/lib/logger_mt.hpp>
 #include <nano/lib/tlsconfig.hpp>
 #include <nano/lib/tomlconfig.hpp>
@@ -137,6 +138,52 @@ namespace
 	}
 }
 #endif
+
+nano::error read_tls_config_toml (std::filesystem::path const & data_path_a, nano::tls_config & config_a, nano::nlogger & nlogger, std::vector<std::string> const & config_overrides)
+{
+	nano::error error;
+	auto toml_config_path = nano::get_tls_toml_config_path (data_path_a);
+
+	// Parse and deserialize
+	nano::tomlconfig toml;
+
+	std::stringstream config_overrides_stream;
+	for (auto const & entry : config_overrides)
+	{
+		config_overrides_stream << entry << std::endl;
+	}
+	config_overrides_stream << std::endl;
+
+	// Make sure we don't create an empty toml file if it doesn't exist. Running without a tls toml file is the default.
+	if (!error)
+	{
+		if (std::filesystem::exists (toml_config_path))
+		{
+			error = toml.read (config_overrides_stream, toml_config_path);
+		}
+		else
+		{
+			error = toml.read (config_overrides_stream);
+		}
+	}
+
+	if (!error)
+	{
+		error = config_a.deserialize_toml (toml);
+	}
+
+	if (!error && (config_a.enable_https || config_a.enable_wss))
+	{
+#ifdef NANO_SECURE_RPC
+		load_certs (config_a, logger_a);
+#else
+		nlogger.critical (nano::log::type::tls, "HTTPS or WSS is enabled in the TLS configuration, but the node is not built with NANO_SECURE_RPC");
+		std::exit (1);
+#endif
+	}
+
+	return error;
+}
 
 nano::error read_tls_config_toml (std::filesystem::path const & data_path_a, nano::tls_config & config_a, nano::logger_mt & logger_a, std::vector<std::string> const & config_overrides)
 {

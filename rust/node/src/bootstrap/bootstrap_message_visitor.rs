@@ -43,16 +43,6 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                     return;
                 };
 
-                if self.logging_config.bulk_pull_logging() {
-                    self.logger.try_log(&format!(
-                        "Received bulk pull for {} down to {}, maximum of {} from {}",
-                        payload.start,
-                        payload.end,
-                        payload.count,
-                        self.connection.remote_endpoint()
-                    ));
-                }
-
                 let payload = payload.clone();
                 let connection = Arc::clone(&self.connection);
                 let ledger = Arc::clone(&self.ledger);
@@ -82,14 +72,6 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 let Some(thread_pool) = self.thread_pool.upgrade() else {
                     return;
                 };
-
-                if self.logging_config.bulk_pull_logging() {
-                    self.logger.try_log(&format!(
-                        "Received bulk pull account for {} with a minimum amount of {}",
-                        payload.account.encode_account(),
-                        payload.minimum_amount.format_balance(10)
-                    ));
-                }
 
                 let payload = payload.clone();
                 let connection = Arc::clone(&self.connection);
@@ -156,13 +138,6 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 let Some(thread_pool) = self.thread_pool.upgrade() else {
                     return;
                 };
-                if self.logging_config.bulk_pull_logging() {
-                    self.logger.try_log(&format!(
-                        "Received frontier request for {} with age {}",
-                        payload.start.encode_account(),
-                        payload.age
-                    ));
-                }
 
                 let request = payload.clone();
                 let connection = Arc::clone(&self.connection);

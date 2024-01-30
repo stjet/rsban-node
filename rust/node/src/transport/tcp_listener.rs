@@ -11,7 +11,10 @@ use crate::{
     utils::{first_ipv6_subnet_address, is_ipv4_mapped, AsyncRuntime, ErrorCode, ThreadPool},
     NetworkParams,
 };
-use rsnano_core::{utils::Logger, KeyPair};
+use rsnano_core::{
+    utils::{LogType, Logger},
+    KeyPair,
+};
 use rsnano_ledger::Ledger;
 use std::{
     collections::HashMap,
@@ -290,10 +293,13 @@ impl TcpListenerExt for Arc<TcpListener> {
         ));
         let listening_port = self.socket_facade.listening_port();
         if ec.is_err() {
-            self.logger.always_log(&format!(
-                "Network: Error while binding for incoming TCP/bootstrap on port {}: {:?}",
-                listening_port, ec
-            ));
+            self.logger.critical(
+                LogType::TcpListener,
+                &format!(
+                    "Error while binding for incoming TCP/bootstrap on port {}: {:?}",
+                    listening_port, ec
+                ),
+            );
             bail!("Network: Error while binding for incoming TCP/bootstrap");
         }
 
@@ -329,7 +335,7 @@ impl TcpListenerExt for Arc<TcpListener> {
         let this_l = Arc::clone(self);
         self.socket_facade.post(Box::new(move || {
             if !this_l.socket_facade.is_acceptor_open() {
-                this_l.logger.always_log("Network: Acceptor is not open");
+                this_l.logger.error(LogType::TcpListener, "Acceptor is not open");
                 return;
             }
 
@@ -381,17 +387,18 @@ impl TcpListenerExt for Arc<TcpListener> {
                     drop(data);
 
                     if socket_l.connections_per_address.lock().unwrap().count_connections() >= this_clone.max_inbound_connections {
-                        this_clone.logger.try_log ("Network: max_inbound_connections reached, unable to open new connection");
                         this_clone.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
+                        this_clone.logger.debug (LogType::TcpListener, "Max_inbound_connections reached, unable to open new connection");
+
                         this_clone.on_connection_requeue_delayed (callback);
                         return;
                     }
 
                     if this_clone.limit_reached_for_incoming_ip_connections (&connection_clone) {
                         let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
-                        let log_message = format!("Network: max connections per IP (max_peers_per_ip) was reached for {}, unable to open new connection", remote_ip_address);
-                        this_clone.logger.try_log(&log_message);
                         this_clone.stats.inc (StatType::Tcp, DetailType::TcpMaxPerIp, Direction::In);
+                        let log_message = format!("Max connections per IP (max_peers_per_ip) was reached for {}, unable to open new connection", remote_ip_address);
+                        this_clone.logger.debug(LogType::TcpListener, &log_message);
                         this_clone.on_connection_requeue_delayed (callback);
                         return;
                     }
@@ -399,10 +406,10 @@ impl TcpListenerExt for Arc<TcpListener> {
                     if this_clone.limit_reached_for_incoming_subnetwork_connections (&connection_clone) {
                         let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
                         let remote_subnet = first_ipv6_subnet_address(&remote_ip_address, this_clone.network_params.network.max_peers_per_subnetwork as u8);
-                        let log_message = format!("Network: max connections per subnetwork (max_peers_per_subnetwork) was reached for subnetwork {} (remote IP: {}), unable to open new connection",
-                            remote_subnet, remote_ip_address);
-                        this_clone.logger.try_log(&log_message);
                         this_clone.stats.inc(StatType::Tcp, DetailType::TcpMaxPerSubnetwork, Direction::In);
+                        let log_message = format!("Max connections per subnetwork (max_peers_per_subnetwork) was reached for subnetwork {} (remote IP: {}), unable to open new connection",
+                            remote_subnet, remote_ip_address);
+                        this_clone.logger.debug(LogType::TcpListener, &log_message);
                         this_clone.on_connection_requeue_delayed (callback);
                         return;
                     }
@@ -419,13 +426,13 @@ impl TcpListenerExt for Arc<TcpListener> {
                     					this_clone.on_connection (callback);
                     					return;
                     				}
-                    				this_clone.logger.always_log ("Network: Stopping to accept connections");
+                    				this_clone.logger.warn (LogType::TcpListener, "Stopping to accept connections");
                     				return;
                    			}
 
                     			// accept error
-                    			this_clone.logger.try_log (&format!("Network: Unable to accept connection: {:?}", ec));
                     			this_clone.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
+                    			this_clone.logger.error (LogType::TcpListener, &format!("Unable to accept connection: ({:?})", ec));
 
                     			if is_temporary_error (ec)
                     			{
@@ -442,7 +449,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                     			}
 
                     			// No requeue if we reach here, no incoming socket connections will be handled
-                    			this_clone.logger.always_log ("Network: Stopping to accept connections");
+                    			this_clone.logger.warn (LogType::TcpListener, "Stopping to accept connections");
                 }),
             );
         }));
@@ -497,22 +504,18 @@ impl TcpListenerExt for Arc<TcpListener> {
         } else {
             self.stats
                 .inc(StatType::Tcp, DetailType::TcpExcluded, Direction::In);
-            if self.config.logging.network_rejected_logging() {
-                self.logger.try_log(&format!(
-                    "Rejected connection from excluded peer {}",
-                    remote
-                ));
-            }
+            self.logger.debug(
+                LogType::TcpServer,
+                &format!("Rejected connection from excluded peer {}", remote),
+            );
         }
     }
 }
 
 impl TcpServerObserver for TcpListener {
     fn bootstrap_server_timeout(&self, connection_id: usize) {
-        if self.config.logging.bulk_pull_logging() {
-            self.logger
-                .try_log("Closing incoming tcp / bootstrap server by timeout");
-        }
+        self.logger
+            .debug(LogType::TcpServer, "Closing TCP server due to timeout");
         self.remove_connection(connection_id)
     }
 
@@ -522,9 +525,10 @@ impl TcpServerObserver for TcpListener {
         connection_id: usize,
         endpoint: SocketAddrV6,
     ) {
-        if self.config.logging.bulk_pull_logging() {
-            self.logger.try_log("Exiting incoming TCP/bootstrap server");
-        }
+        self.logger.debug(
+            LogType::TcpServer,
+            &format!("Exiting TCP server ({})", endpoint),
+        );
         if socket_type == super::SocketType::Bootstrap {
             self.bootstrap_count.fetch_sub(1, Ordering::SeqCst);
         } else if socket_type == super::SocketType::Realtime {

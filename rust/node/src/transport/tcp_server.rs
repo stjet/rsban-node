@@ -9,7 +9,10 @@ use crate::{
     utils::AsyncRuntime,
     NetworkParams,
 };
-use rsnano_core::{utils::Logger, Account, KeyPair};
+use rsnano_core::{
+    utils::{LogType, Logger},
+    Account, KeyPair,
+};
 use rsnano_messages::*;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
@@ -191,6 +194,10 @@ impl TcpServer {
 
         observer.inc_bootstrap_count();
         self.socket.set_socket_type(SocketType::Bootstrap);
+        self.logger.debug(
+            LogType::TcpServer,
+            &format!("Switched to bootstrap mode ({})", self.remote_endpoint()),
+        );
         true
     }
 
@@ -207,6 +214,10 @@ impl TcpServer {
 
             observer.inc_realtime_count();
             self.socket.set_socket_type(SocketType::Realtime);
+            self.logger.debug(
+                LogType::TcpServer,
+                &format!("Switched to realtime mode ({})", self.remote_endpoint()),
+            );
             return true;
         }
         false
@@ -288,6 +299,12 @@ impl TcpServerExt for Arc<TcpServer> {
             }
             debug_assert!(guard.port() != 0);
         }
+
+        self.logger.debug(
+            LogType::TcpServer,
+            &format!("Starting TCP server ({})", guard.port()),
+        );
+
         self.receive_message();
     }
 
@@ -337,6 +354,15 @@ impl TcpServerExt for Arc<TcpServer> {
                         self_clone
                             .stats
                             .inc(StatType::Error, DetailType::from(e), Direction::In);
+                        self_clone.logger.debug(
+                            LogType::TcpServer,
+                            &format!(
+                                "Error reading message: {:?} ({})",
+                                e,
+                                self_clone.remote_endpoint()
+                            ),
+                        );
+
                         self_clone.stop();
                     }
                 }
@@ -390,6 +416,11 @@ impl TcpServerExt for Arc<TcpServer> {
                 }
             } else {
                 // Neither handshake nor bootstrap received when in handshake mode
+                self.logger.debug(
+                    LogType::TcpServer,
+                    "Neither handshake nor bootstrap received when in handshake mode",
+                );
+
                 return true;
             }
         } else if self.is_realtime_connection() {
@@ -488,19 +519,19 @@ impl HandshakeMessageVisitorImpl {
         let server_weak = Arc::downgrade(&self.server);
         let logger = Arc::clone(&self.logger);
         let stats = Arc::clone(&self.stats);
-        let handshake_logging = self.handshake_logging;
         self.server.socket.async_write(
             &shared_const_buffer,
             Some(Box::new(move |ec, _size| {
                 if let Some(server_l) = server_weak.upgrade() {
                     if ec.is_err() {
-                        if handshake_logging {
-                            logger.try_log(&format!(
-                                "Error sending node_id_handshake to {}: {:?}",
+                        logger.debug(
+                            LogType::TcpServer,
+                            &format!(
+                                "Error sending handshake response: {} ({:?})",
                                 server_l.remote_endpoint(),
                                 ec
-                            ));
-                        }
+                            ),
+                        );
                         // Stop invalid handshake
                         server_l.stop();
                     } else {
@@ -582,24 +613,26 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
         match message {
             Message::NodeIdHandshake(payload) => {
                 if self.disable_tcp_realtime {
-                    if self.handshake_logging {
-                        self.logger.try_log(&format!(
-                            "Disabled realtime TCP for handshake {}",
+                    self.logger.debug(
+                        LogType::TcpServer,
+                        &format!(
+                            "Handshake attempted with disabled realtime TCP ({})",
                             self.server.remote_endpoint()
-                        ));
-                    }
+                        ),
+                    );
                     // Stop invalid handshake
                     self.server.stop();
                     return;
                 }
 
                 if payload.query.is_some() && self.server.was_handshake_query_received() {
-                    if self.handshake_logging {
-                        self.logger.try_log(&format!(
-                            "Detected multiple node_id_handshake query from {}",
+                    self.logger.debug(
+                        LogType::TcpServer,
+                        &format!(
+                            "Detected multiple handshake queries ({})",
                             self.server.remote_endpoint()
-                        ));
-                    }
+                        ),
+                    );
                     // Stop invalid handshake
                     self.server.stop();
                     return;
@@ -607,12 +640,13 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
 
                 self.server.handshake_query_received();
 
-                if self.handshake_logging {
-                    self.logger.try_log(&format!(
-                        "Received node_id_handshake message from {}",
+                self.logger.debug(
+                    LogType::TcpServer,
+                    &format!(
+                        "Handshake query received ({})",
                         self.server.remote_endpoint()
-                    ));
-                }
+                    ),
+                );
 
                 if let Some(query) = &payload.query {
                     self.send_handshake_response(query, payload.is_v2);

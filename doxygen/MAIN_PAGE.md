@@ -5,7 +5,5 @@ files were also excluded as the `EXCLUDE_PATTERN` configuration stated below.
 
     EXCLUDE_PATTERNS       = */nano/*_test/* \
                              */nano/test_common/* \
-                             */nano/boost/* \
-                             */nano/qt/* \
-                             */nano/nano_wallet/*
+                             */nano/boost/* 
 

@@ -1,6 +1,7 @@
 #include "nano/lib/rsnano.hpp"
 
 #include <nano/crypto_lib/random_pool.hpp>
+#include <nano/lib/logging.hpp>
 #include <nano/lib/thread_runner.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/node/election.hpp>
@@ -124,8 +125,7 @@ TEST (system, receive_while_synchronizing)
 
 TEST (ledger, deep_account_compute)
 {
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
+	auto store = nano::make_store (nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::stats stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
@@ -547,14 +547,14 @@ TEST (store, vote_load)
  */
 TEST (store, pruned_load)
 {
-	auto logger{ std::make_shared<nano::logger_mt> () };
+	auto nlogger{ std::make_shared<nano::nlogger> () };
 	auto path (nano::unique_path ());
 	constexpr auto num_pruned = 2000000;
 	auto const expected_result = num_pruned / 2;
 	constexpr auto batch_size = 20;
 	boost::unordered_set<nano::block_hash> hashes;
 	{
-		auto store = nano::make_store (logger, path, nano::dev::constants);
+		auto store = nano::make_store (nlogger, path, nano::dev::constants);
 		ASSERT_FALSE (store->init_error ());
 		for (auto i (0); i < num_pruned / batch_size; ++i)
 		{
@@ -585,7 +585,7 @@ TEST (store, pruned_load)
 
 	// Reinitialize store
 	{
-		auto store = nano::make_store (logger, path, nano::dev::constants);
+		auto store = nano::make_store (nlogger, path, nano::dev::constants);
 		ASSERT_FALSE (store->init_error ());
 		ASSERT_EQ (expected_result, manually_count_pruned_blocks (*store));
 	}
@@ -1132,7 +1132,7 @@ TEST (confirmation_height, many_accounts_send_receive_self)
 // as opposed to active transactions which implicitly calls confirmation height processor.
 TEST (confirmation_height, many_accounts_send_receive_self_no_elections)
 {
-	auto logger{ std::make_shared<nano::logger_mt> () };
+	auto logger{ std::make_shared<nano::nlogger> () };
 	nano::logging logging;
 	auto path (nano::unique_path ());
 	auto store = nano::make_store (logger, path, nano::dev::constants);

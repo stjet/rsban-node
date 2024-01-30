@@ -1,7 +1,9 @@
+#include <nano/lib/logging.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/rsnano_callbacks.hpp>
 
 #include <gtest/gtest.h>
+
 namespace nano
 {
 namespace test
@@ -14,6 +16,7 @@ void force_nano_dev_network ();
 int main (int argc, char ** argv)
 {
 	rsnano::set_rsnano_callbacks ();
+	nano::nlogger::initialize (nano::load_log_config (nano::log_config::tests_default ()));
 	nano::force_nano_dev_network ();
 	nano::node_singleton_memory_pool_purge_guard memory_pool_cleanup_guard;
 	testing::InitGoogleTest (&argc, argv);

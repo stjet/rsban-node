@@ -34,7 +34,6 @@ add_custom_target(
     '${PROJECT_SOURCE_DIR}/nano/ipc_flatbuffers_test/*'
     '${PROJECT_SOURCE_DIR}/nano/ipc_flatbuffers_lib/*'
     '${PROJECT_SOURCE_DIR}/nano/nano_node/*'
-    '${PROJECT_SOURCE_DIR}/nano/nano_wallet/*'
     '${PROJECT_SOURCE_DIR}/nano/nano_rpc/*'
     '${PROJECT_SOURCE_DIR}/nano/rpc_test/*'
     '${PROJECT_SOURCE_DIR}/nano/test_common/*' --output-file

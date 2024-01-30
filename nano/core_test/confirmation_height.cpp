@@ -1726,7 +1726,7 @@ TEST (confirmation_height, election_winner_details_clearing_node_process_confirm
 
 TEST (confirmation_height, unbounded_block_cache_iteration)
 {
-	auto logger{ std::make_shared<nano::logger_mt> () };
+	auto logger{ std::make_shared<nano::nlogger> () };
 	auto path (nano::unique_path ());
 	auto store = nano::make_store (logger, path, nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());

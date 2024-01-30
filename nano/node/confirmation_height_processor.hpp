@@ -22,12 +22,14 @@ namespace nano
 class ledger;
 class logging;
 class logger_mt;
+class nlogger;
 class write_database_queue;
 
 class confirmation_height_processor final
 {
 public:
 	confirmation_height_processor (nano::ledger &, nano::stats & stats_a, nano::write_database_queue &, std::chrono::milliseconds, nano::logging const &, std::shared_ptr<nano::logger_mt> &, boost::latch & initialized_latch);
+	confirmation_height_processor (nano::ledger &, nano::stats & stats_a, nano::write_database_queue &, std::chrono::milliseconds, nano::logging const &, std::shared_ptr<nano::nlogger> &, boost::latch & initialized_latch);
 	~confirmation_height_processor ();
 
 	void pause ();

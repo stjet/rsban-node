@@ -24,8 +24,7 @@ nano::block_hash random_hash ()
 TEST (account_sets, construction)
 {
 	nano::stats stats;
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
+	auto store = nano::make_store (nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::bootstrap_ascending::account_sets sets{ stats };
 }
@@ -34,8 +33,7 @@ TEST (account_sets, empty_blocked)
 {
 	nano::account account{ 1 };
 	nano::stats stats;
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
+	auto store = nano::make_store (nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::bootstrap_ascending::account_sets sets{ stats };
 	ASSERT_FALSE (sets.blocked (account));
@@ -45,8 +43,7 @@ TEST (account_sets, block)
 {
 	nano::account account{ 1 };
 	nano::stats stats;
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
+	auto store = nano::make_store (nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::bootstrap_ascending::account_sets sets{ stats };
 	sets.block (account, random_hash ());
@@ -57,8 +54,7 @@ TEST (account_sets, unblock)
 {
 	nano::account account{ 1 };
 	nano::stats stats;
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
+	auto store = nano::make_store (nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::bootstrap_ascending::account_sets sets{ stats };
 	auto hash = random_hash ();
@@ -71,8 +67,7 @@ TEST (account_sets, priority_base)
 {
 	nano::account account{ 1 };
 	nano::stats stats;
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
+	auto store = nano::make_store (nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::bootstrap_ascending::account_sets sets{ stats };
 	ASSERT_EQ (1.0f, sets.priority (account));
@@ -82,8 +77,7 @@ TEST (account_sets, priority_blocked)
 {
 	nano::account account{ 1 };
 	nano::stats stats;
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
+	auto store = nano::make_store (nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::bootstrap_ascending::account_sets sets{ stats };
 	sets.block (account, random_hash ());
@@ -95,8 +89,7 @@ TEST (account_sets, priority_unblock_keep)
 {
 	nano::account account{ 1 };
 	nano::stats stats;
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
+	auto store = nano::make_store (nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::bootstrap_ascending::account_sets sets{ stats };
 	sets.priority_up (account);
@@ -113,8 +106,7 @@ TEST (account_sets, priority_up_down)
 {
 	nano::account account{ 1 };
 	nano::stats stats;
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
+	auto store = nano::make_store (nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::bootstrap_ascending::account_sets sets{ stats };
 	sets.priority_up (account);
@@ -128,8 +120,7 @@ TEST (account_sets, priority_down_sat)
 {
 	nano::account account{ 1 };
 	nano::stats stats;
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
+	auto store = nano::make_store (nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::bootstrap_ascending::account_sets sets{ stats };
 	sets.priority_down (account);
@@ -141,8 +132,7 @@ TEST (account_sets, saturate_priority)
 {
 	nano::account account{ 1 };
 	nano::stats stats;
-	auto logger{ std::make_shared<nano::logger_mt> () };
-	auto store = nano::make_store (logger, nano::unique_path (), nano::dev::constants);
+	auto store = nano::make_store (nano::unique_path (), nano::dev::constants);
 	ASSERT_FALSE (store->init_error ());
 	nano::bootstrap_ascending::account_sets sets{ stats };
 	for (int n = 0; n < 1000; ++n)

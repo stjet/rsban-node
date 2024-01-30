@@ -62,7 +62,7 @@ nano::bulk_pull_client::bulk_pull_client (std::shared_ptr<nano::node> const & no
 	block_deserializer{ std::make_shared<nano::bootstrap::block_deserializer> (node_a->async_rt) },
 	logging_enabled{ node_a->config->logging.bulk_pull_logging () },
 	network_logging{ node_a->config->logging.network_logging () },
-	logger{ *node_a->logger }
+	logger{ node_a->nlogger }
 {
 	attempt->notify_all ();
 }
@@ -85,10 +85,8 @@ nano::bulk_pull_client::~bulk_pull_client ()
 		}
 		pull.processed += pull_blocks - unexpected_count;
 		node_l->bootstrap_initiator.connections->requeue_pull (pull, network_error);
-		if (logging_enabled)
-		{
-			logger.try_log (boost::str (boost::format ("Bulk pull end block is not expected %1% for account %2% or head block %3%") % pull.end.to_string () % pull.account_or_head.to_account () % pull.account_or_head.to_string ()));
-		}
+
+		logger->debug (nano::log::type::bulk_pull_client, "Bulk pull end block is not expected {} for account {} or head block {}", pull.end.to_string (), pull.account_or_head.to_account (), pull.account_or_head.to_string ());
 	}
 	else
 	{
@@ -122,14 +120,11 @@ void nano::bulk_pull_client::request ()
 	payload.ascending = false;
 	nano::bulk_pull req{ node_l->network_params.network, payload };
 
-	if (logging_enabled)
+	if (attempt->should_log ())
 	{
-		logger.try_log (boost::str (boost::format ("Requesting account %1% or head block %2% from %3%. %4% accounts in queue") % pull.account_or_head.to_account () % pull.account_or_head.to_string () % connection->channel_string () % attempt->get_pulling ()));
+		logger->debug (nano::log::type::bulk_pull_client, "Accounts in pull queue: {}", attempt->get_pulling ());
 	}
-	else if (network_logging && attempt->should_log ())
-	{
-		logger.always_log (boost::str (boost::format ("%1% accounts in pull queue") % attempt->get_pulling ()));
-	}
+
 	auto this_l (shared_from_this ());
 	connection->send (
 	req, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
@@ -144,10 +139,7 @@ void nano::bulk_pull_client::request ()
 		}
 		else
 		{
-			if (node_l->config->logging.bulk_pull_logging ())
-			{
-				this_l->logger.try_log (boost::str (boost::format ("Error sending bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel_string ()));
-			}
+			this_l->logger->debug (nano::log::type::bulk_pull_client, "Error sending bulk pull request to: {} ({})", this_l->connection->channel_string (), ec.message ());
 			node_l->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_request_failure, nano::stat::dir::in);
 		}
 	},
@@ -209,20 +201,11 @@ void nano::bulk_pull_client::received_block (boost::system::error_code ec, std::
 	}
 	if (node_l->network_params.work.validate_entry (*block))
 	{
-		if (node_l->config->logging.bulk_pull_logging ())
-		{
-			logger.try_log (boost::str (boost::format ("Insufficient work for bulk pull block: %1%") % block->hash ().to_string ()));
-		}
+		logger->debug (nano::log::type::bulk_pull_client, "Insufficient work for bulk pull block: {}", block->hash ().to_string ());
 		node_l->stats->inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
 		return;
 	}
 	auto hash = block->hash ();
-	if (node_l->config->logging.bulk_pull_logging ())
-	{
-		std::string block_l;
-		block->serialize_json (block_l, node_l->config->logging.single_line_record ());
-		logger.try_log (boost::str (boost::format ("Pulled block %1% %2%") % hash.to_string () % block_l));
-	}
 	// Is block expected?
 	bool block_expected (false);
 	// Unconfirmed head is used only for lazy destinations if legacy bootstrap is not available, see nano::bootstrap_attempt::lazy_destinations_increment (...)
@@ -290,14 +273,12 @@ void nano::bulk_pull_account_client::request ()
 	payload.minimum_amount = node_l->config->receive_minimum;
 	payload.flags = nano::bulk_pull_account_flags::pending_hash_and_amount;
 	nano::bulk_pull_account req{ node_l->network_params.network, payload };
-	if (node_l->config->logging.bulk_pull_logging ())
+
+	if (attempt->should_log ())
 	{
-		node_l->logger->try_log (boost::str (boost::format ("Requesting pending for account %1% from %2%. %3% accounts in queue") % req.get_account ().to_account () % connection->channel_string () % attempt->wallet_size ()));
+		node_l->nlogger->debug (nano::log::type::bulk_pull_account_client, "Accounts in pull queue: {}", attempt->wallet_size ());
 	}
-	else if (node_l->config->logging.network_logging () && attempt->should_log ())
-	{
-		node_l->logger->always_log (boost::str (boost::format ("%1% accounts in pull queue") % attempt->wallet_size ()));
-	}
+
 	auto this_l (shared_from_this ());
 	connection->send (
 	req, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
@@ -312,12 +293,10 @@ void nano::bulk_pull_account_client::request ()
 		}
 		else
 		{
-			this_l->attempt->requeue_pending (this_l->account);
-			if (node_l->config->logging.bulk_pull_logging ())
-			{
-				node_l->logger->try_log (boost::str (boost::format ("Error starting bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel_string ()));
-			}
+			node_l->nlogger->debug (nano::log::type::bulk_pull_account_client, "Error starting bulk pull request to: {} ({})", this_l->connection->channel_string (), ec.message ());
 			node_l->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_error_starting_request, nano::stat::dir::in);
+
+			this_l->attempt->requeue_pending (this_l->account);
 		}
 	},
 	nano::transport::buffer_drop_policy::no_limiter_drop);
@@ -377,20 +356,16 @@ void nano::bulk_pull_account_client::receive_pending ()
 			}
 			else
 			{
+				node_l->nlogger->debug (nano::log::type::bulk_pull_account_client, "Error while receiving bulk pull account frontier: {}", ec.message ());
+				
 				this_l->attempt->requeue_pending (this_l->account);
-				if (node_l->config->logging.network_logging ())
-				{
-					node_l->logger->try_log (boost::str (boost::format ("Error while receiving bulk pull account frontier %1%") % ec.message ()));
-				}
 			}
 		}
 		else
 		{
+			node_l->nlogger->debug (nano::log::type::bulk_pull_account_client, "Invalid size: Expected {}, got: {}", size_l, size_a);
+
 			this_l->attempt->requeue_pending (this_l->account);
-			if (node_l->config->logging.network_message_logging ())
-			{
-				node_l->logger->try_log (boost::str (boost::format ("Invalid size: expected %1%, got %2%") % size_l % size_a));
-			}
 		}
 	});
 }

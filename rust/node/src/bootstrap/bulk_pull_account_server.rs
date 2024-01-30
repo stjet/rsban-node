@@ -2,7 +2,10 @@ use crate::{
     transport::{SocketExtensions, TcpServer, TcpServerExt, TrafficType},
     utils::{ErrorCode, ThreadPool},
 };
-use rsnano_core::{utils::Logger, Account, Amount, BlockHash, PendingInfo, PendingKey};
+use rsnano_core::{
+    utils::{LogType, Logger},
+    Account, Amount, BlockHash, PendingInfo, PendingKey,
+};
 use rsnano_ledger::Ledger;
 use rsnano_messages::{BulkPullAccount, BulkPullAccountFlags};
 use std::{
@@ -42,12 +45,13 @@ impl BulkPullAccountServerImpl {
         } else if self.request.flags == BulkPullAccountFlags::PendingHashAndAmount {
             // The defaults are set above
         } else {
-            if self.is_logging_enabled {
-                self.logger.try_log(&format!(
+            self.logger.debug(
+                LogType::BulkPullAccountServer,
+                &format!(
                     "Invalid bulk_pull_account flags supplied {:?}",
                     self.request.flags
-                ));
-            }
+                ),
+            );
 
             self.invalid_request = true;
 
@@ -110,19 +114,8 @@ impl BulkPullAccountServerImpl {
 
             let mut send_buffer = Vec::new();
             if self.pending_address_only {
-                if self.is_logging_enabled {
-                    self.logger.try_log(&format!(
-                        "Sending address: {}",
-                        block_info.source.encode_account()
-                    ));
-                }
                 send_buffer.extend_from_slice(block_info.source.as_bytes());
             } else {
-                if self.is_logging_enabled {
-                    self.logger
-                        .try_log(&format!("Sending block: {}", block_info_key.hash));
-                }
-
                 send_buffer.extend_from_slice(block_info_key.hash.as_bytes());
                 send_buffer.extend_from_slice(&block_info.amount.to_be_bytes());
 
@@ -144,9 +137,8 @@ impl BulkPullAccountServerImpl {
             /*
              * Otherwise, finalize the connection
              */
-            if self.is_logging_enabled {
-                self.logger.try_log("Done sending blocks");
-            }
+            self.logger
+                .debug(LogType::BulkPullAccountServer, "Done sending blocks");
 
             self.send_finished(server);
         }
@@ -234,10 +226,10 @@ impl BulkPullAccountServerImpl {
                 server.lock().unwrap().send_next_block(server2);
             }));
         } else {
-            if self.is_logging_enabled {
-                self.logger
-                    .try_log(&format!("Unable to bulk send block: {:?}", ec));
-            }
+            self.logger.debug(
+                LogType::BulkPullAccountServer,
+                &format!("Unable to bulk send block: {:?}", ec),
+            );
         }
     }
 
@@ -262,9 +254,10 @@ impl BulkPullAccountServerImpl {
             }
         }
 
-        if self.is_logging_enabled {
-            self.logger.try_log("Bulk sending for an account finished");
-        }
+        self.logger.debug(
+            LogType::BulkPullAccountServer,
+            "Bulk sending for an account finished",
+        );
 
         self.connection.socket.async_write(
             &Arc::new(send_buffer),
@@ -289,9 +282,8 @@ impl BulkPullAccountServerImpl {
 
             self.connection.start();
         } else {
-            if self.is_logging_enabled {
-                self.logger.try_log("Unable to pending-as-zero");
-            }
+            self.logger
+                .debug(LogType::BulkPullAccountServer, "Unable to pending-as-zero");
         }
     }
 }

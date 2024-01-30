@@ -3,7 +3,7 @@ use crate::{
     utils::{ErrorCode, ThreadPool},
 };
 use rsnano_core::{
-    utils::{Logger, MemoryStream},
+    utils::{LogType, Logger, MemoryStream},
     Account, BlockEnum, BlockHash, BlockType,
 };
 use rsnano_ledger::Ledger;
@@ -130,12 +130,13 @@ impl BulkPullServerImpl {
             .block
             .exists(&transaction, &self.request.end)
         {
-            if self.enable_logging {
-                self.logger.try_log(&format!(
+            self.logger.debug(
+                LogType::BulkPullServer,
+                &format!(
                     "Bulk pull end block doesn't exist: {}, sending everything",
                     self.request.end
-                ));
-            }
+                ),
+            );
             self.request.end = BlockHash::zero();
         }
 
@@ -146,12 +147,10 @@ impl BulkPullServerImpl {
         };
 
         if raw_block_exists {
-            if self.enable_logging {
-                self.logger.try_log(&format!(
-                    "Bulk pull request for block hash: {}",
-                    self.request.start
-                ));
-            }
+            self.logger.debug(
+                LogType::BulkPullServer,
+                &format!("Bulk pull request for block hash: {}", self.request.start),
+            );
 
             self.current = if self.ascending() {
                 self.ledger
@@ -178,23 +177,25 @@ impl BulkPullServerImpl {
                     .account(&transaction, &self.request.end)
                     .unwrap_or_default();
                 if account != self.request.start.into() {
-                    if self.enable_logging {
-                        self.logger.try_log(&format!(
+                    self.logger.debug(
+                        LogType::BulkPullServer,
+                        &format!(
                             "Request for block that is not on account chain: {} not on {}",
                             self.request.end,
                             Account::from(self.request.start).encode_account()
-                        ));
-                    }
+                        ),
+                    );
                     self.current = self.request.end;
                 }
             }
         } else {
-            if self.enable_logging {
-                self.logger.try_log(&format!(
+            self.logger.debug(
+                LogType::BulkPullServer,
+                &format!(
                     "Request for unknown account: {}",
                     Account::from(self.request.start).encode_account()
-                ));
-            }
+                ),
+            );
             self.current = self.request.end;
         }
 
@@ -276,9 +277,8 @@ impl BulkPullServerImpl {
 
     pub fn send_finished(&self, server_impl: Arc<Mutex<Self>>) {
         let send_buffer = Arc::new(vec![BlockType::NotABlock as u8]);
-        if self.enable_logging {
-            self.logger.try_log("Bulk sending finished");
-        }
+        self.logger
+            .debug(LogType::BulkPullServer, "Bulk sending finished");
 
         self.connection.socket.async_write(
             &send_buffer,
@@ -286,8 +286,10 @@ impl BulkPullServerImpl {
                 let guard = server_impl.lock().unwrap();
                 if ec.is_ok() {
                     guard.connection.start();
-                } else if guard.enable_logging {
-                    guard.logger.try_log("Unable to send not-a-block");
+                } else {
+                    guard
+                        .logger
+                        .debug(LogType::BulkPullServer, "Unable to send not-a-block");
                 }
             })),
             crate::transport::TrafficType::Generic,
@@ -300,10 +302,6 @@ impl BulkPullServerImpl {
 
             block.serialize(&mut stream);
             let send_buffer = Arc::new(stream.to_vec());
-            if self.enable_logging {
-                self.logger
-                    .try_log(&format!("sending block: {}", block.hash()));
-            }
             self.connection.socket.async_write(
                 &send_buffer,
                 Some(Box::new(move |ec, size| {
@@ -329,9 +327,11 @@ impl BulkPullServerImpl {
                 let impl_clone = server_impl.clone();
                 server_impl.lock().unwrap().send_next(impl_clone);
             }));
-        } else if self.enable_logging {
-            self.logger
-                .try_log(&format!("Unable to bulk send block: {:?}", ec));
+        } else {
+            self.logger.debug(
+                LogType::BulkPullServer,
+                &format!("Unable to bulk send block: {:?}", ec),
+            );
         }
     }
 }

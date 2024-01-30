@@ -1,5 +1,6 @@
 #include "nano/lib/blocks.hpp"
 #include "nano/lib/logger_mt.hpp"
+#include "nano/lib/logging.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
 

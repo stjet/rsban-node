@@ -12,7 +12,7 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::{BufferReader, Logger},
+    utils::{BufferReader, LogType, Logger},
     work::WorkThresholds,
     BlockEnum, BlockType, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
@@ -111,10 +111,10 @@ impl BulkPushServerImpl {
             return;
         };
         if bootstrap_initiator.in_progress() {
-            if self.enable_logging {
-                self.logger
-                    .try_log("Aborting bulk_push because a bootstrap attempt is in progress");
-            }
+            self.logger.debug(
+                LogType::BulkPushServer,
+                "Aborting bulk_push because a bootstrap attempt is in progress",
+            );
         } else {
             let socket = Arc::clone(&self.connection.socket);
             let buffer = Arc::clone(&self.receive_buffer);
@@ -128,11 +128,10 @@ impl BulkPushServerImpl {
                             guard.received_type(server_impl2);
                         }
                         Err(e) => {
-                            if guard.enable_logging {
-                                guard
-                                    .logger
-                                    .try_log(&format!("Error receiving block type: {:?}", e));
-                            }
+                            guard.logger.debug(
+                                LogType::BulkPushServer,
+                                &format!("Error receiving block type: {:?}", e),
+                            );
                         }
                     }
                 }));
@@ -153,9 +152,10 @@ impl BulkPushServerImpl {
                 return;
             }
             Some(BlockType::Invalid) | None => {
-                if self.enable_network_logging {
-                    self.logger.try_log("Unknown type received as block type");
-                }
+                self.logger.debug(
+                    LogType::BulkPushServer,
+                    "Unknown type received as block type",
+                );
                 return;
             }
             _ => {}
@@ -312,13 +312,11 @@ impl BulkPushServerImpl {
             match block {
                 Ok(block) => {
                     if self.work_thresholds.validate_entry_block(&block) {
-                        if self.enable_logging {
-                            self.logger.try_log(&format!(
-                                "Insufficient work for bulk push block: {}",
-                                block.hash()
-                            ));
-                        }
-                        self.stats.inc_detail_only(
+                        self.logger.debug(
+                            LogType::BulkPushServer,
+                            &format!("Insufficient work for bulk push block: {}", block.hash()),
+                        );
+                        self.stats.inc(
                             StatType::Error,
                             DetailType::InsufficientWork,
                             Direction::In,
@@ -329,10 +327,10 @@ impl BulkPushServerImpl {
                     }
                 }
                 Err(_) => {
-                    if self.enable_logging {
-                        self.logger
-                            .try_log("Error deserializing block received from pull request");
-                    }
+                    self.logger.debug(
+                        LogType::BulkPushServer,
+                        "Error deserializing block received from pull request",
+                    );
                 }
             }
         }

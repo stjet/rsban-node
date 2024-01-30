@@ -9,7 +9,7 @@
 namespace nano
 {
 class bootstrap_attempt;
-class logger_mt;
+class nlogger;
 namespace transport
 {
 	class tcp_server;
@@ -85,7 +85,7 @@ private:
 	bool logging_enabled{ false };
 	bool network_logging{ false };
 	std::weak_ptr<nano::node> node;
-	nano::logger_mt & logger;
+	std::shared_ptr<nano::nlogger> logger;
 };
 class bootstrap_attempt_wallet;
 class bulk_pull_account_client final : public std::enable_shared_from_this<nano::bulk_pull_account_client>

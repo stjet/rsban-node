@@ -1,6 +1,6 @@
 use rsnano_core::{
     to_hex_string,
-    utils::{ContainerInfo, ContainerInfoComponent, Logger},
+    utils::{ContainerInfo, ContainerInfoComponent, LogType, Logger},
     work::WorkThresholds,
     BlockEnum, BlockType, Epoch, HashOrAccount, UncheckedInfo,
 };
@@ -175,12 +175,15 @@ impl BlockProcessor {
             && number_of_blocks_processed != 0
             && timer_l.elapsed() > Duration::from_millis(100)
         {
-            self.logger.always_log(&format!(
-                "Processed {} blocks ({} blocks were forced) in {} ms",
-                number_of_blocks_processed,
-                number_of_forced_processed,
-                timer_l.elapsed().as_millis(),
-            ));
+            self.logger.debug(
+                LogType::Blockprocessor,
+                &format!(
+                    "Processed {} blocks ({} blocks were forced) in {} ms",
+                    number_of_blocks_processed,
+                    number_of_forced_processed,
+                    timer_l.elapsed().as_millis(),
+                ),
+            );
         }
         processed
     }
@@ -196,14 +199,16 @@ impl BlockProcessor {
         let block_ptr = Arc::as_ptr(block) as *mut BlockEnum;
         let mutable_block = unsafe { &mut *block_ptr };
 
-        let result = self.ledger.process(txn, mutable_block);
+        let result = match self.ledger.process(txn, mutable_block) {
+            Ok(()) => ProcessResult::Progress,
+            Err(r) => r,
+        };
+
+        self.stats
+            .inc(StatType::Blockprocessor, result.into(), Direction::In);
+
         match result {
-            Ok(()) => {
-                if self.config.logging.ledger_logging_value {
-                    let block_string = block.to_json().unwrap();
-                    self.logger
-                        .try_log(&format!("Processing block {}: {}", hash, block_string));
-                }
+            ProcessResult::Progress => {
                 self.queue_unchecked(&hash.into());
                 /* For send blocks check epoch open unchecked (gap pending).
                 For state blocks check only send subtype and only if block epoch is not last epoch.
@@ -218,10 +223,7 @@ impl BlockProcessor {
                     self.queue_unchecked(&block.destination_or_link().into());
                 }
             }
-            Err(ProcessResult::GapPrevious) => {
-                if self.config.logging.ledger_logging_value {
-                    self.logger.try_log(&format!("Gap previous for: {hash}"));
-                }
+            ProcessResult::GapPrevious => {
                 self.unchecked_map.put(
                     block.previous().into(),
                     UncheckedInfo::new(Arc::clone(block)),
@@ -229,10 +231,7 @@ impl BlockProcessor {
                 self.stats
                     .inc(StatType::Ledger, DetailType::GapPrevious, Direction::In);
             }
-            Err(ProcessResult::GapSource) => {
-                if self.config.logging.ledger_logging_value {
-                    self.logger.try_log(&format!("Gap source for: {hash}"));
-                }
+            ProcessResult::GapSource => {
                 self.unchecked_map.put(
                     self.ledger.block_source(txn, block).into(),
                     UncheckedInfo::new(Arc::clone(block)),
@@ -240,11 +239,7 @@ impl BlockProcessor {
                 self.stats
                     .inc(StatType::Ledger, DetailType::GapSource, Direction::In);
             }
-            Err(ProcessResult::GapEpochOpenPending) => {
-                if self.config.logging.ledger_logging_value {
-                    self.logger
-                        .try_log(&format!("Gap pending entries for epoch open: {hash}"));
-                }
+            ProcessResult::GapEpochOpenPending => {
                 // Specific unchecked key starting with epoch open block account public key
                 self.unchecked_map.put(
                     block.account_calculated().into(),
@@ -253,83 +248,24 @@ impl BlockProcessor {
                 self.stats
                     .inc(StatType::Ledger, DetailType::GapSource, Direction::In);
             }
-            Err(ProcessResult::Old) => {
-                if self.config.logging.ledger_duplicate_logging() {
-                    self.logger.try_log(&format!("Old for: {hash}"));
-                }
+            ProcessResult::Old => {
                 self.stats
                     .inc(StatType::Ledger, DetailType::Old, Direction::In);
             }
-            Err(ProcessResult::BadSignature) => {
-                if self.config.logging.ledger_logging_value {
-                    self.logger.try_log(&format!("Bad signature for: {hash}"));
-                }
-            }
-            Err(ProcessResult::NegativeSpend) => {
-                if self.config.logging.ledger_logging_value {
-                    self.logger.try_log(&format!("Negative spend for: {hash}"));
-                }
-            }
-            Err(ProcessResult::Unreceivable) => {
-                if self.config.logging.ledger_logging_value {
-                    self.logger.try_log(&format!("Unreceivable for: {hash}"));
-                }
-            }
-            Err(ProcessResult::Fork) => {
+            ProcessResult::BadSignature => {}
+            ProcessResult::NegativeSpend => {}
+            ProcessResult::Unreceivable => {}
+            ProcessResult::Fork => {
                 self.stats
                     .inc(StatType::Ledger, DetailType::Fork, Direction::In);
-
-                if self.config.logging.ledger_logging_value {
-                    self.logger
-                        .try_log(&format!("Fork for: {hash} root: {}", block.root()));
-                }
             }
-            Err(ProcessResult::OpenedBurnAccount) => {
-                if self.config.logging.ledger_logging_value {
-                    self.logger
-                        .try_log(&format!("Rejecting open block for burn account: {hash}"));
-                }
-            }
-            Err(ProcessResult::BalanceMismatch) => {
-                if self.config.logging.ledger_logging_value {
-                    self.logger
-                        .try_log(&format!("Balance mismatch for: {hash}"));
-                }
-            }
-            Err(ProcessResult::RepresentativeMismatch) => {
-                if self.config.logging.ledger_logging_value {
-                    self.logger
-                        .try_log(&format!("Representative mismatch for: {hash}"));
-                }
-            }
-            Err(ProcessResult::BlockPosition) => {
-                if self.config.logging.ledger_logging_value {
-                    self.logger.try_log(&format!(
-                        "Block {hash} cannot follow predecessor: {}",
-                        block.previous()
-                    ));
-                }
-            }
-            Err(ProcessResult::InsufficientWork) => {
-                if self.config.logging.ledger_logging_value {
-                    self.logger.try_log(&format!(
-                        "Insufficient work for {hash} : {} (difficulty {})",
-                        to_hex_string(block.work()),
-                        to_hex_string(self.work.difficulty_block(block))
-                    ));
-                }
-            }
-            Err(ProcessResult::Progress) => {
-                unreachable!()
-            }
+            ProcessResult::OpenedBurnAccount => {}
+            ProcessResult::BalanceMismatch => {}
+            ProcessResult::RepresentativeMismatch => {}
+            ProcessResult::BlockPosition => {}
+            ProcessResult::InsufficientWork => {}
         }
 
-        let result = match result {
-            Ok(()) => ProcessResult::Progress,
-            Err(r) => r,
-        };
-        self.stats
-            .inc(StatType::Blockprocessor, result.into(), Direction::In);
         result
     }
 
@@ -342,28 +278,32 @@ impl BlockProcessor {
         if let Some(successor) = self.ledger.successor(transaction, &block.qualified_root()) {
             if successor.hash() != hash {
                 // Replace our block with the winner and roll back any dependent blocks
-                if self.config.logging.ledger_rollback_logging_value {
-                    self.logger.always_log(&format!(
-                        "Rolling back {} and replacing with {}",
+                self.logger.debug(
+                    LogType::Blockprocessor,
+                    &format!(
+                        "Rolling back: {} and replacing with: {}",
                         successor.hash(),
                         hash
-                    ));
-                }
+                    ),
+                );
                 let rollback_list = match self.ledger.rollback(transaction, &successor.hash()) {
                     Ok(rollback_list) => {
-                        if self.config.logging.ledger_rollback_logging_value {
-                            self.logger
-                                .always_log(&format!("{} blocks rolled back", rollback_list.len()));
-                        }
+                        self.logger.debug(
+                            LogType::Blockprocessor,
+                            &format!("Blocks rolled back: {}", rollback_list.len()),
+                        );
                         rollback_list
                     }
                     Err(_) => {
                         self.stats
                             .inc(StatType::Ledger, DetailType::RollbackFailed, Direction::In);
-                        self.logger.always_log(&format!(
-                            "Failed to roll back {} because it or a successor was confirmed",
-                            successor.hash()
-                        ));
+                        self.logger.error(
+                            LogType::Blockprocessor,
+                            &format!(
+                                "Failed to roll back: {} because it or a successor was confirmed",
+                                successor.hash()
+                            ),
+                        );
                         Vec::new()
                     }
                 };

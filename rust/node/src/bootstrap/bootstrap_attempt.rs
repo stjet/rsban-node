@@ -4,7 +4,11 @@ use crate::{
     websocket::{Listener, MessageBuilder},
 };
 use anyhow::Result;
-use rsnano_core::{encode_hex, utils::Logger, Account, BlockEnum};
+use rsnano_core::{
+    encode_hex,
+    utils::{LogType, Logger},
+    Account, BlockEnum,
+};
 use rsnano_ledger::Ledger;
 use std::{
     sync::{
@@ -88,8 +92,10 @@ impl BootstrapAttempt {
     fn start(&self) -> Result<()> {
         let mode = self.mode_text();
         let id = &self.id;
-        self.logger
-            .always_log(&format!("Starting {mode} bootstrap attempt with ID {id}"));
+        self.logger.debug(
+            LogType::Bootstrap,
+            &format!("Starting bootstrap attempt with ID: {id} (mode: {mode}) "),
+        );
         self.websocket_server
             .broadcast(&MessageBuilder::bootstrap_started(id, mode)?)?;
         Ok(())
@@ -188,8 +194,10 @@ impl Drop for BootstrapAttempt {
     fn drop(&mut self) {
         let mode = self.mode_text();
         let id = &self.id;
-        self.logger
-            .always_log(&format!("Exiting {mode} bootstrap attempt with ID {id}"));
+        self.logger.debug(
+            LogType::Bootstrap,
+            &format!("Exiting bootstrap attempt with ID: {id} (mode: {mode})"),
+        );
 
         self.websocket_server
             .broadcast(

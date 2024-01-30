@@ -20,6 +20,8 @@ enum class type : uint8_t
 	http_callback,
 	ipc,
 	tcp,
+	channel,
+	socket,
 	confirmation_height,
 	confirmation_observer,
 	drop,

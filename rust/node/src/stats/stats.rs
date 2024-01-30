@@ -116,6 +116,8 @@ pub enum StatType {
     HttpCallback,
     Ipc,
     Tcp,
+    Channel,
+    Socket,
     ConfirmationHeight,
     ConfirmationObserver,
     Drop,

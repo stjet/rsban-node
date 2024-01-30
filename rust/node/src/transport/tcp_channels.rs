@@ -506,19 +506,12 @@ impl ChannelTcpObserver for ChannelTcpObserverImpl {
         });
     }
 
-    fn message_dropped(&self, message: &Message, buffer_size: usize) {
+    fn message_dropped(&self, message: &Message, _buffer_size: usize) {
         self.execute(|channels| {
             let detail_type = message.into();
             channels
                 .stats
                 .inc(StatType::Drop, detail_type, Direction::Out);
-            if channels.node_config.logging.network_packet_logging() {
-                channels.logger.always_log(&format!(
-                    "{} of size {} dropped",
-                    detail_type.as_str(),
-                    buffer_size
-                ));
-            }
         });
     }
 

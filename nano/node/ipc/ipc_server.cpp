@@ -269,7 +269,7 @@ public:
 				}
 				else 
 				{
-					this_l->node.nlogger.error (nano::log::type::ipc, "Write failed: ", error_a.message ());
+					this_l->node.nlogger->error (nano::log::type::ipc, "Write failed: ", error_a.message ());
 				}
 			});
 
@@ -302,7 +302,7 @@ public:
 			this_l->active_encoding = static_cast<nano::ipc::payload_encoding> (encoding);
 			if (this_l->buffer[nano::ipc::preamble_offset::lead] != 'N' || this_l->buffer[nano::ipc::preamble_offset::reserved_1] != 0 || this_l->buffer[nano::ipc::preamble_offset::reserved_2] != 0)
 			{
-				this_l->node->nlogger.error (nano::log::type::ipc, "Invalid preamble");
+				this_l->node.nlogger->error (nano::log::type::ipc, "Invalid preamble");
 			}
 			else if (encoding == static_cast<uint8_t> (nano::ipc::payload_encoding::json_v1) || encoding == static_cast<uint8_t> (nano::ipc::payload_encoding::json_v1_unsafe))
 			{
@@ -680,7 +680,7 @@ nano::error nano::ipc::ipc_server::reload_access_config ()
 	nano::error access_config_error (nano::ipc::read_access_config_toml (node.application_path, access));
 	if (access_config_error)
 	{
-		node.nlogger.error (nano::log::type::ipc_server, "Invalid access configuration file: {}", access_config_error.get_message ());
+		node.nlogger->error (nano::log::type::ipc_server, "Invalid access configuration file: {}", access_config_error.get_message ());
 	}
 	return access_config_error;
 }

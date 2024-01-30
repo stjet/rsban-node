@@ -49,6 +49,7 @@ public:
 
 	bool upgrade_json (unsigned, nano::jsonconfig &);
 	nano::account random_representative () const;
+
 	nano::network_params network_params;
 	std::optional<uint16_t> peering_port{};
 	nano::scheduler::optimistic_config optimistic_scheduler;

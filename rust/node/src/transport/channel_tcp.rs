@@ -271,16 +271,16 @@ impl Channel for ChannelTcp {
                 observer.message_sent(message);
             }
         } else {
+            if let Some(observer) = self.observer.lock() {
+                observer.message_dropped(message, buffer.len());
+            }
+
             if let Some(callback) = callback {
                 if let Some(async_rt) = self.async_rt.upgrade() {
                     async_rt.post(Box::new(move || {
                         callback(ErrorCode::not_supported(), 0);
                     }));
                 }
-            }
-
-            if let Some(observer) = self.observer.lock() {
-                observer.message_dropped(message, buffer.len());
             }
         }
     }

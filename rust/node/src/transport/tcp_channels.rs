@@ -18,7 +18,7 @@ use crate::{
 };
 use rand::{seq::SliceRandom, thread_rng};
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, Logger},
+    utils::{ContainerInfo, ContainerInfoComponent, LogType, Logger},
     KeyPair, PublicKey,
 };
 use rsnano_messages::*;
@@ -703,16 +703,10 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 };
 
                 if ec.is_err() {
-                    if this_l
-                        .node_config
-                        .logging
-                        .network_node_id_handshake_logging()
-                    {
-                        this_l.logger.try_log(&format!(
-                            "Error reading node_id_handshake from {}",
-                            endpoint
-                        ));
-                    }
+                    this_l.logger.debug(
+                        LogType::Tcp,
+                        &format!("Error reading node_id_handshake from: {}", endpoint),
+                    );
                     cleanup_node_id_handshake_socket();
                     return;
                 }
@@ -725,16 +719,13 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 // the header type should in principle be checked after checking the network bytes and the version numbers, I will not change it here since the benefits do not outweight the difficulties
 
                 let Message::NodeIdHandshake(handshake) = &message.message else {
-                    if this_l
-                        .node_config
-                        .logging
-                        .network_node_id_handshake_logging()
-                    {
-                        this_l.logger.try_log(&format!(
-                            "Error reading node_id_handshake message header from {}",
+                    this_l.logger.debug(
+                        LogType::Tcp,
+                        &format!(
+                            "Error reading node_id_handshake message header from: {}",
                             endpoint
-                        ));
-                    }
+                        ),
+                    );
                     cleanup_node_id_handshake_socket();
                     return;
                 };
@@ -767,16 +758,10 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 }
 
                 let invalid_handshake = || {
-                    if this_l
-                        .node_config
-                        .logging
-                        .network_node_id_handshake_logging()
-                    {
-                        this_l.logger.try_log(&format!(
-                            "Error reading node_id_handshake from {}",
-                            endpoint
-                        ));
-                    }
+                    this_l.logger.debug(
+                        LogType::Tcp,
+                        &format!("Error reading node_id_handshake from: {}", endpoint),
+                    );
                     cleanup_node_id_handshake_socket();
                 };
 
@@ -822,12 +807,13 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     .logging
                     .network_node_id_handshake_logging()
                 {
-                    this_l.logger.try_log(&format!(
-                        "Node ID handshake response sent with node ID {} to {}: query {:?}",
-                        this_l.node_id.public_key().to_node_id(),
-                        endpoint,
-                        query.cookie
-                    ));
+                    this_l.logger.debug(
+                        LogType::Tcp,
+                        &format!(
+                            "Node ID handshake response sent to {} (query: {:?})",
+                            endpoint, query.cookie
+                        ),
+                    );
                 }
 
                 let channel_clone = channel.clone();
@@ -842,16 +828,13 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                             return;
                         };
                         if ec.is_err() {
-                            if this_l
-                                .node_config
-                                .logging
-                                .network_node_id_handshake_logging()
-                            {
-                                this_l.logger.try_log(&format!(
-                                    "Error sending node_id_handshake to {}: {:?}",
+                            this_l.logger.debug(
+                                LogType::Tcp,
+                                &format!(
+                                    "Error sending node_id_handshake to: {} ({:?})",
                                     endpoint, ec
-                                ));
-                            }
+                                ),
+                            );
                             cleanup_node_id_handshake_socket();
                             return;
                         }
@@ -962,11 +945,10 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 };
 
                 if ec.is_err() {
-                    if this_l.node_config.logging.network_logging_value {
-                        this_l
-                            .logger
-                            .try_log(&format!("Error connecting to {}: {:?}", endpoint, ec));
-                    }
+                    this_l.logger.debug(
+                        LogType::Tcp,
+                        &format!("Error connecting to: {} ({:?})", endpoint, ec),
+                    );
 
                     return;
                 }
@@ -979,21 +961,13 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     is_v2: query.is_some(),
                 });
 
-                if this_l
-                    .node_config
-                    .logging
-                    .network_node_id_handshake_logging()
-                {
-                    let query_string = query
-                        .map(|q| format!("{:?}", q.cookie))
-                        .unwrap_or_else(|| "not_set".to_string());
-                    this_l.logger.try_log(&format!(
-                        "Node ID handshake request sent with node ID {} to {}: query {}",
-                        this_l.node_id.public_key().to_node_id(),
-                        endpoint,
-                        query_string
-                    ));
-                }
+                let query_string = query
+                    .map(|q| format!("{:?}", q.cookie))
+                    .unwrap_or_else(|| "not_set".to_string());
+                this_l.logger.debug(
+                    LogType::Tcp,
+                    &format!("Handshake sent to: {} (query {})", endpoint, query_string),
+                );
 
                 let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
                     panic!("not a tcp channel")
@@ -1015,16 +989,13 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                                 if let Some(socket) = tcp.socket() {
                                     socket.close();
                                 }
-                                if this_l
-                                    .node_config
-                                    .logging
-                                    .network_node_id_handshake_logging()
-                                {
-                                    this_l.logger.try_log(&format!(
-                                        "Error sending node_id_handshake to {}: {:?}",
+                                this_l.logger.debug(
+                                    LogType::Tcp,
+                                    &format!(
+                                        "Error sending node_id_handshake to: {} ({:?})",
                                         endpoint, ec
-                                    ));
-                                }
+                                    ),
+                                );
                             }
                         }
                     })),

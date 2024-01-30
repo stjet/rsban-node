@@ -1,6 +1,6 @@
 use super::{DetailType, Direction, StatType, Stats};
 use crate::transport::{EndpointType, SocketObserver};
-use rsnano_core::utils::Logger;
+use rsnano_core::utils::{LogType, Logger};
 use std::{net::SocketAddrV6, sync::Arc};
 
 pub struct SocketStats {
@@ -21,10 +21,10 @@ impl SocketStats {
 
 impl SocketObserver for SocketStats {
     fn disconnect_due_to_timeout(&self, endpoint: SocketAddrV6) {
-        if self.enable_timeout_logging {
-            self.logger
-                .try_log(&format!("Disconnecting from {} due to timeout", endpoint));
-        }
+        self.logger.debug(
+            LogType::TcpServer,
+            &format!("Closing socket due to timeout ({})", endpoint),
+        );
     }
 
     fn connect_error(&self) {

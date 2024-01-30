@@ -2,6 +2,7 @@
 #include "nano/lib/blocks.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
+#include "nano/lib/logging.hpp"
 #include "nano/node/nodeconfig.hpp"
 #include "nano/node/peer_exclusion.hpp"
 #include "nano/node/transport/channel.hpp"
@@ -230,7 +231,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	tcp_message_manager{ node.config->tcp_incoming_connections_max },
 	stats{ node.stats },
 	config{ node.config },
-	logger{ node.logger },
+	logger{ node.nlogger },
 	publish_filter{ std::make_shared<nano::network_filter> (256 * 1024) }
 {
 	auto node_config_dto{ node.config->to_dto () };
@@ -523,10 +524,7 @@ void nano::transport::tcp_channels::message_dropped (nano::message const & messa
 	nano::transport::callback_visitor visitor;
 	message_a.visit (visitor);
 	stats->inc (nano::stat::type::drop, visitor.result, nano::stat::dir::out);
-	if (config->logging.network_packet_logging ())
-	{
-		logger->always_log (boost::str (boost::format ("%1% of size %2% dropped") % stats->detail_to_string (visitor.result) % buffer_size_a));
-	}
+	logger->debug (nano::log::type::tcp, "{} of size {} dropped", stats->detail_to_string (visitor.result), buffer_size_a);
 }
 
 void nano::transport::tcp_channels::no_socket_drop ()

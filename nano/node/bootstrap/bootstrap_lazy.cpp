@@ -257,11 +257,11 @@ void nano::bootstrap_attempt_lazy::run ()
 	}
 	if (!get_stopped ())
 	{
-		node->logger->try_log ("Completed lazy pulls");
+		node->nlogger->debug (nano::log::type::bootstrap_lazy, "Completed lazy pulls");
 	}
 	if (lazy_has_expired ())
 	{
-		node->logger->try_log (boost::str (boost::format ("Lazy bootstrap attempt ID %1% expired") % id ()));
+		node->nlogger->debug (nano::log::type::bootstrap_lazy, "Lazy bootstrap attempt ID {} expired", id ());
 	}
 	rsnano::rsn_bootstrap_attempt_unlock (lock);
 	stop ();
@@ -632,7 +632,7 @@ void nano::bootstrap_attempt_wallet::run ()
 	}
 	if (!get_stopped ())
 	{
-		node->logger->try_log ("Completed wallet lazy pulls");
+		node->nlogger->info (nano::log::type::bootstrap_lazy, "Completed wallet lazy pulls");
 	}
 	rsnano::rsn_bootstrap_attempt_unlock (lock);
 	stop ();

@@ -15,7 +15,7 @@ namespace store
 	class component;
 }
 class network_params;
-class logger_mt;
+class nlogger;
 
 class epoch_upgrader final
 {
@@ -30,7 +30,7 @@ private: // Dependencies
 	nano::ledger & ledger;
 	nano::store::component & store;
 	nano::network_params & network_params;
-	nano::logger_mt & logger;
+	nano::nlogger & nlogger;
 
 private:
 	void upgrade_impl (nano::raw_key const & prv, nano::epoch epoch, uint64_t count_limit, uint64_t threads);

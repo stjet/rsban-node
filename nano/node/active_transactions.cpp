@@ -1,4 +1,5 @@
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/logging.hpp"
 #include "nano/lib/utility.hpp"
 
 #include <nano/lib/threading.hpp>
@@ -573,26 +574,6 @@ bool nano::active_transactions::have_quorum (nano::tally_t const & tally_a) cons
 	return result;
 }
 
-void nano::active_transactions::log_votes (nano::election & election, nano::election_lock & lock, nano::tally_t const & tally_a, std::string const & prefix_a) const
-{
-	std::stringstream tally;
-	std::string line_end (node.config->logging.single_line_record () ? "\t" : "\n");
-	tally << boost::str (boost::format ("%1%%2%Vote tally for root %3%, final weight:%4%") % prefix_a % line_end % election.root ().to_string () % lock.final_weight ().number ());
-	for (auto i (tally_a.begin ()), n (tally_a.end ()); i != n; ++i)
-	{
-		tally << boost::str (boost::format ("%1%Block %2% weight %3%") % line_end % i->second->hash ().to_string () % i->first.convert_to<std::string> ());
-	}
-	auto votes{ lock.last_votes () };
-	for (auto i (votes.begin ()), n (votes.end ()); i != n; ++i)
-	{
-		if (i->first != nullptr)
-		{
-			tally << boost::str (boost::format ("%1%%2% %3% %4%") % line_end % i->first.to_account () % std::to_string (i->second.get_timestamp ()) % i->second.get_hash ().to_string ());
-		}
-	}
-	node.logger->try_log (tally.str ());
-}
-
 void nano::active_transactions::confirm_if_quorum (nano::election_lock & lock_a, nano::election & election)
 {
 	auto tally_l (tally_impl (lock_a));
@@ -629,10 +610,6 @@ void nano::active_transactions::confirm_if_quorum (nano::election_lock & lock_a,
 		}
 		if (!node.ledger.cache.final_votes_confirmation_canary () || lock_a.final_weight ().number () >= node.online_reps.delta ())
 		{
-			if (node.config->logging.vote_logging () || (node.config->logging.election_fork_tally_logging () && lock_a.last_blocks_size () > 1))
-			{
-				log_votes (election, lock_a, tally_l);
-			}
 			confirm_once (lock_a, nano::election_status_type::active_confirmed_quorum, election);
 		}
 	}
@@ -978,10 +955,6 @@ bool nano::active_transactions::transition_time (nano::confirmation_solicitor & 
 		if (!lock.state_change (state_l, nano::election_state::expired_unconfirmed))
 		{
 			result = true; // Return true to indicate this election should be cleaned up
-			if (node.config->logging.election_expiration_tally_logging ())
-			{
-				log_votes (election, lock, tally_impl (lock), "Election expired: ");
-			}
 			auto st{ lock.status () };
 			st.set_election_status_type (nano::election_status_type::stopped);
 			lock.set_status (st);

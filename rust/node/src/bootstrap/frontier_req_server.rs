@@ -4,7 +4,7 @@ use std::{
 };
 
 use rsnano_core::{
-    utils::{seconds_since_epoch, Logger},
+    utils::{seconds_since_epoch, LogType, Logger},
     Account, BlockHash,
 };
 use rsnano_ledger::Ledger;
@@ -82,10 +82,10 @@ impl FrontierReqServerImpl {
         if ec.is_ok() {
             self.connection.start();
         } else {
-            if self.enable_network_logging {
-                self.logger
-                    .try_log(&format!("Error sending frontier finish: {:?}", ec));
-            }
+            self.logger.debug(
+                LogType::FrontierReqServer,
+                &format!("Error sending frontier finish: {:?}", ec),
+            );
         }
     }
 
@@ -97,9 +97,8 @@ impl FrontierReqServerImpl {
         let mut send_buffer = Vec::with_capacity(64);
         send_buffer.extend_from_slice(Account::zero().as_bytes());
         send_buffer.extend_from_slice(BlockHash::zero().as_bytes());
-        if self.enable_network_logging {
-            self.logger.try_log("Frontier sending finished");
-        }
+        self.logger
+            .debug(LogType::FrontierReqServer, "Frontier sending finished");
 
         self.connection.socket.async_write(
             &Arc::new(send_buffer),
@@ -117,13 +116,6 @@ impl FrontierReqServerImpl {
             send_buffer.extend_from_slice(self.frontier.as_bytes());
             debug_assert!(!self.current.is_zero());
             debug_assert!(!self.frontier.is_zero());
-            if self.enable_logging {
-                self.logger.try_log(&format!(
-                    "Sending frontier for {} {}",
-                    self.current.encode_account(),
-                    self.frontier
-                ));
-            }
             self.next();
             self.connection.socket.async_write(
                 &Arc::new(send_buffer),
@@ -210,8 +202,10 @@ impl FrontierReqServerImpl {
             }));
         } else {
             if self.enable_network_logging {
-                self.logger
-                    .try_log(&format!("Error sending frontier pair: {:?}", ec));
+                self.logger.debug(
+                    LogType::FrontierReqServer,
+                    &format!("Error sending frontier pair: {:?}", ec),
+                );
             }
         }
     }

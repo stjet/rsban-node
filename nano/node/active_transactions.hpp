@@ -1,7 +1,5 @@
 #pragma once
 
-#include "nano/lib/rsnano.hpp"
-
 #include <nano/lib/numbers.hpp>
 #include <nano/node/election.hpp>
 #include <nano/node/election_insertion_result.hpp>
@@ -188,7 +186,6 @@ public:
 	nano::tally_t tally_impl (nano::election_lock & lock) const;
 	void remove_votes (nano::election & election, nano::election_lock & lock, nano::block_hash const & hash_a);
 	bool have_quorum (nano::tally_t const & tally_a) const;
-	void log_votes (nano::election & election, nano::election_lock & lock, nano::tally_t const & tally_a, std::string const & prefix_a = "") const;
 	// Confirm this block if quorum is met
 	void confirm_if_quorum (nano::election_lock & lock_a, nano::election & election);
 	void force_confirm (nano::election & election, nano::election_status_type type_a = nano::election_status_type::active_confirmed_quorum);

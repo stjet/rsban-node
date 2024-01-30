@@ -158,26 +158,12 @@ impl BlockCementer {
         txn.commit();
         write_guard.release();
         let time_spent_cementing = self.write_txn_started.elapsed();
-        self.log_cemented_blocks(
-            time_spent_cementing,
-            self.logic.unpublished_cemented_blocks_len(),
-        );
         self.logic.batch_completed(time_spent_cementing, callbacks);
     }
 
     pub fn write_pending_blocks(&mut self, callbacks: &mut CementCallbackRefs) {
         if self.logic.has_pending_writes() {
             self.force_flush(callbacks);
-        }
-    }
-
-    fn log_cemented_blocks(&self, time_spent_cementing: Duration, cemented_count: usize) {
-        if self.enable_timing_logging {
-            self.logger.always_log(&format!(
-                "Cemented {} blocks in {} ms",
-                cemented_count,
-                time_spent_cementing.as_millis()
-            ));
         }
     }
 

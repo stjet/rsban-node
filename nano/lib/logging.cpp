@@ -348,3 +348,8 @@ nano::log_config nano::load_log_config (nano::log_config fallback, const std::fi
 	}
 	return fallback;
 }
+
+rsnano::LoggerHandleV2 * nano::to_logger_handle (std::shared_ptr<nano::nlogger> const & logger_a)
+{
+	return rsnano::rsn_logger_create_v2 (new std::shared_ptr<nano::nlogger> (logger_a));
+}

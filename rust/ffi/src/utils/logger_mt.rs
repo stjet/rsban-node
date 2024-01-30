@@ -1,8 +1,6 @@
-use std::ffi::c_void;
-
-use rsnano_core::utils::Logger;
-
 use crate::VoidPointerCallback;
+use rsnano_core::utils::Logger;
+use std::ffi::c_void;
 
 pub type TryLogCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize) -> bool;
 pub static mut TRY_LOG_CALLBACK: Option<TryLogCallback> = None;
@@ -42,10 +40,6 @@ impl Logger for LoggerMT {
                 None => panic!("ALWAYS_LOG_CALLBACK not defined"),
             }
         }
-    }
-
-    fn handle(&self) -> *mut c_void {
-        self.handle.0
     }
 }
 

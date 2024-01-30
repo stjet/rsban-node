@@ -143,5 +143,4 @@ private:
 };
 
 rsnano::LoggerHandle * to_logger_handle (std::shared_ptr<nano::logger_mt> const & logger_a);
-
 }

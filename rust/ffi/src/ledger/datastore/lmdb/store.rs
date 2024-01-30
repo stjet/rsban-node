@@ -7,7 +7,7 @@ use super::{
     version_store::LmdbVersionStoreHandle, TransactionHandle, TransactionType,
 };
 use crate::{
-    utils::{LoggerHandle, LoggerMT},
+    utils::{LoggerHandle, LoggerHandleV2, LoggerMT},
     FfiPropertyTreeWriter, LmdbConfigDto, StringDto, TxnTrackingConfigDto,
 };
 use rsnano_node::{config::DiagnosticsConfig, utils::LongRunningTransactionLogger};
@@ -31,6 +31,61 @@ impl Deref for LmdbStoreHandle {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_lmdb_store_create_v2(
+    error: *mut bool,
+    path: *const i8,
+    lmdb_config: *const LmdbConfigDto,
+    use_no_mem_init: bool,
+    logger: &LoggerHandleV2,
+    txn_config: *const TxnTrackingConfigDto,
+    block_processor_batch_max_time_ms: u64,
+    backup_before_upgrade: bool,
+) -> *mut LmdbStoreHandle {
+    let config = LmdbConfig::from(&*lmdb_config);
+    let options = EnvOptions {
+        config,
+        use_no_mem_init,
+    };
+    let path_str = CStr::from_ptr(path).to_str().unwrap();
+    let path = Path::new(path_str);
+    let txn_config = DiagnosticsConfig::from(&*txn_config).txn_tracking;
+    let block_processor_batch_max_time = Duration::from_millis(block_processor_batch_max_time_ms);
+    let logger = logger.into_logger();
+
+    let txn_tracker: Arc<dyn TransactionTracker> = if txn_config.enable {
+        Arc::new(LongRunningTransactionLogger::new(
+            logger.clone(),
+            txn_config,
+            block_processor_batch_max_time,
+        ))
+    } else {
+        Arc::new(NullTransactionTracker::new())
+    };
+
+    let store = LmdbStore::<EnvironmentWrapper>::open(path)
+        .options(&options)
+        .txn_tracker(txn_tracker)
+        .logger(logger)
+        .backup_before_upgrade(backup_before_upgrade)
+        .build();
+
+    match store {
+        Ok(s) => {
+            *error = false;
+            Box::into_raw(Box::new(LmdbStoreHandle(Arc::new(s))))
+        }
+        Err(e) => {
+            *error = true;
+            eprintln!(
+                "Could not create LMDB store: {:?}. LMDB options: {:?}",
+                e, options
+            );
+            std::ptr::null_mut()
+        }
     }
 }
 

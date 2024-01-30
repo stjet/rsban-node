@@ -10,6 +10,10 @@
 
 #include <spdlog/spdlog.h>
 
+namespace rsnano{
+	class LoggerHandleV2;
+}
+
 namespace nano
 {
 class log_config final
@@ -101,6 +105,11 @@ public:
 		get_logger (tag).info (fmt, std::forward<Args> (args)...);
 	}
 
+	void info (nano::log::type tag, std::string const & message)
+	{
+		get_logger (tag).info (message);
+	}
+
 	template <class... Args>
 	void warn (nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{
@@ -131,4 +140,5 @@ private:
 };
 
 nano::nlogger & default_logger ();
+rsnano::LoggerHandleV2 * to_logger_handle (std::shared_ptr<nano::nlogger> const & logger_a);
 }

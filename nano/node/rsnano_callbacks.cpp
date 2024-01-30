@@ -419,6 +419,19 @@ void logger_destroy (void * handle_a)
 	delete logger;
 }
 
+void logger_v2_destroy (void * handle_a)
+{
+	auto logger = static_cast<std::shared_ptr<nano::nlogger> *> (handle_a);
+	delete logger;
+}
+
+void logger_v2_info (void * handle_a, const uint8_t * message_a, size_t len_a)
+{
+	auto logger = static_cast<std::shared_ptr<nano::nlogger> *> (handle_a);
+	auto message_string = std::string (reinterpret_cast<const char *> (message_a), len_a);
+	(*logger)->info (nano::log::type::all, message_string);
+}
+
 class async_write_callback_wrapper
 {
 public:
@@ -628,13 +641,16 @@ void rsnano::set_rsnano_callbacks ()
 
 	rsnano::rsn_callback_try_log (logger_try_log);
 	rsnano::rsn_callback_always_log (logger_always_log);
+	rsnano::rsn_callback_logger_destroy (logger_destroy);
+	rsnano::rsn_callback_logger_v2_destroy (logger_v2_destroy);
+	rsnano::rsn_callback_logger_v2_info (logger_v2_info);
+
 	rsnano::rsn_callback_listener_broadcast (listener_broadcast);
 	rsnano::rsn_callback_block_processor_add (blockprocessor_add);
 	rsnano::rsn_callback_block_processor_process_active (blockprocessor_process_active);
 	rsnano::rsn_callback_block_processor_half_full (blockprocessor_half_full);
 	rsnano::rsn_callback_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
 	rsnano::rsn_callback_bootstrap_initiator_in_progress (bootstrap_initiator_in_progress);
-	rsnano::rsn_callback_logger_destroy (logger_destroy);
 
 	rsnano::rsn_callback_tcp_socket_connected (tcp_socket_connected);
 	rsnano::rsn_callback_tcp_socket_accepted (tcp_socket_accepted);

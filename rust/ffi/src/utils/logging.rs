@@ -17,6 +17,11 @@ pub unsafe extern "C" fn rsn_logger_create_v2(logger: *mut c_void) -> *mut Logge
     Box::into_raw(Box::new(LoggerHandleV2(logger)))
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_logger_destroy_v2(handle: *mut LoggerHandleV2) {
+    drop(Box::from_raw(handle));
+}
+
 pub struct FfiLoggerV2 {
     handle: *mut c_void,
 }

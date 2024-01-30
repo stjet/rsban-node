@@ -140,5 +140,14 @@ private:
 };
 
 nano::nlogger & default_logger ();
-rsnano::LoggerHandleV2 * to_logger_handle (std::shared_ptr<nano::nlogger> const & logger_a);
+
+class logger_handle{
+public:
+	logger_handle(rsnano::LoggerHandleV2 * handle) : handle{ handle}{};
+	logger_handle(logger_handle const &) = delete;
+	logger_handle(logger_handle &&);
+	~logger_handle();
+	rsnano::LoggerHandleV2 * handle;
+};
+nano::logger_handle to_logger_handle (std::shared_ptr<nano::nlogger> const & logger_a);
 }

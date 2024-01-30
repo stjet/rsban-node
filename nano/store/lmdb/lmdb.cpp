@@ -35,12 +35,13 @@ rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, std::filesystem::
 	auto path_string{ path_a.string () };
 	auto config_dto{ options_a.config.to_dto () };
 	auto txn_config_dto{ txn_tracking_config_a.to_dto () };
+	auto logger_handle{nano::to_logger_handle (logger_a)};
 	return rsnano::rsn_lmdb_store_create_v2 (
 			&error_a, 
 			reinterpret_cast<const int8_t *> (path_string.c_str ()), 
 			&config_dto, 
 			options_a.use_no_mem_init, 
-			nano::to_logger_handle (logger_a), 
+			logger_handle.handle, 
 			&txn_config_dto, 
 			block_processor_batch_max_time_a.count (), 
 			backup_before_upgrade);

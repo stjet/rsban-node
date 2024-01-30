@@ -1,5 +1,6 @@
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/config.hpp>
+#include <nano/lib/logging.hpp>
 
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
@@ -459,10 +460,12 @@ nano::tomlconfig nano::load_toml_file (const std::filesystem::path & config_file
 	// First try to load config from the current working directory, then from the node data directory
 	if (auto toml = try_load_toml (config_filename); toml)
 	{
+		nano::default_logger ().info (nano::log::type::config, "Config for `{}` loaded from current working directory", config_filename.string ());
 		return *toml;
 	}
 	if (auto toml = try_load_toml (data_path / config_filename); toml)
 	{
+		nano::default_logger ().info (nano::log::type::config, "Config for `{}` loaded from node data directory ({})", config_filename.string (), data_path.string ());
 		return *toml;
 	}
 
@@ -473,5 +476,6 @@ nano::tomlconfig nano::load_toml_file (const std::filesystem::path & config_file
 	{
 		throw std::runtime_error (error.get_message ());
 	}
+	nano::default_logger ().info (nano::log::type::config, "Config for `{}` not found, using default configuration", config_filename.string ());
 	return toml;
 }

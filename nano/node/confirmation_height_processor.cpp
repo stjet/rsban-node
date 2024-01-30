@@ -47,9 +47,10 @@ std::chrono::milliseconds batch_separate_pending_min_time_a,
 boost::latch & latch)
 {
 	auto logging_dto{ logging_a.to_dto () };
+	auto logger_handle{nano::to_logger_handle(logger_a)};
 	return rsnano::rsn_confirmation_height_processor_create_v2 (
 	write_database_queue_a.handle,
-	nano::to_logger_handle (logger_a),
+	logger_handle.handle,
 	&logging_dto,
 	ledger_a.handle,
 	batch_separate_pending_min_time_a.count (),

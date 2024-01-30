@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 
+#include <nano/lib/logging.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/logging.hpp>
 #include <nano/secure/utility.hpp>
@@ -20,7 +21,7 @@ void force_nano_dev_network ();
 
 GTEST_API_ int main (int argc, char ** argv)
 {
-	printf ("Running main() from core_test_main.cc\n");
+	nano::nlogger::initialize (nano::load_log_config (nano::log_config::tests_default ()));
 	rsnano::set_rsnano_callbacks ();
 	nano::set_file_descriptor_limit (OPEN_FILE_DESCRIPTORS_LIMIT);
 	nano::force_nano_dev_network ();

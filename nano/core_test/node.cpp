@@ -4177,13 +4177,13 @@ TEST (node, pruning_age)
 	ASSERT_EQ (3, node1.ledger.cache.block_count ());
 
 	// Pruning with default age 1 day
-	node1.ledger_pruning (1, true, false);
+	node1.ledger_pruning (1, true);
 	ASSERT_EQ (0, node1.ledger.cache.pruned_count ());
 	ASSERT_EQ (3, node1.ledger.cache.block_count ());
 
 	// Pruning with max age 0
 	node1.config->max_pruning_age = std::chrono::seconds{ 0 };
-	node1.ledger_pruning (1, true, false);
+	node1.ledger_pruning (1, true);
 	ASSERT_EQ (1, node1.ledger.cache.pruned_count ());
 	ASSERT_EQ (3, node1.ledger.cache.block_count ());
 
@@ -4240,13 +4240,13 @@ TEST (node, pruning_depth)
 	ASSERT_EQ (3, node1.ledger.cache.block_count ());
 
 	// Pruning with default depth (unlimited)
-	node1.ledger_pruning (1, true, false);
+	node1.ledger_pruning (1, true);
 	ASSERT_EQ (0, node1.ledger.cache.pruned_count ());
 	ASSERT_EQ (3, node1.ledger.cache.block_count ());
 
 	// Pruning with max depth 1
 	node1.config->max_pruning_depth = 1;
-	node1.ledger_pruning (1, true, false);
+	node1.ledger_pruning (1, true);
 	ASSERT_EQ (1, node1.ledger.cache.pruned_count ());
 	ASSERT_EQ (3, node1.ledger.cache.block_count ());
 

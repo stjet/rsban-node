@@ -1098,7 +1098,7 @@ bool nano::node::collect_ledger_pruning_targets (std::deque<nano::block_hash> & 
 	return !finish_transaction || last_account_a.is_zero ();
 }
 
-void nano::node::ledger_pruning (uint64_t const batch_size_a, bool bootstrap_weight_reached_a, bool log_to_cout_a)
+void nano::node::ledger_pruning (uint64_t const batch_size_a, bool bootstrap_weight_reached_a)
 {
 	uint64_t const max_depth (config->max_pruning_depth != 0 ? config->max_pruning_depth : std::numeric_limits<uint64_t>::max ());
 	uint64_t const cutoff_time (bootstrap_weight_reached_a ? nano::seconds_since_epoch () - config->max_pruning_age.count () : std::numeric_limits<uint64_t>::max ());
@@ -1128,32 +1128,18 @@ void nano::node::ledger_pruning (uint64_t const batch_size_a, bool bootstrap_wei
 				pruning_targets.pop_front ();
 			}
 			pruned_count += transaction_write_count;
-			auto log_message (boost::str (boost::format ("%1% blocks pruned") % pruned_count));
-			if (!log_to_cout_a)
-			{
-				logger->try_log (log_message);
-			}
-			else
-			{
-				std::cout << log_message << std::endl;
-			}
+
+			nlogger.debug (nano::log::type::prunning, "Pruned blocks: {}", pruned_count);
 		}
 	}
-	auto const log_message (boost::str (boost::format ("Total recently pruned block count: %1%") % pruned_count));
-	if (!log_to_cout_a)
-	{
-		logger->always_log (log_message);
-	}
-	else
-	{
-		std::cout << log_message << std::endl;
-	}
+
+	nlogger.debug (nano::log::type::prunning, "Total recently pruned block count: {}", pruned_count);
 }
 
 void nano::node::ongoing_ledger_pruning ()
 {
 	auto bootstrap_weight_reached (ledger.cache.block_count () >= ledger.get_bootstrap_weight_max_blocks ());
-	ledger_pruning (flags.block_processor_batch_size () != 0 ? flags.block_processor_batch_size () : 2 * 1024, bootstrap_weight_reached, false);
+	ledger_pruning (flags.block_processor_batch_size () != 0 ? flags.block_processor_batch_size () : 2 * 1024, bootstrap_weight_reached);
 	auto const ledger_pruning_interval (bootstrap_weight_reached ? config->max_pruning_age : std::min (config->max_pruning_age, std::chrono::seconds (15 * 60)));
 	auto this_l (shared ());
 	workers->add_timed_task (std::chrono::steady_clock::now () + ledger_pruning_interval, [this_l] () {

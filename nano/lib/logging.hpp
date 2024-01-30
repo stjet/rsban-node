@@ -87,6 +87,11 @@ private:
 	static std::vector<spdlog::sink_ptr> global_sinks;
 
 public:
+	void log (nano::log::level level, nano::log::type tag, std::string const & message)
+	{
+		get_logger (tag).log (to_spdlog_level (level), message);
+	}
+
 	template <class... Args>
 	void log (nano::log::level level, nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{

@@ -15,10 +15,10 @@ mod toml;
 pub use toml::*;
 
 mod logger;
-pub use logger::{ConsoleLogger, Logger, NullLogger};
 
 mod container_info;
 pub use container_info::{ContainerInfo, ContainerInfoComponent};
+pub use logger::{ConsoleLogger, LogDetail, LogLevel, LogType, Logger, NullLogger};
 
 pub trait Serialize {
     fn serialize(&self, stream: &mut dyn BufferWriter);

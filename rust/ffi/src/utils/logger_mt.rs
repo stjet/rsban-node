@@ -1,5 +1,5 @@
 use crate::VoidPointerCallback;
-use rsnano_core::utils::Logger;
+use rsnano_core::utils::{LogLevel, LogType, Logger};
 use std::ffi::c_void;
 
 pub type TryLogCallback = unsafe extern "C" fn(*mut c_void, *const u8, usize) -> bool;
@@ -40,6 +40,30 @@ impl Logger for LoggerMT {
                 None => panic!("ALWAYS_LOG_CALLBACK not defined"),
             }
         }
+    }
+
+    fn log(&self, _level: LogLevel, _tag: LogType, message: &str) {
+        self.always_log(message);
+    }
+
+    fn debug(&self, _tag: LogType, message: &str) {
+        self.always_log(message);
+    }
+
+    fn info(&self, _tag: LogType, message: &str) {
+        self.always_log(message);
+    }
+
+    fn warn(&self, _tag: LogType, message: &str) {
+        self.always_log(message);
+    }
+
+    fn error(&self, _tag: LogType, message: &str) {
+        self.always_log(message);
+    }
+
+    fn critical(&self, _tag: LogType, message: &str) {
+        self.always_log(message);
     }
 }
 

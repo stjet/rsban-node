@@ -425,11 +425,15 @@ void logger_v2_destroy (void * handle_a)
 	delete logger;
 }
 
-void logger_v2_info (void * handle_a, const uint8_t * message_a, size_t len_a)
+void logger_v2_log (void * handle_a, uint8_t level, uint8_t tag, const uint8_t * message_a, size_t len_a)
 {
 	auto logger = static_cast<std::shared_ptr<nano::nlogger> *> (handle_a);
 	auto message_string = std::string (reinterpret_cast<const char *> (message_a), len_a);
-	(*logger)->info (nano::log::type::all, message_string);
+
+	(*logger)->log (
+			static_cast<nano::log::level>(level), 
+			static_cast<nano::log::type>(tag), 
+			message_string);
 }
 
 class async_write_callback_wrapper
@@ -643,7 +647,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_always_log (logger_always_log);
 	rsnano::rsn_callback_logger_destroy (logger_destroy);
 	rsnano::rsn_callback_logger_v2_destroy (logger_v2_destroy);
-	rsnano::rsn_callback_logger_v2_info (logger_v2_info);
+	rsnano::rsn_callback_logger_v2_log (logger_v2_log);
 
 	rsnano::rsn_callback_listener_broadcast (listener_broadcast);
 	rsnano::rsn_callback_block_processor_add (blockprocessor_add);

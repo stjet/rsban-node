@@ -112,8 +112,6 @@ target_link_libraries(
   Boost::asio
   Boost::circular_buffer
   Boost::dll
-  Boost::log_setup
-  Boost::log
   Boost::multiprecision
   Boost::program_options
   Boost::stacktrace)

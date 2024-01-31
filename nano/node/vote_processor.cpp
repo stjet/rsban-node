@@ -129,7 +129,8 @@ void nano::vote_processor::process_loop ()
 	while (queue.wait_and_take (votes_l))
 	{
 		log_this_iteration = false;
-		if (votes_l.size () > 50)
+		// TODO: This is a temporary measure to prevent spamming the logs until we can implement a better solution
+		if (votes_l.size () > 1024 * 4)
 		{
 			/*
 				* Only log the timing information for this iteration if

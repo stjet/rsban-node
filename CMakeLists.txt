@@ -475,10 +475,6 @@ include_directories(${BOOST_LIBRARY_INCLUDES})
 add_library(Boost::stacktrace ALIAS boost_stacktrace_basic)
 add_definitions(-DBOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED)
 
-# Workaround for GitHub builders which do not appear to have the Windows Message
-# Compiler mc.exe
-add_definitions(-DBOOST_LOG_WITHOUT_EVENT_LOG)
-
 cmake_policy(SET CMP0079 NEW)
 # Workaround for missing reference errata in the boost property_tree module
 target_link_libraries(boost_property_tree INTERFACE Boost::any)

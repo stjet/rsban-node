@@ -8,6 +8,7 @@ use lmdb_sys::{MDB_env, MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE, MDB_SUCCES
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
 use std::cell::Cell;
 use std::collections::BTreeMap;
+use std::ffi::OsStr;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::{
@@ -766,6 +767,10 @@ impl<T: Environment> LmdbEnv<T> {
 
     pub fn init(path: impl AsRef<Path>, options: &EnvOptions) -> anyhow::Result<T> {
         let path = path.as_ref();
+        debug_assert!(
+            path.extension() == Some(&OsStr::new("ldb")),
+            "invalid filename extension for lmdb database file"
+        );
         try_create_parent_dir(path)?;
         let mut map_size = options.config.map_size;
         let max_instrumented_map_size = 16 * 1024 * 1024;

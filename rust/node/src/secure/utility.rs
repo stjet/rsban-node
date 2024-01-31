@@ -34,6 +34,7 @@ pub fn unique_path_for(network: Networks) -> Option<PathBuf> {
         let uuid = Uuid::new_v4();
         path.push(uuid.to_string());
         ALL_UNIQUE_PATHS.lock().unwrap().push(path.clone());
+        std::fs::create_dir_all(&path).unwrap();
         path
     })
 }
@@ -50,18 +51,6 @@ pub fn remove_temporary_directories() {
                 if let Err(e) = std::fs::remove_dir_all(path) {
                     eprintln!("Could not remove temporary directory '{:?}': {}", path, e);
                 }
-            }
-        }
-
-        // lmdb creates a -lock suffixed file for its MDB_NOSUBDIR databases
-        let mut lockfile = path.to_owned();
-        let mut filename = lockfile.file_name().unwrap().to_os_string();
-        filename.push("-lock");
-        lockfile.set_file_name(filename);
-
-        if std::fs::metadata(lockfile.as_path()).is_ok() {
-            if let Err(e) = std::fs::remove_file(lockfile) {
-                eprintln!("Could not remove temporary lock file: {}", e);
             }
         }
     }

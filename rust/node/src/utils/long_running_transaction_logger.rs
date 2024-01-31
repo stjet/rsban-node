@@ -5,7 +5,7 @@ use std::{
 };
 
 use backtrace::Backtrace;
-use rsnano_core::utils::{Logger, PropertyTreeWriter};
+use rsnano_core::utils::{LogType, Logger, PropertyTreeWriter};
 use rsnano_store_lmdb::TransactionTracker;
 
 #[derive(Clone)]
@@ -102,13 +102,16 @@ impl LongRunningTransactionLogger {
         {
             let txn_type = if txn.is_write { "write lock" } else { "read" };
             txn.stacktrace.resolve();
-            self.logger.always_log(&format!(
-                "{}ms {} held on thread {}\n{:?}",
-                time_open.as_millis(),
-                txn_type,
-                txn.thread_name.as_deref().unwrap_or("unnamed"),
-                txn.stacktrace
-            ));
+            self.logger.warn(
+                LogType::TxnTracker,
+                &format!(
+                    "{}ms {} held on thread {}\n{:?}",
+                    time_open.as_millis(),
+                    txn_type,
+                    txn.thread_name.as_deref().unwrap_or("unnamed"),
+                    txn.stacktrace
+                ),
+            );
         }
     }
 }

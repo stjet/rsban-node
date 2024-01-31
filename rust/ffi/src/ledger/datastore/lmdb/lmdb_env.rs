@@ -11,7 +11,7 @@ use rsnano_store_lmdb::{
 };
 
 use crate::{
-    utils::{LoggerHandle, LoggerMT},
+    utils::{LoggerHandle, LoggerHandleV2, LoggerMT},
     FfiPropertyTreeWriter, LmdbConfigDto, TxnTrackingConfigDto,
 };
 use rsnano_node::{config::DiagnosticsConfig, utils::LongRunningTransactionLogger};
@@ -61,7 +61,7 @@ pub unsafe extern "C" fn rsn_mdb_env_create2(
     path: *const i8,
     lmdb_config: *const LmdbConfigDto,
     use_no_mem_init: bool,
-    logger: *mut LoggerHandle,
+    logger: &LoggerHandleV2,
     txn_config: *const TxnTrackingConfigDto,
     block_processor_batch_max_time_ms: u64,
 ) -> *mut LmdbEnvHandle {
@@ -74,7 +74,7 @@ pub unsafe extern "C" fn rsn_mdb_env_create2(
     let path = Path::new(path_str);
     let txn_config = DiagnosticsConfig::from(&*txn_config).txn_tracking;
     let block_processor_batch_max_time = Duration::from_millis(block_processor_batch_max_time_ms);
-    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
+    let logger = logger.into_logger();
 
     let txn_tracker: Arc<dyn TransactionTracker> = if txn_config.enable {
         Arc::new(LongRunningTransactionLogger::new(

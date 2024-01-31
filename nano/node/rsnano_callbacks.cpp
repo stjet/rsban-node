@@ -4,6 +4,7 @@
 
 #include <nano/lib/config.hpp>
 #include <nano/lib/logger_mt.hpp>
+#include <nano/lib/logging.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/stream.hpp>

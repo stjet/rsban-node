@@ -79,7 +79,9 @@ void nano::daemon::run (std::filesystem::path const & data_path, nano::node_flag
 	auto tmp_overrides{ flags.config_overrides () };
 	auto error = nano::read_node_config_toml (data_path, config, tmp_overrides);
 	flags.set_config_overrides (tmp_overrides);
+
 	nano::set_use_memory_pools (config.node.use_memory_pools);
+
 	if (!error)
 	{
 		error = nano::flags_config_conflicts (flags, config.node);

@@ -100,13 +100,13 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (re
 	return std::make_unique<nano::container_info_composite> (info_handle);
 }
 
-nano::keypair nano::load_or_create_node_id (std::filesystem::path const & application_path, nano::nlogger & nlogger)
+nano::keypair nano::load_or_create_node_id (std::filesystem::path const & application_path)
 {
 	auto node_private_key_path = application_path / "node_id_private.key";
 	std::ifstream ifs (node_private_key_path.c_str ());
 	if (ifs.good ())
 	{
-		nlogger.debug (nano::log::type::node, "Reading node id from: '{}'", node_private_key_path.string ());
+		nano::default_logger().info (nano::log::type::init, "Reading node id from: '{}'", node_private_key_path.string ());
 		std::string node_private_key;
 		ifs >> node_private_key;
 		release_assert (node_private_key.size () == 64);
@@ -117,7 +117,7 @@ nano::keypair nano::load_or_create_node_id (std::filesystem::path const & applic
 	{
 		std::filesystem::create_directories (application_path);
 		// no node_id found, generate new one
-		nlogger.debug (nano::log::type::node, "Generating a new node id, saving to: '{}'", node_private_key_path.string ());
+		nano::default_logger ().info (nano::log::type::node, "Generating a new node id, saving to: '{}'", node_private_key_path.string ());
 
 		nano::keypair kp;
 		std::ofstream ofs (node_private_key_path.c_str (), std::ofstream::out | std::ofstream::trunc);
@@ -142,6 +142,7 @@ nano::node::node (rsnano::async_runtime & async_rt, uint16_t peering_port_a, std
 }
 
 nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path const & application_path_a, nano::node_config const & config_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
+	node_id{ nano::load_or_create_node_id (application_path_a) },
 	write_database_queue (!flags_a.force_use_write_database_queue ()),
 	async_rt{ async_rt_a },
 	io_ctx (async_rt_a.io_ctx),
@@ -149,8 +150,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	observers{ std::make_shared<nano::node_observers> () },
 	config{ std::make_shared<nano::node_config> (config_a) },
 	network_params{ config_a.network_params },
-	nlogger{ std::make_shared<nano::nlogger> ("node") },
-	node_id{ nano::load_or_create_node_id (application_path_a, *nlogger) },
+	nlogger{ std::make_shared<nano::nlogger> (make_logger_identifier(node_id)) },
 	stats{ std::make_shared<nano::stats> (config_a.stats_config) },
 	workers{ std::make_shared<nano::thread_pool> (config_a.background_threads, nano::thread_role::name::worker) },
 	bootstrap_workers{ std::make_shared<nano::thread_pool> (config_a.bootstrap_serving_threads, nano::thread_role::name::bootstrap_worker) },
@@ -226,7 +226,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		}
 	};
 	block_processor.set_blocks_rolled_back_callback (handle_roll_back);
-	nlogger->info (nano::log::type::node, "Node ID: {}", node_id.pub.to_node_id ());
 	network->tcp_channels->set_observer (tcp_listener);
 	nano::transport::request_response_visitor_factory visitor_factory{ *this };
 	network->tcp_channels->set_message_visitor_factory (visitor_factory);
@@ -372,6 +371,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		nlogger->info (nano::log::type::node, "Data path: {}", application_path.string ());
 		nlogger->info (nano::log::type::node, "Work pool threads: {} ({})", work.thread_count (), (work.has_opencl() ? "OpenCL" : "CPU"));
 		nlogger->info (nano::log::type::node, "Work peers: {}", config->work_peers.size ());
+		nlogger->info (nano::log::type::node, "Node ID: {}", node_id.pub.to_node_id ());
 		
 
 		if (!work_generation_enabled ())
@@ -1409,6 +1409,12 @@ nano::telemetry_data nano::node::local_telemetry () const
 	// Make sure this is the final operation!
 	telemetry_data.sign (node_id);
 	return telemetry_data;
+}
+
+std::string nano::node::make_logger_identifier (const nano::keypair & node_id)
+{
+	// Node identifier consists of first 10 characters of node id
+	return node_id.pub.to_node_id ().substr (0, 10);
 }
 
 /*

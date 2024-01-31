@@ -91,6 +91,7 @@ pub enum LogType {
     All = 0, // reserved
 
     Generic,
+    Init,
     Config,
     Logging,
     Node,

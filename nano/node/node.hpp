@@ -133,6 +133,7 @@ public:
 	nano::telemetry_data local_telemetry () const;
 
 public:
+	nano::keypair node_id; // ported
 	nano::write_database_queue write_database_queue; // ported
 	rsnano::async_runtime & async_rt; // ported
 	boost::asio::io_context & io_ctx;
@@ -141,7 +142,6 @@ public:
 	std::shared_ptr<nano::node_config> config; // ported
 	nano::network_params network_params; // ported
 	std::shared_ptr<nano::nlogger> nlogger;
-	nano::keypair node_id; // ported
 	std::shared_ptr<nano::stats> stats; // ported
 	std::shared_ptr<nano::thread_pool> workers; // ported
 	std::shared_ptr<nano::thread_pool> bootstrap_workers; // ported
@@ -221,9 +221,11 @@ public: // Testing convenience functions
 
 private:
 	void long_inactivity_cleanup ();
+
+	static std::string make_logger_identifier (nano::keypair const & node_id);
 };
 
-nano::keypair load_or_create_node_id (std::filesystem::path const & application_path, nano::nlogger & logger);
+nano::keypair load_or_create_node_id (std::filesystem::path const & application_path);
 std::unique_ptr<container_info_component> collect_container_info (node & node, std::string const & name);
 
 nano::node_flags const & inactive_node_flag_defaults ();

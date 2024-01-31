@@ -142,8 +142,8 @@ public:
 	std::shared_ptr<nano::node_config> config; // ported
 	nano::network_params network_params; // ported
 	std::shared_ptr<nano::logger_mt> logger;
-	nano::keypair node_id; // ported
 	std::shared_ptr<nano::nlogger> nlogger;
+	nano::keypair node_id; // ported
 	std::shared_ptr<nano::stats> stats; // ported
 	std::shared_ptr<nano::thread_pool> workers; // ported
 	std::shared_ptr<nano::thread_pool> bootstrap_workers; // ported
@@ -225,7 +225,6 @@ private:
 	void long_inactivity_cleanup ();
 };
 
-nano::keypair load_or_create_node_id (std::filesystem::path const & application_path, nano::logger_mt & logger);
 nano::keypair load_or_create_node_id (std::filesystem::path const & application_path, nano::nlogger & logger);
 std::unique_ptr<container_info_component> collect_container_info (node & node, std::string const & name);
 

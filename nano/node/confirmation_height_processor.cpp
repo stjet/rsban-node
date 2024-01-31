@@ -2,7 +2,6 @@
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
 
-#include <nano/lib/logger_mt.hpp>
 #include <nano/lib/logging.hpp>
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/thread_roles.hpp>
@@ -22,24 +21,6 @@ namespace
 {
 rsnano::ConfirmationHeightProcessorHandle * create_processor_handle (
 nano::write_database_queue & write_database_queue_a,
-std::shared_ptr<nano::logger_mt> & logger_a,
-nano::logging const & logging_a,
-nano::ledger & ledger_a,
-std::chrono::milliseconds batch_separate_pending_min_time_a,
-boost::latch & latch)
-{
-	auto logging_dto{ logging_a.to_dto () };
-	return rsnano::rsn_confirmation_height_processor_create (
-	write_database_queue_a.handle,
-	nano::to_logger_handle (logger_a),
-	&logging_dto,
-	ledger_a.handle,
-	batch_separate_pending_min_time_a.count (),
-	&latch);
-}
-
-rsnano::ConfirmationHeightProcessorHandle * create_processor_handle (
-nano::write_database_queue & write_database_queue_a,
 std::shared_ptr<nano::nlogger> & logger_a,
 nano::logging const & logging_a,
 nano::ledger & ledger_a,
@@ -56,11 +37,6 @@ boost::latch & latch)
 	batch_separate_pending_min_time_a.count (),
 	&latch);
 }
-}
-
-nano::confirmation_height_processor::confirmation_height_processor (nano::ledger & ledger_a, nano::stats & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::logger_mt> & logger_a, boost::latch & latch) :
-	handle{ create_processor_handle (write_database_queue_a, logger_a, logging_a, ledger_a, batch_separate_pending_min_time_a, latch) }
-{
 }
 
 nano::confirmation_height_processor::confirmation_height_processor (nano::ledger & ledger_a, nano::stats & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logging const & logging_a, std::shared_ptr<nano::nlogger> & logger_a, boost::latch & latch) :

@@ -1,13 +1,3 @@
-use std::{
-    ffi::{c_char, c_void, CStr},
-    ops::Deref,
-    sync::Arc,
-    time::Duration,
-};
-
-use rsnano_core::{BlockEnum, BlockHash};
-use rsnano_node::{cementation::CementationThread, config::Logging};
-
 use crate::{
     core::{BlockCallback, BlockHandle, BlockHashCallback},
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
@@ -17,33 +7,16 @@ use crate::{
     },
     LoggingDto, VoidPointerCallback,
 };
+use rsnano_core::{BlockEnum, BlockHash};
+use rsnano_node::{cementation::CementationThread, config::Logging};
+use std::{
+    ffi::{c_char, c_void, CStr},
+    ops::Deref,
+    sync::Arc,
+    time::Duration,
+};
 
 pub struct ConfirmationHeightProcessorHandle(CementationThread);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_create(
-    write_database_queue: *mut WriteDatabaseQueueHandle,
-    logger: *mut LoggerHandle,
-    logging: *const LoggingDto,
-    ledger: *mut LedgerHandle,
-    batch_separate_pending_min_time_ms: u64,
-    latch: *mut c_void,
-) -> *mut ConfirmationHeightProcessorHandle {
-    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
-    let logging = Logging::from(&*logging);
-    let latch = Box::new(FfiLatch::new(latch));
-
-    Box::into_raw(Box::new(ConfirmationHeightProcessorHandle(
-        CementationThread::new(
-            (*write_database_queue).0.clone(),
-            logger,
-            logging.timing_logging_value,
-            (*ledger).0.clone(),
-            Duration::from_millis(batch_separate_pending_min_time_ms),
-            latch,
-        ),
-    )))
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_processor_create_v2(

@@ -1,6 +1,5 @@
 #include "nano/lib/rsnanoutils.hpp"
 
-#include <nano/lib/logger_mt.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/node.hpp>

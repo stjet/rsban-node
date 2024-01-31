@@ -101,7 +101,6 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	std::copy (config.callback_target.begin (), config.callback_target.end (), std::begin (dto.callback_target));
 	dto.callback_target_len = config.callback_target.size ();
 	dto.callback_port = config.callback_port;
-	dto.logging = config.logging.to_dto ();
 	dto.websocket_config = config.websocket_config.to_dto ();
 	dto.ipc_config = config.ipc_config.to_dto ();
 	dto.diagnostics_config = config.diagnostics_config.to_dto ();
@@ -111,20 +110,18 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 }
 
 nano::node_config::node_config (nano::network_params & network_params) :
-	node_config (std::nullopt, nano::logging (), network_params)
+	node_config (std::nullopt, network_params)
 {
 }
 
-nano::node_config::node_config (const std::optional<uint16_t> & peering_port_a, nano::logging const & logging_a, nano::network_params & network_params) :
+nano::node_config::node_config (const std::optional<uint16_t> & peering_port_a, nano::network_params & network_params) :
 	network_params{ network_params },
-	logging{ logging_a },
 	websocket_config{ network_params.network },
 	ipc_config (network_params.network)
 {
 	rsnano::NodeConfigDto dto;
 	auto network_params_dto{ network_params.to_dto () };
-	auto logging_dto{ logging.to_dto () };
-	rsnano::rsn_node_config_create (&dto, peering_port_a.value_or (0), peering_port_a.has_value (), &logging_dto, &network_params_dto);
+	rsnano::rsn_node_config_create (&dto, peering_port_a.value_or (0), peering_port_a.has_value (), &network_params_dto);
 	load_dto (dto);
 }
 
@@ -245,12 +242,6 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 			callback_l.get<std::string> ("address", callback_address);
 			callback_l.get<uint16_t> ("port", callback_port);
 			callback_l.get<std::string> ("target", callback_target);
-		}
-
-		if (toml.has_key ("logging"))
-		{
-			auto logging_l (toml.get_required_child ("logging"));
-			logging.deserialize_toml (logging_l);
 		}
 
 		if (toml.has_key ("websocket"))

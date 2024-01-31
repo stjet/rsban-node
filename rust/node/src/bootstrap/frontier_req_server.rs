@@ -26,8 +26,6 @@ impl FrontierReqServer {
         request: FrontierReq,
         thread_pool: Arc<dyn ThreadPool>,
         logger: Arc<dyn Logger>,
-        enable_logging: bool,
-        enable_network_logging: bool,
         ledger: Arc<Ledger>,
     ) -> Self {
         let result = Self {
@@ -40,8 +38,6 @@ impl FrontierReqServer {
                 accounts: VecDeque::new(),
                 thread_pool: Arc::downgrade(&thread_pool),
                 logger,
-                enable_logging,
-                enable_network_logging,
                 ledger,
             })),
         };
@@ -71,8 +67,6 @@ struct FrontierReqServerImpl {
     count: usize,
     accounts: VecDeque<(Account, BlockHash)>,
     logger: Arc<dyn Logger>,
-    enable_logging: bool,
-    enable_network_logging: bool,
     thread_pool: Weak<dyn ThreadPool>,
     ledger: Arc<Ledger>,
 }
@@ -201,12 +195,10 @@ impl FrontierReqServerImpl {
                 server.lock().unwrap().send_next(server_clone);
             }));
         } else {
-            if self.enable_network_logging {
-                self.logger.debug(
-                    LogType::FrontierReqServer,
-                    &format!("Error sending frontier pair: {:?}", ec),
-                );
-            }
+            self.logger.debug(
+                LogType::FrontierReqServer,
+                &format!("Error sending frontier pair: {:?}", ec),
+            );
         }
     }
 }

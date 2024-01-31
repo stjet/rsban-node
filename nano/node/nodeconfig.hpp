@@ -9,7 +9,6 @@
 #include <nano/lib/threading.hpp>
 #include <nano/node/bootstrap/bootstrap_config.hpp>
 #include <nano/node/ipc/ipc_config.hpp>
-#include <nano/node/logging.hpp>
 #include <nano/node/scheduler/hinted.hpp>
 #include <nano/node/scheduler/optimistic.hpp>
 #include <nano/node/vote_cache.hpp>
@@ -39,7 +38,7 @@ class node_config
 {
 public:
 	node_config (nano::network_params & network_params = nano::dev::network_params);
-	node_config (const std::optional<uint16_t> &, nano::logging const &, nano::network_params & network_params = nano::dev::network_params);
+	node_config (const std::optional<uint16_t> &, nano::network_params & network_params = nano::dev::network_params);
 
 	void load_dto (rsnano::NodeConfigDto & dto);
 	rsnano::NodeConfigDto to_dto () const;
@@ -54,7 +53,6 @@ public:
 	std::optional<uint16_t> peering_port{};
 	nano::scheduler::optimistic_config optimistic_scheduler;
 	nano::scheduler::hinted_config hinted_scheduler;
-	nano::logging logging;
 	std::vector<std::pair<std::string, uint16_t>> work_peers;
 	std::vector<std::pair<std::string, uint16_t>> secondary_work_peers;
 	std::vector<std::string> preconfigured_peers;

@@ -17,7 +17,7 @@ use std::{
 };
 
 use crate::{
-    utils::{AsyncRuntimeHandle, LoggerHandle, LoggerMT, ThreadPoolHandle},
+    utils::{AsyncRuntimeHandle, LoggerHandleV2, ThreadPoolHandle},
     ErrorCodeDto, StatHandle, VoidPointerCallback,
 };
 
@@ -45,18 +45,17 @@ pub unsafe extern "C" fn rsn_socket_create(
     default_timeout_s: u64,
     silent_connection_tolerance_time_s: u64,
     idle_timeout_s: u64,
-    network_timeout_logging: bool,
-    logger: *mut LoggerHandle,
+    logger: &LoggerHandleV2,
     callback_handler: *mut c_void,
     max_write_queue_len: usize,
     async_rt: &AsyncRuntimeHandle,
 ) -> *mut SocketHandle {
     let endpoint_type = FromPrimitive::from_u8(endpoint_type).unwrap();
     let thread_pool = thread_pool.0.clone();
-    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
+    let logger = logger.into_logger();
     let stats = (*stats_handle).deref().clone();
 
-    let socket_stats = Arc::new(SocketStats::new(stats, logger, network_timeout_logging));
+    let socket_stats = Arc::new(SocketStats::new(stats, logger));
     let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
 
     let runtime = Arc::downgrade(&async_rt.0);

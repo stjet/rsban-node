@@ -16,7 +16,6 @@ pub use toml::FfiToml;
 mod atomics;
 mod container_info;
 mod latch;
-mod logger_mt;
 mod logging;
 mod thread_pool;
 mod timer;
@@ -24,7 +23,6 @@ mod timer;
 use crate::{transport::EndpointDto, VoidPointerCallback};
 pub use container_info::*;
 pub use latch::*;
-pub use logger_mt::*;
 pub use logging::LoggerHandleV2;
 pub use thread_pool::ThreadPoolHandle;
 

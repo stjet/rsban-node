@@ -47,8 +47,6 @@ add_library(
   lmdbconfig.cpp
   locks.hpp
   locks.cpp
-  logger_mt.hpp
-  logger_mt.cpp
   logging.hpp
   logging.cpp
   logging_enums.hpp

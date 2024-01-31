@@ -217,11 +217,10 @@ std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::find_connec
 void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & endpoint_a, bool push_front)
 {
 	++connections_count;
-	auto socket (std::make_shared<nano::transport::socket> (node.async_rt, nano::transport::socket::endpoint_type_t::client, *node.stats, node.logger, node.workers,
+	auto socket (std::make_shared<nano::transport::socket> (node.async_rt, nano::transport::socket::endpoint_type_t::client, *node.stats, node.nlogger, node.workers,
 	node.config->tcp_io_timeout,
 	node.network_params.network.silent_connection_tolerance_time,
 	node.network_params.network.idle_timeout,
-	node.config->logging.network_timeout_logging (),
 	node.observers));
 	auto this_l (shared_from_this ());
 	socket->async_connect (endpoint_a,
@@ -237,20 +236,17 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 		}
 		else
 		{
-			if (this_l->node.config->logging.network_logging ())
+			switch (ec.value ())
 			{
-				switch (ec.value ())
-				{
-					default:
-						this_l->node.nlogger->debug (nano::log::type::bootstrap, "Error initiating bootstrap connection to: {} ({})", nano::util::to_str (endpoint_a), ec.message ());
-						break;
-					case boost::system::errc::connection_refused:
-					case boost::system::errc::operation_canceled:
-					case boost::system::errc::timed_out:
-					case 995: // Windows The I/O operation has been aborted because of either a thread exit or an application request
-					case 10061: // Windows No connection could be made because the target machine actively refused it
-						break;
-				}
+				default:
+					this_l->node.nlogger->debug (nano::log::type::bootstrap, "Error initiating bootstrap connection to: {} ({})", nano::util::to_str (endpoint_a), ec.message ());
+					break;
+				case boost::system::errc::connection_refused:
+				case boost::system::errc::operation_canceled:
+				case boost::system::errc::timed_out:
+				case 995: // Windows The I/O operation has been aborted because of either a thread exit or an application request
+				case 10061: // Windows No connection could be made because the target machine actively refused it
+					break;
 			}
 		}
 		--this_l->connections_count;

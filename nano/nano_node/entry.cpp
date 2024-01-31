@@ -1104,10 +1104,8 @@ int main (int argc, char * const * argv)
 			rsnano::async_runtime async_rt1{ true };
 			rsnano::async_runtime async_rt2{ true };
 			nano::work_pool work{ network_params.network, std::numeric_limits<unsigned>::max () };
-			nano::logging logging;
 			auto path1 (nano::unique_path ());
 			auto path2 (nano::unique_path ());
-			logging.init (path1);
 			std::vector<std::string> config_overrides;
 			auto config (vm.find ("config"));
 			if (config != vm.end ())

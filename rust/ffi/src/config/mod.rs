@@ -2,7 +2,6 @@ mod bootstrap_config;
 mod daemon_config;
 mod diagnostics_config;
 mod lmdb_config;
-mod logging;
 mod network_constants;
 mod node_config;
 mod node_flags;
@@ -14,7 +13,6 @@ mod websocket_config;
 
 pub use diagnostics_config::*;
 pub use lmdb_config::LmdbConfigDto;
-pub use logging::*;
 pub use network_constants::*;
 pub use node_config::*;
 pub use node_flags::NodeFlagsHandle;

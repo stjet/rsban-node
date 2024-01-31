@@ -82,8 +82,6 @@ private:
 	 */
 	uint64_t unexpected_count{ 0 };
 	std::shared_ptr<nano::bootstrap::block_deserializer> block_deserializer;
-	bool logging_enabled{ false };
-	bool network_logging{ false };
 	std::weak_ptr<nano::node> node;
 	std::shared_ptr<nano::nlogger> logger;
 };

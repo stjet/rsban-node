@@ -1,7 +1,7 @@
 use super::kdf::KdfHandle;
 use crate::{
     ledger::datastore::{lmdb::LmdbWalletStoreHandle, LedgerHandle, TransactionHandle},
-    utils::{LoggerHandle, LoggerMT},
+    utils::LoggerHandleV2,
     work::WorkThresholdsDto,
 };
 use rsnano_core::{work::WorkThresholds, Account, Root};
@@ -19,7 +19,7 @@ pub struct WalletHandle(pub Arc<Wallet>);
 #[no_mangle]
 pub unsafe extern "C" fn rsn_wallet_create(
     ledger: &LedgerHandle,
-    logger: *mut LoggerHandle,
+    logger: &LoggerHandleV2,
     work: &WorkThresholdsDto,
     fanout: usize,
     kdf: &KdfHandle,
@@ -32,7 +32,7 @@ pub unsafe extern "C" fn rsn_wallet_create(
     let representative = Account::from_ptr(representative);
     let wallet_path = PathBuf::from(CStr::from_ptr(wallet_path).to_str().unwrap());
     let work = WorkThresholds::from(work);
-    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
+    let logger = logger.into_logger();
     let wallet = if json.is_null() {
         Wallet::new(
             Arc::clone(ledger),

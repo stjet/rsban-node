@@ -1,7 +1,6 @@
 mod bootstrap_config;
 mod daemon_config;
 mod diagnostics_config;
-mod logging;
 mod network_constants;
 mod node_config;
 mod node_flags;
@@ -16,7 +15,6 @@ use std::path::{Path, PathBuf};
 pub use bootstrap_config::{AccountSetsConfig, BootstrapAscendingConfig};
 pub use daemon_config::*;
 pub use diagnostics_config::*;
-pub use logging::*;
 pub use network_constants::*;
 pub use node_config::*;
 pub use node_flags::*;

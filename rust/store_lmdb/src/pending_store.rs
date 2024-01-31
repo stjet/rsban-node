@@ -6,8 +6,10 @@ use crate::{
     Transaction, PENDING_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
+#[cfg(feature = "output_tracking")]
+use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
 use rsnano_core::{
-    utils::{BufferReader, Deserialize, OutputListenerMt, OutputTrackerMt},
+    utils::{BufferReader, Deserialize},
     Account, BlockHash, PendingInfo, PendingKey,
 };
 

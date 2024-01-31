@@ -24,7 +24,6 @@ struct BulkPullAccountServerImpl {
     pending_address_only: bool,
     pending_include_address: bool,
     invalid_request: bool,
-    is_logging_enabled: bool,
 }
 
 impl BulkPullAccountServerImpl {
@@ -299,7 +298,6 @@ impl BulkPullAccountServer {
         logger: Arc<dyn Logger>,
         thread_pool: Arc<dyn ThreadPool>,
         ledger: Arc<Ledger>,
-        is_logging_enabled: bool,
     ) -> Self {
         let mut server = BulkPullAccountServerImpl {
             connection,
@@ -312,7 +310,6 @@ impl BulkPullAccountServer {
             pending_address_only: false,
             pending_include_address: false,
             invalid_request: false,
-            is_logging_enabled,
         };
         /*
          * Setup the streaming response for the first call to "send_frontier" and  "send_next_block"

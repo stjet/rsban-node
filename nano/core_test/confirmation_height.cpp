@@ -1735,7 +1735,6 @@ TEST (confirmation_height, unbounded_block_cache_iteration)
 	nano::write_database_queue write_database_queue (false);
 	boost::latch initialized_latch{ 0 };
 	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
-	nano::logging logging;
 	nano::keypair key1;
 	nano::block_builder builder;
 	auto send = builder
@@ -1760,7 +1759,7 @@ TEST (confirmation_height, unbounded_block_cache_iteration)
 		ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send1).code);
 	}
 
-	nano::confirmation_height_processor confirmation_height_processor (ledger, stats, write_database_queue, 10ms, logging, logger, initialized_latch);
+	nano::confirmation_height_processor confirmation_height_processor (ledger, stats, write_database_queue, 10ms, logger, initialized_latch);
 	nano::timer<> timer;
 	timer.start ();
 	{

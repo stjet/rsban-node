@@ -1,4 +1,3 @@
-#include "nano/lib/logger_mt.hpp"
 #include "nano/store/lmdb/lmdb_env.hpp"
 
 #include <nano/crypto_lib/random_pool.hpp>
@@ -430,10 +429,10 @@ nano::account representative,
 std::string const & wallet_path,
 const char * json)
 {
-	auto logger{ nano::to_logger_handle (node.logger) };
+	auto logger_handle{ nano::to_logger_handle (node.nlogger) };
 	return rsnano::rsn_wallet_create (
 	node.ledger.handle,
-	logger,
+	logger_handle.handle,
 	&node.network_params.work.dto,
 	node.config->password_fanout,
 	wallets_a.kdf.handle,
@@ -633,12 +632,13 @@ namespace
 rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lmdb::env & env)
 {
 	auto config_dto{ node_a.config->to_dto () };
+	auto logger_handle{nano::to_logger_handle(node_a.nlogger)};
 
 	return rsnano::rsn_lmdb_wallets_create (
 	node_a.config->enable_voting,
 	env.handle,
 	node_a.ledger.handle,
-	to_logger_handle (node_a.logger),
+	logger_handle.handle,
 	&config_dto,
 	node_a.config->network_params.kdf_work,
 	&node_a.config->network_params.work.dto);
@@ -1422,10 +1422,10 @@ bool nano::wallets::enter_password (const std::shared_ptr<nano::wallet> & wallet
 	{
 		node.nlogger->info (nano::log::type::wallet, "Wallet unlocked");
 
-		wallet_actions.queue_wallet_action(nano::wallets::high_priority, wallet, [&this_l = *this] (nano::wallet & wallet) {
+		wallet_actions.queue_wallet_action (nano::wallets::high_priority, wallet, [&this_l = *this] (nano::wallet & wallet) {
 			// Wallets must survive node lifetime
 			auto tx{ this_l.tx_begin_read () };
-			this_l.search_receivable (wallet.shared_from_this(), *tx);
+			this_l.search_receivable (wallet.shared_from_this (), *tx);
 		});
 	}
 	else

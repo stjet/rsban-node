@@ -1,5 +1,4 @@
 #include "nano/lib/blocks.hpp"
-#include "nano/lib/logger_mt.hpp"
 #include "nano/lib/logging.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
@@ -75,11 +74,6 @@ public:
 		return rsnano::rsn_block_processor_forced_size (handle);
 	}
 
-	bool should_log ()
-	{
-		return rsnano::rsn_block_processor_should_log (handle);
-	}
-
 	rsnano::BlockProcessorLockHandle * handle;
 	nano::block_processor & block_processor;
 };
@@ -111,11 +105,11 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	stats{ *node_a.stats }
 {
 	auto config_dto{ config.to_dto () };
-	auto logger_handle = nano::to_logger_handle (node_a.logger);
+	auto logger_handle = nano::to_logger_handle (node_a.nlogger);
 	handle = rsnano::rsn_block_processor_create (
 	this,
 	&config_dto,
-	logger_handle,
+	logger_handle.handle,
 	node_a.flags.handle,
 	node_a.ledger.handle,
 	node_a.unchecked.handle,

@@ -3,7 +3,6 @@
 #include "nano/node/scheduler/priority.hpp"
 
 #include <nano/lib/config.hpp>
-#include <nano/lib/logger_mt.hpp>
 #include <nano/lib/logging.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnanoutils.hpp>
@@ -350,20 +349,6 @@ void toml_put_child (void * handle_a, const uint8_t * key_a, uintptr_t key_len_a
 	parent->put_child (key, *child);
 }
 
-bool logger_try_log (void * handle_a, const uint8_t * message_a, size_t len_a)
-{
-	auto logger = static_cast<std::shared_ptr<nano::logger_mt> *> (handle_a);
-	auto message_string = std::string (reinterpret_cast<const char *> (message_a), len_a);
-	return (*logger)->try_log (message_string);
-}
-
-void logger_always_log (void * handle_a, const uint8_t * message_a, size_t len_a)
-{
-	auto logger = static_cast<std::shared_ptr<nano::logger_mt> *> (handle_a);
-	auto message_string = std::string (reinterpret_cast<const char *> (message_a), len_a);
-	return (*logger)->always_log (message_string);
-}
-
 bool listener_broadcast (void * handle_a, rsnano::MessageDto const * message_a)
 {
 	try
@@ -412,12 +397,6 @@ bool bootstrap_initiator_in_progress (void * handle_a)
 {
 	auto bootstrap_initiator{ static_cast<nano::bootstrap_initiator *> (handle_a) };
 	return bootstrap_initiator->in_progress ();
-}
-
-void logger_destroy (void * handle_a)
-{
-	auto logger = static_cast<std::shared_ptr<nano::logger_mt> *> (handle_a);
-	delete logger;
 }
 
 void logger_v2_destroy (void * handle_a)
@@ -644,9 +623,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_toml_put_child (toml_put_child);
 	rsnano::rsn_callback_toml_drop_array (toml_drop_array);
 
-	rsnano::rsn_callback_try_log (logger_try_log);
-	rsnano::rsn_callback_always_log (logger_always_log);
-	rsnano::rsn_callback_logger_destroy (logger_destroy);
 	rsnano::rsn_callback_logger_v2_destroy (logger_v2_destroy);
 	rsnano::rsn_callback_logger_v2_log (logger_v2_log);
 

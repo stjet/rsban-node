@@ -1,7 +1,5 @@
 #pragma once
 
-#include "nano/lib/rsnano.hpp"
-
 #include <nano/boost/asio/ip/tcp.hpp>
 #include <nano/boost/asio/strand.hpp>
 #include <nano/lib/asio.hpp>
@@ -35,7 +33,7 @@ namespace nano
 class node;
 class thread_pool;
 class stats;
-class logger_mt;
+class nlogger;
 class node_observers;
 }
 
@@ -84,9 +82,9 @@ public:
 	 * @param endpoint_type_a The endpoint's type: either server or client
 	 */
 	explicit socket (rsnano::async_runtime & async_rt_a, endpoint_type_t endpoint_type_a, nano::stats & stats_a,
-	std::shared_ptr<nano::logger_mt> & logger_a, std::shared_ptr<nano::thread_pool> const & workers_a,
+	std::shared_ptr<nano::nlogger> & logger_a, std::shared_ptr<nano::thread_pool> const & workers_a,
 	std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a,
-	std::chrono::seconds idle_timeout_a, bool network_timeout_logging_a,
+	std::chrono::seconds idle_timeout_a, 
 	std::shared_ptr<nano::node_observers>,
 	std::size_t max_queue_size = default_max_queue_size);
 	socket (rsnano::SocketHandle * handle_a);

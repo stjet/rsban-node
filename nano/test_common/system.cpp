@@ -136,7 +136,6 @@ nano::test::system::system () :
 	{
 		deadline_scaling_factor = std::stod (scale_str);
 	}
-	logging.init (nano::unique_path ());
 }
 
 nano::test::system::system (uint16_t count_a, nano::transport::transport_type type_a, nano::node_flags flags_a) :
@@ -564,7 +563,7 @@ void nano::test::system::stop ()
 
 nano::node_config nano::test::system::default_config ()
 {
-	nano::node_config config{ get_available_port (), logging };
+	nano::node_config config{ get_available_port () };
 	return config;
 }
 

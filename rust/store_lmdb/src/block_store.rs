@@ -5,8 +5,10 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
+#[cfg(feature = "output_tracking")]
+use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
 use rsnano_core::{
-    utils::{BufferReader, FixedSizeSerialize, OutputListenerMt, OutputTrackerMt},
+    utils::{BufferReader, FixedSizeSerialize},
     Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor, BlockWithSideband,
     ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };

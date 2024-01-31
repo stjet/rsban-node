@@ -19,7 +19,6 @@ pub struct BlockCementer {
     write_txn_started: Instant,
     write_database_queue: Arc<WriteDatabaseQueue>,
     logger: Arc<dyn Logger>,
-    enable_timing_logging: bool,
     ledger: Arc<Ledger>,
     logic: BlockCementerLogic,
 }
@@ -29,7 +28,6 @@ impl BlockCementer {
         ledger: Arc<Ledger>,
         write_database_queue: Arc<WriteDatabaseQueue>,
         logger: Arc<dyn Logger>,
-        enable_timing_logging: bool,
         minimum_batch_separation: Duration,
         stopped: Arc<AtomicBool>,
     ) -> Self {
@@ -43,7 +41,6 @@ impl BlockCementer {
         Self {
             write_database_queue,
             logger,
-            enable_timing_logging,
             ledger,
             stopped,
             processing_started: Instant::now(),

@@ -4,6 +4,7 @@ use crate::{
     LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
+#[cfg(feature = "output_tracking")]
 use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
 use rsnano_core::{Account, BlockHash};
 use std::sync::Arc;

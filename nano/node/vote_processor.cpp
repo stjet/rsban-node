@@ -129,7 +129,7 @@ void nano::vote_processor::process_loop ()
 	while (queue.wait_and_take (votes_l))
 	{
 		log_this_iteration = false;
-		if (config.logging.network_logging () && votes_l.size () > 50)
+		if (votes_l.size () > 50)
 		{
 			/*
 				* Only log the timing information for this iteration if

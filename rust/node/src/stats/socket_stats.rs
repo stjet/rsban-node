@@ -6,16 +6,11 @@ use std::{net::SocketAddrV6, sync::Arc};
 pub struct SocketStats {
     stats: Arc<Stats>,
     logger: Arc<dyn Logger>,
-    enable_timeout_logging: bool,
 }
 
 impl SocketStats {
-    pub fn new(stats: Arc<Stats>, logger: Arc<dyn Logger>, enable_timeout_logging: bool) -> Self {
-        Self {
-            stats,
-            logger,
-            enable_timeout_logging,
-        }
+    pub fn new(stats: Arc<Stats>, logger: Arc<dyn Logger>) -> Self {
+        Self { stats, logger }
     }
 }
 

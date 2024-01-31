@@ -13,7 +13,7 @@ constexpr double nano::bootstrap_limits::lazy_batch_pull_count_resize_ratio;
 constexpr std::size_t nano::bootstrap_limits::lazy_blocks_restart_limit;
 
 nano::bootstrap_attempt_lazy::bootstrap_attempt_lazy (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string const & id_a) :
-	nano::bootstrap_attempt (rsnano::rsn_bootstrap_attempt_lazy_create (nano::to_logger_handle (node_a->logger), node_a->websocket.server.get (), node_a->block_processor.get_handle (), node_a->bootstrap_initiator.get_handle (), node_a->ledger.get_handle (), id_a.c_str (), incremental_id_a)),
+	nano::bootstrap_attempt (rsnano::rsn_bootstrap_attempt_lazy_create (nano::to_logger_handle (node_a->nlogger).handle, node_a->websocket.server.get (), node_a->block_processor.get_handle (), node_a->bootstrap_initiator.get_handle (), node_a->ledger.get_handle (), id_a.c_str (), incremental_id_a)),
 	node_weak (node_a)
 {
 }
@@ -52,7 +52,7 @@ bool nano::bootstrap_attempt_lazy::lazy_start (nano::hash_or_account const & has
 void nano::bootstrap_attempt_lazy::lazy_add (nano::hash_or_account const & hash_or_account_a, unsigned retry_limit)
 {
 	// Add only unknown blocks
-	//debug_assert (!mutex.try_lock ());
+	// debug_assert (!mutex.try_lock ());
 	if (!lazy_blocks_processed (hash_or_account_a.as_block_hash ()))
 	{
 		lazy_pulls.emplace_back (hash_or_account_a, retry_limit);
@@ -473,7 +473,7 @@ void nano::bootstrap_attempt_lazy::lazy_backlog_cleanup ()
 
 void nano::bootstrap_attempt_lazy::lazy_blocks_insert (nano::block_hash const & hash_a)
 {
-	//debug_assert (!mutex.try_lock ());
+	// debug_assert (!mutex.try_lock ());
 	auto inserted (lazy_blocks.insert (std::hash<::nano::block_hash> () (hash_a)));
 	if (inserted.second)
 	{
@@ -484,7 +484,7 @@ void nano::bootstrap_attempt_lazy::lazy_blocks_insert (nano::block_hash const & 
 
 void nano::bootstrap_attempt_lazy::lazy_blocks_erase (nano::block_hash const & hash_a)
 {
-	//debug_assert (!mutex.try_lock ());
+	// debug_assert (!mutex.try_lock ());
 	auto erased (lazy_blocks.erase (std::hash<::nano::block_hash> () (hash_a)));
 	if (erased)
 	{

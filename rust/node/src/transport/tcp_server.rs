@@ -455,7 +455,6 @@ pub struct HandshakeMessageVisitorImpl {
     stats: Arc<Stats>,
     node_id: Arc<KeyPair>,
     network_constants: NetworkConstants,
-    pub handshake_logging: bool,
     pub disable_tcp_realtime: bool,
 }
 
@@ -478,7 +477,6 @@ impl HandshakeMessageVisitorImpl {
             node_id,
             network_constants,
             disable_tcp_realtime: false,
-            handshake_logging: false,
         }
     }
 

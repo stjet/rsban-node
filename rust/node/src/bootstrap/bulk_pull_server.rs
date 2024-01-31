@@ -36,7 +36,6 @@ impl BulkPullServer {
         ledger: Arc<Ledger>,
         logger: Arc<dyn Logger>,
         thread_pool: Arc<dyn ThreadPool>,
-        enable_logging: bool,
     ) -> Self {
         let mut server_impl = BulkPullServerImpl {
             include_start: false,
@@ -45,7 +44,6 @@ impl BulkPullServer {
             current: BlockHash::zero(),
             request,
             connection,
-            enable_logging,
             ledger,
             logger,
             thread_pool: Arc::downgrade(&thread_pool),
@@ -106,7 +104,6 @@ impl BulkPullServer {
 struct BulkPullServerImpl {
     ledger: Arc<Ledger>,
     logger: Arc<dyn Logger>,
-    enable_logging: bool,
     connection: Arc<TcpServer>,
     thread_pool: Weak<dyn ThreadPool>,
     include_start: bool,

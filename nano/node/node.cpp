@@ -136,8 +136,8 @@ std::shared_ptr<nano::network> create_network (nano::node & node_a, nano::node_c
 	return network;
 }
 
-nano::node::node (rsnano::async_runtime & async_rt, uint16_t peering_port_a, std::filesystem::path const & application_path_a, nano::logging const & logging_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
-	node (async_rt, application_path_a, nano::node_config (peering_port_a, logging_a), work_a, flags_a, seq)
+nano::node::node (rsnano::async_runtime & async_rt, uint16_t peering_port_a, std::filesystem::path const & application_path_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
+	node (async_rt, application_path_a, nano::node_config (peering_port_a), work_a, flags_a, seq)
 {
 }
 
@@ -150,7 +150,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	config{ std::make_shared<nano::node_config> (config_a) },
 	network_params{ config_a.network_params },
 	nlogger{ std::make_shared<nano::nlogger> ("node") },
-	logger{ std::make_shared<nano::logger_mt> (config_a.logging.min_time_between_log_output) },
 	node_id{ nano::load_or_create_node_id (application_path_a, *nlogger) },
 	stats{ std::make_shared<nano::stats> (config_a.stats_config) },
 	workers{ std::make_shared<nano::thread_pool> (config_a.background_threads, nano::thread_role::name::worker) },
@@ -192,7 +191,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	gap_cache (*this),
 	online_reps (ledger, *config),
 	history{ config_a.network_params.voting },
-	confirmation_height_processor (ledger, *stats, write_database_queue, config_a.conf_height_processor_batch_min_time, config->logging, nlogger, node_initialized_latch),
+	confirmation_height_processor (ledger, *stats, write_database_queue, config_a.conf_height_processor_batch_min_time, nlogger, node_initialized_latch),
 	vote_cache{ config_a.vote_cache, *stats },
 	wallets (wallets_store.init_error (), *this),
 	generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* non-final */ false },
@@ -1447,8 +1446,6 @@ nano::node_wrapper::node_wrapper (std::filesystem::path const & path_a, std::fil
 
 	auto & node_config = daemon_config.node;
 	node_config.peering_port = 24000;
-	node_config.logging.max_size = std::numeric_limits<std::uintmax_t>::max ();
-	node_config.logging.init (path_a);
 
 	node = std::make_shared<nano::node> (*async_rt, path_a, node_config, work, node_flags_a);
 }

@@ -65,9 +65,9 @@ use std::{
 };
 
 use primitive_types::{U256, U512};
+use rsnano_core::utils::{get_cpu_count, PropertyTreeWriter};
 #[cfg(feature = "output_tracking")]
-use rsnano_core::utils::OutputTracker;
-use rsnano_core::utils::{get_cpu_count, OutputListener, PropertyTreeWriter};
+use rsnano_core::utils::{OutputListener, OutputTracker};
 #[cfg(feature = "output_tracking")]
 use std::rc::Rc;
 

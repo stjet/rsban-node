@@ -1,10 +1,16 @@
-use std::{
-    ffi::{c_char, c_void, CStr},
-    net::{Ipv6Addr, SocketAddrV6},
-    ops::Deref,
-    sync::{atomic::Ordering, Arc},
+use super::{
+    peer_exclusion::PeerExclusionHandle, ChannelHandle, EndpointDto, NetworkFilterHandle,
+    OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle, TcpMessageManagerHandle,
 };
-
+use crate::{
+    bootstrap::{RequestResponseVisitorFactoryHandle, TcpListenerHandle},
+    messages::MessageHandle,
+    utils::{
+        AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, LoggerHandleV2,
+        ThreadPoolHandle,
+    },
+    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
+};
 use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
 use rsnano_messages::DeserializedMessage;
 use rsnano_node::{
@@ -12,20 +18,11 @@ use rsnano_node::{
     transport::{ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpListener},
     NetworkParams,
 };
-
-use crate::{
-    bootstrap::{RequestResponseVisitorFactoryHandle, TcpListenerHandle},
-    messages::MessageHandle,
-    utils::{
-        AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, LoggerHandle, LoggerMT,
-        ThreadPoolHandle,
-    },
-    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
-};
-
-use super::{
-    peer_exclusion::PeerExclusionHandle, ChannelHandle, EndpointDto, NetworkFilterHandle,
-    OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle, TcpMessageManagerHandle,
+use std::{
+    ffi::{c_char, c_void, CStr},
+    net::{Ipv6Addr, SocketAddrV6},
+    ops::Deref,
+    sync::Arc,
 };
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
@@ -43,7 +40,7 @@ pub type SinkCallback = unsafe extern "C" fn(*mut c_void, *mut MessageHandle, *m
 #[repr(C)]
 pub struct TcpChannelsOptionsDto {
     pub node_config: *const NodeConfigDto,
-    pub logger: *mut LoggerHandle,
+    pub logger: *mut LoggerHandleV2,
     pub publish_filter: *mut NetworkFilterHandle,
     pub async_rt: *mut AsyncRuntimeHandle,
     pub network: *mut NetworkParamsDto,
@@ -79,7 +76,7 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
 
             Ok(Self {
                 node_config: NodeConfig::try_from(&*value.node_config)?,
-                logger: Arc::new(LoggerMT::new(Box::from_raw(value.logger))),
+                logger: (*value.logger).into_logger(),
                 publish_filter: (*value.publish_filter).0.clone(),
                 network: NetworkParams::try_from(&*value.network)?,
                 async_rt: Arc::clone(&(*value.async_rt).0),

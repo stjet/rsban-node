@@ -106,8 +106,6 @@ add_library(
   ipc/ipc_server.cpp
   json_handler.hpp
   json_handler.cpp
-  logging.hpp
-  logging.cpp
   make_store.hpp
   make_store.cpp
   network.hpp

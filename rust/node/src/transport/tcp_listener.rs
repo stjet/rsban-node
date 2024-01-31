@@ -259,7 +259,6 @@ impl TcpListenerExt for Arc<TcpListener> {
         let socket_stats = Arc::new(SocketStats::new(
             Arc::clone(&self.stats),
             Arc::clone(&self.logger),
-            self.config.logging.network_timeout_logging(),
         ));
 
         let socket = SocketBuilder::endpoint_type(
@@ -342,7 +341,6 @@ impl TcpListenerExt for Arc<TcpListener> {
             let socket_stats = Arc::new(SocketStats::new(
                 Arc::clone(&this_l.stats),
                 Arc::clone(&this_l.logger),
-                this_l.config.logging.network_timeout_logging(),
             ));
 
             // Prepare new connection
@@ -480,7 +478,6 @@ impl TcpListenerExt for Arc<TcpListener> {
                 Arc::clone(&self.block_processor),
                 Arc::clone(&self.bootstrap_initiator),
                 self.node_flags.clone(),
-                self.config.logging.clone(),
             ));
             let observer = Arc::clone(&self);
             let server = Arc::new(TcpServer::new(

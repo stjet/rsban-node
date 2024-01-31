@@ -1,5 +1,5 @@
 use super::{
-    BootstrapAscendingConfig, DiagnosticsConfig, HintedSchedulerConfig, Logging, Networks,
+    BootstrapAscendingConfig, DiagnosticsConfig, HintedSchedulerConfig, Networks,
     OptimisticSchedulerConfig, WebsocketConfig,
 };
 use crate::{consensus::VoteCacheConfig, stats::StatsConfig, IpcConfig, NetworkParams};
@@ -83,7 +83,6 @@ pub struct NodeConfig {
     pub callback_address: String,
     pub callback_port: u16,
     pub callback_target: String,
-    pub logging: Logging,
     pub websocket_config: WebsocketConfig,
     pub ipc_config: IpcConfig,
     pub diagnostics_config: DiagnosticsConfig,
@@ -121,11 +120,7 @@ static DEFAULT_TEST_PEER_NETWORK: Lazy<String> =
     Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering-test.nano.org"));
 
 impl NodeConfig {
-    pub fn new(
-        peering_port: Option<u16>,
-        logging: Logging,
-        network_params: &NetworkParams,
-    ) -> Self {
+    pub fn new(peering_port: Option<u16>, network_params: &NetworkParams) -> Self {
         if peering_port == Some(0) {
             // comment for posterity:
             // - we used to consider ports being 0 a sentinel that meant to use a default port for that specific purpose
@@ -281,7 +276,6 @@ impl NodeConfig {
             callback_address: String::new(),
             callback_port: 0,
             callback_target: String::new(),
-            logging,
             websocket_config: WebsocketConfig::new(&network_params.network),
             ipc_config: IpcConfig::new(&network_params.network),
             diagnostics_config: DiagnosticsConfig::new(),
@@ -441,10 +435,6 @@ impl NodeConfig {
                 "Callback target path.\ntype:string,uri",
             )?;
             Ok(())
-        })?;
-
-        toml.put_child("logging", &mut |logging| {
-            self.logging.serialize_toml(logging)
         })?;
 
         toml.put_child("websocket", &mut |websocket| {

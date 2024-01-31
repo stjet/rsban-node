@@ -236,9 +236,11 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 {
 	auto node_config_dto{ node.config->to_dto () };
 	auto network_dto{ node.config->network_params.to_dto () };
+	auto logger_handle{nano::to_logger_handle(node.nlogger)};
+
 	rsnano::TcpChannelsOptionsDto options;
 	options.node_config = &node_config_dto;
-	options.logger = nano::to_logger_handle (node.logger);
+	options.logger = logger_handle.handle;
 	options.publish_filter = publish_filter->handle;
 	options.async_rt = node.async_rt.handle;
 	options.network = &network_dto;

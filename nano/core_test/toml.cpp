@@ -107,8 +107,6 @@ TEST (toml, rpc_config_deserialize_defaults)
 	ASSERT_EQ (conf.rpc_process.ipc_address, defaults.rpc_process.ipc_address);
 	ASSERT_EQ (conf.rpc_process.ipc_port, defaults.rpc_process.ipc_port);
 	ASSERT_EQ (conf.rpc_process.num_ipc_connections, defaults.rpc_process.num_ipc_connections);
-
-	ASSERT_EQ (conf.rpc_logging.log_rpc, defaults.rpc_logging.log_rpc);
 }
 
 /** Empty config file should match a default config object */
@@ -121,7 +119,6 @@ TEST (toml, daemon_config_deserialize_defaults)
 	[node.httpcallback]
 	[node.ipc.local]
 	[node.ipc.tcp]
-	[node.logging]
 	[node.statistics.log]
 	[node.statistics.sampling]
 	[node.websocket]
@@ -194,35 +191,6 @@ TEST (toml, daemon_config_deserialize_defaults)
 	ASSERT_EQ (conf.node.max_queued_requests, defaults.node.max_queued_requests);
 	ASSERT_EQ (conf.node.backlog_scan_batch_size, defaults.node.backlog_scan_batch_size);
 	ASSERT_EQ (conf.node.backlog_scan_frequency, defaults.node.backlog_scan_frequency);
-
-	ASSERT_EQ (conf.node.logging.bulk_pull_logging_value, defaults.node.logging.bulk_pull_logging_value);
-	ASSERT_EQ (conf.node.logging.flush, defaults.node.logging.flush);
-	ASSERT_EQ (conf.node.logging.insufficient_work_logging_value, defaults.node.logging.insufficient_work_logging_value);
-	ASSERT_EQ (conf.node.logging.ledger_logging_value, defaults.node.logging.ledger_logging_value);
-	ASSERT_EQ (conf.node.logging.ledger_duplicate_logging_value, defaults.node.logging.ledger_duplicate_logging_value);
-	ASSERT_EQ (conf.node.logging.log_ipc_value, defaults.node.logging.log_ipc_value);
-	ASSERT_EQ (conf.node.logging.log_to_cerr_value, defaults.node.logging.log_to_cerr_value);
-	ASSERT_EQ (conf.node.logging.max_size, defaults.node.logging.max_size);
-	ASSERT_EQ (conf.node.logging.min_time_between_log_output.count (), defaults.node.logging.min_time_between_log_output.count ());
-	ASSERT_EQ (conf.node.logging.network_logging_value, defaults.node.logging.network_logging_value);
-	ASSERT_EQ (conf.node.logging.network_keepalive_logging_value, defaults.node.logging.network_keepalive_logging_value);
-	ASSERT_EQ (conf.node.logging.network_message_logging_value, defaults.node.logging.network_message_logging_value);
-	ASSERT_EQ (conf.node.logging.network_node_id_handshake_logging_value, defaults.node.logging.network_node_id_handshake_logging_value);
-	ASSERT_EQ (conf.node.logging.network_packet_logging_value, defaults.node.logging.network_packet_logging_value);
-	ASSERT_EQ (conf.node.logging.network_publish_logging_value, defaults.node.logging.network_publish_logging_value);
-	ASSERT_EQ (conf.node.logging.network_timeout_logging_value, defaults.node.logging.network_timeout_logging_value);
-	ASSERT_EQ (conf.node.logging.node_lifetime_tracing_value, defaults.node.logging.node_lifetime_tracing_value);
-	ASSERT_EQ (conf.node.logging.network_telemetry_logging_value, defaults.node.logging.network_telemetry_logging_value);
-	ASSERT_EQ (conf.node.logging.network_rejected_logging_value, defaults.node.logging.network_rejected_logging_value);
-	ASSERT_EQ (conf.node.logging.rotation_size, defaults.node.logging.rotation_size);
-	ASSERT_EQ (conf.node.logging.single_line_record_value, defaults.node.logging.single_line_record_value);
-	ASSERT_EQ (conf.node.logging.stable_log_filename, defaults.node.logging.stable_log_filename);
-	ASSERT_EQ (conf.node.logging.timing_logging_value, defaults.node.logging.timing_logging_value);
-	ASSERT_EQ (conf.node.logging.active_update_value, defaults.node.logging.active_update_value);
-	ASSERT_EQ (conf.node.logging.upnp_details_logging_value, defaults.node.logging.upnp_details_logging_value);
-	ASSERT_EQ (conf.node.logging.vote_logging_value, defaults.node.logging.vote_logging_value);
-	ASSERT_EQ (conf.node.logging.rep_crawler_logging_value, defaults.node.logging.rep_crawler_logging_value);
-	ASSERT_EQ (conf.node.logging.work_generation_time_value, defaults.node.logging.work_generation_time_value);
 
 	ASSERT_EQ (conf.node.websocket_config.enabled, defaults.node.websocket_config.enabled);
 	ASSERT_EQ (conf.node.websocket_config.address, defaults.node.websocket_config.address);
@@ -477,36 +445,6 @@ TEST (toml, daemon_config_deserialize_no_defaults)
 	skip_unexpected_fields_in_json = false
 	verify_buffers = false
 
-	[node.logging]
-	bulk_pull = true
-	flush = false
-	insufficient_work = false
-	ledger = true
-	ledger_duplicate = true
-	log_ipc = false
-	log_to_cerr = true
-	max_size = 999
-	min_time_between_output = 999
-	network = false
-	network_keepalive = true
-	network_message = true
-	network_node_id_handshake = true
-	network_telemetry_logging = true
-	network_rejected_logging = true
-	network_packet = true
-	network_publish = true
-	network_timeout = true
-	node_lifetime_tracing = true
-	rotation_size = 999
-	single_line_record = true
-	stable_log_filename = true
-	timing = true
-	active_update = true
-	upnp_details = true
-	vote = true
-	rep_crawler = true
-	work_generation_time = false
-
 	[node.statistics.log]
 	filename_counters = "devcounters.stat"
 	filename_samples = "devsamples.stat"
@@ -632,35 +570,6 @@ TEST (toml, daemon_config_deserialize_no_defaults)
 	ASSERT_NE (conf.node.backlog_scan_batch_size, defaults.node.backlog_scan_batch_size);
 	ASSERT_NE (conf.node.backlog_scan_frequency, defaults.node.backlog_scan_frequency);
 
-	ASSERT_NE (conf.node.logging.bulk_pull_logging_value, defaults.node.logging.bulk_pull_logging_value);
-	ASSERT_NE (conf.node.logging.flush, defaults.node.logging.flush);
-	ASSERT_NE (conf.node.logging.insufficient_work_logging_value, defaults.node.logging.insufficient_work_logging_value);
-	ASSERT_NE (conf.node.logging.ledger_logging_value, defaults.node.logging.ledger_logging_value);
-	ASSERT_NE (conf.node.logging.ledger_duplicate_logging_value, defaults.node.logging.ledger_duplicate_logging_value);
-	ASSERT_NE (conf.node.logging.log_ipc_value, defaults.node.logging.log_ipc_value);
-	ASSERT_NE (conf.node.logging.log_to_cerr_value, defaults.node.logging.log_to_cerr_value);
-	ASSERT_NE (conf.node.logging.max_size, defaults.node.logging.max_size);
-	ASSERT_NE (conf.node.logging.min_time_between_log_output.count (), defaults.node.logging.min_time_between_log_output.count ());
-	ASSERT_NE (conf.node.logging.network_logging_value, defaults.node.logging.network_logging_value);
-	ASSERT_NE (conf.node.logging.network_keepalive_logging_value, defaults.node.logging.network_keepalive_logging_value);
-	ASSERT_NE (conf.node.logging.network_message_logging_value, defaults.node.logging.network_message_logging_value);
-	ASSERT_NE (conf.node.logging.network_node_id_handshake_logging_value, defaults.node.logging.network_node_id_handshake_logging_value);
-	ASSERT_NE (conf.node.logging.network_telemetry_logging_value, defaults.node.logging.network_telemetry_logging_value);
-	ASSERT_NE (conf.node.logging.network_rejected_logging_value, defaults.node.logging.network_rejected_logging_value);
-	ASSERT_NE (conf.node.logging.network_packet_logging_value, defaults.node.logging.network_packet_logging_value);
-	ASSERT_NE (conf.node.logging.network_publish_logging_value, defaults.node.logging.network_publish_logging_value);
-	ASSERT_NE (conf.node.logging.network_timeout_logging_value, defaults.node.logging.network_timeout_logging_value);
-	ASSERT_NE (conf.node.logging.node_lifetime_tracing_value, defaults.node.logging.node_lifetime_tracing_value);
-	ASSERT_NE (conf.node.logging.rotation_size, defaults.node.logging.rotation_size);
-	ASSERT_NE (conf.node.logging.single_line_record_value, defaults.node.logging.single_line_record_value);
-	ASSERT_NE (conf.node.logging.stable_log_filename, defaults.node.logging.stable_log_filename);
-	ASSERT_NE (conf.node.logging.timing_logging_value, defaults.node.logging.timing_logging_value);
-	ASSERT_NE (conf.node.logging.active_update_value, defaults.node.logging.active_update_value);
-	ASSERT_NE (conf.node.logging.upnp_details_logging_value, defaults.node.logging.upnp_details_logging_value);
-	ASSERT_NE (conf.node.logging.vote_logging_value, defaults.node.logging.vote_logging_value);
-	ASSERT_NE (conf.node.logging.rep_crawler_logging_value, defaults.node.logging.rep_crawler_logging_value);
-	ASSERT_NE (conf.node.logging.work_generation_time_value, defaults.node.logging.work_generation_time_value);
-
 	ASSERT_NE (conf.node.websocket_config.enabled, defaults.node.websocket_config.enabled);
 	ASSERT_NE (conf.node.websocket_config.address, defaults.node.websocket_config.address);
 	ASSERT_NE (conf.node.websocket_config.port, defaults.node.websocket_config.port);
@@ -725,7 +634,6 @@ TEST (toml, daemon_config_no_required)
 	[node.httpcallback]
 	[node.ipc.local]
 	[node.ipc.tcp]
-	[node.logging]
 	[node.statistics.log]
 	[node.statistics.sampling]
 	[node.websocket]
@@ -760,8 +668,6 @@ TEST (toml, rpc_config_deserialize_no_defaults)
 	ipc_address = "0:0:0:0:0:ffff:7f01:101"
 	ipc_port = 999
 	num_ipc_connections = 999
-	[logging]
-	log_rpc = false
 	)toml";
 
 	nano::tomlconfig toml;
@@ -782,8 +688,6 @@ TEST (toml, rpc_config_deserialize_no_defaults)
 	ASSERT_NE (conf.rpc_process.ipc_address, defaults.rpc_process.ipc_address);
 	ASSERT_NE (conf.rpc_process.ipc_port, defaults.rpc_process.ipc_port);
 	ASSERT_NE (conf.rpc_process.num_ipc_connections, defaults.rpc_process.num_ipc_connections);
-
-	ASSERT_NE (conf.rpc_logging.log_rpc, defaults.rpc_logging.log_rpc);
 }
 
 /** There should be no required values **/
@@ -795,7 +699,6 @@ TEST (toml, rpc_config_no_required)
 	ss << R"toml(
 	[version]
 	[process]
-	[logging]
 	[secure]
 	)toml";
 

@@ -95,7 +95,7 @@ TEST (system, receive_while_synchronizing)
 		uint32_t count (1000);
 		system.generate_mass_activity (count, *system.nodes[0]);
 		nano::keypair key;
-		auto node1 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.logging, system.work));
+		auto node1 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.work));
 		ASSERT_FALSE (node1->init_error ());
 		node1->wallets.create (1);
 		nano::account account;
@@ -1133,7 +1133,6 @@ TEST (confirmation_height, many_accounts_send_receive_self)
 TEST (confirmation_height, many_accounts_send_receive_self_no_elections)
 {
 	auto logger{ std::make_shared<nano::nlogger> () };
-	nano::logging logging;
 	auto path (nano::unique_path ());
 	auto store = nano::make_store (logger, path, nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
@@ -1145,7 +1144,7 @@ TEST (confirmation_height, many_accounts_send_receive_self_no_elections)
 	boost::latch initialized_latch{ 0 };
 
 	nano::block_hash block_hash_being_processed{ 0 };
-	nano::confirmation_height_processor confirmation_height_processor{ ledger, stats, write_database_queue, 10ms, logging, logger, initialized_latch };
+	nano::confirmation_height_processor confirmation_height_processor{ ledger, stats, write_database_queue, 10ms, logger, initialized_latch };
 
 	auto const num_accounts = 100000;
 
@@ -2038,7 +2037,7 @@ TEST (node, wallet_create_block_confirm_conflicts)
 	{
 		nano::test::system system;
 		nano::block_builder builder;
-		nano::node_config node_config (system.get_available_port (), system.logging);
+		nano::node_config node_config (system.get_available_port ());
 		node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 		auto node = system.add_node (node_config);
 		auto const num_blocks = 10000;

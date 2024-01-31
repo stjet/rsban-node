@@ -42,7 +42,6 @@ fn main() {
                 ledger.clone(),
                 write_queue,
                 logger,
-                true,
                 Duration::from_millis(250),
                 Arc::new(AtomicBool::new(false)),
             );

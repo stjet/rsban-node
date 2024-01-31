@@ -1,3 +1,14 @@
+use super::bootstrap_initiator::BootstrapInitiatorHandle;
+use crate::{
+    block_processing::BlockProcessorHandle, core::BlockHandle, ledger::datastore::LedgerHandle,
+    utils::LoggerHandleV2, FfiListener, StringDto, StringHandle,
+};
+use num::FromPrimitive;
+use rsnano_core::Account;
+use rsnano_node::{
+    bootstrap::{BootstrapAttempt, BootstrapStrategy},
+    websocket::{Listener, NullListener},
+};
 use std::{
     ffi::{c_void, CStr, CString},
     ops::Deref,
@@ -5,24 +16,6 @@ use std::{
     sync::{atomic::Ordering, Arc, MutexGuard},
     time::Duration,
 };
-
-use num::FromPrimitive;
-use rsnano_core::Account;
-
-use rsnano_node::{
-    bootstrap::{BootstrapAttempt, BootstrapStrategy},
-    websocket::{Listener, NullListener},
-};
-
-use crate::{
-    block_processing::BlockProcessorHandle,
-    core::BlockHandle,
-    ledger::datastore::LedgerHandle,
-    utils::{LoggerHandle, LoggerMT},
-    FfiListener, StringDto, StringHandle,
-};
-
-use super::bootstrap_initiator::BootstrapInitiatorHandle;
 
 pub struct BootstrapAttemptHandle(Arc<BootstrapStrategy>);
 
@@ -42,7 +35,7 @@ impl Deref for BootstrapAttemptHandle {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
-    logger: *mut LoggerHandle,
+    logger: &LoggerHandleV2,
     websocket_server: *mut c_void,
     block_processor: *const BlockProcessorHandle,
     bootstrap_initiator: *const BootstrapInitiatorHandle,
@@ -51,7 +44,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
     mode: u8,
     incremental_id: u64,
 ) -> *mut BootstrapAttemptHandle {
-    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
+    let logger = logger.into_logger();
     let id_str = CStr::from_ptr(id).to_str().unwrap();
     let mode = FromPrimitive::from_u8(mode).unwrap();
     let websocket_server: Arc<dyn Listener> = if websocket_server.is_null() {

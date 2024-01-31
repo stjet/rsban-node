@@ -7,8 +7,7 @@ use super::{
     version_store::LmdbVersionStoreHandle, TransactionHandle, TransactionType,
 };
 use crate::{
-    utils::{LoggerHandle, LoggerHandleV2, LoggerMT},
-    FfiPropertyTreeWriter, LmdbConfigDto, StringDto, TxnTrackingConfigDto,
+    utils::LoggerHandleV2, FfiPropertyTreeWriter, LmdbConfigDto, StringDto, TxnTrackingConfigDto,
 };
 use rsnano_node::{config::DiagnosticsConfig, utils::LongRunningTransactionLogger};
 use rsnano_store_lmdb::{

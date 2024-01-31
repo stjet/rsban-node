@@ -1,6 +1,5 @@
 #include <nano/lib/config.hpp>
 #include <nano/lib/logging.hpp>
-#include <nano/lib/logger_mt.hpp>
 #include <nano/lib/tlsconfig.hpp>
 #include <nano/lib/tomlconfig.hpp>
 
@@ -39,34 +38,34 @@ nano::error nano::tls_config::deserialize_toml (nano::tomlconfig & toml)
 #ifdef NANO_SECURE_RPC
 namespace
 {
-	bool on_verify_certificate (bool preverified, boost::asio::ssl::verify_context & ctx, nano::tls_config & config_a, nano::logger_mt & logger_a)
+	bool on_verify_certificate (bool preverified, boost::asio::ssl::verify_context & ctx, nano::tls_config & config_a, nano::nlogger & logger_a)
 	{
 		X509_STORE_CTX * cts = ctx.native_handle ();
 		auto error (X509_STORE_CTX_get_error (cts));
 		switch (error)
 		{
 			case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
-				logger_a.always_log ("TLS: Unable to get issuer");
+				logger_a.warn (nano::log::type::tls, "Unable to get issuer");
 				break;
 			case X509_V_ERR_CERT_NOT_YET_VALID:
 			case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
-				logger_a.always_log ("TLS: Certificate not yet valid");
+				logger_a.warn (nano::log::type::tls, "Certificate not yet valid");
 				break;
 			case X509_V_ERR_CERT_HAS_EXPIRED:
 			case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
-				logger_a.always_log ("TLS: Certificate expired");
+				logger_a.warn (nano::log::type::tls, "Certificate expired");
 				break;
 			case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
 				if (config_a.verbose_logging)
 				{
-					logger_a.always_log ("TLS: Self-signed certificate in chain");
+					logger_a.warn (nano::log::type::tls, "Self-signed certificate in chain");
 				}
 
 				// Allow self-signed certificates
 				preverified = true;
 				break;
 			case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
-				logger_a.always_log ("TLS: Self-signed certificate not in the list of trusted certs (forgot to subject-hash certificate filename?)");
+				logger_a.warn (nano::log::type::tls, "Self-signed certificate not in the list of trusted certs (forgot to subject-hash certificate filename?)");
 				break;
 			default:
 				break;
@@ -76,25 +75,25 @@ namespace
 		{
 			if (error != 0)
 			{
-				logger_a.always_log ("TLS: Error: ", X509_verify_cert_error_string (error));
-				logger_a.always_log ("TLS: Error chain depth : ", X509_STORE_CTX_get_error_depth (cts));
+				logger_a.warn (nano::log::type::tls, "Error: ", X509_verify_cert_error_string (error));
+				logger_a.warn (nano::log::type::tls, "Error chain depth : ", X509_STORE_CTX_get_error_depth (cts));
 			}
 
 			X509 * cert = X509_STORE_CTX_get_current_cert (cts);
 			char subject_name[512];
 			X509_NAME_oneline (X509_get_subject_name (cert), subject_name, sizeof (subject_name) - 1);
-			logger_a.always_log ("TLS: Verifying: ", subject_name);
-			logger_a.always_log ("TLS: Verification: ", preverified);
+			logger_a.debug (nano::log::type::tls, "Verifying: ", subject_name);
+			logger_a.debug (nano::log::type::tls, "Verification: ", preverified);
 		}
 		else if (!preverified)
 		{
-			logger_a.always_log ("TLS: Pre-verification failed. Turn on verbose logging for more information.");
+			logger_a.warn (nano::log::type::tls, "Pre-verification failed. Turn on verbose logging for more information.");
 		}
 
 		return preverified;
 	}
 
-	void load_certs (nano::tls_config & config_a, nano::logger_mt & logger_a)
+	void load_certs (nano::tls_config & config_a, nano::nlogger & logger_a)
 	{
 		try
 		{
@@ -127,13 +126,11 @@ namespace
 				});
 			}
 
-			logger_a.always_log ("TLS: successfully configured");
+			logger_a.info (nano::log::type::tls, "TLS: successfully configured");
 		}
 		catch (boost::system::system_error const & err)
 		{
-			auto error (boost::str (boost::format ("Could not load certificate information: %1%. Make sure the paths and the passphrase in config-tls.toml are correct.") % err.what ()));
-			std::cerr << error << std::endl;
-			logger_a.always_log (error);
+			logger_a.error (nano::log::type::tls, "Could not load certificate information: {}. Make sure the paths and the passphrase in config-tls.toml are correct.", err.what());
 		}
 	}
 }
@@ -178,54 +175,6 @@ nano::error read_tls_config_toml (std::filesystem::path const & data_path_a, nan
 		load_certs (config_a, logger_a);
 #else
 		nlogger.critical (nano::log::type::tls, "HTTPS or WSS is enabled in the TLS configuration, but the node is not built with NANO_SECURE_RPC");
-		std::exit (1);
-#endif
-	}
-
-	return error;
-}
-
-nano::error read_tls_config_toml (std::filesystem::path const & data_path_a, nano::tls_config & config_a, nano::logger_mt & logger_a, std::vector<std::string> const & config_overrides)
-{
-	nano::error error;
-	auto toml_config_path = nano::get_tls_toml_config_path (data_path_a);
-
-	// Parse and deserialize
-	nano::tomlconfig toml;
-
-	std::stringstream config_overrides_stream;
-	for (auto const & entry : config_overrides)
-	{
-		config_overrides_stream << entry << std::endl;
-	}
-	config_overrides_stream << std::endl;
-
-	// Make sure we don't create an empty toml file if it doesn't exist. Running without a tls toml file is the default.
-	if (!error)
-	{
-		if (std::filesystem::exists (toml_config_path))
-		{
-			error = toml.read (config_overrides_stream, toml_config_path);
-		}
-		else
-		{
-			error = toml.read (config_overrides_stream);
-		}
-	}
-
-	if (!error)
-	{
-		error = config_a.deserialize_toml (toml);
-	}
-
-	if (!error && (config_a.enable_https || config_a.enable_wss))
-	{
-#ifdef NANO_SECURE_RPC
-		load_certs (config_a, logger_a);
-#else
-		auto msg ("https or wss is enabled in the TLS configuration, but the node is not built with NANO_SECURE_RPC");
-		std::cerr << msg << std::endl;
-		logger_a.always_log (msg);
 		std::exit (1);
 #endif
 	}

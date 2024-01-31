@@ -1,5 +1,4 @@
 use rsnano_core::{
-    to_hex_string,
     utils::{ContainerInfo, ContainerInfoComponent, LogType, Logger},
     work::WorkThresholds,
     BlockEnum, BlockType, Epoch, HashOrAccount, UncheckedInfo,
@@ -171,10 +170,7 @@ impl BlockProcessor {
         }
         drop(lock_a);
 
-        if self.config.logging.timing_logging_value
-            && number_of_blocks_processed != 0
-            && timer_l.elapsed() > Duration::from_millis(100)
-        {
+        if number_of_blocks_processed != 0 && timer_l.elapsed() > Duration::from_millis(100) {
             self.logger.debug(
                 LogType::Blockprocessor,
                 &format!(
@@ -356,20 +352,5 @@ pub struct BlockProcessorImpl {
 impl BlockProcessorImpl {
     pub fn have_blocks_ready(&self) -> bool {
         return self.blocks.len() > 0 || self.forced.len() > 0;
-    }
-
-    pub fn should_log(&mut self) -> bool {
-        let now = SystemTime::now();
-        if self.next_log < now {
-            let delay = if self.config.logging.timing_logging_value {
-                Duration::from_secs(2)
-            } else {
-                Duration::from_secs(15)
-            };
-            self.next_log = now + delay;
-            true
-        } else {
-            false
-        }
     }
 }

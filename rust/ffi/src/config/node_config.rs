@@ -1,8 +1,8 @@
 use super::{
     bootstrap_config::BootstrapAscendingConfigDto,
-    fill_logging_dto, fill_txn_tracking_config_dto, fill_websocket_config_dto,
+    fill_txn_tracking_config_dto, fill_websocket_config_dto,
     lmdb_config::{fill_lmdb_config_dto, LmdbConfigDto},
-    LoggingDto, TxnTrackingConfigDto,
+    TxnTrackingConfigDto,
 };
 use crate::{
     consensus::VoteCacheConfigDto, fill_ipc_config_dto, fill_stat_config_dto, utils::FfiToml,
@@ -12,7 +12,7 @@ use crate::{
 use num::FromPrimitive;
 use rsnano_core::{Account, Amount};
 use rsnano_node::{
-    config::{Logging, NodeConfig, Peer},
+    config::{NodeConfig, Peer},
     NetworkParams,
 };
 use std::{
@@ -85,7 +85,6 @@ pub struct NodeConfigDto {
     pub callback_port: u16,
     pub callback_target: [u8; 128],
     pub callback_target_len: usize,
-    pub logging: LoggingDto,
     pub websocket_config: WebsocketConfigDto,
     pub ipc_config: IpcConfigDto,
     pub diagnostics_config: TxnTrackingConfigDto,
@@ -108,20 +107,18 @@ pub unsafe extern "C" fn rsn_node_config_create(
     dto: *mut NodeConfigDto,
     peering_port: u16,
     peering_port_defined: bool,
-    logging: &LoggingDto,
     network_params: &NetworkParamsDto,
 ) -> i32 {
     let network_params = match NetworkParams::try_from(network_params) {
         Ok(n) => n,
         Err(_) => return -1,
     };
-    let logging = Logging::from(logging);
     let peering_port = if peering_port_defined {
         Some(peering_port)
     } else {
         None
     };
-    let cfg = NodeConfig::new(peering_port, logging, &network_params);
+    let cfg = NodeConfig::new(peering_port, &network_params);
     let dto = &mut (*dto);
     fill_node_config_dto(dto, &cfg);
     0
@@ -236,7 +233,6 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     let bytes = cfg.callback_target.as_bytes();
     dto.callback_target[..bytes.len()].copy_from_slice(bytes);
     dto.callback_target_len = bytes.len();
-    fill_logging_dto(&mut dto.logging, &cfg.logging);
     fill_websocket_config_dto(&mut dto.websocket_config, &cfg.websocket_config);
     fill_ipc_config_dto(&mut dto.ipc_config, &cfg.ipc_config);
     fill_txn_tracking_config_dto(
@@ -366,7 +362,6 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             )
             .to_string(),
             callback_port: value.callback_port,
-            logging: (&value.logging).into(),
             websocket_config: (&value.websocket_config).into(),
             ipc_config: (&value.ipc_config).try_into()?,
             diagnostics_config: (&value.diagnostics_config).into(),

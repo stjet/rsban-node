@@ -1,4 +1,3 @@
-use super::AlwaysLogCallback;
 use crate::VoidPointerCallback;
 use rsnano_core::utils::{LogLevel, LogType, Logger};
 use std::{ffi::c_void, sync::Arc};

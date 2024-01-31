@@ -5,11 +5,11 @@ use crate::{
     transport::{
         EndpointDto, SocketFfiObserver, SocketHandle, SynCookiesHandle, TcpChannelsHandle,
     },
-    utils::{AsyncRuntimeHandle, ContextWrapper, LoggerHandle, LoggerMT, ThreadPoolHandle},
+    utils::{AsyncRuntimeHandle, ContextWrapper, LoggerHandleV2, ThreadPoolHandle},
     ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
     VoidPointerCallback,
 };
-use rsnano_core::{utils::Logger, KeyPair};
+use rsnano_core::KeyPair;
 use rsnano_node::{
     transport::{Socket, TcpListener, TcpListenerExt},
     utils::ErrorCode,
@@ -31,7 +31,7 @@ pub unsafe extern "C" fn rsn_tcp_listener_create(
     port: u16,
     max_inbound_connections: usize,
     config: &NodeConfigDto,
-    logger: *mut LoggerHandle,
+    logger: &LoggerHandleV2,
     tcp_channels: &TcpChannelsHandle,
     syn_cookies: &SynCookiesHandle,
     network_params: &NetworkParamsDto,
@@ -45,7 +45,7 @@ pub unsafe extern "C" fn rsn_tcp_listener_create(
     ledger: &LedgerHandle,
     node_id_prv: *const u8,
 ) -> *mut TcpListenerHandle {
-    let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(logger)));
+    let logger = logger.into_logger();
     let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
     let node_id = Arc::new(
         KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(node_id_prv, 32)).unwrap(),

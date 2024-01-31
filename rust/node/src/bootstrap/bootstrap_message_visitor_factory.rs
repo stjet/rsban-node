@@ -5,7 +5,7 @@ use rsnano_ledger::Ledger;
 
 use crate::{
     block_processing::BlockProcessor,
-    config::{Logging, NetworkConstants, NodeFlags},
+    config::{NetworkConstants, NodeFlags},
     stats::Stats,
     transport::{
         BootstrapMessageVisitor, HandshakeMessageVisitor, HandshakeMessageVisitorImpl,
@@ -28,8 +28,6 @@ pub struct BootstrapMessageVisitorFactory {
     block_processor: Weak<BlockProcessor>,
     bootstrap_initiator: Weak<BootstrapInitiator>,
     flags: NodeFlags,
-    logging_config: Logging,
-    pub handshake_logging: bool,
 }
 
 impl BootstrapMessageVisitorFactory {
@@ -45,7 +43,6 @@ impl BootstrapMessageVisitorFactory {
         block_processor: Arc<BlockProcessor>,
         bootstrap_initiator: Arc<BootstrapInitiator>,
         flags: NodeFlags,
-        logging_config: Logging,
     ) -> Self {
         Self {
             async_rt,
@@ -53,14 +50,12 @@ impl BootstrapMessageVisitorFactory {
             syn_cookies,
             stats,
             node_id,
-            handshake_logging: false,
             network_constants,
             ledger,
             thread_pool: Arc::downgrade(&thread_pool),
             block_processor: Arc::downgrade(&block_processor),
             bootstrap_initiator: Arc::downgrade(&bootstrap_initiator),
             flags,
-            logging_config,
         }
     }
 
@@ -74,7 +69,6 @@ impl BootstrapMessageVisitorFactory {
             self.network_constants.clone(),
         ));
         visitor.disable_tcp_realtime = self.flags.disable_tcp_realtime;
-        visitor.handshake_logging = self.handshake_logging;
         visitor
     }
 
@@ -98,7 +92,6 @@ impl BootstrapMessageVisitorFactory {
             work_thresholds: self.network_constants.work.clone(),
             flags: self.flags.clone(),
             processed: false,
-            logging_config: self.logging_config.clone(),
         })
     }
 }

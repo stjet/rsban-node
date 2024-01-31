@@ -25,7 +25,6 @@ add_executable(
   ipc.cpp
   ledger.cpp
   locks.cpp
-  logger.cpp
   memory_pool.cpp
   network.cpp
   node.cpp

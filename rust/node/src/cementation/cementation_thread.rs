@@ -40,7 +40,6 @@ impl CementationThread {
     pub fn new(
         write_database_queue: Arc<WriteDatabaseQueue>,
         logger: Arc<dyn Logger>,
-        enable_timing_logging: bool,
         ledger: Arc<Ledger>,
         batch_separate_pending_min_time: Duration,
         latch: Box<dyn Latch>,
@@ -55,7 +54,6 @@ impl CementationThread {
             ledger,
             write_database_queue,
             logger,
-            enable_timing_logging,
             batch_separate_pending_min_time,
             stopped.clone(),
         );

@@ -2,13 +2,10 @@ use super::bootstrap_server::TcpServerHandle;
 use crate::{
     ledger::datastore::LedgerHandle,
     messages::MessageHandle,
-    utils::{LoggerHandle, LoggerMT, ThreadPoolHandle},
-    NodeConfigDto,
+    utils::{LoggerHandleV2, ThreadPoolHandle},
 };
-use rsnano_core::utils::Logger;
 use rsnano_messages::Message;
-use rsnano_node::{bootstrap::FrontierReqServer, config::NodeConfig};
-use std::sync::Arc;
+use rsnano_node::bootstrap::FrontierReqServer;
 
 pub struct FrontierReqServerHandle(FrontierReqServer);
 
@@ -17,12 +14,10 @@ pub unsafe extern "C" fn rsn_frontier_req_server_create(
     tcp_server: *mut TcpServerHandle,
     request: &MessageHandle,
     thread_pool: *mut ThreadPoolHandle,
-    logger: *mut LoggerHandle,
-    config: *const NodeConfigDto,
+    logger: &LoggerHandleV2,
     ledger: *mut LedgerHandle,
 ) -> *mut FrontierReqServerHandle {
-    let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(logger)));
-    let config: NodeConfig = (&*config).try_into().unwrap();
+    let logger = logger.into_logger();
     let Message::FrontierReq(request) = &request.message else {
         panic!("not a frontier_req")
     };
@@ -31,8 +26,6 @@ pub unsafe extern "C" fn rsn_frontier_req_server_create(
         request.clone(),
         (*thread_pool).0.clone(),
         logger,
-        config.logging.bulk_pull_logging(),
-        config.logging.network_logging_value,
         (*ledger).0.clone(),
     ))))
 }

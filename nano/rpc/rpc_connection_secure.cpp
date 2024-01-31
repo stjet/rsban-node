@@ -1,10 +1,11 @@
 #include <nano/boost/asio/bind_executor.hpp>
+#include <nano/lib/logging.hpp>
 #include <nano/rpc/rpc_connection_secure.hpp>
 #include <nano/rpc/rpc_secure.hpp>
 
 #include <boost/polymorphic_pointer_cast.hpp>
-
-nano::rpc_connection_secure::rpc_connection_secure (nano::rpc_config const & rpc_config, boost::asio::io_context & io_ctx, nano::logger_mt & logger, nano::rpc_handler_interface & rpc_handler_interface, boost::asio::ssl::context & ssl_context) :
+n
+nano::rpc_connection_secure::rpc_connection_secure (nano::rpc_config const & rpc_config, boost::asio::io_context & io_ctx, nano::nlogger & logger, nano::rpc_handler_interface & rpc_handler_interface, boost::asio::ssl::context & ssl_context) :
 	nano::rpc_connection (rpc_config, io_ctx, logger, rpc_handler_interface),
 	stream (socket, ssl_context)
 {
@@ -34,7 +35,7 @@ void nano::rpc_connection_secure::handle_handshake (boost::system::error_code co
 	}
 	else
 	{
-		logger.always_log ("TLS: Handshake error: ", error.message ());
+		logger.error (nano::log::type::rpc, "TLS: Handshake error: {}", error.message ());
 	}
 }
 

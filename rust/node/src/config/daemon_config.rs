@@ -2,7 +2,7 @@ use crate::NetworkParams;
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
 
-use super::{Logging, NodeConfig, NodeRpcConfig, OpenclConfig};
+use super::{NodeConfig, NodeRpcConfig, OpenclConfig};
 
 pub struct DaemonConfig {
     pub rpc_enable: bool,
@@ -16,7 +16,7 @@ impl DaemonConfig {
     pub fn new(network_params: &NetworkParams) -> Result<Self> {
         Ok(Self {
             rpc_enable: false,
-            node: NodeConfig::new(None, Logging::new(), network_params),
+            node: NodeConfig::new(None, network_params),
             opencl: OpenclConfig::new(),
             opencl_enable: false,
             rpc: NodeRpcConfig::new()?,

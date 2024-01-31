@@ -802,19 +802,13 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     response: Some(response),
                 });
 
-                if this_l
-                    .node_config
-                    .logging
-                    .network_node_id_handshake_logging()
-                {
-                    this_l.logger.debug(
-                        LogType::Tcp,
-                        &format!(
-                            "Node ID handshake response sent to {} (query: {:?})",
-                            endpoint, query.cookie
-                        ),
-                    );
-                }
+                this_l.logger.debug(
+                    LogType::Tcp,
+                    &format!(
+                        "Node ID handshake response sent to {} (query: {:?})",
+                        endpoint, query.cookie
+                    ),
+                );
 
                 let channel_clone = channel.clone();
                 tcp.send(
@@ -896,11 +890,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         let Some(async_rt) = self.async_rt.upgrade() else {
             return;
         };
-        let socket_stats = Arc::new(SocketStats::new(
-            self.stats.clone(),
-            self.logger.clone(),
-            self.node_config.logging.network_timeout_logging(),
-        ));
+        let socket_stats = Arc::new(SocketStats::new(self.stats.clone(), self.logger.clone()));
 
         let socket = SocketBuilder::endpoint_type(
             EndpointType::Client,

@@ -5,12 +5,10 @@ use crate::{
         LedgerHandle,
     },
     messages::MessageHandle,
-    utils::{LoggerHandle, LoggerMT, ThreadPoolHandle},
+    utils::{LoggerHandleV2, ThreadPoolHandle},
 };
-use rsnano_core::utils::Logger;
 use rsnano_messages::Message;
 use rsnano_node::bootstrap::BulkPullAccountServer;
-use std::sync::Arc;
 
 pub struct BulkPullAccountServerHandle(BulkPullAccountServer);
 
@@ -19,14 +17,13 @@ pub unsafe extern "C" fn rsn_bulk_pull_account_server_create(
     request: &MessageHandle,
     server: *mut TcpServerHandle,
     ledger: *mut LedgerHandle,
-    logger: *mut LoggerHandle,
+    logger: &LoggerHandleV2,
     thread_pool: *mut ThreadPoolHandle,
-    logging_enabled: bool,
 ) -> *mut BulkPullAccountServerHandle {
     let Message::BulkPullAccount(payload) = &request.message else {
         panic!("not a bulk_pull_account message")
     };
-    let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(logger)));
+    let logger = logger.into_logger();
     Box::into_raw(Box::new(BulkPullAccountServerHandle(
         BulkPullAccountServer::new(
             (*server).0.clone(),
@@ -34,7 +31,6 @@ pub unsafe extern "C" fn rsn_bulk_pull_account_server_create(
             logger,
             (*thread_pool).0.clone(),
             (*ledger).0.clone(),
-            logging_enabled,
         ),
     )))
 }

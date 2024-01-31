@@ -1,16 +1,14 @@
+use super::bootstrap_initiator::BootstrapInitiatorHandle;
 use crate::{
     block_processing::BlockProcessorHandle,
     ledger::datastore::LedgerHandle,
     transport::SynCookiesHandle,
-    utils::{AsyncRuntimeHandle, LoggerHandle, LoggerMT, ThreadPoolHandle},
+    utils::{AsyncRuntimeHandle, LoggerHandleV2, ThreadPoolHandle},
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
 };
-use rsnano_core::{utils::Logger, KeyPair};
-
-use rsnano_node::{bootstrap::BootstrapMessageVisitorFactory, config::NodeConfig, NetworkParams};
+use rsnano_core::KeyPair;
+use rsnano_node::{bootstrap::BootstrapMessageVisitorFactory, NetworkParams};
 use std::sync::Arc;
-
-use super::bootstrap_initiator::BootstrapInitiatorHandle;
 
 pub struct RequestResponseVisitorFactoryHandle(pub Arc<BootstrapMessageVisitorFactory>);
 
@@ -18,7 +16,7 @@ pub struct RequestResponseVisitorFactoryHandle(pub Arc<BootstrapMessageVisitorFa
 pub struct RequestResponseVisitorFactoryParams {
     pub async_rt: *mut AsyncRuntimeHandle,
     pub config: *const NodeConfigDto,
-    pub logger: *mut LoggerHandle,
+    pub logger: *mut LoggerHandleV2,
     pub workers: *mut ThreadPoolHandle,
     pub network: *const NetworkParamsDto,
     pub stats: *mut StatHandle,
@@ -35,8 +33,7 @@ pub unsafe extern "C" fn rsn_request_response_visitor_factory_create(
     params: &RequestResponseVisitorFactoryParams,
 ) -> *mut RequestResponseVisitorFactoryHandle {
     let async_rt = Arc::clone(&(*params.async_rt).0);
-    let config = Arc::new(NodeConfig::try_from(&*params.config).unwrap());
-    let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(params.logger)));
+    let logger = (*params.logger).into_logger();
     let workers = (*params.workers).0.clone();
     let network = NetworkParams::try_from(&*params.network).unwrap();
     let stats = Arc::clone(&(*params.stats));
@@ -44,11 +41,10 @@ pub unsafe extern "C" fn rsn_request_response_visitor_factory_create(
     let block_processor = Arc::clone(&(*params.block_processor));
     let bootstrap_initiator = Arc::clone(&(*params.bootstrap_initiator));
     let node_flags = (*params.flags).0.lock().unwrap().clone();
-    let logging_config = config.logging.clone();
     let node_id = Arc::new(
         KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(params.node_id_prv, 32)).unwrap(),
     );
-    let mut visitor_factory = BootstrapMessageVisitorFactory::new(
+    let visitor_factory = BootstrapMessageVisitorFactory::new(
         async_rt,
         Arc::clone(&logger),
         Arc::clone(&*params.syn_cookies),
@@ -60,9 +56,7 @@ pub unsafe extern "C" fn rsn_request_response_visitor_factory_create(
         block_processor,
         bootstrap_initiator,
         node_flags,
-        logging_config,
     );
-    visitor_factory.handshake_logging = config.logging.network_node_id_handshake_logging_value;
     Box::into_raw(Box::new(RequestResponseVisitorFactoryHandle(Arc::new(
         visitor_factory,
     ))))

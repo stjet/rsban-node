@@ -1,7 +1,7 @@
 use crate::{
     core::{BlockHandle, BlockVecHandle},
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
-    utils::{ContainerInfoComponentHandle, ContextWrapper, LoggerHandle, LoggerMT},
+    utils::{ContainerInfoComponentHandle, ContextWrapper, LoggerHandleV2},
     work::WorkThresholdsDto,
     NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
@@ -37,7 +37,7 @@ impl Deref for BlockProcessorHandle {
 pub unsafe extern "C" fn rsn_block_processor_create(
     handle: *mut c_void,
     config: &NodeConfigDto,
-    logger: *mut LoggerHandle,
+    logger: &LoggerHandleV2,
     flags: &NodeFlagsHandle,
     ledger: &LedgerHandle,
     unchecked_map: &UncheckedMapHandle,
@@ -47,7 +47,7 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     write_database_queue: &WriteDatabaseQueueHandle,
 ) -> *mut BlockProcessorHandle {
     let config = Arc::new(NodeConfig::try_from(config).unwrap());
-    let logger = Arc::new(LoggerMT::new(Box::from_raw(logger)));
+    let logger = logger.into_logger();
     let flags = Arc::new(flags.lock().unwrap().clone());
     let ledger = Arc::clone(&ledger);
     let unchecked_map = Arc::clone(&unchecked_map);
@@ -251,11 +251,6 @@ pub extern "C" fn rsn_block_processor_pop_front_forced(
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_forced_size(handle: &mut BlockProcessorLockHandle) -> usize {
     handle.0.as_mut().unwrap().forced.len()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_should_log(handle: &mut BlockProcessorLockHandle) -> bool {
-    handle.0.as_mut().unwrap().should_log()
 }
 
 #[no_mangle]

@@ -6,7 +6,7 @@ use rsnano_messages::{Message, MessageVisitor};
 
 use crate::{
     block_processing::BlockProcessor,
-    config::{Logging, NodeFlags},
+    config::NodeFlags,
     stats::Stats,
     transport::{BootstrapMessageVisitor, TcpServer},
     utils::{AsyncRuntime, ThreadPool},
@@ -28,7 +28,6 @@ pub struct BootstrapMessageVisitorImpl {
     pub work_thresholds: WorkThresholds,
     pub flags: NodeFlags,
     pub processed: bool,
-    pub logging_config: Logging,
 }
 
 impl MessageVisitor for BootstrapMessageVisitorImpl {
@@ -48,18 +47,11 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 let ledger = Arc::clone(&self.ledger);
                 let logger = Arc::clone(&self.logger);
                 let thread_pool2 = Arc::clone(&thread_pool);
-                let enable_logging = self.logging_config.bulk_pull_logging();
                 thread_pool.push_task(Box::new(move || {
                     // TODO from original code: Add completion callback to bulk pull server
                     // TODO from original code: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
-                    let mut bulk_pull_server = BulkPullServer::new(
-                        payload,
-                        connection,
-                        ledger,
-                        logger,
-                        thread_pool2,
-                        enable_logging,
-                    );
+                    let mut bulk_pull_server =
+                        BulkPullServer::new(payload, connection, ledger, logger, thread_pool2);
                     bulk_pull_server.send_next();
                 }));
 
@@ -78,7 +70,6 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 let ledger = Arc::clone(&self.ledger);
                 let thread_pool2 = Arc::clone(&thread_pool);
                 let logger = Arc::clone(&self.logger);
-                let enable_logging = self.logging_config.bulk_pull_logging();
                 thread_pool.push_task(Box::new(move || {
                     // original code TODO: Add completion callback to bulk pull server
                     // original code TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
@@ -88,7 +79,6 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                         logger,
                         thread_pool2,
                         ledger,
-                        enable_logging,
                     );
                     bulk_pull_account_server.send_frontier();
                 }));
@@ -109,8 +99,6 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 let ledger = Arc::clone(&self.ledger);
                 let thread_pool2 = Arc::clone(&thread_pool);
                 let logger = Arc::clone(&self.logger);
-                let enable_logging = self.logging_config.bulk_pull_logging();
-                let enable_packet_logging = self.logging_config.network_packet_logging();
                 let stats = Arc::clone(&self.stats);
                 let work_thresholds = self.work_thresholds.clone();
                 let async_rt = Arc::clone(&self.async_rt);
@@ -122,8 +110,6 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                         ledger,
                         logger,
                         thread_pool2,
-                        enable_logging,
-                        enable_packet_logging,
                         block_processor,
                         bootstrap_initiator,
                         stats,
@@ -143,20 +129,11 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 let connection = Arc::clone(&self.connection);
                 let ledger = Arc::clone(&self.ledger);
                 let logger = Arc::clone(&self.logger);
-                let enable_logging = self.logging_config.bulk_pull_logging();
-                let enable_network_logging = self.logging_config.network_logging_value;
                 let thread_pool2 = Arc::clone(&thread_pool);
                 thread_pool.push_task(Box::new(move || {
                     // original code TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
-                    let response = FrontierReqServer::new(
-                        connection,
-                        request,
-                        thread_pool2,
-                        logger,
-                        enable_logging,
-                        enable_network_logging,
-                        ledger,
-                    );
+                    let response =
+                        FrontierReqServer::new(connection, request, thread_pool2, logger, ledger);
                     response.send_next();
                 }));
 

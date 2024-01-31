@@ -3,10 +3,10 @@ use super::{
 };
 use crate::{
     transport::{EndpointDto, NetworkFilterHandle, SocketHandle, TcpMessageManagerHandle},
-    utils::{AsyncRuntimeHandle, LoggerHandle, LoggerMT},
+    utils::{AsyncRuntimeHandle, LoggerHandleV2},
     NetworkParamsDto, NodeConfigDto, StatHandle,
 };
-use rsnano_core::{utils::Logger, Account};
+use rsnano_core::Account;
 use rsnano_node::{
     config::NodeConfig,
     transport::{TcpServer, TcpServerExt},
@@ -35,7 +35,7 @@ pub struct CreateTcpServerParams {
     pub async_rt: *mut AsyncRuntimeHandle,
     pub socket: *mut SocketHandle,
     pub config: *const NodeConfigDto,
-    pub logger: *mut LoggerHandle,
+    pub logger: *mut LoggerHandleV2,
     pub observer: *mut TcpListenerHandle,
     pub publish_filter: *mut NetworkFilterHandle,
     pub network: *const NetworkParamsDto,
@@ -56,7 +56,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let async_rt = Arc::clone(&(*params.async_rt).0);
     let socket = Arc::clone(&(*params.socket));
     let config = Arc::new(NodeConfig::try_from(&*params.config).unwrap());
-    let logger: Arc<dyn Logger> = Arc::new(LoggerMT::new(Box::from_raw(params.logger)));
+    let logger = (*params.logger).into_logger();
     let observer = Arc::clone(&*params.observer);
     let publish_filter = Arc::clone(&*params.publish_filter);
     let network = Arc::new(NetworkParams::try_from(&*params.network).unwrap());

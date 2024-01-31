@@ -141,7 +141,7 @@ public:
 	std::shared_ptr<nano::node_observers> observers;
 	std::shared_ptr<nano::node_config> config; // ported
 	nano::network_params network_params; // ported
-	std::shared_ptr<nano::nlogger> nlogger;
+	std::shared_ptr<nano::logger> logger;
 	std::shared_ptr<nano::stats> stats; // ported
 	std::shared_ptr<nano::thread_pool> workers; // ported
 	std::shared_ptr<nano::thread_pool> bootstrap_workers; // ported

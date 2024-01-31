@@ -5,7 +5,7 @@
 #include <memory>
 
 std::unique_ptr<nano::store::component> nano::make_store (
-		std::shared_ptr<nano::nlogger> logger, 
+		std::shared_ptr<nano::logger> logger, 
 		std::filesystem::path const & path, 
 		nano::ledger_constants & constants, 
 		bool read_only, 
@@ -28,6 +28,6 @@ std::unique_ptr<nano::store::component> nano::make_store (
 		nano::lmdb_config const & lmdb_config_a, 
 		bool backup_before_upgrade)
 {
-	auto logger{std::make_shared<nano::nlogger>()};
+	auto logger{std::make_shared<nano::logger>()};
 	return nano::make_store(logger, path, constants, read_only, add_db_postfix, txn_tracking_config_a, block_processor_batch_max_time_a, lmdb_config_a, backup_before_upgrade);
 }

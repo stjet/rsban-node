@@ -6,7 +6,7 @@
 
 namespace nano
 {
-	class nlogger;
+	class logger;
 
 namespace store
 {
@@ -29,7 +29,7 @@ namespace test
 			std::deque<std::shared_ptr<nano::block>> const & blocks () const;
 
 		private:
-			std::shared_ptr<nano::nlogger> logger;
+			std::shared_ptr<nano::logger> logger;
 			std::unique_ptr<nano::store::component> store_m;
 			nano::stats stats_m;
 			nano::ledger ledger_m;

@@ -20,11 +20,11 @@ namespace
 {
 volatile sig_atomic_t sig_int_or_term = 0;
 
-nano::nlogger nlogger{ "rpc_daemon" };
+nano::logger logger{ "rpc_daemon" };
 
 void run (std::filesystem::path const & data_path, std::vector<std::string> const & config_overrides)
 {
-	nlogger.info (nano::log::type::daemon_rpc, "Daemon started (RPC)");
+	logger.info (nano::log::type::daemon_rpc, "Daemon started (RPC)");
 
 	std::filesystem::create_directories (data_path);
 
@@ -39,10 +39,10 @@ void run (std::filesystem::path const & data_path, std::vector<std::string> cons
 	if (!error)
 	{
 		auto tls_config (std::make_shared<nano::tls_config> ());
-		error = nano::read_tls_config_toml (data_path, *tls_config, nlogger);
+		error = nano::read_tls_config_toml (data_path, *tls_config, logger);
 		if (error)
 		{
-			nlogger.critical (nano::log::type::daemon, "Error reading RPC TLS config: {}", error.get_message ());
+			logger.critical (nano::log::type::daemon, "Error reading RPC TLS config: {}", error.get_message ());
 			std::exit (1);
 		}
 		else
@@ -91,7 +91,7 @@ int main (int argc, char * const * argv)
 {
 	rsnano::set_rsnano_callbacks ();
 	nano::set_umask (); // Make sure the process umask is set before any files are created
-	nano::nlogger::initialize (nano::log_config::cli_default ());
+	nano::logger::initialize (nano::log_config::cli_default ());
 
 	boost::program_options::options_description description ("Command line options");
 

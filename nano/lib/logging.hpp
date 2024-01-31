@@ -71,13 +71,13 @@ namespace nano
 {
 spdlog::level::level_enum to_spdlog_level (nano::log::level);
 
-class nlogger final
+class logger final
 {
 public:
-	nlogger (std::string identifier = "");
+	logger (std::string identifier = "");
 
 	// Disallow copies
-	nlogger (nlogger const &) = delete;
+	logger (logger const &) = delete;
 
 public:
 	static void initialize (nano::log_config fallback, std::filesystem::path data_path = {}, std::vector<std::string> const & config_overrides = std::vector<std::string> ());
@@ -150,7 +150,7 @@ private:
 	std::shared_ptr<spdlog::logger> make_logger (nano::log::type tag);
 };
 
-nano::nlogger & default_logger ();
+nano::logger & default_logger ();
 
 class logger_handle{
 public:
@@ -160,5 +160,5 @@ public:
 	~logger_handle();
 	rsnano::LoggerHandleV2 * handle;
 };
-nano::logger_handle to_logger_handle (std::shared_ptr<nano::nlogger> const & logger_a);
+nano::logger_handle to_logger_handle (std::shared_ptr<nano::logger> const & logger_a);
 }

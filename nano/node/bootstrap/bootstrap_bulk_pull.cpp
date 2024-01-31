@@ -61,7 +61,7 @@ nano::bulk_pull_client::bulk_pull_client (std::shared_ptr<nano::node> const & no
 	attempt{ attempt_a },
 	pull{ pull_a },
 	block_deserializer{ std::make_shared<nano::bootstrap::block_deserializer> (node_a->async_rt) },
-	logger{ node_a->nlogger }
+	logger{ node_a->logger }
 {
 	attempt->notify_all ();
 }
@@ -275,7 +275,7 @@ void nano::bulk_pull_account_client::request ()
 
 	if (attempt->should_log ())
 	{
-		node_l->nlogger->debug (nano::log::type::bulk_pull_account_client, "Accounts in pull queue: {}", attempt->wallet_size ());
+		node_l->logger->debug (nano::log::type::bulk_pull_account_client, "Accounts in pull queue: {}", attempt->wallet_size ());
 	}
 
 	auto this_l (shared_from_this ());
@@ -292,7 +292,7 @@ void nano::bulk_pull_account_client::request ()
 		}
 		else
 		{
-			node_l->nlogger->debug (nano::log::type::bulk_pull_account_client, "Error starting bulk pull request to: {} ({})", this_l->connection->channel_string (), ec.message ());
+			node_l->logger->debug (nano::log::type::bulk_pull_account_client, "Error starting bulk pull request to: {} ({})", this_l->connection->channel_string (), ec.message ());
 			node_l->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_error_starting_request, nano::stat::dir::in);
 
 			this_l->attempt->requeue_pending (this_l->account);
@@ -355,14 +355,14 @@ void nano::bulk_pull_account_client::receive_pending ()
 			}
 			else
 			{
-				node_l->nlogger->debug (nano::log::type::bulk_pull_account_client, "Error while receiving bulk pull account frontier: {}", ec.message ());
+				node_l->logger->debug (nano::log::type::bulk_pull_account_client, "Error while receiving bulk pull account frontier: {}", ec.message ());
 				
 				this_l->attempt->requeue_pending (this_l->account);
 			}
 		}
 		else
 		{
-			node_l->nlogger->debug (nano::log::type::bulk_pull_account_client, "Invalid size: Expected {}, got: {}", size_l, size_a);
+			node_l->logger->debug (nano::log::type::bulk_pull_account_client, "Invalid size: Expected {}, got: {}", size_l, size_a);
 
 			this_l->attempt->requeue_pending (this_l->account);
 		}
@@ -404,7 +404,7 @@ std::shared_ptr<nano::block> nano::bulk_pull_server::get_next ()
 
 nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::bulk_pull> request_a) 
 {
-	auto logger_handle{nano::to_logger_handle(node_a->nlogger)};
+	auto logger_handle{nano::to_logger_handle(node_a->logger)};
 
 	handle = rsnano::rsn_bulk_pull_server_create (
 			request_a->handle, 
@@ -421,7 +421,7 @@ nano::bulk_pull_server::~bulk_pull_server ()
 
 nano::bulk_pull_account_server::bulk_pull_account_server (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::transport::tcp_server> const & connection_a, std::unique_ptr<nano::bulk_pull_account> request_a) 
 {
-	auto logger_handle{nano::to_logger_handle(node_a->nlogger)};
+	auto logger_handle{nano::to_logger_handle(node_a->logger)};
 	handle = rsnano::rsn_bulk_pull_account_server_create (
 			request_a->handle, 
 			connection_a->handle, 

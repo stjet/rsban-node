@@ -20,7 +20,7 @@ namespace
 {
 rsnano::ConfirmationHeightProcessorHandle * create_processor_handle (
 nano::write_database_queue & write_database_queue_a,
-std::shared_ptr<nano::nlogger> & logger_a,
+std::shared_ptr<nano::logger> & logger_a,
 nano::ledger & ledger_a,
 std::chrono::milliseconds batch_separate_pending_min_time_a,
 boost::latch & latch)
@@ -35,7 +35,7 @@ boost::latch & latch)
 }
 }
 
-nano::confirmation_height_processor::confirmation_height_processor (nano::ledger & ledger_a, nano::stats & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, std::shared_ptr<nano::nlogger> & logger_a, boost::latch & latch) :
+nano::confirmation_height_processor::confirmation_height_processor (nano::ledger & ledger_a, nano::stats & stats_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, std::shared_ptr<nano::logger> & logger_a, boost::latch & latch) :
 	handle{ create_processor_handle (write_database_queue_a, logger_a, ledger_a, batch_separate_pending_min_time_a, latch) }
 {
 }

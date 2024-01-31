@@ -38,7 +38,7 @@ nano::error nano::tls_config::deserialize_toml (nano::tomlconfig & toml)
 #ifdef NANO_SECURE_RPC
 namespace
 {
-	bool on_verify_certificate (bool preverified, boost::asio::ssl::verify_context & ctx, nano::tls_config & config_a, nano::nlogger & logger_a)
+	bool on_verify_certificate (bool preverified, boost::asio::ssl::verify_context & ctx, nano::tls_config & config_a, nano::nogger & logger_a)
 	{
 		X509_STORE_CTX * cts = ctx.native_handle ();
 		auto error (X509_STORE_CTX_get_error (cts));
@@ -93,7 +93,7 @@ namespace
 		return preverified;
 	}
 
-	void load_certs (nano::tls_config & config_a, nano::nlogger & logger_a)
+	void load_certs (nano::tls_config & config_a, nano::logger & logger_a)
 	{
 		try
 		{
@@ -136,7 +136,7 @@ namespace
 }
 #endif
 
-nano::error read_tls_config_toml (std::filesystem::path const & data_path_a, nano::tls_config & config_a, nano::nlogger & nlogger, std::vector<std::string> const & config_overrides)
+nano::error read_tls_config_toml (std::filesystem::path const & data_path_a, nano::tls_config & config_a, nano::logger & logger, std::vector<std::string> const & config_overrides)
 {
 	nano::error error;
 	auto toml_config_path = nano::get_tls_toml_config_path (data_path_a);
@@ -174,7 +174,7 @@ nano::error read_tls_config_toml (std::filesystem::path const & data_path_a, nan
 #ifdef NANO_SECURE_RPC
 		load_certs (config_a, logger_a);
 #else
-		nlogger.critical (nano::log::type::tls, "HTTPS or WSS is enabled in the TLS configuration, but the node is not built with NANO_SECURE_RPC");
+		logger.critical (nano::log::type::tls, "HTTPS or WSS is enabled in the TLS configuration, but the node is not built with NANO_SECURE_RPC");
 		std::exit (1);
 #endif
 	}

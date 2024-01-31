@@ -31,7 +31,7 @@ public:
 		return acceptor.local_endpoint ().port ();
 	}
 
-	nano::nlogger logger {"rpc"};
+	nano::logger logger {"rpc"};
 	nano::rpc_config config;
 	boost::asio::ip::tcp::acceptor acceptor;
 	boost::asio::io_context & io_ctx;

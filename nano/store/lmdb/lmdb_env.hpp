@@ -6,7 +6,7 @@
 
 namespace nano
 {
-	class nlogger;
+	class logger;
 }
 
 namespace nano::store::lmdb
@@ -59,7 +59,7 @@ public:
 	};
 
 	env (bool &, std::filesystem::path const &, nano::store::lmdb::env::options options_a = nano::store::lmdb::env::options::make ());
-	env (bool &, std::filesystem::path const &, std::shared_ptr<nano::nlogger> logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::store::lmdb::env::options options_a = nano::store::lmdb::env::options::make ());
+	env (bool &, std::filesystem::path const &, std::shared_ptr<nano::logger> logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::store::lmdb::env::options options_a = nano::store::lmdb::env::options::make ());
 	env (rsnano::LmdbEnvHandle * handle_a);
 	env (env const &) = delete;
 	env (env &&) = delete;

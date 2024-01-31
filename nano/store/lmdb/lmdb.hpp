@@ -24,14 +24,14 @@
 
 namespace nano
 {
-	class nlogger;
+class logger;
 }
 
 namespace nano::store::lmdb
 {
 /**
-	 * mdb implementation of the block store
-	 */
+ * mdb implementation of the block store
+ */
 class component : public nano::store::component
 {
 private:
@@ -53,7 +53,7 @@ private:
 	nano::store::lmdb::version version_store;
 
 public:
-	component (std::shared_ptr<nano::nlogger>, std::filesystem::path const &, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a = nano::txn_tracking_config{}, std::chrono::milliseconds block_processor_batch_max_time_a = std::chrono::milliseconds (5000), nano::lmdb_config const & lmdb_config_a = nano::lmdb_config{}, bool backup_before_upgrade = false);
+	component (std::shared_ptr<nano::logger>, std::filesystem::path const &, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a = nano::txn_tracking_config{}, std::chrono::milliseconds block_processor_batch_max_time_a = std::chrono::milliseconds (5000), nano::lmdb_config const & lmdb_config_a = nano::lmdb_config{}, bool backup_before_upgrade = false);
 	~component ();
 	component (store const &) = delete;
 	component (store &&) = delete;

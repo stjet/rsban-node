@@ -20,7 +20,7 @@ namespace store
 class node_observers;
 class stats;
 class node_config;
-class nlogger;
+class logger;
 class online_reps;
 class rep_crawler;
 class ledger;
@@ -36,7 +36,7 @@ namespace transport
 class vote_processor_queue
 {
 public:
-	vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, std::shared_ptr<nano::nlogger> & logger_a);
+	vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, std::shared_ptr<nano::logger> & logger_a);
 	vote_processor_queue (vote_processor_queue const &) = delete;
 	~vote_processor_queue ();
 
@@ -65,7 +65,7 @@ public:
 	nano::node_observers & observers_a,
 	nano::stats & stats_a,
 	nano::node_config & config_a,
-	nano::nlogger & logger_a,
+	nano::logger & logger_a,
 	nano::rep_crawler & rep_crawler_a,
 	nano::network_params & network_params_a);
 
@@ -81,7 +81,7 @@ public:
 	nano::node_observers & observers;
 	nano::stats & stats;
 	nano::node_config & config;
-	nano::nlogger & logger;
+	nano::logger & logger;
 	nano::rep_crawler & rep_crawler;
 	nano::network_params & network_params;
 	bool started;

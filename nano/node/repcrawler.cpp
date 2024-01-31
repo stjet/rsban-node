@@ -221,7 +221,7 @@ void nano::rep_crawler::validate ()
 
 		if (channel->get_type () == nano::transport::transport_type::loopback)
 		{
-			node.nlogger->debug (nano::log::type::repcrawler, "Ignoring vote from loopback channel: {}", channel->to_string ());
+			node.logger->debug (nano::log::type::repcrawler, "Ignoring vote from loopback channel: {}", channel->to_string ());
 
 			continue;
 		}
@@ -229,7 +229,7 @@ void nano::rep_crawler::validate ()
 		nano::uint128_t rep_weight = node.ledger.weight (vote->account ());
 		if (rep_weight < minimum)
 		{
-			node.nlogger->debug (nano::log::type::repcrawler, "Ignoring vote from account {} with too little voting weight: {}",
+			node.logger->debug (nano::log::type::repcrawler, "Ignoring vote from account {} with too little voting weight: {}",
 			vote->account ().to_account (),
 			nano::util::to_str (rep_weight));
 
@@ -239,12 +239,12 @@ void nano::rep_crawler::validate ()
 		auto insert_result{ node.representative_register.update_or_insert (vote->account (), channel) };
 		if (insert_result.inserted)
 		{
-			node.nlogger->info (nano::log::type::repcrawler, "Found representative {} at {}", vote->account ().to_account (), channel->to_string ());
+			node.logger->info (nano::log::type::repcrawler, "Found representative {} at {}", vote->account ().to_account (), channel->to_string ());
 		}
 
 		if (insert_result.updated)
 		{
-			node.nlogger->warn (nano::log::type::repcrawler, "Updated representative {} at {} (was at: {})", vote->account ().to_account (), channel->to_string (), insert_result.prev_endpoint.address().to_string());
+			node.logger->warn (nano::log::type::repcrawler, "Updated representative {} at {} (was at: {})", vote->account ().to_account (), channel->to_string (), insert_result.prev_endpoint.address().to_string());
 		}
 	}
 }

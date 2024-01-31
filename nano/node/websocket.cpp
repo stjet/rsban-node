@@ -17,13 +17,13 @@
 #include <algorithm>
 #include <chrono>
 
-nano::websocket::confirmation_options::confirmation_options (nano::wallets & wallets_a, nano::nlogger & logger_a) :
+nano::websocket::confirmation_options::confirmation_options (nano::wallets & wallets_a, nano::logger & logger_a) :
 	wallets (wallets_a),
 	logger (logger_a)
 {
 }
 
-nano::websocket::confirmation_options::confirmation_options (boost::property_tree::ptree const & options_a, nano::wallets & wallets_a, nano::nlogger & logger_a) :
+nano::websocket::confirmation_options::confirmation_options (boost::property_tree::ptree const & options_a, nano::wallets & wallets_a, nano::logger & logger_a) :
 	wallets (wallets_a),
 	logger (logger_a)
 {
@@ -195,7 +195,7 @@ void nano::websocket::confirmation_options::check_filter_empty () const
 	}
 }
 
-nano::websocket::vote_options::vote_options (boost::property_tree::ptree const & options_a, nano::nlogger & logger_a)
+nano::websocket::vote_options::vote_options (boost::property_tree::ptree const & options_a, nano::logger & logger_a)
 {
 	include_replays = options_a.get<bool> ("include_replays", false);
 	include_indeterminate = options_a.get<bool> ("include_indeterminate", false);
@@ -247,7 +247,7 @@ nano::websocket::session::session (nano::websocket::listener & listener_a, socke
 
 #endif
 
-nano::websocket::session::session (nano::websocket::listener & listener_a, socket_type socket_a, nano::nlogger & logger_a) :
+nano::websocket::session::session (nano::websocket::listener & listener_a, socket_type socket_a, nano::logger & logger_a) :
 	ws_listener (listener_a), ws (std::move (socket_a)),
 	logger{ logger_a }
 {
@@ -497,7 +497,7 @@ void nano::websocket::listener::stop ()
 	sessions.clear ();
 }
 
-nano::websocket::listener::listener (std::shared_ptr<nano::tls_config> const & tls_config_a, nano::nlogger & logger_a, nano::wallets & wallets_a, boost::asio::io_context & io_ctx_a, boost::asio::ip::tcp::endpoint endpoint_a) :
+nano::websocket::listener::listener (std::shared_ptr<nano::tls_config> const & tls_config_a, nano::logger & logger_a, nano::wallets & wallets_a, boost::asio::io_context & io_ctx_a, boost::asio::ip::tcp::endpoint endpoint_a) :
 	tls_config (tls_config_a),
 	logger (logger_a),
 	wallets (wallets_a),
@@ -898,7 +898,7 @@ std::string nano::websocket::message::to_string () const
  * websocket_server
  */
 
-nano::websocket_server::websocket_server (nano::websocket::config & config_a, nano::node_observers & observers_a, nano::wallets & wallets_a, nano::ledger & ledger_a, boost::asio::io_context & io_ctx_a, nano::nlogger & logger_a) :
+nano::websocket_server::websocket_server (nano::websocket::config & config_a, nano::node_observers & observers_a, nano::wallets & wallets_a, nano::ledger & ledger_a, boost::asio::io_context & io_ctx_a, nano::logger & logger_a) :
 	config{ config_a },
 	observers{ observers_a },
 	wallets{ wallets_a },

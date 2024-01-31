@@ -15,7 +15,7 @@
 
 namespace
 {
-rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, std::filesystem::path const & path_a, nano::store::lmdb::env::options options_a, const std::shared_ptr<nano::nlogger> & logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, bool backup_before_upgrade)
+rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, std::filesystem::path const & path_a, nano::store::lmdb::env::options options_a, const std::shared_ptr<nano::logger> & logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, bool backup_before_upgrade)
 {
 	auto path_string{ path_a.string () };
 	auto config_dto{ options_a.config.to_dto () };
@@ -33,7 +33,7 @@ rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, std::filesystem::
 }
 }
 
-nano::store::lmdb::component::component (std::shared_ptr<nano::nlogger> logger_a, std::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
+nano::store::lmdb::component::component (std::shared_ptr<nano::logger> logger_a, std::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
 	handle{ create_store_handle (error, path_a, nano::store::lmdb::env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true), logger_a, txn_tracking_config_a, block_processor_batch_max_time_a, backup_before_upgrade_a) },
 	block_store{ rsnano::rsn_lmdb_store_block (handle) },
 	frontier_store{ rsnano::rsn_lmdb_store_frontier (handle) },

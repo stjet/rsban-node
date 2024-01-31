@@ -401,13 +401,13 @@ bool bootstrap_initiator_in_progress (void * handle_a)
 
 void logger_v2_destroy (void * handle_a)
 {
-	auto logger = static_cast<std::shared_ptr<nano::nlogger> *> (handle_a);
+	auto logger = static_cast<std::shared_ptr<nano::logger> *> (handle_a);
 	delete logger;
 }
 
 void logger_v2_log (void * handle_a, uint8_t level, uint8_t tag, const uint8_t * message_a, size_t len_a)
 {
-	auto logger = static_cast<std::shared_ptr<nano::nlogger> *> (handle_a);
+	auto logger = static_cast<std::shared_ptr<nano::logger> *> (handle_a);
 	auto message_string = std::string (reinterpret_cast<const char *> (message_a), len_a);
 
 	(*logger)->log (

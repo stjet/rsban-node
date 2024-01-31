@@ -9,7 +9,7 @@
 namespace nano
 {
 class bootstrap_attempt;
-class nlogger;
+class logger;
 namespace transport
 {
 	class tcp_server;
@@ -83,7 +83,7 @@ private:
 	uint64_t unexpected_count{ 0 };
 	std::shared_ptr<nano::bootstrap::block_deserializer> block_deserializer;
 	std::weak_ptr<nano::node> node;
-	std::shared_ptr<nano::nlogger> logger;
+	std::shared_ptr<nano::logger> logger;
 };
 class bootstrap_attempt_wallet;
 class bulk_pull_account_client final : public std::enable_shared_from_this<nano::bulk_pull_account_client>

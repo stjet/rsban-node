@@ -23,7 +23,7 @@ class node_flags;
 class network;
 class telemetry;
 class syn_cookies;
-class nlogger;
+class logger;
 class tcp_message_item final
 {
 public:
@@ -179,7 +179,7 @@ namespace transport
 	private:
 		std::shared_ptr<nano::stats> stats;
 		std::shared_ptr<nano::node_config> config;
-		std::shared_ptr<nano::nlogger> logger;
+		std::shared_ptr<nano::logger> logger;
 
 	public:
 		rsnano::TcpChannelsHandle * handle;

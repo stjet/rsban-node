@@ -12,7 +12,7 @@ rsnano::LmdbEnvHandle * create_mdb_env_handle (bool & error_a, std::filesystem::
 	return rsnano::rsn_mdb_env_create (&error_a, reinterpret_cast<const int8_t *> (path_string.c_str ()), &config_dto, options_a.use_no_mem_init);
 }
 
-rsnano::LmdbEnvHandle * create_mdb_env_handle (bool & error_a, std::filesystem::path const & path_a, nano::store::lmdb::env::options options_a, const std::shared_ptr<nano::nlogger> & logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a)
+rsnano::LmdbEnvHandle * create_mdb_env_handle (bool & error_a, std::filesystem::path const & path_a, nano::store::lmdb::env::options options_a, const std::shared_ptr<nano::logger> & logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a)
 {
 	auto path_string{ path_a.string () };
 	auto config_dto{ options_a.config.to_dto () };
@@ -26,7 +26,7 @@ nano::store::lmdb::env::env (bool & error_a, std::filesystem::path const & path_
 {
 }
 
-nano::store::lmdb::env::env (bool & error_a, std::filesystem::path const & path_a, std::shared_ptr<nano::nlogger> logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::store::lmdb::env::options options_a) :
+nano::store::lmdb::env::env (bool & error_a, std::filesystem::path const & path_a, std::shared_ptr<nano::logger> logger_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::store::lmdb::env::options options_a) :
 	handle{ create_mdb_env_handle (error_a, path_a, options_a, logger_a, txn_tracking_config_a, block_processor_batch_max_time_a) }
 {
 }

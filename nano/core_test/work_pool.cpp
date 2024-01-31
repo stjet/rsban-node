@@ -13,7 +13,7 @@
 
 TEST (work, opencl)
 {
-	nano::nlogger logger;
+	nano::logger logger;
 	bool error (false);
 	nano::opencl_environment environment (error);
 	ASSERT_TRUE (!error || !nano::opencl_loaded);

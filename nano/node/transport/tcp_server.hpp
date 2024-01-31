@@ -21,7 +21,7 @@ class block_processor;
 class bootstrap_initiator;
 class tcp_message_manager;
 class syn_cookies;
-class nlogger;
+class logger;
 }
 
 namespace nano::transport
@@ -55,7 +55,7 @@ public:
 	tcp_server (
 	rsnano::async_runtime & async_rt,
 	std::shared_ptr<nano::transport::socket> const & socket_a,
-	std::shared_ptr<nano::nlogger> const & logger_a,
+	std::shared_ptr<nano::logger> const & logger_a,
 	nano::stats const & stats_a,
 	nano::node_flags const & flags_a,
 	nano::node_config const & config_a,

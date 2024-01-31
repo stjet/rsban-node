@@ -23,7 +23,7 @@
 nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_a, std::size_t max_inbound_connections)
 {
 	auto config_dto{ node_a.config->to_dto () };
-	auto logger_handle{ nano::to_logger_handle (node_a.nlogger) };
+	auto logger_handle{ nano::to_logger_handle (node_a.logger) };
 	auto network_params_dto{ node_a.network_params.to_dto () };
 
 	handle = rsnano::rsn_tcp_listener_create (
@@ -121,7 +121,7 @@ std::unique_ptr<nano::container_info_component> nano::transport::collect_contain
 nano::transport::tcp_server::tcp_server (
 rsnano::async_runtime & async_rt,
 std::shared_ptr<nano::transport::socket> const & socket_a,
-std::shared_ptr<nano::nlogger> const & logger_a,
+std::shared_ptr<nano::logger> const & logger_a,
 nano::stats const & stats_a,
 nano::node_flags const & flags_a,
 nano::node_config const & config_a,
@@ -197,7 +197,7 @@ rsnano::RequestResponseVisitorFactoryHandle * create_request_response_message_vi
 {
 	auto config_dto{ node_a.config->to_dto () };
 	auto network_dto{ node_a.config->network_params.to_dto () };
-	auto logger_handle{nano::to_logger_handle(node_a.nlogger)};
+	auto logger_handle{nano::to_logger_handle(node_a.logger)};
 
 	rsnano::RequestResponseVisitorFactoryParams params;
 	params.async_rt = node_a.async_rt.handle;

@@ -42,7 +42,7 @@ void nano::bulk_push_client::start ()
 		}
 		else
 		{
-			node->nlogger->debug (nano::log::type::bulk_push_client, "Unable to send bulk push request: {}", ec.message ());
+			node->logger->debug (nano::log::type::bulk_push_client, "Unable to send bulk push request: {}", ec.message ());
 		}
 	},
 	nano::transport::buffer_drop_policy::no_limiter_drop);
@@ -73,7 +73,7 @@ void nano::bulk_push_client::push ()
 			}
 			else
 			{
-				node->nlogger->debug (nano::log::type::bulk_push_client, "Bulk pushing range: [{}:{}]", current_target.first.to_string (), current_target.second.to_string ());
+				node->logger->debug (nano::log::type::bulk_push_client, "Bulk pushing range: [{}:{}]", current_target.first.to_string (), current_target.second.to_string ());
 			}
 		}
 	}
@@ -126,7 +126,7 @@ void nano::bulk_push_client::push_block (nano::block const & block_a)
 		}
 		else
 		{
-			node->nlogger->debug (nano::log::type::bulk_push_client, "Error sending block during bulk push: {}", ec.message ());
+			node->logger->debug (nano::log::type::bulk_push_client, "Error sending block during bulk push: {}", ec.message ());
 		}
 	});
 }

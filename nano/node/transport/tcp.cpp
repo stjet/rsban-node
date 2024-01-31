@@ -231,12 +231,12 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	tcp_message_manager{ node.config->tcp_incoming_connections_max },
 	stats{ node.stats },
 	config{ node.config },
-	logger{ node.nlogger },
+	logger{ node.logger },
 	publish_filter{ std::make_shared<nano::network_filter> (256 * 1024) }
 {
 	auto node_config_dto{ node.config->to_dto () };
 	auto network_dto{ node.config->network_params.to_dto () };
-	auto logger_handle{nano::to_logger_handle(node.nlogger)};
+	auto logger_handle{nano::to_logger_handle(node.logger)};
 
 	rsnano::TcpChannelsOptionsDto options;
 	options.node_config = &node_config_dto;

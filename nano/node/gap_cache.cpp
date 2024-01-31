@@ -29,7 +29,7 @@ public:
 			{
 				if (!node_l->bootstrap_initiator.in_progress ())
 				{
-					node_l->nlogger->debug (nano::log::type::gap_cache, "Block {} has enough votes to warrant lazy bootstrapping it", hash_a.to_string ());
+					node_l->logger->debug (nano::log::type::gap_cache, "Block {} has enough votes to warrant lazy bootstrapping it", hash_a.to_string ());
 				}
 				if (!node_l->flags.disable_lazy_bootstrap ())
 				{

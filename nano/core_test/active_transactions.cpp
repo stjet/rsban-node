@@ -106,23 +106,8 @@ namespace nano
 TEST (active_transactions, confirm_frontier)
 {
 	nano::test::system system;
-	nano::node_flags node_flags;
-	node_flags.set_disable_request_loop (true);
-	// Voting node
-	auto & node1 = *system.add_node (node_flags);
-	nano::node_flags node_flags2;
-	// The rep crawler would otherwise request confirmations in order to find representatives
-	node_flags2.set_disable_rep_crawler (true);
-	auto & node2 = *system.add_node (node_flags2);
 
-	// Add key to node1
-	auto wallet_id = node1.wallets.first_wallet_id ();
-	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	// Add representative to disabled rep crawler
-	auto peers (node2.network->random_channels (1));
-	ASSERT_FALSE (peers.empty ());
-	node2.representative_register.update_or_insert (nano::dev::genesis_key.pub, *peers.begin ());
-
+	// send 100 raw from genesis to a random account
 	nano::state_block_builder builder;
 	auto send = builder
 				.account (nano::dev::genesis_key.pub)
@@ -133,16 +118,44 @@ TEST (active_transactions, confirm_frontier)
 				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				.work (*system.work.generate (nano::dev::genesis->hash ()))
 				.build_shared ();
-	auto send_copy = builder.make_block ().from (*send).build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node1.process (*send).code);
-	node1.confirmation_height_processor.add (send);
-	ASSERT_TIMELY (5s, node1.ledger.block_confirmed (*node1.store.tx_begin_read (), send->hash ()));
-	auto process_result = node2.process (*send_copy).code;
-	ASSERT_TRUE (process_result == nano::process_result::progress || process_result == nano::process_result::old);
+
+	{
+		// Voting node
+		nano::node_flags node_flags;
+		node_flags.set_disable_request_loop (true);
+		node_flags.set_disable_ongoing_bootstrap (true);
+		node_flags.set_disable_ascending_bootstrap (true);
+		auto & node1 = *system.add_node (node_flags);
+		auto wallet_id = node1.wallets.first_wallet_id ();
+		(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+
+		// we cannot use the same block instance on 2 different nodes, so make a copy
+		auto send_copy = builder.make_block ().from (*send).build_shared ();
+		ASSERT_TRUE (nano::test::process (node1, { send_copy }));
+		ASSERT_TRUE (nano::test::start_elections (system, node1, { send_copy }));
+		ASSERT_TIMELY (5s, nano::test::confirmed (node1, { send_copy }));
+	}
+
+	// The rep crawler would otherwise request confirmations in order to find representatives
+	nano::node_flags node_flags2;
+	node_flags2.set_disable_ongoing_bootstrap (true);
+	node_flags2.set_disable_ascending_bootstrap (true);
+	node_flags2.set_disable_rep_crawler (true);
+	// start node2 later so that we do not get the gossip traffic
+	auto & node2 = *system.add_node (node_flags2);
+
+	// Add representative to disabled rep crawler
+	auto peers (node2.network->random_channels (1));
+	ASSERT_FALSE (peers.empty ());
+	node2.representative_register.update_or_insert (nano::dev::genesis_key.pub, *peers.begin ());
+
+	ASSERT_EQ (nano::process_result::progress, node2.process (*send).code);
 	ASSERT_TIMELY (5s, !node2.active.empty ());
+
 	// Save election to check request count afterwards
-	auto election2 = node2.active.election (send->qualified_root ());
-	ASSERT_NE (nullptr, election2);
+	std::shared_ptr<nano::election> election2;
+	ASSERT_TIMELY (5s, election2 = node2.active.election (send->qualified_root ()));
+	ASSERT_TIMELY (5s, nano::test::confirmed (node2, { send }));
 	ASSERT_TIMELY_EQ (5s, node2.ledger.cache.cemented_count (), 2);
 	ASSERT_TIMELY (5s, node2.active.empty ());
 	ASSERT_GT (election2->get_confirmation_request_count (), 0u);

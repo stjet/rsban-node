@@ -273,9 +273,9 @@ TEST (node, auto_bootstrap)
 	node1->start ();
 	system.nodes.push_back (node1);
 	ASSERT_NE (nullptr, nano::test::establish_tcp (system, *node1, node0->network->endpoint ()));
-	//ASSERT_TIMELY (10s, node1->bootstrap_initiator.in_progress ());
+	// ASSERT_TIMELY (10s, node1->bootstrap_initiator.in_progress ());
 	ASSERT_TIMELY_EQ (10s, node1->balance (key2.pub), node0->config->receive_minimum.number ());
-	//ASSERT_TIMELY (10s, !node1->bootstrap_initiator.in_progress ());
+	// ASSERT_TIMELY (10s, !node1->bootstrap_initiator.in_progress ());
 	ASSERT_TRUE (node1->ledger.block_or_pruned_exists (send1->hash ()));
 	// Wait block receive
 	ASSERT_TIMELY_EQ (5s, node1->ledger.cache.block_count (), 3);
@@ -321,8 +321,8 @@ TEST (node, auto_bootstrap_age)
 	node1->start ();
 	system.nodes.push_back (node1);
 	ASSERT_NE (nullptr, nano::test::establish_tcp (system, *node1, node0->network->endpoint ()));
-	//ASSERT_TIMELY (10s, node1->bootstrap_initiator.in_progress ());
-	// 4 bootstraps with frontiers age
+	// ASSERT_TIMELY (10s, node1->bootstrap_initiator.in_progress ());
+	//  4 bootstraps with frontiers age
 	ASSERT_TIMELY (10s, node0->stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate_legacy_age, nano::stat::dir::out) >= 3);
 	// More attempts with frontiers age
 	ASSERT_GE (node0->stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate_legacy_age, nano::stat::dir::out), node0->stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out));
@@ -789,9 +789,9 @@ TEST (node, fork_multi_flip)
 	ASSERT_TIMELY (5s, node2.ledger.block_or_pruned_exists (send1->hash ()));
 	ASSERT_TRUE (nano::test::block_or_pruned_none_exists (node2, { send2, send3 }));
 
-	auto winner = election->winner();
+	auto winner = election->winner ();
 	ASSERT_EQ (*send1, *winner);
-	ASSERT_EQ (nano::dev::constants.genesis_amount - 100, election->get_status().get_tally().number());
+	ASSERT_EQ (nano::dev::constants.genesis_amount - 100, election->get_status ().get_tally ().number ());
 }
 
 // Blocks that are no longer actively being voted on should be able to be evicted through bootstrapping.

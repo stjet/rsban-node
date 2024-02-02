@@ -381,12 +381,12 @@ TEST (DISABLED_socket, drop_policy)
 			for (int i = 0; i < total_message_count; i++)
 			{
 				std::vector<uint8_t> buff (1);
-				//channel.send_buffer (
-				//nano::shared_const_buffer (std::move (buff)), [&write_completion, client] (boost::system::error_code const & ec, size_t size_a) mutable {
+				// channel.send_buffer (
+				// nano::shared_const_buffer (std::move (buff)), [&write_completion, client] (boost::system::error_code const & ec, size_t size_a) mutable {
 				//	client.reset ();
 				//	write_completion.increment ();
-				//},
-				//drop_policy);
+				// },
+				// drop_policy);
 			}
 		});
 		ASSERT_FALSE (write_completion.await_count_for (std::chrono::seconds (5)));

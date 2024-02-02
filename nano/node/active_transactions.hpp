@@ -209,8 +209,8 @@ public:
 	 */
 	nano::election_vote_result vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a = nano::vote_source::live);
 	/**
-	* Inserts votes stored in the cache entry into this election
-	*/
+	 * Inserts votes stored in the cache entry into this election
+	 */
 	std::size_t fill_from_cache (nano::election & election, nano::vote_cache::entry const & entry);
 	nano::election_extended_status current_status (nano::election & election) const;
 	nano::tally_t tally (nano::election & election) const;

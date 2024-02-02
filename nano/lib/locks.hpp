@@ -278,7 +278,7 @@ public:
 			owner->mutex.unlock ();
 		}
 
-		T * operator-> ()
+		T * operator->()
 		{
 			return &owner->obj;
 		}
@@ -296,7 +296,7 @@ public:
 		locked * owner{ nullptr };
 	};
 
-	scoped_lock operator-> ()
+	scoped_lock operator->()
 	{
 		return scoped_lock (this);
 	}

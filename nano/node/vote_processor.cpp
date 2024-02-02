@@ -133,9 +133,9 @@ void nano::vote_processor::process_loop ()
 		if (votes_l.size () > 1024 * 4)
 		{
 			/*
-				* Only log the timing information for this iteration if
-				* there are a sufficient number of items for it to be relevant
-				*/
+			 * Only log the timing information for this iteration if
+			 * there are a sufficient number of items for it to be relevant
+			 */
 			log_this_iteration = true;
 			elapsed.restart ();
 		}

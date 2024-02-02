@@ -389,7 +389,7 @@ std::size_t nano::bootstrap_attempts::size ()
 {
 	nano::lock_guard<nano::mutex> lock{ bootstrap_attempts_mutex };
 	return attempts.size ();
-	//return rsnano::rsn_bootstrap_attempts_size (handle);
+	// return rsnano::rsn_bootstrap_attempts_size (handle);
 }
 uint64_t nano::bootstrap_attempts::create_incremental_id ()
 {

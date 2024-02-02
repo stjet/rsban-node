@@ -170,8 +170,8 @@ std::vector<nano::representative> nano::representative_register::principal_repre
 std::size_t nano::representative_register::representative_count ()
 {
 	return rsnano::rsn_representative_register_count (handle);
-	//nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
-	//return probable_reps.size ();
+	// nano::lock_guard<nano::mutex> lock{ probable_reps_mutex };
+	// return probable_reps.size ();
 }
 
 nano::rep_crawler::rep_crawler (nano::node & node_a) :

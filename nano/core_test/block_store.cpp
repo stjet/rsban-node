@@ -22,7 +22,7 @@ using namespace std::chrono_literals;
 TEST (block_store, empty_bootstrap)
 {
 	nano::test::system system{};
-	nano::unchecked_map unchecked{1024, system.stats, false };
+	nano::unchecked_map unchecked{ 1024, system.stats, false };
 	size_t count = 0;
 	unchecked.for_each ([&count] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
 		++count;

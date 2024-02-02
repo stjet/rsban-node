@@ -314,4 +314,3 @@ void nano::test::print_all_account_info (nano::node & node)
 		}
 	}
 }
-

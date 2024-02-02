@@ -211,7 +211,8 @@ public:
 	nano::node & node;
 };
 
-enum class [[nodiscard]] wallets_error{
+enum class [[nodiscard]] wallets_error
+{
 	none = 0,
 	generic,
 	wallet_not_found,

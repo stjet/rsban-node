@@ -20,13 +20,13 @@ nano::election_vote_result::election_vote_result (bool replay_a, bool processed_
 	processed = processed_a;
 }
 
-/* 
+/*
  * election_lock
  */
 
 nano::election_lock::election_lock (nano::election const & election) :
 	handle{ rsnano::rsn_election_lock (election.handle) },
-	election{ *const_cast<nano::election *> (&election) } //hack!
+	election{ *const_cast<nano::election *> (&election) } // hack!
 {
 }
 
@@ -157,7 +157,7 @@ void nano::election_lock::lock ()
 	rsnano::rsn_election_lock_lock (handle, election.handle);
 }
 
-/* 
+/*
  * election
  */
 

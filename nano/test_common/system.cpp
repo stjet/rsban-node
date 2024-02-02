@@ -127,6 +127,19 @@ std::shared_ptr<nano::node> nano::test::system::add_node (nano::node_config cons
 	return node;
 }
 
+std::shared_ptr<nano::node> nano::test::system::make_disconnected_node (std::optional<nano::node_config> opt_node_config, nano::node_flags flags)
+{
+	nano::node_config node_config = opt_node_config.has_value () ? *opt_node_config : default_config ();
+	auto node = std::make_shared<nano::node> (async_rt, nano::unique_path (), node_config, work, flags);
+	if (node->init_error ())
+	{
+		std::cerr << "node init error\n";
+		return nullptr;
+	}
+	node->start ();
+	return node;
+}
+
 nano::test::system::system () :
 	async_rt{ false },
 	io_guard{ boost::asio::make_work_guard (async_rt.io_ctx) }

@@ -771,22 +771,6 @@ void nano::node_flags::set_disable_tcp_realtime (bool value)
 {
 	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_tcp_realtime = value; });
 }
-bool nano::node_flags::disable_unchecked_cleanup () const
-{
-	return flags_dto ().disable_unchecked_cleanup;
-}
-void nano::node_flags::set_disable_unchecked_cleanup (bool value)
-{
-	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_unchecked_cleanup = value; });
-}
-bool nano::node_flags::disable_unchecked_drop () const
-{
-	return flags_dto ().disable_unchecked_drop;
-}
-void nano::node_flags::set_disable_unchecked_drop (bool value)
-{
-	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_unchecked_drop = value; });
-}
 bool nano::node_flags::disable_providing_telemetry_metrics () const
 {
 	return flags_dto ().disable_providing_telemetry_metrics;

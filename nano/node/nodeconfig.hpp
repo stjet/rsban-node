@@ -169,10 +169,6 @@ public:
 	void set_disable_request_loop (bool value);
 	bool disable_tcp_realtime () const;
 	void set_disable_tcp_realtime (bool value);
-	bool disable_unchecked_cleanup () const;
-	void set_disable_unchecked_cleanup (bool value);
-	bool disable_unchecked_drop () const;
-	void set_disable_unchecked_drop (bool value);
 	bool disable_providing_telemetry_metrics () const;
 	void set_disable_providing_telemetry_metrics (bool value);
 	bool disable_ongoing_telemetry_requests () const;

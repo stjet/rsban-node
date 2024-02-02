@@ -128,8 +128,6 @@ pub struct NodeFlagsDto {
     pub disable_rep_crawler: bool,
     pub disable_request_loop: bool,
     pub disable_tcp_realtime: bool,
-    pub disable_unchecked_cleanup: bool,
-    pub disable_unchecked_drop: bool,
     pub disable_providing_telemetry_metrics: bool,
     pub disable_ongoing_telemetry_requests: bool,
     pub disable_block_processor_unchecked_deletion: bool,
@@ -171,8 +169,6 @@ pub unsafe extern "C" fn rsn_node_flags_get(
     result.disable_rep_crawler = lock.disable_rep_crawler;
     result.disable_request_loop = lock.disable_request_loop;
     result.disable_tcp_realtime = lock.disable_tcp_realtime;
-    result.disable_unchecked_cleanup = lock.disable_unchecked_cleanup;
-    result.disable_unchecked_drop = lock.disable_unchecked_drop;
     result.disable_providing_telemetry_metrics = lock.disable_providing_telemetry_metrics;
     result.disable_ongoing_telemetry_requests = lock.disable_ongoing_telemetry_requests;
     result.disable_block_processor_unchecked_deletion =
@@ -215,8 +211,6 @@ pub unsafe extern "C" fn rsn_node_flags_set(
     lock.disable_rep_crawler = flags.disable_rep_crawler;
     lock.disable_request_loop = flags.disable_request_loop;
     lock.disable_tcp_realtime = flags.disable_tcp_realtime;
-    lock.disable_unchecked_cleanup = flags.disable_unchecked_cleanup;
-    lock.disable_unchecked_drop = flags.disable_unchecked_drop;
     lock.disable_providing_telemetry_metrics = flags.disable_providing_telemetry_metrics;
     lock.disable_ongoing_telemetry_requests = flags.disable_ongoing_telemetry_requests;
     lock.disable_block_processor_unchecked_deletion =

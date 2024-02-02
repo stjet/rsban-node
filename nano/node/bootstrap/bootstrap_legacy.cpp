@@ -253,10 +253,6 @@ void nano::bootstrap_attempt_legacy::run ()
 		{
 			lock = request_push (lock);
 		}
-		if (!get_stopped ())
-		{
-			node->unchecked_cleanup ();
-		}
 	}
 	rsnano::rsn_bootstrap_attempt_unlock (lock);
 	stop ();

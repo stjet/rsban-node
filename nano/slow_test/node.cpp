@@ -1796,7 +1796,10 @@ TEST (node, mass_block_new)
 		}
 		ASSERT_TIMELY_EQ (200s, node.ledger.cache.block_count (), next_block_count);
 		next_block_count += num_blocks;
-		node.block_processor.flush ();
+		while (node.block_processor.size () > 0)
+		{
+			std::this_thread::sleep_for (std::chrono::milliseconds{ 100 });
+		}
 		// Clear all active
 		{
 			auto guard{ node.active.lock () };

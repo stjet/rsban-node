@@ -159,17 +159,6 @@ void nano::block_processor::stop ()
 	nano::join_or_pass (processing_thread);
 }
 
-void nano::block_processor::flush ()
-{
-	rsnano::rsn_block_processor_set_flushing (handle, true);
-	nano::block_processor_lock lock{ *this };
-	while (!stopped && (have_blocks (lock) || active))
-	{
-		rsnano::rsn_block_processor_wait (handle, lock.handle);
-	}
-	rsnano::rsn_block_processor_set_flushing (handle, false);
-}
-
 std::size_t nano::block_processor::size ()
 {
 	nano::block_processor_lock lock{ *this };

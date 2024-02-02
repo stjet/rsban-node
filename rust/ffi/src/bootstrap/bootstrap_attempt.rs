@@ -178,6 +178,16 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_notifiy_all(handle: *mut Bootstra
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_wait_until_block_processor_empty(
+    handle: &BootstrapAttemptHandle,
+    lck: &mut BootstrapAttemptLockHandle,
+) {
+    let guard = lck.0.take().unwrap();
+    let guard = handle.0.attempt().wait_until_block_processor_empty(guard);
+    lck.0 = Some(guard);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_wait(
     handle: *mut BootstrapAttemptHandle,
     lck: *mut BootstrapAttemptLockHandle,

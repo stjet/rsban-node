@@ -27,6 +27,9 @@ pub static mut BLOCKPROCESSOR_HALF_FULL_CALLBACK: Option<
     unsafe extern "C" fn(*mut c_void) -> bool,
 > = None;
 
+pub static mut BLOCKPROCESSOR_SIZE_CALLBACK: Option<unsafe extern "C" fn(*mut c_void) -> usize> =
+    None;
+
 pub struct BlockProcessor {
     handle: *mut c_void,
     pub mutex: Mutex<BlockProcessorImpl>,
@@ -107,9 +110,15 @@ impl BlockProcessor {
 
     pub fn half_full(&self) -> bool {
         unsafe {
-            BLOCKPROCESSOR_HALF_FULL_CALLBACK.expect("BLOCKPROCESSOR_ADD_CALLBACK missing")(
+            BLOCKPROCESSOR_HALF_FULL_CALLBACK.expect("BLOCKPROCESSOR_HALF_FULL_CALLBACK missing")(
                 self.handle,
             )
+        }
+    }
+
+    pub fn queue_len(&self) -> usize {
+        unsafe {
+            BLOCKPROCESSOR_SIZE_CALLBACK.expect("BLOCKPROCESSOR_SIZE_CALLBACK missing")(self.handle)
         }
     }
 

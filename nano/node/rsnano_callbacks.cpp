@@ -387,6 +387,12 @@ bool blockprocessor_half_full (void * handle_a)
 	return processor->half_full ();
 }
 
+std::size_t blockprocessor_size (void * handle_a)
+{
+	auto processor = static_cast<nano::block_processor *> (handle_a);
+	return processor->size ();
+}
+
 void bootstrap_initiator_clear_pulls (void * handle_a, uint64_t bootstrap_id_a)
 {
 	auto bootstrap_initiator{ static_cast<nano::bootstrap_initiator *> (handle_a) };
@@ -630,6 +636,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_block_processor_add (blockprocessor_add);
 	rsnano::rsn_callback_block_processor_process_active (blockprocessor_process_active);
 	rsnano::rsn_callback_block_processor_half_full (blockprocessor_half_full);
+	rsnano::rsn_callback_block_processor_size (blockprocessor_size);
 	rsnano::rsn_callback_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
 	rsnano::rsn_callback_bootstrap_initiator_in_progress (bootstrap_initiator_in_progress);
 

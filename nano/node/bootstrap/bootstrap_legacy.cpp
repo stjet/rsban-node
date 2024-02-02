@@ -232,10 +232,8 @@ void nano::bootstrap_attempt_legacy::run ()
 			}
 		}
 
-		// Flushing may resolve forks which can add more pulls
-		rsnano::rsn_bootstrap_attempt_unlock (lock);
-		node->block_processor.flush ();
-		lock = rsnano::rsn_bootstrap_attempt_lock (handle);
+		// TODO: This check / wait is a heuristic and should be improved.
+		rsnano::rsn_bootstrap_attempt_wait_until_block_processor_empty(handle, lock);
 
 		if (start_account.number () != std::numeric_limits<nano::uint256_t>::max ())
 		{

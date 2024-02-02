@@ -13,7 +13,7 @@ use rsnano_ledger::Ledger;
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
-        Arc, Condvar, Mutex, Weak,
+        Arc, Condvar, Mutex, MutexGuard, Weak,
     },
     time::{Duration, Instant},
 };
@@ -187,6 +187,29 @@ impl BootstrapAttempt {
 
     pub fn duration(&self) -> Duration {
         self.attempt_start.elapsed()
+    }
+
+    pub fn wait_until_block_processor_empty(
+        &self,
+        mut guard: MutexGuard<'static, u8>,
+    ) -> MutexGuard<'static, u8> {
+        let Some(processor) = self.block_processor.upgrade() else {
+            return guard;
+        };
+        let wait_start = Instant::now();
+        while !self.stopped()
+            && processor.queue_len() > 0
+            && wait_start.elapsed() < Duration::from_secs(10)
+        {
+            guard = self
+                .condition
+                .wait_timeout_while(guard, Duration::from_millis(100), |_| {
+                    self.stopped() || processor.queue_len() == 0
+                })
+                .unwrap()
+                .0
+        }
+        guard
     }
 }
 

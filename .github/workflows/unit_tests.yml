@@ -27,7 +27,7 @@ jobs:
         id: build
         run: ci/build-tests.sh
 
-      - name: Core Tests
+     - name: Core Tests
         if: steps.build.outcome == 'success' && (success() || failure())
         run: ../ci/tests/run-core-tests.sh
         working-directory: build

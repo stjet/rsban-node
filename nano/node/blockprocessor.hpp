@@ -56,7 +56,6 @@ public:
 	~block_processor ();
 	void start ();
 	void stop ();
-	void flush ();
 	std::size_t size ();
 	bool full ();
 	bool half_full ();

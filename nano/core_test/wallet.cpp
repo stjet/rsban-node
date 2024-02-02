@@ -908,7 +908,7 @@ TEST (wallet, change_seed)
 	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv, false);
 	auto block (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, pub, 100));
 	ASSERT_NE (nullptr, block);
-	system.nodes[0]->block_processor.flush ();
+	ASSERT_TIMELY (5s, nano::test::exists (*system.nodes[0], { block }));
 	{
 		nano::account first_account;
 		uint32_t restored_count;

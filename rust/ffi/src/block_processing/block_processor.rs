@@ -11,6 +11,7 @@ use rsnano_node::{
     block_processing::{
         BlockProcessor, BlockProcessorImpl, BLOCKPROCESSOR_ADD_CALLBACK,
         BLOCKPROCESSOR_HALF_FULL_CALLBACK, BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
+        BLOCKPROCESSOR_SIZE_CALLBACK,
     },
     config::NodeConfig,
 };
@@ -165,6 +166,8 @@ pub unsafe extern "C" fn rsn_block_processor_wait(
 
 pub type BlockProcessorAddCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
 pub type BlockProcessorHalfFullCallback = unsafe extern "C" fn(*mut c_void) -> bool;
+pub type BlockProcessorSizeCallback = unsafe extern "C" fn(*mut c_void) -> usize;
+
 static mut ADD_CALLBACK: Option<BlockProcessorAddCallback> = None;
 static mut PROCESS_ACTIVE_CALLBACK: Option<BlockProcessorAddCallback> = None;
 
@@ -193,6 +196,11 @@ pub unsafe extern "C" fn rsn_callback_block_processor_process_active(f: BlockPro
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_block_processor_half_full(f: BlockProcessorHalfFullCallback) {
     BLOCKPROCESSOR_HALF_FULL_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_block_processor_size(f: BlockProcessorSizeCallback) {
+    BLOCKPROCESSOR_SIZE_CALLBACK = Some(f);
 }
 
 #[no_mangle]

@@ -64,6 +64,8 @@ enum class detail : uint8_t
 	broadcast,
 	cleanup,
 	top,
+	none,
+	success,
 
 	// processing queue
 	queue,
@@ -169,7 +171,7 @@ enum class detail : uint8_t
 	invalid_frontier_req_message,
 	invalid_asc_pull_req_message,
 	invalid_asc_pull_ack_message,
-	message_too_big,
+	message_size_too_big,
 	outdated_version,
 
 	// tcp
@@ -205,7 +207,7 @@ enum class detail : uint8_t
 	requests_unknown,
 
 	// duplicate
-	duplicate_publish,
+	duplicate_publish_message,
 
 	// telemetry
 	invalid_signature,

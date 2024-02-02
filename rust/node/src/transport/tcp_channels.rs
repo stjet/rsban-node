@@ -865,7 +865,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         ),
                         Err(ParseMessageError::InsufficientWork) => stats.inc(
                             StatType::Filter,
-                            DetailType::DuplicatePublish,
+                            DetailType::DuplicatePublishMessage,
                             Direction::In,
                         ),
                         Err(e) => stats.inc(StatType::Error, (*e).into(), Direction::In),

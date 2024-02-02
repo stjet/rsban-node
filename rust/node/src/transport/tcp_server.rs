@@ -335,7 +335,7 @@ impl TcpServerExt for Arc<TcpServer> {
                     Err(ParseMessageError::DuplicatePublishMessage) => {
                         self_clone.stats.inc(
                             StatType::Filter,
-                            DetailType::DuplicatePublish,
+                            DetailType::DuplicatePublishMessage,
                             Direction::In,
                         );
                         self_clone.receive_message();

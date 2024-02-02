@@ -4,6 +4,8 @@
 #include <string_view>
 #include <vector>
 
+#include <magic_enum.hpp>
+
 namespace nano::log
 {
 enum class level
@@ -109,7 +111,6 @@ enum class detail
 	sending_frontier,
 	requesting_account_or_head,
 	requesting_pending,
-
 };
 
 // TODO: Additionally categorize logs by categories which can be enabled/disabled independently
@@ -140,3 +141,19 @@ nano::log::detail parse_detail (std::string_view);
 std::vector<nano::log::level> const & all_levels ();
 std::vector<nano::log::type> const & all_types ();
 }
+
+// Ensure that the enum_range is large enough to hold all values (including future ones)
+template <>
+struct magic_enum::customize::enum_range<nano::log::type>
+{
+	static constexpr int min = 0;
+	static constexpr int max = 128;
+};
+
+// Ensure that the enum_range is large enough to hold all values (including future ones)
+template <>
+struct magic_enum::customize::enum_range<nano::log::detail>
+{
+	static constexpr int min = 0;
+	static constexpr int max = 512;
+};

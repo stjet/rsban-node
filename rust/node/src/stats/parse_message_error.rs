@@ -47,8 +47,8 @@ impl From<ParseMessageError> for DetailType {
             | ParseMessageError::InvalidMessage(MessageType::NotAType) => Self::InvalidMessageType,
             ParseMessageError::InvalidNetwork => Self::InvalidNetwork,
             ParseMessageError::OutdatedVersion => Self::OutdatedVersion,
-            ParseMessageError::DuplicatePublishMessage => Self::DuplicatePublish,
-            ParseMessageError::MessageSizeTooBig => Self::MessageTooBig,
+            ParseMessageError::DuplicatePublishMessage => Self::DuplicatePublishMessage,
+            ParseMessageError::MessageSizeTooBig => Self::MessageSizeTooBig,
         }
     }
 }

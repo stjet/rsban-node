@@ -168,6 +168,8 @@ pub enum DetailType {
     Broadcast,
     Cleanup,
     Top,
+    None,
+    Success,
 
     // processing queue
     Queue,
@@ -273,7 +275,7 @@ pub enum DetailType {
     InvalidFrontierReqMessage,
     InvalidAscPullReqMessage,
     InvalidAscPullAckMessage,
-    MessageTooBig,
+    MessageSizeTooBig,
     OutdatedVersion,
 
     // tcp
@@ -309,7 +311,7 @@ pub enum DetailType {
     RequestsUnknown,
 
     // duplicate
-    DuplicatePublish,
+    DuplicatePublishMessage,
 
     // telemetry
     InvalidSignature,

@@ -604,9 +604,7 @@ void nano::active_transactions::confirm_if_quorum (nano::election_lock & lock_a,
 		if (node.ledger.cache.final_votes_confirmation_canary () && !rsnano::rsn_election_is_quorum_exchange (election.handle, true) && node.config->enable_voting && node.wallets.voting_reps_count () > 0)
 		{
 			auto hash = status_l.get_winner ()->hash ();
-			lock_a.unlock ();
 			node.final_generator.add (election.root (), hash);
-			lock_a.lock ();
 		}
 		if (!node.ledger.cache.final_votes_confirmation_canary () || lock_a.final_weight ().number () >= node.online_reps.delta ())
 		{

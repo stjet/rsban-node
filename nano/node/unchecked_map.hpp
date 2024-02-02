@@ -20,7 +20,7 @@ class stats;
 class unchecked_map
 {
 public:
-	unchecked_map (nano::stats &, bool do_delete);
+	unchecked_map (unsigned const max_unchecked_blocks, nano::stats &, bool do_delete);
 	~unchecked_map ();
 
 	void put (nano::hash_or_account const & dependency, nano::unchecked_info const & info);

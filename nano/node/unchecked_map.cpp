@@ -37,9 +37,9 @@ void drop_predicate_callback (void * context_a)
 }
 }
 
-nano::unchecked_map::unchecked_map (nano::stats & stats, bool disable_delete)
+nano::unchecked_map::unchecked_map (unsigned const max_unchecked_blocks, nano::stats & stats, bool disable_delete)
 {
-	handle = rsnano::rsn_unchecked_map_create (stats.handle, disable_delete);
+	handle = rsnano::rsn_unchecked_map_create (max_unchecked_blocks, stats.handle, disable_delete);
 }
 
 nano::unchecked_map::~unchecked_map ()

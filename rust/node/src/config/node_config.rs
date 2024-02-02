@@ -73,6 +73,7 @@ pub struct NodeConfig {
     pub max_work_generate_multiplier: f64,
     pub frontiers_confirmation: FrontiersConfirmationMode,
     pub max_queued_requests: u32,
+    pub max_unchecked_blocks: u32,
     pub rep_crawler_weight_minimum: Amount,
     pub work_peers: Vec<Peer>,
     pub secondary_work_peers: Vec<Peer>,
@@ -261,6 +262,7 @@ impl NodeConfig {
             max_work_generate_multiplier: 64_f64,
             frontiers_confirmation: FrontiersConfirmationMode::Automatic,
             max_queued_requests: 512,
+            max_unchecked_blocks: 65536,
             rep_crawler_weight_minimum: Amount::decode_hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
                 .unwrap(),
             work_peers: Vec::new(),

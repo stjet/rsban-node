@@ -159,7 +159,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	distributed_work (*this),
 	store_impl (nano::make_store (logger, application_path_a, network_params.ledger, flags.read_only (), true, config_a.diagnostics_config.txn_tracking, config_a.block_processor_batch_max_time, config_a.lmdb_config, config_a.backup_before_upgrade)),
 	store (*store_impl),
-	unchecked{ *stats, flags.disable_block_processor_unchecked_deletion () },
+	unchecked{ config_a.max_unchecked_blocks, *stats, flags.disable_block_processor_unchecked_deletion () },
 	wallets_store_impl (std::make_unique<nano::mdb_wallets_store> (application_path_a / "wallets.ldb", config_a.lmdb_config)),
 	wallets_store (*wallets_store_impl),
 	ledger (store, *stats, network_params.ledger, flags_a.generate_cache ()),

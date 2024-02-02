@@ -9,8 +9,6 @@ use std::{
     thread::JoinHandle,
 };
 
-const MEM_BLOCK_COUNT_MAX: usize = 64 * 1024;
-
 struct UncheckedMapFlags {
     stopped: bool,
     active: bool,
@@ -22,10 +20,11 @@ pub struct UncheckedMap {
     mutable: Arc<Mutex<ThreadMutableData>>,
     condition: Arc<Condvar>,
     stats: Arc<Stats>,
+    max_unchecked_blocks: usize,
 }
 
 impl UncheckedMap {
-    pub fn new(stats: Arc<Stats>, disable_delete: bool) -> Self {
+    pub fn new(max_unchecked_blocks: usize, stats: Arc<Stats>, disable_delete: bool) -> Self {
         let mutable = Arc::new(Mutex::new(ThreadMutableData::new()));
         let condition = Arc::new(Condvar::new());
 
@@ -51,6 +50,7 @@ impl UncheckedMap {
             mutable,
             condition,
             stats,
+            max_unchecked_blocks,
         }
     }
 
@@ -76,7 +76,7 @@ impl UncheckedMap {
         let mut lock = self.mutable.lock().unwrap();
         let key = UncheckedKey::new(dependency.into(), info.block.as_ref().unwrap().hash());
         let inserted = lock.entries_container.insert(Entry::new(key, info));
-        if lock.entries_container.len() > MEM_BLOCK_COUNT_MAX {
+        if lock.entries_container.len() > self.max_unchecked_blocks {
             lock.entries_container.pop_front();
         }
         if inserted {

@@ -39,10 +39,15 @@ impl Deref for UncheckedMapHandle {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_unchecked_map_create(
+    max_unchecked_blocks: usize,
     stats_handle: *mut StatHandle,
     disable_delete: bool,
 ) -> *mut UncheckedMapHandle {
-    let unchecked_map = UncheckedMap::new((*stats_handle).0.clone(), disable_delete);
+    let unchecked_map = UncheckedMap::new(
+        max_unchecked_blocks,
+        (*stats_handle).0.clone(),
+        disable_delete,
+    );
     Box::into_raw(Box::new(UncheckedMapHandle(Arc::new(unchecked_map))))
 }
 

@@ -116,6 +116,7 @@ public:
 	bool backup_before_upgrade{ false };
 	double max_work_generate_multiplier;
 	uint32_t max_queued_requests;
+	unsigned max_unchecked_blocks;
 	std::chrono::seconds max_pruning_age;
 	uint64_t max_pruning_depth;
 	nano::lmdb_config lmdb_config;

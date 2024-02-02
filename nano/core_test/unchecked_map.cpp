@@ -14,11 +14,13 @@ using namespace std::chrono_literals;
 
 namespace
 {
+unsigned max_unchecked_blocks = 65536;
+
 class context
 {
 public:
 	context () :
-		unchecked{ stats, false }
+		unchecked{ max_unchecked_blocks, stats, false }
 	{
 	}
 	nano::stats stats;
@@ -54,7 +56,7 @@ TEST (unchecked_map, put_one)
 TEST (block_store, one_bootstrap)
 {
 	nano::test::system system{};
-	nano::unchecked_map unchecked{ system.stats, false };
+	nano::unchecked_map unchecked{ max_unchecked_blocks, system.stats, false };
 	nano::keypair key;
 	nano::block_builder builder;
 	auto block1 = builder
@@ -88,7 +90,7 @@ TEST (block_store, one_bootstrap)
 TEST (unchecked, simple)
 {
 	nano::test::system system{};
-	nano::unchecked_map unchecked{ system.stats, false };
+	nano::unchecked_map unchecked{ max_unchecked_blocks, system.stats, false };
 	nano::block_builder builder;
 	nano::keypair key;
 	auto block = builder
@@ -125,7 +127,7 @@ TEST (unchecked, simple)
 TEST (unchecked, multiple)
 {
 	nano::test::system system{};
-	nano::unchecked_map unchecked{ system.stats, false };
+	nano::unchecked_map unchecked{ max_unchecked_blocks, system.stats, false };
 	nano::block_builder builder;
 	nano::keypair key;
 	auto block = builder
@@ -156,7 +158,7 @@ TEST (unchecked, multiple)
 TEST (unchecked, double_put)
 {
 	nano::test::system system{};
-	nano::unchecked_map unchecked{ system.stats, false };
+	nano::unchecked_map unchecked{ max_unchecked_blocks, system.stats, false };
 	nano::block_builder builder;
 	nano::keypair key;
 	auto block = builder
@@ -188,7 +190,7 @@ TEST (unchecked, double_put)
 TEST (unchecked, multiple_get)
 {
 	nano::test::system system{};
-	nano::unchecked_map unchecked{ system.stats, false };
+	nano::unchecked_map unchecked{ max_unchecked_blocks, system.stats, false };
 	// Instantiates three blocks
 	nano::block_builder builder;
 	nano::keypair key1;

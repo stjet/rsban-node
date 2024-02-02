@@ -115,6 +115,32 @@ bool nano::test::exists (nano::node & node, std::vector<std::shared_ptr<nano::bl
 	return exists (node, blocks_to_hashes (blocks));
 }
 
+bool nano::test::block_or_pruned_all_exists (nano::node & node, std::vector<nano::block_hash> hashes)
+{
+	return std::all_of (hashes.begin (), hashes.end (),
+	[&] (const auto & hash) {
+		return node.ledger.block_or_pruned_exists (hash);
+	});
+}
+
+bool nano::test::block_or_pruned_all_exists (nano::node & node, std::vector<std::shared_ptr<nano::block>> blocks)
+{
+	return block_or_pruned_all_exists (node, blocks_to_hashes (blocks));
+}
+
+bool nano::test::block_or_pruned_none_exists (nano::node & node, std::vector<nano::block_hash> hashes)
+{
+	return std::none_of (hashes.begin (), hashes.end (),
+	[&] (const auto & hash) {
+		return node.ledger.block_or_pruned_exists (hash);
+	});
+}
+
+bool nano::test::block_or_pruned_none_exists (nano::node & node, std::vector<std::shared_ptr<nano::block>> blocks)
+{
+	return block_or_pruned_none_exists (node, blocks_to_hashes (blocks));
+}
+
 bool nano::test::activate (nano::node & node, std::vector<nano::block_hash> hashes)
 {
 	for (auto & hash : hashes)

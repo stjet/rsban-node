@@ -12,6 +12,13 @@ pub fn working_path() -> Option<PathBuf> {
     working_path_for(NetworkConstants::active_network())
 }
 pub fn working_path_for(network: Networks) -> Option<PathBuf> {
+    if let Ok(path_override) = std::env::var("NANO_APP_PATH") {
+        eprintln!(
+            "Application path overridden by NANO_APP_PATH environment variable: {path_override}"
+        );
+        return Some(path_override.into());
+    }
+
     dirs::home_dir().and_then(|mut path| {
         let subdir = match network {
             Networks::Invalid => return None,

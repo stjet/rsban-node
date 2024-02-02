@@ -379,7 +379,7 @@ TEST (receivable_processor, confirm_insufficient_pos)
 		node1.scheduler.priority.activate (nano::dev::genesis_key.pub, *tx);
 	}
 	nano::keypair key1;
-	auto vote (std::make_shared<nano::vote> (key1.pub, key1.prv, 0, 0, std::vector<nano::block_hash>{ block1->hash () }));
+	auto vote = nano::test::make_vote (key1, { block1 }, 0, 0);
 	nano::confirm_ack con1{ nano::dev::network_params.network, vote };
 	auto channel1 = std::make_shared<nano::transport::inproc::channel> (node1, node1);
 	node1.network->inbound (con1, channel1);
@@ -404,7 +404,7 @@ TEST (receivable_processor, confirm_sufficient_pos)
 		auto tx{ node1.store.tx_begin_read () };
 		node1.scheduler.priority.activate (nano::dev::genesis_key.pub, *tx);
 	}
-	auto vote (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash>{ block1->hash () }));
+	auto vote = nano::test::make_vote (nano::dev::genesis_key, { block1 }, 0, 0);
 	nano::confirm_ack con1{ nano::dev::network_params.network, vote };
 	auto channel1 = std::make_shared<nano::transport::inproc::channel> (node1, node1);
 	node1.network->inbound (con1, channel1);

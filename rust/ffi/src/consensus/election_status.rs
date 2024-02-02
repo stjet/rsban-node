@@ -142,7 +142,7 @@ pub unsafe extern "C" fn rsn_election_status_set_final_tally(
     handle: *mut ElectionStatusHandle,
     final_tally: *const u8,
 ) {
-    (*handle).0.tally = Amount::from_ptr(final_tally);
+    (*handle).0.final_tally = Amount::from_ptr(final_tally);
 }
 
 #[no_mangle]

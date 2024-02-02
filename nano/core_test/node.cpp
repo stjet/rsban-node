@@ -64,8 +64,8 @@ TEST (node, work_generate)
 			work = node.work_generate_blocking (version, root, difficulty);
 		} while (nano::dev::network_params.work.difficulty (version, root, *work) >= node.network_params.work.get_base ());
 		ASSERT_TRUE (work.is_initialized ());
-		ASSERT_TRUE (nano::dev::network_params.work.difficulty (version, root, *work) >= difficulty);
-		ASSERT_GE (nano::dev::network_params.work.difficulty (version, root, *work), node.network_params.work.get_base ());
+		ASSERT_GE (nano::dev::network_params.work.difficulty (version, root, *work), difficulty);
+		ASSERT_FALSE (nano::dev::network_params.work.difficulty (version, root, *work) >= node.network_params.work.get_base ());
 	}
 }
 

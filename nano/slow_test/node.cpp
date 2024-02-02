@@ -943,7 +943,7 @@ TEST (confirmation_height, long_chains)
 	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in), num_blocks * 2 + 2);
 
 	ASSERT_TIMELY_EQ (40s, (node->ledger.cache.cemented_count () - 1), node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out));
-	ASSERT_TIMELY_EQ(10s, node->active.election_winner_details_size (), 0);
+	ASSERT_TIMELY_EQ (10s, node->active.election_winner_details_size (), 0);
 }
 
 TEST (confirmation_height, dynamic_algorithm)

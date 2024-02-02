@@ -265,7 +265,7 @@ public:
 				{
 					this_l->read_next_request ();
 				}
-				else 
+				else
 				{
 					this_l->node.logger->error (nano::log::type::ipc, "Write failed: ", error_a.message ());
 				}
@@ -374,7 +374,7 @@ public:
 									{
 										this_l->read_next_request ();
 									}
-									else 
+									else
 									{
 										this_l->node.logger->error (nano::log::type::ipc, "Write failed: {}", error_a.message ());
 									}

@@ -10,8 +10,9 @@
 
 #include <spdlog/spdlog.h>
 
-namespace rsnano{
-	class LoggerHandleV2;
+namespace rsnano
+{
+class LoggerHandleV2;
 }
 
 namespace nano
@@ -153,12 +154,14 @@ private:
  */
 nano::logger & default_logger ();
 
-class logger_handle{
+class logger_handle
+{
 public:
-	logger_handle(rsnano::LoggerHandleV2 * handle) : handle{ handle}{};
-	logger_handle(logger_handle const &) = delete;
-	logger_handle(logger_handle &&);
-	~logger_handle();
+	logger_handle (rsnano::LoggerHandleV2 * handle) :
+		handle{ handle } {};
+	logger_handle (logger_handle const &) = delete;
+	logger_handle (logger_handle &&);
+	~logger_handle ();
 	rsnano::LoggerHandleV2 * handle;
 };
 nano::logger_handle to_logger_handle (std::shared_ptr<nano::logger> const & logger_a);

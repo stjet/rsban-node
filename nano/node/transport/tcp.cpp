@@ -1,8 +1,8 @@
 #include "boost/asio/io_context.hpp"
 #include "nano/lib/blocks.hpp"
+#include "nano/lib/logging.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
-#include "nano/lib/logging.hpp"
 #include "nano/node/nodeconfig.hpp"
 #include "nano/node/peer_exclusion.hpp"
 #include "nano/node/transport/channel.hpp"
@@ -236,7 +236,7 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 {
 	auto node_config_dto{ node.config->to_dto () };
 	auto network_dto{ node.config->network_params.to_dto () };
-	auto logger_handle{nano::to_logger_handle(node.logger)};
+	auto logger_handle{ nano::to_logger_handle (node.logger) };
 
 	rsnano::TcpChannelsOptionsDto options;
 	options.node_config = &node_config_dto;

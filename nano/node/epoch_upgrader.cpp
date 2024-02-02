@@ -1,5 +1,5 @@
-#include <nano/lib/threading.hpp>
 #include <nano/lib/logging.hpp>
+#include <nano/lib/threading.hpp>
 #include <nano/node/epoch_upgrader.hpp>
 #include <nano/node/node.hpp>
 
@@ -196,7 +196,7 @@ void nano::epoch_upgrader::upgrade_impl (nano::raw_key const & prv_a, nano::epoc
 			else
 			{
 				logger.info (nano::log::type::epoch_upgrader, "{} total accounts were upgraded to new epoch", total_upgraded_accounts);
-				
+
 				finished_accounts = true;
 			}
 		}

@@ -130,7 +130,7 @@ namespace
 		}
 		catch (boost::system::system_error const & err)
 		{
-			logger_a.error (nano::log::type::tls, "Could not load certificate information: {}. Make sure the paths and the passphrase in config-tls.toml are correct.", err.what());
+			logger_a.error (nano::log::type::tls, "Could not load certificate information: {}. Make sure the paths and the passphrase in config-tls.toml are correct.", err.what ());
 		}
 	}
 }

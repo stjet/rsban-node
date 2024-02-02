@@ -188,7 +188,7 @@ void nano::distributed_work::do_request (nano::tcp_endpoint const & endpoint_a)
 					nano::util::to_str (connection->endpoint.address ()),
 					connection->endpoint.port (),
 					ec.message ());
-					
+
 					this_l->add_bad_peer (connection->endpoint);
 					this_l->failure ();
 				}

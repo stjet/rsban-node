@@ -411,9 +411,9 @@ void logger_v2_log (void * handle_a, uint8_t level, uint8_t tag, const uint8_t *
 	auto message_string = std::string (reinterpret_cast<const char *> (message_a), len_a);
 
 	(*logger)->log (
-			static_cast<nano::log::level>(level), 
-			static_cast<nano::log::type>(tag), 
-			message_string);
+	static_cast<nano::log::level> (level),
+	static_cast<nano::log::type> (tag),
+	message_string);
 }
 
 class async_write_callback_wrapper

@@ -145,7 +145,7 @@ void nano::frontier_req_client::received_frontier (boost::system::error_code con
 		if (elapsed_sec > nano::bootstrap_limits::bootstrap_connection_warmup_time_sec && blocks_per_sec * age_factor < nano::bootstrap_limits::bootstrap_minimum_frontier_blocks_per_sec)
 		{
 			node->logger->debug (nano::log::type::frontier_req_client, "Aborting frontier req because it was too slow: {} frontiers per second, last {}", blocks_per_sec, account.to_account ());
-			
+
 			promise.set_value (true);
 			return;
 		}
@@ -278,7 +278,7 @@ std::shared_ptr<nano::node> const & node_a,
 std::shared_ptr<nano::transport::tcp_server> const & connection_a,
 rsnano::MessageHandle * request_a)
 {
-	auto logger_handle {nano::to_logger_handle(node_a->logger)};
+	auto logger_handle{ nano::to_logger_handle (node_a->logger) };
 
 	return rsnano::rsn_frontier_req_server_create (connection_a->handle,
 	request_a,

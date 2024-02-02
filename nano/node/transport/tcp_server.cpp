@@ -139,7 +139,7 @@ bool allow_bootstrap_a)
 {
 	auto config_dto{ config_a.to_dto () };
 	auto network_dto{ config_a.network_params.to_dto () };
-	auto logger_handle{nano::to_logger_handle(logger_a)};
+	auto logger_handle{ nano::to_logger_handle (logger_a) };
 	rsnano::CreateTcpServerParams params;
 	params.async_rt = async_rt.handle;
 	params.socket = socket_a->handle;
@@ -197,7 +197,7 @@ rsnano::RequestResponseVisitorFactoryHandle * create_request_response_message_vi
 {
 	auto config_dto{ node_a.config->to_dto () };
 	auto network_dto{ node_a.config->network_params.to_dto () };
-	auto logger_handle{nano::to_logger_handle(node_a.logger)};
+	auto logger_handle{ nano::to_logger_handle (node_a.logger) };
 
 	rsnano::RequestResponseVisitorFactoryParams params;
 	params.async_rt = node_a.async_rt.handle;

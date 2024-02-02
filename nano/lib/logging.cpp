@@ -1,4 +1,5 @@
 #include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/config.hpp>
 #include <nano/lib/logging.hpp>
 #include <nano/lib/utility.hpp>
@@ -519,23 +520,25 @@ nano::log_config nano::load_log_config (nano::log_config fallback, const std::fi
 	return fallback;
 }
 
-nano::logger_handle::logger_handle(logger_handle && other)
+nano::logger_handle::logger_handle (logger_handle && other)
 {
-	if (handle != nullptr){
-		rsnano::rsn_logger_destroy_v2(handle);
+	if (handle != nullptr)
+	{
+		rsnano::rsn_logger_destroy_v2 (handle);
 	}
 	handle = other.handle;
 	other.handle = nullptr;
 }
 
-nano::logger_handle::~logger_handle()
+nano::logger_handle::~logger_handle ()
 {
-	if (handle != nullptr){
-		rsnano::rsn_logger_destroy_v2(handle);
+	if (handle != nullptr)
+	{
+		rsnano::rsn_logger_destroy_v2 (handle);
 	}
 }
 
 nano::logger_handle nano::to_logger_handle (std::shared_ptr<nano::logger> const & logger_a)
 {
-	return {rsnano::rsn_logger_create_v2 (new std::shared_ptr<nano::logger> (logger_a))};
+	return { rsnano::rsn_logger_create_v2 (new std::shared_ptr<nano::logger> (logger_a)) };
 }

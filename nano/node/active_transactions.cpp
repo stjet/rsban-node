@@ -1,5 +1,5 @@
-#include "nano/lib/rsnano.hpp"
 #include "nano/lib/logging.hpp"
+#include "nano/lib/rsnano.hpp"
 #include "nano/lib/utility.hpp"
 
 #include <nano/lib/threading.hpp>
@@ -738,7 +738,7 @@ void nano::active_transactions::cleanup_election (nano::active_transactions_lock
 	node.stats->inc (completion_type (*election), nano::to_stat_detail (election->behavior ()));
 
 	vacancy_update ();
-	
+
 	for (auto const & [hash, block] : blocks_l)
 	{
 		// Notify observers about dropped elections & blocks lost confirmed elections

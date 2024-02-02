@@ -6,7 +6,7 @@
 
 namespace nano
 {
-	class logger;
+class logger;
 }
 
 namespace nano::store::lmdb

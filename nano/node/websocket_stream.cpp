@@ -112,7 +112,7 @@ nano::websocket::stream::stream (socket_type socket_a)
 
 [[nodiscard]] socket_type & nano::websocket::stream::get_socket ()
 {
-	return impl->get_socket();
+	return impl->get_socket ();
 }
 
 void nano::websocket::stream::handshake (std::function<void (boost::system::error_code const & ec)> callback_a)

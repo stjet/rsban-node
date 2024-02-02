@@ -3,8 +3,8 @@
 #include <nano/boost/asio/bind_executor.hpp>
 #include <nano/boost/asio/ip/address_v6.hpp>
 #include <nano/boost/asio/read.hpp>
-#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/logging.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/transport/socket.hpp>
 #include <nano/node/transport/transport.hpp>
@@ -46,9 +46,9 @@ std::shared_ptr<nano::logger> & logger_a, std::shared_ptr<nano::thread_pool> con
 std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a,
 std::chrono::seconds idle_timeout_a,
 std::shared_ptr<nano::node_observers> observers_a,
-std::size_t max_queue_size_a) 
+std::size_t max_queue_size_a)
 {
-	auto logger_handle{nano::to_logger_handle(logger_a)};
+	auto logger_handle{ nano::to_logger_handle (logger_a) };
 
 	handle = rsnano::rsn_socket_create (
 	static_cast<uint8_t> (endpoint_type_a),

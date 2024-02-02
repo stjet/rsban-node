@@ -6,7 +6,7 @@
 
 namespace nano
 {
-	class logger;
+class logger;
 
 /**
  * Specialization of nano::rpc_connection for establishing TLS connections.

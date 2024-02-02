@@ -106,7 +106,7 @@ nano::keypair nano::load_or_create_node_id (std::filesystem::path const & applic
 	std::ifstream ifs (node_private_key_path.c_str ());
 	if (ifs.good ())
 	{
-		nano::default_logger().info (nano::log::type::init, "Reading node id from: '{}'", node_private_key_path.string ());
+		nano::default_logger ().info (nano::log::type::init, "Reading node id from: '{}'", node_private_key_path.string ());
 		std::string node_private_key;
 		ifs >> node_private_key;
 		release_assert (node_private_key.size () == 64);
@@ -150,7 +150,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	observers{ std::make_shared<nano::node_observers> () },
 	config{ std::make_shared<nano::node_config> (config_a) },
 	network_params{ config_a.network_params },
-	logger{ std::make_shared<nano::logger> (make_logger_identifier(node_id)) },
+	logger{ std::make_shared<nano::logger> (make_logger_identifier (node_id)) },
 	stats{ std::make_shared<nano::stats> (config_a.stats_config) },
 	workers{ std::make_shared<nano::thread_pool> (config_a.background_threads, nano::thread_role::name::worker) },
 	bootstrap_workers{ std::make_shared<nano::thread_pool> (config_a.bootstrap_serving_threads, nano::thread_role::name::bootstrap_worker) },
@@ -369,10 +369,9 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		logger->info (nano::log::type::node, "Active network: {}", network_label);
 		logger->info (nano::log::type::node, "Database backend: {}", store.vendor_get ());
 		logger->info (nano::log::type::node, "Data path: {}", application_path.string ());
-		logger->info (nano::log::type::node, "Work pool threads: {} ({})", work.thread_count (), (work.has_opencl() ? "OpenCL" : "CPU"));
+		logger->info (nano::log::type::node, "Work pool threads: {} ({})", work.thread_count (), (work.has_opencl () ? "OpenCL" : "CPU"));
 		logger->info (nano::log::type::node, "Work peers: {}", config->work_peers.size ());
 		logger->info (nano::log::type::node, "Node ID: {}", node_id.pub.to_node_id ());
-		
 
 		if (!work_generation_enabled ())
 		{
@@ -386,7 +385,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		if (!ledger.block_or_pruned_exists (config->network_params.ledger.genesis->hash ()))
 		{
 			logger->critical (nano::log::type::node, "Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, and also the ledger backend node config option. If using a read-only CLI command a ledger must already exist, start the node with --daemon first.");
-			
+
 			if (network_params.network.is_beta_network ())
 			{
 				logger->critical (nano::log::type::node, "Beta network may have reset, try clearing database files");
@@ -397,8 +396,9 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 
 		if (config->enable_voting)
 		{
-			logger->info (nano::log::type::node, "Voting is enabled, more system resources will be used, local representatives: {}", wallets.voting_reps_count());
-			if (wallets.voting_reps_count() > 1){
+			logger->info (nano::log::type::node, "Voting is enabled, more system resources will be used, local representatives: {}", wallets.voting_reps_count ());
+			if (wallets.voting_reps_count () > 1)
+			{
 				logger->warn (nano::log::type::node, "Voting with more than one representative can limit performance");
 			}
 		}
@@ -420,12 +420,12 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 
 				logger->info (nano::log::type::node, "************************************ Bootstrap weights ************************************");
 				// Sort the weights
-				auto weights {ledger.get_bootstrap_weights ()};
+				auto weights{ ledger.get_bootstrap_weights () };
 				std::vector<std::pair<nano::account, nano::uint128_t>> sorted_weights (weights.begin (), weights.end ());
 				std::sort (sorted_weights.begin (), sorted_weights.end (), [] (auto const & entry1, auto const & entry2) {
 					return entry1.second > entry2.second;
 				});
-				
+
 				for (auto const & rep : sorted_weights)
 				{
 					logger->info (nano::log::type::node, "Using bootstrap rep weight: {} -> {}",

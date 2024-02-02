@@ -825,7 +825,7 @@ TEST (node, fork_bootstrap_flip)
 	nano::test::system system;
 	nano::test::system system0;
 	nano::test::system system1;
-	nano::node_config config0{ system.get_available_port ()};
+	nano::node_config config0{ system.get_available_port () };
 	config0.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags node_flags;
 	node_flags.set_disable_bootstrap_bulk_push_client (true);
@@ -1659,7 +1659,7 @@ TEST (node, unconfirmed_send)
 	ASSERT_TIMELY (5s, node2.block_confirmed (send3->hash ()));
 	ASSERT_TIMELY (5s, node1.block_confirmed (send3->hash ()));
 	ASSERT_TIMELY_EQ (5s, node2.ledger.cache.cemented_count (), 7);
-	ASSERT_TIMELY_EQ(5s, node1.balance (nano::dev::genesis->account ()), nano::dev::constants.genesis_amount);
+	ASSERT_TIMELY_EQ (5s, node1.balance (nano::dev::genesis->account ()), nano::dev::constants.genesis_amount);
 }
 
 // Test that nodes can track nodes that have rep weight for priority broadcasting
@@ -2590,7 +2590,7 @@ TEST (node, vote_by_hash_republish)
 	ASSERT_FALSE (node1.block (send1->hash ()));
 	ASSERT_FALSE (node2.block (send1->hash ()));
 	ASSERT_TIMELY_EQ (5s, node2.balance (key2.pub), node1.config->receive_minimum.number () * 2);
-	ASSERT_TIMELY_EQ(5s, node1.balance (key2.pub), node1.config->receive_minimum.number () * 2);
+	ASSERT_TIMELY_EQ (5s, node1.balance (key2.pub), node1.config->receive_minimum.number () * 2);
 }
 
 // Test disabled because it's failing intermittently.
@@ -3910,9 +3910,9 @@ namespace nano
 TEST (node, deferred_dependent_elections)
 {
 	nano::test::system system;
-	nano::node_config node_config_1{ system.get_available_port ()};
+	nano::node_config node_config_1{ system.get_available_port () };
 	node_config_1.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	nano::node_config node_config_2{ system.get_available_port ()};
+	nano::node_config node_config_2{ system.get_available_port () };
 	node_config_2.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	nano::node_flags flags;
 	flags.set_disable_request_loop (true);
@@ -4073,7 +4073,7 @@ TEST (node, pruning_automatic)
 {
 	nano::test::system system{};
 
-	nano::node_config node_config{ system.get_available_port ()};
+	nano::node_config node_config{ system.get_available_port () };
 	// TODO: remove after allowing pruned voting
 	node_config.enable_voting = false;
 	node_config.max_pruning_age = std::chrono::seconds (1);
@@ -4126,7 +4126,7 @@ TEST (node, pruning_age)
 {
 	nano::test::system system{};
 
-	nano::node_config node_config{ system.get_available_port ()};
+	nano::node_config node_config{ system.get_available_port () };
 	// TODO: remove after allowing pruned voting
 	node_config.enable_voting = false;
 
@@ -4187,7 +4187,7 @@ TEST (node, pruning_depth)
 {
 	nano::test::system system{};
 
-	nano::node_config node_config{ system.get_available_port ()};
+	nano::node_config node_config{ system.get_available_port () };
 	// TODO: remove after allowing pruned voting
 	node_config.enable_voting = false;
 

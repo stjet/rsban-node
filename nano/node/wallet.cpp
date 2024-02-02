@@ -632,7 +632,7 @@ namespace
 rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lmdb::env & env)
 {
 	auto config_dto{ node_a.config->to_dto () };
-	auto logger_handle{nano::to_logger_handle(node_a.logger)};
+	auto logger_handle{ nano::to_logger_handle (node_a.logger) };
 
 	return rsnano::rsn_lmdb_wallets_create (
 	node_a.config->enable_voting,

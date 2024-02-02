@@ -19,9 +19,9 @@
 #include <chrono>
 using namespace std::chrono_literals;
 
-nano::vote_processor_queue::vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, std::shared_ptr<nano::logger> & logger_a) 
+nano::vote_processor_queue::vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, std::shared_ptr<nano::logger> & logger_a)
 {
-	auto logger_handle {nano::to_logger_handle (logger_a)};
+	auto logger_handle{ nano::to_logger_handle (logger_a) };
 	handle = rsnano::rsn_vote_processor_queue_create (max_votes, stats_a.handle, online_reps_a.get_handle (), ledger_a.handle, logger_handle.handle);
 }
 
@@ -146,9 +146,9 @@ void nano::vote_processor::process_loop ()
 		if (log_this_iteration && elapsed.stop () > std::chrono::milliseconds (100))
 		{
 			logger.debug (nano::log::type::vote_processor, "Processed {} votes in {} milliseconds (rate of {} votes per second)",
-				votes_l.size (),
-				elapsed.value ().count (),
-				((votes_l.size () * 1000ULL) / elapsed.value ().count ()));
+			votes_l.size (),
+			elapsed.value ().count (),
+			((votes_l.size () * 1000ULL) / elapsed.value ().count ()));
 		}
 	}
 }

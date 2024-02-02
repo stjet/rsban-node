@@ -85,7 +85,7 @@ void subscribe_or_unsubscribe (nano::logger & logger, COLL & subscriber_collecti
 											 remove = topic_a->unsubscribe && subscriber_l->get_id () == calling_subscriber_l->get_id ();
 											 if (remove)
 											 {
-												logger.info (nano::log::type::ipc, "Subscriber ubsubscribed #{}", calling_subscriber_l->get_id ());
+												 logger.info (nano::log::type::ipc, "Subscriber ubsubscribed #{}", calling_subscriber_l->get_id ());
 											 }
 										 }
 									 }

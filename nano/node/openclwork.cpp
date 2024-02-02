@@ -532,7 +532,7 @@ std::unique_ptr<nano::opencl_work> nano::opencl_work::create (bool create_a, nan
 		std::stringstream stream;
 		environment.dump (stream);
 		logger_a.info (nano::log::type::opencl_work, "OpenCL environment: {}", stream.str ());
-		
+
 		if (!error)
 		{
 			result.reset (new nano::opencl_work (error, config_a, environment, logger_a, work));

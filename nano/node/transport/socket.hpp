@@ -84,7 +84,7 @@ public:
 	explicit socket (rsnano::async_runtime & async_rt_a, endpoint_type_t endpoint_type_a, nano::stats & stats_a,
 	std::shared_ptr<nano::logger> & logger_a, std::shared_ptr<nano::thread_pool> const & workers_a,
 	std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a,
-	std::chrono::seconds idle_timeout_a, 
+	std::chrono::seconds idle_timeout_a,
 	std::shared_ptr<nano::node_observers>,
 	std::size_t max_queue_size = default_max_queue_size);
 	socket (rsnano::SocketHandle * handle_a);

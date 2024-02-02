@@ -1,4 +1,5 @@
 #include "nano/lib/logging.hpp"
+
 #include <nano/lib/jsonconfig.hpp>
 #include <nano/lib/rpcconfig.hpp>
 #include <nano/lib/tlsconfig.hpp>

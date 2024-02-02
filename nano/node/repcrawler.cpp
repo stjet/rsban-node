@@ -1,5 +1,5 @@
-#include "nano/lib/rsnano.hpp"
 #include "nano/lib/logging.hpp"
+#include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
 #include "nano/node/transport/tcp.hpp"
 
@@ -244,7 +244,7 @@ void nano::rep_crawler::validate ()
 
 		if (insert_result.updated)
 		{
-			node.logger->warn (nano::log::type::repcrawler, "Updated representative {} at {} (was at: {})", vote->account ().to_account (), channel->to_string (), insert_result.prev_endpoint.address().to_string());
+			node.logger->warn (nano::log::type::repcrawler, "Updated representative {} at {} (was at: {})", vote->account ().to_account (), channel->to_string (), insert_result.prev_endpoint.address ().to_string ());
 		}
 	}
 }

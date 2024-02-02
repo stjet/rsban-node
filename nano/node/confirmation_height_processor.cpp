@@ -25,7 +25,7 @@ nano::ledger & ledger_a,
 std::chrono::milliseconds batch_separate_pending_min_time_a,
 boost::latch & latch)
 {
-	auto logger_handle{nano::to_logger_handle(logger_a)};
+	auto logger_handle{ nano::to_logger_handle (logger_a) };
 	return rsnano::rsn_confirmation_height_processor_create_v2 (
 	write_database_queue_a.handle,
 	logger_handle.handle,

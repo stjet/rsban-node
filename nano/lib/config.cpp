@@ -433,6 +433,7 @@ uint32_t nano::test_scan_wallet_reps_delay ()
 	return boost::lexical_cast<uint32_t> (test_env);
 }
 
+// Using std::cerr here, since logging may not be initialized yet
 nano::tomlconfig nano::load_toml_file (const std::filesystem::path & config_filename, const std::filesystem::path & data_path, const std::vector<std::string> & config_overrides)
 {
 	std::stringstream config_overrides_stream;
@@ -452,7 +453,7 @@ nano::tomlconfig nano::load_toml_file (const std::filesystem::path & config_file
 		{
 			throw std::runtime_error (error.get_message ());
 		}
-		nano::default_logger ().info (nano::log::type::config, "Config for `{}` loaded from node data directory: ", config_filename.string (), toml_config_path.string ());
+		std::cerr << "Config file `" << config_filename.string () << "` loaded from node data directory: " << toml_config_path.string () << std::endl;
 		return toml;
 	}
 	else
@@ -464,7 +465,7 @@ nano::tomlconfig nano::load_toml_file (const std::filesystem::path & config_file
 		{
 			throw std::runtime_error (error.get_message ());
 		}
-		nano::default_logger ().info (nano::log::type::config, "Config for `{}` not found, using default configuration", config_filename.string ());
+		std::cerr << "Config file `" << config_filename.string () << "` not found, using default configuration" << std::endl;
 		return toml;
 	}
 }

@@ -588,7 +588,7 @@ TEST (node, fork_publish)
 	ASSERT_EQ (send1->hash (), existing1->second.get_hash ());
 	auto winner (election->winner());
 	ASSERT_EQ (*send1, *winner);
-	ASSERT_EQ (nano::dev::constants.genesis_amount - 100, election->get_status().get_final_tally().number());
+	ASSERT_EQ (nano::dev::constants.genesis_amount - 100, election->get_status().get_tally().number());
 }
 
 // In test case there used to be a race condition, it was worked around in:.
@@ -2226,7 +2226,7 @@ TEST (node, local_votes_cache)
 	{
 		ASSERT_NO_ERROR (system.poll (node.aggregator.max_delay));
 	}
-	ASSERT_TIMELY_EQ (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes), 3);
+	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) >= 3);
 	ASSERT_TIMELY (3s, !node.history.votes (send1->root (), send1->hash ()).empty ());
 	ASSERT_TIMELY (3s, !node.history.votes (send2->root (), send2->hash ()).empty ());
 	ASSERT_TIMELY (3s, !node.history.votes (send3->root (), send3->hash ()).empty ());

@@ -19,9 +19,12 @@ rsnano_node = { path = "../node" }
 anyhow = "1"
 num = "0"
 num-traits = "0"
+num-derive = "0"
 rand = "0"
 bounded-vec-deque = "0.1.1"
 tokio = {version = "1", features=["rt-multi-thread"]}
+tracing = "0.1"
+tracing-subscriber = "0.3.18"
 
 [build-dependencies]
 cbindgen = "0.24.3"

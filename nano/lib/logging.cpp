@@ -543,3 +543,9 @@ nano::logger_handle nano::to_logger_handle (std::shared_ptr<nano::logger> const 
 {
 	return { rsnano::rsn_logger_create_v2 (new std::shared_ptr<nano::logger> (logger_a)) };
 }
+
+void nano::log_with_rust (nano::log::level level, nano::log::type tag, const char * message, std::size_t size)
+{
+	auto tag_string {nano::log::to_string(tag)};
+	rsnano::rsn_log(static_cast<uint8_t>(nano::log::level::debug), tag_string.data(), tag_string.length(), message, size);
+}

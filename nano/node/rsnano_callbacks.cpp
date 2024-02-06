@@ -596,6 +596,7 @@ void rsnano::set_rsnano_callbacks ()
 	if (callbacks_set)
 		return;
 
+	rsnano::rsn_log_init ();
 	rsnano::rsn_callback_write_u8 (write_u8);
 	rsnano::rsn_callback_write_bytes (write_bytes);
 	rsnano::rsn_callback_read_u8 (read_u8);

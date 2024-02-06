@@ -1,6 +1,11 @@
 use crate::VoidPointerCallback;
+use num_traits::FromPrimitive;
 use rsnano_core::utils::{LogLevel, LogType, Logger};
-use std::{ffi::c_void, sync::Arc};
+use std::{
+    ffi::{c_char, c_void, CStr},
+    sync::Arc,
+};
+use tracing::{event, Level};
 
 pub struct LoggerHandleV2(*mut c_void);
 
@@ -19,6 +24,69 @@ pub unsafe extern "C" fn rsn_logger_create_v2(logger: *mut c_void) -> *mut Logge
 #[no_mangle]
 pub unsafe extern "C" fn rsn_logger_destroy_v2(handle: *mut LoggerHandleV2) {
     drop(Box::from_raw(handle));
+}
+
+#[derive(FromPrimitive)]
+enum CppLogLevel {
+    Trace,
+    Debug,
+    Info,
+    Warn,
+    Error,
+    Critical,
+    Off,
+}
+
+impl From<CppLogLevel> for tracing::Level {
+    fn from(value: CppLogLevel) -> Self {
+        match value {
+            CppLogLevel::Trace => Level::TRACE,
+            CppLogLevel::Debug => Level::DEBUG,
+            CppLogLevel::Info => Level::INFO,
+            CppLogLevel::Warn => Level::WARN,
+            CppLogLevel::Error => Level::ERROR,
+            CppLogLevel::Critical => Level::ERROR,
+            CppLogLevel::Off => Level::TRACE,
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_log_init() {
+    tracing_subscriber::fmt::init();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_log(
+    log_level: u8,
+    tag: *const c_char,
+    tag_len: usize,
+    message: *const c_char,
+    len: usize,
+) {
+    let tag = std::mem::transmute::<*const c_char, *const u8>(tag);
+    let data = std::slice::from_raw_parts(tag, tag_len);
+    let tag = std::str::from_utf8(data).unwrap();
+
+    let message = std::mem::transmute::<*const c_char, *const u8>(message);
+    let data = std::slice::from_raw_parts(message, len);
+    let message = std::str::from_utf8(data).unwrap();
+
+    let cpp_level: CppLogLevel = FromPrimitive::from_u8(log_level).unwrap();
+    let level = Level::from(cpp_level);
+
+    //TODO log tag as well
+    if level == Level::TRACE {
+        event!(Level::TRACE, message);
+    } else if level == Level::DEBUG {
+        event!(Level::DEBUG, message);
+    } else if level == Level::INFO {
+        event!(Level::INFO, message);
+    } else if level == Level::WARN {
+        event!(Level::WARN, message);
+    } else if level == Level::ERROR {
+        event!(Level::ERROR, message);
+    }
 }
 
 pub struct FfiLoggerV2 {

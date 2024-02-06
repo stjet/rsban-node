@@ -66,6 +66,8 @@ private:
 
 nano::log_config load_log_config (nano::log_config fallback, std::filesystem::path const & data_path, std::vector<std::string> const & config_overrides = {});
 
+void log_with_rust (nano::log::level level, nano::log::type tag, const char * message, std::size_t size);
+
 class logger final
 {
 public:
@@ -91,48 +93,60 @@ private:
 public:
 	void log (nano::log::level level, nano::log::type tag, std::string const & message)
 	{
-		get_logger (tag).log (to_spdlog_level (level), message);
+		nano::log_with_rust(level, tag, message.c_str(), message.length());
 	}
 
 	template <class... Args>
 	void log (nano::log::level level, nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{
-		get_logger (tag).log (to_spdlog_level (level), fmt, std::forward<Args> (args)...);
+		spdlog::memory_buf_t buf;
+		fmt::vformat_to(fmt::appender(buf), fmt, fmt::make_format_args(args...));
+		nano::log_with_rust(level, tag, buf.data(), buf.size());
 	}
 
 	template <class... Args>
 	void debug (nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{
-		get_logger (tag).debug (fmt, std::forward<Args> (args)...);
+		spdlog::memory_buf_t buf;
+		fmt::vformat_to(fmt::appender(buf), fmt, fmt::make_format_args(args...));
+		nano::log_with_rust(nano::log::level::debug, tag, buf.data(), buf.size());
 	}
 
 	template <class... Args>
 	void info (nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{
-		get_logger (tag).info (fmt, std::forward<Args> (args)...);
+		spdlog::memory_buf_t buf;
+		fmt::vformat_to(fmt::appender(buf), fmt, fmt::make_format_args(args...));
+		nano::log_with_rust(nano::log::level::info, tag, buf.data(), buf.size());
 	}
 
 	void info (nano::log::type tag, std::string const & message)
 	{
-		get_logger (tag).info (message);
+		nano::log_with_rust(nano::log::level::info, tag, message.c_str(), message.length());
 	}
 
 	template <class... Args>
 	void warn (nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{
-		get_logger (tag).warn (fmt, std::forward<Args> (args)...);
+		spdlog::memory_buf_t buf;
+		fmt::vformat_to(fmt::appender(buf), fmt, fmt::make_format_args(args...));
+		nano::log_with_rust(nano::log::level::warn, tag, buf.data(), buf.size());
 	}
 
 	template <class... Args>
 	void error (nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{
-		get_logger (tag).error (fmt, std::forward<Args> (args)...);
+		spdlog::memory_buf_t buf;
+		fmt::vformat_to(fmt::appender(buf), fmt, fmt::make_format_args(args...));
+		nano::log_with_rust(nano::log::level::error, tag, buf.data(), buf.size());
 	}
 
 	template <class... Args>
 	void critical (nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{
-		get_logger (tag).critical (fmt, std::forward<Args> (args)...);
+		spdlog::memory_buf_t buf;
+		fmt::vformat_to(fmt::appender(buf), fmt, fmt::make_format_args(args...));
+		nano::log_with_rust(nano::log::level::critical, tag, buf.data(), buf.size());
 	}
 
 private:

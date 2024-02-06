@@ -3,6 +3,9 @@
 #[macro_use]
 extern crate anyhow;
 
+#[macro_use]
+extern crate num_derive;
+
 pub mod block_processing;
 pub mod bootstrap;
 mod cementation;

@@ -5,6 +5,7 @@
 #include <nano/lib/logging.hpp>
 
 #include <chrono>
+#include <filesystem>
 
 namespace nano
 {

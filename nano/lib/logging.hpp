@@ -1,61 +1,14 @@
 #pragma once
 
 #include <nano/lib/logging_enums.hpp>
-#include <nano/lib/tomlconfig.hpp>
-
 #include <initializer_list>
 #include <memory>
 #include <shared_mutex>
 #include <sstream>
-
 #include <spdlog/spdlog.h>
 
 namespace nano
 {
-class log_config final
-{
-public:
-	nano::error serialize_toml (nano::tomlconfig &) const;
-	nano::error deserialize_toml (nano::tomlconfig &);
-
-private:
-	void serialize (nano::tomlconfig &) const;
-	void deserialize (nano::tomlconfig &);
-
-public:
-	nano::log::level default_level{ nano::log::level::info };
-	nano::log::level flush_level{ nano::log::level::error };
-
-	using logger_id_t = std::pair<nano::log::type, nano::log::detail>;
-	std::map<logger_id_t, nano::log::level> levels;
-
-	struct console_config
-	{
-		bool enable{ true };
-		bool colors{ true };
-		bool to_cerr{ false };
-	};
-
-	struct file_config
-	{
-		bool enable{ true };
-		std::size_t max_size{ 32 * 1024 * 1024 };
-		std::size_t rotation_count{ 4 };
-	};
-
-	console_config console;
-	file_config file;
-
-public: // Predefined defaults
-	static logger_id_t parse_logger_id (std::string const &);
-
-private:
-	/// Returns placeholder log levels for all loggers
-	static std::map<logger_id_t, nano::log::level> default_levels (nano::log::level);
-};
-
-nano::log_config load_log_config (nano::log_config fallback, std::filesystem::path const & data_path, std::vector<std::string> const & config_overrides = {});
-
 void log_with_rust (nano::log::level level, nano::log::type tag, const char * message, std::size_t size);
 
 class logger final

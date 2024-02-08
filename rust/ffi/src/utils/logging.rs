@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 use tracing::{enabled, event, Level};
-use tracing_subscriber::{filter::LevelFilter, EnvFilter};
+use tracing_subscriber::EnvFilter;
 
 pub struct LoggerHandleV2(*mut c_void);
 
@@ -125,15 +125,6 @@ impl Drop for FfiLoggerV2 {
 }
 
 impl Logger for FfiLoggerV2 {
-    fn try_log(&self, message: &str) -> bool {
-        self.always_log(message);
-        true
-    }
-
-    fn always_log(&self, message: &str) {
-        self.log(LogLevel::Info, LogType::All, message);
-    }
-
     fn log(&self, level: LogLevel, tag: LogType, message: &str) {
         unsafe {
             LOG_V2_CALLBACK.expect("LOG_V2_CALLBACK missing")(

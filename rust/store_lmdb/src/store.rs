@@ -15,7 +15,8 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
-use rsnano_core::utils::{seconds_since_epoch, Logger, NullLogger, PropertyTreeWriter};
+use rsnano_core::utils::{seconds_since_epoch, PropertyTreeWriter};
+use tracing::{debug, error, info, warn};
 
 #[derive(PartialEq, Eq)]
 pub enum Vacuuming {
@@ -41,7 +42,6 @@ pub struct LmdbStoreBuilder<'a> {
     path: &'a Path,
     options: Option<&'a EnvOptions>,
     tracker: Option<Arc<dyn TransactionTracker>>,
-    logger: Option<Arc<dyn Logger>>,
     backup_before_upgrade: bool,
 }
 
@@ -51,7 +51,6 @@ impl<'a> LmdbStoreBuilder<'a> {
             path,
             options: None,
             tracker: None,
-            logger: None,
             backup_before_upgrade: false,
         }
     }
@@ -63,11 +62,6 @@ impl<'a> LmdbStoreBuilder<'a> {
 
     pub fn txn_tracker(mut self, tracker: Arc<dyn TransactionTracker>) -> Self {
         self.tracker = Some(tracker);
-        self
-    }
-
-    pub fn logger(mut self, logger: Arc<dyn Logger>) -> Self {
-        self.logger = Some(logger);
         self
     }
 
@@ -84,15 +78,7 @@ impl<'a> LmdbStoreBuilder<'a> {
             .tracker
             .unwrap_or_else(|| Arc::new(NullTransactionTracker::new()));
 
-        let logger = self.logger.unwrap_or_else(|| Arc::new(NullLogger::new()));
-
-        LmdbStore::new(
-            self.path,
-            options,
-            txn_tracker,
-            logger,
-            self.backup_before_upgrade,
-        )
+        LmdbStore::new(self.path, options, txn_tracker, self.backup_before_upgrade)
     }
 }
 
@@ -100,8 +86,7 @@ impl LmdbStore<EnvironmentStub> {
     pub fn create_null() -> Self {
         let options = EnvOptions::default();
         let txn_tracker = Arc::new(NullTransactionTracker::new());
-        let logger = Arc::new(NullLogger::new());
-        LmdbStore::new("nulled_data.mdb", &options, txn_tracker, logger, false).unwrap()
+        LmdbStore::new("nulled_data.mdb", &options, txn_tracker, false).unwrap()
     }
 }
 
@@ -114,11 +99,10 @@ impl<T: Environment + 'static> LmdbStore<T> {
         path: impl AsRef<Path>,
         options: &EnvOptions,
         txn_tracker: Arc<dyn TransactionTracker>,
-        logger: Arc<dyn Logger>,
         backup_before_upgrade: bool,
     ) -> anyhow::Result<Self> {
         let path = path.as_ref();
-        upgrade_if_needed::<T>(path, &logger, backup_before_upgrade)?;
+        upgrade_if_needed::<T>(path, backup_before_upgrade)?;
 
         let env = Arc::new(LmdbEnv::<T>::with_txn_tracker(path, options, txn_tracker)?);
 
@@ -200,29 +184,28 @@ impl<T: Environment + 'static> LmdbStore<T> {
 
 fn upgrade_if_needed<T: Environment + 'static>(
     path: &Path,
-    logger: &Arc<dyn Logger>,
     backup_before_upgrade: bool,
 ) -> Result<(), anyhow::Error> {
     let upgrade_info = LmdbVersionStore::<T>::check_upgrade(path)?;
     if upgrade_info.is_fully_upgraded {
-        logger.always_log("No database upgrade needed");
+        debug!("No database upgrade needed");
         return Ok(());
     }
 
     let env = Arc::new(LmdbEnv::<T>::new(path)?);
     if !upgrade_info.is_fresh_db && backup_before_upgrade {
-        create_backup_file(&env, logger.as_ref())?;
+        create_backup_file(&env)?;
     }
 
-    logger.always_log("Upgrade in progress...");
-    let vacuuming = do_upgrades(env.clone(), logger.as_ref())?;
-    logger.always_log("Upgrade done!");
+    info!("Upgrade in progress...");
+    let vacuuming = do_upgrades(env.clone())?;
+    info!("Upgrade done!");
 
     if vacuuming == Vacuuming::Needed {
-        logger.always_log("Preparing vacuum...");
+        info!("Preparing vacuum...");
         match vacuum_after_upgrade (env, path){
-                Ok(_) => logger.always_log("Vacuum succeeded."),
-                Err(_) => logger.always_log("Failed to vacuum. (Optional) Ensure enough disk space is available for a copy of the database and try to vacuum after shutting down the node"),
+                Ok(_) => info!("Vacuum succeeded."),
+                Err(_) => warn!("Failed to vacuum. (Optional) Ensure enough disk space is available for a copy of the database and try to vacuum after shutting down the node"),
             }
     }
     Ok(())
@@ -267,10 +250,7 @@ fn copy_table<T: Environment + 'static>(
     Ok(())
 }
 
-fn do_upgrades<T: Environment + 'static>(
-    env: Arc<LmdbEnv<T>>,
-    logger: &dyn Logger,
-) -> anyhow::Result<Vacuuming> {
+fn do_upgrades<T: Environment + 'static>(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Vacuuming> {
     let version_store = LmdbVersionStore::new(env.clone())?;
     let mut txn = env.tx_begin_write();
 
@@ -278,22 +258,22 @@ fn do_upgrades<T: Environment + 'static>(
         Some(v) => v,
         None => {
             let new_version = STORE_VERSION_MINIMUM;
-            logger.always_log(&format!("Setting db version to {}", new_version));
+            info!("Setting db version to {}", new_version);
             version_store.put(&mut txn, new_version);
             new_version
         }
     };
 
     if version < 21 {
-        logger.always_log(&format!("The version of the ledger ({}) is lower than the minimum ({}) which is supported for upgrades. Either upgrade to a v23 node first or delete the ledger.", version, STORE_VERSION_MINIMUM));
+        error!("The version of the ledger ({}) is lower than the minimum ({}) which is supported for upgrades. Either upgrade to a v23 node first or delete the ledger.", version, STORE_VERSION_MINIMUM);
         bail!("version too low");
     }
 
     if version > 22 {
-        logger.always_log(&format!(
+        error!(
             "The version of the ledger ({}) is too high for this node",
             version
-        ));
+        );
         bail!("version too high");
     }
 
@@ -347,20 +327,14 @@ fn ensure_success(status: i32) -> Result<(), anyhow::Error> {
 }
 
 /// Takes a filepath, appends '_backup_<timestamp>' to the end (but before any extension) and saves that file in the same directory
-pub fn create_backup_file<T: Environment>(
-    env: &LmdbEnv<T>,
-    logger: &dyn Logger,
-) -> anyhow::Result<()> {
+pub fn create_backup_file<T: Environment>(env: &LmdbEnv<T>) -> anyhow::Result<()> {
     let source_path = env.file_path()?;
-
     let backup_path = backup_file_path(&source_path)?;
 
-    let start_message = format!(
+    info!(
         "Performing {:?} backup before database upgrade...",
         source_path
     );
-    logger.always_log(&start_message);
-    println!("{}", start_message);
 
     let backup_path_cstr = CString::new(
         backup_path
@@ -371,14 +345,10 @@ pub fn create_backup_file<T: Environment>(
     let status =
         unsafe { lmdb_sys::mdb_env_copy(env.environment.env(), backup_path_cstr.as_ptr()) };
     if status != MDB_SUCCESS {
-        let error_message = format!("{:?} backup failed", source_path);
-        logger.always_log(&error_message);
-        eprintln!("{}", error_message);
-        Err(anyhow!(error_message))
+        error!("{:?} backup failed", source_path);
+        Err(anyhow!("backup failed"))
     } else {
-        let success_message = format!("Backup created: {:?}", backup_path);
-        logger.always_log(&success_message);
-        println!("{}", success_message);
+        info!("Backup created: {:?}", backup_path);
         Ok(())
     }
 }

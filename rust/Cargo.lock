@@ -1537,6 +1537,7 @@ dependencies = [
  "rsnano_core",
  "rsnano_store_lmdb",
  "serde_json",
+ "tracing",
  "uuid 0.8.2",
 ]
 

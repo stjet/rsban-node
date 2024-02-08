@@ -68,7 +68,6 @@ pub unsafe extern "C" fn rsn_lmdb_store_create_v2(
     let store = LmdbStore::<EnvironmentWrapper>::open(path)
         .options(&options)
         .txn_tracker(txn_tracker)
-        .logger(logger)
         .backup_before_upgrade(backup_before_upgrade)
         .build();
 

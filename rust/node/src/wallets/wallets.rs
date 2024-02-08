@@ -91,7 +91,7 @@ impl<T: Environment + 'static> Wallets<T> {
                 }
             }
             if backup_required {
-                create_backup_file(&wallets.env, logger.as_ref())?;
+                create_backup_file(&wallets.env)?;
             }
             // TODO port more here...
         }

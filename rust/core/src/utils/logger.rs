@@ -1,6 +1,4 @@
 pub trait Logger: Send + Sync {
-    fn try_log(&self, message: &str) -> bool;
-    fn always_log(&self, message: &str);
     fn log(&self, level: LogLevel, tag: LogType, message: &str);
     fn debug(&self, tag: LogType, message: &str);
     fn info(&self, tag: LogType, message: &str);
@@ -17,11 +15,6 @@ impl NullLogger {
 }
 
 impl Logger for NullLogger {
-    fn try_log(&self, _message: &str) -> bool {
-        false
-    }
-
-    fn always_log(&self, _message: &str) {}
     fn log(&self, _level: LogLevel, _tag: LogType, _message: &str) {}
     fn debug(&self, _tag: LogType, _message: &str) {}
     fn info(&self, _tag: LogType, _message: &str) {}
@@ -39,15 +32,6 @@ impl ConsoleLogger {
 }
 
 impl Logger for ConsoleLogger {
-    fn try_log(&self, message: &str) -> bool {
-        println!("{}", message);
-        true
-    }
-
-    fn always_log(&self, message: &str) {
-        println!("{}", message);
-    }
-
     fn log(&self, level: LogLevel, tag: LogType, message: &str) {
         println!("{level:?} {tag:?} {message}");
     }

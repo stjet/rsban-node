@@ -47,11 +47,6 @@ public:
 	file_config file;
 
 public: // Predefined defaults
-	static log_config cli_default ();
-	static log_config daemon_default ();
-	static log_config tests_default ();
-	static log_config sample_config (); // For auto-generated sample config files
-
 	static logger_id_t parse_logger_id (std::string const &);
 
 private:
@@ -73,18 +68,12 @@ public:
 	logger (logger const &) = delete;
 
 public:
-	static void initialize (nano::log_config fallback, std::optional<std::filesystem::path> data_path = std::nullopt, std::vector<std::string> const & config_overrides = std::vector<std::string> ());
-	static void initialize_for_tests (nano::log_config fallback);
-	static void flush ();
+	static void initialize ();
+	static void initialize_for_tests ();
 
 private:
 	static bool global_initialized;
 	static nano::log::level min_level;
-	static nano::log_config global_config;
-	static std::vector<spdlog::sink_ptr> global_sinks;
-	static std::function<std::string (nano::log::type tag, std::string identifier)> global_name_formatter;
-
-	static void initialize_common (nano::log_config const &, std::optional<std::filesystem::path> data_path);
 
 public:
 	void log (nano::log::level level, nano::log::type tag, std::string const & message)
@@ -168,18 +157,6 @@ public:
 			nano::log_with_rust (nano::log::level::critical, tag, buf.data (), buf.size ());
 		}
 	}
-
-private:
-	const std::string identifier;
-
-	std::unordered_map<nano::log::type, std::shared_ptr<spdlog::logger>> spd_loggers;
-	std::shared_mutex mutex;
-
-private:
-	spdlog::logger & get_logger (nano::log::type tag);
-	std::shared_ptr<spdlog::logger> make_logger (nano::log::type tag);
-
-	static spdlog::level::level_enum to_spdlog_level (nano::log::level);
 };
 
 /**

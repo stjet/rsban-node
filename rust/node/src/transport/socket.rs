@@ -11,6 +11,7 @@ use std::{
     },
     time::Duration,
 };
+use tracing::debug;
 
 use super::{
     message_deserializer::AsyncBufferReader,
@@ -308,7 +309,9 @@ impl Socket {
 
 impl Drop for Socket {
     fn drop(&mut self) {
+        debug!("Dropping Socket");
         self.close_internal();
+        debug!("Socket dropped");
     }
 }
 
@@ -752,6 +755,7 @@ impl SocketBuilder {
     }
 
     pub fn build(self) -> Arc<Socket> {
+        debug!("Creating socket");
         let observer = self
             .observer
             .unwrap_or_else(|| Arc::new(NullSocketObserver::new()));

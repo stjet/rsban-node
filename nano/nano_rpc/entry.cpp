@@ -91,7 +91,7 @@ int main (int argc, char * const * argv)
 {
 	rsnano::set_rsnano_callbacks ();
 	nano::set_umask (); // Make sure the process umask is set before any files are created
-	nano::logger::initialize (nano::log_config::cli_default ());
+	nano::logger::initialize ();
 
 	boost::program_options::options_description description ("Command line options");
 

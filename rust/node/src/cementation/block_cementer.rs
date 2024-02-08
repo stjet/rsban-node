@@ -6,6 +6,7 @@ use std::{
 use rsnano_core::BlockEnum;
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
+use tracing::debug;
 
 use super::{
     BatchWriteSizeManager, BlockCache, BlockCementerContainerInfo, BlockCementerLogic,
@@ -22,6 +23,12 @@ pub struct BlockCementer {
     logic: BlockCementerLogic,
 }
 
+impl Drop for BlockCementer {
+    fn drop(&mut self) {
+        debug!("Dropping BlockCementer");
+    }
+}
+
 impl BlockCementer {
     pub fn new(
         ledger: Arc<Ledger>,
@@ -29,6 +36,7 @@ impl BlockCementer {
         minimum_batch_separation: Duration,
         stopped: Arc<AtomicBool>,
     ) -> Self {
+        debug!("Creating BlockCementer");
         let logic = BlockCementerLogic::new(BlockCementerLogicOptions {
             epochs: ledger.constants.epochs.clone(),
             stopped: stopped.clone(),

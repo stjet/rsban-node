@@ -19,8 +19,6 @@ add_custom_command(
           ${PROJECT_BINARY_DIR}/config-node.toml.sample
   COMMAND nano_node --generate_config rpc >
           ${PROJECT_BINARY_DIR}/config-rpc.toml.sample
-  COMMAND nano_node --generate_config log >
-          ${PROJECT_BINARY_DIR}/config-log.toml.sample)
 
 if((NANO_GUI OR RAIBLOCKS_GUI) AND NOT APPLE)
   if(WIN32)

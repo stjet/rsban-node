@@ -22,21 +22,12 @@ nano::logger & nano::default_logger ()
  */
 
 bool nano::logger::global_initialized{ false };
-nano::log_config nano::logger::global_config{};
-std::vector<spdlog::sink_ptr> nano::logger::global_sinks{};
 nano::log::level nano::logger::min_level{ nano::log::level::info };
 
-// By default, use only the tag as the logger name, since only one node is running in the process
-std::function<std::string (nano::log::type tag, std::string identifier)> nano::logger::global_name_formatter{ [] (auto tag, auto identifier) {
-	return std::string{ to_string (tag) };
-} };
-
-void nano::logger::initialize (nano::log_config fallback, std::optional<std::filesystem::path> data_path, std::vector<std::string> const & config_overrides)
+void nano::logger::initialize ()
 {
 	rsnano::rsn_log_init();
-	// Only load log config from file if data_path is available (i.e. not running in cli mode)
-	nano::log_config config = data_path ? nano::load_log_config (fallback, *data_path, config_overrides) : fallback;
-	initialize_common (config, data_path);
+	min_level = static_cast<nano::log::level> (rsnano::rsn_log_min_level ());
 	global_initialized = true;
 }
 
@@ -94,228 +85,24 @@ public:
 };
 }
 
-void nano::logger::initialize_for_tests (nano::log_config fallback)
+void nano::logger::initialize_for_tests ()
 {
 	rsnano::rsn_log_init_test();
-	auto config = nano::load_log_config (std::move (fallback), /* load log config from current workdir */ std::filesystem::current_path ());
-	initialize_common (config, /* store log file in current workdir */ std::filesystem::current_path ());
-
-	// Use tag and identifier as the logger name, since multiple nodes may be running in the same process
-	global_name_formatter = [] (nano::log::type tag, std::string identifier) {
-		return fmt::format ("{}::{}", identifier, to_string (tag));
-	};
-
-	// Setup formatter to include information about node identifier `[%i]` and tag `[%n]`
-	auto formatter = std::make_unique<spdlog::pattern_formatter> ();
-	formatter->add_flag<identifier_formatter_flag> ('i');
-	formatter->add_flag<tag_formatter_flag> ('n');
-	formatter->set_pattern ("[%Y-%m-%d %H:%M:%S.%e] [%i] [%n] [%l] %v");
-
-	for (auto & sink : global_sinks)
-	{
-		sink->set_formatter (formatter->clone ());
-	}
-
-	global_initialized = true;
-}
-
-// Using std::cerr here, since logging may not be initialized yet
-void nano::logger::initialize_common (nano::log_config const & config, std::optional<std::filesystem::path> data_path)
-{
-	global_config = config;
-
-	spdlog::set_automatic_registration (false);
-	spdlog::set_level (to_spdlog_level (config.default_level));
-
-	global_sinks.clear ();
-
-	// Console setup
-	if (config.console.enable)
-	{
-		if (!config.console.to_cerr)
-		{
-			// Only use colors if not writing to cerr
-			if (config.console.colors)
-			{
-				auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt> ();
-				global_sinks.push_back (console_sink);
-			}
-			else
-			{
-				auto console_sink = std::make_shared<spdlog::sinks::stdout_sink_mt> ();
-				global_sinks.push_back (console_sink);
-			}
-		}
-		else
-		{
-			if (config.console.colors)
-			{
-				std::cerr << "WARNING: Logging to cerr is enabled, console colors will be disabled" << std::endl;
-			}
-
-			auto cerr_sink = std::make_shared<spdlog::sinks::stderr_sink_mt> ();
-			global_sinks.push_back (cerr_sink);
-		}
-	}
-
-	// File setup
-	if (config.file.enable)
-	{
-		// In cases where data_path is not available, file logging should always be disabled
-		release_assert (data_path);
-
-		auto now = std::chrono::system_clock::now ();
-		auto time = std::chrono::system_clock::to_time_t (now);
-
-		auto filename = fmt::format ("log_{:%Y-%m-%d_%H-%M}-{:%S}", fmt::localtime (time), now.time_since_epoch ());
-		std::replace (filename.begin (), filename.end (), '.', '_'); // Replace millisecond dot separator with underscore
-
-		std::filesystem::path log_path{ data_path.value () / "log" / (filename + ".log") };
-		log_path = std::filesystem::absolute (log_path);
-
-		std::cerr << "Logging to file: " << log_path.string () << std::endl;
-
-		// If either max_size or rotation_count is 0, then disable file rotation
-		if (config.file.max_size == 0 || config.file.rotation_count == 0)
-		{
-			std::cerr << "WARNING: Log file rotation is disabled, log file size may grow without bound" << std::endl;
-
-			auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt> (log_path.string (), true);
-			global_sinks.push_back (file_sink);
-		}
-		else
-		{
-			auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt> (log_path.string (), config.file.max_size, config.file.rotation_count);
-			global_sinks.push_back (file_sink);
-		}
-	}
-
 	min_level = static_cast<nano::log::level> (rsnano::rsn_log_min_level ());
-}
-
-void nano::logger::flush ()
-{
-	for (auto & sink : global_sinks)
-	{
-		sink->flush ();
-	}
+	global_initialized = true;
 }
 
 /*
  * logger
  */
 
-nano::logger::logger (std::string identifier) :
-	identifier{ std::move (identifier) }
+nano::logger::logger (std::string identifier) 
 {
 	release_assert (global_initialized, "logging should be initialized before creating a logger");
 }
 
 nano::logger::~logger ()
 {
-	flush ();
-}
-
-spdlog::logger & nano::logger::get_logger (nano::log::type tag)
-{
-	// This is a two-step process to avoid exclusively locking the mutex in the common case
-	{
-		std::shared_lock lock{ mutex };
-
-		if (auto it = spd_loggers.find (tag); it != spd_loggers.end ())
-		{
-			return *it->second;
-		}
-	}
-	// Not found, create a new logger
-	{
-		std::unique_lock lock{ mutex };
-
-		auto [it, inserted] = spd_loggers.emplace (tag, make_logger (tag));
-		return *it->second;
-	}
-}
-
-std::shared_ptr<spdlog::logger> nano::logger::make_logger (nano::log::type tag)
-{
-	auto const & config = global_config;
-	auto const & sinks = global_sinks;
-
-	auto name = global_name_formatter (tag, identifier);
-	auto spd_logger = std::make_shared<spdlog::logger> (name, sinks.begin (), sinks.end ());
-
-	if (auto it = config.levels.find ({ tag, nano::log::detail::all }); it != config.levels.end ())
-	{
-		spd_logger->set_level (to_spdlog_level (it->second));
-	}
-	else
-	{
-		spd_logger->set_level (to_spdlog_level (config.default_level));
-	}
-
-	spd_logger->flush_on (to_spdlog_level (config.flush_level));
-
-	return spd_logger;
-}
-
-spdlog::level::level_enum nano::logger::to_spdlog_level (nano::log::level level)
-{
-	switch (level)
-	{
-		case nano::log::level::off:
-			return spdlog::level::off;
-		case nano::log::level::critical:
-			return spdlog::level::critical;
-		case nano::log::level::error:
-			return spdlog::level::err;
-		case nano::log::level::warn:
-			return spdlog::level::warn;
-		case nano::log::level::info:
-			return spdlog::level::info;
-		case nano::log::level::debug:
-			return spdlog::level::debug;
-		case nano::log::level::trace:
-			return spdlog::level::trace;
-	}
-	debug_assert (false, "Invalid log level");
-	return spdlog::level::off;
-}
-
-/*
- * logging config presets
- */
-
-nano::log_config nano::log_config::cli_default ()
-{
-	log_config config{};
-	config.default_level = nano::log::level::critical;
-	config.console.colors = false; // to avoid printing warning about cerr and colors
-	config.console.to_cerr = true; // Use cerr to avoid interference with CLI output that goes to stdout
-	config.file.enable = false;
-	return config;
-}
-
-nano::log_config nano::log_config::daemon_default ()
-{
-	log_config config{};
-	config.default_level = nano::log::level::info;
-	return config;
-}
-
-nano::log_config nano::log_config::tests_default ()
-{
-	log_config config{};
-	config.default_level = nano::log::level::off;
-	config.file.enable = false;
-	return config;
-}
-
-nano::log_config nano::log_config::sample_config ()
-{
-	log_config config{};
-	config.default_level = nano::log::level::info;
-	config.levels = default_levels (nano::log::level::info); // Populate with default levels
-	return config;
 }
 
 /*

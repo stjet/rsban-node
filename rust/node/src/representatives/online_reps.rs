@@ -5,6 +5,7 @@ use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::time::Duration;
 use std::{cmp::max, sync::Arc};
+use tracing::debug;
 
 #[cfg(test)]
 use mock_instant::Instant;
@@ -26,8 +27,15 @@ pub struct OnlineReps {
     online_weight_minimum: Amount,
 }
 
+impl Drop for OnlineReps {
+    fn drop(&mut self) {
+        debug!("Dropping OnlineReps");
+    }
+}
+
 impl OnlineReps {
     pub fn new(ledger: Arc<Ledger>) -> Self {
+        debug!("Creating OnlineReps");
         Self {
             ledger,
             reps: OnlineRepsContainer::new(),

@@ -186,6 +186,8 @@ void nano::logger::initialize_common (nano::log_config const & config, std::opti
 			global_sinks.push_back (file_sink);
 		}
 	}
+
+	min_level = static_cast<nano::log::level>(rsnano::rsn_log_min_level());
 }
 
 void nano::logger::flush ()
@@ -546,6 +548,5 @@ nano::logger_handle nano::to_logger_handle (std::shared_ptr<nano::logger> const 
 
 void nano::log_with_rust (nano::log::level level, nano::log::type tag, const char * message, std::size_t size)
 {
-	auto tag_string {nano::log::to_string(tag)};
-	rsnano::rsn_log(static_cast<uint8_t>(nano::log::level::debug), tag_string.data(), tag_string.length(), message, size);
+	rsnano::rsn_log(static_cast<uint8_t>(nano::log::level::debug), message, size);
 }

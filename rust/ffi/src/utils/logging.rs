@@ -5,7 +5,7 @@ use std::{
     ffi::{c_char, c_void, CStr},
     sync::Arc,
 };
-use tracing::{event, Level};
+use tracing::{enabled, event, Level};
 
 pub struct LoggerHandleV2(*mut c_void);
 
@@ -57,17 +57,7 @@ pub extern "C" fn rsn_log_init() {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_log(
-    log_level: u8,
-    tag: *const c_char,
-    tag_len: usize,
-    message: *const c_char,
-    len: usize,
-) {
-    let tag = std::mem::transmute::<*const c_char, *const u8>(tag);
-    let data = std::slice::from_raw_parts(tag, tag_len);
-    let tag = std::str::from_utf8(data).unwrap();
-
+pub unsafe extern "C" fn rsn_log(log_level: u8, message: *const c_char, len: usize) {
     let message = std::mem::transmute::<*const c_char, *const u8>(message);
     let data = std::slice::from_raw_parts(message, len);
     let message = std::str::from_utf8(data).unwrap();
@@ -87,6 +77,25 @@ pub unsafe extern "C" fn rsn_log(
     } else if level == Level::ERROR {
         event!(Level::ERROR, message);
     }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_log_min_level() -> u8 {
+    let cpp_level = if enabled!(Level::TRACE) {
+        CppLogLevel::Trace
+    } else if enabled!(Level::DEBUG) {
+        CppLogLevel::Debug
+    } else if enabled!(Level::INFO) {
+        CppLogLevel::Info
+    } else if enabled!(Level::WARN) {
+        CppLogLevel::Warn
+    } else if enabled!(Level::ERROR) {
+        CppLogLevel::Error
+    } else {
+        CppLogLevel::Off
+    };
+
+    cpp_level as u8
 }
 
 pub struct FfiLoggerV2 {

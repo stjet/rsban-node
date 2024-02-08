@@ -3,7 +3,7 @@ use super::{
 };
 use crate::{
     transport::{EndpointDto, NetworkFilterHandle, SocketHandle, TcpMessageManagerHandle},
-    utils::{AsyncRuntimeHandle, LoggerHandleV2},
+    utils::AsyncRuntimeHandle,
     NetworkParamsDto, NodeConfigDto, StatHandle,
 };
 use rsnano_core::Account;
@@ -35,7 +35,6 @@ pub struct CreateTcpServerParams {
     pub async_rt: *mut AsyncRuntimeHandle,
     pub socket: *mut SocketHandle,
     pub config: *const NodeConfigDto,
-    pub logger: *mut LoggerHandleV2,
     pub observer: *mut TcpListenerHandle,
     pub publish_filter: *mut NetworkFilterHandle,
     pub network: *const NetworkParamsDto,
@@ -56,7 +55,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let async_rt = Arc::clone(&(*params.async_rt).0);
     let socket = Arc::clone(&(*params.socket));
     let config = Arc::new(NodeConfig::try_from(&*params.config).unwrap());
-    let logger = (*params.logger).into_logger();
     let observer = Arc::clone(&*params.observer);
     let publish_filter = Arc::clone(&*params.publish_filter);
     let network = Arc::new(NetworkParams::try_from(&*params.network).unwrap());
@@ -67,7 +65,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
         async_rt,
         socket,
         config,
-        logger,
         observer,
         publish_filter,
         network,

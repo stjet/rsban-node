@@ -1721,9 +1721,8 @@ TEST (confirmation_height, election_winner_details_clearing_node_process_confirm
 
 TEST (confirmation_height, unbounded_block_cache_iteration)
 {
-	auto logger{ std::make_shared<nano::logger> () };
 	auto path (nano::unique_path ());
-	auto store = nano::make_store (logger, path, nano::dev::constants);
+	auto store = nano::make_store (path, nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::stats stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
@@ -1754,7 +1753,7 @@ TEST (confirmation_height, unbounded_block_cache_iteration)
 		ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send1).code);
 	}
 
-	nano::confirmation_height_processor confirmation_height_processor (ledger, stats, write_database_queue, 10ms, logger, initialized_latch);
+	nano::confirmation_height_processor confirmation_height_processor (ledger, stats, write_database_queue, 10ms, initialized_latch);
 	nano::timer<> timer;
 	timer.start ();
 	{

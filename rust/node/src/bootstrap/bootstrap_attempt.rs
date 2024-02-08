@@ -4,11 +4,7 @@ use crate::{
     websocket::{Listener, MessageBuilder},
 };
 use anyhow::Result;
-use rsnano_core::{
-    encode_hex,
-    utils::{LogType, Logger},
-    Account, BlockEnum,
-};
+use rsnano_core::{encode_hex, Account, BlockEnum};
 use rsnano_ledger::Ledger;
 use std::{
     sync::{
@@ -17,6 +13,7 @@ use std::{
     },
     time::{Duration, Instant},
 };
+use tracing::debug;
 
 use super::{bootstrap_limits, BootstrapInitiator, BootstrapMode};
 
@@ -26,7 +23,6 @@ pub struct BootstrapAttempt {
     pub mode: BootstrapMode,
     pub total_blocks: AtomicU64,
     next_log: Mutex<Instant>,
-    logger: Arc<dyn Logger>,
     websocket_server: Arc<dyn Listener>,
     ledger: Arc<Ledger>,
     attempt_start: Instant,
@@ -49,7 +45,6 @@ pub struct BootstrapAttempt {
 
 impl BootstrapAttempt {
     pub fn new(
-        logger: Arc<dyn Logger>,
         websocket_server: Arc<dyn Listener>,
         block_processor: Weak<BlockProcessor>,
         bootstrap_initiator: Weak<BootstrapInitiator>,
@@ -68,7 +63,6 @@ impl BootstrapAttempt {
             incremental_id,
             id,
             next_log: Mutex::new(Instant::now()),
-            logger,
             block_processor,
             bootstrap_initiator,
             mode,
@@ -92,10 +86,7 @@ impl BootstrapAttempt {
     fn start(&self) -> Result<()> {
         let mode = self.mode_text();
         let id = &self.id;
-        self.logger.debug(
-            LogType::Bootstrap,
-            &format!("Starting bootstrap attempt with ID: {id} (mode: {mode}) "),
-        );
+        debug!("Starting bootstrap attempt with ID: {id} (mode: {mode}) ");
         self.websocket_server
             .broadcast(&MessageBuilder::bootstrap_started(id, mode)?)?;
         Ok(())
@@ -217,10 +208,7 @@ impl Drop for BootstrapAttempt {
     fn drop(&mut self) {
         let mode = self.mode_text();
         let id = &self.id;
-        self.logger.debug(
-            LogType::Bootstrap,
-            &format!("Exiting bootstrap attempt with ID: {id} (mode: {mode})"),
-        );
+        debug!("Exiting bootstrap attempt with ID: {id} (mode: {mode})");
 
         self.websocket_server
             .broadcast(

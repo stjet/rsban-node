@@ -5,7 +5,7 @@ use crate::{
     transport::{
         EndpointDto, SocketFfiObserver, SocketHandle, SynCookiesHandle, TcpChannelsHandle,
     },
-    utils::{AsyncRuntimeHandle, ContextWrapper, LoggerHandleV2, ThreadPoolHandle},
+    utils::{AsyncRuntimeHandle, ContextWrapper, ThreadPoolHandle},
     ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
     VoidPointerCallback,
 };
@@ -31,7 +31,6 @@ pub unsafe extern "C" fn rsn_tcp_listener_create(
     port: u16,
     max_inbound_connections: usize,
     config: &NodeConfigDto,
-    logger: &LoggerHandleV2,
     tcp_channels: &TcpChannelsHandle,
     syn_cookies: &SynCookiesHandle,
     network_params: &NetworkParamsDto,
@@ -45,7 +44,6 @@ pub unsafe extern "C" fn rsn_tcp_listener_create(
     ledger: &LedgerHandle,
     node_id_prv: *const u8,
 ) -> *mut TcpListenerHandle {
-    let logger = logger.into_logger();
     let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
     let node_id = Arc::new(
         KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(node_id_prv, 32)).unwrap(),
@@ -54,7 +52,6 @@ pub unsafe extern "C" fn rsn_tcp_listener_create(
         port,
         max_inbound_connections,
         config.try_into().unwrap(),
-        logger,
         Arc::clone(tcp_channels),
         Arc::clone(syn_cookies),
         network_params.try_into().unwrap(),

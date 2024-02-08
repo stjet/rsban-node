@@ -3,12 +3,10 @@ use std::{
     sync::{Arc, Mutex, Weak},
 };
 
-use rsnano_core::{
-    utils::{seconds_since_epoch, LogType, Logger},
-    Account, BlockHash,
-};
+use rsnano_core::{utils::seconds_since_epoch, Account, BlockHash};
 use rsnano_ledger::Ledger;
 use rsnano_messages::FrontierReq;
+use tracing::debug;
 
 use crate::{
     transport::{SocketExtensions, TcpServer, TcpServerExt, TrafficType},
@@ -25,7 +23,6 @@ impl FrontierReqServer {
         connection: Arc<TcpServer>,
         request: FrontierReq,
         thread_pool: Arc<dyn ThreadPool>,
-        logger: Arc<dyn Logger>,
         ledger: Arc<Ledger>,
     ) -> Self {
         let result = Self {
@@ -37,7 +34,6 @@ impl FrontierReqServer {
                 count: 0,
                 accounts: VecDeque::new(),
                 thread_pool: Arc::downgrade(&thread_pool),
-                logger,
                 ledger,
             })),
         };
@@ -66,7 +62,6 @@ struct FrontierReqServerImpl {
     request: FrontierReq,
     count: usize,
     accounts: VecDeque<(Account, BlockHash)>,
-    logger: Arc<dyn Logger>,
     thread_pool: Weak<dyn ThreadPool>,
     ledger: Arc<Ledger>,
 }
@@ -76,10 +71,7 @@ impl FrontierReqServerImpl {
         if ec.is_ok() {
             self.connection.start();
         } else {
-            self.logger.debug(
-                LogType::FrontierReqServer,
-                &format!("Error sending frontier finish: {:?}", ec),
-            );
+            debug!("Error sending frontier finish: {:?}", ec);
         }
     }
 
@@ -91,8 +83,7 @@ impl FrontierReqServerImpl {
         let mut send_buffer = Vec::with_capacity(64);
         send_buffer.extend_from_slice(Account::zero().as_bytes());
         send_buffer.extend_from_slice(BlockHash::zero().as_bytes());
-        self.logger
-            .debug(LogType::FrontierReqServer, "Frontier sending finished");
+        debug!("Frontier sending finished");
 
         self.connection.socket.async_write(
             &Arc::new(send_buffer),
@@ -195,10 +186,7 @@ impl FrontierReqServerImpl {
                 server.lock().unwrap().send_next(server_clone);
             }));
         } else {
-            self.logger.debug(
-                LogType::FrontierReqServer,
-                &format!("Error sending frontier pair: {:?}", ec),
-            );
+            debug!("Error sending frontier pair: {:?}", ec);
         }
     }
 }

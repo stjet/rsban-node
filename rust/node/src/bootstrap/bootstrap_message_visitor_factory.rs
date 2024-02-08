@@ -1,6 +1,6 @@
 use std::sync::{Arc, Weak};
 
-use rsnano_core::{utils::Logger, KeyPair};
+use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
 
 use crate::{
@@ -18,7 +18,6 @@ use super::{BootstrapInitiator, BootstrapMessageVisitorImpl};
 
 pub struct BootstrapMessageVisitorFactory {
     async_rt: Arc<AsyncRuntime>,
-    logger: Arc<dyn Logger>,
     syn_cookies: Arc<SynCookies>,
     stats: Arc<Stats>,
     node_id: Arc<KeyPair>,
@@ -33,7 +32,6 @@ pub struct BootstrapMessageVisitorFactory {
 impl BootstrapMessageVisitorFactory {
     pub fn new(
         async_rt: Arc<AsyncRuntime>,
-        logger: Arc<dyn Logger>,
         syn_cookies: Arc<SynCookies>,
         stats: Arc<Stats>,
         network_constants: NetworkConstants,
@@ -46,7 +44,6 @@ impl BootstrapMessageVisitorFactory {
     ) -> Self {
         Self {
             async_rt,
-            logger,
             syn_cookies,
             stats,
             node_id,
@@ -62,7 +59,6 @@ impl BootstrapMessageVisitorFactory {
     pub fn handshake_visitor(&self, server: Arc<TcpServer>) -> Box<dyn HandshakeMessageVisitor> {
         let mut visitor = Box::new(HandshakeMessageVisitorImpl::new(
             server,
-            Arc::clone(&self.logger),
             Arc::clone(&self.syn_cookies),
             Arc::clone(&self.stats),
             Arc::clone(&self.node_id),
@@ -83,7 +79,6 @@ impl BootstrapMessageVisitorFactory {
         Box::new(BootstrapMessageVisitorImpl {
             async_rt: Arc::clone(&self.async_rt),
             ledger: Arc::clone(&self.ledger),
-            logger: Arc::clone(&self.logger),
             connection: server,
             thread_pool: self.thread_pool.clone(),
             block_processor: self.block_processor.clone(),

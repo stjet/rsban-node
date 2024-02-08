@@ -4,7 +4,7 @@ use crate::{
     OnlineReps,
 };
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, LogType, Logger},
+    utils::{ContainerInfo, ContainerInfoComponent},
     Account, Vote,
 };
 use rsnano_ledger::Ledger;
@@ -14,6 +14,7 @@ use std::{
     sync::{Arc, Condvar, Mutex},
     time::Duration,
 };
+use tracing::error;
 
 pub struct VoteProcessorQueue {
     data: Mutex<VoteProcessorQueueData>,
@@ -22,7 +23,6 @@ pub struct VoteProcessorQueue {
     stats: Arc<Stats>,
     online_reps: Arc<Mutex<OnlineReps>>,
     ledger: Arc<Ledger>,
-    logger: Arc<dyn Logger>,
 }
 
 impl VoteProcessorQueue {
@@ -31,7 +31,6 @@ impl VoteProcessorQueue {
         stats: Arc<Stats>,
         online_reps: Arc<Mutex<OnlineReps>>,
         ledger: Arc<Ledger>,
-        logger: Arc<dyn Logger>,
     ) -> Self {
         Self {
             data: Mutex::new(VoteProcessorQueueData {
@@ -45,7 +44,6 @@ impl VoteProcessorQueue {
             max_votes,
             online_reps,
             stats,
-            logger,
             ledger,
         }
     }
@@ -146,10 +144,7 @@ impl VoteProcessorQueue {
             });
 
         if result.is_err() {
-            self.logger.error(
-                LogType::VoteProcessor,
-                "vote_processor_queue::flush timeout while waiting for flush",
-            )
+            error!("vote_processor_queue::flush timeout while waiting for flush")
         }
     }
 

@@ -1,5 +1,5 @@
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, LogType, Logger},
+    utils::{ContainerInfo, ContainerInfoComponent},
     work::WorkThresholds,
     BlockEnum, BlockType, Epoch, HashOrAccount, UncheckedInfo,
 };
@@ -12,6 +12,7 @@ use std::{
     sync::{atomic::AtomicBool, Arc, Condvar, Mutex},
     time::{Duration, Instant, SystemTime},
 };
+use tracing::{debug, error};
 
 use crate::{
     config::{NodeConfig, NodeFlags},
@@ -39,7 +40,6 @@ pub struct BlockProcessor {
     pub unchecked_map: Arc<UncheckedMap>,
     gap_cache: Arc<Mutex<GapCache>>,
     config: Arc<NodeConfig>,
-    logger: Arc<dyn Logger>,
     stats: Arc<Stats>,
     work: Arc<WorkThresholds>,
     write_database_queue: Arc<WriteDatabaseQueue>,
@@ -51,7 +51,6 @@ impl BlockProcessor {
     pub fn new(
         handle: *mut c_void,
         config: Arc<NodeConfig>,
-        logger: Arc<dyn Logger>,
         flags: Arc<NodeFlags>,
         ledger: Arc<Ledger>,
         unchecked_map: Arc<UncheckedMap>,
@@ -74,7 +73,6 @@ impl BlockProcessor {
             unchecked_map,
             gap_cache,
             config,
-            logger,
             stats,
             work,
             write_database_queue,
@@ -180,14 +178,11 @@ impl BlockProcessor {
         drop(lock_a);
 
         if number_of_blocks_processed != 0 && timer_l.elapsed() > Duration::from_millis(100) {
-            self.logger.debug(
-                LogType::Blockprocessor,
-                &format!(
-                    "Processed {} blocks ({} blocks were forced) in {} ms",
-                    number_of_blocks_processed,
-                    number_of_forced_processed,
-                    timer_l.elapsed().as_millis(),
-                ),
+            debug!(
+                "Processed {} blocks ({} blocks were forced) in {} ms",
+                number_of_blocks_processed,
+                number_of_forced_processed,
+                timer_l.elapsed().as_millis(),
             );
         }
         processed
@@ -283,31 +278,22 @@ impl BlockProcessor {
         if let Some(successor) = self.ledger.successor(transaction, &block.qualified_root()) {
             if successor.hash() != hash {
                 // Replace our block with the winner and roll back any dependent blocks
-                self.logger.debug(
-                    LogType::Blockprocessor,
-                    &format!(
-                        "Rolling back: {} and replacing with: {}",
-                        successor.hash(),
-                        hash
-                    ),
+                debug!(
+                    "Rolling back: {} and replacing with: {}",
+                    successor.hash(),
+                    hash
                 );
                 let rollback_list = match self.ledger.rollback(transaction, &successor.hash()) {
                     Ok(rollback_list) => {
-                        self.logger.debug(
-                            LogType::Blockprocessor,
-                            &format!("Blocks rolled back: {}", rollback_list.len()),
-                        );
+                        debug!("Blocks rolled back: {}", rollback_list.len());
                         rollback_list
                     }
                     Err(_) => {
                         self.stats
                             .inc(StatType::Ledger, DetailType::RollbackFailed, Direction::In);
-                        self.logger.error(
-                            LogType::Blockprocessor,
-                            &format!(
-                                "Failed to roll back: {} because it or a successor was confirmed",
-                                successor.hash()
-                            ),
+                        error!(
+                            "Failed to roll back: {} because it or a successor was confirmed",
+                            successor.hash()
                         );
                         Vec::new()
                     }

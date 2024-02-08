@@ -33,6 +33,7 @@ std::function<std::string (nano::log::type tag, std::string identifier)> nano::l
 
 void nano::logger::initialize (nano::log_config fallback, std::optional<std::filesystem::path> data_path, std::vector<std::string> const & config_overrides)
 {
+	rsnano::rsn_log_init();
 	// Only load log config from file if data_path is available (i.e. not running in cli mode)
 	nano::log_config config = data_path ? nano::load_log_config (fallback, *data_path, config_overrides) : fallback;
 	initialize_common (config, data_path);
@@ -95,6 +96,7 @@ public:
 
 void nano::logger::initialize_for_tests (nano::log_config fallback)
 {
+	rsnano::rsn_log_init_test();
 	auto config = nano::load_log_config (std::move (fallback), /* load log config from current workdir */ std::filesystem::current_path ());
 	initialize_common (config, /* store log file in current workdir */ std::filesystem::current_path ());
 
@@ -522,29 +524,6 @@ nano::log_config nano::load_log_config (nano::log_config fallback, const std::fi
 		std::cerr << "Unable to load log config. Using defaults. Error: " << ex.what () << std::endl;
 	}
 	return fallback;
-}
-
-nano::logger_handle::logger_handle (logger_handle && other)
-{
-	if (handle != nullptr)
-	{
-		rsnano::rsn_logger_destroy_v2 (handle);
-	}
-	handle = other.handle;
-	other.handle = nullptr;
-}
-
-nano::logger_handle::~logger_handle ()
-{
-	if (handle != nullptr)
-	{
-		rsnano::rsn_logger_destroy_v2 (handle);
-	}
-}
-
-nano::logger_handle nano::to_logger_handle (std::shared_ptr<nano::logger> const & logger_a)
-{
-	return { rsnano::rsn_logger_create_v2 (new std::shared_ptr<nano::logger> (logger_a)) };
 }
 
 void nano::log_with_rust (nano::log::level level, nano::log::type tag, const char * message, std::size_t size)

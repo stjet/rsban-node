@@ -5,10 +5,7 @@ use super::{
 use crate::{
     bootstrap::{RequestResponseVisitorFactoryHandle, TcpListenerHandle},
     messages::MessageHandle,
-    utils::{
-        AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, LoggerHandleV2,
-        ThreadPoolHandle,
-    },
+    utils::{AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, ThreadPoolHandle},
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
 use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
@@ -40,7 +37,6 @@ pub type SinkCallback = unsafe extern "C" fn(*mut c_void, *mut MessageHandle, *m
 #[repr(C)]
 pub struct TcpChannelsOptionsDto {
     pub node_config: *const NodeConfigDto,
-    pub logger: *mut LoggerHandleV2,
     pub publish_filter: *mut NetworkFilterHandle,
     pub async_rt: *mut AsyncRuntimeHandle,
     pub network: *mut NetworkParamsDto,
@@ -76,7 +72,6 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
 
             Ok(Self {
                 node_config: NodeConfig::try_from(&*value.node_config)?,
-                logger: (*value.logger).into_logger(),
                 publish_filter: (*value.publish_filter).0.clone(),
                 network: NetworkParams::try_from(&*value.network)?,
                 async_rt: Arc::clone(&(*value.async_rt).0),

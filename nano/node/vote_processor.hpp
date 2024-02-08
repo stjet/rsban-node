@@ -36,7 +36,7 @@ namespace transport
 class vote_processor_queue
 {
 public:
-	vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, std::shared_ptr<nano::logger> & logger_a);
+	vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a);
 	vote_processor_queue (vote_processor_queue const &) = delete;
 	~vote_processor_queue ();
 

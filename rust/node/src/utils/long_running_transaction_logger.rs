@@ -1,12 +1,12 @@
+use backtrace::Backtrace;
+use rsnano_core::utils::PropertyTreeWriter;
+use rsnano_store_lmdb::TransactionTracker;
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex},
+    sync::Mutex,
     time::{Duration, Instant},
 };
-
-use backtrace::Backtrace;
-use rsnano_core::utils::{LogType, Logger, PropertyTreeWriter};
-use rsnano_store_lmdb::TransactionTracker;
+use tracing::warn;
 
 #[derive(Clone)]
 pub struct TxnTrackingConfig {
@@ -36,19 +36,13 @@ impl Default for TxnTrackingConfig {
 
 pub struct LongRunningTransactionLogger {
     stats: Mutex<HashMap<u64, TxnStats>>,
-    logger: Arc<dyn Logger>,
     config: TxnTrackingConfig,
     block_processor_batch_max_time: Duration,
 }
 
 impl LongRunningTransactionLogger {
-    pub fn new(
-        logger: Arc<dyn Logger>,
-        config: TxnTrackingConfig,
-        block_processor_batch_max_time: Duration,
-    ) -> Self {
+    pub fn new(config: TxnTrackingConfig, block_processor_batch_max_time: Duration) -> Self {
         Self {
-            logger,
             config,
             block_processor_batch_max_time,
             stats: Mutex::new(HashMap::new()),
@@ -102,15 +96,12 @@ impl LongRunningTransactionLogger {
         {
             let txn_type = if txn.is_write { "write lock" } else { "read" };
             txn.stacktrace.resolve();
-            self.logger.warn(
-                LogType::TxnTracker,
-                &format!(
-                    "{}ms {} held on thread {}\n{:?}",
-                    time_open.as_millis(),
-                    txn_type,
-                    txn.thread_name.as_deref().unwrap_or("unnamed"),
-                    txn.stacktrace
-                ),
+            warn!(
+                "{}ms {} held on thread {}\n{:?}",
+                time_open.as_millis(),
+                txn_type,
+                txn.thread_name.as_deref().unwrap_or("unnamed"),
+                txn.stacktrace
             );
         }
     }

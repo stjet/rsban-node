@@ -1,21 +1,16 @@
-use std::{sync::Arc, time::SystemTime};
-
-use rsnano_core::utils::Logger;
-
-use crate::{
-    bootstrap::BootstrapMessageVisitorFactory, config::NodeConfig, stats::Stats,
-    utils::AsyncRuntime, NetworkParams,
-};
-
 use super::{
     Channel, ChannelTcp, NetworkFilter, Socket, SocketType, TcpMessageManager, TcpServer,
     TcpServerExt, TcpServerObserver,
 };
+use crate::{
+    bootstrap::BootstrapMessageVisitorFactory, config::NodeConfig, stats::Stats,
+    utils::AsyncRuntime, NetworkParams,
+};
+use std::{sync::Arc, time::SystemTime};
 
 pub struct TcpServerFactory {
     pub async_rt: Arc<AsyncRuntime>,
     pub config: Arc<NodeConfig>,
-    pub logger: Arc<dyn Logger>,
     pub observer: Arc<dyn TcpServerObserver>,
     pub publish_filter: Arc<NetworkFilter>,
     pub network: Arc<NetworkParams>,
@@ -30,7 +25,6 @@ impl TcpServerFactory {
             Arc::clone(&self.async_rt),
             socket,
             Arc::clone(&self.config),
-            Arc::clone(&self.logger),
             Arc::clone(&self.observer),
             Arc::clone(&self.publish_filter),
             Arc::clone(&self.network),

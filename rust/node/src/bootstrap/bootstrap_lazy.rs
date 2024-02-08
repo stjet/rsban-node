@@ -1,6 +1,5 @@
 use crate::{block_processing::BlockProcessor, websocket::Listener};
 use anyhow::Result;
-use rsnano_core::utils::Logger;
 use rsnano_ledger::Ledger;
 use std::sync::{Arc, Weak};
 
@@ -12,7 +11,6 @@ pub struct BootstrapAttemptLazy {
 
 impl BootstrapAttemptLazy {
     pub fn new(
-        logger: Arc<dyn Logger>,
         websocket_server: Arc<dyn Listener>,
         block_processor: Weak<BlockProcessor>,
         bootstrap_initiator: Weak<BootstrapInitiator>,
@@ -22,7 +20,6 @@ impl BootstrapAttemptLazy {
     ) -> Result<Self> {
         Ok(Self {
             attempt: BootstrapAttempt::new(
-                logger,
                 websocket_server,
                 block_processor,
                 bootstrap_initiator,

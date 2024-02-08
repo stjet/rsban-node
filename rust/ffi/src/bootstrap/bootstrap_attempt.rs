@@ -1,7 +1,7 @@
 use super::bootstrap_initiator::BootstrapInitiatorHandle;
 use crate::{
     block_processing::BlockProcessorHandle, core::BlockHandle, ledger::datastore::LedgerHandle,
-    utils::LoggerHandleV2, FfiListener, StringDto, StringHandle,
+    FfiListener, StringDto, StringHandle,
 };
 use num::FromPrimitive;
 use rsnano_core::Account;
@@ -35,7 +35,6 @@ impl Deref for BootstrapAttemptHandle {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
-    logger: &LoggerHandleV2,
     websocket_server: *mut c_void,
     block_processor: *const BlockProcessorHandle,
     bootstrap_initiator: *const BootstrapInitiatorHandle,
@@ -44,7 +43,6 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
     mode: u8,
     incremental_id: u64,
 ) -> *mut BootstrapAttemptHandle {
-    let logger = logger.into_logger();
     let id_str = CStr::from_ptr(id).to_str().unwrap();
     let mode = FromPrimitive::from_u8(mode).unwrap();
     let websocket_server: Arc<dyn Listener> = if websocket_server.is_null() {
@@ -57,7 +55,6 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
     let ledger = Arc::clone(&*ledger);
     BootstrapAttemptHandle::new(Arc::new(BootstrapStrategy::Other(
         BootstrapAttempt::new(
-            logger,
             websocket_server,
             block_processor,
             bootstrap_initiator,

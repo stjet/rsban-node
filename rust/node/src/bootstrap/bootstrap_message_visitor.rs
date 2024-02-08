@@ -1,6 +1,6 @@
 use std::sync::{Arc, Weak};
 
-use rsnano_core::{utils::Logger, work::WorkThresholds};
+use rsnano_core::work::WorkThresholds;
 use rsnano_ledger::Ledger;
 use rsnano_messages::{Message, MessageVisitor};
 
@@ -19,7 +19,6 @@ use super::{
 pub struct BootstrapMessageVisitorImpl {
     pub async_rt: Arc<AsyncRuntime>,
     pub ledger: Arc<Ledger>,
-    pub logger: Arc<dyn Logger>,
     pub connection: Arc<TcpServer>,
     pub thread_pool: Weak<dyn ThreadPool>,
     pub block_processor: Weak<BlockProcessor>,
@@ -45,13 +44,12 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 let payload = payload.clone();
                 let connection = Arc::clone(&self.connection);
                 let ledger = Arc::clone(&self.ledger);
-                let logger = Arc::clone(&self.logger);
                 let thread_pool2 = Arc::clone(&thread_pool);
                 thread_pool.push_task(Box::new(move || {
                     // TODO from original code: Add completion callback to bulk pull server
                     // TODO from original code: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
                     let mut bulk_pull_server =
-                        BulkPullServer::new(payload, connection, ledger, logger, thread_pool2);
+                        BulkPullServer::new(payload, connection, ledger, thread_pool2);
                     bulk_pull_server.send_next();
                 }));
 
@@ -69,17 +67,11 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 let connection = Arc::clone(&self.connection);
                 let ledger = Arc::clone(&self.ledger);
                 let thread_pool2 = Arc::clone(&thread_pool);
-                let logger = Arc::clone(&self.logger);
                 thread_pool.push_task(Box::new(move || {
                     // original code TODO: Add completion callback to bulk pull server
                     // original code TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
-                    let bulk_pull_account_server = BulkPullAccountServer::new(
-                        connection,
-                        payload,
-                        logger,
-                        thread_pool2,
-                        ledger,
-                    );
+                    let bulk_pull_account_server =
+                        BulkPullAccountServer::new(connection, payload, thread_pool2, ledger);
                     bulk_pull_account_server.send_frontier();
                 }));
 
@@ -98,7 +90,6 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 let connection = Arc::clone(&self.connection);
                 let ledger = Arc::clone(&self.ledger);
                 let thread_pool2 = Arc::clone(&thread_pool);
-                let logger = Arc::clone(&self.logger);
                 let stats = Arc::clone(&self.stats);
                 let work_thresholds = self.work_thresholds.clone();
                 let async_rt = Arc::clone(&self.async_rt);
@@ -108,7 +99,6 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                         async_rt,
                         connection,
                         ledger,
-                        logger,
                         thread_pool2,
                         block_processor,
                         bootstrap_initiator,
@@ -128,12 +118,11 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 let request = payload.clone();
                 let connection = Arc::clone(&self.connection);
                 let ledger = Arc::clone(&self.ledger);
-                let logger = Arc::clone(&self.logger);
                 let thread_pool2 = Arc::clone(&thread_pool);
                 thread_pool.push_task(Box::new(move || {
                     // original code TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
                     let response =
-                        FrontierReqServer::new(connection, request, thread_pool2, logger, ledger);
+                        FrontierReqServer::new(connection, request, thread_pool2, ledger);
                     response.send_next();
                 }));
 

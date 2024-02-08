@@ -1,9 +1,5 @@
 use super::bootstrap_server::TcpServerHandle;
-use crate::{
-    ledger::datastore::LedgerHandle,
-    messages::MessageHandle,
-    utils::{LoggerHandleV2, ThreadPoolHandle},
-};
+use crate::{ledger::datastore::LedgerHandle, messages::MessageHandle, utils::ThreadPoolHandle};
 use rsnano_messages::Message;
 use rsnano_node::bootstrap::FrontierReqServer;
 
@@ -14,10 +10,8 @@ pub unsafe extern "C" fn rsn_frontier_req_server_create(
     tcp_server: *mut TcpServerHandle,
     request: &MessageHandle,
     thread_pool: *mut ThreadPoolHandle,
-    logger: &LoggerHandleV2,
     ledger: *mut LedgerHandle,
 ) -> *mut FrontierReqServerHandle {
-    let logger = logger.into_logger();
     let Message::FrontierReq(request) = &request.message else {
         panic!("not a frontier_req")
     };
@@ -25,7 +19,6 @@ pub unsafe extern "C" fn rsn_frontier_req_server_create(
         (*tcp_server).0.clone(),
         request.clone(),
         (*thread_pool).0.clone(),
-        logger,
         (*ledger).0.clone(),
     ))))
 }

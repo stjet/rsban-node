@@ -405,23 +405,6 @@ bool bootstrap_initiator_in_progress (void * handle_a)
 	return bootstrap_initiator->in_progress ();
 }
 
-void logger_v2_destroy (void * handle_a)
-{
-	auto logger = static_cast<std::shared_ptr<nano::logger> *> (handle_a);
-	delete logger;
-}
-
-void logger_v2_log (void * handle_a, uint8_t level, uint8_t tag, const uint8_t * message_a, size_t len_a)
-{
-	auto logger = static_cast<std::shared_ptr<nano::logger> *> (handle_a);
-	auto message_string = std::string (reinterpret_cast<const char *> (message_a), len_a);
-
-	(*logger)->log (
-	static_cast<nano::log::level> (level),
-	static_cast<nano::log::type> (tag),
-	message_string);
-}
-
 class async_write_callback_wrapper
 {
 public:
@@ -596,7 +579,6 @@ void rsnano::set_rsnano_callbacks ()
 	if (callbacks_set)
 		return;
 
-	rsnano::rsn_log_init ();
 	rsnano::rsn_callback_write_u8 (write_u8);
 	rsnano::rsn_callback_write_bytes (write_bytes);
 	rsnano::rsn_callback_read_u8 (read_u8);
@@ -629,9 +611,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_toml_drop_config (toml_drop_config);
 	rsnano::rsn_callback_toml_put_child (toml_put_child);
 	rsnano::rsn_callback_toml_drop_array (toml_drop_array);
-
-	rsnano::rsn_callback_logger_v2_destroy (logger_v2_destroy);
-	rsnano::rsn_callback_logger_v2_log (logger_v2_log);
 
 	rsnano::rsn_callback_listener_broadcast (listener_broadcast);
 	rsnano::rsn_callback_block_processor_add (blockprocessor_add);

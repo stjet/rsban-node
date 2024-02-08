@@ -547,14 +547,13 @@ TEST (store, vote_load)
  */
 TEST (store, pruned_load)
 {
-	auto logger{ std::make_shared<nano::logger> () };
 	auto path (nano::unique_path ());
 	constexpr auto num_pruned = 2000000;
 	auto const expected_result = num_pruned / 2;
 	constexpr auto batch_size = 20;
 	boost::unordered_set<nano::block_hash> hashes;
 	{
-		auto store = nano::make_store (logger, path, nano::dev::constants);
+		auto store = nano::make_store (path, nano::dev::constants);
 		ASSERT_FALSE (store->init_error ());
 		for (auto i (0); i < num_pruned / batch_size; ++i)
 		{
@@ -585,7 +584,7 @@ TEST (store, pruned_load)
 
 	// Reinitialize store
 	{
-		auto store = nano::make_store (logger, path, nano::dev::constants);
+		auto store = nano::make_store (path, nano::dev::constants);
 		ASSERT_FALSE (store->init_error ());
 		ASSERT_EQ (expected_result, manually_count_pruned_blocks (*store));
 	}
@@ -1132,9 +1131,8 @@ TEST (confirmation_height, many_accounts_send_receive_self)
 // as opposed to active transactions which implicitly calls confirmation height processor.
 TEST (confirmation_height, many_accounts_send_receive_self_no_elections)
 {
-	auto logger{ std::make_shared<nano::logger> () };
 	auto path (nano::unique_path ());
-	auto store = nano::make_store (logger, path, nano::dev::constants);
+	auto store = nano::make_store (path, nano::dev::constants);
 	ASSERT_TRUE (!store->init_error ());
 	nano::stats stats;
 	nano::ledger ledger (*store, stats, nano::dev::constants);
@@ -1144,7 +1142,7 @@ TEST (confirmation_height, many_accounts_send_receive_self_no_elections)
 	boost::latch initialized_latch{ 0 };
 
 	nano::block_hash block_hash_being_processed{ 0 };
-	nano::confirmation_height_processor confirmation_height_processor{ ledger, stats, write_database_queue, 10ms, logger, initialized_latch };
+	nano::confirmation_height_processor confirmation_height_processor{ ledger, stats, write_database_queue, 10ms, initialized_latch };
 
 	auto const num_accounts = 100000;
 

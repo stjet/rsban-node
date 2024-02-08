@@ -105,11 +105,9 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	stats{ *node_a.stats }
 {
 	auto config_dto{ config.to_dto () };
-	auto logger_handle = nano::to_logger_handle (node_a.logger);
 	handle = rsnano::rsn_block_processor_create (
 	this,
 	&config_dto,
-	logger_handle.handle,
 	node_a.flags.handle,
 	node_a.ledger.handle,
 	node_a.unchecked.handle,

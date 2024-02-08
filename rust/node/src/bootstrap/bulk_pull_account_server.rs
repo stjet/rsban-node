@@ -2,21 +2,18 @@ use crate::{
     transport::{SocketExtensions, TcpServer, TcpServerExt, TrafficType},
     utils::{ErrorCode, ThreadPool},
 };
-use rsnano_core::{
-    utils::{LogType, Logger},
-    Account, Amount, BlockHash, PendingInfo, PendingKey,
-};
+use rsnano_core::{Account, Amount, BlockHash, PendingInfo, PendingKey};
 use rsnano_ledger::Ledger;
 use rsnano_messages::{BulkPullAccount, BulkPullAccountFlags};
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex, Weak},
 };
+use tracing::debug;
 
 struct BulkPullAccountServerImpl {
     connection: Arc<TcpServer>,
     request: BulkPullAccount,
-    logger: Arc<dyn Logger>,
     thread_pool: Weak<dyn ThreadPool>,
     ledger: Arc<Ledger>,
     deduplication: HashSet<Account>,
@@ -44,12 +41,9 @@ impl BulkPullAccountServerImpl {
         } else if self.request.flags == BulkPullAccountFlags::PendingHashAndAmount {
             // The defaults are set above
         } else {
-            self.logger.debug(
-                LogType::BulkPullAccountServer,
-                &format!(
-                    "Invalid bulk_pull_account flags supplied {:?}",
-                    self.request.flags
-                ),
+            debug!(
+                "Invalid bulk_pull_account flags supplied {:?}",
+                self.request.flags
             );
 
             self.invalid_request = true;
@@ -136,8 +130,7 @@ impl BulkPullAccountServerImpl {
             /*
              * Otherwise, finalize the connection
              */
-            self.logger
-                .debug(LogType::BulkPullAccountServer, "Done sending blocks");
+            debug!("Done sending blocks");
 
             self.send_finished(server);
         }
@@ -225,10 +218,7 @@ impl BulkPullAccountServerImpl {
                 server.lock().unwrap().send_next_block(server2);
             }));
         } else {
-            self.logger.debug(
-                LogType::BulkPullAccountServer,
-                &format!("Unable to bulk send block: {:?}", ec),
-            );
+            debug!("Unable to bulk send block: {:?}", ec);
         }
     }
 
@@ -253,10 +243,7 @@ impl BulkPullAccountServerImpl {
             }
         }
 
-        self.logger.debug(
-            LogType::BulkPullAccountServer,
-            "Bulk sending for an account finished",
-        );
+        debug!("Bulk sending for an account finished");
 
         self.connection.socket.async_write(
             &Arc::new(send_buffer),
@@ -281,8 +268,7 @@ impl BulkPullAccountServerImpl {
 
             self.connection.start();
         } else {
-            self.logger
-                .debug(LogType::BulkPullAccountServer, "Unable to pending-as-zero");
+            debug!("Unable to pending-as-zero");
         }
     }
 }
@@ -295,14 +281,12 @@ impl BulkPullAccountServer {
     pub fn new(
         connection: Arc<TcpServer>,
         request: BulkPullAccount,
-        logger: Arc<dyn Logger>,
         thread_pool: Arc<dyn ThreadPool>,
         ledger: Arc<Ledger>,
     ) -> Self {
         let mut server = BulkPullAccountServerImpl {
             connection,
             request,
-            logger,
             thread_pool: Arc::downgrade(&thread_pool),
             ledger,
             deduplication: HashSet::new(),

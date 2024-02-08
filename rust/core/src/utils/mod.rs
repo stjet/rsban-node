@@ -14,11 +14,8 @@ pub use stream::*;
 mod toml;
 pub use toml::*;
 
-mod logger;
-
 mod container_info;
 pub use container_info::{ContainerInfo, ContainerInfoComponent};
-pub use logger::{ConsoleLogger, LogDetail, LogLevel, LogType, Logger, NullLogger};
 
 pub trait Serialize {
     fn serialize(&self, stream: &mut dyn BufferWriter);

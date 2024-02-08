@@ -278,12 +278,9 @@ std::shared_ptr<nano::node> const & node_a,
 std::shared_ptr<nano::transport::tcp_server> const & connection_a,
 rsnano::MessageHandle * request_a)
 {
-	auto logger_handle{ nano::to_logger_handle (node_a->logger) };
-
 	return rsnano::rsn_frontier_req_server_create (connection_a->handle,
 	request_a,
 	node_a->bootstrap_workers->handle,
-	logger_handle.handle,
 	node_a->ledger.get_handle ());
 }
 }

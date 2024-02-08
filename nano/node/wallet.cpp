@@ -429,10 +429,8 @@ nano::account representative,
 std::string const & wallet_path,
 const char * json)
 {
-	auto logger_handle{ nano::to_logger_handle (node.logger) };
 	return rsnano::rsn_wallet_create (
 	node.ledger.handle,
-	logger_handle.handle,
 	&node.network_params.work.dto,
 	node.config->password_fanout,
 	wallets_a.kdf.handle,
@@ -632,13 +630,11 @@ namespace
 rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lmdb::env & env)
 {
 	auto config_dto{ node_a.config->to_dto () };
-	auto logger_handle{ nano::to_logger_handle (node_a.logger) };
 
 	return rsnano::rsn_lmdb_wallets_create (
 	node_a.config->enable_voting,
 	env.handle,
 	node_a.ledger.handle,
-	logger_handle.handle,
 	&config_dto,
 	node_a.config->network_params.kdf_work,
 	&node_a.config->network_params.work.dto);

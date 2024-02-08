@@ -1,7 +1,7 @@
 use super::wallet::WalletHandle;
 use crate::{
     ledger::datastore::{lmdb::LmdbEnvHandle, LedgerHandle, TransactionHandle},
-    utils::{ContextWrapper, LoggerHandleV2},
+    utils::ContextWrapper,
     work::WorkThresholdsDto,
     NodeConfigDto, U256ArrayDto, VoidPointerCallback,
 };
@@ -32,12 +32,10 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
     enable_voting: bool,
     lmdb: &LmdbEnvHandle,
     ledger: &LedgerHandle,
-    logger: &LoggerHandleV2,
     node_config: &NodeConfigDto,
     kdf_work: u32,
     work_thresholds: &WorkThresholdsDto,
 ) -> *mut LmdbWalletsHandle {
-    let logger = logger.into_logger();
     let node_config = NodeConfig::try_from(node_config).unwrap();
     let work = WorkThresholds::from(work_thresholds);
     Box::into_raw(Box::new(LmdbWalletsHandle(Arc::new(
@@ -45,7 +43,6 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
             enable_voting,
             Arc::clone(lmdb),
             Arc::clone(&ledger.0),
-            logger,
             &node_config,
             kdf_work,
             work,

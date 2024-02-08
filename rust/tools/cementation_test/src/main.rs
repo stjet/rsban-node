@@ -8,7 +8,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rsnano_core::{utils::ConsoleLogger, Account};
+use rsnano_core::Account;
 use rsnano_ledger::{Ledger, LedgerConstants, WriteDatabaseQueue};
 use rsnano_node::cementation::{BlockCementer, CementCallbacks};
 use rsnano_store_lmdb::{Environment, EnvironmentWrapper, LmdbStore};
@@ -36,12 +36,10 @@ fn main() {
             let ledger = Arc::new(open_ledger::<_, EnvironmentWrapper>(ledger_path));
 
             let write_queue = Arc::new(WriteDatabaseQueue::new(true));
-            let logger = Arc::new(ConsoleLogger::new());
 
             let mut cementer = BlockCementer::new(
                 ledger.clone(),
                 write_queue,
-                logger,
                 Duration::from_millis(250),
                 Arc::new(AtomicBool::new(false)),
             );

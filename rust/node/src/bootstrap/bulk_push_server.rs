@@ -12,12 +12,12 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::{BufferReader, LogType, Logger},
-    work::WorkThresholds,
-    BlockEnum, BlockType, ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
+    utils::BufferReader, work::WorkThresholds, BlockEnum, BlockType, ChangeBlock, OpenBlock,
+    ReceiveBlock, SendBlock, StateBlock,
 };
 use rsnano_ledger::Ledger;
 use tokio::task::spawn_blocking;
+use tracing::debug;
 
 /// Server side of a bulk_push request. Receives blocks and puts them in the block processor to be processed.
 pub struct BulkPushServer {
@@ -29,7 +29,6 @@ impl BulkPushServer {
         async_rt: Arc<AsyncRuntime>,
         connection: Arc<TcpServer>,
         ledger: Arc<Ledger>,
-        logger: Arc<dyn Logger>,
         thread_pool: Arc<dyn ThreadPool>,
         block_processor: Arc<BlockProcessor>,
         bootstrap_initiator: Arc<BootstrapInitiator>,
@@ -40,7 +39,6 @@ impl BulkPushServer {
             async_rt,
             connection,
             ledger,
-            logger,
             thread_pool: Arc::downgrade(&thread_pool),
             block_processor: Arc::downgrade(&block_processor),
             receive_buffer: Arc::new(Mutex::new(vec![0; 256])),
@@ -66,7 +64,6 @@ impl BulkPushServer {
 struct BulkPushServerImpl {
     async_rt: Arc<AsyncRuntime>,
     ledger: Arc<Ledger>,
-    logger: Arc<dyn Logger>,
     connection: Arc<TcpServer>,
     thread_pool: Weak<dyn ThreadPool>,
     block_processor: Weak<BlockProcessor>,
@@ -105,10 +102,7 @@ impl BulkPushServerImpl {
             return;
         };
         if bootstrap_initiator.in_progress() {
-            self.logger.debug(
-                LogType::BulkPushServer,
-                "Aborting bulk_push because a bootstrap attempt is in progress",
-            );
+            debug!("Aborting bulk_push because a bootstrap attempt is in progress");
         } else {
             let socket = Arc::clone(&self.connection.socket);
             let buffer = Arc::clone(&self.receive_buffer);
@@ -122,10 +116,7 @@ impl BulkPushServerImpl {
                             guard.received_type(server_impl2);
                         }
                         Err(e) => {
-                            guard.logger.debug(
-                                LogType::BulkPushServer,
-                                &format!("Error receiving block type: {:?}", e),
-                            );
+                            debug!("Error receiving block type: {:?}", e);
                         }
                     }
                 }));
@@ -146,10 +137,7 @@ impl BulkPushServerImpl {
                 return;
             }
             Some(BlockType::Invalid) | None => {
-                self.logger.debug(
-                    LogType::BulkPushServer,
-                    "Unknown type received as block type",
-                );
+                debug!("Unknown type received as block type");
                 return;
             }
             _ => {}
@@ -306,10 +294,7 @@ impl BulkPushServerImpl {
             match block {
                 Ok(block) => {
                     if self.work_thresholds.validate_entry_block(&block) {
-                        self.logger.debug(
-                            LogType::BulkPushServer,
-                            &format!("Insufficient work for bulk push block: {}", block.hash()),
-                        );
+                        debug!("Insufficient work for bulk push block: {}", block.hash());
                         self.stats.inc(
                             StatType::Error,
                             DetailType::InsufficientWork,
@@ -321,10 +306,7 @@ impl BulkPushServerImpl {
                     }
                 }
                 Err(_) => {
-                    self.logger.debug(
-                        LogType::BulkPushServer,
-                        "Error deserializing block received from pull request",
-                    );
+                    debug!("Error deserializing block received from pull request");
                 }
             }
         }

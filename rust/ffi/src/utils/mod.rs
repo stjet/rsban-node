@@ -23,7 +23,6 @@ mod timer;
 use crate::{transport::EndpointDto, VoidPointerCallback};
 pub use container_info::*;
 pub use latch::*;
-pub use logging::LoggerHandleV2;
 pub use thread_pool::ThreadPoolHandle;
 
 pub struct ContextWrapper {

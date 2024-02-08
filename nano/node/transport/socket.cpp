@@ -42,14 +42,12 @@ bool is_temporary_error (boost::system::error_code const & ec_a)
  */
 
 nano::transport::socket::socket (rsnano::async_runtime & async_rt_a, endpoint_type_t endpoint_type_a, nano::stats & stats_a,
-std::shared_ptr<nano::logger> & logger_a, std::shared_ptr<nano::thread_pool> const & workers_a,
+std::shared_ptr<nano::thread_pool> const & workers_a,
 std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a,
 std::chrono::seconds idle_timeout_a,
 std::shared_ptr<nano::node_observers> observers_a,
 std::size_t max_queue_size_a)
 {
-	auto logger_handle{ nano::to_logger_handle (logger_a) };
-
 	handle = rsnano::rsn_socket_create (
 	static_cast<uint8_t> (endpoint_type_a),
 	stats_a.handle,
@@ -57,7 +55,6 @@ std::size_t max_queue_size_a)
 	default_timeout_a.count (),
 	silent_connection_tolerance_time_a.count (),
 	idle_timeout_a.count (),
-	logger_handle.handle,
 	new std::weak_ptr<nano::node_observers> (observers_a),
 	max_queue_size_a,
 	async_rt_a.handle);
@@ -249,7 +246,7 @@ boost::asio::ip::network_v6 nano::transport::socket_functions::get_ipv6_subnet_a
 
 std::shared_ptr<nano::transport::socket> nano::transport::create_client_socket (nano::node & node_a, std::size_t write_queue_size)
 {
-	return std::make_shared<nano::transport::socket> (node_a.async_rt, nano::transport::socket::endpoint_type_t::client, *node_a.stats, node_a.logger, node_a.workers,
+	return std::make_shared<nano::transport::socket> (node_a.async_rt, nano::transport::socket::endpoint_type_t::client, *node_a.stats, node_a.workers,
 	node_a.config->tcp_io_timeout,
 	node_a.network_params.network.silent_connection_tolerance_time,
 	node_a.network_params.network.idle_timeout,

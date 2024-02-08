@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rsnano_core::{utils::Logger, BlockEnum};
+use rsnano_core::BlockEnum;
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, WriteGuard, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 
@@ -18,7 +18,6 @@ pub struct BlockCementer {
     processing_started: Instant,
     write_txn_started: Instant,
     write_database_queue: Arc<WriteDatabaseQueue>,
-    logger: Arc<dyn Logger>,
     ledger: Arc<Ledger>,
     logic: BlockCementerLogic,
 }
@@ -27,7 +26,6 @@ impl BlockCementer {
     pub fn new(
         ledger: Arc<Ledger>,
         write_database_queue: Arc<WriteDatabaseQueue>,
-        logger: Arc<dyn Logger>,
         minimum_batch_separation: Duration,
         stopped: Arc<AtomicBool>,
     ) -> Self {
@@ -40,7 +38,6 @@ impl BlockCementer {
 
         Self {
             write_database_queue,
-            logger,
             ledger,
             stopped,
             processing_started: Instant::now(),

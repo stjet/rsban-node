@@ -20,13 +20,12 @@ class latch;
 namespace nano
 {
 class ledger;
-class logger;
 class write_database_queue;
 
 class confirmation_height_processor final
 {
 public:
-	confirmation_height_processor (nano::ledger &, nano::stats & stats_a, nano::write_database_queue &, std::chrono::milliseconds, std::shared_ptr<nano::logger> &, boost::latch & initialized_latch);
+	confirmation_height_processor (nano::ledger &, nano::stats & stats_a, nano::write_database_queue &, std::chrono::milliseconds, boost::latch & initialized_latch);
 	~confirmation_height_processor ();
 
 	void pause ();

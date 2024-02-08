@@ -7,15 +7,15 @@ use std::{
 
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    utils::{LogType, Logger},
-    work::WorkThresholds,
-    Account, BlockHash, KeyDerivationFunction, NoValue, PublicKey, RawKey, WalletId,
+    work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, NoValue, PublicKey, RawKey,
+    WalletId,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{
     create_backup_file, BinaryDbIterator, DbIterator, Environment, EnvironmentWrapper, LmdbEnv,
     LmdbIteratorImpl, LmdbWalletStore, LmdbWriteTransaction, RwTransaction, Transaction,
 };
+use tracing::warn;
 
 use crate::config::NodeConfig;
 
@@ -27,7 +27,6 @@ pub struct Wallets<T: Environment = EnvironmentWrapper> {
     pub send_action_ids_handle: Option<T::Database>,
     enable_voting: bool,
     env: Arc<LmdbEnv<T>>,
-    logger: Arc<dyn Logger>,
     pub mutex: Mutex<HashMap<WalletId, Arc<Wallet<T>>>>,
     pub node_config: NodeConfig,
     ledger: Arc<Ledger>,
@@ -39,7 +38,6 @@ impl<T: Environment + 'static> Wallets<T> {
         enable_voting: bool,
         env: Arc<LmdbEnv<T>>,
         ledger: Arc<Ledger>,
-        logger: Arc<dyn Logger>,
         node_config: &NodeConfig,
         kdf_work: u32,
         work: WorkThresholds,
@@ -50,7 +48,6 @@ impl<T: Environment + 'static> Wallets<T> {
             send_action_ids_handle: None,
             enable_voting,
             mutex: Mutex::new(HashMap::new()),
-            logger: Arc::clone(&logger),
             env,
             node_config: node_config.clone(),
             ledger: Arc::clone(&ledger),
@@ -67,7 +64,6 @@ impl<T: Environment + 'static> Wallets<T> {
                 let text = PathBuf::from(id.encode_hex());
                 let wallet = Wallet::new(
                     Arc::clone(&ledger),
-                    Arc::clone(&logger),
                     work.clone(),
                     &mut txn,
                     node_config.password_fanout as usize,
@@ -199,13 +195,7 @@ impl<T: Environment + 'static> Wallets<T> {
                                     };
                                     if should_log {
                                         *last_log_guard = Some(Instant::now());
-                                        self.logger.warn(
-                                            LogType::Wallet,
-                                            &format!(
-                                                "Representative locked inside wallet {}",
-                                                wallet_id
-                                            ),
-                                        );
+                                        warn!("Representative locked inside wallet {}", wallet_id);
                                     }
                                 }
                             }

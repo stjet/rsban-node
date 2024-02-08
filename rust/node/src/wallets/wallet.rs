@@ -6,27 +6,25 @@ use std::{
 
 use anyhow::Context;
 use rsnano_core::{
-    utils::{LogType, Logger},
-    work::WorkThresholds,
-    Account, BlockHash, KeyDerivationFunction, KeyPair, PendingKey, Root, WorkVersion,
+    work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, KeyPair, PendingKey, Root,
+    WorkVersion,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{
     Environment, EnvironmentWrapper, LmdbWalletStore, LmdbWriteTransaction, Transaction,
 };
+use tracing::warn;
 
 pub struct Wallet<T: Environment = EnvironmentWrapper> {
     pub representatives: Mutex<HashSet<Account>>,
     pub store: Arc<LmdbWalletStore<T>>,
     ledger: Arc<Ledger>,
-    logger: Arc<dyn Logger>,
     work_thresholds: WorkThresholds,
 }
 
 impl<T: Environment + 'static> Wallet<T> {
     pub fn new(
         ledger: Arc<Ledger>,
-        logger: Arc<dyn Logger>,
         work_thresholds: WorkThresholds,
         txn: &mut LmdbWriteTransaction<T>,
         fanout: usize,
@@ -41,14 +39,12 @@ impl<T: Environment + 'static> Wallet<T> {
             representatives: Mutex::new(HashSet::new()),
             store: Arc::new(store),
             ledger,
-            logger,
             work_thresholds,
         })
     }
 
     pub fn new_from_json(
         ledger: Arc<Ledger>,
-        logger: Arc<dyn Logger>,
         work_thresholds: WorkThresholds,
         txn: &mut LmdbWriteTransaction<T>,
         fanout: usize,
@@ -63,7 +59,6 @@ impl<T: Environment + 'static> Wallet<T> {
             representatives: Mutex::new(HashSet::new()),
             store: Arc::new(store),
             ledger,
-            logger,
             work_thresholds,
         })
     }
@@ -84,8 +79,7 @@ impl<T: Environment + 'static> Wallet<T> {
         if latest == *root {
             self.store.work_put(txn, account, work);
         } else {
-            self.logger
-                .warn(LogType::Wallet, "Cached work no longer valid, discarding");
+            warn!("Cached work no longer valid, discarding");
         }
     }
 

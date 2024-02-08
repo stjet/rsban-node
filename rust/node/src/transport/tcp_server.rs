@@ -9,10 +9,7 @@ use crate::{
     utils::AsyncRuntime,
     NetworkParams,
 };
-use rsnano_core::{
-    utils::{LogType, Logger},
-    Account, KeyPair,
-};
+use rsnano_core::{Account, KeyPair};
 use rsnano_messages::*;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
@@ -23,6 +20,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::task::spawn_blocking;
+use tracing::debug;
 
 pub trait TcpServerObserver: Send + Sync {
     fn bootstrap_server_timeout(&self, connection_id: usize);
@@ -65,7 +63,6 @@ pub struct TcpServer {
     async_rt: Weak<AsyncRuntime>,
     pub socket: Arc<Socket>,
     config: Arc<NodeConfig>,
-    logger: Arc<dyn Logger>,
     stopped: AtomicBool,
     observer: Weak<dyn TcpServerObserver>,
     pub disable_bootstrap_listener: bool,
@@ -95,7 +92,6 @@ impl TcpServer {
         async_rt: Arc<AsyncRuntime>,
         socket: Arc<Socket>,
         config: Arc<NodeConfig>,
-        logger: Arc<dyn Logger>,
         observer: Arc<dyn TcpServerObserver>,
         publish_filter: Arc<NetworkFilter>,
         network: Arc<NetworkParams>,
@@ -110,7 +106,6 @@ impl TcpServer {
             async_rt: Arc::downgrade(&async_rt),
             socket,
             config,
-            logger,
             observer: Arc::downgrade(&observer),
             stopped: AtomicBool::new(false),
             disable_bootstrap_listener: false,
@@ -194,10 +189,7 @@ impl TcpServer {
 
         observer.inc_bootstrap_count();
         self.socket.set_socket_type(SocketType::Bootstrap);
-        self.logger.debug(
-            LogType::TcpServer,
-            &format!("Switched to bootstrap mode ({})", self.remote_endpoint()),
-        );
+        debug!("Switched to bootstrap mode ({})", self.remote_endpoint());
         true
     }
 
@@ -214,10 +206,7 @@ impl TcpServer {
 
             observer.inc_realtime_count();
             self.socket.set_socket_type(SocketType::Realtime);
-            self.logger.debug(
-                LogType::TcpServer,
-                &format!("Switched to realtime mode ({})", self.remote_endpoint()),
-            );
+            debug!("Switched to realtime mode ({})", self.remote_endpoint());
             return true;
         }
         false
@@ -300,11 +289,7 @@ impl TcpServerExt for Arc<TcpServer> {
             debug_assert!(guard.port() != 0);
         }
 
-        self.logger.debug(
-            LogType::TcpServer,
-            &format!("Starting TCP server ({})", guard.port()),
-        );
-
+        debug!("Starting TCP server ({})", guard.port());
         self.receive_message();
     }
 
@@ -354,13 +339,10 @@ impl TcpServerExt for Arc<TcpServer> {
                         self_clone
                             .stats
                             .inc(StatType::Error, DetailType::from(e), Direction::In);
-                        self_clone.logger.debug(
-                            LogType::TcpServer,
-                            &format!(
-                                "Error reading message: {:?} ({})",
-                                e,
-                                self_clone.remote_endpoint()
-                            ),
+                        debug!(
+                            "Error reading message: {:?} ({})",
+                            e,
+                            self_clone.remote_endpoint()
                         );
 
                         self_clone.stop();
@@ -416,11 +398,7 @@ impl TcpServerExt for Arc<TcpServer> {
                 }
             } else {
                 // Neither handshake nor bootstrap received when in handshake mode
-                self.logger.debug(
-                    LogType::TcpServer,
-                    "Neither handshake nor bootstrap received when in handshake mode",
-                );
-
+                debug!("Neither handshake nor bootstrap received when in handshake mode");
                 return true;
             }
         } else if self.is_realtime_connection() {
@@ -449,7 +427,6 @@ impl TcpServerExt for Arc<TcpServer> {
 pub struct HandshakeMessageVisitorImpl {
     pub process: bool,
     pub bootstrap: bool,
-    logger: Arc<dyn Logger>,
     server: Arc<TcpServer>,
     syn_cookies: Arc<SynCookies>,
     stats: Arc<Stats>,
@@ -461,7 +438,6 @@ pub struct HandshakeMessageVisitorImpl {
 impl HandshakeMessageVisitorImpl {
     pub fn new(
         server: Arc<TcpServer>,
-        logger: Arc<dyn Logger>,
         syn_cookies: Arc<SynCookies>,
         stats: Arc<Stats>,
         node_id: Arc<KeyPair>,
@@ -470,7 +446,6 @@ impl HandshakeMessageVisitorImpl {
         Self {
             process: false,
             bootstrap: false,
-            logger,
             server,
             syn_cookies,
             stats,
@@ -515,20 +490,16 @@ impl HandshakeMessageVisitorImpl {
         let buffer = serializer.serialize(&handshake_response);
         let shared_const_buffer = Arc::new(Vec::from(buffer)); // TODO don't copy buffer
         let server_weak = Arc::downgrade(&self.server);
-        let logger = Arc::clone(&self.logger);
         let stats = Arc::clone(&self.stats);
         self.server.socket.async_write(
             &shared_const_buffer,
             Some(Box::new(move |ec, _size| {
                 if let Some(server_l) = server_weak.upgrade() {
                     if ec.is_err() {
-                        logger.debug(
-                            LogType::TcpServer,
-                            &format!(
-                                "Error sending handshake response: {} ({:?})",
-                                server_l.remote_endpoint(),
-                                ec
-                            ),
+                        debug!(
+                            "Error sending handshake response: {} ({:?})",
+                            server_l.remote_endpoint(),
+                            ec
                         );
                         // Stop invalid handshake
                         server_l.stop();
@@ -611,12 +582,9 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
         match message {
             Message::NodeIdHandshake(payload) => {
                 if self.disable_tcp_realtime {
-                    self.logger.debug(
-                        LogType::TcpServer,
-                        &format!(
-                            "Handshake attempted with disabled realtime TCP ({})",
-                            self.server.remote_endpoint()
-                        ),
+                    debug!(
+                        "Handshake attempted with disabled realtime TCP ({})",
+                        self.server.remote_endpoint()
                     );
                     // Stop invalid handshake
                     self.server.stop();
@@ -624,12 +592,9 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
                 }
 
                 if payload.query.is_some() && self.server.was_handshake_query_received() {
-                    self.logger.debug(
-                        LogType::TcpServer,
-                        &format!(
-                            "Detected multiple handshake queries ({})",
-                            self.server.remote_endpoint()
-                        ),
+                    debug!(
+                        "Detected multiple handshake queries ({})",
+                        self.server.remote_endpoint()
                     );
                     // Stop invalid handshake
                     self.server.stop();
@@ -638,12 +603,9 @@ impl MessageVisitor for HandshakeMessageVisitorImpl {
 
                 self.server.handshake_query_received();
 
-                self.logger.debug(
-                    LogType::TcpServer,
-                    &format!(
-                        "Handshake query received ({})",
-                        self.server.remote_endpoint()
-                    ),
+                debug!(
+                    "Handshake query received ({})",
+                    self.server.remote_endpoint()
                 );
 
                 if let Some(query) = &payload.query {

@@ -1,7 +1,7 @@
 use crate::{
     core::{BlockCallback, BlockHandle, BlockHashCallback},
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
-    utils::{ContainerInfoComponentHandle, ContextWrapper, FfiLatch, LoggerHandleV2},
+    utils::{ContainerInfoComponentHandle, ContextWrapper, FfiLatch},
     VoidPointerCallback,
 };
 use rsnano_core::{BlockEnum, BlockHash};
@@ -18,7 +18,6 @@ pub struct ConfirmationHeightProcessorHandle(CementationThread);
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_height_processor_create_v2(
     write_database_queue: *mut WriteDatabaseQueueHandle,
-    logger: &LoggerHandleV2,
     ledger: *mut LedgerHandle,
     batch_separate_pending_min_time_ms: u64,
     latch: *mut c_void,
@@ -28,7 +27,6 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_create_v2(
     Box::into_raw(Box::new(ConfirmationHeightProcessorHandle(
         CementationThread::new(
             (*write_database_queue).0.clone(),
-            logger.into_logger(),
             (*ledger).0.clone(),
             Duration::from_millis(batch_separate_pending_min_time_ms),
             latch,

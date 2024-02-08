@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::ops::Deref;
 use std::path::PathBuf;
+use std::sync::atomic::AtomicUsize;
 use std::{
     ffi::{c_char, CStr},
     fs::{create_dir_all, set_permissions, Permissions},
@@ -22,6 +23,7 @@ use std::{
     },
     time::Duration,
 };
+use tracing::debug;
 
 // Thin Wrappers + Embedded Stubs
 // --------------------------------------------------------------------------------
@@ -716,6 +718,7 @@ pub struct LmdbEnv<T: Environment = EnvironmentWrapper> {
     pub environment: T,
     next_txn_id: AtomicU64,
     txn_tracker: Arc<dyn TransactionTracker>,
+    env_id: usize,
 }
 
 impl LmdbEnv<EnvironmentStub> {
@@ -730,25 +733,41 @@ impl LmdbEnv<EnvironmentStub> {
     }
 }
 
+static ENV_COUNT: AtomicUsize = AtomicUsize::new(0);
+static NEXT_ENV_ID: AtomicUsize = AtomicUsize::new(0);
+
 impl<T: Environment> LmdbEnv<T> {
     pub fn new(path: impl AsRef<Path>) -> anyhow::Result<Self> {
         Self::with_options(path, &EnvOptions::default())
     }
 
     pub fn with_env(env: T) -> Self {
+        ENV_COUNT.fetch_add(1, Ordering::SeqCst);
+        let env_id = NEXT_ENV_ID.fetch_add(1, Ordering::SeqCst);
+        debug!("LMDB env created: {}", env_id);
         Self {
             environment: env,
             next_txn_id: AtomicU64::new(0),
             txn_tracker: Arc::new(NullTransactionTracker::new()),
+            env_id,
         }
     }
 
     pub fn with_options(path: impl AsRef<Path>, options: &EnvOptions) -> anyhow::Result<Self> {
+        let path = path.as_ref();
         let env = Self {
             environment: Self::init(path, options)?,
             next_txn_id: AtomicU64::new(0),
             txn_tracker: Arc::new(NullTransactionTracker::new()),
+            env_id: NEXT_ENV_ID.fetch_add(1, Ordering::SeqCst),
         };
+        let old = ENV_COUNT.fetch_add(1, Ordering::SeqCst);
+        debug!(
+            "LMDB env created: {}, alive: {}, path: {:?}",
+            env.env_id,
+            old + 1,
+            path
+        );
         Ok(env)
     }
 
@@ -761,7 +780,15 @@ impl<T: Environment> LmdbEnv<T> {
             environment: Self::init(path, options)?,
             next_txn_id: AtomicU64::new(0),
             txn_tracker,
+            env_id: NEXT_ENV_ID.fetch_add(1, Ordering::SeqCst),
         };
+        let old = ENV_COUNT.fetch_add(1, Ordering::SeqCst);
+        debug!(
+            "LMDB env created: {}, alive: {}, path: {:?}",
+            env.env_id,
+            old + 1,
+            path
+        );
         Ok(env)
     }
 
@@ -861,6 +888,12 @@ fn try_create_parent_dir(path: &Path) -> std::io::Result<()> {
 
 impl<T: Environment> Drop for LmdbEnv<T> {
     fn drop(&mut self) {
+        let old = ENV_COUNT.fetch_sub(1, Ordering::SeqCst);
+        debug!(
+            "LMDB env dropped: {}, alive: {}",
+            self.env_id,
+            old.wrapping_sub(1)
+        );
         let _ = self.environment.sync(true);
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     core::{BlockHandle, BlockVecHandle},
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
-    utils::{ContainerInfoComponentHandle, ContextWrapper, LoggerHandleV2},
+    utils::{ContainerInfoComponentHandle, ContextWrapper},
     work::WorkThresholdsDto,
     NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
@@ -38,7 +38,6 @@ impl Deref for BlockProcessorHandle {
 pub unsafe extern "C" fn rsn_block_processor_create(
     handle: *mut c_void,
     config: &NodeConfigDto,
-    logger: &LoggerHandleV2,
     flags: &NodeFlagsHandle,
     ledger: &LedgerHandle,
     unchecked_map: &UncheckedMapHandle,
@@ -48,7 +47,6 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     write_database_queue: &WriteDatabaseQueueHandle,
 ) -> *mut BlockProcessorHandle {
     let config = Arc::new(NodeConfig::try_from(config).unwrap());
-    let logger = logger.into_logger();
     let flags = Arc::new(flags.lock().unwrap().clone());
     let ledger = Arc::clone(&ledger);
     let unchecked_map = Arc::clone(&unchecked_map);
@@ -59,7 +57,6 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     let processor = Arc::new(BlockProcessor::new(
         handle,
         config,
-        logger,
         flags,
         ledger,
         unchecked_map,

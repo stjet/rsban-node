@@ -11,7 +11,7 @@ use std::{
 };
 
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, Latch, Logger},
+    utils::{ContainerInfo, ContainerInfoComponent, Latch},
     BlockEnum, BlockHash,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue};
@@ -39,7 +39,6 @@ pub struct CementationThread {
 impl CementationThread {
     pub fn new(
         write_database_queue: Arc<WriteDatabaseQueue>,
-        logger: Arc<dyn Logger>,
         ledger: Arc<Ledger>,
         batch_separate_pending_min_time: Duration,
         latch: Box<dyn Latch>,
@@ -53,7 +52,6 @@ impl CementationThread {
         let block_cementer = BlockCementer::new(
             ledger,
             write_database_queue,
-            logger,
             batch_separate_pending_min_time,
             stopped.clone(),
         );

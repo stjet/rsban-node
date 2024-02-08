@@ -1,10 +1,7 @@
 use super::VoteHandle;
 use crate::{
-    ledger::datastore::LedgerHandle,
-    representatives::OnlineRepsHandle,
-    transport::ChannelHandle,
-    utils::{ContainerInfoComponentHandle, LoggerHandleV2},
-    StatHandle,
+    ledger::datastore::LedgerHandle, representatives::OnlineRepsHandle, transport::ChannelHandle,
+    utils::ContainerInfoComponentHandle, StatHandle,
 };
 use rsnano_core::{Account, Vote};
 use rsnano_node::{consensus::VoteProcessorQueue, transport::ChannelEnum};
@@ -31,7 +28,6 @@ pub unsafe extern "C" fn rsn_vote_processor_queue_create(
     stats: &StatHandle,
     online_reps: &OnlineRepsHandle,
     ledger: &LedgerHandle,
-    logger: &LoggerHandleV2,
 ) -> *mut VoteProcessorQueueHandle {
     Box::into_raw(Box::new(VoteProcessorQueueHandle(Arc::new(
         VoteProcessorQueue::new(
@@ -39,7 +35,6 @@ pub unsafe extern "C" fn rsn_vote_processor_queue_create(
             Arc::clone(stats),
             Arc::clone(online_reps),
             Arc::clone(ledger),
-            logger.into_logger(),
         ),
     ))))
 }

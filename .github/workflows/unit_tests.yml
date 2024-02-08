@@ -3,7 +3,7 @@ name: Unit Tests
 on: [push, pull_request]
 
 jobs:
-  osx_test:
+  macos_test:
     name: macOS
     strategy:
       fail-fast: false

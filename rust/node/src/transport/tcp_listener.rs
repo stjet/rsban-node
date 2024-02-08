@@ -245,11 +245,13 @@ impl TcpListenerExt for Arc<TcpListener> {
         &self,
         callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
     ) {
-        let this_l = Arc::clone(self);
+        let this_w = Arc::downgrade(self);
         self.workers.add_delayed_task(
             Duration::from_millis(1),
             Box::new(move || {
-                this_l.on_connection(callback);
+                if let Some(this_l) = this_w.upgrade() {
+                    this_l.on_connection(callback);
+                }
             }),
         );
     }

@@ -19,7 +19,7 @@ use std::{
     ffi::{c_char, c_void, CStr},
     net::{Ipv6Addr, SocketAddrV6},
     ops::Deref,
-    sync::Arc,
+    sync::{Arc, Weak},
 };
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
@@ -286,7 +286,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_set_observer(
     handle: &mut TcpChannelsHandle,
     observer: &TcpListenerHandle,
 ) {
-    let observer: Arc<TcpListener> = Arc::clone(observer);
+    let observer: Weak<TcpListener> = Arc::downgrade(observer);
     handle.set_observer(observer);
 }
 

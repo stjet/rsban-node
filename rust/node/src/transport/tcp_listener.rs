@@ -47,6 +47,12 @@ pub struct TcpListener {
     realtime_count: AtomicUsize,
 }
 
+impl Drop for TcpListener {
+    fn drop(&mut self) {
+        debug!("TCP listener dropped");
+    }
+}
+
 struct TcpListenerData {
     connections: HashMap<usize, Weak<TcpServer>>,
     on: bool,
@@ -90,6 +96,7 @@ impl TcpListener {
         ledger: Arc<Ledger>,
         node_id: Arc<KeyPair>,
     ) -> Self {
+        debug!("Creating TCP listener");
         let tcp_socket_facade_factory =
             Arc::new(TokioSocketFacadeFactory::new(Arc::clone(&runtime)));
         Self {
@@ -121,6 +128,7 @@ impl TcpListener {
     }
 
     pub fn stop(&self) {
+        debug!("Stopping TCP listener...");
         let mut conns = HashMap::new();
         {
             let mut guard = self.data.lock().unwrap();
@@ -137,6 +145,7 @@ impl TcpListener {
                     .close_connections();
             }
         }
+        debug!("TCP listener stopped");
     }
 
     pub fn get_realtime_count(&self) -> usize {
@@ -320,8 +329,9 @@ impl TcpListenerExt for Arc<TcpListener> {
             };
             Arc::clone(s)
         };
-        let this_l = Arc::clone(self);
+        let this_w = Arc::downgrade(self);
         self.socket_facade.post(Box::new(move || {
+            let Some(this_l) = this_w.upgrade() else {return;};
             if !this_l.socket_facade.is_acceptor_open() {
                 error!("Socket acceptor is not open");
                 return;
@@ -360,10 +370,11 @@ impl TcpListenerExt for Arc<TcpListener> {
 
             let socket_clone = Arc::clone(&socket_clone);
             let connection_clone = Arc::clone(&new_connection);
-            let this_clone = Arc::clone(&this_l);
+            let this_clone_w = Arc::downgrade(&this_l);
             this_l.socket_facade.async_accept(
                 &new_connection,
                 Box::new(move |remote_endpoint, ec| {
+                    let Some(this_clone) = this_clone_w.upgrade() else { return; };
                     let SocketAddr::V6(remote_endpoint) = remote_endpoint else {panic!("not a v6 address")};
                     let socket_l = socket_clone;
                     connection_clone.set_remote(remote_endpoint);
@@ -464,7 +475,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                 Arc::clone(&self.bootstrap_initiator),
                 self.node_flags.clone(),
             ));
-            let observer = Arc::clone(&self);
+            let observer = Arc::downgrade(&self);
             let server = Arc::new(TcpServer::new(
                 Arc::clone(&self.runtime),
                 socket,

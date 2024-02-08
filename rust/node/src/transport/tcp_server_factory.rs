@@ -6,12 +6,15 @@ use crate::{
     bootstrap::BootstrapMessageVisitorFactory, config::NodeConfig, stats::Stats,
     utils::AsyncRuntime, NetworkParams,
 };
-use std::{sync::Arc, time::SystemTime};
+use std::{
+    sync::{Arc, Weak},
+    time::SystemTime,
+};
 
 pub struct TcpServerFactory {
     pub async_rt: Arc<AsyncRuntime>,
     pub config: Arc<NodeConfig>,
-    pub observer: Arc<dyn TcpServerObserver>,
+    pub observer: Weak<dyn TcpServerObserver>,
     pub publish_filter: Arc<NetworkFilter>,
     pub network: Arc<NetworkParams>,
     pub stats: Arc<Stats>,
@@ -25,7 +28,7 @@ impl TcpServerFactory {
             Arc::clone(&self.async_rt),
             socket,
             Arc::clone(&self.config),
-            Arc::clone(&self.observer),
+            Weak::clone(&self.observer),
             Arc::clone(&self.publish_filter),
             Arc::clone(&self.network),
             Arc::clone(&self.stats),

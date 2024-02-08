@@ -55,7 +55,7 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
     let async_rt = Arc::clone(&(*params.async_rt).0);
     let socket = Arc::clone(&(*params.socket));
     let config = Arc::new(NodeConfig::try_from(&*params.config).unwrap());
-    let observer = Arc::clone(&*params.observer);
+    let observer = Arc::downgrade(&*params.observer);
     let publish_filter = Arc::clone(&*params.publish_filter);
     let network = Arc::new(NetworkParams::try_from(&*params.network).unwrap());
     let stats = Arc::clone(&(*params.stats));

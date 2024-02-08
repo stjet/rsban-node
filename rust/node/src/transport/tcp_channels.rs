@@ -81,10 +81,11 @@ impl TcpChannels {
     pub fn new(options: TcpChannelsOptions) -> Self {
         let node_config = Arc::new(options.node_config);
         let network = Arc::new(options.network);
+        let observer: Arc<dyn TcpServerObserver> = Arc::new(NullTcpServerObserver {});
         let tcp_server_factory = Arc::new(Mutex::new(TcpServerFactory {
             async_rt: Arc::clone(&options.async_rt),
             config: node_config.clone(),
-            observer: Arc::new(NullTcpServerObserver {}),
+            observer: Arc::downgrade(&observer),
             publish_filter: options.publish_filter.clone(),
             network: network.clone(),
             stats: options.stats.clone(),
@@ -253,7 +254,7 @@ impl TcpChannels {
         }
     }
 
-    pub fn set_observer(&self, observer: Arc<dyn TcpServerObserver>) {
+    pub fn set_observer(&self, observer: Weak<dyn TcpServerObserver>) {
         self.tcp_channels
             .lock()
             .unwrap()

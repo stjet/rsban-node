@@ -15,6 +15,7 @@ use rsnano_node::{
     utils::ErrorCode,
 };
 use std::{ffi::c_void, ops::Deref, sync::Arc};
+use tracing::debug;
 
 pub struct TcpListenerHandle(Arc<TcpListener>);
 
@@ -69,6 +70,7 @@ pub unsafe extern "C" fn rsn_tcp_listener_create(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_listener_destroy(handle: *mut TcpListenerHandle) {
+    debug!("calling TCP listener destroy");
     drop(Box::from_raw(handle))
 }
 

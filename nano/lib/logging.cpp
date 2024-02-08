@@ -24,6 +24,7 @@ nano::logger & nano::default_logger ()
 bool nano::logger::global_initialized{ false };
 nano::log_config nano::logger::global_config{};
 std::vector<spdlog::sink_ptr> nano::logger::global_sinks{};
+nano::log::level nano::logger::min_level{ nano::log::level::info };
 
 // By default, use only the tag as the logger name, since only one node is running in the process
 std::function<std::string (nano::log::type tag, std::string identifier)> nano::logger::global_name_formatter{ [] (auto tag, auto identifier) {
@@ -187,7 +188,7 @@ void nano::logger::initialize_common (nano::log_config const & config, std::opti
 		}
 	}
 
-	min_level = static_cast<nano::log::level>(rsnano::rsn_log_min_level());
+	min_level = static_cast<nano::log::level> (rsnano::rsn_log_min_level ());
 }
 
 void nano::logger::flush ()
@@ -548,5 +549,5 @@ nano::logger_handle nano::to_logger_handle (std::shared_ptr<nano::logger> const 
 
 void nano::log_with_rust (nano::log::level level, nano::log::type tag, const char * message, std::size_t size)
 {
-	rsnano::rsn_log(static_cast<uint8_t>(nano::log::level::debug), message, size);
+	rsnano::rsn_log (static_cast<uint8_t> (level), message, size);
 }

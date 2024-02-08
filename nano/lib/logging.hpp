@@ -94,60 +94,84 @@ private:
 public:
 	void log (nano::log::level level, nano::log::type tag, std::string const & message)
 	{
-		nano::log_with_rust(level, tag, message.c_str(), message.length());
+		if (level >= min_level)
+		{
+			nano::log_with_rust (level, tag, message.c_str (), message.length ());
+		}
 	}
 
 	template <class... Args>
 	void log (nano::log::level level, nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{
-		spdlog::memory_buf_t buf;
-		fmt::vformat_to(fmt::appender(buf), fmt, fmt::make_format_args(args...));
-		nano::log_with_rust(level, tag, buf.data(), buf.size());
+		if (level >= min_level)
+		{
+			spdlog::memory_buf_t buf;
+			fmt::vformat_to (fmt::appender (buf), fmt, fmt::make_format_args (args...));
+			nano::log_with_rust (level, tag, buf.data (), buf.size ());
+		}
 	}
 
 	template <class... Args>
 	void debug (nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{
-		spdlog::memory_buf_t buf;
-		fmt::vformat_to(fmt::appender(buf), fmt, fmt::make_format_args(args...));
-		nano::log_with_rust(nano::log::level::debug, tag, buf.data(), buf.size());
+		if (nano::log::level::debug >= min_level)
+		{
+			spdlog::memory_buf_t buf;
+			fmt::vformat_to (fmt::appender (buf), fmt, fmt::make_format_args (args...));
+			nano::log_with_rust (nano::log::level::debug, tag, buf.data (), buf.size ());
+		}
 	}
 
 	template <class... Args>
 	void info (nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{
-		spdlog::memory_buf_t buf;
-		fmt::vformat_to(fmt::appender(buf), fmt, fmt::make_format_args(args...));
-		nano::log_with_rust(nano::log::level::info, tag, buf.data(), buf.size());
+		if (nano::log::level::info >= min_level)
+		{
+			spdlog::memory_buf_t buf;
+			fmt::vformat_to (fmt::appender (buf), fmt, fmt::make_format_args (args...));
+			nano::log_with_rust (nano::log::level::info, tag, buf.data (), buf.size ());
+		}
 	}
 
 	void info (nano::log::type tag, std::string const & message)
 	{
-		nano::log_with_rust(nano::log::level::info, tag, message.c_str(), message.length());
+		if (nano::log::level::info >= min_level)
+		{
+			nano::log_with_rust (nano::log::level::info, tag, message.c_str (), message.length ());
+		}
 	}
 
 	template <class... Args>
 	void warn (nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{
-		spdlog::memory_buf_t buf;
-		fmt::vformat_to(fmt::appender(buf), fmt, fmt::make_format_args(args...));
-		nano::log_with_rust(nano::log::level::warn, tag, buf.data(), buf.size());
+		if (nano::log::level::warn >= min_level)
+		{
+			spdlog::memory_buf_t buf;
+			fmt::vformat_to (fmt::appender (buf), fmt, fmt::make_format_args (args...));
+			nano::log_with_rust (nano::log::level::warn, tag, buf.data (), buf.size ());
+		}
 	}
 
 	template <class... Args>
 	void error (nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{
-		spdlog::memory_buf_t buf;
-		fmt::vformat_to(fmt::appender(buf), fmt, fmt::make_format_args(args...));
-		nano::log_with_rust(nano::log::level::error, tag, buf.data(), buf.size());
+		if (nano::log::level::error >= min_level)
+		{
+			spdlog::memory_buf_t buf;
+			fmt::vformat_to (fmt::appender (buf), fmt, fmt::make_format_args (args...));
+			nano::log_with_rust (nano::log::level::error, tag, buf.data (), buf.size ());
+		}
 	}
 
 	template <class... Args>
 	void critical (nano::log::type tag, spdlog::format_string_t<Args...> fmt, Args &&... args)
 	{
-		spdlog::memory_buf_t buf;
-		fmt::vformat_to(fmt::appender(buf), fmt, fmt::make_format_args(args...));
-		nano::log_with_rust(nano::log::level::critical, tag, buf.data(), buf.size());
+		if (nano::log::level::critical >= min_level)
+		{
+			spdlog::memory_buf_t buf;
+			fmt::vformat_to (fmt::appender (buf), fmt, fmt::make_format_args (args...));
+			nano::log_with_rust (nano::log::level::critical, tag, buf.data (), buf.size ());
+		}
 	}
 
 private:

@@ -2,10 +2,11 @@ use crate::VoidPointerCallback;
 use num_traits::FromPrimitive;
 use rsnano_core::utils::{LogLevel, LogType, Logger};
 use std::{
-    ffi::{c_char, c_void, CStr},
+    ffi::{c_char, c_void},
     sync::Arc,
 };
 use tracing::{enabled, event, Level};
+use tracing_subscriber::{filter::LevelFilter, EnvFilter};
 
 pub struct LoggerHandleV2(*mut c_void);
 
@@ -53,7 +54,16 @@ impl From<CppLogLevel> for tracing::Level {
 
 #[no_mangle]
 pub extern "C" fn rsn_log_init() {
-    tracing_subscriber::fmt::init();
+    let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from(
+        "rsnano_ffi=debug,rsnano_node=debug,rsnano_messages=debug,rsnano_ledger=debug,rsnano_store_lmdb=debug,rsnano_core=debug",
+    ));
+    let filter = EnvFilter::builder().parse_lossy(dirs);
+
+    tracing_subscriber::fmt::fmt()
+        .with_env_filter(filter)
+        .with_target(false)
+        .compact()
+        .init()
 }
 
 #[no_mangle]

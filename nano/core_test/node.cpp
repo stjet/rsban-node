@@ -586,9 +586,9 @@ TEST (node, fork_publish)
 	auto existing1 (votes1.find (nano::dev::genesis_key.pub));
 	ASSERT_NE (votes1.end (), existing1);
 	ASSERT_EQ (send1->hash (), existing1->second.get_hash ());
-	auto winner (election->winner());
+	auto winner (election->winner ());
 	ASSERT_EQ (*send1, *winner);
-	ASSERT_EQ (nano::dev::constants.genesis_amount - 100, election->get_status().get_tally().number());
+	ASSERT_EQ (nano::dev::constants.genesis_amount - 100, election->get_status ().get_tally ().number ());
 }
 
 // In test case there used to be a race condition, it was worked around in:.

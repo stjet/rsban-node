@@ -1,5 +1,6 @@
 #pragma once
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/logging.hpp"
 
 #include <nano/node/vote_cache.hpp>
 #include <nano/secure/common.hpp>
@@ -223,6 +224,9 @@ public: // Information
 private:
 	std::chrono::milliseconds time_to_live () const;
 	bool is_quorum () const;
+
+public: // Logging
+	void operator() (nano::object_stream &) const;
 
 private: // Constants
 	static std::size_t constexpr max_blocks{ 10 };

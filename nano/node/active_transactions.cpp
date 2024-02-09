@@ -731,9 +731,10 @@ void nano::active_transactions::cleanup_election (nano::active_transactions_lock
 	auto election_root{ election->qualified_root () };
 	rsnano::rsn_active_transactions_lock_roots_erase (lock_a.handle, election_root.root ().bytes.data (), election_root.previous ().bytes.data ());
 
-	lock_a.unlock ();
-
 	node.stats->inc (completion_type (*election), to_stat_detail (election->behavior ()));
+	node.logger->trace (nano::log::type::active_transactions, nano::log::detail::active_stopped, nano::log::arg{ "election", election });
+
+	lock_a.unlock ();
 
 	vacancy_update ();
 
@@ -811,7 +812,9 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 	nano::election_insertion_result result;
 
 	if (rsnano::rsn_active_transactions_lock_stopped (guard.handle))
+	{
 		return result;
+	}
 
 	auto const root (block_a->qualified_root ());
 	auto const hash = block_a->hash ();
@@ -839,6 +842,11 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 			// Keep track of election count by election type
 			debug_assert (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (result.election->behavior ())) >= 0);
 			rsnano::rsn_active_transactions_lock_count_by_behavior_inc (guard.handle, static_cast<uint8_t> (result.election->behavior ()));
+
+			node.stats->inc (nano::stat::type::active_started, to_stat_detail (election_behavior_a));
+			node.logger->trace (nano::log::type::active_transactions, nano::log::detail::active_started,
+			nano::log::arg{ "behavior", election_behavior_a },
+			nano::log::arg{ "election", result.election });
 		}
 		else
 		{
@@ -853,10 +861,13 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 
 	if (result.inserted)
 	{
+		release_assert (result.election);
+
 		if (auto const cache = node.vote_cache.find (hash); cache)
 		{
 			fill_from_cache (*result.election, *cache);
 		}
+
 		node.stats->inc (nano::stat::type::active_started, to_stat_detail (election_behavior_a));
 		node.observers->active_started.notify (hash);
 		vacancy_update ();

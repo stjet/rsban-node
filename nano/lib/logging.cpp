@@ -51,7 +51,7 @@ nano::logger::~logger ()
 {
 }
 
-void nano::log_with_rust (nano::log::level level, nano::log::type tag, const char * message, std::size_t size)
+void nano::log_with_rust (nano::log::level level, nano::log::type type, const char * message, std::size_t size)
 {
 	rsnano::rsn_log (static_cast<uint8_t> (level), message, size);
 }

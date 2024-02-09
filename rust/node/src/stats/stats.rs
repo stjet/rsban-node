@@ -262,6 +262,8 @@ pub enum DetailType {
     GenerateVote,
     GenerateVoteNormal,
     GenerateVoteFinal,
+    BroadcastBlockInitial,
+    BroadcastBlockRepeat,
 
     // election types
     Normal,

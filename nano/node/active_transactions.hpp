@@ -250,6 +250,7 @@ private:
 	 * Checks if sufficient amount of time (`vote_generation_interval`) passed since the last vote generation
 	 */
 	void broadcast_vote (nano::election & election, nano::election_lock & lock_a);
+	bool broadcast_block_predicate (nano::election & election, nano::election_lock & lock_a) const;
 	void broadcast_block (nano::confirmation_solicitor & solicitor_a, nano::election & election, nano::election_lock & lock_a);
 	// Minimum time between broadcasts of the current winner of an election, as a backup to requesting confirmations
 	std::chrono::milliseconds base_latency () const;

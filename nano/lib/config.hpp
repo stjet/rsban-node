@@ -209,7 +209,8 @@ public:
 	size_t ipv6_subnetwork_prefix_for_limiting;
 	std::chrono::seconds peer_dump_interval;
 	/** Time to wait before vote rebroadcasts for active elections (milliseconds) */
-	uint64_t vote_broadcast_interval;
+	std::chrono::milliseconds vote_broadcast_interval;
+	std::chrono::milliseconds block_broadcast_interval;
 
 	/** We do not reply to telemetry requests made within cooldown period */
 	std::chrono::milliseconds telemetry_request_cooldown;

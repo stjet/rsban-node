@@ -974,6 +974,7 @@ bool nano::active_transactions::transition_time (nano::confirmation_solicitor & 
 			break;
 		case nano::election_state::confirmed:
 			result = true; // Return true to indicate this election should be cleaned up
+			broadcast_block (solicitor_a, election, lock); // Ensure election winner is broadcasted
 			lock.state_change (nano::election_state::confirmed, nano::election_state::expired_confirmed);
 			break;
 		case nano::election_state::expired_unconfirmed:
@@ -1068,13 +1069,35 @@ nano::tally_t nano::active_transactions::tally (nano::election & election) const
 	return tally_impl (guard);
 }
 
+bool nano::active_transactions::broadcast_block_predicate (nano::election & election, nano::election_lock & lock_a) const
+{
+	auto last_block_elapsed = std::chrono::milliseconds{rsnano::rsn_election_last_block_elapsed_ms(election.handle)};
+	// Broadcast the block if enough time has passed since the last broadcast (or it's the first broadcast)
+	if (last_block_elapsed < node.config->network_params.network.block_broadcast_interval)
+	{
+		return true;
+	}
+	// Or the current election winner has changed
+	nano::block_hash last_block_hash{};
+	rsnano::rsn_election_lock_last_block(lock_a.handle, last_block_hash.bytes.data());
+	if (lock_a.status ().get_winner ()->hash () != last_block_hash)
+	{
+		return true;
+	}
+	return false;
+}
+
 void nano::active_transactions::broadcast_block (nano::confirmation_solicitor & solicitor_a, nano::election & election, nano::election_lock & lock_a)
 {
-	if (base_latency () * 15 < std::chrono::milliseconds{ rsnano::rsn_election_last_block_elapsed_ms (election.handle) })
+	if (broadcast_block_predicate(election, lock_a))
 	{
 		if (!solicitor_a.broadcast (election, lock_a))
 		{
+			nano::block_hash last_block_hash{};
+			rsnano::rsn_election_lock_last_block(lock_a.handle, last_block_hash.bytes.data());
+			node.stats->inc (nano::stat::type::election, last_block_hash.is_zero () ? nano::stat::detail::broadcast_block_initial : nano::stat::detail::broadcast_block_repeat);
 			rsnano::rsn_election_set_last_block (election.handle);
+			rsnano::rsn_election_lock_last_block_set(lock_a.handle, lock_a.status().get_winner()->hash().bytes.data());
 		}
 	}
 }

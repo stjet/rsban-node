@@ -10,6 +10,7 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 
+//TODO remove the many RwLocks
 pub struct Election {
     pub id: usize,
     pub mutex: Mutex<ElectionData>,
@@ -19,9 +20,9 @@ pub struct Election {
     pub confirmation_request_count: AtomicU32,
     // These are modified while not holding the mutex from transition_time only
     last_block: RwLock<Instant>,
+    pub last_req: RwLock<Option<Instant>>,
     pub behavior: ElectionBehavior,
     pub election_start: Instant,
-    pub last_req: RwLock<Option<Instant>>,
     pub confirmation_action: Box<dyn Fn(Arc<BlockEnum>)>,
     pub live_vote_action: Box<dyn Fn(Account)>,
 }
@@ -55,6 +56,7 @@ impl Election {
             last_tally: HashMap::new(),
             final_weight: Amount::zero(),
             last_vote: None,
+            last_block_hash: BlockHash::zero(),
         };
 
         Self {
@@ -103,6 +105,7 @@ pub struct ElectionData {
     pub last_tally: HashMap<BlockHash, Amount>,
     /** The last time vote for this election was generated */
     pub last_vote: Option<Instant>,
+    pub last_block_hash: BlockHash,
 }
 
 impl ElectionData {

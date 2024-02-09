@@ -171,6 +171,27 @@ pub extern "C" fn rsn_election_lock_last_vote_elapsed_ms(handle: &ElectionLockHa
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_election_lock_last_block(
+    handle: &ElectionLockHandle,
+    block_hash: *mut u8,
+) {
+    handle
+        .0
+        .as_ref()
+        .unwrap()
+        .last_block_hash
+        .copy_bytes(block_hash)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_lock_last_block_set(
+    handle: &mut ElectionLockHandle,
+    block_hash: *const u8,
+) {
+    handle.0.as_mut().unwrap().last_block_hash = BlockHash::from_ptr(block_hash);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_election_live_vote_action(
     handle: &ElectionHandle,
     account: *const u8,

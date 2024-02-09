@@ -45,7 +45,8 @@ pub struct NetworkConstants {
     pub ipv6_subnetwork_prefix_for_limiting: usize,
     pub silent_connection_tolerance_time_s: i64,
     /// Time to wait before vote rebroadcasts for active elections (milliseconds)
-    pub vote_broadcast_interval_ms: i64,
+    pub vote_broadcast_interval: Duration,
+    pub block_broadcast_interval: Duration,
 
     /** We do not reply to telemetry requests made within cooldown period */
     pub telemetry_request_cooldown_ms: i64,
@@ -107,7 +108,8 @@ impl NetworkConstants {
             peer_dump_interval_s: 5 * 60,
             ipv6_subnetwork_prefix_for_limiting: 64,
             silent_connection_tolerance_time_s: 120,
-            vote_broadcast_interval_ms: 15 * 1000,
+            vote_broadcast_interval: Duration::from_secs(15),
+            block_broadcast_interval: Duration::from_secs(150),
             telemetry_request_cooldown_ms: 1000 * 15,
             telemetry_request_interval_ms: 1000 * 60,
             telemetry_broadcast_interval_ms: 1000 * 60,
@@ -154,7 +156,8 @@ impl NetworkConstants {
             max_peers_per_ip,
             max_peers_per_subnetwork: max_peers_per_ip * 4,
             peer_dump_interval_s: 1,
-            vote_broadcast_interval_ms: 500,
+            vote_broadcast_interval: Duration::from_millis(500),
+            block_broadcast_interval: Duration::from_millis(500),
             telemetry_request_cooldown_ms: 500,
             telemetry_cache_cutoff_ms: 2000,
             telemetry_request_interval_ms: 500,

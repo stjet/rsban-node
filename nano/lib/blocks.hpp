@@ -18,6 +18,7 @@ namespace nano
 {
 class block_visitor;
 class mutable_block_visitor;
+
 enum class block_type : uint8_t
 {
 	invalid = 0,
@@ -218,6 +219,7 @@ public:
 	void zero ();
 	static std::size_t size ();
 };
+
 class change_block : public nano::block
 {
 public:
@@ -241,6 +243,7 @@ public:
 	void zero ();
 	static std::size_t size ();
 };
+
 class state_block : public nano::block
 {
 public:
@@ -271,6 +274,7 @@ public:
 	void zero ();
 	static std::size_t size ();
 };
+
 class block_visitor
 {
 public:
@@ -281,6 +285,7 @@ public:
 	virtual void state_block (nano::state_block const &) = 0;
 	virtual ~block_visitor () = default;
 };
+
 class mutable_block_visitor
 {
 public:

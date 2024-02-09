@@ -1,3 +1,7 @@
+use crate::{
+    config::{NodeConfig, NodeFlags},
+    stats::{DetailType, Direction, StatType, Stats},
+};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     work::WorkThresholds,
@@ -13,11 +17,6 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 use tracing::{debug, error};
-
-use crate::{
-    config::{NodeConfig, NodeFlags},
-    stats::{DetailType, Direction, StatType, Stats},
-};
 
 use super::{GapCache, UncheckedMap};
 
@@ -194,7 +193,6 @@ impl BlockProcessor {
         block: &Arc<BlockEnum>,
     ) -> ProcessResult {
         let hash = block.hash();
-
         // this is undefined behaviour and should be fixed ASAP:
         let block_ptr = Arc::as_ptr(block) as *mut BlockEnum;
         let mutable_block = unsafe { &mut *block_ptr };

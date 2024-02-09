@@ -27,6 +27,10 @@ void nano::block_memory_pool_purge ()
 	nano::purge_shared_ptr_singleton_pool_memory<nano::change_block> ();
 }
 
+/*
+ * block
+ */
+
 nano::block::~block ()
 {
 	if (handle != nullptr)
@@ -164,7 +168,7 @@ const void * nano::block::get_rust_data_pointer () const
 
 nano::qualified_root nano::block::qualified_root () const
 {
-	return nano::qualified_root (root (), previous ());
+	return { root (), previous () };
 }
 
 nano::amount nano::block::balance () const
@@ -935,6 +939,10 @@ void nano::serialize_block (nano::stream & stream_a, nano::block const & block_a
 	block_a.serialize (stream_a);
 }
 
+/*
+ * receive_block
+ */
+
 void nano::receive_block::visit (nano::block_visitor & visitor_a) const
 {
 	visitor_a.receive_block (*this);
@@ -1146,6 +1154,10 @@ std::string nano::state_subtype (nano::block_details const details_a)
 		return "change";
 	}
 }
+
+/*
+ * block_sideband
+ */
 
 nano::block_sideband::block_sideband ()
 {

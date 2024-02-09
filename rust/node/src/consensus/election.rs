@@ -11,6 +11,7 @@ use std::{
 };
 
 pub struct Election {
+    pub id: usize,
     pub mutex: Mutex<ElectionData>,
     pub root: Root,
     pub qualified_root: QualifiedRoot,
@@ -57,6 +58,7 @@ impl Election {
         };
 
         Self {
+            id,
             mutex: Mutex::new(data),
             root,
             qualified_root,

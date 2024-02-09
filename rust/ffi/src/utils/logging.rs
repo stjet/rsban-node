@@ -33,23 +33,41 @@ pub extern "C" fn rsn_log_init() {
     let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from(
         "rsnano_ffi=debug,rsnano_node=debug,rsnano_messages=debug,rsnano_ledger=debug,rsnano_store_lmdb=debug,rsnano_core=debug",
     ));
-    let filter = EnvFilter::builder().parse_lossy(dirs);
-
-    tracing_subscriber::fmt::fmt()
-        .with_env_filter(filter)
-        .with_target(false)
-        .compact()
-        .init()
+    init_tracing(dirs);
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_log_init_test() {
     let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from("off"));
+    init_tracing(dirs);
+}
+
+fn init_tracing(dirs: impl AsRef<str>) {
     let filter = EnvFilter::builder().parse_lossy(dirs);
 
-    tracing_subscriber::fmt::fmt()
-        .with_env_filter(filter)
-        .init()
+    let value = std::env::var("NANO_LOG");
+    let log_style = value.as_ref().map(|i| i.as_str()).unwrap_or_default();
+    match log_style {
+        "json" => {
+            tracing_subscriber::fmt::fmt()
+                .json()
+                .with_env_filter(filter)
+                .init();
+        }
+        "noansi" => {
+            tracing_subscriber::fmt::fmt()
+                .with_env_filter(filter)
+                .with_ansi(false)
+                .init();
+        }
+        _ => {
+            tracing_subscriber::fmt::fmt()
+                .with_env_filter(filter)
+                .with_ansi(true)
+                .init();
+        }
+    }
+    tracing::debug!(log_style, ?value, "init tracing");
 }
 
 #[no_mangle]

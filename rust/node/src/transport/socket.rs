@@ -1,3 +1,8 @@
+use super::{
+    message_deserializer::AsyncBufferReader,
+    write_queue::{WriteCallback, WriteQueue},
+    TcpStream, TcpStreamFactory, TrafficType,
+};
 use crate::utils::{into_ipv6_socket_address, AsyncRuntime, ErrorCode, ThreadPool, ThreadPoolImpl};
 use async_trait::async_trait;
 use num_traits::FromPrimitive;
@@ -6,18 +11,12 @@ use std::{
     net::{Ipv6Addr, SocketAddrV6},
     ops::Deref,
     sync::{
-        atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
+        atomic::{AtomicBool, AtomicU64, AtomicU8, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
     },
     time::Duration,
 };
 use tracing::debug;
-
-use super::{
-    message_deserializer::AsyncBufferReader,
-    write_queue::{WriteCallback, WriteQueue},
-    TcpStream, TcpStreamFactory, TrafficType,
-};
 
 /// Policy to affect at which stage a buffer can be dropped
 #[derive(PartialEq, Eq, FromPrimitive, Debug)]
@@ -152,6 +151,7 @@ impl SocketObserver for CompositeSocketObserver {
 }
 
 pub struct Socket {
+    socket_id: usize,
     /// The other end of the connection
     remote: Mutex<Option<SocketAddrV6>>,
 
@@ -309,9 +309,9 @@ impl Socket {
 
 impl Drop for Socket {
     fn drop(&mut self) {
-        debug!("Dropping Socket");
         self.close_internal();
-        debug!("Socket dropped");
+        let alive = LIVE_SOCKETS.fetch_sub(1, Ordering::Relaxed) - 1;
+        debug!(socket_id = self.socket_id, alive, "Socket dropped");
     }
 }
 
@@ -710,6 +710,9 @@ pub struct SocketBuilder {
     tcp_stream_factory: Arc<TcpStreamFactory>,
 }
 
+static NEXT_SOCKET_ID: AtomicUsize = AtomicUsize::new(0);
+static LIVE_SOCKETS: AtomicUsize = AtomicUsize::new(0);
+
 impl SocketBuilder {
     pub fn endpoint_type(
         endpoint_type: EndpointType,
@@ -755,12 +758,16 @@ impl SocketBuilder {
     }
 
     pub fn build(self) -> Arc<Socket> {
-        debug!("Creating socket");
+        let socket_id = NEXT_SOCKET_ID.fetch_add(1, Ordering::Relaxed);
+        let alive = LIVE_SOCKETS.fetch_add(1, Ordering::Relaxed) + 1;
+        debug!(socket_id, alive, "Creating socket");
+
         let observer = self
             .observer
             .unwrap_or_else(|| Arc::new(NullSocketObserver::new()));
         Arc::new({
             Socket {
+                socket_id,
                 remote: Mutex::new(None),
                 last_completion_time_or_init: AtomicU64::new(seconds_since_epoch()),
                 last_receive_time_or_init: AtomicU64::new(seconds_since_epoch()),

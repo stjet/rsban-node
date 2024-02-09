@@ -1,10 +1,8 @@
+use super::Representative;
+use crate::{transport::ChannelEnum, OnlineReps};
 use rsnano_core::{Account, Amount};
 use rsnano_ledger::Ledger;
 use rsnano_messages::ProtocolInfo;
-use tracing::debug;
-
-use super::Representative;
-use crate::{transport::ChannelEnum, OnlineReps};
 use std::{
     collections::HashMap,
     net::SocketAddrV6,
@@ -26,19 +24,12 @@ pub enum RegisterRepresentativeResult {
     ChannelChanged(SocketAddrV6),
 }
 
-impl Drop for RepresentativeRegister {
-    fn drop(&mut self) {
-        debug!("Dropping representative register");
-    }
-}
-
 impl RepresentativeRegister {
     pub fn new(
         ledger: Arc<Ledger>,
         online_reps: Arc<Mutex<OnlineReps>>,
         protocol_info: ProtocolInfo,
     ) -> Self {
-        debug!("Creating representative register");
         Self {
             ledger,
             online_reps,

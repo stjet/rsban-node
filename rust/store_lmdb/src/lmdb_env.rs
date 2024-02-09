@@ -744,7 +744,8 @@ impl<T: Environment> LmdbEnv<T> {
     pub fn with_env(env: T) -> Self {
         ENV_COUNT.fetch_add(1, Ordering::SeqCst);
         let env_id = NEXT_ENV_ID.fetch_add(1, Ordering::SeqCst);
-        debug!("LMDB env created: {}", env_id);
+        let alive = ENV_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
+        debug!(env_id, alive, "LMDB env created",);
         Self {
             environment: env,
             next_txn_id: AtomicU64::new(0),
@@ -761,13 +762,8 @@ impl<T: Environment> LmdbEnv<T> {
             txn_tracker: Arc::new(NullTransactionTracker::new()),
             env_id: NEXT_ENV_ID.fetch_add(1, Ordering::SeqCst),
         };
-        let old = ENV_COUNT.fetch_add(1, Ordering::SeqCst);
-        debug!(
-            "LMDB env created: {}, alive: {}, path: {:?}",
-            env.env_id,
-            old + 1,
-            path
-        );
+        let alive = ENV_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
+        debug!(env_id = env.env_id, alive, ?path, "LMDB env created",);
         Ok(env)
     }
 
@@ -782,13 +778,8 @@ impl<T: Environment> LmdbEnv<T> {
             txn_tracker,
             env_id: NEXT_ENV_ID.fetch_add(1, Ordering::SeqCst),
         };
-        let old = ENV_COUNT.fetch_add(1, Ordering::SeqCst);
-        debug!(
-            "LMDB env created: {}, alive: {}, path: {:?}",
-            env.env_id,
-            old + 1,
-            path
-        );
+        let alive = ENV_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
+        debug!(env_id = env.env_id, alive, ?path, "LMDB env created",);
         Ok(env)
     }
 
@@ -888,12 +879,8 @@ fn try_create_parent_dir(path: &Path) -> std::io::Result<()> {
 
 impl<T: Environment> Drop for LmdbEnv<T> {
     fn drop(&mut self) {
-        let old = ENV_COUNT.fetch_sub(1, Ordering::SeqCst);
-        debug!(
-            "LMDB env dropped: {}, alive: {}",
-            self.env_id,
-            old.wrapping_sub(1)
-        );
+        let alive = ENV_COUNT.fetch_sub(1, Ordering::Relaxed) - 1;
+        debug!(env_id = self.env_id, alive, "LMDB env dropped",);
         let _ = self.environment.sync(true);
     }
 }

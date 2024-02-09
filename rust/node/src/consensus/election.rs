@@ -27,6 +27,7 @@ pub struct Election {
 
 impl Election {
     pub fn new(
+        id: usize,
         block: Arc<BlockEnum>,
         behavior: ElectionBehavior,
         confirmation_action: Box<dyn Fn(Arc<BlockEnum>)>,

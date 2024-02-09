@@ -9,7 +9,10 @@ use rsnano_node::{
 use std::{
     ffi::c_void,
     ops::Deref,
-    sync::{atomic::Ordering, Arc, MutexGuard},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, MutexGuard,
+    },
     time::{Duration, SystemTime},
 };
 
@@ -34,6 +37,8 @@ impl Deref for ElectionHandle {
 pub type ConfirmationAction = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
 pub type LiveVoteAction = unsafe extern "C" fn(*mut c_void, *const u8);
 
+static NEXT_ELECTION_ID: AtomicUsize = AtomicUsize::new(1);
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_election_create(
     block: &BlockHandle,
@@ -52,8 +57,10 @@ pub unsafe extern "C" fn rsn_election_create(
 
     let live_vote_context =
         ContextWrapper::new(live_vote_action_context, live_vote_action_context_delete);
+    let id = NEXT_ELECTION_ID.fetch_add(1, Ordering::Relaxed);
 
     Box::into_raw(Box::new(ElectionHandle(Arc::new(Election::new(
+        id,
         Arc::clone(block),
         ElectionBehavior::from_u8(behavior).unwrap(),
         Box::new(move |block| {

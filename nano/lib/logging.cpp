@@ -23,11 +23,13 @@ nano::logger & nano::default_logger ()
 
 bool nano::logger::global_initialized{ false };
 nano::log::level nano::logger::min_level{ nano::log::level::info };
+nano::object_stream_config nano::logger::global_tracing_config {};
 
 void nano::logger::initialize ()
 {
 	rsnano::rsn_log_init();
 	min_level = static_cast<nano::log::level> (rsnano::rsn_log_min_level ());
+	global_tracing_config = nano::object_stream_config::default_config();
 	global_initialized = true;
 }
 
@@ -35,6 +37,7 @@ void nano::logger::initialize_for_tests ()
 {
 	rsnano::rsn_log_init_test();
 	min_level = static_cast<nano::log::level> (rsnano::rsn_log_min_level ());
+	global_tracing_config = nano::object_stream_config::default_config();
 	global_initialized = true;
 }
 

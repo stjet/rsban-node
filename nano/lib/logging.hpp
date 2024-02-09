@@ -1,15 +1,48 @@
 #pragma once
 
+#include "fmt/core.h"
+#include "nano/lib/utility.hpp"
 #include <nano/lib/logging_enums.hpp>
+#include <nano/lib/object_stream.hpp>
+#include <nano/lib/object_stream_adapters.hpp>
+
 #include <initializer_list>
 #include <memory>
 #include <shared_mutex>
 #include <sstream>
+
+#include <fmt/ostream.h>
+#include <math.h>
 #include <spdlog/spdlog.h>
+
+namespace nano::log
+{
+template <class T>
+struct arg
+{
+	std::string_view name;
+	T const & value;
+
+	arg (std::string_view name_a, T const & value_a) :
+		name{ name_a },
+		value{ value_a }
+	{
+	}
+};
+};
 
 namespace nano
 {
 void log_with_rust (nano::log::level level, nano::log::type type, const char * message, std::size_t size);
+
+consteval bool is_tracing_enabled ()
+{
+#ifdef NANO_TRACING
+	return true;
+#else
+	return false;
+#endif
+}
 
 class logger final
 {
@@ -27,6 +60,7 @@ public:
 private:
 	static bool global_initialized;
 	static nano::log::level min_level;
+	static nano::object_stream_config global_tracing_config;
 
 public:
 	void log (nano::log::level level, nano::log::type type, std::string const & message)
@@ -108,6 +142,23 @@ public:
 			spdlog::memory_buf_t buf;
 			fmt::vformat_to (fmt::appender (buf), fmt, fmt::make_format_args (args...));
 			nano::log_with_rust (nano::log::level::critical, type, buf.data (), buf.size ());
+		}
+	}
+
+	template <typename... Args>
+	void trace (nano::log::type type, nano::log::detail detail, Args &&... args)
+	{
+		if constexpr (is_tracing_enabled ())
+		{
+			spdlog::memory_buf_t buf;
+			fmt::vformat_to (fmt::appender (buf), "{}", 
+					fmt::make_format_args(
+					nano::streamed_args (global_tracing_config,
+					nano::log::arg{ "type", to_string(type)}, 
+					nano::log::arg{"detail", to_string(detail)},
+					std::forward<Args> (args)...)));
+
+			nano::log_with_rust (nano::log::level::trace, type, buf.data (), buf.size ());
 		}
 	}
 };

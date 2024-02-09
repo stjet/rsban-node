@@ -25,9 +25,11 @@ add_executable(
   ipc.cpp
   ledger.cpp
   locks.cpp
+  logging.cpp
   memory_pool.cpp
   network.cpp
   node.cpp
+  object_stream.cpp
   optimistic_scheduler.cpp
   processing_queue.cpp
   processor_service.cpp

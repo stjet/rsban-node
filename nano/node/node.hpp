@@ -20,8 +20,6 @@
 #include <nano/node/distributed_work_factory.hpp>
 #include <nano/node/election.hpp>
 #include <nano/node/epoch_upgrader.hpp>
-#include <nano/node/gap_cache.hpp>
-#include <nano/node/gap_tracker.hpp>
 #include <nano/node/network.hpp>
 #include <nano/node/node_observers.hpp>
 #include <nano/node/nodeconfig.hpp>
@@ -160,7 +158,6 @@ public:
 	std::filesystem::path application_path;
 	nano::port_mapping port_mapping;
 	nano::online_reps online_reps; // ported
-	nano::gap_cache gap_cache; // ported
 	nano::representative_register representative_register; // ported
 	nano::rep_crawler rep_crawler;
 	nano::vote_processor_queue vote_processor_queue; // ported
@@ -189,7 +186,6 @@ public:
 	nano::epoch_upgrader epoch_upgrader;
 	nano::block_broadcast block_broadcast;
 	nano::block_publisher block_publisher;
-	nano::gap_tracker gap_tracker;
 	nano::process_live_dispatcher process_live_dispatcher;
 
 	std::chrono::steady_clock::time_point const startup_time;

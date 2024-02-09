@@ -21,7 +21,6 @@ add_executable(
   election_scheduler.cpp
   epochs.cpp
   frontiers_confirmation.cpp
-  gap_cache.cpp
   ipc.cpp
   ledger.cpp
   locks.cpp

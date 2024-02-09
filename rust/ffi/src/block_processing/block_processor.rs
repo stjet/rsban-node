@@ -1,3 +1,4 @@
+use super::unchecked_map::UncheckedMapHandle;
 use crate::{
     core::{BlockHandle, BlockVecHandle},
     ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
@@ -22,8 +23,6 @@ use std::{
     sync::{atomic::Ordering, Arc, MutexGuard},
 };
 
-use super::{gap_cache::GapCacheHandle, unchecked_map::UncheckedMapHandle};
-
 pub struct BlockProcessorHandle(Arc<BlockProcessor>);
 
 impl Deref for BlockProcessorHandle {
@@ -41,7 +40,6 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     flags: &NodeFlagsHandle,
     ledger: &LedgerHandle,
     unchecked_map: &UncheckedMapHandle,
-    gap_cache: &GapCacheHandle,
     stats: &StatHandle,
     work: &WorkThresholdsDto,
     write_database_queue: &WriteDatabaseQueueHandle,
@@ -50,7 +48,6 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     let flags = Arc::new(flags.lock().unwrap().clone());
     let ledger = Arc::clone(&ledger);
     let unchecked_map = Arc::clone(&unchecked_map);
-    let gap_cache = Arc::clone(&gap_cache);
     let stats = Arc::clone(&stats);
     let work = Arc::new(WorkThresholds::from(work));
     let write_database_queue = Arc::clone(write_database_queue);
@@ -60,7 +57,6 @@ pub unsafe extern "C" fn rsn_block_processor_create(
         flags,
         ledger,
         unchecked_map,
-        gap_cache,
         stats,
         work,
         write_database_queue,

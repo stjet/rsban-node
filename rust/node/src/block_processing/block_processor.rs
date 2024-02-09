@@ -1,3 +1,4 @@
+use super::UncheckedMap;
 use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
@@ -18,8 +19,6 @@ use std::{
 };
 use tracing::{debug, error, trace};
 
-use super::{GapCache, UncheckedMap};
-
 pub static mut BLOCKPROCESSOR_ADD_CALLBACK: Option<fn(*mut c_void, Arc<BlockEnum>)> = None;
 pub static mut BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK: Option<fn(*mut c_void, Arc<BlockEnum>)> =
     None;
@@ -37,7 +36,6 @@ pub struct BlockProcessor {
     pub flushing: AtomicBool,
     pub ledger: Arc<Ledger>,
     pub unchecked_map: Arc<UncheckedMap>,
-    gap_cache: Arc<Mutex<GapCache>>,
     config: Arc<NodeConfig>,
     stats: Arc<Stats>,
     work: Arc<WorkThresholds>,
@@ -53,7 +51,6 @@ impl BlockProcessor {
         flags: Arc<NodeFlags>,
         ledger: Arc<Ledger>,
         unchecked_map: Arc<UncheckedMap>,
-        gap_cache: Arc<Mutex<GapCache>>,
         stats: Arc<Stats>,
         work: Arc<WorkThresholds>,
         write_database_queue: Arc<WriteDatabaseQueue>,
@@ -70,7 +67,6 @@ impl BlockProcessor {
             flushing: AtomicBool::new(false),
             ledger,
             unchecked_map,
-            gap_cache,
             config,
             stats,
             work,
@@ -129,10 +125,6 @@ impl BlockProcessor {
 
     pub fn queue_unchecked(&self, hash_or_account: &HashOrAccount) {
         self.unchecked_map.trigger(hash_or_account);
-        self.gap_cache
-            .lock()
-            .unwrap()
-            .erase(&hash_or_account.into())
     }
 
     pub fn process_batch(&self) -> VecDeque<(ProcessResult, Arc<BlockEnum>)> {

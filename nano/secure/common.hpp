@@ -311,6 +311,7 @@ private:
 
 public:
 	static std::string const hash_prefix;
+	void operator() (nano::object_stream &) const;
 };
 
 enum class vote_code

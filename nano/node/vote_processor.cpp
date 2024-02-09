@@ -191,6 +191,11 @@ nano::vote_code nano::vote_processor::vote_blocking (std::shared_ptr<nano::vote>
 			stats.inc (nano::stat::type::vote, nano::stat::detail::vote_indeterminate);
 			break;
 	}
+
+	logger.trace (nano::log::type::vote_processor, nano::log::detail::vote_processed,
+	nano::log::arg{ "vote", vote_a },
+	nano::log::arg{ "result", result });
+
 	return result;
 }
 

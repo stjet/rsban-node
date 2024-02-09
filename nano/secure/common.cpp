@@ -822,6 +822,13 @@ const void * nano::vote::get_rust_data_pointer () const
 	return rsnano::rsn_vote_rust_data_pointer (handle);
 }
 
+void nano::vote::operator() (nano::object_stream & obs) const
+{
+	obs.write ("account", account ());
+	obs.write ("timestamp", timestamp());
+	obs.write_range ("hashes", hashes ());
+}
+
 nano::block_hash nano::iterate_vote_blocks_as_hash::operator() (nano::block_hash const & item) const
 {
 	return item;

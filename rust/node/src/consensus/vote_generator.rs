@@ -13,6 +13,7 @@ use std::{
 use rsnano_core::{utils::milliseconds_since_epoch, Account, BlockEnum, BlockHash, Root, Vote};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbWriteTransaction;
+use tracing::trace;
 
 use crate::{
     config::NetworkConstants,
@@ -397,8 +398,9 @@ impl SharedState {
     }
 
     fn should_vote(&self, txn: &mut LmdbWriteTransaction, root: &Root, hash: &BlockHash) -> bool {
-        if self.is_final {
-            match self.ledger.get_block(txn, hash) {
+        let block = self.ledger.get_block(txn, hash);
+        let should_vote = if self.is_final {
+            match &block {
                 Some(block) => {
                     debug_assert!(block.root() == *root);
                     self.ledger.dependents_confirmed(txn, &block)
@@ -411,11 +413,20 @@ impl SharedState {
                 None => false,
             }
         } else {
-            match self.ledger.get_block(txn, hash) {
+            match &block {
                 Some(block) => self.ledger.dependents_confirmed(txn, &block),
                 None => false,
             }
-        }
+        };
+
+        trace!(
+            should_vote,
+            is_final = self.is_final,
+            block = %block.map(|b| b.hash()).unwrap_or_default(),
+            "Should vote"
+        );
+
+        should_vote
     }
 }
 

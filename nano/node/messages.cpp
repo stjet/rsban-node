@@ -35,6 +35,13 @@ nano::stat::detail nano::to_stat_detail (nano::message_type message_type)
 	return static_cast<nano::stat::detail> (rsnano::rsn_message_type_to_stat_detail (static_cast<uint8_t> (message_type)));
 }
 
+nano::log::detail nano::to_log_detail (nano::message_type type)
+{
+	auto value = magic_enum::enum_cast<nano::log::detail> (magic_enum::enum_name (type));
+	debug_assert (value);
+	return value.value_or (nano::log::detail{});
+}
+
 /*
  * message
  */
@@ -52,6 +59,11 @@ nano::message::~message ()
 nano::message_type nano::message::type () const
 {
 	return static_cast<nano::message_type> (rsnano::rsn_message_type (handle));
+}
+
+void nano::message::operator() (nano::object_stream & obs) const
+{
+	obs.write("message_type", magic_enum::enum_name (type()));
 }
 
 std::unique_ptr<nano::message> nano::message_handle_to_message (rsnano::MessageHandle * handle_a)

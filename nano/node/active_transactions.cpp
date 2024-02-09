@@ -344,16 +344,26 @@ void nano::active_transactions::broadcast_vote_locked (nano::election_lock & loc
 	rsnano::rsn_election_lock_last_vote_set (lock.handle);
 	if (node.config->enable_voting && node.wallets.voting_reps_count () > 0)
 	{
-		node.stats->inc (nano::stat::type::election, nano::stat::detail::generate_vote);
+		node.stats->inc (nano::stat::type::election, nano::stat::detail::broadcast_vote);
 
 		if (confirmed_locked (lock) || have_quorum (tally_impl (lock)))
 		{
 			node.stats->inc (nano::stat::type::election, nano::stat::detail::generate_vote_final);
+			node.logger->trace (nano::log::type::election, nano::log::detail::broadcast_vote,
+			nano::log::arg{ "qualified_root", election.qualified_root () },
+			nano::log::arg{ "winner", lock.status ().get_winner ()->hash () },
+			nano::log::arg{ "type", "final" });
+
 			node.final_generator.add (election.root (), lock.status ().get_winner ()->hash ()); // Broadcasts vote to the network
 		}
 		else
 		{
 			node.stats->inc (nano::stat::type::election, nano::stat::detail::generate_vote_normal);
+			node.logger->trace (nano::log::type::election, nano::log::detail::broadcast_vote,
+			nano::log::arg{ "qualified_root", election.qualified_root () },
+			nano::log::arg{ "winner", lock.status ().get_winner ()->hash () },
+			nano::log::arg{ "type", "normal" });
+
 			node.generator.add (election.root (), lock.status ().get_winner ()->hash ()); // Broadcasts vote to the network
 		}
 	}
@@ -455,6 +465,7 @@ void nano::active_transactions::process_confirmed (nano::election_status const &
 	}
 	if (block_l)
 	{
+		node.logger->trace (nano::log::type::node, nano::log::detail::process_confirmed, nano::log::arg{ "block", block_l });
 		confirmation_height_processor.add (block_l);
 	}
 	else if (iteration_a < num_iters)
@@ -492,6 +503,9 @@ void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano
 		status_l = lock_a.status ();
 
 		node.active.recently_confirmed.put (election.qualified_root (), status_l.get_winner ()->hash ());
+
+		node.logger->trace (nano::log::type::election, nano::log::detail::election_confirmed,
+		nano::log::arg{ "qualified_root", election.qualified_root() });
 
 		lock_a.unlock ();
 
@@ -962,6 +976,9 @@ bool nano::active_transactions::transition_time (nano::confirmation_solicitor & 
 		state_l = static_cast<nano::election_state> (rsnano::rsn_election_lock_state (lock.handle));
 		if (!lock.state_change (state_l, nano::election_state::expired_unconfirmed))
 		{
+			node.logger->trace (nano::log::type::election, nano::log::detail::election_expired,
+			nano::log::arg{ "qualified_root", election.qualified_root() });
+
 			result = true; // Return true to indicate this election should be cleaned up
 			auto st{ lock.status () };
 			st.set_election_status_type (nano::election_status_type::stopped);
@@ -1288,6 +1305,14 @@ nano::election_vote_result nano::active_transactions::vote (nano::election & ele
 	}
 
 	node.stats->inc (nano::stat::type::election, vote_source_a == nano::vote_source::live ? nano::stat::detail::vote_new : nano::stat::detail::vote_cached);
+	node.logger->trace (nano::log::type::election, nano::log::detail::vote_processed,
+	nano::log::arg{ "qualified_root", election.qualified_root () },
+	nano::log::arg{ "account", rep },
+	nano::log::arg{ "hash", block_hash_a },
+	nano::log::arg{ "timestamp", timestamp_a },
+	nano::log::arg{ "vote_source", vote_source_a },
+	nano::log::arg{ "weight", weight });
+
 
 	if (!confirmed_locked (lock))
 	{

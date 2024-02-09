@@ -10,6 +10,7 @@ use std::{
 
 use rsnano_core::Account;
 use rsnano_messages::{Message, MessageSerializer, ProtocolInfo};
+use tracing::trace;
 
 use super::{
     write_queue::WriteCallback, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket,
@@ -270,10 +271,12 @@ impl Channel for ChannelTcp {
             if let Some(observer) = self.observer.lock() {
                 observer.message_sent(message);
             }
+            trace!(channel_id = self.channel_id, message = ?message, "Message sent");
         } else {
             if let Some(observer) = self.observer.lock() {
                 observer.message_dropped(message, buffer.len());
             }
+            trace!(channel_id = self.channel_id, message = ?message, "Message dropped");
 
             if let Some(callback) = callback {
                 if let Some(async_rt) = self.async_rt.upgrade() {

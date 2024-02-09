@@ -344,6 +344,7 @@ private:
 void nano::network::process_message (nano::message const & message, std::shared_ptr<nano::transport::channel> const & channel)
 {
 	node.stats->inc (nano::stat::type::message, to_stat_detail (message.type ()), nano::stat::dir::in);
+	node.logger->trace (nano::log::type::network_processed, to_log_detail (message.type ()), nano::log::arg{ "message", message });
 
 	network_message_visitor visitor (node, channel);
 	message.visit (visitor);

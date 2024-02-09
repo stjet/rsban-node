@@ -26,6 +26,7 @@ class node;
 class active_transactions;
 class block;
 class block_sideband;
+class block_processor;
 class election;
 class vote;
 class confirmation_height_processor;
@@ -130,7 +131,7 @@ private: // Elections
 	friend class nano::election;
 
 public:
-	active_transactions (nano::node &, nano::confirmation_height_processor &);
+	active_transactions (nano::node &, nano::confirmation_height_processor &, nano::block_processor &);
 	active_transactions (active_transactions const &) = delete;
 	~active_transactions ();
 
@@ -261,8 +262,9 @@ private:
 	void process_confirmed_data (store::transaction const &, std::shared_ptr<nano::block> const &, nano::block_hash const &, nano::account &, nano::uint128_t &, bool &, bool &, nano::account &);
 
 private: // Dependencies
-	nano::confirmation_height_processor & confirmation_height_processor;
 	nano::node & node;
+	nano::confirmation_height_processor & confirmation_height_processor;
+	nano::block_processor & block_processor;
 
 public:
 	recently_confirmed_cache recently_confirmed;

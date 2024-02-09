@@ -195,7 +195,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	wallets (wallets_store.init_error (), *this),
 	generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* non-final */ false },
 	final_generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* final */ true },
-	active (*this, confirmation_height_processor),
+	active (*this, confirmation_height_processor, block_processor),
 	scheduler_impl{ std::make_unique<nano::scheduler::component> (*this) },
 	scheduler{ *scheduler_impl },
 	aggregator (*config, *stats, generator, final_generator, history, ledger, wallets, active),
@@ -206,7 +206,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	startup_time (std::chrono::steady_clock::now ()),
 	node_seq (seq),
 	block_broadcast{ *network, block_arrival, !flags.disable_block_processor_republishing () },
-	block_publisher{ active },
 	process_live_dispatcher{ ledger, scheduler.priority, vote_cache, websocket }
 {
 	logger->debug (nano::log::type::node, "Constructing node...");
@@ -230,7 +229,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 
 	block_processor.start ();
 	block_broadcast.connect (block_processor);
-	block_publisher.connect (block_processor);
 	process_live_dispatcher.connect (block_processor);
 	unchecked.set_satisfied_observer ([this] (nano::unchecked_info const & info) {
 		this->block_processor.add (info.get_block ());

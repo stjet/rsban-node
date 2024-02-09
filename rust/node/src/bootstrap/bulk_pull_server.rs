@@ -6,7 +6,7 @@ use rsnano_core::{utils::MemoryStream, Account, BlockEnum, BlockHash, BlockType}
 use rsnano_ledger::Ledger;
 use rsnano_messages::BulkPull;
 use std::sync::{Arc, Mutex, Weak};
-use tracing::debug;
+use tracing::{debug, trace};
 
 /**
  * Handle a request for the pull of all blocks associated with an account
@@ -275,6 +275,7 @@ impl BulkPullServerImpl {
 
     pub fn send_next(&mut self, server_impl: Arc<Mutex<Self>>) {
         if let Some(block) = self.get_next() {
+            trace!(block = %block.hash(), remote = %self.connection.remote_endpoint(), "Sending block");
             let mut stream = MemoryStream::new();
 
             block.serialize(&mut stream);

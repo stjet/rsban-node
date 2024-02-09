@@ -16,7 +16,7 @@ use std::{
     sync::{atomic::AtomicBool, Arc, Condvar, Mutex},
     time::{Duration, Instant, SystemTime},
 };
-use tracing::{debug, error};
+use tracing::{debug, error, trace};
 
 use super::{GapCache, UncheckedMap};
 
@@ -204,6 +204,7 @@ impl BlockProcessor {
 
         self.stats
             .inc(StatType::Blockprocessor, result.into(), Direction::In);
+        trace!(?result, block = %block.hash(), "Block processed");
 
         match result {
             ProcessResult::Progress => {

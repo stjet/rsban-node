@@ -868,7 +868,6 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 			fill_from_cache (*result.election, *cache);
 		}
 
-		node.stats->inc (nano::stat::type::active_started, to_stat_detail (election_behavior_a));
 		node.observers->active_started.notify (hash);
 		vacancy_update ();
 	}

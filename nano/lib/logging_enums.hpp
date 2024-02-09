@@ -68,6 +68,8 @@ enum class type
 	txn_tracker,
 	gap_cache,
 	vote_processor,
+	election_scheduler,
+	bote_generator,
 
 	// bootstrap
 	bulk_pull_client,

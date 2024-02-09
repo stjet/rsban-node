@@ -239,6 +239,11 @@ nano::block_hash nano::block::generate_hash () const
 	return result;
 }
 
+void nano::block::operator() (nano::object_stream & obs) const
+{
+	obs.write ("hash", hash());
+}
+
 void nano::send_block::visit (nano::block_visitor & visitor_a) const
 {
 	visitor_a.send_block (*this);
@@ -388,6 +393,10 @@ std::size_t nano::send_block::size ()
 {
 	return sizeof (nano::block_hash) + sizeof (nano::account) + sizeof (nano::amount) + sizeof (nano::signature) + sizeof (uint64_t);
 }
+
+/*
+ * open_block
+ */
 
 nano::open_block::open_block ()
 {
@@ -561,6 +570,10 @@ std::size_t nano::open_block::size ()
 	return rsnano::rsn_open_block_size ();
 }
 
+/*
+ * change_block
+ */
+
 nano::change_block::change_block ()
 {
 	rsnano::ChangeBlockDto dto;
@@ -703,6 +716,10 @@ std::size_t nano::change_block::size ()
 {
 	return rsnano::rsn_change_block_size ();
 }
+
+/*
+ * state_block
+ */
 
 nano::state_block::state_block ()
 {

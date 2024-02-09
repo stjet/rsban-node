@@ -3,6 +3,7 @@
 #include <nano/lib/epoch.hpp>
 #include <nano/lib/errors.hpp>
 #include <nano/lib/numbers.hpp>
+#include <nano/lib/object_stream.hpp>
 #include <nano/lib/optional_ptr.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/stream.hpp>
@@ -139,6 +140,9 @@ protected:
 	virtual nano::block_hash generate_hash () const;
 	mutable nano::block_hash cached_hash{ 0 };
 	rsnano::BlockHandle * handle;
+
+public: // Logging
+	void operator() (nano::object_stream &) const;
 };
 
 using block_list_t = std::vector<std::shared_ptr<nano::block>>;

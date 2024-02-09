@@ -9,7 +9,7 @@ use std::{
     collections::HashSet,
     sync::{Arc, Mutex, Weak},
 };
-use tracing::debug;
+use tracing::{debug, trace};
 
 struct BulkPullAccountServerImpl {
     connection: Arc<TcpServer>,
@@ -107,8 +107,10 @@ impl BulkPullAccountServerImpl {
 
             let mut send_buffer = Vec::new();
             if self.pending_address_only {
+                trace!(pending = %block_info.source, "Sending pending");
                 send_buffer.extend_from_slice(block_info.source.as_bytes());
             } else {
+                trace!(block = %block_info_key.hash, "Sending block");
                 send_buffer.extend_from_slice(block_info_key.hash.as_bytes());
                 send_buffer.extend_from_slice(&block_info.amount.to_be_bytes());
 

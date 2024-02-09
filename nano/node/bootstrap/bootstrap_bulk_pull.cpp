@@ -119,6 +119,11 @@ void nano::bulk_pull_client::request ()
 	payload.ascending = false;
 	nano::bulk_pull req{ node_l->network_params.network, payload };
 
+	logger->trace (nano::log::type::bulk_pull_client, nano::log::detail::requesting_account_or_head,
+	nano::log::arg{ "account_or_head", pull.account_or_head },
+	nano::log::arg{ "channel", connection->channel_string() });
+
+
 	if (attempt->should_log ())
 	{
 		logger->debug (nano::log::type::bulk_pull_client, "Accounts in pull queue: {}", attempt->get_pulling ());
@@ -205,6 +210,9 @@ void nano::bulk_pull_client::received_block (boost::system::error_code ec, std::
 		return;
 	}
 	auto hash = block->hash ();
+
+	logger->trace (nano::log::type::bulk_pull_client, nano::log::detail::pulled_block, nano::log::arg{ "block", block });
+
 	// Is block expected?
 	bool block_expected (false);
 	// Unconfirmed head is used only for lazy destinations if legacy bootstrap is not available, see nano::bootstrap_attempt::lazy_destinations_increment (...)
@@ -272,6 +280,10 @@ void nano::bulk_pull_account_client::request ()
 	payload.minimum_amount = node_l->config->receive_minimum;
 	payload.flags = nano::bulk_pull_account_flags::pending_hash_and_amount;
 	nano::bulk_pull_account req{ node_l->network_params.network, payload };
+
+	node_l->logger->trace (nano::log::type::bulk_pull_account_client, nano::log::detail::requesting_pending,
+	nano::log::arg{ "account", req.get_account ().to_account () }, // TODO: Convert to lazy eval
+	nano::log::arg{ "connection", connection->channel_string () });
 
 	if (attempt->should_log ())
 	{

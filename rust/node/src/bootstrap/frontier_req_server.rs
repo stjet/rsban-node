@@ -6,7 +6,7 @@ use std::{
 use rsnano_core::{utils::seconds_since_epoch, Account, BlockHash};
 use rsnano_ledger::Ledger;
 use rsnano_messages::FrontierReq;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::{
     transport::{SocketExtensions, TcpServer, TcpServerExt, TrafficType},
@@ -96,6 +96,12 @@ impl FrontierReqServerImpl {
 
     pub fn send_next(&mut self, server: Arc<Mutex<FrontierReqServerImpl>>) {
         if !self.current.is_zero() && self.count < self.request.count as usize {
+            trace!(
+                account = %self.current, 
+                frontier = %self.frontier, 
+                socket = %self.connection.remote_endpoint(), 
+                "Sending frontier");
+
             let mut send_buffer = Vec::with_capacity(64);
             send_buffer.extend_from_slice(self.current.as_bytes());
             send_buffer.extend_from_slice(self.frontier.as_bytes());

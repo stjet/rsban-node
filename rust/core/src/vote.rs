@@ -111,7 +111,7 @@ impl Vote {
         let mut result = String::new();
         for h in self.hashes.iter() {
             result.push_str(&h.to_string());
-            result.push_str(", ");
+            result.push_str(",");
         }
         result
     }

@@ -89,7 +89,7 @@ pub extern "C" fn rsn_tcp_listener_start(
         let ec_dto = ErrorCodeDto::from(&ec);
         callback(context.get_context(), SocketHandle::new(socket), &ec_dto)
     });
-    handle.0.start(callback_wrapper).is_ok()
+    handle.0.start_with(callback_wrapper).is_ok()
 }
 
 #[no_mangle]

@@ -145,6 +145,10 @@ impl TcpChannels {
         }
     }
 
+    pub fn new_test_instance() -> Self {
+        Self::new(TcpChannelsOptions::new_test_instance())
+    }
+
     pub fn get_next_channel_id(&self) -> usize {
         self.next_channel_id.fetch_add(1, Ordering::SeqCst)
     }

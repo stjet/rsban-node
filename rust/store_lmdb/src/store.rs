@@ -86,7 +86,7 @@ impl LmdbStore<EnvironmentStub> {
     pub fn create_null() -> Self {
         let options = EnvOptions::default();
         let txn_tracker = Arc::new(NullTransactionTracker::new());
-        LmdbStore::new("nulled_data.mdb", &options, txn_tracker, false).unwrap()
+        LmdbStore::new("nulled_data.ldb", &options, txn_tracker, false).unwrap()
     }
 }
 

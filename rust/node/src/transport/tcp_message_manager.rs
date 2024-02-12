@@ -114,6 +114,12 @@ impl TcpMessageManager {
     }
 }
 
+impl Default for TcpMessageManager {
+    fn default() -> Self {
+        Self::new(2048)
+    }
+}
+
 const MAX_ENTRIES_PER_CONNECTION: usize = 16;
 
 #[cfg(test)]

@@ -165,6 +165,12 @@ impl UncheckedMap {
     }
 }
 
+impl Default for UncheckedMap {
+    fn default() -> Self {
+        Self::new(65536, Arc::new(Stats::default()), false)
+    }
+}
+
 impl Drop for UncheckedMap {
     fn drop(&mut self) {
         self.stop()

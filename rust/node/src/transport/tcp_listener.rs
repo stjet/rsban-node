@@ -566,90 +566,50 @@ fn is_temporary_error(ec: ErrorCode) -> bool {
 mod tests {
     use super::*;
     use crate::{
-        block_processing::UncheckedMap,
-        transport::{
-            alive_sockets, NetworkFilter, NullSocketObserver, OutboundBandwidthLimiter,
-            TcpChannelsOptions, TcpMessageManager,
-        },
+        transport::{alive_sockets, NullSocketObserver, TcpChannelsOptions, TcpMessageManager},
         utils::ThreadPoolImpl,
+        DEV_NETWORK_PARAMS,
     };
-    use rsnano_core::{work::WORK_THRESHOLDS_STUB, Networks};
-    use rsnano_ledger::{LedgerConstants, WriteDatabaseQueue};
-    use rsnano_store_lmdb::{EnvironmentWrapper, LmdbStore, TestDbFile};
+    use rsnano_ledger::LedgerContext;
 
     #[test]
     fn memory_leak() {
         {
-            let network_params = NetworkParams::new(Networks::NanoDevNetwork);
-            let config = NodeConfig::new(Some(2000), &network_params);
-            let tokio = tokio::runtime::Builder::new_multi_thread()
-                .thread_name("tokio runtime")
-                .enable_all()
-                .build()
-                .unwrap();
-            let async_rt = Arc::new(AsyncRuntime::new(tokio));
-            let tcp_message_manager = Arc::new(TcpMessageManager::new(10));
-            let stats = Arc::new(Stats::default());
-            let flags = NodeFlags::default();
-            let limiter = Arc::new(OutboundBandwidthLimiter::new(Default::default()));
-            let syn_cookies = Arc::new(SynCookies::new(16));
-            let workers: Arc<dyn ThreadPool> =
-                Arc::new(ThreadPoolImpl::create(2, "test workers".into()));
-            let observer: Arc<dyn SocketObserver> = Arc::new(NullSocketObserver::new());
+            let async_rt = Arc::new(AsyncRuntime::default());
             let node_id = KeyPair::new();
+            let syn_cookies = Arc::new(SynCookies::default());
+            let tcp_message_manager = Arc::new(TcpMessageManager::default());
+            let ledger_ctx = LedgerContext::empty();
+
             let tcp_channels = Arc::new(TcpChannels::new(TcpChannelsOptions {
-                node_config: config.clone(),
-                publish_filter: Arc::new(NetworkFilter::new(1000)),
                 async_rt: Arc::clone(&async_rt),
-                network: network_params.clone(),
-                stats: Arc::clone(&stats),
-                tcp_message_manager,
                 port: 8088,
-                flags: flags.clone(),
-                sink: Box::new(|_, _| {}),
-                limiter,
                 node_id: node_id.clone(),
                 syn_cookies: Arc::clone(&syn_cookies),
-                workers: Arc::clone(&workers),
-                observer: Arc::clone(&observer),
+                tcp_message_manager: Arc::clone(&tcp_message_manager),
+                ..TcpChannelsOptions::new_test_instance()
             }));
-            let db_file = TestDbFile::random();
-            let store = Arc::new(
-                LmdbStore::<EnvironmentWrapper>::open(&db_file.path)
-                    .build()
-                    .unwrap(),
-            );
-            let ledger_constants = LedgerConstants::dev();
-            let ledger = Arc::new(Ledger::new(store.clone(), ledger_constants).unwrap());
-            let unchecked_map = Arc::new(UncheckedMap::new(100, Arc::clone(&stats), false));
-            let work = Arc::new(WORK_THRESHOLDS_STUB.clone());
-            let write_database_queue = Arc::new(WriteDatabaseQueue::new(false));
-            let block_processor = Arc::new(BlockProcessor::new(
-                std::ptr::null_mut(),
-                Arc::new(config.clone()),
-                Arc::new(flags.clone()),
-                Arc::clone(&ledger),
-                unchecked_map,
-                Arc::clone(&stats),
-                work,
-                write_database_queue,
-            ));
+
+            let block_processor = Arc::new(BlockProcessor::new_test_instance(Arc::clone(
+                &ledger_ctx.ledger,
+            )));
+
             let bootstrap_initiator = Arc::new(BootstrapInitiator::new(std::ptr::null_mut()));
             let tcp_listener = Arc::new(TcpListener::new(
                 8088,
                 32,
-                config,
+                NodeConfig::new_null(),
                 tcp_channels,
                 syn_cookies,
-                network_params,
-                flags,
+                DEV_NETWORK_PARAMS.clone(),
+                NodeFlags::default(),
                 async_rt,
-                observer,
-                stats,
-                workers,
+                Arc::new(NullSocketObserver::new()),
+                Arc::new(Stats::default()),
+                Arc::new(ThreadPoolImpl::new_test_instance()),
                 block_processor,
                 bootstrap_initiator,
-                ledger,
+                Arc::clone(&ledger_ctx.ledger),
                 Arc::new(node_id),
             ));
 

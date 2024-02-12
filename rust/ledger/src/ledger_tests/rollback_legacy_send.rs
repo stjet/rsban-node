@@ -8,7 +8,10 @@ use crate::{
     DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 
-use super::{setup_legacy_send_block, LedgerContext, LegacySendBlockResult};
+use super::{
+    helpers::{setup_legacy_send_block, LegacySendBlockResult},
+    LedgerContext,
+};
 
 #[test]
 fn update_vote_weight() {

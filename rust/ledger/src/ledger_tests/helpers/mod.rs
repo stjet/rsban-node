@@ -1,8 +1,7 @@
 mod account_block_factory;
-mod ledger_context;
 
+use crate::LedgerContext;
 pub(crate) use account_block_factory::AccountBlockFactory;
-pub(crate) use ledger_context::LedgerContext;
 use rsnano_core::{Amount, BlockEnum};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 

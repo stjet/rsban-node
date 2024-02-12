@@ -71,12 +71,6 @@ pub struct OutboundBandwidthLimiter {
     limiter_bootstrap: BandwidthLimiter,
 }
 
-impl Default for OutboundBandwidthLimiter {
-    fn default() -> Self {
-        Self::new(OutboundBandwidthLimiterConfig::default())
-    }
-}
-
 impl OutboundBandwidthLimiter {
     pub fn new(config: OutboundBandwidthLimiterConfig) -> Self {
         Self {
@@ -109,6 +103,12 @@ impl OutboundBandwidthLimiter {
             BandwidthLimitType::Standard => &self.limiter_standard,
             BandwidthLimitType::Bootstrap => &self.limiter_bootstrap,
         }
+    }
+}
+
+impl Default for OutboundBandwidthLimiter {
+    fn default() -> Self {
+        Self::new(Default::default())
     }
 }
 

@@ -1,13 +1,13 @@
-use std::sync::Arc;
-
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, Ledger};
 use rsnano_core::{Account, ConfirmationHeightInfo};
 use rsnano_store_lmdb::{EnvironmentWrapper, LmdbStore, LmdbWriteTransaction, TestDbFile};
+use std::sync::Arc;
 
-use super::AccountBlockFactory;
+#[cfg(test)]
+use crate::ledger_tests::helpers::AccountBlockFactory;
 
-pub(crate) struct LedgerContext {
-    pub(crate) ledger: Ledger,
+pub struct LedgerContext {
+    pub ledger: Arc<Ledger>,
     _db_file: TestDbFile,
 }
 
@@ -19,7 +19,7 @@ impl LedgerContext {
                 .build()
                 .unwrap(),
         );
-        let ledger = Ledger::new(store.clone(), LEDGER_CONSTANTS_STUB.clone()).unwrap();
+        let ledger = Arc::new(Ledger::new(store.clone(), LEDGER_CONSTANTS_STUB.clone()).unwrap());
 
         LedgerContext {
             ledger,
@@ -27,11 +27,13 @@ impl LedgerContext {
         }
     }
 
-    pub fn genesis_block_factory(&self) -> AccountBlockFactory {
+    #[cfg(test)]
+    pub(crate) fn genesis_block_factory(&self) -> AccountBlockFactory {
         AccountBlockFactory::genesis(&self.ledger)
     }
 
-    pub fn block_factory(&self) -> AccountBlockFactory {
+    #[cfg(test)]
+    pub(crate) fn block_factory(&self) -> AccountBlockFactory {
         AccountBlockFactory::new(&self.ledger)
     }
 

@@ -36,6 +36,10 @@ impl ThreadPoolImpl<TimerWrapper> {
     pub fn create(num_threads: usize, thread_name: String) -> Self {
         Self::new(num_threads, thread_name, Timer::create())
     }
+
+    pub fn new_test_instance() -> Self {
+        Self::create(2, "test pool".into())
+    }
 }
 
 impl ThreadPoolImpl<NullTimer> {

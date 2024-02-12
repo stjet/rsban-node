@@ -82,6 +82,12 @@ impl NetworkFilter {
     }
 }
 
+impl Default for NetworkFilter {
+    fn default() -> Self {
+        Self::new(256 * 1024)
+    }
+}
+
 pub trait NetworkFilterHasher {
     fn hash(&self, bytes: &[u8]) -> u128;
 }

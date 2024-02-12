@@ -2,7 +2,9 @@ use super::{
     BootstrapAscendingConfig, DiagnosticsConfig, HintedSchedulerConfig, Networks,
     OptimisticSchedulerConfig, WebsocketConfig,
 };
-use crate::{consensus::VoteCacheConfig, stats::StatsConfig, IpcConfig, NetworkParams};
+use crate::{
+    consensus::VoteCacheConfig, stats::StatsConfig, IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
+};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
@@ -293,6 +295,10 @@ impl NodeConfig {
             },
             vote_cache: Default::default(),
         }
+    }
+
+    pub fn new_null() -> Self {
+        Self::new(None, &DEV_NETWORK_PARAMS)
     }
 
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {

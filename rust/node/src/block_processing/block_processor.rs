@@ -5,7 +5,7 @@ use crate::{
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    work::WorkThresholds,
+    work::{WorkThresholds, WORK_THRESHOLDS_STUB},
     BlockEnum, BlockType, Epoch, HashOrAccount, UncheckedInfo,
 };
 use rsnano_ledger::{Ledger, ProcessResult, WriteDatabaseQueue, Writer};
@@ -74,6 +74,19 @@ impl BlockProcessor {
             flags,
             blocks_rolled_back: Mutex::new(None),
         }
+    }
+
+    pub fn new_test_instance(ledger: Arc<Ledger>) -> Self {
+        BlockProcessor::new(
+            std::ptr::null_mut(),
+            Arc::new(NodeConfig::new_null()),
+            Arc::new(NodeFlags::default()),
+            ledger,
+            Arc::new(UncheckedMap::default()),
+            Arc::new(Stats::default()),
+            Arc::new(WORK_THRESHOLDS_STUB.clone()),
+            Arc::new(WriteDatabaseQueue::new(false)),
+        )
     }
 
     pub fn set_blocks_rolled_back_callback(

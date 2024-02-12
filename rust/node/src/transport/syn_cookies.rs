@@ -119,6 +119,12 @@ impl SynCookies {
     }
 }
 
+impl Default for SynCookies {
+    fn default() -> Self {
+        Self::new(10)
+    }
+}
+
 struct LockedSynCookies {
     cookies: HashMap<SocketAddrV6, SynCookieInfo>,
     cookies_per_ip: HashMap<Ipv6Addr, usize>,

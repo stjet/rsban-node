@@ -1,9 +1,9 @@
 use super::{
     BufferDropPolicy, ChannelEnum, ChannelTcp, ChannelTcpObserver, CompositeSocketObserver,
     EndpointType, IChannelTcpObserverWeakPtr, MessageDeserializer, NetworkFilter,
-    NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket, SocketBuilder,
-    SocketExtensions, SocketObserver, SynCookies, TcpMessageManager, TcpServer, TcpServerFactory,
-    TcpServerObserver, TrafficType,
+    NullSocketObserver, NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket,
+    SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpMessageManager, TcpServer,
+    TcpServerFactory, TcpServerObserver, TrafficType,
 };
 use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
@@ -12,9 +12,9 @@ use crate::{
     transport::{Channel, SocketType},
     utils::{
         ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address, AsyncRuntime,
-        ErrorCode, ThreadPool,
+        ErrorCode, ThreadPool, ThreadPoolImpl,
     },
-    NetworkParams,
+    NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rand::{seq::SliceRandom, thread_rng};
 use rsnano_core::{
@@ -51,6 +51,27 @@ pub struct TcpChannelsOptions {
     pub syn_cookies: Arc<SynCookies>,
     pub workers: Arc<dyn ThreadPool>,
     pub observer: Arc<dyn SocketObserver>,
+}
+
+impl TcpChannelsOptions {
+    pub fn new_test_instance() -> Self {
+        TcpChannelsOptions {
+            node_config: NodeConfig::new_null(),
+            publish_filter: Arc::new(NetworkFilter::default()),
+            async_rt: Arc::new(AsyncRuntime::default()),
+            network: DEV_NETWORK_PARAMS.clone(),
+            stats: Arc::new(Default::default()),
+            tcp_message_manager: Arc::new(TcpMessageManager::default()),
+            port: 8088,
+            flags: NodeFlags::default(),
+            sink: Box::new(|_, _| {}),
+            limiter: Arc::new(OutboundBandwidthLimiter::default()),
+            node_id: KeyPair::new(),
+            syn_cookies: Arc::new(SynCookies::default()),
+            workers: Arc::new(ThreadPoolImpl::new_test_instance()),
+            observer: Arc::new(NullSocketObserver::new()),
+        }
+    }
 }
 
 pub struct TcpChannels {

@@ -3,8 +3,8 @@ use num::FromPrimitive;
 use rsnano_node::{
     stats::SocketStats,
     transport::{
-        CompositeSocketObserver, Socket, SocketBuilder, SocketExtensions, SocketObserver,
-        SocketType, WriteCallback,
+        alive_sockets, CompositeSocketObserver, Socket, SocketBuilder, SocketExtensions,
+        SocketObserver, SocketType, WriteCallback,
     },
     utils::ErrorCode,
 };
@@ -15,6 +15,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use tracing::debug;
 
 use crate::{
     utils::{AsyncRuntimeHandle, ThreadPoolHandle},
@@ -35,6 +36,11 @@ impl Deref for SocketHandle {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_sockets_alive() -> usize {
+    alive_sockets()
 }
 
 #[no_mangle]
@@ -67,6 +73,7 @@ pub unsafe extern "C" fn rsn_socket_create(
         ])))
         .max_write_queue_len(max_write_queue_len)
         .build();
+    debug!(socket_id = socket.socket_id, "Socket created from FFI");
 
     SocketHandle::new(socket)
 }

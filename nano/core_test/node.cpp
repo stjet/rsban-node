@@ -20,6 +20,7 @@
 
 #include <fstream>
 #include <numeric>
+#include <thread>
 
 using namespace std::chrono_literals;
 
@@ -32,6 +33,15 @@ TEST (node, null_account)
 	nano::account default_account{};
 	ASSERT_FALSE (default_account == nullptr);
 	ASSERT_NE (default_account, nullptr);
+}
+
+TEST (node, memory_leak)
+{
+	{
+		nano::test::system system (2);
+	}
+	auto alive  = rsnano::rsn_sockets_alive();
+	ASSERT_EQ(0, alive);
 }
 
 TEST (node, stop)

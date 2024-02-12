@@ -151,7 +151,7 @@ impl SocketObserver for CompositeSocketObserver {
 }
 
 pub struct Socket {
-    socket_id: usize,
+    pub socket_id: usize,
     /// The other end of the connection
     remote: Mutex<Option<SocketAddrV6>>,
 
@@ -238,6 +238,7 @@ impl Socket {
     }
 
     pub fn close_internal(&self) {
+        debug!(socket_id = self.socket_id, "Socket::close_internal");
         if !self.closed.swap(true, Ordering::SeqCst) {
             self.send_queue.clear();
             self.set_default_timeout_value(0);
@@ -712,6 +713,10 @@ pub struct SocketBuilder {
 
 static NEXT_SOCKET_ID: AtomicUsize = AtomicUsize::new(0);
 static LIVE_SOCKETS: AtomicUsize = AtomicUsize::new(0);
+
+pub fn alive_sockets() -> usize {
+    LIVE_SOCKETS.load(Ordering::Relaxed)
+}
 
 impl SocketBuilder {
     pub fn endpoint_type(

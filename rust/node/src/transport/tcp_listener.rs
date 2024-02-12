@@ -283,6 +283,10 @@ impl TcpListenerExt for Arc<TcpListener> {
             Arc::clone(&self.socket_observer),
         ])))
         .build();
+        debug!(
+            socket_id = socket.socket_id,
+            "Socket created from tcp_listener::start"
+        );
 
         let listening_socket = Arc::new(ServerSocket {
             socket,
@@ -324,7 +328,7 @@ impl TcpListenerExt for Arc<TcpListener> {
     }
 
     fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>) {
-        let socket_clone = {
+        let listening_socket = {
             let guard = self.data.lock().unwrap();
             let Some(s) = &guard.listening_socket else {
                 return;
@@ -369,8 +373,12 @@ impl TcpListenerExt for Arc<TcpListener> {
                 Arc::clone(&this_l.socket_observer),
             ])))
             .build();
+            debug!(
+                socket_id = new_connection.socket_id,
+                "Socket created from tcp_listener::on_connection"
+            );
 
-            let socket_clone = Arc::clone(&socket_clone);
+            let listening_socket_clone = Arc::clone(&listening_socket);
             let connection_clone = Arc::clone(&new_connection);
             let this_clone_w = Arc::downgrade(&this_l);
             this_l.socket_facade.async_accept(
@@ -378,7 +386,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                 Box::new(move |remote_endpoint, ec| {
                     let Some(this_clone) = this_clone_w.upgrade() else { return; };
                     let SocketAddr::V6(remote_endpoint) = remote_endpoint else {panic!("not a v6 address")};
-                    let socket_l = socket_clone;
+                    let socket_l = listening_socket_clone;
                     connection_clone.set_remote(remote_endpoint);
 
                     let data = this_clone.data.lock().unwrap();
@@ -552,4 +560,114 @@ impl TcpServerObserver for TcpListener {
 fn is_temporary_error(ec: ErrorCode) -> bool {
     return ec.val == 11 // would block
                         || ec.val ==  4; // interrupted system call
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        block_processing::UncheckedMap,
+        transport::{
+            alive_sockets, NetworkFilter, NullSocketObserver, OutboundBandwidthLimiter,
+            TcpChannelsOptions, TcpMessageManager,
+        },
+        utils::ThreadPoolImpl,
+    };
+    use rsnano_core::{work::WORK_THRESHOLDS_STUB, Networks};
+    use rsnano_ledger::{LedgerConstants, WriteDatabaseQueue};
+    use rsnano_store_lmdb::{EnvironmentWrapper, LmdbStore, TestDbFile};
+
+    #[test]
+    fn memory_leak() {
+        {
+            let network_params = NetworkParams::new(Networks::NanoDevNetwork);
+            let config = NodeConfig::new(Some(2000), &network_params);
+            let tokio = tokio::runtime::Builder::new_multi_thread()
+                .thread_name("tokio runtime")
+                .enable_all()
+                .build()
+                .unwrap();
+            let async_rt = Arc::new(AsyncRuntime::new(tokio));
+            let tcp_message_manager = Arc::new(TcpMessageManager::new(10));
+            let stats = Arc::new(Stats::default());
+            let flags = NodeFlags::default();
+            let limiter = Arc::new(OutboundBandwidthLimiter::new(Default::default()));
+            let syn_cookies = Arc::new(SynCookies::new(16));
+            let workers: Arc<dyn ThreadPool> =
+                Arc::new(ThreadPoolImpl::create(2, "test workers".into()));
+            let observer: Arc<dyn SocketObserver> = Arc::new(NullSocketObserver::new());
+            let node_id = KeyPair::new();
+            let tcp_channels = Arc::new(TcpChannels::new(TcpChannelsOptions {
+                node_config: config.clone(),
+                publish_filter: Arc::new(NetworkFilter::new(1000)),
+                async_rt: Arc::clone(&async_rt),
+                network: network_params.clone(),
+                stats: Arc::clone(&stats),
+                tcp_message_manager,
+                port: 8088,
+                flags: flags.clone(),
+                sink: Box::new(|_, _| {}),
+                limiter,
+                node_id: node_id.clone(),
+                syn_cookies: Arc::clone(&syn_cookies),
+                workers: Arc::clone(&workers),
+                observer: Arc::clone(&observer),
+            }));
+            let db_file = TestDbFile::random();
+            let store = Arc::new(
+                LmdbStore::<EnvironmentWrapper>::open(&db_file.path)
+                    .build()
+                    .unwrap(),
+            );
+            let ledger_constants = LedgerConstants::dev();
+            let ledger = Arc::new(Ledger::new(store.clone(), ledger_constants).unwrap());
+            let unchecked_map = Arc::new(UncheckedMap::new(100, Arc::clone(&stats), false));
+            let work = Arc::new(WORK_THRESHOLDS_STUB.clone());
+            let write_database_queue = Arc::new(WriteDatabaseQueue::new(false));
+            let block_processor = Arc::new(BlockProcessor::new(
+                std::ptr::null_mut(),
+                Arc::new(config.clone()),
+                Arc::new(flags.clone()),
+                Arc::clone(&ledger),
+                unchecked_map,
+                Arc::clone(&stats),
+                work,
+                write_database_queue,
+            ));
+            let bootstrap_initiator = Arc::new(BootstrapInitiator::new(std::ptr::null_mut()));
+            let tcp_listener = Arc::new(TcpListener::new(
+                8088,
+                32,
+                config,
+                tcp_channels,
+                syn_cookies,
+                network_params,
+                flags,
+                async_rt,
+                observer,
+                stats,
+                workers,
+                block_processor,
+                bootstrap_initiator,
+                ledger,
+                Arc::new(node_id),
+            ));
+
+            let listener_w = Arc::downgrade(&tcp_listener);
+            tcp_listener
+                .start(Box::new(move |socket, ec| {
+                    if let Some(listener) = listener_w.upgrade() {
+                        listener.accept_action(ec, socket);
+                        true
+                    } else {
+                        false
+                    }
+                }))
+                .unwrap();
+            std::thread::sleep(Duration::from_secs(2));
+            assert!(alive_sockets() > 0);
+            tcp_listener.stop();
+        }
+        assert_eq!(0, alive_sockets());
+    }
 }

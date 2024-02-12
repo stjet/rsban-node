@@ -894,6 +894,10 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             self.observer.clone(),
         ])))
         .build();
+        debug!(
+            socket_id = socket.socket_id,
+            "Socket created from tcp_channels::start_tcp"
+        );
 
         let channel_id = self.get_next_channel_id();
         let observer: Arc<dyn ChannelTcpObserver> =

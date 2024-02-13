@@ -7,7 +7,7 @@ use rsnano_core::{
 use serde_derive::Serialize;
 use std::{fmt::Display, mem::size_of};
 
-#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub struct BulkPull {
     pub start: HashOrAccount,

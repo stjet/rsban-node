@@ -57,10 +57,10 @@ public:
 	double get_block_rate () const;
 	bool get_pending_stop () const;
 	bool get_hard_stop () const;
+	rsnano::BootstrapClientHandle * handle;
 
 private:
 	std::vector<uint8_t> buffer; // only used for returning a uint8_t*
-	rsnano::BootstrapClientHandle * handle;
 };
 
 /**

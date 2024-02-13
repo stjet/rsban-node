@@ -46,13 +46,20 @@ class bootstrap_connections;
 class bulk_pull_client final : public std::enable_shared_from_this<nano::bulk_pull_client>
 {
 public:
-	bulk_pull_client (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::bootstrap_client> const &, std::shared_ptr<nano::bootstrap_attempt> const &, nano::pull_info const &);
+	bulk_pull_client (
+			std::shared_ptr<nano::node> const & node_a, 
+			std::shared_ptr<nano::bootstrap_client> const &, 
+			std::shared_ptr<nano::bootstrap_attempt> const &, 
+			nano::pull_info const &);
+	bulk_pull_client (bulk_pull_client const &) = delete;
 	~bulk_pull_client ();
 	void request ();
-	void receive_block ();
-	void throttled_receive_block ();
+
+private:
 	void received_block (boost::system::error_code ec, std::shared_ptr<nano::block> block);
-	nano::block_hash first ();
+	void throttled_receive_block ();
+	void receive_block ();
+
 	std::shared_ptr<nano::bootstrap_client> connection;
 	std::shared_ptr<nano::bootstrap_attempt> attempt;
 	std::shared_ptr<nano::bootstrap_connections> connections;
@@ -84,6 +91,7 @@ private:
 	std::shared_ptr<nano::bootstrap::block_deserializer> block_deserializer;
 	std::weak_ptr<nano::node> node;
 	std::shared_ptr<nano::logger> logger;
+	rsnano::BulkPullClientHandle * handle;
 };
 class bootstrap_attempt_wallet;
 class bulk_pull_account_client final : public std::enable_shared_from_this<nano::bulk_pull_account_client>

@@ -426,6 +426,7 @@ void nano::bootstrap_connections::start_populate_connections ()
 
 void nano::bootstrap_connections::add_pull (nano::pull_info const & pull_a)
 {
+	node.logger->warn(nano::log::type::bootstrap, "BOOTSTRAP_CONNECTIONS ADD_PULL");
 	nano::pull_info pull (pull_a);
 	node.bootstrap_initiator.cache.update_pull (pull);
 	{
@@ -437,6 +438,7 @@ void nano::bootstrap_connections::add_pull (nano::pull_info const & pull_a)
 
 void nano::bootstrap_connections::request_pull (nano::unique_lock<nano::mutex> & lock_a)
 {
+	node.logger->warn(nano::log::type::bootstrap, "BOOTSTRAP_CONNECTIONS REQUEST_PULL");
 	lock_a.unlock ();
 	auto connection_l (connection ());
 	lock_a.lock ();
@@ -447,6 +449,7 @@ void nano::bootstrap_connections::request_pull (nano::unique_lock<nano::mutex> &
 		// Search pulls with existing attempts
 		while (attempt_l == nullptr && !pulls.empty ())
 		{
+			node.logger->warn(nano::log::type::bootstrap, "BOOTSTRAP_CONNECTIONS POPPING PULL");
 			pull = pulls.front ();
 			pulls.pop_front ();
 			attempt_l = node.bootstrap_initiator.attempts.find (pull.bootstrap_id);
@@ -462,6 +465,7 @@ void nano::bootstrap_connections::request_pull (nano::unique_lock<nano::mutex> &
 		}
 		if (attempt_l != nullptr)
 		{
+			node.logger->warn(nano::log::type::bootstrap, "REQUEST_PULL ATTEMPT FOUND");
 			auto node_l{ node.shared_from_this () };
 			// The bulk_pull_client destructor attempt to requeue_pull which can cause a deadlock if this is the last reference
 			// Dispatch request in an external thread in case it needs to be destroyed
@@ -473,6 +477,7 @@ void nano::bootstrap_connections::request_pull (nano::unique_lock<nano::mutex> &
 	}
 	else if (connection_l != nullptr)
 	{
+		node.logger->warn(nano::log::type::bootstrap, "REQUEST_PULL B");
 		// Reuse connection if pulls deque become empty
 		lock_a.unlock ();
 		pool_connection (connection_l);
@@ -512,6 +517,7 @@ void nano::bootstrap_connections::requeue_pull (nano::pull_info const & pull_a, 
 			{
 				{
 					nano::lock_guard<nano::mutex> lock{ mutex };
+					node.logger->warn (nano::log::type::bootstrap, "BOOTSTRAP CONNECTIONS add pull in requeue_pull");
 					pulls.push_back (pull);
 				}
 				attempt_l->pull_started ();
@@ -558,12 +564,15 @@ void nano::bootstrap_connections::run ()
 	nano::unique_lock<nano::mutex> lock{ mutex };
 	while (!stopped)
 	{
+		node.logger->warn(nano::log::type::bootstrap, "BOOTSTRAP_CONNECTIONS::run");
 		if (!pulls.empty ())
 		{
+			node.logger->warn(nano::log::type::bootstrap, "BOOTSTRAP_CONNECTIONS has pulls");
 			request_pull (lock);
 		}
 		else
 		{
+			node.logger->warn(nano::log::type::bootstrap, "BOOTSTRAP_CONNECTIONS PULLS EMPTY");
 			condition.wait (lock);
 		}
 	}

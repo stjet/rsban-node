@@ -103,6 +103,9 @@ impl FfiListener {
     }
 }
 
+unsafe impl Send for FfiListener {}
+unsafe impl Sync for FfiListener {}
+
 impl Listener for FfiListener {
     fn broadcast(&self, message: &Message) -> Result<()> {
         unsafe {

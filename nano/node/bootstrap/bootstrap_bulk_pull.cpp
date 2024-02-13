@@ -54,7 +54,13 @@ void nano::pull_info::load_dto (rsnano::PullInfoDto const & dto)
 	bootstrap_id = dto.bootstrap_id;
 }
 
-nano::bulk_pull_client::bulk_pull_client (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::bootstrap_client> const & connection_a, std::shared_ptr<nano::bootstrap_attempt> const & attempt_a, nano::pull_info const & pull_a) :
+const bool RUST_BULK_PULL = true;
+
+nano::bulk_pull_client::bulk_pull_client (
+std::shared_ptr<nano::node> const & node_a,
+std::shared_ptr<nano::bootstrap_client> const & connection_a,
+std::shared_ptr<nano::bootstrap_attempt> const & attempt_a,
+nano::pull_info const & pull_a) :
 	node{ node_a },
 	connections{ node_a->bootstrap_initiator.connections },
 	connection{ connection_a },
@@ -63,44 +69,81 @@ nano::bulk_pull_client::bulk_pull_client (std::shared_ptr<nano::node> const & no
 	block_deserializer{ std::make_shared<nano::bootstrap::block_deserializer> (node_a->async_rt) },
 	logger{ node_a->logger }
 {
-	attempt->notify_all ();
+	if (RUST_BULK_PULL)
+	{
+		auto nw_params{ node_a->network_params.to_dto () };
+		auto pull_dto{ pull_a.to_dto () };
+		handle = rsnano::rsn_bulk_pull_client_create (
+		&nw_params,
+		node_a->flags.handle,
+		node_a->stats->handle,
+		node_a->block_processor.handle,
+		connection_a->handle,
+		attempt_a->handle,
+		node_a->workers->handle,
+		node_a->async_rt.handle,
+		node_a->bootstrap_initiator.connections->handle,
+		node_a->bootstrap_initiator.handle,
+		&pull_dto);
+	}
+	else
+	{
+		attempt->notify_all ();
+	}
 }
 
 nano::bulk_pull_client::~bulk_pull_client ()
 {
-	auto node_l = node.lock ();
-	if (!node_l)
+	if (RUST_BULK_PULL)
 	{
-		return;
-	}
-	/* If received end block is not expected end block
-	Or if given start and end blocks are from different chains (i.e. forked node or malicious node) */
-	if (expected != pull.end && !expected.is_zero ())
-	{
-		pull.head = expected;
-		if (attempt->get_mode () != nano::bootstrap_mode::legacy)
-		{
-			pull.account_or_head = expected;
-		}
-		pull.processed += pull_blocks - unexpected_count;
-		node_l->bootstrap_initiator.connections->requeue_pull (pull, network_error);
-
-		logger->debug (nano::log::type::bulk_pull_client, "Bulk pull end block is not expected {} for account {} or head block {}", pull.end.to_string (), pull.account_or_head.to_account (), pull.account_or_head.to_string ());
+		rsnano::rsn_bulk_pull_client_destroy (handle);
 	}
 	else
 	{
-		node_l->bootstrap_initiator.cache.remove (pull);
+		logger->warn (nano::log::type::bulk_pull_client, "DESTROYING CLIENT");
+		auto node_l = node.lock ();
+		if (!node_l)
+		{
+			logger->warn (nano::log::type::bulk_pull_client, "EARLY RETURN");
+			return;
+		}
+		/* If received end block is not expected end block
+		Or if given start and end blocks are from different chains (i.e. forked node or malicious node) */
+		if (expected != pull.end && !expected.is_zero ())
+		{
+			pull.head = expected;
+			if (attempt->get_mode () != nano::bootstrap_mode::legacy)
+			{
+				pull.account_or_head = expected;
+			}
+			pull.processed += pull_blocks - unexpected_count;
+			node_l->bootstrap_initiator.connections->requeue_pull (pull, network_error);
+
+			logger->debug (nano::log::type::bulk_pull_client, "Bulk pull end block is not expected {} for account {} or head block {}", pull.end.to_string (), pull.account_or_head.to_account (), pull.account_or_head.to_string ());
+		}
+		else
+		{
+			node_l->bootstrap_initiator.cache.remove (pull);
+		}
+		attempt->pull_finished ();
+		logger->warn (nano::log::type::bulk_pull_client, "CLIENT DESTROYED");
 	}
-	attempt->pull_finished ();
 }
 
 void nano::bulk_pull_client::request ()
 {
+	if (RUST_BULK_PULL)
+	{
+		rsnano::rsn_bulk_pull_client_request (handle);
+		return;
+	}
+
 	auto node_l = node.lock ();
 	if (!node_l || node_l->is_stopped ())
 	{
 		return;
 	}
+	logger->warn (nano::log::type::bulk_pull_client, "REQUEST");
 	debug_assert (!pull.head.is_zero () || pull.retry_limit <= node_l->network_params.bootstrap.lazy_retry_limit);
 	expected = pull.head;
 	nano::bulk_pull::bulk_pull_payload payload;
@@ -121,8 +164,7 @@ void nano::bulk_pull_client::request ()
 
 	logger->trace (nano::log::type::bulk_pull_client, nano::log::detail::requesting_account_or_head,
 	nano::log::arg{ "account_or_head", pull.account_or_head },
-	nano::log::arg{ "channel", connection->channel_string() });
-
+	nano::log::arg{ "channel", connection->channel_string () });
 
 	if (attempt->should_log ())
 	{
@@ -148,6 +190,7 @@ void nano::bulk_pull_client::request ()
 		}
 	},
 	nano::transport::buffer_drop_policy::no_limiter_drop);
+	logger->warn (nano::log::type::bulk_pull_client, "REQUEST FINISHED");
 }
 
 void nano::bulk_pull_client::throttled_receive_block ()
@@ -157,6 +200,7 @@ void nano::bulk_pull_client::throttled_receive_block ()
 	{
 		return;
 	}
+	logger->warn (nano::log::type::bulk_pull_client, "THROTTLED_RECEIVE_BLOCK");
 	debug_assert (!network_error);
 	if (!node_l->block_processor.half_full () && !node_l->block_processor.flushing ())
 	{
@@ -176,6 +220,7 @@ void nano::bulk_pull_client::throttled_receive_block ()
 
 void nano::bulk_pull_client::receive_block ()
 {
+	logger->warn (nano::log::type::bulk_pull_client, "RECEIVE_BLOCK");
 	auto socket{ connection->get_socket () };
 	block_deserializer->read (*socket, [this_l = shared_from_this ()] (boost::system::error_code ec, std::shared_ptr<nano::block> block) {
 		this_l->received_block (ec, block);
@@ -189,8 +234,10 @@ void nano::bulk_pull_client::received_block (boost::system::error_code ec, std::
 	{
 		return;
 	}
+	logger->warn (nano::log::type::bulk_pull_client, "RECEIVED_BLOCK");
 	if (ec)
 	{
+		logger->warn (nano::log::type::bootstrap_lazy, "RECEIVED_BLOCK NETWORK ERROR!");
 		network_error = true;
 		return;
 	}
@@ -199,6 +246,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code ec, std::
 		// Avoid re-using slow peers, or peers that sent the wrong blocks.
 		if (!connection->get_pending_stop () && (expected == pull.end || (pull.count != 0 && pull.count == pull_blocks)))
 		{
+			logger->warn (nano::log::type::bulk_pull_client, "POOL CONNECTION");
 			connections->pool_connection (connection);
 		}
 		return;
@@ -236,6 +284,7 @@ void nano::bulk_pull_client::received_block (boost::system::error_code ec, std::
 	}
 	attempt->total_blocks_inc ();
 	pull_blocks++;
+	logger->warn (nano::log::type::bootstrap_lazy, "CALLING PROCESS_BLOCK IN ATTEMPT");
 	bool stop_pull (attempt->process_block (block, known_account, pull_blocks, pull.count, block_expected, pull.retry_limit));
 	if (!stop_pull && !connection->get_hard_stop ())
 	{
@@ -244,11 +293,13 @@ void nano::bulk_pull_client::received_block (boost::system::error_code ec, std::
 		to prevent spam */
 		if (attempt->get_mode () != nano::bootstrap_mode::legacy || unexpected_count < 16384)
 		{
+			logger->warn (nano::log::type::bulk_pull_client, "RECEIVED_BLOCK X");
 			throttled_receive_block ();
 		}
 	}
 	else if (!stop_pull && block_expected)
 	{
+		logger->warn (nano::log::type::bulk_pull_client, "RECEIVED_BLOCK Y");
 		connections->pool_connection (connection);
 	}
 }

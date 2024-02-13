@@ -1,5 +1,7 @@
 use std::ffi::c_void;
 
+use super::PullInfo;
+
 pub type BootstrapInitiatorClearPullsCallback = unsafe extern "C" fn(*mut c_void, u64);
 pub static mut BOOTSTRAP_INITIATOR_CLEAR_PULLS_CALLBACK: Option<
     BootstrapInitiatorClearPullsCallback,
@@ -8,6 +10,11 @@ pub static mut BOOTSTRAP_INITIATOR_CLEAR_PULLS_CALLBACK: Option<
 pub type BootstrapInitiatorInProgressCallback = unsafe extern "C" fn(*mut c_void) -> bool;
 pub static mut BOOTSTRAP_INITIATOR_IN_PROGRESS_CALLBACK: Option<
     BootstrapInitiatorInProgressCallback,
+> = None;
+
+pub type BootstrapInitiatorRemoveCacheCallback = fn(*mut c_void, &PullInfo);
+pub static mut BOOTSTRAP_INITIATOR_REMOVE_CACHE_CALLBACK: Option<
+    BootstrapInitiatorRemoveCacheCallback,
 > = None;
 
 pub struct BootstrapInitiator {
@@ -33,6 +40,15 @@ impl BootstrapInitiator {
         unsafe {
             BOOTSTRAP_INITIATOR_IN_PROGRESS_CALLBACK
                 .expect("BOOTSTRAP_INITIATOR_IN_PROGRESS_CALLBACK missing")(self.handle)
+        }
+    }
+
+    pub fn remove_from_cache(&self, pull: &PullInfo) {
+        unsafe {
+            BOOTSTRAP_INITIATOR_REMOVE_CACHE_CALLBACK
+                .expect("BOOTSTRAP_INITIATOR_REMOVE_CACHE_CALLBACK missing")(
+                self.handle, pull
+            )
         }
     }
 }

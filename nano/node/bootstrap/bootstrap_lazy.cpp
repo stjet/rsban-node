@@ -13,7 +13,7 @@ constexpr double nano::bootstrap_limits::lazy_batch_pull_count_resize_ratio;
 constexpr std::size_t nano::bootstrap_limits::lazy_blocks_restart_limit;
 
 nano::bootstrap_attempt_lazy::bootstrap_attempt_lazy (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string const & id_a) :
-	nano::bootstrap_attempt (rsnano::rsn_bootstrap_attempt_lazy_create (node_a->websocket.server.get (), node_a->block_processor.get_handle (), node_a->bootstrap_initiator.get_handle (), node_a->ledger.get_handle (), id_a.c_str (), incremental_id_a)),
+	nano::bootstrap_attempt (rsnano::rsn_bootstrap_attempt_lazy_create (this, node_a->websocket.server.get (), node_a->block_processor.get_handle (), node_a->bootstrap_initiator.get_handle (), node_a->ledger.get_handle (), id_a.c_str (), incremental_id_a)),
 	node_weak (node_a)
 {
 }
@@ -30,6 +30,7 @@ bool nano::bootstrap_attempt_lazy::lazy_start (nano::hash_or_account const & has
 	{
 		return false;
 	}
+	node->logger->warn (nano::log::type::bootstrap_lazy, "LAZY START");
 	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	bool inserted (false);
 	// Add start blocks, limit 1024 (4k with disabled legacy bootstrap)
@@ -37,6 +38,7 @@ bool nano::bootstrap_attempt_lazy::lazy_start (nano::hash_or_account const & has
 	if (lazy_keys.size () < max_keys && lazy_keys.find (hash_or_account_a.as_block_hash ()) == lazy_keys.end () && !lazy_blocks_processed (hash_or_account_a.as_block_hash ()))
 	{
 		lazy_keys.insert (hash_or_account_a.as_block_hash ());
+		node->logger->warn (nano::log::type::bootstrap_lazy, "LAZY START. insert into lazy_pulls");
 		lazy_pulls.emplace_back (hash_or_account_a, node->network_params.bootstrap.lazy_retry_limit);
 		rsnano::rsn_bootstrap_attempt_unlock (lock);
 		rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
@@ -51,16 +53,29 @@ bool nano::bootstrap_attempt_lazy::lazy_start (nano::hash_or_account const & has
 
 void nano::bootstrap_attempt_lazy::lazy_add (nano::hash_or_account const & hash_or_account_a, unsigned retry_limit)
 {
+	auto node = node_weak.lock ();
+	if (!node || node->is_stopped ())
+	{
+		return;
+	}
+	node->logger->warn (nano::log::type::bootstrap_lazy, "LAZY ADD");
 	// Add only unknown blocks
 	// debug_assert (!mutex.try_lock ());
 	if (!lazy_blocks_processed (hash_or_account_a.as_block_hash ()))
 	{
+		node->logger->warn (nano::log::type::bootstrap_lazy, "LAZY ADD actually add");
 		lazy_pulls.emplace_back (hash_or_account_a, retry_limit);
 	}
 }
 
 void nano::bootstrap_attempt_lazy::lazy_add (nano::pull_info const & pull_a)
 {
+	auto node = node_weak.lock ();
+	if (!node || node->is_stopped ())
+	{
+		return;
+	}
+	node->logger->warn (nano::log::type::bootstrap_lazy, "LAZY ADD2");
 	debug_assert (pull_a.account_or_head.as_block_hash () == pull_a.head);
 	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
 	lazy_add (pull_a.account_or_head, pull_a.retry_limit);
@@ -120,22 +135,27 @@ rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_lazy::lazy_pull_flu
 	{
 		return lock_a;
 	}
+	node->logger->warn(nano::log::type::bootstrap, "LAZY_PULL_FLUSH");
 	static std::size_t const max_pulls (static_cast<std::size_t> (nano::bootstrap_limits::bootstrap_connection_scale_target_blocks) * 3);
 	if (get_pulling () < max_pulls)
 	{
+		node->logger->warn(nano::log::type::bootstrap, "LAZY_PULL_FLUSH A");
 		debug_assert (node->network_params.bootstrap.lazy_max_pull_blocks <= std::numeric_limits<nano::pull_info::count_t>::max ());
 		nano::pull_info::count_t batch_count (lazy_batch_size ());
 		uint64_t read_count (0);
 		std::size_t count (0);
 		auto transaction (node->store.tx_begin_read ());
+		node->logger->warn(nano::log::type::bootstrap, "LAZY_PULL_FLUSH empty {} count {} max_pulls {}", lazy_pulls.empty(), count, max_pulls);
 		while (!lazy_pulls.empty () && count < max_pulls)
 		{
+			node->logger->warn(nano::log::type::bootstrap, "LAZY_PULL_FLUSH B");
 			auto pull_start (lazy_pulls.front ());
 			lazy_pulls.pop_front ();
 			// Recheck if block was already processed
 			if (!lazy_blocks_processed (pull_start.first.as_block_hash ()) && !node->ledger.block_or_pruned_exists (*transaction, pull_start.first.as_block_hash ()))
 			{
 				rsnano::rsn_bootstrap_attempt_unlock (lock_a);
+				node->logger->warn(nano::log::type::bootstrap, "LAZY_PULL_FLUSH add pull");
 				node->bootstrap_initiator.connections->add_pull (nano::pull_info (pull_start.first, pull_start.first.as_block_hash (), nano::block_hash (0), get_incremental_id (), batch_count, pull_start.second));
 				inc_pulling ();
 				++count;
@@ -275,9 +295,11 @@ bool nano::bootstrap_attempt_lazy::process_block (std::shared_ptr<nano::block> c
 	{
 		return true;
 	}
+	node->logger->warn (nano::log::type::bootstrap_lazy, "LAZY PROCESS_BLOCK ENTER");
 	bool stop_pull (false);
 	if (block_expected)
 	{
+		node->logger->warn (nano::log::type::bootstrap_lazy, "LAZY PROCESS_BLOCK BLOCK EXPECTED");
 		stop_pull = process_block_lazy (block_a, known_account_a, pull_blocks_processed, max_blocks, retry_limit);
 	}
 	else
@@ -295,6 +317,7 @@ bool nano::bootstrap_attempt_lazy::process_block_lazy (std::shared_ptr<nano::blo
 	{
 		return true;
 	}
+	node->logger->warn (nano::log::type::bootstrap_lazy, "PROCESS_BLOCK_LAZY ENTER");
 	bool stop_pull (false);
 	auto hash (block_a->hash ());
 	auto lock{ rsnano::rsn_bootstrap_attempt_lock (handle) };
@@ -305,6 +328,7 @@ bool nano::bootstrap_attempt_lazy::process_block_lazy (std::shared_ptr<nano::blo
 		// Search for new dependencies
 		if (!block_a->source ().is_zero () && !node->ledger.block_or_pruned_exists (block_a->source ()) && block_a->source () != node->network_params.ledger.genesis->account ())
 		{
+			node->logger->warn (nano::log::type::bootstrap_lazy, "PROCESS_BLOCK_LAZY A");
 			lazy_add (block_a->source (), retry_limit);
 		}
 		else if (block_a->type () == nano::block_type::state)
@@ -360,6 +384,7 @@ void nano::bootstrap_attempt_lazy::lazy_block_state (std::shared_ptr<nano::block
 			// If state block previous is 0 then source block required
 			if (previous.is_zero ())
 			{
+				node->logger->warn (nano::log::type::bootstrap_lazy, "PROCESS_BLOCK_STATE A");
 				lazy_add (link, retry_limit);
 			}
 			// In other cases previous block balance required to find out subtype of state block
@@ -371,6 +396,7 @@ void nano::bootstrap_attempt_lazy::lazy_block_state (std::shared_ptr<nano::block
 				{
 					if (previous_balance <= balance)
 					{
+						node->logger->warn (nano::log::type::bootstrap_lazy, "PROCESS_BLOCK_STATE B");
 						lazy_add (link, retry_limit);
 					}
 				}
@@ -384,6 +410,7 @@ void nano::bootstrap_attempt_lazy::lazy_block_state (std::shared_ptr<nano::block
 				{
 					if (previous_balance->second <= balance)
 					{
+						node->logger->warn (nano::log::type::bootstrap_lazy, "PROCESS_BLOCK_STATE C");
 						lazy_add (link, retry_limit);
 					}
 					lazy_balances.erase (previous_balance);
@@ -415,12 +442,14 @@ void nano::bootstrap_attempt_lazy::lazy_block_state_backlog_check (std::shared_p
 		{
 			if (block_a->balance ().number () <= next_block.balance) // balance
 			{
+				node->logger->warn (nano::log::type::bootstrap_lazy, "LAZY_BLOCK_STATE_BACKLOG_CHECK A");
 				lazy_add (next_block.link, next_block.retry_limit); // link
 			}
 		}
 		// Assumption for other legacy block types
 		else if (lazy_undefined_links.find (next_block.link.as_block_hash ()) == lazy_undefined_links.end ())
 		{
+			node->logger->warn (nano::log::type::bootstrap_lazy, "LAZY_BLOCK_STATE_BACKLOG_CHECK B");
 			lazy_add (next_block.link, node->network_params.bootstrap.lazy_retry_limit); // Head is not confirmed. It can be account or hash or non-existing
 			lazy_undefined_links.insert (next_block.link.as_block_hash ());
 		}
@@ -448,17 +477,20 @@ void nano::bootstrap_attempt_lazy::lazy_backlog_cleanup ()
 			{
 				if (balance <= next_block.balance) // balance
 				{
+					node->logger->warn (nano::log::type::bootstrap_lazy, "LAZY_BACKLOG_CLEANUP A");
 					lazy_add (next_block.link, next_block.retry_limit); // link
 				}
 			}
 			else
 			{
+					node->logger->warn (nano::log::type::bootstrap_lazy, "LAZY_BACKLOG_CLEANUP B");
 				lazy_add (next_block.link, node->network_params.bootstrap.lazy_retry_limit); // Not confirmed
 			}
 			it = lazy_state_backlog.erase (it);
 		}
 		else
 		{
+					node->logger->warn (nano::log::type::bootstrap_lazy, "LAZY_BACKLOG_CLEANUP C");
 			lazy_add (it->first, it->second.retry_limit);
 			++it;
 		}

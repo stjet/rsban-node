@@ -19,6 +19,14 @@ use num_traits::FromPrimitive;
 
 pub struct BootstrapClientHandle(pub Arc<BootstrapClient>);
 
+impl Deref for BootstrapClientHandle {
+    type Target = Arc<BootstrapClient>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 /// `observer` is a `shared_ptr<bootstrap_client_observer>*`
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_client_create(
@@ -238,6 +246,9 @@ impl FfiBootstrapClientObserver {
     }
 }
 
+unsafe impl Send for FfiBootstrapClientObserver {}
+unsafe impl Sync for FfiBootstrapClientObserver {}
+
 impl BootstrapClientObserver for FfiBootstrapClientObserver {
     fn bootstrap_client_closed(&self) {
         unsafe {
@@ -262,6 +273,9 @@ struct FfiBootstrapClientObserverWeakPtr {
     /// a `weak_ptr<bootstrap_client_observer>*`
     handle: *mut c_void,
 }
+
+unsafe impl Send for FfiBootstrapClientObserverWeakPtr {}
+unsafe impl Sync for FfiBootstrapClientObserverWeakPtr {}
 
 impl FfiBootstrapClientObserverWeakPtr {
     fn new(handle: *mut c_void) -> Self {

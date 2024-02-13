@@ -15,6 +15,7 @@
 #include <nano/crypto_lib/random_pool_shuffle.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/stats.hpp>
+#include <nano/lib/utility.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/transport/fake.hpp>
 #include <nano/node/transport/inproc.hpp>

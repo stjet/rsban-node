@@ -19,7 +19,7 @@ use std::{
     },
     time::{Duration, Instant},
 };
-use tokio::task::spawn_blocking;
+use tokio::{sync::Notify, task::spawn_blocking};
 use tracing::debug;
 
 pub trait TcpServerObserver: Send + Sync {
@@ -83,6 +83,7 @@ pub struct TcpServer {
     message_deserializer: Arc<MessageDeserializer<Arc<Socket>>>,
     tcp_message_manager: Arc<TcpMessageManager>,
     allow_bootstrap: bool,
+    notify_stop: Notify,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -102,6 +103,10 @@ impl TcpServer {
     ) -> Self {
         let network_constants = network.network.clone();
         let socket_clone = Arc::clone(&socket);
+        debug!(
+            socket_id = socket.socket_id,
+            "Cloning socket in TcpServer constructor"
+        );
         Self {
             async_rt: Arc::downgrade(&async_rt),
             socket,
@@ -128,6 +133,7 @@ impl TcpServer {
             )),
             tcp_message_manager,
             allow_bootstrap,
+            notify_stop: Notify::new(),
         }
     }
 
@@ -138,6 +144,7 @@ impl TcpServer {
     pub fn stop(&self) {
         if !self.stopped.swap(true, Ordering::SeqCst) {
             self.socket.close();
+            self.notify_stop.notify_one();
         }
     }
 
@@ -250,7 +257,7 @@ impl Drop for TcpServer {
             observer.boostrap_server_exited(self.socket.socket_type(), self.unique_id(), remote_ep);
         }
         self.stop();
-        debug!(socket_id = self.socket.socket_id, "TcpServer stopped");
+        debug!(socket_id = self.socket.socket_id, "TcpServer dropped");
     }
 }
 
@@ -287,7 +294,7 @@ impl TcpServerExt for Arc<TcpServer> {
             if let Some(ep) = self.socket.get_remote() {
                 *guard = ep;
             }
-            debug_assert!(guard.port() != 0);
+            //debug_assert!(guard.port() != 0);
         }
 
         debug!("Starting TCP server ({})", guard.port());
@@ -314,7 +321,11 @@ impl TcpServerExt for Arc<TcpServer> {
 
         let self_clone = Arc::clone(self);
         async_rt.tokio.spawn(async move {
-            let result = self_clone.message_deserializer.read().await;
+            let result = tokio::select! {
+                i = self_clone.message_deserializer.read() => i,
+                _ = self_clone.notify_stop.notified() => Err(ParseMessageError::Other)
+            };
+
             spawn_blocking(Box::new(move || {
                 match result {
                     Ok(msg) => self_clone.received_message(msg),

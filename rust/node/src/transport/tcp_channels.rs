@@ -98,6 +98,12 @@ pub struct TcpChannels {
     channel_observer: Mutex<Option<Arc<dyn ChannelTcpObserver>>>,
 }
 
+impl Drop for TcpChannels {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
 impl TcpChannels {
     pub fn new(options: TcpChannelsOptions) -> Self {
         let node_config = Arc::new(options.node_config);
@@ -154,9 +160,10 @@ impl TcpChannels {
     }
 
     pub fn stop(&self) {
-        self.stopped.store(true, Ordering::SeqCst);
-        self.tcp_channels.lock().unwrap().close_channels();
-        self.tcp_message_manager.stop();
+        if !self.stopped.swap(true, Ordering::SeqCst) {
+            self.tcp_channels.lock().unwrap().close_channels();
+            self.tcp_message_manager.stop();
+        }
     }
 
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
@@ -501,6 +508,9 @@ impl TcpChannels {
 pub struct ChannelTcpObserverImpl(Weak<TcpChannels>);
 
 impl ChannelTcpObserverImpl {
+    pub fn new(channels: &Arc<TcpChannels>) -> Self {
+        Self(Arc::downgrade(channels))
+    }
     fn execute(&self, action: impl FnOnce(&TcpChannels)) {
         if let Some(channels) = self.0.upgrade() {
             action(&channels)
@@ -919,10 +929,6 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             self.observer.clone(),
         ])))
         .build();
-        debug!(
-            socket_id = socket.socket_id,
-            "Socket created from tcp_channels::start_tcp"
-        );
 
         let channel_id = self.get_next_channel_id();
         let observer: Arc<dyn ChannelTcpObserver> =

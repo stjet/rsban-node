@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Mutex, Weak},
 };
 
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, sync::Notify};
 
 use crate::utils::{AsyncRuntime, ErrorCode};
 
@@ -21,6 +21,7 @@ pub struct TokioSocketFacade {
     // make sure we call the current callback if we close the socket
     pub current_action: Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
     pub tcp_stream_factory: Arc<TcpStreamFactory>,
+    close_notify: Arc<Notify>,
 }
 
 pub enum TokioSocketState {
@@ -37,6 +38,7 @@ impl TokioSocketFacade {
             state: Arc::new(Mutex::new(TokioSocketState::Closed)),
             current_action: Mutex::new(None),
             tcp_stream_factory,
+            close_notify: Arc::new(Notify::new()),
         }
     }
 
@@ -95,8 +97,13 @@ impl TokioSocketFacade {
         };
         let runtime_w = Weak::clone(&self.runtime);
         let client_socket = Arc::clone(client_socket);
+        let notify = Arc::clone(&self.close_notify);
         runtime.tokio.spawn(async move {
-            match listener.accept().await {
+            let res = tokio::select! {
+                i = listener.accept() => i,
+                _ = notify.notified() => Err(std::io::Error::new(std::io::ErrorKind::Other, "accept cancelled"))
+            };
+            match res {
                 Ok((stream, remote)) => {
                     // wrap the tokio stream in our stream:
                     let stream = TcpStream::new(stream);
@@ -155,6 +162,7 @@ impl TokioSocketFacade {
 
     pub fn close_acceptor(&self) {
         *self.state.lock().unwrap() = TokioSocketState::Closed;
+        self.close_notify.notify_one();
     }
 
     pub fn is_acceptor_open(&self) -> bool {

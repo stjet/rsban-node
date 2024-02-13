@@ -238,13 +238,12 @@ impl Socket {
     }
 
     pub fn close_internal(&self) {
-        debug!(socket_id = self.socket_id, "Socket::close_internal");
         if !self.closed.swap(true, Ordering::SeqCst) {
             self.send_queue.clear();
             self.set_default_timeout_value(0);
 
             self.is_connecting.store(false, Ordering::SeqCst);
-            *self.stream.lock().unwrap() = None;
+
             if let Some(cb) = self.current_action.lock().unwrap().take() {
                 cb();
             }
@@ -312,7 +311,6 @@ impl Drop for Socket {
     fn drop(&mut self) {
         self.close_internal();
         let alive = LIVE_SOCKETS.fetch_sub(1, Ordering::Relaxed) - 1;
-        debug!(socket_id = self.socket_id, alive, "Socket dropped");
     }
 }
 
@@ -516,26 +514,28 @@ impl SocketExtensions for Arc<Socket> {
         };
         self.set_default_timeout();
         self.write_in_progress.store(true, Ordering::SeqCst);
-        let self_clone = Arc::clone(self);
+        let self_w = Arc::downgrade(self);
 
         let callback: Arc<Mutex<Option<Box<dyn FnOnce(ErrorCode, usize) + Send>>>> =
             Arc::new(Mutex::new(Some(Box::new(move |ec, size| {
-                self_clone.write_in_progress.store(false, Ordering::SeqCst);
+                if let Some(self_clone) = self_w.upgrade() {
+                    self_clone.write_in_progress.store(false, Ordering::SeqCst);
 
-                if ec.is_err() {
-                    self_clone.observer.write_error();
-                    self_clone.close();
-                } else {
-                    self_clone.observer.write_successful(size);
-                    self_clone.set_last_completion();
-                }
+                    if ec.is_err() {
+                        self_clone.observer.write_error();
+                        self_clone.close();
+                    } else {
+                        self_clone.observer.write_successful(size);
+                        self_clone.set_last_completion();
+                    }
 
-                if let Some(cbk) = next.callback.take() {
-                    cbk(ec, size);
-                }
+                    if let Some(cbk) = next.callback.take() {
+                        cbk(ec, size);
+                    }
 
-                if ec.is_ok() {
-                    self_clone.write_queued_messages();
+                    if ec.is_ok() {
+                        self_clone.write_queued_messages();
+                    }
                 }
             }))));
 

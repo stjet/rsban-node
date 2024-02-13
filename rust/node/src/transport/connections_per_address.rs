@@ -1,3 +1,5 @@
+use tracing::debug;
+
 use super::{Socket, SocketExtensions};
 use crate::utils::{first_ipv6_subnet_address, last_ipv6_subnet_address};
 use std::{
@@ -49,6 +51,10 @@ impl ConnectionsPerAddress {
     }
 
     pub(crate) fn insert(&mut self, connection: &Arc<Socket>) {
+        debug!(
+            socket_id = connection.socket_id,
+            "Inserting into ConnectionsPerAddress"
+        );
         let endpoint = connection.get_remote().unwrap();
         self.connections
             .entry(*endpoint.ip())

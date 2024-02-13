@@ -410,6 +410,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                 &new_connection,
                 Box::new(move |remote_endpoint, ec| {
                     let Some(this_clone) = this_clone_w.upgrade() else { return; };
+                    debug!(socket_id=connection_clone.socket_id, "Entered async_accept TcpListener::on_connection");
                     let SocketAddr::V6(remote_endpoint) = remote_endpoint else {panic!("not a v6 address")};
                     let socket_l = listening_socket_clone;
                     connection_clone.set_remote(remote_endpoint);

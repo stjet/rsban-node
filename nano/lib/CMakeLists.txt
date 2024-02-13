@@ -117,6 +117,7 @@ target_link_libraries(
   Boost::dll
   Boost::multiprecision
   Boost::program_options
+  Boost::property_tree
   Boost::stacktrace)
 
 if(NANO_STACKTRACE_BACKTRACE)

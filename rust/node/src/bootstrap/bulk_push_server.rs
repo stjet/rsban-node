@@ -35,6 +35,10 @@ impl BulkPushServer {
         stats: Arc<Stats>,
         work_thresholds: WorkThresholds,
     ) -> Self {
+        debug!(
+            socket_id = connection.socket.socket_id,
+            "Creating BulkPushServer"
+        );
         let server_impl = BulkPushServerImpl {
             async_rt,
             connection,
@@ -58,6 +62,15 @@ impl BulkPushServer {
             .lock()
             .unwrap()
             .throttled_receive(server_impl2);
+    }
+}
+
+impl Drop for BulkPushServer {
+    fn drop(&mut self) {
+        debug!(
+            socket_id = self.server_impl.lock().unwrap().connection.socket.socket_id,
+            "Dropping BulkPushServer"
+        );
     }
 }
 

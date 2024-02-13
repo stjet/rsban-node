@@ -10,7 +10,7 @@ use std::{
 
 use rsnano_core::Account;
 use rsnano_messages::{Message, MessageSerializer, ProtocolInfo};
-use tracing::trace;
+use tracing::{debug, trace};
 
 use super::{
     write_queue::WriteCallback, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket,
@@ -65,6 +65,10 @@ impl ChannelTcp {
         channel_id: usize,
         protocol: ProtocolInfo,
     ) -> Self {
+        debug!(
+            socket_id = socket.socket_id,
+            "Creating ChannelTcp for socket"
+        );
         Self {
             channel_id,
             channel_mutex: Mutex::new(TcpChannelData {
@@ -295,6 +299,7 @@ impl Drop for ChannelTcp {
         if !self.temporary.load(Ordering::Relaxed) {
             self.socket.close();
         }
+        debug!(socket_id = self.socket.socket_id, "Dropping ChannelTcp")
     }
 }
 

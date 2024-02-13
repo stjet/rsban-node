@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use rsnano_core::{utils::BufferReader, work::WorkThresholds};
 use rsnano_messages::*;
 use std::sync::{Arc, Mutex};
+use tracing::debug;
 
 #[async_trait]
 pub trait AsyncBufferReader {
@@ -34,6 +35,7 @@ impl<T: AsyncBufferReader + Send> MessageDeserializer<T> {
     }
 
     pub async fn read(&self) -> Result<DeserializedMessage, ParseMessageError> {
+        debug!("MessageDeserializer calling buffer_reader.read");
         self.buffer_reader
             .read(
                 Arc::clone(&self.read_buffer),
@@ -41,8 +43,13 @@ impl<T: AsyncBufferReader + Send> MessageDeserializer<T> {
             )
             .await
             .map_err(|_| ParseMessageError::Other)?;
+        debug!(
+            "MessageDeserializer finished calling buffer_reader.read. Calling receive_header..."
+        );
 
-        self.received_header().await
+        let result = self.received_header().await;
+        debug!("MessageDeserializer finished with receive_header");
+        result
     }
 
     async fn received_header(&self) -> Result<DeserializedMessage, ParseMessageError> {

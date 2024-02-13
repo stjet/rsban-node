@@ -91,6 +91,10 @@ impl CompositeSocketObserver {
 impl SocketObserver for CompositeSocketObserver {
     fn socket_connected(&self, socket: Arc<Socket>) {
         for child in &self.children {
+            debug!(
+                socket_id = socket.socket_id,
+                "Cloning socket for socket_connected"
+            );
             child.socket_connected(Arc::clone(&socket));
         }
     }
@@ -145,6 +149,10 @@ impl SocketObserver for CompositeSocketObserver {
 
     fn socket_accepted(&self, socket: Arc<Socket>) {
         for child in &self.children {
+            debug!(
+                socket_id = socket.socket_id,
+                "Cloning socket for socket_accepted"
+            );
             child.socket_accepted(Arc::clone(&socket));
         }
     }
@@ -244,7 +252,7 @@ impl Socket {
             self.set_default_timeout_value(0);
 
             self.is_connecting.store(false, Ordering::SeqCst);
-            *self.stream.lock().unwrap() = None;
+
             if let Some(cb) = self.current_action.lock().unwrap().take() {
                 cb();
             }
@@ -345,6 +353,10 @@ impl SocketExtensions for Arc<Socket> {
     }
 
     fn async_connect(&self, endpoint: SocketAddrV6, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
+        debug!(
+            socket_id = self.socket_id,
+            "Cloning socket inside async_connect"
+        );
         let self_clone = self.clone();
         debug_assert!(self.endpoint_type == EndpointType::Client);
 
@@ -516,26 +528,32 @@ impl SocketExtensions for Arc<Socket> {
         };
         self.set_default_timeout();
         self.write_in_progress.store(true, Ordering::SeqCst);
-        let self_clone = Arc::clone(self);
+        debug!(
+            socket_id = self.socket_id,
+            "Cloning socket inside write_queued_messages"
+        );
+        let self_w = Arc::downgrade(self);
 
         let callback: Arc<Mutex<Option<Box<dyn FnOnce(ErrorCode, usize) + Send>>>> =
             Arc::new(Mutex::new(Some(Box::new(move |ec, size| {
-                self_clone.write_in_progress.store(false, Ordering::SeqCst);
+                if let Some(self_clone) = self_w.upgrade() {
+                    self_clone.write_in_progress.store(false, Ordering::SeqCst);
 
-                if ec.is_err() {
-                    self_clone.observer.write_error();
-                    self_clone.close();
-                } else {
-                    self_clone.observer.write_successful(size);
-                    self_clone.set_last_completion();
-                }
+                    if ec.is_err() {
+                        self_clone.observer.write_error();
+                        self_clone.close();
+                    } else {
+                        self_clone.observer.write_successful(size);
+                        self_clone.set_last_completion();
+                    }
 
-                if let Some(cbk) = next.callback.take() {
-                    cbk(ec, size);
-                }
+                    if let Some(cbk) = next.callback.take() {
+                        cbk(ec, size);
+                    }
 
-                if ec.is_ok() {
-                    self_clone.write_queued_messages();
+                    if ec.is_ok() {
+                        self_clone.write_queued_messages();
+                    }
                 }
             }))));
 

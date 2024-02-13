@@ -25,6 +25,10 @@ impl FrontierReqServer {
         thread_pool: Arc<dyn ThreadPool>,
         ledger: Arc<Ledger>,
     ) -> Self {
+        debug!(
+            socket_id = connection.socket.socket_id,
+            "Creating FrontierReqServer"
+        );
         let result = Self {
             server_impl: Arc::new(Mutex::new(FrontierReqServerImpl {
                 connection,
@@ -52,6 +56,15 @@ impl FrontierReqServer {
 
     pub fn frontier(&self) -> BlockHash {
         self.server_impl.lock().unwrap().frontier
+    }
+}
+
+impl Drop for FrontierReqServer{
+    fn drop(&mut self) {
+        debug!(
+            socket_id = self.server_impl.lock().unwrap().connection.socket.socket_id,
+            "Dropping FrontierReqServer"
+        );
     }
 }
 

@@ -5,6 +5,7 @@ use std::{
 };
 
 use rsnano_core::Account;
+use tracing::debug;
 
 use crate::{
     transport::{Channel, ChannelEnum, ChannelTcp, Socket, TcpServer},
@@ -16,12 +17,38 @@ pub struct ChannelTcpWrapper {
     pub response_server: Option<Arc<TcpServer>>,
 }
 
+impl Drop for ChannelTcpWrapper {
+    fn drop(&mut self) {
+        debug!(
+            server.socket_id = self
+                .response_server
+                .as_ref()
+                .map(|i| i.socket.socket_id.clone())
+                .unwrap_or_default(),
+            channel.socket_id = self.tcp_channel().socket.socket_id,
+            "Dropping ChannelTcpWrapper"
+        );
+    }
+}
+
 impl ChannelTcpWrapper {
     pub fn new(channel: Arc<ChannelEnum>, response_server: Option<Arc<TcpServer>>) -> Self {
-        Self {
+        let result = Self {
             channel,
             response_server,
-        }
+        };
+
+        debug!(
+            server.socket_id = result
+                .response_server
+                .as_ref()
+                .map(|i| i.socket.socket_id.clone())
+                .unwrap_or_default(),
+            channel.socket_id = result.tcp_channel().socket.socket_id,
+            "Creating ChannelTcpWrapper"
+        );
+
+        result
     }
 
     pub fn tcp_channel(&self) -> &ChannelTcp {

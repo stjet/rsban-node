@@ -34,6 +34,10 @@ impl BulkPullServer {
         ledger: Arc<Ledger>,
         thread_pool: Arc<dyn ThreadPool>,
     ) -> Self {
+        debug!(
+            socket_id = connection.socket.socket_id,
+            "Creating BulkPullServer"
+        );
         let mut server_impl = BulkPullServerImpl {
             include_start: false,
             sent_count: 0,
@@ -94,6 +98,15 @@ impl BulkPullServer {
     pub fn send_next(&mut self) {
         let impl_clone = self.server_impl.clone();
         self.server_impl.lock().unwrap().send_next(impl_clone);
+    }
+}
+
+impl Drop for BulkPullServer {
+    fn drop(&mut self) {
+        debug!(
+            socket_id = self.server_impl.lock().unwrap().connection.socket.socket_id,
+            "Creating BulkPushServer"
+        );
     }
 }
 

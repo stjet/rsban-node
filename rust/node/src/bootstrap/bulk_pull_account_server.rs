@@ -286,6 +286,10 @@ impl BulkPullAccountServer {
         thread_pool: Arc<dyn ThreadPool>,
         ledger: Arc<Ledger>,
     ) -> Self {
+        debug!(
+            socket_id = connection.socket.socket_id,
+            "Creating BulkPullAccountServer"
+        );
         let mut server = BulkPullAccountServerImpl {
             connection,
             request,
@@ -329,5 +333,14 @@ impl BulkPullAccountServer {
 
     pub fn invalid_request(&self) -> bool {
         self.server.lock().unwrap().invalid_request
+    }
+}
+
+impl Drop for BulkPullAccountServer {
+    fn drop(&mut self) {
+        debug!(
+            socket_id = self.server.lock().unwrap().connection.socket.socket_id,
+            "Dropping BulkPullAccountServer"
+        );
     }
 }

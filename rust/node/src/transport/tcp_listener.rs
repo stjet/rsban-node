@@ -247,9 +247,13 @@ pub trait TcpListenerExt {
     ) -> anyhow::Result<()>;
     fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>);
     fn accept_action(&self, ec: ErrorCode, socket: Arc<Socket>);
+    fn as_observer(self) -> Arc<dyn TcpServerObserver>;
 }
 
 impl TcpListenerExt for Arc<TcpListener> {
+    fn as_observer(self) -> Arc<dyn TcpServerObserver> {
+        self
+    }
     fn on_connection_requeue_delayed(
         &self,
         callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
@@ -482,6 +486,7 @@ impl TcpListenerExt for Arc<TcpListener> {
     }
 
     fn accept_action(&self, _ec: ErrorCode, socket: Arc<Socket>) {
+        debug!(socket_id = socket.socket_id, "TcpListener::accept_action");
         let Some(remote) = socket.get_remote() else {
             return;
         };
@@ -539,6 +544,7 @@ pub struct TcpListenerBuilder {
     async_rt: Option<Arc<AsyncRuntime>>,
     ledger: Arc<Ledger>,
     node_id: Option<KeyPair>,
+    block_processor: Option<Arc<BlockProcessor>>,
 }
 
 impl TcpListenerBuilder {
@@ -550,6 +556,7 @@ impl TcpListenerBuilder {
             syn_cookies: None,
             async_rt: None,
             node_id: None,
+            block_processor: None,
         }
     }
 
@@ -578,8 +585,15 @@ impl TcpListenerBuilder {
         self
     }
 
+    pub fn block_processor(mut self, processor: Arc<BlockProcessor>) -> Self {
+        self.block_processor = Some(processor);
+        self
+    }
+
     pub fn build(self) -> TcpListener {
-        let block_processor = Arc::new(BlockProcessor::new_test_instance(Arc::clone(&self.ledger)));
+        let block_processor = self.block_processor.unwrap_or_else(|| {
+            Arc::new(BlockProcessor::new_test_instance(Arc::clone(&self.ledger)))
+        });
         let bootstrap_initiator = Arc::new(BootstrapInitiator::new(std::ptr::null_mut()));
 
         TcpListener::new(
@@ -659,45 +673,86 @@ fn is_temporary_error(ec: ErrorCode) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transport::{alive_sockets, TcpChannelsOptions, TcpMessageManager};
+    use crate::{
+        config::STUB_NETWORK_CONSTANTS,
+        transport::{alive_sockets, TcpChannelsExtension, TcpChannelsOptions, TcpMessageManager},
+    };
     use rsnano_ledger::LedgerContext;
+    use tracing_subscriber::EnvFilter;
 
     #[test]
     fn memory_leak() {
-        tracing_subscriber::fmt::init();
+        tracing_subscriber::fmt()
+            .with_env_filter(EnvFilter::from_default_env())
+            .with_ansi(false)
+            .init();
+
+        let async_rt = Arc::new(AsyncRuntime::default());
         {
-            let async_rt = Arc::new(AsyncRuntime::default());
-            let node_id = KeyPair::new();
-            let syn_cookies = Arc::new(SynCookies::default());
-            let tcp_message_manager = Arc::new(TcpMessageManager::default());
-            let ledger_ctx = LedgerContext::empty();
+            let (listener1, channels1) = create_test_listener(Arc::clone(&async_rt), 8088);
+            let (listener2, channels2) = create_test_listener(Arc::clone(&async_rt), 8089);
+            listener1.start().unwrap();
+            listener2.start().unwrap();
 
-            let tcp_channels = Arc::new(TcpChannels::new(TcpChannelsOptions {
-                async_rt: Arc::clone(&async_rt),
-                port: 8088,
-                node_id: node_id.clone(),
-                syn_cookies: Arc::clone(&syn_cookies),
-                tcp_message_manager: Arc::clone(&tcp_message_manager),
-                ..TcpChannelsOptions::new_test_instance()
-            }));
+            channels1.start_tcp(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8089, 0, 0));
+            channels2.start_tcp(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8088, 0, 0));
 
-            let tcp_listener = Arc::new(
-                TcpListener::new_test_builder(Arc::clone(&ledger_ctx.ledger))
-                    .port(8088)
-                    .node_id(node_id.clone())
-                    .async_rt(Arc::clone(&async_rt))
-                    .syn_cookies(syn_cookies)
-                    .tcp_channels(tcp_channels)
-                    .build(),
-            );
-
-            tcp_listener.start().unwrap();
-
-            std::thread::sleep(Duration::from_secs(2));
+            std::thread::sleep(Duration::from_secs(1));
 
             debug!(alive_sockets = alive_sockets(), "Alive sockets after wait");
-            tcp_listener.stop();
+            listener1.stop();
+            listener2.stop();
         }
+        std::thread::sleep(Duration::from_secs(1));
+        debug!("ALL SOCKETS SHOULD BE CLOSED NOW");
         assert_eq!(0, alive_sockets());
+    }
+
+    fn create_test_listener(
+        async_rt: Arc<AsyncRuntime>,
+        port: u16,
+    ) -> (Arc<TcpListener>, Arc<TcpChannels>) {
+        let node_id = KeyPair::new();
+        let syn_cookies = Arc::new(SynCookies::default());
+        let tcp_message_manager = Arc::new(TcpMessageManager::default());
+        let ledger_ctx = LedgerContext::empty();
+        let block_processor = Arc::new(BlockProcessor::new_test_instance(Arc::clone(
+            &ledger_ctx.ledger,
+        )));
+
+        let tcp_channels = Arc::new(TcpChannels::new(TcpChannelsOptions {
+            async_rt: Arc::clone(&async_rt),
+            port,
+            node_id: node_id.clone(),
+            syn_cookies: Arc::clone(&syn_cookies),
+            tcp_message_manager: Arc::clone(&tcp_message_manager),
+            ..TcpChannelsOptions::new_test_instance()
+        }));
+        let visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
+            Arc::clone(&async_rt),
+            Arc::clone(&syn_cookies),
+            Arc::new(Stats::default()),
+            STUB_NETWORK_CONSTANTS.clone(),
+            Arc::new(node_id.clone()),
+            Arc::clone(&ledger_ctx.ledger),
+            Arc::new(ThreadPoolImpl::new_test_instance()),
+            Arc::clone(&block_processor),
+            Arc::new(BootstrapInitiator::new(std::ptr::null_mut())),
+            NodeFlags::default(),
+        ));
+        tcp_channels.set_message_visitor_factory(visitor_factory);
+        tcp_channels.observe();
+        let listener = Arc::new(
+            TcpListener::new_test_builder(Arc::clone(&ledger_ctx.ledger))
+                .port(port)
+                .node_id(node_id.clone())
+                .async_rt(Arc::clone(&async_rt))
+                .syn_cookies(syn_cookies)
+                .tcp_channels(Arc::clone(&tcp_channels))
+                .block_processor(block_processor)
+                .build(),
+        );
+
+        (listener, tcp_channels)
     }
 }

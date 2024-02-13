@@ -2,6 +2,7 @@ use std::sync::{Arc, Weak};
 
 use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
+use tracing::debug;
 
 use crate::{
     block_processing::BlockProcessor,
@@ -57,6 +58,10 @@ impl BootstrapMessageVisitorFactory {
     }
 
     pub fn handshake_visitor(&self, server: Arc<TcpServer>) -> Box<dyn HandshakeMessageVisitor> {
+        debug!(
+            socket_id = server.socket.socket_id,
+            "Creating HandshakeMessageVisitorImpl"
+        );
         let mut visitor = Box::new(HandshakeMessageVisitorImpl::new(
             server,
             Arc::clone(&self.syn_cookies),
@@ -69,6 +74,10 @@ impl BootstrapMessageVisitorFactory {
     }
 
     pub fn realtime_visitor(&self, server: Arc<TcpServer>) -> Box<dyn RealtimeMessageVisitor> {
+        debug!(
+            socket_id = server.socket.socket_id,
+            "Creating RealtimeMessageVisitorImpl"
+        );
         Box::new(RealtimeMessageVisitorImpl::new(
             server,
             Arc::clone(&self.stats),
@@ -76,6 +85,11 @@ impl BootstrapMessageVisitorFactory {
     }
 
     pub fn bootstrap_visitor(&self, server: Arc<TcpServer>) -> Box<dyn BootstrapMessageVisitor> {
+        debug!(
+            socket_id = server.socket.socket_id,
+            "Creating BootstrapMessageVisitorImpl"
+        );
+
         Box::new(BootstrapMessageVisitorImpl {
             async_rt: Arc::clone(&self.async_rt),
             ledger: Arc::clone(&self.ledger),

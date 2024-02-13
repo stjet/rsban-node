@@ -98,8 +98,16 @@ pub struct TcpChannels {
     channel_observer: Mutex<Option<Arc<dyn ChannelTcpObserver>>>,
 }
 
+impl Drop for TcpChannels {
+    fn drop(&mut self) {
+        self.stop();
+        debug!("Dropping TcpChannels");
+    }
+}
+
 impl TcpChannels {
     pub fn new(options: TcpChannelsOptions) -> Self {
+        debug!("Creating TcpChannels");
         let node_config = Arc::new(options.node_config);
         let network = Arc::new(options.network);
         let observer: Arc<dyn TcpServerObserver> = Arc::new(NullTcpServerObserver {});
@@ -154,9 +162,10 @@ impl TcpChannels {
     }
 
     pub fn stop(&self) {
-        self.stopped.store(true, Ordering::SeqCst);
-        self.tcp_channels.lock().unwrap().close_channels();
-        self.tcp_message_manager.stop();
+        if !self.stopped.swap(true, Ordering::SeqCst) {
+            self.tcp_channels.lock().unwrap().close_channels();
+            self.tcp_message_manager.stop();
+        }
     }
 
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
@@ -190,6 +199,16 @@ impl TcpChannels {
                 }
 
                 let wrapper = Arc::new(ChannelTcpWrapper::new(channel.clone(), server));
+                debug!(
+                    server.socket_id = wrapper
+                        .response_server
+                        .as_ref()
+                        .map(|i| i.socket.socket_id)
+                        .unwrap_or_default(),
+                    channel.socket_id = wrapper.tcp_channel().socket.socket_id,
+                    "Inserting ChannelTcpWrapper into TcpChannels"
+                );
+
                 lock.channels.insert(wrapper);
                 lock.attempts.remove(&endpoint);
                 let observer = lock.new_channel_observer.clone();
@@ -501,6 +520,9 @@ impl TcpChannels {
 pub struct ChannelTcpObserverImpl(Weak<TcpChannels>);
 
 impl ChannelTcpObserverImpl {
+    pub fn new(channels: &Arc<TcpChannels>) -> Self {
+        Self(Arc::downgrade(channels))
+    }
     fn execute(&self, action: impl FnOnce(&TcpChannels)) {
         if let Some(channels) = self.0.upgrade() {
             action(&channels)
@@ -618,6 +640,10 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         let channel_id = self.get_next_channel_id();
                         let channel_observer =
                             Arc::downgrade(self.channel_observer.lock().unwrap().as_ref().unwrap());
+                        debug!(
+                            socket_id = socket.socket_id,
+                            "Cloning socket inside process_message"
+                        );
                         let temporary_channel = ChannelTcp::new(
                             Arc::clone(socket),
                             SystemTime::now(),
@@ -840,6 +866,10 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                             cleanup_node_id_handshake_socket();
                             return;
                         }
+                        debug!(
+                            socket_id = tcp.socket.socket_id,
+                            "Cloning socket for tcp_server"
+                        );
                         // Insert new node ID connection
                         let response_server = this_l
                             .tcp_server_factory
@@ -938,6 +968,10 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         )));
         let this_w = Arc::downgrade(self);
         let socket_clone = Arc::clone(&socket);
+        debug!(
+            socket_id = socket_clone.socket_id,
+            "Cloning socket for async_connect"
+        );
         socket.async_connect(
             endpoint,
             Box::new(move |ec| {
@@ -1037,10 +1071,16 @@ impl TcpChannelsImpl {
     }
 
     pub fn close_channels(&mut self) {
+        debug!("Closing all channels in TcpChannels");
         for channel in self.channels.iter() {
             channel.socket().close();
             // Remove response server
             if let Some(server) = &channel.response_server {
+                debug!(
+                    socket_id = server.socket.socket_id,
+                    "Removing TcpServer from ChannelTcpWrapper"
+                );
+
                 server.stop();
             }
         }

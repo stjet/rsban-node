@@ -19,8 +19,8 @@ use std::{
     },
     time::{Duration, Instant},
 };
-use tokio::task::spawn_blocking;
-use tracing::debug;
+use tokio::{sync::Notify, task::spawn_blocking};
+use tracing::{debug, span, Level};
 
 pub trait TcpServerObserver: Send + Sync {
     fn bootstrap_server_timeout(&self, connection_id: usize);
@@ -83,6 +83,7 @@ pub struct TcpServer {
     message_deserializer: Arc<MessageDeserializer<Arc<Socket>>>,
     tcp_message_manager: Arc<TcpMessageManager>,
     allow_bootstrap: bool,
+    notify_stop: Notify,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -102,6 +103,10 @@ impl TcpServer {
     ) -> Self {
         let network_constants = network.network.clone();
         let socket_clone = Arc::clone(&socket);
+        debug!(
+            socket_id = socket.socket_id,
+            "Cloning socket in TcpServer constructor"
+        );
         Self {
             async_rt: Arc::downgrade(&async_rt),
             socket,
@@ -128,6 +133,7 @@ impl TcpServer {
             )),
             tcp_message_manager,
             allow_bootstrap,
+            notify_stop: Notify::new(),
         }
     }
 
@@ -138,6 +144,7 @@ impl TcpServer {
     pub fn stop(&self) {
         if !self.stopped.swap(true, Ordering::SeqCst) {
             self.socket.close();
+            self.notify_stop.notify_one();
         }
     }
 
@@ -250,7 +257,7 @@ impl Drop for TcpServer {
             observer.boostrap_server_exited(self.socket.socket_type(), self.unique_id(), remote_ep);
         }
         self.stop();
-        debug!(socket_id = self.socket.socket_id, "TcpServer stopped");
+        debug!(socket_id = self.socket.socket_id, "TcpServer dropped");
     }
 }
 
@@ -313,9 +320,26 @@ impl TcpServerExt for Arc<TcpServer> {
         };
 
         let self_clone = Arc::clone(self);
+        debug!(
+            socket_id = self.socket.socket_id,
+            "Cloning TcpServer in TcpServer::receive_message"
+        );
         async_rt.tokio.spawn(async move {
-            let result = self_clone.message_deserializer.read().await;
+            let span = span!(
+                Level::DEBUG,
+                "TcpServer::receive_message calling message deserializer",
+                socket_id = self_clone.socket.socket_id,
+            );
+            let result = tokio::select! {
+                i = self_clone.message_deserializer.read() => i,
+                _ = self_clone.notify_stop.notified() => Err(ParseMessageError::Other)
+            };
+
             spawn_blocking(Box::new(move || {
+                debug!(
+                    socket_id = self_clone.socket.socket_id,
+                    "TcpServer::receive_message inside spawn blocking"
+                );
                 match result {
                     Ok(msg) => self_clone.received_message(msg),
                     Err(ParseMessageError::DuplicatePublishMessage) => {
@@ -349,6 +373,10 @@ impl TcpServerExt for Arc<TcpServer> {
                         self_clone.stop();
                     }
                 }
+                debug!(
+                    socket_id = self_clone.socket.socket_id,
+                    "TcpServer::receive_message exiting spawn blocking"
+                );
             }));
         });
     }
@@ -642,6 +670,15 @@ impl HandshakeMessageVisitor for HandshakeMessageVisitorImpl {
     }
 }
 
+impl Drop for HandshakeMessageVisitorImpl {
+    fn drop(&mut self) {
+        debug!(
+            socket_id = self.server.socket.socket_id,
+            "Dropping HandshakeMessageVisitorImpl"
+        );
+    }
+}
+
 pub struct RealtimeMessageVisitorImpl {
     server: Arc<TcpServer>,
     stats: Arc<Stats>,
@@ -655,6 +692,15 @@ impl RealtimeMessageVisitorImpl {
             stats,
             process: false,
         }
+    }
+}
+
+impl Drop for RealtimeMessageVisitorImpl {
+    fn drop(&mut self) {
+        debug!(
+            socket_id = self.server.socket.socket_id,
+            "Dropping RealtimeMessageVisitorImpl"
+        );
     }
 }
 

@@ -3,6 +3,7 @@ use std::sync::{Arc, Weak};
 use rsnano_core::work::WorkThresholds;
 use rsnano_ledger::Ledger;
 use rsnano_messages::{Message, MessageVisitor};
+use tracing::debug;
 
 use crate::{
     block_processing::BlockProcessor,
@@ -42,6 +43,11 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 };
 
                 let payload = payload.clone();
+                debug!(
+                    socket_id = self.connection.socket.socket_id,
+                    message_type = message.message_type().as_str(),
+                    "Cloning TcpServer BootstrapMessageVisitorImpl::received"
+                );
                 let connection = Arc::clone(&self.connection);
                 let ledger = Arc::clone(&self.ledger);
                 let thread_pool2 = Arc::clone(&thread_pool);
@@ -64,6 +70,11 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 };
 
                 let payload = payload.clone();
+                debug!(
+                    socket_id = self.connection.socket.socket_id,
+                    message_type = message.message_type().as_str(),
+                    "Cloning TcpServer BootstrapMessageVisitorImpl::received"
+                );
                 let connection = Arc::clone(&self.connection);
                 let ledger = Arc::clone(&self.ledger);
                 let thread_pool2 = Arc::clone(&thread_pool);
@@ -87,6 +98,11 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 let Some(bootstrap_initiator) = self.bootstrap_initiator.upgrade() else {
                     return;
                 };
+                debug!(
+                    socket_id = self.connection.socket.socket_id,
+                    message_type = message.message_type().as_str(),
+                    "Cloning TcpServer BootstrapMessageVisitorImpl::received"
+                );
                 let connection = Arc::clone(&self.connection);
                 let ledger = Arc::clone(&self.ledger);
                 let thread_pool2 = Arc::clone(&thread_pool);
@@ -116,6 +132,11 @@ impl MessageVisitor for BootstrapMessageVisitorImpl {
                 };
 
                 let request = payload.clone();
+                debug!(
+                    socket_id = self.connection.socket.socket_id,
+                    message_type = message.message_type().as_str(),
+                    "Cloning TcpServer BootstrapMessageVisitorImpl::received"
+                );
                 let connection = Arc::clone(&self.connection);
                 let ledger = Arc::clone(&self.ledger);
                 let thread_pool2 = Arc::clone(&thread_pool);

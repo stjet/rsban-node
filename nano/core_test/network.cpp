@@ -692,7 +692,14 @@ TEST (tcp_listener, tcp_listener_timeout_node_id_handshake)
 	ASSERT_TRUE (cookie);
 	nano::node_id_handshake::query_payload query{ *cookie };
 	nano::node_id_handshake node_id_handshake{ nano::dev::network_params.network, query };
-	auto channel = std::make_shared<nano::transport::channel_tcp> (node0->async_rt, node0->outbound_limiter, node0->config->network_params.network, socket, node0->network->tcp_channels, 1);
+	auto channel = std::make_shared<nano::transport::channel_tcp> (
+			node0->async_rt, 
+			node0->outbound_limiter, 
+			node0->config->network_params.network, 
+			socket, 
+			*node0->stats,
+			*node0->network->tcp_channels, 
+			1);
 	socket->async_connect (node0->tcp_listener->endpoint (), [&node_id_handshake, channel] (boost::system::error_code const & ec) {
 		ASSERT_FALSE (ec);
 		channel->send (node_id_handshake, [] (boost::system::error_code const & ec, size_t size_a) {

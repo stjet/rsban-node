@@ -14,22 +14,12 @@ use tracing::trace;
 
 use super::{
     write_queue::WriteCallback, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket,
-    SocketExtensions, TrafficType,
+    SocketExtensions, TcpChannels, TrafficType,
 };
-use crate::utils::{AsyncRuntime, ErrorCode};
-
-pub trait IChannelTcpObserverWeakPtr: Send + Sync {
-    fn lock(&self) -> Option<Arc<dyn ChannelTcpObserver>>;
-}
-
-pub trait ChannelTcpObserver: Send + Sync {
-    fn data_sent(&self, endpoint: &SocketAddrV6);
-    fn host_unreachable(&self);
-    fn message_sent(&self, message: &Message);
-    fn message_dropped(&self, message: &Message, buffer_size: usize);
-    fn no_socket_drop(&self);
-    fn write_drop(&self);
-}
+use crate::{
+    stats::{DetailType, Direction, StatType, Stats},
+    utils::{AsyncRuntime, ErrorCode},
+};
 
 pub struct TcpChannelData {
     last_bootstrap_attempt: SystemTime,
@@ -49,17 +39,19 @@ pub struct ChannelTcp {
     But if other side is behing NAT or firewall this connection can be pemanent. */
     temporary: AtomicBool,
     network_version: AtomicU8,
-    pub observer: Arc<dyn IChannelTcpObserverWeakPtr>,
     pub limiter: Arc<OutboundBandwidthLimiter>,
     pub async_rt: Weak<AsyncRuntime>,
     message_serializer: Mutex<MessageSerializer>, // TODO remove mutex
+    stats: Arc<Stats>,
+    tcp_channels: Weak<TcpChannels>,
 }
 
 impl ChannelTcp {
     pub fn new(
         socket: Arc<Socket>,
         now: SystemTime,
-        observer: Arc<dyn IChannelTcpObserverWeakPtr>,
+        stats: Arc<Stats>,
+        tcp_channels: &Arc<TcpChannels>,
         limiter: Arc<OutboundBandwidthLimiter>,
         async_rt: &Arc<AsyncRuntime>,
         channel_id: usize,
@@ -78,10 +70,11 @@ impl ChannelTcp {
             socket,
             temporary: AtomicBool::new(false),
             network_version: AtomicU8::new(0),
-            observer,
             limiter,
             async_rt: Arc::downgrade(async_rt),
             message_serializer: Mutex::new(MessageSerializer::new(protocol)),
+            stats,
+            tcp_channels: Arc::downgrade(tcp_channels),
         }
     }
 
@@ -138,19 +131,24 @@ impl ChannelTcp {
             if !socket_l.max(traffic_type)
                 || (policy == BufferDropPolicy::NoSocketDrop && !socket_l.full(traffic_type))
             {
-                let observer_weak_l = self.observer.clone();
+                let channels_w = Weak::clone(&self.tcp_channels);
+                let stats = Arc::clone(&self.stats);
                 let endpoint = socket_l
                     .get_remote()
                     .unwrap_or_else(|| SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0));
                 socket_l.async_write(
                     buffer,
                     Some(Box::new(move |ec, size| {
-                        if let Some(observer_l) = observer_weak_l.lock() {
+                        if let Some(channels_l) = channels_w.upgrade() {
                             if ec.is_ok() {
-                                observer_l.data_sent(&endpoint);
+                                channels_l.data_sent(&endpoint);
                             }
                             if ec == ErrorCode::host_unreachable() {
-                                observer_l.host_unreachable();
+                                stats.inc(
+                                    StatType::Error,
+                                    DetailType::UnreachableHost,
+                                    Direction::Out,
+                                );
                             }
                         }
                         if let Some(callback) = callback {
@@ -160,12 +158,15 @@ impl ChannelTcp {
                     traffic_type,
                 );
             } else {
-                if let Some(observer_l) = self.observer.lock() {
-                    if policy == BufferDropPolicy::NoSocketDrop {
-                        observer_l.no_socket_drop();
-                    } else {
-                        observer_l.write_drop();
-                    }
+                if policy == BufferDropPolicy::NoSocketDrop {
+                    self.stats.inc(
+                        StatType::Tcp,
+                        DetailType::TcpWriteNoSocketDrop,
+                        Direction::Out,
+                    )
+                } else {
+                    self.stats
+                        .inc(StatType::Tcp, DetailType::TcpWriteDrop, Direction::Out);
                 }
                 if let Some(callback_a) = callback {
                     callback_a(ErrorCode::no_buffer_space(), 0);
@@ -268,14 +269,12 @@ impl Channel for ChannelTcp {
         let should_pass = self.limiter.should_pass(buffer.len(), traffic_type.into());
         if !is_droppable_by_limiter || should_pass {
             self.send_buffer(&buffer, callback, drop_policy, traffic_type);
-            if let Some(observer) = self.observer.lock() {
-                observer.message_sent(message);
-            }
+            self.stats
+                .inc(StatType::Message, message.into(), Direction::Out);
             trace!(channel_id = self.channel_id, message = ?message, "Message sent");
         } else {
-            if let Some(observer) = self.observer.lock() {
-                observer.message_dropped(message, buffer.len());
-            }
+            let detail_type = message.into();
+            self.stats.inc(StatType::Drop, detail_type, Direction::Out);
             trace!(channel_id = self.channel_id, message = ?message, "Message dropped");
 
             if let Some(callback) = callback {

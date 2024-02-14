@@ -1,13 +1,12 @@
 use super::{
     bandwidth_limiter::OutboundBandwidthLimiterHandle,
     channel::{as_tcp_channel, ChannelHandle},
-    channel_tcp_observer::FfiChannelTcpObserverWeakPtr,
     socket::SocketHandle,
-    EndpointDto,
+    EndpointDto, TcpChannelsHandle,
 };
 use crate::{
     messages::MessageHandle, utils::AsyncRuntimeHandle, ErrorCodeDto, NetworkConstantsDto,
-    VoidPointerCallback,
+    StatHandle, VoidPointerCallback,
 };
 use num::FromPrimitive;
 use rsnano_node::{
@@ -18,16 +17,15 @@ use rsnano_node::{
 use std::{ffi::c_void, net::SocketAddrV6, ops::Deref, sync::Arc, time::SystemTime};
 
 #[no_mangle]
-/// observer is `weak_ptr<channel_tcp_observer> *`
 pub unsafe extern "C" fn rsn_channel_tcp_create(
     socket: *mut SocketHandle,
-    observer: *mut c_void,
+    stats: &StatHandle,
+    tcp_channels: &TcpChannelsHandle,
     limiter: *const OutboundBandwidthLimiterHandle,
     async_rt: &AsyncRuntimeHandle,
     channel_id: usize,
     network_constants: &NetworkConstantsDto,
 ) -> *mut ChannelHandle {
-    let observer = Arc::new(FfiChannelTcpObserverWeakPtr::new(observer));
     let limiter = Arc::clone(&*limiter);
     let async_rt = Arc::clone(&async_rt.0);
     let protocol = NetworkConstants::try_from(network_constants)
@@ -37,7 +35,8 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
     ChannelHandle::new(Arc::new(ChannelEnum::Tcp(ChannelTcp::new(
         Arc::clone((*socket).deref()),
         SystemTime::now(),
-        observer,
+        Arc::clone(stats),
+        tcp_channels,
         limiter,
         &async_rt,
         channel_id,

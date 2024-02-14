@@ -311,6 +311,7 @@ impl Drop for Socket {
     fn drop(&mut self) {
         self.close_internal();
         let alive = LIVE_SOCKETS.fetch_sub(1, Ordering::Relaxed) - 1;
+        debug!(socket_id = self.socket_id, alive, "Socket dropped");
     }
 }
 

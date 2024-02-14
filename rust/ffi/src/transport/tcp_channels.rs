@@ -101,7 +101,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_create(
     let channels = Arc::new(TcpChannels::new(
         TcpChannelsOptions::try_from(options).unwrap(),
     ));
-    channels.observe();
     Box::into_raw(Box::new(TcpChannelsHandle(channels)))
 }
 

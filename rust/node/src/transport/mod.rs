@@ -31,7 +31,7 @@ pub use bandwidth_limiter::{
 pub use block_deserializer::BlockDeserializer;
 pub use channel_fake::ChannelFake;
 pub use channel_inproc::{ChannelInProc, InboundCallback};
-pub use channel_tcp::{ChannelTcp, ChannelTcpObserver, IChannelTcpObserverWeakPtr, TcpChannelData};
+pub use channel_tcp::{ChannelTcp, TcpChannelData};
 pub(crate) use connections_per_address::ConnectionsPerAddress;
 pub use message_deserializer::{AsyncBufferReader, MessageDeserializer};
 pub use network_filter::NetworkFilter;

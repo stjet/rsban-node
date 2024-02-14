@@ -1,9 +1,9 @@
 use super::{
-    BufferDropPolicy, ChannelEnum, ChannelTcp, ChannelTcpObserver, CompositeSocketObserver,
-    EndpointType, IChannelTcpObserverWeakPtr, MessageDeserializer, NetworkFilter,
-    NullSocketObserver, NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket,
-    SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpMessageManager, TcpServer,
-    TcpServerFactory, TcpServerObserver, TrafficType,
+    BufferDropPolicy, ChannelEnum, ChannelTcp, CompositeSocketObserver, EndpointType,
+    MessageDeserializer, NetworkFilter, NullSocketObserver, NullTcpServerObserver,
+    OutboundBandwidthLimiter, PeerExclusion, Socket, SocketBuilder, SocketExtensions,
+    SocketObserver, SynCookies, TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver,
+    TrafficType,
 };
 use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
@@ -95,7 +95,6 @@ pub struct TcpChannels {
     pub publish_filter: Arc<NetworkFilter>,
     tcp_server_factory: Arc<Mutex<TcpServerFactory>>,
     observer: Arc<dyn SocketObserver>,
-    channel_observer: Mutex<Option<Arc<dyn ChannelTcpObserver>>>,
 }
 
 impl Drop for TcpChannels {
@@ -146,7 +145,6 @@ impl TcpChannels {
             publish_filter: options.publish_filter,
             tcp_server_factory,
             observer: options.observer,
-            channel_observer: Mutex::new(None),
             async_rt: Arc::downgrade(&options.async_rt),
         }
     }
@@ -449,6 +447,10 @@ impl TcpChannels {
         error
     }
 
+    pub fn data_sent(&self, endpoint: &SocketAddrV6) {
+        self.tcp_channels.lock().unwrap().update(endpoint);
+    }
+
     pub fn len_sqrt(&self) -> f32 {
         self.tcp_channels.lock().unwrap().len_sqrt()
     }
@@ -505,76 +507,6 @@ impl TcpChannels {
     }
 }
 
-pub struct ChannelTcpObserverImpl(Weak<TcpChannels>);
-
-impl ChannelTcpObserverImpl {
-    pub fn new(channels: &Arc<TcpChannels>) -> Self {
-        Self(Arc::downgrade(channels))
-    }
-    fn execute(&self, action: impl FnOnce(&TcpChannels)) {
-        if let Some(channels) = self.0.upgrade() {
-            action(&channels)
-        }
-    }
-}
-
-impl ChannelTcpObserver for ChannelTcpObserverImpl {
-    fn data_sent(&self, endpoint: &SocketAddrV6) {
-        self.execute(|channels| channels.tcp_channels.lock().unwrap().update(endpoint));
-    }
-
-    fn host_unreachable(&self) {
-        self.execute(|channels| {
-            channels
-                .stats
-                .inc(StatType::Error, DetailType::UnreachableHost, Direction::Out)
-        });
-    }
-
-    fn message_sent(&self, message: &Message) {
-        self.execute(|channels| {
-            channels
-                .stats
-                .inc(StatType::Message, message.into(), Direction::Out);
-        });
-    }
-
-    fn message_dropped(&self, message: &Message, _buffer_size: usize) {
-        self.execute(|channels| {
-            let detail_type = message.into();
-            channels
-                .stats
-                .inc(StatType::Drop, detail_type, Direction::Out);
-        });
-    }
-
-    fn no_socket_drop(&self) {
-        self.execute(|channels| {
-            channels.stats.inc(
-                StatType::Tcp,
-                DetailType::TcpWriteNoSocketDrop,
-                Direction::Out,
-            )
-        });
-    }
-
-    fn write_drop(&self) {
-        self.execute(|channels| {
-            channels
-                .stats
-                .inc(StatType::Tcp, DetailType::TcpWriteDrop, Direction::Out);
-        });
-    }
-}
-
-struct ChannelTcpObserverWeakPtr(Weak<dyn ChannelTcpObserver>);
-
-impl IChannelTcpObserverWeakPtr for ChannelTcpObserverWeakPtr {
-    fn lock(&self) -> Option<Arc<dyn ChannelTcpObserver>> {
-        self.0.upgrade()
-    }
-}
-
 pub trait TcpChannelsExtension {
     fn process_messages(&self);
     fn process_message(
@@ -588,7 +520,6 @@ pub trait TcpChannelsExtension {
     fn ongoing_keepalive(&self);
     fn start_tcp_receive_node_id(&self, channel: &Arc<ChannelEnum>, endpoint: SocketAddrV6);
     fn start_tcp(&self, endpoint: SocketAddrV6);
-    fn observe(&self);
 }
 
 impl TcpChannelsExtension for Arc<TcpChannels> {
@@ -626,12 +557,11 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     if !node_id.is_zero() {
                         // Add temporary channel
                         let channel_id = self.get_next_channel_id();
-                        let channel_observer =
-                            Arc::downgrade(self.channel_observer.lock().unwrap().as_ref().unwrap());
                         let temporary_channel = ChannelTcp::new(
                             Arc::clone(socket),
                             SystemTime::now(),
-                            Arc::new(ChannelTcpObserverWeakPtr(channel_observer)),
+                            Arc::clone(&self.stats),
+                            self,
                             self.limiter.clone(),
                             &async_rt,
                             channel_id,
@@ -931,12 +861,11 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         .build();
 
         let channel_id = self.get_next_channel_id();
-        let observer: Arc<dyn ChannelTcpObserver> =
-            Arc::clone(self.channel_observer.lock().unwrap().as_ref().unwrap());
         let channel = Arc::new(ChannelEnum::Tcp(ChannelTcp::new(
             Arc::clone(&socket),
             SystemTime::now(),
-            Arc::new(ChannelTcpObserverWeakPtr(Arc::downgrade(&observer))),
+            Arc::clone(&self.stats),
+            self,
             self.limiter.clone(),
             &async_rt,
             channel_id,
@@ -1002,11 +931,6 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 );
             }),
         );
-    }
-
-    fn observe(&self) {
-        *self.channel_observer.lock().unwrap() =
-            Some(Arc::new(ChannelTcpObserverImpl(Arc::downgrade(self))));
     }
 }
 

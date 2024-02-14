@@ -455,74 +455,6 @@ void tcp_socket_delete_callback (void * handle_a)
 	delete callback;
 };
 
-nano::transport::channel_tcp_observer & to_channel_tcp (void * handle_a)
-{
-	auto channel = static_cast<std::shared_ptr<nano::transport::channel_tcp_observer> *> (handle_a);
-	return **channel;
-}
-
-void channel_tcp_data_sent (void * handle_a, const rsnano::EndpointDto * endpoint_a)
-{
-	auto endpoint{ rsnano::dto_to_endpoint (*endpoint_a) };
-	to_channel_tcp (handle_a).data_sent (endpoint);
-}
-
-void channel_tcp_host_unreachable (void * handle_a)
-{
-	to_channel_tcp (handle_a).host_unreachable ();
-}
-
-void channel_tcp_message_dropped (void * handle_a, rsnano::MessageHandle * message_a, size_t buffer_size_a)
-{
-	auto message = nano::message_handle_to_message (message_a);
-	to_channel_tcp (handle_a).message_dropped (*message, buffer_size_a);
-}
-
-void channel_tcp_message_sent (void * handle_a, rsnano::MessageHandle * message_a)
-{
-	auto message = nano::message_handle_to_message (message_a);
-	to_channel_tcp (handle_a).message_sent (*message);
-}
-
-void channel_tcp_no_socket_drop (void * handle_a)
-{
-	to_channel_tcp (handle_a).no_socket_drop ();
-}
-
-void channel_tcp_write_drop (void * handle_a)
-{
-	to_channel_tcp (handle_a).write_drop ();
-}
-
-void channel_tcp_destroy (void * handle_a)
-{
-	auto channel = static_cast<std::shared_ptr<nano::transport::channel_tcp_observer> *> (handle_a);
-	delete channel;
-}
-
-void channel_tcp_drop_weak (void * handle_a)
-{
-	auto observer = static_cast<std::weak_ptr<nano::transport::channel_tcp_observer> *> (handle_a);
-	delete observer;
-}
-
-void * channel_tcp_clone_weak (void * handle_a)
-{
-	auto observer = static_cast<std::weak_ptr<nano::transport::channel_tcp_observer> *> (handle_a);
-	return new std::weak_ptr<nano::transport::channel_tcp_observer> (*observer);
-}
-
-void * channel_tcp_observer_lock (void * handle_a)
-{
-	auto input{ static_cast<std::weak_ptr<nano::transport::channel_tcp_observer> *> (handle_a) };
-	auto sp = input->lock ();
-	if (sp)
-	{
-		return new std::shared_ptr<nano::transport::channel_tcp_observer> (sp);
-	}
-	return nullptr;
-}
-
 void bootstrap_client_observer_closed (void * handle_a)
 {
 	auto observer{ static_cast<std::shared_ptr<nano::bootstrap_client_observer> *> (handle_a) };
@@ -623,17 +555,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_tcp_socket_connected (tcp_socket_connected);
 	rsnano::rsn_callback_tcp_socket_accepted (tcp_socket_accepted);
 	rsnano::rsn_callback_delete_tcp_socket_callback (tcp_socket_delete_callback);
-
-	rsnano::rsn_callback_channel_tcp_observer_data_sent (channel_tcp_data_sent);
-	rsnano::rsn_callback_channel_tcp_observer_host_unreachable (channel_tcp_host_unreachable);
-	rsnano::rsn_callback_channel_tcp_observer_message_dropped (channel_tcp_message_dropped);
-	rsnano::rsn_callback_channel_tcp_observer_message_sent (channel_tcp_message_sent);
-	rsnano::rsn_callback_channel_tcp_observer_no_socket_drop (channel_tcp_no_socket_drop);
-	rsnano::rsn_callback_channel_tcp_observer_write_drop (channel_tcp_write_drop);
-	rsnano::rsn_callback_channel_tcp_observer_destroy (channel_tcp_destroy);
-	rsnano::rsn_callback_channel_tcp_observer_drop_weak (channel_tcp_drop_weak);
-	rsnano::rsn_callback_channel_tcp_observer_clone_weak (channel_tcp_clone_weak);
-	rsnano::rsn_callback_channel_tcp_observer_lock (channel_tcp_observer_lock);
 
 	rsnano::rsn_callback_bootstrap_client_observer_closed (bootstrap_client_observer_closed);
 	rsnano::rsn_callback_bootstrap_client_observer_destroy (bootstrap_client_observer_destroy);

@@ -68,17 +68,6 @@ namespace transport
 		rsnano::RequestResponseVisitorFactoryHandle * handle;
 	};
 
-	class channel_tcp_observer
-	{
-	public:
-		virtual void data_sent (boost::asio::ip::tcp::endpoint const & endpoint_a) = 0;
-		virtual void host_unreachable () = 0;
-		virtual void message_sent (nano::message const & message_a) = 0;
-		virtual void message_dropped (nano::message const & message_a, std::size_t buffer_size_a) = 0;
-		virtual void no_socket_drop () = 0;
-		virtual void write_drop () = 0;
-	};
-
 	void channel_tcp_send_callback (void * context_a, const rsnano::ErrorCodeDto * ec_a, std::size_t size_a);
 	void delete_send_buffer_callback (void * context_a);
 
@@ -87,7 +76,15 @@ namespace transport
 		friend class nano::transport::tcp_channels;
 
 	public:
-		channel_tcp (rsnano::async_runtime & async_rt_a, nano::outbound_bandwidth_limiter & limiter_a, nano::network_constants const & network_a, std::shared_ptr<nano::transport::socket> const & socket_a, std::shared_ptr<nano::transport::channel_tcp_observer> const & observer_a, size_t channel_id);
+		channel_tcp (
+				rsnano::async_runtime & async_rt_a, 
+				nano::outbound_bandwidth_limiter & limiter_a, 
+				nano::network_constants const & network_a, 
+				std::shared_ptr<nano::transport::socket> const & socket_a, 
+				nano::stats const & stats_a,
+				nano::transport::tcp_channels const & tcp_channels_a,
+				size_t channel_id);
+
 		channel_tcp (rsnano::ChannelHandle * handle_a) :
 			channel{ handle_a } {};
 
@@ -118,7 +115,7 @@ namespace transport
 		virtual bool alive () const override;
 	};
 
-	class tcp_channels final : public nano::transport::channel_tcp_observer, public std::enable_shared_from_this<tcp_channels>
+	class tcp_channels final : public std::enable_shared_from_this<tcp_channels>
 	{
 		friend class nano::transport::channel_tcp;
 
@@ -157,12 +154,12 @@ namespace transport
 		void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
 
 		// channel_tcp_observer:
-		void data_sent (boost::asio::ip::tcp::endpoint const & endpoint_a) override;
-		void host_unreachable () override;
-		void message_sent (nano::message const & message_a) override;
-		void message_dropped (nano::message const & message_a, std::size_t buffer_size_a) override;
-		void no_socket_drop () override;
-		void write_drop () override;
+		void data_sent (boost::asio::ip::tcp::endpoint const & endpoint_a);
+		void host_unreachable ();
+		void message_sent (nano::message const & message_a);
+		void message_dropped (nano::message const & message_a, std::size_t buffer_size_a);
+		void no_socket_drop ();
+		void write_drop ();
 
 		std::vector<nano::endpoint> get_peers () const;
 		void random_fill (std::array<nano::endpoint, 8> &) const;

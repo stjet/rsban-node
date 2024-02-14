@@ -230,7 +230,21 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 			this_l->node.logger->debug (nano::log::type::bootstrap, "Connection established to: {}", nano::util::to_str (endpoint_a));
 
 			auto channel_id = this_l->node.network->tcp_channels->get_next_channel_id ();
-			auto client (std::make_shared<nano::bootstrap_client> (this_l->node.async_rt, this_l, std::make_shared<nano::transport::channel_tcp> (this_l->node.async_rt, this_l->node.outbound_limiter, this_l->node.config->network_params.network, socket, this_l->node.network->tcp_channels, channel_id), socket));
+
+			auto tcp_channel{std::make_shared<nano::transport::channel_tcp> (
+					this_l->node.async_rt, 
+					this_l->node.outbound_limiter, 
+					this_l->node.config->network_params.network, 
+					socket, 
+					*this_l->node.stats, 
+					*this_l->node.network->tcp_channels, 
+					channel_id)};
+
+			auto client (std::make_shared<nano::bootstrap_client> (
+						this_l->node.async_rt, 
+						this_l, 
+						tcp_channel,
+						socket));
 			this_l->connections_count++;
 			this_l->pool_connection (client, true, push_front);
 		}

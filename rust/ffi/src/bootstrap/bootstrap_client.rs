@@ -17,7 +17,7 @@ use rsnano_node::{
 
 use num_traits::FromPrimitive;
 
-pub struct BootstrapClientHandle(BootstrapClient);
+pub struct BootstrapClientHandle(pub Arc<BootstrapClient>);
 
 /// `observer` is a `shared_ptr<bootstrap_client_observer>*`
 #[no_mangle]
@@ -31,8 +31,8 @@ pub unsafe extern "C" fn rsn_bootstrap_client_create(
     let channel = (*channel).0.clone();
     let socket = (*socket).deref().clone();
     let async_rt = Arc::clone(&(*async_rt).0);
-    Box::into_raw(Box::new(BootstrapClientHandle(BootstrapClient::new(
-        async_rt, observer, channel, socket,
+    Box::into_raw(Box::new(BootstrapClientHandle(Arc::new(
+        BootstrapClient::new(async_rt, observer, channel, socket),
     ))))
 }
 

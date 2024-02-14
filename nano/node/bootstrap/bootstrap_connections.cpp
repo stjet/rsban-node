@@ -24,6 +24,10 @@ nano::bootstrap_client::bootstrap_client (rsnano::async_runtime & async_rt, std:
 {
 }
 
+nano::bootstrap_client::bootstrap_client (rsnano::BootstrapClientHandle * handle_a) :
+	handle{handle_a}
+{}
+
 nano::bootstrap_client::~bootstrap_client ()
 {
 	rsnano::rsn_bootstrap_client_destroy (handle);
@@ -145,7 +149,7 @@ nano::bootstrap_connections::~bootstrap_connections ()
 }
 
 void nano::bootstrap_connections::init_rust(){
-	auto cpp_handle = new std::shared_ptr<nano::bootstrap_connections>(shared_from_this());
+	auto cpp_handle = new std::weak_ptr<nano::bootstrap_connections>(shared_from_this());
 	handle = rsnano::rsn_bootstrap_connections_create(cpp_handle);
 }
 

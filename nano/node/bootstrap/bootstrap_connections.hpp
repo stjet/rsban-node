@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
 #include "nano/node/bandwidth_limiter.hpp"
 #include "nano/node/transport/traffic_type.hpp"
 
@@ -35,6 +36,7 @@ class bootstrap_client final : public std::enable_shared_from_this<bootstrap_cli
 {
 public:
 	bootstrap_client (rsnano::async_runtime & async_rt, std::shared_ptr<nano::bootstrap_client_observer> const & observer_a, std::shared_ptr<nano::transport::channel_tcp> const & channel_a, std::shared_ptr<nano::transport::socket> const & socket_a);
+	bootstrap_client (rsnano::BootstrapClientHandle * handle_a);
 	~bootstrap_client ();
 	void stop (bool force);
 	double sample_block_rate ();

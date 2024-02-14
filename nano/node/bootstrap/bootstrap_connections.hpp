@@ -69,7 +69,11 @@ class bootstrap_connections final : public std::enable_shared_from_this<bootstra
 {
 public:
 	explicit bootstrap_connections (nano::node & node_a);
+	bootstrap_connections(bootstrap_connections const &) = delete;
+	~bootstrap_connections();
+	void init_rust();
 	std::shared_ptr<nano::bootstrap_client> connection (std::shared_ptr<nano::bootstrap_attempt> const & attempt_a = nullptr, bool use_front_connection = false);
+	//this:
 	void pool_connection (std::shared_ptr<nano::bootstrap_client> const & client_a, bool new_client = false, bool push_front = false);
 	void add_connection (nano::endpoint const & endpoint_a);
 	std::shared_ptr<nano::bootstrap_client> find_connection (nano::tcp_endpoint const & endpoint_a);
@@ -79,6 +83,7 @@ public:
 	void start_populate_connections ();
 	void add_pull (nano::pull_info const & pull_a);
 	void request_pull (nano::unique_lock<nano::mutex> & lock_a);
+	//this:
 	void requeue_pull (nano::pull_info const & pull_a, bool network_error = false);
 	void clear_pulls (uint64_t);
 	void run ();
@@ -94,5 +99,6 @@ public:
 	std::atomic<bool> stopped{ false };
 	nano::mutex mutex;
 	nano::condition_variable condition;
+	rsnano::BootstrapConnectionsHandle * handle{nullptr};
 };
 }

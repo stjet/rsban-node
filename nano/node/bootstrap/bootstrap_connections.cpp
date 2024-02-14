@@ -1,3 +1,4 @@
+#include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
 
 #include <nano/node/bootstrap/bootstrap.hpp>
@@ -136,6 +137,16 @@ bool nano::bootstrap_client::get_hard_stop () const
 nano::bootstrap_connections::bootstrap_connections (nano::node & node_a) :
 	node (node_a)
 {
+}
+
+nano::bootstrap_connections::~bootstrap_connections () 
+{
+	rsnano::rsn_bootstrap_connections_drop(handle);
+}
+
+void nano::bootstrap_connections::init_rust(){
+	auto cpp_handle = new std::shared_ptr<nano::bootstrap_connections>(shared_from_this());
+	handle = rsnano::rsn_bootstrap_connections_create(cpp_handle);
 }
 
 std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::connection (std::shared_ptr<nano::bootstrap_attempt> const & attempt_a, bool use_front_connection)

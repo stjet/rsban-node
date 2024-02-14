@@ -498,6 +498,12 @@ void election_scheduler_activate (void * scheduler_a, const uint8_t * account_a,
 	election_scheduler->activate (account, txn_wrapper);
 }
 
+void delete_bootstrap_connections(void * cpp_handle)
+{
+	auto connections{ static_cast<std::shared_ptr<nano::bootstrap_connections> *> (cpp_handle) };
+	delete connections;
+}
+
 void wait_latch (void * latch_ptr)
 {
 	auto latch = static_cast<boost::latch *> (latch_ptr);
@@ -568,6 +574,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_election_scheduler_activate (election_scheduler_activate);
 
 	rsnano::rsn_set_wait_latch_callback (wait_latch);
+	rsnano::rsn_callback_bootstrap_connections_dropped(delete_bootstrap_connections);
 
 	callbacks_set = true;
 }

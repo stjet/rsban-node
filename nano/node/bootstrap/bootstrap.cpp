@@ -13,6 +13,7 @@ nano::bootstrap_initiator::bootstrap_initiator (nano::node & node_a) :
 	handle{ rsnano::rsn_bootstrap_initiator_create (this) }
 {
 	connections = std::make_shared<nano::bootstrap_connections> (node);
+	connections->init_rust();
 	bootstrap_initiator_threads.push_back (boost::thread ([this] () {
 		nano::thread_role::set (nano::thread_role::name::bootstrap_connections);
 		connections->run ();

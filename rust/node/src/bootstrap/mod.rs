@@ -1,6 +1,7 @@
 mod bootstrap_attempt;
 mod bootstrap_attempts;
 mod bootstrap_client;
+mod bootstrap_connections;
 mod bootstrap_initiator;
 mod bootstrap_lazy;
 mod bootstrap_message_visitor;
@@ -13,6 +14,7 @@ mod frontier_req_server;
 mod pulls_cache;
 
 pub use bootstrap_attempt::*;
+pub use bootstrap_connections::*;
 pub use bootstrap_initiator::*;
 pub use frontier_req_server::FrontierReqServer;
 

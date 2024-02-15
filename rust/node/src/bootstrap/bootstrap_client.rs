@@ -1,3 +1,12 @@
+use super::bootstrap_limits;
+use crate::{
+    transport::{
+        BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, Socket, SocketExtensions, TrafficType,
+        WriteCallback,
+    },
+    utils::{AsyncRuntime, ErrorCode},
+};
+use rsnano_messages::Message;
 use std::{
     net::{Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
@@ -6,26 +15,14 @@ use std::{
     },
     time::{Duration, Instant},
 };
-
-use rsnano_messages::Message;
 use tokio::task::spawn_blocking;
 
-use crate::{
-    transport::{
-        BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, Socket, SocketExtensions, TrafficType,
-        WriteCallback,
-    },
-    utils::{AsyncRuntime, ErrorCode},
-};
-
-use super::bootstrap_limits;
-
-pub trait BootstrapClientObserver {
+pub trait BootstrapClientObserver: Send + Sync {
     fn bootstrap_client_closed(&self);
     fn to_weak(&self) -> Box<dyn BootstrapClientObserverWeakPtr>;
 }
 
-pub trait BootstrapClientObserverWeakPtr {
+pub trait BootstrapClientObserverWeakPtr: Send + Sync {
     fn upgrade(&self) -> Option<Arc<dyn BootstrapClientObserver>>;
 }
 

@@ -54,203 +54,37 @@ void nano::pull_info::load_dto (rsnano::PullInfoDto const & dto)
 	bootstrap_id = dto.bootstrap_id;
 }
 
-nano::bulk_pull_client::bulk_pull_client (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::bootstrap_client> const & connection_a, std::shared_ptr<nano::bootstrap_attempt> const & attempt_a, nano::pull_info const & pull_a) :
-	node{ node_a },
-	connections{ node_a->bootstrap_initiator.connections },
-	connection{ connection_a },
-	attempt{ attempt_a },
-	pull{ pull_a },
-	block_deserializer{ std::make_shared<nano::bootstrap::block_deserializer> (node_a->async_rt) },
-	logger{ node_a->logger }
+nano::bulk_pull_client::bulk_pull_client (
+std::shared_ptr<nano::node> const & node_a,
+std::shared_ptr<nano::bootstrap_client> const & connection_a,
+std::shared_ptr<nano::bootstrap_attempt> const & attempt_a,
+nano::pull_info const & pull_a) 
 {
-	attempt->notify_all ();
+	auto nw_params{ node_a->network_params.to_dto () };
+	auto pull_dto{ pull_a.to_dto () };
+	handle = rsnano::rsn_bulk_pull_client_create (
+	&nw_params,
+	node_a->flags.handle,
+	node_a->stats->handle,
+	node_a->block_processor.handle,
+	connection_a->handle,
+	attempt_a->handle,
+	node_a->workers->handle,
+	node_a->async_rt.handle,
+	node_a->bootstrap_initiator.connections->handle,
+	node_a->bootstrap_initiator.handle,
+	&pull_dto);
 }
 
 nano::bulk_pull_client::~bulk_pull_client ()
 {
-	auto node_l = node.lock ();
-	if (!node_l)
-	{
-		return;
-	}
-	/* If received end block is not expected end block
-	Or if given start and end blocks are from different chains (i.e. forked node or malicious node) */
-	if (expected != pull.end && !expected.is_zero ())
-	{
-		pull.head = expected;
-		if (attempt->get_mode () != nano::bootstrap_mode::legacy)
-		{
-			pull.account_or_head = expected;
-		}
-		pull.processed += pull_blocks - unexpected_count;
-		node_l->bootstrap_initiator.connections->requeue_pull (pull, network_error);
-
-		logger->debug (nano::log::type::bulk_pull_client, "Bulk pull end block is not expected {} for account {} or head block {}", pull.end.to_string (), pull.account_or_head.to_account (), pull.account_or_head.to_string ());
-	}
-	else
-	{
-		node_l->bootstrap_initiator.cache.remove (pull);
-	}
-	attempt->pull_finished ();
+	rsnano::rsn_bulk_pull_client_destroy (handle);
 }
 
 void nano::bulk_pull_client::request ()
 {
-	auto node_l = node.lock ();
-	if (!node_l || node_l->is_stopped ())
-	{
-		return;
-	}
-	debug_assert (!pull.head.is_zero () || pull.retry_limit <= node_l->network_params.bootstrap.lazy_retry_limit);
-	expected = pull.head;
-	nano::bulk_pull::bulk_pull_payload payload;
-	if (pull.head == pull.head_original && pull.attempts % 4 < 3)
-	{
-		// Account for new pulls
-		payload.start = pull.account_or_head;
-	}
-	else
-	{
-		// Head for cached pulls or accounts with public key equal to existing block hash (25% of attempts)
-		payload.start = pull.account_or_head;
-	}
-	payload.end = pull.end;
-	payload.count = pull.count;
-	payload.ascending = false;
-	nano::bulk_pull req{ node_l->network_params.network, payload };
+	rsnano::rsn_bulk_pull_client_request (handle);
 
-	logger->trace (nano::log::type::bulk_pull_client, nano::log::detail::requesting_account_or_head,
-	nano::log::arg{ "account_or_head", pull.account_or_head },
-	nano::log::arg{ "channel", connection->channel_string() });
-
-
-	if (attempt->should_log ())
-	{
-		logger->debug (nano::log::type::bulk_pull_client, "Accounts in pull queue: {}", attempt->get_pulling ());
-	}
-
-	auto this_l (shared_from_this ());
-	connection->send (
-	req, [this_l] (boost::system::error_code const & ec, std::size_t size_a) {
-		auto node_l = this_l->node.lock ();
-		if (!node_l || node_l->is_stopped ())
-		{
-			return;
-		}
-		if (!ec)
-		{
-			this_l->throttled_receive_block ();
-		}
-		else
-		{
-			this_l->logger->debug (nano::log::type::bulk_pull_client, "Error sending bulk pull request to: {} ({})", this_l->connection->channel_string (), ec.message ());
-			node_l->stats->inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_request_failure, nano::stat::dir::in);
-		}
-	},
-	nano::transport::buffer_drop_policy::no_limiter_drop);
-}
-
-void nano::bulk_pull_client::throttled_receive_block ()
-{
-	auto node_l = node.lock ();
-	if (!node_l || node_l->is_stopped ())
-	{
-		return;
-	}
-	debug_assert (!network_error);
-	if (!node_l->block_processor.half_full () && !node_l->block_processor.flushing ())
-	{
-		receive_block ();
-	}
-	else
-	{
-		auto this_l (shared_from_this ());
-		node_l->workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::seconds (1), [this_l] () {
-			if (!this_l->connection->get_pending_stop () && !this_l->attempt->get_stopped ())
-			{
-				this_l->throttled_receive_block ();
-			}
-		});
-	}
-}
-
-void nano::bulk_pull_client::receive_block ()
-{
-	auto socket{ connection->get_socket () };
-	block_deserializer->read (*socket, [this_l = shared_from_this ()] (boost::system::error_code ec, std::shared_ptr<nano::block> block) {
-		this_l->received_block (ec, block);
-	});
-}
-
-void nano::bulk_pull_client::received_block (boost::system::error_code ec, std::shared_ptr<nano::block> block)
-{
-	auto node_l = node.lock ();
-	if (!node_l || node_l->is_stopped ())
-	{
-		return;
-	}
-	if (ec)
-	{
-		network_error = true;
-		return;
-	}
-	if (block == nullptr)
-	{
-		// Avoid re-using slow peers, or peers that sent the wrong blocks.
-		if (!connection->get_pending_stop () && (expected == pull.end || (pull.count != 0 && pull.count == pull_blocks)))
-		{
-			connections->pool_connection (connection);
-		}
-		return;
-	}
-	if (node_l->network_params.work.validate_entry (*block))
-	{
-		logger->debug (nano::log::type::bulk_pull_client, "Insufficient work for bulk pull block: {}", block->hash ().to_string ());
-		node_l->stats->inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
-		return;
-	}
-	auto hash = block->hash ();
-
-	logger->trace (nano::log::type::bulk_pull_client, nano::log::detail::pulled_block, nano::log::arg{ "block", block });
-
-	// Is block expected?
-	bool block_expected (false);
-	// Unconfirmed head is used only for lazy destinations if legacy bootstrap is not available, see nano::bootstrap_attempt::lazy_destinations_increment (...)
-	bool unconfirmed_account_head (node_l->flags.disable_legacy_bootstrap () && pull_blocks == 0 && pull.retry_limit <= node_l->network_params.bootstrap.lazy_retry_limit && expected == pull.account_or_head.as_block_hash () && block->account () == pull.account_or_head.as_account ());
-	if (hash == expected || unconfirmed_account_head)
-	{
-		expected = block->previous ();
-		block_expected = true;
-	}
-	else
-	{
-		unexpected_count++;
-	}
-	if (pull_blocks == 0 && block_expected)
-	{
-		known_account = block->account ();
-	}
-	if (connection->inc_block_count () == 0)
-	{
-		connection->set_start_time ();
-	}
-	attempt->total_blocks_inc ();
-	pull_blocks++;
-	bool stop_pull (attempt->process_block (block, known_account, pull_blocks, pull.count, block_expected, pull.retry_limit));
-	if (!stop_pull && !connection->get_hard_stop ())
-	{
-		/* Process block in lazy pull if not stopped
-		Stop usual pull request with unexpected block & more than 16k blocks processed
-		to prevent spam */
-		if (attempt->get_mode () != nano::bootstrap_mode::legacy || unexpected_count < 16384)
-		{
-			throttled_receive_block ();
-		}
-	}
-	else if (!stop_pull && block_expected)
-	{
-		connections->pool_connection (connection);
-	}
 }
 
 nano::bulk_pull_account_client::bulk_pull_account_client (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::bootstrap_client> const & connection_a, std::shared_ptr<nano::bootstrap_attempt_wallet> const & attempt_a, nano::account const & account_a) :

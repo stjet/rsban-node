@@ -123,6 +123,7 @@ struct CachedPulls {
     new_head: BlockHash,
 }
 
+#[derive(Default, Clone)]
 pub struct PullInfo {
     pub account_or_head: HashOrAccount,
     pub head: BlockHash,

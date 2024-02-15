@@ -4,9 +4,17 @@ use rsnano_node::bootstrap::{
     BootstrapConnections, DROP_BOOTSTRAP_CONNECTIONS_CALLBACK, POOL_CONNECTION_CALLBACK,
     REQUEUE_PULL_CALLBACK,
 };
-use std::{ffi::c_void, sync::Arc};
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 pub struct BootstrapConnectionsHandle(Arc<BootstrapConnections>);
+
+impl Deref for BootstrapConnectionsHandle {
+    type Target = Arc<BootstrapConnections>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_bootstrap_connections_create(

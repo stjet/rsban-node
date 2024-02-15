@@ -121,7 +121,7 @@ pub fn to_topic(topic: impl AsRef<str>) -> Topic {
     }
 }
 
-pub trait Listener {
+pub trait Listener: Send + Sync {
     fn broadcast(&self, message: &Message) -> Result<()>;
 }
 

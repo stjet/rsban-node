@@ -130,6 +130,7 @@ pub trait Block: FullHash {
     fn visit(&self, visitor: &mut dyn BlockVisitor);
     fn visit_mut(&mut self, visitor: &mut dyn MutableBlockVisitor);
     fn balance(&self) -> Amount;
+    /// Source block for open/receive blocks, zero otherwise.
     fn source(&self) -> Option<BlockHash>;
     fn representative(&self) -> Option<Account>;
     fn destination(&self) -> Option<Account>;

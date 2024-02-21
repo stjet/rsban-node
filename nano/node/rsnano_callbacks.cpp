@@ -533,19 +533,23 @@ void requeue_pull(void * cpp_handle, rsnano::PullInfoDto const * pull_dto, bool 
 	}
 }
 
-bool lazy_process_block(
-		void * cpp_handle, 
-		rsnano::BlockHandle * block_handle, 
-		const uint8_t * account, 
-		uint64_t pull_blocks_processed, 
-		uint32_t max_blocks, 
-		bool block_expected, 
-		uint32_t retry_limit)
+void populate_connections(void * cpp_handle, bool repeat)
 {
-	auto lazy = static_cast<nano::bootstrap_attempt_lazy *> (cpp_handle);
-	auto block {nano::block_handle_to_block(block_handle)};
-	auto acc = nano::account::from_bytes(account);
-	return lazy->process_block(block, acc, pull_blocks_processed, max_blocks, block_expected, retry_limit);
+	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
+	auto con = connections->lock();
+	if (con){
+		con->populate_connections(repeat);
+	}
+}
+
+void add_pull(void * cpp_handle, rsnano::PullInfoDto const * pull_dto){
+	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
+	nano::pull_info pull;
+	pull.load_dto(*pull_dto);
+	auto con = connections->lock();
+	if (con){
+		con->add_pull(pull);
+	}
 }
 
 void wait_latch (void * latch_ptr)
@@ -622,7 +626,8 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_connections_dropped(delete_bootstrap_connections);
 	rsnano::rsn_callback_bootstrap_connections_pool_connection(pool_connection);
 	rsnano::rsn_callback_bootstrap_connections_requeue_pull(requeue_pull);
-	rsnano::rsn_callback_lazy_process_block(lazy_process_block);
+	rsnano::rsn_callback_bootstrap_connections_populate_connections(populate_connections);
+	rsnano::rsn_callback_bootstrap_connections_add_pull(add_pull);
 
 	callbacks_set = true;
 }

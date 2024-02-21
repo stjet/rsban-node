@@ -26,7 +26,7 @@ public:
 	explicit bootstrap_attempt (std::shared_ptr<nano::node> const & node_a, nano::bootstrap_mode mode_a, uint64_t incremental_id_a, std::string id_a);
 	explicit bootstrap_attempt (rsnano::BootstrapAttemptHandle * handle);
 	virtual ~bootstrap_attempt ();
-	virtual void run () = 0;
+	virtual void run ();
 	virtual void stop ();
 	bool still_pulling ();
 	void pull_started ();

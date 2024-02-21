@@ -188,6 +188,12 @@ impl From<Account> for HashOrAccount {
     }
 }
 
+impl From<&BlockHash> for HashOrAccount {
+    fn from(hash: &BlockHash) -> Self {
+        HashOrAccount::from_bytes(*hash.as_bytes())
+    }
+}
+
 impl From<BlockHash> for HashOrAccount {
     fn from(hash: BlockHash) -> Self {
         HashOrAccount::from_bytes(*hash.as_bytes())

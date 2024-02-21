@@ -19,6 +19,9 @@ pub static mut DROP_BOOTSTRAP_CONNECTIONS_CALLBACK: Option<unsafe extern "C" fn(
 pub static mut POOL_CONNECTION_CALLBACK: Option<fn(*mut c_void, Arc<BootstrapClient>, bool, bool)> =
     None;
 pub static mut REQUEUE_PULL_CALLBACK: Option<fn(*mut c_void, PullInfo, bool)> = None;
+pub static mut POPULATE_CONNECTIONS_CALLBACK: Option<unsafe extern "C" fn(*mut c_void, bool)> =
+    None;
+pub static mut ADD_PULL_CALLBACK: Option<fn(*mut c_void, PullInfo)> = None;
 
 impl Drop for BootstrapConnections {
     fn drop(&mut self) {
@@ -31,6 +34,8 @@ impl Drop for BootstrapConnections {
 pub trait BootstrapConnectionsExt {
     fn pool_connection(&self, client: Arc<BootstrapClient>, new_client: bool, push_front: bool);
     fn requeue_pull(&self, pull: PullInfo, network_error: bool);
+    fn populate_connections(&self, repeat: bool);
+    fn add_pull(&self, pull: PullInfo);
 }
 
 impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
@@ -52,6 +57,21 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                 pull,
                 network_error,
             );
+        }
+    }
+
+    fn populate_connections(&self, repeat: bool) {
+        unsafe {
+            POPULATE_CONNECTIONS_CALLBACK.expect("POPULATE_CONNECTIONS_CALLBACK missing")(
+                self.cpp_handle,
+                repeat,
+            );
+        }
+    }
+
+    fn add_pull(&self, pull: PullInfo) {
+        unsafe {
+            ADD_PULL_CALLBACK.expect("ADD_PULL_CALLBACK missing")(self.cpp_handle, pull);
         }
     }
 }

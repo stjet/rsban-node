@@ -1,8 +1,8 @@
 use super::{bootstrap_client::BootstrapClientHandle, pulls_cache::PullInfoDto};
 use crate::VoidPointerCallback;
 use rsnano_node::bootstrap::{
-    BootstrapConnections, DROP_BOOTSTRAP_CONNECTIONS_CALLBACK, POOL_CONNECTION_CALLBACK,
-    REQUEUE_PULL_CALLBACK,
+    BootstrapConnections, ADD_PULL_CALLBACK, DROP_BOOTSTRAP_CONNECTIONS_CALLBACK,
+    POOL_CONNECTION_CALLBACK, POPULATE_CONNECTIONS_CALLBACK, REQUEUE_PULL_CALLBACK,
 };
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
@@ -35,6 +35,10 @@ pub type PoolConnectionCallback =
 
 pub type RequeuePullCallback = unsafe extern "C" fn(*mut c_void, *const PullInfoDto, bool);
 
+pub type PopulateConnectionsCallback = unsafe extern "C" fn(*mut c_void, bool);
+
+pub type AddPullCallback = unsafe extern "C" fn(*mut c_void, *const PullInfoDto);
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_bootstrap_connections_dropped(callback: VoidPointerCallback) {
     unsafe {
@@ -44,6 +48,7 @@ pub unsafe extern "C" fn rsn_callback_bootstrap_connections_dropped(callback: Vo
 
 static mut FFI_POOL_CONNECTION_CALLBACK: Option<PoolConnectionCallback> = None;
 static mut FFI_REQUEUE_PULL_CALLBACK: Option<RequeuePullCallback> = None;
+static mut FFI_ADD_PULL_CALLBACK: Option<AddPullCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_bootstrap_connections_pool_connection(
@@ -72,6 +77,26 @@ pub unsafe extern "C" fn rsn_callback_bootstrap_connections_requeue_pull(
         REQUEUE_PULL_CALLBACK = Some(|cpp_handle, pull, network_error| {
             let pull_dto = (&pull).into();
             FFI_REQUEUE_PULL_CALLBACK.unwrap()(cpp_handle, &pull_dto, network_error);
+        });
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_bootstrap_connections_populate_connections(
+    callback: PopulateConnectionsCallback,
+) {
+    unsafe {
+        POPULATE_CONNECTIONS_CALLBACK = Some(callback);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_bootstrap_connections_add_pull(callback: AddPullCallback) {
+    unsafe {
+        FFI_ADD_PULL_CALLBACK = Some(callback);
+        ADD_PULL_CALLBACK = Some(|cpp_handle, pull| {
+            let pull_dto = (&pull).into();
+            FFI_ADD_PULL_CALLBACK.unwrap()(cpp_handle, &pull_dto);
         });
     }
 }

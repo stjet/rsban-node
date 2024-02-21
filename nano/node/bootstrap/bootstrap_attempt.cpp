@@ -1,4 +1,5 @@
 #include "nano/lib/logging.hpp"
+#include "nano/lib/rsnano.hpp"
 
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
@@ -134,6 +135,11 @@ void nano::bootstrap_attempt::pull_started ()
 void nano::bootstrap_attempt::pull_finished ()
 {
 	rsnano::rsn_bootstrap_attempt_pull_finished (handle);
+}
+
+void nano::bootstrap_attempt::run ()
+{
+	rsnano::rsn_bootstrap_attempt_run(handle);
 }
 
 void nano::bootstrap_attempt::stop ()

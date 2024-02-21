@@ -142,7 +142,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_process_block(
     retry_limit: u32,
 ) -> bool {
     let block = Arc::clone(&block);
-    handle.0.attempt().process_block(
+    handle.0.process_block(
         block,
         &Account::from_ptr(known_account),
         pull_blocks_processed,
@@ -150,6 +150,11 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_process_block(
         block_expected,
         retry_limit,
     )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_bootstrap_attempt_run(handle: &BootstrapAttemptHandle) {
+    handle.0.run()
 }
 
 pub struct BootstrapAttemptLockHandle(Option<MutexGuard<'static, u8>>);

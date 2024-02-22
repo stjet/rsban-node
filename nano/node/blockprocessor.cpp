@@ -16,6 +16,7 @@
 
 namespace nano
 {
+
 class block_processor_lock
 {
 public:
@@ -80,11 +81,14 @@ void blocks_rolled_back_delete (void * context)
 }
 }
 
+/*
+ * block_processor
+ */
+
 nano::block_processor::block_processor (nano::node & node_a, nano::write_database_queue & write_database_queue_a) :
 	config (*node_a.config),
 	network_params (node_a.network_params),
 	flags (node_a.flags),
-	block_arrival (node_a.block_arrival),
 	stats{ *node_a.stats }
 {
 	auto config_dto{ config.to_dto () };
@@ -156,7 +160,6 @@ bool nano::block_processor::half_full ()
 
 void nano::block_processor::process_active (std::shared_ptr<nano::block> const & incoming)
 {
-	block_arrival.add (incoming->hash ());
 	add (incoming);
 }
 

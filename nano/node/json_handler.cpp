@@ -1190,7 +1190,6 @@ void nano::json_handler::block_confirm ()
 				status.set_election_status_type (nano::election_status_type::active_confirmation_height);
 				node.active.recently_cemented.put (status);
 				// Trigger callback for confirmed block
-				node.block_arrival.add (hash);
 				auto account (node.ledger.account (*transaction, hash));
 				bool error_or_pruned (false);
 				auto amount (node.ledger.amount_safe (*transaction, hash, error_or_pruned));

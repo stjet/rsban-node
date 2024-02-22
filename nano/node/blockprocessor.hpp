@@ -29,7 +29,6 @@ class stats;
 class local_vote_history;
 class active_transactions;
 class election_scheduler;
-class block_arrival;
 class unchecked_map;
 class gap_cache;
 class bootstrap_initiator;
@@ -62,8 +61,8 @@ public: // Context
 
 	struct context
 	{
-		block_source source;
-		// std::chrono::steady_clock::time_point arrival;
+		block_source const source{};
+		// std::chrono::steady_clock::time_point const arrival {std::chrono::steady_clock::now ()};
 	};
 
 	using processed_t = std::tuple<nano::process_return, std::shared_ptr<nano::block>, context>;
@@ -109,7 +108,6 @@ private:
 	nano::stats & stats;
 	nano::node_config & config; // already ported
 	nano::network_params & network_params; // already ported
-	nano::block_arrival & block_arrival; // already ported
 
 public:
 	rsnano::BlockProcessorHandle * handle;

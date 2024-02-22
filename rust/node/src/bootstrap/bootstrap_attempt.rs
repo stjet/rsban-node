@@ -1,5 +1,5 @@
 use crate::{
-    block_processing::BlockProcessor,
+    block_processing::{BlockProcessor, BlockSource},
     utils::HardenedConstants,
     websocket::{Listener, MessageBuilder},
 };
@@ -139,7 +139,7 @@ impl BootstrapAttempt {
         {
             stop_pull = true;
         } else if let Some(p) = self.block_processor.upgrade() {
-            p.add(block);
+            p.add(block, BlockSource::Live);
         }
 
         stop_pull

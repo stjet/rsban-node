@@ -49,8 +49,27 @@ class block_processor_lock;
  */
 class block_processor final
 {
+public: // Context
+	enum class block_source
+	{
+		unknown = 0,
+		live,
+		bootstrap,
+		unchecked,
+		local,
+		forced,
+	};
+
+	struct context
+	{
+		block_source source;
+		// std::chrono::steady_clock::time_point arrival;
+	};
+
+	using processed_t = std::tuple<nano::process_return, std::shared_ptr<nano::block>, context>;
+
 public:
-	explicit block_processor (nano::node &, nano::write_database_queue &);
+	block_processor (nano::node &, nano::write_database_queue &);
 	block_processor (nano::block_processor const &) = delete;
 	block_processor (nano::block_processor &&) = delete;
 	~block_processor ();
@@ -60,8 +79,8 @@ public:
 	bool full ();
 	bool half_full ();
 	void process_active (std::shared_ptr<nano::block> const & incoming);
-	void add (std::shared_ptr<nano::block> const &);
-	std::optional<nano::process_return> add_blocking (std::shared_ptr<nano::block> const & block);
+	void add (std::shared_ptr<nano::block> const &, block_source = block_source::live);
+	std::optional<nano::process_return> add_blocking (std::shared_ptr<nano::block> const & block, block_source);
 	void force (std::shared_ptr<nano::block> const &);
 	bool have_blocks_ready (nano::block_processor_lock & lock_a);
 	bool have_blocks (nano::block_processor_lock & lock_a);
@@ -71,12 +90,12 @@ public:
 	rsnano::BlockProcessorHandle const * get_handle () const;
 
 public: // Events
-	using processed_t = std::pair<nano::process_return, std::shared_ptr<nano::block>>;
-	nano::observer_set<nano::process_return const &, std::shared_ptr<nano::block>> processed;
+	void set_blocks_rolled_back_callback (std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> callback);
+
+	nano::observer_set<nano::process_return const &, std::shared_ptr<nano::block>, context> processed;
 
 	// The batch observer feeds the processed obsever
 	nano::observer_set<std::deque<processed_t> const &> batch_processed;
-	void set_blocks_rolled_back_callback (std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> callback);
 
 private:
 	blocking_observer blocking;

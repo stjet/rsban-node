@@ -368,11 +368,11 @@ bool listener_broadcast (void * handle_a, rsnano::MessageDto const * message_a)
 	}
 }
 
-void blockprocessor_add (void * handle_a, rsnano::BlockHandle * block_a)
+void blockprocessor_add (void * handle_a, rsnano::BlockHandle * block_a, uint8_t source)
 {
 	auto processor = static_cast<nano::block_processor *> (handle_a);
 	auto block{ nano::block_handle_to_block (block_a) };
-	processor->add (block);
+	processor->add (block, static_cast<nano::block_processor::block_source> (source));
 }
 
 void blockprocessor_process_active (void * handle_a, rsnano::BlockHandle * block_a)

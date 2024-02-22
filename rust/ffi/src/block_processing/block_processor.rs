@@ -6,13 +6,14 @@ use crate::{
     work::WorkThresholdsDto,
     NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
+use num_traits::FromPrimitive;
 use rsnano_core::{work::WorkThresholds, BlockEnum};
 use rsnano_ledger::ProcessResult;
 use rsnano_node::{
     block_processing::{
-        BlockProcessor, BlockProcessorImpl, BLOCKPROCESSOR_ADD_CALLBACK,
-        BLOCKPROCESSOR_HALF_FULL_CALLBACK, BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
-        BLOCKPROCESSOR_SIZE_CALLBACK,
+        BlockProcessor, BlockProcessorContext, BlockProcessorImpl, BlockSource,
+        BLOCKPROCESSOR_ADD_CALLBACK, BLOCKPROCESSOR_HALF_FULL_CALLBACK,
+        BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK, BLOCKPROCESSOR_SIZE_CALLBACK,
     },
     config::NodeConfig,
 };
@@ -21,6 +22,7 @@ use std::{
     ffi::{c_char, c_void, CStr},
     ops::Deref,
     sync::{atomic::Ordering, Arc, MutexGuard},
+    time::Instant,
 };
 
 pub struct BlockProcessorHandle(Arc<BlockProcessor>);
@@ -157,26 +159,30 @@ pub unsafe extern "C" fn rsn_block_processor_wait(
     (*lock_handle).0 = Some(guard);
 }
 
-pub type BlockProcessorAddCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
+pub type BlockProcessorAddCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle, u8);
+pub type BlockProcessorProcessActiveCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
 pub type BlockProcessorHalfFullCallback = unsafe extern "C" fn(*mut c_void) -> bool;
 pub type BlockProcessorSizeCallback = unsafe extern "C" fn(*mut c_void) -> usize;
 
 static mut ADD_CALLBACK: Option<BlockProcessorAddCallback> = None;
-static mut PROCESS_ACTIVE_CALLBACK: Option<BlockProcessorAddCallback> = None;
+static mut PROCESS_ACTIVE_CALLBACK: Option<BlockProcessorProcessActiveCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_block_processor_add(f: BlockProcessorAddCallback) {
     ADD_CALLBACK = Some(f);
-    BLOCKPROCESSOR_ADD_CALLBACK = Some(|handle, block| {
+    BLOCKPROCESSOR_ADD_CALLBACK = Some(|handle, block, source| {
         ADD_CALLBACK.expect("ADD_CALLBACK missing")(
             handle,
             Box::into_raw(Box::new(BlockHandle(block))),
+            source as u8,
         )
     });
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_block_processor_process_active(f: BlockProcessorAddCallback) {
+pub unsafe extern "C" fn rsn_callback_block_processor_process_active(
+    f: BlockProcessorProcessActiveCallback,
+) {
     PROCESS_ACTIVE_CALLBACK = Some(f);
     BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK = Some(|handle, block| {
         PROCESS_ACTIVE_CALLBACK.expect("PROCESS_ACTIVE_CALLBACK missing")(
@@ -197,30 +203,6 @@ pub unsafe extern "C" fn rsn_callback_block_processor_size(f: BlockProcessorSize
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_block_processor_push_back_block(
-    handle: &mut BlockProcessorLockHandle,
-    block: &BlockHandle,
-) {
-    handle
-        .0
-        .as_mut()
-        .unwrap()
-        .blocks
-        .push_back(Arc::clone(&block))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_pop_front_block(
-    handle: &mut BlockProcessorLockHandle,
-) -> *mut BlockHandle {
-    let block = handle.0.as_mut().unwrap().blocks.pop_front();
-    match block {
-        Some(b) => Box::into_raw(Box::new(BlockHandle(b))),
-        None => std::ptr::null_mut(),
-    }
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_block_processor_blocks_size(handle: &mut BlockProcessorLockHandle) -> usize {
     handle.0.as_mut().unwrap().blocks.len()
 }
@@ -230,23 +212,13 @@ pub extern "C" fn rsn_block_processor_push_back_forced(
     handle: &mut BlockProcessorLockHandle,
     block: &BlockHandle,
 ) {
-    handle
-        .0
-        .as_mut()
-        .unwrap()
-        .forced
-        .push_back(Arc::clone(&block))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_pop_front_forced(
-    handle: &mut BlockProcessorLockHandle,
-) -> *mut BlockHandle {
-    let block = handle.0.as_mut().unwrap().forced.pop_front();
-    match block {
-        Some(b) => Box::into_raw(Box::new(BlockHandle(b))),
-        None => std::ptr::null_mut(),
-    }
+    handle.0.as_mut().unwrap().forced.push_back((
+        Arc::clone(&block),
+        BlockProcessorContext {
+            source: BlockSource::Forced,
+            arrival: Instant::now(),
+        },
+    ))
 }
 
 #[no_mangle]
@@ -258,8 +230,9 @@ pub extern "C" fn rsn_block_processor_forced_size(handle: &mut BlockProcessorLoc
 pub extern "C" fn rsn_block_processor_add_impl(
     handle: &mut BlockProcessorHandle,
     block: &BlockHandle,
+    source: u8,
 ) {
-    handle.add_impl(Arc::clone(&block));
+    handle.add_impl(Arc::clone(&block), FromPrimitive::from_u8(source).unwrap());
 }
 
 #[no_mangle]
@@ -267,7 +240,7 @@ pub extern "C" fn rsn_block_processor_set_flushing(handle: &mut BlockProcessorHa
     handle.flushing.store(value, Ordering::SeqCst);
 }
 
-pub struct ProcessBatchResult(VecDeque<(ProcessResult, Arc<BlockEnum>)>);
+pub struct ProcessBatchResult(VecDeque<(ProcessResult, Arc<BlockEnum>, BlockProcessorContext)>);
 
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_process_batch(
@@ -292,9 +265,11 @@ pub extern "C" fn rsn_process_batch_result_get(
     handle: &ProcessBatchResult,
     index: usize,
     result: &mut u8,
+    source: &mut u8,
 ) -> *mut BlockHandle {
-    let (res, block) = &handle.0[index];
+    let (res, block, context) = &handle.0[index];
     *result = (*res) as u8;
+    *source = context.source as u8;
     Box::into_raw(Box::new(BlockHandle(Arc::clone(block))))
 }
 

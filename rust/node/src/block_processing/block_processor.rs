@@ -19,7 +19,8 @@ use std::{
 };
 use tracing::{debug, error, trace};
 
-pub static mut BLOCKPROCESSOR_ADD_CALLBACK: Option<fn(*mut c_void, Arc<BlockEnum>)> = None;
+pub static mut BLOCKPROCESSOR_ADD_CALLBACK: Option<fn(*mut c_void, Arc<BlockEnum>, BlockSource)> =
+    None;
 pub static mut BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK: Option<fn(*mut c_void, Arc<BlockEnum>)> =
     None;
 pub static mut BLOCKPROCESSOR_HALF_FULL_CALLBACK: Option<
@@ -28,6 +29,21 @@ pub static mut BLOCKPROCESSOR_HALF_FULL_CALLBACK: Option<
 
 pub static mut BLOCKPROCESSOR_SIZE_CALLBACK: Option<unsafe extern "C" fn(*mut c_void) -> usize> =
     None;
+
+#[derive(FromPrimitive, Copy, Clone)]
+pub enum BlockSource {
+    Unknown = 0,
+    Live,
+    Bootstrap,
+    Unchecked,
+    Local,
+    Forced,
+}
+
+pub struct BlockProcessorContext {
+    pub source: BlockSource,
+    pub arrival: Instant,
+}
 
 pub struct BlockProcessor {
     handle: *mut c_void,
@@ -105,11 +121,12 @@ impl BlockProcessor {
         }
     }
 
-    pub fn add(&self, block: Arc<BlockEnum>) {
+    pub fn add(&self, block: Arc<BlockEnum>, source: BlockSource) {
         unsafe {
             BLOCKPROCESSOR_ADD_CALLBACK.expect("BLOCKPROCESSOR_ADD_CALLBACK missing")(
                 self.handle,
                 block,
+                source,
             )
         }
     }
@@ -128,10 +145,16 @@ impl BlockProcessor {
         }
     }
 
-    pub fn add_impl(&self, block: Arc<BlockEnum>) {
+    pub fn add_impl(&self, block: Arc<BlockEnum>, source: BlockSource) {
         {
             let mut lock = self.mutex.lock().unwrap();
-            lock.blocks.push_back(block);
+            lock.blocks.push_back((
+                block,
+                BlockProcessorContext {
+                    source,
+                    arrival: Instant::now(),
+                },
+            ));
         }
         self.condition.notify_all();
     }
@@ -140,12 +163,16 @@ impl BlockProcessor {
         self.unchecked_map.trigger(hash_or_account);
     }
 
-    pub fn process_batch(&self) -> VecDeque<(ProcessResult, Arc<BlockEnum>)> {
+    pub fn process_batch(
+        &self,
+    ) -> VecDeque<(ProcessResult, Arc<BlockEnum>, BlockProcessorContext)> {
         let mut processed = VecDeque::new();
+
         let _scoped_write_guard = self.write_database_queue.wait(Writer::ProcessBatch);
         let mut transaction = self.ledger.rw_txn();
         let mut lock_a = self.mutex.lock().unwrap();
         let timer_l = Instant::now();
+
         // Processing blocks
         let mut number_of_blocks_processed = 0;
         let mut number_of_forced_processed = 0;
@@ -159,26 +186,23 @@ impl BlockProcessor {
             && (!deadline_reached()
                 || number_of_blocks_processed < self.flags.block_processor_batch_size)
         {
-            let block: Arc<BlockEnum>;
-            let force: bool;
-            if lock_a.forced.len() == 0 {
-                block = lock_a.blocks.pop_front().unwrap();
-                force = false;
-            } else {
-                block = lock_a.forced.pop_front().unwrap();
-                force = true;
-                number_of_forced_processed += 1;
-            }
+            let ((block, context), force) = lock_a.next_block();
+
             drop(lock_a);
 
             if force {
+                number_of_forced_processed += 1;
                 self.rollback_competitor(&mut transaction, &block);
             }
+
             number_of_blocks_processed += 1;
+
             let result = self.process_one(&mut transaction, &block);
-            processed.push_back((result, block));
+            processed.push_back((result, block, context));
+
             lock_a = self.mutex.lock().unwrap();
         }
+
         drop(lock_a);
 
         if number_of_blocks_processed != 0 && timer_l.elapsed() > Duration::from_millis(100) {
@@ -342,8 +366,8 @@ unsafe impl Send for BlockProcessor {}
 unsafe impl Sync for BlockProcessor {}
 
 pub struct BlockProcessorImpl {
-    pub blocks: VecDeque<Arc<BlockEnum>>,
-    pub forced: VecDeque<Arc<BlockEnum>>,
+    pub blocks: VecDeque<(Arc<BlockEnum>, BlockProcessorContext)>,
+    pub forced: VecDeque<(Arc<BlockEnum>, BlockProcessorContext)>,
     pub next_log: SystemTime,
     config: Arc<NodeConfig>,
 }
@@ -351,5 +375,15 @@ pub struct BlockProcessorImpl {
 impl BlockProcessorImpl {
     pub fn have_blocks_ready(&self) -> bool {
         return self.blocks.len() > 0 || self.forced.len() > 0;
+    }
+
+    fn next_block(&mut self) -> ((Arc<BlockEnum>, BlockProcessorContext), bool) {
+        if let Some(entry) = self.forced.pop_front() {
+            (entry, true) // Forced
+        } else {
+            // Checked before calling this function
+            let entry = self.blocks.pop_front().expect("blocks must not be empty");
+            (entry, false) // Not forced
+        }
     }
 }

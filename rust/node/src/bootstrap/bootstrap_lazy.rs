@@ -3,7 +3,10 @@ use super::{
     BootstrapInitiator, BootstrapMode,
 };
 use crate::{
-    block_processing::BlockProcessor, bootstrap::PullInfo, config::NodeFlags, websocket::Listener,
+    block_processing::{BlockProcessor, BlockSource},
+    bootstrap::PullInfo,
+    config::NodeFlags,
+    websocket::Listener,
     NetworkParams,
 };
 use anyhow::Result;
@@ -375,7 +378,7 @@ impl BootstrapAttemptLazy {
             data.lazy_block_state_backlog_check(&block, &hash);
             drop(lock);
             drop(data);
-            self.block_processor.add(block);
+            self.block_processor.add(block, BlockSource::Live);
         }
         // Force drop lazy bootstrap connection for long bulk_pull
         if pull_blocks_processed > max_blocks as u64 {

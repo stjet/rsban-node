@@ -110,13 +110,13 @@ nano::stats const & stats_a,
 nano::transport::tcp_channels const & tcp_channels_a,
 size_t channel_id) :
 	channel (create_tcp_channel_handle (
-				async_rt_a, 
-				limiter_a, 
-				network_a, 
-				socket_a, 
-				stats_a, 
-				tcp_channels_a, 
-				channel_id))
+	async_rt_a,
+	limiter_a,
+	network_a,
+	socket_a,
+	stats_a,
+	tcp_channels_a,
+	channel_id))
 {
 	set_network_version (network_a.protocol_version);
 }

@@ -518,7 +518,7 @@ void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano
 		node.active.recently_confirmed.put (election.qualified_root (), status_l.get_winner ()->hash ());
 
 		node.logger->trace (nano::log::type::election, nano::log::detail::election_confirmed,
-		nano::log::arg{ "qualified_root", election.qualified_root() });
+		nano::log::arg{ "qualified_root", election.qualified_root () });
 
 		lock_a.unlock ();
 
@@ -991,7 +991,7 @@ bool nano::active_transactions::transition_time (nano::confirmation_solicitor & 
 		if (!lock.state_change (state_l, nano::election_state::expired_unconfirmed))
 		{
 			node.logger->trace (nano::log::type::election, nano::log::detail::election_expired,
-			nano::log::arg{ "qualified_root", election.qualified_root() });
+			nano::log::arg{ "qualified_root", election.qualified_root () });
 
 			result = true; // Return true to indicate this election should be cleaned up
 			auto st{ lock.status () };
@@ -1071,7 +1071,7 @@ nano::tally_t nano::active_transactions::tally (nano::election & election) const
 
 bool nano::active_transactions::broadcast_block_predicate (nano::election & election, nano::election_lock & lock_a) const
 {
-	auto last_block_elapsed = std::chrono::milliseconds{rsnano::rsn_election_last_block_elapsed_ms(election.handle)};
+	auto last_block_elapsed = std::chrono::milliseconds{ rsnano::rsn_election_last_block_elapsed_ms (election.handle) };
 	// Broadcast the block if enough time has passed since the last broadcast (or it's the first broadcast)
 	if (last_block_elapsed < node.config->network_params.network.block_broadcast_interval)
 	{
@@ -1079,7 +1079,7 @@ bool nano::active_transactions::broadcast_block_predicate (nano::election & elec
 	}
 	// Or the current election winner has changed
 	nano::block_hash last_block_hash{};
-	rsnano::rsn_election_lock_last_block(lock_a.handle, last_block_hash.bytes.data());
+	rsnano::rsn_election_lock_last_block (lock_a.handle, last_block_hash.bytes.data ());
 	if (lock_a.status ().get_winner ()->hash () != last_block_hash)
 	{
 		return true;
@@ -1089,15 +1089,15 @@ bool nano::active_transactions::broadcast_block_predicate (nano::election & elec
 
 void nano::active_transactions::broadcast_block (nano::confirmation_solicitor & solicitor_a, nano::election & election, nano::election_lock & lock_a)
 {
-	if (broadcast_block_predicate(election, lock_a))
+	if (broadcast_block_predicate (election, lock_a))
 	{
 		if (!solicitor_a.broadcast (election, lock_a))
 		{
 			nano::block_hash last_block_hash{};
-			rsnano::rsn_election_lock_last_block(lock_a.handle, last_block_hash.bytes.data());
+			rsnano::rsn_election_lock_last_block (lock_a.handle, last_block_hash.bytes.data ());
 			node.stats->inc (nano::stat::type::election, last_block_hash.is_zero () ? nano::stat::detail::broadcast_block_initial : nano::stat::detail::broadcast_block_repeat);
 			rsnano::rsn_election_set_last_block (election.handle);
-			rsnano::rsn_election_lock_last_block_set(lock_a.handle, lock_a.status().get_winner()->hash().bytes.data());
+			rsnano::rsn_election_lock_last_block_set (lock_a.handle, lock_a.status ().get_winner ()->hash ().bytes.data ());
 		}
 	}
 }
@@ -1348,7 +1348,6 @@ nano::election_vote_result nano::active_transactions::vote (nano::election & ele
 	nano::log::arg{ "timestamp", timestamp_a },
 	nano::log::arg{ "vote_source", vote_source_a },
 	nano::log::arg{ "weight", weight });
-
 
 	if (!confirmed_locked (lock))
 	{

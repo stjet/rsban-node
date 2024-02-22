@@ -25,8 +25,9 @@ nano::bootstrap_client::bootstrap_client (rsnano::async_runtime & async_rt, std:
 }
 
 nano::bootstrap_client::bootstrap_client (rsnano::BootstrapClientHandle * handle_a) :
-	handle{handle_a}
-{}
+	handle{ handle_a }
+{
+}
 
 nano::bootstrap_client::~bootstrap_client ()
 {
@@ -143,14 +144,15 @@ nano::bootstrap_connections::bootstrap_connections (nano::node & node_a) :
 {
 }
 
-nano::bootstrap_connections::~bootstrap_connections () 
+nano::bootstrap_connections::~bootstrap_connections ()
 {
-	rsnano::rsn_bootstrap_connections_drop(handle);
+	rsnano::rsn_bootstrap_connections_drop (handle);
 }
 
-void nano::bootstrap_connections::init_rust(){
-	auto cpp_handle = new std::weak_ptr<nano::bootstrap_connections>(shared_from_this());
-	handle = rsnano::rsn_bootstrap_connections_create(cpp_handle);
+void nano::bootstrap_connections::init_rust ()
+{
+	auto cpp_handle = new std::weak_ptr<nano::bootstrap_connections> (shared_from_this ());
+	handle = rsnano::rsn_bootstrap_connections_create (cpp_handle);
 }
 
 std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::connection (std::shared_ptr<nano::bootstrap_attempt> const & attempt_a, bool use_front_connection)
@@ -246,20 +248,20 @@ void nano::bootstrap_connections::connect_client (nano::tcp_endpoint const & end
 
 			auto channel_id = this_l->node.network->tcp_channels->get_next_channel_id ();
 
-			auto tcp_channel{std::make_shared<nano::transport::channel_tcp> (
-					this_l->node.async_rt, 
-					this_l->node.outbound_limiter, 
-					this_l->node.config->network_params.network, 
-					socket, 
-					*this_l->node.stats, 
-					*this_l->node.network->tcp_channels, 
-					channel_id)};
+			auto tcp_channel{ std::make_shared<nano::transport::channel_tcp> (
+			this_l->node.async_rt,
+			this_l->node.outbound_limiter,
+			this_l->node.config->network_params.network,
+			socket,
+			*this_l->node.stats,
+			*this_l->node.network->tcp_channels,
+			channel_id) };
 
 			auto client (std::make_shared<nano::bootstrap_client> (
-						this_l->node.async_rt, 
-						this_l, 
-						tcp_channel,
-						socket));
+			this_l->node.async_rt,
+			this_l,
+			tcp_channel,
+			socket));
 			this_l->connections_count++;
 			this_l->pool_connection (client, true, push_front);
 		}

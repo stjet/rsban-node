@@ -47,10 +47,10 @@ class bulk_pull_client final : public std::enable_shared_from_this<nano::bulk_pu
 {
 public:
 	bulk_pull_client (
-			std::shared_ptr<nano::node> const & node_a, 
-			std::shared_ptr<nano::bootstrap_client> const &, 
-			std::shared_ptr<nano::bootstrap_attempt> const &, 
-			nano::pull_info const &);
+	std::shared_ptr<nano::node> const & node_a,
+	std::shared_ptr<nano::bootstrap_client> const &,
+	std::shared_ptr<nano::bootstrap_attempt> const &,
+	nano::pull_info const &);
 	bulk_pull_client (bulk_pull_client const &) = delete;
 	~bulk_pull_client ();
 	void request ();

@@ -825,7 +825,7 @@ const void * nano::vote::get_rust_data_pointer () const
 void nano::vote::operator() (nano::object_stream & obs) const
 {
 	obs.write ("account", account ());
-	obs.write ("timestamp", timestamp());
+	obs.write ("timestamp", timestamp ());
 	obs.write_range ("hashes", hashes ());
 }
 

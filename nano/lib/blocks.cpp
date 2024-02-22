@@ -241,7 +241,7 @@ nano::block_hash nano::block::generate_hash () const
 
 void nano::block::operator() (nano::object_stream & obs) const
 {
-	obs.write ("hash", hash());
+	obs.write ("hash", hash ());
 }
 
 void nano::send_block::visit (nano::block_visitor & visitor_a) const

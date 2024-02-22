@@ -867,4 +867,3 @@ TEST (toml, tls_config_defaults)
 	ASSERT_EQ (conf.server_key_passphrase, defaults.server_key_passphrase);
 	ASSERT_EQ (conf.server_dh_path, defaults.server_dh_path);
 }
-

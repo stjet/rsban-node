@@ -65,7 +65,6 @@ bool nano::scheduler::priority::activate (nano::account const & account_a, store
 				nano::log::arg{ "time", info->modified () },
 				nano::log::arg{ "priority", balance_priority });
 
-
 				nano::lock_guard<nano::mutex> lock{ mutex };
 				buckets->push (info->modified (), block, balance_priority);
 				notify ();

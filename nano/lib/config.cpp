@@ -218,8 +218,8 @@ void nano::network_constants::read_dto (rsnano::NetworkConstantsDto const & dto)
 	peer_dump_interval = std::chrono::seconds (dto.peer_dump_interval_s);
 	ipv6_subnetwork_prefix_for_limiting = dto.ipv6_subnetwork_prefix_for_limiting;
 	silent_connection_tolerance_time = std::chrono::seconds (dto.silent_connection_tolerance_time_s);
-	vote_broadcast_interval = std::chrono::milliseconds {dto.vote_broadcast_interval_ms};
-	block_broadcast_interval = std::chrono::milliseconds {dto.block_broadcast_interval_ms};
+	vote_broadcast_interval = std::chrono::milliseconds{ dto.vote_broadcast_interval_ms };
+	block_broadcast_interval = std::chrono::milliseconds{ dto.block_broadcast_interval_ms };
 	telemetry_request_cooldown = std::chrono::milliseconds (dto.telemetry_request_cooldown_ms);
 	telemetry_request_interval = std::chrono::milliseconds (dto.telemetry_request_interval_ms);
 	telemetry_broadcast_interval = std::chrono::milliseconds (dto.telemetry_broadcast_interval_ms);
@@ -307,8 +307,8 @@ rsnano::NetworkConstantsDto nano::network_constants::to_dto () const
 	dto.peer_dump_interval_s = peer_dump_interval.count ();
 	dto.ipv6_subnetwork_prefix_for_limiting = ipv6_subnetwork_prefix_for_limiting;
 	dto.silent_connection_tolerance_time_s = silent_connection_tolerance_time.count ();
-	dto.vote_broadcast_interval_ms = vote_broadcast_interval.count();
-	dto.block_broadcast_interval_ms = block_broadcast_interval.count();
+	dto.vote_broadcast_interval_ms = vote_broadcast_interval.count ();
+	dto.block_broadcast_interval_ms = block_broadcast_interval.count ();
 	dto.telemetry_request_cooldown_ms = telemetry_request_cooldown.count ();
 	dto.telemetry_request_interval_ms = telemetry_request_interval.count ();
 	dto.telemetry_broadcast_interval_ms = telemetry_broadcast_interval.count ();

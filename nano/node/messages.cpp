@@ -63,7 +63,7 @@ nano::message_type nano::message::type () const
 
 void nano::message::operator() (nano::object_stream & obs) const
 {
-	obs.write("message_type", magic_enum::enum_name (type()));
+	obs.write ("message_type", magic_enum::enum_name (type ()));
 }
 
 std::unique_ptr<nano::message> nano::message_handle_to_message (rsnano::MessageHandle * handle_a)

@@ -14,13 +14,13 @@ using namespace std::chrono_literals;
 std::shared_ptr<nano::transport::channel> create_dummy_channel (nano::node & node, std::shared_ptr<nano::transport::socket> client)
 {
 	return std::make_shared<nano::transport::channel_tcp> (
-			node.async_rt, 
-			node.outbound_limiter, 
-			node.network_params.network, 
-			client, 
-			*node.stats,
-			*node.network->tcp_channels, 
-			1);
+	node.async_rt,
+	node.outbound_limiter,
+	node.network_params.network,
+	client,
+	*node.stats,
+	*node.network->tcp_channels,
+	1);
 }
 
 TEST (request_aggregator, one)

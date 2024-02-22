@@ -363,7 +363,7 @@ void nano::election::operator() (nano::object_stream & obs) const
 {
 	obs.write ("id", "TODO");
 	obs.write ("qualified_root", qualified_root ().to_string ());
-	obs.write ("behaviour", behavior());
+	obs.write ("behaviour", behavior ());
 	obs.write ("height", "TODO");
 	obs.write ("status", "TODO");
 }

@@ -1,4 +1,5 @@
 #include "nano/lib/rsnano.hpp"
+
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/bootstrap/bootstrap_lazy.hpp>
 #include <nano/node/common.hpp>
@@ -15,57 +16,57 @@ constexpr std::size_t nano::bootstrap_limits::lazy_blocks_restart_limit;
 
 namespace
 {
-rsnano::BootstrapAttemptHandle * create_lazy_handle(nano::bootstrap_attempt_lazy * self, std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string const & id_a)
+rsnano::BootstrapAttemptHandle * create_lazy_handle (nano::bootstrap_attempt_lazy * self, std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string const & id_a)
 {
-	auto network_params_dto{node_a->network_params.to_dto()};
+	auto network_params_dto{ node_a->network_params.to_dto () };
 	return rsnano::rsn_bootstrap_attempt_lazy_create (
-			self, 
-			node_a->websocket.server.get (), 
-			node_a->block_processor.get_handle (), 
-			node_a->bootstrap_initiator.get_handle (), 
-			node_a->ledger.get_handle (), 
-			id_a.c_str (), 
-			incremental_id_a,
-			node_a->flags.handle,
-			node_a->bootstrap_initiator.connections->handle,
-			&network_params_dto);
+	self,
+	node_a->websocket.server.get (),
+	node_a->block_processor.get_handle (),
+	node_a->bootstrap_initiator.get_handle (),
+	node_a->ledger.get_handle (),
+	id_a.c_str (),
+	incremental_id_a,
+	node_a->flags.handle,
+	node_a->bootstrap_initiator.connections->handle,
+	&network_params_dto);
 }
 }
 
 nano::bootstrap_attempt_lazy::bootstrap_attempt_lazy (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string const & id_a) :
-	nano::bootstrap_attempt (create_lazy_handle(this, node_a, incremental_id_a, id_a))
+	nano::bootstrap_attempt (create_lazy_handle (this, node_a, incremental_id_a, id_a))
 {
 }
 
 bool nano::bootstrap_attempt_lazy::lazy_start (nano::hash_or_account const & hash_or_account_a)
 {
-	return rsnano::rsn_bootstrap_attempt_lazy_lazy_start(handle, hash_or_account_a.bytes.data());
+	return rsnano::rsn_bootstrap_attempt_lazy_lazy_start (handle, hash_or_account_a.bytes.data ());
 }
 
 void nano::bootstrap_attempt_lazy::lazy_add (nano::pull_info const & pull_a)
 {
-	auto pull_dto {pull_a.to_dto()};
-	rsnano::rsn_bootstrap_attempt_lazy_lazy_add(handle, &pull_dto);
+	auto pull_dto{ pull_a.to_dto () };
+	rsnano::rsn_bootstrap_attempt_lazy_lazy_add (handle, &pull_dto);
 }
 
 void nano::bootstrap_attempt_lazy::lazy_requeue (nano::block_hash const & hash_a, nano::block_hash const & previous_a)
 {
-	rsnano::rsn_bootstrap_attempt_lazy_lazy_requeue(handle, hash_a.bytes.data(), previous_a.bytes.data());
+	rsnano::rsn_bootstrap_attempt_lazy_lazy_requeue (handle, hash_a.bytes.data (), previous_a.bytes.data ());
 }
 
 uint32_t nano::bootstrap_attempt_lazy::lazy_batch_size ()
 {
-	return rsnano::rsn_bootstrap_attempt_lazy_lazy_batch_size(handle);
+	return rsnano::rsn_bootstrap_attempt_lazy_lazy_batch_size (handle);
 }
 
 bool nano::bootstrap_attempt_lazy::lazy_processed_or_exists (nano::block_hash const & hash_a)
 {
-	return rsnano::rsn_bootstrap_attempt_lazy_lazy_processed_or_exists(handle, hash_a.bytes.data());
+	return rsnano::rsn_bootstrap_attempt_lazy_lazy_processed_or_exists (handle, hash_a.bytes.data ());
 }
 
 void nano::bootstrap_attempt_lazy::get_information (boost::property_tree::ptree & tree_a)
 {
-	rsnano::rsn_bootstrap_attempt_lazy_get_information(handle, &tree_a);
+	rsnano::rsn_bootstrap_attempt_lazy_get_information (handle, &tree_a);
 }
 
 nano::bootstrap_attempt_wallet::bootstrap_attempt_wallet (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string id_a) :

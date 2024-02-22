@@ -1,6 +1,6 @@
 #pragma once
-#include "nano/lib/rsnano.hpp"
 #include "nano/lib/logging.hpp"
+#include "nano/lib/rsnano.hpp"
 
 #include <nano/node/vote_cache.hpp>
 #include <nano/secure/common.hpp>

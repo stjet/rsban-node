@@ -406,12 +406,12 @@ bool bootstrap_initiator_in_progress (void * handle_a)
 	return bootstrap_initiator->in_progress ();
 }
 
-void bootstrap_initiator_remove_cache(void * handle_a, rsnano::PullInfoDto const * pull_dto)
+void bootstrap_initiator_remove_cache (void * handle_a, rsnano::PullInfoDto const * pull_dto)
 {
 	auto bootstrap_initiator{ static_cast<nano::bootstrap_initiator *> (handle_a) };
 	nano::pull_info pull;
-	pull.load_dto(*pull_dto);
-	bootstrap_initiator->cache.remove(pull);
+	pull.load_dto (*pull_dto);
+	bootstrap_initiator->cache.remove (pull);
 }
 
 class async_write_callback_wrapper
@@ -507,48 +507,54 @@ void election_scheduler_activate (void * scheduler_a, const uint8_t * account_a,
 	election_scheduler->activate (account, txn_wrapper);
 }
 
-void delete_bootstrap_connections(void * cpp_handle)
+void delete_bootstrap_connections (void * cpp_handle)
 {
 	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
 	delete connections;
 }
 
-void pool_connection(void * cpp_handle, rsnano::BootstrapClientHandle * client_handle, bool new_client, bool push_front)
+void pool_connection (void * cpp_handle, rsnano::BootstrapClientHandle * client_handle, bool new_client, bool push_front)
 {
 	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
-	auto client = std::make_shared<nano::bootstrap_client>(client_handle);
-	auto con = connections->lock();
-	if (con){
-		con->pool_connection(client, new_client, push_front);
+	auto client = std::make_shared<nano::bootstrap_client> (client_handle);
+	auto con = connections->lock ();
+	if (con)
+	{
+		con->pool_connection (client, new_client, push_front);
 	}
 }
 
-void requeue_pull(void * cpp_handle, rsnano::PullInfoDto const * pull_dto, bool network_error){
-	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
-	nano::pull_info pull;
-	pull.load_dto(*pull_dto);
-	auto con = connections->lock();
-	if (con){
-		con->requeue_pull(pull, network_error);
-	}
-}
-
-void populate_connections(void * cpp_handle, bool repeat)
+void requeue_pull (void * cpp_handle, rsnano::PullInfoDto const * pull_dto, bool network_error)
 {
 	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
-	auto con = connections->lock();
-	if (con){
-		con->populate_connections(repeat);
+	nano::pull_info pull;
+	pull.load_dto (*pull_dto);
+	auto con = connections->lock ();
+	if (con)
+	{
+		con->requeue_pull (pull, network_error);
 	}
 }
 
-void add_pull(void * cpp_handle, rsnano::PullInfoDto const * pull_dto){
+void populate_connections (void * cpp_handle, bool repeat)
+{
+	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
+	auto con = connections->lock ();
+	if (con)
+	{
+		con->populate_connections (repeat);
+	}
+}
+
+void add_pull (void * cpp_handle, rsnano::PullInfoDto const * pull_dto)
+{
 	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
 	nano::pull_info pull;
-	pull.load_dto(*pull_dto);
-	auto con = connections->lock();
-	if (con){
-		con->add_pull(pull);
+	pull.load_dto (*pull_dto);
+	auto con = connections->lock ();
+	if (con)
+	{
+		con->add_pull (pull);
 	}
 }
 
@@ -623,11 +629,11 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_election_scheduler_activate (election_scheduler_activate);
 
 	rsnano::rsn_set_wait_latch_callback (wait_latch);
-	rsnano::rsn_callback_bootstrap_connections_dropped(delete_bootstrap_connections);
-	rsnano::rsn_callback_bootstrap_connections_pool_connection(pool_connection);
-	rsnano::rsn_callback_bootstrap_connections_requeue_pull(requeue_pull);
-	rsnano::rsn_callback_bootstrap_connections_populate_connections(populate_connections);
-	rsnano::rsn_callback_bootstrap_connections_add_pull(add_pull);
+	rsnano::rsn_callback_bootstrap_connections_dropped (delete_bootstrap_connections);
+	rsnano::rsn_callback_bootstrap_connections_pool_connection (pool_connection);
+	rsnano::rsn_callback_bootstrap_connections_requeue_pull (requeue_pull);
+	rsnano::rsn_callback_bootstrap_connections_populate_connections (populate_connections);
+	rsnano::rsn_callback_bootstrap_connections_add_pull (add_pull);
 
 	callbacks_set = true;
 }

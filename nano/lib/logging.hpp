@@ -2,6 +2,7 @@
 
 #include "fmt/core.h"
 #include "nano/lib/utility.hpp"
+
 #include <nano/lib/logging_enums.hpp>
 #include <nano/lib/object_stream.hpp>
 #include <nano/lib/object_stream_adapters.hpp>
@@ -151,12 +152,12 @@ public:
 		if constexpr (is_tracing_enabled ())
 		{
 			spdlog::memory_buf_t buf;
-			fmt::vformat_to (fmt::appender (buf), "{}", 
-					fmt::make_format_args(
-					nano::streamed_args (global_tracing_config,
-					nano::log::arg{ "type", to_string(type)}, 
-					nano::log::arg{"detail", to_string(detail)},
-					std::forward<Args> (args)...)));
+			fmt::vformat_to (fmt::appender (buf), "{}",
+			fmt::make_format_args (
+			nano::streamed_args (global_tracing_config,
+			nano::log::arg{ "type", to_string (type) },
+			nano::log::arg{ "detail", to_string (detail) },
+			std::forward<Args> (args)...)));
 
 			nano::log_with_rust (nano::log::level::trace, type, buf.data (), buf.size ());
 		}

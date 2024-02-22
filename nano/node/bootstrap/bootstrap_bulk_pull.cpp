@@ -58,7 +58,7 @@ nano::bulk_pull_client::bulk_pull_client (
 std::shared_ptr<nano::node> const & node_a,
 std::shared_ptr<nano::bootstrap_client> const & connection_a,
 std::shared_ptr<nano::bootstrap_attempt> const & attempt_a,
-nano::pull_info const & pull_a) 
+nano::pull_info const & pull_a)
 {
 	auto nw_params{ node_a->network_params.to_dto () };
 	auto pull_dto{ pull_a.to_dto () };
@@ -84,7 +84,6 @@ nano::bulk_pull_client::~bulk_pull_client ()
 void nano::bulk_pull_client::request ()
 {
 	rsnano::rsn_bulk_pull_client_request (handle);
-
 }
 
 nano::bulk_pull_account_client::bulk_pull_account_client (std::shared_ptr<nano::node> const & node_a, std::shared_ptr<nano::bootstrap_client> const & connection_a, std::shared_ptr<nano::bootstrap_attempt_wallet> const & attempt_a, nano::account const & account_a) :

@@ -139,7 +139,7 @@ void nano::bootstrap_attempt::pull_finished ()
 
 void nano::bootstrap_attempt::run ()
 {
-	rsnano::rsn_bootstrap_attempt_run(handle);
+	rsnano::rsn_bootstrap_attempt_run (handle);
 }
 
 void nano::bootstrap_attempt::stop ()

@@ -87,4 +87,3 @@ TEST (log_parse, parse_detail)
 	ASSERT_THROW (nano::log::parse_detail ("_last"), std::invalid_argument);
 	ASSERT_THROW (nano::log::parse_detail ("_all"), std::invalid_argument);
 }
-

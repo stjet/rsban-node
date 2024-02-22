@@ -88,7 +88,7 @@ enum class type
 enum class detail
 {
 	all = 0, // reserved
-	
+
 	test,
 
 	// node
@@ -117,7 +117,7 @@ enum class detail
 	// election_scheduler
 	block_activated,
 
-	//vote_generator
+	// vote_generator
 	candidate_processed,
 	should_vote,
 

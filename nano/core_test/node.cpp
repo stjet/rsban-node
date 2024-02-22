@@ -40,8 +40,8 @@ TEST (node, memory_leak)
 	{
 		nano::test::system system (2);
 	}
-	auto alive  = rsnano::rsn_sockets_alive();
-	ASSERT_EQ(0, alive);
+	auto alive = rsnano::rsn_sockets_alive ();
+	ASSERT_EQ (0, alive);
 }
 
 TEST (node, stop)

@@ -40,6 +40,19 @@ pub enum BlockSource {
     Forced,
 }
 
+impl From<BlockSource> for DetailType {
+    fn from(value: BlockSource) -> Self {
+        match value {
+            BlockSource::Unknown => DetailType::Unknown,
+            BlockSource::Live => DetailType::Live,
+            BlockSource::Bootstrap => DetailType::Bootstrap,
+            BlockSource::Unchecked => DetailType::Unchecked,
+            BlockSource::Local => DetailType::Local,
+            BlockSource::Forced => DetailType::Forced,
+        }
+    }
+}
+
 pub struct BlockProcessorContext {
     pub source: BlockSource,
     pub arrival: Instant,
@@ -239,7 +252,7 @@ impl BlockProcessor {
         &self,
         txn: &mut LmdbWriteTransaction,
         block: &Arc<BlockEnum>,
-        _context: &BlockProcessorContext,
+        context: &BlockProcessorContext,
     ) -> ProcessResult {
         let hash = block.hash();
         // this is undefined behaviour and should be fixed ASAP:
@@ -253,7 +266,12 @@ impl BlockProcessor {
 
         self.stats
             .inc(StatType::Blockprocessor, result.into(), Direction::In);
-        trace!(?result, block = %block.hash(), "Block processed");
+        self.stats.inc(
+            StatType::BlockprocessorSources,
+            context.source.into(),
+            Direction::In,
+        );
+        trace!(?result, block = %block.hash(), source = ?context.source, "Block processed");
 
         match result {
             ProcessResult::Progress => {

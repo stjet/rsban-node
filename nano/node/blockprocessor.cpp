@@ -11,6 +11,7 @@
 
 #include <boost/format.hpp>
 
+#include <magic_enum.hpp>
 #include <cstdint>
 #include <memory>
 
@@ -328,4 +329,11 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (bl
 {
 	auto info_handle = rsnano::rsn_block_processor_collect_container_info (block_processor.handle, name.c_str ());
 	return std::make_unique<nano::container_info_composite> (info_handle);
+}
+
+nano::stat::detail nano::to_stat_detail (block_processor::block_source type)
+{
+	auto value = magic_enum::enum_cast<nano::stat::detail> (magic_enum::enum_name (type));
+	debug_assert (value);
+	return value.value_or (nano::stat::detail{});
 }

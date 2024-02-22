@@ -129,6 +129,7 @@ pub enum StatType {
     VoteCache,
     Hinting,
     Blockprocessor,
+    BlockprocessorSources,
     BootstrapServer,
     Active,
     ActiveStarted,
@@ -170,6 +171,7 @@ pub enum DetailType {
     Top,
     None,
     Success,
+    Unknown,
 
     // processing queue
     Queue,
@@ -208,6 +210,13 @@ pub enum DetailType {
     BalanceMismatch,
     RepresentativeMismatch,
     BlockPosition,
+
+    // blockprocessor result
+    Live,
+    Bootstrap,
+    Unchecked,
+    Local,
+    Forced,
 
     // message specific
     NotAType,

@@ -3,13 +3,13 @@
 #include "nano/node/websocket.hpp"
 
 #include <nano/lib/blocks.hpp>
-#include <nano/node/blocking_observer.hpp>
 #include <nano/secure/common.hpp>
 
 #include <chrono>
 #include <functional>
 #include <future>
 #include <memory>
+#include <optional>
 #include <thread>
 
 namespace nano::store
@@ -59,13 +59,28 @@ public: // Context
 		forced,
 	};
 
-	struct context
+	class context
 	{
-		block_source const source{};
-		// std::chrono::steady_clock::time_point const arrival {std::chrono::steady_clock::now ()};
-	};
+	public:
+		explicit context (block_source);
+		context (context const &) = delete;
+		context (context &&);
+		~context ();
 
-	using processed_t = std::tuple<nano::process_return, std::shared_ptr<nano::block>, context>;
+		block_source const source{};
+
+	public:
+		using result_t = nano::process_return;
+		std::future<result_t> get_future ();
+
+	private:
+		void set_result (result_t const &);
+
+		friend class block_processor;
+
+	public:
+		rsnano::BlockProcessorContextHandle * handle;
+	};
 
 public:
 	block_processor (nano::node &, nano::write_database_queue &);
@@ -89,18 +104,17 @@ public:
 	rsnano::BlockProcessorHandle const * get_handle () const;
 
 public: // Events
+	using processed_t = std::tuple<nano::process_return, std::shared_ptr<nano::block>, context>;
+	using processed_batch_t = std::deque<processed_t>;
+
 	void set_blocks_rolled_back_callback (std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> callback);
 
-	nano::observer_set<nano::process_return const &, std::shared_ptr<nano::block>, context> processed;
-
 	// The batch observer feeds the processed obsever
-	nano::observer_set<std::deque<processed_t> const &> batch_processed;
+	nano::observer_set<nano::process_return const &, std::shared_ptr<nano::block> const &, context const &> processed;
+	nano::observer_set<processed_batch_t const &> batch_processed;
 
 private:
-	blocking_observer blocking;
-
-private:
-	std::deque<processed_t> process_batch (nano::block_processor_lock &);
+	processed_batch_t process_batch (nano::block_processor_lock &);
 
 	bool stopped{ false };
 	bool active{ false };

@@ -43,9 +43,9 @@ public:
 		rsnano::rsn_block_processor_lock_unlock (handle);
 	}
 
-	void push_back_forced (std::shared_ptr<nano::block> const & block)
+	void push_back_forced (std::shared_ptr<nano::block> const & block, nano::block_processor::context context)
 	{
-		rsnano::rsn_block_processor_push_back_forced (handle, block->get_handle ());
+		rsnano::rsn_block_processor_push_back_forced (handle, block->get_handle (), context.handle);
 	}
 
 	std::size_t blocks_size () const
@@ -82,6 +82,44 @@ void blocks_rolled_back_delete (void * context)
 }
 
 /*
+ * block_processor::context
+ */
+
+nano::block_processor::context::context (nano::block_processor::block_source source_a) :
+	source{ source_a },
+	handle{ rsnano::rsn_block_processor_context_create (static_cast<uint8_t> (source_a), new std::promise<nano::block_processor::context::result_t> ()) }
+{
+	debug_assert (source != nano::block_processor::block_source::unknown);
+}
+
+nano::block_processor::context::context (nano::block_processor::context && other) :
+	source{ other.source },
+	handle{ other.handle }
+{
+	other.handle = nullptr;
+}
+
+nano::block_processor::context::~context ()
+{
+	if (handle != nullptr)
+	{
+		rsnano::rsn_block_processor_context_destroy (handle);
+	}
+}
+
+auto nano::block_processor::context::get_future () -> std::future<result_t>
+{
+	auto promise = static_cast<std::promise<result_t> *> (rsnano::rsn_block_processor_context_promise (handle));
+	return promise->get_future ();
+}
+
+void nano::block_processor::context::set_result (result_t const & result)
+{
+	auto promise = static_cast<std::promise<result_t> *> (rsnano::rsn_block_processor_context_promise (handle));
+	promise->set_value (result);
+}
+
+/*
  * block_processor
  */
 
@@ -109,7 +147,6 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 			processed.notify (result, block, context);
 		}
 	});
-	blocking.connect (*this);
 }
 
 nano::block_processor::~block_processor ()
@@ -137,7 +174,6 @@ void nano::block_processor::stop ()
 		stopped = true;
 	}
 	rsnano::rsn_block_processor_notify_all (handle);
-	blocking.stop ();
 	rsnano::rsn_block_processor_stop (handle);
 	nano::join_or_pass (processing_thread);
 }
@@ -175,40 +211,37 @@ void nano::block_processor::add (std::shared_ptr<nano::block> const & block, blo
 		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::insufficient_work);
 		return;
 	}
-	rsnano::rsn_block_processor_add_impl (handle, block->get_handle (), static_cast<uint8_t> (source));
+	context ctx{ source };
+	rsnano::rsn_block_processor_add_impl (handle, block->get_handle (), ctx.handle);
 	return;
 }
 
 std::optional<nano::process_return> nano::block_processor::add_blocking (std::shared_ptr<nano::block> const & block, block_source const source)
 {
-	auto future = blocking.insert (block);
-	rsnano::rsn_block_processor_add_impl (handle, block->get_handle (), static_cast<uint8_t> (source));
-	rsnano::rsn_block_processor_notify_all (handle);
-	std::optional<nano::process_return> result;
+	context ctx{ source };
+	auto future = ctx.get_future ();
+	rsnano::rsn_block_processor_add_impl (handle, block->get_handle (), ctx.handle);
+
 	try
 	{
 		auto status = future.wait_for (config.block_process_timeout);
 		debug_assert (status != std::future_status::deferred);
 		if (status == std::future_status::ready)
 		{
-			result = future.get ();
-		}
-		else
-		{
-			blocking.erase (block);
+			return future.get ();
 		}
 	}
 	catch (std::future_error const &)
 	{
 	}
-	return result;
+	return std::nullopt;
 }
 
 void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 {
 	{
 		nano::block_processor_lock lock{ *this };
-		lock.push_back_forced (block_a);
+		lock.push_back_forced (block_a, context{ block_source::forced });
 	}
 	rsnano::rsn_block_processor_notify_all (handle);
 }
@@ -222,8 +255,16 @@ void nano::block_processor::process_blocks ()
 		{
 			active = true;
 			lock.unlock ();
+
 			auto processed = process_batch (lock);
+
+			for (auto & [result, block, context] : processed)
+			{
+				context.set_result (result);
+			}
+
 			batch_processed.notify (processed);
+
 			lock.lock (handle);
 			active = false;
 		}

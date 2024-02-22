@@ -1,6 +1,7 @@
 #include "boost/thread/latch.hpp"
 #include "nano/lib/blocks.hpp"
 #include "nano/node/scheduler/priority.hpp"
+#include "nano/secure/common.hpp"
 
 #include <nano/lib/config.hpp>
 #include <nano/lib/logging.hpp>
@@ -564,6 +565,12 @@ void wait_latch (void * latch_ptr)
 	latch->wait ();
 }
 
+void drop_block_processor_promise (void * promise_ptr)
+{
+	auto promise = static_cast<std::promise<nano::process_return> *> (promise_ptr);
+	delete promise;
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -634,6 +641,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_connections_requeue_pull (requeue_pull);
 	rsnano::rsn_callback_bootstrap_connections_populate_connections (populate_connections);
 	rsnano::rsn_callback_bootstrap_connections_add_pull (add_pull);
+	rsnano::rsn_callback_drop_block_processor_promise (drop_block_processor_promise);
 
 	callbacks_set = true;
 }

@@ -48,4 +48,3 @@ void nano::block_broadcast::observe (std::shared_ptr<nano::block> const & block,
 		}
 	}
 }
-

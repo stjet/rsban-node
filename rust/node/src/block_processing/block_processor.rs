@@ -43,6 +43,29 @@ pub enum BlockSource {
 pub struct BlockProcessorContext {
     pub source: BlockSource,
     pub arrival: Instant,
+    pub promise: *mut c_void,
+}
+
+impl BlockProcessorContext {
+    pub fn new(source: BlockSource, promise: *mut c_void) -> Self {
+        Self {
+            source,
+            arrival: Instant::now(),
+            promise,
+        }
+    }
+}
+
+pub static mut DROP_BLOCK_PROCESSOR_PROMISE: Option<unsafe extern "C" fn(*mut c_void)> = None;
+
+impl Drop for BlockProcessorContext {
+    fn drop(&mut self) {
+        unsafe {
+            DROP_BLOCK_PROCESSOR_PROMISE.expect("DROP_BLOCK_PROCESSOR_PROMISE missing")(
+                self.promise,
+            );
+        }
+    }
 }
 
 pub struct BlockProcessor {
@@ -145,16 +168,10 @@ impl BlockProcessor {
         }
     }
 
-    pub fn add_impl(&self, block: Arc<BlockEnum>, source: BlockSource) {
+    pub fn add_impl(&self, block: Arc<BlockEnum>, context: BlockProcessorContext) {
         {
             let mut lock = self.mutex.lock().unwrap();
-            lock.blocks.push_back((
-                block,
-                BlockProcessorContext {
-                    source,
-                    arrival: Instant::now(),
-                },
-            ));
+            lock.blocks.push_back((block, context));
         }
         self.condition.notify_all();
     }

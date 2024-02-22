@@ -14,6 +14,7 @@ use rsnano_node::{
         BlockProcessor, BlockProcessorContext, BlockProcessorImpl, BlockSource,
         BLOCKPROCESSOR_ADD_CALLBACK, BLOCKPROCESSOR_HALF_FULL_CALLBACK,
         BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK, BLOCKPROCESSOR_SIZE_CALLBACK,
+        DROP_BLOCK_PROCESSOR_PROMISE,
     },
     config::NodeConfig,
 };
@@ -22,7 +23,6 @@ use std::{
     ffi::{c_char, c_void, CStr},
     ops::Deref,
     sync::{atomic::Ordering, Arc, MutexGuard},
-    time::Instant,
 };
 
 pub struct BlockProcessorHandle(Arc<BlockProcessor>);
@@ -211,14 +211,14 @@ pub extern "C" fn rsn_block_processor_blocks_size(handle: &mut BlockProcessorLoc
 pub extern "C" fn rsn_block_processor_push_back_forced(
     handle: &mut BlockProcessorLockHandle,
     block: &BlockHandle,
+    context: &mut BlockProcessorContextHandle,
 ) {
-    handle.0.as_mut().unwrap().forced.push_back((
-        Arc::clone(&block),
-        BlockProcessorContext {
-            source: BlockSource::Forced,
-            arrival: Instant::now(),
-        },
-    ))
+    handle
+        .0
+        .as_mut()
+        .unwrap()
+        .forced
+        .push_back((Arc::clone(&block), context.0.take().unwrap()))
 }
 
 #[no_mangle]
@@ -230,9 +230,9 @@ pub extern "C" fn rsn_block_processor_forced_size(handle: &mut BlockProcessorLoc
 pub extern "C" fn rsn_block_processor_add_impl(
     handle: &mut BlockProcessorHandle,
     block: &BlockHandle,
-    source: u8,
+    context: &mut BlockProcessorContextHandle,
 ) {
-    handle.add_impl(Arc::clone(&block), FromPrimitive::from_u8(source).unwrap());
+    handle.add_impl(Arc::clone(&block), context.0.take().unwrap());
 }
 
 #[no_mangle]
@@ -282,4 +282,35 @@ pub unsafe extern "C" fn rsn_block_processor_collect_container_info(
         .0
         .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
     Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
+}
+
+pub struct BlockProcessorContextHandle(Option<BlockProcessorContext>);
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_context_create(
+    source: u8,
+    promise: *mut c_void,
+) -> *mut BlockProcessorContextHandle {
+    Box::into_raw(Box::new(BlockProcessorContextHandle(Some(
+        BlockProcessorContext::new(FromPrimitive::from_u8(source).unwrap(), promise),
+    ))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_processor_context_destroy(
+    handle: *mut BlockProcessorContextHandle,
+) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_processor_context_promise(
+    handle: &BlockProcessorContextHandle,
+) -> *mut c_void {
+    handle.0.as_ref().unwrap().promise
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_drop_block_processor_promise(callback: VoidPointerCallback) {
+    DROP_BLOCK_PROCESSOR_PROMISE = Some(callback);
 }

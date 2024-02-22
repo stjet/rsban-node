@@ -14,6 +14,8 @@
 #include <queue>
 #include <stdexcept>
 
+#include <magic_enum.hpp>
+
 namespace
 {
 char const * dev_private_key_data = "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";
@@ -1211,4 +1213,9 @@ void nano::election_status::set_election_duration (std::chrono::milliseconds ele
 void nano::election_status::set_election_status_type (nano::election_status_type election_status_type)
 {
 	rsnano::rsn_election_status_set_election_status_type (handle, static_cast<uint8_t> (election_status_type));
+}
+
+std::string_view nano::to_string (nano::process_result process_result)
+{
+	return magic_enum::enum_name (process_result);
 }

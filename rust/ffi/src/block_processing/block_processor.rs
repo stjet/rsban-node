@@ -11,10 +11,9 @@ use rsnano_core::{work::WorkThresholds, BlockEnum};
 use rsnano_ledger::ProcessResult;
 use rsnano_node::{
     block_processing::{
-        BlockProcessor, BlockProcessorContext, BlockProcessorImpl, BlockSource,
-        BLOCKPROCESSOR_ADD_CALLBACK, BLOCKPROCESSOR_HALF_FULL_CALLBACK,
-        BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK, BLOCKPROCESSOR_SIZE_CALLBACK,
-        DROP_BLOCK_PROCESSOR_PROMISE,
+        BlockProcessor, BlockProcessorContext, BlockProcessorImpl, BLOCKPROCESSOR_ADD_CALLBACK,
+        BLOCKPROCESSOR_HALF_FULL_CALLBACK, BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
+        BLOCKPROCESSOR_SIZE_CALLBACK, DROP_BLOCK_PROCESSOR_PROMISE,
     },
     config::NodeConfig,
 };
@@ -261,16 +260,15 @@ pub extern "C" fn rsn_process_batch_result_size(handle: &ProcessBatchResult) -> 
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_process_batch_result_get(
-    handle: &ProcessBatchResult,
-    index: usize,
+pub extern "C" fn rsn_process_batch_result_pop(
+    handle: &mut ProcessBatchResult,
     result: &mut u8,
-    source: &mut u8,
+    context: &mut *mut BlockProcessorContextHandle,
 ) -> *mut BlockHandle {
-    let (res, block, context) = &handle.0[index];
-    *result = (*res) as u8;
-    *source = context.source as u8;
-    Box::into_raw(Box::new(BlockHandle(Arc::clone(block))))
+    let (res, block, ctx) = handle.0.pop_front().unwrap();
+    *result = res as u8;
+    *context = Box::into_raw(Box::new(BlockProcessorContextHandle(Some(ctx))));
+    Box::into_raw(Box::new(BlockHandle(block)))
 }
 
 #[no_mangle]
@@ -301,6 +299,13 @@ pub unsafe extern "C" fn rsn_block_processor_context_destroy(
     handle: *mut BlockProcessorContextHandle,
 ) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_block_processor_context_source(
+    handle: &BlockProcessorContextHandle,
+) -> u8 {
+    handle.0.as_ref().unwrap().source as u8
 }
 
 #[no_mangle]

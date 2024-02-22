@@ -92,6 +92,12 @@ nano::block_processor::context::context (nano::block_processor::block_source sou
 	debug_assert (source != nano::block_processor::block_source::unknown);
 }
 
+nano::block_processor::context::context (rsnano::BlockProcessorContextHandle * handle_a) :
+	source{rsnano::rsn_block_processor_context_source(handle_a)},
+	handle{handle_a}
+{
+}
+
 nano::block_processor::context::context (nano::block_processor::context && other) :
 	source{ other.source },
 	handle{ other.handle }
@@ -308,11 +314,11 @@ auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) 
 	for (auto i = 0; i < size; ++i)
 	{
 		uint8_t result_code = 0;
-		uint8_t source = 0;
-		auto block_handle = rsnano::rsn_process_batch_result_get (result_handle, i, &result_code, &source);
+		rsnano::BlockProcessorContextHandle * ctx_handle{nullptr};
+		auto block_handle = rsnano::rsn_process_batch_result_pop (result_handle, &result_code, &ctx_handle);
 		auto block = nano::block_handle_to_block (block_handle);
 		nano::process_return ret{ static_cast<nano::process_result> (result_code) };
-		result.emplace_back (ret, block, nano::block_processor::context{ static_cast<nano::block_processor::block_source> (source) });
+		result.emplace_back (ret, block, nano::block_processor::context{ctx_handle});
 	}
 	rsnano::rsn_process_batch_result_destroy (result_handle);
 	return result;

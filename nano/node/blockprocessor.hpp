@@ -63,6 +63,7 @@ public: // Context
 	{
 	public:
 		explicit context (block_source);
+		explicit context (rsnano::BlockProcessorContextHandle * handle_a);
 		context (context const &) = delete;
 		context (context &&);
 		~context ();

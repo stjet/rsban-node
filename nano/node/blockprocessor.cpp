@@ -219,7 +219,6 @@ void nano::block_processor::add (std::shared_ptr<nano::block> const & block, blo
 	}
 	context ctx{ source };
 	rsnano::rsn_block_processor_add_impl (handle, block->get_handle (), ctx.handle);
-	return;
 }
 
 std::optional<nano::process_return> nano::block_processor::add_blocking (std::shared_ptr<nano::block> const & block, block_source const source)
@@ -264,6 +263,7 @@ void nano::block_processor::process_blocks ()
 
 			auto processed = process_batch (lock);
 
+			// Set results for futures when not holding the lock
 			for (auto & [result, block, context] : processed)
 			{
 				context.set_result (result);

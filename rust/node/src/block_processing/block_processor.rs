@@ -30,7 +30,7 @@ pub static mut BLOCKPROCESSOR_HALF_FULL_CALLBACK: Option<
 pub static mut BLOCKPROCESSOR_SIZE_CALLBACK: Option<unsafe extern "C" fn(*mut c_void) -> usize> =
     None;
 
-#[derive(FromPrimitive, Copy, Clone)]
+#[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug)]
 pub enum BlockSource {
     Unknown = 0,
     Live,
@@ -169,6 +169,7 @@ impl BlockProcessor {
     }
 
     pub fn add_impl(&self, block: Arc<BlockEnum>, context: BlockProcessorContext) {
+        assert_ne!(context.source, BlockSource::Forced);
         {
             let mut lock = self.mutex.lock().unwrap();
             lock.blocks.push_back((block, context));
@@ -203,7 +204,8 @@ impl BlockProcessor {
             && (!deadline_reached()
                 || number_of_blocks_processed < self.flags.block_processor_batch_size)
         {
-            let ((block, context), force) = lock_a.next_block();
+            let (block, context) = lock_a.next();
+            let force = context.source == BlockSource::Forced;
 
             drop(lock_a);
 
@@ -214,7 +216,7 @@ impl BlockProcessor {
 
             number_of_blocks_processed += 1;
 
-            let result = self.process_one(&mut transaction, &block);
+            let result = self.process_one(&mut transaction, &block, &context);
             processed.push_back((result, block, context));
 
             lock_a = self.mutex.lock().unwrap();
@@ -237,6 +239,7 @@ impl BlockProcessor {
         &self,
         txn: &mut LmdbWriteTransaction,
         block: &Arc<BlockEnum>,
+        _context: &BlockProcessorContext,
     ) -> ProcessResult {
         let hash = block.hash();
         // this is undefined behaviour and should be fixed ASAP:
@@ -394,13 +397,18 @@ impl BlockProcessorImpl {
         return self.blocks.len() > 0 || self.forced.len() > 0;
     }
 
-    fn next_block(&mut self) -> ((Arc<BlockEnum>, BlockProcessorContext), bool) {
-        if let Some(entry) = self.forced.pop_front() {
-            (entry, true) // Forced
-        } else {
-            // Checked before calling this function
-            let entry = self.blocks.pop_front().expect("blocks must not be empty");
-            (entry, false) // Not forced
+    fn next(&mut self) -> (Arc<BlockEnum>, BlockProcessorContext) {
+        debug_assert!(!self.blocks.is_empty() || !self.forced.is_empty()); // This should be checked before calling next
+
+        if let Some(entry) = self.blocks.pop_front() {
+            assert_ne!(entry.1.source, BlockSource::Forced);
+            return entry;
         }
+        if let Some(entry) = self.forced.pop_front() {
+            assert_eq!(entry.1.source, BlockSource::Forced);
+            return entry;
+        }
+
+        panic!("next() called when no blocks are ready");
     }
 }

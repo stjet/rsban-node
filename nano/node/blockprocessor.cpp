@@ -11,7 +11,6 @@
 
 #include <boost/format.hpp>
 
-#include <magic_enum.hpp>
 #include <cstdint>
 #include <memory>
 
@@ -86,11 +85,11 @@ void blocks_rolled_back_delete (void * context)
  * block_processor::context
  */
 
-nano::block_processor::context::context (nano::block_processor::block_source source_a) :
+nano::block_processor::context::context (nano::block_source source_a) :
 	source{ source_a },
 	handle{ rsnano::rsn_block_processor_context_create (static_cast<uint8_t> (source_a), new std::promise<nano::block_processor::context::result_t> ()) }
 {
-	debug_assert (source != nano::block_processor::block_source::unknown);
+	debug_assert (source != nano::block_source::unknown);
 }
 
 nano::block_processor::context::context (rsnano::BlockProcessorContextHandle * handle_a) :
@@ -331,9 +330,3 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (bl
 	return std::make_unique<nano::container_info_composite> (info_handle);
 }
 
-nano::stat::detail nano::to_stat_detail (block_processor::block_source type)
-{
-	auto value = magic_enum::enum_cast<nano::stat::detail> (magic_enum::enum_name (type));
-	debug_assert (value);
-	return value.value_or (nano::stat::detail{});
-}

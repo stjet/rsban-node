@@ -235,7 +235,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	block_broadcast.connect (block_processor);
 	process_live_dispatcher.connect (block_processor);
 	unchecked.set_satisfied_observer ([this] (nano::unchecked_info const & info) {
-		this->block_processor.add (info.get_block (), nano::block_processor::block_source::unchecked);
+		this->block_processor.add (info.get_block (), nano::block_source::unchecked);
 	});
 
 	backlog.set_activate_callback ([this] (nano::store::transaction const & transaction, nano::account const & account, nano::account_info const & account_info, nano::confirmation_height_info const & conf_info) {
@@ -601,12 +601,12 @@ nano::process_return nano::node::process (nano::block & block)
 
 std::optional<nano::process_return> nano::node::process_local (std::shared_ptr<nano::block> const & block_a)
 {
-	return block_processor.add_blocking (block_a, nano::block_processor::block_source::local);
+	return block_processor.add_blocking (block_a, nano::block_source::local);
 }
 
 void nano::node::process_local_async (std::shared_ptr<nano::block> const & block_a)
 {
-	block_processor.add (block_a, nano::block_processor::block_source::local);
+	block_processor.add (block_a, nano::block_source::local);
 }
 
 void nano::node::start ()

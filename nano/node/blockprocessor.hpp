@@ -42,6 +42,17 @@ namespace websocket
 
 class block_processor_lock;
 
+enum class block_source
+{
+	unknown = 0,
+	live,
+	bootstrap,
+	unchecked,
+	local,
+	forced,
+};
+
+
 /**
  * Processing blocks is a potentially long IO operation.
  * This class isolates block insertion from other operations like servicing network operations
@@ -49,16 +60,6 @@ class block_processor_lock;
 class block_processor final
 {
 public: // Context
-	enum class block_source
-	{
-		unknown = 0,
-		live,
-		bootstrap,
-		unchecked,
-		local,
-		forced,
-	};
-
 	class context
 	{
 	public:
@@ -136,6 +137,4 @@ private:
 };
 
 std::unique_ptr<nano::container_info_component> collect_container_info (block_processor & block_processor, std::string const & name);
-
-nano::stat::detail to_stat_detail (block_processor::block_source);
 }

@@ -72,7 +72,7 @@ public: // Context
 		~context ();
 
 		block_source const source{};
-		std::shared_ptr<nano::block> block() const;
+		std::shared_ptr<nano::block> get_block () const;
 
 	public:
 		using result_t = nano::process_return;

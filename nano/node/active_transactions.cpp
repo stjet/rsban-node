@@ -73,7 +73,7 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 		switch (result.code)
 		{
 			case nano::process_result::fork:
-				publish (context.block());
+				publish (context.get_block ());
 				break;
 			default:
 				break;

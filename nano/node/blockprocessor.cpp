@@ -11,9 +11,10 @@
 
 #include <boost/format.hpp>
 
-#include <magic_enum.hpp>
 #include <cstdint>
 #include <memory>
+
+#include <magic_enum.hpp>
 
 namespace nano
 {
@@ -88,7 +89,7 @@ void blocks_rolled_back_delete (void * context)
 
 nano::block_processor::context::context (std::shared_ptr<nano::block> block, nano::block_source source_a) :
 	source{ source_a },
-	handle{ rsnano::rsn_block_processor_context_create (block->get_handle(), static_cast<uint8_t> (source_a), new std::promise<nano::block_processor::context::result_t> ()) }
+	handle{ rsnano::rsn_block_processor_context_create (block->get_handle (), static_cast<uint8_t> (source_a), new std::promise<nano::block_processor::context::result_t> ()) }
 {
 	debug_assert (source != nano::block_source::unknown);
 }
@@ -114,9 +115,9 @@ nano::block_processor::context::~context ()
 	}
 }
 
-std::shared_ptr<nano::block> nano::block_processor::context::block() const
+std::shared_ptr<nano::block> nano::block_processor::context::get_block () const
 {
-	return nano::block_handle_to_block(rsnano::rsn_block_processor_context_block(handle));
+	return nano::block_handle_to_block (rsnano::rsn_block_processor_context_block (handle));
 }
 
 auto nano::block_processor::context::get_future () -> std::future<result_t>
@@ -140,7 +141,7 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	network_params (node_a.network_params),
 	flags (node_a.flags),
 	stats{ *node_a.stats },
-	logger{ *node_a.logger}
+	logger{ *node_a.logger }
 {
 	auto config_dto{ config.to_dto () };
 	handle = rsnano::rsn_block_processor_create (
@@ -254,7 +255,6 @@ std::optional<nano::process_return> nano::block_processor::add_blocking (std::sh
 	{
 		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::process_blocking_timeout);
 		logger.error (nano::log::type::blockprocessor, "Timeout processing block: {}", block->hash ().to_string ());
-
 	}
 	return std::nullopt;
 }

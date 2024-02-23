@@ -97,9 +97,9 @@ impl FrontierReqServerImpl {
     pub fn send_next(&mut self, server: Arc<Mutex<FrontierReqServerImpl>>) {
         if !self.current.is_zero() && self.count < self.request.count as usize {
             trace!(
-                account = %self.current, 
-                frontier = %self.frontier, 
-                socket = %self.connection.remote_endpoint(), 
+                account = %self.current,
+                frontier = %self.frontier,
+                socket = %self.connection.remote_endpoint(),
                 "Sending frontier");
 
             let mut send_buffer = Vec::with_capacity(64);

@@ -36,7 +36,7 @@ nano::bootstrap_ascending::service::service (nano::node_config & config_a, nano:
 			auto transaction = ledger.store.tx_begin_read ();
 			for (auto const & [result, context] : batch)
 			{
-				auto block{context.block()};
+				auto block{ context.get_block () };
 				debug_assert (block != nullptr);
 				inspect (*transaction, result, *block);
 			}

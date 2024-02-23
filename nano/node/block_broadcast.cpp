@@ -28,7 +28,7 @@ void nano::block_broadcast::connect (nano::block_processor & block_processor)
 
 void nano::block_broadcast::observe (nano::block_processor::context const & context)
 {
-	auto const block = context.block ();
+	auto const block = context.get_block ();
 	if (context.source == nano::block_source::local)
 	{
 		// Block created on this node

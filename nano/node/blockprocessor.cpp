@@ -44,9 +44,9 @@ public:
 		rsnano::rsn_block_processor_lock_unlock (handle);
 	}
 
-	void push_back_forced (std::shared_ptr<nano::block> const & block, nano::block_processor::context context)
+	void push_back_forced (nano::block_processor::context context)
 	{
-		rsnano::rsn_block_processor_push_back_forced (handle, block->get_handle (), context.handle);
+		rsnano::rsn_block_processor_push_back_forced (handle, context.handle);
 	}
 
 	std::size_t blocks_size () const
@@ -86,9 +86,9 @@ void blocks_rolled_back_delete (void * context)
  * block_processor::context
  */
 
-nano::block_processor::context::context (nano::block_source source_a) :
+nano::block_processor::context::context (std::shared_ptr<nano::block> block, nano::block_source source_a) :
 	source{ source_a },
-	handle{ rsnano::rsn_block_processor_context_create (static_cast<uint8_t> (source_a), new std::promise<nano::block_processor::context::result_t> ()) }
+	handle{ rsnano::rsn_block_processor_context_create (block->get_handle(), static_cast<uint8_t> (source_a), new std::promise<nano::block_processor::context::result_t> ()) }
 {
 	debug_assert (source != nano::block_source::unknown);
 }
@@ -112,6 +112,11 @@ nano::block_processor::context::~context ()
 	{
 		rsnano::rsn_block_processor_context_destroy (handle);
 	}
+}
+
+std::shared_ptr<nano::block> nano::block_processor::context::block() const
+{
+	return nano::block_handle_to_block(rsnano::rsn_block_processor_context_block(handle));
 }
 
 auto nano::block_processor::context::get_future () -> std::future<result_t>
@@ -150,9 +155,9 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 
 	batch_processed.add ([this] (auto const & items) {
 		// For every batch item: notify the 'processed' observer.
-		for (auto const & [result, block, context] : items)
+		for (auto const & [result, context] : items)
 		{
-			block_processed.notify (result, block, context);
+			block_processed.notify (result, context);
 		}
 	});
 }
@@ -223,8 +228,8 @@ void nano::block_processor::add (std::shared_ptr<nano::block> const & block, blo
 	stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::process);
 	logger.debug (nano::log::type::blockprocessor, "Processing block (async): {} (source: {})", block->hash ().to_string (), to_string (source));
 
-	context ctx{ source };
-	rsnano::rsn_block_processor_add_impl (handle, block->get_handle (), ctx.handle);
+	context ctx{ block, source };
+	rsnano::rsn_block_processor_add_impl (handle, ctx.handle);
 }
 
 std::optional<nano::process_return> nano::block_processor::add_blocking (std::shared_ptr<nano::block> const & block, block_source const source)
@@ -232,9 +237,9 @@ std::optional<nano::process_return> nano::block_processor::add_blocking (std::sh
 	stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::process_blocking);
 	logger.debug (nano::log::type::blockprocessor, "Processing block (blocking): {} (source: {})", block->hash ().to_string (), to_string (source));
 
-	context ctx{ source };
+	context ctx{ block, source };
 	auto future = ctx.get_future ();
-	rsnano::rsn_block_processor_add_impl (handle, block->get_handle (), ctx.handle);
+	rsnano::rsn_block_processor_add_impl (handle, ctx.handle);
 
 	try
 	{
@@ -261,7 +266,7 @@ void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 
 	{
 		nano::block_processor_lock lock{ *this };
-		lock.push_back_forced (block_a, context{ block_source::forced });
+		lock.push_back_forced (context{ block_a, block_source::forced });
 	}
 	rsnano::rsn_block_processor_notify_all (handle);
 }
@@ -279,7 +284,7 @@ void nano::block_processor::process_blocks ()
 			auto processed = process_batch (lock);
 
 			// Set results for futures when not holding the lock
-			for (auto & [result, block, context] : processed)
+			for (auto & [result, context] : processed)
 			{
 				context.set_result (result);
 			}
@@ -329,11 +334,9 @@ auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) 
 	for (auto i = 0; i < size; ++i)
 	{
 		uint8_t result_code = 0;
-		rsnano::BlockProcessorContextHandle * ctx_handle{ nullptr };
-		auto block_handle = rsnano::rsn_process_batch_result_pop (result_handle, &result_code, &ctx_handle);
-		auto block = nano::block_handle_to_block (block_handle);
+		auto ctx_handle = rsnano::rsn_process_batch_result_pop (result_handle, &result_code);
 		nano::process_return ret{ static_cast<nano::process_result> (result_code) };
-		result.emplace_back (ret, block, nano::block_processor::context{ ctx_handle });
+		result.emplace_back (ret, nano::block_processor::context{ ctx_handle });
 	}
 	rsnano::rsn_process_batch_result_destroy (result_handle);
 	return result;

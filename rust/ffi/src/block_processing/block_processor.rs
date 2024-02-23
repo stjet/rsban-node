@@ -7,7 +7,7 @@ use crate::{
     NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
 use num_traits::FromPrimitive;
-use rsnano_core::{work::WorkThresholds, BlockEnum};
+use rsnano_core::work::WorkThresholds;
 use rsnano_ledger::ProcessResult;
 use rsnano_node::{
     block_processing::{
@@ -209,7 +209,6 @@ pub extern "C" fn rsn_block_processor_blocks_size(handle: &mut BlockProcessorLoc
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_push_back_forced(
     handle: &mut BlockProcessorLockHandle,
-    block: &BlockHandle,
     context: &mut BlockProcessorContextHandle,
 ) {
     handle
@@ -217,7 +216,7 @@ pub extern "C" fn rsn_block_processor_push_back_forced(
         .as_mut()
         .unwrap()
         .forced
-        .push_back((Arc::clone(&block), context.0.take().unwrap()))
+        .push_back(context.0.take().unwrap())
 }
 
 #[no_mangle]
@@ -228,10 +227,9 @@ pub extern "C" fn rsn_block_processor_forced_size(handle: &mut BlockProcessorLoc
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_add_impl(
     handle: &mut BlockProcessorHandle,
-    block: &BlockHandle,
     context: &mut BlockProcessorContextHandle,
 ) {
-    handle.add_impl(Arc::clone(&block), context.0.take().unwrap());
+    handle.add_impl(context.0.take().unwrap());
 }
 
 #[no_mangle]
@@ -239,7 +237,7 @@ pub extern "C" fn rsn_block_processor_set_flushing(handle: &mut BlockProcessorHa
     handle.flushing.store(value, Ordering::SeqCst);
 }
 
-pub struct ProcessBatchResult(VecDeque<(ProcessResult, Arc<BlockEnum>, BlockProcessorContext)>);
+pub struct ProcessBatchResult(VecDeque<(ProcessResult, BlockProcessorContext)>);
 
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_process_batch(
@@ -263,12 +261,10 @@ pub extern "C" fn rsn_process_batch_result_size(handle: &ProcessBatchResult) -> 
 pub extern "C" fn rsn_process_batch_result_pop(
     handle: &mut ProcessBatchResult,
     result: &mut u8,
-    context: &mut *mut BlockProcessorContextHandle,
-) -> *mut BlockHandle {
-    let (res, block, ctx) = handle.0.pop_front().unwrap();
+) -> *mut BlockProcessorContextHandle {
+    let (res, ctx) = handle.0.pop_front().unwrap();
     *result = res as u8;
-    *context = Box::into_raw(Box::new(BlockProcessorContextHandle(Some(ctx))));
-    Box::into_raw(Box::new(BlockHandle(block)))
+    Box::into_raw(Box::new(BlockProcessorContextHandle(Some(ctx))))
 }
 
 #[no_mangle]
@@ -286,11 +282,16 @@ pub struct BlockProcessorContextHandle(Option<BlockProcessorContext>);
 
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_context_create(
+    block: &BlockHandle,
     source: u8,
     promise: *mut c_void,
 ) -> *mut BlockProcessorContextHandle {
     Box::into_raw(Box::new(BlockProcessorContextHandle(Some(
-        BlockProcessorContext::new(FromPrimitive::from_u8(source).unwrap(), promise),
+        BlockProcessorContext::new(
+            Arc::clone(block),
+            FromPrimitive::from_u8(source).unwrap(),
+            promise,
+        ),
     ))))
 }
 
@@ -299,6 +300,13 @@ pub unsafe extern "C" fn rsn_block_processor_context_destroy(
     handle: *mut BlockProcessorContextHandle,
 ) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_context_block(
+    handle: &BlockProcessorContextHandle,
+) -> *mut BlockHandle {
+    BlockHandle::new(Arc::clone(&handle.0.as_ref().unwrap().block))
 }
 
 #[no_mangle]

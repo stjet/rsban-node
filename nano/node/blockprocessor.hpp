@@ -65,13 +65,14 @@ public: // Context
 	class context
 	{
 	public:
-		explicit context (block_source);
+		context (std::shared_ptr<block> block, block_source source);
 		explicit context (rsnano::BlockProcessorContextHandle * handle_a);
 		context (context const &) = delete;
 		context (context &&);
 		~context ();
 
 		block_source const source{};
+		std::shared_ptr<nano::block> block() const;
 
 	public:
 		using result_t = nano::process_return;
@@ -108,13 +109,13 @@ public:
 	rsnano::BlockProcessorHandle const * get_handle () const;
 
 public: // Events
-	using processed_t = std::tuple<nano::process_return, std::shared_ptr<nano::block>, context>;
+	using processed_t = std::tuple<nano::process_return, context>;
 	using processed_batch_t = std::deque<processed_t>;
 
 	void set_blocks_rolled_back_callback (std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> callback);
 
 	// The batch observer feeds the processed observer
-	nano::observer_set<nano::process_return const &, std::shared_ptr<nano::block> const &, context const &> block_processed;
+	nano::observer_set<nano::process_return const &, context const &> block_processed;
 	nano::observer_set<processed_batch_t const &> batch_processed;
 
 private:

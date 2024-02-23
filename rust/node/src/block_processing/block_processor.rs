@@ -56,14 +56,16 @@ impl From<BlockSource> for DetailType {
 }
 
 pub struct BlockProcessorContext {
+    pub block: Arc<BlockEnum>,
     pub source: BlockSource,
     pub arrival: Instant,
     pub promise: *mut c_void,
 }
 
 impl BlockProcessorContext {
-    pub fn new(source: BlockSource, promise: *mut c_void) -> Self {
+    pub fn new(block: Arc<BlockEnum>, source: BlockSource, promise: *mut c_void) -> Self {
         Self {
+            block,
             source,
             arrival: Instant::now(),
             promise,
@@ -183,11 +185,11 @@ impl BlockProcessor {
         }
     }
 
-    pub fn add_impl(&self, block: Arc<BlockEnum>, context: BlockProcessorContext) {
+    pub fn add_impl(&self, context: BlockProcessorContext) {
         assert_ne!(context.source, BlockSource::Forced);
         {
             let mut lock = self.mutex.lock().unwrap();
-            lock.blocks.push_back((block, context));
+            lock.blocks.push_back(context);
         }
         self.condition.notify_all();
     }
@@ -196,9 +198,7 @@ impl BlockProcessor {
         self.unchecked_map.trigger(hash_or_account);
     }
 
-    pub fn process_batch(
-        &self,
-    ) -> VecDeque<(ProcessResult, Arc<BlockEnum>, BlockProcessorContext)> {
+    pub fn process_batch(&self) -> VecDeque<(ProcessResult, BlockProcessorContext)> {
         let mut processed = VecDeque::new();
 
         let _scoped_write_guard = self.write_database_queue.wait(Writer::ProcessBatch);
@@ -219,20 +219,20 @@ impl BlockProcessor {
             && (!deadline_reached()
                 || number_of_blocks_processed < self.flags.block_processor_batch_size)
         {
-            let (block, context) = lock_a.next();
+            let context = lock_a.next();
             let force = context.source == BlockSource::Forced;
 
             drop(lock_a);
 
             if force {
                 number_of_forced_processed += 1;
-                self.rollback_competitor(&mut transaction, &block);
+                self.rollback_competitor(&mut transaction, &context.block);
             }
 
             number_of_blocks_processed += 1;
 
-            let result = self.process_one(&mut transaction, &block, &context);
-            processed.push_back((result, block, context));
+            let result = self.process_one(&mut transaction, &context);
+            processed.push_back((result, context));
 
             lock_a = self.mutex.lock().unwrap();
         }
@@ -253,9 +253,9 @@ impl BlockProcessor {
     pub fn process_one(
         &self,
         txn: &mut LmdbWriteTransaction,
-        block: &Arc<BlockEnum>,
         context: &BlockProcessorContext,
     ) -> ProcessResult {
+        let block = &context.block;
         let hash = block.hash();
         // this is undefined behaviour and should be fixed ASAP:
         let block_ptr = Arc::as_ptr(block) as *mut BlockEnum;
@@ -406,8 +406,8 @@ unsafe impl Send for BlockProcessor {}
 unsafe impl Sync for BlockProcessor {}
 
 pub struct BlockProcessorImpl {
-    pub blocks: VecDeque<(Arc<BlockEnum>, BlockProcessorContext)>,
-    pub forced: VecDeque<(Arc<BlockEnum>, BlockProcessorContext)>,
+    pub blocks: VecDeque<BlockProcessorContext>,
+    pub forced: VecDeque<BlockProcessorContext>,
     pub next_log: SystemTime,
     config: Arc<NodeConfig>,
 }
@@ -417,16 +417,16 @@ impl BlockProcessorImpl {
         return self.blocks.len() > 0 || self.forced.len() > 0;
     }
 
-    fn next(&mut self) -> (Arc<BlockEnum>, BlockProcessorContext) {
+    fn next(&mut self) -> BlockProcessorContext {
         debug_assert!(!self.blocks.is_empty() || !self.forced.is_empty()); // This should be checked before calling next
 
         if let Some(entry) = self.forced.pop_front() {
-            assert_eq!(entry.1.source, BlockSource::Forced);
+            assert_eq!(entry.source, BlockSource::Forced);
             return entry;
         }
 
         if let Some(entry) = self.blocks.pop_front() {
-            assert_ne!(entry.1.source, BlockSource::Forced);
+            assert_ne!(entry.source, BlockSource::Forced);
             return entry;
         }
 

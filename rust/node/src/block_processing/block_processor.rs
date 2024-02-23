@@ -420,12 +420,13 @@ impl BlockProcessorImpl {
     fn next(&mut self) -> (Arc<BlockEnum>, BlockProcessorContext) {
         debug_assert!(!self.blocks.is_empty() || !self.forced.is_empty()); // This should be checked before calling next
 
-        if let Some(entry) = self.blocks.pop_front() {
-            assert_ne!(entry.1.source, BlockSource::Forced);
-            return entry;
-        }
         if let Some(entry) = self.forced.pop_front() {
             assert_eq!(entry.1.source, BlockSource::Forced);
+            return entry;
+        }
+
+        if let Some(entry) = self.blocks.pop_front() {
+            assert_ne!(entry.1.source, BlockSource::Forced);
             return entry;
         }
 

@@ -53,7 +53,7 @@ enum class block_source
 	forced,
 };
 
-std::string_view to_string (nano::block_source);
+std::string_view to_string (block_source);
 
 /**
  * Processing blocks is a potentially long IO operation.

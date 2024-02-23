@@ -373,7 +373,7 @@ TEST (receivable_processor, confirm_insufficient_pos)
 				  .work (0)
 				  .build_shared ();
 	node1.work_generate_blocking (*block1);
-	ASSERT_EQ (nano::process_result::progress, node1.process (*block1).code);
+	ASSERT_EQ (nano::block_status::progress, node1.process (*block1));
 	{
 		auto tx{ node1.store.tx_begin_read () };
 		node1.scheduler.priority.activate (nano::dev::genesis_key.pub, *tx);
@@ -399,7 +399,7 @@ TEST (receivable_processor, confirm_sufficient_pos)
 				  .work (0)
 				  .build_shared ();
 	node1.work_generate_blocking (*block1);
-	ASSERT_EQ (nano::process_result::progress, node1.process (*block1).code);
+	ASSERT_EQ (nano::block_status::progress, node1.process (*block1));
 	{
 		auto tx{ node1.store.tx_begin_read () };
 		node1.scheduler.priority.activate (nano::dev::genesis_key.pub, *tx);

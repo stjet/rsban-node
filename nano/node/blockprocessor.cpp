@@ -233,7 +233,7 @@ void nano::block_processor::add (std::shared_ptr<nano::block> const & block, blo
 	rsnano::rsn_block_processor_add_impl (handle, ctx.handle);
 }
 
-std::optional<nano::process_return> nano::block_processor::add_blocking (std::shared_ptr<nano::block> const & block, block_source const source)
+std::optional<nano::block_status> nano::block_processor::add_blocking (std::shared_ptr<nano::block> const & block, block_source const source)
 {
 	stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::process_blocking);
 	logger.debug (nano::log::type::blockprocessor, "Processing block (blocking): {} (source: {})", block->hash ().to_string (), to_string (source));
@@ -335,8 +335,8 @@ auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) 
 	{
 		uint8_t result_code = 0;
 		auto ctx_handle = rsnano::rsn_process_batch_result_pop (result_handle, &result_code);
-		nano::process_return ret{ static_cast<nano::process_result> (result_code) };
-		result.emplace_back (ret, nano::block_processor::context{ ctx_handle });
+		auto status =  static_cast<nano::block_status> (result_code);
+		result.emplace_back (status, nano::block_processor::context{ ctx_handle });
 	}
 	rsnano::rsn_process_batch_result_destroy (result_handle);
 	return result;

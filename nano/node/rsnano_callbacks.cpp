@@ -567,7 +567,7 @@ void wait_latch (void * latch_ptr)
 
 void drop_block_processor_promise (void * promise_ptr)
 {
-	auto promise = static_cast<std::promise<nano::process_return> *> (promise_ptr);
+	auto promise = static_cast<std::promise<nano::block_status> *> (promise_ptr);
 	delete promise;
 }
 

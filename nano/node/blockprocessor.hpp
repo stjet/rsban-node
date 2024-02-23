@@ -75,7 +75,7 @@ public: // Context
 		std::shared_ptr<nano::block> get_block () const;
 
 	public:
-		using result_t = nano::process_return;
+		using result_t = nano::block_status;
 		std::future<result_t> get_future ();
 
 	private:
@@ -99,7 +99,7 @@ public:
 	bool half_full ();
 	void process_active (std::shared_ptr<nano::block> const & incoming);
 	void add (std::shared_ptr<nano::block> const &, block_source = block_source::live);
-	std::optional<nano::process_return> add_blocking (std::shared_ptr<nano::block> const & block, block_source);
+	std::optional<nano::block_status> add_blocking (std::shared_ptr<nano::block> const & block, block_source);
 	void force (std::shared_ptr<nano::block> const &);
 	bool have_blocks_ready (nano::block_processor_lock & lock_a);
 	bool have_blocks (nano::block_processor_lock & lock_a);
@@ -110,13 +110,13 @@ public:
 	rsnano::BlockProcessorHandle const * get_handle () const;
 
 public: // Events
-	using processed_t = std::tuple<nano::process_return, context>;
+	using processed_t = std::tuple<nano::block_status, context>;
 	using processed_batch_t = std::deque<processed_t>;
 
 	void set_blocks_rolled_back_callback (std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> callback);
 
 	// The batch observer feeds the processed observer
-	nano::observer_set<nano::process_return const &, context const &> block_processed;
+	nano::observer_set<nano::block_status const &, context const &> block_processed;
 	nano::observer_set<processed_batch_t const &> batch_processed;
 
 private:

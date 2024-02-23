@@ -35,7 +35,7 @@ public:
 	std::string mode_text ();
 	virtual bool process_block (std::shared_ptr<nano::block> const &, nano::account const &, uint64_t, nano::bulk_pull::count_t, bool, unsigned);
 	virtual void get_information (boost::property_tree::ptree &) = 0;
-	virtual void block_processed (nano::store::transaction const & tx, nano::process_return const & result, nano::block const & block);
+	virtual void block_processed (nano::store::transaction const & tx, nano::block_status const & result, nano::block const & block);
 	uint64_t total_blocks () const;
 	void total_blocks_inc ();
 	unsigned get_pulling () const;

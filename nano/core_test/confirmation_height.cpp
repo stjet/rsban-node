@@ -193,20 +193,20 @@ TEST (confirmation_height, multiple_accounts)
 
 	{
 		auto transaction = node->store.tx_begin_write ();
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send1).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send2).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send3).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send1));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send2));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send3));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *open1).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *open2).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *open3).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *open1));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *open2));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *open3));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send4).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send5).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send4));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send5));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *receive1).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send6).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *receive2).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *receive1));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send6));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *receive2));
 
 		// Check confirmation heights of all the accounts (except genesis) are uninitialized (0),
 		// as we have any just added them to the ledger and not processed any live transactions yet.
@@ -645,20 +645,20 @@ TEST (confirmation_height, send_receive_between_2_accounts)
 	// Unpocketed send
 	{
 		auto transaction = node->store.tx_begin_write ();
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send1).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *open1).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send1));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *open1));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send2).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *receive1).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send2));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *receive1));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send3).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send4).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send3));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send4));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *receive2).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *receive3).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *receive2));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *receive3));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send5).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send6).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send5));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send6));
 	}
 
 	add_callback_stats (*node);
@@ -762,14 +762,14 @@ TEST (confirmation_height, send_receive_self)
 				 .build ();
 	{
 		auto transaction = node->store.tx_begin_write ();
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send1).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *receive1).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send2).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send3).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send1));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *receive1));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send2));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send3));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *receive2).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *receive3).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send4).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *receive2));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *receive3));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send4));
 	}
 
 	add_callback_stats (*node);
@@ -985,30 +985,30 @@ TEST (confirmation_height, all_block_types)
 
 	{
 		auto transaction (store.tx_begin_write ());
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send1).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *open).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *state_open).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send1));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *open));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *state_open));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send2).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *state_receive).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send2));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *state_receive));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *state_send).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *receive).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *change).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *state_change).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *state_send));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *receive));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *change));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *state_change));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *epoch).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *epoch1).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *epoch));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *epoch1));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *state_send1).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *state_receive2).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *state_send1));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *state_receive2));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *state_send2).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *state_send3).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *state_send2));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *state_send3));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *state_send4).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *state_receive3).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *state_send4));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *state_receive3));
 	}
 
 	add_callback_stats (*node);
@@ -1072,7 +1072,7 @@ TEST (confirmation_height, conflict_rollback_cemented)
 				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				  .work (*system.work.generate (genesis_hash))
 				  .build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node1->process (*fork1a).code);
+	ASSERT_EQ (nano::block_status::progress, node1->process (*fork1a));
 	ASSERT_TRUE (nano::test::start_elections (system, *node1, { fork1a }, true));
 	ASSERT_TIMELY (5s, nano::test::confirmed (*node1, { fork1a }));
 
@@ -1127,6 +1127,7 @@ TEST (confirmation_height, observers)
 	ASSERT_EQ (2, node1->ledger.cache.cemented_count ());
 	ASSERT_EQ (0, node1->active.election_winner_details_size ());
 }
+
 namespace nano
 {
 TEST (confirmation_height, pending_observer_callbacks)
@@ -1162,8 +1163,8 @@ TEST (confirmation_height, pending_observer_callbacks)
 
 	{
 		auto transaction = node->store.tx_begin_write ();
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send1).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send1));
 	}
 
 	add_callback_stats (*node);
@@ -1203,7 +1204,7 @@ TEST (confirmation_height, callback_confirmed_history)
 				.build_shared ();
 	{
 		auto transaction = node->store.tx_begin_write ();
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send));
 	}
 
 	auto send1 = builder
@@ -1300,9 +1301,9 @@ TEST (confirmation_height, dependent_election)
 				 .build_shared ();
 	{
 		auto transaction = node->store.tx_begin_write ();
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send1).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send2).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send1));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send2));
 	}
 
 	add_callback_stats (*node);
@@ -1438,21 +1439,21 @@ TEST (confirmation_height, cemented_gap_below_receive)
 
 	{
 		auto transaction = node->store.tx_begin_write ();
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send1).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *dummy_send).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send1));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *dummy_send));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *open).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *receive1).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send2).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *open));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *receive1));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send2));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *receive2).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *dummy_send1).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *receive2));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *dummy_send1));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send3).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *dummy_send2).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send3));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *dummy_send2));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *open1).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *open1));
 	}
 
 	std::vector<nano::block_hash> observer_order;
@@ -1592,21 +1593,21 @@ TEST (confirmation_height, cemented_gap_below_no_cache)
 
 	{
 		auto transaction = node->store.tx_begin_write ();
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send1).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *dummy_send).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send1));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *dummy_send));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *open).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *receive1).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send2).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *open));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *receive1));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send2));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *receive2).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *dummy_send1).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *receive2));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *dummy_send1));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *send3).code);
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *dummy_send2).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *send3));
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *dummy_send2));
 
-		ASSERT_EQ (nano::process_result::progress, node->ledger.process (*transaction, *open1).code);
+		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, *open1));
 	}
 
 	// Force some blocks to be cemented so that the cached confirmed info variable is empty
@@ -1655,7 +1656,7 @@ TEST (confirmation_height, election_winner_details_clearing)
 					   .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 					   .work (*system.work.generate (latest))
 					   .build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node->process (*send1).code);
+	ASSERT_EQ (nano::block_status::progress, node->process (*send1));
 
 	auto const send2 = builder.make_block ()
 					   .previous (send1->hash ())
@@ -1664,7 +1665,7 @@ TEST (confirmation_height, election_winner_details_clearing)
 					   .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 					   .work (*system.work.generate (send1->hash ()))
 					   .build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node->process (*send2).code);
+	ASSERT_EQ (nano::block_status::progress, node->process (*send2));
 
 	auto const send3 = builder.make_block ()
 					   .previous (send2->hash ())
@@ -1673,7 +1674,7 @@ TEST (confirmation_height, election_winner_details_clearing)
 					   .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 					   .work (*system.work.generate (send2->hash ()))
 					   .build_shared ();
-	ASSERT_EQ (nano::process_result::progress, node->process (*send3).code);
+	ASSERT_EQ (nano::block_status::progress, node->process (*send3));
 
 	node->process_confirmed (nano::election_status{ send2 });
 	ASSERT_TIMELY (5s, node->block_confirmed (send2->hash ()));
@@ -1749,8 +1750,8 @@ TEST (confirmation_height, unbounded_block_cache_iteration)
 				 .build_shared ();
 	{
 		auto transaction (store->tx_begin_write ());
-		ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send).code);
-		ASSERT_EQ (nano::process_result::progress, ledger.process (*transaction, *send1).code);
+		ASSERT_EQ (nano::block_status::progress, ledger.process (*transaction, *send));
+		ASSERT_EQ (nano::block_status::progress, ledger.process (*transaction, *send1));
 	}
 
 	nano::confirmation_height_processor confirmation_height_processor (ledger, stats, write_database_queue, 10ms, initialized_latch);

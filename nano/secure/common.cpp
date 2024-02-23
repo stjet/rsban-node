@@ -988,7 +988,7 @@ void nano::generate_cache::enable_block_count (bool enable)
 	rsnano::rsn_generate_cache_set_account_count (handle, enable);
 }
 
-nano::stat::detail nano::to_stat_detail (nano::process_result process_result)
+nano::stat::detail nano::to_stat_detail (nano::block_status process_result)
 {
 	return static_cast<nano::stat::detail> (rsnano::rsn_process_result_into_detail (static_cast<uint8_t> (process_result)));
 }
@@ -1215,7 +1215,7 @@ void nano::election_status::set_election_status_type (nano::election_status_type
 	rsnano::rsn_election_status_set_election_status_type (handle, static_cast<uint8_t> (election_status_type));
 }
 
-std::string_view nano::to_string (nano::process_result process_result)
+std::string_view nano::to_string (nano::block_status code)
 {
-	return magic_enum::enum_name (process_result);
+	return magic_enum::enum_name (code);
 }

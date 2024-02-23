@@ -32,7 +32,7 @@ TEST (votes, check_signature)
 	node1.work_generate_blocking (*send1);
 	{
 		auto transaction (node1.store.tx_begin_write ());
-		ASSERT_EQ (nano::process_result::progress, node1.ledger.process (*transaction, *send1).code);
+		ASSERT_EQ (nano::block_status::progress, node1.ledger.process (*transaction, *send1));
 	}
 	node1.scheduler.priority.activate (nano::dev::genesis_key.pub, *node1.store.tx_begin_read ());
 	ASSERT_TIMELY (5s, node1.active.election (send1->qualified_root ()));
@@ -62,7 +62,7 @@ TEST (votes, add_one)
 				 .build_shared ();
 	node1.work_generate_blocking (*send1);
 	auto transaction (node1.store.tx_begin_write ());
-	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (*transaction, *send1).code);
+	ASSERT_EQ (nano::block_status::progress, node1.ledger.process (*transaction, *send1));
 	node1.start_election (send1);
 	ASSERT_TIMELY (5s, node1.active.election (send1->qualified_root ()));
 	auto election1 = node1.active.election (send1->qualified_root ());
@@ -104,7 +104,7 @@ TEST (votes, add_existing)
 										 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 										 .build ();
 	node1.work_generate_blocking (*send1);
-	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (*node1.store.tx_begin_write (), *send1).code);
+	ASSERT_EQ (nano::block_status::progress, node1.ledger.process (*node1.store.tx_begin_write (), *send1));
 	node1.scheduler.priority.activate (nano::dev::genesis_key.pub, *node1.store.tx_begin_read ());
 	ASSERT_TIMELY (5s, node1.active.election (send1->qualified_root ()));
 	auto election1 = node1.active.election (send1->qualified_root ());
@@ -163,7 +163,7 @@ TEST (votes, add_old)
 				 .build_shared ();
 	node1.work_generate_blocking (*send1);
 	auto transaction (node1.store.tx_begin_write ());
-	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (*transaction, *send1).code);
+	ASSERT_EQ (nano::block_status::progress, node1.ledger.process (*transaction, *send1));
 	node1.start_election (send1);
 	ASSERT_TIMELY (5s, node1.active.election (send1->qualified_root ()));
 	auto election1 = node1.active.election (send1->qualified_root ());
@@ -223,8 +223,8 @@ TEST (votes, DISABLED_add_old_different_account)
 				 .work (0)
 				 .build_shared ();
 	node1.work_generate_blocking (*send2);
-	ASSERT_EQ (nano::process_result::progress, node1.process (*send1).code);
-	ASSERT_EQ (nano::process_result::progress, node1.process (*send2).code);
+	ASSERT_EQ (nano::block_status::progress, node1.process (*send1));
+	ASSERT_EQ (nano::block_status::progress, node1.process (*send2));
 	ASSERT_TRUE (nano::test::start_elections (system, node1, { send1, send2 }));
 	auto election1 = node1.active.election (send1->qualified_root ());
 	ASSERT_NE (nullptr, election1);
@@ -270,7 +270,7 @@ TEST (votes, add_cooldown)
 				 .build_shared ();
 	node1.work_generate_blocking (*send1);
 	auto transaction (node1.store.tx_begin_write ());
-	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (*transaction, *send1).code);
+	ASSERT_EQ (nano::block_status::progress, node1.ledger.process (*transaction, *send1));
 	node1.start_election (send1);
 	ASSERT_TIMELY (5s, node1.active.election (send1->qualified_root ()));
 	auto election1 = node1.active.election (send1->qualified_root ());
@@ -312,8 +312,8 @@ TEST (ledger, epoch_open_pending)
 					  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 					  .work (*pool.generate (key1.pub))
 					  .build_shared ();
-	auto process_result = node1.ledger.process (*node1.store.tx_begin_write (), *epoch_open);
-	ASSERT_EQ (nano::process_result::gap_epoch_open_pending, process_result.code);
+	auto block_status = node1.ledger.process (*node1.store.tx_begin_write (), *epoch_open);
+	ASSERT_EQ (nano::block_status::gap_epoch_open_pending, block_status);
 	node1.block_processor.add (epoch_open);
 	// Waits for the block to get saved in the database
 	ASSERT_TIMELY_EQ (10s, 1, node1.unchecked.count ());
@@ -403,10 +403,10 @@ TEST (ledger, block_hash_account_conflict)
 	node1.work_generate_blocking (*receive1);
 	node1.work_generate_blocking (*send2);
 	node1.work_generate_blocking (*open_epoch1);
-	ASSERT_EQ (nano::process_result::progress, node1.process (*send1).code);
-	ASSERT_EQ (nano::process_result::progress, node1.process (*receive1).code);
-	ASSERT_EQ (nano::process_result::progress, node1.process (*send2).code);
-	ASSERT_EQ (nano::process_result::progress, node1.process (*open_epoch1).code);
+	ASSERT_EQ (nano::block_status::progress, node1.process (*send1));
+	ASSERT_EQ (nano::block_status::progress, node1.process (*receive1));
+	ASSERT_EQ (nano::block_status::progress, node1.process (*send2));
+	ASSERT_EQ (nano::block_status::progress, node1.process (*open_epoch1));
 	ASSERT_TRUE (nano::test::start_elections (system, node1, { send1, receive1, send2, open_epoch1 }));
 	auto election1 = node1.active.election (send1->qualified_root ());
 	ASSERT_NE (nullptr, election1);

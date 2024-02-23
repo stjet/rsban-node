@@ -110,6 +110,7 @@ enum class detail : uint8_t
 	// blockprocessor result
 	live,
 	bootstrap,
+	bootstrap_legacy,
 	unchecked,
 	local,
 	forced,

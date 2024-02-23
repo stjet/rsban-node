@@ -214,6 +214,7 @@ pub enum DetailType {
     // blockprocessor result
     Live,
     Bootstrap,
+    BootstrapLegacy,
     Unchecked,
     Local,
     Forced,

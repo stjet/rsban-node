@@ -139,7 +139,7 @@ impl BootstrapAttempt {
         {
             stop_pull = true;
         } else if let Some(p) = self.block_processor.upgrade() {
-            p.add(block, BlockSource::Live);
+            p.add(block, BlockSource::BootstrapLegacy);
         }
 
         stop_pull

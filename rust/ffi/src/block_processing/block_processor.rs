@@ -8,7 +8,7 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 use rsnano_core::work::WorkThresholds;
-use rsnano_ledger::ProcessResult;
+use rsnano_ledger::BlockStatus;
 use rsnano_node::{
     block_processing::{
         BlockProcessor, BlockProcessorContext, BlockProcessorImpl, BLOCKPROCESSOR_ADD_CALLBACK,
@@ -237,7 +237,7 @@ pub extern "C" fn rsn_block_processor_set_flushing(handle: &mut BlockProcessorHa
     handle.flushing.store(value, Ordering::SeqCst);
 }
 
-pub struct ProcessBatchResult(VecDeque<(ProcessResult, BlockProcessorContext)>);
+pub struct ProcessBatchResult(VecDeque<(BlockStatus, BlockProcessorContext)>);
 
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_process_batch(

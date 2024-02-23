@@ -10,8 +10,7 @@ mod validate_state_receive;
 mod validate_state_send;
 
 use crate::{
-    block_insertion::BlockInsertInstructions, ledger_constants::LEDGER_CONSTANTS_STUB,
-    ProcessResult,
+    block_insertion::BlockInsertInstructions, ledger_constants::LEDGER_CONSTANTS_STUB, BlockStatus,
 };
 use rsnano_core::{
     work::WORK_THRESHOLDS_STUB, Account, Amount, BlockEnum, Epoch, PendingInfo, TestAccountChain,
@@ -105,7 +104,7 @@ impl BlockValidationTest {
         self.block.as_ref().unwrap()
     }
 
-    pub fn assert_validation_fails_with(&self, expected: ProcessResult) {
+    pub fn assert_validation_fails_with(&self, expected: BlockStatus) {
         assert_eq!(self.validate(), Err(expected));
     }
 
@@ -113,7 +112,7 @@ impl BlockValidationTest {
         self.validate().expect("block should be valid!")
     }
 
-    fn validate(&self) -> Result<BlockInsertInstructions, ProcessResult> {
+    fn validate(&self) -> Result<BlockInsertInstructions, BlockStatus> {
         let block = self.block.as_ref().unwrap();
         let mut validator = create_test_validator(block, self.chain.account());
         if self.chain.height() > 0 {

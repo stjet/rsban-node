@@ -1,5 +1,5 @@
 use num::FromPrimitive;
-use rsnano_ledger::ProcessResult;
+use rsnano_ledger::BlockStatus;
 use rsnano_messages::MessageType;
 use rsnano_node::stats::{
     DetailType, Direction, FileWriter, JsonWriter, StatType, Stats, StatsConfig, StatsLogSink,
@@ -228,7 +228,7 @@ pub unsafe extern "C" fn rsn_stat_count(
 
 #[no_mangle]
 pub extern "C" fn rsn_process_result_into_detail(process_result: u8) -> u8 {
-    let pr: ProcessResult = FromPrimitive::from_u8(process_result).unwrap();
+    let pr: BlockStatus = FromPrimitive::from_u8(process_result).unwrap();
     let result: DetailType = pr.into();
     result as u8
 }

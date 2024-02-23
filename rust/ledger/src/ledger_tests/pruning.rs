@@ -1,6 +1,6 @@
 use crate::ledger_tests::helpers::upgrade_genesis_to_epoch_v1;
 use crate::ledger_tests::LedgerContext;
-use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, ProcessResult, DEV_GENESIS_HASH};
+use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, BlockStatus, DEV_GENESIS_HASH};
 use rsnano_core::{
     work::{WorkPool, STUB_WORK_POOL},
     Amount, BlockBuilder, BlockDetails, Epoch, PendingKey,
@@ -311,7 +311,7 @@ fn pruning_process_error() {
 
     // Attempt to process pruned block again
     let result = ctx.ledger.process(&mut txn, &mut send1).unwrap_err();
-    assert_eq!(result, ProcessResult::Old);
+    assert_eq!(result, BlockStatus::Old);
 
     // Attept to process new block after pruned
     let mut send2 = BlockBuilder::state()
@@ -323,7 +323,7 @@ fn pruning_process_error() {
         .work(STUB_WORK_POOL.generate_dev2(send1.hash().into()).unwrap())
         .build();
     let result = ctx.ledger.process(&mut txn, &mut send2).unwrap_err();
-    assert_eq!(result, ProcessResult::GapPrevious);
+    assert_eq!(result, BlockStatus::GapPrevious);
     assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 1);
     assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 2);
 }

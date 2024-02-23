@@ -8,30 +8,30 @@ mod stats_log_sink;
 mod ledger_stats;
 pub use ledger_stats::LedgerStats;
 
-use rsnano_ledger::ProcessResult;
+use rsnano_ledger::BlockStatus;
 use rsnano_messages::Message;
 pub use socket_stats::SocketStats;
 pub use stats::{stat_type_as_str, DetailType, Direction, StatType, Stats};
 pub use stats_config::StatsConfig;
 pub use stats_log_sink::{FileWriter, JsonWriter, StatsLogSink};
 
-impl From<ProcessResult> for DetailType {
-    fn from(value: ProcessResult) -> Self {
+impl From<BlockStatus> for DetailType {
+    fn from(value: BlockStatus) -> Self {
         match value {
-            ProcessResult::Progress => Self::Progress,
-            ProcessResult::BadSignature => Self::BadSignature,
-            ProcessResult::Old => Self::Old,
-            ProcessResult::NegativeSpend => Self::NegativeSpend,
-            ProcessResult::Fork => Self::Fork,
-            ProcessResult::Unreceivable => Self::Unreceivable,
-            ProcessResult::GapPrevious => Self::GapPrevious,
-            ProcessResult::GapSource => Self::GapSource,
-            ProcessResult::GapEpochOpenPending => Self::GapEpochOpenPending,
-            ProcessResult::OpenedBurnAccount => Self::OpenedBurnAccount,
-            ProcessResult::BalanceMismatch => Self::BalanceMismatch,
-            ProcessResult::RepresentativeMismatch => Self::RepresentativeMismatch,
-            ProcessResult::BlockPosition => Self::BlockPosition,
-            ProcessResult::InsufficientWork => Self::InsufficientWork,
+            BlockStatus::Progress => Self::Progress,
+            BlockStatus::BadSignature => Self::BadSignature,
+            BlockStatus::Old => Self::Old,
+            BlockStatus::NegativeSpend => Self::NegativeSpend,
+            BlockStatus::Fork => Self::Fork,
+            BlockStatus::Unreceivable => Self::Unreceivable,
+            BlockStatus::GapPrevious => Self::GapPrevious,
+            BlockStatus::GapSource => Self::GapSource,
+            BlockStatus::GapEpochOpenPending => Self::GapEpochOpenPending,
+            BlockStatus::OpenedBurnAccount => Self::OpenedBurnAccount,
+            BlockStatus::BalanceMismatch => Self::BalanceMismatch,
+            BlockStatus::RepresentativeMismatch => Self::RepresentativeMismatch,
+            BlockStatus::BlockPosition => Self::BlockPosition,
+            BlockStatus::InsufficientWork => Self::InsufficientWork,
         }
     }
 }

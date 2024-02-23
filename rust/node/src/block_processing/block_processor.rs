@@ -8,7 +8,7 @@ use rsnano_core::{
     work::{WorkThresholds, WORK_THRESHOLDS_STUB},
     BlockEnum, BlockType, Epoch, HashOrAccount, UncheckedInfo,
 };
-use rsnano_ledger::{Ledger, ProcessResult, WriteDatabaseQueue, Writer};
+use rsnano_ledger::{BlockStatus, Ledger, WriteDatabaseQueue, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
     collections::VecDeque,
@@ -198,7 +198,7 @@ impl BlockProcessor {
         self.unchecked_map.trigger(hash_or_account);
     }
 
-    pub fn process_batch(&self) -> VecDeque<(ProcessResult, BlockProcessorContext)> {
+    pub fn process_batch(&self) -> VecDeque<(BlockStatus, BlockProcessorContext)> {
         let mut processed = VecDeque::new();
 
         let _scoped_write_guard = self.write_database_queue.wait(Writer::ProcessBatch);
@@ -254,7 +254,7 @@ impl BlockProcessor {
         &self,
         txn: &mut LmdbWriteTransaction,
         context: &BlockProcessorContext,
-    ) -> ProcessResult {
+    ) -> BlockStatus {
         let block = &context.block;
         let hash = block.hash();
         // this is undefined behaviour and should be fixed ASAP:
@@ -262,7 +262,7 @@ impl BlockProcessor {
         let mutable_block = unsafe { &mut *block_ptr };
 
         let result = match self.ledger.process(txn, mutable_block) {
-            Ok(()) => ProcessResult::Progress,
+            Ok(()) => BlockStatus::Progress,
             Err(r) => r,
         };
 
@@ -276,7 +276,7 @@ impl BlockProcessor {
         trace!(?result, block = %block.hash(), source = ?context.source, "Block processed");
 
         match result {
-            ProcessResult::Progress => {
+            BlockStatus::Progress => {
                 self.queue_unchecked(&hash.into());
                 /* For send blocks check epoch open unchecked (gap pending).
                 For state blocks check only send subtype and only if block epoch is not last epoch.
@@ -291,7 +291,7 @@ impl BlockProcessor {
                     self.queue_unchecked(&block.destination_or_link().into());
                 }
             }
-            ProcessResult::GapPrevious => {
+            BlockStatus::GapPrevious => {
                 self.unchecked_map.put(
                     block.previous().into(),
                     UncheckedInfo::new(Arc::clone(block)),
@@ -299,7 +299,7 @@ impl BlockProcessor {
                 self.stats
                     .inc(StatType::Ledger, DetailType::GapPrevious, Direction::In);
             }
-            ProcessResult::GapSource => {
+            BlockStatus::GapSource => {
                 self.unchecked_map.put(
                     self.ledger.block_source(txn, block).into(),
                     UncheckedInfo::new(Arc::clone(block)),
@@ -307,7 +307,7 @@ impl BlockProcessor {
                 self.stats
                     .inc(StatType::Ledger, DetailType::GapSource, Direction::In);
             }
-            ProcessResult::GapEpochOpenPending => {
+            BlockStatus::GapEpochOpenPending => {
                 // Specific unchecked key starting with epoch open block account public key
                 self.unchecked_map.put(
                     block.account_calculated().into(),
@@ -316,22 +316,22 @@ impl BlockProcessor {
                 self.stats
                     .inc(StatType::Ledger, DetailType::GapSource, Direction::In);
             }
-            ProcessResult::Old => {
+            BlockStatus::Old => {
                 self.stats
                     .inc(StatType::Ledger, DetailType::Old, Direction::In);
             }
-            ProcessResult::BadSignature => {}
-            ProcessResult::NegativeSpend => {}
-            ProcessResult::Unreceivable => {}
-            ProcessResult::Fork => {
+            BlockStatus::BadSignature => {}
+            BlockStatus::NegativeSpend => {}
+            BlockStatus::Unreceivable => {}
+            BlockStatus::Fork => {
                 self.stats
                     .inc(StatType::Ledger, DetailType::Fork, Direction::In);
             }
-            ProcessResult::OpenedBurnAccount => {}
-            ProcessResult::BalanceMismatch => {}
-            ProcessResult::RepresentativeMismatch => {}
-            ProcessResult::BlockPosition => {}
-            ProcessResult::InsufficientWork => {}
+            BlockStatus::OpenedBurnAccount => {}
+            BlockStatus::BalanceMismatch => {}
+            BlockStatus::RepresentativeMismatch => {}
+            BlockStatus::BlockPosition => {}
+            BlockStatus::InsufficientWork => {}
         }
 
         result

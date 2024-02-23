@@ -6,7 +6,7 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, Epoch, Link, QualifiedRoot};
-use rsnano_ledger::{Ledger, ProcessResult};
+use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_node::stats::LedgerStats;
 use std::{ops::Deref, ptr::null_mut, sync::Arc};
 
@@ -649,8 +649,8 @@ pub struct ProcessReturnDto {
     pub code: u8,
 }
 
-impl From<ProcessResult> for ProcessReturnDto {
-    fn from(result: ProcessResult) -> Self {
+impl From<BlockStatus> for ProcessReturnDto {
+    fn from(result: BlockStatus) -> Self {
         Self { code: result as u8 }
     }
 }
@@ -666,7 +666,7 @@ pub unsafe extern "C" fn rsn_ledger_process(
     let block_ptr = Arc::as_ptr(&block) as *mut BlockEnum;
     let res = handle.0.process(txn.as_write_txn(), &mut *block_ptr);
     let res = match res {
-        Ok(()) => ProcessResult::Progress,
+        Ok(()) => BlockStatus::Progress,
         Err(res) => res,
     };
     (*result) = res.into();

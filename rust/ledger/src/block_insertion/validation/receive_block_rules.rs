@@ -1,32 +1,32 @@
 use super::BlockValidator;
-use crate::ProcessResult;
+use crate::BlockStatus;
 use rsnano_core::{BlockEnum, Epoch};
 
 impl<'a> BlockValidator<'a> {
-    pub fn ensure_pending_receive_is_correct(&self) -> Result<(), ProcessResult> {
+    pub fn ensure_pending_receive_is_correct(&self) -> Result<(), BlockStatus> {
         self.ensure_source_block_exists()?;
         self.ensure_receive_block_receives_pending_amount()?;
         self.ensure_legacy_source_is_epoch_0()
     }
 
-    fn ensure_source_block_exists(&self) -> Result<(), ProcessResult> {
+    fn ensure_source_block_exists(&self) -> Result<(), BlockStatus> {
         if self.is_receive() && !self.source_block_exists {
-            Err(ProcessResult::GapSource)
+            Err(BlockStatus::GapSource)
         } else {
             Ok(())
         }
     }
 
-    fn ensure_receive_block_receives_pending_amount(&self) -> Result<(), ProcessResult> {
+    fn ensure_receive_block_receives_pending_amount(&self) -> Result<(), BlockStatus> {
         if self.is_receive() {
             match &self.pending_receive_info {
                 Some(pending) => {
                     if self.amount_received() != pending.amount {
-                        return Err(ProcessResult::BalanceMismatch);
+                        return Err(BlockStatus::BalanceMismatch);
                     }
                 }
                 None => {
-                    return Err(ProcessResult::Unreceivable);
+                    return Err(BlockStatus::Unreceivable);
                 }
             };
         }
@@ -34,7 +34,7 @@ impl<'a> BlockValidator<'a> {
         Ok(())
     }
 
-    fn ensure_legacy_source_is_epoch_0(&self) -> Result<(), ProcessResult> {
+    fn ensure_legacy_source_is_epoch_0(&self) -> Result<(), BlockStatus> {
         let is_legacy_receive = matches!(
             self.block,
             BlockEnum::LegacyReceive(_) | BlockEnum::LegacyOpen(_)
@@ -48,7 +48,7 @@ impl<'a> BlockValidator<'a> {
                 .unwrap_or_default()
                 != Epoch::Epoch0
         {
-            Err(ProcessResult::Unreceivable)
+            Err(BlockStatus::Unreceivable)
         } else {
             Ok(())
         }

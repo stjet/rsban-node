@@ -1,5 +1,5 @@
 use super::BlockValidationTest;
-use crate::ProcessResult;
+use crate::BlockStatus;
 use rsnano_core::{AccountInfo, Amount, BlockDetails, Epoch};
 
 #[test]
@@ -20,14 +20,14 @@ fn updgrade_to_epoch_v1() {
 fn adding_epoch_twice_fails() {
     BlockValidationTest::for_epoch1_account()
         .block_to_validate(|chain| chain.new_epoch1_block().build())
-        .assert_validation_fails_with(ProcessResult::BlockPosition);
+        .assert_validation_fails_with(BlockStatus::BlockPosition);
 }
 
 #[test]
 fn adding_legacy_change_block_after_epoch1_fails() {
     BlockValidationTest::for_epoch1_account()
         .block_to_validate(|chain| chain.new_legacy_change_block().build())
-        .assert_validation_fails_with(ProcessResult::BlockPosition);
+        .assert_validation_fails_with(BlockStatus::BlockPosition);
 }
 
 #[test]
@@ -41,7 +41,7 @@ fn can_add_state_blocks_after_epoch1() {
 fn epoch_block_with_changed_representative_fails() {
     BlockValidationTest::for_epoch0_account()
         .block_to_validate(|chain| chain.new_epoch1_block().representative(999999).build())
-        .assert_validation_fails_with(ProcessResult::RepresentativeMismatch);
+        .assert_validation_fails_with(BlockStatus::RepresentativeMismatch);
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn cannot_use_legacy_open_block_if_sender_is_on_epoch1() {
     BlockValidationTest::for_unopened_account()
         .with_pending_receive(Amount::raw(10), Epoch::Epoch1)
         .block_to_validate(|chain| chain.new_legacy_open_block().build())
-        .assert_validation_fails_with(ProcessResult::Unreceivable);
+        .assert_validation_fails_with(BlockStatus::Unreceivable);
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn cannot_use_legacy_receive_block_after_epoch1_upgrade() {
     BlockValidationTest::for_epoch1_account()
         .with_pending_receive(Amount::raw(10), Epoch::Epoch0)
         .block_to_validate(|chain| chain.new_legacy_receive_block().build())
-        .assert_validation_fails_with(ProcessResult::BlockPosition);
+        .assert_validation_fails_with(BlockStatus::BlockPosition);
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn cannot_use_legacy_receive_block_after_sender_upgraded_to_epoch1() {
     BlockValidationTest::for_epoch0_account()
         .with_pending_receive(Amount::raw(10), Epoch::Epoch1)
         .block_to_validate(|chain| chain.new_legacy_receive_block().build())
-        .assert_validation_fails_with(ProcessResult::Unreceivable);
+        .assert_validation_fails_with(BlockStatus::Unreceivable);
 }
 
 #[test]
@@ -118,5 +118,5 @@ fn epoch_v1_fork() {
         .setup_account(|chain| {
             chain.add_state();
         })
-        .assert_validation_fails_with(ProcessResult::Fork);
+        .assert_validation_fails_with(BlockStatus::Fork);
 }

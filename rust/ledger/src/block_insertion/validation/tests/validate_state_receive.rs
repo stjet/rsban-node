@@ -1,4 +1,4 @@
-use crate::{block_insertion::validation::tests::BlockValidationTest, ProcessResult};
+use crate::{block_insertion::validation::tests::BlockValidationTest, BlockStatus};
 use rsnano_core::{AccountInfo, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, PendingKey};
 
 #[test]
@@ -49,7 +49,7 @@ fn fails_with_gap_source_if_send_block_not_found() {
         .with_pending_receive(Amount::raw(10), Epoch::Epoch0)
         .block_to_validate(|chain| chain.new_receive_block().amount_received(10).build())
         .source_block_is_missing()
-        .assert_validation_fails_with(ProcessResult::GapSource);
+        .assert_validation_fails_with(BlockStatus::GapSource);
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn fails_with_balance_mismatch_if_amount_is_wrong() {
     BlockValidationTest::for_epoch2_account()
         .with_pending_receive(Amount::raw(10), Epoch::Epoch0)
         .block_to_validate(|chain| chain.new_receive_block().amount_received(99999).build())
-        .assert_validation_fails_with(ProcessResult::BalanceMismatch);
+        .assert_validation_fails_with(BlockStatus::BalanceMismatch);
 }
 
 #[test]
@@ -65,12 +65,12 @@ fn fails_with_balance_mismatch_if_no_link_provided() {
     BlockValidationTest::for_epoch2_account()
         .with_pending_receive(Amount::raw(10), Epoch::Epoch0)
         .block_to_validate(|chain| chain.new_receive_block().link(0).build())
-        .assert_validation_fails_with(ProcessResult::BalanceMismatch);
+        .assert_validation_fails_with(BlockStatus::BalanceMismatch);
 }
 
 #[test]
 fn fails_with_unreceivable_if_receiving_from_wrong_account() {
     BlockValidationTest::for_epoch2_account()
         .block_to_validate(|chain| chain.new_receive_block().build())
-        .assert_validation_fails_with(ProcessResult::Unreceivable);
+        .assert_validation_fails_with(BlockStatus::Unreceivable);
 }

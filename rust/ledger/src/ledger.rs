@@ -38,7 +38,7 @@ pub struct UncementedInfo {
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
 #[repr(u8)]
-pub enum ProcessResult {
+pub enum BlockStatus {
     Progress,      // Hasn't been seen before, signed correctly
     BadSignature,  // Signature was bad, forged or transmission error
     Old,           // Already seen and was valid
@@ -938,7 +938,7 @@ impl<T: Environment + 'static> Ledger<T> {
         &self,
         txn: &mut LmdbWriteTransaction<T>,
         block: &mut BlockEnum,
-    ) -> Result<(), ProcessResult> {
+    ) -> Result<(), BlockStatus> {
         let validator = BlockValidatorFactory::new(self, txn, block).create_validator();
         let instructions = validator.validate()?;
         BlockInserter::new(self, txn, block, &instructions).insert();

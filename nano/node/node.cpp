@@ -1317,7 +1317,7 @@ nano::telemetry_data nano::node::local_telemetry () const
 	telemetry_data.set_minor_version (nano::get_minor_node_version ());
 	telemetry_data.set_patch_version (nano::get_patch_node_version ());
 	telemetry_data.set_pre_release_version (nano::get_pre_release_node_version ());
-	telemetry_data.set_maker (static_cast<std::underlying_type_t<telemetry_maker>> (ledger.pruning_enabled () ? telemetry_maker::nf_pruned_node : telemetry_maker::nf_node));
+	telemetry_data.set_maker (static_cast<std::underlying_type_t<telemetry_maker>> (telemetry_maker::rs_nano_node));
 	telemetry_data.set_timestamp (std::chrono::system_clock::now ());
 	telemetry_data.set_active_difficulty (default_difficulty (nano::work_version::work_1));
 	// Make sure this is the final operation!

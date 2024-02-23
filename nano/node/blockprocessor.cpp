@@ -342,9 +342,9 @@ auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) 
 	return result;
 }
 
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (block_processor & block_processor, std::string const & name)
+std::unique_ptr<nano::container_info_component> nano::block_processor::collect_container_info (std::string const & name)
 {
-	auto info_handle = rsnano::rsn_block_processor_collect_container_info (block_processor.handle, name.c_str ());
+	auto info_handle = rsnano::rsn_block_processor_collect_container_info (handle, name.c_str ());
 	return std::make_unique<nano::container_info_composite> (info_handle);
 }
 

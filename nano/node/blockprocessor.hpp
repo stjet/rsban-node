@@ -105,6 +105,7 @@ public:
 	bool have_blocks (nano::block_processor_lock & lock_a);
 	void process_blocks ();
 	bool flushing ();
+	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);
 
 	rsnano::BlockProcessorHandle const * get_handle () const;
 
@@ -139,6 +140,4 @@ private:
 	friend std::unique_ptr<container_info_component> collect_container_info (block_processor & block_processor, std::string const & name);
 	friend class block_processor_lock;
 };
-
-std::unique_ptr<nano::container_info_component> collect_container_info (block_processor & block_processor, std::string const & name);
 }

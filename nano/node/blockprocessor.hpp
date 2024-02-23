@@ -52,7 +52,6 @@ enum class block_source
 	forced,
 };
 
-
 /**
  * Processing blocks is a potentially long IO operation.
  * This class isolates block insertion from other operations like servicing network operations

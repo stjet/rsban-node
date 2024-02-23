@@ -93,8 +93,8 @@ nano::block_processor::context::context (nano::block_source source_a) :
 }
 
 nano::block_processor::context::context (rsnano::BlockProcessorContextHandle * handle_a) :
-	source{rsnano::rsn_block_processor_context_source(handle_a)},
-	handle{handle_a}
+	source{ rsnano::rsn_block_processor_context_source (handle_a) },
+	handle{ handle_a }
 {
 }
 
@@ -314,11 +314,11 @@ auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) 
 	for (auto i = 0; i < size; ++i)
 	{
 		uint8_t result_code = 0;
-		rsnano::BlockProcessorContextHandle * ctx_handle{nullptr};
+		rsnano::BlockProcessorContextHandle * ctx_handle{ nullptr };
 		auto block_handle = rsnano::rsn_process_batch_result_pop (result_handle, &result_code, &ctx_handle);
 		auto block = nano::block_handle_to_block (block_handle);
 		nano::process_return ret{ static_cast<nano::process_result> (result_code) };
-		result.emplace_back (ret, block, nano::block_processor::context{ctx_handle});
+		result.emplace_back (ret, block, nano::block_processor::context{ ctx_handle });
 	}
 	rsnano::rsn_process_batch_result_destroy (result_handle);
 	return result;
@@ -329,4 +329,3 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (bl
 	auto info_handle = rsnano::rsn_block_processor_collect_container_info (block_processor.handle, name.c_str ());
 	return std::make_unique<nano::container_info_composite> (info_handle);
 }
-

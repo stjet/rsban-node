@@ -373,7 +373,7 @@ void blockprocessor_add (void * handle_a, rsnano::BlockHandle * block_a, uint8_t
 {
 	auto processor = static_cast<nano::block_processor *> (handle_a);
 	auto block{ nano::block_handle_to_block (block_a) };
-	processor->add (block, static_cast<nano::block_processor::block_source> (source));
+	processor->add (block, static_cast<nano::block_source> (source));
 }
 
 void blockprocessor_process_active (void * handle_a, rsnano::BlockHandle * block_a)

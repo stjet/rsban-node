@@ -2923,7 +2923,7 @@ TEST (node, block_processor_reject_state)
 	send1->signature_set (sig);
 	ASSERT_FALSE (node.ledger.block_or_pruned_exists (send1->hash ()));
 	node.process_active (send1);
-	ASSERT_TIMELY_EQ (5s, 1, node.stats->count (nano::stat::type::blockprocessor, nano::stat::detail::bad_signature));
+	ASSERT_TIMELY_EQ (5s, 1, node.stats->count (nano::stat::type::blockprocessor_result, nano::stat::detail::bad_signature));
 	ASSERT_FALSE (node.ledger.block_or_pruned_exists (send1->hash ()));
 	auto send2 = builder.make_block ()
 				 .account (nano::dev::genesis_key.pub)

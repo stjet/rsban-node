@@ -53,6 +53,8 @@ enum class block_source
 	forced,
 };
 
+std::string_view to_string (nano::block_source);
+
 /**
  * Processing blocks is a potentially long IO operation.
  * This class isolates block insertion from other operations like servicing network operations
@@ -122,6 +124,7 @@ private:
 	bool active{ false };
 
 	nano::stats & stats;
+	nano::logger & logger;
 	nano::node_config & config; // already ported
 	nano::network_params & network_params; // already ported
 

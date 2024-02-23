@@ -267,9 +267,9 @@ impl BlockProcessor {
         };
 
         self.stats
-            .inc(StatType::Blockprocessor, result.into(), Direction::In);
+            .inc(StatType::BlockprocessorResult, result.into(), Direction::In);
         self.stats.inc(
-            StatType::BlockprocessorSources,
+            StatType::BlockprocessorSource,
             context.source.into(),
             Direction::In,
         );

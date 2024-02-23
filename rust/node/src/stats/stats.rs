@@ -129,7 +129,8 @@ pub enum StatType {
     VoteCache,
     Hinting,
     Blockprocessor,
-    BlockprocessorSources,
+    BlockprocessorSource,
+    BlockprocessorResult,
     BootstrapServer,
     Active,
     ActiveStarted,
@@ -211,7 +212,12 @@ pub enum DetailType {
     RepresentativeMismatch,
     BlockPosition,
 
-    // blockprocessor result
+    // blockprocessor
+    ProcessBlocking,
+    ProcessBlockingTimeout,
+    Force,
+
+    // block source
     Live,
     Bootstrap,
     BootstrapLegacy,

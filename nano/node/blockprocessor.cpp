@@ -11,6 +11,7 @@
 
 #include <boost/format.hpp>
 
+#include <magic_enum.hpp>
 #include <cstdint>
 #include <memory>
 
@@ -133,7 +134,8 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 	config (*node_a.config),
 	network_params (node_a.network_params),
 	flags (node_a.flags),
-	stats{ *node_a.stats }
+	stats{ *node_a.stats },
+	logger{ *node_a.logger}
 {
 	auto config_dto{ config.to_dto () };
 	handle = rsnano::rsn_block_processor_create (
@@ -217,12 +219,19 @@ void nano::block_processor::add (std::shared_ptr<nano::block> const & block, blo
 		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::insufficient_work);
 		return;
 	}
+
+	stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::process);
+	logger.debug (nano::log::type::blockprocessor, "Processing block (async): {} (source: {})", block->hash ().to_string (), to_string (source));
+
 	context ctx{ source };
 	rsnano::rsn_block_processor_add_impl (handle, block->get_handle (), ctx.handle);
 }
 
 std::optional<nano::process_return> nano::block_processor::add_blocking (std::shared_ptr<nano::block> const & block, block_source const source)
 {
+	stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::process_blocking);
+	logger.debug (nano::log::type::blockprocessor, "Processing block (blocking): {} (source: {})", block->hash ().to_string (), to_string (source));
+
 	context ctx{ source };
 	auto future = ctx.get_future ();
 	rsnano::rsn_block_processor_add_impl (handle, block->get_handle (), ctx.handle);
@@ -238,12 +247,18 @@ std::optional<nano::process_return> nano::block_processor::add_blocking (std::sh
 	}
 	catch (std::future_error const &)
 	{
+		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::process_blocking_timeout);
+		logger.error (nano::log::type::blockprocessor, "Timeout processing block: {}", block->hash ().to_string ());
+
 	}
 	return std::nullopt;
 }
 
 void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 {
+	stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::force);
+	logger.debug (nano::log::type::blockprocessor, "Forcing block: {}", block_a->hash ().to_string ());
+
 	{
 		nano::block_processor_lock lock{ *this };
 		lock.push_back_forced (block_a, context{ block_source::forced });
@@ -328,4 +343,9 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (bl
 {
 	auto info_handle = rsnano::rsn_block_processor_collect_container_info (block_processor.handle, name.c_str ());
 	return std::make_unique<nano::container_info_composite> (info_handle);
+}
+
+std::string_view nano::to_string (nano::block_source source)
+{
+	return magic_enum::enum_name (source);
 }

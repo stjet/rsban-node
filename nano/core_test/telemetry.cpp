@@ -410,31 +410,6 @@ TEST (telemetry, max_possible_size)
 	ASSERT_TIMELY_EQ (5s, 1, node_server->stats->count (nano::stat::type::message, nano::stat::detail::telemetry_ack, nano::stat::dir::in));
 }
 
-TEST (telemetry, maker_pruning)
-{
-	nano::test::system system;
-	nano::node_flags node_flags;
-	auto node_client = system.add_node (node_flags);
-	node_flags.set_enable_pruning (true);
-	nano::node_config config;
-	config.enable_voting = false;
-	node_flags.set_disable_ongoing_telemetry_requests (true);
-	auto node_server = system.add_node (config, node_flags);
-
-	nano::test::wait_peer_connections (system);
-
-	// Request telemetry metrics
-	auto channel = node_client->network->find_node_id (node_server->get_node_id ());
-	ASSERT_NE (nullptr, channel);
-
-	std::optional<nano::telemetry_data> telemetry_data;
-	ASSERT_TIMELY (5s, telemetry_data = node_client->telemetry->get_telemetry (channel->get_remote_endpoint ()));
-	ASSERT_EQ (node_server->get_node_id (), telemetry_data->get_node_id ());
-
-	// Ensure telemetry response indicates pruned node
-	ASSERT_EQ (nano::telemetry_maker::nf_pruned_node, static_cast<nano::telemetry_maker> (telemetry_data->get_maker ()));
-}
-
 TEST (telemetry, invalid_signature)
 {
 	nano::test::system system;

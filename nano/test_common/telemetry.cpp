@@ -22,7 +22,7 @@ void compare_telemetry_data_impl (const nano::telemetry_data & data_a, const nan
 	ASSERT_EQ (data_a.get_minor_version (), nano::get_minor_node_version ());
 	ASSERT_EQ (data_a.get_patch_version (), nano::get_patch_node_version ());
 	ASSERT_EQ (data_a.get_pre_release_version (), nano::get_pre_release_node_version ());
-	ASSERT_EQ (data_a.get_maker (), static_cast<std::underlying_type_t<nano::telemetry_maker>> (nano::telemetry_maker::nf_node));
+	ASSERT_EQ (data_a.get_maker (), static_cast<std::underlying_type_t<nano::telemetry_maker>> (nano::telemetry_maker::rs_nano_node));
 	ASSERT_GT (data_a.get_timestamp (), std::chrono::system_clock::now () - std::chrono::seconds (100));
 	ASSERT_EQ (data_a.get_active_difficulty (), data_b.get_active_difficulty ());
 	ASSERT_EQ (data_a.get_unknown_data (), std::vector<uint8_t>{});

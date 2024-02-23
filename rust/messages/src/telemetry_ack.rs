@@ -19,6 +19,8 @@ use std::time::{Duration, SystemTime};
 pub enum TelemetryMaker {
     NfNode = 0,
     NfPrunedNode = 1,
+    NanoNodeLight = 2,
+    RsNano = 3,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize)]
@@ -65,7 +67,7 @@ impl TelemetryData {
             minor_version: 0,
             patch_version: 0,
             pre_release_version: 0,
-            maker: TelemetryMaker::NfNode as u8,
+            maker: TelemetryMaker::RsNano as u8,
             timestamp: SystemTime::UNIX_EPOCH,
             active_difficulty: 0,
             unknown_data: Vec::new(),
@@ -79,7 +81,7 @@ impl TelemetryData {
         data.minor_version = 1;
         data.patch_version = 5;
         data.pre_release_version = 2;
-        data.maker = 1;
+        data.maker = TelemetryMaker::RsNano as u8;
         data.timestamp = SystemTime::UNIX_EPOCH + Duration::from_millis(100);
         data
     }

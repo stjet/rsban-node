@@ -8,6 +8,7 @@ mod bootstrap_server;
 mod bulk_pull_account_server;
 mod bulk_pull_client;
 mod bulk_pull_server;
+mod frontier_req_client;
 mod frontier_req_server;
 mod pulls_cache;
 mod request_response_visitor_factory;

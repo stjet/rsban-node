@@ -11,6 +11,7 @@ mod bulk_pull_client;
 mod bulk_pull_server;
 mod bulk_push_server;
 mod channel_tcp_wrapper;
+mod frontier_req_client;
 mod frontier_req_server;
 mod pulls_cache;
 
@@ -19,6 +20,7 @@ use std::sync::Arc;
 pub use bootstrap_attempt::*;
 pub use bootstrap_connections::*;
 pub use bootstrap_initiator::*;
+pub use frontier_req_client::*;
 pub use frontier_req_server::FrontierReqServer;
 
 pub use bootstrap_client::{

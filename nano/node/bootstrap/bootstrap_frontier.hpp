@@ -26,11 +26,17 @@ class frontier_req_client final : public std::enable_shared_from_this<nano::fron
 public:
 	explicit frontier_req_client (std::shared_ptr<nano::node> const &, std::shared_ptr<nano::bootstrap_client> const &, std::shared_ptr<nano::bootstrap_attempt_legacy> const &);
 	void run (nano::account const & start_account_a, uint32_t const frontiers_age_a, uint32_t const count_a);
+	bool get_result();
+	void set_result(bool value);
+
+private:
 	void receive_frontier ();
 	void received_frontier (boost::system::error_code const &, std::size_t);
 	bool bulk_push_available ();
 	void unsynced (nano::block_hash const &, nano::block_hash const &);
 	void next ();
+
+	std::promise<bool> promise;
 	std::weak_ptr<nano::node> node_weak;
 	std::shared_ptr<nano::bootstrap_client> connection;
 	std::weak_ptr<nano::bootstrap_attempt_legacy> attempt;
@@ -39,7 +45,6 @@ public:
 	unsigned count;
 	nano::account last_account{ std::numeric_limits<nano::uint256_t>::max () }; // Using last possible account stop further frontier requests
 	std::chrono::steady_clock::time_point start_time;
-	std::promise<bool> promise;
 	/** A very rough estimate of the cost of `bulk_push`ing missing blocks */
 	uint64_t bulk_push_cost;
 	std::deque<std::pair<nano::account, nano::block_hash>> accounts;

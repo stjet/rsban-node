@@ -17,6 +17,25 @@ constexpr unsigned nano::bootstrap_limits::bulk_push_cost_limit;
 
 constexpr std::size_t nano::frontier_req_client::size_frontier;
 
+bool nano::frontier_req_client::get_result()
+{
+	auto future = promise.get_future();
+	bool result;
+	try
+	{
+		result = future.get ();
+	}
+	catch (std::future_error &)
+	{
+		result = true;
+	}
+	return result;
+}
+
+void nano::frontier_req_client::set_result(bool value){
+	promise.set_value(value);
+}
+
 void nano::frontier_req_client::run (nano::account const & start_account_a, uint32_t const frontiers_age_a, uint32_t const count_a)
 {
 	auto node = node_weak.lock ();

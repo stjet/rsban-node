@@ -43,7 +43,7 @@ void nano::bootstrap_attempt_legacy::stop ()
 	{
 		try
 		{
-			i->promise.set_value (true);
+			i->set_result (true);
 		}
 		catch (std::future_error &)
 		{
@@ -144,16 +144,17 @@ bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::BootstrapAttemptL
 	if (connection_l && !get_stopped ())
 	{
 		endpoint_frontier_request = connection_l->get_tcp_endpoint ();
-		std::future<bool> future;
 		{
-			auto this_l = std::dynamic_pointer_cast<nano::bootstrap_attempt_legacy> (shared_from_this ());
-			auto client = std::make_shared<nano::frontier_req_client> (node, connection_l, this_l);
-			client->run (start_account, frontiers_age, node->config->bootstrap_frontier_request_count);
-			frontiers = client;
-			future = client->promise.get_future ();
+			std::shared_ptr<nano::frontier_req_client> client;
+			{
+				auto this_l = std::dynamic_pointer_cast<nano::bootstrap_attempt_legacy> (shared_from_this ());
+				client = std::make_shared<nano::frontier_req_client> (node, connection_l, this_l);
+				client->run (start_account, frontiers_age, node->config->bootstrap_frontier_request_count);
+				frontiers = client;
+			}
+			rsnano::rsn_bootstrap_attempt_unlock (*lock_a);
+			result = client->get_result();
 		}
-		rsnano::rsn_bootstrap_attempt_unlock (*lock_a);
-		result = consume_future (future); // This is out of scope of `client' so when the last reference via boost::asio::io_context is lost and the client is destroyed, the future throws an exception.
 		*lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 		if (result)
 		{

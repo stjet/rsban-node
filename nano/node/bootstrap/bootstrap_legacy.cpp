@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/bootstrap/bootstrap_bulk_push.hpp>
 #include <nano/node/bootstrap/bootstrap_frontier.hpp>
 #include <nano/node/bootstrap/bootstrap_legacy.hpp>
@@ -5,8 +7,29 @@
 
 #include <boost/format.hpp>
 
+namespace
+{
+rsnano::BootstrapAttemptHandle * create_legacy_handle (
+nano::bootstrap_attempt_legacy * this_l,
+std::shared_ptr<nano::node> const & node_a,
+uint64_t const incremental_id_a,
+std::string const & id_a,
+uint32_t const frontiers_age_a,
+nano::account const & start_account_a)
+{
+	return rsnano::rsn_bootstrap_attempt_legacy_create (
+	this_l,
+	node_a->websocket.server.get (),
+	node_a->block_processor.handle,
+	node_a->bootstrap_initiator.get_handle (),
+	node_a->ledger.handle,
+	id_a.c_str (),
+	incremental_id_a);
+}
+}
+
 nano::bootstrap_attempt_legacy::bootstrap_attempt_legacy (std::shared_ptr<nano::node> const & node_a, uint64_t const incremental_id_a, std::string const & id_a, uint32_t const frontiers_age_a, nano::account const & start_account_a) :
-	nano::bootstrap_attempt (node_a, nano::bootstrap_mode::legacy, incremental_id_a, id_a),
+	nano::bootstrap_attempt (create_legacy_handle (this, node_a, incremental_id_a, id_a, frontiers_age_a, start_account_a)),
 	node_weak (node_a),
 	frontiers_age (frontiers_age_a),
 	start_account (start_account_a)
@@ -153,7 +176,7 @@ bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::BootstrapAttemptL
 				frontiers = client;
 			}
 			rsnano::rsn_bootstrap_attempt_unlock (*lock_a);
-			result = client->get_result();
+			result = client->get_result ();
 		}
 		*lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 		if (result)

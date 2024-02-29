@@ -335,7 +335,7 @@ auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) 
 	{
 		uint8_t result_code = 0;
 		auto ctx_handle = rsnano::rsn_process_batch_result_pop (result_handle, &result_code);
-		auto status =  static_cast<nano::block_status> (result_code);
+		auto status = static_cast<nano::block_status> (result_code);
 		result.emplace_back (status, nano::block_processor::context{ ctx_handle });
 	}
 	rsnano::rsn_process_batch_result_destroy (result_handle);

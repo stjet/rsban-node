@@ -29,7 +29,7 @@ TEST (work, opencl)
 
 	// 0 threads, should add 1 for managing OpenCL
 	bool opencl_function_called = false;
-	nano::work_pool pool{ nano::dev::network_params.network, 0, std::chrono::nanoseconds (0), 
+	nano::work_pool pool{ nano::dev::network_params.network, 0, std::chrono::nanoseconds (0),
 		[&opencl, &opencl_function_called] (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, nano::work_ticket ticket_a) {
 			opencl_function_called = true;
 			return opencl->generate_work (version_a, root_a, difficulty_a);

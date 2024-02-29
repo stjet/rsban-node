@@ -13,6 +13,7 @@
 #include <nano/node/blockprocessor.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/bootstrap/bootstrap_lazy.hpp>
+#include <nano/node/bootstrap/bootstrap_legacy.hpp>
 #include <nano/node/node_observers.hpp>
 #include <nano/node/rsnano_callbacks.hpp>
 #include <nano/node/transport/tcp.hpp>
@@ -571,6 +572,26 @@ void drop_block_processor_promise (void * promise_ptr)
 	delete promise;
 }
 
+void legacy_add_frontier (void * cpp_handle, rsnano::PullInfoDto const * pull_dto)
+{
+	auto attempt = static_cast<nano::bootstrap_attempt_legacy *> (cpp_handle);
+	nano::pull_info pull;
+	pull.load_dto (*pull_dto);
+	attempt->add_frontier (pull);
+}
+
+void legacy_set_start_account (void * cpp_handle, uint8_t const * account)
+{
+	auto attempt = static_cast<nano::bootstrap_attempt_legacy *> (cpp_handle);
+	attempt->set_start_account (nano::account::from_bytes (account));
+}
+
+void legacy_add_bulk_push_target (void * cpp_handle, uint8_t const * head, uint8_t const * end)
+{
+	auto attempt = static_cast<nano::bootstrap_attempt_legacy *> (cpp_handle);
+	attempt->add_bulk_push_target (nano::block_hash::from_bytes (head), nano::block_hash::from_bytes (end));
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -642,6 +663,10 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_connections_populate_connections (populate_connections);
 	rsnano::rsn_callback_bootstrap_connections_add_pull (add_pull);
 	rsnano::rsn_callback_drop_block_processor_promise (drop_block_processor_promise);
+
+	rsnano::rsn_callback_bootstrap_attempt_legacy_add_frontier (legacy_add_frontier);
+	rsnano::rsn_callback_bootstrap_attempt_legacy_add_start_account (legacy_set_start_account);
+	rsnano::rsn_callback_bootstrap_attempt_legacy_add_bulk_push_target (legacy_add_bulk_push_target);
 
 	callbacks_set = true;
 }

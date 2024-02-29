@@ -1,8 +1,9 @@
-use super::{BootstrapAttemptLegacy, BootstrapClient};
+use super::{BootstrapClient, BootstrapConnections, BootstrapStrategy};
 use crate::{
-    bootstrap::bootstrap_limits,
+    bootstrap::{bootstrap_limits, BootstrapConnectionsExt, PullInfo},
     transport::{BufferDropPolicy, TrafficType},
     utils::ErrorCode,
+    NetworkParams,
 };
 use primitive_types::U256;
 use rsnano_core::{
@@ -13,10 +14,8 @@ use rsnano_ledger::Ledger;
 use rsnano_messages::{FrontierReq, Message};
 use std::{
     collections::VecDeque,
-    sync::{
-        mpsc::{Receiver, Sender},
-        Arc, Mutex, Weak,
-    },
+    ops::Deref,
+    sync::{Arc, Condvar, Mutex, Weak},
     time::Instant,
 };
 use tracing::debug;
@@ -24,10 +23,11 @@ use tracing::debug;
 pub struct FrontierReqClient {
     data: Mutex<FrontierReqClientData>,
     connection: Arc<BootstrapClient>,
+    connections: Arc<BootstrapConnections>,
     ledger: Arc<Ledger>,
-    attempt: Mutex<Option<Weak<BootstrapAttemptLegacy>>>,
-    tx: Sender<bool>,
-    rx: Receiver<bool>,
+    attempt: Option<Weak<BootstrapStrategy>>,
+    network_params: NetworkParams,
+    condition: Condvar,
 }
 
 struct FrontierReqClientData {
@@ -38,19 +38,65 @@ struct FrontierReqClientData {
     accounts: VecDeque<(Account, BlockHash)>,
     start_time: Instant,
     count: u32,
+    last_account: Account,
+    /// A very rough estimate of the cost of `bulk_push`ing missing blocks
+    bulk_push_cost: u64,
+    result: Option<bool>,
+}
+
+impl FrontierReqClientData {
+    fn bulk_push_available(&self) -> bool {
+        self.bulk_push_cost < bootstrap_limits::BULK_PUSH_COST_LIMIT
+            && self.frontiers_age == u32::MAX
+    }
+
+    fn next(&mut self, ledger: &Ledger) {
+        // Filling accounts deque to prevent often read transactions
+        if self.accounts.is_empty() {
+            let max_size = 128;
+            let txn = ledger.read_txn();
+            let mut it = ledger
+                .store
+                .account
+                .begin_account(&txn, &(self.current.number() + 1).into());
+
+            while let Some((account, info)) = it.current() {
+                if self.accounts.len() == max_size {
+                    break;
+                }
+                self.accounts.push_back((*account, info.head));
+                it.next();
+            }
+
+            /* If loop breaks before max_size, then accounts_end () is reached. Add empty record */
+            if self.accounts.len() != max_size {
+                self.accounts
+                    .push_back((Account::zero(), BlockHash::zero()));
+            }
+        }
+        // Retrieving accounts from deque
+        let (current, frontier) = self.accounts.pop_front().unwrap();
+        self.current = current;
+        self.frontier = frontier;
+    }
 }
 
 const SIZE_FRONTIER: usize = 32 + 32; // Account + BlockHash
 
 impl FrontierReqClient {
-    pub fn new(connection: Arc<BootstrapClient>, ledger: Arc<Ledger>) -> Self {
-        let (tx, rx) = std::sync::mpsc::channel();
+    pub fn new(
+        connection: Arc<BootstrapClient>,
+        ledger: Arc<Ledger>,
+        network_params: NetworkParams,
+        connections: Arc<BootstrapConnections>,
+    ) -> Self {
         Self {
             connection,
             ledger,
-            tx,
-            rx,
-            attempt: Mutex::new(None),
+            attempt: None,
+            network_params,
+            connections,
+            condition: Condvar::new(),
             data: Mutex::new(FrontierReqClientData {
                 current: Account::zero(),
                 frontier: BlockHash::zero(),
@@ -59,41 +105,54 @@ impl FrontierReqClient {
                 accounts: Default::default(),
                 start_time: Instant::now(),
                 count: 0,
+                bulk_push_cost: 0,
+                last_account: Account::MAX, // Using last possible account stop further frontier requests
+                result: None,
             }),
         }
     }
 
-    fn next(&self) {
-        let mut guard = self.data.lock().unwrap();
-        // Filling accounts deque to prevent often read transactions
-        if guard.accounts.is_empty() {
-            let max_size = 128;
-            let txn = self.ledger.read_txn();
-            let mut it = self
-                .ledger
-                .store
-                .account
-                .begin_account(&txn, &(guard.current.number() + 1).into());
+    pub fn set_attempt(&mut self, attempt: Arc<BootstrapStrategy>) {
+        self.attempt = Some(Arc::downgrade(&attempt));
+    }
 
-            while let Some((account, info)) = it.current() {
-                if guard.accounts.len() == max_size {
-                    break;
-                }
-                guard.accounts.push_back((*account, info.head));
-                it.next();
-            }
+    pub fn get_result(&self) -> bool {
+        let guard = self.data.lock().unwrap();
+        if let Some(result) = guard.result {
+            return result;
+        }
+        let guard = self
+            .condition
+            .wait_while(guard, |i| i.result.is_none())
+            .unwrap();
+        guard.result.unwrap()
+    }
 
-            /* If loop breaks before max_size, then accounts_end () is reached. Add empty record */
-            if guard.accounts.len() != max_size {
-                guard
-                    .accounts
-                    .push_back((Account::zero(), BlockHash::zero()));
+    pub fn set_result(&self, result: bool) {
+        {
+            let mut guard = self.data.lock().unwrap();
+            guard.result = Some(result);
+        }
+        self.condition.notify_all();
+    }
+
+    fn unsynced(&self, data: &mut FrontierReqClientData, head: BlockHash, end: BlockHash) {
+        let Some(attempt) = self.attempt.as_ref().unwrap().upgrade() else {
+            return;
+        };
+
+        let BootstrapStrategy::Legacy(legacy) = attempt.deref() else {
+            return;
+        };
+
+        if data.bulk_push_available() {
+            legacy.add_bulk_push_target(&head, &end);
+            if end.is_zero() {
+                data.bulk_push_cost += 2;
+            } else {
+                data.bulk_push_cost += 1;
             }
         }
-        // Retrieving accounts from deque
-        let (current, frontier) = guard.accounts.pop_front().unwrap();
-        guard.current = current;
-        guard.frontier = frontier;
     }
 }
 
@@ -120,12 +179,12 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
             guard.current = *start_account;
             guard.frontiers_age = frontiers_age;
             guard.count_limit = count;
+            guard.next(&self.ledger); // Load accounts from disk
         }
-        self.next(); // Load accounts from disk
         let this_l = Arc::clone(self);
         self.connection.send(
             &request,
-            Some(Box::new(move |ec, size| {
+            Some(Box::new(move |ec, _size| {
                 if ec.is_ok() {
                     this_l.receive_frontier();
                 } else {
@@ -154,9 +213,14 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
     }
 
     fn received_frontier(&self, ec: ErrorCode, size_a: usize) {
-        let Some(attempt) = self.attempt.lock().unwrap().as_ref().unwrap().upgrade() else {
+        let Some(attempt) = self.attempt.as_ref().unwrap().upgrade() else {
             return;
         };
+
+        let BootstrapStrategy::Legacy(legacy) = attempt.deref() else {
+            return;
+        };
+
         if ec.is_ok() {
             debug_assert_eq!(size_a, SIZE_FRONTIER);
             let buf = self.connection.receive_buffer();
@@ -187,11 +251,13 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
             {
                 debug!("Aborting frontier req because it was too slow: {} frontiers per second, last {}", blocks_per_sec, account.encode_account());
 
-                self.tx.send(true);
+                guard.result = Some(true);
+                drop(guard);
+                self.condition.notify_all();
                 return;
             }
 
-            if attempt.should_log() {
+            if legacy.attempt.should_log() {
                 debug!(
                     "Received {} frontiers from {}",
                     guard.count,
@@ -199,79 +265,95 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                 );
             }
 
-            if !account.is_zero() && guard.count <= count_limit {
-                //		last_account = account;
-                //		while (!current.is_zero () && current < account)
-                //		{
-                //			// We know about an account they don't.
-                //			unsynced (frontier, 0);
-                //			next ();
-                //		}
-                //		if (!current.is_zero ())
-                //		{
-                //			if (account == current)
-                //			{
-                //				if (latest == frontier)
-                //				{
-                //					// In sync
-                //				}
-                //				else
-                //				{
-                //					if (node->ledger.block_or_pruned_exists (latest))
-                //					{
-                //						// We know about a block they don't.
-                //						unsynced (frontier, latest);
-                //					}
-                //					else
-                //					{
-                //						attempt_l->add_frontier (nano::pull_info (account, latest, frontier, attempt_l->get_incremental_id (), 0, node->network_params.bootstrap.frontier_retry_limit));
-                //						// Either we're behind or there's a fork we differ on
-                //						// Either way, bulk pushing will probably not be effective
-                //						bulk_push_cost += 5;
-                //					}
-                //				}
-                //				next ();
-                //			}
-                //			else
-                //			{
-                //				debug_assert (account < current);
-                //				attempt_l->add_frontier (nano::pull_info (account, latest, nano::block_hash (0), attempt_l->get_incremental_id (), 0, node->network_params.bootstrap.frontier_retry_limit));
-                //			}
-                //		}
-                //		else
-                //		{
-                //			attempt_l->add_frontier (nano::pull_info (account, latest, nano::block_hash (0), attempt_l->get_incremental_id (), 0, node->network_params.bootstrap.frontier_retry_limit));
-                //		}
-                //		receive_frontier ();
+            if !account.is_zero() && guard.count <= guard.count_limit {
+                guard.last_account = account;
+                while !guard.current.is_zero() && guard.current < account {
+                    // We know about an account they don't.
+                    let frontier = guard.frontier;
+                    self.unsynced(&mut guard, frontier, BlockHash::zero());
+                    guard.next(&self.ledger);
+                }
+                if !guard.current.is_zero() {
+                    if account == guard.current {
+                        if latest == guard.frontier {
+                            // In sync
+                        } else {
+                            if self.ledger.block_or_pruned_exists(&latest) {
+                                // We know about a block they don't.
+                                let frontier = guard.frontier;
+                                self.unsynced(&mut guard, frontier, latest);
+                            } else {
+                                let pull = PullInfo {
+                                    account_or_head: account.into(),
+                                    head: latest,
+                                    head_original: latest,
+                                    end: guard.frontier,
+                                    count: 0,
+                                    attempts: 0,
+                                    processed: 0,
+                                    retry_limit: self.network_params.bootstrap.frontier_retry_limit,
+                                    bootstrap_id: legacy.attempt.incremental_id,
+                                };
+                                legacy.add_frontier(&pull);
+                                // Either we're behind or there's a fork we differ on
+                                // Either way, bulk pushing will probably not be effective
+                                guard.bulk_push_cost += 5;
+                            }
+                        }
+                        guard.next(&self.ledger);
+                    } else {
+                        debug_assert!(account < guard.current);
+                        let pull = PullInfo {
+                            account_or_head: account.into(),
+                            head: latest,
+                            head_original: latest,
+                            end: BlockHash::zero(),
+                            count: 0,
+                            attempts: 0,
+                            processed: 0,
+                            retry_limit: self.network_params.bootstrap.frontier_retry_limit,
+                            bootstrap_id: legacy.attempt.incremental_id,
+                        };
+                        legacy.add_frontier(&pull);
+                    }
+                } else {
+                    let pull = PullInfo {
+                        account_or_head: account.into(),
+                        head: latest,
+                        head_original: latest,
+                        end: BlockHash::zero(),
+                        count: 0,
+                        attempts: 0,
+                        processed: 0,
+                        retry_limit: self.network_params.bootstrap.frontier_retry_limit,
+                        bootstrap_id: legacy.attempt.incremental_id,
+                    };
+
+                    legacy.add_frontier(&pull);
+                }
+                self.receive_frontier();
             } else {
-                //		if (count <= count_limit)
-                //		{
-                //			while (!current.is_zero () && bulk_push_available ())
-                //			{
-                //				// We know about an account they don't.
-                //				unsynced (frontier, 0);
-                //				next ();
-                //			}
-                //			// Prevent new frontier_req requests
-                //			attempt_l->set_start_account (std::numeric_limits<nano::uint256_t>::max ());
-                //			node->logger->debug (nano::log::type::frontier_req_client, "Bulk push cost: {}", bulk_push_cost);
-                //		}
-                //		else
-                //		{
-                //			// Set last processed account as new start target
-                //			attempt_l->set_start_account (last_account);
-                //		}
-                //		node->bootstrap_initiator.connections->pool_connection (connection);
-                //		try
-                //		{
-                //			promise.set_value (false);
-                //		}
-                //		catch (std::future_error &)
-                //		{
-                //		}
+                if guard.count <= guard.count_limit {
+                    while !guard.current.is_zero() && guard.bulk_push_available() {
+                        // We know about an account they don't.
+                        let frontier = guard.frontier;
+                        self.unsynced(&mut guard, frontier, BlockHash::zero());
+                        guard.next(&self.ledger);
+                    }
+                    // Prevent new frontier_req requests
+                    legacy.set_start_account(Account::MAX);
+                    debug!("Bulk push cost: {}", guard.bulk_push_cost);
+                } else {
+                    // Set last processed account as new start target
+                    legacy.set_start_account(guard.last_account);
+                }
+                self.connections
+                    .pool_connection(Arc::clone(&self.connection), false, false);
+                guard.result = Some(false);
+                self.condition.notify_all();
             }
         } else {
-            //	node->logger->debug (nano::log::type::frontier_req_client, "Error while receiving frontier: {}", ec.message ());
+            debug!("Error while receiving frontier: {:?}", ec);
         }
     }
 }

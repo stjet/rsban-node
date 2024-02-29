@@ -50,6 +50,7 @@ pub mod bootstrap_limits {
     pub const BOOTSTRAP_MINIMUM_FRONTIER_BLOCKS_PER_SEC: f64 = 1000.0;
     pub const LAZY_BATCH_PULL_COUNT_RESIZE_BLOCKS_LIMIT: u64 = 4 * 1024 * 1024;
     pub const LAZY_BATCH_PULL_COUNT_RESIZE_RATIO: f64 = 2.0;
+    pub const BULK_PUSH_COST_LIMIT: u64 = 200;
 }
 
 #[derive(Clone, Copy, FromPrimitive, Debug, PartialEq, Eq)]
@@ -62,6 +63,7 @@ pub enum BootstrapMode {
 
 pub enum BootstrapStrategy {
     Lazy(BootstrapAttemptLazy),
+    Legacy(BootstrapAttemptLegacy),
     Other(BootstrapAttempt),
 }
 
@@ -70,13 +72,15 @@ impl BootstrapStrategy {
         match self {
             BootstrapStrategy::Other(i) => i,
             BootstrapStrategy::Lazy(i) => &i.attempt,
+            BootstrapStrategy::Legacy(i) => &i.attempt,
         }
     }
 
     pub fn run(&self) {
         match self {
             BootstrapStrategy::Lazy(i) => i.run(),
-            BootstrapStrategy::Other(i) => {}
+            BootstrapStrategy::Other(_) => {}
+            BootstrapStrategy::Legacy(_) => {}
         }
     }
 
@@ -91,6 +95,14 @@ impl BootstrapStrategy {
     ) -> bool {
         match self {
             BootstrapStrategy::Other(i) => i.process_block(
+                block,
+                known_account,
+                pull_blocks_processed,
+                max_blocks,
+                block_expected,
+                retry_limit,
+            ),
+            BootstrapStrategy::Legacy(i) => i.attempt.process_block(
                 block,
                 known_account,
                 pull_blocks_processed,

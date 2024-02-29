@@ -4,7 +4,7 @@ use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
-use primitive_types::U512;
+use primitive_types::{U256, U512};
 
 pub type Account = PublicKey;
 
@@ -44,6 +44,8 @@ impl Account {
         node_id.replace_range(0..4, "node");
         node_id
     }
+
+    pub const MAX: Self = Self::from_bytes([0xFF; 32]);
 }
 
 impl serde::Serialize for Account {

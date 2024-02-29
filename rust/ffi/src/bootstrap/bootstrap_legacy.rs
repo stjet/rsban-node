@@ -10,10 +10,11 @@ use crate::{
 use super::{
     bootstrap_attempt::BootstrapAttemptHandle, pulls_cache::PullInfoDto, BootstrapInitiatorHandle,
 };
+use rsnano_core::BlockHash;
 use rsnano_node::{
     bootstrap::{
         BootstrapAttemptLegacy, BootstrapStrategy, ADD_BULK_PUSH_TARGET, ADD_FRONTIER,
-        ADD_START_ACCOUNT,
+        ADD_START_ACCOUNT, REQUEST_BULK_PUSH_TARGET,
     },
     websocket::{Listener, NullListener},
 };
@@ -83,10 +84,37 @@ pub unsafe extern "C" fn rsn_callback_bootstrap_attempt_legacy_add_bulk_push_tar
     })
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_bootstrap_attempt_legacy_request_bulk_push_target(
+    callback: LegacyRequestBulkPushTargetCallback,
+) {
+    FFI_REQUEST_BULK_PUSH_TARGET = Some(callback);
+    REQUEST_BULK_PUSH_TARGET = Some(|cpp_handle| {
+        let mut head_bytes = [0_u8; 32];
+        let mut end_bytes = [0_u8; 32];
+        let is_empty = FFI_REQUEST_BULK_PUSH_TARGET.unwrap()(
+            cpp_handle,
+            head_bytes.as_mut_ptr(),
+            end_bytes.as_mut_ptr(),
+        );
+        if is_empty {
+            None
+        } else {
+            Some((
+                BlockHash::from_bytes(head_bytes),
+                BlockHash::from_bytes(end_bytes),
+            ))
+        }
+    })
+}
+
 pub type LegacyAddFrontierCallback = unsafe extern "C" fn(*mut c_void, *const PullInfoDto);
 pub type LegacyAddStartAccountCallback = unsafe extern "C" fn(*mut c_void, *const u8);
 pub type LegacyAddBulkPushTargetCallback = unsafe extern "C" fn(*mut c_void, *const u8, *const u8);
+pub type LegacyRequestBulkPushTargetCallback =
+    unsafe extern "C" fn(*mut c_void, *mut u8, *mut u8) -> bool;
 
 pub static mut FFI_ADD_FRONTIER: Option<LegacyAddFrontierCallback> = None;
 pub static mut FFI_ADD_START_ACCOUNT: Option<LegacyAddStartAccountCallback> = None;
 pub static mut FFI_ADD_BULK_PUSH_TARGET: Option<LegacyAddBulkPushTargetCallback> = None;
+pub static mut FFI_REQUEST_BULK_PUSH_TARGET: Option<LegacyRequestBulkPushTargetCallback> = None;

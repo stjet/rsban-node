@@ -1,14 +1,11 @@
+use super::{BootstrapAttempt, BootstrapInitiator, BootstrapMode, PullInfo};
+use crate::{block_processing::BlockProcessor, websocket::Listener};
+use rsnano_core::{Account, BlockHash};
+use rsnano_ledger::Ledger;
 use std::{
     ffi::c_void,
     sync::{Arc, Weak},
 };
-
-use rsnano_core::{Account, BlockHash};
-use rsnano_ledger::Ledger;
-
-use crate::{block_processing::BlockProcessor, websocket::Listener};
-
-use super::{BootstrapAttempt, BootstrapInitiator, BootstrapMode, PullInfo};
 
 pub struct BootstrapAttemptLegacy {
     cpp_handle: *mut c_void,
@@ -39,6 +36,12 @@ impl BootstrapAttemptLegacy {
         })
     }
 
+    pub fn request_bulk_push_target(&self) -> Option<(BlockHash, BlockHash)> {
+        unsafe {
+            REQUEST_BULK_PUSH_TARGET.expect("REQUEST_BULK_PUSH_TARGET missing")(self.cpp_handle)
+        }
+    }
+
     pub fn add_frontier(&self, pull_info: &PullInfo) {
         unsafe {
             ADD_FRONTIER.expect("ADD_FRONTIER missing")(self.cpp_handle, pull_info);
@@ -64,3 +67,5 @@ unsafe impl Sync for BootstrapAttemptLegacy {}
 pub static mut ADD_FRONTIER: Option<fn(*mut c_void, &PullInfo)> = None;
 pub static mut ADD_START_ACCOUNT: Option<fn(*mut c_void, Account)> = None;
 pub static mut ADD_BULK_PUSH_TARGET: Option<fn(*mut c_void, &BlockHash, &BlockHash)> = None;
+pub static mut REQUEST_BULK_PUSH_TARGET: Option<fn(*mut c_void) -> Option<(BlockHash, BlockHash)>> =
+    None;

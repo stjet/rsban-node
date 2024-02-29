@@ -25,6 +25,7 @@
 
 #include <iostream>
 #include <system_error>
+#include <utility>
 
 int32_t write_u8 (void * stream, const uint8_t value)
 {
@@ -592,6 +593,18 @@ void legacy_add_bulk_push_target (void * cpp_handle, uint8_t const * head, uint8
 	attempt->add_bulk_push_target (nano::block_hash::from_bytes (head), nano::block_hash::from_bytes (end));
 }
 
+bool legacy_request_bulk_push_target (void * cpp_handle, uint8_t * head, uint8_t * end)
+{
+	auto attempt = static_cast<nano::bootstrap_attempt_legacy *> (cpp_handle);
+	auto target = std::make_pair(nano::block_hash {0}, nano::block_hash{0});
+	bool empty = attempt->request_bulk_push_target (target);
+	if (!empty){
+		target.first.copy_bytes_to(head);
+		target.second.copy_bytes_to(end);
+	}
+	return empty;
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -667,6 +680,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_attempt_legacy_add_frontier (legacy_add_frontier);
 	rsnano::rsn_callback_bootstrap_attempt_legacy_add_start_account (legacy_set_start_account);
 	rsnano::rsn_callback_bootstrap_attempt_legacy_add_bulk_push_target (legacy_add_bulk_push_target);
+	rsnano::rsn_callback_bootstrap_attempt_legacy_request_bulk_push_target (legacy_request_bulk_push_target);
 
 	callbacks_set = true;
 }

@@ -20,6 +20,7 @@ use std::{
 };
 use tracing::debug;
 
+/// Client side of a frontier request. Created to send and listen for frontier sequences from the server.
 pub struct FrontierReqClient {
     data: Mutex<FrontierReqClientData>,
     connection: Arc<BootstrapClient>,

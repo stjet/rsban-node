@@ -96,7 +96,7 @@ rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_legacy::request_pus
 			push = client;
 		}
 		rsnano::rsn_bootstrap_attempt_unlock (lock_a);
-		error = client->get_result();
+		error = client->get_result ();
 		lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 	}
 	return lock_a;

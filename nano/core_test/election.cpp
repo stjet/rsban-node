@@ -6,6 +6,7 @@
 #include <nano/test_common/testutil.hpp>
 
 #include <gtest/gtest.h>
+
 #include <thread>
 
 using namespace std::chrono_literals;

@@ -25,8 +25,8 @@ public:
 	explicit bulk_push_client (std::shared_ptr<nano::node> const &, std::shared_ptr<nano::bootstrap_client> const &, std::shared_ptr<nano::bootstrap_attempt_legacy> const &);
 	~bulk_push_client ();
 	void start ();
-	bool get_result();
-	void set_result(bool value);
+	bool get_result ();
+	void set_result (bool value);
 	rsnano::BulkPushClientHandle * handle;
 };
 }

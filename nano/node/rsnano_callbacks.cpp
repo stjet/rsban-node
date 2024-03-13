@@ -596,11 +596,12 @@ void legacy_add_bulk_push_target (void * cpp_handle, uint8_t const * head, uint8
 bool legacy_request_bulk_push_target (void * cpp_handle, uint8_t * head, uint8_t * end)
 {
 	auto attempt = static_cast<nano::bootstrap_attempt_legacy *> (cpp_handle);
-	auto target = std::make_pair(nano::block_hash {0}, nano::block_hash{0});
+	auto target = std::make_pair (nano::block_hash{ 0 }, nano::block_hash{ 0 });
 	bool empty = attempt->request_bulk_push_target (target);
-	if (!empty){
-		target.first.copy_bytes_to(head);
-		target.second.copy_bytes_to(end);
+	if (!empty)
+	{
+		target.first.copy_bytes_to (head);
+		target.second.copy_bytes_to (end);
 	}
 	return empty;
 }

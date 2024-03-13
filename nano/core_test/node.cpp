@@ -1224,47 +1224,47 @@ TEST (node, DISABLED_broadcast_elected)
 		auto transaction1 (node1->store.tx_begin_write ());
 		auto transaction2 (node2->store.tx_begin_write ());
 		auto fund_big = builder.send ()
-						 .previous (nano::dev::genesis->hash ())
-						 .destination (rep_big.pub)
-						 .balance (nano::Gxrb_ratio * 5)
-						 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-						 .work (*system.work.generate (nano::dev::genesis->hash ()))
-						 .build ();
+						.previous (nano::dev::genesis->hash ())
+						.destination (rep_big.pub)
+						.balance (nano::Gxrb_ratio * 5)
+						.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
+						.work (*system.work.generate (nano::dev::genesis->hash ()))
+						.build ();
 		auto open_big = builder.open ()
-						 .source (fund_big->hash ())
-						 .representative (rep_big.pub)
-						 .account (rep_big.pub)
-						 .sign (rep_big.prv, rep_big.pub)
-						 .work (*system.work.generate (rep_big.pub))
-						 .build ();
+						.source (fund_big->hash ())
+						.representative (rep_big.pub)
+						.account (rep_big.pub)
+						.sign (rep_big.prv, rep_big.pub)
+						.work (*system.work.generate (rep_big.pub))
+						.build ();
 		auto fund_small = builder.send ()
-						   .previous (fund_big->hash ())
-						   .destination (rep_small.pub)
-						   .balance (nano::Gxrb_ratio * 2)
-						   .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-						   .work (*system.work.generate (fund_big->hash ()))
-						   .build ();
+						  .previous (fund_big->hash ())
+						  .destination (rep_small.pub)
+						  .balance (nano::Gxrb_ratio * 2)
+						  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
+						  .work (*system.work.generate (fund_big->hash ()))
+						  .build ();
 		auto open_small = builder.open ()
-						   .source (fund_small->hash ())
-						   .representative (rep_small.pub)
-						   .account (rep_small.pub)
-						   .sign (rep_small.prv, rep_small.pub)
-						   .work (*system.work.generate (rep_small.pub))
-						   .build ();
+						  .source (fund_small->hash ())
+						  .representative (rep_small.pub)
+						  .account (rep_small.pub)
+						  .sign (rep_small.prv, rep_small.pub)
+						  .work (*system.work.generate (rep_small.pub))
+						  .build ();
 		auto fund_other = builder.send ()
-						   .previous (fund_small->hash ())
-						   .destination (rep_other.pub)
-						   .balance (nano::Gxrb_ratio)
-						   .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-						   .work (*system.work.generate (fund_small->hash ()))
-						   .build ();
+						  .previous (fund_small->hash ())
+						  .destination (rep_other.pub)
+						  .balance (nano::Gxrb_ratio)
+						  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
+						  .work (*system.work.generate (fund_small->hash ()))
+						  .build ();
 		auto open_other = builder.open ()
-						   .source (fund_other->hash ())
-						   .representative (rep_other.pub)
-						   .account (rep_other.pub)
-						   .sign (rep_other.prv, rep_other.pub)
-						   .work (*system.work.generate (rep_other.pub))
-						   .build ();
+						  .source (fund_other->hash ())
+						  .representative (rep_other.pub)
+						  .account (rep_other.pub)
+						  .sign (rep_other.prv, rep_other.pub)
+						  .work (*system.work.generate (rep_other.pub))
+						  .build ();
 		ASSERT_EQ (nano::block_status::progress, node0->ledger.process (*transaction0, fund_big));
 		ASSERT_EQ (nano::block_status::progress, node1->ledger.process (*transaction1, fund_big));
 		ASSERT_EQ (nano::block_status::progress, node2->ledger.process (*transaction2, fund_big));
@@ -1342,19 +1342,19 @@ TEST (node, rep_self_vote)
 	nano::keypair rep_big;
 	nano::block_builder builder;
 	auto fund_big = builder.send ()
-					 .previous (nano::dev::genesis->hash ())
-					 .destination (rep_big.pub)
-					 .balance (nano::uint128_t{ "0xb0000000000000000000000000000000" })
-					 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-					 .work (*system.work.generate (nano::dev::genesis->hash ()))
-					 .build ();
+					.previous (nano::dev::genesis->hash ())
+					.destination (rep_big.pub)
+					.balance (nano::uint128_t{ "0xb0000000000000000000000000000000" })
+					.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
+					.work (*system.work.generate (nano::dev::genesis->hash ()))
+					.build ();
 	auto open_big = builder.open ()
-					 .source (fund_big->hash ())
-					 .representative (rep_big.pub)
-					 .account (rep_big.pub)
-					 .sign (rep_big.prv, rep_big.pub)
-					 .work (*system.work.generate (rep_big.pub))
-					 .build ();
+					.source (fund_big->hash ())
+					.representative (rep_big.pub)
+					.account (rep_big.pub)
+					.sign (rep_big.prv, rep_big.pub)
+					.work (*system.work.generate (rep_big.pub))
+					.build ();
 	ASSERT_EQ (nano::block_status::progress, node0->process (fund_big));
 	ASSERT_EQ (nano::block_status::progress, node0->process (open_big));
 	// Confirm both blocks, allowing voting on the upcoming block
@@ -1481,26 +1481,26 @@ TEST (node, bootstrap_fork_open)
 	nano::keypair key0;
 	nano::block_builder builder;
 	auto send0 = builder.send ()
-				  .previous (nano::dev::genesis->hash ())
-				  .destination (key0.pub)
-				  .balance (nano::dev::constants.genesis_amount - 500)
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (*system.work.generate (nano::dev::genesis->hash ()))
-				  .build ();
+				 .previous (nano::dev::genesis->hash ())
+				 .destination (key0.pub)
+				 .balance (nano::dev::constants.genesis_amount - 500)
+				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
+				 .work (*system.work.generate (nano::dev::genesis->hash ()))
+				 .build ();
 	auto open0 = builder.open ()
-				  .source (send0->hash ())
-				  .representative (1)
-				  .account (key0.pub)
-				  .sign (key0.prv, key0.pub)
-				  .work (*system.work.generate (key0.pub))
-				  .build ();
+				 .source (send0->hash ())
+				 .representative (1)
+				 .account (key0.pub)
+				 .sign (key0.prv, key0.pub)
+				 .work (*system.work.generate (key0.pub))
+				 .build ();
 	auto open1 = builder.open ()
-				  .source (send0->hash ())
-				  .representative (2)
-				  .account (key0.pub)
-				  .sign (key0.prv, key0.pub)
-				  .work (*system.work.generate (key0.pub))
-				  .build ();
+				 .source (send0->hash ())
+				 .representative (2)
+				 .account (key0.pub)
+				 .sign (key0.prv, key0.pub)
+				 .work (*system.work.generate (key0.pub))
+				 .build ();
 	// Both know about send0
 	ASSERT_EQ (nano::block_status::progress, node0->process (send0));
 	ASSERT_EQ (nano::block_status::progress, node1->process (send0));

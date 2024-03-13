@@ -6,6 +6,7 @@
 #include <nano/test_common/testutil.hpp>
 
 #include <gtest/gtest.h>
+#include <thread>
 
 using namespace std::chrono_literals;
 
@@ -306,5 +307,5 @@ TEST (election, continuous_voting)
 	ASSERT_TIMELY (5s, node1.active.active (*send2));
 
 	// Ensure votes are broadcasted in continuous manner
-	ASSERT_TIMELY (5s, node1.stats->count (nano::stat::type::election, nano::stat::detail::generate_vote) >= 5);
+	ASSERT_TIMELY (5s, node1.stats->count (nano::stat::type::election, nano::stat::detail::broadcast_vote) >= 5);
 }

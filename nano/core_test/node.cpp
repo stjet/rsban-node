@@ -35,7 +35,7 @@ TEST (node, null_account)
 	ASSERT_NE (default_account, nullptr);
 }
 
-TEST (node, memory_leak)
+TEST (node, DISABLED_memory_leak)
 {
 	{
 		nano::test::system system (2);

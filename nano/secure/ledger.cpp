@@ -103,10 +103,10 @@ std::optional<nano::pending_info> nano::ledger::pending_info (store::transaction
 	return std::nullopt;
 }
 
-nano::block_status nano::ledger::process (store::write_transaction const & transaction_a, nano::block & block_a)
+nano::block_status nano::ledger::process (store::write_transaction const & transaction_a, std::shared_ptr<nano::block> block_a)
 {
 	rsnano::ProcessReturnDto result_dto;
-	rsnano::rsn_ledger_process (handle, transaction_a.get_rust_handle (), block_a.get_handle (), &result_dto);
+	rsnano::rsn_ledger_process (handle, transaction_a.get_rust_handle (), block_a->get_handle (), &result_dto);
 	return static_cast<nano::block_status> (result_dto.code);
 }
 

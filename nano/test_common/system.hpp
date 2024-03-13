@@ -38,7 +38,7 @@ namespace test
 		void generate_receive (nano::node &);
 		void generate_send_new (nano::node &, std::vector<nano::account> &);
 		void generate_send_existing (nano::node &, std::vector<nano::account> &);
-		std::unique_ptr<nano::state_block> upgrade_genesis_epoch (nano::node &, nano::epoch const);
+		std::shared_ptr<nano::state_block> upgrade_genesis_epoch (nano::node &, nano::epoch const);
 		nano::account account (size_t);
 		/** Generate work with difficulty between \p min_difficulty_a (inclusive) and \p max_difficulty_a (exclusive) */
 		uint64_t work_generate_limited (nano::block_hash const & root_a, uint64_t min_difficulty_a, uint64_t max_difficulty_a);
@@ -85,7 +85,7 @@ namespace test
 		boost::asio::executor_work_guard<boost::asio::io_context::executor_type> io_guard;
 	};
 
-	std::unique_ptr<nano::state_block> upgrade_epoch (nano::work_pool &, nano::ledger &, nano::epoch);
+	std::shared_ptr<nano::state_block> upgrade_epoch (nano::work_pool &, nano::ledger &, nano::epoch);
 	void cleanup_dev_directories_on_exit ();
 }
 }

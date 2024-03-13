@@ -58,7 +58,7 @@ namespace
 {
 bool opencl_wrapper (void * context_a, uint8_t version_a, const uint8_t * root_a, uint64_t difficulty_a, rsnano::WorkTicketHandle * ticket_a, uint64_t * work_a)
 {
-	auto callback = static_cast<std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const, uint64_t, nano::work_ticket)> *> (context_a);
+	auto callback = static_cast<nano::opencl_work_func_t *> (context_a);
 	auto version = static_cast<nano::work_version> (version_a);
 	nano::root root;
 	std::copy (root_a, root_a + 32, std::begin (root.bytes));
@@ -74,12 +74,12 @@ bool opencl_wrapper (void * context_a, uint8_t version_a, const uint8_t * root_a
 
 void delete_opencl_context (void * context_a)
 {
-	auto callback = static_cast<std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const, uint64_t, nano::work_ticket)> *> (context_a);
+	auto callback = static_cast<nano::opencl_work_func_t *> (context_a);
 	delete callback;
 }
 }
 
-nano::work_pool::work_pool (nano::network_constants & network_constants, unsigned max_threads_a, std::chrono::nanoseconds pow_rate_limiter_a, std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const, uint64_t, nano::work_ticket)> opencl_a)
+nano::work_pool::work_pool (nano::network_constants & network_constants, unsigned max_threads_a, std::chrono::nanoseconds pow_rate_limiter_a, nano::opencl_work_func_t opencl_a)
 {
 	auto nw_constants_dto = network_constants.to_dto ();
 	auto opencl_context = opencl_a ? new std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const, uint64_t, nano::work_ticket)> (opencl_a) : nullptr;

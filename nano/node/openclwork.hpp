@@ -22,12 +22,14 @@ namespace nano
 {
 extern bool opencl_loaded;
 class logger;
+
 class opencl_platform
 {
 public:
 	cl_platform_id platform;
 	std::vector<cl_device_id> devices;
 };
+
 class opencl_environment
 {
 public:
@@ -35,8 +37,10 @@ public:
 	void dump (std::ostream & stream);
 	std::vector<nano::opencl_platform> platforms;
 };
+
 class root;
 class work_pool;
+
 class opencl_work
 {
 public:

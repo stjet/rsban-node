@@ -346,33 +346,17 @@ impl<T: Environment + 'static> Ledger<T> {
     }
 
     /// Balance for account containing the given block at the time of the block.
-    /// Returns 0 if the block was not found
     pub fn balance(
         &self,
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
-    ) -> Amount {
+    ) -> Option<Amount> {
         if hash.is_zero() {
-            Amount::zero()
+            None
         } else {
             self.get_block(txn, hash)
                 .map(|block| block.balance_calculated())
-                .unwrap_or_default()
         }
-    }
-
-    /// Balance for account containing the given block at the time of the block.
-    /// Returns Err if the pruning is enabled and the block was not found.
-    pub fn balance_safe(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        hash: &BlockHash,
-    ) -> anyhow::Result<Amount> {
-        if self.pruning_enabled() && !hash.is_zero() && !self.store.block.exists(txn, hash) {
-            bail!("block not found");
-        }
-
-        Ok(self.balance(txn, hash))
     }
 
     /// Balance for account by account number
@@ -384,7 +368,7 @@ impl<T: Environment + 'static> Ledger<T> {
     ) -> Amount {
         if only_confirmed {
             match self.store.confirmation_height.get(txn, account) {
-                Some(info) => self.balance(txn, &info.frontier),
+                Some(info) => self.balance(txn, &info.frontier).unwrap_or_default(),
                 None => Amount::zero(),
             }
         } else {
@@ -483,7 +467,7 @@ impl<T: Environment + 'static> Ledger<T> {
             Some(sideband) => sideband.details.is_send,
             None => {
                 if !previous.is_zero() {
-                    block.balance() < self.balance(txn, &previous)
+                    block.balance() < self.balance(txn, &previous).unwrap_or_default()
                 } else {
                     false
                 }
@@ -595,37 +579,14 @@ impl<T: Environment + 'static> Ledger<T> {
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<Amount> {
-        self.get_block(txn, hash).map(|block| {
-            let block_balance = self.balance(txn, hash);
-            let previous_balance = self.balance(txn, &block.previous());
-            if block_balance > previous_balance {
-                block_balance - previous_balance
-            } else {
-                previous_balance - block_balance
-            }
-        })
-    }
-
-    /// Return absolute amount decrease or increase for block
-    pub fn amount_safe(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        hash: &BlockHash,
-    ) -> Option<Amount> {
-        self.get_block(txn, hash).and_then(|block| {
-            let block_balance = self.balance(txn, hash);
-            let previous_balance = self.balance_safe(txn, &block.previous());
-            match previous_balance {
-                Ok(previous) => {
-                    if block_balance > previous {
-                        Some(block_balance - previous)
-                    } else {
-                        Some(previous - block_balance)
-                    }
-                }
-                Err(_) => None,
-            }
-        })
+        let block = self.get_block(txn, hash)?;
+        let block_balance = self.balance(txn, hash)?;
+        let previous_balance = self.balance(txn, &block.previous())?;
+        if block_balance > previous_balance {
+            Some(block_balance - previous_balance)
+        } else {
+            Some(previous_balance - block_balance)
+        }
     }
 
     /// Return latest block for account

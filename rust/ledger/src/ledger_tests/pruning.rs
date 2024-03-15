@@ -405,13 +405,13 @@ fn pruning_safe_functions() {
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &send1.hash(), 1), 1);
 
     // Safe ledger actions
-    assert!(ctx.ledger.balance_safe(&txn, &send1.hash()).is_err());
+    assert!(ctx.ledger.balance(&txn, &send1.hash()).is_none());
     assert_eq!(
-        ctx.ledger.balance_safe(&txn, &send2.hash()).unwrap(),
+        ctx.ledger.balance(&txn, &send2.hash()).unwrap(),
         send2.balance()
     );
 
-    assert_eq!(ctx.ledger.amount_safe(&txn, &send2.hash()), None);
+    assert_eq!(ctx.ledger.amount(&txn, &send2.hash()), None);
     assert_eq!(ctx.ledger.account(&txn, &send1.hash()), None);
     assert_eq!(
         ctx.ledger.account(&txn, &send2.hash()),

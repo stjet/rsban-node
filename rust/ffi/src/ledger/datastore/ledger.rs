@@ -136,31 +136,16 @@ pub unsafe extern "C" fn rsn_ledger_get_cache_handle(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_balance(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    hash: *const u8,
-    result: *mut u8,
-) {
-    let balance = (*handle).balance((*txn).as_txn(), &BlockHash::from_ptr(hash));
-    balance.copy_bytes(result);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_balance_safe(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
+    handle: &LedgerHandle,
+    txn: &TransactionHandle,
     hash: *const u8,
     result: *mut u8,
 ) -> bool {
-    match (*handle).balance_safe((*txn).as_txn(), &BlockHash::from_ptr(hash)) {
-        Ok(balance) => {
-            balance.copy_bytes(result);
-            true
-        }
-        Err(_) => {
-            Amount::zero().copy_bytes(result);
-            false
-        }
+    if let Some(balance) = handle.balance(txn.as_txn(), &BlockHash::from_ptr(hash)) {
+        balance.copy_bytes(result);
+        true
+    } else {
+        false
     }
 }
 
@@ -299,37 +284,17 @@ pub unsafe extern "C" fn rsn_ledger_weight(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_account(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    hash: *const u8,
-    result: *mut u8,
-) {
-    let account = (*handle)
-        .0
-        .account((*txn).as_txn(), &BlockHash::from_ptr(hash))
-        .unwrap_or_default();
-    account.copy_bytes(result);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_account_safe(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
+    handle: &LedgerHandle,
+    txn: &TransactionHandle,
     hash: *const u8,
     result: *mut u8,
 ) -> bool {
-    let account = (*handle)
-        .0
-        .account((*txn).as_txn(), &BlockHash::from_ptr(hash));
-    match account {
-        Some(a) => {
-            a.copy_bytes(result);
+    match handle.account(txn.as_txn(), &BlockHash::from_ptr(hash)) {
+        Some(account) => {
+            account.copy_bytes(result);
             true
         }
-        None => {
-            Account::zero().copy_bytes(result);
-            false
-        }
+        None => false,
     }
 }
 
@@ -355,37 +320,17 @@ pub unsafe extern "C" fn rsn_ledger_account_height(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_amount(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    hash: *const u8,
-    result: *mut u8,
-) {
-    let amount = (*handle)
-        .0
-        .amount((*txn).as_txn(), &BlockHash::from_ptr(hash))
-        .unwrap_or_default();
-    amount.copy_bytes(result);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_amount_safe(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
+    handle: &LedgerHandle,
+    txn: &TransactionHandle,
     hash: *const u8,
     result: *mut u8,
 ) -> bool {
-    let amount = (*handle)
-        .0
-        .amount_safe((*txn).as_txn(), &BlockHash::from_ptr(hash));
-    match amount {
-        Some(a) => {
-            a.copy_bytes(result);
+    match handle.amount(txn.as_txn(), &BlockHash::from_ptr(hash)) {
+        Some(amount) => {
+            amount.copy_bytes(result);
             true
         }
-        None => {
-            Amount::zero().copy_bytes(result);
-            false
-        }
+        None => false,
     }
 }
 

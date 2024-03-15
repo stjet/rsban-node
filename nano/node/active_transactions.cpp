@@ -1012,14 +1012,13 @@ void nano::active_transactions::process_confirmed_data (store::transaction const
 	}
 	// Faster amount calculation
 	auto previous (block_a->previous ());
-	bool error (false);
-	auto previous_balance (node.ledger.balance_safe (transaction_a, previous, error));
+	auto previous_balance (node.ledger.balance (transaction_a, previous));
 	auto block_balance = node.ledger.balance (*block_a);
 	if (hash_a != node.ledger.constants.genesis->account ())
 	{
-		if (!error)
+		if (previous_balance)
 		{
-			amount_a = block_balance > previous_balance ? block_balance - previous_balance : previous_balance - block_balance;
+			amount_a = block_balance > previous_balance.value () ? block_balance - previous_balance.value () : previous_balance.value () - block_balance;
 		}
 		else
 		{

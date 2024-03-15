@@ -4,7 +4,7 @@ use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
-use primitive_types::{U256, U512};
+use primitive_types::U512;
 
 pub type Account = PublicKey;
 

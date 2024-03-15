@@ -20,6 +20,8 @@
 
 #include <boost/multiprecision/cpp_int.hpp>
 
+#include <optional>
+
 nano::ledger::ledger (nano::store::component & store_a, nano::stats & stat_a, nano::ledger_constants & constants, nano::generate_cache const & generate_cache_a) :
 	constants{ constants },
 	store{ store_a },
@@ -63,19 +65,18 @@ nano::uint128_t nano::ledger::balance (nano::block const & block)
 }
 
 // Balance for account containing hash
-nano::uint128_t nano::ledger::balance (store::transaction const & transaction, nano::block_hash const & hash) const
+std::optional<nano::uint128_t> nano::ledger::balance (store::transaction const & transaction, nano::block_hash const & hash) const
 {
 	nano::amount result;
-	rsnano::rsn_ledger_balance (handle, transaction.get_rust_handle (), hash.bytes.data (), result.bytes.data ());
-	return result.number ();
-}
-
-nano::uint128_t nano::ledger::balance_safe (store::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
-{
-	nano::amount result;
-	auto success = rsnano::rsn_ledger_balance_safe (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
-	error_a = !success;
-	return result.number ();
+	bool found = rsnano::rsn_ledger_balance (handle, transaction.get_rust_handle (), hash.bytes.data (), result.bytes.data ());
+	if (found)
+	{
+		return result.number ();
+	}
+	else
+	{
+		return std::nullopt;
+	}
 }
 
 std::shared_ptr<nano::block> nano::ledger::block (store::transaction const & transaction, nano::block_hash const & hash) const
@@ -199,7 +200,7 @@ bool nano::ledger::rollback (store::write_transaction const & transaction_a, nan
 	return rollback (transaction_a, block_a, rollback_list);
 }
 
-nano::account nano::ledger::account (nano::block const & block) const
+nano::account nano::ledger::account (nano::block const & block)
 {
 	debug_assert (block.has_sideband ());
 	nano::account result (block.account ());
@@ -211,28 +212,18 @@ nano::account nano::ledger::account (nano::block const & block) const
 	return result;
 }
 
-nano::account nano::ledger::account (store::transaction const & transaction, nano::block_hash const & hash) const
+std::optional<nano::account> nano::ledger::account (store::transaction const & transaction, nano::block_hash const & hash) const
 {
 	nano::account result;
-	rsnano::rsn_ledger_account (handle, transaction.get_rust_handle (), hash.bytes.data (), result.bytes.data ());
-	return result;
-}
-
-nano::account nano::ledger::account_safe (store::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
-{
-	nano::account result;
-	bool success = rsnano::rsn_ledger_account_safe (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
-	if (!success)
+	bool found = rsnano::rsn_ledger_account (handle, transaction.get_rust_handle (), hash.bytes.data (), result.bytes.data ());
+	if (found)
 	{
-		error_a = true;
+		return result;
 	}
-	return result;
-}
-
-nano::account nano::ledger::account_safe (store::transaction const & transaction, nano::block_hash const & hash) const
-{
-	bool ignored;
-	return account_safe (transaction, hash, ignored);
+	else
+	{
+		return std::nullopt;
+	}
 }
 
 std::optional<nano::account_info> nano::ledger::account_info (store::transaction const & transaction, nano::account const & account) const
@@ -240,22 +231,18 @@ std::optional<nano::account_info> nano::ledger::account_info (store::transaction
 	return store.account ().get (transaction, account);
 }
 
-nano::uint128_t nano::ledger::amount (store::transaction const & transaction_a, nano::block_hash const & hash_a)
+std::optional<nano::uint128_t> nano::ledger::amount (store::transaction const & transaction_a, nano::block_hash const & hash_a)
 {
 	nano::amount result;
-	rsnano::rsn_ledger_amount (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
-	return result.number ();
-}
-
-nano::uint128_t nano::ledger::amount_safe (store::transaction const & transaction_a, nano::block_hash const & hash_a, bool & error_a) const
-{
-	nano::amount result;
-	auto success = rsnano::rsn_ledger_amount_safe (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
-	if (!success)
+	bool found = rsnano::rsn_ledger_amount (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
+	if (found)
 	{
-		error_a = true;
+		return result.number ();
 	}
-	return result.number ();
+	else
+	{
+		return std::nullopt;
+	}
 }
 
 // Return latest block for account

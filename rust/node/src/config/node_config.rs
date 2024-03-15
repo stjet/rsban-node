@@ -233,7 +233,7 @@ impl NodeConfig {
             vote_minimum: Amount::raw(*GXRB_RATIO),
             vote_generator_delay_ms: 100,
             vote_generator_threshold: 3,
-            block_process_timeout_s: 15,
+            block_process_timeout_s: 300,
             unchecked_cutoff_time_s: 4 * 60 * 60, // 4 hours
             tcp_io_timeout_s: if network_params.network.is_dev_network() && !is_sanitizer_build() {
                 5

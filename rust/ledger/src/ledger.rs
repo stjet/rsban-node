@@ -876,23 +876,6 @@ impl<T: Environment + 'static> Ledger<T> {
         DependentBlocksFinder::new(self, txn).find_dependent_blocks(block)
     }
 
-    pub fn could_fit(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        block: &BlockEnum,
-    ) -> bool {
-        let (first, second) = self.dependent_blocks(txn, block);
-        self.is_dependency_satisfied(txn, &first) && self.is_dependency_satisfied(txn, &second)
-    }
-
-    fn is_dependency_satisfied(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        dependency: &BlockHash,
-    ) -> bool {
-        dependency.is_zero() || self.store.block.exists(txn, dependency)
-    }
-
     pub fn dependents_confirmed(
         &self,
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,

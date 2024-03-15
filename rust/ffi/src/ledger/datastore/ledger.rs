@@ -591,15 +591,6 @@ pub unsafe extern "C" fn rsn_ledger_dependent_blocks(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_ledger_could_fit(
-    handle: &LedgerHandle,
-    txn: &TransactionHandle,
-    block: &BlockHandle,
-) -> bool {
-    handle.0.could_fit(txn.as_txn(), &block)
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_ledger_dependents_confirmed(
     handle: &LedgerHandle,
     txn: &TransactionHandle,

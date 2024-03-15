@@ -40,8 +40,8 @@ public:
 	vote_processor_queue (vote_processor_queue const &) = delete;
 	~vote_processor_queue ();
 
-	std::size_t size ();
-	bool empty ();
+	std::size_t size () const;
+	bool empty () const;
 	/** Returns false if the vote was processed */
 	bool vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a);
 	void calculate_weights ();
@@ -69,14 +69,18 @@ public:
 	nano::rep_crawler & rep_crawler_a,
 	nano::network_params & network_params_a);
 
+	~vote_processor ();
+
+	void start ();
+	void stop ();
+
 	/** Note: node.active.mutex lock is required */
 	nano::vote_code vote_blocking (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &, bool = false);
 	void verify_votes (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> const &);
-	void stop ();
+
 	std::atomic<uint64_t> total_processed{ 0 };
 
-	void process_loop ();
-
+private: // Dependencies
 	nano::active_transactions & active;
 	nano::node_observers & observers;
 	nano::stats & stats;
@@ -84,10 +88,14 @@ public:
 	nano::logger & logger;
 	nano::rep_crawler & rep_crawler;
 	nano::network_params & network_params;
-	bool started;
+
+private:
+	void run ();
+
+private:
+	bool stopped{ false };
 	std::thread thread;
-	nano::condition_variable condition;
-	nano::mutex mutex{ mutex_identifier (mutexes::vote_processor) };
+	mutable nano::mutex mutex{ mutex_identifier (mutexes::vote_processor) };
 
 public:
 	nano::vote_processor_queue & queue;

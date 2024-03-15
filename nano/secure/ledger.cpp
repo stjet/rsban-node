@@ -264,11 +264,6 @@ nano::root nano::ledger::latest_root (store::transaction const & transaction_a, 
 	return latest_l;
 }
 
-bool nano::ledger::could_fit (store::transaction const & transaction_a, nano::block const & block_a) const
-{
-	return rsnano::rsn_ledger_could_fit (handle, transaction_a.get_rust_handle (), block_a.get_handle ());
-}
-
 bool nano::ledger::dependents_confirmed (store::transaction const & transaction_a, nano::block const & block_a) const
 {
 	return rsnano::rsn_ledger_dependents_confirmed (handle, transaction_a.get_rust_handle (), block_a.get_handle ());

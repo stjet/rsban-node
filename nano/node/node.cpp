@@ -772,7 +772,7 @@ nano::uint128_t nano::node::balance (nano::account const & account_a)
 std::shared_ptr<nano::block> nano::node::block (nano::block_hash const & hash_a)
 {
 	auto const transaction (store.tx_begin_read ());
-	return store.block ().get (*transaction, hash_a);
+	return ledger.block (*transaction, hash_a);
 }
 
 std::pair<nano::uint128_t, nano::uint128_t> nano::node::balance_pending (nano::account const & account_a, bool only_confirmed_a)
@@ -962,7 +962,7 @@ bool nano::node::collect_ledger_pruning_targets (std::deque<nano::block_hash> & 
 		uint64_t depth (0);
 		while (!hash.is_zero () && depth < max_depth_a)
 		{
-			auto block (store.block ().get (*transaction, hash));
+			auto block (ledger.block (*transaction, hash));
 			if (block != nullptr)
 			{
 				if (block->sideband ().timestamp () > cutoff_time_a || depth == 0)

@@ -95,9 +95,7 @@ impl<'a, T: Environment + 'static> RollbackPlannerFactory<'a, T> {
 
     fn load_block(&self, block_hash: &BlockHash) -> anyhow::Result<BlockEnum> {
         self.ledger
-            .store
-            .block
-            .get(self.txn, block_hash)
+            .get_block(self.txn, block_hash)
             .ok_or_else(|| anyhow!("block not found"))
     }
 

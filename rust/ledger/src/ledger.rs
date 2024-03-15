@@ -329,12 +329,20 @@ impl<T: Environment + 'static> Ledger<T> {
         self.block_or_pruned_exists_txn(&txn, block)
     }
 
+    pub fn block_exists(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        block: &BlockHash,
+    ) -> bool {
+        self.store.block.exists(txn, block)
+    }
+
     pub fn block_or_pruned_exists_txn(
         &self,
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> bool {
-        self.store.pruned.exists(txn, hash) || self.store.block.exists(txn, hash)
+        self.store.pruned.exists(txn, hash) || self.block_exists(txn, hash)
     }
 
     /// Balance for account containing the given block at the time of the block.
@@ -347,9 +355,7 @@ impl<T: Environment + 'static> Ledger<T> {
         if hash.is_zero() {
             Amount::zero()
         } else {
-            self.store
-                .block
-                .get(txn, hash)
+            self.get_block(txn, hash)
                 .map(|block| block.balance_calculated())
                 .unwrap_or_default()
         }
@@ -430,7 +436,7 @@ impl<T: Environment + 'static> Ledger<T> {
             return true;
         }
 
-        match self.store.block.get(txn, hash) {
+        match self.get_block(txn, hash) {
             Some(block) => {
                 let mut account = block.account();
                 let sideband = &block.sideband().unwrap();
@@ -448,7 +454,7 @@ impl<T: Environment + 'static> Ledger<T> {
 
     pub fn block_text(&self, hash: &BlockHash) -> anyhow::Result<String> {
         let txn = self.store.tx_begin_read();
-        match self.store.block.get(&txn, hash) {
+        match self.get_block(&txn, hash) {
             Some(block) => block.to_json(),
             None => Ok(String::new()),
         }
@@ -513,9 +519,7 @@ impl<T: Environment + 'static> Ledger<T> {
          * passed in exist in the database.  This is because it will try
          * to check account balances to determine if it is a send block.
          */
-        debug_assert!(
-            block.previous().is_zero() || self.store.block.exists(txn, &block.previous())
-        );
+        debug_assert!(block.previous().is_zero() || self.block_exists(txn, &block.previous()));
 
         // If block_a.source () is nonzero, then we have our source.
         // However, universal blocks will always return zero.
@@ -581,9 +585,7 @@ impl<T: Environment + 'static> Ledger<T> {
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<Account> {
-        self.store
-            .block
-            .get(txn, hash)
+        self.get_block(txn, hash)
             .map(|block| block.account_calculated())
     }
 
@@ -593,7 +595,7 @@ impl<T: Environment + 'static> Ledger<T> {
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<Amount> {
-        self.store.block.get(txn, hash).map(|block| {
+        self.get_block(txn, hash).map(|block| {
             let block_balance = self.balance(txn, hash);
             let previous_balance = self.balance(txn, &block.previous());
             if block_balance > previous_balance {
@@ -610,7 +612,7 @@ impl<T: Environment + 'static> Ledger<T> {
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<Amount> {
-        self.store.block.get(txn, hash).and_then(|block| {
+        self.get_block(txn, hash).and_then(|block| {
             let block_balance = self.balance(txn, hash);
             let previous_balance = self.balance_safe(txn, &block.previous());
             match previous_balance {
@@ -652,9 +654,7 @@ impl<T: Environment + 'static> Ledger<T> {
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Epoch {
-        self.store
-            .block
-            .get(txn, hash)
+        self.get_block(txn, hash)
             .map(|block| block.epoch())
             .unwrap_or(Epoch::Epoch0)
     }
@@ -664,9 +664,7 @@ impl<T: Environment + 'static> Ledger<T> {
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> u64 {
-        self.store
-            .block
-            .get(txn, hash)
+        self.get_block(txn, hash)
             .map(|block| block.sideband().unwrap().height)
             .unwrap_or_default()
     }
@@ -686,7 +684,7 @@ impl<T: Environment + 'static> Ledger<T> {
     ) -> Option<BlockEnum> {
         // get the cemented frontier
         let info = self.store.confirmation_height.get(txn, destination)?;
-        let mut possible_receive_block = self.store.block.get(txn, &info.frontier);
+        let mut possible_receive_block = self.get_block(txn, &info.frontier);
 
         // walk down the chain until the source field of a receive block matches the send block hash
         while let Some(current) = possible_receive_block {
@@ -706,7 +704,7 @@ impl<T: Environment + 'static> Ledger<T> {
                 return Some(current);
             }
 
-            possible_receive_block = self.store.block.get(txn, &current.previous());
+            possible_receive_block = self.get_block(txn, &current.previous());
         }
 
         None
@@ -758,7 +756,7 @@ impl<T: Environment + 'static> Ledger<T> {
             successor = self.store.block.successor(txn, &root.previous);
         }
 
-        successor.and_then(|hash| self.store.block.get(txn, &hash))
+        successor.and_then(|hash| self.get_block(txn, &hash))
     }
 
     pub fn pruning_action(
@@ -772,7 +770,7 @@ impl<T: Environment + 'static> Ledger<T> {
         let genesis_hash = self.constants.genesis.hash();
 
         while !hash.is_zero() && hash != genesis_hash {
-            if let Some(block) = self.store.block.get(txn, &hash) {
+            if let Some(block) = self.get_block(txn, &hash) {
                 self.store.block.del(txn, &hash);
                 self.store.pruned.put(txn, &hash);
                 hash = block.previous();
@@ -848,7 +846,7 @@ impl<T: Environment + 'static> Ledger<T> {
                 .get(txn, &section.account)
                 .map(|i| i.height)
                 .unwrap_or_default();
-            let block = self.store.block.get(txn, &section.top_hash).unwrap();
+            let block = self.get_block(txn, &section.top_hash).unwrap();
             debug_assert_eq!(
                 block.sideband().unwrap().height,
                 conf_height + section.block_count()

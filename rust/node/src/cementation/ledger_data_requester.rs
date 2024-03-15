@@ -69,7 +69,7 @@ impl<'a> LedgerDataRequester for LedgerAdapter<'a> {
         }
 
         self.block_read_count.set(read_count + 1);
-        self.ledger.store.block.get(self.txn, block_hash)
+        self.ledger.get_block(self.txn, block_hash)
     }
 
     fn get_confirmation_height(&self, account: &Account) -> Option<ConfirmationHeightInfo> {

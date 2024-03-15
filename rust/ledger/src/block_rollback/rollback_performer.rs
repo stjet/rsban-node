@@ -59,7 +59,7 @@ impl<'a, T: Environment> BlockRollbackPerformer<'a, T> {
     }
 
     fn block_exists(&self, block_hash: &BlockHash) -> bool {
-        self.ledger.store.block.exists(self.txn, block_hash)
+        self.ledger.block_exists(self.txn, block_hash)
     }
 
     fn load_account_head(&self, block: &BlockEnum) -> anyhow::Result<BlockEnum> {
@@ -75,9 +75,7 @@ impl<'a, T: Environment> BlockRollbackPerformer<'a, T> {
 
     fn load_block(&self, block_hash: &BlockHash) -> anyhow::Result<BlockEnum> {
         self.ledger
-            .store
-            .block
-            .get(self.txn, block_hash)
+            .get_block(self.txn, block_hash)
             .ok_or_else(|| anyhow!("block not found"))
     }
 }

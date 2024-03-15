@@ -1233,7 +1233,7 @@ std::shared_ptr<nano::block> nano::wallets::send_action (const std::shared_ptr<n
 			auto hash{ wallets.get_block_hash (error, *transaction, *id_a) };
 			if (!hash.is_zero ())
 			{
-				block = node.store.block ().get (*block_transaction, hash);
+				block = node.ledger.block (*block_transaction, hash);
 			}
 		}
 
@@ -1391,7 +1391,7 @@ bool nano::wallets::search_receivable (const std::shared_ptr<nano::wallet> & wal
 						}
 						else if (!node.confirmation_height_processor.is_processing_block (hash))
 						{
-							auto block (node.store.block ().get (*block_transaction, hash));
+							auto block (node.ledger.block (*block_transaction, hash));
 							if (block)
 							{
 								// Request confirmation for block which is not being processed yet

@@ -1397,17 +1397,17 @@ int main (int argc, char * const * argv)
 
 				auto hash (info.open_block ());
 				nano::block_hash calculated_hash (0);
-				auto block (node->store.block ().get (transaction, hash)); // Block data
+				auto block (node->ledger.block (transaction, hash)); // Block data
 				uint64_t height (0);
 				if (node->ledger.pruning_enabled () && confirmation_height_info.height () != 0)
 				{
 					hash = confirmation_height_info.frontier ();
-					block = node->store.block ().get (transaction, hash);
+					block = node->ledger.block (transaction, hash);
 					// Iteration until pruned block
 					bool pruned_block (false);
 					while (!pruned_block && !block->previous ().is_zero ())
 					{
-						auto previous_block (node->store.block ().get (transaction, block->previous ()));
+						auto previous_block (node->ledger.block (transaction, block->previous ()));
 						if (previous_block != nullptr)
 						{
 							hash = previous_block->hash ();
@@ -1577,7 +1577,7 @@ int main (int argc, char * const * argv)
 					// Retrieving block data
 					if (!hash.is_zero ())
 					{
-						block = node->store.block ().get (transaction, hash);
+						block = node->ledger.block (transaction, hash);
 					}
 				}
 				// Check if required block exists
@@ -1662,7 +1662,7 @@ int main (int argc, char * const * argv)
 					std::cout << boost::str (boost::format ("%1% pending blocks validated\n") % count);
 				}
 				// Check block existance
-				auto block (node->store.block ().get (transaction, key.hash));
+				auto block (node->ledger.block (transaction, key.hash));
 				bool pruned (false);
 				if (block == nullptr)
 				{
@@ -1679,7 +1679,7 @@ int main (int argc, char * const * argv)
 					bool previous_pruned = node->ledger.pruning_enabled () && node->store.pruned ().exists (transaction, block->previous ());
 					if (previous_pruned)
 					{
-						block = node->store.block ().get (transaction, key.hash);
+						block = node->ledger.block (transaction, key.hash);
 					}
 					if (auto state = dynamic_cast<nano::state_block *> (block.get ()))
 					{
@@ -1788,7 +1788,7 @@ int main (int argc, char * const * argv)
 					while (!hash.is_zero ())
 					{
 						// Retrieving block data
-						auto block (source_node->store.block ().get (*transaction, hash));
+						auto block (source_node->ledger.block (*transaction, hash));
 						if (block != nullptr)
 						{
 							++count;

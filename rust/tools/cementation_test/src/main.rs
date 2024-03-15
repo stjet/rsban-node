@@ -57,7 +57,7 @@ fn main() {
                     .unwrap_or_default();
 
                 if conf_height.height != info.block_count {
-                    let head = ledger.store.block.get(&txn, &info.head).unwrap();
+                    let head = ledger.get_block(&txn, &info.head).unwrap();
                     block_queue.push_back(head);
                     if block_queue.len() == 300_000 {
                         break;

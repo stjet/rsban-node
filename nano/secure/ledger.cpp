@@ -78,6 +78,16 @@ nano::uint128_t nano::ledger::balance_safe (store::transaction const & transacti
 	return result.number ();
 }
 
+std::shared_ptr<nano::block> nano::ledger::block (store::transaction const & transaction, nano::block_hash const & hash) const
+{
+	return store.block ().get (transaction, hash);
+}
+
+bool nano::ledger::block_exists (store::transaction const & transaction, nano::block_hash const & hash) const
+{
+	return store.block ().exists (transaction, hash);
+}
+
 // Balance for an account by account number
 nano::uint128_t nano::ledger::account_balance (store::transaction const & transaction_a, nano::account const & account_a, bool only_confirmed_a)
 {

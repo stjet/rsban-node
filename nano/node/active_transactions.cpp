@@ -474,7 +474,7 @@ void nano::active_transactions::process_confirmed (nano::election_status const &
 	std::shared_ptr<nano::block> block_l;
 	{
 		auto tx{ node.ledger.store.tx_begin_read () };
-		block_l = node.ledger.store.block ().get (*tx, hash);
+		block_l = node.ledger.block (*tx, hash);
 	}
 	if (block_l)
 	{

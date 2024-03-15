@@ -84,6 +84,7 @@ pub struct TcpServer {
     tcp_message_manager: Arc<TcpMessageManager>,
     allow_bootstrap: bool,
     notify_stop: Notify,
+    last_keepalive: Mutex<Option<Keepalive>>,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -134,6 +135,7 @@ impl TcpServer {
             tcp_message_manager,
             allow_bootstrap,
             notify_stop: Notify::new(),
+            last_keepalive: Mutex::new(None),
         }
     }
 
@@ -247,6 +249,14 @@ impl TcpServer {
             node_id: *self.remote_node_id.lock().unwrap(),
             socket: Some(Arc::clone(&self.socket)),
         });
+    }
+
+    pub fn set_last_keepalive(&self, keepalive: Option<Keepalive>) {
+        *self.last_keepalive.lock().unwrap() = keepalive;
+    }
+
+    pub fn get_last_keepalive(&self) -> Option<Keepalive> {
+        self.last_keepalive.lock().unwrap().clone()
     }
 }
 
@@ -672,8 +682,11 @@ impl RealtimeMessageVisitorImpl {
 impl MessageVisitor for RealtimeMessageVisitorImpl {
     fn received(&mut self, message: &Message) {
         match message {
-            Message::Keepalive(_)
-            | Message::Publish(_)
+            Message::Keepalive(keepalive) => {
+                self.process = true;
+                self.server.set_last_keepalive(Some(keepalive.clone()));
+            }
+            Message::Publish(_)
             | Message::AscPullAck(_)
             | Message::AscPullReq(_)
             | Message::ConfirmAck(_)

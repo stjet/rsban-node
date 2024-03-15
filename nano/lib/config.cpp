@@ -210,6 +210,7 @@ void nano::network_constants::read_dto (rsnano::NetworkConstantsDto const & dto)
 	aec_loop_interval_ms = dto.aec_loop_interval_ms;
 	cleanup_period = std::chrono::seconds (dto.cleanup_period_s);
 	keepalive_period = std::chrono::seconds (dto.keepalive_period_s);
+	merge_period = std::chrono::milliseconds (dto.merge_period_ms);
 	idle_timeout = std::chrono::seconds (dto.idle_timeout_s);
 	syn_cookie_cutoff = std::chrono::seconds (dto.sync_cookie_cutoff_s);
 	bootstrap_interval = std::chrono::seconds (dto.bootstrap_interval_s);
@@ -299,6 +300,7 @@ rsnano::NetworkConstantsDto nano::network_constants::to_dto () const
 	dto.aec_loop_interval_ms = aec_loop_interval_ms;
 	dto.cleanup_period_s = cleanup_period.count ();
 	dto.keepalive_period_s = keepalive_period.count ();
+	dto.merge_period_ms = merge_period.count ();
 	dto.idle_timeout_s = idle_timeout.count ();
 	dto.sync_cookie_cutoff_s = syn_cookie_cutoff.count ();
 	dto.bootstrap_interval_s = bootstrap_interval.count ();

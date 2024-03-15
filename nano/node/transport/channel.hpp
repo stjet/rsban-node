@@ -189,5 +189,4 @@ struct hash<std::reference_wrapper<::nano::transport::channel const>>
 		return hash (channel_a.get ());
 	}
 };
-
 }

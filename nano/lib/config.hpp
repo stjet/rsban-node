@@ -195,6 +195,8 @@ public:
 	std::chrono::seconds cleanup_period;
 	std::chrono::milliseconds cleanup_period_half () const;
 	std::chrono::seconds cleanup_cutoff () const;
+	/** How often to connect to other peers */
+	std::chrono::milliseconds merge_period;
 	/** How often to send keepalive messages */
 	std::chrono::seconds keepalive_period;
 	/** Default maximum idle time for a socket before it's automatically closed */

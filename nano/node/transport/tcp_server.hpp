@@ -76,6 +76,7 @@ public:
 	void start ();
 	void stop ();
 	void timeout ();
+	std::optional<nano::keepalive> get_last_keepalive () const;
 	bool is_stopped () const;
 	std::size_t unique_id () const;
 	void set_remote_node_id (nano::account account_a);

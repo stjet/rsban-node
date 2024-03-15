@@ -14,6 +14,7 @@
 
 #include <boost/format.hpp>
 
+#include <optional>
 #include <stdexcept>
 
 /*
@@ -180,6 +181,21 @@ void nano::transport::tcp_server::stop ()
 void nano::transport::tcp_server::timeout ()
 {
 	rsnano::rsn_bootstrap_server_timeout (handle);
+}
+
+std::optional<nano::keepalive> nano::transport::tcp_server::get_last_keepalive () const
+{
+	auto message = rsnano::rsn_bootstrap_server_get_last_keepalive (handle);
+	auto result = nano::message_handle_to_message (message);
+	if (result == nullptr)
+	{
+		return {};
+	}
+	else
+	{
+		nano::keepalive keepalive{ *static_cast<nano::keepalive *> (result.get ()) };
+		return { keepalive };
+	}
 }
 
 /*

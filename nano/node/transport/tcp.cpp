@@ -426,6 +426,7 @@ void nano::transport::tcp_channels::process_messages ()
 void nano::transport::tcp_channels::start ()
 {
 	ongoing_keepalive ();
+	ongoing_merge (0);
 }
 
 void nano::transport::tcp_channels::stop ()
@@ -459,6 +460,11 @@ void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point
 void nano::transport::tcp_channels::ongoing_keepalive ()
 {
 	rsnano::rsn_tcp_channels_ongoing_keepalive (handle);
+}
+
+void nano::transport::tcp_channels::ongoing_merge (size_t channel_index)
+{
+	rsnano::rsn_tcp_channels_ongoing_merge (handle, channel_index);
 }
 
 void nano::transport::tcp_channels::list (std::deque<std::shared_ptr<nano::transport::channel>> & deque_a, uint8_t minimum_version_a, bool include_temporary_channels_a)

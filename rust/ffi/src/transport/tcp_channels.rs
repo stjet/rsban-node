@@ -328,6 +328,14 @@ pub unsafe extern "C" fn rsn_tcp_channels_ongoing_keepalive(handle: &TcpChannels
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_ongoing_merge(
+    handle: &TcpChannelsHandle,
+    channel_index: usize,
+) {
+    handle.ongoing_merge(channel_index)
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_start_tcp(
     handle: &TcpChannelsHandle,
     endpoint: &EndpointDto,

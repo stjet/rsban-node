@@ -426,6 +426,15 @@ impl TcpChannels {
         is_max
     }
 
+    pub fn reachout_checked(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
+        // Don't contact invalid IPs
+        let mut error = self.not_a_peer(endpoint, allow_local_peers);
+        if !error {
+            error = self.reachout(endpoint);
+        }
+        error
+    }
+
     pub fn reachout(&self, endpoint: &SocketAddrV6) -> bool {
         // Don't overload single IP
         let mut error = self.excluded_peers.lock().unwrap().is_excluded(endpoint)
@@ -517,7 +526,15 @@ pub trait TcpChannelsExtension {
         socket: &Arc<Socket>,
     );
 
+    fn merge_peer(&self, peer: &SocketAddrV6);
     fn ongoing_keepalive(&self);
+    fn ongoing_merge(&self, channel_index: usize);
+    fn ongoing_merge_keepalive(
+        &self,
+        channel_index: usize,
+        keepalive: Keepalive,
+        peer_index: usize,
+    );
     fn start_tcp_receive_node_id(&self, channel: &Arc<ChannelEnum>, endpoint: SocketAddrV6);
     fn start_tcp(&self, endpoint: SocketAddrV6);
 }
@@ -598,6 +615,12 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         }
     }
 
+    fn merge_peer(&self, peer: &SocketAddrV6) {
+        if !self.reachout_checked(peer, self.node_config.allow_local_peers) {
+            self.start_tcp(*peer);
+        }
+    }
+
     fn ongoing_keepalive(&self) {
         let mut peers = [SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0); 8];
         self.random_fill(&mut peers);
@@ -630,6 +653,82 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 }
             }),
         );
+    }
+
+    fn ongoing_merge(&self, mut channel_index: usize) {
+        let mut keepalive = None;
+        {
+            let guard = self.tcp_channels.lock().unwrap();
+            let mut count = 0;
+            while keepalive.is_none() && guard.channels.len() > 0 && count < guard.channels.len() {
+                count += 1;
+                channel_index += 1;
+                if guard.channels.len() <= channel_index {
+                    channel_index = 0;
+                }
+                if let Some(channel) = guard.channels.get_by_index(channel_index) {
+                    if let Some(server) = &channel.response_server {
+                        if let Some(last_keepalive) = server.get_last_keepalive() {
+                            keepalive = Some(last_keepalive);
+                            server.set_last_keepalive(None);
+                        }
+                    }
+                }
+            }
+        }
+        if let Some(keepalive) = keepalive {
+            self.ongoing_merge_keepalive(channel_index, keepalive, 1);
+        } else {
+            let this_w = Arc::downgrade(self);
+            self.workers.add_delayed_task(
+                self.network.network.merge_period,
+                Box::new(move || {
+                    if let Some(this_l) = this_w.upgrade() {
+                        if !this_l.stopped.load(Ordering::SeqCst) {
+                            this_l.ongoing_merge(channel_index);
+                        }
+                    }
+                }),
+            );
+        }
+    }
+
+    fn ongoing_merge_keepalive(
+        &self,
+        channel_index: usize,
+        keepalive: Keepalive,
+        mut peer_index: usize,
+    ) {
+        debug_assert!(peer_index < keepalive.peers.len());
+        self.merge_peer(&keepalive.peers[peer_index]);
+        peer_index += 1;
+        if peer_index < keepalive.peers.len() {
+            let this_w = Arc::downgrade(self);
+            self.workers.add_delayed_task(
+                self.network.network.merge_period,
+                Box::new(move || {
+                    if let Some(this_l) = this_w.upgrade() {
+                        if !this_l.stopped.load(Ordering::SeqCst) {
+                            this_l.ongoing_merge_keepalive(channel_index, keepalive, peer_index);
+                        }
+                    }
+                }),
+            );
+        } else {
+            let this_w = Arc::downgrade(self);
+            self.workers.add_delayed_task(
+                self.network.network.merge_period,
+                Box::new(move || {
+                    if let Some(this_l) = this_w.upgrade() {
+                        {
+                            if !this_l.stopped.load(Ordering::SeqCst) {
+                                this_l.ongoing_merge(channel_index);
+                            }
+                        }
+                    }
+                }),
+            );
+        }
     }
 
     fn start_tcp_receive_node_id(&self, channel: &Arc<ChannelEnum>, endpoint: SocketAddrV6) {

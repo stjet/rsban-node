@@ -2,11 +2,13 @@ use super::{
     request_response_visitor_factory::RequestResponseVisitorFactoryHandle, TcpListenerHandle,
 };
 use crate::{
+    messages::MessageHandle,
     transport::{EndpointDto, NetworkFilterHandle, SocketHandle, TcpMessageManagerHandle},
     utils::AsyncRuntimeHandle,
     NetworkParamsDto, NodeConfigDto, StatHandle,
 };
 use rsnano_core::Account;
+use rsnano_messages::{DeserializedMessage, Message, ProtocolInfo};
 use rsnano_node::{
     config::NodeConfig,
     transport::{TcpServer, TcpServerExt},
@@ -132,4 +134,17 @@ pub unsafe extern "C" fn rsn_bootstrap_server_socket(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_server_timeout(handle: *mut TcpServerHandle) {
     (*handle).timeout();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_bootstrap_server_get_last_keepalive(
+    handle: &TcpServerHandle,
+) -> *mut MessageHandle {
+    match handle.get_last_keepalive() {
+        Some(keepalive) => MessageHandle::new(DeserializedMessage::new(
+            Message::Keepalive(keepalive),
+            ProtocolInfo::default(),
+        )),
+        None => std::ptr::null_mut(),
+    }
 }

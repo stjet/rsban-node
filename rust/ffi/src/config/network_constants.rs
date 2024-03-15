@@ -15,6 +15,7 @@ pub struct NetworkConstantsDto {
     pub aec_loop_interval_ms: u32,
     pub cleanup_period_s: i64,
     pub keepalive_period_s: i64,
+    pub merge_period_ms: i64,
     pub idle_timeout_s: i64,
     pub sync_cookie_cutoff_s: i64,
     pub bootstrap_interval_s: i64,
@@ -64,6 +65,7 @@ pub fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &Net
     dto.aec_loop_interval_ms = constants.aec_loop_interval_ms;
     dto.cleanup_period_s = constants.cleanup_period_s;
     dto.keepalive_period_s = constants.keepalive_period.as_secs() as i64;
+    dto.merge_period_ms = constants.merge_period.as_millis() as i64;
     dto.idle_timeout_s = constants.idle_timeout_s;
     dto.sync_cookie_cutoff_s = constants.sync_cookie_cutoff_s;
     dto.bootstrap_interval_s = constants.bootstrap_interval_s;
@@ -167,6 +169,7 @@ impl TryFrom<&NetworkConstantsDto> for NetworkConstants {
             aec_loop_interval_ms: value.aec_loop_interval_ms,
             cleanup_period_s: value.cleanup_period_s,
             keepalive_period: Duration::from_secs(value.keepalive_period_s as u64),
+            merge_period: Duration::from_millis(value.merge_period_ms as u64),
             idle_timeout_s: value.idle_timeout_s,
             sync_cookie_cutoff_s: value.sync_cookie_cutoff_s,
             bootstrap_interval_s: value.bootstrap_interval_s,

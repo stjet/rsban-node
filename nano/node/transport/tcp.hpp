@@ -143,6 +143,7 @@ namespace transport
 		std::unique_ptr<container_info_component> collect_container_info (std::string const &);
 		void purge (std::chrono::system_clock::time_point const &);
 		void ongoing_keepalive ();
+		void ongoing_merge (size_t channel_index);
 		void list (std::deque<std::shared_ptr<nano::transport::channel>> &, uint8_t = 0, bool = true);
 		std::deque<std::shared_ptr<nano::transport::channel>> list (std::size_t max_count = 0, uint8_t = 0, bool = true);
 		std::deque<std::shared_ptr<nano::transport::channel>> random_fanout (float scale = 1.0f);

@@ -207,10 +207,10 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	ascendboot{ *config, block_processor, ledger, *network, *stats },
 	websocket{ config->websocket_config, *observers, wallets, ledger, io_ctx, *logger },
 	epoch_upgrader{ *this, ledger, store, network_params, *logger },
+	local_block_broadcaster{ *this, block_processor, *network, *stats, !flags.disable_block_processor_republishing () },
+	process_live_dispatcher{ ledger, scheduler.priority, vote_cache, websocket },
 	startup_time (std::chrono::steady_clock::now ()),
-	node_seq (seq),
-	block_broadcast{ *network, !flags.disable_block_processor_republishing () },
-	process_live_dispatcher{ ledger, scheduler.priority, vote_cache, websocket }
+	node_seq (seq)
 {
 	logger->debug (nano::log::type::node, "Constructing node...");
 	std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> handle_roll_back =
@@ -218,6 +218,8 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		// Deleting from votes cache, stop active transaction
 		for (auto & i : rolled_back)
 		{
+			node_a->block_processor.rolled_back.notify (i);
+
 			node_a->history.erase (i->root ());
 			// Stop all rolled back active transactions except initial
 			if (i->hash () != initial_block->hash ())
@@ -232,7 +234,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	network->tcp_channels->set_message_visitor_factory (visitor_factory);
 
 	block_processor.start ();
-	block_broadcast.connect (block_processor);
 	process_live_dispatcher.connect (block_processor);
 	unchecked.set_satisfied_observer ([this] (nano::unchecked_info const & info) {
 		this->block_processor.add (info.get_block (), nano::block_source::unchecked);
@@ -580,6 +581,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (no
 	composite->add_component (collect_container_info (node.final_generator, "vote_generator_final"));
 	composite->add_component (node.ascendboot.collect_container_info ("bootstrap_ascending"));
 	composite->add_component (node.unchecked.collect_container_info ("unchecked"));
+	composite->add_component (node.local_block_broadcaster.collect_container_info ("local_block_broadcaster"));
 	return composite;
 }
 
@@ -694,6 +696,7 @@ void nano::node::start ()
 	}
 	websocket.start ();
 	telemetry->start ();
+	local_block_broadcaster.start ();
 }
 
 void nano::node::stop ()
@@ -734,6 +737,7 @@ void nano::node::stop ()
 	stats->stop ();
 	epoch_upgrader.stop ();
 	workers->stop ();
+	local_block_broadcaster.stop ();
 	// work pool is not stopped on purpose due to testing setup
 }
 

@@ -142,6 +142,7 @@ pub enum StatType {
     ElectionScheduler,
     OptimisticScheduler,
     Handshake,
+    LocalBlockBroadcaster,
 
     BootstrapAscending,
     BootstrapAscendingAccounts,
@@ -201,6 +202,7 @@ pub enum DetailType {
     Old,
     GapPrevious,
     GapSource,
+    Rollback,
     RollbackFailed,
     Progress,
     BadSignature,
@@ -424,6 +426,12 @@ pub enum DetailType {
     PriorityEraseOverflow,
     Deprioritize,
     DeprioritizeFailed,
+
+    // block broadcaster
+    BroadcastNormal,
+    BroadcastAggressive,
+    EraseOld,
+    EraseConfirmed,
 }
 
 impl DetailType {

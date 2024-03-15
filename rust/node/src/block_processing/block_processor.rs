@@ -353,6 +353,8 @@ impl BlockProcessor {
                 );
                 let rollback_list = match self.ledger.rollback(transaction, &successor.hash()) {
                     Ok(rollback_list) => {
+                        self.stats
+                            .inc(StatType::Ledger, DetailType::Rollback, Direction::In);
                         debug!("Blocks rolled back: {}", rollback_list.len());
                         rollback_list
                     }

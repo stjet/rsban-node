@@ -3,6 +3,7 @@
 #include <nano/lib/memory.hpp>
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/threading.hpp>
+#include <nano/lib/rsnano.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
 
@@ -943,11 +944,6 @@ std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree:
 
 	result = nano::block_handle_to_block (block_handle);
 	return result;
-}
-
-void nano::serialize_block_type (nano::stream & stream, const nano::block_type & type)
-{
-	nano::write (stream, type);
 }
 
 void nano::serialize_block (nano::stream & stream_a, nano::block const & block_a)

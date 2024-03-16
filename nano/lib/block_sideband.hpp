@@ -3,11 +3,12 @@
 #include <nano/lib/block_type.hpp>
 #include <nano/lib/epoch.hpp>
 #include <nano/lib/numbers.hpp>
+#include <nano/lib/rsnano.hpp>
 #include <nano/lib/stream.hpp>
 #include <nano/lib/timer.hpp>
-#include <nano/lib/rsnano.hpp>
 
 #include <cstdint>
+#include <memory>
 
 namespace nano
 {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnanoutils.hpp"
+
 #include <nano/lib/errors.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/node/node.hpp>

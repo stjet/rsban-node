@@ -1,6 +1,7 @@
 #include "nano/lib/rsnano.hpp"
 #include "nano/secure/common.hpp"
 
+#include <nano/lib/blocks.hpp>
 #include <nano/lib/locks.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/stats_enums.hpp>

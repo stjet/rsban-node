@@ -1,8 +1,5 @@
 #pragma once
 
-#include "nano/node/websocket.hpp"
-
-#include <nano/lib/blocks.hpp>
 #include <nano/secure/common.hpp>
 
 #include <chrono>
@@ -12,6 +9,14 @@
 #include <optional>
 #include <thread>
 
+namespace nano
+{
+class block;
+class node;
+class write_database_queue;
+class logger;
+}
+
 namespace nano::store
 {
 class write_transaction;
@@ -19,8 +24,6 @@ class write_transaction;
 
 namespace nano
 {
-class node;
-class write_database_queue;
 class node_config;
 class ledger;
 class node_flags;

@@ -4,4 +4,3 @@ void nano::serialize_block_type (nano::stream & stream, const nano::block_type &
 {
 	nano::write (stream, type);
 }
-

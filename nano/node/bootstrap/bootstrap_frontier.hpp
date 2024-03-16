@@ -1,12 +1,17 @@
 #pragma once
 
 #include "nano/lib/numbers.hpp"
-#include "nano/lib/rsnano.hpp"
 
 #include <nano/node/common.hpp>
 
 #include <deque>
 #include <future>
+#include <memory>
+
+namespace rsnano
+{
+class FrontierReqClientHandle;
+}
 
 namespace nano
 {

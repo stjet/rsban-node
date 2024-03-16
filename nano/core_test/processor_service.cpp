@@ -1,3 +1,5 @@
+#include <nano/lib/blocks.hpp>
+#include <nano/lib/logging.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/work.hpp>
 #include <nano/node/make_store.hpp>

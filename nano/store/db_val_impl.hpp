@@ -11,4 +11,3 @@ nano::store::db_val<T>::db_val (std::shared_ptr<nano::block> const & val_a) :
 	}
 	convert_buffer_to_value ();
 }
-

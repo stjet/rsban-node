@@ -1,12 +1,12 @@
-#include "nano/lib/config.hpp"
-#include "nano/store/component.hpp"
-
+#include <nano/lib/blocks.hpp>
+#include <nano/lib/config.hpp>
 #include <nano/node/network.hpp>
 #include <nano/node/nodeconfig.hpp>
 #include <nano/node/scheduler/component.hpp>
 #include <nano/node/scheduler/priority.hpp>
 #include <nano/node/transport/inproc.hpp>
 #include <nano/node/transport/socket.hpp>
+#include <nano/store/component.hpp>
 #include <nano/test_common/network.hpp>
 #include <nano/test_common/system.hpp>
 #include <nano/test_common/testutil.hpp>

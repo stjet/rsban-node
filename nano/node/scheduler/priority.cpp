@@ -1,3 +1,4 @@
+#include <nano/lib/blocks.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/scheduler/buckets.hpp>

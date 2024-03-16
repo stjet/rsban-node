@@ -2,6 +2,7 @@
 #include "nano/lib/epoch.hpp"
 #include "nano/lib/logging.hpp"
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/rsnanoutils.hpp"
 #include "nano/lib/threading.hpp"
 #include "nano/node/messages.hpp"
 #include "nano/secure/common.hpp"

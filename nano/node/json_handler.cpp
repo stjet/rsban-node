@@ -1,5 +1,6 @@
 #include "nano/node/wallet.hpp"
 
+#include <nano/lib/blocks.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/json_error_response.hpp>
 #include <nano/lib/timer.hpp>

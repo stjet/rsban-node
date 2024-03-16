@@ -1,10 +1,6 @@
 #pragma once
 
-#include "nano/lib/blocks.hpp"
-#include "nano/lib/rsnano.hpp"
-
 #include <nano/lib/numbers.hpp>
-#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/timer.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/store/component.hpp>
@@ -16,6 +12,10 @@
 namespace boost
 {
 class latch;
+}
+namespace rsnano
+{
+class ConfirmationHeightProcessorHandle;
 }
 namespace nano
 {

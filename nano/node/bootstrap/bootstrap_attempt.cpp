@@ -1,6 +1,7 @@
 #include "nano/lib/logging.hpp"
 #include "nano/lib/rsnano.hpp"
 
+#include <nano/lib/blocks.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/bootstrap/bootstrap_attempt.hpp>

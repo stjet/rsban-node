@@ -17,14 +17,13 @@
 
 namespace rsnano
 {
-	class BlockHandle;
+class BlockHandle;
 }
 
 namespace nano
 {
 class block_visitor;
 class mutable_block_visitor;
-
 
 class block
 {
@@ -85,8 +84,6 @@ protected:
 public: // Logging
 	void operator() (nano::object_stream &) const;
 };
-
-using block_list_t = std::vector<std::shared_ptr<nano::block>>;
 
 class send_block final : public nano::block
 {

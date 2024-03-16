@@ -3,6 +3,7 @@
 #include "nano/node/repcrawler.hpp"
 #include "nano/node/transport/tcp.hpp"
 
+#include <nano/lib/blocks.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/lib/utility.hpp>

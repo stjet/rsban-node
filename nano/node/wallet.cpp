@@ -1,6 +1,7 @@
 #include "nano/store/lmdb/lmdb_env.hpp"
 
 #include <nano/crypto_lib/random_pool.hpp>
+#include <nano/lib/blocks.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/threading.hpp>

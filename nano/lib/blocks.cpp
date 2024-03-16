@@ -2,8 +2,8 @@
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/memory.hpp>
 #include <nano/lib/numbers.hpp>
-#include <nano/lib/threading.hpp>
 #include <nano/lib/rsnano.hpp>
+#include <nano/lib/threading.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
 

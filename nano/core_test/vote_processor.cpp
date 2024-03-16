@@ -1,6 +1,6 @@
-#include "nano/lib/rsnano.hpp"
-
+#include <nano/lib/blocks.hpp>
 #include <nano/lib/jsonconfig.hpp>
+#include <nano/lib/rsnano.hpp>
 #include <nano/node/transport/inproc.hpp>
 #include <nano/node/vote_processor.hpp>
 #include <nano/test_common/chains.hpp>

@@ -1,5 +1,6 @@
 #include "nano/lib/rsnano.hpp"
 
+#include <nano/lib/blocks.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/node.hpp>

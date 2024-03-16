@@ -1,3 +1,5 @@
+#include <nano/lib/blocks.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/store/lmdb/block.hpp>
 #include <nano/store/lmdb/lmdb.hpp>
 

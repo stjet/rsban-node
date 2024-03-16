@@ -3,6 +3,8 @@
 #include <nano/secure/utility.hpp>
 #include <nano/secure/working.hpp>
 
+#include <boost/system/error_code.hpp>
+
 #include <random>
 
 std::filesystem::path nano::working_path (nano::networks network)

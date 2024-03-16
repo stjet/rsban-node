@@ -1,6 +1,7 @@
-#include "nano/lib/rsnano.hpp"
-
+#include <nano/lib/blocks.hpp>
+#include <nano/lib/logging.hpp>
 #include <nano/lib/rep_weights.hpp>
+#include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/utility.hpp>

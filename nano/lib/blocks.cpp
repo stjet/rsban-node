@@ -4,6 +4,7 @@
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/threading.hpp>
+#include <nano/lib/object_stream.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
 

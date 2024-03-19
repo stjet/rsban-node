@@ -190,7 +190,7 @@ TEST (bulk_pull, ascending_two_account)
 	ASSERT_EQ (nano::block_status::progress, node.process (block1));
 	auto connection (create_bootstrap_server (system.nodes[0]));
 	nano::bulk_pull::bulk_pull_payload payload{};
-	payload.start = nano::dev::genesis->account ();
+	payload.start = nano::dev::genesis_key.pub;
 	payload.end = 0;
 	payload.ascending = true;
 	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network, payload);
@@ -2190,9 +2190,9 @@ TEST (bulk_pull_account, basics)
 	auto wallet_id = node->wallets.first_wallet_id ();
 	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	(void)node->wallets.insert_adhoc (wallet_id, key1.prv);
-	auto send1 (node->wallets.send_action (wallet_id, nano::dev::genesis->account (), key1.pub, 25));
-	auto send2 (node->wallets.send_action (wallet_id, nano::dev::genesis->account (), key1.pub, 10));
-	auto send3 (node->wallets.send_action (wallet_id, nano::dev::genesis->account (), key1.pub, 2));
+	auto send1 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, 25));
+	auto send2 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, 10));
+	auto send3 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, 2));
 	ASSERT_TIMELY_EQ (5s, system.nodes[0]->balance (key1.pub), 25);
 	auto connection (create_bootstrap_server (system.nodes[0]));
 
@@ -2211,7 +2211,7 @@ TEST (bulk_pull_account, basics)
 		auto block_data (request->get_next ());
 		ASSERT_EQ (send2->hash (), block_data.first.get ()->hash);
 		ASSERT_EQ (nano::uint128_union (10), block_data.second.get ()->amount);
-		ASSERT_EQ (nano::dev::genesis->account (), block_data.second.get ()->source);
+		ASSERT_EQ (nano::dev::genesis_key.pub, block_data.second.get ()->source);
 		ASSERT_EQ (nullptr, request->get_next ().first.get ());
 	}
 
@@ -2226,7 +2226,7 @@ TEST (bulk_pull_account, basics)
 		auto block_data (request->get_next ());
 		ASSERT_NE (nullptr, block_data.first.get ());
 		ASSERT_NE (nullptr, block_data.second.get ());
-		ASSERT_EQ (nano::dev::genesis->account (), block_data.second.get ()->source);
+		ASSERT_EQ (nano::dev::genesis_key.pub, block_data.second.get ()->source);
 		block_data = request->get_next ();
 		ASSERT_EQ (nullptr, block_data.first.get ());
 		ASSERT_EQ (nullptr, block_data.second.get ());

@@ -96,12 +96,6 @@ void nano::node::keepalive (std::string const & address_a, uint16_t port_a)
 	});
 }
 
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (rep_crawler & rep_crawler, std::string const & name)
-{
-	auto info_handle = rsnano::rsn_rep_crawler_collect_container_info (rep_crawler.handle, name.c_str ());
-	return std::make_unique<nano::container_info_composite> (info_handle);
-}
-
 nano::keypair nano::load_or_create_node_id (std::filesystem::path const & application_path)
 {
 	auto node_private_key_path = application_path / "node_id_private.key";
@@ -184,7 +178,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	application_path (application_path_a),
 	port_mapping (*this),
 	representative_register (*this),
-	rep_crawler (*this),
+	rep_crawler (config->rep_crawler, *this),
 	vote_processor_queue{
 		flags_a.vote_processor_capacity (),
 		*stats,
@@ -347,13 +341,14 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		observers->endpoint.add ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
 			this->network->send_keepalive_self (channel_a);
 		});
-		observers->vote.add ([this] (std::shared_ptr<nano::vote> vote_a, std::shared_ptr<nano::transport::channel> const & channel_a, nano::vote_code code_a) {
-			debug_assert (code_a != nano::vote_code::invalid);
-			auto active_in_rep_crawler (!this->rep_crawler.response (channel_a, vote_a));
+
+		observers->vote.add ([this] (std::shared_ptr<nano::vote> vote, std::shared_ptr<nano::transport::channel> const & channel, nano::vote_code code) {
+			debug_assert (code != nano::vote_code::invalid);
+			bool active_in_rep_crawler = rep_crawler.process (vote, channel);
 			if (active_in_rep_crawler)
 			{
 				// Representative is defined as online if replying to live votes or rep_crawler queries
-				this->online_reps.observe (vote_a->account ());
+				this->online_reps.observe (vote->account ());
 			}
 		});
 
@@ -570,7 +565,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (no
 	composite->add_component (collect_container_info (*node.observers, "observers"));
 	composite->add_component (collect_container_info (node.wallets, "wallets"));
 	composite->add_component (collect_container_info (node.vote_processor.queue, "vote_processor"));
-	composite->add_component (collect_container_info (node.rep_crawler, "rep_crawler"));
+	composite->add_component (node.rep_crawler.collect_container_info ("rep_crawler"));
 	composite->add_component (node.block_processor.collect_container_info ("block_processor"));
 	composite->add_component (collect_container_info (node.online_reps, "online_reps"));
 	composite->add_component (collect_container_info (node.history, "history"));
@@ -719,6 +714,7 @@ void nano::node::stop ()
 	{
 		ascendboot.stop ();
 	}
+	rep_crawler.stop ();
 	unchecked.stop ();
 	block_processor.stop ();
 	aggregator.stop ();
@@ -748,14 +744,14 @@ bool nano::node::is_stopped () const
 	return stopped;
 }
 
-void nano::node::keepalive_preconfigured (std::vector<std::string> const & peers_a)
+void nano::node::keepalive_preconfigured ()
 {
-	for (auto i (peers_a.begin ()), n (peers_a.end ()); i != n; ++i)
+	for (auto const & peer : config->preconfigured_peers)
 	{
 		// can't use `network.port` here because preconfigured peers are referenced
 		// just by their address, so we rely on them listening on the default port
 		//
-		keepalive (*i, network_params.network.default_node_port);
+		keepalive (peer, network_params.network.default_node_port);
 	}
 }
 

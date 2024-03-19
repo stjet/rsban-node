@@ -35,7 +35,7 @@ pub enum EndpointType {
     Client,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, FromPrimitive)]
+#[derive(PartialEq, Eq, Clone, Copy, FromPrimitive, Debug)]
 pub enum SocketType {
     Undefined,
     Bootstrap,

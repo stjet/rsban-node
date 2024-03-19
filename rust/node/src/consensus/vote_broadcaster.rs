@@ -66,7 +66,7 @@ impl VoteBroadcaster {
             .unwrap()
             .representatives()
         {
-            rep.channel().send(
+            rep.channel.send(
                 &message,
                 None,
                 BufferDropPolicy::NoLimiterDrop,

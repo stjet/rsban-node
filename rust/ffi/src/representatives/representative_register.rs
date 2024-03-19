@@ -1,7 +1,7 @@
 use crate::{
     ledger::datastore::LedgerHandle,
     transport::{ChannelHandle, EndpointDto},
-    NetworkConstantsDto,
+    NetworkConstantsDto, StatHandle,
 };
 use rsnano_core::{Account, Amount};
 use rsnano_node::{
@@ -29,12 +29,14 @@ impl Deref for RepresentativeRegisterHandle {
 pub extern "C" fn rsn_representative_register_create(
     ledger: &LedgerHandle,
     online_reps: &OnlineRepsHandle,
+    stats: &StatHandle,
     network_constants: &NetworkConstantsDto,
 ) -> *mut RepresentativeRegisterHandle {
     Box::into_raw(Box::new(RepresentativeRegisterHandle(Arc::new(
         Mutex::new(RepresentativeRegister::new(
             Arc::clone(ledger),
             Arc::clone(online_reps),
+            Arc::clone(stats),
             NetworkConstants::try_from(network_constants)
                 .unwrap()
                 .protocol_info(),
@@ -98,6 +100,19 @@ pub unsafe extern "C" fn rsn_representative_register_cleanup_reps(
     handle: &mut RepresentativeRegisterHandle,
 ) {
     handle.lock().unwrap().cleanup_reps()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_representative_register_last_request_elapsed_ms(
+    handle: &RepresentativeRegisterHandle,
+    channel: &ChannelHandle,
+) -> i64 {
+    handle
+        .lock()
+        .unwrap()
+        .last_request_elapsed(channel)
+        .map(|i| i.as_millis() as i64)
+        .unwrap_or(-1)
 }
 
 #[no_mangle]

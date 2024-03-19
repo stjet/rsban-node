@@ -56,6 +56,16 @@ public:
 	rsnano::RepresentativeHandle * handle;
 };
 
+class rep_crawler_config final
+{
+public:
+	explicit rep_crawler_config (std::chrono::milliseconds query_timeout_a);
+	nano::error deserialize (nano::tomlconfig & toml);
+
+public:
+	std::chrono::milliseconds query_timeout;
+};
+
 class representative_register
 {
 public:

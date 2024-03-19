@@ -18,6 +18,7 @@ use rsnano_node::{
 use std::{
     convert::{TryFrom, TryInto},
     ffi::c_void,
+    time::Duration,
 };
 
 #[repr(C)]
@@ -94,6 +95,7 @@ pub struct NodeConfigDto {
     pub backlog_scan_batch_size: u32,
     pub backlog_scan_frequency: u32,
     pub vote_cache: VoteCacheConfigDto,
+    pub rep_crawler_query_timeout_ms: i64,
 }
 
 #[repr(C)]
@@ -246,6 +248,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.backlog_scan_frequency = cfg.backlog_scan_frequency;
     dto.backlog_scan_batch_size = cfg.backlog_scan_batch_size;
     dto.vote_cache = (&cfg.vote_cache).into();
+    dto.rep_crawler_query_timeout_ms = cfg.rep_crawler_query_timeout.as_millis() as i64;
 }
 
 #[no_mangle]
@@ -373,6 +376,9 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             backlog_scan_batch_size: value.backlog_scan_batch_size,
             backlog_scan_frequency: value.backlog_scan_frequency,
             vote_cache: (&value.vote_cache).into(),
+            rep_crawler_query_timeout: Duration::from_millis(
+                value.rep_crawler_query_timeout_ms as u64,
+            ),
         };
 
         Ok(cfg)

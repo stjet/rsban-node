@@ -403,3 +403,21 @@ std::vector<std::shared_ptr<nano::transport::channel>> nano::rep_crawler::repres
 	}
 	return result;
 }
+
+/*
+ * rep_crawler_config
+ */
+
+nano::rep_crawler_config::rep_crawler_config (std::chrono::milliseconds query_timeout_a) :
+	query_timeout{query_timeout_a}
+{
+}
+
+nano::error nano::rep_crawler_config::deserialize (nano::tomlconfig & toml)
+{
+	auto query_timeout_l = query_timeout.count ();
+	toml.get ("query_timeout", query_timeout_l);
+	query_timeout = std::chrono::milliseconds{ query_timeout_l };
+
+	return toml.get_error ();
+}

@@ -13,7 +13,7 @@ use rsnano_core::{
     Account, Amount, GXRB_RATIO, XRB_RATIO,
 };
 use rsnano_store_lmdb::LmdbConfig;
-use std::net::Ipv6Addr;
+use std::{net::Ipv6Addr, time::Duration};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
@@ -96,6 +96,7 @@ pub struct NodeConfig {
     /// Number of times per second to run backlog population batches. Number of accounts per single batch is `backlog_scan_batch_size / backlog_scan_frequency`
     pub backlog_scan_frequency: u32,
     pub vote_cache: VoteCacheConfig,
+    pub rep_crawler_query_timeout: Duration,
 }
 
 #[derive(Clone)]
@@ -294,6 +295,11 @@ impl NodeConfig {
                 HintedSchedulerConfig::default()
             },
             vote_cache: Default::default(),
+            rep_crawler_query_timeout: if network_params.network.is_dev_network() {
+                Duration::from_secs(1)
+            } else {
+                Duration::from_secs(60)
+            },
         }
     }
 
@@ -471,6 +477,14 @@ impl NodeConfig {
 
         toml.put_child("vote_cache", &mut |writer| {
             self.vote_cache.serialize_toml(writer)
+        })?;
+
+        toml.put_child("rep_crawler", &mut |writer| {
+            writer.put_u64(
+                "query_timeout",
+                self.rep_crawler_query_timeout.as_millis() as u64,
+                "",
+            )
         })?;
 
         Ok(())

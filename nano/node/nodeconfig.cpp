@@ -108,6 +108,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.diagnostics_config = config.diagnostics_config.to_dto ();
 	dto.stat_config = config.stats_config.to_dto ();
 	dto.lmdb_config = config.lmdb_config.to_dto ();
+	dto.rep_crawler_query_timeout_ms = config.rep_crawler.query_timeout.count();
 	return dto;
 }
 
@@ -119,7 +120,8 @@ nano::node_config::node_config (nano::network_params & network_params) :
 nano::node_config::node_config (const std::optional<uint16_t> & peering_port_a, nano::network_params & network_params) :
 	network_params{ network_params },
 	websocket_config{ network_params.network },
-	ipc_config (network_params.network)
+	ipc_config (network_params.network),
+	rep_crawler {std::chrono::milliseconds(0)}
 {
 	rsnano::NodeConfigDto dto;
 	auto network_params_dto{ network_params.to_dto () };
@@ -224,6 +226,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	lmdb_config.load_dto (dto.lmdb_config);
 	backlog_scan_batch_size = dto.backlog_scan_batch_size;
 	backlog_scan_frequency = dto.backlog_scan_frequency;
+	rep_crawler.query_timeout = std::chrono::milliseconds(dto.rep_crawler_query_timeout_ms);
 }
 
 nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
@@ -293,6 +296,12 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			auto config_l = toml.get_required_child ("vote_cache");
 			vote_cache.deserialize (config_l);
+		}
+
+		if (toml.has_key ("rep_crawler"))
+		{
+			auto config_l = toml.get_required_child ("rep_crawler");
+			rep_crawler.deserialize (config_l);
 		}
 
 		if (toml.has_key ("work_peers"))

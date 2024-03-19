@@ -142,6 +142,7 @@ pub enum StatType {
     ElectionScheduler,
     OptimisticScheduler,
     Handshake,
+    RepCrawler,
     LocalBlockBroadcaster,
 
     BootstrapAscending,
@@ -426,6 +427,18 @@ pub enum DetailType {
     PriorityEraseOverflow,
     Deprioritize,
     DeprioritizeFailed,
+    //
+    // rep_crawler
+    ChannelDead,
+    QueryTargetFailed,
+    QueryChannelBusy,
+    QuerySent,
+    QueryDuplicate,
+    RepTimeout,
+    QueryTimeout,
+    QueryCompletion,
+    CrawlAggressive,
+    CrawlNormal,
 
     // block broadcaster
     BroadcastNormal,

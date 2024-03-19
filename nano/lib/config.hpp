@@ -226,6 +226,9 @@ public:
 	/** How much to delay activation of optimistic elections to avoid interfering with election scheduler */
 	std::chrono::seconds optimistic_activation_delay;
 
+	std::chrono::milliseconds rep_crawler_normal_interval;
+	std::chrono::milliseconds rep_crawler_warmup_interval;
+
 	/** Returns the network this object contains values for */
 	nano::networks network () const;
 

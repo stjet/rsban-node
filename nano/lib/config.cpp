@@ -226,6 +226,8 @@ void nano::network_constants::read_dto (rsnano::NetworkConstantsDto const & dto)
 	telemetry_broadcast_interval = std::chrono::milliseconds (dto.telemetry_broadcast_interval_ms);
 	telemetry_cache_cutoff = std::chrono::milliseconds (dto.telemetry_cache_cutoff_ms);
 	optimistic_activation_delay = std::chrono::seconds (dto.optimistic_activation_delay_s);
+	rep_crawler_normal_interval = std::chrono::milliseconds (dto.rep_crawler_normal_interval_ms);
+	rep_crawler_warmup_interval = std::chrono::milliseconds (dto.rep_crawler_warmup_interval_ms);
 }
 
 bool nano::network_constants::set_active_network (std::string network_a)
@@ -316,6 +318,8 @@ rsnano::NetworkConstantsDto nano::network_constants::to_dto () const
 	dto.telemetry_broadcast_interval_ms = telemetry_broadcast_interval.count ();
 	dto.telemetry_cache_cutoff_ms = telemetry_cache_cutoff.count ();
 	dto.optimistic_activation_delay_s = optimistic_activation_delay.count ();
+	dto.rep_crawler_normal_interval_ms = rep_crawler_normal_interval.count();
+	dto.rep_crawler_warmup_interval_ms = rep_crawler_warmup_interval.count();
 	return dto;
 }
 

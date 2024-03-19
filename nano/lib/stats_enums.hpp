@@ -46,6 +46,7 @@ enum class type : uint8_t
 	election_scheduler,
 	optimistic_scheduler,
 	handshake,
+	rep_crawler,
 	local_block_broadcaster,
 
 	bootstrap_ascending,
@@ -322,6 +323,18 @@ enum class detail : uint8_t
 	priority_erase_overflow,
 	deprioritize,
 	deprioritize_failed,
+
+	// rep_crawler
+	channel_dead,
+	query_target_failed,
+	query_channel_busy,
+	query_sent,
+	query_duplicate,
+	rep_timeout,
+	query_timeout,
+	query_completion,
+	crawl_aggressive,
+	crawl_normal, 
 
 	// block broadcaster
 	broadcast_normal,

@@ -34,6 +34,8 @@ pub struct NetworkConstantsDto {
     pub telemetry_broadcast_interval_ms: i64,
     pub telemetry_cache_cutoff_ms: i64,
     pub optimistic_activation_delay_s: i64,
+    pub rep_crawler_normal_interval_ms: i64,
+    pub rep_crawler_warmup_interval_ms: i64,
 }
 
 #[no_mangle]
@@ -81,6 +83,8 @@ pub fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &Net
     dto.telemetry_broadcast_interval_ms = constants.telemetry_broadcast_interval_ms;
     dto.telemetry_cache_cutoff_ms = constants.telemetry_cache_cutoff_ms;
     dto.optimistic_activation_delay_s = constants.optimistic_activation_delay.as_secs() as i64;
+    dto.rep_crawler_normal_interval_ms = constants.rep_crawler_normal_interval.as_millis() as i64;
+    dto.rep_crawler_warmup_interval_ms = constants.rep_crawler_warmup_interval.as_millis() as i64;
 }
 
 #[no_mangle]
@@ -188,6 +192,12 @@ impl TryFrom<&NetworkConstantsDto> for NetworkConstants {
             telemetry_cache_cutoff_ms: value.telemetry_cache_cutoff_ms,
             optimistic_activation_delay: Duration::from_secs(
                 value.optimistic_activation_delay_s as u64,
+            ),
+            rep_crawler_normal_interval: Duration::from_millis(
+                value.rep_crawler_normal_interval_ms as u64,
+            ),
+            rep_crawler_warmup_interval: Duration::from_millis(
+                value.rep_crawler_warmup_interval_ms as u64,
             ),
         })
     }

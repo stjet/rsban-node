@@ -334,7 +334,7 @@ enum class detail : uint8_t
 	query_timeout,
 	query_completion,
 	crawl_aggressive,
-	crawl_normal, 
+	crawl_normal,
 
 	// block broadcaster
 	broadcast_normal,

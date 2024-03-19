@@ -106,7 +106,7 @@ TEST (rep_crawler, rep_weight)
 	ASSERT_EQ (1, reps.size ());
 	ASSERT_EQ (node.balance (nano::dev::genesis_key.pub), node.ledger.weight (reps[0].get_account ()));
 	ASSERT_EQ (nano::dev::genesis_key.pub, reps[0].get_account ());
-	ASSERT_EQ (channel1->channel_id(), reps[0].channel_id());
+	ASSERT_EQ (channel1->channel_id (), reps[0].channel_id ());
 	ASSERT_TRUE (node.rep_crawler.is_pr (channel1));
 	ASSERT_FALSE (node.rep_crawler.is_pr (channel2));
 	ASSERT_TRUE (node.rep_crawler.is_pr (channel3));
@@ -189,7 +189,7 @@ TEST (rep_crawler, rep_remove)
 	ASSERT_EQ (1, reps.size ());
 	ASSERT_EQ (searching_node.minimum_principal_weight () * 2, searching_node.ledger.weight (reps[0].get_account ()));
 	ASSERT_EQ (keys_rep1.pub, reps[0].get_account ());
-	ASSERT_EQ (channel_rep1->channel_id(), reps[0].channel_id());
+	ASSERT_EQ (channel_rep1->channel_id (), reps[0].channel_id ());
 
 	// When rep1 disconnects then rep1 should not be found anymore
 	channel_rep1->close ();
@@ -227,9 +227,9 @@ TEST (rep_crawler, rep_remove)
 	reps = searching_node.rep_crawler.representatives (1);
 	ASSERT_EQ (nano::dev::genesis_key.pub, reps[0].get_account ());
 	// TODO: these asserts fail!?
-	//ASSERT_TIMELY_EQ (5s, searching_node.network->size (), 1);
-	//auto list (searching_node.network->tcp_channels->list (1));
-	//ASSERT_EQ (node_genesis_rep->network->endpoint (), list[0]->get_remote_endpoint ());
+	// ASSERT_TIMELY_EQ (5s, searching_node.network->size (), 1);
+	// auto list (searching_node.network->tcp_channels->list (1));
+	// ASSERT_EQ (node_genesis_rep->network->endpoint (), list[0]->get_remote_endpoint ());
 }
 
 TEST (rep_crawler, rep_connection_close)
@@ -258,7 +258,7 @@ TEST (rep_crawler, recently_confirmed)
 	node1.active.recently_confirmed.put (block->qualified_root (), block->hash ());
 	auto & node2 (*system.add_node ());
 	auto wallet_id2 = node2.wallets.first_wallet_id ();
-    (void)node2.wallets.insert_adhoc (wallet_id2, nano::dev::genesis_key.prv);
+	(void)node2.wallets.insert_adhoc (wallet_id2, nano::dev::genesis_key.prv);
 	auto channel = node1.network->find_node_id (node2.get_node_id ());
 	ASSERT_NE (nullptr, channel);
 	node1.rep_crawler.query (channel); // this query should be dropped due to the recently_confirmed entry

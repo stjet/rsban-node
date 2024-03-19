@@ -2105,9 +2105,9 @@ TEST (rpc, work_peer_bad)
 	auto const rpc_ctx = add_rpc (system, node1);
 	nano::block_hash hash1 (1);
 	std::atomic<uint64_t> work (0);
-	node2.work_generate (nano::work_version::work_1, hash1, node2.network_params.work.get_base (), [&work] (boost::optional<uint64_t> work_a) {
-		ASSERT_TRUE (work_a.is_initialized ());
-		work = *work_a;
+	node2.work_generate (nano::work_version::work_1, hash1, node2.network_params.work.get_base (), [&work] (std::optional<uint64_t> work_a) {
+		ASSERT_TRUE (work_a.has_value ());
+		work = work_a.value ();
 	});
 	ASSERT_TIMELY (5s, nano::dev::network_params.work.difficulty (nano::work_version::work_1, hash1, work) >= nano::dev::network_params.work.threshold_base (nano::work_version::work_1));
 }
@@ -2124,9 +2124,9 @@ TEST (rpc, DISABLED_work_peer_one)
 	node2.config->work_peers.emplace_back (node1->network->endpoint ().address ().to_string (), rpc_ctx.rpc->listening_port ());
 	nano::keypair key1;
 	std::atomic<uint64_t> work (0);
-	node2.work_generate (nano::work_version::work_1, key1.pub, node1->network_params.work.get_base (), [&work] (boost::optional<uint64_t> work_a) {
-		ASSERT_TRUE (work_a.is_initialized ());
-		work = *work_a;
+	node2.work_generate (nano::work_version::work_1, key1.pub, node1->network_params.work.get_base (), [&work] (std::optional<uint64_t> work_a) {
+		ASSERT_TRUE (work_a.has_value ());
+		work = work_a.value ();
 	});
 	ASSERT_TIMELY (5s, nano::dev::network_params.work.difficulty (nano::work_version::work_1, key1.pub, work) >= nano::dev::network_params.work.threshold_base (nano::work_version::work_1));
 }
@@ -2155,8 +2155,8 @@ TEST (rpc, DISABLED_work_peer_many)
 	for (auto & work : works)
 	{
 		nano::keypair key1;
-		node1.work_generate (nano::work_version::work_1, key1.pub, node1.network_params.work.get_base (), [&work] (boost::optional<uint64_t> work_a) {
-			work = *work_a;
+		node1.work_generate (nano::work_version::work_1, key1.pub, node1.network_params.work.get_base (), [&work] (std::optional<uint64_t> work_a) {
+			work = work_a.value ();
 		});
 		while (nano::dev::network_params.work.difficulty (nano::work_version::work_1, key1.pub, work) < nano::dev::network_params.work.threshold_base (nano::work_version::work_1))
 		{

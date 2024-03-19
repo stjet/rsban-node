@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nano/lib/config.hpp"
+
 #include <nano/lib/block_sideband.hpp>
 #include <nano/lib/epoch.hpp>
 #include <nano/lib/errors.hpp>

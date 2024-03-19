@@ -318,8 +318,8 @@ rsnano::NetworkConstantsDto nano::network_constants::to_dto () const
 	dto.telemetry_broadcast_interval_ms = telemetry_broadcast_interval.count ();
 	dto.telemetry_cache_cutoff_ms = telemetry_cache_cutoff.count ();
 	dto.optimistic_activation_delay_s = optimistic_activation_delay.count ();
-	dto.rep_crawler_normal_interval_ms = rep_crawler_normal_interval.count();
-	dto.rep_crawler_warmup_interval_ms = rep_crawler_warmup_interval.count();
+	dto.rep_crawler_normal_interval_ms = rep_crawler_normal_interval.count ();
+	dto.rep_crawler_warmup_interval_ms = rep_crawler_warmup_interval.count ();
 	return dto;
 }
 

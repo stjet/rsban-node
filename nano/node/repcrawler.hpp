@@ -1,8 +1,9 @@
 #pragma once
 
 #include "nano/lib/rsnano.hpp"
-#include <nano/lib/locks.hpp>
 #include "nano/node/common.hpp"
+
+#include <nano/lib/locks.hpp>
 #include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
 
@@ -95,9 +96,9 @@ public:
 	/** Total number of representatives */
 	std::size_t representative_count ();
 
-	void cleanup_reps();
-	std::optional<std::chrono::milliseconds> last_request_elapsed(std::shared_ptr<nano::transport::channel> const & target_channel) const;
-	void on_rep_request(std::shared_ptr<nano::transport::channel> const & target_channel);
+	void cleanup_reps ();
+	std::optional<std::chrono::milliseconds> last_request_elapsed (std::shared_ptr<nano::transport::channel> const & target_channel) const;
+	void on_rep_request (std::shared_ptr<nano::transport::channel> const & target_channel);
 
 	rsnano::RepresentativeRegisterHandle * handle;
 

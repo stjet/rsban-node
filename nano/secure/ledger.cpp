@@ -203,14 +203,7 @@ bool nano::ledger::rollback (store::write_transaction const & transaction_a, nan
 
 nano::account nano::ledger::account (nano::block const & block)
 {
-	debug_assert (block.has_sideband ());
-	nano::account result (block.account ());
-	if (result.is_zero ())
-	{
-		result = block.sideband ().account ();
-	}
-	debug_assert (!result.is_zero ());
-	return result;
+	return block.account ().value_or (block.sideband ().account ());
 }
 
 std::optional<nano::account> nano::ledger::account (store::transaction const & transaction, nano::block_hash const & hash) const

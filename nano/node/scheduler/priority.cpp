@@ -150,7 +150,7 @@ void nano::scheduler::priority::run ()
 
 void nano::scheduler::priority::try_schedule_successors (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction, nano::election_status_type status)
 {
-	auto const account = !block->account ().is_zero () ? block->account () : block->sideband ().account ();
+	auto account = node.ledger.account (*block);
 	bool cemented_bootstrap_count_reached = node.ledger.cache.cemented_count () >= node.ledger.get_bootstrap_weight_max_blocks ();
 	bool was_active = status == nano::election_status_type::active_confirmed_quorum || status == nano::election_status_type::active_confirmation_height;
 

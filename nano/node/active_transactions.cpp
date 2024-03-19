@@ -435,7 +435,7 @@ void nano::active_transactions::notify_observers (nano::election_status const & 
 
 void nano::active_transactions::handle_final_votes_confirmation (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction, nano::election_status_type status)
 {
-	auto const account = !block->account ().is_zero () ? block->account () : block->sideband ().account ();
+	auto account = node.ledger.account (*block);
 
 	bool is_canary_not_set = !node.ledger.cache.final_votes_confirmation_canary ();
 	bool is_canary_account = account == node.network_params.ledger.final_votes_canary_account;
@@ -1007,7 +1007,7 @@ bool nano::active_transactions::transition_time (nano::confirmation_solicitor & 
 void nano::active_transactions::process_confirmed_data (store::transaction const & transaction_a, std::shared_ptr<nano::block> const & block_a, nano::block_hash const & hash_a, nano::account & account_a, nano::uint128_t & amount_a, bool & is_state_send_a, bool & is_state_epoch_a, nano::account & pending_account_a)
 {
 	// Faster account calculation
-	account_a = block_a->account ();
+	account_a = node.ledger.account (*block_a);
 	if (account_a.is_zero ())
 	{
 		account_a = block_a->sideband ().account ();

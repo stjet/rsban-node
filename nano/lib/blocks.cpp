@@ -152,10 +152,9 @@ nano::link nano::block::link () const
 	return link;
 }
 
-nano::account nano::block::account () const
+std::optional<nano::account> nano::block::account () const
 {
-	static nano::account account{};
-	return account;
+	return std::nullopt;
 }
 
 rsnano::BlockHandle * nano::block::clone_handle () const
@@ -480,7 +479,7 @@ nano::open_block::open_block (rsnano::BlockHandle * handle_a)
 	handle = handle_a;
 }
 
-nano::account nano::open_block::account () const
+std::optional<nano::account> nano::open_block::account () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_open_block_account (handle, &buffer);
@@ -525,7 +524,7 @@ nano::block_hash nano::open_block::source () const
 
 nano::root nano::open_block::root () const
 {
-	return account ();
+	return account ().value ();
 }
 
 nano::account nano::open_block::representative () const
@@ -794,7 +793,7 @@ nano::state_block::state_block (rsnano::BlockHandle * handle_a)
 	handle = handle_a;
 }
 
-nano::account nano::state_block::account () const
+std::optional<nano::account> nano::state_block::account () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_state_block_account (handle, &buffer);
@@ -854,7 +853,7 @@ nano::root nano::state_block::root () const
 	}
 	else
 	{
-		return account ();
+		return account ().value ();
 	}
 }
 

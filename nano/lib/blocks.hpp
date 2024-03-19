@@ -38,7 +38,6 @@ public:
 	std::string to_json () const;
 	virtual uint64_t block_work () const;
 	virtual void block_work_set (uint64_t);
-	virtual nano::account account () const;
 	// Previous block in account's chain, zero for open block
 	virtual nano::block_hash previous () const;
 	// Source block for open/receive blocks, zero otherwise.
@@ -69,6 +68,11 @@ public:
 	virtual nano::work_version work_version () const;
 	// If there are any changes to the hashables, call this to update the cached hash
 	void refresh ();
+
+public: // Direct access to the block fields or nullopt if the block type does not have the specified field
+	// Account field for open/state blocks
+	virtual std::optional<nano::account> account () const;
+
 	rsnano::BlockHandle * get_handle () const;
 	rsnano::BlockHandle * clone_handle () const;
 
@@ -145,7 +149,7 @@ public:
 	open_block (nano::open_block &&);
 	open_block (rsnano::BlockHandle * handle_a);
 	using nano::block::hash;
-	nano::account account () const override;
+	std::optional<nano::account> account () const override;
 	nano::block_hash source () const override;
 	nano::root root () const override;
 	nano::account representative () const override;
@@ -196,7 +200,7 @@ public:
 	state_block (nano::state_block &&);
 	state_block (rsnano::BlockHandle * handle_a);
 	using nano::block::hash;
-	nano::account account () const override;
+	std::optional<nano::account> account () const override;
 	nano::root root () const override;
 	nano::link link () const override;
 	nano::account representative () const override;

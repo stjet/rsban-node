@@ -37,10 +37,6 @@ public:
 	ledger (nano::ledger &&) = delete;
 	~ledger ();
 	/**
-	 * Return account containing hash, expects that block hash exists in ledger
-	 */
-	static nano::account account (nano::block const & block);
-	/**
 	 * Returns the account for a given hash
 	 * Returns std::nullopt if the block doesn't exist or has been pruned
 	 */

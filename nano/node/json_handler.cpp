@@ -388,7 +388,7 @@ uint64_t nano::json_handler::difficulty_ledger (nano::block const & block_a)
 	if (!link.is_zero () && !details.is_send ())
 	{
 		auto block_link (node.ledger.block (*transaction, link.as_block_hash ()));
-		if (block_link != nullptr && node.store.pending ().exists (*transaction, nano::pending_key (block_a.account ().value (), link.as_block_hash ())))
+		if (block_link != nullptr && node.store.pending ().exists (*transaction, nano::pending_key (block_a.account_field ().value (), link.as_block_hash ())))
 		{
 			auto epoch = std::max (details.epoch (), block_link->sideband ().details ().epoch ());
 			details = nano::block_details (epoch, details.is_send (), true, details.is_epoch ());
@@ -1103,7 +1103,7 @@ void nano::json_handler::active_difficulty ()
 
 void nano::json_handler::available_supply ()
 {
-	auto genesis_balance (node.balance (node.network_params.ledger.genesis->account ().value ())); // Cold storage genesis
+	auto genesis_balance (node.balance (node.network_params.ledger.genesis->account_field ().value ())); // Cold storage genesis
 	auto landing_balance (node.balance (nano::account ("059F68AAB29DE0D3A27443625C7EA9CDDB6517A8B76FE37727EF6A4D76832AD5"))); // Active unavailable account
 	auto faucet_balance (node.balance (nano::account ("8E319CE6F3025E5B2DF66DA7AB1467FE48F1679C13DD43BFDB29FA2E9FC40D3B"))); // Faucet account
 	auto burned_balance ((node.balance_pending (nano::account{}, false)).second); // Burning 0 account
@@ -1121,7 +1121,7 @@ void nano::json_handler::block_info ()
 		auto block (node.ledger.block (*transaction, hash));
 		if (block != nullptr)
 		{
-			auto account = node.ledger.account (*block);
+			auto account = block->account ();
 			response_l.put ("block_account", account.to_account ());
 			auto amount = node.ledger.amount (*transaction, hash);
 			if (amount)
@@ -1190,7 +1190,7 @@ void nano::json_handler::block_confirm ()
 				status.set_election_status_type (nano::election_status_type::active_confirmation_height);
 				node.active.recently_cemented.put (status);
 				// Trigger callback for confirmed block
-				auto account = node.ledger.account (*block_l);
+				auto account = block_l->account ();
 				auto amount = node.ledger.amount (*transaction, hash);
 				bool is_state_send (false);
 				bool is_state_epoch (false);
@@ -1282,7 +1282,7 @@ void nano::json_handler::blocks_info ()
 				if (block != nullptr)
 				{
 					boost::property_tree::ptree entry;
-					auto account = node.ledger.account (*block);
+					auto account = block->account ();
 					entry.put ("block_account", account.to_account ());
 					auto amount (node.ledger.amount (*transaction, hash));
 					if (amount)
@@ -1362,7 +1362,7 @@ void nano::json_handler::blocks_info ()
 						auto block_a (node.ledger.block (*transaction, source_hash));
 						if (block_a != nullptr)
 						{
-							auto source_account = node.ledger.account (*block_a);
+							auto source_account = block_a->account ();
 							entry.put ("source_account", source_account.to_account ());
 						}
 						else
@@ -1409,7 +1409,7 @@ void nano::json_handler::block_account ()
 		auto block = node.ledger.block (*transaction, hash);
 		if (block)
 		{
-			response_l.put ("account", node.ledger.account (*block).to_account ());
+			response_l.put ("account", block->account ().to_account ());
 		}
 		else
 		{
@@ -2420,14 +2420,14 @@ public:
 			tree.put ("type", "open");
 			tree.put ("representative", block_a.representative ().to_account ());
 			tree.put ("source", block_a.source ().to_string ());
-			tree.put ("opened", block_a.account ().value ().to_account ());
+			tree.put ("opened", block_a.account ().to_account ());
 		}
 		else
 		{
 			// Report opens as a receive
 			tree.put ("type", "receive");
 		}
-		if (block_a.source () != handler.node.ledger.constants.genesis->account ())
+		if (block_a.source () != handler.node.ledger.constants.genesis->account_field ())
 		{
 			auto amount = handler.node.ledger.amount (transaction, hash);
 			if (amount)
@@ -2442,7 +2442,7 @@ public:
 		}
 		else
 		{
-			tree.put ("account", handler.node.ledger.constants.genesis->account ().value ().to_account ());
+			tree.put ("account", handler.node.ledger.constants.genesis->account_field ().value ().to_account ());
 			tree.put ("amount", nano::dev::constants.genesis_amount.convert_to<std::string> ());
 		}
 	}
@@ -3200,7 +3200,7 @@ void nano::json_handler::process ()
 				}
 				else
 				{
-					auto balance (rpc_l->node.ledger.account_balance (*transaction, block_state->account ().value ()));
+					auto balance (rpc_l->node.ledger.account_balance (*transaction, block_state->account ()));
 					if (subtype_text == "send")
 					{
 						if (balance <= block_state->balance ().number ())

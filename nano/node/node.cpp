@@ -1117,7 +1117,7 @@ bool nano::node::work_generation_enabled (std::vector<std::pair<std::string, uin
 
 std::optional<uint64_t> nano::node::work_generate_blocking (nano::block & block_a, uint64_t difficulty_a)
 {
-	auto opt_work_l (work_generate_blocking (block_a.work_version (), block_a.root (), difficulty_a, block_a.account ()));
+	auto opt_work_l (work_generate_blocking (block_a.work_version (), block_a.root (), difficulty_a, block_a.account_field ()));
 	if (opt_work_l.has_value ())
 	{
 		block_a.block_work_set (opt_work_l.value ());

@@ -230,7 +230,7 @@ std::pair<std::vector<std::shared_ptr<nano::block>>, std::vector<std::shared_ptr
 				if (block != nullptr)
 				{
 					nano::confirmation_height_info confirmation_height_info;
-					ledger.store.confirmation_height ().get (*transaction, ledger.account (*block), confirmation_height_info);
+					ledger.store.confirmation_height ().get (*transaction, block->account (), confirmation_height_info);
 					generate_final_vote = (confirmation_height_info.height () >= block->sideband ().height ());
 				}
 			}
@@ -266,7 +266,7 @@ std::pair<std::vector<std::shared_ptr<nano::block>>, std::vector<std::shared_ptr
 					if (block != nullptr && generate_vote)
 					{
 						nano::confirmation_height_info confirmation_height_info;
-						ledger.store.confirmation_height ().get (*transaction, ledger.account (*block), confirmation_height_info);
+						ledger.store.confirmation_height ().get (*transaction, block->account (), confirmation_height_info);
 						generate_final_vote = (confirmation_height_info.height () >= block->sideband ().height ());
 					}
 				}

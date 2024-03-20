@@ -1441,7 +1441,7 @@ int main (int argc, char * const * argv)
 					// Check for state & open blocks if account field is correct
 					if (block->type () == nano::block_type::open || block->type () == nano::block_type::state)
 					{
-						if (block->account () != account)
+						if (block->account_field () != account)
 						{
 							print_error_message (boost::str (boost::format ("Incorrect account field for block %1%\n") % hash.to_string ()));
 						}

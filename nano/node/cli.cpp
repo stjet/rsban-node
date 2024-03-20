@@ -526,7 +526,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					{
 						auto transaction (node.node->store.tx_begin_write ());
 						auto conf_height_reset_num = 0;
-						if (account == node.node->network_params.ledger.genesis->account ())
+						if (account == node.node->network_params.ledger.genesis->account_field ())
 						{
 							conf_height_reset_num = 1;
 							node.node->store.confirmation_height ().put (*transaction, account, { confirmation_height_info.height (), node.node->network_params.ledger.genesis->hash () });
@@ -1219,6 +1219,6 @@ void reset_confirmation_heights (nano::store::write_transaction const & transact
 	store.confirmation_height ().clear (transaction);
 
 	// Then make sure the confirmation height of the genesis account open block is 1
-	store.confirmation_height ().put (transaction, constants.genesis->account ().value (), { 1, constants.genesis->hash () });
+	store.confirmation_height ().put (transaction, constants.genesis->account (), { 1, constants.genesis->hash () });
 }
 }

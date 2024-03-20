@@ -152,7 +152,24 @@ nano::link nano::block::link () const
 	return link;
 }
 
-std::optional<nano::account> nano::block::account () const
+nano::account nano::block::account () const noexcept
+{
+	release_assert (has_sideband ());
+	switch (type ())
+	{
+		case block_type::open:
+		case block_type::state:
+			return account_field ().value ();
+		case block_type::change:
+		case block_type::send:
+		case block_type::receive:
+			return sideband ().account ();
+		default:
+			release_assert (false);
+	}
+}
+
+std::optional<nano::account> nano::block::account_field () const
 {
 	return std::nullopt;
 }
@@ -479,7 +496,7 @@ nano::open_block::open_block (rsnano::BlockHandle * handle_a)
 	handle = handle_a;
 }
 
-std::optional<nano::account> nano::open_block::account () const
+std::optional<nano::account> nano::open_block::account_field () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_open_block_account (handle, &buffer);
@@ -524,7 +541,7 @@ nano::block_hash nano::open_block::source () const
 
 nano::root nano::open_block::root () const
 {
-	return account ().value ();
+	return account_field ().value ();
 }
 
 nano::account nano::open_block::representative () const
@@ -793,7 +810,7 @@ nano::state_block::state_block (rsnano::BlockHandle * handle_a)
 	handle = handle_a;
 }
 
-std::optional<nano::account> nano::state_block::account () const
+std::optional<nano::account> nano::state_block::account_field () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_state_block_account (handle, &buffer);
@@ -853,7 +870,7 @@ nano::root nano::state_block::root () const
 	}
 	else
 	{
-		return account ().value ();
+		return account_field ().value ();
 	}
 }
 

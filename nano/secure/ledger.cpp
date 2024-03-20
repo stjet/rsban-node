@@ -201,11 +201,6 @@ bool nano::ledger::rollback (store::write_transaction const & transaction_a, nan
 	return rollback (transaction_a, block_a, rollback_list);
 }
 
-nano::account nano::ledger::account (nano::block const & block)
-{
-	return block.account ().value_or (block.sideband ().account ());
-}
-
 std::optional<nano::account> nano::ledger::account (store::transaction const & transaction, nano::block_hash const & hash) const
 {
 	nano::account result;

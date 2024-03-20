@@ -70,8 +70,10 @@ public:
 	void refresh ();
 
 public: // Direct access to the block fields or nullopt if the block type does not have the specified field
+	// Returns account field or account from sideband
+	nano::account account () const noexcept;
 	// Account field for open/state blocks
-	virtual std::optional<nano::account> account () const;
+	virtual std::optional<nano::account> account_field () const;
 
 	rsnano::BlockHandle * get_handle () const;
 	rsnano::BlockHandle * clone_handle () const;
@@ -149,7 +151,7 @@ public:
 	open_block (nano::open_block &&);
 	open_block (rsnano::BlockHandle * handle_a);
 	using nano::block::hash;
-	std::optional<nano::account> account () const override;
+	std::optional<nano::account> account_field () const override;
 	nano::block_hash source () const override;
 	nano::root root () const override;
 	nano::account representative () const override;
@@ -200,7 +202,7 @@ public:
 	state_block (nano::state_block &&);
 	state_block (rsnano::BlockHandle * handle_a);
 	using nano::block::hash;
-	std::optional<nano::account> account () const override;
+	std::optional<nano::account> account_field () const override;
 	nano::root root () const override;
 	nano::link link () const override;
 	nano::account representative () const override;

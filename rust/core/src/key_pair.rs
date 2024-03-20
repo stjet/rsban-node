@@ -1,4 +1,4 @@
-use crate::BlockEnum;
+use crate::{Block, BlockEnum, StateBlock};
 
 use super::{PublicKey, RawKey, Signature};
 
@@ -86,7 +86,7 @@ pub fn validate_message(
     Ok(())
 }
 
-pub fn validate_block_signature(block: &BlockEnum) -> anyhow::Result<()> {
+pub fn validate_block_signature(block: &StateBlock) -> anyhow::Result<()> {
     validate_message(
         &block.account(),
         block.hash().as_bytes(),

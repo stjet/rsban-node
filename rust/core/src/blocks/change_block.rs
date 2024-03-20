@@ -158,8 +158,8 @@ impl Block for ChangeBlock {
         BlockType::LegacyChange
     }
 
-    fn account(&self) -> Account {
-        Account::zero()
+    fn account_field(&self) -> Option<Account> {
+        None
     }
 
     fn hash(&self) -> BlockHash {

@@ -176,9 +176,9 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn new_pending_info(&self) -> Option<(PendingKey, PendingInfo)> {
         match self.block {
-            BlockEnum::State(state) => {
+            BlockEnum::State(_) => {
                 if self.is_send() {
-                    let key = PendingKey::for_send_state_block(state);
+                    let key = PendingKey::for_send_block(self.block);
                     let info = PendingInfo::new(self.account, self.amount(), self.epoch());
                     Some((key, info))
                 } else {

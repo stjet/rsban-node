@@ -117,7 +117,7 @@ mod tests {
         };
         assert_eq!(open.hashables.source, BlockHash::from(1));
         assert_eq!(open.hashables.representative, Account::from(2));
-        assert_ne!(open.hashables.account, Account::zero());
+        assert_ne!(open.account(), Account::zero());
         assert_eq!(WORK_THRESHOLDS_STUB.validate_entry_block(&block), false);
         assert_ne!(*open.block_signature(), Signature::new());
 

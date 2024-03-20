@@ -78,7 +78,7 @@ impl LegacyChangeBlockBuilder {
                 is_epoch: false,
             };
             block.set_sideband(BlockSideband::new(
-                block.account(),
+                Account::from(42),
                 BlockHash::zero(),
                 Amount::raw(5),
                 1,

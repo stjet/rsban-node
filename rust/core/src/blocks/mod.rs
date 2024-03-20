@@ -100,7 +100,7 @@ impl LazyBlockHash {
 
 pub trait Block: FullHash {
     fn block_type(&self) -> BlockType;
-    fn account(&self) -> Account;
+    fn account_field(&self) -> Option<Account>;
 
     /**
      * Contextual details about a block, some fields may or may not be set depending on block type.
@@ -253,13 +253,10 @@ impl BlockEnum {
     }
 
     pub fn account_calculated(&self) -> Account {
-        let result = if self.account().is_zero() {
-            self.sideband().unwrap().account
-        } else {
-            self.account()
-        };
-
-        result
+        match self.account_field() {
+            Some(account) => account,
+            None => self.sideband().unwrap().account,
+        }
     }
 
     pub fn height(&self) -> u64 {
@@ -308,8 +305,8 @@ impl BlockEnum {
                 sideband.balance = block.balance();
                 sideband.details = BlockDetails::new(Epoch::Epoch0, true, false, false)
             }
-            BlockEnum::LegacyOpen(_) => {
-                sideband.account = block.account();
+            BlockEnum::LegacyOpen(open) => {
+                sideband.account = open.account();
                 sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)
             }
             BlockEnum::LegacyReceive(_) => {
@@ -318,8 +315,8 @@ impl BlockEnum {
             BlockEnum::LegacyChange(_) => {
                 sideband.details = BlockDetails::new(Epoch::Epoch0, false, false, false)
             }
-            BlockEnum::State(_) => {
-                sideband.account = block.account();
+            BlockEnum::State(state) => {
+                sideband.account = state.account();
                 sideband.balance = block.balance();
             }
         }

@@ -158,11 +158,6 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
         self.connection.send(
             &Message::BulkPull(payload),
             Some(Box::new(move |ec, _len| {
-                //    auto node_l = this_l->node.lock ();
-                //    if (!node_l || node_l->is_stopped ())
-                //    {
-                //        return;
-                //    }
                 if ec.is_ok() {
                     self_clone.throttled_receive_block();
                 } else {
@@ -253,7 +248,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
             && self.pull_blocks.load(Ordering::SeqCst) == 0
             && self.pull.retry_limit <= self.network_params.bootstrap.lazy_retry_limit
             && expected == self.pull.account_or_head.into()
-            && block.account() == self.pull.account_or_head.into();
+            && block.account_field() == Some(self.pull.account_or_head.into());
 
         if hash == expected || unconfirmed_account_head {
             *self.expected.lock().unwrap() = block.previous();
@@ -263,7 +258,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
         }
 
         if self.pull_blocks.load(Ordering::SeqCst) == 0 && block_expected {
-            *self.known_account.lock().unwrap() = block.account();
+            *self.known_account.lock().unwrap() = block.account_field().unwrap_or_default();
         }
 
         if self.connection.inc_block_count() == 0 {

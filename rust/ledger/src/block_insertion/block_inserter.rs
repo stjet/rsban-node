@@ -167,7 +167,7 @@ mod tests {
         assert_eq!(result.deleted_frontiers, Vec::new());
         assert_eq!(
             result.saved_frontiers,
-            vec![(block.hash(), block.account())]
+            vec![(block.hash(), block.account_field().unwrap())]
         );
     }
 
@@ -298,7 +298,7 @@ mod tests {
             ..AccountInfo::create_test_instance()
         };
         let instructions = BlockInsertInstructions {
-            account: block.account(),
+            account: block.account_field().unwrap(),
             old_account_info: AccountInfo::default(),
             set_account_info: account_info,
             delete_pending: None,
@@ -346,7 +346,7 @@ mod tests {
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
             balance: block.balance_calculated(),
-            account: block.account(),
+            account: block.account_field().unwrap(),
             ..BlockSideband::create_test_instance()
         };
         let old_account_info = AccountInfo {

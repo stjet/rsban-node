@@ -280,7 +280,7 @@ impl<T: Environment + 'static> Ledger<T> {
     fn add_genesis_block(&self, txn: &mut LmdbWriteTransaction<T>) {
         let genesis_block = self.constants.genesis.deref();
         let genesis_hash = genesis_block.hash();
-        let genesis_account = genesis_block.account();
+        let genesis_account = self.constants.genesis_account;
         self.store.block.put(txn, genesis_block);
 
         self.store.confirmation_height.put(
@@ -422,7 +422,7 @@ impl<T: Environment + 'static> Ledger<T> {
 
         match self.get_block(txn, hash) {
             Some(block) => {
-                let mut account = block.account();
+                let mut account = block.account_calculated();
                 let sideband = &block.sideband().unwrap();
                 if account.is_zero() {
                     account = sideband.account;

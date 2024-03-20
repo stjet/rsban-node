@@ -57,9 +57,9 @@ impl<'a, T: Environment + 'static> BlockValidatorFactory<'a, T> {
     }
 
     fn get_account(&self) -> Option<Account> {
-        match self.block {
-            BlockEnum::LegacyOpen(_) | BlockEnum::State(_) => Some(self.block.account()),
-            _ => self.get_account_from_frontier_table(),
+        match self.block.account_field() {
+            Some(account) => Some(account),
+            None => self.get_account_from_frontier_table(),
         }
     }
 
@@ -90,7 +90,7 @@ mod tests {
 
         assert_eq!(validator.block.hash(), block.hash());
         assert_eq!(validator.epochs, &ledger.constants.epochs);
-        assert_eq!(validator.account, block.account());
+        assert_eq!(validator.account, block.account_field().unwrap());
         assert_eq!(validator.frontier_missing, false);
         assert_eq!(validator.block_exists, false);
         assert_eq!(validator.old_account_info, None);
@@ -148,7 +148,7 @@ mod tests {
         let block = BlockBuilder::state().build();
         let account_info = AccountInfo::create_test_instance();
         let ledger = Ledger::create_null_with()
-            .account_info(&block.account(), &account_info)
+            .account_info(&block.account_field().unwrap(), &account_info)
             .build();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
@@ -161,7 +161,7 @@ mod tests {
         let pending_info = PendingInfo::create_test_instance();
         let ledger = Ledger::create_null_with()
             .pending(
-                &PendingKey::new(block.account(), BlockHash::from(42)),
+                &PendingKey::new(block.account_field().unwrap(), BlockHash::from(42)),
                 &pending_info,
             )
             .build();
@@ -195,7 +195,7 @@ mod tests {
         let pending_info = PendingInfo::create_test_instance();
         let ledger = Ledger::create_null_with()
             .pending(
-                &PendingKey::new(block.account(), BlockHash::from(42)),
+                &PendingKey::new(block.account_field().unwrap(), BlockHash::from(42)),
                 &pending_info,
             )
             .build();

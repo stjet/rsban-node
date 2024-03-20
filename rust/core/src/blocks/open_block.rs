@@ -72,6 +72,10 @@ impl OpenBlock {
         }
     }
 
+    pub fn account(&self) -> Account {
+        self.hashables.account
+    }
+
     pub fn create_test_instance() -> Self {
         let key = KeyPair::from(42);
         Self::new(
@@ -154,8 +158,8 @@ impl Block for OpenBlock {
         BlockType::LegacyOpen
     }
 
-    fn account(&self) -> Account {
-        self.hashables.account
+    fn account_field(&self) -> Option<Account> {
+        Some(self.hashables.account)
     }
 
     fn hash(&self) -> BlockHash {
@@ -208,7 +212,7 @@ impl Block for OpenBlock {
     }
 
     fn root(&self) -> Root {
-        self.account().into()
+        self.hashables.account.into()
     }
 
     fn visit(&self, visitor: &mut dyn BlockVisitor) {
@@ -287,7 +291,7 @@ mod tests {
             0,
         );
 
-        assert_eq!(block.account(), account);
+        assert_eq!(block.account_field(), Some(account));
         assert_eq!(block.root(), account.into());
     }
 

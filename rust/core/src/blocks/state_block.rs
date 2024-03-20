@@ -128,6 +128,10 @@ impl StateBlock {
         }
     }
 
+    pub fn account(&self) -> Account {
+        self.hashables.account
+    }
+
     pub fn source(&self) -> BlockHash {
         BlockHash::zero()
     }
@@ -226,8 +230,8 @@ impl Block for StateBlock {
         BlockType::State
     }
 
-    fn account(&self) -> Account {
-        self.hashables.account
+    fn account_field(&self) -> Option<Account> {
+        Some(self.hashables.account)
     }
 
     fn hash(&self) -> BlockHash {
@@ -291,7 +295,7 @@ impl Block for StateBlock {
         if !self.previous().is_zero() {
             self.previous().into()
         } else {
-            self.account().into()
+            self.hashables.account.into()
         }
     }
 

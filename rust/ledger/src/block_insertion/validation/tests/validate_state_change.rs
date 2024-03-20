@@ -30,7 +30,7 @@ fn valid_change_block() {
             height: old_account_info.block_count + 1,
             timestamp: test.seconds_since_epoch,
             successor: BlockHash::zero(),
-            account: change_block.account(),
+            account: change_block.account_field().unwrap(),
             balance: old_account_info.balance,
             details: BlockDetails::new(old_account_info.epoch, false, false, false),
             source_epoch: Epoch::Epoch0

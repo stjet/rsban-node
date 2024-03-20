@@ -397,7 +397,7 @@ mod tests {
         genesis.add_legacy_send_to(chain.account, Amount::raw(10));
         chain.add_legacy_open_from_account(&genesis);
         let block = chain.latest_block();
-        assert_eq!(block.account(), chain.account());
+        assert_eq!(block.account_field(), Some(chain.account()));
         assert_eq!(block.block_type(), BlockType::LegacyOpen);
         assert_eq!(block.sideband().unwrap().height, 1);
         assert_eq!(chain.frontier(), block.hash());

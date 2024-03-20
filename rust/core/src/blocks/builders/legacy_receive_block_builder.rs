@@ -1,6 +1,7 @@
 use crate::{
     work::{WorkPool, STUB_WORK_POOL},
-    Amount, Block, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair, ReceiveBlock,
+    Account, Amount, Block, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair,
+    ReceiveBlock,
 };
 
 pub struct LegacyReceiveBlockBuilder {
@@ -72,7 +73,7 @@ impl LegacyReceiveBlockBuilder {
 
         if self.build_sideband {
             block.set_sideband(BlockSideband::new(
-                block.account(),
+                Account::from(42),
                 BlockHash::zero(),
                 Amount::raw(5),
                 1,

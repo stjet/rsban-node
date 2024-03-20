@@ -17,7 +17,7 @@ fn valid_open_block() {
             height: 1,
             timestamp: test.seconds_since_epoch,
             successor: BlockHash::zero(),
-            account: open_block.account(),
+            account: open_block.account_field().unwrap(),
             balance: open_block.balance(),
             details: BlockDetails::new(Epoch::Epoch2, false, true, false),
             source_epoch: Epoch::Epoch2

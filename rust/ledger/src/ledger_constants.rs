@@ -78,7 +78,7 @@ pub static LEDGER_CONSTANTS_STUB: Lazy<LedgerConstants> =
     Lazy::new(|| LedgerConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork));
 
 pub static DEV_GENESIS: Lazy<Arc<BlockEnum>> = Lazy::new(|| LEDGER_CONSTANTS_STUB.genesis.clone());
-pub static DEV_GENESIS_ACCOUNT: Lazy<Account> = Lazy::new(|| DEV_GENESIS.account());
+pub static DEV_GENESIS_ACCOUNT: Lazy<Account> = Lazy::new(|| DEV_GENESIS.account_field().unwrap());
 pub static DEV_GENESIS_HASH: Lazy<BlockHash> = Lazy::new(|| DEV_GENESIS.hash());
 
 fn parse_block_from_genesis_data(genesis_data: &str) -> Result<BlockEnum> {
@@ -136,7 +136,7 @@ impl LedgerConstants {
         let mut nano_test_genesis =
             parse_block_from_genesis_data(TEST_GENESIS_DATA.as_str()).unwrap();
 
-        let beta_genesis_account = nano_beta_genesis.account();
+        let beta_genesis_account = nano_beta_genesis.account_field().unwrap();
         nano_beta_genesis
             .as_block_mut()
             .set_sideband(BlockSideband::new(
@@ -149,7 +149,7 @@ impl LedgerConstants {
                 Epoch::Epoch0,
             ));
 
-        let dev_genesis_account = nano_dev_genesis.account();
+        let dev_genesis_account = nano_dev_genesis.account_field().unwrap();
         nano_dev_genesis
             .as_block_mut()
             .set_sideband(BlockSideband::new(
@@ -162,7 +162,7 @@ impl LedgerConstants {
                 Epoch::Epoch0,
             ));
 
-        let live_genesis_account = nano_live_genesis.account();
+        let live_genesis_account = nano_live_genesis.account_field().unwrap();
         nano_live_genesis
             .as_block_mut()
             .set_sideband(BlockSideband::new(
@@ -175,7 +175,7 @@ impl LedgerConstants {
                 Epoch::Epoch0,
             ));
 
-        let test_genesis_account = nano_test_genesis.account();
+        let test_genesis_account = nano_test_genesis.account_field().unwrap();
         nano_test_genesis
             .as_block_mut()
             .set_sideband(BlockSideband::new(
@@ -195,7 +195,7 @@ impl LedgerConstants {
             Networks::NanoLiveNetwork => nano_live_genesis.clone(),
             Networks::Invalid => panic!("invalid network"),
         };
-        let genesis_account = genesis.account();
+        let genesis_account = genesis.account_field().unwrap();
 
         let nano_dev_final_votes_canary_account = Account::decode_hex(DEV_PUBLIC_KEY_DATA).unwrap();
         let nano_beta_final_votes_canary_account =
@@ -218,7 +218,7 @@ impl LedgerConstants {
 
         let mut epochs = Epochs::new();
 
-        let epoch_1_signer = genesis.account();
+        let epoch_1_signer = genesis_account;
         let epoch_link_v1 = epoch_v1_link();
 
         let nano_live_epoch_v2_signer = Account::decode_account(

@@ -1,8 +1,6 @@
-use rsnano_core::{validate_block_signature, BlockEnum, Epoch, Epochs};
-
-use crate::BlockStatus;
-
 use super::BlockValidator;
+use crate::BlockStatus;
+use rsnano_core::{validate_block_signature, BlockEnum, Epoch, Epochs};
 
 impl<'a> BlockValidator<'a> {
     pub(crate) fn ensure_valid_epoch_block(&self) -> Result<(), BlockStatus> {
@@ -96,7 +94,7 @@ impl<'a> BlockValidator<'a> {
         if let BlockEnum::State(state_block) = self.block {
             // Check for possible regular state blocks with epoch link (send subtype)
             if self.has_epoch_link(state_block)
-                && (validate_block_signature(self.block).is_err()
+                && (validate_block_signature(state_block).is_err()
                     && self.epochs.validate_epoch_signature(self.block).is_err())
             {
                 return Err(BlockStatus::BadSignature);

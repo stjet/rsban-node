@@ -215,8 +215,8 @@ impl Block for SendBlock {
         BlockType::LegacySend
     }
 
-    fn account(&self) -> Account {
-        Account::zero()
+    fn account_field(&self) -> Option<Account> {
+        None
     }
 
     fn hash(&self) -> BlockHash {

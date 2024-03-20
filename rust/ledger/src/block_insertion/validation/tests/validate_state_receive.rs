@@ -10,7 +10,7 @@ fn valid_receive_block() {
     let receive = &test.block();
     let old_account_info = test.chain.account_info();
 
-    assert_eq!(result.account, receive.account(), "account");
+    assert_eq!(result.account, receive.account_field().unwrap(), "account");
     assert_eq!(
         result.set_account_info,
         AccountInfo {
@@ -29,7 +29,7 @@ fn valid_receive_block() {
             height: old_account_info.block_count + 1,
             timestamp: test.seconds_since_epoch,
             successor: BlockHash::zero(),
-            account: receive.account(),
+            account: receive.account_field().unwrap(),
             balance: receive.balance(),
             details: BlockDetails::new(old_account_info.epoch, false, true, false),
             source_epoch: Epoch::Epoch0
@@ -38,7 +38,10 @@ fn valid_receive_block() {
     );
     assert_eq!(
         result.delete_pending,
-        Some(PendingKey::new(receive.account(), receive.link().into()))
+        Some(PendingKey::new(
+            receive.account_field().unwrap(),
+            receive.link().into()
+        ))
     );
     assert_eq!(result.insert_pending, None);
 }

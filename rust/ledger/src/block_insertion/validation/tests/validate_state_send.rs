@@ -12,7 +12,11 @@ fn valid_send_block() {
     let send_block = &test.block();
     let old_account_info = test.chain.account_info();
 
-    assert_eq!(result.account, send_block.account(), "account");
+    assert_eq!(
+        result.account,
+        send_block.account_field().unwrap(),
+        "account"
+    );
     assert_eq!(
         result.set_account_info,
         AccountInfo {
@@ -33,7 +37,7 @@ fn valid_send_block() {
             PendingInfo {
                 amount: Amount::raw(1),
                 epoch: old_account_info.epoch,
-                source: send_block.account()
+                source: send_block.account_field().unwrap()
             }
         )),
         "insert pending"
@@ -45,7 +49,7 @@ fn valid_send_block() {
             height: old_account_info.block_count + 1,
             timestamp: test.seconds_since_epoch,
             successor: BlockHash::zero(),
-            account: send_block.account(),
+            account: send_block.account_field().unwrap(),
             balance: send_block.balance(),
             details: BlockDetails::new(old_account_info.epoch, true, false, false),
             source_epoch: Epoch::Epoch0

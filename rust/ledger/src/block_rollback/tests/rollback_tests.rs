@@ -27,7 +27,7 @@ fn rollback_receive_block_which_performed_epoch1_upgrade_undoes_epoch_upgrade() 
     assert_eq!(
         instructions.add_pending,
         Some((
-            PendingKey::new(receive_block.account(), receive_block.link().into()),
+            PendingKey::new(chain.account(), receive_block.link().into()),
             PendingInfo {
                 source: Account::from(456),
                 amount: Amount::raw(1),

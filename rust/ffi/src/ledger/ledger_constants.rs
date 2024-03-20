@@ -115,7 +115,7 @@ impl TryFrom<&LedgerConstantsDto> for LedgerConstants {
         );
 
         let genesis = unsafe { &*value.genesis }.deref().clone();
-        let genesis_account = genesis.account();
+        let genesis_account = genesis.account_field().unwrap();
         let ledger = LedgerConstants {
             work: (&value.work).into(),
             zero_key: KeyPair::from_priv_key_bytes(&value.priv_key)?,

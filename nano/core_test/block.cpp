@@ -146,7 +146,7 @@ TEST (block_builder, open)
 				 .build (ec);
 	ASSERT_EQ (block->hash ().to_string (), "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19B728948");
 	ASSERT_EQ (block->source ().to_string (), "E89208DD038FBB269987689621D52292AE9C35941A7484756ECCED92A65093BA");
-	ASSERT_FALSE (block->destination ());
+	ASSERT_FALSE (block->destination_field ());
 	ASSERT_TRUE (block->link ().is_zero ());
 }
 
@@ -185,7 +185,7 @@ TEST (block_builder, change)
 				 .build (ec);
 	ASSERT_EQ (block->hash ().to_string (), "13552AC3928E93B5C6C215F61879358E248D4A5246B8B3D1EEC5A566EDCEE077");
 	ASSERT_TRUE (block->source ().is_zero ());
-	ASSERT_FALSE (block->destination ());
+	ASSERT_FALSE (block->destination_field ());
 	ASSERT_TRUE (block->link ().is_zero ());
 }
 
@@ -224,7 +224,7 @@ TEST (block_builder, send)
 				 .build (ec);
 	ASSERT_EQ (block->hash ().to_string (), "4560E7B1F3735D082700CFC2852F5D1F378F7418FD24CEF1AD45AB69316F15CD");
 	ASSERT_TRUE (block->source ().is_zero ());
-	ASSERT_EQ (block->destination ().value ().to_account (), "nano_1gys8r4crpxhp94n4uho5cshaho81na6454qni5gu9n53gksoyy1wcd4udyb");
+	ASSERT_EQ (block->destination_field ().value ().to_account (), "nano_1gys8r4crpxhp94n4uho5cshaho81na6454qni5gu9n53gksoyy1wcd4udyb");
 	ASSERT_TRUE (block->link ().is_zero ());
 }
 
@@ -286,6 +286,6 @@ TEST (block_builder, receive)
 				 .build (ec);
 	ASSERT_EQ (block->hash ().to_string (), "6C004BF911D9CF2ED75CF6EC45E795122AD5D093FF5A83EDFBA43EC4A3EDC722");
 	ASSERT_EQ (block->source ().to_string (), "7B2B0A29C1B235FDF9B4DEF2984BB3573BD1A52D28246396FBB3E4C5FE662135");
-	ASSERT_FALSE (block->destination ());
+	ASSERT_FALSE (block->destination_field ());
 	ASSERT_TRUE (block->link ().is_zero ());
 }

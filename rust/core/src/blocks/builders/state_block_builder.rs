@@ -303,7 +303,7 @@ mod tests {
             "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F"
         );
         assert!(block.source().is_none());
-        assert!(block.destination().is_none());
+        assert!(block.destination_field().is_none());
         assert_eq!(
             block.link().encode_hex(),
             "E16DD58C1EFA8B521545B0A74375AA994D9FC43828A4266D75ECF57F07A7EE86"

@@ -133,7 +133,7 @@ pub trait Block: FullHash {
     /// Source block for open/receive blocks, zero otherwise.
     fn source(&self) -> Option<BlockHash>;
     fn representative(&self) -> Option<Account>;
-    fn destination(&self) -> Option<Account>;
+    fn destination_field(&self) -> Option<Account>;
     fn qualified_root(&self) -> QualifiedRoot {
         QualifiedRoot::new(self.root(), self.previous())
     }
@@ -241,7 +241,8 @@ impl BlockEnum {
     }
 
     pub fn destination_or_link(&self) -> Account {
-        self.destination().unwrap_or_else(|| self.link().into())
+        self.destination_field()
+            .unwrap_or_else(|| self.link().into())
     }
 
     pub fn account(&self) -> Account {

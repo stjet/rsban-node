@@ -327,7 +327,7 @@ impl Block for StateBlock {
         true
     }
 
-    fn destination(&self) -> Option<Account> {
+    fn destination_field(&self) -> Option<Account> {
         None
     }
 }

@@ -1693,7 +1693,7 @@ int main (int argc, char * const * argv)
 					}
 					else if (auto send = dynamic_cast<nano::send_block *> (block.get ()))
 					{
-						destination = send->destination ().value ();
+						destination = send->destination_field ().value ();
 					}
 					else
 					{

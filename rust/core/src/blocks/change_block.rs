@@ -237,7 +237,7 @@ impl Block for ChangeBlock {
         valid_change_block_predecessor(block_type)
     }
 
-    fn destination(&self) -> Option<Account> {
+    fn destination_field(&self) -> Option<Account> {
         None
     }
 }

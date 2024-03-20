@@ -247,7 +247,7 @@ impl Block for OpenBlock {
         crate::QualifiedRoot::new(self.root(), self.previous())
     }
 
-    fn destination(&self) -> Option<Account> {
+    fn destination_field(&self) -> Option<Account> {
         None
     }
 }

@@ -141,7 +141,7 @@ nano::block_hash nano::block::source () const
 	return source;
 }
 
-std::optional<nano::account> nano::block::destination () const
+std::optional<nano::account> nano::block::destination_field () const
 {
 	return std::nullopt;
 }
@@ -181,6 +181,21 @@ nano::amount nano::block::balance () const noexcept
 		case nano::block_type::send:
 		case nano::block_type::state:
 			return balance_field ().value ();
+		default:
+			release_assert (false);
+	}
+}
+
+nano::account nano::block::destination () const noexcept
+{
+	release_assert (has_sideband ());
+	switch (type ())
+	{
+		case nano::block_type::send:
+			return destination_field ().value ();
+		case nano::block_type::state:
+			release_assert (sideband ().details ().is_send ());
+			return link ().as_account ();
 		default:
 			release_assert (false);
 	}
@@ -400,7 +415,7 @@ bool nano::send_block::operator== (nano::send_block const & other_a) const
 	return rsnano::rsn_block_equals (handle, other_a.handle);
 }
 
-std::optional<nano::account> nano::send_block::destination () const
+std::optional<nano::account> nano::send_block::destination_field () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_send_block_destination (handle, &buffer);

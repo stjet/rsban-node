@@ -225,7 +225,7 @@ impl Block for ReceiveBlock {
         valid_receive_block_predecessor(block_type)
     }
 
-    fn destination(&self) -> Option<Account> {
+    fn destination_field(&self) -> Option<Account> {
         None
     }
 }

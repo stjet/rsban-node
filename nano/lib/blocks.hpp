@@ -75,8 +75,10 @@ public: // Direct access to the block fields or nullopt if the block type does n
 	nano::amount balance () const noexcept;
 	// Balance field for open/send/state blocks
 	virtual std::optional<nano::amount> balance_field () const;
+	// Returns the destination account for send/state blocks that are sends
+	nano::account destination () const noexcept;
 	// Destination account for send blocks
-	virtual std::optional<nano::account> destination () const;
+	virtual std::optional<nano::account> destination_field () const;
 
 	rsnano::BlockHandle * get_handle () const;
 	rsnano::BlockHandle * clone_handle () const;
@@ -118,7 +120,7 @@ public:
 
 public: // Send block fields
 	std::optional<nano::amount> balance_field () const override;
-	std::optional<nano::account> destination () const override;
+	std::optional<nano::account> destination_field () const override;
 };
 
 class receive_block : public nano::block

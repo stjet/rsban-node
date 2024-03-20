@@ -2375,12 +2375,12 @@ public:
 	virtual ~history_visitor () = default;
 	void send_block (nano::send_block const & block_a)
 	{
-		if (should_ignore_account (block_a.destination ().value ()))
+		if (should_ignore_account (block_a.destination_field ().value ()))
 		{
 			return;
 		}
 		tree.put ("type", "send");
-		auto account (block_a.destination ().value ().to_account ());
+		auto account (block_a.destination_field ().value ().to_account ());
 		tree.put ("account", account);
 		auto amount = handler.node.ledger.amount (transaction, hash);
 		if (amount)

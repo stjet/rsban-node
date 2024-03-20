@@ -295,7 +295,7 @@ impl Block for SendBlock {
         valid_send_block_predecessor(block_type)
     }
 
-    fn destination(&self) -> Option<Account> {
+    fn destination_field(&self) -> Option<Account> {
         Some(self.hashables.destination)
     }
 }

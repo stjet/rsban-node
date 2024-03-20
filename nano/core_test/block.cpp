@@ -184,7 +184,7 @@ TEST (block_builder, change)
 				 .previous_hex ("088EE46429CA936F76C4EAA20B97F6D33E5D872971433EE0C1311BCB98764456")
 				 .build (ec);
 	ASSERT_EQ (block->hash ().to_string (), "13552AC3928E93B5C6C215F61879358E248D4A5246B8B3D1EEC5A566EDCEE077");
-	ASSERT_TRUE (block->source_field ().value ().is_zero ());
+	ASSERT_FALSE (block->source_field());
 	ASSERT_FALSE (block->destination_field ());
 	ASSERT_TRUE (block->link ().is_zero ());
 }
@@ -223,7 +223,7 @@ TEST (block_builder, send)
 				 .balance_hex ("00F035A9C7D818E7C34148C524FFFFEE")
 				 .build (ec);
 	ASSERT_EQ (block->hash ().to_string (), "4560E7B1F3735D082700CFC2852F5D1F378F7418FD24CEF1AD45AB69316F15CD");
-	ASSERT_TRUE (block->source_field ().value ().is_zero ());
+	ASSERT_FALSE (block->source_field ());
 	ASSERT_EQ (block->destination_field ().value ().to_account (), "nano_1gys8r4crpxhp94n4uho5cshaho81na6454qni5gu9n53gksoyy1wcd4udyb");
 	ASSERT_TRUE (block->link ().is_zero ());
 }

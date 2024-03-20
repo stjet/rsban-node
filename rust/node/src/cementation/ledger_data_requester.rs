@@ -114,7 +114,7 @@ impl LedgerDataRequesterStub {
             .entry(block.account())
             .or_insert_with(|| AccountInfo {
                 head: block.hash(),
-                representative: block.representative().unwrap_or_default(),
+                representative: block.representative_field().unwrap_or_default(),
                 open_block: block.hash(),
                 balance: block.balance(),
                 modified: 0,

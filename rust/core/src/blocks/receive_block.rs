@@ -213,7 +213,7 @@ impl Block for ReceiveBlock {
         Some(self.hashables.source)
     }
 
-    fn representative(&self) -> Option<Account> {
+    fn representative_field(&self) -> Option<Account> {
         None
     }
 

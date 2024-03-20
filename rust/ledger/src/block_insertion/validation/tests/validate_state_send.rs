@@ -21,7 +21,7 @@ fn valid_send_block() {
         result.set_account_info,
         AccountInfo {
             head: send_block.hash(),
-            representative: send_block.representative().unwrap(),
+            representative: send_block.representative_field().unwrap(),
             open_block: old_account_info.open_block,
             balance: send_block.balance_field().unwrap(),
             modified: test.seconds_since_epoch,

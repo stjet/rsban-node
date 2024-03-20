@@ -13,7 +13,7 @@ fn valid_change_block() {
         result.set_account_info,
         AccountInfo {
             head: change_block.hash(),
-            representative: change_block.representative().unwrap(),
+            representative: change_block.representative_field().unwrap(),
             open_block: old_account_info.open_block,
             balance: old_account_info.balance,
             modified: test.seconds_since_epoch,

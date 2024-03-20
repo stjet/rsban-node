@@ -15,7 +15,7 @@ fn valid_receive_block() {
         result.set_account_info,
         AccountInfo {
             head: receive.hash(),
-            representative: receive.representative().unwrap(),
+            representative: receive.representative_field().unwrap(),
             open_block: old_account_info.open_block,
             balance: receive.balance_field().unwrap(),
             modified: test.seconds_since_epoch,

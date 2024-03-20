@@ -175,10 +175,9 @@ rsnano::BlockHandle * nano::block::get_handle () const
 	return handle;
 }
 
-nano::account nano::block::representative () const
+std::optional<nano::account> nano::block::representative_field () const
 {
-	static nano::account representative{};
-	return representative;
+	return std::nullopt;
 }
 
 std::optional<nano::block_hash> nano::block::source_field () const
@@ -635,7 +634,7 @@ nano::root nano::open_block::root () const
 	return account_field ().value ();
 }
 
-nano::account nano::open_block::representative () const
+std::optional<nano::account> nano::open_block::representative_field () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_open_block_representative (handle, &buffer);
@@ -790,7 +789,7 @@ nano::root nano::change_block::root () const
 	return previous ();
 }
 
-nano::account nano::change_block::representative () const
+std::optional<nano::account> nano::change_block::representative_field () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_change_block_representative (handle, &buffer);
@@ -974,7 +973,7 @@ std::optional<nano::link> nano::state_block::link_field () const
 	return result;
 }
 
-nano::account nano::state_block::representative () const
+std::optional<nano::account> nano::state_block::representative_field () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_state_block_representative (handle, &buffer);

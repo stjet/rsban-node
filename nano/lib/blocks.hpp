@@ -42,7 +42,6 @@ public:
 	virtual nano::root root () const = 0;
 	// Qualified root value based on previous() and root()
 	virtual nano::qualified_root qualified_root () const;
-	virtual nano::account representative () const;
 	virtual void serialize (nano::stream &) const;
 	virtual void serialize_json (std::string &, bool = false) const;
 	virtual void serialize_json (boost::property_tree::ptree &) const;
@@ -78,6 +77,8 @@ public: // Direct access to the block fields or nullopt if the block type does n
 	virtual std::optional<nano::account> destination_field () const;
 	// Link field for state blocks
 	virtual std::optional<nano::link> link_field () const;
+	// Representative field for open/change blocks
+	virtual std::optional<nano::account> representative_field () const;
 	// Returns the source block hash for open/receive/state blocks that are receives
 	nano::block_hash source () const noexcept;
 	// Source block for open/receive blocks
@@ -164,7 +165,6 @@ public:
 	open_block (rsnano::BlockHandle * handle_a);
 	using nano::block::hash;
 	nano::root root () const override;
-	nano::account representative () const override;
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
 	bool operator== (nano::block const &) const override;
@@ -178,6 +178,7 @@ public:
 
 public: // Open block fields
 	std::optional<nano::account> account_field () const override;
+	std::optional<nano::account> representative_field () const override;
 	std::optional<nano::block_hash> source_field () const override;
 };
 
@@ -193,7 +194,6 @@ public:
 	change_block (rsnano::BlockHandle * handle_a);
 	using nano::block::hash;
 	nano::root root () const override;
-	nano::account representative () const override;
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
 	bool operator== (nano::block const &) const override;
@@ -203,6 +203,9 @@ public:
 	void representative_set (nano::account account_a);
 	void zero ();
 	static std::size_t size ();
+
+public: // Change block fields
+	std::optional<nano::account> representative_field () const override;
 };
 
 class state_block : public nano::block
@@ -217,7 +220,6 @@ public:
 	state_block (rsnano::BlockHandle * handle_a);
 	using nano::block::hash;
 	nano::root root () const override;
-	nano::account representative () const override;
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
 	bool operator== (nano::block const &) const override;
@@ -236,6 +238,7 @@ public: // State block fields
 	std::optional<nano::account> account_field () const override;
 	std::optional<nano::amount> balance_field () const override;
 	std::optional<nano::link> link_field () const override;
+	std::optional<nano::account> representative_field () const override;
 };
 
 class block_visitor

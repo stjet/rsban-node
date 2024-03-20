@@ -154,7 +154,7 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn new_representative(&self) -> Account {
         self.block
-            .representative()
+            .representative_field()
             .unwrap_or(self.old_representative())
     }
 

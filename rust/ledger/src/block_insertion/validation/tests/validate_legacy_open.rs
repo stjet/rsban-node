@@ -37,7 +37,7 @@ fn valid_legacy_open_block() {
         result.set_account_info,
         AccountInfo {
             head: block.hash(),
-            representative: block.representative().unwrap(),
+            representative: block.representative_field().unwrap(),
             open_block: block.hash(),
             balance: Amount::raw(100),
             modified: test.seconds_since_epoch,

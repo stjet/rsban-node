@@ -361,7 +361,7 @@ impl TestAccountChain {
             previous.set_sideband(sideband);
         }
 
-        if let Some(rep) = block.representative() {
+        if let Some(rep) = block.representative_field() {
             self.representative = rep;
         }
 
@@ -373,7 +373,7 @@ impl TestAccountChain {
         self.blocks[..height as usize]
             .iter()
             .rev()
-            .filter_map(|b| b.representative())
+            .filter_map(|b| b.representative_field())
             .next()
     }
 }
@@ -404,7 +404,7 @@ mod tests {
         assert_eq!(chain.height(), 1);
         assert_eq!(
             chain.account_info().representative,
-            block.representative().unwrap()
+            block.representative_field().unwrap()
         );
     }
 }

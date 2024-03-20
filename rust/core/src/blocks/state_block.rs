@@ -319,7 +319,7 @@ impl Block for StateBlock {
         None
     }
 
-    fn representative(&self) -> Option<Account> {
+    fn representative_field(&self) -> Option<Account> {
         Some(self.hashables.representative)
     }
 

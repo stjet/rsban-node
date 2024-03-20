@@ -283,7 +283,7 @@ impl Block for SendBlock {
         None
     }
 
-    fn representative(&self) -> Option<Account> {
+    fn representative_field(&self) -> Option<Account> {
         None
     }
 

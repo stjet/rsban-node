@@ -32,7 +32,7 @@ fn valid_open_block() {
         result.set_account_info,
         AccountInfo {
             head: open_block.hash(),
-            representative: open_block.representative().unwrap(),
+            representative: open_block.representative_field().unwrap(),
             open_block: open_block.hash(),
             balance: open_block.balance_field().unwrap(),
             modified: test.seconds_since_epoch,

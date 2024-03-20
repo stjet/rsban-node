@@ -653,10 +653,10 @@ void nano::json_handler::account_info ()
 					nano::account confirmed_representative{};
 					if (confirmed_frontier_block)
 					{
-						confirmed_representative = confirmed_frontier_block->representative ();
+						confirmed_representative = confirmed_frontier_block->representative_field ().value_or (0);
 						if (confirmed_representative.is_zero ())
 						{
-							confirmed_representative = node.ledger.block (*transaction, node.ledger.representative (*transaction, confirmation_height_info.frontier ()))->representative ();
+							confirmed_representative = node.ledger.block (*transaction, node.ledger.representative (*transaction, confirmation_height_info.frontier ()))->representative_field ().value ();
 						}
 					}
 
@@ -2418,7 +2418,7 @@ public:
 		if (raw)
 		{
 			tree.put ("type", "open");
-			tree.put ("representative", block_a.representative ().to_account ());
+			tree.put ("representative", block_a.representative_field ().value ().to_account ());
 			tree.put ("source", block_a.source_field ().value ().to_string ());
 			tree.put ("opened", block_a.account ().to_account ());
 		}
@@ -2451,7 +2451,7 @@ public:
 		if (raw && accounts_filter.empty ())
 		{
 			tree.put ("type", "change");
-			tree.put ("representative", block_a.representative ().to_account ());
+			tree.put ("representative", block_a.representative_field ().value ().to_account ());
 			tree.put ("previous", block_a.previous ().to_string ());
 		}
 	}
@@ -2460,7 +2460,7 @@ public:
 		if (raw)
 		{
 			tree.put ("type", "state");
-			tree.put ("representative", block_a.representative ().to_account ());
+			tree.put ("representative", block_a.representative_field ().value ().to_account ());
 			tree.put ("link", block_a.link_field ().value ().to_string ());
 			tree.put ("balance", block_a.balance ().to_string_dec ());
 			tree.put ("previous", block_a.previous ().to_string ());

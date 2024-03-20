@@ -91,7 +91,7 @@ fn can_open_account_with_epoch1_block() {
         instructions.set_account_info,
         AccountInfo {
             head: epoch1_open.hash(),
-            representative: epoch1_open.representative().unwrap(),
+            representative: epoch1_open.representative_field().unwrap(),
             open_block: epoch1_open.hash(),
             balance: Amount::zero(),
             modified: test.seconds_since_epoch,

@@ -132,7 +132,7 @@ pub trait Block: FullHash {
     fn balance_field(&self) -> Option<Amount>;
     /// Source block for open/receive blocks, zero otherwise.
     fn source_field(&self) -> Option<BlockHash>;
-    fn representative(&self) -> Option<Account>;
+    fn representative_field(&self) -> Option<Account>;
     fn destination_field(&self) -> Option<Account>;
     fn qualified_root(&self) -> QualifiedRoot {
         QualifiedRoot::new(self.root(), self.previous())

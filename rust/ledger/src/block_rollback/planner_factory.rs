@@ -109,7 +109,7 @@ impl<'a, T: Environment + 'static> RollbackPlannerFactory<'a, T> {
 
         let previous_rep = if !rep_block_hash.is_zero() {
             let rep_block = self.load_block(&rep_block_hash)?;
-            Some(rep_block.representative().unwrap_or_default())
+            Some(rep_block.representative_field().unwrap_or_default())
         } else {
             None
         };

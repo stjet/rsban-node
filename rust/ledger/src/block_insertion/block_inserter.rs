@@ -358,7 +358,7 @@ mod tests {
             head: block.hash(),
             open_block: block.hash(),
             balance: block.balance_field().unwrap(),
-            representative: block.representative().unwrap(),
+            representative: block.representative_field().unwrap(),
             ..AccountInfo::create_test_instance()
         };
         let instructions = BlockInsertInstructions {

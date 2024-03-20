@@ -36,8 +36,6 @@ public:
 	std::string to_json () const;
 	virtual uint64_t block_work () const;
 	virtual void block_work_set (uint64_t);
-	// Previous block in account's chain, zero for open block
-	virtual nano::block_hash previous () const;
 	// Previous block or account number for open blocks
 	virtual nano::root root () const = 0;
 	// Qualified root value based on previous() and root()
@@ -77,6 +75,10 @@ public: // Direct access to the block fields or nullopt if the block type does n
 	virtual std::optional<nano::account> destination_field () const;
 	// Link field for state blocks
 	virtual std::optional<nano::link> link_field () const;
+	// Previous block if field exists of 0
+	virtual nano::block_hash previous () const noexcept;
+	// Previous block in chain if the field exists
+	virtual std::optional<nano::block_hash> previous_field () const;
 	// Representative field for open/change blocks
 	virtual std::optional<nano::account> representative_field () const;
 	// Returns the source block hash for open/receive/state blocks that are receives

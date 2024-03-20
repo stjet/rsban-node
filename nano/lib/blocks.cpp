@@ -297,9 +297,27 @@ void nano::block::serialize (nano::stream & stream_a) const
 		throw std::runtime_error ("could not serialize block");
 	}
 }
-
-nano::block_hash nano::block::previous () const
+//
+// TODO - Remove comments below and fixup usages to not need to check .is_zero ()
+// std::optional<nano::block_hash> nano::block::previous () const
+nano::block_hash nano::block::previous () const noexcept
 {
+	std::optional<nano::block_hash> result = previous_field ();
+	/*
+	if (result && result.value ().is_zero ())
+	{
+		return std::nullopt;
+	}
+	return result;*/
+	return result.value_or (0);
+}
+
+std::optional<nano::block_hash> nano::block::previous_field () const
+{
+	if (type () == nano::block_type::open || type () == nano::block_type::invalid || type () == nano::block_type::not_a_block)
+	{
+		return std::nullopt;
+	}
 	uint8_t buffer[32];
 	rsnano::rsn_block_previous (handle, &buffer);
 	nano::block_hash result;

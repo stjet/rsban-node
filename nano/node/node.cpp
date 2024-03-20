@@ -229,7 +229,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	nano::transport::request_response_visitor_factory visitor_factory{ *this };
 	network->tcp_channels->set_message_visitor_factory (visitor_factory);
 
-	block_processor.start ();
 	process_live_dispatcher.connect (block_processor);
 	unchecked.set_satisfied_observer ([this] (nano::unchecked_info const & info) {
 		this->block_processor.add (info.get_block (), nano::block_source::unchecked);
@@ -681,6 +680,7 @@ void nano::node::start ()
 	}
 	wallets.wallet_actions.start ();
 	vote_processor.start ();
+	block_processor.start ();
 	active.start ();
 	generator.start ();
 	final_generator.start ();

@@ -95,8 +95,10 @@ public:
 	block_processor (nano::block_processor const &) = delete;
 	block_processor (nano::block_processor &&) = delete;
 	~block_processor ();
+
 	void start ();
 	void stop ();
+
 	std::size_t size ();
 	bool full ();
 	bool half_full ();
@@ -106,8 +108,8 @@ public:
 	void force (std::shared_ptr<nano::block> const &);
 	bool have_blocks_ready (nano::block_processor_lock & lock_a);
 	bool have_blocks (nano::block_processor_lock & lock_a);
-	void process_blocks ();
 	bool flushing ();
+
 	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);
 
 	rsnano::BlockProcessorHandle const * get_handle () const;
@@ -124,11 +126,10 @@ public: // Events
 	nano::observer_set<std::shared_ptr<nano::block> const &> rolled_back;
 
 private:
+	void run ();
 	processed_batch_t process_batch (nano::block_processor_lock &);
 
 	bool stopped{ false };
-	bool active{ false };
-
 	nano::stats & stats;
 	nano::logger & logger;
 	nano::node_config & config; // already ported
@@ -139,7 +140,7 @@ public:
 
 private:
 	nano::node_flags & flags; // already ported
-	std::thread processing_thread;
+	std::thread thread;
 
 	friend std::unique_ptr<container_info_component> collect_container_info (block_processor & block_processor, std::string const & name);
 	friend class block_processor_lock;

@@ -166,6 +166,8 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 nano::block_processor::~block_processor ()
 {
 	rsnano::rsn_block_processor_destroy (handle);
+	// Thread must be stopped before destruction
+	debug_assert (!thread.joinable ());
 }
 
 rsnano::BlockProcessorHandle const * nano::block_processor::get_handle () const
@@ -175,9 +177,11 @@ rsnano::BlockProcessorHandle const * nano::block_processor::get_handle () const
 
 void nano::block_processor::start ()
 {
-	processing_thread = std::thread ([this] () {
+	debug_assert (!thread.joinable ());
+
+	thread = std::thread ([this] () {
 		nano::thread_role::set (nano::thread_role::name::block_processing);
-		this->process_blocks ();
+		run ();
 	});
 }
 
@@ -189,7 +193,10 @@ void nano::block_processor::stop ()
 	}
 	rsnano::rsn_block_processor_notify_all (handle);
 	rsnano::rsn_block_processor_stop (handle);
-	nano::join_or_pass (processing_thread);
+	if (thread.joinable ())
+	{
+		thread.join ();
+	}
 }
 
 std::size_t nano::block_processor::size ()
@@ -271,14 +278,13 @@ void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 	rsnano::rsn_block_processor_notify_all (handle);
 }
 
-void nano::block_processor::process_blocks ()
+void nano::block_processor::run ()
 {
 	nano::block_processor_lock lock{ *this };
 	while (!stopped)
 	{
 		if (have_blocks_ready (lock))
 		{
-			active = true;
 			lock.unlock ();
 
 			auto processed = process_batch (lock);
@@ -292,7 +298,6 @@ void nano::block_processor::process_blocks ()
 			batch_processed.notify (processed);
 
 			lock.lock (handle);
-			active = false;
 		}
 		else
 		{

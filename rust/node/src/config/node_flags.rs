@@ -1,4 +1,4 @@
-use rsnano_ledger::GenerateCache;
+use rsnano_ledger::GenerateCacheFlags;
 
 #[derive(Clone)]
 pub struct NodeFlags {
@@ -30,7 +30,7 @@ pub struct NodeFlags {
     pub fast_bootstrap: bool,
     pub read_only: bool,
     pub disable_connection_cleanup: bool,
-    pub generate_cache: GenerateCache,
+    pub generate_cache: GenerateCacheFlags,
     pub inactive_node: bool,
     pub block_processor_batch_size: usize,
     pub block_processor_full_size: usize,
@@ -70,7 +70,7 @@ impl NodeFlags {
             fast_bootstrap: false,
             read_only: false,
             disable_connection_cleanup: false,
-            generate_cache: GenerateCache::new(),
+            generate_cache: GenerateCacheFlags::new(),
             inactive_node: false,
             block_processor_batch_size: 0,
             block_processor_full_size: 65536,

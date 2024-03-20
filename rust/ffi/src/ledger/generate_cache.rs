@@ -1,17 +1,17 @@
 use std::ops::Deref;
 
-use rsnano_ledger::GenerateCache;
+use rsnano_ledger::GenerateCacheFlags;
 
-pub struct GenerateCacheHandle(GenerateCache);
+pub struct GenerateCacheHandle(GenerateCacheFlags);
 
 impl GenerateCacheHandle {
-    pub fn new(cfg: GenerateCache) -> *mut GenerateCacheHandle {
+    pub fn new(cfg: GenerateCacheFlags) -> *mut GenerateCacheHandle {
         Box::into_raw(Box::new(GenerateCacheHandle(cfg)))
     }
 }
 
 impl Deref for GenerateCacheHandle {
-    type Target = GenerateCache;
+    type Target = GenerateCacheFlags;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -20,7 +20,7 @@ impl Deref for GenerateCacheHandle {
 
 #[no_mangle]
 pub extern "C" fn rsn_generate_cache_create() -> *mut GenerateCacheHandle {
-    GenerateCacheHandle::new(GenerateCache::new())
+    GenerateCacheHandle::new(GenerateCacheFlags::new())
 }
 
 #[no_mangle]

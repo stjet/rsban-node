@@ -497,31 +497,6 @@ enum class confirmation_height_mode
 	bounded
 };
 
-/* Holds flags for various cacheable data. For most CLI operations caching is unnecessary
- * (e.g getting the cemented block count) so it can be disabled for performance reasons. */
-class generate_cache
-{
-public:
-	generate_cache ();
-	generate_cache (rsnano::GenerateCacheHandle * handle_a);
-	generate_cache (generate_cache const &);
-	generate_cache (generate_cache && other_a) noexcept;
-	~generate_cache ();
-	generate_cache & operator= (generate_cache const & other_a);
-	generate_cache & operator= (generate_cache && other_a);
-	bool reps () const;
-	void enable_reps (bool enable);
-	bool cemented_count () const;
-	void enable_cemented_count (bool enable);
-	void enable_unchecked_count (bool enable);
-	bool account_count () const;
-	void enable_account_count (bool enable);
-	bool block_count () const;
-	void enable_block_count (bool enable);
-	void enable_all ();
-	rsnano::GenerateCacheHandle * handle;
-};
-
 /* Holds an in-memory cache of various counts */
 class ledger_cache
 {

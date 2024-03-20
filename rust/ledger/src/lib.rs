@@ -7,7 +7,7 @@ extern crate num_derive;
 mod block_insertion;
 mod block_rollback;
 mod dependent_blocks_finder;
-mod generate_cache;
+mod generate_cache_flags;
 mod ledger;
 mod ledger_cache;
 mod ledger_constants;
@@ -21,7 +21,7 @@ mod ledger_tests;
 
 pub(crate) use block_rollback::BlockRollbackPerformer;
 pub(crate) use dependent_blocks_finder::DependentBlocksFinder;
-pub use generate_cache::GenerateCache;
+pub use generate_cache_flags::GenerateCacheFlags;
 pub use ledger::{BlockStatus, Ledger, LedgerObserver, UncementedInfo};
 pub use ledger_cache::LedgerCache;
 pub use ledger_constants::{LedgerConstants, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};

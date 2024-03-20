@@ -1,5 +1,5 @@
 #[derive(Clone)]
-pub struct GenerateCache {
+pub struct GenerateCacheFlags {
     pub reps: bool,
     pub cemented_count: bool,
     pub unchecked_count: bool,
@@ -7,7 +7,7 @@ pub struct GenerateCache {
     pub block_count: bool,
 }
 
-impl GenerateCache {
+impl GenerateCacheFlags {
     pub fn new() -> Self {
         Self {
             reps: true,
@@ -26,7 +26,7 @@ impl GenerateCache {
     }
 }
 
-impl Default for GenerateCache {
+impl Default for GenerateCacheFlags {
     fn default() -> Self {
         Self::new()
     }

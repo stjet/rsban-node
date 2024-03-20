@@ -2,6 +2,7 @@
 
 #include <nano/lib/timer.hpp>
 #include <nano/secure/common.hpp>
+#include <nano/secure/generate_cache_flags.hpp>
 
 #include <map>
 
@@ -31,7 +32,7 @@ public:
 class ledger final
 {
 public:
-	ledger (nano::store::component &, nano::stats &, nano::ledger_constants & constants, nano::generate_cache const & = nano::generate_cache ());
+	ledger (nano::store::component &, nano::stats &, nano::ledger_constants & constants, nano::generate_cache_flags const & = nano::generate_cache_flags ());
 	ledger (nano::ledger const &) = delete;
 	ledger (nano::ledger &&) = delete;
 	~ledger ();

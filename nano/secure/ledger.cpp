@@ -23,13 +23,13 @@
 
 #include <optional>
 
-nano::ledger::ledger (nano::store::component & store_a, nano::stats & stat_a, nano::ledger_constants & constants, nano::generate_cache const & generate_cache_a) :
+nano::ledger::ledger (nano::store::component & store_a, nano::stats & stat_a, nano::ledger_constants & constants, nano::generate_cache_flags const & generate_cache_flags_a) :
 	constants{ constants },
 	store{ store_a },
 	stats{ stat_a }
 {
 	auto constants_dto{ constants.to_dto () };
-	handle = rsnano::rsn_ledger_create (store_a.get_handle (), &constants_dto, stat_a.handle, generate_cache_a.handle);
+	handle = rsnano::rsn_ledger_create (store_a.get_handle (), &constants_dto, stat_a.handle, generate_cache_flags_a.handle);
 	cache = nano::ledger_cache (rsnano::rsn_ledger_get_cache_handle (handle));
 }
 

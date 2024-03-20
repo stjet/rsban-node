@@ -1,6 +1,6 @@
 use crate::{
     block_insertion::{BlockInserter, BlockValidatorFactory},
-    BlockRollbackPerformer, GenerateCache, LedgerCache, LedgerConstants, RepWeights,
+    BlockRollbackPerformer, GenerateCacheFlags, LedgerCache, LedgerConstants, RepWeights,
     RepresentativeBlockFinder,
 };
 use rand::{thread_rng, Rng};
@@ -180,13 +180,13 @@ impl NullLedgerBuilder {
 
 impl<T: Environment + 'static> Ledger<T> {
     pub fn new(store: Arc<LmdbStore<T>>, constants: LedgerConstants) -> anyhow::Result<Self> {
-        Self::with_cache(store, constants, &GenerateCache::new())
+        Self::with_cache(store, constants, &GenerateCacheFlags::new())
     }
 
     pub fn with_cache(
         store: Arc<LmdbStore<T>>,
         constants: LedgerConstants,
-        generate_cache: &GenerateCache,
+        generate_cache: &GenerateCacheFlags,
     ) -> anyhow::Result<Self> {
         let mut ledger = Self {
             store,
@@ -216,7 +216,7 @@ impl<T: Environment + 'static> Ledger<T> {
         self.store.tx_begin_write()
     }
 
-    fn initialize(&mut self, generate_cache: &GenerateCache) -> anyhow::Result<()> {
+    fn initialize(&mut self, generate_cache: &GenerateCacheFlags) -> anyhow::Result<()> {
         if self.store.account.begin(&self.read_txn()).is_end() {
             self.add_genesis_block(&mut self.rw_txn());
         }

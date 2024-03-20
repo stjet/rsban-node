@@ -15,6 +15,7 @@
 #include <nano/node/vote_cache.hpp>
 #include <nano/node/websocketconfig.hpp>
 #include <nano/secure/common.hpp>
+#include <nano/secure/generate_cache_flags.hpp>
 
 #include <chrono>
 #include <optional>
@@ -200,8 +201,8 @@ public:
 	void set_read_only (bool value);
 	bool disable_connection_cleanup () const;
 	void set_disable_connection_cleanup (bool value);
-	nano::generate_cache generate_cache () const;
-	void set_generate_cache (nano::generate_cache const & cache);
+	nano::generate_cache_flags generate_cache () const;
+	void set_generate_cache (nano::generate_cache_flags const & cache);
 	bool inactive_node () const;
 	void set_inactive_node (bool value);
 	std::size_t block_processor_batch_size () const;

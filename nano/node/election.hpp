@@ -1,16 +1,12 @@
 #pragma once
-#include "nano/lib/logging.hpp"
 #include "nano/lib/rsnano.hpp"
 
 #include <nano/node/vote_cache.hpp>
 #include <nano/secure/common.hpp>
-#include <nano/secure/ledger.hpp>
 #include <nano/store/component.hpp>
 
-#include <atomic>
 #include <chrono>
 #include <memory>
-#include <unordered_set>
 
 namespace nano
 {

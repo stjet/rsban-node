@@ -22,13 +22,13 @@ impl<'a, T: Environment + 'static> DependentBlocksFinder<'a, T> {
             BlockEnum::LegacySend(_) | BlockEnum::LegacyChange(_) => {
                 (block.previous(), BlockHash::zero())
             }
-            BlockEnum::LegacyReceive(receive) => (receive.previous(), receive.mandatory_source()),
+            BlockEnum::LegacyReceive(receive) => (receive.previous(), receive.source()),
             BlockEnum::LegacyOpen(open) => {
                 if self.is_genesis_open(open) {
                     // genesis open block does not have any further dependencies
                     Default::default()
                 } else {
-                    (open.mandatory_source(), BlockHash::zero())
+                    (open.source(), BlockHash::zero())
                 }
             }
 

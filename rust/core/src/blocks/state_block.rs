@@ -311,7 +311,7 @@ impl Block for StateBlock {
         Some(self.hashables.balance)
     }
 
-    fn source(&self) -> Option<BlockHash> {
+    fn source_field(&self) -> Option<BlockHash> {
         None
     }
 

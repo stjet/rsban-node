@@ -75,7 +75,7 @@ impl ReceiveBlock {
     }
 
     // Receive blocks always have a source
-    pub fn mandatory_source(&self) -> BlockHash {
+    pub fn source(&self) -> BlockHash {
         self.hashables.source
     }
 
@@ -209,7 +209,7 @@ impl Block for ReceiveBlock {
         None
     }
 
-    fn source(&self) -> Option<BlockHash> {
+    fn source_field(&self) -> Option<BlockHash> {
         Some(self.hashables.source)
     }
 

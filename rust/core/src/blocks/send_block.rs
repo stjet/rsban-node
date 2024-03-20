@@ -279,7 +279,7 @@ impl Block for SendBlock {
         Some(self.hashables.balance)
     }
 
-    fn source(&self) -> Option<BlockHash> {
+    fn source_field(&self) -> Option<BlockHash> {
         None
     }
 

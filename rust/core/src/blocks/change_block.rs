@@ -221,7 +221,7 @@ impl Block for ChangeBlock {
         None
     }
 
-    fn source(&self) -> Option<BlockHash> {
+    fn source_field(&self) -> Option<BlockHash> {
         None
     }
 

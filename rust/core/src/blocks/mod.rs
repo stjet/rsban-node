@@ -131,7 +131,7 @@ pub trait Block: FullHash {
     fn visit_mut(&mut self, visitor: &mut dyn MutableBlockVisitor);
     fn balance_field(&self) -> Option<Amount>;
     /// Source block for open/receive blocks, zero otherwise.
-    fn source(&self) -> Option<BlockHash>;
+    fn source_field(&self) -> Option<BlockHash>;
     fn representative(&self) -> Option<Account>;
     fn destination_field(&self) -> Option<Account>;
     fn qualified_root(&self) -> QualifiedRoot {
@@ -236,8 +236,23 @@ impl BlockEnum {
         !matches!(self, BlockEnum::State(_))
     }
 
+    pub fn source(&self) -> Option<BlockHash> {
+        match self {
+            BlockEnum::LegacyOpen(i) => Some(i.source()),
+            BlockEnum::LegacyReceive(i) => Some(i.source()),
+            BlockEnum::State(i) => {
+                if i.sideband().unwrap().details.is_receive {
+                    Some(i.link().into())
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     pub fn source_or_link(&self) -> BlockHash {
-        self.source().unwrap_or_else(|| self.link().into())
+        self.source_field().unwrap_or_else(|| self.link().into())
     }
 
     pub fn destination_or_link(&self) -> Account {

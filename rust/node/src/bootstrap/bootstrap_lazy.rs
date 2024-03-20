@@ -357,7 +357,7 @@ impl BootstrapAttemptLazy {
         // Processing new blocks
         if !data.lazy_blocks_processed(&hash) {
             // Search for new dependencies
-            if block.source().is_some()
+            if block.source_field().is_some()
                 && !self.ledger.block_or_pruned_exists(&block.source_or_link())
                 && block.source_or_link()
                     != BlockHash::from_bytes(*self.network_params.ledger.genesis_account.as_bytes())

@@ -302,7 +302,7 @@ mod tests {
             block.hash().to_string(),
             "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F"
         );
-        assert!(block.source().is_none());
+        assert!(block.source_field().is_none());
         assert!(block.destination_field().is_none());
         assert_eq!(
             block.link().encode_hex(),

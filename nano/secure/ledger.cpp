@@ -141,13 +141,6 @@ nano::account nano::ledger::block_destination (nano::store::transaction const & 
 	return destination_l;
 }
 
-nano::block_hash nano::ledger::block_source (store::transaction const & transaction_a, nano::block const & block_a)
-{
-	nano::block_hash source_l;
-	rsnano::rsn_ledger_block_source (handle, transaction_a.get_rust_handle (), block_a.get_handle (), source_l.bytes.data ());
-	return source_l;
-}
-
 std::pair<nano::block_hash, nano::block_hash> nano::ledger::hash_root_random (store::transaction const & transaction_a) const
 {
 	nano::block_hash hash;

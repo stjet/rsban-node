@@ -77,8 +77,10 @@ public: // Direct access to the block fields or nullopt if the block type does n
 	nano::account destination () const noexcept;
 	// Destination account for send blocks
 	virtual std::optional<nano::account> destination_field () const;
+	// Returns the source block hash for open/receive/state blocks that are receives
+	nano::block_hash source () const noexcept;
 	// Source block for open/receive blocks
-	virtual std::optional<nano::block_hash> source () const;
+	virtual std::optional<nano::block_hash> source_field () const;
 
 	rsnano::BlockHandle * get_handle () const;
 	rsnano::BlockHandle * clone_handle () const;
@@ -146,7 +148,7 @@ public:
 	static std::size_t size ();
 
 public: // Receive block fields
-	std::optional<nano::block_hash> source () const override;
+	std::optional<nano::block_hash> source_field () const override;
 };
 class open_block : public nano::block
 {
@@ -173,9 +175,9 @@ public:
 	void zero ();
 	static std::size_t size ();
 
-	public: // Open block fields
+public: // Open block fields
 	std::optional<nano::account> account_field () const override;
-	std::optional<nano::block_hash> source () const override;
+	std::optional<nano::block_hash> source_field () const override;
 };
 
 class change_block : public nano::block

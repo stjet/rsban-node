@@ -88,7 +88,7 @@ impl OpenBlock {
         )
     }
 
-    pub fn mandatory_source(&self) -> BlockHash {
+    pub fn source(&self) -> BlockHash {
         self.hashables.source
     }
 
@@ -223,7 +223,7 @@ impl Block for OpenBlock {
         None
     }
 
-    fn source(&self) -> Option<BlockHash> {
+    fn source_field(&self) -> Option<BlockHash> {
         Some(self.hashables.source)
     }
 

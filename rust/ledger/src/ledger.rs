@@ -515,7 +515,7 @@ impl<T: Environment + 'static> Ledger<T> {
                     state.source()
                 }
             }
-            _ => block.source().unwrap_or_default(),
+            _ => block.source_field().unwrap_or_default(),
         }
     }
 
@@ -648,18 +648,9 @@ impl<T: Environment + 'static> Ledger<T> {
 
         // walk down the chain until the source field of a receive block matches the send block hash
         while let Some(current) = possible_receive_block {
-            // if source is non-zero then it is a legacy receive or open block
-            let mut source = current.source().unwrap_or_default();
-
-            // if source is zero then it could be a state block, which needs a different kind of access
-            if let BlockEnum::State(state_block) = &current {
-                // we read the block from the database, so we expect it to have sideband
-                if state_block.sideband().unwrap().details.is_receive {
-                    source = state_block.link().into();
-                }
-            }
-
-            if *send_block_hash == source {
+            if current.sideband().unwrap().details.is_receive
+                && Some(*send_block_hash) == current.source()
+            {
                 // we have a match
                 return Some(current);
             }

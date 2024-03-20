@@ -889,11 +889,11 @@ void nano::node_flags::set_disable_connection_cleanup (bool value)
 {
 	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_connection_cleanup = value; });
 }
-nano::generate_cache nano::node_flags::generate_cache () const
+nano::generate_cache_flags nano::node_flags::generate_cache () const
 {
-	return nano::generate_cache{ rsnano::rsn_node_flags_generate_cache (handle) };
+	return nano::generate_cache_flags{ rsnano::rsn_node_flags_generate_cache (handle) };
 }
-void nano::node_flags::set_generate_cache (nano::generate_cache const & cache)
+void nano::node_flags::set_generate_cache (nano::generate_cache_flags const & cache)
 {
 	rsnano::rsn_node_flags_generate_set_cache (handle, cache.handle);
 }

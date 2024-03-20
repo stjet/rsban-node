@@ -1,5 +1,5 @@
-#include <nano/secure/generate_cache_flags.hpp>
 #include <nano/lib/rsnano.hpp>
+#include <nano/secure/generate_cache_flags.hpp>
 
 nano::generate_cache_flags::generate_cache_flags () :
 	handle{ rsnano::rsn_generate_cache_create () }
@@ -84,4 +84,3 @@ void nano::generate_cache_flags::enable_block_count (bool enable)
 {
 	rsnano::rsn_generate_cache_set_account_count (handle, enable);
 }
-

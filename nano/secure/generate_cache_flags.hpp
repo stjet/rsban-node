@@ -1,7 +1,7 @@
 #pragma once
 namespace rsnano
 {
-	class GenerateCacheHandle;
+class GenerateCacheHandle;
 }
 
 namespace nano

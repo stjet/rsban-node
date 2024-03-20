@@ -1686,7 +1686,7 @@ int main (int argc, char * const * argv)
 					}
 					if (auto state = dynamic_cast<nano::state_block *> (block.get ()))
 					{
-						if (node->ledger.is_send (transaction, *state))
+						if (state->is_send ())
 						{
 							destination = state->link ().value ().as_account ();
 						}

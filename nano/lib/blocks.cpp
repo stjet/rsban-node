@@ -67,6 +67,20 @@ void nano::block::refresh ()
 	}
 }
 
+bool nano::block::is_send () const noexcept
+{
+	release_assert (has_sideband ());
+	switch (type ())
+	{
+		case nano::block_type::send:
+			return true;
+		case nano::block_type::state:
+			return sideband ().details ().is_send ();
+		default:
+			return false;
+	}
+}
+
 uint64_t nano::block::block_work () const
 {
 	return rsnano::rsn_block_work (handle);

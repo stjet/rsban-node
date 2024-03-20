@@ -44,10 +44,27 @@ impl<'a, T: Environment + 'static> DependentBlocksFinder<'a, T> {
     }
 
     fn link_refers_to_block(&self, state: &StateBlock) -> bool {
-        !self.ledger.is_epoch_link(&state.link()) && !self.ledger.is_send(self.txn, state)
+        !self.ledger.is_epoch_link(&state.link()) && !self.is_send(state)
     }
 
     fn is_genesis_open(&self, open: &OpenBlock) -> bool {
         open.account() == self.ledger.constants.genesis_account
+    }
+
+    // This function is used in place of block.is_send() as it is tolerant to the block not having the sideband information loaded
+    // This is needed for instance in vote generation on forks which have not yet had sideband information attached
+    fn is_send(&self, block: &StateBlock) -> bool {
+        if block.previous().is_zero() {
+            return false;
+        }
+        if let Some(sideband) = block.sideband() {
+            sideband.details.is_send
+        } else {
+            block.balance()
+                < self
+                    .ledger
+                    .balance(self.txn, &block.previous())
+                    .unwrap_or_default()
+        }
     }
 }

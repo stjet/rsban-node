@@ -225,17 +225,6 @@ pub unsafe extern "C" fn rsn_ledger_block_text(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_ledger_is_send(
-    handle: &LedgerHandle,
-    txn: &TransactionHandle,
-    block: &BlockHandle,
-) -> bool {
-    handle
-        .0
-        .is_send(txn.as_txn(), block.deref().deref().as_block())
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_block_destination(
     handle: &LedgerHandle,
     txn: &TransactionHandle,
@@ -244,17 +233,6 @@ pub unsafe extern "C" fn rsn_ledger_block_destination(
 ) {
     let destination = handle.0.block_destination(txn.as_txn(), &block);
     destination.copy_bytes(result);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_block_source(
-    handle: &LedgerHandle,
-    txn: &TransactionHandle,
-    block: &BlockHandle,
-    result: *mut u8,
-) {
-    let source = handle.0.block_source(txn.as_txn(), &block);
-    source.copy_bytes(result);
 }
 
 #[no_mangle]

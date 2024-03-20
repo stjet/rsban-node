@@ -236,6 +236,14 @@ impl BlockEnum {
         !matches!(self, BlockEnum::State(_))
     }
 
+    pub fn is_send(&self) -> bool {
+        match self {
+            BlockEnum::LegacySend(_) => true,
+            BlockEnum::State(_) => self.sideband().unwrap().details.is_send,
+            _ => false,
+        }
+    }
+
     pub fn source(&self) -> Option<BlockHash> {
         match self {
             BlockEnum::LegacyOpen(i) => Some(i.source()),

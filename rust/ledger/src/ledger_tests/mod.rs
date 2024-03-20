@@ -272,28 +272,28 @@ fn block_destination_source() {
         Some(block6.balance_field().unwrap())
     );
     assert_eq!(ledger.block_destination(&txn, &block1), dest_account);
-    assert_eq!(ledger.block_source(&txn, &block1), BlockHash::zero());
+    assert_eq!(block1.source(), None);
 
     assert_eq!(
         ledger.block_destination(&txn, &block2),
         *DEV_GENESIS_ACCOUNT
     );
-    assert_eq!(ledger.block_source(&txn, &block2), BlockHash::zero());
+    assert_eq!(block2.source(), None);
 
     assert_eq!(ledger.block_destination(&txn, &block3), Account::zero());
-    assert_eq!(ledger.block_source(&txn, &block3), block2.hash());
+    assert_eq!(block3.source(), Some(block2.hash()));
 
     assert_eq!(ledger.block_destination(&txn, &block4), dest_account);
-    assert_eq!(ledger.block_source(&txn, &block4), BlockHash::zero());
+    assert_eq!(block4.source(), None);
 
     assert_eq!(
         ledger.block_destination(&txn, &block5),
         *DEV_GENESIS_ACCOUNT
     );
-    assert_eq!(ledger.block_source(&txn, &block5), BlockHash::zero());
+    assert_eq!(block5.source(), None);
 
     assert_eq!(ledger.block_destination(&txn, &block6), Account::zero());
-    assert_eq!(ledger.block_source(&txn, &block6), block5.hash());
+    assert_eq!(block6.source(), Some(block5.hash()));
 }
 
 #[test]
@@ -693,9 +693,7 @@ fn unconfirmed_frontiers() {
 
 #[test]
 fn is_send_genesis() {
-    let ctx = LedgerContext::empty();
-    let txn = ctx.ledger.read_txn();
-    assert_eq!(ctx.ledger.is_send(&txn, DEV_GENESIS.as_block()), false);
+    assert_eq!(DEV_GENESIS.is_send(), false);
 }
 
 #[test]
@@ -703,8 +701,8 @@ fn is_send_state() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let open = setup_open_block(&ctx, &mut txn);
-    assert_eq!(ctx.ledger.is_send(&txn, open.send_block.deref()), true);
-    assert_eq!(ctx.ledger.is_send(&txn, open.open_block.deref()), false);
+    assert_eq!(open.send_block.is_send(), true);
+    assert_eq!(open.open_block.is_send(), false);
 }
 
 #[test]
@@ -712,8 +710,8 @@ fn is_send_legacy() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
     let open = setup_legacy_open_block(&ctx, &mut txn);
-    assert_eq!(ctx.ledger.is_send(&txn, open.send_block.deref()), true);
-    assert_eq!(ctx.ledger.is_send(&txn, open.open_block.deref()), false);
+    assert_eq!(open.send_block.is_send(), true);
+    assert_eq!(open.open_block.is_send(), false);
 }
 
 #[test]

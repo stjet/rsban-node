@@ -283,7 +283,7 @@ impl BlockProcessor {
                 If epoch is last, then pending entry shouldn't trigger same epoch open block for destination account. */
                 if block.block_type() == BlockType::LegacySend
                     || block.block_type() == BlockType::State
-                        && block.sideband().unwrap().details.is_send
+                        && block.is_send()
                         && block.sideband().unwrap().details.epoch < Epoch::MAX
                 {
                     /* block->destination () for legacy send blocks
@@ -301,7 +301,10 @@ impl BlockProcessor {
             }
             BlockStatus::GapSource => {
                 self.unchecked_map.put(
-                    self.ledger.block_source(txn, block).into(),
+                    block
+                        .source_field()
+                        .unwrap_or(block.link_field().unwrap_or_default().into())
+                        .into(),
                     UncheckedInfo::new(Arc::clone(block)),
                 );
                 self.stats

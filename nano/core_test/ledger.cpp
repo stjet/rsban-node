@@ -564,7 +564,7 @@ TEST (ledger, unchecked_epoch_invalid)
 		auto epoch2_store = node1.ledger.block (*transaction, epoch2->hash ());
 		ASSERT_NE (nullptr, epoch2_store);
 		ASSERT_EQ (nano::epoch::epoch_0, epoch2_store->sideband ().details ().epoch ());
-		ASSERT_TRUE (epoch2_store->sideband ().details ().is_send ());
+		ASSERT_TRUE (epoch2_store->is_send ());
 		ASSERT_FALSE (epoch2_store->sideband ().details ().is_epoch ());
 		ASSERT_FALSE (epoch2_store->sideband ().details ().is_receive ());
 	}

@@ -129,11 +129,6 @@ std::string nano::ledger::block_text (nano::block_hash const & hash_a)
 	return rsnano::convert_dto_to_string (dto);
 }
 
-bool nano::ledger::is_send (store::transaction const & transaction_a, nano::block const & block_a) const
-{
-	return rsnano::rsn_ledger_is_send (handle, transaction_a.get_rust_handle (), block_a.get_handle ());
-}
-
 nano::account nano::ledger::block_destination (nano::store::transaction const & transaction_a, nano::block const & block_a)
 {
 	nano::account destination_l;

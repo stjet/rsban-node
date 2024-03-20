@@ -443,38 +443,6 @@ impl<T: Environment + 'static> Ledger<T> {
         }
     }
 
-    pub fn is_send(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        block: &dyn Block,
-    ) -> bool {
-        if block.block_type() != BlockType::State {
-            return block.block_type() == BlockType::LegacySend;
-        }
-        let previous = block.previous();
-        /*
-         * if block_a does not have a sideband, then is_send()
-         * requires that the previous block exists in the database.
-         * This is because it must retrieve the balance of the previous block.
-         */
-        debug_assert!(
-            block.sideband().is_some()
-                || previous.is_zero()
-                || self.store.block.exists(txn, &previous)
-        );
-        match block.sideband() {
-            Some(sideband) => sideband.details.is_send,
-            None => {
-                if !previous.is_zero() {
-                    block.balance_field().unwrap()
-                        < self.balance(txn, &previous).unwrap_or_default()
-                } else {
-                    false
-                }
-            }
-        }
-    }
-
     pub fn block_destination(
         &self,
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
@@ -483,39 +451,13 @@ impl<T: Environment + 'static> Ledger<T> {
         match block {
             BlockEnum::LegacySend(send) => send.hashables.destination,
             BlockEnum::State(state) => {
-                if self.is_send(txn, state) {
+                if block.is_send() {
                     state.link().into()
                 } else {
                     Account::zero()
                 }
             }
             _ => Account::zero(),
-        }
-    }
-
-    pub fn block_source(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        block: &BlockEnum,
-    ) -> BlockHash {
-        /*
-         * block_source() requires that the previous block of the block
-         * passed in exist in the database.  This is because it will try
-         * to check account balances to determine if it is a send block.
-         */
-        debug_assert!(block.previous().is_zero() || self.block_exists(txn, &block.previous()));
-
-        // If block_a.source () is nonzero, then we have our source.
-        // However, universal blocks will always return zero.
-        match block {
-            BlockEnum::State(state) => {
-                if !self.is_send(txn, state) {
-                    state.link().into()
-                } else {
-                    state.source()
-                }
-            }
-            _ => block.source_field().unwrap_or_default(),
         }
     }
 

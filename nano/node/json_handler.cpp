@@ -2400,7 +2400,7 @@ public:
 		auto amount = handler.node.ledger.amount (transaction, hash);
 		if (amount)
 		{
-			auto source_account = handler.node.ledger.account (transaction, block_a.source ());
+			auto source_account = handler.node.ledger.account (transaction, block_a.source ().value ());
 			if (source_account)
 			{
 				tree.put ("account", source_account.value ().to_account ());
@@ -2409,7 +2409,7 @@ public:
 		}
 		if (raw)
 		{
-			tree.put ("source", block_a.source ().to_string ());
+			tree.put ("source", block_a.source ().value ().to_string ());
 			tree.put ("previous", block_a.previous ().to_string ());
 		}
 	}
@@ -2419,7 +2419,7 @@ public:
 		{
 			tree.put ("type", "open");
 			tree.put ("representative", block_a.representative ().to_account ());
-			tree.put ("source", block_a.source ().to_string ());
+			tree.put ("source", block_a.source ().value ().to_string ());
 			tree.put ("opened", block_a.account ().to_account ());
 		}
 		else
@@ -2432,7 +2432,7 @@ public:
 			auto amount = handler.node.ledger.amount (transaction, hash);
 			if (amount)
 			{
-				auto source_account (handler.node.ledger.account (transaction, block_a.source ()));
+				auto source_account (handler.node.ledger.account (transaction, block_a.source ().value ()));
 				if (source_account)
 				{
 					tree.put ("account", source_account.value ().to_account ());

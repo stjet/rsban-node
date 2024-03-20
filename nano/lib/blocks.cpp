@@ -135,10 +135,9 @@ nano::account nano::block::representative () const
 	return representative;
 }
 
-nano::block_hash nano::block::source () const
+std::optional<nano::block_hash> nano::block::source () const
 {
-	static nano::block_hash source{ 0 };
-	return source;
+	return std::nullopt;
 }
 
 std::optional<nano::account> nano::block::destination_field () const
@@ -561,7 +560,7 @@ bool nano::open_block::valid_predecessor (nano::block const & block_a) const
 	return false;
 }
 
-nano::block_hash nano::open_block::source () const
+std::optional<nano::block_hash> nano::open_block::source () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_open_block_source (handle, &buffer);
@@ -1107,7 +1106,7 @@ void nano::receive_block::previous_set (nano::block_hash previous_a)
 	rsnano::rsn_receive_block_previous_set (handle, &buffer);
 }
 
-nano::block_hash nano::receive_block::source () const
+std::optional<nano::block_hash> nano::receive_block::source () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_receive_block_source (handle, &buffer);

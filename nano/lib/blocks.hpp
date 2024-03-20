@@ -40,8 +40,6 @@ public:
 	virtual void block_work_set (uint64_t);
 	// Previous block in account's chain, zero for open block
 	virtual nano::block_hash previous () const;
-	// Source block for open/receive blocks, zero otherwise.
-	virtual nano::block_hash source () const;
 	// Previous block or account number for open blocks
 	virtual nano::root root () const = 0;
 	// Qualified root value based on previous() and root()
@@ -79,6 +77,8 @@ public: // Direct access to the block fields or nullopt if the block type does n
 	nano::account destination () const noexcept;
 	// Destination account for send blocks
 	virtual std::optional<nano::account> destination_field () const;
+	// Source block for open/receive blocks
+	virtual std::optional<nano::block_hash> source () const;
 
 	rsnano::BlockHandle * get_handle () const;
 	rsnano::BlockHandle * clone_handle () const;
@@ -135,7 +135,6 @@ public:
 	receive_block (rsnano::BlockHandle * handle_a);
 	using nano::block::hash;
 	void previous_set (nano::block_hash previous_a);
-	nano::block_hash source () const override;
 	void source_set (nano::block_hash source_a);
 	nano::root root () const override;
 	void visit (nano::block_visitor &) const override;
@@ -145,6 +144,9 @@ public:
 	bool valid_predecessor (nano::block const &) const override;
 	void zero ();
 	static std::size_t size ();
+
+public: // Receive block fields
+	std::optional<nano::block_hash> source () const override;
 };
 class open_block : public nano::block
 {
@@ -158,8 +160,6 @@ public:
 	open_block (nano::open_block &&);
 	open_block (rsnano::BlockHandle * handle_a);
 	using nano::block::hash;
-	std::optional<nano::account> account_field () const override;
-	nano::block_hash source () const override;
 	nano::root root () const override;
 	nano::account representative () const override;
 	void visit (nano::block_visitor &) const override;
@@ -172,6 +172,10 @@ public:
 	void representative_set (nano::account account_a);
 	void zero ();
 	static std::size_t size ();
+
+	public: // Open block fields
+	std::optional<nano::account> account_field () const override;
+	std::optional<nano::block_hash> source () const override;
 };
 
 class change_block : public nano::block

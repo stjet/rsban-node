@@ -10,6 +10,7 @@
 
 namespace nano
 {
+class account_info;
 class block;
 }
 
@@ -104,15 +105,7 @@ public:
 		convert_buffer_to_value ();
 	}
 
-	explicit operator nano::account_info () const
-	{
-		nano::bufferstream stream (reinterpret_cast<uint8_t const *> (data ()), size ());
-		nano::account_info result;
-		debug_assert (size () == result.db_size ());
-		bool error = result.deserialize (stream);
-		debug_assert (!error);
-		return result;
-	}
+	explicit operator nano::account_info () const;
 
 	explicit operator block_info () const
 	{

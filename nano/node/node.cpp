@@ -288,7 +288,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 							}
 							else if (is_state_epoch_a)
 							{
-								debug_assert (amount_a == 0 && node_l->ledger.is_epoch_link (block_a->link ().value ()));
+								debug_assert (amount_a == 0 && node_l->ledger.is_epoch_link (block_a->link_field ().value ()));
 								event.add ("subtype", "epoch");
 							}
 							else

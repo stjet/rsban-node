@@ -11,8 +11,6 @@
 
 #include <boost/property_tree/ptree_fwd.hpp>
 
-#include <unordered_map>
-
 namespace rsnano
 {
 class BlockHandle;
@@ -79,7 +77,7 @@ public: // Direct access to the block fields or nullopt if the block type does n
 	// Destination account for send blocks
 	virtual std::optional<nano::account> destination_field () const;
 	// Link field for state blocks
-	virtual std::optional<nano::link> link () const;
+	virtual std::optional<nano::link> link_field () const;
 	// Returns the source block hash for open/receive/state blocks that are receives
 	nano::block_hash source () const noexcept;
 	// Source block for open/receive blocks
@@ -237,7 +235,7 @@ public:
 public: // State block fields
 	std::optional<nano::account> account_field () const override;
 	std::optional<nano::amount> balance_field () const override;
-	std::optional<nano::link> link () const override;
+	std::optional<nano::link> link_field () const override;
 };
 
 class block_visitor

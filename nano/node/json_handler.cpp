@@ -384,7 +384,7 @@ uint64_t nano::json_handler::difficulty_ledger (nano::block const & block_a)
 		auto epoch = block_previous->sideband ().details ().epoch ();
 		details = nano::block_details (epoch, details.is_send (), details.is_receive (), details.is_epoch ());
 	}
-	auto link = block_a.link ();
+	auto link = block_a.link_field ();
 	if (link && !details.is_send ())
 	{
 		auto block_link (node.ledger.block (*transaction, link.value ().as_block_hash ()));
@@ -1200,7 +1200,7 @@ void nano::json_handler::block_confirm ()
 					if (auto state = dynamic_cast<nano::state_block *> (block_l.get ()))
 					{
 						is_state_send = state->is_send ();
-						is_state_epoch = amount.value () == 0 && node.ledger.is_epoch_link (state->link ().value ());
+						is_state_epoch = amount.value () == 0 && node.ledger.is_epoch_link (state->link_field ().value ());
 					}
 				}
 				node.observers->blocks.notify (status, {}, account, amount.value_or (0), is_state_send, is_state_epoch);
@@ -2461,7 +2461,7 @@ public:
 		{
 			tree.put ("type", "state");
 			tree.put ("representative", block_a.representative ().to_account ());
-			tree.put ("link", block_a.link ().value ().to_string ());
+			tree.put ("link", block_a.link_field ().value ().to_string ());
 			tree.put ("balance", block_a.balance ().to_string_dec ());
 			tree.put ("previous", block_a.previous ().to_string ());
 		}
@@ -2480,7 +2480,7 @@ public:
 		}
 		else if (balance < previous_balance.value ())
 		{
-			if (should_ignore_account (block_a.link ().value ().as_account ()))
+			if (should_ignore_account (block_a.link_field ().value ().as_account ()))
 			{
 				tree.clear ();
 				return;
@@ -2493,29 +2493,29 @@ public:
 			{
 				tree.put ("type", "send");
 			}
-			tree.put ("account", block_a.link ().value ().to_account ());
+			tree.put ("account", block_a.link_field ().value ().to_account ());
 			tree.put ("amount", (previous_balance.value () - balance).convert_to<std::string> ());
 		}
 		else
 		{
-			if (block_a.link ().value ().is_zero ())
+			if (block_a.link_field ().value ().is_zero ())
 			{
 				if (raw && accounts_filter.empty ())
 				{
 					tree.put ("subtype", "change");
 				}
 			}
-			else if (balance == previous_balance && handler.node.ledger.is_epoch_link (block_a.link ().value ()))
+			else if (balance == previous_balance && handler.node.ledger.is_epoch_link (block_a.link_field ().value ()))
 			{
 				if (raw && accounts_filter.empty ())
 				{
 					tree.put ("subtype", "epoch");
-					tree.put ("account", handler.node.ledger.epoch_signer (block_a.link ().value ()).to_account ());
+					tree.put ("account", handler.node.ledger.epoch_signer (block_a.link_field ().value ()).to_account ());
 				}
 			}
 			else
 			{
-				auto source_account = handler.node.ledger.account (transaction, block_a.link ().value ().as_block_hash ());
+				auto source_account = handler.node.ledger.account (transaction, block_a.link_field ().value ().as_block_hash ());
 				if (source_account && should_ignore_account (source_account.value ()))
 				{
 					tree.clear ();
@@ -3241,7 +3241,7 @@ void nano::json_handler::process ()
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_balance;
 						}
-						else if (!rpc_l->node.ledger.is_epoch_link (block_state->link ().value ()))
+						else if (!rpc_l->node.ledger.is_epoch_link (block_state->link_field ().value ()))
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_epoch_link;
 						}
@@ -3643,7 +3643,7 @@ void nano::json_handler::republish ()
 				block = node.ledger.block (*transaction, hash);
 				if (sources != 0) // Republish source chain
 				{
-					nano::block_hash source = block->source_field ().value_or (block->link ().value_or (0).as_block_hash ());
+					nano::block_hash source = block->source_field ().value_or (block->link_field ().value_or (0).as_block_hash ());
 					auto block_a (node.ledger.block (*transaction, source));
 					std::vector<nano::block_hash> hashes;
 					while (block_a != nullptr && hashes.size () < sources)
@@ -3681,7 +3681,7 @@ void nano::json_handler::republish ()
 							while (block_d != nullptr && hash != source)
 							{
 								hashes.push_back (previous);
-								source = block_d->source_field ().value_or (block_d->is_send () ? 0 : block_d->link ().value_or (0).as_block_hash ());
+								source = block_d->source_field ().value_or (block_d->is_send () ? 0 : block_d->link_field ().value_or (0).as_block_hash ());
 								previous = block_d->previous ();
 								block_d = node.ledger.block (*transaction, previous);
 							}

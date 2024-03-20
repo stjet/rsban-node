@@ -27,7 +27,7 @@ impl PendingKey {
     }
 
     pub fn for_receive_block(block: &BlockEnum) -> Self {
-        Self::new(block.account_calculated(), block.link().into())
+        Self::new(block.account(), block.link().into())
     }
 
     pub fn create_test_instance() -> Self {

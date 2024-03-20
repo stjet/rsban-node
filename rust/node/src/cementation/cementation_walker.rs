@@ -45,7 +45,7 @@ impl ChainIteration {
     fn new(lowest_block: &BlockEnum, highest_block: &BlockEnum) -> Self {
         debug_assert!(lowest_block.height() <= highest_block.height());
         Self {
-            account: highest_block.account_calculated(),
+            account: highest_block.account(),
             bottom_hash: lowest_block.hash(),
             bottom_height: lowest_block.height(),
             top_hash: highest_block.hash(),
@@ -255,7 +255,7 @@ impl CementationWalker {
         {
             let current_chain = self.chain_stack.back_mut().unwrap();
             current_chain.go_to_successor_of(&receive);
-            if corresponding_send.account_calculated() != receive.account_calculated() {
+            if corresponding_send.account() != receive.account() {
                 self.enqueue_for_cementation(&corresponding_send, data_requester);
             }
         } else {
@@ -286,7 +286,7 @@ impl CementationWalker {
         top_block: &BlockEnum,
         data_requester: &mut T,
     ) -> Option<BlockEnum> {
-        let account = top_block.account_calculated();
+        let account = top_block.account();
         match self.get_confirmation_height(&account, data_requester) {
             Some(info) => {
                 if top_block.height() <= info.height {

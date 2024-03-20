@@ -252,7 +252,7 @@ impl BlockEnum {
         self.destination().unwrap_or_else(|| self.link().into())
     }
 
-    pub fn account_calculated(&self) -> Account {
+    pub fn account(&self) -> Account {
         match self.account_field() {
             Some(account) => account,
             None => self.sideband().unwrap().account,

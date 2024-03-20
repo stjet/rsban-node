@@ -77,7 +77,7 @@ impl<'a, T: Environment + 'static> RollbackPlannerFactory<'a, T> {
         self.ledger
             .store
             .confirmation_height
-            .get(self.txn, &self.head_block.account_calculated())
+            .get(self.txn, &self.head_block.account())
             .unwrap_or_default()
     }
 

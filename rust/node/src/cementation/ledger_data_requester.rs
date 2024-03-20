@@ -111,7 +111,7 @@ impl LedgerDataRequesterStub {
     fn add_block(&mut self, block: BlockEnum) {
         let info = self
             .account_infos
-            .entry(block.account_calculated())
+            .entry(block.account())
             .or_insert_with(|| AccountInfo {
                 head: block.hash(),
                 representative: block.representative().unwrap_or_default(),
@@ -158,7 +158,7 @@ impl LedgerDataRequesterStub {
     }
 
     pub fn cement(&mut self, block: &BlockEnum) {
-        let account = block.account_calculated();
+        let account = block.account();
         let current_info = self.get_confirmation_height(&account).unwrap_or_default();
         assert!(current_info.height < block.height());
         self.set_confirmation_height(

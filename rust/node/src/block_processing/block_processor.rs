@@ -310,7 +310,7 @@ impl BlockProcessor {
             BlockStatus::GapEpochOpenPending => {
                 // Specific unchecked key starting with epoch open block account public key
                 self.unchecked_map.put(
-                    block.account_calculated().into(),
+                    block.account().into(),
                     UncheckedInfo::new(Arc::clone(block)),
                 );
                 self.stats

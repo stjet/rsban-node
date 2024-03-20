@@ -264,7 +264,7 @@ impl WriteBatcher {
                 panic!(
                     "Next block to cement not found: {} for account {}",
                     self.new_cemented_frontier_hash,
-                    current.account_calculated().encode_account()
+                    current.account().encode_account()
                 );
             }
             self.new_cemented_frontier_block = next_block.map(Arc::new);

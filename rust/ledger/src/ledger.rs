@@ -422,7 +422,7 @@ impl<T: Environment + 'static> Ledger<T> {
 
         match self.get_block(txn, hash) {
             Some(block) => {
-                let mut account = block.account_calculated();
+                let mut account = block.account();
                 let sideband = &block.sideband().unwrap();
                 if account.is_zero() {
                     account = sideband.account;
@@ -569,8 +569,7 @@ impl<T: Environment + 'static> Ledger<T> {
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         hash: &BlockHash,
     ) -> Option<Account> {
-        self.get_block(txn, hash)
-            .map(|block| block.account_calculated())
+        self.get_block(txn, hash).map(|block| block.account())
     }
 
     /// Return absolute amount decrease or increase for block

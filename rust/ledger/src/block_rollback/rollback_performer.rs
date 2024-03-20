@@ -69,7 +69,7 @@ impl<'a, T: Environment> BlockRollbackPerformer<'a, T> {
 
     fn get_account_info(&self, block: &BlockEnum) -> AccountInfo {
         self.ledger
-            .account_info(self.txn, &block.account_calculated())
+            .account_info(self.txn, &block.account())
             .unwrap()
     }
 

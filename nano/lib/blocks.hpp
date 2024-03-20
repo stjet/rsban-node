@@ -51,7 +51,6 @@ public:
 	// Link field for state blocks, zero otherwise.
 	virtual nano::link link () const;
 	virtual nano::account representative () const;
-	virtual nano::amount balance () const;
 	virtual void serialize (nano::stream &) const;
 	virtual void serialize_json (std::string &, bool = false) const;
 	virtual void serialize_json (boost::property_tree::ptree &) const;
@@ -74,6 +73,8 @@ public: // Direct access to the block fields or nullopt if the block type does n
 	nano::account account () const noexcept;
 	// Account field for open/state blocks
 	virtual std::optional<nano::account> account_field () const;
+	// Balance field for open/send/state blocks
+	virtual std::optional<nano::amount> balance () const;
 
 	rsnano::BlockHandle * get_handle () const;
 	rsnano::BlockHandle * clone_handle () const;
@@ -103,7 +104,6 @@ public:
 	using nano::block::hash;
 	nano::account destination () const override;
 	nano::root root () const override;
-	nano::amount balance () const override;
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
 	bool operator== (nano::block const &) const override;
@@ -114,6 +114,9 @@ public:
 	void previous_set (nano::block_hash previous_a);
 	void balance_set (nano::amount balance_a);
 	static std::size_t size ();
+
+public: // Send block fields
+	std::optional<nano::amount> balance () const override;
 };
 
 class receive_block : public nano::block
@@ -202,11 +205,9 @@ public:
 	state_block (nano::state_block &&);
 	state_block (rsnano::BlockHandle * handle_a);
 	using nano::block::hash;
-	std::optional<nano::account> account_field () const override;
 	nano::root root () const override;
 	nano::link link () const override;
 	nano::account representative () const override;
-	nano::amount balance () const override;
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
 	bool operator== (nano::block const &) const override;
@@ -220,6 +221,10 @@ public:
 	void link_set (nano::link link);
 	void zero ();
 	static std::size_t size ();
+	
+public: // State block fields
+	std::optional<nano::account> account_field () const override;
+	std::optional<nano::amount> balance () const override;
 };
 
 class block_visitor

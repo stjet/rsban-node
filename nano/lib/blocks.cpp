@@ -189,10 +189,9 @@ nano::qualified_root nano::block::qualified_root () const
 	return { root (), previous () };
 }
 
-nano::amount nano::block::balance () const
+std::optional<nano::amount> nano::block::balance () const
 {
-	static nano::amount amount{ 0 };
-	return amount;
+	return std::nullopt;
 }
 
 void nano::block::sign_zero ()
@@ -398,7 +397,7 @@ nano::root nano::send_block::root () const
 	return previous ();
 }
 
-nano::amount nano::send_block::balance () const
+std::optional<nano::amount> nano::send_block::balance () const
 {
 	uint8_t buffer[16];
 	rsnano::rsn_send_block_balance (handle, &buffer);
@@ -892,7 +891,7 @@ nano::account nano::state_block::representative () const
 	return result;
 }
 
-nano::amount nano::state_block::balance () const
+std::optional<nano::amount> nano::state_block::balance () const
 {
 	uint8_t buffer[16];
 	rsnano::rsn_state_block_balance (handle, &buffer);

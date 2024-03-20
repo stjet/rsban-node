@@ -55,7 +55,7 @@ nano::uint128_t nano::ledger::balance (nano::block const & block)
 			break;
 		case nano::block_type::send:
 		case nano::block_type::state:
-			result = block.balance ().number ();
+			result = block.balance ().value ().number ();
 			break;
 		case nano::block_type::invalid:
 		case nano::block_type::not_a_block:

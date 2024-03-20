@@ -33,8 +33,8 @@ impl<'a, T: Environment + 'static> DependentBlocksFinder<'a, T> {
             }
 
             BlockEnum::State(state) => {
-                let linked_block = if self.link_refers_to_block(block, state) {
-                    block.link().into()
+                let linked_block = if self.link_refers_to_block(state) {
+                    state.link().into()
                 } else {
                     BlockHash::zero()
                 };
@@ -43,8 +43,8 @@ impl<'a, T: Environment + 'static> DependentBlocksFinder<'a, T> {
         }
     }
 
-    fn link_refers_to_block(&self, block: &BlockEnum, state: &StateBlock) -> bool {
-        !self.ledger.is_epoch_link(&block.link()) && !self.ledger.is_send(self.txn, state)
+    fn link_refers_to_block(&self, state: &StateBlock) -> bool {
+        !self.ledger.is_epoch_link(&state.link()) && !self.ledger.is_send(self.txn, state)
     }
 
     fn is_genesis_open(&self, open: &OpenBlock) -> bool {

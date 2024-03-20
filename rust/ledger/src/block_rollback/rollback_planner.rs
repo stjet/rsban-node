@@ -148,7 +148,10 @@ impl<'a> RollbackPlanner<'a> {
             } else {
                 BlockSubType::Receive
             }
-        } else if self.epochs.is_epoch_link(&self.head_block.link()) {
+        } else if self
+            .epochs
+            .is_epoch_link(&self.head_block.link_field().unwrap_or_default())
+        {
             BlockSubType::Epoch
         } else {
             BlockSubType::Change

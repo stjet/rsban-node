@@ -157,8 +157,8 @@ impl Block for ReceiveBlock {
         self.hash.hash(&self.hashables)
     }
 
-    fn link(&self) -> Link {
-        Link::zero()
+    fn link_field(&self) -> Option<Link> {
+        None
     }
 
     fn block_signature(&self) -> &Signature {

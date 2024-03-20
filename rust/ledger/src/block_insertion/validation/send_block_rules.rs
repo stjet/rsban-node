@@ -1,6 +1,6 @@
 use super::BlockValidator;
 use crate::BlockStatus;
-use rsnano_core::{Block, BlockEnum};
+use rsnano_core::BlockEnum;
 
 impl<'a> BlockValidator<'a> {
     /// If there's no link, the balance must remain the same, only the representative can change

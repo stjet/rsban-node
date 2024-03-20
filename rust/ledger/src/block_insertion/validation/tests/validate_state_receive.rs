@@ -40,7 +40,7 @@ fn valid_receive_block() {
         result.delete_pending,
         Some(PendingKey::new(
             receive.account_field().unwrap(),
-            receive.link().into()
+            receive.link_field().unwrap().into()
         ))
     );
     assert_eq!(result.insert_pending, None);

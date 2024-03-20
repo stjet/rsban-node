@@ -338,9 +338,9 @@ impl TestAccountChain {
             self.balance = new_balance;
         }
 
-        if block.link() == epoch_v1_link() {
+        if block.link_field().unwrap_or_default() == epoch_v1_link() {
             self.epoch = Epoch::Epoch1;
-        } else if block.link() == epoch_v2_link() {
+        } else if block.link_field().unwrap_or_default() == epoch_v2_link() {
             self.epoch = Epoch::Epoch2;
         }
 

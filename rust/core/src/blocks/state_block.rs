@@ -132,6 +132,10 @@ impl StateBlock {
         self.hashables.account
     }
 
+    pub fn link(&self) -> Link {
+        self.hashables.link
+    }
+
     pub fn balance(&self) -> Amount {
         self.hashables.balance
     }
@@ -242,8 +246,8 @@ impl Block for StateBlock {
         self.hash.hash(&self.hashables)
     }
 
-    fn link(&self) -> Link {
-        self.hashables.link
+    fn link_field(&self) -> Option<Link> {
+        Some(self.hashables.link)
     }
 
     fn block_signature(&self) -> &Signature {

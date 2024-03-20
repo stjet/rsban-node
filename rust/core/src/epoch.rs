@@ -87,7 +87,7 @@ impl Epochs {
     pub fn validate_epoch_signature(&self, block: &BlockEnum) -> anyhow::Result<()> {
         validate_message(
             &self
-                .epoch_signer(&block.link())
+                .epoch_signer(&block.link_field().unwrap_or_default())
                 .ok_or_else(|| anyhow!("not an epoch link!"))?,
             block.hash().as_bytes(),
             block.block_signature(),

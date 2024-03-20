@@ -23,11 +23,14 @@ impl PendingKey {
     }
 
     pub fn for_send_block(block: &BlockEnum) -> Self {
-        Self::new(block.link().into(), block.hash())
+        Self::new(block.link_field().unwrap_or_default().into(), block.hash())
     }
 
     pub fn for_receive_block(block: &BlockEnum) -> Self {
-        Self::new(block.account(), block.link().into())
+        Self::new(
+            block.account(),
+            block.link_field().unwrap_or_default().into(),
+        )
     }
 
     pub fn create_test_instance() -> Self {

@@ -110,7 +110,7 @@ pub trait Block: FullHash {
     fn sideband(&'_ self) -> Option<&'_ BlockSideband>;
     fn set_sideband(&mut self, sideband: BlockSideband);
     fn hash(&self) -> BlockHash;
-    fn link(&self) -> Link;
+    fn link_field(&self) -> Option<Link>;
     fn block_signature(&self) -> &Signature;
     fn set_block_signature(&mut self, signature: &Signature);
     fn work(&self) -> u64;
@@ -252,12 +252,13 @@ impl BlockEnum {
     }
 
     pub fn source_or_link(&self) -> BlockHash {
-        self.source_field().unwrap_or_else(|| self.link().into())
+        self.source_field()
+            .unwrap_or_else(|| self.link_field().unwrap_or_default().into())
     }
 
     pub fn destination_or_link(&self) -> Account {
         self.destination_field()
-            .unwrap_or_else(|| self.link().into())
+            .unwrap_or_else(|| self.link_field().unwrap_or_default().into())
     }
 
     pub fn account(&self) -> Account {

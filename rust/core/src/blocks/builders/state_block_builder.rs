@@ -305,7 +305,7 @@ mod tests {
         assert!(block.source_field().is_none());
         assert!(block.destination_field().is_none());
         assert_eq!(
-            block.link().encode_hex(),
+            block.link_field().unwrap().encode_hex(),
             "E16DD58C1EFA8B521545B0A74375AA994D9FC43828A4266D75ECF57F07A7EE86"
         );
         Ok(())

@@ -399,7 +399,7 @@ impl BootstrapAttemptLazy {
     fn lazy_block_state(&self, data: &mut LazyData, block: &Arc<BlockEnum>, retry_limit: u32) {
         let txn = self.ledger.read_txn();
         let balance = block.balance_field().unwrap();
-        let link = block.link();
+        let link = block.link_field().unwrap();
         // If link is not epoch link or 0. And if block from link is unknown
         if !link.is_zero()
             && !self.ledger.is_epoch_link(&link)

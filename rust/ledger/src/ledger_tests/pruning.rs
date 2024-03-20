@@ -408,7 +408,7 @@ fn pruning_safe_functions() {
     assert!(ctx.ledger.balance(&txn, &send1.hash()).is_none());
     assert_eq!(
         ctx.ledger.balance(&txn, &send2.hash()).unwrap(),
-        send2.balance()
+        send2.balance_field().unwrap()
     );
 
     assert_eq!(ctx.ledger.amount(&txn, &send2.hash()), None);

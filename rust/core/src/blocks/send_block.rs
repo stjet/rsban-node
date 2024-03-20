@@ -142,6 +142,10 @@ impl SendBlock {
         self.hashables.clear();
     }
 
+    pub fn balance(&self) -> Amount {
+        self.hashables.balance
+    }
+
     pub fn set_destination(&mut self, destination: Account) {
         self.hashables.destination = destination;
     }
@@ -271,8 +275,8 @@ impl Block for SendBlock {
         visitor.send_block(self);
     }
 
-    fn balance(&self) -> Amount {
-        self.hashables.balance
+    fn balance_field(&self) -> Option<Amount> {
+        Some(self.hashables.balance)
     }
 
     fn source(&self) -> Option<BlockHash> {

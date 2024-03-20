@@ -17,7 +17,7 @@ impl<'a> BlockValidator<'a> {
     pub(crate) fn previous_balance(&self) -> Amount {
         self.previous_block
             .as_ref()
-            .map(|b| b.balance_calculated())
+            .map(|b| b.balance())
             .unwrap_or_default()
     }
 
@@ -43,7 +43,7 @@ impl<'a> BlockValidator<'a> {
 
                 match &self.old_account_info {
                     Some(info) => {
-                        self.block.balance() >= info.balance && !state_block.link().is_zero()
+                        state_block.balance() >= info.balance && !state_block.link().is_zero()
                     }
                     None => true,
                 }
@@ -83,13 +83,15 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn amount_sent(&self) -> Amount {
         if let Some(info) = &self.old_account_info {
-            match self.block {
-                BlockEnum::LegacySend(_) | BlockEnum::State(_) => {
-                    if self.block.balance() < info.balance {
-                        return info.balance - self.block.balance();
-                    }
+            let balance = match self.block {
+                BlockEnum::LegacySend(i) => Some(i.balance()),
+                BlockEnum::State(i) => Some(i.balance()),
+                _ => None,
+            };
+            if let Some(balance) = balance {
+                if balance < info.balance {
+                    return info.balance - balance;
                 }
-                _ => {}
             }
         }
         Amount::zero()
@@ -115,7 +117,7 @@ impl<'a> BlockValidator<'a> {
     pub(crate) fn is_epoch_block(&self) -> bool {
         match self.block {
             BlockEnum::State(state_block) => {
-                self.has_epoch_link(state_block) && self.previous_balance() == self.block.balance()
+                self.has_epoch_link(state_block) && self.previous_balance() == state_block.balance()
             }
             _ => false,
         }

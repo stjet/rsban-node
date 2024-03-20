@@ -43,28 +43,6 @@ rsnano::LedgerHandle * nano::ledger::get_handle () const
 	return handle;
 }
 
-nano::uint128_t nano::ledger::balance (nano::block const & block)
-{
-	nano::uint128_t result;
-	switch (block.type ())
-	{
-		case nano::block_type::open:
-		case nano::block_type::receive:
-		case nano::block_type::change:
-			result = block.sideband ().balance ().number ();
-			break;
-		case nano::block_type::send:
-		case nano::block_type::state:
-			result = block.balance ().value ().number ();
-			break;
-		case nano::block_type::invalid:
-		case nano::block_type::not_a_block:
-			release_assert (false);
-			break;
-	}
-	return result;
-}
-
 // Balance for account containing hash
 std::optional<nano::uint128_t> nano::ledger::balance (store::transaction const & transaction, nano::block_hash const & hash) const
 {

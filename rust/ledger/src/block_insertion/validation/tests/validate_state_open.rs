@@ -18,7 +18,7 @@ fn valid_open_block() {
             timestamp: test.seconds_since_epoch,
             successor: BlockHash::zero(),
             account: open_block.account_field().unwrap(),
-            balance: open_block.balance(),
+            balance: open_block.balance_field().unwrap(),
             details: BlockDetails::new(Epoch::Epoch2, false, true, false),
             source_epoch: Epoch::Epoch2
         }
@@ -34,7 +34,7 @@ fn valid_open_block() {
             head: open_block.hash(),
             representative: open_block.representative().unwrap(),
             open_block: open_block.hash(),
-            balance: open_block.balance(),
+            balance: open_block.balance_field().unwrap(),
             modified: test.seconds_since_epoch,
             block_count: 1,
             epoch: Epoch::Epoch2

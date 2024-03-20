@@ -20,6 +20,7 @@ use std::{
     collections::{hash_map::DefaultHasher, HashMap, HashSet, VecDeque},
     ffi::c_void,
     hash::{Hash, Hasher},
+    ops::Deref,
     sync::{atomic::Ordering, Arc, Mutex, MutexGuard, Weak},
     time::{Duration, Instant},
 };
@@ -193,10 +194,14 @@ impl LazyData {
         if let Some(next_block) = self.lazy_state_backlog.get(hash) {
             let link = next_block.link;
             // Retrieve balance for previous state & send blocks
-            if block.block_type() == BlockType::State || block.block_type() == BlockType::LegacySend
-            {
+            let balance = match block.deref() {
+                BlockEnum::State(i) => Some(i.balance()),
+                BlockEnum::LegacySend(i) => Some(i.balance()),
+                _ => None,
+            };
+            if let Some(balance) = balance {
                 // balance
-                if block.balance() <= next_block.balance {
+                if balance <= next_block.balance {
                     self.lazy_add(next_block.link, next_block.retry_limit); // link
                 }
             }
@@ -363,11 +368,15 @@ impl BootstrapAttemptLazy {
             }
             data.lazy_blocks_insert(&hash);
             // Adding lazy balances for first processed block in pull
-            if pull_blocks_processed == 1
-                && (block.block_type() == BlockType::State
-                    || block.block_type() == BlockType::LegacySend)
-            {
-                data.lazy_balances.insert(hash, block.balance());
+            if pull_blocks_processed == 1 {
+                let balance = match block.deref() {
+                    BlockEnum::State(i) => Some(i.balance()),
+                    BlockEnum::LegacySend(i) => Some(i.balance()),
+                    _ => None,
+                };
+                if let Some(balance) = balance {
+                    data.lazy_balances.insert(hash, balance);
+                }
             }
             // Clearing lazy balances for previous block
             if !block.previous().is_zero() && data.lazy_balances.contains_key(&block.previous()) {
@@ -389,7 +398,7 @@ impl BootstrapAttemptLazy {
 
     fn lazy_block_state(&self, data: &mut LazyData, block: &Arc<BlockEnum>, retry_limit: u32) {
         let txn = self.ledger.read_txn();
-        let balance = block.balance();
+        let balance = block.balance_field().unwrap();
         let link = block.link();
         // If link is not epoch link or 0. And if block from link is unknown
         if !link.is_zero()

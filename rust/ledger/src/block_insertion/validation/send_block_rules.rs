@@ -1,6 +1,6 @@
 use super::BlockValidator;
 use crate::BlockStatus;
-use rsnano_core::{Block, BlockEnum, BlockType};
+use rsnano_core::{Block, BlockEnum};
 
 impl<'a> BlockValidator<'a> {
     /// If there's no link, the balance must remain the same, only the representative can change
@@ -16,11 +16,11 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn ensure_no_negative_amount_send(&self) -> Result<(), BlockStatus> {
         // Is this trying to spend a negative amount (Malicious)
-        if self.block.block_type() == BlockType::LegacySend
-            && self.previous_balance() < self.block.balance()
-        {
-            return Err(BlockStatus::NegativeSpend);
-        };
+        if let BlockEnum::LegacySend(send) = self.block {
+            if self.previous_balance() < send.balance() {
+                return Err(BlockStatus::NegativeSpend);
+            };
+        }
 
         Ok(())
     }

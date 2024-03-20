@@ -345,19 +345,19 @@ mod tests {
     ) -> (BlockEnum, BlockInsertInstructions) {
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
-            balance: block.balance_calculated(),
+            balance: block.balance(),
             account: block.account_field().unwrap(),
             ..BlockSideband::create_test_instance()
         };
         let old_account_info = AccountInfo {
             head: previous.hash(),
-            balance: previous.balance_calculated(),
+            balance: previous.balance(),
             ..AccountInfo::create_test_instance()
         };
         let new_account_info = AccountInfo {
             head: block.hash(),
             open_block: block.hash(),
-            balance: block.balance(),
+            balance: block.balance_field().unwrap(),
             representative: block.representative().unwrap(),
             ..AccountInfo::create_test_instance()
         };

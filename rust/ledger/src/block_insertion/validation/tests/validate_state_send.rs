@@ -23,7 +23,7 @@ fn valid_send_block() {
             head: send_block.hash(),
             representative: send_block.representative().unwrap(),
             open_block: old_account_info.open_block,
-            balance: send_block.balance(),
+            balance: send_block.balance_field().unwrap(),
             modified: test.seconds_since_epoch,
             block_count: old_account_info.block_count + 1,
             epoch: old_account_info.epoch,
@@ -50,7 +50,7 @@ fn valid_send_block() {
             timestamp: test.seconds_since_epoch,
             successor: BlockHash::zero(),
             account: send_block.account_field().unwrap(),
-            balance: send_block.balance(),
+            balance: send_block.balance_field().unwrap(),
             details: BlockDetails::new(old_account_info.epoch, true, false, false),
             source_epoch: Epoch::Epoch0
         },

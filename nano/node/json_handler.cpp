@@ -374,7 +374,7 @@ uint64_t nano::json_handler::difficulty_ledger (nano::block const & block_a)
 	// Send check
 	if (block_previous != nullptr)
 	{
-		auto is_send = node.ledger.balance (*transaction, previous) > block_a.balance ().value ().number ();
+		auto is_send = node.ledger.balance (*transaction, previous) > block_a.balance_field ().value ().number ();
 		details = nano::block_details (nano::epoch::epoch_0, is_send, false, false);
 		details_found = true;
 	}
@@ -1289,8 +1289,8 @@ void nano::json_handler::blocks_info ()
 					{
 						entry.put ("amount", amount.value ().convert_to<std::string> ());
 					}
-					auto balance = node.ledger.balance (*block);
-					entry.put ("balance", balance.convert_to<std::string> ());
+					auto balance = block->balance ();
+					entry.put ("balance", balance.number ().convert_to<std::string> ());
 					entry.put ("height", std::to_string (block->sideband ().height ()));
 					entry.put ("local_timestamp", std::to_string (block->sideband ().timestamp ()));
 					entry.put ("successor", block->sideband ().successor ().to_string ());
@@ -2390,7 +2390,7 @@ public:
 		if (raw)
 		{
 			tree.put ("destination", account);
-			tree.put ("balance", block_a.balance ().value ().to_string_dec ());
+			tree.put ("balance", block_a.balance ().to_string_dec ());
 			tree.put ("previous", block_a.previous ().to_string ());
 		}
 	}
@@ -2462,10 +2462,10 @@ public:
 			tree.put ("type", "state");
 			tree.put ("representative", block_a.representative ().to_account ());
 			tree.put ("link", block_a.link ().to_string ());
-			tree.put ("balance", block_a.balance ().value ().to_string_dec ());
+			tree.put ("balance", block_a.balance ().to_string_dec ());
 			tree.put ("previous", block_a.previous ().to_string ());
 		}
-		auto balance (block_a.balance ().value ().number ());
+		auto balance (block_a.balance ().number ());
 		auto previous_balance = handler.node.ledger.balance (transaction, block_a.previous ());
 		if (!previous_balance)
 		{
@@ -3203,7 +3203,7 @@ void nano::json_handler::process ()
 					auto balance (rpc_l->node.ledger.account_balance (*transaction, block_state->account ()));
 					if (subtype_text == "send")
 					{
-						if (balance <= block_state->balance ().value ().number ())
+						if (balance <= block_state->balance ().number ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_balance;
 						}
@@ -3211,7 +3211,7 @@ void nano::json_handler::process ()
 					}
 					else if (subtype_text == "receive")
 					{
-						if (balance > block_state->balance ().value ().number ())
+						if (balance > block_state->balance ().number ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_balance;
 						}
@@ -3226,7 +3226,7 @@ void nano::json_handler::process ()
 					}
 					else if (subtype_text == "change")
 					{
-						if (balance != block_state->balance ().value ().number ())
+						if (balance != block_state->balance ().number ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_balance;
 						}
@@ -3237,7 +3237,7 @@ void nano::json_handler::process ()
 					}
 					else if (subtype_text == "epoch")
 					{
-						if (balance != block_state->balance ().value ().number ())
+						if (balance != block_state->balance ().number ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_balance;
 						}

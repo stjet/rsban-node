@@ -1511,7 +1511,7 @@ int main (int argc, char * const * argv)
 						auto prev_balance (node->ledger.balance (transaction, block->previous ()));
 						if (!node->ledger.pruning_enabled () || prev_balance)
 						{
-							if (block->balance () < prev_balance.value ())
+							if (block->balance_field () < prev_balance.value ())
 							{
 								// State send
 								block_details_error = !sideband.details ().is_send () || sideband.details ().is_receive () || sideband.details ().is_epoch ();
@@ -1523,7 +1523,7 @@ int main (int argc, char * const * argv)
 									// State change
 									block_details_error = sideband.details ().is_send () || sideband.details ().is_receive () || sideband.details ().is_epoch ();
 								}
-								else if (block->balance () == prev_balance.value () && node->ledger.is_epoch_link (block->link ()))
+								else if (block->balance_field () == prev_balance.value () && node->ledger.is_epoch_link (block->link ()))
 								{
 									// State epoch
 									block_details_error = !sideband.details ().is_epoch () || sideband.details ().is_send () || sideband.details ().is_receive ();

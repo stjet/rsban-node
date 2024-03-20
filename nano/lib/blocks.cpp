@@ -169,6 +169,23 @@ nano::account nano::block::account () const noexcept
 	}
 }
 
+nano::amount nano::block::balance () const noexcept
+{
+	release_assert (has_sideband ());
+	switch (type ())
+	{
+		case nano::block_type::open:
+		case nano::block_type::receive:
+		case nano::block_type::change:
+			return sideband ().balance ();
+		case nano::block_type::send:
+		case nano::block_type::state:
+			return balance_field ().value ();
+		default:
+			release_assert (false);
+	}
+}
+
 std::optional<nano::account> nano::block::account_field () const
 {
 	return std::nullopt;
@@ -189,7 +206,7 @@ nano::qualified_root nano::block::qualified_root () const
 	return { root (), previous () };
 }
 
-std::optional<nano::amount> nano::block::balance () const
+std::optional<nano::amount> nano::block::balance_field () const
 {
 	return std::nullopt;
 }
@@ -397,7 +414,7 @@ nano::root nano::send_block::root () const
 	return previous ();
 }
 
-std::optional<nano::amount> nano::send_block::balance () const
+std::optional<nano::amount> nano::send_block::balance_field () const
 {
 	uint8_t buffer[16];
 	rsnano::rsn_send_block_balance (handle, &buffer);
@@ -891,7 +908,7 @@ nano::account nano::state_block::representative () const
 	return result;
 }
 
-std::optional<nano::amount> nano::state_block::balance () const
+std::optional<nano::amount> nano::state_block::balance_field () const
 {
 	uint8_t buffer[16];
 	rsnano::rsn_state_block_balance (handle, &buffer);

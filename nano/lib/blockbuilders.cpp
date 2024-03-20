@@ -213,7 +213,7 @@ nano::state_block_builder & nano::state_block_builder::from (nano::state_block c
 	build_state |= build_flags::signature_present;
 	block->account_set (other_block.account_field ().value ());
 	build_state |= build_flags::account_present;
-	block->balance_set (other_block.balance ().value ());
+	block->balance_set (other_block.balance_field ().value ());
 	build_state |= build_flags::balance_present;
 	block->link_set (other_block.link ());
 	build_state |= build_flags::link_present;

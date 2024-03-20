@@ -308,7 +308,7 @@ impl TestAccountChain {
             head: self.frontier(),
             representative: self.representative,
             open_block: self.open(),
-            balance: self.latest_block().balance_calculated(),
+            balance: self.latest_block().balance(),
             modified: 123,
             block_count: self.height(),
             epoch: self.epoch,
@@ -329,12 +329,12 @@ impl TestAccountChain {
         if height == 0 {
             Amount::zero()
         } else {
-            self.blocks[height as usize - 1].balance_calculated()
+            self.blocks[height as usize - 1].balance()
         }
     }
 
     pub fn add_block(&mut self, mut block: BlockEnum, source_epoch: Epoch) -> &BlockEnum {
-        if let Some(new_balance) = block.balance_opt() {
+        if let Some(new_balance) = block.balance_field() {
             self.balance = new_balance;
         }
 

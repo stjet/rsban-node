@@ -17,7 +17,7 @@ fn valid_receive_block() {
             head: receive.hash(),
             representative: receive.representative().unwrap(),
             open_block: old_account_info.open_block,
-            balance: receive.balance(),
+            balance: receive.balance_field().unwrap(),
             modified: test.seconds_since_epoch,
             block_count: old_account_info.block_count + 1,
             epoch: old_account_info.epoch,
@@ -30,7 +30,7 @@ fn valid_receive_block() {
             timestamp: test.seconds_since_epoch,
             successor: BlockHash::zero(),
             account: receive.account_field().unwrap(),
-            balance: receive.balance(),
+            balance: receive.balance_field().unwrap(),
             details: BlockDetails::new(old_account_info.epoch, false, true, false),
             source_epoch: Epoch::Epoch0
         },

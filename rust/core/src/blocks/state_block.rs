@@ -132,6 +132,10 @@ impl StateBlock {
         self.hashables.account
     }
 
+    pub fn balance(&self) -> Amount {
+        self.hashables.balance
+    }
+
     pub fn source(&self) -> BlockHash {
         BlockHash::zero()
     }
@@ -303,8 +307,8 @@ impl Block for StateBlock {
         visitor.state_block(self)
     }
 
-    fn balance(&self) -> Amount {
-        self.hashables.balance
+    fn balance_field(&self) -> Option<Amount> {
+        Some(self.hashables.balance)
     }
 
     fn source(&self) -> Option<BlockHash> {

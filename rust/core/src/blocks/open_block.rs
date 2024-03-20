@@ -219,8 +219,8 @@ impl Block for OpenBlock {
         visitor.open_block(self);
     }
 
-    fn balance(&self) -> Amount {
-        Amount::zero()
+    fn balance_field(&self) -> Option<Amount> {
+        None
     }
 
     fn source(&self) -> Option<BlockHash> {

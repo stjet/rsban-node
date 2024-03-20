@@ -217,8 +217,8 @@ impl Block for ChangeBlock {
         visitor.change_block(self);
     }
 
-    fn balance(&self) -> Amount {
-        Amount::zero()
+    fn balance_field(&self) -> Option<Amount> {
+        None
     }
 
     fn source(&self) -> Option<BlockHash> {

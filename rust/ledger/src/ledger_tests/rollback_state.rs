@@ -235,8 +235,11 @@ fn rollback_receive_with_rep_change() {
     assert_eq!(
         ctx.ledger
             .account_balance(&txn, &DEV_GENESIS_ACCOUNT, false),
-        send.balance()
+        send.balance_field().unwrap()
     );
-    assert_eq!(ctx.ledger.weight(&DEV_GENESIS_ACCOUNT), send.balance());
+    assert_eq!(
+        ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
+        send.balance_field().unwrap()
+    );
     assert_eq!(ctx.ledger.weight(&representative), Amount::zero());
 }

@@ -129,7 +129,7 @@ pub trait Block: FullHash {
     fn root(&self) -> Root;
     fn visit(&self, visitor: &mut dyn BlockVisitor);
     fn visit_mut(&mut self, visitor: &mut dyn MutableBlockVisitor);
-    fn balance(&self) -> Amount;
+    fn balance_field(&self) -> Option<Amount>;
     /// Source block for open/receive blocks, zero otherwise.
     fn source(&self) -> Option<BlockHash>;
     fn representative(&self) -> Option<Account>;
@@ -214,7 +214,7 @@ impl BlockEnum {
         }
     }
 
-    pub fn balance_calculated(&self) -> Amount {
+    pub fn balance(&self) -> Amount {
         match self {
             BlockEnum::LegacySend(b) => b.balance(),
             BlockEnum::LegacyReceive(b) => b.sideband().unwrap().balance,
@@ -234,14 +234,6 @@ impl BlockEnum {
 
     pub fn is_legacy(&self) -> bool {
         !matches!(self, BlockEnum::State(_))
-    }
-
-    pub fn balance_opt(&self) -> Option<Amount> {
-        match self {
-            BlockEnum::LegacySend(b) => Some(b.balance()),
-            BlockEnum::State(b) => Some(b.balance()),
-            _ => None,
-        }
     }
 
     pub fn source_or_link(&self) -> BlockHash {
@@ -301,8 +293,8 @@ impl BlockEnum {
         // BlockSideband does not serialize all data depending on the block type.
         // That's why we fill in the missing data here:
         match &block {
-            BlockEnum::LegacySend(_) => {
-                sideband.balance = block.balance();
+            BlockEnum::LegacySend(i) => {
+                sideband.balance = i.balance();
                 sideband.details = BlockDetails::new(Epoch::Epoch0, true, false, false)
             }
             BlockEnum::LegacyOpen(open) => {
@@ -317,7 +309,7 @@ impl BlockEnum {
             }
             BlockEnum::State(state) => {
                 sideband.account = state.account();
-                sideband.balance = block.balance();
+                sideband.balance = state.balance();
             }
         }
         block.as_block_mut().set_sideband(sideband);

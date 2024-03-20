@@ -354,8 +354,7 @@ impl<T: Environment + 'static> Ledger<T> {
         if hash.is_zero() {
             None
         } else {
-            self.get_block(txn, hash)
-                .map(|block| block.balance_calculated())
+            self.get_block(txn, hash).map(|block| block.balance())
         }
     }
 
@@ -467,7 +466,8 @@ impl<T: Environment + 'static> Ledger<T> {
             Some(sideband) => sideband.details.is_send,
             None => {
                 if !previous.is_zero() {
-                    block.balance() < self.balance(txn, &previous).unwrap_or_default()
+                    block.balance_field().unwrap()
+                        < self.balance(txn, &previous).unwrap_or_default()
                 } else {
                     false
                 }

@@ -116,7 +116,7 @@ impl LedgerDataRequesterStub {
                 head: block.hash(),
                 representative: block.representative().unwrap_or_default(),
                 open_block: block.hash(),
-                balance: block.balance_calculated(),
+                balance: block.balance(),
                 modified: 0,
                 block_count: 1,
                 epoch: Epoch::Unspecified,

@@ -267,7 +267,10 @@ fn block_destination_source() {
     let block5 = send_to_self_2;
     let block6 = receive2;
 
-    assert_eq!(ledger.balance(&txn, &block6.hash()), Some(block6.balance()));
+    assert_eq!(
+        ledger.balance(&txn, &block6.hash()),
+        Some(block6.balance_field().unwrap())
+    );
     assert_eq!(ledger.block_destination(&txn, &block1), dest_account);
     assert_eq!(ledger.block_source(&txn, &block1), BlockHash::zero());
 
@@ -609,7 +612,7 @@ fn ledger_cache() {
             let mut send = genesis.send(&txn).link(destination.account()).build();
             ctx.ledger.process(&mut txn, &mut send).unwrap();
             expected.block_count += 1;
-            expected.genesis_weight = send.balance();
+            expected.genesis_weight = send.balance_field().unwrap();
             send
         };
         cache_check(&ctx.ledger.cache, &expected);

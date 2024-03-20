@@ -96,6 +96,24 @@ bool nano::block::is_receive () const noexcept
 	}
 }
 
+bool nano::block::is_change () const noexcept
+{
+	release_assert (has_sideband ());
+	switch (type ())
+	{
+		case nano::block_type::change:
+			return true;
+		case nano::block_type::state:
+			if (link ().value ().is_zero ())
+			{
+				return true;
+			}
+			return false;
+		default:
+			return false;
+	}
+}
+
 uint64_t nano::block::block_work () const
 {
 	return rsnano::rsn_block_work (handle);

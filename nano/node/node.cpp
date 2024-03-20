@@ -282,7 +282,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 						// Subtype field
 						else if (block_a->type () == nano::block_type::state)
 						{
-							if (block_a->link ().value ().is_zero ())
+							if (block_a->is_change ())
 							{
 								event.add ("subtype", "change");
 							}

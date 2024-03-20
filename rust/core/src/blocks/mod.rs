@@ -252,6 +252,14 @@ impl BlockEnum {
         }
     }
 
+    pub fn is_change(&self) -> bool {
+        match self {
+            BlockEnum::LegacyChange(_) => true,
+            BlockEnum::State(state) => state.link().is_zero(),
+            _ => false,
+        }
+    }
+
     pub fn source(&self) -> Option<BlockHash> {
         match self {
             BlockEnum::LegacyOpen(i) => Some(i.source()),

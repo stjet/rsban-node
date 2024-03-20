@@ -9,6 +9,7 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include <bitset>
+#include <optional>
 
 /** Compare blocks, first by type, then content. This is an optimization over dynamic_cast, which is very slow on some platforms. */
 namespace
@@ -140,10 +141,9 @@ nano::block_hash nano::block::source () const
 	return source;
 }
 
-nano::account nano::block::destination () const
+std::optional<nano::account> nano::block::destination () const
 {
-	static nano::account destination{};
-	return destination;
+	return std::nullopt;
 }
 
 nano::link nano::block::link () const
@@ -400,7 +400,7 @@ bool nano::send_block::operator== (nano::send_block const & other_a) const
 	return rsnano::rsn_block_equals (handle, other_a.handle);
 }
 
-nano::account nano::send_block::destination () const
+std::optional<nano::account> nano::send_block::destination () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_send_block_destination (handle, &buffer);

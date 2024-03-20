@@ -42,8 +42,6 @@ public:
 	virtual nano::block_hash previous () const;
 	// Source block for open/receive blocks, zero otherwise.
 	virtual nano::block_hash source () const;
-	// Destination account for send blocks, zero otherwise.
-	virtual nano::account destination () const;
 	// Previous block or account number for open blocks
 	virtual nano::root root () const = 0;
 	// Qualified root value based on previous() and root()
@@ -77,6 +75,8 @@ public: // Direct access to the block fields or nullopt if the block type does n
 	nano::amount balance () const noexcept;
 	// Balance field for open/send/state blocks
 	virtual std::optional<nano::amount> balance_field () const;
+	// Destination account for send blocks
+	virtual std::optional<nano::account> destination () const;
 
 	rsnano::BlockHandle * get_handle () const;
 	rsnano::BlockHandle * clone_handle () const;
@@ -104,7 +104,6 @@ public:
 	send_block (send_block && other);
 	send_block (rsnano::BlockHandle * handle_a);
 	using nano::block::hash;
-	nano::account destination () const override;
 	nano::root root () const override;
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
@@ -119,6 +118,7 @@ public:
 
 public: // Send block fields
 	std::optional<nano::amount> balance_field () const override;
+	std::optional<nano::account> destination () const override;
 };
 
 class receive_block : public nano::block

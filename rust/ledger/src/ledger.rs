@@ -590,9 +590,7 @@ impl<T: Environment + 'static> Ledger<T> {
 
         // walk down the chain until the source field of a receive block matches the send block hash
         while let Some(current) = possible_receive_block {
-            if current.sideband().unwrap().details.is_receive
-                && Some(*send_block_hash) == current.source()
-            {
+            if current.is_receive() && Some(*send_block_hash) == current.source() {
                 // we have a match
                 return Some(current);
             }

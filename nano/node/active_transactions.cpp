@@ -1035,11 +1035,11 @@ void nano::active_transactions::process_confirmed_data (store::transaction const
 		{
 			is_state_send_a = true;
 		}
-		if (amount_a == 0 && node.network_params.ledger.epochs.is_epoch_link (state->link ()))
+		if (amount_a == 0 && node.network_params.ledger.epochs.is_epoch_link (state->link ().value ()))
 		{
 			is_state_epoch_a = true;
 		}
-		pending_account_a = state->link ().as_account ();
+		pending_account_a = state->link ().value ().as_account ();
 	}
 	if (auto send = dynamic_cast<nano::send_block *> (block_a.get ()))
 	{

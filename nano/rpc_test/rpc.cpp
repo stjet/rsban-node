@@ -935,7 +935,7 @@ TEST (rpc, history)
 	ASSERT_NE (nullptr, change);
 	auto send (node0->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, node0->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send);
-	auto receive (node0->wallets.receive_action (wallet_id, send->hash (), nano::dev::genesis_key.pub, node0->config->receive_minimum.number (), send->link ().as_account ()));
+	auto receive (node0->wallets.receive_action (wallet_id, send->hash (), nano::dev::genesis_key.pub, node0->config->receive_minimum.number (), send->link ().value ().as_account ()));
 	ASSERT_NE (nullptr, receive);
 	nano::block_builder builder;
 	auto usend = builder
@@ -1020,7 +1020,7 @@ TEST (rpc, account_history)
 	ASSERT_NE (nullptr, change);
 	auto send (node0->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, node0->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send);
-	auto receive (node0->wallets.receive_action (wallet_id, send->hash (), nano::dev::genesis_key.pub, node0->config->receive_minimum.number (), send->link ().as_account ()));
+	auto receive (node0->wallets.receive_action (wallet_id, send->hash (), nano::dev::genesis_key.pub, node0->config->receive_minimum.number (), send->link ().value ().as_account ()));
 	ASSERT_NE (nullptr, receive);
 	nano::block_builder builder;
 	auto usend = builder
@@ -1124,7 +1124,7 @@ TEST (rpc, account_history)
 	(void)node0->wallets.deterministic_insert (wallet_id, true, account2);
 	auto send2 (node0->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, account2, node0->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send2);
-	auto receive2 (node0->wallets.receive_action (wallet_id, send2->hash (), account2, node0->config->receive_minimum.number (), send2->link ().as_account ()));
+	auto receive2 (node0->wallets.receive_action (wallet_id, send2->hash (), account2, node0->config->receive_minimum.number (), send2->link ().value ().as_account ()));
 	// Test filter for send state blocks
 	ASSERT_NE (nullptr, receive2);
 	{
@@ -1168,7 +1168,7 @@ TEST (rpc, history_count)
 	ASSERT_NE (nullptr, change);
 	auto send (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, node->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send);
-	auto receive (node->wallets.receive_action (wallet_id, send->hash (), nano::dev::genesis_key.pub, node->config->receive_minimum.number (), send->link ().as_account ()));
+	auto receive (node->wallets.receive_action (wallet_id, send->hash (), nano::dev::genesis_key.pub, node->config->receive_minimum.number (), send->link ().value ().as_account ()));
 	ASSERT_NE (nullptr, receive);
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
@@ -4153,10 +4153,10 @@ TEST (rpc, blocks_info_receive_hash)
 	auto send4 = node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, 4);
 
 	// do 4 receives, mix up the ordering a little
-	auto recv1 (node->wallets.receive_action (wallet_id, send1->hash (), key1.pub, node->config->receive_minimum.number (), send1->link ().as_account ()));
-	auto recv4 (node->wallets.receive_action (wallet_id, send4->hash (), key1.pub, node->config->receive_minimum.number (), send4->link ().as_account ()));
-	auto recv3 (node->wallets.receive_action (wallet_id, send3->hash (), key1.pub, node->config->receive_minimum.number (), send3->link ().as_account ()));
-	auto recv2 (node->wallets.receive_action (wallet_id, send2->hash (), key1.pub, node->config->receive_minimum.number (), send2->link ().as_account ()));
+	auto recv1 (node->wallets.receive_action (wallet_id, send1->hash (), key1.pub, node->config->receive_minimum.number (), send1->link ().value ().as_account ()));
+	auto recv4 (node->wallets.receive_action (wallet_id, send4->hash (), key1.pub, node->config->receive_minimum.number (), send4->link ().value ().as_account ()));
+	auto recv3 (node->wallets.receive_action (wallet_id, send3->hash (), key1.pub, node->config->receive_minimum.number (), send3->link ().value ().as_account ()));
+	auto recv2 (node->wallets.receive_action (wallet_id, send2->hash (), key1.pub, node->config->receive_minimum.number (), send2->link ().value ().as_account ()));
 
 	// function to check that all 4 receive blocks are cemented
 	auto all_blocks_cemented = [node, &key1] () -> bool {
@@ -4220,7 +4220,7 @@ TEST (rpc, blocks_info_subtype)
 	(void)node1->wallets.insert_adhoc (wallet_id, key.prv);
 	auto send (node1->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, nano::Gxrb_ratio));
 	ASSERT_NE (nullptr, send);
-	auto receive (node1->wallets.receive_action (wallet_id, send->hash (), key.pub, nano::Gxrb_ratio, send->link ().as_account ()));
+	auto receive (node1->wallets.receive_action (wallet_id, send->hash (), key.pub, nano::Gxrb_ratio, send->link ().value ().as_account ()));
 	ASSERT_NE (nullptr, receive);
 	auto change (node1->wallets.change_action (wallet_id, nano::dev::genesis_key.pub, key.pub));
 	ASSERT_NE (nullptr, change);
@@ -5220,7 +5220,7 @@ TEST (rpc, online_reps)
 	auto send (node1->wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, new_rep, node1->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send);
 	ASSERT_TIMELY (10s, node2->block (send->hash ()));
-	auto receive (node2->wallets.receive_action (wallet_id2, send->hash (), new_rep, node1->config->receive_minimum.number (), send->link ().as_account ()));
+	auto receive (node2->wallets.receive_action (wallet_id2, send->hash (), new_rep, node1->config->receive_minimum.number (), send->link ().value ().as_account ()));
 	ASSERT_NE (nullptr, receive);
 	ASSERT_TIMELY (5s, node2->block (receive->hash ()));
 	auto change (node1->wallets.change_action (wallet_id1, nano::dev::genesis_key.pub, new_rep));
@@ -5717,7 +5717,7 @@ TEST (rpc, DISABLED_wallet_history)
 	auto send (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, node->config->receive_minimum.number ()));
 	ASSERT_NE (nullptr, send);
 	auto timestamp2 = nano::seconds_since_epoch ();
-	auto receive (node->wallets.receive_action (wallet_id, send->hash (), nano::dev::genesis_key.pub, node->config->receive_minimum.number (), send->link ().as_account ()));
+	auto receive (node->wallets.receive_action (wallet_id, send->hash (), nano::dev::genesis_key.pub, node->config->receive_minimum.number (), send->link ().value ().as_account ()));
 	ASSERT_NE (nullptr, receive);
 	nano::keypair key;
 	auto timestamp3 = nano::seconds_since_epoch ();

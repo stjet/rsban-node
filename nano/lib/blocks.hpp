@@ -44,8 +44,6 @@ public:
 	virtual nano::root root () const = 0;
 	// Qualified root value based on previous() and root()
 	virtual nano::qualified_root qualified_root () const;
-	// Link field for state blocks, zero otherwise.
-	virtual nano::link link () const;
 	virtual nano::account representative () const;
 	virtual void serialize (nano::stream &) const;
 	virtual void serialize_json (std::string &, bool = false) const;
@@ -77,6 +75,8 @@ public: // Direct access to the block fields or nullopt if the block type does n
 	nano::account destination () const noexcept;
 	// Destination account for send blocks
 	virtual std::optional<nano::account> destination_field () const;
+	// Link field for state blocks
+	virtual std::optional<nano::link> link () const;
 	// Returns the source block hash for open/receive/state blocks that are receives
 	nano::block_hash source () const noexcept;
 	// Source block for open/receive blocks
@@ -216,7 +216,6 @@ public:
 	state_block (rsnano::BlockHandle * handle_a);
 	using nano::block::hash;
 	nano::root root () const override;
-	nano::link link () const override;
 	nano::account representative () const override;
 	void visit (nano::block_visitor &) const override;
 	void visit (nano::mutable_block_visitor &) override;
@@ -235,6 +234,7 @@ public:
 public: // State block fields
 	std::optional<nano::account> account_field () const override;
 	std::optional<nano::amount> balance_field () const override;
+	std::optional<nano::link> link () const override;
 };
 
 class block_visitor

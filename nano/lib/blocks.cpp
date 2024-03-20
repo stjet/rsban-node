@@ -145,10 +145,9 @@ std::optional<nano::account> nano::block::destination_field () const
 	return std::nullopt;
 }
 
-nano::link nano::block::link () const
+std::optional<nano::link> nano::block::link () const
 {
-	static nano::link link{ 0 };
-	return link;
+	return std::nullopt;
 }
 
 nano::account nano::block::account () const noexcept
@@ -194,7 +193,7 @@ nano::account nano::block::destination () const noexcept
 			return destination_field ().value ();
 		case nano::block_type::state:
 			release_assert (sideband ().details ().is_send ());
-			return link ().as_account ();
+			return link ().value ().as_account ();
 		default:
 			release_assert (false);
 	}
@@ -210,7 +209,7 @@ nano::block_hash nano::block::source () const noexcept
 			return source_field ().value ();
 		case nano::block_type::state:
 			release_assert (sideband ().details ().is_receive ());
-			return link ().as_block_hash ();
+			return link ().value ().as_block_hash ();
 		default:
 			release_assert (false);
 	}
@@ -920,7 +919,7 @@ nano::root nano::state_block::root () const
 	}
 }
 
-nano::link nano::state_block::link () const
+std::optional<nano::link> nano::state_block::link () const
 {
 	uint8_t buffer[32];
 	rsnano::rsn_state_block_link (handle, &buffer);

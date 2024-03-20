@@ -219,7 +219,7 @@ nano::state_block_builder & nano::state_block_builder::from (nano::state_block c
 	build_state |= build_flags::link_present;
 	block->previous_set (other_block.previous ());
 	build_state |= build_flags::previous_present;
-	block->representative_set (other_block.representative ());
+	block->representative_set (other_block.representative_field ().value ());
 	build_state |= build_flags::representative_present;
 	return *this;
 }

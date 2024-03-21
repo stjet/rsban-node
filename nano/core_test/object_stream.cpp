@@ -589,4 +589,3 @@ TEST (object_stream, print_range)
 	ASSERT_EQ (ss1.str (), expected);
 	ASSERT_EQ (ss2.str (), expected);
 }
-

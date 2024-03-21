@@ -140,7 +140,6 @@ fn create_test_validator<'a>(block: &'a BlockEnum, account: Account) -> BlockVal
         work: &WORK_THRESHOLDS_STUB,
         block_exists: false,
         account,
-        frontier_missing: false,
         old_account_info: None,
         previous_block: None,
         pending_receive_info: None,

@@ -21,10 +21,9 @@ impl<'a, T: Environment + 'static> BlockValidatorFactory<'a, T> {
     }
 
     pub(crate) fn create_validator(&self) -> BlockValidator<'a> {
-        let account = self.get_account();
-        let frontier_missing = account.is_none();
-        let account = account.unwrap_or_default();
         let previous_block = self.load_previous_block();
+        let account = self.get_account(&previous_block);
+        let account = account.unwrap_or_default();
         let source_block = self.block.source_or_link();
         let source_block_exists = !source_block.is_zero()
             && self
@@ -43,7 +42,6 @@ impl<'a, T: Environment + 'static> BlockValidatorFactory<'a, T> {
             epochs: &self.ledger.constants.epochs,
             work: &self.ledger.constants.work,
             account,
-            frontier_missing,
             block_exists: self
                 .ledger
                 .block_or_pruned_exists_txn(self.txn, &self.block.hash()),
@@ -56,15 +54,14 @@ impl<'a, T: Environment + 'static> BlockValidatorFactory<'a, T> {
         }
     }
 
-    fn get_account(&self) -> Option<Account> {
+    fn get_account(&self, previous: &Option<BlockEnum>) -> Option<Account> {
         match self.block.account_field() {
             Some(account) => Some(account),
-            None => self.get_account_from_frontier_table(),
+            None => match previous {
+                Some(p) => Some(p.account()),
+                None => None,
+            },
         }
-    }
-
-    fn get_account_from_frontier_table(&self) -> Option<Account> {
-        self.ledger.get_frontier(self.txn, &self.block.previous())
     }
 
     fn load_previous_block(&self) -> Option<BlockEnum> {
@@ -91,7 +88,6 @@ mod tests {
         assert_eq!(validator.block.hash(), block.hash());
         assert_eq!(validator.epochs, &ledger.constants.epochs);
         assert_eq!(validator.account, block.account_field().unwrap());
-        assert_eq!(validator.frontier_missing, false);
         assert_eq!(validator.block_exists, false);
         assert_eq!(validator.old_account_info, None);
         assert_eq!(validator.pending_receive_info, None);
@@ -102,27 +98,16 @@ mod tests {
     }
 
     #[test]
-    fn frontier_missing() {
-        let block = BlockBuilder::legacy_send().build();
-        let ledger = Ledger::create_null_with().build();
-        let txn = ledger.read_txn();
-        let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
-
-        assert_eq!(validator.account, Account::zero());
-        assert_eq!(validator.frontier_missing, true);
-    }
-
-    #[test]
-    fn frontier_not_missing() {
-        let block = BlockBuilder::legacy_send().build();
-        let ledger = Ledger::create_null_with()
-            .frontier(&block.previous(), &Account::from(42))
+    fn get_account_from_previous_block() {
+        let previous = BlockBuilder::legacy_send().with_sideband().build();
+        let block = BlockBuilder::legacy_send()
+            .previous(previous.hash())
             .build();
+        let ledger = Ledger::create_null_with().block(&previous).build();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
 
-        assert_eq!(validator.account, Account::from(42));
-        assert_eq!(validator.frontier_missing, false);
+        assert_eq!(validator.account, previous.account());
     }
 
     #[test]
@@ -172,13 +157,18 @@ mod tests {
 
     #[test]
     fn pending_receive_info_for_legacy_receive() {
+        let account = Account::from(1111);
+        let previous = BlockBuilder::legacy_open()
+            .account(account)
+            .with_sideband()
+            .build();
         let block = BlockBuilder::legacy_receive()
+            .previous(previous.hash())
             .source(BlockHash::from(42))
             .build();
-        let account = Account::from(1111);
         let pending_info = PendingInfo::create_test_instance();
         let ledger = Ledger::create_null_with()
-            .frontier(&block.previous(), &account)
+            .block(&previous)
             .pending(
                 &PendingKey::new(account, BlockHash::from(42)),
                 &pending_info,

@@ -167,7 +167,7 @@ void nano::scheduler::priority::activate_successors (const nano::account & accou
 	activate (account, transaction);
 
 	// Start or vote for the next unconfirmed block in the destination account
-	if (block->is_send () && !block->destination ().is_zero() && block->destination() != account)
+	if (block->is_send () && !block->destination ().is_zero () && block->destination () != account)
 	{
 		activate (block->destination (), transaction);
 	}

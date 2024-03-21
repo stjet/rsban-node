@@ -3,14 +3,6 @@ use crate::BlockStatus;
 use rsnano_core::validate_message;
 
 impl<'a> BlockValidator<'a> {
-    pub(crate) fn ensure_frontier_not_missing(&self) -> Result<(), BlockStatus> {
-        if self.frontier_missing {
-            Err(BlockStatus::Fork)
-        } else {
-            Ok(())
-        }
-    }
-
     pub(crate) fn ensure_block_does_not_exist_yet(&self) -> Result<(), BlockStatus> {
         if self.block_exists {
             Err(BlockStatus::Old)

@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use std::sync::atomic::Ordering;
 
 pub mod helpers;
@@ -283,10 +282,7 @@ fn block_destination_source() {
     assert_eq!(block4.destination(), Some(dest_account));
     assert_eq!(block4.source(), None);
 
-    assert_eq!(
-        ledger.block_destination(&txn, &block5),
-        *DEV_GENESIS_ACCOUNT
-    );
+    assert_eq!(block5.destination(), Some(*DEV_GENESIS_ACCOUNT));
     assert_eq!(block5.source(), None);
 
     assert_eq!(block6.destination(), None);

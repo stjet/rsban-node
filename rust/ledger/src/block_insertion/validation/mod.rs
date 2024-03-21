@@ -20,7 +20,6 @@ pub(crate) struct BlockValidator<'a> {
     pub work: &'a WorkThresholds,
     pub block_exists: bool,
     pub account: Account,
-    pub frontier_missing: bool,
     pub previous_block: Option<BlockEnum>,
     pub old_account_info: Option<AccountInfo>,
     pub pending_receive_info: Option<PendingInfo>,
@@ -34,7 +33,6 @@ impl<'a> BlockValidator<'a> {
         self.epoch_block_pre_checks()?;
         self.ensure_block_does_not_exist_yet()?;
         self.ensure_valid_predecessor()?;
-        self.ensure_frontier_not_missing()?;
         self.ensure_valid_signature()?;
         self.ensure_block_is_not_for_burn_account()?;
         self.ensure_account_exists_for_none_open_block()?;

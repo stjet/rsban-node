@@ -7,6 +7,7 @@ mod inactive_cache_information;
 mod inactive_cache_status;
 mod local_vote_history;
 mod recently_cemented_cache;
+mod rep_tiers;
 mod vote;
 mod vote_broadcaster;
 mod vote_cache;

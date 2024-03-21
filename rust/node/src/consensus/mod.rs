@@ -1,6 +1,7 @@
 mod active_transactions;
 mod election;
 mod local_vote_history;
+mod rep_tiers;
 mod vote_broadcaster;
 mod vote_cache;
 mod vote_generator;
@@ -9,6 +10,7 @@ mod vote_spacing;
 
 pub use election::{Election, ElectionBehavior, ElectionData, ElectionState, VoteInfo};
 pub use local_vote_history::*;
+pub use rep_tiers::*;
 pub use vote_broadcaster::*;
 pub use vote_spacing::VoteSpacing;
 

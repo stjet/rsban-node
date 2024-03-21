@@ -1,7 +1,7 @@
-#include "nano/lib/rsnano.hpp"
-#include "nano/lib/rsnanoutils.hpp"
-#include "nano/node/repcrawler.hpp"
-#include "nano/node/transport/tcp.hpp"
+#include <nano/lib/rsnano.hpp>
+#include <nano/lib/rsnanoutils.hpp>
+#include <nano/node/repcrawler.hpp>
+#include <nano/node/transport/tcp.hpp>
 
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/stats.hpp>
@@ -116,7 +116,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (na
 nano::vote_broadcaster::vote_broadcaster (nano::node & node_a, nano::vote_processor_queue & vote_processor_queue_a, nano::network & network_a, nano::representative_register & representative_register_a, nano::network_params const & network_params_a, nano::transport::tcp_channels & tcp_channels_a)
 {
 	auto network_constants_dto{ network_params_a.network.to_dto () };
-	auto context = new std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> (network_a.inbound);
+	auto context = new std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> ([&network_a](nano::message const & msg, std::shared_ptr<nano::transport::channel> const & channel){network_a.inbound(msg, channel);});
 	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (network_a.endpoint ()) };
 	handle = rsnano::rsn_vote_broadcaster_create (
 	representative_register_a.handle,
@@ -145,7 +145,7 @@ void nano::vote_broadcaster::broadcast (std::shared_ptr<nano::vote> const & vote
 nano::vote_generator::vote_generator (nano::node & node_a, nano::node_config const & config_a, nano::ledger & ledger_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::vote_processor_queue & vote_processor_queue_a, nano::local_vote_history & history_a, nano::network & network_a, nano::stats & stats_a, nano::representative_register & representative_register_a, bool is_final_a)
 {
 	auto network_constants_dto{ config_a.network_params.network.to_dto () };
-	auto context = new std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> (network_a.inbound);
+	auto context = new std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> ([&network_a](nano::message const & msg, std::shared_ptr<nano::transport::channel> const & channel){network_a.inbound(msg, channel);});
 	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (network_a.endpoint ()) };
 
 	handle = rsnano::rsn_vote_generator_create (

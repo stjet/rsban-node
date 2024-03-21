@@ -18,13 +18,10 @@
  */
 
 nano::network::network (nano::node & node_a, uint16_t port_a) :
+	node (node_a),
 	id (nano::network_constants::active_network ()),
 	syn_cookies{ std::make_shared<nano::syn_cookies> (node_a.network_params.network.max_peers_per_ip) },
-	inbound{ [this] (nano::message const & message, std::shared_ptr<nano::transport::channel> const & channel) {
-		process_message (message, channel);
-	} },
 	resolver (node_a.io_ctx),
-	node (node_a),
 	port (port_a),
 	disconnect_observer ([] () {})
 {
@@ -37,7 +34,9 @@ nano::network::~network ()
 
 void nano::network::start_threads ()
 {
-	tcp_channels = std::move (std::make_shared<nano::transport::tcp_channels> (node, port, inbound));
+	tcp_channels = std::move (std::make_shared<nano::transport::tcp_channels> (node, port, [this](nano::message const & message, std::shared_ptr<nano::transport::channel> const & channel) {
+		inbound (message, channel);
+	}));
 	auto this_l = shared_from_this ();
 	// TCP
 	for (std::size_t i = 0; i < node.config->network_threads && !node.flags.disable_tcp_realtime (); ++i)
@@ -347,6 +346,11 @@ void nano::network::process_message (nano::message const & message, std::shared_
 
 	network_message_visitor visitor (node, channel);
 	message.visit (visitor);
+}
+
+void nano::network::inbound (const nano::message & message, const std::shared_ptr<nano::transport::channel> & channel)
+{
+	process_message (message, channel);
 }
 
 // Send keepalives to all the peers we've been notified of

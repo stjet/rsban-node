@@ -1,6 +1,6 @@
 use crate::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
-    Account, Block, BlockEnum, BlockHash, StateBlock,
+    Account, Block, BlockEnum, BlockHash,
 };
 use primitive_types::U512;
 
@@ -69,5 +69,33 @@ impl From<U512> for PendingKey {
             Account::from_slice(&buffer[..32]).unwrap(),
             BlockHash::from_slice(&buffer[32..]).unwrap(),
         )
+    }
+}
+
+impl PartialOrd for PendingKey {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        if self.account == other.account {
+            self.hash.partial_cmp(&other.hash)
+        } else {
+            self.account.partial_cmp(&other.account)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::PendingKey;
+
+    #[test]
+    fn pending_key_sorting() {
+        let one = PendingKey::new(1.into(), 2.into());
+        let one_same = PendingKey::new(1.into(), 2.into());
+        let two = PendingKey::new(1.into(), 3.into());
+        let three = PendingKey::new(2.into(), 1.into());
+        assert!(one < two);
+        assert!(one < three);
+        assert!(two < three);
+        assert!(one == one_same);
+        assert!(one != two);
     }
 }

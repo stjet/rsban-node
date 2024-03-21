@@ -3,8 +3,7 @@
 #include <nano/lib/rsnano.hpp>
 #include <nano/node/messages.hpp>
 #include <nano/node/transport/socket.hpp>
-
-#include <unordered_set>
+#include <nano/secure/pending_info.hpp>
 
 namespace nano
 {

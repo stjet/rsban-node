@@ -17,6 +17,8 @@ class write_transaction;
 
 namespace nano
 {
+class pending_key;
+class pending_info;
 class stats;
 
 // map of vote weight per block, ordered greater first

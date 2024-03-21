@@ -47,7 +47,7 @@ public:
 	network (nano::node &, uint16_t port);
 	~network ();
 
-	void start_threads ();
+	void create_tcp_channels ();
 	void start ();
 	void stop ();
 	void flood_message (nano::message &, nano::transport::buffer_drop_policy const = nano::transport::buffer_drop_policy::limiter, float const = 1.0f);
@@ -91,6 +91,7 @@ public:
 	void set_port (uint16_t port_a);
 
 private:
+	void run_processing ();
 	void process_message (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
 
 private: // Dependencies
@@ -100,13 +101,15 @@ public:
 	nano::networks const id;
 	std::shared_ptr<nano::syn_cookies> syn_cookies;
 	boost::asio::ip::udp::resolver resolver;
-	std::vector<boost::thread> packet_processing_threads;
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
 	std::atomic<uint16_t> port{ 0 };
-	std::function<void ()> disconnect_observer;
+
+public: // Callbacks
+	std::function<void ()> disconnect_observer{ [] () {} };
 
 private:
 	std::atomic<bool> stopped{ false };
+	std::vector<boost::thread> processing_threads; // Using boost::thread to enable increased stack size
 
 public:
 	static unsigned const broadcast_interval_ms = 10;

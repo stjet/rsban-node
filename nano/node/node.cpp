@@ -128,8 +128,8 @@ nano::keypair nano::load_or_create_node_id (std::filesystem::path const & applic
 
 std::shared_ptr<nano::network> create_network (nano::node & node_a, nano::node_config const & config_a)
 {
-	auto network{ std::make_shared<nano::network> (node_a, config_a.peering_port.has_value () ? *config_a.peering_port : 0) };
-	network->start_threads ();
+	auto network{ std::make_shared<nano::network> (node_a, config_a.peering_port.value_or (0)) };
+	network->create_tcp_channels ();
 	return network;
 }
 

@@ -346,7 +346,6 @@ nano::keypair::keypair (const nano::keypair & other_a) :
 {
 }
 
-
 nano::unchecked_info::unchecked_info () :
 	handle (rsnano::rsn_unchecked_info_create ())
 {

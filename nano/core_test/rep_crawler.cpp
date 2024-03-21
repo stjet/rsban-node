@@ -302,4 +302,3 @@ TEST (rep_crawler, two_reps_one_node)
 	ASSERT_TRUE (nano::dev::genesis_key.pub == reps[0].get_account () || nano::dev::genesis_key.pub == reps[1].get_account ());
 	ASSERT_TRUE (second_rep.pub == reps[0].get_account () || second_rep.pub == reps[1].get_account ());
 }
-

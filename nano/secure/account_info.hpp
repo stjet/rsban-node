@@ -39,4 +39,3 @@ public:
 	rsnano::AccountInfoHandle * handle;
 };
 }
-

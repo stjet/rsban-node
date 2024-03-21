@@ -7,7 +7,6 @@
 #include <deque>
 #include <memory>
 #include <thread>
-#include <unordered_set>
 
 namespace nano
 {
@@ -27,6 +26,7 @@ class ledger;
 class network_params;
 class node_flags;
 class stats;
+class rep_tiers;
 
 namespace transport
 {
@@ -36,7 +36,7 @@ namespace transport
 class vote_processor_queue
 {
 public:
-	vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a);
+	vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, nano::rep_tiers & rep_tiers_a);
 	vote_processor_queue (vote_processor_queue const &) = delete;
 	~vote_processor_queue ();
 
@@ -44,7 +44,6 @@ public:
 	bool empty () const;
 	/** Returns false if the vote was processed */
 	bool vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a);
-	void calculate_weights ();
 	bool wait_and_take (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> & votes_a);
 	/** Function blocks until the queue is empty */
 	void flush ();
@@ -67,7 +66,8 @@ public:
 	nano::node_config & config_a,
 	nano::logger & logger_a,
 	nano::rep_crawler & rep_crawler_a,
-	nano::network_params & network_params_a);
+	nano::network_params & network_params_a,
+	nano::rep_tiers & rep_tiers_a);
 
 	~vote_processor ();
 
@@ -76,9 +76,11 @@ public:
 
 	/** Note: node.active.mutex lock is required */
 	nano::vote_code vote_blocking (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &, bool = false);
-	void verify_votes (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> const &);
 
 	std::atomic<uint64_t> total_processed{ 0 };
+
+private: // Dependencies
+	void verify_votes (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> const &);
 
 private: // Dependencies
 	nano::active_transactions & active;
@@ -88,6 +90,7 @@ private: // Dependencies
 	nano::logger & logger;
 	nano::rep_crawler & rep_crawler;
 	nano::network_params & network_params;
+	nano::rep_tiers & rep_tiers;
 
 private:
 	void run ();
@@ -99,8 +102,6 @@ private:
 
 public:
 	nano::vote_processor_queue & queue;
-
-	friend class vote_processor_weights_Test;
 };
 
 }

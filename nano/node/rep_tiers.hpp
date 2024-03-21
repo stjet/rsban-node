@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
@@ -33,7 +34,7 @@ enum class rep_tier
 class rep_tiers final
 {
 public:
-	rep_tiers (nano::ledger &, nano::network_params &, nano::online_reps &, nano::stats &, nano::logger &);
+	rep_tiers (nano::ledger &, nano::network_params &, nano::online_reps &, nano::stats &);
 	~rep_tiers ();
 
 	void start ();

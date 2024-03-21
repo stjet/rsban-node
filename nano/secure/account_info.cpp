@@ -1,5 +1,5 @@
-#include <nano/secure/account_info.hpp>
 #include <nano/lib/rsnano.hpp>
+#include <nano/secure/account_info.hpp>
 
 nano::account_info::account_info () :
 	account_info (0, 0, 0, 0, 0, 0, nano::epoch::epoch_0)
@@ -114,4 +114,3 @@ uint64_t nano::account_info::block_count () const
 	rsnano::rsn_account_info_values (handle, &dto);
 	return dto.block_count;
 }
-

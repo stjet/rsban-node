@@ -32,4 +32,3 @@ public:
 	nano::block_hash hash{ 0 };
 };
 }
-

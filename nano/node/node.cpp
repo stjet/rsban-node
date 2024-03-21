@@ -180,13 +180,15 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	port_mapping (*this),
 	representative_register (*this),
 	rep_crawler (config->rep_crawler, *this),
+	rep_tiers{ ledger, network_params, online_reps, *stats },
 	vote_processor_queue{
 		flags_a.vote_processor_capacity (),
 		*stats,
 		online_reps,
 		ledger,
+		rep_tiers,
 	},
-	vote_processor (vote_processor_queue, active, *observers, *stats, *config, *logger, rep_crawler, network_params),
+	vote_processor (vote_processor_queue, active, *observers, *stats, *config, *logger, rep_crawler, network_params, rep_tiers),
 	warmed_up (0),
 	block_processor (*this, write_database_queue),
 	online_reps (ledger, *config),
@@ -579,6 +581,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (no
 	composite->add_component (node.ascendboot.collect_container_info ("bootstrap_ascending"));
 	composite->add_component (node.unchecked.collect_container_info ("unchecked"));
 	composite->add_component (node.local_block_broadcaster.collect_container_info ("local_block_broadcaster"));
+	composite->add_component (node.rep_tiers.collect_container_info ("rep_tiers"));
 	return composite;
 }
 
@@ -628,7 +631,6 @@ void nano::node::start ()
 	{
 		rep_crawler.start ();
 	}
-	ongoing_rep_calculation ();
 	ongoing_peer_store ();
 	ongoing_online_weight_calculation_queue ();
 
@@ -680,6 +682,7 @@ void nano::node::start ()
 		port_mapping.start ();
 	}
 	wallets.wallet_actions.start ();
+	rep_tiers.start ();
 	vote_processor.start ();
 	block_processor.start ();
 	active.start ();
@@ -720,6 +723,7 @@ void nano::node::stop ()
 	block_processor.stop ();
 	aggregator.stop ();
 	vote_processor.stop ();
+	rep_tiers.stop ();
 	scheduler.stop ();
 	active.stop ();
 	generator.stop ();
@@ -811,19 +815,6 @@ void nano::node::long_inactivity_cleanup ()
 		store.peer ().clear (*transaction);
 		logger->info (nano::log::type::node, "Removed records of peers and online weight after a long period of inactivity");
 	}
-}
-
-void nano::node::ongoing_rep_calculation ()
-{
-	auto now (std::chrono::steady_clock::now ());
-	vote_processor_queue.calculate_weights ();
-	std::weak_ptr<nano::node> node_w (shared_from_this ());
-	workers->add_timed_task (now + std::chrono::minutes (10), [node_w] () {
-		if (auto node_l = node_w.lock ())
-		{
-			node_l->ongoing_rep_calculation ();
-		}
-	});
 }
 
 void nano::node::ongoing_bootstrap ()

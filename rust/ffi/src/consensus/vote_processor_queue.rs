@@ -1,4 +1,4 @@
-use super::VoteHandle;
+use super::{rep_tiers::RepTiersHandle, VoteHandle};
 use crate::{
     ledger::datastore::LedgerHandle, representatives::OnlineRepsHandle, transport::ChannelHandle,
     utils::ContainerInfoComponentHandle, StatHandle,
@@ -28,6 +28,7 @@ pub unsafe extern "C" fn rsn_vote_processor_queue_create(
     stats: &StatHandle,
     online_reps: &OnlineRepsHandle,
     ledger: &LedgerHandle,
+    rep_tiers: &RepTiersHandle,
 ) -> *mut VoteProcessorQueueHandle {
     Box::into_raw(Box::new(VoteProcessorQueueHandle(Arc::new(
         VoteProcessorQueue::new(
@@ -35,6 +36,7 @@ pub unsafe extern "C" fn rsn_vote_processor_queue_create(
             Arc::clone(stats),
             Arc::clone(online_reps),
             Arc::clone(ledger),
+            Arc::clone(rep_tiers),
         ),
     ))))
 }
@@ -64,11 +66,6 @@ pub extern "C" fn rsn_vote_processor_queue_vote(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_vote_processor_queue_calculate_weights(handle: &VoteProcessorQueueHandle) {
-    handle.0.calculate_weights();
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_vote_processor_queue_wait_and_take(
     handle: &VoteProcessorQueueHandle,
 ) -> *mut RawVoteProcessorQueueHandle {
@@ -89,15 +86,6 @@ pub extern "C" fn rsn_vote_processor_queue_clear(handle: &VoteProcessorQueueHand
 #[no_mangle]
 pub extern "C" fn rsn_vote_processor_queue_stop(handle: &VoteProcessorQueueHandle) {
     handle.0.stop();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_processor_queue_reps_contains(
-    handle: &VoteProcessorQueueHandle,
-    reps_id: u8,
-    account: *const u8,
-) -> bool {
-    handle.0.reps_contains(reps_id, &Account::from_ptr(account))
 }
 
 #[no_mangle]

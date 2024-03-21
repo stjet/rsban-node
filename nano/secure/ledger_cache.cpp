@@ -1,5 +1,5 @@
-#include <nano/secure/ledger_cache.hpp>
 #include <nano/lib/rsnano.hpp>
+#include <nano/secure/ledger_cache.hpp>
 
 nano::ledger_cache::ledger_cache () :
 	handle{ rsnano::rsn_ledger_cache_create () }, rep_weights_m{ rsnano::rsn_ledger_cache_weights (handle) }
@@ -85,4 +85,3 @@ void nano::ledger_cache::remove_accounts (uint64_t count)
 {
 	rsnano::rsn_ledger_cache_remove_accounts (handle, count);
 }
-

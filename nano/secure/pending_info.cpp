@@ -65,4 +65,3 @@ nano::account const & nano::pending_key::key () const
 {
 	return account;
 }
-

@@ -9,6 +9,7 @@
 #include <nano/node/node_observers.hpp>
 #include <nano/node/nodeconfig.hpp>
 #include <nano/node/online_reps.hpp>
+#include <nano/node/rep_tiers.hpp>
 #include <nano/node/repcrawler.hpp>
 #include <nano/node/vote_processor.hpp>
 #include <nano/secure/common.hpp>
@@ -20,9 +21,9 @@
 
 using namespace std::chrono_literals;
 
-nano::vote_processor_queue::vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a)
+nano::vote_processor_queue::vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, nano::rep_tiers & rep_tiers_a)
 {
-	handle = rsnano::rsn_vote_processor_queue_create (max_votes, stats_a.handle, online_reps_a.get_handle (), ledger_a.handle);
+	handle = rsnano::rsn_vote_processor_queue_create (max_votes, stats_a.handle, online_reps_a.get_handle (), ledger_a.handle, rep_tiers_a.handle);
 }
 
 nano::vote_processor_queue::~vote_processor_queue ()
@@ -43,11 +44,6 @@ bool nano::vote_processor_queue::empty () const
 bool nano::vote_processor_queue::vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a)
 {
 	return rsnano::rsn_vote_processor_queue_vote (handle, vote_a->get_handle (), channel_a->handle);
-}
-
-void nano::vote_processor_queue::calculate_weights ()
-{
-	rsnano::rsn_vote_processor_queue_calculate_weights (handle);
 }
 
 bool nano::vote_processor_queue::wait_and_take (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> & votes_a)
@@ -95,14 +91,16 @@ nano::stats & stats_a,
 nano::node_config & config_a,
 nano::logger & logger_a,
 nano::rep_crawler & rep_crawler_a,
-nano::network_params & network_params_a) :
-	active (active_a),
-	observers (observers_a),
-	stats (stats_a),
-	config (config_a),
-	logger (logger_a),
-	rep_crawler (rep_crawler_a),
-	network_params (network_params_a),
+nano::network_params & network_params_a,
+nano::rep_tiers & rep_tiers_a) :
+	active{ active_a },
+	observers{ observers_a },
+	stats{ stats_a },
+	config{ config_a },
+	logger{ logger_a },
+	rep_crawler{ rep_crawler_a },
+	network_params{ network_params_a },
+	rep_tiers{ rep_tiers_a },
 	queue{ queue_a }
 {
 }

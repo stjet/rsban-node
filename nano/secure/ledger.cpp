@@ -85,12 +85,7 @@ nano::uint128_t nano::ledger::account_receivable (store::transaction const & tra
 
 std::optional<nano::pending_info> nano::ledger::pending_info (store::transaction const & transaction, nano::pending_key const & key) const
 {
-	nano::pending_info result;
-	if (!store.pending ().get (transaction, key, result))
-	{
-		return result;
-	}
-	return std::nullopt;
+	return store.pending ().get (transaction, key);
 }
 
 nano::block_status nano::ledger::process (store::write_transaction const & transaction_a, std::shared_ptr<nano::block> block_a)

@@ -56,18 +56,20 @@ void nano::store::lmdb::pending::del (nano::store::write_transaction const & tra
 	rsnano::rsn_lmdb_pending_store_del (handle, transaction.get_rust_handle (), &key_dto);
 }
 
-bool nano::store::lmdb::pending::get (nano::store::transaction const & transaction, nano::pending_key const & key, nano::pending_info & pending_a)
+std::optional<nano::pending_info> nano::store::lmdb::pending::get (nano::store::transaction const & transaction, nano::pending_key const & key)
 {
 	auto key_dto{ key_to_dto (key) };
 	rsnano::PendingInfoDto value_dto;
 	auto result = rsnano::rsn_lmdb_pending_store_get (handle, transaction.get_rust_handle (), &key_dto, &value_dto);
 	if (!result)
 	{
-		std::copy (std::begin (value_dto.source), std::end (value_dto.source), std::begin (pending_a.source.bytes));
-		std::copy (std::begin (value_dto.amount), std::end (value_dto.amount), std::begin (pending_a.amount.bytes));
-		pending_a.epoch = static_cast<nano::epoch> (value_dto.epoch);
+		nano::pending_info pending;
+		std::copy (std::begin (value_dto.source), std::end (value_dto.source), std::begin (pending.source.bytes));
+		std::copy (std::begin (value_dto.amount), std::end (value_dto.amount), std::begin (pending.amount.bytes));
+		pending.epoch = static_cast<nano::epoch> (value_dto.epoch);
+		return pending;
 	}
-	return result;
+	return std::nullopt;
 }
 
 bool nano::store::lmdb::pending::exists (nano::store::transaction const & transaction_a, nano::pending_key const & key_a)

@@ -24,10 +24,13 @@ void nano::store::lmdb::block::raw_put (nano::store::write_transaction const & t
 	rsnano::rsn_lmdb_block_store_raw_put (handle, transaction_a.get_rust_handle (), data.data (), data.size (), hash_a.bytes.data ());
 }
 
-nano::block_hash nano::store::lmdb::block::successor (nano::store::transaction const & transaction_a, nano::block_hash const & hash_a) const
+std::optional<nano::block_hash> nano::store::lmdb::block::successor (nano::store::transaction const & transaction_a, nano::block_hash const & hash_a) const
 {
 	nano::block_hash result;
 	rsnano::rsn_lmdb_block_store_successor (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
+	if (result.is_zero()){
+		return std::nullopt;
+	}
 	return result;
 }
 

@@ -57,7 +57,6 @@ public:
 	nano::uint128_t account_balance (store::transaction const &, nano::account const &, bool = false);
 	nano::uint128_t account_receivable (store::transaction const &, nano::account const &, bool = false);
 	nano::uint128_t weight (nano::account const &);
-	std::shared_ptr<nano::block> successor (store::transaction const &, nano::qualified_root const &);
 	std::shared_ptr<nano::block> head_block (store::transaction const &, nano::account const &);
 	bool block_confirmed (store::transaction const &, nano::block_hash const &) const;
 	nano::block_hash latest (store::transaction const &, nano::account const &);

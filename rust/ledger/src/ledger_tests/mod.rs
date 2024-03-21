@@ -31,7 +31,7 @@ fn ledger_successor() {
 
     assert_eq!(
         ledger.successor(&txn, &QualifiedRoot::new(Root::zero(), chain.open())),
-        Some(send)
+        Some(send.hash())
     );
 }
 
@@ -50,7 +50,7 @@ fn ledger_successor_genesis() {
             &txn,
             &QualifiedRoot::new(genesis.account().into(), BlockHash::zero())
         ),
-        Some(genesis.block(1).clone())
+        Some(genesis.block(1).hash())
     );
 }
 

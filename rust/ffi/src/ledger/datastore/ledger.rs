@@ -399,22 +399,6 @@ pub unsafe extern "C" fn rsn_ledger_update_account(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_successor(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    root: *const u8,
-) -> *mut BlockHandle {
-    let successor = (*handle)
-        .0
-        .successor((*txn).as_txn(), &QualifiedRoot::from_ptr(root));
-
-    match successor {
-        Some(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(block)))),
-        None => null_mut(),
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_pruning_action(
     handle: *mut LedgerHandle,
     txn: *mut TransactionHandle,

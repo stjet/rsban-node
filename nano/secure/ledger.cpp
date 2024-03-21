@@ -250,12 +250,6 @@ void nano::ledger::update_account (store::write_transaction const & transaction_
 	rsnano::rsn_ledger_update_account (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), old_a.handle, new_a.handle);
 }
 
-std::shared_ptr<nano::block> nano::ledger::successor (store::transaction const & transaction_a, nano::qualified_root const & root_a)
-{
-	auto block_handle = rsnano::rsn_ledger_successor (handle, transaction_a.get_rust_handle (), root_a.bytes.data ());
-	return nano::block_handle_to_block (block_handle);
-}
-
 std::shared_ptr<nano::block> nano::ledger::head_block (store::transaction const & transaction, nano::account const & account)
 {
 	auto info = store.account ().get (transaction, account);

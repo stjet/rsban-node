@@ -615,15 +615,12 @@ impl<T: Environment + 'static> Ledger<T> {
         &self,
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         root: &QualifiedRoot,
-    ) -> Option<BlockEnum> {
+    ) -> Option<BlockHash> {
         if !root.previous.is_zero() {
-            self.store
-                .block
-                .successor(txn, &root.previous)
-                .and_then(|hash| self.get_block(txn, &hash))
+            self.store.block.successor(txn, &root.previous)
         } else {
             self.account_info(txn, &root.root.into())
-                .and_then(|info| self.get_block(txn, &info.open_block))
+                .map(|info| info.open_block)
         }
     }
 

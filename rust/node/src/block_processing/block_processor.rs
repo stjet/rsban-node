@@ -347,14 +347,11 @@ impl BlockProcessor {
     ) {
         let hash = block.hash();
         if let Some(successor) = self.ledger.successor(transaction, &block.qualified_root()) {
-            if successor.hash() != hash {
+            let successor_block = self.ledger.get_block(transaction, &successor).unwrap();
+            if successor != hash {
                 // Replace our block with the winner and roll back any dependent blocks
-                debug!(
-                    "Rolling back: {} and replacing with: {}",
-                    successor.hash(),
-                    hash
-                );
-                let rollback_list = match self.ledger.rollback(transaction, &successor.hash()) {
+                debug!("Rolling back: {} and replacing with: {}", successor, hash);
+                let rollback_list = match self.ledger.rollback(transaction, &successor) {
                     Ok(rollback_list) => {
                         self.stats
                             .inc(StatType::Ledger, DetailType::Rollback, Direction::In);
@@ -366,7 +363,7 @@ impl BlockProcessor {
                             .inc(StatType::Ledger, DetailType::RollbackFailed, Direction::In);
                         error!(
                             "Failed to roll back: {} because it or a successor was confirmed",
-                            successor.hash()
+                            successor
                         );
                         Vec::new()
                     }
@@ -374,7 +371,7 @@ impl BlockProcessor {
 
                 let callback_guard = self.blocks_rolled_back.lock().unwrap();
                 if let Some(callback) = callback_guard.as_ref() {
-                    callback(rollback_list, successor);
+                    callback(rollback_list, successor_block);
                 }
             }
         }

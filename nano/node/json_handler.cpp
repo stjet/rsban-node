@@ -3201,10 +3201,10 @@ void nano::json_handler::process ()
 				}
 				else
 				{
-					auto balance (rpc_l->node.ledger.account_balance (*transaction, block_state->account ()));
+					auto balance (rpc_l->node.ledger.account_balance (*transaction, block_state->account_field ().value ()));
 					if (subtype_text == "send")
 					{
-						if (balance <= block_state->balance ().number ())
+						if (balance <= block_state->balance_field ().value ().number ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_balance;
 						}
@@ -3212,7 +3212,7 @@ void nano::json_handler::process ()
 					}
 					else if (subtype_text == "receive")
 					{
-						if (balance > block_state->balance ().number ())
+						if (balance > block_state->balance_field ().value ().number ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_balance;
 						}
@@ -3227,7 +3227,7 @@ void nano::json_handler::process ()
 					}
 					else if (subtype_text == "change")
 					{
-						if (balance != block_state->balance ().number ())
+						if (balance != block_state->balance_field ().value ().number ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_balance;
 						}
@@ -3238,7 +3238,7 @@ void nano::json_handler::process ()
 					}
 					else if (subtype_text == "epoch")
 					{
-						if (balance != block_state->balance ().number ())
+						if (balance != block_state->balance_field ().value ().number ())
 						{
 							rpc_l->ec = nano::error_rpc::invalid_subtype_balance;
 						}

@@ -73,8 +73,7 @@ public:
 	// Get the next peer for attempting a tcp bootstrap connection
 	nano::tcp_endpoint bootstrap_peer ();
 	nano::endpoint endpoint () const;
-	void cleanup (std::chrono::system_clock::time_point const &);
-	void ongoing_cleanup ();
+	void cleanup (std::chrono::system_clock::time_point const & cutoff);
 	void ongoing_syn_cookie_cleanup ();
 	void ongoing_keepalive ();
 	std::size_t size () const;
@@ -92,6 +91,7 @@ public:
 
 private:
 	void run_processing ();
+	void run_cleanup ();
 	void process_message (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
 
 private: // Dependencies
@@ -109,7 +109,10 @@ public: // Callbacks
 
 private:
 	std::atomic<bool> stopped{ false };
+	mutable nano::mutex mutex;
+	nano::condition_variable condition;
 	std::vector<boost::thread> processing_threads; // Using boost::thread to enable increased stack size
+	std::thread cleanup_thread;
 
 public:
 	static unsigned const broadcast_interval_ms = 10;

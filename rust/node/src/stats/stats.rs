@@ -110,6 +110,7 @@ pub enum StatType {
     Ledger,
     Rollback,
     Bootstrap,
+    Network,
     TcpServer,
     Vote,
     Election,
@@ -166,6 +167,7 @@ pub enum DetailType {
     // common
     Ok,
     Loop,
+    LoopCleanup,
     Total,
     Process,
     Processed,

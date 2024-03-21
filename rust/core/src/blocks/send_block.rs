@@ -181,7 +181,7 @@ impl SendBlock {
         PendingKey::new(self.hashables.destination, self.hash())
     }
 
-    pub fn mandatory_destination(&self) -> &Account {
+    pub fn destination(&self) -> &Account {
         &self.hashables.destination
     }
 }

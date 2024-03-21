@@ -275,6 +275,20 @@ impl BlockEnum {
         }
     }
 
+    pub fn destination(&self) -> Option<Account> {
+        match self {
+            BlockEnum::LegacySend(i) => Some(*i.destination()),
+            BlockEnum::State(i) => {
+                if i.sideband().unwrap().details.is_send {
+                    Some(i.link().into())
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     pub fn source_or_link(&self) -> BlockHash {
         self.source_field()
             .unwrap_or_else(|| self.link_field().unwrap_or_default().into())

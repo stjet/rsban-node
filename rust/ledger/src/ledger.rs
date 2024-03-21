@@ -443,24 +443,6 @@ impl<T: Environment + 'static> Ledger<T> {
         }
     }
 
-    pub fn block_destination(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        block: &BlockEnum,
-    ) -> Account {
-        match block {
-            BlockEnum::LegacySend(send) => send.hashables.destination,
-            BlockEnum::State(state) => {
-                if block.is_send() {
-                    state.link().into()
-                } else {
-                    Account::zero()
-                }
-            }
-            _ => Account::zero(),
-        }
-    }
-
     pub fn hash_root_random(
         &self,
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,

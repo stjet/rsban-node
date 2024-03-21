@@ -271,19 +271,16 @@ fn block_destination_source() {
         ledger.balance(&txn, &block6.hash()),
         Some(block6.balance_field().unwrap())
     );
-    assert_eq!(ledger.block_destination(&txn, &block1), dest_account);
+    assert_eq!(block1.destination(), Some(dest_account));
     assert_eq!(block1.source(), None);
 
-    assert_eq!(
-        ledger.block_destination(&txn, &block2),
-        *DEV_GENESIS_ACCOUNT
-    );
+    assert_eq!(block2.destination(), Some(*DEV_GENESIS_ACCOUNT));
     assert_eq!(block2.source(), None);
 
-    assert_eq!(ledger.block_destination(&txn, &block3), Account::zero());
+    assert_eq!(block3.destination(), None);
     assert_eq!(block3.source(), Some(block2.hash()));
 
-    assert_eq!(ledger.block_destination(&txn, &block4), dest_account);
+    assert_eq!(block4.destination(), Some(dest_account));
     assert_eq!(block4.source(), None);
 
     assert_eq!(
@@ -292,7 +289,7 @@ fn block_destination_source() {
     );
     assert_eq!(block5.source(), None);
 
-    assert_eq!(ledger.block_destination(&txn, &block6), Account::zero());
+    assert_eq!(block6.destination(), None);
     assert_eq!(block6.source(), Some(block5.hash()));
 }
 

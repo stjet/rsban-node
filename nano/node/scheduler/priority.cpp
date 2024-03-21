@@ -165,12 +165,11 @@ void nano::scheduler::priority::try_schedule_successors (std::shared_ptr<nano::b
 void nano::scheduler::priority::activate_successors (const nano::account & account, std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction)
 {
 	activate (account, transaction);
-	auto const destination = node.ledger.block_destination (transaction, *block);
 
 	// Start or vote for the next unconfirmed block in the destination account
-	if (!destination.is_zero () && destination != account)
+	if (block->is_send () && !block->destination ().is_zero() && block->destination() != account)
 	{
-		activate (destination, transaction);
+		activate (block->destination (), transaction);
 	}
 }
 

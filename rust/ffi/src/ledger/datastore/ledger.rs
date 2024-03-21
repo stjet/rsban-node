@@ -225,17 +225,6 @@ pub unsafe extern "C" fn rsn_ledger_block_text(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_block_destination(
-    handle: &LedgerHandle,
-    txn: &TransactionHandle,
-    block: &BlockHandle,
-    result: *mut u8,
-) {
-    let destination = handle.0.block_destination(txn.as_txn(), &block);
-    destination.copy_bytes(result);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_hash_root_random(
     handle: *mut LedgerHandle,
     txn: *mut TransactionHandle,

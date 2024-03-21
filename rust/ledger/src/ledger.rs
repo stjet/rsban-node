@@ -5,9 +5,9 @@ use crate::{
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::seconds_since_epoch, Account, AccountInfo, Amount, Block, BlockChainSection, BlockEnum,
-    BlockHash, BlockSubType, BlockType, ConfirmationHeightInfo, Epoch, Link, PendingInfo,
-    PendingKey, QualifiedRoot, Root,
+    utils::seconds_since_epoch, Account, AccountInfo, Amount, BlockChainSection, BlockEnum,
+    BlockHash, BlockSubType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey,
+    QualifiedRoot, Root,
 };
 use rsnano_store_lmdb::{
     ConfiguredAccountDatabaseBuilder, ConfiguredBlockDatabaseBuilder,
@@ -616,20 +616,15 @@ impl<T: Environment + 'static> Ledger<T> {
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         root: &QualifiedRoot,
     ) -> Option<BlockEnum> {
-        let (mut successor, get_from_previous) = if root.previous.is_zero() {
-            match self.account_info(txn, &root.root.into()) {
-                Some(info) => (Some(info.open_block), false),
-                None => (None, true),
-            }
+        if !root.previous.is_zero() {
+            self.store
+                .block
+                .successor(txn, &root.previous)
+                .and_then(|hash| self.get_block(txn, &hash))
         } else {
-            (None, true)
-        };
-
-        if get_from_previous {
-            successor = self.store.block.successor(txn, &root.previous);
+            self.account_info(txn, &root.root.into())
+                .and_then(|info| self.get_block(txn, &info.open_block))
         }
-
-        successor.and_then(|hash| self.get_block(txn, &hash))
     }
 
     pub fn pruning_action(

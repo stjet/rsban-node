@@ -62,7 +62,6 @@ public:
 	void merge_peer (nano::endpoint const &);
 	void send_keepalive (std::shared_ptr<nano::transport::channel> const &);
 	void send_keepalive_self (std::shared_ptr<nano::transport::channel> const &);
-	void send_node_id_handshake (std::shared_ptr<nano::transport::channel> const &, std::optional<nano::uint256_union> const & cookie, std::optional<nano::uint256_union> const & respond_to);
 	std::shared_ptr<nano::transport::channel> find_node_id (nano::account const &);
 	std::shared_ptr<nano::transport::channel> find_channel (nano::endpoint const &);
 	// Should we reach out to this endpoint with a keepalive message

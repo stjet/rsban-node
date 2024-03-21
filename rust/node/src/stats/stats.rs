@@ -144,6 +144,7 @@ pub enum StatType {
     Handshake,
     RepCrawler,
     LocalBlockBroadcaster,
+    RepTiers,
 
     BootstrapAscending,
     BootstrapAscendingAccounts,
@@ -167,7 +168,10 @@ pub enum DetailType {
     Loop,
     Total,
     Process,
+    Processed,
+    Ignored,
     Update,
+    Updated,
     Request,
     Broadcast,
     Cleanup,

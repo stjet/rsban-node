@@ -70,6 +70,7 @@ pub struct NodeConfigDto {
     pub max_work_generate_multiplier: f64,
     pub frontiers_confirmation: u8,
     pub max_queued_requests: u32,
+    pub request_aggregator_threads: u32,
     pub max_unchecked_blocks: u32,
     pub rep_crawler_weight_minimum: [u8; 16],
     pub work_peers: [PeerDto; 5],
@@ -177,6 +178,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.max_work_generate_multiplier = cfg.max_work_generate_multiplier;
     dto.frontiers_confirmation = cfg.frontiers_confirmation as u8;
     dto.max_queued_requests = cfg.max_queued_requests;
+    dto.request_aggregator_threads = cfg.request_aggregator_threads;
     dto.max_unchecked_blocks = cfg.max_unchecked_blocks;
     dto.rep_crawler_weight_minimum = cfg.rep_crawler_weight_minimum.to_be_bytes();
     if cfg.work_peers.len() > dto.work_peers.len() {
@@ -351,6 +353,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             frontiers_confirmation: FromPrimitive::from_u8(value.frontiers_confirmation)
                 .ok_or_else(|| anyhow!("invalid frontiers confirmation mode"))?,
             max_queued_requests: value.max_queued_requests,
+            request_aggregator_threads: value.request_aggregator_threads,
             max_unchecked_blocks: value.max_unchecked_blocks,
             rep_crawler_weight_minimum: Amount::from_be_bytes(value.rep_crawler_weight_minimum),
             work_peers,

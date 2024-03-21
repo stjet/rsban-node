@@ -66,6 +66,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.max_work_generate_multiplier = config.max_work_generate_multiplier;
 	dto.frontiers_confirmation = static_cast<uint8_t> (config.frontiers_confirmation);
 	dto.max_queued_requests = config.max_queued_requests;
+	dto.request_aggregator_threads = config.request_aggregator_threads;
 	dto.max_unchecked_blocks = config.max_unchecked_blocks;
 	std::copy (std::begin (config.rep_crawler_weight_minimum.bytes), std::end (config.rep_crawler_weight_minimum.bytes), std::begin (dto.rep_crawler_weight_minimum));
 	dto.work_peers_count = config.work_peers.size ();
@@ -187,6 +188,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	max_work_generate_multiplier = dto.max_work_generate_multiplier;
 	frontiers_confirmation = static_cast<nano::frontiers_confirmation_mode> (dto.frontiers_confirmation);
 	max_queued_requests = dto.max_queued_requests;
+	request_aggregator_threads = dto.request_aggregator_threads;
 	max_unchecked_blocks = dto.max_unchecked_blocks;
 	std::copy (std::begin (dto.rep_crawler_weight_minimum), std::end (dto.rep_crawler_weight_minimum), std::begin (rep_crawler_weight_minimum.bytes));
 	work_peers.clear ();
@@ -446,6 +448,7 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		toml.get<double> ("max_work_generate_multiplier", max_work_generate_multiplier);
 
 		toml.get<uint32_t> ("max_queued_requests", max_queued_requests);
+		toml.get<uint32_t> ("request_aggregator_threads", request_aggregator_threads);
 
 		toml.get<unsigned> ("max_unchecked_blocks", max_unchecked_blocks);
 

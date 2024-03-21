@@ -13,7 +13,7 @@ use rsnano_core::{
     Account, Amount, GXRB_RATIO, XRB_RATIO,
 };
 use rsnano_store_lmdb::LmdbConfig;
-use std::{net::Ipv6Addr, time::Duration};
+use std::{cmp::max, net::Ipv6Addr, time::Duration};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
@@ -75,6 +75,7 @@ pub struct NodeConfig {
     pub max_work_generate_multiplier: f64,
     pub frontiers_confirmation: FrontiersConfirmationMode,
     pub max_queued_requests: u32,
+    pub request_aggregator_threads: u32,
     pub max_unchecked_blocks: u32,
     pub rep_crawler_weight_minimum: Amount,
     pub work_peers: Vec<Peer>,
@@ -210,23 +211,25 @@ impl NodeConfig {
             Networks::Invalid => panic!("invalid network"),
         }
 
+        let cpus = get_cpu_count() as u32;
+
         Self {
             peering_port,
             bootstrap_fraction_numerator: 1,
             receive_minimum: Amount::raw(*XRB_RATIO),
             online_weight_minimum: Amount::raw(60000 * *GXRB_RATIO),
             password_fanout: 1024,
-            io_threads: std::cmp::max(get_cpu_count() as u32, 4),
-            network_threads: std::cmp::max(get_cpu_count() as u32, 4),
-            work_threads: std::cmp::max(get_cpu_count() as u32, 4),
-            background_threads: std::cmp::max(get_cpu_count() as u32, 4),
+            io_threads: max(cpus, 4),
+            network_threads: max(cpus, 4),
+            work_threads: max(cpus, 4),
+            background_threads: max(cpus, 4),
             /* Use half available threads on the system for signature checking. The calling thread does checks as well, so these are extra worker threads */
-            signature_checker_threads: get_cpu_count() as u32 / 2,
+            signature_checker_threads: cpus / 2,
             enable_voting,
             bootstrap_connections: 4,
             bootstrap_connections_max: 64,
             bootstrap_initiator_threads: 1,
-            bootstrap_serving_threads: std::cmp::max(get_cpu_count() as u32 / 2, 2),
+            bootstrap_serving_threads: max(cpus / 2, 2),
             bootstrap_frontier_request_count: 1024 * 1024,
             block_processor_batch_max_time_ms: 500,
             allow_local_peers: !(network_params.network.is_live_network()
@@ -265,6 +268,7 @@ impl NodeConfig {
             max_work_generate_multiplier: 64_f64,
             frontiers_confirmation: FrontiersConfirmationMode::Automatic,
             max_queued_requests: 512,
+            request_aggregator_threads: max(cpus, 4),
             max_unchecked_blocks: 65536,
             rep_crawler_weight_minimum: Amount::decode_hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
                 .unwrap(),
@@ -387,6 +391,7 @@ impl NodeConfig {
             "Mode controlling frontier confirmation rate.\ntype:string,{auto,always,disabled}",
         )?;
         toml.put_u32("max_queued_requests", self.max_queued_requests, "Limit for number of queued confirmation requests for one channel, after which new requests are dropped until the queue drops below this value.\ntype:uint32")?;
+        toml.put_u32("request_aggregator_threads", self.request_aggregator_threads, "Number of threads to dedicate to request aggregator. The default value is the minimum of 4 or the number returned by nano::hardware_concurency(), which is the number of hardware threads or the value of the environment variable NANO_HARDWARE_CONCURRENCY.")?;
         toml.put_str("rep_crawler_weight_minimum", &self.rep_crawler_weight_minimum.to_string_dec (), "Rep crawler minimum weight, if this is less than minimum principal weight then this is taken as the minimum weight a rep must have to be tracked. If you want to track all reps set this to 0. If you do not want this to influence anything then set it to max value. This is only useful for debugging or for people who really know what they are doing.\ntype:string,amount,raw")?;
 
         toml.put_u32 ("backlog_scan_batch_size", self.backlog_scan_batch_size, "Number of accounts per second to process when doing backlog population scan. Increasing this value will help unconfirmed frontiers get into election prioritization queue faster, however it will also increase resource usage. \ntype:uint")?;

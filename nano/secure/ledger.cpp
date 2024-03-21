@@ -140,6 +140,11 @@ nano::uint128_t nano::ledger::weight (nano::account const & account_a)
 	return result.number ();
 }
 
+std::optional<nano::block_hash> nano::ledger::successor (store::transaction const & transaction, nano::block_hash const & hash) const noexcept
+{
+	return store.block ().successor (transaction, hash);
+}
+
 // Rollback blocks until `block_a' doesn't exist or it tries to penetrate the confirmation height
 bool nano::ledger::rollback (store::write_transaction const & transaction_a, nano::block_hash const & block_a, std::vector<std::shared_ptr<nano::block>> & list_a)
 {

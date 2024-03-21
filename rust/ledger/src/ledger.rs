@@ -614,6 +614,14 @@ impl<T: Environment + 'static> Ledger<T> {
     pub fn successor(
         &self,
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        hash: &BlockHash,
+    ) -> Option<BlockHash> {
+        self.store.block.successor(txn, hash)
+    }
+
+    pub fn successor_by_root(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         root: &QualifiedRoot,
     ) -> Option<BlockHash> {
         if !root.previous.is_zero() {

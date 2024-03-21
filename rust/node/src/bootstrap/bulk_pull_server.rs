@@ -140,8 +140,6 @@ impl BulkPullServerImpl {
 
             self.current = if self.ascending() {
                 self.ledger
-                    .store
-                    .block
                     .successor(&transaction, &self.request.start.into())
                     .unwrap_or_default()
             } else {

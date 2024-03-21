@@ -346,7 +346,10 @@ impl BlockProcessor {
         block: &Arc<BlockEnum>,
     ) {
         let hash = block.hash();
-        if let Some(successor) = self.ledger.successor(transaction, &block.qualified_root()) {
+        if let Some(successor) = self
+            .ledger
+            .successor_by_root(transaction, &block.qualified_root())
+        {
             let successor_block = self.ledger.get_block(transaction, &successor).unwrap();
             if successor != hash {
                 // Replace our block with the winner and roll back any dependent blocks

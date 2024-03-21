@@ -2,11 +2,7 @@
 
 #include <nano/lib/epoch.hpp>
 #include <nano/lib/numbers.hpp>
-
-namespace nano
-{
-class stream;
-}
+#include <nano/lib/stream.hpp>
 
 namespace nano
 {

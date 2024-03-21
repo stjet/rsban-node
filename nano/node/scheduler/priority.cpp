@@ -3,6 +3,7 @@
 #include <nano/node/node.hpp>
 #include <nano/node/scheduler/buckets.hpp>
 #include <nano/node/scheduler/priority.hpp>
+#include <nano/secure/ledger.hpp>
 
 nano::scheduler::priority::priority (nano::node & node_a, nano::stats & stats_a) :
 	handle{ rsnano::rsn_election_scheduler_create (this) },

@@ -8,6 +8,7 @@
 #include <nano/node/bootstrap/bootstrap_bulk_push.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/websocket.hpp>
+#include <nano/secure/ledger.hpp>
 
 #include <boost/format.hpp>
 

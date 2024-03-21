@@ -34,7 +34,6 @@
 #include <nano/node/wallet.hpp>
 #include <nano/node/websocket.hpp>
 #include <nano/node/write_database_queue.hpp>
-#include <nano/secure/ledger.hpp>
 #include <nano/secure/utility.hpp>
 
 #include <boost/program_options.hpp>

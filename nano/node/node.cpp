@@ -18,6 +18,7 @@
 #include <nano/node/scheduler/priority.hpp>
 #include <nano/node/telemetry.hpp>
 #include <nano/node/websocket.hpp>
+#include <nano/secure/ledger.hpp>
 #include <nano/store/component.hpp>
 
 #include <boost/property_tree/json_parser.hpp>

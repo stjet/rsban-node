@@ -5,6 +5,7 @@
 
 #include <nano/node/node.hpp>
 #include <nano/node/repcrawler.hpp>
+#include <nano/secure/ledger.hpp>
 
 #include <boost/format.hpp>
 

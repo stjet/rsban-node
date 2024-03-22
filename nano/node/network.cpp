@@ -33,11 +33,12 @@ nano::network::~network ()
 	// All threads must be stopped before this destructor
 	debug_assert (processing_threads.empty ());
 	debug_assert (!cleanup_thread.joinable ());
+	debug_assert (!keepalive_thread.joinable ());
 }
 
 void nano::network::create_tcp_channels ()
 {
-	tcp_channels = std::move (std::make_shared<nano::transport::tcp_channels> (node, port, [this](nano::message const & message, std::shared_ptr<nano::transport::channel> const & channel) {
+	tcp_channels = std::move (std::make_shared<nano::transport::tcp_channels> (node, port, [this] (nano::message const & message, std::shared_ptr<nano::transport::channel> const & channel) {
 		inbound (message, channel);
 	}));
 }
@@ -49,7 +50,10 @@ void nano::network::start ()
 		run_cleanup ();
 	});
 
-	ongoing_keepalive ();
+	keepalive_thread = std::thread ([this] () {
+		nano::thread_role::set (nano::thread_role::name::network_keepalive);
+		run_keepalive ();
+	});
 
 	if (!node.flags.disable_tcp_realtime ())
 	{
@@ -82,6 +86,10 @@ void nano::network::stop ()
 	}
 	processing_threads.clear ();
 
+	if (keepalive_thread.joinable ())
+	{
+		keepalive_thread.join ();
+	}
 	if (cleanup_thread.joinable ())
 	{
 		cleanup_thread.join ();
@@ -146,6 +154,28 @@ void nano::network::run_cleanup ()
 		}
 
 		syn_cookies->purge (node.network_params.network.syn_cookie_cutoff);
+
+		lock.lock ();
+	}
+}
+
+void nano::network::run_keepalive ()
+{
+	nano::unique_lock<nano::mutex> lock{ mutex };
+	while (!stopped)
+	{
+		condition.wait_for (lock, node.network_params.network.keepalive_period);
+		lock.unlock ();
+
+		if (stopped)
+		{
+			return;
+		}
+
+		node.stats->inc (nano::stat::type::network, nano::stat::detail::loop_keepalive);
+
+		flood_keepalive (0.75f);
+		flood_keepalive_self (0.25f);
 
 		lock.lock ();
 	}
@@ -478,19 +508,6 @@ void nano::network::cleanup (std::chrono::system_clock::time_point const & cutof
 	{
 		disconnect_observer ();
 	}
-}
-
-void nano::network::ongoing_keepalive ()
-{
-	flood_keepalive (0.75f);
-	flood_keepalive_self (0.25f);
-	std::weak_ptr<nano::node> node_w (node.shared ());
-	node.workers->add_timed_task (std::chrono::steady_clock::now () + node.network_params.network.keepalive_period, [node_w] () {
-		if (auto node_l = node_w.lock ())
-		{
-			node_l->network->ongoing_keepalive ();
-		}
-	});
 }
 
 std::size_t nano::network::size () const

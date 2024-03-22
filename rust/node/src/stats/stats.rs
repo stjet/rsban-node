@@ -169,6 +169,7 @@ pub enum DetailType {
     Ok,
     Loop,
     LoopCleanup,
+    LoopKeepalive,
     Total,
     Process,
     Processed,

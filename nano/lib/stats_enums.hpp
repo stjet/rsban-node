@@ -65,6 +65,7 @@ enum class detail : uint8_t
 	ok,
 	loop,
 	loop_cleanup,
+	loop_keepalive,
 	total,
 	process,
 	processed,

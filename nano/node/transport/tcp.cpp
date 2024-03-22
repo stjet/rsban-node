@@ -329,9 +329,10 @@ void nano::transport::tcp_channels::keepalive ()
 std::optional<nano::keepalive> nano::transport::tcp_channels::sample_keepalive ()
 {
 	auto msg_handle = rsnano::rsn_tcp_channels_sample_keepalive (handle);
-	if (msg_handle != nullptr){
-		auto msg = nano::message_handle_to_message(msg_handle);
-		return *static_cast<nano::keepalive*>(msg.get());
+	if (msg_handle != nullptr)
+	{
+		auto msg = nano::message_handle_to_message (msg_handle);
+		return *static_cast<nano::keepalive *> (msg.get ());
 	}
 	return std::nullopt;
 }

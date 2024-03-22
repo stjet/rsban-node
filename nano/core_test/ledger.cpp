@@ -693,4 +693,3 @@ TEST (ledger, unchecked_receive)
 	ASSERT_TIMELY (10s, node1.ledger.block_exists (*node1.store.tx_begin_read (), receive1->hash ()));
 	ASSERT_EQ (0, node1.unchecked.count ());
 }
-

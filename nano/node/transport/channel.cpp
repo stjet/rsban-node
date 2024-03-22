@@ -1,7 +1,7 @@
-#include <nano/lib/rsnanoutils.hpp>
 #include "nano/node/transport/tcp.hpp"
 
 #include <nano/lib/rsnano.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/transport/channel.hpp>

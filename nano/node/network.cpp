@@ -209,7 +209,7 @@ void nano::network::run_reachout ()
 		auto keepalive = tcp_channels->sample_keepalive ();
 		if (keepalive)
 		{
-			for (auto const & peer : keepalive->get_peers())
+			for (auto const & peer : keepalive->get_peers ())
 			{
 				if (stopped)
 				{

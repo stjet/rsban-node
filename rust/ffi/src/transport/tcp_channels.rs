@@ -306,11 +306,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_excluded_peers(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_ongoing_keepalive(handle: &TcpChannelsHandle) {
-    handle.keepalive()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_start_tcp(
     handle: &TcpChannelsHandle,
     endpoint: &EndpointDto,

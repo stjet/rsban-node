@@ -85,10 +85,10 @@ nano::transport::inproc::channel::channel (nano::node & node_a, nano::node & des
 	node_a.async_rt,
 	node_a.network->endpoint (),
 	node_a.node_id.pub,
-	std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> ([&node_a](nano::message const & msg, std::shared_ptr<nano::transport::channel> const & channel){node_a.network->inbound(msg, channel);}),
+	std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> ([&node_a] (nano::message const & msg, std::shared_ptr<nano::transport::channel> const & channel) { node_a.network->inbound (msg, channel); }),
 	destination.network->endpoint (),
 	destination.node_id.pub,
-	std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> ([&destination](nano::message const & msg, std::shared_ptr<nano::transport::channel> const & channel){destination.network->inbound(msg, channel);}))
+	std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> ([&destination] (nano::message const & msg, std::shared_ptr<nano::transport::channel> const & channel) { destination.network->inbound (msg, channel); }))
 {
 }
 

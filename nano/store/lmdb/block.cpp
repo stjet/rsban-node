@@ -28,7 +28,8 @@ std::optional<nano::block_hash> nano::store::lmdb::block::successor (nano::store
 {
 	nano::block_hash result;
 	rsnano::rsn_lmdb_block_store_successor (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
-	if (result.is_zero()){
+	if (result.is_zero ())
+	{
 		return std::nullopt;
 	}
 	return result;

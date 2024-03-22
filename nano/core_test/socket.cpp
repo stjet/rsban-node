@@ -373,15 +373,14 @@ TEST (DISABLED_socket, drop_policy)
 		});
 
 		auto client = nano::transport::create_client_socket (*node);
-		auto channel = std::make_shared<nano::transport::channel_tcp>(
-			node->async_rt,
-			node->outbound_limiter,
-			node->config->network_params.network,
-			client,
-			*node->stats,
-			*node->network->tcp_channels,
-			1
-		);
+		auto channel = std::make_shared<nano::transport::channel_tcp> (
+		node->async_rt,
+		node->outbound_limiter,
+		node->config->network_params.network,
+		client,
+		*node->stats,
+		*node->network->tcp_channels,
+		1);
 		nano::test::counted_completion write_completion (static_cast<unsigned> (total_message_count));
 
 		client->async_connect (boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::loopback (), listener->endpoint ().port ()),

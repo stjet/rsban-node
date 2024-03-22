@@ -232,11 +232,6 @@ pub extern "C" fn rsn_block_processor_add_impl(
     handle.add_impl(context.0.take().unwrap());
 }
 
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_set_flushing(handle: &mut BlockProcessorHandle, value: bool) {
-    handle.flushing.store(value, Ordering::SeqCst);
-}
-
 pub struct ProcessBatchResult(VecDeque<(BlockStatus, BlockProcessorContext)>);
 
 #[no_mangle]

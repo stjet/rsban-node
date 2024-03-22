@@ -2,8 +2,6 @@ add_library(
   test_common
   chains.hpp
   chains.cpp
-  ledger.hpp
-  ledger.cpp
   network.hpp
   network.cpp
   rate_observer.cpp

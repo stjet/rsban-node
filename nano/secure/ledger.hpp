@@ -8,6 +8,11 @@
 
 #include <map>
 
+namespace rsnano
+{
+class LedgerHandle;
+}
+
 namespace nano::store
 {
 class component;

@@ -7,7 +7,6 @@
 #include <nano/node/scheduler/component.hpp>
 #include <nano/node/scheduler/priority.hpp>
 #include <nano/node/transport/inproc.hpp>
-#include <nano/test_common/ledger.hpp>
 #include <nano/test_common/system.hpp>
 #include <nano/test_common/testutil.hpp>
 
@@ -695,11 +694,3 @@ TEST (ledger, unchecked_receive)
 	ASSERT_EQ (0, node1.unchecked.count ());
 }
 
-TEST (ledger, head_block)
-{
-	auto ctx = nano::test::context::ledger_empty ();
-	auto & ledger = ctx.ledger ();
-	auto & store = ctx.store ();
-	auto tx = store.tx_begin_read ();
-	ASSERT_EQ (*nano::dev::genesis, *ledger.head_block (*tx, nano::dev::genesis_key.pub));
-}

@@ -12,7 +12,7 @@ mod bulk_pull_client;
 mod bulk_pull_server;
 mod bulk_push_client;
 mod bulk_push_server;
-mod channel_tcp_wrapper;
+mod channel_entry;
 mod frontier_req_client;
 mod frontier_req_server;
 mod pulls_cache;
@@ -39,7 +39,7 @@ pub use bulk_pull_client::*;
 pub use bulk_pull_server::BulkPullServer;
 pub use bulk_push_client::*;
 pub use bulk_push_server::BulkPushServer;
-pub use channel_tcp_wrapper::ChannelTcpWrapper;
+pub use channel_entry::ChannelEntry;
 pub use pulls_cache::{PullInfo, PullsCache};
 use rsnano_core::{Account, BlockEnum};
 

@@ -57,7 +57,7 @@ pub unsafe fn as_inproc_channel(handle: *mut ChannelHandle) -> &'static ChannelI
     }
 }
 
-pub unsafe fn as_tcp_channel(handle: *mut ChannelHandle) -> &'static ChannelTcp {
+pub unsafe fn as_tcp_channel(handle: *mut ChannelHandle) -> &'static Arc<ChannelTcp> {
     match (*handle).0.as_ref() {
         ChannelEnum::Tcp(tcp) => tcp,
         _ => panic!("expected tcp channel"),

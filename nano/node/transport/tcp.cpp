@@ -3,6 +3,7 @@
 #include "nano/lib/logging.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
+#include "nano/node/messages.hpp"
 #include "nano/node/nodeconfig.hpp"
 #include "nano/node/peer_exclusion.hpp"
 #include "nano/node/transport/channel.hpp"
@@ -320,6 +321,21 @@ std::deque<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_chann
 	return result;
 }
 
+void nano::transport::tcp_channels::keepalive ()
+{
+	rsnano::rsn_tcp_channels_keepalive (handle);
+}
+
+std::optional<nano::keepalive> nano::transport::tcp_channels::sample_keepalive ()
+{
+	auto msg_handle = rsnano::rsn_tcp_channels_sample_keepalive (handle);
+	if (msg_handle != nullptr){
+		auto msg = nano::message_handle_to_message(msg_handle);
+		return *static_cast<nano::keepalive*>(msg.get());
+	}
+	return std::nullopt;
+}
+
 void nano::transport::tcp_channels::flood_message (nano::message & msg, float scale)
 {
 	rsnano::rsn_tcp_channels_flood_message (handle, msg.handle, scale);
@@ -425,8 +441,6 @@ void nano::transport::tcp_channels::process_messages ()
 
 void nano::transport::tcp_channels::start ()
 {
-	ongoing_keepalive ();
-	ongoing_merge (0);
 }
 
 void nano::transport::tcp_channels::stop ()
@@ -440,7 +454,7 @@ bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_
 	return rsnano::rsn_tcp_channels_not_a_peer (handle, &endpoint_dto, allow_local_peers);
 }
 
-bool nano::transport::tcp_channels::reachout (nano::endpoint const & endpoint_a)
+bool nano::transport::tcp_channels::track_reachout (nano::endpoint const & endpoint_a)
 {
 	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
 	return rsnano::rsn_tcp_channels_reachout (handle, &endpoint_dto);
@@ -457,16 +471,6 @@ void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point
 	rsnano::rsn_tcp_channels_purge (handle, cutoff_ns);
 }
 
-void nano::transport::tcp_channels::ongoing_keepalive ()
-{
-	rsnano::rsn_tcp_channels_ongoing_keepalive (handle);
-}
-
-void nano::transport::tcp_channels::ongoing_merge (size_t channel_index)
-{
-	rsnano::rsn_tcp_channels_ongoing_merge (handle, channel_index);
-}
-
 void nano::transport::tcp_channels::list (std::deque<std::shared_ptr<nano::transport::channel>> & deque_a, uint8_t minimum_version_a, bool include_temporary_channels_a)
 {
 	auto list_handle = rsnano::rsn_tcp_channels_list_channels (handle, minimum_version_a, include_temporary_channels_a);
@@ -477,19 +481,6 @@ void nano::transport::tcp_channels::list (std::deque<std::shared_ptr<nano::trans
 		deque_a.push_back (channel);
 	}
 	rsnano::rsn_channel_list_destroy (list_handle);
-}
-
-void nano::transport::tcp_channels::modify_last_packet_sent (nano::endpoint const & endpoint_a, std::chrono::system_clock::time_point const & time_a)
-{
-	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
-	auto time_ns = std::chrono::duration_cast<std::chrono::nanoseconds> (time_a.time_since_epoch ()).count ();
-	rsnano::rsn_tcp_channels_set_last_packet_sent (handle, &endpoint_dto, time_ns);
-}
-
-void nano::transport::tcp_channels::update (nano::tcp_endpoint const & endpoint_a)
-{
-	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
-	rsnano::rsn_tcp_channels_update_channel (handle, &endpoint_dto);
 }
 
 void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a)
@@ -518,11 +509,6 @@ void delete_callback_context (void * context)
 	auto callback = static_cast<std::function<void (boost::system::error_code, std::unique_ptr<nano::message>)> *> (context);
 	delete callback;
 }
-}
-
-void nano::transport::tcp_channels::data_sent (boost::asio::ip::tcp::endpoint const & endpoint_a)
-{
-	update (endpoint_a);
 }
 
 void nano::transport::tcp_channels::host_unreachable ()

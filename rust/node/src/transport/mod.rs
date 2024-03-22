@@ -23,7 +23,7 @@ mod write_queue;
 use rsnano_messages::Message;
 pub use tokio_socket_facade::*;
 
-use std::{net::SocketAddrV6, ops::Deref, time::SystemTime};
+use std::{net::SocketAddrV6, ops::Deref, sync::Arc, time::SystemTime};
 
 pub use bandwidth_limiter::{
     BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
@@ -31,7 +31,7 @@ pub use bandwidth_limiter::{
 pub use block_deserializer::BlockDeserializer;
 pub use channel_fake::ChannelFake;
 pub use channel_inproc::{ChannelInProc, InboundCallback};
-pub use channel_tcp::{ChannelTcp, TcpChannelData};
+pub use channel_tcp::*;
 pub(crate) use connections_per_address::ConnectionsPerAddress;
 pub use message_deserializer::{AsyncBufferReader, MessageDeserializer};
 pub use network_filter::NetworkFilter;
@@ -40,7 +40,7 @@ use rsnano_core::Account;
 pub use socket::*;
 pub use syn_cookies::SynCookies;
 pub use tcp_channels::{
-    TcpChannels, TcpChannelsExtension, TcpChannelsImpl, TcpChannelsOptions, TcpEndpointAttempt,
+    AttemptEntry, TcpChannels, TcpChannelsExtension, TcpChannelsImpl, TcpChannelsOptions,
 };
 pub use tcp_listener::{TcpListener, TcpListenerExt};
 pub use tcp_message_manager::{TcpMessageItem, TcpMessageManager};
@@ -98,7 +98,7 @@ pub enum TrafficType {
 }
 
 pub enum ChannelEnum {
-    Tcp(ChannelTcp),
+    Tcp(Arc<ChannelTcp>),
     InProc(ChannelInProc),
     Fake(ChannelFake),
 }

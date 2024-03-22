@@ -22,7 +22,11 @@ pub struct TcpServerFactory {
     pub message_visitor_factory: Option<Arc<BootstrapMessageVisitorFactory>>,
 }
 impl TcpServerFactory {
-    pub fn create_tcp_server(&self, channel: &ChannelTcp, socket: Arc<Socket>) -> Arc<TcpServer> {
+    pub fn create_tcp_server(
+        &self,
+        channel: &Arc<ChannelTcp>,
+        socket: Arc<Socket>,
+    ) -> Arc<TcpServer> {
         channel.set_last_packet_sent(SystemTime::now());
         let response_server = TcpServer::new(
             Arc::clone(&self.async_rt),

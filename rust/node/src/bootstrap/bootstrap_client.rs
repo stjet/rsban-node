@@ -1,8 +1,8 @@
 use super::bootstrap_limits;
 use crate::{
     transport::{
-        BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, Socket, SocketExtensions, TrafficType,
-        WriteCallback,
+        BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, ChannelTcpExt, Socket,
+        SocketExtensions, TrafficType, WriteCallback,
     },
     utils::{AsyncRuntime, ErrorCode},
 };
@@ -122,7 +122,7 @@ impl BootstrapClient {
         self.receive_buffer.lock().unwrap().len()
     }
 
-    fn tcp_channel(&self) -> &ChannelTcp {
+    fn tcp_channel(&self) -> &Arc<ChannelTcp> {
         match self.channel.as_ref() {
             ChannelEnum::Tcp(tcp) => tcp,
             _ => panic!("not a tcp channel!"),

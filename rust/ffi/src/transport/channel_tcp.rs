@@ -32,7 +32,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
         .unwrap()
         .protocol_info();
 
-    ChannelHandle::new(Arc::new(ChannelEnum::Tcp(ChannelTcp::new(
+    ChannelHandle::new(Arc::new(ChannelEnum::Tcp(Arc::new(ChannelTcp::new(
         Arc::clone((*socket).deref()),
         SystemTime::now(),
         Arc::clone(stats),
@@ -41,7 +41,7 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
         &async_rt,
         channel_id,
         protocol,
-    ))))
+    )))))
 }
 
 #[no_mangle]

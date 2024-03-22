@@ -120,7 +120,29 @@ impl ChannelTcp {
         lock.peering_endpoint = Some(address);
     }
 
-    pub fn send_buffer(
+    pub fn max(&self, traffic_type: TrafficType) -> bool {
+        self.socket.max(traffic_type)
+    }
+}
+
+pub trait ChannelTcpExt {
+    fn send_buffer(
+        &self,
+        buffer: &Arc<Vec<u8>>,
+        callback: Option<WriteCallback>,
+        policy: BufferDropPolicy,
+        traffic_type: TrafficType,
+    );
+}
+
+impl Display for ChannelTcp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.channel_mutex.lock().unwrap().remote_endpoint.fmt(f)
+    }
+}
+
+impl ChannelTcpExt for Arc<ChannelTcp> {
+    fn send_buffer(
         &self,
         buffer: &Arc<Vec<u8>>,
         callback: Option<WriteCallback>,
@@ -133,15 +155,13 @@ impl ChannelTcp {
             {
                 let channels_w = Weak::clone(&self.tcp_channels);
                 let stats = Arc::clone(&self.stats);
-                let endpoint = socket_l
-                    .get_remote()
-                    .unwrap_or_else(|| SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0));
+                let this_l = Arc::clone(self);
                 socket_l.async_write(
                     buffer,
                     Some(Box::new(move |ec, size| {
-                        if let Some(channels_l) = channels_w.upgrade() {
+                        if let Some(_) = channels_w.upgrade() {
                             if ec.is_ok() {
-                                channels_l.data_sent(&endpoint);
+                                this_l.set_last_packet_sent(SystemTime::now());
                             }
                             if ec == ErrorCode::host_unreachable() {
                                 stats.inc(
@@ -180,19 +200,9 @@ impl ChannelTcp {
             }
         }
     }
-
-    pub fn max(&self, traffic_type: TrafficType) -> bool {
-        self.socket.max(traffic_type)
-    }
 }
 
-impl Display for ChannelTcp {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.remote_endpoint().fmt(f)
-    }
-}
-
-impl Channel for ChannelTcp {
+impl Channel for Arc<ChannelTcp> {
     fn is_temporary(&self) -> bool {
         self.temporary.load(Ordering::SeqCst)
     }
@@ -296,7 +306,7 @@ impl Drop for ChannelTcp {
     fn drop(&mut self) {
         // Close socket. Exception: socket is used by bootstrap_server
         if !self.temporary.load(Ordering::Relaxed) {
-            self.close()
+            self.socket.close();
         }
     }
 }

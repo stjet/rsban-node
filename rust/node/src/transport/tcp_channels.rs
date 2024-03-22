@@ -6,7 +6,7 @@ use super::{
     TrafficType,
 };
 use crate::{
-    bootstrap::{BootstrapMessageVisitorFactory, ChannelTcpWrapper},
+    bootstrap::{BootstrapMessageVisitorFactory, ChannelEntry},
     config::{NetworkConstants, NodeConfig, NodeFlags},
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     transport::{Channel, SocketType},
@@ -16,7 +16,7 @@ use crate::{
     },
     NetworkParams, DEV_NETWORK_PARAMS,
 };
-use rand::{seq::SliceRandom, thread_rng};
+use rand::{seq::SliceRandom, thread_rng, Rng};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     KeyPair, PublicKey,
@@ -99,6 +99,7 @@ pub struct TcpChannels {
 
 impl Drop for TcpChannels {
     fn drop(&mut self) {
+        debug_assert_eq!(self.tcp_channels.lock().unwrap().channels.len(), 0);
         self.stop();
     }
 }
@@ -159,9 +160,13 @@ impl TcpChannels {
 
     pub fn stop(&self) {
         if !self.stopped.swap(true, Ordering::SeqCst) {
-            self.tcp_channels.lock().unwrap().close_channels();
             self.tcp_message_manager.stop();
+            self.close();
         }
+    }
+
+    fn close(&self) {
+        self.tcp_channels.lock().unwrap().close_channels();
     }
 
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
@@ -194,7 +199,7 @@ impl TcpChannels {
                     lock.channels.remove_by_node_id(&node_id);
                 }
 
-                let wrapper = Arc::new(ChannelTcpWrapper::new(channel.clone(), server));
+                let wrapper = Arc::new(ChannelEntry::new(channel.clone(), server));
                 lock.channels.insert(wrapper);
                 lock.attempts.remove(&endpoint);
                 let observer = lock.new_channel_observer.clone();
@@ -430,34 +435,31 @@ impl TcpChannels {
         // Don't contact invalid IPs
         let mut error = self.not_a_peer(endpoint, allow_local_peers);
         if !error {
-            error = self.reachout(endpoint);
+            error = !self.track_reachout(endpoint);
         }
         error
     }
 
-    pub fn reachout(&self, endpoint: &SocketAddrV6) -> bool {
+    pub fn track_reachout(&self, endpoint: &SocketAddrV6) -> bool {
         // Don't overload single IP
-        let mut error = self.excluded_peers.lock().unwrap().is_excluded(endpoint)
-            || self.max_ip_or_subnetwork_connections(endpoint);
-
-        if !error && !self.flags.disable_tcp_realtime {
-            // Don't keepalive to nodes that already sent us something
-            if self.find_channel(endpoint).is_some() {
-                error = true;
-            }
-
-            let mut guard = self.tcp_channels.lock().unwrap();
-            let attempt = TcpEndpointAttempt::new(*endpoint);
-            let inserted = guard.attempts.insert(attempt);
-            if !inserted {
-                error = true;
-            }
+        if self.max_ip_or_subnetwork_connections(endpoint) {
+            return false;
         }
-        error
-    }
+        if self.excluded_peers.lock().unwrap().is_excluded(endpoint) {
+            return false;
+        }
+        if self.flags.disable_tcp_realtime {
+            return false;
+        }
+        // Don't keepalive to nodes that already sent us something
+        if self.find_channel(endpoint).is_some() {
+            return false;
+        }
 
-    pub fn data_sent(&self, endpoint: &SocketAddrV6) {
-        self.tcp_channels.lock().unwrap().update(endpoint);
+        let mut guard = self.tcp_channels.lock().unwrap();
+        let attempt = AttemptEntry::new(*endpoint);
+        let inserted = guard.attempts.insert(attempt);
+        inserted
     }
 
     pub fn len_sqrt(&self) -> f32 {
@@ -500,19 +502,25 @@ impl TcpChannels {
             .list(min_version, include_temporary_channels)
     }
 
-    pub fn update_channel(&self, endpoint: &SocketAddrV6) {
-        self.tcp_channels.lock().unwrap().update(endpoint);
-    }
-
-    pub fn set_last_packet_sent(&self, endpoint: &SocketAddrV6, time: SystemTime) {
-        self.tcp_channels
-            .lock()
-            .unwrap()
-            .set_last_packet_sent(endpoint, time);
-    }
-
     pub fn set_port(&self, port: u16) {
         self.port.store(port, Ordering::SeqCst);
+    }
+
+    pub fn sample_keepalive(&self) -> Option<Keepalive> {
+        let channels = self.tcp_channels.lock().unwrap();
+        let mut rng = thread_rng();
+        for _ in 0..channels.channels.len() {
+            let index = rng.gen_range(0..channels.channels.len());
+            if let Some(channel) = channels.channels.get_by_index(index) {
+                if let Some(server) = &channel.response_server {
+                    if let Some(keepalive) = server.pop_last_keepalive() {
+                        return Some(keepalive);
+                    }
+                }
+            }
+        }
+
+        None
     }
 }
 
@@ -527,14 +535,7 @@ pub trait TcpChannelsExtension {
     );
 
     fn merge_peer(&self, peer: &SocketAddrV6);
-    fn ongoing_keepalive(&self);
-    fn ongoing_merge(&self, channel_index: usize);
-    fn ongoing_merge_keepalive(
-        &self,
-        channel_index: usize,
-        keepalive: Keepalive,
-        peer_index: usize,
-    );
+    fn keepalive(&self);
     fn start_tcp_receive_node_id(&self, channel: &Arc<ChannelEnum>, endpoint: SocketAddrV6);
     fn start_tcp(&self, endpoint: SocketAddrV6);
 }
@@ -574,7 +575,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     if !node_id.is_zero() {
                         // Add temporary channel
                         let channel_id = self.get_next_channel_id();
-                        let temporary_channel = ChannelTcp::new(
+                        let temporary_channel = Arc::new(ChannelTcp::new(
                             Arc::clone(socket),
                             SystemTime::now(),
                             Arc::clone(&self.stats),
@@ -583,7 +584,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                             &async_rt,
                             channel_id,
                             self.network.network.protocol_info(),
-                        );
+                        ));
                         temporary_channel.set_remote_endpoint();
                         debug_assert!(*endpoint == temporary_channel.remote_endpoint());
                         temporary_channel.set_node_id(node_id);
@@ -621,16 +622,18 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         }
     }
 
-    fn ongoing_keepalive(&self) {
+    fn keepalive(&self) {
         let mut peers = [SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0); 8];
         self.random_fill(&mut peers);
         let message = Message::Keepalive(Keepalive { peers });
+
         // Wake up channels
-        let send_list = {
+        let to_wake_up = {
             let guard = self.tcp_channels.lock().unwrap();
             guard.keepalive_list()
         };
-        for channel in send_list {
+
+        for channel in to_wake_up {
             let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
                 continue;
             };
@@ -639,94 +642,6 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 None,
                 BufferDropPolicy::Limiter,
                 TrafficType::Generic,
-            );
-        }
-
-        let this_w = Arc::downgrade(self);
-        self.workers.add_delayed_task(
-            self.network.network.keepalive_period,
-            Box::new(move || {
-                if let Some(this_l) = this_w.upgrade() {
-                    if !this_l.stopped.load(Ordering::SeqCst) {
-                        this_l.ongoing_keepalive();
-                    }
-                }
-            }),
-        );
-    }
-
-    fn ongoing_merge(&self, mut channel_index: usize) {
-        let mut keepalive = None;
-        {
-            let guard = self.tcp_channels.lock().unwrap();
-            let mut count = 0;
-            while keepalive.is_none() && guard.channels.len() > 0 && count < guard.channels.len() {
-                count += 1;
-                channel_index += 1;
-                if guard.channels.len() <= channel_index {
-                    channel_index = 0;
-                }
-                if let Some(channel) = guard.channels.get_by_index(channel_index) {
-                    if let Some(server) = &channel.response_server {
-                        if let Some(last_keepalive) = server.get_last_keepalive() {
-                            keepalive = Some(last_keepalive);
-                            server.set_last_keepalive(None);
-                        }
-                    }
-                }
-            }
-        }
-        if let Some(keepalive) = keepalive {
-            self.ongoing_merge_keepalive(channel_index, keepalive, 1);
-        } else {
-            let this_w = Arc::downgrade(self);
-            self.workers.add_delayed_task(
-                self.network.network.merge_period,
-                Box::new(move || {
-                    if let Some(this_l) = this_w.upgrade() {
-                        if !this_l.stopped.load(Ordering::SeqCst) {
-                            this_l.ongoing_merge(channel_index);
-                        }
-                    }
-                }),
-            );
-        }
-    }
-
-    fn ongoing_merge_keepalive(
-        &self,
-        channel_index: usize,
-        keepalive: Keepalive,
-        mut peer_index: usize,
-    ) {
-        debug_assert!(peer_index < keepalive.peers.len());
-        self.merge_peer(&keepalive.peers[peer_index]);
-        peer_index += 1;
-        if peer_index < keepalive.peers.len() {
-            let this_w = Arc::downgrade(self);
-            self.workers.add_delayed_task(
-                self.network.network.merge_period,
-                Box::new(move || {
-                    if let Some(this_l) = this_w.upgrade() {
-                        if !this_l.stopped.load(Ordering::SeqCst) {
-                            this_l.ongoing_merge_keepalive(channel_index, keepalive, peer_index);
-                        }
-                    }
-                }),
-            );
-        } else {
-            let this_w = Arc::downgrade(self);
-            self.workers.add_delayed_task(
-                self.network.network.merge_period,
-                Box::new(move || {
-                    if let Some(this_l) = this_w.upgrade() {
-                        {
-                            if !this_l.stopped.load(Ordering::SeqCst) {
-                                this_l.ongoing_merge(channel_index);
-                            }
-                        }
-                    }
-                }),
             );
         }
     }
@@ -960,7 +875,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         .build();
 
         let channel_id = self.get_next_channel_id();
-        let channel = Arc::new(ChannelEnum::Tcp(ChannelTcp::new(
+        let channel = Arc::new(ChannelEnum::Tcp(Arc::new(ChannelTcp::new(
             Arc::clone(&socket),
             SystemTime::now(),
             Arc::clone(&self.stats),
@@ -969,7 +884,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             &async_rt,
             channel_id,
             self.network.network.protocol_info(),
-        )));
+        ))));
         let this_w = Arc::downgrade(self);
         let socket_clone = Arc::clone(&socket);
         socket.async_connect(
@@ -1077,16 +992,18 @@ impl TcpChannelsImpl {
     }
 
     pub fn purge(&mut self, cutoff: SystemTime) {
-        // Remove channels with dead underlying sockets
-        self.channels.remove_dead();
-        self.channels.purge(cutoff);
-
-        // Remove keepalive attempt tracking for attempts older than cutoff
-        self.attempts.purge(cutoff);
+        debug!("Performing periodic channel cleanup");
+        self.channels.close_idle_channels(cutoff);
 
         // Check if any tcp channels belonging to old protocol versions which may still be alive due to async operations
         self.channels
-            .remove_old_protocol_versions(self.network_constants.protocol_version_min);
+            .close_old_protocol_versions(self.network_constants.protocol_version_min);
+
+        // Remove channels with dead underlying sockets
+        self.channels.remove_dead();
+
+        // Remove keepalive attempt tracking for attempts older than cutoff
+        self.attempts.purge(cutoff);
     }
 
     pub fn random_channels(
@@ -1119,23 +1036,13 @@ impl TcpChannelsImpl {
     pub fn keepalive_list(&self) -> Vec<Arc<ChannelEnum>> {
         let cutoff = SystemTime::now() - self.network_constants.keepalive_period;
         let mut result = Vec::new();
-        for channel in self.channels.iter_by_last_packet_sent() {
-            if channel.last_packet_sent() >= cutoff {
-                break;
+        for channel in self.channels.iter() {
+            if channel.last_packet_sent() < cutoff {
+                result.push(channel.channel.clone());
             }
-            result.push(channel.channel.clone());
         }
 
         result
-    }
-
-    pub fn update(&mut self, endpoint: &SocketAddrV6) {
-        self.channels
-            .set_last_packet_sent(endpoint, SystemTime::now());
-    }
-
-    pub fn set_last_packet_sent(&mut self, endpoint: &SocketAddrV6, time: SystemTime) {
-        self.channels.set_last_packet_sent(endpoint, time);
     }
 
     pub fn find_channel(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
@@ -1200,12 +1107,12 @@ impl TcpChannelsImpl {
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "channels".to_string(),
                     count: self.channels.len(),
-                    sizeof_element: size_of::<ChannelTcpWrapper>(),
+                    sizeof_element: size_of::<ChannelEntry>(),
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "attempts".to_string(),
                     count: self.attempts.len(),
-                    sizeof_element: size_of::<TcpEndpointAttempt>(),
+                    sizeof_element: size_of::<AttemptEntry>(),
                 }),
             ],
         )
@@ -1214,18 +1121,17 @@ impl TcpChannelsImpl {
 
 #[derive(Default)]
 pub struct ChannelContainer {
-    by_endpoint: HashMap<SocketAddrV6, Arc<ChannelTcpWrapper>>,
+    by_endpoint: HashMap<SocketAddrV6, Arc<ChannelEntry>>,
     by_random_access: Vec<SocketAddrV6>,
     by_bootstrap_attempt: BTreeMap<SystemTime, Vec<SocketAddrV6>>,
     by_node_id: HashMap<PublicKey, Vec<SocketAddrV6>>,
-    by_last_packet_sent: BTreeMap<SystemTime, Vec<SocketAddrV6>>,
     by_network_version: BTreeMap<u8, Vec<SocketAddrV6>>,
     by_ip_address: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
     by_subnet: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
 }
 
 impl ChannelContainer {
-    pub fn insert(&mut self, wrapper: Arc<ChannelTcpWrapper>) -> bool {
+    pub fn insert(&mut self, wrapper: Arc<ChannelEntry>) -> bool {
         let endpoint = wrapper.endpoint();
         if self.by_endpoint.contains_key(&endpoint) {
             return false;
@@ -1238,10 +1144,6 @@ impl ChannelContainer {
             .push(endpoint);
         self.by_node_id
             .entry(wrapper.node_id().unwrap_or_default())
-            .or_default()
-            .push(endpoint);
-        self.by_last_packet_sent
-            .entry(wrapper.last_packet_sent())
             .or_default()
             .push(endpoint);
         self.by_network_version
@@ -1260,18 +1162,12 @@ impl ChannelContainer {
         true
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Arc<ChannelTcpWrapper>> {
+    pub fn iter(&self) -> impl Iterator<Item = &Arc<ChannelEntry>> {
         self.by_endpoint.values()
     }
 
-    pub fn iter_by_last_bootstrap_attempt(&self) -> impl Iterator<Item = &Arc<ChannelTcpWrapper>> {
+    pub fn iter_by_last_bootstrap_attempt(&self) -> impl Iterator<Item = &Arc<ChannelEntry>> {
         self.by_bootstrap_attempt
-            .iter()
-            .flat_map(|(_, v)| v.iter().map(|ep| self.by_endpoint.get(ep).unwrap()))
-    }
-
-    pub fn iter_by_last_packet_sent(&self) -> impl Iterator<Item = &Arc<ChannelTcpWrapper>> {
-        self.by_last_packet_sent
             .iter()
             .flat_map(|(_, v)| v.iter().map(|ep| self.by_endpoint.get(ep).unwrap()))
     }
@@ -1293,65 +1189,48 @@ impl ChannelContainer {
     }
 
     pub fn remove_by_endpoint(&mut self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
-        if let Some(wrapper) = self.by_endpoint.remove(endpoint) {
+        if let Some(entry) = self.by_endpoint.remove(endpoint) {
             self.by_random_access.retain(|x| x != endpoint); // todo: linear search is slow?
 
             remove_endpoint_btree(
                 &mut self.by_bootstrap_attempt,
-                &wrapper.last_bootstrap_attempt(),
+                &entry.last_bootstrap_attempt(),
                 endpoint,
             );
             remove_endpoint_map(
                 &mut self.by_node_id,
-                &wrapper.node_id().unwrap_or_default(),
-                endpoint,
-            );
-            remove_endpoint_btree(
-                &mut self.by_last_packet_sent,
-                &wrapper.last_packet_sent(),
+                &entry.node_id().unwrap_or_default(),
                 endpoint,
             );
             remove_endpoint_btree(
                 &mut self.by_network_version,
-                &wrapper.network_version(),
+                &entry.network_version(),
                 endpoint,
             );
-            remove_endpoint_map(&mut self.by_ip_address, &wrapper.ip_address(), endpoint);
-            remove_endpoint_map(&mut self.by_subnet, &wrapper.subnetwork(), endpoint);
-            Some(wrapper.channel.clone())
+            remove_endpoint_map(&mut self.by_ip_address, &entry.ip_address(), endpoint);
+            remove_endpoint_map(&mut self.by_subnet, &entry.subnetwork(), endpoint);
+            Some(entry.channel.clone())
         } else {
             None
         }
     }
 
-    pub fn get(&self, endpoint: &SocketAddrV6) -> Option<&Arc<ChannelTcpWrapper>> {
+    pub fn get(&self, endpoint: &SocketAddrV6) -> Option<&Arc<ChannelEntry>> {
         self.by_endpoint.get(endpoint)
     }
 
-    pub fn get_by_index(&self, index: usize) -> Option<&Arc<ChannelTcpWrapper>> {
+    pub fn get_by_index(&self, index: usize) -> Option<&Arc<ChannelEntry>> {
         self.by_random_access
             .get(index)
             .map(|ep| self.by_endpoint.get(ep))
             .flatten()
     }
 
-    pub fn get_by_node_id(&self, node_id: &PublicKey) -> Option<&Arc<ChannelTcpWrapper>> {
+    pub fn get_by_node_id(&self, node_id: &PublicKey) -> Option<&Arc<ChannelEntry>> {
         self.by_node_id
             .get(node_id)
             .map(|endpoints| self.by_endpoint.get(&endpoints[0]))
             .flatten()
-    }
-
-    pub fn set_last_packet_sent(&mut self, endpoint: &SocketAddrV6, time: SystemTime) {
-        if let Some(channel) = self.by_endpoint.get(endpoint) {
-            let old_time = channel.last_packet_sent();
-            channel.channel.set_last_packet_sent(time);
-            remove_endpoint_btree(&mut self.by_last_packet_sent, &old_time, endpoint);
-            self.by_last_packet_sent
-                .entry(time)
-                .or_default()
-                .push(*endpoint);
-        }
     }
 
     pub fn set_last_bootstrap_attempt(
@@ -1393,21 +1272,16 @@ impl ChannelContainer {
         self.by_random_access.clear();
         self.by_bootstrap_attempt.clear();
         self.by_node_id.clear();
-        self.by_last_packet_sent.clear();
         self.by_network_version.clear();
         self.by_ip_address.clear();
         self.by_subnet.clear();
     }
 
-    pub fn purge(&mut self, cutoff: SystemTime) {
-        while let Some((time, endpoints)) = self.by_last_packet_sent.first_key_value() {
-            if *time < cutoff {
-                let endpoints = endpoints.clone();
-                for ep in endpoints {
-                    self.remove_by_endpoint(&ep);
-                }
-            } else {
-                break;
+    pub fn close_idle_channels(&mut self, cutoff: SystemTime) {
+        for entry in self.iter() {
+            if entry.channel.get_last_packet_sent() < cutoff {
+                debug!("Closing idle channel: {}", entry.channel.remote_endpoint());
+                entry.channel.close();
             }
         }
     }
@@ -1421,16 +1295,19 @@ impl ChannelContainer {
             .collect();
 
         for channel in dead_channels {
+            debug!("Removing dead channel: {}", channel.endpoint());
             self.remove_by_endpoint(&channel.endpoint());
         }
     }
 
-    pub fn remove_old_protocol_versions(&mut self, min_version: u8) {
+    pub fn close_old_protocol_versions(&mut self, min_version: u8) {
         while let Some((version, endpoints)) = self.by_network_version.first_key_value() {
             if *version < min_version {
-                let endpoints = endpoints.clone();
                 for ep in endpoints {
-                    self.remove_by_endpoint(&ep);
+                    debug!("Closing channel with old protocol version: {}", ep);
+                    if let Some(entry) = self.by_endpoint.get(ep) {
+                        entry.channel.close();
+                    }
                 }
             } else {
                 break;
@@ -1465,14 +1342,14 @@ fn remove_endpoint_map<K: Eq + PartialEq + Hash>(
     }
 }
 
-pub struct TcpEndpointAttempt {
+pub struct AttemptEntry {
     pub endpoint: SocketAddrV6,
     pub address: Ipv6Addr,
     pub subnetwork: Ipv6Addr,
     pub last_attempt: SystemTime,
 }
 
-impl TcpEndpointAttempt {
+impl AttemptEntry {
     pub fn new(endpoint: SocketAddrV6) -> Self {
         Self {
             endpoint,
@@ -1485,14 +1362,14 @@ impl TcpEndpointAttempt {
 
 #[derive(Default)]
 pub struct TcpEndpointAttemptContainer {
-    by_endpoint: HashMap<SocketAddrV6, TcpEndpointAttempt>,
+    by_endpoint: HashMap<SocketAddrV6, AttemptEntry>,
     by_address: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
     by_subnetwork: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
     by_time: BTreeMap<SystemTime, Vec<SocketAddrV6>>,
 }
 
 impl TcpEndpointAttemptContainer {
-    pub fn insert(&mut self, attempt: TcpEndpointAttempt) -> bool {
+    pub fn insert(&mut self, attempt: AttemptEntry) -> bool {
         if self.by_endpoint.contains_key(&attempt.endpoint) {
             return false;
         }

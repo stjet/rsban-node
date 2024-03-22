@@ -258,6 +258,10 @@ impl TcpServer {
     pub fn get_last_keepalive(&self) -> Option<Keepalive> {
         self.last_keepalive.lock().unwrap().clone()
     }
+
+    pub fn pop_last_keepalive(&self) -> Option<Keepalive> {
+        self.last_keepalive.lock().unwrap().take()
+    }
 }
 
 impl Drop for TcpServer {

@@ -78,12 +78,12 @@ TEST (peer_container, tcp_channel_cleanup_works)
 	ASSERT_NE (nullptr, channel1);
 	// set the last packet sent for channel1 only to guarantee it contains a value.
 	// it won't be necessarily the same use by the cleanup cutoff time
-	node1.network->tcp_channels->modify_last_packet_sent (channel1->get_remote_endpoint (), now - std::chrono::seconds (5));
+	channel1->set_last_packet_sent(now - std::chrono::seconds (5));
 	auto channel2 = nano::test::establish_tcp (system, node1, outer_node2->network->endpoint ());
 	ASSERT_NE (nullptr, channel2);
 	// set the last packet sent for channel2 only to guarantee it contains a value.
 	// it won't be necessarily the same use by the cleanup cutoff time
-	node1.network->tcp_channels->modify_last_packet_sent (channel2->get_remote_endpoint (), now + std::chrono::seconds (1));
+	channel2->set_last_packet_sent(now + std::chrono::seconds (1));
 	ASSERT_EQ (2, node1.network->size ());
 	ASSERT_EQ (2, node1.network->tcp_channels->size ());
 
@@ -213,18 +213,19 @@ TEST (peer_container, reachout)
 	auto outer_node1 = nano::test::add_outer_node (system);
 	ASSERT_NE (nullptr, nano::test::establish_tcp (system, node1, outer_node1->network->endpoint ()));
 	// Make sure having been contacted by them already indicates we shouldn't reach out
-	ASSERT_TRUE (node1.network->reachout (outer_node1->network->endpoint ()));
+	ASSERT_FALSE (node1.network->track_reachout (outer_node1->network->endpoint ()));
 	auto outer_node2 = nano::test::add_outer_node (system);
-	ASSERT_FALSE (node1.network->reachout (outer_node2->network->endpoint ()));
+	ASSERT_TRUE (node1.network->track_reachout (outer_node2->network->endpoint ()));
 	ASSERT_NE (nullptr, nano::test::establish_tcp (system, node1, outer_node2->network->endpoint ()));
 	// Reaching out to them once should signal we shouldn't reach out again.
-	ASSERT_TRUE (node1.network->reachout (outer_node2->network->endpoint ()));
+	ASSERT_FALSE (node1.network->track_reachout (outer_node2->network->endpoint ()));
 	// Make sure we don't purge new items
 	node1.network->cleanup (std::chrono::system_clock::now () - std::chrono::seconds (10));
-	ASSERT_TRUE (node1.network->reachout (outer_node2->network->endpoint ()));
+	ASSERT_FALSE (node1.network->track_reachout (outer_node2->network->endpoint ()));
 	// Make sure we purge old items
 	node1.network->cleanup (std::chrono::system_clock::now () + std::chrono::seconds (10));
-	ASSERT_FALSE (node1.network->reachout (outer_node2->network->endpoint ()));
+	ASSERT_TIMELY (5s, node1.network->empty ());
+	ASSERT_TRUE (node1.network->track_reachout (outer_node2->network->endpoint ()));
 }
 
 // This test is similar to network.filter_invalid_version_using with the difference that

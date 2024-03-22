@@ -64,8 +64,8 @@ public:
 	void send_keepalive_self (std::shared_ptr<nano::transport::channel> const &);
 	std::shared_ptr<nano::transport::channel> find_node_id (nano::account const &);
 	std::shared_ptr<nano::transport::channel> find_channel (nano::endpoint const &);
-	// Should we reach out to this endpoint with a keepalive message
-	bool reachout (nano::endpoint const &, bool = false);
+	// Should we reach out to this endpoint with a keepalive message? If yes, register a new reachout attempt
+	bool track_reachout (nano::endpoint const &);
 	std::deque<std::shared_ptr<nano::transport::channel>> list_non_pr (std::size_t);
 	void fill_keepalive_self (std::array<nano::endpoint, 8> &) const;
 	// Note: The minimum protocol version is used after the random selection, so number of peers can be less than expected.
@@ -91,6 +91,7 @@ private:
 	void run_processing ();
 	void run_cleanup ();
 	void run_keepalive ();
+	void run_reachout ();
 	void process_message (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
 
 private: // Dependencies
@@ -113,6 +114,7 @@ private:
 	std::vector<boost::thread> processing_threads; // Using boost::thread to enable increased stack size
 	std::thread cleanup_thread;
 	std::thread keepalive_thread;
+	std::thread reachout_thread;
 
 public:
 	static unsigned const broadcast_interval_ms = 10;

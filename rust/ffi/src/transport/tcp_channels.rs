@@ -9,7 +9,7 @@ use crate::{
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
 use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
-use rsnano_messages::DeserializedMessage;
+use rsnano_messages::{DeserializedMessage, Message};
 use rsnano_node::{
     config::NodeConfig,
     transport::{ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpListener},
@@ -174,23 +174,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_list_channels(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_update_channel(
-    handle: &mut TcpChannelsHandle,
-    endpoint: &EndpointDto,
-) {
-    handle.update_channel(&endpoint.into())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_set_last_packet_sent(
-    handle: &mut TcpChannelsHandle,
-    endpoint: &EndpointDto,
-    time_ns: u64,
-) {
-    handle.set_last_packet_sent(&endpoint.into(), system_time_from_nanoseconds(time_ns));
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_not_a_peer(
     handle: &mut TcpChannelsHandle,
     endpoint: &EndpointDto,
@@ -312,7 +295,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_reachout(
     handle: &TcpChannelsHandle,
     endpoint: &EndpointDto,
 ) -> bool {
-    handle.reachout(&endpoint.into())
+    handle.track_reachout(&endpoint.into())
 }
 
 #[no_mangle]
@@ -324,15 +307,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_excluded_peers(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_ongoing_keepalive(handle: &TcpChannelsHandle) {
-    handle.ongoing_keepalive()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_ongoing_merge(
-    handle: &TcpChannelsHandle,
-    channel_index: usize,
-) {
-    handle.ongoing_merge(channel_index)
+    handle.keepalive()
 }
 
 #[no_mangle]
@@ -360,6 +335,23 @@ pub extern "C" fn rsn_tcp_channels_random_fanout(
 ) -> *mut ChannelListHandle {
     let channels = handle.random_fanout(scale);
     Box::into_raw(Box::new(ChannelListHandle(channels)))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_keepalive(handle: &TcpChannelsHandle) {
+    handle.keepalive();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_sample_keepalive(
+    handle: &TcpChannelsHandle,
+) -> *mut MessageHandle {
+    if let Some(keepalive) = handle.sample_keepalive() {
+        let msg = Message::Keepalive(keepalive);
+        return MessageHandle::new(DeserializedMessage::new(msg, Default::default()));
+    }
+
+    std::ptr::null_mut()
 }
 
 #[no_mangle]

@@ -13,7 +13,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <unordered_set>
 
 namespace nano
 {
@@ -112,7 +111,7 @@ namespace transport
 		bool max (nano::transport::traffic_type traffic_type) override;
 		nano::endpoint get_peering_endpoint () const override;
 		void set_peering_endpoint (nano::endpoint endpoint) override;
-		virtual bool alive () const override;
+		bool alive () const override;
 	};
 
 	class tcp_channels final : public std::enable_shared_from_this<tcp_channels>
@@ -123,6 +122,10 @@ namespace transport
 		explicit tcp_channels (nano::node &, uint16_t port, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> = nullptr);
 		tcp_channels (nano::transport::tcp_channels const &) = delete;
 		~tcp_channels ();
+
+		void start ();
+		void stop ();
+
 		void erase (nano::tcp_endpoint const &);
 		void erase_temporary_channel (nano::tcp_endpoint const &);
 		std::size_t size () const;
@@ -134,22 +137,18 @@ namespace transport
 		std::shared_ptr<nano::transport::channel_tcp> find_node_id (nano::account const &);
 		// Get the next peer for attempting a tcp connection
 		nano::tcp_endpoint bootstrap_peer ();
-		void start ();
-		void stop ();
 		bool not_a_peer (nano::endpoint const &, bool);
 		void process_messages ();
 		// Should we reach out to this endpoint with a keepalive message
-		bool reachout (nano::endpoint const &);
+		bool track_reachout (nano::endpoint const &);
 		std::unique_ptr<container_info_component> collect_container_info (std::string const &);
-		void purge (std::chrono::system_clock::time_point const &);
-		void ongoing_keepalive ();
-		void ongoing_merge (size_t channel_index);
+		void purge (std::chrono::system_clock::time_point const & cutoff_deadline);
 		void list (std::deque<std::shared_ptr<nano::transport::channel>> &, uint8_t = 0, bool = true);
 		std::deque<std::shared_ptr<nano::transport::channel>> list (std::size_t max_count = 0, uint8_t = 0, bool = true);
 		std::deque<std::shared_ptr<nano::transport::channel>> random_fanout (float scale = 1.0f);
+		void keepalive ();
+		std::optional<nano::keepalive> sample_keepalive ();
 		void flood_message (nano::message & msg, float scale);
-		void modify_last_packet_sent (nano::endpoint const & endpoint_a, std::chrono::system_clock::time_point const & time_a);
-		void update (nano::tcp_endpoint const &);
 		// Connection start
 		void start_tcp (nano::endpoint const &);
 		void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);

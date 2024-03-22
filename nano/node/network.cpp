@@ -19,13 +19,12 @@ using namespace std::chrono_literals;
  * network
  */
 
-nano::network::network (nano::node & node_a, uint16_t port_a) :
-	node (node_a),
-	id (nano::network_constants::active_network ()),
-	syn_cookies{ std::make_shared<nano::syn_cookies> (node_a.network_params.network.max_peers_per_ip) },
-	resolver (node_a.io_ctx),
-	port (port_a),
-	disconnect_observer ([] () {})
+nano::network::network (nano::node & node, uint16_t port) :
+	node{ node },
+	id{ nano::network_constants::active_network () },
+	syn_cookies{ std::make_shared<nano::syn_cookies> (node.network_params.network.max_peers_per_ip) },
+	resolver{ node.io_ctx },
+	port{ port }
 {
 }
 
@@ -45,15 +44,11 @@ void nano::network::create_tcp_channels ()
 
 void nano::network::start ()
 {
-	if (!node.flags.disable_connection_cleanup ())
-	{
-		cleanup_thread = std::thread ([this] () {
-			nano::thread_role::set (nano::thread_role::name::network_cleanup);
-			run_cleanup ();
-		});
-	}
+	cleanup_thread = std::thread ([this] () {
+		nano::thread_role::set (nano::thread_role::name::network_cleanup);
+		run_cleanup ();
+	});
 
-	ongoing_syn_cookie_cleanup ();
 	ongoing_keepalive ();
 
 	if (!node.flags.disable_tcp_realtime ())
@@ -143,8 +138,14 @@ void nano::network::run_cleanup ()
 		}
 
 		node.stats->inc (nano::stat::type::network, nano::stat::detail::loop_cleanup);
-		auto const cutoff = std::chrono::system_clock::now () - node.network_params.network.cleanup_cutoff ();
-		cleanup (cutoff);
+
+		if (!node.flags.disable_connection_cleanup ())
+		{
+			auto const cutoff = std::chrono::system_clock::now () - node.network_params.network.cleanup_cutoff ();
+			cleanup (cutoff);
+		}
+
+		syn_cookies->purge (node.network_params.network.syn_cookie_cutoff);
 
 		lock.lock ();
 	}
@@ -479,18 +480,6 @@ void nano::network::cleanup (std::chrono::system_clock::time_point const & cutof
 	}
 }
 
-void nano::network::ongoing_syn_cookie_cleanup ()
-{
-	syn_cookies->purge (nano::transport::syn_cookie_cutoff);
-	std::weak_ptr<nano::node> node_w (node.shared ());
-	node.workers->add_timed_task (std::chrono::steady_clock::now () + (nano::transport::syn_cookie_cutoff * 2), [node_w] () {
-		if (auto node_l = node_w.lock ())
-		{
-			node_l->network->ongoing_syn_cookie_cleanup ();
-		}
-	});
-}
-
 void nano::network::ongoing_keepalive ()
 {
 	flood_keepalive (0.75f);
@@ -546,15 +535,16 @@ nano::syn_cookies::~syn_cookies ()
 	rsnano::rsn_syn_cookies_destroy (handle);
 }
 
-boost::optional<nano::uint256_union> nano::syn_cookies::assign (nano::endpoint const & endpoint_a)
+std::optional<nano::uint256_union> nano::syn_cookies::assign (nano::endpoint const & endpoint_a)
 {
 	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
-	boost::optional<nano::uint256_union> result;
 	nano::uint256_union cookie;
 	if (rsnano::rsn_syn_cookies_assign (handle, &endpoint_dto, cookie.bytes.data ()))
-		result = cookie;
+	{
+		return cookie;
+	}
 
-	return result;
+	return std::nullopt;
 }
 
 bool nano::syn_cookies::validate (nano::endpoint const & endpoint_a, nano::account const & node_id, nano::signature const & sig)

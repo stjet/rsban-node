@@ -146,6 +146,7 @@ pub enum StatType {
     RepCrawler,
     LocalBlockBroadcaster,
     RepTiers,
+    SynCookies,
 
     BootstrapAscending,
     BootstrapAscendingAccounts,

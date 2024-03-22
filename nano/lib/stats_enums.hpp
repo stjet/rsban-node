@@ -50,6 +50,7 @@ enum class type : uint8_t
 	rep_crawler,
 	local_block_broadcaster,
 	rep_tiers,
+	syn_cookies,
 
 	bootstrap_ascending,
 	bootstrap_ascending_accounts,

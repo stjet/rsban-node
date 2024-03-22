@@ -1,3 +1,4 @@
+use super::DependentBlocksFinder;
 use crate::{
     block_insertion::{BlockInserter, BlockValidatorFactory},
     BlockRollbackPerformer, GenerateCacheFlags, LedgerCache, LedgerConstants, RepWeights,
@@ -17,7 +18,6 @@ use rsnano_store_lmdb::{
     LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore,
     LmdbReadTransaction, LmdbStore, LmdbVersionStore, LmdbWriteTransaction, Transaction,
 };
-
 use std::{
     collections::{BTreeMap, HashMap},
     ops::Deref,
@@ -26,8 +26,6 @@ use std::{
         Arc, Mutex,
     },
 };
-
-use super::DependentBlocksFinder;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct UncementedInfo {
@@ -838,5 +836,45 @@ impl<T: Environment + 'static> Ledger<T> {
         key: &PendingKey,
     ) -> Option<PendingInfo> {
         self.store.pending.get(txn, key)
+    }
+
+    pub fn receivable_lower_bound<'a>(
+        &'a self,
+        txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        account: Account,
+        hash: BlockHash,
+    ) -> ReceivableIterator<'a, T> {
+        ReceivableIterator::<'a, T> {
+            txn,
+            pending: self.store.pending.deref(),
+            account,
+            next_hash: Some(hash),
+        }
+    }
+}
+
+pub struct ReceivableIterator<'a, T: Environment + 'static> {
+    txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    pending: &'a LmdbPendingStore<T>,
+    account: Account,
+    next_hash: Option<BlockHash>,
+}
+
+impl<'a, T: Environment + 'static> Iterator for ReceivableIterator<'a, T> {
+    type Item = (PendingKey, PendingInfo);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let hash = self.next_hash?;
+        let it = self
+            .pending
+            .begin_at_key(self.txn, &PendingKey::new(self.account, hash));
+
+        let (key, info) = it.current()?;
+        if key.account == self.account {
+            self.next_hash = key.hash.inc();
+            Some((key.clone(), info.clone()))
+        } else {
+            None
+        }
     }
 }

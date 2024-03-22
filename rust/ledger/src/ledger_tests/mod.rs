@@ -14,6 +14,7 @@ use rsnano_core::{
 
 mod empty_ledger;
 mod pruning;
+mod receivable_iteration;
 mod rollback_legacy_change;
 mod rollback_legacy_receive;
 mod rollback_legacy_send;

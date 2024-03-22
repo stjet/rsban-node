@@ -1,7 +1,5 @@
 #pragma once
 
-#include "nano/lib/rsnano.hpp"
-
 #include <nano/lib/locks.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/node/bandwidth_limiter.hpp>
@@ -98,6 +96,8 @@ public:
 	nano::transport::traffic_type = nano::transport::traffic_type::generic)
 	= 0;
 
+	void close ();
+
 	virtual std::string to_string () const = 0;
 	virtual nano::endpoint get_remote_endpoint () const = 0;
 	virtual nano::tcp_endpoint get_tcp_remote_endpoint () const = 0;
@@ -108,6 +108,7 @@ public:
 	{
 		return false;
 	}
+
 	virtual bool alive () const
 	{
 		return true;

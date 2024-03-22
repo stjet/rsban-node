@@ -117,6 +117,7 @@ pub enum StatType {
     HttpCallback,
     Ipc,
     Tcp,
+    TcpChannels,
     Channel,
     Socket,
     ConfirmationHeight,
@@ -169,7 +170,6 @@ pub enum DetailType {
     Ok,
     Loop,
     LoopCleanup,
-    LoopKeepalive,
     Total,
     Process,
     Processed,
@@ -314,6 +314,11 @@ pub enum DetailType {
     InvalidAscPullAckMessage,
     MessageSizeTooBig,
     OutdatedVersion,
+
+    // network
+    LoopKeepalive,
+    LoopReachout,
+    MergePeer,
 
     // tcp
     TcpAcceptSuccess,

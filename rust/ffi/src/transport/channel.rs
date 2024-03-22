@@ -79,6 +79,11 @@ pub unsafe extern "C" fn rsn_channel_destroy(handle: *mut ChannelHandle) {
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_channel_close(handle: &mut ChannelHandle) {
+    handle.close()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_channel_is_temporary(handle: *mut ChannelHandle) -> bool {
     as_channel(handle).is_temporary()
 }
@@ -301,11 +306,6 @@ pub unsafe extern "C" fn rsn_channel_fake_send(
     let policy = FromPrimitive::from_u8(policy).unwrap();
     let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
     as_fake_channel(handle).send(&message.message, Some(cb), policy, traffic_type);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_fake_close(handle: *mut ChannelHandle) {
-    as_fake_channel(handle).close();
 }
 
 #[no_mangle]

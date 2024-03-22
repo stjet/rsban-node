@@ -56,11 +56,6 @@ namespace transport
 			nano::endpoint get_peering_endpoint () const override;
 			void set_peering_endpoint (nano::endpoint endpoint) override;
 
-			void close ()
-			{
-				rsnano::rsn_channel_fake_close (handle);
-			}
-
 			bool alive () const override;
 		};
 	} // namespace fake

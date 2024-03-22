@@ -286,13 +286,17 @@ impl Channel for ChannelTcp {
             }
         }
     }
+
+    fn close(&self) {
+        self.socket.close();
+    }
 }
 
 impl Drop for ChannelTcp {
     fn drop(&mut self) {
         // Close socket. Exception: socket is used by bootstrap_server
         if !self.temporary.load(Ordering::Relaxed) {
-            self.socket.close();
+            self.close()
         }
     }
 }

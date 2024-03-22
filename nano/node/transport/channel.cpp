@@ -1,4 +1,4 @@
-#include "nano/lib/rsnanoutils.hpp"
+#include <nano/lib/rsnanoutils.hpp>
 #include "nano/node/transport/tcp.hpp"
 
 #include <nano/lib/rsnano.hpp>
@@ -32,6 +32,11 @@ bool nano::transport::channel::is_temporary () const
 void nano::transport::channel::set_temporary (bool temporary)
 {
 	rsnano::rsn_channel_set_temporary (handle, temporary);
+}
+
+void nano::transport::channel::close ()
+{
+	rsnano::rsn_channel_close (handle);
 }
 
 std::chrono::system_clock::time_point nano::transport::channel::get_last_bootstrap_attempt () const

@@ -87,6 +87,7 @@ pub trait Channel {
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,
     );
+    fn close(&self);
 }
 
 #[derive(FromPrimitive, Copy, Clone, Debug)]

@@ -83,10 +83,6 @@ impl ChannelFake {
             }
         }
     }
-
-    pub fn close(&self) {
-        self.closed.store(true, Ordering::SeqCst);
-    }
 }
 
 impl Channel for ChannelFake {
@@ -182,5 +178,9 @@ impl Channel for ChannelFake {
 
             self.stats.inc(StatType::Drop, detail, Direction::Out);
         }
+    }
+
+    fn close(&self) {
+        self.closed.store(true, Ordering::SeqCst);
     }
 }

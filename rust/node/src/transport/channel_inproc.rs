@@ -316,6 +316,10 @@ impl Channel for ChannelInProc {
             self.stats.inc(StatType::Drop, detail, Direction::Out);
         }
     }
+
+    fn close(&self) {
+        // Can't be closed
+    }
 }
 
 #[cfg(test)]

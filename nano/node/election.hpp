@@ -98,15 +98,6 @@ public:
 	nano::uint128_t weight;
 };
 
-class election_vote_result final
-{
-public:
-	election_vote_result () = default;
-	election_vote_result (bool, bool);
-	bool replay{ false };
-	bool processed{ false };
-};
-
 enum class election_behavior
 {
 	normal,
@@ -179,6 +170,13 @@ enum class vote_source
 {
 	live,
 	cache,
+};
+
+enum class vote_result
+{
+	ignored,
+	processed,
+	replay,
 };
 
 class election final : public std::enable_shared_from_this<nano::election>

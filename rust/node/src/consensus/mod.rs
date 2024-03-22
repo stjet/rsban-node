@@ -17,11 +17,7 @@ pub use vote_spacing::VoteSpacing;
 mod election_status;
 
 pub use election_status::{ElectionStatus, ElectionStatusType};
-mod inactive_cache_information;
-mod inactive_cache_status;
 
-pub use inactive_cache_information::InactiveCacheInformation;
-pub use inactive_cache_status::InactiveCacheStatus;
 mod buckets;
 pub use buckets::{Buckets, ValueType};
 

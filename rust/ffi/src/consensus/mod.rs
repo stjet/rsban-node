@@ -3,8 +3,6 @@ mod buckets;
 mod election;
 mod election_scheduler;
 mod election_status;
-mod inactive_cache_information;
-mod inactive_cache_status;
 mod local_vote_history;
 mod recently_cemented_cache;
 mod rep_tiers;

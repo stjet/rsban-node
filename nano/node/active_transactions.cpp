@@ -1141,13 +1141,14 @@ nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> con
 
 	if (!process.empty ())
 	{
-		bool replay (false);
-		bool processed (false);
+		bool replay = false;
+		bool processed = false;
+
 		for (auto const & [election, block_hash] : process)
 		{
-			auto const result_l = vote (*election, vote_a->account (), vote_a->timestamp (), block_hash);
-			processed = processed || result_l.processed;
-			replay = replay || result_l.replay;
+			auto const vote_result = vote (*election, vote_a->account (), vote_a->timestamp (), block_hash);
+			processed |= (vote_result == nano::vote_result::processed);
+			replay |= (vote_result == nano::vote_result::replay);
 		}
 
 		// Republish vote if it is new and the node does not host a principal representative (or close to)
@@ -1298,13 +1299,14 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 	return result;
 }
 
-nano::election_vote_result nano::active_transactions::vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a)
+nano::vote_result nano::active_transactions::vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a)
 {
 	auto weight = node.ledger.weight (rep);
 	if (!node.network_params.network.is_dev_network () && weight <= node.minimum_principal_weight ())
 	{
-		return nano::election_vote_result (false, false);
+		return vote_result::ignored;
 	}
+
 	nano::election_lock lock{ election };
 
 	auto last_vote_l{ lock.find_vote (rep) };
@@ -1312,18 +1314,18 @@ nano::election_vote_result nano::active_transactions::vote (nano::election & ele
 	{
 		if (last_vote_l->get_timestamp () > timestamp_a)
 		{
-			return nano::election_vote_result (true, false);
+			return vote_result::replay;
 		}
 		if (last_vote_l->get_timestamp () == timestamp_a && !(last_vote_l->get_hash () < block_hash_a))
 		{
-			return nano::election_vote_result (true, false);
+			return vote_result::replay;
 		}
 
 		auto max_vote = timestamp_a == std::numeric_limits<uint64_t>::max () && last_vote_l->get_timestamp () < timestamp_a;
 
 		bool past_cooldown = true;
 		// Only cooldown live votes
-		if (vote_source_a == nano::vote_source::live)
+		if (vote_source_a == nano::vote_source::live) // Only cooldown live votes
 		{
 			const auto cooldown = cooldown_time (weight);
 			past_cooldown = last_vote_l->get_time () <= std::chrono::system_clock::now () - cooldown;
@@ -1331,7 +1333,7 @@ nano::election_vote_result nano::active_transactions::vote (nano::election & ele
 
 		if (!max_vote && !past_cooldown)
 		{
-			return nano::election_vote_result (false, false);
+			return vote_result::ignored;
 		}
 	}
 	lock.insert_or_assign_vote (rep, { timestamp_a, block_hash_a });
@@ -1353,7 +1355,7 @@ nano::election_vote_result nano::active_transactions::vote (nano::election & ele
 	{
 		confirm_if_quorum (lock, election);
 	}
-	return nano::election_vote_result (false, true);
+	return vote_result::processed;
 }
 
 std::size_t nano::active_transactions::fill_from_cache (nano::election & election, nano::vote_cache::entry const & entry)
@@ -1361,8 +1363,8 @@ std::size_t nano::active_transactions::fill_from_cache (nano::election & electio
 	std::size_t inserted = 0;
 	for (const auto & voter : entry.voters_m)
 	{
-		auto [is_replay, processed] = vote (election, voter.representative, voter.timestamp, entry.hash_m, nano::vote_source::cache);
-		if (processed)
+		auto result = vote (election, voter.representative, voter.timestamp, entry.hash_m, nano::vote_source::cache);
+		if (result == nano::vote_result::processed)
 		{
 			inserted++;
 		}

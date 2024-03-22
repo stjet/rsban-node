@@ -15,12 +15,6 @@
 
 using namespace std::chrono;
 
-nano::election_vote_result::election_vote_result (bool replay_a, bool processed_a)
-{
-	replay = replay_a;
-	processed = processed_a;
-}
-
 /*
  * election_lock
  */

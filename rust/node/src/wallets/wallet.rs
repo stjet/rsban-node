@@ -106,15 +106,9 @@ impl<T: Environment + 'static> Wallet<T> {
                 }
                 None => {
                     // Check if there are pending blocks for account
-                    let pending_it = self.ledger.store.pending.begin_at_key(
-                        &block_txn,
-                        &PendingKey::new(pair.public_key(), BlockHash::from(0)),
-                    );
-                    if let Some((key, _)) = pending_it.current() {
-                        if key.account == pair.public_key() {
-                            result = i;
-                            n = i + 64 + (i / 64);
-                        }
+                    if self.ledger.receivable_any(&block_txn, pair.public_key()) {
+                        result = i;
+                        n = i + 64 + (i / 64);
                     }
                 }
             }

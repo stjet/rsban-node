@@ -1374,15 +1374,15 @@ bool nano::wallets::search_receivable (const std::shared_ptr<nano::wallet> & wal
 			// Don't search pending for watch-only accounts
 			if (!nano::wallet_value (i->second).key.is_zero ())
 			{
-				for (auto j (node.store.pending ().begin (*block_transaction, nano::pending_key (account, 0))), k (node.store.pending ().end ()); j != k && nano::pending_key (j->first).account == account; ++j)
+				for (auto i = node.ledger.receivable_upper_bound (*block_transaction, account, 0); !i.is_end (); ++i)
 				{
-					nano::pending_key key (j->first);
-					auto hash (key.hash);
-					nano::pending_info pending (j->second);
-					auto amount (pending.amount.number ());
+					auto const & [key, info] = *i;
+					auto hash = key.hash;
+
+					auto amount = info.amount.number ();
 					if (node.config->receive_minimum.number () <= amount)
 					{
-						node.logger->info (nano::log::type::wallet, "Found a receivable block {} for account {}", hash.to_string (), pending.source.to_account ());
+						node.logger->info (nano::log::type::wallet, "Found a receivable block {} for account {}", hash.to_string (), info.source.to_account ());
 						if (node.ledger.block_confirmed (*block_transaction, hash))
 						{
 							auto representative = wallet->store.representative (wallet_transaction_a);

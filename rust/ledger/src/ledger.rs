@@ -383,26 +383,11 @@ impl<T: Environment + 'static> Ledger<T> {
         only_confirmed: bool,
     ) -> Amount {
         let mut result = Amount::zero();
-        let end = Account::from(account.number() + 1);
-        let mut i = self
-            .store
-            .pending
-            .begin_at_key(txn, &PendingKey::new(*account, BlockHash::zero()));
-        let n = self
-            .store
-            .pending
-            .begin_at_key(txn, &PendingKey::new(end, BlockHash::zero()));
-        while !i.eq(n.as_ref()) {
-            if let Some((key, info)) = i.current() {
-                if only_confirmed {
-                    if self.block_confirmed(txn, &key.hash) {
-                        result += info.amount;
-                    }
-                } else {
-                    result += info.amount;
-                }
-            };
-            i.next();
+
+        for (key, info) in self.account_receivable_upper_bound(txn, *account, BlockHash::zero()) {
+            if !only_confirmed || self.block_confirmed(txn, &key.hash) {
+                result += info.amount;
+            }
         }
 
         result

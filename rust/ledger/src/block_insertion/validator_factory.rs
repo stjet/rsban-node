@@ -47,7 +47,7 @@ impl<'a, T: Environment + 'static> BlockValidatorFactory<'a, T> {
                 .block_or_pruned_exists_txn(self.txn, &self.block.hash()),
             old_account_info: self.ledger.account_info(self.txn, &account),
             pending_receive_info,
-            any_pending_exists: self.ledger.store.pending.any(self.txn, &account),
+            any_pending_exists: self.ledger.receivable_any(self.txn, account),
             source_block_exists,
             previous_block,
             seconds_since_epoch: seconds_since_epoch(),

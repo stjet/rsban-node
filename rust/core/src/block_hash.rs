@@ -1,25 +1,16 @@
+use super::Account;
+use crate::u256_struct;
 use blake2::digest::Update;
 use blake2::digest::VariableOutput;
 use blake2::Blake2bVar;
-use primitive_types::U256;
 use rand::thread_rng;
 use rand::Rng;
-
-use crate::u256_struct;
-
-use super::Account;
 
 u256_struct!(BlockHash);
 
 impl BlockHash {
     pub fn random() -> Self {
         BlockHash::from_bytes(thread_rng().gen())
-    }
-
-    pub fn inc(&self) -> Option<Self> {
-        self.number()
-            .checked_add(U256::from(1))
-            .map(|i| BlockHash::from(i))
     }
 }
 

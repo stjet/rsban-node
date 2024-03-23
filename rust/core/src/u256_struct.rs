@@ -38,6 +38,12 @@ macro_rules! u256_struct {
                 primitive_types::U256::from_big_endian(&self.0)
             }
 
+            pub fn inc(&self) -> Option<Self> {
+                self.number()
+                    .checked_add(primitive_types::U256::from(1))
+                    .map(|i| Self::from(i))
+            }
+
             pub fn encode_hex(&self) -> String {
                 use std::fmt::Write;
                 let mut result = String::with_capacity(64);

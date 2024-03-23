@@ -1,4 +1,4 @@
-use super::lmdb::{LmdbStoreHandle, TransactionHandle};
+use super::lmdb::{LmdbStoreHandle, PendingInfoDto, PendingKeyDto, TransactionHandle};
 use crate::{
     core::{copy_block_array_dto, AccountInfoHandle, BlockArrayDto, BlockHandle},
     ledger::{GenerateCacheHandle, LedgerCacheHandle, LedgerConstantsDto},
@@ -6,8 +6,9 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, Epoch, Link, QualifiedRoot};
-use rsnano_ledger::{BlockStatus, Ledger};
+use rsnano_ledger::{BlockStatus, Ledger, ReceivableIterator};
 use rsnano_node::stats::LedgerStats;
+use rsnano_store_lmdb::EnvironmentWrapper;
 use std::{ops::Deref, ptr::null_mut, sync::Arc};
 
 pub struct LedgerHandle(pub Arc<Ledger>);
@@ -557,4 +558,66 @@ pub unsafe extern "C" fn rsn_ledger_process(
         Err(res) => res,
     };
     (*result) = res.into();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_receivable_any(
+    handle: &LedgerHandle,
+    txn: &mut TransactionHandle,
+    account: *const u8,
+) -> bool {
+    handle.receivable_any(txn.as_txn(), Account::from_ptr(account))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_receivable_upper_bound(
+    handle: &LedgerHandle,
+    txn: &mut TransactionHandle,
+    account: *const u8,
+) -> *mut ReceivableIteratorHandle {
+    let it = handle.receivable_upper_bound(txn.as_txn(), Account::from_ptr(account));
+    ReceivableIteratorHandle::new(it)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_acocunt_receivable_upper_bound(
+    handle: &LedgerHandle,
+    txn: &mut TransactionHandle,
+    account: *const u8,
+    hash: *const u8,
+) -> *mut ReceivableIteratorHandle {
+    let it = handle.account_receivable_upper_bound(
+        txn.as_txn(),
+        Account::from_ptr(account),
+        BlockHash::from_ptr(hash),
+    );
+    ReceivableIteratorHandle::new(it)
+}
+
+pub struct ReceivableIteratorHandle(ReceivableIterator<'static, EnvironmentWrapper>);
+
+impl ReceivableIteratorHandle {
+    pub unsafe fn new<'a>(it: ReceivableIterator<'a, EnvironmentWrapper>) -> *mut Self {
+        let it = std::mem::transmute::<
+            ReceivableIterator<'a, EnvironmentWrapper>,
+            ReceivableIterator<'static, EnvironmentWrapper>,
+        >(it);
+        Box::into_raw(Box::new(ReceivableIteratorHandle(it)))
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_receivable_iterator_next(
+    handle: &mut ReceivableIteratorHandle,
+    key: &mut PendingKeyDto,
+    info: &mut PendingInfoDto,
+) -> bool {
+    match handle.0.next() {
+        Some((k, i)) => {
+            *key = k.into();
+            *info = i.into();
+            true
+        }
+        None => false,
+    }
 }

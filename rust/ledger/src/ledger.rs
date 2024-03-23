@@ -838,7 +838,8 @@ impl<T: Environment + 'static> Ledger<T> {
         self.store.pending.get(txn, key)
     }
 
-    pub fn receivable_lower_bound<'a>(
+    /// Returns the next receivable entry for the account 'account' with hash greater than 'hash'
+    pub fn account_receivable_upper_bound<'a>(
         &'a self,
         txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         account: Account,
@@ -847,16 +848,44 @@ impl<T: Environment + 'static> Ledger<T> {
         ReceivableIterator::<'a, T> {
             txn,
             pending: self.store.pending.deref(),
-            account,
-            next_hash: Some(hash),
+            requested_account: account,
+            actual_account: Some(account),
+            next_hash: hash.inc(),
         }
+    }
+
+    /// Returns the next receivable entry for an account greater than 'account'
+    pub fn receivable_upper_bound<'a>(
+        &'a self,
+        txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        account: Account,
+    ) -> ReceivableIterator<'a, T> {
+        ReceivableIterator::<'a, T> {
+            txn,
+            pending: self.store.pending.deref(),
+            requested_account: account.inc().unwrap_or_default(),
+            actual_account: None,
+            next_hash: Some(BlockHash::zero()),
+        }
+    }
+
+    /// Returns whether there are any receivable entries for 'account'
+    pub fn receivable_any(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        account: Account,
+    ) -> bool {
+        self.account_receivable_upper_bound(txn, account, BlockHash::zero())
+            .next()
+            .is_some()
     }
 }
 
 pub struct ReceivableIterator<'a, T: Environment + 'static> {
     txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
     pending: &'a LmdbPendingStore<T>,
-    account: Account,
+    requested_account: Account,
+    actual_account: Option<Account>,
     next_hash: Option<BlockHash>,
 }
 
@@ -865,16 +894,26 @@ impl<'a, T: Environment + 'static> Iterator for ReceivableIterator<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let hash = self.next_hash?;
-        let it = self
-            .pending
-            .begin_at_key(self.txn, &PendingKey::new(self.account, hash));
+        let it = self.pending.begin_at_key(
+            self.txn,
+            &PendingKey::new(self.actual_account.unwrap_or(self.requested_account), hash),
+        );
 
         let (key, info) = it.current()?;
-        if key.account == self.account {
-            self.next_hash = key.hash.inc();
-            Some((key.clone(), info.clone()))
-        } else {
-            None
+        match self.actual_account {
+            Some(account) => {
+                if key.account == account {
+                    self.next_hash = key.hash.inc();
+                    Some((key.clone(), info.clone()))
+                } else {
+                    None
+                }
+            }
+            None => {
+                self.actual_account = Some(key.account);
+                self.next_hash = key.hash.inc();
+                Some((key.clone(), info.clone()))
+            }
         }
     }
 }

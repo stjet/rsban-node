@@ -607,6 +607,11 @@ impl ReceivableIteratorHandle {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_receivable_iterator_destroy(handle: *mut ReceivableIteratorHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
 pub extern "C" fn rsn_receivable_iterator_next(
     handle: &mut ReceivableIteratorHandle,
     key: &mut PendingKeyDto,

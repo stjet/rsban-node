@@ -381,17 +381,17 @@ uint64_t nano::ledger::height (store::transaction const & transaction, nano::blo
 
 bool nano::ledger::receivable_any (store::transaction const & tx, nano::account const & account) const
 {
-	return rsnano::rsn_ledger_receivable_any(handle, tx.get_rust_handle (), account.bytes.data());
+	return rsnano::rsn_ledger_receivable_any (handle, tx.get_rust_handle (), account.bytes.data ());
 }
 
 nano::receivable_iterator nano::ledger::receivable_upper_bound (store::transaction const & tx, nano::account const & account) const
 {
-	return {rsnano::rsn_ledger_receivable_upper_bound(handle, tx.get_rust_handle (), account.bytes.data())};
+	return { rsnano::rsn_ledger_receivable_upper_bound (handle, tx.get_rust_handle (), account.bytes.data ()) };
 }
 
 nano::receivable_iterator nano::ledger::receivable_upper_bound (store::transaction const & tx, nano::account const & account, nano::block_hash const & hash) const
 {
-	return {rsnano::rsn_ledger_acocunt_receivable_upper_bound(handle, tx.get_rust_handle (), account.bytes.data(), hash.bytes.data())};
+	return { rsnano::rsn_ledger_acocunt_receivable_upper_bound (handle, tx.get_rust_handle (), account.bytes.data (), hash.bytes.data ()) };
 }
 
 nano::uncemented_info::uncemented_info (nano::block_hash const & cemented_frontier, nano::block_hash const & frontier, nano::account const & account) :

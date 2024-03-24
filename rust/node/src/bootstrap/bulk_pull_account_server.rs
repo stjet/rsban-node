@@ -145,29 +145,18 @@ impl BulkPullAccountServerImpl {
              * destroy a database transaction, to avoid locking the
              * database for a prolonged period.
              */
-            let stream_transaction = self.ledger.read_txn();
-            let stream = self
-                .ledger
-                .store
-                .pending
-                .begin_at_key(&stream_transaction, &self.current_key);
+            let tx = self.ledger.read_txn();
+            let mut stream = self.ledger.account_receivable_upper_bound(
+                &tx,
+                self.current_key.account,
+                self.current_key.hash,
+            );
 
-            let Some((key, info)) = stream.current() else {
+            let Some((key, info)) = stream.next() else {
                 break;
             };
 
-            /*
-             * Get the key for the next value, to use in the next call or iteration
-             */
-            self.current_key.account = key.account;
-            self.current_key.hash = key.hash.number().overflowing_add(1.into()).0.into();
-
-            /*
-             * Finish up if the response is for a different account
-             */
-            if key.account != self.request.account {
-                break;
-            }
+            self.current_key = key.clone();
 
             /*
              * Skip entries where the amount is less than the requested

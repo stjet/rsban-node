@@ -95,6 +95,11 @@ nano::receivable_iterator::receivable_iterator (rsnano::ReceivableIteratorHandle
 	load_next ();
 }
 
+nano::receivable_iterator::~receivable_iterator ()
+{
+	rsnano::rsn_receivable_iterator_destroy (handle);
+}
+
 nano::receivable_iterator & nano::receivable_iterator::operator++ ()
 {
 	load_next ();

@@ -62,7 +62,7 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	handle = rsnano::rsn_active_transactions_create (&network_dto, node_a.online_reps.get_handle ());
 
 	// Register a callback which will get called after a block is cemented
-	confirmation_height_processor.set_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
+	confirmation_height_processor.add_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
 		this->block_cemented_callback (callback_block_a);
 	});
 
@@ -393,11 +393,6 @@ void nano::active_transactions::handle_confirmation (nano::store::read_transacti
 	nano::block_hash hash = block->hash ();
 	recently_cemented.put (election->get_status ());
 
-	if (block->is_send ())
-	{
-		node.wallets.receive_confirmed (transaction, hash, block->destination ());
-	}
-
 	election->set_status_type (status_type);
 	auto status = election->get_status ();
 	auto votes = votes_with_weight (*election);
@@ -447,6 +442,38 @@ void nano::active_transactions::remove_election_winner_details (nano::block_hash
 nano::active_transactions_lock nano::active_transactions::lock () const
 {
 	return nano::active_transactions_lock{ *this };
+}
+
+void nano::active_transactions::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)
+{
+	auto hash (status_a.get_winner ()->hash ());
+	decltype (iteration_a) const num_iters = (node.config->block_processor_batch_max_time / node.network_params.node.process_confirmed_interval) * 4;
+	std::shared_ptr<nano::block> block_l;
+	{
+		auto tx{ node.ledger.store.tx_begin_read () };
+		block_l = node.ledger.block (*tx, hash);
+	}
+	if (block_l)
+	{
+		node.logger->trace (nano::log::type::node, nano::log::detail::process_confirmed, nano::log::arg{ "block", block_l });
+		confirmation_height_processor.add (block_l);
+	}
+	else if (iteration_a < num_iters)
+	{
+		iteration_a++;
+		std::weak_ptr<nano::node> node_w (node.shared ());
+		node.workers->add_timed_task (std::chrono::steady_clock::now () + node.network_params.node.process_confirmed_interval, [node_w, status_a, iteration_a] () {
+			if (auto node_l = node_w.lock ())
+			{
+				node_l->active.process_confirmed (status_a, iteration_a);
+			}
+		});
+	}
+	else
+	{
+		// Do some cleanup due to this block never being processed by confirmation height processor
+		remove_election_winner_details (hash);
+	}
 }
 
 void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano::election_status_type type_a, nano::election & election)

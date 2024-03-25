@@ -28,7 +28,7 @@ pub struct CementationThread {
     batch_write_size: Arc<BatchWriteSizeManager>,
     stopped: Arc<AtomicBool>,
     // No mutex needed for the observers as these should be set up during initialization of the node
-    cemented_observer: Arc<Mutex<Option<BlockCallback>>>,
+    cemented_observers: Arc<Mutex<Vec<BlockCallback>>>,
     already_cemented_observer: Arc<Mutex<Option<BlockHashCallback>>>,
     thread: Option<JoinHandle<()>>,
     block_cache: Arc<BlockCache>,
@@ -43,7 +43,7 @@ impl CementationThread {
         batch_separate_pending_min_time: Duration,
         latch: Box<dyn Latch>,
     ) -> Self {
-        let cemented_observer: Arc<Mutex<Option<BlockCallback>>> = Arc::new(Mutex::new(None));
+        let cemented_observers: Arc<Mutex<Vec<BlockCallback>>> = Arc::new(Mutex::new(Vec::new()));
         let already_cemented_observer: Arc<Mutex<Option<BlockHashCallback>>> =
             Arc::new(Mutex::new(None));
         let stopped = Arc::new(AtomicBool::new(false));
@@ -63,7 +63,7 @@ impl CementationThread {
         let condition = Arc::new(Condvar::new());
 
         let callbacks = CementCallbacks {
-            block_cemented: cemented_callback(cemented_observer.clone()),
+            block_cemented: cemented_callback(Arc::clone(&cemented_observers)),
             block_already_cemented: block_already_cemented_callback(
                 already_cemented_observer.clone(),
             ),
@@ -97,7 +97,7 @@ impl CementationThread {
             condition,
             batch_write_size,
             stopped,
-            cemented_observer,
+            cemented_observers,
             already_cemented_observer,
             thread: Some(join_handle),
             block_cache,
@@ -138,8 +138,8 @@ impl CementationThread {
         }
     }
 
-    pub fn set_cemented_observer(&mut self, callback: BlockCallback) {
-        *self.cemented_observer.lock().unwrap() = Some(callback);
+    pub fn add_cemented_observer(&mut self, callback: BlockCallback) {
+        self.cemented_observers.lock().unwrap().push(callback);
     }
 
     pub fn set_already_cemented_observer(&mut self, callback: BlockHashCallback) {
@@ -147,7 +147,7 @@ impl CementationThread {
     }
 
     pub fn clear_cemented_observer(&mut self) {
-        *self.cemented_observer.lock().unwrap() = None;
+        self.cemented_observers.lock().unwrap().clear();
     }
 
     pub fn is_processing_block(&self, block_hash: &BlockHash) -> bool {
@@ -216,11 +216,11 @@ fn block_already_cemented_callback(
     })
 }
 
-fn cemented_callback(cemented_observer: Arc<Mutex<Option<BlockCallback>>>) -> BlockCallback {
+fn cemented_callback(cemented_observer: Arc<Mutex<Vec<BlockCallback>>>) -> BlockCallback {
     Box::new(move |block| {
         let mut lock = cemented_observer.lock().unwrap();
-        if let Some(f) = lock.deref_mut() {
-            (f)(block);
+        for callback in lock.deref_mut() {
+            (callback)(block);
         }
     })
 }

@@ -80,7 +80,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_stop(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_height_processor_set_cemented_observer(
+pub unsafe extern "C" fn rsn_confirmation_height_processor_add_cemented_observer(
     handle: *mut ConfirmationHeightProcessorHandle,
     callback: BlockCallback,
     context: *mut c_void,
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_set_cemented_observer
         callback(context_wrapper.get_context(), block_handle);
         drop(Box::from_raw(block_handle));
     });
-    (*handle).0.set_cemented_observer(callback_wrapper);
+    (*handle).0.add_cemented_observer(callback_wrapper);
 }
 
 #[no_mangle]

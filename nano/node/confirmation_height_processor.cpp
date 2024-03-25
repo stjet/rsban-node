@@ -93,10 +93,10 @@ void delete_block_hash_callback_context (void * context_a)
 }
 
 // Not thread-safe, only call before this processor has begun cementing
-void nano::confirmation_height_processor::set_cemented_observer (std::function<void (std::shared_ptr<nano::block> const &)> const & callback_a)
+void nano::confirmation_height_processor::add_cemented_observer (std::function<void (std::shared_ptr<nano::block> const &)> const & callback_a)
 {
 	auto context = new std::function<void (std::shared_ptr<nano::block> const &)> (callback_a);
-	rsnano::rsn_confirmation_height_processor_set_cemented_observer (handle, block_callback, context, delete_block_callback_context);
+	rsnano::rsn_confirmation_height_processor_add_cemented_observer (handle, block_callback, context, delete_block_callback_context);
 }
 
 void nano::confirmation_height_processor::clear_cemented_observer ()

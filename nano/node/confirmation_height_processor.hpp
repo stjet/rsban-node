@@ -42,7 +42,7 @@ public:
 	 * Called for each newly cemented block
 	 * Called from confirmation height processor thread
 	 */
-	void set_cemented_observer (std::function<void (std::shared_ptr<nano::block> const &)> const &);
+	void add_cemented_observer (std::function<void (std::shared_ptr<nano::block> const &)> const &);
 	void clear_cemented_observer ();
 	/*
 	 * Called when the block was added to the confirmation height processor but is already confirmed

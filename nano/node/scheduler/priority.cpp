@@ -158,16 +158,16 @@ void nano::scheduler::priority::try_schedule_successors (std::shared_ptr<nano::b
 	// Next-block activations are only done for blocks with previously active elections
 	if (cemented_bootstrap_count_reached && was_active)
 	{
-		activate_successors (account, block, transaction);
+		activate_successors (transaction, block);
 	}
 }
 
-void nano::scheduler::priority::activate_successors (const nano::account & account, std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction)
+void nano::scheduler::priority::activate_successors (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block)
 {
-	activate (account, transaction);
+	activate (block->account (), transaction);
 
 	// Start or vote for the next unconfirmed block in the destination account
-	if (block->is_send () && !block->destination ().is_zero () && block->destination () != account)
+	if (block->is_send () && !block->destination ().is_zero () && block->destination () != block->account ())
 	{
 		activate (block->destination (), transaction);
 	}

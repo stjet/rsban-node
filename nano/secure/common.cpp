@@ -112,16 +112,6 @@ nano::ledger_constants::ledger_constants (ledger_constants const & other_a) :
 	genesis{ other_a.genesis },
 	genesis_amount{ other_a.genesis_amount },
 	burn_account{ other_a.burn_account },
-	nano_dev_final_votes_canary_account{ other_a.nano_dev_final_votes_canary_account },
-	nano_beta_final_votes_canary_account{ other_a.nano_beta_final_votes_canary_account },
-	nano_live_final_votes_canary_account{ other_a.nano_live_final_votes_canary_account },
-	nano_test_final_votes_canary_account{ other_a.nano_test_final_votes_canary_account },
-	final_votes_canary_account{ other_a.final_votes_canary_account },
-	nano_dev_final_votes_canary_height{ other_a.nano_dev_final_votes_canary_height },
-	nano_beta_final_votes_canary_height{ other_a.nano_beta_final_votes_canary_height },
-	nano_live_final_votes_canary_height{ other_a.nano_live_final_votes_canary_height },
-	nano_test_final_votes_canary_height{ other_a.nano_test_final_votes_canary_height },
-	final_votes_canary_height{ other_a.final_votes_canary_height },
 	epochs{ other_a.epochs }
 {
 }
@@ -143,16 +133,6 @@ rsnano::LedgerConstantsDto nano::ledger_constants::to_dto () const
 	dto.genesis = genesis->clone_handle ();
 	boost::multiprecision::export_bits (genesis_amount, std::rbegin (dto.genesis_amount), 8, false);
 	std::copy (std::begin (burn_account.bytes), std::end (burn_account.bytes), std::begin (dto.burn_account));
-	std::copy (std::begin (nano_dev_final_votes_canary_account.bytes), std::end (nano_dev_final_votes_canary_account.bytes), std::begin (dto.nano_dev_final_votes_canary_account));
-	std::copy (std::begin (nano_beta_final_votes_canary_account.bytes), std::end (nano_beta_final_votes_canary_account.bytes), std::begin (dto.nano_beta_final_votes_canary_account));
-	std::copy (std::begin (nano_live_final_votes_canary_account.bytes), std::end (nano_live_final_votes_canary_account.bytes), std::begin (dto.nano_live_final_votes_canary_account));
-	std::copy (std::begin (nano_test_final_votes_canary_account.bytes), std::end (nano_test_final_votes_canary_account.bytes), std::begin (dto.nano_test_final_votes_canary_account));
-	std::copy (std::begin (final_votes_canary_account.bytes), std::end (final_votes_canary_account.bytes), std::begin (dto.final_votes_canary_account));
-	dto.nano_dev_final_votes_canary_height = nano_dev_final_votes_canary_height;
-	dto.nano_beta_final_votes_canary_height = nano_beta_final_votes_canary_height;
-	dto.nano_live_final_votes_canary_height = nano_live_final_votes_canary_height;
-	dto.nano_test_final_votes_canary_height = nano_test_final_votes_canary_height;
-	dto.final_votes_canary_height = final_votes_canary_height;
 
 	auto epoch_1_link{ epochs.link (nano::epoch::epoch_1) };
 	auto epoch_1_signer{ epochs.signer (nano::epoch::epoch_1) };
@@ -184,16 +164,6 @@ void nano::ledger_constants::read_dto (rsnano::LedgerConstantsDto const & dto)
 	genesis = nano::block_handle_to_block (dto.genesis);
 	boost::multiprecision::import_bits (genesis_amount, std::begin (dto.genesis_amount), std::end (dto.genesis_amount));
 	std::copy (std::begin (dto.burn_account), std::end (dto.burn_account), std::begin (burn_account.bytes));
-	std::copy (std::begin (dto.nano_dev_final_votes_canary_account), std::end (dto.nano_dev_final_votes_canary_account), std::begin (nano_dev_final_votes_canary_account.bytes));
-	std::copy (std::begin (dto.nano_beta_final_votes_canary_account), std::end (dto.nano_beta_final_votes_canary_account), std::begin (nano_beta_final_votes_canary_account.bytes));
-	std::copy (std::begin (dto.nano_live_final_votes_canary_account), std::end (dto.nano_live_final_votes_canary_account), std::begin (nano_live_final_votes_canary_account.bytes));
-	std::copy (std::begin (dto.nano_test_final_votes_canary_account), std::end (dto.nano_test_final_votes_canary_account), std::begin (nano_test_final_votes_canary_account.bytes));
-	std::copy (std::begin (dto.final_votes_canary_account), std::end (dto.final_votes_canary_account), std::begin (final_votes_canary_account.bytes));
-	nano_dev_final_votes_canary_height = dto.nano_dev_final_votes_canary_height;
-	nano_beta_final_votes_canary_height = dto.nano_beta_final_votes_canary_height;
-	nano_live_final_votes_canary_height = dto.nano_live_final_votes_canary_height;
-	nano_test_final_votes_canary_height = dto.nano_test_final_votes_canary_height;
-	final_votes_canary_height = dto.final_votes_canary_height;
 
 	nano::account epoch_v1_signer;
 	std::copy (std::begin (dto.epoch_1_signer), std::end (dto.epoch_1_signer), std::begin (epoch_v1_signer.bytes));

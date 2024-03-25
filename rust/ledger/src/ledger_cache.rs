@@ -1,7 +1,4 @@
-use std::sync::{
-    atomic::{AtomicBool, AtomicU64},
-    Arc,
-};
+use std::sync::{atomic::AtomicU64, Arc};
 
 use crate::RepWeights;
 
@@ -11,7 +8,6 @@ pub struct LedgerCache {
     pub block_count: AtomicU64,
     pub pruned_count: AtomicU64,
     pub account_count: AtomicU64,
-    pub final_votes_confirmation_canary: AtomicBool,
 }
 
 impl LedgerCache {
@@ -23,7 +19,6 @@ impl LedgerCache {
             block_count: AtomicU64::new(0),
             pruned_count: AtomicU64::new(0),
             account_count: AtomicU64::new(0),
-            final_votes_confirmation_canary: AtomicBool::new(false),
         }
     }
 }

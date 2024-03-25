@@ -7,7 +7,7 @@ use rsnano_core::{
     utils::{get_env_or_default_string, seconds_since_epoch, SerdePropertyTree},
     work::{WorkThresholds, WORK_THRESHOLDS_STUB},
     Account, Amount, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, Epochs, KeyPair,
-    Networks, DEV_GENESIS_KEY, DEV_PUBLIC_KEY_DATA,
+    Networks, DEV_GENESIS_KEY,
 };
 
 static BETA_PUBLIC_KEY_DATA: &str =
@@ -62,18 +62,6 @@ static TEST_GENESIS_DATA: Lazy<String> = Lazy::new(|| {
     )
 });
 
-static BETA_CANARY_PUBLIC_KEY_DATA: &str =
-    "259a438a8f9f9226130c84d902c237af3e57c0981c7d709c288046b110d8c8ac";
-static LIVE_CANARY_PUBLIC_KEY_DATA: &str =
-    "7CBAF192A3763DAEC9F9BAC1B2CDF665D8369F8400B4BC5AB4BA31C00BAA4404"; // nano_1z7ty8bc8xjxou6zmgp3pd8zesgr8thra17nqjfdbgjjr17tnj16fjntfqfn
-
-static TEST_CANARY_PUBLIC_KEY_DATA: Lazy<String> = Lazy::new(|| {
-    get_env_or_default_string(
-        "NANO_TEST_CANARY_PUB",
-        "3BAD2C554ACE05F5E528FBBCE79D51E552C55FA765CCFD89B289C4835DE5F04A",
-    ) // nano_1gxf7jcnomi7yqkkjyxwwygo5sckrohtgsgezp6u74g6ifgydw4cajwbk8bf
-});
-
 pub static LEDGER_CONSTANTS_STUB: Lazy<LedgerConstants> =
     Lazy::new(|| LedgerConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork));
 
@@ -115,16 +103,6 @@ pub struct LedgerConstants {
     pub genesis_account: Account,
     pub genesis_amount: Amount,
     pub burn_account: Account,
-    pub nano_dev_final_votes_canary_account: Account,
-    pub nano_beta_final_votes_canary_account: Account,
-    pub nano_live_final_votes_canary_account: Account,
-    pub nano_test_final_votes_canary_account: Account,
-    pub final_votes_canary_account: Account,
-    pub nano_dev_final_votes_canary_height: u64,
-    pub nano_beta_final_votes_canary_height: u64,
-    pub nano_live_final_votes_canary_height: u64,
-    pub nano_test_final_votes_canary_height: u64,
-    pub final_votes_canary_height: u64,
     pub epochs: Epochs,
 }
 
@@ -197,22 +175,6 @@ impl LedgerConstants {
         };
         let genesis_account = genesis.account_field().unwrap();
 
-        let nano_dev_final_votes_canary_account = Account::decode_hex(DEV_PUBLIC_KEY_DATA).unwrap();
-        let nano_beta_final_votes_canary_account =
-            Account::decode_hex(BETA_CANARY_PUBLIC_KEY_DATA).unwrap();
-        let nano_live_final_votes_canary_account =
-            Account::decode_hex(LIVE_CANARY_PUBLIC_KEY_DATA).unwrap();
-        let nano_test_final_votes_canary_account =
-            Account::decode_hex(TEST_CANARY_PUBLIC_KEY_DATA.as_str()).unwrap();
-
-        let final_votes_canary_account = match network {
-            Networks::NanoDevNetwork => nano_dev_final_votes_canary_account,
-            Networks::NanoBetaNetwork => nano_beta_final_votes_canary_account,
-            Networks::NanoLiveNetwork => nano_live_final_votes_canary_account,
-            Networks::NanoTestNetwork => nano_test_final_votes_canary_account,
-            Networks::Invalid => panic!("invalid network"),
-        };
-
         let nano_beta_account = Account::decode_hex(BETA_PUBLIC_KEY_DATA).unwrap();
         let nano_test_account = Account::decode_hex(TEST_PUBLIC_KEY_DATA.as_str()).unwrap();
 
@@ -251,16 +213,6 @@ impl LedgerConstants {
             genesis_account,
             genesis_amount: Amount::raw(u128::MAX),
             burn_account: Account::zero(),
-            nano_dev_final_votes_canary_account,
-            nano_beta_final_votes_canary_account,
-            nano_live_final_votes_canary_account,
-            nano_test_final_votes_canary_account,
-            final_votes_canary_account,
-            nano_dev_final_votes_canary_height: 1,
-            nano_beta_final_votes_canary_height: 1,
-            nano_live_final_votes_canary_height: 1,
-            nano_test_final_votes_canary_height: 1,
-            final_votes_canary_height: 1,
             epochs,
         }
     }

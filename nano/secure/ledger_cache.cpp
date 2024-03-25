@@ -53,10 +53,6 @@ uint64_t nano::ledger_cache::account_count () const
 {
 	return rsnano::rsn_ledger_cache_account_count (handle);
 }
-bool nano::ledger_cache::final_votes_confirmation_canary () const
-{
-	return rsnano::rsn_ledger_cache_final_votes_confirmation_canary (handle);
-}
 void nano::ledger_cache::add_cemented (uint64_t count)
 {
 	rsnano::rsn_ledger_cache_add_cemented (handle, count);
@@ -72,10 +68,6 @@ void nano::ledger_cache::add_pruned (uint64_t count)
 void nano::ledger_cache::add_accounts (uint64_t count)
 {
 	rsnano::rsn_ledger_cache_add_accounts (handle, count);
-}
-void nano::ledger_cache::set_final_votes_confirmation_canary (bool canary)
-{
-	rsnano::rsn_ledger_cache_set_final_votes_confirmation_canary (handle, canary);
 }
 void nano::ledger_cache::remove_blocks (uint64_t count)
 {

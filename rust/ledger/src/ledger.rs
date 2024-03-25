@@ -263,17 +263,6 @@ impl<T: Environment + 'static> Ledger<T> {
             .pruned_count
             .fetch_add(self.store.pruned.count(&transaction), Ordering::SeqCst);
 
-        // Final votes requirement for confirmation canary block
-        if let Some(conf_height) = self
-            .store
-            .confirmation_height
-            .get(&transaction, &self.constants.final_votes_canary_account)
-        {
-            self.cache.final_votes_confirmation_canary.store(
-                conf_height.height >= self.constants.final_votes_canary_height,
-                Ordering::SeqCst,
-            );
-        }
         Ok(())
     }
 

@@ -439,16 +439,6 @@ void nano::active_transactions::notify_observers (nano::election_status const & 
 void nano::active_transactions::handle_final_votes_confirmation (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction, nano::election_status_type status)
 {
 	auto account = block->account ();
-
-	bool is_canary_not_set = !node.ledger.cache.final_votes_confirmation_canary ();
-	bool is_canary_account = account == node.network_params.ledger.final_votes_canary_account;
-	bool is_height_above_threshold = block->sideband ().height () >= node.network_params.ledger.final_votes_canary_height;
-
-	if (is_canary_not_set && is_canary_account && is_height_above_threshold)
-	{
-		node.ledger.cache.set_final_votes_confirmation_canary (true);
-	}
-
 	if (block_confirmed_callback != nullptr)
 	{
 		block_confirmed_callback (block, transaction, status);
@@ -633,12 +623,12 @@ void nano::active_transactions::confirm_if_quorum (nano::election_lock & lock_a,
 
 	if (have_quorum (tally_l))
 	{
-		if (node.ledger.cache.final_votes_confirmation_canary () && !rsnano::rsn_election_is_quorum_exchange (election.handle, true) && node.config->enable_voting && node.wallets.voting_reps_count () > 0)
+		if (!rsnano::rsn_election_is_quorum_exchange (election.handle, true) && node.config->enable_voting && node.wallets.voting_reps_count () > 0)
 		{
 			auto hash = status_l.get_winner ()->hash ();
 			node.final_generator.add (election.root (), hash);
 		}
-		if (!node.ledger.cache.final_votes_confirmation_canary () || lock_a.final_weight ().number () >= node.online_reps.delta ())
+		if (lock_a.final_weight ().number () >= node.online_reps.delta ())
 		{
 			confirm_once (lock_a, nano::election_status_type::active_confirmed_quorum, election);
 		}

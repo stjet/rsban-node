@@ -1,15 +1,13 @@
-use std::{convert::TryFrom, ops::Deref, sync::Arc};
-
-use num::FromPrimitive;
-use rsnano_ledger::LedgerConstants;
-
 use crate::{
     core::BlockHandle,
     work::{fill_work_thresholds_dto, WorkThresholdsDto},
 };
+use num::FromPrimitive;
 use rsnano_core::{
     work::WorkThresholds, Account, Amount, BlockEnum, Epoch, Epochs, KeyPair, Link, PublicKey,
 };
+use rsnano_ledger::LedgerConstants;
+use std::{convert::TryFrom, ops::Deref, sync::Arc};
 
 #[repr(C)]
 pub struct LedgerConstantsDto {
@@ -26,16 +24,6 @@ pub struct LedgerConstantsDto {
     pub genesis: *mut BlockHandle,
     pub genesis_amount: [u8; 16],
     pub burn_account: [u8; 32],
-    pub nano_dev_final_votes_canary_account: [u8; 32],
-    pub nano_beta_final_votes_canary_account: [u8; 32],
-    pub nano_live_final_votes_canary_account: [u8; 32],
-    pub nano_test_final_votes_canary_account: [u8; 32],
-    pub final_votes_canary_account: [u8; 32],
-    pub nano_dev_final_votes_canary_height: u64,
-    pub nano_beta_final_votes_canary_height: u64,
-    pub nano_live_final_votes_canary_height: u64,
-    pub nano_test_final_votes_canary_height: u64,
-    pub final_votes_canary_height: u64,
     pub epoch_1_signer: [u8; 32],
     pub epoch_1_link: [u8; 32],
     pub epoch_2_signer: [u8; 32],
@@ -78,20 +66,6 @@ pub fn fill_ledger_constants_dto(dto: &mut LedgerConstantsDto, ledger: &LedgerCo
     dto.genesis = block_to_block_handle(&ledger.genesis);
     dto.genesis_amount = ledger.genesis_amount.to_be_bytes();
     dto.burn_account = *ledger.burn_account.as_bytes();
-    dto.nano_dev_final_votes_canary_account =
-        *ledger.nano_dev_final_votes_canary_account.as_bytes();
-    dto.nano_beta_final_votes_canary_account =
-        *ledger.nano_beta_final_votes_canary_account.as_bytes();
-    dto.nano_live_final_votes_canary_account =
-        *ledger.nano_live_final_votes_canary_account.as_bytes();
-    dto.nano_test_final_votes_canary_account =
-        *ledger.nano_test_final_votes_canary_account.as_bytes();
-    dto.final_votes_canary_account = *ledger.final_votes_canary_account.as_bytes();
-    dto.nano_dev_final_votes_canary_height = ledger.nano_dev_final_votes_canary_height;
-    dto.nano_beta_final_votes_canary_height = ledger.nano_beta_final_votes_canary_height;
-    dto.nano_live_final_votes_canary_height = ledger.nano_live_final_votes_canary_height;
-    dto.nano_test_final_votes_canary_height = ledger.nano_test_final_votes_canary_height;
-    dto.final_votes_canary_height = ledger.final_votes_canary_height;
     dto.epoch_1_signer = *ledger.epochs.signer(Epoch::Epoch1).unwrap().as_bytes();
     dto.epoch_1_link = *ledger.epochs.link(Epoch::Epoch1).unwrap().as_bytes();
     dto.epoch_2_signer = *ledger.epochs.signer(Epoch::Epoch2).unwrap().as_bytes();
@@ -130,24 +104,6 @@ impl TryFrom<&LedgerConstantsDto> for LedgerConstants {
             genesis,
             genesis_amount: Amount::from_be_bytes(value.genesis_amount),
             burn_account: Account::from_bytes(value.burn_account),
-            nano_dev_final_votes_canary_account: Account::from_bytes(
-                value.nano_dev_final_votes_canary_account,
-            ),
-            nano_beta_final_votes_canary_account: Account::from_bytes(
-                value.nano_beta_final_votes_canary_account,
-            ),
-            nano_live_final_votes_canary_account: Account::from_bytes(
-                value.nano_live_final_votes_canary_account,
-            ),
-            nano_test_final_votes_canary_account: Account::from_bytes(
-                value.nano_test_final_votes_canary_account,
-            ),
-            final_votes_canary_account: Account::from_bytes(value.final_votes_canary_account),
-            nano_dev_final_votes_canary_height: value.nano_dev_final_votes_canary_height,
-            nano_beta_final_votes_canary_height: value.nano_beta_final_votes_canary_height,
-            nano_live_final_votes_canary_height: value.nano_live_final_votes_canary_height,
-            nano_test_final_votes_canary_height: value.nano_test_final_votes_canary_height,
-            final_votes_canary_height: value.final_votes_canary_height,
             epochs,
         };
 

@@ -1,11 +1,9 @@
+use super::RepWeightsHandle;
+use rsnano_ledger::LedgerCache;
 use std::{
     ops::Deref,
     sync::{atomic::Ordering, Arc},
 };
-
-use rsnano_ledger::LedgerCache;
-
-use super::RepWeightsHandle;
 
 pub struct LedgerCacheHandle(Arc<LedgerCache>);
 
@@ -61,16 +59,6 @@ pub unsafe extern "C" fn rsn_ledger_cache_account_count(handle: *mut LedgerCache
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_cache_final_votes_confirmation_canary(
-    handle: *mut LedgerCacheHandle,
-) -> bool {
-    (*handle)
-        .0
-        .final_votes_confirmation_canary
-        .load(Ordering::SeqCst)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_cache_add_cemented(handle: *mut LedgerCacheHandle, count: u64) {
     (*handle)
         .0
@@ -107,15 +95,4 @@ pub unsafe extern "C" fn rsn_ledger_cache_remove_blocks(
     count: u64,
 ) {
     (*handle).0.block_count.fetch_sub(count, Ordering::SeqCst);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_cache_set_final_votes_confirmation_canary(
-    handle: *mut LedgerCacheHandle,
-    value: bool,
-) {
-    (*handle)
-        .0
-        .final_votes_confirmation_canary
-        .store(value, Ordering::SeqCst);
 }

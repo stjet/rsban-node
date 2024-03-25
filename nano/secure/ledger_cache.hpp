@@ -30,8 +30,6 @@ public:
 	uint64_t account_count () const;
 	void add_accounts (uint64_t count);
 	void remove_accounts (uint64_t count);
-	bool final_votes_confirmation_canary () const;
-	void set_final_votes_confirmation_canary (bool canary);
 	rsnano::LedgerCacheHandle * handle;
 
 private:

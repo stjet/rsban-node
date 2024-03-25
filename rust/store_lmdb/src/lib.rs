@@ -7,6 +7,7 @@ extern crate anyhow;
 mod iterator;
 mod lmdb_config;
 mod lmdb_env;
+mod rep_weight_store;
 mod wallet_store;
 
 pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl, LmdbIteratorImpl};
@@ -48,6 +49,7 @@ pub use pruned_store::{ConfiguredPrunedDatabaseBuilder, LmdbPrunedStore};
 mod version_store;
 pub use version_store::LmdbVersionStore;
 
+pub use rep_weight_store::*;
 pub use wallet_store::{Fans, LmdbWalletStore, WalletValue};
 
 mod fan;
@@ -466,6 +468,8 @@ pub const FRONTIER_TEST_DATABASE: DatabaseStub = DatabaseStub(2);
 pub const ACCOUNT_TEST_DATABASE: DatabaseStub = DatabaseStub(3);
 pub const PENDING_TEST_DATABASE: DatabaseStub = DatabaseStub(4);
 pub const PRUNED_TEST_DATABASE: DatabaseStub = DatabaseStub(5);
+pub const REP_WEIGHT_TEST_DATABASE: DatabaseStub = DatabaseStub(6);
+
 #[cfg(test)]
 mod test {
     use super::*;

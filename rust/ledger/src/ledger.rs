@@ -16,7 +16,8 @@ use rsnano_store_lmdb::{
     ConfiguredPrunedDatabaseBuilder, Environment, EnvironmentStub, EnvironmentWrapper,
     LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore,
     LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore,
-    LmdbReadTransaction, LmdbStore, LmdbVersionStore, LmdbWriteTransaction, Transaction,
+    LmdbReadTransaction, LmdbRepWeightStore, LmdbStore, LmdbVersionStore, LmdbWriteTransaction,
+    Transaction,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -170,6 +171,7 @@ impl NullLedgerBuilder {
             peer: Arc::new(LmdbPeerStore::new(env.clone()).unwrap()),
             pending: Arc::new(LmdbPendingStore::new(env.clone()).unwrap()),
             pruned: Arc::new(LmdbPrunedStore::new(env.clone()).unwrap()),
+            rep_weight: Arc::new(LmdbRepWeightStore::new(env.clone()).unwrap()),
             version: Arc::new(LmdbVersionStore::new(env.clone()).unwrap()),
         };
         Ledger::new(Arc::new(store), LedgerConstants::unit_test()).unwrap()

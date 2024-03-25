@@ -1,21 +1,20 @@
+use crate::{
+    lmdb_env::{EnvironmentWrapper, RoCursor, RoTransaction, RwTransaction},
+    EnvOptions, Environment, EnvironmentStub, LmdbAccountStore, LmdbBlockStore,
+    LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
+    LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
+    LmdbRepWeightStore, LmdbVersionStore, LmdbWriteTransaction, NullTransactionTracker, Table,
+    TransactionTracker, STORE_VERSION_MINIMUM,
+};
+use lmdb::{DatabaseFlags, WriteFlags};
+use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
+use rsnano_core::utils::{seconds_since_epoch, PropertyTreeWriter};
 use std::{
     ffi::CString,
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
 };
-
-use crate::{
-    lmdb_env::{EnvironmentWrapper, RoCursor, RoTransaction, RwTransaction},
-    EnvOptions, Environment, EnvironmentStub, LmdbAccountStore, LmdbBlockStore,
-    LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
-    LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
-    LmdbVersionStore, LmdbWriteTransaction, NullTransactionTracker, Table, TransactionTracker,
-    STORE_VERSION_MINIMUM,
-};
-use lmdb::{DatabaseFlags, WriteFlags};
-use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
-use rsnano_core::utils::{seconds_since_epoch, PropertyTreeWriter};
 use tracing::{debug, error, info, warn};
 
 #[derive(PartialEq, Eq)]
@@ -32,6 +31,7 @@ pub struct LmdbStore<T: Environment = EnvironmentWrapper> {
     pub pending: Arc<LmdbPendingStore<T>>,
     pub online_weight: Arc<LmdbOnlineWeightStore<T>>,
     pub pruned: Arc<LmdbPrunedStore<T>>,
+    pub rep_weight: Arc<LmdbRepWeightStore<T>>,
     pub peer: Arc<LmdbPeerStore<T>>,
     pub confirmation_height: Arc<LmdbConfirmationHeightStore<T>>,
     pub final_vote: Arc<LmdbFinalVoteStore<T>>,
@@ -113,6 +113,7 @@ impl<T: Environment + 'static> LmdbStore<T> {
             pending: Arc::new(LmdbPendingStore::new(env.clone())?),
             online_weight: Arc::new(LmdbOnlineWeightStore::new(env.clone())?),
             pruned: Arc::new(LmdbPrunedStore::new(env.clone())?),
+            rep_weight: Arc::new(LmdbRepWeightStore::new(env.clone())?),
             peer: Arc::new(LmdbPeerStore::new(env.clone())?),
             confirmation_height: Arc::new(LmdbConfirmationHeightStore::new(env.clone())?),
             final_vote: Arc::new(LmdbFinalVoteStore::new(env.clone())?),

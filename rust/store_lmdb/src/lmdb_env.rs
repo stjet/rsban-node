@@ -433,6 +433,7 @@ impl RoTransaction for RoTransactionStub {
                 database: db.clone(),
                 ascending: Cell::new(true),
             }),
+
             None => Ok(RoCursorStub {
                 current: Cell::new(0),
                 ascending: Cell::new(true),

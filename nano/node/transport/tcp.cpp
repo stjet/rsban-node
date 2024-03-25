@@ -151,23 +151,6 @@ bool nano::transport::channel_tcp::max (nano::transport::traffic_type traffic_ty
 	return rsnano::rsn_channel_tcp_max (handle, static_cast<uint8_t> (traffic_type));
 }
 
-std::size_t nano::transport::channel_tcp::hash_code () const
-{
-	std::hash<::nano::tcp_endpoint> hash;
-	return hash (get_tcp_remote_endpoint ());
-}
-
-bool nano::transport::channel_tcp::operator== (nano::transport::channel const & other_a) const
-{
-	bool result (false);
-	auto other_l (dynamic_cast<nano::transport::channel_tcp const *> (&other_a));
-	if (other_l != nullptr)
-	{
-		return *this == *other_l;
-	}
-	return result;
-}
-
 void nano::transport::channel_tcp_send_callback (void * context_a, const rsnano::ErrorCodeDto * ec_a, std::size_t size_a)
 {
 	auto callback_ptr = static_cast<std::function<void (boost::system::error_code const &, std::size_t)> *> (context_a);
@@ -193,11 +176,6 @@ void nano::transport::channel_tcp::send (nano::message & message_a, std::functio
 std::string nano::transport::channel_tcp::to_string () const
 {
 	return boost::str (boost::format ("%1%") % get_tcp_remote_endpoint ());
-}
-
-bool nano::transport::channel_tcp::operator== (nano::transport::channel_tcp const & other_a) const
-{
-	return rsnano::rsn_channel_tcp_eq (handle, other_a.handle);
 }
 
 nano::endpoint nano::transport::channel_tcp::get_peering_endpoint () const

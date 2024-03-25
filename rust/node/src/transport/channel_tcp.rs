@@ -96,7 +96,7 @@ impl ChannelTcp {
             .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0))
     }
 
-    pub fn set_remote_endpoint(&self) {
+    pub fn update_remote_endpoint(&self) {
         let mut lock = self.channel_mutex.lock().unwrap();
         debug_assert!(lock.remote_endpoint == SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)); // Not initialized endpoint value
                                                                                                   // Calculate TCP socket endpoint

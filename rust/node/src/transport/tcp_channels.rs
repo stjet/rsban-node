@@ -585,7 +585,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                             channel_id,
                             self.network.network.protocol_info(),
                         ));
-                        temporary_channel.set_remote_endpoint();
+                        temporary_channel.update_remote_endpoint();
                         debug_assert!(*endpoint == temporary_channel.remote_endpoint());
                         temporary_channel.set_node_id(node_id);
                         temporary_channel.set_network_version(message.protocol.version_using);
@@ -916,7 +916,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
                     panic!("not a tcp channel")
                 };
-                tcp.set_remote_endpoint();
+                tcp.update_remote_endpoint();
                 let this_w = Arc::downgrade(&this_l);
                 let channel_clone = Arc::clone(&channel);
                 tcp.send(

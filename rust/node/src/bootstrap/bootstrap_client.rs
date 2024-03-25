@@ -47,7 +47,7 @@ impl BootstrapClient {
         socket: Arc<Socket>,
     ) -> Self {
         if let ChannelEnum::Tcp(tcp) = channel.as_ref() {
-            tcp.set_remote_endpoint();
+            tcp.update_remote_endpoint();
         }
         Self {
             async_rt,

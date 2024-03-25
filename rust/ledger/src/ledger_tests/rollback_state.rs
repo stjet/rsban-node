@@ -96,10 +96,8 @@ fn rollback_received_send() {
 
     assert_eq!(
         ctx.ledger
-            .store
-            .pending
-            .exists(&txn, &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())),
-        false
+            .pending_info(&txn, &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())),
+        None
     );
     assert_eq!(ctx.ledger.store.block.exists(&txn, &send.hash()), false);
     assert_eq!(ctx.ledger.store.block.exists(&txn, &open.hash()), false);

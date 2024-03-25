@@ -33,9 +33,8 @@ fn pruning_action() {
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &DEV_GENESIS_HASH, 1), 0);
     assert!(ctx
         .ledger
-        .store
-        .pending
-        .exists(&txn, &PendingKey::new(genesis.account(), send1.hash())),);
+        .pending_info(&txn, &PendingKey::new(genesis.account(), send1.hash()))
+        .is_some());
 
     assert_eq!(ctx.ledger.store.block.exists(&txn, &send1.hash()), false);
 
@@ -60,10 +59,8 @@ fn pruning_action() {
     assert!(ctx.ledger.store.block.exists(&txn, &receive1.hash()));
     assert_eq!(
         ctx.ledger
-            .store
-            .pending
-            .exists(&txn, &PendingKey::new(genesis.account(), send1.hash())),
-        false
+            .pending_info(&txn, &PendingKey::new(genesis.account(), send1.hash())),
+        None
     );
     let receive1_stored = ctx.ledger.get_block(&txn, &receive1.hash()).unwrap();
     assert_eq!(receive1, receive1_stored);
@@ -189,10 +186,8 @@ fn pruning_source_rollback() {
 
     assert_eq!(
         ctx.ledger
-            .store
-            .pending
-            .exists(&txn, &PendingKey::new(genesis.account(), send1.hash())),
-        false
+            .pending_info(&txn, &PendingKey::new(genesis.account(), send1.hash())),
+        None
     );
     assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 2);
     assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 5);

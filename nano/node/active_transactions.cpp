@@ -167,7 +167,7 @@ void nano::active_transactions::process_inactive_confirmation (nano::store::read
 	status.set_election_end (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()));
 	status.set_block_count (1);
 	status.set_election_status_type (nano::election_status_type::inactive_confirmation_height);
-	node.observers->blocks.notify (status, {}, account, amount, is_state_send, is_state_epoch);
+	notify_observers (status, {}, account, amount, is_state_send, is_state_epoch, pending_account);
 }
 
 void nano::active_transactions::process_active_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block, nano::election_status_type status_type)

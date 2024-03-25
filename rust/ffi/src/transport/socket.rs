@@ -248,14 +248,6 @@ pub unsafe extern "C" fn rsn_socket_full(handle: *mut SocketHandle, traffic_type
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_socket_set_silent_connection_tolerance_time(
-    handle: *mut SocketHandle,
-    time_s: u64,
-) {
-    (*handle).set_silent_connection_tolerance_time(time_s)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_socket_set_timeout(handle: *mut SocketHandle, timeout_s: u64) {
     (*handle).set_timeout(Duration::from_secs(timeout_s));
 }

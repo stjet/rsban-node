@@ -165,11 +165,6 @@ std::chrono::seconds nano::transport::socket::get_default_timeout_value () const
 	return std::chrono::seconds{ rsnano::rsn_socket_default_timeout_value (handle) };
 }
 
-void nano::transport::socket::set_silent_connection_tolerance_time (std::chrono::seconds tolerance_time_a)
-{
-	rsnano::rsn_socket_set_silent_connection_tolerance_time (handle, tolerance_time_a.count ());
-}
-
 nano::transport::socket::type_t nano::transport::socket::type () const
 {
 	return static_cast<nano::transport::socket::type_t> (rsnano::rsn_socket_type (handle));

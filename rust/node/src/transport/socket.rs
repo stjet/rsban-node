@@ -332,7 +332,6 @@ pub trait SocketExtensions {
     fn get_remote(&self) -> Option<SocketAddrV6>;
     fn set_remote(&self, endpoint: SocketAddrV6);
     fn has_timed_out(&self) -> bool;
-    fn set_silent_connection_tolerance_time(&self, time_s: u64);
 
     fn write_queued_messages(&self);
 }
@@ -680,11 +679,6 @@ impl SocketExtensions for Arc<Socket> {
 
     fn has_timed_out(&self) -> bool {
         self.timed_out.load(Ordering::SeqCst)
-    }
-
-    fn set_silent_connection_tolerance_time(&self, time_s: u64) {
-        self.silent_connection_tolerance_time
-            .store(time_s, Ordering::SeqCst);
     }
 }
 

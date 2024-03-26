@@ -28,6 +28,7 @@ TEST (socket, max_connections)
 
 	// start a server socket that allows max 2 live connections
 	auto listener = std::make_shared<nano::transport::tcp_listener> (server_port, *node, 2);
+	nano::test::stop_guard stop_guard{ *listener };
 	listener->start ([&server_sockets] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
 		server_sockets.push_back (new_connection);
 		return true;
@@ -121,6 +122,7 @@ TEST (socket, max_connections_per_ip)
 	std::vector<std::shared_ptr<nano::transport::socket>> server_sockets;
 
 	auto listener = std::make_shared<nano::transport::tcp_listener> (server_port, *node, max_global_connections);
+	nano::test::stop_guard stop_guard{ *listener };
 	listener->start ([&server_sockets] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
 		server_sockets.push_back (new_connection);
 		return true;
@@ -193,6 +195,7 @@ TEST (socket, max_connections_per_subnetwork)
 	std::vector<std::shared_ptr<nano::transport::socket>> server_sockets;
 
 	auto listener = std::make_shared<nano::transport::tcp_listener> (server_port, *node, max_global_connections);
+	nano::test::stop_guard stop_guard{ *listener };
 	listener->start ([&server_sockets] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
 		server_sockets.push_back (new_connection);
 		return true;
@@ -253,6 +256,7 @@ TEST (socket, disabled_max_peers_per_ip)
 	std::vector<std::shared_ptr<nano::transport::socket>> server_sockets;
 
 	auto server_socket = std::make_shared<nano::transport::tcp_listener> (server_port, *node, max_global_connections);
+	nano::test::stop_guard stop_guard{ *listener };
 	server_socket->start ([&server_sockets] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
 		server_sockets.push_back (new_connection);
 		return true;
@@ -313,6 +317,7 @@ TEST (socket, disconnection_of_silent_connections)
 
 	// start a server listening socket
 	auto listener = std::make_shared<nano::transport::tcp_listener> (server_port, *node, 1);
+	nano::test::stop_guard stop_guard{ *listener };
 	listener->start ([&server_data_socket] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
 		server_data_socket = new_connection;
 		return true;
@@ -367,6 +372,7 @@ TEST (DISABLED_socket, drop_policy)
 		auto server_port (system.get_available_port ());
 
 		auto listener = std::make_shared<nano::transport::tcp_listener> (server_port, *node, 1);
+		nano::test::stop_guard stop_guard{ *listener };
 		listener->start ([&connections] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
 			connections.push_back (new_connection);
 			return true;

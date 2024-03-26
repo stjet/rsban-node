@@ -56,6 +56,10 @@ namespace scheduler
 {
 	class component;
 }
+namespace transport
+{
+	class tcp_listener;
+}
 
 // Configs
 backlog_population::config backlog_population_config (node_config const &);

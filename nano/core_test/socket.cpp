@@ -3,6 +3,7 @@
 #include <nano/lib/thread_runner.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/node/transport/socket.hpp>
+#include <nano/node/transport/tcp_listener.hpp>
 #include <nano/test_common/system.hpp>
 #include <nano/test_common/testutil.hpp>
 
@@ -10,9 +11,7 @@
 
 #include <boost/asio/read.hpp>
 
-#include <map>
 #include <memory>
-#include <utility>
 #include <vector>
 
 using namespace std::chrono_literals;
@@ -256,7 +255,7 @@ TEST (socket, disabled_max_peers_per_ip)
 	std::vector<std::shared_ptr<nano::transport::socket>> server_sockets;
 
 	auto server_socket = std::make_shared<nano::transport::tcp_listener> (server_port, *node, max_global_connections);
-	nano::test::stop_guard stop_guard{ *listener };
+	nano::test::stop_guard stop_guard{ *server_socket };
 	server_socket->start ([&server_sockets] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
 		server_sockets.push_back (new_connection);
 		return true;

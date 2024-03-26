@@ -1,9 +1,8 @@
-#include "nano/node/wallet.hpp"
-
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/json_error_response.hpp>
 #include <nano/lib/timer.hpp>
+#include <nano/node/active_transactions.hpp>
 #include <nano/node/bootstrap/bootstrap_lazy.hpp>
 #include <nano/node/bootstrap_ascending/service.hpp>
 #include <nano/node/common.hpp>
@@ -12,6 +11,7 @@
 #include <nano/node/node.hpp>
 #include <nano/node/node_rpc_config.hpp>
 #include <nano/node/telemetry.hpp>
+#include <nano/node/wallet.hpp>
 #include <nano/secure/ledger.hpp>
 
 #include <boost/property_tree/json_parser.hpp>

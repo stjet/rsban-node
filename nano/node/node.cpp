@@ -1,14 +1,16 @@
-#include "nano/lib/rsnano.hpp"
-#include "nano/lib/rsnanoutils.hpp"
-#include "nano/secure/common.hpp"
-
+#include <nano/lib/rsnano.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/stream.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/lib/utility.hpp>
+#include <nano/secure/common.hpp>
+#include <nano/node/active_transactions.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/daemonconfig.hpp>
+#include <nano/node/election_status.hpp>
+#include <nano/node/local_vote_history.hpp>
 #include <nano/node/make_store.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/scheduler/component.hpp>
@@ -17,6 +19,7 @@
 #include <nano/node/scheduler/optimistic.hpp>
 #include <nano/node/scheduler/priority.hpp>
 #include <nano/node/telemetry.hpp>
+#include <nano/node/vote_generator.hpp>
 #include <nano/node/websocket.hpp>
 #include <nano/secure/ledger.hpp>
 #include <nano/store/component.hpp>

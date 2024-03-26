@@ -1,9 +1,9 @@
-#include "nano/lib/numbers.hpp"
-#include "nano/lib/rsnano.hpp"
-#include "nano/lib/rsnanoutils.hpp"
-#include "nano/lib/utility.hpp"
-
+#include <nano/lib/numbers.hpp>
+#include <nano/lib/rsnano.hpp>
+#include <nano/lib/rsnanoutils.hpp>
+#include <nano/lib/utility.hpp>
 #include <nano/lib/tomlconfig.hpp>
+#include <nano/node/election.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/vote_cache.hpp>
 

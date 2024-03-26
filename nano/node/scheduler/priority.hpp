@@ -1,7 +1,7 @@
 #pragma once
 
 #include <nano/lib/numbers.hpp>
-#include <nano/node/active_transactions.hpp>
+#include <nano/node/election_status.hpp>
 
 #include <boost/optional.hpp>
 
@@ -10,15 +10,24 @@
 #include <memory>
 #include <string>
 #include <thread>
+
 namespace rsnano
 {
 class ElectionSchedulerHandle;
 }
+
 namespace nano
 {
 class block;
 class container_info_component;
 class node;
+class stats;
+}
+
+namespace nano::store
+{
+class transaction;
+class read_transaction;
 }
 
 namespace nano::scheduler

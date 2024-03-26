@@ -1,4 +1,6 @@
 #include <nano/lib/blocks.hpp>
+#include <nano/node/active_transactions.hpp>
+#include <nano/node/election.hpp>
 #include <nano/secure/ledger.hpp>
 #include <nano/test_common/system.hpp>
 #include <nano/test_common/testutil.hpp>

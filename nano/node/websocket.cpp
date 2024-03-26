@@ -6,6 +6,7 @@
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/tlsconfig.hpp>
 #include <nano/lib/work.hpp>
+#include <nano/node/election_status.hpp>
 #include <nano/node/node_observers.hpp>
 #include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>

@@ -71,7 +71,10 @@ add_library(
   distributed_work_factory.cpp
   election.hpp
   election.cpp
+  election_behavior.hpp
   election_insertion_result.hpp
+  election_status.hpp
+  election_status.cpp
   epoch_upgrader.hpp
   epoch_upgrader.cpp
   ipc/action_handler.hpp
@@ -92,6 +95,8 @@ add_library(
   json_handler.cpp
   local_block_broadcaster.cpp
   local_block_broadcaster.hpp
+  local_vote_history.cpp
+  local_vote_history.hpp
   make_store.hpp
   make_store.cpp
   network.hpp
@@ -156,10 +161,13 @@ add_library(
   unchecked_map.hpp
   vote_cache.hpp
   vote_cache.cpp
+  vote_generator.hpp
+  vote_generator.cpp
   vote_processor.hpp
   vote_processor.cpp
-  voting.hpp
-  voting.cpp
+  vote_spacing.hpp
+  vote_spacing.cpp
+  vote_with_weight_info.hpp
   wallet.hpp
   wallet.cpp
   websocket.hpp

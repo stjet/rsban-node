@@ -2,8 +2,11 @@
 
 #include <nano/lib/numbers.hpp>
 #include <nano/node/election.hpp>
+#include <nano/node/election_behavior.hpp>
 #include <nano/node/election_insertion_result.hpp>
-#include <nano/node/voting.hpp>
+#include <nano/node/election_status.hpp>
+#include <nano/node/vote_with_weight_info.hpp>
+#include <nano/secure/ledger.hpp>
 #include <nano/secure/common.hpp>
 
 #include <boost/multi_index/hashed_index.hpp>
@@ -16,7 +19,9 @@
 #include <condition_variable>
 #include <deque>
 #include <memory>
+#include <thread>
 #include <unordered_map>
+#include <immintrin.h>
 
 namespace mi = boost::multi_index;
 
@@ -31,7 +36,16 @@ class election;
 class vote;
 class confirmation_height_processor;
 class stats;
+class election_lock;
+}
 
+namespace nano::store
+{
+class read_transaction;
+}
+
+namespace nano
+{
 class recently_confirmed_cache final
 {
 public:
@@ -52,8 +66,8 @@ public: // Tests
 
 private:
 	// clang-format off
-	class tag_root {};
 	class tag_hash {};
+	class tag_root {};
 	class tag_sequence {};
 
 	using ordered_recent_confirmations = boost::multi_index_container<entry_t,

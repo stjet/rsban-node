@@ -18,6 +18,7 @@
 #include <nano/node/election.hpp>
 #include <nano/node/epoch_upgrader.hpp>
 #include <nano/node/local_block_broadcaster.hpp>
+#include <nano/node/local_vote_history.hpp>
 #include <nano/node/network.hpp>
 #include <nano/node/node_observers.hpp>
 #include <nano/node/nodeconfig.hpp>
@@ -30,6 +31,7 @@
 #include <nano/node/telemetry.hpp>
 #include <nano/node/transport/tcp_server.hpp>
 #include <nano/node/unchecked_map.hpp>
+#include <nano/node/vote_generator.hpp>
 #include <nano/node/vote_cache.hpp>
 #include <nano/node/vote_processor.hpp>
 #include <nano/node/wallet.hpp>

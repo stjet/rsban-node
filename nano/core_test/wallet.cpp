@@ -2,6 +2,8 @@
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/thread_runner.hpp>
 #include <nano/lib/threading.hpp>
+#include <nano/node/active_transactions.hpp>
+#include <nano/node/election.hpp>
 #include <nano/secure/ledger.hpp>
 #include <nano/store/lmdb/wallet_value.hpp>
 #include <nano/test_common/system.hpp>

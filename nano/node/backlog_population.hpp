@@ -7,10 +7,6 @@
 #include <nano/lib/observer_set.hpp>
 #include <nano/secure/common.hpp>
 
-#include <atomic>
-#include <condition_variable>
-#include <thread>
-
 namespace nano::store
 {
 class component;

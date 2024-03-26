@@ -10,6 +10,7 @@
 namespace nano::store
 {
 class transaction;
+class component;
 }
 
 namespace nano

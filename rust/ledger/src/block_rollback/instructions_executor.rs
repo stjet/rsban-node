@@ -75,7 +75,7 @@ impl<'a, T: Environment> RollbackInstructionsExecutor<'a, T> {
         }
     }
 
-    fn roll_back_representative_cache(&self) {
+    fn roll_back_representative_cache(&mut self) {
         if let Some(previous_rep) = &self.instructions.new_representative {
             self.roll_back_change_in_representative_cache(previous_rep);
         } else {
@@ -83,8 +83,9 @@ impl<'a, T: Environment> RollbackInstructionsExecutor<'a, T> {
         }
     }
 
-    fn roll_back_change_in_representative_cache(&self, previous_representative: &Account) {
+    fn roll_back_change_in_representative_cache(&mut self, previous_representative: &Account) {
         self.ledger.cache.rep_weights.representation_add_dual(
+            self.txn,
             self.instructions.old_account_info.representative,
             Amount::zero().wrapping_sub(self.instructions.old_account_info.balance),
             *previous_representative,
@@ -92,8 +93,9 @@ impl<'a, T: Environment> RollbackInstructionsExecutor<'a, T> {
         );
     }
 
-    fn roll_back_receive_in_representative_cache(&self) {
+    fn roll_back_receive_in_representative_cache(&mut self) {
         self.ledger.cache.rep_weights.representation_add(
+            self.txn,
             self.instructions.old_account_info.representative,
             Amount::zero().wrapping_sub(self.instructions.old_account_info.balance),
         );

@@ -13,7 +13,6 @@ namespace nano
 class ledger_cache
 {
 public:
-	ledger_cache ();
 	ledger_cache (rsnano::LedgerCacheHandle * handle_a);
 	ledger_cache (ledger_cache &&);
 	~ledger_cache ();

@@ -112,7 +112,7 @@ impl ChannelEnum {
     pub(crate) fn create_test_instance_with_channel_id(channel_id: usize) -> Self {
         use crate::{stats::Stats, utils::AsyncRuntime};
         use rsnano_messages::ProtocolInfo;
-        use std::{net::Ipv6Addr, sync::Arc};
+        use std::net::Ipv6Addr;
 
         let limiter = Arc::new(OutboundBandwidthLimiter::default());
         let async_rt = Arc::new(AsyncRuntime::new(tokio::runtime::Runtime::new().unwrap()));

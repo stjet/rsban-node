@@ -75,7 +75,7 @@ impl LedgerObserver for NullLedgerObserver {}
 
 pub struct Ledger<T: Environment + 'static = EnvironmentWrapper> {
     pub store: Arc<LmdbStore<T>>,
-    pub cache: Arc<LedgerCache>,
+    pub cache: Arc<LedgerCache<T>>,
     pub constants: LedgerConstants,
     pub observer: Arc<dyn LedgerObserver>,
     pruning: AtomicBool,
@@ -189,8 +189,8 @@ impl<T: Environment + 'static> Ledger<T> {
         generate_cache: &GenerateCacheFlags,
     ) -> anyhow::Result<Self> {
         let mut ledger = Self {
+            cache: Arc::new(LedgerCache::new(Arc::clone(&store.rep_weight))),
             store,
-            cache: Arc::new(LedgerCache::new()),
             constants,
             observer: Arc::new(NullLedgerObserver::new()),
             pruning: AtomicBool::new(false),
@@ -225,12 +225,12 @@ impl<T: Environment + 'static> Ledger<T> {
             self.store.account.for_each_par(&|_txn, mut i, n| {
                 let mut block_count = 0;
                 let mut account_count = 0;
-                let rep_weights = RepWeights::new();
+                let rep_weights = RepWeights::new(Arc::clone(&self.store.rep_weight));
                 while !i.eq(n.as_ref()) {
                     let info = i.current().unwrap().1;
                     block_count += info.block_count;
                     account_count += 1;
-                    rep_weights.representation_add(info.representative, info.balance);
+                    rep_weights.representation_put(info.representative, info.balance);
                     i.next();
                 }
                 self.cache
@@ -294,6 +294,7 @@ impl<T: Environment + 'static> Ledger<T> {
         self.store
             .frontier
             .put(txn, &genesis_hash, &genesis_account);
+        self.store.rep_weight.put(txn, genesis_account, Amount::MAX);
     }
 
     pub fn pruning_enabled(&self) -> bool {

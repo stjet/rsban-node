@@ -1,10 +1,5 @@
-#include <nano/lib/rep_weights.hpp>
+#include <nano/secure/rep_weights.hpp>
 #include <nano/store/component.hpp>
-
-nano::rep_weights::rep_weights () :
-	handle{ rsnano::rsn_rep_weights_create () }
-{
-}
 
 nano::rep_weights::rep_weights (rsnano::RepWeightsHandle * handle_a) :
 	handle{ handle_a } {};
@@ -30,20 +25,20 @@ nano::rep_weights & nano::rep_weights::operator= (nano::rep_weights && other_a)
 	return *this;
 }
 
-void nano::rep_weights::representation_add (nano::account const & source_rep_a, nano::uint128_t const & amount_a)
+void nano::rep_weights::representation_add (store::write_transaction const & txn_a, nano::account const & source_rep_a, nano::uint128_t const & amount_a)
 {
 	std::uint8_t amount_bytes[16] = { 0 };
 	boost::multiprecision::export_bits (amount_a, std::rbegin (amount_bytes), 8, false);
-	rsnano::rsn_rep_weights_representation_add (handle, source_rep_a.bytes.data (), &amount_bytes[0]);
+	rsnano::rsn_rep_weights_representation_add (handle, txn_a.get_rust_handle (), source_rep_a.bytes.data (), &amount_bytes[0]);
 }
 
-void nano::rep_weights::representation_add_dual (nano::account const & source_rep_1, nano::uint128_t const & amount_1, nano::account const & source_rep_2, nano::uint128_t const & amount_2)
+void nano::rep_weights::representation_add_dual (store::write_transaction const & txn_a, nano::account const & source_rep_1, nano::uint128_t const & amount_1, nano::account const & source_rep_2, nano::uint128_t const & amount_2)
 {
 	std::uint8_t amount_1_bytes[16] = { 0 };
 	std::uint8_t amount_2_bytes[16] = { 0 };
 	boost::multiprecision::export_bits (amount_1, std::rbegin (amount_1_bytes), 8, false);
 	boost::multiprecision::export_bits (amount_2, std::rbegin (amount_2_bytes), 8, false);
-	rsnano::rsn_rep_weights_representation_add_dual (handle, source_rep_1.bytes.data (), &amount_1_bytes[0], source_rep_2.bytes.data (), &amount_2_bytes[0]);
+	rsnano::rsn_rep_weights_representation_add_dual (handle, txn_a.get_rust_handle (), source_rep_1.bytes.data (), &amount_1_bytes[0], source_rep_2.bytes.data (), &amount_2_bytes[0]);
 }
 
 nano::uint128_t nano::rep_weights::representation_get (nano::account const & account_a) const

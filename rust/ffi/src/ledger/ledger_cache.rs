@@ -22,11 +22,6 @@ impl Deref for LedgerCacheHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_ledger_cache_create() -> *mut LedgerCacheHandle {
-    LedgerCacheHandle::new(Arc::new(LedgerCache::new()))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_cache_destroy(handle: *mut LedgerCacheHandle) {
     drop(Box::from_raw(handle))
 }

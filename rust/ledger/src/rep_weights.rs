@@ -1,17 +1,21 @@
+use rsnano_core::{Account, Amount};
+use rsnano_store_lmdb::{
+    Environment, EnvironmentWrapper, LmdbRepWeightStore, LmdbWriteTransaction,
+};
 use std::collections::HashMap;
 use std::mem::size_of;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 
-use rsnano_core::{Account, Amount};
-
-pub struct RepWeights {
+pub struct RepWeights<T: Environment + 'static = EnvironmentWrapper> {
     rep_amounts: Mutex<HashMap<Account, Amount>>,
+    store: Arc<LmdbRepWeightStore<T>>,
 }
 
-impl RepWeights {
-    pub fn new() -> Self {
+impl<T: Environment + 'static> RepWeights<T> {
+    pub fn new(store: Arc<LmdbRepWeightStore<T>>) -> Self {
         RepWeights {
             rep_amounts: Mutex::new(HashMap::new()),
+            store,
         }
     }
 
@@ -19,6 +23,7 @@ impl RepWeights {
         guard.get(account).cloned().unwrap_or_default()
     }
 
+    /// Only use this method when loading rep weights from the database table!
     fn put(
         &self,
         guard: &mut MutexGuard<HashMap<Account, Amount>>,
@@ -32,7 +37,7 @@ impl RepWeights {
         self.rep_amounts.lock().unwrap().clone()
     }
 
-    pub fn copy_from(&self, other: &RepWeights) {
+    pub fn copy_from(&self, other: &RepWeights<T>) {
         let mut guard_this = self.rep_amounts.lock().unwrap();
         let guard_other = other.rep_amounts.lock().unwrap();
         for (account, amount) in guard_other.iter() {
@@ -41,16 +46,22 @@ impl RepWeights {
         }
     }
 
-    pub fn representation_add(&self, source_rep: Account, amount: Amount) {
+    pub fn representation_add(
+        &self,
+        tx: &mut LmdbWriteTransaction<T>,
+        representative: Account,
+        amount: Amount,
+    ) {
+        let weight = self.store.get(tx, representative).unwrap_or_default();
+        let weight = weight.wrapping_add(amount);
+        self.store.put(tx, representative, weight);
         let mut guard = self.rep_amounts.lock().unwrap();
-        let source_previous = self.get(&guard, &source_rep);
-        let new_amount = source_previous.wrapping_add(amount);
-        self.put(&mut guard, source_rep, new_amount)
+        self.put(&mut guard, representative, weight);
     }
 
-    pub fn representation_put(&self, account: Account, representation: Amount) {
+    pub fn representation_put(&self, representative: Account, weight: Amount) {
         let mut guard = self.rep_amounts.lock().unwrap();
-        self.put(&mut guard, account, representation);
+        self.put(&mut guard, representative, weight);
     }
 
     pub fn representation_get(&self, account: &Account) -> Amount {
@@ -60,27 +71,24 @@ impl RepWeights {
 
     pub fn representation_add_dual(
         &self,
-        source_rep_1: Account,
+        tx: &mut LmdbWriteTransaction<T>,
+        rep_1: Account,
         amount_1: Amount,
-        source_rep_2: Account,
+        rep_2: Account,
         amount_2: Amount,
     ) {
-        if source_rep_1 != source_rep_2 {
+        if rep_1 != rep_2 {
+            let mut rep_1_weight = self.store.get(tx, rep_1).unwrap_or_default();
+            let mut rep_2_weight = self.store.get(tx, rep_2).unwrap_or_default();
+            rep_1_weight = rep_1_weight.wrapping_add(amount_1);
+            rep_2_weight = rep_2_weight.wrapping_add(amount_2);
+            self.store.put(tx, rep_1, rep_1_weight);
+            self.store.put(tx, rep_2, rep_2_weight);
             let mut guard = self.rep_amounts.lock().unwrap();
-            let source_previous_1 = self.get(&guard, &source_rep_1);
-            self.put(
-                &mut guard,
-                source_rep_1,
-                source_previous_1.wrapping_add(amount_1),
-            );
-            let source_previous_2 = self.get(&guard, &source_rep_2);
-            self.put(
-                &mut guard,
-                source_rep_2,
-                source_previous_2.wrapping_add(amount_2),
-            );
+            self.put(&mut guard, rep_1, rep_1_weight);
+            self.put(&mut guard, rep_2, rep_2_weight);
         } else {
-            self.representation_add(source_rep_1, amount_1.wrapping_add(amount_2));
+            self.representation_add(tx, rep_1, amount_1.wrapping_add(amount_2));
         }
     }
 
@@ -95,12 +103,15 @@ impl RepWeights {
 
 #[cfg(test)]
 mod tests {
+    use crate::LedgerContext;
+
     use super::*;
 
     #[test]
     fn representation_changes() {
+        let ctx = LedgerContext::empty();
         let account = Account::from(1);
-        let rep_weights = RepWeights::new();
+        let rep_weights = RepWeights::new(Arc::clone(&ctx.ledger.store.rep_weight));
         assert_eq!(rep_weights.representation_get(&account), Amount::zero());
 
         rep_weights.representation_put(account, Amount::from(1));

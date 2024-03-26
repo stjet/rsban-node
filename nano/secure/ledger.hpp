@@ -107,14 +107,12 @@ public:
 	nano::receivable_iterator receivable_upper_bound (store::transaction const & tx, nano::account const & account, nano::block_hash const & hash) const;
 	static nano::uint128_t const unit;
 	nano::store::component & store;
+	rsnano::LedgerHandle * handle;
 	nano::ledger_cache cache;
 	nano::ledger_constants & constants;
 
 private:
 	nano::stats & stats;
-
-public:
-	rsnano::LedgerHandle * handle;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (ledger & ledger, std::string const & name);

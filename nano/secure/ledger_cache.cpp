@@ -1,11 +1,6 @@
 #include <nano/lib/rsnano.hpp>
 #include <nano/secure/ledger_cache.hpp>
 
-nano::ledger_cache::ledger_cache () :
-	handle{ rsnano::rsn_ledger_cache_create () }, rep_weights_m{ rsnano::rsn_ledger_cache_weights (handle) }
-{
-}
-
 nano::ledger_cache::ledger_cache (rsnano::LedgerCacheHandle * handle_a) :
 	handle{ handle_a }, rep_weights_m{ rsnano::rsn_ledger_cache_weights (handle) }
 {

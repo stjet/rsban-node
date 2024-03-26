@@ -4,7 +4,6 @@
 #include <nano/lib/utility.hpp>
 
 #include <memory>
-#include <mutex>
 #include <unordered_map>
 
 namespace rsnano

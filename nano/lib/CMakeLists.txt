@@ -66,8 +66,6 @@ add_library(
   optional_ptr.hpp
   processing_queue.hpp
   relaxed_atomic.hpp
-  rep_weights.hpp
-  rep_weights.cpp
   rpc_handler_interface.hpp
   rpcconfig.hpp
   rpcconfig.cpp

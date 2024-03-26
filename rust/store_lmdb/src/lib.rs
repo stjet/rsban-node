@@ -460,8 +460,8 @@ where
     });
 }
 
-pub const STORE_VERSION_MINIMUM: i32 = 21;
-pub const STORE_VERSION_CURRENT: i32 = 22;
+pub const STORE_VERSION_MINIMUM: i32 = 23;
+pub const STORE_VERSION_CURRENT: i32 = 23;
 
 pub const BLOCK_TEST_DATABASE: DatabaseStub = DatabaseStub(1);
 pub const FRONTIER_TEST_DATABASE: DatabaseStub = DatabaseStub(2);

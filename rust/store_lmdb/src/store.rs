@@ -4,7 +4,7 @@ use crate::{
     LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
     LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
     LmdbRepWeightStore, LmdbVersionStore, LmdbWriteTransaction, NullTransactionTracker, Table,
-    TransactionTracker, STORE_VERSION_MINIMUM,
+    TransactionTracker, STORE_VERSION_CURRENT, STORE_VERSION_MINIMUM,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
@@ -265,25 +265,17 @@ fn do_upgrades<T: Environment + 'static>(env: Arc<LmdbEnv<T>>) -> anyhow::Result
         }
     };
 
-    if version < 21 {
+    if version < STORE_VERSION_MINIMUM {
         error!("The version of the ledger ({}) is lower than the minimum ({}) which is supported for upgrades. Either upgrade to a v23 node first or delete the ledger.", version, STORE_VERSION_MINIMUM);
         bail!("version too low");
     }
 
-    if version > 22 {
+    if version > STORE_VERSION_CURRENT {
         error!(
             "The version of the ledger ({}) is too high for this node",
             version
         );
         bail!("version too high");
-    }
-
-    if version == 21 {
-        unsafe {
-            let rw_txn = txn.rw_txn_mut();
-            let db = rw_txn.create_db(Some("unchecked"), DatabaseFlags::empty())?;
-            rw_txn.drop_db(db)?;
-        }
     }
 
     // most recent version

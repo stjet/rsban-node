@@ -32,6 +32,11 @@ void nano::scheduler::hinted::start ()
 {
 	debug_assert (!thread.joinable ());
 
+	if (!config.enabled)
+	{
+		return;
+	}
+
 	thread = std::thread{ [this] () {
 		nano::thread_role::set (nano::thread_role::name::scheduler_hinted);
 		run ();
@@ -262,6 +267,7 @@ nano::scheduler::hinted_config::hinted_config (nano::network_constants const & n
 rsnano::HintedSchedulerConfigDto nano::scheduler::hinted_config::into_dto () const
 {
 	rsnano::HintedSchedulerConfigDto dto;
+	dto.enabled = enabled;
 	dto.hinting_threshold_percent = hinting_threshold_percent;
 	dto.vacancy_threshold_percent = vacancy_threshold_percent;
 	dto.check_interval_ms = static_cast<uint32_t> (check_interval.count ());
@@ -271,6 +277,7 @@ rsnano::HintedSchedulerConfigDto nano::scheduler::hinted_config::into_dto () con
 
 void nano::scheduler::hinted_config::load_dto (rsnano::HintedSchedulerConfigDto const & dto_a)
 {
+	enabled = dto_a.enabled;
 	check_interval = std::chrono::milliseconds{ dto_a.check_interval_ms };
 	block_cooldown = std::chrono::milliseconds{ dto_a.block_cooldown_ms };
 	hinting_threshold_percent = dto_a.hinting_threshold_percent;
@@ -279,6 +286,7 @@ void nano::scheduler::hinted_config::load_dto (rsnano::HintedSchedulerConfigDto 
 
 nano::error nano::scheduler::hinted_config::serialize (nano::tomlconfig & toml) const
 {
+	toml.put ("enable", enabled, "Enable or disable hinted elections\ntype:bool");
 	toml.put ("hinting_threshold", hinting_threshold_percent, "Percentage of online weight needed to start a hinted election. \ntype:uint32,[0,100]");
 	toml.put ("check_interval", check_interval.count (), "Interval between scans of the vote cache for possible hinted elections. \ntype:milliseconds");
 	toml.put ("block_cooldown", block_cooldown.count (), "Cooldown period for blocks that failed to start an election. \ntype:milliseconds");
@@ -289,6 +297,7 @@ nano::error nano::scheduler::hinted_config::serialize (nano::tomlconfig & toml) 
 
 nano::error nano::scheduler::hinted_config::deserialize (nano::tomlconfig & toml)
 {
+	toml.get ("enabled", enabled);
 	toml.get ("hinting_threshold", hinting_threshold_percent);
 
 	auto check_interval_l = check_interval.count ();

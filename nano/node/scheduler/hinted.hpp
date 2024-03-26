@@ -40,6 +40,7 @@ public:
 	nano::error serialize (nano::tomlconfig & toml) const;
 
 public:
+	bool enabled;
 	std::chrono::milliseconds check_interval;
 	std::chrono::milliseconds block_cooldown;
 	unsigned hinting_threshold_percent;

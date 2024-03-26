@@ -39,6 +39,7 @@ impl OptimisticSchedulerConfig {
 
 #[derive(Clone)]
 pub struct HintedSchedulerConfig {
+    pub enabled: bool,
     pub check_interval: Duration,
     pub block_cooldown: Duration,
     pub hinting_theshold_percent: u32,
@@ -58,6 +59,7 @@ impl HintedSchedulerConfig {
 impl Default for HintedSchedulerConfig {
     fn default() -> Self {
         Self {
+            enabled: true,
             check_interval: Duration::from_millis(1000),
             block_cooldown: Duration::from_millis(5000),
             hinting_theshold_percent: 10,

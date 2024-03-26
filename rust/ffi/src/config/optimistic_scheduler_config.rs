@@ -38,6 +38,7 @@ pub unsafe extern "C" fn rsn_optimistic_scheduler_config_create(
 
 #[repr(C)]
 pub struct HintedSchedulerConfigDto {
+    pub enabled: bool,
     pub check_interval_ms: u32,
     pub block_cooldown_ms: u32,
     pub hinting_threshold_percent: u32,
@@ -60,6 +61,7 @@ pub unsafe extern "C" fn rsn_hinted_scheduler_config_create(
 impl From<&HintedSchedulerConfig> for HintedSchedulerConfigDto {
     fn from(value: &HintedSchedulerConfig) -> Self {
         Self {
+            enabled: value.enabled,
             check_interval_ms: value.check_interval.as_millis() as u32,
             block_cooldown_ms: value.block_cooldown.as_millis() as u32,
             hinting_threshold_percent: value.hinting_theshold_percent,
@@ -71,6 +73,7 @@ impl From<&HintedSchedulerConfig> for HintedSchedulerConfigDto {
 impl From<&HintedSchedulerConfigDto> for HintedSchedulerConfig {
     fn from(value: &HintedSchedulerConfigDto) -> Self {
         Self {
+            enabled: value.enabled,
             check_interval: Duration::from_millis(value.check_interval_ms as u64),
             block_cooldown: Duration::from_millis(value.block_cooldown_ms as u64),
             hinting_theshold_percent: value.hinting_threshold_percent,

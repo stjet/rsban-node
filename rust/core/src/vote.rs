@@ -88,11 +88,15 @@ impl Vote {
     /// Returns the timestamp of the vote (with the duration bits masked, set to zero)
     /// If it is a final vote, all the bits including duration bits are returned as they are, all FF
     pub fn timestamp(&self) -> u64 {
-        if self.timestamp == Vote::FINAL_TIMESTAMP {
+        if self.is_final() {
             self.timestamp //final vote
         } else {
             self.timestamp & Self::TIMESTAMP_MASK
         }
+    }
+
+    pub fn is_final(&self) -> bool {
+        self.timestamp == Vote::FINAL_TIMESTAMP
     }
 
     pub fn duration_bits(&self) -> u8 {

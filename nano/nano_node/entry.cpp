@@ -1,7 +1,7 @@
 #include <nano/crypto_lib/random_pool.hpp>
-#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/cli.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/thread_runner.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/nano_node/daemon.hpp>

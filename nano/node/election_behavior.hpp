@@ -20,4 +20,3 @@ enum class election_behavior
 	optimistic,
 };
 }
-

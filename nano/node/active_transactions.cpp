@@ -130,7 +130,7 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 	if (election)
 	{
 		status = election->get_status ();
-		votes = votes_with_weight(*election);
+		votes = votes_with_weight (*election);
 	}
 	if (confirmation_height_processor.is_processing_added_block (block->hash ()))
 	{
@@ -997,32 +997,36 @@ void nano::active_transactions::broadcast_block (nano::confirmation_solicitor & 
 }
 
 // Validate a vote and apply it to the current election if one exists
-nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> const & vote_a)
+std::unordered_map<nano::block_hash, nano::vote_code> nano::active_transactions::vote (std::shared_ptr<nano::vote> const & vote)
 {
-	nano::vote_code result{ nano::vote_code::indeterminate };
-	// If all hashes were recently confirmed then it is a replay
-	unsigned recently_confirmed_counter (0);
-
-	std::vector<std::pair<std::shared_ptr<nano::election>, nano::block_hash>> process;
+	std::unordered_map<nano::block_hash, nano::vote_code> results;
+	std::unordered_map<nano::block_hash, std::shared_ptr<nano::election>> process;
 	std::vector<nano::block_hash> inactive; // Hashes that should be added to inactive vote cache
 
 	{
 		auto guard{ lock () };
-		for (auto const & hash : vote_a->hashes ())
+		for (auto const & hash : vote->hashes ())
 		{
+			// Ignore duplicate hashes (should not happen with a well-behaved voting node)
+			if (results.find (hash) != results.end ())
+			{
+				continue;
+			}
+
 			auto existing_handle = rsnano::rsn_active_transactions_lock_blocks_find (guard.handle, hash.bytes.data ());
 			if (existing_handle != nullptr)
 			{
 				auto existing = std::make_shared<nano::election> (existing_handle);
-				process.emplace_back (existing, hash);
+				process[hash] = existing;
 			}
 			else if (!recently_confirmed.exists (hash))
 			{
 				inactive.emplace_back (hash);
+				results[hash] = nano::vote_code::indeterminate;
 			}
 			else
 			{
-				++recently_confirmed_counter;
+				results[hash] = nano::vote_code::replay;
 			}
 		}
 	}
@@ -1030,7 +1034,7 @@ nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> con
 	// Process inactive votes outside of the critical section
 	for (auto & hash : inactive)
 	{
-		add_vote_cache (hash, vote_a);
+		add_vote_cache (hash, vote);
 	}
 
 	if (!process.empty ())
@@ -1038,29 +1042,26 @@ nano::vote_code nano::active_transactions::vote (std::shared_ptr<nano::vote> con
 		bool replay = false;
 		bool processed = false;
 
-		for (auto const & [election, block_hash] : process)
+		for (auto const & [block_hash, election] : process)
 		{
-			auto const vote_result = vote (*election, vote_a->account (), vote_a->timestamp (), block_hash);
-			processed |= (vote_result == nano::vote_result::processed);
-			replay |= (vote_result == nano::vote_result::replay);
+			auto const vote_result = this->vote (*election, vote->account (), vote->timestamp (), block_hash);
+			results[block_hash] = vote_result;
+
+			processed |= (vote_result == nano::vote_code::vote);
 		}
 
 		// Republish vote if it is new and the node does not host a principal representative (or close to)
 		if (processed)
 		{
-			if (node.wallets.should_republish_vote (vote_a->account ()))
+			if (node.wallets.should_republish_vote (vote->account ()))
 			{
-				nano::confirm_ack ack{ node.network_params.network, vote_a };
+				nano::confirm_ack ack{ node.network_params.network, vote };
 				node.network->tcp_channels->flood_message (ack, 0.5f);
 			}
 		}
-		result = replay ? nano::vote_code::replay : nano::vote_code::vote;
 	}
-	else if (recently_confirmed_counter == vote_a->hashes ().size ())
-	{
-		result = nano::vote_code::replay;
-	}
-	return result;
+
+	return results;
 }
 
 bool nano::active_transactions::active (nano::qualified_root const & root_a) const
@@ -1193,12 +1194,12 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 	return result;
 }
 
-nano::vote_result nano::active_transactions::vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a)
+nano::vote_code nano::active_transactions::vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a)
 {
 	auto weight = node.ledger.weight (rep);
 	if (!node.network_params.network.is_dev_network () && weight <= node.minimum_principal_weight ())
 	{
-		return vote_result::ignored;
+		return vote_code::indeterminate;
 	}
 
 	nano::election_lock lock{ election };
@@ -1208,11 +1209,11 @@ nano::vote_result nano::active_transactions::vote (nano::election & election, na
 	{
 		if (last_vote_l->get_timestamp () > timestamp_a)
 		{
-			return vote_result::replay;
+			return vote_code::replay;
 		}
 		if (last_vote_l->get_timestamp () == timestamp_a && !(last_vote_l->get_hash () < block_hash_a))
 		{
-			return vote_result::replay;
+			return vote_code::replay;
 		}
 
 		auto max_vote = timestamp_a == std::numeric_limits<uint64_t>::max () && last_vote_l->get_timestamp () < timestamp_a;
@@ -1227,7 +1228,7 @@ nano::vote_result nano::active_transactions::vote (nano::election & election, na
 
 		if (!max_vote && !past_cooldown)
 		{
-			return vote_result::ignored;
+			return vote_code::ignored;
 		}
 	}
 	lock.insert_or_assign_vote (rep, { timestamp_a, block_hash_a });
@@ -1249,7 +1250,7 @@ nano::vote_result nano::active_transactions::vote (nano::election & election, na
 	{
 		confirm_if_quorum (lock, election);
 	}
-	return vote_result::processed;
+	return vote_code::vote;
 }
 
 std::size_t nano::active_transactions::fill_from_cache (nano::election & election, nano::vote_cache::entry const & entry)
@@ -1258,7 +1259,7 @@ std::size_t nano::active_transactions::fill_from_cache (nano::election & electio
 	for (const auto & voter : entry.voters_m)
 	{
 		auto result = vote (election, voter.representative, voter.timestamp, entry.hash_m, nano::vote_source::cache);
-		if (result == nano::vote_result::processed)
+		if (result == nano::vote_code::vote)
 		{
 			inserted++;
 		}

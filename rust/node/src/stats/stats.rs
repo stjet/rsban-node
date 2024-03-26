@@ -183,6 +183,7 @@ pub enum DetailType {
     None,
     Success,
     Unknown,
+    Cache,
 
     // processing queue
     Queue,
@@ -266,12 +267,15 @@ pub enum DetailType {
     FrontierConfirmationFailed,
     ErrorSocketClose,
 
-    // vote specific
-    VoteValid,
-    VoteReplay,
-    VoteIndeterminate,
-    VoteInvalid,
+    // vote result
+    Vote,
+    Valid,
+    Replay,
+    Indeterminate,
+
+    // vote processor
     VoteOverflow,
+    VoteIgnored,
 
     // election specific
     VoteNew,

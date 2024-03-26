@@ -2,6 +2,7 @@
 #include "nano/lib/logging.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
+
 #include <nano/lib/threading.hpp>
 #include <nano/lib/timer.hpp>
 #include <nano/node/active_transactions.hpp>

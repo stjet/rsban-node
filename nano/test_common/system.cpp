@@ -68,7 +68,6 @@ nano::test::system::~system ()
 #endif
 }
 
-
 nano::node & nano::test::system::node (std::size_t index) const
 {
 	debug_assert (index < nodes.size ());

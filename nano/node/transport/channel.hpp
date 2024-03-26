@@ -147,4 +147,3 @@ private:
 	rsnano::ChannelWeakHandle * handle;
 };
 }
-

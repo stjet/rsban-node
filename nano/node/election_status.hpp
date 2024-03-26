@@ -7,7 +7,7 @@
 
 namespace rsnano
 {
-	class ElectionStatusHandle;
+class ElectionStatusHandle;
 }
 namespace nano
 {

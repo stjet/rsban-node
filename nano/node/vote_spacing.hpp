@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nano/lib/numbers.hpp>
+
 #include <chrono>
 
 namespace rsnano

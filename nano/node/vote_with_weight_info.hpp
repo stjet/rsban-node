@@ -16,4 +16,3 @@ public:
 	nano::uint128_t weight;
 };
 }
-

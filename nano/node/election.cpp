@@ -1,6 +1,7 @@
 #include "nano/lib/blocks.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
+
 #include <nano/node/active_transactions.hpp>
 #include <nano/node/confirmation_solicitor.hpp>
 #include <nano/node/election.hpp>

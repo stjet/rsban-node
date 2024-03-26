@@ -695,6 +695,20 @@ rsnano::UncheckedKeyDto nano::unchecked_key::to_dto () const
 	return dto;
 }
 
+nano::stat::detail nano::to_stat_detail (nano::vote_code code)
+{
+	auto value = magic_enum::enum_cast<nano::stat::detail> (magic_enum::enum_name (code));
+	debug_assert (value);
+	return value.value_or (nano::stat::detail{});
+}
+
+nano::stat::detail nano::to_stat_detail (nano::vote_source source)
+{
+	auto value = magic_enum::enum_cast<nano::stat::detail> (magic_enum::enum_name (source));
+	debug_assert (value);
+	return value.value_or (nano::stat::detail{});
+}
+
 nano::stat::detail nano::to_stat_detail (nano::block_status process_result)
 {
 	return static_cast<nano::stat::detail> (rsnano::rsn_process_result_into_detail (static_cast<uint8_t> (process_result)));

@@ -25,4 +25,3 @@ std::size_t nano::vote_spacing::size () const
 {
 	return rsnano::rsn_vote_spacing_len (handle);
 }
-

@@ -6,8 +6,8 @@
 #include <nano/node/election_insertion_result.hpp>
 #include <nano/node/election_status.hpp>
 #include <nano/node/vote_with_weight_info.hpp>
-#include <nano/secure/ledger.hpp>
 #include <nano/secure/common.hpp>
+#include <nano/secure/ledger.hpp>
 
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/member.hpp>
@@ -21,6 +21,7 @@
 #include <memory>
 #include <thread>
 #include <unordered_map>
+
 #include <immintrin.h>
 
 namespace mi = boost::multi_index;
@@ -157,7 +158,7 @@ public:
 	 */
 	nano::election_insertion_result insert (std::shared_ptr<nano::block> const & block, nano::election_behavior behavior = nano::election_behavior::normal);
 	// Distinguishes replay votes, cannot be determined if the block is not in any election
-	nano::vote_code vote (std::shared_ptr<nano::vote> const &);
+	std::unordered_map<nano::block_hash, nano::vote_code> vote (std::shared_ptr<nano::vote> const &);
 	// Is the root of this block in the roots container
 	bool active (nano::block const &) const;
 	bool active (nano::qualified_root const &) const;
@@ -222,7 +223,7 @@ public:
 	 * Process vote. Internally uses cooldown to throttle non-final votes
 	 * If the election reaches consensus, it will be confirmed
 	 */
-	nano::vote_result vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a = nano::vote_source::live);
+	nano::vote_code vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a = nano::vote_source::live);
 	/**
 	 * Inserts votes stored in the cache entry into this election
 	 */

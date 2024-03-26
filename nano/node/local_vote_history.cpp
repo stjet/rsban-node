@@ -1,6 +1,6 @@
 #include <nano/lib/rsnano.hpp>
-#include <nano/secure/common.hpp>
 #include <nano/node/local_vote_history.hpp>
+#include <nano/secure/common.hpp>
 
 nano::local_vote_history::local_vote_history (nano::voting_constants const & constants) :
 	handle{ rsnano::rsn_local_vote_history_create (constants.max_cache) }

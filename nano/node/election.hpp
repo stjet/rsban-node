@@ -2,8 +2,9 @@
 #include <nano/lib/rsnano.hpp>
 #include <nano/node/election_behavior.hpp>
 #include <nano/node/election_status.hpp>
-#include <nano/node/vote_with_weight_info.hpp>
 #include <nano/node/vote_cache.hpp>
+#include <nano/node/vote_with_weight_info.hpp>
+#include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>
 
 #include <chrono>
@@ -137,19 +138,6 @@ public:
 
 	nano::election & election;
 	rsnano::ElectionLockHandle * handle;
-};
-
-enum class vote_source
-{
-	live,
-	cache,
-};
-
-enum class vote_result
-{
-	ignored,
-	processed,
-	replay,
 };
 
 class election final : public std::enable_shared_from_this<nano::election>

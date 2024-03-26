@@ -78,8 +78,9 @@ pub unsafe extern "C" fn rsn_election_status_get_election_end(
     (*handle)
         .0
         .election_end
-        .map(|x| x.duration_since(UNIX_EPOCH).unwrap().as_millis() as i64)
-        .unwrap_or_default()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64
 }
 
 #[no_mangle]
@@ -158,11 +159,9 @@ pub unsafe extern "C" fn rsn_election_status_set_election_end(
     handle: *mut ElectionStatusHandle,
     election_end: i64,
 ) {
-    (*handle).0.election_end = if election_end == 0 {
-        None
-    } else {
-        UNIX_EPOCH.checked_add(Duration::from_millis(election_end as u64))
-    };
+    (*handle).0.election_end = UNIX_EPOCH
+        .checked_add(Duration::from_millis(election_end as u64))
+        .unwrap();
 }
 
 #[no_mangle]

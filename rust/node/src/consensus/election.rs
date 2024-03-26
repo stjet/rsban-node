@@ -1,4 +1,4 @@
-use super::{ElectionStatus, ElectionStatusType};
+use super::ElectionStatus;
 use crate::{stats::DetailType, utils::HardenedConstants};
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, QualifiedRoot, Root};
 use std::{
@@ -41,7 +41,7 @@ impl Election {
         let data = ElectionData {
             status: ElectionStatus {
                 winner: Some(Arc::clone(&block)),
-                election_end: Some(SystemTime::now()),
+                election_end: SystemTime::now(),
                 block_count: 1,
                 election_status_type: super::ElectionStatusType::Ongoing,
                 ..Default::default()
@@ -109,18 +109,13 @@ pub struct ElectionData {
 }
 
 impl ElectionData {
-    pub fn update_status_to_confirmed(
-        &mut self,
-        status_type: ElectionStatusType,
-        election: &Election,
-    ) {
-        self.status.election_end = Some(SystemTime::now());
+    pub fn update_status_to_confirmed(&mut self, election: &Election) {
+        self.status.election_end = SystemTime::now();
         self.status.election_duration = election.election_start.elapsed();
         self.status.confirmation_request_count =
             election.confirmation_request_count.load(Ordering::SeqCst);
         self.status.block_count = self.last_blocks.len() as u32;
         self.status.voter_count = self.last_votes.len() as u32;
-        self.status.election_status_type = status_type;
     }
 
     pub fn state_change(

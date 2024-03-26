@@ -43,6 +43,7 @@ public:
 	void notify ();
 	std::size_t size () const;
 	bool empty () const;
+	void activate_successors (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block);
 
 	std::unique_ptr<container_info_component> collect_container_info (std::string const & name);
 
@@ -55,7 +56,6 @@ private:
 	bool empty_locked () const;
 	bool predicate () const;
 	void try_schedule_successors (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction, nano::election_status_type status);
-	void activate_successors (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block);
 
 	std::unique_ptr<nano::scheduler::buckets> buckets;
 

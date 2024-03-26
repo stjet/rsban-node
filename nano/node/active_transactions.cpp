@@ -117,67 +117,43 @@ void nano::active_transactions::stop ()
 	clear ();
 }
 
-void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::block> const & block_a)
+void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::block> const & block)
 {
-	auto status_type = election_status (block_a);
-
-	if (!status_type)
-		return;
-
-	auto transaction = node.store.tx_begin_read ();
-	switch (*status_type)
+	if (auto election_l = election (block->qualified_root ()))
 	{
-		case nano::election_status_type::inactive_confirmation_height:
-			process_inactive_confirmation (*transaction, block_a);
-			break;
-
-		default:
-			process_active_confirmation (*transaction, block_a, *status_type);
-			break;
+		try_confirm (*election_l, block->hash ());
 	}
-
-	handle_final_votes_confirmation (block_a, *transaction, *status_type);
-}
-
-boost::optional<nano::election_status_type> nano::active_transactions::election_status (std::shared_ptr<nano::block> const & block)
-{
-	boost::optional<nano::election_status_type> status_type;
-
-	if (!confirmation_height_processor.is_processing_added_block (block->hash ()))
+	auto election = remove_election_winner_details (block->hash ());
+	nano::election_status status;
+	std::vector<nano::vote_with_weight_info> votes;
+	status.set_winner (block);
+	if (election)
 	{
-		status_type = confirm_block (block);
+		status = election->get_status ();
+		votes = votes_with_weight(*election);
+	}
+	if (confirmation_height_processor.is_processing_added_block (block->hash ()))
+	{
+		status.set_election_status_type (nano::election_status_type::active_confirmed_quorum);
+	}
+	else if (election)
+	{
+		status.set_election_status_type (nano::election_status_type::active_confirmation_height);
 	}
 	else
 	{
-		status_type = nano::election_status_type::active_confirmed_quorum;
+		status.set_election_status_type (nano::election_status_type::inactive_confirmation_height);
 	}
+	recently_cemented.put (status);
+	auto transaction = node.store.tx_begin_read ();
+	notify_observers (*transaction, status, votes);
+	bool cemented_bootstrap_count_reached = node.ledger.cache.cemented_count () >= node.ledger.get_bootstrap_weight_max_blocks ();
+	bool was_active = status.get_election_status_type () == nano::election_status_type::active_confirmed_quorum || status.get_election_status_type () == nano::election_status_type::active_confirmation_height;
 
-	return status_type;
-}
-
-void nano::active_transactions::process_inactive_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block)
-{
-	nano::election_status status{ block };
-	status.set_election_end (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()));
-	status.set_block_count (1);
-	status.set_election_status_type (nano::election_status_type::inactive_confirmation_height);
-	notify_observers (transaction, status, {});
-}
-
-void nano::active_transactions::process_active_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block, nano::election_status_type status_type)
-{
-	auto hash (block->hash ());
-	nano::unique_lock<nano::mutex> election_winners_lk{ election_winner_details_mutex };
-	auto existing = election_winner_details.find (hash);
-	if (existing != election_winner_details.end ())
+	// Next-block activations are only done for blocks with previously active elections
+	if (cemented_bootstrap_count_reached && was_active)
 	{
-		auto election = existing->second;
-		election_winner_details.erase (hash);
-		election_winners_lk.unlock ();
-		if (confirmed (*election) && election->winner ()->hash () == hash)
-		{
-			handle_confirmation (transaction, block, election, status_type);
-		}
+		node.scheduler.priority.activate_successors (*transaction, block);
 	}
 }
 
@@ -388,17 +364,6 @@ void nano::active_transactions::broadcast_vote (nano::election & election, nano:
 	}
 }
 
-void nano::active_transactions::handle_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block, std::shared_ptr<nano::election> election, nano::election_status_type status_type)
-{
-	nano::block_hash hash = block->hash ();
-	recently_cemented.put (election->get_status ());
-
-	election->set_status_type (status_type);
-	auto status = election->get_status ();
-	auto votes = votes_with_weight (*election);
-	notify_observers (transaction, status, votes);
-}
-
 void nano::active_transactions::notify_observers (nano::store::read_transaction const & transaction, nano::election_status const & status, std::vector<nano::vote_with_weight_info> const & votes)
 {
 	auto block = status.get_winner ();
@@ -418,25 +383,23 @@ void nano::active_transactions::notify_observers (nano::store::read_transaction 
 	}
 }
 
-void nano::active_transactions::handle_final_votes_confirmation (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction, nano::election_status_type status)
-{
-	auto account = block->account ();
-	if (block_confirmed_callback != nullptr)
-	{
-		block_confirmed_callback (block, transaction, status);
-	}
-}
-
 void nano::active_transactions::add_election_winner_details (nano::block_hash const & hash_a, std::shared_ptr<nano::election> const & election_a)
 {
 	nano::lock_guard<nano::mutex> guard{ election_winner_details_mutex };
 	election_winner_details.emplace (hash_a, election_a);
 }
 
-void nano::active_transactions::remove_election_winner_details (nano::block_hash const & hash_a)
+std::shared_ptr<nano::election> nano::active_transactions::remove_election_winner_details (nano::block_hash const & hash_a)
 {
 	nano::lock_guard<nano::mutex> guard{ election_winner_details_mutex };
-	election_winner_details.erase (hash_a);
+	std::shared_ptr<nano::election> result;
+	auto existing = election_winner_details.find (hash_a);
+	if (existing != election_winner_details.end ())
+	{
+		result = existing->second;
+		election_winner_details.erase (existing);
+	}
+	return result;
 }
 
 nano::active_transactions_lock nano::active_transactions::lock () const
@@ -476,7 +439,7 @@ void nano::active_transactions::process_confirmed (nano::election_status const &
 	}
 }
 
-void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano::election_status_type type_a, nano::election & election)
+void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano::election & election)
 {
 	// This must be kept above the setting of election state, as dependent confirmed elections require up to date changes to election_winner_details
 	nano::unique_lock<nano::mutex> election_winners_lk{ election_winner_details_mutex };
@@ -489,7 +452,7 @@ void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano
 		election_winner_details.emplace (status_l.get_winner ()->hash (), election.shared_from_this ());
 		election_winners_lk.unlock ();
 
-		rsnano::rsn_election_lock_update_status_to_confirmed (lock_a.handle, election.handle, static_cast<uint8_t> (type_a));
+		rsnano::rsn_election_lock_update_status_to_confirmed (lock_a.handle, election.handle);
 		status_l = lock_a.status ();
 
 		node.active.recently_confirmed.put (election.qualified_root (), status_l.get_winner ()->hash ());
@@ -612,16 +575,16 @@ void nano::active_transactions::confirm_if_quorum (nano::election_lock & lock_a,
 		}
 		if (lock_a.final_weight ().number () >= node.online_reps.delta ())
 		{
-			confirm_once (lock_a, nano::election_status_type::active_confirmed_quorum, election);
+			confirm_once (lock_a, election);
 		}
 	}
 }
 
-void nano::active_transactions::force_confirm (nano::election & election, nano::election_status_type type_a)
+void nano::active_transactions::force_confirm (nano::election & election)
 {
 	release_assert (node.network_params.network.is_dev_network ());
 	nano::election_lock lock{ election };
-	confirm_once (lock, type_a, election);
+	confirm_once (lock, election);
 }
 
 std::chrono::seconds nano::active_transactions::cooldown_time (nano::uint128_t weight) const
@@ -1303,56 +1266,17 @@ std::size_t nano::active_transactions::fill_from_cache (nano::election & electio
 	return inserted;
 }
 
-// Returns the type of election status requiring callbacks calling later
-boost::optional<nano::election_status_type> nano::active_transactions::confirm_block (std::shared_ptr<nano::block> const & block_a)
+void nano::active_transactions::try_confirm (nano::election & election, nano::block_hash const & hash)
 {
-	auto const hash = block_a->hash ();
-	std::shared_ptr<nano::election> election = nullptr;
-	{
-		auto guard{ lock () };
-		auto existing_handle = rsnano::rsn_active_transactions_lock_blocks_find (guard.handle, hash.bytes.data ());
-		if (existing_handle != nullptr)
-		{
-			election = std::make_shared<nano::election> (existing_handle);
-		}
-	}
-
-	boost::optional<nano::election_status_type> status_type;
-	if (election)
-	{
-		status_type = try_confirm (*election, hash);
-	}
-	else
-	{
-		status_type = nano::election_status_type::inactive_confirmation_height;
-	}
-
-	return status_type;
-}
-
-boost::optional<nano::election_status_type> nano::active_transactions::try_confirm (nano::election & election, nano::block_hash const & hash)
-{
-	boost::optional<nano::election_status_type> status_type;
 	auto guard{ election.lock () };
 	auto winner = guard.status ().get_winner ();
 	if (winner && winner->hash () == hash)
 	{
-		// Determine if the block was confirmed explicitly via election confirmation or implicitly via confirmation height
 		if (!confirmed_locked (guard))
 		{
-			confirm_once (guard, nano::election_status_type::active_confirmation_height, election);
-			status_type = nano::election_status_type::active_confirmation_height;
-		}
-		else
-		{
-			status_type = nano::election_status_type::active_confirmed_quorum;
+			confirm_once (guard, election);
 		}
 	}
-	else
-	{
-		status_type = boost::optional<nano::election_status_type>{};
-	}
-	return status_type;
 }
 
 void nano::active_transactions::add_vote_cache (nano::block_hash const & hash, std::shared_ptr<nano::vote> const vote)

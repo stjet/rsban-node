@@ -1174,8 +1174,9 @@ TEST (confirmation_height, pending_observer_callbacks)
 
 	node->confirmation_height_processor.add (send1);
 
-	// Confirm the callback is not called under this circumstance because there is no election information
-	ASSERT_TIMELY (10s, node->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out) == 1 && node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out) == 1);
+	// Callback is performed for all blocks that are confirmed
+	ASSERT_TIMELY_EQ (5s, 2, node->stats->count (nano::stat::type::http_callback, nano::stat::detail::http_callback, nano::stat::dir::out))
+	ASSERT_TIMELY_EQ (5s, 2, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out));
 
 	ASSERT_EQ (2, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
 	ASSERT_EQ (3, node->ledger.cache.cemented_count ());
@@ -1251,7 +1252,7 @@ TEST (confirmation_height, callback_confirmed_history)
 	ASSERT_TIMELY (10s, node->active.size () == 0);
 	ASSERT_TIMELY (10s, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_quorum, nano::stat::dir::out) == 1);
 
-	ASSERT_EQ (1, node->active.recently_cemented.list ().size ());
+	ASSERT_EQ (2, node->active.recently_cemented.list ().size ());
 	ASSERT_TRUE (node->active.empty ());
 
 	// Confirm the callback is not called under this circumstance

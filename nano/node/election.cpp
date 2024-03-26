@@ -309,15 +309,6 @@ void nano::election::inc_confirmation_request_count ()
 	rsnano::rsn_election_confirmation_request_count_inc (handle);
 }
 
-void nano::election::set_status_type (nano::election_status_type status_type)
-{
-	nano::election_lock election_lk{ *this };
-	auto st{ election_lk.status () };
-	st.set_election_status_type (status_type);
-	st.set_confirmation_request_count (get_confirmation_request_count ());
-	election_lk.set_status (st);
-}
-
 std::shared_ptr<nano::block> nano::election::find (nano::block_hash const & hash_a) const
 {
 	nano::election_lock guard{ *this };

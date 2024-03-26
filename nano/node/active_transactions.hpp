@@ -161,8 +161,7 @@ public:
 	bool empty () const;
 	std::size_t size () const;
 	bool publish (std::shared_ptr<nano::block> const &);
-	boost::optional<nano::election_status_type> confirm_block (std::shared_ptr<nano::block> const &);
-	boost::optional<nano::election_status_type> try_confirm (nano::election & election, nano::block_hash const & hash);
+	void try_confirm (nano::election & election, nano::block_hash const & hash);
 	void block_cemented_callback (std::shared_ptr<nano::block> const &);
 	void block_already_cemented_callback (nano::block_hash const &);
 
@@ -179,17 +178,18 @@ public:
 
 	std::size_t election_winner_details_size ();
 	void add_election_winner_details (nano::block_hash const &, std::shared_ptr<nano::election> const &);
-	void remove_election_winner_details (nano::block_hash const &);
+	std::shared_ptr<nano::election> remove_election_winner_details (nano::block_hash const &);
+
 	nano::active_transactions_lock lock () const;
 	void process_confirmed (nano::election_status const & status_a, uint64_t iteration_a = 0);
 	// lock_a does not own the mutex on return
-	void confirm_once (nano::election_lock & lock_a, nano::election_status_type type_a, nano::election & election);
+	void confirm_once (nano::election_lock & lock_a, nano::election & election);
 	nano::tally_t tally_impl (nano::election_lock & lock) const;
 	void remove_votes (nano::election & election, nano::election_lock & lock, nano::block_hash const & hash_a);
 	bool have_quorum (nano::tally_t const & tally_a) const;
 	// Confirm this block if quorum is met
 	void confirm_if_quorum (nano::election_lock & lock_a, nano::election & election);
-	void force_confirm (nano::election & election, nano::election_status_type type_a = nano::election_status_type::active_confirmed_quorum);
+	void force_confirm (nano::election & election);
 	/**
 	 * Calculates minimum time delay between subsequent votes when processing non-final votes
 	 */
@@ -233,11 +233,6 @@ private:
 	 * TODO: Should be moved to `vote_cache` class
 	 */
 	void add_vote_cache (nano::block_hash const & hash, std::shared_ptr<nano::vote> vote);
-	boost::optional<nano::election_status_type> election_status (std::shared_ptr<nano::block> const & block);
-	void process_inactive_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block);
-	void process_active_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block, nano::election_status_type status);
-	void handle_final_votes_confirmation (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction, nano::election_status_type status);
-	void handle_confirmation (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block, std::shared_ptr<nano::election> election, nano::election_status_type status);
 	void notify_observers (nano::store::read_transaction const & transaction, nano::election_status const & status, std::vector<nano::vote_with_weight_info> const & votes);
 	/**
 	 * Broadcast vote for current election winner. Generates final vote if reached quorum or already confirmed

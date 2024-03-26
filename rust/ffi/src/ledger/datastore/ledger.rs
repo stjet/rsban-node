@@ -5,7 +5,7 @@ use crate::{
     StatHandle, StringDto,
 };
 use num_traits::FromPrimitive;
-use rsnano_core::{Account, Amount, BlockEnum, BlockHash, Epoch, Link, QualifiedRoot};
+use rsnano_core::{Account, Amount, BlockEnum, BlockHash, Epoch, Link};
 use rsnano_ledger::{BlockStatus, Ledger, ReceivableIterator};
 use rsnano_node::stats::LedgerStats;
 use rsnano_store_lmdb::EnvironmentWrapper;

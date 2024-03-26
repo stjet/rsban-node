@@ -1,9 +1,7 @@
 use num_traits::FromPrimitive;
 use rsnano_core::{utils::system_time_as_nanoseconds, Account, Amount, BlockEnum, BlockHash};
 use rsnano_node::{
-    consensus::{
-        Election, ElectionBehavior, ElectionData, ElectionState, ElectionStatusType, VoteInfo,
-    },
+    consensus::{Election, ElectionBehavior, ElectionData, ElectionState, VoteInfo},
     stats::DetailType,
 };
 use std::{
@@ -250,14 +248,12 @@ pub extern "C" fn rsn_election_lock_state_start_elapsed_ms(handle: &ElectionLock
 pub extern "C" fn rsn_election_lock_update_status_to_confirmed(
     lock_handle: &mut ElectionLockHandle,
     election_handle: &ElectionHandle,
-    status_type: u8,
 ) {
-    let status_type = ElectionStatusType::from_u8(status_type).unwrap();
     lock_handle
         .0
         .as_mut()
         .unwrap()
-        .update_status_to_confirmed(status_type, &election_handle.0);
+        .update_status_to_confirmed(&election_handle.0);
 }
 
 #[no_mangle]

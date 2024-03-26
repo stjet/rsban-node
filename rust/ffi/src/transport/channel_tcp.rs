@@ -135,11 +135,6 @@ pub unsafe extern "C" fn rsn_channel_tcp_network_set_version(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_eq(a: *mut ChannelHandle, b: *mut ChannelHandle) -> bool {
-    as_tcp_channel(a).eq(as_tcp_channel(b))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_max(handle: *mut ChannelHandle, traffic_type: u8) -> bool {
     as_tcp_channel(handle).max(FromPrimitive::from_u8(traffic_type).unwrap())
 }

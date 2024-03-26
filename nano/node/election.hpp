@@ -203,7 +203,6 @@ public: // Interface
 	~election ();
 
 	std::shared_ptr<nano::block> find (nano::block_hash const &) const;
-	void set_status_type (nano::election_status_type status_type);
 
 	nano::vote_info get_last_vote (nano::account const & account);
 	void set_last_vote (nano::account const & account, nano::vote_info vote_info);

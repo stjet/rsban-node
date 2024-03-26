@@ -3,7 +3,7 @@ use crate::{
     ledger::datastore::LedgerHandle, representatives::OnlineRepsHandle, transport::ChannelHandle,
     utils::ContainerInfoComponentHandle, StatHandle,
 };
-use rsnano_core::{Account, Vote};
+use rsnano_core::Vote;
 use rsnano_node::{consensus::VoteProcessorQueue, transport::ChannelEnum};
 use std::{
     collections::VecDeque,

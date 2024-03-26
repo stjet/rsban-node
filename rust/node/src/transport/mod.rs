@@ -45,9 +45,8 @@ pub use tcp_channels::{
 pub use tcp_listener::{TcpListener, TcpListenerExt};
 pub use tcp_message_manager::{TcpMessageItem, TcpMessageManager};
 pub use tcp_server::{
-    BootstrapMessageVisitor, HandshakeMessageVisitor, HandshakeMessageVisitorImpl,
-    NullTcpServerObserver, RealtimeMessageVisitor, RealtimeMessageVisitorImpl, TcpServer,
-    TcpServerExt, TcpServerObserver,
+    BootstrapMessageVisitor, HandshakeMessageVisitor, NullTcpServerObserver,
+    RealtimeMessageVisitor, RealtimeMessageVisitorImpl, TcpServer, TcpServerExt, TcpServerObserver,
 };
 pub use tcp_server_factory::TcpServerFactory;
 pub use tcp_stream::TcpStream;

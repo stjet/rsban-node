@@ -3,11 +3,13 @@ use super::{
 };
 use crate::{
     messages::MessageHandle,
-    transport::{EndpointDto, NetworkFilterHandle, SocketHandle, TcpMessageManagerHandle},
+    transport::{
+        EndpointDto, NetworkFilterHandle, SocketHandle, SynCookiesHandle, TcpMessageManagerHandle,
+    },
     utils::AsyncRuntimeHandle,
     NetworkParamsDto, NodeConfigDto, StatHandle,
 };
-use rsnano_core::Account;
+use rsnano_core::{Account, KeyPair};
 use rsnano_messages::{DeserializedMessage, Message, ProtocolInfo};
 use rsnano_node::{
     config::NodeConfig,
@@ -48,6 +50,8 @@ pub struct CreateTcpServerParams {
     pub request_response_visitor_factory: *mut RequestResponseVisitorFactoryHandle,
     pub tcp_message_manager: *mut TcpMessageManagerHandle,
     pub allow_bootstrap: bool,
+    pub syn_cookies: *mut SynCookiesHandle,
+    pub node_id_priv: *const u8,
 }
 
 #[no_mangle]
@@ -74,6 +78,8 @@ pub unsafe extern "C" fn rsn_bootstrap_server_create(
         tcp_message_manager,
         visitor_factory,
         params.allow_bootstrap,
+        Arc::clone(&*params.syn_cookies),
+        KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(params.node_id_priv, 32)).unwrap(),
     );
     server.disable_bootstrap_listener = params.disable_bootstrap_listener;
     server.connections_max = params.connections_max;

@@ -707,7 +707,7 @@ TEST (tcp_listener, tcp_listener_timeout_node_id_handshake)
 			ASSERT_FALSE (ec);
 		});
 	});
-	ASSERT_TIMELY (5s, node0->stats->count (nano::stat::type::message, nano::stat::detail::node_id_handshake) != 0);
+	ASSERT_TIMELY (5s, node0->stats->count (nano::stat::type::tcp_server, nano::stat::detail::node_id_handshake) != 0);
 	ASSERT_EQ (node0->tcp_listener->connections_count (), 1);
 	bool disconnected (false);
 	system.deadline_set (std::chrono::seconds (20));

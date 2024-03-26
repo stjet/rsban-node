@@ -334,6 +334,15 @@ pub enum DetailType {
     TcpReadError,
     TcpWriteError,
 
+    // tcp_server
+    Handshake,
+    HandshakeAbort,
+    HandshakeError,
+    HandshakeNetworkError,
+    HandshakeInitiate,
+    HandshakeResponse,
+    HandshakeResponseInvalid,
+
     // ipc
     Invocations,
 

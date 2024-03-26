@@ -118,6 +118,8 @@ impl TcpChannels {
             stats: options.stats.clone(),
             tcp_message_manager: options.tcp_message_manager.clone(),
             message_visitor_factory: None,
+            syn_cookies: Arc::clone(&options.syn_cookies),
+            node_id: options.node_id.clone(),
         }));
 
         Self {

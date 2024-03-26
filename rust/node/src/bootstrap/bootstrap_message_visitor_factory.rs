@@ -8,8 +8,8 @@ use crate::{
     config::{NetworkConstants, NodeFlags},
     stats::Stats,
     transport::{
-        BootstrapMessageVisitor, HandshakeMessageVisitor, HandshakeMessageVisitorImpl,
-        RealtimeMessageVisitor, RealtimeMessageVisitorImpl, SynCookies, TcpServer,
+        BootstrapMessageVisitor, RealtimeMessageVisitor, RealtimeMessageVisitorImpl, SynCookies,
+        TcpServer,
     },
     utils::{AsyncRuntime, ThreadPool},
 };
@@ -54,18 +54,6 @@ impl BootstrapMessageVisitorFactory {
             bootstrap_initiator: Arc::downgrade(&bootstrap_initiator),
             flags,
         }
-    }
-
-    pub fn handshake_visitor(&self, server: Arc<TcpServer>) -> Box<dyn HandshakeMessageVisitor> {
-        let mut visitor = Box::new(HandshakeMessageVisitorImpl::new(
-            server,
-            Arc::clone(&self.syn_cookies),
-            Arc::clone(&self.stats),
-            Arc::clone(&self.node_id),
-            self.network_constants.clone(),
-        ));
-        visitor.disable_tcp_realtime = self.flags.disable_tcp_realtime;
-        visitor
     }
 
     pub fn realtime_visitor(&self, server: Arc<TcpServer>) -> Box<dyn RealtimeMessageVisitor> {

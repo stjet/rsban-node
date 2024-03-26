@@ -1,7 +1,7 @@
 use super::{MessageDeserializer, NetworkFilter};
 use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
-    config::{NetworkConstants, NodeConfig},
+    config::NodeConfig,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
         Socket, SocketExtensions, SocketType, SynCookies, TcpMessageItem, TcpMessageManager,
@@ -78,13 +78,16 @@ pub struct TcpServer {
     stats: Arc<Stats>,
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
-    handshake_query_received: AtomicBool,
+    handshake_received: AtomicBool,
     message_visitor_factory: Arc<BootstrapMessageVisitorFactory>,
     message_deserializer: Arc<MessageDeserializer<Arc<Socket>>>,
     tcp_message_manager: Arc<TcpMessageManager>,
     allow_bootstrap: bool,
     notify_stop: Notify,
     last_keepalive: Mutex<Option<Keepalive>>,
+    syn_cookies: Arc<SynCookies>,
+    node_id: KeyPair,
+    protocol_info: ProtocolInfo,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -101,6 +104,8 @@ impl TcpServer {
         tcp_message_manager: Arc<TcpMessageManager>,
         message_visitor_factory: Arc<BootstrapMessageVisitorFactory>,
         allow_bootstrap: bool,
+        syn_cookies: Arc<SynCookies>,
+        node_id: KeyPair,
     ) -> Self {
         let network_constants = network.network.clone();
         let socket_clone = Arc::clone(&socket);
@@ -124,8 +129,9 @@ impl TcpServer {
             stats,
             disable_bootstrap_bulk_pull_server: false,
             disable_tcp_realtime: false,
-            handshake_query_received: AtomicBool::new(false),
+            handshake_received: AtomicBool::new(false),
             message_visitor_factory,
+            protocol_info: network_constants.protocol_info(),
             message_deserializer: Arc::new(MessageDeserializer::new(
                 network_constants.protocol_info(),
                 network_constants.work.clone(),
@@ -136,6 +142,8 @@ impl TcpServer {
             allow_bootstrap,
             notify_stop: Notify::new(),
             last_keepalive: Mutex::new(None),
+            syn_cookies,
+            node_id,
         }
     }
 
@@ -150,12 +158,12 @@ impl TcpServer {
         }
     }
 
-    pub fn was_handshake_query_received(&self) -> bool {
-        self.handshake_query_received.load(Ordering::SeqCst)
+    pub fn was_handshake_received(&self) -> bool {
+        self.handshake_received.load(Ordering::SeqCst)
     }
 
     pub fn handshake_query_received(&self) {
-        self.handshake_query_received.store(true, Ordering::SeqCst);
+        self.handshake_received.store(true, Ordering::SeqCst);
     }
 
     pub fn remote_endpoint(&self) -> SocketAddrV6 {
@@ -262,6 +270,78 @@ impl TcpServer {
     pub fn pop_last_keepalive(&self) -> Option<Keepalive> {
         self.last_keepalive.lock().unwrap().take()
     }
+
+    fn verify_handshake_response(
+        &self,
+        response: &NodeIdHandshakeResponse,
+        remote_endpoint: &SocketAddrV6,
+    ) -> bool {
+        // Prevent connection with ourselves
+        if response.node_id == self.node_id.public_key() {
+            self.stats.inc(
+                StatType::Handshake,
+                DetailType::InvalidNodeId,
+                Direction::In,
+            );
+            return false; // Fail
+        }
+
+        // Prevent mismatched genesis
+        if let Some(v2) = &response.v2 {
+            if v2.genesis != self.network.ledger.genesis.hash() {
+                self.stats.inc(
+                    StatType::Handshake,
+                    DetailType::InvalidGenesis,
+                    Direction::In,
+                );
+                return false; // Fail
+            }
+        }
+
+        let Some(cookie) = self.syn_cookies.cookie(remote_endpoint) else {
+            self.stats.inc(
+                StatType::Handshake,
+                DetailType::MissingCookie,
+                Direction::In,
+            );
+            return false; // Fail
+        };
+
+        if response.validate(&cookie).is_err() {
+            self.stats.inc(
+                StatType::Handshake,
+                DetailType::InvalidSignature,
+                Direction::In,
+            );
+            return false; // Fail
+        }
+
+        self.stats
+            .inc(StatType::Handshake, DetailType::Ok, Direction::In);
+        true // OK
+    }
+
+    fn prepare_handshake_response(
+        &self,
+        query: &NodeIdHandshakeQuery,
+        v2: bool,
+    ) -> NodeIdHandshakeResponse {
+        if v2 {
+            let genesis = self.network.ledger.genesis.hash();
+            NodeIdHandshakeResponse::new_v2(&query.cookie, &self.node_id, genesis)
+        } else {
+            NodeIdHandshakeResponse::new_v1(&query.cookie, &self.node_id)
+        }
+    }
+
+    fn prepare_handshake_query(
+        &self,
+        remote_endpoint: &SocketAddrV6,
+    ) -> Option<NodeIdHandshakeQuery> {
+        self.syn_cookies
+            .assign(remote_endpoint)
+            .map(|cookie| NodeIdHandshakeQuery { cookie })
+    }
 }
 
 impl Drop for TcpServer {
@@ -273,12 +353,6 @@ impl Drop for TcpServer {
         self.stop();
         debug!(socket_id = self.socket.socket_id, "TcpServer dropped");
     }
-}
-
-pub trait HandshakeMessageVisitor: MessageVisitor {
-    fn process(&self) -> bool;
-    fn bootstrap(&self) -> bool;
-    fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor;
 }
 
 pub trait RealtimeMessageVisitor: MessageVisitor {
@@ -297,7 +371,22 @@ pub trait TcpServerExt {
 
     fn receive_message(&self);
     fn received_message(&self, message: DeserializedMessage);
-    fn process_message(&self, message: DeserializedMessage) -> bool;
+    fn process_message(&self, message: DeserializedMessage) -> ProcessResult;
+    fn process_handshake(&self, message: &NodeIdHandshake) -> HandshakeStatus;
+    fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool);
+}
+
+pub enum ProcessResult {
+    Abort,
+    Progress,
+    Pause,
+}
+
+pub enum HandshakeStatus {
+    Abort,
+    Handshake,
+    Realtime,
+    Bootstrap,
 }
 
 impl TcpServerExt for Arc<TcpServer> {
@@ -344,6 +433,7 @@ impl TcpServerExt for Arc<TcpServer> {
                 match result {
                     Ok(msg) => self_clone.received_message(msg),
                     Err(ParseMessageError::DuplicatePublishMessage) => {
+                        // Avoid too much noise about `duplicate_publish_message` errors
                         self_clone.stats.inc(
                             StatType::Filter,
                             DetailType::DuplicatePublishMessage,
@@ -379,12 +469,16 @@ impl TcpServerExt for Arc<TcpServer> {
     }
 
     fn received_message(&self, message: DeserializedMessage) {
-        if self.process_message(message) {
-            self.receive_message();
+        match self.process_message(message) {
+            ProcessResult::Progress => self.receive_message(),
+            ProcessResult::Abort => self.stop(),
+            ProcessResult::Pause => {
+                // Do nothing
+            }
         }
     }
 
-    fn process_message(&self, message: DeserializedMessage) -> bool {
+    fn process_message(&self, message: DeserializedMessage) -> ProcessResult {
         self.stats.inc(
             StatType::TcpServer,
             DetailType::from(message.message.message_type()),
@@ -409,23 +503,47 @@ impl TcpServerExt for Arc<TcpServer> {
          * In bootstrap mode any realtime messages are ignored
          */
         if self.is_undefined_connection() {
-            let mut handshake_visitor = self
-                .message_visitor_factory
-                .handshake_visitor(Arc::clone(self));
+            let mut handshake_visitor = HandshakeMessageVisitor::new(Arc::clone(&self));
             handshake_visitor.received(&message.message);
 
-            if handshake_visitor.process() {
-                self.queue_realtime(message);
-                return true;
-            } else if handshake_visitor.bootstrap() {
-                if !self.to_bootstrap_connection() {
-                    self.stop();
-                    return false;
+            match handshake_visitor.result {
+                HandshakeStatus::Abort => {
+                    self.stats.inc(
+                        StatType::TcpServer,
+                        DetailType::HandshakeAbort,
+                        Direction::In,
+                    );
+                    debug!(
+                        "Aborting handshake: {:?} ({})",
+                        message.message.message_type(),
+                        self.remote_endpoint()
+                    );
+                    return ProcessResult::Abort;
                 }
-            } else {
-                // Neither handshake nor bootstrap received when in handshake mode
-                debug!("Neither handshake nor bootstrap received when in handshake mode");
-                return true;
+                HandshakeStatus::Handshake => {
+                    return ProcessResult::Progress; // Continue handshake
+                }
+                HandshakeStatus::Realtime => {
+                    self.queue_realtime(message);
+                    return ProcessResult::Progress; // Continue receiving new messages
+                }
+                HandshakeStatus::Bootstrap => {
+                    if !self.to_bootstrap_connection() {
+                        self.stats.inc(
+                            StatType::TcpServer,
+                            DetailType::HandshakeError,
+                            Direction::In,
+                        );
+                        debug!(
+                            "Error switching to bootstrap mode: {:?} ({})",
+                            message.message.message_type(),
+                            self.remote_endpoint()
+                        );
+                        return ProcessResult::Abort;
+                    } else {
+                        // Fall through to process the bootstrap message
+                    }
+                }
             }
         } else if self.is_realtime_connection() {
             let mut realtime_visitor = self
@@ -435,93 +553,138 @@ impl TcpServerExt for Arc<TcpServer> {
             if realtime_visitor.process() {
                 self.queue_realtime(message);
             }
-            return true;
+            return ProcessResult::Progress;
         }
-        // the server will switch to bootstrap mode immediately after processing the first bootstrap message, thus no `else if`
+        // The server will switch to bootstrap mode immediately after processing the first bootstrap message, thus no `else if`
         if self.is_bootstrap_connection() {
             let mut bootstrap_visitor = self
                 .message_visitor_factory
                 .bootstrap_visitor(Arc::clone(self));
             bootstrap_visitor.received(&message.message);
-            return !bootstrap_visitor.processed(); // Stop receiving new messages if bootstrap serving started
+
+            // Pause receiving new messages if bootstrap serving started
+            return if bootstrap_visitor.processed() {
+                ProcessResult::Pause
+            } else {
+                ProcessResult::Progress
+            };
         }
         debug_assert!(false);
-        true // Continue receiving new messages
+        ProcessResult::Abort
     }
-}
 
-pub struct HandshakeMessageVisitorImpl {
-    pub process: bool,
-    pub bootstrap: bool,
-    server: Arc<TcpServer>,
-    syn_cookies: Arc<SynCookies>,
-    stats: Arc<Stats>,
-    node_id: Arc<KeyPair>,
-    network_constants: NetworkConstants,
-    pub disable_tcp_realtime: bool,
-}
-
-impl HandshakeMessageVisitorImpl {
-    pub fn new(
-        server: Arc<TcpServer>,
-        syn_cookies: Arc<SynCookies>,
-        stats: Arc<Stats>,
-        node_id: Arc<KeyPair>,
-        network_constants: NetworkConstants,
-    ) -> Self {
-        Self {
-            process: false,
-            bootstrap: false,
-            server,
-            syn_cookies,
-            stats,
-            node_id,
-            network_constants,
-            disable_tcp_realtime: false,
+    fn process_handshake(&self, message: &NodeIdHandshake) -> HandshakeStatus {
+        if self.disable_tcp_realtime {
+            self.stats.inc(
+                StatType::TcpServer,
+                DetailType::HandshakeError,
+                Direction::In,
+            );
+            debug!(
+                "Handshake attempted with disabled realtime TCP ({})",
+                self.remote_endpoint()
+            );
+            return HandshakeStatus::Abort;
         }
-    }
-
-    fn prepare_handshake_response(
-        &self,
-        query: &NodeIdHandshakeQuery,
-        v2: bool,
-    ) -> NodeIdHandshakeResponse {
-        if v2 {
-            let genesis = self.server.network.ledger.genesis.hash();
-            NodeIdHandshakeResponse::new_v2(&query.cookie, &self.node_id, genesis)
-        } else {
-            NodeIdHandshakeResponse::new_v1(&query.cookie, &self.node_id)
+        if message.query.is_none() && message.response.is_none() {
+            self.stats.inc(
+                StatType::TcpServer,
+                DetailType::HandshakeError,
+                Direction::In,
+            );
+            debug!(
+                "Invalid handshake message received ({})",
+                self.remote_endpoint()
+            );
+            return HandshakeStatus::Abort;
         }
-    }
+        if message.query.is_some() && self.was_handshake_received() {
+            // Second handshake message should be a response only
+            self.stats.inc(
+                StatType::TcpServer,
+                DetailType::HandshakeError,
+                Direction::In,
+            );
+            debug!(
+                "Detected multiple handshake queries ({})",
+                self.remote_endpoint()
+            );
+            return HandshakeStatus::Abort;
+        }
 
-    fn prepare_handshake_query(
-        &self,
-        remote_endpoint: &SocketAddrV6,
-    ) -> Option<NodeIdHandshakeQuery> {
-        self.syn_cookies
-            .assign(remote_endpoint)
-            .map(|cookie| NodeIdHandshakeQuery { cookie })
+        self.handshake_received.store(true, Ordering::SeqCst);
+
+        self.stats.inc(
+            StatType::TcpServer,
+            DetailType::NodeIdHandshake,
+            Direction::In,
+        );
+        debug!("Handshake message received ({})", self.remote_endpoint());
+
+        if let Some(query) = &message.query {
+            // Send response + our own query
+            self.send_handshake_response(query, message.is_v2);
+            // Fall through and continue handshake
+        }
+        if let Some(response) = &message.response {
+            if self.verify_handshake_response(response, &self.remote_endpoint()) {
+                let success = self.to_realtime_connection(&response.node_id);
+                if success {
+                    return HandshakeStatus::Realtime; // Switch to realtime
+                } else {
+                    self.stats.inc(
+                        StatType::TcpServer,
+                        DetailType::HandshakeError,
+                        Direction::In,
+                    );
+                    debug!(
+                        "Error switching to realtime mode ({})",
+                        self.remote_endpoint()
+                    );
+                    return HandshakeStatus::Abort;
+                }
+            } else {
+                self.stats.inc(
+                    StatType::TcpServer,
+                    DetailType::HandshakeResponseInvalid,
+                    Direction::In,
+                );
+                debug!(
+                    "Invalid handshake response received ({})",
+                    self.remote_endpoint()
+                );
+                return HandshakeStatus::Abort;
+            }
+        }
+        HandshakeStatus::Handshake // Handshake is in progress
     }
 
     fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool) {
         let response = self.prepare_handshake_response(query, v2);
-        let own_query = self.prepare_handshake_query(&self.server.remote_endpoint());
+        let own_query = self.prepare_handshake_query(&self.remote_endpoint());
         let handshake_response = Message::NodeIdHandshake(NodeIdHandshake {
             is_v2: own_query.is_some() || response.v2.is_some(),
             query: own_query,
             response: Some(response),
         });
 
-        let mut serializer = MessageSerializer::new(self.network_constants.protocol_info());
+        debug!("Responding to handshake ({})", self.remote_endpoint());
+
+        let mut serializer = MessageSerializer::new(self.protocol_info);
         let buffer = serializer.serialize(&handshake_response);
         let shared_const_buffer = Arc::new(Vec::from(buffer)); // TODO don't copy buffer
-        let server_weak = Arc::downgrade(&self.server);
+        let server_weak = Arc::downgrade(&self);
         let stats = Arc::clone(&self.stats);
-        self.server.socket.async_write(
+        self.socket.async_write(
             &shared_const_buffer,
             Some(Box::new(move |ec, _size| {
                 if let Some(server_l) = server_weak.upgrade() {
                     if ec.is_err() {
+                        server_l.stats.inc(
+                            StatType::TcpServer,
+                            DetailType::HandshakeNetworkError,
+                            Direction::In,
+                        );
                         debug!(
                             "Error sending handshake response: {} ({:?})",
                             server_l.remote_endpoint(),
@@ -530,9 +693,11 @@ impl HandshakeMessageVisitorImpl {
                         // Stop invalid handshake
                         server_l.stop();
                     } else {
-                        let _ = stats.inc(
-                            StatType::Message,
-                            DetailType::NodeIdHandshake,
+                        let _ =
+                            stats.inc(StatType::TcpServer, DetailType::Handshake, Direction::Out);
+                        stats.inc(
+                            StatType::TcpServer,
+                            DetailType::HandshakeResponse,
                             Direction::Out,
                         );
                     }
@@ -541,129 +706,32 @@ impl HandshakeMessageVisitorImpl {
             super::TrafficType::Generic,
         );
     }
+}
 
-    fn verify_handshake_response(
-        &self,
-        response: &NodeIdHandshakeResponse,
-        remote_endpoint: &SocketAddrV6,
-    ) -> bool {
-        // Prevent connection with ourselves
-        if response.node_id == self.node_id.public_key() {
-            self.stats.inc(
-                StatType::Handshake,
-                DetailType::InvalidNodeId,
-                Direction::In,
-            );
-            return false; // Fail
+pub struct HandshakeMessageVisitor {
+    pub result: HandshakeStatus,
+    server: Arc<TcpServer>,
+}
+
+impl HandshakeMessageVisitor {
+    pub fn new(server: Arc<TcpServer>) -> Self {
+        Self {
+            server,
+            result: HandshakeStatus::Abort,
         }
-
-        // Prevent mismatched genesis
-        if let Some(v2) = &response.v2 {
-            if v2.genesis != self.server.network.ledger.genesis.hash() {
-                self.stats.inc(
-                    StatType::Handshake,
-                    DetailType::InvalidGenesis,
-                    Direction::In,
-                );
-                return false; // Fail
-            }
-        }
-
-        let Some(cookie) = self.syn_cookies.cookie(remote_endpoint) else {
-            self.stats.inc(
-                StatType::Handshake,
-                DetailType::MissingCookie,
-                Direction::In,
-            );
-            return false; // Fail
-        };
-
-        if response.validate(&cookie).is_err() {
-            self.stats.inc(
-                StatType::Handshake,
-                DetailType::InvalidSignature,
-                Direction::In,
-            );
-            return false; // Fail
-        }
-
-        self.stats
-            .inc(StatType::Handshake, DetailType::Ok, Direction::In);
-        true // OK
     }
 }
 
-impl MessageVisitor for HandshakeMessageVisitorImpl {
+impl MessageVisitor for HandshakeMessageVisitor {
     fn received(&mut self, message: &Message) {
-        if matches!(
-            message,
+        self.result = match message {
             Message::BulkPull(_)
-                | Message::BulkPullAccount(_)
-                | Message::BulkPush
-                | Message::FrontierReq(_)
-        ) {
-            self.bootstrap = true;
-        };
-
-        match message {
-            Message::NodeIdHandshake(payload) => {
-                if self.disable_tcp_realtime {
-                    debug!(
-                        "Handshake attempted with disabled realtime TCP ({})",
-                        self.server.remote_endpoint()
-                    );
-                    // Stop invalid handshake
-                    self.server.stop();
-                    return;
-                }
-
-                if payload.query.is_some() && self.server.was_handshake_query_received() {
-                    debug!(
-                        "Detected multiple handshake queries ({})",
-                        self.server.remote_endpoint()
-                    );
-                    // Stop invalid handshake
-                    self.server.stop();
-                    return;
-                }
-
-                self.server.handshake_query_received();
-
-                debug!(
-                    "Handshake query received ({})",
-                    self.server.remote_endpoint()
-                );
-
-                if let Some(query) = &payload.query {
-                    self.send_handshake_response(query, payload.is_v2);
-                } else if let Some(response) = &payload.response {
-                    if self.verify_handshake_response(response, &self.server.remote_endpoint()) {
-                        self.server.to_realtime_connection(&response.node_id);
-                    } else {
-                        // Stop invalid handshake
-                        self.server.stop();
-                        return;
-                    }
-                }
-
-                self.process = true;
-            }
-            _ => {}
+            | Message::BulkPullAccount(_)
+            | Message::BulkPush
+            | Message::FrontierReq(_) => HandshakeStatus::Bootstrap,
+            Message::NodeIdHandshake(payload) => self.server.process_handshake(payload),
+            _ => HandshakeStatus::Abort,
         }
-    }
-}
-
-impl HandshakeMessageVisitor for HandshakeMessageVisitorImpl {
-    fn process(&self) -> bool {
-        self.process
-    }
-
-    fn bootstrap(&self) -> bool {
-        self.bootstrap
-    }
-
-    fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor {
-        self
     }
 }
 

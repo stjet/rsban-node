@@ -1,6 +1,8 @@
+use rsnano_core::KeyPair;
+
 use super::{
-    Channel, ChannelTcp, NetworkFilter, Socket, SocketType, TcpMessageManager, TcpServer,
-    TcpServerExt, TcpServerObserver,
+    Channel, ChannelTcp, NetworkFilter, Socket, SocketType, SynCookies, TcpMessageManager,
+    TcpServer, TcpServerExt, TcpServerObserver,
 };
 use crate::{
     bootstrap::BootstrapMessageVisitorFactory, config::NodeConfig, stats::Stats,
@@ -20,6 +22,8 @@ pub struct TcpServerFactory {
     pub stats: Arc<Stats>,
     pub tcp_message_manager: Arc<TcpMessageManager>,
     pub message_visitor_factory: Option<Arc<BootstrapMessageVisitorFactory>>,
+    pub syn_cookies: Arc<SynCookies>,
+    pub node_id: KeyPair,
 }
 impl TcpServerFactory {
     pub fn create_tcp_server(
@@ -44,6 +48,8 @@ impl TcpServerFactory {
                     .expect("no message visitor factory provided"),
             ),
             true,
+            Arc::clone(&self.syn_cookies),
+            self.node_id.clone(),
         );
         // Listen for possible responses
         response_server

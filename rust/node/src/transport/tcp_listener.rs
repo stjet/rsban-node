@@ -20,6 +20,7 @@ use rsnano_ledger::Ledger;
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
+    ops::Deref,
     sync::{
         atomic::{AtomicU16, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
@@ -501,6 +502,8 @@ impl TcpListenerExt for Arc<TcpListener> {
                 Arc::clone(&tcp_channels.tcp_message_manager),
                 message_visitor_factory,
                 true,
+                Arc::clone(&self.syn_cookies),
+                self.node_id.deref().clone(),
             ));
 
             let mut data = self.data.lock().unwrap();

@@ -351,7 +351,6 @@ impl Drop for TcpServer {
             observer.boostrap_server_exited(self.socket.socket_type(), self.unique_id(), remote_ep);
         }
         self.stop();
-        debug!(socket_id = self.socket.socket_id, "TcpServer dropped");
     }
 }
 

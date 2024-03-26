@@ -52,9 +52,15 @@ pub struct TcpListener {
     realtime_count: AtomicUsize,
 }
 
+impl Drop for TcpListener {
+    fn drop(&mut self) {
+        debug_assert!(self.data.lock().unwrap().stopped);
+    }
+}
+
 struct TcpListenerData {
     connections: HashMap<usize, Weak<TcpServer>>,
-    on: bool,
+    stopped: bool,
     listening_socket: Option<Arc<ServerSocket>>, // TODO remove arc
 }
 
@@ -105,7 +111,7 @@ impl TcpListener {
             syn_cookies,
             data: Mutex::new(TcpListenerData {
                 connections: HashMap::new(),
-                on: false,
+                stopped: false,
                 listening_socket: None,
             }),
             network_params,
@@ -133,7 +139,7 @@ impl TcpListener {
         let mut conns = HashMap::new();
         {
             let mut guard = self.data.lock().unwrap();
-            guard.on = false;
+            guard.stopped = true;
             std::mem::swap(&mut conns, &mut guard.connections);
 
             if let Some(socket) = guard.listening_socket.take() {
@@ -153,13 +159,14 @@ impl TcpListener {
     }
 
     pub fn connection_count(&self) -> usize {
-        let data = self.data.lock().unwrap();
+        let mut data = self.data.lock().unwrap();
+        cleanup(&mut data);
         data.connections.len()
     }
 
     pub fn endpoint(&self) -> SocketAddrV6 {
         let guard = self.data.lock().unwrap();
-        if guard.on && guard.listening_socket.is_some() {
+        if !guard.stopped && guard.listening_socket.is_some() {
             SocketAddrV6::new(Ipv6Addr::LOCALHOST, self.port.load(Ordering::SeqCst), 0, 0)
         } else {
             SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0)
@@ -224,6 +231,10 @@ impl TcpListener {
     }
 }
 
+fn cleanup(data: &mut std::sync::MutexGuard<'_, TcpListenerData>) {
+    data.connections.retain(|_, conn| conn.strong_count() > 0)
+}
+
 pub trait TcpListenerExt {
     /// If we are unable to accept a socket, for any reason, we wait just a little (1ms) before rescheduling the next connection accept.
     /// The intention is to throttle back the connection requests and break up any busy loops that could possibly form and
@@ -274,7 +285,6 @@ impl TcpListenerExt for Arc<TcpListener> {
         callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
     ) -> anyhow::Result<()> {
         let mut data = self.data.lock().unwrap();
-        data.on = true;
 
         let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
 
@@ -607,13 +617,12 @@ impl TcpListenerBuilder {
 impl TcpServerObserver for TcpListener {
     fn bootstrap_server_timeout(&self, connection_id: usize) {
         debug!("Closing TCP server due to timeout");
-        self.remove_connection(connection_id)
     }
 
     fn boostrap_server_exited(
         &self,
         socket_type: super::SocketType,
-        connection_id: usize,
+        _connection_id: usize,
         endpoint: SocketAddrV6,
     ) {
         debug!("Exiting TCP server ({})", endpoint);
@@ -626,7 +635,6 @@ impl TcpServerObserver for TcpListener {
                 tcp_channels.erase_temporary_channel(&endpoint);
             }
         }
-        self.remove_connection(connection_id);
     }
 
     fn get_bootstrap_count(&self) -> usize {

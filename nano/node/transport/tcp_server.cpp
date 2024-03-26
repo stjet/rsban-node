@@ -108,12 +108,12 @@ std::size_t nano::transport::tcp_listener::connections_count ()
 	return rsnano::rsn_tcp_listener_connection_count (handle);
 }
 
-std::unique_ptr<nano::container_info_component> nano::transport::collect_container_info (nano::transport::tcp_listener & bootstrap_listener, std::string const & name)
+std::unique_ptr<nano::container_info_component> nano::transport::tcp_listener::collect_container_info (std::string const & name)
 {
 	// auto sizeof_element = sizeof (decltype (bootstrap_listener.connections)::value_type);
 	size_t sizeof_element = 1;
 	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "connections", bootstrap_listener.connection_count (), sizeof_element }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "connections", connection_count (), sizeof_element }));
 	return composite;
 }
 

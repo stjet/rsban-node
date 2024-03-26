@@ -11,15 +11,15 @@
 #include <vector>
 
 /*
- * entry
+ * vote_cache_entry
  */
 
-nano::vote_cache::entry::entry (const nano::block_hash & hash) :
+nano::vote_cache_entry::vote_cache_entry (const nano::block_hash & hash) :
 	hash_m{ hash }
 {
 }
 
-nano::vote_cache::entry::entry (rsnano::VoteCacheEntryDto & dto) :
+nano::vote_cache_entry::vote_cache_entry (rsnano::VoteCacheEntryDto & dto) :
 	hash_m{ nano::block_hash::from_bytes (&dto.hash[0]) }
 {
 	nano::amount tally;
@@ -38,27 +38,27 @@ nano::vote_cache::entry::entry (rsnano::VoteCacheEntryDto & dto) :
 	rsnano::rsn_vote_cache_entry_destroy (&dto);
 }
 
-std::size_t nano::vote_cache::entry::size () const
+std::size_t nano::vote_cache_entry::size () const
 {
 	return voters_m.size ();
 }
 
-nano::block_hash nano::vote_cache::entry::hash () const
+nano::block_hash nano::vote_cache_entry::hash () const
 {
 	return hash_m;
 }
 
-nano::uint128_t nano::vote_cache::entry::tally () const
+nano::uint128_t nano::vote_cache_entry::tally () const
 {
 	return tally_m;
 }
 
-nano::uint128_t nano::vote_cache::entry::final_tally () const
+nano::uint128_t nano::vote_cache_entry::final_tally () const
 {
 	return final_tally_m;
 }
 
-std::vector<nano::vote_cache::entry::voter_entry> nano::vote_cache::entry::voters () const
+std::vector<nano::vote_cache_entry::voter_entry> nano::vote_cache_entry::voters () const
 {
 	return voters_m;
 }

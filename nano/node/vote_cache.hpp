@@ -32,38 +32,40 @@ public:
 	std::chrono::seconds age_cutoff{ 5 * 60 };
 };
 
+/**
+* Stores votes associated with a single block hash
+*/
+class vote_cache_entry final
+{
+public:
+	struct voter_entry
+	{
+		nano::account representative;
+		uint64_t timestamp;
+	};
+
+public:
+	explicit vote_cache_entry (nano::block_hash const & hash);
+	explicit vote_cache_entry (rsnano::VoteCacheEntryDto & dto);
+
+	std::size_t size () const;
+
+	nano::block_hash hash () const;
+	nano::uint128_t tally () const;
+	nano::uint128_t final_tally () const;
+	std::vector<voter_entry> voters () const;
+
+	nano::block_hash const hash_m;
+	std::vector<voter_entry> voters_m;
+
+	nano::uint128_t tally_m{ 0 };
+	nano::uint128_t final_tally_m{ 0 };
+};
+
 class vote_cache final
 {
 public:
-	/**
-	 * Stores votes associated with a single block hash
-	 */
-	class entry final
-	{
-	public:
-		struct voter_entry
-		{
-			nano::account representative;
-			uint64_t timestamp;
-		};
-
-	public:
-		explicit entry (nano::block_hash const & hash);
-		explicit entry (rsnano::VoteCacheEntryDto & dto);
-
-		std::size_t size () const;
-
-		nano::block_hash hash () const;
-		nano::uint128_t tally () const;
-		nano::uint128_t final_tally () const;
-		std::vector<voter_entry> voters () const;
-
-		nano::block_hash const hash_m;
-		std::vector<voter_entry> voters_m;
-
-		nano::uint128_t tally_m{ 0 };
-		nano::uint128_t final_tally_m{ 0 };
-	};
+	using entry = vote_cache_entry;
 
 public:
 	explicit vote_cache (vote_cache_config const &, nano::stats &);

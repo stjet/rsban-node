@@ -17,6 +17,7 @@ public:
 
 	/** Tells the IO context to stop processing events.*/
 	void stop_event_processing ();
+
 	/** Wait for IO threads to complete */
 	void join ();
 

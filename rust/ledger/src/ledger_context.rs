@@ -1,5 +1,5 @@
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, Ledger};
-use rsnano_core::{Account, ConfirmationHeightInfo};
+use rsnano_core::{Account, Amount, ConfirmationHeightInfo};
 use rsnano_store_lmdb::{EnvironmentWrapper, LmdbStore, LmdbWriteTransaction, TestDbFile};
 use std::sync::Arc;
 
@@ -19,7 +19,9 @@ impl LedgerContext {
                 .build()
                 .unwrap(),
         );
-        let ledger = Arc::new(Ledger::new(store.clone(), LEDGER_CONSTANTS_STUB.clone()).unwrap());
+        let ledger = Arc::new(
+            Ledger::new(store.clone(), LEDGER_CONSTANTS_STUB.clone(), Amount::zero()).unwrap(),
+        );
 
         LedgerContext {
             ledger,

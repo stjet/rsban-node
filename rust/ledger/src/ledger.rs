@@ -89,6 +89,7 @@ impl Ledger<EnvironmentStub> {
         Self::new(
             Arc::new(LmdbStore::create_null()),
             LedgerConstants::unit_test(),
+            Amount::zero(),
         )
         .unwrap()
     }
@@ -104,6 +105,7 @@ pub struct NullLedgerBuilder {
     accounts: ConfiguredAccountDatabaseBuilder,
     pending: ConfiguredPendingDatabaseBuilder,
     pruned: ConfiguredPrunedDatabaseBuilder,
+    min_rep_weight: Amount,
 }
 
 impl NullLedgerBuilder {
@@ -114,6 +116,7 @@ impl NullLedgerBuilder {
             accounts: ConfiguredAccountDatabaseBuilder::new(),
             pending: ConfiguredPendingDatabaseBuilder::new(),
             pruned: ConfiguredPrunedDatabaseBuilder::new(),
+            min_rep_weight: Amount::zero(),
         }
     }
 
@@ -174,24 +177,34 @@ impl NullLedgerBuilder {
             rep_weight: Arc::new(LmdbRepWeightStore::new(env.clone()).unwrap()),
             version: Arc::new(LmdbVersionStore::new(env.clone()).unwrap()),
         };
-        Ledger::new(Arc::new(store), LedgerConstants::unit_test()).unwrap()
+        Ledger::new(
+            Arc::new(store),
+            LedgerConstants::unit_test(),
+            self.min_rep_weight,
+        )
+        .unwrap()
     }
 }
 
 impl<T: Environment + 'static> Ledger<T> {
-    pub fn new(store: Arc<LmdbStore<T>>, constants: LedgerConstants) -> anyhow::Result<Self> {
-        Self::with_cache(store, constants, &GenerateCacheFlags::new())
+    pub fn new(
+        store: Arc<LmdbStore<T>>,
+        constants: LedgerConstants,
+        min_rep_weight: Amount,
+    ) -> anyhow::Result<Self> {
+        Self::with_cache(store, constants, &GenerateCacheFlags::new(), min_rep_weight)
     }
 
     pub fn with_cache(
         store: Arc<LmdbStore<T>>,
         constants: LedgerConstants,
         generate_cache: &GenerateCacheFlags,
+        min_rep_weight: Amount,
     ) -> anyhow::Result<Self> {
         let mut ledger = Self {
             cache: Arc::new(LedgerCache::new(
                 Arc::clone(&store.rep_weight),
-                Amount::zero(),
+                min_rep_weight,
             )),
             store,
             constants,

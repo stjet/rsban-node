@@ -8,7 +8,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rsnano_core::Account;
+use rsnano_core::{Account, Amount};
 use rsnano_ledger::{Ledger, LedgerConstants, WriteDatabaseQueue};
 use rsnano_node::cementation::{BlockCementer, CementCallbacks};
 use rsnano_store_lmdb::{Environment, EnvironmentWrapper, LmdbStore};
@@ -116,7 +116,7 @@ fn main() {
 
 fn open_ledger<T: AsRef<Path>, E: Environment + 'static>(ledger_path: T) -> Ledger {
     let store = Arc::new(LmdbStore::<E>::open(ledger_path.as_ref()).build().unwrap());
-    Ledger::new(store, LedgerConstants::beta()).unwrap()
+    Ledger::new(store, LedgerConstants::beta(), Amount::zero()).unwrap()
 }
 
 enum Mode {

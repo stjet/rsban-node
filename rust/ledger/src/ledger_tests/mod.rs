@@ -595,8 +595,12 @@ fn ledger_cache() {
         let cache_check = |cache: &LedgerCache, expected: &ExpectedCache| {
             check_impl(cache, expected);
 
-            let new_ledger =
-                Ledger::new(ctx.ledger.store.clone(), LEDGER_CONSTANTS_STUB.clone()).unwrap();
+            let new_ledger = Ledger::new(
+                ctx.ledger.store.clone(),
+                LEDGER_CONSTANTS_STUB.clone(),
+                Amount::zero(),
+            )
+            .unwrap();
             check_impl(&new_ledger.cache, expected);
         };
 

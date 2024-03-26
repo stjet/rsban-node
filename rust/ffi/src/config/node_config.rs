@@ -30,6 +30,7 @@ pub struct NodeConfigDto {
     pub bootstrap_fraction_numerator: u32,
     pub receive_minimum: [u8; 16],
     pub online_weight_minimum: [u8; 16],
+    pub representative_vote_weight_minimum: [u8; 16],
     pub password_fanout: u32,
     pub io_threads: u32,
     pub network_threads: u32,
@@ -136,6 +137,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.bootstrap_fraction_numerator = cfg.bootstrap_fraction_numerator;
     dto.receive_minimum = cfg.receive_minimum.to_be_bytes();
     dto.online_weight_minimum = cfg.online_weight_minimum.to_be_bytes();
+    dto.representative_vote_weight_minimum = cfg.representative_vote_weight_minimum.to_be_bytes();
     dto.password_fanout = cfg.password_fanout;
     dto.io_threads = cfg.io_threads;
     dto.network_threads = cfg.network_threads;
@@ -308,6 +310,9 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             bootstrap_fraction_numerator: value.bootstrap_fraction_numerator,
             receive_minimum: Amount::from_be_bytes(value.receive_minimum),
             online_weight_minimum: Amount::from_be_bytes(value.online_weight_minimum),
+            representative_vote_weight_minimum: Amount::from_be_bytes(
+                value.representative_vote_weight_minimum,
+            ),
             password_fanout: value.password_fanout,
             io_threads: value.io_threads,
             network_threads: value.network_threads,

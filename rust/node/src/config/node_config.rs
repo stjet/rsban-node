@@ -32,6 +32,9 @@ pub struct NodeConfig {
     pub bootstrap_fraction_numerator: u32,
     pub receive_minimum: Amount,
     pub online_weight_minimum: Amount,
+    /// The minimum vote weight that a representative must have for its vote to be counted.
+    /// All representatives above this weight will be kept in memory!
+    pub representative_vote_weight_minimum: Amount,
     pub password_fanout: u32,
     pub io_threads: u32,
     pub network_threads: u32,
@@ -217,7 +220,8 @@ impl NodeConfig {
             peering_port,
             bootstrap_fraction_numerator: 1,
             receive_minimum: Amount::raw(*XRB_RATIO),
-            online_weight_minimum: Amount::raw(60000 * *GXRB_RATIO),
+            online_weight_minimum: Amount::nano(60_000_000),
+            representative_vote_weight_minimum: Amount::nano(10),
             password_fanout: 1024,
             io_threads: max(cpus, 4),
             network_threads: max(cpus, 4),
@@ -319,6 +323,7 @@ impl NodeConfig {
         toml.put_u32("bootstrap_fraction_numerator", self.bootstrap_fraction_numerator, "Change bootstrap threshold (online stake / 256 * bootstrap_fraction_numerator).\ntype:uint32")?;
         toml.put_str("receive_minimum", &self.receive_minimum.to_string_dec (), "Minimum receive amount. Only affects node wallets. A large amount is recommended to avoid automatic work generation for tiny transactions.\ntype:string,amount,raw")?;
         toml.put_str("online_weight_minimum", &self.online_weight_minimum.to_string_dec (), "When calculating online weight, the node is forced to assume at least this much voting weight is online, thus setting a floor for voting weight to confirm transactions at online_weight_minimum * \"quorum delta\".\ntype:string,amount,raw")?;
+        toml.put_str("representative_vote_weight_minimum", &self.representative_vote_weight_minimum.to_string_dec(), "Minimum vote weight that a representative must have for its vote to be counted.\nAll representatives above this weight will be kept in memory!\ntype:string,amount,raw")?;
         toml.put_u32(
             "password_fanout",
             self.password_fanout,

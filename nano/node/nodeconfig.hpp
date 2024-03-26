@@ -66,6 +66,11 @@ public:
 	std::chrono::milliseconds vote_generator_delay;
 	unsigned vote_generator_threshold;
 	nano::amount online_weight_minimum{ 60000 * nano::Gxrb_ratio };
+	/*
+	 * The minimum vote weight that a representative must have for its vote to be counted.
+	 * All representatives above this weight will be kept in memory!
+	 */
+	nano::amount representative_vote_weight_minimum;
 	unsigned password_fanout{ 1024 };
 	unsigned io_threads{ std::max (4u, nano::hardware_concurrency ()) };
 	unsigned network_threads{ std::max (4u, nano::hardware_concurrency ()) };

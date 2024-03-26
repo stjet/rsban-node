@@ -27,6 +27,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.bootstrap_fraction_numerator = config.bootstrap_fraction_numerator;
 	std::copy (std::begin (config.receive_minimum.bytes), std::end (config.receive_minimum.bytes), std::begin (dto.receive_minimum));
 	std::copy (std::begin (config.online_weight_minimum.bytes), std::end (config.online_weight_minimum.bytes), std::begin (dto.online_weight_minimum));
+	std::copy (std::begin (config.representative_vote_weight_minimum.bytes), std::end(config.representative_vote_weight_minimum.bytes), std::begin(dto.representative_vote_weight_minimum));
 	dto.password_fanout = config.password_fanout;
 	dto.io_threads = config.io_threads;
 	dto.network_threads = config.network_threads;
@@ -150,6 +151,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	bootstrap_fraction_numerator = dto.bootstrap_fraction_numerator;
 	std::copy (std::begin (dto.receive_minimum), std::end (dto.receive_minimum), std::begin (receive_minimum.bytes));
 	std::copy (std::begin (dto.online_weight_minimum), std::end (dto.online_weight_minimum), std::begin (online_weight_minimum.bytes));
+	std::copy (std::begin (dto.representative_vote_weight_minimum), std::end (dto.representative_vote_weight_minimum), std::begin (representative_vote_weight_minimum.bytes));
 	password_fanout = dto.password_fanout;
 	io_threads = dto.io_threads;
 	network_threads = dto.network_threads;
@@ -358,6 +360,16 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		if (online_weight_minimum.decode_dec (online_weight_minimum_l))
 		{
 			toml.get_error ().set ("online_weight_minimum contains an invalid decimal amount");
+		}
+
+		auto representative_vote_weight_minimum_l{ representative_vote_weight_minimum.to_string_dec () };
+		if (toml.has_key ("representative_vote_weight_minimum"))
+		{
+			representative_vote_weight_minimum_l = toml.get<std::string> ("representative_vote_weight_minimum");
+		}
+		if (representative_vote_weight_minimum.decode_dec (representative_vote_weight_minimum_l))
+		{
+			toml.get_error ().set ("representative_vote_weight_minimum contains an invalid decimal amount");
 		}
 
 		auto vote_minimum_l (vote_minimum.to_string_dec ());

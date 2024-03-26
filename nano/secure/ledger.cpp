@@ -149,6 +149,13 @@ nano::uint128_t nano::ledger::weight (nano::account const & account_a)
 	return result.number ();
 }
 
+nano::uint128_t nano::ledger::weight_exact (store::transaction const & txn_a, nano::account const & representative_a)
+{
+	nano::amount result;
+	rsnano::rsn_ledger_weight_exact (handle, txn_a.get_rust_handle (), representative_a.bytes.data (), result.bytes.data ());
+	return result.number ();
+}
+
 std::optional<nano::block_hash> nano::ledger::successor (store::transaction const & transaction, nano::block_hash const & hash) const noexcept
 {
 	return store.block ().successor (transaction, hash);

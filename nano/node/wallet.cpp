@@ -519,7 +519,11 @@ void nano::wallet::set_representatives (std::unordered_set<nano::account> const 
 
 bool nano::wallet_representatives::check_rep (nano::account const & account_a, nano::uint128_t const & half_principal_weight_a, bool const acquire_lock_a)
 {
-	auto weight = node.ledger.weight (account_a);
+	nano::uint128_t weight;
+	{
+		auto ledger_txn{ node.ledger.store.tx_begin_read () };
+		weight = node.ledger.weight_exact (*ledger_txn, account_a);
+	}
 
 	if (weight < node.config->vote_minimum.number ())
 	{

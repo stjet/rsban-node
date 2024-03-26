@@ -666,7 +666,7 @@ void nano::json_handler::account_info ()
 			}
 			if (weight)
 			{
-				auto account_weight (node.ledger.weight (account));
+				auto account_weight (node.ledger.weight_exact (*transaction, account));
 				response_l.put ("weight", account_weight.convert_to<std::string> ());
 			}
 			if (receivable)
@@ -2773,7 +2773,7 @@ void nano::json_handler::ledger ()
 					}
 					if (weight)
 					{
-						auto account_weight (node.ledger.weight (account));
+						auto account_weight (node.ledger.weight_exact (*transaction, account));
 						response_a.put ("weight", account_weight.convert_to<std::string> ());
 					}
 					accounts.push_back (std::make_pair (account.to_account (), response_a));
@@ -2826,7 +2826,7 @@ void nano::json_handler::ledger ()
 					}
 					if (weight)
 					{
-						auto account_weight (node.ledger.weight (account));
+						auto account_weight (node.ledger.weight_exact (*transaction, account));
 						response_a.put ("weight", account_weight.convert_to<std::string> ());
 					}
 					accounts.push_back (std::make_pair (account.to_account (), response_a));
@@ -4771,7 +4771,7 @@ void nano::json_handler::wallet_ledger ()
 						}
 						if (weight)
 						{
-							auto account_weight (node.ledger.weight (account));
+							auto account_weight (node.ledger.weight_exact (*block_transaction,  account));
 							entry.put ("weight", account_weight.convert_to<std::string> ());
 						}
 						if (receivable)

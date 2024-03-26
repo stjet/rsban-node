@@ -174,12 +174,13 @@ impl<T: Environment + 'static> Wallets<T> {
             let mut action_accounts_l: Vec<(PublicKey, RawKey)> = Vec::new();
             {
                 let transaction_l = self.env.tx_begin_read();
+                let ledger_txn = self.ledger.read_txn();
                 let lock = self.mutex.lock().unwrap();
                 for (wallet_id, wallet) in lock.iter() {
                     let representatives_l = wallet.representatives.lock().unwrap().clone();
                     for account in representatives_l {
                         if wallet.store.exists(&transaction_l, &account) {
-                            if !self.ledger.weight(&account).is_zero() {
+                            if !self.ledger.weight_exact(&ledger_txn, account).is_zero() {
                                 if wallet.store.valid_password(&transaction_l) {
                                     let prv = wallet
                                         .store

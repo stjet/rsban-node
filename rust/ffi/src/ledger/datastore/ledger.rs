@@ -253,6 +253,19 @@ pub unsafe extern "C" fn rsn_ledger_weight(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_weight_exact(
+    handle: *mut LedgerHandle,
+    txn: &TransactionHandle,
+    account: *const u8,
+    result: *mut u8,
+) {
+    let weight = (*handle)
+        .0
+        .weight_exact(txn.as_txn(), Account::from_ptr(account));
+    weight.copy_bytes(result);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_account(
     handle: &LedgerHandle,
     txn: &TransactionHandle,

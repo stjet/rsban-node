@@ -463,7 +463,9 @@ impl<T: Environment + 'static> Ledger<T> {
         }
     }
 
-    /// Vote weight of an account
+    /// Returns the cached vote weight for the given representative.
+    /// If the weight is below the cache limit it returns 0.
+    /// During bootstrap it returns the preconfigured bootstrap weights.
     pub fn weight(&self, account: &Account) -> Amount {
         if self.check_bootstrap_weights.load(Ordering::SeqCst) {
             if self.cache.block_count.load(Ordering::SeqCst) < self.bootstrap_weight_max_blocks() {
@@ -477,6 +479,18 @@ impl<T: Environment + 'static> Ledger<T> {
         }
 
         self.cache.rep_weights.representation_get(account)
+    }
+
+    /// Returns the exact vote weight for the given representative by doing a database lookup
+    pub fn weight_exact(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        representative: Account,
+    ) -> Amount {
+        self.store
+            .rep_weight
+            .get(txn, representative)
+            .unwrap_or_default()
     }
 
     /// Return account containing block hash

@@ -189,7 +189,10 @@ impl<T: Environment + 'static> Ledger<T> {
         generate_cache: &GenerateCacheFlags,
     ) -> anyhow::Result<Self> {
         let mut ledger = Self {
-            cache: Arc::new(LedgerCache::new(Arc::clone(&store.rep_weight))),
+            cache: Arc::new(LedgerCache::new(
+                Arc::clone(&store.rep_weight),
+                Amount::zero(),
+            )),
             store,
             constants,
             observer: Arc::new(NullLedgerObserver::new()),
@@ -225,7 +228,8 @@ impl<T: Environment + 'static> Ledger<T> {
             self.store.account.for_each_par(&|_txn, mut i, n| {
                 let mut block_count = 0;
                 let mut account_count = 0;
-                let rep_weights = RepWeights::new(Arc::clone(&self.store.rep_weight));
+                let rep_weights =
+                    RepWeights::new(Arc::clone(&self.store.rep_weight), Amount::zero());
                 while !i.eq(n.as_ref()) {
                     let info = i.current().unwrap().1;
                     block_count += info.block_count;

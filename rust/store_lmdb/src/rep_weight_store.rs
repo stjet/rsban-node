@@ -17,6 +17,8 @@ pub struct LmdbRepWeightStore<T: Environment = EnvironmentWrapper> {
     database: T::Database,
     #[cfg(feature = "output_tracking")]
     delete_listener: OutputListenerMt<Account>,
+    #[cfg(feature = "output_tracking")]
+    put_listener: OutputListenerMt<(Account, Amount)>,
 }
 
 impl<T: Environment + 'static> LmdbRepWeightStore<T> {
@@ -29,12 +31,19 @@ impl<T: Environment + 'static> LmdbRepWeightStore<T> {
             database,
             #[cfg(feature = "output_tracking")]
             delete_listener: OutputListenerMt::new(),
+            #[cfg(feature = "output_tracking")]
+            put_listener: OutputListenerMt::new(),
         })
     }
 
     #[cfg(feature = "output_tracking")]
     pub fn track_deletions(&self) -> Arc<OutputTrackerMt<Account>> {
         self.delete_listener.track()
+    }
+
+    #[cfg(feature = "output_tracking")]
+    pub fn track_puts(&self) -> Arc<OutputTrackerMt<(Account, Amount)>> {
+        self.put_listener.track()
     }
 
     pub fn get(
@@ -54,21 +63,25 @@ impl<T: Environment + 'static> LmdbRepWeightStore<T> {
         }
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, account: Account, weight: Amount) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, representative: Account, weight: Amount) {
+        #[cfg(feature = "output_tracking")]
+        self.put_listener.emit((representative, weight));
+
         txn.put(
             self.database,
-            account.as_bytes(),
+            representative.as_bytes(),
             &weight.to_be_bytes(),
             WriteFlags::empty(),
         )
         .unwrap();
     }
 
-    pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, account: Account) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, representative: Account) {
         #[cfg(feature = "output_tracking")]
-        self.delete_listener.emit(account);
+        self.delete_listener.emit(representative);
 
-        txn.delete(self.database, account.as_bytes(), None).unwrap();
+        txn.delete(self.database, representative.as_bytes(), None)
+            .unwrap();
     }
 
     pub fn count(

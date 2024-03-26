@@ -1,3 +1,4 @@
+use rsnano_core::Amount;
 use rsnano_store_lmdb::{Environment, EnvironmentWrapper, LmdbRepWeightStore};
 use std::sync::{atomic::AtomicU64, Arc};
 
@@ -12,8 +13,8 @@ pub struct LedgerCache<T: Environment + 'static = EnvironmentWrapper> {
 }
 
 impl<T: Environment + 'static> LedgerCache<T> {
-    pub fn new(rep_weight_store: Arc<LmdbRepWeightStore<T>>) -> Self {
-        let rep_weights = Arc::new(RepWeights::new(rep_weight_store));
+    pub fn new(rep_weight_store: Arc<LmdbRepWeightStore<T>>, min_weight: Amount) -> Self {
+        let rep_weights = Arc::new(RepWeights::new(rep_weight_store, min_weight));
         Self {
             rep_weights,
             cemented_count: AtomicU64::new(0),

@@ -9,13 +9,15 @@ use std::sync::{Arc, Mutex, MutexGuard};
 pub struct RepWeights<T: Environment + 'static = EnvironmentWrapper> {
     rep_amounts: Mutex<HashMap<Account, Amount>>,
     store: Arc<LmdbRepWeightStore<T>>,
+    min_weight: Amount,
 }
 
 impl<T: Environment + 'static> RepWeights<T> {
-    pub fn new(store: Arc<LmdbRepWeightStore<T>>) -> Self {
+    pub fn new(store: Arc<LmdbRepWeightStore<T>>, min_weight: Amount) -> Self {
         RepWeights {
             rep_amounts: Mutex::new(HashMap::new()),
             store,
+            min_weight,
         }
     }
 
@@ -56,7 +58,7 @@ impl<T: Environment + 'static> RepWeights<T> {
         representative: Account,
         new_weight: Amount,
     ) {
-        if new_weight.is_zero() {
+        if new_weight < self.min_weight || new_weight.is_zero() {
             guard.remove(&representative);
         } else {
             guard.insert(representative, new_weight);
@@ -125,14 +127,14 @@ impl<T: Environment + 'static> RepWeights<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::LedgerContext;
     use rsnano_store_lmdb::{ConfiguredRepWeightDatabaseBuilder, LmdbEnv};
 
     #[test]
     fn representation_changes() {
-        let ctx = LedgerContext::empty();
+        let env = Arc::new(LmdbEnv::create_null());
+        let store = Arc::new(LmdbRepWeightStore::new(env).unwrap());
         let account = Account::from(1);
-        let rep_weights = RepWeights::new(Arc::clone(&ctx.ledger.store.rep_weight));
+        let rep_weights = RepWeights::new(store, Amount::zero());
         assert_eq!(rep_weights.representation_get(&account), Amount::zero());
 
         rep_weights.representation_put(account, Amount::from(1));
@@ -157,7 +159,7 @@ mod tests {
         );
         let store = Arc::new(LmdbRepWeightStore::new(Arc::clone(&env)).unwrap());
         let delete_tracker = store.track_deletions();
-        let rep_weights = RepWeights::new(store);
+        let rep_weights = RepWeights::new(store, Amount::zero());
         rep_weights.representation_put(representative, weight);
         let mut tx = env.tx_begin_write();
 
@@ -188,7 +190,7 @@ mod tests {
         );
         let store = Arc::new(LmdbRepWeightStore::new(Arc::clone(&env)).unwrap());
         let delete_tracker = store.track_deletions();
-        let rep_weights = RepWeights::new(store);
+        let rep_weights = RepWeights::new(store, Amount::zero());
         rep_weights.representation_put(rep1, weight);
         rep_weights.representation_put(rep2, weight);
         let mut tx = env.tx_begin_write();
@@ -204,5 +206,50 @@ mod tests {
 
         assert_eq!(rep_weights.count(), 0);
         assert_eq!(delete_tracker.output(), vec![rep1, rep2]);
+    }
+
+    #[test]
+    fn add_below_min_weight() {
+        let env = Arc::new(LmdbEnv::create_null());
+        let store = Arc::new(LmdbRepWeightStore::new(Arc::clone(&env)).unwrap());
+        let put_tracker = store.track_puts();
+        let mut txn = env.tx_begin_write();
+        let representative = Account::from(1);
+        let min_weight = Amount::from(10);
+        let rep_weight = Amount::from(9);
+        let rep_weights = RepWeights::new(store, min_weight);
+
+        rep_weights.representation_add(&mut txn, representative, rep_weight);
+
+        assert_eq!(rep_weights.count(), 0);
+        assert_eq!(put_tracker.output(), vec![(representative, rep_weight)]);
+    }
+
+    #[test]
+    fn fall_below_min_weight() {
+        let representative = Account::from(1);
+        let weight = Amount::from(11);
+        let env = Arc::new(
+            LmdbEnv::create_null_with()
+                .configured_database(ConfiguredRepWeightDatabaseBuilder::create(vec![(
+                    representative,
+                    weight,
+                )]))
+                .build(),
+        );
+        let store = Arc::new(LmdbRepWeightStore::new(Arc::clone(&env)).unwrap());
+        let put_tracker = store.track_puts();
+        let mut txn = env.tx_begin_write();
+        let min_weight = Amount::from(10);
+        let rep_weights = RepWeights::new(store, min_weight);
+
+        rep_weights.representation_add(
+            &mut txn,
+            representative,
+            Amount::zero().wrapping_sub(Amount::from(2)),
+        );
+
+        assert_eq!(rep_weights.count(), 0);
+        assert_eq!(put_tracker.output(), vec![(representative, 9.into())]);
     }
 }

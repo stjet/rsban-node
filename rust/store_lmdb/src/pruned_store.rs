@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{
     iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal, ConfiguredDatabase,
     Environment, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
@@ -8,6 +6,7 @@ use crate::{
 use lmdb::{DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
 use rsnano_core::{BlockHash, NoValue};
+use std::sync::Arc;
 
 pub type PrunedIterator = Box<dyn DbIterator<BlockHash, NoValue>>;
 

@@ -1,19 +1,22 @@
-use lmdb::{DatabaseFlags, WriteFlags};
-use lmdb_sys::{MDB_cursor_op, MDB_FIRST, MDB_NEXT};
-use rsnano_core::{
-    utils::{BufferReader, Deserialize},
-    Account, Amount,
-};
-
 use crate::{
     lmdb_env::RoCursor, ConfiguredDatabase, Environment, EnvironmentWrapper, LmdbEnv,
     LmdbWriteTransaction, Transaction, REP_WEIGHT_TEST_DATABASE,
+};
+use lmdb::{DatabaseFlags, WriteFlags};
+use lmdb_sys::{MDB_cursor_op, MDB_FIRST, MDB_NEXT};
+#[cfg(feature = "output_tracking")]
+use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
+use rsnano_core::{
+    utils::{BufferReader, Deserialize},
+    Account, Amount,
 };
 use std::{marker::PhantomData, sync::Arc};
 
 pub struct LmdbRepWeightStore<T: Environment = EnvironmentWrapper> {
     _env: Arc<LmdbEnv<T>>,
     database: T::Database,
+    #[cfg(feature = "output_tracking")]
+    delete_listener: OutputListenerMt<Account>,
 }
 
 impl<T: Environment + 'static> LmdbRepWeightStore<T> {
@@ -24,7 +27,14 @@ impl<T: Environment + 'static> LmdbRepWeightStore<T> {
         Ok(Self {
             _env: env,
             database,
+            #[cfg(feature = "output_tracking")]
+            delete_listener: OutputListenerMt::new(),
         })
+    }
+
+    #[cfg(feature = "output_tracking")]
+    pub fn track_deletions(&self) -> Arc<OutputTrackerMt<Account>> {
+        self.delete_listener.track()
     }
 
     pub fn get(
@@ -55,6 +65,9 @@ impl<T: Environment + 'static> LmdbRepWeightStore<T> {
     }
 
     pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, account: Account) {
+        #[cfg(feature = "output_tracking")]
+        self.delete_listener.emit(account);
+
         txn.delete(self.database, account.as_bytes(), None).unwrap();
     }
 

@@ -1,7 +1,7 @@
 use crate::stats::{DetailType, Direction, StatType, Stats};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, TomlWriter},
-    Account, Amount, BlockHash, Vote,
+    Account, Amount, BlockHash, Vote, VoteCode, VoteSource,
 };
 use std::{
     cmp::Ordering,
@@ -80,15 +80,42 @@ impl VoteCache {
         }
     }
 
-    pub fn vote(&mut self, vote: &Arc<Vote>, rep_weight: Amount) {
-        self.vote_filtered(vote, rep_weight, |_| true)
+    pub fn observe(
+        &mut self,
+        vote: &Arc<Vote>,
+        rep_weight: Amount,
+        source: VoteSource,
+        results: HashMap<BlockHash, VoteCode>,
+    ) {
+        if !matches!(source, VoteSource::Live) {
+            return;
+        }
+
+        self.insert_filtered(vote, rep_weight, |hash| {
+            // This filters which hashes should be included in the vote cache
+            match results.get(hash) {
+                Some(code) => {
+                    // Cache votes with a corresponding active election (indicated by `vote_code::vote`) in case that election gets dropped
+                    matches!(code, VoteCode::Vote | VoteCode::Indeterminate)
+                }
+                None => {
+                    debug_assert!(false);
+                    false
+                }
+            }
+        });
     }
 
-    pub fn vote_filtered<F>(&mut self, vote: &Arc<Vote>, rep_weight: Amount, filter: F)
+    pub fn insert(&mut self, vote: &Arc<Vote>, rep_weight: Amount) {
+        self.insert_filtered(vote, rep_weight, |_| true)
+    }
+
+    pub fn insert_filtered<F>(&mut self, vote: &Arc<Vote>, rep_weight: Amount, filter: F)
     where
         F: Fn(&BlockHash) -> bool,
     {
         for hash in &vote.hashes {
+            // Using filter callback here to avoid unnecessary relocking when processing large votes
             if !filter(hash) {
                 continue;
             }
@@ -566,7 +593,7 @@ mod tests {
         let hash = BlockHash::from(1);
         let vote = create_vote(&rep, &hash, 1);
 
-        cache.vote(&vote, Amount::raw(7));
+        cache.insert(&vote, Amount::raw(7));
 
         assert_eq!(cache.size(), 1);
         let peek = cache.find(&hash);
@@ -591,9 +618,9 @@ mod tests {
         let vote2 = create_vote(&rep2, &hash, 2);
         let vote3 = create_vote(&rep3, &hash, 3);
 
-        cache.vote(&vote1, Amount::raw(7));
-        cache.vote(&vote2, Amount::raw(9));
-        cache.vote(&vote3, Amount::raw(11));
+        cache.insert(&vote1, Amount::raw(7));
+        cache.insert(&vote2, Amount::raw(9));
+        cache.insert(&vote3, Amount::raw(11));
         // We have 3 votes but for a single hash, so just one entry in vote cache
         assert_eq!(cache.size(), 1);
         let votes = cache.find(&hash);
@@ -622,9 +649,9 @@ mod tests {
         let vote4 = create_vote(&rep4, &hash1, 1);
 
         // Insert first 3 votes in cache
-        cache.vote(&vote1, Amount::raw(7));
-        cache.vote(&vote2, Amount::raw(9));
-        cache.vote(&vote3, Amount::raw(11));
+        cache.insert(&vote1, Amount::raw(7));
+        cache.insert(&vote2, Amount::raw(9));
+        cache.insert(&vote3, Amount::raw(11));
 
         // Ensure all of those are properly inserted
         assert_eq!(cache.size(), 3);
@@ -633,7 +660,7 @@ mod tests {
         assert_eq!(cache.find(&hash3).len(), 1);
 
         // Now add a vote from rep4 with the highest voting weight
-        cache.vote(&vote4, Amount::raw(13));
+        cache.insert(&vote4, Amount::raw(13));
 
         let pop1 = cache.find(&hash1);
         assert_eq!(pop1.len(), 2);
@@ -654,8 +681,8 @@ mod tests {
         let vote1 = create_vote(&rep, &hash, 1);
         let vote2 = create_vote(&rep, &hash, 1);
 
-        cache.vote(&vote1, Amount::raw(9));
-        cache.vote(&vote2, Amount::raw(9));
+        cache.insert(&vote1, Amount::raw(9));
+        cache.insert(&vote2, Amount::raw(9));
 
         assert_eq!(cache.size(), 1)
     }
@@ -670,7 +697,7 @@ mod tests {
         let hash = BlockHash::from(1);
         let rep = KeyPair::new();
         let vote1 = create_vote(&rep, &hash, 1);
-        cache.vote(&vote1, Amount::raw(9));
+        cache.insert(&vote1, Amount::raw(9));
 
         let vote2 = Arc::new(Vote::new(
             rep.public_key(),
@@ -679,7 +706,7 @@ mod tests {
             Vote::DURATION_MAX,
             vec![hash],
         ));
-        cache.vote(&vote2, Amount::raw(9));
+        cache.insert(&vote2, Amount::raw(9));
 
         let peek2 = cache.find(&hash);
         assert_eq!(peek2.len(), 1);
@@ -695,11 +722,11 @@ mod tests {
         let hash = BlockHash::from(1);
         let rep = KeyPair::new();
         let vote1 = create_vote(&rep, &hash, 2);
-        cache.vote(&vote1, Amount::raw(9));
+        cache.insert(&vote1, Amount::raw(9));
         let peek1 = cache.find(&hash);
 
         let vote2 = create_vote(&rep, &hash, 1);
-        cache.vote(&vote2, Amount::raw(9));
+        cache.insert(&vote2, Amount::raw(9));
         let peek2 = cache.find(&hash);
 
         assert_eq!(cache.size(), 1);
@@ -728,9 +755,9 @@ mod tests {
         let vote2 = create_vote(&rep2, &hash2, 1);
         let vote3 = create_vote(&rep3, &hash3, 1);
 
-        cache.vote(&vote1, Amount::raw(7));
-        cache.vote(&vote2, Amount::raw(9));
-        cache.vote(&vote3, Amount::raw(11));
+        cache.insert(&vote1, Amount::raw(7));
+        cache.insert(&vote2, Amount::raw(9));
+        cache.insert(&vote3, Amount::raw(11));
 
         assert_eq!(cache.size(), 3);
         assert_eq!(cache.find(&hash1).len(), 1);
@@ -767,16 +794,16 @@ mod tests {
         let rep4 = KeyPair::new();
 
         let vote1 = create_vote(&rep1, &hash1, 1);
-        cache.vote(&vote1, Amount::raw(1));
+        cache.insert(&vote1, Amount::raw(1));
 
         let vote2 = create_vote(&rep2, &hash2, 1);
-        cache.vote(&vote2, Amount::raw(2));
+        cache.insert(&vote2, Amount::raw(2));
 
         let vote3 = create_vote(&rep3, &hash3, 1);
-        cache.vote(&vote3, Amount::raw(3));
+        cache.insert(&vote3, Amount::raw(3));
 
         let vote4 = create_vote(&rep4, &hash4, 1);
-        cache.vote(&vote4, Amount::raw(4));
+        cache.insert(&vote4, Amount::raw(4));
 
         assert_eq!(cache.size(), 3);
 
@@ -797,15 +824,15 @@ mod tests {
 
         let rep1 = KeyPair::new();
         let vote1 = create_vote(&rep1, &hash, 1);
-        cache.vote(&vote1, Amount::raw(9));
+        cache.insert(&vote1, Amount::raw(9));
 
         let rep2 = KeyPair::new();
         let vote2 = create_vote(&rep2, &hash, 1);
-        cache.vote(&vote2, Amount::raw(9));
+        cache.insert(&vote2, Amount::raw(9));
 
         let rep3 = KeyPair::new();
         let vote3 = create_vote(&rep3, &hash, 1);
-        cache.vote(&vote3, Amount::raw(9));
+        cache.insert(&vote3, Amount::raw(9));
 
         assert_eq!(cache.size(), 1);
     }
@@ -818,8 +845,8 @@ mod tests {
         let rep = KeyPair::new();
         let vote = create_vote(&rep, &hash, 1);
         let final_vote = create_final_vote(&rep, &hash);
-        cache.vote(&vote, Amount::raw(9));
-        cache.vote(&final_vote, Amount::raw(9));
+        cache.insert(&vote, Amount::raw(9));
+        cache.insert(&final_vote, Amount::raw(9));
 
         let votes = cache.find(&hash);
         let vote = votes.first().unwrap();
@@ -833,7 +860,7 @@ mod tests {
 
         let rep = KeyPair::new();
         let vote = create_final_vote(&rep, &hash);
-        cache.vote(&vote, Amount::raw(9));
+        cache.insert(&vote, Amount::raw(9));
 
         let votes = cache.find(&hash);
         let vote = votes.first().unwrap();
@@ -924,11 +951,11 @@ mod tests {
 
     fn add_test_vote(cache: &mut VoteCache, hash: &BlockHash, rep_weight: Amount) {
         let vote = create_vote(&KeyPair::new(), &hash, 0);
-        cache.vote(&vote, rep_weight);
+        cache.insert(&vote, rep_weight);
     }
 
     fn add_test_final_vote(cache: &mut VoteCache, hash: &BlockHash, rep_weight: Amount) {
         let vote = create_final_vote(&KeyPair::new(), &hash);
-        cache.vote(&vote, rep_weight);
+        cache.insert(&vote, rep_weight);
     }
 }

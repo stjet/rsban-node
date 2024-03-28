@@ -246,6 +246,10 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		scheduler.optimistic.activate (account, account_info, conf_info);
 	});
 
+	active.vote_processed.add ([this] (std::shared_ptr<nano::vote> const & vote, nano::vote_source source, std::unordered_map<nano::block_hash, nano::vote_code> const & results) {
+		vote_cache.observe (vote, source, results);
+	});
+
 	if (!init_error ())
 	{
 		// Notify election schedulers when AEC frees election slot

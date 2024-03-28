@@ -19,7 +19,7 @@ use blake2::{
     Blake2bVar,
 };
 pub use block_hash::{BlockHash, BlockHashBuilder};
-pub use vote::Vote;
+pub use vote::*;
 
 mod key_pair;
 pub use key_pair::{sign_message, validate_block_signature, validate_message, KeyPair};

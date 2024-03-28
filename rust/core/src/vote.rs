@@ -10,6 +10,21 @@ use crate::utils::Serialize;
 use anyhow::Result;
 use std::time::Duration;
 
+#[derive(FromPrimitive, Clone)]
+pub enum VoteSource {
+    Live,
+    Cache,
+}
+
+#[derive(FromPrimitive, Clone)]
+pub enum VoteCode {
+    Invalid,       // Vote is not signed correctly
+    Replay,        // Vote does not have the highest timestamp, it's a replay
+    Vote,          // Vote has the highest timestamp
+    Indeterminate, // Unknown if replay or vote
+    Ignored,       // Vote is valid, but got ingored (e.g. due to cooldown)
+}
+
 #[derive(Clone, Debug, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct Vote {

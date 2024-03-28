@@ -72,7 +72,18 @@ nano::vote_cache::~vote_cache ()
 	rsnano::rsn_vote_cache_destroy (handle);
 }
 
-void nano::vote_cache::vote (
+void nano::vote_cache::observe (const std::shared_ptr<nano::vote> & vote, nano::uint128_t rep_weight, nano::vote_source source, std::unordered_map<nano::block_hash, nano::vote_code> results)
+{
+	auto results_handle = rsnano::rsn_vote_result_map_create();
+	for (auto const & it : results) {
+		rsnano::rsn_vote_result_map_insert(results_handle, it.first.bytes.data (), static_cast<uint8_t>(it.second));
+	}
+	nano::amount weight{rep_weight};
+	rsnano::rsn_vote_cache_observe(handle, vote->get_handle (), weight.bytes.data (), static_cast<uint8_t>(source), results_handle);
+	rsnano::rsn_vote_result_map_destroy(results_handle);
+}
+
+void nano::vote_cache::insert (
 		std::shared_ptr<nano::vote> const & vote, 
 		nano::uint128_t weight, 
 		std::function<bool (nano::block_hash const &)> const & filter)

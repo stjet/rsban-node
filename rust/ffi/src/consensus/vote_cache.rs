@@ -1,7 +1,9 @@
 use crate::{consensus::VoteHandle, utils::ContainerInfoComponentHandle, StatHandle};
-use rsnano_core::{Amount, BlockHash, Vote};
+use num_traits::FromPrimitive;
+use rsnano_core::{Amount, BlockHash, Vote, VoteCode, VoteSource};
 use rsnano_node::consensus::{CacheEntry, TopEntry, VoteCache, VoteCacheConfig};
 use std::{
+    collections::HashMap,
     ffi::{c_char, CStr},
     ops::Deref,
     sync::{Arc, Mutex},
@@ -62,6 +64,46 @@ pub unsafe extern "C" fn rsn_vote_cache_clear(handle: *mut VoteCacheHandle) {
     guard.clear()
 }
 
+pub struct VoteResultMapHandle(HashMap<BlockHash, VoteCode>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_result_map_create() -> *mut VoteResultMapHandle {
+    Box::into_raw(Box::new(VoteResultMap(HashMap::new())))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_result_map_destroy(handle: *mut VoteResultMapHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_result_map_insert(
+    handle: &mut VoteResultMapHandle,
+    hash: *const u8,
+    code: u8,
+) {
+    handle.0.insert(
+        BlockHash::from_ptr(hash),
+        FromPrimitive::from_u8(code).unwrap(),
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_cache_observe(
+    handle: &mut VoteCacheHandle,
+    vote: &VoteHandle,
+    rep_weight: *const u8,
+    vote_source: u8,
+    results: &VoteResultMapHandle,
+) {
+    handle.0.lock().unwrap().observe(
+        vote,
+        Amount::from_ptr(rep_weight),
+        VoteSource::from_u8(vote_source).unwrap(),
+        results.0.clone(),
+    );
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_cache_vote(
     handle: &mut VoteCacheHandle,
@@ -73,7 +115,7 @@ pub unsafe extern "C" fn rsn_vote_cache_vote(
         .0
         .lock()
         .unwrap()
-        .vote(vote, Amount::from_ptr(weight));
+        .insert(vote, Amount::from_ptr(weight));
 }
 
 #[no_mangle]

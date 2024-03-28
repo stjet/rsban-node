@@ -72,10 +72,13 @@ nano::vote_cache::~vote_cache ()
 	rsnano::rsn_vote_cache_destroy (handle);
 }
 
-void nano::vote_cache::vote (std::shared_ptr<nano::vote> const & vote, std::function<bool (nano::block_hash const &)> const & filter)
+void nano::vote_cache::vote (
+		std::shared_ptr<nano::vote> const & vote, 
+		nano::uint128_t weight, 
+		std::function<bool (nano::block_hash const &)> const & filter)
 {
-	//TODO!
-	throw std::runtime_error("NOT IMPLEMENTED");
+	nano::amount weight_amount { weight };
+	rsnano::rsn_vote_cache_vote(handle, vote->get_handle(), weight_amount.bytes.data ());
 }
 
 bool nano::vote_cache::empty () const

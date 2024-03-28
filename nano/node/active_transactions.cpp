@@ -1133,12 +1133,12 @@ std::shared_ptr<nano::block> nano::active_transactions::winner (nano::block_hash
 	return result;
 }
 
-void nano::active_transactions::erase (nano::block const & block_a)
+bool nano::active_transactions::erase (nano::block const & block_a)
 {
-	erase (block_a.qualified_root ());
+	return erase (block_a.qualified_root ());
 }
 
-void nano::active_transactions::erase (nano::qualified_root const & root_a)
+bool nano::active_transactions::erase (nano::qualified_root const & root_a)
 {
 	auto guard{ lock () };
 	auto election_handle = rsnano::rsn_active_transactions_lock_roots_find (guard.handle, root_a.root ().bytes.data (), root_a.previous ().bytes.data ());
@@ -1146,14 +1146,17 @@ void nano::active_transactions::erase (nano::qualified_root const & root_a)
 	{
 		auto election = std::make_shared<nano::election> (election_handle);
 		cleanup_election (guard, election);
+		return true;
 	}
+	return false;
 }
 
-void nano::active_transactions::erase_hash (nano::block_hash const & hash_a)
+bool nano::active_transactions::erase_hash (nano::block_hash const & hash_a)
 {
 	auto guard{ lock () };
 	[[maybe_unused]] auto erased (rsnano::rsn_active_transactions_lock_blocks_erase (guard.handle, hash_a.bytes.data ()));
 	debug_assert (erased);
+	return erased;
 }
 
 void nano::active_transactions::erase_oldest ()

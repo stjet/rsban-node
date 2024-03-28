@@ -63,6 +63,20 @@ pub unsafe extern "C" fn rsn_vote_cache_clear(handle: *mut VoteCacheHandle) {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_vote_cache_vote(
+    handle: &mut VoteCacheHandle,
+    vote: &VoteHandle,
+    weight: *const u8,
+) {
+    // TODO: pass filter callback too!
+    handle
+        .0
+        .lock()
+        .unwrap()
+        .vote(vote, Amount::from_ptr(weight));
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_cache_collect_container_info(
     handle: *const VoteCacheHandle,
     name: *const c_char,

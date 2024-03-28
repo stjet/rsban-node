@@ -124,6 +124,6 @@ pub unsafe extern "C" fn rsn_raw_vote_processor_queue_get(
     channel: *mut *mut ChannelHandle,
 ) {
     let (v, c) = handle.0.get(index).unwrap();
-    *vote = Box::into_raw(Box::new(VoteHandle::new(Arc::clone(v))));
+    *vote = VoteHandle::new(Arc::clone(v));
     *channel = ChannelHandle::new(Arc::clone(c));
 }

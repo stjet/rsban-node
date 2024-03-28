@@ -1,8 +1,9 @@
 use crate::{consensus::VoteHandle, utils::ContainerInfoComponentHandle, StatHandle};
-use rsnano_core::{Amount, BlockHash};
-use rsnano_node::consensus::{TopEntry, VoteCache, VoteCacheConfig, VoterEntry};
+use rsnano_core::{Amount, BlockHash, Vote};
+use rsnano_node::consensus::{CacheEntry, TopEntry, VoteCache, VoteCacheConfig};
 use std::{
     ffi::{c_char, CStr},
+    ops::Deref,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -26,18 +27,6 @@ pub unsafe extern "C" fn rsn_vote_cache_destroy(handle: *mut VoteCacheHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_vote(
-    handle: *mut VoteCacheHandle,
-    hash: *const u8,
-    vote: &VoteHandle,
-    rep_weight: *const u8,
-) {
-    let hash = BlockHash::from_ptr(hash);
-    let rep_weight = Amount::from_ptr(rep_weight);
-    (*handle).0.lock().unwrap().vote(&hash, &vote, rep_weight);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_cache_cache_empty(handle: *const VoteCacheHandle) -> bool {
     (*handle).0.lock().unwrap().empty()
 }
@@ -51,31 +40,10 @@ pub unsafe extern "C" fn rsn_vote_cache_cache_size(handle: *const VoteCacheHandl
 pub unsafe extern "C" fn rsn_vote_cache_find(
     handle: *mut VoteCacheHandle,
     hash: *const u8,
-    result: *mut VoteCacheEntryDto,
-) -> bool {
+) -> *mut VoteVecHandle {
     let hash = BlockHash::from_ptr(hash);
     let guard = (*handle).0.lock().unwrap();
-    let entry = guard.find(&hash);
-    fill_entry_dto(entry, result)
-}
-
-unsafe fn fill_entry_dto(
-    entry: Option<&rsnano_node::consensus::CacheEntry>,
-    result: *mut VoteCacheEntryDto,
-) -> bool {
-    match entry {
-        Some(entry) => {
-            (*result).hash.copy_from_slice(entry.hash.as_bytes());
-            (*result).tally.copy_from_slice(&entry.tally.to_be_bytes());
-            (*result)
-                .final_tally
-                .copy_from_slice(&entry.final_tally.to_be_bytes());
-            (*result).voters_count = entry.voters.len();
-            (*result).voters = Box::into_raw(Box::new(VoterListDto(entry.voters.clone())));
-            true
-        }
-        None => false,
-    }
+    VoteVecHandle::new(guard.find(&hash))
 }
 
 #[no_mangle]
@@ -95,23 +63,6 @@ pub unsafe extern "C" fn rsn_vote_cache_clear(handle: *mut VoteCacheHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_entry_destroy(entry: *mut VoteCacheEntryDto) {
-    drop(Box::from_raw((*entry).voters));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_entry_get_voter(
-    entry: *const VoteCacheEntryDto,
-    index: usize,
-    account: *mut u8,
-    timestamp: *mut u64,
-) {
-    let voter = (*(*entry).voters).0.get(index).unwrap();
-    voter.representative.copy_bytes(account);
-    *timestamp = voter.timestamp;
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_cache_collect_container_info(
     handle: *const VoteCacheHandle,
     name: *const c_char,
@@ -123,17 +74,6 @@ pub unsafe extern "C" fn rsn_vote_cache_collect_container_info(
         .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
     Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }
-
-#[repr(C)]
-pub struct VoteCacheEntryDto {
-    pub hash: [u8; 32],
-    pub tally: [u8; 16],
-    pub final_tally: [u8; 16],
-    pub voters: *mut VoterListDto,
-    pub voters_count: usize,
-}
-
-pub struct VoterListDto(Vec<VoterEntry>);
 
 #[repr(C)]
 pub struct TopEntryDto {
@@ -200,4 +140,81 @@ impl From<&VoteCacheConfigDto> for VoteCacheConfig {
             age_cutoff: Duration::from_secs(value.age_cutoff_s),
         }
     }
+}
+
+pub struct VoteCacheEntryHandle(CacheEntry);
+
+impl VoteCacheEntryHandle {
+    pub fn new(entry: CacheEntry) -> *mut Self {
+        Box::into_raw(Box::new(VoteCacheEntryHandle(entry)))
+    }
+}
+
+impl Deref for VoteCacheEntryHandle {
+    type Target = CacheEntry;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_cache_entry_destroy(handle: *mut VoteCacheEntryHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_vote_cache_entry_size(handle: &VoteCacheEntryHandle) -> usize {
+    handle.size()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_cache_entry_hash(handle: &VoteCacheEntryHandle, result: *mut u8) {
+    handle.hash.copy_bytes(result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_cache_entry_tally(
+    handle: &VoteCacheEntryHandle,
+    result: *mut u8,
+) {
+    handle.tally().copy_bytes(result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_cache_entry_final_tally(
+    handle: &VoteCacheEntryHandle,
+    result: *mut u8,
+) {
+    handle.final_tally().copy_bytes(result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_cache_entry_votes(
+    handle: &VoteCacheEntryHandle,
+) -> *mut VoteVecHandle {
+    VoteVecHandle::new(handle.votes())
+}
+
+pub struct VoteVecHandle(Vec<Arc<Vote>>);
+
+impl VoteVecHandle {
+    pub fn new(votes: Vec<Arc<Vote>>) -> *mut Self {
+        Box::into_raw(Box::new(VoteVecHandle(votes)))
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_vec_destroy(handle: *mut VoteVecHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_vec_len(handle: &VoteVecHandle) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_vec_get(handle: &VoteVecHandle, index: usize) -> *mut VoteHandle {
+    VoteHandle::new(Arc::clone(handle.0.get(index).unwrap()))
 }

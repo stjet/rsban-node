@@ -5,8 +5,8 @@ use std::{ffi::c_void, ops::Deref, sync::Arc};
 pub struct VoteHandle(pub Arc<Vote>);
 
 impl VoteHandle {
-    pub fn new(vote: Arc<Vote>) -> Self {
-        Self(vote)
+    pub fn new(vote: Arc<Vote>) -> *mut Self {
+        Box::into_raw(Box::new(Self(vote)))
     }
 
     fn get_mut(&mut self) -> &mut Vote {
@@ -24,7 +24,7 @@ impl Deref for VoteHandle {
 
 #[no_mangle]
 pub extern "C" fn rsn_vote_create() -> *mut VoteHandle {
-    Box::into_raw(Box::new(VoteHandle::new(Arc::new(Vote::null()))))
+    VoteHandle::new(Arc::new(Vote::null()))
 }
 
 #[no_mangle]
@@ -42,9 +42,9 @@ pub unsafe extern "C" fn rsn_vote_create2(
     let hashes = std::slice::from_raw_parts(hashes, hash_count);
     let hashes = hashes.iter().map(|&h| BlockHash::from_bytes(h)).collect();
 
-    Box::into_raw(Box::new(VoteHandle::new(Arc::new(Vote::new(
+    VoteHandle::new(Arc::new(Vote::new(
         account, &key, timestamp, duration, hashes,
-    )))))
+    )))
 }
 
 #[no_mangle]
@@ -58,9 +58,7 @@ pub unsafe extern "C" fn rsn_vote_copy(handle: *const VoteHandle) -> *mut VoteHa
         return std::ptr::null_mut();
     }
 
-    Box::into_raw(Box::new(VoteHandle::new(Arc::new(
-        (*handle).deref().deref().clone(),
-    ))))
+    VoteHandle::new(Arc::new((*handle).deref().deref().clone()))
 }
 
 #[no_mangle]

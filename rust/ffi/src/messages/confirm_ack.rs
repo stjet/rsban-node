@@ -30,7 +30,7 @@ unsafe fn get_payload(handle: &MessageHandle) -> &ConfirmAck {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_confirm_ack_vote(handle: &MessageHandle) -> *mut VoteHandle {
     let vote = get_payload(handle).vote().clone();
-    Box::into_raw(Box::new(VoteHandle::new(Arc::new(vote))))
+    VoteHandle::new(Arc::new(vote))
 }
 
 #[no_mangle]

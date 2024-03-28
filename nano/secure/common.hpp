@@ -251,6 +251,8 @@ public:
 	void operator() (nano::object_stream &) const;
 };
 
+std::vector<std::shared_ptr<nano::vote>> into_vote_vec(rsnano::VoteVecHandle * handle);
+
 enum class vote_code
 {
 	invalid, // Vote is not signed correctly

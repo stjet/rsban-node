@@ -224,10 +224,6 @@ public:
 	 * If the election reaches consensus, it will be confirmed
 	 */
 	nano::vote_code vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a = nano::vote_source::live);
-	/**
-	 * Inserts votes stored in the cache entry into this election
-	 */
-	std::size_t fill_from_cache (nano::election & election, nano::vote_cache::entry const & entry);
 	nano::election_extended_status current_status (nano::election & election) const;
 	nano::tally_t tally (nano::election & election) const;
 	void on_block_confirmed (std::function<void (std::shared_ptr<nano::block> const &, nano::store::read_transaction const &, nano::election_status_type)> callback);
@@ -243,11 +239,6 @@ private:
 	nano::stat::type completion_type (nano::election const & election) const;
 	// Returns a list of elections sorted by difficulty, mutex must be locked
 	std::vector<std::shared_ptr<nano::election>> list_active_impl (std::size_t, nano::active_transactions_lock & guard) const;
-	/**
-	 * Checks if vote passes minimum representative weight threshold and adds it to inactive vote cache
-	 * TODO: Should be moved to `vote_cache` class
-	 */
-	void add_vote_cache (nano::block_hash const & hash, std::shared_ptr<nano::vote> vote);
 	void notify_observers (nano::store::read_transaction const & transaction, nano::election_status const & status, std::vector<nano::vote_with_weight_info> const & votes);
 	/**
 	 * Broadcast vote for current election winner. Generates final vote if reached quorum or already confirmed

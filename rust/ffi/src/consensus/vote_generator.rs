@@ -132,7 +132,7 @@ pub extern "C" fn rsn_vote_generator_set_reply_action(
     let context_wrapper = ContextWrapper::new(context, drop_context);
     handle.set_reply_action(Box::new(move |vote, channel| {
         let ctx = context_wrapper.get_context();
-        let vote_handle = Box::into_raw(Box::new(VoteHandle::new(Arc::clone(vote))));
+        let vote_handle = VoteHandle::new(Arc::clone(vote));
         let channel_handle = ChannelHandle::new(Arc::clone(channel));
         action(ctx, vote_handle, channel_handle);
     }));

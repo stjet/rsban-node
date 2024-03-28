@@ -1,3 +1,4 @@
+#include "nano/secure/common.hpp"
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnanoutils.hpp>
@@ -8,59 +9,52 @@
 #include <nano/node/vote_cache.hpp>
 
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 /*
  * vote_cache_entry
  */
 
-nano::vote_cache_entry::vote_cache_entry (const nano::block_hash & hash) :
-	hash_m{ hash }
+nano::vote_cache_entry::vote_cache_entry (rsnano::VoteCacheEntryHandle * handle) :
+	handle{ handle }
 {
 }
 
-nano::vote_cache_entry::vote_cache_entry (rsnano::VoteCacheEntryDto & dto) :
-	hash_m{ nano::block_hash::from_bytes (&dto.hash[0]) }
+nano::vote_cache_entry::~vote_cache_entry () 
 {
-	nano::amount tally;
-	nano::amount final_tally;
-	std::copy (std::begin (dto.tally), std::end (dto.tally), std::begin (tally.bytes));
-	std::copy (std::begin (dto.final_tally), std::end (dto.final_tally), std::begin (final_tally.bytes));
-	tally_m = tally.number ();
-	final_tally_m = final_tally.number ();
-	voters_m.reserve (dto.voters_count);
-	for (auto i = 0; i < dto.voters_count; ++i)
-	{
-		nano::vote_cache::entry::voter_entry e;
-		rsnano::rsn_vote_cache_entry_get_voter (&dto, i, e.representative.bytes.data (), &e.timestamp);
-		voters_m.push_back (e);
-	}
-	rsnano::rsn_vote_cache_entry_destroy (&dto);
+	rsnano::rsn_vote_cache_entry_destroy(handle);
 }
 
 std::size_t nano::vote_cache_entry::size () const
 {
-	return voters_m.size ();
+	return rsnano::rsn_vote_cache_entry_size(handle);
 }
 
 nano::block_hash nano::vote_cache_entry::hash () const
 {
-	return hash_m;
+	nano::block_hash result;
+	rsnano::rsn_vote_cache_entry_hash(handle, result.bytes.data());
+	return result;
 }
 
 nano::uint128_t nano::vote_cache_entry::tally () const
 {
-	return tally_m;
+	nano::amount result;
+	rsnano::rsn_vote_cache_entry_tally(handle, result.bytes.data());
+	return result.number();
 }
 
 nano::uint128_t nano::vote_cache_entry::final_tally () const
 {
-	return final_tally_m;
+	nano::amount result;
+	rsnano::rsn_vote_cache_entry_final_tally(handle, result.bytes.data());
+	return result.number();
 }
 
-std::vector<nano::vote_cache_entry::voter_entry> nano::vote_cache_entry::voters () const
+std::vector<std::shared_ptr<nano::vote>> nano::vote_cache_entry::votes () const
 {
-	return voters_m;
+	return nano::into_vote_vec(rsnano::rsn_vote_cache_entry_votes (handle));
 }
 
 /*
@@ -78,10 +72,10 @@ nano::vote_cache::~vote_cache ()
 	rsnano::rsn_vote_cache_destroy (handle);
 }
 
-void nano::vote_cache::vote (const nano::block_hash & hash, const std::shared_ptr<nano::vote> vote, nano::uint128_t rep_weight)
+void nano::vote_cache::vote (std::shared_ptr<nano::vote> const & vote, std::function<bool (nano::block_hash const &)> const & filter)
 {
-	nano::amount rep_weight_amount{ rep_weight };
-	rsnano::rsn_vote_cache_vote (handle, hash.bytes.data (), vote->get_handle (), rep_weight_amount.bytes.data ());
+	//TODO!
+	throw std::runtime_error("NOT IMPLEMENTED");
 }
 
 bool nano::vote_cache::empty () const
@@ -94,14 +88,9 @@ std::size_t nano::vote_cache::size () const
 	return rsnano::rsn_vote_cache_cache_size (handle);
 }
 
-std::optional<nano::vote_cache::entry> nano::vote_cache::find (const nano::block_hash & hash) const
+std::vector<std::shared_ptr<nano::vote>> nano::vote_cache::find (const nano::block_hash & hash) const
 {
-	rsnano::VoteCacheEntryDto result{};
-	if (rsnano::rsn_vote_cache_find (handle, hash.bytes.data (), &result))
-	{
-		return nano::vote_cache::entry{ result };
-	}
-	return {};
+	return nano::into_vote_vec(rsnano::rsn_vote_cache_find(handle, hash.bytes.data()));
 }
 
 bool nano::vote_cache::erase (const nano::block_hash & hash)

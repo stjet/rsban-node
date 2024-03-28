@@ -1,15 +1,16 @@
 #pragma once
 
-#include "nano/lib/interval.hpp"
-#include "nano/lib/rsnano.hpp"
-
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
 
 #include <memory>
-#include <optional>
 #include <vector>
+
+namespace rsnano
+{
+class VoteCacheEntryHandle;
+}
 
 namespace nano
 {
@@ -38,28 +39,18 @@ public:
 class vote_cache_entry final
 {
 public:
-	struct voter_entry
-	{
-		nano::account representative;
-		uint64_t timestamp;
-	};
-
-public:
-	explicit vote_cache_entry (nano::block_hash const & hash);
-	explicit vote_cache_entry (rsnano::VoteCacheEntryDto & dto);
+	explicit vote_cache_entry (rsnano::VoteCacheEntryHandle * handle);
+	vote_cache_entry(vote_cache_entry const &) = delete;
+	vote_cache_entry(vote_cache_entry &&) = delete;
+	~vote_cache_entry();
 
 	std::size_t size () const;
 
 	nano::block_hash hash () const;
 	nano::uint128_t tally () const;
 	nano::uint128_t final_tally () const;
-	std::vector<voter_entry> voters () const;
-
-	nano::block_hash const hash_m;
-	std::vector<voter_entry> voters_m;
-
-	nano::uint128_t tally_m{ 0 };
-	nano::uint128_t final_tally_m{ 0 };
+	std::vector<std::shared_ptr<nano::vote>> votes () const;
+	rsnano::VoteCacheEntryHandle * handle;
 };
 
 class vote_cache final
@@ -76,12 +67,12 @@ public:
 	/**
 	 * Adds a new vote to cache
 	 */
-	void vote (nano::block_hash const & hash, std::shared_ptr<nano::vote> vote, nano::uint128_t rep_weight);
+	void vote (std::shared_ptr<nano::vote> const & vote, std::function<bool (nano::block_hash const &)> const & filter);
 
 	/**
 	 * Tries to find an entry associated with block hash
 	 */
-	std::optional<entry> find (nano::block_hash const & hash) const;
+	std::vector<std::shared_ptr<nano::vote>> find (nano::block_hash const & hash) const;
 
 	/**
 	 * Removes an entry associated with block hash, does nothing if entry does not exist
@@ -92,8 +83,6 @@ public:
 
 	std::size_t size () const;
 	bool empty () const;
-
-	rsnano::VoteCacheHandle * handle;
 
 public:
 	struct top_entry
@@ -112,5 +101,7 @@ public:
 
 public: // Container info
 	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name) const;
+
+	rsnano::VoteCacheHandle * handle;
 };
 }

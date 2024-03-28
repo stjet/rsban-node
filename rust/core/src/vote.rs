@@ -201,6 +201,8 @@ impl PartialEq for Vote {
     }
 }
 
+impl Eq for Vote {}
+
 impl FullHash for Vote {
     fn full_hash(&self) -> BlockHash {
         BlockHashBuilder::new()

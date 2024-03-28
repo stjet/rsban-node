@@ -213,11 +213,22 @@ bool nano::active_transactions::replace_by_weight (nano::election & election, na
 	}
 	rsnano::rsn_tally_destroy (last_tally_handle);
 	lock_a.unlock ();
+
 	// Sort in ascending order
 	std::sort (sorted.begin (), sorted.end (), [] (auto const & left, auto const & right) { return left.second < right.second; });
+
+	auto votes_tally = [this] (std::vector<std::shared_ptr<nano::vote>> const & votes) {
+		nano::uint128_t result{ 0 };
+		for (auto const & vote : votes)
+		{
+			result += node.ledger.weight (vote->account ());
+		}
+		return result;
+	};
+
 	// Replace if lowest tally is below inactive cache new block weight
 	auto inactive_existing = node.vote_cache.find (hash_a);
-	auto inactive_tally = inactive_existing ? inactive_existing->tally () : 0;
+	auto inactive_tally = votes_tally (inactive_existing);
 	if (inactive_tally > 0 && sorted.size () < election.max_blocks)
 	{
 		// If count of tally items is less than 10, remove any block without tally
@@ -773,9 +784,11 @@ void nano::active_transactions::request_loop ()
 
 nano::election_insertion_result nano::active_transactions::insert (const std::shared_ptr<nano::block> & block_a, nano::election_behavior election_behavior_a)
 {
-	auto guard{ lock () };
 	debug_assert (block_a);
 	debug_assert (block_a->has_sideband ());
+
+	auto guard{ lock () };
+
 	nano::election_insertion_result result;
 
 	if (rsnano::rsn_active_transactions_lock_stopped (guard.handle))
@@ -824,15 +837,16 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 	{
 		result.election = existing;
 	}
-	guard.unlock (); // end of critical section
+	guard.unlock ();
 
 	if (result.inserted)
 	{
 		release_assert (result.election);
 
-		if (auto const cache = node.vote_cache.find (hash); cache)
+		auto cached = node.vote_cache.find (hash);
+		for (auto const & cached_vote : cached)
 		{
-			fill_from_cache (*result.election, *cache);
+			vote (cached_vote);
 		}
 
 		node.observers->active_started.notify (hash);
@@ -845,7 +859,9 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 		auto guard{ result.election->lock () };
 		broadcast_vote (*result.election, guard);
 	}
+
 	trim ();
+	
 	return result;
 }
 
@@ -1031,12 +1047,6 @@ std::unordered_map<nano::block_hash, nano::vote_code> nano::active_transactions:
 		}
 	}
 
-	// Process inactive votes outside of the critical section
-	for (auto & hash : inactive)
-	{
-		add_vote_cache (hash, vote);
-	}
-
 	if (!process.empty ())
 	{
 		bool replay = false;
@@ -1184,10 +1194,13 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 			guard.lock ();
 			rsnano::rsn_active_transactions_lock_blocks_insert (guard.handle, block_a->hash ().bytes.data (), election->handle);
 			guard.unlock ();
-			if (auto const cache = node.vote_cache.find (block_a->hash ()); cache)
+
+			auto cached = node.vote_cache.find (block_a->hash ());
+			for (auto const & cached_vote : cached)
 			{
-				fill_from_cache (*election, *cache);
+				vote (cached_vote);
 			}
+
 			node.stats->inc (nano::stat::type::active, nano::stat::detail::election_block_conflict);
 		}
 	}
@@ -1253,20 +1266,6 @@ nano::vote_code nano::active_transactions::vote (nano::election & election, nano
 	return vote_code::vote;
 }
 
-std::size_t nano::active_transactions::fill_from_cache (nano::election & election, nano::vote_cache::entry const & entry)
-{
-	std::size_t inserted = 0;
-	for (const auto & voter : entry.voters_m)
-	{
-		auto result = vote (election, voter.representative, voter.timestamp, entry.hash_m, nano::vote_source::cache);
-		if (result == nano::vote_code::vote)
-		{
-			inserted++;
-		}
-	}
-	return inserted;
-}
-
 void nano::active_transactions::try_confirm (nano::election & election, nano::block_hash const & hash)
 {
 	auto guard{ election.lock () };
@@ -1277,15 +1276,6 @@ void nano::active_transactions::try_confirm (nano::election & election, nano::bl
 		{
 			confirm_once (guard, election);
 		}
-	}
-}
-
-void nano::active_transactions::add_vote_cache (nano::block_hash const & hash, std::shared_ptr<nano::vote> const vote)
-{
-	auto rep_weight = node.ledger.weight (vote->account ());
-	if (rep_weight > node.minimum_principal_weight ())
-	{
-		node.vote_cache.vote (hash, vote, rep_weight);
 	}
 }
 

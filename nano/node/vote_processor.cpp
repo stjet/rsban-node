@@ -15,8 +15,6 @@
 #include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>
 
-#include <boost/format.hpp>
-
 #include <chrono>
 
 using namespace std::chrono_literals;
@@ -179,12 +177,12 @@ void nano::vote_processor::verify_votes (std::deque<std::pair<std::shared_ptr<na
 	}
 }
 
-nano::vote_code nano::vote_processor::vote_blocking (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a, bool validated)
+nano::vote_code nano::vote_processor::vote_blocking (std::shared_ptr<nano::vote> const & vote, std::shared_ptr<nano::transport::channel> const & channel_a, bool validated)
 {
 	auto result = nano::vote_code::invalid;
-	if (validated || !vote_a->validate ())
+	if (validated || !vote->validate ())
 	{
-		auto vote_results = active.vote (vote_a);
+		auto vote_results = active.vote (vote);
 
 		// Aggregate results for individual hashes
 		bool replay = false;
@@ -196,13 +194,13 @@ nano::vote_code nano::vote_processor::vote_blocking (std::shared_ptr<nano::vote>
 		}
 		result = replay ? nano::vote_code::replay : (processed ? nano::vote_code::vote : nano::vote_code::indeterminate);
 
-		observers.vote.notify (vote_a, channel_a, result);
+		observers.vote.notify (vote, channel_a, result);
 	}
 
 	stats.inc (nano::stat::type::vote, to_stat_detail (result));
 
 	logger.trace (nano::log::type::vote_processor, nano::log::detail::vote_processed,
-	nano::log::arg{ "vote", vote_a },
+	nano::log::arg{ "vote", vote },
 	nano::log::arg{ "result", result });
 
 	return result;

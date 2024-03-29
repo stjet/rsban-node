@@ -1053,28 +1053,10 @@ std::unordered_map<nano::block_hash, nano::vote_code> nano::active_transactions:
 		}
 	}
 
-	if (!process.empty ())
+	for (auto const & [block_hash, election] : process)
 	{
-		bool replay = false;
-		bool processed = false;
-
-		for (auto const & [block_hash, election] : process)
-		{
-			auto const vote_result = this->vote (*election, vote->account (), vote->timestamp (), block_hash, source);
-			results[block_hash] = vote_result;
-
-			processed |= (vote_result == nano::vote_code::vote);
-		}
-
-		// Republish vote if it is new and the node does not host a principal representative (or close to)
-		if (processed)
-		{
-			if (node.wallets.should_republish_vote (vote->account ()))
-			{
-				nano::confirm_ack ack{ node.network_params.network, vote };
-				node.network->tcp_channels->flood_message (ack, 0.5f);
-			}
-		}
+		auto const vote_result = this->vote (*election, vote->account(), vote->timestamp(), block_hash, source);
+		results[block_hash] = vote_result;
 	}
 
 	vote_processed.notify (vote, source, results);

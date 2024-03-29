@@ -251,6 +251,21 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		vote_cache.observe (vote, rep_weight, source, results);
 	});
 
+	// Republish vote if it is new and the node does not host a principal representative (or close to)
+	active.vote_processed.add ([this] (std::shared_ptr<nano::vote> const & vote, nano::vote_source source, std::unordered_map<nano::block_hash, nano::vote_code> const & results) {
+		bool processed = std::any_of (results.begin (), results.end (), [] (auto const & result) {
+			return result.second == nano::vote_code::vote;
+		});
+		if (processed)
+		{
+			if (wallets.should_republish_vote (vote->account ()))
+			{
+				nano::confirm_ack ack{ network_params.network, vote };
+				network->tcp_channels->flood_message (ack, 0.5f);
+			}
+		}
+	});
+
 	if (!init_error ())
 	{
 		// Notify election schedulers when AEC frees election slot

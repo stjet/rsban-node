@@ -79,7 +79,7 @@ impl WriteDatabaseQueue {
         }
     }
 
-    /// Blocks until we are at the head of the queue
+    /// Blocks until we are at the head of the queue and blocks other waiters until write_guard goes out of scope
     pub fn wait(&self, writer: Writer) -> WriteGuard {
         if self.data.use_noops {
             return WriteGuard::null();

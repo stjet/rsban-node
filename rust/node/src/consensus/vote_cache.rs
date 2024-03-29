@@ -537,7 +537,7 @@ mod tests {
         VoteCacheConfig {
             max_size: 3,
             max_voters: 80,
-            age_cutoff: Duration::from_secs(15 * 60),
+            age_cutoff: Duration::from_secs(5 * 60),
         }
     }
 

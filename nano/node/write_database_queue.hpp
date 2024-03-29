@@ -41,6 +41,10 @@ private:
 	bool owns{ true };
 };
 
+/**
+ * Allocates database write access in a fair maner rather than directly waiting for mutex aquisition
+ * Users should wait() for access to database write transaction and hold the write_guard until complete
+ */
 class write_database_queue final
 {
 public:
@@ -48,8 +52,8 @@ public:
 	write_database_queue (write_database_queue const &) = delete;
 	write_database_queue (write_database_queue &&) = delete;
 	~write_database_queue ();
-	/** Blocks until we are at the head of the queue */
-	write_guard wait (nano::writer writer);
+	/** Blocks until we are at the head of the queue and blocks other waiters until write_guard goes out of scope */
+	[[nodiscard ("write_guard blocks other waiters")]] write_guard wait (nano::writer writer);
 
 	/** Returns true if this writer is now at the front of the queue */
 	bool process (nano::writer writer);

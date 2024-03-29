@@ -843,7 +843,7 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 	{
 		debug_assert (result.election);
 
-		trigger_vote_cache (result.election);
+		trigger_vote_cache (hash);
 
 		node.observers->active_started.notify (hash);
 		vacancy_update ();

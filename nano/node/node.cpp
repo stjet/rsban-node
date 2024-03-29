@@ -247,7 +247,8 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	});
 
 	active.vote_processed.add ([this] (std::shared_ptr<nano::vote> const & vote, nano::vote_source source, std::unordered_map<nano::block_hash, nano::vote_code> const & results) {
-		vote_cache.observe (vote, source, results);
+		auto rep_weight = ledger.weight(vote->account ());
+		vote_cache.observe (vote, rep_weight, source, results);
 	});
 
 	if (!init_error ())

@@ -68,7 +68,7 @@ pub struct VoteResultMapHandle(HashMap<BlockHash, VoteCode>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_result_map_create() -> *mut VoteResultMapHandle {
-    Box::into_raw(Box::new(VoteResultMap(HashMap::new())))
+    Box::into_raw(Box::new(VoteResultMapHandle(HashMap::new())))
 }
 
 #[no_mangle]

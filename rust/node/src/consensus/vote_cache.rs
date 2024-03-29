@@ -184,16 +184,15 @@ impl VoteCache {
         }
 
         let mut results = Vec::new();
-        for entry in self.cache.iter_by_tally() {
+        for entry in self.cache.iter() {
             let tally = entry.tally();
-            if tally < min_tally {
-                break;
+            if tally >= min_tally {
+                results.push(TopEntry {
+                    hash: entry.hash,
+                    tally,
+                    final_tally: entry.final_tally(),
+                });
             }
-            results.push(TopEntry {
-                hash: entry.hash,
-                tally,
-                final_tally: entry.final_tally(),
-            });
         }
 
         // Sort by final tally then by normal tally, descending
@@ -364,14 +363,12 @@ impl CacheEntry {
 pub struct CacheEntryCollection {
     sequential: BTreeMap<usize, BlockHash>,
     by_hash: HashMap<BlockHash, CacheEntry>,
-    by_tally: BTreeMap<Amount, Vec<BlockHash>>,
 }
 
 impl CacheEntryCollection {
     pub fn insert(&mut self, entry: CacheEntry) {
         let old = self.sequential.insert(entry.id, entry.hash);
         debug_assert!(old.is_none());
-        self.insert_by_tally(entry.tally(), entry.hash);
         let old = self.by_hash.insert(entry.hash, entry);
         debug_assert!(old.is_none());
     }
@@ -381,44 +378,17 @@ impl CacheEntryCollection {
         F: FnOnce(&mut CacheEntry),
     {
         if let Some(entry) = self.by_hash.get_mut(hash) {
-            let old_tally = entry.tally();
             f(entry);
-            let new_tally = entry.tally();
-            if new_tally != old_tally {
-                self.remove_by_tally(&old_tally, hash);
-                self.insert_by_tally(new_tally, *hash);
-            }
             true
         } else {
             false
         }
     }
 
-    fn remove_by_tally(&mut self, tally: &Amount, hash: &BlockHash) {
-        let hashes = self.by_tally.get_mut(tally).unwrap();
-        if hashes.len() == 1 {
-            self.by_tally.remove(tally);
-        } else {
-            hashes.retain(|x| x != hash);
-        }
-    }
-
-    fn insert_by_tally(&mut self, tally: Amount, hash: BlockHash) {
-        self.by_tally.entry(tally).or_default().push(hash);
-    }
-
-    pub fn iter_by_tally(&self) -> impl Iterator<Item = &CacheEntry> {
-        self.by_tally
-            .iter()
-            .rev()
-            .flat_map(|(_, hashes)| hashes.iter().map(|h| self.by_hash.get(h).unwrap()))
-    }
-
     pub fn pop_front(&mut self) -> Option<CacheEntry> {
         match self.sequential.pop_first() {
             Some((_, front_hash)) => {
                 let entry = self.by_hash.remove(&front_hash).unwrap();
-                self.remove_by_tally(&entry.tally(), &front_hash);
                 Some(entry)
             }
             None => None,
@@ -432,7 +402,6 @@ impl CacheEntryCollection {
     pub fn remove_by_hash(&mut self, hash: &BlockHash) -> Option<CacheEntry> {
         match self.by_hash.remove(hash) {
             Some(entry) => {
-                self.remove_by_tally(&entry.tally(), hash);
                 self.sequential.remove(&entry.id);
                 Some(entry)
             }
@@ -455,7 +424,6 @@ impl CacheEntryCollection {
     pub fn clear(&mut self) {
         self.sequential.clear();
         self.by_hash.clear();
-        self.by_tally.clear();
     }
 }
 

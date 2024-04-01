@@ -100,7 +100,7 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_payload_blocks(
 ) {
     match &get_payload(handle).pull_type {
         AscPullAckType::Blocks(blks) => {
-            let list = blks.blocks().iter().map(|b| Arc::new(b.clone())).collect();
+            let list: Vec<_> = blks.blocks().iter().map(|b| Arc::new(b.clone())).collect();
             copy_block_array_dto(list, blocks)
         }
         _ => panic!("not a blocks payload"),

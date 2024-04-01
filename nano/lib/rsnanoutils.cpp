@@ -157,6 +157,15 @@ void rsnano::read_block_array_dto (rsnano::BlockArrayDto & dto, std::vector<std:
 	rsnano::rsn_block_array_destroy (&dto);
 }
 
+void rsnano::read_block_deque (rsnano::BlockArrayDto & dto, std::deque<std::shared_ptr<nano::block>> & list_a)
+{
+	for (int i = 0; i < dto.count; ++i)
+	{
+		list_a.push_back (nano::block_handle_to_block (dto.blocks[i]));
+	}
+	rsnano::rsn_block_array_destroy (&dto);
+}
+
 rsnano::block_hash_vec::block_hash_vec () :
 	handle{ rsnano::rsn_block_hash_vec_create () }
 {

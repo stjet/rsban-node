@@ -1,8 +1,8 @@
 use super::DependentBlocksFinder;
 use crate::{
     block_insertion::{BlockInserter, BlockValidatorFactory},
-    BlockRollbackPerformer, GenerateCacheFlags, LedgerCache, LedgerConstants, RepWeights,
-    RepresentativeBlockFinder,
+    BlockRollbackPerformer, DependentBlocks, GenerateCacheFlags, LedgerCache, LedgerConstants,
+    RepWeights, RepresentativeBlockFinder,
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
@@ -20,7 +20,7 @@ use rsnano_store_lmdb::{
     Transaction,
 };
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, VecDeque},
     ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -749,7 +749,7 @@ impl<T: Environment + 'static> Ledger<T> {
         &self,
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         block: &BlockEnum,
-    ) -> (BlockHash, BlockHash) {
+    ) -> DependentBlocks {
         DependentBlocksFinder::new(self, txn).find_dependent_blocks(block)
     }
 
@@ -758,8 +758,9 @@ impl<T: Environment + 'static> Ledger<T> {
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         block: &BlockEnum,
     ) -> bool {
-        let (first, second) = self.dependent_blocks(txn, block);
-        self.is_dependency_confirmed(txn, &first) && self.is_dependency_confirmed(txn, &second)
+        self.dependent_blocks(txn, block)
+            .iter()
+            .all(|hash| self.is_dependency_confirmed(txn, hash))
     }
 
     fn is_dependency_confirmed(
@@ -844,6 +845,61 @@ impl<T: Environment + 'static> Ledger<T> {
         key: &PendingKey,
     ) -> Option<PendingInfo> {
         self.store.pending.get(txn, key)
+    }
+
+    pub fn confirm(
+        &self,
+        txn: &mut LmdbWriteTransaction<T>,
+        hash: BlockHash,
+    ) -> VecDeque<BlockEnum> {
+        let mut result = VecDeque::new();
+        let mut stack = Vec::new();
+        stack.push(hash);
+        while let Some(&hash) = stack.last() {
+            let block = self.get_block(txn, &hash).unwrap();
+            let dependents = self.dependent_blocks(txn, &block);
+            for dependent in dependents.iter() {
+                if !self.block_confirmed(txn, dependent) {
+                    stack.push(*dependent);
+                }
+            }
+
+            if stack.last() == Some(&hash) {
+                stack.pop();
+                if !self.block_confirmed(txn, &hash) {
+                    self.confirm_block(txn, &block);
+                    result.push_back(block);
+                }
+            } else {
+                // unconfirmed dependencies were added
+            }
+        }
+        result
+    }
+
+    fn confirm_block(&self, txn: &mut LmdbWriteTransaction<T>, block: &BlockEnum) {
+        debug_assert!(
+            (self
+                .store
+                .confirmation_height
+                .get(txn, &block.account())
+                .is_none()
+                && block.sideband().unwrap().height == 1)
+                || self
+                    .store
+                    .confirmation_height
+                    .get(txn, &block.account())
+                    .unwrap()
+                    .height
+                    + 1
+                    == block.sideband().unwrap().height
+        );
+        let info = ConfirmationHeightInfo::new(block.sideband().unwrap().height, block.hash());
+        self.store
+            .confirmation_height
+            .put(txn, &block.account(), &info);
+        self.cache.cemented_count.fetch_add(1, Ordering::SeqCst);
+        self.observer.blocks_cemented(1);
     }
 
     /// Returns the next receivable entry for the account 'account' with hash greater than 'hash'

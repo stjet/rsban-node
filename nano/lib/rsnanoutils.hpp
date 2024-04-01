@@ -41,6 +41,7 @@ public:
 };
 
 void read_block_array_dto (rsnano::BlockArrayDto & dto, std::vector<std::shared_ptr<nano::block>> & list_a);
+void read_block_deque (rsnano::BlockArrayDto & dto, std::deque<std::shared_ptr<nano::block>> & list_a);
 rsnano::BlockArrayDto to_block_array_dto (std::vector<std::shared_ptr<nano::block>> & list_a);
 
 class AtomicU64Wrapper

@@ -2,33 +2,70 @@ use crate::ledger::Ledger;
 use rsnano_core::{Block, BlockEnum, BlockHash, OpenBlock, StateBlock};
 use rsnano_store_lmdb::{Environment, Transaction};
 
+#[derive(Default)]
+pub struct DependentBlocks {
+    dependents: [BlockHash; 2],
+}
+
+impl DependentBlocks {
+    pub fn new(previous: BlockHash, link: BlockHash) -> Self {
+        Self {
+            dependents: [previous, link],
+        }
+    }
+
+    pub fn previous(&self) -> Option<BlockHash> {
+        self.get_index(0)
+    }
+
+    pub fn link(&self) -> Option<BlockHash> {
+        self.get_index(1)
+    }
+
+    fn get_index(&self, index: usize) -> Option<BlockHash> {
+        if self.dependents[index].is_zero() {
+            None
+        } else {
+            Some(self.dependents[index])
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &BlockHash> {
+        self.dependents
+            .iter()
+            .flat_map(|i| if i.is_zero() { None } else { Some(i) })
+    }
+}
+
 /// Finds all dependent blocks for a given block.
 /// There can be at most two dependencies per block, namely "previous" and "link/source".
-pub(crate) struct DependentBlocksFinder<'a, T: Environment + 'static> {
+pub struct DependentBlocksFinder<'a, T: Environment + 'static> {
     ledger: &'a Ledger<T>,
     txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
 }
 
 impl<'a, T: Environment + 'static> DependentBlocksFinder<'a, T> {
-    pub(crate) fn new(
+    pub fn new(
         ledger: &'a Ledger<T>,
         txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
     ) -> Self {
         Self { ledger, txn }
     }
 
-    pub(crate) fn find_dependent_blocks(&self, block: &BlockEnum) -> (BlockHash, BlockHash) {
+    pub fn find_dependent_blocks(&self, block: &BlockEnum) -> DependentBlocks {
         match block {
             BlockEnum::LegacySend(_) | BlockEnum::LegacyChange(_) => {
-                (block.previous(), BlockHash::zero())
+                DependentBlocks::new(block.previous(), BlockHash::zero())
             }
-            BlockEnum::LegacyReceive(receive) => (receive.previous(), receive.source()),
+            BlockEnum::LegacyReceive(receive) => {
+                DependentBlocks::new(receive.previous(), receive.source())
+            }
             BlockEnum::LegacyOpen(open) => {
                 if self.is_genesis_open(open) {
                     // genesis open block does not have any further dependencies
                     Default::default()
                 } else {
-                    (open.source(), BlockHash::zero())
+                    DependentBlocks::new(open.source(), BlockHash::zero())
                 }
             }
 
@@ -38,7 +75,7 @@ impl<'a, T: Environment + 'static> DependentBlocksFinder<'a, T> {
                 } else {
                     BlockHash::zero()
                 };
-                (block.previous(), linked_block)
+                DependentBlocks::new(block.previous(), linked_block)
             }
         }
     }

@@ -207,7 +207,10 @@ pub unsafe extern "C" fn rsn_deserialize_block(
 
 pub struct BlockArrayRawPtr(Vec<*mut BlockHandle>);
 
-pub(crate) fn copy_block_array_dto(blocks: Vec<Arc<BlockEnum>>, target: &mut BlockArrayDto) {
+pub(crate) fn copy_block_array_dto(
+    blocks: impl IntoIterator<Item = Arc<BlockEnum>>,
+    target: &'_ mut BlockArrayDto,
+) {
     let mut raw_block_array = Box::new(BlockArrayRawPtr(Vec::new()));
     for block in blocks {
         raw_block_array

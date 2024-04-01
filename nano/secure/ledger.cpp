@@ -97,6 +97,15 @@ std::optional<nano::pending_info> nano::ledger::pending_info (store::transaction
 	return store.pending ().get (transaction, key);
 }
 
+std::deque<std::shared_ptr<nano::block>> nano::ledger::confirm (nano::store::write_transaction const & transaction, nano::block_hash const & hash)
+{
+	rsnano::BlockArrayDto dto;
+	rsnano::rsn_ledger_confirm (handle, transaction.get_rust_handle (), hash.bytes.data (), &dto);
+	std::deque<std::shared_ptr<nano::block>> blocks;
+	rsnano::read_block_deque (dto, blocks);
+	return blocks;
+}
+
 nano::block_status nano::ledger::process (store::write_transaction const & transaction_a, std::shared_ptr<nano::block> block_a)
 {
 	rsnano::ProcessReturnDto result_dto;

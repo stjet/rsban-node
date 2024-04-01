@@ -497,9 +497,9 @@ pub unsafe extern "C" fn rsn_ledger_dependent_blocks(
     result1: *mut u8,
     result2: *mut u8,
 ) {
-    let (first, second) = (*handle).0.dependent_blocks((*txn).as_txn(), &block);
-    first.copy_bytes(result1);
-    second.copy_bytes(result2);
+    let dependent = (*handle).0.dependent_blocks((*txn).as_txn(), &block);
+    dependent.previous().unwrap_or_default().copy_bytes(result1);
+    dependent.link().unwrap_or_default().copy_bytes(result2);
 }
 
 #[no_mangle]
@@ -536,7 +536,10 @@ pub unsafe extern "C" fn rsn_ledger_rollback(
         .rollback((*txn).as_write_txn(), &BlockHash::from_ptr(hash))
     {
         Ok(mut block_list) => {
-            let block_list = block_list.drain(..).map(|b| Arc::new(b)).collect();
+            let block_list = block_list
+                .drain(..)
+                .map(|b| Arc::new(b))
+                .collect::<Vec<_>>();
             copy_block_array_dto(block_list, result);
             false
         }
@@ -607,6 +610,22 @@ pub unsafe extern "C" fn rsn_ledger_acocunt_receivable_upper_bound(
         BlockHash::from_ptr(hash),
     );
     ReceivableIteratorHandle::new(it)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_confirm(
+    handle: &mut LedgerHandle,
+    txn: &mut TransactionHandle,
+    hash: *const u8,
+    result: &mut BlockArrayDto,
+) {
+    let hash = BlockHash::from_ptr(hash);
+    let confirmed: Vec<_> = handle
+        .confirm(txn.as_write_txn(), hash)
+        .drain(..)
+        .map(Arc::new)
+        .collect();
+    copy_block_array_dto(confirmed, result);
 }
 
 pub struct ReceivableIteratorHandle(ReceivableIterator<'static, EnvironmentWrapper>);

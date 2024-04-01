@@ -20,7 +20,7 @@ mod write_database_queue;
 mod ledger_tests;
 
 pub(crate) use block_rollback::BlockRollbackPerformer;
-pub(crate) use dependent_blocks_finder::DependentBlocksFinder;
+pub use dependent_blocks_finder::*;
 pub use generate_cache_flags::GenerateCacheFlags;
 pub use ledger::*;
 pub use ledger_cache::LedgerCache;

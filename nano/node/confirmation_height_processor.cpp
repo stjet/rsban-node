@@ -121,7 +121,7 @@ bool nano::confirmation_height_processor::is_processing_added_block (nano::block
 	return rsnano::rsn_confirmation_height_processor_is_processing_added_block (handle, hash_a.bytes.data ());
 }
 
-bool nano::confirmation_height_processor::is_processing_block (nano::block_hash const & hash_a) const
+bool nano::confirmation_height_processor::exists (nano::block_hash const & hash_a) const
 {
 	return rsnano::rsn_confirmation_height_processor_is_processing_block (handle, hash_a.bytes.data ());
 }

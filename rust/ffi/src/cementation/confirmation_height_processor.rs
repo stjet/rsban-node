@@ -124,9 +124,7 @@ pub unsafe extern "C" fn rsn_confirmation_height_processor_is_processing_block(
     handle: *mut ConfirmationHeightProcessorHandle,
     block_hash: *const u8,
 ) -> bool {
-    (*handle)
-        .0
-        .is_processing_block(&BlockHash::from_ptr(block_hash))
+    (*handle).0.exists(&BlockHash::from_ptr(block_hash))
 }
 
 #[no_mangle]

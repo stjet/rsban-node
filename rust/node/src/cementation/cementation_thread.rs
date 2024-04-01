@@ -150,7 +150,7 @@ impl CementationThread {
         self.cemented_observers.lock().unwrap().clear();
     }
 
-    pub fn is_processing_block(&self, block_hash: &BlockHash) -> bool {
+    pub fn exists(&self, block_hash: &BlockHash) -> bool {
         self.is_processing_added_block(block_hash) || self.block_cache.contains(block_hash)
     }
 

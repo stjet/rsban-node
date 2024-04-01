@@ -34,7 +34,7 @@ public:
 	void add (std::shared_ptr<nano::block> const &);
 	std::size_t awaiting_processing_size () const;
 	bool is_processing_added_block (nano::block_hash const & hash_a) const;
-	bool is_processing_block (nano::block_hash const &) const;
+	bool exists (nano::block_hash const &) const;
 	nano::block_hash current () const;
 	void set_batch_write_size (size_t write_size);
 

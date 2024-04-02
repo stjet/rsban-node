@@ -1,6 +1,7 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, Environment, EnvironmentWrapper, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, Environment, EnvironmentWrapper,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    CONFIRMATION_HEIGHT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -118,6 +119,40 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
             };
             action(&transaction, begin_it, end_it);
         });
+    }
+}
+
+pub struct ConfiguredConfirmationHeightDatabaseBuilder {
+    database: ConfiguredDatabase,
+}
+
+impl ConfiguredConfirmationHeightDatabaseBuilder {
+    pub fn new() -> Self {
+        Self {
+            database: ConfiguredDatabase::new(
+                CONFIRMATION_HEIGHT_TEST_DATABASE,
+                "confirmation_height",
+            ),
+        }
+    }
+
+    pub fn height(mut self, account: &Account, info: &ConfirmationHeightInfo) -> Self {
+        self.database
+            .entries
+            .insert(account.as_bytes().to_vec(), info.to_bytes().to_vec());
+        self
+    }
+
+    pub fn build(self) -> ConfiguredDatabase {
+        self.database
+    }
+
+    pub fn create(hashes: Vec<(Account, ConfirmationHeightInfo)>) -> ConfiguredDatabase {
+        let mut builder = Self::new();
+        for (account, info) in hashes {
+            builder = builder.height(&account, &info);
+        }
+        builder.build()
     }
 }
 

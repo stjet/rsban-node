@@ -12,12 +12,12 @@ use rsnano_core::{
 };
 use rsnano_store_lmdb::{
     ConfiguredAccountDatabaseBuilder, ConfiguredBlockDatabaseBuilder,
-    ConfiguredFrontierDatabaseBuilder, ConfiguredPendingDatabaseBuilder,
-    ConfiguredPrunedDatabaseBuilder, Environment, EnvironmentStub, EnvironmentWrapper,
-    LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore,
-    LmdbFrontierStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore,
-    LmdbReadTransaction, LmdbRepWeightStore, LmdbStore, LmdbVersionStore, LmdbWriteTransaction,
-    Transaction,
+    ConfiguredConfirmationHeightDatabaseBuilder, ConfiguredFrontierDatabaseBuilder,
+    ConfiguredPendingDatabaseBuilder, ConfiguredPrunedDatabaseBuilder, Environment,
+    EnvironmentStub, EnvironmentWrapper, LmdbAccountStore, LmdbBlockStore,
+    LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
+    LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
+    LmdbRepWeightStore, LmdbStore, LmdbVersionStore, LmdbWriteTransaction, Transaction,
 };
 use std::{
     collections::{BTreeMap, HashMap, VecDeque},
@@ -105,6 +105,7 @@ pub struct NullLedgerBuilder {
     accounts: ConfiguredAccountDatabaseBuilder,
     pending: ConfiguredPendingDatabaseBuilder,
     pruned: ConfiguredPrunedDatabaseBuilder,
+    confirmation_height: ConfiguredConfirmationHeightDatabaseBuilder,
     min_rep_weight: Amount,
 }
 
@@ -116,6 +117,7 @@ impl NullLedgerBuilder {
             accounts: ConfiguredAccountDatabaseBuilder::new(),
             pending: ConfiguredPendingDatabaseBuilder::new(),
             pruned: ConfiguredPrunedDatabaseBuilder::new(),
+            confirmation_height: ConfiguredConfirmationHeightDatabaseBuilder::new(),
             min_rep_weight: Amount::zero(),
         }
     }
@@ -129,6 +131,11 @@ impl NullLedgerBuilder {
         for b in blocks.into_iter() {
             self.blocks = self.blocks.block(b);
         }
+        self
+    }
+
+    pub fn confirmation_height(mut self, account: &Account, info: &ConfirmationHeightInfo) -> Self {
+        self.confirmation_height = self.confirmation_height.height(account, info);
         self
     }
 
@@ -160,6 +167,7 @@ impl NullLedgerBuilder {
                 .configured_database(self.accounts.build())
                 .configured_database(self.pending.build())
                 .configured_database(self.pruned.build())
+                .configured_database(self.confirmation_height.build())
                 .build(),
         );
 

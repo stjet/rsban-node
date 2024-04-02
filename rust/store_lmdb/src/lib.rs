@@ -26,7 +26,7 @@ mod block_store;
 pub use block_store::{ConfiguredBlockDatabaseBuilder, LmdbBlockStore};
 
 mod confirmation_height_store;
-pub use confirmation_height_store::LmdbConfirmationHeightStore;
+pub use confirmation_height_store::*;
 
 mod final_vote_store;
 pub use final_vote_store::LmdbFinalVoteStore;
@@ -469,6 +469,7 @@ pub const ACCOUNT_TEST_DATABASE: DatabaseStub = DatabaseStub(3);
 pub const PENDING_TEST_DATABASE: DatabaseStub = DatabaseStub(4);
 pub const PRUNED_TEST_DATABASE: DatabaseStub = DatabaseStub(5);
 pub const REP_WEIGHT_TEST_DATABASE: DatabaseStub = DatabaseStub(6);
+pub const CONFIRMATION_HEIGHT_TEST_DATABASE: DatabaseStub = DatabaseStub(7);
 
 #[cfg(test)]
 mod test {

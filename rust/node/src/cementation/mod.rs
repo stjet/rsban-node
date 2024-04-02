@@ -7,6 +7,7 @@ mod block_queue;
 mod cementation_queue;
 mod cementation_thread;
 mod cementation_walker;
+mod confirming_set;
 mod ledger_data_requester;
 mod write_batcher;
 
@@ -32,6 +33,7 @@ use block_cementer_logic::{
 use cementation_queue::{CementationQueue, CementationQueueContainerInfo};
 pub use cementation_thread::{CementCallbackRefs, CementCallbacks, CementationThread};
 use cementation_walker::CementationWalker;
+pub use confirming_set::*;
 use write_batcher::{WriteBatcher, WriteBatcherOptions};
 
 /// We need these details whenever we want to write the new

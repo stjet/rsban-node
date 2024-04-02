@@ -94,4 +94,5 @@ std::shared_ptr<nano::rpc> nano::get_rpc (boost::asio::io_context & io_ctx_a, na
 	{
 		return std::make_shared<nano::rpc> (io_ctx_a, config_a, rpc_handler_interface_a);
 	}
+	return nullptr;
 }

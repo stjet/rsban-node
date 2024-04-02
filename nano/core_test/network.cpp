@@ -108,7 +108,6 @@ TEST (DISABLED_network, send_node_id_handshake_tcp)
 	auto list2 (node1->network->tcp_channels->list (1));
 	ASSERT_EQ (nano::transport::transport_type::tcp, list2[0]->get_type ());
 	ASSERT_EQ (node0->get_node_id (), list2[0]->get_node_id ());
-	node1->stop ();
 }
 
 TEST (network, last_contacted)

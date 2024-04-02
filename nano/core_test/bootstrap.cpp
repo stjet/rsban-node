@@ -331,7 +331,6 @@ TEST (bootstrap_processor, process_none)
 
 	node1->bootstrap_initiator.bootstrap (system.nodes[0]->network->endpoint (), false);
 	ASSERT_TIMELY (5s, done);
-	node1->stop ();
 }
 
 // Bootstrap can pull one basic block
@@ -356,7 +355,6 @@ TEST (bootstrap_processor, process_one)
 	ASSERT_NE (node0->latest (nano::dev::genesis_key.pub), node1->latest (nano::dev::genesis_key.pub));
 	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
 	ASSERT_TIMELY_EQ (10s, node1->latest (nano::dev::genesis_key.pub), node0->latest (nano::dev::genesis_key.pub));
-	node1->stop ();
 }
 
 TEST (bootstrap_processor, process_two)
@@ -378,7 +376,6 @@ TEST (bootstrap_processor, process_two)
 	ASSERT_NE (node1->latest (nano::dev::genesis_key.pub), node0->latest (nano::dev::genesis_key.pub)); // nodes should be out of sync here
 	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false); // bootstrap triggered
 	ASSERT_TIMELY_EQ (5s, node1->latest (nano::dev::genesis_key.pub), node0->latest (nano::dev::genesis_key.pub)); // nodes should sync up
-	node1->stop ();
 }
 
 // Bootstrap can pull universal blocks
@@ -425,7 +422,6 @@ TEST (bootstrap_processor, process_state)
 	ASSERT_NE (node1->latest (nano::dev::genesis_key.pub), block2->hash ());
 	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
 	ASSERT_TIMELY_EQ (5s, node1->latest (nano::dev::genesis_key.pub), block2->hash ());
-	node1->stop ();
 }
 
 TEST (bootstrap_processor, process_new)
@@ -518,7 +514,6 @@ TEST (bootstrap_processor, pull_diamond)
 	auto node1 = system.make_disconnected_node ();
 	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
 	ASSERT_TIMELY_EQ (5s, node1->balance (nano::dev::genesis_key.pub), 100);
-	node1->stop ();
 }
 
 TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
@@ -628,7 +623,6 @@ TEST (bootstrap_processor, DISABLED_push_diamond)
 	auto node2 = system.add_node (config, flags);
 	node1->bootstrap_initiator.bootstrap (node2->network->endpoint (), false);
 	ASSERT_TIMELY_EQ (5s, node2->balance (nano::dev::genesis_key.pub), 100);
-	node1->stop ();
 }
 
 TEST (bootstrap_processor, DISABLED_push_diamond_pruning)
@@ -719,7 +713,6 @@ TEST (bootstrap_processor, DISABLED_push_diamond_pruning)
 	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
 	ASSERT_TIMELY_EQ (5s, node0->balance (nano::dev::genesis_key.pub), 100);
 	ASSERT_TIMELY_EQ (5s, node1->balance (nano::dev::genesis_key.pub), 100);
-	node1->stop ();
 }
 
 TEST (bootstrap_processor, push_one)
@@ -743,7 +736,6 @@ TEST (bootstrap_processor, push_one)
 
 	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
 	ASSERT_TIMELY_EQ (5s, node0->balance (nano::dev::genesis_key.pub), genesis_balance - 100);
-	node1->stop ();
 }
 
 TEST (bootstrap_processor, lazy_hash)
@@ -818,7 +810,6 @@ TEST (bootstrap_processor, lazy_hash)
 	}
 	// Check processed blocks
 	ASSERT_TIMELY (10s, node1->balance (key2.pub) != 0);
-	node1->stop ();
 }
 
 TEST (bootstrap_processor, lazy_hash_bootstrap_id)
@@ -893,7 +884,6 @@ TEST (bootstrap_processor, lazy_hash_bootstrap_id)
 	}
 	// Check processed blocks
 	ASSERT_TIMELY (10s, node1->balance (key2.pub) != 0);
-	node1->stop ();
 }
 
 TEST (bootstrap_processor, lazy_hash_pruning)
@@ -1046,7 +1036,6 @@ TEST (bootstrap_processor, lazy_hash_pruning)
 	ASSERT_TIMELY_EQ (5s, node1->ledger.cache.block_count (), 9);
 	ASSERT_TIMELY (5s, node1->balance (key2.pub) != 0);
 	ASSERT_TIMELY (5s, !node1->bootstrap_initiator.in_progress ());
-	node1->stop ();
 }
 
 TEST (bootstrap_processor, lazy_max_pull_count)
@@ -1148,7 +1137,6 @@ TEST (bootstrap_processor, lazy_max_pull_count)
 	node1->bootstrap_initiator.bootstrap_lazy (change3->hash ());
 	// Check processed blocks
 	ASSERT_TIMELY (10s, node1->block (change3->hash ()));
-	node1->stop ();
 }
 
 TEST (bootstrap_processor, lazy_unclear_state_link)
@@ -1499,7 +1487,6 @@ TEST (bootstrap_processor, lazy_cancel)
 	}
 	// Cancel failing lazy bootstrap
 	ASSERT_TIMELY (10s, !node1->bootstrap_initiator.in_progress ());
-	node1->stop ();
 }
 
 TEST (bootstrap_processor, wallet_lazy_frontier)
@@ -1581,7 +1568,6 @@ TEST (bootstrap_processor, wallet_lazy_frontier)
 	}
 	// Check processed blocks
 	ASSERT_TIMELY (10s, node1->ledger.block_or_pruned_exists (receive2->hash ()));
-	node1->stop ();
 }
 
 TEST (bootstrap_processor, wallet_lazy_pending)

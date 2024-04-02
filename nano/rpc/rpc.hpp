@@ -17,7 +17,7 @@ namespace nano
 {
 class rpc_handler_interface;
 
-class rpc
+class rpc : public std::enable_shared_from_this<rpc>
 {
 public:
 	rpc (boost::asio::io_context & io_ctx_a, nano::rpc_config config_a, nano::rpc_handler_interface & rpc_handler_interface_a);

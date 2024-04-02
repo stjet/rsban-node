@@ -16,11 +16,13 @@ nano::thread_runner::thread_runner (boost::asio::io_context & io_ctx_a, unsigned
 {
 	for (auto i (0u); i < num_threads; ++i)
 	{
-		threads.emplace_back (nano::thread_attributes::get_default (), [this, &io_ctx_a] () {
+		threads.emplace_back (nano::thread_attributes::get_default (), [this, &io_ctx_a, i] () {
 			nano::thread_role::set (role);
 			try
 			{
+				logger.debug (nano::log::type::thread_runner, "Thread #{} ({}) started", i, to_string (role));
 				run (io_ctx_a);
+				logger.debug (nano::log::type::thread_runner, "Thread #{} ({}) stopped", i, to_string (role));
 			}
 			catch (std::exception const & ex)
 			{

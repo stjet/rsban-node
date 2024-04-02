@@ -595,19 +595,15 @@ void nano::test::system::stop ()
 {
 	logger.debug (nano::log::type::system, "Stopping...");
 
-	// Keep io_context running while stopping
-	auto stopped = std::async (std::launch::async, [&] {
-		for (auto & node : nodes)
-		{
-			node->stop ();
-		}
-	});
-
-	auto ec = poll_until_true (10s, [&] {
-		auto status = stopped.wait_for (0s);
-		return status == std::future_status::ready;
-	});
-	debug_assert (!ec);
+	// Keep io_context running while stopping nodes
+	for (auto & node : nodes)
+	{
+		stop_node (*node);
+	}
+	for (auto & node : disconnected_nodes)
+	{
+		stop_node (*node);
+	}
 
 	io_guard.reset ();
 	work.stop ();

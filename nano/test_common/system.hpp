@@ -79,6 +79,7 @@ namespace test
 	public:
 		rsnano::async_runtime async_rt;
 		std::vector<std::shared_ptr<nano::node>> nodes;
+		std::vector<std::shared_ptr<nano::node>> disconnected_nodes;
 		nano::stats stats;
 		nano::logger logger{ "tests" };
 		nano::work_pool work{ nano::dev::network_params.network, std::max (nano::hardware_concurrency (), 1u) };

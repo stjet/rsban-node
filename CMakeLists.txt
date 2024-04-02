@@ -100,7 +100,6 @@ set_property(
            active
            block_arrival
            block_processor
-           confirmation_height_processor
            dropped_elections,
            election_winner_details
            gap_cache

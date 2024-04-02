@@ -22,7 +22,6 @@ enum class mutexes
 	active,
 	block_processor,
 	blockstore_cache,
-	confirmation_height_processor,
 	election_winner_details,
 	network_filter,
 	observer_set,

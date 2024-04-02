@@ -197,12 +197,12 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	block_processor (*this, write_database_queue),
 	online_reps (ledger, *config),
 	history{ config_a.network_params.voting },
-	confirmation_height_processor (ledger, write_database_queue, config_a.confirming_set_batch_time),
+	confirming_set (ledger, write_database_queue, config_a.confirming_set_batch_time),
 	vote_cache{ config_a.vote_cache, *stats },
 	wallets (wallets_store.init_error (), *this),
 	generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* non-final */ false },
 	final_generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* final */ true },
-	active (*this, confirmation_height_processor, block_processor),
+	active (*this, confirming_set, block_processor),
 	scheduler_impl{ std::make_unique<nano::scheduler::component> (*this) },
 	scheduler{ *scheduler_impl },
 	aggregator (*config, *stats, generator, final_generator, history, ledger, wallets, active),
@@ -479,7 +479,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 				std::exit (1);
 			}
 		}
-		confirmation_height_processor.add_cemented_observer ([this] (auto const & block) {
+		confirming_set.add_cemented_observer ([this] (auto const & block) {
 			if (block->is_send ())
 			{
 				auto transaction = store.tx_begin_read ();
@@ -602,7 +602,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (no
 	composite->add_component (node.block_processor.collect_container_info ("block_processor"));
 	composite->add_component (collect_container_info (node.online_reps, "online_reps"));
 	composite->add_component (collect_container_info (node.history, "history"));
-	composite->add_component (node.confirmation_height_processor.collect_container_info ("confirmation_queue"));
+	composite->add_component (node.confirming_set.collect_container_info ("confirming_set"));
 	composite->add_component (collect_container_info (node.distributed_work, "distributed_work"));
 	composite->add_component (collect_container_info (node.aggregator, "request_aggregator"));
 	composite->add_component (node.scheduler.collect_container_info ("election_scheduler"));
@@ -719,7 +719,7 @@ void nano::node::start ()
 	active.start ();
 	generator.start ();
 	final_generator.start ();
-	confirmation_height_processor.start ();
+	confirming_set.start ();
 	scheduler.start ();
 	backlog.start ();
 	bootstrap_server.start ();
@@ -760,7 +760,7 @@ void nano::node::stop ()
 	active.stop ();
 	generator.stop ();
 	final_generator.stop ();
-	confirmation_height_processor.stop ();
+	confirming_set.stop ();
 	telemetry->stop ();
 	websocket.stop ();
 	bootstrap_server.stop ();
@@ -1228,7 +1228,7 @@ bool nano::node::block_confirmed (nano::block_hash const & hash_a)
 
 bool nano::node::block_confirmed_or_being_confirmed (nano::store::transaction const & transaction, nano::block_hash const & hash_a)
 {
-	return confirmation_height_processor.exists (hash_a) || ledger.block_confirmed (transaction, hash_a);
+	return confirming_set.exists (hash_a) || ledger.block_confirmed (transaction, hash_a);
 }
 
 bool nano::node::block_confirmed_or_being_confirmed (nano::block_hash const & hash_a)

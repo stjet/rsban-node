@@ -61,8 +61,6 @@ add_library(
   common.cpp
   confirming_set.hpp
   confirming_set.cpp
-  confirmation_height_processor.hpp
-  confirmation_height_processor.cpp
   confirmation_solicitor.hpp
   confirmation_solicitor.cpp
   daemonconfig.hpp

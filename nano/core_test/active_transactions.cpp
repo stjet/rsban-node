@@ -1253,7 +1253,7 @@ TEST (active_transactions, activate_inactive)
 	ASSERT_NE (nullptr, election);
 	node.active.force_confirm (*election);
 
-	ASSERT_TIMELY (5s, !node.confirmation_height_processor.is_processing_added_block (send2->hash ()));
+	ASSERT_TIMELY (5s, !node.confirmation_height_processor.exists (send2->hash ()));
 	ASSERT_TIMELY (5s, node.block_confirmed (send2->hash ()));
 	ASSERT_TIMELY (5s, node.block_confirmed (send->hash ()));
 

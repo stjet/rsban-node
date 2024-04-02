@@ -6,8 +6,8 @@
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/node/active_transactions.hpp>
-#include <nano/node/confirmation_height_processor.hpp>
 #include <nano/node/confirmation_solicitor.hpp>
+#include <nano/node/confirming_set.hpp>
 #include <nano/node/election.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/repcrawler.hpp>
@@ -50,7 +50,7 @@ bool nano::active_transactions_lock::owns_lock ()
 	return rsnano::rsn_active_transactions_lock_owns_lock (handle);
 }
 
-nano::active_transactions::active_transactions (nano::node & node_a, nano::confirmation_height_processor & confirmation_height_processor_a, nano::block_processor & block_processor_a) :
+nano::active_transactions::active_transactions (nano::node & node_a, nano::confirming_set & confirmation_height_processor_a, nano::block_processor & block_processor_a) :
 	node{ node_a },
 	confirmation_height_processor{ confirmation_height_processor_a },
 	block_processor{ block_processor_a },
@@ -67,7 +67,7 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	});
 
 	// Register a callback which will get called if a block is already cemented
-	confirmation_height_processor.set_block_already_cemented_observer ([this] (nano::block_hash const & hash_a) {
+	confirmation_height_processor.add_block_already_cemented_observer ([this] (nano::block_hash const & hash_a) {
 		this->block_already_cemented_callback (hash_a);
 	});
 
@@ -119,6 +119,7 @@ void nano::active_transactions::stop ()
 
 void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::block> const & block)
 {
+	debug_assert (node.block_confirmed (block->hash ()));
 	if (auto election_l = election (block->qualified_root ()))
 	{
 		try_confirm (*election_l, block->hash ());
@@ -132,7 +133,7 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 		status = election->get_status ();
 		votes = votes_with_weight (*election);
 	}
-	if (confirmation_height_processor.is_processing_added_block (block->hash ()))
+	if (confirmation_height_processor.exists (block->hash ()))
 	{
 		status.set_election_status_type (nano::election_status_type::active_confirmed_quorum);
 	}
@@ -430,7 +431,7 @@ void nano::active_transactions::process_confirmed (nano::election_status const &
 	if (block_l)
 	{
 		node.logger->trace (nano::log::type::node, nano::log::detail::process_confirmed, nano::log::arg{ "block", block_l });
-		confirmation_height_processor.add (block_l);
+		confirmation_height_processor.add (block_l->hash ());
 	}
 	else if (iteration_a < num_iters)
 	{

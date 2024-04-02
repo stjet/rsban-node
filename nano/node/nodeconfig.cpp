@@ -62,7 +62,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.bandwidth_limit_burst_ratio = config.bandwidth_limit_burst_ratio;
 	dto.bootstrap_bandwidth_limit = config.bootstrap_bandwidth_limit;
 	dto.bootstrap_bandwidth_burst_ratio = config.bootstrap_bandwidth_burst_ratio;
-	dto.conf_height_processor_batch_min_time_ms = config.conf_height_processor_batch_min_time.count ();
+	dto.confirming_set_batch_time_ms = config.confirming_set_batch_time.count ();
 	dto.backup_before_upgrade = config.backup_before_upgrade;
 	dto.max_work_generate_multiplier = config.max_work_generate_multiplier;
 	dto.frontiers_confirmation = static_cast<uint8_t> (config.frontiers_confirmation);
@@ -185,7 +185,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	bandwidth_limit_burst_ratio = dto.bandwidth_limit_burst_ratio;
 	bootstrap_bandwidth_limit = dto.bootstrap_bandwidth_limit;
 	bootstrap_bandwidth_burst_ratio = dto.bootstrap_bandwidth_burst_ratio;
-	conf_height_processor_batch_min_time = std::chrono::milliseconds (dto.conf_height_processor_batch_min_time_ms);
+	confirming_set_batch_time = std::chrono::milliseconds (dto.confirming_set_batch_time_ms);
 	backup_before_upgrade = dto.backup_before_upgrade;
 	max_work_generate_multiplier = dto.max_work_generate_multiplier;
 	frontiers_confirmation = static_cast<nano::frontiers_confirmation_mode> (dto.frontiers_confirmation);
@@ -453,9 +453,9 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 
 		toml.get<bool> ("backup_before_upgrade", backup_before_upgrade);
 
-		auto conf_height_processor_batch_min_time_l (conf_height_processor_batch_min_time.count ());
-		toml.get ("conf_height_processor_batch_min_time", conf_height_processor_batch_min_time_l);
-		conf_height_processor_batch_min_time = std::chrono::milliseconds (conf_height_processor_batch_min_time_l);
+		auto confirming_set_batch_time_l (confirming_set_batch_time.count ());
+		toml.get ("confirming_set_batch_time", confirming_set_batch_time_l);
+		confirming_set_batch_time = std::chrono::milliseconds (confirming_set_batch_time_l);
 
 		toml.get<double> ("max_work_generate_multiplier", max_work_generate_multiplier);
 

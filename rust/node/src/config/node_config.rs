@@ -73,7 +73,7 @@ pub struct NodeConfig {
     pub bootstrap_ascending: BootstrapAscendingConfig,
     pub bootstrap_bandwidth_limit: usize,
     pub bootstrap_bandwidth_burst_ratio: f64,
-    pub conf_height_processor_batch_min_time_ms: i64,
+    pub confirming_set_batch_time: Duration,
     pub backup_before_upgrade: bool,
     pub max_work_generate_multiplier: f64,
     pub frontiers_confirmation: FrontiersConfirmationMode,
@@ -267,7 +267,7 @@ impl NodeConfig {
             // Bootstrap traffic does not need bursts
             bootstrap_bandwidth_burst_ratio: 1.,
             bootstrap_ascending: Default::default(),
-            conf_height_processor_batch_min_time_ms: 50,
+            confirming_set_batch_time: Duration::from_millis(250),
             backup_before_upgrade: false,
             max_work_generate_multiplier: 64_f64,
             frontiers_confirmation: FrontiersConfirmationMode::Automatic,
@@ -382,7 +382,7 @@ impl NodeConfig {
             "Burst ratio for outbound bootstrap traffic.\ntype:double",
         )?;
 
-        toml.put_i64("conf_height_processor_batch_min_time", self.conf_height_processor_batch_min_time_ms, "Minimum write batching time when there are blocks pending confirmation height.\ntype:milliseconds")?;
+        toml.put_i64("confirming_set_batch_time", self.confirming_set_batch_time.as_millis() as i64, "Maximum time the confirming set will hold the database write transaction.\ntype:milliseconds")?;
         toml.put_bool("backup_before_upgrade", self.backup_before_upgrade, "Backup the ledger database before performing upgrades.\nWarning: uses more disk storage and increases startup time when upgrading.\ntype:bool")?;
         toml.put_f64(
             "max_work_generate_multiplier",

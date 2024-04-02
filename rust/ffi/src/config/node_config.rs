@@ -66,7 +66,7 @@ pub struct NodeConfigDto {
     pub bootstrap_ascending: BootstrapAscendingConfigDto,
     pub bootstrap_bandwidth_limit: usize,
     pub bootstrap_bandwidth_burst_ratio: f64,
-    pub conf_height_processor_batch_min_time_ms: i64,
+    pub confirming_set_batch_time_ms: i64,
     pub backup_before_upgrade: bool,
     pub max_work_generate_multiplier: f64,
     pub frontiers_confirmation: u8,
@@ -175,7 +175,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.bootstrap_bandwidth_limit = cfg.bootstrap_bandwidth_limit;
     dto.bootstrap_bandwidth_burst_ratio = cfg.bootstrap_bandwidth_burst_ratio;
     dto.bootstrap_ascending = (&cfg.bootstrap_ascending).into();
-    dto.conf_height_processor_batch_min_time_ms = cfg.conf_height_processor_batch_min_time_ms;
+    dto.confirming_set_batch_time_ms = cfg.confirming_set_batch_time.as_millis() as i64;
     dto.backup_before_upgrade = cfg.backup_before_upgrade;
     dto.max_work_generate_multiplier = cfg.max_work_generate_multiplier;
     dto.frontiers_confirmation = cfg.frontiers_confirmation as u8;
@@ -352,7 +352,9 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             bootstrap_bandwidth_limit: value.bootstrap_bandwidth_limit,
             bootstrap_bandwidth_burst_ratio: value.bootstrap_bandwidth_burst_ratio,
             bootstrap_ascending: (&value.bootstrap_ascending).into(),
-            conf_height_processor_batch_min_time_ms: value.conf_height_processor_batch_min_time_ms,
+            confirming_set_batch_time: Duration::from_millis(
+                value.confirming_set_batch_time_ms as u64,
+            ),
             backup_before_upgrade: value.backup_before_upgrade,
             max_work_generate_multiplier: value.max_work_generate_multiplier,
             frontiers_confirmation: FromPrimitive::from_u8(value.frontiers_confirmation)

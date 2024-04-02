@@ -35,7 +35,7 @@ class block_sideband;
 class block_processor;
 class election;
 class vote;
-class confirmation_height_processor;
+class confirming_set;
 class stats;
 class election_lock;
 }
@@ -146,7 +146,7 @@ private: // Elections
 	friend class nano::election;
 
 public:
-	active_transactions (nano::node &, nano::confirmation_height_processor &, nano::block_processor &);
+	active_transactions (nano::node &, nano::confirming_set &, nano::block_processor &);
 	active_transactions (active_transactions const &) = delete;
 	~active_transactions ();
 
@@ -268,7 +268,7 @@ private:
 
 private: // Dependencies
 	nano::node & node;
-	nano::confirmation_height_processor & confirmation_height_processor;
+	nano::confirming_set & confirmation_height_processor;
 	nano::block_processor & block_processor;
 
 public:

@@ -14,6 +14,7 @@
 #include <nano/node/bootstrap/bootstrap_server.hpp>
 #include <nano/node/bootstrap_ascending/service.hpp>
 #include <nano/node/confirmation_height_processor.hpp>
+#include <nano/node/confirming_set.hpp>
 #include <nano/node/distributed_work_factory.hpp>
 #include <nano/node/election.hpp>
 #include <nano/node/epoch_upgrader.hpp>
@@ -166,7 +167,7 @@ public:
 	nano::vote_processor vote_processor;
 	unsigned warmed_up;
 	nano::local_vote_history history; // ported
-	nano::confirmation_height_processor confirmation_height_processor; // ported
+	nano::confirming_set confirmation_height_processor; // ported
 	nano::vote_cache vote_cache; // ported
 	nano::wallets wallets;
 	nano::vote_generator generator;

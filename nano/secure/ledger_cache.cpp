@@ -28,7 +28,7 @@ nano::ledger_cache & nano::ledger_cache::operator= (nano::ledger_cache && other_
 	return *this;
 }
 
-nano::rep_weights & nano::ledger_cache::rep_weights ()
+nano::rep_weights const & nano::ledger_cache::rep_weights () const
 {
 	return rep_weights_m;
 }

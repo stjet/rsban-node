@@ -30,11 +30,10 @@ public:
 	void representation_add_dual (store::write_transaction const & txn_a, nano::account const & source_rep_1, nano::uint128_t const & amount_1, nano::account const & source_rep_2, nano::uint128_t const & amount_2);
 	nano::uint128_t representation_get (nano::account const & account_a) const;
 	std::unordered_map<nano::account, nano::uint128_t> get_rep_amounts () const;
+	std::unique_ptr<container_info_component> collect_container_info (std::string const &) const;
 
 private:
 	rsnano::RepWeightsHandle * handle;
 	friend std::unique_ptr<container_info_component> collect_container_info (rep_weights const &, std::string const &);
 };
-
-std::unique_ptr<container_info_component> collect_container_info (rep_weights const &, std::string const &);
 }

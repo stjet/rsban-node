@@ -73,9 +73,9 @@ std::unordered_map<nano::account, nano::uint128_t> nano::rep_weights::get_rep_am
 	return result;
 }
 
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (nano::rep_weights const & rep_weights, std::string const & name)
+std::unique_ptr<nano::container_info_component> nano::rep_weights::collect_container_info (std::string const & name) const
 {
-	size_t rep_amounts_count = rsnano::rsn_rep_weights_item_count (rep_weights.handle);
+	size_t rep_amounts_count = rsnano::rsn_rep_weights_item_count (handle);
 	auto sizeof_element = rsnano::rsn_rep_weights_item_size ();
 	auto composite = std::make_unique<nano::container_info_composite> (name);
 	composite->add_component (std::make_unique<nano::container_info_leaf> (container_info{ "rep_amounts", rep_amounts_count, sizeof_element }));

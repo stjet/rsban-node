@@ -18,7 +18,7 @@ public:
 	~ledger_cache ();
 	ledger_cache (ledger_cache const &) = delete;
 	ledger_cache & operator= (ledger_cache && other_a);
-	nano::rep_weights & rep_weights ();
+	nano::rep_weights const & rep_weights () const;
 	uint64_t cemented_count () const;
 	void add_cemented (uint64_t count);
 	uint64_t block_count () const;

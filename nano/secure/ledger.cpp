@@ -423,12 +423,12 @@ nano::uncemented_info::uncemented_info (nano::block_hash const & cemented_fronti
 {
 }
 
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (ledger & ledger, std::string const & name)
+std::unique_ptr<nano::container_info_component> nano::ledger::collect_container_info (std::string const & name) const
 {
-	auto count = ledger.get_bootstrap_weights_size ();
+	auto count = get_bootstrap_weights_size ();
 	auto sizeof_element = sizeof (nano::account) + sizeof (nano::uint128_t);
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "bootstrap_weights", count, sizeof_element }));
-	composite->add_component (collect_container_info (ledger.cache.rep_weights (), "rep_weights"));
+	composite->add_component (cache.rep_weights ().collect_container_info("rep_weights"));
 	return composite;
 }

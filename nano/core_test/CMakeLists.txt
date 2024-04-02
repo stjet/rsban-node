@@ -13,6 +13,7 @@ add_executable(
   bootstrap_server.cpp
   cli.cpp
   confirmation_solicitor.cpp
+  confirming_set.cpp
   conflicts.cpp
   difficulty.cpp
   distributed_work.cpp

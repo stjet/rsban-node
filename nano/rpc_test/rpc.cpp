@@ -6014,7 +6014,7 @@ TEST (rpc, simultaneous_calls)
 	ASSERT_TRUE (ipc_tcp_port.has_value ());
 	rpc_config.rpc_process.num_ipc_connections = 8;
 	nano::ipc_rpc_processor ipc_rpc_processor (system.async_rt.io_ctx, rpc_config, ipc_tcp_port.value ());
-	auto rpc = std::make_shared<nano::rpc> (system.async_rt, rpc_config, ipc_rpc_processor);
+	auto rpc = std::make_shared<nano::rpc> (system.async_rt.io_ctx, rpc_config, ipc_rpc_processor);
 	nano::test::start_stop_guard stop_guard{ *rpc };
 
 	boost::property_tree::ptree request;

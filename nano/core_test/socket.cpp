@@ -28,8 +28,11 @@ TEST (socket, max_connections)
 	// start a server socket that allows max 2 live connections
 	auto listener = std::make_shared<nano::transport::tcp_listener> (server_port, *node, 2);
 	nano::test::stop_guard stop_guard{ *listener };
-	listener->start ([&server_sockets] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
-		server_sockets.push_back (new_connection);
+	listener->start ([&server_sockets] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec) {
+		if (!ec)
+		{
+			server_sockets.push_back (new_connection);
+		}
 		return true;
 	});
 

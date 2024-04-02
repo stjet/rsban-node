@@ -77,16 +77,15 @@ fn pruning_action() {
     assert_eq!(ctx.ledger.store.block.exists(&txn, &send2.hash()), false);
     assert_eq!(
         ctx.ledger.store.account.count(&txn),
-        ctx.ledger.cache.account_count.load(Ordering::Relaxed)
+        ctx.ledger.account_count()
     );
     assert_eq!(
         ctx.ledger.store.pruned.count(&txn),
-        ctx.ledger.cache.pruned_count.load(Ordering::Relaxed)
+        ctx.ledger.pruned_count()
     );
     assert_eq!(
         ctx.ledger.store.block.count(&txn),
-        ctx.ledger.cache.block_count.load(Ordering::Relaxed)
-            - ctx.ledger.cache.pruned_count.load(Ordering::Relaxed)
+        ctx.ledger.block_count() - ctx.ledger.pruned_count()
     );
 }
 #[test]
@@ -123,12 +122,11 @@ fn pruning_large_chain() {
     assert_eq!(ctx.ledger.store.block.exists(&txn, &last_hash), false);
     assert_eq!(
         ctx.ledger.store.pruned.count(&txn),
-        ctx.ledger.cache.pruned_count.load(Ordering::Relaxed)
+        ctx.ledger.pruned_count()
     );
     assert_eq!(
         ctx.ledger.store.block.count(&txn),
-        ctx.ledger.cache.block_count.load(Ordering::Relaxed)
-            - ctx.ledger.cache.pruned_count.load(Ordering::Relaxed)
+        ctx.ledger.block_count() - ctx.ledger.pruned_count()
     );
     assert_eq!(ctx.ledger.store.pruned.count(&txn), send_receive_pairs * 2);
     assert_eq!(ctx.ledger.store.block.count(&txn), 1);
@@ -189,8 +187,8 @@ fn pruning_source_rollback() {
             .pending_info(&txn, &PendingKey::new(genesis.account(), send1.hash())),
         None
     );
-    assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 2);
-    assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 5);
+    assert_eq!(ctx.ledger.pruned_count(), 2);
+    assert_eq!(ctx.ledger.block_count(), 5);
 }
 
 #[test]
@@ -253,8 +251,8 @@ fn pruning_source_rollback_legacy() {
             .pending_info(&txn, &PendingKey::new(genesis.account(), send1.hash())),
         None
     );
-    assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 2);
-    assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 5);
+    assert_eq!(ctx.ledger.pruned_count(), 2);
+    assert_eq!(ctx.ledger.block_count(), 5);
 
     // Receiving pruned block (open)
     let mut open1 = BlockBuilder::legacy_open()
@@ -287,8 +285,8 @@ fn pruning_source_rollback_legacy() {
             .pending_info(&txn, &PendingKey::new(destination.account(), send2.hash())),
         None
     );
-    assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 2);
-    assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 6);
+    assert_eq!(ctx.ledger.pruned_count(), 2);
+    assert_eq!(ctx.ledger.block_count(), 6);
 }
 
 #[test]
@@ -319,8 +317,8 @@ fn pruning_process_error() {
         .build();
     let result = ctx.ledger.process(&mut txn, &mut send2).unwrap_err();
     assert_eq!(result, BlockStatus::GapPrevious);
-    assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 1);
-    assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 2);
+    assert_eq!(ctx.ledger.pruned_count(), 1);
+    assert_eq!(ctx.ledger.block_count(), 2);
 }
 
 #[test]
@@ -377,8 +375,8 @@ fn pruning_legacy_blocks() {
     assert_eq!(ctx.ledger.store.block.exists(&txn, &open1.hash()), false);
     assert_eq!(ctx.ledger.store.pruned.exists(&txn, &open1.hash()), true);
     assert_eq!(ctx.ledger.store.block.exists(&txn, &send3.hash()), true);
-    assert_eq!(ctx.ledger.cache.pruned_count.load(Ordering::Relaxed), 4);
-    assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 7);
+    assert_eq!(ctx.ledger.pruned_count(), 4);
+    assert_eq!(ctx.ledger.block_count(), 7);
     assert_eq!(ctx.ledger.store.pruned.count(&txn), 4);
     assert_eq!(ctx.ledger.store.block.count(&txn), 3);
 }

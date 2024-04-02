@@ -719,10 +719,10 @@ TEST (confirmation_height, many_accounts_single_confirmation)
 		cemented_count += i->second.height ();
 	}
 
-	ASSERT_EQ (cemented_count, node->ledger.cache.cemented_count ());
+	ASSERT_EQ (cemented_count, node->ledger.cemented_count ());
 	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in), num_accounts * 2 - 2);
 
-	ASSERT_TIMELY_EQ (40s, (node->ledger.cache.cemented_count () - 1), node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out));
+	ASSERT_TIMELY_EQ (40s, (node->ledger.cemented_count () - 1), node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out));
 	ASSERT_TIMELY_EQ (10s, node->active.election_winner_details_size (), 0);
 }
 
@@ -782,7 +782,7 @@ TEST (confirmation_height, many_accounts_many_confirmations)
 	auto const num_blocks_to_confirm = (num_accounts - 1) * 2;
 	ASSERT_TIMELY_EQ (1500s, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in), num_blocks_to_confirm);
 
-	ASSERT_TIMELY_EQ (60s, (node->ledger.cache.cemented_count () - 1), node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out));
+	ASSERT_TIMELY_EQ (60s, (node->ledger.cemented_count () - 1), node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out));
 
 	auto transaction = node->store.tx_begin_read ();
 	size_t cemented_count = 0;
@@ -792,9 +792,9 @@ TEST (confirmation_height, many_accounts_many_confirmations)
 	}
 
 	ASSERT_EQ (num_blocks_to_confirm + 1, cemented_count);
-	ASSERT_EQ (cemented_count, node->ledger.cache.cemented_count ());
+	ASSERT_EQ (cemented_count, node->ledger.cemented_count ());
 
-	ASSERT_TIMELY_EQ (20s, (node->ledger.cache.cemented_count () - 1), node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out));
+	ASSERT_TIMELY_EQ (20s, (node->ledger.cemented_count () - 1), node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out));
 
 	ASSERT_TIMELY_EQ (10s, node->active.election_winner_details_size (), 0);
 }
@@ -937,10 +937,10 @@ TEST (confirmation_height, long_chains)
 		cemented_count += i->second.height ();
 	}
 
-	ASSERT_EQ (cemented_count, node->ledger.cache.cemented_count ());
+	ASSERT_EQ (cemented_count, node->ledger.cemented_count ());
 	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in), num_blocks * 2 + 2);
 
-	ASSERT_TIMELY_EQ (40s, (node->ledger.cache.cemented_count () - 1), node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out));
+	ASSERT_TIMELY_EQ (40s, (node->ledger.cemented_count () - 1), node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out));
 	ASSERT_TIMELY_EQ (10s, node->active.election_winner_details_size (), 0);
 }
 
@@ -981,11 +981,11 @@ TEST (confirmation_height, dynamic_algorithm)
 	}
 
 	node->confirming_set.add (state_blocks.front ()->hash ());
-	ASSERT_TIMELY_EQ (20s, node->ledger.cache.cemented_count (), 2);
+	ASSERT_TIMELY_EQ (20s, node->ledger.cemented_count (), 2);
 
 	node->confirming_set.add (latest_genesis->hash ());
 
-	ASSERT_TIMELY_EQ (20s, node->ledger.cache.cemented_count (), num_blocks + 1);
+	ASSERT_TIMELY_EQ (20s, node->ledger.cemented_count (), num_blocks + 1);
 
 	ASSERT_EQ (node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in), num_blocks);
 	ASSERT_TIMELY_EQ (10s, node->active.election_winner_details_size (), 0);
@@ -1098,7 +1098,7 @@ TEST (confirmation_height, many_accounts_send_receive_self)
 	}
 
 	system.deadline_set (200s);
-	while ((node->ledger.cache.cemented_count () - 1) != node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out))
+	while ((node->ledger.cemented_count () - 1) != node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out))
 	{
 		ASSERT_NO_ERROR (system.poll ());
 	}
@@ -1111,10 +1111,10 @@ TEST (confirmation_height, many_accounts_send_receive_self)
 	}
 
 	ASSERT_EQ (num_blocks_to_confirm + 1, cemented_count);
-	ASSERT_EQ (cemented_count, node->ledger.cache.cemented_count ());
+	ASSERT_EQ (cemented_count, node->ledger.cemented_count ());
 
 	system.deadline_set (60s);
-	while ((node->ledger.cache.cemented_count () - 1) != node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out))
+	while ((node->ledger.cemented_count () - 1) != node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::all, nano::stat::dir::out))
 	{
 		ASSERT_NO_ERROR (system.poll ());
 	}
@@ -1260,7 +1260,7 @@ TEST (confirmation_height, many_accounts_send_receive_self_no_elections)
 	}
 
 	ASSERT_EQ (num_blocks_to_confirm + 1, cemented_count);
-	ASSERT_EQ (cemented_count, ledger.cache.cemented_count ());
+	ASSERT_EQ (cemented_count, ledger.cemented_count ());
 }
 
 }
@@ -1468,7 +1468,7 @@ TEST (telemetry, under_load)
 	std::thread thread1 (thread_func, nano::dev::genesis_key, latest_genesis, nano::dev::constants.genesis_amount - num_blocks);
 	std::thread thread2 (thread_func, key, latest_key, num_blocks);
 
-	ASSERT_TIMELY_EQ (200s, node1->ledger.cache.block_count (), num_blocks * 2 + 3);
+	ASSERT_TIMELY_EQ (200s, node1->ledger.block_count (), num_blocks * 2 + 3);
 
 	thread1.join ();
 	thread2.join ();
@@ -1699,8 +1699,8 @@ TEST (node, mass_epoch_upgrader)
 				info.pending_hash = block->hash ();
 			}
 		}
-		ASSERT_EQ (1 + total_accounts, node.ledger.cache.block_count ());
-		ASSERT_EQ (1, node.ledger.cache.account_count ());
+		ASSERT_EQ (1 + total_accounts, node.ledger.block_count ());
+		ASSERT_EQ (1, node.ledger.account_count ());
 
 		// Receive for half of accounts
 		for (auto const & info : opened)
@@ -1720,32 +1720,32 @@ TEST (node, mass_epoch_upgrader)
 			ASSERT_NE (nullptr, block);
 			ASSERT_EQ (nano::block_status::progress, node.process (block));
 		}
-		ASSERT_EQ (1 + total_accounts + opened.size (), node.ledger.cache.block_count ());
-		ASSERT_EQ (1 + opened.size (), node.ledger.cache.account_count ());
+		ASSERT_EQ (1 + total_accounts + opened.size (), node.ledger.block_count ());
+		ASSERT_EQ (1 + opened.size (), node.ledger.account_count ());
 
 		nano::keypair epoch_signer (nano::dev::genesis_key);
 
-		auto const block_count_before = node.ledger.cache.block_count ();
+		auto const block_count_before = node.ledger.block_count ();
 		auto const total_to_upgrade = 1 + total_accounts;
 		std::cout << "Mass upgrading " << total_to_upgrade << " accounts" << std::endl;
-		while (node.ledger.cache.block_count () != block_count_before + total_to_upgrade)
+		while (node.ledger.block_count () != block_count_before + total_to_upgrade)
 		{
-			auto const pre_upgrade = node.ledger.cache.block_count ();
+			auto const pre_upgrade = node.ledger.block_count ();
 			auto upgrade_count = std::min<size_t> (batch_size, block_count_before + total_to_upgrade - pre_upgrade);
 			ASSERT_FALSE (node.epoch_upgrader.start (epoch_signer.prv, nano::epoch::epoch_1, upgrade_count, threads));
 			// Already ongoing - should fail
 			ASSERT_TRUE (node.epoch_upgrader.start (epoch_signer.prv, nano::epoch::epoch_1, upgrade_count, threads));
 			system.deadline_set (60s);
-			while (node.ledger.cache.block_count () != pre_upgrade + upgrade_count)
+			while (node.ledger.block_count () != pre_upgrade + upgrade_count)
 			{
 				ASSERT_NO_ERROR (system.poll ());
 				std::this_thread::sleep_for (200ms);
-				std::cout << node.ledger.cache.block_count () - block_count_before << " / " << total_to_upgrade << std::endl;
+				std::cout << node.ledger.block_count () - block_count_before << " / " << total_to_upgrade << std::endl;
 			}
 			std::this_thread::sleep_for (50ms);
 		}
 		auto expected_blocks = block_count_before + total_accounts + 1;
-		ASSERT_EQ (expected_blocks, node.ledger.cache.block_count ());
+		ASSERT_EQ (expected_blocks, node.ledger.block_count ());
 		// Check upgrade
 		{
 			auto transaction (node.store.tx_begin_read ());
@@ -1791,7 +1791,7 @@ TEST (node, mass_block_new)
 		{
 			node.process_active (block);
 		}
-		ASSERT_TIMELY_EQ (200s, node.ledger.cache.block_count (), next_block_count);
+		ASSERT_TIMELY_EQ (200s, node.ledger.block_count (), next_block_count);
 		next_block_count += num_blocks;
 		while (node.block_processor.size () > 0)
 		{
@@ -1971,7 +1971,7 @@ TEST (node, aggressive_flooding)
 
 	ASSERT_TIMELY (!nano::slow_instrumentation () ? 10s : 40s, all_received ());
 
-	ASSERT_TIMELY_EQ (!nano::slow_instrumentation () ? 10s : 40s, node1.ledger.cache.block_count (), 1 + 2 * nodes_wallets.size ());
+	ASSERT_TIMELY_EQ (!nano::slow_instrumentation () ? 10s : 40s, node1.ledger.block_count (), 1 + 2 * nodes_wallets.size ());
 
 	// Wait until the main node sees all representatives
 	ASSERT_TIMELY_EQ (!nano::slow_instrumentation () ? 10s : 40s, node1.representative_register.principal_representatives ().size (), nodes_wallets.size ());
@@ -2008,7 +2008,7 @@ TEST (node, aggressive_flooding)
 
 	// All blocks: genesis + (send+open) for each representative + 2 local blocks
 	// The main node only sees all blocks if other nodes are flooding their PR's open block to all other PRs
-	ASSERT_EQ (1 + 2 * nodes_wallets.size () + 2, node1.ledger.cache.block_count ());
+	ASSERT_EQ (1 + 2 * nodes_wallets.size () + 2, node1.ledger.block_count ());
 }
 
 TEST (node, send_single_many_peers)
@@ -2167,7 +2167,7 @@ TEST (system, block_sequence)
 			std::string message;
 			for (auto i : system.nodes)
 			{
-				message += boost::str (boost::format ("N:%1% b:%2% c:%3% a:%4% s:%5% p:%6%\n") % std::to_string (i->network->get_port ()) % std::to_string (i->ledger.cache.block_count ()) % std::to_string (i->ledger.cache.cemented_count ()) % std::to_string (i->active.size ()) % std::to_string (i->scheduler.priority.size ()) % std::to_string (i->network->size ()));
+				message += boost::str (boost::format ("N:%1% b:%2% c:%3% a:%4% s:%5% p:%6%\n") % std::to_string (i->network->get_port ()) % std::to_string (i->ledger.block_count ()) % std::to_string (i->ledger.cemented_count ()) % std::to_string (i->active.size ()) % std::to_string (i->scheduler.priority.size ()) % std::to_string (i->network->size ()));
 			}
 			std::cerr << message << std::endl;
 			last = std::chrono::system_clock::now ();

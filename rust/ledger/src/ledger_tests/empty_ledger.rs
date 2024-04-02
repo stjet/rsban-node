@@ -72,8 +72,8 @@ fn genesis_confirmation_height_info() {
 #[test]
 fn cache() {
     let ctx = LedgerContext::empty();
-    assert_eq!(ctx.ledger.cache.account_count.load(Ordering::SeqCst), 1);
-    assert_eq!(ctx.ledger.cache.cemented_count.load(Ordering::SeqCst), 1);
+    assert_eq!(ctx.ledger.account_count(), 1);
+    assert_eq!(ctx.ledger.cemented_count(), 1);
 }
 
 #[test]

@@ -444,7 +444,7 @@ impl<T: Environment + 'static> Ledger<T> {
             let count = self.cache.block_count.load(Ordering::SeqCst);
             let region = thread_rng().gen_range(0..count);
             // Pruned cache cannot guarantee that pruned blocks are already commited
-            if region < self.cache.pruned_count.load(Ordering::SeqCst) {
+            if region < self.pruned_count() {
                 hash = self.store.pruned.random(txn).unwrap_or_default();
             }
             if hash.is_zero() {
@@ -929,6 +929,22 @@ impl<T: Environment + 'static> Ledger<T> {
         self.account_receivable_upper_bound(txn, account, BlockHash::zero())
             .next()
             .is_some()
+    }
+
+    pub fn cemented_count(&self) -> u64 {
+        self.cache.cemented_count.load(Ordering::SeqCst)
+    }
+
+    pub fn block_count(&self) -> u64 {
+        self.cache.block_count.load(Ordering::SeqCst)
+    }
+
+    pub fn account_count(&self) -> u64 {
+        self.cache.account_count.load(Ordering::SeqCst)
+    }
+
+    pub fn pruned_count(&self) -> u64 {
+        self.cache.pruned_count.load(Ordering::SeqCst)
     }
 }
 

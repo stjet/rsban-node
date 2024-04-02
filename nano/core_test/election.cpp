@@ -241,14 +241,14 @@ TEST (election, quorum_minimum_update_weight_before_quorum_checks)
 					   .work (*system.work.generate (open1->hash ()))
 					   .build ();
 	ASSERT_EQ (nano::block_status::progress, node1.process (send2));
-	ASSERT_TIMELY_EQ (5s, node1.ledger.cache.block_count (), 4);
+	ASSERT_TIMELY_EQ (5s, node1.ledger.block_count (), 4);
 
 	node_config.peering_port = system.get_available_port ();
 	auto & node2 = *system.add_node (node_config);
 	auto wallet_id2 = node2.wallets.first_wallet_id ();
 
 	(void)node2.wallets.insert_adhoc (wallet_id2, key1.prv);
-	ASSERT_TIMELY_EQ (10s, node2.ledger.cache.block_count (), 4);
+	ASSERT_TIMELY_EQ (10s, node2.ledger.block_count (), 4);
 
 	std::shared_ptr<nano::election> election;
 	ASSERT_TIMELY (5s, (election = node1.active.election (send1->qualified_root ())) != nullptr);

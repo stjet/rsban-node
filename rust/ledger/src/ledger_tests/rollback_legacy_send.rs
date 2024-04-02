@@ -37,7 +37,7 @@ fn update_account_store() {
     assert_eq!(account_info.block_count, 1);
     assert_eq!(account_info.head, *DEV_GENESIS_HASH);
     assert_eq!(account_info.balance, LEDGER_CONSTANTS_STUB.genesis_amount);
-    assert_eq!(ctx.ledger.cache.account_count.load(Ordering::Relaxed), 1);
+    assert_eq!(ctx.ledger.account_count(), 1);
 }
 
 #[test]

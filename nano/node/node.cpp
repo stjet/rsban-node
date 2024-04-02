@@ -431,10 +431,10 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 			ledger.set_bootstrap_weight_max_blocks (bootstrap_weights.first);
 
 			logger->info (nano::log::type::node, "Initial bootstrap height: {}", ledger.get_bootstrap_weight_max_blocks ());
-			logger->info (nano::log::type::node, "Current ledger height:    {}", ledger.cache.block_count ());
+			logger->info (nano::log::type::node, "Current ledger height:    {}", ledger.block_count ());
 
 			// Use bootstrap weights if initial bootstrap is not completed
-			const bool use_bootstrap_weight = ledger.cache.block_count () < bootstrap_weights.first;
+			const bool use_bootstrap_weight = ledger.block_count () < bootstrap_weights.first;
 			if (use_bootstrap_weight)
 			{
 				logger->info (nano::log::type::node, "Using predefined representative weights, since block count is less than bootstrap threshold");
@@ -871,7 +871,7 @@ void nano::node::ongoing_bootstrap ()
 	}
 	// Differential bootstrap with max age (75% of all legacy attempts)
 	uint32_t frontiers_age (std::numeric_limits<uint32_t>::max ());
-	auto bootstrap_weight_reached (ledger.cache.block_count () >= ledger.get_bootstrap_weight_max_blocks ());
+	auto bootstrap_weight_reached (ledger.block_count () >= ledger.get_bootstrap_weight_max_blocks ());
 	auto previous_bootstrap_count (stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out) + stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate_legacy_age, nano::stat::dir::out));
 	/*
 	- Maximum value for 25% of attempts or if block count is below preconfigured value (initial bootstrap not finished)
@@ -1066,7 +1066,7 @@ void nano::node::ledger_pruning (uint64_t const batch_size_a, bool bootstrap_wei
 
 void nano::node::ongoing_ledger_pruning ()
 {
-	auto bootstrap_weight_reached (ledger.cache.block_count () >= ledger.get_bootstrap_weight_max_blocks ());
+	auto bootstrap_weight_reached (ledger.block_count () >= ledger.get_bootstrap_weight_max_blocks ());
 	ledger_pruning (flags.block_processor_batch_size () != 0 ? flags.block_processor_batch_size () : 2 * 1024, bootstrap_weight_reached);
 	auto const ledger_pruning_interval (bootstrap_weight_reached ? config->max_pruning_age : std::min (config->max_pruning_age, std::chrono::seconds (15 * 60)));
 	auto this_l (shared ());
@@ -1340,15 +1340,15 @@ nano::telemetry_data nano::node::local_telemetry () const
 {
 	nano::telemetry_data telemetry_data;
 	telemetry_data.set_node_id (node_id.pub);
-	telemetry_data.set_block_count (ledger.cache.block_count ());
-	telemetry_data.set_cemented_count (ledger.cache.cemented_count ());
+	telemetry_data.set_block_count (ledger.block_count ());
+	telemetry_data.set_cemented_count (ledger.cemented_count ());
 	telemetry_data.set_bandwidth_cap (config->bandwidth_limit);
 	telemetry_data.set_protocol_version (network_params.network.protocol_version);
 	telemetry_data.set_uptime (std::chrono::duration_cast<std::chrono::seconds> (std::chrono::steady_clock::now () - startup_time).count ());
 	telemetry_data.set_unchecked_count (unchecked.count ());
 	telemetry_data.set_genesis_block (network_params.ledger.genesis->hash ());
 	telemetry_data.set_peer_count (nano::narrow_cast<decltype (telemetry_data.get_peer_count ())> (network->size ()));
-	telemetry_data.set_account_count (ledger.cache.account_count ());
+	telemetry_data.set_account_count (ledger.account_count ());
 	telemetry_data.set_major_version (nano::get_major_node_version ());
 	telemetry_data.set_minor_version (nano::get_minor_node_version ());
 	telemetry_data.set_patch_version (nano::get_patch_node_version ());

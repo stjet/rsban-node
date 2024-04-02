@@ -213,7 +213,7 @@ fn bootstrap_rep_weight() {
         let mut weights = ctx.ledger.bootstrap_weights.lock().unwrap();
         weights.insert(representative_account, Amount::raw(1000));
     }
-    assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 2);
+    assert_eq!(ctx.ledger.block_count(), 2);
     assert_eq!(
         ctx.ledger.weight(&representative_account),
         Amount::raw(1000)
@@ -227,7 +227,7 @@ fn bootstrap_rep_weight() {
             .build();
         ctx.ledger.process(&mut txn, &mut send).unwrap();
     }
-    assert_eq!(ctx.ledger.cache.block_count.load(Ordering::Relaxed), 3);
+    assert_eq!(ctx.ledger.block_count(), 3);
     assert_eq!(ctx.ledger.weight(&representative_account), Amount::zero());
 }
 

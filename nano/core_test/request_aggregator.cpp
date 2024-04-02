@@ -465,8 +465,6 @@ TEST (request_aggregator, cannot_vote)
 	nano::node_flags flags;
 	flags.set_disable_request_loop (true);
 	auto & node (*system.add_node (flags));
-	// This prevents activation of blocks which are cemented
-	node.confirmation_height_processor.clear_cemented_observer ();
 	nano::state_block_builder builder;
 	auto send1 = builder.make_block ()
 				 .account (nano::dev::genesis_key.pub)

@@ -707,39 +707,6 @@ impl<T: Environment + 'static> Ledger<T> {
         self.cache.block_count.load(Ordering::SeqCst) >= self.bootstrap_weight_max_blocks()
     }
 
-    pub fn write_confirmation_height(
-        &self,
-        txn: &mut LmdbWriteTransaction<T>,
-        section: &BlockChainSection,
-    ) {
-        #[cfg(debug_assertions)]
-        {
-            let conf_height = self
-                .store
-                .confirmation_height
-                .get(txn, &section.account)
-                .map(|i| i.height)
-                .unwrap_or_default();
-            let block = self.get_block(txn, &section.top_hash).unwrap();
-            debug_assert_eq!(
-                block.sideband().unwrap().height,
-                conf_height + section.block_count()
-            );
-        }
-
-        self.store.confirmation_height.put(
-            txn,
-            &section.account,
-            &ConfirmationHeightInfo::new(section.top_height, section.top_hash),
-        );
-
-        self.cache
-            .cemented_count
-            .fetch_add(section.block_count(), Ordering::SeqCst);
-
-        self.observer.blocks_cemented(section.block_count());
-    }
-
     pub fn dependent_blocks(
         &self,
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,

@@ -380,7 +380,7 @@ mod dependents_confirmed {
             .link(destination.account())
             .build();
         ctx.ledger.process(&mut txn, &mut send).unwrap();
-        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.confirm(&mut txn, send.hash());
 
         let mut open = destination.open(&txn, send.hash()).build();
         ctx.ledger.process(&mut txn, &mut open).unwrap();
@@ -401,7 +401,7 @@ mod dependents_confirmed {
             .link(destination.account())
             .build();
         ctx.ledger.process(&mut txn, &mut send1).unwrap();
-        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.confirm(&mut txn, send1.hash());
 
         let mut send2 = ctx
             .genesis_block_factory()
@@ -412,7 +412,7 @@ mod dependents_confirmed {
 
         let mut open = destination.open(&txn, send1.hash()).build();
         ctx.ledger.process(&mut txn, &mut open).unwrap();
-        ctx.inc_confirmation_height(&mut txn, &destination.account());
+        ctx.ledger.confirm(&mut txn, open.hash());
 
         let mut receive = destination.receive(&txn, send2.hash()).build();
         ctx.ledger.process(&mut txn, &mut receive).unwrap();
@@ -433,7 +433,7 @@ mod dependents_confirmed {
             .link(destination.account())
             .build();
         ctx.ledger.process(&mut txn, &mut send1).unwrap();
-        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.confirm(&mut txn, send1.hash());
 
         let mut send2 = ctx
             .genesis_block_factory()
@@ -441,7 +441,7 @@ mod dependents_confirmed {
             .link(destination.account())
             .build();
         ctx.ledger.process(&mut txn, &mut send2).unwrap();
-        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.confirm(&mut txn, send2.hash());
 
         let mut open = destination.open(&txn, send1.hash()).build();
         ctx.ledger.process(&mut txn, &mut open).unwrap();
@@ -465,7 +465,7 @@ mod dependents_confirmed {
             .link(destination.account())
             .build();
         ctx.ledger.process(&mut txn, &mut send1).unwrap();
-        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.confirm(&mut txn, send1.hash());
 
         let mut send2 = ctx
             .genesis_block_factory()
@@ -473,11 +473,11 @@ mod dependents_confirmed {
             .link(destination.account())
             .build();
         ctx.ledger.process(&mut txn, &mut send2).unwrap();
-        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.confirm(&mut txn, send2.hash());
 
         let mut open = destination.open(&txn, send1.hash()).build();
         ctx.ledger.process(&mut txn, &mut open).unwrap();
-        ctx.inc_confirmation_height(&mut txn, &destination.account());
+        ctx.ledger.confirm(&mut txn, open.hash());
 
         let mut receive = destination.receive(&txn, send2.hash()).build();
         ctx.ledger.process(&mut txn, &mut receive).unwrap();
@@ -499,7 +499,7 @@ mod dependents_confirmed {
             .link(destination.account())
             .build();
         ctx.ledger.process(&mut txn, &mut send1).unwrap();
-        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.confirm(&mut txn, send1.hash());
 
         let mut send2 = ctx
             .genesis_block_factory()
@@ -507,7 +507,7 @@ mod dependents_confirmed {
             .link(destination.account())
             .build();
         ctx.ledger.process(&mut txn, &mut send2).unwrap();
-        ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
+        ctx.ledger.confirm(&mut txn, send2.hash());
 
         assert_eq!(ctx.ledger.pruning_action(&mut txn, &send2.hash(), 1), 2);
 
@@ -541,7 +541,7 @@ fn block_confirmed() {
     ctx.ledger.process(&mut txn, &mut send).unwrap();
     assert_eq!(ctx.ledger.block_confirmed(&txn, &send.hash()), false);
 
-    ctx.inc_confirmation_height(&mut txn, &DEV_GENESIS_ACCOUNT);
+    ctx.ledger.confirm(&mut txn, send.hash());
     assert_eq!(ctx.ledger.block_confirmed(&txn, &send.hash()), true);
 }
 

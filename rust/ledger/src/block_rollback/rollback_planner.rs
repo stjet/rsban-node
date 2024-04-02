@@ -18,8 +18,6 @@ pub(crate) struct RollbackInstructions {
     pub add_pending: Option<(PendingKey, PendingInfo)>,
     pub set_account_info: AccountInfo,
     pub old_account_info: AccountInfo,
-    pub delete_frontier: Option<BlockHash>,
-    pub add_frontier: Option<(BlockHash, Account)>,
     pub clear_successor: Option<BlockHash>,
     pub new_balance: Amount,
     pub new_representative: Option<Account>,
@@ -60,8 +58,6 @@ impl<'a> RollbackPlanner<'a> {
             remove_pending: self.remove_pending(),
             add_pending: self.add_pending(),
             set_account_info: self.previous_account_info(),
-            delete_frontier: self.delete_frontier(),
-            add_frontier: self.add_frontier(),
             clear_successor: self.previous.as_ref().map(|b| b.hash()),
             new_balance: self.previous_balance(),
         };
@@ -91,23 +87,6 @@ impl<'a> RollbackPlanner<'a> {
         Ok(Some(RollbackStep::RequestDependencyRollback(
             latest_destination_block,
         )))
-    }
-
-    fn add_frontier(&self) -> Option<(BlockHash, rsnano_core::PublicKey)> {
-        if self.head_block.is_legacy() {
-            if let Some(previous) = &self.previous {
-                return Some((previous.hash(), self.account));
-            }
-        }
-        None
-    }
-
-    fn delete_frontier(&self) -> Option<BlockHash> {
-        if self.head_block.is_legacy() {
-            Some(self.head_block.hash())
-        } else {
-            None
-        }
     }
 
     fn add_pending(&self) -> Option<(PendingKey, PendingInfo)> {

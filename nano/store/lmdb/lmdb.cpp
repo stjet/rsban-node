@@ -11,8 +11,6 @@
 #include <boost/format.hpp>
 #include <boost/polymorphic_cast.hpp>
 
-#include <queue>
-
 namespace
 {
 rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, std::filesystem::path const & path_a, nano::store::lmdb::env::options options_a, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, bool backup_before_upgrade)
@@ -34,7 +32,6 @@ rsnano::LmdbStoreHandle * create_store_handle (bool & error_a, std::filesystem::
 nano::store::lmdb::component::component (std::filesystem::path const & path_a, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a, std::chrono::milliseconds block_processor_batch_max_time_a, nano::lmdb_config const & lmdb_config_a, bool backup_before_upgrade_a) :
 	handle{ create_store_handle (error, path_a, nano::store::lmdb::env::options::make ().set_config (lmdb_config_a).set_use_no_mem_init (true), txn_tracking_config_a, block_processor_batch_max_time_a, backup_before_upgrade_a) },
 	block_store{ rsnano::rsn_lmdb_store_block (handle) },
-	frontier_store{ rsnano::rsn_lmdb_store_frontier (handle) },
 	account_store{ rsnano::rsn_lmdb_store_account (handle) },
 	pending_store{ rsnano::rsn_lmdb_store_pending (handle) },
 	online_weight_store{ rsnano::rsn_lmdb_store_online_weight (handle) },
@@ -102,11 +99,6 @@ unsigned nano::store::lmdb::component::max_block_write_batch_num () const
 nano::store::block & nano::store::lmdb::component::block ()
 {
 	return block_store;
-}
-
-nano::store::frontier & nano::store::lmdb::component::frontier ()
-{
-	return frontier_store;
 }
 
 nano::store::account & nano::store::lmdb::component::account ()

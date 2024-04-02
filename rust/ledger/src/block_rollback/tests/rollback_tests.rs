@@ -56,11 +56,6 @@ fn rollback_legacy_change() {
 
     let instructions = RollbackTest::for_chain(&chain).assert_rollback_succeeds();
 
-    assert_eq!(instructions.delete_frontier, Some(chain.frontier()));
-    assert_eq!(
-        instructions.add_frontier,
-        Some((previous_account_info.head, chain.account()))
-    );
     assert_eq!(
         instructions.set_account_info,
         AccountInfo {
@@ -83,8 +78,6 @@ fn rollback_legacy_open() {
         .with_linked_account(linked_account)
         .assert_rollback_succeeds();
 
-    assert_eq!(instructions.delete_frontier, Some(chain.frontier()));
-    assert_eq!(instructions.add_frontier, None);
     assert_eq!(instructions.block_sub_type, BlockSubType::Open);
     assert_eq!(instructions.new_balance, Amount::zero());
     assert_eq!(instructions.new_representative, None);

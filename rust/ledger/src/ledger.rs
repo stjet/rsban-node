@@ -12,10 +12,9 @@ use rsnano_core::{
 };
 use rsnano_store_lmdb::{
     ConfiguredAccountDatabaseBuilder, ConfiguredBlockDatabaseBuilder,
-    ConfiguredConfirmationHeightDatabaseBuilder, ConfiguredFrontierDatabaseBuilder,
-    ConfiguredPendingDatabaseBuilder, ConfiguredPrunedDatabaseBuilder, Environment,
-    EnvironmentStub, EnvironmentWrapper, LmdbAccountStore, LmdbBlockStore,
-    LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
+    ConfiguredConfirmationHeightDatabaseBuilder, ConfiguredPendingDatabaseBuilder,
+    ConfiguredPrunedDatabaseBuilder, Environment, EnvironmentStub, EnvironmentWrapper,
+    LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore,
     LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
     LmdbRepWeightStore, LmdbStore, LmdbVersionStore, LmdbWriteTransaction, Transaction,
 };
@@ -101,7 +100,6 @@ impl Ledger<EnvironmentStub> {
 
 pub struct NullLedgerBuilder {
     blocks: ConfiguredBlockDatabaseBuilder,
-    frontiers: ConfiguredFrontierDatabaseBuilder,
     accounts: ConfiguredAccountDatabaseBuilder,
     pending: ConfiguredPendingDatabaseBuilder,
     pruned: ConfiguredPrunedDatabaseBuilder,
@@ -113,7 +111,6 @@ impl NullLedgerBuilder {
     fn new() -> Self {
         Self {
             blocks: ConfiguredBlockDatabaseBuilder::new(),
-            frontiers: ConfiguredFrontierDatabaseBuilder::new(),
             accounts: ConfiguredAccountDatabaseBuilder::new(),
             pending: ConfiguredPendingDatabaseBuilder::new(),
             pruned: ConfiguredPrunedDatabaseBuilder::new(),
@@ -139,11 +136,6 @@ impl NullLedgerBuilder {
         self
     }
 
-    pub fn frontier(mut self, hash: &BlockHash, account: &Account) -> Self {
-        self.frontiers = self.frontiers.frontier(hash, account);
-        self
-    }
-
     pub fn account_info(mut self, account: &Account, info: &AccountInfo) -> Self {
         self.accounts = self.accounts.account(account, info);
         self
@@ -163,7 +155,6 @@ impl NullLedgerBuilder {
         let env = Arc::new(
             LmdbEnv::create_null_with()
                 .configured_database(self.blocks.build())
-                .configured_database(self.frontiers.build())
                 .configured_database(self.accounts.build())
                 .configured_database(self.pending.build())
                 .configured_database(self.pruned.build())
@@ -177,7 +168,6 @@ impl NullLedgerBuilder {
             block: Arc::new(LmdbBlockStore::new(env.clone()).unwrap()),
             confirmation_height: Arc::new(LmdbConfirmationHeightStore::new(env.clone()).unwrap()),
             final_vote: Arc::new(LmdbFinalVoteStore::new(env.clone()).unwrap()),
-            frontier: Arc::new(LmdbFrontierStore::new(env.clone()).unwrap()),
             online_weight: Arc::new(LmdbOnlineWeightStore::new(env.clone()).unwrap()),
             peer: Arc::new(LmdbPeerStore::new(env.clone()).unwrap()),
             pending: Arc::new(LmdbPendingStore::new(env.clone()).unwrap()),
@@ -316,9 +306,6 @@ impl<T: Environment + 'static> Ledger<T> {
                 epoch: Epoch::Epoch0,
             },
         );
-        self.store
-            .frontier
-            .put(txn, &genesis_hash, &genesis_account);
         self.store.rep_weight.put(txn, genesis_account, Amount::MAX);
     }
 
@@ -836,14 +823,6 @@ impl<T: Environment + 'static> Ledger<T> {
         account: &Account,
     ) -> Option<ConfirmationHeightInfo> {
         self.store.confirmation_height.get(txn, account)
-    }
-
-    pub fn get_frontier(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        hash: &BlockHash,
-    ) -> Option<Account> {
-        self.store.frontier.get(txn, hash)
     }
 
     pub fn pending_info(

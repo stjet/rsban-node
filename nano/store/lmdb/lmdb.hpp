@@ -10,7 +10,6 @@
 #include <nano/store/lmdb/confirmation_height.hpp>
 #include <nano/store/lmdb/db_val.hpp>
 #include <nano/store/lmdb/final_vote.hpp>
-#include <nano/store/lmdb/frontier.hpp>
 #include <nano/store/lmdb/iterator.hpp>
 #include <nano/store/lmdb/lmdb_env.hpp>
 #include <nano/store/lmdb/online_weight.hpp>
@@ -40,7 +39,6 @@ private:
 	nano::store::lmdb::block block_store;
 	nano::store::lmdb::confirmation_height confirmation_height_store;
 	nano::store::lmdb::final_vote final_vote_store;
-	nano::store::lmdb::frontier frontier_store;
 	nano::store::lmdb::online_weight online_weight_store;
 	nano::store::lmdb::peer peer_store;
 	nano::store::lmdb::pending pending_store;
@@ -59,7 +57,6 @@ public:
 	void serialize_memory_stats (boost::property_tree::ptree &) override;
 	unsigned max_block_write_batch_num () const override;
 	nano::store::block & block () override;
-	nano::store::frontier & frontier () override;
 	nano::store::account & account () override;
 	nano::store::pending & pending () override;
 	nano::store::online_weight & online_weight () override;

@@ -24,26 +24,6 @@ fn clear_successor() {
 }
 
 #[test]
-fn rollback_frontiers() {
-    let ctx = LedgerContext::empty();
-    let mut txn = ctx.ledger.rw_txn();
-    let receive = setup_legacy_receive_block(&ctx, &mut txn);
-
-    ctx.ledger
-        .rollback(&mut txn, &receive.receive_block.hash())
-        .unwrap();
-
-    assert_eq!(
-        ctx.ledger.get_frontier(&txn, &receive.open_block.hash()),
-        Some(receive.destination.account())
-    );
-    assert_eq!(
-        ctx.ledger.get_frontier(&txn, &receive.receive_block.hash()),
-        None
-    );
-}
-
-#[test]
 fn update_account_info() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();

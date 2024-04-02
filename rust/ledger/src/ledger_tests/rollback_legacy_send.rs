@@ -27,20 +27,6 @@ fn update_vote_weight() {
 }
 
 #[test]
-fn rollback_frontiers() {
-    let ctx = LedgerContext::empty();
-    let mut txn = ctx.ledger.rw_txn();
-
-    let send = rollback_send_block(&ctx, &mut txn);
-
-    assert_eq!(
-        ctx.ledger.get_frontier(&txn, &DEV_GENESIS_HASH),
-        Some(*DEV_GENESIS_ACCOUNT)
-    );
-    assert_eq!(ctx.ledger.get_frontier(&txn, &send.send_block.hash()), None);
-}
-
-#[test]
 fn update_account_store() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();

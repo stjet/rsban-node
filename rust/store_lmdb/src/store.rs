@@ -1,10 +1,10 @@
 use crate::{
     lmdb_env::{EnvironmentWrapper, RoCursor, RoTransaction, RwTransaction},
     EnvOptions, Environment, EnvironmentStub, LmdbAccountStore, LmdbBlockStore,
-    LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbFrontierStore,
-    LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
-    LmdbRepWeightStore, LmdbVersionStore, LmdbWriteTransaction, NullTransactionTracker, Table,
-    TransactionTracker, STORE_VERSION_CURRENT, STORE_VERSION_MINIMUM,
+    LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbOnlineWeightStore, LmdbPeerStore,
+    LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction, LmdbRepWeightStore, LmdbVersionStore,
+    LmdbWriteTransaction, NullTransactionTracker, Table, TransactionTracker, STORE_VERSION_CURRENT,
+    STORE_VERSION_MINIMUM,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
@@ -26,7 +26,6 @@ pub enum Vacuuming {
 pub struct LmdbStore<T: Environment = EnvironmentWrapper> {
     pub env: Arc<LmdbEnv<T>>,
     pub block: Arc<LmdbBlockStore<T>>,
-    pub frontier: Arc<LmdbFrontierStore<T>>,
     pub account: Arc<LmdbAccountStore<T>>,
     pub pending: Arc<LmdbPendingStore<T>>,
     pub online_weight: Arc<LmdbOnlineWeightStore<T>>,
@@ -108,7 +107,6 @@ impl<T: Environment + 'static> LmdbStore<T> {
 
         Ok(Self {
             block: Arc::new(LmdbBlockStore::new(env.clone())?),
-            frontier: Arc::new(LmdbFrontierStore::new(env.clone())?),
             account: Arc::new(LmdbAccountStore::new(env.clone())?),
             pending: Arc::new(LmdbPendingStore::new(env.clone())?),
             online_weight: Arc::new(LmdbOnlineWeightStore::new(env.clone())?),
@@ -266,7 +264,7 @@ fn do_upgrades<T: Environment + 'static>(env: Arc<LmdbEnv<T>>) -> anyhow::Result
     };
 
     if version < STORE_VERSION_MINIMUM {
-        error!("The version of the ledger ({}) is lower than the minimum ({}) which is supported for upgrades. Either upgrade to a v23 node first or delete the ledger.", version, STORE_VERSION_MINIMUM);
+        error!("The version of the ledger ({}) is lower than the minimum ({}) which is supported for upgrades. Either upgrade to a v24 node first or delete the ledger.", version, STORE_VERSION_MINIMUM);
         bail!("version too low");
     }
 

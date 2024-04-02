@@ -31,9 +31,6 @@ pub use confirmation_height_store::*;
 mod final_vote_store;
 pub use final_vote_store::LmdbFinalVoteStore;
 
-mod frontier_store;
-pub use frontier_store::{ConfiguredFrontierDatabaseBuilder, LmdbFrontierStore};
-
 mod online_weight_store;
 pub use online_weight_store::LmdbOnlineWeightStore;
 
@@ -460,8 +457,8 @@ where
     });
 }
 
-pub const STORE_VERSION_MINIMUM: i32 = 23;
-pub const STORE_VERSION_CURRENT: i32 = 23;
+pub const STORE_VERSION_MINIMUM: i32 = 24;
+pub const STORE_VERSION_CURRENT: i32 = 24;
 
 pub const BLOCK_TEST_DATABASE: DatabaseStub = DatabaseStub(1);
 pub const FRONTIER_TEST_DATABASE: DatabaseStub = DatabaseStub(2);

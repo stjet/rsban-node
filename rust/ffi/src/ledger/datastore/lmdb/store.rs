@@ -1,10 +1,10 @@
 use super::{
     account_store::LmdbAccountStoreHandle, block_store::LmdbBlockStoreHandle,
     confirmation_height_store::LmdbConfirmationHeightStoreHandle,
-    final_vote_store::LmdbFinalVoteStoreHandle, frontier_store::LmdbFrontierStoreHandle,
-    online_weight_store::LmdbOnlineWeightStoreHandle, peer_store::LmdbPeerStoreHandle,
-    pending_store::LmdbPendingStoreHandle, pruned_store::LmdbPrunedStoreHandle,
-    version_store::LmdbVersionStoreHandle, TransactionHandle, TransactionType,
+    final_vote_store::LmdbFinalVoteStoreHandle, online_weight_store::LmdbOnlineWeightStoreHandle,
+    peer_store::LmdbPeerStoreHandle, pending_store::LmdbPendingStoreHandle,
+    pruned_store::LmdbPrunedStoreHandle, version_store::LmdbVersionStoreHandle, TransactionHandle,
+    TransactionType,
 };
 use crate::{FfiPropertyTreeWriter, LmdbConfigDto, StringDto, TxnTrackingConfigDto};
 use rsnano_node::{config::DiagnosticsConfig, utils::LongRunningTransactionLogger};
@@ -95,17 +95,6 @@ pub unsafe extern "C" fn rsn_lmdb_store_block(
         ptr::null_mut()
     } else {
         LmdbBlockStoreHandle::new((*handle).0.block.clone())
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_store_frontier(
-    handle: *mut LmdbStoreHandle,
-) -> *mut LmdbFrontierStoreHandle {
-    if handle.is_null() {
-        ptr::null_mut()
-    } else {
-        LmdbFrontierStoreHandle::new((*handle).0.frontier.clone())
     }
 }
 

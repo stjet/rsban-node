@@ -70,17 +70,6 @@ fn genesis_confirmation_height_info() {
 }
 
 #[test]
-fn genesis_frontier() {
-    let ctx = LedgerContext::empty();
-    let txn = ctx.ledger.read_txn();
-
-    assert_eq!(
-        ctx.ledger.get_frontier(&txn, &DEV_GENESIS_HASH),
-        Some(*DEV_GENESIS_ACCOUNT),
-    );
-}
-
-#[test]
 fn cache() {
     let ctx = LedgerContext::empty();
     assert_eq!(ctx.ledger.cache.account_count.load(Ordering::SeqCst), 1);

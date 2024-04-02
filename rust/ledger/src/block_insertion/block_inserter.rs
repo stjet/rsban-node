@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering;
 
 use crate::Ledger;
 use rsnano_core::{
-    Account, AccountInfo, Amount, BlockEnum, BlockSideband, BlockType, PendingInfo, PendingKey,
+    Account, AccountInfo, Amount, BlockEnum, BlockSideband, PendingInfo, PendingKey,
 };
 use rsnano_store_lmdb::{Environment, LmdbWriteTransaction};
 
@@ -46,8 +46,6 @@ impl<'a, T: Environment> BlockInserter<'a, T> {
         self.update_account();
         self.delete_old_pending_info();
         self.insert_new_pending_info();
-        self.delete_old_frontier();
-        self.insert_new_frontier();
         self.update_representative_cache();
         self.ledger
             .observer
@@ -67,31 +65,6 @@ impl<'a, T: Environment> BlockInserter<'a, T> {
             &self.instructions.old_account_info,
             &self.instructions.set_account_info,
         );
-    }
-
-    fn delete_old_frontier(&mut self) {
-        if self
-            .ledger
-            .store
-            .frontier
-            .get(self.txn, &self.instructions.old_account_info.head)
-            .is_some()
-        {
-            self.ledger
-                .store
-                .frontier
-                .del(self.txn, &self.instructions.old_account_info.head);
-        }
-    }
-
-    fn insert_new_frontier(&mut self) {
-        if self.block.block_type() != BlockType::State {
-            self.ledger.store.frontier.put(
-                self.txn,
-                &self.block.hash(),
-                &self.instructions.account,
-            );
-        }
     }
 
     fn delete_old_pending_info(&mut self) {
@@ -155,46 +128,6 @@ mod tests {
         );
         assert_eq!(ledger.cache.block_count.load(Ordering::Relaxed), 1);
         assert_eq!(result.deleted_pending, Vec::new());
-        assert_eq!(result.deleted_frontiers, Vec::new());
-        assert_eq!(result.saved_frontiers, Vec::new());
-    }
-
-    #[test]
-    fn insert_new_frontier_for_legacy_block() {
-        let (mut block, instructions) = legacy_open_block_instructions();
-        let ledger = Ledger::create_null();
-
-        let result = insert(&ledger, &mut block, &instructions);
-
-        assert_eq!(result.deleted_frontiers, Vec::new());
-        assert_eq!(
-            result.saved_frontiers,
-            vec![(block.hash(), block.account_field().unwrap())]
-        );
-    }
-
-    #[test]
-    fn delete_old_frontier() {
-        let mut open = BlockBuilder::legacy_open().build();
-        let sideband = BlockSideband {
-            successor: BlockHash::zero(),
-            ..BlockSideband::create_test_instance()
-        };
-        open.set_sideband(sideband);
-
-        let (mut block, instructions) = state_block_instructions(&open);
-
-        let ledger = Ledger::create_null_with()
-            .block(&open)
-            .frontier(&instructions.old_account_info.head, &instructions.account)
-            .build();
-
-        let result = insert(&ledger, &mut block, &instructions);
-
-        assert_eq!(
-            result.deleted_frontiers,
-            vec![instructions.old_account_info.head]
-        )
     }
 
     #[test]
@@ -261,10 +194,8 @@ mod tests {
         let mut txn = ledger.rw_txn();
         let saved_blocks = ledger.store.block.track_puts();
         let saved_accounts = ledger.store.account.track_puts();
-        let saved_frontiers = ledger.store.frontier.track_puts();
         let saved_pending = ledger.store.pending.track_puts();
         let deleted_pending = ledger.store.pending.track_deletions();
-        let deleted_frontiers = ledger.store.frontier.track_deletions();
 
         let mut block_inserter = BlockInserter::new(&ledger, &mut txn, block, &instructions);
         block_inserter.insert();
@@ -272,20 +203,16 @@ mod tests {
         InsertResult {
             saved_blocks: saved_blocks.output(),
             saved_accounts: saved_accounts.output(),
-            saved_frontiers: saved_frontiers.output(),
             saved_pending: saved_pending.output(),
             deleted_pending: deleted_pending.output(),
-            deleted_frontiers: deleted_frontiers.output(),
         }
     }
 
     struct InsertResult {
         saved_blocks: Vec<BlockEnum>,
         saved_accounts: Vec<(Account, AccountInfo)>,
-        saved_frontiers: Vec<(BlockHash, Account)>,
         saved_pending: Vec<(PendingKey, PendingInfo)>,
         deleted_pending: Vec<PendingKey>,
-        deleted_frontiers: Vec<BlockHash>,
     }
 
     fn legacy_open_block_instructions() -> (BlockEnum, BlockInsertInstructions) {

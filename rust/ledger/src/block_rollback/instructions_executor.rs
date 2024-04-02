@@ -27,7 +27,6 @@ impl<'a, T: Environment> RollbackInstructionsExecutor<'a, T> {
     pub(crate) fn execute(&mut self) {
         self.update_pending_table();
         self.update_account_table();
-        self.update_frontier_table();
         self.update_block_table();
         self.roll_back_representative_cache();
         self.ledger.cache.block_count.fetch_sub(1, Ordering::SeqCst);
@@ -55,15 +54,6 @@ impl<'a, T: Environment> RollbackInstructionsExecutor<'a, T> {
             &self.instructions.old_account_info,
             &self.instructions.set_account_info,
         );
-    }
-
-    fn update_frontier_table(&mut self) {
-        if let Some(hash) = self.instructions.delete_frontier {
-            self.ledger.store.frontier.del(self.txn, &hash);
-        }
-        if let Some((hash, account)) = self.instructions.add_frontier {
-            self.ledger.store.frontier.put(self.txn, &hash, &account)
-        }
     }
 
     fn update_pending_table(&mut self) {

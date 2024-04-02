@@ -20,7 +20,6 @@ namespace store
 	class block;
 	class confirmation_height;
 	class final_vote;
-	class frontier;
 	class online_weight;
 	class peer;
 	class pending;
@@ -39,7 +38,6 @@ namespace store
 	public:
 		virtual ~component () = default;
 		virtual store::block & block () = 0;
-		virtual store::frontier & frontier () = 0;
 		virtual store::account & account () = 0;
 		virtual store::pending & pending () = 0;
 		virtual store::online_weight & online_weight () = 0;

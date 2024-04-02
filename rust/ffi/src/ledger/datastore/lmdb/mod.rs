@@ -2,7 +2,6 @@ mod account_store;
 mod block_store;
 mod confirmation_height_store;
 mod final_vote_store;
-mod frontier_store;
 mod iterator;
 mod lmdb_env;
 mod online_weight_store;

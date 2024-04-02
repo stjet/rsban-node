@@ -1,6 +1,6 @@
 use crate::{
-    epoch_v1_link, epoch_v2_link, Account, AccountInfo, Amount, BlockBuilder, BlockChainSection,
-    BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair, LegacyChangeBlockBuilder,
+    epoch_v1_link, epoch_v2_link, Account, AccountInfo, Amount, BlockBuilder, BlockDetails,
+    BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair, LegacyChangeBlockBuilder,
     LegacyOpenBlockBuilder, LegacyReceiveBlockBuilder, LegacySendBlockBuilder, StateBlockBuilder,
     DEV_GENESIS_KEY,
 };
@@ -287,20 +287,6 @@ impl TestAccountChain {
 
     pub fn take_blocks(self) -> Vec<BlockEnum> {
         self.blocks
-    }
-
-    pub fn section(&self, bottom: u64, top: u64) -> BlockChainSection {
-        BlockChainSection {
-            account: self.account(),
-            bottom_hash: self.blocks[bottom as usize - 1].hash(),
-            bottom_height: bottom,
-            top_hash: self.blocks[top as usize - 1].hash(),
-            top_height: top,
-        }
-    }
-
-    pub fn frontier_section(&self) -> BlockChainSection {
-        self.section(self.height(), self.height())
     }
 
     pub fn account_info(&self) -> AccountInfo {

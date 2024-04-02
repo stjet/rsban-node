@@ -315,38 +315,6 @@ impl Networks {
     }
 }
 
-/// A slice of blocks of an account chain
-#[derive(Clone, PartialEq, Eq, Default)]
-pub struct BlockChainSection {
-    pub account: Account,
-    /// The lowest block (inclusive)
-    pub bottom_hash: BlockHash,
-    /// block height of the lowest block
-    pub bottom_height: u64,
-    /// The highest block (inclusive)
-    pub top_hash: BlockHash,
-    /// block height of the highest block
-    pub top_height: u64,
-}
-
-impl BlockChainSection {
-    pub fn block_count(&self) -> u64 {
-        self.top_height - self.bottom_height + 1
-    }
-}
-
-impl std::fmt::Debug for BlockChainSection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("WriteDetails")
-            .field("account", &self.account.encode_account())
-            .field("bottom_height", &self.bottom_height)
-            .field("bottom_hash", &self.bottom_hash.encode_hex())
-            .field("top_height", &self.top_height)
-            .field("top_hash", &self.top_hash.encode_hex())
-            .finish()
-    }
-}
-
 pub fn epoch_v1_link() -> Link {
     let mut link_bytes = [0u8; 32];
     link_bytes[..14].copy_from_slice(b"epoch v1 block");

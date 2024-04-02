@@ -35,15 +35,6 @@ class stats;
 // map of vote weight per block, ordered greater first
 using tally_t = std::map<nano::uint128_t, std::shared_ptr<nano::block>, std::greater<nano::uint128_t>>;
 
-class uncemented_info
-{
-public:
-	uncemented_info (nano::block_hash const & cemented_frontier, nano::block_hash const & frontier, nano::account const & account);
-	nano::block_hash cemented_frontier;
-	nano::block_hash frontier;
-	nano::account account;
-};
-
 class ledger final
 {
 public:
@@ -95,7 +86,6 @@ public:
 	std::shared_ptr<nano::block> find_receive_block_by_send_hash (store::transaction const & transaction, nano::account const & destination, nano::block_hash const & send_block_hash);
 	nano::account epoch_signer (nano::link const &) const;
 	nano::link epoch_link (nano::epoch) const;
-	std::multimap<uint64_t, uncemented_info, std::greater<>> unconfirmed_frontiers () const;
 	bool bootstrap_weight_reached () const;
 	rsnano::LedgerHandle * get_handle () const;
 	size_t get_bootstrap_weights_size () const;

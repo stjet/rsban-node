@@ -96,7 +96,6 @@ int main (int argc, char * const * argv)
 		("debug_peers", "Display peer IPv6:port connections")
 		("debug_cemented_block_count", "Displays the number of cemented (confirmed) blocks")
 		("debug_stacktrace", "Display an example stacktrace")
-		("debug_unconfirmed_frontiers", "Displays the account, height (sorted), frontier and cemented frontier for all accounts which are not fully confirmed")
 		("validate_blocks,debug_validate_blocks", "Check all blocks for correct hash, signature, work value")
 		("debug_prune", "Prune accounts up to last confirmed blocks (EXPERIMENTAL)")
 		("platform", boost::program_options::value<std::string> (), "Defines the <platform> for OpenCL commands")
@@ -1889,20 +1888,6 @@ int main (int argc, char * const * argv)
 			inactive_node->node->logger->warn ({}, "Testing system logger (WARN)");
 			inactive_node->node->logger->info ({}, "Testing system logger (INFO)");
 			inactive_node->node->logger->debug ({}, "Testing system logger (DEBUG)");
-		}
-		else if (vm.count ("debug_unconfirmed_frontiers"))
-		{
-			auto inactive_node = nano::default_inactive_node (data_path, vm);
-			auto node = inactive_node->node;
-
-			auto unconfirmed_frontiers = node->ledger.unconfirmed_frontiers ();
-			std::cout << "Account: Height delta | Frontier | Confirmed frontier\n";
-			for (auto const & [height_delta, unconfirmed_info] : unconfirmed_frontiers)
-			{
-				std::cout << (boost::format ("%1%: %2% %3% %4%\n") % unconfirmed_info.account.to_account () % height_delta % unconfirmed_info.frontier.to_string () % unconfirmed_info.cemented_frontier.to_string ()).str ();
-			}
-
-			std::cout << "\nNumber of unconfirmed frontiers: " << unconfirmed_frontiers.size () << std::endl;
 		}
 		else if (vm.count ("version"))
 		{

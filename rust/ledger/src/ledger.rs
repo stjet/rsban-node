@@ -6,9 +6,8 @@ use crate::{
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::seconds_since_epoch, Account, AccountInfo, Amount, BlockChainSection, BlockEnum,
-    BlockHash, BlockSubType, ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey,
-    QualifiedRoot, Root,
+    utils::seconds_since_epoch, Account, AccountInfo, Amount, BlockEnum, BlockHash, BlockSubType,
+    ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
 };
 use rsnano_store_lmdb::{
     ConfiguredAccountDatabaseBuilder, ConfiguredBlockDatabaseBuilder,
@@ -19,20 +18,13 @@ use rsnano_store_lmdb::{
     LmdbRepWeightStore, LmdbStore, LmdbVersionStore, LmdbWriteTransaction, Transaction,
 };
 use std::{
-    collections::{BTreeMap, HashMap, VecDeque},
+    collections::{HashMap, VecDeque},
     ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
     },
 };
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct UncementedInfo {
-    pub cemented_frontier: BlockHash,
-    pub frontier: BlockHash,
-    pub account: Account,
-}
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
 #[repr(u8)]
@@ -662,45 +654,6 @@ impl<T: Environment + 'static> Ledger<T> {
         }
 
         pruned_count
-    }
-
-    /// **Warning:** In C++ the result is sorted in reverse order!
-    pub fn unconfirmed_frontiers(&self) -> BTreeMap<u64, Vec<UncementedInfo>> {
-        let result = Mutex::new(BTreeMap::<u64, Vec<UncementedInfo>>::new());
-        self.store.account.for_each_par(&|txn, mut i, n| {
-            let mut unconfirmed_frontiers = Vec::new();
-            while !i.eq(n.as_ref()) {
-                if let Some((&account, account_info)) = i.current() {
-                    if let Some(conf_height_info) =
-                        self.store.confirmation_height.get(txn, &account)
-                    {
-                        if account_info.block_count != conf_height_info.height {
-                            // Always output as no confirmation height has been set on the account yet
-                            let height_delta = account_info.block_count - conf_height_info.height;
-                            let frontier = account_info.head;
-                            let cemented_frontier = conf_height_info.frontier;
-                            unconfirmed_frontiers.push((
-                                height_delta,
-                                UncementedInfo {
-                                    cemented_frontier,
-                                    frontier,
-                                    account,
-                                },
-                            ))
-                        }
-                    }
-                }
-                i.next()
-            }
-
-            // Merge results
-            let mut guard = result.lock().unwrap();
-            for (delta, info) in unconfirmed_frontiers {
-                guard.entry(delta).or_default().push(info);
-            }
-        });
-
-        result.into_inner().unwrap()
     }
 
     pub fn bootstrap_weight_reached(&self) -> bool {

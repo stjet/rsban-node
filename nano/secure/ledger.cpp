@@ -299,26 +299,6 @@ uint64_t nano::ledger::pruning_action (store::write_transaction & transaction_a,
 	return rsnano::rsn_ledger_pruning_action (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), batch_size_a);
 }
 
-std::multimap<uint64_t, nano::uncemented_info, std::greater<>> nano::ledger::unconfirmed_frontiers () const
-{
-	rsnano::UnconfirmedFrontierArrayDto array_dto;
-	rsnano::rsn_ledger_unconfirmed_frontiers (handle, &array_dto);
-	std::multimap<uint64_t, nano::uncemented_info, std::greater<>> result;
-	for (int i = 0; i < array_dto.count; ++i)
-	{
-		const auto & item_dto = array_dto.items[i].info;
-		nano::block_hash cemented_frontier;
-		nano::block_hash frontier;
-		nano::account account;
-		std::copy (std::begin (item_dto.cemented_frontier), std::end (item_dto.cemented_frontier), std::begin (cemented_frontier.bytes));
-		std::copy (std::begin (item_dto.frontier), std::end (item_dto.frontier), std::begin (frontier.bytes));
-		std::copy (std::begin (item_dto.account), std::end (item_dto.account), std::begin (account.bytes));
-		result.emplace (std::piecewise_construct, std::forward_as_tuple (array_dto.items[i].height_delta), std::forward_as_tuple (cemented_frontier, frontier, account));
-	}
-	rsnano::rsn_unconfirmed_frontiers_destroy (&array_dto);
-	return result;
-}
-
 bool nano::ledger::bootstrap_weight_reached () const
 {
 	return rsnano::rsn_ledger_bootstrap_weight_reached (handle);
@@ -436,11 +416,6 @@ uint64_t nano::ledger::account_count () const
 uint64_t nano::ledger::pruned_count () const
 {
 	return cache.pruned_count ();
-}
-
-nano::uncemented_info::uncemented_info (nano::block_hash const & cemented_frontier, nano::block_hash const & frontier, nano::account const & account) :
-	cemented_frontier (cemented_frontier), frontier (frontier), account (account)
-{
 }
 
 std::unique_ptr<nano::container_info_component> nano::ledger::collect_container_info (std::string const & name) const

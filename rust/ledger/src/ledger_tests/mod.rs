@@ -4,8 +4,7 @@ pub mod helpers;
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB,
     ledger_tests::helpers::{setup_legacy_open_block, setup_open_block, AccountBlockFactory},
-    Ledger, LedgerCache, LedgerContext, UncementedInfo, DEV_GENESIS, DEV_GENESIS_ACCOUNT,
-    DEV_GENESIS_HASH,
+    Ledger, LedgerCache, LedgerContext, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 use rsnano_core::{
     Account, Amount, BlockBuilder, BlockHash, KeyPair, QualifiedRoot, Root, TestAccountChain,
@@ -658,35 +657,6 @@ fn ledger_cache() {
         }
         cache_check(&ctx.ledger.cache, &expected);
     }
-}
-
-#[test]
-fn unconfirmed_frontiers() {
-    let ctx = LedgerContext::empty();
-    let mut txn = ctx.ledger.rw_txn();
-
-    assert!(ctx.ledger.unconfirmed_frontiers().is_empty());
-
-    let genesis = ctx.genesis_block_factory();
-    let destination = ctx.block_factory();
-    let latest = ctx.ledger.latest(&txn, &genesis.account()).unwrap();
-
-    let mut send = genesis.send(&txn).link(destination.account()).build();
-    ctx.ledger.process(&mut txn, &mut send).unwrap();
-    txn.commit();
-
-    let unconfirmed_frontiers = ctx.ledger.unconfirmed_frontiers();
-    assert_eq!(unconfirmed_frontiers.len(), 1);
-    let (key, value) = unconfirmed_frontiers.iter().next().unwrap();
-    assert_eq!(*key, 1);
-    assert_eq!(
-        value.first().unwrap(),
-        &UncementedInfo {
-            cemented_frontier: latest,
-            frontier: send.hash(),
-            account: genesis.account()
-        }
-    )
 }
 
 #[test]

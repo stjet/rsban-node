@@ -5,7 +5,6 @@ use rsnano_core::{
     work::{WorkPool, STUB_WORK_POOL},
     Amount, BlockBuilder, BlockDetails, Epoch, PendingKey,
 };
-use std::sync::atomic::Ordering;
 
 #[test]
 fn pruning_action() {
@@ -20,6 +19,7 @@ fn pruning_action() {
         .link(genesis.account())
         .build();
     ctx.ledger.process(&mut txn, &mut send1).unwrap();
+    ctx.ledger.confirm(&mut txn, send1.hash());
 
     let mut send2 = genesis
         .send(&txn)
@@ -27,6 +27,7 @@ fn pruning_action() {
         .link(genesis.account())
         .build();
     ctx.ledger.process(&mut txn, &mut send2).unwrap();
+    ctx.ledger.confirm(&mut txn, send2.hash());
 
     // Prune...
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &send1.hash(), 1), 1);
@@ -72,6 +73,7 @@ fn pruning_action() {
 
     // Middle block pruning
     assert!(ctx.ledger.store.block.exists(&txn, &send2.hash()));
+    ctx.ledger.confirm(&mut txn, send2.hash());
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &send2.hash(), 1), 1);
     assert!(ctx.ledger.store.pruned.exists(&txn, &send2.hash()));
     assert_eq!(ctx.ledger.store.block.exists(&txn, &send2.hash()), false);
@@ -110,6 +112,7 @@ fn pruning_large_chain() {
         ctx.ledger.store.block.count(&txn),
         send_receive_pairs * 2 + 1
     );
+    ctx.ledger.confirm(&mut txn, last_hash);
 
     // Pruning action
     assert_eq!(
@@ -154,6 +157,7 @@ fn pruning_source_rollback() {
         .link(genesis.account())
         .build();
     ctx.ledger.process(&mut txn, &mut send2).unwrap();
+    ctx.ledger.confirm(&mut txn, send2.hash());
 
     // Pruning action
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &send1.hash(), 1), 2);
@@ -219,6 +223,7 @@ fn pruning_source_rollback_legacy() {
         .amount(100)
         .build();
     ctx.ledger.process(&mut txn, &mut send3).unwrap();
+    ctx.ledger.confirm(&mut txn, send2.hash());
 
     // Pruning action
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &send2.hash(), 1), 2);
@@ -290,38 +295,6 @@ fn pruning_source_rollback_legacy() {
 }
 
 #[test]
-fn pruning_process_error() {
-    let ctx = LedgerContext::empty();
-    ctx.ledger.enable_pruning();
-    let genesis = ctx.genesis_block_factory();
-    let mut txn = ctx.ledger.rw_txn();
-
-    let mut send1 = genesis.send(&txn).link(genesis.account()).build();
-    ctx.ledger.process(&mut txn, &mut send1).unwrap();
-
-    // Pruning action for latest block (not valid action)
-    assert_eq!(ctx.ledger.pruning_action(&mut txn, &send1.hash(), 1), 1);
-
-    // Attempt to process pruned block again
-    let result = ctx.ledger.process(&mut txn, &mut send1).unwrap_err();
-    assert_eq!(result, BlockStatus::Old);
-
-    // Attept to process new block after pruned
-    let mut send2 = BlockBuilder::state()
-        .account(genesis.account())
-        .previous(send1.hash())
-        .balance(0)
-        .link(genesis.account())
-        .sign(&genesis.key)
-        .work(STUB_WORK_POOL.generate_dev2(send1.hash().into()).unwrap())
-        .build();
-    let result = ctx.ledger.process(&mut txn, &mut send2).unwrap_err();
-    assert_eq!(result, BlockStatus::GapPrevious);
-    assert_eq!(ctx.ledger.pruned_count(), 1);
-    assert_eq!(ctx.ledger.block_count(), 2);
-}
-
-#[test]
 fn pruning_legacy_blocks() {
     let ctx = LedgerContext::empty();
     ctx.ledger.enable_pruning();
@@ -358,6 +331,8 @@ fn pruning_legacy_blocks() {
         .destination(genesis.account())
         .build();
     ctx.ledger.process(&mut txn, &mut send3).unwrap();
+    ctx.ledger.confirm(&mut txn, change1.hash());
+    ctx.ledger.confirm(&mut txn, open1.hash());
 
     // Pruning action
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &change1.hash(), 2), 3);
@@ -393,6 +368,7 @@ fn pruning_safe_functions() {
 
     let mut send2 = genesis.send(&txn).link(genesis.account()).build();
     ctx.ledger.process(&mut txn, &mut send2).unwrap();
+    ctx.ledger.confirm(&mut txn, send1.hash());
 
     // Pruning action
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &send1.hash(), 1), 1);
@@ -424,6 +400,7 @@ fn hash_root_random() {
 
     let mut send2 = genesis.send(&txn).link(genesis.account()).build();
     ctx.ledger.process(&mut txn, &mut send2).unwrap();
+    ctx.ledger.confirm(&mut txn, send1.hash());
 
     // Pruning action
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &send1.hash(), 1), 1);

@@ -637,6 +637,7 @@ impl<T: Environment + 'static> Ledger<T> {
 
         while !hash.is_zero() && hash != genesis_hash {
             if let Some(block) = self.get_block(txn, &hash) {
+                assert!(self.block_confirmed(txn, &hash));
                 self.store.block.del(txn, &hash);
                 self.store.pruned.put(txn, &hash);
                 hash = block.previous();

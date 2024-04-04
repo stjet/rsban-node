@@ -194,9 +194,9 @@ TEST (confirmation_callback, dependent_election)
 	// Once the item added to the confirming set no longer exists, callbacks have completed
 	ASSERT_TIMELY (5s, !node->confirming_set.exists (send2->hash ()));
 
-	ASSERT_EQ (1, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_quorum, nano::stat::dir::out));
-	ASSERT_EQ (1, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_conf_height, nano::stat::dir::out));
-	ASSERT_EQ (1, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_quorum, nano::stat::dir::out)); // send2
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::active_conf_height, nano::stat::dir::out)); // send1
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out)); // send
 	ASSERT_EQ (4, node->ledger.cemented_count ());
 
 	ASSERT_EQ (0, node->active.election_winner_details_size ());

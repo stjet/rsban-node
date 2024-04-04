@@ -1,18 +1,16 @@
-use std::{
-    collections::{HashSet, VecDeque},
-    sync::{Arc, Condvar, Mutex},
-    thread::JoinHandle,
-    time::{Duration, Instant},
-};
-
+use super::{BlockCallback, BlockHashCallback};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     BlockHash,
 };
 use rsnano_ledger::{Ledger, WriteDatabaseQueue, Writer};
 use rsnano_store_lmdb::{Environment, EnvironmentWrapper};
-
-use super::{BlockCallback, BlockHashCallback};
+use std::{
+    collections::{HashSet, VecDeque},
+    sync::{Arc, Condvar, Mutex},
+    thread::JoinHandle,
+    time::{Duration, Instant},
+};
 
 /// Set of blocks to be durably confirmed
 pub struct ConfirmingSet<T: Environment + 'static = EnvironmentWrapper> {

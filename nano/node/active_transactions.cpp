@@ -167,7 +167,8 @@ bool nano::active_transactions::confirmed (nano::election const & election) cons
 bool nano::active_transactions::confirmed_locked (nano::election_lock & lock) const
 {
 	auto hash = lock.status ().get_winner ()->hash ();
-	return confirmed (hash);
+	auto state = static_cast<nano::election_state>(rsnano::rsn_election_lock_state(lock.handle));
+	return state == nano::election_state::confirmed || state == nano::election_state::expired_confirmed; 
 }
 
 bool nano::active_transactions::confirmed (nano::block_hash const & hash) const

@@ -20,8 +20,11 @@ namespace nano
 enum class election_status_type : uint8_t
 {
 	ongoing = 0,
+	/// Election was directly confirmed by reaching quorum
 	active_confirmed_quorum = 1,
+	/// Election was active, but was indirectly confirmed by another block
 	active_confirmation_height = 2,
+	/// Election was inactive and was indirectly confirmed by another block
 	inactive_confirmation_height = 3,
 	stopped = 5
 };

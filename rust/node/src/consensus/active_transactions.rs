@@ -1,3 +1,5 @@
+use super::{Election, ElectionBehavior};
+use crate::{NetworkParams, OnlineReps};
 use rsnano_core::{Amount, BlockEnum, BlockHash, QualifiedRoot};
 use std::{
     cmp::max,
@@ -5,10 +7,6 @@ use std::{
     sync::{Arc, Condvar, Mutex, MutexGuard},
     time::{Duration, Instant},
 };
-
-use crate::{NetworkParams, OnlineReps};
-
-use super::{Election, ElectionBehavior};
 
 pub struct ActiveTransactions {
     pub mutex: Mutex<ActiveTransactionsData>,
@@ -58,7 +56,7 @@ impl ActiveTransactions {
             );
 
             self.condition
-                .wait_timeout_while(guard, wait_duration, |data| data.stopped)
+                .wait_timeout_while(guard, wait_duration, |data| !data.stopped)
                 .unwrap()
                 .0
         } else {

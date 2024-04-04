@@ -4,6 +4,7 @@ mod channel_fake;
 mod channel_inproc;
 mod channel_tcp;
 mod connections_per_address;
+mod fair_queue;
 mod message_deserializer;
 mod network_filter;
 mod peer_exclusion;
@@ -20,6 +21,7 @@ mod token_bucket;
 mod tokio_socket_facade;
 mod write_queue;
 
+pub use fair_queue::*;
 use rsnano_messages::Message;
 pub use tokio_socket_facade::*;
 

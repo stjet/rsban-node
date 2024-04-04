@@ -32,11 +32,11 @@ impl Deref for BootstrapClientHandle {
 pub unsafe extern "C" fn rsn_bootstrap_client_create(
     async_rt: *mut AsyncRuntimeHandle,
     observer: *mut c_void,
-    channel: *mut ChannelHandle,
+    channel: &ChannelHandle,
     socket: *mut SocketHandle,
 ) -> *mut BootstrapClientHandle {
     let observer = Arc::new(FfiBootstrapClientObserver::new(observer));
-    let channel = (*channel).0.clone();
+    let channel = Arc::clone(channel);
     let socket = (*socket).deref().clone();
     let async_rt = Arc::clone(&(*async_rt).0);
     Box::into_raw(Box::new(BootstrapClientHandle(Arc::new(

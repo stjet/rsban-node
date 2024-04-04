@@ -1,3 +1,7 @@
+use super::{
+    bandwidth_limiter::OutboundBandwidthLimiterHandle, ChannelTcpSendBufferCallback, EndpointDto,
+    NetworkFilterHandle, SendBufferCallbackWrapper,
+};
 use crate::{
     messages::MessageHandle,
     utils::{AsyncRuntimeHandle, ContextWrapper},
@@ -21,12 +25,7 @@ use std::{
     time::SystemTime,
 };
 
-use super::{
-    bandwidth_limiter::OutboundBandwidthLimiterHandle, ChannelTcpSendBufferCallback, EndpointDto,
-    NetworkFilterHandle, SendBufferCallbackWrapper,
-};
-
-pub struct ChannelHandle(pub Arc<ChannelEnum>);
+pub struct ChannelHandle(Arc<ChannelEnum>);
 pub struct ChannelWeakHandle(pub Weak<ChannelEnum>);
 
 impl ChannelHandle {
@@ -245,19 +244,17 @@ pub unsafe extern "C" fn rsn_channel_fake_create(
     endpoint: *const EndpointDto,
     network_constants: &NetworkConstantsDto,
 ) -> *mut ChannelHandle {
-    Box::into_raw(Box::new(ChannelHandle(Arc::new(ChannelEnum::Fake(
-        ChannelFake::new(
-            SystemTime::now(),
-            channel_id,
-            &async_rt.0,
-            (*limiter).0.clone(),
-            (*stats).0.clone(),
-            SocketAddrV6::from(&(*endpoint)),
-            NetworkConstants::try_from(network_constants)
-                .unwrap()
-                .protocol_info(),
-        ),
-    )))))
+    ChannelHandle::new(Arc::new(ChannelEnum::Fake(ChannelFake::new(
+        SystemTime::now(),
+        channel_id,
+        &async_rt.0,
+        (*limiter).0.clone(),
+        (*stats).0.clone(),
+        SocketAddrV6::from(&(*endpoint)),
+        NetworkConstants::try_from(network_constants)
+            .unwrap()
+            .protocol_info(),
+    ))))
 }
 
 #[no_mangle]
@@ -321,7 +318,7 @@ pub unsafe extern "C" fn rsn_channel_weak_destroy(handle: *mut ChannelWeakHandle
 #[no_mangle]
 pub extern "C" fn rsn_channel_weak_upgrade(handle: &ChannelWeakHandle) -> *mut ChannelHandle {
     match handle.0.upgrade() {
-        Some(channel) => Box::into_raw(Box::new(ChannelHandle(channel))),
+        Some(channel) => ChannelHandle::new(channel),
         None => std::ptr::null_mut(),
     }
 }

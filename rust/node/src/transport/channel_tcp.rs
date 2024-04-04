@@ -1,3 +1,13 @@
+use super::{
+    write_queue::WriteCallback, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket,
+    SocketExtensions, TcpChannels, TrafficType,
+};
+use crate::{
+    stats::{DetailType, Direction, StatType, Stats},
+    utils::{AsyncRuntime, ErrorCode},
+};
+use rsnano_core::Account;
+use rsnano_messages::{Message, MessageSerializer, ProtocolInfo};
 use std::{
     fmt::Display,
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
@@ -7,19 +17,7 @@ use std::{
     },
     time::{SystemTime, UNIX_EPOCH},
 };
-
-use rsnano_core::Account;
-use rsnano_messages::{Message, MessageSerializer, ProtocolInfo};
 use tracing::trace;
-
-use super::{
-    write_queue::WriteCallback, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket,
-    SocketExtensions, TcpChannels, TrafficType,
-};
-use crate::{
-    stats::{DetailType, Direction, StatType, Stats},
-    utils::{AsyncRuntime, ErrorCode},
-};
 
 pub struct TcpChannelData {
     last_bootstrap_attempt: SystemTime,
@@ -155,13 +153,15 @@ impl ChannelTcpExt for Arc<ChannelTcp> {
             {
                 let channels_w = Weak::clone(&self.tcp_channels);
                 let stats = Arc::clone(&self.stats);
-                let this_l = Arc::clone(self);
+                let this_w = Arc::downgrade(self);
                 socket_l.async_write(
                     buffer,
                     Some(Box::new(move |ec, size| {
                         if let Some(_) = channels_w.upgrade() {
                             if ec.is_ok() {
-                                this_l.set_last_packet_sent(SystemTime::now());
+                                if let Some(channel) = this_w.upgrade() {
+                                    channel.set_last_packet_sent(SystemTime::now());
+                                }
                             }
                             if ec == ErrorCode::host_unreachable() {
                                 stats.inc(

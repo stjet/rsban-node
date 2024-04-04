@@ -1,17 +1,18 @@
 use crate::transport::ChannelHandle;
 use rsnano_core::Account;
 use rsnano_node::representatives::Representative;
+use std::sync::Arc;
 
 pub struct RepresentativeHandle(pub Representative);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_representative_create(
     account: *const u8,
-    channel: *mut ChannelHandle,
+    channel: &ChannelHandle,
 ) -> *mut RepresentativeHandle {
     Box::into_raw(Box::new(RepresentativeHandle(Representative::new(
         Account::from_ptr(account),
-        (*channel).0.clone(),
+        Arc::clone(channel),
     ))))
 }
 
@@ -37,9 +38,9 @@ pub unsafe extern "C" fn rsn_representative_account(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_representative_channel(
-    handle: *const RepresentativeHandle,
+    handle: &RepresentativeHandle,
 ) -> *mut ChannelHandle {
-    ChannelHandle::new((*handle).0.channel.clone())
+    ChannelHandle::new(Arc::clone(&handle.0.channel))
 }
 
 #[no_mangle]
@@ -47,5 +48,5 @@ pub unsafe extern "C" fn rsn_representative_set_channel(
     handle: &mut RepresentativeHandle,
     channel: &ChannelHandle,
 ) {
-    handle.0.channel = channel.0.clone();
+    handle.0.channel = Arc::clone(channel);
 }

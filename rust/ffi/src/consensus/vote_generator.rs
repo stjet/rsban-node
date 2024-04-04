@@ -117,7 +117,7 @@ pub extern "C" fn rsn_vote_generator_generate(
     blocks: &BlockVecHandle,
     channel: &ChannelHandle,
 ) -> usize {
-    handle.generate(&blocks.0, Arc::clone(&channel.0))
+    handle.generate(&blocks.0, Arc::clone(channel))
 }
 
 pub type VoteGeneratorReplyAction = extern "C" fn(*mut c_void, *mut VoteHandle, *mut ChannelHandle);

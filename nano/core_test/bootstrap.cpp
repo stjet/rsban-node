@@ -558,7 +558,7 @@ TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
 	ASSERT_EQ (0, node1->stats->count (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_failed_account, nano::stat::dir::in)); // Requeue is not increasing failed attempts
 }
 
-TEST (bootstrap_processor, DISABLED_push_diamond)
+TEST (bootstrap_processor, push_diamond)
 {
 	nano::test::system system;
 	nano::keypair key;
@@ -625,7 +625,7 @@ TEST (bootstrap_processor, DISABLED_push_diamond)
 	ASSERT_TIMELY_EQ (5s, node2->balance (nano::dev::genesis_key.pub), 100);
 }
 
-TEST (bootstrap_processor, DISABLED_push_diamond_pruning)
+TEST (bootstrap_processor, push_diamond_pruning)
 {
 	nano::test::system system;
 	nano::node_config config = system.default_config ();

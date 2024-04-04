@@ -240,7 +240,7 @@ TEST (active_transactions, keep_local)
 	// ASSERT_EQ (1, node.scheduler.size ());
 }
 
-TEST (active_transactions, basic)
+TEST (inactive_votes_cache, basic)
 {
 	nano::test::system system (1);
 	auto & node = *system.nodes[0];
@@ -290,8 +290,7 @@ TEST (active_transactions, non_final)
 	ASSERT_FALSE (node.active.confirmed (*election));
 }
 
-// this test is very flaky! Fix is this PR: https://github.com/nanocurrency/nano-node/pull/4313
-TEST (DISABLED_active_transactions, fork)
+TEST (inactive_votes_cache, fork)
 {
 	nano::test::system system{ 1 };
 	auto & node = *system.nodes[0];
@@ -331,7 +330,7 @@ TEST (DISABLED_active_transactions, fork)
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached));
 }
 
-TEST (active_transactions, existing_vote)
+TEST (inactive_votes_cache, existing_vote)
 {
 	nano::test::system system;
 	nano::node_config node_config = system.default_config ();
@@ -388,7 +387,7 @@ TEST (active_transactions, existing_vote)
 	ASSERT_EQ (0, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached));
 }
 
-TEST (active_transactions, multiple_votes)
+TEST (inactive_votes_cache, multiple_votes)
 {
 	nano::test::system system;
 	nano::node_config node_config = system.default_config ();
@@ -444,7 +443,7 @@ TEST (active_transactions, multiple_votes)
 	ASSERT_EQ (2, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached));
 }
 
-TEST (active_transactions, election_start)
+TEST (inactive_votes_cache, election_start)
 {
 	nano::test::system system;
 	nano::node_config node_config = system.default_config ();

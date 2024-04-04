@@ -171,6 +171,11 @@ void nano::transport::channel_tcp::send (nano::message & message_a, std::functio
 	rsnano::rsn_channel_tcp_send (handle, message_a.handle, nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a), static_cast<uint8_t> (traffic_type));
 }
 
+size_t nano::transport::channel_tcp::socket_id () const
+{
+	return rsnano::rsn_channel_tcp_socket_id (handle);
+}
+
 std::string nano::transport::channel_tcp::to_string () const
 {
 	return boost::str (boost::format ("%1%") % get_tcp_remote_endpoint ());

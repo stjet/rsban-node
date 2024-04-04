@@ -40,7 +40,7 @@ TEST (node, null_account)
 	ASSERT_NE (default_account, nullptr);
 }
 
-TEST (node, DISABLED_memory_leak)
+TEST (node, memory_leak)
 {
 	{
 		nano::test::system system (2);
@@ -575,7 +575,7 @@ TEST (node, fork_publish)
 // there is a race somewhere and the election might not notice the send2 block.
 // The test case can be made to pass by ensuring the election is started before the send2 is processed.
 // However, is this a problem with the test case or this is a problem with the node handling of forks?
-TEST (DISABLED_node, fork_publish_inactive)
+TEST (node, fork_publish_inactive)
 {
 	nano::test::system system (1);
 	auto & node = *system.nodes[0];

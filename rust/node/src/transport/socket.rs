@@ -241,8 +241,8 @@ impl Socket {
         if !self.closed.swap(true, Ordering::SeqCst) {
             self.send_queue.clear();
             self.set_default_timeout_value(0);
-
             self.is_connecting.store(false, Ordering::SeqCst);
+            drop(self.stream.lock().unwrap().take());
 
             if let Some(cb) = self.current_action.lock().unwrap().take() {
                 cb();

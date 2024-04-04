@@ -61,6 +61,11 @@ pub unsafe extern "C" fn rsn_channel_tcp_remote_endpoint(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_channel_tcp_socket_id(handle: *mut ChannelHandle) -> usize {
+    as_tcp_channel(handle).socket_id()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_peering_endpoint(
     handle: *mut ChannelHandle,
     endpoint: *mut EndpointDto,

@@ -150,14 +150,14 @@ std::pair<nano::block_hash, nano::block_hash> nano::ledger::hash_root_random (st
 }
 
 // Vote weight of an account
-nano::uint128_t nano::ledger::weight (nano::account const & account_a)
+nano::uint128_t nano::ledger::weight (nano::account const & account_a) const
 {
 	nano::amount result;
 	rsnano::rsn_ledger_weight (handle, account_a.bytes.data (), result.bytes.data ());
 	return result.number ();
 }
 
-nano::uint128_t nano::ledger::weight_exact (store::transaction const & txn_a, nano::account const & representative_a)
+nano::uint128_t nano::ledger::weight_exact (store::transaction const & txn_a, nano::account const & representative_a) const
 {
 	nano::amount result;
 	rsnano::rsn_ledger_weight_exact (handle, txn_a.get_rust_handle (), representative_a.bytes.data (), result.bytes.data ());

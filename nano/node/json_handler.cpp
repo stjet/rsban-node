@@ -4795,7 +4795,7 @@ void nano::json_handler::wallet_ledger ()
 						}
 						if (weight)
 						{
-							auto account_weight (node.ledger.weight_exact (*block_transaction,  account));
+							auto account_weight (node.ledger.weight_exact (*block_transaction, account));
 							entry.put ("weight", account_weight.convert_to<std::string> ());
 						}
 						if (receivable)

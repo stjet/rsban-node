@@ -167,8 +167,8 @@ bool nano::active_transactions::confirmed (nano::election const & election) cons
 bool nano::active_transactions::confirmed_locked (nano::election_lock & lock) const
 {
 	auto hash = lock.status ().get_winner ()->hash ();
-	auto state = static_cast<nano::election_state>(rsnano::rsn_election_lock_state(lock.handle));
-	return state == nano::election_state::confirmed || state == nano::election_state::expired_confirmed; 
+	auto state = static_cast<nano::election_state> (rsnano::rsn_election_lock_state (lock.handle));
+	return state == nano::election_state::confirmed || state == nano::election_state::expired_confirmed;
 }
 
 bool nano::active_transactions::confirmed (nano::block_hash const & hash) const
@@ -859,7 +859,7 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 	}
 
 	trim ();
-	
+
 	return result;
 }
 
@@ -1057,7 +1057,7 @@ std::unordered_map<nano::block_hash, nano::vote_code> nano::active_transactions:
 
 	for (auto const & [block_hash, election] : process)
 	{
-		auto const vote_result = this->vote (*election, vote->account(), vote->timestamp(), block_hash, source);
+		auto const vote_result = this->vote (*election, vote->account (), vote->timestamp (), block_hash, source);
 		results[block_hash] = vote_result;
 	}
 

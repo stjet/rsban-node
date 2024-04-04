@@ -1,6 +1,5 @@
-#include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/rsnano.hpp>
-#include <nano/node/transport/tcp_listener.hpp>
+#include <nano/lib/rsnanoutils.hpp>
 #include <nano/node/messages.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/transport/tcp.hpp>

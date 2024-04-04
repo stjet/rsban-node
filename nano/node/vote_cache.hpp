@@ -34,15 +34,15 @@ public:
 };
 
 /**
-* Stores votes associated with a single block hash
-*/
+ * Stores votes associated with a single block hash
+ */
 class vote_cache_entry final
 {
 public:
 	explicit vote_cache_entry (rsnano::VoteCacheEntryHandle * handle);
-	vote_cache_entry(vote_cache_entry const &) = delete;
-	vote_cache_entry(vote_cache_entry &&) = delete;
-	~vote_cache_entry();
+	vote_cache_entry (vote_cache_entry const &) = delete;
+	vote_cache_entry (vote_cache_entry &&) = delete;
+	~vote_cache_entry ();
 
 	std::size_t size () const;
 
@@ -68,15 +68,14 @@ public:
 	 * Adds a new vote to cache
 	 */
 	void insert (
-			std::shared_ptr<nano::vote> const & vote, 
-			nano::uint128_t weight, 
-			std::function<bool (nano::block_hash const &)> const & filter = [] (nano::block_hash const &) { return true; });
+	std::shared_ptr<nano::vote> const & vote,
+	nano::uint128_t weight,
+	std::function<bool (nano::block_hash const &)> const & filter = [] (nano::block_hash const &) { return true; });
 
 	/**
 	 * Should be called for every processed vote, filters which votes should be added to cache
 	 */
 	void observe (std::shared_ptr<nano::vote> const & vote, nano::uint128_t rep_weight, nano::vote_source source, std::unordered_map<nano::block_hash, nano::vote_code>);
-
 
 	/**
 	 * Tries to find an entry associated with block hash

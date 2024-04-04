@@ -1,6 +1,6 @@
-#include <nano/lib/thread_roles.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnanoutils.hpp>
+#include <nano/lib/thread_roles.hpp>
 #include <nano/node/confirming_set.hpp>
 #include <nano/node/write_database_queue.hpp>
 #include <nano/secure/ledger.hpp>
@@ -36,38 +36,38 @@ void delete_block_hash_callback_context (void * context_a)
 }
 
 nano::confirming_set::confirming_set (nano::ledger & ledger, nano::write_database_queue & write_queue, std::chrono::milliseconds batch_time) :
-	handle{rsnano::rsn_confirming_set_create(ledger.handle, write_queue.handle, batch_time.count())}
+	handle{ rsnano::rsn_confirming_set_create (ledger.handle, write_queue.handle, batch_time.count ()) }
 {
 }
 
 nano::confirming_set::~confirming_set ()
 {
-	rsnano::rsn_confirming_set_destroy(handle);
+	rsnano::rsn_confirming_set_destroy (handle);
 }
 
 void nano::confirming_set::add (nano::block_hash const & hash)
 {
-	rsnano::rsn_confirming_set_add(handle, hash.bytes.data());
+	rsnano::rsn_confirming_set_add (handle, hash.bytes.data ());
 }
 
 void nano::confirming_set::start ()
 {
-	rsnano::rsn_confirming_set_start(handle);
+	rsnano::rsn_confirming_set_start (handle);
 }
 
 void nano::confirming_set::stop ()
 {
-	rsnano::rsn_confirming_set_stop(handle);
+	rsnano::rsn_confirming_set_stop (handle);
 }
 
 bool nano::confirming_set::exists (nano::block_hash const & hash) const
 {
-	return rsnano::rsn_confirming_set_exists(handle, hash.bytes.data());
+	return rsnano::rsn_confirming_set_exists (handle, hash.bytes.data ());
 }
 
 std::size_t nano::confirming_set::size () const
 {
-	return rsnano::rsn_confirming_set_len(handle);
+	return rsnano::rsn_confirming_set_len (handle);
 }
 
 void nano::confirming_set::add_cemented_observer (std::function<void (std::shared_ptr<nano::block> const &)> const & callback_a)

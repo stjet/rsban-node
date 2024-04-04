@@ -19,7 +19,7 @@ nano::rpc_request_processor::rpc_request_processor (boost::asio::io_context & io
 	{
 		connections.push_back (std::make_shared<nano::ipc_connection> (nano::ipc::ipc_client (io_ctx), false));
 		auto connection = this->connections.back ();
-		connection->client.async_connect (ipc_address, ipc_port, 
+		connection->client.async_connect (ipc_address, ipc_port,
 		[connection] (nano::error err) {
 			// Even if there is an error this needs to be set so that another attempt can be made to connect with the ipc connection
 			connection->is_available = true;

@@ -6906,4 +6906,3 @@ TEST (rpc, election_statistics)
 	ASSERT_EQ ("0", response1.get<std::string> ("total"));
 	ASSERT_EQ ("0.00", response1.get<std::string> ("aec_utilization_percentage"));
 }
-

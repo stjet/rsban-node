@@ -1,7 +1,5 @@
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnanoutils.hpp>
-#include <nano/secure/common.hpp>
-#include <nano/secure/ledger.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/bootstrap/bootstrap_bulk_push.hpp>
 #include <nano/node/bootstrap/bootstrap_frontier.hpp>
@@ -10,6 +8,8 @@
 #include <nano/node/transport/tcp.hpp>
 #include <nano/node/transport/tcp_listener.hpp>
 #include <nano/node/transport/tcp_server.hpp>
+#include <nano/secure/common.hpp>
+#include <nano/secure/ledger.hpp>
 
 #include <boost/format.hpp>
 

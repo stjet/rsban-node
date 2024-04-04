@@ -24,16 +24,16 @@
 
 namespace
 {
-rsnano::LedgerHandle * create_ledger_handle(nano::store::component & store_a, nano::stats & stat_a, nano::ledger_constants & constants, nano::generate_cache_flags const & generate_cache_flags_a, nano::uint128_t min_rep_weight_a)
+rsnano::LedgerHandle * create_ledger_handle (nano::store::component & store_a, nano::stats & stat_a, nano::ledger_constants & constants, nano::generate_cache_flags const & generate_cache_flags_a, nano::uint128_t min_rep_weight_a)
 {
 	auto constants_dto{ constants.to_dto () };
-	nano::amount min_rep_weight {min_rep_weight_a};
+	nano::amount min_rep_weight{ min_rep_weight_a };
 	return rsnano::rsn_ledger_create (store_a.get_handle (), &constants_dto, stat_a.handle, generate_cache_flags_a.handle, min_rep_weight.bytes.data ());
 }
 }
 
 nano::ledger::ledger (nano::store::component & store_a, nano::stats & stat_a, nano::ledger_constants & constants, nano::generate_cache_flags const & generate_cache_flags_a, nano::uint128_t min_rep_weight_a) :
-	handle{ create_ledger_handle (store_a, stat_a, constants, generate_cache_flags_a, min_rep_weight_a)},
+	handle{ create_ledger_handle (store_a, stat_a, constants, generate_cache_flags_a, min_rep_weight_a) },
 	cache{ rsnano::rsn_ledger_get_cache_handle (handle) },
 	constants{ constants },
 	store{ store_a },
@@ -424,6 +424,6 @@ std::unique_ptr<nano::container_info_component> nano::ledger::collect_container_
 	auto sizeof_element = sizeof (nano::account) + sizeof (nano::uint128_t);
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "bootstrap_weights", count, sizeof_element }));
-	composite->add_component (cache.rep_weights ().collect_container_info("rep_weights"));
+	composite->add_component (cache.rep_weights ().collect_container_info ("rep_weights"));
 	return composite;
 }

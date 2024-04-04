@@ -37,4 +37,3 @@ public:
 	rsnano::TcpListenerHandle * handle;
 };
 }
-

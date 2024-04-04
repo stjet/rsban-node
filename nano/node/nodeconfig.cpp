@@ -27,7 +27,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.bootstrap_fraction_numerator = config.bootstrap_fraction_numerator;
 	std::copy (std::begin (config.receive_minimum.bytes), std::end (config.receive_minimum.bytes), std::begin (dto.receive_minimum));
 	std::copy (std::begin (config.online_weight_minimum.bytes), std::end (config.online_weight_minimum.bytes), std::begin (dto.online_weight_minimum));
-	std::copy (std::begin (config.representative_vote_weight_minimum.bytes), std::end(config.representative_vote_weight_minimum.bytes), std::begin(dto.representative_vote_weight_minimum));
+	std::copy (std::begin (config.representative_vote_weight_minimum.bytes), std::end (config.representative_vote_weight_minimum.bytes), std::begin (dto.representative_vote_weight_minimum));
 	dto.password_fanout = config.password_fanout;
 	dto.io_threads = config.io_threads;
 	dto.network_threads = config.network_threads;

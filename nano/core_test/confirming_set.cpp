@@ -21,7 +21,7 @@ TEST (confirmation_callback, observer_callbacks)
 	auto node = system.add_node (node_config, node_flags);
 
 	auto wallet_id = node->wallets.first_wallet_id ();
-	(void)node->wallets.insert_adhoc(wallet_id, nano::dev::genesis_key.prv);
+	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	nano::block_hash latest (node->latest (nano::dev::genesis_key.pub));
 
 	nano::keypair key1;

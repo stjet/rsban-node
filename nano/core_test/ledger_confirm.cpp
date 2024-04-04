@@ -775,4 +775,3 @@ TEST (ledger_confirm, election_winner_details_clearing_node_process_confirmed)
 	node->process_confirmed (election, 1000000);
 	ASSERT_EQ (0, node->active.election_winner_details_size ());
 }
-

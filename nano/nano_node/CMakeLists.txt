@@ -19,4 +19,3 @@ add_custom_command(
           ${PROJECT_BINARY_DIR}/config-node.toml.sample
   COMMAND nano_node --generate_config rpc >
           ${PROJECT_BINARY_DIR}/config-rpc.toml.sample)
-

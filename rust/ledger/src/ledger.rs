@@ -835,12 +835,21 @@ impl<T: Environment + 'static> Ledger<T> {
         txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         account: Account,
     ) -> ReceivableIterator<'a, T> {
-        ReceivableIterator::<'a, T> {
-            txn,
-            pending: self.store.pending.deref(),
-            requested_account: account.inc().unwrap_or_default(),
-            actual_account: None,
-            next_hash: Some(BlockHash::zero()),
+        match account.inc() {
+            None => ReceivableIterator::<'a, T> {
+                txn,
+                pending: self.store.pending.deref(),
+                requested_account: Default::default(),
+                actual_account: None,
+                next_hash: None,
+            },
+            Some(account) => ReceivableIterator::<'a, T> {
+                txn,
+                pending: self.store.pending.deref(),
+                requested_account: account.inc().unwrap_or(Account::MAX),
+                actual_account: None,
+                next_hash: Some(BlockHash::zero()),
+            },
         }
     }
 

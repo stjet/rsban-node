@@ -288,13 +288,13 @@ impl CacheEntry {
     pub fn tally(&self) -> Amount {
         self.voters
             .iter_unordered()
-            .fold(Amount::zero(), |acc, i| acc + i.weight)
+            .fold(Amount::zero(), |acc, i| acc.wrapping_add(i.weight))
     }
 
     pub fn final_tally(&self) -> Amount {
         self.voters
             .iter_unordered()
-            .fold(Amount::zero(), |acc, i| acc + i.final_weight())
+            .fold(Amount::zero(), |acc, i| acc.wrapping_add(i.final_weight()))
     }
 
     pub fn votes(&self) -> Vec<Arc<Vote>> {

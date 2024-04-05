@@ -260,6 +260,10 @@ void nano::epoch_upgrader::upgrade_impl (nano::raw_key const & prv_a, nano::epoc
 					}
 					// Move to next pending item
 					current = ledger.receivable_upper_bound (*transaction, key.account, key.hash);
+					if (current.is_end ())
+					{
+						current = ledger.receivable_upper_bound (*transaction, key.account);
+					}
 				}
 				else
 				{

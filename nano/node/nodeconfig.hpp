@@ -7,6 +7,7 @@
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/threading.hpp>
+#include <nano/node/blockprocessor.hpp>
 #include <nano/node/bootstrap/bootstrap_config.hpp>
 #include <nano/node/ipc/ipc_config.hpp>
 #include <nano/node/repcrawler.hpp>
@@ -135,6 +136,7 @@ public:
 	unsigned backlog_scan_frequency;
 	nano::vote_cache_config vote_cache;
 	nano::rep_crawler_config rep_crawler;
+	nano::block_processor_config block_processor;
 
 public:
 	nano::frontiers_confirmation_mode deserialize_frontiers_confirmation (std::string const &);

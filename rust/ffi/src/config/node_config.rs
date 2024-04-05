@@ -5,9 +5,9 @@ use super::{
     TxnTrackingConfigDto,
 };
 use crate::{
-    consensus::VoteCacheConfigDto, fill_ipc_config_dto, fill_stat_config_dto, utils::FfiToml,
-    HintedSchedulerConfigDto, IpcConfigDto, NetworkParamsDto, OptimisticSchedulerConfigDto,
-    StatConfigDto, WebsocketConfigDto,
+    block_processing::BlockProcessorConfigDto, consensus::VoteCacheConfigDto, fill_ipc_config_dto,
+    fill_stat_config_dto, utils::FfiToml, HintedSchedulerConfigDto, IpcConfigDto, NetworkParamsDto,
+    OptimisticSchedulerConfigDto, StatConfigDto, WebsocketConfigDto,
 };
 use num::FromPrimitive;
 use rsnano_core::{Account, Amount};
@@ -98,6 +98,7 @@ pub struct NodeConfigDto {
     pub backlog_scan_frequency: u32,
     pub vote_cache: VoteCacheConfigDto,
     pub rep_crawler_query_timeout_ms: i64,
+    pub block_processor: BlockProcessorConfigDto,
 }
 
 #[repr(C)]
@@ -253,6 +254,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.backlog_scan_batch_size = cfg.backlog_scan_batch_size;
     dto.vote_cache = (&cfg.vote_cache).into();
     dto.rep_crawler_query_timeout_ms = cfg.rep_crawler_query_timeout.as_millis() as i64;
+    dto.block_processor = (&cfg.block_processor).into();
 }
 
 #[no_mangle]
@@ -389,6 +391,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             rep_crawler_query_timeout: Duration::from_millis(
                 value.rep_crawler_query_timeout_ms as u64,
             ),
+            block_processor: (&value.block_processor).into(),
         };
 
         Ok(cfg)

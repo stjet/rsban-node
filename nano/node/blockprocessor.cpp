@@ -360,3 +360,38 @@ std::string_view nano::to_string (nano::block_source source)
 {
 	return magic_enum::enum_name (source);
 }
+
+/*
+ * block_processor_config
+ */
+
+nano::block_processor_config::block_processor_config (rsnano::BlockProcessorConfigDto const & dto)
+{
+	max_peer_queue = dto.max_peer_queue;
+	max_system_queue = dto.max_system_queue;
+	priority_live = dto.priority_live;
+	priority_bootstrap = dto.priority_bootstrap;
+	priority_local = dto.priority_local;
+}
+
+rsnano::BlockProcessorConfigDto nano::block_processor_config::to_dto () const
+{
+	rsnano::BlockProcessorConfigDto dto;
+	dto.max_peer_queue = max_peer_queue;
+	dto.max_system_queue = max_system_queue;
+	dto.priority_live = priority_live;
+	dto.priority_bootstrap = priority_bootstrap;
+	dto.priority_local = priority_local;
+	return dto;
+}
+
+nano::error nano::block_processor_config::deserialize (nano::tomlconfig & toml)
+{
+	toml.get ("max_peer_queue", max_peer_queue);
+	toml.get ("max_system_queue", max_system_queue);
+	toml.get ("priority_live", priority_live);
+	toml.get ("priority_bootstrap", priority_bootstrap);
+	toml.get ("priority_local", priority_local);
+
+	return toml.get_error ();
+}

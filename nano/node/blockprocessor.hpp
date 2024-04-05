@@ -58,6 +58,27 @@ enum class block_source
 
 std::string_view to_string (block_source);
 
+class block_processor_config final
+{
+public:
+	block_processor_config () = default;
+	explicit block_processor_config (rsnano::BlockProcessorConfigDto const &);
+
+	nano::error deserialize (nano::tomlconfig & toml);
+	rsnano::BlockProcessorConfigDto to_dto () const;
+
+public:
+	// Maximum number of blocks to queue from network peers
+	size_t max_peer_queue;
+	// Maximum number of blocks to queue from system components (local RPC, bootstrap)
+	size_t max_system_queue;
+
+	// Higher priority gets processed more frequently
+	size_t priority_live;
+	size_t priority_bootstrap;
+	size_t priority_local;
+};
+
 /**
  * Processing blocks is a potentially long IO operation.
  * This class isolates block insertion from other operations like servicing network operations

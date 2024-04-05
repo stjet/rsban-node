@@ -3,7 +3,8 @@ use super::{
     OptimisticSchedulerConfig, WebsocketConfig,
 };
 use crate::{
-    consensus::VoteCacheConfig, stats::StatsConfig, IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
+    block_processing::BlockProcessorConfig, consensus::VoteCacheConfig, stats::StatsConfig,
+    IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;
@@ -101,6 +102,7 @@ pub struct NodeConfig {
     pub backlog_scan_frequency: u32,
     pub vote_cache: VoteCacheConfig,
     pub rep_crawler_query_timeout: Duration,
+    pub block_processor: BlockProcessorConfig,
 }
 
 #[derive(Clone)]
@@ -308,6 +310,7 @@ impl NodeConfig {
             } else {
                 Duration::from_secs(60)
             },
+            block_processor: BlockProcessorConfig::new(network_params.network.current_network),
         }
     }
 
@@ -495,6 +498,10 @@ impl NodeConfig {
                 self.rep_crawler_query_timeout.as_millis() as u64,
                 "",
             )
+        })?;
+
+        toml.put_child("block_processor", &mut |writer| {
+            self.block_processor.serialize_toml(writer)
         })?;
 
         Ok(())

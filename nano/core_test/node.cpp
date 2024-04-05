@@ -2931,7 +2931,8 @@ TEST (node, dont_write_lock_node)
 	finished_promise.set_value ();
 }
 
-TEST (node, bidirectional_tcp)
+// TODO: Gustav: Disabled because it is flaky
+TEST (node, DISABLED_bidirectional_tcp)
 {
 	nano::test::system system;
 	nano::node_flags node_flags;

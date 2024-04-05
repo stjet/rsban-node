@@ -150,6 +150,13 @@ std::unique_ptr<nano::container_info_component> nano::vote_cache::collect_contai
  * vote_cache_config
  */
 
+nano::vote_cache_config::vote_cache_config (rsnano::VoteCacheConfigDto dto)
+{
+	max_size = dto.max_size;
+	max_voters = dto.max_voters;
+	age_cutoff = std::chrono::seconds{ dto.age_cutoff_s };
+}
+
 nano::error nano::vote_cache_config::deserialize (nano::tomlconfig & toml)
 {
 	toml.get ("max_size", max_size);

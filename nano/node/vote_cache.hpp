@@ -24,6 +24,8 @@ namespace nano
 class vote_cache_config final
 {
 public:
+	vote_cache_config () = default;
+	explicit vote_cache_config (rsnano::VoteCacheConfigDto dto);
 	nano::error deserialize (nano::tomlconfig & toml);
 	rsnano::VoteCacheConfigDto to_dto () const;
 

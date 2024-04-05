@@ -201,10 +201,9 @@ void nano::wallet_store::erase (store::transaction const & transaction_a, nano::
 	rsnano::rsn_lmdb_wallet_store_erase (rust_handle, transaction_a.get_rust_handle (), pub.bytes.data ());
 }
 
-nano::key_type nano::wallet_store::key_type (nano::wallet_value const & value_a)
+nano::key_type nano::wallet_store::key_type (store::transaction const & transaction_a, nano::account const & account)
 {
-	auto dto{ value_a.to_dto () };
-	return static_cast<nano::key_type> (rsnano::rsn_lmdb_wallet_store_key_type (&dto));
+	return static_cast<nano::key_type> (rsnano::rsn_lmdb_wallet_store_key_type (rust_handle, transaction_a.get_rust_handle (), account.bytes.data ()));
 }
 
 bool nano::wallet_store::fetch (store::transaction const & transaction_a, nano::account const & pub, nano::raw_key & prv)
@@ -692,7 +691,7 @@ size_t nano::wallets::representatives_count (nano::wallet_id const & id) const
 	return wallet->representatives_count ();
 }
 
-nano::key_type nano::wallets::key_type (nano::wallet_id const & wallet_id, nano::raw_key const & key)
+nano::key_type nano::wallets::key_type (nano::wallet_id const & wallet_id, nano::account const & account)
 {
 	auto lock{ mutex.lock () };
 	auto wallet = lock.find (wallet_id);
@@ -703,8 +702,7 @@ nano::key_type nano::wallets::key_type (nano::wallet_id const & wallet_id, nano:
 	}
 
 	auto txn{ tx_begin_read () };
-	nano::wallet_value wallet_val{ key, 0 };
-	return wallet->store.key_type (wallet_val);
+	return wallet->store.key_type (*txn, account);
 }
 
 nano::wallets_error nano::wallets::get_representative (nano::wallet_id const & wallet_id, nano::account & representative)
@@ -866,7 +864,7 @@ bool nano::wallets::import (nano::wallet_id const & wallet_id, std::string const
 	return error;
 }
 
-nano::wallets_error nano::wallets::decrypt (nano::wallet_id const & wallet_id, std::vector<std::pair<nano::account, nano::raw_key>> accounts) const
+nano::wallets_error nano::wallets::decrypt (nano::wallet_id const & wallet_id, std::vector<std::pair<nano::account, nano::raw_key>> & accounts) const
 {
 	auto lock{ mutex.lock () };
 	auto wallet = lock.find (wallet_id);

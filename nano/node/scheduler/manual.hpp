@@ -1,5 +1,6 @@
 #pragma once
 #include "nano/lib/utility.hpp"
+
 #include <nano/lib/locks.hpp>
 #include <nano/lib/numbers.hpp>
 #include <nano/node/election_behavior.hpp>

@@ -4437,7 +4437,7 @@ void nano::json_handler::wallet_info ()
 
 				receivable += node.ledger.account_receivable (*block_transaction, account);
 
-				nano::key_type key_type = node.wallets.key_type (wallet_id, priv);
+				nano::key_type key_type = node.wallets.key_type (wallet_id, account);
 				if (key_type == nano::key_type::deterministic)
 				{
 					deterministic_count++;

@@ -122,10 +122,12 @@ int main (int argc, char * const * argv)
 	boost::program_options::notify (vm);
 	int result (0);
 
-	if (vm.contains ("initialize") || vm.contains ("wallet_create") || vm.contains("wallet_decrypt_unsafe") || vm.contains("wallet_list")){
+	if (vm.contains ("initialize") || vm.contains ("wallet_create") || vm.contains ("wallet_decrypt_unsafe") || vm.contains ("wallet_list"))
+	{
 		// don't log by default for these commands
 		nano::logger::initialize_for_tests ();
-	} else
+	}
+	else
 	{
 		nano::logger::initialize ();
 	}

@@ -1,17 +1,15 @@
-use std::{
-    collections::HashSet,
-    path::Path,
-    sync::{Arc, Mutex},
-};
-
 use anyhow::Context;
 use rsnano_core::{
-    work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, KeyPair, PendingKey, Root,
-    WorkVersion,
+    work::WorkThresholds, Account, KeyDerivationFunction, KeyPair, Root, WorkVersion,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{
     Environment, EnvironmentWrapper, LmdbWalletStore, LmdbWriteTransaction, Transaction,
+};
+use std::{
+    collections::HashSet,
+    path::Path,
+    sync::{Arc, Mutex},
 };
 use tracing::warn;
 

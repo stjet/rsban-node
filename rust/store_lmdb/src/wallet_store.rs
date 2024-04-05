@@ -476,6 +476,15 @@ impl<T: Environment + 'static> LmdbWalletStore<T> {
             .unwrap();
     }
 
+    pub fn get_key_type(
+        &self,
+        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        account: &Account,
+    ) -> KeyType {
+        let value = self.entry_get_raw(txn, account);
+        Self::key_type(&value)
+    }
+
     pub fn key_type(value: &WalletValue) -> KeyType {
         let number = value.key.number();
         if number > u64::MAX.into() {

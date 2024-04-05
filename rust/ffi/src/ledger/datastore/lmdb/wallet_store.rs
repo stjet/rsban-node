@@ -9,7 +9,7 @@ use std::{
 use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 use crate::{wallets::kdf::KdfHandle, StringDto, U256ArrayDto};
 use rsnano_core::{Account, PublicKey, RawKey};
-use rsnano_store_lmdb::{EnvironmentWrapper, LmdbWalletStore, WalletValue};
+use rsnano_store_lmdb::{LmdbWalletStore, WalletValue};
 
 pub struct LmdbWalletStoreHandle(pub Arc<LmdbWalletStore>);
 
@@ -228,8 +228,12 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_erase(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_key_type(value: *const WalletValueDto) -> u8 {
-    LmdbWalletStore::<EnvironmentWrapper>::key_type(&WalletValue::from(&*value)) as u8
+pub unsafe extern "C" fn rsn_lmdb_wallet_store_key_type(
+    handle: &mut LmdbWalletStoreHandle,
+    txn: &mut TransactionHandle,
+    account: *const u8,
+) -> u8 {
+    handle.get_key_type(txn.as_txn(), &Account::from_ptr(account)) as u8
 }
 
 #[no_mangle]

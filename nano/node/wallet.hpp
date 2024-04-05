@@ -64,7 +64,7 @@ public:
 	void wallet_key (nano::raw_key &, store::transaction const &);
 	void seed (nano::raw_key &, store::transaction const &);
 	void seed_set (store::transaction const &, nano::raw_key const &);
-	nano::key_type key_type (nano::wallet_value const &);
+	nano::key_type key_type (store::transaction const & transaction_a, nano::account const & account);
 	nano::public_key deterministic_insert (store::transaction const &);
 	nano::public_key deterministic_insert (store::transaction const &, uint32_t const);
 	nano::raw_key deterministic_key (store::transaction const &, uint32_t);
@@ -261,7 +261,7 @@ public:
 	void create (nano::wallet_id const &);
 	size_t wallet_count () const;
 	size_t representatives_count (nano::wallet_id const & id) const;
-	nano::key_type key_type (nano::wallet_id const & wallet_id, nano::raw_key const & key);
+	nano::key_type key_type (nano::wallet_id const & wallet_id, nano::account const & account);
 
 	nano::wallets_error get_seed (nano::wallet_id const & wallet_id, nano::raw_key & prv_a) const;
 	/** Changes the wallet seed and returns the first account */
@@ -271,7 +271,7 @@ public:
 	bool import (nano::wallet_id const & wallet_id, std::string const & json_a);
 	nano::wallets_error serialize (nano::wallet_id const & wallet_id, std::string &);
 	nano::wallets_error fetch (nano::wallet_id const & wallet_id, nano::account const & pub, nano::raw_key & prv);
-	nano::wallets_error decrypt (nano::wallet_id const & wallet_id, std::vector<std::pair<nano::account, nano::raw_key>> accounts) const;
+	nano::wallets_error decrypt (nano::wallet_id const & wallet_id, std::vector<std::pair<nano::account, nano::raw_key>> & accounts) const;
 	void backup (std::filesystem::path const & backup_path);
 
 	std::vector<nano::wallet_id> get_wallet_ids () const;

@@ -3253,7 +3253,7 @@ TEST (rpc, wallet_info)
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
 	request.put ("action", "wallet_info");
-	request.put ("wallet", node->wallets.first_wallet_id ().to_string ());
+	request.put ("wallet", wallet_id.to_string ());
 	auto response (wait_response (system, rpc_ctx, request));
 	std::string balance_text (response.get<std::string> ("balance"));
 	ASSERT_EQ ("340282366920938463463374607431768211454", balance_text);

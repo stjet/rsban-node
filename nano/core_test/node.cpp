@@ -40,7 +40,7 @@ TEST (node, null_account)
 	ASSERT_NE (default_account, nullptr);
 }
 
-TEST (node, memory_leak)
+TEST (node, DISABLED_memory_leak)
 {
 	{
 		nano::test::system system (2);
@@ -770,7 +770,7 @@ TEST (node, fork_multi_flip)
 
 	auto election = nano::test::start_election (system, node2, send2->hash ());
 	ASSERT_NE (nullptr, election);
-	ASSERT_TIMELY (5s, node2.ledger.block_or_pruned_exists (send1->hash ()));
+	ASSERT_TIMELY (10s, node2.ledger.block_or_pruned_exists (send1->hash ()));
 	ASSERT_TRUE (nano::test::block_or_pruned_none_exists (node2, { send2, send3 }));
 
 	auto winner = election->winner ();

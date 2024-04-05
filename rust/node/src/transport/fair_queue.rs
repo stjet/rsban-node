@@ -13,6 +13,15 @@ struct Origin<S> {
     channel: Option<Arc<ChannelEnum>>,
 }
 
+impl<S> From<S> for Origin<S> {
+    fn from(value: S) -> Self {
+        Origin {
+            source: value,
+            channel: None,
+        }
+    }
+}
+
 #[derive(Clone)]
 struct OriginEntry<S>
 where
@@ -173,6 +182,20 @@ impl<R, S> FairQueue<R, S>
 where
     S: Ord + Copy,
 {
+    pub fn new(
+        max_size_query: Box<dyn Fn(&Origin<S>) -> usize>,
+        priority_query: Box<dyn Fn(&Origin<S>) -> usize>,
+    ) -> Self {
+        Self {
+            queues: BTreeMap::new(),
+            last_update: Instant::now(),
+            current_queue_key: None,
+            counter: 0,
+            max_size_query,
+            priority_query,
+        }
+    }
+
     pub fn len(&self, source: &Origin<S>) -> usize {
         self.queues
             .get(&source.into())
@@ -328,5 +351,126 @@ where
             queue.max_size = (self.max_size_query)(&source.into());
             queue.priority = (self.priority_query)(&source.into());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+    enum TestSource {
+        Unknown,
+        Live,
+        Bootstrap,
+        BootstrapLegacy,
+        Unchecked,
+        Local,
+        Forced,
+    }
+
+    #[test]
+    fn empty() {
+        let queue: FairQueue<i32, TestSource> =
+            FairQueue::new(Box::new(|_| 999), Box::new(|_| 999));
+        assert_eq!(queue.total_len(), 0);
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn process_one() {
+        let mut queue: FairQueue<i32, TestSource> =
+            FairQueue::new(Box::new(|_| 1), Box::new(|_| 1));
+        queue.push(7, TestSource::Live.into());
+
+        assert_eq!(queue.total_len(), 1);
+        assert_eq!(queue.queues_len(), 1);
+        assert_eq!(queue.len(&TestSource::Live.into()), 1);
+        assert_eq!(queue.len(&TestSource::Bootstrap.into()), 0);
+
+        let (result, origin) = queue.next().unwrap();
+        assert_eq!(result, 7);
+        assert_eq!(origin.source, TestSource::Live);
+        assert!(origin.channel.is_none());
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn fifo() {
+        let mut queue: FairQueue<i32, TestSource> =
+            FairQueue::new(Box::new(|_| 999), Box::new(|_| 1));
+
+        queue.push(7, TestSource::Live.into());
+        queue.push(8, TestSource::Live.into());
+        queue.push(9, TestSource::Live.into());
+
+        assert_eq!(queue.total_len(), 3);
+        assert_eq!(queue.queues_len(), 1);
+        assert_eq!(queue.len(&TestSource::Live.into()), 3);
+
+        let (result, origin) = queue.next().unwrap();
+        assert_eq!(result, 7);
+        assert_eq!(origin.source, TestSource::Live);
+
+        let (result, origin) = queue.next().unwrap();
+        assert_eq!(result, 8);
+        assert_eq!(origin.source, TestSource::Live);
+
+        let (result, origin) = queue.next().unwrap();
+        assert_eq!(result, 9);
+        assert_eq!(origin.source, TestSource::Live);
+
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn process_many() {
+        let mut queue: FairQueue<i32, TestSource> =
+            FairQueue::new(Box::new(|_| 1), Box::new(|_| 1));
+
+        queue.push(7, TestSource::Live.into());
+        queue.push(8, TestSource::Bootstrap.into());
+        queue.push(9, TestSource::Unchecked.into());
+
+        assert_eq!(queue.total_len(), 3);
+        assert_eq!(queue.queues_len(), 3);
+
+        let (result, origin) = queue.next().unwrap();
+        assert_eq!(result, 7);
+        assert_eq!(origin.source, TestSource::Live);
+
+        let (result, origin) = queue.next().unwrap();
+        assert_eq!(result, 8);
+        assert_eq!(origin.source, TestSource::Bootstrap);
+
+        let (result, origin) = queue.next().unwrap();
+        assert_eq!(result, 9);
+        assert_eq!(origin.source, TestSource::Unchecked);
+
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn max_queue_size() {
+        let mut queue: FairQueue<i32, TestSource> =
+            FairQueue::new(Box::new(|_| 2), Box::new(|_| 1));
+
+        queue.push(7, TestSource::Live.into());
+        queue.push(8, TestSource::Live.into());
+        queue.push(9, TestSource::Live.into());
+
+        assert_eq!(queue.total_len(), 2);
+        assert_eq!(queue.queues_len(), 1);
+        assert_eq!(queue.len(&TestSource::Live.into()), 2);
+
+        let (result, origin) = queue.next().unwrap();
+        assert_eq!(result, 7);
+        assert_eq!(origin.source, TestSource::Live);
+
+        let (result, origin) = queue.next().unwrap();
+        assert_eq!(result, 8);
+        assert_eq!(origin.source, TestSource::Live);
+
+        assert!(queue.is_empty());
     }
 }

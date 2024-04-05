@@ -4294,12 +4294,12 @@ TEST (rpc, block_info_pruning)
 	nano::node_config node_config0 = system.default_config ();
 	node_config0.receive_minimum = nano::dev::constants.genesis_amount; // Prevent auto-receive & receive1 block conflicts
 	auto & node0 = *system.add_node (node_config0);
+	auto wallet_id0 = node0.wallets.first_wallet_id ();
 	nano::node_config node_config1 = system.default_config ();
 	node_config1.enable_voting = false; // Remove after allowing pruned voting
 	nano::node_flags node_flags;
 	node_flags.set_enable_pruning (true);
 	auto node1 = add_ipc_enabled_node (system, node_config1, node_flags);
-	auto wallet_id1 = node1->wallets.first_wallet_id ();
 	auto latest (node1->latest (nano::dev::genesis_key.pub));
 	nano::block_builder builder;
 	auto send1 = builder
@@ -4319,7 +4319,7 @@ TEST (rpc, block_info_pruning)
 					.work (*node1->work_generate_blocking (send1->hash ()))
 					.build ();
 	node1->process_active (receive1);
-	(void)node1->wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
+	(void)node0.wallets.insert_adhoc (wallet_id0, nano::dev::genesis_key.prv);
 	ASSERT_TIMELY (5s, node1->block_confirmed (receive1->hash ()));
 	// Pruning action
 	{

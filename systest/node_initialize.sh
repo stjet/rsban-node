@@ -27,7 +27,8 @@ test_initialize_cmd() {
     $NANO_NODE_EXE --initialize --data_path "$DATADIR" "$netcmd" "$netarg"
 
     # check that it is the live network
-    grep -q "Active network: $netmatch" "$DATADIR"/log/log_*.log
+	# DISABLED because we don't have log files with Rust
+    #grep -q "Active network: $netmatch" "$DATADIR"/log/log_*.log
 
     # check that the ledger file is created and has one block, the genesis block
     $NANO_NODE_EXE --debug_block_count --data_path "$DATADIR" "$netcmd" "$netarg" | grep -q 'Block count: 1'

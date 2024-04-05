@@ -846,7 +846,7 @@ impl<T: Environment + 'static> Ledger<T> {
             Some(account) => ReceivableIterator::<'a, T> {
                 txn,
                 pending: self.store.pending.deref(),
-                requested_account: account.inc().unwrap_or(Account::MAX),
+                requested_account: account,
                 actual_account: None,
                 next_hash: Some(BlockHash::zero()),
             },

@@ -542,6 +542,16 @@ pub unsafe extern "C" fn rsn_ledger_receivable_upper_bound(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_receivable_lower_bound(
+    handle: &LedgerHandle,
+    txn: &mut TransactionHandle,
+    account: *const u8,
+) -> *mut ReceivableIteratorHandle {
+    let it = handle.receivable_lower_bound(txn.as_txn(), Account::from_ptr(account));
+    ReceivableIteratorHandle::new(it)
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_acocunt_receivable_upper_bound(
     handle: &LedgerHandle,
     txn: &mut TransactionHandle,

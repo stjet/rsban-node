@@ -4284,7 +4284,7 @@ void nano::json_handler::unopened ()
 		auto transaction = node.store.tx_begin_read ();
 		auto & ledger = node.ledger;
 		boost::property_tree::ptree accounts;
-		for (auto iterator = ledger.receivable_upper_bound (*transaction, start, 0); !iterator.is_end () && accounts.size () < count;)
+		for (auto iterator = ledger.receivable_lower_bound (*transaction, start); !iterator.is_end () && accounts.size () < count;)
 		{
 			auto const & [key, info] = *iterator;
 			nano::account account = key.account;

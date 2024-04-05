@@ -497,6 +497,9 @@ impl<T: Environment + 'static> Ledger<T> {
     ) -> Option<Amount> {
         let block = self.get_block(txn, hash)?;
         let block_balance = self.balance(txn, hash)?;
+        if block.previous().is_zero() {
+            return Some(block_balance);
+        }
         let previous_balance = self.balance(txn, &block.previous())?;
         if block_balance > previous_balance {
             Some(block_balance - previous_balance)
@@ -836,6 +839,21 @@ impl<T: Environment + 'static> Ledger<T> {
             txn,
             pending: self.store.pending.deref(),
             requested_account: account.inc().unwrap_or_default(),
+            actual_account: None,
+            next_hash: Some(BlockHash::zero()),
+        }
+    }
+
+    /// Returns the next receivable entry for an account greater than or equal to 'account'
+    pub fn receivable_lower_bound<'a>(
+        &'a self,
+        txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        account: Account,
+    ) -> ReceivableIterator<'a, T> {
+        ReceivableIterator::<'a, T> {
+            txn,
+            pending: self.store.pending.deref(),
+            requested_account: account,
             actual_account: None,
             next_hash: Some(BlockHash::zero()),
         }

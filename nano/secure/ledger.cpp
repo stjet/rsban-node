@@ -393,6 +393,11 @@ nano::receivable_iterator nano::ledger::receivable_upper_bound (store::transacti
 	return { rsnano::rsn_ledger_receivable_upper_bound (handle, tx.get_rust_handle (), account.bytes.data ()) };
 }
 
+nano::receivable_iterator nano::ledger::receivable_lower_bound (store::transaction const & tx, nano::account const & account) const
+{
+	return { rsnano::rsn_ledger_receivable_lower_bound (handle, tx.get_rust_handle (), account.bytes.data ()) };
+}
+
 nano::receivable_iterator nano::ledger::receivable_upper_bound (store::transaction const & tx, nano::account const & account, nano::block_hash const & hash) const
 {
 	return { rsnano::rsn_ledger_acocunt_receivable_upper_bound (handle, tx.get_rust_handle (), account.bytes.data (), hash.bytes.data ()) };

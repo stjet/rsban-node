@@ -102,6 +102,8 @@ public:
 	bool receivable_any (store::transaction const & tx, nano::account const & account) const;
 	// Returns the next receivable entry for an account greater than 'account'
 	nano::receivable_iterator receivable_upper_bound (store::transaction const & tx, nano::account const & account) const;
+	// Returns the next receivable entry for an account greater than or equal to 'account'
+	nano::receivable_iterator receivable_lower_bound (store::transaction const & tx, nano::account const & account) const;
 	// Returns the next receivable entry for the account 'account' with hash greater than 'hash'
 	nano::receivable_iterator receivable_upper_bound (store::transaction const & tx, nano::account const & account, nano::block_hash const & hash) const;
 	std::unique_ptr<container_info_component> collect_container_info (std::string const & name) const;

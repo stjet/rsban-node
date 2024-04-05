@@ -111,6 +111,7 @@ nano::receivable_iterator & nano::receivable_iterator::operator= (nano::receivab
 		rsnano::rsn_receivable_iterator_destroy (handle);
 	}
 	handle = other.handle;
+	current = other.current;
 	other.handle = nullptr;
 	return *this;
 }

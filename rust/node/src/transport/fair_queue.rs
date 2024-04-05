@@ -13,6 +13,15 @@ struct Origin<S> {
     channel: Option<Arc<ChannelEnum>>,
 }
 
+impl<S> Origin<S> {
+    fn new(source: S, channel: Arc<ChannelEnum>) -> Self {
+        Self {
+            source,
+            channel: Some(channel),
+        }
+    }
+}
+
 impl<S> From<S> for Origin<S> {
     fn from(value: S) -> Self {
         Origin {
@@ -356,6 +365,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::transport::ChannelFake;
+
     use super::*;
 
     #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -472,5 +483,97 @@ mod tests {
         assert_eq!(origin.source, TestSource::Live);
 
         assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn round_robin_with_priority() {
+        let mut queue: FairQueue<i32, TestSource> = FairQueue::new(
+            Box::new(|_| 999),
+            Box::new(|origin| match origin.source {
+                TestSource::Live => 1,
+                TestSource::Bootstrap => 2,
+                TestSource::Unchecked => 3,
+                _ => 0,
+            }),
+        );
+
+        queue.push(7, TestSource::Live.into());
+        queue.push(8, TestSource::Live.into());
+        queue.push(9, TestSource::Live.into());
+        queue.push(10, TestSource::Bootstrap.into());
+        queue.push(11, TestSource::Bootstrap.into());
+        queue.push(12, TestSource::Bootstrap.into());
+        queue.push(13, TestSource::Unchecked.into());
+        queue.push(14, TestSource::Unchecked.into());
+        queue.push(15, TestSource::Unchecked.into());
+        assert_eq!(queue.total_len(), 9);
+
+        // Processing 1x live, 2x bootstrap, 3x unchecked before moving to the next source
+        assert_eq!(queue.next().unwrap().1.source, TestSource::Live);
+        assert_eq!(queue.next().unwrap().1.source, TestSource::Bootstrap);
+        assert_eq!(queue.next().unwrap().1.source, TestSource::Bootstrap);
+        assert_eq!(queue.next().unwrap().1.source, TestSource::Unchecked);
+        assert_eq!(queue.next().unwrap().1.source, TestSource::Unchecked);
+        assert_eq!(queue.next().unwrap().1.source, TestSource::Unchecked);
+        assert_eq!(queue.next().unwrap().1.source, TestSource::Live);
+        assert_eq!(queue.next().unwrap().1.source, TestSource::Bootstrap);
+        assert_eq!(queue.next().unwrap().1.source, TestSource::Live);
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn source_channel() {
+        let mut queue: FairQueue<i32, TestSource> =
+            FairQueue::new(Box::new(|_| 999), Box::new(|_| 1));
+
+        let channel1 = Arc::new(ChannelEnum::create_test_instance());
+        let channel2 = Arc::new(ChannelEnum::create_test_instance());
+        let channel3 = Arc::new(ChannelEnum::create_test_instance());
+
+        queue.push(6, Origin::new(TestSource::Live, Arc::clone(&channel1)));
+        queue.push(7, Origin::new(TestSource::Live, Arc::clone(&channel2)));
+        queue.push(8, Origin::new(TestSource::Live, Arc::clone(&channel3)));
+        queue.push(9, Origin::new(TestSource::Live, Arc::clone(&channel1))); // Channel 1 has multiple entries
+        assert_eq!(queue.total_len(), 4);
+        assert_eq!(queue.queues_len(), 3); // Each <source, channel> pair is a separate queue
+        assert_eq!(
+            queue.len(&Origin::new(TestSource::Live, Arc::clone(&channel1))),
+            2
+        );
+        assert_eq!(queue.len(&Origin::new(TestSource::Live, channel2)), 1);
+        assert_eq!(queue.len(&Origin::new(TestSource::Live, channel3)), 1);
+
+        let all = queue.next_batch(999);
+        assert_eq!(all.len(), 4);
+
+        let channel1_results = all
+            .iter()
+            .filter(|i| Arc::ptr_eq(i.1.channel.as_ref().unwrap(), &channel1));
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn cleanup() {
+        let mut queue: FairQueue<i32, TestSource> =
+            FairQueue::new(Box::new(|_| 999), Box::new(|_| 1));
+
+        let channel1 = Arc::new(ChannelEnum::create_test_instance());
+        let channel2 = Arc::new(ChannelEnum::create_test_instance());
+        let channel3 = Arc::new(ChannelEnum::create_test_instance());
+
+        queue.push(7, Origin::new(TestSource::Live, Arc::clone(&channel1)));
+        queue.push(8, Origin::new(TestSource::Live, Arc::clone(&channel2)));
+        queue.push(9, Origin::new(TestSource::Live, Arc::clone(&channel3)));
+
+        // Either closing or resetting the channel should remove it from the queue
+        channel1.close();
+        drop(channel2);
+
+        assert!(queue.periodic_update(Duration::ZERO));
+
+        // Only channel 3 should remain
+        assert_eq!(queue.total_len(), 1);
+        assert_eq!(queue.queues_len(), 1);
+        assert_eq!(queue.len(&Origin::new(TestSource::Live, channel3)), 1);
     }
 }

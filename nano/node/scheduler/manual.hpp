@@ -1,4 +1,5 @@
 #pragma once
+#include "nano/lib/utility.hpp"
 #include <nano/lib/locks.hpp>
 #include <nano/lib/numbers.hpp>
 #include <nano/node/election_behavior.hpp>
@@ -7,12 +8,13 @@
 
 #include <deque>
 #include <memory>
-#include <mutex>
+#include <thread>
 
 namespace nano
 {
 class block;
 class node;
+class container_info_component;
 }
 
 namespace nano::scheduler

@@ -15,14 +15,10 @@
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index_container.hpp>
 
-#include <atomic>
-#include <condition_variable>
 #include <deque>
 #include <memory>
 #include <thread>
 #include <unordered_map>
-
-#include <immintrin.h>
 
 namespace mi = boost::multi_index;
 

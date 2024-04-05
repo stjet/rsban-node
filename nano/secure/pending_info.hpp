@@ -48,7 +48,12 @@ class receivable_iterator
 {
 public:
 	receivable_iterator (rsnano::ReceivableIteratorHandle * handle);
+	receivable_iterator (receivable_iterator const &) = delete;
+	receivable_iterator (receivable_iterator &&) = delete;
 	~receivable_iterator ();
+
+	receivable_iterator& operator=(receivable_iterator && other);
+
 	// Advances to the next receivable entry for the same account
 	receivable_iterator & operator++ ();
 	bool is_end () const;

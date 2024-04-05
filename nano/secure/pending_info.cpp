@@ -97,7 +97,21 @@ nano::receivable_iterator::receivable_iterator (rsnano::ReceivableIteratorHandle
 
 nano::receivable_iterator::~receivable_iterator ()
 {
-	rsnano::rsn_receivable_iterator_destroy (handle);
+	if (handle != nullptr)
+	{
+		rsnano::rsn_receivable_iterator_destroy (handle);
+		handle = nullptr;
+	}
+}
+
+nano::receivable_iterator& nano::receivable_iterator::operator=(nano::receivable_iterator && other)
+{
+	if (handle != nullptr){
+		rsnano::rsn_receivable_iterator_destroy (handle);
+	}
+	handle = other.handle;
+	other.handle = nullptr;
+	return *this;
 }
 
 nano::receivable_iterator & nano::receivable_iterator::operator++ ()

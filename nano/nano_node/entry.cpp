@@ -58,7 +58,6 @@ int main (int argc, char * const * argv)
 {
 	rsnano::set_rsnano_callbacks ();
 	nano::set_umask (); // Make sure the process umask is set before any files are created
-	nano::logger::initialize ();
 
 	nano::node_singleton_memory_pool_purge_guard memory_pool_cleanup_guard;
 
@@ -122,6 +121,14 @@ int main (int argc, char * const * argv)
 	}
 	boost::program_options::notify (vm);
 	int result (0);
+
+	if (vm.contains ("initialize") || vm.contains ("wallet_create") || vm.contains("wallet_decrypt_unsafe") || vm.contains("wallet_list")){
+		// don't log by default for these commands
+		nano::logger::initialize_for_tests ();
+	} else
+	{
+		nano::logger::initialize ();
+	}
 
 	auto network (vm.find ("network"));
 	if (network != vm.end ())

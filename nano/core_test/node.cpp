@@ -702,7 +702,7 @@ TEST (node, DISABLED_fork_flip)
 				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build ();
 	nano::publish publish2{ nano::dev::network_params.network, send2 };
-	auto ignored_channel = nano::test::fake_channel(node1);
+	auto ignored_channel = nano::test::fake_channel (node1);
 
 	node1.network->inbound (publish1, ignored_channel);
 	node2.network->inbound (publish2, ignored_channel);

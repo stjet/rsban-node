@@ -341,7 +341,7 @@ public:
 
 	void publish (nano::publish const & message) override
 	{
-		bool added = node.block_processor.add(message.get_block(), nano::block_source::live, channel);
+		bool added = node.block_processor.add (message.get_block (), nano::block_source::live, channel);
 		if (!added)
 		{
 			node.network->clear_from_publish_filter (message.get_digest ());

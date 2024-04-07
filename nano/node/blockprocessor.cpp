@@ -194,22 +194,22 @@ void nano::block_processor::stop ()
 
 std::size_t nano::block_processor::size () const
 {
-	return rsnano::rsn_block_processor_total_queue_len(handle);
+	return rsnano::rsn_block_processor_total_queue_len (handle);
 }
 
 std::size_t nano::block_processor::size (nano::block_source source) const
 {
-	return rsnano::rsn_block_processor_queue_len(handle, static_cast<uint8_t>(source));
+	return rsnano::rsn_block_processor_queue_len (handle, static_cast<uint8_t> (source));
 }
 
 bool nano::block_processor::full () const
 {
-	return rsnano::rsn_block_processor_full(handle);
+	return rsnano::rsn_block_processor_full (handle);
 }
 
 bool nano::block_processor::half_full () const
 {
-	return rsnano::rsn_block_processor_half_full(handle);
+	return rsnano::rsn_block_processor_half_full (handle);
 }
 
 void nano::block_processor::process_active (std::shared_ptr<nano::block> const & incoming)
@@ -220,7 +220,7 @@ void nano::block_processor::process_active (std::shared_ptr<nano::block> const &
 bool nano::block_processor::add (std::shared_ptr<nano::block> const & block, block_source const source, std::shared_ptr<nano::transport::channel> const & channel)
 {
 	auto channel_handle = channel ? channel->handle : nullptr;
-	return rsnano::rsn_block_processor_add (handle, block->get_handle(), static_cast<uint8_t>(source), channel_handle);
+	return rsnano::rsn_block_processor_add (handle, block->get_handle (), static_cast<uint8_t> (source), channel_handle);
 }
 
 std::optional<nano::block_status> nano::block_processor::add_blocking (std::shared_ptr<nano::block> const & block, block_source const source)

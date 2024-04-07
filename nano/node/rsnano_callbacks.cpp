@@ -548,7 +548,7 @@ void wait_latch (void * latch_ptr)
 
 void * create_block_processor_promise ()
 {
-	return new std::promise<nano::block_status>();
+	return new std::promise<nano::block_status> ();
 }
 
 void drop_block_processor_promise (void * promise_ptr)

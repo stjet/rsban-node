@@ -1,4 +1,4 @@
-use rsnano_core::{utils::TomlWriter, Networks};
+use rsnano_core::utils::TomlWriter;
 
 #[derive(Clone)]
 pub struct BlockProcessorConfig {
@@ -26,16 +26,8 @@ impl Default for BlockProcessorConfig {
 }
 
 impl BlockProcessorConfig {
-    pub fn new(network: Networks) -> Self {
-        if network == Networks::NanoBetaNetwork {
-            // Bump max queue sizes for beta network to allow for more aggressive block propagation for saturation testing
-            Self {
-                max_peer_queue: 1024,
-                ..Default::default()
-            }
-        } else {
-            Default::default()
-        }
+    pub fn new() -> Self {
+        Default::default()
     }
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
         toml.put_usize(

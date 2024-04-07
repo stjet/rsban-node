@@ -310,7 +310,7 @@ impl NodeConfig {
             } else {
                 Duration::from_secs(60)
             },
-            block_processor: BlockProcessorConfig::new(network_params.network.current_network),
+            block_processor: BlockProcessorConfig::new(),
         }
     }
 

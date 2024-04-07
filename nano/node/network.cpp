@@ -339,16 +339,12 @@ public:
 		}
 	}
 
-	void publish (nano::publish const & message_a) override
+	void publish (nano::publish const & message) override
 	{
-		if (!node.block_processor.full ())
+		bool added = node.block_processor.add(message.get_block(), nano::block_source::live, channel);
+		if (!added)
 		{
-			auto block{ message_a.get_block () };
-			node.process_active (block);
-		}
-		else
-		{
-			node.network->clear_from_publish_filter (message_a.get_digest ());
+			node.network->clear_from_publish_filter (message.get_digest ());
 			node.stats->inc (nano::stat::type::drop, nano::stat::detail::publish, nano::stat::dir::in);
 		}
 	}

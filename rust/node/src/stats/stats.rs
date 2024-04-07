@@ -133,6 +133,7 @@ pub enum StatType {
     Blockprocessor,
     BlockprocessorSource,
     BlockprocessorResult,
+    BlockprocessorOverfill,
     BootstrapServer,
     Active,
     ActiveStarted,
@@ -184,6 +185,7 @@ pub enum DetailType {
     Success,
     Unknown,
     Cache,
+    QueueOverflow,
 
     // processing queue
     Queue,

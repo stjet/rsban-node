@@ -386,7 +386,7 @@ impl BootstrapAttemptLazy {
             drop(lock);
             drop(data);
             self.block_processor
-                .add(block, BlockSource::BootstrapLegacy);
+                .add(block, BlockSource::BootstrapLegacy, None);
         }
         // Force drop lazy bootstrap connection for long bulk_pull
         if pull_blocks_processed > max_blocks as u64 {

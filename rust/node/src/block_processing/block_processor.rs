@@ -2,6 +2,7 @@ use super::UncheckedMap;
 use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
+    transport::{ChannelEnum, FairQueue, Origin},
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -15,22 +16,14 @@ use std::{
     ffi::c_void,
     mem::size_of,
     sync::{atomic::AtomicBool, Arc, Condvar, Mutex},
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
-use tracing::{debug, error, trace};
+use tracing::{debug, error, info, trace};
 
-pub static mut BLOCKPROCESSOR_ADD_CALLBACK: Option<fn(*mut c_void, Arc<BlockEnum>, BlockSource)> =
-    None;
 pub static mut BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK: Option<fn(*mut c_void, Arc<BlockEnum>)> =
     None;
-pub static mut BLOCKPROCESSOR_HALF_FULL_CALLBACK: Option<
-    unsafe extern "C" fn(*mut c_void) -> bool,
-> = None;
 
-pub static mut BLOCKPROCESSOR_SIZE_CALLBACK: Option<unsafe extern "C" fn(*mut c_void) -> usize> =
-    None;
-
-#[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug, PartialOrd, Ord)]
 pub enum BlockSource {
     Unknown = 0,
     Live,
@@ -63,16 +56,19 @@ pub struct BlockProcessorContext {
 }
 
 impl BlockProcessorContext {
-    pub fn new(block: Arc<BlockEnum>, source: BlockSource, promise: *mut c_void) -> Self {
+    pub fn new(block: Arc<BlockEnum>, source: BlockSource) -> Self {
         Self {
             block,
             source,
             arrival: Instant::now(),
-            promise,
+            promise: unsafe {
+                CREATE_BLOCK_PROCESSOR_PROMISE.expect("CREATE_BLOCK_PROCESSOR_PROMISE missing")()
+            },
         }
     }
 }
 
+pub static mut CREATE_BLOCK_PROCESSOR_PROMISE: Option<unsafe extern "C" fn() -> *mut c_void> = None;
 pub static mut DROP_BLOCK_PROCESSOR_PROMISE: Option<unsafe extern "C" fn(*mut c_void)> = None;
 
 impl Drop for BlockProcessorContext {
@@ -111,12 +107,27 @@ impl BlockProcessor {
         work: Arc<WorkThresholds>,
         write_database_queue: Arc<WriteDatabaseQueue>,
     ) -> Self {
+        let processor_config = config.block_processor.clone();
+        let max_size_query = Box::new(move |origin: &Origin<BlockSource>| match origin.source {
+            BlockSource::Live => processor_config.max_peer_queue,
+            _ => processor_config.max_system_queue,
+        });
+
+        let processor_config = config.block_processor.clone();
+        let priority_query = Box::new(move |origin: &Origin<BlockSource>| match origin.source {
+            BlockSource::Live => processor_config.priority_live,
+            BlockSource::Bootstrap | BlockSource::BootstrapLegacy | BlockSource::Unchecked => {
+                processor_config.priority_bootstrap
+            }
+            BlockSource::Local => processor_config.priority_local,
+            _ => 1,
+        });
+
         Self {
             handle,
             mutex: Mutex::new(BlockProcessorImpl {
-                blocks: VecDeque::new(),
-                forced: VecDeque::new(),
-                next_log: SystemTime::now(),
+                queue: FairQueue::new(max_size_query, priority_query),
+                last_log: None,
                 config: Arc::clone(&config),
             }),
             condition: Condvar::new(),
@@ -161,37 +172,80 @@ impl BlockProcessor {
         }
     }
 
-    pub fn add(&self, block: Arc<BlockEnum>, source: BlockSource) {
-        unsafe {
-            BLOCKPROCESSOR_ADD_CALLBACK.expect("BLOCKPROCESSOR_ADD_CALLBACK missing")(
-                self.handle,
-                block,
-                source,
-            )
+    pub fn add(
+        &self,
+        block: Arc<BlockEnum>,
+        source: BlockSource,
+        channel: Option<Arc<ChannelEnum>>,
+    ) -> bool {
+        if self.work.validate_entry_block(&block) {
+            // true => error
+            self.stats.inc(
+                StatType::Blockprocessor,
+                DetailType::InsufficientWork,
+                Direction::In,
+            );
+            return false; // Not added
         }
+
+        self.stats
+            .inc(StatType::Blockprocessor, DetailType::Process, Direction::In);
+        debug!(
+            "Processing block (async): {} (source: {:?} {})",
+            block.hash(),
+            source,
+            channel
+                .as_ref()
+                .map(|c| c.remote_endpoint().to_string())
+                .unwrap_or_else(|| "<unknown>".to_string())
+        );
+
+        self.add_impl(BlockProcessorContext::new(block, source), channel)
+    }
+
+    pub fn full(&self) -> bool {
+        self.total_queue_len() >= self.flags.block_processor_full_size
     }
 
     pub fn half_full(&self) -> bool {
-        unsafe {
-            BLOCKPROCESSOR_HALF_FULL_CALLBACK.expect("BLOCKPROCESSOR_HALF_FULL_CALLBACK missing")(
-                self.handle,
-            )
-        }
+        self.total_queue_len() >= self.flags.block_processor_full_size / 2
     }
 
-    pub fn queue_len(&self) -> usize {
-        unsafe {
-            BLOCKPROCESSOR_SIZE_CALLBACK.expect("BLOCKPROCESSOR_SIZE_CALLBACK missing")(self.handle)
-        }
+    // TODO: Remove and replace all checks with calls to size (block_source)
+    pub fn total_queue_len(&self) -> usize {
+        self.mutex.lock().unwrap().queue.total_len()
     }
 
-    pub fn add_impl(&self, context: BlockProcessorContext) {
-        assert_ne!(context.source, BlockSource::Forced);
+    pub fn queue_len(&self, source: BlockSource) -> usize {
+        self.mutex.lock().unwrap().queue.len(&source.into())
+    }
+
+    pub fn add_impl(
+        &self,
+        context: BlockProcessorContext,
+        channel: Option<Arc<ChannelEnum>>,
+    ) -> bool {
+        let source = context.source;
+        let added;
         {
-            let mut lock = self.mutex.lock().unwrap();
-            lock.blocks.push_back(context);
+            let mut guard = self.mutex.lock().unwrap();
+            added = guard.queue.push(context, Origin::new_opt(source, channel));
         }
-        self.condition.notify_all();
+        if added {
+            self.condition.notify_all();
+        } else {
+            self.stats.inc(
+                StatType::Blockprocessor,
+                DetailType::Overfill,
+                Direction::In,
+            );
+            self.stats.inc(
+                StatType::BlockprocessorOverfill,
+                source.into(),
+                Direction::In,
+            );
+        }
+        added
     }
 
     pub fn queue_unchecked(&self, hash_or_account: &HashOrAccount) {
@@ -204,6 +258,9 @@ impl BlockProcessor {
         let _scoped_write_guard = self.write_database_queue.wait(Writer::ProcessBatch);
         let mut transaction = self.ledger.rw_txn();
         let mut lock_a = self.mutex.lock().unwrap();
+
+        lock_a.queue.periodic_update(Duration::from_secs(30));
+
         let timer_l = Instant::now();
 
         // Processing blocks
@@ -215,10 +272,18 @@ impl BlockProcessor {
                 > Duration::from_millis(self.config.block_processor_batch_max_time_ms as u64)
         };
 
-        while lock_a.have_blocks_ready()
+        while !lock_a.queue.is_empty()
             && (!deadline_reached()
                 || number_of_blocks_processed < self.flags.block_processor_batch_size)
         {
+            // TODO: Cleaner periodical logging
+            if lock_a.should_log() {
+                info!(
+                    "{} blocks (+ {} forced) in processing queue",
+                    lock_a.queue.total_len(),
+                    lock_a.queue.len(&BlockSource::Forced.into())
+                );
+            }
             let context = lock_a.next();
             let force = context.source == BlockSource::Forced;
 
@@ -385,23 +450,21 @@ impl BlockProcessor {
     }
 
     pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
-        let (blocks_count, forced_count) = {
-            let guard = self.mutex.lock().unwrap();
-            (guard.blocks.len(), guard.forced.len())
-        };
+        let guard = self.mutex.lock().unwrap();
         ContainerInfoComponent::Composite(
             name,
             vec![
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "blocks".to_owned(),
-                    count: blocks_count,
+                    count: guard.queue.total_len(),
                     sizeof_element: size_of::<Arc<BlockEnum>>(),
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "forced".to_owned(),
-                    count: forced_count,
+                    count: guard.queue.len(&BlockSource::Forced.into()),
                     sizeof_element: size_of::<Arc<BlockEnum>>(),
                 }),
+                guard.queue.collect_container_info("queue"),
             ],
         )
     }
@@ -411,30 +474,31 @@ unsafe impl Send for BlockProcessor {}
 unsafe impl Sync for BlockProcessor {}
 
 pub struct BlockProcessorImpl {
-    pub blocks: VecDeque<BlockProcessorContext>,
-    pub forced: VecDeque<BlockProcessorContext>,
-    pub next_log: SystemTime,
+    pub queue: FairQueue<BlockProcessorContext, BlockSource>,
+    pub last_log: Option<Instant>,
     config: Arc<NodeConfig>,
 }
 
 impl BlockProcessorImpl {
-    pub fn have_blocks_ready(&self) -> bool {
-        return self.blocks.len() > 0 || self.forced.len() > 0;
-    }
-
     fn next(&mut self) -> BlockProcessorContext {
-        debug_assert!(!self.blocks.is_empty() || !self.forced.is_empty()); // This should be checked before calling next
-
-        if let Some(entry) = self.forced.pop_front() {
-            assert_eq!(entry.source, BlockSource::Forced);
-            return entry;
-        }
-
-        if let Some(entry) = self.blocks.pop_front() {
-            assert_ne!(entry.source, BlockSource::Forced);
-            return entry;
+        debug_assert!(!self.queue.is_empty()); // This should be checked before calling next
+        if !self.queue.is_empty() {
+            let (request, origin) = self.queue.next().unwrap();
+            assert!(origin.source != BlockSource::Forced || request.source == BlockSource::Forced);
+            return request;
         }
 
         panic!("next() called when no blocks are ready");
+    }
+
+    pub fn should_log(&mut self) -> bool {
+        if let Some(last) = &self.last_log {
+            if last.elapsed() >= Duration::from_secs(15) {
+                self.last_log = Some(Instant::now());
+                return true;
+            }
+        }
+
+        false
     }
 }

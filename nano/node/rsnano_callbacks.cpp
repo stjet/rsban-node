@@ -23,8 +23,6 @@
 
 #include <boost/property_tree/json_parser.hpp>
 
-#include <iostream>
-#include <system_error>
 #include <utility>
 
 int32_t write_u8 (void * stream, const uint8_t value)
@@ -371,30 +369,11 @@ bool listener_broadcast (void * handle_a, rsnano::MessageDto const * message_a)
 	}
 }
 
-void blockprocessor_add (void * handle_a, rsnano::BlockHandle * block_a, uint8_t source)
-{
-	auto processor = static_cast<nano::block_processor *> (handle_a);
-	auto block{ nano::block_handle_to_block (block_a) };
-	processor->add (block, static_cast<nano::block_source> (source));
-}
-
 void blockprocessor_process_active (void * handle_a, rsnano::BlockHandle * block_a)
 {
 	auto processor = static_cast<nano::block_processor *> (handle_a);
 	auto block{ nano::block_handle_to_block (block_a) };
 	processor->process_active (block);
-}
-
-bool blockprocessor_half_full (void * handle_a)
-{
-	auto processor = static_cast<nano::block_processor *> (handle_a);
-	return processor->half_full ();
-}
-
-std::size_t blockprocessor_size (void * handle_a)
-{
-	auto processor = static_cast<nano::block_processor *> (handle_a);
-	return processor->size ();
 }
 
 void bootstrap_initiator_clear_pulls (void * handle_a, uint64_t bootstrap_id_a)
@@ -567,6 +546,11 @@ void wait_latch (void * latch_ptr)
 	latch->wait ();
 }
 
+void * create_block_processor_promise ()
+{
+	return new std::promise<nano::block_status>();
+}
+
 void drop_block_processor_promise (void * promise_ptr)
 {
 	auto promise = static_cast<std::promise<nano::block_status> *> (promise_ptr);
@@ -647,10 +631,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_toml_drop_array (toml_drop_array);
 
 	rsnano::rsn_callback_listener_broadcast (listener_broadcast);
-	rsnano::rsn_callback_block_processor_add (blockprocessor_add);
 	rsnano::rsn_callback_block_processor_process_active (blockprocessor_process_active);
-	rsnano::rsn_callback_block_processor_half_full (blockprocessor_half_full);
-	rsnano::rsn_callback_block_processor_size (blockprocessor_size);
 	rsnano::rsn_callback_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
 	rsnano::rsn_callback_bootstrap_initiator_in_progress (bootstrap_initiator_in_progress);
 	rsnano::rsn_callback_bootstrap_initiator_remove_from_cache (bootstrap_initiator_remove_cache);
@@ -676,6 +657,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_connections_requeue_pull (requeue_pull);
 	rsnano::rsn_callback_bootstrap_connections_populate_connections (populate_connections);
 	rsnano::rsn_callback_bootstrap_connections_add_pull (add_pull);
+	rsnano::rsn_callback_create_block_processor_promise (create_block_processor_promise);
 	rsnano::rsn_callback_drop_block_processor_promise (drop_block_processor_promise);
 
 	rsnano::rsn_callback_bootstrap_attempt_legacy_add_frontier (legacy_add_frontier);

@@ -8,9 +8,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-struct Origin<S> {
-    source: S,
-    channel: Option<Arc<ChannelEnum>>,
+pub struct Origin<S> {
+    pub source: S,
+    pub channel: Option<Arc<ChannelEnum>>,
 }
 
 impl<S> Origin<S> {
@@ -19,6 +19,10 @@ impl<S> Origin<S> {
             source,
             channel: Some(channel),
         }
+    }
+
+    pub fn new_opt(source: S, channel: Option<Arc<ChannelEnum>>) -> Self {
+        Self { source, channel }
     }
 }
 
@@ -175,7 +179,7 @@ impl<R> Entry<R> {
     }
 }
 
-struct FairQueue<R, S>
+pub struct FairQueue<R, S>
 where
     S: Ord + Copy,
 {

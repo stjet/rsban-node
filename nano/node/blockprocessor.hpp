@@ -1,5 +1,6 @@
 #pragma once
 
+#include <nano/node/transport/channel.hpp>
 #include <nano/secure/common.hpp>
 
 #include <chrono>
@@ -120,15 +121,14 @@ public:
 	void start ();
 	void stop ();
 
-	std::size_t size ();
-	bool full ();
-	bool half_full ();
+	std::size_t size () const;
+	std::size_t size (block_source) const;
+	bool full () const;
+	bool half_full () const;
 	void process_active (std::shared_ptr<nano::block> const & incoming);
-	void add (std::shared_ptr<nano::block> const &, block_source = block_source::live);
+	bool add (std::shared_ptr<nano::block> const &, block_source = block_source::live, std::shared_ptr<nano::transport::channel> const & channel = nullptr);
 	std::optional<nano::block_status> add_blocking (std::shared_ptr<nano::block> const & block, block_source);
 	void force (std::shared_ptr<nano::block> const &);
-	bool have_blocks_ready (nano::block_processor_lock & lock_a);
-	bool have_blocks (nano::block_processor_lock & lock_a);
 	bool flushing ();
 
 	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);

@@ -6,6 +6,7 @@ use crate::{
 use num::FromPrimitive;
 use rsnano_core::Account;
 use rsnano_node::{
+    block_processing::BlockSource,
     bootstrap::{BootstrapAttempt, BootstrapStrategy},
     websocket::{Listener, NullListener},
 };
@@ -185,7 +186,10 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_wait_until_block_processor_empty(
     lck: &mut BootstrapAttemptLockHandle,
 ) {
     let guard = lck.0.take().unwrap();
-    let guard = handle.0.attempt().wait_until_block_processor_empty(guard);
+    let guard = handle
+        .0
+        .attempt()
+        .wait_until_block_processor_empty(guard, BlockSource::BootstrapLegacy);
     lck.0 = Some(guard);
 }
 

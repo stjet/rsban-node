@@ -48,19 +48,9 @@ public:
 		rsnano::rsn_block_processor_lock_unlock (handle);
 	}
 
-	void push_back_forced (nano::block_processor::context context)
+	bool queue_empty ()
 	{
-		rsnano::rsn_block_processor_push_back_forced (handle, context.handle);
-	}
-
-	std::size_t blocks_size () const
-	{
-		return rsnano::rsn_block_processor_blocks_size (handle);
-	}
-
-	std::size_t forced_size () const
-	{
-		return rsnano::rsn_block_processor_forced_size (handle);
+		return rsnano::rsn_block_processor_lock_queue_empty (handle);
 	}
 
 	rsnano::BlockProcessorLockHandle * handle;
@@ -92,7 +82,7 @@ void blocks_rolled_back_delete (void * context)
 
 nano::block_processor::context::context (std::shared_ptr<nano::block> block, nano::block_source source_a) :
 	source{ source_a },
-	handle{ rsnano::rsn_block_processor_context_create (block->get_handle (), static_cast<uint8_t> (source_a), new std::promise<nano::block_processor::context::result_t> ()) }
+	handle{ rsnano::rsn_block_processor_context_create (block->get_handle (), static_cast<uint8_t> (source_a)) }
 {
 	debug_assert (source != nano::block_source::unknown);
 }
@@ -202,20 +192,24 @@ void nano::block_processor::stop ()
 	}
 }
 
-std::size_t nano::block_processor::size ()
+std::size_t nano::block_processor::size () const
 {
-	nano::block_processor_lock lock{ *this };
-	return (lock.blocks_size () + lock.forced_size ());
+	return rsnano::rsn_block_processor_total_queue_len(handle);
 }
 
-bool nano::block_processor::full ()
+std::size_t nano::block_processor::size (nano::block_source source) const
 {
-	return size () >= flags.block_processor_full_size ();
+	return rsnano::rsn_block_processor_queue_len(handle, static_cast<uint8_t>(source));
 }
 
-bool nano::block_processor::half_full ()
+bool nano::block_processor::full () const
 {
-	return size () >= flags.block_processor_full_size () / 2;
+	return rsnano::rsn_block_processor_full(handle);
+}
+
+bool nano::block_processor::half_full () const
+{
+	return rsnano::rsn_block_processor_half_full(handle);
 }
 
 void nano::block_processor::process_active (std::shared_ptr<nano::block> const & incoming)
@@ -223,24 +217,10 @@ void nano::block_processor::process_active (std::shared_ptr<nano::block> const &
 	add (incoming);
 }
 
-void nano::block_processor::add (std::shared_ptr<nano::block> const & block, block_source const source)
+bool nano::block_processor::add (std::shared_ptr<nano::block> const & block, block_source const source, std::shared_ptr<nano::transport::channel> const & channel)
 {
-	if (full ())
-	{
-		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::overfill);
-		return;
-	}
-	if (network_params.work.validate_entry (*block)) // true => error
-	{
-		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::insufficient_work);
-		return;
-	}
-
-	stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::process);
-	logger.debug (nano::log::type::blockprocessor, "Processing block (async): {} (source: {})", block->hash ().to_string (), to_string (source));
-
-	context ctx{ block, source };
-	rsnano::rsn_block_processor_add_impl (handle, ctx.handle);
+	auto channel_handle = channel ? channel->handle : nullptr;
+	return rsnano::rsn_block_processor_add (handle, block->get_handle(), static_cast<uint8_t>(source), channel_handle);
 }
 
 std::optional<nano::block_status> nano::block_processor::add_blocking (std::shared_ptr<nano::block> const & block, block_source const source)
@@ -250,7 +230,7 @@ std::optional<nano::block_status> nano::block_processor::add_blocking (std::shar
 
 	context ctx{ block, source };
 	auto future = ctx.get_future ();
-	rsnano::rsn_block_processor_add_impl (handle, ctx.handle);
+	rsnano::rsn_block_processor_add_impl (handle, ctx.handle, nullptr);
 
 	try
 	{
@@ -274,11 +254,8 @@ void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 	stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::force);
 	logger.debug (nano::log::type::blockprocessor, "Forcing block: {}", block_a->hash ().to_string ());
 
-	{
-		nano::block_processor_lock lock{ *this };
-		lock.push_back_forced (context{ block_a, block_source::forced });
-	}
-	rsnano::rsn_block_processor_notify_all (handle);
+	context ctx{ block_a, block_source::forced };
+	rsnano::rsn_block_processor_add_impl (handle, ctx.handle, nullptr);
 }
 
 void nano::block_processor::run ()
@@ -286,7 +263,7 @@ void nano::block_processor::run ()
 	nano::block_processor_lock lock{ *this };
 	while (!stopped)
 	{
-		if (have_blocks_ready (lock))
+		if (!lock.queue_empty ())
 		{
 			lock.unlock ();
 
@@ -322,16 +299,6 @@ void nano::block_processor::set_blocks_rolled_back_callback (std::function<void 
 	blocks_rolled_back_wrapper,
 	new std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> (callback),
 	blocks_rolled_back_delete);
-}
-
-bool nano::block_processor::have_blocks_ready (nano::block_processor_lock & lock_a)
-{
-	return lock_a.blocks_size () > 0 || lock_a.forced_size () > 0;
-}
-
-bool nano::block_processor::have_blocks (nano::block_processor_lock & lock_a)
-{
-	return have_blocks_ready (lock_a);
 }
 
 auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) -> std::deque<processed_t>

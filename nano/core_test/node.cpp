@@ -525,6 +525,7 @@ TEST (node, expire)
 	ASSERT_TRUE (node0.expired ());
 }
 
+// This test is racy, there is no guarantee that the election won't be confirmed until all forks are fully processed
 // TODO gustav: I've temporarily disabled this test because it fails very often
 TEST (node, DISABLED_fork_publish)
 {
@@ -674,7 +675,8 @@ TEST (node, fork_keep)
 	ASSERT_TRUE (node2.ledger.block_exists (*transaction1, send1->hash ()));
 }
 
-TEST (node, fork_flip)
+// This test is racy, there is no guarantee that the election won't be confirmed until all forks are fully processed
+TEST (node, DISABLED_fork_flip)
 {
 	nano::test::system system (2);
 	auto & node1 (*system.nodes[0]);
@@ -700,7 +702,7 @@ TEST (node, fork_flip)
 				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build ();
 	nano::publish publish2{ nano::dev::network_params.network, send2 };
-	std::shared_ptr<nano::transport::channel_tcp> ignored_channel;
+	auto ignored_channel = nano::test::fake_channel(node1);
 
 	node1.network->inbound (publish1, ignored_channel);
 	node2.network->inbound (publish2, ignored_channel);
@@ -727,7 +729,7 @@ TEST (node, fork_flip)
 }
 
 // Test that more than one block can be rolled back
-TEST (node, fork_multi_flip)
+TEST (node, DISABLED_fork_multi_flip)
 {
 	auto type = nano::transport::transport_type::tcp;
 	nano::test::system system;

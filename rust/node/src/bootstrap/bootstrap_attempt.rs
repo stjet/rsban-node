@@ -139,7 +139,7 @@ impl BootstrapAttempt {
         {
             stop_pull = true;
         } else if let Some(p) = self.block_processor.upgrade() {
-            p.add(block, BlockSource::BootstrapLegacy);
+            p.add(block, BlockSource::BootstrapLegacy, None);
         }
 
         stop_pull
@@ -183,19 +183,20 @@ impl BootstrapAttempt {
     pub fn wait_until_block_processor_empty(
         &self,
         mut guard: MutexGuard<'static, u8>,
+        source: BlockSource,
     ) -> MutexGuard<'static, u8> {
         let Some(processor) = self.block_processor.upgrade() else {
             return guard;
         };
         let wait_start = Instant::now();
         while !self.stopped()
-            && processor.queue_len() > 0
+            && processor.queue_len(source) > 0
             && wait_start.elapsed() < Duration::from_secs(10)
         {
             guard = self
                 .condition
                 .wait_timeout_while(guard, Duration::from_millis(100), |_| {
-                    self.stopped() || processor.queue_len() == 0
+                    self.stopped() || processor.queue_len(source) == 0
                 })
                 .unwrap()
                 .0

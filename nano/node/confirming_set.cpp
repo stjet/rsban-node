@@ -2,9 +2,9 @@
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/thread_roles.hpp>
 #include <nano/node/confirming_set.hpp>
-#include <nano/node/write_database_queue.hpp>
 #include <nano/secure/ledger.hpp>
 #include <nano/store/component.hpp>
+#include <nano/store/write_database_queue.hpp>
 
 namespace
 {
@@ -35,7 +35,7 @@ void delete_block_hash_callback_context (void * context_a)
 }
 }
 
-nano::confirming_set::confirming_set (nano::ledger & ledger, nano::write_database_queue & write_queue, std::chrono::milliseconds batch_time) :
+nano::confirming_set::confirming_set (nano::ledger & ledger, nano::store::write_database_queue & write_queue, std::chrono::milliseconds batch_time) :
 	handle{ rsnano::rsn_confirming_set_create (ledger.handle, write_queue.handle, batch_time.count ()) }
 {
 }

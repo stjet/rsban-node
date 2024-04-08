@@ -129,7 +129,7 @@ void nano::block_processor::context::set_result (result_t const & result)
  * block_processor
  */
 
-nano::block_processor::block_processor (nano::node & node_a, nano::write_database_queue & write_database_queue_a) :
+nano::block_processor::block_processor (nano::node & node_a, nano::store::write_database_queue & write_database_queue_a) :
 	config (*node_a.config),
 	network_params (node_a.network_params),
 	flags (node_a.flags),

@@ -14,13 +14,13 @@ namespace nano
 {
 class block;
 class node;
-class write_database_queue;
 class logger;
 }
 
 namespace nano::store
 {
 class write_transaction;
+class write_database_queue;
 }
 
 namespace nano
@@ -113,7 +113,7 @@ public: // Context
 	};
 
 public:
-	block_processor (nano::node &, nano::write_database_queue &);
+	block_processor (nano::node &, nano::store::write_database_queue &);
 	block_processor (nano::block_processor const &) = delete;
 	block_processor (nano::block_processor &&) = delete;
 	~block_processor ();

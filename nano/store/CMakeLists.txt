@@ -59,7 +59,9 @@ add_library(
   peer.cpp
   pending.cpp
   pruned.cpp
-  version.cpp)
+  version.cpp
+  write_database_queue.hpp
+  write_database_queue.cpp)
 
 target_link_libraries(
   nano_store

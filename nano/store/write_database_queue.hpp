@@ -2,17 +2,13 @@
 
 #include <nano/lib/locks.hpp>
 
-#include <condition_variable>
-#include <deque>
-#include <functional>
-
 namespace rsnano
 {
 class WriteDatabaseQueueHandle;
 class WriteGuardHandle;
 }
 
-namespace nano
+namespace nano::store
 {
 /** Distinct areas write locking is done, order is irrelevant */
 enum class writer
@@ -53,13 +49,13 @@ public:
 	write_database_queue (write_database_queue &&) = delete;
 	~write_database_queue ();
 	/** Blocks until we are at the head of the queue and blocks other waiters until write_guard goes out of scope */
-	[[nodiscard ("write_guard blocks other waiters")]] write_guard wait (nano::writer writer);
+	[[nodiscard ("write_guard blocks other waiters")]] write_guard wait (nano::store::writer writer);
 
 	/** Returns true if this writer is now at the front of the queue */
-	bool process (nano::writer writer);
+	bool process (nano::store::writer writer);
 
 	/** Returns true if this writer is anywhere in the queue. Currently only used in tests */
-	bool contains (nano::writer writer);
+	bool contains (nano::store::writer writer);
 
 	/** Doesn't actually pop anything until the returned write_guard is out of scope */
 	write_guard pop ();

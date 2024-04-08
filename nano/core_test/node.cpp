@@ -2755,7 +2755,7 @@ TEST (node, block_processor_half_full)
 				 .work (*node.work_generate_blocking (send2->hash ()))
 				 .build ();
 	// The write guard prevents block processor doing any writes
-	auto write_guard = node.write_database_queue.wait (nano::writer::testing);
+	auto write_guard = node.write_database_queue.wait (nano::store::writer::testing);
 	node.block_processor.add (send1);
 	ASSERT_FALSE (node.block_processor.half_full ());
 	node.block_processor.add (send2);
@@ -3101,7 +3101,7 @@ TEST (node, rollback_vote_self)
 
 	{
 		// The write guard prevents the block processor from performing the rollback
-		auto write_guard = node.write_database_queue.wait (nano::writer::testing);
+		auto write_guard = node.write_database_queue.wait (nano::store::writer::testing);
 
 		ASSERT_EQ (0, node.active.votes_with_weight (*election).size ());
 		// Vote with key to switch the winner

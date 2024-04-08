@@ -1,4 +1,7 @@
-use super::lmdb::{LmdbStoreHandle, PendingInfoDto, PendingKeyDto, TransactionHandle};
+use super::{
+    lmdb::{LmdbStoreHandle, PendingInfoDto, PendingKeyDto, TransactionHandle},
+    write_queue::WriteGuardHandle,
+};
 use crate::{
     core::{copy_block_array_dto, AccountInfoHandle, BlockArrayDto, BlockHandle},
     ledger::{GenerateCacheHandle, LedgerCacheHandle, LedgerConstantsDto},
@@ -6,7 +9,7 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, Epoch, Link};
-use rsnano_ledger::{BlockStatus, Ledger, ReceivableIterator};
+use rsnano_ledger::{BlockStatus, Ledger, ReceivableIterator, Writer};
 use rsnano_node::stats::LedgerStats;
 use rsnano_store_lmdb::EnvironmentWrapper;
 use std::{ops::Deref, ptr::null_mut, sync::Arc};
@@ -46,6 +49,18 @@ pub unsafe extern "C" fn rsn_ledger_create(
 #[no_mangle]
 pub extern "C" fn rsn_ledger_destroy(handle: *mut LedgerHandle) {
     drop(unsafe { Box::from_raw(handle) });
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_ledger_wait(handle: &LedgerHandle, writer: u8) -> *mut WriteGuardHandle {
+    WriteGuardHandle::new(handle.write_queue.wait(Writer::from_u8(writer).unwrap()))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_ledger_queue_contains(handle: &LedgerHandle, writer: u8) -> bool {
+    handle
+        .write_queue
+        .contains(Writer::from_u8(writer).unwrap())
 }
 
 #[no_mangle]

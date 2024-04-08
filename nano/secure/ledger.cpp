@@ -51,6 +51,17 @@ rsnano::LedgerHandle * nano::ledger::get_handle () const
 	return handle;
 }
 
+nano::store::write_guard nano::ledger::wait (nano::store::writer writer)
+{
+	auto guard_handle = rsnano::rsn_ledger_wait (handle, static_cast<uint8_t> (writer));
+	return nano::store::write_guard (guard_handle);
+}
+
+bool nano::ledger::queue_contains (nano::store::writer writer)
+{
+	return rsnano::rsn_ledger_queue_contains (handle, static_cast<uint8_t> (writer));
+}
+
 // Balance for account containing hash
 std::optional<nano::uint128_t> nano::ledger::balance (store::transaction const & transaction, nano::block_hash const & hash) const
 {

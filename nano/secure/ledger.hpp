@@ -6,6 +6,7 @@
 #include <nano/secure/generate_cache_flags.hpp>
 #include <nano/secure/ledger_cache.hpp>
 #include <nano/secure/pending_info.hpp>
+#include <nano/store/write_queue.hpp>
 
 #include <deque>
 #include <map>
@@ -42,6 +43,9 @@ public:
 	ledger (nano::ledger const &) = delete;
 	ledger (nano::ledger &&) = delete;
 	~ledger ();
+	[[nodiscard ("write_guard blocks other waiters")]] nano::store::write_guard wait (nano::store::writer writer);
+	/** Returns true if this writer is anywhere in the queue. Currently only used in tests */
+	bool queue_contains (nano::store::writer writer);
 	/**
 	 * Returns the account for a given hash
 	 * Returns std::nullopt if the block doesn't exist or has been pruned

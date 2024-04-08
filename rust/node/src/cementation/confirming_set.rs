@@ -3,7 +3,7 @@ use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     BlockHash,
 };
-use rsnano_ledger::{Ledger, WriteQueue, Writer};
+use rsnano_ledger::{Ledger, Writer};
 use rsnano_store_lmdb::{Environment, EnvironmentWrapper};
 use std::{
     collections::{HashSet, VecDeque},
@@ -19,7 +19,7 @@ pub struct ConfirmingSet<T: Environment + 'static = EnvironmentWrapper> {
 }
 
 impl<T: Environment + 'static> ConfirmingSet<T> {
-    pub fn new(ledger: Arc<Ledger<T>>, write_queue: Arc<WriteQueue>, batch_time: Duration) -> Self {
+    pub fn new(ledger: Arc<Ledger<T>>, batch_time: Duration) -> Self {
         Self {
             join_handle: Mutex::new(None),
             thread: Arc::new(ConfirmingSetThread {
@@ -29,7 +29,6 @@ impl<T: Environment + 'static> ConfirmingSet<T> {
                     processing: HashSet::new(),
                 }),
                 condition: Condvar::new(),
-                write_queue,
                 ledger,
                 batch_time,
                 cemented_observers: Mutex::new(Vec::new()),
@@ -114,7 +113,6 @@ impl<T: Environment + 'static> Drop for ConfirmingSet<T> {
 pub struct ConfirmingSetThread<T: Environment + 'static = EnvironmentWrapper> {
     mutex: Mutex<ConfirmingSetImpl>,
     condition: Condvar,
-    write_queue: Arc<WriteQueue>,
     ledger: Arc<Ledger<T>>,
     batch_time: Duration,
     cemented_observers: Mutex<Vec<BlockCallback>>,
@@ -171,7 +169,7 @@ impl<T: Environment + 'static> ConfirmingSetThread<T> {
 
                 while !processing.is_empty() && !guard.stopped {
                     drop(guard); // Waiting for db write is potentially slow
-                    let _write_guard = self.write_queue.wait(Writer::ConfirmationHeight);
+                    let _write_guard = self.ledger.write_queue.wait(Writer::ConfirmationHeight);
                     let mut tx = self.ledger.rw_txn();
                     guard = self.mutex.lock().unwrap();
                     // Process items in the back buffer within a single transaction for a limited amount of time
@@ -234,8 +232,7 @@ mod tests {
     #[test]
     fn add_exists() {
         let ledger = Arc::new(Ledger::create_null());
-        let write_queue = Arc::new(WriteQueue::new(false));
-        let confirming_set = ConfirmingSet::new(ledger, write_queue, Duration::from_millis(500));
+        let confirming_set = ConfirmingSet::new(ledger, Duration::from_millis(500));
         let hash = BlockHash::from(1);
         confirming_set.add(hash);
         assert!(confirming_set.exists(&hash));
@@ -257,8 +254,7 @@ mod tests {
                 )
                 .build(),
         );
-        let write_queue = Arc::new(WriteQueue::new(false));
-        let confirming_set = ConfirmingSet::new(ledger, write_queue, Duration::from_millis(500));
+        let confirming_set = ConfirmingSet::new(ledger, Duration::from_millis(500));
         confirming_set.start();
         let count = Arc::new(Mutex::new(0));
         let condition = Arc::new(Condvar::new());

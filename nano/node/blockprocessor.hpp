@@ -20,7 +20,6 @@ class logger;
 namespace nano::store
 {
 class write_transaction;
-class write_queue;
 }
 
 namespace nano
@@ -113,7 +112,7 @@ public: // Context
 	};
 
 public:
-	block_processor (nano::node &, nano::store::write_queue &);
+	block_processor (nano::node &);
 	block_processor (nano::block_processor const &) = delete;
 	block_processor (nano::block_processor &&) = delete;
 	~block_processor ();

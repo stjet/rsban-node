@@ -101,8 +101,6 @@ nano::block_processor::block_processor (nano::node & node_a)
 nano::block_processor::~block_processor ()
 {
 	rsnano::rsn_block_processor_destroy (handle);
-	// Thread must be stopped before destruction
-	debug_assert (!thread.joinable ());
 }
 
 rsnano::BlockProcessorHandle const * nano::block_processor::get_handle () const
@@ -112,21 +110,12 @@ rsnano::BlockProcessorHandle const * nano::block_processor::get_handle () const
 
 void nano::block_processor::start ()
 {
-	debug_assert (!thread.joinable ());
-
-	thread = std::thread ([this] () {
-		nano::thread_role::set (nano::thread_role::name::block_processing);
-		rsnano::rsn_block_processor_run (handle);
-	});
+	rsnano::rsn_block_processor_start (handle);
 }
 
 void nano::block_processor::stop ()
 {
 	rsnano::rsn_block_processor_stop (handle);
-	if (thread.joinable ())
-	{
-		thread.join ();
-	}
 }
 
 std::size_t nano::block_processor::size () const

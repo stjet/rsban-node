@@ -61,11 +61,6 @@ pub extern "C" fn rsn_block_processor_destroy(handle: *mut BlockProcessorHandle)
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_block_processor_run(handle: &BlockProcessorHandle) {
-    handle.run();
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_block_processor_total_queue_len(handle: &BlockProcessorHandle) -> usize {
     handle.total_queue_len()
 }
@@ -89,8 +84,13 @@ pub extern "C" fn rsn_block_processor_half_full(handle: &BlockProcessorHandle) -
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_block_processor_start(handle: &BlockProcessorHandle) {
+    handle.start();
+}
+
+#[no_mangle]
 pub extern "C" fn rsn_block_processor_stop(handle: &BlockProcessorHandle) {
-    handle.stop().unwrap();
+    handle.stop();
 }
 
 pub type BlocksRolledBackCallback =

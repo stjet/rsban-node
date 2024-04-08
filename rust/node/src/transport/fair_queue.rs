@@ -186,8 +186,8 @@ where
     queues: BTreeMap<OriginEntry<S>, Entry<R>>,
     last_update: Instant,
     current_queue_key: Option<OriginEntry<S>>,
-    max_size_query: Box<dyn Fn(&Origin<S>) -> usize>,
-    priority_query: Box<dyn Fn(&Origin<S>) -> usize>,
+    max_size_query: Box<dyn Fn(&Origin<S>) -> usize + Send + Sync>,
+    priority_query: Box<dyn Fn(&Origin<S>) -> usize + Send + Sync>,
     counter: usize,
 }
 
@@ -196,8 +196,8 @@ where
     S: Ord + Copy,
 {
     pub fn new(
-        max_size_query: Box<dyn Fn(&Origin<S>) -> usize>,
-        priority_query: Box<dyn Fn(&Origin<S>) -> usize>,
+        max_size_query: Box<dyn Fn(&Origin<S>) -> usize + Send + Sync>,
+        priority_query: Box<dyn Fn(&Origin<S>) -> usize + Send + Sync>,
     ) -> Self {
         Self {
             queues: BTreeMap::new(),

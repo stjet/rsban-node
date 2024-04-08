@@ -14,6 +14,7 @@ use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
     mem::size_of,
     sync::{Arc, Condvar, Mutex},
+    thread::JoinHandle,
     time::{Duration, Instant},
 };
 use tracing::{debug, error, info, trace};
@@ -82,18 +83,8 @@ impl BlockProcessorContext {
 }
 
 pub struct BlockProcessor {
-    mutex: Mutex<BlockProcessorImpl>,
-    condition: Condvar,
-    ledger: Arc<Ledger>,
-    unchecked_map: Arc<UncheckedMap>,
-    config: Arc<NodeConfig>,
-    stats: Arc<Stats>,
-    work: Arc<WorkThresholds>,
-    flags: Arc<NodeFlags>,
-    blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<BlockEnum>, BlockEnum)>>>,
-    block_rolled_back: Mutex<Vec<Box<dyn Fn(&BlockEnum)>>>,
-    block_processed: Mutex<Vec<Box<dyn Fn(BlockStatus, &BlockProcessorContext)>>>,
-    batch_processed: Mutex<Vec<Box<dyn Fn(&[(BlockStatus, Arc<BlockProcessorContext>)])>>>,
+    thread: Mutex<Option<JoinHandle<()>>>,
+    processor_loop: Arc<BlockProcessorLoop>,
 }
 
 impl BlockProcessor {
@@ -122,26 +113,156 @@ impl BlockProcessor {
         });
 
         Self {
-            mutex: Mutex::new(BlockProcessorImpl {
-                queue: FairQueue::new(max_size_query, priority_query),
-                last_log: None,
-                config: Arc::clone(&config),
-                stopped: false,
+            processor_loop: Arc::new(BlockProcessorLoop {
+                mutex: Mutex::new(BlockProcessorImpl {
+                    queue: FairQueue::new(max_size_query, priority_query),
+                    last_log: None,
+                    config: Arc::clone(&config),
+                    stopped: false,
+                }),
+                condition: Condvar::new(),
+                ledger,
+                unchecked_map,
+                config,
+                stats,
+                work,
+                flags,
+                blocks_rolled_back: Mutex::new(None),
+                block_rolled_back: Mutex::new(Vec::new()),
+                block_processed: Mutex::new(Vec::new()),
+                batch_processed: Mutex::new(Vec::new()),
             }),
-            condition: Condvar::new(),
-            ledger,
-            unchecked_map,
-            config,
-            stats,
-            work,
-            flags,
-            blocks_rolled_back: Mutex::new(None),
-            block_rolled_back: Mutex::new(Vec::new()),
-            block_processed: Mutex::new(Vec::new()),
-            batch_processed: Mutex::new(Vec::new()),
+            thread: Mutex::new(None),
         }
     }
 
+    pub fn new_test_instance(ledger: Arc<Ledger>) -> Self {
+        BlockProcessor::new(
+            Arc::new(NodeConfig::new_null()),
+            Arc::new(NodeFlags::default()),
+            ledger,
+            Arc::new(UncheckedMap::default()),
+            Arc::new(Stats::default()),
+            Arc::new(WORK_THRESHOLDS_STUB.clone()),
+        )
+    }
+
+    pub fn start(&self) {
+        debug_assert!(self.thread.lock().unwrap().is_none());
+        let processor_loop = Arc::clone(&self.processor_loop);
+        *self.thread.lock().unwrap() = Some(
+            std::thread::Builder::new()
+                .name("Blck processing".to_string())
+                .spawn(move || {
+                    processor_loop.run();
+                })
+                .unwrap(),
+        );
+    }
+
+    pub fn stop(&self) {
+        self.processor_loop.mutex.lock().unwrap().stopped = true;
+        self.processor_loop.condition.notify_all();
+        if let Some(join_handle) = self.thread.lock().unwrap().take() {
+            join_handle.join().unwrap();
+        }
+    }
+
+    pub fn full(&self) -> bool {
+        self.processor_loop.full()
+    }
+
+    pub fn half_full(&self) -> bool {
+        self.processor_loop.half_full()
+    }
+
+    pub fn total_queue_len(&self) -> usize {
+        self.processor_loop.total_queue_len()
+    }
+
+    pub fn queue_len(&self, source: BlockSource) -> usize {
+        self.processor_loop.queue_len(source)
+    }
+
+    pub fn add_block_processed_observer(
+        &self,
+        observer: Box<dyn Fn(BlockStatus, &BlockProcessorContext) + Send + Sync>,
+    ) {
+        self.processor_loop.add_block_processed_observer(observer);
+    }
+
+    pub fn add_batch_processed_observer(
+        &self,
+        observer: Box<dyn Fn(&[(BlockStatus, Arc<BlockProcessorContext>)]) + Send + Sync>,
+    ) {
+        self.processor_loop.add_batch_processed_observer(observer);
+    }
+
+    pub fn add_rolled_back_observer(&self, observer: Box<dyn Fn(&BlockEnum) + Send + Sync>) {
+        self.processor_loop.add_rolled_back_observer(observer);
+    }
+
+    pub fn add(
+        &self,
+        block: Arc<BlockEnum>,
+        source: BlockSource,
+        channel: Option<Arc<ChannelEnum>>,
+    ) -> bool {
+        self.processor_loop.add(block, source, channel)
+    }
+
+    pub fn add_blocking(&self, block: Arc<BlockEnum>, source: BlockSource) -> Option<BlockStatus> {
+        self.processor_loop.add_blocking(block, source)
+    }
+
+    pub fn process_active(&self, block: Arc<BlockEnum>) {
+        self.processor_loop.process_active(block);
+    }
+
+    pub fn notify_block_rolled_back(&self, block: &BlockEnum) {
+        self.processor_loop.notify_block_rolled_back(block)
+    }
+
+    pub fn set_blocks_rolled_back_callback(
+        &self,
+        callback: Box<dyn Fn(Vec<BlockEnum>, BlockEnum) + Send + Sync>,
+    ) {
+        self.processor_loop
+            .set_blocks_rolled_back_callback(callback);
+    }
+    pub fn force(&self, block: Arc<BlockEnum>) {
+        self.processor_loop.force(block);
+    }
+
+    pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
+        self.processor_loop.collect_container_info(name)
+    }
+}
+
+impl Drop for BlockProcessor {
+    fn drop(&mut self) {
+        // Thread must be stopped before destruction
+        debug_assert!(self.thread.lock().unwrap().is_none());
+    }
+}
+
+struct BlockProcessorLoop {
+    mutex: Mutex<BlockProcessorImpl>,
+    condition: Condvar,
+    ledger: Arc<Ledger>,
+    unchecked_map: Arc<UncheckedMap>,
+    config: Arc<NodeConfig>,
+    stats: Arc<Stats>,
+    work: Arc<WorkThresholds>,
+    flags: Arc<NodeFlags>,
+    blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<BlockEnum>, BlockEnum) + Send + Sync>>>,
+    block_rolled_back: Mutex<Vec<Box<dyn Fn(&BlockEnum) + Send + Sync>>>,
+    block_processed: Mutex<Vec<Box<dyn Fn(BlockStatus, &BlockProcessorContext) + Send + Sync>>>,
+    batch_processed:
+        Mutex<Vec<Box<dyn Fn(&[(BlockStatus, Arc<BlockProcessorContext>)]) + Send + Sync>>>,
+}
+
+impl BlockProcessorLoop {
     pub fn run(&self) {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {
@@ -182,32 +303,21 @@ impl BlockProcessor {
         }
     }
 
-    pub fn new_test_instance(ledger: Arc<Ledger>) -> Self {
-        BlockProcessor::new(
-            Arc::new(NodeConfig::new_null()),
-            Arc::new(NodeFlags::default()),
-            ledger,
-            Arc::new(UncheckedMap::default()),
-            Arc::new(Stats::default()),
-            Arc::new(WORK_THRESHOLDS_STUB.clone()),
-        )
-    }
-
     pub fn add_block_processed_observer(
         &self,
-        observer: Box<dyn Fn(BlockStatus, &BlockProcessorContext)>,
+        observer: Box<dyn Fn(BlockStatus, &BlockProcessorContext) + Send + Sync>,
     ) {
         self.block_processed.lock().unwrap().push(observer);
     }
 
     pub fn add_batch_processed_observer(
         &self,
-        observer: Box<dyn Fn(&[(BlockStatus, Arc<BlockProcessorContext>)])>,
+        observer: Box<dyn Fn(&[(BlockStatus, Arc<BlockProcessorContext>)]) + Send + Sync>,
     ) {
         self.batch_processed.lock().unwrap().push(observer);
     }
 
-    pub fn add_rolled_back_observer(&self, observer: Box<dyn Fn(&BlockEnum)>) {
+    pub fn add_rolled_back_observer(&self, observer: Box<dyn Fn(&BlockEnum) + Send + Sync>) {
         self.block_rolled_back.lock().unwrap().push(observer);
     }
 
@@ -219,7 +329,7 @@ impl BlockProcessor {
 
     pub fn set_blocks_rolled_back_callback(
         &self,
-        callback: Box<dyn Fn(Vec<BlockEnum>, BlockEnum)>,
+        callback: Box<dyn Fn(Vec<BlockEnum>, BlockEnum) + Send + Sync>,
     ) {
         *self.blocks_rolled_back.lock().unwrap() = Some(callback);
     }
@@ -502,11 +612,7 @@ impl BlockProcessor {
         result
     }
 
-    pub fn rollback_competitor(
-        &self,
-        transaction: &mut LmdbWriteTransaction,
-        block: &Arc<BlockEnum>,
-    ) {
+    fn rollback_competitor(&self, transaction: &mut LmdbWriteTransaction, block: &Arc<BlockEnum>) {
         let hash = block.hash();
         if let Some(successor) = self
             .ledger
@@ -542,12 +648,6 @@ impl BlockProcessor {
         }
     }
 
-    pub fn stop(&self) -> std::thread::Result<()> {
-        self.mutex.lock().unwrap().stopped = true;
-        self.condition.notify_all();
-        Ok(())
-    }
-
     pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
         let guard = self.mutex.lock().unwrap();
         ContainerInfoComponent::Composite(
@@ -569,10 +669,7 @@ impl BlockProcessor {
     }
 }
 
-unsafe impl Send for BlockProcessor {}
-unsafe impl Sync for BlockProcessor {}
-
-pub struct BlockProcessorImpl {
+struct BlockProcessorImpl {
     pub queue: FairQueue<Arc<BlockProcessorContext>, BlockSource>,
     pub last_log: Option<Instant>,
     config: Arc<NodeConfig>,

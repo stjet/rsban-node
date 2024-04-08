@@ -93,6 +93,7 @@ pub struct BlockProcessor {
     work: Arc<WorkThresholds>,
     flags: Arc<NodeFlags>,
     blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<BlockEnum>, BlockEnum)>>>,
+    block_rolled_back: Mutex<Vec<Box<dyn Fn(&BlockEnum)>>>,
 }
 
 impl BlockProcessor {
@@ -137,6 +138,7 @@ impl BlockProcessor {
             work,
             flags,
             blocks_rolled_back: Mutex::new(None),
+            block_rolled_back: Mutex::new(Vec::new()),
         }
     }
 
@@ -150,6 +152,16 @@ impl BlockProcessor {
             Arc::new(Stats::default()),
             Arc::new(WORK_THRESHOLDS_STUB.clone()),
         )
+    }
+
+    pub fn add_rolled_back_observer(&self, observer: Box<dyn Fn(&BlockEnum)>) {
+        self.block_rolled_back.lock().unwrap().push(observer);
+    }
+
+    pub fn notify_block_rolled_back(&self, block: &BlockEnum) {
+        for observer in self.block_rolled_back.lock().unwrap().iter() {
+            observer(block)
+        }
     }
 
     pub fn set_blocks_rolled_back_callback(

@@ -3,7 +3,6 @@
 #include <nano/node/transport/channel.hpp>
 #include <nano/secure/common.hpp>
 
-#include <chrono>
 #include <functional>
 #include <future>
 #include <memory>
@@ -143,7 +142,8 @@ public: // Events
 	// The batch observer feeds the processed observer
 	nano::observer_set<nano::block_status const &, context const &> block_processed;
 	nano::observer_set<processed_batch_t const &> batch_processed;
-	nano::observer_set<std::shared_ptr<nano::block> const &> rolled_back;
+	void add_rolled_back_observer (std::function<void (std::shared_ptr<nano::block> const &)> observer);
+	void notify_block_rolled_back (std::shared_ptr<nano::block> const & block);
 
 private:
 	void run ();

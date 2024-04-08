@@ -167,8 +167,8 @@ public:
 	nano::confirming_set confirming_set; // ported
 	nano::vote_cache vote_cache; // ported
 	nano::wallets wallets;
-	nano::vote_generator generator;
-	nano::vote_generator final_generator;
+	nano::vote_generator generator; // ported
+	nano::vote_generator final_generator; // ported
 	nano::block_processor block_processor;
 	nano::active_transactions active;
 	std::shared_ptr<nano::transport::tcp_listener> tcp_listener;

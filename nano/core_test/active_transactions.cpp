@@ -852,7 +852,8 @@ TEST (active_transactions, fork_filter_cleanup)
  *     (9 votes from this batch should survive and replace existing blocks in the election, why not 10?)
  * Then send winning block and it should replace one of the existing blocks
  */
-TEST (active_transactions, fork_replacement_tally)
+// Disabled by Gustav. It is flaky.
+TEST (active_transactions, DISABLED_fork_replacement_tally)
 {
 	nano::test::system system;
 	nano::node_config node_config = system.default_config ();

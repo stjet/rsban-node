@@ -74,6 +74,19 @@ void blocks_rolled_back_delete (void * context)
 	auto callback = static_cast<std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> *> (context);
 	delete callback;
 }
+
+void block_rolled_back_wrapper (void * context, rsnano::BlockHandle * block_handle)
+{
+	auto callback = static_cast<std::function<void (std::shared_ptr<nano::block> const &)> *> (context);
+	auto block{ nano::block_handle_to_block (block_handle) };
+	(*callback) (block);
+}
+
+void block_rolled_back_delete (void * context)
+{
+	auto callback = static_cast<std::function<void (std::shared_ptr<nano::block> const &)> *> (context);
+	delete callback;
+}
 }
 
 /*
@@ -314,6 +327,17 @@ auto nano::block_processor::process_batch (nano::block_processor_lock & lock_a) 
 	}
 	rsnano::rsn_process_batch_result_destroy (result_handle);
 	return result;
+}
+
+void nano::block_processor::add_rolled_back_observer (std::function<void (std::shared_ptr<nano::block> const &)> observer)
+{
+	auto context = new std::function<void (std::shared_ptr<nano::block> const &)> (observer);
+	rsnano::rsn_block_processor_add_rolled_back_observer (handle, context, block_rolled_back_delete, block_rolled_back_wrapper);
+}
+
+void nano::block_processor::notify_block_rolled_back (std::shared_ptr<nano::block> const & block)
+{
+	rsnano::rsn_block_processor_notify_block_rolled_back (handle, block->get_handle ());
 }
 
 std::unique_ptr<nano::container_info_component> nano::block_processor::collect_container_info (std::string const & name)

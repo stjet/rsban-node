@@ -7,7 +7,6 @@ mod local_vote_history;
 mod recently_cemented_cache;
 mod rep_tiers;
 mod vote;
-mod vote_broadcaster;
 mod vote_cache;
 mod vote_generator;
 mod vote_processor_queue;

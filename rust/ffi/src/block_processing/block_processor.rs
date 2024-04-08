@@ -1,7 +1,7 @@
 use super::unchecked_map::UncheckedMapHandle;
 use crate::{
     core::{BlockHandle, BlockVecHandle},
-    ledger::datastore::{LedgerHandle, WriteQueueHandle},
+    ledger::datastore::LedgerHandle,
     transport::ChannelHandle,
     utils::{ContainerInfoComponentHandle, ContextWrapper},
     work::WorkThresholdsDto,
@@ -238,6 +238,30 @@ pub unsafe extern "C" fn rsn_block_processor_add_impl(
         Some(Arc::clone(&*channel))
     };
     handle.add_impl(context.0.take().unwrap(), channel)
+}
+
+pub type BlockRolledBackCallback = extern "C" fn(*mut c_void, *mut BlockHandle);
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_add_rolled_back_observer(
+    handle: &mut BlockProcessorHandle,
+    context: *mut c_void,
+    drop_context: VoidPointerCallback,
+    observer: BlockRolledBackCallback,
+) {
+    let context_wrapper = ContextWrapper::new(context, drop_context);
+    handle.add_rolled_back_observer(Box::new(move |block| {
+        let block_handle = BlockHandle::new(Arc::new(block.clone()));
+        observer(context_wrapper.get_context(), block_handle);
+    }));
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_notify_block_rolled_back(
+    handle: &mut BlockProcessorHandle,
+    block: &BlockHandle,
+) {
+    handle.notify_block_rolled_back(block);
 }
 
 pub struct ProcessBatchResult(VecDeque<(BlockStatus, BlockProcessorContext)>);

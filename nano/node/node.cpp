@@ -221,7 +221,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		// Deleting from votes cache, stop active transaction
 		for (auto & i : rolled_back)
 		{
-			node_a->block_processor.rolled_back.notify (i);
+			node_a->block_processor.notify_block_rolled_back (i);
 
 			node_a->history.erase (i->root ());
 			// Stop all rolled back active transactions except initial

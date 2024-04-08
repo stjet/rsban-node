@@ -136,7 +136,7 @@ public:
 	std::shared_ptr<nano::node_observers> observers;
 	std::shared_ptr<nano::node_config> config; // ported
 	nano::network_params network_params; // ported
-	std::shared_ptr<nano::logger> logger;
+	std::shared_ptr<nano::logger> logger; // ported
 	std::shared_ptr<nano::stats> stats; // ported
 	std::shared_ptr<nano::thread_pool> workers; // ported
 	std::shared_ptr<nano::thread_pool> bootstrap_workers; // ported
@@ -169,9 +169,9 @@ public:
 	nano::wallets wallets;
 	nano::vote_generator generator; // ported
 	nano::vote_generator final_generator; // ported
-	nano::block_processor block_processor;
+	nano::block_processor block_processor; // ported
 	nano::active_transactions active;
-	std::shared_ptr<nano::transport::tcp_listener> tcp_listener;
+	std::shared_ptr<nano::transport::tcp_listener> tcp_listener; // ported
 
 private: // Placed here to maintain initialization order
 	std::unique_ptr<nano::scheduler::component> scheduler_impl;

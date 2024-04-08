@@ -11,8 +11,7 @@ use num_traits::FromPrimitive;
 use rsnano_core::work::WorkThresholds;
 use rsnano_node::{
     block_processing::{
-        BlockProcessor, BlockProcessorContext, BlockProcessorImpl, BlockSource,
-        BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
+        BlockProcessor, BlockProcessorImpl, BlockSource, BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
     },
     config::NodeConfig,
 };
@@ -317,74 +316,4 @@ pub unsafe extern "C" fn rsn_block_processor_collect_container_info(
         .0
         .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
     Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
-}
-
-pub struct BlockProcessorContextHandle(Option<BlockProcessorContext>);
-
-impl BlockProcessorContextHandle {
-    pub fn new(ctx: BlockProcessorContext) -> *mut Self {
-        Box::into_raw(Box::new(Self(Some(ctx))))
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_context_create(
-    block: &BlockHandle,
-    source: u8,
-) -> *mut BlockProcessorContextHandle {
-    BlockProcessorContextHandle::new(BlockProcessorContext::new(
-        Arc::clone(block),
-        FromPrimitive::from_u8(source).unwrap(),
-    ))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_context_destroy(
-    handle: *mut BlockProcessorContextHandle,
-) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_context_block(
-    handle: &BlockProcessorContextHandle,
-) -> *mut BlockHandle {
-    BlockHandle::new(Arc::clone(&handle.0.as_ref().unwrap().block))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_context_source(
-    handle: &BlockProcessorContextHandle,
-) -> u8 {
-    handle.0.as_ref().unwrap().source as u8
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_context_promise(
-    handle: &BlockProcessorContextHandle,
-) -> *mut c_void {
-    handle.0.as_ref().unwrap().promise
-}
-
-pub type VoidPointerResultCallback = unsafe extern "C" fn() -> *mut c_void;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_create_block_processor_promise(
-    callback: VoidPointerResultCallback,
-) {
-    CREATE_BLOCK_PROCESSOR_PROMISE = Some(callback);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_drop_block_processor_promise(callback: VoidPointerCallback) {
-    DROP_BLOCK_PROCESSOR_PROMISE = Some(callback);
-}
-
-pub type PromiseSetResultCallback = unsafe extern "C" fn(*mut c_void, u8);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_block_processor_promise_set_result(
-    callback: PromiseSetResultCallback,
-) {
-    BLOCK_PROCESSOR_PROMISE_SET_RESULT = Some(callback);
 }

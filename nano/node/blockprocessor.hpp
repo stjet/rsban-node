@@ -4,7 +4,6 @@
 #include <nano/secure/common.hpp>
 
 #include <functional>
-#include <future>
 #include <memory>
 #include <optional>
 #include <thread>
@@ -85,32 +84,6 @@ public:
  */
 class block_processor final
 {
-public: // Context
-	class context
-	{
-	public:
-		context (std::shared_ptr<block> block, block_source source);
-		explicit context (rsnano::BlockProcessorContextHandle * handle_a);
-		context (context const &) = delete;
-		context (context &&);
-		~context ();
-
-		block_source const source{};
-		std::shared_ptr<nano::block> get_block () const;
-
-	public:
-		using result_t = nano::block_status;
-		std::future<result_t> get_future ();
-
-	private:
-		void set_result (result_t const &);
-
-		friend class block_processor;
-
-	public:
-		rsnano::BlockProcessorContextHandle * handle;
-	};
-
 public:
 	block_processor (nano::node &);
 	block_processor (nano::block_processor const &) = delete;
@@ -135,7 +108,6 @@ public:
 	rsnano::BlockProcessorHandle const * get_handle () const;
 
 public: // Events
-	using processed_t = std::tuple<nano::block_status, context>;
 	using processed_batch_t = std::vector<std::tuple<nano::block_status, std::shared_ptr<nano::block>, nano::block_source>>;
 
 	void set_blocks_rolled_back_callback (std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> callback);

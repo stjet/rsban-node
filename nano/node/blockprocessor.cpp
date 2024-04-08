@@ -96,7 +96,7 @@ void block_processed_wrapper (void * context, rsnano::BlockProcessedInfoDto * dt
 
 void block_processed_delete (void * context)
 {
-	auto callback = static_cast<std::function<void (nano::block_status const &, nano::block_processor::context const &)> *> (context);
+	auto callback = static_cast<std::function<void (nano::block_status const &, std::shared_ptr<nano::block> const &, nano::block_source)> *> (context);
 	delete callback;
 }
 
@@ -119,55 +119,6 @@ void batch_processed_delete (void * context)
 	auto callback = static_cast<std::function<void (std::vector<std::tuple<nano::block_status, std::shared_ptr<nano::block>, nano::block_source>> const &)> *> (context);
 	delete callback;
 }
-}
-
-/*
- * block_processor::context
- */
-
-nano::block_processor::context::context (std::shared_ptr<nano::block> block, nano::block_source source_a) :
-	source{ source_a },
-	handle{ rsnano::rsn_block_processor_context_create (block->get_handle (), static_cast<uint8_t> (source_a)) }
-{
-	debug_assert (source != nano::block_source::unknown);
-}
-
-nano::block_processor::context::context (rsnano::BlockProcessorContextHandle * handle_a) :
-	source{ rsnano::rsn_block_processor_context_source (handle_a) },
-	handle{ handle_a }
-{
-}
-
-nano::block_processor::context::context (nano::block_processor::context && other) :
-	source{ other.source },
-	handle{ other.handle }
-{
-	other.handle = nullptr;
-}
-
-nano::block_processor::context::~context ()
-{
-	if (handle != nullptr)
-	{
-		rsnano::rsn_block_processor_context_destroy (handle);
-	}
-}
-
-std::shared_ptr<nano::block> nano::block_processor::context::get_block () const
-{
-	return nano::block_handle_to_block (rsnano::rsn_block_processor_context_block (handle));
-}
-
-auto nano::block_processor::context::get_future () -> std::future<result_t>
-{
-	auto promise = static_cast<std::promise<result_t> *> (rsnano::rsn_block_processor_context_promise (handle));
-	return promise->get_future ();
-}
-
-void nano::block_processor::context::set_result (result_t const & result)
-{
-	auto promise = static_cast<std::promise<result_t> *> (rsnano::rsn_block_processor_context_promise (handle));
-	promise->set_value (result);
 }
 
 /*

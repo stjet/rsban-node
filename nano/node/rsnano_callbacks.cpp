@@ -546,23 +546,6 @@ void wait_latch (void * latch_ptr)
 	latch->wait ();
 }
 
-void * create_block_processor_promise ()
-{
-	return new std::promise<nano::block_status> ();
-}
-
-void drop_block_processor_promise (void * promise_ptr)
-{
-	auto promise = static_cast<std::promise<nano::block_status> *> (promise_ptr);
-	delete promise;
-}
-
-void block_processor_set_result (void * promise_ptr, uint8_t result)
-{
-	auto promise = static_cast<std::promise<nano::block_status> *> (promise_ptr);
-	promise->set_value (static_cast<nano::block_status> (result));
-}
-
 void legacy_add_frontier (void * cpp_handle, rsnano::PullInfoDto const * pull_dto)
 {
 	auto attempt = static_cast<nano::bootstrap_attempt_legacy *> (cpp_handle);
@@ -663,9 +646,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_connections_requeue_pull (requeue_pull);
 	rsnano::rsn_callback_bootstrap_connections_populate_connections (populate_connections);
 	rsnano::rsn_callback_bootstrap_connections_add_pull (add_pull);
-	rsnano::rsn_callback_create_block_processor_promise (create_block_processor_promise);
-	rsnano::rsn_callback_drop_block_processor_promise (drop_block_processor_promise);
-	rsnano::rsn_callback_block_processor_promise_set_result (block_processor_set_result);
 
 	rsnano::rsn_callback_bootstrap_attempt_legacy_add_frontier (legacy_add_frontier);
 	rsnano::rsn_callback_bootstrap_attempt_legacy_add_start_account (legacy_set_start_account);

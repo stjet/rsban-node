@@ -197,8 +197,8 @@ public:
 	void set_disable_max_peers_per_ip (bool value);
 	bool disable_max_peers_per_subnetwork () const; // For testing only
 	void set_disable_max_peers_per_subnetwork (bool value);
-	bool force_use_write_database_queue () const; // For testing only. RocksDB does not use the database queue, but some tests rely on it being used.
-	void set_force_use_write_database_queue (bool value);
+	bool force_use_write_queue () const; // For testing only. RocksDB does not use the database queue, but some tests rely on it being used.
+	void set_force_use_write_queue (bool value);
 	bool disable_search_pending () const; // For testing only
 	void set_disable_search_pending (bool value);
 	bool enable_pruning () const;

@@ -135,7 +135,7 @@ pub struct NodeFlagsDto {
     pub allow_bootstrap_peers_duplicates: bool,
     pub disable_max_peers_per_ip: bool,
     pub disable_max_peers_per_subnetwork: bool,
-    pub force_use_write_database_queue: bool,
+    pub force_use_write_queue: bool,
     pub disable_search_pending: bool,
     pub enable_pruning: bool,
     pub fast_bootstrap: bool,
@@ -177,7 +177,7 @@ pub unsafe extern "C" fn rsn_node_flags_get(
     result.allow_bootstrap_peers_duplicates = lock.allow_bootstrap_peers_duplicates;
     result.disable_max_peers_per_ip = lock.disable_max_peers_per_ip;
     result.disable_max_peers_per_subnetwork = lock.disable_max_peers_per_subnetwork;
-    result.force_use_write_database_queue = lock.force_use_write_database_queue;
+    result.force_use_write_queue = lock.force_use_write_queue;
     result.disable_search_pending = lock.disable_search_pending;
     result.enable_pruning = lock.enable_pruning;
     result.fast_bootstrap = lock.fast_bootstrap;
@@ -219,7 +219,7 @@ pub unsafe extern "C" fn rsn_node_flags_set(
     lock.allow_bootstrap_peers_duplicates = flags.allow_bootstrap_peers_duplicates;
     lock.disable_max_peers_per_ip = flags.disable_max_peers_per_ip;
     lock.disable_max_peers_per_subnetwork = flags.disable_max_peers_per_subnetwork;
-    lock.force_use_write_database_queue = flags.force_use_write_database_queue;
+    lock.force_use_write_queue = flags.force_use_write_queue;
     lock.disable_search_pending = flags.disable_search_pending;
     lock.enable_pruning = flags.enable_pruning;
     lock.fast_bootstrap = flags.fast_bootstrap;

@@ -17,7 +17,7 @@ class container_info_component;
 }
 namespace nano::store
 {
-class write_database_queue;
+class write_queue;
 }
 
 namespace nano
@@ -28,7 +28,7 @@ namespace nano
 class confirming_set final
 {
 public:
-	confirming_set (nano::ledger & ledger, nano::store::write_database_queue & write_queue, std::chrono::milliseconds batch_time = std::chrono::milliseconds{ 500 });
+	confirming_set (nano::ledger & ledger, nano::store::write_queue & write_queue, std::chrono::milliseconds batch_time = std::chrono::milliseconds{ 500 });
 	~confirming_set ();
 	// Adds a block to the set of blocks to be confirmed
 	void add (nano::block_hash const & hash);

@@ -866,13 +866,13 @@ void nano::node_flags::set_disable_max_peers_per_subnetwork (bool value)
 {
 	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_max_peers_per_subnetwork = value; });
 }
-bool nano::node_flags::force_use_write_database_queue () const // For testing only
+bool nano::node_flags::force_use_write_queue () const // For testing only
 {
-	return flags_dto ().force_use_write_database_queue;
+	return flags_dto ().force_use_write_queue;
 }
-void nano::node_flags::set_force_use_write_database_queue (bool value)
+void nano::node_flags::set_force_use_write_queue (bool value)
 {
-	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.force_use_write_database_queue = value; });
+	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.force_use_write_queue = value; });
 }
 bool nano::node_flags::disable_search_pending () const // For testing only
 {

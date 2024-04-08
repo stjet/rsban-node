@@ -129,7 +129,7 @@ void nano::block_processor::context::set_result (result_t const & result)
  * block_processor
  */
 
-nano::block_processor::block_processor (nano::node & node_a, nano::store::write_database_queue & write_database_queue_a) :
+nano::block_processor::block_processor (nano::node & node_a, nano::store::write_queue & write_queue_a) :
 	config (*node_a.config),
 	network_params (node_a.network_params),
 	flags (node_a.flags),
@@ -145,7 +145,7 @@ nano::block_processor::block_processor (nano::node & node_a, nano::store::write_
 	node_a.unchecked.handle,
 	node_a.stats->handle,
 	&node_a.config->network_params.work.dto,
-	write_database_queue_a.handle);
+	write_queue_a.handle);
 
 	batch_processed.add ([this] (auto const & items) {
 		// For every batch item: notify the 'processed' observer.

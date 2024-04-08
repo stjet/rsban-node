@@ -144,7 +144,7 @@ nano::node::node (rsnano::async_runtime & async_rt, uint16_t peering_port_a, std
 
 nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path const & application_path_a, nano::node_config const & config_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
 	node_id{ nano::load_or_create_node_id (application_path_a) },
-	write_database_queue (!flags_a.force_use_write_database_queue ()),
+	write_queue (!flags_a.force_use_write_queue ()),
 	async_rt{ async_rt_a },
 	io_ctx (async_rt_a.io_ctx),
 	node_initialized_latch (1),
@@ -194,10 +194,10 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	},
 	vote_processor (vote_processor_queue, active, *observers, *stats, *config, *logger, rep_crawler, network_params, rep_tiers),
 	warmed_up (0),
-	block_processor (*this, write_database_queue),
+	block_processor (*this, write_queue),
 	online_reps (ledger, *config),
 	history{ config_a.network_params.voting },
-	confirming_set (ledger, write_database_queue, config_a.confirming_set_batch_time),
+	confirming_set (ledger, write_queue, config_a.confirming_set_batch_time),
 	vote_cache{ config_a.vote_cache, *stats },
 	wallets (wallets_store.init_error (), *this),
 	generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* non-final */ false },
@@ -1046,7 +1046,7 @@ void nano::node::ledger_pruning (uint64_t const batch_size_a, bool bootstrap_wei
 		transaction_write_count = 0;
 		if (!pruning_targets.empty () && !stopped)
 		{
-			auto scoped_write_guard = write_database_queue.wait (nano::store::writer::pruning);
+			auto scoped_write_guard = write_queue.wait (nano::store::writer::pruning);
 			auto write_transaction (store.tx_begin_write ({ tables::blocks, tables::pruned }));
 			while (!pruning_targets.empty () && transaction_write_count < batch_size_a && !stopped)
 			{

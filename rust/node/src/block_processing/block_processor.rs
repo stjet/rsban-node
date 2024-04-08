@@ -51,7 +51,8 @@ pub struct BlockProcessorContext {
     pub block: Arc<BlockEnum>,
     pub source: BlockSource,
     pub arrival: Instant,
-    pub promise: *mut c_void,
+    pub result: Mutex<Option<BlockStatus>>,
+    condition: Condvar,
 }
 
 impl BlockProcessorContext {
@@ -60,34 +61,27 @@ impl BlockProcessorContext {
             block,
             source,
             arrival: Instant::now(),
-            promise: unsafe {
-                CREATE_BLOCK_PROCESSOR_PROMISE.expect("CREATE_BLOCK_PROCESSOR_PROMISE missing")()
-            },
+            result: Mutex::new(None),
+            condition: Condvar::new(),
         }
     }
 
-    pub fn set_result(&mut self, result: BlockStatus) {
-        unsafe {
-            BLOCK_PROCESSOR_PROMISE_SET_RESULT.expect("BLOCK_PROCESSOR_PROMISE_SET_RESULT missing")(
-                self.promise,
-                result as u8,
-            );
-        }
+    pub fn set_result(&self, result: BlockStatus) {
+        *self.result.lock().unwrap() = Some(result);
+        self.condition.notify_all();
     }
-}
 
-pub static mut CREATE_BLOCK_PROCESSOR_PROMISE: Option<unsafe extern "C" fn() -> *mut c_void> = None;
-pub static mut DROP_BLOCK_PROCESSOR_PROMISE: Option<unsafe extern "C" fn(*mut c_void)> = None;
-pub static mut BLOCK_PROCESSOR_PROMISE_SET_RESULT: Option<unsafe extern "C" fn(*mut c_void, u8)> =
-    None;
-
-impl Drop for BlockProcessorContext {
-    fn drop(&mut self) {
-        unsafe {
-            DROP_BLOCK_PROCESSOR_PROMISE.expect("DROP_BLOCK_PROCESSOR_PROMISE missing")(
-                self.promise,
-            );
+    pub fn wait_result(&self, timeout: Duration) -> Option<BlockStatus> {
+        let guard = self.result.lock().unwrap();
+        if guard.is_some() {
+            return *guard;
         }
+
+        *self
+            .condition
+            .wait_timeout_while(guard, timeout, |i| i.is_none())
+            .unwrap()
+            .0
     }
 }
 
@@ -105,7 +99,7 @@ pub struct BlockProcessor {
     blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<BlockEnum>, BlockEnum)>>>,
     block_rolled_back: Mutex<Vec<Box<dyn Fn(&BlockEnum)>>>,
     block_processed: Mutex<Vec<Box<dyn Fn(BlockStatus, &BlockProcessorContext)>>>,
-    batch_processed: Mutex<Vec<Box<dyn Fn(&[(BlockStatus, BlockProcessorContext)])>>>,
+    batch_processed: Mutex<Vec<Box<dyn Fn(&[(BlockStatus, Arc<BlockProcessorContext>)])>>>,
 }
 
 impl BlockProcessor {
@@ -180,7 +174,7 @@ impl BlockProcessor {
         }
     }
 
-    fn notify_batch_processed(&self, blocks: &Vec<(BlockStatus, BlockProcessorContext)>) {
+    fn notify_batch_processed(&self, blocks: &Vec<(BlockStatus, Arc<BlockProcessorContext>)>) {
         {
             let guard = self.block_processed.lock().unwrap();
             for observer in guard.iter() {
@@ -218,7 +212,7 @@ impl BlockProcessor {
 
     pub fn add_batch_processed_observer(
         &self,
-        observer: Box<dyn Fn(&[(BlockStatus, BlockProcessorContext)])>,
+        observer: Box<dyn Fn(&[(BlockStatus, Arc<BlockProcessorContext>)])>,
     ) {
         self.batch_processed.lock().unwrap().push(observer);
     }
@@ -277,7 +271,48 @@ impl BlockProcessor {
                 .unwrap_or_else(|| "<unknown>".to_string())
         );
 
-        self.add_impl(BlockProcessorContext::new(block, source), channel)
+        self.add_impl(Arc::new(BlockProcessorContext::new(block, source)), channel)
+    }
+
+    pub fn add_blocking(&self, block: Arc<BlockEnum>, source: BlockSource) -> Option<BlockStatus> {
+        self.stats.inc(
+            StatType::Blockprocessor,
+            DetailType::ProcessBlocking,
+            Direction::In,
+        );
+        debug!(
+            "Processing block (blocking): {} (source: {:?})",
+            block.hash(),
+            source
+        );
+
+        let ctx = Arc::new(BlockProcessorContext::new(block, source));
+        let ctx_clone = Arc::clone(&ctx);
+        //auto future = ctx.get_future ();
+        self.add_impl(ctx, None);
+
+        match ctx_clone.wait_result(Duration::from_secs(
+            self.config.block_process_timeout_s as u64,
+        )) {
+            Some(status) => Some(status),
+            None => {
+                self.stats.inc(
+                    StatType::Blockprocessor,
+                    DetailType::ProcessBlockingTimeout,
+                    Direction::In,
+                );
+                error!("Timeout processing block: {}", ctx_clone.block.hash());
+                None
+            }
+        }
+    }
+
+    pub fn force(&self, block: Arc<BlockEnum>) {
+        self.stats
+            .inc(StatType::Blockprocessor, DetailType::Force, Direction::In);
+        debug!("Forcing block: {}", block.hash());
+        let ctx = Arc::new(BlockProcessorContext::new(block, BlockSource::Forced));
+        self.add_impl(ctx, None);
     }
 
     pub fn full(&self) -> bool {
@@ -297,9 +332,9 @@ impl BlockProcessor {
         self.mutex.lock().unwrap().queue.len(&source.into())
     }
 
-    pub fn add_impl(
+    fn add_impl(
         &self,
-        context: BlockProcessorContext,
+        context: Arc<BlockProcessorContext>,
         channel: Option<Arc<ChannelEnum>>,
     ) -> bool {
         let source = context.source;
@@ -329,7 +364,7 @@ impl BlockProcessor {
         self.unchecked_map.trigger(hash_or_account);
     }
 
-    pub fn process_batch(&self) -> Vec<(BlockStatus, BlockProcessorContext)> {
+    pub fn process_batch(&self) -> Vec<(BlockStatus, Arc<BlockProcessorContext>)> {
         let mut processed = Vec::new();
 
         let _scoped_write_guard = self.ledger.write_queue.wait(Writer::ProcessBatch);
@@ -553,14 +588,14 @@ unsafe impl Send for BlockProcessor {}
 unsafe impl Sync for BlockProcessor {}
 
 pub struct BlockProcessorImpl {
-    pub queue: FairQueue<BlockProcessorContext, BlockSource>,
+    pub queue: FairQueue<Arc<BlockProcessorContext>, BlockSource>,
     pub last_log: Option<Instant>,
     config: Arc<NodeConfig>,
     stopped: bool,
 }
 
 impl BlockProcessorImpl {
-    fn next(&mut self) -> BlockProcessorContext {
+    fn next(&mut self) -> Arc<BlockProcessorContext> {
         debug_assert!(!self.queue.is_empty()); // This should be checked before calling next
         if !self.queue.is_empty() {
             let (request, origin) = self.queue.next().unwrap();

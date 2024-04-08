@@ -12,8 +12,7 @@ use rsnano_core::work::WorkThresholds;
 use rsnano_node::{
     block_processing::{
         BlockProcessor, BlockProcessorContext, BlockProcessorImpl, BlockSource,
-        BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK, BLOCK_PROCESSOR_PROMISE_SET_RESULT,
-        CREATE_BLOCK_PROCESSOR_PROMISE, DROP_BLOCK_PROCESSOR_PROMISE,
+        BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
     },
     config::NodeConfig,
 };
@@ -169,26 +168,6 @@ pub unsafe extern "C" fn rsn_block_processor_lock_unlock(handle: &mut BlockProce
     handle.0 = None;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_notify_all(handle: &BlockProcessorHandle) {
-    handle.condition.notify_all();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_notify_one(handle: &BlockProcessorHandle) {
-    handle.condition.notify_one();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_wait(
-    handle: *mut BlockProcessorHandle,
-    lock_handle: *mut BlockProcessorLockHandle,
-) {
-    let guard = (*lock_handle).0.take().unwrap();
-    let guard = (*handle).0.condition.wait(guard).unwrap();
-    (*lock_handle).0 = Some(guard);
-}
-
 pub type BlockProcessorAddCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle, u8);
 pub type BlockProcessorProcessActiveCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
 pub type BlockProcessorHalfFullCallback = unsafe extern "C" fn(*mut c_void) -> bool;
@@ -230,17 +209,27 @@ pub unsafe extern "C" fn rsn_block_processor_add(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_add_impl(
+pub extern "C" fn rsn_block_processor_add_blocking(
     handle: &mut BlockProcessorHandle,
-    context: &mut BlockProcessorContextHandle,
-    channel: *mut ChannelHandle,
+    block: &BlockHandle,
+    source: u8,
+    status: &mut u8,
 ) -> bool {
-    let channel = if channel.is_null() {
-        None
-    } else {
-        Some(Arc::clone(&*channel))
-    };
-    handle.add_impl(context.0.take().unwrap(), channel)
+    match handle.add_blocking(Arc::clone(block), BlockSource::from_u8(source).unwrap()) {
+        Some(i) => {
+            *status = i as u8;
+            true
+        }
+        None => false,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_force(
+    handle: &mut BlockProcessorHandle,
+    block: &BlockHandle,
+) {
+    handle.force(Arc::clone(block));
 }
 
 #[repr(C)]

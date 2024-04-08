@@ -146,11 +146,6 @@ public: // Events
 	void add_rolled_back_observer (std::function<void (std::shared_ptr<nano::block> const &)> observer);
 	void notify_block_rolled_back (std::shared_ptr<nano::block> const & block);
 
-private:
-	nano::stats & stats;
-	nano::logger & logger;
-	nano::node_config & config; // already ported
-
 public:
 	rsnano::BlockProcessorHandle * handle;
 

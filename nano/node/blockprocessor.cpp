@@ -1,5 +1,4 @@
 #include "nano/lib/blocks.hpp"
-#include "nano/lib/logging.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
 
@@ -175,12 +174,9 @@ void nano::block_processor::context::set_result (result_t const & result)
  * block_processor
  */
 
-nano::block_processor::block_processor (nano::node & node_a) :
-	config (*node_a.config),
-	stats{ *node_a.stats },
-	logger{ *node_a.logger }
+nano::block_processor::block_processor (nano::node & node_a)
 {
-	auto config_dto{ config.to_dto () };
+	auto config_dto{ node_a.config->to_dto () };
 	handle = rsnano::rsn_block_processor_create (
 	this,
 	&config_dto,
@@ -255,37 +251,20 @@ bool nano::block_processor::add (std::shared_ptr<nano::block> const & block, blo
 
 std::optional<nano::block_status> nano::block_processor::add_blocking (std::shared_ptr<nano::block> const & block, block_source const source)
 {
-	stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::process_blocking);
-	logger.debug (nano::log::type::blockprocessor, "Processing block (blocking): {} (source: {})", block->hash ().to_string (), to_string (source));
-
-	context ctx{ block, source };
-	auto future = ctx.get_future ();
-	rsnano::rsn_block_processor_add_impl (handle, ctx.handle, nullptr);
-
-	try
+	std::uint8_t status;
+	if (rsnano::rsn_block_processor_add_blocking (handle, block->get_handle (), static_cast<uint8_t> (source), &status))
 	{
-		auto status = future.wait_for (config.block_process_timeout);
-		debug_assert (status != std::future_status::deferred);
-		if (status == std::future_status::ready)
-		{
-			return future.get ();
-		}
+		return static_cast<nano::block_status> (status);
 	}
-	catch (std::future_error const &)
+	else
 	{
-		stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::process_blocking_timeout);
-		logger.error (nano::log::type::blockprocessor, "Timeout processing block: {}", block->hash ().to_string ());
+		return std::nullopt;
 	}
-	return std::nullopt;
 }
 
 void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 {
-	stats.inc (nano::stat::type::blockprocessor, nano::stat::detail::force);
-	logger.debug (nano::log::type::blockprocessor, "Forcing block: {}", block_a->hash ().to_string ());
-
-	context ctx{ block_a, block_source::forced };
-	rsnano::rsn_block_processor_add_impl (handle, ctx.handle, nullptr);
+	rsnano::rsn_block_processor_force (handle, block_a->get_handle ());
 }
 
 bool nano::block_processor::flushing ()

@@ -30,14 +30,13 @@ nano::bootstrap_ascending::service::service (nano::node_config & config_a, nano:
 	database_limiter{ config.bootstrap_ascending.database_requests_limit, 1.0 }
 {
 	// TODO: This is called from a very congested blockprocessor thread. Offload this work to a dedicated processing thread
-	block_processor.batch_processed.add ([this] (auto const & batch) {
+	block_processor.add_batch_processed_observer ([this] (auto const & batch) {
 		{
 			nano::lock_guard<nano::mutex> lock{ mutex };
 
 			auto transaction = ledger.store.tx_begin_read ();
-			for (auto const & [result, context] : batch)
+			for (auto const & [result, block, source] : batch)
 			{
-				auto block{ context.get_block () };
 				debug_assert (block != nullptr);
 				inspect (*transaction, result, *block);
 			}

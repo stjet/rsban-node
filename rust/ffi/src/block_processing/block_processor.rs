@@ -9,17 +9,15 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 use rsnano_core::work::WorkThresholds;
-use rsnano_ledger::BlockStatus;
 use rsnano_node::{
     block_processing::{
         BlockProcessor, BlockProcessorContext, BlockProcessorImpl, BlockSource,
-        BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK, CREATE_BLOCK_PROCESSOR_PROMISE,
-        DROP_BLOCK_PROCESSOR_PROMISE,
+        BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK, BLOCK_PROCESSOR_PROMISE_SET_RESULT,
+        CREATE_BLOCK_PROCESSOR_PROMISE, DROP_BLOCK_PROCESSOR_PROMISE,
     },
     config::NodeConfig,
 };
 use std::{
-    collections::VecDeque,
     ffi::{c_char, c_void, CStr},
     ops::Deref,
     sync::{atomic::Ordering, Arc, MutexGuard},
@@ -66,6 +64,11 @@ pub unsafe extern "C" fn rsn_block_processor_create(
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_destroy(handle: *mut BlockProcessorHandle) {
     drop(unsafe { Box::from_raw(handle) });
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_run(handle: &BlockProcessorHandle) {
+    handle.run();
 }
 
 #[no_mangle]
@@ -240,6 +243,58 @@ pub unsafe extern "C" fn rsn_block_processor_add_impl(
     handle.add_impl(context.0.take().unwrap(), channel)
 }
 
+#[repr(C)]
+pub struct BlockProcessedInfoDto {
+    pub status: u8,
+    pub block: *mut BlockHandle,
+    pub source: u8,
+}
+
+pub type BlockProcessedCallback = extern "C" fn(*mut c_void, *mut BlockProcessedInfoDto);
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_add_block_processed_observer(
+    handle: &mut BlockProcessorHandle,
+    context: *mut c_void,
+    drop_context: VoidPointerCallback,
+    observer: BlockProcessedCallback,
+) {
+    let context_wrapper = ContextWrapper::new(context, drop_context);
+    handle.add_block_processed_observer(Box::new(move |status, block_context| {
+        let block_handle = BlockHandle::new(Arc::clone(&block_context.block));
+        let mut dto = BlockProcessedInfoDto {
+            status: status as u8,
+            block: block_handle,
+            source: block_context.source as u8,
+        };
+        observer(context_wrapper.get_context(), &mut dto);
+    }));
+}
+
+pub type BatchProcessedCallback = extern "C" fn(*mut c_void, *const BlockProcessedInfoDto, usize);
+
+#[no_mangle]
+pub extern "C" fn rsn_block_processor_add_batch_processed_observer(
+    handle: &mut BlockProcessorHandle,
+    context: *mut c_void,
+    drop_context: VoidPointerCallback,
+    observer: BatchProcessedCallback,
+) {
+    let context_wrapper = ContextWrapper::new(context, drop_context);
+    handle.add_batch_processed_observer(Box::new(move |blocks| {
+        let dtos = blocks
+            .iter()
+            .map(|(status, context)| BlockProcessedInfoDto {
+                status: *status as u8,
+                block: BlockHandle::new(Arc::clone(&context.block)),
+                source: context.source as u8,
+            })
+            .collect::<Vec<_>>();
+
+        observer(context_wrapper.get_context(), dtos.as_ptr(), dtos.len());
+    }));
+}
+
 pub type BlockRolledBackCallback = extern "C" fn(*mut c_void, *mut BlockHandle);
 
 #[no_mangle]
@@ -264,36 +319,6 @@ pub extern "C" fn rsn_block_processor_notify_block_rolled_back(
     handle.notify_block_rolled_back(block);
 }
 
-pub struct ProcessBatchResult(VecDeque<(BlockStatus, BlockProcessorContext)>);
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_process_batch(
-    handle: &BlockProcessorHandle,
-) -> *mut ProcessBatchResult {
-    let result = handle.process_batch();
-    Box::into_raw(Box::new(ProcessBatchResult(result)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_process_batch_result_destroy(handle: *mut ProcessBatchResult) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_process_batch_result_size(handle: &ProcessBatchResult) -> usize {
-    handle.0.len()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_process_batch_result_pop(
-    handle: &mut ProcessBatchResult,
-    result: &mut u8,
-) -> *mut BlockProcessorContextHandle {
-    let (res, ctx) = handle.0.pop_front().unwrap();
-    *result = res as u8;
-    Box::into_raw(Box::new(BlockProcessorContextHandle(Some(ctx))))
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_processor_collect_container_info(
     handle: &BlockProcessorHandle,
@@ -307,14 +332,21 @@ pub unsafe extern "C" fn rsn_block_processor_collect_container_info(
 
 pub struct BlockProcessorContextHandle(Option<BlockProcessorContext>);
 
+impl BlockProcessorContextHandle {
+    pub fn new(ctx: BlockProcessorContext) -> *mut Self {
+        Box::into_raw(Box::new(Self(Some(ctx))))
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_context_create(
     block: &BlockHandle,
     source: u8,
 ) -> *mut BlockProcessorContextHandle {
-    Box::into_raw(Box::new(BlockProcessorContextHandle(Some(
-        BlockProcessorContext::new(Arc::clone(block), FromPrimitive::from_u8(source).unwrap()),
-    ))))
+    BlockProcessorContextHandle::new(BlockProcessorContext::new(
+        Arc::clone(block),
+        FromPrimitive::from_u8(source).unwrap(),
+    ))
 }
 
 #[no_mangle]
@@ -357,4 +389,13 @@ pub unsafe extern "C" fn rsn_callback_create_block_processor_promise(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_drop_block_processor_promise(callback: VoidPointerCallback) {
     DROP_BLOCK_PROCESSOR_PROMISE = Some(callback);
+}
+
+pub type PromiseSetResultCallback = unsafe extern "C" fn(*mut c_void, u8);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_block_processor_promise_set_result(
+    callback: PromiseSetResultCallback,
+) {
+    BLOCK_PROCESSOR_PROMISE_SET_RESULT = Some(callback);
 }

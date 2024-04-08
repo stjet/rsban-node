@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <thread>
+#include <vector>
 
 namespace nano
 {
@@ -135,31 +136,25 @@ public:
 
 public: // Events
 	using processed_t = std::tuple<nano::block_status, context>;
-	using processed_batch_t = std::deque<processed_t>;
+	using processed_batch_t = std::vector<std::tuple<nano::block_status, std::shared_ptr<nano::block>, nano::block_source>>;
 
 	void set_blocks_rolled_back_callback (std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> callback);
 
 	// The batch observer feeds the processed observer
-	nano::observer_set<nano::block_status const &, context const &> block_processed;
-	nano::observer_set<processed_batch_t const &> batch_processed;
+	void add_block_processed_observer (std::function<void (nano::block_status, std::shared_ptr<nano::block> const &, nano::block_source)> observer);
+	void add_batch_processed_observer (std::function<void (processed_batch_t const &)> observer);
 	void add_rolled_back_observer (std::function<void (std::shared_ptr<nano::block> const &)> observer);
 	void notify_block_rolled_back (std::shared_ptr<nano::block> const & block);
 
 private:
-	void run ();
-	processed_batch_t process_batch (nano::block_processor_lock &);
-
-	bool stopped{ false };
 	nano::stats & stats;
 	nano::logger & logger;
 	nano::node_config & config; // already ported
-	nano::network_params & network_params; // already ported
 
 public:
 	rsnano::BlockProcessorHandle * handle;
 
 private:
-	nano::node_flags & flags; // already ported
 	std::thread thread;
 
 	friend std::unique_ptr<container_info_component> collect_container_info (block_processor & block_processor, std::string const & name);

@@ -18,11 +18,10 @@ nano::process_live_dispatcher::process_live_dispatcher (nano::ledger & ledger, n
 
 void nano::process_live_dispatcher::connect (nano::block_processor & block_processor)
 {
-	block_processor.batch_processed.add ([this] (auto const & batch) {
+	block_processor.add_batch_processed_observer ([this] (auto const & batch) {
 		auto const transaction = ledger.store.tx_begin_read ();
-		for (auto const & [result, context] : batch)
+		for (auto const & [result, block, source] : batch)
 		{
-			auto block{ context.get_block () };
 			debug_assert (block != nullptr);
 			inspect (result, *block, *transaction);
 		}

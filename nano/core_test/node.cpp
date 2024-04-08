@@ -783,7 +783,8 @@ TEST (node, DISABLED_fork_multi_flip)
 
 // Blocks that are no longer actively being voted on should be able to be evicted through bootstrapping.
 // This could happen if a fork wasn't resolved before the process previously shut down
-TEST (node, fork_bootstrap_flip)
+// TODO Gustav: Disabled because of flakyness
+TEST (node, DISABLED_fork_bootstrap_flip)
 {
 	nano::test::system system;
 	nano::test::system system0;

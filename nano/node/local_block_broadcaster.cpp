@@ -18,15 +18,15 @@ nano::local_block_broadcaster::local_block_broadcaster (nano::node & node_a, nan
 		return;
 	}
 
-	block_processor.batch_processed.add ([this] (auto const & batch) {
+	block_processor.add_batch_processed_observer ([this] (auto const & batch) {
 		bool should_notify = false;
-		for (auto const & [result, context] : batch)
+		for (auto const & [result, block, source] : batch)
 		{
 			// Only rebroadcast local blocks that were successfully processed (no forks or gaps)
-			if (result == nano::block_status::progress && context.source == nano::block_source::local)
+			if (result == nano::block_status::progress && source == nano::block_source::local)
 			{
 				nano::lock_guard<nano::mutex> guard{ mutex };
-				local_blocks.emplace_back (local_entry{ context.get_block (), std::chrono::steady_clock::now () });
+				local_blocks.emplace_back (local_entry{ block, std::chrono::steady_clock::now () });
 				stats.inc (nano::stat::type::local_block_broadcaster, nano::stat::detail::insert);
 				should_notify = true;
 			}

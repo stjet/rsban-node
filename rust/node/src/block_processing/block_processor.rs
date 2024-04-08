@@ -12,7 +12,6 @@ use rsnano_core::{
 use rsnano_ledger::{BlockStatus, Ledger, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
-    collections::VecDeque,
     ffi::c_void,
     mem::size_of,
     sync::{atomic::AtomicBool, Arc, Condvar, Mutex},
@@ -66,10 +65,21 @@ impl BlockProcessorContext {
             },
         }
     }
+
+    pub fn set_result(&mut self, result: BlockStatus) {
+        unsafe {
+            BLOCK_PROCESSOR_PROMISE_SET_RESULT.expect("BLOCK_PROCESSOR_PROMISE_SET_RESULT missing")(
+                self.promise,
+                result as u8,
+            );
+        }
+    }
 }
 
 pub static mut CREATE_BLOCK_PROCESSOR_PROMISE: Option<unsafe extern "C" fn() -> *mut c_void> = None;
 pub static mut DROP_BLOCK_PROCESSOR_PROMISE: Option<unsafe extern "C" fn(*mut c_void)> = None;
+pub static mut BLOCK_PROCESSOR_PROMISE_SET_RESULT: Option<unsafe extern "C" fn(*mut c_void, u8)> =
+    None;
 
 impl Drop for BlockProcessorContext {
     fn drop(&mut self) {
@@ -94,6 +104,8 @@ pub struct BlockProcessor {
     flags: Arc<NodeFlags>,
     blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<BlockEnum>, BlockEnum)>>>,
     block_rolled_back: Mutex<Vec<Box<dyn Fn(&BlockEnum)>>>,
+    block_processed: Mutex<Vec<Box<dyn Fn(BlockStatus, &BlockProcessorContext)>>>,
+    batch_processed: Mutex<Vec<Box<dyn Fn(&[(BlockStatus, BlockProcessorContext)])>>>,
 }
 
 impl BlockProcessor {
@@ -128,6 +140,7 @@ impl BlockProcessor {
                 queue: FairQueue::new(max_size_query, priority_query),
                 last_log: None,
                 config: Arc::clone(&config),
+                stopped: false,
             }),
             condition: Condvar::new(),
             flushing: AtomicBool::new(false),
@@ -139,6 +152,48 @@ impl BlockProcessor {
             flags,
             blocks_rolled_back: Mutex::new(None),
             block_rolled_back: Mutex::new(Vec::new()),
+            block_processed: Mutex::new(Vec::new()),
+            batch_processed: Mutex::new(Vec::new()),
+        }
+    }
+
+    pub fn run(&self) {
+        let mut guard = self.mutex.lock().unwrap();
+        while !guard.stopped {
+            if !guard.queue.is_empty() {
+                drop(guard);
+
+                let mut processed = self.process_batch();
+
+                // Set results for futures when not holding the lock
+                for (result, context) in processed.iter_mut() {
+                    context.set_result(*result);
+                }
+
+                self.notify_batch_processed(&processed);
+
+                guard = self.mutex.lock().unwrap();
+            } else {
+                self.condition.notify_one();
+                guard = self.condition.wait(guard).unwrap();
+            }
+        }
+    }
+
+    fn notify_batch_processed(&self, blocks: &Vec<(BlockStatus, BlockProcessorContext)>) {
+        {
+            let guard = self.block_processed.lock().unwrap();
+            for observer in guard.iter() {
+                for (status, context) in blocks {
+                    observer(*status, context);
+                }
+            }
+        }
+        {
+            let guard = self.batch_processed.lock().unwrap();
+            for observer in guard.iter() {
+                observer(&blocks);
+            }
         }
     }
 
@@ -152,6 +207,20 @@ impl BlockProcessor {
             Arc::new(Stats::default()),
             Arc::new(WORK_THRESHOLDS_STUB.clone()),
         )
+    }
+
+    pub fn add_block_processed_observer(
+        &self,
+        observer: Box<dyn Fn(BlockStatus, &BlockProcessorContext)>,
+    ) {
+        self.block_processed.lock().unwrap().push(observer);
+    }
+
+    pub fn add_batch_processed_observer(
+        &self,
+        observer: Box<dyn Fn(&[(BlockStatus, BlockProcessorContext)])>,
+    ) {
+        self.batch_processed.lock().unwrap().push(observer);
     }
 
     pub fn add_rolled_back_observer(&self, observer: Box<dyn Fn(&BlockEnum)>) {
@@ -260,8 +329,8 @@ impl BlockProcessor {
         self.unchecked_map.trigger(hash_or_account);
     }
 
-    pub fn process_batch(&self) -> VecDeque<(BlockStatus, BlockProcessorContext)> {
-        let mut processed = VecDeque::new();
+    pub fn process_batch(&self) -> Vec<(BlockStatus, BlockProcessorContext)> {
+        let mut processed = Vec::new();
 
         let _scoped_write_guard = self.ledger.write_queue.wait(Writer::ProcessBatch);
         let mut transaction = self.ledger.rw_txn();
@@ -305,7 +374,7 @@ impl BlockProcessor {
             number_of_blocks_processed += 1;
 
             let result = self.process_one(&mut transaction, &context);
-            processed.push_back((result, context));
+            processed.push((result, context));
 
             lock_a = self.mutex.lock().unwrap();
         }
@@ -454,6 +523,8 @@ impl BlockProcessor {
     }
 
     pub fn stop(&self) -> std::thread::Result<()> {
+        self.mutex.lock().unwrap().stopped = true;
+        self.condition.notify_all();
         Ok(())
     }
 
@@ -485,6 +556,7 @@ pub struct BlockProcessorImpl {
     pub queue: FairQueue<BlockProcessorContext, BlockSource>,
     pub last_log: Option<Instant>,
     config: Arc<NodeConfig>,
+    stopped: bool,
 }
 
 impl BlockProcessorImpl {

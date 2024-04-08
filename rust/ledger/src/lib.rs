@@ -14,7 +14,7 @@ mod ledger_constants;
 mod ledger_context;
 mod rep_weights;
 mod representative_block_finder;
-mod write_database_queue;
+mod write_queue;
 
 #[cfg(test)]
 mod ledger_tests;
@@ -28,4 +28,4 @@ pub use ledger_constants::{LedgerConstants, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DE
 pub use ledger_context::LedgerContext;
 pub use rep_weights::RepWeights;
 pub(crate) use representative_block_finder::RepresentativeBlockFinder;
-pub use write_database_queue::{WriteDatabaseQueue, WriteGuard, Writer};
+pub use write_queue::{WriteGuard, WriteQueue, Writer};

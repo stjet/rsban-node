@@ -9,7 +9,7 @@ use rsnano_core::{
     work::{WorkThresholds, WORK_THRESHOLDS_STUB},
     BlockEnum, BlockType, Epoch, HashOrAccount, UncheckedInfo,
 };
-use rsnano_ledger::{BlockStatus, Ledger, WriteDatabaseQueue, Writer};
+use rsnano_ledger::{BlockStatus, Ledger, WriteQueue, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
     collections::VecDeque,
@@ -91,7 +91,7 @@ pub struct BlockProcessor {
     config: Arc<NodeConfig>,
     stats: Arc<Stats>,
     work: Arc<WorkThresholds>,
-    write_database_queue: Arc<WriteDatabaseQueue>,
+    write_queue: Arc<WriteQueue>,
     flags: Arc<NodeFlags>,
     blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<BlockEnum>, BlockEnum)>>>,
 }
@@ -105,7 +105,7 @@ impl BlockProcessor {
         unchecked_map: Arc<UncheckedMap>,
         stats: Arc<Stats>,
         work: Arc<WorkThresholds>,
-        write_database_queue: Arc<WriteDatabaseQueue>,
+        write_queue: Arc<WriteQueue>,
     ) -> Self {
         let processor_config = config.block_processor.clone();
         let max_size_query = Box::new(move |origin: &Origin<BlockSource>| match origin.source {
@@ -137,7 +137,7 @@ impl BlockProcessor {
             config,
             stats,
             work,
-            write_database_queue,
+            write_queue,
             flags,
             blocks_rolled_back: Mutex::new(None),
         }
@@ -152,7 +152,7 @@ impl BlockProcessor {
             Arc::new(UncheckedMap::default()),
             Arc::new(Stats::default()),
             Arc::new(WORK_THRESHOLDS_STUB.clone()),
-            Arc::new(WriteDatabaseQueue::new(false)),
+            Arc::new(WriteQueue::new(false)),
         )
     }
 
@@ -255,7 +255,7 @@ impl BlockProcessor {
     pub fn process_batch(&self) -> VecDeque<(BlockStatus, BlockProcessorContext)> {
         let mut processed = VecDeque::new();
 
-        let _scoped_write_guard = self.write_database_queue.wait(Writer::ProcessBatch);
+        let _scoped_write_guard = self.write_queue.wait(Writer::ProcessBatch);
         let mut transaction = self.ledger.rw_txn();
         let mut lock_a = self.mutex.lock().unwrap();
 

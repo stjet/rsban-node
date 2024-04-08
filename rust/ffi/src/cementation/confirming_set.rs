@@ -1,6 +1,6 @@
 use crate::{
     core::{BlockCallback, BlockHandle, BlockHashCallback},
-    ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
+    ledger::datastore::{LedgerHandle, WriteQueueHandle},
     utils::{ContainerInfoComponentHandle, ContextWrapper},
     VoidPointerCallback,
 };
@@ -18,7 +18,7 @@ pub struct ConfirmingSetHandle(Arc<ConfirmingSet>);
 #[no_mangle]
 pub extern "C" fn rsn_confirming_set_create(
     ledger: &LedgerHandle,
-    write_queue: &WriteDatabaseQueueHandle,
+    write_queue: &WriteQueueHandle,
     batch_time_ms: u64,
 ) -> *mut ConfirmingSetHandle {
     Box::into_raw(Box::new(ConfirmingSetHandle(Arc::new(ConfirmingSet::new(

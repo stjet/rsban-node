@@ -1,7 +1,7 @@
 use super::unchecked_map::UncheckedMapHandle;
 use crate::{
     core::{BlockHandle, BlockVecHandle},
-    ledger::datastore::{LedgerHandle, WriteDatabaseQueueHandle},
+    ledger::datastore::{LedgerHandle, WriteQueueHandle},
     transport::ChannelHandle,
     utils::{ContainerInfoComponentHandle, ContextWrapper},
     work::WorkThresholdsDto,
@@ -44,7 +44,7 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     unchecked_map: &UncheckedMapHandle,
     stats: &StatHandle,
     work: &WorkThresholdsDto,
-    write_database_queue: &WriteDatabaseQueueHandle,
+    write_queue: &WriteQueueHandle,
 ) -> *mut BlockProcessorHandle {
     let config = Arc::new(NodeConfig::try_from(config).unwrap());
     let flags = Arc::new(flags.lock().unwrap().clone());
@@ -52,7 +52,7 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     let unchecked_map = Arc::clone(&unchecked_map);
     let stats = Arc::clone(&stats);
     let work = Arc::new(WorkThresholds::from(work));
-    let write_database_queue = Arc::clone(write_database_queue);
+    let write_queue = Arc::clone(write_queue);
     let processor = Arc::new(BlockProcessor::new(
         handle,
         config,
@@ -61,7 +61,7 @@ pub unsafe extern "C" fn rsn_block_processor_create(
         unchecked_map,
         stats,
         work,
-        write_database_queue,
+        write_queue,
     ));
     Box::into_raw(Box::new(BlockProcessorHandle(processor)))
 }

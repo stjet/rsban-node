@@ -2,7 +2,7 @@ use super::DependentBlocksFinder;
 use crate::{
     block_insertion::{BlockInserter, BlockValidatorFactory},
     BlockRollbackPerformer, DependentBlocks, GenerateCacheFlags, LedgerCache, LedgerConstants,
-    RepWeights, RepresentativeBlockFinder,
+    RepWeights, RepresentativeBlockFinder, WriteQueue,
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
@@ -73,6 +73,7 @@ pub struct Ledger<T: Environment + 'static = EnvironmentWrapper> {
     bootstrap_weight_max_blocks: AtomicU64,
     pub check_bootstrap_weights: AtomicBool,
     pub bootstrap_weights: Mutex<HashMap<Account, Amount>>,
+    pub write_queue: Arc<WriteQueue>,
 }
 
 impl Ledger<EnvironmentStub> {
@@ -203,6 +204,7 @@ impl<T: Environment + 'static> Ledger<T> {
             bootstrap_weight_max_blocks: AtomicU64::new(1),
             check_bootstrap_weights: AtomicBool::new(true),
             bootstrap_weights: Mutex::new(HashMap::new()),
+            write_queue: Arc::new(WriteQueue::new(false)),
         };
 
         ledger.initialize(generate_cache)?;

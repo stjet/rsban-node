@@ -50,32 +50,32 @@ void nano::store::write_guard::release ()
 }
 
 nano::store::write_queue::write_queue (bool use_noops_a) :
-	handle{ rsnano::rsn_write_database_queue_create (use_noops_a) }
+	handle{ rsnano::rsn_write_queue_create (use_noops_a) }
 {
 }
 
 nano::store::write_queue::~write_queue ()
 {
-	rsnano::rsn_write_database_queue_destroy (handle);
+	rsnano::rsn_write_queue_destroy (handle);
 }
 
 nano::store::write_guard nano::store::write_queue::wait (nano::store::writer writer)
 {
-	auto guard_handle = rsnano::rsn_write_database_queue_wait (handle, static_cast<uint8_t> (writer));
+	auto guard_handle = rsnano::rsn_write_queue_wait (handle, static_cast<uint8_t> (writer));
 	return nano::store::write_guard (guard_handle);
 }
 
 bool nano::store::write_queue::contains (nano::store::writer writer)
 {
-	return rsnano::rsn_write_database_queue_contains (handle, static_cast<uint8_t> (writer));
+	return rsnano::rsn_write_queue_contains (handle, static_cast<uint8_t> (writer));
 }
 
 bool nano::store::write_queue::process (nano::store::writer writer)
 {
-	return rsnano::rsn_write_database_queue_process (handle, static_cast<uint8_t> (writer));
+	return rsnano::rsn_write_queue_process (handle, static_cast<uint8_t> (writer));
 }
 
 nano::store::write_guard nano::store::write_queue::pop ()
 {
-	return nano::store::write_guard (rsnano::rsn_write_database_queue_pop (handle));
+	return nano::store::write_guard (rsnano::rsn_write_queue_pop (handle));
 }

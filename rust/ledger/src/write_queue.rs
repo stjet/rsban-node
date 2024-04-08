@@ -46,20 +46,20 @@ impl Drop for WriteGuard {
     }
 }
 
-pub struct WriteDatabaseQueue {
-    data: Arc<WriteDatabaseQueueData>,
+pub struct WriteQueue {
+    data: Arc<WriteQueueData>,
     guard_finish_callback: Arc<dyn Fn() + Send + Sync>,
 }
 
-struct WriteDatabaseQueueData {
+struct WriteQueueData {
     queue: Mutex<VecDeque<Writer>>,
     use_noops: bool,
     condition: Condvar,
 }
 
-impl WriteDatabaseQueue {
+impl WriteQueue {
     pub fn new(use_noops: bool) -> Self {
-        let data = Arc::new(WriteDatabaseQueueData {
+        let data = Arc::new(WriteQueueData {
             queue: Mutex::new(VecDeque::new()),
             use_noops,
             condition: Condvar::new(),

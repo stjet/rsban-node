@@ -4,7 +4,7 @@
 
 namespace rsnano
 {
-class WriteDatabaseQueueHandle;
+class WriteQueueHandle;
 class WriteGuardHandle;
 }
 
@@ -60,6 +60,6 @@ public:
 	/** Doesn't actually pop anything until the returned write_guard is out of scope */
 	write_guard pop ();
 
-	rsnano::WriteDatabaseQueueHandle * handle;
+	rsnano::WriteQueueHandle * handle;
 };
 }

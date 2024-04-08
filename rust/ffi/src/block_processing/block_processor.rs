@@ -10,15 +10,13 @@ use crate::{
 use num_traits::FromPrimitive;
 use rsnano_core::work::WorkThresholds;
 use rsnano_node::{
-    block_processing::{
-        BlockProcessor, BlockProcessorImpl, BlockSource, BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK,
-    },
+    block_processing::{BlockProcessor, BlockSource},
     config::NodeConfig,
 };
 use std::{
     ffi::{c_char, c_void, CStr},
     ops::Deref,
-    sync::{atomic::Ordering, Arc, MutexGuard},
+    sync::Arc,
 };
 
 pub struct BlockProcessorHandle(Arc<BlockProcessor>);
@@ -33,7 +31,6 @@ impl Deref for BlockProcessorHandle {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_processor_create(
-    handle: *mut c_void,
     config: &NodeConfigDto,
     flags: &NodeFlagsHandle,
     ledger: &LedgerHandle,
@@ -48,7 +45,6 @@ pub unsafe extern "C" fn rsn_block_processor_create(
     let stats = Arc::clone(&stats);
     let work = Arc::new(WorkThresholds::from(work));
     let processor = Arc::new(BlockProcessor::new(
-        handle,
         config,
         flags,
         ledger,
@@ -116,76 +112,6 @@ pub extern "C" fn rsn_block_processor_set_blocks_rolled_back_callback(
             initial_block,
         );
     }));
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_flushing(handle: &BlockProcessorHandle) -> bool {
-    handle.flushing.load(Ordering::SeqCst)
-}
-
-pub struct BlockProcessorLockHandle(Option<MutexGuard<'static, BlockProcessorImpl>>);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_lock(
-    handle: &BlockProcessorHandle,
-) -> *mut BlockProcessorLockHandle {
-    let guard = handle.mutex.lock().unwrap();
-    let guard = std::mem::transmute::<
-        MutexGuard<BlockProcessorImpl>,
-        MutexGuard<'static, BlockProcessorImpl>,
-    >(guard);
-    Box::into_raw(Box::new(BlockProcessorLockHandle(Some(guard))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_lock_destroy(handle: *mut BlockProcessorLockHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_lock_queue_empty(
-    handle: &BlockProcessorLockHandle,
-) -> bool {
-    handle.0.as_ref().unwrap().queue.is_empty()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_lock_lock(
-    handle: &mut BlockProcessorLockHandle,
-    processor: &BlockProcessorHandle,
-) {
-    let guard = processor.0.mutex.lock().unwrap();
-    let guard = std::mem::transmute::<
-        MutexGuard<BlockProcessorImpl>,
-        MutexGuard<'static, BlockProcessorImpl>,
-    >(guard);
-    handle.0 = Some(guard);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_lock_unlock(handle: &mut BlockProcessorLockHandle) {
-    handle.0 = None;
-}
-
-pub type BlockProcessorAddCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle, u8);
-pub type BlockProcessorProcessActiveCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
-pub type BlockProcessorHalfFullCallback = unsafe extern "C" fn(*mut c_void) -> bool;
-pub type BlockProcessorSizeCallback = unsafe extern "C" fn(*mut c_void) -> usize;
-
-static mut ADD_CALLBACK: Option<BlockProcessorAddCallback> = None;
-static mut PROCESS_ACTIVE_CALLBACK: Option<BlockProcessorProcessActiveCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_block_processor_process_active(
-    f: BlockProcessorProcessActiveCallback,
-) {
-    PROCESS_ACTIVE_CALLBACK = Some(f);
-    BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK = Some(|handle, block| {
-        PROCESS_ACTIVE_CALLBACK.expect("PROCESS_ACTIVE_CALLBACK missing")(
-            handle,
-            Box::into_raw(Box::new(BlockHandle(block))),
-        )
-    });
 }
 
 #[no_mangle]

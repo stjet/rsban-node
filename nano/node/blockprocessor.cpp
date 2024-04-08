@@ -18,45 +18,6 @@
 
 #include <magic_enum.hpp>
 
-namespace nano
-{
-
-class block_processor_lock
-{
-public:
-	block_processor_lock (nano::block_processor & block_processor_a) :
-		handle{ rsnano::rsn_block_processor_lock (block_processor_a.handle) },
-		block_processor{ block_processor_a }
-	{
-	}
-
-	block_processor_lock (block_processor_lock const &) = delete;
-
-	~block_processor_lock ()
-	{
-		rsnano::rsn_block_processor_lock_destroy (handle);
-	}
-
-	void lock (rsnano::BlockProcessorHandle * processor)
-	{
-		rsnano::rsn_block_processor_lock_lock (handle, processor);
-	}
-
-	void unlock ()
-	{
-		rsnano::rsn_block_processor_lock_unlock (handle);
-	}
-
-	bool queue_empty ()
-	{
-		return rsnano::rsn_block_processor_lock_queue_empty (handle);
-	}
-
-	rsnano::BlockProcessorLockHandle * handle;
-	nano::block_processor & block_processor;
-};
-}
-
 namespace
 {
 void blocks_rolled_back_wrapper (void * context, rsnano::BlockVecHandle * rolled_back, rsnano::BlockHandle * initial_block)
@@ -129,7 +90,6 @@ nano::block_processor::block_processor (nano::node & node_a)
 {
 	auto config_dto{ node_a.config->to_dto () };
 	handle = rsnano::rsn_block_processor_create (
-	this,
 	&config_dto,
 	node_a.flags.handle,
 	node_a.ledger.handle,
@@ -216,11 +176,6 @@ std::optional<nano::block_status> nano::block_processor::add_blocking (std::shar
 void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 {
 	rsnano::rsn_block_processor_force (handle, block_a->get_handle ());
-}
-
-bool nano::block_processor::flushing ()
-{
-	return rsnano::rsn_block_processor_flushing (handle);
 }
 
 void nano::block_processor::set_blocks_rolled_back_callback (std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> callback)

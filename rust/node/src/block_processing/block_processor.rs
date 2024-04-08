@@ -12,15 +12,11 @@ use rsnano_core::{
 use rsnano_ledger::{BlockStatus, Ledger, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
-    ffi::c_void,
     mem::size_of,
-    sync::{atomic::AtomicBool, Arc, Condvar, Mutex},
+    sync::{Arc, Condvar, Mutex},
     time::{Duration, Instant},
 };
 use tracing::{debug, error, info, trace};
-
-pub static mut BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK: Option<fn(*mut c_void, Arc<BlockEnum>)> =
-    None;
 
 #[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug, PartialOrd, Ord)]
 pub enum BlockSource {
@@ -86,12 +82,10 @@ impl BlockProcessorContext {
 }
 
 pub struct BlockProcessor {
-    handle: *mut c_void,
-    pub mutex: Mutex<BlockProcessorImpl>,
-    pub condition: Condvar,
-    pub flushing: AtomicBool,
-    pub ledger: Arc<Ledger>,
-    pub unchecked_map: Arc<UncheckedMap>,
+    mutex: Mutex<BlockProcessorImpl>,
+    condition: Condvar,
+    ledger: Arc<Ledger>,
+    unchecked_map: Arc<UncheckedMap>,
     config: Arc<NodeConfig>,
     stats: Arc<Stats>,
     work: Arc<WorkThresholds>,
@@ -104,7 +98,6 @@ pub struct BlockProcessor {
 
 impl BlockProcessor {
     pub fn new(
-        handle: *mut c_void,
         config: Arc<NodeConfig>,
         flags: Arc<NodeFlags>,
         ledger: Arc<Ledger>,
@@ -129,7 +122,6 @@ impl BlockProcessor {
         });
 
         Self {
-            handle,
             mutex: Mutex::new(BlockProcessorImpl {
                 queue: FairQueue::new(max_size_query, priority_query),
                 last_log: None,
@@ -137,7 +129,6 @@ impl BlockProcessor {
                 stopped: false,
             }),
             condition: Condvar::new(),
-            flushing: AtomicBool::new(false),
             ledger,
             unchecked_map,
             config,
@@ -193,7 +184,6 @@ impl BlockProcessor {
 
     pub fn new_test_instance(ledger: Arc<Ledger>) -> Self {
         BlockProcessor::new(
-            std::ptr::null_mut(),
             Arc::new(NodeConfig::new_null()),
             Arc::new(NodeFlags::default()),
             ledger,
@@ -235,12 +225,7 @@ impl BlockProcessor {
     }
 
     pub fn process_active(&self, block: Arc<BlockEnum>) {
-        unsafe {
-            BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK
-                .expect("BLOCKPROCESSOR_PROCESS_ACTIVE_CALLBACK missing")(
-                self.handle, block
-            )
-        }
+        self.add(block, BlockSource::Live, None);
     }
 
     pub fn add(

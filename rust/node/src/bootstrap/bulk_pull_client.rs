@@ -180,9 +180,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
 
     fn throttled_receive_block(&self) {
         debug_assert!(!self.network_error.load(Ordering::Relaxed));
-        if !self.block_processor.half_full()
-            && !self.block_processor.flushing.load(Ordering::SeqCst)
-        {
+        if !self.block_processor.half_full() {
             self.receive_block();
         } else {
             let self_clone = Arc::clone(self);

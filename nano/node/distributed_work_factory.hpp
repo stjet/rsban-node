@@ -25,7 +25,7 @@ public:
 	distributed_work_factory (distributed_work_factory const &) = delete;
 	distributed_work_factory (distributed_work_factory &&) = delete;
 	~distributed_work_factory ();
-	bool work_generation_enabled () const;
+	bool work_generation_enabled (bool secondary_work_peers = false) const;
 	bool work_generation_enabled (std::vector<std::pair<std::string, uint16_t>> const & work_peers) const;
 	std::optional<uint64_t> make_blocking (nano::block & block_a, uint64_t difficulty_a);
 	std::optional<uint64_t> make_blocking (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, std::optional<nano::account> const & account_a = std::nullopt);

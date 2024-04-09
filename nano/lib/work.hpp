@@ -76,7 +76,6 @@ public:
 	uint64_t threshold_base (nano::work_version const version_a) const;
 	uint64_t difficulty (nano::work_version const version_a, nano::root const & root_a, uint64_t const work_a) const;
 
-private:
 	rsnano::WorkPoolHandle * handle;
 };
 

@@ -7,8 +7,8 @@ use std::{
 
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    work::{DistributedWorkFactory, WorkThresholds},
-    Account, BlockHash, KeyDerivationFunction, NoValue, PublicKey, RawKey, Root, WalletId,
+    work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, NoValue, PublicKey, RawKey,
+    Root, WalletId,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{
@@ -17,7 +17,7 @@ use rsnano_store_lmdb::{
 };
 use tracing::warn;
 
-use crate::config::NodeConfig;
+use crate::{config::NodeConfig, work::DistributedWorkFactory};
 
 use super::Wallet;
 pub type WalletsIterator<T> = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl<T>>;

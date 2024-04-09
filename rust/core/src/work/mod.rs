@@ -1,5 +1,4 @@
 mod cpu_work_generator;
-mod distributed_work_factory;
 mod opencl_work_generator;
 mod stub_work_pool;
 mod work_pool;
@@ -9,7 +8,6 @@ mod work_thresholds;
 mod xorshift;
 
 pub(crate) use cpu_work_generator::CpuWorkGenerator;
-pub use distributed_work_factory::*;
 pub(crate) use opencl_work_generator::{OpenClWorkFunc, OpenClWorkGenerator};
 pub use stub_work_pool::StubWorkPool;
 pub(crate) use work_pool::WorkGenerator;

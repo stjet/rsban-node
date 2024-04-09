@@ -270,29 +270,30 @@ pub extern "C" fn rsn_node_config_serialize_toml(dto: &NodeConfigDto, toml: *mut
     }
 }
 
+impl From<&PeerDto> for Peer {
+    fn from(value: &PeerDto) -> Self {
+        let address = String::from_utf8_lossy(&value.address[..value.address_len]).to_string();
+        Peer::new(address, value.port)
+    }
+}
+
 impl TryFrom<&NodeConfigDto> for NodeConfig {
     type Error = anyhow::Error;
 
     fn try_from(value: &NodeConfigDto) -> Result<Self, Self::Error> {
         let mut work_peers = Vec::with_capacity(value.work_peers_count);
         for i in 0..value.work_peers_count {
-            let p = &value.work_peers[i];
-            let address = String::from_utf8_lossy(&p.address[..p.address_len]).to_string();
-            work_peers.push(Peer::new(address, p.port));
+            work_peers.push((&value.work_peers[i]).into());
         }
 
         let mut secondary_work_peers = Vec::with_capacity(value.secondary_work_peers_count);
         for i in 0..value.secondary_work_peers_count {
-            let p = &value.secondary_work_peers[i];
-            let address = String::from_utf8_lossy(&p.address[..p.address_len]).to_string();
-            secondary_work_peers.push(Peer::new(address, p.port));
+            secondary_work_peers.push((&value.secondary_work_peers[i]).into());
         }
 
         let mut preconfigured_peers = Vec::with_capacity(value.preconfigured_peers_count);
         for i in 0..value.preconfigured_peers_count {
-            let p = &value.preconfigured_peers[i];
-            let address = String::from_utf8_lossy(&p.address[..p.address_len]).to_string();
-            preconfigured_peers.push(address);
+            preconfigured_peers.push(Peer::from(&value.preconfigured_peers[i]).address);
         }
 
         let mut preconfigured_representatives = Vec::new();

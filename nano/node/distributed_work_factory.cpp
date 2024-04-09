@@ -4,10 +4,13 @@
 #include <nano/node/distributed_work_factory.hpp>
 #include <nano/node/node.hpp>
 
+#include <iterator>
+
 nano::distributed_work_factory::distributed_work_factory (nano::node & node_a) :
-	node (node_a),
-	handle{ rsnano::rsn_distributed_work_factory_create (this) }
+	node (node_a)
 {
+	auto config_dto{ node_a.config->to_dto () };
+	handle = rsnano::rsn_distributed_work_factory_create (this, &config_dto, node_a.work.handle);
 }
 
 nano::distributed_work_factory::~distributed_work_factory ()
@@ -16,14 +19,28 @@ nano::distributed_work_factory::~distributed_work_factory ()
 	rsnano::rsn_distributed_work_factory_destroy (handle);
 }
 
-bool nano::distributed_work_factory::work_generation_enabled () const
+bool nano::distributed_work_factory::work_generation_enabled (bool secondary_work_peers) const
 {
-	return work_generation_enabled (node.config->work_peers);
+	if (secondary_work_peers)
+	{
+		return rsnano::rsn_distributed_work_factory_enabled_secondary (handle);
+	}
+	return rsnano::rsn_distributed_work_factory_enabled (handle);
 }
 
 bool nano::distributed_work_factory::work_generation_enabled (std::vector<std::pair<std::string, uint16_t>> const & work_peers) const
 {
-	return !work_peers.empty () || node.work.work_generation_enabled ();
+	std::vector<rsnano::PeerDto> dtos;
+	dtos.reserve (work_peers.size ());
+	for (auto i = work_peers.begin (), n = work_peers.end (); i != n; ++i)
+	{
+		rsnano::PeerDto dto;
+		dto.port = i->second;
+		dto.address_len = i->first.size ();
+		std::copy (i->first.begin (), i->first.end (), std::begin (dto.address));
+		dtos.push_back (dto);
+	}
+	return rsnano::rsn_distributed_work_factory_enabled_peers (handle, dtos.data (), dtos.size ());
 }
 
 std::optional<uint64_t> nano::distributed_work_factory::make_blocking (nano::block & block_a, uint64_t difficulty_a)

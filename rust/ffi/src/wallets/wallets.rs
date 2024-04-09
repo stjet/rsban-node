@@ -5,7 +5,7 @@ use crate::{
     work::{DistributedWorkFactoryHandle, WorkThresholdsDto},
     NodeConfigDto, U256ArrayDto, VoidPointerCallback,
 };
-use rsnano_core::{work::WorkThresholds, BlockHash, WalletId};
+use rsnano_core::{work::WorkThresholds, Account, BlockHash, Root, WalletId};
 use rsnano_node::{
     config::NodeConfig,
     wallets::{Wallet, Wallets},
@@ -246,4 +246,13 @@ pub extern "C" fn rsn_wallets_foreach_representative(
             prv_key.as_bytes().as_ptr(),
         );
     });
+}
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_work_cache_blocking(
+    handle: &mut LmdbWalletsHandle,
+    wallet: &mut WalletHandle,
+    account: *const u8,
+    root: *const u8,
+) {
+    handle.work_cache_blocking(wallet, &Account::from_ptr(account), &Root::from_ptr(root));
 }

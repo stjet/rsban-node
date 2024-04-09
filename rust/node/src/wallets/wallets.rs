@@ -215,23 +215,25 @@ impl<T: Environment + 'static> Wallets<T> {
         }
     }
 
-    pub fn work_cache_blocking(&self, wallet: &Wallet, account: &Account, root: &Root) {
+    pub fn work_cache_blocking(&self, wallet: &Wallet<T>, account: &Account, root: &Root) {
         if self.distributed_work.work_generation_enabled() {
             let difficulty = self.work_thresholds.threshold_base(WorkVersion::Work1);
-            //	auto opt_work_l (node.distributed_work.make_blocking (nano::work_version::work_1, root_a, difficulty, account_a));
-            //	if (opt_work_l.has_value ())
-            //	{
-            //		auto transaction_l (env.tx_begin_write ());
-            //		if (wallet->live () && wallet->store.exists (*transaction_l, account_a))
-            //		{
-            //			wallet->work_update (*transaction_l, account_a, root_a, opt_work_l.value ());
-            //		}
-            //	}
-            //	else if (!node.stopped)
-            //	{
-            //		node.logger->warn (nano::log::type::wallet, "Could not precache work for root {} due to work generation failure", root_a.to_string ());
-            //	}
+            if let Some(work) = self.distributed_work.make_blocking(
+                WorkVersion::Work1,
+                *root,
+                difficulty,
+                Some(*account),
+            ) {
+                let mut tx = self.env.tx_begin_write();
+                if wallet.live() && wallet.store.exists(&tx, account) {
+                    wallet.work_update(&mut tx, account, root, work);
+                }
+            } else {
+                warn!(
+                    "Could not precache work for root {} due to work generation failure",
+                    root
+                );
+            }
         }
-        todo!()
     }
 }

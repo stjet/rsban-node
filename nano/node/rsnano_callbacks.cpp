@@ -1,5 +1,6 @@
 #include "boost/thread/latch.hpp"
 #include "nano/lib/blocks.hpp"
+#include "nano/node/distributed_work_factory.hpp"
 #include "nano/node/scheduler/priority.hpp"
 #include "nano/secure/common.hpp"
 
@@ -572,6 +573,40 @@ bool legacy_request_bulk_push_target (void * cpp_handle, uint8_t * head, uint8_t
 	return empty;
 }
 
+bool work_make_blocking (void * factory_pointer, rsnano::BlockHandle * block_handle, uint64_t difficulty, uint64_t * result)
+{
+	auto factory = static_cast<nano::distributed_work_factory *> (factory_pointer);
+	auto block{ nano::block_handle_to_block (block_handle) };
+	auto work = factory->make_blocking (*block, difficulty);
+	if (work.has_value ())
+	{
+		*result = work.value ();
+		return true;
+	}
+
+	return false;
+}
+
+bool work_make_blocking_2 (void * factory_pointer, uint8_t version, uint8_t const * root_bytes, uint64_t difficulty, bool has_account, uint8_t const * account_bytes, uint64_t * result)
+{
+	auto factory = static_cast<nano::distributed_work_factory *> (factory_pointer);
+	nano::root root;
+	std::copy (root_bytes, root_bytes + 32, root.bytes.begin ());
+	std::optional<nano::account> account;
+	if (has_account)
+	{
+		account = nano::account::from_bytes (account_bytes);
+	}
+	auto work = factory->make_blocking (static_cast<nano::work_version> (version), root, difficulty, account);
+	if (work.has_value ())
+	{
+		*result = work.value ();
+		return true;
+	}
+
+	return false;
+}
+
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -643,6 +678,9 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_attempt_legacy_add_start_account (legacy_set_start_account);
 	rsnano::rsn_callback_bootstrap_attempt_legacy_add_bulk_push_target (legacy_add_bulk_push_target);
 	rsnano::rsn_callback_bootstrap_attempt_legacy_request_bulk_push_target (legacy_request_bulk_push_target);
+
+	rsnano::rsn_callback_work_make_blocking (work_make_blocking);
+	rsnano::rsn_callback_work_make_blocking_2 (work_make_blocking_2);
 
 	callbacks_set = true;
 }

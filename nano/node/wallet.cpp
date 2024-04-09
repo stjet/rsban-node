@@ -1474,23 +1474,7 @@ nano::public_key nano::wallets::change_seed (const std::shared_ptr<nano::wallet>
 
 void nano::wallets::work_cache_blocking (const std::shared_ptr<nano::wallet> & wallet, nano::account const & account_a, nano::root const & root_a)
 {
-	if (node.distributed_work.work_generation_enabled ())
-	{
-		auto difficulty (node.default_difficulty (nano::work_version::work_1));
-		auto opt_work_l (node.distributed_work.make_blocking (nano::work_version::work_1, root_a, difficulty, account_a));
-		if (opt_work_l.has_value ())
-		{
-			auto transaction_l (env.tx_begin_write ());
-			if (wallet->live () && wallet->store.exists (*transaction_l, account_a))
-			{
-				wallet->work_update (*transaction_l, account_a, root_a, opt_work_l.value ());
-			}
-		}
-		else if (!node.stopped)
-		{
-			node.logger->warn (nano::log::type::wallet, "Could not precache work for root {} due to work generation failure", root_a.to_string ());
-		}
-	}
+	rsnano::rsn_wallets_work_cache_blocking (rust_handle, wallet->handle, account_a.bytes.data (), root_a.bytes.data ());
 }
 
 nano::wallets_error nano::wallets::insert_watch (nano::wallet_id const & wallet_id, std::vector<nano::public_key> const & accounts)

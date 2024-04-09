@@ -15,6 +15,14 @@ use std::{
 
 pub struct WalletHandle(pub Arc<Wallet>);
 
+impl Deref for WalletHandle {
+    type Target = Arc<Wallet>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_wallet_create(
     ledger: &LedgerHandle,

@@ -1,6 +1,6 @@
 use super::work_pool::WorkPoolHandle;
 use crate::{core::BlockHandle, NodeConfigDto, PeerDto};
-use rsnano_node::work::{DistributedWorkFactory, MAKE_BLOCKING};
+use rsnano_node::work::{DistributedWorkFactory, MAKE_BLOCKING, MAKE_BLOCKING_2};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 pub struct DistributedWorkFactoryHandle(Arc<DistributedWorkFactory>);
@@ -62,6 +62,9 @@ pub unsafe extern "C" fn rsn_distributed_work_factory_enabled_peers(
 pub type WorkMakeBlockingCallback =
     unsafe extern "C" fn(*mut c_void, *mut BlockHandle, u64, *mut u64) -> bool;
 
+pub type WorkMakeBlocking2Callback =
+    unsafe extern "C" fn(*mut c_void, u8, *const u8, u64, bool, *const u8, &mut u64) -> bool;
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_work_make_blocking(f: WorkMakeBlockingCallback) {
     MAKE_BLOCKING_WRAPPER = Some(f);
@@ -76,4 +79,27 @@ pub unsafe extern "C" fn rsn_callback_work_make_blocking(f: WorkMakeBlockingCall
     });
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_work_make_blocking_2(f: WorkMakeBlocking2Callback) {
+    MAKE_BLOCKING_2_WRAPPER = Some(f);
+    MAKE_BLOCKING_2 = Some(|factory_pointer, version, root, difficulty, account| {
+        let mut work = 0;
+        let account_raw = account.unwrap_or_default();
+        if MAKE_BLOCKING_2_WRAPPER.unwrap()(
+            factory_pointer,
+            version as u8,
+            root.as_bytes().as_ptr(),
+            difficulty,
+            account.is_some(),
+            account_raw.as_bytes().as_ptr(),
+            &mut work,
+        ) {
+            Some(work)
+        } else {
+            None
+        }
+    });
+}
+
 pub static mut MAKE_BLOCKING_WRAPPER: Option<WorkMakeBlockingCallback> = None;
+pub static mut MAKE_BLOCKING_2_WRAPPER: Option<WorkMakeBlocking2Callback> = None;

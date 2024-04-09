@@ -1,10 +1,5 @@
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    sync::{Arc, Mutex},
-    time::{Duration, Instant},
-};
-
+use super::Wallet;
+use crate::{config::NodeConfig, work::DistributedWorkFactory};
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
     work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, NoValue, PublicKey, RawKey,
@@ -15,11 +10,25 @@ use rsnano_store_lmdb::{
     create_backup_file, BinaryDbIterator, DbIterator, Environment, EnvironmentWrapper, LmdbEnv,
     LmdbIteratorImpl, LmdbWalletStore, LmdbWriteTransaction, RwTransaction, Transaction,
 };
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
 use tracing::warn;
 
-use crate::{config::NodeConfig, work::DistributedWorkFactory};
+#[derive(FromPrimitive)]
+pub enum WalletsError {
+    None,
+    Generic,
+    WalletNotFound,
+    WalletLocked,
+    AccountNotFound,
+    InvalidPassword,
+    BadPublicKey,
+}
 
-use super::Wallet;
 pub type WalletsIterator<T> = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl<T>>;
 
 pub struct Wallets<T: Environment = EnvironmentWrapper> {
@@ -235,5 +244,87 @@ impl<T: Environment + 'static> Wallets<T> {
                 );
             }
         }
+    }
+
+    pub fn insert_watch(
+        &self,
+        wallet_id: &WalletId,
+        accounts: &[Account],
+    ) -> Result<(), WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let Some(wallet) = guard.get(wallet_id) else {
+            return Err(WalletsError::WalletNotFound);
+        };
+        let mut tx = self.env.tx_begin_write();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+
+        for account in accounts {
+            if wallet.store.insert_watch(&mut tx, account).is_err() {
+                return Err(WalletsError::BadPublicKey);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn valid_password(&self, wallet_id: &WalletId) -> Result<bool, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let Some(wallet) = guard.get(wallet_id) else {
+            return Err(WalletsError::WalletNotFound);
+        };
+
+        let tx = self.env.tx_begin_read();
+        Ok(wallet.store.valid_password(&tx))
+    }
+
+    pub fn attempt_password(
+        &self,
+        wallet_id: &WalletId,
+        password: impl AsRef<str>,
+    ) -> Result<(), WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let Some(wallet) = guard.get(wallet_id) else {
+            return Err(WalletsError::WalletNotFound);
+        };
+
+        let tx = self.env.tx_begin_write();
+        if wallet.store.attempt_password(&tx, password.as_ref()) {
+            Ok(())
+        } else {
+            Err(WalletsError::InvalidPassword)
+        }
+    }
+
+    pub fn lock(&self, wallet_id: &WalletId) -> Result<(), WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let Some(wallet) = guard.get(wallet_id) else {
+            return Err(WalletsError::WalletNotFound);
+        };
+
+        wallet.store.lock();
+        Ok(())
+    }
+
+    pub fn rekey(
+        &self,
+        wallet_id: &WalletId,
+        password: impl AsRef<str>,
+    ) -> Result<(), WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let Some(wallet) = guard.get(wallet_id) else {
+            return Err(WalletsError::WalletNotFound);
+        };
+
+        let mut tx = self.env.tx_begin_write();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+
+        wallet
+            .store
+            .rekey(&mut tx, password.as_ref())
+            .map_err(|_| WalletsError::Generic)
     }
 }

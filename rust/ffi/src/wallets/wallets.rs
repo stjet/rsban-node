@@ -1,4 +1,4 @@
-use super::wallet::WalletHandle;
+use super::wallet::{AccountVecHandle, WalletHandle};
 use crate::{
     ledger::datastore::{lmdb::LmdbEnvHandle, LedgerHandle, TransactionHandle},
     utils::ContextWrapper,
@@ -8,7 +8,7 @@ use crate::{
 use rsnano_core::{work::WorkThresholds, Account, BlockHash, Root, WalletId};
 use rsnano_node::{
     config::NodeConfig,
-    wallets::{Wallet, Wallets},
+    wallets::{Wallet, Wallets, WalletsError},
 };
 use std::{
     collections::HashMap,
@@ -255,4 +255,70 @@ pub unsafe extern "C" fn rsn_wallets_work_cache_blocking(
     root: *const u8,
 ) {
     handle.work_cache_blocking(wallet, &Account::from_ptr(account), &Root::from_ptr(root));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_insert_watch(
+    handle: &mut LmdbWalletsHandle,
+    wallet_id: *const u8,
+    accounts: &AccountVecHandle,
+) -> u8 {
+    match handle.insert_watch(&WalletId::from_ptr(wallet_id), &accounts) {
+        Ok(()) => WalletsError::None as u8,
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_attempt_password(
+    handle: &mut LmdbWalletsHandle,
+    wallet_id: *const u8,
+    password: *const c_char,
+) -> u8 {
+    match handle.attempt_password(
+        &WalletId::from_ptr(wallet_id),
+        CStr::from_ptr(password).to_string_lossy(),
+    ) {
+        Ok(()) => WalletsError::None as u8,
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_lock(
+    handle: &mut LmdbWalletsHandle,
+    wallet_id: *const u8,
+) -> u8 {
+    match handle.lock(&WalletId::from_ptr(wallet_id)) {
+        Ok(()) => WalletsError::None as u8,
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_valid_password(
+    handle: &mut LmdbWalletsHandle,
+    wallet_id: *const u8,
+    valid: *mut bool,
+) -> u8 {
+    match handle.valid_password(&WalletId::from_ptr(wallet_id)) {
+        Ok(val) => {
+            *valid = val;
+            WalletsError::None as u8
+        }
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_rekey(
+    handle: &mut LmdbWalletsHandle,
+    wallet_id: *const u8,
+    password: *const c_char,
+) -> u8 {
+    let password = CStr::from_ptr(password).to_string_lossy();
+    match handle.rekey(&WalletId::from_ptr(wallet_id), password) {
+        Ok(()) => WalletsError::None as u8,
+        Err(e) => e as u8,
+    }
 }

@@ -8,7 +8,7 @@ use rsnano_node::wallets::Wallet;
 use std::{
     collections::HashSet,
     ffi::{c_char, CStr},
-    ops::Deref,
+    ops::{Deref, DerefMut},
     path::PathBuf,
     sync::{Arc, MutexGuard},
 };
@@ -157,6 +157,25 @@ pub unsafe extern "C" fn rsn_representatives_lock_clear(handle: &mut Representat
 
 pub struct AccountVecHandle(Vec<Account>);
 
+impl Deref for AccountVecHandle {
+    type Target = Vec<Account>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for AccountVecHandle {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_account_vec_create() -> *mut AccountVecHandle {
+    Box::into_raw(Box::new(AccountVecHandle(Vec::new())))
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_account_vec_destroy(handle: *mut AccountVecHandle) {
     drop(Box::from_raw(handle))
@@ -174,6 +193,11 @@ pub unsafe extern "C" fn rsn_account_vec_get(
     result: *mut u8,
 ) {
     handle.0[index].copy_bytes(result);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_account_vec_push(handle: &mut AccountVecHandle, account: *const u8) {
+    handle.push(Account::from_ptr(account));
 }
 
 #[no_mangle]

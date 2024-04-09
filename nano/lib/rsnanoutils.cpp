@@ -1,3 +1,4 @@
+#include "nano/lib/rsnano.hpp"
 #include "nano/node/common.hpp"
 #include "nano/node/messages.hpp"
 
@@ -221,4 +222,28 @@ std::chrono::system_clock::time_point rsnano::time_point_from_nanoseconds (uint6
 {
 	std::chrono::nanoseconds result_ns{ nanoseconds };
 	return std::chrono::system_clock::time_point (std::chrono::duration_cast<std::chrono::system_clock::duration> (result_ns));
+}
+
+rsnano::account_vec::account_vec () :
+	handle{ rsnano::rsn_account_vec_create () }
+{
+}
+
+rsnano::account_vec::~account_vec ()
+{
+	rsnano::rsn_account_vec_destroy (handle);
+}
+
+rsnano::account_vec::account_vec (std::vector<nano::account> accounts) :
+	handle{ rsnano::rsn_account_vec_create () }
+{
+	for (const auto & i : accounts)
+	{
+		push (i);
+	}
+}
+
+void rsnano::account_vec::push (nano::account const & account)
+{
+	rsnano::rsn_account_vec_push (handle, account.bytes.data ());
 }

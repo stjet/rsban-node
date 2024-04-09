@@ -241,4 +241,14 @@ public:
 	rsnano::InstantHandle * handle;
 };
 
+class account_vec
+{
+public:
+	account_vec ();
+	account_vec (std::vector<nano::account> accounts);
+	~account_vec ();
+	void push (nano::account const & account);
+	rsnano::AccountVecHandle * handle;
+};
+
 }

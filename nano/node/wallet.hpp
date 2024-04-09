@@ -280,7 +280,7 @@ public:
 	nano::wallets_error enter_password (nano::wallet_id const & id, std::string const & password_a);
 	void enter_initial_password (nano::wallet_id const & wallet_id);
 	nano::wallets_error valid_password (nano::wallet_id const & wallet_id, bool & valid);
-	nano::wallets_error attempt_password (nano::wallet_id const & wallet_id, std::string const &, bool & error);
+	nano::wallets_error attempt_password (nano::wallet_id const & wallet_id, std::string const &);
 	nano::wallets_error rekey (nano::wallet_id const wallet_id, std::string const &);
 	nano::wallets_error lock (nano::wallet_id const & wallet_id);
 	bool ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id, std::string const & password_a);

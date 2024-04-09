@@ -814,9 +814,7 @@ TEST (wallet, password_race_corrupt_seed)
 	nano::raw_key seed;
 	ASSERT_EQ (nano::wallets_error::none, node1.wallets.rekey (wallet_id, "4567"));
 	ASSERT_EQ (nano::wallets_error::none, node1.wallets.get_seed (wallet_id, seed));
-	bool error = false;
-	ASSERT_EQ (nano::wallets_error::none, node1.wallets.attempt_password (wallet_id, "4567", error));
-	ASSERT_FALSE (error);
+	ASSERT_EQ (nano::wallets_error::none, node1.wallets.attempt_password (wallet_id, "4567"));
 	std::vector<std::thread> threads;
 	for (int i = 0; i < 100; i++)
 	{
@@ -835,8 +833,7 @@ TEST (wallet, password_race_corrupt_seed)
 		threads.emplace_back ([&node1, &wallet_id] () {
 			for (int i = 0; i < 10; i++)
 			{
-				bool error = false;
-				(void)node1.wallets.attempt_password (wallet_id, "1234", error);
+				(void)node1.wallets.attempt_password (wallet_id, "1234");
 			}
 		});
 	}
@@ -847,9 +844,8 @@ TEST (wallet, password_race_corrupt_seed)
 	system.stop ();
 	runner.join ();
 	{
-		bool error = true;
-		(void)node1.wallets.attempt_password (wallet_id, "1234", error);
-		if (!error)
+		nano::wallets_error error = node1.wallets.attempt_password (wallet_id, "1234");
+		if (error == nano::wallets_error::none)
 		{
 			nano::raw_key seed_now;
 			(void)node1.wallets.get_seed (wallet_id, seed_now);
@@ -857,8 +853,8 @@ TEST (wallet, password_race_corrupt_seed)
 		}
 		else
 		{
-			(void)node1.wallets.attempt_password (wallet_id, "0000", error);
-			if (!error)
+			error = node1.wallets.attempt_password (wallet_id, "0000");
+			if (error == nano::wallets_error::none)
 			{
 				nano::raw_key seed_now;
 				(void)node1.wallets.get_seed (wallet_id, seed_now);
@@ -866,8 +862,8 @@ TEST (wallet, password_race_corrupt_seed)
 			}
 			else
 			{
-				(void)node1.wallets.attempt_password (wallet_id, "4567", error);
-				if (!error)
+				error = node1.wallets.attempt_password (wallet_id, "4567");
+				if (error == nano::wallets_error::none)
 				{
 					nano::raw_key seed_now;
 					(void)node1.wallets.get_seed (wallet_id, seed_now);

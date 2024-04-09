@@ -1479,27 +1479,9 @@ void nano::wallets::work_cache_blocking (const std::shared_ptr<nano::wallet> & w
 
 nano::wallets_error nano::wallets::insert_watch (nano::wallet_id const & wallet_id, std::vector<nano::public_key> const & accounts)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_write () };
-	if (!wallet->store.valid_password (*txn))
-	{
-		return nano::wallets_error::wallet_locked;
-	}
-
-	for (auto & account : accounts)
-	{
-		if (wallet->insert_watch (*txn, account))
-		{
-			return nano::wallets_error::bad_public_key;
-		}
-	}
-
-	return nano::wallets_error::none;
+	rsnano::account_vec account_vec{ accounts };
+	auto result = rsnano::rsn_wallets_insert_watch (rust_handle, wallet_id.bytes.data (), account_vec.handle);
+	return static_cast<nano::wallets_error> (result);
 }
 
 void nano::wallets::set_password (nano::wallet_id const & wallet_id, nano::raw_key const & password)
@@ -1543,61 +1525,26 @@ void nano::wallets::enter_initial_password (nano::wallet_id const & wallet_id)
 
 nano::wallets_error nano::wallets::valid_password (nano::wallet_id const & wallet_id, bool & valid)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_read () };
-	valid = wallet->store.valid_password (*txn);
-	return nano::wallets_error::none;
+	auto error = rsnano::rsn_wallets_valid_password (rust_handle, wallet_id.bytes.data (), &valid);
+	return static_cast<nano::wallets_error> (error);
 }
 
-nano::wallets_error nano::wallets::attempt_password (nano::wallet_id const & wallet_id, std::string const & password, bool & error)
+nano::wallets_error nano::wallets::attempt_password (nano::wallet_id const & wallet_id, std::string const & password)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_write () };
-	error = wallet->store.attempt_password (*txn, password);
-	return nano::wallets_error::none;
+	auto error = rsnano::rsn_wallets_attempt_password (rust_handle, wallet_id.bytes.data (), password.c_str ());
+	return static_cast<nano::wallets_error> (error);
 }
 
 nano::wallets_error nano::wallets::rekey (nano::wallet_id const wallet_id, std::string const & password)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_write () };
-	if (!wallet->store.valid_password (*txn))
-	{
-		return nano::wallets_error::wallet_locked;
-	}
-
-	if (wallet->store.rekey (*txn, password))
-	{
-		return nano::wallets_error::generic;
-	}
-	return nano::wallets_error::none;
+	auto error = rsnano::rsn_wallets_rekey (rust_handle, wallet_id.bytes.data (), password.c_str ());
+	return static_cast<nano::wallets_error> (error);
 }
 
 nano::wallets_error nano::wallets::lock (nano::wallet_id const & wallet_id)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	wallet->store.lock ();
-	return nano::wallets_error::none;
+	auto error = rsnano::rsn_wallets_lock (rust_handle, wallet_id.bytes.data ());
+	return static_cast<nano::wallets_error> (error);
 }
 
 nano::public_key nano::wallets::deterministic_insert (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & transaction_a, bool generate_work_a)

@@ -1133,43 +1133,22 @@ bool nano::node::local_work_generation_enabled () const
 
 bool nano::node::work_generation_enabled () const
 {
-	return work_generation_enabled (config->work_peers);
-}
-
-bool nano::node::work_generation_enabled (std::vector<std::pair<std::string, uint16_t>> const & work_peers) const
-{
-	return !work_peers.empty () || work.work_generation_enabled ();
+	return distributed_work.work_generation_enabled ();
 }
 
 std::optional<uint64_t> nano::node::work_generate_blocking (nano::block & block_a, uint64_t difficulty_a)
 {
-	auto opt_work_l (work_generate_blocking (block_a.work_version (), block_a.root (), difficulty_a, block_a.account_field ()));
-	if (opt_work_l.has_value ())
-	{
-		block_a.block_work_set (opt_work_l.value ());
-	}
-	return opt_work_l;
+	return distributed_work.make_blocking (block_a, difficulty_a);
 }
 
 void nano::node::work_generate (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, std::function<void (std::optional<uint64_t>)> callback_a, std::optional<nano::account> const & account_a, bool secondary_work_peers_a)
 {
-	auto const & peers_l (secondary_work_peers_a ? config->secondary_work_peers : config->work_peers);
-	if (distributed_work.make (version_a, root_a, peers_l, difficulty_a, callback_a, account_a))
-	{
-		// Error in creating the job (either stopped or work generation is not possible)
-		callback_a (std::nullopt);
-	}
+	distributed_work.make (version_a, root_a, difficulty_a, callback_a, account_a, secondary_work_peers_a);
 }
 
 std::optional<uint64_t> nano::node::work_generate_blocking (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, std::optional<nano::account> const & account_a)
 {
-	std::promise<std::optional<uint64_t>> promise;
-	work_generate (
-	version_a, root_a, difficulty_a, [&promise] (std::optional<uint64_t> opt_work_a) {
-		promise.set_value (opt_work_a);
-	},
-	account_a);
-	return promise.get_future ().get ();
+	return distributed_work.make_blocking (version_a, root_a, difficulty_a, account_a);
 }
 
 std::optional<uint64_t> nano::node::work_generate_blocking (nano::block & block_a)

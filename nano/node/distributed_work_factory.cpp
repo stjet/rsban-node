@@ -1,15 +1,60 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/distributed_work.hpp>
 #include <nano/node/distributed_work_factory.hpp>
 #include <nano/node/node.hpp>
 
 nano::distributed_work_factory::distributed_work_factory (nano::node & node_a) :
-	node (node_a)
+	node (node_a),
+	handle{ rsnano::rsn_distributed_work_factory_create (this) }
 {
 }
 
 nano::distributed_work_factory::~distributed_work_factory ()
 {
 	stop ();
+	rsnano::rsn_distributed_work_factory_destroy (handle);
+}
+
+bool nano::distributed_work_factory::work_generation_enabled () const
+{
+	return work_generation_enabled (node.config->work_peers);
+}
+
+bool nano::distributed_work_factory::work_generation_enabled (std::vector<std::pair<std::string, uint16_t>> const & work_peers) const
+{
+	return !work_peers.empty () || node.work.work_generation_enabled ();
+}
+
+std::optional<uint64_t> nano::distributed_work_factory::make_blocking (nano::block & block_a, uint64_t difficulty_a)
+{
+	auto opt_work_l (make_blocking (block_a.work_version (), block_a.root (), difficulty_a, block_a.account_field ()));
+	if (opt_work_l.has_value ())
+	{
+		block_a.block_work_set (opt_work_l.value ());
+	}
+	return opt_work_l;
+}
+
+std::optional<uint64_t> nano::distributed_work_factory::make_blocking (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, std::optional<nano::account> const & account_a)
+{
+	std::promise<std::optional<uint64_t>> promise;
+	make (
+	version_a, root_a, difficulty_a, [&promise] (std::optional<uint64_t> opt_work_a) {
+		promise.set_value (opt_work_a);
+	},
+	account_a);
+	return promise.get_future ().get ();
+}
+
+void nano::distributed_work_factory::make (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, std::function<void (std::optional<uint64_t>)> callback_a, std::optional<nano::account> const & account_a, bool secondary_work_peers_a)
+{
+	auto const & peers_l (secondary_work_peers_a ? node.config->secondary_work_peers : node.config->work_peers);
+	if (make (version_a, root_a, peers_l, difficulty_a, callback_a, account_a))
+	{
+		// Error in creating the job (either stopped or work generation is not possible)
+		callback_a (std::nullopt);
+	}
 }
 
 bool nano::distributed_work_factory::make (nano::work_version const version_a, nano::root const & root_a, std::vector<std::pair<std::string, uint16_t>> const & peers_a, uint64_t difficulty_a, std::function<void (std::optional<uint64_t>)> const & callback_a, std::optional<nano::account> const & account_a)
@@ -23,7 +68,7 @@ bool nano::distributed_work_factory::make (std::chrono::seconds const & backoff_
 	if (!stopped)
 	{
 		cleanup_finished ();
-		if (node.work_generation_enabled (request_a.peers))
+		if (work_generation_enabled (request_a.peers))
 		{
 			auto distributed (std::make_shared<nano::distributed_work> (node, request_a, backoff_a));
 			{

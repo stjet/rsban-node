@@ -18,12 +18,19 @@ enum class error_system
 	deadline_expired
 };
 
+enum class work_generation
+{
+	enabled,
+	disabled
+};
+
 namespace test
 {
 	class system final
 	{
 	public:
 		system ();
+		explicit system (work_generation work_gen);
 		system (uint16_t, nano::transport::transport_type = nano::transport::transport_type::tcp, nano::node_flags = nano::node_flags ());
 		~system ();
 

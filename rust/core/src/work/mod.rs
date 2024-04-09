@@ -1,29 +1,24 @@
-mod work_thresholds;
-pub use work_thresholds::{WorkThresholds, WORK_THRESHOLDS_STUB};
-
+mod cpu_work_generator;
+mod distributed_work_factory;
+mod opencl_work_generator;
+mod stub_work_pool;
 mod work_pool;
-pub(crate) use work_pool::WorkGenerator;
-
-pub use work_pool::{WorkPool, WorkPoolImpl, STUB_WORK_POOL};
-
-mod xorshift;
-pub(crate) use xorshift::XorShift1024Star;
-
 mod work_queue;
+mod work_thread;
+mod work_thresholds;
+mod xorshift;
+
+pub(crate) use cpu_work_generator::CpuWorkGenerator;
+pub use distributed_work_factory::*;
+pub(crate) use opencl_work_generator::{OpenClWorkFunc, OpenClWorkGenerator};
+pub use stub_work_pool::StubWorkPool;
+pub(crate) use work_pool::WorkGenerator;
+pub use work_pool::{WorkPool, WorkPoolImpl, STUB_WORK_POOL};
 pub use work_queue::WorkTicket;
 pub(crate) use work_queue::{WorkItem, WorkQueueCoordinator};
-
-mod cpu_work_generator;
-pub(crate) use cpu_work_generator::CpuWorkGenerator;
-
-mod opencl_work_generator;
-pub(crate) use opencl_work_generator::{OpenClWorkFunc, OpenClWorkGenerator};
-
-mod work_thread;
 pub(crate) use work_thread::WorkThread;
-
-mod stub_work_pool;
-pub use stub_work_pool::StubWorkPool;
+pub use work_thresholds::{WorkThresholds, WORK_THRESHOLDS_STUB};
+pub(crate) use xorshift::XorShift1024Star;
 
 pub(crate) trait WorkRng {
     fn next_work(&mut self) -> u64;

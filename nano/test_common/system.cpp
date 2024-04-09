@@ -30,8 +30,14 @@ std::string nano::error_system_messages::message (int ev) const
  */
 
 nano::test::system::system () :
+	system (nano::work_generation::enabled)
+{
+}
+
+nano::test::system::system (nano::work_generation work_gen) :
 	async_rt{ false },
-	io_guard{ boost::asio::make_work_guard (async_rt.io_ctx) }
+	io_guard{ boost::asio::make_work_guard (async_rt.io_ctx) },
+	work{ nano::dev::network_params.network, work_gen == nano::work_generation::enabled ? std::max (nano::hardware_concurrency (), 1u) : 0 }
 {
 	auto scale_str = std::getenv ("DEADLINE_SCALE_FACTOR");
 	if (scale_str)

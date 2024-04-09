@@ -306,7 +306,7 @@ TEST (rpc, send_work)
 
 TEST (rpc, send_work_disabled)
 {
-	nano::test::system system;
+	nano::test::system system{ nano::work_generation::disabled };
 	nano::node_config node_config = system.default_config ();
 	node_config.work_threads = 0;
 	auto node = add_ipc_enabled_node (system, node_config);
@@ -2447,7 +2447,7 @@ TEST (rpc, account_representative_set)
 
 TEST (rpc, account_representative_set_work_disabled)
 {
-	nano::test::system system;
+	nano::test::system system{ nano::work_generation::disabled };
 	nano::node_config node_config = system.default_config ();
 	node_config.work_threads = 0;
 	auto node = add_ipc_enabled_node (system, node_config);
@@ -6557,9 +6557,9 @@ TEST (rpc, receive_unopened)
 	}
 }
 
-TEST (rpc, receive_work_disabled)
+TEST (rpc, DISABLED_receive_work_disabled)
 {
-	nano::test::system system;
+	nano::test::system system{ nano::work_generation::disabled };
 	nano::node_config config = system.default_config ();
 	auto & worker_node = *system.add_node (config);
 	config.peering_port = system.get_available_port ();

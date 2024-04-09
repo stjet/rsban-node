@@ -105,7 +105,6 @@ public:
 	uint64_t max_work_generate_difficulty (nano::work_version const) const;
 	bool local_work_generation_enabled () const;
 	bool work_generation_enabled () const;
-	bool work_generation_enabled (std::vector<std::pair<std::string, uint16_t>> const &) const;
 	std::optional<uint64_t> work_generate_blocking (nano::block &, uint64_t);
 	std::optional<uint64_t> work_generate_blocking (nano::work_version const, nano::root const &, uint64_t, std::optional<nano::account> const & = std::nullopt);
 	void work_generate (nano::work_version const, nano::root const &, uint64_t, std::function<void (std::optional<uint64_t>)>, std::optional<nano::account> const & = std::nullopt, bool const = false);

@@ -7,8 +7,8 @@ use std::{
 
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, NoValue, PublicKey, RawKey,
-    WalletId,
+    work::{DistributedWorkFactory, WorkThresholds},
+    Account, BlockHash, KeyDerivationFunction, NoValue, PublicKey, RawKey, Root, WalletId,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{
@@ -31,6 +31,7 @@ pub struct Wallets<T: Environment = EnvironmentWrapper> {
     pub node_config: NodeConfig,
     ledger: Arc<Ledger>,
     last_log: Mutex<Option<Instant>>,
+    distributed_work: Arc<DistributedWorkFactory>,
 }
 
 impl<T: Environment + 'static> Wallets<T> {
@@ -41,6 +42,7 @@ impl<T: Environment + 'static> Wallets<T> {
         node_config: &NodeConfig,
         kdf_work: u32,
         work: WorkThresholds,
+        distributed_work: Arc<DistributedWorkFactory>,
     ) -> anyhow::Result<Self> {
         let kdf = KeyDerivationFunction::new(kdf_work);
         let mut wallets = Self {
@@ -52,6 +54,7 @@ impl<T: Environment + 'static> Wallets<T> {
             node_config: node_config.clone(),
             ledger: Arc::clone(&ledger),
             last_log: Mutex::new(None),
+            distributed_work,
         };
         let mut txn = wallets.env.tx_begin_write();
         wallets.initialize(&mut txn)?;
@@ -208,5 +211,9 @@ impl<T: Environment + 'static> Wallets<T> {
                 action(&pub_key, &prv_key);
             }
         }
+    }
+
+    pub fn work_cache_blocking(&self, wallet: &Wallet, account: &Account, root: &Root) {
+        todo!()
     }
 }

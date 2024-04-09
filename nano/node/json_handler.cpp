@@ -5156,7 +5156,7 @@ void nano::json_handler::work_generate ()
 				}
 				auto secondary_work_peers_l (request.get<bool> ("secondary_work_peers", false));
 				auto const & peers_l (secondary_work_peers_l ? node.config->secondary_work_peers : node.config->work_peers);
-				if (node.work_generation_enabled (peers_l))
+				if (node.distributed_work.work_generation_enabled (peers_l))
 				{
 					node.work_generate (work_version, hash, difficulty, callback, account, secondary_work_peers_l);
 				}

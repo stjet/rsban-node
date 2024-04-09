@@ -643,7 +643,8 @@ rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lm
 	node_a.ledger.handle,
 	&config_dto,
 	node_a.config->network_params.kdf_work,
-	&node_a.config->network_params.work.dto);
+	&node_a.config->network_params.work.dto,
+	node_a.distributed_work.handle);
 }
 }
 
@@ -1473,10 +1474,10 @@ nano::public_key nano::wallets::change_seed (const std::shared_ptr<nano::wallet>
 
 void nano::wallets::work_cache_blocking (const std::shared_ptr<nano::wallet> & wallet, nano::account const & account_a, nano::root const & root_a)
 {
-	if (node.work_generation_enabled ())
+	if (node.distributed_work.work_generation_enabled ())
 	{
 		auto difficulty (node.default_difficulty (nano::work_version::work_1));
-		auto opt_work_l (node.work_generate_blocking (nano::work_version::work_1, root_a, difficulty, account_a));
+		auto opt_work_l (node.distributed_work.make_blocking (nano::work_version::work_1, root_a, difficulty, account_a));
 		if (opt_work_l.has_value ())
 		{
 			auto transaction_l (env.tx_begin_write ());

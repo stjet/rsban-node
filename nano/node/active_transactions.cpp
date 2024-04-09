@@ -154,6 +154,8 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 	// Next-block activations are only done for blocks with previously active elections
 	if (cemented_bootstrap_count_reached && was_active)
 	{
+		// TODO Gustav: Use callback style:
+		// block_cemented_with_active_election(transaction, block);
 		node.scheduler.priority.activate_successors (*transaction, block);
 	}
 }
@@ -1310,63 +1312,56 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (ac
  */
 
 nano::recently_confirmed_cache::recently_confirmed_cache (std::size_t max_size_a) :
-	max_size{ max_size_a }
+	handle{ rsnano::rsn_recently_confirmed_cache_create (max_size_a) }
 {
+}
+
+nano::recently_confirmed_cache::~recently_confirmed_cache ()
+{
+	rsnano::rsn_recently_confirmed_cache_destroy (handle);
 }
 
 void nano::recently_confirmed_cache::put (const nano::qualified_root & root, const nano::block_hash & hash)
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	confirmed.get<tag_sequence> ().emplace_back (root, hash);
-	if (confirmed.size () > max_size)
-	{
-		confirmed.get<tag_sequence> ().pop_front ();
-	}
+	rsnano::rsn_recently_confirmed_cache_put (handle, root.bytes.data (), hash.bytes.data ());
 }
 
 void nano::recently_confirmed_cache::erase (const nano::block_hash & hash)
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	confirmed.get<tag_hash> ().erase (hash);
+	rsnano::rsn_recently_confirmed_cache_erase (handle, hash.bytes.data ());
 }
 
 void nano::recently_confirmed_cache::clear ()
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	confirmed.clear ();
+	rsnano::rsn_recently_confirmed_cache_clear (handle);
 }
 
 bool nano::recently_confirmed_cache::exists (const nano::block_hash & hash) const
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	return confirmed.get<tag_hash> ().find (hash) != confirmed.get<tag_hash> ().end ();
+	return rsnano::rsn_recently_confirmed_cache_hash_exists (handle, hash.bytes.data ());
 }
 
 bool nano::recently_confirmed_cache::exists (const nano::qualified_root & root) const
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	return confirmed.get<tag_root> ().find (root) != confirmed.get<tag_root> ().end ();
+	return rsnano::rsn_recently_confirmed_cache_root_exists (handle, root.bytes.data ());
 }
 
 std::size_t nano::recently_confirmed_cache::size () const
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	return confirmed.size ();
+	return rsnano::rsn_recently_confirmed_cache_len (handle);
 }
 
 nano::recently_confirmed_cache::entry_t nano::recently_confirmed_cache::back () const
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	return confirmed.back ();
+	nano::qualified_root root;
+	nano::block_hash hash;
+	rsnano::rsn_recently_confirmed_cache_back (handle, root.bytes.data (), hash.bytes.data ());
+	return { root, hash };
 }
 
 std::unique_ptr<nano::container_info_component> nano::recently_confirmed_cache::collect_container_info (const std::string & name)
 {
-	nano::unique_lock<nano::mutex> lock{ mutex };
-
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "confirmed", confirmed.size (), sizeof (decltype (confirmed)::value_type) }));
-	return composite;
+	return std::make_unique<nano::container_info_composite> (rsnano::rsn_recently_confirmed_cache_collect_container_info (handle, name.c_str ()));
 }
 
 /*

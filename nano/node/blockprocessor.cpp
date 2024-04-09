@@ -50,14 +50,14 @@ void block_rolled_back_delete (void * context)
 
 void block_processed_wrapper (void * context, rsnano::BlockProcessedInfoDto * dto)
 {
-	auto callback = static_cast<std::function<void (nano::block_status const &, std::shared_ptr<nano::block> const &, nano::block_source)> *> (context);
+	auto callback = static_cast<std::function<void (nano::block_status, std::shared_ptr<nano::block> const &, nano::block_source)> *> (context);
 	auto block{ nano::block_handle_to_block (dto->block) };
 	(*callback) (static_cast<nano::block_status> (dto->status), block, static_cast<nano::block_source> (dto->source));
 }
 
 void block_processed_delete (void * context)
 {
-	auto callback = static_cast<std::function<void (nano::block_status const &, std::shared_ptr<nano::block> const &, nano::block_source)> *> (context);
+	auto callback = static_cast<std::function<void (nano::block_status, std::shared_ptr<nano::block> const &, nano::block_source)> *> (context);
 	delete callback;
 }
 

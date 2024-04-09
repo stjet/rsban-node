@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use crate::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream},
     BlockHash, Root,
@@ -27,6 +29,12 @@ impl QualifiedRoot {
             root: Root::from_ptr(ptr),
             previous: BlockHash::from_ptr(ptr.add(32)),
         }
+    }
+
+    pub unsafe fn copy_bytes(&self, target: *mut u8) {
+        let target_slice = std::slice::from_raw_parts_mut(target, 64);
+        target_slice[..32].copy_from_slice(self.root.as_bytes());
+        target_slice[32..].copy_from_slice(self.previous.as_bytes());
     }
 
     pub fn create_test_instance() -> Self {

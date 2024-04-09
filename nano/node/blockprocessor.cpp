@@ -63,7 +63,7 @@ void block_processed_delete (void * context)
 
 void batch_processed_wrapper (void * context, rsnano::BlockProcessedInfoDto const * dto, std::size_t len)
 {
-	auto callback = static_cast<std::function<void (std::vector<std::tuple<nano::block_status, std::shared_ptr<nano::block>, nano::block_source>> const &)> *> (context);
+	auto callback = static_cast<std::function<void (nano::block_processor::processed_batch_t const &)> *> (context);
 	std::vector<std::tuple<nano::block_status, std::shared_ptr<nano::block>, nano::block_source>> blocks{};
 	for (auto i = 0; i < len; ++i)
 	{
@@ -77,7 +77,7 @@ void batch_processed_wrapper (void * context, rsnano::BlockProcessedInfoDto cons
 
 void batch_processed_delete (void * context)
 {
-	auto callback = static_cast<std::function<void (std::vector<std::tuple<nano::block_status, std::shared_ptr<nano::block>, nano::block_source>> const &)> *> (context);
+	auto callback = static_cast<std::function<void (nano::block_processor::processed_batch_t const &)> *> (context);
 	delete callback;
 }
 }
@@ -184,7 +184,7 @@ void nano::block_processor::add_block_processed_observer (std::function<void (na
 
 void nano::block_processor::add_batch_processed_observer (std::function<void (nano::block_processor::processed_batch_t const &)> observer)
 {
-	auto context = new std::function<void (nano::block_processor::processed_batch_t &)> (observer);
+	auto context = new std::function<void (nano::block_processor::processed_batch_t const &)> (observer);
 	rsnano::rsn_block_processor_add_batch_processed_observer (handle, context, batch_processed_delete, batch_processed_wrapper);
 }
 

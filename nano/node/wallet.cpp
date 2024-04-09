@@ -516,39 +516,40 @@ void nano::wallet::set_representatives (std::unordered_set<nano::account> const 
 	representatives_lk.set (reps);
 }
 
-bool nano::wallet_representatives::check_rep (nano::account const & account_a, nano::uint128_t const & half_principal_weight_a, bool const acquire_lock_a)
+nano::wallet_representatives::wallet_representatives (nano::node & node_a) :
+	handle{ rsnano::rsn_wallet_representatives_create (node_a.config->vote_minimum.bytes.data (), node_a.ledger.handle) }
 {
-	nano::uint128_t weight;
-	{
-		auto ledger_txn{ node.ledger.store.tx_begin_read () };
-		weight = node.ledger.weight_exact (*ledger_txn, account_a);
-	}
+}
 
-	if (weight < node.config->vote_minimum.number ())
-	{
-		return false; // account not a representative
-	}
+nano::wallet_representatives::~wallet_representatives ()
+{
+	rsnano::rsn_wallet_representatives_destroy (handle);
+}
 
-	nano::unique_lock<nano::mutex> lock;
-	if (acquire_lock_a)
-	{
-		lock = nano::unique_lock<nano::mutex>{ reps_cache_mutex };
-	}
+uint64_t nano::wallet_representatives::voting_reps () const
+{
+	return rsnano::rsn_wallet_representatives_voting_reps (handle);
+}
 
-	if (weight >= half_principal_weight_a)
-	{
-		half_principal = true;
-	}
+bool nano::wallet_representatives::have_half_rep () const
+{
+	return rsnano::rsn_wallet_representatives_have_half_rep (handle);
+}
 
-	auto insert_result = accounts.insert (account_a);
-	if (!insert_result.second)
-	{
-		return false; // account already exists
-	}
+bool nano::wallet_representatives::exists (nano::account const & rep_a) const
+{
+	return rsnano::rsn_wallet_representatives_exists (handle, rep_a.bytes.data ());
+}
 
-	++voting;
+void nano::wallet_representatives::clear ()
+{
+	return rsnano::rsn_wallet_representatives_clear (handle);
+}
 
-	return true;
+bool nano::wallet_representatives::check_rep (nano::account const & account_a, nano::uint128_t const & half_principal_weight_a)
+{
+	nano::amount half_weight{ half_principal_weight_a };
+	return rsnano::rsn_wallet_representatives_check_rep (handle, account_a.bytes.data (), half_weight.bytes.data ());
 }
 
 nano::wallets::wallets_mutex_lock::wallets_mutex_lock (rsnano::WalletsMutexLockHandle * handle) :
@@ -1114,6 +1115,7 @@ nano::public_key nano::wallets::insert_adhoc (const std::shared_ptr<nano::wallet
 		// Makes sure that the representatives container will
 		// be in sync with any added keys.
 		transaction->commit ();
+		auto lock{ nano::unique_lock<nano::mutex>{ reps_cache_mutex } };
 		if (representatives.check_rep (key, half_principal_weight))
 		{
 			wallet->insert_representative (key);
@@ -1624,6 +1626,7 @@ nano::public_key nano::wallets::deterministic_insert (const std::shared_ptr<nano
 			work_ensure (wallet, key, key);
 		}
 		auto half_principal_weight (node.minimum_principal_weight () / 2);
+		auto lock{ nano::unique_lock<nano::mutex>{ reps_cache_mutex } };
 		if (representatives.check_rep (key, half_principal_weight))
 		{
 			wallet->insert_representative (key);
@@ -2033,32 +2036,32 @@ void nano::wallets::clear_send_ids ()
 
 size_t nano::wallets::voting_reps_count () const
 {
-	nano::lock_guard<nano::mutex> counts_guard{ representatives.reps_cache_mutex };
-	return representatives.voting;
+	nano::lock_guard<nano::mutex> counts_guard{ reps_cache_mutex };
+	return representatives.voting_reps ();
 }
 
 bool nano::wallets::have_half_rep () const
 {
-	nano::lock_guard<nano::mutex> counts_guard{ representatives.reps_cache_mutex };
+	nano::lock_guard<nano::mutex> counts_guard{ reps_cache_mutex };
 	return representatives.have_half_rep ();
 }
 
 bool nano::wallets::rep_exists (nano::account const & rep) const
 {
-	nano::lock_guard<nano::mutex> counts_guard{ representatives.reps_cache_mutex };
+	nano::lock_guard<nano::mutex> counts_guard{ reps_cache_mutex };
 	return representatives.exists (rep);
 }
 
 bool nano::wallets::should_republish_vote (nano::account const & voting_account) const
 {
-	nano::lock_guard<nano::mutex> counts_guard{ representatives.reps_cache_mutex };
+	nano::lock_guard<nano::mutex> counts_guard{ reps_cache_mutex };
 	return !representatives.have_half_rep () && !representatives.exists (voting_account);
 }
 
 void nano::wallets::compute_reps ()
 {
 	auto guard{ mutex.lock () };
-	nano::lock_guard<nano::mutex> counts_guard{ representatives.reps_cache_mutex };
+	nano::lock_guard<nano::mutex> counts_guard{ reps_cache_mutex };
 	representatives.clear ();
 	auto half_principal_weight (node.minimum_principal_weight () / 2);
 	auto transaction (tx_begin_read ());
@@ -2070,7 +2073,7 @@ void nano::wallets::compute_reps ()
 		for (auto ii (wallet.store.begin (*transaction)), nn (wallet.store.end ()); ii != nn; ++ii)
 		{
 			auto account (ii->first);
-			if (representatives.check_rep (account, half_principal_weight, false))
+			if (representatives.check_rep (account, half_principal_weight))
 			{
 				representatives_l.insert (account);
 			}

@@ -184,31 +184,16 @@ public:
 class wallet_representatives
 {
 public:
-	wallet_representatives (nano::node & node_a) :
-		node{ node_a }
-	{
-	}
-	uint64_t voting{ 0 }; // Number of representatives with at least the configured minimum voting weight
-	bool half_principal{ false }; // has representatives with at least 50% of principal representative requirements
-	std::unordered_set<nano::account> accounts; // Representatives with at least the configured minimum voting weight
-	bool have_half_rep () const
-	{
-		return half_principal;
-	}
-	bool exists (nano::account const & rep_a) const
-	{
-		return accounts.count (rep_a) > 0;
-	}
-	void clear ()
-	{
-		voting = 0;
-		half_principal = false;
-		accounts.clear ();
-	}
-	bool check_rep (nano::account const &, nano::uint128_t const &, bool const = true);
-
-	mutable nano::mutex reps_cache_mutex;
-	nano::node & node;
+	wallet_representatives (nano::node & node_a);
+	wallet_representatives (wallet_representatives const &) = delete;
+	wallet_representatives (wallet_representatives &&) = delete;
+	~wallet_representatives ();
+	bool have_half_rep () const;
+	uint64_t voting_reps () const;
+	bool exists (nano::account const & rep_a) const;
+	void clear ();
+	bool check_rep (nano::account const &, nano::uint128_t const &);
+	rsnano::WalletRepresentativesHandle * handle;
 };
 
 enum class [[nodiscard]] wallets_error
@@ -382,6 +367,7 @@ public:
 	nano::wallet_representatives representatives;
 	rsnano::LmdbWalletsHandle * rust_handle;
 	mutable wallets_mutex mutex;
+	mutable nano::mutex reps_cache_mutex;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (wallets & wallets, std::string const & name);

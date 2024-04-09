@@ -72,6 +72,7 @@ public:
 	size_t pending_value_size () const;
 	size_t thread_count () const;
 	bool has_opencl () const;
+	bool work_generation_enabled () const;
 	uint64_t threshold_base (nano::work_version const version_a) const;
 	uint64_t difficulty (nano::work_version const version_a, nano::root const & root_a, uint64_t const work_a) const;
 

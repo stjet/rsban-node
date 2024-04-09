@@ -139,6 +139,11 @@ pub unsafe extern "C" fn rsn_work_pool_has_opencl(handle: *mut WorkPoolHandle) -
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_work_pool_work_generation_enabled(handle: &WorkPoolHandle) -> bool {
+    handle.0.work_generation_enabled()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_work_pool_cancel(handle: *mut WorkPoolHandle, root: *const u8) {
     (*handle).0.cancel(&Root::from_ptr(root));
 }

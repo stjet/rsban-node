@@ -92,6 +92,10 @@ impl WorkPoolImpl {
         self.has_opencl
     }
 
+    pub fn work_generation_enabled(&self) -> bool {
+        self.threads.len() > 0
+    }
+
     pub fn cancel(&self, root: &Root) {
         self.work_queue.cancel(root);
     }

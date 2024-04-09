@@ -165,6 +165,12 @@ bool nano::work_pool::has_opencl () const
 {
 	return rsnano::rsn_work_pool_has_opencl (handle);
 }
+
+bool nano::work_pool::work_generation_enabled () const
+{
+	return rsnano::rsn_work_pool_work_generation_enabled (handle);
+}
+
 uint64_t nano::work_pool::threshold_base (const nano::work_version version_a) const
 {
 	return rsnano::rsn_work_pool_threshold_base (handle, static_cast<uint8_t> (version_a));

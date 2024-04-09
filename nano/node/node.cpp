@@ -1128,7 +1128,7 @@ uint64_t nano::node::max_work_generate_difficulty (nano::work_version const vers
 
 bool nano::node::local_work_generation_enabled () const
 {
-	return config->work_threads > 0 || work.has_opencl ();
+	return work.work_generation_enabled ();
 }
 
 bool nano::node::work_generation_enabled () const
@@ -1136,9 +1136,9 @@ bool nano::node::work_generation_enabled () const
 	return work_generation_enabled (config->work_peers);
 }
 
-bool nano::node::work_generation_enabled (std::vector<std::pair<std::string, uint16_t>> const & peers_a) const
+bool nano::node::work_generation_enabled (std::vector<std::pair<std::string, uint16_t>> const & work_peers) const
 {
-	return !peers_a.empty () || local_work_generation_enabled ();
+	return !work_peers.empty () || work.work_generation_enabled ();
 }
 
 std::optional<uint64_t> nano::node::work_generate_blocking (nano::block & block_a, uint64_t difficulty_a)

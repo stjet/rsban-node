@@ -14,7 +14,7 @@ jobs:
           - { name: UBSAN, ignore_errors: false }
           - { name: ASAN, ignore_errors: false, leak_check: false }
           - { name: ASAN_INT, ignore_errors: true, leak_check: false }
-          - { name: TSAN, ignore_errors: true }
+          - { name: TSAN, ignore_errors: false }
           - { name: LEAK, ignore_errors: true, leak_check: true }
     runs-on: ubuntu-22.04
     env:
@@ -67,7 +67,7 @@ jobs:
         SANITIZER:
           - { name: UBSAN, ignore_errors: false }
           - { name: ASAN, ignore_errors: false }
-          - { name: TSAN, ignore_errors: true }
+          - { name: TSAN, ignore_errors: false }
     runs-on: macos-14
     env:
       COMPILER: ${{ matrix.COMPILER }}

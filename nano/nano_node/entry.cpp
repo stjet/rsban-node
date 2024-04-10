@@ -8,6 +8,7 @@
 #include <nano/node/active_transactions.hpp>
 #include <nano/node/cli.hpp>
 #include <nano/node/daemonconfig.hpp>
+#include <nano/node/inactive_node.hpp>
 #include <nano/node/ipc/ipc_server.hpp>
 #include <nano/node/json_handler.hpp>
 #include <nano/node/node.hpp>

@@ -77,7 +77,6 @@ add_library(
   election_status.cpp
   epoch_upgrader.hpp
   epoch_upgrader.cpp
-  fair_queue.hpp
   ipc/action_handler.hpp
   ipc/action_handler.cpp
   ipc/flatbuffers_handler.hpp

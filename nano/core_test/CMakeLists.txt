@@ -20,7 +20,6 @@ add_executable(
   election.cpp
   election_scheduler.cpp
   epochs.cpp
-  fair_queue.cpp
   frontiers_confirmation.cpp
   ipc.cpp
   ledger.cpp

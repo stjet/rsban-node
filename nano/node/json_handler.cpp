@@ -1997,10 +1997,18 @@ void nano::json_handler::election_statistics ()
 	unsigned hinted_count = 0;
 	unsigned optimistic_count = 0;
 	unsigned total_count = 0;
+	std::chrono::milliseconds total_age{ 0 };
+	std::chrono::milliseconds max_age{ 0 };
 
 	for (auto const & election : active_elections)
 	{
 		total_count++;
+		auto age = election->age ();
+		total_age += age;
+		if (age > max_age)
+		{
+			max_age = age;
+		}
 		switch (election->behavior ())
 		{
 			case election_behavior::normal:
@@ -2014,16 +2022,19 @@ void nano::json_handler::election_statistics ()
 				break;
 		}
 	}
+	auto average_election_age = std::chrono::milliseconds{ total_count ? total_age.count () / total_count : 0 };
 
 	auto utilization_percentage = (static_cast<double> (total_count * 100) / node.config->active_elections_size);
-	std::stringstream stream;
-	stream << std::fixed << std::setprecision (2) << utilization_percentage;
+	std::stringstream stream_utilization, stream_average_age;
+	stream_utilization << std::fixed << std::setprecision (2) << utilization_percentage;
 
 	response_l.put ("normal", normal_count);
 	response_l.put ("hinted", hinted_count);
 	response_l.put ("optimistic", optimistic_count);
 	response_l.put ("total", total_count);
-	response_l.put ("aec_utilization_percentage", stream.str ());
+	response_l.put ("aec_utilization_percentage", stream_utilization.str ());
+	response_l.put ("max_election_age", max_age.count ());
+	response_l.put ("average_election_age", average_election_age.count ());
 
 	response_errors ();
 }

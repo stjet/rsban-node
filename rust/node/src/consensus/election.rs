@@ -93,6 +93,10 @@ impl Election {
     pub fn last_block_elapsed(&self) -> Duration {
         self.last_block.read().unwrap().elapsed()
     }
+
+    pub fn age(&self) -> Duration {
+        self.mutex.lock().unwrap().state_start.elapsed()
+    }
 }
 
 pub struct ElectionData {

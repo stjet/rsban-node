@@ -283,6 +283,12 @@ nano::election_status nano::election::get_status () const
 	return guard.status ();
 }
 
+std::chrono::milliseconds nano::election::age () const
+{
+	auto guard{ lock () };
+	return std::chrono::milliseconds{ rsnano::rsn_election_lock_state_start_elapsed_ms (guard.handle) };
+}
+
 nano::election_lock nano::election::lock () const
 {
 	return nano::election_lock{ *this };

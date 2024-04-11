@@ -492,7 +492,28 @@ pub unsafe extern "C" fn rsn_wallets_insert_adhoc(
     result: *mut u8,
 ) {
     let account = handle.insert_adhoc(wallet, &RawKey::from_ptr(key), generate_work);
-    account.copy_bytes(result);
+    account.copy_bytes(result)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_insert_adhoc2(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    key: *const u8,
+    generate_work: bool,
+    result: *mut u8,
+) -> u8 {
+    match handle.insert_adhoc2(
+        &WalletId::from_ptr(wallet_id),
+        &RawKey::from_ptr(key),
+        generate_work,
+    ) {
+        Ok(account) => {
+            account.copy_bytes(result);
+            WalletsError::None as u8
+        }
+        Err(e) => e as u8,
+    }
 }
 
 #[no_mangle]

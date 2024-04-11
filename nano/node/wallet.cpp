@@ -1068,39 +1068,13 @@ nano::wallet_id nano::wallets::first_wallet_id () const
 
 nano::wallets_error nano::wallets::insert_adhoc (nano::wallet_id const & wallet_id, nano::raw_key const & key_a, bool generate_work_a)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_read () };
-	if (!wallet->store.valid_password (*txn))
-	{
-		return nano::wallets_error::wallet_locked;
-	}
-
-	txn->reset ();
-	insert_adhoc (wallet, key_a, generate_work_a);
-	return nano::wallets_error::none;
+	nano::account account;
+	return static_cast<nano::wallets_error> (rsnano::rsn_wallets_insert_adhoc2 (rust_handle, wallet_id.bytes.data (), key_a.bytes.data (), generate_work_a, account.bytes.data ()));
 }
 
 nano::wallets_error nano::wallets::insert_adhoc (nano::wallet_id const & wallet_id, nano::raw_key const & key_a, bool generate_work_a, nano::public_key & account)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_read () };
-	if (!wallet->store.valid_password (*txn))
-	{
-		return nano::wallets_error::wallet_locked;
-	}
-	txn->reset ();
-	account = insert_adhoc (wallet, key_a, generate_work_a);
-	return nano::wallets_error::none;
+	return static_cast<nano::wallets_error> (rsnano::rsn_wallets_insert_adhoc2 (rust_handle, wallet_id.bytes.data (), key_a.bytes.data (), generate_work_a, account.bytes.data ()));
 }
 
 nano::public_key nano::wallets::insert_adhoc (const std::shared_ptr<nano::wallet> & wallet, nano::raw_key const & key_a, bool generate_work_a)

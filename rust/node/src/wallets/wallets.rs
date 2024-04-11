@@ -284,15 +284,20 @@ impl<T: Environment + 'static> Wallets<T> {
         }
     }
 
+    fn get_wallet<'a>(
+        guard: &'a HashMap<WalletId, Arc<Wallet<T>>>,
+        wallet_id: &WalletId,
+    ) -> Result<&'a Arc<Wallet<T>>, WalletsError> {
+        guard.get(wallet_id).ok_or(WalletsError::WalletNotFound)
+    }
+
     pub fn insert_watch(
         &self,
         wallet_id: &WalletId,
         accounts: &[Account],
     ) -> Result<(), WalletsError> {
         let guard = self.mutex.lock().unwrap();
-        let Some(wallet) = guard.get(wallet_id) else {
-            return Err(WalletsError::WalletNotFound);
-        };
+        let wallet = Self::get_wallet(&guard, wallet_id)?;
         let mut tx = self.env.tx_begin_write();
         if !wallet.store.valid_password(&tx) {
             return Err(WalletsError::WalletLocked);
@@ -309,10 +314,7 @@ impl<T: Environment + 'static> Wallets<T> {
 
     pub fn valid_password(&self, wallet_id: &WalletId) -> Result<bool, WalletsError> {
         let guard = self.mutex.lock().unwrap();
-        let Some(wallet) = guard.get(wallet_id) else {
-            return Err(WalletsError::WalletNotFound);
-        };
-
+        let wallet = Self::get_wallet(&guard, wallet_id)?;
         let tx = self.env.tx_begin_read();
         Ok(wallet.store.valid_password(&tx))
     }
@@ -323,10 +325,7 @@ impl<T: Environment + 'static> Wallets<T> {
         password: impl AsRef<str>,
     ) -> Result<(), WalletsError> {
         let guard = self.mutex.lock().unwrap();
-        let Some(wallet) = guard.get(wallet_id) else {
-            return Err(WalletsError::WalletNotFound);
-        };
-
+        let wallet = Self::get_wallet(&guard, wallet_id)?;
         let tx = self.env.tx_begin_write();
         if wallet.store.attempt_password(&tx, password.as_ref()) {
             Ok(())
@@ -337,10 +336,7 @@ impl<T: Environment + 'static> Wallets<T> {
 
     pub fn lock(&self, wallet_id: &WalletId) -> Result<(), WalletsError> {
         let guard = self.mutex.lock().unwrap();
-        let Some(wallet) = guard.get(wallet_id) else {
-            return Err(WalletsError::WalletNotFound);
-        };
-
+        let wallet = Self::get_wallet(&guard, wallet_id)?;
         wallet.store.lock();
         Ok(())
     }
@@ -351,10 +347,7 @@ impl<T: Environment + 'static> Wallets<T> {
         password: impl AsRef<str>,
     ) -> Result<(), WalletsError> {
         let guard = self.mutex.lock().unwrap();
-        let Some(wallet) = guard.get(wallet_id) else {
-            return Err(WalletsError::WalletNotFound);
-        };
-
+        let wallet = Self::get_wallet(&guard, wallet_id)?;
         let mut tx = self.env.tx_begin_write();
         if !wallet.store.valid_password(&tx) {
             return Err(WalletsError::WalletLocked);
@@ -448,7 +441,16 @@ const GENERATE_PRIORITY: Amount = Amount::MAX;
 
 pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
     fn insert_adhoc(&self, wallet: &Arc<Wallet<T>>, key: &RawKey, generate_work: bool) -> Account;
+
+    fn insert_adhoc2(
+        &self,
+        wallet_id: &WalletId,
+        key: &RawKey,
+        generate_work: bool,
+    ) -> Result<Account, WalletsError>;
+
     fn work_ensure(&self, wallet: Arc<Wallet<T>>, account: Account, root: Root);
+
     fn action_complete(
         &self,
         wallet: Arc<Wallet<T>>,
@@ -485,6 +487,22 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
             wallet.representatives.lock().unwrap().insert(key);
         }
         key
+    }
+
+    fn insert_adhoc2(
+        &self,
+        wallet_id: &WalletId,
+        key: &RawKey,
+        generate_work: bool,
+    ) -> Result<Account, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, wallet_id)?;
+        let mut tx = self.env.tx_begin_read();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+        tx.reset();
+        Ok(self.insert_adhoc(wallet, key, generate_work))
     }
 
     fn work_ensure(&self, wallet: Arc<Wallet<T>>, account: Account, root: Root) {

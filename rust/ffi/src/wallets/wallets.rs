@@ -543,3 +543,49 @@ pub unsafe extern "C" fn rsn_wallets_exists(
 pub unsafe extern "C" fn rsn_wallets_reload(handle: &LmdbWalletsHandle) {
     handle.reload();
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_remove_account(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    account: *const u8,
+) -> u8 {
+    match handle.remove_account(&WalletId::from_ptr(wallet_id), &Account::from_ptr(account)) {
+        Ok(_) => WalletsError::None as u8,
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_work_set(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    account: *const u8,
+    work: u64,
+) -> u8 {
+    match handle.work_set(
+        &WalletId::from_ptr(wallet_id),
+        &Account::from_ptr(account),
+        work,
+    ) {
+        Ok(_) => WalletsError::None as u8,
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_move_accounts(
+    handle: &LmdbWalletsHandle,
+    source_id: *const u8,
+    target_id: *const u8,
+    accounts: &AccountVecHandle,
+) -> i32 {
+    match handle.move_accounts(
+        &WalletId::from_ptr(source_id),
+        &WalletId::from_ptr(target_id),
+        accounts,
+    ) {
+        Ok(_) => 0,
+        Err(_) => -1,
+    }
+}

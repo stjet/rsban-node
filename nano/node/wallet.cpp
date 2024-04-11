@@ -1005,52 +1005,21 @@ uint64_t nano::wallets::work_get (nano::wallet_id const & wallet_id, nano::accou
 
 nano::wallets_error nano::wallets::work_set (nano::wallet_id const & wallet_id, nano::account const & account, uint64_t work)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_write () };
-	if (wallet->store.find (*txn, account) == wallet->store.end ())
-	{
-		return nano::wallets_error::account_not_found;
-	}
-
-	wallet->store.work_put (*txn, account, work);
-	return nano::wallets_error::none;
+	auto result = rsnano::rsn_wallets_work_set (rust_handle, wallet_id.bytes.data (), account.bytes.data (), work);
+	return static_cast<nano::wallets_error> (result);
 }
 
 nano::wallets_error nano::wallets::remove_account (nano::wallet_id const & wallet_id, nano::account const & account_id)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_write () };
-	if (!wallet->store.valid_password (*txn))
-	{
-		return nano::wallets_error::wallet_locked;
-	}
-	if (wallet->store.find (*txn, account_id) == wallet->store.end ())
-	{
-		return nano::wallets_error::account_not_found;
-	}
-	wallet->store.erase (*txn, account_id);
-	return nano::wallets_error::none;
+	auto result = rsnano::rsn_wallets_remove_account (rust_handle, wallet_id.bytes.data (), account_id.bytes.data ());
+	return static_cast<nano::wallets_error> (result);
 }
 
 bool nano::wallets::move_accounts (nano::wallet_id const & source_id, nano::wallet_id const & target_id, std::vector<nano::public_key> const & accounts)
 {
-	auto lock{ mutex.lock () };
-	auto existing (lock.find (source_id));
-	auto source (existing);
-	auto transaction (tx_begin_write ());
-	auto target{ lock.find (target_id) };
-	auto error (target->store.move (*transaction, source->store, accounts));
-	return error;
+	rsnano::account_vec acc_vec{ accounts };
+	auto result = rsnano::rsn_wallets_move_accounts (rust_handle, source_id.bytes.data (), target_id.bytes.data (), acc_vec.handle);
+	return result != 0;
 }
 
 bool nano::wallets::wallet_exists (nano::wallet_id const & id) const

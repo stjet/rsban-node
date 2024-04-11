@@ -435,6 +435,57 @@ impl<T: Environment + 'static> Wallets<T> {
         let wallet = guard.remove(id).unwrap();
         wallet.store.destroy(&mut tx);
     }
+
+    pub fn remove_account(
+        &self,
+        wallet_id: &WalletId,
+        account: &Account,
+    ) -> Result<(), WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Self::get_wallet(&guard, wallet_id)?;
+        let mut tx = self.env.tx_begin_write();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+        if wallet.store.find(&tx, account).is_end() {
+            return Err(WalletsError::AccountNotFound);
+        }
+        wallet.store.erase(&mut tx, account);
+        Ok(())
+    }
+
+    pub fn work_set(
+        &self,
+        wallet_id: &WalletId,
+        account: &Account,
+        work: u64,
+    ) -> Result<(), WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Self::get_wallet(&guard, wallet_id)?;
+        let mut tx = self.env.tx_begin_write();
+        if wallet.store.find(&tx, account).is_end() {
+            return Err(WalletsError::AccountNotFound);
+        }
+        wallet.store.work_put(&mut tx, account, work);
+        Ok(())
+    }
+
+    pub fn move_accounts(
+        &self,
+        source_id: &WalletId,
+        target_id: &WalletId,
+        accounts: &[Account],
+    ) -> anyhow::Result<()> {
+        let guard = self.mutex.lock().unwrap();
+        let source = guard
+            .get(source_id)
+            .ok_or_else(|| anyhow!("source not found"))?;
+        let mut tx = self.env.tx_begin_write();
+        let target = guard
+            .get(target_id)
+            .ok_or_else(|| anyhow!("target not found"))?;
+        target.store.move_keys(&mut tx, &source.store, accounts)
+    }
 }
 
 const GENERATE_PRIORITY: Amount = Amount::MAX;

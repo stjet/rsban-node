@@ -9,6 +9,7 @@ use crate::{
     block_processing::BlockProcessorHandle,
     core::{BlockDetailsDto, BlockHandle},
     ledger::datastore::{lmdb::LmdbEnvHandle, LedgerHandle, TransactionHandle},
+    representatives::OnlineRepsHandle,
     utils::{ContextWrapper, ThreadPoolHandle},
     work::{DistributedWorkFactoryHandle, WorkThresholdsDto},
     NetworkParamsDto, NodeConfigDto, U256ArrayDto, VoidPointerCallback,
@@ -49,6 +50,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
     network_params: &NetworkParamsDto,
     workers: &ThreadPoolHandle,
     block_processor: &BlockProcessorHandle,
+    online_reps: &OnlineRepsHandle,
 ) -> *mut LmdbWalletsHandle {
     let network_params = NetworkParams::try_from(network_params).unwrap();
     let node_config = NodeConfig::try_from(node_config).unwrap();
@@ -65,6 +67,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
             network_params,
             Arc::clone(workers),
             Arc::clone(block_processor),
+            Arc::clone(online_reps),
         )
         .expect("could not create wallet"),
     ))))
@@ -476,4 +479,9 @@ pub unsafe extern "C" fn rsn_wallets_representatives_lock(
 ) -> *mut WalletRepresentativesLock {
     let guard = handle.representatives.lock().unwrap();
     WalletRepresentativesLock::new(guard)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_compute_reps(handle: &LmdbWalletsHandle) {
+    handle.compute_reps();
 }

@@ -4,7 +4,7 @@ use crate::{
     config::NodeConfig,
     utils::ThreadPool,
     work::DistributedWorkFactory,
-    NetworkParams,
+    NetworkParams, OnlineReps,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
@@ -17,7 +17,7 @@ use rsnano_store_lmdb::{
     LmdbIteratorImpl, LmdbWalletStore, LmdbWriteTransaction, RwTransaction, Transaction,
 };
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::PathBuf,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
@@ -54,6 +54,7 @@ pub struct Wallets<T: Environment = EnvironmentWrapper> {
     pub wallet_actions: WalletActionThread,
     block_processor: Arc<BlockProcessor>,
     pub representatives: Mutex<WalletRepresentatives>,
+    online_reps: Arc<Mutex<OnlineReps>>,
 }
 
 impl<T: Environment + 'static> Wallets<T> {
@@ -68,6 +69,7 @@ impl<T: Environment + 'static> Wallets<T> {
         network_params: NetworkParams,
         workers: Arc<dyn ThreadPool>,
         block_processor: Arc<BlockProcessor>,
+        online_reps: Arc<Mutex<OnlineReps>>,
     ) -> anyhow::Result<Self> {
         let kdf = KeyDerivationFunction::new(kdf_work);
         let mut wallets = Self {
@@ -90,6 +92,7 @@ impl<T: Environment + 'static> Wallets<T> {
                 node_config.vote_minimum,
                 Arc::clone(&ledger),
             )),
+            online_reps,
         };
         let mut txn = wallets.env.tx_begin_write();
         wallets.initialize(&mut txn)?;
@@ -362,6 +365,25 @@ impl<T: Environment + 'static> Wallets<T> {
 
     pub fn set_observer(&self, observer: Box<dyn Fn(bool) + Send>) {
         self.wallet_actions.set_observer(observer);
+    }
+
+    pub fn compute_reps(&self) {
+        let wallets_guard = self.mutex.lock().unwrap();
+        let mut reps_guard = self.representatives.lock().unwrap();
+        reps_guard.clear();
+        let half_principal_weight = self.online_reps.lock().unwrap().minimum_principal_weight() / 2;
+        let tx = self.env.tx_begin_read();
+        for (_, wallet) in wallets_guard.iter() {
+            let mut representatives = HashSet::new();
+            let mut it = wallet.store.begin(&tx);
+            while let Some((&account, _)) = it.current() {
+                if reps_guard.check_rep(account, half_principal_weight) {
+                    representatives.insert(account);
+                }
+                it.next();
+            }
+            *wallet.representatives.lock().unwrap() = representatives;
+        }
     }
 }
 

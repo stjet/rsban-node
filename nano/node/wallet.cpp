@@ -648,7 +648,8 @@ rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lm
 	node_a.distributed_work.handle,
 	&network_params_dto,
 	node_a.workers->handle,
-	node_a.block_processor.handle);
+	node_a.block_processor.handle,
+	node_a.online_reps.get_handle ());
 }
 }
 
@@ -2042,26 +2043,7 @@ bool nano::wallets::should_republish_vote (nano::account const & voting_account)
 
 void nano::wallets::compute_reps ()
 {
-	auto guard{ mutex.lock () };
-	auto counts_guard{ lock_representatives () };
-	counts_guard.clear ();
-	auto half_principal_weight (node.minimum_principal_weight () / 2);
-	auto transaction (tx_begin_read ());
-	auto wallets{ guard.get_all () };
-	for (auto i (wallets.begin ()), n (wallets.end ()); i != n; ++i)
-	{
-		auto & wallet (*i->second);
-		std::unordered_set<nano::account> representatives_l;
-		for (auto ii (wallet.store.begin (*transaction)), nn (wallet.store.end ()); ii != nn; ++ii)
-		{
-			auto account (ii->first);
-			if (counts_guard.check_rep (account, half_principal_weight))
-			{
-				representatives_l.insert (account);
-			}
-		}
-		wallet.set_representatives (representatives_l);
-	}
+	rsnano::rsn_wallets_compute_reps (rust_handle);
 }
 
 void nano::wallets::ongoing_compute_reps ()

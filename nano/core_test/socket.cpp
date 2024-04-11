@@ -317,15 +317,18 @@ TEST (socket, disconnection_of_silent_connections)
 	auto server_port = system.get_available_port ();
 
 	// on a connection, a server data socket is created. The shared pointer guarantees the object's lifecycle until the end of this test.
+	std::mutex mutex;
 	std::shared_ptr<nano::transport::socket> server_data_socket;
 
 	// start a server listening socket
 	auto listener = std::make_shared<nano::transport::tcp_listener> (server_port, *node, 1);
 	nano::test::stop_guard stop_guard{ *listener };
-	listener->start ([&server_data_socket] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec) {
+	listener->start ([&server_data_socket, &mutex] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec) {
 		if (!ec)
 		{
+			mutex.lock ();
 			server_data_socket = new_connection;
+			mutex.unlock ();
 		}
 		return true;
 	});
@@ -342,7 +345,14 @@ TEST (socket, disconnection_of_silent_connections)
 	});
 	ASSERT_TIMELY (4s, connected);
 	// Checking the connection was closed.
-	ASSERT_TIMELY (10s, server_data_socket != nullptr);
+	auto check_socket = [&server_data_socket, &mutex] () {
+		bool done = false;
+		mutex.lock ();
+		done = server_data_socket != nullptr;
+		mutex.unlock ();
+		return done;
+	};
+	ASSERT_TIMELY (10s, check_socket ());
 	ASSERT_TIMELY (10s, server_data_socket->is_closed ());
 
 	auto get_tcp_io_timeout_drops = [&node] () {

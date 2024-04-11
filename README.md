@@ -1,8 +1,7 @@
 <p style="text-align:center;"><img src="/images/logo.svg" width"300px" height="auto" alt="Logo"></p>
 
 
-
-[![Tests](https://github.com/simpago/rsnano-node/workflows/Unit%20Tests/badge.svg)](https://github.com/simpago/rsnano-node/actions/workflows/unit_tests.yml)
+[![Unit Tests](https://github.com/simpago/rsnano-node/actions/workflows/unit_tests.yml/badge.svg)](https://github.com/simpago/rsnano-node/actions/workflows/unit_tests.yml)
 [![Discord](https://img.shields.io/badge/discord-join%20chat-orange.svg)](https://discord.gg/kBwvAyxEWE)
 
 

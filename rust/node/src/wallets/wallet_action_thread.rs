@@ -14,6 +14,15 @@ pub struct WalletActionThread {
     join_handle: Mutex<Option<JoinHandle<()>>>,
 }
 
+impl Drop for WalletActionThread {
+    fn drop(&mut self) {
+        assert!(
+            self.join_handle.lock().unwrap().is_none(),
+            "wallet action thread wasn't stopped"
+        );
+    }
+}
+
 impl WalletActionThread {
     pub fn new() -> Self {
         Self {

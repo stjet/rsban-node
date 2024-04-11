@@ -32,7 +32,7 @@ pub unsafe extern "C" fn rsn_wallet_action_lock(
 }
 
 pub struct WalletActionThreadLock(
-    MutexGuard<'static, BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>>,
+    pub MutexGuard<'static, BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>>,
 );
 
 #[no_mangle]

@@ -645,8 +645,7 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (node_a.wallets_store_impl.get ())->environment),
 	representatives{ node_a },
 	rust_handle{ create_wallets (node_a, env) },
-	mutex{ rust_handle },
-	wallet_actions{}
+	mutex{ rust_handle }
 {
 	{
 		// ported until here...
@@ -1481,27 +1480,36 @@ void nano::wallets::erase_delayed_work (nano::account const & account)
 
 void nano::wallets::set_actions_observer (std::function<void (bool)> observer_a)
 {
-	wallet_actions.set_observer (observer_a);
+	auto context = new std::function<void (bool)> (observer_a);
+	rsnano::rsn_wallets_set_observer (rust_handle, wrapped_wallet_action_observer, context, delete_wallet_action_observer_context);
 }
 
 void nano::wallets::start_actions ()
 {
-	wallet_actions.start ();
+	rsnano::rsn_wallets_start (rust_handle);
 }
 
 void nano::wallets::stop_actions ()
 {
-	wallet_actions.stop ();
+	rsnano::rsn_wallets_stop (rust_handle);
 }
 
 void nano::wallets::queue_wallet_action (nano::uint128_t const & amount_a, std::shared_ptr<nano::wallet> const & wallet_a, std::function<void (nano::wallet &)> action_a)
 {
-	wallet_actions.queue_wallet_action (amount_a, wallet_a, action_a);
+	nano::amount amount{ amount_a };
+	auto context = new std::function<void (nano::wallet &)> (action_a);
+	rsnano::rsn_wallets_queue_wallet_action (
+	rust_handle,
+	amount.bytes.data (),
+	wallet_a->handle,
+	wrapped_wallet_action_callback,
+	context,
+	delete_wallet_action_context);
 }
 
 size_t nano::wallets::actions_size ()
 {
-	return wallet_actions.size ();
+	return rsnano::rsn_wallets_actions_size (rust_handle);
 }
 
 nano::wallets_error nano::wallets::insert_watch (nano::wallet_id const & wallet_id, std::vector<nano::public_key> const & accounts)
@@ -1889,7 +1897,7 @@ void nano::wallets::destroy (nano::wallet_id const & id_a)
 	auto lock{ mutex.lock () };
 	auto transaction (tx_begin_write ());
 	// action_mutex should be locked after transactions to prevent deadlocks in deterministic_insert () & insert_adhoc ()
-	auto action_lock{ wallet_actions.lock () };
+	nano::wallet_action_thread::actions_lock action_lock{ rsnano::rsn_wallets_actions_lock (rust_handle) };
 	auto existing (lock.find (id_a));
 	debug_assert (existing != nullptr);
 	auto wallet (existing);
@@ -2084,22 +2092,7 @@ void nano::wallets::send_async (const std::shared_ptr<nano::wallet> & wallet, na
 
 void nano::wallets::work_ensure (std::shared_ptr<nano::wallet> wallet, nano::account const & account_a, nano::root const & root_a)
 {
-	using namespace std::chrono_literals;
-	std::chrono::seconds const precache_delay = node.network_params.network.is_dev_network () ? 1s : 10s;
-
-	delayed_work->operator[] (account_a) = root_a;
-
-	node.workers->add_timed_task (std::chrono::steady_clock::now () + precache_delay, [&this_l = *this, wallet_l = wallet, account_a, root_a] {
-		auto delayed_work = this_l.delayed_work.lock ();
-		auto existing (delayed_work->find (account_a));
-		if (existing != delayed_work->end () && existing->second == root_a)
-		{
-			delayed_work->erase (existing);
-			this_l.queue_wallet_action (nano::wallets::generate_priority, wallet_l, [account_a, root_a, wallet_l, &this_l] (nano::wallet & wallet_a) {
-				this_l.work_cache_blocking (wallet_l, account_a, root_a);
-			});
-		}
-	});
+	rsnano::rsn_wallets_work_ensure (rust_handle, wallet->handle, account_a.bytes.data (), root_a.bytes.data ());
 }
 
 bool nano::wallets::action_complete (std::shared_ptr<nano::wallet> wallet, std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, bool const generate_work_a, nano::block_details const & details_a)

@@ -1,6 +1,8 @@
 use super::{
     wallet::{AccountVecHandle, WalletHandle},
-    wallet_action_thread::WalletActionObserverCallback,
+    wallet_action_thread::{
+        WalletActionCallback, WalletActionObserverCallback, WalletActionThreadLock,
+    },
 };
 use crate::{
     ledger::datastore::{lmdb::LmdbEnvHandle, LedgerHandle, TransactionHandle},
@@ -9,7 +11,7 @@ use crate::{
     NodeConfigDto, U256ArrayDto, VoidPointerCallback,
 };
 use num_traits::FromPrimitive;
-use rsnano_core::{work::WorkThresholds, Account, BlockHash, Root, WalletId};
+use rsnano_core::{work::WorkThresholds, Account, Amount, BlockHash, Root, WalletId};
 use rsnano_node::{
     config::NodeConfig,
     wallets::{Wallet, Wallets, WalletsError, WalletsExt},
@@ -332,6 +334,16 @@ pub unsafe extern "C" fn rsn_wallets_rekey(
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_wallets_start(handle: &LmdbWalletsHandle) {
+    handle.start();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_wallets_stop(handle: &LmdbWalletsHandle) {
+    handle.stop();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_wallets_get_delayed_work(
     handle: &LmdbWalletsHandle,
     account: *const u8,
@@ -342,6 +354,7 @@ pub unsafe extern "C" fn rsn_wallets_get_delayed_work(
         .lock()
         .unwrap()
         .get(&Account::from_ptr(account))
+        .cloned()
         .unwrap_or_default()
         .copy_bytes(root);
 }
@@ -385,4 +398,38 @@ pub extern "C" fn rsn_wallets_set_observer(
         observer(ctx, active);
     });
     handle.set_observer(wrapped_observer);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_queue_wallet_action(
+    handle: &LmdbWalletsHandle,
+    amount: *const u8,
+    wallet: &WalletHandle,
+    action: WalletActionCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let amount = Amount::from_ptr(amount);
+    let context_wrapper = ContextWrapper::new(context, delete_context);
+    let wrapped_action = Box::new(move |wallet| {
+        let ctx = context_wrapper.get_context();
+        action(ctx, Box::into_raw(Box::new(WalletHandle(wallet))))
+    });
+
+    handle
+        .wallet_actions
+        .queue_wallet_action(amount, Arc::clone(&wallet.0), wrapped_action)
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_wallets_actions_size(handle: &LmdbWalletsHandle) -> usize {
+    handle.wallet_actions.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_actions_lock(
+    handle: &LmdbWalletsHandle,
+) -> *mut WalletActionThreadLock {
+    let guard = handle.wallet_actions.lock();
+    Box::into_raw(Box::new(WalletActionThreadLock(guard)))
 }

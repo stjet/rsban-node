@@ -1,13 +1,9 @@
 use super::{Wallet, WalletActionThread};
-use crate::{
-    config::NodeConfig,
-    utils::{ThreadPool, ThreadPoolImpl},
-    work::DistributedWorkFactory,
-};
+use crate::{config::NodeConfig, utils::ThreadPool, work::DistributedWorkFactory};
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, Networks, NoValue, PublicKey,
-    RawKey, Root, WalletId, WorkVersion,
+    work::WorkThresholds, Account, Amount, BlockHash, KeyDerivationFunction, Networks, NoValue,
+    PublicKey, RawKey, Root, WalletId, WorkVersion,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{
@@ -121,6 +117,14 @@ impl<T: Environment + 'static> Wallets<T> {
         }
 
         Ok(wallets)
+    }
+
+    pub fn start(&self) {
+        self.wallet_actions.start();
+    }
+
+    pub fn stop(&self) {
+        self.wallet_actions.stop();
     }
 
     pub fn initialize(&mut self, txn: &mut LmdbWriteTransaction<T>) -> anyhow::Result<()> {
@@ -347,6 +351,8 @@ impl<T: Environment + 'static> Wallets<T> {
     }
 }
 
+const GENERATE_PRIORITY: Amount = Amount::MAX;
+
 pub trait WalletsExt {
     fn work_ensure(&self, wallet: Arc<Wallet>, account: Account, root: Root);
 }
@@ -360,18 +366,24 @@ impl WalletsExt for Arc<Wallets> {
         };
         self.delayed_work.lock().unwrap().insert(account, root);
         let self_clone = Arc::clone(self);
-        todo!("port more");
-        //self.workers.add_delayed_task(
-        //    precache_delay,
-        //    Box::new(move || {
-        //        let mut guard = self_clone.delayed_work.lock().unwrap();
-        //        if let Some(&existing) = guard.get(&account) {
-        //            if existing == root {
-        //                guard.remove(&account);
-        //                self_clone.
-        //            }
-        //        }
-        //    }),
-        //);
+        self.workers.add_delayed_task(
+            precache_delay,
+            Box::new(move || {
+                let mut guard = self_clone.delayed_work.lock().unwrap();
+                if let Some(&existing) = guard.get(&account) {
+                    if existing == root {
+                        guard.remove(&account);
+                        let self_clone_2 = Arc::clone(&self_clone);
+                        self_clone.wallet_actions.queue_wallet_action(
+                            GENERATE_PRIORITY,
+                            wallet,
+                            Box::new(move |w| {
+                                self_clone_2.work_cache_blocking(&w, &account, &root);
+                            }),
+                        );
+                    }
+                }
+            }),
+        );
     }
 }

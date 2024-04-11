@@ -359,8 +359,6 @@ public: // TODO make private
 	// fields
 public:
 	nano::network_params & network_params;
-	nano::wallet_action_thread wallet_actions;
-	nano::locked<std::unordered_map<nano::account, nano::root>> delayed_work;
 	nano::kdf kdf;
 	nano::node & node;
 	nano::store::lmdb::env & env;

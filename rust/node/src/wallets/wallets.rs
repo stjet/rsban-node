@@ -8,7 +8,9 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    work::WorkThresholds, Account, Amount, BlockDetails, BlockEnum, BlockHash, HackyUnsafeMutBlock,
+    utils::{get_env_or_default, get_env_or_default_string},
+    work::WorkThresholds,
+    Account, Amount, BlockDetails, BlockEnum, BlockHash, HackyUnsafeMutBlock,
     KeyDerivationFunction, NoValue, PublicKey, RawKey, Root, WalletId, WorkVersion,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
@@ -399,6 +401,8 @@ pub trait WalletsExt {
         generate_work: bool,
         details: &BlockDetails,
     ) -> anyhow::Result<()>;
+
+    fn ongoing_compute_reps(&self);
 }
 
 impl WalletsExt for Arc<Wallets> {
@@ -472,4 +476,30 @@ impl WalletsExt for Arc<Wallets> {
         }
         Ok(())
     }
+
+    fn ongoing_compute_reps(&self) {
+        self.compute_reps();
+
+        // Representation drifts quickly on the test network but very slowly on the live network
+        let compute_delay = if self.network_params.network.is_dev_network() {
+            Duration::from_millis(10)
+        } else if self.network_params.network.is_test_network() {
+            test_scan_wallet_reps_delay()
+        } else {
+            Duration::from_secs(60 * 15)
+        };
+
+        let self_l = Arc::clone(self);
+        self.workers.add_delayed_task(
+            compute_delay,
+            Box::new(move || {
+                self_l.ongoing_compute_reps();
+            }),
+        );
+    }
+}
+
+fn test_scan_wallet_reps_delay() -> Duration {
+    let test_env = get_env_or_default_string("NANO_TEST_WALLET_SCAN_REPS_DELAY", "900000"); // 15 minutes by default
+    Duration::from_millis(test_env.parse().unwrap())
 }

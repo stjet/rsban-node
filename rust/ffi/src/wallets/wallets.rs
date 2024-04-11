@@ -485,3 +485,8 @@ pub unsafe extern "C" fn rsn_wallets_representatives_lock(
 pub unsafe extern "C" fn rsn_wallets_compute_reps(handle: &LmdbWalletsHandle) {
     handle.compute_reps();
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_ongoing_compute_reps(handle: &LmdbWalletsHandle) {
+    handle.ongoing_compute_reps();
+}

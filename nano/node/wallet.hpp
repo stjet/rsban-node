@@ -173,10 +173,6 @@ public:
 	size_t size ();
 	void set_observer (std::function<void (bool)> observer);
 
-private:
-	void do_wallet_actions ();
-	std::thread thread;
-
 public:
 	rsnano::WalletActionThreadHandle * handle;
 };
@@ -352,6 +348,13 @@ public: // TODO make private
 	void enter_initial_password (const std::shared_ptr<nano::wallet> & wallet);
 	nano::public_key change_seed (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & transaction_a, nano::raw_key const & prv_a, uint32_t count);
 	void work_cache_blocking (const std::shared_ptr<nano::wallet> & wallet, nano::account const & account_a, nano::root const & root_a);
+	nano::root get_delayed_work (nano::account const & account);
+	void erase_delayed_work (nano::account const & account);
+	void set_actions_observer (std::function<void (bool)> observer_a);
+	void start_actions ();
+	void stop_actions ();
+	void queue_wallet_action (nano::uint128_t const &, std::shared_ptr<nano::wallet> const &, std::function<void (nano::wallet &)>);
+	size_t actions_size ();
 
 	// fields
 public:

@@ -1,14 +1,18 @@
-use super::wallet::{AccountVecHandle, WalletHandle};
+use super::{
+    wallet::{AccountVecHandle, WalletHandle},
+    wallet_action_thread::WalletActionObserverCallback,
+};
 use crate::{
     ledger::datastore::{lmdb::LmdbEnvHandle, LedgerHandle, TransactionHandle},
-    utils::ContextWrapper,
+    utils::{ContextWrapper, ThreadPoolHandle},
     work::{DistributedWorkFactoryHandle, WorkThresholdsDto},
     NodeConfigDto, U256ArrayDto, VoidPointerCallback,
 };
+use num_traits::FromPrimitive;
 use rsnano_core::{work::WorkThresholds, Account, BlockHash, Root, WalletId};
 use rsnano_node::{
     config::NodeConfig,
-    wallets::{Wallet, Wallets, WalletsError},
+    wallets::{Wallet, Wallets, WalletsError, WalletsExt},
 };
 use std::{
     collections::HashMap,
@@ -36,6 +40,8 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
     kdf_work: u32,
     work_thresholds: &WorkThresholdsDto,
     distributed_work: &DistributedWorkFactoryHandle,
+    network: u16,
+    workers: &ThreadPoolHandle,
 ) -> *mut LmdbWalletsHandle {
     let node_config = NodeConfig::try_from(node_config).unwrap();
     let work = WorkThresholds::from(work_thresholds);
@@ -48,6 +54,8 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
             kdf_work,
             work,
             Arc::clone(distributed_work),
+            FromPrimitive::from_u16(network).unwrap(),
+            Arc::clone(workers),
         )
         .expect("could not create wallet"),
     ))))
@@ -321,4 +329,60 @@ pub unsafe extern "C" fn rsn_wallets_rekey(
         Ok(()) => WalletsError::None as u8,
         Err(e) => e as u8,
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_get_delayed_work(
+    handle: &LmdbWalletsHandle,
+    account: *const u8,
+    root: *mut u8,
+) {
+    handle
+        .delayed_work
+        .lock()
+        .unwrap()
+        .get(&Account::from_ptr(account))
+        .unwrap_or_default()
+        .copy_bytes(root);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_erase_delayed_work(
+    handle: &LmdbWalletsHandle,
+    account: *const u8,
+) {
+    handle
+        .delayed_work
+        .lock()
+        .unwrap()
+        .remove(&Account::from_ptr(account));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_work_ensure(
+    handle: &LmdbWalletsHandle,
+    wallet: &WalletHandle,
+    account: *const u8,
+    root: *const u8,
+) {
+    handle.work_ensure(
+        Arc::clone(wallet),
+        Account::from_ptr(account),
+        Root::from_ptr(root),
+    );
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_wallets_set_observer(
+    handle: &mut LmdbWalletsHandle,
+    observer: WalletActionObserverCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let context_wrapper = ContextWrapper::new(context, delete_context);
+    let wrapped_observer = Box::new(move |active| {
+        let ctx = context_wrapper.get_context();
+        observer(ctx, active);
+    });
+    handle.set_observer(wrapped_observer);
 }

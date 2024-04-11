@@ -286,19 +286,12 @@ nano::wallet_action_thread::~wallet_action_thread ()
 
 void nano::wallet_action_thread::start ()
 {
-	thread = std::thread{ [this] () {
-		nano::thread_role::set (nano::thread_role::name::wallet_actions);
-		do_wallet_actions ();
-	} };
+	rsnano::rsn_wallet_action_thread_start (handle);
 }
 
 void nano::wallet_action_thread::stop ()
 {
 	rsnano::rsn_wallet_action_thread_stop (handle);
-	if (thread.joinable ())
-	{
-		thread.join ();
-	}
 }
 
 namespace
@@ -359,11 +352,6 @@ void nano::wallet_action_thread::set_observer (std::function<void (bool)> observ
 {
 	auto context = new std::function<void (bool)> (observer_a);
 	rsnano::rsn_wallet_action_thread_set_observer (handle, wrapped_wallet_action_observer, context, delete_wallet_action_observer_context);
-}
-
-void nano::wallet_action_thread::do_wallet_actions ()
-{
-	rsnano::rsn_wallet_action_thread_do_wallet_actions (handle);
 }
 
 nano::wallet::representatives_lock::representatives_lock (rsnano::RepresentativesLockHandle * handle) :
@@ -644,7 +632,9 @@ rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lm
 	&config_dto,
 	node_a.config->network_params.kdf_work,
 	&node_a.config->network_params.work.dto,
-	node_a.distributed_work.handle);
+	node_a.distributed_work.handle,
+	static_cast<uint16_t> (node_a.network_params.network.network ()),
+	node_a.workers->handle);
 }
 }
 
@@ -676,7 +666,7 @@ nano::wallets::wallets (bool error_a, nano::node & node_a) :
 
 nano::wallets::~wallets ()
 {
-	wallet_actions.stop ();
+	stop_actions ();
 	rsnano::rsn_lmdb_wallets_destroy (rust_handle);
 }
 
@@ -1319,7 +1309,7 @@ std::shared_ptr<nano::block> nano::wallets::send_action (const std::shared_ptr<n
 
 void nano::wallets::change_async (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & representative_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a)
 {
-	wallet_actions.queue_wallet_action (nano::wallets::high_priority, wallet, [&this_l = *this, wallet, source_a, representative_a, action_a, work_a, generate_work_a] (nano::wallet & wallet_a) {
+	queue_wallet_action (nano::wallets::high_priority, wallet, [&this_l = *this, wallet, source_a, representative_a, action_a, work_a, generate_work_a] (nano::wallet & wallet_a) {
 		auto block (this_l.change_action (wallet, source_a, representative_a, work_a, generate_work_a));
 		action_a (block);
 	});
@@ -1340,7 +1330,7 @@ bool nano::wallets::change_sync (const std::shared_ptr<nano::wallet> & wallet, n
 
 void nano::wallets::receive_async (const std::shared_ptr<nano::wallet> & wallet, nano::block_hash const & hash_a, nano::account const & representative_a, nano::uint128_t const & amount_a, nano::account const & account_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a)
 {
-	wallet_actions.queue_wallet_action (amount_a, wallet, [&this_l = *this, wallet, hash_a, representative_a, amount_a, account_a, action_a, work_a, generate_work_a] (nano::wallet & wallet_a) {
+	queue_wallet_action (amount_a, wallet, [&this_l = *this, wallet, hash_a, representative_a, amount_a, account_a, action_a, work_a, generate_work_a] (nano::wallet & wallet_a) {
 		auto block (this_l.receive_action (wallet, hash_a, representative_a, amount_a, account_a, work_a, generate_work_a));
 		action_a (block);
 	});
@@ -1424,7 +1414,7 @@ bool nano::wallets::enter_password (const std::shared_ptr<nano::wallet> & wallet
 	{
 		node.logger->info (nano::log::type::wallet, "Wallet unlocked");
 
-		wallet_actions.queue_wallet_action (nano::wallets::high_priority, wallet, [&this_l = *this] (nano::wallet & wallet) {
+		queue_wallet_action (nano::wallets::high_priority, wallet, [&this_l = *this] (nano::wallet & wallet) {
 			// Wallets must survive node lifetime
 			auto tx{ this_l.tx_begin_read () };
 			this_l.search_receivable (wallet.shared_from_this (), *tx);
@@ -1475,6 +1465,43 @@ nano::public_key nano::wallets::change_seed (const std::shared_ptr<nano::wallet>
 void nano::wallets::work_cache_blocking (const std::shared_ptr<nano::wallet> & wallet, nano::account const & account_a, nano::root const & root_a)
 {
 	rsnano::rsn_wallets_work_cache_blocking (rust_handle, wallet->handle, account_a.bytes.data (), root_a.bytes.data ());
+}
+
+nano::root nano::wallets::get_delayed_work (nano::account const & account)
+{
+	nano::root result;
+	rsnano::rsn_wallets_get_delayed_work (rust_handle, account.bytes.data (), result.bytes.data ());
+	return result;
+}
+
+void nano::wallets::erase_delayed_work (nano::account const & account)
+{
+	rsnano::rsn_wallets_erase_delayed_work (rust_handle, account.bytes.data ());
+}
+
+void nano::wallets::set_actions_observer (std::function<void (bool)> observer_a)
+{
+	wallet_actions.set_observer (observer_a);
+}
+
+void nano::wallets::start_actions ()
+{
+	wallet_actions.start ();
+}
+
+void nano::wallets::stop_actions ()
+{
+	wallet_actions.stop ();
+}
+
+void nano::wallets::queue_wallet_action (nano::uint128_t const & amount_a, std::shared_ptr<nano::wallet> const & wallet_a, std::function<void (nano::wallet &)> action_a)
+{
+	wallet_actions.queue_wallet_action (amount_a, wallet_a, action_a);
+}
+
+size_t nano::wallets::actions_size ()
+{
+	return wallet_actions.size ();
 }
 
 nano::wallets_error nano::wallets::insert_watch (nano::wallet_id const & wallet_id, std::vector<nano::public_key> const & accounts)
@@ -2049,7 +2076,7 @@ nano::block_hash nano::wallets::get_block_hash (bool & error_a, nano::store::tra
 
 void nano::wallets::send_async (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
 {
-	wallet_actions.queue_wallet_action (nano::wallets::high_priority, wallet, [&wallets = *this, wallet, source_a, account_a, amount_a, action_a, work_a, generate_work_a, id_a] (nano::wallet & wallet_a) {
+	queue_wallet_action (nano::wallets::high_priority, wallet, [&wallets = *this, wallet, source_a, account_a, amount_a, action_a, work_a, generate_work_a, id_a] (nano::wallet & wallet_a) {
 		auto block{ wallets.send_action (wallet, source_a, account_a, amount_a, work_a, generate_work_a, id_a) };
 		action_a (block);
 	});
@@ -2068,7 +2095,7 @@ void nano::wallets::work_ensure (std::shared_ptr<nano::wallet> wallet, nano::acc
 		if (existing != delayed_work->end () && existing->second == root_a)
 		{
 			delayed_work->erase (existing);
-			this_l.wallet_actions.queue_wallet_action (nano::wallets::generate_priority, wallet_l, [account_a, root_a, wallet_l, &this_l] (nano::wallet & wallet_a) {
+			this_l.queue_wallet_action (nano::wallets::generate_priority, wallet_l, [account_a, root_a, wallet_l, &this_l] (nano::wallet & wallet_a) {
 				this_l.work_cache_blocking (wallet_l, account_a, root_a);
 			});
 		}
@@ -2079,7 +2106,7 @@ bool nano::wallets::action_complete (std::shared_ptr<nano::wallet> wallet, std::
 {
 	bool error{ false };
 	// Unschedule any work caching for this account
-	delayed_work->erase (account_a);
+	erase_delayed_work (account_a);
 	if (block_a != nullptr)
 	{
 		auto required_difficulty{ node.network_params.work.threshold (block_a->work_version (), details_a) };
@@ -2163,7 +2190,7 @@ bool nano::mdb_wallets_store::init_error () const
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (wallets & wallets, std::string const & name)
 {
 	std::size_t items_count;
-	std::size_t actions_count = wallets.wallet_actions.size ();
+	std::size_t actions_count = wallets.actions_size ();
 	{
 		auto guard{ wallets.mutex.lock () };
 		items_count = guard.size ();

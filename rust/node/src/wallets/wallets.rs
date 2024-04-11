@@ -1,9 +1,13 @@
-use super::Wallet;
-use crate::{config::NodeConfig, work::DistributedWorkFactory};
+use super::{Wallet, WalletActionThread};
+use crate::{
+    config::NodeConfig,
+    utils::{ThreadPool, ThreadPoolImpl},
+    work::DistributedWorkFactory,
+};
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, NoValue, PublicKey, RawKey,
-    Root, WalletId, WorkVersion,
+    work::WorkThresholds, Account, BlockHash, KeyDerivationFunction, Networks, NoValue, PublicKey,
+    RawKey, Root, WalletId, WorkVersion,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{
@@ -42,6 +46,10 @@ pub struct Wallets<T: Environment = EnvironmentWrapper> {
     last_log: Mutex<Option<Instant>>,
     distributed_work: Arc<DistributedWorkFactory>,
     work_thresholds: WorkThresholds,
+    network: Networks,
+    pub delayed_work: Mutex<HashMap<Account, Root>>,
+    workers: Arc<dyn ThreadPool>,
+    pub wallet_actions: WalletActionThread,
 }
 
 impl<T: Environment + 'static> Wallets<T> {
@@ -53,6 +61,8 @@ impl<T: Environment + 'static> Wallets<T> {
         kdf_work: u32,
         work: WorkThresholds,
         distributed_work: Arc<DistributedWorkFactory>,
+        network: Networks,
+        workers: Arc<dyn ThreadPool>,
     ) -> anyhow::Result<Self> {
         let kdf = KeyDerivationFunction::new(kdf_work);
         let mut wallets = Self {
@@ -66,6 +76,10 @@ impl<T: Environment + 'static> Wallets<T> {
             last_log: Mutex::new(None),
             distributed_work,
             work_thresholds: work.clone(),
+            network,
+            delayed_work: Mutex::new(HashMap::new()),
+            workers,
+            wallet_actions: WalletActionThread::new(),
         };
         let mut txn = wallets.env.tx_begin_write();
         wallets.initialize(&mut txn)?;
@@ -326,5 +340,38 @@ impl<T: Environment + 'static> Wallets<T> {
             .store
             .rekey(&mut tx, password.as_ref())
             .map_err(|_| WalletsError::Generic)
+    }
+
+    pub fn set_observer(&self, observer: Box<dyn Fn(bool) + Send>) {
+        self.wallet_actions.set_observer(observer);
+    }
+}
+
+pub trait WalletsExt {
+    fn work_ensure(&self, wallet: Arc<Wallet>, account: Account, root: Root);
+}
+
+impl WalletsExt for Arc<Wallets> {
+    fn work_ensure(&self, wallet: Arc<Wallet>, account: Account, root: Root) {
+        let precache_delay = if self.network == Networks::NanoDevNetwork {
+            Duration::from_secs(1)
+        } else {
+            Duration::from_secs(10)
+        };
+        self.delayed_work.lock().unwrap().insert(account, root);
+        let self_clone = Arc::clone(self);
+        todo!("port more");
+        //self.workers.add_delayed_task(
+        //    precache_delay,
+        //    Box::new(move || {
+        //        let mut guard = self_clone.delayed_work.lock().unwrap();
+        //        if let Some(&existing) = guard.get(&account) {
+        //            if existing == root {
+        //                guard.remove(&account);
+        //                self_clone.
+        //            }
+        //        }
+        //    }),
+        //);
     }
 }

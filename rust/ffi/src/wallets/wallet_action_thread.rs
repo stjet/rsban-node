@@ -24,19 +24,10 @@ pub unsafe extern "C" fn rsn_wallet_action_thread_destroy(handle: *mut WalletAct
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_wallet_action_lock(
+pub unsafe extern "C" fn rsn_wallet_action_lock(
     handle: &WalletActionThreadHandle,
 ) -> *mut WalletActionThreadLock {
-    let guard = handle.0.mutex.lock().unwrap();
-    let guard = unsafe {
-        std::mem::transmute::<
-            MutexGuard<BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>>,
-            MutexGuard<
-                'static,
-                BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>,
-            >,
-        >(guard)
-    };
+    let guard = handle.0.lock();
     Box::into_raw(Box::new(WalletActionThreadLock(guard)))
 }
 
@@ -49,6 +40,11 @@ pub unsafe extern "C" fn rsn_wallet_action_thread_lock_destroy(
     handle: *mut WalletActionThreadLock,
 ) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_wallet_action_thread_start(handle: &WalletActionThreadHandle) {
+    handle.0.start()
 }
 
 #[no_mangle]
@@ -99,9 +95,4 @@ pub extern "C" fn rsn_wallet_action_thread_set_observer(
         observer(ctx, active);
     });
     handle.0.set_observer(wrapped_observer);
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_wallet_action_thread_do_wallet_actions(handle: &WalletActionThreadHandle) {
-    handle.0.do_wallet_actions();
 }

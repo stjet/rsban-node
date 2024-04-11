@@ -1,43 +1,107 @@
+use super::Wallet;
+use rsnano_core::Amount;
 use std::{
     collections::BTreeMap,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Condvar, Mutex,
+        Arc, Condvar, Mutex, MutexGuard,
     },
+    thread::JoinHandle,
 };
 
-use rsnano_core::Amount;
-
-use super::Wallet;
-
 pub struct WalletActionThread {
-    pub mutex: Mutex<BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>>,
-    pub stopped: AtomicBool,
-    pub condition: Condvar,
-    observer: Box<dyn Fn(bool) + Send>,
+    action_loop: Arc<WalletActionLoop>,
+    join_handle: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl WalletActionThread {
     pub fn new() -> Self {
         Self {
-            mutex: Mutex::new(BTreeMap::new()),
-            stopped: AtomicBool::new(false),
-            condition: Condvar::new(),
-            observer: Box::new(|_| {}),
+            action_loop: Arc::new(WalletActionLoop::new()),
+            join_handle: Mutex::new(None),
         }
     }
 
+    pub fn start(&self) {
+        let loop_clone = Arc::clone(&self.action_loop);
+        let mut guard = self.join_handle.lock().unwrap();
+        assert!(guard.is_none(), "wallet action thread already running");
+        *guard = Some(
+            std::thread::Builder::new()
+                .name("Wallet actions".to_string())
+                .spawn(move || {
+                    loop_clone.do_wallet_actions();
+                })
+                .unwrap(),
+        );
+    }
+
     pub fn stop(&self) {
+        self.action_loop.stop();
+        if let Some(join_handle) = self.join_handle.lock().unwrap().take() {
+            join_handle.join().unwrap();
+        }
+    }
+
+    pub fn queue_wallet_action(
+        &self,
+        amount: Amount,
+        wallet: Arc<Wallet>,
+        action: Box<dyn Fn(Arc<Wallet>) + Send>,
+    ) {
+        self.action_loop.queue_wallet_action(amount, wallet, action);
+    }
+
+    pub fn len(&self) -> usize {
+        self.action_loop.len()
+    }
+
+    pub fn set_observer(&self, observer: Box<dyn Fn(bool) + Send>) {
+        self.action_loop.set_observer(observer);
+    }
+
+    pub unsafe fn lock(
+        &self,
+    ) -> MutexGuard<'static, BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>>
+    {
+        let guard = self.action_loop.mutex.lock().unwrap();
+        std::mem::transmute::<
+            MutexGuard<BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>>,
+            MutexGuard<
+                'static,
+                BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>,
+            >,
+        >(guard)
+    }
+}
+
+struct WalletActionLoop {
+    mutex: Mutex<BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>>,
+    stopped: AtomicBool,
+    condition: Condvar,
+    observer: Mutex<Box<dyn Fn(bool) + Send>>,
+}
+
+impl WalletActionLoop {
+    fn new() -> Self {
+        Self {
+            mutex: Mutex::new(BTreeMap::new()),
+            stopped: AtomicBool::new(false),
+            condition: Condvar::new(),
+            observer: Mutex::new(Box::new(|_| {})),
+        }
+    }
+
+    fn stop(&self) {
         {
             let mut guard = self.mutex.lock().unwrap();
             self.stopped.store(true, Ordering::SeqCst);
             guard.clear();
         }
         self.condition.notify_all();
-        //TODO port more...
     }
 
-    pub fn queue_wallet_action(
+    fn queue_wallet_action(
         &self,
         amount: Amount,
         wallet: Arc<Wallet>,
@@ -50,15 +114,15 @@ impl WalletActionThread {
         self.condition.notify_all();
     }
 
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.mutex.lock().unwrap().len()
     }
 
-    pub fn set_observer(&mut self, observer: Box<dyn Fn(bool) + Send>) {
-        self.observer = observer;
+    fn set_observer(&self, observer: Box<dyn Fn(bool) + Send>) {
+        *self.observer.lock().unwrap() = observer;
     }
 
-    pub fn do_wallet_actions(&self) {
+    fn do_wallet_actions(&self) {
         let mut guard = self.mutex.lock().unwrap();
         while !self.stopped.load(Ordering::SeqCst) {
             if let Some((_, wallets)) = guard.pop_first() {
@@ -69,9 +133,9 @@ impl WalletActionThread {
 
                     if wallet.live() {
                         drop(guard);
-                        (self.observer)(true);
+                        (self.observer.lock().unwrap())(true);
                         action(wallet);
-                        (self.observer)(false);
+                        (self.observer.lock().unwrap())(false);
                         guard = self.mutex.lock().unwrap();
                     }
                 }

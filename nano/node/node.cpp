@@ -275,7 +275,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 			scheduler.optimistic.notify ();
 		};
 
-		wallets.wallet_actions.set_observer ([this] (bool active) {
+		wallets.set_actions_observer ([this] (bool active) {
 			observers->wallet.notify (active);
 		});
 		network->on_new_channel ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
@@ -712,7 +712,7 @@ void nano::node::start ()
 	{
 		port_mapping.start ();
 	}
-	wallets.wallet_actions.start ();
+	wallets.start_actions ();
 	rep_tiers.start ();
 	vote_processor.start ();
 	block_processor.start ();
@@ -767,7 +767,7 @@ void nano::node::stop ()
 	bootstrap_initiator.stop ();
 	tcp_listener->stop ();
 	port_mapping.stop ();
-	wallets.wallet_actions.stop ();
+	wallets.stop_actions ();
 	stats->stop ();
 	epoch_upgrader.stop ();
 	workers->stop ();

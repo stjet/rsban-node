@@ -1926,42 +1926,7 @@ void nano::wallets::destroy (nano::wallet_id const & id_a)
 
 void nano::wallets::reload ()
 {
-	auto lock{ mutex.lock () };
-	auto transaction (tx_begin_write ());
-	std::unordered_set<nano::uint256_union> stored_items;
-	auto wallet_ids{ get_wallet_ids (*transaction) };
-	for (auto id : wallet_ids)
-	{
-		// New wallet
-		if (lock.find (id) == nullptr)
-		{
-			bool error = false;
-			std::string text;
-			id.encode_hex (text);
-			auto wallet (std::make_shared<nano::wallet> (error, *transaction, *this, text));
-			if (!error)
-			{
-				lock.insert (id, wallet);
-			}
-		}
-		// List of wallets on disk
-		stored_items.insert (id);
-	}
-	// Delete non existing wallets from memory
-	std::vector<nano::wallet_id> deleted_items;
-	auto wallets{ lock.get_all () };
-	for (auto i : wallets)
-	{
-		if (stored_items.find (i.first) == stored_items.end ())
-		{
-			deleted_items.push_back (i.first);
-		}
-	}
-	for (auto & i : deleted_items)
-	{
-		debug_assert (lock.find (i) == nullptr);
-		lock.erase (i);
-	}
+	rsnano::rsn_wallets_reload (rust_handle);
 }
 
 namespace
@@ -1993,15 +1958,7 @@ void nano::wallets::foreach_representative (std::function<void (nano::public_key
 
 bool nano::wallets::exists (nano::account const & account_a)
 {
-	auto lock{ mutex.lock () };
-	auto txn{ tx_begin_read () };
-	auto result (false);
-	auto wallets{ lock.get_all () };
-	for (auto i (wallets.begin ()), n (wallets.end ()); !result && i != n; ++i)
-	{
-		result = i->second->store.exists (*txn, account_a);
-	}
-	return result;
+	return rsnano::rsn_wallets_exists (rust_handle, account_a.bytes.data ());
 }
 
 std::unique_ptr<nano::store::write_transaction> nano::wallets::tx_begin_write ()

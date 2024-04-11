@@ -490,3 +490,16 @@ pub unsafe extern "C" fn rsn_wallets_compute_reps(handle: &LmdbWalletsHandle) {
 pub unsafe extern "C" fn rsn_wallets_ongoing_compute_reps(handle: &LmdbWalletsHandle) {
     handle.ongoing_compute_reps();
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_exists(
+    handle: &LmdbWalletsHandle,
+    account: *const u8,
+) -> bool {
+    handle.exists(&Account::from_ptr(account))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_reload(handle: &LmdbWalletsHandle) {
+    handle.reload();
+}

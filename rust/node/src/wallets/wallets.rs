@@ -8,10 +8,9 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    utils::{get_env_or_default, get_env_or_default_string},
-    work::WorkThresholds,
-    Account, Amount, BlockDetails, BlockEnum, BlockHash, HackyUnsafeMutBlock,
-    KeyDerivationFunction, NoValue, PublicKey, RawKey, Root, WalletId, WorkVersion,
+    utils::get_env_or_default_string, work::WorkThresholds, Account, Amount, BlockDetails,
+    BlockEnum, BlockHash, HackyUnsafeMutBlock, KeyDerivationFunction, NoValue, PublicKey, RawKey,
+    Root, WalletId, WorkVersion,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_store_lmdb::{
@@ -57,6 +56,7 @@ pub struct Wallets<T: Environment = EnvironmentWrapper> {
     block_processor: Arc<BlockProcessor>,
     pub representatives: Mutex<WalletRepresentatives>,
     online_reps: Arc<Mutex<OnlineReps>>,
+    kdf: KeyDerivationFunction,
 }
 
 impl<T: Environment + 'static> Wallets<T> {
@@ -95,6 +95,7 @@ impl<T: Environment + 'static> Wallets<T> {
                 Arc::clone(&ledger),
             )),
             online_reps,
+            kdf: kdf.clone(),
         };
         let mut txn = wallets.env.tx_begin_write();
         wallets.initialize(&mut txn)?;
@@ -385,6 +386,51 @@ impl<T: Environment + 'static> Wallets<T> {
                 it.next();
             }
             *wallet.representatives.lock().unwrap() = representatives;
+        }
+    }
+
+    pub fn exists(&self, account: &Account) -> bool {
+        let guard = self.mutex.lock().unwrap();
+        let tx = self.env.tx_begin_read();
+        guard
+            .values()
+            .any(|wallet| wallet.store.exists(&tx, account))
+    }
+
+    pub fn reload(&self) {
+        let mut guard = self.mutex.lock().unwrap();
+        let mut tx = self.env.tx_begin_write();
+        let mut stored_items = HashSet::new();
+        let wallet_ids = self.get_wallet_ids(&tx);
+        for id in wallet_ids {
+            // New wallet
+            if !guard.contains_key(&id) {
+                let text = PathBuf::from(id.encode_hex());
+                let representative = self.node_config.random_representative();
+                if let Ok(wallet) = Wallet::new(
+                    Arc::clone(&self.ledger),
+                    self.work_thresholds.clone(),
+                    &mut tx,
+                    self.node_config.password_fanout as usize,
+                    self.kdf.clone(),
+                    representative,
+                    &text,
+                ) {
+                    guard.insert(id, Arc::new(wallet));
+                }
+            }
+            // List of wallets on disk
+            stored_items.insert(id);
+        }
+        // Delete non existing wallets from memory
+        let mut deleted_items = Vec::new();
+        for &id in guard.keys() {
+            if !stored_items.contains(&id) {
+                deleted_items.push(id);
+            }
+        }
+        for i in &deleted_items {
+            guard.remove(i);
         }
     }
 }

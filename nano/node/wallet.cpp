@@ -1105,27 +1105,9 @@ nano::wallets_error nano::wallets::insert_adhoc (nano::wallet_id const & wallet_
 
 nano::public_key nano::wallets::insert_adhoc (const std::shared_ptr<nano::wallet> & wallet, nano::raw_key const & key_a, bool generate_work_a)
 {
-	nano::public_key key{};
-	auto transaction (env.tx_begin_write ());
-	if (wallet->store.valid_password (*transaction))
-	{
-		key = wallet->store.insert_adhoc (*transaction, key_a);
-		auto block_transaction (node.store.tx_begin_read ());
-		if (generate_work_a)
-		{
-			work_ensure (wallet, key, node.ledger.latest_root (*block_transaction, key));
-		}
-		auto half_principal_weight (node.minimum_principal_weight () / 2);
-		// Makes sure that the representatives container will
-		// be in sync with any added keys.
-		transaction->commit ();
-		auto lock{ lock_representatives () };
-		if (lock.check_rep (key, half_principal_weight))
-		{
-			wallet->insert_representative (key);
-		}
-	}
-	return key;
+	nano::public_key result;
+	rsnano::rsn_wallets_insert_adhoc (rust_handle, wallet->handle, key_a.bytes.data (), generate_work_a, result.bytes.data ());
+	return result;
 }
 
 std::shared_ptr<nano::block> nano::wallets::receive_action (const std::shared_ptr<nano::wallet> & wallet, nano::block_hash const & send_hash_a, nano::account const & representative_a, nano::uint128_union const & amount_a, nano::account const & account_a, uint64_t work_a, bool generate_work_a)
@@ -1913,15 +1895,7 @@ void nano::wallets::search_receivable_all ()
 
 void nano::wallets::destroy (nano::wallet_id const & id_a)
 {
-	auto lock{ mutex.lock () };
-	auto transaction (tx_begin_write ());
-	// action_mutex should be locked after transactions to prevent deadlocks in deterministic_insert () & insert_adhoc ()
-	nano::wallet_action_thread::actions_lock action_lock{ rsnano::rsn_wallets_actions_lock (rust_handle) };
-	auto existing (lock.find (id_a));
-	debug_assert (existing != nullptr);
-	auto wallet (existing);
-	lock.erase (id_a);
-	wallet->store.destroy (*transaction);
+	rsnano::rsn_wallets_destroy (rust_handle, id_a.bytes.data ());
 }
 
 void nano::wallets::reload ()

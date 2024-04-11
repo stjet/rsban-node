@@ -14,7 +14,9 @@ use crate::{
     work::{DistributedWorkFactoryHandle, WorkThresholdsDto},
     NetworkParamsDto, NodeConfigDto, U256ArrayDto, VoidPointerCallback,
 };
-use rsnano_core::{work::WorkThresholds, Account, Amount, BlockDetails, BlockHash, Root, WalletId};
+use rsnano_core::{
+    work::WorkThresholds, Account, Amount, BlockDetails, BlockHash, RawKey, Root, WalletId,
+};
 use rsnano_node::{
     config::NodeConfig,
     wallets::{Wallet, Wallets, WalletsError, WalletsExt},
@@ -482,6 +484,18 @@ pub unsafe extern "C" fn rsn_wallets_representatives_lock(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_insert_adhoc(
+    handle: &LmdbWalletsHandle,
+    wallet: &WalletHandle,
+    key: *const u8,
+    generate_work: bool,
+    result: *mut u8,
+) {
+    let account = handle.insert_adhoc(wallet, &RawKey::from_ptr(key), generate_work);
+    account.copy_bytes(result);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_wallets_compute_reps(handle: &LmdbWalletsHandle) {
     handle.compute_reps();
 }
@@ -489,6 +503,11 @@ pub unsafe extern "C" fn rsn_wallets_compute_reps(handle: &LmdbWalletsHandle) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_wallets_ongoing_compute_reps(handle: &LmdbWalletsHandle) {
     handle.ongoing_compute_reps();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_destroy(handle: &LmdbWalletsHandle, wallet_id: *const u8) {
+    handle.destroy(&WalletId::from_ptr(wallet_id));
 }
 
 #[no_mangle]

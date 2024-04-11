@@ -38,7 +38,7 @@ pub enum WalletsError {
 
 pub type WalletsIterator<T> = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl<T>>;
 
-pub struct Wallets<T: Environment = EnvironmentWrapper> {
+pub struct Wallets<T: Environment + 'static = EnvironmentWrapper> {
     pub handle: Option<T::Database>,
     pub send_action_ids_handle: Option<T::Database>,
     enable_voting: bool,
@@ -52,7 +52,7 @@ pub struct Wallets<T: Environment = EnvironmentWrapper> {
     network_params: NetworkParams,
     pub delayed_work: Mutex<HashMap<Account, Root>>,
     workers: Arc<dyn ThreadPool>,
-    pub wallet_actions: WalletActionThread,
+    pub wallet_actions: WalletActionThread<T>,
     block_processor: Arc<BlockProcessor>,
     pub representatives: Mutex<WalletRepresentatives>,
     online_reps: Arc<Mutex<OnlineReps>>,
@@ -433,15 +433,25 @@ impl<T: Environment + 'static> Wallets<T> {
             guard.remove(i);
         }
     }
+
+    pub fn destroy(&self, id: &WalletId) {
+        let mut guard = self.mutex.lock().unwrap();
+        let mut tx = self.env.tx_begin_write();
+        // action_mutex should be locked after transactions to prevent deadlocks in deterministic_insert () & insert_adhoc ()
+        let _action_guard = self.wallet_actions.lock_safe();
+        let wallet = guard.remove(id).unwrap();
+        wallet.store.destroy(&mut tx);
+    }
 }
 
 const GENERATE_PRIORITY: Amount = Amount::MAX;
 
-pub trait WalletsExt {
-    fn work_ensure(&self, wallet: Arc<Wallet>, account: Account, root: Root);
+pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
+    fn insert_adhoc(&self, wallet: &Arc<Wallet<T>>, key: &RawKey, generate_work: bool) -> Account;
+    fn work_ensure(&self, wallet: Arc<Wallet<T>>, account: Account, root: Root);
     fn action_complete(
         &self,
-        wallet: Arc<Wallet>,
+        wallet: Arc<Wallet<T>>,
         block: Option<Arc<BlockEnum>>,
         account: Account,
         generate_work: bool,
@@ -451,8 +461,33 @@ pub trait WalletsExt {
     fn ongoing_compute_reps(&self);
 }
 
-impl WalletsExt for Arc<Wallets> {
-    fn work_ensure(&self, wallet: Arc<Wallet>, account: Account, root: Root) {
+impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
+    fn insert_adhoc(&self, wallet: &Arc<Wallet<T>>, key: &RawKey, generate_work: bool) -> Account {
+        let mut tx = self.env.tx_begin_write();
+        if !wallet.store.valid_password(&tx) {
+            return PublicKey::zero();
+        }
+        let key = wallet.store.insert_adhoc(&mut tx, key);
+        let block_tx = self.ledger.read_txn();
+        if generate_work {
+            self.work_ensure(
+                Arc::clone(wallet),
+                key,
+                self.ledger.latest_root(&block_tx, &key),
+            );
+        }
+        let half_principal_weight = self.online_reps.lock().unwrap().minimum_principal_weight() / 2;
+        // Makes sure that the representatives container will
+        // be in sync with any added keys.
+        tx.commit();
+        let mut rep_guard = self.representatives.lock().unwrap();
+        if rep_guard.check_rep(key, half_principal_weight) {
+            wallet.representatives.lock().unwrap().insert(key);
+        }
+        key
+    }
+
+    fn work_ensure(&self, wallet: Arc<Wallet<T>>, account: Account, root: Root) {
         let precache_delay = if self.network_params.network.is_dev_network() {
             Duration::from_secs(1)
         } else {
@@ -483,7 +518,7 @@ impl WalletsExt for Arc<Wallets> {
 
     fn action_complete(
         &self,
-        wallet: Arc<Wallet>,
+        wallet: Arc<Wallet<T>>,
         block: Option<Arc<BlockEnum>>,
         account: Account,
         generate_work: bool,

@@ -1,11 +1,17 @@
 use super::{Wallet, WalletActionThread};
-use crate::{config::NodeConfig, utils::ThreadPool, work::DistributedWorkFactory};
+use crate::{
+    block_processing::{BlockProcessor, BlockSource},
+    config::NodeConfig,
+    utils::ThreadPool,
+    work::DistributedWorkFactory,
+    NetworkParams,
+};
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
-    work::WorkThresholds, Account, Amount, BlockHash, KeyDerivationFunction, Networks, NoValue,
-    PublicKey, RawKey, Root, WalletId, WorkVersion,
+    work::WorkThresholds, Account, Amount, BlockDetails, BlockEnum, BlockHash, HackyUnsafeMutBlock,
+    KeyDerivationFunction, NoValue, PublicKey, RawKey, Root, WalletId, WorkVersion,
 };
-use rsnano_ledger::Ledger;
+use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_store_lmdb::{
     create_backup_file, BinaryDbIterator, DbIterator, Environment, EnvironmentWrapper, LmdbEnv,
     LmdbIteratorImpl, LmdbWalletStore, LmdbWriteTransaction, RwTransaction, Transaction,
@@ -16,7 +22,7 @@ use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
-use tracing::warn;
+use tracing::{info, warn};
 
 #[derive(FromPrimitive)]
 pub enum WalletsError {
@@ -42,10 +48,11 @@ pub struct Wallets<T: Environment = EnvironmentWrapper> {
     last_log: Mutex<Option<Instant>>,
     distributed_work: Arc<DistributedWorkFactory>,
     work_thresholds: WorkThresholds,
-    network: Networks,
+    network_params: NetworkParams,
     pub delayed_work: Mutex<HashMap<Account, Root>>,
     workers: Arc<dyn ThreadPool>,
     pub wallet_actions: WalletActionThread,
+    block_processor: Arc<BlockProcessor>,
 }
 
 impl<T: Environment + 'static> Wallets<T> {
@@ -57,8 +64,9 @@ impl<T: Environment + 'static> Wallets<T> {
         kdf_work: u32,
         work: WorkThresholds,
         distributed_work: Arc<DistributedWorkFactory>,
-        network: Networks,
+        network_params: NetworkParams,
         workers: Arc<dyn ThreadPool>,
+        block_processor: Arc<BlockProcessor>,
     ) -> anyhow::Result<Self> {
         let kdf = KeyDerivationFunction::new(kdf_work);
         let mut wallets = Self {
@@ -72,10 +80,11 @@ impl<T: Environment + 'static> Wallets<T> {
             last_log: Mutex::new(None),
             distributed_work,
             work_thresholds: work.clone(),
-            network,
+            network_params,
             delayed_work: Mutex::new(HashMap::new()),
             workers,
             wallet_actions: WalletActionThread::new(),
+            block_processor,
         };
         let mut txn = wallets.env.tx_begin_write();
         wallets.initialize(&mut txn)?;
@@ -355,11 +364,19 @@ const GENERATE_PRIORITY: Amount = Amount::MAX;
 
 pub trait WalletsExt {
     fn work_ensure(&self, wallet: Arc<Wallet>, account: Account, root: Root);
+    fn action_complete(
+        &self,
+        wallet: Arc<Wallet>,
+        block: Option<Arc<BlockEnum>>,
+        account: Account,
+        generate_work: bool,
+        details: &BlockDetails,
+    ) -> anyhow::Result<()>;
 }
 
 impl WalletsExt for Arc<Wallets> {
     fn work_ensure(&self, wallet: Arc<Wallet>, account: Account, root: Root) {
-        let precache_delay = if self.network == Networks::NanoDevNetwork {
+        let precache_delay = if self.network_params.network.is_dev_network() {
             Duration::from_secs(1)
         } else {
             Duration::from_secs(10)
@@ -385,5 +402,47 @@ impl WalletsExt for Arc<Wallets> {
                 }
             }),
         );
+    }
+
+    fn action_complete(
+        &self,
+        wallet: Arc<Wallet>,
+        block: Option<Arc<BlockEnum>>,
+        account: Account,
+        generate_work: bool,
+        details: &BlockDetails,
+    ) -> anyhow::Result<()> {
+        // Unschedule any work caching for this account
+        self.delayed_work.lock().unwrap().remove(&account);
+        let Some(block) = block else {
+            return Ok(());
+        };
+        let hash = block.hash();
+        let required_difficulty = self
+            .network_params
+            .work
+            .threshold2(block.work_version(), details);
+        let mut_block = unsafe { block.undefined_behavior_mut() };
+        if self.network_params.work.difficulty_block(mut_block) < required_difficulty {
+            info!(
+                "Cached or provided work for block {} account {} is invalid, regenerating...",
+                block.hash(),
+                account.encode_account()
+            );
+            self.distributed_work
+                .make_blocking_block(mut_block, required_difficulty)
+                .ok_or_else(|| anyhow!("no work generated"))?;
+        }
+        let result = self.block_processor.add_blocking(block, BlockSource::Local);
+
+        if !matches!(result, Some(BlockStatus::Progress)) {
+            bail!("block processor failed: {:?}", result);
+        }
+
+        if generate_work {
+            // Pregenerate work for next block based on the block just created
+            self.work_ensure(wallet, account, hash.into());
+        }
+        Ok(())
     }
 }

@@ -22,7 +22,7 @@ impl DistributedWorkFactory {
         }
     }
 
-    pub fn make_blocking_block(&self, block: &BlockEnum, difficulty: u64) -> Option<u64> {
+    pub fn make_blocking_block(&self, block: &mut BlockEnum, difficulty: u64) -> Option<u64> {
         unsafe {
             MAKE_BLOCKING.expect("MAKE_BLOCKING missing")(self.factory_pointer, block, difficulty)
         }
@@ -59,7 +59,7 @@ impl DistributedWorkFactory {
     }
 }
 
-pub static mut MAKE_BLOCKING: Option<fn(*mut c_void, &BlockEnum, u64) -> Option<u64>> = None;
+pub static mut MAKE_BLOCKING: Option<fn(*mut c_void, &mut BlockEnum, u64) -> Option<u64>> = None;
 pub static mut MAKE_BLOCKING_2: Option<
     fn(*mut c_void, WorkVersion, Root, u64, Option<Account>) -> Option<u64>,
 > = None;

@@ -5,16 +5,18 @@ use super::{
     },
 };
 use crate::{
+    block_processing::BlockProcessorHandle,
+    core::{BlockDetailsDto, BlockHandle},
     ledger::datastore::{lmdb::LmdbEnvHandle, LedgerHandle, TransactionHandle},
     utils::{ContextWrapper, ThreadPoolHandle},
     work::{DistributedWorkFactoryHandle, WorkThresholdsDto},
-    NodeConfigDto, U256ArrayDto, VoidPointerCallback,
+    NetworkParamsDto, NodeConfigDto, U256ArrayDto, VoidPointerCallback,
 };
-use num_traits::FromPrimitive;
-use rsnano_core::{work::WorkThresholds, Account, Amount, BlockHash, Root, WalletId};
+use rsnano_core::{work::WorkThresholds, Account, Amount, BlockDetails, BlockHash, Root, WalletId};
 use rsnano_node::{
     config::NodeConfig,
     wallets::{Wallet, Wallets, WalletsError, WalletsExt},
+    NetworkParams,
 };
 use std::{
     collections::HashMap,
@@ -22,6 +24,7 @@ use std::{
     ops::Deref,
     sync::{Arc, MutexGuard},
 };
+use tracing::warn;
 
 pub struct LmdbWalletsHandle(pub Arc<Wallets>);
 
@@ -42,9 +45,11 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
     kdf_work: u32,
     work_thresholds: &WorkThresholdsDto,
     distributed_work: &DistributedWorkFactoryHandle,
-    network: u16,
+    network_params: &NetworkParamsDto,
     workers: &ThreadPoolHandle,
+    block_processor: &BlockProcessorHandle,
 ) -> *mut LmdbWalletsHandle {
+    let network_params = NetworkParams::try_from(network_params).unwrap();
     let node_config = NodeConfig::try_from(node_config).unwrap();
     let work = WorkThresholds::from(work_thresholds);
     Box::into_raw(Box::new(LmdbWalletsHandle(Arc::new(
@@ -56,8 +61,9 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
             kdf_work,
             work,
             Arc::clone(distributed_work),
-            FromPrimitive::from_u16(network).unwrap(),
+            network_params,
             Arc::clone(workers),
+            Arc::clone(block_processor),
         )
         .expect("could not create wallet"),
     ))))
@@ -432,4 +438,33 @@ pub unsafe extern "C" fn rsn_wallets_actions_lock(
 ) -> *mut WalletActionThreadLock {
     let guard = handle.wallet_actions.lock();
     Box::into_raw(Box::new(WalletActionThreadLock(guard)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_action_complete(
+    handle: &LmdbWalletsHandle,
+    wallet: &WalletHandle,
+    block: *mut BlockHandle,
+    account: *const u8,
+    generate_work: bool,
+    details: &BlockDetailsDto,
+) -> i32 {
+    let block = if block.is_null() {
+        None
+    } else {
+        Some(Arc::clone((*block).deref()))
+    };
+    match handle.action_complete(
+        Arc::clone(wallet),
+        block,
+        Account::from_ptr(account),
+        generate_work,
+        &BlockDetails::try_from(details).unwrap(),
+    ) {
+        Ok(_) => 0,
+        Err(e) => {
+            warn!("action complete failed: {:?}", e);
+            -1
+        }
+    }
 }

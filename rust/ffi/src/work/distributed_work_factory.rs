@@ -72,6 +72,7 @@ pub unsafe extern "C" fn rsn_callback_work_make_blocking(f: WorkMakeBlockingCall
         let block_handle = BlockHandle::new(Arc::new(block.clone()));
         let mut work = 0;
         if MAKE_BLOCKING_WRAPPER.unwrap()(factory_pointer, block_handle, difficulty, &mut work) {
+            block.set_work(work);
             Some(work)
         } else {
             None

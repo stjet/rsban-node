@@ -624,6 +624,7 @@ namespace
 rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lmdb::env & env)
 {
 	auto config_dto{ node_a.config->to_dto () };
+	auto network_params_dto{ node_a.network_params.to_dto () };
 
 	return rsnano::rsn_lmdb_wallets_create (
 	node_a.config->enable_voting,
@@ -633,8 +634,9 @@ rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lm
 	node_a.config->network_params.kdf_work,
 	&node_a.config->network_params.work.dto,
 	node_a.distributed_work.handle,
-	static_cast<uint16_t> (node_a.network_params.network.network ()),
-	node_a.workers->handle);
+	&network_params_dto,
+	node_a.workers->handle,
+	node_a.block_processor.handle);
 }
 }
 
@@ -2097,33 +2099,8 @@ void nano::wallets::work_ensure (std::shared_ptr<nano::wallet> wallet, nano::acc
 
 bool nano::wallets::action_complete (std::shared_ptr<nano::wallet> wallet, std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, bool const generate_work_a, nano::block_details const & details_a)
 {
-	bool error{ false };
-	// Unschedule any work caching for this account
-	erase_delayed_work (account_a);
-	if (block_a != nullptr)
-	{
-		auto required_difficulty{ node.network_params.work.threshold (block_a->work_version (), details_a) };
-		if (node.network_params.work.difficulty (*block_a) < required_difficulty)
-		{
-			node.logger->info (nano::log::type::wallet, "Cached or provided work for block {} account {} is invalid, regenerating...",
-			block_a->hash ().to_string (),
-			account_a.to_account ());
-
-			debug_assert (required_difficulty <= node.max_work_generate_difficulty (block_a->work_version ()));
-			error = !node.work_generate_blocking (*block_a, required_difficulty).has_value ();
-		}
-		if (!error)
-		{
-			auto result = node.process_local (block_a);
-			error = !result || result.value () != nano::block_status::progress;
-			debug_assert (error || block_a->sideband ().details () == details_a);
-		}
-		if (!error && generate_work_a)
-		{
-			// Pregenerate work for next block based on the block just created
-			work_ensure (wallet, account_a, block_a->hash ());
-		}
-	}
+	auto block_handle = block_a == nullptr ? nullptr : block_a->get_handle ();
+	auto error = rsnano::rsn_wallets_action_complete (rust_handle, wallet->handle, block_handle, account_a.bytes.data (), generate_work_a, &details_a.dto) != 0;
 	return error;
 }
 

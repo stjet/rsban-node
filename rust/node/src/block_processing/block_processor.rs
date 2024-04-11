@@ -7,7 +7,7 @@ use crate::{
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     work::{WorkThresholds, WORK_THRESHOLDS_STUB},
-    BlockEnum, BlockType, Epoch, HashOrAccount, UncheckedInfo,
+    BlockEnum, BlockType, Epoch, HackyUnsafeMutBlock, HashOrAccount, UncheckedInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
@@ -529,9 +529,7 @@ impl BlockProcessorLoop {
     ) -> BlockStatus {
         let block = &context.block;
         let hash = block.hash();
-        // this is undefined behaviour and should be fixed ASAP:
-        let block_ptr = Arc::as_ptr(block) as *mut BlockEnum;
-        let mutable_block = unsafe { &mut *block_ptr };
+        let mutable_block = unsafe { block.undefined_behavior_mut() };
 
         let result = match self.ledger.process(txn, mutable_block) {
             Ok(()) => BlockStatus::Progress,

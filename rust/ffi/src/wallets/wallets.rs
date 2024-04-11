@@ -3,6 +3,7 @@ use super::{
     wallet_action_thread::{
         WalletActionCallback, WalletActionObserverCallback, WalletActionThreadLock,
     },
+    wallet_representatives::WalletRepresentativesLock,
 };
 use crate::{
     block_processing::BlockProcessorHandle,
@@ -467,4 +468,12 @@ pub unsafe extern "C" fn rsn_wallets_action_complete(
             -1
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_representatives_lock(
+    handle: &LmdbWalletsHandle,
+) -> *mut WalletRepresentativesLock {
+    let guard = handle.representatives.lock().unwrap();
+    WalletRepresentativesLock::new(guard)
 }

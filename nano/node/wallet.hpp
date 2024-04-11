@@ -26,7 +26,6 @@ class node;
 class node_config;
 class wallets;
 class wallet_action_thread;
-class wallet_representatives;
 class kdf final
 {
 public:
@@ -177,19 +176,19 @@ public:
 	rsnano::WalletActionThreadHandle * handle;
 };
 
-class wallet_representatives
+class wallet_representatives_lock
 {
 public:
-	wallet_representatives (nano::node & node_a);
-	wallet_representatives (wallet_representatives const &) = delete;
-	wallet_representatives (wallet_representatives &&) = delete;
-	~wallet_representatives ();
+	wallet_representatives_lock (rsnano::WalletRepresentativesLock * handle);
+	wallet_representatives_lock (wallet_representatives_lock const &) = delete;
+	wallet_representatives_lock (wallet_representatives_lock &&);
+	~wallet_representatives_lock ();
 	bool have_half_rep () const;
 	uint64_t voting_reps () const;
 	bool exists (nano::account const & rep_a) const;
 	void clear ();
 	bool check_rep (nano::account const &, nano::uint128_t const &);
-	rsnano::WalletRepresentativesHandle * handle;
+	rsnano::WalletRepresentativesLock * handle;
 };
 
 enum class [[nodiscard]] wallets_error
@@ -355,6 +354,7 @@ public: // TODO make private
 	void stop_actions ();
 	void queue_wallet_action (nano::uint128_t const &, std::shared_ptr<nano::wallet> const &, std::function<void (nano::wallet &)>);
 	size_t actions_size ();
+	nano::wallet_representatives_lock lock_representatives () const;
 
 	// fields
 public:
@@ -365,7 +365,6 @@ public:
 	static nano::uint128_t const generate_priority;
 	static nano::uint128_t const high_priority;
 
-	nano::wallet_representatives representatives;
 	rsnano::LmdbWalletsHandle * rust_handle;
 	mutable wallets_mutex mutex;
 	mutable nano::mutex reps_cache_mutex;

@@ -1,4 +1,4 @@
-use super::{Wallet, WalletActionThread};
+use super::{Wallet, WalletActionThread, WalletRepresentatives};
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     config::NodeConfig,
@@ -53,6 +53,7 @@ pub struct Wallets<T: Environment = EnvironmentWrapper> {
     workers: Arc<dyn ThreadPool>,
     pub wallet_actions: WalletActionThread,
     block_processor: Arc<BlockProcessor>,
+    pub representatives: Mutex<WalletRepresentatives>,
 }
 
 impl<T: Environment + 'static> Wallets<T> {
@@ -85,6 +86,10 @@ impl<T: Environment + 'static> Wallets<T> {
             workers,
             wallet_actions: WalletActionThread::new(),
             block_processor,
+            representatives: Mutex::new(WalletRepresentatives::new(
+                node_config.vote_minimum,
+                Arc::clone(&ledger),
+            )),
         };
         let mut txn = wallets.env.tx_begin_write();
         wallets.initialize(&mut txn)?;

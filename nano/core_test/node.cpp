@@ -1639,7 +1639,7 @@ TEST (node, no_voting)
 	auto wallet_id0 = node0.wallets.first_wallet_id ();
 	auto wallet_id1 = node1->wallets.first_wallet_id ();
 	// Node1 has a rep
-	(void)node0.wallets.insert_adhoc (wallet_id0, nano::dev::genesis_key.prv);
+	(void)node1->wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 	nano::keypair key1;
 	(void)node1->wallets.insert_adhoc (wallet_id1, key1.prv);
 	// Broadcast a confirm so others should know this is a rep node

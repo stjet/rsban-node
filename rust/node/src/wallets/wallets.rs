@@ -11,7 +11,7 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::get_env_or_default_string, work::WorkThresholds, Account, Amount, BlockDetails,
     BlockEnum, BlockHash, Epoch, HackyUnsafeMutBlock, KeyDerivationFunction, Link, NoValue,
-    PublicKey, RawKey, Root, StateBlock, WalletId, WorkVersion,
+    PendingKey, PublicKey, RawKey, Root, StateBlock, WalletId, WorkVersion,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
@@ -690,6 +690,17 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         work: u64,
         generate_work: bool,
     ) -> Option<BlockEnum>;
+
+    fn receive_action(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        send_hash: BlockHash,
+        representative: Account,
+        amount: Amount,
+        account: Account,
+        work: u64,
+        generate_work: bool,
+    ) -> Option<BlockEnum>;
 }
 
 impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
@@ -1004,6 +1015,102 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
                 block = Some(arc_block.deref().clone())
             }
         }
+        block
+    }
+
+    fn receive_action(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        send_hash: BlockHash,
+        representative: Account,
+        amount: Amount,
+        account: Account,
+        mut work: u64,
+        generate_work: bool,
+    ) -> Option<BlockEnum> {
+        if amount < self.node_config.receive_minimum {
+            warn!(
+                "Not receiving block {} due to minimum receive threshold",
+                send_hash
+            );
+            return None;
+        }
+
+        let mut block = None;
+        let mut epoch = Epoch::Epoch0;
+        let block_tx = self.ledger.read_txn();
+        let wallet_tx = self.env.tx_begin_read();
+        if self
+            .ledger
+            .block_or_pruned_exists_txn(&block_tx, &send_hash)
+        {
+            if let Some(pending_info) = self
+                .ledger
+                .pending_info(&block_tx, &PendingKey::new(account, send_hash))
+            {
+                if let Ok(prv) = wallet.store.fetch(&wallet_tx, &account) {
+                    if work == 0 {
+                        work = wallet
+                            .store
+                            .work_get(&wallet_tx, &account)
+                            .unwrap_or_default();
+                    }
+                    if let Some(info) = self.ledger.account_info(&block_tx, &account) {
+                        block = Some(BlockEnum::State(StateBlock::new(
+                            account,
+                            info.head,
+                            info.representative,
+                            info.balance + pending_info.amount,
+                            send_hash.into(),
+                            &prv,
+                            &account,
+                            work,
+                        )));
+                        epoch = std::cmp::max(info.epoch, pending_info.epoch);
+                    } else {
+                        block = Some(BlockEnum::State(StateBlock::new(
+                            account,
+                            BlockHash::zero(),
+                            representative,
+                            pending_info.amount,
+                            send_hash.into(),
+                            &prv,
+                            &account,
+                            work,
+                        )));
+                        epoch = pending_info.epoch;
+                    }
+                } else {
+                    warn!("Unable to receive, wallet locked");
+                }
+            } else {
+                // Ledger doesn't have this marked as available to receive anymore
+            }
+        } else {
+            // Ledger doesn't have this block anymore.
+        }
+
+        if let Some(b) = block {
+            let details = BlockDetails::new(epoch, false, true, false);
+            let arc_block = Arc::new(b);
+            if self
+                .action_complete(
+                    Arc::clone(wallet),
+                    Some(Arc::clone(&arc_block)),
+                    account,
+                    generate_work,
+                    &details,
+                )
+                .is_err()
+            {
+                // Return null block after work generation or ledger process error
+                block = None;
+            } else {
+                // block arc gets changed by block_processor! So we have to copy it back.
+                block = Some(arc_block.deref().clone())
+            }
+        }
+
         block
     }
 }

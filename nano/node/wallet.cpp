@@ -1057,66 +1057,8 @@ nano::public_key nano::wallets::insert_adhoc (const std::shared_ptr<nano::wallet
 
 std::shared_ptr<nano::block> nano::wallets::receive_action (const std::shared_ptr<nano::wallet> & wallet, nano::block_hash const & send_hash_a, nano::account const & representative_a, nano::uint128_union const & amount_a, nano::account const & account_a, uint64_t work_a, bool generate_work_a)
 {
-	std::shared_ptr<nano::block> block;
-	nano::epoch epoch = nano::epoch::epoch_0;
-	if (node.config->receive_minimum.number () <= amount_a.number ())
-	{
-		auto block_transaction (node.ledger.store.tx_begin_read ());
-		auto transaction (env.tx_begin_read ());
-		if (node.ledger.block_or_pruned_exists (*block_transaction, send_hash_a))
-		{
-			auto pending_info = node.ledger.pending_info (*block_transaction, nano::pending_key (account_a, send_hash_a));
-			if (pending_info)
-			{
-				nano::raw_key prv;
-				if (!wallet->store.fetch (*transaction, account_a, prv))
-				{
-					if (work_a == 0)
-					{
-						wallet->store.work_get (*transaction, account_a, work_a);
-					}
-					auto info = node.ledger.account_info (*block_transaction, account_a);
-					if (info)
-					{
-						block = std::make_shared<nano::state_block> (account_a, info->head (), info->representative (), info->balance ().number () + pending_info->amount.number (), send_hash_a, prv, account_a, work_a);
-						epoch = std::max (info->epoch (), pending_info->epoch);
-					}
-					else
-					{
-						block = std::make_shared<nano::state_block> (account_a, 0, representative_a, pending_info->amount, reinterpret_cast<nano::link const &> (send_hash_a), prv, account_a, work_a);
-						epoch = pending_info->epoch;
-					}
-				}
-				else
-				{
-					node.logger->warn (nano::log::type::wallet, "Unable to receive, wallet locked");
-				}
-			}
-			else
-			{
-				// Ledger doesn't have this marked as available to receive anymore
-			}
-		}
-		else
-		{
-			// Ledger doesn't have this block anymore.
-		}
-	}
-	else
-	{
-		node.logger->warn (nano::log::type::wallet, "Not receiving block {} due to minimum receive threshold", send_hash_a.to_string ());
-		// Someone sent us something below the threshold of receiving
-	}
-	if (block != nullptr)
-	{
-		auto details = nano::block_details (epoch, false, true, false);
-		if (action_complete (wallet, block, account_a, generate_work_a, details))
-		{
-			// Return null block after work generation or ledger process error
-			block = nullptr;
-		}
-	}
-	return block;
+	auto block_handle = rsnano::rsn_wallets_receive_action (rust_handle, wallet->handle, send_hash_a.bytes.data (), representative_a.bytes.data (), amount_a.bytes.data (), account_a.bytes.data (), work_a, generate_work_a);
+	return nano::block_handle_to_block (block_handle);
 }
 
 std::shared_ptr<nano::block> nano::wallets::change_action (const std::shared_ptr<wallet> & wallet, nano::account const & source_a, nano::account const & representative_a, uint64_t work_a, bool generate_work_a)

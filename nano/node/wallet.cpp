@@ -901,31 +901,8 @@ nano::wallets_error nano::wallets::decrypt (nano::wallet_id const & wallet_id, s
 
 nano::wallets_error nano::wallets::fetch (nano::wallet_id const & wallet_id, nano::account const & pub, nano::raw_key & prv)
 {
-	auto lock{ mutex.lock () };
-	auto wallet = lock.find (wallet_id);
-
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-
-	auto txn{ tx_begin_read () };
-	if (!wallet->store.valid_password (*txn))
-	{
-		return nano::wallets_error::wallet_locked;
-	}
-
-	if (wallet->store.find (*txn, pub) == wallet->store.end ())
-	{
-		return nano::wallets_error::account_not_found;
-	}
-
-	if (wallet->store.fetch (*txn, pub, prv))
-	{
-		return nano::wallets_error::generic;
-	}
-
-	return nano::wallets_error::none;
+	auto result = rsnano::rsn_wallets_fetch (rust_handle, wallet_id.bytes.data (), pub.bytes.data (), prv.bytes.data ());
+	return static_cast<nano::wallets_error> (result);
 }
 
 std::vector<nano::wallet_id> nano::wallets::get_wallet_ids () const

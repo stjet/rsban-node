@@ -668,6 +668,22 @@ impl<T: Environment + 'static> Wallets<T> {
         }
         Ok(accounts)
     }
+
+    pub fn fetch(&self, wallet_id: &WalletId, account: &Account) -> Result<RawKey, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Self::get_wallet(&guard, wallet_id)?;
+        let tx = self.env.tx_begin_read();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+        if wallet.store.find(&tx, account).is_end() {
+            return Err(WalletsError::AccountNotFound);
+        }
+        wallet
+            .store
+            .fetch(&tx, account)
+            .map_err(|_| WalletsError::Generic)
+    }
 }
 
 const GENERATE_PRIORITY: Amount = Amount::MAX;

@@ -807,3 +807,19 @@ pub unsafe extern "C" fn rsn_wallets_get_accounts_of_wallet(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_fetch(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    account: *const u8,
+    prv_key: *mut u8,
+) -> u8 {
+    match handle.fetch(&WalletId::from_ptr(wallet_id), &Account::from_ptr(account)) {
+        Ok(key) => {
+            key.copy_bytes(prv_key);
+            WalletsError::None as u8
+        }
+        Err(e) => e as u8,
+    }
+}

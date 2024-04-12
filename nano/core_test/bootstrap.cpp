@@ -2172,9 +2172,10 @@ TEST (bulk, genesis_pruning)
 
 TEST (bulk_pull_account, basics)
 {
-	nano::test::system system (1);
-	auto node = system.nodes[0];
-	node->config->receive_minimum = 20;
+	nano::test::system system;
+	auto config{ system.default_config () };
+	config.receive_minimum = 20;
+	auto node = system.add_node (config);
 	nano::keypair key1;
 	auto wallet_id = node->wallets.first_wallet_id ();
 	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);

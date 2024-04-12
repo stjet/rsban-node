@@ -2,6 +2,7 @@ use super::{Wallet, WalletActionThread, WalletRepresentatives};
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     config::NodeConfig,
+    transport::{BufferDropPolicy, TcpChannels},
     utils::ThreadPool,
     work::DistributedWorkFactory,
     NetworkParams, OnlineReps,
@@ -9,10 +10,11 @@ use crate::{
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::get_env_or_default_string, work::WorkThresholds, Account, Amount, BlockDetails,
-    BlockEnum, BlockHash, HackyUnsafeMutBlock, KeyDerivationFunction, NoValue, PublicKey, RawKey,
-    Root, WalletId, WorkVersion,
+    BlockEnum, BlockHash, Epoch, HackyUnsafeMutBlock, KeyDerivationFunction, NoValue, PublicKey,
+    RawKey, Root, StateBlock, WalletId, WorkVersion,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
+use rsnano_messages::{Message, Publish};
 use rsnano_store_lmdb::{
     create_backup_file, BinaryDbIterator, DbIterator, Environment, EnvironmentWrapper, LmdbEnv,
     LmdbIteratorImpl, LmdbWalletStore, LmdbWriteTransaction, RwTransaction, Transaction,
@@ -20,6 +22,7 @@ use rsnano_store_lmdb::{
 use std::{
     collections::{HashMap, HashSet},
     fs::Permissions,
+    ops::Deref,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
@@ -59,6 +62,7 @@ pub struct Wallets<T: Environment + 'static = EnvironmentWrapper> {
     pub representatives: Mutex<WalletRepresentatives>,
     online_reps: Arc<Mutex<OnlineReps>>,
     kdf: KeyDerivationFunction,
+    tcp_channels: Arc<TcpChannels>,
 }
 
 impl<T: Environment + 'static> Wallets<T> {
@@ -74,6 +78,7 @@ impl<T: Environment + 'static> Wallets<T> {
         workers: Arc<dyn ThreadPool>,
         block_processor: Arc<BlockProcessor>,
         online_reps: Arc<Mutex<OnlineReps>>,
+        tcp_channels: Arc<TcpChannels>,
     ) -> anyhow::Result<Self> {
         let kdf = KeyDerivationFunction::new(kdf_work);
         let mut wallets = Self {
@@ -98,6 +103,7 @@ impl<T: Environment + 'static> Wallets<T> {
             )),
             online_reps,
             kdf: kdf.clone(),
+            tcp_channels,
         };
         let mut txn = wallets.env.tx_begin_write();
         wallets.initialize(&mut txn)?;
@@ -508,6 +514,108 @@ impl<T: Environment + 'static> Wallets<T> {
         let tx = self.env.tx_begin_read();
         Ok(wallet.store.deterministic_index_get(&tx))
     }
+
+    fn prepare_send(
+        &self,
+        tx: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        wallet: &Arc<Wallet<T>>,
+        source: Account,
+        account: Account,
+        amount: Amount,
+        mut work: u64,
+    ) -> (Option<BlockEnum>, bool, bool, BlockDetails) {
+        let block_tx = self.ledger.read_txn();
+        let mut details = BlockDetails::new(Epoch::Epoch0, true, false, false);
+        let mut block = None;
+        if wallet.store.valid_password(tx) {
+            let balance = self.ledger.account_balance(&block_tx, &source, false);
+            if !balance.is_zero() && balance >= amount {
+                let info = self.ledger.account_info(&block_tx, &source).unwrap();
+                let prv_key = wallet.store.fetch(tx, &source).unwrap();
+                if work == 0 {
+                    work = wallet.store.work_get(tx, &source).unwrap_or_default();
+                }
+                let state_block = BlockEnum::State(StateBlock::new(
+                    source,
+                    info.head,
+                    info.representative,
+                    balance - amount,
+                    account.into(),
+                    &prv_key,
+                    &source,
+                    work,
+                ));
+                block = Some(state_block);
+                details = BlockDetails::new(info.epoch, true, false, false);
+            }
+        }
+
+        let error = false;
+        let cached_block = false;
+        (block, error, cached_block, details)
+    }
+
+    fn prepare_send_with_id(
+        &self,
+        tx: &mut LmdbWriteTransaction<T>,
+        id: &str,
+        wallet: &Arc<Wallet<T>>,
+        source: Account,
+        account: Account,
+        amount: Amount,
+        mut work: u64,
+    ) -> (Option<BlockEnum>, bool, bool, BlockDetails) {
+        let block_tx = self.ledger.read_txn();
+        let mut details = BlockDetails::new(Epoch::Epoch0, true, false, false);
+
+        let mut block = match self.get_block_hash(tx, id) {
+            Ok(Some(hash)) => Some(self.ledger.get_block(&block_tx, &hash).unwrap()),
+            Ok(None) => None,
+            _ => {
+                return (None, true, false, details);
+            }
+        };
+
+        let cached_block: bool;
+        let mut error = false;
+
+        if let Some(block) = &block {
+            cached_block = true;
+            let msg = Message::Publish(Publish::new(block.clone()));
+            self.tcp_channels
+                .flood_message2(&msg, BufferDropPolicy::NoLimiterDrop, 1.0);
+        } else {
+            cached_block = false;
+            if wallet.store.valid_password(tx) {
+                let balance = self.ledger.account_balance(&block_tx, &source, false);
+                if !balance.is_zero() && balance >= amount {
+                    let info = self.ledger.account_info(&block_tx, &source).unwrap();
+                    let prv_key = wallet.store.fetch(tx, &source).unwrap();
+                    if work == 0 {
+                        work = wallet.store.work_get(tx, &source).unwrap_or_default();
+                    }
+                    let state_block = BlockEnum::State(StateBlock::new(
+                        source,
+                        info.head,
+                        info.representative,
+                        balance - amount,
+                        account.into(),
+                        &prv_key,
+                        &source,
+                        work,
+                    ));
+                    details = BlockDetails::new(info.epoch, true, false, false);
+                    if self.set_block_hash(tx, id, &state_block.hash()).is_err() {
+                        error = true;
+                    } else {
+                        block = Some(state_block);
+                    }
+                }
+            }
+        }
+
+        (block, error, cached_block, details)
+    }
 }
 
 const GENERATE_PRIORITY: Amount = Amount::MAX;
@@ -524,6 +632,12 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         &self,
         wallet_id: &WalletId,
         index: u32,
+        generate_work: bool,
+    ) -> Result<PublicKey, WalletsError>;
+
+    fn deterministic_insert2(
+        &self,
+        wallet_id: &WalletId,
         generate_work: bool,
     ) -> Result<PublicKey, WalletsError>;
 
@@ -548,6 +662,25 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
     ) -> anyhow::Result<()>;
 
     fn ongoing_compute_reps(&self);
+
+    fn change_seed(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        tx: &mut LmdbWriteTransaction<T>,
+        prv_key: &RawKey,
+        count: u32,
+    ) -> PublicKey;
+
+    fn send_action(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        source: Account,
+        account: Account,
+        amount: Amount,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
+    ) -> Option<BlockEnum>;
 }
 
 impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
@@ -570,6 +703,20 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
             wallet.representatives.lock().unwrap().insert(key);
         }
         key
+    }
+
+    fn deterministic_insert2(
+        &self,
+        wallet_id: &WalletId,
+        generate_work: bool,
+    ) -> Result<PublicKey, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, wallet_id)?;
+        let mut tx = self.env.tx_begin_write();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+        Ok(self.deterministic_insert(wallet, &mut tx, generate_work))
     }
 
     fn deterministic_insert_at(
@@ -719,6 +866,71 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
                 self_l.ongoing_compute_reps();
             }),
         );
+    }
+
+    fn change_seed(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        tx: &mut LmdbWriteTransaction<T>,
+        prv_key: &RawKey,
+        mut count: u32,
+    ) -> PublicKey {
+        wallet.store.set_seed(tx, prv_key);
+        let mut account = self.deterministic_insert(wallet, tx, true);
+        if count == 0 {
+            count = wallet.deterministic_check(tx, 0);
+        }
+        for _ in 0..count {
+            // Disable work generation to prevent weak CPU nodes stuck
+            account = self.deterministic_insert(wallet, tx, false);
+        }
+        account
+    }
+
+    fn send_action(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        source: Account,
+        account: Account,
+        amount: Amount,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
+    ) -> Option<BlockEnum> {
+        let (mut block, error, cached_block, details) = match id {
+            Some(id) => {
+                let mut tx = self.env.tx_begin_write();
+                self.prepare_send_with_id(&mut tx, &id, wallet, source, account, amount, work)
+            }
+            None => {
+                let tx = self.env.tx_begin_read();
+                self.prepare_send(&tx, wallet, source, account, amount, work)
+            }
+        };
+
+        if let Some(b) = &block {
+            if !error && !cached_block {
+                let block_arc = Arc::new(b.clone());
+                if self
+                    .action_complete(
+                        Arc::clone(wallet),
+                        Some(Arc::clone(&block_arc)),
+                        source,
+                        generate_work,
+                        &details,
+                    )
+                    .is_err()
+                {
+                    // Return null block after work generation or ledger process error
+                    block = None;
+                } else {
+                    // block arc gets changed by block_processor! So we have to copy it back.
+                    block = Some(block_arc.deref().clone());
+                }
+            }
+        }
+
+        block
     }
 }
 

@@ -279,6 +279,13 @@ impl TcpChannels {
         )
     }
 
+    pub fn flood_message2(&self, message: &Message, drop_policy: BufferDropPolicy, scale: f32) {
+        let channels = self.random_fanout(scale);
+        for channel in channels {
+            channel.send(message, None, drop_policy, TrafficType::Generic)
+        }
+    }
+
     pub fn flood_message(&self, message: &Message, scale: f32) {
         let channels = self.random_fanout(scale);
         for channel in channels {

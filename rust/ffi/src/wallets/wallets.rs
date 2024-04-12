@@ -10,6 +10,7 @@ use crate::{
     core::{BlockDetailsDto, BlockHandle},
     ledger::datastore::{lmdb::LmdbEnvHandle, LedgerHandle, TransactionHandle},
     representatives::OnlineRepsHandle,
+    transport::TcpChannelsHandle,
     utils::{ContextWrapper, ThreadPoolHandle},
     work::{DistributedWorkFactoryHandle, WorkThresholdsDto},
     NetworkParamsDto, NodeConfigDto, U256ArrayDto, VoidPointerCallback,
@@ -54,6 +55,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
     workers: &ThreadPoolHandle,
     block_processor: &BlockProcessorHandle,
     online_reps: &OnlineRepsHandle,
+    tcp_channels: &TcpChannelsHandle,
 ) -> *mut LmdbWalletsHandle {
     let network_params = NetworkParams::try_from(network_params).unwrap();
     let node_config = NodeConfig::try_from(node_config).unwrap();
@@ -71,6 +73,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
             Arc::clone(workers),
             Arc::clone(block_processor),
             Arc::clone(online_reps),
+            Arc::clone(tcp_channels),
         )
         .expect("could not create wallet"),
     ))))
@@ -639,5 +642,67 @@ pub unsafe extern "C" fn rsn_wallets_deterministic_insert2(
             WalletsError::None as u8
         }
         Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_deterministic_insert3(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    generate_work: bool,
+    key: *mut u8,
+) -> u8 {
+    match handle.deterministic_insert2(&WalletId::from_ptr(wallet_id), generate_work) {
+        Ok(k) => {
+            k.copy_bytes(key);
+            WalletsError::None as u8
+        }
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_change_seed(
+    handle: &LmdbWalletsHandle,
+    wallet: &WalletHandle,
+    tx: &mut TransactionHandle,
+    prv_key: *const u8,
+    count: u32,
+    pub_key: *mut u8,
+) {
+    let key = handle.change_seed(wallet, tx.as_write_txn(), &RawKey::from_ptr(prv_key), count);
+    key.copy_bytes(pub_key);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_send_action(
+    handle: &LmdbWalletsHandle,
+    wallet: &WalletHandle,
+    source: *const u8,
+    account: *const u8,
+    amount: *const u8,
+    work: u64,
+    generate_work: bool,
+    id: *const c_char,
+) -> *mut BlockHandle {
+    let id = if id.is_null() {
+        None
+    } else {
+        Some(CStr::from_ptr(id).to_str().unwrap().to_owned())
+    };
+
+    let block = handle.send_action(
+        wallet,
+        Account::from_ptr(source),
+        Account::from_ptr(account),
+        Amount::from_ptr(amount),
+        work,
+        generate_work,
+        id,
+    );
+
+    match block {
+        Some(b) => BlockHandle::new(Arc::new(b)),
+        None => std::ptr::null_mut(),
     }
 }

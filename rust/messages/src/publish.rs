@@ -20,6 +20,10 @@ pub struct Publish {
 impl Publish {
     const BLOCK_TYPE_MASK: u16 = 0x0f00;
 
+    pub fn new(block: BlockEnum) -> Self {
+        Self { block, digest: 0 }
+    }
+
     pub fn create_test_instance() -> Self {
         Self {
             block: BlockEnum::create_test_instance(),

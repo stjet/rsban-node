@@ -19,7 +19,7 @@ use std::{
 use tracing::debug;
 
 /// Policy to affect at which stage a buffer can be dropped
-#[derive(PartialEq, Eq, FromPrimitive, Debug)]
+#[derive(PartialEq, Eq, FromPrimitive, Debug, Clone, Copy)]
 pub enum BufferDropPolicy {
     /// Can be dropped by bandwidth limiter (default)
     Limiter,

@@ -229,6 +229,11 @@ rsnano::account_vec::account_vec () :
 {
 }
 
+rsnano::account_vec::account_vec (rsnano::AccountVecHandle * handle) :
+	handle{ handle }
+{
+}
+
 rsnano::account_vec::~account_vec ()
 {
 	rsnano::rsn_account_vec_destroy (handle);
@@ -243,7 +248,25 @@ rsnano::account_vec::account_vec (std::vector<nano::account> accounts) :
 	}
 }
 
+std::size_t rsnano::account_vec::size () const
+{
+	return rsnano::rsn_account_vec_len (handle);
+}
+
 void rsnano::account_vec::push (nano::account const & account)
 {
 	rsnano::rsn_account_vec_push (handle, account.bytes.data ());
+}
+
+std::vector<nano::account> rsnano::account_vec::into_vector () const
+{
+	std::vector<nano::account> result;
+	result.reserve (size ());
+	for (auto i = 0; i < size (); ++i)
+	{
+		nano::account account;
+		rsnano::rsn_account_vec_get (handle, i, account.bytes.data ());
+		result.push_back (account);
+	}
+	return result;
 }

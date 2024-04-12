@@ -616,6 +616,42 @@ impl<T: Environment + 'static> Wallets<T> {
 
         (block, error, cached_block, details)
     }
+
+    pub fn work_get(&self, wallet_id: &WalletId, account: &Account) -> u64 {
+        let guard = self.mutex.lock().unwrap();
+        let tx = self.env.tx_begin_read();
+        let Some(wallet) = guard.get(&wallet_id) else {
+            return 1;
+        };
+        wallet.store.work_get(&tx, account).unwrap_or(1)
+    }
+
+    pub fn work_get2(&self, wallet_id: &WalletId, account: &Account) -> Result<u64, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let tx = self.env.tx_begin_read();
+        let wallet = Self::get_wallet(&guard, wallet_id)?;
+        if wallet.store.find(&tx, account).is_end() {
+            return Err(WalletsError::AccountNotFound);
+        }
+        Ok(wallet.store.work_get(&tx, account).unwrap_or(1))
+    }
+
+    pub fn get_accounts(&self, max_results: usize) -> Vec<Account> {
+        let mut accounts = Vec::new();
+        let guard = self.mutex.lock().unwrap();
+        let tx = self.env.tx_begin_read();
+        for wallet in guard.values() {
+            let mut it = wallet.store.begin(&tx);
+            while let Some((&account, _)) = it.current() {
+                if accounts.len() >= max_results {
+                    break;
+                }
+                accounts.push(account);
+                it.next();
+            }
+        }
+        accounts
+    }
 }
 
 const GENERATE_PRIORITY: Amount = Amount::MAX;

@@ -756,3 +756,36 @@ pub unsafe extern "C" fn rsn_wallets_receive_action(
         None => std::ptr::null_mut(),
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_work_get(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    account: *const u8,
+) -> u64 {
+    handle.work_get(&WalletId::from_ptr(wallet_id), &Account::from_ptr(account))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_work_get2(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    account: *const u8,
+    work: *mut u64,
+) -> u8 {
+    match handle.work_get2(&WalletId::from_ptr(wallet_id), &Account::from_ptr(account)) {
+        Ok(w) => {
+            *work = w;
+            WalletsError::None as u8
+        }
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_get_accounts(
+    handle: &LmdbWalletsHandle,
+    max_results: usize,
+) -> *mut AccountVecHandle {
+    AccountVecHandle::new(handle.get_accounts(max_results))
+}

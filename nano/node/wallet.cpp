@@ -962,47 +962,19 @@ nano::wallets_error nano::wallets::get_accounts (nano::wallet_id const & wallet_
 
 std::vector<nano::account> nano::wallets::get_accounts (size_t max_results)
 {
-	auto lock{ mutex.lock () };
-	auto const transaction (tx_begin_read ());
-	std::vector<nano::account> accounts;
-	auto wallets{ lock.get_all () };
-	for (auto i (wallets.begin ()), n (wallets.end ()); i != n && accounts.size () < max_results; ++i)
-	{
-		auto & wallet (*i->second);
-		for (auto j (wallet.store.begin (*transaction)), m (wallet.store.end ()); j != m && accounts.size () < max_results; ++j)
-		{
-			nano::account account (j->first);
-			accounts.push_back (account);
-		}
-	}
-	return accounts;
+	rsnano::account_vec acc_vec{ rsnano::rsn_wallets_get_accounts (rust_handle, max_results) };
+	return acc_vec.into_vector ();
 }
 
 nano::wallets_error nano::wallets::work_get (nano::wallet_id const & wallet_id, nano::account const & account, uint64_t & work)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_write () };
-	if (wallet->store.find (*txn, account) == wallet->store.end ())
-	{
-		return nano::wallets_error::account_not_found;
-	}
-	wallet->store.work_get (*txn, account, work);
-	return nano::wallets_error::none;
+	auto result = rsnano::rsn_wallets_work_get2 (rust_handle, wallet_id.bytes.data (), account.bytes.data (), &work);
+	return static_cast<nano::wallets_error> (result);
 }
 
 uint64_t nano::wallets::work_get (nano::wallet_id const & wallet_id, nano::account const & account)
 {
-	auto lock{ mutex.lock () };
-	auto transaction (tx_begin_read ());
-	auto wallet{ lock.find (wallet_id) };
-	uint64_t work (1);
-	wallet->store.work_get (*transaction, account, work);
-	return work;
+	return rsnano::rsn_wallets_work_get (rust_handle, wallet_id.bytes.data (), account.bytes.data ());
 }
 
 nano::wallets_error nano::wallets::work_set (nano::wallet_id const & wallet_id, nano::account const & account, uint64_t work)

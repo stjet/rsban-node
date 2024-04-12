@@ -171,6 +171,12 @@ impl DerefMut for AccountVecHandle {
     }
 }
 
+impl AccountVecHandle {
+    pub fn new(accounts: Vec<Account>) -> *mut AccountVecHandle {
+        Box::into_raw(Box::new(Self(accounts)))
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_account_vec_create() -> *mut AccountVecHandle {
     Box::into_raw(Box::new(AccountVecHandle(Vec::new())))

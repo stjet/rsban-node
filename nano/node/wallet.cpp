@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <future>
 #include <memory>
+#include <stdexcept>
 
 nano::uint256_union nano::wallet_store::check (store::transaction const & transaction_a)
 {
@@ -1528,44 +1529,15 @@ nano::wallets_error nano::wallets::lock (nano::wallet_id const & wallet_id)
 
 nano::public_key nano::wallets::deterministic_insert (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & transaction_a, bool generate_work_a)
 {
-	nano::public_key key{};
-	if (wallet->store.valid_password (transaction_a))
-	{
-		key = wallet->store.deterministic_insert (transaction_a);
-		if (generate_work_a)
-		{
-			work_ensure (wallet, key, key);
-		}
-		auto half_principal_weight (node.minimum_principal_weight () / 2);
-		auto lock{ lock_representatives () };
-		if (lock.check_rep (key, half_principal_weight))
-		{
-			wallet->insert_representative (key);
-		}
-	}
+	nano::public_key key;
+	rsnano::rsn_wallets_deterministic_insert (rust_handle, wallet->handle, transaction_a.get_rust_handle (), generate_work_a, key.bytes.data ());
 	return key;
 }
 
 nano::wallets_error nano::wallets::deterministic_insert (nano::wallet_id const & wallet_id, uint32_t const index, bool generate_work_a, nano::account & account)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_write () };
-	if (!wallet->store.valid_password (*txn))
-	{
-		return nano::wallets_error::wallet_locked;
-	}
-
-	account = wallet->store.deterministic_insert (*txn, index);
-	if (generate_work_a)
-	{
-		work_ensure (wallet, account, account);
-	}
-	return nano::wallets_error::none;
+	auto result = rsnano::rsn_wallets_deterministic_insert2 (rust_handle, wallet_id.bytes.data (), index, generate_work_a, account.bytes.data ());
+	return static_cast<nano::wallets_error> (result);
 }
 
 nano::wallets_error nano::wallets::deterministic_insert (nano::wallet_id const & wallet_id, bool generate_work_a, nano::account & account)
@@ -1588,30 +1560,15 @@ nano::wallets_error nano::wallets::deterministic_insert (nano::wallet_id const &
 
 nano::wallets_error nano::wallets::deterministic_index_get (nano::wallet_id const & wallet_id, uint32_t & index)
 {
-	index = 0;
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_read () };
-	index = wallet->store.deterministic_index_get (*txn);
-	return nano::wallets_error::none;
+	auto result = rsnano::rsn_wallets_deterministic_index_get (rust_handle, wallet_id.bytes.data (), &index);
+	return static_cast<nano::wallets_error> (result);
 }
 
 void nano::wallets::backup (std::filesystem::path const & backup_path)
 {
-	auto lock{ mutex.lock () };
-	auto transaction{ tx_begin_read () };
-	auto wallets{ lock.get_all () };
-	for (auto i (wallets.begin ()), n (wallets.end ()); i != n; ++i)
+	if (rsnano::rsn_wallets_backup (rust_handle, backup_path.c_str ()) != 0)
 	{
-		boost::system::error_code error_chmod;
-
-		std::filesystem::create_directories (backup_path);
-		nano::set_secure_perm_directory (backup_path, error_chmod);
-		i->second->store.write_backup (*transaction, backup_path / (i->first.to_string () + ".json"));
+		throw std::runtime_error ("backup failed");
 	}
 }
 

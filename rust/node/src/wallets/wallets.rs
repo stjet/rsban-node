@@ -19,7 +19,9 @@ use rsnano_store_lmdb::{
 };
 use std::{
     collections::{HashMap, HashSet},
-    path::PathBuf,
+    fs::Permissions,
+    os::unix::fs::PermissionsExt,
+    path::{Path, PathBuf},
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
@@ -486,11 +488,45 @@ impl<T: Environment + 'static> Wallets<T> {
             .ok_or_else(|| anyhow!("target not found"))?;
         target.store.move_keys(&mut tx, &source.store, accounts)
     }
+
+    pub fn backup(&self, path: &Path) -> anyhow::Result<()> {
+        let guard = self.mutex.lock().unwrap();
+        let tx = self.env.tx_begin_read();
+        for (id, wallet) in guard.iter() {
+            std::fs::create_dir_all(path)?;
+            std::fs::set_permissions(path, Permissions::from_mode(0o700))?;
+            let mut backup_path = PathBuf::from(path);
+            backup_path.push(format!("{}.json", id));
+            wallet.store.write_backup(&tx, &backup_path)?;
+        }
+        Ok(())
+    }
+
+    pub fn deterministic_index_get(&self, wallet_id: &WalletId) -> Result<u32, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Self::get_wallet(&guard, wallet_id)?;
+        let tx = self.env.tx_begin_read();
+        Ok(wallet.store.deterministic_index_get(&tx))
+    }
 }
 
 const GENERATE_PRIORITY: Amount = Amount::MAX;
 
 pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
+    fn deterministic_insert(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        tx: &mut LmdbWriteTransaction<T>,
+        generate_work: bool,
+    ) -> PublicKey;
+
+    fn deterministic_insert_at(
+        &self,
+        wallet_id: &WalletId,
+        index: u32,
+        generate_work: bool,
+    ) -> Result<PublicKey, WalletsError>;
+
     fn insert_adhoc(&self, wallet: &Arc<Wallet<T>>, key: &RawKey, generate_work: bool) -> Account;
 
     fn insert_adhoc2(
@@ -500,7 +536,7 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         generate_work: bool,
     ) -> Result<Account, WalletsError>;
 
-    fn work_ensure(&self, wallet: Arc<Wallet<T>>, account: Account, root: Root);
+    fn work_ensure(&self, wallet: &Arc<Wallet<T>>, account: Account, root: Root);
 
     fn action_complete(
         &self,
@@ -515,6 +551,46 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
 }
 
 impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
+    fn deterministic_insert(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        tx: &mut LmdbWriteTransaction<T>,
+        generate_work: bool,
+    ) -> PublicKey {
+        if !wallet.store.valid_password(tx) {
+            return PublicKey::zero();
+        }
+        let key = wallet.store.deterministic_insert(tx);
+        if generate_work {
+            self.work_ensure(wallet, key, key.into());
+        }
+        let half_principal_weight = self.online_reps.lock().unwrap().minimum_principal_weight() / 2;
+        let mut reps = self.representatives.lock().unwrap();
+        if reps.check_rep(key, half_principal_weight) {
+            wallet.representatives.lock().unwrap().insert(key);
+        }
+        key
+    }
+
+    fn deterministic_insert_at(
+        &self,
+        wallet_id: &WalletId,
+        index: u32,
+        generate_work: bool,
+    ) -> Result<PublicKey, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, wallet_id)?;
+        let mut tx = self.env.tx_begin_write();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+        let account = wallet.store.deterministic_insert_at(&mut tx, index);
+        if generate_work {
+            self.work_ensure(wallet, account, account.into());
+        }
+        Ok(account)
+    }
+
     fn insert_adhoc(&self, wallet: &Arc<Wallet<T>>, key: &RawKey, generate_work: bool) -> Account {
         let mut tx = self.env.tx_begin_write();
         if !wallet.store.valid_password(&tx) {
@@ -523,11 +599,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         let key = wallet.store.insert_adhoc(&mut tx, key);
         let block_tx = self.ledger.read_txn();
         if generate_work {
-            self.work_ensure(
-                Arc::clone(wallet),
-                key,
-                self.ledger.latest_root(&block_tx, &key),
-            );
+            self.work_ensure(wallet, key, self.ledger.latest_root(&block_tx, &key));
         }
         let half_principal_weight = self.online_reps.lock().unwrap().minimum_principal_weight() / 2;
         // Makes sure that the representatives container will
@@ -556,7 +628,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         Ok(self.insert_adhoc(wallet, key, generate_work))
     }
 
-    fn work_ensure(&self, wallet: Arc<Wallet<T>>, account: Account, root: Root) {
+    fn work_ensure(&self, wallet: &Arc<Wallet<T>>, account: Account, root: Root) {
         let precache_delay = if self.network_params.network.is_dev_network() {
             Duration::from_secs(1)
         } else {
@@ -564,6 +636,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         };
         self.delayed_work.lock().unwrap().insert(account, root);
         let self_clone = Arc::clone(self);
+        let wallet = Arc::clone(wallet);
         self.workers.add_delayed_task(
             precache_delay,
             Box::new(move || {
@@ -622,7 +695,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
         if generate_work {
             // Pregenerate work for next block based on the block just created
-            self.work_ensure(wallet, account, hash.into());
+            self.work_ensure(&wallet, account, hash.into());
         }
         Ok(())
     }

@@ -26,6 +26,7 @@ use std::{
     collections::HashMap,
     ffi::{c_char, c_void, CStr},
     ops::Deref,
+    path::PathBuf,
     sync::{Arc, MutexGuard},
 };
 use tracing::warn;
@@ -390,11 +391,7 @@ pub unsafe extern "C" fn rsn_wallets_work_ensure(
     account: *const u8,
     root: *const u8,
 ) {
-    handle.work_ensure(
-        Arc::clone(wallet),
-        Account::from_ptr(account),
-        Root::from_ptr(root),
-    );
+    handle.work_ensure(wallet, Account::from_ptr(account), Root::from_ptr(root));
 }
 
 #[no_mangle]
@@ -587,5 +584,60 @@ pub unsafe extern "C" fn rsn_wallets_move_accounts(
     ) {
         Ok(_) => 0,
         Err(_) => -1,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_backup(
+    handle: &LmdbWalletsHandle,
+    path: *const c_char,
+) -> i32 {
+    match handle.backup(&PathBuf::from(CStr::from_ptr(path).to_str().unwrap())) {
+        Ok(_) => 0,
+        Err(_) => -1,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_deterministic_index_get(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    index: *mut u32,
+) -> u8 {
+    match handle.deterministic_index_get(&WalletId::from_ptr(wallet_id)) {
+        Ok(i) => {
+            *index = i;
+            WalletsError::None as u8
+        }
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_deterministic_insert(
+    handle: &LmdbWalletsHandle,
+    wallet: &WalletHandle,
+    tx: &mut TransactionHandle,
+    generate_work: bool,
+    key: *mut u8,
+) {
+    let k = handle.deterministic_insert(wallet, tx.as_write_txn(), generate_work);
+    k.copy_bytes(key);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_deterministic_insert2(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    index: u32,
+    generate_work: bool,
+    key: *mut u8,
+) -> u8 {
+    match handle.deterministic_insert_at(&WalletId::from_ptr(wallet_id), index, generate_work) {
+        Ok(k) => {
+            k.copy_bytes(key);
+            WalletsError::None as u8
+        }
+        Err(e) => e as u8,
     }
 }

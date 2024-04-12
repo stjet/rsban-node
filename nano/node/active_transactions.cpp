@@ -50,6 +50,46 @@ bool nano::active_transactions_lock::owns_lock ()
 	return rsnano::rsn_active_transactions_lock_owns_lock (handle);
 }
 
+namespace
+{
+class election_winner_details_lock
+{
+public:
+	election_winner_details_lock (rsnano::ElectionWinnerDetailsLock * handle) :
+		handle{ handle }
+	{
+	}
+	election_winner_details_lock (election_winner_details_lock const &) = delete;
+	election_winner_details_lock (election_winner_details_lock && other) :
+		handle{ other.handle }
+	{
+		other.handle = nullptr;
+	}
+	~election_winner_details_lock ()
+	{
+		if (handle != nullptr)
+		{
+			rsnano::rsn_election_winner_details_lock_destroy (handle);
+		}
+	}
+
+	void unlock ()
+	{
+		if (handle != nullptr)
+		{
+			rsnano::rsn_election_winner_details_lock_unlock (handle);
+		}
+	}
+
+	rsnano::ElectionWinnerDetailsLock * handle;
+};
+
+election_winner_details_lock lock_election_winners (rsnano::ActiveTransactionsHandle * handle)
+{
+	return election_winner_details_lock{ rsnano::rsn_active_transactions_lock_election_winner_details (handle) };
+}
+}
+
 nano::active_transactions::active_transactions (nano::node & node_a, nano::confirming_set & confirming_set, nano::block_processor & block_processor_a) :
 	node{ node_a },
 	confirming_set{ confirming_set },
@@ -59,7 +99,7 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	election_time_to_live{ node_a.network_params.network.is_dev_network () ? 0s : 2s }
 {
 	auto network_dto{ node_a.network_params.to_dto () };
-	handle = rsnano::rsn_active_transactions_create (&network_dto, node_a.online_reps.get_handle ());
+	handle = rsnano::rsn_active_transactions_create (&network_dto, node_a.online_reps.get_handle (), node_a.wallets.rust_handle);
 
 	// Register a callback which will get called after a block is cemented
 	confirming_set.add_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
@@ -400,13 +440,13 @@ void nano::active_transactions::notify_observers (nano::store::read_transaction 
 
 void nano::active_transactions::add_election_winner_details (nano::block_hash const & hash_a, std::shared_ptr<nano::election> const & election_a)
 {
-	nano::lock_guard<nano::mutex> guard{ election_winner_details_mutex };
+	auto guard{ lock_election_winners (handle) };
 	election_winner_details.emplace (hash_a, election_a);
 }
 
 std::shared_ptr<nano::election> nano::active_transactions::remove_election_winner_details (nano::block_hash const & hash_a)
 {
-	nano::lock_guard<nano::mutex> guard{ election_winner_details_mutex };
+	auto guard{ lock_election_winners (handle) };
 	std::shared_ptr<nano::election> result;
 	auto existing = election_winner_details.find (hash_a);
 	if (existing != election_winner_details.end ())
@@ -457,7 +497,7 @@ void nano::active_transactions::process_confirmed (nano::election_status const &
 void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano::election & election)
 {
 	// This must be kept above the setting of election state, as dependent confirmed elections require up to date changes to election_winner_details
-	nano::unique_lock<nano::mutex> election_winners_lk{ election_winner_details_mutex };
+	auto election_winners_lk{ lock_election_winners (handle) };
 	auto status_l{ lock_a.status () };
 	auto old_state = static_cast<nano::election_state> (rsnano::rsn_election_lock_state (lock_a.handle));
 	auto just_confirmed = old_state != nano::election_state::confirmed;
@@ -1274,7 +1314,7 @@ void nano::active_transactions::try_confirm (nano::election & election, nano::bl
 
 std::size_t nano::active_transactions::election_winner_details_size ()
 {
-	nano::lock_guard<nano::mutex> guard{ election_winner_details_mutex };
+	auto guard{ lock_election_winners (handle) };
 	return election_winner_details.size ();
 }
 

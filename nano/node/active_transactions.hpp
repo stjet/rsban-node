@@ -256,7 +256,6 @@ public:
 	recently_cemented_cache recently_cemented;
 
 private:
-	nano::mutex election_winner_details_mutex{ mutex_identifier (mutexes::election_winner_details) };
 	std::unordered_map<nano::block_hash, std::shared_ptr<nano::election>> election_winner_details;
 
 	// Maximum time an election can be kept active if it is extending the container

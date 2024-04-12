@@ -1,9 +1,13 @@
 use super::election::ElectionHandle;
-use crate::{representatives::OnlineRepsHandle, utils::InstantHandle, NetworkParamsDto};
+use crate::{
+    representatives::OnlineRepsHandle, utils::InstantHandle, wallets::LmdbWalletsHandle,
+    NetworkParamsDto,
+};
 use num_traits::FromPrimitive;
 use rsnano_core::{Amount, BlockHash, QualifiedRoot, Root};
 use rsnano_node::consensus::{ActiveTransactions, ActiveTransactionsData, Election};
 use std::{
+    collections::HashMap,
     ops::Deref,
     sync::{Arc, MutexGuard},
 };
@@ -22,9 +26,14 @@ impl Deref for ActiveTransactionsHandle {
 pub extern "C" fn rsn_active_transactions_create(
     network: &NetworkParamsDto,
     online_reps: &OnlineRepsHandle,
+    wallets: &LmdbWalletsHandle,
 ) -> *mut ActiveTransactionsHandle {
     Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::new(
-        ActiveTransactions::new(network.try_into().unwrap(), Arc::clone(online_reps)),
+        ActiveTransactions::new(
+            network.try_into().unwrap(),
+            Arc::clone(online_reps),
+            Arc::clone(wallets),
+        ),
     ))))
 }
 
@@ -308,4 +317,34 @@ pub unsafe extern "C" fn rsn_active_transactions_cooldown_time_s(
     weight: *const u8,
 ) -> u64 {
     handle.cooldown_time(Amount::from_ptr(weight)).as_secs()
+}
+
+pub struct ElectionWinnerDetailsLock(
+    Option<MutexGuard<'static, HashMap<BlockHash, Arc<Election>>>>,
+);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_lock_election_winner_details(
+    handle: &ActiveTransactionsHandle,
+) -> *mut ElectionWinnerDetailsLock {
+    let guard = handle.election_winner_details.lock().unwrap();
+    let guard = std::mem::transmute::<
+        MutexGuard<HashMap<BlockHash, Arc<Election>>>,
+        MutexGuard<'static, HashMap<BlockHash, Arc<Election>>>,
+    >(guard);
+    Box::into_raw(Box::new(ElectionWinnerDetailsLock(Some(guard))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_winner_details_lock_destroy(
+    handle: *mut ElectionWinnerDetailsLock,
+) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_winner_details_lock_unlock(
+    handle: &mut ElectionWinnerDetailsLock,
+) {
+    drop(handle.0.take())
 }

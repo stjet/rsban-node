@@ -1,5 +1,5 @@
 use super::{Election, ElectionBehavior};
-use crate::{NetworkParams, OnlineReps};
+use crate::{wallets::Wallets, NetworkParams, OnlineReps};
 use rsnano_core::{Amount, BlockEnum, BlockHash, QualifiedRoot};
 use std::{
     cmp::max,
@@ -13,10 +13,16 @@ pub struct ActiveTransactions {
     pub condition: Condvar,
     network: NetworkParams,
     pub online_reps: Arc<Mutex<OnlineReps>>,
+    wallets: Arc<Wallets>,
+    pub election_winner_details: Mutex<HashMap<BlockHash, Arc<Election>>>,
 }
 
 impl ActiveTransactions {
-    pub fn new(network: NetworkParams, online_reps: Arc<Mutex<OnlineReps>>) -> Self {
+    pub fn new(
+        network: NetworkParams,
+        online_reps: Arc<Mutex<OnlineReps>>,
+        wallets: Arc<Wallets>,
+    ) -> Self {
         Self {
             mutex: Mutex::new(ActiveTransactionsData {
                 roots: OrderedRoots::default(),
@@ -29,6 +35,8 @@ impl ActiveTransactions {
             condition: Condvar::new(),
             network,
             online_reps,
+            wallets,
+            election_winner_details: Mutex::new(HashMap::new()),
         }
     }
 

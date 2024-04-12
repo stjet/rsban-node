@@ -706,3 +706,26 @@ pub unsafe extern "C" fn rsn_wallets_send_action(
         None => std::ptr::null_mut(),
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_change_action(
+    handle: &LmdbWalletsHandle,
+    wallet: &WalletHandle,
+    source: *const u8,
+    representative: *const u8,
+    work: u64,
+    generate_work: bool,
+) -> *mut BlockHandle {
+    let block = handle.change_action(
+        wallet,
+        Account::from_ptr(source),
+        Account::from_ptr(representative),
+        work,
+        generate_work,
+    );
+
+    match block {
+        Some(b) => BlockHandle::new(Arc::new(b)),
+        None => std::ptr::null_mut(),
+    }
+}

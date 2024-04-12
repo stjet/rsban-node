@@ -10,8 +10,8 @@ use crate::{
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::get_env_or_default_string, work::WorkThresholds, Account, Amount, BlockDetails,
-    BlockEnum, BlockHash, Epoch, HackyUnsafeMutBlock, KeyDerivationFunction, NoValue, PublicKey,
-    RawKey, Root, StateBlock, WalletId, WorkVersion,
+    BlockEnum, BlockHash, Epoch, HackyUnsafeMutBlock, KeyDerivationFunction, Link, NoValue,
+    PublicKey, RawKey, Root, StateBlock, WalletId, WorkVersion,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
@@ -681,6 +681,15 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         generate_work: bool,
         id: Option<String>,
     ) -> Option<BlockEnum>;
+
+    fn change_action(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        source: Account,
+        representative: Account,
+        work: u64,
+        generate_work: bool,
+    ) -> Option<BlockEnum>;
 }
 
 impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
@@ -930,6 +939,71 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
             }
         }
 
+        block
+    }
+
+    fn change_action(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        source: Account,
+        representative: Account,
+        mut work: u64,
+        generate_work: bool,
+    ) -> Option<BlockEnum> {
+        let mut epoch = Epoch::Epoch0;
+        let mut block = None;
+        {
+            let wallet_tx = self.env.tx_begin_read();
+            let block_tx = self.ledger.read_txn();
+            if !wallet.store.valid_password(&wallet_tx) {
+                return None;
+            }
+
+            let existing = wallet.store.find(&wallet_tx, &source);
+            if !existing.is_end() && self.ledger.latest(&block_tx, &source).is_some() {
+                let info = self.ledger.account_info(&block_tx, &source).unwrap();
+                let prv = wallet.store.fetch(&wallet_tx, &source).unwrap();
+                if work == 0 {
+                    work = wallet
+                        .store
+                        .work_get(&wallet_tx, &source)
+                        .unwrap_or_default();
+                }
+                let state_block = BlockEnum::State(StateBlock::new(
+                    source,
+                    info.head,
+                    representative,
+                    info.balance,
+                    Link::zero(),
+                    &prv,
+                    &source,
+                    work,
+                ));
+                block = Some(state_block);
+                epoch = info.epoch;
+            }
+        }
+
+        if let Some(b) = block {
+            let details = BlockDetails::new(epoch, false, false, false);
+            let arc_block = Arc::new(b);
+            if self
+                .action_complete(
+                    Arc::clone(&wallet),
+                    Some(Arc::clone(&arc_block)),
+                    source,
+                    generate_work,
+                    &details,
+                )
+                .is_err()
+            {
+                // Return null block after work generation or ledger process error
+                block = None;
+            } else {
+                // block arc gets changed by block_processor! So we have to copy it back.
+                block = Some(arc_block.deref().clone())
+            }
+        }
         block
     }
 }

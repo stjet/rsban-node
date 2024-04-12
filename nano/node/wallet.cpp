@@ -1121,41 +1121,8 @@ std::shared_ptr<nano::block> nano::wallets::receive_action (const std::shared_pt
 
 std::shared_ptr<nano::block> nano::wallets::change_action (const std::shared_ptr<wallet> & wallet, nano::account const & source_a, nano::account const & representative_a, uint64_t work_a, bool generate_work_a)
 {
-	auto epoch = nano::epoch::epoch_0;
-	std::shared_ptr<nano::block> block;
-	{
-		auto transaction (env.tx_begin_read ());
-		auto block_transaction (node.store.tx_begin_read ());
-		if (wallet->store.valid_password (*transaction))
-		{
-			auto existing (wallet->store.find (*transaction, source_a));
-			if (existing != wallet->store.end () && !node.ledger.latest (*block_transaction, source_a).is_zero ())
-			{
-				auto info = node.ledger.account_info (*block_transaction, source_a);
-				debug_assert (info);
-				nano::raw_key prv;
-				auto error2 (wallet->store.fetch (*transaction, source_a, prv));
-				(void)error2;
-				debug_assert (!error2);
-				if (work_a == 0)
-				{
-					wallet->store.work_get (*transaction, source_a, work_a);
-				}
-				block = std::make_shared<nano::state_block> (source_a, info->head (), representative_a, info->balance (), 0, prv, source_a, work_a);
-				epoch = info->epoch ();
-			}
-		}
-	}
-	if (block != nullptr)
-	{
-		auto details = nano::block_details (epoch, false, false, false);
-		if (action_complete (wallet, block, source_a, generate_work_a, details))
-		{
-			// Return null block after work generation or ledger process error
-			block = nullptr;
-		}
-	}
-	return block;
+	auto block_handle = rsnano::rsn_wallets_change_action (rust_handle, wallet->handle, source_a.bytes.data (), representative_a.bytes.data (), work_a, generate_work_a);
+	return nano::block_handle_to_block (block_handle);
 }
 
 std::shared_ptr<nano::block> nano::wallets::send_action (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)

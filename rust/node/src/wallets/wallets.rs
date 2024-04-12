@@ -652,6 +652,22 @@ impl<T: Environment + 'static> Wallets<T> {
         }
         accounts
     }
+
+    pub fn get_accounts_of_wallet(
+        &self,
+        wallet_id: &WalletId,
+    ) -> Result<Vec<Account>, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Self::get_wallet(&guard, wallet_id)?;
+        let tx = self.env.tx_begin_read();
+        let mut it = wallet.store.begin(&tx);
+        let mut accounts = Vec::new();
+        while let Some((&account, _)) = it.current() {
+            accounts.push(account);
+            it.next();
+        }
+        Ok(accounts)
+    }
 }
 
 const GENERATE_PRIORITY: Amount = Amount::MAX;

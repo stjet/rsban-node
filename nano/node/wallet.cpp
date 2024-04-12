@@ -943,21 +943,15 @@ std::vector<nano::wallet_id> nano::wallets::get_wallet_ids () const
 
 nano::wallets_error nano::wallets::get_accounts (nano::wallet_id const & wallet_id, std::vector<nano::account> & accounts)
 {
-	auto lock{ mutex.lock () };
-	auto wallet = lock.find (wallet_id);
-
-	if (wallet == nullptr)
+	uint8_t error_code;
+	auto vec_handle = rsnano::rsn_wallets_get_accounts_of_wallet (rust_handle, wallet_id.bytes.data (), &error_code);
+	auto error = static_cast<nano::wallets_error> (error_code);
+	if (error == nano::wallets_error::none)
 	{
-		return nano::wallets_error::wallet_not_found;
+		rsnano::account_vec acc_vec{ vec_handle };
+		accounts = acc_vec.into_vector ();
 	}
-	auto txn (tx_begin_read ());
-
-	for (auto j (wallet->store.begin (*txn)), m (wallet->store.end ()); j != m; ++j)
-	{
-		accounts.push_back (nano::account (j->first));
-	}
-
-	return nano::wallets_error::none;
+	return error;
 }
 
 std::vector<nano::account> nano::wallets::get_accounts (size_t max_results)

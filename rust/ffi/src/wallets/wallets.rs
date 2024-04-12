@@ -789,3 +789,21 @@ pub unsafe extern "C" fn rsn_wallets_get_accounts(
 ) -> *mut AccountVecHandle {
     AccountVecHandle::new(handle.get_accounts(max_results))
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_get_accounts_of_wallet(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    result: &mut u8,
+) -> *mut AccountVecHandle {
+    match handle.get_accounts_of_wallet(&WalletId::from_ptr(wallet_id)) {
+        Ok(accounts) => {
+            *result = WalletsError::None as u8;
+            AccountVecHandle::new(accounts)
+        }
+        Err(e) => {
+            *result = e as u8;
+            std::ptr::null_mut()
+        }
+    }
+}

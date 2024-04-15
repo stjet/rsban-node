@@ -24,6 +24,12 @@ use super::election_status::ElectionStatusHandle;
 
 pub struct ElectionHandle(pub Arc<Election>);
 
+impl ElectionHandle {
+    pub fn new(election: Arc<Election>) -> *mut ElectionHandle {
+        Box::into_raw(Box::new(Self(election)))
+    }
+}
+
 impl Deref for ElectionHandle {
     type Target = Arc<Election>;
 
@@ -57,7 +63,7 @@ pub unsafe extern "C" fn rsn_election_create(
         ContextWrapper::new(live_vote_action_context, live_vote_action_context_delete);
     let id = NEXT_ELECTION_ID.fetch_add(1, Ordering::Relaxed);
 
-    Box::into_raw(Box::new(ElectionHandle(Arc::new(Election::new(
+    ElectionHandle::new(Arc::new(Election::new(
         id,
         Arc::clone(block),
         ElectionBehavior::from_u8(behavior).unwrap(),
@@ -70,7 +76,7 @@ pub unsafe extern "C" fn rsn_election_create(
         Box::new(move |account| {
             live_vote_action(live_vote_context.get_context(), account.as_bytes().as_ptr())
         }),
-    )))))
+    )))
 }
 
 #[no_mangle]

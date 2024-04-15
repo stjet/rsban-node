@@ -21,6 +21,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 
 using namespace std::chrono;
 
@@ -73,12 +74,40 @@ public:
 		}
 	}
 
+	void ensure_locked () const
+	{
+		if (handle == nullptr)
+			throw std::runtime_error ("election_winner_details_lock is unlocked!");
+	}
+
 	void unlock ()
 	{
-		if (handle != nullptr)
-		{
-			rsnano::rsn_election_winner_details_lock_unlock (handle);
-		}
+		ensure_locked ();
+		rsnano::rsn_election_winner_details_lock_unlock (handle);
+	}
+
+	std::size_t size () const
+	{
+		ensure_locked ();
+		return rsnano::rsn_election_winner_details_len (handle);
+	}
+
+	bool contains (nano::block_hash const & hash) const
+	{
+		ensure_locked ();
+		return rsnano::rsn_election_winner_details_contains (handle, hash.bytes.data ());
+	}
+
+	void insert (nano::block_hash const & hash, nano::election const & election)
+	{
+		ensure_locked ();
+		rsnano::rsn_election_winner_details_insert (handle, hash.bytes.data (), election.handle);
+	}
+
+	void remove (nano::block_hash const & hash)
+	{
+		ensure_locked ();
+		rsnano::rsn_election_winner_details_remove (handle, hash.bytes.data ());
 	}
 
 	rsnano::ElectionWinnerDetailsLock * handle;
@@ -441,20 +470,18 @@ void nano::active_transactions::notify_observers (nano::store::read_transaction 
 void nano::active_transactions::add_election_winner_details (nano::block_hash const & hash_a, std::shared_ptr<nano::election> const & election_a)
 {
 	auto guard{ lock_election_winners (handle) };
-	election_winner_details.emplace (hash_a, election_a);
+	guard.insert (hash_a, *election_a);
 }
 
 std::shared_ptr<nano::election> nano::active_transactions::remove_election_winner_details (nano::block_hash const & hash_a)
 {
-	auto guard{ lock_election_winners (handle) };
-	std::shared_ptr<nano::election> result;
-	auto existing = election_winner_details.find (hash_a);
-	if (existing != election_winner_details.end ())
+	std::shared_ptr<nano::election> removed{};
+	auto election_handle = rsnano::rsn_active_transactions_remove_election_winner_details (handle, hash_a.bytes.data ());
+	if (election_handle != nullptr)
 	{
-		result = existing->second;
-		election_winner_details.erase (existing);
+		removed = std::make_shared<nano::election> (election_handle);
 	}
-	return result;
+	return removed;
 }
 
 nano::active_transactions_lock nano::active_transactions::lock () const
@@ -502,9 +529,9 @@ void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano
 	auto old_state = static_cast<nano::election_state> (rsnano::rsn_election_lock_state (lock_a.handle));
 	auto just_confirmed = old_state != nano::election_state::confirmed;
 	rsnano::rsn_election_lock_state_set (lock_a.handle, static_cast<uint8_t> (nano::election_state::confirmed));
-	if (just_confirmed && (election_winner_details.count (status_l.get_winner ()->hash ()) == 0))
+	if (just_confirmed && !election_winners_lk.contains (status_l.get_winner ()->hash ()))
 	{
-		election_winner_details.emplace (status_l.get_winner ()->hash (), election.shared_from_this ());
+		election_winners_lk.insert (status_l.get_winner ()->hash (), election);
 		election_winners_lk.unlock ();
 
 		rsnano::rsn_election_lock_update_status_to_confirmed (lock_a.handle, election.handle);
@@ -1315,7 +1342,7 @@ void nano::active_transactions::try_confirm (nano::election & election, nano::bl
 std::size_t nano::active_transactions::election_winner_details_size ()
 {
 	auto guard{ lock_election_winners (handle) };
-	return election_winner_details.size ();
+	return guard.size ();
 }
 
 void nano::active_transactions::clear ()
@@ -1336,7 +1363,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (ac
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "roots", rsnano::rsn_active_transactions_lock_roots_size (guard.handle), sizeof (intptr_t) }));
 
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "blocks", rsnano::rsn_active_transactions_lock_blocks_len (guard.handle), sizeof (intptr_t) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "election_winner_details", active_transactions.election_winner_details_size (), sizeof (decltype (active_transactions.election_winner_details)::value_type) }));
+	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "election_winner_details", active_transactions.election_winner_details_size (), sizeof (nano::block_hash) + sizeof (std::size_t) }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "normal", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::normal))), 0 }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "hinted", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::hinted))), 0 }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "optimistic", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::optimistic))), 0 }));

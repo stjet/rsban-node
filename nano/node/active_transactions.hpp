@@ -256,8 +256,6 @@ public:
 	recently_cemented_cache recently_cemented;
 
 private:
-	std::unordered_map<nano::block_hash, std::shared_ptr<nano::election>> election_winner_details;
-
 	// Maximum time an election can be kept active if it is extending the container
 	std::chrono::seconds const election_time_to_live;
 

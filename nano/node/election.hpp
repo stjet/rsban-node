@@ -157,7 +157,11 @@ public: // Status
 	void inc_confirmation_request_count ();
 
 public: // Interface
-	election (nano::node &, std::shared_ptr<nano::block> const & block, std::function<void (std::shared_ptr<nano::block> const &)> const & confirmation_action, std::function<void (nano::account const &)> const & vote_action, nano::election_behavior behavior);
+	election (nano::node &, std::shared_ptr<nano::block> const & block,
+	std::function<void (std::shared_ptr<nano::block> const &)> const & confirmation_action,
+	std::function<void (nano::account const &)> const & vote_action,
+	nano::election_behavior behavior);
+
 	election (rsnano::ElectionHandle * handle_a);
 	election (election const &) = delete;
 	election (election &&) = delete;

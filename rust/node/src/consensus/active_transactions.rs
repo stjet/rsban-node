@@ -1,4 +1,4 @@
-use super::{Election, ElectionBehavior};
+use super::{Election, ElectionBehavior, ElectionStatus};
 use crate::{wallets::Wallets, NetworkParams, OnlineReps};
 use rsnano_core::{Amount, BlockEnum, BlockHash, QualifiedRoot};
 use std::{
@@ -84,6 +84,11 @@ impl ActiveTransactions {
             // The rest of smaller reps
             Duration::from_secs(15)
         }
+    }
+
+    pub fn remove_election_winner_details(&self, hash: &BlockHash) -> Option<Arc<Election>> {
+        let mut guard = self.election_winner_details.lock().unwrap();
+        guard.remove(hash)
     }
 }
 

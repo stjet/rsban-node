@@ -319,6 +319,17 @@ pub unsafe extern "C" fn rsn_active_transactions_cooldown_time_s(
     handle.cooldown_time(Amount::from_ptr(weight)).as_secs()
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_remove_election_winner_details(
+    handle: &ActiveTransactionsHandle,
+    hash: *const u8,
+) -> *mut ElectionHandle {
+    match handle.remove_election_winner_details(&BlockHash::from_ptr(hash)) {
+        Some(election) => ElectionHandle::new(election),
+        None => std::ptr::null_mut(),
+    }
+}
+
 pub struct ElectionWinnerDetailsLock(
     Option<MutexGuard<'static, HashMap<BlockHash, Arc<Election>>>>,
 );
@@ -347,4 +358,46 @@ pub unsafe extern "C" fn rsn_election_winner_details_lock_unlock(
     handle: &mut ElectionWinnerDetailsLock,
 ) {
     drop(handle.0.take())
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_winner_details_len(handle: &ElectionWinnerDetailsLock) -> usize {
+    handle.0.as_ref().unwrap().len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_winner_details_contains(
+    handle: &ElectionWinnerDetailsLock,
+    hash: *const u8,
+) -> bool {
+    handle
+        .0
+        .as_ref()
+        .unwrap()
+        .contains_key(&BlockHash::from_ptr(hash))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_winner_details_insert(
+    handle: &mut ElectionWinnerDetailsLock,
+    hash: *const u8,
+    election: &ElectionHandle,
+) {
+    handle
+        .0
+        .as_mut()
+        .unwrap()
+        .insert(BlockHash::from_ptr(hash), Arc::clone(election));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_winner_details_remove(
+    handle: &mut ElectionWinnerDetailsLock,
+    hash: *const u8,
+) {
+    handle
+        .0
+        .as_mut()
+        .unwrap()
+        .remove(&BlockHash::from_ptr(hash));
 }

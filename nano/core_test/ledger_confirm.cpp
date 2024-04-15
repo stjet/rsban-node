@@ -769,7 +769,11 @@ TEST (ledger_confirm, election_winner_details_clearing_node_process_confirmed)
 				.work (*system.work.generate (nano::dev::genesis->hash ()))
 				.build ();
 	// Add to election_winner_details. Use an unrealistic iteration so that it should fall into the else case and do a cleanup
-	node->active.add_election_winner_details (send->hash (), nullptr);
+	node->active.add_election_winner_details (send->hash (),
+	std::make_shared<nano::election> (
+	*node, send,
+	[] (std::shared_ptr<nano::block> const &) {},
+	[] (nano::account const &) {}, nano::election_behavior::normal));
 	nano::election_status election;
 	election.set_winner (send);
 	node->process_confirmed (election, 1000000);

@@ -1341,7 +1341,7 @@ TEST (active_transactions, vacancy)
 					.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 					.work (*system.work.generate (nano::dev::genesis->hash ()))
 					.build ();
-		node.active.vacancy_update = [&updated] () { updated = true; };
+		node.active.set_vacancy_update ([&updated] () { updated = true; });
 		ASSERT_EQ (nano::block_status::progress, node.process (send));
 		ASSERT_EQ (1, node.active.vacancy ());
 		ASSERT_EQ (0, node.active.size ());

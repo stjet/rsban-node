@@ -11,9 +11,10 @@ use crate::{
     core::BlockHandle,
     ledger::datastore::LedgerHandle,
     representatives::OnlineRepsHandle,
-    utils::{InstantHandle, ThreadPoolHandle},
+    transport::TcpChannelsHandle,
+    utils::{ContextWrapper, InstantHandle, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
-    NetworkParamsDto, NodeConfigDto,
+    NetworkParamsDto, NodeConfigDto, VoidPointerCallback,
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{Amount, BlockEnum, BlockHash, QualifiedRoot, Root};
@@ -25,6 +26,7 @@ use rsnano_node::{
 };
 use std::{
     collections::{BTreeMap, HashMap},
+    ffi::c_void,
     ops::Deref,
     sync::{Arc, MutexGuard},
 };
@@ -51,6 +53,7 @@ pub extern "C" fn rsn_active_transactions_create(
     history: &LocalVoteHistoryHandle,
     block_processor: &BlockProcessorHandle,
     final_generator: &VoteGeneratorHandle,
+    tcp_channels: &TcpChannelsHandle,
 ) -> *mut ActiveTransactionsHandle {
     Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::new(
         ActiveTransactions::new(
@@ -64,6 +67,7 @@ pub extern "C" fn rsn_active_transactions_create(
             Arc::clone(history),
             Arc::clone(block_processor),
             Arc::clone(final_generator),
+            Arc::clone(tcp_channels),
         ),
     ))))
 }
@@ -229,7 +233,7 @@ pub unsafe extern "C" fn rsn_active_transactions_lock_roots_find(
 pub extern "C" fn rsn_active_transactions_lock_count_by_behavior(
     handle: &ActiveTransactionsLockHandle,
     behavior: u8,
-) -> u64 {
+) -> usize {
     handle
         .0
         .as_ref()
@@ -447,30 +451,72 @@ pub unsafe extern "C" fn rsn_active_transactions_remove_election_winner_details(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_confirm_if_quorum(
+pub extern "C" fn rsn_active_transactions_confirm_if_quorum(
     handle: &ActiveTransactionsHandle,
     election_lock: &mut ElectionLockHandle,
     election: &ElectionHandle,
 ) {
-    handle.confirm_if_quorum(election_lock.take().unwrap(), Arc::clone(election));
+    handle.confirm_if_quorum(election_lock.take().unwrap(), election);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_confirm_once(
+pub extern "C" fn rsn_active_transactions_confirm_once(
     handle: &ActiveTransactionsHandle,
     election_lock: &mut ElectionLockHandle,
     election: &ElectionHandle,
 ) {
-    handle.confirm_once(election_lock.take().unwrap(), Arc::clone(election));
+    handle.confirm_once(election_lock.take().unwrap(), election);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_process_confirmed(
+pub extern "C" fn rsn_active_transactions_process_confirmed(
     handle: &ActiveTransactionsHandle,
     status: &ElectionStatusHandle,
     iteration: u64,
 ) {
     handle.process_confirmed(status.0.clone(), iteration);
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_force_confirm(
+    handle: &ActiveTransactionsHandle,
+    election: &ElectionHandle,
+) {
+    handle.force_confirm(election);
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_limit(
+    handle: &ActiveTransactionsHandle,
+    behavior: u8,
+) -> usize {
+    handle.limit(FromPrimitive::from_u8(behavior).unwrap())
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_vacancy(
+    handle: &ActiveTransactionsHandle,
+    behavior: u8,
+) -> usize {
+    handle.vacancy(FromPrimitive::from_u8(behavior).unwrap())
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_vacancy_update(handle: &ActiveTransactionsHandle) {
+    (handle.vacancy_update.lock().unwrap())();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_set_vacancy_update(
+    handle: &ActiveTransactionsHandle,
+    context: *mut c_void,
+    callback: VoidPointerCallback,
+    drop_context: VoidPointerCallback,
+) {
+    let ctx_wrapper = ContextWrapper::new(context, drop_context);
+    *handle.vacancy_update.lock().unwrap() = Box::new(move || unsafe {
+        callback(ctx_wrapper.get_context());
+    })
 }
 
 pub struct ElectionWinnerDetailsLock(

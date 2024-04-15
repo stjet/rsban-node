@@ -111,6 +111,18 @@ election_winner_details_lock lock_election_winners (rsnano::ActiveTransactionsHa
 {
 	return election_winner_details_lock{ rsnano::rsn_active_transactions_lock_election_winner_details (handle) };
 }
+
+void call_vacancy_update (void * context)
+{
+	auto callback = static_cast<std::function<void ()> *> (context);
+	(*callback) ();
+}
+
+void delete_vacancy_update (void * context)
+{
+	auto callback = static_cast<std::function<void ()> *> (context);
+	delete callback;
+}
 }
 
 nano::active_transactions::active_transactions (nano::node & node_a, nano::confirming_set & confirming_set, nano::block_processor & block_processor_a) :
@@ -125,7 +137,7 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	handle = rsnano::rsn_active_transactions_create (&network_dto, node_a.online_reps.get_handle (),
 	node_a.wallets.rust_handle, &config_dto, node_a.ledger.handle, node_a.confirming_set.handle,
 	node_a.workers->handle, node_a.history.handle, node_a.block_processor.handle,
-	node_a.final_generator.handle);
+	node_a.final_generator.handle, node_a.network->tcp_channels->handle);
 
 	// Register a callback which will get called after a block is cemented
 	confirming_set.add_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
@@ -535,9 +547,7 @@ void nano::active_transactions::confirm_if_quorum (nano::election_lock & lock_a,
 
 void nano::active_transactions::force_confirm (nano::election & election)
 {
-	release_assert (node.network_params.network.is_dev_network ());
-	nano::election_lock lock{ election };
-	confirm_once (lock, election);
+	rsnano::rsn_active_transactions_force_confirm (handle, election.handle);
 }
 
 std::chrono::seconds nano::active_transactions::cooldown_time (nano::uint128_t weight) const
@@ -557,41 +567,23 @@ void nano::active_transactions::block_already_cemented_callback (nano::block_has
 
 int64_t nano::active_transactions::limit (nano::election_behavior behavior) const
 {
-	switch (behavior)
-	{
-		case nano::election_behavior::normal:
-		{
-			return static_cast<int64_t> (node.config->active_elections_size);
-		}
-		case nano::election_behavior::hinted:
-		{
-			const uint64_t limit = node.config->active_elections_hinted_limit_percentage * node.config->active_elections_size / 100;
-			return static_cast<int64_t> (limit);
-		}
-		case nano::election_behavior::optimistic:
-		{
-			const uint64_t limit = node.config->active_elections_optimistic_limit_percentage * node.config->active_elections_size / 100;
-			return static_cast<int64_t> (limit);
-		}
-	}
-
-	debug_assert (false, "unknown election behavior");
-	return 0;
+	return rsnano::rsn_active_transactions_limit (handle, static_cast<uint8_t> (behavior));
 }
 
 int64_t nano::active_transactions::vacancy (nano::election_behavior behavior) const
 {
-	auto guard{ lock () };
-	switch (behavior)
-	{
-		case nano::election_behavior::normal:
-			return limit () - static_cast<int64_t> (rsnano::rsn_active_transactions_lock_roots_size (guard.handle));
-		case nano::election_behavior::hinted:
-		case nano::election_behavior::optimistic:
-			return limit (behavior) - rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (behavior));
-	}
-	debug_assert (false); // Unknown enum
-	return 0;
+	return rsnano::rsn_active_transactions_vacancy (handle, static_cast<uint8_t> (behavior));
+}
+
+void nano::active_transactions::set_vacancy_update (std::function<void ()> callback)
+{
+	auto context = new std::function<void ()> (callback);
+	rsnano::rsn_active_transactions_set_vacancy_update (handle, context, call_vacancy_update, delete_vacancy_update);
+}
+
+void nano::active_transactions::vacancy_update ()
+{
+	rsnano::rsn_active_transactions_vacancy_update (handle);
 }
 
 void nano::active_transactions::request_confirm (nano::active_transactions_lock & lock_a)

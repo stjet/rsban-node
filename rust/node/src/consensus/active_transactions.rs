@@ -4,8 +4,9 @@ use super::{
 };
 use crate::{
     block_processing::BlockProcessor, cementation::ConfirmingSet, config::NodeConfig,
-    utils::ThreadPool, wallets::Wallets, NetworkParams, OnlineReps,
+    transport::TcpChannels, utils::ThreadPool, wallets::Wallets, NetworkParams, OnlineReps,
 };
+use num_traits::ops::overflowing::OverflowingSub;
 use rsnano_core::{Amount, BlockEnum, BlockHash, QualifiedRoot};
 use rsnano_ledger::Ledger;
 use std::{
@@ -32,6 +33,8 @@ pub struct ActiveTransactions {
     history: Arc<LocalVoteHistory>,
     block_processor: Arc<BlockProcessor>,
     final_generator: Arc<VoteGenerator>,
+    tcp_channels: Arc<TcpChannels>,
+    pub vacancy_update: Mutex<Box<dyn Fn() + Send + Sync>>,
 }
 
 impl ActiveTransactions {
@@ -46,6 +49,7 @@ impl ActiveTransactions {
         history: Arc<LocalVoteHistory>,
         block_processor: Arc<BlockProcessor>,
         final_generator: Arc<VoteGenerator>,
+        tcp_channels: Arc<TcpChannels>,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveTransactionsData {
@@ -69,6 +73,8 @@ impl ActiveTransactions {
             history,
             block_processor,
             final_generator,
+            tcp_channels,
+            vacancy_update: Mutex::new(Box::new(|| {})),
         }
     }
 
@@ -96,6 +102,7 @@ impl ActiveTransactions {
         }
     }
 
+    /// Calculates minimum time delay between subsequent votes when processing non-final votes
     pub fn cooldown_time(&self, weight: Amount) -> Duration {
         let online_stake = { self.online_reps.lock().unwrap().trended() };
         if weight > online_stake / 20 {
@@ -172,6 +179,41 @@ impl ActiveTransactions {
         let delta = self.online_reps.lock().unwrap().delta();
         first - second >= delta
     }
+
+    /// Maximum number of elections that should be present in this container
+    /// NOTE: This is only a soft limit, it is possible for this container to exceed this count
+    pub fn limit(&self, behavior: ElectionBehavior) -> usize {
+        match behavior {
+            ElectionBehavior::Normal => self.config.active_elections_size,
+            ElectionBehavior::Hinted => {
+                self.config.active_elections_hinted_limit_percentage
+                    * self.config.active_elections_size
+                    / 100
+            }
+            ElectionBehavior::Optimistic => {
+                self.config.active_elections_optimistic_limit_percentage
+                    * self.config.active_elections_size
+                    / 100
+            }
+        }
+    }
+
+    /// How many election slots are available for specified election type
+    pub fn vacancy(&self, behavior: ElectionBehavior) -> usize {
+        let guard = self.mutex.lock().unwrap();
+        match behavior {
+            ElectionBehavior::Normal => {
+                self.limit(ElectionBehavior::Normal)
+                    .overflowing_sub(guard.roots.len())
+                    .0
+            }
+            ElectionBehavior::Hinted | ElectionBehavior::Optimistic => {
+                self.limit(behavior)
+                    .overflowing_sub(guard.count_by_behavior(behavior))
+                    .0
+            }
+        }
+    }
 }
 
 #[derive(PartialEq, Eq)]
@@ -206,14 +248,14 @@ impl PartialOrd for TallyKey {
 pub struct ActiveTransactionsData {
     pub roots: OrderedRoots,
     pub stopped: bool,
-    pub normal_count: u64,
-    pub hinted_count: u64,
-    pub optimistic_count: u64,
+    pub normal_count: usize,
+    pub hinted_count: usize,
+    pub optimistic_count: usize,
     pub blocks: HashMap<BlockHash, Arc<Election>>,
 }
 
 impl ActiveTransactionsData {
-    pub fn count_by_behavior(&self, behavior: ElectionBehavior) -> u64 {
+    pub fn count_by_behavior(&self, behavior: ElectionBehavior) -> usize {
         match behavior {
             ElectionBehavior::Normal => self.normal_count,
             ElectionBehavior::Hinted => self.hinted_count,
@@ -221,7 +263,7 @@ impl ActiveTransactionsData {
         }
     }
 
-    pub fn count_by_behavior_mut(&mut self, behavior: ElectionBehavior) -> &mut u64 {
+    pub fn count_by_behavior_mut(&mut self, behavior: ElectionBehavior) -> &mut usize {
         match behavior {
             ElectionBehavior::Normal => &mut self.normal_count,
             ElectionBehavior::Hinted => &mut self.hinted_count,
@@ -274,16 +316,24 @@ impl OrderedRoots {
 }
 
 pub trait ActiveTransactionsExt {
-    fn confirm_if_quorum(&self, election_lock: MutexGuard<ElectionData>, election: Arc<Election>);
-    fn confirm_once(&self, election_lock: MutexGuard<ElectionData>, election: Arc<Election>);
+    /// Confirm this block if quorum is met
+    fn confirm_if_quorum(&self, election_lock: MutexGuard<ElectionData>, election: &Arc<Election>);
+    fn confirm_once(&self, election_lock: MutexGuard<ElectionData>, election: &Arc<Election>);
     fn process_confirmed(&self, status: ElectionStatus, iteration: u64);
+    fn force_confirm(&self, election: &Arc<Election>);
 }
 
 impl ActiveTransactionsExt for Arc<ActiveTransactions> {
+    fn force_confirm(&self, election: &Arc<Election>) {
+        assert!(self.network.network.is_dev_network());
+        let guard = election.mutex.lock().unwrap();
+        self.confirm_once(guard, election);
+    }
+
     fn confirm_if_quorum(
         &self,
         mut election_lock: MutexGuard<ElectionData>,
-        election: Arc<Election>,
+        election: &Arc<Election>,
     ) {
         let tally = self.tally_impl(&mut election_lock);
         let (amount, block) = tally.first_key_value().unwrap();
@@ -297,7 +347,7 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
         }
         if sum >= self.online_reps.lock().unwrap().delta() && winner_hash != status_winner_hash {
             election_lock.status.winner = Some(Arc::clone(block));
-            self.remove_votes(&election, &mut election_lock, &status_winner_hash);
+            self.remove_votes(election, &mut election_lock, &status_winner_hash);
             self.block_processor.force(Arc::clone(block));
         }
 
@@ -315,7 +365,7 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
         }
     }
 
-    fn confirm_once(&self, mut election_lock: MutexGuard<ElectionData>, election: Arc<Election>) {
+    fn confirm_once(&self, mut election_lock: MutexGuard<ElectionData>, election: &Arc<Election>) {
         // This must be kept above the setting of election state, as dependent confirmed elections require up to date changes to election_winner_details
         let mut winners_guard = self.election_winner_details.lock().unwrap();
         let mut status = election_lock.status.clone();
@@ -323,13 +373,10 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
         let just_confirmed = old_state != ElectionState::Confirmed;
         election_lock.state = ElectionState::Confirmed;
         if just_confirmed && !winners_guard.contains_key(&status.winner.as_ref().unwrap().hash()) {
-            winners_guard.insert(
-                status.winner.as_ref().unwrap().hash(),
-                Arc::clone(&election),
-            );
+            winners_guard.insert(status.winner.as_ref().unwrap().hash(), Arc::clone(election));
             drop(winners_guard);
 
-            election_lock.update_status_to_confirmed(&election);
+            election_lock.update_status_to_confirmed(election);
             status = election_lock.status.clone();
 
             self.recently_confirmed.put(
@@ -344,6 +391,7 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
             drop(election_lock);
 
             let self_l = Arc::clone(&self);
+            let election = Arc::clone(election);
             self.workers.push_task(Box::new(move || {
                 let block = Arc::clone(status.winner.as_ref().unwrap());
                 self_l.process_confirmed(status, 0);

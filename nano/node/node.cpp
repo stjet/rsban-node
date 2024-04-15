@@ -269,11 +269,11 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	if (!init_error ())
 	{
 		// Notify election schedulers when AEC frees election slot
-		active.vacancy_update = [this] () {
+		active.set_vacancy_update ([this] () {
 			scheduler.priority.notify ();
 			scheduler.hinted.notify ();
 			scheduler.optimistic.notify ();
-		};
+		});
 
 		wallets.set_actions_observer ([this] (bool active) {
 			observers->wallet.notify (active);

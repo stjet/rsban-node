@@ -9,7 +9,8 @@ use rsnano_core::{Amount, BlockEnum, BlockHash, QualifiedRoot};
 use rsnano_ledger::Ledger;
 use std::{
     cmp::max,
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
+    ops::Deref,
     sync::{Arc, Condvar, Mutex, MutexGuard},
     time::{Duration, Instant},
 };
@@ -110,6 +111,62 @@ impl ActiveTransactions {
     pub fn remove_election_winner_details(&self, hash: &BlockHash) -> Option<Arc<Election>> {
         let mut guard = self.election_winner_details.lock().unwrap();
         guard.remove(hash)
+    }
+
+    pub fn tally_impl(
+        &self,
+        guard: &mut MutexGuard<ElectionData>,
+    ) -> BTreeMap<TallyKey, Arc<BlockEnum>> {
+        let mut block_weights: HashMap<BlockHash, Amount> = HashMap::new();
+        let mut final_weights: HashMap<BlockHash, Amount> = HashMap::new();
+        for (account, info) in &guard.last_votes {
+            let rep_weight = self.ledger.weight(account);
+            *block_weights.entry(info.hash).or_default() += rep_weight;
+            if info.timestamp == u64::MAX {
+                *final_weights.entry(info.hash).or_default() += rep_weight;
+            }
+        }
+        guard.last_tally.clear();
+        for (&hash, &weight) in &block_weights {
+            guard.last_tally.insert(hash, weight);
+        }
+        let mut result = BTreeMap::new();
+        for (hash, weight) in &block_weights {
+            if let Some(block) = guard.last_blocks.get(hash) {
+                result.insert(TallyKey(*weight), Arc::clone(block));
+            }
+        }
+        // Calculate final votes sum for winner
+        if !final_weights.is_empty() && !result.is_empty() {
+            let winner_hash = result.first_key_value().unwrap().1.hash();
+            if let Some(final_weight) = final_weights.get(&winner_hash) {
+                guard.final_weight = *final_weight;
+            }
+        }
+        result
+    }
+}
+
+#[derive(PartialEq, Eq)]
+pub struct TallyKey(Amount);
+
+impl Deref for TallyKey {
+    type Target = Amount;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Ord for TallyKey {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.0.cmp(&self.0)
+    }
+}
+
+impl PartialOrd for TallyKey {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        other.0.partial_cmp(&self.0)
     }
 }
 

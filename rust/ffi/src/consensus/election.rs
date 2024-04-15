@@ -213,7 +213,7 @@ pub unsafe extern "C" fn rsn_election_confirmation_action(
     (handle.0.confirmation_action)(block);
 }
 
-pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionData>>);
+pub struct ElectionLockHandle(pub Option<MutexGuard<'static, ElectionData>>);
 
 impl ElectionLockHandle {
     pub fn take(&mut self) -> Option<MutexGuard<'static, ElectionData>> {

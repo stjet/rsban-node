@@ -497,42 +497,15 @@ void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano
 
 nano::tally_t nano::active_transactions::tally_impl (nano::election_lock & lock) const
 {
-	std::unordered_map<nano::block_hash, nano::uint128_t> block_weights;
-	std::unordered_map<nano::block_hash, nano::uint128_t> final_weights_l;
-	for (auto const & [account, info] : lock.last_votes ())
-	{
-		auto rep_weight (node.ledger.weight (account));
-		block_weights[info.get_hash ()] += rep_weight;
-		if (info.get_timestamp () == std::numeric_limits<uint64_t>::max ())
-		{
-			final_weights_l[info.get_hash ()] += rep_weight;
-		}
-	}
-	rsnano::rsn_election_lock_last_tally_clear (lock.handle);
-	for (const auto & item : block_weights)
-	{
-		nano::amount a{ item.second };
-		rsnano::rsn_election_lock_last_tally_add (lock.handle, item.first.bytes.data (), a.bytes.data ());
-	}
 	nano::tally_t result;
-	for (auto const & [hash, amount] : block_weights)
+	auto tally_handle = rsnano::rsn_active_transactions_tally_impl (handle, lock.handle);
+	for (size_t i = 0, n = rsnano::rsn_tally_blocks_len (tally_handle); i < n; ++i)
 	{
-		auto block (lock.find_block (hash));
-		if (block != nullptr)
-		{
-			result.emplace (amount, block);
-		}
+		nano::amount weight;
+		auto block_handle = rsnano::rsn_tally_blocks_get (tally_handle, i, weight.bytes.data ());
+		result.emplace (weight.number (), nano::block_handle_to_block (block_handle));
 	}
-	// Calculate final votes sum for winner
-	if (!final_weights_l.empty () && !result.empty ())
-	{
-		auto winner_hash (result.begin ()->second->hash ());
-		auto find_final (final_weights_l.find (winner_hash));
-		if (find_final != final_weights_l.end ())
-		{
-			lock.set_final_weight (find_final->second);
-		}
-	}
+	rsnano::rsn_tally_blocks_destroy (tally_handle);
 	return result;
 }
 

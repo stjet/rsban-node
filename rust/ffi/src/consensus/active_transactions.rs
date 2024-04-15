@@ -6,6 +6,7 @@ use super::{
 };
 use crate::{
     cementation::ConfirmingSetHandle,
+    core::BlockHandle,
     ledger::datastore::LedgerHandle,
     representatives::OnlineRepsHandle,
     utils::{InstantHandle, ThreadPoolHandle},
@@ -13,13 +14,15 @@ use crate::{
     NetworkParamsDto, NodeConfigDto,
 };
 use num_traits::FromPrimitive;
-use rsnano_core::{Amount, BlockHash, QualifiedRoot, Root};
+use rsnano_core::{Amount, BlockEnum, BlockHash, QualifiedRoot, Root};
 use rsnano_node::{
     config::NodeConfig,
-    consensus::{ActiveTransactions, ActiveTransactionsData, ActiveTransactionsExt, Election},
+    consensus::{
+        ActiveTransactions, ActiveTransactionsData, ActiveTransactionsExt, Election, TallyKey,
+    },
 };
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     ops::Deref,
     sync::{Arc, MutexGuard},
 };
@@ -300,6 +303,43 @@ pub unsafe extern "C" fn rsn_active_transactions_lock_blocks_find(
         Some(election) => Box::into_raw(Box::new(ElectionHandle(Arc::clone(election)))),
         None => std::ptr::null_mut(),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_tally_impl(
+    handle: &ActiveTransactionsHandle,
+    lock_handle: &mut ElectionLockHandle,
+) -> *mut TallyBlocksHandle {
+    let tally = handle.tally_impl(lock_handle.0.as_mut().unwrap());
+    Box::into_raw(Box::new(TallyBlocksHandle(
+        tally
+            .iter()
+            .map(|(key, value)| (key.deref().clone(), Arc::clone(value)))
+            .collect(),
+    )))
+}
+
+pub struct TallyBlocksHandle(Vec<(Amount, Arc<BlockEnum>)>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tally_blocks_destroy(handle: *mut TallyBlocksHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tally_blocks_len(handle: &TallyBlocksHandle) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tally_blocks_get(
+    handle: &TallyBlocksHandle,
+    index: usize,
+    weight: *mut u8,
+) -> *mut BlockHandle {
+    let (amount, block) = handle.0.get(index).unwrap();
+    amount.copy_bytes(weight);
+    BlockHandle::new(Arc::clone(block))
 }
 
 #[no_mangle]

@@ -184,12 +184,12 @@ impl OrderedRoots {
 }
 
 pub trait ActiveTransactionsExt {
-    fn confirm_once(&self, election_lock: MutexGuard<ElectionData>, election: &Arc<Election>);
-    fn process_confirmed(&self, status: &ElectionStatus, iteration: u64);
+    fn confirm_once(&self, election_lock: MutexGuard<ElectionData>, election: Arc<Election>);
+    fn process_confirmed(&self, status: ElectionStatus, iteration: u64);
 }
 
 impl ActiveTransactionsExt for Arc<ActiveTransactions> {
-    fn confirm_once(&self, mut election_lock: MutexGuard<ElectionData>, election: &Arc<Election>) {
+    fn confirm_once(&self, mut election_lock: MutexGuard<ElectionData>, election: Arc<Election>) {
         // This must be kept above the setting of election state, as dependent confirmed elections require up to date changes to election_winner_details
         let mut winners_guard = self.election_winner_details.lock().unwrap();
         let mut status = election_lock.status.clone();
@@ -197,34 +197,40 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
         let just_confirmed = old_state != ElectionState::Confirmed;
         election_lock.state = ElectionState::Confirmed;
         if just_confirmed && !winners_guard.contains_key(&status.winner.as_ref().unwrap().hash()) {
-            winners_guard.insert(status.winner.as_ref().unwrap().hash(), Arc::clone(election));
+            winners_guard.insert(
+                status.winner.as_ref().unwrap().hash(),
+                Arc::clone(&election),
+            );
             drop(winners_guard);
 
             election_lock.update_status_to_confirmed(&election);
             status = election_lock.status.clone();
-            todo!();
 
-            //    recently_confirmed.put (election.qualified_root (), status_l.get_winner ()->hash ());
+            self.recently_confirmed.put(
+                election.qualified_root.clone(),
+                status.winner.as_ref().unwrap().hash(),
+            );
 
-            //    node.logger->trace (nano::log::type::election, nano::log::detail::election_confirmed,
-            //    nano::log::arg{ "qualified_root", election.qualified_root () });
+            trace!(
+                qualified_root = ?election.qualified_root,
+                "election confirmed"
+            );
+            drop(election_lock);
 
-            //    lock_a.unlock ();
-
-            //    node.background ([node_l = node.shared (), status_l, election_l = election.shared_from_this ()] () {
-            //        node_l->active.process_confirmed (status_l);
-
-            //        rsnano::rsn_election_confirmation_action (election_l->handle, status_l.get_winner ()->get_handle ());
-            //    });
+            let self_l = Arc::clone(&self);
+            self.workers.push_task(Box::new(move || {
+                let block = Arc::clone(status.winner.as_ref().unwrap());
+                self_l.process_confirmed(status, 0);
+                (election.confirmation_action)(block);
+            }));
         }
     }
 
-    fn process_confirmed(&self, status: &ElectionStatus, mut iteration: u64) {
+    fn process_confirmed(&self, status: ElectionStatus, mut iteration: u64) {
         let hash = status.winner.as_ref().unwrap().hash();
         let num_iters = (self.config.block_processor_batch_max_time_ms
             / self.network.node.process_confirmed_interval_ms) as u64
             * 4;
-        //std::shared_ptr<nano::block> block_l;
         let block = {
             let tx = self.ledger.read_txn();
             self.ledger.get_block(&tx, &hash)
@@ -235,15 +241,14 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
         } else if iteration < num_iters {
             iteration += 1;
             let self_w = Arc::downgrade(self);
-            todo!()
-            //self.workers.add_delayed_task(
-            //    Duration::from_millis(self.network.node.process_confirmed_interval_ms as u64),
-            //    Box::new(move || {
-            //        if let Some(self_l) = self_w.upgrade() {
-            //            self_l.process_confirmed(status, iteration);
-            //        }
-            //    }),
-            //);
+            self.workers.add_delayed_task(
+                Duration::from_millis(self.network.node.process_confirmed_interval_ms as u64),
+                Box::new(move || {
+                    if let Some(self_l) = self_w.upgrade() {
+                        self_l.process_confirmed(status, iteration);
+                    }
+                }),
+            );
         } else {
             // Do some cleanup due to this block never being processed by confirmation height processor
             self.remove_election_winner_details(&hash);

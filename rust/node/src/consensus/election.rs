@@ -23,8 +23,8 @@ pub struct Election {
     pub last_req: RwLock<Option<Instant>>,
     pub behavior: ElectionBehavior,
     pub election_start: Instant,
-    pub confirmation_action: Box<dyn Fn(Arc<BlockEnum>)>,
-    pub live_vote_action: Box<dyn Fn(Account)>,
+    pub confirmation_action: Box<dyn Fn(Arc<BlockEnum>) + Send + Sync>,
+    pub live_vote_action: Box<dyn Fn(Account) + Send + Sync>,
 }
 
 impl Election {
@@ -32,8 +32,8 @@ impl Election {
         id: usize,
         block: Arc<BlockEnum>,
         behavior: ElectionBehavior,
-        confirmation_action: Box<dyn Fn(Arc<BlockEnum>)>,
-        live_vote_action: Box<dyn Fn(Account)>,
+        confirmation_action: Box<dyn Fn(Arc<BlockEnum>) + Send + Sync>,
+        live_vote_action: Box<dyn Fn(Account) + Send + Sync>,
     ) -> Self {
         let root = block.root();
         let qualified_root = block.qualified_root();

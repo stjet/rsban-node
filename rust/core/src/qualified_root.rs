@@ -6,7 +6,7 @@ use crate::{
 };
 use primitive_types::U512;
 
-#[derive(Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct QualifiedRoot {
     pub root: Root,
     pub previous: BlockHash,

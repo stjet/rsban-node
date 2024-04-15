@@ -215,6 +215,12 @@ pub unsafe extern "C" fn rsn_election_confirmation_action(
 
 pub struct ElectionLockHandle(Option<MutexGuard<'static, ElectionData>>);
 
+impl ElectionLockHandle {
+    pub fn take(&mut self) -> Option<MutexGuard<'static, ElectionData>> {
+        self.0.take()
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_election_lock_destroy(handle: *mut ElectionLockHandle) {
     drop(Box::from_raw(handle))

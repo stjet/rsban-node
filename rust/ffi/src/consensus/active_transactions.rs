@@ -1,5 +1,7 @@
 use super::{
-    election::ElectionHandle, recently_cemented_cache::RecentlyCementedCacheHandle,
+    election::{ElectionHandle, ElectionLockHandle},
+    election_status::ElectionStatusHandle,
+    recently_cemented_cache::RecentlyCementedCacheHandle,
     recently_confirmed_cache::RecentlyConfirmedCacheHandle,
 };
 use crate::{
@@ -14,7 +16,7 @@ use num_traits::FromPrimitive;
 use rsnano_core::{Amount, BlockHash, QualifiedRoot, Root};
 use rsnano_node::{
     config::NodeConfig,
-    consensus::{ActiveTransactions, ActiveTransactionsData, Election},
+    consensus::{ActiveTransactions, ActiveTransactionsData, ActiveTransactionsExt, Election},
 };
 use std::{
     collections::HashMap,
@@ -353,6 +355,24 @@ pub unsafe extern "C" fn rsn_active_transactions_remove_election_winner_details(
         Some(election) => ElectionHandle::new(election),
         None => std::ptr::null_mut(),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_confirm_once(
+    handle: &ActiveTransactionsHandle,
+    election_lock: &mut ElectionLockHandle,
+    election: &ElectionHandle,
+) {
+    handle.confirm_once(election_lock.take().unwrap(), Arc::clone(election));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_process_confirmed(
+    handle: &ActiveTransactionsHandle,
+    status: &ElectionStatusHandle,
+    iteration: u64,
+) {
+    handle.process_confirmed(status.0.clone(), iteration);
 }
 
 pub struct ElectionWinnerDetailsLock(

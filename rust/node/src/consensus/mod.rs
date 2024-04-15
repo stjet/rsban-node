@@ -29,7 +29,7 @@ pub use election_scheduler::{
     ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK,
 };
 
-pub use active_transactions::{ActiveTransactions, ActiveTransactionsData};
+pub use active_transactions::*;
 pub use vote_cache::{CacheEntry, TopEntry, VoteCache, VoteCacheConfig, VoterEntry};
 pub use vote_generator::*;
 pub use vote_processor_queue::VoteProcessorQueue;

@@ -487,69 +487,12 @@ nano::active_transactions_lock nano::active_transactions::lock () const
 
 void nano::active_transactions::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)
 {
-	auto hash (status_a.get_winner ()->hash ());
-	decltype (iteration_a) const num_iters = (node.config->block_processor_batch_max_time / node.network_params.node.process_confirmed_interval) * 4;
-	std::shared_ptr<nano::block> block_l;
-	{
-		auto tx{ node.ledger.store.tx_begin_read () };
-		block_l = node.ledger.block (*tx, hash);
-	}
-	if (block_l)
-	{
-		node.logger->trace (nano::log::type::node, nano::log::detail::process_confirmed, nano::log::arg{ "block", block_l });
-		confirming_set.add (block_l->hash ());
-	}
-	else if (iteration_a < num_iters)
-	{
-		iteration_a++;
-		std::weak_ptr<nano::node> node_w (node.shared ());
-		node.workers->add_timed_task (std::chrono::steady_clock::now () + node.network_params.node.process_confirmed_interval, [node_w, status_a, iteration_a] () {
-			if (auto node_l = node_w.lock ())
-			{
-				node_l->active.process_confirmed (status_a, iteration_a);
-			}
-		});
-	}
-	else
-	{
-		// Do some cleanup due to this block never being processed by confirmation height processor
-		remove_election_winner_details (hash);
-	}
+	rsnano::rsn_active_transactions_process_confirmed (handle, status_a.handle, iteration_a);
 }
 
 void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano::election & election)
 {
-	// This must be kept above the setting of election state, as dependent confirmed elections require up to date changes to election_winner_details
-	auto election_winners_lk{ lock_election_winners (handle) };
-	auto status_l{ lock_a.status () };
-	auto old_state = static_cast<nano::election_state> (rsnano::rsn_election_lock_state (lock_a.handle));
-	auto just_confirmed = old_state != nano::election_state::confirmed;
-	rsnano::rsn_election_lock_state_set (lock_a.handle, static_cast<uint8_t> (nano::election_state::confirmed));
-	if (just_confirmed && !election_winners_lk.contains (status_l.get_winner ()->hash ()))
-	{
-		election_winners_lk.insert (status_l.get_winner ()->hash (), election);
-		election_winners_lk.unlock ();
-
-		rsnano::rsn_election_lock_update_status_to_confirmed (lock_a.handle, election.handle);
-		status_l = lock_a.status ();
-
-		recently_confirmed ().put (election.qualified_root (), status_l.get_winner ()->hash ());
-
-		node.logger->trace (nano::log::type::election, nano::log::detail::election_confirmed,
-		nano::log::arg{ "qualified_root", election.qualified_root () });
-
-		lock_a.unlock ();
-
-		node.background ([node_l = node.shared (), status_l, election_l = election.shared_from_this ()] () {
-			node_l->active.process_confirmed (status_l);
-
-			rsnano::rsn_election_confirmation_action (election_l->handle, status_l.get_winner ()->get_handle ());
-		});
-	}
-	else
-	{
-		lock_a.unlock ();
-	}
+	rsnano::rsn_active_transactions_confirm_once (handle, lock_a.handle, election.handle);
 }
 
 nano::tally_t nano::active_transactions::tally_impl (nano::election_lock & lock) const

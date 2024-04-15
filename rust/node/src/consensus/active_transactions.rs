@@ -1,5 +1,6 @@
 use super::{
-    Election, ElectionBehavior, ElectionData, ElectionState, ElectionStatus, RecentlyConfirmedCache,
+    Election, ElectionBehavior, ElectionData, ElectionState, ElectionStatus, LocalVoteHistory,
+    RecentlyConfirmedCache,
 };
 use crate::{
     cementation::ConfirmingSet, config::NodeConfig, utils::ThreadPool, wallets::Wallets,
@@ -28,6 +29,7 @@ pub struct ActiveTransactions {
     confirming_set: Arc<ConfirmingSet>,
     workers: Arc<dyn ThreadPool>,
     pub recently_confirmed: Arc<RecentlyConfirmedCache>,
+    history: Arc<LocalVoteHistory>,
 }
 
 impl ActiveTransactions {
@@ -39,6 +41,7 @@ impl ActiveTransactions {
         ledger: Arc<Ledger>,
         confirming_set: Arc<ConfirmingSet>,
         workers: Arc<dyn ThreadPool>,
+        history: Arc<LocalVoteHistory>,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveTransactionsData {
@@ -59,15 +62,8 @@ impl ActiveTransactions {
             confirming_set,
             workers,
             recently_confirmed: Arc::new(RecentlyConfirmedCache::new(65536)),
+            history,
         }
-    }
-
-    pub fn erase_block(&self, block: &BlockEnum) {
-        self.erase_root(&block.qualified_root());
-    }
-
-    pub fn erase_root(&self, _root: &QualifiedRoot) {
-        todo!()
     }
 
     pub fn request_loop<'a>(
@@ -145,10 +141,41 @@ impl ActiveTransactions {
         }
         result
     }
+
+    pub fn remove_votes(
+        &self,
+        election: &Election,
+        guard: &mut MutexGuard<ElectionData>,
+        hash: &BlockHash,
+    ) {
+        if self.config.enable_voting && self.wallets.voting_reps_count() > 0 {
+            // Remove votes from election
+            let list_generated_votes = self.history.votes(&election.root, hash, false);
+            for vote in list_generated_votes {
+                guard.last_votes.remove(&vote.voting_account);
+            }
+            // Clear votes cache
+            self.history.erase(&election.root);
+        }
+    }
+
+    pub fn have_quorum(&self, tally: &BTreeMap<TallyKey, Arc<BlockEnum>>) -> bool {
+        let mut it = tally.keys();
+        let first = it.next().map(|i| i.amount()).unwrap_or_default();
+        let second = it.next().map(|i| i.amount()).unwrap_or_default();
+        let delta = self.online_reps.lock().unwrap().delta();
+        first - second >= delta
+    }
 }
 
 #[derive(PartialEq, Eq)]
-pub struct TallyKey(Amount);
+pub struct TallyKey(pub Amount);
+
+impl TallyKey {
+    pub fn amount(&self) -> Amount {
+        self.0.clone()
+    }
+}
 
 impl Deref for TallyKey {
     type Target = Amount;

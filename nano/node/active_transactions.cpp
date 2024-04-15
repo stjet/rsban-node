@@ -124,7 +124,7 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	auto config_dto{ node_a.config->to_dto () };
 	handle = rsnano::rsn_active_transactions_create (&network_dto, node_a.online_reps.get_handle (),
 	node_a.wallets.rust_handle, &config_dto, node_a.ledger.handle, node_a.confirming_set.handle,
-	node_a.workers->handle);
+	node_a.workers->handle, node_a.history.handle);
 
 	// Register a callback which will get called after a block is cemented
 	confirming_set.add_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
@@ -511,27 +511,19 @@ nano::tally_t nano::active_transactions::tally_impl (nano::election_lock & lock)
 
 void nano::active_transactions::remove_votes (nano::election & election, nano::election_lock & lock, nano::block_hash const & hash_a)
 {
-	if (node.config->enable_voting && node.wallets.voting_reps_count () > 0)
-	{
-		// Remove votes from election
-		auto list_generated_votes (node.history.votes (election.root (), hash_a));
-		for (auto const & vote : list_generated_votes)
-		{
-			lock.erase_vote (vote->account ());
-		}
-		// Clear votes cache
-		node.history.erase (election.root ());
-	}
+	rsnano::rsn_active_transactions_remove_votes (handle, election.handle, lock.handle, hash_a.bytes.data ());
 }
 
 bool nano::active_transactions::have_quorum (nano::tally_t const & tally_a) const
 {
-	auto i (tally_a.begin ());
-	++i;
-	auto second (i != tally_a.end () ? i->first : 0);
-	auto delta_l (node.online_reps.delta ());
-	release_assert (tally_a.begin ()->first >= second);
-	bool result{ (tally_a.begin ()->first - second) >= delta_l };
+	auto tally_handle = rsnano::rsn_tally_blocks_create ();
+	for (const auto & [weight, block] : tally_a)
+	{
+		nano::amount amount{ weight };
+		rsnano::rsn_tally_blocks_insert (tally_handle, amount.bytes.data (), block->get_handle ());
+	}
+	bool result = rsnano::rsn_active_transactions_have_quorum (handle, tally_handle);
+	rsnano::rsn_tally_blocks_destroy (tally_handle);
 	return result;
 }
 

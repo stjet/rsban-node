@@ -164,6 +164,10 @@ impl<T: Environment + 'static> Wallets<T> {
         Ok(())
     }
 
+    pub fn voting_reps_count(&self) -> u64 {
+        self.representatives.lock().unwrap().voting_reps()
+    }
+
     pub fn get_store_it(
         &self,
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,

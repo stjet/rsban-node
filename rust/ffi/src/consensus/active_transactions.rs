@@ -1,8 +1,8 @@
 use super::{
     election::{ElectionHandle, ElectionLockHandle},
     election_status::ElectionStatusHandle,
-    recently_cemented_cache::RecentlyCementedCacheHandle,
     recently_confirmed_cache::RecentlyConfirmedCacheHandle,
+    LocalVoteHistoryHandle,
 };
 use crate::{
     cementation::ConfirmingSetHandle,
@@ -46,6 +46,7 @@ pub extern "C" fn rsn_active_transactions_create(
     ledger: &LedgerHandle,
     confirming_set: &ConfirmingSetHandle,
     workers: &ThreadPoolHandle,
+    history: &LocalVoteHistoryHandle,
 ) -> *mut ActiveTransactionsHandle {
     Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::new(
         ActiveTransactions::new(
@@ -56,6 +57,7 @@ pub extern "C" fn rsn_active_transactions_create(
             Arc::clone(ledger),
             Arc::clone(confirming_set),
             Arc::clone(workers),
+            Arc::clone(history),
         ),
     ))))
 }
@@ -319,7 +321,39 @@ pub unsafe extern "C" fn rsn_active_transactions_tally_impl(
     )))
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_have_quorum(
+    handle: &ActiveTransactionsHandle,
+    tally: &TallyBlocksHandle,
+) -> bool {
+    let ordered_tally: BTreeMap<TallyKey, Arc<BlockEnum>> = tally
+        .0
+        .iter()
+        .map(|(k, v)| (TallyKey(*k), Arc::clone(v)))
+        .collect();
+    handle.have_quorum(&ordered_tally)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_remove_votes(
+    handle: &ActiveTransactionsHandle,
+    election: &ElectionHandle,
+    lock_handle: &mut ElectionLockHandle,
+    hash: *const u8,
+) {
+    handle.remove_votes(
+        election,
+        lock_handle.0.as_mut().unwrap(),
+        &BlockHash::from_ptr(hash),
+    );
+}
+
 pub struct TallyBlocksHandle(Vec<(Amount, Arc<BlockEnum>)>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tally_blocks_create() -> *mut TallyBlocksHandle {
+    Box::into_raw(Box::new(TallyBlocksHandle(Vec::new())))
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tally_blocks_destroy(handle: *mut TallyBlocksHandle) {
@@ -340,6 +374,15 @@ pub unsafe extern "C" fn rsn_tally_blocks_get(
     let (amount, block) = handle.0.get(index).unwrap();
     amount.copy_bytes(weight);
     BlockHandle::new(Arc::clone(block))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_tally_blocks_insert(
+    handle: &mut TallyBlocksHandle,
+    weight: *const u8,
+    block: &BlockHandle,
+) {
+    handle.0.push((Amount::from_ptr(weight), Arc::clone(block)))
 }
 
 #[no_mangle]

@@ -2,9 +2,11 @@ use super::{
     election::{ElectionHandle, ElectionLockHandle},
     election_status::ElectionStatusHandle,
     recently_confirmed_cache::RecentlyConfirmedCacheHandle,
+    vote_generator::VoteGeneratorHandle,
     LocalVoteHistoryHandle,
 };
 use crate::{
+    block_processing::BlockProcessorHandle,
     cementation::ConfirmingSetHandle,
     core::BlockHandle,
     ledger::datastore::LedgerHandle,
@@ -47,6 +49,8 @@ pub extern "C" fn rsn_active_transactions_create(
     confirming_set: &ConfirmingSetHandle,
     workers: &ThreadPoolHandle,
     history: &LocalVoteHistoryHandle,
+    block_processor: &BlockProcessorHandle,
+    final_generator: &VoteGeneratorHandle,
 ) -> *mut ActiveTransactionsHandle {
     Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::new(
         ActiveTransactions::new(
@@ -58,6 +62,8 @@ pub extern "C" fn rsn_active_transactions_create(
             Arc::clone(confirming_set),
             Arc::clone(workers),
             Arc::clone(history),
+            Arc::clone(block_processor),
+            Arc::clone(final_generator),
         ),
     ))))
 }
@@ -438,6 +444,15 @@ pub unsafe extern "C" fn rsn_active_transactions_remove_election_winner_details(
         Some(election) => ElectionHandle::new(election),
         None => std::ptr::null_mut(),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_confirm_if_quorum(
+    handle: &ActiveTransactionsHandle,
+    election_lock: &mut ElectionLockHandle,
+    election: &ElectionHandle,
+) {
+    handle.confirm_if_quorum(election_lock.take().unwrap(), Arc::clone(election));
 }
 
 #[no_mangle]

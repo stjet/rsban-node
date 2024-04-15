@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    ops::DerefMut,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex, MutexGuard,
@@ -13,7 +14,7 @@ pub struct ProcessingQueue<T: Send + 'static> {
     thread_name: String,
     thread_count: usize,
     max_queue_size: usize,
-    threads: Vec<JoinHandle<()>>,
+    threads: Mutex<Vec<JoinHandle<()>>>,
     shared_state: Arc<SharedState<T>>,
     stats: Arc<Stats>,
     stat_type: StatType,
@@ -35,7 +36,7 @@ impl<T: Send + 'static> ProcessingQueue<T> {
             stats: Arc::clone(&stats),
             stat_type,
             max_queue_size,
-            threads: Vec::with_capacity(thread_count),
+            threads: Mutex::new(Vec::with_capacity(thread_count)),
             shared_state: Arc::new(SharedState::new(
                 max_batch_size,
                 stats,
@@ -45,10 +46,11 @@ impl<T: Send + 'static> ProcessingQueue<T> {
         }
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&self) {
+        let mut threads = self.threads.lock().unwrap();
         for _ in 0..self.thread_count {
             let state = Arc::clone(&self.shared_state);
-            self.threads.push(
+            threads.push(
                 thread::Builder::new()
                     .name(self.thread_name.clone())
                     .spawn(move || state.run())
@@ -57,10 +59,16 @@ impl<T: Send + 'static> ProcessingQueue<T> {
         }
     }
 
-    pub fn stop(&mut self) {
+    pub fn stop(&self) {
         self.shared_state.stopped.store(true, Ordering::SeqCst);
         self.shared_state.condition.notify_all();
-        for thread in self.threads.drain(..) {
+        let threads = {
+            let mut t = Vec::new();
+            let mut guard = self.threads.lock().unwrap();
+            std::mem::swap(guard.deref_mut(), &mut t);
+            t
+        };
+        for thread in threads {
             thread.join().unwrap();
         }
     }

@@ -19,10 +19,10 @@ use std::{
     time::Duration,
 };
 
-pub struct VoteGeneratorHandle(VoteGenerator);
+pub struct VoteGeneratorHandle(Arc<VoteGenerator>);
 
 impl Deref for VoteGeneratorHandle {
-    type Target = VoteGenerator;
+    type Target = Arc<VoteGenerator>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rsn_vote_generator_create(
             ChannelHandle::new(channel),
         );
     });
-    Box::into_raw(Box::new(VoteGeneratorHandle(VoteGenerator::new(
+    Box::into_raw(Box::new(VoteGeneratorHandle(Arc::new(VoteGenerator::new(
         Arc::clone(ledger),
         Arc::clone(wallets),
         Arc::clone(history),
@@ -84,7 +84,7 @@ pub unsafe extern "C" fn rsn_vote_generator_create(
         Duration::from_secs(voting_delay_s),
         Duration::from_millis(vote_generator_delay_ms),
         vote_generator_threshold,
-    ))))
+    )))))
 }
 
 #[no_mangle]

@@ -30,7 +30,7 @@ pub struct VoteGenerator {
     ledger: Arc<Ledger>,
     vote_generation_queue: ProcessingQueue<(Root, BlockHash)>,
     shared_state: Arc<SharedState>,
-    thread: Option<JoinHandle<()>>,
+    thread: Mutex<Option<JoinHandle<()>>>,
     stats: Arc<Stats>,
 }
 
@@ -88,7 +88,7 @@ impl VoteGenerator {
         Self {
             ledger,
             shared_state,
-            thread: None,
+            thread: Mutex::new(None),
             vote_generation_queue: ProcessingQueue::new(
                 Arc::clone(&stats),
                 StatType::VoteGenerator,
@@ -112,9 +112,9 @@ impl VoteGenerator {
         *guard = Some(action);
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&self) {
         let shared_state_clone = Arc::clone(&self.shared_state);
-        self.thread = Some(
+        *self.thread.lock().unwrap() = Some(
             thread::Builder::new()
                 .name("voting".to_owned())
                 .spawn(move || shared_state_clone.run())
@@ -123,11 +123,11 @@ impl VoteGenerator {
         self.vote_generation_queue.start();
     }
 
-    pub fn stop(&mut self) {
+    pub fn stop(&self) {
         self.vote_generation_queue.stop();
         self.shared_state.stopped.store(true, Ordering::SeqCst);
         self.shared_state.condition.notify_all();
-        if let Some(thread) = self.thread.take() {
+        if let Some(thread) = self.thread.lock().unwrap().take() {
             thread.join().unwrap();
         }
     }

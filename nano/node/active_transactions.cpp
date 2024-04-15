@@ -124,7 +124,8 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	auto config_dto{ node_a.config->to_dto () };
 	handle = rsnano::rsn_active_transactions_create (&network_dto, node_a.online_reps.get_handle (),
 	node_a.wallets.rust_handle, &config_dto, node_a.ledger.handle, node_a.confirming_set.handle,
-	node_a.workers->handle, node_a.history.handle);
+	node_a.workers->handle, node_a.history.handle, node_a.block_processor.handle,
+	node_a.final_generator.handle);
 
 	// Register a callback which will get called after a block is cemented
 	confirming_set.add_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
@@ -529,41 +530,7 @@ bool nano::active_transactions::have_quorum (nano::tally_t const & tally_a) cons
 
 void nano::active_transactions::confirm_if_quorum (nano::election_lock & lock_a, nano::election & election)
 {
-	auto tally_l (tally_impl (lock_a));
-	debug_assert (!tally_l.empty ());
-	auto winner (tally_l.begin ());
-	auto block_l (winner->second);
-	auto winner_hash_l{ block_l->hash () };
-	auto status_l{ lock_a.status () };
-	status_l.set_tally (winner->first);
-	status_l.set_final_tally (lock_a.final_weight ());
-	auto status_winner_hash_l{ status_l.get_winner ()->hash () };
-	nano::uint128_t sum (0);
-	for (auto & i : tally_l)
-	{
-		sum += i.first;
-	}
-	if (sum >= node.online_reps.delta () && winner_hash_l != status_winner_hash_l)
-	{
-		status_l.set_winner (block_l);
-		remove_votes (election, lock_a, status_winner_hash_l);
-		node.block_processor.force (block_l);
-	}
-
-	lock_a.set_status (status_l);
-
-	if (have_quorum (tally_l))
-	{
-		if (!rsnano::rsn_election_is_quorum_exchange (election.handle, true) && node.config->enable_voting && node.wallets.voting_reps_count () > 0)
-		{
-			auto hash = status_l.get_winner ()->hash ();
-			node.final_generator.add (election.root (), hash);
-		}
-		if (lock_a.final_weight ().number () >= node.online_reps.delta ())
-		{
-			confirm_once (lock_a, election);
-		}
-	}
+	rsnano::rsn_active_transactions_confirm_if_quorum (handle, lock_a.handle, election.handle);
 }
 
 void nano::active_transactions::force_confirm (nano::election & election)

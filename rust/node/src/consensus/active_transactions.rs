@@ -1,10 +1,10 @@
 use super::{
     Election, ElectionBehavior, ElectionData, ElectionState, ElectionStatus, LocalVoteHistory,
-    RecentlyConfirmedCache,
+    RecentlyConfirmedCache, VoteGenerator,
 };
 use crate::{
-    cementation::ConfirmingSet, config::NodeConfig, utils::ThreadPool, wallets::Wallets,
-    NetworkParams, OnlineReps,
+    block_processing::BlockProcessor, cementation::ConfirmingSet, config::NodeConfig,
+    utils::ThreadPool, wallets::Wallets, NetworkParams, OnlineReps,
 };
 use rsnano_core::{Amount, BlockEnum, BlockHash, QualifiedRoot};
 use rsnano_ledger::Ledger;
@@ -12,7 +12,7 @@ use std::{
     cmp::max,
     collections::{BTreeMap, HashMap},
     ops::Deref,
-    sync::{Arc, Condvar, Mutex, MutexGuard},
+    sync::{atomic::Ordering, Arc, Condvar, Mutex, MutexGuard},
     time::{Duration, Instant},
 };
 use tracing::trace;
@@ -30,6 +30,8 @@ pub struct ActiveTransactions {
     workers: Arc<dyn ThreadPool>,
     pub recently_confirmed: Arc<RecentlyConfirmedCache>,
     history: Arc<LocalVoteHistory>,
+    block_processor: Arc<BlockProcessor>,
+    final_generator: Arc<VoteGenerator>,
 }
 
 impl ActiveTransactions {
@@ -42,6 +44,8 @@ impl ActiveTransactions {
         confirming_set: Arc<ConfirmingSet>,
         workers: Arc<dyn ThreadPool>,
         history: Arc<LocalVoteHistory>,
+        block_processor: Arc<BlockProcessor>,
+        final_generator: Arc<VoteGenerator>,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveTransactionsData {
@@ -63,6 +67,8 @@ impl ActiveTransactions {
             workers,
             recently_confirmed: Arc::new(RecentlyConfirmedCache::new(65536)),
             history,
+            block_processor,
+            final_generator,
         }
     }
 
@@ -268,11 +274,47 @@ impl OrderedRoots {
 }
 
 pub trait ActiveTransactionsExt {
+    fn confirm_if_quorum(&self, election_lock: MutexGuard<ElectionData>, election: Arc<Election>);
     fn confirm_once(&self, election_lock: MutexGuard<ElectionData>, election: Arc<Election>);
     fn process_confirmed(&self, status: ElectionStatus, iteration: u64);
 }
 
 impl ActiveTransactionsExt for Arc<ActiveTransactions> {
+    fn confirm_if_quorum(
+        &self,
+        mut election_lock: MutexGuard<ElectionData>,
+        election: Arc<Election>,
+    ) {
+        let tally = self.tally_impl(&mut election_lock);
+        let (amount, block) = tally.first_key_value().unwrap();
+        let winner_hash = block.hash();
+        election_lock.status.tally = amount.amount();
+        election_lock.status.final_tally = election_lock.final_weight;
+        let status_winner_hash = election_lock.status.winner.as_ref().unwrap().hash();
+        let mut sum = Amount::zero();
+        for k in tally.keys() {
+            sum += k.amount();
+        }
+        if sum >= self.online_reps.lock().unwrap().delta() && winner_hash != status_winner_hash {
+            election_lock.status.winner = Some(Arc::clone(block));
+            self.remove_votes(&election, &mut election_lock, &status_winner_hash);
+            self.block_processor.force(Arc::clone(block));
+        }
+
+        if self.have_quorum(&tally) {
+            if !election.is_quorum.swap(true, Ordering::SeqCst)
+                && self.config.enable_voting
+                && self.wallets.voting_reps_count() > 0
+            {
+                self.final_generator
+                    .add(&election.root, &status_winner_hash);
+            }
+            if election_lock.final_weight >= self.online_reps.lock().unwrap().delta() {
+                self.confirm_once(election_lock, election);
+            }
+        }
+    }
+
     fn confirm_once(&self, mut election_lock: MutexGuard<ElectionData>, election: Arc<Election>) {
         // This must be kept above the setting of election state, as dependent confirmed elections require up to date changes to election_winner_details
         let mut winners_guard = self.election_winner_details.lock().unwrap();

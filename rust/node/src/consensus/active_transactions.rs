@@ -214,6 +214,27 @@ impl ActiveTransactions {
             }
         }
     }
+
+    pub fn clear(&self) {
+        {
+            let mut guard = self.mutex.lock().unwrap();
+            guard.blocks.clear();
+            guard.roots.clear();
+        }
+        (self.vacancy_update.lock().unwrap())()
+    }
+
+    pub fn confirmed_locked(&self, guard: &MutexGuard<ElectionData>) -> bool {
+        matches!(
+            guard.state,
+            ElectionState::Confirmed | ElectionState::ExpiredConfirmed
+        )
+    }
+
+    pub fn active(&self, hash: &BlockHash) -> bool {
+        let guard = self.mutex.lock().unwrap();
+        guard.blocks.contains_key(hash)
+    }
 }
 
 #[derive(PartialEq, Eq)]
@@ -321,6 +342,7 @@ pub trait ActiveTransactionsExt {
     fn confirm_once(&self, election_lock: MutexGuard<ElectionData>, election: &Arc<Election>);
     fn process_confirmed(&self, status: ElectionStatus, iteration: u64);
     fn force_confirm(&self, election: &Arc<Election>);
+    fn try_confirm(&self, election: &Arc<Election>, hash: &BlockHash);
 }
 
 impl ActiveTransactionsExt for Arc<ActiveTransactions> {
@@ -426,6 +448,17 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
         } else {
             // Do some cleanup due to this block never being processed by confirmation height processor
             self.remove_election_winner_details(&hash);
+        }
+    }
+
+    fn try_confirm(&self, election: &Arc<Election>, hash: &BlockHash) {
+        let guard = election.mutex.lock().unwrap();
+        if let Some(winner) = &guard.status.winner {
+            if winner.hash() == *hash {
+                if !self.confirmed_locked(&guard) {
+                    self.confirm_once(guard, election);
+                }
+            }
         }
     }
 }

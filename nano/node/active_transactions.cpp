@@ -246,9 +246,7 @@ bool nano::active_transactions::confirmed (nano::election const & election) cons
 
 bool nano::active_transactions::confirmed_locked (nano::election_lock & lock) const
 {
-	auto hash = lock.status ().get_winner ()->hash ();
-	auto state = static_cast<nano::election_state> (rsnano::rsn_election_lock_state (lock.handle));
-	return state == nano::election_state::confirmed || state == nano::election_state::expired_confirmed;
+	return rsnano::rsn_active_transactions_confirmed_locked (handle, lock.handle);
 }
 
 bool nano::active_transactions::confirmed (nano::block_hash const & hash) const
@@ -1026,14 +1024,7 @@ bool nano::active_transactions::active (nano::block const & block_a) const
 
 bool nano::active_transactions::active (const nano::block_hash & hash) const
 {
-	auto guard{ lock () };
-	auto existing_handle = rsnano::rsn_active_transactions_lock_blocks_find (guard.handle, hash.bytes.data ());
-	bool block_exists = existing_handle != nullptr;
-	if (block_exists)
-	{
-		rsnano::rsn_election_destroy (existing_handle);
-	}
-	return block_exists;
+	return rsnano::rsn_active_transactions_active (handle, hash.bytes.data ());
 }
 
 std::shared_ptr<nano::election> nano::active_transactions::election (nano::qualified_root const & root_a) const
@@ -1196,15 +1187,7 @@ nano::vote_code nano::active_transactions::vote (nano::election & election, nano
 
 void nano::active_transactions::try_confirm (nano::election & election, nano::block_hash const & hash)
 {
-	auto guard{ election.lock () };
-	auto winner = guard.status ().get_winner ();
-	if (winner && winner->hash () == hash)
-	{
-		if (!confirmed_locked (guard))
-		{
-			confirm_once (guard, election);
-		}
-	}
+	rsnano::rsn_active_transactions_try_confirm (handle, election.handle, hash.bytes.data ());
 }
 
 std::size_t nano::active_transactions::election_winner_details_size ()
@@ -1215,12 +1198,7 @@ std::size_t nano::active_transactions::election_winner_details_size ()
 
 void nano::active_transactions::clear ()
 {
-	{
-		auto guard{ lock () };
-		rsnano::rsn_active_transactions_lock_blocks_clear (guard.handle);
-		rsnano::rsn_active_transactions_lock_roots_clear (guard.handle);
-	}
-	vacancy_update ();
+	rsnano::rsn_active_transactions_clear (handle);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (active_transactions & active_transactions, std::string const & name)

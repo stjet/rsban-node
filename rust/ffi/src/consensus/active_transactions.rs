@@ -519,6 +519,36 @@ pub extern "C" fn rsn_active_transactions_set_vacancy_update(
     })
 }
 
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_clear(handle: &ActiveTransactionsHandle) {
+    handle.clear();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_confirmed_locked(
+    handle: &ActiveTransactionsHandle,
+    election: &ElectionLockHandle,
+) -> bool {
+    handle.confirmed_locked(&election.0.as_ref().unwrap())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_try_confirm(
+    handle: &ActiveTransactionsHandle,
+    election: &ElectionHandle,
+    hash: *const u8,
+) {
+    handle.try_confirm(election, &BlockHash::from_ptr(hash));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_active(
+    handle: &ActiveTransactionsHandle,
+    hash: *const u8,
+) -> bool {
+    handle.active(&BlockHash::from_ptr(hash))
+}
+
 pub struct ElectionWinnerDetailsLock(
     Option<MutexGuard<'static, HashMap<BlockHash, Arc<Election>>>>,
 );

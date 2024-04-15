@@ -104,12 +104,6 @@ public:
 		rsnano::rsn_election_winner_details_insert (handle, hash.bytes.data (), election.handle);
 	}
 
-	void remove (nano::block_hash const & hash)
-	{
-		ensure_locked ();
-		rsnano::rsn_election_winner_details_remove (handle, hash.bytes.data ());
-	}
-
 	rsnano::ElectionWinnerDetailsLock * handle;
 };
 
@@ -123,12 +117,14 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	node{ node_a },
 	confirming_set{ confirming_set },
 	block_processor{ block_processor_a },
-	recently_confirmed{ 65536 },
 	recently_cemented{ node.config->confirmation_history_size },
 	election_time_to_live{ node_a.network_params.network.is_dev_network () ? 0s : 2s }
 {
 	auto network_dto{ node_a.network_params.to_dto () };
-	handle = rsnano::rsn_active_transactions_create (&network_dto, node_a.online_reps.get_handle (), node_a.wallets.rust_handle);
+	auto config_dto{ node_a.config->to_dto () };
+	handle = rsnano::rsn_active_transactions_create (&network_dto, node_a.online_reps.get_handle (),
+	node_a.wallets.rust_handle, &config_dto, node_a.ledger.handle, node_a.confirming_set.handle,
+	node_a.workers->handle);
 
 	// Register a callback which will get called after a block is cemented
 	confirming_set.add_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
@@ -223,7 +219,7 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 	// Next-block activations are only done for blocks with previously active elections
 	if (cemented_bootstrap_count_reached && was_active)
 	{
-		// TODO Gustav: Use callback style:
+		// TODO Gustav: Use callback style?
 		// block_cemented_with_active_election(transaction, block);
 		node.scheduler.priority.activate_successors (*transaction, block);
 	}
@@ -537,7 +533,7 @@ void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano
 		rsnano::rsn_election_lock_update_status_to_confirmed (lock_a.handle, election.handle);
 		status_l = lock_a.status ();
 
-		node.active.recently_confirmed.put (election.qualified_root (), status_l.get_winner ()->hash ());
+		recently_confirmed ().put (election.qualified_root (), status_l.get_winner ()->hash ());
 
 		node.logger->trace (nano::log::type::election, nano::log::detail::election_confirmed,
 		nano::log::arg{ "qualified_root", election.qualified_root () });
@@ -878,7 +874,7 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 
 	if (existing == nullptr)
 	{
-		if (!recently_confirmed.exists (root))
+		if (!recently_confirmed ().exists (root))
 		{
 			result.inserted = true;
 			auto observe_rep_cb = [&node = node] (auto const & rep_a) {
@@ -1035,6 +1031,11 @@ bool nano::active_transactions::transition_time (nano::confirmation_solicitor & 
 	return result;
 }
 
+nano::recently_confirmed_cache nano::active_transactions::recently_confirmed ()
+{
+	return nano::recently_confirmed_cache{ rsnano::rsn_active_transactions_recently_confirmed (handle) };
+}
+
 void nano::active_transactions::on_block_confirmed (std::function<void (std::shared_ptr<nano::block> const &, nano::store::read_transaction const &, nano::election_status_type)> callback)
 {
 	block_confirmed_callback = std::move (callback);
@@ -1112,7 +1113,7 @@ std::unordered_map<nano::block_hash, nano::vote_code> nano::active_transactions:
 				auto existing = std::make_shared<nano::election> (existing_handle);
 				process[hash] = existing;
 			}
-			else if (!recently_confirmed.exists (hash))
+			else if (!recently_confirmed ().exists (hash))
 			{
 				inactive.emplace_back (hash);
 				results[hash] = nano::vote_code::indeterminate;
@@ -1368,7 +1369,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (ac
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "hinted", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::hinted))), 0 }));
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "optimistic", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::optimistic))), 0 }));
 
-	composite->add_component (active_transactions.recently_confirmed.collect_container_info ("recently_confirmed"));
+	composite->add_component (active_transactions.recently_confirmed ().collect_container_info ("recently_confirmed"));
 	composite->add_component (active_transactions.recently_cemented.collect_container_info ("recently_cemented"));
 
 	return composite;
@@ -1383,9 +1384,23 @@ nano::recently_confirmed_cache::recently_confirmed_cache (std::size_t max_size_a
 {
 }
 
+nano::recently_confirmed_cache::recently_confirmed_cache (rsnano::RecentlyConfirmedCacheHandle * handle) :
+	handle{ handle }
+{
+}
+
+nano::recently_confirmed_cache::recently_confirmed_cache (recently_confirmed_cache && other) :
+	handle{ other.handle }
+{
+	other.handle = nullptr;
+}
+
 nano::recently_confirmed_cache::~recently_confirmed_cache ()
 {
-	rsnano::rsn_recently_confirmed_cache_destroy (handle);
+	if (handle != nullptr)
+	{
+		rsnano::rsn_recently_confirmed_cache_destroy (handle);
+	}
 }
 
 void nano::recently_confirmed_cache::put (const nano::qualified_root & root, const nano::block_hash & hash)

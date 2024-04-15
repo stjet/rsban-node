@@ -1,11 +1,21 @@
-use super::election::ElectionHandle;
+use super::{
+    election::ElectionHandle, recently_cemented_cache::RecentlyCementedCacheHandle,
+    recently_confirmed_cache::RecentlyConfirmedCacheHandle,
+};
 use crate::{
-    representatives::OnlineRepsHandle, utils::InstantHandle, wallets::LmdbWalletsHandle,
-    NetworkParamsDto,
+    cementation::ConfirmingSetHandle,
+    ledger::datastore::LedgerHandle,
+    representatives::OnlineRepsHandle,
+    utils::{InstantHandle, ThreadPoolHandle},
+    wallets::LmdbWalletsHandle,
+    NetworkParamsDto, NodeConfigDto,
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{Amount, BlockHash, QualifiedRoot, Root};
-use rsnano_node::consensus::{ActiveTransactions, ActiveTransactionsData, Election};
+use rsnano_node::{
+    config::NodeConfig,
+    consensus::{ActiveTransactions, ActiveTransactionsData, Election},
+};
 use std::{
     collections::HashMap,
     ops::Deref,
@@ -27,12 +37,20 @@ pub extern "C" fn rsn_active_transactions_create(
     network: &NetworkParamsDto,
     online_reps: &OnlineRepsHandle,
     wallets: &LmdbWalletsHandle,
+    config: &NodeConfigDto,
+    ledger: &LedgerHandle,
+    confirming_set: &ConfirmingSetHandle,
+    workers: &ThreadPoolHandle,
 ) -> *mut ActiveTransactionsHandle {
     Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::new(
         ActiveTransactions::new(
             network.try_into().unwrap(),
             Arc::clone(online_reps),
             Arc::clone(wallets),
+            NodeConfig::try_from(config).unwrap(),
+            Arc::clone(ledger),
+            Arc::clone(confirming_set),
+            Arc::clone(workers),
         ),
     ))))
 }
@@ -46,6 +64,13 @@ pub extern "C" fn rsn_active_transactions_request_loop(
     let guard = lock_handle.0.take().unwrap();
     let guard = handle.0.request_loop(stamp.0, guard);
     lock_handle.0 = Some(guard);
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_recently_confirmed(
+    handle: &ActiveTransactionsHandle,
+) -> *mut RecentlyConfirmedCacheHandle {
+    RecentlyConfirmedCacheHandle::new(Arc::clone(&handle.recently_confirmed))
 }
 
 #[no_mangle]

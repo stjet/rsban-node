@@ -3,20 +3,21 @@ use rsnano_node::consensus::RecentlyConfirmedCache;
 use std::{
     ffi::{c_char, CStr},
     ops::Deref,
+    sync::Arc,
 };
 
 use crate::utils::ContainerInfoComponentHandle;
 
-pub struct RecentlyConfirmedCacheHandle(RecentlyConfirmedCache);
+pub struct RecentlyConfirmedCacheHandle(Arc<RecentlyConfirmedCache>);
 
 impl RecentlyConfirmedCacheHandle {
-    pub fn new(cache: RecentlyConfirmedCache) -> *mut Self {
+    pub fn new(cache: Arc<RecentlyConfirmedCache>) -> *mut Self {
         Box::into_raw(Box::new(Self(cache)))
     }
 }
 
 impl Deref for RecentlyConfirmedCacheHandle {
-    type Target = RecentlyConfirmedCache;
+    type Target = Arc<RecentlyConfirmedCache>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -27,7 +28,7 @@ impl Deref for RecentlyConfirmedCacheHandle {
 pub extern "C" fn rsn_recently_confirmed_cache_create(
     max_len: usize,
 ) -> *mut RecentlyConfirmedCacheHandle {
-    RecentlyConfirmedCacheHandle::new(RecentlyConfirmedCache::new(max_len))
+    RecentlyConfirmedCacheHandle::new(Arc::new(RecentlyConfirmedCache::new(max_len)))
 }
 
 #[no_mangle]

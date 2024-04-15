@@ -15,6 +15,14 @@ use std::{
 
 pub struct ConfirmingSetHandle(Arc<ConfirmingSet>);
 
+impl Deref for ConfirmingSetHandle {
+    type Target = Arc<ConfirmingSet>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_confirming_set_create(
     ledger: &LedgerHandle,

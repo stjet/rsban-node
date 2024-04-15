@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/numbers.hpp>
 #include <nano/node/election.hpp>
 #include <nano/node/election_behavior.hpp>
@@ -49,8 +51,9 @@ public:
 	using entry_t = std::pair<nano::qualified_root, nano::block_hash>;
 
 	explicit recently_confirmed_cache (std::size_t max_size);
+	explicit recently_confirmed_cache (rsnano::RecentlyConfirmedCacheHandle * handle);
 	recently_confirmed_cache (recently_confirmed_cache const &) = delete;
-	recently_confirmed_cache (recently_confirmed_cache &&) = delete;
+	recently_confirmed_cache (recently_confirmed_cache &&);
 	~recently_confirmed_cache ();
 
 	void put (nano::qualified_root const &, nano::block_hash const &);
@@ -252,7 +255,7 @@ private: // Dependencies
 	nano::block_processor & block_processor;
 
 public:
-	recently_confirmed_cache recently_confirmed;
+	recently_confirmed_cache recently_confirmed ();
 	recently_cemented_cache recently_cemented;
 
 private:

@@ -41,5 +41,17 @@ public:
 	uint64_t timestamp;
 	nano::block_hash hash;
 	nano::uint128_t weight;
+
+	rsnano::VoteWithWeightInfoDto into_dto () const
+	{
+		rsnano::VoteWithWeightInfoDto dto;
+		representative.copy_bytes_to (dto.representative);
+		dto.time_ns = std::chrono::duration_cast<std::chrono::nanoseconds> (time.time_since_epoch ()).count ();
+		dto.timestamp = timestamp;
+		hash.copy_bytes_to (dto.hash);
+		nano::amount amount{ weight };
+		std::copy (amount.bytes.begin (), amount.bytes.end (), std::begin (dto.weight));
+		return dto;
+	}
 };
 }

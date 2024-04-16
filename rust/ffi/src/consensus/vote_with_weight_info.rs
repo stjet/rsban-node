@@ -36,7 +36,7 @@ impl From<&VoteWithWeightInfoDto> for VoteWithWeightInfo {
     }
 }
 
-pub struct VoteWithWeightInfoVecHandle(Vec<VoteWithWeightInfo>);
+pub struct VoteWithWeightInfoVecHandle(pub Vec<VoteWithWeightInfo>);
 
 impl VoteWithWeightInfoVecHandle {
     pub fn new(votes: Vec<VoteWithWeightInfo>) -> *mut Self {
@@ -45,10 +45,24 @@ impl VoteWithWeightInfoVecHandle {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_vote_with_weight_info_vec_create() -> *mut VoteWithWeightInfoVecHandle
+{
+    VoteWithWeightInfoVecHandle::new(Vec::new())
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_with_weight_info_vec_destroy(
     handle: *mut VoteWithWeightInfoVecHandle,
 ) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_vote_with_weight_info_vec_add(
+    handle: &mut VoteWithWeightInfoVecHandle,
+    info: &VoteWithWeightInfoDto,
+) {
+    handle.0.push(info.into());
 }
 
 #[no_mangle]

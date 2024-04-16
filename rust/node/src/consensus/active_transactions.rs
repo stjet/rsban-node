@@ -13,8 +13,8 @@ use crate::{
     NetworkParams, OnlineReps,
 };
 use rsnano_core::{
-    utils::MemoryStream, Account, Amount, BlockEnum, BlockHash, QualifiedRoot, Vote, VoteCode,
-    VoteSource, VoteWithWeightInfo,
+    utils::MemoryStream, Account, Amount, BlockEnum, BlockHash, BlockType, QualifiedRoot, Vote,
+    VoteCode, VoteSource, VoteWithWeightInfo,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::{Message, Publish};
@@ -136,6 +136,34 @@ impl ActiveTransactions {
     }
 
     //--------------------------------------------------------------------------------
+
+    pub fn notify_observers(
+        &self,
+        tx: &LmdbReadTransaction,
+        status: &ElectionStatus,
+        votes: &Vec<VoteWithWeightInfo>,
+    ) {
+        let block = status.winner.as_ref().unwrap();
+        let account = block.account();
+        let amount = self.ledger.amount(tx, &block.hash()).unwrap_or_default();
+        let is_state_send = block.block_type() == BlockType::State && block.is_send();
+        let is_state_epoch = block.block_type() == BlockType::State && block.is_epoch();
+        (self.election_end)(
+            status,
+            votes,
+            account,
+            amount,
+            is_state_send,
+            is_state_epoch,
+        );
+
+        if amount > Amount::zero() {
+            (self.account_balance_changed)(&account, false);
+            if block.is_send() {
+                (self.account_balance_changed)(&block.destination().unwrap(), true);
+            }
+        }
+    }
 
     pub fn request_loop<'a>(
         &self,

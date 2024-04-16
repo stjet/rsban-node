@@ -391,21 +391,14 @@ void nano::active_transactions::broadcast_vote (nano::election & election, nano:
 
 void nano::active_transactions::notify_observers (nano::store::read_transaction const & transaction, nano::election_status const & status, std::vector<nano::vote_with_weight_info> const & votes)
 {
-	auto block = status.get_winner ();
-	auto account = block->account ();
-	auto amount = node.ledger.amount (transaction, block->hash ()).value_or (0);
-	auto is_state_send = block->type () == block_type::state && block->is_send ();
-	auto is_state_epoch = block->type () == block_type::state && block->is_epoch ();
-	node.observers->blocks.notify (status, votes, account, amount, is_state_send, is_state_epoch);
-
-	if (amount > 0)
+	auto vec_handle = rsnano::rsn_vote_with_weight_info_vec_create ();
+	for (const auto & i : votes)
 	{
-		node.observers->account_balance.notify (account, false);
-		if (block->is_send ())
-		{
-			node.observers->account_balance.notify (block->destination (), true);
-		}
+		auto dto{ i.into_dto () };
+		rsnano::rsn_vote_with_weight_info_vec_add (vec_handle, &dto);
 	}
+	rsnano::rsn_active_transactions_notify_observers (handle, transaction.get_rust_handle (), status.handle, vec_handle);
+	rsnano::rsn_vote_with_weight_info_vec_destroy (vec_handle);
 }
 
 void nano::active_transactions::add_election_winner_details (nano::block_hash const & hash_a, std::shared_ptr<nano::election> const & election_a)

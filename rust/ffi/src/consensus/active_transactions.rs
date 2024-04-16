@@ -718,6 +718,16 @@ pub unsafe extern "C" fn rsn_active_transactions_vote2(
     ) as u8
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_notify_observers(
+    handle: &ActiveTransactionsHandle,
+    tx: &mut TransactionHandle,
+    status: &ElectionStatusHandle,
+    votes: &VoteWithWeightInfoVecHandle,
+) {
+    handle.notify_observers(tx.as_read_txn(), &status.0, &votes.0);
+}
+
 /*
  * Callbacks
  */

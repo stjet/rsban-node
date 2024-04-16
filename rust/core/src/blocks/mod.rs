@@ -236,6 +236,13 @@ impl BlockEnum {
         !matches!(self, BlockEnum::State(_))
     }
 
+    pub fn is_epoch(&self) -> bool {
+        match self {
+            BlockEnum::State(_) => self.sideband().unwrap().details.is_epoch,
+            _ => false,
+        }
+    }
+
     pub fn is_send(&self) -> bool {
         match self {
             BlockEnum::LegacySend(_) => true,

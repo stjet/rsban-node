@@ -2,6 +2,8 @@
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
 #include "nano/lib/utility.hpp"
+#include "nano/node/election_status.hpp"
+#include "nano/store/lmdb/transaction_impl.hpp"
 
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/threading.hpp>
@@ -157,6 +159,51 @@ void delete_vote_processed_context (void * context)
 	auto callback = static_cast<std::function<void (std::shared_ptr<nano::vote> const &, nano::vote_source, std::unordered_map<nano::block_hash, nano::vote_code> const &)> *> (context);
 	delete callback;
 }
+
+void call_activate_successors (void * context, rsnano::TransactionHandle * tx_handle, rsnano::BlockHandle * block_handle)
+{
+	auto callback = static_cast<std::function<void (nano::store::read_transaction const &, std::shared_ptr<nano::block> const &)> *> (context);
+	auto block{ nano::block_handle_to_block (block_handle) };
+	nano::store::lmdb::read_transaction_impl tx{ tx_handle };
+	(*callback) (tx, block);
+}
+
+void delete_activate_successors_context (void * context)
+{
+	auto callback = static_cast<std::function<void (nano::store::read_transaction const &, std::shared_ptr<nano::block> const &)> *> (context);
+	delete callback;
+}
+
+void call_election_ended (void * context, rsnano::ElectionStatusHandle * status_handle,
+rsnano::VoteWithWeightInfoVecHandle * votes_handle, uint8_t const * account_bytes,
+uint8_t const * amount_bytes, bool is_state_send, bool is_state_epoch)
+{
+	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
+
+	nano::election_status status{ status_handle };
+
+	std::vector<nano::vote_with_weight_info> votes;
+	auto len = rsnano::rsn_vote_with_weight_info_vec_len (votes_handle);
+	for (auto i = 0; i < len; ++i)
+	{
+		rsnano::VoteWithWeightInfoDto dto;
+		rsnano::rsn_vote_with_weight_info_vec_get (votes_handle, i, &dto);
+		votes.emplace_back (dto);
+	}
+	rsnano::rsn_vote_with_weight_info_vec_destroy (votes_handle);
+
+	auto account{ nano::account::from_bytes (account_bytes) };
+	auto amount{ nano::amount::from_bytes (amount_bytes) };
+
+	(*observers)->blocks.notify (status, votes, account, amount.number (), is_state_send, is_state_epoch);
+}
+
+void call_account_balance_changed (void * context, uint8_t const * account, bool is_pending)
+{
+	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
+	(*observers)->account_balance.notify (nano::account::from_bytes (account), is_pending);
+}
+
 }
 
 nano::active_transactions::active_transactions (nano::node & node_a, nano::confirming_set & confirming_set, nano::block_processor & block_processor_a) :
@@ -169,12 +216,20 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	auto network_dto{ node_a.network_params.to_dto () };
 	auto config_dto{ node_a.config->to_dto () };
 	auto observers_context = new std::shared_ptr<nano::node_observers> (node_a.observers);
+
 	handle = rsnano::rsn_active_transactions_create (&network_dto, node_a.online_reps.get_handle (),
 	node_a.wallets.rust_handle, &config_dto, node_a.ledger.handle, node_a.confirming_set.handle,
 	node_a.workers->handle, node_a.history.handle, node_a.block_processor.handle,
 	node_a.generator.handle, node_a.final_generator.handle, node_a.network->tcp_channels->handle,
 	node_a.vote_cache.handle, node_a.stats->handle, observers_context, delete_observers_context,
-	call_active_stopped);
+	call_active_stopped, call_election_ended, call_account_balance_changed);
+
+	auto activate_successors_context = new std::function<void (nano::store::read_transaction const &, std::shared_ptr<nano::block> const &)>{
+		[&node_a] (nano::store::read_transaction const & tx, std::shared_ptr<nano::block> const & block) {
+			node_a.scheduler.priority.activate_successors (tx, block);
+		}
+	};
+	rsnano::rsn_active_transactions_activate_successors (handle, call_activate_successors, activate_successors_context, delete_activate_successors_context);
 
 	// Register a callback which will get called after a block is cemented
 	confirming_set.add_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
@@ -269,8 +324,6 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 	// Next-block activations are only done for blocks with previously active elections
 	if (cemented_bootstrap_count_reached && was_active)
 	{
-		// TODO Gustav: Use callback style?
-		// block_cemented_with_active_election(transaction, block);
 		node.scheduler.priority.activate_successors (*transaction, block);
 	}
 }

@@ -6,9 +6,9 @@ use super::{
     },
     validate_message, Account, BlockHash, BlockHashBuilder, FullHash, KeyPair, RawKey, Signature,
 };
-use crate::utils::Serialize;
+use crate::{utils::Serialize, Amount};
 use anyhow::Result;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 #[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug)]
 pub enum VoteSource {
@@ -232,4 +232,13 @@ fn packed_timestamp(timestamp: u64, duration: u8) -> u64 {
     debug_assert!(duration <= Vote::DURATION_MAX);
     debug_assert!(timestamp != Vote::TIMESTAMP_MAX || duration == Vote::DURATION_MAX);
     (timestamp & Vote::TIMESTAMP_MASK) | (duration as u64)
+}
+
+#[derive(Clone)]
+pub struct VoteWithWeightInfo {
+    pub representative: Account,
+    pub time: SystemTime,
+    pub timestamp: u64,
+    pub hash: BlockHash,
+    pub weight: Amount,
 }

@@ -4,13 +4,14 @@ use super::{
     recently_confirmed_cache::RecentlyConfirmedCacheHandle,
     vote_cache::{VoteCacheHandle, VoteResultMapHandle},
     vote_generator::VoteGeneratorHandle,
+    vote_with_weight_info::VoteWithWeightInfoVecHandle,
     LocalVoteHistoryHandle, VoteHandle,
 };
 use crate::{
     block_processing::BlockProcessorHandle,
     cementation::ConfirmingSetHandle,
     core::{BlockHandle, BlockHashCallback},
-    ledger::datastore::LedgerHandle,
+    ledger::datastore::{lmdb::TransactionType, LedgerHandle, TransactionHandle},
     representatives::OnlineRepsHandle,
     transport::TcpChannelsHandle,
     utils::{ContextWrapper, InstantHandle, ThreadPoolHandle},
@@ -24,8 +25,8 @@ use rsnano_core::{
 use rsnano_node::{
     config::NodeConfig,
     consensus::{
-        ActiveTransactions, ActiveTransactionsData, ActiveTransactionsExt, Election, ElectionData,
-        TallyKey,
+        AccountBalanceChangedCallback, ActiveTransactions, ActiveTransactionsData,
+        ActiveTransactionsExt, Election, ElectionData, ElectionEndCallback, TallyKey,
     },
 };
 use std::{
@@ -46,7 +47,7 @@ impl Deref for ActiveTransactionsHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_active_transactions_create(
+pub unsafe extern "C" fn rsn_active_transactions_create(
     network: &NetworkParamsDto,
     online_reps: &OnlineRepsHandle,
     wallets: &LmdbWalletsHandle,
@@ -64,11 +65,40 @@ pub extern "C" fn rsn_active_transactions_create(
     observers_context: *mut c_void,
     delete_observers_context: VoidPointerCallback,
     active_stopped: BlockHashCallback,
+    election_ended: ElectionEndedCallback,
+    balance_changed: FfiAccountBalanceCallback,
 ) -> *mut ActiveTransactionsHandle {
-    let context_wrapper = ContextWrapper::new(observers_context, delete_observers_context);
+    let ctx_wrapper = Arc::new(ContextWrapper::new(
+        observers_context,
+        delete_observers_context,
+    ));
+    let ctx = Arc::clone(&ctx_wrapper);
     let active_stopped_wrapper = Box::new(move |hash: BlockHash| {
-        active_stopped(context_wrapper.get_context(), hash.as_bytes().as_ptr())
+        active_stopped(ctx.get_context(), hash.as_bytes().as_ptr())
     });
+
+    let ctx = Arc::clone(&ctx_wrapper);
+    let election_ended_wrapper: ElectionEndCallback = Box::new(
+        move |status, votes, account, amount, is_state_send, is_state_epoch| {
+            let status_handle = ElectionStatusHandle::new(status.clone());
+            let votes_handle = VoteWithWeightInfoVecHandle::new(votes.clone());
+            election_ended(
+                ctx.get_context(),
+                status_handle,
+                votes_handle,
+                account.as_bytes().as_ptr(),
+                amount.to_be_bytes().as_ptr(),
+                is_state_send,
+                is_state_epoch,
+            );
+        },
+    );
+
+    let ctx = Arc::clone(&ctx_wrapper);
+    let account_balance_changed_wrapper: AccountBalanceChangedCallback =
+        Box::new(move |account, is_pending| {
+            balance_changed(ctx.get_context(), account.as_bytes().as_ptr(), is_pending);
+        });
 
     Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::new(
         ActiveTransactions::new(
@@ -87,6 +117,8 @@ pub extern "C" fn rsn_active_transactions_create(
             Arc::clone(vote_cache),
             Arc::clone(stats),
             active_stopped_wrapper,
+            election_ended_wrapper,
+            account_balance_changed_wrapper,
         ),
     ))))
 }
@@ -668,6 +700,27 @@ pub unsafe extern "C" fn rsn_active_transactions_vote(
     VoteResultMapHandle::new(&result)
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_vote2(
+    handle: &ActiveTransactionsHandle,
+    election: &ElectionHandle,
+    rep: *const u8,
+    timestamp: u64,
+    block_hash: *const u8,
+    vote_source: u8,
+) -> u8 {
+    handle.vote2(
+        election,
+        &Account::from_ptr(rep),
+        timestamp,
+        &BlockHash::from_ptr(block_hash),
+        VoteSource::from_u8(vote_source).unwrap(),
+    ) as u8
+}
+
+/*
+ * Callbacks
+ */
 pub type VoteProcessedCallback =
     unsafe extern "C" fn(*mut c_void, *mut VoteHandle, u8, *mut VoteResultMapHandle);
 
@@ -694,23 +747,37 @@ pub unsafe extern "C" fn rsn_active_transactions_add_vote_processed_observer(
     handle.add_vote_processed_observer(wrapped_observer)
 }
 
+pub type ActivateSuccessorsCallback =
+    unsafe extern "C" fn(*mut c_void, *mut TransactionHandle, *mut BlockHandle);
+
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_vote2(
+pub unsafe extern "C" fn rsn_active_transactions_activate_successors(
     handle: &ActiveTransactionsHandle,
-    election: &ElectionHandle,
-    rep: *const u8,
-    timestamp: u64,
-    block_hash: *const u8,
-    vote_source: u8,
-) -> u8 {
-    handle.vote2(
-        election,
-        &Account::from_ptr(rep),
-        timestamp,
-        &BlockHash::from_ptr(block_hash),
-        VoteSource::from_u8(vote_source).unwrap(),
-    ) as u8
+    callback: ActivateSuccessorsCallback,
+    context: *mut c_void,
+    drop_context: VoidPointerCallback,
+) {
+    let ctx_wrapper = ContextWrapper::new(context, drop_context);
+    handle.set_activate_successors_callback(Box::new(move |tx, block| {
+        let tx_handle = TransactionHandle::new(TransactionType::Read(tx));
+        let block_handle = BlockHandle::new(Arc::clone(&block));
+        callback(ctx_wrapper.get_context(), tx_handle, block_handle);
+    }));
 }
+
+pub type ElectionEndedCallback = unsafe extern "C" fn(
+    *mut c_void,
+    *mut ElectionStatusHandle,
+    *mut VoteWithWeightInfoVecHandle,
+    *const u8,
+    *const u8,
+    bool,
+    bool,
+);
+
+pub type FfiAccountBalanceCallback = unsafe extern "C" fn(*mut c_void, *const u8, bool);
+
+//--------------------------------------------------------------------------------
 
 pub struct ElectionWinnerDetailsLock(
     Option<MutexGuard<'static, HashMap<BlockHash, Arc<Election>>>>,

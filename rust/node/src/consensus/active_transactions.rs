@@ -14,10 +14,11 @@ use crate::{
 };
 use rsnano_core::{
     utils::MemoryStream, Account, Amount, BlockEnum, BlockHash, QualifiedRoot, Vote, VoteCode,
-    VoteSource,
+    VoteSource, VoteWithWeightInfo,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::{Message, Publish};
+use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{
     cmp::max,
     collections::{BTreeMap, HashMap},
@@ -31,6 +32,12 @@ const ELECTION_MAX_BLOCKS: usize = 10;
 
 pub type VoteProcessedCallback =
     Box<dyn Fn(&Arc<Vote>, VoteSource, &HashMap<BlockHash, VoteCode>) + Send + Sync>;
+
+pub type ElectionEndCallback = Box<
+    dyn Fn(&ElectionStatus, &Vec<VoteWithWeightInfo>, Account, Amount, bool, bool) + Send + Sync,
+>;
+
+pub type AccountBalanceChangedCallback = Box<dyn Fn(&Account, bool) + Send + Sync>;
 
 pub struct ActiveTransactions {
     pub mutex: Mutex<ActiveTransactionsData>,
@@ -54,6 +61,9 @@ pub struct ActiveTransactions {
     stats: Arc<Stats>,
     active_stopped_observer: Box<dyn Fn(BlockHash) + Send + Sync>,
     vote_processed_observers: Mutex<Vec<VoteProcessedCallback>>,
+    activate_successors: Mutex<Box<dyn Fn(LmdbReadTransaction, &Arc<BlockEnum>) + Send + Sync>>,
+    election_end: ElectionEndCallback,
+    account_balance_changed: AccountBalanceChangedCallback,
 }
 
 impl ActiveTransactions {
@@ -73,6 +83,8 @@ impl ActiveTransactions {
         vote_cache: Arc<Mutex<VoteCache>>,
         stats: Arc<Stats>,
         active_stopped_observer: Box<dyn Fn(BlockHash) + Send + Sync>,
+        election_end: ElectionEndCallback,
+        account_balance_changed: AccountBalanceChangedCallback,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveTransactionsData {
@@ -103,12 +115,27 @@ impl ActiveTransactions {
             stats,
             active_stopped_observer,
             vote_processed_observers: Mutex::new(Vec::new()),
+            activate_successors: Mutex::new(Box::new(|_tx, _block| {})),
+            election_end,
+            account_balance_changed,
         }
     }
 
+    /*
+     * Callbacks
+     */
     pub fn add_vote_processed_observer(&self, observer: VoteProcessedCallback) {
         self.vote_processed_observers.lock().unwrap().push(observer);
     }
+
+    pub fn set_activate_successors_callback(
+        &self,
+        callback: Box<dyn Fn(LmdbReadTransaction, &Arc<BlockEnum>) + Send + Sync>,
+    ) {
+        *self.activate_successors.lock().unwrap() = callback;
+    }
+
+    //--------------------------------------------------------------------------------
 
     pub fn request_loop<'a>(
         &self,

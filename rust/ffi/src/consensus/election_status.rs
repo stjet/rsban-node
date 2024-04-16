@@ -17,10 +17,16 @@ impl Deref for ElectionStatusHandle {
     }
 }
 
+impl ElectionStatusHandle {
+    pub fn new(status: ElectionStatus) -> *mut Self {
+        Box::into_raw(Box::new(Self(status)))
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_election_status_create() -> *mut ElectionStatusHandle {
     let info = ElectionStatus::default();
-    Box::into_raw(Box::new(ElectionStatusHandle(info)))
+    ElectionStatusHandle::new(info)
 }
 
 #[no_mangle]

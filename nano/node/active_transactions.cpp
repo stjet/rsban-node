@@ -287,45 +287,7 @@ std::vector<nano::vote_with_weight_info> nano::active_transactions::votes_with_w
 
 bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & block_a, nano::election & election)
 {
-	nano::election_lock lock{ election };
-
-	// Do not insert new blocks if already confirmed
-	auto result = confirmed_locked (lock);
-	if (!result && lock.last_blocks_size () >= election.max_blocks && lock.find_block (block_a->hash ()) == nullptr)
-	{
-		if (!replace_by_weight (election, lock, block_a->hash ()))
-		{
-			result = true;
-			node.network->tcp_channels->publish_filter->clear (block_a);
-		}
-	}
-	if (!result)
-	{
-		auto existing = lock.find_block (block_a->hash ());
-		if (existing == nullptr)
-		{
-			lock.insert_or_assign_last_block (block_a);
-		}
-		else
-		{
-			result = true;
-			lock.insert_or_assign_last_block (block_a);
-			auto st{ lock.status () };
-			if (st.get_winner ()->hash () == block_a->hash ())
-			{
-				st.set_winner (block_a);
-				lock.set_status (st);
-				node.network->flood_block (block_a, nano::transport::buffer_drop_policy::no_limiter_drop);
-			}
-		}
-	}
-	/*
-	Result is true if:
-	1) election is confirmed or expired
-	2) given election contains 10 blocks & new block didn't receive enough votes to replace existing blocks
-	3) given block in already in election & election contains less than 10 blocks (replacing block content with new)
-	*/
-	return result;
+	return rsnano::rsn_active_transactions_publish (handle, block_a->get_handle (), election.handle);
 }
 
 void nano::active_transactions::broadcast_vote_locked (nano::election_lock & lock, nano::election & election)

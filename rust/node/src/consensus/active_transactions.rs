@@ -3,11 +3,17 @@ use super::{
     RecentlyConfirmedCache, VoteCache, VoteGenerator,
 };
 use crate::{
-    block_processing::BlockProcessor, cementation::ConfirmingSet, config::NodeConfig,
-    transport::TcpChannels, utils::ThreadPool, wallets::Wallets, NetworkParams, OnlineReps,
+    block_processing::BlockProcessor,
+    cementation::ConfirmingSet,
+    config::NodeConfig,
+    transport::{BufferDropPolicy, TcpChannels},
+    utils::ThreadPool,
+    wallets::Wallets,
+    NetworkParams, OnlineReps,
 };
 use rsnano_core::{utils::MemoryStream, Amount, BlockEnum, BlockHash, QualifiedRoot, Vote};
 use rsnano_ledger::Ledger;
+use rsnano_messages::{Message, Publish};
 use std::{
     cmp::max,
     collections::{BTreeMap, HashMap},
@@ -163,11 +169,15 @@ impl ActiveTransactions {
         if election_guard.status.winner.as_ref().unwrap().hash() != *hash {
             if let Some(existing) = election_guard.last_blocks.remove(hash) {
                 election_guard.last_votes.retain(|_, v| v.hash != *hash);
-                let mut buf = MemoryStream::new();
-                existing.serialize_without_block_type(&mut buf);
-                self.tcp_channels.publish_filter.clear_bytes(buf.as_bytes());
+                self.clear_publish_filter(&existing);
             }
         }
+    }
+
+    fn clear_publish_filter(&self, block: &BlockEnum) {
+        let mut buf = MemoryStream::new();
+        block.serialize_without_block_type(&mut buf);
+        self.tcp_channels.publish_filter.clear_bytes(buf.as_bytes());
     }
 
     pub fn remove_votes(
@@ -309,6 +319,52 @@ impl ActiveTransactions {
             election_guard = election.mutex.lock().unwrap();
         }
         (replaced, election_guard)
+    }
+
+    pub fn publish(&self, block: &Arc<BlockEnum>, election: &Election) -> bool {
+        let mut election_guard = election.mutex.lock().unwrap();
+
+        // Do not insert new blocks if already confirmed
+        let mut result = self.confirmed_locked(&election_guard);
+        if !result
+            && election_guard.last_blocks.len() >= ELECTION_MAX_BLOCKS
+            && !election_guard.last_blocks.contains_key(&block.hash())
+        {
+            let (replaced, guard) = self.replace_by_weight(election, election_guard, &block.hash());
+            election_guard = guard;
+            if !replaced {
+                result = true;
+                self.clear_publish_filter(block);
+            }
+        }
+        if !result {
+            if election_guard.last_blocks.get(&block.hash()).is_some() {
+                result = true;
+                election_guard
+                    .last_blocks
+                    .insert(block.hash(), Arc::clone(block));
+                if election_guard.status.winner.as_ref().unwrap().hash() == block.hash() {
+                    election_guard.status.winner = Some(Arc::clone(block));
+                    let message = Message::Publish(Publish::new(block.as_ref().clone()));
+                    self.tcp_channels.flood_message2(
+                        &message,
+                        BufferDropPolicy::NoLimiterDrop,
+                        1.0,
+                    );
+                }
+            } else {
+                election_guard
+                    .last_blocks
+                    .insert(block.hash(), Arc::clone(block));
+            }
+        }
+        /*
+        Result is true if:
+        1) election is confirmed or expired
+        2) given election contains 10 blocks & new block didn't receive enough votes to replace existing blocks
+        3) given block in already in election & election contains less than 10 blocks (replacing block content with new)
+        */
+        result
     }
 }
 

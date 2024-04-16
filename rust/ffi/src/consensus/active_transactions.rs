@@ -580,6 +580,15 @@ pub unsafe extern "C" fn rsn_active_transactions_replace_by_weight(
     replaced
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_publish(
+    handle: &ActiveTransactionsHandle,
+    block: &BlockHandle,
+    election: &ElectionHandle,
+) -> bool {
+    handle.publish(block, election)
+}
+
 pub struct ElectionWinnerDetailsLock(
     Option<MutexGuard<'static, HashMap<BlockHash, Arc<Election>>>>,
 );

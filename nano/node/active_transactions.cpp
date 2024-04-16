@@ -137,8 +137,8 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	handle = rsnano::rsn_active_transactions_create (&network_dto, node_a.online_reps.get_handle (),
 	node_a.wallets.rust_handle, &config_dto, node_a.ledger.handle, node_a.confirming_set.handle,
 	node_a.workers->handle, node_a.history.handle, node_a.block_processor.handle,
-	node_a.final_generator.handle, node_a.network->tcp_channels->handle,
-	node_a.vote_cache.handle);
+	node_a.generator.handle, node_a.final_generator.handle, node_a.network->tcp_channels->handle,
+	node_a.vote_cache.handle, node_a.stats->handle);
 
 	// Register a callback which will get called after a block is cemented
 	confirming_set.add_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
@@ -292,37 +292,7 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 
 void nano::active_transactions::broadcast_vote_locked (nano::election_lock & lock, nano::election & election)
 {
-	std::chrono::milliseconds last_vote_elapsed{ rsnano::rsn_election_lock_last_vote_elapsed_ms (lock.handle) };
-	if (last_vote_elapsed < std::chrono::milliseconds (node.config->network_params.network.vote_broadcast_interval))
-	{
-		return;
-	}
-	rsnano::rsn_election_lock_last_vote_set (lock.handle);
-	if (node.config->enable_voting && node.wallets.voting_reps_count () > 0)
-	{
-		node.stats->inc (nano::stat::type::election, nano::stat::detail::broadcast_vote);
-
-		if (confirmed_locked (lock) || have_quorum (tally_impl (lock)))
-		{
-			node.stats->inc (nano::stat::type::election, nano::stat::detail::generate_vote_final);
-			node.logger->trace (nano::log::type::election, nano::log::detail::broadcast_vote,
-			nano::log::arg{ "qualified_root", election.qualified_root () },
-			nano::log::arg{ "winner", lock.status ().get_winner ()->hash () },
-			nano::log::arg{ "type", "final" });
-
-			node.final_generator.add (election.root (), lock.status ().get_winner ()->hash ()); // Broadcasts vote to the network
-		}
-		else
-		{
-			node.stats->inc (nano::stat::type::election, nano::stat::detail::generate_vote_normal);
-			node.logger->trace (nano::log::type::election, nano::log::detail::broadcast_vote,
-			nano::log::arg{ "qualified_root", election.qualified_root () },
-			nano::log::arg{ "winner", lock.status ().get_winner ()->hash () },
-			nano::log::arg{ "type", "normal" });
-
-			node.generator.add (election.root (), lock.status ().get_winner ()->hash ()); // Broadcasts vote to the network
-		}
-	}
+	rsnano::rsn_active_transactions_broadcast_vote_locked (handle, lock.handle, election.handle);
 }
 
 void nano::active_transactions::broadcast_vote (nano::election & election, nano::election_lock & lock_a)

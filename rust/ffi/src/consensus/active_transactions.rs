@@ -15,7 +15,7 @@ use crate::{
     transport::TcpChannelsHandle,
     utils::{ContextWrapper, InstantHandle, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
-    NetworkParamsDto, NodeConfigDto, VoidPointerCallback,
+    NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{Amount, BlockEnum, BlockHash, QualifiedRoot, Root};
@@ -54,9 +54,11 @@ pub extern "C" fn rsn_active_transactions_create(
     workers: &ThreadPoolHandle,
     history: &LocalVoteHistoryHandle,
     block_processor: &BlockProcessorHandle,
+    generator: &VoteGeneratorHandle,
     final_generator: &VoteGeneratorHandle,
     tcp_channels: &TcpChannelsHandle,
     vote_cache: &VoteCacheHandle,
+    stats: &StatHandle,
 ) -> *mut ActiveTransactionsHandle {
     Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::new(
         ActiveTransactions::new(
@@ -69,9 +71,11 @@ pub extern "C" fn rsn_active_transactions_create(
             Arc::clone(workers),
             Arc::clone(history),
             Arc::clone(block_processor),
+            Arc::clone(generator),
             Arc::clone(final_generator),
             Arc::clone(tcp_channels),
             Arc::clone(vote_cache),
+            Arc::clone(stats),
         ),
     ))))
 }
@@ -587,6 +591,15 @@ pub unsafe extern "C" fn rsn_active_transactions_publish(
     election: &ElectionHandle,
 ) -> bool {
     handle.publish(block, election)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_broadcast_vote_locked(
+    handle: &ActiveTransactionsHandle,
+    election_lock: &mut ElectionLockHandle,
+    election: &ElectionHandle,
+) {
+    handle.broadcast_vote_locked(election_lock.0.as_mut().unwrap(), election)
 }
 
 pub struct ElectionWinnerDetailsLock(

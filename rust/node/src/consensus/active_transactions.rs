@@ -6,6 +6,7 @@ use crate::{
     block_processing::BlockProcessor,
     cementation::ConfirmingSet,
     config::NodeConfig,
+    stats::{DetailType, Direction, StatType, Stats},
     transport::{BufferDropPolicy, TcpChannels},
     utils::ThreadPool,
     wallets::Wallets,
@@ -39,10 +40,12 @@ pub struct ActiveTransactions {
     pub recently_confirmed: Arc<RecentlyConfirmedCache>,
     history: Arc<LocalVoteHistory>,
     block_processor: Arc<BlockProcessor>,
+    generator: Arc<VoteGenerator>,
     final_generator: Arc<VoteGenerator>,
     tcp_channels: Arc<TcpChannels>,
     pub vacancy_update: Mutex<Box<dyn Fn() + Send + Sync>>,
     vote_cache: Arc<Mutex<VoteCache>>,
+    stats: Arc<Stats>,
 }
 
 impl ActiveTransactions {
@@ -56,9 +59,11 @@ impl ActiveTransactions {
         workers: Arc<dyn ThreadPool>,
         history: Arc<LocalVoteHistory>,
         block_processor: Arc<BlockProcessor>,
+        generator: Arc<VoteGenerator>,
         final_generator: Arc<VoteGenerator>,
         tcp_channels: Arc<TcpChannels>,
         vote_cache: Arc<Mutex<VoteCache>>,
+        stats: Arc<Stats>,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveTransactionsData {
@@ -81,10 +86,12 @@ impl ActiveTransactions {
             recently_confirmed: Arc::new(RecentlyConfirmedCache::new(65536)),
             history,
             block_processor,
+            generator,
             final_generator,
             tcp_channels,
             vacancy_update: Mutex::new(Box::new(|| {})),
             vote_cache,
+            stats,
         }
     }
 
@@ -365,6 +372,44 @@ impl ActiveTransactions {
         3) given block in already in election & election contains less than 10 blocks (replacing block content with new)
         */
         result
+    }
+
+    pub fn broadcast_vote_locked(
+        &self,
+        election_guard: &mut MutexGuard<ElectionData>,
+        election: &Election,
+    ) {
+        let last_vote_elapsed = election_guard.last_vote_elapsed();
+        if last_vote_elapsed < self.network.network.vote_broadcast_interval {
+            return;
+        }
+        election_guard.set_last_vote();
+        if self.config.enable_voting && self.wallets.voting_reps_count() > 0 {
+            self.stats
+                .inc(StatType::Election, DetailType::BroadcastVote, Direction::In);
+
+            if self.confirmed_locked(election_guard)
+                || self.have_quorum(&self.tally_impl(election_guard))
+            {
+                self.stats.inc(
+                    StatType::Election,
+                    DetailType::GenerateVoteFinal,
+                    Direction::In,
+                );
+                let winner = election_guard.status.winner.as_ref().unwrap().hash();
+                trace!(qualified_root = ?election.qualified_root, %winner, "type" = "final", "broadcast vote");
+                self.final_generator.add(&election.root, &winner); // Broadcasts vote to the network
+            } else {
+                self.stats.inc(
+                    StatType::Election,
+                    DetailType::GenerateVoteNormal,
+                    Direction::In,
+                );
+                let winner = election_guard.status.winner.as_ref().unwrap().hash();
+                trace!(qualified_root = ?election.qualified_root, %winner, "type" = "normal", "broadcast vote");
+                self.generator.add(&election.root, &winner); // Broadcasts vote to the network
+            }
+        }
     }
 }
 

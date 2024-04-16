@@ -137,7 +137,8 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	handle = rsnano::rsn_active_transactions_create (&network_dto, node_a.online_reps.get_handle (),
 	node_a.wallets.rust_handle, &config_dto, node_a.ledger.handle, node_a.confirming_set.handle,
 	node_a.workers->handle, node_a.history.handle, node_a.block_processor.handle,
-	node_a.final_generator.handle, node_a.network->tcp_channels->handle);
+	node_a.final_generator.handle, node_a.network->tcp_channels->handle,
+	node_a.vote_cache.handle);
 
 	// Register a callback which will get called after a block is cemented
 	confirming_set.add_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
@@ -257,96 +258,12 @@ bool nano::active_transactions::confirmed (nano::block_hash const & hash) const
 
 void nano::active_transactions::remove_block (nano::election_lock & lock, nano::block_hash const & hash_a)
 {
-	if (lock.status ().get_winner ()->hash () != hash_a)
-	{
-		if (auto existing = lock.find_block (hash_a); existing != nullptr)
-		{
-			auto votes{ lock.last_votes () };
-			for (auto & i : votes)
-			{
-				if (i.second.get_hash () == hash_a)
-				{
-					lock.erase_vote (i.first);
-				}
-			}
-			node.network->tcp_channels->publish_filter->clear (existing);
-			lock.erase_last_block (hash_a);
-		}
-	}
+	rsnano::rsn_active_transactions_remove_block (handle, lock.handle, hash_a.bytes.data ());
 }
 
 bool nano::active_transactions::replace_by_weight (nano::election & election, nano::election_lock & lock_a, nano::block_hash const & hash_a)
 {
-	nano::block_hash replaced_block (0);
-	auto winner_hash (lock_a.status ().get_winner ()->hash ());
-	// Sort existing blocks tally
-	std::vector<std::pair<nano::block_hash, nano::uint128_t>> sorted;
-	auto last_tally_handle = rsnano::rsn_election_lock_last_tally (lock_a.handle);
-	auto tally_len = rsnano::rsn_tally_len (last_tally_handle);
-	sorted.reserve (tally_len);
-	for (auto i = 0; i < tally_len; ++i)
-	{
-		nano::block_hash h;
-		nano::amount a;
-		rsnano::rsn_tally_get (last_tally_handle, i, h.bytes.data (), a.bytes.data ());
-		sorted.emplace_back (h, a.number ());
-	}
-	rsnano::rsn_tally_destroy (last_tally_handle);
-	lock_a.unlock ();
-
-	// Sort in ascending order
-	std::sort (sorted.begin (), sorted.end (), [] (auto const & left, auto const & right) { return left.second < right.second; });
-
-	auto votes_tally = [this] (std::vector<std::shared_ptr<nano::vote>> const & votes) {
-		nano::uint128_t result{ 0 };
-		for (auto const & vote : votes)
-		{
-			result += node.ledger.weight (vote->account ());
-		}
-		return result;
-	};
-
-	// Replace if lowest tally is below inactive cache new block weight
-	auto inactive_existing = node.vote_cache.find (hash_a);
-	auto inactive_tally = votes_tally (inactive_existing);
-	if (inactive_tally > 0 && sorted.size () < election.max_blocks)
-	{
-		// If count of tally items is less than 10, remove any block without tally
-		for (auto const & [hash, block] : election.blocks ())
-		{
-			if (std::find_if (sorted.begin (), sorted.end (), [&hash = hash] (auto const & item_a) { return item_a.first == hash; }) == sorted.end () && hash != winner_hash)
-			{
-				replaced_block = hash;
-				break;
-			}
-		}
-	}
-	else if (inactive_tally > 0 && inactive_tally > sorted.front ().second)
-	{
-		if (sorted.front ().first != winner_hash)
-		{
-			replaced_block = sorted.front ().first;
-		}
-		else if (inactive_tally > sorted[1].second)
-		{
-			// Avoid removing winner
-			replaced_block = sorted[1].first;
-		}
-	}
-
-	bool replaced (false);
-	if (!replaced_block.is_zero ())
-	{
-		erase_hash (replaced_block);
-		lock_a.lock ();
-		remove_block (lock_a, replaced_block);
-		replaced = true;
-	}
-	else
-	{
-		lock_a.lock ();
-	}
-	return replaced;
+	return rsnano::rsn_active_transactions_replace_by_weight (handle, election.handle, lock_a.handle, hash_a.bytes.data ());
 }
 
 std::vector<nano::vote_with_weight_info> nano::active_transactions::votes_with_weight (nano::election & election) const

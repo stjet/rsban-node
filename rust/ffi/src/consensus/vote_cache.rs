@@ -12,6 +12,14 @@ use std::{
 
 pub struct VoteCacheHandle(Arc<Mutex<VoteCache>>);
 
+impl Deref for VoteCacheHandle {
+    type Target = Arc<Mutex<VoteCache>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_vote_cache_create(
     config: &VoteCacheConfigDto,

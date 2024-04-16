@@ -1,13 +1,12 @@
 use super::{
     Election, ElectionBehavior, ElectionData, ElectionState, ElectionStatus, LocalVoteHistory,
-    RecentlyConfirmedCache, VoteGenerator,
+    RecentlyConfirmedCache, VoteCache, VoteGenerator,
 };
 use crate::{
     block_processing::BlockProcessor, cementation::ConfirmingSet, config::NodeConfig,
     transport::TcpChannels, utils::ThreadPool, wallets::Wallets, NetworkParams, OnlineReps,
 };
-use num_traits::ops::overflowing::OverflowingSub;
-use rsnano_core::{Amount, BlockEnum, BlockHash, QualifiedRoot};
+use rsnano_core::{utils::MemoryStream, Amount, BlockEnum, BlockHash, QualifiedRoot, Vote};
 use rsnano_ledger::Ledger;
 use std::{
     cmp::max,
@@ -17,6 +16,8 @@ use std::{
     time::{Duration, Instant},
 };
 use tracing::trace;
+
+const ELECTION_MAX_BLOCKS: usize = 10;
 
 pub struct ActiveTransactions {
     pub mutex: Mutex<ActiveTransactionsData>,
@@ -35,6 +36,7 @@ pub struct ActiveTransactions {
     final_generator: Arc<VoteGenerator>,
     tcp_channels: Arc<TcpChannels>,
     pub vacancy_update: Mutex<Box<dyn Fn() + Send + Sync>>,
+    vote_cache: Arc<Mutex<VoteCache>>,
 }
 
 impl ActiveTransactions {
@@ -50,6 +52,7 @@ impl ActiveTransactions {
         block_processor: Arc<BlockProcessor>,
         final_generator: Arc<VoteGenerator>,
         tcp_channels: Arc<TcpChannels>,
+        vote_cache: Arc<Mutex<VoteCache>>,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveTransactionsData {
@@ -75,6 +78,7 @@ impl ActiveTransactions {
             final_generator,
             tcp_channels,
             vacancy_update: Mutex::new(Box::new(|| {})),
+            vote_cache,
         }
     }
 
@@ -153,6 +157,17 @@ impl ActiveTransactions {
             }
         }
         result
+    }
+
+    pub fn remove_block(&self, election_guard: &mut MutexGuard<ElectionData>, hash: &BlockHash) {
+        if election_guard.status.winner.as_ref().unwrap().hash() != *hash {
+            if let Some(existing) = election_guard.last_blocks.remove(hash) {
+                election_guard.last_votes.retain(|_, v| v.hash != *hash);
+                let mut buf = MemoryStream::new();
+                existing.serialize_without_block_type(&mut buf);
+                self.tcp_channels.publish_filter.clear_bytes(buf.as_bytes());
+            }
+        }
     }
 
     pub fn remove_votes(
@@ -234,6 +249,66 @@ impl ActiveTransactions {
     pub fn active(&self, hash: &BlockHash) -> bool {
         let guard = self.mutex.lock().unwrap();
         guard.blocks.contains_key(hash)
+    }
+
+    pub fn replace_by_weight<'a>(
+        &self,
+        election: &'a Election,
+        mut election_guard: MutexGuard<'a, ElectionData>,
+        hash: &BlockHash,
+    ) -> (bool, MutexGuard<'a, ElectionData>) {
+        let mut replaced_block = BlockHash::zero();
+        let winner_hash = election_guard.status.winner.as_ref().unwrap().hash();
+        // Sort existing blocks tally
+        let mut sorted: Vec<_> = election_guard
+            .last_tally
+            .iter()
+            .map(|(hash, amount)| (*hash, *amount))
+            .collect();
+        drop(election_guard);
+
+        // Sort in ascending order
+        sorted.sort_by(|left, right| right.cmp(left));
+
+        let votes_tally = |votes: &[Arc<Vote>]| {
+            let mut result = Amount::zero();
+            for vote in votes {
+                result += self.ledger.weight(&vote.voting_account);
+            }
+            result
+        };
+
+        // Replace if lowest tally is below inactive cache new block weight
+        let inactive_existing = self.vote_cache.lock().unwrap().find(hash);
+        let inactive_tally = votes_tally(&inactive_existing);
+        if inactive_tally > Amount::zero() && sorted.len() < ELECTION_MAX_BLOCKS {
+            // If count of tally items is less than 10, remove any block without tally
+            election_guard = election.mutex.lock().unwrap();
+            for (hash, _) in &election_guard.last_blocks {
+                if sorted.iter().all(|(h, _)| h != hash) && *hash != winner_hash {
+                    replaced_block = *hash;
+                    break;
+                }
+            }
+        } else if inactive_tally > Amount::zero() && inactive_tally > sorted.first().unwrap().1 {
+            if sorted.first().unwrap().0 != winner_hash {
+                replaced_block = sorted[0].0;
+            } else if inactive_tally > sorted[1].1 {
+                // Avoid removing winner
+                replaced_block = sorted[1].0;
+            }
+        }
+
+        let mut replaced = false;
+        if !replaced_block.is_zero() {
+            self.mutex.lock().unwrap().blocks.remove(&replaced_block);
+            election_guard = election.mutex.lock().unwrap();
+            self.remove_block(&mut election_guard, &replaced_block);
+            replaced = true;
+        } else {
+            election_guard = election.mutex.lock().unwrap();
+        }
+        (replaced, election_guard)
     }
 }
 

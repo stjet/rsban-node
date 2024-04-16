@@ -2,6 +2,7 @@ use super::{
     election::{ElectionHandle, ElectionLockHandle},
     election_status::ElectionStatusHandle,
     recently_confirmed_cache::RecentlyConfirmedCacheHandle,
+    vote_cache::VoteCacheHandle,
     vote_generator::VoteGeneratorHandle,
     LocalVoteHistoryHandle,
 };
@@ -21,7 +22,8 @@ use rsnano_core::{Amount, BlockEnum, BlockHash, QualifiedRoot, Root};
 use rsnano_node::{
     config::NodeConfig,
     consensus::{
-        ActiveTransactions, ActiveTransactionsData, ActiveTransactionsExt, Election, TallyKey,
+        ActiveTransactions, ActiveTransactionsData, ActiveTransactionsExt, Election, ElectionData,
+        TallyKey,
     },
 };
 use std::{
@@ -54,6 +56,7 @@ pub extern "C" fn rsn_active_transactions_create(
     block_processor: &BlockProcessorHandle,
     final_generator: &VoteGeneratorHandle,
     tcp_channels: &TcpChannelsHandle,
+    vote_cache: &VoteCacheHandle,
 ) -> *mut ActiveTransactionsHandle {
     Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::new(
         ActiveTransactions::new(
@@ -68,6 +71,7 @@ pub extern "C" fn rsn_active_transactions_create(
             Arc::clone(block_processor),
             Arc::clone(final_generator),
             Arc::clone(tcp_channels),
+            Arc::clone(vote_cache),
         ),
     ))))
 }
@@ -547,6 +551,33 @@ pub unsafe extern "C" fn rsn_active_transactions_active(
     hash: *const u8,
 ) -> bool {
     handle.active(&BlockHash::from_ptr(hash))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_remove_block(
+    handle: &ActiveTransactionsHandle,
+    election: &mut ElectionLockHandle,
+    hash: *const u8,
+) {
+    handle.remove_block(election.0.as_mut().unwrap(), &BlockHash::from_ptr(hash));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_replace_by_weight(
+    handle: &ActiveTransactionsHandle,
+    election: &ElectionHandle,
+    election_lock: &mut ElectionLockHandle,
+    hash: *const u8,
+) -> bool {
+    let election_guard = election_lock.0.take().unwrap();
+    let (replaced, election_guard) =
+        handle.replace_by_weight(election, election_guard, &BlockHash::from_ptr(hash));
+    let election_guard = std::mem::transmute::<
+        MutexGuard<ElectionData>,
+        MutexGuard<'static, ElectionData>,
+    >(election_guard);
+    election_lock.0 = Some(election_guard);
+    replaced
 }
 
 pub struct ElectionWinnerDetailsLock(

@@ -10,13 +10,13 @@ use crate::utils::Serialize;
 use anyhow::Result;
 use std::time::Duration;
 
-#[derive(FromPrimitive, Clone)]
+#[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug)]
 pub enum VoteSource {
     Live,
     Cache,
 }
 
-#[derive(FromPrimitive, Clone)]
+#[derive(FromPrimitive, Clone, Copy)]
 pub enum VoteCode {
     Invalid,       // Vote is not signed correctly
     Replay,        // Vote does not have the highest timestamp, it's a replay

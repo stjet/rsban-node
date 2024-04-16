@@ -1,6 +1,6 @@
 use super::{
     Election, ElectionBehavior, ElectionData, ElectionState, ElectionStatus, LocalVoteHistory,
-    RecentlyConfirmedCache, VoteCache, VoteGenerator,
+    RecentlyConfirmedCache, VoteCache, VoteGenerator, VoteInfo,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -12,7 +12,10 @@ use crate::{
     wallets::Wallets,
     NetworkParams, OnlineReps,
 };
-use rsnano_core::{utils::MemoryStream, Amount, BlockEnum, BlockHash, QualifiedRoot, Vote};
+use rsnano_core::{
+    utils::MemoryStream, Account, Amount, BlockEnum, BlockHash, QualifiedRoot, Vote, VoteCode,
+    VoteSource,
+};
 use rsnano_ledger::Ledger;
 use rsnano_messages::{Message, Publish};
 use std::{
@@ -20,11 +23,14 @@ use std::{
     collections::{BTreeMap, HashMap},
     ops::Deref,
     sync::{atomic::Ordering, Arc, Condvar, Mutex, MutexGuard},
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
 use tracing::trace;
 
 const ELECTION_MAX_BLOCKS: usize = 10;
+
+pub type VoteProcessedCallback =
+    Box<dyn Fn(&Arc<Vote>, VoteSource, &HashMap<BlockHash, VoteCode>) + Send + Sync>;
 
 pub struct ActiveTransactions {
     pub mutex: Mutex<ActiveTransactionsData>,
@@ -47,6 +53,7 @@ pub struct ActiveTransactions {
     vote_cache: Arc<Mutex<VoteCache>>,
     stats: Arc<Stats>,
     active_stopped_observer: Box<dyn Fn(BlockHash) + Send + Sync>,
+    vote_processed_observers: Mutex<Vec<VoteProcessedCallback>>,
 }
 
 impl ActiveTransactions {
@@ -95,7 +102,12 @@ impl ActiveTransactions {
             vote_cache,
             stats,
             active_stopped_observer,
+            vote_processed_observers: Mutex::new(Vec::new()),
         }
+    }
+
+    pub fn add_vote_processed_observer(&self, observer: VoteProcessedCallback) {
+        self.vote_processed_observers.lock().unwrap().push(observer);
     }
 
     pub fn request_loop<'a>(
@@ -652,6 +664,15 @@ pub trait ActiveTransactionsExt {
     fn process_confirmed(&self, status: ElectionStatus, iteration: u64);
     fn force_confirm(&self, election: &Arc<Election>);
     fn try_confirm(&self, election: &Arc<Election>, hash: &BlockHash);
+    fn vote(&self, vote: &Arc<Vote>, source: VoteSource) -> HashMap<BlockHash, VoteCode>;
+    fn vote2(
+        &self,
+        election: &Arc<Election>,
+        rep: &Account,
+        timestamp: u64,
+        block_hash: &BlockHash,
+        vote_source: VoteSource,
+    ) -> VoteCode;
 }
 
 impl ActiveTransactionsExt for Arc<ActiveTransactions> {
@@ -769,5 +790,120 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
                 }
             }
         }
+    }
+
+    /// Validate a vote and apply it to the current election if one exists
+    /// Distinguishes replay votes, cannot be determined if the block is not in any election
+    fn vote(&self, vote: &Arc<Vote>, source: VoteSource) -> HashMap<BlockHash, VoteCode> {
+        let mut results = HashMap::new();
+        let mut process = HashMap::new();
+        let mut inactive = Vec::new(); // Hashes that should be added to inactive vote cache
+
+        {
+            let guard = self.mutex.lock().unwrap();
+            for hash in &vote.hashes {
+                // Ignore duplicate hashes (should not happen with a well-behaved voting node)
+                if results.contains_key(hash) {
+                    continue;
+                }
+
+                if let Some(existing) = guard.blocks.get(hash) {
+                    process.insert(*hash, Arc::clone(existing));
+                } else if !self.recently_confirmed.hash_exists(hash) {
+                    inactive.push(*hash);
+                    results.insert(*hash, VoteCode::Indeterminate);
+                } else {
+                    results.insert(*hash, VoteCode::Replay);
+                }
+            }
+        }
+
+        for (block_hash, election) in process {
+            let vote_result = self.vote2(
+                &election,
+                &vote.voting_account,
+                vote.timestamp(),
+                &block_hash,
+                source,
+            );
+            results.insert(block_hash, vote_result);
+        }
+
+        let observers = self.vote_processed_observers.lock().unwrap();
+        for o in observers.iter() {
+            o(vote, source, &results);
+        }
+
+        results
+    }
+
+    fn vote2(
+        &self,
+        election: &Arc<Election>,
+        rep: &Account,
+        timestamp: u64,
+        block_hash: &BlockHash,
+        vote_source: VoteSource,
+    ) -> VoteCode {
+        let weight = self.ledger.weight(rep);
+        if !self.network.network.is_dev_network()
+            && weight <= self.online_reps.lock().unwrap().minimum_principal_weight()
+        {
+            return VoteCode::Indeterminate;
+        }
+
+        let mut guard = election.mutex.lock().unwrap();
+
+        if let Some(last_vote) = guard.last_votes.get(rep) {
+            if last_vote.timestamp > timestamp {
+                return VoteCode::Replay;
+            }
+            if last_vote.timestamp == timestamp && !(last_vote.hash < *block_hash) {
+                return VoteCode::Replay;
+            }
+
+            let max_vote = timestamp == u64::MAX && last_vote.timestamp < timestamp;
+
+            let mut past_cooldown = true;
+            // Only cooldown live votes
+            if vote_source == VoteSource::Live {
+                let cooldown = self.cooldown_time(weight);
+                past_cooldown = last_vote.time <= SystemTime::now() - cooldown;
+            }
+
+            if !max_vote && !past_cooldown {
+                return VoteCode::Ignored;
+            }
+        }
+        guard
+            .last_votes
+            .insert(*rep, VoteInfo::new(timestamp, *block_hash));
+
+        if vote_source == VoteSource::Live {
+            (election.live_vote_action)(*rep);
+        }
+
+        self.stats.inc(
+            StatType::Election,
+            if vote_source == VoteSource::Live {
+                DetailType::VoteNew
+            } else {
+                DetailType::VoteCached
+            },
+            Direction::In,
+        );
+        trace!(
+            qualified_root = ?election.qualified_root,
+            account = %rep,
+            hash = %block_hash,
+            timestamp,
+            ?vote_source,
+            ?weight,
+            "vote processed");
+
+        if !self.confirmed_locked(&guard) {
+            self.confirm_if_quorum(guard, election);
+        }
+        VoteCode::Vote
     }
 }

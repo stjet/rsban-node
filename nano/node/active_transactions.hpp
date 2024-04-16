@@ -181,8 +181,7 @@ public:
 	std::shared_ptr<nano::election> remove_election_winner_details (nano::block_hash const &);
 
 public: // Events
-	using vote_processed_event_t = nano::observer_set<std::shared_ptr<nano::vote> const &, nano::vote_source, std::unordered_map<nano::block_hash, nano::vote_code> const &>;
-	vote_processed_event_t vote_processed;
+	void add_vote_processed_observer (std::function<void (std::shared_ptr<nano::vote> const &, nano::vote_source, std::unordered_map<nano::block_hash, nano::vote_code> const &)> observer);
 
 	nano::active_transactions_lock lock () const;
 	void process_confirmed (nano::election_status const & status_a, uint64_t iteration_a = 0);

@@ -2,9 +2,9 @@ use super::{
     election::{ElectionHandle, ElectionLockHandle},
     election_status::ElectionStatusHandle,
     recently_confirmed_cache::RecentlyConfirmedCacheHandle,
-    vote_cache::VoteCacheHandle,
+    vote_cache::{VoteCacheHandle, VoteResultMapHandle},
     vote_generator::VoteGeneratorHandle,
-    LocalVoteHistoryHandle,
+    LocalVoteHistoryHandle, VoteHandle,
 };
 use crate::{
     block_processing::BlockProcessorHandle,
@@ -18,7 +18,9 @@ use crate::{
     NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
 };
 use num_traits::FromPrimitive;
-use rsnano_core::{Amount, BlockEnum, BlockHash, QualifiedRoot, Root};
+use rsnano_core::{
+    Account, Amount, BlockEnum, BlockHash, QualifiedRoot, Root, Vote, VoteCode, VoteSource,
+};
 use rsnano_node::{
     config::NodeConfig,
     consensus::{
@@ -654,6 +656,60 @@ pub unsafe extern "C" fn rsn_active_transactions_broadcast_vote_locked(
     election: &ElectionHandle,
 ) {
     handle.broadcast_vote_locked(election_lock.0.as_mut().unwrap(), election)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_vote(
+    handle: &ActiveTransactionsHandle,
+    vote: &VoteHandle,
+    source: u8,
+) -> *mut VoteResultMapHandle {
+    let result = handle.vote(vote, VoteSource::from_u8(source).unwrap());
+    VoteResultMapHandle::new(&result)
+}
+
+pub type VoteProcessedCallback =
+    unsafe extern "C" fn(*mut c_void, *mut VoteHandle, u8, *mut VoteResultMapHandle);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_add_vote_processed_observer(
+    handle: &ActiveTransactionsHandle,
+    observer: VoteProcessedCallback,
+    context: *mut c_void,
+    drop_context: VoidPointerCallback,
+) {
+    let ctx_wrapper = ContextWrapper::new(context, drop_context);
+    let wrapped_observer = Box::new(
+        move |vote: &Arc<Vote>, source: VoteSource, results: &HashMap<BlockHash, VoteCode>| {
+            let vote_handle = VoteHandle::new(Arc::clone(vote));
+            let results_handle = VoteResultMapHandle::new(results);
+            observer(
+                ctx_wrapper.get_context(),
+                vote_handle,
+                source as u8,
+                results_handle,
+            );
+        },
+    );
+    handle.add_vote_processed_observer(wrapped_observer)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_vote2(
+    handle: &ActiveTransactionsHandle,
+    election: &ElectionHandle,
+    rep: *const u8,
+    timestamp: u64,
+    block_hash: *const u8,
+    vote_source: u8,
+) -> u8 {
+    handle.vote2(
+        election,
+        &Account::from_ptr(rep),
+        timestamp,
+        &BlockHash::from_ptr(block_hash),
+        VoteSource::from_u8(vote_source).unwrap(),
+    ) as u8
 }
 
 pub struct ElectionWinnerDetailsLock(

@@ -72,11 +72,23 @@ pub unsafe extern "C" fn rsn_vote_cache_clear(handle: *mut VoteCacheHandle) {
     guard.clear()
 }
 
-pub struct VoteResultMapHandle(HashMap<BlockHash, VoteCode>);
+pub struct VoteResultMapHandle(Vec<(BlockHash, VoteCode)>);
+
+impl VoteResultMapHandle {
+    pub fn new(map: &HashMap<BlockHash, VoteCode>) -> *mut Self {
+        Box::into_raw(Box::new(Self(map.iter().map(|(k, v)| (*k, *v)).collect())))
+    }
+}
+
+impl From<&VoteResultMapHandle> for HashMap<BlockHash, VoteCode> {
+    fn from(value: &VoteResultMapHandle) -> Self {
+        value.0.iter().map(|(k, v)| (*k, *v)).collect()
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_result_map_create() -> *mut VoteResultMapHandle {
-    Box::into_raw(Box::new(VoteResultMapHandle(HashMap::new())))
+    VoteResultMapHandle::new(&HashMap::new())
 }
 
 #[no_mangle]
@@ -85,15 +97,31 @@ pub unsafe extern "C" fn rsn_vote_result_map_destroy(handle: *mut VoteResultMapH
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_vote_result_map_len(handle: &VoteResultMapHandle) -> usize {
+    handle.0.len()
+}
+#[no_mangle]
+
+pub unsafe extern "C" fn rsn_vote_result_map_get(
+    handle: &VoteResultMapHandle,
+    index: usize,
+    hash: *mut u8,
+) -> u8 {
+    let (block_hash, code) = &handle.0[index];
+    block_hash.copy_bytes(hash);
+    *code as u8
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_result_map_insert(
     handle: &mut VoteResultMapHandle,
     hash: *const u8,
     code: u8,
 ) {
-    handle.0.insert(
+    handle.0.push((
         BlockHash::from_ptr(hash),
         FromPrimitive::from_u8(code).unwrap(),
-    );
+    ));
 }
 
 #[no_mangle]
@@ -108,7 +136,7 @@ pub unsafe extern "C" fn rsn_vote_cache_observe(
         vote,
         Amount::from_ptr(rep_weight),
         VoteSource::from_u8(vote_source).unwrap(),
-        results.0.clone(),
+        results.into(),
     );
 }
 

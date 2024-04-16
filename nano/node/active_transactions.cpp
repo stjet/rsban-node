@@ -135,6 +135,28 @@ void delete_observers_context (void * context)
 	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
 	delete observers;
 }
+
+void call_vote_processed (void * context, rsnano::VoteHandle * vote_handle, uint8_t source, rsnano::VoteResultMapHandle * results_handle)
+{
+	auto callback = static_cast<std::function<void (std::shared_ptr<nano::vote> const &, nano::vote_source, std::unordered_map<nano::block_hash, nano::vote_code> const &)> *> (context);
+	auto vote = std::make_shared<nano::vote> (vote_handle);
+	std::unordered_map<nano::block_hash, nano::vote_code> result;
+	auto len = rsnano::rsn_vote_result_map_len (results_handle);
+	for (auto i = 0; i < len; ++i)
+	{
+		nano::block_hash hash;
+		auto code = rsnano::rsn_vote_result_map_get (results_handle, i, hash.bytes.data ());
+		result.emplace (hash, static_cast<nano::vote_code> (code));
+	}
+	rsnano::rsn_vote_result_map_destroy (results_handle);
+	(*callback) (vote, static_cast<nano::vote_source> (source), result);
+}
+
+void delete_vote_processed_context (void * context)
+{
+	auto callback = static_cast<std::function<void (std::shared_ptr<nano::vote> const &, nano::vote_source, std::unordered_map<nano::block_hash, nano::vote_code> const &)> *> (context);
+	delete callback;
+}
 }
 
 nano::active_transactions::active_transactions (nano::node & node_a, nano::confirming_set & confirming_set, nano::block_processor & block_processor_a) :
@@ -348,6 +370,12 @@ std::shared_ptr<nano::election> nano::active_transactions::remove_election_winne
 		removed = std::make_shared<nano::election> (election_handle);
 	}
 	return removed;
+}
+
+void nano::active_transactions::add_vote_processed_observer (std::function<void (std::shared_ptr<nano::vote> const &, nano::vote_source, std::unordered_map<nano::block_hash, nano::vote_code> const &)> observer)
+{
+	auto context = new std::function<void (std::shared_ptr<nano::vote> const &, nano::vote_source, std::unordered_map<nano::block_hash, nano::vote_code> const &)> (observer);
+	rsnano::rsn_active_transactions_add_vote_processed_observer (handle, call_vote_processed, context, delete_vote_processed_context);
 }
 
 nano::active_transactions_lock nano::active_transactions::lock () const
@@ -736,47 +764,17 @@ void nano::active_transactions::broadcast_block (nano::confirmation_solicitor & 
 // Validate a vote and apply it to the current election if one exists
 std::unordered_map<nano::block_hash, nano::vote_code> nano::active_transactions::vote (std::shared_ptr<nano::vote> const & vote, nano::vote_source source)
 {
-	std::unordered_map<nano::block_hash, nano::vote_code> results;
-	std::unordered_map<nano::block_hash, std::shared_ptr<nano::election>> process;
-	std::vector<nano::block_hash> inactive; // Hashes that should be added to inactive vote cache
-
+	auto result_handle = rsnano::rsn_active_transactions_vote (handle, vote->get_handle (), static_cast<uint8_t> (source));
+	std::unordered_map<nano::block_hash, nano::vote_code> result;
+	auto len = rsnano::rsn_vote_result_map_len (result_handle);
+	for (auto i = 0; i < len; ++i)
 	{
-		auto guard{ lock () };
-		for (auto const & hash : vote->hashes ())
-		{
-			// Ignore duplicate hashes (should not happen with a well-behaved voting node)
-			if (results.find (hash) != results.end ())
-			{
-				continue;
-			}
-
-			auto existing_handle = rsnano::rsn_active_transactions_lock_blocks_find (guard.handle, hash.bytes.data ());
-			if (existing_handle != nullptr)
-			{
-				auto existing = std::make_shared<nano::election> (existing_handle);
-				process[hash] = existing;
-			}
-			else if (!recently_confirmed ().exists (hash))
-			{
-				inactive.emplace_back (hash);
-				results[hash] = nano::vote_code::indeterminate;
-			}
-			else
-			{
-				results[hash] = nano::vote_code::replay;
-			}
-		}
+		nano::block_hash hash;
+		auto code = rsnano::rsn_vote_result_map_get (result_handle, i, hash.bytes.data ());
+		result.emplace (hash, static_cast<nano::vote_code> (code));
 	}
-
-	for (auto const & [block_hash, election] : process)
-	{
-		auto const vote_result = this->vote (*election, vote->account (), vote->timestamp (), block_hash, source);
-		results[block_hash] = vote_result;
-	}
-
-	vote_processed.notify (vote, source, results);
-
-	return results;
+	rsnano::rsn_vote_result_map_destroy (result_handle);
+	return result;
 }
 
 bool nano::active_transactions::active (nano::qualified_root const & root_a) const
@@ -901,61 +899,8 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 
 nano::vote_code nano::active_transactions::vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a)
 {
-	auto weight = node.ledger.weight (rep);
-	if (!node.network_params.network.is_dev_network () && weight <= node.minimum_principal_weight ())
-	{
-		return vote_code::indeterminate;
-	}
-
-	nano::election_lock lock{ election };
-
-	auto last_vote_l{ lock.find_vote (rep) };
-	if (last_vote_l.has_value ())
-	{
-		if (last_vote_l->get_timestamp () > timestamp_a)
-		{
-			return vote_code::replay;
-		}
-		if (last_vote_l->get_timestamp () == timestamp_a && !(last_vote_l->get_hash () < block_hash_a))
-		{
-			return vote_code::replay;
-		}
-
-		auto max_vote = timestamp_a == std::numeric_limits<uint64_t>::max () && last_vote_l->get_timestamp () < timestamp_a;
-
-		bool past_cooldown = true;
-		// Only cooldown live votes
-		if (vote_source_a == nano::vote_source::live) // Only cooldown live votes
-		{
-			const auto cooldown = cooldown_time (weight);
-			past_cooldown = last_vote_l->get_time () <= std::chrono::system_clock::now () - cooldown;
-		}
-
-		if (!max_vote && !past_cooldown)
-		{
-			return vote_code::ignored;
-		}
-	}
-	lock.insert_or_assign_vote (rep, { timestamp_a, block_hash_a });
-	if (vote_source_a == nano::vote_source::live)
-	{
-		rsnano::rsn_election_live_vote_action (election.handle, rep.bytes.data ());
-	}
-
-	node.stats->inc (nano::stat::type::election, vote_source_a == nano::vote_source::live ? nano::stat::detail::vote_new : nano::stat::detail::vote_cached);
-	node.logger->trace (nano::log::type::election, nano::log::detail::vote_processed,
-	nano::log::arg{ "qualified_root", election.qualified_root () },
-	nano::log::arg{ "account", rep },
-	nano::log::arg{ "hash", block_hash_a },
-	nano::log::arg{ "timestamp", timestamp_a },
-	nano::log::arg{ "vote_source", vote_source_a },
-	nano::log::arg{ "weight", weight });
-
-	if (!confirmed_locked (lock))
-	{
-		confirm_if_quorum (lock, election);
-	}
-	return vote_code::vote;
+	auto result = rsnano::rsn_active_transactions_vote2 (handle, election.handle, rep.bytes.data (), timestamp_a, block_hash_a.bytes.data (), static_cast<uint8_t> (vote_source_a));
+	return static_cast<nano::vote_code> (result);
 }
 
 void nano::active_transactions::try_confirm (nano::election & election, nano::block_hash const & hash)

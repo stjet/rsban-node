@@ -246,13 +246,13 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		scheduler.optimistic.activate (account, account_info, conf_info);
 	});
 
-	active.vote_processed.add ([this] (std::shared_ptr<nano::vote> const & vote, nano::vote_source source, std::unordered_map<nano::block_hash, nano::vote_code> const & results) {
+	active.add_vote_processed_observer ([this] (std::shared_ptr<nano::vote> const & vote, nano::vote_source source, std::unordered_map<nano::block_hash, nano::vote_code> const & results) {
 		auto rep_weight = ledger.weight (vote->account ());
 		vote_cache.observe (vote, rep_weight, source, results);
 	});
 
 	// Republish vote if it is new and the node does not host a principal representative (or close to)
-	active.vote_processed.add ([this] (std::shared_ptr<nano::vote> const & vote, nano::vote_source source, std::unordered_map<nano::block_hash, nano::vote_code> const & results) {
+	active.add_vote_processed_observer ([this] (std::shared_ptr<nano::vote> const & vote, nano::vote_source source, std::unordered_map<nano::block_hash, nano::vote_code> const & results) {
 		bool processed = std::any_of (results.begin (), results.end (), [] (auto const & result) {
 			return result.second == nano::vote_code::vote;
 		});

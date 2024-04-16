@@ -234,18 +234,14 @@ impl ActiveTransactions {
     }
 
     /// How many election slots are available for specified election type
-    pub fn vacancy(&self, behavior: ElectionBehavior) -> usize {
+    pub fn vacancy(&self, behavior: ElectionBehavior) -> i64 {
         let guard = self.mutex.lock().unwrap();
         match behavior {
             ElectionBehavior::Normal => {
-                self.limit(ElectionBehavior::Normal)
-                    .overflowing_sub(guard.roots.len())
-                    .0
+                self.limit(ElectionBehavior::Normal) as i64 - guard.roots.len() as i64
             }
             ElectionBehavior::Hinted | ElectionBehavior::Optimistic => {
-                self.limit(behavior)
-                    .overflowing_sub(guard.count_by_behavior(behavior))
-                    .0
+                self.limit(behavior) as i64 - guard.count_by_behavior(behavior) as i64
             }
         }
     }
@@ -496,6 +492,56 @@ impl ActiveTransactions {
             let election = Arc::clone(election);
             drop(it);
             self.cleanup_election(guard, &election)
+        }
+    }
+
+    /// Erase elections if we're over capacity
+    pub fn trim(&self) {
+        /*
+         * Both normal and hinted election schedulers are well-behaved, meaning they first check for AEC vacancy before inserting new elections.
+         * However, it is possible that AEC will be temporarily overfilled in case it's running at full capacity and election hinting or manual queue kicks in.
+         * That case will lead to unwanted churning of elections, so this allows for AEC to be overfilled to 125% until erasing of elections happens.
+         */
+        while self.vacancy(ElectionBehavior::Normal)
+            < -(self.limit(ElectionBehavior::Normal) as i64 / 4)
+        {
+            self.stats
+                .inc(StatType::Active, DetailType::EraseOldest, Direction::In);
+            self.erase_oldest();
+        }
+    }
+
+    fn base_latency(&self) -> Duration {
+        if self.network.network.is_dev_network() {
+            Duration::from_millis(25)
+        } else {
+            Duration::from_millis(1000)
+        }
+    }
+
+    pub fn confirm_req_time(&self, election: &Election) -> Duration {
+        match election.behavior {
+            ElectionBehavior::Normal | ElectionBehavior::Hinted => self.base_latency() * 5,
+            ElectionBehavior::Optimistic => self.base_latency() * 2,
+        }
+    }
+
+    pub fn broadcast_block_predicate(
+        &self,
+        election: &Arc<Election>,
+        election_guard: &MutexGuard<ElectionData>,
+    ) -> bool {
+        // Broadcast the block if enough time has passed since the last broadcast (or it's the first broadcast)
+        if election.last_block_elapsed() < self.network.network.block_broadcast_interval {
+            true
+        }
+        // Or the current election winner has changed
+        else if election_guard.status.winner.as_ref().unwrap().hash()
+            != election_guard.last_block_hash
+        {
+            true
+        } else {
+            false
         }
     }
 }

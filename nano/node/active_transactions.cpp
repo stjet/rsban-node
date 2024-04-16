@@ -614,16 +614,7 @@ bool nano::active_transactions::trigger_vote_cache (nano::block_hash hash)
 
 void nano::active_transactions::trim ()
 {
-	/*
-	 * Both normal and hinted election schedulers are well-behaved, meaning they first check for AEC vacancy before inserting new elections.
-	 * However, it is possible that AEC will be temporarily overfilled in case it's running at full capacity and election hinting or manual queue kicks in.
-	 * That case will lead to unwanted churning of elections, so this allows for AEC to be overfilled to 125% until erasing of elections happens.
-	 */
-	while (vacancy () < -(limit () / 4))
-	{
-		node.stats->inc (nano::stat::type::active, nano::stat::detail::erase_oldest);
-		erase_oldest ();
-	}
+	rsnano::rsn_active_transactions_trim (handle);
 }
 
 std::chrono::milliseconds nano::active_transactions::base_latency () const
@@ -633,16 +624,7 @@ std::chrono::milliseconds nano::active_transactions::base_latency () const
 
 std::chrono::milliseconds nano::active_transactions::confirm_req_time (nano::election & election) const
 {
-	switch (election.behavior ())
-	{
-		case election_behavior::normal:
-		case election_behavior::hinted:
-			return base_latency () * 5;
-		case election_behavior::optimistic:
-			return base_latency () * 2;
-	}
-	debug_assert (false);
-	return {};
+	return std::chrono::milliseconds{ rsnano::rsn_active_transactions_confirm_req_time_ms (handle, election.handle) };
 }
 
 void nano::active_transactions::send_confirm_req (nano::confirmation_solicitor & solicitor_a, nano::election & election, nano::election_lock & lock_a)
@@ -733,20 +715,7 @@ nano::tally_t nano::active_transactions::tally (nano::election & election) const
 
 bool nano::active_transactions::broadcast_block_predicate (nano::election & election, nano::election_lock & lock_a) const
 {
-	auto last_block_elapsed = std::chrono::milliseconds{ rsnano::rsn_election_last_block_elapsed_ms (election.handle) };
-	// Broadcast the block if enough time has passed since the last broadcast (or it's the first broadcast)
-	if (last_block_elapsed < node.config->network_params.network.block_broadcast_interval)
-	{
-		return true;
-	}
-	// Or the current election winner has changed
-	nano::block_hash last_block_hash{};
-	rsnano::rsn_election_lock_last_block (lock_a.handle, last_block_hash.bytes.data ());
-	if (lock_a.status ().get_winner ()->hash () != last_block_hash)
-	{
-		return true;
-	}
-	return false;
+	return rsnano::rsn_active_transactions_broadcast_block_predicate (handle, election.handle, lock_a.handle);
 }
 
 void nano::active_transactions::broadcast_block (nano::confirmation_solicitor & solicitor_a, nano::election & election, nano::election_lock & lock_a)

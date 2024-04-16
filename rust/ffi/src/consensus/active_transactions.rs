@@ -380,6 +380,28 @@ pub unsafe extern "C" fn rsn_active_transactions_erase_oldest(handle: &ActiveTra
     handle.erase_oldest();
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_trim(handle: &ActiveTransactionsHandle) {
+    handle.trim();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_confirm_req_time_ms(
+    handle: &ActiveTransactionsHandle,
+    election: &ElectionHandle,
+) -> i64 {
+    handle.confirm_req_time(election).as_millis() as i64
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_broadcast_block_predicate(
+    handle: &ActiveTransactionsHandle,
+    election: &ElectionHandle,
+    lock_handle: &mut ElectionLockHandle,
+) -> bool {
+    handle.broadcast_block_predicate(election, lock_handle.0.as_ref().unwrap())
+}
+
 pub struct TallyBlocksHandle(Vec<(Amount, Arc<BlockEnum>)>);
 
 #[no_mangle]
@@ -519,7 +541,7 @@ pub extern "C" fn rsn_active_transactions_limit(
 pub extern "C" fn rsn_active_transactions_vacancy(
     handle: &ActiveTransactionsHandle,
     behavior: u8,
-) -> usize {
+) -> i64 {
     handle.vacancy(FromPrimitive::from_u8(behavior).unwrap())
 }
 

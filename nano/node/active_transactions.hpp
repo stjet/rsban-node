@@ -224,7 +224,6 @@ private:
 	void request_confirm (nano::active_transactions_lock &);
 	// Erase all blocks from active and, if not confirmed, clear digests from network filters
 	void cleanup_election (nano::active_transactions_lock & lock_a, std::shared_ptr<nano::election>);
-	nano::stat::type completion_type (nano::election const & election) const;
 	// Returns a list of elections sorted by difficulty, mutex must be locked
 	std::vector<std::shared_ptr<nano::election>> list_active_impl (std::size_t, nano::active_transactions_lock & guard) const;
 	void notify_observers (nano::store::read_transaction const & transaction, nano::election_status const & status, std::vector<nano::vote_with_weight_info> const & votes);

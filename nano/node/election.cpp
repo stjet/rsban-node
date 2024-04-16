@@ -260,9 +260,7 @@ void nano::election::transition_active ()
 
 bool nano::election::failed () const
 {
-	auto guard{ lock () };
-	auto state_l = static_cast<nano::election_state> (rsnano::rsn_election_lock_state (guard.handle));
-	return state_l == nano::election_state::expired_unconfirmed;
+	return rsnano::rsn_election_failed (handle);
 }
 
 nano::vote_info nano::election::get_last_vote (nano::account const & account)

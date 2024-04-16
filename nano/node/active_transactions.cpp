@@ -123,6 +123,18 @@ void delete_vacancy_update (void * context)
 	auto callback = static_cast<std::function<void ()> *> (context);
 	delete callback;
 }
+
+void call_active_stopped (void * context, uint8_t const * hash)
+{
+	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
+	(*observers)->active_stopped.notify (nano::block_hash::from_bytes (hash));
+}
+
+void delete_observers_context (void * context)
+{
+	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
+	delete observers;
+}
 }
 
 nano::active_transactions::active_transactions (nano::node & node_a, nano::confirming_set & confirming_set, nano::block_processor & block_processor_a) :
@@ -134,11 +146,13 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 {
 	auto network_dto{ node_a.network_params.to_dto () };
 	auto config_dto{ node_a.config->to_dto () };
+	auto observers_context = new std::shared_ptr<nano::node_observers> (node_a.observers);
 	handle = rsnano::rsn_active_transactions_create (&network_dto, node_a.online_reps.get_handle (),
 	node_a.wallets.rust_handle, &config_dto, node_a.ledger.handle, node_a.confirming_set.handle,
 	node_a.workers->handle, node_a.history.handle, node_a.block_processor.handle,
 	node_a.generator.handle, node_a.final_generator.handle, node_a.network->tcp_channels->handle,
-	node_a.vote_cache.handle, node_a.stats->handle);
+	node_a.vote_cache.handle, node_a.stats->handle, observers_context, delete_observers_context,
+	call_active_stopped);
 
 	// Register a callback which will get called after a block is cemented
 	confirming_set.add_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
@@ -297,11 +311,7 @@ void nano::active_transactions::broadcast_vote_locked (nano::election_lock & loc
 
 void nano::active_transactions::broadcast_vote (nano::election & election, nano::election_lock & lock_a)
 {
-	if (std::chrono::milliseconds{ rsnano::rsn_election_lock_last_vote_elapsed_ms (lock_a.handle) } >= std::chrono::milliseconds (node.config->network_params.network.vote_broadcast_interval))
-	{
-		broadcast_vote_locked (lock_a, election);
-		rsnano::rsn_election_lock_last_vote_set (lock_a.handle);
-	}
+	rsnano::rsn_active_transactions_broadcast_vote (handle, election.handle, lock_a.handle);
 }
 
 void nano::active_transactions::notify_observers (nano::store::read_transaction const & transaction, nano::election_status const & status, std::vector<nano::vote_with_weight_info> const & votes)
@@ -473,57 +483,7 @@ void nano::active_transactions::request_confirm (nano::active_transactions_lock 
 
 void nano::active_transactions::cleanup_election (nano::active_transactions_lock & lock_a, std::shared_ptr<nano::election> election)
 {
-	debug_assert (lock_a.owns_lock ());
-
-	// Keep track of election count by election type
-	debug_assert (rsnano::rsn_active_transactions_lock_count_by_behavior (lock_a.handle, static_cast<uint8_t> (election->behavior ())) > 0);
-	rsnano::rsn_active_transactions_lock_count_by_behavior_dec (lock_a.handle, static_cast<uint8_t> (election->behavior ()));
-
-	auto blocks_l = election->blocks ();
-	for (auto const & [hash, block] : blocks_l)
-	{
-		auto erased (rsnano::rsn_active_transactions_lock_blocks_erase (lock_a.handle, hash.bytes.data ()));
-		(void)erased;
-		debug_assert (erased);
-	}
-
-	auto election_root{ election->qualified_root () };
-	rsnano::rsn_active_transactions_lock_roots_erase (lock_a.handle, election_root.root ().bytes.data (), election_root.previous ().bytes.data ());
-
-	node.stats->inc (completion_type (*election), to_stat_detail (election->behavior ()));
-	node.logger->trace (nano::log::type::active_transactions, nano::log::detail::active_stopped, nano::log::arg{ "election", election });
-
-	lock_a.unlock ();
-
-	vacancy_update ();
-
-	for (auto const & [hash, block] : blocks_l)
-	{
-		// Notify observers about dropped elections & blocks lost confirmed elections
-		if (!confirmed (*election) || hash != election->winner ()->hash ())
-		{
-			node.observers->active_stopped.notify (hash);
-		}
-
-		if (!confirmed (*election))
-		{
-			// Clear from publish filter
-			node.network->tcp_channels->publish_filter->clear (block);
-		}
-	}
-}
-
-nano::stat::type nano::active_transactions::completion_type (nano::election const & election) const
-{
-	if (confirmed (election))
-	{
-		return nano::stat::type::active_confirmed;
-	}
-	if (election.failed ())
-	{
-		return nano::stat::type::active_timeout;
-	}
-	return nano::stat::type::active_dropped;
+	rsnano::rsn_active_transactions_cleanup_election (handle, lock_a.handle, election->handle);
 }
 
 std::vector<std::shared_ptr<nano::election>> nano::active_transactions::list_active (std::size_t max_a)
@@ -930,12 +890,7 @@ bool nano::active_transactions::erase_hash (nano::block_hash const & hash_a)
 
 void nano::active_transactions::erase_oldest ()
 {
-	auto guard{ lock () };
-	if (rsnano::rsn_active_transactions_lock_roots_size (guard.handle) > 0)
-	{
-		std::shared_ptr<nano::election> front = list_active_impl (1, guard).front ();
-		cleanup_election (guard, front);
-	}
+	rsnano::rsn_active_transactions_erase_oldest (handle);
 }
 
 bool nano::active_transactions::empty () const

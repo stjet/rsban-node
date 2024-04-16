@@ -9,7 +9,7 @@ use super::{
 use crate::{
     block_processing::BlockProcessorHandle,
     cementation::ConfirmingSetHandle,
-    core::BlockHandle,
+    core::{BlockHandle, BlockHashCallback},
     ledger::datastore::LedgerHandle,
     representatives::OnlineRepsHandle,
     transport::TcpChannelsHandle,
@@ -59,7 +59,15 @@ pub extern "C" fn rsn_active_transactions_create(
     tcp_channels: &TcpChannelsHandle,
     vote_cache: &VoteCacheHandle,
     stats: &StatHandle,
+    observers_context: *mut c_void,
+    delete_observers_context: VoidPointerCallback,
+    active_stopped: BlockHashCallback,
 ) -> *mut ActiveTransactionsHandle {
+    let context_wrapper = ContextWrapper::new(observers_context, delete_observers_context);
+    let active_stopped_wrapper = Box::new(move |hash: BlockHash| {
+        active_stopped(context_wrapper.get_context(), hash.as_bytes().as_ptr())
+    });
+
     Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::new(
         ActiveTransactions::new(
             network.try_into().unwrap(),
@@ -76,6 +84,7 @@ pub extern "C" fn rsn_active_transactions_create(
             Arc::clone(tcp_channels),
             Arc::clone(vote_cache),
             Arc::clone(stats),
+            active_stopped_wrapper,
         ),
     ))))
 }
@@ -366,6 +375,11 @@ pub unsafe extern "C" fn rsn_active_transactions_remove_votes(
     );
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_erase_oldest(handle: &ActiveTransactionsHandle) {
+    handle.erase_oldest();
+}
+
 pub struct TallyBlocksHandle(Vec<(Amount, Arc<BlockEnum>)>);
 
 #[no_mangle]
@@ -528,6 +542,15 @@ pub extern "C" fn rsn_active_transactions_set_vacancy_update(
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_active_transactions_cleanup_election(
+    handle: &ActiveTransactionsHandle,
+    lock_handle: &mut ActiveTransactionsLockHandle,
+    election: &ElectionHandle,
+) {
+    handle.cleanup_election(lock_handle.0.take().unwrap(), election);
+}
+
+#[no_mangle]
 pub extern "C" fn rsn_active_transactions_clear(handle: &ActiveTransactionsHandle) {
     handle.clear();
 }
@@ -591,6 +614,15 @@ pub unsafe extern "C" fn rsn_active_transactions_publish(
     election: &ElectionHandle,
 ) -> bool {
     handle.publish(block, election)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_broadcast_vote(
+    handle: &ActiveTransactionsHandle,
+    election: &ElectionHandle,
+    election_lock: &mut ElectionLockHandle,
+) {
+    handle.broadcast_vote(election, election_lock.0.as_mut().unwrap());
 }
 
 #[no_mangle]

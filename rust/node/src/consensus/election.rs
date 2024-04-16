@@ -3,6 +3,7 @@ use crate::{stats::DetailType, utils::HardenedConstants};
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, QualifiedRoot, Root};
 use std::{
     collections::HashMap,
+    fmt::Debug,
     sync::{
         atomic::{AtomicBool, AtomicU32, Ordering},
         Arc, Mutex, RwLock,
@@ -25,6 +26,7 @@ pub struct Election {
     pub election_start: Instant,
     pub confirmation_action: Box<dyn Fn(Arc<BlockEnum>) + Send + Sync>,
     pub live_vote_action: Box<dyn Fn(Account) + Send + Sync>,
+    height: u64,
 }
 
 impl Election {
@@ -37,6 +39,7 @@ impl Election {
     ) -> Self {
         let root = block.root();
         let qualified_root = block.qualified_root();
+        let height = block.sideband().map(|s| s.height).unwrap_or_default();
 
         let data = ElectionData {
             status: ElectionStatus {
@@ -72,6 +75,7 @@ impl Election {
             last_req: RwLock::new(None),
             confirmation_action,
             live_vote_action,
+            height,
         }
     }
 
@@ -96,6 +100,21 @@ impl Election {
 
     pub fn age(&self) -> Duration {
         self.mutex.lock().unwrap().state_start.elapsed()
+    }
+
+    pub fn failed(&self) -> bool {
+        self.mutex.lock().unwrap().state == ElectionState::ExpiredUnconfirmed
+    }
+}
+
+impl Debug for Election {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Election")
+            .field("id", &self.id)
+            .field("qualified_root", &self.qualified_root)
+            .field("behavior", &self.behavior)
+            .field("height", &self.height)
+            .finish()
     }
 }
 

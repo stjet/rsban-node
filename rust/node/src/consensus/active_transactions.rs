@@ -46,6 +46,7 @@ pub struct ActiveTransactions {
     pub vacancy_update: Mutex<Box<dyn Fn() + Send + Sync>>,
     vote_cache: Arc<Mutex<VoteCache>>,
     stats: Arc<Stats>,
+    active_stopped_observer: Box<dyn Fn(BlockHash) + Send + Sync>,
 }
 
 impl ActiveTransactions {
@@ -64,6 +65,7 @@ impl ActiveTransactions {
         tcp_channels: Arc<TcpChannels>,
         vote_cache: Arc<Mutex<VoteCache>>,
         stats: Arc<Stats>,
+        active_stopped_observer: Box<dyn Fn(BlockHash) + Send + Sync>,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveTransactionsData {
@@ -92,6 +94,7 @@ impl ActiveTransactions {
             vacancy_update: Mutex::new(Box::new(|| {})),
             vote_cache,
             stats,
+            active_stopped_observer,
         }
     }
 
@@ -374,6 +377,17 @@ impl ActiveTransactions {
         result
     }
 
+    pub fn broadcast_vote(
+        &self,
+        election: &Election,
+        election_guard: &mut MutexGuard<ElectionData>,
+    ) {
+        if election_guard.last_vote_elapsed() >= self.network.network.vote_broadcast_interval {
+            self.broadcast_vote_locked(election_guard, election);
+            election_guard.set_last_vote();
+        }
+    }
+
     pub fn broadcast_vote_locked(
         &self,
         election_guard: &mut MutexGuard<ElectionData>,
@@ -409,6 +423,79 @@ impl ActiveTransactions {
                 trace!(qualified_root = ?election.qualified_root, %winner, "type" = "normal", "broadcast vote");
                 self.generator.add(&election.root, &winner); // Broadcasts vote to the network
             }
+        }
+    }
+
+    pub fn cleanup_election(
+        &self,
+        mut guard: MutexGuard<ActiveTransactionsData>,
+        election: &Arc<Election>,
+    ) {
+        // Keep track of election count by election type
+        debug_assert!(guard.count_by_behavior(election.behavior) > 0);
+        *guard.count_by_behavior_mut(election.behavior) -= 1;
+
+        let election_winner: BlockHash;
+        let blocks;
+        {
+            let election_guard = election.mutex.lock().unwrap();
+            blocks = election_guard.last_blocks.clone();
+            election_winner = election_guard.status.winner.as_ref().unwrap().hash();
+        }
+
+        for hash in blocks.keys() {
+            let erased = guard.blocks.remove(hash);
+            debug_assert!(erased.is_some());
+        }
+
+        guard.roots.erase(&election.qualified_root);
+
+        self.stats.inc(
+            self.completion_type(election),
+            election.behavior.into(),
+            Direction::In,
+        );
+        trace!(election = ?election, "active stopped");
+
+        drop(guard);
+
+        (self.vacancy_update.lock().unwrap())();
+
+        for (hash, block) in blocks {
+            // Notify observers about dropped elections & blocks lost confirmed elections
+            if !self.confirmed(election) || hash != election_winner {
+                (self.active_stopped_observer)(hash);
+            }
+
+            if !self.confirmed(election) {
+                // Clear from publish filter
+                self.clear_publish_filter(&block);
+            }
+        }
+    }
+
+    fn completion_type(&self, election: &Election) -> StatType {
+        if self.confirmed(election) {
+            StatType::ActiveConfirmed
+        } else if election.failed() {
+            StatType::ActiveTimeout
+        } else {
+            StatType::ActiveDropped
+        }
+    }
+
+    fn confirmed(&self, election: &Election) -> bool {
+        let guard = election.mutex.lock().unwrap();
+        self.confirmed_locked(&guard)
+    }
+
+    pub fn erase_oldest(&self) {
+        let guard = self.mutex.lock().unwrap();
+        let mut it = guard.roots.iter_sequenced();
+        if let Some((_, election)) = it.next() {
+            let election = Arc::clone(election);
+            drop(it);
+            self.cleanup_election(guard, &election)
         }
     }
 }

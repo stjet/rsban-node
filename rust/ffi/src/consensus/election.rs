@@ -145,6 +145,11 @@ pub unsafe extern "C" fn rsn_election_confirmation_request_count_inc(handle: &El
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_election_failed(handle: &ElectionHandle) -> bool {
+    handle.0.failed()
+}
+
+#[no_mangle]
 pub extern "C" fn rsn_election_behavior(handle: &ElectionHandle) -> u8 {
     handle.0.behavior as u8
 }

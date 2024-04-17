@@ -383,7 +383,7 @@ impl<T: Environment + 'static> Ledger<T> {
         let mut result = Amount::zero();
 
         for (key, info) in self.account_receivable_upper_bound(txn, *account, BlockHash::zero()) {
-            if !only_confirmed || self.block_confirmed(txn, &key.hash) {
+            if !only_confirmed || self.block_confirmed(txn, &key.send_block_hash) {
                 result += info.amount;
             }
         }
@@ -919,16 +919,16 @@ impl<'a, T: Environment + 'static> Iterator for ReceivableIterator<'a, T> {
         let (key, info) = it.current()?;
         match self.actual_account {
             Some(account) => {
-                if key.account == account {
-                    self.next_hash = key.hash.inc();
+                if key.receiving_account == account {
+                    self.next_hash = key.send_block_hash.inc();
                     Some((key.clone(), info.clone()))
                 } else {
                     None
                 }
             }
             None => {
-                self.actual_account = Some(key.account);
-                self.next_hash = key.hash.inc();
+                self.actual_account = Some(key.receiving_account);
+                self.next_hash = key.send_block_hash.inc();
                 Some((key.clone(), info.clone()))
             }
         }

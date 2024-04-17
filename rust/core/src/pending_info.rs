@@ -5,10 +5,15 @@ use crate::{
 use num::FromPrimitive;
 use std::mem::size_of;
 
+/// Information on an uncollected send
+/// This struct captures the data stored in a pending table entry
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct PendingInfo {
+    /// The account sending the funds
     pub source: Account,
+    /// Amount receivable in this transaction
     pub amount: Amount,
+    /// Epoch of sending block, this info is stored here to make it possible to prune the send block
     pub epoch: Epoch,
 }
 

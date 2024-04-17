@@ -6913,7 +6913,7 @@ TEST (rpc, election_statistics)
 
 	boost::property_tree::ptree request;
 	request.put ("action", "election_statistics");
-	
+
 	auto response (wait_response (system, rpc_ctx, request));
 	ASSERT_EQ ("1", response.get<std::string> ("normal"));
 	ASSERT_EQ ("0", response.get<std::string> ("hinted"));

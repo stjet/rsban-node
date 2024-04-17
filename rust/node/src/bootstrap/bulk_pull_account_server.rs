@@ -54,8 +54,8 @@ impl BulkPullAccountServerImpl {
         /*
          * Initialize the current item from the requested account
          */
-        self.current_key.account = self.request.account;
-        self.current_key.hash = BlockHash::zero();
+        self.current_key.receiving_account = self.request.account;
+        self.current_key.send_block_hash = BlockHash::zero();
     }
 
     fn send_frontier(&self, server: Arc<Mutex<BulkPullAccountServerImpl>>) {
@@ -110,8 +110,8 @@ impl BulkPullAccountServerImpl {
                 trace!(pending = %block_info.source, "Sending pending");
                 send_buffer.extend_from_slice(block_info.source.as_bytes());
             } else {
-                trace!(block = %block_info_key.hash, "Sending block");
-                send_buffer.extend_from_slice(block_info_key.hash.as_bytes());
+                trace!(block = %block_info_key.send_block_hash, "Sending block");
+                send_buffer.extend_from_slice(block_info_key.send_block_hash.as_bytes());
                 send_buffer.extend_from_slice(&block_info.amount.to_be_bytes());
 
                 if self.pending_include_address {
@@ -148,8 +148,8 @@ impl BulkPullAccountServerImpl {
             let tx = self.ledger.read_txn();
             let mut stream = self.ledger.account_receivable_upper_bound(
                 &tx,
-                self.current_key.account,
-                self.current_key.hash,
+                self.current_key.receiving_account,
+                self.current_key.send_block_hash,
             );
 
             let Some((key, info)) = stream.next() else {

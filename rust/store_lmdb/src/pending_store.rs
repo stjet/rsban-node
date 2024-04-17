@@ -127,7 +127,7 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
         let iterator = self.begin_at_key(txn, &key);
         iterator
             .current()
-            .map(|(k, _)| k.account == *account)
+            .map(|(k, _)| k.receiving_account == *account)
             .unwrap_or(false)
     }
 

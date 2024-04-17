@@ -39,8 +39,8 @@ pub struct PendingInfoDto {
 impl From<&PendingKeyDto> for PendingKey {
     fn from(dto: &PendingKeyDto) -> Self {
         Self {
-            account: Account::from_bytes(dto.account),
-            hash: BlockHash::from_bytes(dto.hash),
+            receiving_account: Account::from_bytes(dto.account),
+            send_block_hash: BlockHash::from_bytes(dto.hash),
         }
     }
 }
@@ -58,8 +58,8 @@ impl From<&PendingInfoDto> for PendingInfo {
 impl From<PendingKey> for PendingKeyDto {
     fn from(value: PendingKey) -> Self {
         Self {
-            account: *value.account.as_bytes(),
-            hash: *value.hash.as_bytes(),
+            account: *value.receiving_account.as_bytes(),
+            hash: *value.send_block_hash.as_bytes(),
         }
     }
 }

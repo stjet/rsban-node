@@ -1,24 +1,29 @@
 use crate::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
-    Account, Block, BlockEnum, BlockHash,
+    Account, BlockEnum, BlockHash,
 };
 use primitive_types::U512;
 
+/// This struct represents the data written into the pending (receivable) database table key
+/// the receiving account and hash of the send block identify a pending db table entry
 #[derive(Default, PartialEq, Eq, Debug, Clone)]
 pub struct PendingKey {
-    pub account: Account,
-    pub hash: BlockHash,
+    pub receiving_account: Account,
+    pub send_block_hash: BlockHash,
 }
 
 impl PendingKey {
-    pub fn new(account: Account, hash: BlockHash) -> Self {
-        Self { account, hash }
+    pub fn new(receiving_account: Account, send_block_hash: BlockHash) -> Self {
+        Self {
+            receiving_account,
+            send_block_hash,
+        }
     }
 
     pub fn to_bytes(&self) -> [u8; 64] {
         let mut result = [0; 64];
-        result[..32].copy_from_slice(self.account.as_bytes());
-        result[32..].copy_from_slice(self.hash.as_bytes());
+        result[..32].copy_from_slice(self.receiving_account.as_bytes());
+        result[32..].copy_from_slice(self.send_block_hash.as_bytes());
         result
     }
 
@@ -40,8 +45,8 @@ impl PendingKey {
 
 impl Serialize for PendingKey {
     fn serialize(&self, writer: &mut dyn BufferWriter) {
-        self.account.serialize(writer);
-        self.hash.serialize(writer);
+        self.receiving_account.serialize(writer);
+        self.send_block_hash.serialize(writer);
     }
 }
 
@@ -57,7 +62,10 @@ impl Deserialize for PendingKey {
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
         let account = Account::deserialize(stream)?;
         let hash = BlockHash::deserialize(stream)?;
-        Ok(Self { account, hash })
+        Ok(Self {
+            receiving_account: account,
+            send_block_hash: hash,
+        })
     }
 }
 
@@ -74,10 +82,10 @@ impl From<U512> for PendingKey {
 
 impl PartialOrd for PendingKey {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        if self.account == other.account {
-            self.hash.partial_cmp(&other.hash)
+        if self.receiving_account == other.receiving_account {
+            self.send_block_hash.partial_cmp(&other.send_block_hash)
         } else {
-            self.account.partial_cmp(&other.account)
+            self.receiving_account.partial_cmp(&other.receiving_account)
         }
     }
 }

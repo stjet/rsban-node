@@ -43,10 +43,7 @@ impl WalletRepresentatives {
     }
 
     pub fn check_rep(&mut self, account: Account, half_principal_weight: Amount) -> bool {
-        let weight = {
-            let txn = self.ledger.read_txn();
-            self.ledger.weight_exact(&txn, account)
-        };
+        let weight = self.ledger.weight(&account);
 
         if weight < self.vote_minimum {
             return false; // account not a representative

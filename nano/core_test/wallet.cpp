@@ -591,8 +591,7 @@ TEST (wallet, work_generate)
 	auto account1{ system.account (0) };
 	nano::keypair key;
 	auto block (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, 100));
-	auto transaction (node1.store.tx_begin_read ());
-	ASSERT_TIMELY (10s, node1.ledger.account_balance (*transaction, nano::dev::genesis_key.pub) != amount1);
+	ASSERT_TIMELY (10s, node1.ledger.account_balance (*node1.ledger.store.tx_begin_read (), nano::dev::genesis_key.pub) != amount1);
 	system.deadline_set (10s);
 	auto again (true);
 	while (again)

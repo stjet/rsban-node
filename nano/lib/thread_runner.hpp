@@ -31,6 +31,16 @@ private:
 	boost::asio::executor_work_guard<boost::asio::io_context::executor_type> io_guard;
 
 private:
-	void run (boost::asio::io_context &);
+	boost::asio::io_context & io_ctx;
+	void run ();
 };
+
+constexpr unsigned asio_handler_tracking_threshold ()
+{
+#if NANO_ASIO_HANDLER_TRACKING == 0
+	return 0;
+#else
+	return NANO_ASIO_HANDLER_TRACKING;
+#endif
+}
 } // namespace nano

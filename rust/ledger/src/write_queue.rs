@@ -86,18 +86,17 @@ impl WriteQueue {
         }
 
         let mut lk = self.data.queue.lock().unwrap();
+        debug_assert!(lk.iter().all(|i| *i != writer));
+
         // Add writer to the end of the queue if it's not already waiting
         if !lk.contains(&writer) {
             lk.push_back(writer);
         }
 
-        while let Some(&w) = lk.front() {
-            if w != writer {
-                lk = self.data.condition.wait(lk).unwrap();
-            } else {
-                break;
-            }
-        }
+        let _result = self
+            .data
+            .condition
+            .wait_while(lk, |queue| queue.front() != Some(&writer));
 
         self.create_write_guard()
     }

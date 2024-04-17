@@ -9,6 +9,8 @@ pub enum Writer {
     ConfirmationHeight,
     ProcessBatch,
     Pruning,
+    Voting,
+    VotingFinal,
     Testing, // Used in tests to emulate a write lock
 }
 

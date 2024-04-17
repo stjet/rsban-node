@@ -11,7 +11,7 @@ use std::{
 };
 
 use rsnano_core::{utils::milliseconds_since_epoch, Account, BlockEnum, BlockHash, Root, Vote};
-use rsnano_ledger::Ledger;
+use rsnano_ledger::{Ledger, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use tracing::trace;
 
@@ -376,6 +376,12 @@ impl SharedState {
     fn process_batch(&self, batch: VecDeque<(Root, BlockHash)>) {
         let mut candidates_new = VecDeque::new();
         {
+            let writer = if self.is_final {
+                Writer::VotingFinal
+            } else {
+                Writer::Voting
+            };
+            let _guard = self.ledger.write_queue.wait(writer);
             let mut txn = self.ledger.rw_txn();
             for (root, hash) in batch {
                 if self.should_vote(&mut txn, &root, &hash) {

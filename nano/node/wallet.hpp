@@ -299,7 +299,6 @@ public:
 	nano::wallets_error change_async (nano::wallet_id const & wallet_id, nano::account const &, nano::account const &, std::function<void (std::shared_ptr<nano::block> const &)> const &, uint64_t = 0, bool = true);
 	nano::wallets_error send_async (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a = 0, bool generate_work_a = true, boost::optional<std::string> id_a = {});
 
-	void receive_confirmed (store::transaction const & block_transaction_a, nano::block_hash const & hash_a, nano::account const & destination_a);
 	nano::wallets_error search_receivable (nano::wallet_id const &);
 	void search_receivable_all ();
 
@@ -314,6 +313,7 @@ public:
 	bool should_republish_vote (nano::account const & voting_account) const;
 	void compute_reps ();
 	void ongoing_compute_reps ();
+	void receive_confirmed (nano::block_hash const & hash_a, nano::account const & destination_a);
 	/** Start read-write transaction */
 	std::unique_ptr<store::write_transaction> tx_begin_write ();
 

@@ -482,8 +482,9 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		confirming_set.add_cemented_observer ([this] (auto const & block) {
 			if (block->is_send ())
 			{
-				auto transaction = store.tx_begin_read ();
-				receive_confirmed (*transaction, block->hash (), block->destination ());
+				workers->push_task ([this, hash = block->hash (), destination = block->destination ()] () {
+					wallets.receive_confirmed (hash, destination);
+				});
 			}
 		});
 	}
@@ -1235,11 +1236,6 @@ void nano::node::ongoing_online_weight_calculation ()
 {
 	online_reps.sample ();
 	ongoing_online_weight_calculation_queue ();
-}
-
-void nano::node::receive_confirmed (store::transaction const & block_transaction_a, nano::block_hash const & hash_a, nano::account const & destination_a)
-{
-	wallets.receive_confirmed (block_transaction_a, hash_a, destination_a);
 }
 
 void nano::node::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)

@@ -215,43 +215,22 @@ public: // Events
 	nano::vote_code vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a = nano::vote_source::live);
 	nano::election_extended_status current_status (nano::election & election) const;
 	nano::tally_t tally (nano::election & election) const;
-	void on_block_confirmed (std::function<void (std::shared_ptr<nano::block> const &, nano::store::read_transaction const &, nano::election_status_type)> callback);
 
 private:
 	// Erase elections if we're over capacity
 	void trim ();
 	void request_loop ();
-	void request_confirm (nano::active_transactions_lock &);
-	// Erase all blocks from active and, if not confirmed, clear digests from network filters
-	void cleanup_election (nano::active_transactions_lock & lock_a, std::shared_ptr<nano::election>);
 	// Returns a list of elections sorted by difficulty, mutex must be locked
 	std::vector<std::shared_ptr<nano::election>> list_active_impl (std::size_t, nano::active_transactions_lock & guard) const;
-	void notify_observers (nano::store::read_transaction const & transaction, nano::election_status const & status, std::vector<nano::vote_with_weight_info> const & votes);
 	bool trigger_vote_cache (nano::block_hash);
-	/**
-	 * Broadcast vote for current election winner. Generates final vote if reached quorum or already confirmed
-	 * Requires mutex lock
-	 */
-	void broadcast_vote_locked (nano::election_lock & lock, nano::election & election);
 	/**
 	 * Broadcasts vote for the current winner of this election
 	 * Checks if sufficient amount of time (`vote_generation_interval`) passed since the last vote generation
 	 */
 	void broadcast_vote (nano::election & election, nano::election_lock & lock_a);
-	bool broadcast_block_predicate (nano::election & election, nano::election_lock & lock_a) const;
-	void broadcast_block (nano::confirmation_solicitor & solicitor_a, nano::election & election, nano::election_lock & lock_a);
-	// Minimum time between broadcasts of the current winner of an election, as a backup to requesting confirmations
-	std::chrono::milliseconds base_latency () const;
-	/**
-	 * Calculates time delay between broadcasting confirmation requests
-	 */
-	std::chrono::milliseconds confirm_req_time (nano::election & election) const;
-	void send_confirm_req (nano::confirmation_solicitor & solicitor_a, nano::election & election, nano::election_lock & lock_a);
-	bool transition_time (nano::confirmation_solicitor & solicitor_a, nano::election & election);
 
 private: // Dependencies
 	nano::node & node;
-	nano::confirming_set & confirming_set;
 	nano::block_processor & block_processor;
 
 public:

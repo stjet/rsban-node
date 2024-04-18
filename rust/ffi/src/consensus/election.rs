@@ -114,24 +114,6 @@ pub unsafe extern "C" fn rsn_election_is_quorum(handle: &ElectionHandle) -> bool
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_election_is_quorum_exchange(
-    handle: &ElectionHandle,
-    value: bool,
-) -> bool {
-    handle.0.is_quorum.swap(value, Ordering::SeqCst)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_last_block_elapsed_ms(handle: &ElectionHandle) -> u64 {
-    handle.0.last_block_elapsed().as_millis() as u64
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_set_last_block(handle: &ElectionHandle) {
-    handle.0.set_last_block();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_election_confirmation_request_count(handle: &ElectionHandle) -> u32 {
     handle.0.confirmation_request_count.load(Ordering::SeqCst)
 }
@@ -152,70 +134,6 @@ pub extern "C" fn rsn_election_failed(handle: &ElectionHandle) -> bool {
 #[no_mangle]
 pub extern "C" fn rsn_election_behavior(handle: &ElectionHandle) -> u8 {
     handle.0.behavior as u8
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_election_elapsed_ms(handle: &ElectionHandle) -> u64 {
-    handle.0.election_start.elapsed().as_millis() as u64
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_election_last_req_set(handle: &ElectionHandle) {
-    handle.0.set_last_req();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_election_last_req_elapsed_ms(handle: &ElectionHandle) -> u64 {
-    handle.0.last_req_elapsed().as_millis() as u64
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_election_lock_last_vote_set(handle: &mut ElectionLockHandle) {
-    handle.0.as_mut().unwrap().set_last_vote();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_election_lock_last_vote_elapsed_ms(handle: &ElectionLockHandle) -> u64 {
-    handle.0.as_ref().unwrap().last_vote_elapsed().as_millis() as u64
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_lock_last_block(
-    handle: &ElectionLockHandle,
-    block_hash: *mut u8,
-) {
-    handle
-        .0
-        .as_ref()
-        .unwrap()
-        .last_block_hash
-        .copy_bytes(block_hash)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_lock_last_block_set(
-    handle: &mut ElectionLockHandle,
-    block_hash: *const u8,
-) {
-    handle.0.as_mut().unwrap().last_block_hash = BlockHash::from_ptr(block_hash);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_live_vote_action(
-    handle: &ElectionHandle,
-    account: *const u8,
-) {
-    let account = Account::from_ptr(account);
-    (handle.0.live_vote_action)(account);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_confirmation_action(
-    handle: &ElectionHandle,
-    block: &BlockHandle,
-) {
-    let block = Arc::clone(block);
-    (handle.0.confirmation_action)(block);
 }
 
 pub struct ElectionLockHandle(pub Option<MutexGuard<'static, ElectionData>>);
@@ -262,18 +180,6 @@ pub extern "C" fn rsn_election_lock_state_start_elapsed_ms(handle: &ElectionLock
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_election_lock_update_status_to_confirmed(
-    lock_handle: &mut ElectionLockHandle,
-    election_handle: &ElectionHandle,
-) {
-    lock_handle
-        .0
-        .as_mut()
-        .unwrap()
-        .update_status_to_confirmed(&election_handle.0);
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_election_lock_status_set(
     handle: &mut ElectionLockHandle,
     status: &ElectionStatusHandle,
@@ -285,11 +191,6 @@ pub extern "C" fn rsn_election_lock_status_set(
 #[no_mangle]
 pub extern "C" fn rsn_election_lock_state(handle: &ElectionLockHandle) -> u8 {
     handle.0.as_ref().unwrap().state as u8
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_election_lock_state_set(handle: &mut ElectionLockHandle, state: u8) {
-    handle.0.as_mut().unwrap().state = FromPrimitive::from_u8(state).unwrap()
 }
 
 #[no_mangle]
@@ -350,40 +251,6 @@ pub unsafe extern "C" fn rsn_election_lock_erase_block(
         .unwrap()
         .last_blocks
         .remove(&BlockHash::from_ptr(hash));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_lock_last_tally_clear(handle: &mut ElectionLockHandle) {
-    handle.0.as_mut().unwrap().last_tally.clear();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_lock_last_tally_add(
-    handle: &mut ElectionLockHandle,
-    hash: *const u8,
-    amount: *const u8,
-) {
-    handle
-        .0
-        .as_mut()
-        .unwrap()
-        .last_tally
-        .insert(BlockHash::from_ptr(hash), Amount::from_ptr(amount));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_lock_last_tally(
-    handle: &ElectionLockHandle,
-) -> *mut TallyHandle {
-    let tally_vec = handle
-        .0
-        .as_ref()
-        .unwrap()
-        .last_tally
-        .iter()
-        .map(|(k, v)| (*k, *v))
-        .collect();
-    Box::into_raw(Box::new(TallyHandle(tally_vec)))
 }
 
 pub struct TallyHandle(Vec<(BlockHash, Amount)>);

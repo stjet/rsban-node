@@ -267,16 +267,6 @@ pub unsafe extern "C" fn rsn_active_transactions_lock_roots_insert(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_lock_roots_erase(
-    handle: &mut ActiveTransactionsLockHandle,
-    root: *const u8,
-    previous: *const u8,
-) {
-    let root = QualifiedRoot::new(Root::from_ptr(root), BlockHash::from_ptr(previous));
-    handle.0.as_mut().unwrap().roots.erase(&root)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_lock_roots_exists(
     handle: &ActiveTransactionsLockHandle,
     root: *const u8,
@@ -322,19 +312,6 @@ pub extern "C" fn rsn_active_transactions_lock_count_by_behavior_inc(
         .unwrap()
         .count_by_behavior_mut(FromPrimitive::from_u8(behavior).unwrap());
     *count += 1;
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_active_transactions_lock_count_by_behavior_dec(
-    handle: &mut ActiveTransactionsLockHandle,
-    behavior: u8,
-) {
-    let count = handle
-        .0
-        .as_mut()
-        .unwrap()
-        .count_by_behavior_mut(FromPrimitive::from_u8(behavior).unwrap());
-    *count -= 1;
 }
 
 #[no_mangle]
@@ -429,6 +406,14 @@ pub unsafe extern "C" fn rsn_active_transactions_remove_votes(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_erase(
+    handle: &ActiveTransactionsHandle,
+    root: *const u8,
+) -> bool {
+    handle.erase(&QualifiedRoot::from_ptr(root))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_erase_oldest(handle: &ActiveTransactionsHandle) {
     handle.erase_oldest();
 }
@@ -436,23 +421,6 @@ pub unsafe extern "C" fn rsn_active_transactions_erase_oldest(handle: &ActiveTra
 #[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_trim(handle: &ActiveTransactionsHandle) {
     handle.trim();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_confirm_req_time_ms(
-    handle: &ActiveTransactionsHandle,
-    election: &ElectionHandle,
-) -> i64 {
-    handle.confirm_req_time(election).as_millis() as i64
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_broadcast_block_predicate(
-    handle: &ActiveTransactionsHandle,
-    election: &ElectionHandle,
-    lock_handle: &mut ElectionLockHandle,
-) -> bool {
-    handle.broadcast_block_predicate(election, lock_handle.0.as_ref().unwrap())
 }
 
 pub struct TallyBlocksHandle(Vec<(Amount, Arc<BlockEnum>)>);
@@ -617,15 +585,6 @@ pub extern "C" fn rsn_active_transactions_set_vacancy_update(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_active_transactions_cleanup_election(
-    handle: &ActiveTransactionsHandle,
-    lock_handle: &mut ActiveTransactionsLockHandle,
-    election: &ElectionHandle,
-) {
-    handle.cleanup_election(lock_handle.0.take().unwrap(), election);
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_active_transactions_clear(handle: &ActiveTransactionsHandle) {
     handle.clear();
 }
@@ -701,15 +660,6 @@ pub unsafe extern "C" fn rsn_active_transactions_broadcast_vote(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_broadcast_vote_locked(
-    handle: &ActiveTransactionsHandle,
-    election_lock: &mut ElectionLockHandle,
-    election: &ElectionHandle,
-) {
-    handle.broadcast_vote_locked(election_lock.0.as_mut().unwrap(), election)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_vote(
     handle: &ActiveTransactionsHandle,
     vote: &VoteHandle,
@@ -735,16 +685,6 @@ pub unsafe extern "C" fn rsn_active_transactions_vote2(
         &BlockHash::from_ptr(block_hash),
         VoteSource::from_u8(vote_source).unwrap(),
     ) as u8
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_notify_observers(
-    handle: &ActiveTransactionsHandle,
-    tx: &mut TransactionHandle,
-    status: &ElectionStatusHandle,
-    votes: &VoteWithWeightInfoVecHandle,
-) {
-    handle.notify_observers(tx.as_read_txn(), &status.0, &votes.0);
 }
 
 #[no_mangle]
@@ -874,16 +814,4 @@ pub unsafe extern "C" fn rsn_election_winner_details_insert(
         .as_mut()
         .unwrap()
         .insert(BlockHash::from_ptr(hash), Arc::clone(election));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_winner_details_remove(
-    handle: &mut ElectionWinnerDetailsLock,
-    hash: *const u8,
-) {
-    handle
-        .0
-        .as_mut()
-        .unwrap()
-        .remove(&BlockHash::from_ptr(hash));
 }

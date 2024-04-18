@@ -486,6 +486,8 @@ impl ActiveTransactions {
         }
     }
 
+    /// Broadcast vote for current election winner. Generates final vote if reached quorum or already confirmed
+    /// Requires mutex lock
     pub fn broadcast_vote_locked(
         &self,
         election_guard: &mut MutexGuard<ElectionData>,
@@ -524,6 +526,7 @@ impl ActiveTransactions {
         }
     }
 
+    /// Erase all blocks from active and, if not confirmed, clear digests from network filters
     pub fn cleanup_election<'a>(
         &self,
         mut guard: MutexGuard<'a, ActiveTransactionsData>,
@@ -613,6 +616,7 @@ impl ActiveTransactions {
         }
     }
 
+    /// Minimum time between broadcasts of the current winner of an election, as a backup to requesting confirmations
     fn base_latency(&self) -> Duration {
         if self.network.network.is_dev_network() {
             Duration::from_millis(25)
@@ -621,6 +625,7 @@ impl ActiveTransactions {
         }
     }
 
+    /// Calculates time delay between broadcasting confirmation requests
     pub fn confirm_req_time(&self, election: &Election) -> Duration {
         match election.behavior {
             ElectionBehavior::Normal | ElectionBehavior::Hinted => self.base_latency() * 5,
@@ -726,6 +731,7 @@ impl ActiveTransactions {
         self.mutex.lock().unwrap()
     }
 
+    /// Returns a list of elections sorted by difficulty, mutex must be locked
     fn list_active_impl(
         max: usize,
         guard: &MutexGuard<ActiveTransactionsData>,
@@ -738,11 +744,14 @@ impl ActiveTransactions {
             .collect()
     }
 
-    fn erase(&self, root: &QualifiedRoot) {
+    pub fn erase(&self, root: &QualifiedRoot) -> bool {
         let guard = self.mutex.lock().unwrap();
         if let Some(election) = guard.roots.get(root) {
             let election = Arc::clone(election);
             self.cleanup_election(guard, &election);
+            true
+        } else {
+            false
         }
     }
 

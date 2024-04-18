@@ -16,6 +16,8 @@ pub struct ConfirmReq {
 }
 
 impl ConfirmReq {
+    pub const HASHES_MAX: usize = 7;
+
     // Header extension bits:
     // ----------------------
     const COUNT_HIGH_MASK: u16 = 0b1111_0000_0000_0000;

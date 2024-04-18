@@ -130,6 +130,13 @@ impl ChannelEnum {
             ProtocolInfo::dev_network(),
         ))
     }
+
+    pub fn max(&self, traffic_type: TrafficType) -> bool {
+        match self {
+            Self::Tcp(tcp) => tcp.max(traffic_type),
+            _ => false,
+        }
+    }
 }
 
 impl Deref for ChannelEnum {

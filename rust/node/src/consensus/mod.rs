@@ -1,4 +1,5 @@
 mod active_transactions;
+mod confirmation_solicitor;
 mod election;
 mod local_vote_history;
 mod recently_confirmed_cache;

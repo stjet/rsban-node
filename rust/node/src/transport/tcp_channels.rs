@@ -474,7 +474,8 @@ impl TcpChannels {
     pub fn len_sqrt(&self) -> f32 {
         self.tcp_channels.lock().unwrap().len_sqrt()
     }
-
+    /// Desired fanout for a given scale
+    /// Simulating with sqrt_broadcast_simulate shows we only need to broadcast to sqrt(total_peers) random peers in order to successfully publish to everyone with high probability
     pub fn fanout(&self, scale: f32) -> usize {
         self.tcp_channels.lock().unwrap().fanout(scale)
     }

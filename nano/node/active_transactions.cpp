@@ -306,16 +306,6 @@ bool nano::active_transactions::confirmed (nano::block_hash const & hash) const
 	return node.ledger.block_confirmed (*transaction, hash);
 }
 
-void nano::active_transactions::remove_block (nano::election_lock & lock, nano::block_hash const & hash_a)
-{
-	rsnano::rsn_active_transactions_remove_block (handle, lock.handle, hash_a.bytes.data ());
-}
-
-bool nano::active_transactions::replace_by_weight (nano::election & election, nano::election_lock & lock_a, nano::block_hash const & hash_a)
-{
-	return rsnano::rsn_active_transactions_replace_by_weight (handle, election.handle, lock_a.handle, hash_a.bytes.data ());
-}
-
 std::vector<nano::vote_with_weight_info> nano::active_transactions::votes_with_weight (nano::election & election) const
 {
 	std::multimap<nano::uint128_t, nano::vote_with_weight_info, std::greater<nano::uint128_t>> sorted_votes;
@@ -405,33 +395,9 @@ void nano::active_transactions::remove_votes (nano::election & election, nano::e
 	rsnano::rsn_active_transactions_remove_votes (handle, election.handle, lock.handle, hash_a.bytes.data ());
 }
 
-bool nano::active_transactions::have_quorum (nano::tally_t const & tally_a) const
-{
-	auto tally_handle = rsnano::rsn_tally_blocks_create ();
-	for (const auto & [weight, block] : tally_a)
-	{
-		nano::amount amount{ weight };
-		rsnano::rsn_tally_blocks_insert (tally_handle, amount.bytes.data (), block->get_handle ());
-	}
-	bool result = rsnano::rsn_active_transactions_have_quorum (handle, tally_handle);
-	rsnano::rsn_tally_blocks_destroy (tally_handle);
-	return result;
-}
-
-void nano::active_transactions::confirm_if_quorum (nano::election_lock & lock_a, nano::election & election)
-{
-	rsnano::rsn_active_transactions_confirm_if_quorum (handle, lock_a.handle, election.handle);
-}
-
 void nano::active_transactions::force_confirm (nano::election & election)
 {
 	rsnano::rsn_active_transactions_force_confirm (handle, election.handle);
-}
-
-std::chrono::seconds nano::active_transactions::cooldown_time (nano::uint128_t weight) const
-{
-	nano::amount weight_amount{ weight };
-	return std::chrono::seconds{ rsnano::rsn_active_transactions_cooldown_time_s (handle, weight_amount.bytes.data ()) };
 }
 
 void nano::active_transactions::block_already_cemented_callback (nano::block_hash const & hash_a)
@@ -593,16 +559,6 @@ nano::recently_confirmed_cache nano::active_transactions::recently_confirmed ()
 nano::recently_cemented_cache nano::active_transactions::recently_cemented ()
 {
 	return nano::recently_cemented_cache{ rsnano::rsn_active_transactions_recently_cemented (handle) };
-}
-
-nano::election_extended_status nano::active_transactions::current_status (nano::election & election) const
-{
-	nano::election_lock guard{ election };
-	nano::election_status status_l = guard.status ();
-	status_l.set_confirmation_request_count (election.get_confirmation_request_count ());
-	status_l.set_block_count (nano::narrow_cast<decltype (status_l.get_block_count ())> (guard.last_blocks_size ()));
-	status_l.set_voter_count (nano::narrow_cast<decltype (status_l.get_voter_count ())> (guard.last_votes_size ()));
-	return nano::election_extended_status{ status_l, guard.last_votes (), tally_impl (guard) };
 }
 
 nano::tally_t nano::active_transactions::tally (nano::election & election) const

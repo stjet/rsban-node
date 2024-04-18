@@ -188,22 +188,13 @@ public: // Events
 	void confirm_once (nano::election_lock & lock_a, nano::election & election);
 	nano::tally_t tally_impl (nano::election_lock & lock) const;
 	void remove_votes (nano::election & election, nano::election_lock & lock, nano::block_hash const & hash_a);
-	bool have_quorum (nano::tally_t const & tally_a) const;
-	// Confirm this block if quorum is met
-	void confirm_if_quorum (nano::election_lock & lock_a, nano::election & election);
 	void force_confirm (nano::election & election);
-	/**
-	 * Calculates minimum time delay between subsequent votes when processing non-final votes
-	 */
-	std::chrono::seconds cooldown_time (nano::uint128_t weight) const;
 	// Returns true when the winning block is durably confirmed in the ledger.
 	// Later once the confirmation height processor has updated the confirmation height it will be confirmed on disk
 	// It is possible for an election to be confirmed on disk but not in memory, for instance if implicitly confirmed via confirmation height
 	bool confirmed (nano::election const & election) const;
 	bool confirmed_locked (nano::election_lock & lock) const;
 	bool confirmed (nano::block_hash const & hash) const;
-	void remove_block (nano::election_lock & lock, nano::block_hash const & hash_a);
-	bool replace_by_weight (nano::election & election, nano::election_lock & lock_a, nano::block_hash const & hash_a);
 	std::vector<nano::vote_with_weight_info> votes_with_weight (nano::election & election) const;
 	bool publish (std::shared_ptr<nano::block> const & block_a, nano::election & election);
 	/*
@@ -211,7 +202,6 @@ public: // Events
 	 * If the election reaches consensus, it will be confirmed
 	 */
 	nano::vote_code vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a = nano::vote_source::live);
-	nano::election_extended_status current_status (nano::election & election) const;
 	nano::tally_t tally (nano::election & election) const;
 
 private:

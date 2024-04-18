@@ -944,6 +944,11 @@ pub trait ActiveTransactionsExt {
     fn block_cemented_callback(&self, block: &Arc<BlockEnum>);
     fn trigger_vote_cache(&self, hash: &BlockHash) -> bool;
     fn publish_block(&self, block: &Arc<BlockEnum>) -> bool;
+    fn insert(
+        &self,
+        block: &Arc<BlockEnum>,
+        election_behavior: ElectionBehavior,
+    ) -> (bool, Option<Arc<Election>>);
 }
 
 impl ActiveTransactionsExt for Arc<ActiveTransactions> {
@@ -1253,5 +1258,84 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
         }
 
         result
+    }
+
+    fn insert(
+        &self,
+        block: &Arc<BlockEnum>,
+        election_behavior: ElectionBehavior,
+    ) -> (bool, Option<Arc<Election>>) {
+        let guard = self.mutex.lock().unwrap();
+
+        //nano::election_insertion_result result;
+
+        if guard.stopped {
+            return (false, None);
+        }
+        todo!()
+
+        //auto const root (block_a->qualified_root ());
+        //auto const hash = block_a->hash ();
+        //auto const existing_handle = rsnano::rsn_active_transactions_lock_roots_find (guard.handle, root.root ().bytes.data (), root.previous ().bytes.data ());
+        //std::shared_ptr<nano::election> existing{};
+        //if (existing_handle != nullptr)
+        //{
+        //    existing = std::make_shared<nano::election> (existing_handle);
+        //}
+
+        //if (existing == nullptr)
+        //{
+        //    if (!recently_confirmed ().exists (root))
+        //    {
+        //        result.inserted = true;
+        //        auto observe_rep_cb = [&node = node] (auto const & rep_a) {
+        //            // Representative is defined as online if replying to live votes or rep_crawler queries
+        //            node.online_reps.observe (rep_a);
+        //        };
+        //        auto hash (block_a->hash ());
+        //        result.election = nano::make_shared<nano::election> (node, block_a, nullptr, observe_rep_cb, election_behavior_a);
+        //        rsnano::rsn_active_transactions_lock_roots_insert (guard.handle, root.root ().bytes.data (), root.previous ().bytes.data (), result.election->handle);
+        //        rsnano::rsn_active_transactions_lock_blocks_insert (guard.handle, hash.bytes.data (), result.election->handle);
+
+        //        // Keep track of election count by election type
+        //        debug_assert (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (result.election->behavior ())) >= 0);
+        //        rsnano::rsn_active_transactions_lock_count_by_behavior_inc (guard.handle, static_cast<uint8_t> (result.election->behavior ()));
+
+        //        node.stats->inc (nano::stat::type::active_started, to_stat_detail (election_behavior_a));
+        //        node.logger->trace (nano::log::type::active_transactions, nano::log::detail::active_started,
+        //        nano::log::arg{ "behavior", election_behavior_a },
+        //        nano::log::arg{ "election", result.election });
+        //    }
+        //    else
+        //    {
+        //        // result is not set
+        //    }
+        //}
+        //else
+        //{
+        //    result.election = existing;
+        //}
+        //guard.unlock ();
+
+        //if (result.inserted)
+        //{
+        //    debug_assert (result.election);
+
+        //    trigger_vote_cache (hash);
+
+        //    node.observers->active_started.notify (hash);
+        //    vacancy_update ();
+        //}
+
+        //// Votes are generated for inserted or ongoing elections
+        //if (result.election)
+        //{
+        //    auto guard{ result.election->lock () };
+        //    broadcast_vote (*result.election, guard);
+        //}
+
+        //trim ();
+
+        //return result;
     }
 }

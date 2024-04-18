@@ -1,6 +1,7 @@
 use super::{
-    Election, ElectionBehavior, ElectionData, ElectionState, ElectionStatus, ElectionStatusType,
-    LocalVoteHistory, RecentlyConfirmedCache, VoteCache, VoteGenerator, VoteInfo,
+    confirmation_solicitor::ConfirmationSolicitor, Election, ElectionBehavior, ElectionData,
+    ElectionState, ElectionStatus, ElectionStatusType, LocalVoteHistory, RecentlyConfirmedCache,
+    VoteCache, VoteGenerator, VoteInfo,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -648,6 +649,54 @@ impl ActiveTransactions {
             .flatten()
             .collect();
         result
+    }
+
+    pub fn request_confirm<'a>(
+        &'a self,
+        guard: MutexGuard<'a, ActiveTransactionsData>,
+    ) -> MutexGuard<'a, ActiveTransactionsData> {
+        let this_loop_target = guard.roots.len();
+        let elections = Self::list_active_impl(this_loop_target, &guard);
+        drop(guard);
+
+        let mut solicitor = ConfirmationSolicitor::new(&self.network, &self.tcp_channels);
+        //solicitor.prepare (node.representative_register.principal_representatives (std::numeric_limits<std::size_t>::max ()));
+
+        //std::size_t unconfirmed_count_l (0);
+        //nano::timer<std::chrono::milliseconds> elapsed (nano::timer_state::started);
+
+        /*
+         * Loop through active elections in descending order of proof-of-work difficulty, requesting confirmation
+         *
+         * Only up to a certain amount of elections are queued for confirmation request and block rebroadcasting. The remaining elections can still be confirmed if votes arrive
+         * Elections extending the soft config.active_elections_size limit are flushed after a certain time-to-live cutoff
+         * Flushed elections are later re-activated via frontier confirmation
+         */
+        //for (auto const & election_l : elections_l)
+        //{
+        //    bool const confirmed_l (confirmed (*election_l));
+        //    unconfirmed_count_l += !confirmed_l;
+
+        //    if (confirmed_l || transition_time (solicitor, *election_l))
+        //    {
+        //        erase (election_l->qualified_root ());
+        //    }
+        //}
+
+        //solicitor.flush ();
+        self.mutex.lock().unwrap()
+    }
+
+    fn list_active_impl(
+        max: usize,
+        guard: &MutexGuard<ActiveTransactionsData>,
+    ) -> Vec<Arc<Election>> {
+        guard
+            .roots
+            .iter_sequenced()
+            .map(|(_, election)| Arc::clone(election))
+            .take(max)
+            .collect()
     }
 }
 

@@ -689,19 +689,6 @@ bool nano::active_transactions::erase (nano::qualified_root const & root_a)
 	return rsnano::rsn_active_transactions_erase (handle, root_a.bytes.data ());
 }
 
-bool nano::active_transactions::erase_hash (nano::block_hash const & hash_a)
-{
-	auto guard{ lock () };
-	[[maybe_unused]] auto erased (rsnano::rsn_active_transactions_lock_blocks_erase (guard.handle, hash_a.bytes.data ()));
-	debug_assert (erased);
-	return erased;
-}
-
-void nano::active_transactions::erase_oldest ()
-{
-	rsnano::rsn_active_transactions_erase_oldest (handle);
-}
-
 bool nano::active_transactions::empty () const
 {
 	auto guard{ lock () };
@@ -716,27 +703,7 @@ std::size_t nano::active_transactions::size () const
 
 bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & block_a)
 {
-	auto guard{ lock () };
-	auto root = block_a->qualified_root ();
-	auto election_handle = rsnano::rsn_active_transactions_lock_roots_find (guard.handle, root.root ().bytes.data (), root.previous ().bytes.data ());
-	auto result (true);
-	if (election_handle != nullptr)
-	{
-		auto election = std::make_shared<nano::election> (election_handle);
-		guard.unlock ();
-		result = publish (block_a, *election);
-		if (!result)
-		{
-			guard.lock ();
-			rsnano::rsn_active_transactions_lock_blocks_insert (guard.handle, block_a->hash ().bytes.data (), election->handle);
-			guard.unlock ();
-
-			trigger_vote_cache (block_a->hash ());
-
-			node.stats->inc (nano::stat::type::active, nano::stat::detail::election_block_conflict);
-		}
-	}
-	return result;
+	return rsnano::rsn_active_transactions_publish_block (handle, block_a->get_handle ());
 }
 
 nano::vote_code nano::active_transactions::vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a)

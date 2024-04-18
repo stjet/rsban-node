@@ -931,6 +931,7 @@ pub trait ActiveTransactionsExt {
     fn process_confirmed(&self, status: ElectionStatus, iteration: u64);
     fn force_confirm(&self, election: &Arc<Election>);
     fn try_confirm(&self, election: &Arc<Election>, hash: &BlockHash);
+    /// Distinguishes replay votes, cannot be determined if the block is not in any election
     fn vote(&self, vote: &Arc<Vote>, source: VoteSource) -> HashMap<BlockHash, VoteCode>;
     fn vote2(
         &self,
@@ -941,6 +942,8 @@ pub trait ActiveTransactionsExt {
         vote_source: VoteSource,
     ) -> VoteCode;
     fn block_cemented_callback(&self, block: &Arc<BlockEnum>);
+    fn trigger_vote_cache(&self, hash: &BlockHash) -> bool;
+    fn publish_block(&self, block: &Arc<BlockEnum>) -> bool;
 }
 
 impl ActiveTransactionsExt for Arc<ActiveTransactions> {
@@ -1216,5 +1219,39 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
             let guard = self.activate_successors.lock().unwrap();
             (guard)(tx, block);
         }
+    }
+
+    fn trigger_vote_cache(&self, hash: &BlockHash) -> bool {
+        let cached = self.vote_cache.lock().unwrap().find(hash);
+        for cached_vote in &cached {
+            self.vote(cached_vote, VoteSource::Cache);
+        }
+        !cached.is_empty()
+    }
+
+    fn publish_block(&self, block: &Arc<BlockEnum>) -> bool {
+        let mut guard = self.mutex.lock().unwrap();
+        let root = block.qualified_root();
+        let mut result = true;
+        if let Some(election) = guard.roots.get(&root) {
+            let election = Arc::clone(election);
+            drop(guard);
+            result = self.publish(block, &election);
+            if !result {
+                guard = self.mutex.lock().unwrap();
+                guard.blocks.insert(block.hash(), election);
+                drop(guard);
+
+                self.trigger_vote_cache(&block.hash());
+
+                self.stats.inc(
+                    StatType::Active,
+                    DetailType::ElectionBlockConflict,
+                    Direction::In,
+                );
+            }
+        }
+
+        result
     }
 }

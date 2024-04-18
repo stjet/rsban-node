@@ -414,6 +414,14 @@ pub unsafe extern "C" fn rsn_active_transactions_erase(
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_active_transactions_publish_block(
+    handle: &ActiveTransactionsHandle,
+    block: &BlockHandle,
+) -> bool {
+    handle.publish_block(block)
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_erase_oldest(handle: &ActiveTransactionsHandle) {
     handle.erase_oldest();
 }

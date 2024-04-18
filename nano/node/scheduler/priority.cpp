@@ -109,11 +109,6 @@ bool nano::scheduler::priority::predicate () const
 
 void nano::scheduler::priority::run ()
 {
-	std::weak_ptr<nano::node> node_w{ node.shared () };
-	node.active.on_block_confirmed ([this] (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & txn, nano::election_status_type status) {
-		try_schedule_successors (block, txn, status);
-	});
-
 	nano::unique_lock<nano::mutex> lock{ mutex };
 	while (!stopped)
 	{
@@ -148,19 +143,6 @@ void nano::scheduler::priority::run ()
 			notify ();
 			lock.lock ();
 		}
-	}
-}
-
-void nano::scheduler::priority::try_schedule_successors (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction, nano::election_status_type status)
-{
-	auto account = block->account ();
-	bool cemented_bootstrap_count_reached = node.ledger.cache.cemented_count () >= node.ledger.get_bootstrap_weight_max_blocks ();
-	bool was_active = status == nano::election_status_type::active_confirmed_quorum || status == nano::election_status_type::active_confirmation_height;
-
-	// Next-block activations are only done for blocks with previously active elections
-	if (cemented_bootstrap_count_reached && was_active)
-	{
-		activate_successors (transaction, block);
 	}
 }
 

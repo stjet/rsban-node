@@ -13,7 +13,7 @@ use crate::{
     cementation::ConfirmingSetHandle,
     core::{BlockHandle, BlockHashCallback},
     ledger::datastore::{lmdb::TransactionType, LedgerHandle, TransactionHandle},
-    representatives::OnlineRepsHandle,
+    representatives::{OnlineRepsHandle, RepresentativeRegisterHandle},
     transport::TcpChannelsHandle,
     utils::{ContextWrapper, InstantHandle, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
@@ -74,6 +74,7 @@ pub unsafe extern "C" fn rsn_active_transactions_create(
     active_stopped: BlockHashCallback,
     election_ended: ElectionEndedCallback,
     balance_changed: FfiAccountBalanceCallback,
+    rep_register: &RepresentativeRegisterHandle,
 ) -> *mut ActiveTransactionsHandle {
     let ctx_wrapper = Arc::new(ContextWrapper::new(
         observers_context,
@@ -125,17 +126,23 @@ pub unsafe extern "C" fn rsn_active_transactions_create(
         active_stopped_wrapper,
         election_ended_wrapper,
         account_balance_changed_wrapper,
+        Arc::clone(rep_register),
     )))
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_active_transactions_request_loop(
+pub extern "C" fn rsn_active_transactions_request_loop(handle: &ActiveTransactionsHandle) {
+    handle.request_loop();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_request_loop2(
     handle: &ActiveTransactionsHandle,
     lock_handle: &mut ActiveTransactionsLockHandle,
     stamp: &InstantHandle,
 ) {
     let guard = lock_handle.0.take().unwrap();
-    let guard = handle.0.request_loop(stamp.0, guard);
+    let guard = handle.0.request_loop2(stamp.0, guard);
     lock_handle.0 = Some(guard);
 }
 

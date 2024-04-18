@@ -259,11 +259,7 @@ public:
 	recently_cemented_cache recently_cemented ();
 
 private:
-	// Maximum time an election can be kept active if it is extending the container
-	std::chrono::seconds const election_time_to_live;
-
 	std::thread thread;
-	std::function<void (std::shared_ptr<nano::block> const &, nano::store::read_transaction const &, nano::election_status_type)> block_confirmed_callback;
 
 public:
 	rsnano::ActiveTransactionsHandle * handle;

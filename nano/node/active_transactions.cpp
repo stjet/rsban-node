@@ -1,6 +1,5 @@
 #include "nano/lib/logging.hpp"
 #include "nano/lib/rsnano.hpp"
-#include "nano/lib/rsnanoutils.hpp"
 #include "nano/lib/utility.hpp"
 #include "nano/node/election_status.hpp"
 #include "nano/store/lmdb/transaction_impl.hpp"
@@ -209,8 +208,7 @@ void call_account_balance_changed (void * context, uint8_t const * account, bool
 nano::active_transactions::active_transactions (nano::node & node_a, nano::confirming_set & confirming_set, nano::block_processor & block_processor_a) :
 	node{ node_a },
 	confirming_set{ confirming_set },
-	block_processor{ block_processor_a },
-	election_time_to_live{ node_a.network_params.network.is_dev_network () ? 0s : 2s }
+	block_processor{ block_processor_a }
 {
 	auto network_dto{ node_a.network_params.to_dto () };
 	auto config_dto{ node_a.config->to_dto () };
@@ -221,7 +219,8 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	node_a.workers->handle, node_a.history.handle, node_a.block_processor.handle,
 	node_a.generator.handle, node_a.final_generator.handle, node_a.network->tcp_channels->handle,
 	node_a.vote_cache.handle, node_a.stats->handle, observers_context, delete_observers_context,
-	call_active_stopped, call_election_ended, call_account_balance_changed);
+	call_active_stopped, call_election_ended, call_account_balance_changed,
+	node_a.representative_register.handle);
 
 	auto activate_successors_context = new std::function<void (nano::store::read_transaction const &, std::shared_ptr<nano::block> const &)>{
 		[&node_a] (nano::store::read_transaction const & tx, std::shared_ptr<nano::block> const & block) {
@@ -550,17 +549,18 @@ std::vector<std::shared_ptr<nano::election>> nano::active_transactions::list_act
 
 void nano::active_transactions::request_loop ()
 {
-	auto guard{ lock () };
-	while (!rsnano::rsn_active_transactions_lock_stopped (guard.handle))
-	{
-		rsnano::instant stamp_l;
+	rsnano::rsn_active_transactions_request_loop (handle);
+	// auto guard{ lock () };
+	// while (!rsnano::rsn_active_transactions_lock_stopped (guard.handle))
+	//{
+	//	rsnano::instant stamp_l;
 
-		node.stats->inc (nano::stat::type::active, nano::stat::detail::loop);
+	//	node.stats->inc (nano::stat::type::active, nano::stat::detail::loop);
 
-		request_confirm (guard);
+	//	request_confirm (guard);
 
-		rsnano::rsn_active_transactions_request_loop (handle, guard.handle, stamp_l.handle);
-	}
+	//	rsnano::rsn_active_transactions_request_loop2 (handle, guard.handle, stamp_l.handle);
+	//}
 }
 
 nano::election_insertion_result nano::active_transactions::insert (const std::shared_ptr<nano::block> & block_a, nano::election_behavior election_behavior_a)
@@ -735,11 +735,6 @@ nano::recently_confirmed_cache nano::active_transactions::recently_confirmed ()
 nano::recently_cemented_cache nano::active_transactions::recently_cemented ()
 {
 	return nano::recently_cemented_cache{ rsnano::rsn_active_transactions_recently_cemented (handle) };
-}
-
-void nano::active_transactions::on_block_confirmed (std::function<void (std::shared_ptr<nano::block> const &, nano::store::read_transaction const &, nano::election_status_type)> callback)
-{
-	block_confirmed_callback = std::move (callback);
 }
 
 nano::election_extended_status nano::active_transactions::current_status (nano::election & election) const

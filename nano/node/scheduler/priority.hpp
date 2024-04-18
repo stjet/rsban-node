@@ -64,7 +64,6 @@ private:
 	void run ();
 	bool empty_locked () const;
 	bool predicate () const;
-	void try_schedule_successors (std::shared_ptr<nano::block> const & block, nano::store::read_transaction const & transaction, nano::election_status_type status);
 
 	std::unique_ptr<nano::scheduler::buckets> buckets;
 

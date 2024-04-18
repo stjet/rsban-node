@@ -30,6 +30,8 @@ pub struct Election {
 }
 
 impl Election {
+    pub const PASSIVE_DURATION_FACTOR: u32 = 5;
+
     pub fn new(
         id: usize,
         block: Arc<BlockEnum>,
@@ -104,6 +106,13 @@ impl Election {
 
     pub fn failed(&self) -> bool {
         self.mutex.lock().unwrap().state == ElectionState::ExpiredUnconfirmed
+    }
+
+    pub fn time_to_live(&self) -> Duration {
+        match self.behavior {
+            ElectionBehavior::Normal => Duration::from_secs(60 * 5),
+            ElectionBehavior::Hinted | ElectionBehavior::Optimistic => Duration::from_secs(30),
+        }
     }
 }
 

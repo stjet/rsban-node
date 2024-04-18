@@ -7,6 +7,7 @@ use crate::{
     block_processing::BlockProcessor,
     cementation::ConfirmingSet,
     config::NodeConfig,
+    representatives::RepresentativeRegister,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{BufferDropPolicy, TcpChannels},
     utils::{HardenedConstants, ThreadPool},
@@ -67,6 +68,7 @@ pub struct ActiveTransactions {
     activate_successors: Mutex<Box<dyn Fn(LmdbReadTransaction, &Arc<BlockEnum>) + Send + Sync>>,
     election_end: ElectionEndCallback,
     account_balance_changed: AccountBalanceChangedCallback,
+    representative_register: Arc<Mutex<RepresentativeRegister>>,
 }
 
 impl ActiveTransactions {
@@ -88,6 +90,7 @@ impl ActiveTransactions {
         active_stopped_observer: Box<dyn Fn(BlockHash) + Send + Sync>,
         election_end: ElectionEndCallback,
         account_balance_changed: AccountBalanceChangedCallback,
+        representative_register: Arc<Mutex<RepresentativeRegister>>,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveTransactionsData {
@@ -124,6 +127,7 @@ impl ActiveTransactions {
             activate_successors: Mutex::new(Box::new(|_tx, _block| {})),
             election_end,
             account_balance_changed,
+            representative_register,
         }
     }
 
@@ -171,7 +175,7 @@ impl ActiveTransactions {
         }
     }
 
-    pub fn request_loop<'a>(
+    pub fn request_loop2<'a>(
         &self,
         stamp: Instant,
         guard: MutexGuard<'a, ActiveTransactionsData>,
@@ -457,6 +461,31 @@ impl ActiveTransactions {
         }
     }
 
+    pub fn broadcast_block(
+        &self,
+        solicitor: &mut ConfirmationSolicitor,
+        election: &Election,
+        election_guard: &mut MutexGuard<ElectionData>,
+    ) {
+        if self.broadcast_block_predicate(election, election_guard) {
+            if solicitor.broadcast(election_guard).is_ok() {
+                let last_block_hash = election_guard.last_block_hash;
+                self.stats.inc(
+                    StatType::Election,
+                    if last_block_hash.is_zero() {
+                        DetailType::BroadcastBlockInitial
+                    } else {
+                        DetailType::BroadcastBlockRepeat
+                    },
+                    Direction::In,
+                );
+                election.set_last_block();
+                election_guard.last_block_hash =
+                    election_guard.status.winner.as_ref().unwrap().hash();
+            }
+        }
+    }
+
     pub fn broadcast_vote_locked(
         &self,
         election_guard: &mut MutexGuard<ElectionData>,
@@ -495,10 +524,10 @@ impl ActiveTransactions {
         }
     }
 
-    pub fn cleanup_election(
+    pub fn cleanup_election<'a>(
         &self,
-        mut guard: MutexGuard<ActiveTransactionsData>,
-        election: &Arc<Election>,
+        mut guard: MutexGuard<'a, ActiveTransactionsData>,
+        election: &'a Arc<Election>,
     ) {
         // Keep track of election count by election type
         debug_assert!(guard.count_by_behavior(election.behavior) > 0);
@@ -601,7 +630,7 @@ impl ActiveTransactions {
 
     pub fn broadcast_block_predicate(
         &self,
-        election: &Arc<Election>,
+        election: &Election,
         election_guard: &MutexGuard<ElectionData>,
     ) -> bool {
         // Broadcast the block if enough time has passed since the last broadcast (or it's the first broadcast)
@@ -651,6 +680,17 @@ impl ActiveTransactions {
         result
     }
 
+    pub fn request_loop(&self) {
+        let mut guard = self.mutex.lock().unwrap();
+        while !guard.stopped {
+            let stamp = Instant::now();
+            self.stats
+                .inc(StatType::Active, DetailType::Loop, Direction::In);
+            guard = self.request_confirm(guard);
+            guard = self.request_loop2(stamp, guard);
+        }
+    }
+
     pub fn request_confirm<'a>(
         &'a self,
         guard: MutexGuard<'a, ActiveTransactionsData>,
@@ -660,10 +700,13 @@ impl ActiveTransactions {
         drop(guard);
 
         let mut solicitor = ConfirmationSolicitor::new(&self.network, &self.tcp_channels);
-        //solicitor.prepare (node.representative_register.principal_representatives (std::numeric_limits<std::size_t>::max ()));
-
-        //std::size_t unconfirmed_count_l (0);
-        //nano::timer<std::chrono::milliseconds> elapsed (nano::timer_state::started);
+        solicitor.prepare(
+            &self
+                .representative_register
+                .lock()
+                .unwrap()
+                .principal_representatives(),
+        );
 
         /*
          * Loop through active elections in descending order of proof-of-work difficulty, requesting confirmation
@@ -672,18 +715,14 @@ impl ActiveTransactions {
          * Elections extending the soft config.active_elections_size limit are flushed after a certain time-to-live cutoff
          * Flushed elections are later re-activated via frontier confirmation
          */
-        //for (auto const & election_l : elections_l)
-        //{
-        //    bool const confirmed_l (confirmed (*election_l));
-        //    unconfirmed_count_l += !confirmed_l;
+        for election in elections {
+            let confirmed = self.confirmed(&election);
+            if confirmed || self.transition_time(&mut solicitor, &election) {
+                self.erase(&election.qualified_root);
+            }
+        }
 
-        //    if (confirmed_l || transition_time (solicitor, *election_l))
-        //    {
-        //        erase (election_l->qualified_root ());
-        //    }
-        //}
-
-        //solicitor.flush ();
+        solicitor.flush();
         self.mutex.lock().unwrap()
     }
 
@@ -697,6 +736,83 @@ impl ActiveTransactions {
             .map(|(_, election)| Arc::clone(election))
             .take(max)
             .collect()
+    }
+
+    fn erase(&self, root: &QualifiedRoot) {
+        let guard = self.mutex.lock().unwrap();
+        if let Some(election) = guard.roots.get(root) {
+            let election = Arc::clone(election);
+            self.cleanup_election(guard, &election);
+        }
+    }
+
+    fn transition_time(
+        &self,
+        solicitor: &mut ConfirmationSolicitor,
+        election: &Arc<Election>,
+    ) -> bool {
+        let mut guard = election.mutex.lock().unwrap();
+        let mut result = false;
+        match guard.state {
+            ElectionState::Passive => {
+                if self.base_latency() * Election::PASSIVE_DURATION_FACTOR
+                    < election.election_start.elapsed()
+                {
+                    guard
+                        .state_change(ElectionState::Passive, ElectionState::Active)
+                        .unwrap();
+                }
+            }
+            ElectionState::Active => {
+                self.broadcast_vote(election, &mut guard);
+                self.broadcast_block(solicitor, election, &mut guard);
+                self.send_confirm_req(solicitor, election, &guard);
+            }
+            ElectionState::Confirmed => {
+                result = true; // Return true to indicate this election should be cleaned up
+                self.broadcast_block(solicitor, election, &mut guard); // Ensure election winner is broadcasted
+                guard
+                    .state_change(ElectionState::Confirmed, ElectionState::ExpiredConfirmed)
+                    .unwrap();
+            }
+            ElectionState::ExpiredConfirmed | ElectionState::ExpiredUnconfirmed => {
+                unreachable!()
+            }
+        }
+
+        if !self.confirmed_locked(&guard)
+            && election.time_to_live() < election.election_start.elapsed()
+        {
+            // It is possible the election confirmed while acquiring the mutex
+            // state_change returning true would indicate it
+            let state = guard.state;
+            if guard
+                .state_change(state, ElectionState::ExpiredUnconfirmed)
+                .is_ok()
+            {
+                trace!(qualified_root = ?election.qualified_root, "election expired");
+                result = true; // Return true to indicate this election should be cleaned up
+                guard.status.election_status_type = ElectionStatusType::Stopped;
+            }
+        }
+
+        result
+    }
+
+    fn send_confirm_req(
+        &self,
+        solicitor: &mut ConfirmationSolicitor,
+        election: &Election,
+        election_guard: &MutexGuard<ElectionData>,
+    ) {
+        if self.confirm_req_time(election) < election.last_req_elapsed() {
+            if !solicitor.add(election, election_guard) {
+                election.set_last_req();
+                election
+                    .confirmation_request_count
+                    .fetch_add(1, Ordering::SeqCst);
+            }
+        }
     }
 }
 

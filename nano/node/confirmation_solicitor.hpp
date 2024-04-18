@@ -3,8 +3,6 @@
 #include <nano/node/network.hpp>
 #include <nano/node/repcrawler.hpp>
 
-#include <unordered_map>
-
 namespace nano
 {
 class election;
@@ -15,6 +13,8 @@ class confirmation_solicitor final
 {
 public:
 	confirmation_solicitor (nano::network &, nano::node_config const &);
+	confirmation_solicitor (confirmation_solicitor const &) = delete;
+	~confirmation_solicitor ();
 	/** Prepare object for batching election confirmation requests*/
 	void prepare (std::vector<nano::representative> const &);
 	/** Broadcast the winner of an election if the broadcast limit has not been reached. Returns false if the broadcast was performed */
@@ -23,23 +23,6 @@ public:
 	bool add (nano::election const &, nano::election_lock const & lock_a);
 	/** Dispatch bundled requests to each channel*/
 	void flush ();
-	/** Global maximum amount of block broadcasts */
-	std::size_t const max_block_broadcasts;
-	/** Maximum amount of requests to be sent per election, bypassed if an existing vote is for a different hash*/
-	std::size_t const max_election_requests;
-	/** Maximum amount of directed broadcasts to be sent per election */
-	std::size_t const max_election_broadcasts;
-
-private:
-	nano::network & network;
-	nano::node_config const & config;
-
-	unsigned rebroadcasted{ 0 };
-	std::vector<nano::representative> representatives_requests;
-	std::vector<nano::representative> representatives_broadcasts;
-	using vector_root_hashes = std::vector<std::pair<nano::block_hash, nano::root>>;
-	std::unordered_map<size_t, vector_root_hashes> requests;
-	std::unordered_map<size_t, std::shared_ptr<nano::transport::channel>> channels;
-	bool prepared{ false };
+	rsnano::ConfirmationSolicitorHandle * handle;
 };
 }

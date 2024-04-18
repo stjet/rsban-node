@@ -117,7 +117,7 @@ TEST (confirmation_solicitor, bypass_max_requests_cap)
 	auto & node2 = *system.add_node (node_flags);
 	nano::confirmation_solicitor solicitor (*node2.network, *node2.config);
 	std::vector<nano::representative> representatives;
-	auto max_representatives = std::max<size_t> (solicitor.max_election_requests, solicitor.max_election_broadcasts);
+	auto max_representatives = 50;
 	representatives.reserve (max_representatives + 1);
 	for (auto i (0); i < max_representatives + 1; ++i)
 	{

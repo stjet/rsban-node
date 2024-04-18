@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/blocks.hpp>
 #include <nano/node/confirmation_solicitor.hpp>
 #include <nano/node/election.hpp>
@@ -5,117 +7,39 @@
 
 using namespace std::chrono_literals;
 
-nano::confirmation_solicitor::confirmation_solicitor (nano::network & network_a, nano::node_config const & config_a) :
-	max_block_broadcasts (config_a.network_params.network.is_dev_network () ? 4 : 30),
-	max_election_requests (50),
-	max_election_broadcasts (std::max<std::size_t> (network_a.tcp_channels->fanout () / 2, 1)),
-	network (network_a),
-	config (config_a)
+nano::confirmation_solicitor::confirmation_solicitor (nano::network & network_a, nano::node_config const & config_a)
 {
+	auto params_dto{ config_a.network_params.to_dto () };
+	handle = rsnano::rsn_confirmation_solicitor_create (&params_dto, network_a.tcp_channels->handle);
+}
+
+nano::confirmation_solicitor::~confirmation_solicitor ()
+{
+	rsnano::rsn_confirmation_solicitor_destroy (handle);
 }
 
 void nano::confirmation_solicitor::prepare (std::vector<nano::representative> const & representatives_a)
 {
-	debug_assert (!prepared);
-	requests.clear ();
-	channels.clear ();
-	rebroadcasted = 0;
-	/** Two copies are required as representatives can be erased from \p representatives_requests */
-	representatives_requests = representatives_a;
-	representatives_broadcasts = representatives_a;
-	prepared = true;
+	auto reps_handle = rsnano::rsn_representative_vec_create ();
+	for (const auto & i : representatives_a)
+	{
+		rsnano::rsn_representative_vec_push (reps_handle, i.handle);
+	}
+	rsnano::rsn_confirmation_solicitor_prepare (handle, reps_handle);
+	rsnano::rsn_representative_vec_destroy (reps_handle);
 }
 
 bool nano::confirmation_solicitor::broadcast (nano::election const & election_a, nano::election_lock const & lock_a)
 {
-	debug_assert (prepared);
-	bool error (true);
-	if (rebroadcasted++ < max_block_broadcasts)
-	{
-		auto winner_block{ lock_a.status ().get_winner () };
-		auto hash{ winner_block->hash () };
-		nano::publish winner{ config.network_params.network, winner_block };
-		unsigned count = 0;
-		// Directed broadcasting to principal representatives
-		for (auto i (representatives_broadcasts.begin ()), n (representatives_broadcasts.end ()); i != n && count < max_election_broadcasts; ++i)
-		{
-			auto existing{ lock_a.find_vote (i->get_account ()) };
-			bool const exists (existing.has_value ());
-			bool const different (exists && existing->get_hash () != hash);
-			if (!exists || different)
-			{
-				i->get_channel ()->send (winner);
-				count += different ? 0 : 1;
-			}
-		}
-		// Random flood for block propagation
-		network.flood_message (winner, nano::transport::buffer_drop_policy::limiter, 0.5f);
-		error = false;
-	}
-	return error;
+	return rsnano::rsn_confirmation_solicitor_broadcast (handle, lock_a.handle);
 }
 
 bool nano::confirmation_solicitor::add (nano::election const & election_a, nano::election_lock const & lock_a)
 {
-	debug_assert (prepared);
-	bool error (true);
-	unsigned count = 0;
-	auto winner{ lock_a.status ().get_winner () };
-	auto hash{ winner->hash () };
-	for (auto i (representatives_requests.begin ()); i != representatives_requests.end () && count < max_election_requests;)
-	{
-		bool full_queue (false);
-		auto rep (*i);
-		auto existing{ lock_a.find_vote (rep.get_account ()) };
-		bool const exists{ existing.has_value () };
-		bool const is_final (exists && (!election_a.is_quorum () || existing->get_timestamp () == std::numeric_limits<uint64_t>::max ()));
-		bool const different (exists && existing->get_hash () != hash);
-		if (!exists || !is_final || different)
-		{
-			auto channel{ rep.get_channel () };
-			auto & request_queue (requests[channel->channel_id ()]);
-			if (!channels.contains (channel->channel_id ()))
-			{
-				channels.emplace (channel->channel_id (), channel);
-			}
-			if (!channel->max ())
-			{
-				request_queue.emplace_back (winner->hash (), winner->root ());
-				count += different ? 0 : 1;
-				error = false;
-			}
-			else
-			{
-				full_queue = true;
-			}
-		}
-		i = !full_queue ? i + 1 : representatives_requests.erase (i);
-	}
-	return error;
+	return rsnano::rsn_confirmation_solicitor_add (handle, election_a.handle, lock_a.handle);
 }
 
 void nano::confirmation_solicitor::flush ()
 {
-	debug_assert (prepared);
-	for (auto const & channel_item : channels)
-	{
-		auto const & channel (channel_item.second);
-		std::vector<std::pair<nano::block_hash, nano::root>> roots_hashes_l;
-		for (auto const & root_hash : requests[channel->channel_id ()])
-		{
-			roots_hashes_l.push_back (root_hash);
-			if (roots_hashes_l.size () == nano::network::confirm_req_hashes_max)
-			{
-				nano::confirm_req req{ config.network_params.network, roots_hashes_l };
-				channel->send (req);
-				roots_hashes_l.clear ();
-			}
-		}
-		if (!roots_hashes_l.empty ())
-		{
-			nano::confirm_req req{ config.network_params.network, roots_hashes_l };
-			channel->send (req);
-		}
-	}
-	prepared = false;
+	rsnano::rsn_confirmation_solicitor_flush (handle);
 }

@@ -1843,7 +1843,7 @@ TEST (node, block_confirm)
 	node2.start_election (send1_copy);
 	std::shared_ptr<nano::election> election;
 	ASSERT_TIMELY (5s, election = node2.active.election (send1_copy->qualified_root ()));
-	ASSERT_TIMELY_EQ (10s, node1.active.recently_cemented.list ().size (), 1);
+	ASSERT_TIMELY_EQ (10s, node1.active.recently_cemented ().list ().size (), 1);
 }
 
 TEST (node, confirm_quorum)

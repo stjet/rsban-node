@@ -1,3 +1,4 @@
+use crate::utils::ContainerInfoComponentHandle;
 use rsnano_core::{BlockHash, QualifiedRoot};
 use rsnano_node::consensus::RecentlyConfirmedCache;
 use std::{
@@ -6,13 +7,11 @@ use std::{
     sync::Arc,
 };
 
-use crate::utils::ContainerInfoComponentHandle;
-
 pub struct RecentlyConfirmedCacheHandle(Arc<RecentlyConfirmedCache>);
 
 impl RecentlyConfirmedCacheHandle {
-    pub fn new(cache: Arc<RecentlyConfirmedCache>) -> *mut Self {
-        Box::into_raw(Box::new(Self(cache)))
+    pub fn new(inner: Arc<RecentlyConfirmedCache>) -> *mut Self {
+        Box::into_raw(Box::new(Self(inner)))
     }
 }
 

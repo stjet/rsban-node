@@ -234,7 +234,7 @@ fn packed_timestamp(timestamp: u64, duration: u8) -> u64 {
     (timestamp & Vote::TIMESTAMP_MASK) | (duration as u64)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VoteWithWeightInfo {
     pub representative: Account,
     pub time: SystemTime,

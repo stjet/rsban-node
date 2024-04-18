@@ -53,7 +53,7 @@ void nano::thread_runner::run ()
 	{
 		io_ctx.run ();
 	}
-	else 
+	else
 	{
 		nano::timer<> timer;
 		timer.start ();

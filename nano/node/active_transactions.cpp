@@ -210,7 +210,6 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	node{ node_a },
 	confirming_set{ confirming_set },
 	block_processor{ block_processor_a },
-	recently_cemented{ node.config->confirmation_history_size },
 	election_time_to_live{ node_a.network_params.network.is_dev_network () ? 0s : 2s }
 {
 	auto network_dto{ node_a.network_params.to_dto () };
@@ -289,43 +288,7 @@ void nano::active_transactions::stop ()
 
 void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::block> const & block)
 {
-	debug_assert (node.block_confirmed (block->hash ()));
-	if (auto election_l = election (block->qualified_root ()))
-	{
-		try_confirm (*election_l, block->hash ());
-	}
-	auto election = remove_election_winner_details (block->hash ());
-	nano::election_status status;
-	std::vector<nano::vote_with_weight_info> votes;
-	status.set_winner (block);
-	if (election)
-	{
-		status = election->get_status ();
-		votes = votes_with_weight (*election);
-	}
-	if (confirming_set.exists (block->hash ()))
-	{
-		status.set_election_status_type (nano::election_status_type::active_confirmed_quorum);
-	}
-	else if (election)
-	{
-		status.set_election_status_type (nano::election_status_type::active_confirmation_height);
-	}
-	else
-	{
-		status.set_election_status_type (nano::election_status_type::inactive_confirmation_height);
-	}
-	recently_cemented.put (status);
-	auto transaction = node.store.tx_begin_read ();
-	notify_observers (*transaction, status, votes);
-	bool cemented_bootstrap_count_reached = node.ledger.cemented_count () >= node.ledger.get_bootstrap_weight_max_blocks ();
-	bool was_active = status.get_election_status_type () == nano::election_status_type::active_confirmed_quorum || status.get_election_status_type () == nano::election_status_type::active_confirmation_height;
-
-	// Next-block activations are only done for blocks with previously active elections
-	if (cemented_bootstrap_count_reached && was_active)
-	{
-		node.scheduler.priority.activate_successors (*transaction, block);
-	}
+	rsnano::rsn_active_transactions_block_cemented_callback (handle, block->get_handle ());
 }
 
 bool nano::active_transactions::confirmed (nano::election const & election) const
@@ -367,6 +330,9 @@ std::vector<nano::vote_with_weight_info> nano::active_transactions::votes_with_w
 			auto amount (node.ledger.cache.rep_weights ().representation_get (vote_l.first));
 			nano::vote_with_weight_info vote_info{ vote_l.first, vote_l.second.get_time (), vote_l.second.get_timestamp (), vote_l.second.get_hash (), amount };
 			sorted_votes.emplace (std::move (amount), vote_info);
+		}
+		else
+		{
 		}
 	}
 	result.reserve (sorted_votes.size ());
@@ -766,6 +732,11 @@ nano::recently_confirmed_cache nano::active_transactions::recently_confirmed ()
 	return nano::recently_confirmed_cache{ rsnano::rsn_active_transactions_recently_confirmed (handle) };
 }
 
+nano::recently_cemented_cache nano::active_transactions::recently_cemented ()
+{
+	return nano::recently_cemented_cache{ rsnano::rsn_active_transactions_recently_cemented (handle) };
+}
+
 void nano::active_transactions::on_block_confirmed (std::function<void (std::shared_ptr<nano::block> const &, nano::store::read_transaction const &, nano::election_status_type)> callback)
 {
 	block_confirmed_callback = std::move (callback);
@@ -979,7 +950,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (ac
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "optimistic", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::optimistic))), 0 }));
 
 	composite->add_component (active_transactions.recently_confirmed ().collect_container_info ("recently_confirmed"));
-	composite->add_component (active_transactions.recently_cemented.collect_container_info ("recently_cemented"));
+	composite->add_component (active_transactions.recently_cemented ().collect_container_info ("recently_cemented"));
 
 	return composite;
 }
@@ -1061,6 +1032,11 @@ std::unique_ptr<nano::container_info_component> nano::recently_confirmed_cache::
 
 nano::recently_cemented_cache::recently_cemented_cache (std::size_t max_size_a) :
 	handle (rsnano::rsn_recently_cemented_cache_create1 (max_size_a))
+{
+}
+
+nano::recently_cemented_cache::recently_cemented_cache (rsnano::RecentlyCementedCacheHandle * handle) :
+	handle{ handle }
 {
 }
 

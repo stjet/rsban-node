@@ -81,6 +81,7 @@ public:
 	using queue_t = std::deque<nano::election_status>;
 
 	explicit recently_cemented_cache (std::size_t max_size);
+	explicit recently_cemented_cache (rsnano::RecentlyCementedCacheHandle * handle);
 	recently_cemented_cache (recently_cemented_cache &&) = delete;
 	explicit recently_cemented_cache (recently_cemented_cache const &);
 	~recently_cemented_cache ();
@@ -255,7 +256,7 @@ private: // Dependencies
 
 public:
 	recently_confirmed_cache recently_confirmed ();
-	recently_cemented_cache recently_cemented;
+	recently_cemented_cache recently_cemented ();
 
 private:
 	// Maximum time an election can be kept active if it is extending the container

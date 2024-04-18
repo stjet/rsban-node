@@ -1033,7 +1033,7 @@ TEST (active_transactions, confirmation_consistency)
 			auto guard{ node.active.lock () };
 			EXPECT_EQ (i + 1, node.active.recently_confirmed ().size ());
 			EXPECT_EQ (block->qualified_root (), node.active.recently_confirmed ().back ().first);
-			return i + 1 == node.active.recently_cemented.size (); // done after a callback
+			return i + 1 == node.active.recently_cemented ().size (); // done after a callback
 		}));
 	}
 }

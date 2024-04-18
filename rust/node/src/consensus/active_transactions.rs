@@ -1,6 +1,6 @@
 use super::{
-    Election, ElectionBehavior, ElectionData, ElectionState, ElectionStatus, LocalVoteHistory,
-    RecentlyConfirmedCache, VoteCache, VoteGenerator, VoteInfo,
+    Election, ElectionBehavior, ElectionData, ElectionState, ElectionStatus, ElectionStatusType,
+    LocalVoteHistory, RecentlyConfirmedCache, VoteCache, VoteGenerator, VoteInfo,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -8,10 +8,11 @@ use crate::{
     config::NodeConfig,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{BufferDropPolicy, TcpChannels},
-    utils::ThreadPool,
+    utils::{HardenedConstants, ThreadPool},
     wallets::Wallets,
     NetworkParams, OnlineReps,
 };
+use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
     utils::MemoryStream, Account, Amount, BlockEnum, BlockHash, BlockType, QualifiedRoot, Vote,
     VoteCode, VoteSource, VoteWithWeightInfo,
@@ -51,6 +52,7 @@ pub struct ActiveTransactions {
     confirming_set: Arc<ConfirmingSet>,
     workers: Arc<dyn ThreadPool>,
     pub recently_confirmed: Arc<RecentlyConfirmedCache>,
+    pub recently_cemented: Arc<Mutex<BoundedVecDeque<ElectionStatus>>>,
     history: Arc<LocalVoteHistory>,
     block_processor: Arc<BlockProcessor>,
     generator: Arc<VoteGenerator>,
@@ -100,11 +102,14 @@ impl ActiveTransactions {
             online_reps,
             wallets,
             election_winner_details: Mutex::new(HashMap::new()),
-            config,
             ledger,
             confirming_set,
             workers,
             recently_confirmed: Arc::new(RecentlyConfirmedCache::new(65536)),
+            recently_cemented: Arc::new(Mutex::new(BoundedVecDeque::new(
+                config.confirmation_history_size,
+            ))),
+            config,
             history,
             block_processor,
             generator,
@@ -611,6 +616,39 @@ impl ActiveTransactions {
             false
         }
     }
+
+    pub fn election(&self, hash: &QualifiedRoot) -> Option<Arc<Election>> {
+        let guard = self.mutex.lock().unwrap();
+        guard.roots.get(hash).cloned()
+    }
+
+    pub fn votes_with_weight(&self, election: &Election) -> Vec<VoteWithWeightInfo> {
+        let mut sorted_votes: BTreeMap<TallyKey, Vec<VoteWithWeightInfo>> = BTreeMap::new();
+        let guard = election.mutex.lock().unwrap();
+        for (&representative, info) in &guard.last_votes {
+            if representative == HardenedConstants::get().not_an_account {
+                continue;
+            }
+            let weight = self.ledger.weight(&representative);
+            let vote_with_weight = VoteWithWeightInfo {
+                representative,
+                time: info.time,
+                timestamp: info.timestamp,
+                hash: info.hash,
+                weight,
+            };
+            sorted_votes
+                .entry(TallyKey(weight))
+                .or_default()
+                .push(vote_with_weight);
+        }
+        let result: Vec<_> = sorted_votes
+            .values_mut()
+            .map(|i| std::mem::take(i))
+            .flatten()
+            .collect();
+        result
+    }
 }
 
 #[derive(PartialEq, Eq)]
@@ -728,6 +766,7 @@ pub trait ActiveTransactionsExt {
         block_hash: &BlockHash,
         vote_source: VoteSource,
     ) -> VoteCode;
+    fn block_cemented_callback(&self, block: &Arc<BlockEnum>);
 }
 
 impl ActiveTransactionsExt for Arc<ActiveTransactions> {
@@ -960,5 +999,48 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
             self.confirm_if_quorum(guard, election);
         }
         VoteCode::Vote
+    }
+
+    fn block_cemented_callback(&self, block: &Arc<BlockEnum>) {
+        if let Some(election) = self.election(&block.qualified_root()) {
+            self.try_confirm(&election, &block.hash());
+        }
+        let votes: Vec<VoteWithWeightInfo>;
+        let mut status: ElectionStatus;
+        let election = self.remove_election_winner_details(&block.hash());
+        if let Some(election) = &election {
+            status = election.mutex.lock().unwrap().status.clone();
+            votes = self.votes_with_weight(election);
+        } else {
+            status = ElectionStatus {
+                winner: Some(Arc::clone(block)),
+                ..Default::default()
+            };
+            votes = Vec::new();
+        }
+        if self.confirming_set.exists(&block.hash()) {
+            status.election_status_type = ElectionStatusType::ActiveConfirmedQuorum;
+        } else if election.is_some() {
+            status.election_status_type = ElectionStatusType::ActiveConfirmationHeight;
+        } else {
+            status.election_status_type = ElectionStatusType::InactiveConfirmationHeight;
+        }
+
+        self.recently_cemented
+            .lock()
+            .unwrap()
+            .push_back(status.clone());
+        let tx = self.ledger.read_txn();
+        self.notify_observers(&tx, &status, &votes);
+        let cemented_bootstrap_count_reached =
+            self.ledger.cemented_count() >= self.ledger.bootstrap_weight_max_blocks();
+        let was_active = status.election_status_type == ElectionStatusType::ActiveConfirmedQuorum
+            || status.election_status_type == ElectionStatusType::ActiveConfirmationHeight;
+
+        // Next-block activations are only done for blocks with previously active elections
+        if cemented_bootstrap_count_reached && was_active {
+            let guard = self.activate_successors.lock().unwrap();
+            (guard)(tx, block);
+        }
     }
 }

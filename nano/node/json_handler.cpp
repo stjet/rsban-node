@@ -1190,7 +1190,7 @@ void nano::json_handler::block_confirm ()
 				status.set_election_end (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()));
 				status.set_block_count (1);
 				status.set_election_status_type (nano::election_status_type::active_confirmation_height);
-				node.active.recently_cemented.put (status);
+				node.active.recently_cemented ().put (status);
 				// Trigger callback for confirmed block
 				auto account = block_l->account ();
 				auto amount = node.ledger.amount (*transaction, hash);
@@ -2052,7 +2052,7 @@ void nano::json_handler::confirmation_history ()
 	}
 	if (!ec)
 	{
-		for (auto const & status : node.active.recently_cemented.list ())
+		for (auto const & status : node.active.recently_cemented ().list ())
 		{
 			if (hash.is_zero () || status.get_winner ()->hash () == hash)
 			{

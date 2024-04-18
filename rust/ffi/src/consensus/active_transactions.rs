@@ -1,6 +1,7 @@
 use super::{
     election::{ElectionHandle, ElectionLockHandle},
     election_status::ElectionStatusHandle,
+    recently_cemented_cache::RecentlyCementedCacheHandle,
     recently_confirmed_cache::RecentlyConfirmedCacheHandle,
     vote_cache::{VoteCacheHandle, VoteResultMapHandle},
     vote_generator::VoteGeneratorHandle,
@@ -37,6 +38,12 @@ use std::{
 };
 
 pub struct ActiveTransactionsHandle(Arc<ActiveTransactions>);
+
+impl ActiveTransactionsHandle {
+    pub fn new(inner: Arc<ActiveTransactions>) -> *mut Self {
+        Box::into_raw(Box::new(Self(inner)))
+    }
+}
 
 impl Deref for ActiveTransactionsHandle {
     type Target = Arc<ActiveTransactions>;
@@ -100,27 +107,25 @@ pub unsafe extern "C" fn rsn_active_transactions_create(
             balance_changed(ctx.get_context(), account.as_bytes().as_ptr(), is_pending);
         });
 
-    Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::new(
-        ActiveTransactions::new(
-            network.try_into().unwrap(),
-            Arc::clone(online_reps),
-            Arc::clone(wallets),
-            NodeConfig::try_from(config).unwrap(),
-            Arc::clone(ledger),
-            Arc::clone(confirming_set),
-            Arc::clone(workers),
-            Arc::clone(history),
-            Arc::clone(block_processor),
-            Arc::clone(generator),
-            Arc::clone(final_generator),
-            Arc::clone(tcp_channels),
-            Arc::clone(vote_cache),
-            Arc::clone(stats),
-            active_stopped_wrapper,
-            election_ended_wrapper,
-            account_balance_changed_wrapper,
-        ),
-    ))))
+    ActiveTransactionsHandle::new(Arc::new(ActiveTransactions::new(
+        network.try_into().unwrap(),
+        Arc::clone(online_reps),
+        Arc::clone(wallets),
+        NodeConfig::try_from(config).unwrap(),
+        Arc::clone(ledger),
+        Arc::clone(confirming_set),
+        Arc::clone(workers),
+        Arc::clone(history),
+        Arc::clone(block_processor),
+        Arc::clone(generator),
+        Arc::clone(final_generator),
+        Arc::clone(tcp_channels),
+        Arc::clone(vote_cache),
+        Arc::clone(stats),
+        active_stopped_wrapper,
+        election_ended_wrapper,
+        account_balance_changed_wrapper,
+    )))
 }
 
 #[no_mangle]
@@ -139,6 +144,13 @@ pub extern "C" fn rsn_active_transactions_recently_confirmed(
     handle: &ActiveTransactionsHandle,
 ) -> *mut RecentlyConfirmedCacheHandle {
     RecentlyConfirmedCacheHandle::new(Arc::clone(&handle.recently_confirmed))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_recently_cemented(
+    handle: &ActiveTransactionsHandle,
+) -> *mut RecentlyCementedCacheHandle {
+    RecentlyCementedCacheHandle::new(Arc::clone(&handle.recently_cemented))
 }
 
 #[no_mangle]
@@ -726,6 +738,14 @@ pub unsafe extern "C" fn rsn_active_transactions_notify_observers(
     votes: &VoteWithWeightInfoVecHandle,
 ) {
     handle.notify_observers(tx.as_read_txn(), &status.0, &votes.0);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_block_cemented_callback(
+    handle: &ActiveTransactionsHandle,
+    block: &BlockHandle,
+) {
+    handle.block_cemented_callback(block);
 }
 
 /*

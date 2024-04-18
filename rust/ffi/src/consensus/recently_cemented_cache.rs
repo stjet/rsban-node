@@ -5,13 +5,17 @@ use std::sync::{Arc, Mutex};
 
 pub struct RecentlyCementedCacheHandle(Arc<Mutex<BoundedVecDeque<ElectionStatus>>>);
 
+impl RecentlyCementedCacheHandle {
+    pub fn new(inner: Arc<Mutex<BoundedVecDeque<ElectionStatus>>>) -> *mut Self {
+        Box::into_raw(Box::new(Self(inner)))
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_recently_cemented_cache_create1(
     max_size: usize,
 ) -> *mut RecentlyCementedCacheHandle {
-    Box::into_raw(Box::new(RecentlyCementedCacheHandle(Arc::new(Mutex::new(
-        BoundedVecDeque::new(max_size),
-    )))))
+    RecentlyCementedCacheHandle::new(Arc::new(Mutex::new(BoundedVecDeque::new(max_size))))
 }
 
 #[no_mangle]

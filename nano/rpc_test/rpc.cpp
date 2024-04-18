@@ -5248,9 +5248,9 @@ TEST (rpc, confirmation_history)
 	auto wallet_id = node->wallets.first_wallet_id ();
 	nano::keypair key;
 	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	ASSERT_TRUE (node->active.recently_cemented.list ().empty ());
+	ASSERT_TRUE (node->active.recently_cemented ().list ().empty ());
 	auto block (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, nano::Gxrb_ratio));
-	ASSERT_TIMELY (10s, !node->active.recently_cemented.list ().empty ());
+	ASSERT_TIMELY (10s, !node->active.recently_cemented ().list ().empty ());
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
 	request.put ("action", "confirmation_history");
@@ -5280,11 +5280,11 @@ TEST (rpc, confirmation_history_hash)
 	auto wallet_id = node->wallets.first_wallet_id ();
 	nano::keypair key;
 	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	ASSERT_TRUE (node->active.recently_cemented.list ().empty ());
+	ASSERT_TRUE (node->active.recently_cemented ().list ().empty ());
 	auto send1 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, nano::Gxrb_ratio));
 	auto send2 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, nano::Gxrb_ratio));
 	auto send3 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, nano::Gxrb_ratio));
-	ASSERT_TIMELY_EQ (10s, node->active.recently_cemented.list ().size (), 3);
+	ASSERT_TIMELY_EQ (10s, node->active.recently_cemented ().list ().size (), 3);
 	auto const rpc_ctx = add_rpc (system, node);
 	boost::property_tree::ptree request;
 	request.put ("action", "confirmation_history");
@@ -5370,7 +5370,7 @@ TEST (rpc, block_confirm_confirmed)
 	auto response (wait_response (system, rpc_ctx, request));
 	ASSERT_EQ ("1", response.get<std::string> ("started"));
 	// Check confirmation history
-	auto confirmed (node->active.recently_cemented.list ());
+	auto confirmed (node->active.recently_cemented ().list ());
 	ASSERT_EQ (1, confirmed.size ());
 	ASSERT_EQ (nano::dev::genesis->hash (), confirmed.begin ()->get_winner ()->hash ());
 	// Check callback

@@ -1,7 +1,9 @@
 use num_traits::FromPrimitive;
 use rsnano_core::{utils::system_time_as_nanoseconds, Account, Amount, BlockEnum, BlockHash};
 use rsnano_node::{
-    consensus::{Election, ElectionBehavior, ElectionData, ElectionState, VoteInfo},
+    consensus::{
+        Election, ElectionBehavior, ElectionData, ElectionState, VoteInfo, NEXT_ELECTION_ID,
+    },
     stats::DetailType,
 };
 use std::{
@@ -40,8 +42,6 @@ impl Deref for ElectionHandle {
 
 pub type ConfirmationAction = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
 pub type LiveVoteAction = unsafe extern "C" fn(*mut c_void, *const u8);
-
-static NEXT_ELECTION_ID: AtomicUsize = AtomicUsize::new(1);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_election_create(

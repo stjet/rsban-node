@@ -11,7 +11,7 @@ mod vote_processor_queue;
 mod vote_spacing;
 
 pub use confirmation_solicitor::ConfirmationSolicitor;
-pub use election::{Election, ElectionBehavior, ElectionData, ElectionState, VoteInfo};
+pub use election::*;
 pub use local_vote_history::*;
 pub use recently_confirmed_cache::*;
 pub use rep_tiers::*;

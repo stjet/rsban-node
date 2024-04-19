@@ -1,7 +1,7 @@
 use super::{
     confirmation_solicitor::ConfirmationSolicitor, Election, ElectionBehavior, ElectionData,
     ElectionState, ElectionStatus, ElectionStatusType, LocalVoteHistory, RecentlyConfirmedCache,
-    VoteCache, VoteGenerator, VoteInfo,
+    VoteCache, VoteGenerator, VoteInfo, NEXT_ELECTION_ID,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -63,6 +63,7 @@ pub struct ActiveTransactions {
     pub vacancy_update: Mutex<Box<dyn Fn() + Send + Sync>>,
     vote_cache: Arc<Mutex<VoteCache>>,
     stats: Arc<Stats>,
+    active_started_observer: Box<dyn Fn(BlockHash) + Send + Sync>,
     active_stopped_observer: Box<dyn Fn(BlockHash) + Send + Sync>,
     vote_processed_observers: Mutex<Vec<VoteProcessedCallback>>,
     activate_successors: Mutex<Box<dyn Fn(LmdbReadTransaction, &Arc<BlockEnum>) + Send + Sync>>,
@@ -87,6 +88,7 @@ impl ActiveTransactions {
         tcp_channels: Arc<TcpChannels>,
         vote_cache: Arc<Mutex<VoteCache>>,
         stats: Arc<Stats>,
+        active_started_observer: Box<dyn Fn(BlockHash) + Send + Sync>,
         active_stopped_observer: Box<dyn Fn(BlockHash) + Send + Sync>,
         election_end: ElectionEndCallback,
         account_balance_changed: AccountBalanceChangedCallback,
@@ -122,6 +124,7 @@ impl ActiveTransactions {
             vacancy_update: Mutex::new(Box::new(|| {})),
             vote_cache,
             stats,
+            active_started_observer,
             active_stopped_observer,
             vote_processed_observers: Mutex::new(Vec::new()),
             activate_successors: Mutex::new(Box::new(|_tx, _block| {})),
@@ -1265,77 +1268,74 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
         block: &Arc<BlockEnum>,
         election_behavior: ElectionBehavior,
     ) -> (bool, Option<Arc<Election>>) {
-        let guard = self.mutex.lock().unwrap();
+        let mut election_result = None;
+        let mut inserted = false;
 
-        //nano::election_insertion_result result;
+        let mut guard = self.mutex.lock().unwrap();
 
         if guard.stopped {
             return (false, None);
         }
-        todo!()
 
-        //auto const root (block_a->qualified_root ());
-        //auto const hash = block_a->hash ();
-        //auto const existing_handle = rsnano::rsn_active_transactions_lock_roots_find (guard.handle, root.root ().bytes.data (), root.previous ().bytes.data ());
-        //std::shared_ptr<nano::election> existing{};
-        //if (existing_handle != nullptr)
-        //{
-        //    existing = std::make_shared<nano::election> (existing_handle);
-        //}
+        let root = block.qualified_root();
+        let hash = block.hash();
+        let existing = guard.roots.get(&root);
 
-        //if (existing == nullptr)
-        //{
-        //    if (!recently_confirmed ().exists (root))
-        //    {
-        //        result.inserted = true;
-        //        auto observe_rep_cb = [&node = node] (auto const & rep_a) {
-        //            // Representative is defined as online if replying to live votes or rep_crawler queries
-        //            node.online_reps.observe (rep_a);
-        //        };
-        //        auto hash (block_a->hash ());
-        //        result.election = nano::make_shared<nano::election> (node, block_a, nullptr, observe_rep_cb, election_behavior_a);
-        //        rsnano::rsn_active_transactions_lock_roots_insert (guard.handle, root.root ().bytes.data (), root.previous ().bytes.data (), result.election->handle);
-        //        rsnano::rsn_active_transactions_lock_blocks_insert (guard.handle, hash.bytes.data (), result.election->handle);
+        if let Some(existing) = existing {
+            election_result = Some(Arc::clone(existing));
+        } else {
+            if !self.recently_confirmed.root_exists(&root) {
+                inserted = true;
+                let online_reps = Arc::clone(&self.online_reps);
+                let observer_rep_cb = Box::new(move |rep| {
+                    // Representative is defined as online if replying to live votes or rep_crawler queries
+                    online_reps.lock().unwrap().observe(rep);
+                });
 
-        //        // Keep track of election count by election type
-        //        debug_assert (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (result.election->behavior ())) >= 0);
-        //        rsnano::rsn_active_transactions_lock_count_by_behavior_inc (guard.handle, static_cast<uint8_t> (result.election->behavior ()));
+                let id = NEXT_ELECTION_ID.fetch_add(1, Ordering::Relaxed);
+                let election = Arc::new(Election::new(
+                    id,
+                    Arc::clone(block),
+                    election_behavior,
+                    Box::new(|_| {}),
+                    observer_rep_cb,
+                ));
+                guard.roots.insert(root, Arc::clone(&election));
+                guard.blocks.insert(hash, Arc::clone(&election));
 
-        //        node.stats->inc (nano::stat::type::active_started, to_stat_detail (election_behavior_a));
-        //        node.logger->trace (nano::log::type::active_transactions, nano::log::detail::active_started,
-        //        nano::log::arg{ "behavior", election_behavior_a },
-        //        nano::log::arg{ "election", result.election });
-        //    }
-        //    else
-        //    {
-        //        // result is not set
-        //    }
-        //}
-        //else
-        //{
-        //    result.election = existing;
-        //}
-        //guard.unlock ();
+                // Keep track of election count by election type
+                *guard.count_by_behavior_mut(election.behavior) += 1;
 
-        //if (result.inserted)
-        //{
-        //    debug_assert (result.election);
+                self.stats.inc(
+                    StatType::ActiveStarted,
+                    election_behavior.into(),
+                    Direction::In,
+                );
+                trace!(behavior = ?election_behavior, ?election, "active started");
+                election_result = Some(election);
+            } else {
+                // result is not set
+            }
+        }
+        drop(guard);
 
-        //    trigger_vote_cache (hash);
+        if inserted {
+            debug_assert!(election_result.is_some());
 
-        //    node.observers->active_started.notify (hash);
-        //    vacancy_update ();
-        //}
+            self.trigger_vote_cache(&hash);
 
-        //// Votes are generated for inserted or ongoing elections
-        //if (result.election)
-        //{
-        //    auto guard{ result.election->lock () };
-        //    broadcast_vote (*result.election, guard);
-        //}
+            (self.active_started_observer)(hash);
+            self.vacancy_update.lock().unwrap()();
+        }
 
-        //trim ();
+        // Votes are generated for inserted or ongoing elections
+        if let Some(election) = &election_result {
+            let mut guard = election.mutex.lock().unwrap();
+            self.broadcast_vote(election, &mut guard);
+        }
 
-        //return result;
+        self.trim();
+
+        (inserted, election_result)
     }
 }

@@ -27,11 +27,11 @@ use rsnano_node::{
     config::NodeConfig,
     consensus::{
         AccountBalanceChangedCallback, ActiveTransactions, ActiveTransactionsData,
-        ActiveTransactionsExt, Election, ElectionData, ElectionEndCallback, TallyKey,
+        ActiveTransactionsExt, Election, ElectionBehavior, ElectionEndCallback,
     },
 };
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::HashMap,
     ffi::c_void,
     ops::Deref,
     sync::{Arc, MutexGuard},
@@ -71,6 +71,7 @@ pub unsafe extern "C" fn rsn_active_transactions_create(
     stats: &StatHandle,
     observers_context: *mut c_void,
     delete_observers_context: VoidPointerCallback,
+    active_started: BlockHashCallback,
     active_stopped: BlockHashCallback,
     election_ended: ElectionEndedCallback,
     balance_changed: FfiAccountBalanceCallback,
@@ -80,6 +81,12 @@ pub unsafe extern "C" fn rsn_active_transactions_create(
         observers_context,
         delete_observers_context,
     ));
+
+    let ctx = Arc::clone(&ctx_wrapper);
+    let active_started_wrapper = Box::new(move |hash: BlockHash| {
+        active_started(ctx.get_context(), hash.as_bytes().as_ptr())
+    });
+
     let ctx = Arc::clone(&ctx_wrapper);
     let active_stopped_wrapper = Box::new(move |hash: BlockHash| {
         active_stopped(ctx.get_context(), hash.as_bytes().as_ptr())
@@ -123,6 +130,7 @@ pub unsafe extern "C" fn rsn_active_transactions_create(
         Arc::clone(tcp_channels),
         Arc::clone(vote_cache),
         Arc::clone(stats),
+        active_started_wrapper,
         active_stopped_wrapper,
         election_ended_wrapper,
         account_balance_changed_wrapper,
@@ -330,15 +338,6 @@ pub unsafe extern "C" fn rsn_active_transactions_lock_blocks_insert(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_lock_blocks_erase(
-    handle: &mut ActiveTransactionsLockHandle,
-    hash: *const u8,
-) -> bool {
-    let hash = BlockHash::from_ptr(hash);
-    handle.0.as_mut().unwrap().blocks.remove(&hash).is_some()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_lock_blocks_len(
     handle: &ActiveTransactionsLockHandle,
 ) -> usize {
@@ -379,19 +378,6 @@ pub unsafe extern "C" fn rsn_active_transactions_tally_impl(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_have_quorum(
-    handle: &ActiveTransactionsHandle,
-    tally: &TallyBlocksHandle,
-) -> bool {
-    let ordered_tally: BTreeMap<TallyKey, Arc<BlockEnum>> = tally
-        .0
-        .iter()
-        .map(|(k, v)| (TallyKey(*k), Arc::clone(v)))
-        .collect();
-    handle.have_quorum(&ordered_tally)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_remove_votes(
     handle: &ActiveTransactionsHandle,
     election: &ElectionHandle,
@@ -419,11 +405,6 @@ pub extern "C" fn rsn_active_transactions_publish_block(
     block: &BlockHandle,
 ) -> bool {
     handle.publish_block(block)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_erase_oldest(handle: &ActiveTransactionsHandle) {
-    handle.erase_oldest();
 }
 
 #[no_mangle]
@@ -505,14 +486,6 @@ pub extern "C" fn rsn_election_vec_get(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_cooldown_time_s(
-    handle: &ActiveTransactionsHandle,
-    weight: *const u8,
-) -> u64 {
-    handle.cooldown_time(Amount::from_ptr(weight)).as_secs()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_remove_election_winner_details(
     handle: &ActiveTransactionsHandle,
     hash: *const u8,
@@ -521,15 +494,6 @@ pub unsafe extern "C" fn rsn_active_transactions_remove_election_winner_details(
         Some(election) => ElectionHandle::new(election),
         None => std::ptr::null_mut(),
     }
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_active_transactions_confirm_if_quorum(
-    handle: &ActiveTransactionsHandle,
-    election_lock: &mut ElectionLockHandle,
-    election: &ElectionHandle,
-) {
-    handle.confirm_if_quorum(election_lock.take().unwrap(), election);
 }
 
 #[no_mangle]
@@ -564,6 +528,21 @@ pub extern "C" fn rsn_active_transactions_limit(
     behavior: u8,
 ) -> usize {
     handle.limit(FromPrimitive::from_u8(behavior).unwrap())
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_insert(
+    handle: &ActiveTransactionsHandle,
+    block: &BlockHandle,
+    election_behavior: u8,
+    inserted: &mut bool,
+) -> *mut ElectionHandle {
+    let (election_inserted, election) =
+        handle.insert(block, ElectionBehavior::from_u8(election_behavior).unwrap());
+    *inserted = election_inserted;
+    election
+        .map(|e| ElectionHandle::new(e))
+        .unwrap_or(std::ptr::null_mut())
 }
 
 #[no_mangle]
@@ -620,33 +599,6 @@ pub unsafe extern "C" fn rsn_active_transactions_active(
     hash: *const u8,
 ) -> bool {
     handle.active(&BlockHash::from_ptr(hash))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_remove_block(
-    handle: &ActiveTransactionsHandle,
-    election: &mut ElectionLockHandle,
-    hash: *const u8,
-) {
-    handle.remove_block(election.0.as_mut().unwrap(), &BlockHash::from_ptr(hash));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_replace_by_weight(
-    handle: &ActiveTransactionsHandle,
-    election: &ElectionHandle,
-    election_lock: &mut ElectionLockHandle,
-    hash: *const u8,
-) -> bool {
-    let election_guard = election_lock.0.take().unwrap();
-    let (replaced, election_guard) =
-        handle.replace_by_weight(election, election_guard, &BlockHash::from_ptr(hash));
-    let election_guard = std::mem::transmute::<
-        MutexGuard<ElectionData>,
-        MutexGuard<'static, ElectionData>,
-    >(election_guard);
-    election_lock.0 = Some(election_guard);
-    replaced
 }
 
 #[no_mangle]

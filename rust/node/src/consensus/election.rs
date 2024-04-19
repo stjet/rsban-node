@@ -5,11 +5,13 @@ use std::{
     collections::HashMap,
     fmt::Debug,
     sync::{
-        atomic::{AtomicBool, AtomicU32, Ordering},
+        atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering},
         Arc, Mutex, RwLock,
     },
     time::{Duration, Instant, SystemTime},
 };
+
+pub static NEXT_ELECTION_ID: AtomicUsize = AtomicUsize::new(1);
 
 //TODO remove the many RwLocks
 pub struct Election {

@@ -1,4 +1,3 @@
-#include "nano/lib/logging.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/utility.hpp"
 #include "nano/node/election_status.hpp"
@@ -19,7 +18,6 @@
 
 #include <boost/format.hpp>
 
-#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
@@ -125,6 +123,12 @@ void delete_vacancy_update (void * context)
 	delete callback;
 }
 
+void call_active_started (void * context, uint8_t const * hash)
+{
+	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
+	(*observers)->active_started.notify (nano::block_hash::from_bytes (hash));
+}
+
 void call_active_stopped (void * context, uint8_t const * hash)
 {
 	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
@@ -218,7 +222,7 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	node_a.workers->handle, node_a.history.handle, node_a.block_processor.handle,
 	node_a.generator.handle, node_a.final_generator.handle, node_a.network->tcp_channels->handle,
 	node_a.vote_cache.handle, node_a.stats->handle, observers_context, delete_observers_context,
-	call_active_stopped, call_election_ended, call_account_balance_changed,
+	call_active_started, call_active_stopped, call_election_ended, call_account_balance_changed,
 	node_a.representative_register.handle);
 
 	auto activate_successors_context = new std::function<void (nano::store::read_transaction const &, std::shared_ptr<nano::block> const &)>{
@@ -459,80 +463,12 @@ void nano::active_transactions::request_loop ()
 
 nano::election_insertion_result nano::active_transactions::insert (const std::shared_ptr<nano::block> & block_a, nano::election_behavior election_behavior_a)
 {
-	debug_assert (block_a);
-	debug_assert (block_a->has_sideband ());
-
-	auto guard{ lock () };
-
 	nano::election_insertion_result result;
-
-	if (rsnano::rsn_active_transactions_lock_stopped (guard.handle))
+	auto election_handle = rsnano::rsn_active_transactions_insert (handle, block_a->get_handle (), static_cast<uint8_t> (election_behavior_a), &result.inserted);
+	if (election_handle != nullptr)
 	{
-		return result;
+		result.election = std::make_shared<nano::election> (election_handle);
 	}
-
-	auto const root (block_a->qualified_root ());
-	auto const hash = block_a->hash ();
-	auto const existing_handle = rsnano::rsn_active_transactions_lock_roots_find (guard.handle, root.root ().bytes.data (), root.previous ().bytes.data ());
-	std::shared_ptr<nano::election> existing{};
-	if (existing_handle != nullptr)
-	{
-		existing = std::make_shared<nano::election> (existing_handle);
-	}
-
-	if (existing == nullptr)
-	{
-		if (!recently_confirmed ().exists (root))
-		{
-			result.inserted = true;
-			auto observe_rep_cb = [&node = node] (auto const & rep_a) {
-				// Representative is defined as online if replying to live votes or rep_crawler queries
-				node.online_reps.observe (rep_a);
-			};
-			auto hash (block_a->hash ());
-			result.election = nano::make_shared<nano::election> (node, block_a, nullptr, observe_rep_cb, election_behavior_a);
-			rsnano::rsn_active_transactions_lock_roots_insert (guard.handle, root.root ().bytes.data (), root.previous ().bytes.data (), result.election->handle);
-			rsnano::rsn_active_transactions_lock_blocks_insert (guard.handle, hash.bytes.data (), result.election->handle);
-
-			// Keep track of election count by election type
-			debug_assert (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (result.election->behavior ())) >= 0);
-			rsnano::rsn_active_transactions_lock_count_by_behavior_inc (guard.handle, static_cast<uint8_t> (result.election->behavior ()));
-
-			node.stats->inc (nano::stat::type::active_started, to_stat_detail (election_behavior_a));
-			node.logger->trace (nano::log::type::active_transactions, nano::log::detail::active_started,
-			nano::log::arg{ "behavior", election_behavior_a },
-			nano::log::arg{ "election", result.election });
-		}
-		else
-		{
-			// result is not set
-		}
-	}
-	else
-	{
-		result.election = existing;
-	}
-	guard.unlock ();
-
-	if (result.inserted)
-	{
-		debug_assert (result.election);
-
-		trigger_vote_cache (hash);
-
-		node.observers->active_started.notify (hash);
-		vacancy_update ();
-	}
-
-	// Votes are generated for inserted or ongoing elections
-	if (result.election)
-	{
-		auto guard{ result.election->lock () };
-		broadcast_vote (*result.election, guard);
-	}
-
-	trim ();
-
 	return result;
 }
 

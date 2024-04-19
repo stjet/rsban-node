@@ -204,9 +204,12 @@ public: // Events
 	nano::tally_t tally (nano::election & election) const;
 	void clear_recently_confirmed ();
 	std::size_t recently_confirmed_size ();
+	std::size_t recently_cemented_size ();
 	bool recently_confirmed (nano::block_hash const & hash);
 	nano::qualified_root lastest_recently_confirmed_root ();
 	void insert_recently_confirmed (std::shared_ptr<nano::block> const & block);
+	void insert_recently_cemented (nano::election_status const & status);
+	std::deque<nano::election_status> recently_cemented_list ();
 
 private:
 	void request_loop ();
@@ -216,10 +219,6 @@ private:
 private: // Dependencies
 	nano::node & node;
 	nano::block_processor & block_processor;
-
-public:
-	recently_confirmed_cache recently_confirmed ();
-	recently_cemented_cache recently_cemented ();
 
 private:
 	std::thread thread;

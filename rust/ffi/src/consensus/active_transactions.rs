@@ -1,7 +1,9 @@
 use super::{
     election::{ElectionHandle, ElectionLockHandle},
     election_status::ElectionStatusHandle,
-    recently_cemented_cache::RecentlyCementedCacheHandle,
+    recently_cemented_cache::{
+        RecentlyCementedCacheHandle, RecentlyCementedCachedDto, RecentlyCementedCachedRawData,
+    },
     recently_confirmed_cache::RecentlyConfirmedCacheHandle,
     vote_cache::{VoteCacheHandle, VoteResultMapHandle},
     vote_generator::VoteGeneratorHandle,
@@ -485,6 +487,13 @@ pub extern "C" fn rsn_active_transactions_recently_confirmed_count(
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_active_transactions_recently_cemented_count(
+    handle: &ActiveTransactionsHandle,
+) -> usize {
+    handle.0.recently_cemented_count()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_was_recently_confirmed(
     handle: &ActiveTransactionsHandle,
     hash: *const u8,
@@ -511,6 +520,30 @@ pub extern "C" fn rsn_active_transactions_recently_confirmed_insert(
     block: &BlockHandle,
 ) {
     handle.0.insert_recently_confirmed(block);
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_recently_cemented_insert(
+    handle: &ActiveTransactionsHandle,
+    status: &ElectionStatusHandle,
+) {
+    handle.0.insert_recently_cemented(status.0.clone());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_recently_cemented_list(
+    handle: &ActiveTransactionsHandle,
+    list: *mut RecentlyCementedCachedDto,
+) {
+    let items: Vec<*mut ElectionStatusHandle> = handle
+        .recently_cemented_list()
+        .drain(..)
+        .map(|e| Box::into_raw(Box::new(ElectionStatusHandle(e))))
+        .collect();
+    let raw_data = Box::into_raw(Box::new(RecentlyCementedCachedRawData(items)));
+    (*list).items = (*raw_data).0.as_ptr();
+    (*list).count = (*raw_data).0.len();
+    (*list).raw_data = raw_data;
 }
 
 #[no_mangle]

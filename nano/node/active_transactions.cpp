@@ -467,16 +467,6 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 	return result;
 }
 
-nano::recently_confirmed_cache nano::active_transactions::recently_confirmed ()
-{
-	return nano::recently_confirmed_cache{ rsnano::rsn_active_transactions_recently_confirmed (handle) };
-}
-
-nano::recently_cemented_cache nano::active_transactions::recently_cemented ()
-{
-	return nano::recently_cemented_cache{ rsnano::rsn_active_transactions_recently_cemented (handle) };
-}
-
 nano::election_extended_status nano::active_transactions::current_status (nano::election & election) const
 {
 	nano::election_lock guard{ election };
@@ -503,6 +493,11 @@ std::size_t nano::active_transactions::recently_confirmed_size ()
 	return rsnano::rsn_active_transactions_recently_confirmed_count (handle);
 }
 
+std::size_t nano::active_transactions::recently_cemented_size ()
+{
+	return rsnano::rsn_active_transactions_recently_cemented_count (handle);
+}
+
 bool nano::active_transactions::recently_confirmed (nano::block_hash const & hash)
 {
 	return rsnano::rsn_active_transactions_was_recently_confirmed (handle, hash.bytes.data ());
@@ -518,6 +513,30 @@ nano::qualified_root nano::active_transactions::lastest_recently_confirmed_root 
 void nano::active_transactions::insert_recently_confirmed (std::shared_ptr<nano::block> const & block)
 {
 	rsnano::rsn_active_transactions_recently_confirmed_insert (handle, block->get_handle ());
+}
+
+void nano::active_transactions::insert_recently_cemented (nano::election_status const & status)
+{
+	rsnano::rsn_active_transactions_recently_cemented_insert (handle, status.handle);
+}
+
+std::deque<nano::election_status> nano::active_transactions::recently_cemented_list ()
+{
+	rsnano::RecentlyCementedCachedDto recently_cemented_cache_dto;
+	rsnano::rsn_active_transactions_recently_cemented_list (handle, &recently_cemented_cache_dto);
+	nano::recently_cemented_cache::queue_t result;
+	rsnano::ElectionStatusHandle * const * current;
+	int i;
+	for (i = 0, current = recently_cemented_cache_dto.items; i < recently_cemented_cache_dto.count; ++i)
+	{
+		nano::election_status election_status (*current);
+		result.push_back (election_status);
+		current++;
+	}
+
+	rsnano::rsn_recently_cemented_cache_destroy_dto (&recently_cemented_cache_dto);
+
+	return result;
 }
 
 // Validate a vote and apply it to the current election if one exists

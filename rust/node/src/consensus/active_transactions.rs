@@ -144,6 +144,10 @@ impl ActiveTransactions {
         self.recently_confirmed.len()
     }
 
+    pub fn recently_cemented_count(&self) -> usize {
+        self.recently_cemented.lock().unwrap().len()
+    }
+
     pub fn was_recently_confirmed(&self, hash: &BlockHash) -> bool {
         self.recently_confirmed.hash_exists(hash)
     }
@@ -155,6 +159,14 @@ impl ActiveTransactions {
     pub fn insert_recently_confirmed(&self, block: &BlockEnum) {
         self.recently_confirmed
             .put(block.qualified_root(), block.hash());
+    }
+
+    pub fn insert_recently_cemented(&self, status: ElectionStatus) {
+        self.recently_cemented.lock().unwrap().push_back(status);
+    }
+
+    pub fn recently_cemented_list(&self) -> BoundedVecDeque<ElectionStatus> {
+        self.recently_cemented.lock().unwrap().clone()
     }
 
     /*

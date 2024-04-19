@@ -53,12 +53,12 @@ pub unsafe extern "C" fn rsn_recently_cemented_cache_list(
     (*list).raw_data = raw_data;
 }
 
-pub struct RecentlyCementedCachedRawData(Vec<*mut ElectionStatusHandle>);
+pub struct RecentlyCementedCachedRawData(pub Vec<*mut ElectionStatusHandle>);
 
 #[repr(C)]
 pub struct RecentlyCementedCachedDto {
-    items: *const *mut ElectionStatusHandle,
-    count: usize,
+    pub items: *const *mut ElectionStatusHandle,
+    pub count: usize,
     pub raw_data: *mut RecentlyCementedCachedRawData,
 }
 

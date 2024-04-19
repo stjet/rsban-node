@@ -163,6 +163,20 @@ pub unsafe extern "C" fn rsn_active_transactions_destroy(handle: *mut ActiveTran
     drop(Box::from_raw(handle))
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_stop(handle: &ActiveTransactionsHandle) {
+    handle.stop();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_active_root(
+    handle: &ActiveTransactionsHandle,
+    root: *const u8,
+) -> bool {
+    let root = QualifiedRoot::from_ptr(root);
+    handle.active_root(&root)
+}
+
 pub struct ActiveTransactionsLockHandle(Option<MutexGuard<'static, ActiveTransactionsData>>);
 
 #[no_mangle]
@@ -307,6 +321,15 @@ pub unsafe extern "C" fn rsn_active_transactions_remove_votes(
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_active_transactions_list_active(
+    handle: &ActiveTransactionsHandle,
+    max: usize,
+) -> *mut ElectionVecHandle {
+    let elections = handle.0.list_active(max);
+    Box::into_raw(Box::new(ElectionVecHandle(elections)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_erase(
     handle: &ActiveTransactionsHandle,
     root: *const u8,
@@ -430,6 +453,14 @@ pub extern "C" fn rsn_active_transactions_force_confirm(
     election: &ElectionHandle,
 ) {
     handle.force_confirm(election);
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_confirmed(
+    handle: &ActiveTransactionsHandle,
+    election: &ElectionHandle,
+) -> bool {
+    handle.confirmed(election.0.as_ref())
 }
 
 #[no_mangle]

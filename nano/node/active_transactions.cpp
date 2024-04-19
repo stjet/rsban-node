@@ -279,10 +279,7 @@ void nano::active_transactions::start ()
 
 void nano::active_transactions::stop ()
 {
-	{
-		auto guard{ lock () };
-		rsnano::rsn_active_transactions_lock_stop (guard.handle);
-	}
+	rsnano::rsn_active_transactions_stop (handle);
 	rsnano::rsn_active_transactions_notify_all (handle);
 	nano::join_or_pass (thread);
 	clear ();
@@ -295,13 +292,7 @@ void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::b
 
 bool nano::active_transactions::confirmed (nano::election const & election) const
 {
-	auto guard{ election.lock () };
-	return confirmed_locked (guard);
-}
-
-bool nano::active_transactions::confirmed_locked (nano::election_lock & lock) const
-{
-	return rsnano::rsn_active_transactions_confirmed_locked (handle, lock.handle);
+	return rsnano::rsn_active_transactions_confirmed (handle, election.handle);
 }
 
 bool nano::active_transactions::confirmed (nano::block_hash const & hash) const
@@ -431,8 +422,18 @@ void nano::active_transactions::vacancy_update ()
 
 std::vector<std::shared_ptr<nano::election>> nano::active_transactions::list_active (std::size_t max_a)
 {
-	auto guard{ lock () };
-	return list_active_impl (max_a, guard);
+	std::vector<std::shared_ptr<nano::election>> result_l;
+	auto elections_handle = rsnano::rsn_active_transactions_list_active (handle, max_a);
+	auto len = rsnano::rsn_election_vec_len (elections_handle);
+	result_l.reserve (std::min (max_a, len));
+	std::size_t count_l{ 0 };
+	for (auto i = 0; i < len && count_l < max_a; ++i, ++count_l)
+	{
+		auto election = std::make_shared<nano::election> (rsnano::rsn_election_vec_get (elections_handle, i));
+		result_l.push_back (election);
+	}
+	rsnano::rsn_election_vec_destroy (elections_handle);
+	return result_l;
 }
 
 std::vector<std::shared_ptr<nano::election>> nano::active_transactions::list_active_impl (std::size_t max_a, nano::active_transactions_lock & guard) const
@@ -557,8 +558,7 @@ std::unordered_map<nano::block_hash, nano::vote_code> nano::active_transactions:
 
 bool nano::active_transactions::active (nano::qualified_root const & root_a) const
 {
-	auto guard{ lock () };
-	return rsnano::rsn_active_transactions_lock_roots_exists (guard.handle, root_a.root ().bytes.data (), root_a.previous ().bytes.data ());
+	return rsnano::rsn_active_transactions_active_root (handle, root_a.bytes.data ());
 }
 
 bool nano::active_transactions::active (nano::block const & block_a) const

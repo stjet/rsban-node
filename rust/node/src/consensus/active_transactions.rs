@@ -137,6 +137,10 @@ impl ActiveTransactions {
         }
     }
 
+    pub fn stop(&self) {
+        self.mutex.lock().unwrap().stopped = true;
+    }
+
     pub fn clear_recently_confirmed(&self) {
         self.recently_confirmed.clear();
     }
@@ -376,6 +380,11 @@ impl ActiveTransactions {
             guard.state,
             ElectionState::Confirmed | ElectionState::ExpiredConfirmed
         )
+    }
+
+    pub fn active_root(&self, root: &QualifiedRoot) -> bool {
+        let guard = self.mutex.lock().unwrap();
+        guard.roots.get(root).is_some()
     }
 
     pub fn active(&self, hash: &BlockHash) -> bool {
@@ -626,7 +635,7 @@ impl ActiveTransactions {
         }
     }
 
-    fn confirmed(&self, election: &Election) -> bool {
+    pub fn confirmed(&self, election: &Election) -> bool {
         let guard = election.mutex.lock().unwrap();
         self.confirmed_locked(&guard)
     }
@@ -770,6 +779,18 @@ impl ActiveTransactions {
 
         solicitor.flush();
         self.mutex.lock().unwrap()
+    }
+
+    // Returns a list of elections sorted by difficulty
+    pub fn list_active(&self, max: usize) -> Vec<Arc<Election>> {
+        self.mutex
+            .lock()
+            .unwrap()
+            .roots
+            .iter_sequenced()
+            .map(|(_, election)| Arc::clone(election))
+            .take(max)
+            .collect()
     }
 
     /// Returns a list of elections sorted by difficulty, mutex must be locked

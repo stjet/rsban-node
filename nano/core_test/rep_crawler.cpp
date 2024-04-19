@@ -257,7 +257,7 @@ TEST (rep_crawler, recently_confirmed)
 	auto & node1 (*system.nodes[0]);
 	ASSERT_EQ (1, node1.ledger.block_count ());
 	auto const block = nano::dev::genesis;
-	node1.active.recently_confirmed ().put (block->qualified_root (), block->hash ());
+	node1.active.insert_recently_confirmed (block);
 	auto & node2 (*system.add_node ());
 	auto wallet_id2 = node2.wallets.first_wallet_id ();
 	(void)node2.wallets.insert_adhoc (wallet_id2, nano::dev::genesis_key.prv);

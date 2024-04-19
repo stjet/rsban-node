@@ -202,19 +202,16 @@ public: // Events
 	nano::vote_code vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a = nano::vote_source::live);
 	nano::election_extended_status current_status (nano::election & election) const;
 	nano::tally_t tally (nano::election & election) const;
+	void clear_recently_confirmed ();
+	std::size_t recently_confirmed_size ();
+	bool recently_confirmed (nano::block_hash const & hash);
+	nano::qualified_root lastest_recently_confirmed_root ();
+	void insert_recently_confirmed (std::shared_ptr<nano::block> const & block);
 
 private:
-	// Erase elections if we're over capacity
-	void trim ();
 	void request_loop ();
 	// Returns a list of elections sorted by difficulty, mutex must be locked
 	std::vector<std::shared_ptr<nano::election>> list_active_impl (std::size_t, nano::active_transactions_lock & guard) const;
-	bool trigger_vote_cache (nano::block_hash);
-	/**
-	 * Broadcasts vote for the current winner of this election
-	 * Checks if sufficient amount of time (`vote_generation_interval`) passed since the last vote generation
-	 */
-	void broadcast_vote (nano::election & election, nano::election_lock & lock_a);
 
 private: // Dependencies
 	nano::node & node;

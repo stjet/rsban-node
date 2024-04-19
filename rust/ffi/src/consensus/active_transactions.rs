@@ -15,7 +15,7 @@ use crate::{
     ledger::datastore::{lmdb::TransactionType, LedgerHandle, TransactionHandle},
     representatives::{OnlineRepsHandle, RepresentativeRegisterHandle},
     transport::TcpChannelsHandle,
-    utils::{ContextWrapper, InstantHandle, ThreadPoolHandle},
+    utils::{ContainerInfoComponentHandle, ContextWrapper, InstantHandle, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
     NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
 };
@@ -32,7 +32,7 @@ use rsnano_node::{
 };
 use std::{
     collections::HashMap,
-    ffi::c_void,
+    ffi::{c_char, c_void, CStr},
     ops::Deref,
     sync::{Arc, MutexGuard},
 };
@@ -231,13 +231,6 @@ pub extern "C" fn rsn_active_transactions_lock_owns_lock(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_lock_stopped(
-    handle: &ActiveTransactionsLockHandle,
-) -> bool {
-    handle.0.as_ref().unwrap().stopped
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_lock_stop(
     handle: &mut ActiveTransactionsLockHandle,
 ) {
@@ -256,22 +249,6 @@ pub extern "C" fn rsn_active_transactions_lock_roots_clear(
     handle: &mut ActiveTransactionsLockHandle,
 ) {
     handle.0.as_mut().unwrap().roots.clear();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_lock_roots_insert(
-    handle: &mut ActiveTransactionsLockHandle,
-    root: *const u8,
-    previous: *const u8,
-    election: &ElectionHandle,
-) {
-    let root = QualifiedRoot::new(Root::from_ptr(root), BlockHash::from_ptr(previous));
-    handle
-        .0
-        .as_mut()
-        .unwrap()
-        .roots
-        .insert(root, Arc::clone(election));
 }
 
 #[no_mangle]
@@ -295,53 +272,6 @@ pub unsafe extern "C" fn rsn_active_transactions_lock_roots_find(
         Some(election) => Box::into_raw(Box::new(ElectionHandle(Arc::clone(election)))),
         None => std::ptr::null_mut(),
     }
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_active_transactions_lock_count_by_behavior(
-    handle: &ActiveTransactionsLockHandle,
-    behavior: u8,
-) -> usize {
-    handle
-        .0
-        .as_ref()
-        .unwrap()
-        .count_by_behavior(FromPrimitive::from_u8(behavior).unwrap())
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_active_transactions_lock_count_by_behavior_inc(
-    handle: &mut ActiveTransactionsLockHandle,
-    behavior: u8,
-) {
-    let count = handle
-        .0
-        .as_mut()
-        .unwrap()
-        .count_by_behavior_mut(FromPrimitive::from_u8(behavior).unwrap());
-    *count += 1;
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_lock_blocks_insert(
-    handle: &mut ActiveTransactionsLockHandle,
-    hash: *const u8,
-    election: &ElectionHandle,
-) {
-    let hash = BlockHash::from_ptr(hash);
-    handle
-        .0
-        .as_mut()
-        .unwrap()
-        .blocks
-        .insert(hash, Arc::clone(election));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_lock_blocks_len(
-    handle: &ActiveTransactionsLockHandle,
-) -> usize {
-    handle.0.as_ref().unwrap().blocks.len()
 }
 
 #[no_mangle]
@@ -405,11 +335,6 @@ pub extern "C" fn rsn_active_transactions_publish_block(
     block: &BlockHandle,
 ) -> bool {
     handle.publish_block(block)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_trim(handle: &ActiveTransactionsHandle) {
-    handle.trim();
 }
 
 pub struct TallyBlocksHandle(Vec<(Amount, Arc<BlockEnum>)>);
@@ -546,6 +471,49 @@ pub extern "C" fn rsn_active_transactions_insert(
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_active_transactions_clear_recently_confirmed(
+    handle: &ActiveTransactionsHandle,
+) {
+    handle.0.clear_recently_confirmed();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_recently_confirmed_count(
+    handle: &ActiveTransactionsHandle,
+) -> usize {
+    handle.0.recently_confirmed_count()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_was_recently_confirmed(
+    handle: &ActiveTransactionsHandle,
+    hash: *const u8,
+) -> bool {
+    handle.0.was_recently_confirmed(&BlockHash::from_ptr(hash))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_latest_recently_confirmed_root(
+    handle: &ActiveTransactionsHandle,
+    result: *mut u8,
+) {
+    handle
+        .0
+        .latest_recently_confirmed()
+        .unwrap()
+        .0
+        .copy_bytes(result);
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_active_transactions_recently_confirmed_insert(
+    handle: &ActiveTransactionsHandle,
+    block: &BlockHandle,
+) {
+    handle.0.insert_recently_confirmed(block);
+}
+
+#[no_mangle]
 pub extern "C" fn rsn_active_transactions_vacancy(
     handle: &ActiveTransactionsHandle,
     behavior: u8,
@@ -611,15 +579,6 @@ pub unsafe extern "C" fn rsn_active_transactions_publish(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_broadcast_vote(
-    handle: &ActiveTransactionsHandle,
-    election: &ElectionHandle,
-    election_lock: &mut ElectionLockHandle,
-) {
-    handle.broadcast_vote(election, election_lock.0.as_mut().unwrap());
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_vote(
     handle: &ActiveTransactionsHandle,
     vote: &VoteHandle,
@@ -653,6 +612,16 @@ pub unsafe extern "C" fn rsn_active_transactions_block_cemented_callback(
     block: &BlockHandle,
 ) {
     handle.block_cemented_callback(block);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_collect_container_info(
+    handle: &ActiveTransactionsHandle,
+    name: *const c_char,
+) -> *mut ContainerInfoComponentHandle {
+    let container_info =
+        handle.collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
+    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }
 
 /*

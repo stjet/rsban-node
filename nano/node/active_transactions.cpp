@@ -337,11 +337,6 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 	return rsnano::rsn_active_transactions_publish (handle, block_a->get_handle (), election.handle);
 }
 
-void nano::active_transactions::broadcast_vote (nano::election & election, nano::election_lock & lock_a)
-{
-	rsnano::rsn_active_transactions_broadcast_vote (handle, election.handle, lock_a.handle);
-}
-
 void nano::active_transactions::add_election_winner_details (nano::block_hash const & hash_a, std::shared_ptr<nano::election> const & election_a)
 {
 	auto guard{ lock_election_winners (handle) };
@@ -472,21 +467,6 @@ nano::election_insertion_result nano::active_transactions::insert (const std::sh
 	return result;
 }
 
-bool nano::active_transactions::trigger_vote_cache (nano::block_hash hash)
-{
-	auto cached = node.vote_cache.find (hash);
-	for (auto const & cached_vote : cached)
-	{
-		vote (cached_vote, nano::vote_source::cache);
-	}
-	return !cached.empty ();
-}
-
-void nano::active_transactions::trim ()
-{
-	rsnano::rsn_active_transactions_trim (handle);
-}
-
 nano::recently_confirmed_cache nano::active_transactions::recently_confirmed ()
 {
 	return nano::recently_confirmed_cache{ rsnano::rsn_active_transactions_recently_confirmed (handle) };
@@ -511,6 +491,33 @@ nano::tally_t nano::active_transactions::tally (nano::election & election) const
 {
 	auto guard{ election.lock () };
 	return tally_impl (guard);
+}
+
+void nano::active_transactions::clear_recently_confirmed ()
+{
+	rsnano::rsn_active_transactions_clear_recently_confirmed (handle);
+}
+
+std::size_t nano::active_transactions::recently_confirmed_size ()
+{
+	return rsnano::rsn_active_transactions_recently_confirmed_count (handle);
+}
+
+bool nano::active_transactions::recently_confirmed (nano::block_hash const & hash)
+{
+	return rsnano::rsn_active_transactions_was_recently_confirmed (handle, hash.bytes.data ());
+}
+
+nano::qualified_root nano::active_transactions::lastest_recently_confirmed_root ()
+{
+	nano::qualified_root result;
+	rsnano::rsn_active_transactions_latest_recently_confirmed_root (handle, result.bytes.data ());
+	return result;
+}
+
+void nano::active_transactions::insert_recently_confirmed (std::shared_ptr<nano::block> const & block)
+{
+	rsnano::rsn_active_transactions_recently_confirmed_insert (handle, block->get_handle ());
 }
 
 // Validate a vote and apply it to the current election if one exists
@@ -632,21 +639,7 @@ void nano::active_transactions::clear ()
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (active_transactions & active_transactions, std::string const & name)
 {
-	auto guard{ active_transactions.lock () };
-
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "roots", rsnano::rsn_active_transactions_lock_roots_size (guard.handle), sizeof (intptr_t) }));
-
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "blocks", rsnano::rsn_active_transactions_lock_blocks_len (guard.handle), sizeof (intptr_t) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "election_winner_details", active_transactions.election_winner_details_size (), sizeof (nano::block_hash) + sizeof (std::size_t) }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "normal", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::normal))), 0 }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "hinted", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::hinted))), 0 }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "optimistic", static_cast<std::size_t> (rsnano::rsn_active_transactions_lock_count_by_behavior (guard.handle, static_cast<uint8_t> (nano::election_behavior::optimistic))), 0 }));
-
-	composite->add_component (active_transactions.recently_confirmed ().collect_container_info ("recently_confirmed"));
-	composite->add_component (active_transactions.recently_cemented ().collect_container_info ("recently_cemented"));
-
-	return composite;
+	return std::make_unique<container_info_composite> (rsnano::rsn_active_transactions_collect_container_info (active_transactions.handle, name.c_str ()));
 }
 
 /*

@@ -16,8 +16,9 @@ use crate::{
 };
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
-    utils::MemoryStream, Account, Amount, BlockEnum, BlockHash, BlockType, QualifiedRoot, Vote,
-    VoteCode, VoteSource, VoteWithWeightInfo,
+    utils::{ContainerInfo, ContainerInfoComponent, MemoryStream},
+    Account, Amount, BlockEnum, BlockHash, BlockType, QualifiedRoot, Vote, VoteCode, VoteSource,
+    VoteWithWeightInfo,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::{Message, Publish};
@@ -25,6 +26,7 @@ use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{
     cmp::max,
     collections::{BTreeMap, HashMap},
+    mem::size_of,
     ops::Deref,
     sync::{atomic::Ordering, Arc, Condvar, Mutex, MutexGuard},
     time::{Duration, Instant, SystemTime},
@@ -132,6 +134,27 @@ impl ActiveTransactions {
             account_balance_changed,
             representative_register,
         }
+    }
+
+    pub fn clear_recently_confirmed(&self) {
+        self.recently_confirmed.clear();
+    }
+
+    pub fn recently_confirmed_count(&self) -> usize {
+        self.recently_confirmed.len()
+    }
+
+    pub fn was_recently_confirmed(&self, hash: &BlockHash) -> bool {
+        self.recently_confirmed.hash_exists(hash)
+    }
+
+    pub fn latest_recently_confirmed(&self) -> Option<(QualifiedRoot, BlockHash)> {
+        self.recently_confirmed.back()
+    }
+
+    pub fn insert_recently_confirmed(&self, block: &BlockEnum) {
+        self.recently_confirmed
+            .put(block.qualified_root(), block.hash());
     }
 
     /*
@@ -453,6 +476,8 @@ impl ActiveTransactions {
         result
     }
 
+    /// Broadcasts vote for the current winner of this election
+    /// Checks if sufficient amount of time (`vote_generation_interval`) passed since the last vote generation
     pub fn broadcast_vote(
         &self,
         election: &Election,
@@ -826,6 +851,55 @@ impl ActiveTransactions {
             }
         }
     }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        let guard = self.mutex.lock().unwrap();
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "roots".to_string(),
+                    count: guard.roots.len(),
+                    sizeof_element: OrderedRoots::ELEMENT_SIZE,
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "blocks".to_string(),
+                    count: guard.blocks.len(),
+                    sizeof_element: size_of::<BlockHash>() + size_of::<Arc<Election>>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "election_winner_details".to_string(),
+                    count: self.election_winner_details.lock().unwrap().len(),
+                    sizeof_element: size_of::<BlockHash>() + size_of::<Arc<Election>>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "normal".to_string(),
+                    count: guard.count_by_behavior(ElectionBehavior::Normal),
+                    sizeof_element: 0,
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "hinted".to_string(),
+                    count: guard.count_by_behavior(ElectionBehavior::Hinted),
+                    sizeof_element: 0,
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "optimistic".to_string(),
+                    count: guard.count_by_behavior(ElectionBehavior::Optimistic),
+                    sizeof_element: 0,
+                }),
+                self.recently_confirmed
+                    .collect_container_info("recently_confirmed"),
+                ContainerInfoComponent::Composite(
+                    "recently_cemented".to_string(),
+                    vec![ContainerInfoComponent::Leaf(ContainerInfo {
+                        name: "cemented".to_string(),
+                        count: self.recently_cemented.lock().unwrap().len(),
+                        sizeof_element: size_of::<ElectionStatus>(),
+                    })],
+                ),
+            ],
+        )
+    }
 }
 
 #[derive(PartialEq, Eq)]
@@ -894,6 +968,7 @@ impl OrderedRoots {
     pub fn new() -> Self {
         Default::default()
     }
+    pub const ELEMENT_SIZE: usize = size_of::<QualifiedRoot>() * 2 + size_of::<Arc<Election>>();
 
     pub fn insert(&mut self, root: QualifiedRoot, election: Arc<Election>) {
         if self.by_root.insert(root.clone(), election).is_none() {

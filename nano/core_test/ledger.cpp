@@ -78,7 +78,6 @@ TEST (votes, add_one)
 	auto existing1 (votes1.find (nano::dev::genesis_key.pub));
 	ASSERT_NE (votes1.end (), existing1);
 	ASSERT_EQ (send1->hash (), existing1->second.get_hash ());
-	auto guard{ node1.active.lock () };
 	auto winner (*node1.active.tally (*election1).begin ());
 	ASSERT_EQ (*send1, *winner.second);
 	ASSERT_EQ (nano::dev::constants.genesis_amount - 100, winner.first);

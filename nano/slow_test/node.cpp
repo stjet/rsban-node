@@ -324,7 +324,6 @@ TEST (node, fork_storm)
 			}
 			else
 			{
-				auto lock{ node_a->active.lock () };
 				auto elections_handle = rsnano::rsn_active_transactions_lock_roots_get_elections (lock.handle);
 				auto election = std::make_shared<nano::election> (rsnano::rsn_election_vec_get (elections_handle, 0));
 				rsnano::rsn_election_vec_destroy (elections_handle);
@@ -1798,7 +1797,6 @@ TEST (node, mass_block_new)
 		}
 		// Clear all active
 		{
-			auto guard{ node.active.lock () };
 			rsnano::rsn_active_transactions_lock_roots_clear (guard.handle);
 			rsnano::rsn_active_transactions_lock_blocks_clear (guard.handle);
 		}

@@ -56,6 +56,7 @@ pub struct ActiveTransactions {
     confirming_set: Arc<ConfirmingSet>,
     workers: Arc<dyn ThreadPool>,
     pub recently_confirmed: Arc<RecentlyConfirmedCache>,
+    /// Helper container for storing recently cemented elections (a block from election might be confirmed but not yet cemented by confirmation height processor)
     pub recently_cemented: Arc<Mutex<BoundedVecDeque<ElectionStatus>>>,
     history: Arc<LocalVoteHistory>,
     block_processor: Arc<BlockProcessor>,

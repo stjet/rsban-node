@@ -1,10 +1,7 @@
 use super::{
     election::{ElectionHandle, ElectionLockHandle},
     election_status::ElectionStatusHandle,
-    recently_cemented_cache::{
-        RecentlyCementedCacheHandle, RecentlyCementedCachedDto, RecentlyCementedCachedRawData,
-    },
-    recently_confirmed_cache::RecentlyConfirmedCacheHandle,
+    recently_cemented_cache::{RecentlyCementedCachedDto, RecentlyCementedCachedRawData},
     vote_cache::{VoteCacheHandle, VoteResultMapHandle},
     vote_generator::VoteGeneratorHandle,
     vote_with_weight_info::VoteWithWeightInfoVecHandle,
@@ -154,20 +151,6 @@ pub extern "C" fn rsn_active_transactions_request_loop2(
     let guard = lock_handle.0.take().unwrap();
     let guard = handle.0.request_loop2(stamp.0, guard);
     lock_handle.0 = Some(guard);
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_active_transactions_recently_confirmed(
-    handle: &ActiveTransactionsHandle,
-) -> *mut RecentlyConfirmedCacheHandle {
-    RecentlyConfirmedCacheHandle::new(Arc::clone(&handle.recently_confirmed))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_active_transactions_recently_cemented(
-    handle: &ActiveTransactionsHandle,
-) -> *mut RecentlyCementedCacheHandle {
-    RecentlyCementedCacheHandle::new(Arc::clone(&handle.recently_cemented))
 }
 
 #[no_mangle]

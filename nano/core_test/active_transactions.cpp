@@ -1027,7 +1027,6 @@ TEST (active_transactions, confirmation_consistency)
 			ASSERT_NO_ERROR (system.poll (5ms));
 		}
 		ASSERT_NO_ERROR (system.poll_until_true (1s, [&node, &block, i] {
-			auto guard{ node.active.lock () };
 			EXPECT_EQ (i + 1, node.active.recently_confirmed_size ());
 			EXPECT_EQ (block->qualified_root (), node.active.lastest_recently_confirmed_root ());
 			return i + 1 == node.active.recently_cemented_size (); // done after a callback

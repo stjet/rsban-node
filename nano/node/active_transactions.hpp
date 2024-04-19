@@ -70,30 +70,6 @@ public: // Container info
 	rsnano::RecentlyConfirmedCacheHandle * handle;
 };
 
-/*
- * Helper container for storing recently cemented elections (a block from election might be confirmed but not yet cemented by confirmation height processor)
- */
-class recently_cemented_cache final
-{
-public:
-	using queue_t = std::deque<nano::election_status>;
-
-	explicit recently_cemented_cache (std::size_t max_size);
-	explicit recently_cemented_cache (rsnano::RecentlyCementedCacheHandle * handle);
-	recently_cemented_cache (recently_cemented_cache &&) = delete;
-	explicit recently_cemented_cache (recently_cemented_cache const &);
-	~recently_cemented_cache ();
-	nano::recently_cemented_cache & operator= (const nano::recently_cemented_cache &);
-
-	void put (nano::election_status const &);
-	queue_t list () const;
-	std::size_t size () const;
-	rsnano::RecentlyCementedCacheHandle * handle;
-
-public: // Container info
-	std::unique_ptr<container_info_component> collect_container_info (std::string const &);
-};
-
 class active_transactions;
 
 class active_transactions_lock

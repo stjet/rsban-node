@@ -54,7 +54,6 @@ impl<'a> ConfirmationSolicitor<'a> {
     pub fn prepare(&mut self, representatives: &[Representative]) {
         debug_assert!(!self.prepared);
         self.requests.clear();
-        self.channels.clear();
         self.rebroadcasted = 0;
         self.representative_requests = representatives.to_vec();
         self.representative_broadcasts = representatives.to_vec();
@@ -64,6 +63,7 @@ impl<'a> ConfirmationSolicitor<'a> {
     /// Broadcast the winner of an election if the broadcast limit has not been reached. Returns false if the broadcast was performed
     pub fn broadcast(&mut self, guard: &MutexGuard<ElectionData>) -> Result<(), ()> {
         debug_assert!(self.prepared);
+        self.rebroadcasted += 1;
         if self.rebroadcasted >= self.max_block_broadcasts {
             return Err(());
         }
@@ -95,7 +95,6 @@ impl<'a> ConfirmationSolicitor<'a> {
         // Random flood for block propagation
         self.tcp_channels
             .flood_message2(&winner, BufferDropPolicy::Limiter, 0.5);
-        self.rebroadcasted += 1;
         Ok(())
     }
 
@@ -132,7 +131,7 @@ impl<'a> ConfirmationSolicitor<'a> {
                 }
                 if !rep.channel.max(TrafficType::Generic) {
                     request_queue.push((winner.hash(), winner.root()));
-                    if different {
+                    if !different {
                         count += 1;
                     }
                     error = false;

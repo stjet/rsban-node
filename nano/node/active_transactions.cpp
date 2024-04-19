@@ -561,6 +561,16 @@ nano::recently_cemented_cache nano::active_transactions::recently_cemented ()
 	return nano::recently_cemented_cache{ rsnano::rsn_active_transactions_recently_cemented (handle) };
 }
 
+nano::election_extended_status nano::active_transactions::current_status (nano::election & election) const
+{
+	nano::election_lock guard{ election };
+	nano::election_status status_l = guard.status ();
+	status_l.set_confirmation_request_count (election.get_confirmation_request_count ());
+	status_l.set_block_count (nano::narrow_cast<decltype (status_l.get_block_count ())> (guard.last_blocks_size ()));
+	status_l.set_voter_count (nano::narrow_cast<decltype (status_l.get_voter_count ())> (guard.last_votes_size ()));
+	return nano::election_extended_status{ status_l, guard.last_votes (), tally_impl (guard) };
+}
+
 nano::tally_t nano::active_transactions::tally (nano::election & election) const
 {
 	auto guard{ election.lock () };

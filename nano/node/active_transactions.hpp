@@ -22,8 +22,6 @@
 #include <thread>
 #include <unordered_map>
 
-namespace mi = boost::multi_index;
-
 namespace nano
 {
 class node;
@@ -202,6 +200,7 @@ public: // Events
 	 * If the election reaches consensus, it will be confirmed
 	 */
 	nano::vote_code vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a = nano::vote_source::live);
+	nano::election_extended_status current_status (nano::election & election) const;
 	nano::tally_t tally (nano::election & election) const;
 
 private:

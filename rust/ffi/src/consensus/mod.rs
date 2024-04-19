@@ -6,7 +6,6 @@ mod election_scheduler;
 mod election_status;
 mod local_vote_history;
 mod recently_cemented_cache;
-mod recently_confirmed_cache;
 mod rep_tiers;
 mod vote;
 mod vote_cache;

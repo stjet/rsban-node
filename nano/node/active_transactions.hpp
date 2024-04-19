@@ -43,49 +43,12 @@ class read_transaction;
 
 namespace nano
 {
-class recently_confirmed_cache final
-{
-public:
-	using entry_t = std::pair<nano::qualified_root, nano::block_hash>;
-
-	explicit recently_confirmed_cache (std::size_t max_size);
-	explicit recently_confirmed_cache (rsnano::RecentlyConfirmedCacheHandle * handle);
-	recently_confirmed_cache (recently_confirmed_cache const &) = delete;
-	recently_confirmed_cache (recently_confirmed_cache &&);
-	~recently_confirmed_cache ();
-
-	void put (nano::qualified_root const &, nano::block_hash const &);
-	void erase (nano::block_hash const &);
-	void clear ();
-	std::size_t size () const;
-
-	bool exists (nano::qualified_root const &) const;
-	bool exists (nano::block_hash const &) const;
-
-public: // Tests
-	entry_t back () const;
-
-public: // Container info
-	std::unique_ptr<container_info_component> collect_container_info (std::string const &);
-	rsnano::RecentlyConfirmedCacheHandle * handle;
-};
-
 /**
  * Core class for determining consensus
  * Holds all active blocks i.e. recently added blocks that need confirmation
  */
 class active_transactions final
 {
-private: // Elections
-	class conflict_info final
-	{
-	public:
-		nano::qualified_root root;
-		std::shared_ptr<nano::election> election;
-	};
-
-	friend class nano::election;
-
 public:
 	active_transactions (nano::node &, nano::confirming_set &, nano::block_processor &);
 	active_transactions (active_transactions const &) = delete;
@@ -116,7 +79,6 @@ public:
 	bool empty () const;
 	std::size_t size () const;
 	bool publish (std::shared_ptr<nano::block> const &);
-	void try_confirm (nano::election & election, nano::block_hash const & hash);
 	void block_cemented_callback (std::shared_ptr<nano::block> const &);
 	void block_already_cemented_callback (nano::block_hash const &);
 
@@ -140,8 +102,6 @@ public: // Events
 	void add_vote_processed_observer (std::function<void (std::shared_ptr<nano::vote> const &, nano::vote_source, std::unordered_map<nano::block_hash, nano::vote_code> const &)> observer);
 
 	void process_confirmed (nano::election_status const & status_a, uint64_t iteration_a = 0);
-	// lock_a does not own the mutex on return
-	void confirm_once (nano::election_lock & lock_a, nano::election & election);
 	nano::tally_t tally_impl (nano::election_lock & lock) const;
 	void remove_votes (nano::election & election, nano::election_lock & lock, nano::block_hash const & hash_a);
 	void force_confirm (nano::election & election);

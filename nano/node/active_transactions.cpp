@@ -26,65 +26,6 @@ using namespace std::chrono;
 
 namespace
 {
-class election_winner_details_lock
-{
-public:
-	election_winner_details_lock (rsnano::ElectionWinnerDetailsLock * handle) :
-		handle{ handle }
-	{
-	}
-	election_winner_details_lock (election_winner_details_lock const &) = delete;
-	election_winner_details_lock (election_winner_details_lock && other) :
-		handle{ other.handle }
-	{
-		other.handle = nullptr;
-	}
-	~election_winner_details_lock ()
-	{
-		if (handle != nullptr)
-		{
-			rsnano::rsn_election_winner_details_lock_destroy (handle);
-		}
-	}
-
-	void ensure_locked () const
-	{
-		if (handle == nullptr)
-			throw std::runtime_error ("election_winner_details_lock is unlocked!");
-	}
-
-	void unlock ()
-	{
-		ensure_locked ();
-		rsnano::rsn_election_winner_details_lock_unlock (handle);
-	}
-
-	std::size_t size () const
-	{
-		ensure_locked ();
-		return rsnano::rsn_election_winner_details_len (handle);
-	}
-
-	bool contains (nano::block_hash const & hash) const
-	{
-		ensure_locked ();
-		return rsnano::rsn_election_winner_details_contains (handle, hash.bytes.data ());
-	}
-
-	void insert (nano::block_hash const & hash, nano::election const & election)
-	{
-		ensure_locked ();
-		rsnano::rsn_election_winner_details_insert (handle, hash.bytes.data (), election.handle);
-	}
-
-	rsnano::ElectionWinnerDetailsLock * handle;
-};
-
-election_winner_details_lock lock_election_winners (rsnano::ActiveTransactionsHandle * handle)
-{
-	return election_winner_details_lock{ rsnano::rsn_active_transactions_lock_election_winner_details (handle) };
-}
-
 void call_vacancy_update (void * context)
 {
 	auto callback = static_cast<std::function<void ()> *> (context);
@@ -304,8 +245,7 @@ bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & bl
 
 void nano::active_transactions::add_election_winner_details (nano::block_hash const & hash_a, std::shared_ptr<nano::election> const & election_a)
 {
-	auto guard{ lock_election_winners (handle) };
-	guard.insert (hash_a, *election_a);
+	rsnano::rsn_active_transactions_add_election_winner_details (handle, hash_a.bytes.data (), election_a->handle);
 }
 
 std::shared_ptr<nano::election> nano::active_transactions::remove_election_winner_details (nano::block_hash const & hash_a)
@@ -328,11 +268,6 @@ void nano::active_transactions::add_vote_processed_observer (std::function<void 
 void nano::active_transactions::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)
 {
 	rsnano::rsn_active_transactions_process_confirmed (handle, status_a.handle, iteration_a);
-}
-
-void nano::active_transactions::confirm_once (nano::election_lock & lock_a, nano::election & election)
-{
-	rsnano::rsn_active_transactions_confirm_once (handle, lock_a.handle, election.handle);
 }
 
 nano::tally_t nano::active_transactions::tally_impl (nano::election_lock & lock) const
@@ -572,15 +507,9 @@ nano::vote_code nano::active_transactions::vote (nano::election & election, nano
 	return static_cast<nano::vote_code> (result);
 }
 
-void nano::active_transactions::try_confirm (nano::election & election, nano::block_hash const & hash)
-{
-	rsnano::rsn_active_transactions_try_confirm (handle, election.handle, hash.bytes.data ());
-}
-
 std::size_t nano::active_transactions::election_winner_details_size ()
 {
-	auto guard{ lock_election_winners (handle) };
-	return guard.size ();
+	return rsnano::rsn_active_transactions_election_winner_details_len (handle);
 }
 
 void nano::active_transactions::clear ()
@@ -591,75 +520,4 @@ void nano::active_transactions::clear ()
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (active_transactions & active_transactions, std::string const & name)
 {
 	return std::make_unique<container_info_composite> (rsnano::rsn_active_transactions_collect_container_info (active_transactions.handle, name.c_str ()));
-}
-
-/*
- * class recently_confirmed
- */
-
-nano::recently_confirmed_cache::recently_confirmed_cache (std::size_t max_size_a) :
-	handle{ rsnano::rsn_recently_confirmed_cache_create (max_size_a) }
-{
-}
-
-nano::recently_confirmed_cache::recently_confirmed_cache (rsnano::RecentlyConfirmedCacheHandle * handle) :
-	handle{ handle }
-{
-}
-
-nano::recently_confirmed_cache::recently_confirmed_cache (recently_confirmed_cache && other) :
-	handle{ other.handle }
-{
-	other.handle = nullptr;
-}
-
-nano::recently_confirmed_cache::~recently_confirmed_cache ()
-{
-	if (handle != nullptr)
-	{
-		rsnano::rsn_recently_confirmed_cache_destroy (handle);
-	}
-}
-
-void nano::recently_confirmed_cache::put (const nano::qualified_root & root, const nano::block_hash & hash)
-{
-	rsnano::rsn_recently_confirmed_cache_put (handle, root.bytes.data (), hash.bytes.data ());
-}
-
-void nano::recently_confirmed_cache::erase (const nano::block_hash & hash)
-{
-	rsnano::rsn_recently_confirmed_cache_erase (handle, hash.bytes.data ());
-}
-
-void nano::recently_confirmed_cache::clear ()
-{
-	rsnano::rsn_recently_confirmed_cache_clear (handle);
-}
-
-bool nano::recently_confirmed_cache::exists (const nano::block_hash & hash) const
-{
-	return rsnano::rsn_recently_confirmed_cache_hash_exists (handle, hash.bytes.data ());
-}
-
-bool nano::recently_confirmed_cache::exists (const nano::qualified_root & root) const
-{
-	return rsnano::rsn_recently_confirmed_cache_root_exists (handle, root.bytes.data ());
-}
-
-std::size_t nano::recently_confirmed_cache::size () const
-{
-	return rsnano::rsn_recently_confirmed_cache_len (handle);
-}
-
-nano::recently_confirmed_cache::entry_t nano::recently_confirmed_cache::back () const
-{
-	nano::qualified_root root;
-	nano::block_hash hash;
-	rsnano::rsn_recently_confirmed_cache_back (handle, root.bytes.data (), hash.bytes.data ());
-	return { root, hash };
-}
-
-std::unique_ptr<nano::container_info_component> nano::recently_confirmed_cache::collect_container_info (const std::string & name)
-{
-	return std::make_unique<nano::container_info_composite> (rsnano::rsn_recently_confirmed_cache_collect_container_info (handle, name.c_str ()));
 }

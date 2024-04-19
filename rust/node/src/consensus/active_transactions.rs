@@ -178,6 +178,17 @@ impl ActiveTransactions {
         self.recently_cemented.lock().unwrap().clone()
     }
 
+    pub fn add_election_winner_details(&self, hash: BlockHash, election: Arc<Election>) {
+        self.election_winner_details
+            .lock()
+            .unwrap()
+            .insert(hash, election);
+    }
+
+    pub fn election_winner_details_len(&self) -> usize {
+        self.election_winner_details.lock().unwrap().len()
+    }
+
     /*
      * Callbacks
      */

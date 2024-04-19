@@ -70,23 +70,6 @@ public: // Container info
 	rsnano::RecentlyConfirmedCacheHandle * handle;
 };
 
-class active_transactions;
-
-class active_transactions_lock
-{
-public:
-	active_transactions_lock (nano::active_transactions const & active_transactions);
-	active_transactions_lock (active_transactions_lock const &) = delete;
-	~active_transactions_lock ();
-
-	void lock ();
-	void unlock ();
-	bool owns_lock ();
-
-	rsnano::ActiveTransactionsLockHandle * handle;
-	nano::active_transactions const & active_transactions;
-};
-
 /**
  * Core class for determining consensus
  * Holds all active blocks i.e. recently added blocks that need confirmation
@@ -156,7 +139,6 @@ public:
 public: // Events
 	void add_vote_processed_observer (std::function<void (std::shared_ptr<nano::vote> const &, nano::vote_source, std::unordered_map<nano::block_hash, nano::vote_code> const &)> observer);
 
-	nano::active_transactions_lock lock () const;
 	void process_confirmed (nano::election_status const & status_a, uint64_t iteration_a = 0);
 	// lock_a does not own the mutex on return
 	void confirm_once (nano::election_lock & lock_a, nano::election & election);
@@ -189,8 +171,6 @@ public: // Events
 
 private:
 	void request_loop ();
-	// Returns a list of elections sorted by difficulty, mutex must be locked
-	std::vector<std::shared_ptr<nano::election>> list_active_impl (std::size_t, nano::active_transactions_lock & guard) const;
 
 private: // Dependencies
 	nano::node & node;
@@ -204,7 +184,6 @@ public:
 
 private:
 	friend class election;
-	friend class active_transactions_lock;
 	friend std::unique_ptr<container_info_component> collect_container_info (active_transactions &, std::string const &);
 
 public: // Tests

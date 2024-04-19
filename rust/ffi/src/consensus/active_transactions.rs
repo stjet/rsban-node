@@ -609,11 +609,46 @@ pub unsafe extern "C" fn rsn_active_transactions_try_confirm(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_active(
+pub extern "C" fn rsn_active_transactions_active(
+    handle: &ActiveTransactionsHandle,
+    block: &BlockHandle,
+) -> bool {
+    handle.active(block)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_len(handle: &ActiveTransactionsHandle) -> usize {
+    handle.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_winner(
+    handle: &ActiveTransactionsHandle,
+    hash: *const u8,
+) -> *mut BlockHandle {
+    handle
+        .winner(&BlockHash::from_ptr(hash))
+        .map(BlockHandle::new)
+        .unwrap_or(std::ptr::null_mut())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_election(
+    handle: &ActiveTransactionsHandle,
+    root: *const u8,
+) -> *mut ElectionHandle {
+    handle
+        .election(&QualifiedRoot::from_ptr(root))
+        .map(ElectionHandle::new)
+        .unwrap_or(std::ptr::null_mut())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_active_block(
     handle: &ActiveTransactionsHandle,
     hash: *const u8,
 ) -> bool {
-    handle.active(&BlockHash::from_ptr(hash))
+    handle.active_block(&BlockHash::from_ptr(hash))
 }
 
 #[no_mangle]

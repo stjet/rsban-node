@@ -24,32 +24,6 @@
 
 using namespace std::chrono;
 
-nano::active_transactions_lock::active_transactions_lock (nano::active_transactions const & active_transactions) :
-	handle{ rsnano::rsn_active_transactions_lock (active_transactions.handle) },
-	active_transactions{ active_transactions }
-{
-}
-
-nano::active_transactions_lock::~active_transactions_lock ()
-{
-	rsnano::rsn_active_transactions_lock_destroy (handle);
-}
-
-void nano::active_transactions_lock::lock ()
-{
-	rsnano::rsn_active_transactions_lock_lock (handle, active_transactions.handle);
-}
-
-void nano::active_transactions_lock::unlock ()
-{
-	rsnano::rsn_active_transactions_lock_unlock (handle);
-}
-
-bool nano::active_transactions_lock::owns_lock ()
-{
-	return rsnano::rsn_active_transactions_lock_owns_lock (handle);
-}
-
 namespace
 {
 class election_winner_details_lock
@@ -351,11 +325,6 @@ void nano::active_transactions::add_vote_processed_observer (std::function<void 
 	rsnano::rsn_active_transactions_add_vote_processed_observer (handle, call_vote_processed, context, delete_vote_processed_context);
 }
 
-nano::active_transactions_lock nano::active_transactions::lock () const
-{
-	return nano::active_transactions_lock{ *this };
-}
-
 void nano::active_transactions::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)
 {
 	rsnano::rsn_active_transactions_process_confirmed (handle, status_a.handle, iteration_a);
@@ -424,22 +393,6 @@ std::vector<std::shared_ptr<nano::election>> nano::active_transactions::list_act
 {
 	std::vector<std::shared_ptr<nano::election>> result_l;
 	auto elections_handle = rsnano::rsn_active_transactions_list_active (handle, max_a);
-	auto len = rsnano::rsn_election_vec_len (elections_handle);
-	result_l.reserve (std::min (max_a, len));
-	std::size_t count_l{ 0 };
-	for (auto i = 0; i < len && count_l < max_a; ++i, ++count_l)
-	{
-		auto election = std::make_shared<nano::election> (rsnano::rsn_election_vec_get (elections_handle, i));
-		result_l.push_back (election);
-	}
-	rsnano::rsn_election_vec_destroy (elections_handle);
-	return result_l;
-}
-
-std::vector<std::shared_ptr<nano::election>> nano::active_transactions::list_active_impl (std::size_t max_a, nano::active_transactions_lock & guard) const
-{
-	std::vector<std::shared_ptr<nano::election>> result_l;
-	auto elections_handle = rsnano::rsn_active_transactions_lock_roots_get_elections (guard.handle);
 	auto len = rsnano::rsn_election_vec_len (elections_handle);
 	result_l.reserve (std::min (max_a, len));
 	std::size_t count_l{ 0 };
@@ -563,29 +516,18 @@ bool nano::active_transactions::active (nano::qualified_root const & root_a) con
 
 bool nano::active_transactions::active (nano::block const & block_a) const
 {
-	auto guard{ lock () };
-	auto root{ block_a.qualified_root () };
-	auto hash{ block_a.hash () };
-	auto root_exists = rsnano::rsn_active_transactions_lock_roots_exists (guard.handle, root.root ().bytes.data (), root.previous ().bytes.data ());
-	auto existing_handle = rsnano::rsn_active_transactions_lock_blocks_find (guard.handle, hash.bytes.data ());
-	bool block_exists = existing_handle != nullptr;
-	if (block_exists)
-	{
-		rsnano::rsn_election_destroy (existing_handle);
-	}
-	return root_exists && block_exists;
+	return rsnano::rsn_active_transactions_active (handle, block_a.get_handle ());
 }
 
 bool nano::active_transactions::active (const nano::block_hash & hash) const
 {
-	return rsnano::rsn_active_transactions_active (handle, hash.bytes.data ());
+	return rsnano::rsn_active_transactions_active_block (handle, hash.bytes.data ());
 }
 
 std::shared_ptr<nano::election> nano::active_transactions::election (nano::qualified_root const & root_a) const
 {
 	std::shared_ptr<nano::election> result;
-	auto guard{ lock () };
-	auto election_handle = rsnano::rsn_active_transactions_lock_roots_find (guard.handle, root_a.root ().bytes.data (), root_a.previous ().bytes.data ());
+	auto election_handle = rsnano::rsn_active_transactions_election (handle, root_a.bytes.data ());
 	if (election_handle != nullptr)
 	{
 		result = std::make_shared<nano::election> (election_handle);
@@ -595,16 +537,8 @@ std::shared_ptr<nano::election> nano::active_transactions::election (nano::quali
 
 std::shared_ptr<nano::block> nano::active_transactions::winner (nano::block_hash const & hash_a) const
 {
-	std::shared_ptr<nano::block> result;
-	auto guard{ lock () };
-	auto existing_handle = rsnano::rsn_active_transactions_lock_blocks_find (guard.handle, hash_a.bytes.data ());
-	if (existing_handle != nullptr)
-	{
-		auto election = std::make_shared<nano::election> (existing_handle);
-		guard.unlock ();
-		result = election->winner ();
-	}
-	return result;
+	auto winner_handle = rsnano::rsn_active_transactions_winner (handle, hash_a.bytes.data ());
+	return nano::block_handle_to_block (winner_handle);
 }
 
 bool nano::active_transactions::erase (nano::block const & block_a)
@@ -619,14 +553,12 @@ bool nano::active_transactions::erase (nano::qualified_root const & root_a)
 
 bool nano::active_transactions::empty () const
 {
-	auto guard{ lock () };
-	return rsnano::rsn_active_transactions_lock_roots_size (guard.handle) == 0;
+	return size () == 0;
 }
 
 std::size_t nano::active_transactions::size () const
 {
-	auto guard{ lock () };
-	return rsnano::rsn_active_transactions_lock_roots_size (guard.handle);
+	return rsnano::rsn_active_transactions_len (handle);
 }
 
 bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & block_a)

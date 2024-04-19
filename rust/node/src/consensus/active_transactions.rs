@@ -141,6 +141,10 @@ impl ActiveTransactions {
         self.mutex.lock().unwrap().stopped = true;
     }
 
+    pub fn len(&self) -> usize {
+        self.mutex.lock().unwrap().roots.len()
+    }
+
     pub fn clear_recently_confirmed(&self) {
         self.recently_confirmed.clear();
     }
@@ -186,6 +190,14 @@ impl ActiveTransactions {
         callback: Box<dyn Fn(LmdbReadTransaction, &Arc<BlockEnum>) + Send + Sync>,
     ) {
         *self.activate_successors.lock().unwrap() = callback;
+    }
+
+    pub fn winner(&self, hash: &BlockHash) -> Option<Arc<BlockEnum>> {
+        let guard = self.mutex.lock().unwrap();
+        guard
+            .blocks
+            .get(hash)
+            .map(|i| Arc::clone(&i.mutex.lock().unwrap().status.winner.as_ref().unwrap()))
     }
 
     //--------------------------------------------------------------------------------
@@ -387,9 +399,15 @@ impl ActiveTransactions {
         guard.roots.get(root).is_some()
     }
 
-    pub fn active(&self, hash: &BlockHash) -> bool {
+    pub fn active_block(&self, hash: &BlockHash) -> bool {
         let guard = self.mutex.lock().unwrap();
         guard.blocks.contains_key(hash)
+    }
+
+    pub fn active(&self, block: &BlockEnum) -> bool {
+        let guard = self.mutex.lock().unwrap();
+        guard.blocks.contains_key(&block.hash())
+            && guard.roots.get(&block.qualified_root()).is_some()
     }
 
     pub fn replace_by_weight<'a>(

@@ -1,8 +1,6 @@
 use super::{
     wallet::{AccountVecHandle, WalletHandle},
-    wallet_action_thread::{
-        WalletActionCallback, WalletActionObserverCallback, WalletActionThreadLock,
-    },
+    wallet_action_thread::{WalletActionCallback, WalletActionObserverCallback},
     wallet_representatives::WalletRepresentativesLock,
 };
 use crate::{
@@ -436,14 +434,6 @@ pub unsafe extern "C" fn rsn_wallets_queue_wallet_action(
 #[no_mangle]
 pub extern "C" fn rsn_wallets_actions_size(handle: &LmdbWalletsHandle) -> usize {
     handle.wallet_actions.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_wallets_actions_lock(
-    handle: &LmdbWalletsHandle,
-) -> *mut WalletActionThreadLock {
-    let guard = handle.wallet_actions.lock();
-    Box::into_raw(Box::new(WalletActionThreadLock(guard)))
 }
 
 #[no_mangle]

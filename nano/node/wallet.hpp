@@ -145,22 +145,6 @@ public:
 class wallet_action_thread
 {
 public:
-	class actions_lock
-	{
-	public:
-		actions_lock (rsnano::WalletActionThreadLock * handle) :
-			handle{ handle }
-		{
-		}
-		actions_lock (actions_lock const &) = delete;
-		~actions_lock ()
-		{
-			rsnano::rsn_wallet_action_thread_lock_destroy (handle);
-		}
-
-	private:
-		rsnano::WalletActionThreadLock * handle;
-	};
 	wallet_action_thread ();
 	wallet_action_thread (const wallet_action_thread &) = delete;
 	~wallet_action_thread ();
@@ -168,7 +152,6 @@ public:
 	void start ();
 	void stop ();
 	void queue_wallet_action (nano::uint128_t const &, std::shared_ptr<nano::wallet> const &, std::function<void (nano::wallet &)>);
-	actions_lock lock ();
 	size_t size ();
 	void set_observer (std::function<void (bool)> observer);
 

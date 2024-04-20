@@ -1,13 +1,8 @@
-use std::{
-    collections::BTreeMap,
-    ffi::c_void,
-    sync::{Arc, MutexGuard},
-};
-
 use super::wallet::WalletHandle;
 use crate::{utils::ContextWrapper, VoidPointerCallback};
 use rsnano_core::Amount;
-use rsnano_node::wallets::{Wallet, WalletActionThread};
+use rsnano_node::wallets::WalletActionThread;
+use std::{ffi::c_void, sync::Arc};
 
 pub struct WalletActionThreadHandle(WalletActionThread);
 
@@ -20,25 +15,6 @@ pub extern "C" fn rsn_wallet_action_thread_create() -> *mut WalletActionThreadHa
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_wallet_action_thread_destroy(handle: *mut WalletActionThreadHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_wallet_action_lock(
-    handle: &WalletActionThreadHandle,
-) -> *mut WalletActionThreadLock {
-    let guard = handle.0.lock();
-    Box::into_raw(Box::new(WalletActionThreadLock(guard)))
-}
-
-pub struct WalletActionThreadLock(
-    pub MutexGuard<'static, BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>>,
-);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_wallet_action_thread_lock_destroy(
-    handle: *mut WalletActionThreadLock,
-) {
     drop(Box::from_raw(handle))
 }
 

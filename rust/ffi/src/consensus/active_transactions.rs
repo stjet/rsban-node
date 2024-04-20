@@ -138,6 +138,11 @@ pub unsafe extern "C" fn rsn_active_transactions_create(
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_active_transactions_initialize(handle: &ActiveTransactionsHandle) {
+    handle.initialize();
+}
+
+#[no_mangle]
 pub extern "C" fn rsn_active_transactions_request_loop(handle: &ActiveTransactionsHandle) {
     handle.request_loop();
 }

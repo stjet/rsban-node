@@ -109,8 +109,6 @@ public: // Events
 
 	void set_blocks_rolled_back_callback (std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> callback);
 
-	// The batch observer feeds the processed observer
-	void add_block_processed_observer (std::function<void (nano::block_status, std::shared_ptr<nano::block> const &, nano::block_source)> observer);
 	void add_batch_processed_observer (std::function<void (processed_batch_t const &)> observer);
 	void add_rolled_back_observer (std::function<void (std::shared_ptr<nano::block> const &)> observer);
 	void notify_block_rolled_back (std::shared_ptr<nano::block> const & block);

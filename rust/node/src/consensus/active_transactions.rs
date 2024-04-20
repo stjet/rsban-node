@@ -20,7 +20,7 @@ use rsnano_core::{
     Account, Amount, BlockEnum, BlockHash, BlockType, QualifiedRoot, Vote, VoteCode, VoteSource,
     VoteWithWeightInfo,
 };
-use rsnano_ledger::Ledger;
+use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
 use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{
@@ -1066,6 +1066,7 @@ impl OrderedRoots {
 }
 
 pub trait ActiveTransactionsExt {
+    fn initialize(&self);
     /// Confirm this block if quorum is met
     fn confirm_if_quorum(&self, election_lock: MutexGuard<ElectionData>, election: &Arc<Election>);
     fn confirm_once(&self, election_lock: MutexGuard<ElectionData>, election: &Arc<Election>);
@@ -1093,6 +1094,41 @@ pub trait ActiveTransactionsExt {
 }
 
 impl ActiveTransactionsExt for Arc<ActiveTransactions> {
+    fn initialize(&self) {
+        let self_w = Arc::downgrade(self);
+        // Register a callback which will get called after a block is cemented
+        self.confirming_set
+            .add_cemented_observer(Box::new(move |block| {
+                if let Some(active) = self_w.upgrade() {
+                    active.block_cemented_callback(block);
+                }
+            }));
+
+        let self_w = Arc::downgrade(self);
+        // Register a callback which will get called if a block is already cemented
+        self.confirming_set
+            .add_already_cemented_observer(Box::new(move |hash| {
+                if let Some(active) = self_w.upgrade() {
+                    // Depending on timing there is a situation where the election_winner_details is not reset.
+                    // This can happen when a block wins an election, and the block is confirmed + observer
+                    // called before the block hash gets added to election_winner_details. If the block is confirmed
+                    // callbacks have already been done, so we can safely just remove it.
+                    active.remove_election_winner_details(&hash);
+                }
+            }));
+
+        let self_w = Arc::downgrade(self);
+        // Notify elections about alternative (forked) blocks
+        self.block_processor
+            .add_block_processed_observer(Box::new(move |status, context| {
+                if matches!(status, BlockStatus::Fork) {
+                    if let Some(active) = self_w.upgrade() {
+                        active.publish_block(&context.block);
+                    }
+                }
+            }));
+    }
+
     fn force_confirm(&self, election: &Arc<Election>) {
         assert!(self.network.network.is_dev_network());
         let guard = election.mutex.lock().unwrap();

@@ -164,27 +164,6 @@ pub struct BlockProcessedInfoDto {
     pub source: u8,
 }
 
-pub type BlockProcessedCallback = extern "C" fn(*mut c_void, *mut BlockProcessedInfoDto);
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_add_block_processed_observer(
-    handle: &mut BlockProcessorHandle,
-    context: *mut c_void,
-    drop_context: VoidPointerCallback,
-    observer: BlockProcessedCallback,
-) {
-    let context_wrapper = ContextWrapper::new(context, drop_context);
-    handle.add_block_processed_observer(Box::new(move |status, block_context| {
-        let block_handle = BlockHandle::new(Arc::clone(&block_context.block));
-        let mut dto = BlockProcessedInfoDto {
-            status: status as u8,
-            block: block_handle,
-            source: block_context.source as u8,
-        };
-        observer(context_wrapper.get_context(), &mut dto);
-    }));
-}
-
 pub type BatchProcessedCallback = extern "C" fn(*mut c_void, *const BlockProcessedInfoDto, usize);
 
 #[no_mangle]

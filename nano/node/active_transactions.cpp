@@ -146,28 +146,7 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 		}
 	};
 	rsnano::rsn_active_transactions_activate_successors (handle, call_activate_successors, activate_successors_context, delete_activate_successors_context);
-
-	// Register a callback which will get called after a block is cemented
-	confirming_set.add_cemented_observer ([this] (std::shared_ptr<nano::block> const & callback_block_a) {
-		this->block_cemented_callback (callback_block_a);
-	});
-
-	// Register a callback which will get called if a block is already cemented
-	confirming_set.add_block_already_cemented_observer ([this] (nano::block_hash const & hash_a) {
-		this->block_already_cemented_callback (hash_a);
-	});
-
-	// Notify elections about alternative (forked) blocks
-	block_processor.add_block_processed_observer ([this] (auto const result, auto const & block, auto source) {
-		switch (result)
-		{
-			case nano::block_status::fork:
-				publish (block);
-				break;
-			default:
-				break;
-		}
-	});
+	rsnano::rsn_active_transactions_initialize (handle);
 }
 
 nano::active_transactions::~active_transactions ()

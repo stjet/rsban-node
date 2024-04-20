@@ -176,12 +176,6 @@ void nano::block_processor::set_blocks_rolled_back_callback (std::function<void 
 	blocks_rolled_back_delete);
 }
 
-void nano::block_processor::add_block_processed_observer (std::function<void (nano::block_status, std::shared_ptr<nano::block> const &, nano::block_source)> observer)
-{
-	auto context = new std::function<void (nano::block_status, std::shared_ptr<nano::block> const &, nano::block_source)> (observer);
-	rsnano::rsn_block_processor_add_block_processed_observer (handle, context, block_processed_delete, block_processed_wrapper);
-}
-
 void nano::block_processor::add_batch_processed_observer (std::function<void (nano::block_processor::processed_batch_t const &)> observer)
 {
 	auto context = new std::function<void (nano::block_processor::processed_batch_t const &)> (observer);

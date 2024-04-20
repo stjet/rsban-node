@@ -324,11 +324,6 @@ void nano::wallet_action_thread::queue_wallet_action (nano::uint128_t const & am
 	delete_wallet_action_context);
 }
 
-nano::wallet_action_thread::actions_lock nano::wallet_action_thread::lock ()
-{
-	return nano::wallet_action_thread::actions_lock{ rsnano::rsn_wallet_action_lock (handle) };
-}
-
 size_t nano::wallet_action_thread::size ()
 {
 	return rsnano::rsn_wallet_action_thread_len (handle);

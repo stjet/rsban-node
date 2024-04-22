@@ -9,6 +9,7 @@ use rsnano_ledger::Ledger;
 use rsnano_messages::ProtocolInfo;
 use std::{
     collections::HashMap,
+    mem::size_of,
     net::SocketAddrV6,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
@@ -31,6 +32,11 @@ pub enum RegisterRepresentativeResult {
 }
 
 impl RepresentativeRegister {
+    pub const ELEMENT_SIZE: usize = size_of::<Representative>()
+        + size_of::<Account>()
+        + size_of::<usize>()
+        + size_of::<Account>();
+
     pub fn new(
         ledger: Arc<Ledger>,
         online_reps: Arc<Mutex<OnlineReps>>,

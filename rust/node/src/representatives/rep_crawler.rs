@@ -11,11 +11,15 @@ use crate::{
     NetworkParams, OnlineReps,
 };
 use bounded_vec_deque::BoundedVecDeque;
-use rsnano_core::{BlockHash, Root, Vote};
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent},
+    BlockHash, Root, Vote,
+};
 use rsnano_ledger::Ledger;
 use rsnano_messages::{ConfirmReq, Message};
 use std::{
     collections::HashMap,
+    mem::size_of,
     ops::DerefMut,
     sync::{Arc, Condvar, Mutex, MutexGuard},
     thread::JoinHandle,
@@ -393,6 +397,36 @@ impl RepCrawler {
             }
         });
     }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        let reps_count = self
+            .representative_register
+            .lock()
+            .unwrap()
+            .representatives_count();
+
+        let guard = self.rep_crawler_impl.lock().unwrap();
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "reps".to_string(),
+                    count: reps_count,
+                    sizeof_element: RepresentativeRegister::ELEMENT_SIZE,
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "queries".to_string(),
+                    count: guard.queries.len(),
+                    sizeof_element: OrderedQueries::ELEMENT_SIZE,
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "responses".to_string(),
+                    count: guard.responses.len(),
+                    sizeof_element: size_of::<Arc<Vote>>() * 2,
+                }),
+            ],
+        )
+    }
 }
 
 struct RepCrawlerImpl {
@@ -552,6 +586,13 @@ impl OrderedQueries {
             by_hash: HashMap::new(),
             next_id: 1,
         }
+    }
+
+    pub const ELEMENT_SIZE: usize =
+        size_of::<QueryEntry>() + size_of::<BlockHash>() + size_of::<usize>() * 3;
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
     }
 
     fn insert(&mut self, entry: QueryEntry) {

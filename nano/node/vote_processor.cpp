@@ -15,7 +15,7 @@
 #include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>
 
-#include <chrono>
+#include <memory>
 
 using namespace std::chrono_literals;
 
@@ -81,129 +81,59 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (vo
 	return std::make_unique<nano::container_info_composite> (info_handle);
 }
 
+namespace
+{
+void on_vote_processed (void * context, rsnano::VoteHandle * vote_handle, rsnano::ChannelHandle * channel_handle, uint8_t code)
+{
+	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
+	auto vote = std::make_shared<nano::vote> (vote_handle);
+	auto channel = nano::transport::channel_handle_to_channel (channel_handle);
+	(*observers)->vote.notify (vote, channel, static_cast<nano::vote_code> (code));
+}
+
+void delete_vote_processed (void * context)
+{
+	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
+	delete observers;
+}
+}
+
 nano::vote_processor::vote_processor (
 nano::vote_processor_queue & queue_a,
 nano::active_transactions & active_a,
-nano::node_observers & observers_a,
+std::shared_ptr<nano::node_observers> observers_a,
 nano::stats & stats_a,
 nano::node_config & config_a,
 nano::logger & logger_a,
 nano::rep_crawler & rep_crawler_a,
 nano::network_params & network_params_a,
-nano::rep_tiers & rep_tiers_a) :
-	active{ active_a },
-	observers{ observers_a },
-	stats{ stats_a },
-	config{ config_a },
-	logger{ logger_a },
-	rep_crawler{ rep_crawler_a },
-	network_params{ network_params_a },
-	rep_tiers{ rep_tiers_a },
-	queue{ queue_a }
+nano::rep_tiers & rep_tiers_a)
 {
-	handle = rsnano::rsn_vote_processor_create (queue_a.handle);
+	auto context = new std::shared_ptr<nano::node_observers> (observers_a);
+	handle = rsnano::rsn_vote_processor_create (queue_a.handle, active_a.handle, stats_a.handle, on_vote_processed, context, delete_vote_processed);
 }
 
 nano::vote_processor::~vote_processor ()
 {
-	// Thread must be stopped before destruction
-	debug_assert (!thread.joinable ());
 	rsnano::rsn_vote_processor_destroy (handle);
 }
 
 void nano::vote_processor::start ()
 {
-	debug_assert (!thread.joinable ());
-
-	thread = std::thread{ [this] () {
-		nano::thread_role::set (nano::thread_role::name::vote_processing);
-		run ();
-	} };
+	rsnano::rsn_vote_processor_start (handle);
 }
 
 void nano::vote_processor::stop ()
 {
-	queue.stop ();
-	{
-		nano::lock_guard<nano::mutex> lock{ mutex };
-		stopped = true;
-	}
-	if (thread.joinable ())
-	{
-		thread.join ();
-	}
+	rsnano::rsn_vote_processor_stop (handle);
 }
 
-void nano::vote_processor::run ()
+uint64_t nano::vote_processor::total_processed () const
 {
-	nano::timer<std::chrono::milliseconds> elapsed;
-	bool log_this_iteration;
-
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> votes_l;
-	while (queue.wait_and_take (votes_l))
-	{
-		log_this_iteration = false;
-		// TODO: This is a temporary measure to prevent spamming the logs until we can implement a better solution
-		if (votes_l.size () > 1024 * 4)
-		{
-			/*
-			 * Only log the timing information for this iteration if
-			 * there are a sufficient number of items for it to be relevant
-			 */
-			log_this_iteration = true;
-			elapsed.restart ();
-		}
-		verify_votes (votes_l);
-		total_processed += votes_l.size ();
-		votes_l.clear ();
-
-		if (log_this_iteration && elapsed.stop () > std::chrono::milliseconds (100))
-		{
-			logger.debug (nano::log::type::vote_processor, "Processed {} votes in {} milliseconds (rate of {} votes per second)",
-			votes_l.size (),
-			elapsed.value ().count (),
-			((votes_l.size () * 1000ULL) / elapsed.value ().count ()));
-		}
-	}
-}
-
-void nano::vote_processor::verify_votes (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> const & votes_a)
-{
-	for (auto const & vote : votes_a)
-	{
-		if (!nano::validate_message (vote.first->account (), vote.first->hash (), vote.first->signature ()))
-		{
-			vote_blocking (vote.first, vote.second, true);
-		}
-	}
+	return rsnano::rsn_vote_processor_total_processed (handle);
 }
 
 nano::vote_code nano::vote_processor::vote_blocking (std::shared_ptr<nano::vote> const & vote, std::shared_ptr<nano::transport::channel> const & channel_a, bool validated)
 {
-	auto result = nano::vote_code::invalid;
-	if (validated || !vote->validate ())
-	{
-		auto vote_results = active.vote (vote);
-
-		// Aggregate results for individual hashes
-		bool replay = false;
-		bool processed = false;
-		for (auto const & [hash, hash_result] : vote_results)
-		{
-			replay |= (hash_result == nano::vote_code::replay);
-			processed |= (hash_result == nano::vote_code::vote);
-		}
-		result = replay ? nano::vote_code::replay : (processed ? nano::vote_code::vote : nano::vote_code::indeterminate);
-
-		observers.vote.notify (vote, channel_a, result);
-	}
-
-	stats.inc (nano::stat::type::vote, to_stat_detail (result));
-
-	logger.trace (nano::log::type::vote_processor, nano::log::detail::vote_processed,
-	nano::log::arg{ "vote", vote },
-	nano::log::arg{ "result", result });
-
-	return result;
+	return static_cast<nano::vote_code> (rsnano::rsn_vote_processor_vote_blocking (handle, vote->get_handle (), channel_a->handle, validated));
 }

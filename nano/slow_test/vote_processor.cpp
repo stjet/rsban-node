@@ -33,7 +33,7 @@ TEST (vote_processor, producer_consumer)
 	};
 
 	auto consumer = [&node, &number_of_votes] () -> void {
-		while (node.vote_processor.total_processed.load () < number_of_votes)
+		while (node.vote_processor.total_processed () < number_of_votes)
 		{
 			if (node.vote_processor_queue.size () >= number_of_votes / 100)
 			{
@@ -43,7 +43,7 @@ TEST (vote_processor, producer_consumer)
 	};
 
 	auto monitor = [&node, &number_of_votes, &producer_wins, &consumer_wins] () -> void {
-		while (node.vote_processor.total_processed.load () < number_of_votes)
+		while (node.vote_processor.total_processed () < number_of_votes)
 		{
 			std::this_thread::sleep_for (std::chrono::milliseconds (50));
 			if (node.vote_processor_queue.empty ())
@@ -67,7 +67,7 @@ TEST (vote_processor, producer_consumer)
 	std::thread consumer_thread{ consumer };
 	std::thread monitor_thread{ monitor };
 
-	ASSERT_TIMELY (30s, node.vote_processor.total_processed.load () >= number_of_votes);
+	ASSERT_TIMELY (30s, node.vote_processor.total_processed () >= number_of_votes);
 
 	for (auto & producer : producers)
 	{

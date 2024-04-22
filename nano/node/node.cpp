@@ -169,7 +169,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		ledger,
 		rep_tiers,
 	},
-	vote_processor (vote_processor_queue, active, *observers, *stats, *config, *logger, rep_crawler, network_params, rep_tiers),
+	vote_processor (vote_processor_queue, active, observers, *stats, *config, *logger, rep_crawler, network_params, rep_tiers),
 	warmed_up (0),
 	block_processor (*this),
 	online_reps (ledger, *config),
@@ -583,7 +583,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (no
 	composite->add_component (collect_container_info (*node.workers, "workers"));
 	composite->add_component (collect_container_info (*node.observers, "observers"));
 	composite->add_component (collect_container_info (node.wallets, "wallets"));
-	composite->add_component (collect_container_info (node.vote_processor.queue, "vote_processor"));
+	composite->add_component (collect_container_info (node.vote_processor_queue, "vote_processor"));
 	composite->add_component (node.rep_crawler.collect_container_info ("rep_crawler"));
 	composite->add_component (node.block_processor.collect_container_info ("block_processor"));
 	composite->add_component (collect_container_info (node.online_reps, "online_reps"));

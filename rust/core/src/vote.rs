@@ -16,7 +16,7 @@ pub enum VoteSource {
     Cache,
 }
 
-#[derive(FromPrimitive, Clone, Copy)]
+#[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum VoteCode {
     Invalid,       // Vote is not signed correctly
     Replay,        // Vote does not have the highest timestamp, it's a replay

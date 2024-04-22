@@ -61,7 +61,7 @@ public:
 	vote_processor (
 	nano::vote_processor_queue & queue_a,
 	nano::active_transactions & active_a,
-	nano::node_observers & observers_a,
+	std::shared_ptr<nano::node_observers> observers_a,
 	nano::stats & stats_a,
 	nano::node_config & config_a,
 	nano::logger & logger_a,
@@ -78,31 +78,8 @@ public:
 	/** Note: node.active.mutex lock is required */
 	nano::vote_code vote_blocking (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &, bool = false);
 
-	std::atomic<uint64_t> total_processed{ 0 };
+	uint64_t total_processed () const;
 
-private: // Dependencies
-	void verify_votes (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> const &);
-
-private: // Dependencies
-	nano::active_transactions & active;
-	nano::node_observers & observers;
-	nano::stats & stats;
-	nano::node_config & config;
-	nano::logger & logger;
-	nano::rep_crawler & rep_crawler;
-	nano::network_params & network_params;
-	nano::rep_tiers & rep_tiers;
-
-private:
-	void run ();
-
-private:
-	bool stopped{ false };
-	std::thread thread;
-	mutable nano::mutex mutex{ mutex_identifier (mutexes::vote_processor) };
-
-public:
-	nano::vote_processor_queue & queue;
 	rsnano::VoteProcessorHandle * handle;
 };
 

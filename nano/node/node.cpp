@@ -193,6 +193,14 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	node_seq (seq)
 {
 	logger->debug (nano::log::type::node, "Constructing node...");
+
+	if (!flags.disable_rep_crawler ())
+	{
+		observers->endpoint.add ([this] (std::shared_ptr<nano::transport::channel> const & channel) {
+			rep_crawler.query (channel);
+		});
+	}
+
 	std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> handle_roll_back =
 	[node_a = &(*this)] (std::vector<std::shared_ptr<nano::block>> const & rolled_back, std::shared_ptr<nano::block> const & initial_block) {
 		// Deleting from votes cache, stop active transaction

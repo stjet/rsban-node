@@ -236,6 +236,9 @@ private:
 	mutable nano::mutex mutex;
 	std::thread thread;
 
+public:
+	rsnano::RepCrawlerHandle * handle;
+
 public: // Testing
 	void force_add_rep (nano::account const & account, std::shared_ptr<nano::transport::channel> const & channel);
 	void force_process (std::shared_ptr<nano::vote> const & vote, std::shared_ptr<nano::transport::channel> const & channel);

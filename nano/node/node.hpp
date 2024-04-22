@@ -168,7 +168,7 @@ public:
 	nano::wallets wallets;
 	nano::vote_generator generator; // ported
 	nano::vote_generator final_generator; // ported
-	nano::active_transactions active;
+	nano::active_transactions active; // ported
 	std::shared_ptr<nano::transport::tcp_listener> tcp_listener; // ported
 
 private: // Placed here to maintain initialization order

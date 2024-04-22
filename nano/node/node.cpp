@@ -76,30 +76,7 @@ nano::outbound_bandwidth_limiter::config nano::outbound_bandwidth_limiter_config
 
 void nano::node::keepalive (std::string const & address_a, uint16_t port_a)
 {
-	auto node_l (shared_from_this ());
-	network->resolver.async_resolve (boost::asio::ip::udp::resolver::query (address_a, std::to_string (port_a)), [node_l, address_a, port_a] (boost::system::error_code const & ec, boost::asio::ip::udp::resolver::iterator i_a) {
-		if (!ec)
-		{
-			for (auto i (i_a), n (boost::asio::ip::udp::resolver::iterator{}); i != n; ++i)
-			{
-				auto endpoint (nano::transport::map_endpoint_to_v6 (i->endpoint ()));
-				std::weak_ptr<nano::node> node_w (node_l);
-				auto channel (node_l->network->find_channel (endpoint));
-				if (!channel)
-				{
-					node_l->network->tcp_channels->start_tcp (endpoint);
-				}
-				else
-				{
-					node_l->network->send_keepalive (channel);
-				}
-			}
-		}
-		else
-		{
-			node_l->logger->error (nano::log::type::node, "Error resolving address for keepalive: {}:{} ({})", address_a, port_a, ec.message ());
-		}
-	});
+	rsnano::rsn_rep_crawler_keepalive (rep_crawler.handle, address_a.c_str (), port_a);
 }
 
 nano::keypair nano::load_or_create_node_id (std::filesystem::path const & application_path)

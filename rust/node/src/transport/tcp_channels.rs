@@ -516,6 +516,12 @@ impl TcpChannels {
         self.port.store(port, Ordering::SeqCst);
     }
 
+    pub fn create_keepalive_message(&self) -> Message {
+        let mut peers = [SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0); 8];
+        self.random_fill(&mut peers);
+        Message::Keepalive(Keepalive { peers })
+    }
+
     pub fn sample_keepalive(&self) -> Option<Keepalive> {
         let channels = self.tcp_channels.lock().unwrap();
         let mut rng = thread_rng();
@@ -633,9 +639,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
     }
 
     fn keepalive(&self) {
-        let mut peers = [SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0); 8];
-        self.random_fill(&mut peers);
-        let message = Message::Keepalive(Keepalive { peers });
+        let message = self.create_keepalive_message();
 
         // Wake up channels
         let to_wake_up = {

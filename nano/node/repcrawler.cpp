@@ -165,6 +165,10 @@ void nano::representative_register::on_rep_request (std::shared_ptr<nano::transp
 {
 	rsnano::rsn_representative_register_on_rep_request (handle, target_channel->handle);
 }
+//
+//------------------------------------------------------------------------------
+// rep_crawler
+//------------------------------------------------------------------------------
 
 nano::rep_crawler::rep_crawler (nano::rep_crawler_config const & config_a, nano::node & node_a) :
 	config{ config_a },
@@ -174,6 +178,17 @@ nano::rep_crawler::rep_crawler (nano::rep_crawler_config const & config_a, nano:
 	network_constants{ node_a.network_params.network },
 	active{ node_a.active }
 {
+	auto config_dto{ node_a.config->to_dto () };
+	auto network_dto{ node_a.network_params.to_dto () };
+	handle = rsnano::rsn_rep_crawler_create (
+	node_a.representative_register.handle,
+	node_a.stats->handle,
+	config.query_timeout.count (),
+	node_a.online_reps.get_handle (),
+	&config_dto,
+	&network_dto,
+	node_a.network->tcp_channels->handle,
+	node_a.async_rt.handle);
 	if (!node.flags.disable_rep_crawler ())
 	{
 		node.observers->endpoint.add ([this] (std::shared_ptr<nano::transport::channel> const & channel) {
@@ -186,6 +201,7 @@ nano::rep_crawler::~rep_crawler ()
 {
 	// Thread must be stopped before destruction
 	debug_assert (!thread.joinable ());
+	rsnano::rsn_rep_crawler_destroy (handle);
 }
 
 void nano::rep_crawler::start ()

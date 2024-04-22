@@ -7,20 +7,8 @@
 #include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
 
-#include <boost/circular_buffer.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/mem_fun.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/random_access_index.hpp>
-#include <boost/multi_index_container.hpp>
-#include <boost/optional.hpp>
-
 #include <chrono>
 #include <memory>
-#include <thread>
-
-namespace mi = boost::multi_index;
 
 namespace nano
 {
@@ -127,9 +115,6 @@ public:
 	bool process (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &);
 
 	/** Attempt to determine if the peer manages one or more representative accounts */
-	void query (std::vector<std::shared_ptr<nano::transport::channel>> const & target_channels);
-
-	/** Attempt to determine if the peer manages one or more representative accounts */
 	void query (std::shared_ptr<nano::transport::channel> const & target_channel);
 
 	/** Query if a peer manages a principle representative */
@@ -151,87 +136,8 @@ public:
 
 	std::unique_ptr<container_info_component> collect_container_info (std::string const & name);
 
-private: 
-	rep_crawler_config const & config;
+private:
 	nano::node & node;
-	nano::stats & stats;
-	nano::logger & logger;
-	nano::network_constants & network_constants;
-	nano::active_transactions & active;
-
-	void run ();
-	void cleanup ();
-	void validate_and_process (nano::unique_lock<nano::mutex> &);
-	bool query_predicate (bool sufficient_weight) const;
-	std::chrono::milliseconds query_interval (bool sufficient_weight) const;
-
-	using hash_root_t = std::pair<nano::block_hash, nano::root>;
-
-	/** Returns a list of endpoints to crawl. The total weight is passed in to avoid computing it twice. */
-	std::vector<std::shared_ptr<nano::transport::channel>> prepare_crawl_targets (bool sufficient_weight) const;
-	std::optional<hash_root_t> prepare_query_target ();
-	bool track_rep_request (hash_root_t hash_root, std::shared_ptr<nano::transport::channel> const & channel);
-
-	/**
-	 * A representative picked up during repcrawl.
-	 */
-	struct rep_entry
-	{
-		rep_entry (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a) :
-			account{ account_a },
-			channel{ channel_a }
-		{
-			debug_assert (channel != nullptr);
-		}
-
-		nano::account const account;
-		std::shared_ptr<nano::transport::channel> channel;
-
-		std::chrono::steady_clock::time_point last_request{};
-		std::chrono::steady_clock::time_point last_response{ std::chrono::steady_clock::now () };
-
-		nano::account get_account () const
-		{
-			return account;
-		}
-	};
-
-	struct query_entry
-	{
-		nano::block_hash hash;
-		std::shared_ptr<nano::transport::channel> channel;
-		std::size_t channel_id;
-		std::chrono::steady_clock::time_point time{ std::chrono::steady_clock::now () };
-		unsigned int replies{ 0 }; // number of replies to the query
-	};
-
-	// clang-format off
-	class tag_hash {};
-	class tag_channel {};
-	class tag_sequenced {};
-
-	using ordered_queries = boost::multi_index_container<query_entry,
-	mi::indexed_by<
-		mi::hashed_non_unique<mi::tag<tag_channel>,
-			mi::member<query_entry, std::size_t, &query_entry::channel_id>>,
-		mi::sequenced<mi::tag<tag_sequenced>>,
-		mi::hashed_non_unique<mi::tag<tag_hash>,
-			mi::member<query_entry, nano::block_hash, &query_entry::hash>>
-	>>;
-	// clang-format on
-
-	ordered_queries queries;
-
-	static size_t constexpr max_responses{ 1024 * 4 };
-	using response_t = std::pair<std::shared_ptr<nano::transport::channel>, std::shared_ptr<nano::vote>>;
-	boost::circular_buffer<response_t> responses{ max_responses };
-
-	std::chrono::steady_clock::time_point last_query{};
-
-	std::atomic<bool> stopped{ false };
-	nano::condition_variable condition;
-	mutable nano::mutex mutex;
-	std::thread thread;
 
 public:
 	rsnano::RepCrawlerHandle * handle;

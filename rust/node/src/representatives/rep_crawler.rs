@@ -109,8 +109,7 @@ impl RepCrawler {
         queries.modify_for_channel(channel.channel_id(), |query| {
             // TODO: This linear search could be slow, especially with large votes.
             let target_hash = query.hash;
-            let hashes = vote.hashes.clone();
-            let found = hashes.iter().any(|h| *h == target_hash);
+            let found = vote.hashes.iter().any(|h| *h == target_hash);
             let done;
 
             if found {
@@ -319,6 +318,10 @@ impl RepCrawler {
 
         // Randomly select a block from ledger to request votes for
         for _ in 0..MAX_ATTEMPTS {
+            if hash_root.is_some() {
+                break;
+            }
+
             hash_root = self.ledger.hash_root_random(&tx);
 
             // Rebroadcasted votes for recently confirmed blocks might confuse the rep crawler
@@ -426,6 +429,13 @@ impl RepCrawler {
                 }),
             ],
         )
+    }
+}
+
+impl Drop for RepCrawler {
+    fn drop(&mut self) {
+        // Thread must be stopped before destruction
+        debug_assert!(self.thread.lock().unwrap().is_none())
     }
 }
 
@@ -610,7 +620,7 @@ impl OrderedQueries {
     fn retain(&mut self, predicate: impl Fn(&QueryEntry) -> bool) {
         let mut to_delete = Vec::new();
         for (&id, entry) in &self.entries {
-            if predicate(entry) {
+            if !predicate(entry) {
                 to_delete.push(id);
             }
         }
@@ -622,8 +632,19 @@ impl OrderedQueries {
     fn remove(&mut self, entry_id: usize) {
         if let Some(entry) = self.entries.remove(&entry_id) {
             self.sequenced.retain(|id| *id != entry_id);
-            self.by_channel.remove(&entry.channel.channel_id());
-            self.by_hash.remove(&entry.hash);
+            if let Some(mut by_channel) = self.by_channel.remove(&entry.channel.channel_id()) {
+                if by_channel.len() > 1 {
+                    by_channel.retain(|i| *i != entry_id);
+                    self.by_channel
+                        .insert(entry.channel.channel_id(), by_channel);
+                }
+            }
+            if let Some(mut by_hash) = self.by_hash.remove(&entry.hash) {
+                if by_hash.len() > 1 {
+                    by_hash.retain(|i| *i != entry_id);
+                    self.by_hash.insert(entry.hash, by_hash);
+                }
+            }
         }
     }
 

@@ -14,6 +14,7 @@ mod vote_processor_queue;
 mod vote_spacing;
 mod vote_with_weight_info;
 
+pub use active_transactions::ActiveTransactionsHandle;
 pub use local_vote_history::LocalVoteHistoryHandle;
 pub use vote::VoteHandle;
 pub use vote_cache::VoteCacheConfigDto;

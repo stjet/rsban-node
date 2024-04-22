@@ -93,6 +93,7 @@ impl RepresentativeRegister {
         })
     }
 
+    /// Query if a peer manages a principle representative
     pub fn is_pr(&self, channel: &ChannelEnum) -> bool {
         if let Some(existing) = self.by_channel_id.get(&channel.channel_id()) {
             let min_weight = {
@@ -107,6 +108,7 @@ impl RepresentativeRegister {
         }
     }
 
+    /// Get total available weight from representatives
     pub fn total_weight(&self) -> Amount {
         let mut result = Amount::zero();
         for (account, rep) in &self.by_account {
@@ -159,10 +161,12 @@ impl RepresentativeRegister {
         }
     }
 
+    /// Request a list of the top \p count known representatives in descending order of weight, with at least \p weight_a voting weight, and optionally with a minimum version \p minimum_protocol_version
     pub fn representatives(&self) -> Vec<Representative> {
         self.representatives_filter(usize::MAX, Amount::zero(), None)
     }
 
+    /// Request a list of the top \p count known principal representatives in descending order of weight, optionally with a minimum version \p minimum_protocol_version
     pub fn principal_representatives(&self) -> Vec<Representative> {
         self.representatives_filter(
             usize::MAX,
@@ -198,6 +202,7 @@ impl RepresentativeRegister {
             .collect()
     }
 
+    /// Total number of representatives
     pub fn representatives_count(&self) -> usize {
         self.by_account.len()
     }

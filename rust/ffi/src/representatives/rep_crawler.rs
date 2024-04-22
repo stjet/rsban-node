@@ -1,7 +1,8 @@
 use super::{OnlineRepsHandle, RepresentativeRegisterHandle};
 use crate::{
-    ledger::datastore::LedgerHandle, transport::TcpChannelsHandle, utils::AsyncRuntimeHandle,
-    NetworkParamsDto, NodeConfigDto, StatHandle,
+    consensus::ActiveTransactionsHandle, ledger::datastore::LedgerHandle,
+    transport::TcpChannelsHandle, utils::AsyncRuntimeHandle, NetworkParamsDto, NodeConfigDto,
+    StatHandle,
 };
 use rsnano_node::representatives::RepCrawler;
 use std::{
@@ -32,6 +33,7 @@ pub extern "C" fn rsn_rep_crawler_create(
     tcp_channels: &TcpChannelsHandle,
     async_rt: &AsyncRuntimeHandle,
     ledger: &LedgerHandle,
+    active: &ActiveTransactionsHandle,
 ) -> *mut RepCrawlerHandle {
     Box::into_raw(Box::new(RepCrawlerHandle(Arc::new(RepCrawler::new(
         Arc::clone(representative_register),
@@ -43,6 +45,7 @@ pub extern "C" fn rsn_rep_crawler_create(
         Arc::clone(tcp_channels),
         Arc::clone(async_rt),
         Arc::clone(ledger),
+        Arc::clone(active),
     )))))
 }
 

@@ -1,5 +1,7 @@
+use super::{RegisterRepresentativeResult, RepresentativeRegister};
 use crate::{
     config::NodeConfig,
+    consensus::ActiveTransactions,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, TcpChannels, TcpChannelsExtension, TrafficType,
@@ -11,15 +13,17 @@ use crate::{
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{BlockHash, Root, Vote};
 use rsnano_ledger::Ledger;
+use rsnano_messages::{ConfirmReq, Message};
 use std::{
     collections::HashMap,
+    ops::DerefMut,
     sync::{Arc, Condvar, Mutex, MutexGuard},
     time::{Duration, Instant},
 };
 use tracing::{debug, error, info, warn};
 
-use super::{RegisterRepresentativeResult, RepresentativeRegister};
-
+/// Crawls the network for representatives. Queries are performed by requesting confirmation of a
+/// random block and observing the corresponding vote.
 pub struct RepCrawler {
     rep_crawler_impl: Mutex<RepCrawlerImpl>,
     representative_register: Arc<Mutex<RepresentativeRegister>>,
@@ -31,10 +35,12 @@ pub struct RepCrawler {
     async_rt: Arc<AsyncRuntime>,
     condition: Condvar,
     ledger: Arc<Ledger>,
+    active: Arc<ActiveTransactions>,
 }
 
 impl RepCrawler {
     const MAX_RESPONSES: usize = 1024 * 4;
+
     pub fn new(
         representative_register: Arc<Mutex<RepresentativeRegister>>,
         stats: Arc<Stats>,
@@ -45,6 +51,7 @@ impl RepCrawler {
         channels: Arc<TcpChannels>,
         async_rt: Arc<AsyncRuntime>,
         ledger: Arc<Ledger>,
+        active: Arc<ActiveTransactions>,
     ) -> Self {
         let is_dev_network = network_params.network.is_dev_network();
         Self {
@@ -57,6 +64,7 @@ impl RepCrawler {
             async_rt,
             condition: Condvar::new(),
             ledger,
+            active,
             rep_crawler_impl: Mutex::new(RepCrawlerImpl {
                 is_dev_network,
                 queries: OrderedQueries::new(),
@@ -69,6 +77,92 @@ impl RepCrawler {
                 channels,
             }),
         }
+    }
+
+    /// Called when a non-replay vote arrives that might be of interest to rep crawler.
+    /// @return true, if the vote was of interest and was processed, this indicates that the rep is likely online and voting
+    pub fn process(&self, vote: Arc<Vote>, channel: Arc<ChannelEnum>) -> bool {
+        let mut guard = self.rep_crawler_impl.lock().unwrap();
+        let mut processed = false;
+
+        let x = guard.deref_mut();
+        let queries = &mut x.queries;
+        let responses = &mut x.responses;
+        queries.modify_for_channel(channel.channel_id(), |query| {
+            // TODO: This linear search could be slow, especially with large votes.
+            let target_hash = query.hash;
+            let hashes = vote.hashes.clone();
+            let found = hashes.iter().any(|h| *h == target_hash);
+            let done;
+
+            if found {
+                debug!(
+                    "Processing response for block {} from {}",
+                    target_hash,
+                    channel.remote_endpoint()
+                );
+                self.stats
+                    .inc(StatType::RepCrawler, DetailType::Response, Direction::In);
+                // TODO: Track query response time
+
+                responses.push_back((Arc::clone(&channel), Arc::clone(&vote)));
+                query.replies += 1;
+                self.condition.notify_all();
+                processed = true;
+                done = true
+            } else {
+                done = false
+            }
+
+            done
+        });
+
+        processed
+    }
+
+    /// Attempt to determine if the peer manages one or more representative accounts
+    fn query(&self, target_channels: Vec<Arc<ChannelEnum>>) {
+        let Some(hash_root) = self.prepare_query_target() else {
+            debug!("No block to query");
+            self.stats.inc(
+                StatType::RepCrawler,
+                DetailType::QueryTargetFailed,
+                Direction::In,
+            );
+            return;
+        };
+
+        let mut guard = self.rep_crawler_impl.lock().unwrap();
+
+        for channel in target_channels {
+            guard.track_rep_request(hash_root, Arc::clone(&channel));
+            debug!(
+                "Sending query for block {} to {}",
+                hash_root.0,
+                channel.remote_endpoint()
+            );
+            self.stats
+                .inc(StatType::RepCrawler, DetailType::QuerySent, Direction::In);
+
+            let req = Message::ConfirmReq(ConfirmReq::new(vec![hash_root]));
+
+            let stats = Arc::clone(&self.stats);
+            channel.send(
+                &req,
+                Some(Box::new(move |ec, _len| {
+                    if ec.is_err() {
+                        stats.inc(StatType::RepCrawler, DetailType::WriteError, Direction::Out);
+                    }
+                })),
+                BufferDropPolicy::NoSocketDrop,
+                TrafficType::Generic,
+            )
+        }
+    }
+
+    /// Attempt to determine if the peer manages one or more representative accounts
+    fn query_channel(&self, target_channel: Arc<ChannelEnum>) {
+        self.query(vec![target_channel]);
     }
 
     pub fn run(&self) {
@@ -187,17 +281,35 @@ impl RepCrawler {
         let mut hash_root = None;
 
         // Randomly select a block from ledger to request votes for
-        for i in 0..MAX_ATTEMPTS {
+        for _ in 0..MAX_ATTEMPTS {
             hash_root = self.ledger.hash_root_random(&tx);
 
             // Rebroadcasted votes for recently confirmed blocks might confuse the rep crawler
-            todo!();
+            if self
+                .active
+                .recently_confirmed
+                .hash_exists(&hash_root.as_ref().unwrap().0)
+            {
+                hash_root = None;
+            }
         }
-        todo!();
-    }
 
-    fn query(&self, target_channels: Vec<Arc<ChannelEnum>>) {
-        todo!()
+        if hash_root.is_none() {
+            return None;
+        }
+
+        // Don't send same block multiple times in tests
+        if self.network_params.network.is_dev_network() {
+            let guard = self.rep_crawler_impl.lock().unwrap();
+            for _ in 0..MAX_ATTEMPTS {
+                if guard.queries.count_by_block(&hash_root.as_ref().unwrap().0) == 0 {
+                    break;
+                }
+                hash_root = self.ledger.hash_root_random(&tx);
+            }
+        }
+
+        hash_root
     }
 
     fn query_interval(&self, sufficient_weight: bool) -> Duration {
@@ -320,12 +432,26 @@ impl RepCrawlerImpl {
                     } else {
                         AGGRESSIVE_MAX_ATTEMPTS
                     };
-                    self.queries.count(channel.channel_id()) < max_attemts
+                    self.queries.count_by_channel(channel.channel_id()) < max_attemts
                 }
             }
         });
 
         random_peers
+    }
+
+    fn track_rep_request(&mut self, hash_root: (BlockHash, Root), channel: Arc<ChannelEnum>) {
+        self.queries.insert(QueryEntry {
+            hash: hash_root.0,
+            channel: Arc::clone(&channel),
+            time: Instant::now(),
+            replies: 0,
+        });
+        // Find and update the timestamp on all reps available on the endpoint (a single host may have multiple reps)
+        self.representative_register
+            .lock()
+            .unwrap()
+            .on_rep_request(&channel);
     }
 
     fn cleanup(&mut self) {
@@ -427,10 +553,31 @@ impl OrderedQueries {
         }
     }
 
-    fn count(&self, channel_id: usize) -> usize {
+    fn count_by_block(&self, hash: &BlockHash) -> usize {
+        self.by_hash.get(hash).map(|i| i.len()).unwrap_or_default()
+    }
+
+    fn count_by_channel(&self, channel_id: usize) -> usize {
         self.by_channel
             .get(&channel_id)
             .map(|i| i.len())
             .unwrap_or_default()
+    }
+
+    fn modify_for_channel(
+        &mut self,
+        channel_id: usize,
+        mut f: impl FnMut(&mut QueryEntry) -> bool,
+    ) {
+        if let Some(ids) = self.by_channel.get(&channel_id) {
+            for id in ids {
+                if let Some(entry) = self.entries.get_mut(id) {
+                    let done = f(entry);
+                    if done {
+                        return;
+                    }
+                }
+            }
+        }
     }
 }

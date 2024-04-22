@@ -427,7 +427,7 @@ impl<T: Environment + 'static> Ledger<T> {
     pub fn hash_root_random(
         &self,
         txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> Option<(BlockHash, BlockHash)> {
+    ) -> Option<(BlockHash, Root)> {
         if !self.pruning_enabled() {
             self.store
                 .block
@@ -445,9 +445,9 @@ impl<T: Environment + 'static> Ledger<T> {
                 self.store
                     .block
                     .random(txn)
-                    .map(|block| (block.hash(), block.root().into()))
+                    .map(|block| (block.hash(), block.root()))
             } else {
-                Some((hash, BlockHash::zero()))
+                Some((hash, Root::zero()))
             }
         }
     }

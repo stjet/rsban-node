@@ -16,7 +16,7 @@ use crate::{
     transport::TcpChannelsHandle,
     utils::{ContainerInfoComponentHandle, ContextWrapper, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
-    NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
+    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{
@@ -75,6 +75,7 @@ pub unsafe extern "C" fn rsn_active_transactions_create(
     election_ended: ElectionEndedCallback,
     balance_changed: FfiAccountBalanceCallback,
     rep_register: &RepresentativeRegisterHandle,
+    node_flags: &NodeFlagsHandle,
 ) -> *mut ActiveTransactionsHandle {
     let ctx_wrapper = Arc::new(ContextWrapper::new(
         observers_context,
@@ -134,6 +135,7 @@ pub unsafe extern "C" fn rsn_active_transactions_create(
         election_ended_wrapper,
         account_balance_changed_wrapper,
         Arc::clone(rep_register),
+        node_flags.lock().unwrap().clone(),
     )))
 }
 
@@ -155,6 +157,11 @@ pub extern "C" fn rsn_active_transactions_notify_all(handle: &ActiveTransactions
 #[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_destroy(handle: *mut ActiveTransactionsHandle) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_start(handle: &ActiveTransactionsHandle) {
+    handle.start();
 }
 
 #[no_mangle]

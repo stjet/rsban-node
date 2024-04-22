@@ -79,8 +79,6 @@ public:
 	bool empty () const;
 	std::size_t size () const;
 	bool publish (std::shared_ptr<nano::block> const &);
-	void block_cemented_callback (std::shared_ptr<nano::block> const &);
-	void block_already_cemented_callback (nano::block_hash const &);
 
 	/**
 	 * Maximum number of elections that should be present in this container
@@ -129,15 +127,8 @@ public: // Events
 	void insert_recently_cemented (nano::election_status const & status);
 	std::deque<nano::election_status> recently_cemented_list ();
 
-private:
-	void request_loop ();
-
 private: // Dependencies
 	nano::node & node;
-	nano::block_processor & block_processor;
-
-private:
-	std::thread thread;
 
 public:
 	rsnano::ActiveTransactionsHandle * handle;

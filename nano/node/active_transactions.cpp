@@ -125,8 +125,7 @@ void call_account_balance_changed (void * context, uint8_t const * account, bool
 }
 
 nano::active_transactions::active_transactions (nano::node & node_a, nano::confirming_set & confirming_set, nano::block_processor & block_processor_a) :
-	node{ node_a },
-	block_processor{ block_processor_a }
+	node{ node_a }
 {
 	auto network_dto{ node_a.network_params.to_dto () };
 	auto config_dto{ node_a.config->to_dto () };
@@ -138,7 +137,7 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	node_a.generator.handle, node_a.final_generator.handle, node_a.network->tcp_channels->handle,
 	node_a.vote_cache.handle, node_a.stats->handle, observers_context, delete_observers_context,
 	call_active_started, call_active_stopped, call_election_ended, call_account_balance_changed,
-	node_a.representative_register.handle);
+	node_a.representative_register.handle, node_a.flags.handle);
 
 	auto activate_successors_context = new std::function<void (nano::store::read_transaction const &, std::shared_ptr<nano::block> const &)>{
 		[&node_a] (nano::store::read_transaction const & tx, std::shared_ptr<nano::block> const & block) {
@@ -151,37 +150,17 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 
 nano::active_transactions::~active_transactions ()
 {
-	// Thread must be stopped before destruction
-	debug_assert (!thread.joinable ());
 	rsnano::rsn_active_transactions_destroy (handle);
 }
 
 void nano::active_transactions::start ()
 {
-	if (node.flags.disable_request_loop ())
-	{
-		return;
-	}
-
-	debug_assert (!thread.joinable ());
-
-	thread = std::thread ([this] () {
-		nano::thread_role::set (nano::thread_role::name::request_loop);
-		request_loop ();
-	});
+	rsnano::rsn_active_transactions_start (handle);
 }
 
 void nano::active_transactions::stop ()
 {
 	rsnano::rsn_active_transactions_stop (handle);
-	rsnano::rsn_active_transactions_notify_all (handle);
-	nano::join_or_pass (thread);
-	clear ();
-}
-
-void nano::active_transactions::block_cemented_callback (std::shared_ptr<nano::block> const & block)
-{
-	rsnano::rsn_active_transactions_block_cemented_callback (handle, block->get_handle ());
 }
 
 bool nano::active_transactions::confirmed (nano::election const & election) const
@@ -273,15 +252,6 @@ void nano::active_transactions::force_confirm (nano::election & election)
 	rsnano::rsn_active_transactions_force_confirm (handle, election.handle);
 }
 
-void nano::active_transactions::block_already_cemented_callback (nano::block_hash const & hash_a)
-{
-	// Depending on timing there is a situation where the election_winner_details is not reset.
-	// This can happen when a block wins an election, and the block is confirmed + observer
-	// called before the block hash gets added to election_winner_details. If the block is confirmed
-	// callbacks have already been done, so we can safely just remove it.
-	remove_election_winner_details (hash_a);
-}
-
 int64_t nano::active_transactions::limit (nano::election_behavior behavior) const
 {
 	return rsnano::rsn_active_transactions_limit (handle, static_cast<uint8_t> (behavior));
@@ -317,11 +287,6 @@ std::vector<std::shared_ptr<nano::election>> nano::active_transactions::list_act
 	}
 	rsnano::rsn_election_vec_destroy (elections_handle);
 	return result_l;
-}
-
-void nano::active_transactions::request_loop ()
-{
-	rsnano::rsn_active_transactions_request_loop (handle);
 }
 
 nano::election_insertion_result nano::active_transactions::insert (const std::shared_ptr<nano::block> & block_a, nano::election_behavior election_behavior_a)

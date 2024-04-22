@@ -6,7 +6,7 @@ use super::{
 use crate::{
     block_processing::BlockProcessor,
     cementation::ConfirmingSet,
-    config::NodeConfig,
+    config::{NodeConfig, NodeFlags},
     representatives::RepresentativeRegister,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{BufferDropPolicy, TcpChannels},
@@ -29,6 +29,7 @@ use std::{
     mem::size_of,
     ops::Deref,
     sync::{atomic::Ordering, Arc, Condvar, Mutex, MutexGuard},
+    thread::JoinHandle,
     time::{Duration, Instant, SystemTime},
 };
 use tracing::trace;
@@ -73,6 +74,8 @@ pub struct ActiveTransactions {
     election_end: ElectionEndCallback,
     account_balance_changed: AccountBalanceChangedCallback,
     representative_register: Arc<Mutex<RepresentativeRegister>>,
+    thread: Mutex<Option<JoinHandle<()>>>,
+    flags: NodeFlags,
 }
 
 impl ActiveTransactions {
@@ -96,6 +99,7 @@ impl ActiveTransactions {
         election_end: ElectionEndCallback,
         account_balance_changed: AccountBalanceChangedCallback,
         representative_register: Arc<Mutex<RepresentativeRegister>>,
+        flags: NodeFlags,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveTransactionsData {
@@ -134,11 +138,9 @@ impl ActiveTransactions {
             election_end,
             account_balance_changed,
             representative_register,
+            thread: Mutex::new(None),
+            flags,
         }
-    }
-
-    pub fn stop(&self) {
-        self.mutex.lock().unwrap().stopped = true;
     }
 
     pub fn len(&self) -> usize {
@@ -965,6 +967,13 @@ impl ActiveTransactions {
     }
 }
 
+impl Drop for ActiveTransactions {
+    fn drop(&mut self) {
+        // Thread must be stopped before destruction
+        debug_assert!(self.thread.lock().unwrap().is_none());
+    }
+}
+
 #[derive(PartialEq, Eq)]
 pub struct TallyKey(pub Amount);
 
@@ -1067,6 +1076,8 @@ impl OrderedRoots {
 
 pub trait ActiveTransactionsExt {
     fn initialize(&self);
+    fn start(&self);
+    fn stop(&self);
     /// Confirm this block if quorum is met
     fn confirm_if_quorum(&self, election_lock: MutexGuard<ElectionData>, election: &Arc<Election>);
     fn confirm_once(&self, election_lock: MutexGuard<ElectionData>, election: &Arc<Election>);
@@ -1127,6 +1138,33 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
                     }
                 }
             }));
+    }
+
+    fn start(&self) {
+        if self.flags.disable_request_loop {
+            return;
+        }
+
+        let mut guard = self.thread.lock().unwrap();
+        let self_l = Arc::clone(self);
+        assert!(guard.is_none());
+        *guard = Some(
+            std::thread::Builder::new()
+                .name("Request loop".to_string())
+                .spawn(Box::new(move || {
+                    self_l.request_loop();
+                }))
+                .unwrap(),
+        );
+    }
+
+    fn stop(&self) {
+        self.mutex.lock().unwrap().stopped = true;
+        self.condition.notify_all();
+        if let Some(join_handle) = self.thread.lock().unwrap().take() {
+            join_handle.join().unwrap();
+        }
+        self.clear();
     }
 
     fn force_confirm(&self, election: &Arc<Election>) {

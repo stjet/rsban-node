@@ -156,7 +156,6 @@ public:
 	nano::port_mapping port_mapping;
 	nano::online_reps online_reps; // ported
 	nano::representative_register representative_register; // ported
-	nano::rep_crawler rep_crawler;
 	nano::rep_tiers rep_tiers; // ported
 	nano::vote_processor_queue vote_processor_queue; // ported
 	nano::vote_processor vote_processor;
@@ -169,6 +168,7 @@ public:
 	nano::vote_generator generator; // ported
 	nano::vote_generator final_generator; // ported
 	nano::active_transactions active; // ported
+	nano::rep_crawler rep_crawler;
 	std::shared_ptr<nano::transport::tcp_listener> tcp_listener; // ported
 
 private: // Placed here to maintain initialization order

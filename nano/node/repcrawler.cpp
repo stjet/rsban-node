@@ -188,7 +188,8 @@ nano::rep_crawler::rep_crawler (nano::rep_crawler_config const & config_a, nano:
 	&config_dto,
 	&network_dto,
 	node_a.network->tcp_channels->handle,
-	node_a.async_rt.handle);
+	node_a.async_rt.handle,
+	node_a.ledger.handle);
 	if (!node.flags.disable_rep_crawler ())
 	{
 		node.observers->endpoint.add ([this] (std::shared_ptr<nano::transport::channel> const & channel) {

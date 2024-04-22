@@ -57,7 +57,7 @@ use token_bucket::TokenBucket;
 pub use write_queue::WriteCallback;
 
 #[repr(u8)]
-#[derive(FromPrimitive)]
+#[derive(FromPrimitive, PartialEq, Eq)]
 pub enum TransportType {
     Undefined = 0,
     Tcp = 1,

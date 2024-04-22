@@ -10,6 +10,7 @@ mod rep_tiers;
 mod vote;
 mod vote_cache;
 mod vote_generator;
+mod vote_processor;
 mod vote_processor_queue;
 mod vote_spacing;
 mod vote_with_weight_info;

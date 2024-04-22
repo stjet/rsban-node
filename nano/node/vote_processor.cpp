@@ -101,12 +101,14 @@ nano::rep_tiers & rep_tiers_a) :
 	rep_tiers{ rep_tiers_a },
 	queue{ queue_a }
 {
+	handle = rsnano::rsn_vote_processor_create (queue_a.handle);
 }
 
 nano::vote_processor::~vote_processor ()
 {
 	// Thread must be stopped before destruction
 	debug_assert (!thread.joinable ());
+	rsnano::rsn_vote_processor_destroy (handle);
 }
 
 void nano::vote_processor::start ()

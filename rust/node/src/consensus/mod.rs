@@ -7,6 +7,7 @@ mod rep_tiers;
 mod vote_broadcaster;
 mod vote_cache;
 mod vote_generator;
+mod vote_processor;
 mod vote_processor_queue;
 mod vote_spacing;
 
@@ -16,6 +17,7 @@ pub use local_vote_history::*;
 pub use recently_confirmed_cache::*;
 pub use rep_tiers::*;
 pub use vote_broadcaster::*;
+pub use vote_processor::*;
 pub use vote_spacing::VoteSpacing;
 
 mod election_status;

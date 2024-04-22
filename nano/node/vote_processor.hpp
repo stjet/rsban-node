@@ -69,6 +69,7 @@ public:
 	nano::network_params & network_params_a,
 	nano::rep_tiers & rep_tiers_a);
 
+	vote_processor (vote_processor const &) = delete;
 	~vote_processor ();
 
 	void start ();
@@ -102,6 +103,7 @@ private:
 
 public:
 	nano::vote_processor_queue & queue;
+	rsnano::VoteProcessorHandle * handle;
 };
 
 }

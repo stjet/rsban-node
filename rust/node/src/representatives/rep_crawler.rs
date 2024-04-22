@@ -18,6 +18,7 @@ use std::{
     collections::HashMap,
     ops::DerefMut,
     sync::{Arc, Condvar, Mutex, MutexGuard},
+    thread::JoinHandle,
     time::{Duration, Instant},
 };
 use tracing::{debug, error, info, warn};
@@ -36,6 +37,7 @@ pub struct RepCrawler {
     condition: Condvar,
     ledger: Arc<Ledger>,
     active: Arc<ActiveTransactions>,
+    thread: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl RepCrawler {
@@ -65,6 +67,7 @@ impl RepCrawler {
             condition: Condvar::new(),
             ledger,
             active,
+            thread: Mutex::new(None),
             rep_crawler_impl: Mutex::new(RepCrawlerImpl {
                 is_dev_network,
                 queries: OrderedQueries::new(),
@@ -76,6 +79,17 @@ impl RepCrawler {
                 responses: BoundedVecDeque::new(Self::MAX_RESPONSES),
                 channels,
             }),
+        }
+    }
+
+    pub fn stop(&self) {
+        {
+            let mut guard = self.rep_crawler_impl.lock().unwrap();
+            guard.stopped = true;
+        }
+        self.condition.notify_all();
+        if let Some(handle) = self.thread.lock().unwrap().take() {
+            handle.join().unwrap();
         }
     }
 
@@ -121,7 +135,7 @@ impl RepCrawler {
     }
 
     /// Attempt to determine if the peer manages one or more representative accounts
-    fn query(&self, target_channels: Vec<Arc<ChannelEnum>>) {
+    pub fn query(&self, target_channels: Vec<Arc<ChannelEnum>>) {
         let Some(hash_root) = self.prepare_query_target() else {
             debug!("No block to query");
             self.stats.inc(
@@ -161,11 +175,30 @@ impl RepCrawler {
     }
 
     /// Attempt to determine if the peer manages one or more representative accounts
-    fn query_channel(&self, target_channel: Arc<ChannelEnum>) {
+    pub fn query_channel(&self, target_channel: Arc<ChannelEnum>) {
         self.query(vec![target_channel]);
     }
 
-    pub fn run(&self) {
+    // Only for tests
+    pub fn force_process(&self, vote: Arc<Vote>, channel: Arc<ChannelEnum>) {
+        assert!(self.network_params.network.is_dev_network());
+        let mut guard = self.rep_crawler_impl.lock().unwrap();
+        guard.responses.push_back((channel, vote));
+    }
+
+    // Only for tests
+    pub fn force_query(&self, hash: BlockHash, channel: Arc<ChannelEnum>) {
+        assert!(self.network_params.network.is_dev_network());
+        let mut guard = self.rep_crawler_impl.lock().unwrap();
+        guard.queries.insert(QueryEntry {
+            hash,
+            channel,
+            time: Instant::now(),
+            replies: 0,
+        })
+    }
+
+    fn run(&self) {
         let mut guard = self.rep_crawler_impl.lock().unwrap();
         while !guard.stopped {
             drop(guard);
@@ -579,5 +612,24 @@ impl OrderedQueries {
                 }
             }
         }
+    }
+}
+
+pub trait RepCrawlerExt {
+    fn start(&self);
+}
+
+impl RepCrawlerExt for Arc<RepCrawler> {
+    fn start(&self) {
+        debug_assert!(self.thread.lock().unwrap().is_none());
+        let self_l = Arc::clone(self);
+        *self.thread.lock().unwrap() = Some(
+            std::thread::Builder::new()
+                .name("Rep Crawler".to_string())
+                .spawn(Box::new(move || {
+                    self_l.run();
+                }))
+                .unwrap(),
+        );
     }
 }

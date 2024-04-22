@@ -151,7 +151,7 @@ public:
 
 	std::unique_ptr<container_info_component> collect_container_info (std::string const & name);
 
-private: // Dependencies
+private: 
 	rep_crawler_config const & config;
 	nano::node & node;
 	nano::stats & stats;
@@ -159,7 +159,6 @@ private: // Dependencies
 	nano::network_constants & network_constants;
 	nano::active_transactions & active;
 
-private:
 	void run ();
 	void cleanup ();
 	void validate_and_process (nano::unique_lock<nano::mutex> &);
@@ -173,7 +172,6 @@ private:
 	std::optional<hash_root_t> prepare_query_target ();
 	bool track_rep_request (hash_root_t hash_root, std::shared_ptr<nano::transport::channel> const & channel);
 
-private:
 	/**
 	 * A representative picked up during repcrawl.
 	 */
@@ -224,7 +222,6 @@ private:
 
 	ordered_queries queries;
 
-private:
 	static size_t constexpr max_responses{ 1024 * 4 };
 	using response_t = std::pair<std::shared_ptr<nano::transport::channel>, std::shared_ptr<nano::vote>>;
 	boost::circular_buffer<response_t> responses{ max_responses };

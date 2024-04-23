@@ -803,7 +803,7 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         block: &BlockEnum,
         representative: Account,
         amount: Amount,
-    ) -> bool;
+    ) -> Result<(), ()>;
 
     fn search_receivable(
         &self,
@@ -815,11 +815,32 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
     fn search_receivable_all(&self);
     fn search_receivable_wallet(&self, wallet_id: WalletId) -> Result<(), WalletsError>;
 
-    fn enter_password(
+    fn enter_password(&self, wallet_id: WalletId, password: &str) -> Result<(), WalletsError>;
+
+    fn enter_password_wallet(
         &self,
         wallet: &Arc<Wallet<T>>,
         wallet_tx: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
         password: &str,
+    ) -> Result<(), ()>;
+
+    fn enter_initial_password(&self, wallet: &Arc<Wallet<T>>);
+    fn create(&self, wallet_id: WalletId);
+    fn change_async_wallet(
+        &self,
+        wallet: Arc<Wallet<T>>,
+        source: Account,
+        representative: Account,
+        action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
+        work: u64,
+        generate_work: bool,
+    );
+
+    fn change_sync_wallet(
+        &self,
+        wallet: Arc<Wallet<T>>,
+        source: Account,
+        representative: Account,
     ) -> Result<(), ()>;
 }
 
@@ -1270,7 +1291,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         block: &BlockEnum,
         representative: Account,
         amount: Amount,
-    ) -> bool {
+    ) -> Result<(), ()> {
         let result = Arc::new((Condvar::new(), Mutex::new((false, false)))); // done, result
         let result_clone = Arc::clone(&result);
         self.receive_async(
@@ -1288,7 +1309,11 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         );
         let mut guard = result.1.lock().unwrap();
         guard = result.0.wait_while(guard, |i| !i.0).unwrap();
-        guard.1
+        if guard.1 {
+            Ok(())
+        } else {
+            Err(())
+        }
     }
 
     fn search_receivable(
@@ -1365,7 +1390,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
             (self.env.tx_begin_read(), guard.clone())
         };
 
-        for (id, wallet) in wallets {
+        for (_id, wallet) in wallets {
             if wallet.store.exists(&wallet_tx, &destination) {
                 let representative = wallet.store.representative(&wallet_tx);
                 let pending = self
@@ -1398,8 +1423,8 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
     fn search_receivable_all(&self) {
         let wallets = self.mutex.lock().unwrap().clone();
         let wallet_tx = self.env.tx_begin_read();
-        for (id, wallet) in wallets {
-            self.search_receivable(&wallet, &wallet_tx);
+        for (_, wallet) in wallets {
+            let _ = self.search_receivable(&wallet, &wallet_tx);
         }
     }
 
@@ -1408,7 +1433,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         if let Some(wallet) = guard.get(&wallet_id) {
             let tx = self.env.tx_begin_read();
             if wallet.store.valid_password(&tx) {
-                self.search_receivable(wallet, &tx);
+                let _ = self.search_receivable(wallet, &tx);
                 Ok(())
             } else {
                 Err(WalletsError::WalletLocked)
@@ -1418,7 +1443,15 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         }
     }
 
-    fn enter_password(
+    fn enter_password(&self, wallet_id: WalletId, password: &str) -> Result<(), WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, &wallet_id)?;
+        let tx = self.env.tx_begin_write();
+        self.enter_password_wallet(wallet, &tx, password)
+            .map_err(|_| WalletsError::InvalidPassword)
+    }
+
+    fn enter_password_wallet(
         &self,
         wallet: &Arc<Wallet<T>>,
         wallet_tx: &dyn Transaction<
@@ -1439,10 +1472,94 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
                 Box::new(move |wallet| {
                     // Wallets must survive node lifetime
                     let tx = self_l.env.tx_begin_read();
-                    self_l.search_receivable(&wallet, &tx);
+                    let _ = self_l.search_receivable(&wallet, &tx);
                 }),
             );
             Ok(())
+        }
+    }
+
+    fn enter_initial_password(&self, wallet: &Arc<Wallet<T>>) {
+        let password = wallet.store.password();
+        if password.is_zero() {
+            let mut tx = self.env.tx_begin_write();
+            if wallet.store.valid_password(&tx) {
+                // Newly created wallets have a zero key
+                let _ = wallet.store.rekey(&mut tx, "");
+            } else {
+                let _ = self.enter_password_wallet(wallet, &tx, "");
+            }
+        }
+    }
+
+    fn create(&self, wallet_id: WalletId) {
+        let mut guard = self.mutex.lock().unwrap();
+        debug_assert!(!guard.contains_key(&wallet_id));
+        let wallet = {
+            let mut tx = self.env.tx_begin_write();
+            let Ok(wallet) = Wallet::new(
+                Arc::clone(&self.ledger),
+                self.work_thresholds.clone(),
+                &mut tx,
+                self.node_config.password_fanout as usize,
+                self.kdf.clone(),
+                self.node_config.random_representative(),
+                &PathBuf::from(wallet_id.to_string()),
+            ) else {
+                return;
+            };
+            Arc::new(wallet)
+        };
+        guard.insert(wallet_id, Arc::clone(&wallet));
+        self.enter_initial_password(&wallet);
+    }
+
+    fn change_async_wallet(
+        &self,
+        wallet: Arc<Wallet<T>>,
+        source: Account,
+        representative: Account,
+        action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
+        work: u64,
+        generate_work: bool,
+    ) {
+        let self_l = Arc::clone(self);
+        self.wallet_actions.queue_wallet_action(
+            HIGH_PRIORITY,
+            wallet,
+            Box::new(move |wallet| {
+                let block =
+                    self_l.change_action(&wallet, source, representative, work, generate_work);
+                action(block);
+            }),
+        );
+    }
+
+    fn change_sync_wallet(
+        &self,
+        wallet: Arc<Wallet<T>>,
+        source: Account,
+        representative: Account,
+    ) -> Result<(), ()> {
+        let result = Arc::new((Condvar::new(), Mutex::new((false, false)))); // done, result
+        let result_clone = Arc::clone(&result);
+        self.change_async_wallet(
+            wallet,
+            source,
+            representative,
+            Box::new(move |block| {
+                *result_clone.1.lock().unwrap() = (true, block.is_some());
+                result_clone.0.notify_all();
+            }),
+            0,
+            true,
+        );
+        let mut guard = result.1.lock().unwrap();
+        guard = result.0.wait_while(guard, |i| !i.0).unwrap();
+        if guard.1 {
+            Ok(())
+        } else {
+            Err(())
         }
     }
 }

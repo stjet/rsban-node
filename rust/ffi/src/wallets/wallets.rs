@@ -825,12 +825,14 @@ pub unsafe extern "C" fn rsn_wallets_receive_sync(
     representative: *const u8,
     amount: *mut u8,
 ) -> bool {
-    handle.receive_sync(
-        Arc::clone(wallet),
-        block,
-        Account::from_ptr(representative),
-        Amount::from_ptr(amount),
-    )
+    handle
+        .receive_sync(
+            Arc::clone(wallet),
+            block,
+            Account::from_ptr(representative),
+            Amount::from_ptr(amount),
+        )
+        .is_err()
 }
 
 pub type WalletsStartElectionCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
@@ -893,10 +895,54 @@ pub unsafe extern "C" fn rsn_wallets_enter_password(
     password: *const c_char,
 ) -> bool {
     handle
-        .enter_password(
+        .enter_password_wallet(
             wallet,
             tx.as_txn(),
             CStr::from_ptr(password).to_str().unwrap(),
+        )
+        .is_err()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_enter_password2(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    password: *const c_char,
+) -> u8 {
+    match handle.enter_password(
+        WalletId::from_ptr(wallet_id),
+        CStr::from_ptr(password).to_str().unwrap(),
+    ) {
+        Ok(_) => WalletsError::None as u8,
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_enter_initial_password(
+    handle: &LmdbWalletsHandle,
+    wallet: &WalletHandle,
+) {
+    handle.enter_initial_password(wallet);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_create(handle: &LmdbWalletsHandle, wallet_id: *const u8) {
+    handle.create(WalletId::from_ptr(wallet_id));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_change_sync_wallet(
+    handle: &LmdbWalletsHandle,
+    wallet: &WalletHandle,
+    source: *const u8,
+    representative: *const u8,
+) -> bool {
+    handle
+        .change_sync_wallet(
+            Arc::clone(wallet),
+            Account::from_ptr(source),
+            Account::from_ptr(representative),
         )
         .is_err()
 }

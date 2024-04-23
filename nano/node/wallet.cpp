@@ -1041,15 +1041,7 @@ void nano::wallets::change_async (const std::shared_ptr<nano::wallet> & wallet, 
 
 bool nano::wallets::change_sync (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & representative_a)
 {
-	std::promise<bool> result;
-	std::future<bool> future = result.get_future ();
-	change_async (
-	wallet,
-	source_a, representative_a, [&result] (std::shared_ptr<nano::block> const & block_a) {
-		result.set_value (block_a == nullptr);
-	},
-	0, true);
-	return future.get ();
+	return rsnano::rsn_wallets_change_sync_wallet (rust_handle, wallet->handle, source_a.bytes.data (), representative_a.bytes.data ());
 }
 
 void nano::wallets::receive_async (const std::shared_ptr<nano::wallet> & wallet, nano::block_hash const & hash_a, nano::account const & representative_a, nano::uint128_t const & amount_a, nano::account const & account_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a)
@@ -1084,21 +1076,7 @@ bool nano::wallets::enter_password (const std::shared_ptr<nano::wallet> & wallet
 
 void nano::wallets::enter_initial_password (const std::shared_ptr<nano::wallet> & wallet)
 {
-	nano::raw_key password_l;
-	wallet->store.password (password_l);
-	if (password_l.is_zero ())
-	{
-		auto transaction (env.tx_begin_write ());
-		if (wallet->store.valid_password (*transaction))
-		{
-			// Newly created wallets have a zero key
-			wallet->store.rekey (*transaction, "");
-		}
-		else
-		{
-			enter_password (wallet, *transaction, "");
-		}
-	}
+	rsnano::rsn_wallets_enter_initial_password (rust_handle, wallet->handle);
 }
 
 nano::public_key nano::wallets::change_seed (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & transaction_a, nano::raw_key const & prv_a, uint32_t count)
@@ -1187,20 +1165,7 @@ void nano::wallets::password (nano::wallet_id const & wallet_id, nano::raw_key &
 
 nano::wallets_error nano::wallets::enter_password (nano::wallet_id const & wallet_id, std::string const & password_a)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_write () };
-
-	bool error = enter_password (wallet, *txn, password_a);
-	if (error)
-	{
-		return nano::wallets_error::invalid_password;
-	}
-	return nano::wallets_error::none;
+	return static_cast<nano::wallets_error> (rsnano::rsn_wallets_enter_password2 (rust_handle, wallet_id.bytes.data (), password_a.c_str ()));
 }
 
 void nano::wallets::enter_initial_password (nano::wallet_id const & wallet_id)
@@ -1403,19 +1368,7 @@ nano::wallets_error nano::wallets::serialize (nano::wallet_id const & wallet_id,
 
 void nano::wallets::create (nano::wallet_id const & id_a)
 {
-	auto lock{ mutex.lock () };
-	debug_assert (lock.find (id_a) == nullptr);
-	std::shared_ptr<nano::wallet> result;
-	bool error = false;
-	{
-		auto transaction (tx_begin_write ());
-		result = std::make_shared<nano::wallet> (error, *transaction, *this, id_a.to_string ());
-	}
-	if (!error)
-	{
-		lock.insert (id_a, result);
-		enter_initial_password (result);
-	}
+	rsnano::rsn_wallets_create (rust_handle, id_a.bytes.data ());
 }
 
 nano::wallets_error nano::wallets::search_receivable (nano::wallet_id const & wallet_id)

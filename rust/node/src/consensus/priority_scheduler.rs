@@ -28,7 +28,7 @@ impl PriorityScheduler {
             thread: Mutex::new(None),
             mutex: Mutex::new(PrioritySchedulerImpl {
                 stopped: false,
-                buckets: Buckets::new(250_000),
+                buckets: Buckets::default(),
             }),
             condition: Condvar::new(),
             ledger,

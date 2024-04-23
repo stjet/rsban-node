@@ -133,8 +133,6 @@ add_library(
   request_aggregator.cpp
   rsnano_callbacks.hpp
   rsnano_callbacks.cpp
-  scheduler/buckets.cpp
-  scheduler/buckets.hpp
   scheduler/component.hpp
   scheduler/component.cpp
   scheduler/hinted.hpp

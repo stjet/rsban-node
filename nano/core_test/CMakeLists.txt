@@ -35,7 +35,6 @@ add_executable(
   processor_service.cpp
   rep_crawler.cpp
   peer_container.cpp
-  scheduler_buckets.cpp
   request_aggregator.cpp
   signal_manager.cpp
   socket.cpp

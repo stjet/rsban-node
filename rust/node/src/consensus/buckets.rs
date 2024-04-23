@@ -261,6 +261,12 @@ impl Buckets {
     }
 }
 
+impl Default for Buckets {
+    fn default() -> Self {
+        Self::new(250_000)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rsnano_core::KeyPair;
@@ -269,7 +275,7 @@ mod tests {
 
     #[test]
     fn construction() {
-        let buckets = Buckets::new(3);
+        let buckets = Buckets::default();
         assert_eq!(buckets.len(), 0);
         assert!(buckets.is_empty());
         assert_eq!(buckets.bucket_count(), 62);
@@ -277,48 +283,164 @@ mod tests {
 
     #[test]
     fn index_min() {
-        let buckets = Buckets::new(3);
+        let buckets = Buckets::default();
         assert_eq!(buckets.index(&Amount::zero()), 0);
     }
 
     #[test]
     fn index_max() {
-        let buckets = Buckets::new(3);
+        let buckets = Buckets::default();
         assert_eq!(buckets.index(&Amount::MAX), buckets.bucket_count() - 1);
     }
 
     #[test]
     fn insert_gxrb() {
-        let mut buckets = Buckets::new(3);
-        buckets.push(1000, block_a(), Amount::nano(1000));
+        let mut buckets = Buckets::default();
+        buckets.push(1000, test_block(1), Amount::nano(1000));
         assert_eq!(buckets.len(), 1);
         assert_eq!(buckets.bucket_size(48), 1);
     }
 
     #[test]
     fn insert_mxrb() {
-        let mut buckets = Buckets::new(3);
-        buckets.push(1000, block_a(), Amount::nano(1));
+        let mut buckets = Buckets::default();
+        buckets.push(1000, test_block(1), Amount::nano(1));
         assert_eq!(buckets.len(), 1);
         assert_eq!(buckets.bucket_size(13), 1);
     }
 
     // Test two blocks with the same priority
     #[test]
-    #[ignore]
     fn insert_same_priority() {
-        let mut buckets = Buckets::new(3);
-        buckets.push(1000, block_a(), Amount::nano(1000));
-        buckets.push(1000, block_b(), Amount::nano(1000));
+        let mut buckets = Buckets::default();
+        buckets.push(1000, test_block(1), Amount::nano(1000));
+        buckets.push(1000, test_block(2), Amount::nano(1000));
         assert_eq!(buckets.len(), 2);
         assert_eq!(buckets.bucket_size(48), 2);
     }
 
-    fn block_a() -> Arc<BlockEnum> {
-        Arc::new(BlockEnum::create_test_instance_with_key(KeyPair::from(1)))
+    // Test the same block inserted multiple times
+    #[test]
+    fn insert_duplicate() {
+        let mut buckets = Buckets::default();
+        buckets.push(1000, test_block(1), Amount::nano(1000));
+        buckets.push(1000, test_block(1), Amount::nano(1000));
+        assert_eq!(buckets.len(), 1);
     }
 
-    fn block_b() -> Arc<BlockEnum> {
-        Arc::new(BlockEnum::create_test_instance_with_key(KeyPair::from(2)))
+    #[test]
+    fn insert_older() {
+        let mut buckets = Buckets::default();
+        let a = test_block(1);
+        let b = test_block(2);
+        let a_hash = a.hash();
+        let b_hash = b.hash();
+        buckets.push(1000, a, Amount::nano(1000));
+        buckets.push(1000, b, Amount::nano(1000));
+        assert_eq!(buckets.top().hash(), a_hash);
+        buckets.pop();
+        assert_eq!(buckets.top().hash(), b_hash);
+    }
+
+    #[test]
+    fn pop() {
+        let mut buckets = Buckets::default();
+        buckets.push(1000, test_block(1), Amount::nano(1000));
+        buckets.pop();
+        assert!(buckets.is_empty());
+    }
+
+    #[test]
+    fn top_one() {
+        let mut buckets = Buckets::default();
+        let a = test_block(1);
+        let a_hash = a.hash();
+        buckets.push(1000, a, Amount::nano(1000));
+        assert_eq!(buckets.top().hash(), a_hash);
+    }
+
+    #[test]
+    fn top_two() {
+        let mut buckets = Buckets::default();
+        let a = test_block(1);
+        let b = test_block(2);
+        let a_hash = a.hash();
+        let b_hash = b.hash();
+        buckets.push(1000, a, Amount::nano(1000));
+        buckets.push(1, b, Amount::nano(1));
+        assert_eq!(buckets.top().hash(), a_hash);
+        buckets.pop();
+        assert_eq!(buckets.top().hash(), b_hash);
+    }
+
+    #[test]
+    fn top_round_robin() {
+        let mut buckets = Buckets::default();
+        let a = test_block(1);
+        let b = test_block(2);
+        let c = test_block(2);
+        let d = test_block(2);
+        let a_hash = a.hash();
+        let b_hash = b.hash();
+        let c_hash = c.hash();
+        let d_hash = d.hash();
+        buckets.push(1000, a, Amount::zero());
+        buckets.push(1000, b, Amount::nano(1000));
+        buckets.push(1000, c, Amount::nano(1));
+        buckets.push(1100, d, Amount::nano(1));
+        assert_eq!(buckets.top().hash(), a_hash);
+        buckets.pop();
+        assert_eq!(buckets.top().hash(), c_hash);
+        buckets.pop();
+        assert_eq!(buckets.top().hash(), b_hash);
+        buckets.pop();
+        assert_eq!(buckets.top().hash(), d_hash);
+    }
+
+    #[test]
+    fn trim_normal() {
+        let mut buckets = Buckets::new(2);
+        let a = test_block(1);
+        let a_hash = a.hash();
+        let b = test_block(2);
+        buckets.push(1000, a, Amount::nano(1000));
+        buckets.push(1100, b, Amount::nano(1000));
+        assert_eq!(buckets.len(), 1);
+        assert_eq!(buckets.top().hash(), a_hash);
+    }
+
+    #[test]
+    fn trim_reverse() {
+        let mut buckets = Buckets::new(2);
+        let a = test_block(1);
+        let b = test_block(2);
+        let b_hash = b.hash();
+        buckets.push(1100, a, Amount::nano(1000));
+        buckets.push(1000, b, Amount::nano(1000));
+        assert_eq!(buckets.len(), 1);
+        assert_eq!(buckets.top().hash(), b_hash);
+    }
+
+    #[test]
+    fn trim_even() {
+        let mut buckets = Buckets::new(2);
+        let a = test_block(1);
+        let b = test_block(2);
+        let c = test_block(3);
+        let a_hash = a.hash();
+        let c_hash = c.hash();
+        buckets.push(1000, a, Amount::nano(1000));
+        buckets.push(1100, b, Amount::nano(1000));
+        buckets.push(1000, c, Amount::nano(1));
+        assert_eq!(buckets.len(), 2);
+        assert_eq!(buckets.top().hash(), a_hash);
+        buckets.pop();
+        assert_eq!(buckets.top().hash(), c_hash);
+    }
+
+    fn test_block(private_key: u64) -> Arc<BlockEnum> {
+        Arc::new(BlockEnum::create_test_instance_with_key(KeyPair::from(
+            private_key,
+        )))
     }
 }

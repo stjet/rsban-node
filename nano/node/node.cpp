@@ -194,6 +194,10 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 {
 	logger->debug (nano::log::type::node, "Constructing node...");
 
+	wallets.set_start_election_callback ([this] (std::shared_ptr<nano::block> const & block) {
+		start_election (block);
+	});
+
 	if (!flags.disable_rep_crawler ())
 	{
 		observers->endpoint.add ([this] (std::shared_ptr<nano::transport::channel> const & channel) {

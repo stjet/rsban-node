@@ -1,6 +1,7 @@
 use super::{Wallet, WalletActionThread, WalletRepresentatives};
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
+    cementation::ConfirmingSet,
     config::NodeConfig,
     transport::{BufferDropPolicy, TcpChannels},
     utils::ThreadPool,
@@ -63,6 +64,8 @@ pub struct Wallets<T: Environment + 'static = EnvironmentWrapper> {
     online_reps: Arc<Mutex<OnlineReps>>,
     kdf: KeyDerivationFunction,
     tcp_channels: Arc<TcpChannels>,
+    start_election: Mutex<Option<Box<dyn Fn(Arc<BlockEnum>) + Send + Sync>>>,
+    confirming_set: Arc<ConfirmingSet>,
 }
 
 impl<T: Environment + 'static> Wallets<T> {
@@ -79,6 +82,7 @@ impl<T: Environment + 'static> Wallets<T> {
         block_processor: Arc<BlockProcessor>,
         online_reps: Arc<Mutex<OnlineReps>>,
         tcp_channels: Arc<TcpChannels>,
+        confirming_set: Arc<ConfirmingSet>,
     ) -> anyhow::Result<Self> {
         let kdf = KeyDerivationFunction::new(kdf_work);
         let mut wallets = Self {
@@ -104,6 +108,8 @@ impl<T: Environment + 'static> Wallets<T> {
             online_reps,
             kdf: kdf.clone(),
             tcp_channels,
+            start_election: Mutex::new(None),
+            confirming_set,
         };
         let mut txn = wallets.env.tx_begin_write();
         wallets.initialize(&mut txn)?;
@@ -153,6 +159,10 @@ impl<T: Environment + 'static> Wallets<T> {
 
     pub fn stop(&self) {
         self.wallet_actions.stop();
+    }
+
+    pub fn set_start_election_callback(&self, callback: Box<dyn Fn(Arc<BlockEnum>) + Send + Sync>) {
+        *self.start_election.lock().unwrap() = Some(callback);
     }
 
     pub fn initialize(&mut self, txn: &mut LmdbWriteTransaction<T>) -> anyhow::Result<()> {
@@ -793,6 +803,12 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         representative: Account,
         amount: Amount,
     ) -> bool;
+
+    fn search_receivable(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        wallet_tx: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+    ) -> Result<(), ()>;
 }
 
 impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
@@ -1261,6 +1277,73 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         let mut guard = result.1.lock().unwrap();
         guard = result.0.wait_while(guard, |i| !i.0).unwrap();
         guard.1
+    }
+
+    fn search_receivable(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        wallet_tx: &dyn Transaction<
+            Database = <T as Environment>::Database,
+            RoCursor = <T as Environment>::RoCursor,
+        >,
+    ) -> Result<(), ()> {
+        if !wallet.store.valid_password(wallet_tx) {
+            info!("Stopping search, wallet is locked");
+            return Err(());
+        }
+
+        info!("Beginning receivable block search");
+
+        let mut it = wallet.store.begin(wallet_tx);
+        while let Some((account, wallet_value)) = it.current() {
+            let block_tx = self.ledger.read_txn();
+            // Don't search pending for watch-only accounts
+            if !wallet_value.key.is_zero() {
+                for (key, info) in self.ledger.account_receivable_upper_bound(
+                    &block_tx,
+                    *account,
+                    BlockHash::zero(),
+                ) {
+                    let hash = key.send_block_hash;
+                    let amount = info.amount;
+                    if self.node_config.receive_minimum <= amount {
+                        info!(
+                            "Found a receivable block {} for account {}",
+                            hash,
+                            info.source.encode_account()
+                        );
+                        if self.ledger.block_confirmed(&block_tx, &hash) {
+                            let representative = wallet.store.representative(wallet_tx);
+                            // Receive confirmed block
+                            self.receive_async(
+                                Arc::clone(wallet),
+                                hash,
+                                representative,
+                                amount,
+                                *account,
+                                Box::new(|_| {}),
+                                0,
+                                true,
+                            );
+                        } else if !self.confirming_set.exists(&hash) {
+                            let block = self.ledger.get_block(&block_tx, &hash);
+                            if let Some(block) = block {
+                                // Request confirmation for block which is not being processed yet
+                                let guard = self.start_election.lock().unwrap();
+                                if let Some(callback) = guard.as_ref() {
+                                    callback(Arc::new(block));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            it.next();
+        }
+
+        info!("Receivable block search phase completed");
+        Ok(())
     }
 }
 

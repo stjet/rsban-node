@@ -308,6 +308,7 @@ public:
 	bool set_block_hash (store::transaction const & transaction_a, std::string const & id_a, nano::block_hash const & hash);
 	std::vector<nano::wallet_id> get_wallet_ids (store::transaction const & transaction_a);
 	nano::block_hash get_block_hash (bool & error_a, store::transaction const & transaction_a, std::string const & id_a);
+	void set_start_election_callback (std::function<void (std::shared_ptr<nano::block> const &)> callback);
 
 private:
 	void send_async (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a);

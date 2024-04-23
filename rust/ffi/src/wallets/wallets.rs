@@ -5,6 +5,7 @@ use super::{
 };
 use crate::{
     block_processing::BlockProcessorHandle,
+    cementation::ConfirmingSetHandle,
     core::{BlockDetailsDto, BlockHandle},
     ledger::datastore::{lmdb::LmdbEnvHandle, LedgerHandle, TransactionHandle},
     representatives::OnlineRepsHandle,
@@ -54,6 +55,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
     block_processor: &BlockProcessorHandle,
     online_reps: &OnlineRepsHandle,
     tcp_channels: &TcpChannelsHandle,
+    confirming_set: &ConfirmingSetHandle,
 ) -> *mut LmdbWalletsHandle {
     let network_params = NetworkParams::try_from(network_params).unwrap();
     let node_config = NodeConfig::try_from(node_config).unwrap();
@@ -72,6 +74,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
             Arc::clone(block_processor),
             Arc::clone(online_reps),
             Arc::clone(tcp_channels),
+            Arc::clone(confirming_set),
         )
         .expect("could not create wallet"),
     ))))
@@ -828,4 +831,31 @@ pub unsafe extern "C" fn rsn_wallets_receive_sync(
         Account::from_ptr(representative),
         Amount::from_ptr(amount),
     )
+}
+
+pub type WalletsStartElectionCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_set_start_election_callback(
+    handle: &LmdbWalletsHandle,
+    callback: WalletsStartElectionCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let context_wrapper = ContextWrapper::new(context, delete_context);
+    handle.set_start_election_callback(Box::new(move |block| {
+        let block_handle = BlockHandle::new(block);
+        callback(context_wrapper.get_context(), block_handle);
+    }));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_search_receivable(
+    handle: &LmdbWalletsHandle,
+    wallet: &WalletHandle,
+    wallet_tx: &TransactionHandle,
+) -> bool {
+    handle
+        .search_receivable(wallet, wallet_tx.as_txn())
+        .is_err()
 }

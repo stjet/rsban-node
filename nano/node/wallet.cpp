@@ -342,6 +342,19 @@ void delete_wallet_action_observer_context (void * context)
 	auto callback = static_cast<std::function<void (bool)> *> (context);
 	delete callback;
 }
+
+void start_election_wrapper (void * context, rsnano::BlockHandle * block_handle)
+{
+	auto callback = static_cast<std::function<void (std::shared_ptr<nano::block> const &)> *> (context);
+	auto block{ nano::block_handle_to_block (block_handle) };
+	(*callback) (block);
+}
+
+void delete_start_election_context (void * context)
+{
+	auto callback = static_cast<std::function<void (std::shared_ptr<nano::block> const &)> *> (context);
+	delete callback;
+}
 }
 
 void nano::wallet_action_thread::set_observer (std::function<void (bool)> observer_a)
@@ -646,7 +659,8 @@ rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lm
 	node_a.workers->handle,
 	node_a.block_processor.handle,
 	node_a.online_reps.get_handle (),
-	node_a.network->tcp_channels->handle);
+	node_a.network->tcp_channels->handle,
+	node_a.confirming_set.handle);
 }
 }
 
@@ -1052,62 +1066,15 @@ bool nano::wallets::receive_sync (const std::shared_ptr<nano::wallet> & wallet, 
 	return rsnano::rsn_wallets_receive_sync (rust_handle, wallet->handle, block_a->get_handle (), representative_a.bytes.data (), amount.bytes.data ());
 }
 
+void nano::wallets::set_start_election_callback (std::function<void (std::shared_ptr<nano::block> const &)> callback)
+{
+	auto context = new std::function<void (std::shared_ptr<nano::block> const &)> (callback);
+	rsnano::rsn_wallets_set_start_election_callback (rust_handle, start_election_wrapper, context, delete_start_election_context);
+}
+
 bool nano::wallets::search_receivable (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & wallet_transaction_a)
 {
-	std::function<void (std::shared_ptr<nano::block> const &)> start_election =
-	[&this_l = *this] (std::shared_ptr<nano::block> const & block) {
-		this_l.node.start_election (block);
-	};
-
-	// TODO port this:
-	auto error (!wallet->store.valid_password (wallet_transaction_a));
-	if (!error)
-	{
-		node.logger->info (nano::log::type::wallet, "Beginning receivable block search");
-
-		for (auto i (wallet->store.begin (wallet_transaction_a)), n (wallet->store.end ()); i != n; ++i)
-		{
-			auto block_transaction (node.store.tx_begin_read ());
-			nano::account const & account (i->first);
-			// Don't search pending for watch-only accounts
-			if (!nano::wallet_value (i->second).key.is_zero ())
-			{
-				for (auto i = node.ledger.receivable_upper_bound (*block_transaction, account, 0); !i.is_end (); ++i)
-				{
-					auto const & [key, info] = *i;
-					auto hash = key.hash;
-
-					auto amount = info.amount.number ();
-					if (node.config->receive_minimum.number () <= amount)
-					{
-						node.logger->info (nano::log::type::wallet, "Found a receivable block {} for account {}", hash.to_string (), info.source.to_account ());
-						if (node.ledger.block_confirmed (*block_transaction, hash))
-						{
-							auto representative = wallet->store.representative (wallet_transaction_a);
-							// Receive confirmed block
-							receive_async (
-							wallet, hash, representative, amount, account, [] (std::shared_ptr<nano::block> const &) {}, 0, true);
-						}
-						else if (!node.confirming_set.exists (hash))
-						{
-							auto block (node.ledger.block (*block_transaction, hash));
-							if (block)
-							{
-								// Request confirmation for block which is not being processed yet
-								start_election (block);
-							}
-						}
-					}
-				}
-			}
-		}
-		node.logger->info (nano::log::type::wallet, "Receivable block search phase completed");
-	}
-	else
-	{
-		node.logger->info (nano::log::type::wallet, "Stopping search, wallet is locked");
-	}
-	return error;
+	return rsnano::rsn_wallets_search_receivable (rust_handle, wallet->handle, wallet_transaction_a.get_rust_handle ());
 }
 
 bool nano::wallets::enter_password (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & transaction_a, std::string const & password_a)

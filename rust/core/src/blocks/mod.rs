@@ -190,6 +190,11 @@ impl BlockEnum {
     pub fn create_test_instance() -> Self {
         Self::State(StateBlock::create_test_instance())
     }
+
+    pub fn create_test_instance_with_key(key: KeyPair) -> Self {
+        Self::State(StateBlock::create_test_instance_with_key(key))
+    }
+
     pub fn block_type(&self) -> BlockType {
         self.as_block().block_type()
     }

@@ -19,7 +19,7 @@ pub unsafe extern "C" fn rsn_prioritization_destroy(handle: *mut PrioritizationH
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_prioritization_size(handle: *const PrioritizationHandle) -> usize {
-    (*handle).0.size()
+    (*handle).0.len()
 }
 
 #[no_mangle]
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rsn_prioritization_bucket_size(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_prioritization_empty(handle: *mut PrioritizationHandle) -> bool {
-    (*handle).0.empty()
+    (*handle).0.is_empty()
 }
 
 #[no_mangle]

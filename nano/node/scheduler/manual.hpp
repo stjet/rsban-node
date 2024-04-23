@@ -20,7 +20,6 @@ class container_info_component;
 
 namespace nano::scheduler
 {
-class buckets;
 class manual final
 {
 	std::deque<std::tuple<std::shared_ptr<nano::block>, boost::optional<nano::uint128_t>, nano::election_behavior>> queue;

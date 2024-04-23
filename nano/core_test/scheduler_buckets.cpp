@@ -107,42 +107,6 @@ std::shared_ptr<nano::state_block> & block3 ()
 	return result;
 }
 
-TEST (buckets, construction)
-{
-	nano::scheduler::buckets buckets;
-	ASSERT_EQ (0, buckets.size ());
-	ASSERT_TRUE (buckets.empty ());
-	ASSERT_EQ (62, buckets.bucket_count ());
-}
-
-TEST (buckets, index_min)
-{
-	nano::scheduler::buckets buckets;
-	ASSERT_EQ (0, buckets.index (std::numeric_limits<nano::uint128_t>::min ()));
-}
-
-TEST (buckets, index_max)
-{
-	nano::scheduler::buckets buckets;
-	ASSERT_EQ (buckets.bucket_count () - 1, buckets.index (std::numeric_limits<nano::uint128_t>::max ()));
-}
-
-TEST (buckets, insert_Gxrb)
-{
-	nano::scheduler::buckets buckets;
-	buckets.push (1000, block0 (), nano::Gxrb_ratio);
-	ASSERT_EQ (1, buckets.size ());
-	ASSERT_EQ (1, buckets.bucket_size (48));
-}
-
-TEST (buckets, insert_Mxrb)
-{
-	nano::scheduler::buckets buckets;
-	buckets.push (1000, block1 (), nano::Mxrb_ratio);
-	ASSERT_EQ (1, buckets.size ());
-	ASSERT_EQ (1, buckets.bucket_size (13));
-}
-
 // Test two blocks with the same priority
 TEST (buckets, insert_same_priority)
 {

@@ -114,15 +114,15 @@ impl PriorityScheduler {
     }
 
     pub fn len(&self) -> usize {
-        self.mutex.lock().unwrap().buckets.size()
+        self.mutex.lock().unwrap().buckets.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.mutex.lock().unwrap().buckets.empty()
+        self.mutex.lock().unwrap().buckets.is_empty()
     }
 
     fn predicate(&self, buckets: &Buckets) -> bool {
-        self.active.vacancy(ElectionBehavior::Normal) > 0 && !buckets.empty()
+        self.active.vacancy(ElectionBehavior::Normal) > 0 && !buckets.is_empty()
     }
 
     pub fn run(&self) {

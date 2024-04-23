@@ -90,10 +90,9 @@ impl StateBlock {
         }
     }
 
-    pub fn create_test_instance() -> Self {
-        let key = KeyPair::from(42);
+    pub fn create_test_instance_with_key(key: KeyPair) -> Self {
         Self::new(
-            Account::from(123),
+            key.public_key(),
             BlockHash::from(456),
             Account::from(789),
             Amount::raw(420),
@@ -102,6 +101,11 @@ impl StateBlock {
             &key.public_key(),
             69420,
         )
+    }
+
+    pub fn create_test_instance() -> Self {
+        let key = KeyPair::from(42);
+        Self::create_test_instance_with_key(key)
     }
 
     pub fn with_signature(

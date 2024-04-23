@@ -157,7 +157,7 @@ impl Buckets {
     /// Push a block and its associated time into the prioritization container.
     /// The time is given here because sideband might not exist in the case of state blocks.
     pub fn push(&mut self, time: u64, block: Arc<BlockEnum>, priority: Amount) {
-        let was_empty = self.empty();
+        let was_empty = self.is_empty();
         let index = self.index(&priority);
         let bucket = &mut self.buckets[index];
         bucket.push(time, block);
@@ -177,20 +177,20 @@ impl Buckets {
 
     /// Return the highest priority block of the current bucket
     pub fn top(&self) -> &Arc<BlockEnum> {
-        debug_assert!(!self.empty());
+        debug_assert!(!self.is_empty());
         self.buckets[self.current].top()
     }
 
     /// Pop the current block from the container and seek to the next block, if it exists
     pub fn pop(&mut self) {
-        debug_assert!(!self.empty());
+        debug_assert!(!self.is_empty());
         let bucket = &mut self.buckets[self.current];
         bucket.pop();
         self.seek();
     }
 
     /// Returns the total number of blocks in buckets
-    pub fn size(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.buckets.iter().map(|b| b.len()).sum()
     }
 
@@ -217,7 +217,7 @@ impl Buckets {
     }
 
     /// Returns true if all buckets are empty
-    pub fn empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.buckets.iter().all(|b| b.is_empty())
     }
 
@@ -258,5 +258,67 @@ impl Buckets {
             .collect();
 
         ContainerInfoComponent::Composite(name.into(), leafs)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rsnano_core::KeyPair;
+
+    use super::*;
+
+    #[test]
+    fn construction() {
+        let buckets = Buckets::new(3);
+        assert_eq!(buckets.len(), 0);
+        assert!(buckets.is_empty());
+        assert_eq!(buckets.bucket_count(), 62);
+    }
+
+    #[test]
+    fn index_min() {
+        let buckets = Buckets::new(3);
+        assert_eq!(buckets.index(&Amount::zero()), 0);
+    }
+
+    #[test]
+    fn index_max() {
+        let buckets = Buckets::new(3);
+        assert_eq!(buckets.index(&Amount::MAX), buckets.bucket_count() - 1);
+    }
+
+    #[test]
+    fn insert_gxrb() {
+        let mut buckets = Buckets::new(3);
+        buckets.push(1000, block_a(), Amount::nano(1000));
+        assert_eq!(buckets.len(), 1);
+        assert_eq!(buckets.bucket_size(48), 1);
+    }
+
+    #[test]
+    fn insert_mxrb() {
+        let mut buckets = Buckets::new(3);
+        buckets.push(1000, block_a(), Amount::nano(1));
+        assert_eq!(buckets.len(), 1);
+        assert_eq!(buckets.bucket_size(13), 1);
+    }
+
+    // Test two blocks with the same priority
+    #[test]
+    #[ignore]
+    fn insert_same_priority() {
+        let mut buckets = Buckets::new(3);
+        buckets.push(1000, block_a(), Amount::nano(1000));
+        buckets.push(1000, block_b(), Amount::nano(1000));
+        assert_eq!(buckets.len(), 2);
+        assert_eq!(buckets.bucket_size(48), 2);
+    }
+
+    fn block_a() -> Arc<BlockEnum> {
+        Arc::new(BlockEnum::create_test_instance_with_key(KeyPair::from(1)))
+    }
+
+    fn block_b() -> Arc<BlockEnum> {
+        Arc::new(BlockEnum::create_test_instance_with_key(KeyPair::from(2)))
     }
 }

@@ -32,7 +32,6 @@ class read_transaction;
 
 namespace nano::scheduler
 {
-class buckets;
 class priority final
 {
 public:

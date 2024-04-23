@@ -850,7 +850,7 @@ pub unsafe extern "C" fn rsn_wallets_set_start_election_callback(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_wallets_search_receivable(
+pub extern "C" fn rsn_wallets_search_receivable(
     handle: &LmdbWalletsHandle,
     wallet: &WalletHandle,
     wallet_tx: &TransactionHandle,
@@ -867,4 +867,36 @@ pub unsafe extern "C" fn rsn_wallets_receive_confirmed(
     destination: *const u8,
 ) {
     handle.receive_confirmed(BlockHash::from_ptr(hash), Account::from_ptr(destination))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_wallets_search_receivable_all(handle: &LmdbWalletsHandle) {
+    handle.search_receivable_all();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_search_receivable_wallet(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+) -> u8 {
+    match handle.search_receivable_wallet(WalletId::from_ptr(wallet_id)) {
+        Ok(_) => WalletsError::None as u8,
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_enter_password(
+    handle: &LmdbWalletsHandle,
+    wallet: &WalletHandle,
+    tx: &TransactionHandle,
+    password: *const c_char,
+) -> bool {
+    handle
+        .enter_password(
+            wallet,
+            tx.as_txn(),
+            CStr::from_ptr(password).to_str().unwrap(),
+        )
+        .is_err()
 }

@@ -1079,22 +1079,7 @@ bool nano::wallets::search_receivable (const std::shared_ptr<nano::wallet> & wal
 
 bool nano::wallets::enter_password (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & transaction_a, std::string const & password_a)
 {
-	auto error (wallet->store.attempt_password (transaction_a, password_a));
-	if (!error)
-	{
-		node.logger->info (nano::log::type::wallet, "Wallet unlocked");
-
-		queue_wallet_action (nano::wallets::high_priority, wallet, [&this_l = *this] (nano::wallet & wallet) {
-			// Wallets must survive node lifetime
-			auto tx{ this_l.tx_begin_read () };
-			this_l.search_receivable (wallet.shared_from_this (), *tx);
-		});
-	}
-	else
-	{
-		node.logger->warn (nano::log::type::wallet, "Invalid password, wallet locked");
-	}
-	return error;
+	return rsnano::rsn_wallets_enter_password (rust_handle, wallet->handle, transaction_a.get_rust_handle (), password_a.c_str ());
 }
 
 void nano::wallets::enter_initial_password (const std::shared_ptr<nano::wallet> & wallet)
@@ -1435,34 +1420,12 @@ void nano::wallets::create (nano::wallet_id const & id_a)
 
 nano::wallets_error nano::wallets::search_receivable (nano::wallet_id const & wallet_id)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_read () };
-	if (!wallet->store.valid_password (*txn))
-	{
-		return nano::wallets_error::wallet_locked;
-	}
-
-	search_receivable (wallet, *txn);
-	return nano::wallets_error::none;
+	return static_cast<nano::wallets_error> (rsnano::rsn_wallets_search_receivable_wallet (rust_handle, wallet_id.bytes.data ()));
 }
 
 void nano::wallets::search_receivable_all ()
 {
-	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> wallets_l;
-	{
-		auto lk{ mutex.lock () };
-		wallets_l = lk.get_all ();
-	}
-	auto wallet_transaction (tx_begin_read ());
-	for (auto const & [id, wallet] : wallets_l)
-	{
-		search_receivable (wallet, *wallet_transaction);
-	}
+	rsnano::rsn_wallets_search_receivable_all (rust_handle);
 }
 
 void nano::wallets::destroy (nano::wallet_id const & id_a)

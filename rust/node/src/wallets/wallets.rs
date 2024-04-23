@@ -701,6 +701,7 @@ impl<T: Environment + 'static> Wallets<T> {
 }
 
 const GENERATE_PRIORITY: Amount = Amount::MAX;
+const HIGH_PRIORITY: Amount = Amount::raw(u128::MAX - 1);
 
 pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
     fn deterministic_insert(
@@ -811,6 +812,15 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
     ) -> Result<(), ()>;
 
     fn receive_confirmed(&self, hash: BlockHash, destinaton: Account);
+    fn search_receivable_all(&self);
+    fn search_receivable_wallet(&self, wallet_id: WalletId) -> Result<(), WalletsError>;
+
+    fn enter_password(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        wallet_tx: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        password: &str,
+    ) -> Result<(), ()>;
 }
 
 impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
@@ -1382,6 +1392,57 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
                     }
                 }
             }
+        }
+    }
+
+    fn search_receivable_all(&self) {
+        let wallets = self.mutex.lock().unwrap().clone();
+        let wallet_tx = self.env.tx_begin_read();
+        for (id, wallet) in wallets {
+            self.search_receivable(&wallet, &wallet_tx);
+        }
+    }
+
+    fn search_receivable_wallet(&self, wallet_id: WalletId) -> Result<(), WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        if let Some(wallet) = guard.get(&wallet_id) {
+            let tx = self.env.tx_begin_read();
+            if wallet.store.valid_password(&tx) {
+                self.search_receivable(wallet, &tx);
+                Ok(())
+            } else {
+                Err(WalletsError::WalletLocked)
+            }
+        } else {
+            Err(WalletsError::WalletNotFound)
+        }
+    }
+
+    fn enter_password(
+        &self,
+        wallet: &Arc<Wallet<T>>,
+        wallet_tx: &dyn Transaction<
+            Database = <T as Environment>::Database,
+            RoCursor = <T as Environment>::RoCursor,
+        >,
+        password: &str,
+    ) -> Result<(), ()> {
+        if !wallet.store.attempt_password(wallet_tx, password) {
+            warn!("Invalid password, wallet locked");
+            Err(())
+        } else {
+            info!("Wallet unlocked");
+            let self_l = Arc::clone(self);
+            self.wallet_actions.queue_wallet_action(
+                HIGH_PRIORITY,
+                Arc::clone(wallet),
+                Box::new(move |wallet| {
+                    // Wallets must survive node lifetime
+                    let tx = self_l.env.tx_begin_read();
+                    self_l.search_receivable(&wallet, &tx);
+                }),
+            );
+            Ok(())
         }
     }
 }

@@ -813,3 +813,19 @@ pub unsafe extern "C" fn rsn_wallets_fetch(
         Err(e) => e as u8,
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_receive_sync(
+    handle: &LmdbWalletsHandle,
+    wallet: &WalletHandle,
+    block: &BlockHandle,
+    representative: *const u8,
+    amount: *mut u8,
+) -> bool {
+    handle.receive_sync(
+        Arc::clone(wallet),
+        block,
+        Account::from_ptr(representative),
+        Amount::from_ptr(amount),
+    )
+}

@@ -25,7 +25,7 @@ use std::{
     ops::Deref,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{Arc, Condvar, Mutex},
     time::{Duration, Instant},
 };
 use tracing::{info, warn};
@@ -773,6 +773,26 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         work: u64,
         generate_work: bool,
     ) -> Option<BlockEnum>;
+
+    fn receive_async(
+        &self,
+        wallet: Arc<Wallet<T>>,
+        hash: BlockHash,
+        representative: Account,
+        amount: Amount,
+        account: Account,
+        action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
+        work: u64,
+        generate_work: bool,
+    );
+
+    fn receive_sync(
+        &self,
+        wallet: Arc<Wallet<T>>,
+        block: &BlockEnum,
+        representative: Account,
+        amount: Amount,
+    ) -> bool;
 }
 
 impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
@@ -797,20 +817,6 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         key
     }
 
-    fn deterministic_insert2(
-        &self,
-        wallet_id: &WalletId,
-        generate_work: bool,
-    ) -> Result<PublicKey, WalletsError> {
-        let guard = self.mutex.lock().unwrap();
-        let wallet = Wallets::get_wallet(&guard, wallet_id)?;
-        let mut tx = self.env.tx_begin_write();
-        if !wallet.store.valid_password(&tx) {
-            return Err(WalletsError::WalletLocked);
-        }
-        Ok(self.deterministic_insert(wallet, &mut tx, generate_work))
-    }
-
     fn deterministic_insert_at(
         &self,
         wallet_id: &WalletId,
@@ -828,6 +834,20 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
             self.work_ensure(wallet, account, account.into());
         }
         Ok(account)
+    }
+
+    fn deterministic_insert2(
+        &self,
+        wallet_id: &WalletId,
+        generate_work: bool,
+    ) -> Result<PublicKey, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, wallet_id)?;
+        let mut tx = self.env.tx_begin_write();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+        Ok(self.deterministic_insert(wallet, &mut tx, generate_work))
     }
 
     fn insert_adhoc(&self, wallet: &Arc<Wallet<T>>, key: &RawKey, generate_work: bool) -> Account {
@@ -1184,6 +1204,63 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         }
 
         block
+    }
+
+    fn receive_async(
+        &self,
+        wallet: Arc<Wallet<T>>,
+        hash: BlockHash,
+        representative: Account,
+        amount: Amount,
+        account: Account,
+        action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
+        work: u64,
+        generate_work: bool,
+    ) {
+        let self_l = Arc::clone(self);
+        self.wallet_actions.queue_wallet_action(
+            amount,
+            wallet,
+            Box::new(move |wallet| {
+                let block = self_l.receive_action(
+                    &wallet,
+                    hash,
+                    representative,
+                    amount,
+                    account,
+                    work,
+                    generate_work,
+                );
+                action(block);
+            }),
+        );
+    }
+
+    fn receive_sync(
+        &self,
+        wallet: Arc<Wallet<T>>,
+        block: &BlockEnum,
+        representative: Account,
+        amount: Amount,
+    ) -> bool {
+        let result = Arc::new((Condvar::new(), Mutex::new((false, false)))); // done, result
+        let result_clone = Arc::clone(&result);
+        self.receive_async(
+            wallet,
+            block.hash(),
+            representative,
+            amount,
+            block.destination().unwrap(),
+            Box::new(move |block| {
+                *result_clone.1.lock().unwrap() = (true, block.is_some());
+                result_clone.0.notify_all();
+            }),
+            0,
+            true,
+        );
+        let mut guard = result.1.lock().unwrap();
+        guard = result.0.wait_while(guard, |i| !i.0).unwrap();
+        guard.1
     }
 }
 

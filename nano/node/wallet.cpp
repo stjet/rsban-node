@@ -1048,15 +1048,8 @@ void nano::wallets::receive_async (const std::shared_ptr<nano::wallet> & wallet,
 
 bool nano::wallets::receive_sync (const std::shared_ptr<nano::wallet> & wallet, std::shared_ptr<nano::block> const & block_a, nano::account const & representative_a, nano::uint128_t const & amount_a)
 {
-	std::promise<bool> result;
-	std::future<bool> future = result.get_future ();
-	receive_async (
-	wallet,
-	block_a->hash (), representative_a, amount_a, block_a->destination (), [&result] (std::shared_ptr<nano::block> const & block_a) {
-		result.set_value (block_a == nullptr);
-	},
-	0, true);
-	return future.get ();
+	nano::amount amount{ amount_a };
+	return rsnano::rsn_wallets_receive_sync (rust_handle, wallet->handle, block_a->get_handle (), representative_a.bytes.data (), amount.bytes.data ());
 }
 
 bool nano::wallets::search_receivable (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & wallet_transaction_a)

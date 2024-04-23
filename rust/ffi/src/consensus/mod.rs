@@ -3,6 +3,7 @@ mod confirmation_solicitor;
 mod election;
 mod election_status;
 mod local_vote_history;
+mod manual_scheduler;
 mod priority_scheduler;
 mod recently_cemented_cache;
 mod rep_tiers;

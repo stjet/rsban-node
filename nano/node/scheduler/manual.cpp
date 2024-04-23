@@ -1,96 +1,43 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/active_transactions.hpp>
 #include <nano/node/election.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/scheduler/manual.hpp>
 
 nano::scheduler::manual::manual (nano::node & node) :
-	node{ node }
+	handle{ rsnano::rsn_manual_scheduler_create (node.stats->handle, node.active.handle) }
 {
 }
 
 nano::scheduler::manual::~manual ()
 {
-	// Thread must be stopped before destruction
-	debug_assert (!thread.joinable ());
+	rsnano::rsn_manual_scheduler_destroy (handle);
 }
 
 void nano::scheduler::manual::start ()
 {
-	debug_assert (!thread.joinable ());
-
-	thread = std::thread{ [this] () {
-		nano::thread_role::set (nano::thread_role::name::scheduler_manual);
-		run ();
-	} };
+	rsnano::rsn_manual_scheduler_start (handle);
 }
 
 void nano::scheduler::manual::stop ()
 {
-	{
-		nano::lock_guard<nano::mutex> lock{ mutex };
-		stopped = true;
-	}
-	notify ();
-	nano::join_or_pass (thread);
-}
-
-void nano::scheduler::manual::notify ()
-{
-	condition.notify_all ();
+	rsnano::rsn_manual_scheduler_stop (handle);
 }
 
 void nano::scheduler::manual::push (std::shared_ptr<nano::block> const & block_a, boost::optional<nano::uint128_t> const & previous_balance_a, nano::election_behavior election_behavior_a)
 {
-	nano::lock_guard<nano::mutex> lock{ mutex };
-	queue.push_back (std::make_tuple (block_a, previous_balance_a, election_behavior_a));
-	notify ();
-}
-
-bool nano::scheduler::manual::predicate () const
-{
-	return !queue.empty ();
-}
-
-void nano::scheduler::manual::run ()
-{
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	while (!stopped)
+	uint8_t * previous_ptr = nullptr;
+	nano::amount amount;
+	if (previous_balance_a.has_value ())
 	{
-		condition.wait (lock, [this] () {
-			return stopped || predicate ();
-		});
-		debug_assert ((std::this_thread::yield (), true)); // Introduce some random delay in debug builds
-		if (!stopped)
-		{
-			node.stats->inc (nano::stat::type::election_scheduler, nano::stat::detail::loop);
-
-			if (predicate ())
-			{
-				auto const [block, previous_balance, election_behavior] = queue.front ();
-				queue.pop_front ();
-				lock.unlock ();
-				node.stats->inc (nano::stat::type::election_scheduler, nano::stat::detail::insert_manual);
-				auto result = node.active.insert (block, election_behavior);
-				if (result.election != nullptr)
-				{
-					result.election->transition_active ();
-				}
-			}
-			else
-			{
-				lock.unlock ();
-			}
-			notify ();
-			lock.lock ();
-		}
+		amount = previous_balance_a.value ();
+		previous_ptr = amount.bytes.data ();
 	}
+	rsnano::rsn_manual_scheduler_push (handle, block_a->get_handle (), previous_ptr, static_cast<uint8_t> (election_behavior_a));
 }
 
 std::unique_ptr<nano::container_info_component> nano::scheduler::manual::collect_container_info (std::string const & name) const
 {
-	nano::unique_lock<nano::mutex> lock{ mutex };
-
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "queue", queue.size (), sizeof (decltype (queue)::value_type) }));
-	return composite;
+	return std::make_unique<container_info_composite> (rsnano::rsn_manual_scheduler_collect_container_info (handle, name.c_str ()));
 }

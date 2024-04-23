@@ -253,30 +253,6 @@ pub unsafe extern "C" fn rsn_election_lock_erase_block(
         .remove(&BlockHash::from_ptr(hash));
 }
 
-pub struct TallyHandle(Vec<(BlockHash, Amount)>);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tally_destroy(handle: *mut TallyHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tally_len(handle: &TallyHandle) -> usize {
-    handle.0.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tally_get(
-    handle: &TallyHandle,
-    index: usize,
-    hash: *mut u8,
-    tally: *mut u8,
-) {
-    let (hash_value, tally_value) = &handle.0[index];
-    hash_value.copy_bytes(hash);
-    tally_value.copy_bytes(tally);
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_election_lock_(handle: &mut ElectionLockHandle, hash: *const u8) {
     handle

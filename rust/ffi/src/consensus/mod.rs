@@ -1,5 +1,4 @@
 mod active_transactions;
-mod buckets;
 mod confirmation_solicitor;
 mod election;
 mod election_status;

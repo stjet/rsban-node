@@ -145,16 +145,6 @@ pub extern "C" fn rsn_active_transactions_initialize(handle: &ActiveTransactions
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_active_transactions_request_loop(handle: &ActiveTransactionsHandle) {
-    handle.request_loop();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_active_transactions_notify_all(handle: &ActiveTransactionsHandle) {
-    handle.condition.notify_all();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_destroy(handle: *mut ActiveTransactionsHandle) {
     drop(Box::from_raw(handle))
 }
@@ -250,11 +240,6 @@ pub extern "C" fn rsn_active_transactions_publish_block(
 pub struct TallyBlocksHandle(Vec<(Amount, Arc<BlockEnum>)>);
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_tally_blocks_create() -> *mut TallyBlocksHandle {
-    Box::into_raw(Box::new(TallyBlocksHandle(Vec::new())))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_tally_blocks_destroy(handle: *mut TallyBlocksHandle) {
     drop(Box::from_raw(handle))
 }
@@ -273,15 +258,6 @@ pub unsafe extern "C" fn rsn_tally_blocks_get(
     let (amount, block) = handle.0.get(index).unwrap();
     amount.copy_bytes(weight);
     BlockHandle::new(Arc::clone(block))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tally_blocks_insert(
-    handle: &mut TallyBlocksHandle,
-    weight: *const u8,
-    block: &BlockHandle,
-) {
-    handle.0.push((Amount::from_ptr(weight), Arc::clone(block)))
 }
 
 pub struct ElectionVecHandle(Vec<Arc<Election>>);
@@ -546,14 +522,6 @@ pub unsafe extern "C" fn rsn_active_transactions_vote2(
         &BlockHash::from_ptr(block_hash),
         VoteSource::from_u8(vote_source).unwrap(),
     ) as u8
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_block_cemented_callback(
-    handle: &ActiveTransactionsHandle,
-    block: &BlockHandle,
-) {
-    handle.block_cemented_callback(block);
 }
 
 #[no_mangle]

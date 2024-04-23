@@ -1,4 +1,7 @@
-use rsnano_core::{Amount, BlockEnum};
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent},
+    Amount, BlockEnum,
+};
 
 use std::{
     cmp::{max, Ordering},
@@ -238,5 +241,22 @@ impl Buckets {
             })
             .unwrap_or(self.minimums.len())
             - 1
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        let leafs = self
+            .buckets
+            .iter()
+            .enumerate()
+            .map(|(i, b)| {
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: i.to_string(),
+                    count: b.len(),
+                    sizeof_element: 0,
+                })
+            })
+            .collect();
+
+        ContainerInfoComponent::Composite(name.into(), leafs)
     }
 }

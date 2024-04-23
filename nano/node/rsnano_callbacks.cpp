@@ -1,8 +1,6 @@
 #include "boost/thread/latch.hpp"
 #include "nano/lib/blocks.hpp"
 #include "nano/node/distributed_work_factory.hpp"
-#include "nano/node/scheduler/priority.hpp"
-#include "nano/secure/common.hpp"
 
 #include <nano/lib/config.hpp>
 #include <nano/lib/logging.hpp>
@@ -474,15 +472,6 @@ void bootstrap_client_observer_weak_destroy (void * handle_a)
 	delete observer;
 }
 
-void election_scheduler_activate (void * scheduler_a, const uint8_t * account_a, rsnano::TransactionHandle * txn_a)
-{
-	auto election_scheduler = static_cast<nano::scheduler::priority *> (scheduler_a);
-	nano::account account;
-	std::copy (account_a, account_a + 32, std::begin (account.bytes));
-	nano::store::transaction_wrapper txn_wrapper{ txn_a };
-	election_scheduler->activate (account, txn_wrapper);
-}
-
 void delete_bootstrap_connections (void * cpp_handle)
 {
 	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
@@ -664,8 +653,6 @@ void rsnano::set_rsnano_callbacks ()
 
 	rsnano::rsn_callback_memory_intensive_instrumentation (nano::memory_intensive_instrumentation);
 	rsnano::rsn_callback_is_sanitizer_build (nano::is_sanitizer_build);
-
-	rsnano::rsn_callback_election_scheduler_activate (election_scheduler_activate);
 
 	rsnano::rsn_set_wait_latch_callback (wait_latch);
 	rsnano::rsn_callback_bootstrap_connections_dropped (delete_bootstrap_connections);

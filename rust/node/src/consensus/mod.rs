@@ -1,7 +1,10 @@
 mod active_transactions;
+mod buckets;
 mod confirmation_solicitor;
 mod election;
+mod election_status;
 mod local_vote_history;
+mod priority_scheduler;
 mod recently_confirmed_cache;
 mod rep_tiers;
 mod vote_broadcaster;
@@ -11,29 +14,18 @@ mod vote_processor;
 mod vote_processor_queue;
 mod vote_spacing;
 
+pub use active_transactions::*;
+pub use buckets::{Buckets, ValueType};
 pub use confirmation_solicitor::ConfirmationSolicitor;
 pub use election::*;
+pub use election_status::{ElectionStatus, ElectionStatusType};
 pub use local_vote_history::*;
+pub use priority_scheduler::*;
 pub use recently_confirmed_cache::*;
 pub use rep_tiers::*;
 pub use vote_broadcaster::*;
-pub use vote_processor::*;
-pub use vote_spacing::VoteSpacing;
-
-mod election_status;
-
-pub use election_status::{ElectionStatus, ElectionStatusType};
-
-mod buckets;
-pub use buckets::{Buckets, ValueType};
-
-mod election_scheduler;
-pub use election_scheduler::{
-    ElectionScheduler, ElectionSchedulerActivateInternalCallback,
-    ELECTION_SCHEDULER_ACTIVATE_INTERNAL_CALLBACK,
-};
-
-pub use active_transactions::*;
 pub use vote_cache::{CacheEntry, TopEntry, VoteCache, VoteCacheConfig, VoterEntry};
 pub use vote_generator::*;
+pub use vote_processor::*;
 pub use vote_processor_queue::VoteProcessorQueue;
+pub use vote_spacing::VoteSpacing;

@@ -1,0 +1,85 @@
+use super::ActiveTransactionsHandle;
+use crate::{
+    core::BlockHandle,
+    ledger::datastore::{LedgerHandle, TransactionHandle},
+    utils::ContainerInfoComponentHandle,
+    StatHandle,
+};
+use rsnano_core::Account;
+use rsnano_node::consensus::{PriorityScheduler, PrioritySchedulerExt};
+use std::{
+    ffi::{c_char, CStr},
+    sync::Arc,
+};
+
+pub struct ElectionSchedulerHandle(Arc<PriorityScheduler>);
+
+#[no_mangle]
+pub extern "C" fn rsn_election_scheduler_create(
+    ledger: &LedgerHandle,
+    stats: &StatHandle,
+    active: &ActiveTransactionsHandle,
+) -> *mut ElectionSchedulerHandle {
+    Box::into_raw(Box::new(ElectionSchedulerHandle(Arc::new(
+        PriorityScheduler::new(Arc::clone(ledger), Arc::clone(stats), Arc::clone(active)),
+    ))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_scheduler_destroy(handle: *mut ElectionSchedulerHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_scheduler_start(handle: &ElectionSchedulerHandle) {
+    handle.0.start();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_election_scheduler_stop(handle: &ElectionSchedulerHandle) {
+    handle.0.stop();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_scheduler_activate(
+    handle: &ElectionSchedulerHandle,
+    account: *const u8,
+    tx: &TransactionHandle,
+) -> bool {
+    handle.0.activate(&Account::from_ptr(account), tx.as_txn())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_scheduler_activate_successors(
+    handle: &ElectionSchedulerHandle,
+    tx: &mut TransactionHandle,
+    block: &BlockHandle,
+) {
+    handle.0.activate_successors(tx.as_read_txn(), block);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_scheduler_notify(handle: &ElectionSchedulerHandle) {
+    handle.0.notify()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_scheduler_len(handle: &ElectionSchedulerHandle) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_scheduler_empty(handle: &ElectionSchedulerHandle) -> bool {
+    handle.0.is_empty()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_election_scheduler_collect_container_info(
+    handle: &ElectionSchedulerHandle,
+    name: *const c_char,
+) -> *mut ContainerInfoComponentHandle {
+    let container_info = handle
+        .0
+        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
+    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
+}

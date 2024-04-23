@@ -83,6 +83,14 @@ impl Election {
         }
     }
 
+    pub fn transition_active(&self) {
+        let _ = self
+            .mutex
+            .lock()
+            .unwrap()
+            .state_change(ElectionState::Passive, ElectionState::Active);
+    }
+
     pub fn set_last_req(&self) {
         *self.last_req.write().unwrap() = Some(Instant::now());
     }

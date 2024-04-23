@@ -859,3 +859,12 @@ pub unsafe extern "C" fn rsn_wallets_search_receivable(
         .search_receivable(wallet, wallet_tx.as_txn())
         .is_err()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_receive_confirmed(
+    handle: &LmdbWalletsHandle,
+    hash: *const u8,
+    destination: *const u8,
+) {
+    handle.receive_confirmed(BlockHash::from_ptr(hash), Account::from_ptr(destination))
+}

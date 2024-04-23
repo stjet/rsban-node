@@ -809,6 +809,8 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         wallet: &Arc<Wallet<T>>,
         wallet_tx: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
     ) -> Result<(), ()>;
+
+    fn receive_confirmed(&self, hash: BlockHash, destinaton: Account);
 }
 
 impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
@@ -1344,6 +1346,43 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
         info!("Receivable block search phase completed");
         Ok(())
+    }
+
+    fn receive_confirmed(&self, hash: BlockHash, destination: Account) {
+        //std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> wallets_l;
+        let (wallet_tx, wallets) = {
+            let guard = self.mutex.lock().unwrap();
+            (self.env.tx_begin_read(), guard.clone())
+        };
+
+        for (id, wallet) in wallets {
+            if wallet.store.exists(&wallet_tx, &destination) {
+                let representative = wallet.store.representative(&wallet_tx);
+                let pending = self
+                    .ledger
+                    .pending_info(&self.ledger.read_txn(), &PendingKey::new(destination, hash));
+                if let Some(pending) = pending {
+                    let amount = pending.amount;
+                    self.receive_async(
+                        wallet,
+                        hash,
+                        representative,
+                        amount,
+                        destination,
+                        Box::new(|_| {}),
+                        0,
+                        true,
+                    );
+                } else {
+                    if !self.ledger.block_or_pruned_exists(&hash) {
+                        warn!("Confirmed block is missing:  {}", hash);
+                        debug_assert!(false);
+                    } else {
+                        warn!("Block %1% has already been received: {}", hash);
+                    }
+                }
+            }
+        }
     }
 }
 

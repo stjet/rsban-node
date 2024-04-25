@@ -278,7 +278,7 @@ impl TcpServer {
     ) -> bool {
         // Prevent connection with ourselves
         if response.node_id == self.node_id.public_key() {
-            self.stats.inc(
+            self.stats.inc_dir(
                 StatType::Handshake,
                 DetailType::InvalidNodeId,
                 Direction::In,
@@ -289,7 +289,7 @@ impl TcpServer {
         // Prevent mismatched genesis
         if let Some(v2) = &response.v2 {
             if v2.genesis != self.network.ledger.genesis.hash() {
-                self.stats.inc(
+                self.stats.inc_dir(
                     StatType::Handshake,
                     DetailType::InvalidGenesis,
                     Direction::In,
@@ -299,7 +299,7 @@ impl TcpServer {
         }
 
         let Some(cookie) = self.syn_cookies.cookie(remote_endpoint) else {
-            self.stats.inc(
+            self.stats.inc_dir(
                 StatType::Handshake,
                 DetailType::MissingCookie,
                 Direction::In,
@@ -308,7 +308,7 @@ impl TcpServer {
         };
 
         if response.validate(&cookie).is_err() {
-            self.stats.inc(
+            self.stats.inc_dir(
                 StatType::Handshake,
                 DetailType::InvalidSignature,
                 Direction::In,
@@ -317,7 +317,7 @@ impl TcpServer {
         }
 
         self.stats
-            .inc(StatType::Handshake, DetailType::Ok, Direction::In);
+            .inc_dir(StatType::Handshake, DetailType::Ok, Direction::In);
         true // OK
     }
 
@@ -433,7 +433,7 @@ impl TcpServerExt for Arc<TcpServer> {
                     Ok(msg) => self_clone.received_message(msg),
                     Err(ParseMessageError::DuplicatePublishMessage) => {
                         // Avoid too much noise about `duplicate_publish_message` errors
-                        self_clone.stats.inc(
+                        self_clone.stats.inc_dir(
                             StatType::Filter,
                             DetailType::DuplicatePublishMessage,
                             Direction::In,
@@ -442,7 +442,7 @@ impl TcpServerExt for Arc<TcpServer> {
                     }
                     Err(ParseMessageError::InsufficientWork) => {
                         // IO error or critical error when deserializing message
-                        self_clone.stats.inc(
+                        self_clone.stats.inc_dir(
                             StatType::Error,
                             DetailType::InsufficientWork,
                             Direction::In,
@@ -451,9 +451,11 @@ impl TcpServerExt for Arc<TcpServer> {
                     }
                     Err(e) => {
                         // IO error or critical error when deserializing message
-                        self_clone
-                            .stats
-                            .inc(StatType::Error, DetailType::from(e), Direction::In);
+                        self_clone.stats.inc_dir(
+                            StatType::Error,
+                            DetailType::from(e),
+                            Direction::In,
+                        );
                         debug!(
                             "Error reading message: {:?} ({})",
                             e,
@@ -478,7 +480,7 @@ impl TcpServerExt for Arc<TcpServer> {
     }
 
     fn process_message(&self, message: DeserializedMessage) -> ProcessResult {
-        self.stats.inc(
+        self.stats.inc_dir(
             StatType::TcpServer,
             DetailType::from(message.message.message_type()),
             Direction::In,
@@ -507,7 +509,7 @@ impl TcpServerExt for Arc<TcpServer> {
 
             match handshake_visitor.result {
                 HandshakeStatus::Abort => {
-                    self.stats.inc(
+                    self.stats.inc_dir(
                         StatType::TcpServer,
                         DetailType::HandshakeAbort,
                         Direction::In,
@@ -528,7 +530,7 @@ impl TcpServerExt for Arc<TcpServer> {
                 }
                 HandshakeStatus::Bootstrap => {
                     if !self.to_bootstrap_connection() {
-                        self.stats.inc(
+                        self.stats.inc_dir(
                             StatType::TcpServer,
                             DetailType::HandshakeError,
                             Direction::In,
@@ -574,7 +576,7 @@ impl TcpServerExt for Arc<TcpServer> {
 
     fn process_handshake(&self, message: &NodeIdHandshake) -> HandshakeStatus {
         if self.disable_tcp_realtime {
-            self.stats.inc(
+            self.stats.inc_dir(
                 StatType::TcpServer,
                 DetailType::HandshakeError,
                 Direction::In,
@@ -586,7 +588,7 @@ impl TcpServerExt for Arc<TcpServer> {
             return HandshakeStatus::Abort;
         }
         if message.query.is_none() && message.response.is_none() {
-            self.stats.inc(
+            self.stats.inc_dir(
                 StatType::TcpServer,
                 DetailType::HandshakeError,
                 Direction::In,
@@ -599,7 +601,7 @@ impl TcpServerExt for Arc<TcpServer> {
         }
         if message.query.is_some() && self.was_handshake_received() {
             // Second handshake message should be a response only
-            self.stats.inc(
+            self.stats.inc_dir(
                 StatType::TcpServer,
                 DetailType::HandshakeError,
                 Direction::In,
@@ -613,7 +615,7 @@ impl TcpServerExt for Arc<TcpServer> {
 
         self.handshake_received.store(true, Ordering::SeqCst);
 
-        self.stats.inc(
+        self.stats.inc_dir(
             StatType::TcpServer,
             DetailType::NodeIdHandshake,
             Direction::In,
@@ -631,7 +633,7 @@ impl TcpServerExt for Arc<TcpServer> {
                 if success {
                     return HandshakeStatus::Realtime; // Switch to realtime
                 } else {
-                    self.stats.inc(
+                    self.stats.inc_dir(
                         StatType::TcpServer,
                         DetailType::HandshakeError,
                         Direction::In,
@@ -643,7 +645,7 @@ impl TcpServerExt for Arc<TcpServer> {
                     return HandshakeStatus::Abort;
                 }
             } else {
-                self.stats.inc(
+                self.stats.inc_dir(
                     StatType::TcpServer,
                     DetailType::HandshakeResponseInvalid,
                     Direction::In,
@@ -679,7 +681,7 @@ impl TcpServerExt for Arc<TcpServer> {
             Some(Box::new(move |ec, _size| {
                 if let Some(server_l) = server_weak.upgrade() {
                     if ec.is_err() {
-                        server_l.stats.inc(
+                        server_l.stats.inc_dir(
                             StatType::TcpServer,
                             DetailType::HandshakeNetworkError,
                             Direction::In,
@@ -692,9 +694,12 @@ impl TcpServerExt for Arc<TcpServer> {
                         // Stop invalid handshake
                         server_l.stop();
                     } else {
-                        let _ =
-                            stats.inc(StatType::TcpServer, DetailType::Handshake, Direction::Out);
-                        stats.inc(
+                        let _ = stats.inc_dir(
+                            StatType::TcpServer,
+                            DetailType::Handshake,
+                            Direction::Out,
+                        );
+                        stats.inc_dir(
                             StatType::TcpServer,
                             DetailType::HandshakeResponse,
                             Direction::Out,
@@ -770,7 +775,7 @@ impl MessageVisitor for RealtimeMessageVisitorImpl {
                     self.server.set_last_telemetry_req();
                     self.process = true;
                 } else {
-                    self.stats.inc(
+                    self.stats.inc_dir(
                         StatType::Telemetry,
                         DetailType::RequestWithinProtectionCacheZone,
                         Direction::In,

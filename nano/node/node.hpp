@@ -172,10 +172,10 @@ public:
 	std::shared_ptr<nano::transport::tcp_listener> tcp_listener; // ported
 
 private: // Placed here to maintain initialization order
-	std::unique_ptr<nano::scheduler::component> scheduler_impl;
+	std::unique_ptr<nano::scheduler::component> scheduler_impl; // ported
 
 public:
-	nano::scheduler::component & scheduler;
+	nano::scheduler::component & scheduler; // ported
 	nano::request_aggregator aggregator;
 	nano::backlog_population backlog; // ported
 	nano::bootstrap_ascending::service ascendboot;

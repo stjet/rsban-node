@@ -81,10 +81,10 @@ impl<T: Send + 'static> ProcessingQueue<T> {
             drop(queue);
             self.shared_state.condition.notify_one();
             self.stats
-                .inc(self.stat_type, DetailType::Queue, Direction::In);
+                .inc_dir(self.stat_type, DetailType::Queue, Direction::In);
         } else {
             self.stats
-                .inc(self.stat_type, DetailType::Overfill, Direction::In);
+                .inc_dir(self.stat_type, DetailType::Overfill, Direction::In);
         }
     }
 
@@ -133,7 +133,7 @@ impl<T> SharedState<T> {
             let batch = self.next_batch(guard);
             if !batch.is_empty() {
                 self.stats
-                    .inc(self.stat_type, DetailType::Batch, Direction::In);
+                    .inc_dir(self.stat_type, DetailType::Batch, Direction::In);
                 (self.process_batch)(batch);
             }
             guard = self.queue.lock().unwrap();

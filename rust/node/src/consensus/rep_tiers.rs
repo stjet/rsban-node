@@ -163,8 +163,7 @@ impl RepTiersImpl {
     }
 
     fn calculate_tiers(&self) {
-        self.stats
-            .inc(StatType::RepTiers, DetailType::Loop, Direction::In);
+        self.stats.inc(StatType::RepTiers, DetailType::Loop);
         let stake = self.online_reps.lock().unwrap().trended();
         let rep_amounts = self.ledger.cache.rep_weights.get_rep_amounts();
         let mut representatives_1_l = HashSet::new();
@@ -221,7 +220,6 @@ impl RepTiersImpl {
             guard.representatives_3 = representatives_3_l;
         }
 
-        self.stats
-            .inc(StatType::RepTiers, DetailType::Updated, Direction::In);
+        self.stats.inc(StatType::RepTiers, DetailType::Updated);
     }
 }

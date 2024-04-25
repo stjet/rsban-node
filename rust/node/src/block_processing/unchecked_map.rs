@@ -80,8 +80,7 @@ impl UncheckedMap {
             lock.entries_container.pop_front();
         }
         if inserted {
-            self.stats
-                .inc(StatType::Unchecked, DetailType::Put, Direction::In);
+            self.stats.inc(StatType::Unchecked, DetailType::Put);
         }
     }
 
@@ -107,8 +106,7 @@ impl UncheckedMap {
         let mut lock = self.mutable.lock().unwrap();
         lock.buffer.push_back(*dependency);
         drop(lock);
-        self.stats
-            .inc(StatType::Unchecked, DetailType::Trigger, Direction::In);
+        self.stats.inc(StatType::Unchecked, DetailType::Trigger);
         self.condition.notify_all(); // Notify run ()
     }
 
@@ -245,8 +243,7 @@ impl UncheckedMapThread {
             hash,
             &mut |key, info| {
                 delete_queue.push(key.clone());
-                self.stats
-                    .inc(StatType::Unchecked, DetailType::Satisfied, Direction::In);
+                self.stats.inc(StatType::Unchecked, DetailType::Satisfied);
                 if let Some(callback) = &lock.satisfied_callback {
                     callback(info);
                 }

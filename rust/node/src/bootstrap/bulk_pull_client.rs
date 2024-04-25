@@ -166,7 +166,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
                         self_clone.connection.channel_string(),
                         ec
                     );
-                    self_clone.stats.inc(
+                    self_clone.stats.inc_dir(
                         StatType::Bootstrap,
                         DetailType::BulkPullRequestFailure,
                         Direction::In,

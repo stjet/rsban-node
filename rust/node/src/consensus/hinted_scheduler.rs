@@ -121,11 +121,8 @@ impl HintedScheduler {
                 if self.confirming_set.exists(&current_hash)
                     || self.ledger.block_confirmed(tx, &current_hash)
                 {
-                    self.stats.inc(
-                        StatType::Hinting,
-                        DetailType::AlreadyConfirmed,
-                        Direction::In,
-                    );
+                    self.stats
+                        .inc(StatType::Hinting, DetailType::AlreadyConfirmed);
                     self.vote_cache.lock().unwrap().erase(&current_hash); // Remove from vote cache
                     continue; // Move on to the next item in the stack
                 }
@@ -133,11 +130,8 @@ impl HintedScheduler {
                 if check_dependents {
                     // Perform a depth-first search of the dependency graph
                     if !self.ledger.dependents_confirmed(tx, &block) {
-                        self.stats.inc(
-                            StatType::Hinting,
-                            DetailType::DependentUnconfirmed,
-                            Direction::In,
-                        );
+                        self.stats
+                            .inc(StatType::Hinting, DetailType::DependentUnconfirmed);
                         let dependents = self.ledger.dependent_blocks(tx, &block);
                         for dependent_hash in dependents.iter() {
                             // Avoid visiting the same block twice
@@ -160,11 +154,9 @@ impl HintedScheduler {
                     } else {
                         DetailType::InsertFailed
                     },
-                    Direction::In,
                 );
             } else {
-                self.stats
-                    .inc(StatType::Hinting, DetailType::MissingBlock, Direction::In);
+                self.stats.inc(StatType::Hinting, DetailType::MissingBlock);
 
                 // TODO: Block is missing, bootstrap it
             }
@@ -196,16 +188,12 @@ impl HintedScheduler {
             // Check dependents only if cached tally is lower than quorum
             if entry.final_tally < minimum_final_tally {
                 // Ensure all dependent blocks are already confirmed before activating
-                self.stats
-                    .inc(StatType::Hinting, DetailType::Activate, Direction::In);
+                self.stats.inc(StatType::Hinting, DetailType::Activate);
                 self.activate(&mut tx, entry.hash, /* activate dependents */ true);
             } else {
                 // Blocks with a vote tally higher than quorum, can be activated and confirmed immediately
-                self.stats.inc(
-                    StatType::Hinting,
-                    DetailType::ActivateImmediate,
-                    Direction::In,
-                );
+                self.stats
+                    .inc(StatType::Hinting, DetailType::ActivateImmediate);
                 self.activate(&mut tx, entry.hash, false);
             }
         }
@@ -214,8 +202,7 @@ impl HintedScheduler {
     fn run(&self) {
         let mut guard = self.stopped_mutex.lock().unwrap();
         while !self.stopped.load(Ordering::SeqCst) {
-            self.stats
-                .inc(StatType::Hinting, DetailType::Loop, Direction::In);
+            self.stats.inc(StatType::Hinting, DetailType::Loop);
             guard = self
                 .condition
                 .wait_timeout_while(guard, self.config.check_interval, |_| {

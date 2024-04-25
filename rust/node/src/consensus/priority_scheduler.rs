@@ -1,7 +1,7 @@
 use super::{ActiveTransactions, Buckets, ElectionBehavior};
 use crate::{
     consensus::ActiveTransactionsExt,
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{DetailType, StatType, Stats},
 };
 use rsnano_core::{utils::ContainerInfoComponent, Account, BlockEnum};
 use rsnano_ledger::Ledger;
@@ -86,11 +86,8 @@ impl PriorityScheduler {
             .unwrap_or_default();
         let balance_priority = max(balance, previous_balance);
 
-        self.stats.inc(
-            StatType::ElectionScheduler,
-            DetailType::Activated,
-            Direction::In,
-        );
+        self.stats
+            .inc(StatType::ElectionScheduler, DetailType::Activated);
 
         trace!(
             account = account.encode_account(),
@@ -134,23 +131,19 @@ impl PriorityScheduler {
                 .unwrap();
             if !guard.stopped {
                 self.stats
-                    .inc(StatType::ElectionScheduler, DetailType::Loop, Direction::In);
+                    .inc(StatType::ElectionScheduler, DetailType::Loop);
 
                 if self.predicate(&guard.buckets) {
                     let block = Arc::clone(guard.buckets.top());
                     guard.buckets.pop();
                     drop(guard);
-                    self.stats.inc(
-                        StatType::ElectionScheduler,
-                        DetailType::InsertPriority,
-                        Direction::In,
-                    );
+                    self.stats
+                        .inc(StatType::ElectionScheduler, DetailType::InsertPriority);
                     let (inserted, election) = self.active.insert(&block, ElectionBehavior::Normal);
                     if inserted {
                         self.stats.inc(
                             StatType::ElectionScheduler,
                             DetailType::InsertPrioritySuccess,
-                            Direction::In,
                         );
                     }
                     if let Some(election) = election {

@@ -119,7 +119,7 @@ impl RepCrawler {
                     channel.remote_endpoint()
                 );
                 self.stats
-                    .inc(StatType::RepCrawler, DetailType::Response, Direction::In);
+                    .inc_dir(StatType::RepCrawler, DetailType::Response, Direction::In);
                 // TODO: Track query response time
 
                 responses.push_back((Arc::clone(&channel), Arc::clone(&vote)));
@@ -141,7 +141,7 @@ impl RepCrawler {
     pub fn query(&self, target_channels: Vec<Arc<ChannelEnum>>) {
         let Some(hash_root) = self.prepare_query_target() else {
             debug!("No block to query");
-            self.stats.inc(
+            self.stats.inc_dir(
                 StatType::RepCrawler,
                 DetailType::QueryTargetFailed,
                 Direction::In,
@@ -159,7 +159,7 @@ impl RepCrawler {
                 channel.remote_endpoint()
             );
             self.stats
-                .inc(StatType::RepCrawler, DetailType::QuerySent, Direction::In);
+                .inc_dir(StatType::RepCrawler, DetailType::QuerySent, Direction::In);
 
             let req = Message::ConfirmReq(ConfirmReq::new(vec![hash_root]));
 
@@ -168,7 +168,7 @@ impl RepCrawler {
                 &req,
                 Some(Box::new(move |ec, _len| {
                     if ec.is_err() {
-                        stats.inc(StatType::RepCrawler, DetailType::WriteError, Direction::Out);
+                        stats.inc_dir(StatType::RepCrawler, DetailType::WriteError, Direction::Out);
                     }
                 })),
                 BufferDropPolicy::NoSocketDrop,
@@ -212,7 +212,7 @@ impl RepCrawler {
             // If online weight drops below minimum, reach out to preconfigured peers
             if !sufficient_weight {
                 self.stats
-                    .inc(StatType::RepCrawler, DetailType::Keepalive, Direction::In);
+                    .inc_dir(StatType::RepCrawler, DetailType::Keepalive, Direction::In);
                 self.keepalive_preconfigured();
             }
 
@@ -231,7 +231,7 @@ impl RepCrawler {
             }
 
             self.stats
-                .inc(StatType::RepCrawler, DetailType::Loop, Direction::In);
+                .inc_dir(StatType::RepCrawler, DetailType::Loop, Direction::In);
 
             if !guard.responses.is_empty() {
                 self.validate_and_process(guard);
@@ -471,7 +471,7 @@ impl RepCrawlerImpl {
             Duration::from_secs(60)
         };
 
-        self.stats.inc(
+        self.stats.inc_dir(
             StatType::RepCrawler,
             if sufficient_weight {
                 DetailType::CrawlNormal
@@ -547,7 +547,7 @@ impl RepCrawlerImpl {
                     query.hash,
                     query.channel.remote_endpoint()
                 );
-                self.stats.inc(
+                self.stats.inc_dir(
                     StatType::RepCrawler,
                     DetailType::QueryTimeout,
                     Direction::In,
@@ -559,7 +559,7 @@ impl RepCrawlerImpl {
                     query.hash,
                     query.channel.remote_endpoint()
                 );
-                self.stats.inc(
+                self.stats.inc_dir(
                     StatType::RepCrawler,
                     DetailType::QueryCompletion,
                     Direction::In,

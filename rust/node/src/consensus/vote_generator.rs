@@ -162,7 +162,6 @@ impl VoteGenerator {
             self.stats.inc(
                 StatType::VoteGenerator,
                 DetailType::GeneratorRepliesDiscarded,
-                Direction::In,
             );
         }
 
@@ -253,11 +252,8 @@ impl SharedState {
                         roots.push(root);
                         hashes.push(hash);
                     } else {
-                        self.stats.inc(
-                            StatType::VoteGenerator,
-                            DetailType::GeneratorSpacing,
-                            Direction::In,
-                        );
+                        self.stats
+                            .inc(StatType::VoteGenerator, DetailType::GeneratorSpacing);
                     }
                 }
                 if hashes.len() == VoteGenerator::MAX_HASHES {
@@ -270,11 +266,8 @@ impl SharedState {
             drop(queues);
             self.vote(&hashes, &roots, |vote| {
                 self.vote_broadcaster.broadcast(vote);
-                self.stats.inc(
-                    StatType::VoteGenerator,
-                    DetailType::GeneratorBroadcasts,
-                    Direction::In,
-                );
+                self.stats
+                    .inc(StatType::VoteGenerator, DetailType::GeneratorBroadcasts);
             });
             queues = self.queues.lock().unwrap();
         }
@@ -336,11 +329,8 @@ impl SharedState {
                             roots.push(*root);
                             hashes.push(*hash);
                         } else {
-                            self.stats.inc(
-                                StatType::VoteGenerator,
-                                DetailType::GeneratorSpacing,
-                                Direction::In,
-                            );
+                            self.stats
+                                .inc(StatType::VoteGenerator, DetailType::GeneratorSpacing);
                         }
                     }
                 }
@@ -358,7 +348,7 @@ impl SharedState {
                     if let Some(action) = action.deref() {
                         (action)(&vote, &request.1);
                     }
-                    self.stats.inc(
+                    self.stats.inc_dir(
                         StatType::Requests,
                         DetailType::RequestsGeneratedVotes,
                         Direction::In,
@@ -366,11 +356,8 @@ impl SharedState {
                 });
             }
         }
-        self.stats.inc(
-            StatType::VoteGenerator,
-            DetailType::GeneratorReplies,
-            Direction::In,
-        );
+        self.stats
+            .inc(StatType::VoteGenerator, DetailType::GeneratorReplies);
     }
 
     fn process_batch(&self, batch: VecDeque<(Root, BlockHash)>) {

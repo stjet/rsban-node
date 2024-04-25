@@ -110,11 +110,8 @@ impl OptimisticScheduler {
                     return false; // Not activated
                 }
 
-                self.stats.inc(
-                    StatType::OptimisticScheduler,
-                    DetailType::Activated,
-                    Direction::In,
-                );
+                self.stats
+                    .inc(StatType::OptimisticScheduler, DetailType::Activated);
                 candidates.insert(account, Instant::now());
             }
             true // Activated
@@ -139,7 +136,7 @@ impl OptimisticScheduler {
         if self.active.vacancy(ElectionBehavior::Optimistic) <= 0 {
             return false;
         }
-        if let Some((account, time)) = candidates.front() {
+        if let Some((_account, time)) = candidates.front() {
             time.elapsed() >= self.network_constants.optimistic_activation_delay
         } else {
             false
@@ -149,11 +146,8 @@ impl OptimisticScheduler {
     fn run(&self) {
         let mut guard = self.candidates.lock().unwrap();
         while !self.stopped.load(Ordering::SeqCst) {
-            self.stats.inc(
-                StatType::OptimisticScheduler,
-                DetailType::Loop,
-                Direction::In,
-            );
+            self.stats
+                .inc(StatType::OptimisticScheduler, DetailType::Loop);
 
             if self.predicate(&guard) {
                 let tx = self.ledger.read_txn();
@@ -178,7 +172,7 @@ impl OptimisticScheduler {
         }
     }
 
-    fn run_one(&self, tx: &LmdbReadTransaction, account: Account, time: Instant) {
+    fn run_one(&self, tx: &LmdbReadTransaction, account: Account, _time: Instant) {
         if let Some(block) = self.ledger.head_block(tx, &account) {
             // Ensure block is not already confirmed
             if !self.confirming_set.exists(&block.hash())
@@ -196,7 +190,6 @@ impl OptimisticScheduler {
                     } else {
                         DetailType::InsertFailed
                     },
-                    Direction::In,
                 );
             }
         }

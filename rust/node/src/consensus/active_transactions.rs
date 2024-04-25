@@ -558,7 +558,6 @@ impl ActiveTransactions {
                     } else {
                         DetailType::BroadcastBlockRepeat
                     },
-                    Direction::In,
                 );
                 election.set_last_block();
                 election_guard.last_block_hash =
@@ -581,25 +580,19 @@ impl ActiveTransactions {
         election_guard.set_last_vote();
         if self.config.enable_voting && self.wallets.voting_reps_count() > 0 {
             self.stats
-                .inc(StatType::Election, DetailType::BroadcastVote, Direction::In);
+                .inc(StatType::Election, DetailType::BroadcastVote);
 
             if self.confirmed_locked(election_guard)
                 || self.have_quorum(&self.tally_impl(election_guard))
             {
-                self.stats.inc(
-                    StatType::Election,
-                    DetailType::GenerateVoteFinal,
-                    Direction::In,
-                );
+                self.stats
+                    .inc(StatType::Election, DetailType::GenerateVoteFinal);
                 let winner = election_guard.status.winner.as_ref().unwrap().hash();
                 trace!(qualified_root = ?election.qualified_root, %winner, "type" = "final", "broadcast vote");
                 self.final_generator.add(&election.root, &winner); // Broadcasts vote to the network
             } else {
-                self.stats.inc(
-                    StatType::Election,
-                    DetailType::GenerateVoteNormal,
-                    Direction::In,
-                );
+                self.stats
+                    .inc(StatType::Election, DetailType::GenerateVoteNormal);
                 let winner = election_guard.status.winner.as_ref().unwrap().hash();
                 trace!(qualified_root = ?election.qualified_root, %winner, "type" = "normal", "broadcast vote");
                 self.generator.add(&election.root, &winner); // Broadcasts vote to the network
@@ -632,11 +625,8 @@ impl ActiveTransactions {
 
         guard.roots.erase(&election.qualified_root);
 
-        self.stats.inc(
-            self.completion_type(election),
-            election.behavior.into(),
-            Direction::In,
-        );
+        self.stats
+            .inc(self.completion_type(election), election.behavior.into());
         trace!(election = ?election, "active stopped");
 
         drop(guard);
@@ -691,8 +681,7 @@ impl ActiveTransactions {
         while self.vacancy(ElectionBehavior::Normal)
             < -(self.limit(ElectionBehavior::Normal) as i64 / 4)
         {
-            self.stats
-                .inc(StatType::Active, DetailType::EraseOldest, Direction::In);
+            self.stats.inc(StatType::Active, DetailType::EraseOldest);
             self.erase_oldest();
         }
     }
@@ -770,8 +759,7 @@ impl ActiveTransactions {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {
             let stamp = Instant::now();
-            self.stats
-                .inc(StatType::Active, DetailType::Loop, Direction::In);
+            self.stats.inc(StatType::Active, DetailType::Loop);
             guard = self.request_confirm(guard);
             guard = self.request_loop2(stamp, guard);
         }
@@ -1381,7 +1369,6 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
             } else {
                 DetailType::VoteCached
             },
-            Direction::In,
         );
         trace!(
             qualified_root = ?election.qualified_root,
@@ -1464,11 +1451,8 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
 
                 self.trigger_vote_cache(&block.hash());
 
-                self.stats.inc(
-                    StatType::Active,
-                    DetailType::ElectionBlockConflict,
-                    Direction::In,
-                );
+                self.stats
+                    .inc(StatType::Active, DetailType::ElectionBlockConflict);
             }
         }
 
@@ -1518,11 +1502,8 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
                 // Keep track of election count by election type
                 *guard.count_by_behavior_mut(election.behavior) += 1;
 
-                self.stats.inc(
-                    StatType::ActiveStarted,
-                    election_behavior.into(),
-                    Direction::In,
-                );
+                self.stats
+                    .inc(StatType::ActiveStarted, election_behavior.into());
                 trace!(behavior = ?election_behavior, ?election, "active started");
                 election_result = Some(election);
             } else {

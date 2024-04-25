@@ -29,11 +29,11 @@ impl LedgerObserver for LedgerStats {
     fn block_rolled_back(&self, block_type: BlockSubType) {
         let _ = self
             .stats
-            .inc(StatType::Rollback, block_type.into(), Direction::In);
+            .inc_dir(StatType::Rollback, block_type.into(), Direction::In);
     }
 
     fn block_rolled_back2(&self, block: &BlockEnum, is_epoch: bool) {
-        let _ = self.stats.inc(
+        let _ = self.stats.inc_dir(
             StatType::Rollback,
             block_detail_type(block, is_epoch),
             Direction::In,
@@ -41,7 +41,7 @@ impl LedgerObserver for LedgerStats {
     }
 
     fn block_added(&self, block: &BlockEnum, is_epoch: bool) {
-        let _ = self.stats.inc(
+        let _ = self.stats.inc_dir(
             StatType::Ledger,
             block_detail_type(block, is_epoch),
             Direction::In,

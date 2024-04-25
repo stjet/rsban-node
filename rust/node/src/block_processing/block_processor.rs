@@ -346,16 +346,13 @@ impl BlockProcessorLoop {
     ) -> bool {
         if self.work.validate_entry_block(&block) {
             // true => error
-            self.stats.inc(
-                StatType::Blockprocessor,
-                DetailType::InsufficientWork,
-                Direction::In,
-            );
+            self.stats
+                .inc(StatType::Blockprocessor, DetailType::InsufficientWork);
             return false; // Not added
         }
 
         self.stats
-            .inc(StatType::Blockprocessor, DetailType::Process, Direction::In);
+            .inc(StatType::Blockprocessor, DetailType::Process);
         debug!(
             "Processing block (async): {} (source: {:?} {})",
             block.hash(),
@@ -370,11 +367,8 @@ impl BlockProcessorLoop {
     }
 
     pub fn add_blocking(&self, block: Arc<BlockEnum>, source: BlockSource) -> Option<BlockStatus> {
-        self.stats.inc(
-            StatType::Blockprocessor,
-            DetailType::ProcessBlocking,
-            Direction::In,
-        );
+        self.stats
+            .inc(StatType::Blockprocessor, DetailType::ProcessBlocking);
         debug!(
             "Processing block (blocking): {} (source: {:?})",
             block.hash(),
@@ -391,11 +385,8 @@ impl BlockProcessorLoop {
         )) {
             Some(status) => Some(status),
             None => {
-                self.stats.inc(
-                    StatType::Blockprocessor,
-                    DetailType::ProcessBlockingTimeout,
-                    Direction::In,
-                );
+                self.stats
+                    .inc(StatType::Blockprocessor, DetailType::ProcessBlockingTimeout);
                 error!("Timeout processing block: {}", ctx_clone.block.hash());
                 None
             }
@@ -403,8 +394,7 @@ impl BlockProcessorLoop {
     }
 
     pub fn force(&self, block: Arc<BlockEnum>) {
-        self.stats
-            .inc(StatType::Blockprocessor, DetailType::Force, Direction::In);
+        self.stats.inc(StatType::Blockprocessor, DetailType::Force);
         debug!("Forcing block: {}", block.hash());
         let ctx = Arc::new(BlockProcessorContext::new(block, BlockSource::Forced));
         self.add_impl(ctx, None);
@@ -441,16 +431,10 @@ impl BlockProcessorLoop {
         if added {
             self.condition.notify_all();
         } else {
-            self.stats.inc(
-                StatType::Blockprocessor,
-                DetailType::Overfill,
-                Direction::In,
-            );
-            self.stats.inc(
-                StatType::BlockprocessorOverfill,
-                source.into(),
-                Direction::In,
-            );
+            self.stats
+                .inc(StatType::Blockprocessor, DetailType::Overfill);
+            self.stats
+                .inc(StatType::BlockprocessorOverfill, source.into());
         }
         added
     }
@@ -537,12 +521,9 @@ impl BlockProcessorLoop {
         };
 
         self.stats
-            .inc(StatType::BlockprocessorResult, result.into(), Direction::In);
-        self.stats.inc(
-            StatType::BlockprocessorSource,
-            context.source.into(),
-            Direction::In,
-        );
+            .inc(StatType::BlockprocessorResult, result.into());
+        self.stats
+            .inc(StatType::BlockprocessorSource, context.source.into());
         trace!(?result, block = %block.hash(), source = ?context.source, "Block processed");
 
         match result {
@@ -566,8 +547,7 @@ impl BlockProcessorLoop {
                     block.previous().into(),
                     UncheckedInfo::new(Arc::clone(block)),
                 );
-                self.stats
-                    .inc(StatType::Ledger, DetailType::GapPrevious, Direction::In);
+                self.stats.inc(StatType::Ledger, DetailType::GapPrevious);
             }
             BlockStatus::GapSource => {
                 self.unchecked_map.put(
@@ -577,8 +557,7 @@ impl BlockProcessorLoop {
                         .into(),
                     UncheckedInfo::new(Arc::clone(block)),
                 );
-                self.stats
-                    .inc(StatType::Ledger, DetailType::GapSource, Direction::In);
+                self.stats.inc(StatType::Ledger, DetailType::GapSource);
             }
             BlockStatus::GapEpochOpenPending => {
                 // Specific unchecked key starting with epoch open block account public key
@@ -586,19 +565,16 @@ impl BlockProcessorLoop {
                     block.account().into(),
                     UncheckedInfo::new(Arc::clone(block)),
                 );
-                self.stats
-                    .inc(StatType::Ledger, DetailType::GapSource, Direction::In);
+                self.stats.inc(StatType::Ledger, DetailType::GapSource);
             }
             BlockStatus::Old => {
-                self.stats
-                    .inc(StatType::Ledger, DetailType::Old, Direction::In);
+                self.stats.inc(StatType::Ledger, DetailType::Old);
             }
             BlockStatus::BadSignature => {}
             BlockStatus::NegativeSpend => {}
             BlockStatus::Unreceivable => {}
             BlockStatus::Fork => {
-                self.stats
-                    .inc(StatType::Ledger, DetailType::Fork, Direction::In);
+                self.stats.inc(StatType::Ledger, DetailType::Fork);
             }
             BlockStatus::OpenedBurnAccount => {}
             BlockStatus::BalanceMismatch => {}
@@ -622,14 +598,12 @@ impl BlockProcessorLoop {
                 debug!("Rolling back: {} and replacing with: {}", successor, hash);
                 let rollback_list = match self.ledger.rollback(transaction, &successor) {
                     Ok(rollback_list) => {
-                        self.stats
-                            .inc(StatType::Ledger, DetailType::Rollback, Direction::In);
+                        self.stats.inc(StatType::Ledger, DetailType::Rollback);
                         debug!("Blocks rolled back: {}", rollback_list.len());
                         rollback_list
                     }
                     Err(_) => {
-                        self.stats
-                            .inc(StatType::Ledger, DetailType::RollbackFailed, Direction::In);
+                        self.stats.inc(StatType::Ledger, DetailType::RollbackFailed);
                         error!(
                             "Failed to roll back: {} because it or a successor was confirmed",
                             successor

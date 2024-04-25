@@ -146,7 +146,7 @@ impl BulkPushServerImpl {
         self.async_rt.tokio.spawn(async move {
             match block_type {
                 Some(BlockType::LegacySend) => {
-                    stats.inc(StatType::Bootstrap, DetailType::Send, Direction::In);
+                    stats.inc_dir(StatType::Bootstrap, DetailType::Send, Direction::In);
                     let result = socket.read_raw(buffer, SendBlock::serialized_size()).await;
                     let ec;
                     let len;
@@ -171,7 +171,7 @@ impl BulkPushServerImpl {
                     }));
                 }
                 Some(BlockType::LegacyReceive) => {
-                    stats.inc(StatType::Bootstrap, DetailType::Receive, Direction::In);
+                    stats.inc_dir(StatType::Bootstrap, DetailType::Receive, Direction::In);
                     let result = socket
                         .read_raw(buffer, ReceiveBlock::serialized_size())
                         .await;
@@ -197,7 +197,7 @@ impl BulkPushServerImpl {
                     }));
                 }
                 Some(BlockType::LegacyOpen) => {
-                    stats.inc(StatType::Bootstrap, DetailType::Open, Direction::In);
+                    stats.inc_dir(StatType::Bootstrap, DetailType::Open, Direction::In);
                     let result = socket.read_raw(buffer, OpenBlock::serialized_size()).await;
                     let ec;
                     let len;
@@ -221,7 +221,7 @@ impl BulkPushServerImpl {
                     }));
                 }
                 Some(BlockType::LegacyChange) => {
-                    stats.inc(StatType::Bootstrap, DetailType::Change, Direction::In);
+                    stats.inc_dir(StatType::Bootstrap, DetailType::Change, Direction::In);
                     let result = socket
                         .read_raw(buffer, ChangeBlock::serialized_size())
                         .await;
@@ -247,7 +247,7 @@ impl BulkPushServerImpl {
                     }));
                 }
                 Some(BlockType::State) => {
-                    stats.inc(StatType::Bootstrap, DetailType::StateBlock, Direction::In);
+                    stats.inc_dir(StatType::Bootstrap, DetailType::StateBlock, Direction::In);
                     let result = socket.read_raw(buffer, StateBlock::serialized_size()).await;
                     let ec;
                     let len;
@@ -295,7 +295,7 @@ impl BulkPushServerImpl {
                 Ok(block) => {
                     if self.work_thresholds.validate_entry_block(&block) {
                         debug!("Insufficient work for bulk push block: {}", block.hash());
-                        self.stats.inc(
+                        self.stats.inc_dir(
                             StatType::Error,
                             DetailType::InsufficientWork,
                             Direction::In,

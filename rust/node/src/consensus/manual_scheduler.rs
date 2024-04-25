@@ -68,7 +68,7 @@ impl ManualScheduler {
 
             if !guard.stopped {
                 self.stats
-                    .inc(StatType::ElectionScheduler, DetailType::Loop, Direction::In);
+                    .inc(StatType::ElectionScheduler, DetailType::Loop);
 
                 if guard.predicate() {
                     let (block, _previous_balance, election_behavior) =
@@ -76,11 +76,8 @@ impl ManualScheduler {
 
                     drop(guard);
 
-                    self.stats.inc(
-                        StatType::ElectionScheduler,
-                        DetailType::InsertManual,
-                        Direction::In,
-                    );
+                    self.stats
+                        .inc(StatType::ElectionScheduler, DetailType::InsertManual);
 
                     let (_inserted, election) = self.active.insert(&block, election_behavior);
                     if let Some(election) = election {

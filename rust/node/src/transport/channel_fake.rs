@@ -166,7 +166,8 @@ impl Channel for ChannelFake {
 
         if !is_droppable_by_limiter || should_pass {
             self.send_buffer(&buffer, callback, drop_policy, traffic_type);
-            self.stats.inc(StatType::Message, detail, Direction::Out);
+            self.stats
+                .inc_dir(StatType::Message, detail, Direction::Out);
         } else {
             if let Some(cb) = callback {
                 if let Some(async_rt) = self.async_rt.upgrade() {
@@ -176,7 +177,7 @@ impl Channel for ChannelFake {
                 }
             }
 
-            self.stats.inc(StatType::Drop, detail, Direction::Out);
+            self.stats.inc_dir(StatType::Drop, detail, Direction::Out);
         }
     }
 

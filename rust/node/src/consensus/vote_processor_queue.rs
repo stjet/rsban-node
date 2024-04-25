@@ -87,7 +87,7 @@ impl VoteProcessorQueue {
                 self.condition.notify_all();
             } else {
                 self.stats
-                    .inc(StatType::Vote, DetailType::VoteOverflow, Direction::In);
+                    .inc_dir(StatType::Vote, DetailType::VoteOverflow, Direction::In);
             }
         }
         return !process;

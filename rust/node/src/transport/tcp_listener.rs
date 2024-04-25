@@ -409,7 +409,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                     drop(data);
 
                     if socket_l.connections_per_address.lock().unwrap().count_connections() >= this_clone.max_inbound_connections {
-                        this_clone.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
+                        this_clone.stats.inc_dir (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
                         debug!("Max_inbound_connections reached, unable to open new connection");
 
                         this_clone.on_connection_requeue_delayed (callback);
@@ -418,7 +418,7 @@ impl TcpListenerExt for Arc<TcpListener> {
 
                     if this_clone.limit_reached_for_incoming_ip_connections (&connection_clone) {
                         let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
-                        this_clone.stats.inc (StatType::Tcp, DetailType::TcpMaxPerIp, Direction::In);
+                        this_clone.stats.inc_dir (StatType::Tcp, DetailType::TcpMaxPerIp, Direction::In);
                         debug!("Max connections per IP (max_peers_per_ip) was reached for {}, unable to open new connection", remote_ip_address);
                         this_clone.on_connection_requeue_delayed (callback);
                         return;
@@ -427,7 +427,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                     if this_clone.limit_reached_for_incoming_subnetwork_connections (&connection_clone) {
                         let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
                         let remote_subnet = first_ipv6_subnet_address(&remote_ip_address, this_clone.network_params.network.max_peers_per_subnetwork as u8);
-                        this_clone.stats.inc(StatType::Tcp, DetailType::TcpMaxPerSubnetwork, Direction::In);
+                        this_clone.stats.inc_dir(StatType::Tcp, DetailType::TcpMaxPerSubnetwork, Direction::In);
                         debug!("Max connections per subnetwork (max_peers_per_subnetwork) was reached for subnetwork {} (remote IP: {}), unable to open new connection",
                             remote_subnet, remote_ip_address);
                         this_clone.on_connection_requeue_delayed (callback);
@@ -438,7 +438,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                     				// an IO operation immediately, which will start a timer.
                     				connection_clone.start ();
                     				connection_clone.set_timeout (Duration::from_secs(this_clone.network_params.network.idle_timeout_s as u64));
-                    				this_clone.stats.inc (StatType::Tcp, DetailType::TcpAcceptSuccess, Direction::In);
+                    				this_clone.stats.inc_dir (StatType::Tcp, DetailType::TcpAcceptSuccess, Direction::In);
                                     socket_l.connections_per_address.lock().unwrap().insert(&connection_clone);
                                     this_clone.socket_observer.socket_accepted(Arc::clone(&connection_clone));
                     				if callback (connection_clone, ec)
@@ -451,7 +451,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                    			}
 
                     			// accept error
-                    			this_clone.stats.inc (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
+                    			this_clone.stats.inc_dir (StatType::Tcp, DetailType::TcpAcceptFailure, Direction::In);
                     			error!("Unable to accept connection: ({:?})", ec);
 
                     			if is_temporary_error (ec)
@@ -522,7 +522,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             server.start();
         } else {
             self.stats
-                .inc(StatType::Tcp, DetailType::TcpExcluded, Direction::In);
+                .inc_dir(StatType::Tcp, DetailType::TcpExcluded, Direction::In);
             debug!("Rejected connection from excluded peer {}", remote);
         }
     }

@@ -560,7 +560,11 @@ impl Stats {
         }
     }
 
-    pub fn inc(&self, stat_type: StatType, detail: DetailType, dir: Direction) {
+    pub fn inc(&self, stat_type: StatType, detail: DetailType) {
+        self.add(stat_type, detail, Direction::In, 1, false)
+    }
+
+    pub fn inc_dir(&self, stat_type: StatType, detail: DetailType, dir: Direction) {
         self.add(stat_type, detail, dir, 1, false)
     }
 

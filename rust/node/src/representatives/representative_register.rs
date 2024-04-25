@@ -153,7 +153,7 @@ impl RepresentativeRegister {
                 rep.channel.remote_endpoint()
             );
             self.stats
-                .inc(StatType::RepCrawler, DetailType::ChannelDead, Direction::In);
+                .inc_dir(StatType::RepCrawler, DetailType::ChannelDead, Direction::In);
         }
     }
 

@@ -168,7 +168,7 @@ impl ChannelTcpExt for Arc<ChannelTcp> {
                                 }
                             }
                             if ec == ErrorCode::host_unreachable() {
-                                stats.inc(
+                                stats.inc_dir(
                                     StatType::Error,
                                     DetailType::UnreachableHost,
                                     Direction::Out,
@@ -183,14 +183,14 @@ impl ChannelTcpExt for Arc<ChannelTcp> {
                 );
             } else {
                 if policy == BufferDropPolicy::NoSocketDrop {
-                    self.stats.inc(
+                    self.stats.inc_dir(
                         StatType::Tcp,
                         DetailType::TcpWriteNoSocketDrop,
                         Direction::Out,
                     )
                 } else {
                     self.stats
-                        .inc(StatType::Tcp, DetailType::TcpWriteDrop, Direction::Out);
+                        .inc_dir(StatType::Tcp, DetailType::TcpWriteDrop, Direction::Out);
                 }
                 if let Some(callback_a) = callback {
                     callback_a(ErrorCode::no_buffer_space(), 0);
@@ -284,11 +284,12 @@ impl Channel for Arc<ChannelTcp> {
         if !is_droppable_by_limiter || should_pass {
             self.send_buffer(&buffer, callback, drop_policy, traffic_type);
             self.stats
-                .inc(StatType::Message, message.into(), Direction::Out);
+                .inc_dir(StatType::Message, message.into(), Direction::Out);
             trace!(channel_id = self.channel_id, message = ?message, "Message sent");
         } else {
             let detail_type = message.into();
-            self.stats.inc(StatType::Drop, detail_type, Direction::Out);
+            self.stats
+                .inc_dir(StatType::Drop, detail_type, Direction::Out);
             trace!(channel_id = self.channel_id, message = ?message, "Message dropped");
 
             if let Some(callback) = callback {

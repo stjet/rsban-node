@@ -121,15 +121,13 @@ impl VoteCache {
             }
 
             let cache_entry_exists = self.cache.modify_by_hash(hash, |existing| {
-                self.stats
-                    .inc(StatType::VoteCache, DetailType::Update, Direction::In);
+                self.stats.inc(StatType::VoteCache, DetailType::Update);
 
                 existing.vote(vote, rep_weight, self.config.max_voters);
             });
 
             if !cache_entry_exists {
-                self.stats
-                    .inc(StatType::VoteCache, DetailType::Insert, Direction::In);
+                self.stats.inc(StatType::VoteCache, DetailType::Insert);
                 let id = self.next_id;
                 self.next_id += 1;
                 let mut cache_entry = CacheEntry::new(id, *hash);
@@ -176,8 +174,7 @@ impl VoteCache {
     /// below this will be ignore
     pub fn top(&mut self, min_tally: impl Into<Amount>) -> Vec<TopEntry> {
         let min_tally = min_tally.into();
-        self.stats
-            .inc(StatType::VoteCache, DetailType::Top, Direction::In);
+        self.stats.inc(StatType::VoteCache, DetailType::Top);
         if self.last_cleanup.elapsed() >= self.config.age_cutoff / 2 {
             self.cleanup();
             self.last_cleanup = Instant::now();
@@ -209,8 +206,7 @@ impl VoteCache {
     }
 
     fn cleanup(&mut self) {
-        self.stats
-            .inc(StatType::VoteCache, DetailType::Cleanup, Direction::In);
+        self.stats.inc(StatType::VoteCache, DetailType::Cleanup);
         let to_delete: Vec<_> = self
             .cache
             .iter()

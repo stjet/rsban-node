@@ -123,8 +123,7 @@ impl VoteProcessor {
             (self.vote_processed)(vote, channel, result);
         }
 
-        self.stats
-            .inc(StatType::Vote, DetailType::VoteProcessed, Direction::In);
+        self.stats.inc(StatType::Vote, DetailType::VoteProcessed);
         trace!(?vote, ?result, "vote processed");
 
         result

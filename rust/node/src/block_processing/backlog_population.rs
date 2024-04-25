@@ -143,9 +143,7 @@ impl BacklogPopulationThread {
         let mut lock = self.mutex.lock().unwrap();
         while !lock.stopped {
             if self.predicate(&lock) {
-                let _ = self
-                    .stats
-                    .inc(StatType::Backlog, DetailType::Loop, Direction::In);
+                self.stats.inc(StatType::Backlog, DetailType::Loop);
 
                 lock.triggered = false;
                 drop(lock);
@@ -185,9 +183,7 @@ impl BacklogPopulationThread {
                     }
                     transaction.refresh_if_needed(Duration::from_millis(500));
 
-                    let _ = self
-                        .stats
-                        .inc(StatType::Backlog, DetailType::Total, Direction::In);
+                    self.stats.inc(StatType::Backlog, DetailType::Total);
 
                     self.activate(&transaction, account);
                     next = (account.number().overflowing_add(U256::from(1)).0).into();
@@ -237,10 +233,7 @@ impl BacklogPopulationThread {
 
         // If conf info is empty then it means then it means nothing is confirmed yet
         if conf_info.height < account_info.block_count {
-            let _ = self
-                .stats
-                .inc(StatType::Backlog, DetailType::Activated, Direction::In);
-
+            self.stats.inc(StatType::Backlog, DetailType::Activated);
             let callback_lock = self.activate_callback.lock().unwrap();
             match callback_lock.deref() {
                 Some(callback) => callback(txn, account, &account_info, &conf_info),

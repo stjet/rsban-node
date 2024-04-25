@@ -339,7 +339,7 @@ impl TcpChannels {
         }
         if result {
             self.stats
-                .inc(StatType::Tcp, DetailType::TcpMaxPerIp, Direction::Out);
+                .inc_dir(StatType::Tcp, DetailType::TcpMaxPerIp, Direction::Out);
         }
         result
     }
@@ -351,7 +351,7 @@ impl TcpChannels {
     ) -> bool {
         // Prevent connection with ourselves
         if response.node_id == self.node_id.public_key() {
-            self.stats.inc(
+            self.stats.inc_dir(
                 StatType::Handshake,
                 DetailType::InvalidNodeId,
                 Direction::In,
@@ -362,7 +362,7 @@ impl TcpChannels {
         // Prevent mismatched genesis
         if let Some(v2) = &response.v2 {
             if v2.genesis != self.network.ledger.genesis.hash() {
-                self.stats.inc(
+                self.stats.inc_dir(
                     StatType::Handshake,
                     DetailType::InvalidGenesis,
                     Direction::In,
@@ -372,7 +372,7 @@ impl TcpChannels {
         }
 
         let Some(cookie) = self.syn_cookies.cookie(&remote_endpoint) else {
-            self.stats.inc(
+            self.stats.inc_dir(
                 StatType::Handshake,
                 DetailType::MissingCookie,
                 Direction::In,
@@ -381,7 +381,7 @@ impl TcpChannels {
         };
 
         if response.validate(&cookie).is_err() {
-            self.stats.inc(
+            self.stats.inc_dir(
                 StatType::Handshake,
                 DetailType::InvalidSignature,
                 Direction::In,
@@ -390,7 +390,7 @@ impl TcpChannels {
         }
 
         self.stats
-            .inc(StatType::Handshake, DetailType::Ok, Direction::In);
+            .inc_dir(StatType::Handshake, DetailType::Ok, Direction::In);
         true
     }
 
@@ -430,7 +430,7 @@ impl TcpChannels {
                 >= self.network.network.max_peers_per_subnetwork;
 
         if is_max {
-            self.stats.inc(
+            self.stats.inc_dir(
                 StatType::Tcp,
                 DetailType::TcpMaxPerSubnetwork,
                 Direction::Out,
@@ -621,7 +621,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         debug_assert!(
                             message.message.message_type() == MessageType::NodeIdHandshake
                         );
-                        self.stats.inc(
+                        self.stats.inc_dir(
                             StatType::Message,
                             DetailType::NodeIdHandshake,
                             Direction::In,
@@ -698,7 +698,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                     cleanup_node_id_handshake_socket();
                     return;
                 }
-                this_l.stats.inc(
+                this_l.stats.inc_dir(
                     StatType::Message,
                     DetailType::NodeIdHandshake,
                     Direction::In,
@@ -720,13 +720,13 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 {
                     // error handling, either the networks bytes or the version is wrong
                     if message.protocol.network == this_l.network.network.current_network {
-                        this_l.stats.inc(
+                        this_l.stats.inc_dir(
                             StatType::Message,
                             DetailType::InvalidNetwork,
                             Direction::In,
                         );
                     } else {
-                        this_l.stats.inc(
+                        this_l.stats.inc_dir(
                             StatType::Message,
                             DetailType::OutdatedVersion,
                             Direction::In,
@@ -834,17 +834,17 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                 let result = deserializer.read().await;
                 spawn_blocking(Box::new(move || {
                     match &result {
-                        Ok(payload) => stats.inc(
+                        Ok(payload) => stats.inc_dir(
                             StatType::Message,
                             payload.message.message_type().into(),
                             Direction::In,
                         ),
-                        Err(ParseMessageError::InsufficientWork) => stats.inc(
+                        Err(ParseMessageError::InsufficientWork) => stats.inc_dir(
                             StatType::Filter,
                             DetailType::DuplicatePublishMessage,
                             Direction::In,
                         ),
-                        Err(e) => stats.inc(StatType::Error, (*e).into(), Direction::In),
+                        Err(e) => stats.inc_dir(StatType::Error, (*e).into(), Direction::In),
                     }
 
                     match result {

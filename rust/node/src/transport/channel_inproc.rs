@@ -141,7 +141,7 @@ impl ChannelInProc {
 
             // process message
             {
-                stats.inc(
+                stats.inc_dir(
                     StatType::Message,
                     msg.message.message_type().into(),
                     Direction::In,
@@ -303,7 +303,8 @@ impl Channel for ChannelInProc {
 
         if !is_droppable_by_limiter || should_pass {
             self.send_buffer_2(&buffer, callback, drop_policy, traffic_type);
-            self.stats.inc(StatType::Message, detail, Direction::Out);
+            self.stats
+                .inc_dir(StatType::Message, detail, Direction::Out);
         } else {
             if let Some(cb) = callback {
                 if let Some(async_rt) = self.async_rt.upgrade() {
@@ -313,7 +314,7 @@ impl Channel for ChannelInProc {
                 }
             }
 
-            self.stats.inc(StatType::Drop, detail, Direction::Out);
+            self.stats.inc_dir(StatType::Drop, detail, Direction::Out);
         }
     }
 

@@ -1,4 +1,4 @@
-use rsnano_node::config::{AccountSetsConfig, BootstrapAscendingConfig};
+use rsnano_node::{bootstrap::AccountSetsConfig, config::BootstrapAscendingConfig};
 use std::time::Duration;
 
 #[repr(C)]

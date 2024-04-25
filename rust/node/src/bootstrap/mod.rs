@@ -1,3 +1,4 @@
+mod ascending;
 mod bootstrap_attempt;
 mod bootstrap_attempts;
 mod bootstrap_client;
@@ -19,6 +20,7 @@ mod pulls_cache;
 
 use std::sync::Arc;
 
+pub use ascending::*;
 pub use bootstrap_attempt::*;
 pub use bootstrap_connections::*;
 pub use bootstrap_initiator::*;

@@ -1128,6 +1128,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
+name = "ordered-float"
+version = "4.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a76df7075c7d4d01fdcb46c912dd17fba5b60c78ea480b475f2b6ab6f666584e"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "os_pipe"
 version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1491,6 +1500,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "once_cell",
+ "ordered-float",
  "primitive-types",
  "rand",
  "rsnano_core",

@@ -5,8 +5,6 @@
 
 #include <boost/system/error_code.hpp>
 
-#include <random>
-
 std::filesystem::path nano::working_path (nano::networks network)
 {
 	uint8_t buffer[256];
@@ -32,17 +30,4 @@ std::filesystem::path nano::unique_path (nano::networks network)
 void nano::remove_temporary_directories ()
 {
 	rsnano::rsn_remove_temporary_directories ();
-}
-
-namespace nano
-{
-/** A wrapper for handling signals */
-std::function<void ()> signal_handler_impl;
-void signal_handler (int sig)
-{
-	if (signal_handler_impl != nullptr)
-	{
-		signal_handler_impl ();
-	}
-}
 }

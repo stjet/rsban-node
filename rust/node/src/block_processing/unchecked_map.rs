@@ -1,4 +1,4 @@
-use crate::stats::{DetailType, Direction, StatType, Stats};
+use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{BlockHash, HashOrAccount, UncheckedInfo, UncheckedKey};
 use std::{
     cmp::Ordering,
@@ -36,16 +36,8 @@ impl UncheckedMap {
             back_buffer: Mutex::new(VecDeque::new()),
         });
 
-        let thread_clone = thread.clone();
-        let join_handle = std::thread::Builder::new()
-            .name("Unchecked".to_string())
-            .spawn(move || {
-                thread_clone.run();
-            })
-            .unwrap();
-
         Self {
-            join_handle: Mutex::new(Some(join_handle)),
+            join_handle: Mutex::new(None),
             thread,
             mutable,
             condition,
@@ -54,14 +46,22 @@ impl UncheckedMap {
         }
     }
 
+    pub fn start(&self) {
+        debug_assert!(self.join_handle.lock().unwrap().is_none());
+        let thread_clone = Arc::clone(&self.thread);
+        *self.join_handle.lock().unwrap() = Some(
+            std::thread::Builder::new()
+                .name("Unchecked".to_string())
+                .spawn(move || {
+                    thread_clone.run();
+                })
+                .unwrap(),
+        );
+    }
+
     pub fn stop(&self) {
-        {
-            let mut lock = self.mutable.lock().unwrap();
-            if !lock.stopped {
-                lock.stopped = true;
-                self.condition.notify_all();
-            }
-        }
+        self.mutable.lock().unwrap().stopped = true;
+        self.condition.notify_all();
         if let Some(handle) = self.join_handle.lock().unwrap().take() {
             handle.join().unwrap();
         }
@@ -171,6 +171,7 @@ impl Default for UncheckedMap {
 
 impl Drop for UncheckedMap {
     fn drop(&mut self) {
+        debug_assert!(self.join_handle.lock().unwrap().is_none());
         self.stop()
     }
 }
@@ -219,7 +220,6 @@ impl UncheckedMapThread {
                 lock.writing_back_buffer = false;
                 back_buffer_lock.clear();
             } else {
-                self.condition.notify_all();
                 lock = self
                     .condition
                     .wait_while(lock, |other_lock| {

@@ -74,6 +74,11 @@ pub unsafe extern "C" fn rsn_unchecked_map_trigger(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_unchecked_map_start(handle: *mut UncheckedMapHandle) {
+    (*handle).0.start();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_unchecked_map_stop(handle: *mut UncheckedMapHandle) {
     (*handle).0.stop();
 }

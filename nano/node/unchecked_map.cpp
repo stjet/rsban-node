@@ -48,6 +48,16 @@ nano::unchecked_map::~unchecked_map ()
 	rsnano::rsn_unchecked_map_destroy (handle);
 }
 
+void nano::unchecked_map::start ()
+{
+	rsnano::rsn_unchecked_map_start (handle);
+}
+
+void nano::unchecked_map::stop ()
+{
+	rsnano::rsn_unchecked_map_stop (handle);
+}
+
 void nano::unchecked_map::put (nano::hash_or_account const & dependency, nano::unchecked_info const & info)
 {
 	rsnano::rsn_unchecked_map_put (handle, dependency.bytes.data (), info.handle);
@@ -107,11 +117,6 @@ std::size_t nano::unchecked_map::count () const
 std::size_t nano::unchecked_map::buffer_count () const
 {
 	return rsnano::rsn_unchecked_map_buffer_count (handle);
-}
-
-void nano::unchecked_map::stop ()
-{
-	rsnano::rsn_unchecked_map_stop (handle);
 }
 
 void nano::unchecked_map::trigger (nano::hash_or_account const & dependency)

@@ -1,7 +1,7 @@
 #include <nano/lib/logging.hpp>
 #include <nano/node/common.hpp>
-#include <nano/secure/utility.hpp>
 #include <nano/node/rsnano_callbacks.hpp>
+#include <nano/secure/utility.hpp>
 
 #include <gtest/gtest.h>
 

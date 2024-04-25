@@ -23,6 +23,9 @@ public:
 	unchecked_map (unsigned const max_unchecked_blocks, nano::stats &, bool do_delete);
 	~unchecked_map ();
 
+	void start ();
+	void stop ();
+
 	void put (nano::hash_or_account const & dependency, nano::unchecked_info const & info);
 	void for_each (
 	std::function<void (nano::unchecked_key const &, nano::unchecked_info const &)> action, std::function<bool ()> predicate = [] () { return true; });
@@ -34,7 +37,6 @@ public:
 	void clear ();
 	std::size_t count () const;
 	std::size_t buffer_count () const;
-	void stop ();
 
 	/**
 	 * Trigger requested dependencies

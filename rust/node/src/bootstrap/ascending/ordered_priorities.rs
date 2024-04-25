@@ -3,6 +3,7 @@ use rand::{thread_rng, RngCore};
 use rsnano_core::Account;
 use std::{collections::BTreeMap, time::Instant};
 
+#[derive(Clone, Default)]
 pub(crate) struct PriorityEntry {
     pub account: Account,
     pub priority: OrderedFloat<f32>,
@@ -32,6 +33,20 @@ pub(crate) struct OrderedPriorities {
 }
 
 impl OrderedPriorities {
+    pub fn len(&self) -> usize {
+        self.sequenced.len()
+    }
+
+    pub fn get(&self, account: &Account) -> Option<&PriorityEntry> {
+        self.by_account
+            .get(account)
+            .and_then(|id| self.by_id.get(id))
+    }
+
+    pub fn contains(&self, account: &Account) -> bool {
+        self.by_account.contains_key(account)
+    }
+
     pub fn insert(&mut self, entry: PriorityEntry) -> bool {
         let id = entry.id;
         let account = entry.account;
@@ -48,19 +63,46 @@ impl OrderedPriorities {
         true
     }
 
+    pub fn pop_lowest_priority(&mut self) -> Option<PriorityEntry> {
+        if let Some(mut entry) = self.by_priority.first_entry() {
+            let ids = entry.get_mut();
+            let id = ids[0];
+            if ids.len() == 1 {
+                entry.remove();
+            } else {
+                ids.pop();
+            }
+            let entry = self.by_id.remove(&id).unwrap();
+            self.sequenced.retain(|i| *i != entry.id);
+            self.by_account.remove(&entry.account);
+            Some(entry)
+        } else {
+            None
+        }
+    }
+
+    pub fn change_timestamp(&mut self, account: &Account, timestamp: Option<Instant>) {
+        if let Some(id) = self.by_account.get(account) {
+            self.by_id.get_mut(id).unwrap().timestamp = timestamp;
+        }
+    }
+
     pub fn change_priority(
         &mut self,
         account: &Account,
-        mut f: impl FnMut(OrderedFloat<f32>) -> OrderedFloat<f32>,
+        mut f: impl FnMut(OrderedFloat<f32>) -> Option<OrderedFloat<f32>>,
     ) -> bool {
-        if let Some(id) = self.by_account.get(account) {
-            if let Some(entry) = self.by_id.get_mut(id) {
+        if let Some(&id) = self.by_account.get(account) {
+            if let Some(entry) = self.by_id.get_mut(&id) {
                 let old_prio = entry.priority;
-                entry.priority = f(entry.priority);
-                let new_prio = entry.priority;
-                if new_prio != old_prio {
-                    let id = entry.id;
-                    self.change_priority_internal(id, old_prio, new_prio)
+                if let Some(new_prio) = f(entry.priority) {
+                    entry.priority = new_prio;
+                    if new_prio != old_prio {
+                        let id = entry.id;
+                        self.change_priority_internal(id, old_prio, new_prio)
+                    }
+                } else {
+                    self.remove_id(id);
                 }
                 return true;
             }
@@ -82,5 +124,32 @@ impl OrderedPriorities {
             }
         }
         self.by_priority.entry(new_prio).or_default().push(id);
+    }
+
+    pub fn remove(&mut self, account: &Account) -> Option<PriorityEntry> {
+        if let Some(id) = self.by_account.remove(account) {
+            let entry = self.by_id.remove(&id).unwrap();
+            self.sequenced.retain(|i| *i != id);
+            self.remove_priority(id, entry.priority);
+            Some(entry)
+        } else {
+            None
+        }
+    }
+
+    fn remove_id(&mut self, id: u64) {
+        let entry = self.by_id.remove(&id).unwrap();
+        self.by_account.remove(&entry.account);
+        self.sequenced.retain(|i| *i != id);
+        self.remove_priority(id, entry.priority);
+    }
+
+    fn remove_priority(&mut self, id: u64, priority: OrderedFloat<f32>) {
+        let ids = self.by_priority.get_mut(&priority).unwrap();
+        if ids.len() > 1 {
+            ids.retain(|i| *i != id);
+        } else {
+            self.by_priority.remove(&priority);
+        }
     }
 }

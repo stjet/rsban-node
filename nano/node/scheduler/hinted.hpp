@@ -5,17 +5,7 @@
 #include <nano/secure/common.hpp>
 #include <nano/store/transaction.hpp>
 
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index_container.hpp>
-
-#include <atomic>
 #include <chrono>
-#include <condition_variable>
-#include <thread>
-#include <unordered_map>
-
-namespace mi = boost::multi_index;
 
 namespace nano
 {
@@ -54,6 +44,7 @@ class hinted final
 {
 public:
 	hinted (hinted_config const &, nano::node &, nano::vote_cache &, nano::active_transactions &, nano::online_reps &, nano::stats &);
+	hinted (hinted const &) = delete;
 	~hinted ();
 
 	void start ();
@@ -65,55 +56,6 @@ public:
 	void notify ();
 
 	std::unique_ptr<container_info_component> collect_container_info (std::string const & name) const;
-
-private:
-	bool predicate () const;
-	void run ();
-	void run_iterative ();
-	void activate (nano::store::read_transaction const &, nano::block_hash const & hash, bool check_dependents);
-
-	nano::uint128_t tally_threshold () const;
-	nano::uint128_t final_tally_threshold () const;
-
-private: // Dependencies
-	nano::node & node;
-	nano::vote_cache & vote_cache;
-	nano::active_transactions & active;
-	nano::online_reps & online_reps;
-	nano::stats & stats;
-
-private:
-	hinted_config const & config;
-
-	std::atomic<bool> stopped{ false };
-	nano::condition_variable condition;
-	mutable nano::mutex mutex;
-	std::thread thread;
-
-private:
-	bool cooldown (nano::block_hash const & hash);
-
-	struct cooldown_entry
-	{
-		nano::block_hash hash;
-		std::chrono::steady_clock::time_point timeout;
-	};
-
-	// clang-format off
-	class tag_hash {};
-	class tag_timeout {};
-	// clang-format on
-
-	// clang-format off
-	using ordered_cooldowns = boost::multi_index_container<cooldown_entry,
-	mi::indexed_by<
-		mi::hashed_unique<mi::tag<tag_hash>,
-			mi::member<cooldown_entry, nano::block_hash, &cooldown_entry::hash>>,
-		mi::ordered_non_unique<mi::tag<tag_timeout>,
-			mi::member<cooldown_entry, std::chrono::steady_clock::time_point, &cooldown_entry::timeout>>
-	>>;
-	// clang-format on
-
-	ordered_cooldowns cooldowns_m;
+	rsnano::HintedSchedulerHandle * handle;
 };
 }

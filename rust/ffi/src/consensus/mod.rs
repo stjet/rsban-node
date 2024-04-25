@@ -2,6 +2,7 @@ mod active_transactions;
 mod confirmation_solicitor;
 mod election;
 mod election_status;
+mod hinted_scheduler;
 mod local_vote_history;
 mod manual_scheduler;
 mod priority_scheduler;

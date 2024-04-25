@@ -173,6 +173,14 @@ impl std::ops::Div<u128> for Amount {
     }
 }
 
+impl std::ops::Mul<u128> for Amount {
+    type Output = Self;
+
+    fn mul(self, rhs: u128) -> Self::Output {
+        Amount::raw(self.number() * rhs)
+    }
+}
+
 impl std::cmp::PartialOrd for Amount {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.raw.partial_cmp(&other.raw)

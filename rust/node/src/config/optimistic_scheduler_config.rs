@@ -1,13 +1,12 @@
-use std::time::Duration;
-
 use rsnano_core::utils::TomlWriter;
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct OptimisticSchedulerConfig {
     pub enabled: bool,
 
     /// Minimum difference between confirmation frontier and account frontier to become a candidate for optimistic confirmation
-    pub gap_threshold: usize,
+    pub gap_threshold: u64,
 
     /// Maximum number of candidates stored in memory
     pub max_size: usize,
@@ -28,7 +27,7 @@ impl OptimisticSchedulerConfig {
             self.enabled,
             "Enable or disable optimistic elections\ntype:bool",
         )?;
-        toml.put_usize ("gap_threshold", self.gap_threshold, "Minimum difference between confirmation frontier and account frontier to become a candidate for optimistic confirmation\ntype:uint64")?;
+        toml.put_u64 ("gap_threshold", self.gap_threshold, "Minimum difference between confirmation frontier and account frontier to become a candidate for optimistic confirmation\ntype:uint64")?;
         toml.put_usize(
             "max_size",
             self.max_size,

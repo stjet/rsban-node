@@ -1,11 +1,10 @@
-use std::time::Duration;
-
 use rsnano_node::config::{HintedSchedulerConfig, OptimisticSchedulerConfig};
+use std::time::Duration;
 
 #[repr(C)]
 pub struct OptimisticSchedulerConfigDto {
     pub enabled: bool,
-    pub gap_threshold: usize,
+    pub gap_threshold: u64,
     pub max_size: usize,
 }
 

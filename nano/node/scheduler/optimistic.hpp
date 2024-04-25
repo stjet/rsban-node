@@ -8,19 +8,7 @@
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
 
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-#include <boost/multi_index_container.hpp>
-
-#include <condition_variable>
 #include <memory>
-#include <queue>
-#include <thread>
-#include <vector>
-
-namespace mi = boost::multi_index;
 
 namespace nano
 {
@@ -56,6 +44,7 @@ class optimistic final
 
 public:
 	optimistic (optimistic_config const &, nano::node &, nano::ledger &, nano::active_transactions &, nano::network_constants const & network_constants, nano::stats &);
+	optimistic (optimistic const &) = delete;
 	~optimistic ();
 
 	void start ();
@@ -72,47 +61,6 @@ public:
 	void notify ();
 
 	std::unique_ptr<container_info_component> collect_container_info (std::string const & name) const;
-
-private:
-	bool activate_predicate (nano::account_info const &, nano::confirmation_height_info const &) const;
-
-	bool predicate () const;
-	void run ();
-	void run_one (store::transaction const &, entry const & candidate);
-
-private: // Dependencies
-	optimistic_config const & config;
-	nano::node & node;
-	nano::ledger & ledger;
-	nano::active_transactions & active;
-	nano::network_constants const & network_constants;
-	nano::stats & stats;
-
-private:
-	struct entry
-	{
-		nano::account account;
-		nano::clock::time_point timestamp;
-	};
-
-	// clang-format off
-	class tag_sequenced {};
-	class tag_account {};
-
-	using ordered_candidates = boost::multi_index_container<entry,
-	mi::indexed_by<
-		mi::sequenced<mi::tag<tag_sequenced>>,
-		mi::hashed_unique<mi::tag<tag_account>,
-			mi::member<entry, nano::account, &entry::account>>
-	>>;
-	// clang-format on
-
-	/** Accounts eligible for optimistic scheduling */
-	ordered_candidates candidates;
-
-	bool stopped{ false };
-	nano::condition_variable condition;
-	mutable nano::mutex mutex;
-	std::thread thread;
+	rsnano::OptimisticSchedulerHandle * handle;
 };
 }

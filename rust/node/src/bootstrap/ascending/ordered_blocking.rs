@@ -1,7 +1,10 @@
 use super::ordered_priorities::PriorityEntry;
 use ordered_float::OrderedFloat;
 use rsnano_core::{Account, BlockHash};
-use std::collections::{BTreeMap, VecDeque};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    mem::size_of,
+};
 
 pub(crate) struct BlockingEntry {
     pub account: Account,
@@ -25,6 +28,9 @@ pub(crate) struct OrderedBlocking {
 }
 
 impl OrderedBlocking {
+    pub const ELEMENT_SIZE: usize =
+        size_of::<BlockingEntry>() + size_of::<Account>() * 3 + size_of::<f32>();
+
     pub fn len(&self) -> usize {
         self.sequenced.len()
     }
@@ -50,7 +56,7 @@ impl OrderedBlocking {
         self.by_account.get(account)
     }
 
-    pub fn remove(&self, account: &Account) {
+    pub fn remove(&mut self, account: &Account) {
         if let Some(entry) = self.by_account.remove(account) {
             self.sequenced.retain(|i| i != account);
             let accounts = self.by_priority.get_mut(&entry.priority()).unwrap();

@@ -173,9 +173,8 @@ impl<T> SharedState<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn empty_queue() {
@@ -201,7 +200,7 @@ mod tests {
 
     #[test]
     fn max_queue_size() {
-        let mut fixture = create_fixture();
+        let fixture = create_fixture();
         fixture.queue.stop();
         for _ in 0..2 * MAX_TEST_QUEUE_LEN {
             fixture.queue.add(1);
@@ -218,10 +217,11 @@ mod tests {
     impl TestFixture {
         fn wait_until_process_count_is(&self, expected: usize) {
             let guard = self.processed.lock().unwrap();
-            let _ = self
+            let (guard, result) = self
                 .condition
                 .wait_timeout_while(guard, Duration::from_secs(5), |count| *count == expected)
                 .unwrap();
+            assert_eq!(result.timed_out(), false, "timeout! count was {}", *guard);
         }
     }
 
@@ -233,7 +233,7 @@ mod tests {
         let processed_clone = Arc::clone(&processed);
         let condition_clone = Arc::clone(&condition);
 
-        let mut queue = ProcessingQueue::new(
+        let queue = ProcessingQueue::new(
             Arc::new(Stats::new(Default::default())),
             StatType::BootstrapServer,
             "processing test thread".to_string(),

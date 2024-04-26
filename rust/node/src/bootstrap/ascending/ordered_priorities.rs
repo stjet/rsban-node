@@ -1,6 +1,8 @@
 use ordered_float::OrderedFloat;
 use rand::{thread_rng, RngCore};
 use rsnano_core::Account;
+use std::mem::size_of;
+use std::ops::Bound;
 use std::{collections::BTreeMap, time::Instant};
 
 #[derive(Clone, Default)]
@@ -33,8 +35,15 @@ pub(crate) struct OrderedPriorities {
 }
 
 impl OrderedPriorities {
+    pub const ELEMENT_SIZE: usize =
+        size_of::<PriorityEntry>() + size_of::<Account>() + size_of::<f32>() + size_of::<u64>() * 4;
+
     pub fn len(&self) -> usize {
         self.sequenced.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.sequenced.is_empty()
     }
 
     pub fn get(&self, account: &Account) -> Option<&PriorityEntry> {
@@ -108,6 +117,20 @@ impl OrderedPriorities {
             }
         }
         false
+    }
+
+    pub fn wrapping_lower_bound(&self, value: u64) -> Option<&PriorityEntry> {
+        let result = self
+            .by_id
+            .range((Bound::Included(value), Bound::Unbounded))
+            .map(|(_, v)| v)
+            .next();
+
+        if result.is_none() {
+            self.by_id.first_key_value().map(|(_, v)| v)
+        } else {
+            result
+        }
     }
 
     fn change_priority_internal(

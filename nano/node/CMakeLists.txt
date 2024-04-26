@@ -44,15 +44,6 @@ add_library(
   bootstrap/bootstrap.cpp
   bootstrap/bootstrap_server.hpp
   bootstrap/bootstrap_server.cpp
-  bootstrap_ascending/common.hpp
-  bootstrap_ascending/throttle.hpp
-  bootstrap_ascending/throttle.cpp
-  bootstrap_ascending/account_sets.hpp
-  bootstrap_ascending/account_sets.cpp
-  bootstrap_ascending/iterators.hpp
-  bootstrap_ascending/iterators.cpp
-  bootstrap_ascending/peer_scoring.hpp
-  bootstrap_ascending/peer_scoring.cpp
   bootstrap_ascending/service.hpp
   bootstrap_ascending/service.cpp
   cli.hpp

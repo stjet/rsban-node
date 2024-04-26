@@ -178,7 +178,7 @@ public:
 	nano::scheduler::component & scheduler; // ported
 	nano::request_aggregator aggregator;
 	nano::backlog_population backlog; // ported
-	nano::bootstrap_ascending::service ascendboot;
+	nano::bootstrap_ascending::service ascendboot; // ported
 	nano::websocket_server websocket;
 	nano::epoch_upgrader epoch_upgrader;
 	nano::local_block_broadcaster local_block_broadcaster;

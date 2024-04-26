@@ -6,11 +6,6 @@
 #include <nano/lib/timer.hpp>
 #include <nano/node/bandwidth_limiter.hpp>
 #include <nano/node/bootstrap/bootstrap_config.hpp>
-#include <nano/node/bootstrap_ascending/account_sets.hpp>
-#include <nano/node/bootstrap_ascending/common.hpp>
-#include <nano/node/bootstrap_ascending/iterators.hpp>
-#include <nano/node/bootstrap_ascending/peer_scoring.hpp>
-#include <nano/node/bootstrap_ascending/throttle.hpp>
 
 namespace rsnano
 {

@@ -26,7 +26,10 @@ pub use account_sets_config::*;
 pub use bootstrap_ascending_config::*;
 use num::integer::sqrt;
 use rand::{thread_rng, RngCore};
-use rsnano_core::{Account, BlockEnum, HashOrAccount};
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent},
+    Account, BlockEnum, HashOrAccount,
+};
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{
     AscPullAck, AscPullAckType, AscPullReq, AscPullReqType, BlocksAckPayload, BlocksReqPayload,
@@ -336,37 +339,37 @@ impl BootstrapAscending {
             .inc(StatType::BootstrapAscending, DetailType::Reply);
 
         let result = self.verify(response, tag);
-        todo!();
-        //switch (result)
-        //{
-        //	case verify_result::ok:
-        //	{
-        //		stats.add (nano::stat::type::bootstrap_ascending, nano::stat::detail::blocks, nano::stat::dir::in, response.blocks.size ());
+        match result {
+            VerifyResult::Ok => {
+                self.stats.add(
+                    StatType::BootstrapAscending,
+                    DetailType::Blocks,
+                    Direction::In,
+                    response.blocks().len() as u64,
+                    false,
+                );
 
-        //		for (auto & block : response.blocks)
-        //		{
-        //			block_processor.add (block, nano::block_source::bootstrap);
-        //		}
-        //		nano::lock_guard<nano::mutex> lock{ mutex };
-        //		throttle.add (true);
-        //	}
-        //	break;
-        //	case verify_result::nothing_new:
-        //	{
-        //		stats.inc (nano::stat::type::bootstrap_ascending, nano::stat::detail::nothing_new);
+                for block in response.blocks() {
+                    self.block_processor
+                        .add(Arc::new(block.clone()), BlockSource::Bootstrap, None);
+                }
+                let mut guard = self.mutex.lock().unwrap();
+                guard.throttle.add(true);
+            }
+            VerifyResult::NothingNew => {
+                self.stats
+                    .inc(StatType::BootstrapAscending, DetailType::NothingNew);
 
-        //		nano::lock_guard<nano::mutex> lock{ mutex };
-        //		accounts.priority_down (tag.account);
-        //		throttle.add (false);
-        //	}
-        //	break;
-        //	case verify_result::invalid:
-        //	{
-        //		stats.inc (nano::stat::type::bootstrap_ascending, nano::stat::detail::invalid);
-        //		// TODO: Log
-        //	}
-        //	break;
-        //}
+                let mut guard = self.mutex.lock().unwrap();
+                guard.accounts.priority_down(&tag.account);
+                guard.throttle.add(false);
+            }
+            VerifyResult::Invalid => {
+                self.stats
+                    .inc(StatType::BootstrapAscending, DetailType::Invalid);
+                // TODO: Log
+            }
+        }
     }
 
     /// Verifies whether the received response is valid. Returns:
@@ -383,46 +386,36 @@ impl BootstrapAscending {
         }
 
         let first = blocks.first().unwrap();
-        todo!()
-        //switch (tag.type)
-        //{
-        //	case async_tag::query_type::blocks_by_hash:
-        //	{
-        //		if (first->hash () != tag.start.as_block_hash ())
-        //		{
-        //			// TODO: Stat & log
-        //			return verify_result::invalid;
-        //		}
-        //	}
-        //	break;
-        //	case async_tag::query_type::blocks_by_account:
-        //	{
-        //		// Open & state blocks always contain account field
-        //		if (first->account_field () != tag.start.as_account ())
-        //		{
-        //			// TODO: Stat & log
-        //			return verify_result::invalid;
-        //		}
-        //	}
-        //	break;
-        //	default:
-        //		return verify_result::invalid;
-        //}
+        match tag.query_type {
+            QueryType::BlocksByHash => {
+                if first.hash() != tag.start.into() {
+                    // TODO: Stat & log
+                    return VerifyResult::Invalid;
+                }
+            }
+            QueryType::BlocksByAccount => {
+                // Open & state blocks always contain account field
+                if first.account_field().unwrap() != tag.start.into() {
+                    // TODO: Stat & log
+                    return VerifyResult::Invalid;
+                }
+            }
+            QueryType::Invalid => {
+                return VerifyResult::Invalid;
+            }
+        }
 
-        //// Verify blocks make a valid chain
-        //nano::block_hash previous_hash = blocks.front ()->hash ();
-        //for (int n = 1; n < blocks.size (); ++n)
-        //{
-        //	auto & block = blocks[n];
-        //	if (block->previous () != previous_hash)
-        //	{
-        //		// TODO: Stat & log
-        //		return verify_result::invalid; // Blocks do not make a chain
-        //	}
-        //	previous_hash = block->hash ();
-        //}
+        // Verify blocks make a valid chain
+        let mut previous_hash = first.hash();
+        for block in &blocks[1..] {
+            if block.previous() != previous_hash {
+                // TODO: Stat & log
+                return VerifyResult::Invalid; // Blocks do not make a chain
+            }
+            previous_hash = block.hash();
+        }
 
-        //return verify_result::ok;
+        VerifyResult::Ok
     }
 
     fn track(&self, tag: AsyncTag) {
@@ -432,6 +425,31 @@ impl BootstrapAscending {
         let mut guard = self.mutex.lock().unwrap();
         debug_assert!(!guard.tags.contains(tag.id));
         guard.tags.insert(tag)
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        let guard = self.mutex.lock().unwrap();
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "tags".to_string(),
+                    count: guard.tags.len(),
+                    sizeof_element: OrderedTags::ELEMENT_SIZE,
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "throttle".to_string(),
+                    count: guard.throttle.len(),
+                    sizeof_element: 0,
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "throttle_success".to_string(),
+                    count: guard.throttle.successes(),
+                    sizeof_element: 0,
+                }),
+                guard.accounts.collect_container_info("accounts"),
+            ],
+        )
     }
 }
 

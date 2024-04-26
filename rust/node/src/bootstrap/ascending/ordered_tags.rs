@@ -1,6 +1,7 @@
 use rsnano_core::{Account, HashOrAccount};
 use std::{
     collections::{HashMap, VecDeque},
+    mem::size_of,
     time::Instant,
 };
 
@@ -30,6 +31,9 @@ pub(crate) struct OrderedTags {
 }
 
 impl OrderedTags {
+    pub const ELEMENT_SIZE: usize =
+        size_of::<AsyncTag>() + size_of::<Account>() + size_of::<u64>() * 3;
+
     pub(crate) fn len(&self) -> usize {
         self.sequenced.len()
     }

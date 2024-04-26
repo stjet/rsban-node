@@ -21,7 +21,7 @@ impl Throttle {
         self.successes == 0
     }
 
-    fn add(&mut self, sample: bool) {
+    pub fn add(&mut self, sample: bool) {
         self.pop();
         self.samples.push_back(sample);
         if sample {
@@ -42,11 +42,11 @@ impl Throttle {
         }
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.samples.len()
     }
 
-    fn successes(&self) -> usize {
+    pub fn successes(&self) -> usize {
         self.successes
     }
 

@@ -1,4 +1,3 @@
-mod bootstrap_config;
 mod daemon_config;
 mod diagnostics_config;
 mod network_constants;
@@ -12,7 +11,6 @@ mod websocket_config;
 
 use std::path::{Path, PathBuf};
 
-pub use bootstrap_config::BootstrapAscendingConfig;
 pub use daemon_config::*;
 pub use diagnostics_config::*;
 pub use network_constants::*;

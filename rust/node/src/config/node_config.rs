@@ -1,10 +1,9 @@
 use super::{
-    BootstrapAscendingConfig, DiagnosticsConfig, HintedSchedulerConfig, Networks,
-    OptimisticSchedulerConfig, WebsocketConfig,
+    DiagnosticsConfig, HintedSchedulerConfig, Networks, OptimisticSchedulerConfig, WebsocketConfig,
 };
 use crate::{
-    block_processing::BlockProcessorConfig, consensus::VoteCacheConfig, stats::StatsConfig,
-    IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
+    block_processing::BlockProcessorConfig, bootstrap::BootstrapAscendingConfig,
+    consensus::VoteCacheConfig, stats::StatsConfig, IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;

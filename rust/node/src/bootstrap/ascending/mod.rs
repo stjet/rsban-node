@@ -1,10 +1,13 @@
 mod account_sets;
 mod account_sets_config;
+mod bootstrap_ascending_config;
 mod ordered_blocking;
 mod ordered_priorities;
 mod ordered_tags;
+mod peer_scoring;
 
 pub use account_sets_config::*;
+pub use bootstrap_ascending_config::*;
 
 use rsnano_core::BlockEnum;
 use rsnano_ledger::{BlockStatus, Ledger};

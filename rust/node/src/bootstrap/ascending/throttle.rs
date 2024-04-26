@@ -17,7 +17,7 @@ impl Throttle {
         }
     }
 
-    fn throttled(&self) -> bool {
+    pub fn throttled(&self) -> bool {
         self.successes == 0
     }
 
@@ -32,7 +32,7 @@ impl Throttle {
     /// Resizes the number of samples tracked
     /// Drops the oldest samples if the size decreases
     /// Adds false samples if the size increases
-    fn resize(&mut self, size: usize) {
+    pub fn resize(&mut self, size: usize) {
         debug_assert!(size > 0);
         while self.samples.len() > size {
             self.pop();

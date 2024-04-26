@@ -24,7 +24,7 @@ impl PeerScoring {
         }
     }
 
-    fn received_message(&mut self, channel: &Arc<ChannelEnum>) {
+    pub fn received_message(&mut self, channel: &Arc<ChannelEnum>) {
         self.scoring.modify(channel.channel_id(), |i| {
             if i.outstanding > 1 {
                 i.outstanding -= 1;
@@ -33,7 +33,7 @@ impl PeerScoring {
         })
     }
 
-    fn channel(&mut self) -> Option<Arc<ChannelEnum>> {
+    pub fn channel(&mut self) -> Option<Arc<ChannelEnum>> {
         if let Some(channel) = self.get_next_channel() {
             self.scoring.modify(channel.channel_id(), |i| {
                 i.outstanding += 1;
@@ -58,16 +58,16 @@ impl PeerScoring {
         })
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.scoring.len()
     }
 
-    fn timeout(&mut self) {
+    pub fn timeout(&mut self) {
         self.scoring.retain(|i| i.is_alive());
         self.scoring.modify_all(|i| i.decay());
     }
 
-    fn sync(&mut self, channels: &[Arc<ChannelEnum>]) {
+    pub fn sync(&mut self, channels: &[Arc<ChannelEnum>]) {
         for channel in channels {
             if channel.network_version() >= self.network_constants.bootstrap_protocol_version_min {
                 if !self.scoring.contains(channel.channel_id()) {

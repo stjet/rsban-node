@@ -8,37 +8,56 @@ mod ordered_tags;
 mod peer_scoring;
 mod throttle;
 
+use self::{
+    account_sets::AccountSets,
+    iterator::BufferedIterator,
+    ordered_tags::{AsyncTag, OrderedTags},
+    peer_scoring::PeerScoring,
+    throttle::Throttle,
+};
+use crate::{
+    block_processing::{BlockProcessor, BlockSource},
+    bootstrap::ascending::ordered_tags::QueryType,
+    config::{NetworkConstants, NodeConfig},
+    stats::{DetailType, Direction, StatType, Stats},
+    transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, TcpChannels, TrafficType},
+};
 pub use account_sets_config::*;
 pub use bootstrap_ascending_config::*;
-
-use rsnano_core::BlockEnum;
+use num::integer::sqrt;
+use rand::{thread_rng, RngCore};
+use rsnano_core::{Account, BlockEnum, HashOrAccount};
 use rsnano_ledger::{BlockStatus, Ledger};
-use rsnano_messages::{AscPullReq, AscPullReqType, BlocksReqPayload, HashType, Message};
+use rsnano_messages::{
+    AscPullAck, AscPullAckType, AscPullReq, AscPullReqType, BlocksAckPayload, BlocksReqPayload,
+    HashType, Message,
+};
 use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{
-    sync::{Arc, Condvar, Mutex},
+    sync::{Arc, Condvar, Mutex, MutexGuard},
     thread::JoinHandle,
+    time::{Duration, Instant},
 };
 
-use crate::{
-    block_processing::BlockProcessor,
-    bootstrap::ascending::ordered_tags::QueryType,
-    config::NodeConfig,
-    stats::{DetailType, Direction, StatType, Stats},
-    transport::{BufferDropPolicy, ChannelEnum, TrafficType},
-};
-
-use self::ordered_tags::AsyncTag;
+enum VerifyResult {
+    Ok,
+    NothingNew,
+    Invalid,
+}
 
 pub struct BootstrapAscending {
     block_processor: Arc<BlockProcessor>,
     ledger: Arc<Ledger>,
     stats: Arc<Stats>,
+    channels: Arc<TcpChannels>,
     thread: Mutex<Option<JoinHandle<()>>>,
     timeout_thread: Mutex<Option<JoinHandle<()>>>,
     mutex: Mutex<BootstrapAscendingImpl>,
     condition: Condvar,
     config: NodeConfig,
+    /// Requests for accounts from database have much lower hitrate and could introduce strain on the network
+    /// A separate (lower) limiter ensures that we always reserve resources for querying accounts from priority queue
+    database_limiter: BandwidthLimiter,
 }
 
 impl BootstrapAscending {
@@ -46,17 +65,34 @@ impl BootstrapAscending {
         block_processor: Arc<BlockProcessor>,
         ledger: Arc<Ledger>,
         stats: Arc<Stats>,
+        channels: Arc<TcpChannels>,
         config: NodeConfig,
+        network_constants: NetworkConstants,
     ) -> Self {
         Self {
             block_processor,
-            ledger,
-            stats,
             thread: Mutex::new(None),
             timeout_thread: Mutex::new(None),
-            mutex: Mutex::new(BootstrapAscendingImpl { stopped: false }),
+            mutex: Mutex::new(BootstrapAscendingImpl {
+                stopped: false,
+                accounts: AccountSets::new(
+                    Arc::clone(&stats),
+                    config.bootstrap_ascending.account_sets.clone(),
+                ),
+                scoring: PeerScoring::new(network_constants, config.bootstrap_ascending.clone()),
+                iterator: BufferedIterator::new(Arc::clone(&ledger)),
+                tags: OrderedTags::default(),
+                throttle: Throttle::new(compute_throttle_size(&ledger, &config)),
+            }),
             condition: Condvar::new(),
+            database_limiter: BandwidthLimiter::new(
+                1.0,
+                config.bootstrap_ascending.database_requests_limit,
+            ),
             config,
+            stats,
+            channels,
+            ledger,
         }
     }
 
@@ -106,22 +142,296 @@ impl BootstrapAscending {
         );
     }
 
-    pub fn priority_size(&self) -> usize {
-        //TODO port more
-        todo!()
+    pub fn priority_len(&self) -> usize {
+        self.mutex.lock().unwrap().accounts.priority_len()
     }
 
-    /// Inspects a block that has been processed by the block processor
-    fn inspect(&self, _tx: &LmdbReadTransaction, _status: BlockStatus, _block: &Arc<BlockEnum>) {
-        todo!()
+    pub fn blocked_len(&self) -> usize {
+        self.mutex.lock().unwrap().accounts.blocked_len()
+    }
+
+    pub fn score_len(&self) -> usize {
+        self.mutex.lock().unwrap().scoring.len()
+    }
+
+    fn wait_blockprocessor(&self) {
+        let mut guard = self.mutex.lock().unwrap();
+        while !guard.stopped
+            && self.block_processor.queue_len(BlockSource::Bootstrap)
+                > self.config.bootstrap_ascending.block_wait_count
+        {
+            // Blockprocessor is relatively slow, sleeping here instead of using conditions
+            guard = self
+                .condition
+                .wait_timeout_while(guard, self.config.bootstrap_ascending.throttle_wait, |g| {
+                    !g.stopped
+                })
+                .unwrap()
+                .0;
+        }
+    }
+
+    fn wait_available_channel(&self) -> Option<Arc<ChannelEnum>> {
+        let mut guard = self.mutex.lock().unwrap();
+        while !guard.stopped {
+            let channel = guard.scoring.channel();
+            if channel.is_some() {
+                return channel;
+            }
+
+            guard = self
+                .condition
+                .wait_timeout_while(guard, self.config.bootstrap_ascending.throttle_wait, |g| {
+                    !g.stopped
+                })
+                .unwrap()
+                .0;
+        }
+
+        None
+    }
+
+    fn wait_available_account(&self) -> Account {
+        let mut guard = self.mutex.lock().unwrap();
+        while !guard.stopped {
+            let account = guard.available_account(&self.stats, &self.database_limiter);
+            if !account.is_zero() {
+                guard.accounts.timestamp(&account, false);
+                return account;
+            } else {
+                guard = self
+                    .condition
+                    .wait_timeout_while(guard, Duration::from_millis(100), |g| !g.stopped)
+                    .unwrap()
+                    .0
+            }
+        }
+
+        Account::zero()
+    }
+
+    fn request(&self, account: Account, channel: &Arc<ChannelEnum>) -> bool {
+        let info = {
+            let tx = self.ledger.read_txn();
+            self.ledger.store.account.get(&tx, &account)
+        };
+
+        // Check if the account picked has blocks, if it does, start the pull from the highest block
+        let (query_type, start) = match info {
+            Some(info) => (QueryType::BlocksByHash, HashOrAccount::from(info.head)),
+            None => (QueryType::BlocksByAccount, HashOrAccount::from(account)),
+        };
+
+        let tag = AsyncTag {
+            id: thread_rng().next_u64(),
+            account,
+            time: Instant::now(),
+            query_type,
+            start,
+        };
+
+        self.track(tag.clone());
+        self.send(channel, tag);
+        true // Request sent
+    }
+
+    fn run_one(&self) -> bool {
+        // Ensure there is enough space in blockprocessor for queuing new blocks
+        self.wait_blockprocessor();
+
+        // Waits for account either from priority queue or database
+        let account = self.wait_available_account();
+        if account.is_zero() {
+            return false;
+        }
+
+        // Waits for channel that is not full
+        let Some(channel) = self.wait_available_channel() else {
+            return false;
+        };
+
+        let success = self.request(account, &channel);
+        return success;
+    }
+
+    fn throttle_if_needed<'a>(
+        &'a self,
+        data: MutexGuard<'a, BootstrapAscendingImpl>,
+    ) -> MutexGuard<'a, BootstrapAscendingImpl> {
+        if !data.iterator.warmup() && data.throttle.throttled() {
+            self.stats
+                .inc(StatType::BootstrapAscending, DetailType::Throttled);
+            self.condition
+                .wait_timeout_while(data, self.config.bootstrap_ascending.throttle_wait, |g| {
+                    !g.stopped
+                })
+                .unwrap()
+                .0
+        } else {
+            data
+        }
     }
 
     fn run(&self) {
-        todo!()
+        let mut guard = self.mutex.lock().unwrap();
+        while !guard.stopped {
+            drop(guard);
+            self.stats
+                .inc(StatType::BootstrapAscending, DetailType::Loop);
+            self.run_one();
+            guard = self.mutex.lock().unwrap();
+            guard = self.throttle_if_needed(guard);
+        }
     }
 
     fn run_timeouts(&self) {
+        let mut guard = self.mutex.lock().unwrap();
+        while !guard.stopped {
+            guard.scoring.sync(&self.channels.list_channels(0, true));
+            guard.scoring.timeout();
+            guard
+                .throttle
+                .resize(compute_throttle_size(&self.ledger, &self.config));
+            while let Some(front) = guard.tags.front() {
+                if front.time.elapsed() <= self.config.bootstrap_ascending.timeout {
+                    break;
+                }
+
+                guard.tags.pop_front();
+                self.stats
+                    .inc(StatType::BootstrapAscending, DetailType::Timeout);
+            }
+            guard = self
+                .condition
+                .wait_timeout_while(guard, Duration::from_secs(1), |g| !g.stopped)
+                .unwrap()
+                .0;
+        }
+    }
+
+    fn process(&self, message: &AscPullAck, channel: &Arc<ChannelEnum>) {
+        let mut guard = self.mutex.lock().unwrap();
+
+        // Only process messages that have a known tag
+
+        if let Some(tag) = guard.tags.remove(message.id) {
+            guard.scoring.received_message(channel);
+            drop(guard);
+
+            self.condition.notify_all();
+
+            match &message.pull_type {
+                AscPullAckType::Blocks(blocks) => self.process_blocks(blocks, &tag),
+                AscPullAckType::AccountInfo(_) => { /* TODO: Make use of account info */ }
+                AscPullAckType::Frontiers(_) => { /* TODO: Make use of frontiers info */ }
+            }
+        } else {
+            self.stats
+                .inc(StatType::BootstrapAscending, DetailType::MissingTag);
+        }
+    }
+
+    fn process_blocks(&self, response: &BlocksAckPayload, tag: &AsyncTag) {
+        self.stats
+            .inc(StatType::BootstrapAscending, DetailType::Reply);
+
+        let result = self.verify(response, tag);
+        todo!();
+        //switch (result)
+        //{
+        //	case verify_result::ok:
+        //	{
+        //		stats.add (nano::stat::type::bootstrap_ascending, nano::stat::detail::blocks, nano::stat::dir::in, response.blocks.size ());
+
+        //		for (auto & block : response.blocks)
+        //		{
+        //			block_processor.add (block, nano::block_source::bootstrap);
+        //		}
+        //		nano::lock_guard<nano::mutex> lock{ mutex };
+        //		throttle.add (true);
+        //	}
+        //	break;
+        //	case verify_result::nothing_new:
+        //	{
+        //		stats.inc (nano::stat::type::bootstrap_ascending, nano::stat::detail::nothing_new);
+
+        //		nano::lock_guard<nano::mutex> lock{ mutex };
+        //		accounts.priority_down (tag.account);
+        //		throttle.add (false);
+        //	}
+        //	break;
+        //	case verify_result::invalid:
+        //	{
+        //		stats.inc (nano::stat::type::bootstrap_ascending, nano::stat::detail::invalid);
+        //		// TODO: Log
+        //	}
+        //	break;
+        //}
+    }
+
+    /// Verifies whether the received response is valid. Returns:
+    /// - invalid: when received blocks do not correspond to requested hash/account or they do not make a valid chain
+    /// - nothing_new: when received response indicates that the account chain does not have more blocks
+    /// - ok: otherwise, if all checks pass
+    fn verify(&self, response: &BlocksAckPayload, tag: &AsyncTag) -> VerifyResult {
+        let blocks = response.blocks();
+        if blocks.is_empty() {
+            return VerifyResult::NothingNew;
+        }
+        if blocks.len() == 1 && blocks.first().unwrap().hash() == tag.start.into() {
+            return VerifyResult::NothingNew;
+        }
+
+        let first = blocks.first().unwrap();
         todo!()
+        //switch (tag.type)
+        //{
+        //	case async_tag::query_type::blocks_by_hash:
+        //	{
+        //		if (first->hash () != tag.start.as_block_hash ())
+        //		{
+        //			// TODO: Stat & log
+        //			return verify_result::invalid;
+        //		}
+        //	}
+        //	break;
+        //	case async_tag::query_type::blocks_by_account:
+        //	{
+        //		// Open & state blocks always contain account field
+        //		if (first->account_field () != tag.start.as_account ())
+        //		{
+        //			// TODO: Stat & log
+        //			return verify_result::invalid;
+        //		}
+        //	}
+        //	break;
+        //	default:
+        //		return verify_result::invalid;
+        //}
+
+        //// Verify blocks make a valid chain
+        //nano::block_hash previous_hash = blocks.front ()->hash ();
+        //for (int n = 1; n < blocks.size (); ++n)
+        //{
+        //	auto & block = blocks[n];
+        //	if (block->previous () != previous_hash)
+        //	{
+        //		// TODO: Stat & log
+        //		return verify_result::invalid; // Blocks do not make a chain
+        //	}
+        //	previous_hash = block->hash ();
+        //}
+
+        //return verify_result::ok;
+    }
+
+    fn track(&self, tag: AsyncTag) {
+        self.stats
+            .inc(StatType::BootstrapAscending, DetailType::Track);
+
+        let mut guard = self.mutex.lock().unwrap();
+        debug_assert!(!guard.tags.contains(tag.id));
+        guard.tags.insert(tag)
     }
 }
 
@@ -144,10 +454,10 @@ impl BootstrapAscendingExt for Arc<BootstrapAscending> {
         self.block_processor
             .add_batch_processed_observer(Box::new(move |batch| {
                 if let Some(self_l) = self_w.upgrade() {
-                    let _guard = self_l.mutex.lock().unwrap();
+                    let mut guard = self_l.mutex.lock().unwrap();
                     let tx = self_l.ledger.read_txn();
                     for (result, context) in batch {
-                        self_l.inspect(&tx, *result, &context.block);
+                        guard.inspect(&self_l.ledger, &tx, *result, &context.block);
                     }
 
                     self_l.condition.notify_all();
@@ -179,4 +489,93 @@ impl BootstrapAscendingExt for Arc<BootstrapAscending> {
 
 struct BootstrapAscendingImpl {
     stopped: bool,
+    accounts: AccountSets,
+    scoring: PeerScoring,
+    iterator: BufferedIterator,
+    tags: OrderedTags,
+    throttle: Throttle,
+}
+
+impl BootstrapAscendingImpl {
+    /// Inspects a block that has been processed by the block processor
+    /// - Marks an account as blocked if the result code is gap source as there is no reason request additional blocks for this account until the dependency is resolved
+    /// - Marks an account as forwarded if it has been recently referenced by a block that has been inserted.
+    fn inspect(
+        &mut self,
+        ledger: &Ledger,
+        tx: &LmdbReadTransaction,
+        status: BlockStatus,
+        block: &Arc<BlockEnum>,
+    ) {
+        let hash = block.hash();
+
+        match status {
+            BlockStatus::Progress => {
+                let account = block.account();
+                // If we've inserted any block in to an account, unmark it as blocked
+                self.accounts.unblock(account, None);
+                self.accounts.priority_up(&account);
+                self.accounts
+                    .timestamp(&account, /* reset timestamp */ true);
+
+                if block.is_send() {
+                    let destination = block.destination().unwrap();
+                    self.accounts.unblock(destination, Some(hash)); // Unblocking automatically inserts account into priority set
+                    self.accounts.priority_up(&destination);
+                }
+            }
+            BlockStatus::GapSource => {
+                let account = if block.previous().is_zero() {
+                    block.account_field().unwrap()
+                } else {
+                    ledger.account(tx, &block.previous()).unwrap()
+                };
+                let source = block.source_or_link();
+
+                // Mark account as blocked because it is missing the source block
+                self.accounts.block(account, source);
+
+                // TODO: Track stats
+            }
+            BlockStatus::Old | BlockStatus::GapPrevious => {
+                // TODO: Track stats
+            }
+            _ => {
+                // No need to handle other cases
+            }
+        }
+    }
+
+    fn available_account(&mut self, stats: &Stats, database_limiter: &BandwidthLimiter) -> Account {
+        {
+            let account = self.accounts.next();
+            if !account.is_zero() {
+                stats.inc(StatType::BootstrapAscending, DetailType::NextPriority);
+                return account;
+            }
+        }
+
+        if database_limiter.should_pass(1) {
+            let account = self.iterator.next();
+            if !account.is_zero() {
+                stats.inc(StatType::BootstrapAscending, DetailType::NextDatabase);
+                return account;
+            }
+        }
+
+        stats.inc(StatType::BootstrapAscending, DetailType::NextNone);
+        Account::zero()
+    }
+}
+
+fn compute_throttle_size(ledger: &Ledger, config: &NodeConfig) -> usize {
+    // Scales logarithmically with ledger block
+    // Returns: config.throttle_coefficient * sqrt(block_count)
+    let size_new =
+        config.bootstrap_ascending.throttle_coefficient as u64 * sqrt(ledger.block_count());
+    if size_new == 0 {
+        16
+    } else {
+        size_new as usize
+    }
 }

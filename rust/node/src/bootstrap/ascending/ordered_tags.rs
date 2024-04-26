@@ -1,7 +1,10 @@
 use rsnano_core::{Account, HashOrAccount};
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::{HashMap, VecDeque},
+    time::Instant,
+};
 
-#[derive(Default, PartialEq, Eq, Debug)]
+#[derive(Default, PartialEq, Eq, Debug, Clone)]
 pub(crate) enum QueryType {
     #[default]
     Invalid,
@@ -10,24 +13,57 @@ pub(crate) enum QueryType {
     // TODO: account_info
 }
 
-#[derive(Default)]
+#[derive(Clone)]
 pub(crate) struct AsyncTag {
     pub query_type: QueryType,
     pub id: u64,
     pub start: HashOrAccount,
-    pub time: Duration,
+    pub time: Instant,
     pub account: Account,
 }
 
+#[derive(Default)]
 pub(crate) struct OrderedTags {
     by_id: HashMap<u64, AsyncTag>,
     by_account: HashMap<Account, Vec<u64>>,
-    sequenced: Vec<u64>,
+    sequenced: VecDeque<u64>,
 }
 
 impl OrderedTags {
     pub(crate) fn len(&self) -> usize {
         self.sequenced.len()
+    }
+
+    pub fn contains(&self, id: u64) -> bool {
+        self.by_id.contains_key(&id)
+    }
+
+    pub fn get(&self, id: u64) -> Option<&AsyncTag> {
+        self.by_id.get(&id)
+    }
+
+    pub fn remove(&mut self, id: u64) -> Option<AsyncTag> {
+        if let Some(tag) = self.by_id.remove(&id) {
+            self.remove_by_account(id, &tag.account);
+            self.sequenced.retain(|i| *i != id);
+            Some(tag)
+        } else {
+            None
+        }
+    }
+
+    pub fn front(&self) -> Option<&AsyncTag> {
+        self.sequenced.front().map(|id| self.by_id.get(id).unwrap())
+    }
+
+    pub fn pop_front(&mut self) -> Option<AsyncTag> {
+        if let Some(id) = self.sequenced.pop_front() {
+            let result = self.by_id.remove(&id).unwrap();
+            self.remove_by_account(id, &result.account);
+            Some(result)
+        } else {
+            None
+        }
     }
 
     pub(crate) fn insert(&mut self, tag: AsyncTag) {
@@ -37,11 +73,16 @@ impl OrderedTags {
             self.remove_internal(old.id, &old.account);
         }
         self.by_account.entry(account).or_default().push(id);
-        self.sequenced.push(id);
+        self.sequenced.push_back(id);
     }
 
     fn remove_internal(&mut self, id: u64, account: &Account) {
         self.by_id.remove(&id);
+        self.remove_by_account(id, account);
+        self.sequenced.retain(|i| *i != id);
+    }
+
+    fn remove_by_account(&mut self, id: u64, account: &Account) {
         if let Some(ids) = self.by_account.get_mut(account) {
             if ids.len() == 1 {
                 self.by_account.remove(account);
@@ -49,6 +90,5 @@ impl OrderedTags {
                 ids.retain(|i| *i != id)
             }
         }
-        self.sequenced.retain(|i| *i != id);
     }
 }

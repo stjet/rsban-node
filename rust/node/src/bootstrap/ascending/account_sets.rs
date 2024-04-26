@@ -46,7 +46,7 @@ impl AccountSets {
         }
     }
 
-    fn priority_up(&mut self, account: &Account) {
+    pub fn priority_up(&mut self, account: &Account) {
         if !self.blocked(account) {
             self.stats
                 .inc(StatType::BootstrapAscendingAccounts, DetailType::Prioritize);
@@ -71,7 +71,7 @@ impl AccountSets {
         }
     }
 
-    fn priority_down(&mut self, account: &Account) {
+    pub fn priority_down(&mut self, account: &Account) {
         if !self.priorities.change_priority(account, |prio| {
             self.stats.inc(
                 StatType::BootstrapAscendingAccounts,
@@ -96,7 +96,7 @@ impl AccountSets {
         }
     }
 
-    fn block(&mut self, account: Account, dependency: BlockHash) {
+    pub fn block(&mut self, account: Account, dependency: BlockHash) {
         self.stats
             .inc(StatType::BootstrapAscendingAccounts, DetailType::Block);
 
@@ -119,7 +119,7 @@ impl AccountSets {
         self.trim_overflow();
     }
 
-    fn unblock(&mut self, account: Account, hash: Option<BlockHash>) {
+    pub fn unblock(&mut self, account: Account, hash: Option<BlockHash>) {
         // Unblock only if the dependency is fulfilled
 
         if let Some(existing) = self.blocking.get(&account) {
@@ -153,7 +153,7 @@ impl AccountSets {
         );
     }
 
-    fn timestamp(&mut self, account: &Account, reset: bool) {
+    pub fn timestamp(&mut self, account: &Account, reset: bool) {
         let tstamp = if reset { None } else { Some(Instant::now()) };
         self.priorities.change_timestamp(account, tstamp);
     }
@@ -192,7 +192,7 @@ impl AccountSets {
         }
     }
 
-    fn next(&self) -> Account {
+    pub fn next(&self) -> Account {
         if self.priorities.is_empty() {
             return Account::zero();
         }
@@ -230,11 +230,11 @@ impl AccountSets {
         self.blocking.contains(account)
     }
 
-    fn priority_len(&self) -> usize {
+    pub fn priority_len(&self) -> usize {
         self.priorities.len()
     }
 
-    fn blocked_len(&self) -> usize {
+    pub fn blocked_len(&self) -> usize {
         self.blocking.len()
     }
 

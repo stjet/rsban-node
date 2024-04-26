@@ -1,6 +1,7 @@
 mod account_sets;
 mod account_sets_config;
 mod bootstrap_ascending_config;
+mod iterator;
 mod ordered_blocking;
 mod ordered_priorities;
 mod ordered_tags;

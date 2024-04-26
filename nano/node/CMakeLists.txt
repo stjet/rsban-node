@@ -66,8 +66,6 @@ add_library(
   election_insertion_result.hpp
   election_status.hpp
   election_status.cpp
-  epoch_upgrader.hpp
-  epoch_upgrader.cpp
   ipc/action_handler.hpp
   ipc/action_handler.cpp
   ipc/flatbuffers_handler.hpp

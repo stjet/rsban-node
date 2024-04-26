@@ -186,7 +186,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	backlog{ nano::backlog_population_config (*config), ledger, *stats },
 	ascendboot{ *config, block_processor, ledger, *network, *stats },
 	websocket{ config->websocket_config, *observers, wallets, ledger, io_ctx, *logger },
-	epoch_upgrader{ *this, ledger, store, network_params, *logger },
 	local_block_broadcaster{ *this, block_processor, *network, *stats, !flags.disable_block_processor_republishing () },
 	process_live_dispatcher{ ledger, scheduler.priority, vote_cache, websocket },
 	startup_time (std::chrono::steady_clock::now ()),
@@ -760,7 +759,6 @@ void nano::node::stop ()
 	port_mapping.stop ();
 	wallets.stop_actions ();
 	stats->stop ();
-	epoch_upgrader.stop ();
 	workers->stop ();
 	local_block_broadcaster.stop ();
 	network->stop (); // Stop network last to avoid killing in-use sockets

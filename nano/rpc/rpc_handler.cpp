@@ -154,7 +154,6 @@ std::unordered_set<std::string> create_rpc_control_impls ()
 	set.emplace ("block_create");
 	set.emplace ("bootstrap_lazy");
 	set.emplace ("database_txn_tracker");
-	set.emplace ("epoch_upgrade");
 	set.emplace ("keepalive");
 	set.emplace ("ledger");
 	set.emplace ("node_id");

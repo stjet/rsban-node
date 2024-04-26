@@ -16,7 +16,6 @@
 #include <nano/node/confirming_set.hpp>
 #include <nano/node/distributed_work_factory.hpp>
 #include <nano/node/election.hpp>
-#include <nano/node/epoch_upgrader.hpp>
 #include <nano/node/local_block_broadcaster.hpp>
 #include <nano/node/local_vote_history.hpp>
 #include <nano/node/network.hpp>
@@ -180,7 +179,6 @@ public:
 	nano::backlog_population backlog; // ported
 	nano::bootstrap_ascending::service ascendboot; // ported
 	nano::websocket_server websocket;
-	nano::epoch_upgrader epoch_upgrader;
 	nano::local_block_broadcaster local_block_broadcaster;
 	nano::process_live_dispatcher process_live_dispatcher;
 

@@ -2307,68 +2307,6 @@ void nano::json_handler::deterministic_key ()
 	response_errors ();
 }
 
-/*
- * @warning This is an internal/diagnostic RPC, do not rely on its interface being stable
- */
-void nano::json_handler::epoch_upgrade ()
-{
-	nano::epoch epoch (nano::epoch::invalid);
-	uint8_t epoch_int (request.get<uint8_t> ("epoch"));
-	switch (epoch_int)
-	{
-		case 1:
-			epoch = nano::epoch::epoch_1;
-			break;
-		case 2:
-			epoch = nano::epoch::epoch_2;
-			break;
-		default:
-			break;
-	}
-	if (epoch != nano::epoch::invalid)
-	{
-		uint64_t count_limit (count_optional_impl ());
-		uint64_t threads (0);
-		boost::optional<std::string> threads_text (request.get_optional<std::string> ("threads"));
-		if (!ec && threads_text.is_initialized ())
-		{
-			if (decode_unsigned (threads_text.get (), threads))
-			{
-				ec = nano::error_rpc::invalid_threads_count;
-			}
-		}
-		std::string key_text (request.get<std::string> ("key"));
-		nano::raw_key prv;
-		if (!prv.decode_hex (key_text))
-		{
-			if (nano::pub_key (prv) == node.ledger.epoch_signer (node.ledger.epoch_link (epoch)))
-			{
-				if (!node.epoch_upgrader.start (prv, epoch, count_limit, threads))
-				{
-					response_l.put ("started", "1");
-				}
-				else
-				{
-					response_l.put ("started", "0");
-				}
-			}
-			else
-			{
-				ec = nano::error_rpc::invalid_epoch_signer;
-			}
-		}
-		else
-		{
-			ec = nano::error_common::bad_private_key;
-		}
-	}
-	else
-	{
-		ec = nano::error_rpc::invalid_epoch;
-	}
-	response_errors ();
-}
-
 void nano::json_handler::frontiers ()
 {
 	auto start (account_impl ());
@@ -5405,7 +5343,6 @@ ipc_json_handler_no_arg_func_map create_ipc_json_handler_no_arg_func_map ()
 	no_arg_funcs.emplace ("delegators_count", &nano::json_handler::delegators_count);
 	no_arg_funcs.emplace ("deterministic_key", &nano::json_handler::deterministic_key);
 	no_arg_funcs.emplace ("election_statistics", &nano::json_handler::election_statistics);
-	no_arg_funcs.emplace ("epoch_upgrade", &nano::json_handler::epoch_upgrade);
 	no_arg_funcs.emplace ("frontiers", &nano::json_handler::frontiers);
 	no_arg_funcs.emplace ("frontier_count", &nano::json_handler::account_count);
 	no_arg_funcs.emplace ("keepalive", &nano::json_handler::keepalive);

@@ -5,6 +5,7 @@ mod ordered_blocking;
 mod ordered_priorities;
 mod ordered_tags;
 mod peer_scoring;
+mod throttle;
 
 pub use account_sets_config::*;
 pub use bootstrap_ascending_config::*;

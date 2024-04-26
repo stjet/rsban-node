@@ -40,7 +40,6 @@ add_executable(
   socket.cpp
   system.cpp
   telemetry.cpp
-  throttle.cpp
   toml.cpp
   timer.cpp
   uint256_union.cpp

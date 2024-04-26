@@ -16,7 +16,8 @@ public:
 	account (account &&) = delete;
 	~account () override;
 	void put (nano::store::write_transaction const & transaction, nano::account const & account, nano::account_info const & info) override;
-	bool get (nano::store::transaction const & transaction_a, nano::account const & account_a, nano::account_info & info_a) override;
+	bool get (nano::store::transaction const & transaction_a, nano::account const & account_a, nano::account_info & info_a) const override;
+	std::optional<nano::account_info> get (nano::store::transaction const &, nano::account const &) override;
 	void del (nano::store::write_transaction const & transaction_a, nano::account const & account_a) override;
 	bool exists (nano::store::transaction const & transaction_a, nano::account const & account_a) override;
 	size_t count (nano::store::transaction const & transaction_a) override;

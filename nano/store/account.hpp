@@ -22,8 +22,8 @@ class account
 public:
 	virtual ~account (){};
 	virtual void put (store::write_transaction const &, nano::account const &, nano::account_info const &) = 0;
-	virtual bool get (store::transaction const &, nano::account const &, nano::account_info &) = 0;
-	std::optional<nano::account_info> get (store::transaction const &, nano::account const &);
+	virtual bool get (store::transaction const &, nano::account const &, nano::account_info &) const = 0;
+	virtual std::optional<nano::account_info> get (store::transaction const &, nano::account const &) = 0;
 	virtual void del (store::write_transaction const &, nano::account const &) = 0;
 	virtual bool exists (store::transaction const &, nano::account const &) = 0;
 	virtual size_t count (store::transaction const &) = 0;

@@ -25,6 +25,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.peering_port = config.peering_port.value_or (0);
 	dto.peering_port_defined = config.peering_port.has_value ();
 	dto.bootstrap_fraction_numerator = config.bootstrap_fraction_numerator;
+	dto.bootstrap_ascending = config.bootstrap_ascending.to_dto ();
 	std::copy (std::begin (config.receive_minimum.bytes), std::end (config.receive_minimum.bytes), std::begin (dto.receive_minimum));
 	std::copy (std::begin (config.online_weight_minimum.bytes), std::end (config.online_weight_minimum.bytes), std::begin (dto.online_weight_minimum));
 	std::copy (std::begin (config.representative_vote_weight_minimum.bytes), std::end (config.representative_vote_weight_minimum.bytes), std::begin (dto.representative_vote_weight_minimum));

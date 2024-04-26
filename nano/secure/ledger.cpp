@@ -290,16 +290,6 @@ void nano::ledger::update_account (store::write_transaction const & transaction_
 	rsnano::rsn_ledger_update_account (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), old_a.handle, new_a.handle);
 }
 
-std::shared_ptr<nano::block> nano::ledger::head_block (store::transaction const & transaction, nano::account const & account)
-{
-	auto info = store.account ().get (transaction, account);
-	if (info)
-	{
-		return store.block ().get (transaction, info->head ());
-	}
-	return nullptr;
-}
-
 bool nano::ledger::block_confirmed (store::transaction const & transaction_a, nano::block_hash const & hash_a) const
 {
 	return rsnano::rsn_ledger_block_confirmed (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());

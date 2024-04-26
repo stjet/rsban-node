@@ -1,3 +1,4 @@
+mod bootstrap_ascending;
 mod bootstrap_attempt;
 mod bootstrap_attempts;
 mod bootstrap_client;

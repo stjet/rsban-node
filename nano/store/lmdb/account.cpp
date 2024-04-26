@@ -18,10 +18,24 @@ void nano::store::lmdb::account::put (nano::store::write_transaction const & tra
 	rsnano::rsn_lmdb_account_store_put (handle, transaction.get_rust_handle (), account.bytes.data (), info.handle);
 }
 
-bool nano::store::lmdb::account::get (nano::store::transaction const & transaction, nano::account const & account, nano::account_info & info)
+bool nano::store::lmdb::account::get (nano::store::transaction const & transaction, nano::account const & account, nano::account_info & info) const
 {
 	bool found = rsnano::rsn_lmdb_account_store_get (handle, transaction.get_rust_handle (), account.bytes.data (), info.handle);
 	return !found;
+}
+
+std::optional<nano::account_info> nano::store::lmdb::account::get (nano::store::transaction const & tx, nano::account const & account)
+{
+	nano::account_info info{};
+	bool found = rsnano::rsn_lmdb_account_store_get (handle, tx.get_rust_handle (), account.bytes.data (), info.handle);
+	if (!found)
+	{
+		return {};
+	}
+	else
+	{
+		return info;
+	}
 }
 
 void nano::store::lmdb::account::del (nano::store::write_transaction const & transaction_a, nano::account const & account_a)

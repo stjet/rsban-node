@@ -182,11 +182,10 @@ impl BootstrapAscending {
                 return channel;
             }
 
+            let sleep = self.config.bootstrap_ascending.throttle_wait;
             guard = self
                 .condition
-                .wait_timeout_while(guard, self.config.bootstrap_ascending.throttle_wait, |g| {
-                    !g.stopped
-                })
+                .wait_timeout_while(guard, sleep, |g| !g.stopped)
                 .unwrap()
                 .0;
         }
@@ -312,7 +311,8 @@ impl BootstrapAscending {
         }
     }
 
-    fn process(&self, message: &AscPullAck, channel: &Arc<ChannelEnum>) {
+    /// Process `asc_pull_ack` message coming from network
+    pub fn process(&self, message: &AscPullAck, channel: &Arc<ChannelEnum>) {
         let mut guard = self.mutex.lock().unwrap();
 
         // Only process messages that have a known tag
@@ -424,7 +424,7 @@ impl BootstrapAscending {
 
         let mut guard = self.mutex.lock().unwrap();
         debug_assert!(!guard.tags.contains(tag.id));
-        guard.tags.insert(tag)
+        guard.tags.insert(tag);
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {

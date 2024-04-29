@@ -179,6 +179,7 @@ impl LocalBlockBroadcaster {
         )
     }
 
+    /// Flood block to all PRs and a random selection of non-PRs
     fn flood_block_initial(&self, block: BlockEnum) {
         let message = Message::Publish(Publish::new(block));
         for i in self

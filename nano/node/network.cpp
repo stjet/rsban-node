@@ -277,19 +277,6 @@ void nano::network::flood_block (std::shared_ptr<nano::block> const & block_a, n
 	flood_message (message, drop_policy_a);
 }
 
-void nano::network::flood_block_initial (std::shared_ptr<nano::block> const & block_a)
-{
-	nano::publish message (node.network_params.network, block_a);
-	for (auto const & i : node.representative_register.principal_representatives ())
-	{
-		i.get_channel ()->send (message, nullptr, nano::transport::buffer_drop_policy::no_limiter_drop);
-	}
-	for (auto & i : list_non_pr (tcp_channels->fanout (1.0)))
-	{
-		i->send (message, nullptr, nano::transport::buffer_drop_policy::no_limiter_drop);
-	}
-}
-
 void nano::network::flood_block_many (std::deque<std::shared_ptr<nano::block>> blocks_a, std::function<void ()> callback_a, unsigned delay_a)
 {
 	if (!blocks_a.empty ())
@@ -472,22 +459,6 @@ bool nano::network::track_reachout (nano::endpoint const & endpoint_a)
 	return tcp_channels->track_reachout (endpoint_a);
 }
 
-std::deque<std::shared_ptr<nano::transport::channel>> nano::network::list_non_pr (std::size_t count_a)
-{
-	std::deque<std::shared_ptr<nano::transport::channel>> result;
-	tcp_channels->list (result);
-	nano::random_pool_shuffle (result.begin (), result.end ());
-	result.erase (std::remove_if (result.begin (), result.end (), [this] (std::shared_ptr<nano::transport::channel> const & channel) {
-		return this->node.representative_register.is_pr (channel);
-	}),
-	result.end ());
-	if (result.size () > count_a)
-	{
-		result.resize (count_a, nullptr);
-	}
-	return result;
-}
-
 std::vector<std::shared_ptr<nano::transport::channel>> nano::network::random_channels (std::size_t count_a, uint8_t min_version_a, bool include_temporary_channels_a) const
 {
 	return tcp_channels->random_channels (count_a, min_version_a, include_temporary_channels_a);
@@ -526,11 +497,6 @@ void nano::network::fill_keepalive_self (std::array<nano::endpoint, 8> & target_
 nano::tcp_endpoint nano::network::bootstrap_peer ()
 {
 	return tcp_channels->bootstrap_peer ();
-}
-
-std::shared_ptr<nano::transport::channel> nano::network::find_channel (nano::endpoint const & endpoint_a)
-{
-	return tcp_channels->find_channel (nano::transport::map_endpoint_to_tcp (endpoint_a));
 }
 
 std::shared_ptr<nano::transport::channel> nano::network::find_node_id (nano::account const & node_id_a)

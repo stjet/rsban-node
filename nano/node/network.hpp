@@ -53,8 +53,6 @@ public:
 	void flood_message (nano::message &, nano::transport::buffer_drop_policy const = nano::transport::buffer_drop_policy::limiter, float const = 1.0f);
 	void flood_keepalive (float const scale_a = 1.0f);
 	void flood_keepalive_self (float const scale_a = 0.5f);
-	// Flood block to all PRs and a random selection of non-PRs
-	void flood_block_initial (std::shared_ptr<nano::block> const &);
 	// Flood block to a random selection of peers
 	void flood_block (std::shared_ptr<nano::block> const &, nano::transport::buffer_drop_policy const = nano::transport::buffer_drop_policy::limiter);
 	void flood_block_many (std::deque<std::shared_ptr<nano::block>>, std::function<void ()> = nullptr, unsigned = broadcast_interval_ms);
@@ -63,10 +61,8 @@ public:
 	void send_keepalive (std::shared_ptr<nano::transport::channel> const &);
 	void send_keepalive_self (std::shared_ptr<nano::transport::channel> const &);
 	std::shared_ptr<nano::transport::channel> find_node_id (nano::account const &);
-	std::shared_ptr<nano::transport::channel> find_channel (nano::endpoint const &);
 	// Should we reach out to this endpoint with a keepalive message? If yes, register a new reachout attempt
 	bool track_reachout (nano::endpoint const &);
-	std::deque<std::shared_ptr<nano::transport::channel>> list_non_pr (std::size_t);
 	void fill_keepalive_self (std::array<nano::endpoint, 8> &) const;
 	// Note: The minimum protocol version is used after the random selection, so number of peers can be less than expected.
 	std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t count, uint8_t min_version = 0, bool include_temporary_channels = false) const;

@@ -3,7 +3,7 @@ use super::{
     MessageDeserializer, NetworkFilter, NullSocketObserver, NullTcpServerObserver,
     OutboundBandwidthLimiter, PeerExclusion, Socket, SocketBuilder, SocketExtensions,
     SocketObserver, SynCookies, TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver,
-    TrafficType,
+    TrafficType, TransportType,
 };
 use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelEntry},
@@ -537,6 +537,19 @@ impl TcpChannels {
         }
 
         None
+    }
+
+    pub fn exclude(&self, channel: &Arc<ChannelEnum>) {
+        // Add to peer exclusion list
+        self.excluded_peers
+            .lock()
+            .unwrap()
+            .peer_misbehaved(&channel.remote_endpoint());
+
+        // Disconnect
+        if channel.get_type() == TransportType::Tcp {
+            self.erase_channel_by_endpoint(&channel.remote_endpoint())
+        }
     }
 }
 

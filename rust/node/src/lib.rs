@@ -12,19 +12,18 @@ pub mod block_processing;
 pub mod bootstrap;
 pub mod cementation;
 pub mod config;
-mod ipc;
-pub mod wallets;
-
-pub use representatives::{OnlineReps, OnlineWeightSampler, ONLINE_WEIGHT_QUORUM};
-
 pub mod consensus;
+mod ipc;
 pub mod representatives;
 mod secure;
 pub mod stats;
+mod telemetry;
 pub mod transport;
 pub mod utils;
+pub mod wallets;
 pub mod websocket;
 pub mod work;
 
 pub use ipc::*;
+pub use representatives::{OnlineReps, OnlineWeightSampler, ONLINE_WEIGHT_QUORUM};
 pub use secure::*;

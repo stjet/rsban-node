@@ -837,4 +837,3 @@ TEST (toml, daemon_read_config)
 		ASSERT_EQ (error.get_message (), expected_message2);
 	}
 }
-

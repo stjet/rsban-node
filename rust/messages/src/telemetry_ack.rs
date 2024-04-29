@@ -211,6 +211,7 @@ impl TelemetryAck {
     pub fn create_test_instance() -> Self {
         Self(Some(TelemetryData::create_test_instance()))
     }
+
     pub fn serialized_size(extensions: BitArray<u16>) -> usize {
         (extensions.data & TelemetryData::SIZE_MASK) as usize
     }

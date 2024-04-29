@@ -179,7 +179,7 @@ public:
 	nano::backlog_population backlog; // ported
 	nano::bootstrap_ascending::service ascendboot; // ported
 	nano::websocket_server websocket;
-	nano::local_block_broadcaster local_block_broadcaster;
+	nano::local_block_broadcaster local_block_broadcaster; // ported
 	nano::process_live_dispatcher process_live_dispatcher;
 
 	std::chrono::steady_clock::time_point const startup_time;

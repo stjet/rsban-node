@@ -2,6 +2,7 @@ mod block_processor;
 pub(crate) use block_processor::*;
 use rsnano_node::block_processing::BlockProcessorConfig;
 mod backlog_population;
+mod local_block_broadcaster;
 mod unchecked_map;
 
 #[repr(C)]

@@ -1,5 +1,6 @@
-use super::BlockProcessor;
+use super::{BlockProcessor, BlockSource};
 use crate::{
+    cementation::ConfirmingSet,
     representatives::RepresentativeRegister,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, TcpChannels, TrafficType},
@@ -8,7 +9,7 @@ use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     BlockEnum, BlockHash,
 };
-use rsnano_ledger::Ledger;
+use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
 use rsnano_store_lmdb::Transaction;
 use std::{
@@ -25,7 +26,7 @@ pub struct LocalBlockBroadcaster {
     block_processor: Arc<BlockProcessor>,
     stats: Arc<Stats>,
     ledger: Arc<Ledger>,
-    confirming_set: Arc<Ledger>,
+    confirming_set: Arc<ConfirmingSet>,
     thread: Mutex<Option<JoinHandle<()>>>,
     enabled: bool,
     mutex: Mutex<LocalBlockBroadcasterData>,
@@ -48,7 +49,7 @@ impl LocalBlockBroadcaster {
         channels: Arc<TcpChannels>,
         representatives: Arc<Mutex<RepresentativeRegister>>,
         ledger: Arc<Ledger>,
-        confirming_set: Arc<Ledger>,
+        confirming_set: Arc<ConfirmingSet>,
         enabled: bool,
     ) -> Self {
         Self {
@@ -85,7 +86,11 @@ impl LocalBlockBroadcaster {
         while !guard.stopped {
             self.stats
                 .inc(StatType::LocalBlockBroadcaster, DetailType::Loop);
-            guard = self.condition.wait_while(guard, |g| !g.stopped).unwrap();
+            guard = self
+                .condition
+                .wait_timeout(guard, Self::CHECK_INTERVAL)
+                .unwrap()
+                .0;
             if !guard.stopped {
                 self.cleanup(&mut guard);
                 guard = self.run_broadcasts(guard);
@@ -112,11 +117,14 @@ impl LocalBlockBroadcaster {
         for block in to_broadcast {
             while !self.limiter.should_pass(1) {
                 guard = self.mutex.lock().unwrap();
-                drop(
-                    self.condition
-                        .wait_timeout_while(guard, Duration::from_millis(100), |g| !g.stopped)
-                        .unwrap(),
-                );
+                guard = self
+                    .condition
+                    .wait_timeout_while(guard, Duration::from_millis(100), |g| !g.stopped)
+                    .unwrap()
+                    .0;
+                if guard.stopped {
+                    return guard;
+                }
             }
 
             self.stats.inc_dir(
@@ -148,7 +156,7 @@ impl LocalBlockBroadcaster {
                 // This block has never been broadcasted, keep it so it's broadcasted at least once
                 return true;
             }
-            if self.confirming_set.block_exists(&tx, &entry.block.hash())
+            if self.confirming_set.exists(&entry.block.hash())
                 || self.ledger.block_confirmed(&tx, &entry.block.hash())
             {
                 self.stats
@@ -216,10 +224,64 @@ impl Drop for LocalBlockBroadcaster {
 }
 
 pub trait LocalBlockBroadcasterExt {
+    fn initialize(&self);
     fn start(&self);
 }
 
 impl LocalBlockBroadcasterExt for Arc<LocalBlockBroadcaster> {
+    fn initialize(&self) {
+        if !self.enabled {
+            return;
+        }
+
+        let self_w = Arc::downgrade(self);
+        self.block_processor
+            .add_batch_processed_observer(Box::new(move |batch| {
+                let Some(self_l) = self_w.upgrade() else {
+                    return;
+                };
+                let mut should_notify = false;
+                for (result, context) in batch {
+                    // Only rebroadcast local blocks that were successfully processed (no forks or gaps)
+                    if *result == BlockStatus::Progress && context.source == BlockSource::Local {
+                        let mut guard = self_l.mutex.lock().unwrap();
+                        guard.local_blocks.push_back(LocalEntry {
+                            block: Arc::clone(&context.block),
+                            arrival: Instant::now(),
+                            last_broadcast: None,
+                        });
+                        self_l
+                            .stats
+                            .inc(StatType::LocalBlockBroadcaster, DetailType::Insert);
+                        should_notify = true;
+                    }
+                }
+                if should_notify {
+                    self_l.condition.notify_all();
+                }
+            }));
+
+        let self_w = Arc::downgrade(self);
+        self.block_processor
+            .add_rolled_back_observer(Box::new(move |block| {
+                let Some(self_l) = self_w.upgrade() else {
+                    return;
+                };
+
+                let mut guard = self_l.mutex.lock().unwrap();
+                let erased = guard.local_blocks.remove(&block.hash());
+                if erased {
+                    self_l.stats.add(
+                        StatType::LocalBlockBroadcaster,
+                        DetailType::Rollback,
+                        Direction::In,
+                        1,
+                        false,
+                    );
+                }
+            }));
+    }
+
     fn start(&self) {
         if !self.enabled {
             return;
@@ -241,11 +303,6 @@ struct LocalBlockBroadcasterData {
     local_blocks: OrderedLocals,
 }
 
-enum BroadcastStrategy {
-    Normal,
-    Aggressive,
-}
-
 struct LocalEntry {
     block: Arc<BlockEnum>,
     arrival: Instant,
@@ -264,7 +321,7 @@ impl OrderedLocals {
         self.sequenced.len()
     }
 
-    fn insert(&mut self, entry: LocalEntry) {
+    fn push_back(&mut self, entry: LocalEntry) {
         let hash = entry.block.hash();
         if let Some(old) = self.by_hash.insert(entry.block.hash(), entry) {
             self.sequenced.retain(|i| *i != old.block.hash());
@@ -285,11 +342,20 @@ impl OrderedLocals {
         self.by_hash.remove(&hash)
     }
 
+    fn remove(&mut self, hash: &BlockHash) -> bool {
+        if let Some(_) = self.by_hash.remove(hash) {
+            self.sequenced.retain(|i| i != hash);
+            true
+        } else {
+            false
+        }
+    }
+
     fn retain(&mut self, mut f: impl FnMut(&LocalEntry) -> bool) {
-        self.by_hash.retain(|_, v| {
-            let retain = f(v);
+        self.by_hash.retain(|hash, entry| {
+            let retain = f(entry);
             if !retain {
-                self.sequenced.retain(|i| *i != v.block.hash())
+                self.sequenced.retain(|i| i != hash)
             }
             retain
         });

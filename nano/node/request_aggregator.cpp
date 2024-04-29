@@ -159,6 +159,11 @@ bool nano::request_aggregator::empty ()
 	return size () == 0;
 }
 
+std::chrono::milliseconds nano::request_aggregator::get_max_delay () const
+{
+	return max_delay;
+}
+
 void nano::request_aggregator::reply_action (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a) const
 {
 	nano::confirm_ack confirm{ config.network_params.network, vote_a };

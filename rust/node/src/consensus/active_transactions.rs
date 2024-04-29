@@ -8,7 +8,7 @@ use crate::{
     cementation::ConfirmingSet,
     config::{NodeConfig, NodeFlags},
     representatives::RepresentativeRegister,
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{DetailType, StatType, Stats},
     transport::{BufferDropPolicy, TcpChannels},
     utils::{HardenedConstants, ThreadPool},
     wallets::Wallets,

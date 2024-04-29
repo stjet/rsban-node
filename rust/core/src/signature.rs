@@ -1,7 +1,7 @@
 use crate::utils::{BufferWriter, Serialize, Stream};
 use std::fmt::Write;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, PartialOrd, Ord)]
 pub struct Signature {
     bytes: [u8; 64],
 }

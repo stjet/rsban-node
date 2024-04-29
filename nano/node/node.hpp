@@ -128,7 +128,7 @@ public:
 public:
 	nano::keypair node_id; // ported
 	rsnano::async_runtime & async_rt; // ported
-	boost::asio::io_context & io_ctx;
+	boost::asio::io_context & io_ctx; // ported
 	boost::latch node_initialized_latch;
 	std::shared_ptr<nano::node_observers> observers;
 	std::shared_ptr<nano::node_config> config; // ported

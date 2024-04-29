@@ -1935,7 +1935,7 @@ TEST (node, local_votes_cache)
 	}
 	for (int i = 0; i < 4; ++i)
 	{
-		ASSERT_NO_ERROR (system.poll (node.aggregator.max_delay));
+		ASSERT_NO_ERROR (system.poll (node.aggregator.get_max_delay ()));
 	}
 	// Make sure a new vote was not generated
 	ASSERT_TIMELY_EQ (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes), 2);
@@ -1951,7 +1951,7 @@ TEST (node, local_votes_cache)
 	}
 	for (int i = 0; i < 4; ++i)
 	{
-		ASSERT_NO_ERROR (system.poll (node.aggregator.max_delay));
+		ASSERT_NO_ERROR (system.poll (node.aggregator.get_max_delay ()));
 	}
 	ASSERT_TIMELY (3s, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) >= 3);
 	ASSERT_TIMELY (3s, !node.history.votes (send1->root (), send1->hash ()).empty ());

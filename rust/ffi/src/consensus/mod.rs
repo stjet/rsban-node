@@ -9,6 +9,7 @@ mod optimistic_scheduler;
 mod priority_scheduler;
 mod recently_cemented_cache;
 mod rep_tiers;
+mod request_aggregator;
 mod vote;
 mod vote_cache;
 mod vote_generator;

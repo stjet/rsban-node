@@ -70,7 +70,9 @@ public:
 	/** Returns the number of currently queued request pools */
 	std::size_t size ();
 	bool empty ();
+	std::chrono::milliseconds get_max_delay () const;
 
+private:
 	nano::node_config const & config;
 	std::chrono::milliseconds const max_delay;
 	std::chrono::milliseconds const small_delay;

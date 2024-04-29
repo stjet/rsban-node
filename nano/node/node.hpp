@@ -175,7 +175,7 @@ private: // Placed here to maintain initialization order
 
 public:
 	nano::scheduler::component & scheduler; // ported
-	nano::request_aggregator aggregator;
+	nano::request_aggregator aggregator; // ported
 	nano::backlog_population backlog; // ported
 	nano::bootstrap_ascending::service ascendboot; // ported
 	nano::websocket_server websocket;

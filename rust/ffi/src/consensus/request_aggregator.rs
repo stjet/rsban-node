@@ -2,12 +2,15 @@ use super::{
     vote_generator::VoteGeneratorHandle, ActiveTransactionsHandle, LocalVoteHistoryHandle,
 };
 use crate::{
-    ledger::datastore::LedgerHandle, transport::ChannelHandle, wallets::LmdbWalletsHandle,
-    NodeConfigDto, StatHandle,
+    ledger::datastore::LedgerHandle, transport::ChannelHandle, utils::ContainerInfoComponentHandle,
+    wallets::LmdbWalletsHandle, NodeConfigDto, StatHandle,
 };
 use rsnano_core::{BlockHash, Root};
-use rsnano_node::consensus::RequestAggregator;
-use std::sync::Arc;
+use rsnano_node::consensus::{RequestAggregator, RequestAggregatorExt};
+use std::{
+    ffi::{c_char, CStr},
+    sync::Arc,
+};
 
 pub struct RequestAggregatorHandle(Arc<RequestAggregator>);
 
@@ -44,6 +47,11 @@ pub unsafe extern "C" fn rsn_request_aggregator_destroy(handle: *mut RequestAggr
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_request_aggregator_start(handle: &RequestAggregatorHandle) {
+    handle.0.start();
+}
+
+#[no_mangle]
 pub extern "C" fn rsn_request_aggregator_add(
     handle: &RequestAggregatorHandle,
     channel: &ChannelHandle,
@@ -65,6 +73,17 @@ pub extern "C" fn rsn_request_aggregator_len(handle: &RequestAggregatorHandle) -
 #[no_mangle]
 pub extern "C" fn rsn_request_aggregator_max_delay_ms(handle: &RequestAggregatorHandle) -> u64 {
     handle.0.max_delay.as_millis() as u64
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_request_aggregator_collect_container_info(
+    handle: &RequestAggregatorHandle,
+    name: *const c_char,
+) -> *mut ContainerInfoComponentHandle {
+    let container_info = handle
+        .0
+        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
+    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }
 
 pub struct HashesRootsVecHandle(Vec<(BlockHash, Root)>);

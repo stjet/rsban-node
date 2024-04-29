@@ -91,6 +91,7 @@ impl RequestAggregator {
     }
 
     /// Add a new request by channel for hashes hashes_roots
+    /// TODO: This is badly implemented, will prematurely drop large vote requests
     pub fn add(&self, channel: Arc<ChannelEnum>, hashes_roots: &Vec<(BlockHash, Root)>) {
         debug_assert!(self.wallets.voting_reps_count() > 0);
         let mut error = true;
@@ -211,8 +212,8 @@ impl RequestAggregator {
         self.len() == 0
     }
 
-    fn reply_action(&self, vote: Vote, channel: &ChannelEnum) {
-        let confirm = Message::ConfirmAck(ConfirmAck::new(vote));
+    fn reply_action(&self, vote: &Arc<Vote>, channel: &ChannelEnum) {
+        let confirm = Message::ConfirmAck(ConfirmAck::new((**vote).clone()));
         channel.send(
             &confirm,
             None,
@@ -381,7 +382,7 @@ impl RequestAggregator {
 
         let cached_votes_len = cached_votes.len() as u64;
         for vote in cached_votes {
-            self.reply_action((*vote).clone(), channel);
+            self.reply_action(&vote, channel);
         }
         self.stats.add(
             StatType::Requests,
@@ -524,5 +525,45 @@ impl ChannelPoolContainer {
         } else {
             self.by_deadline.remove(&deadline);
         }
+    }
+}
+
+pub trait RequestAggregatorExt {
+    fn start(&self);
+}
+
+impl RequestAggregatorExt for Arc<RequestAggregator> {
+    fn start(&self) {
+        {
+            let mut guard = self.threads.lock().unwrap();
+            for _ in 0..self.request_aggregator_threads {
+                let self_l = Arc::clone(self);
+                guard.push(
+                    std::thread::Builder::new()
+                        .name("Req aggregator".to_string())
+                        .spawn(move || self_l.run())
+                        .unwrap(),
+                );
+            }
+        }
+
+        let self_w = Arc::downgrade(self);
+        self.generator
+            .set_reply_action(Box::new(move |vote, channel| {
+                if let Some(self_l) = self_w.upgrade() {
+                    self_l.reply_action(vote, channel);
+                }
+            }));
+
+        let self_w = Arc::downgrade(self);
+        self.final_generator
+            .set_reply_action(Box::new(move |vote, channel| {
+                if let Some(self_l) = self_w.upgrade() {
+                    self_l.reply_action(vote, channel);
+                }
+            }));
+
+        let guard = self.mutex.lock().unwrap();
+        drop(self.condition.wait_while(guard, |g| !g.started).unwrap());
     }
 }

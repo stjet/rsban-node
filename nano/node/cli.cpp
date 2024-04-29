@@ -1,6 +1,5 @@
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/cli.hpp>
-#include <nano/lib/tlsconfig.hpp>
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/cli.hpp>
 #include <nano/node/common.hpp>
@@ -627,12 +626,6 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		{
 			valid_type = true;
 			nano::rpc_config config{ nano::dev::network_params.network };
-			config.serialize_toml (toml);
-		}
-		else if (type == "tls")
-		{
-			valid_type = true;
-			nano::tls_config config;
 			config.serialize_toml (toml);
 		}
 		else

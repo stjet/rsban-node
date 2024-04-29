@@ -17,13 +17,6 @@ using socket_type = boost::asio::basic_stream_socket<boost::asio::ip::tcp, boost
 #endif
 using ws_type = boost::beast::websocket::stream<socket_type>;
 
-#ifdef NANO_SECURE_RPC
-#include <boost/asio/ssl/context.hpp>
-#include <boost/beast/ssl.hpp>
-#include <boost/beast/websocket/ssl.hpp>
-using wss_type = boost::beast::websocket::stream<boost::beast::ssl_stream<socket_type>>;
-#endif
-
 namespace nano::websocket
 {
 /** The minimal stream interface needed by the Nano websocket implementation */
@@ -46,9 +39,6 @@ public:
 class stream final : public websocket_stream_concept
 {
 public:
-#ifdef NANO_SECURE_RPC
-	stream (socket_type socket_a, boost::asio::ssl::context & ctx_a);
-#endif
 	stream (socket_type socket_a);
 
 	[[nodiscard]] boost::asio::strand<boost::asio::io_context::executor_type> & get_strand () override;

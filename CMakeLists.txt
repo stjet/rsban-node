@@ -76,9 +76,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR})
 set(NANO_TEST
     OFF
     CACHE BOOL "")
-set(NANO_SECURE_RPC
-    OFF
-    CACHE BOOL "")
 set(NANO_WARN_TO_ERR
     OFF
     CACHE BOOL "")
@@ -376,17 +373,7 @@ endif()
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${PLATFORM_LINK_FLAGS}")
 
-if(NANO_SECURE_RPC OR RAIBLOCKS_SECURE_RPC)
-  find_package(OpenSSL 1.0 REQUIRED)
-  include_directories(${OPENSSL_INCLUDE_DIR})
-  add_definitions(-DNANO_SECURE_RPC)
-  message("OpenSSL include dir: ${OPENSSL_INCLUDE_DIR}")
-  message("OpenSSL libraries: ${OPENSSL_LIBRARIES}")
-  message("OpenSSL lib: ${OPENSSL_SSL_LIBRARY}")
-  message("Crypto lib: ${OPENSSL_CRYPTO_LIBRARY}")
-else()
-  set(OPENSSL_LIBRARIES "")
-endif()
+set(OPENSSL_LIBRARIES "")
 
 include_directories(${CMAKE_SOURCE_DIR})
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")

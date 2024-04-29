@@ -13,7 +13,6 @@
 namespace nano
 {
 class tomlconfig;
-class tls_config;
 
 /**
  * Configuration options for RPC TLS.
@@ -78,8 +77,6 @@ public:
 	uint8_t max_json_depth;
 	uint64_t max_request_size;
 	nano::rpc_logging_config rpc_logging;
-	/** Optional TLS config */
-	std::shared_ptr<nano::tls_config> tls_config;
 };
 
 nano::error read_rpc_config_toml (std::filesystem::path const & data_path_a, nano::rpc_config & config_a, std::vector<std::string> const & config_overrides = std::vector<std::string> ());

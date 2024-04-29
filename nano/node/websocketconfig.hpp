@@ -8,7 +8,6 @@
 namespace nano
 {
 class tomlconfig;
-class tls_config;
 namespace websocket
 {
 	/** websocket configuration */
@@ -24,7 +23,6 @@ namespace websocket
 		uint16_t port;
 		std::string address;
 		/** Optional TLS config */
-		std::shared_ptr<nano::tls_config> tls_config;
 	};
 }
 }

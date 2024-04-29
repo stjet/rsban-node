@@ -2,7 +2,6 @@
 
 #include <nano/lib/jsonconfig.hpp>
 #include <nano/lib/rpcconfig.hpp>
-#include <nano/lib/tlsconfig.hpp>
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/daemonconfig.hpp>
 #include <nano/secure/utility.hpp>
@@ -839,60 +838,3 @@ TEST (toml, daemon_read_config)
 	}
 }
 
-/** Deserialize an tls config with non-default values */
-TEST (toml, tls_config_deserialize_no_defaults)
-{
-	std::stringstream ss;
-
-	// A config file with values that differs from devnet defaults
-	ss << R"toml(
-	enable_https=true
-	enable_wss=true
-	verbose_logging=true
-	server_cert_path="xyz.cert.pem"
-	server_key_path="xyz.key.pem"
-	server_key_passphrase="xyz"
-	server_dh_path="xyz.pem"
-	)toml";
-
-	nano::tomlconfig toml;
-	toml.read (ss);
-	nano::tls_config conf;
-	nano::tls_config defaults;
-	conf.deserialize_toml (toml);
-
-	ASSERT_FALSE (toml.get_error ()) << toml.get_error ().get_message ();
-
-	ASSERT_NE (conf.enable_https, defaults.enable_https);
-	ASSERT_NE (conf.enable_wss, defaults.enable_wss);
-	ASSERT_NE (conf.verbose_logging, defaults.verbose_logging);
-	ASSERT_NE (conf.server_cert_path, defaults.server_cert_path);
-	ASSERT_NE (conf.server_key_path, defaults.server_key_path);
-	ASSERT_NE (conf.server_key_passphrase, defaults.server_key_passphrase);
-	ASSERT_NE (conf.server_dh_path, defaults.server_dh_path);
-}
-
-/** Empty tls config file should match a default config object, and there should be no required values. */
-TEST (toml, tls_config_defaults)
-{
-	std::stringstream ss;
-
-	// A config with no values
-	ss << R"toml()toml";
-
-	nano::tomlconfig toml;
-	toml.read (ss);
-	nano::tls_config conf;
-	nano::tls_config defaults;
-	conf.deserialize_toml (toml);
-
-	ASSERT_FALSE (toml.get_error ()) << toml.get_error ().get_message ();
-
-	ASSERT_EQ (conf.enable_https, defaults.enable_wss);
-	ASSERT_EQ (conf.enable_wss, defaults.enable_wss);
-	ASSERT_EQ (conf.verbose_logging, defaults.verbose_logging);
-	ASSERT_EQ (conf.server_cert_path, defaults.server_cert_path);
-	ASSERT_EQ (conf.server_key_path, defaults.server_key_path);
-	ASSERT_EQ (conf.server_key_passphrase, defaults.server_key_passphrase);
-	ASSERT_EQ (conf.server_dh_path, defaults.server_dh_path);
-}

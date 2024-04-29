@@ -1,8 +1,3 @@
-if(NANO_SECURE_RPC OR RAIBLOCKS_SECURE_RPC)
-  set(secure_rpc_sources rpc_secure.hpp rpc_secure.cpp
-                         rpc_connection_secure.hpp rpc_connection_secure.cpp)
-endif()
-
 add_library(
   rpc
   ${secure_rpc_sources}

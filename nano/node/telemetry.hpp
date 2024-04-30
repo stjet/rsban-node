@@ -58,6 +58,7 @@ public:
 
 public:
 	telemetry (config const &, nano::node &, nano::network &, nano::node_observers &, nano::network_params &, nano::stats &);
+	telemetry (telemetry const &) = delete;
 	~telemetry ();
 
 	void start ();
@@ -73,6 +74,8 @@ public:
 	 */
 	void trigger ();
 
+	nano::telemetry_data local_telemetry () const;
+
 	std::size_t size () const;
 
 	/**
@@ -87,6 +90,7 @@ public:
 
 public: // Container info
 	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);
+	rsnano::TelemetryHandle * handle;
 
 private: // Dependencies
 	nano::node & node;

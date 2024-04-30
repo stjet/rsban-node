@@ -1,14 +1,18 @@
-use rsnano_messages::{Message, TelemetryAck, TelemetryData};
+use rsnano_core::{KeyPair, Signature, WorkVersion};
+use rsnano_ledger::Ledger;
+use rsnano_messages::{Message, TelemetryAck, TelemetryData, TelemetryMaker};
 use std::{
     cmp::min,
     collections::{HashMap, VecDeque},
     net::SocketAddrV6,
     sync::{Arc, Condvar, Mutex},
     thread::JoinHandle,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
 
 use crate::{
+    block_processing::UncheckedMap,
+    config::NodeConfig,
     stats::{DetailType, StatType, Stats},
     transport::{BufferDropPolicy, ChannelEnum, TcpChannels, TrafficType},
     NetworkParams,
@@ -25,12 +29,17 @@ use crate::{
  */
 pub struct Telemetry {
     config: TelementryConfig,
+    node_config: NodeConfig,
     stats: Arc<Stats>,
+    ledger: Arc<Ledger>,
+    unchecked: Arc<UncheckedMap>,
     thread: Mutex<Option<JoinHandle<()>>>,
     condition: Condvar,
     mutex: Mutex<TelemetryImpl>,
     network_params: NetworkParams,
     channels: Arc<TcpChannels>,
+    node_id: KeyPair,
+    startup_time: Instant,
     notify: Box<dyn Fn(&TelemetryData, &Arc<ChannelEnum>) + Send + Sync>,
 }
 
@@ -39,14 +48,21 @@ impl Telemetry {
 
     pub fn new(
         config: TelementryConfig,
+        node_config: NodeConfig,
         stats: Arc<Stats>,
+        ledger: Arc<Ledger>,
+        unchecked: Arc<UncheckedMap>,
         network_params: NetworkParams,
         channels: Arc<TcpChannels>,
+        node_id: KeyPair,
         notify: Box<dyn Fn(&TelemetryData, &Arc<ChannelEnum>) + Send + Sync>,
     ) -> Self {
         Self {
             config,
+            node_config,
             stats,
+            ledger,
+            unchecked,
             network_params,
             channels,
             thread: Mutex::new(None),
@@ -59,6 +75,8 @@ impl Telemetry {
                 last_request: None,
             }),
             notify,
+            node_id,
+            startup_time: Instant::now(),
         }
     }
 
@@ -235,6 +253,33 @@ impl Telemetry {
 
     fn cleanup(&self) {
         todo!();
+    }
+
+    pub fn local_telemetry(&self) -> TelemetryData {
+        let mut telemetry_data = TelemetryData {
+            node_id: self.node_id.public_key(),
+            block_count: self.ledger.block_count(),
+            cemented_count: self.ledger.cemented_count(),
+            bandwidth_cap: self.node_config.bandwidth_limit as u64,
+            protocol_version: self.network_params.network.protocol_version,
+            uptime: self.startup_time.elapsed().as_secs(),
+            unchecked_count: self.unchecked.len() as u64,
+            genesis_block: self.network_params.ledger.genesis.hash(),
+            peer_count: self.channels.len() as u32,
+            account_count: self.ledger.account_count(),
+            major_version: 27,       // TODO: get this from cmake
+            minor_version: 0,        // TODO: get this from cmake
+            patch_version: 0,        // TODO: get this from cmake
+            pre_release_version: 99, // TODO: get this from cmake
+            maker: TelemetryMaker::RsNano as u8,
+            timestamp: SystemTime::now(),
+            active_difficulty: self.network_params.work.threshold_base(WorkVersion::Work1),
+            unknown_data: Vec::new(),
+            signature: Signature::default(),
+        };
+        // Make sure this is the final operation!
+        telemetry_data.sign(&self.node_id);
+        telemetry_data
     }
 }
 

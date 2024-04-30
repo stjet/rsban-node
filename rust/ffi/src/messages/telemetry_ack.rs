@@ -6,9 +6,15 @@ use std::time::{Duration, SystemTime};
 
 pub struct TelemetryDataHandle(TelemetryData);
 
+impl TelemetryDataHandle {
+    pub fn new(data: TelemetryData) -> *mut Self {
+        Box::into_raw(Box::new(Self(data)))
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn rsn_telemetry_data_create() -> *mut TelemetryDataHandle {
-    Box::into_raw(Box::new(TelemetryDataHandle(TelemetryData::new())))
+    TelemetryDataHandle::new(TelemetryData::new())
 }
 
 #[no_mangle]

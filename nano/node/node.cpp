@@ -1301,27 +1301,7 @@ nano::account nano::node::get_node_id () const
 
 nano::telemetry_data nano::node::local_telemetry () const
 {
-	nano::telemetry_data telemetry_data;
-	telemetry_data.set_node_id (node_id.pub);
-	telemetry_data.set_block_count (ledger.block_count ());
-	telemetry_data.set_cemented_count (ledger.cemented_count ());
-	telemetry_data.set_bandwidth_cap (config->bandwidth_limit);
-	telemetry_data.set_protocol_version (network_params.network.protocol_version);
-	telemetry_data.set_uptime (std::chrono::duration_cast<std::chrono::seconds> (std::chrono::steady_clock::now () - startup_time).count ());
-	telemetry_data.set_unchecked_count (unchecked.count ());
-	telemetry_data.set_genesis_block (network_params.ledger.genesis->hash ());
-	telemetry_data.set_peer_count (nano::narrow_cast<decltype (telemetry_data.get_peer_count ())> (network->size ()));
-	telemetry_data.set_account_count (ledger.account_count ());
-	telemetry_data.set_major_version (nano::get_major_node_version ());
-	telemetry_data.set_minor_version (nano::get_minor_node_version ());
-	telemetry_data.set_patch_version (nano::get_patch_node_version ());
-	telemetry_data.set_pre_release_version (nano::get_pre_release_node_version ());
-	telemetry_data.set_maker (static_cast<std::underlying_type_t<telemetry_maker>> (telemetry_maker::rs_nano_node));
-	telemetry_data.set_timestamp (std::chrono::system_clock::now ());
-	telemetry_data.set_active_difficulty (default_difficulty (nano::work_version::work_1));
-	// Make sure this is the final operation!
-	telemetry_data.sign (node_id);
-	return telemetry_data;
+	return telemetry->local_telemetry ();
 }
 
 std::string nano::node::make_logger_identifier (const nano::keypair & node_id)

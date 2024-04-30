@@ -16,3 +16,4 @@ mod telemetry_ack;
 mod telemetry_req;
 
 pub use node_id_handshake::HandshakeResponseDto;
+pub use telemetry_ack::TelemetryDataHandle;

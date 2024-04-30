@@ -493,7 +493,7 @@ impl TcpChannels {
             .remove_by_endpoint(endpoint);
     }
 
-    pub fn count(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.tcp_channels.lock().unwrap().channels.len()
     }
 

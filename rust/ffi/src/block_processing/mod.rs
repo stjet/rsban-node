@@ -5,6 +5,8 @@ mod backlog_population;
 mod local_block_broadcaster;
 mod unchecked_map;
 
+pub use unchecked_map::UncheckedMapHandle;
+
 #[repr(C)]
 pub struct BlockProcessorConfigDto {
     pub max_peer_queue: usize,

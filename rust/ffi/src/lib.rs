@@ -20,6 +20,7 @@ mod property_tree;
 pub mod representatives;
 mod secure;
 mod stats;
+mod telemetry;
 mod transport;
 mod utils;
 mod wallets;

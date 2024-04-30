@@ -24,6 +24,12 @@ use std::{
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
 
+impl TcpChannelsHandle {
+    pub fn new(channels: Arc<TcpChannels>) -> *mut Self {
+        Box::into_raw(Box::new(Self(channels)))
+    }
+}
+
 impl Deref for TcpChannelsHandle {
     type Target = Arc<TcpChannels>;
 
@@ -152,7 +158,7 @@ pub extern "C" fn rsn_tcp_channels_erase_channel_by_endpoint(
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_channels_channel_count(handle: &mut TcpChannelsHandle) -> usize {
-    handle.count()
+    handle.len()
 }
 
 #[no_mangle]

@@ -2,13 +2,24 @@ use super::{create_message_handle2, message_handle_clone, MessageHandle};
 use crate::{NetworkConstantsDto, StringDto};
 use rsnano_core::{Account, BlockHash, KeyPair, Signature};
 use rsnano_messages::{Message, TelemetryAck, TelemetryData};
-use std::time::{Duration, SystemTime};
+use std::{
+    ops::Deref,
+    time::{Duration, SystemTime},
+};
 
 pub struct TelemetryDataHandle(TelemetryData);
 
 impl TelemetryDataHandle {
     pub fn new(data: TelemetryData) -> *mut Self {
         Box::into_raw(Box::new(Self(data)))
+    }
+}
+
+impl Deref for TelemetryDataHandle {
+    type Target = TelemetryData;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -34,15 +45,15 @@ pub unsafe extern "C" fn rsn_telemetry_data_get_signature(
     handle: &TelemetryDataHandle,
     signature: *mut u8,
 ) {
-    handle.0.signature.copy_bytes(signature);
+    handle.signature.copy_bytes(signature);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_telemetry_data_set_signature(
-    handle: *mut TelemetryDataHandle,
+    handle: &mut TelemetryDataHandle,
     signature: *const u8,
 ) {
-    (*handle).0.signature = Signature::from_ptr(signature);
+    handle.0.signature = Signature::from_ptr(signature);
 }
 
 #[no_mangle]

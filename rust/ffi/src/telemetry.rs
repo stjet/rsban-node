@@ -9,12 +9,13 @@ use crate::{
 use rsnano_core::KeyPair;
 use rsnano_messages::{Message, TelemetryData};
 use rsnano_node::{
-    config::NodeConfig, transport::ChannelEnum, NetworkParams, TelementryConfig, TelementryExt,
-    Telemetry,
+    config::NodeConfig, consolidate_telemetry_data, transport::ChannelEnum, NetworkParams,
+    TelementryConfig, TelementryExt, Telemetry,
 };
 use std::{
     ffi::{c_char, c_void, CStr},
     net::SocketAddrV6,
+    ops::Deref,
     sync::Arc,
 };
 
@@ -161,4 +162,17 @@ pub extern "C" fn rsn_telemetry_data_map_get(
     let (ep, data) = &handle.0[index];
     *endpoint = ep.into();
     TelemetryDataHandle::new(data.clone())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_consolidate_telemetry_data(
+    datas: *const TelemetryDataHandle,
+    len: usize,
+) -> *mut TelemetryDataHandle {
+    let datas: Vec<_> = std::slice::from_raw_parts(datas, len)
+        .iter()
+        .map(|i| (*i).clone())
+        .collect();
+
+    TelemetryDataHandle::new(consolidate_telemetry_data(&datas))
 }

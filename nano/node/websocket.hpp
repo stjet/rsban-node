@@ -1,10 +1,13 @@
 #pragma once
 
+#include <nano/boost/asio/strand.hpp>
+#include <nano/boost/beast/core.hpp>
+#include <nano/boost/beast/websocket.hpp>
+#include <nano/lib/asio.hpp>
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/work.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/vote_with_weight_info.hpp>
-#include <nano/node/websocket_stream.hpp>
 #include <nano/node/websocketconfig.hpp>
 #include <nano/secure/common.hpp>
 
@@ -16,6 +19,10 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+using socket_type = boost::asio::basic_stream_socket<boost::asio::ip::tcp, boost::asio::io_context::executor_type>;
+#define beast_buffers boost::beast::make_printable
+using ws_type = boost::beast::websocket::stream<socket_type>;
 
 namespace nano
 {
@@ -258,8 +265,8 @@ namespace websocket
 	private:
 		/** The owning listener */
 		nano::websocket::listener & ws_listener;
-		/** Websocket stream, supporting both plain and tls connections */
-		nano::websocket::stream ws;
+		ws_type ws;
+		boost::asio::strand<boost::asio::io_context::executor_type> strand;
 		nano::logger & logger;
 
 		/** Buffer for received messages */

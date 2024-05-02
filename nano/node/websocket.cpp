@@ -1,3 +1,5 @@
+#include "boost/asio/bind_executor.hpp"
+
 #include <nano/boost/asio/bind_executor.hpp>
 #include <nano/boost/asio/dispatch.hpp>
 #include <nano/boost/asio/strand.hpp>
@@ -241,15 +243,17 @@ bool nano::websocket::vote_options::should_filter (nano::websocket::message cons
 }
 
 nano::websocket::session::session (nano::websocket::listener & listener_a, socket_type socket_a, nano::logger & logger_a) :
-	ws_listener (listener_a), ws (std::move (socket_a)),
+	ws_listener (listener_a),
+	ws (std::move (socket_a)),
+	strand{ ws.get_executor () },
 	logger{ logger_a }
 {
 	{
 		// Best effort attempt to get endpoint addresses
 		boost::system::error_code ec;
-		remote = ws.get_socket ().remote_endpoint (ec);
+		remote = ws.next_layer ().remote_endpoint (ec);
 		debug_assert (!ec);
-		local = ws.get_socket ().local_endpoint (ec);
+		local = ws.next_layer ().local_endpoint (ec);
 		debug_assert (!ec);
 	}
 
@@ -270,7 +274,8 @@ nano::websocket::session::~session ()
 void nano::websocket::session::handshake ()
 {
 	auto this_l (shared_from_this ());
-	ws.handshake ([this_l] (boost::system::error_code const & ec) {
+	// Websocket handshake
+	ws.async_accept ([this_l] (boost::system::error_code const & ec) {
 		if (!ec)
 		{
 			// Start reading incoming messages
@@ -288,7 +293,7 @@ void nano::websocket::session::close ()
 	logger.info (nano::log::type::websocket, "Session closing ({})", nano::util::to_str (remote));
 
 	auto this_l (shared_from_this ());
-	boost::asio::dispatch (ws.get_strand (),
+	boost::asio::dispatch (strand,
 	[this_l] () {
 		boost::beast::websocket::close_reason reason;
 		reason.code = boost::beast::websocket::close_code::normal;
@@ -306,7 +311,7 @@ void nano::websocket::session::write (nano::websocket::message message_a)
 	{
 		lk.unlock ();
 		auto this_l (shared_from_this ());
-		boost::asio::post (ws.get_strand (),
+		boost::asio::post (strand,
 		[message_a, this_l] () {
 			bool write_in_progress = !this_l->send_queue.empty ();
 			this_l->send_queue.emplace_back (message_a);
@@ -324,6 +329,7 @@ void nano::websocket::session::write_queued_messages ()
 	auto this_l (shared_from_this ());
 
 	ws.async_write (nano::shared_const_buffer (msg),
+	boost::asio::bind_executor (strand,
 	[this_l] (boost::system::error_code ec, std::size_t bytes_transferred) {
 		this_l->send_queue.pop_front ();
 		if (!ec)
@@ -333,15 +339,16 @@ void nano::websocket::session::write_queued_messages ()
 				this_l->write_queued_messages ();
 			}
 		}
-	});
+	}));
 }
 
 void nano::websocket::session::read ()
 {
 	auto this_l (shared_from_this ());
 
-	boost::asio::post (ws.get_strand (), [this_l] () {
+	boost::asio::post (strand, [this_l] () {
 		this_l->ws.async_read (this_l->read_buffer,
+		boost::asio::bind_executor (this_l->strand,
 		[this_l] (boost::system::error_code ec, std::size_t bytes_transferred) {
 			if (!ec)
 			{
@@ -368,7 +375,7 @@ void nano::websocket::session::read ()
 			{
 				this_l->logger.error (nano::log::type::websocket, "Read failed: {} ({})", ec.message (), nano::util::to_str (this_l->remote));
 			}
-		});
+		}));
 	});
 }
 

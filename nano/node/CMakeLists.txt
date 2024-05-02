@@ -167,8 +167,6 @@ add_library(
   websocket.cpp
   websocketconfig.hpp
   websocketconfig.cpp
-  websocket_stream.hpp
-  websocket_stream.cpp
   messages.hpp
   messages.cpp
   xorshift.hpp)

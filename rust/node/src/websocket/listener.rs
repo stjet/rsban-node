@@ -1,6 +1,12 @@
-use super::Message;
+use crate::wallets::Wallets;
+
+use super::{Message, Topic};
 use anyhow::Result;
-use std::ffi::c_void;
+use std::{
+    collections::{HashMap, HashSet},
+    ffi::c_void,
+    sync::{Arc, Mutex},
+};
 
 pub trait Listener: Send + Sync {
     fn broadcast(&self, message: &Message) -> Result<()>;
@@ -20,13 +26,65 @@ impl Listener for NullListener {
     }
 }
 
+pub enum Options {
+    Confirmation(ConfirmationOptions),
+    Vote(VoteOptions),
+    Other,
+}
+
+pub struct ConfirmationOptions {
+    pub include_election_info: bool,
+    pub include_election_info_with_votes: bool,
+    pub include_sideband_info: bool,
+    pub include_block: bool,
+    pub has_account_filtering_options: bool,
+    pub all_local_accounts: bool,
+    pub confirmation_types: u8,
+    pub accounts: HashSet<String>,
+    wallets: Arc<Wallets>,
+}
+
+impl ConfirmationOptions {
+    const TYPE_ACTIVE_QUORUM: u8 = 1;
+    const TYPE_ACTIVE_CONFIRMATION_HEIGHT: u8 = 2;
+    const TYPE_INACTIVE: u8 = 4;
+    const TYPE_ALL_ACTIVE: u8 = Self::TYPE_ACTIVE_QUORUM | Self::TYPE_ACTIVE_CONFIRMATION_HEIGHT;
+    const TYPE_ALL: u8 = Self::TYPE_ALL_ACTIVE | Self::TYPE_INACTIVE;
+
+    pub fn new(wallets: Arc<Wallets>) -> Self {
+        Self {
+            include_election_info: false,
+            include_election_info_with_votes: false,
+            include_sideband_info: false,
+            include_block: true,
+            has_account_filtering_options: false,
+            all_local_accounts: false,
+            confirmation_types: Self::TYPE_ALL,
+            accounts: HashSet::new(),
+            wallets,
+        }
+    }
+}
+
+pub struct VoteOptions {}
+
+impl VoteOptions {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
 pub struct WebsocketListener {
     cpp_pointer: *mut c_void,
+    subscriptions: Mutex<HashMap<Topic, Options>>,
 }
 
 impl WebsocketListener {
     pub fn new(cpp_pointer: *mut c_void) -> Self {
-        Self { cpp_pointer }
+        Self {
+            cpp_pointer,
+            subscriptions: Mutex::new(HashMap::new()),
+        }
     }
 }
 

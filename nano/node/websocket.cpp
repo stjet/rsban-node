@@ -1,4 +1,5 @@
 #include "boost/asio/bind_executor.hpp"
+#include "nano/lib/rsnano.hpp"
 
 #include <nano/boost/asio/bind_executor.hpp>
 #include <nano/boost/asio/dispatch.hpp>
@@ -21,23 +22,46 @@
 #include <algorithm>
 #include <chrono>
 
+nano::websocket::options::options () :
+	handle{ rsnano::rsn_websocket_options_create () }
+{
+}
+nano::websocket::options::options (rsnano::WebsocketOptionsHandle * handle) :
+	handle{ handle }
+{
+}
+
+nano::websocket::options::~options ()
+{
+	rsnano::rsn_websocket_options_destroy (handle);
+}
+
 nano::websocket::confirmation_options::confirmation_options (nano::wallets & wallets_a, nano::logger & logger_a) :
+	options (rsnano::rsn_confirmation_options_create (wallets_a.rust_handle)),
 	wallets (wallets_a),
 	logger (logger_a)
 {
 }
 
 nano::websocket::confirmation_options::confirmation_options (boost::property_tree::ptree const & options_a, nano::wallets & wallets_a, nano::logger & logger_a) :
+	options (rsnano::rsn_confirmation_options_create (wallets_a.rust_handle)),
 	wallets (wallets_a),
 	logger (logger_a)
 {
 	// Non-account filtering options
-	include_block = options_a.get<bool> ("include_block", true);
-	include_election_info = options_a.get<bool> ("include_election_info", false);
-	include_election_info_with_votes = options_a.get<bool> ("include_election_info_with_votes", false);
-	include_sideband_info = options_a.get<bool> ("include_sideband_info", false);
+	bool include_block = options_a.get<bool> ("include_block", true);
+	rsnano::rsn_confirmation_options_include_block_set (handle, include_block);
 
-	confirmation_types = 0;
+	bool include_election_info = options_a.get<bool> ("include_election_info", false);
+	rsnano::rsn_confirmation_options_include_election_info_set (handle, include_election_info);
+
+	bool include_election_info_with_votes = options_a.get<bool> ("include_election_info_with_votes", false);
+	rsnano::rsn_confirmation_options_include_election_info_with_votes_set (handle, include_election_info_with_votes);
+
+	bool include_sideband_info = options_a.get<bool> ("include_sideband_info", false);
+	rsnano::rsn_confirmation_options_include_sideband_info_set (handle, include_sideband_info);
+
+	uint8_t confirmation_types = 0;
 	auto type_l (options_a.get<std::string> ("confirmation_type", "all"));
 
 	if (boost::iequals (type_l, "active"))
@@ -60,13 +84,15 @@ nano::websocket::confirmation_options::confirmation_options (boost::property_tre
 	{
 		confirmation_types = type_all;
 	}
+	rsnano::rsn_confirmation_options_confirmation_types_set (handle, confirmation_types);
 
 	// Account filtering options
 	auto all_local_accounts_l (options_a.get_optional<bool> ("all_local_accounts"));
 	if (all_local_accounts_l.is_initialized ())
 	{
-		all_local_accounts = all_local_accounts_l.get ();
-		has_account_filtering_options = true;
+		rsnano::rsn_confirmation_options_all_local_accounts_set (handle, all_local_accounts_l.get ());
+		bool has_account_filtering_options = true;
+		rsnano::rsn_confirmation_options_has_account_filtering_options_set (handle, has_account_filtering_options);
 
 		if (!include_block)
 		{
@@ -76,14 +102,15 @@ nano::websocket::confirmation_options::confirmation_options (boost::property_tre
 	auto accounts_l (options_a.get_child_optional ("accounts"));
 	if (accounts_l)
 	{
-		has_account_filtering_options = true;
+		bool has_account_filtering_options = true;
+		rsnano::rsn_confirmation_options_has_account_filtering_options_set (handle, has_account_filtering_options);
 		for (auto account_l : *accounts_l)
 		{
 			nano::account result_l{};
 			if (!result_l.decode_account (account_l.second.data ()))
 			{
 				// Do not insert the given raw data to keep old prefix support
-				accounts.insert (result_l.to_account ());
+				rsnano::rsn_confirmation_options_accounts_insert (handle, result_l.to_account ().c_str ());
 			}
 			else
 			{
@@ -104,6 +131,7 @@ bool nano::websocket::confirmation_options::should_filter (nano::websocket::mess
 	bool should_filter_conf_type_l (true);
 
 	auto type_text_l (message_a.contents.get<std::string> ("message.confirmation_type"));
+	auto confirmation_types = rsnano::rsn_confirmation_options_confirmation_types (handle);
 	if (type_text_l == "active_quorum" && confirmation_types & type_active_quorum)
 	{
 		should_filter_conf_type_l = false;
@@ -117,12 +145,12 @@ bool nano::websocket::confirmation_options::should_filter (nano::websocket::mess
 		should_filter_conf_type_l = false;
 	}
 
-	bool should_filter_account (has_account_filtering_options);
+	bool should_filter_account (rsnano::rsn_confirmation_options_has_account_filtering_options (handle));
 	auto destination_opt_l (message_a.contents.get_optional<std::string> ("message.block.link_as_account"));
 	if (destination_opt_l)
 	{
 		auto source_text_l (message_a.contents.get<std::string> ("message.account"));
-		if (all_local_accounts)
+		if (rsnano::rsn_confirmation_options_all_local_accounts (handle))
 		{
 			nano::account source_l{};
 			nano::account destination_l{};
@@ -136,7 +164,7 @@ bool nano::websocket::confirmation_options::should_filter (nano::websocket::mess
 				should_filter_account = false;
 			}
 		}
-		if (accounts.find (source_text_l) != accounts.end () || accounts.find (destination_opt_l.get ()) != accounts.end ())
+		if (rsnano::rsn_confirmation_options_accounts_contains (handle, source_text_l.c_str ()) || rsnano::rsn_confirmation_options_accounts_contains (handle, destination_opt_l->c_str ()))
 		{
 			should_filter_account = false;
 		}
@@ -148,7 +176,7 @@ bool nano::websocket::confirmation_options::should_filter (nano::websocket::mess
 bool nano::websocket::confirmation_options::update (boost::property_tree::ptree const & options_a)
 {
 	auto update_accounts = [this] (boost::property_tree::ptree const & accounts_text_a, bool insert_a) {
-		this->has_account_filtering_options = true;
+		rsnano::rsn_confirmation_options_has_account_filtering_options_set (this->handle, true);
 		for (auto const & account_l : accounts_text_a)
 		{
 			nano::account result_l{};
@@ -158,11 +186,11 @@ bool nano::websocket::confirmation_options::update (boost::property_tree::ptree 
 				auto encoded_l (result_l.to_account ());
 				if (insert_a)
 				{
-					this->accounts.insert (encoded_l);
+					rsnano::rsn_confirmation_options_accounts_insert (this->handle, encoded_l.c_str ());
 				}
 				else
 				{
-					this->accounts.erase (encoded_l);
+					rsnano::rsn_confirmation_options_accounts_remove (this->handle, encoded_l.c_str ());
 				}
 			}
 			else
@@ -193,13 +221,14 @@ bool nano::websocket::confirmation_options::update (boost::property_tree::ptree 
 void nano::websocket::confirmation_options::check_filter_empty () const
 {
 	// Warn the user if the options resulted in an empty filter
-	if (has_account_filtering_options && !all_local_accounts && accounts.empty ())
+	if (rsnano::rsn_confirmation_options_has_account_filtering_options (handle) && !rsnano::rsn_confirmation_options_all_local_accounts (handle) && rsnano::rsn_confirmation_options_accounts_is_empty (handle))
 	{
 		logger.warn (nano::log::type::websocket, "Provided options resulted in an empty account confirmation filter");
 	}
 }
 
-nano::websocket::vote_options::vote_options (boost::property_tree::ptree const & options_a, nano::logger & logger_a)
+nano::websocket::vote_options::vote_options (boost::property_tree::ptree const & options_a, nano::logger & logger_a) :
+	options (rsnano::rsn_vote_options_create ())
 {
 	include_replays = options_a.get<bool> ("include_replays", false);
 	include_indeterminate = options_a.get<bool> ("include_indeterminate", false);

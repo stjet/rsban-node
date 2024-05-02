@@ -28,7 +28,7 @@ mod websocket;
 mod work;
 
 use std::{
-    ffi::{c_void, CString},
+    ffi::{c_void, CStr, CString},
     os::raw::c_char,
 };
 
@@ -126,4 +126,8 @@ impl U256ArrayDto {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_u256_array_destroy(dto: *mut U256ArrayDto) {
     drop(Box::from_raw((*dto).handle))
+}
+
+pub(crate) unsafe fn to_rust_string(s: *const c_char) -> String {
+    CStr::from_ptr(s).to_str().unwrap().to_owned()
 }

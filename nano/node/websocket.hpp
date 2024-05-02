@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/boost/asio/strand.hpp>
 #include <nano/boost/beast/core.hpp>
 #include <nano/boost/beast/websocket.hpp>
@@ -115,7 +117,10 @@ namespace websocket
 	class options
 	{
 	public:
-		virtual ~options () = default;
+		options ();
+		options (rsnano::WebsocketOptionsHandle * handle);
+		options (options const &) = delete;
+		virtual ~options ();
 
 	protected:
 		/**
@@ -137,6 +142,7 @@ namespace websocket
 		}
 
 		friend class session;
+		rsnano::WebsocketOptionsHandle * handle;
 	};
 
 	/**
@@ -174,25 +180,25 @@ namespace websocket
 		/** Returns whether or not block contents should be included */
 		bool get_include_block () const
 		{
-			return include_block;
+			return rsnano::rsn_confirmation_options_include_block (handle);
 		}
 
 		/** Returns whether or not to include election info, such as tally and duration */
 		bool get_include_election_info () const
 		{
-			return include_election_info;
+			return rsnano::rsn_confirmation_options_include_election_info (handle);
 		}
 
 		/** Returns whether or not to include election info with votes */
 		bool get_include_election_info_with_votes () const
 		{
-			return include_election_info_with_votes;
+			return rsnano::rsn_confirmation_options_include_election_info_with_votes (handle);
 		}
 
 		/** Returns whether or not to include sideband info */
 		bool get_include_sideband_info () const
 		{
-			return include_sideband_info;
+			return rsnano::rsn_confirmation_options_include_sideband_info (handle);
 		}
 
 		static constexpr uint8_t const type_active_quorum = 1;
@@ -206,14 +212,6 @@ namespace websocket
 
 		nano::wallets & wallets;
 		nano::logger & logger;
-		bool include_election_info{ false };
-		bool include_election_info_with_votes{ false };
-		bool include_sideband_info{ false };
-		bool include_block{ true };
-		bool has_account_filtering_options{ false };
-		bool all_local_accounts{ false };
-		uint8_t confirmation_types{ type_all };
-		std::unordered_set<std::string> accounts;
 	};
 
 	/**

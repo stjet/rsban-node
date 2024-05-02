@@ -148,7 +148,7 @@ public:
 	nano::ledger ledger; // ported
 	nano::outbound_bandwidth_limiter outbound_limiter; // ported
 	std::shared_ptr<nano::network> network;
-	std::shared_ptr<nano::telemetry> telemetry;
+	std::shared_ptr<nano::telemetry> telemetry; // ported
 	nano::bootstrap_initiator bootstrap_initiator;
 	nano::bootstrap_server bootstrap_server;
 	std::filesystem::path application_path;

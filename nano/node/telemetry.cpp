@@ -1,5 +1,6 @@
 #include "nano/lib/observer_set.hpp"
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/rsnanoutils.hpp"
 #include "nano/node/messages.hpp"
 #include "nano/node/transport/tcp.hpp"
 
@@ -15,12 +16,8 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include <algorithm>
-#include <cstdint>
-#include <future>
 #include <memory>
-#include <numeric>
-#include <set>
+#include <optional>
 
 using namespace std::chrono_literals;
 
@@ -41,13 +38,7 @@ void delete_notify_context (void * context)
 }
 }
 
-nano::telemetry::telemetry (const config & config_a, nano::node & node_a, nano::network & network_a, nano::node_observers & observers_a, nano::network_params & network_params_a, nano::stats & stats_a) :
-	config_m{ config_a },
-	node{ node_a },
-	network{ network_a },
-	observers{ observers_a },
-	network_params{ network_params_a },
-	stats{ stats_a }
+nano::telemetry::telemetry (const config & config_a, nano::node & node_a, nano::network & network_a, nano::node_observers & observers_a, nano::network_params & network_params_a, nano::stats & stats_a)
 {
 	auto node_config_dto{ node_a.config->to_dto () };
 	auto network_dto{ node_a.network_params.to_dto () };
@@ -69,111 +60,27 @@ nano::telemetry::telemetry (const config & config_a, nano::node & node_a, nano::
 
 nano::telemetry::~telemetry ()
 {
-	// Thread must be stopped before destruction
-	debug_assert (!thread.joinable ());
 	rsnano::rsn_telemetry_destroy (handle);
 }
 
 void nano::telemetry::start ()
 {
-	debug_assert (!thread.joinable ());
-
-	thread = std::thread ([this] () {
-		nano::thread_role::set (nano::thread_role::name::telemetry);
-		run ();
-	});
+	rsnano::rsn_telemetry_start (handle);
 }
 
 void nano::telemetry::stop ()
 {
-	{
-		nano::lock_guard<nano::mutex> guard{ mutex };
-		stopped = true;
-	}
-	condition.notify_all ();
-	nano::join_or_pass (thread);
-}
-
-bool nano::telemetry::verify (const nano::telemetry_ack & telemetry, const std::shared_ptr<nano::transport::channel> & channel) const
-{
-	if (telemetry.is_empty_payload ())
-	{
-		stats.inc (nano::stat::type::telemetry, nano::stat::detail::empty_payload);
-		return false;
-	}
-
-	// Check if telemetry node id matches channel node id
-	if (telemetry.get_data ().get_node_id () != channel->get_node_id ())
-	{
-		stats.inc (nano::stat::type::telemetry, nano::stat::detail::node_id_mismatch);
-		return false;
-	}
-
-	// Check whether data is signed by node id presented in telemetry message
-	if (telemetry.get_data ().validate_signature ()) // Returns false when signature OK
-	{
-		stats.inc (nano::stat::type::telemetry, nano::stat::detail::invalid_signature);
-		return false;
-	}
-
-	if (telemetry.get_data ().get_genesis_block () != network_params.ledger.genesis->hash ())
-	{
-		network.exclude (channel);
-
-		stats.inc (nano::stat::type::telemetry, nano::stat::detail::genesis_mismatch);
-		return false;
-	}
-
-	return true; // Telemetry is OK
+	rsnano::rsn_telemetry_stop (handle);
 }
 
 void nano::telemetry::process (const nano::telemetry_ack & telemetry, const std::shared_ptr<nano::transport::channel> & channel)
 {
-	if (!verify (telemetry, channel))
-	{
-		return;
-	}
-
-	nano::unique_lock<nano::mutex> lock{ mutex };
-
-	const auto endpoint = channel->get_remote_endpoint ();
-
-	if (auto it = telemetries.get<tag_endpoint> ().find (endpoint); it != telemetries.get<tag_endpoint> ().end ())
-	{
-		stats.inc (nano::stat::type::telemetry, nano::stat::detail::update);
-
-		telemetries.get<tag_endpoint> ().modify (it, [&telemetry, &endpoint] (auto & entry) {
-			debug_assert (entry.endpoint == endpoint);
-			entry.data = telemetry.get_data ();
-			entry.last_updated = std::chrono::steady_clock::now ();
-		});
-	}
-	else
-	{
-		stats.inc (nano::stat::type::telemetry, nano::stat::detail::insert);
-		telemetries.get<tag_endpoint> ().insert ({ endpoint, telemetry.get_data (), std::chrono::steady_clock::now (), channel });
-
-		if (telemetries.size () > max_size)
-		{
-			stats.inc (nano::stat::type::telemetry, nano::stat::detail::overfill);
-			telemetries.get<tag_sequenced> ().pop_front (); // Erase oldest entry
-		}
-	}
-
-	lock.unlock ();
-
-	observers.telemetry.notify (telemetry.get_data (), channel);
-
-	stats.inc (nano::stat::type::telemetry, nano::stat::detail::process);
+	rsnano::rsn_telemetry_process (handle, telemetry.handle, channel->handle);
 }
 
 void nano::telemetry::trigger ()
 {
-	{
-		nano::lock_guard<nano::mutex> guard{ mutex };
-		triggered = true;
-	}
-	condition.notify_all ();
+	rsnano::rsn_telemetry_trigger (handle);
 }
 
 nano::telemetry_data nano::telemetry::local_telemetry () const
@@ -183,305 +90,51 @@ nano::telemetry_data nano::telemetry::local_telemetry () const
 
 std::size_t nano::telemetry::size () const
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-	return telemetries.size ();
-}
-
-bool nano::telemetry::request_predicate () const
-{
-	debug_assert (!mutex.try_lock ());
-
-	if (triggered)
-	{
-		return true;
-	}
-	if (config_m.enable_ongoing_requests)
-	{
-		return last_request + network_params.network.telemetry_request_interval < std::chrono::steady_clock::now ();
-	}
-	return false;
-}
-
-bool nano::telemetry::broadcast_predicate () const
-{
-	debug_assert (!mutex.try_lock ());
-
-	if (config_m.enable_ongoing_broadcasts)
-	{
-		return last_broadcast + network_params.network.telemetry_broadcast_interval < std::chrono::steady_clock::now ();
-	}
-	return false;
-}
-
-void nano::telemetry::run ()
-{
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	while (!stopped)
-	{
-		stats.inc (nano::stat::type::telemetry, nano::stat::detail::loop);
-
-		cleanup ();
-
-		if (request_predicate ())
-		{
-			triggered = false;
-			lock.unlock ();
-
-			run_requests ();
-
-			lock.lock ();
-			last_request = std::chrono::steady_clock::now ();
-		}
-
-		if (broadcast_predicate ())
-		{
-			lock.unlock ();
-
-			run_broadcasts ();
-
-			lock.lock ();
-			last_broadcast = std::chrono::steady_clock::now ();
-		}
-
-		condition.wait_for (lock, std::min (network_params.network.telemetry_request_interval, network_params.network.telemetry_broadcast_interval) / 2);
-	}
-}
-
-void nano::telemetry::run_requests ()
-{
-	auto peers = network.tcp_channels->list ();
-
-	for (auto & channel : peers)
-	{
-		request (channel);
-	}
-}
-
-void nano::telemetry::request (std::shared_ptr<nano::transport::channel> & channel)
-{
-	stats.inc (nano::stat::type::telemetry, nano::stat::detail::request);
-
-	nano::telemetry_req message{ network_params.network };
-	channel->send (message);
-}
-
-void nano::telemetry::run_broadcasts ()
-{
-	auto telemetry = node.local_telemetry ();
-	auto peers = network.tcp_channels->list ();
-
-	for (auto & channel : peers)
-	{
-		broadcast (channel, telemetry);
-	}
-}
-
-void nano::telemetry::broadcast (std::shared_ptr<nano::transport::channel> & channel, const nano::telemetry_data & telemetry)
-{
-	stats.inc (nano::stat::type::telemetry, nano::stat::detail::broadcast);
-
-	nano::telemetry_ack message{ network_params.network, telemetry };
-	channel->send (message);
-}
-
-void nano::telemetry::cleanup ()
-{
-	debug_assert (!mutex.try_lock ());
-
-	erase_if (telemetries, [this] (entry const & entry) {
-		// Remove if telemetry data is stale
-		if (!check_timeout (entry))
-		{
-			stats.inc (nano::stat::type::telemetry, nano::stat::detail::cleanup_outdated);
-			return true; // Erase
-		}
-
-		return false; // Do not erase
-	});
-}
-
-bool nano::telemetry::check_timeout (const entry & entry) const
-{
-	return entry.last_updated + network_params.network.telemetry_cache_cutoff >= std::chrono::steady_clock::now ();
+	return rsnano::rsn_telemetry_len (handle);
 }
 
 std::optional<nano::telemetry_data> nano::telemetry::get_telemetry (const nano::endpoint & endpoint) const
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-
-	if (auto it = telemetries.get<tag_endpoint> ().find (endpoint); it != telemetries.get<tag_endpoint> ().end ())
+	auto dto{ rsnano::udp_endpoint_to_dto (endpoint) };
+	auto data_handle = rsnano::rsn_telemetry_get_telemetry (handle, &dto);
+	if (data_handle != nullptr)
 	{
-		if (check_timeout (*it))
-		{
-			return it->data;
-		}
+		return { nano::telemetry_data{ data_handle } };
 	}
-	return {};
+	else
+	{
+		return std::nullopt;
+	}
 }
 
 std::unordered_map<nano::endpoint, nano::telemetry_data> nano::telemetry::get_all_telemetries () const
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-
+	auto map_handle = rsnano::rsn_telemetry_get_all (handle);
+	auto size = rsnano::rsn_telemetry_data_map_len (map_handle);
 	std::unordered_map<nano::endpoint, nano::telemetry_data> result;
-	for (auto const & entry : telemetries)
+	for (auto i = 0; i < size; ++i)
 	{
-		if (check_timeout (entry))
-		{
-			result[entry.endpoint] = entry.data;
-		}
+		rsnano::EndpointDto endpoint_dto;
+		auto data_handle = rsnano::rsn_telemetry_data_map_get (map_handle, i, &endpoint_dto);
+		auto endpoint = rsnano::dto_to_udp_endpoint (endpoint_dto);
+		result.emplace (endpoint, nano::telemetry_data{ data_handle });
 	}
+	rsnano::rsn_telemetry_data_map_destroy (map_handle);
 	return result;
 }
 
 std::unique_ptr<nano::container_info_component> nano::telemetry::collect_container_info (const std::string & name)
 {
-	nano::lock_guard<nano::mutex> guard{ mutex };
-
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "telemetries", telemetries.size (), sizeof (decltype (telemetries)::value_type) }));
-	return composite;
+	return std::make_unique<container_info_composite> (rsnano::rsn_telemetry_collect_container_info (handle, name.c_str ()));
 }
 
 nano::telemetry_data nano::consolidate_telemetry_data (std::vector<nano::telemetry_data> const & telemetry_datas)
 {
-	if (telemetry_datas.empty ())
+	std::vector<rsnano::TelemetryDataHandle *> data_handles;
+	data_handles.reserve (telemetry_datas.size ());
+	for (auto const & i : telemetry_datas)
 	{
-		return {};
+		data_handles.push_back (i.handle);
 	}
-	else if (telemetry_datas.size () == 1)
-	{
-		// Only 1 element in the collection, so just return it.
-		return telemetry_datas.front ();
-	}
-
-	std::unordered_map<uint8_t, int> protocol_versions;
-	std::unordered_map<std::string, int> vendor_versions;
-	std::unordered_map<uint64_t, int> bandwidth_caps;
-	std::unordered_map<nano::block_hash, int> genesis_blocks;
-
-	// Use a trimmed average which excludes the upper and lower 10% of the results
-	std::multiset<uint64_t> account_counts;
-	std::multiset<uint64_t> block_counts;
-	std::multiset<uint64_t> cemented_counts;
-	std::multiset<uint32_t> peer_counts;
-	std::multiset<uint64_t> unchecked_counts;
-	std::multiset<uint64_t> uptimes;
-	std::multiset<uint64_t> bandwidths;
-	std::multiset<uint64_t> timestamps;
-	std::multiset<uint64_t> active_difficulties;
-
-	for (auto const & telemetry_data : telemetry_datas)
-	{
-		account_counts.insert (telemetry_data.get_account_count ());
-		block_counts.insert (telemetry_data.get_block_count ());
-		cemented_counts.insert (telemetry_data.get_cemented_count ());
-
-		std::ostringstream ss;
-		ss << telemetry_data.get_major_version () << "." << telemetry_data.get_minor_version () << "." << telemetry_data.get_patch_version () << "." << telemetry_data.get_pre_release_version () << "." << telemetry_data.get_maker ();
-		++vendor_versions[ss.str ()];
-		timestamps.insert (std::chrono::duration_cast<std::chrono::milliseconds> (telemetry_data.get_timestamp ().time_since_epoch ()).count ());
-		++protocol_versions[telemetry_data.get_protocol_version ()];
-		peer_counts.insert (telemetry_data.get_peer_count ());
-		unchecked_counts.insert (telemetry_data.get_unchecked_count ());
-		uptimes.insert (telemetry_data.get_uptime ());
-		// 0 has a special meaning (unlimited), don't include it in the average as it will be heavily skewed
-		if (telemetry_data.get_bandwidth_cap () != 0)
-		{
-			bandwidths.insert (telemetry_data.get_bandwidth_cap ());
-		}
-
-		++bandwidth_caps[telemetry_data.get_bandwidth_cap ()];
-		++genesis_blocks[telemetry_data.get_genesis_block ()];
-		active_difficulties.insert (telemetry_data.get_active_difficulty ());
-	}
-
-	// Remove 10% of the results from the lower and upper bounds to catch any outliers. Need at least 10 responses before any are removed.
-	auto num_either_side_to_remove = telemetry_datas.size () / 10;
-
-	auto strip_outliers_and_sum = [num_either_side_to_remove] (auto & counts) {
-		if (num_either_side_to_remove * 2 >= counts.size ())
-		{
-			return nano::uint128_t (0);
-		}
-		counts.erase (counts.begin (), std::next (counts.begin (), num_either_side_to_remove));
-		counts.erase (std::next (counts.rbegin (), num_either_side_to_remove).base (), counts.end ());
-		return std::accumulate (counts.begin (), counts.end (), nano::uint128_t (0), [] (nano::uint128_t total, auto count) {
-			return total += count;
-		});
-	};
-
-	auto account_sum = strip_outliers_and_sum (account_counts);
-	auto block_sum = strip_outliers_and_sum (block_counts);
-	auto cemented_sum = strip_outliers_and_sum (cemented_counts);
-	auto peer_sum = strip_outliers_and_sum (peer_counts);
-	auto unchecked_sum = strip_outliers_and_sum (unchecked_counts);
-	auto uptime_sum = strip_outliers_and_sum (uptimes);
-	auto bandwidth_sum = strip_outliers_and_sum (bandwidths);
-	auto active_difficulty_sum = strip_outliers_and_sum (active_difficulties);
-
-	nano::telemetry_data consolidated_data;
-	auto size = telemetry_datas.size () - num_either_side_to_remove * 2;
-	consolidated_data.set_account_count (boost::numeric_cast<decltype (consolidated_data.get_account_count ())> (account_sum / size));
-	consolidated_data.set_block_count (boost::numeric_cast<decltype (consolidated_data.get_block_count ())> (block_sum / size));
-	consolidated_data.set_cemented_count (boost::numeric_cast<decltype (consolidated_data.get_cemented_count ())> (cemented_sum / size));
-	consolidated_data.set_peer_count (boost::numeric_cast<decltype (consolidated_data.get_peer_count ())> (peer_sum / size));
-	consolidated_data.set_uptime (boost::numeric_cast<decltype (consolidated_data.get_uptime ())> (uptime_sum / size));
-	consolidated_data.set_unchecked_count (boost::numeric_cast<decltype (consolidated_data.get_unchecked_count ())> (unchecked_sum / size));
-	consolidated_data.set_active_difficulty (boost::numeric_cast<decltype (consolidated_data.get_unchecked_count ())> (active_difficulty_sum / size));
-
-	if (!timestamps.empty ())
-	{
-		auto timestamp_sum = strip_outliers_and_sum (timestamps);
-		consolidated_data.set_timestamp (std::chrono::system_clock::time_point (std::chrono::milliseconds (boost::numeric_cast<uint64_t> (timestamp_sum / timestamps.size ()))));
-	}
-
-	auto get_mode_or_average = [] (auto const & collection, auto const & sum, std::size_t size) -> uint64_t {
-		auto max = std::max_element (collection.begin (), collection.end (), [] (auto const & lhs, auto const & rhs) {
-			return lhs.second < rhs.second;
-		});
-		if (max->second > 1)
-		{
-			return max->first;
-		}
-		else
-		{
-			return (sum / size).template convert_to<uint64_t> ();
-		}
-	};
-
-	auto get_mode = [] (auto const & collection, std::size_t size) {
-		auto max = std::max_element (collection.begin (), collection.end (), [] (auto const & lhs, auto const & rhs) {
-			return lhs.second < rhs.second;
-		});
-		if (max->second > 1)
-		{
-			return max->first;
-		}
-		else
-		{
-			// Just pick the first one
-			return collection.begin ()->first;
-		}
-	};
-
-	// Use the mode of protocol version and vendor version. Also use it for bandwidth cap if there is 2 or more of the same cap.
-	consolidated_data.set_bandwidth_cap (get_mode_or_average (bandwidth_caps, bandwidth_sum, size));
-	consolidated_data.set_protocol_version (get_mode (protocol_versions, size));
-	consolidated_data.set_genesis_block (get_mode (genesis_blocks, size));
-
-	// Vendor version, needs to be parsed out of the string
-	std::string version = get_mode (vendor_versions, size);
-
-	// May only have major version, but check for optional parameters as well, only output if all are used
-	std::vector<std::string> version_fragments;
-	boost::split (version_fragments, version, boost::is_any_of ("."));
-	debug_assert (version_fragments.size () == 5);
-	consolidated_data.set_major_version (boost::lexical_cast<uint8_t> (version_fragments.front ()));
-	consolidated_data.set_minor_version (boost::lexical_cast<uint8_t> (version_fragments[1]));
-	consolidated_data.set_patch_version (boost::lexical_cast<uint8_t> (version_fragments[2]));
-	consolidated_data.set_pre_release_version (boost::lexical_cast<uint8_t> (version_fragments[3]));
-	consolidated_data.set_maker (boost::lexical_cast<uint8_t> (version_fragments[4]));
-
-	return consolidated_data;
+	return { rsnano::rsn_consolidate_telemetry_data (data_handles.data (), data_handles.size ()) };
 }

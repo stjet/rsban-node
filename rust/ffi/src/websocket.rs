@@ -91,43 +91,20 @@ static mut BROADCAST_CALLBACK: Option<ListenerBroadcastCallback> = None;
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_listener_broadcast(f: ListenerBroadcastCallback) {
     BROADCAST_CALLBACK = Some(f);
-}
-
-pub(crate) struct FfiListener {
-    handle: *mut c_void,
-}
-
-impl FfiListener {
-    pub(crate) fn new(handle: *mut c_void) -> Self {
-        Self { handle }
-    }
-}
-
-unsafe impl Send for FfiListener {}
-unsafe impl Sync for FfiListener {}
-
-impl Listener for FfiListener {
-    fn broadcast(&self, message: &Message) -> Result<()> {
-        unsafe {
-            match BROADCAST_CALLBACK {
-                Some(f) => {
-                    let message_dto = MessageDto {
-                        topic: message.topic as u8,
-                        contents: message
-                            .contents
-                            .as_any()
-                            .downcast_ref::<FfiPropertyTreeWriter>()
-                            .ok_or_else(|| anyhow!("not an FfiPropertyTreeWriter"))?
-                            .handle,
-                    };
-                    if f(self.handle, &message_dto) {
-                        Ok(())
-                    } else {
-                        Err(anyhow!("callback failed"))
-                    }
-                }
-                None => Err(anyhow!("BROADCAST_CALLBACK missing")),
-            }
+    rsnano_node::websocket::BROADCAST_CALLBACK = Some(|cpp_pointer, message| {
+        let message_dto = MessageDto {
+            topic: message.topic as u8,
+            contents: message
+                .contents
+                .as_any()
+                .downcast_ref::<FfiPropertyTreeWriter>()
+                .ok_or_else(|| anyhow!("not an FfiPropertyTreeWriter"))?
+                .handle,
+        };
+        if (BROADCAST_CALLBACK.unwrap())(cpp_pointer, &message_dto) {
+            Ok(())
+        } else {
+            Err(anyhow!("callback failed"))
         }
-    }
+    });
 }

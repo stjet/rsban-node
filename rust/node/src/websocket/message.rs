@@ -120,21 +120,3 @@ pub fn to_topic(topic: impl AsRef<str>) -> Topic {
         _ => Topic::Invalid,
     }
 }
-
-pub trait Listener: Send + Sync {
-    fn broadcast(&self, message: &Message) -> Result<()>;
-}
-
-pub struct NullListener {}
-
-impl NullListener {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Listener for NullListener {
-    fn broadcast(&self, _message: &Message) -> Result<()> {
-        Ok(())
-    }
-}

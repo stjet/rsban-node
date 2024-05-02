@@ -1,14 +1,14 @@
 use super::bootstrap_initiator::BootstrapInitiatorHandle;
 use crate::{
     block_processing::BlockProcessorHandle, core::BlockHandle, ledger::datastore::LedgerHandle,
-    FfiListener, StringDto, StringHandle,
+    StringDto, StringHandle,
 };
 use num::FromPrimitive;
 use rsnano_core::Account;
 use rsnano_node::{
     block_processing::BlockSource,
     bootstrap::{BootstrapAttempt, BootstrapStrategy},
-    websocket::{Listener, NullListener},
+    websocket::{Listener, NullListener, WebsocketListener},
 };
 use std::{
     ffi::{c_void, CStr, CString},
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
     let websocket_server: Arc<dyn Listener> = if websocket_server.is_null() {
         Arc::new(NullListener::new())
     } else {
-        Arc::new(FfiListener::new(websocket_server))
+        Arc::new(WebsocketListener::new(websocket_server))
     };
     let block_processor = Arc::downgrade(&*block_processor);
     let bootstrap_initiator = Arc::downgrade(&*bootstrap_initiator);

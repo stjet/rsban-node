@@ -3,9 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::{
-    block_processing::BlockProcessorHandle, ledger::datastore::LedgerHandle, websocket::FfiListener,
-};
+use crate::{block_processing::BlockProcessorHandle, ledger::datastore::LedgerHandle};
 
 use super::{
     bootstrap_attempt::BootstrapAttemptHandle, pulls_cache::PullInfoDto, BootstrapInitiatorHandle,
@@ -16,7 +14,7 @@ use rsnano_node::{
         BootstrapAttemptLegacy, BootstrapStrategy, ADD_BULK_PUSH_TARGET, ADD_FRONTIER,
         ADD_START_ACCOUNT, REQUEST_BULK_PUSH_TARGET,
     },
-    websocket::{Listener, NullListener},
+    websocket::{Listener, NullListener, WebsocketListener},
 };
 
 #[no_mangle]
@@ -33,7 +31,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_legacy_create(
     let websocket_server: Arc<dyn Listener> = if websocket_server.is_null() {
         Arc::new(NullListener::new())
     } else {
-        Arc::new(FfiListener::new(websocket_server))
+        Arc::new(WebsocketListener::new(websocket_server))
     };
     BootstrapAttemptHandle::new(Arc::new(BootstrapStrategy::Legacy(
         BootstrapAttemptLegacy::new(

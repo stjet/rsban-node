@@ -1,9 +1,13 @@
-use rsnano_core::{KeyPair, Signature, WorkVersion};
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent},
+    BlockHash, KeyPair, PublicKey, Signature, WorkVersion,
+};
 use rsnano_ledger::Ledger;
 use rsnano_messages::{Message, TelemetryAck, TelemetryData, TelemetryMaker};
 use std::{
     cmp::min,
     collections::{HashMap, VecDeque},
+    mem::size_of,
     net::SocketAddrV6,
     sync::{Arc, Condvar, Mutex},
     thread::JoinHandle,
@@ -120,7 +124,8 @@ impl Telemetry {
         return true; // Telemetry is OK
     }
 
-    fn process(&self, telemetry: &TelemetryAck, channel: &Arc<ChannelEnum>) {
+    /// Process telemetry message from network
+    pub fn process(&self, telemetry: &TelemetryAck, channel: &Arc<ChannelEnum>) {
         if !self.verify(telemetry, channel) {
             return;
         }
@@ -155,12 +160,13 @@ impl Telemetry {
         self.stats.inc(StatType::Telemetry, DetailType::Process);
     }
 
-    fn trigger(&self) {
+    /// Trigger manual telemetry request to all peers
+    pub fn trigger(&self) {
         self.mutex.lock().unwrap().triggered = true;
         self.condition.notify_all();
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.mutex.lock().unwrap().telemetries.len()
     }
 
@@ -196,7 +202,7 @@ impl Telemetry {
         while !guard.stopped {
             self.stats.inc(StatType::Telemetry, DetailType::Loop);
 
-            self.cleanup();
+            self.cleanup(&mut guard);
 
             if self.request_predicate(&guard) {
                 guard.triggered = false;
@@ -236,6 +242,196 @@ impl Telemetry {
         }
     }
 
+    fn run_broadcasts(&self) {
+        let telemetry = self.local_telemetry();
+        let peers = self.channels.random_list(usize::MAX, 0, true);
+        let message = Message::TelemetryAck(TelemetryAck(Some(telemetry)));
+        for channel in peers {
+            self.broadcast(&channel, &message);
+        }
+    }
+
+    fn broadcast(&self, channel: &ChannelEnum, message: &Message) {
+        self.stats.inc(StatType::Telemetry, DetailType::Broadcast);
+        channel.send(
+            message,
+            None,
+            BufferDropPolicy::Limiter,
+            TrafficType::Generic,
+        )
+    }
+
+    fn cleanup(&self, data: &mut TelemetryImpl) {
+        data.telemetries.retain(|entry| {
+            // Remove if telemetry data is stale
+            if self.has_timed_out(entry) {
+                self.stats
+                    .inc(StatType::Telemetry, DetailType::CleanupOutdated);
+                false // Erase
+            } else {
+                true // Retain
+            }
+        })
+    }
+
+    fn has_timed_out(&self, entry: &Entry) -> bool {
+        entry.last_updated.elapsed()
+            > Duration::from_millis(self.network_params.network.telemetry_cache_cutoff_ms as u64)
+    }
+
+    /// Returns telemetry for selected endpoint
+    pub fn get_telemetry(&self, endpoint: &SocketAddrV6) -> Option<TelemetryData> {
+        let guard = self.mutex.lock().unwrap();
+        if let Some(entry) = guard.telemetries.get(endpoint) {
+            if !self.has_timed_out(entry) {
+                return Some(entry.data.clone());
+            }
+        }
+        None
+    }
+
+    pub fn get_all_telemetries(&self) -> HashMap<SocketAddrV6, TelemetryData> {
+        let guard = self.mutex.lock().unwrap();
+        let mut result = HashMap::new();
+        for entry in guard.telemetries.iter() {
+            if !self.has_timed_out(entry) {
+                result.insert(entry.endpoint, entry.data.clone());
+            }
+        }
+        result
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        let guard = self.mutex.lock().unwrap();
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "telemetries".to_string(),
+                count: guard.telemetries.len(),
+                sizeof_element: OrderedTelemetries::ELEMENT_SIZE,
+            })],
+        )
+    }
+
+    pub fn consolidate_telemetry_data(telemetry_datas: &[TelemetryData]) -> TelemetryData {
+        if telemetry_datas.is_empty() {
+            return Default::default();
+        } else if telemetry_datas.len() == 1 {
+            // Only 1 element in the collection, so just return it.
+            return telemetry_datas.first().unwrap().clone();
+        }
+
+        let mut protocol_versions: HashMap<u8, i32> = HashMap::new();
+        let mut vendor_versions: HashMap<VendorVersion, i32> = HashMap::new();
+        let mut bandwidth_caps: HashMap<u64, i32> = HashMap::new();
+        let mut genesis_blocks: HashMap<BlockHash, i32> = HashMap::new();
+
+        // Use a trimmed average which excludes the upper and lower 10% of the results
+        let mut account_counts: Vec<u64> = Vec::new();
+        let mut block_counts: Vec<u64> = Vec::new();
+        let mut cemented_counts: Vec<u64> = Vec::new();
+        let mut peer_counts: Vec<u64> = Vec::new();
+        let mut unchecked_counts: Vec<u64> = Vec::new();
+        let mut uptimes: Vec<u64> = Vec::new();
+        let mut bandwidths: Vec<u64> = Vec::new();
+        let mut timestamps: Vec<u64> = Vec::new();
+        let mut active_difficulties: Vec<u64> = Vec::new();
+
+        for telemetry_data in telemetry_datas {
+            account_counts.push(telemetry_data.account_count);
+            block_counts.push(telemetry_data.block_count);
+            cemented_counts.push(telemetry_data.cemented_count);
+
+            let version = VendorVersion {
+                major: telemetry_data.major_version,
+                minor: telemetry_data.minor_version,
+                patch: telemetry_data.patch_version,
+                pre_release: telemetry_data.pre_release_version,
+                maker: telemetry_data.maker,
+            };
+            *vendor_versions.entry(version).or_default() += 1;
+            timestamps.push(
+                telemetry_data
+                    .timestamp
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis() as u64,
+            );
+            *protocol_versions
+                .entry(telemetry_data.protocol_version)
+                .or_default() += 1;
+            peer_counts.push(telemetry_data.peer_count as u64);
+            unchecked_counts.push(telemetry_data.unchecked_count);
+            uptimes.push(telemetry_data.uptime);
+            // 0 has a special meaning (unlimited), don't include it in the average as it will be heavily skewed
+            if telemetry_data.bandwidth_cap != 0 {
+                bandwidths.push(telemetry_data.bandwidth_cap);
+            }
+
+            *bandwidth_caps
+                .entry(telemetry_data.bandwidth_cap)
+                .or_default() += 1;
+
+            *genesis_blocks
+                .entry(telemetry_data.genesis_block)
+                .or_default() += 1;
+
+            active_difficulties.push(telemetry_data.active_difficulty);
+        }
+
+        // Remove 10% of the results from the lower and upper bounds to catch any outliers. Need at least 10 responses before any are removed.
+        let num_either_side_to_remove = telemetry_datas.len() / 10;
+
+        let strip_outliers_and_sum = |counts: &mut Vec<u64>| {
+            if num_either_side_to_remove * 2 >= counts.len() {
+                return 0u128;
+            }
+            counts.sort();
+            counts
+                .iter()
+                .skip(num_either_side_to_remove)
+                .take(counts.len() - num_either_side_to_remove * 2)
+                .map(|i| u128::from(*i))
+                .sum()
+        };
+
+        let size = (telemetry_datas.len() - num_either_side_to_remove * 2) as u128;
+        let account_sum = strip_outliers_and_sum(&mut account_counts);
+        let block_sum = strip_outliers_and_sum(&mut block_counts);
+        let cemented_sum = strip_outliers_and_sum(&mut cemented_counts);
+        let peer_sum = strip_outliers_and_sum(&mut peer_counts);
+        let unchecked_sum = strip_outliers_and_sum(&mut unchecked_counts);
+        let uptime_sum = strip_outliers_and_sum(&mut uptimes);
+        let bandwidth_sum = strip_outliers_and_sum(&mut bandwidths);
+        let active_difficulty_sum = strip_outliers_and_sum(&mut active_difficulties);
+        let timestamp_sum = strip_outliers_and_sum(&mut timestamps);
+        let version = get_mode(&vendor_versions, size);
+
+        TelemetryData {
+            account_count: (account_sum / size) as u64,
+            block_count: (block_sum / size) as u64,
+            cemented_count: (cemented_sum / size) as u64,
+            peer_count: (peer_sum / size) as u32,
+            uptime: (uptime_sum / size) as u64,
+            unchecked_count: (unchecked_sum / size) as u64,
+            active_difficulty: (active_difficulty_sum / size) as u64,
+            timestamp: SystemTime::UNIX_EPOCH
+                + Duration::from_millis((timestamp_sum / size) as u64),
+            // Use the mode of protocol version and vendor version. Also use it for bandwidth cap if there is 2 or more of the same cap.
+            bandwidth_cap: get_mode_or_average(&bandwidth_caps, bandwidth_sum, size),
+            protocol_version: get_mode(&protocol_versions, size),
+            genesis_block: get_mode(&genesis_blocks, size),
+            major_version: version.major,
+            minor_version: version.minor,
+            patch_version: version.patch,
+            pre_release_version: version.pre_release,
+            maker: version.maker,
+            unknown_data: Vec::new(),
+            node_id: PublicKey::zero(),
+            signature: Signature::default(),
+        }
+    }
+
     fn request(&self, channel: &ChannelEnum) {
         self.stats.inc(StatType::Telemetry, DetailType::Request);
         let message = Message::TelemetryReq;
@@ -245,14 +441,6 @@ impl Telemetry {
             BufferDropPolicy::Limiter,
             TrafficType::Generic,
         );
-    }
-
-    fn run_broadcasts(&self) {
-        todo!();
-    }
-
-    fn cleanup(&self) {
-        todo!();
     }
 
     pub fn local_telemetry(&self) -> TelemetryData {
@@ -280,6 +468,41 @@ impl Telemetry {
         // Make sure this is the final operation!
         telemetry_data.sign(&self.node_id);
         telemetry_data
+    }
+}
+
+#[derive(Clone, Hash, Copy, PartialEq, Eq, Default)]
+struct VendorVersion {
+    major: u8,
+    minor: u8,
+    patch: u8,
+    pre_release: u8,
+    maker: u8,
+}
+
+fn get_mode_or_average(collection: &HashMap<u64, i32>, sum: u128, size: u128) -> u64 {
+    let Some((key, count)) = collection.iter().max_by_key(|(k, v)| *v) else {
+        return Default::default();
+    };
+    if *count > 1 {
+        *key
+    } else {
+        (sum / size) as u64
+    }
+}
+
+fn get_mode<T>(collection: &HashMap<T, i32>, size: u128) -> T
+where
+    T: Default + Clone,
+{
+    let Some((key, count)) = collection.iter().max_by_key(|(k, v)| *v) else {
+        return Default::default();
+    };
+    if *count > 1 {
+        key.clone()
+    } else {
+        // Just pick the first one
+        collection.iter().next().unwrap().0.clone()
     }
 }
 
@@ -336,6 +559,7 @@ struct OrderedTelemetries {
 }
 
 impl OrderedTelemetries {
+    pub const ELEMENT_SIZE: usize = size_of::<Entry>() + size_of::<SocketAddrV6>() * 2;
     fn len(&self) -> usize {
         self.sequenced.len()
     }
@@ -348,6 +572,10 @@ impl OrderedTelemetries {
         self.sequenced.push_back(endpoint);
     }
 
+    fn get(&self, entpoint: &SocketAddrV6) -> Option<&Entry> {
+        self.by_endpoint.get(entpoint)
+    }
+
     fn get_mut(&mut self, entpoint: &SocketAddrV6) -> Option<&mut Entry> {
         self.by_endpoint.get_mut(entpoint)
     }
@@ -356,5 +584,19 @@ impl OrderedTelemetries {
         if let Some(endpoint) = self.sequenced.pop_front() {
             self.by_endpoint.remove(&endpoint);
         }
+    }
+
+    fn retain(&mut self, mut f: impl FnMut(&Entry) -> bool) {
+        self.by_endpoint.retain(|endpoint, entry| {
+            let retain = f(entry);
+            if !retain {
+                self.sequenced.retain(|i| i != endpoint);
+            }
+            retain
+        })
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &Entry> {
+        self.by_endpoint.values()
     }
 }

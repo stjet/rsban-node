@@ -146,6 +146,37 @@ int32_t ptree_get_string (const void * ptree, const char * path, uintptr_t path_
 	}
 }
 
+void * ptree_get_child (const void * ptree, const char * path, uintptr_t path_len)
+{
+	auto tree (static_cast<const boost::property_tree::ptree *> (ptree));
+	std::string path_str (path, path_len);
+	auto child = tree->get_child_optional (path_str);
+	if (child.has_value ())
+	{
+		return (void *)&child.value ();
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+void ptree_get_children (const void * ptree, rsnano::PTreeChildContainer * result)
+{
+	auto tree = static_cast<const boost::property_tree::ptree *> (ptree);
+	for (auto const & child : *tree)
+	{
+		rsnano::rsn_add_ptree_child (result, child.first.c_str (), (void *)&child.second);
+	}
+}
+
+void ptree_get_data (const void * ptree, rsnano::PTreeDataContainer * result)
+{
+	auto tree = static_cast<const boost::property_tree::ptree *> (ptree);
+	auto data = tree->data ();
+	rsnano::rsn_set_ptree_data (result, data.c_str ());
+}
+
 void * ptree_create ()
 {
 	return new boost::property_tree::ptree ();
@@ -620,6 +651,9 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_property_tree_put_child (ptree_put_child);
 	rsnano::rsn_callback_property_tree_clear (ptree_clear);
 	rsnano::rsn_callback_property_tree_to_json (ptree_to_json);
+	rsnano::rsn_callback_property_tree_get_child (ptree_get_child);
+	rsnano::rsn_callback_property_tree_get_children (ptree_get_children);
+	rsnano::rsn_callback_property_tree_get_data (ptree_get_data);
 
 	rsnano::rsn_callback_string_chars (string_chars);
 	rsnano::rsn_callback_string_delete (string_delete);

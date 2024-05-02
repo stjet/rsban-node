@@ -175,47 +175,7 @@ bool nano::websocket::confirmation_options::should_filter (nano::websocket::mess
 
 bool nano::websocket::confirmation_options::update (boost::property_tree::ptree const & options_a)
 {
-	auto update_accounts = [this] (boost::property_tree::ptree const & accounts_text_a, bool insert_a) {
-		rsnano::rsn_confirmation_options_has_account_filtering_options_set (this->handle, true);
-		for (auto const & account_l : accounts_text_a)
-		{
-			nano::account result_l{};
-			if (!result_l.decode_account (account_l.second.data ()))
-			{
-				// Re-encode to keep old prefix support
-				auto encoded_l (result_l.to_account ());
-				if (insert_a)
-				{
-					rsnano::rsn_confirmation_options_accounts_insert (this->handle, encoded_l.c_str ());
-				}
-				else
-				{
-					rsnano::rsn_confirmation_options_accounts_remove (this->handle, encoded_l.c_str ());
-				}
-			}
-			else
-			{
-				logger.warn (nano::log::type::websocket, "Invalid account provided for filtering blocks: ", account_l.second.data ());
-			}
-		}
-	};
-
-	// Adding accounts as filter exceptions
-	auto accounts_add_l (options_a.get_child_optional ("accounts_add"));
-	if (accounts_add_l)
-	{
-		update_accounts (*accounts_add_l, true);
-	}
-
-	// Removing accounts as filter exceptions
-	auto accounts_del_l (options_a.get_child_optional ("accounts_del"));
-	if (accounts_del_l)
-	{
-		update_accounts (*accounts_del_l, false);
-	}
-
-	check_filter_empty ();
-	return false;
+	return rsnano::rsn_confirmation_options_update (handle, &options_a);
 }
 
 void nano::websocket::confirmation_options::check_filter_empty () const

@@ -1,10 +1,12 @@
+use serde_json::{Map, Value};
 use std::any::Any;
 use std::collections::HashMap;
 
-use serde_json::{Map, Value};
-
 pub trait PropertyTreeReader {
     fn get_string(&self, path: &str) -> anyhow::Result<String>;
+    fn get_child(&self, path: &str) -> Option<Box<dyn PropertyTreeReader>>;
+    fn get_children(&self) -> Vec<(String, Box<dyn PropertyTreeReader>)>;
+    fn data(&self) -> String;
 }
 
 pub trait PropertyTreeWriter {
@@ -38,6 +40,18 @@ impl PropertyTreeReader for TestPropertyTree {
             .get(path)
             .cloned()
             .ok_or_else(|| anyhow!("path not found"))
+    }
+
+    fn get_child(&self, _path: &str) -> Option<Box<dyn PropertyTreeReader>> {
+        unimplemented!()
+    }
+
+    fn get_children(&self) -> Vec<(String, Box<dyn PropertyTreeReader>)> {
+        unimplemented!()
+    }
+
+    fn data(&self) -> String {
+        unimplemented!()
     }
 }
 
@@ -109,6 +123,44 @@ impl PropertyTreeReader for SerdePropertyTree {
                 _ => Err(anyhow!("not a string value")),
             },
             None => Err(anyhow!("could not find path")),
+        }
+    }
+
+    fn get_child(&self, path: &str) -> Option<Box<dyn PropertyTreeReader>> {
+        self.value.get(path).map(|value| {
+            let child: Box<dyn PropertyTreeReader> = Box::new(Self {
+                value: value.clone(),
+            });
+            child
+        })
+    }
+
+    fn get_children(&self) -> Vec<(String, Box<dyn PropertyTreeReader>)> {
+        match &self.value {
+            Value::Array(array) => array
+                .iter()
+                .map(|i| {
+                    let reader: Box<dyn PropertyTreeReader> =
+                        Box::new(SerdePropertyTree { value: i.clone() });
+                    (String::default(), reader)
+                })
+                .collect(),
+            Value::Object(object) => object
+                .iter()
+                .map(|(k, v)| {
+                    let reader: Box<dyn PropertyTreeReader> =
+                        Box::new(SerdePropertyTree { value: v.clone() });
+                    (k.clone(), reader)
+                })
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    fn data(&self) -> String {
+        match &self.value {
+            Value::String(s) => s.clone(),
+            _ => unimplemented!(),
         }
     }
 }

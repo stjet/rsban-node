@@ -6,6 +6,8 @@ use std::{
     os::raw::c_char,
 };
 
+use crate::to_rust_string;
+
 type PropertyTreePutStringCallback =
     unsafe extern "C" fn(*mut c_void, *const c_char, usize, *const c_char, usize);
 type PropertyTreeGetStringCallback =
@@ -17,6 +19,12 @@ type PropertyTreeDestroyTreeCallback = unsafe extern "C" fn(*mut c_void);
 type PropertyTreePushBackCallback = unsafe extern "C" fn(*mut c_void, *const c_char, *const c_void);
 type PropertyTreeClearCallback = unsafe extern "C" fn(*mut c_void);
 type PropertyTreeToJsonCallback = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
+type PropertyTreeGetChildCallback =
+    unsafe extern "C" fn(*const c_void, *const c_char, usize) -> *mut c_void;
+
+type PropertyTreeGetChildrenCallback =
+    unsafe extern "C" fn(*const c_void, *mut PTreeChildContainer);
+type PropertyTreeGetDataCallback = unsafe extern "C" fn(*const c_void, *mut PTreeDataContainer);
 type StringCharsCallback = unsafe extern "C" fn(*mut c_void) -> *const c_char;
 type StringDeleteCallback = unsafe extern "C" fn(*mut c_void);
 
@@ -25,6 +33,9 @@ static mut PUT_U64_CALLBACK: Option<PropertyTreePutU64Callback> = None;
 static mut ADD_CALLBACK: Option<PropertyTreePutStringCallback> = None;
 static mut CLEAR_CALLBACK: Option<PropertyTreeClearCallback> = None;
 static mut GET_STRING_CALLBACK: Option<PropertyTreeGetStringCallback> = None;
+static mut GET_CHILD_CALLBACK: Option<PropertyTreeGetChildCallback> = None;
+static mut GET_CHILDREN_CALLBACK: Option<PropertyTreeGetChildrenCallback> = None;
+static mut GET_PTREE_DATA: Option<PropertyTreeGetDataCallback> = None;
 static mut CREATE_TREE_CALLBACK: Option<PropertyTreeCreateTreeCallback> = None;
 static mut DESTROY_TREE_CALLBACK: Option<PropertyTreeDestroyTreeCallback> = None;
 static mut PUSH_BACK_CALLBACK: Option<PropertyTreePushBackCallback> = None;
@@ -57,6 +68,23 @@ pub unsafe extern "C" fn rsn_callback_property_tree_clear(f: PropertyTreeClearCa
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_property_tree_get_string(f: PropertyTreeGetStringCallback) {
     GET_STRING_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_property_tree_get_child(f: PropertyTreeGetChildCallback) {
+    GET_CHILD_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_property_tree_get_children(
+    f: PropertyTreeGetChildrenCallback,
+) {
+    GET_CHILDREN_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_property_tree_get_data(f: PropertyTreeGetDataCallback) {
+    GET_PTREE_DATA = Some(f);
 }
 
 #[no_mangle]
@@ -98,6 +126,23 @@ pub unsafe extern "C" fn rsn_callback_string_chars(f: StringCharsCallback) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_string_delete(f: StringDeleteCallback) {
     STRING_DELETE_CALLBACK = Some(f);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_add_ptree_child(
+    context: &mut PTreeChildContainer,
+    name: *const c_char,
+    child_tree: *mut c_void,
+) {
+    context.0.push((
+        to_rust_string(name),
+        Box::new(FfiPropertyTreeReader::new(child_tree)),
+    ));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_set_ptree_data(context: &mut PTreeDataContainer, data: *const c_char) {
+    context.0 = to_rust_string(data);
 }
 
 pub struct FfiPropertyTreeWriter {
@@ -300,6 +345,9 @@ impl FfiPropertyTreeReader {
     }
 }
 
+pub struct PTreeChildContainer(Vec<(String, Box<dyn PropertyTreeReader>)>);
+pub struct PTreeDataContainer(String);
+
 impl PropertyTreeReader for FfiPropertyTreeReader {
     fn get_string(&self, path: &str) -> Result<String> {
         unsafe {
@@ -321,5 +369,38 @@ impl PropertyTreeReader for FfiPropertyTreeReader {
                 None => Err(anyhow!("GET_STRING_CALLBACK missing")),
             }
         }
+    }
+
+    fn get_child(&self, path: &str) -> Option<Box<dyn PropertyTreeReader>> {
+        let child_handle = unsafe {
+            GET_CHILD_CALLBACK.expect("GET_CHILD_CALLBACK missing")(
+                self.handle,
+                path.as_ptr() as *const i8,
+                path.len(),
+            )
+        };
+
+        if child_handle.is_null() {
+            None
+        } else {
+            Some(Box::new(FfiPropertyTreeReader::new(child_handle)))
+        }
+    }
+
+    fn get_children(&self) -> Vec<(String, Box<dyn PropertyTreeReader>)> {
+        let mut result = Box::new(PTreeChildContainer(Vec::new()));
+        unsafe {
+            GET_CHILDREN_CALLBACK.expect("GET_CHILDREN_CALLBACK missing")(
+                self.handle,
+                result.as_mut(),
+            )
+        }
+        result.0
+    }
+
+    fn data(&self) -> String {
+        let mut result = Box::new(PTreeDataContainer(String::new()));
+        unsafe { GET_PTREE_DATA.expect("GET_PTREE_DATA missing")(self.handle, result.as_mut()) }
+        result.0
     }
 }

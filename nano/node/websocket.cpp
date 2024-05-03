@@ -128,49 +128,8 @@ nano::websocket::confirmation_options::confirmation_options (boost::property_tre
 
 bool nano::websocket::confirmation_options::should_filter (nano::websocket::message const & message_a) const
 {
-	bool should_filter_conf_type_l (true);
-
-	auto type_text_l (message_a.contents.get<std::string> ("message.confirmation_type"));
-	auto confirmation_types = rsnano::rsn_confirmation_options_confirmation_types (handle);
-	if (type_text_l == "active_quorum" && confirmation_types & type_active_quorum)
-	{
-		should_filter_conf_type_l = false;
-	}
-	else if (type_text_l == "active_confirmation_height" && confirmation_types & type_active_confirmation_height)
-	{
-		should_filter_conf_type_l = false;
-	}
-	else if (type_text_l == "inactive" && confirmation_types & type_inactive)
-	{
-		should_filter_conf_type_l = false;
-	}
-
-	bool should_filter_account (rsnano::rsn_confirmation_options_has_account_filtering_options (handle));
-	auto destination_opt_l (message_a.contents.get_optional<std::string> ("message.block.link_as_account"));
-	if (destination_opt_l)
-	{
-		auto source_text_l (message_a.contents.get<std::string> ("message.account"));
-		if (rsnano::rsn_confirmation_options_all_local_accounts (handle))
-		{
-			nano::account source_l{};
-			nano::account destination_l{};
-			auto decode_source_ok_l (!source_l.decode_account (source_text_l));
-			auto decode_destination_ok_l (!destination_l.decode_account (destination_opt_l.get ()));
-			(void)decode_source_ok_l;
-			(void)decode_destination_ok_l;
-			debug_assert (decode_source_ok_l && decode_destination_ok_l);
-			if (wallets.exists (source_l) || wallets.exists (destination_l))
-			{
-				should_filter_account = false;
-			}
-		}
-		if (rsnano::rsn_confirmation_options_accounts_contains (handle, source_text_l.c_str ()) || rsnano::rsn_confirmation_options_accounts_contains (handle, destination_opt_l->c_str ()))
-		{
-			should_filter_account = false;
-		}
-	}
-
-	return should_filter_conf_type_l || should_filter_account;
+	auto message_dto{ message_a.to_dto () };
+	return rsnano::rsn_confirmation_options_should_filter (handle, &message_dto);
 }
 
 bool nano::websocket::confirmation_options::update (boost::property_tree::ptree & options_a)
@@ -866,6 +825,11 @@ void nano::websocket::message_builder::set_common_fields (nano::websocket::messa
 	msg.topic = static_cast<uint8_t> (message_a.topic);
 	msg.contents = &message_a.contents;
 	rsnano::rsn_websocket_set_common_fields (&msg);
+}
+
+rsnano::MessageDto nano::websocket::message::to_dto () const
+{
+	return { static_cast<uint8_t> (topic), (void *)&contents };
 }
 
 std::string nano::websocket::message::to_string () const

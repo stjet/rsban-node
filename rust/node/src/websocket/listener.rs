@@ -1,6 +1,5 @@
-use crate::wallets::Wallets;
-
 use super::{Message, Topic};
+use crate::wallets::Wallets;
 use anyhow::Result;
 use rsnano_core::{utils::PropertyTree, Account};
 use std::{
@@ -68,49 +67,45 @@ impl ConfirmationOptions {
     }
 
     pub fn should_filter(&self, message_a: &Message) -> bool {
-        let mut should_filter_conf_type_l = true;
+        let mut should_filter_conf_type = true;
 
-        let type_text_l = message_a.contents.get_string("message.confirmation_type");
-        //auto confirmation_types = rsnano::rsn_confirmation_options_confirmation_types (handle);
-        //if (type_text_l == "active_quorum" && confirmation_types & type_active_quorum)
-        //{
-        //	should_filter_conf_type_l = false;
-        //}
-        //else if (type_text_l == "active_confirmation_height" && confirmation_types & type_active_confirmation_height)
-        //{
-        //	should_filter_conf_type_l = false;
-        //}
-        //else if (type_text_l == "inactive" && confirmation_types & type_inactive)
-        //{
-        //	should_filter_conf_type_l = false;
-        //}
+        let type_text = message_a
+            .contents
+            .get_string("message.confirmation_type")
+            .unwrap_or_default();
+        let confirmation_types = self.confirmation_types;
+        if type_text == "active_quorum" && (confirmation_types & Self::TYPE_ACTIVE_QUORUM) > 0 {
+            should_filter_conf_type = false;
+        } else if type_text == "active_confirmation_height"
+            && (confirmation_types & Self::TYPE_ACTIVE_CONFIRMATION_HEIGHT) > 0
+        {
+            should_filter_conf_type = false;
+        } else if type_text == "inactive" && (confirmation_types & Self::TYPE_INACTIVE) > 0 {
+            should_filter_conf_type = false;
+        }
 
-        let should_filter_account = self.has_account_filtering_options;
-        //auto destination_opt_l (message_a.contents.get_optional<std::string> ("message.block.link_as_account"));
-        //if (destination_opt_l)
-        //{
-        //	auto source_text_l (message_a.contents.get<std::string> ("message.account"));
-        //	if (rsnano::rsn_confirmation_options_all_local_accounts (handle))
-        //	{
-        //		nano::account source_l{};
-        //		nano::account destination_l{};
-        //		auto decode_source_ok_l (!source_l.decode_account (source_text_l));
-        //		auto decode_destination_ok_l (!destination_l.decode_account (destination_opt_l.get ()));
-        //		(void)decode_source_ok_l;
-        //		(void)decode_destination_ok_l;
-        //		debug_assert (decode_source_ok_l && decode_destination_ok_l);
-        //		if (wallets.exists (source_l) || wallets.exists (destination_l))
-        //		{
-        //			should_filter_account = false;
-        //		}
-        //	}
-        //	if (rsnano::rsn_confirmation_options_accounts_contains (handle, source_text_l.c_str ()) || rsnano::rsn_confirmation_options_accounts_contains (handle, destination_opt_l->c_str ()))
-        //	{
-        //		should_filter_account = false;
-        //	}
-        //}
+        let mut should_filter_account = self.has_account_filtering_options;
+        let destination_text = message_a
+            .contents
+            .get_string("message.block.link_as_account");
+        if let Ok(destination_text) = destination_text {
+            let source_text = message_a
+                .contents
+                .get_string("message.account")
+                .unwrap_or_default();
+            if self.all_local_accounts {
+                let source = Account::decode_account(&source_text).unwrap_or_default();
+                let destination = Account::decode_account(&destination_text).unwrap_or_default();
+                if self.wallets.exists(&source) || self.wallets.exists(&destination) {
+                    should_filter_account = false;
+                }
+            }
+            if self.accounts.contains(&source_text) || self.accounts.contains(&destination_text) {
+                should_filter_account = false;
+            }
+        }
 
-        should_filter_conf_type_l || should_filter_account
+        should_filter_conf_type || should_filter_account
     }
 
     /**

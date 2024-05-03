@@ -87,6 +87,8 @@ namespace websocket
 		{
 		}
 
+		rsnano::MessageDto to_dto () const;
+
 		std::string to_string () const;
 		nano::websocket::topic topic;
 		boost::property_tree::ptree contents;

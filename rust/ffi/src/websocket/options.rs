@@ -6,6 +6,8 @@ use std::{
     sync::Arc,
 };
 
+use super::MessageDto;
+
 pub struct WebsocketOptionsHandle(Options);
 
 impl WebsocketOptionsHandle {
@@ -212,6 +214,14 @@ pub unsafe extern "C" fn rsn_confirmation_options_accounts_is_empty(
     handle: &mut WebsocketOptionsHandle,
 ) -> bool {
     handle.confirmation_options_mut().accounts.is_empty()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_confirmation_options_should_filter(
+    handle: &WebsocketOptionsHandle,
+    message: &MessageDto,
+) -> bool {
+    handle.confirmation_options().should_filter(&message.into())
 }
 
 #[no_mangle]

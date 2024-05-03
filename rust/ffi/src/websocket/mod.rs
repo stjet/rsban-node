@@ -15,6 +15,15 @@ pub struct MessageDto {
     pub contents: *mut c_void,
 }
 
+impl From<&MessageDto> for Message {
+    fn from(value: &MessageDto) -> Self {
+        Self {
+            topic: FromPrimitive::from_u8(value.topic).unwrap(),
+            contents: Box::new(FfiPropertyTree::new_borrowed(value.contents)),
+        }
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_websocket_set_common_fields(message: *mut MessageDto) {
     let dto = &mut (*message);
